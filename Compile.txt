@@ -1,0 +1,1 @@
+/Users/james/micropython/mpy-cross/mpy-cross -msmall-int-bits=31 -mno-unicode /Users/james/Developer/Python/BooleanAlgebra/derive.py 2>&1 && echo "SUCCESS"
