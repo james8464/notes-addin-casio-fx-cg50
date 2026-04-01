@@ -452,9 +452,86 @@ def step(node):
     return None
 
 
+def to_nand(node):
+    kind = node[0]
+    if kind == "c":
+        return node
+    if kind == "v":
+        return node
+    if kind == "n":
+        child = node[1]
+        if child == Z or child == O:
+            return node
+        return to_nand(child)
+    if kind == "a":
+        parts = kids(node, "a")
+        nanded = []
+        for item in parts:
+            nanded.append(("n", to_nand(item)))
+        return mk("o", nanded)
+    if kind == "o":
+        parts = kids(node, "o")
+        converted = []
+        for item in parts:
+            converted.append(to_nand(item))
+        inner = mk("a", converted)
+        return ("n", inner)
+    return node
+
+
+def to_nor(node):
+    kind = node[0]
+    if kind == "c":
+        return node
+    if kind == "v":
+        return node
+    if kind == "n":
+        child = node[1]
+        if child == Z or child == O:
+            return node
+        return to_nor(child)
+    if kind == "o":
+        parts = kids(node, "o")
+        nored = []
+        for item in parts:
+            nored.append(("n", to_nor(item)))
+        return mk("a", nored)
+    if kind == "a":
+        parts = kids(node, "a")
+        converted = []
+        for item in parts:
+            converted.append(to_nor(item))
+        inner = mk("o", converted)
+        return ("n", inner)
+    return node
+
+
+def normalise(node):
+    kind = node[0]
+    if kind in ("c", "v"):
+        return node
+    if kind == "n":
+        return ("n", normalise(node[1]))
+    if kind == "a":
+        return mk("a", [normalise(x) for x in kids(node, "a")])
+    if kind == "o":
+        return mk("o", [normalise(x) for x in kids(node, "o")])
+    return node
+
+
 print("  , for NOT")
 print("  . for AND")
 print("  + for OR")
+print("Variables: single letters (A, B, ...) or multi-letter (AB, XYZ, ...)")
+print("")
+print("Mode:")
+print("  1. Simplify")
+print("  2. NAND form")
+print("  3. NOR form")
+mode = input("Choose: ").strip()
+if mode == "":
+    mode = "1"
+
 print("")
 s = input("Enter: ").strip()
 if s == "":

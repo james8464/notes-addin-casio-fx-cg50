@@ -2165,8 +2165,78 @@ def integrate_standard_term(node, var):
     S, U = integrate_quadratic_rational(A, C)
     if S is not None:
         return S, U
-    if A[0] == 'div' and is_one(A[1]) and A[2][0] == 'pow' and linear_info(
-            A[2][1], C) is not None and is_num(A[2][2]):
+    
+    # Add pattern for 1/(x^2 + a^2) = (1/a) * arctan(x/a) + C  
+    if A[0] == 'div' and is_one(A[1]) and A[2][0] == 'add':
+        terms = flat(A[2], 'add')
+        if len(terms) == 2:
+            # Look for x^2 and positive constant terms
+            x_squared_term = None
+            constant_term = None
+            for term in terms:
+                if term[0] == 'pow' and term[1] == sym(C) and same(term[2], num(2)):
+                    x_squared_term = term
+                elif is_num(term) and term[1] > 0:
+                    constant_term = term
+            
+            # If we found the pattern, apply arctan formula
+            if x_squared_term is not None and constant_term is not None:
+                a = fn('sqrt', constant_term)
+                result = div(fn('atan', div(sym(C), a)), a)
+                return result, ['Use the standard result: 1/(' + C + '^2 + ' + pretty(constant_term) + ') -> (1/' + pretty(a) + ')*arctan(' + C + '/' + pretty(a) + ')',
+                               'So I = ' + pretty(result) + ' + C']
+    
+    # Add pattern for f'(x)/f(x) = ln|f(x)| + C (general logarithmic integration)
+    if A[0] == 'div':
+        numerator = A[1]
+        denominator = A[2]
+        # Check if numerator is derivative of denominator
+        deriv_denom = diff(denominator, C)
+        if same(deriv_denom, numerator) or (is_num(numerator) and is_num(deriv_denom) and 
+                                            divq(numerator, deriv_denom) and is_one(divq(numerator, deriv_denom))):
+            result = fn('log', fn('abs', denominator))
+            return result, ['Use the standard result for f\'(x)/f(x) -> ln|f(x)|.',
+                           'So I = ' + pretty(result) + ' + C']
+        # Special case: k*f'(x)/f(x) = k*ln|f(x)| + C  
+        coeff, base_numer = split_coeff(numerator)
+        if not is_one(coeff):
+            deriv_check = diff(denominator, C)
+            if same(deriv_check, base_numer) or (is_num(base_numer) and is_num(deriv_check) and 
+                                                divq(base_numer, deriv_check) and is_one(divq(base_numer, deriv_check))):
+                result = mul([coeff, fn('log', fn('abs', denominator))])
+                return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
+                               'So I = ' + pretty(result) + ' + C']
+    
+    # Add pattern for 1/sqrt(a^2 - x^2) = arcsin(x/a) + C
+    if A[0] == 'div' and is_one(A[1]) and (
+            A[2][0] == 'fn' and A[2][1] == 'sqrt' or A[2][0] == 'pow' and same(A[2][2], num(1, 2))):
+        J = A[2][2]if A[2][0] == 'fn'else A[2][1]
+        H = poly_num(J, C)
+        if H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
+            B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
+            return B, [
+                'Use the standard result for 1/sqrt(' + C + '^2+a).', 'So I = ' + pretty(B) + ' + C']
+        if same(J, add([num(1), neg(power(F, num(2)))])) or same(
+                J, add([neg(power(F, num(2))), num(1)])):
+            return fn('asin', F), [
+                'Use the standard result for 1/sqrt(1-' + C + '^2).', 'So I = asin(' + C + ') + C']
+        if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(
+                H[0]) and is_num(H[2]) and H[0][1] > 0 and H[2][1] < 0:
+            V = fn('sqrt', H[0])
+            T = fn('sqrt', negq(H[2]))
+            W = div(mul([T, F]), V)
+            D = div(fn('asin', W), T)
+            return D, [
+                'Use the standard result for 1/sqrt(a^2-b^2*' + C + '^2).', 'So I = ' + pretty(D) + ' + C']
+        # Additional check for a^2 - x^2 form
+        if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(H[2]) and is_num(H[0]):
+            # Check if we have form a^2 - x^2
+            if H[2][1] < 0 and H[0][1] > 0:  # a^2 - x^2 where a^2 > 0
+                a_squared = H[0]
+                a = fn('sqrt', a_squared)
+                result = fn('asin', div(sym(C), a))
+                return result, ['Use the standard result for 1/sqrt(' + pretty(a_squared) + '-' + C + '^2).',
+                               'So I = ' + pretty(result) + ' + C']
         G, M = linear_info(A[2][1], C)
         N = neg(A[2][2])
         if N == num(-1):

@@ -1230,7 +1230,7 @@ def explain(node, var, deps):
         lines.append("v = " + show(v))
         lines.append("du/d" + var + " = " + show(du))
         lines.append("dv/d" + var + " = " + show(dv))
-        lines.append("d/d" + var + "[u*v] = u*dv/d" + var + "+v*du/d" + var)
+        lines.append("d/d" + var + "[uv] = u*dv/d" + var + "+v*du/d" + var)
         lines.append("= " + show(tidy(add([mul([u, dv]), mul([v, du])]))))
         return d, lines
     if node[0] == "div":
@@ -1268,7 +1268,7 @@ def explain(node, var, deps):
             lines.append("Exponential rule")
             lines.append("u = " + show(exp))
             lines.append("du/d" + var + " = " + show(de))
-            lines.append("d/d" + var + "[" + show(power(base, sym("u"))) + "] = " + show(power(base, sym("u"))) + "*ln(" + show(base) + ")*du/d" + var)
+            lines.append("d/d" + var + "[a^u] = a^u*ln(a)*du/d" + var)
             lines.append("= " + show(d))
             return d, lines
     if node[0] == "fn":
@@ -1277,11 +1277,11 @@ def explain(node, var, deps):
         darg = tidy(diff(arg, var, deps))
         if same(arg, sym(var)) or arg[0] == "sym":
             label = {
-                "sin": "Trig rule", "cos": "Trig rule", "tan": "Trig rule",
-                "sec": "Trig rule", "cosec": "Trig rule", "cot": "Trig rule",
-                "asin": "Trig rule", "acos": "Trig rule", "atan": "Trig rule",
-                "log": "Log rule", "log10": "Log rule", "exp": "Exponential rule",
-                "sqrt": "Root rule", "abs": "Absolute rule"
+                "sin": "Differentiate sin", "cos": "Differentiate cos", "tan": "Differentiate tan",
+                "sec": "Differentiate sec", "cosec": "Differentiate cosec", "cot": "Differentiate cot",
+                "asin": "Differentiate arcsin", "acos": "Differentiate arccos", "atan": "Differentiate arctan",
+                "log": "Differentiate ln", "log10": "Differentiate log10", "exp": "Differentiate e^x",
+                "sqrt": "Differentiate sqrt", "abs": "Differentiate abs"
             }.get(name, "Differentiate")
             lines.append(label)
             lines.append("d/d" + var + "[" + show(node) + "] = " + show(d))
@@ -1295,7 +1295,7 @@ def explain(node, var, deps):
             lines.append("dy/du = " + show(dydu))
             lines.append("dy/d" + var + " = dy/du*du/d" + var)
             lines.append("= " + show(joined))
-            lines.append("Substitute u = " + show(arg))
+            lines.append("Sub u = " + show(arg))
             lines.append("= " + show(subbed))
         return d, lines
     lines.append("Differentiate")
@@ -1847,12 +1847,12 @@ def main():
             coef, rest = coeff_d(whole, dname)
             if is_zero(coef):
                 if not depends(work, [dep]):
-                    raise ValueError("The equation does not contain " + dep + ". Check your input or variable choice.")
-                raise ValueError("Could not find " + dname + " after differentiating. The equation may be non-standard.")
+                    raise ValueError("The equation does not contain " + dep + ".")
+                raise ValueError("Could not find " + dname + ".")
             ans = prefer_trig_recip(tidy(div(neg(rest), coef)))
-            print(str(step) + ". Differentiate both sides with respect to " + var)
+            print(str(step) + ". d/d" + var + "(LHS) = d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + show(dleft) + " = " + show(dright))
-            print(str(step + 2) + ". Rearrange to make " + dname + " the subject")
+            print(str(step + 2) + ". Make " + dname + " the subject")
             if is_one(coef):
                 lhs = dname
             elif is_minus_one(coef):
@@ -1873,12 +1873,11 @@ def main():
             dx = sim(diff(xt, "t", []))
             dy = sim(diff(yt, "t", []))
             if is_zero(dx):
-                raise ValueError("dx/dt = 0: x(t) is constant, so dy/dx is undefined.")
+                raise ValueError("dx/dt = 0: dy/dx undefined.")
             ans = prefer_trig_recip(tidy(div(dy, dx)))
-            print("1. dx/dt = " + show(dx))
-            print("2. dy/dt = " + show(dy))
-            print("3. dy/dx = (dy/dt)/(dx/dt)")
-            print("dy/dx = " + show(ans))
+            print("dx/dt = " + show(dx))
+            print("dy/dt = " + show(dy))
+            print("dy/dx = (dy/dt)/(dx/dt) = " + show(ans))
 
         else:
             print("Mode must be 1, 2 or 3.")
