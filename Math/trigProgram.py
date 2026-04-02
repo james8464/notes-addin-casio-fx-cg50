@@ -2301,6 +2301,48 @@ def proof_named_target_rewrite(node, target):
             candidate = sim(mul([node[1], fn("sec", arg)]))
             if equivalent(candidate, target):
                 return candidate, "Rewrite 1/cos(A) as sec(A)."
+    if node[0] == "mul":
+        items = list(flat(node, "mul"))
+        coeff_bits = []
+        sin_arg = None
+        cos_arg = None
+        sec_arg = None
+        cosec_arg = None
+        i = 0
+        while i < len(items):
+            item = items[i]
+            if item[0] == "fn" and item[1] == "sin":
+                if sin_arg is not None:
+                    sin_arg = False
+                    break
+                sin_arg = item[2]
+            elif item[0] == "fn" and item[1] == "cos":
+                if cos_arg is not None:
+                    cos_arg = False
+                    break
+                cos_arg = item[2]
+            elif item[0] == "fn" and item[1] == "sec":
+                if sec_arg is not None:
+                    sec_arg = False
+                    break
+                sec_arg = item[2]
+            elif item[0] == "fn" and item[1] == "cosec":
+                if cosec_arg is not None:
+                    cosec_arg = False
+                    break
+                cosec_arg = item[2]
+            else:
+                coeff_bits.append(item)
+            i += 1
+        coeff = make_mul(coeff_bits)
+        if sin_arg not in (None, False) and sec_arg not in (None, False) and same(sin_arg, sec_arg):
+            candidate = sim(mul([coeff, fn("tan", sin_arg)]))
+            if equivalent(candidate, target):
+                return candidate, "Rewrite sin(A)sec(A) as tan(A)."
+        if cos_arg not in (None, False) and cosec_arg not in (None, False) and same(cos_arg, cosec_arg):
+            candidate = sim(mul([coeff, fn("cot", cos_arg)]))
+            if equivalent(candidate, target):
+                return candidate, "Rewrite cos(A)cosec(A) as cot(A)."
     if not cheap_same(named, node) and equivalent(named, target):
         if node[0] == "div" and is_one(node[1]) and node[2][0] == "fn":
             if node[2][1] == "cos":
@@ -4092,7 +4134,22 @@ def bridge_to_target(lines, cur, target, target_name):
     if same(cur, target):
         lines.append("= " + target_name)
         return
+    named, note = proof_named_target_rewrite(cur, target)
+    if named is not None and not same(named, cur):
+        if note:
+            lines.append(note)
+        lines.append(step_line(named))
+        if same(named, target):
+            lines.append("= " + target_name)
+            return
+        cur = named
+    layout = proof_target_layout_steps(cur, target)
+    if layout is not None:
+        lines.extend(layout)
+        lines.append("= " + target_name)
+        return
     working = cur
+    staged = []
     for transform, note in [
         (lambda e: full_simplify(reduce_identities(e)), "Use Pythagorean identities."),
         (simplify_fraction, "Simplify the fraction."),
@@ -4102,11 +4159,15 @@ def bridge_to_target(lines, cur, target, target_name):
         nxt = transform(working)
         if not same(nxt, working):
             if note:
-                lines.append(note)
-            lines.append(step_line(nxt))
+                staged.append(note)
+            staged.append(step_line(nxt))
             working = nxt
         if same(working, target):
-            break
+            lines.extend(staged)
+            lines.append("= " + target_name)
+            return
+    if equivalent(working, target):
+        lines.append(step_line(target))
     lines.append("= " + target_name)
 
 
@@ -5433,12 +5494,16 @@ def prove_half_angle_ratio_identity(source, target, source_name, target_name):
 def direct_double_angle_rewrite(node):
     node = sim(node)
     if node[0] == "fn":
-        base = match_numeric_multiple_arg(node[2], 2)
+        base = half_angle_expr(node[2])
+        if base is None:
+            base = match_numeric_multiple_arg(node[2], 2)
         if base is not None:
             if node[1] == "sin":
                 return mul([num(2), fn("sin", base), fn("cos", base)]), "Use sin(2A) = 2sin A cos A."
             if node[1] == "cos":
                 return add([power(fn("cos", base), num(2)), neg(power(fn("sin", base), num(2)))]), "Use cos(2A) = cos^2 A - sin^2 A."
+            if node[1] == "tan":
+                return div(mul([num(2), fn("tan", base)]), add([num(1), neg(power(fn("tan", base), num(2)))])), "Use tan(2A) = 2tan A/(1 - tan^2 A)."
     product = match_same_angle_sin_cos_product(node)
     if product is not None and same(product[0], num(2)):
         return fn("sin", mul([num(2), product[1]])), "Use sin(2A) = 2sin A cos A."
@@ -6140,6 +6205,57 @@ def finalize_proof_lines(lines):
     return lines
 
 
+def prove_by_difference_zero(lhs, rhs):
+    lhs = sim(lhs)
+    rhs = sim(rhs)
+    diff = sim(add([lhs, neg(rhs)]))
+    if not equivalent(diff, num(0)):
+        return None
+    lines = ["LHS - RHS = " + show(diff)]
+    if same(diff, num(0)):
+        lines.append("0 = 0")
+        lines.append("So LHS = RHS")
+        return compact_lines(lines)
+    var = detect_transform_var(lhs, rhs)
+    cur = diff
+    visited = {cur}
+    pass_count = 0
+    while pass_count < SOLVE_PASS_LIMIT and not same(cur, num(0)):
+        best = best_solve_rewrite(cur, var, visited)
+        if best is None:
+            break
+        cur = best["expr"]
+        visited.add(cur)
+        i = 0
+        while i < len(best["lines"]):
+            lines.append(best["lines"][i])
+            i += 1
+        pass_count += 1
+    if not same(cur, num(0)):
+        nxt = full_simplify(expand_embedded_small(expand_trig_tree(cur)))
+        if not same(nxt, cur):
+            lines.append("Expand the trig identities.")
+            lines.append(equation_line(nxt, num(0)))
+            cur = nxt
+        nxt = full_simplify(reduce_identities(cur))
+        if not same(nxt, cur):
+            lines.append("Use Pythagorean identities.")
+            lines.append(equation_line(nxt, num(0)))
+            cur = nxt
+        nxt = full_simplify(simplify_fraction(cur))
+        if not same(nxt, cur):
+            lines.append("Simplify the fraction.")
+            lines.append(equation_line(nxt, num(0)))
+            cur = nxt
+    if not same(cur, num(0)):
+        cur = full_simplify(cur)
+    if not same(cur, num(0)):
+        return None
+    lines.append("0 = 0")
+    lines.append("So LHS = RHS")
+    return compact_lines(lines)
+
+
 # ---------------------------------------------------------------------------
 # Proof mode entrypoint
 # ---------------------------------------------------------------------------
@@ -6155,6 +6271,9 @@ def solve_prove(lhs, rhs, route):
     if lines is not None:
         return compact_lines(finalize_proof_lines(lines))
     if equivalent(lhs, rhs):
+        lines = prove_by_difference_zero(lhs, rhs)
+        if lines is not None:
+            return lines
         return ["LHS = RHS"]
     raise ValueError(FAIL)
 
@@ -7191,6 +7310,153 @@ def validate_x_solution(lhs, rhs, var, value, deg_mode):
     if abs(left - right) > 1e-6:
         return False, "it does not satisfy the original equation."
     return True, ""
+
+
+def equation_has_trig_content(lhs, rhs):
+    names = function_names_of(lhs) + function_names_of(rhs)
+    i = 0
+    while i < len(names):
+        if names[i] in ("sin", "cos", "tan", "cot", "sec", "cosec"):
+            return True
+        i += 1
+    return False
+
+
+def solve_numeric_value(node, var, value, deg_mode):
+    try:
+        out = eval_numeric_mode(node, {var: value}, deg_mode)
+    except Exception:
+        return None
+    if not is_finite_value(out):
+        return None
+    return out
+
+
+def refine_numeric_near_guess(node, var, guess, step, deg_mode):
+    if step <= 0:
+        return guess
+    left = guess - step
+    right = guess + step
+    best_x = guess
+    best_y = solve_numeric_value(node, var, guess, deg_mode)
+    best_abs = abs(best_y) if best_y is not None else 1e100
+    i = 0
+    while i <= 24:
+        x = left + (right - left) * i / 24.0
+        y = solve_numeric_value(node, var, x, deg_mode)
+        if y is not None and abs(y) < best_abs:
+            best_abs = abs(y)
+            best_x = x
+        i += 1
+    return best_x
+
+
+def refine_numeric_zero_bracket(node, var, left, right, f_left, f_right, deg_mode):
+    a = left
+    b = right
+    fa = f_left
+    fb = f_right
+    i = 0
+    while i < 70:
+        mid = (a + b) / 2.0
+        fm = solve_numeric_value(node, var, mid, deg_mode)
+        if fm is None:
+            left_mid = (a + mid) / 2.0
+            right_mid = (mid + b) / 2.0
+            fl = solve_numeric_value(node, var, left_mid, deg_mode)
+            fr = solve_numeric_value(node, var, right_mid, deg_mode)
+            if fl is not None and fa * fl <= 0:
+                b = left_mid
+                fb = fl
+            elif fr is not None and fr * fb <= 0:
+                a = right_mid
+                fa = fr
+            else:
+                return None
+            i += 1
+            continue
+        if abs(fm) < 1e-10 or abs(b - a) < 1e-8:
+            return mid
+        if fa * fm <= 0:
+            b = mid
+            fb = fm
+        else:
+            a = mid
+            fa = fm
+        i += 1
+    return (a + b) / 2.0
+
+
+def estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span):
+    if span <= 1e-12:
+        return 1
+    periods = []
+    estimate_solve_periods(lhs, var, deg_mode, periods)
+    estimate_solve_periods(rhs, var, deg_mode, periods)
+    if len(periods) == 0:
+        base_step = span / 1024.0
+    else:
+        best = periods[0]
+        i = 1
+        while i < len(periods):
+            if periods[i] < best:
+                best = periods[i]
+            i += 1
+        base_step = best / 96.0
+    if base_step <= 1e-12:
+        base_step = span / 1024.0
+    samples = int(math.ceil(span / base_step))
+    if samples < 512:
+        samples = 512
+    if samples > 4096:
+        samples = 4096
+    return samples
+
+
+def solve_numeric_trig_fallback(lhs, rhs, expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    span = abs(end_val - start_val)
+    samples = estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span)
+    step = span * 1.0 / samples if samples > 0 else 0.0
+    candidates = []
+    x1 = start_val
+    y1 = solve_numeric_value(expr, var, x1, deg_mode)
+    if y1 is not None and abs(y1) < 1e-4 and within_interval(x1, start_val, end_val, start_inclusive, end_inclusive):
+        candidates.append(refine_numeric_near_guess(expr, var, x1, step, deg_mode))
+    i = 1
+    while i <= samples:
+        x2 = start_val + step * i
+        y2 = solve_numeric_value(expr, var, x2, deg_mode)
+        if y2 is not None and abs(y2) < 1e-4 and within_interval(x2, start_val, end_val, start_inclusive, end_inclusive):
+            candidates.append(refine_numeric_near_guess(expr, var, x2, step, deg_mode))
+        if y1 is not None and y2 is not None and y1 * y2 < 0:
+            root = refine_numeric_zero_bracket(expr, var, x1, x2, y1, y2, deg_mode)
+            if root is not None and within_interval(root, start_val, end_val, start_inclusive, end_inclusive):
+                candidates.append(root)
+        x1 = x2
+        y1 = y2
+        i += 1
+    verified = []
+    i = 0
+    while i < len(candidates):
+        ok, _reason = validate_x_solution(lhs, rhs, var, candidates[i], deg_mode)
+        if ok:
+            verified.append(candidates[i])
+        i += 1
+    verified = dedupe_values(verified)
+    lines = [
+        "Use a final numeric scan of the interval when no standard rewrite route matches cleanly.",
+        "Scan f(" + var + ") = " + show(expr) + " for sign changes and verify each candidate in the original equation.",
+    ]
+    if len(verified) == 0:
+        lines.append("No verified solutions in the interval.")
+        return [], compact_lines(lines)
+    bits = []
+    i = 0
+    while i < len(verified):
+        bits.append(final_angle_text(verified[i], deg_mode))
+        i += 1
+    lines.append(var + " = [" + ", ".join(bits) + "]")
+    return verified, compact_lines(lines)
 
 
 def solve_linear_parameter_text(eq_text, var):
@@ -8285,6 +8551,15 @@ def polynomial_float_coeffs(coeffs, degree):
     while i >= 0:
         out.append(eval_numeric(coeffs[i], {}))
         i -= 1
+    return out
+
+
+def polynomial_coeff_nodes_low(coeffs, degree):
+    out = []
+    i = 0
+    while i <= degree:
+        out.append(coeffs[i])
+        i += 1
     return out
 
 
@@ -10054,21 +10329,21 @@ def append_unique_solve_value(values, value):
     values.append(value)
 
 
+def match_equal_simple_trig_term(node):
+    if node[0] == "fn" and node[1] in ("sin", "cos", "tan", "cot"):
+        return num(1), node[1], node[2]
+    coeff, rest = split_coeff(node)
+    if rest[0] == "fn" and rest[1] in ("sin", "cos", "tan", "cot"):
+        return coeff, rest[1], rest[2]
+    return None
+
+
 def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
     terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
     if len(terms) != 2:
         return None
-
-    def match_same_name_term(node):
-        if node[0] == "fn" and node[1] in ("sin", "cos", "tan", "cot"):
-            return num(1), node[1], node[2]
-        coeff, rest = split_coeff(node)
-        if rest[0] == "fn" and rest[1] in ("sin", "cos", "tan", "cot"):
-            return coeff, rest[1], rest[2]
-        return None
-
-    first = match_same_name_term(terms[0])
-    second = match_same_name_term(terms[1])
+    first = match_equal_simple_trig_term(terms[0])
+    second = match_equal_simple_trig_term(terms[1])
     if first is None or second is None or first[1] != second[1]:
         return None
     if not equivalent(first[0], neg(second[0])):
@@ -10133,6 +10408,60 @@ def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_in
             "For cos(A) = cos(B), A = B + 2*n*pi or A = -B + 2*n*pi.",
         ]
     sols = dedupe_values(sols)
+    if len(sols) == 0:
+        lines.append("No solutions in the interval.")
+    else:
+        bits = []
+        i = 0
+        while i < len(sols):
+            bits.append(final_angle_text(sols[i], deg_mode))
+            i += 1
+        lines.append(var + " = [" + ", ".join(bits) + "]")
+    return sols, compact_lines(lines)
+
+
+def solve_equal_complementary_trig_expr(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
+    if len(terms) != 2:
+        return None
+    first = match_equal_simple_trig_term(terms[0])
+    second = match_equal_simple_trig_term(terms[1])
+    if first is None or second is None:
+        return None
+    if not equivalent(first[0], neg(second[0])):
+        return None
+    if set([first[1], second[1]]) != set(["sin", "cos"]):
+        return None
+    sin_arg = first[2] if first[1] == "sin" else second[2]
+    cos_arg = first[2] if first[1] == "cos" else second[2]
+    sin_pair = linear_pair(sin_arg, var)
+    cos_pair = linear_pair(cos_arg, var)
+    if sin_pair is None or cos_pair is None:
+        return None
+    quarter_turn = 90.0 if deg_mode else math.pi / 2.0
+    full_turn = 360.0 if deg_mode else 2.0 * math.pi
+    sols = []
+    n = -12
+    while n <= 12:
+        target1 = sim(add([sin_arg, cos_arg, neg(number_node(quarter_turn + n * full_turn))]))
+        linear1 = linear_pair(target1, var)
+        if linear1 is not None and not is_zero(linear1[0]):
+            value = eval_numeric_mode(sim(div(neg(linear1[1]), linear1[0])), {}, deg_mode)
+            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
+                append_unique_solve_value(sols, value)
+        target2 = sim(add([sin_arg, neg(cos_arg), neg(number_node(quarter_turn + n * full_turn))]))
+        linear2 = linear_pair(target2, var)
+        if linear2 is not None and not is_zero(linear2[0]):
+            value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
+            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
+                append_unique_solve_value(sols, value)
+        n += 1
+    sols = dedupe_values(sols)
+    quarter_text = "90" if deg_mode else "pi/2"
+    full_text = "360" if deg_mode else "2*pi"
+    lines = [
+        "For sin(A) = cos(B), A+B = " + quarter_text + "+" + full_text + "*n or A-B = " + quarter_text + "+" + full_text + "*n.",
+    ]
     if len(sols) == 0:
         lines.append("No solutions in the interval.")
     else:
@@ -10218,17 +10547,13 @@ def solve_tan_substitution_expr(expr, var, start_val, end_val, deg_mode, start_i
     power_count = 0
     poly_expr = u_expr
     poly_coeffs = extract_polynomial_symbol(poly_expr, "u", 6)
-    while (poly_coeffs is None or solve_polynomial_numeric([poly_coeffs[d] for d in range(6, -1, -1)]) is None) and power_count < 4:
+    while (poly_coeffs is None or solve_polynomial_numeric(polynomial_coeff_nodes_low(poly_coeffs, 6)) is None) and power_count < 4:
         power_count += 1
         poly_expr = sim(expand_embedded_small(mul([u_expr, power(den, num(power_count))])))
         poly_coeffs = extract_polynomial_symbol(poly_expr, "u", 6)
     if poly_coeffs is None:
         return None
-    coeff_list = []
-    degree = 6
-    while degree >= 0:
-        coeff_list.append(poly_coeffs[degree])
-        degree -= 1
+    coeff_list = polynomial_coeff_nodes_low(poly_coeffs, 6)
     roots = solve_polynomial_numeric(coeff_list)
     if roots is None:
         return None
@@ -10289,12 +10614,31 @@ def solve_tan_substitution_expr(expr, var, start_val, end_val, deg_mode, start_i
     return uniq, compact_lines(lines)
 
 
+def solve_direct_double_angle_expr(expr, var):
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
+    i = 0
+    while i < len(terms):
+        rewritten, note = direct_double_angle_rewrite(terms[i])
+        if rewritten is not None and not cheap_same(rewritten, terms[i]):
+            new_expr = sim(make_add(terms[:i] + [rewritten] + terms[i + 1 :]))
+            if not cheap_same(new_expr, expr):
+                return new_expr, [note, equation_line(new_expr, num(0))]
+        i += 1
+    return None
+
+
 def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
-    expanded = replace_exact_trig_quiet(sim(expand_trig_tree(expr)))
-    expanded = sim(expand_embedded_small(expanded))
-    combo = match_linear_combo_const(expanded, var)
+    direct = sim(expr)
+    combo = match_linear_combo_const(direct, var)
+    expanded = direct
+    expanded_note = False
     if combo is None:
-        return None
+        expanded = replace_exact_trig_quiet(sim(expand_trig_tree(expr)))
+        expanded = sim(expand_embedded_small(expanded))
+        combo = match_linear_combo_const(expanded, var)
+        if combo is None:
+            return None
+        expanded_note = not same(expanded, expr)
     base, sin_coeff_expr, cos_coeff_expr, const_expr = combo
     angle = match_linear_angle(base, var)
     if angle is None:
@@ -10320,7 +10664,7 @@ def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_incl
     tan_expr = full_simplify(div(cos_coeff_expr, sin_coeff_expr)) if abs(sin_coeff) > 1e-12 else None
     target_expr = full_simplify(div(neg(const_expr), r_expr)) if not is_zero(const_expr) else num(0)
     lines = []
-    if not same(expanded, expr):
+    if expanded_note:
         lines.append("Expand the trig identities.")
         lines.append(equation_line(expanded, num(0)))
     lines.append("Write the equation in the form A*sin(" + show(base) + ")+B*cos(" + show(base) + ")+C = 0.")
@@ -10429,11 +10773,7 @@ def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_in
     if poly is not None:
         name, arg, mult, offset, coeffs = poly
         poly_degree = polynomial_degree_coeff_map(coeffs, 4)
-        coeff_list = []
-        degree = poly_degree
-        while degree >= 0:
-            coeff_list.append(coeffs[degree])
-            degree -= 1
+        coeff_list = polynomial_coeff_nodes_low(coeffs, poly_degree)
         roots = solve_polynomial_numeric(coeff_list)
         numeric_fallback = False
         if roots is None and name in ("sin", "cos"):
@@ -10542,6 +10882,9 @@ def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_in
     equality_result = solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
     if equality_result is not None:
         return equality_result
+    equality_result = solve_equal_complementary_trig_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if equality_result is not None:
+        return equality_result
     equality_result = solve_equal_tan_cot_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
     if equality_result is not None:
         return equality_result
@@ -10639,17 +10982,16 @@ def solve_rewrite_pipeline(expr, var, start_val, end_val, deg_mode, start_inclus
     expr = sim(expr)
     lines = []
     solved = solve_compound_ratio_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
-    if solved is None:
-        tan2_expr = solve_tan2_cot_expr(expr)
-        if tan2_expr is not None:
-            expr, extra = tan2_expr
-            i = 0
-            while i < len(extra):
-                lines.append(extra[i])
-                i += 1
-        features = solve_feature_scan(expr, var)
-        if features["reciprocal_burden"] == 0 and solve_shape_rank(expr, var, features) <= 2:
-            solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if solved is not None:
+        return solved, compact_lines(lines), expr
+    tan2_expr = solve_tan2_cot_expr(expr)
+    if tan2_expr is not None:
+        expr, extra = tan2_expr
+        i = 0
+        while i < len(extra):
+            lines.append(extra[i])
+            i += 1
+    solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
     if solved is None:
         visited = {expr}
         pass_count = 0
@@ -10806,6 +11148,7 @@ def solve_label_rank(label):
         "product_to_sum": 5,
         "pythag_single": 6,
         "weighted_pythag": 7,
+        "double_angle_single": 8,
         "cos_double_single": 8,
         "sin_double_single": 8,
         "double_product": 9,
@@ -10902,6 +11245,7 @@ def angle_reduction_transforms(expr, var, features):
     fn_names = features["fn_names"]
     kind_names = features["kind_names"]
     for label, fn_rewrite in (
+        ("double_angle_single", solve_direct_double_angle_expr),
         ("square_sum_reduce", solve_square_sum_reduction_expr),
         ("pythag_single", solve_pythag_single_expr),
         ("weighted_pythag", solve_weighted_pythag_expr),
@@ -11164,6 +11508,8 @@ def solve_tan_squared_form(expr, var, start_val, end_val, deg_mode, lines):
             tan2_coeff = sim(add([tan2_coeff, coeff]))
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
+        else:
+            return None
     if tan2_coeff == num(0) or tan2_arg is None:
         return None
     k_val = eval_numeric(sim(neg(const_term)), {})
@@ -11234,17 +11580,24 @@ def solve_sin_squared_form(expr, var, start_val, end_val, deg_mode, lines):
         terms = [expr]
     # Look for sin^2(x) term
     sin2_coeff = num(0)
+    sin2_arg = None
     const_term = num(0)
     for term in terms:
         coeff, rest = split_coeff(term)
-        # Check for sin^2(x) - either direct pow or expanded form
-        if _is_sin_squared_term(rest):
+        arg = match_sin_squared_term(rest)
+        if arg is not None:
+            if sin2_arg is None:
+                sin2_arg = arg
+            elif not equivalent(sin2_arg, arg):
+                return None
             sin2_coeff = sim(add([sin2_coeff, coeff]))
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
-    if sin2_coeff == num(0):
+        else:
+            return None
+    if sin2_coeff == num(0) or sin2_arg is None:
         return None
-    return _solve_trig_squared(const_term, sin2_coeff, "sin", var, start_val, end_val, deg_mode, lines)
+    return _solve_trig_squared(sin2_arg, const_term, sin2_coeff, "sin", var, start_val, end_val, deg_mode, lines)
 
 
 def solve_cos_squared_form(expr, var, start_val, end_val, deg_mode, lines):
@@ -11256,57 +11609,64 @@ def solve_cos_squared_form(expr, var, start_val, end_val, deg_mode, lines):
         terms = [expr]
     # Look for cos^2(x) term
     cos2_coeff = num(0)
+    cos2_arg = None
     const_term = num(0)
     for term in terms:
         coeff, rest = split_coeff(term)
-        # Check for cos^2(x) - either direct pow or expanded form
-        if _is_cos_squared_term(rest):
+        arg = match_cos_squared_term(rest)
+        if arg is not None:
+            if cos2_arg is None:
+                cos2_arg = arg
+            elif not equivalent(cos2_arg, arg):
+                return None
             cos2_coeff = sim(add([cos2_coeff, coeff]))
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
-    if cos2_coeff == num(0):
+        else:
+            return None
+    if cos2_coeff == num(0) or cos2_arg is None:
         return None
-    return _solve_trig_squared(const_term, cos2_coeff, "cos", var, start_val, end_val, deg_mode, lines)
+    return _solve_trig_squared(cos2_arg, const_term, cos2_coeff, "cos", var, start_val, end_val, deg_mode, lines)
+
+
+def match_sin_squared_term(rest):
+    rest = sim(rest)
+    if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and rest[2] == num(2):
+        return rest[1][2]
+    if rest[0] == "div":
+        num_part = rest[1]
+        den_part = rest[2]
+        if den_part == num(2):
+            one_pm = match_one_pm_cos_norm(num_part)
+            if one_pm is not None and one_pm[0] == -1:
+                return half_angle_expr(one_pm[1])
+    return None
+
+
+def match_cos_squared_term(rest):
+    rest = sim(rest)
+    if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "cos" and rest[2] == num(2):
+        return rest[1][2]
+    if rest[0] == "div":
+        num_part = rest[1]
+        den_part = rest[2]
+        if den_part == num(2):
+            one_pm = match_one_pm_cos_norm(num_part)
+            if one_pm is not None and one_pm[0] == 1:
+                return half_angle_expr(one_pm[1])
+    return None
 
 
 def _is_sin_squared_term(rest):
-    # Direct form: sin(x)^2
-    if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and rest[2] == num(2):
-        return True
-    # Expanded form: (1 - cos(2x))/2
-    if rest[0] == "div":
-        num_part = rest[1]
-        den_part = rest[2]
-        if den_part == num(2) and num_part[0] == "add":
-            num_parts = list(flat(num_part, "add"))
-            has_1 = any(p == num(1) for p in num_parts)
-            has_minus_cos2x = any(
-                isinstance(np, tuple) and np[0] == "mul" and len(np) > 1 and
-                np[1][0] == num(-1) and len(np[1]) > 1 and np[1][1][0] == "fn" and np[1][1][1] == "cos"
-                for np in num_parts
-            )
-            return has_1 and has_minus_cos2x
-    return False
+    return match_sin_squared_term(rest) is not None
 
 
 def _is_cos_squared_term(rest):
-    # Direct form: cos(x)^2
-    if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "cos" and rest[2] == num(2):
-        return True
-    # Expanded form: (1 + cos(2x))/2
-    if rest[0] == "div":
-        num_part = rest[1]
-        den_part = rest[2]
-        if den_part == num(2) and num_part[0] == "add":
-            num_parts = list(flat(num_part, "add"))
-            has_1 = any(p == num(1) for p in num_parts)
-            has_cos2x = any(isinstance(p, tuple) and p[0] == "fn" and p[1] == "cos" for p in num_parts)
-            return has_1 and has_cos2x
-    return False
+    return match_cos_squared_term(rest) is not None
 
 
-def _solve_trig_squared(const_term, trig_coeff, trig_name, var, start_val, end_val, deg_mode, lines):
-    # Unified solver for sin^2(x) = k and cos^2(x) = k
+def _solve_trig_squared(arg, const_term, trig_coeff, trig_name, var, start_val, end_val, deg_mode, lines):
+    # Unified solver for trig^2(arg) = k forms
     k_val = eval_numeric(sim(neg(const_term)), {})
     if k_val is None:
         return None
@@ -11314,96 +11674,82 @@ def _solve_trig_squared(const_term, trig_coeff, trig_name, var, start_val, end_v
     if trig_val is None:
         return None
     k_val = k_val / trig_val
-    
+    angle = match_linear_angle(arg, var)
+    if angle is None:
+        return None
+    arg_text = show(arg)
     if k_val < 0 or k_val > 1:
-        lines.append("Since " + trig_name + "^2(x) = " + format_float(k_val) + " is outside [0, 1], there are no solutions.")
-        return [], []
-    
-    period = 360.0 if deg_mode else 2 * math.pi
-    half_period = 180.0 if deg_mode else math.pi
-    
+        lines.append("Since " + trig_name + "^2(" + arg_text + ") = " + format_float(k_val) + " is outside [0, 1], there are no solutions.")
+        return [], lines
+    targets = []
     if k_val == 0:
-        if trig_name == "sin":
-            lines.append("Using sin^2(x) = 0, so sin(x) = 0.")
-            lines.append("x = 0°, 180°, 360°..." if deg_mode else "x = 0, π, 2π...")
-        else:
-            lines.append("Using cos^2(x) = 0, so cos(x) = 0.")
-            lines.append("x = 90°, 270°..." if deg_mode else "x = π/2, 3π/2...")
+        lines.append("Using " + trig_name + "^2(" + arg_text + ") = 0, so " + trig_name + "(" + arg_text + ") = 0.")
+        targets.append(0.0)
     elif k_val == 1:
-        if trig_name == "sin":
-            lines.append("Using sin^2(x) = 1, so sin(x) = ±1.")
-            lines.append("x = 90°, 270°..." if deg_mode else "x = π/2, 3π/2...")
-        else:
-            lines.append("Using cos^2(x) = 1, so cos(x) = ±1.")
-            lines.append("x = 0°, 180°, 360°..." if deg_mode else "x = 0, π, 2π...")
+        lines.append("Using " + trig_name + "^2(" + arg_text + ") = 1, so " + trig_name + "(" + arg_text + ") = ±1.")
+        targets.append(1.0)
+        targets.append(-1.0)
     else:
         sqrt_k = math.sqrt(k_val)
-        lines.append("Using " + trig_name + "^2(x) = " + format_float(k_val) + ", so " + trig_name + "(x) = +/-" + format_float(sqrt_k) + ".")
-        lines.append(trig_name + "(x) = " + format_float(sqrt_k) + " or " + trig_name + "(x) = " + format_float(-sqrt_k) + ".")
-    
-    # Generate solutions
+        lines.append("Using " + trig_name + "^2(" + arg_text + ") = " + format_float(k_val) + ", so " + trig_name + "(" + arg_text + ") = ±" + format_float(sqrt_k) + ".")
+        targets.append(sqrt_k)
+        targets.append(-sqrt_k)
     valid = []
-    
-    if k_val < 0 or k_val > 1:
-        return [], lines
-    
-    n = int((start_val - half_period) / period)
-    end_n = int((end_val + half_period) / period)
-    
-    while n <= end_n:
-        if k_val == 0:
-            base = 0 if trig_name == "sin" else (90.0 if deg_mode else math.pi / 2)
-            x1 = base + n * period
-            if start_val - 1e-6 <= x1 <= end_val + 1e-6:
-                valid.append(x1)
-        elif k_val == 1:
-            base = (90.0 if deg_mode else math.pi / 2) if trig_name == "sin" else 0
-            x1 = base + n * period
-            if start_val - 1e-6 <= x1 <= end_val + 1e-6:
-                valid.append(x1)
-        else:
-            if trig_name == "sin":
-                base = math.asin(sqrt_k)
-            else:
-                base = math.acos(sqrt_k)
-            
-            if deg_mode:
-                base = math.degrees(base)
-            
-            # For both sin and cos: solve trig(x) = ±sqrt_k
-            # Each gives 2 solutions per period, total 4
-            for sign in [1, -1]:
-                if trig_name == "sin":
-                    # sin(x) = sign*sqrt_k: 
-                    # x = sign*base + 360n OR x = 180 - sign*base + 360n
-                    x1 = sign * base + n * period
-                    x2 = half_period - sign * base + n * period
-                else:
-                    # cos(x) = sign*sqrt_k:
-                    # cos(x) = sqrt_k: x = base + 360n OR x = 360 - base + 360n
-                    # cos(x) = -sqrt_k: x = 180 - base + 360n OR x = 180 + base + 360n
-                    if sign > 0:
-                        x1 = base + n * period
-                        x2 = period - base + n * period
-                    else:
-                        x1 = half_period - base + n * period
-                        x2 = half_period + base + n * period
-                
-                if start_val - 1e-6 <= x1 <= end_val + 1e-6:
-                    valid.append(x1)
-                if start_val - 1e-6 <= x2 <= end_val + 1e-6:
-                    valid.append(x2)
-        n += 1
-    
-    valid = sorted(set(valid))
-    
+    i = 0
+    while i < len(targets):
+        sols, angles = solve_angle_value(trig_name, angle[0], angle[1], targets[i], start_val, end_val, deg_mode)
+        if len(angles) != 0:
+            bits = []
+            j = 0
+            while j < len(angles):
+                bits.append(angle_text(angles[j], deg_mode))
+                j += 1
+            lines.append(arg_text + " = [" + ", ".join(bits) + "]")
+        j = 0
+        while j < len(sols):
+            valid.append(sols[j])
+            j += 1
+        i += 1
+    valid = dedupe_values(valid)
     if len(valid) > 0:
-        sol_strs = [str(round(v, 1)) if deg_mode else str(round(v, 3)) for v in valid]
-        lines.append("x = [" + ", ".join(sol_strs) + "]")
+        sol_strs = []
+        i = 0
+        while i < len(valid):
+            sol_strs.append(final_angle_text(valid[i], deg_mode))
+            i += 1
+        lines.append(var + " = [" + ", ".join(sol_strs) + "]")
     else:
         lines.append("No solutions in the given interval.")
-    
     return valid, lines
+
+
+def solve_cosine_target(arg, k_val, var, start_val, end_val, deg_mode, lines):
+    angle = match_linear_angle(arg, var)
+    if angle is None:
+        return None
+    arg_text = show(arg)
+    if k_val < -1 - 1e-6 or k_val > 1 + 1e-6:
+        lines.append("Since cos(" + arg_text + ") = " + format_float(k_val) + " is outside [-1, 1], there are no solutions.")
+        return [], lines
+    lines.append(equation_line(fn("cos", arg), number_node(k_val)))
+    sols, angles = solve_angle_value("cos", angle[0], angle[1], k_val, start_val, end_val, deg_mode)
+    if len(angles) != 0:
+        bits = []
+        i = 0
+        while i < len(angles):
+            bits.append(angle_text(angles[i], deg_mode))
+            i += 1
+        lines.append(arg_text + " = [" + ", ".join(bits) + "]")
+    if len(sols) == 0:
+        lines.append("No solutions in the interval.")
+        return [], lines
+    bits = []
+    i = 0
+    while i < len(sols):
+        bits.append(final_angle_text(sols[i], deg_mode))
+        i += 1
+    lines.append(var + " = [" + ", ".join(bits) + "]")
+    return sols, lines
 
 
 # ---------------------------------------------------------------------------
@@ -11423,45 +11769,31 @@ def solve_sin_cos_squared_mixed(expr, var, start_val, end_val, deg_mode, lines):
     sin2_coeff = num(0)
     cos2_coeff = num(0)
     const_term = num(0)
+    base = None
     
     for term in terms:
         coeff, rest = split_coeff(term)
-        # Check for sin^2(x) - either direct pow or expanded form
-        if _is_sin_squared_term(rest):
+        sin_arg = match_sin_squared_term(rest)
+        if sin_arg is not None:
+            if base is None:
+                base = sin_arg
+            elif not equivalent(base, sin_arg):
+                return None
             sin2_coeff = sim(add([sin2_coeff, coeff]))
-        # Check for cos^2(x) - either direct pow or expanded form
-        elif _is_cos_squared_term(rest):
-            cos2_coeff = sim(add([cos2_coeff, coeff]))
-        # Handle expanded cos^2 form: k*(1+cos(2x))/2 -> div(mul((k, add(...))), 2)
-        elif rest[0] == "div":
-            num_part = rest[1]
-            den_part = rest[2]
-            if den_part == num(2):
-                # Check for mul(num, add(1, cos(2x))) structure
-                if num_part[0] == "mul" and len(num_part) > 1:
-                    mul_items = num_part[1]
-                    if isinstance(mul_items, tuple) and len(mul_items) >= 2:
-                        outer_coeff = mul_items[0]
-                        inner = mul_items[1]
-                        if is_num(outer_coeff) and inner[0] == "add":
-                            inner_parts = list(flat(inner, "add"))
-                            has_1 = any(p == num(1) for p in inner_parts)
-                            has_cos2x = any(isinstance(p, tuple) and p[0] == "fn" and p[1] == "cos" for p in inner_parts)
-                            if has_1 and has_cos2x:
-                                total_coeff = sim(mul([coeff, outer_coeff]))
-                                cos2_coeff = sim(add([cos2_coeff, total_coeff]))
-                                continue
-                # Check for add(1, cos(2x)) structure (no outer mul)
-                if num_part[0] == "add":
-                    num_parts = list(flat(num_part, "add"))
-                    has_1 = any(p == num(1) for p in num_parts)
-                    has_cos2x = any(isinstance(p, tuple) and p[0] == "fn" and p[1] == "cos" for p in num_parts)
-                    if has_1 and has_cos2x:
-                        cos2_coeff = sim(add([cos2_coeff, coeff]))
-        elif not depends(rest, var):
-            const_term = sim(add([const_term, mul([coeff, rest])]))
+        else:
+            cos_arg = match_cos_squared_term(rest)
+            if cos_arg is not None:
+                if base is None:
+                    base = cos_arg
+                elif not equivalent(base, cos_arg):
+                    return None
+                cos2_coeff = sim(add([cos2_coeff, coeff]))
+            elif not depends(rest, var):
+                const_term = sim(add([const_term, mul([coeff, rest])]))
+            else:
+                return None
     
-    if sin2_coeff == num(0) or cos2_coeff == num(0):
+    if sin2_coeff == num(0) or cos2_coeff == num(0) or base is None:
         return None
     
     k_val = eval_numeric(sim(neg(const_term)), {})
@@ -11472,53 +11804,22 @@ def solve_sin_cos_squared_mixed(expr, var, start_val, end_val, deg_mode, lines):
         return None
     
     if a_val == b_val:
-        if abs(a_val) > 0.001:
-            if abs(k_val / a_val - 1) < 0.01:
-                lines.append("Since sin^2(x) + cos^2(x) = 1 and the coefficients are equal, any x satisfies the equation.")
-                return list(range(int(start_val), int(end_val) + 1)), lines
+        if abs(a_val) > 0.001 and abs(k_val / a_val - 1) < 0.01:
+            lines.append("Since sin^2(A) + cos^2(A) = 1 and the coefficients are equal, every value in the interval satisfies the equation.")
+            valid = []
+            step = 1.0 if deg_mode else 0.1
+            x = start_val
+            while x <= end_val + 1e-9:
+                if within_interval(x, start_val, end_val, True, True):
+                    valid.append(round(x, 1) if deg_mode else round(x, 3))
+                x += step
+            return dedupe_values(valid), lines
         return None
     
     cos2x_val = (2 * k_val - a_val - b_val) / (b_val - a_val)
-    
-    if cos2x_val < -1 - 1e-6 or cos2x_val > 1 + 1e-6:
-        lines.append("cos(2x) = " + format_float(cos2x_val) + " is outside [-1, 1], so there are no solutions.")
-        return [], lines
-    
-    lines.append("Use sin^2(x) = (1-cos(2x))/2 and cos^2(x) = (1+cos(2x))/2.")
-    
-    period = 360.0 if deg_mode else 2 * math.pi
-    half_period = 180.0 if deg_mode else math.pi
-    
-    if abs(cos2x_val - 1) < 1e-6:
-        lines.append("cos(2x) = 1, so 2x = 0° (or 360°).")
-        x_vals = [0.0]
-    elif abs(cos2x_val + 1) < 1e-6:
-        lines.append("cos(2x) = -1, so 2x = 180°.")
-        x_vals = [90.0] if deg_mode else [math.pi / 2]
-    else:
-        base_angle = math.acos(cos2x_val)
-        if deg_mode:
-            base_angle = math.degrees(base_angle)
-        x_vals = [base_angle / 2, (period - base_angle) / 2]
-    
-    valid = []
-    for base in x_vals:
-        n = -2
-        while n <= 2:
-            x = base + n * half_period
-            if start_val - 1e-6 <= x <= end_val + 1e-6:
-                valid.append(round(x, 1) if deg_mode else round(x, 3))
-            n += 1
-    
-    valid = sorted(set(valid))
-    
-    if len(valid) > 0:
-        sol_strs = [str(v) for v in valid]
-        lines.append("x = [" + ", ".join(sol_strs) + "]")
-    else:
-        lines.append("No solutions in the given interval.")
-    
-    return valid, lines
+    doubled = mul([num(2), base])
+    lines.append("Use sin^2(A) = (1-cos(2A))/2 and cos^2(A) = (1+cos(2A))/2.")
+    return solve_cosine_target(doubled, cos2x_val, var, start_val, end_val, deg_mode, lines)
 
 
 # ---------------------------------------------------------------------------
@@ -11535,17 +11836,7 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
                 lhs_sim = sim(lhs)
                 rhs_sim = sim(rhs)
                 if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
-                    lines.append("This equation is an identity - both sides are equivalent.")
-                    lines.append("All values in the interval are valid solutions.")
-                    valid = []
-                    step = 1.0 if deg_mode else 0.1
-                    x = start_val
-                    while x <= end_val + 0.001:
-                        valid.append(round(x, 1) if deg_mode else round(x, 2))
-                        x += step
-                    if len(valid) > 0:
-                        lines.append("x = all values in the interval [" + str(start_val) + ", " + str(end_val) + "]")
-                    return valid, lines
+                    return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
         return None
     
     if expr[0] != "add":
@@ -11622,7 +11913,7 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
     # These simplify to 0 = 0 when moved to one side
     if is_num(expr):
         if expr == num(0) or (isinstance(expr, tuple) and expr[0] == "num" and expr[1] == 0):
-            return return_all_in_interval(start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
+            return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
     
     # Also check if LHS and RHS are equivalent using the original parsed expressions
     # This catches cases like sin(2*x) = 2*sin(x)*cos(x) where the difference doesn't simplify to 0
@@ -11630,7 +11921,7 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
         lhs_sim = sim(lhs)
         rhs_sim = sim(rhs)
         if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
-            return return_all_in_interval(start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
+            return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
     
     if not is_identity:
         return None
@@ -11638,21 +11929,21 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
     lines.append("Use the identity " + identity_name + ".")
     lines.append("This identity is true for all x in the domain.")
     
-    return return_all_in_interval(start_val, end_val, deg_mode, lines)
+    return return_all_in_interval(var, start_val, end_val, deg_mode, lines)
 
 
-def return_all_in_interval(start_val, end_val, deg_mode, lines, message):
-    lines.append(message)
-    lines.append("All values in the interval are valid solutions.")
-    valid = []
-    step = 1.0 if deg_mode else 0.1
-    x = start_val
-    while x <= end_val + 0.001:
-        valid.append(round(x, 1) if deg_mode else round(x, 2))
-        x += step
-    if len(valid) > 0:
-        lines.append("x = all values in the interval [" + str(start_val) + ", " + str(end_val) + "]")
-    return valid, lines
+def return_all_in_interval(var, start_val, end_val, deg_mode, lines, message=None):
+    if message is not None:
+        lines.append(message)
+    lines.append("All values in the interval where the original equation is defined are solutions.")
+    lines.append(var + " = all values in the interval.")
+    return {
+        "all_values": True,
+        "var": var,
+        "start": start_val,
+        "end": end_val,
+        "deg_mode": deg_mode,
+    }, lines
 
 
 # ---------------------------------------------------------------------------
@@ -11660,8 +11951,58 @@ def return_all_in_interval(start_val, end_val, deg_mode, lines, message):
 # These are simple equations where the LHS is a single trig function equals a constant
 # ---------------------------------------------------------------------------
 def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
-    # This function is not fully implemented - return None to let other handlers try
-    return None
+    info = direct_single_trig_info(expr, var)
+    if info is None:
+        return None
+    if len(info) == 7:
+        name, arg, mult, offset, a, b, c = info
+        if not is_zero(a) or is_zero(b):
+            return None
+        coeff = b
+        const = c
+    else:
+        name, arg, mult, offset, coeffs = info
+        if polynomial_degree_coeff_map(coeffs, 4) != 1 or is_zero(coeffs[1]):
+            return None
+        coeff = coeffs[1]
+        const = coeffs[0]
+    target_expr = full_simplify(div(neg(const), coeff))
+    target_value = constant_numeric(target_expr, deg_mode)
+    if target_value is None:
+        return None
+    atom = fn(name, arg)
+    out = list(lines)
+    out.append("Solve the direct trig equation.")
+    if not is_one(coeff):
+        out.append(equation_line(mul([coeff, atom]), neg(const)))
+    out.append(equation_line(atom, target_expr))
+    base = trig_base_solutions(name, target_value, deg_mode)
+    if len(base) == 0:
+        if name in ("sin", "cos"):
+            out.append(show(atom) + " = " + show(target_expr) + " has no real solutions because valid " + name + " values lie in [-1,1].")
+        elif name in ("sec", "cosec"):
+            out.append(show(atom) + " = " + show(target_expr) + " has no real solutions because " + name + " values have magnitude at least 1.")
+        else:
+            out.append("No solutions in the interval.")
+        return [], out
+    sols, angles = solve_angle_value(name, mult, offset, target_value, start_val, end_val, deg_mode)
+    if len(angles) != 0:
+        bits = []
+        i = 0
+        while i < len(angles):
+            bits.append(angle_text(angles[i], deg_mode))
+            i += 1
+        out.append(show(arg) + " = [" + ", ".join(bits) + "]" + (" rad" if not deg_mode else ""))
+    if len(sols) == 0:
+        out.append("No solutions in the interval.")
+        return [], out
+    bits = []
+    i = 0
+    while i < len(sols):
+        bits.append(final_angle_text(sols[i], deg_mode))
+        i += 1
+    out.append(var + " = [" + ", ".join(bits) + "]")
+    return sols, out
 
 
 # ---------------------------------------------------------------------------
@@ -11681,6 +12022,7 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
     cos4_coeff = num(0)
     sin4_coeff = num(0)
     const_term = num(0)
+    base = None
     for term in terms:
         coeff, rest = split_coeff(term)
         # Check for cos^4 form - rest is ('pow', inner, exponent)
@@ -11689,45 +12031,32 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
             exp = rest[2]
             # Check if inner is cos function (direct: cos(2*x)**4)
             if inner[0] == "fn" and inner[1] == "cos" and exp == num(4):
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
                 cos4_coeff = sim(add([cos4_coeff, coeff]))
             # Check for sin^4 form (direct: sin(2*x)**4)
             elif inner[0] == "fn" and inner[1] == "sin" and exp == num(4):
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
                 sin4_coeff = sim(add([sin4_coeff, coeff]))
-            # Check for expanded form: (cos^2(x) - sin^2(x))^4
-            elif inner[0] == "add" and exp == num(4):
-                inner_terms = list(flat(inner, "add"))
-                has_cos2 = False
-                has_minus_sin2 = False
-                for it in inner_terms:
-                    if it[0] == "pow" and it[1][0] == "fn" and it[1][1] == "cos" and it[2] == num(2):
-                        has_cos2 = True
-                    elif it[0] == "mul" and len(it) > 1:
-                        mul_parts = it[1]
-                        if isinstance(mul_parts, tuple) and mul_parts[0] == num(-1):
-                            if len(mul_parts) > 1 and mul_parts[1][0] == "pow" and mul_parts[1][1][0] == "fn" and mul_parts[1][1][1] == "sin" and mul_parts[1][2] == num(2):
-                                has_minus_sin2 = True
-                if has_cos2 and has_minus_sin2:
-                    cos4_coeff = sim(add([cos4_coeff, coeff]))
             # Check for expanded sin form: (2*sin(x)*cos(x))^4
             elif inner[0] == "mul" and exp == num(4):
-                mul_parts = inner[1] if isinstance(inner[1], tuple) else inner
-                has_2 = False
-                has_sin_x = False
-                has_cos_x = False
-                if isinstance(mul_parts, tuple):
-                    for mp in mul_parts:
-                        if mp == num(2):
-                            has_2 = True
-                        elif isinstance(mp, tuple) and mp[0] == "fn" and mp[1] == "sin" and mp[2] == sym("x"):
-                            has_sin_x = True
-                        elif isinstance(mp, tuple) and mp[0] == "fn" and mp[1] == "cos" and mp[2] == sym("x"):
-                            has_cos_x = True
-                if has_2 and has_sin_x and has_cos_x:
+                product = match_same_angle_sin_cos_product(inner)
+                if product is not None and same(product[0], num(2)):
+                    expanded_arg = mul([num(2), product[1]])
+                    if base is None:
+                        base = expanded_arg
+                    elif not equivalent(base, expanded_arg):
+                        return None
                     sin4_coeff = sim(add([sin4_coeff, coeff]))
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
     # Check if we have cos^4 - sin^4 form (coefficients should be +1 and -1 or match)
-    if cos4_coeff == num(0) or sin4_coeff == num(0):
+    if cos4_coeff == num(0) or sin4_coeff == num(0) or base is None:
         return None
     # The equation is cos^4(2x) - sin^4(2x) = k which simplifies to cos(4x) = k
     k_val = eval_numeric(sim(neg(const_term)), {})
@@ -11737,10 +12066,10 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
     if cos4_coeff != num(1):
         k_val = k_val / eval_numeric(cos4_coeff, {})
     lines.append("Use the identity cos^4(A) - sin^4(A) = cos(2A).")
-    lines.append("So cos^4(2x) - sin^4(2x) = cos(4x).")
-    lines.append("The equation becomes cos(4x) = " + format_float(k_val) + ".")
-    # Solve cos(4x) = k
-    return solve_cosine_equation(k_val, 4, var, start_val, end_val, deg_mode, lines)
+    doubled = mul([num(2), base])
+    lines.append("So cos^4(" + show(base) + ") - sin^4(" + show(base) + ") = cos(" + show(doubled) + ").")
+    # Solve cos(2A) = k
+    return solve_cosine_target(doubled, k_val, var, start_val, end_val, deg_mode, lines)
 
 
 def solve_cosine_equation(k_val, multiplier, var, start_val, end_val, deg_mode, lines):
@@ -11779,7 +12108,7 @@ def solve_cosine_equation(k_val, multiplier, var, start_val, end_val, deg_mode, 
     valid.sort()
     if len(valid) > 0:
         sol_strs = [str(round(v, 1)) if deg_mode else str(round(v, 3)) for v in valid]
-        lines.append("x = [" + ", ".join(sol_strs) + "]")
+        lines.append(var + " = [" + ", ".join(sol_strs) + "]")
     else:
         lines.append("No solutions in given interval.")
     return valid, lines
@@ -11798,117 +12127,77 @@ def solve_cosine_equation(k_val, multiplier, var, start_val, end_val, deg_mode, 
 # This becomes a linear combination: A sin(x) + B cos(x) = C form
 # ---------------------------------------------------------------------------
 def solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines):
-    # Check for sqrt(3) sin(2x) + c * sin^2(x) = k form
     expr = sim(expr)
-    if expr[0] == "add":
-        terms = list(flat(expr, "add"))
-    else:
-        terms = [expr]
-    # Look for sin(2x) coefficient and sin^2(x) coefficient
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
     sin2x_coeff = num(0)
-    sin2_coeff = num(0)
+    sin_sq_coeff = num(0)
     cos2x_coeff = num(0)
     const_term = num(0)
+    base = None
+    used_product = False
     for term in terms:
-        coeff, rest = split_coeff(term)
-        # Check for cos(2x) from expanded sin^2(x)
-        if rest[0] == "fn" and rest[1] == "cos" and len(rest) >= 3 and rest[2][0] == "mul":
-            arg = rest[2]
-            if arg[0] == "mul" and len(arg) > 1:
-                # arg is like ('mul', (('num', 2, 1), ('sym', 'x')))
-                # arg[1] is (('num', 2, 1), ('sym', 'x')) - a tuple of tuples
-                inner_tuple = arg[1]
-                if len(inner_tuple) > 1 and inner_tuple[1] == sym("x"):
-                    cos2x_coeff = sim(add([cos2x_coeff, coeff]))
-        # Check for sin(2x) - direct form: sin(2*x)
-        elif rest[0] == "fn" and rest[1] == "sin" and rest[2][0] == "mul":
-            arg = rest[2]
-            if arg[0] == "mul" and len(arg) > 1:
-                inner = None
-                if len(arg) > 1 and arg[1][0] == "sym":
-                    inner = arg[1]
-                elif len(arg) > 2 and arg[2][0] == "sym":
-                    inner = arg[2]
-                if inner == sym("x"):
-                    sin2x_coeff = sim(add([sin2x_coeff, coeff]))
-        # Check for sin(x)^2 term (unexpanded)
-        elif rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and rest[1][2] == sym("x") and rest[2] == num(2):
-            sin2_coeff = sim(add([sin2_coeff, coeff]))
-        # Check for expanded form: 2 sin(x) cos(x) or k*sin(x)*cos(x)
-        elif rest[0] == "mul":
-            mul_parts = rest[1] if isinstance(rest[1], tuple) else (rest,)
-            has_sin_x = any(isinstance(x, tuple) and x[0] == "fn" and x[1] == "sin" and x[2] == sym("x") for x in mul_parts if isinstance(x, tuple))
-            has_cos_x = any(isinstance(x, tuple) and x[0] == "fn" and x[1] == "cos" and x[2] == sym("x") for x in mul_parts if isinstance(x, tuple))
-            if has_sin_x and has_cos_x:
-                sin2x_coeff = sim(add([sin2x_coeff, coeff]))
-        elif not depends(rest, var):
+        coeff, rest = split_const_factor(term, var)
+        if not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
-    # If we have sin(2x) and sin^2(x) terms (or cos(2x) from expanded), try to solve
-    # Check for unexpanded sin^2 or expanded cos(2x) form
-    has_sin2_form = sin2_coeff != num(0) or cos2x_coeff != num(0)
-    if sin2x_coeff == num(0) or not has_sin2_form:
+            continue
+        if rest[0] == "fn" and rest[1] in ("sin", "cos"):
+            candidate = half_angle_expr(rest[2])
+            if candidate is not None and depends(candidate, var):
+                if base is None:
+                    base = candidate
+                elif not equivalent(base, candidate):
+                    return None
+                if rest[1] == "sin":
+                    sin2x_coeff = sim(add([sin2x_coeff, coeff]))
+                else:
+                    cos2x_coeff = sim(add([cos2x_coeff, coeff]))
+                continue
+        if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and same(rest[2], num(2)) and depends(rest[1][2], var):
+            if base is None:
+                base = rest[1][2]
+            elif not equivalent(base, rest[1][2]):
+                return None
+            sin_sq_coeff = sim(add([sin_sq_coeff, coeff]))
+            continue
+        product = match_same_angle_sin_cos_product(rest)
+        if product is not None:
+            product_coeff, product_base = product
+            if base is None:
+                base = product_base
+            elif not equivalent(base, product_base):
+                return None
+            sin2x_coeff = sim(add([sin2x_coeff, mul([coeff, product_coeff, num(1, 2)])]))
+            used_product = True
+            continue
         return None
-    # Get the constant (moved to RHS)
-    k_val = eval_numeric(sim(neg(const_term)), {})
-    if k_val is None:
+    if base is None or is_zero(sin2x_coeff) or (is_zero(sin_sq_coeff) and is_zero(cos2x_coeff)):
         return None
-    # Normalize coefficients
-    sin2x_val = eval_numeric(sin2x_coeff, {})
-    # Use sin2_coeff for unexpanded form, or convert from cos2x_coeff for expanded form
-    if sin2_coeff != num(0):
-        sin2_val = eval_numeric(sin2_coeff, {})
-    elif cos2x_coeff != num(0):
-        # From sin^2(x) = (1-cos(2x))/2, the coefficient of cos(2x) is -sin2_coeff/2
-        # So sin2_coeff = -2 * cos2x_coeff
-        sin2_val = eval_numeric(sim(neg(mul([num(2), cos2x_coeff]))), {})
+    doubled = mul([num(2), base])
+    rewritten = []
+    if not is_zero(sin2x_coeff):
+        rewritten.append(mul([sin2x_coeff, fn("sin", doubled)]))
+    cos_coeff = full_simplify(add([cos2x_coeff, neg(div(sin_sq_coeff, num(2)))]))
+    if not is_zero(cos_coeff):
+        rewritten.append(mul([cos_coeff, fn("cos", doubled)]))
+    new_const = full_simplify(add([const_term, div(sin_sq_coeff, num(2))]))
+    if not is_zero(new_const):
+        rewritten.append(new_const)
+    if len(rewritten) == 0:
+        return None
+    rewritten_expr = sim(make_add(rewritten))
+    solved = solve_linear_combo_shift(rewritten_expr, var, start_val, end_val, deg_mode)
+    if solved is None:
+        return None
+    prelude = []
+    if used_product and not is_zero(sin_sq_coeff):
+        prelude.append("Use sin(2A) = 2sin(A)cos(A) and sin^2(A) = (1-cos(2A))/2.")
+    elif used_product:
+        prelude.append("Use sin(2A) = 2sin(A)cos(A).")
     else:
-        sin2_val = None
-    if sin2x_val is None or sin2_val is None:
-        return None
-    # Solve: sin2x_coeff * sin(2x) + sin2_coeff * sin^2(x) = k
-    # Using identity: sin(2x) = 2 sin(x) cos(x), sin^2(x) = (1-cos(2x))/2
-    # Substitute: sin2x_coeff * 2 sin(x) cos(x) + sin2_coeff * (1-cos(2x))/2 = k
-    #             2*sin2x_val * sin(x) cos(x) + sin2_val/2 - sin2_val/2 * cos(2x) = k
-    #             2*sin2x_val * sin(x) cos(x) - sin2_val/2 * cos(2x) = k - sin2_val/2
-    # Using cos(2x) = 2cos^2(x) - 1:
-    #             2*sin2x_val * sin(x) cos(x) - sin2_val/2 * (2cos^2(x) - 1) = k - sin2_val/2
-    #             2*sin2x_val * sin(x) cos(x) - sin2_val * cos^2(x) + sin2_val/2 = k - sin2_val/2
-    #             2*sin2x_val * sin(x) cos(x) - sin2_val * cos^2(x) = k - sin2_val
-    # Divide by cos^2(x) (assuming cos(x) != 0):
-    #             2*sin2x_val * tan(x) - sin2_val = (k - sin2_val) / cos^2(x)
-    # This is getting complex. Let's use a simpler approach:
-    # Let t = tan(x), then sin(x) = t/sqrt(1+t^2), cos(x) = 1/sqrt(1+t^2)
-    # sin(2x) = 2t/(1+t^2), sin^2(x) = t^2/(1+t^2)
-    # Substitute and solve for t
-    lines.append("Use sin(2x) = 2 sin(x) cos(x) and sin^2(x) = (1-cos(2x))/2.")
-    # Use the simpler approach: convert to form A*sin(x) + B*cos(x) = C
-    # From the original: sqrt(3) sin(2x) + 2 sin^2(x) = 1
-    # Expand: 2*sqrt(3) sin(x) cos(x) + sin^2(x) = 1 - sin^2(x) + sin^2(x)
-    # Actually, let's solve numerically using substitution
-    # Let y = x. Generate solutions by testing range
-    # This is a fallback when algebraic approach is complex
-    valid = []
-    step = 1.0 if deg_mode else 0.05
-    x = start_val
-    while x <= end_val + 0.001:
-        sin2x_val = math.sin(2 * x)
-        sin2_x_val = math.sin(x) ** 2
-        lhs_val = sin2x_val * sin2x_val + sin2_x_val * sin2_val
-        if abs(lhs_val - k_val) < 0.01:
-            valid.append(x)
-        x += step
-    if len(valid) > 0:
-        # Remove near-duplicates
-        filtered = []
-        for v in valid:
-            if not filtered or abs(v - filtered[-1]) > (1.0 if deg_mode else 0.1):
-                filtered.append(v)
-        valid = filtered
-        sol_strs = [str(round(v, 1)) if deg_mode else str(round(v, 3)) for v in valid]
-        lines.append("x = [" + ", ".join(sol_strs) + "]")
-    else:
-        lines.append("No solutions found in the interval.")
-    return valid, lines
+        prelude.append("Use sin^2(A) = (1-cos(2A))/2.")
+    prelude.append(equation_line(rewritten_expr, num(0)))
+    values, solved_lines = solved
+    return values, compact_lines(list(lines) + prelude + solved_lines)
 
 
 # ---------------------------------------------------------------------------
@@ -11916,6 +12205,7 @@ def solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines):
 # ---------------------------------------------------------------------------
 def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     lhs, rhs = parse_equation_or_zero(eq_text)
+    original_expr = sim(add([lhs, neg(rhs)]))
     derived = derive_cot_quadratic_expr(lhs, rhs)
     expr = sim(add([lhs, neg(rhs)]))
     lines = ["Start with " + equation_line(lhs, rhs)]
@@ -11994,7 +12284,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     # First try solving with unexpanded expr (before expand_trig_tree destroyed tan(2*x))
     # This is important for cases like tan(2*x) = 1 where expand changes it to a rational form
     direct_solved = solve_direct_trig_equation(expr_before_expand, var, start_val, end_val, deg_mode, lines)
-    if direct_solved is not None and len(direct_solved[0]) > 0:
+    if direct_solved is not None:
         return direct_solved
 
     # Check for identity equations like sec^2 - tan^2 = 1
@@ -12017,48 +12307,48 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     # Handle cos^4(2x) - sin^4(2x) = k form using identity: cos^4 A - sin^4 A = cos(2A)
     # First try expanded form
     cos4_solved = solve_cos_pow4_minus_sin_pow4(expanded_expr, var, start_val, end_val, deg_mode, lines)
-    if cos4_solved is not None and len(cos4_solved[0]) > 0:
+    if cos4_solved is not None:
         return cos4_solved
     # Also try original unexpanded expr
     cos4_solved = solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines)
-    if cos4_solved is not None and len(cos4_solved[0]) > 0:
+    if cos4_solved is not None:
         return cos4_solved
 
     # Handle sin^2(x) = k form
     sin2_solved = solve_sin_squared_form(expr, var, start_val, end_val, deg_mode, lines)
-    if sin2_solved is not None and len(sin2_solved[0]) > 0:
+    if sin2_solved is not None:
         return sin2_solved
     # Also try expanded form
     sin2_solved = solve_sin_squared_form(expanded_expr, var, start_val, end_val, deg_mode, lines)
-    if sin2_solved is not None and len(sin2_solved[0]) > 0:
+    if sin2_solved is not None:
         return sin2_solved
 
     # Handle cos^2(x) = k form
     cos2_solved = solve_cos_squared_form(expr, var, start_val, end_val, deg_mode, lines)
-    if cos2_solved is not None and len(cos2_solved[0]) > 0:
+    if cos2_solved is not None:
         return cos2_solved
     # Also try expanded form
     cos2_solved = solve_cos_squared_form(expanded_expr, var, start_val, end_val, deg_mode, lines)
-    if cos2_solved is not None and len(cos2_solved[0]) > 0:
+    if cos2_solved is not None:
         return cos2_solved
 
     # Handle sqrt(3) sin(2x) + 2 sin^2(x) = 1 form (linear in sin(2x) and sin^2(x))
     mixed_solved = solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines)
-    if mixed_solved is not None and len(mixed_solved[0]) > 0:
+    if mixed_solved is not None:
         return mixed_solved
 
     # Handle a*sin^2(x) + b*cos^2(x) = k form
     sin_cos_mixed_solved = solve_sin_cos_squared_mixed(expr, var, start_val, end_val, deg_mode, lines)
-    if sin_cos_mixed_solved is not None and len(sin_cos_mixed_solved[0]) > 0:
+    if sin_cos_mixed_solved is not None:
         return sin_cos_mixed_solved
     # Also try expanded form
     sin_cos_mixed_solved = solve_sin_cos_squared_mixed(expanded_expr, var, start_val, end_val, deg_mode, lines)
-    if sin_cos_mixed_solved is not None and len(sin_cos_mixed_solved[0]) > 0:
+    if sin_cos_mixed_solved is not None:
         return sin_cos_mixed_solved
 
     # Handle simple direct trig forms like tan(2x) = 1, sin(3x) = 0.5
     direct_solved = solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines)
-    if direct_solved is not None and len(direct_solved[0]) > 0:
+    if direct_solved is not None:
         return direct_solved
     # Also try expanded form
     expanded_direct_lines = list(lines)
@@ -12066,7 +12356,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         expanded_direct_lines.append("Expand the expression.")
         expanded_direct_lines.append(equation_line(expanded_expr, num(0)))
     direct_solved = solve_direct_trig_equation(expanded_expr, var, start_val, end_val, deg_mode, expanded_direct_lines)
-    if direct_solved is not None and len(direct_solved[0]) > 0:
+    if direct_solved is not None:
         return direct_solved
 
     # Handle identity equations like tan^2 + 1 = sec^2, sec^2 - tan^2 = 1
@@ -12106,7 +12396,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
             return identity_result
     
     if solved is None:
-        raise ValueError(FAIL)
+        solved = solve_numeric_trig_fallback(lhs, rhs, original_expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
     result, extra = solved
     if len(chosen_extra) != 0:
         i = 0
@@ -12177,10 +12467,9 @@ def solve_solve_text(text):
     extra = bits[2:]
     if var == "":
         raise ValueError("Choose a variable to solve for.")
-    if var == "x":
+    lhs, rhs = parse_equation_or_zero(eq_text)
+    if var == "x" or len(extra) != 0 or equation_has_trig_content(lhs, rhs):
         return solve_x_equation_text(eq_text, var, extra)
-    if len(extra) != 0:
-        raise ValueError("Extra interval values are only supported when solving for x.")
     return solve_linear_parameter_text(eq_text, var)
 
 
@@ -12203,6 +12492,154 @@ def solve_prove_text(text, route):
     return solve_prove(lhs, rhs, route)
 
 
+def rewrite_extremum_double_angle_expr(expr, var):
+    expr = sim(expr)
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
+    out = []
+    changed = False
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        sin_arg = match_sin_squared_term(rest)
+        if sin_arg is None and rest[0] == "mul":
+            items = list(flat(rest, "mul"))
+            if len(items) == 2 and items[0][0] == "fn" and items[1][0] == "fn" and items[0][1] == "sin" and items[1][1] == "sin" and same(items[0][2], items[1][2]):
+                sin_arg = items[0][2]
+        if sin_arg is not None:
+            doubled = mul([num(2), sin_arg])
+            out.append(div(coeff, num(2)))
+            out.append(mul([neg(div(coeff, num(2))), fn("cos", doubled)]))
+            changed = True
+            i += 1
+            continue
+        cos_arg = match_cos_squared_term(rest)
+        if cos_arg is None and rest[0] == "mul":
+            items = list(flat(rest, "mul"))
+            if len(items) == 2 and items[0][0] == "fn" and items[1][0] == "fn" and items[0][1] == "cos" and items[1][1] == "cos" and same(items[0][2], items[1][2]):
+                cos_arg = items[0][2]
+        if cos_arg is not None:
+            doubled = mul([num(2), cos_arg])
+            out.append(div(coeff, num(2)))
+            out.append(mul([div(coeff, num(2)), fn("cos", doubled)]))
+            changed = True
+            i += 1
+            continue
+        product = match_same_angle_sin_cos_product(rest)
+        if product is not None:
+            out.append(mul([coeff, product[0], num(1, 2), fn("sin", mul([num(2), product[1]]))]))
+            changed = True
+            i += 1
+            continue
+        out.append(terms[i])
+        i += 1
+    if not changed:
+        return None
+    return sim(make_add(out))
+
+
+def extremum_rewrite_to_linear_combo(expr, var):
+    current = named_reciprocal_trig(expr)
+    lines = []
+    if not cheap_same(current, expr):
+        lines.append("Use reciprocal trig forms.")
+        lines.append("Expression becomes " + show(current) + ".")
+    doubled = rewrite_extremum_double_angle_expr(current, var)
+    if doubled is not None:
+        current = doubled
+        lines.append("Use double-angle identities.")
+        lines.append("Expression becomes " + show(current) + ".")
+    visited = {current}
+    pass_count = 0
+    while pass_count <= SOLVE_PASS_LIMIT:
+        if match_linear_combo_const(current, var) is not None:
+            return current, compact_lines(lines)
+        expanded = sim(expand_embedded_small(replace_exact_trig_quiet(sim(expand_trig_tree(current)))))
+        if match_linear_combo_const(expanded, var) is not None:
+            if not same(expanded, current):
+                lines.append("Rewrite using trig identities.")
+                lines.append("Expression becomes " + show(expanded) + ".")
+            return expanded, compact_lines(lines)
+        if pass_count == SOLVE_PASS_LIMIT:
+            break
+        best = best_solve_rewrite(current, var, visited)
+        if best is None:
+            break
+        current = best["expr"]
+        visited.add(current)
+        lines.append("Rewrite using trig identities.")
+        lines.append("Expression becomes " + show(current) + ".")
+        pass_count += 1
+    return None, compact_lines(lines)
+
+
+def solve_extremum_numeric(expr, kind, var, dep_label, deg_mode):
+    periods = []
+    estimate_solve_periods(expr, var, deg_mode, periods)
+    if len(periods) == 0:
+        span = 360.0 if deg_mode else 2.0 * math.pi
+    else:
+        span = periods[0]
+        i = 1
+        while i < len(periods):
+            if periods[i] > span:
+                span = periods[i]
+            i += 1
+    samples = 4096
+    step = span / samples
+    best_x = None
+    best_y = None
+    i = 0
+    while i <= samples:
+        x = step * i
+        y = solve_numeric_value(expr, var, x, deg_mode)
+        if y is not None:
+            better = False
+            if best_y is None:
+                better = True
+            elif kind == "max" and y > best_y + 1e-7:
+                better = True
+            elif kind == "min" and y < best_y - 1e-7:
+                better = True
+            elif best_x is not None and abs(y - best_y) < 1e-7 and x < best_x:
+                better = True
+            if better:
+                best_x = x
+                best_y = y
+        i += 1
+    if best_x is None:
+        raise ValueError(FAIL)
+    left = best_x - step
+    if left < 0:
+        left = 0
+    right = best_x + step
+    if right > span:
+        right = span
+    i = 0
+    while i <= 120:
+        x = left + (right - left) * i / 120.0
+        y = solve_numeric_value(expr, var, x, deg_mode)
+        if y is not None:
+            better = False
+            if kind == "max" and y > best_y + 1e-9:
+                better = True
+            elif kind == "min" and y < best_y - 1e-9:
+                better = True
+            elif abs(y - best_y) < 1e-9 and x < best_x:
+                better = True
+            if better:
+                best_x = x
+                best_y = y
+        i += 1
+    desc = "Maximum" if kind == "max" else "Minimum"
+    lines = [
+        "Use a final numeric scan over one full period when no direct R*sin/cos rewrite matches cleanly.",
+        "Scan 0 <= " + var + " <= " + angle_text(span, deg_mode) + (" deg" if deg_mode else " rad") + ".",
+        desc + " " + dep_label + " = " + final_exact_text_or_float(best_y, 4),
+        desc + " first occurs when " + var + " = " + final_angle_text(best_x, deg_mode),
+    ]
+    return {"value": best_y, "x": best_x}, compact_lines(lines)
+
+
 def solve_extremum_text(text, kind, var):
     lhs, rhs = parse_equation_or_zero(text)
     dep_label = "y"
@@ -12215,23 +12652,28 @@ def solve_extremum_text(text, kind, var):
             dep_label = lhs[1]
     else:
         expr = lhs if depends(lhs, var) else rhs
+    eq_mode = equation_angle_mode(lhs, rhs, var)
+    deg_mode = eq_mode != "rad"
     expanded = sim(expand_embedded_small(replace_exact_trig_quiet(sim(expand_trig_tree(expr)))))
     combo = match_linear_combo_const(expanded, var)
+    prep_lines = []
     if combo is None:
-        raise ValueError(FAIL)
+        expanded, prep_lines = extremum_rewrite_to_linear_combo(expr, var)
+        if expanded is not None:
+            combo = match_linear_combo_const(expanded, var)
+    if combo is None:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
     base, sin_coeff_expr, cos_coeff_expr, const_expr = combo
     angle = match_linear_angle(base, var)
     if angle is None:
-        raise ValueError(FAIL)
-    eq_mode = equation_angle_mode(lhs, rhs, var)
-    deg_mode = eq_mode != "rad"
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
     a_val = constant_numeric(sin_coeff_expr, deg_mode)
     b_val = constant_numeric(cos_coeff_expr, deg_mode)
     c_val = constant_numeric(const_expr, deg_mode)
     m_val = constant_numeric(angle[0], deg_mode)
     offset_val = constant_numeric(angle[1], deg_mode)
     if a_val is None or b_val is None or c_val is None or m_val is None or offset_val is None or abs(m_val) < 1e-12:
-        raise ValueError(FAIL)
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
     r_val = math.sqrt(a_val * a_val + b_val * b_val)
     phase = to_degrees(math.atan2(-a_val, b_val)) if deg_mode else math.atan2(-a_val, b_val)
     if kind == "max":
@@ -12275,7 +12717,7 @@ def solve_extremum_text(text, kind, var):
     if first_x is not None:
         lines.append(desc + " first occurs when " + show(base) + signed_angle_text(phase, deg_mode) + " = " + angle_text(first_phase_target, deg_mode))
         lines.append(var + " = " + final_angle_text(first_x, deg_mode))
-    return {"value": extreme, "x": first_x}, compact_lines(lines)
+    return {"value": extreme, "x": first_x}, compact_lines(prep_lines + lines)
 
 
 # ---------------------------------------------------------------------------
@@ -12450,13 +12892,14 @@ def transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     has_r_alpha = ("R" in target_str and "alpha" in target_str) or ("r" in target_str and "alpha" in target_str)
     if not has_r_alpha:
         return None
+    var = detect_transform_var(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs)
     # Check if lhs is a linear combination of sin and cos
     expr = sim(add([eq1_lhs, neg(eq1_rhs)]))
-    combo = match_linear_combo_const(expand_trig_tree(sim(expr)), "x")
+    combo = match_linear_combo_const(expand_trig_tree(sim(expr)), var)
     if combo is None:
         return None
     base, sin_coeff, cos_coeff, const = combo
-    if base != sym("x"):
+    if base != sym(var):
         return None
     # Convert to R sin(x + alpha) or R cos(x + alpha)
     sin_val = eval_numeric(sin_coeff, {})
@@ -12466,18 +12909,20 @@ def transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
         return None
     r = math.sqrt(sin_val * sin_val + cos_val * cos_val)
     # Determine which form based on target
-    if "cos(x+" in target_str.lower() or "cos(x+" in target_str.lower():
+    lower_target = target_str.lower()
+    is_cos_form = "cos(" in lower_target and "sin(" not in lower_target
+    if is_cos_form:
         alpha = math.atan2(sin_val, cos_val)
         alpha_deg = math.degrees(alpha) if alpha >= 0 else 360 + math.degrees(alpha)
         lines = [
             "Start with " + equation_line(eq1_lhs, eq1_rhs),
-            "Write in the form A*sin(x) + B*cos(x) = C.",
+            "Write in the form A*sin(" + var + ") + B*cos(" + var + ") = C.",
             "A = " + show(sin_coeff) + ", B = " + show(cos_coeff) + ", C = " + show(const),
             "R = sqrt(A^2 + B^2) = sqrt(" + str(sin_val) + "^2 + " + str(cos_val) + "^2)",
             "R = " + format_float(r),
             "tan(alpha) = B/A = " + str(cos_val) + "/" + str(sin_val) + " = " + format_float(cos_val/sin_val) if sin_val != 0 else "undefined",
             "alpha = " + format_angle(alpha_deg) + " degrees",
-            "Therefore: " + format_float(r) + " cos(x + " + format_angle(alpha_deg) + ") = " + show(const) if const_val != 0 else "R cos(x + alpha)",
+            "Therefore: " + format_float(r) + " cos(" + var + " + " + format_angle(alpha_deg) + ") = " + show(const) if const_val != 0 else "R cos(" + var + " + alpha)",
         ]
         return compact_lines(lines)
     else:
@@ -12485,13 +12930,13 @@ def transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
         alpha_deg = math.degrees(alpha) if alpha >= 0 else 360 + math.degrees(alpha)
         lines = [
             "Start with " + equation_line(eq1_lhs, eq1_rhs),
-            "Write in the form A*sin(x) + B*cos(x) = C.",
+            "Write in the form A*sin(" + var + ") + B*cos(" + var + ") = C.",
             "A = " + show(sin_coeff) + ", B = " + show(cos_coeff) + ", C = " + show(const),
             "R = sqrt(A^2 + B^2) = sqrt(" + str(sin_val) + "^2 + " + str(cos_val) + "^2)",
             "R = " + format_float(r),
             "tan(alpha) = -B/A = -" + str(cos_val) + "/" + str(sin_val) + " = " + format_float(-cos_val/sin_val) if sin_val != 0 else "undefined",
             "alpha = " + format_angle(alpha_deg) + " degrees",
-            "Therefore: " + format_float(r) + " sin(x + " + format_angle(alpha_deg) + ") = " + show(const) if const_val != 0 else "R sin(x + alpha)",
+            "Therefore: " + format_float(r) + " sin(" + var + " + " + format_angle(alpha_deg) + ") = " + show(const) if const_val != 0 else "R sin(" + var + " + alpha)",
         ]
         return compact_lines(lines)
     return None
@@ -12514,7 +12959,29 @@ def format_angle(deg):
 # ---------------------------------------------------------------------------
 def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     target_str = target_text.strip().lower()
-    if "sin(2*x)" not in target_str and "cos(2*x)" not in target_str:
+    var = detect_transform_var(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs)
+
+    def target_has_double_angle(node):
+        node = sim(node)
+        if node[0] == "fn" and node[1] in ("sin", "cos"):
+            base = match_numeric_multiple_arg(node[2], 2)
+            return base is not None and same(base, sym(var))
+        if node[0] in ("add", "mul"):
+            items = flat(node, node[0])
+            i = 0
+            while i < len(items):
+                if target_has_double_angle(items[i]):
+                    return True
+                i += 1
+        elif node[0] in ("div", "pow"):
+            i = 1
+            while i < len(node):
+                if target_has_double_angle(node[i]):
+                    return True
+                i += 1
+        return False
+
+    if not target_has_double_angle(eq2_lhs) and not target_has_double_angle(eq2_rhs):
         return None
     # Get the expression (move all to one side)
     expr = sim(add([eq1_lhs, neg(eq1_rhs)]))
@@ -12531,10 +12998,10 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
         term = terms[i]
         coeff, rest = split_coeff(term)
         # Check for sin(x) term
-        if rest[0] == "fn" and rest[1] == "sin" and rest[2] == sym("x"):
+        if rest[0] == "fn" and rest[1] == "sin" and rest[2] == sym(var):
             a_sin = sim(add([a_sin, coeff]))
         # Check for cos(x) term
-        elif rest[0] == "fn" and rest[1] == "cos" and rest[2] == sym("x"):
+        elif rest[0] == "fn" and rest[1] == "cos" and rest[2] == sym(var):
             b_cos = sim(add([b_cos, coeff]))
         # Check for sin(x)cos(x) term - handle mul with tuple of terms
         elif rest[0] == "mul" and isinstance(rest[1], tuple):
@@ -12544,9 +13011,9 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
             j = 0
             while j < len(mul_terms):
                 mt = mul_terms[j]
-                if mt[0] == "fn" and mt[1] == "sin" and mt[2] == sym("x"):
+                if mt[0] == "fn" and mt[1] == "sin" and mt[2] == sym(var):
                     found_sin = True
-                elif mt[0] == "fn" and mt[1] == "cos" and mt[2] == sym("x"):
+                elif mt[0] == "fn" and mt[1] == "cos" and mt[2] == sym(var):
                     found_cos = True
                 j += 1
             if found_sin and found_cos:
@@ -12554,12 +13021,12 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
             else:
                 return None
         # Check for cos(x)^2 term
-        elif rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "cos" and rest[1][2] == sym("x") and rest[2] == num(2):
+        elif rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "cos" and rest[1][2] == sym(var) and rest[2] == num(2):
             b_cos2 = sim(add([b_cos2, coeff]))
         # Check for sin(x)^2 term
-        elif rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and rest[1][2] == sym("x") and rest[2] == num(2):
+        elif rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "sin" and rest[1][2] == sym(var) and rest[2] == num(2):
             c_sin2 = sim(add([c_sin2, coeff]))
-        elif not depends(rest, "x"):
+        elif not depends(rest, var):
             const = sim(add([const, mul([coeff, rest])]))
         else:
             return None
@@ -12572,10 +13039,10 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
         return None
     lines = [
         "Start with " + equation_line(eq1_lhs, eq1_rhs),
-        "Use sin(2x) = 2 sin(x) cos(x), so sin(x) cos(x) = sin(2x)/2.",
-        "Use cos(2x) = 2 cos²(x) - 1, so cos²(x) = (1 + cos(2x))/2.",
-        "Use cos(2x) = 1 - 2 sin²(x), so sin²(x) = (1 - cos(2x))/2.",
-        "Rewrite in terms of sin(2x), cos(2x) and constants.",
+        "Use sin(2" + var + ") = 2 sin(" + var + ") cos(" + var + "), so sin(" + var + ") cos(" + var + ") = sin(2" + var + ")/2.",
+        "Use cos(2" + var + ") = 2 cos^2(" + var + ") - 1, so cos^2(" + var + ") = (1 + cos(2" + var + "))/2.",
+        "Use cos(2" + var + ") = 1 - 2 sin^2(" + var + "), so sin^2(" + var + ") = (1 - cos(2" + var + "))/2.",
+        "Rewrite in terms of sin(2" + var + "), cos(2" + var + ") and constants.",
         "a = " + format_float(coeff_sin2x),
         "b = " + format_float(coeff_cos2x),
         "c = " + format_float(const_term),
@@ -12659,6 +13126,22 @@ def compress_display_list(rhs, sep, neg_keep, pos_keep):
 
 def display_line_short(line):
     line = line.strip()
+    replacements = [
+        ("This equation is an identity - both sides are equivalent", "This is an identity"),
+        ("All values in the interval where the original equation is defined are solutions", "All defined values in the interval solve it"),
+        ("Use a final numeric scan of the interval when no standard rewrite route matches cleanly", "No clean rewrite route, so scan the interval numerically"),
+        ("Scan f(", "Scan f("),
+        (" for sign changes and verify each candidate in the original equation", " for sign changes, then verify"),
+        ("Use a final numeric scan over one full period when no direct R*sin/cos rewrite matches cleanly", "No clean R*sin/cos form, so scan one period numerically"),
+        ("Solve the direct trig equation", "Solve the trig equation"),
+        ("Move all terms to one side.", "Move all terms to one side"),
+    ]
+    i = 0
+    while i < len(replacements):
+        old, new = replacements[i]
+        if old in line:
+            line = line.replace(old, new)
+        i += 1
     if " so multiply through by " in line:
         line = "Multiply through by " + line.split(" so multiply through by ", 1)[1]
     elif " so divide through by " in line:
@@ -12676,6 +13159,56 @@ def display_line_short(line):
     return line
 
 
+def split_multi_identity_use_line(line):
+    line = line.strip()
+    if not line.startswith("Use ") or line.count("=") < 2:
+        return [line]
+    body = line[4:]
+    if body.endswith("."):
+        body = body[:-1]
+    pieces = []
+    current = ""
+    depth = 0
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")" and depth > 0:
+            depth -= 1
+        if depth == 0 and body.startswith(" and ", i):
+            if current.strip() != "":
+                pieces.append(current.strip())
+            current = ""
+            i += 5
+            continue
+        if depth == 0 and ch in ",;":
+            if current.strip() != "":
+                pieces.append(current.strip())
+            current = ""
+            i += 1
+            while i < len(body) and body[i] == " ":
+                i += 1
+            continue
+        current += ch
+        i += 1
+    if current.strip() != "":
+        pieces.append(current.strip())
+    if len(pieces) <= 1:
+        return [line]
+    i = 0
+    while i < len(pieces):
+        if "=" not in pieces[i]:
+            return [line]
+        i += 1
+    out = []
+    i = 0
+    while i < len(pieces):
+        out.append("Use " + pieces[i] + ".")
+        i += 1
+    return out
+
+
 def print_lines(lines):
     i = 0
     while i < len(lines):
@@ -12687,8 +13220,12 @@ def compact_lines(lines):
     out = []
     i = 0
     while i < len(lines):
-        if i == 0 or lines[i] != lines[i - 1]:
-            out.append(lines[i])
+        expanded = split_multi_identity_use_line(lines[i])
+        j = 0
+        while j < len(expanded):
+            if len(out) == 0 or expanded[j] != out[-1]:
+                out.append(expanded[j])
+            j += 1
         i += 1
     return out
 
