@@ -500,6 +500,51 @@ def binomial_coefficient(n, k):
     return result
 
 
+def x_degree(node):
+    """Return degree of x in a term, or None if term is not a polynomial term in x."""
+    if is_num(node) or node[0] == 'const':
+        return 0
+    if same(node, sym('x')):
+        return 1
+    if node[0] == 'pow' and same(node[1], sym('x')) and is_int_num(node[2]) and node[2][1] >= 0:
+        return node[2][1]
+    if node[0] == 'mul':
+        total = 0
+        items = flat(node, 'mul')
+        i = 0
+        while i < len(items):
+            deg = x_degree(items[i])
+            if deg is None:
+                return None
+            total += deg
+            i += 1
+        return total
+    return None
+
+
+def reorder_expanded_x_terms_ascending(node):
+    """For polynomial sums in x, reorder terms into ascending powers of x."""
+    node = sim(node)
+    if node[0] != 'add':
+        return node
+    items = flat(node, 'add')
+    decorated = []
+    i = 0
+    while i < len(items):
+        deg = x_degree(items[i])
+        if deg is None:
+            return node
+        decorated.append((deg, i, items[i]))
+        i += 1
+    decorated.sort(key=lambda item: (item[0], item[1]))
+    out = []
+    i = 0
+    while i < len(decorated):
+        out.append(decorated[i][2])
+        i += 1
+    return make_add(out)
+
+
 def expand_binomial(base_expr, power_expr, max_terms=None):
     """Expand (a+b)^n using binomial theorem. Returns (result, steps)."""
     if not is_num(power_expr):
@@ -527,7 +572,7 @@ def expand_binomial(base_expr, power_expr, max_terms=None):
             result_terms.append(term)
             steps.append('Term ' + str(i+1) + ': C(' + str(n) + ',' + str(i) + ') * ' + show(a) + '^' + str(n-i) + ' * ' + show(b) + '^' + str(i) + ' = ' + show(term))
             i += 1
-        return sim(make_add(result_terms)), steps
+        return reorder_expanded_x_terms_ascending(sim(make_add(result_terms))), steps
     
     # Negative integer power: (a+b)^(-n) as series
     elif d == 1 and n < 0:
