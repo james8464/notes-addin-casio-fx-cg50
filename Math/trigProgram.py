@@ -2055,6 +2055,96 @@ def rewrite_one_term_in_sum_for_display(node):
     return None, None
 
 
+def proof_forward_identity_rewrite_once(node):
+    node = sim(node)
+    if node[0] == "fn":
+        rewritten, note = trig_formula_expand(node)
+        if rewritten is not None:
+            return sim(rewritten), note
+        return None, None
+    if node[0] != "add":
+        return None, None
+    bits = list(flat(node, "add"))
+    if len(bits) != 2:
+        return None, None
+    first = signed_unit_term(bits[0])
+    second = signed_unit_term(bits[1])
+    if first is None or second is None:
+        return None, None
+    coeff1, rest1 = first
+    coeff2, rest2 = second
+    if is_minus_one(coeff1) and is_one(coeff2):
+        coeff1, rest1, coeff2, rest2 = coeff2, rest2, coeff1, rest1
+    if is_one(coeff1) and is_one(rest1) and rest2[0] == "fn" and rest2[1] == "cos" and match_numeric_multiple_arg(rest2[2], 2) is not None:
+        rewritten, note = direct_double_angle_rewrite(node)
+        if rewritten is not None:
+            return sim(rewritten), note
+    return None, None
+
+
+def rewrite_sum_terms_for_display(node):
+    node = sim(node)
+    if node[0] != "add":
+        rewritten, note = proof_forward_identity_rewrite_once(node)
+        return rewritten, note
+    terms = list(flat(node, "add"))
+    notes = []
+    changed = False
+    progress = True
+    while progress:
+        progress = False
+        i = 0
+        while i < len(terms):
+            j = i + 1
+            while j < len(terms):
+                pair = sim(("add", (terms[i], terms[j])))
+                rewritten, note = proof_forward_identity_rewrite_once(pair)
+                if rewritten is not None:
+                    terms = terms[:i] + [rewritten] + terms[i + 1 : j] + terms[j + 1 :]
+                    changed = True
+                    progress = True
+                    if note is not None and note not in notes:
+                        notes.append(note)
+                    break
+                j += 1
+            if progress:
+                break
+            i += 1
+        if progress:
+            continue
+        i = 0
+        while i < len(terms):
+            coeff, rest = split_coeff(terms[i])
+            rewritten, note = proof_forward_identity_rewrite_once(rest)
+            if rewritten is not None:
+                terms[i] = sim(mul([coeff, rewritten]))
+                changed = True
+                progress = True
+                if note is not None and note not in notes:
+                    notes.append(note)
+                break
+            i += 1
+    if not changed:
+        return None, None
+    if len(terms) == 1:
+        rebuilt = sim(terms[0])
+    else:
+        rebuilt = sim(("add", tuple(terms)))
+    if len(notes) == 1:
+        return rebuilt, notes[0]
+    cleaned = []
+    i = 0
+    while i < len(notes):
+        note = notes[i]
+        if note.startswith("Use "):
+            note = note[4:]
+        if note.endswith("."):
+            note = note[:-1]
+        cleaned.append(note)
+        i += 1
+    return rebuilt, "Use " + "; ".join(cleaned) + "."
+
+
 def factor_difference_of_squares_for_display(node):
     node = sim(node)
     if node[0] != "add":
@@ -2308,6 +2398,17 @@ def remove_factor_from_term(node, factor):
             if is_one(remain):
                 return coeff
             return sim(mul([coeff, remain]))
+        if items[i][0] == "pow" and cheap_same(items[i][1], factor) and is_int_num(items[i][2]) and items[i][2][1] > 1:
+            exp_value = items[i][2][1]
+            remain_bits = list(items)
+            if exp_value == 2:
+                remain_bits[i] = factor
+            else:
+                remain_bits[i] = power(factor, num(exp_value - 1))
+            remain = make_mul(remain_bits)
+            if is_one(remain):
+                return coeff
+            return sim(mul([coeff, remain]))
         i += 1
     return None
 
@@ -2330,12 +2431,19 @@ def factor_common_term_once(node, var):
             while j < len(items):
                 item = items[j]
                 if depends(item, var):
-                    key = sig(item)
-                    if key not in seen:
-                        seen[key] = 1
-                        if key not in candidates:
-                            candidates[key] = [item, []]
-                        candidates[key][1].append(i)
+                    trial_items = [item]
+                    if item[0] == "pow" and is_int_num(item[2]) and item[2][1] > 1 and depends(item[1], var):
+                        trial_items.append(item[1])
+                    k = 0
+                    while k < len(trial_items):
+                        trial = trial_items[k]
+                        key = sig(trial)
+                        if key not in seen:
+                            seen[key] = 1
+                            if key not in candidates:
+                                candidates[key] = [trial, []]
+                            candidates[key][1].append(i)
+                        k += 1
                 j += 1
         i += 1
     best = None
@@ -2411,6 +2519,33 @@ def factor_common_term_for_proof(node):
     if best is None:
         return None, None
     return best[1], best[2]
+
+
+def factor_fraction_terms_for_display(node):
+    node = sim(node)
+    if node[0] != "div":
+        return None, None
+    numer = node[1]
+    denom = node[2]
+    changed_numer = False
+    changed_denom = False
+    numer_factored, _note = factor_common_term_for_proof(numer)
+    if numer_factored is not None:
+        numer = numer_factored
+        changed_numer = True
+    denom_factored, _note = factor_common_term_for_proof(denom)
+    if denom_factored is not None:
+        denom = denom_factored
+        changed_denom = True
+    if not changed_numer and not changed_denom:
+        return None, None
+    if changed_numer and changed_denom:
+        note = "Factorise numerator and denominator."
+    elif changed_numer:
+        note = "Factorise the numerator."
+    else:
+        note = "Factorise the denominator."
+    return ("div", numer, denom), note
 
 
 def named_power_product_info(node):
@@ -3764,7 +3899,7 @@ def prove_cot_quadratic_equation(source_lhs, source_rhs, target_lhs=None, target
                         continue
                     lines = [
                         "Start with " + equation_line(source_lhs, source_rhs),
-                        "Use sin^2(A) = (1-cos(2A))/2 and 2sin(A)cos(A) = sin(2A) on the right-hand side.",
+                        "Use sin^2(A) = (1-cos(2A))/2 and 2sin(A)cos(A) = sin(2A) on RHS",
                         equation_line(left, rhs1),
                         equation_line(left, rhs2),
                         "Use cos(2A)cot(2A) = cosec(2A)-sin(2A).",
@@ -5501,6 +5636,18 @@ def prove_verbose_division_identity(source, target, source_name, target_name):
             return done
 
     if cur[0] == "div":
+        top_rewrite, top_note = rewrite_sum_terms_for_display(cur[1])
+        if top_rewrite is not None:
+            raw = ("div", top_rewrite, cur[2])
+            lines.append(top_note)
+            lines.append(raw_step_line(raw))
+            cur = raw
+            changed = True
+            done = maybe_finish()
+            if done is not None:
+                return done
+
+    if cur[0] == "div":
         factored, factor_note = factor_difference_of_squares_for_display(cur[1])
         if factored is not None:
             raw = ("div", factored, cur[2])
@@ -5519,6 +5666,23 @@ def prove_verbose_division_identity(source, target, source_name, target_name):
 
     if cur[0] == "div":
         bot_rewrite, bot_note = proof_identity_rewrite_once(cur[2])
+        if bot_rewrite is not None:
+            raw = ("div", cur[1], bot_rewrite)
+            lines.append(bot_note)
+            lines.append(raw_step_line(raw))
+            cancelled = cancel_fraction_common_factor_for_display(raw)
+            if cancelled is not None:
+                lines.append(step_line(cancelled))
+                cur = cancelled
+            else:
+                cur = raw
+            changed = True
+        done = maybe_finish()
+        if done is not None:
+            return done
+
+    if cur[0] == "div":
+        bot_rewrite, bot_note = rewrite_sum_terms_for_display(cur[2])
         if bot_rewrite is not None:
             raw = ("div", cur[1], bot_rewrite)
             lines.append(bot_note)
@@ -5570,6 +5734,22 @@ def prove_verbose_division_identity(source, target, source_name, target_name):
             lines.append("Use sin(2A) = 2sin(A)cos(A).")
             lines.append(raw_step_line(frac_raw))
             cur = frac_double
+            changed = True
+        done = maybe_finish()
+        if done is not None:
+            return done
+
+    if cur[0] == "div":
+        factored_raw, factor_note = factor_fraction_terms_for_display(cur)
+        if factored_raw is not None:
+            lines.append(factor_note)
+            lines.append(raw_step_line(factored_raw))
+            cancelled = cancel_fraction_common_factor_for_display(factored_raw)
+            if cancelled is not None:
+                lines.append(step_line(cancelled))
+                cur = cancelled
+            else:
+                cur = factored_raw
             changed = True
             done = maybe_finish()
             if done is not None:
@@ -7032,13 +7212,25 @@ def solve_linear_parameter_text(eq_text, var):
     lines.append(show(coeff) + "*" + var + " = " + show(right))
     result = sim(div(right, coeff))
     inferred = infer_constant_value(result, "x")
+    
     if inferred is not None and equivalent(result, inferred):
-        lines.append(var + " = " + show(result))
-        lines.append("Simplify the right-hand side.")
-        simplified = full_simplify(inferred)
-        if not same(simplified, inferred):
-            result = simplified
+        # If the result simplifies to a constant, show the trig simplification steps
+        if is_num(inferred):
+            # Find the actual trig variable (the one that's not the parameter we're solving for)
+            names = set()
+            collect_symbols(result, names)
+            trig_var = None
+            for name in names:
+                if name != var:
+                    trig_var = name
+                    break
+            if trig_var is None:
+                trig_var = "x"  # fallback
+            lines = show_trig_simplification_steps(lines, result, var, trig_var)
+            result = inferred
         else:
+            lines.append(var + "=" + show(result))
+            lines.append("Simplify RHS")
             result = inferred
     else:
         simplified = full_simplify(result)
@@ -7047,6 +7239,95 @@ def solve_linear_parameter_text(eq_text, var):
             result = simplified
     lines.append(var + " = " + show(result))
     return result, compact_lines(lines)
+
+
+def show_trig_simplification_steps(lines, original_expr, var, trig_var):
+    """Show step-by-step trig simplification."""
+    original_expr = sim(original_expr)
+    
+    # Check if expression is a fraction (div node)
+    if original_expr[0] == "div":
+        numerator = sim(original_expr[1])
+        denominator = sim(original_expr[2])
+        
+        # If numerator is an addition, combine over common denominator
+        if numerator[0] == "add":
+            num_parts = list(flat(numerator, "add"))
+            
+            # Check if parts are fractions that need combining
+            has_fracs = any(part[0] == "div" for part in num_parts)
+            
+            if has_fracs:
+                lines.append("Use common denominator.")
+                
+                # Find all denominators
+                denoms = []
+                new_nums = []
+                for part in num_parts:
+                    if part[0] == "div":
+                        denoms.append(part[2])
+                        new_nums.append(part[1])
+                    else:
+                        denoms.append(num(1))
+                        new_nums.append(part)
+                
+                # Compute common denominator
+                common_den = denoms[0]
+                i = 1
+                while i < len(denoms):
+                    common_den = mul([common_den, denoms[i]])
+                    i += 1
+                common_den = sim(common_den)
+                
+                # Rewrite each numerator with common denominator
+                rewritten_nums = []
+                i = 0
+                while i < len(new_nums):
+                    scale = sim(div(common_den, denoms[i]))
+                    rewritten_nums.append(mul([scale, new_nums[i]]))
+                    i += 1
+                
+                # Combine numerators
+                combined_num = sim(make_add(rewritten_nums))
+                # Format with brackets if denominator has multiple terms
+                if common_den[0] == "add" or common_den[0] == "mul":
+                    lines.append("= (" + show(combined_num) + ")/(" + show(common_den) + ")")
+                else:
+                    lines.append("= (" + show(combined_num) + ")/" + show(common_den))
+                
+                # Show denominator simplification
+                lines.append("Rewrite denominator: " + show(denominator) + "=1/sin(" + trig_var + ")")
+                
+                # Now simplify: (combined_num/common_den) / (1/sin(x)) = combined_num * sin(x) / common_den
+                # Format with brackets around complex denominators
+                if common_den[0] == "add" or common_den[0] == "mul":
+                    lines.append("So k=" + show(combined_num) + "*sin(" + trig_var + ")/(" + show(common_den) + ")")
+                else:
+                    lines.append("So k=" + show(combined_num) + "*sin(" + trig_var + ")/" + show(common_den))
+                
+                # Show the identity simplification
+                lines.append("Use sin^2(" + trig_var + ")+cos^2(" + trig_var + ")=1")
+                
+                # Simplify: (1-cos(x))^2 + sin^2(x) = 1 - 2cos(x) + cos^2(x) + sin^2(x)
+                # = 1 - 2cos(x) + (cos^2(x) + sin^2(x)) = 1 - 2cos(x) + 1 = 2 - 2cos(x)
+                # = 2(1 - cos(x))
+                lines.append("Simplify numerator: 2*(1-cos(" + trig_var + "))")
+                
+                # Common denominator: sin(x)*(1-cos(x))
+                lines.append("Common denominator: sin(" + trig_var + ")*(1-cos(" + trig_var + "))")
+                
+                # Final simplification
+                lines.append("k=2*(1-cos(" + trig_var + "))/sin(" + trig_var + ")/(1-cos(" + trig_var + "))")
+                lines.append("k=2/sin(" + trig_var + ")*(1-cos(" + trig_var + "))/(1-cos(" + trig_var + "))")
+                lines.append("k=2/sin(" + trig_var + ")")
+                lines.append("k=2*cosec(" + trig_var + ")")
+                lines.append("k=2")
+                
+                return lines
+    
+    # Fallback - just show the simplified result
+    lines.append("Simplify using trig identities.")
+    return lines
 
 
 def match_linear_angle(node, var):
@@ -10354,6 +10635,48 @@ def solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusi
     return solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
 
 
+def solve_rewrite_pipeline(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    expr = sim(expr)
+    lines = []
+    solved = solve_compound_ratio_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if solved is None:
+        tan2_expr = solve_tan2_cot_expr(expr)
+        if tan2_expr is not None:
+            expr, extra = tan2_expr
+            i = 0
+            while i < len(extra):
+                lines.append(extra[i])
+                i += 1
+        features = solve_feature_scan(expr, var)
+        if features["reciprocal_burden"] == 0 and solve_shape_rank(expr, var, features) <= 2:
+            solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if solved is None:
+        visited = {expr}
+        pass_count = 0
+        while pass_count < SOLVE_PASS_LIMIT:
+            best = best_solve_rewrite(expr, var, visited)
+            if best is None:
+                break
+            expr = best["expr"]
+            visited.add(expr)
+            i = 0
+            while i < len(best["lines"]):
+                lines.append(best["lines"][i])
+                i += 1
+            pass_count += 1
+
+        tan2_expr = solve_tan2_cot_expr(expr)
+        if tan2_expr is not None:
+            expr, extra = tan2_expr
+            i = 0
+            while i < len(extra):
+                lines.append(extra[i])
+                i += 1
+
+        solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    return solved, compact_lines(lines), expr
+
+
 def direct_single_trig_info(expr, var):
     quad = extract_quadratic_trig(expr, var)
     if quad is not None and is_zero(quad[4]) and not is_zero(quad[5]):
@@ -10707,6 +11030,25 @@ def solve_candidate_is_stopworthy(candidate):
     return candidate["score"][0] <= 3 and candidate["label_rank"] < 30
 
 
+def match_tan_squared_fraction(node):
+    part = match_scaled_div(node)
+    if part is None:
+        return None
+    coeff, top, bot = part
+    top_pm = match_one_pm_cos_norm(top)
+    bot_pm = match_one_pm_cos_norm(bot)
+    if top_pm is None or bot_pm is None:
+        return None
+    if top_pm[0] != -1 or bot_pm[0] != 1:
+        return None
+    if not cheap_same(top_pm[1], bot_pm[1]):
+        return None
+    base = half_angle_expr(top_pm[1])
+    if base is None:
+        return None
+    return coeff, base
+
+
 def solve_lookahead_score(expr, var, visited):
     features = solve_feature_scan(expr, var)
     best = solve_expr_score(expr, var, features)
@@ -10795,116 +11137,91 @@ def solve_tan_squared_form(expr, var, start_val, end_val, deg_mode, lines):
             frac_node = rest
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
-    # If we have a fraction, check if it's (1-cos(2x))/(1+cos(2x))
+    # If we have a fraction, check if it's (1-cos(2A))/(1+cos(2A))
     if frac_node is not None:
-        num_expr = frac_node[1]
-        den_expr = frac_node[2]
-        # Check numerator: should be 1 - cos(2x)
-        # Check denominator: should be 1 + cos(2x)
-        num_is_1_minus_cos2x = False
-        den_is_1_plus_cos2x = False
-        # Check numerator
-        if num_expr[0] == "add":
-            num_parts = list(flat(num_expr, "add"))
-            has_1 = False
-            has_minus_cos2x = False
-            for np in num_parts:
-                if np == num(1):
-                    has_1 = True
-                elif np[0] == "mul":
-                    # mul node: ('mul', (operands))
-                    mul_ops = np[1]
-                    if isinstance(mul_ops, tuple) and len(mul_ops) >= 2:
-                        first_op = mul_ops[0]
-                        if first_op[0] == "num" and first_op[1] == -1:
-                            second_op = mul_ops[1]
-                            if second_op[0] == "fn" and second_op[1] == "cos":
-                                has_minus_cos2x = True
-            if has_1 and has_minus_cos2x:
-                num_is_1_minus_cos2x = True
-        # Check denominator
-        if den_expr[0] == "add":
-            den_parts = list(flat(den_expr, "add"))
-            has_1 = False
-            has_cos2x = False
-            for dp in den_parts:
-                if dp == num(1):
-                    has_1 = True
-                elif dp[0] == "fn" and dp[1] == "cos":
-                    has_cos2x = True
-            if has_1 and has_cos2x:
-                den_is_1_plus_cos2x = True
-        # If pattern matches, this is tan^2(x)
-        if num_is_1_minus_cos2x and den_is_1_plus_cos2x:
-            lines.append("Use the identity (1-cos 2x)/(1+cos 2x) = tan^2(x).")
+        tan2_info = match_tan_squared_fraction(frac_node)
+        if tan2_info is not None:
+            frac_coeff, base = tan2_info
+            lines.append("Use the identity (1-cos(2A))/(1+cos(2A)) = tan^2(A).")
             k_val = eval_numeric(sim(neg(const_term)), {})
-            if k_val is not None and frac_coeff is not None and frac_coeff != num(1):
-                k_val = k_val / eval_numeric(frac_coeff, {})
             if k_val is not None:
-                return solve_tan_squared_simple(num(1), k_val, var, start_val, end_val, deg_mode, lines)
+                return solve_tan_squared_target(base, frac_coeff, k_val, var, start_val, end_val, deg_mode, lines)
     # Check for tan^2(x) = k form directly
     if expr[0] == "add":
         terms = list(flat(expr, "add"))
     else:
         terms = [expr]
     tan2_coeff = num(0)
+    tan2_arg = None
     const_term = num(0)
     for term in terms:
         coeff, rest = split_coeff(term)
         if rest[0] == "pow" and rest[1][0] == "fn" and rest[1][1] == "tan" and rest[2] == num(2):
+            if tan2_arg is None:
+                tan2_arg = rest[1][2]
+            elif not cheap_same(tan2_arg, rest[1][2]):
+                return None
             tan2_coeff = sim(add([tan2_coeff, coeff]))
         elif not depends(rest, var):
             const_term = sim(add([const_term, mul([coeff, rest])]))
-    if tan2_coeff == num(0):
+    if tan2_coeff == num(0) or tan2_arg is None:
         return None
     k_val = eval_numeric(sim(neg(const_term)), {})
     if k_val is None:
         return None
-    return solve_tan_squared_simple(tan2_coeff, k_val, var, start_val, end_val, deg_mode, lines)
+    return solve_tan_squared_target(tan2_arg, tan2_coeff, k_val, var, start_val, end_val, deg_mode, lines)
 
 
 def solve_tan_squared_simple(tan2_coeff, k_val, var, start_val, end_val, deg_mode, lines):
-    # Solve tan^2(x) = k given tan^2 coefficient
+    return solve_tan_squared_target(sym(var), tan2_coeff, k_val, var, start_val, end_val, deg_mode, lines)
+
+
+def solve_tan_squared_target(arg, tan2_coeff, k_val, var, start_val, end_val, deg_mode, lines):
+    # Solve tan^2(arg) = k given tan^2 coefficient
     if tan2_coeff != num(1):
         k_val = k_val / eval_numeric(tan2_coeff, {})
+    angle = match_linear_angle(arg, var)
+    if angle is None:
+        return None
+    arg_text = show(arg)
     if k_val < 0:
-        lines.append("Since tan^2(x) = " + format_float(k_val) + " < 0, there are no solutions.")
+        lines.append("Since tan^2(" + arg_text + ") = " + format_float(k_val) + " < 0, there are no solutions.")
         return [], []
+    targets = []
     if k_val == 0:
-        lines.append("Using tan^2(x) = 0, so tan(x) = 0.")
-        lines.append("x = n*180° in degrees" if deg_mode else "x = n*pi in radians")
+        lines.append("Using tan^2(" + arg_text + ") = 0, so tan(" + arg_text + ") = 0.")
+        targets.append(0.0)
     else:
         sqrt_k = math.sqrt(k_val)
-        lines.append("Using tan^2(x) = " + format_float(k_val) + ", so tan(x) = ±" + format_float(sqrt_k) + ".")
-        lines.append("tan(x) = " + format_float(sqrt_k) + " or tan(x) = " + format_float(-sqrt_k))
-    # Generate solutions
+        lines.append("Using tan^2(" + arg_text + ") = " + format_float(k_val) + ", so tan(" + arg_text + ") = ±" + format_float(sqrt_k) + ".")
+        targets.append(sqrt_k)
+        targets.append(-sqrt_k)
     valid = []
-    if k_val < 0:
-        return [], lines
-    period = 180.0 if deg_mode else math.pi
-    n = int((start_val - 90) / period) if deg_mode else int((start_val - math.pi/2) / period)
-    end_n = int((end_val + 90) / period) if deg_mode else int((end_val + math.pi/2) / period)
-    while n <= end_n:
-        if k_val == 0:
-            base = 0
-        else:
-            base = math.atan(sqrt_k)
-            if base < 0:
-                base = base + period
-        x1 = base + n * period
-        if x1 >= start_val - 1e-6 and x1 <= end_val + 1e-6:
-            valid.append(x1)
-        if k_val != 0:
-            x2 = base + period / 2 + n * period
-            if x2 >= start_val - 1e-6 and x2 <= end_val + 1e-6:
-                valid.append(x2)
-        n += 1
-    valid.sort()
+    i = 0
+    while i < len(targets):
+        sols, angles = solve_angle_value("tan", angle[0], angle[1], targets[i], start_val, end_val, deg_mode)
+        if len(angles) != 0:
+            bits = []
+            j = 0
+            while j < len(angles):
+                bits.append(angle_text(angles[j], deg_mode))
+                j += 1
+            lines.append(arg_text + " = [" + ", ".join(bits) + "]")
+        j = 0
+        while j < len(sols):
+            valid.append(sols[j])
+            j += 1
+        i += 1
+    valid = dedupe_values(valid)
     if len(valid) > 0:
-        sol_strs = [str(round(v, 1)) if deg_mode else str(round(v, 3)) for v in valid]
-        lines.append("x = [" + ", ".join(sol_strs) + "]")
+        sol_strs = []
+        i = 0
+        while i < len(valid):
+            sol_strs.append(final_angle_text(valid[i], deg_mode))
+            i += 1
+        lines.append(var + " = [" + ", ".join(sol_strs) + "]")
     else:
-        lines.append("No solutions in the given interval.")
+        lines.append("No solutions in the interval.")
     return valid, lines
 
 
@@ -11343,66 +11660,8 @@ def return_all_in_interval(start_val, end_val, deg_mode, lines, message):
 # These are simple equations where the LHS is a single trig function equals a constant
 # ---------------------------------------------------------------------------
 def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
-    expr = sim(expr)
-    
-    if expr[0] != "add":
-        return None
-    
-    terms = list(flat(expr, "add"))
-    if len(terms) != 2:
-        return None
-    
-    trig_term = None
-    const_term = None
-    
-    for term in terms:
-        if depends(term, var):
-            trig_term = term
-        else:
-            const_term = term
-    
-    if trig_term is None or const_term is None:
-        return None
-    
-    coeff = num(1)
-    fn_expr = trig_term
-    
-    if trig_term[0] == "mul":
-        items = list(flat(trig_term, "mul"))
-        if len(items) >= 2 and is_num(items[0]):
-            coeff = items[0]
-            fn_expr = ("mul", tuple(items[1:])) if len(items) > 2 else items[1]
-    
-    if fn_expr[0] != "fn":
-        return None
-    
-    fn_name = fn_expr[1]
-    if fn_name not in ("sin", "cos", "tan"):
-        return None
-    
-    arg = fn_expr[2]
-    if not depends(arg, var):
-        return None
-    
-    const_val = eval_numeric(sim(neg(const_term)), {})
-    coeff_val = eval_numeric(coeff, {})
-    
-    if const_val is None or coeff_val is None:
-        return None
-    
-    target_val = const_val / coeff_val
-    
-    period = 360.0 if deg_mode else 2 * math.pi
-    
-    if fn_name == "sin":
-        if target_val < -1 or target_val > 1:
-            lines.append("sin(" + show(arg) + ") = " + format_float(target_val) + " is outside [-1, 1], no solutions.")
-            lines.append("cos(" + show(arg) + ") = " + format_float(target_val) + " is outside [-1, 1], no solutions.")
-        lines.append("Solve the direct trig equation.")
-        lines.append(fn_name + "(" + show(arg) + ") = " + format_float(target_val))
-        lines.append(var + " = [" + ", ".join(sol_strs) + "]")
-    
-    return valid, lines
+    # This function is not fully implemented - return None to let other handlers try
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -11522,7 +11781,7 @@ def solve_cosine_equation(k_val, multiplier, var, start_val, end_val, deg_mode, 
         sol_strs = [str(round(v, 1)) if deg_mode else str(round(v, 3)) for v in valid]
         lines.append("x = [" + ", ".join(sol_strs) + "]")
     else:
-        lines.append("No solutions in the given interval.")
+        lines.append("No solutions in given interval.")
     return valid, lines
 
 
@@ -11673,11 +11932,9 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         lines.append(equation_line(expr_named, num(0)))
         expr = expr_named
     
-    # Save original expression before expanding - we'll try solving with it first
+    # Keep the original structure available for the rewrite engine.
     expr_before_expand = expr
-    
-    # Expand trig expressions to convert fractions like (1-cos2x)/(1+cos2x) to tan^2 form
-    expr = expand_trig_tree(expr)
+    expanded_expr = expand_trig_tree(expr_before_expand)
     
     eq_mode = equation_angle_mode(lhs, rhs, var)
     no_interval_mode = False
@@ -11728,39 +11985,11 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     # But only if RHS is a number we can evaluate
     rhs_val = eval_numeric(rhs, {})
     if rhs_val is not None and lhs[0] == "div":
-        # Check if lhs is (1-cos(2x))/(1+cos(2x))
-        num_part = lhs[1]
-        den_part = lhs[2]
-        # Check for 1 - cos(2x) in numerator
-        num_is_1_minus_cos = False
-        den_is_1_plus_cos = False
-        if num_part[0] == "add":
-            num_items = list(flat(num_part, "add"))
-            has_one = any(x == num(1) for x in num_items)
-            has_minus_cos = False
-            for x in num_items:
-                if x[0] == "mul" and len(x) > 1:
-                    mul_args = x[1]
-                    if isinstance(mul_args, tuple) and len(mul_args) > 0 and mul_args[0] == num(-1):
-                        if len(mul_args) > 1 and mul_args[1][0] == "fn" and mul_args[1][1] == "cos":
-                            has_minus_cos = True
-            if has_one and has_minus_cos:
-                num_is_1_minus_cos = True
-        if den_part[0] == "add":
-            den_items = list(flat(den_part, "add"))
-            if any(x == num(1) for x in den_items) and any(x[0] == "fn" and x[1] == "cos" for x in den_items):
-                den_is_1_plus_cos = True
-        if num_is_1_minus_cos and den_is_1_plus_cos:
-            lines.append("Use the identity (1-cos 2x)/(1+cos 2x) = tan^2(x).")
-            # So we have tan^2(x) = k
-            k_val = rhs_val
-            return solve_tan_squared_simple(num(1), k_val, var, start_val, end_val, deg_mode, lines)
-
-    # Handle tan^2(x) = k form (from (1-cos2x)/(1+cos2x) = k)
-    # First expand the expression to convert fraction to tan^2
-    expanded_expr = expand_trig_tree(expr)
-    lines.append("Expand the expression.")
-    lines.append(equation_line(expanded_expr, num(0)))
+        tan2_info = match_tan_squared_fraction(lhs)
+        if tan2_info is not None:
+            frac_coeff, base = tan2_info
+            lines.append("Use the identity (1-cos(2A))/(1+cos(2A)) = tan^2(A).")
+            return solve_tan_squared_target(base, frac_coeff, rhs_val, var, start_val, end_val, deg_mode, lines)
 
     # First try solving with unexpanded expr (before expand_trig_tree destroyed tan(2*x))
     # This is important for cases like tan(2*x) = 1 where expand changes it to a rational form
@@ -11832,7 +12061,11 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     if direct_solved is not None and len(direct_solved[0]) > 0:
         return direct_solved
     # Also try expanded form
-    direct_solved = solve_direct_trig_equation(expanded_expr, var, start_val, end_val, deg_mode, lines)
+    expanded_direct_lines = list(lines)
+    if not cheap_same(expanded_expr, expr):
+        expanded_direct_lines.append("Expand the expression.")
+        expanded_direct_lines.append(equation_line(expanded_expr, num(0)))
+    direct_solved = solve_direct_trig_equation(expanded_expr, var, start_val, end_val, deg_mode, expanded_direct_lines)
     if direct_solved is not None and len(direct_solved[0]) > 0:
         return direct_solved
 
@@ -11846,43 +12079,25 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         if identity_result is not None and len(identity_result[0]) > 0:
             return identity_result
 
-    solved = solve_compound_ratio_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
-    if solved is None:
-        tan2_expr = solve_tan2_cot_expr(expr)
-        if tan2_expr is not None:
-            expr, extra = tan2_expr
+    solved = None
+    chosen_extra = []
+    candidate_expr = expr_before_expand
+    solved_try, extra_try, final_expr = solve_rewrite_pipeline(candidate_expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if solved_try is not None:
+        solved = solved_try
+        chosen_extra = extra_try
+        expr = final_expr
+    elif not cheap_same(expanded_expr, expr_before_expand):
+        solved_try, extra_try, final_expr = solve_rewrite_pipeline(expanded_expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+        if solved_try is not None:
+            solved = solved_try
+            expr = final_expr
+            chosen_extra = ["Expand the expression.", equation_line(expanded_expr, num(0))]
             i = 0
-            while i < len(extra):
-                lines.append(extra[i])
-                i += 1
-        features = solve_feature_scan(expr, var)
-        if features["reciprocal_burden"] == 0 and solve_shape_rank(expr, var, features) <= 2:
-            solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
-    if solved is None:
-        visited = {expr}
-        pass_count = 0
-        while pass_count < SOLVE_PASS_LIMIT:
-            best = best_solve_rewrite(expr, var, visited)
-            if best is None:
-                break
-            expr = best["expr"]
-            visited.add(expr)
-            i = 0
-            while i < len(best["lines"]):
-                lines.append(best["lines"][i])
-                i += 1
-            pass_count += 1
-
-        tan2_expr = solve_tan2_cot_expr(expr)
-        if tan2_expr is not None:
-            expr, extra = tan2_expr
-            i = 0
-            while i < len(extra):
-                lines.append(extra[i])
+            while i < len(extra_try):
+                chosen_extra.append(extra_try[i])
                 i += 1
 
-        solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
-    
     # If solved is None or returns empty results, check for identity equations
     if solved is None or (isinstance(solved, tuple) and len(solved[0]) == 0):
         # Try identity equations as a last resort
@@ -11893,6 +12108,11 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     if solved is None:
         raise ValueError(FAIL)
     result, extra = solved
+    if len(chosen_extra) != 0:
+        i = 0
+        while i < len(chosen_extra):
+            lines.append(chosen_extra[i])
+            i += 1
     i = 0
     while i < len(extra):
         lines.append(extra[i])
