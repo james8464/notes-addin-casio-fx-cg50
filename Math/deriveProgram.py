@@ -44,6 +44,8 @@ SKIP_AUTORUN = sys is not None and getattr(sys, "_derive_no_autorun", False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 LOW_MEMORY_RUNTIME = False
 TIDY_EXPAND_LIMIT = 5
+_CACHE_MISS = object()
+_ENGINE_CACHES = {}
 
 
 def apply_runtime_profile(low_memory=None):
@@ -55,7 +57,50 @@ def apply_runtime_profile(low_memory=None):
 
 
 def begin_user_action():
-    return None
+    clear_engine_caches()
+
+
+def clear_engine_caches():
+    _ENGINE_CACHES.clear()
+
+
+def _cache_limit(name):
+    if LOW_MEMORY_RUNTIME:
+        limits = {
+            "sim": 320,
+            "depends": 384,
+            "show": 512,
+            "format_final_answer": 96,
+        }
+    else:
+        limits = {
+            "sim": 1536,
+            "depends": 2048,
+            "show": 2048,
+            "format_final_answer": 256,
+        }
+    return limits.get(name, 128)
+
+
+def _cache_get(name, key):
+    bucket = _ENGINE_CACHES.get(name)
+    if bucket is None:
+        return _CACHE_MISS
+    return bucket.get(key, _CACHE_MISS)
+
+
+def _cache_set(name, key, value):
+    bucket = _ENGINE_CACHES.get(name)
+    if bucket is None:
+        bucket = {}
+        _ENGINE_CACHES[name] = bucket
+    if len(bucket) >= _cache_limit(name):
+        try:
+            bucket.pop(next(iter(bucket)))
+        except StopIteration:
+            pass
+    bucket[key] = value
+    return value
 
 
 def _force_low_memory_runtime(flag):
@@ -1013,6 +1058,87 @@ def show(node, parent=0):
 # SECTION 11: Parsing
 # ============================================================================
 
+KNOWN_PARSE_NAMES = tuple(
+    sorted(
+        set(FUNC_NAMES) |
+        set(FUNC_ALIASES.keys()) |
+        {"e", "pi", "ln", "csc"},
+        key=len,
+        reverse=True))
+
+
+def normalize_name_token(token):
+    low = token.lower()
+    if low in FUNC_ALIASES:
+        return FUNC_ALIASES[low]
+    if low == "ln":
+        return "log"
+    if low == "csc":
+        return "cosec"
+    if low in FUNC_NAMES or low in ("e", "pi"):
+        return low
+    return token
+
+
+def decompose_name_word(word, next_char):
+    low = word.lower()
+    known = low in FUNC_NAMES or low in ("e", "pi", "ln", "csc") or low in FUNC_ALIASES
+    has_digit = False
+    k = 0
+    while k < len(word):
+        if is_digit_char(word[k]) or word[k] == "_":
+            has_digit = True
+            break
+        k += 1
+    if known or len(word) == 1 or has_digit:
+        return [normalize_name_token(word)]
+    if next_char == "(":
+        for token in KNOWN_PARSE_NAMES:
+            if low.endswith(token) and len(word) > len(token):
+                prefix = word[:len(word) - len(token)]
+                if prefix != "":
+                    return list(prefix) + [normalize_name_token(token)]
+    if len(word) == 2:
+        return [word[0], word[1]]
+    raise ValueError(
+        "Unsupported multi-letter name: " +
+        word +
+        ". Use single-letter variables.")
+
+
+def split_explicit_var(text):
+    body = text.strip()
+    if body[:1] == "(" and body[-1:] == ")":
+        body = body[1:-1].strip()
+    depth = 0
+    split_at = -1
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            split_at = i
+            break
+        i += 1
+    if split_at == -1:
+        return None
+    expr = body[:split_at].strip()
+    var = body[split_at + 1:].strip()
+    if expr == "" or var == "":
+        raise ValueError("Use expr,var with a single-letter variable.")
+    return expr, var
+
+
+def normalize_explicit_var(name):
+    var = name.strip()
+    if not is_valid_symbol_name(var) or len(var) != 1:
+        raise ValueError("Use a single-letter variable after the comma.")
+    return var
+
+
 def parse(text):
     toks = []
     i = 0
@@ -1042,34 +1168,8 @@ def parse(text):
             while j < len(text) and is_name_char(text[j]):
                 j += 1
             word = text[i:j]
-            low = word.lower()
-            known = low in FUNC_NAMES or low in ("e", "pi", "ln", "csc") or low in FUNC_ALIASES
-            has_digit = False
-            k = 0
-            while k < len(word):
-                if is_digit_char(word[k]) or word[k] == "_":
-                    has_digit = True
-                    break
-                k += 1
-            if known or len(word) == 1 or has_digit:
-                if low in FUNC_ALIASES:
-                    toks.append(FUNC_ALIASES[low])
-                elif low in ("e", "pi", "ln", "csc"):
-                    if low == "ln":
-                        toks.append("log")
-                    elif low == "csc":
-                        toks.append("cosec")
-                    else:
-                        toks.append(low)
-                elif low in FUNC_NAMES:
-                    toks.append(low)
-                else:
-                    toks.append(word)
-            else:
-                k = 0
-                while k < len(word):
-                    toks.append(word[k])
-                    k += 1
+            next_char = text[j] if j < len(text) else ""
+            toks.extend(decompose_name_word(word, next_char))
             i = j
         else:
             raise ValueError("Unexpected character: " + ch)
@@ -1099,11 +1199,7 @@ def parse(text):
         return False
 
     def starts_implicit(t):
-        if not is_atom_start(t):
-            return False
-        if t in FUNC_NAMES:
-            return False
-        return True
+        return is_atom_start(t)
 
     def atom():
         nonlocal p
@@ -1198,9 +1294,11 @@ def parse_normal_input(text):
             return parse(right_side), "x"
         else:
             raise ValueError("For equations, use implicit mode (mode 2). Or for y = f(x), put just f(x) on right side.")
-    if "," in text:
-        parts = text.split(",", 1)
-        return parse(parts[0]), parts[1]
+    parts = split_explicit_var(text)
+    if parts is not None:
+        expr_text, var_text = parts
+        var = normalize_explicit_var(var_text)
+        return parse(expr_text), var
     return parse(text), "x"
 
 
@@ -1599,46 +1697,6 @@ def pick_implicit_vars(left, right):
 # SECTION 17: Post-Output Simplification
 # ============================================================================
 
-def simplify_steps(node, var):
-    lines = []
-    current = sim(node)
-    current = prefer_trig_recip(current)
-    step_num = 1
-
-    lines.append(str(step_num) + ". After differentiation: " + show(current))
-    step_num += 1
-
-    newer = convert_neg_powers_to_fractions(current)
-    if sig(newer) != sig(current):
-        lines.append(str(step_num) + ". Convert negative powers to fractions: " + show(newer))
-        step_num += 1
-        current = newer
-
-    newer = simplify_complex_fractions(current)
-    if sig(newer) != sig(current):
-        lines.append(str(step_num) + ". Simplify complex fractions: " + show(newer))
-        step_num += 1
-        current = newer
-
-    newer = collect_and_factor_terms(current)
-    if sig(newer) != sig(current):
-        lines.append(str(step_num) + ". Collect and factor terms: " + show(newer))
-        step_num += 1
-        current = newer
-
-    final_result = format_final_answer(current)
-    if sig(final_result) != sig(current):
-        lines.append(str(step_num) + ". Final formatted answer: " + show(final_result))
-        step_num += 1
-        current = final_result
-    else:
-        cleaned = prefer_trig_recip(current)
-        if sig(cleaned) != sig(current):
-            current = cleaned
-
-    return current, lines
-
-
 def convert_neg_powers_to_fractions(node):
     if node[0] == "pow":
         base = convert_neg_powers_to_fractions(node[1])
@@ -1721,6 +1779,60 @@ def format_final_answer(node):
                 return sim(("div", result[1], expanded))
 
     return result
+
+
+def solve_normal_mode(text):
+    expr, var = parse_normal_input(text)
+    expr = trig_normal(expr)
+    ans, steps = explain(expr, var, [])
+    final = prefer_trig_recip(tidy(ans))
+    formatted = format_final_answer(final)
+    return var, steps, final, formatted
+
+
+_depends_uncached = depends
+
+
+def depends(node, names):
+    key = (node, tuple(names))
+    cached = _cache_get("depends", key)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("depends", key, _depends_uncached(node, names))
+
+
+_sim_uncached = sim
+
+
+def sim(node):
+    cached = _cache_get("sim", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("sim", node, _sim_uncached(node))
+
+
+_show_uncached = show
+
+
+def show(node, parent=0):
+    key = (node, parent)
+    cached = _cache_get("show", key)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("show", key, _show_uncached(node, parent))
+
+
+_format_final_answer_uncached = format_final_answer
+
+
+def format_final_answer(node):
+    cached = _cache_get("format_final_answer", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set(
+        "format_final_answer",
+        node,
+        _format_final_answer_uncached(node))
 
 
 def simplify_trig_identity(node):
@@ -1806,10 +1918,7 @@ def main():
     try:
         if mode == "1":
             text = input("y = ").strip()
-            expr, var = parse_normal_input(text)
-            expr = trig_normal(expr)
-            ans, steps = explain(expr, var, [])
-            final = prefer_trig_recip(tidy(ans))
+            var, steps, final, formatted = solve_normal_mode(text)
 
             i = 1
             while i <= len(steps):
@@ -1818,7 +1927,6 @@ def main():
 
             print("dy/d" + var + " = " + show(final))
 
-            formatted = format_final_answer(final)
             if sig(formatted) != sig(final):
                 print("dy/d" + var + " = " + show(formatted))
 

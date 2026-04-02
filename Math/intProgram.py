@@ -9,12 +9,15 @@ except ImportError:
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
 FAIL = 'This integral is outside the supported A-level method set.'
+DE_FAIL = 'This differential equation is outside the supported A-level method set.'
 SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
 EXPAND_PASS_LIMIT = 4
 TRIG_REWRITE_LIMIT = 4
+_CACHE_MISS = object()
+_ENGINE_CACHES = {}
 E = 'const', 'e'
 PI = 'const', 'pi'
 U = 'sym', 'u'
@@ -35,11 +38,54 @@ def apply_runtime_profile(low_memory=None):
 
 
 def begin_user_action():
-    return None
+    clear_engine_caches()
 
 
 def clear_engine_caches():
-    return None
+    _ENGINE_CACHES.clear()
+
+
+def _cache_limit(name):
+    if LOW_MEMORY_RUNTIME:
+        limits = {
+            'sim': 384,
+            'depends': 512,
+            'poly_num': 192,
+            'linear_info': 192,
+            'ordered_candidates': 96,
+            'combine_logs': 96,
+            'finalize_integral': 48}
+    else:
+        limits = {
+            'sim': 2048,
+            'depends': 3072,
+            'poly_num': 768,
+            'linear_info': 768,
+            'ordered_candidates': 256,
+            'combine_logs': 256,
+            'finalize_integral': 128}
+    return limits.get(name, 128)
+
+
+def _cache_get(name, key):
+    bucket = _ENGINE_CACHES.get(name)
+    if bucket is None:
+        return _CACHE_MISS
+    return bucket.get(key, _CACHE_MISS)
+
+
+def _cache_set(name, key, value):
+    bucket = _ENGINE_CACHES.get(name)
+    if bucket is None:
+        bucket = {}
+        _ENGINE_CACHES[name] = bucket
+    if len(bucket) >= _cache_limit(name):
+        try:
+            bucket.pop(next(iter(bucket)))
+        except StopIteration:
+            pass
+    bucket[key] = value
+    return value
 
 
 def _force_low_memory_runtime(flag): apply_runtime_profile(flag)
@@ -438,6 +484,27 @@ def trig_product_rewrite(left_name, right_name, arg):
     return A, div(fn('sin', mul([num(2), arg])), num(2))
 
 
+def trig_product_to_sum_rewrite(left_name, right_name, left_arg, right_arg, var):
+    if var is None or linear_info(left_arg, var) is None or linear_info(
+            right_arg, var) is None:
+        return None, None
+    A = add([left_arg, right_arg])
+    B = add([left_arg, neg(right_arg)])
+    if left_name == 'sin' and right_name == 'cos':
+        return 'Use sin A cos B = 1/2(sin(A+B)+sin(A-B)).', div(
+            add([fn('sin', A), fn('sin', B)]), num(2))
+    if left_name == 'cos' and right_name == 'sin':
+        return 'Use cos A sin B = 1/2(sin(A+B)-sin(A-B)).', div(
+            add([fn('sin', A), neg(fn('sin', B))]), num(2))
+    if left_name == 'sin' and right_name == 'sin':
+        return 'Use sin A sin B = 1/2(cos(A-B)-cos(A+B)).', div(
+            add([fn('cos', B), neg(fn('cos', A))]), num(2))
+    if left_name == 'cos' and right_name == 'cos':
+        return 'Use cos A cos B = 1/2(cos(A+B)+cos(A-B)).', div(
+            add([fn('cos', A), fn('cos', B)]), num(2))
+    return None, None
+
+
 def split_coeff(node):
     B = node
     if is_num(B):
@@ -642,6 +709,8 @@ def sim(node):
         A = special_trig_value(S, N)
         if A is not None:
             return A
+        if S == 'exp' and is_zero(N):
+            return num(1)
         if S == 'exp':
             return 'fn', 'exp', N
         return 'fn', S, N
@@ -1371,11 +1440,14 @@ def parse(text):
     return sim(Q)
 
 
+def is_supported_explicit_var(name):
+    return len(name) == 1 and is_name_start(name)
+
+
 def split_input_var(text):
-    A = text
-    A = A.strip()
-    if not (A[:1] == '(' and A[-1:] == ')'):
-        return
+    A = text.strip()
+    if A[:1] == '(' and A[-1:] == ')':
+        A = A[1:-1].strip()
     E = 0
     B = -1
     C = 0
@@ -1385,20 +1457,18 @@ def split_input_var(text):
             E += 1
         elif F == ')':
             E -= 1
-        elif F == ',' and E == 1:
+        elif F == ',' and E == 0:
             B = C
+            break
         C += 1
     if B == -1:
         return
-    H = A[1:B].strip()
-    D = A[B + 1:-1].strip()
+    H = A[:B].strip()
+    D = A[B + 1:].strip()
     if H == '' or D == '':
         return
-    G = 0
-    while G < len(D):
-        if not is_name_char(D[G]):
-            return
-        G += 1
+    if not is_supported_explicit_var(D):
+        raise ValueError('Use a single-letter variable after the comma.')
     return H, D
 
 
@@ -2354,7 +2424,7 @@ def integrate_standard(node, var):
     return integrate_standard_term(B, C)
 
 
-FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp'
+FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp', 'log'
 
 
 def ordered_candidates(node, var, mode):
@@ -2536,7 +2606,7 @@ def integrate_substitution(node, var, forced_u=None):
     return None, None
 
 
-def trig_rewrite_step(node):
+def trig_rewrite_step(node, var=None):
     B = node
     I = expand_square(B)
     if I is not None:
@@ -2574,9 +2644,14 @@ def trig_rewrite_step(node):
         if len(A) == 2 and A[0][0] == 'fn' and A[1][0] == 'fn' and A[0][1] == 'cos' and A[1][1] == 'sin' and same(
                 A[0][2], A[1][2]):
             return trig_product_rewrite(A[0][1], A[1][1], A[0][2])
+        if len(A) == 2 and A[0][0] == 'fn' and A[1][0] == 'fn':
+            F, E = trig_product_to_sum_rewrite(
+                A[0][1], A[1][1], A[0][2], A[1][2], var)
+            if E is not None:
+                return F, E
         G = 0
         while G < len(A):
-            F, E = trig_rewrite_step(A[G])
+            F, E = trig_rewrite_step(A[G], var)
             if E is not None:
                 return F, expand_small(mul(A[:G] + [E] + A[G + 1:]))
             G += 1
@@ -2591,7 +2666,7 @@ def integrate_trig(node, var, allow_steps=True):
     F = False
     G = 0
     while G < TRIG_REWRITE_LIMIT:
-        J, H = trig_rewrite_step(B)
+        J, H = trig_rewrite_step(B, C)
         if H is None:
             break
         B = H
@@ -2775,6 +2850,214 @@ def integrate_by_parts(node, var, depth=0):
             G += 1
     B.append('= ' + pretty(L) + ' + C')
     return L, B
+
+
+def integral_answer_line(node):
+    return '= ' + pretty(node) + ' + C'
+
+
+def split_numeric_term(node):
+    A = sim(node)
+    if is_num(A):
+        return A, num(1)
+    if A[0] == 'mul':
+        D = num(1)
+        C = []
+        for B in flat(A, 'mul'):
+            if is_num(B):
+                D = mulq(D, B)
+            else:
+                C.append(B)
+        return D, make_mul(C)
+    if A[0] == 'div':
+        D, C = split_numeric_term(A[1])
+        return D, div(C, A[2])
+    return num(1), A
+
+
+def recombine_numeric_term(coeff, rest):
+    if is_one(rest):
+        return coeff
+    if is_one(coeff):
+        return rest
+    if is_minus_one(coeff):
+        return neg(rest)
+    return mul([coeff, rest])
+
+
+def expand_small_recursive(node):
+    A = sim(node)
+    B = A[0]
+    if B in ('num', 'sym', 'const'):
+        return A
+    if B == 'fn':
+        return 'fn', A[1], expand_small_recursive(A[2])
+    if B in ('pow', 'div'):
+        return sim((B, expand_small_recursive(A[1]), expand_small_recursive(A[2])))
+    C = []
+    for D in flat(A, B):
+        C.append(expand_small_recursive(D))
+    return sim(expand_small((B, tuple(C))))
+
+
+def normalize_add_coeffs(node):
+    A = sim(node)
+    B = A[0]
+    if B == 'add':
+        D = num(0)
+        C = []
+        E = {}
+        for H in flat(A, 'add'):
+            G = normalize_add_coeffs(H)
+            I, F = split_numeric_term(G)
+            if is_one(F):
+                D = addq(D, I)
+            else:
+                J = sig(F)
+                if J not in E:
+                    C.append(J)
+                    E[J] = [F, num(0)]
+                E[J][1] = addq(E[J][1], I)
+        K = []
+        for H in C:
+            F, I = E[H]
+            if not is_zero(I):
+                K.append(recombine_numeric_term(I, F))
+        if not is_zero(D):
+            K.append(D)
+        return sim(make_add(K)) if len(K) > 0 else num(0)
+    if B == 'fn':
+        return 'fn', A[1], normalize_add_coeffs(A[2])
+    if B in ('pow', 'div'):
+        return sim((B, normalize_add_coeffs(A[1]), normalize_add_coeffs(A[2])))
+    if B == 'mul':
+        C = []
+        for D in flat(A, 'mul'):
+            C.append(normalize_add_coeffs(D))
+        return sim(('mul', tuple(C)))
+    return A
+
+
+def finalize_integral_answer(node):
+    A = _cache_get('finalize_integral', node)
+    if A is not _CACHE_MISS:
+        return A
+
+    def B(cur):
+        C = sim(cur)
+        D = combine_logs(C)
+        E = normalize_add_coeffs(expand_small_recursive(D))
+        return sim(combine_logs(E))
+    F = []
+    G = set()
+
+    def H(cur):
+        I = sig(cur)
+        if I in G:
+            return
+        G.add(I)
+        F.append(cur)
+    H(sim(node))
+    H(combine_logs(sim(node)))
+    C = sim(node)
+    J = 0
+    while J < 3:
+        C = B(C)
+        H(C)
+        J += 1
+    K = F[0]
+    L = (len(pretty(K)), len(repr(sig(K))))
+    for C in F[1:]:
+        M = (len(pretty(C)), len(repr(sig(C))))
+        if M < L:
+            K = C
+            L = M
+    return _cache_set('finalize_integral', node, K)
+
+
+def finalize_integral_result(ans, lines):
+    if ans is None:
+        return ans, lines
+    B = finalize_integral_answer(ans)
+    if sig(B) == sig(ans):
+        return B, lines
+    A = list(lines or [])
+    if len(A) == 0 or A[-1] != 'Simplify.':
+        A.append('Simplify.')
+    return B, A
+
+
+def integral_is_rational_division(node, var):
+    return node[0] == 'div' and poly_num(node[1], var) is not None and poly_num(
+        node[2], var) is not None
+
+
+def auto_route_termwise(node, var, depth):
+    A, B = integrate_termwise_with(
+        node, var, lambda n, v, d: integrate_auto(n, v, d, False), depth)
+    if A is not None:
+        return 'direct', A, [
+            'Integrate each term separately.',
+            integral_answer_line(A)]
+    return None, None, None
+
+
+def auto_route_standard(node, var, depth):
+    A, B = integrate_standard(node, var)
+    if A is not None:
+        return 'direct', A, B
+    return None, None, None
+
+
+def auto_route_reverse(node, var, depth):
+    A, B = integrate_reverse_chain(node, var)
+    if A is not None:
+        return 'reverse', A, B
+    return None, None, None
+
+
+def auto_route_trig(node, var, depth):
+    A, B = integrate_trig(node, var, True)
+    if A is not None:
+        return 'trig', A, B
+    return None, None, None
+
+
+def auto_route_division(node, var, depth):
+    A, B = integrate_division(node, var, True)
+    if A is not None:
+        return 'pf', A, B
+    A, B = integrate_partial(node, var)
+    if A is not None:
+        return 'pf', A, B
+    return None, None, None
+
+
+def auto_route_substitution(node, var, depth):
+    A, B = integrate_substitution(node, var, None)
+    if A is not None:
+        return 'sub', A, B
+    return None, None, None
+
+
+def auto_route_parts(node, var, depth):
+    A, B = integrate_by_parts(node, var, depth)
+    if A is not None:
+        return 'parts', A, B
+    return None, None, None
+
+
+def auto_integral_routes(rational, allow_termwise):
+    A = []
+    if allow_termwise:
+        A.append(auto_route_termwise)
+    A.extend([auto_route_standard, auto_route_reverse, auto_route_trig])
+    if rational:
+        A.append(auto_route_division)
+    A.extend([auto_route_substitution, auto_route_parts])
+    if not rational:
+        A.append(auto_route_division)
+    return A
 
 
 def pf_factor_list(node, var):
@@ -3331,7 +3614,123 @@ def de_exp_target(node, yvar):
     return None, None
 
 
-def solve_de(rhs, xvar, yvar, bc=None):
+def de_linear_y_coeff(node, yvar):
+    A, B = split_const_mul(node, yvar)
+    C = sym(yvar)
+    if cheap_same(B, C) or same(B, C):
+        return A
+
+
+def split_linear_rhs(node, xvar, yvar):
+    B = []
+    C = []
+    D = False
+    for A in flat(node, 'add')if node[0] == 'add'else [node]:
+        E = de_linear_y_coeff(A, yvar)
+        if E is not None:
+            if depends(E, yvar):
+                return
+            C.append(E)
+            D = True
+        elif depends(A, yvar):
+            return
+        else:
+            B.append(A)
+    if not D:
+        return
+    return make_add(B), make_add(C)
+
+
+def de_integrating_factor_divide(node, factor):
+    if node[0] == 'add':
+        B = []
+        for A in flat(node, 'add'):
+            C = quotient_by_target(A, factor)
+            if C is None:
+                B = None
+                break
+            B.append(C)
+        if B is not None:
+            return sim(make_add(B))
+    A = quotient_by_target(node, factor)
+    if A is not None:
+        return sim(A)
+    if factor[0] == 'fn' and factor[1] == 'exp':
+        return sim(mul([node, fn('exp', neg(factor[2]))]))
+    return sim(div(node, factor))
+
+
+def solve_linear_de(rhs, xvar, yvar, bc=None):
+    M = split_linear_rhs(rhs, xvar, yvar)
+    if M is None:
+        return None, None
+    Q, A = M
+    P = neg(A)
+    B, C = integrate_auto(P, xvar, 0, True)
+    if B is None:
+        return None, None
+    N = fn('exp', B)
+    O = sim(mul([N, Q]))
+    D, E = integrate_auto(O, xvar, 0, True)
+    if D is None:
+        return None, None
+    F = mul([N, sym(yvar)])
+    G = de_integrating_factor_divide(D, N)
+    H = de_integrating_factor_divide(sym('C'), N)
+    I = sim(normalize_add_coeffs(expand_small_recursive(add([G, H]))))
+    J = [
+        'Rearrange to d' +
+        yvar +
+        '/d' +
+        xvar +
+        ' + (' +
+        pretty(P) +
+        ')*' +
+        yvar +
+        ' = ' +
+        pretty(Q),
+        'Int[' +
+        pretty(P) +
+        '] d' +
+        xvar +
+        ' = ' +
+        pretty(B),
+        'Integrating factor = ' +
+        pretty(N),
+        'Multiply through by ' +
+        pretty(N),
+        'd/d' +
+        xvar +
+        '[' +
+        pretty(F) +
+        '] = ' +
+        pretty(O),
+        pretty(F) + ' = ' + pretty(D) + ' + C']
+    if bc is not None:
+        K, L = bc
+        R = sim(mul([subst(N, xvar, K), L]))
+        S = sim(subst(D, xvar, K))
+        T = sim(add([R, neg(S)]))
+        U = de_integrating_factor_divide(T, N)
+        I = sim(normalize_add_coeffs(expand_small_recursive(add([G, U]))))
+        J.append(
+            'Use ' +
+            yvar +
+            ' = ' +
+            pretty(L) +
+            ' when ' +
+            xvar +
+            ' = ' +
+            pretty(K) +
+            '.')
+        J.append('C = ' + pretty(T))
+        J.append('So ' + yvar + ' = ' + pretty(I))
+        return yvar + ' = ' + pretty(I), J
+    J.append('So ' + yvar + ' = ' + pretty(I))
+    return yvar + ' = ' + pretty(I), J
+
+
+def solve_separable_de(rhs, xvar, yvar, bc=None):
     F = xvar
     B = yvar
     N = split_separable_rhs(rhs, F, B)
@@ -3410,6 +3809,13 @@ def solve_de(rhs, xvar, yvar, bc=None):
     return L, A
 
 
+def solve_de(rhs, xvar, yvar, bc=None):
+    A, B = solve_separable_de(rhs, xvar, yvar, bc)
+    if A is not None:
+        return A, B
+    return solve_linear_de(rhs, xvar, yvar, bc)
+
+
 def integrate_auto(node, var, depth=0, allow_termwise=True, return_kind=False):
     F = depth
     D = var
@@ -3422,44 +3828,11 @@ def integrate_auto(node, var, depth=0, allow_termwise=True, return_kind=False):
         return ans, A
     if F > 4:
         return E(None, None, None)
-    if allow_termwise:
-        A, H = integrate_termwise_with(
-            C, D, lambda n, v, d: integrate_auto(
-                n, v, d, False), F)
+    G = integral_is_rational_division(C, D)
+    for H in auto_integral_routes(G, allow_termwise):
+        I, A, B = H(C, D, F)
         if A is not None:
-            return E('direct', A, [
-                     'Integrate each term separately.', '= ' + pretty(A) + ' + C'])
-    A, B = integrate_standard(C, D)
-    if A is not None:
-        return E('direct', A, B)
-    A, B = integrate_reverse_chain(C, D)
-    if A is not None:
-        return E('reverse', A, B)
-    A, B = integrate_trig(C, D, True)
-    if A is not None:
-        return E('trig', A, B)
-    G = C[0] == 'div' and poly_num(
-        C[1], D) is not None and poly_num(
-        C[2], D) is not None
-    if G:
-        A, B = integrate_division(C, D, True)
-        if A is not None:
-            return E('pf', A, B)
-        A, B = integrate_partial(C, D)
-        if A is not None:
-            return E('pf', A, B)
-    A, B = integrate_substitution(C, D, None)
-    if A is not None:
-        return E('sub', A, B)
-    A, B = integrate_by_parts(C, D, F)
-    if A is not None:
-        return E('parts', A, B)
-    if not G:
-        A, B = integrate_division(C, D, True)
-        if A is not None:
-            return E('pf', A, B)
-        A, B = integrate_partial(C, D)
-        return E('pf', A, B)
+            return E(I, A, B)
     return E('pf', None, None)
 
 
@@ -3500,6 +3873,13 @@ def standard_title(node, var):
     return 'Integrating standard functions'
 
 
+def finish_integral_solve(title, ans, lines):
+    if ans is None:
+        return title, ans, lines
+    A, B = finalize_integral_result(ans, lines)
+    return title, A, B
+
+
 def solve(node, var, method, forced_u=None):
     F = forced_u
     E = method
@@ -3510,42 +3890,43 @@ def solve(node, var, method, forced_u=None):
         F = sim(F)
     if E == '2':
         A, B = integrate_standard(C, D)
-        return standard_title(C, D), A, B
+        return finish_integral_solve(standard_title(C, D), A, B)
     if E == '3':
         A, B = integrate_trig(C, D, True)
-        return 'Using trigonometric identities', A, B
+        return finish_integral_solve('Using trigonometric identities', A, B)
     if E == '4':
         if F is None:
             A, B = integrate_reverse_chain(C, D)
             if A is not None:
-                return 'Reverse chain rule', A, B
+                return finish_integral_solve('Reverse chain rule', A, B)
             A, B = integrate_substitution(C, D, None)
-            return 'Integration by substitution', A, B
+            return finish_integral_solve(
+                'Integration by substitution', A, B)
         A, B = integrate_substitution(C, D, F)
-        return 'Integration by substitution', A, B
+        return finish_integral_solve('Integration by substitution', A, B)
     if E == '5':
         A, B = integrate_by_parts(C, D, 0)
-        return 'Integration by parts', A, B
+        return finish_integral_solve('Integration by parts', A, B)
     if E == '6':
         A, B = integrate_partial(C, D)
-        return 'Partial fractions', A, B
+        return finish_integral_solve('Partial fractions', A, B)
     if E == '7':
         A, B = integrate_division(C, D, True)
-        return 'Partial fractions', A, B
+        return finish_integral_solve('Partial fractions', A, B)
     G, A, B = integrate_auto(C, D, 0, True, True)
     if A is None:
         return 'Partial fractions', A, B
     if G == 'direct':
-        return standard_title(C, D), A, B
+        return finish_integral_solve(standard_title(C, D), A, B)
     if G == 'reverse':
-        return 'Reverse chain rule', A, B
+        return finish_integral_solve('Reverse chain rule', A, B)
     if G == 'trig':
-        return 'Using trigonometric identities', A, B
+        return finish_integral_solve('Using trigonometric identities', A, B)
     if G == 'sub':
-        return 'Integration by substitution', A, B
+        return finish_integral_solve('Integration by substitution', A, B)
     if G == 'parts':
-        return 'Integration by parts', A, B
-    return 'Partial fractions', A, B
+        return finish_integral_solve('Integration by parts', A, B)
+    return finish_integral_solve('Partial fractions', A, B)
 
 
 def subst(node, name, value):
@@ -3569,6 +3950,76 @@ def subst(node, name, value):
         F.append(subst(A[1][E], B, C))
         E += 1
     return D, tuple(F)
+
+
+_depends_uncached = depends
+
+
+def depends(node, name):
+    A = (node, name)
+    B = _cache_get('depends', A)
+    if B is not _CACHE_MISS:
+        return B
+    return _cache_set('depends', A, _depends_uncached(node, name))
+
+
+_sim_uncached = sim
+
+
+def sim(node):
+    A = _cache_get('sim', node)
+    if A is not _CACHE_MISS:
+        return A
+    return _cache_set('sim', node, _sim_uncached(node))
+
+
+_poly_num_uncached = poly_num
+
+
+def poly_num(node, var):
+    A = (node, var)
+    B = _cache_get('poly_num', A)
+    if B is not _CACHE_MISS:
+        return B
+    return _cache_set('poly_num', A, _poly_num_uncached(node, var))
+
+
+_linear_info_uncached = linear_info
+
+
+def linear_info(node, var):
+    A = (node, var)
+    B = _cache_get('linear_info', A)
+    if B is not _CACHE_MISS:
+        return B
+    return _cache_set('linear_info', A, _linear_info_uncached(node, var))
+
+
+_ordered_candidates_uncached = ordered_candidates
+
+
+def ordered_candidates(node, var, mode):
+    A = (node, var, mode)
+    B = _cache_get('ordered_candidates', A)
+    if B is not _CACHE_MISS:
+        return B
+    return _cache_set(
+        'ordered_candidates',
+        A,
+        _ordered_candidates_uncached(
+            node,
+            var,
+            mode))
+
+
+_combine_logs_uncached = combine_logs
+
+
+def combine_logs(node):
+    A = _cache_get('combine_logs', node)
+    if A is not _CACHE_MISS:
+        return A
+    return _cache_set('combine_logs', node, _combine_logs_uncached(node))
 
 
 def main():
@@ -3616,7 +4067,7 @@ def main():
             H = parse_de_condition(G, N, O)if G != ''else None
             C, A = solve_de(M, N, O, H)
             if C is None:
-                print(FAIL)
+                print(DE_FAIL)
             else:
                 B = 0
                 while B < len(A):
