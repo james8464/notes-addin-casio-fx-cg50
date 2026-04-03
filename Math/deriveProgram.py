@@ -1751,8 +1751,15 @@ def simplify_complex_fractions(node):
     return node
 
 
-def collect_and_factor_terms(node):
-    return node
+def collect_and_factor_terms(coef, rest, dname):
+    dterm = ("mul", (coef, sym(dname)))
+    text = show(dterm)
+    if not is_zero(rest):
+        if neg_term(rest):
+            text += " - " + show(abs_term(rest))
+        else:
+            text += " + " + show(rest)
+    return text
 
 
 def format_final_answer(node):
@@ -1961,18 +1968,8 @@ def main():
             print(str(step) + ". d/d" + var + "(LHS) = d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + show(dleft) + " = " + show(dright))
             print(str(step + 2) + ". Make " + dname + " the subject")
-            if is_one(coef):
-                lhs = dname
-            elif is_minus_one(coef):
-                lhs = "-" + dname
-            else:
-                lhs = show(coef) + "*" + dname
-            if not is_zero(rest):
-                if neg_term(rest):
-                    lhs = lhs + " - " + show(abs_term(rest))
-                else:
-                    lhs = lhs + " + " + show(rest)
-            print(str(step + 3) + ". " + lhs + " = 0")
+            grouped = collect_and_factor_terms(coef, rest, dname)
+            print(str(step + 3) + ". " + grouped + " = 0")
             print(dname + " = " + show(ans))
 
         elif mode == "3":

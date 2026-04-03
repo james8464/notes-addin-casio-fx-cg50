@@ -505,6 +505,141 @@ def trig_product_to_sum_rewrite(left_name, right_name, left_arg, right_arg, var)
     return None, None
 
 
+def strip_simple_minus(node):
+    A, B = split_coeff(node)
+    if is_num(A) and A[1] < 0:
+        C = num(-A[1], A[2])
+        if is_one(B):
+            return True, C
+        if is_one(C):
+            return True, B
+        return True, mul([C, B])
+    return False, node
+
+
+def normalize_trig_signs(node):
+    A = sim(node)
+    B = A[0]
+    if B in ('num', 'sym', 'const'):
+        return A
+    if B == 'fn':
+        D = normalize_trig_signs(A[2])
+        if A[1] in ('sin', 'tan', 'cot', 'cosec', 'cos', 'sec'):
+            C, E = strip_simple_minus(D)
+            if C:
+                if A[1] in ('cos', 'sec'):
+                    return sim(fn(A[1], E))
+                return sim(neg(fn(A[1], E)))
+        return sim(('fn', A[1], D))
+    if B in ('pow', 'div'):
+        return sim((B, normalize_trig_signs(A[1]), normalize_trig_signs(A[2])))
+    return sim((B, tuple(normalize_trig_signs(C) for C in A[1])))
+
+
+def trig_linear_reciprocal_rewrite(node):
+    A = node
+    if A[0] != 'div' or not is_one(A[1]) or A[2][0] != 'add':
+        return None, None
+    B = flat(A[2], 'add')
+    if len(B) != 2:
+        return None, None
+    C = None
+    D = None
+    for E in B:
+        if same(E, num(1)):
+            C = num(1)
+        elif E[0] == 'fn' and E[1] in ('sin', 'cos'):
+            D = E
+        elif E[0] == 'mul':
+            F, G = split_coeff(E)
+            if is_minus_one(F) and G[0] == 'fn' and G[1] in ('sin', 'cos'):
+                D = neg(G)
+    if C is None or D is None:
+        return None, None
+    H = D[2] if D[0] == 'fn' else D[1][1][2]
+    I = D if D[0] == 'fn' else D[1][1]
+    J = D[0] == 'fn'
+    K = I[1]
+    if K == 'sin':
+        if J:
+            return 'Rationalise the denominator.', add(
+                [power(fn('sec', H), num(2)), neg(mul([fn('sec', H), fn('tan', H)]))])
+        return 'Rationalise the denominator.', add(
+            [power(fn('sec', H), num(2)), mul([fn('sec', H), fn('tan', H)])])
+    if J:
+        return 'Rationalise the denominator.', add(
+            [power(fn('cosec', H), num(2)), neg(mul([fn('cosec', H), fn('cot', H)]))])
+    return 'Rationalise the denominator.', add(
+        [power(fn('cosec', H), num(2)), mul([fn('cosec', H), fn('cot', H)])])
+
+
+def trig_same_angle_power_rewrite(node):
+    A = sim(node)
+    if A[0] != 'mul':
+        return None, None
+    B = flat(A, 'mul')
+    C = None
+    D = None
+    E = []
+    for F in B:
+        if F[0] == 'fn' and F[1] in ('sin', 'cos'):
+            if F[1] == 'sin':
+                C = (F[2], 1) if C is None else C
+                if C[0] != F[2]:
+                    return None, None
+            else:
+                D = (F[2], 1) if D is None else D
+                if D[0] != F[2]:
+                    return None, None
+        elif F[0] == 'pow' and F[1][0] == 'fn' and F[1][1] in ('sin', 'cos') and is_int_num(F[2]) and F[2][1] > 0:
+            if F[1][1] == 'sin':
+                C = (F[1][2], F[2][1]) if C is None else C
+                if C[0] != F[1][2]:
+                    return None, None
+            else:
+                D = (F[1][2], F[2][1]) if D is None else D
+                if D[0] != F[1][2]:
+                    return None, None
+        else:
+            E.append(F)
+    if C is None or D is None or C[0] != D[0]:
+        return None, None
+    G = C[0]
+    H = C[1]
+    I = D[1]
+    J = list(E)
+
+    def K(base_name, start_pow, count):
+        L = []
+        M = 0
+        while M <= count:
+            N = math.comb(count, M) if math is not None and hasattr(math, 'comb') else 1
+            O = start_pow + 2 * M
+            P = fn(base_name, G) if O == 1 else power(fn(base_name, G), num(O))
+            Q = P if N == 1 else mul([num(N), P])
+            if M % 2 == 1:
+                Q = neg(Q)
+            L.append(Q)
+            M += 1
+        return make_add(L)
+
+    if H % 2 == 1 and H >= 3:
+        J.append(fn('sin', G))
+        if I > 0:
+            J.append(fn('cos', G) if I == 1 else power(fn('cos', G), num(I)))
+        if H > 1:
+            J.append(K('cos', 0, (H - 1) // 2))
+        return 'Use sin^2 x = 1-cos^2 x.', expand_small(make_mul(J))
+    if I % 2 == 1 and I >= 3:
+        if H > 0:
+            J.append(fn('sin', G) if H == 1 else power(fn('sin', G), num(H)))
+        J.append(fn('cos', G))
+        if I > 1:
+            J.append(K('sin', 0, (I - 1) // 2))
+        return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
+    return None, None
+
+
 def split_coeff(node):
     B = node
     if is_num(B):
@@ -1283,6 +1418,13 @@ def diff(node, var):
     raise ValueError(FAIL)
 
 
+def safe_diff(node, var):
+    try:
+        return diff(node, var)
+    except ValueError:
+        return
+
+
 def is_digit_char(ch): return '0' <= ch <= '9'
 def is_alpha_char(ch): return 'A' <= ch <= 'Z' or 'a' <= ch <= 'z'
 def is_name_start(ch): return is_alpha_char(ch) or ch == '_'
@@ -1714,6 +1856,44 @@ def factor_poly_linear(coeffs):
             return
         D.append(B)
     return D
+
+
+def factor_poly_linear_partial(coeffs, max_roots=None):
+    A = poly_trim(list(coeffs))
+    B = []
+    while len(A) > 1:
+        if max_roots is not None and len(B) >= max_roots:
+            break
+        if len(A) == 2:
+            B.append(divq(negq(A[0]), A[1]))
+            A = [num(1)]
+            break
+        if not is_int_num(A[0]) or not is_int_num(A[-1]):
+            break
+        G = divisors(A[0][1])
+        H = divisors(A[-1][1])
+        C = None
+        D = 0
+        while D < len(G) and C is None:
+            E = 0
+            while E < len(H):
+                F = num(G[D], H[E])
+                if is_zero(poly_eval(A, F)):
+                    C = F
+                    break
+                F = num(-G[D], H[E])
+                if is_zero(poly_eval(A, F)):
+                    C = F
+                    break
+                E += 1
+            D += 1
+        if C is None:
+            break
+        A, I = poly_div_root(A, C)
+        if not is_zero(I):
+            break
+        B.append(C)
+    return B, poly_trim(A)
 
 
 def poly_num(node, var):
@@ -2261,7 +2441,9 @@ def integrate_standard_term(node, var):
         numerator = A[1]
         denominator = A[2]
         # Check if numerator is derivative of denominator
-        deriv_denom = diff(denominator, C)
+        deriv_denom = safe_diff(denominator, C)
+        if deriv_denom is None:
+            deriv_denom = num(0)
         if same(deriv_denom, numerator) or (is_num(numerator) and is_num(deriv_denom) and 
                                             divq(numerator, deriv_denom) and is_one(divq(numerator, deriv_denom))):
             result = fn('log', fn('abs', denominator))
@@ -2270,7 +2452,9 @@ def integrate_standard_term(node, var):
         # Special case: k*f'(x)/f(x) = k*ln|f(x)| + C  
         coeff, base_numer = split_coeff(numerator)
         if not is_one(coeff):
-            deriv_check = diff(denominator, C)
+            deriv_check = safe_diff(denominator, C)
+            if deriv_check is None:
+                deriv_check = num(0)
             if same(deriv_check, base_numer) or (is_num(base_numer) and is_num(deriv_check) and 
                                                 divq(base_numer, deriv_check) and is_one(divq(base_numer, deriv_check))):
                 result = mul([coeff, fn('log', fn('abs', denominator))])
@@ -2503,8 +2687,8 @@ def integrate_reverse_chain(node, var):
     E = 0
     while E < len(I):
         C = I[E]
-        F = diff(C, B)
-        if not is_zero(F):
+        F = safe_diff(C, B)
+        if F is not None and not is_zero(F):
             J = quotient_by_target(D, F)
             if J is not None:
                 G = rewrite_in_u(J, C, B)
@@ -2587,8 +2771,8 @@ def integrate_substitution(node, var, forced_u=None):
     H = 0
     while H < len(G):
         D = G[H]
-        E = diff(D, C)
-        if not is_zero(E):
+        E = safe_diff(D, C)
+        if E is not None and not is_zero(E):
             F = quotient_by_target(B, E)
             if F is None:
                 F = div(B, E)
@@ -2603,6 +2787,8 @@ def integrate_substitution(node, var, forced_u=None):
                         M = subst(I, 'u', D)
                         return M, substitution_work(B, C, D, E, A, L, I, M)
         H += 1
+    if J is None:
+        return integrate_trig_sub_radical(B, C)
     return None, None
 
 
@@ -2611,17 +2797,20 @@ def trig_rewrite_step(node, var=None):
     I = expand_square(B)
     if I is not None:
         return 'Expand the brackets.', I
+    J, H = trig_linear_reciprocal_rewrite(B)
+    if H is not None:
+        return J, H
     if B[0] == 'div' and B[1][0] == 'add' and B[2][0] == 'pow' and same(
             B[2][2], num(2)) and B[2][1][0] == 'fn':
         D = flat(B[1], 'add')
-        H = B[2][1]
-        C = H[2]
-        if len(D) == 2 and same(H, fn('cos', C)):
+        P = B[2][1]
+        C = P[2]
+        if len(D) == 2 and same(P, fn('cos', C)):
             if same(D[0], num(1)) and same(D[1], neg(fn('sin', C))) or same(
                     D[1], num(1)) and same(D[0], neg(fn('sin', C))):
                 return 'Rewrite in sec and tan.', add(
                     [power(fn('sec', C), num(2)), neg(mul([fn('sec', C), fn('tan', C)]))])
-        if len(D) == 2 and same(H, fn('sin', C)):
+        if len(D) == 2 and same(P, fn('sin', C)):
             if same(D[0], num(1)) and same(D[1], fn('cos', C)) or same(
                     D[1], num(1)) and same(D[0], fn('cos', C)):
                 return 'Rewrite in cosec and cot.', add(
@@ -2636,6 +2825,9 @@ def trig_rewrite_step(node, var=None):
         F, E = trig_high_power_rewrite(B[1][1], B[2], B[1][2])
         if E is not None:
             return F, E
+    F, E = trig_same_angle_power_rewrite(B)
+    if E is not None:
+        return F, E
     if B[0] == 'mul':
         A = list(B[1])
         if len(A) == 2 and A[0][0] == 'fn' and A[1][0] == 'fn' and A[0][1] == 'sin' and A[1][1] == 'cos' and same(
@@ -2755,13 +2947,58 @@ def integrate_after_trig_rewrite(node, var, depth=0):
     return None, None
 
 
+def integrate_cyclic_parts(node, var):
+    A, B = split_const_mul(node, var)
+    C = flat(B, 'mul') if B[0] == 'mul' else [B]
+    D = None
+    E = None
+    F = []
+    for G in C:
+        if G[0] == 'fn' and G[1] == 'exp' and D is None:
+            D = G
+        elif G[0] == 'fn' and G[1] in ('sin', 'cos') and E is None:
+            E = G
+        else:
+            F.append(G)
+    if D is None or E is None or len(F) > 0:
+        return None, None
+    H = linear_info(D[2], var)
+    I = linear_info(E[2], var)
+    if H is None or I is None:
+        return None, None
+    J = H[0]
+    K = I[0]
+    L = add([mul([J, J]), mul([K, K])])
+    M = fn('exp', D[2])
+    if E[1] == 'sin':
+        N = add([mul([J, fn('sin', E[2])]), neg(mul([K, fn('cos', E[2])]))])
+        O = 'Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.'
+    else:
+        N = add([mul([J, fn('cos', E[2])]), mul([K, fn('sin', E[2])])])
+        O = 'Use the standard result for Int[e^(ax+b)cos(cx+d)] dx.'
+    P = sim(div(mul([A, M, N]), L))
+    return P, [O, '= ' + pretty(P) + ' + C']
+
+
 def choose_parts(node, var):
     F = var
     E = node
     J = sym(F)
     if E[0] == 'fn' and E[1] == 'log' and same(E[2], J):
         return E, num(1), J
+    if E[0] == 'pow' and E[1][0] == 'fn' and E[1][1] == 'log' and same(
+            E[1][2], J) and is_int_num(E[2]) and E[2][1] > 0:
+        return E, num(1), J
     N, C = split_const_mul(E, F)
+    if C[0] == 'fn' and C[1] == 'log' and same(C[2], J):
+        D, _ = integrate_dv_subproblem(N, F, 0)
+        if D is not None:
+            return C, N, D
+    if C[0] == 'pow' and C[1][0] == 'fn' and C[1][1] == 'log' and same(
+            C[1][2], J) and is_int_num(C[2]) and C[2][1] > 0:
+        D, _ = integrate_dv_subproblem(N, F, 0)
+        if D is not None:
+            return C, N, D
     if C[0] == 'div' and C[1][0] == 'fn' and C[1][1] == 'log' and same(
             C[1][2], J):
         O = mul([N, div(num(1), C[2])])
@@ -2826,11 +3063,16 @@ def integrate_by_parts(node, var, depth=0):
     A = var
     if H > 4:
         return None, None
+    C, B = integrate_cyclic_parts(node, A)
+    if C is not None:
+        return C, B
     I = choose_parts(node, A)
     if I is None:
         return None, None
     C, M, D = I
-    J = diff(C, A)
+    J = safe_diff(C, A)
+    if J is None:
+        return None, None
     E = mul([D, J])
     K, F = integrate_auto(E, A, H + 1, True)
     if K is None:
@@ -2947,7 +3189,7 @@ def finalize_integral_answer(node):
         C = sim(cur)
         D = combine_logs(C)
         E = normalize_add_coeffs(expand_small_recursive(D))
-        return sim(combine_logs(E))
+        return normalize_trig_signs(sim(combine_logs(E)))
     F = []
     G = set()
 
@@ -3210,6 +3452,55 @@ def integrate_partial_linear_quadratic(node, var):
     return U, Z
 
 
+def integrate_partial_two_linear_quadratic(node, var):
+    A = node
+    B = var
+    if A[0] != 'div':
+        return None, None
+    C = poly_num(A[1], B)
+    D = poly_num(A[2], B)
+    if C is None or D is None or len(C) >= len(D):
+        return None, None
+    E, F = factor_poly_linear_partial(D, 2)
+    if len(E) != 2 or len(F) != 3:
+        return None, None
+    G = add([sym(B), neg(E[0])])
+    H = add([sym(B), neg(E[1])])
+    I = poly_num(G, B)
+    J = poly_num(H, B)
+    K = pad_coeffs(C, len(D) - 1)
+    L = pad_coeffs(poly_mul_num(J, F), len(D) - 1)
+    M = pad_coeffs(poly_mul_num(I, F), len(D) - 1)
+    N = pad_coeffs(poly_mul_num(I, J), len(D) - 1)
+    O = pad_coeffs(poly_mul_num([num(0), num(1)], N), len(D) - 1)
+    P = []
+    Q = 0
+    while Q < len(K):
+        P.append([L[Q], M[Q], O[Q], N[Q]])
+        Q += 1
+    R = solve_linear_system(P, list(K))
+    if R is None:
+        return None, None
+    S, T, U, V = R
+    W = add([div(sym('A'), G), div(sym('B'), H), div(add([mul([sym('C'), sym(B)]), sym('D')]), poly_to_node(F, B))])
+    X = add([div(S, G), div(T, H), div(add([mul([U, sym(B)]), V]), poly_to_node(F, B))])
+    Y = []
+    for Z in flat(X, 'add'):
+        a, b = integrate_standard(Z, B)
+        if a is None:
+            a, b = integrate_quadratic_rational(Z, B)
+        if a is None:
+            return None, None
+        Y.append(a)
+    c = add(Y)
+    d = [
+        'Use partial fractions.',
+        pretty(A) + ' = ' + pretty(W),
+        'A = ' + pretty(S) + ', B = ' + pretty(T) + ', C = ' + pretty(U) + ', D = ' + pretty(V),
+        'So I = ' + pretty(c) + ' + C']
+    return c, d
+
+
 def integrate_partial(node, var):
     E = var
     D = node
@@ -3223,7 +3514,10 @@ def integrate_partial(node, var):
         return None, None
     C = pf_factor_list(D[2], E)
     if C is None:
-        return integrate_partial_linear_quadratic(D, E)
+        A, B = integrate_partial_linear_quadratic(D, E)
+        if A is not None:
+            return A, B
+        return integrate_partial_two_linear_quadratic(D, E)
     K = []
     L = []
     O = []
@@ -3294,6 +3588,43 @@ def integrate_partial(node, var):
     G.append(N)
     G.append('So I = ' + pretty(Y) + ' + C')
     return Y, G
+
+
+def integrate_trig_sub_radical(node, var):
+    A = node
+    B = var
+    if A[0] != 'div' or not is_one(A[1]):
+        return None, None
+    C = flat(A[2], 'mul') if A[2][0] == 'mul' else [A[2]]
+    D = False
+    E = None
+    F = []
+    for G in C:
+        if not D and G[0] == 'pow' and G[1] == sym(B) and same(G[2], num(2)):
+            D = True
+        elif E is None and ((G[0] == 'fn' and G[1] == 'sqrt') or (G[0] == 'pow' and same(G[2], num(1, 2)))):
+            E = G[2] if G[0] == 'fn' else G[1]
+        else:
+            F.append(G)
+    if not D or E is None or len(F) > 0:
+        return None, None
+    H = poly_num(E, B)
+    if H is None or len(H) != 3 or not is_zero(H[1]) or not is_num(H[0]) or not is_num(H[2]) or H[2][1] >= 0:
+        return None, None
+    if H[2] != num(-1):
+        return None, None
+    I = H[0]
+    J = fn('sqrt', I)
+    K = neg(div(fn('sqrt', add([I, neg(power(sym(B), num(2)))])), mul([I, sym(B)])))
+    L = div(num(1), I)
+    M = [
+        'Use x = ' + pretty(J) + '*sin(t).',
+        'dx = ' + pretty(J) + '*cos(t) dt',
+        'sqrt(' + pretty(I) + '-' + B + '^2) = ' + pretty(J) + '*cos(t)',
+        'So I = Int[' + pretty(L) + '*cosec(t)^2] dt',
+        '= ' + pretty(neg(mul([L, fn('cot', sym('t'))]))) + ' + C',
+        '= ' + pretty(K) + ' + C']
+    return K, M
 
 
 def integrate_division(node, var, follow):
@@ -3515,9 +3846,66 @@ def de_absorb_k_sign(node):
     return B
 
 
+def de_linear_coeffs(node, yvar):
+    A = poly_num(node, yvar)
+    if A is None or len(A) > 2:
+        return
+    B = A[1] if len(A) > 1 else num(0)
+    C = A[0]
+    return B, C
+
+
+def de_fractional_linear_solution(target, rhs, yvar):
+    A = target
+    if A[0] == 'mul':
+        B = flat(A, 'mul')
+        if len(B) == 2 and B[1][0] == 'pow' and B[1][2] == num(-1):
+            A = div(B[0], B[1][1])
+        elif len(B) == 2 and B[0][0] == 'pow' and B[0][2] == num(-1):
+            A = div(B[1], B[0][1])
+    if A[0] != 'div':
+        return
+    B = de_linear_coeffs(A[1], yvar)
+    C = de_linear_coeffs(A[2], yvar)
+    if B is None or C is None:
+        return
+    D, E = B
+    F, G = C
+    H = add([D, neg(mul([rhs, F]))])
+    if is_zero(H):
+        return
+    I = add([mul([rhs, G]), neg(E)])
+    return pretty(sym(yvar)) + ' = ' + pretty(div(I, H))
+
+
+def simplify_exp_log_sum(node):
+    A = sim(node)
+    if A[0] == 'fn':
+        B = simplify_exp_log_sum(A[2])
+        if A[1] == 'exp' and B[0] == 'add':
+            D = []
+            C = num(1)
+            for E in flat(B, 'add'):
+                if E[0] == 'fn' and E[1] == 'log' and is_num(E[2]) and E[2][1] > 0:
+                    C = mulq(C, E[2])
+                else:
+                    D.append(E)
+            if not is_one(C):
+                if len(D) == 0:
+                    return C
+                F = fn('exp', make_add(D))
+                return sim(mul([C, F]))
+        return sim(('fn', A[1], B))
+    if A[0] in ('pow', 'div'):
+        return sim((A[0], simplify_exp_log_sum(A[1]), simplify_exp_log_sum(A[2])))
+    if A[0] in ('add', 'mul'):
+        return sim((A[0], tuple(simplify_exp_log_sum(B) for B in A[1])))
+    return A
+
+
 def de_solve_target(target, rhs, yvar):
     E = target
-    A = rhs
+    A = simplify_exp_log_sum(rhs)
     F = linear_info(E, yvar)
     if F is None:
         return pretty(E) + ' = ' + pretty(A)
@@ -3560,15 +3948,21 @@ def de_finish_target(target, rhs, yvar, y0=None):
     if D is not None:
         return de_finish_target(
             D, fn('exp', B if is_one(C)else div(B, C)), yvar, y0)
+    E = de_log_argument(A)
+    if E is not None:
+        return de_finish_target(E, fn('exp', B), yvar, y0)
+    E = de_fractional_linear_solution(A, B, yvar)
+    if E is not None:
+        return E
     C = de_solve_target(A, B, yvar)
     if not (A[0] == 'fn' and A[2] == sym(yvar)):
-        D, E = de_quadratic_target(A, yvar)
+        D, F = de_quadratic_target(A, yvar)
         if D is not None:
-            F = div(add([B, neg(E)]), D)
+            G = div(add([B, neg(F)]), D)
             if y0 is None:
-                return pretty(power(sym(yvar), num(2))) + ' = ' + pretty(F)
-            return pretty(sym(yvar)) + ' = ' + pretty(neg(fn('sqrt', F))
-                                                      if split_coeff(y0)[0][1] < 0 else fn('sqrt', F))
+                return pretty(power(sym(yvar), num(2))) + ' = ' + pretty(G)
+            return pretty(sym(yvar)) + ' = ' + pretty(neg(fn('sqrt', G))
+                                                      if split_coeff(y0)[0][1] < 0 else fn('sqrt', G))
         return C
     D = A[1]
     if D == 'sin':
@@ -3660,18 +4054,41 @@ def de_integrating_factor_divide(node, factor):
     return sim(div(node, factor))
 
 
+def simplify_integrating_factor(node, xvar):
+    A = sim(node)
+    if A[0] == 'fn' and A[1] == 'exp':
+        B = A[2]
+        if B[0] == 'fn' and B[1] == 'log' and B[2][0] == 'fn' and B[2][1] == 'abs':
+            C = B[2][2]
+            if linear_info(C, xvar) is not None:
+                return C
+        if B[0] == 'mul':
+            D, E = split_coeff(B)
+            if is_minus_one(D) and E[0] == 'fn' and E[1] == 'log' and E[2][0] == 'fn' and E[2][1] == 'abs':
+                F = E[2][2]
+                if linear_info(F, xvar) is not None:
+                    return div(num(1), F)
+    return A
+
+
 def solve_linear_de(rhs, xvar, yvar, bc=None):
     M = split_linear_rhs(rhs, xvar, yvar)
     if M is None:
         return None, None
     Q, A = M
     P = neg(A)
-    B, C = integrate_auto(P, xvar, 0, True)
+    try:
+        B, C = integrate_auto(P, xvar, 0, True)
+    except ValueError:
+        return None, None
     if B is None:
         return None, None
-    N = fn('exp', B)
+    N = simplify_integrating_factor(fn('exp', B), xvar)
     O = sim(mul([N, Q]))
-    D, E = integrate_auto(O, xvar, 0, True)
+    try:
+        D, E = integrate_auto(O, xvar, 0, True)
+    except ValueError:
+        return None, None
     if D is None:
         return None, None
     F = mul([N, sym(yvar)])
@@ -3744,10 +4161,16 @@ def solve_separable_de(rhs, xvar, yvar, bc=None):
     if H is not None:
         P = H
     Y = H if H is not None else G
-    E, Z = integrate_auto(Y, B, 0, True)
+    try:
+        E, Z = integrate_auto(Y, B, 0, True)
+    except ValueError:
+        return None, None
     if E is None:
         return None, None
-    D, Z = integrate_auto(K, F, 0, True)
+    try:
+        D, Z = integrate_auto(K, F, 0, True)
+    except ValueError:
+        return None, None
     if D is None:
         return None, None
     A = ['Separate variables', int_text(G, B) + ' = ' + int_text(K, F)]
