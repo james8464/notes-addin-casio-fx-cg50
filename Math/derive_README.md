@@ -16,10 +16,84 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (runs MicroPy
 - **Numbers**: Integers, decimals, or fractions
 - **Constants**: `pi`, `e`
 - **Trig Functions**: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
-- **Inverse Trig**: `asin`, `acos`, `atan`
-- **Other Functions**: `exp`, `log`, `log10`, `sqrt`, `abs`
-- **Operators**: `+`, `-`, `*`, `/`, `^`
+- **Inverse Trig**: `asin`, `acos`, `atan`, `arcsin`, `arccos`, `arctan`
+- **Other Functions**: `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`
+- **Operators**: `+`, `-`, `*`, `/`, `^`, `**`
 - **Grouping**: Parentheses `()`
+- **Compact forms**: `sin x`, `ln x`, `sin^2 x`, `cos^3 x`, `e^x`
+- **Normal mode extras**: `expr,x` for an explicit variable, or `y=expr`
+- **Implicit mode**: `left=right`
+- **Parametric mode**: enter `x(t)` and `y(t)` separately
+
+## Coverage Notes
+
+- Supports compact no-parentheses function input in normal mode
+- Handles inverse trig aliases and powers like `sin^2(x)`
+- Invalid input now shows `Err: ...` in the CLI
+- Implicit mode still expects an equation and parametric mode still uses `t`
+
+## Error Handling
+
+- Invalid input shows `Err: ...`
+- Division by zero is caught and reported
+- Missing variables in implicit mode are detected
+- Unsupported forms fail with a direct parse/solve error instead of guessing
+
+## Notes
+
+- Works on MicroPython v1.9.4 (CASIO fx-cg50)
+- Uses only `math` import (available on calculator)
+- Optimized for calculator-friendly symbolic work
+- Shows short step lines for the screen
+- Accepts both `^` and `**`
+
+## Differentiation Rules Implemented
+
+### Basic Rules
+- **Constant**: d/dx[c] = 0
+- **Power**: d/dx[x^n] = n*x^(n-1)
+- **Constant Multiple**: d/dx[c*f] = c*f'
+- **Sum/Difference**: d/dx[f ± g] = f' ± g'
+
+### Product & Quotient
+- **Product Rule**: d/dx[f*g] = f'*g + f*g'
+- **Quotient Rule**: d/dx[f/g] = (f'*g - f*g')/g^2
+
+### Chain Rule
+- **Composite**: d/dx[f(g(x))] = f'(g(x)) * g'(x)
+
+### Trigonometric
+- d/dx[sin(x)] = cos(x)
+- d/dx[cos(x)] = -sin(x)
+- d/dx[tan(x)] = sec^2(x)
+- d/dx[sec(x)] = sec(x)tan(x)
+- d/dx[cosec(x)] = -cosec(x)cot(x)
+- d/dx[cot(x)] = -cosec^2(x)
+
+### Exponential & Logarithm
+- d/dx[e^x] = e^x
+- d/dx[a^x] = a^x * ln(a)
+- d/dx[ln(x)] = 1/x
+- d/dx[log(x)] = 1/(x * ln(10))
+
+### Inverse Trig (limited)
+- d/dx[asin(x)] = 1/sqrt(1-x^2)
+- d/dx[acos(x)] = -1/sqrt(1-x^2)
+- d/dx[atan(x)] = 1/(1+x^2)
+
+## Error Handling
+
+- Invalid input shows "Input error: [message]"
+- Division by zero is caught and reported
+- Missing variables in implicit mode are detected
+
+## Notes
+
+- Works on MicroPython v1.9.4 (CASIO fx-cg50)
+- Uses only `math` import (available on calculator)
+- Optimized for A-level mathematics
+- Can handle complex nested expressions
+- Shows step-by-step working for clarity
 
 ## Mode 1: Normal Differentiation
 

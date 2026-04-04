@@ -1459,11 +1459,26 @@ def parse(text):
                 return E
             if low in FUNC_ALIASES:
                 low = FUNC_ALIASES[low]
-            if cur() == "(" and low in FUNC_NAMES:
-                eat("(")
-                out = expr()
-                eat(")")
-                return fn(low, out)
+            if low in FUNC_NAMES:
+                if cur() == "**":
+                    eat("**")
+                    exp = power_part()
+                    if cur() == "(":
+                        eat("(")
+                        out = expr()
+                        eat(")")
+                    elif starts_implicit(cur()):
+                        out = atom()
+                    else:
+                        raise ValueError("Bad function power form.")
+                    return power(fn(low, out), exp)
+                if cur() == "(":
+                    eat("(")
+                    out = expr()
+                    eat(")")
+                    return fn(low, out)
+                if starts_implicit(cur()):
+                    return fn(low, atom())
             return sym(tok)
         raise ValueError("Bad token: " + repr(tok))
 
@@ -14986,37 +15001,37 @@ def compress_display_list(rhs, sep, neg_keep, pos_keep):
 def display_line_short(line):
     line = line.strip()
     replacements = [
-        ("This equation is an identity - both sides are equivalent", "This is an identity"),
-        ("All values in the interval where the original equation is defined are solutions", "All defined values in the interval solve it"),
-        ("Use a final numeric scan of the interval when no standard rewrite route matches cleanly", "No clean rewrite route, so scan the interval numerically"),
+        ("This equation is an identity - both sides are equivalent", "Identity"),
+        ("All values in the interval where the original equation is defined are solutions", "All defined values work"),
+        ("Use a final numeric scan of the interval when no standard rewrite route matches cleanly", "No clean route; scan numerically"),
         ("Scan f(", "Scan f("),
-        (" for sign changes and verify each candidate in the original equation", " for sign changes, then verify"),
-        ("Use a final numeric scan over one full period when no direct R*sin/cos rewrite matches cleanly", "No clean R*sin/cos form, so scan one period numerically"),
-        ("Solve the direct trig equation", "Solve the trig equation"),
-        ("Move all terms to one side.", "Move all terms to one side"),
+        (" for sign changes and verify each candidate in the original equation", " for sign changes; verify"),
+        ("Use a final numeric scan over one full period when no direct R*sin/cos rewrite matches cleanly", "No clean R*sin/cos form; scan one period"),
+        ("Solve the direct trig equation", "Solve trig eq"),
+        ("Move all terms to one side.", "Move terms to one side"),
         ("Equation 1:", "Eq 1:"),
         ("Equation 2 in zero form:", "Eq 2 in zero form:"),
         ("Compare with ", "Match "),
         ("Compare ", "Match "),
         ("Coefficient of ", "Coeff of "),
         ("Constant term:", "Const:"),
-        ("Clear the denominator.", "Clear denom."),
-        ("Expand and simplify.", "Expand, then simplify."),
-        ("Simplify the fraction.", "Simplify frac."),
-        ("Simplify the expression.", "Simplify."),
-        ("Simplify into the target terms.", "Rewrite in the target terms."),
-        ("Use exact angle values to solve the constant equations.", "Use exact angles."),
+        ("Clear the denominator.", "Clear denom"),
+        ("Expand and simplify.", "Expand; simplify"),
+        ("Simplify the fraction.", "Simplify frac"),
+        ("Simplify the expression.", "Simplify"),
+        ("Simplify into the target terms.", "Rewrite in target terms"),
+        ("Use exact angle values to solve the constant equations.", "Use exact angles"),
         ("Write in terms of ", "Write using "),
         (" only.", " only."),
         ("Write the model in the form ", "Write as "),
         ("Write ", "Write "),
         ("Square and add the two equations.", "Square, then add."),
         ("Divide the second equation by the first.", "Divide the second by the first."),
-        ("Use reciprocal trig forms.", "Use reciprocal trig."),
-        ("Use Pythagorean identities.", "Use Pythagorean identities."),
-        ("Use standard trig identities.", "Use trig identities."),
-        ("Use a common denominator.", "Use a common denom."),
-        ("Use common denominator.", "Use a common denom."),
+        ("Use reciprocal trig forms.", "Use reciprocal trig"),
+        ("Use Pythagorean identities.", "Use Pythagorean ids"),
+        ("Use standard trig identities.", "Use trig ids"),
+        ("Use a common denominator.", "Use a common denom"),
+        ("Use common denominator.", "Use a common denom"),
         ("Use half-angle ratio identities.", "Use half-angle ratio identities."),
         ("Mixed degree and radian input is not supported in solve mode.", "Mixed degree/radian input is not supported."),
         ("This expression cannot be written using only the requested terms.", "This can't be written in the requested terms."),
@@ -15125,50 +15140,50 @@ def compact_lines(lines):
 
 
 def main():
-    print("1 prove/show")
-    print("2 transform")
+    print("1 prove")
+    print("2 xform")
     print("3 solve")
-    print("4 rewrite")
-    mode = input("Mode: ").strip()
+    print("4 rw")
+    mode = input("M: ").strip()
     if mode == "":
         mode = "1"
     try:
         if mode == "1":
-            text = input("Identity: ").strip()
+            text = input("Id: ").strip()
             print("1 auto")
             print("2 lhs")
             print("3 rhs")
             print("4 both")
-            route = input("Route: ").strip()
+            route = input("R: ").strip()
             if route == "":
                 route = "1"
             lines = solve_prove_text(text, route)
             print_lines(lines)
         elif mode == "2":
-            eq1 = input("Eq 1: ").strip()
-            eq2 = input("Eq 2: ").strip()
+            eq1 = input("E1: ").strip()
+            eq2 = input("E2: ").strip()
             lines = solve_transform_text(eq1, eq2)
             print_lines(lines)
         elif mode == "3":
-            text = input("Solve: ").strip()
+            text = input("Eq: ").strip()
             _result, lines = solve_solve_text(text)
             print_lines(lines)
         elif mode == "4":
-            text = input("Rewrite: ").strip()
-            print("Enter allowed terms one per line.")
-            print("Press Enter on an empty line to finish.")
+            text = input("Rw: ").strip()
+            print("1 term/line")
+            print("Blank = end")
             terms = []
             while True:
-                term = input("Term: ").strip()
+                term = input("T: ").strip()
                 if term == "":
                     break
                 terms.append(term)
             lines = solve_rewrite_text(text, terms)
             print_lines(lines)
         else:
-            print("Mode must be 1, 2, 3 or 4.")
+            print("Bad mode.")
     except Exception as err:
-        print("Input error: " + str(err))
+        print("Err: " + str(err))
 
 
 run = main

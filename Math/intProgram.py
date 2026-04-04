@@ -8,8 +8,8 @@ except ImportError:
     sys = None
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
-FAIL = 'This integral is outside the supported A-level method set.'
-DE_FAIL = 'This differential equation is outside the supported A-level method set.'
+FAIL = 'Out of scope.'
+DE_FAIL = 'Out of scope.'
 SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
@@ -311,7 +311,10 @@ STANDARD_FN_PRIMITIVES = {
                         'log_abs_sum', ('sec', 'tan'), 1), 'cosec': (
                             'log_abs_sum', ('cosec', 'cot'), -1), 'exp': (
                                 'fn', 'exp', 1), 'sqrt': (
-                                    'sqrt_power',)}
+                                    'sqrt_power',), 'asin': (
+                                        'inv_trig_parts_asin',), 'acos': (
+                                            'inv_trig_parts_acos',), 'atan': (
+                                                'inv_trig_parts_atan',)}
 STANDARD_POWER_PRIMITIVES = {('sec', 2): (
     'fn', 'tan', 1), ('cosec', 2): ('fn', 'cot', -1)}
 STANDARD_PRODUCT_PRIMITIVES = {('sec', 'tan'): (
@@ -384,6 +387,12 @@ def primitive_from_rule(rule, arg):
         return neg(A)if B[2] < 0 else A
     if D == 'sqrt_power':
         return div(mul([num(2), power(C, num(3, 2))]), num(3))
+    if D == 'inv_trig_parts_asin':
+        return add([mul([C, fn('asin', C)]), fn('sqrt', add([num(1), neg(power(C, num(2)))]))])
+    if D == 'inv_trig_parts_acos':
+        return add([mul([C, fn('acos', C)]), neg(fn('sqrt', add([num(1), neg(power(C, num(2)))])))])
+    if D == 'inv_trig_parts_atan':
+        return add([mul([C, fn('atan', C)]), neg(mul([num(1, 2), fn('log', fn('abs', add([num(1), power(C, num(2))])))]))])
 
 
 def primitive_of_named_function(name, arg):
@@ -1496,6 +1505,16 @@ def parse(text):
         I += 1
         return B
 
+    def consume_func_arg():
+        if F() == '(':
+            D('(')
+            A = L()
+            D(')')
+            return A
+        if O(F()):
+            return P()
+        raise ValueError('Bad function form.')
+
     def R(tok):
         A = tok
         if A is None:
@@ -1542,11 +1561,18 @@ def parse(text):
                 return PI
             if B == 'e':
                 return E
-            if F() == '(' and B in FUNC_NAMES:
-                D('(')
-                C = L()
-                D(')')
-                return fn(B, C)
+            if B in FUNC_NAMES:
+                if F() in ('^', '**'):
+                    D(F())
+                    C = J()
+                    return power(fn(B, consume_func_arg()), C)
+                if F() == '(':
+                    D('(')
+                    C = L()
+                    D(')')
+                    return fn(B, C)
+                if O(F()):
+                    return fn(B, P())
             return sym(A)
         raise ValueError('Bad token: ' + repr(A))
 
@@ -2584,7 +2610,7 @@ def integrate_standard_term(node, var):
         B = primitive_of_named_function(O, J)
         if B is not None:
             D = div(B, G)
-            if O in ('tan', 'cot', 'sec', 'cosec'):
+            if O in ('tan', 'cot', 'sec', 'cosec', 'asin', 'acos', 'atan'):
                 return D, []
             return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(
                 diff(B, C)), 'So I = ' + pretty(D) + ' + C']
@@ -3096,7 +3122,7 @@ def choose_parts(node, var):
             return u, A, B
     A = 0
     while A < len(B):
-        if B[A][0] == 'fn' and B[A][1] == 'log' and same(B[A][2], J):
+        if B[A][0] == 'fn' and B[A][1] in ('log', 'asin', 'acos', 'atan') and same(B[A][2], J):
             G = []
             K = 0
             while K < len(B):
@@ -4524,29 +4550,29 @@ def combine_logs(node):
 
 
 def main():
-    print('1 integral')
+    print('1 int')
     print('2 de')
-    D = input('Mode: ').strip()
+    D = input('M: ').strip()
     if D == '':
         D = '1'
     begin_user_action()
     try:
         if D == '1':
-            F = input('f = ').strip()
+            F = input('f: ').strip()
             J, K = parse_input(F)
             print('1 auto')
-            print('2 direct')
+            print('2 dir')
             print('3 trig')
             print('4 sub')
-            print('5 parts')
+            print('5 pts')
             print('6 pf')
-            print('7 divide')
-            E = input('Method: ').strip()
+            print('7 div')
+            E = input('Met: ').strip()
             if E == '':
                 E = '1'
             G = None
             if E == '4':
-                H = input('u = ').strip()
+                H = input('u: ').strip()
                 if H != '':
                     G = parse_forced_u(H)
             L, C, A = solve(J, K, E, G)
@@ -4554,7 +4580,7 @@ def main():
                 print(FAIL)
             else:
                 I = '= ' + pretty(C) + ' + C'
-                print('Method: ' + L)
+                print('Met: ' + L)
                 B = 0
                 while B < len(A):
                     print(str(B + 1) + '. ' + A[B])
@@ -4562,7 +4588,7 @@ def main():
                 if len(A) == 0 or A[-1] != I:
                     print(I)
         elif D == '2':
-            F = input('dy/dx = ').strip()
+            F = input('dy/dx: ').strip()
             M, N, O = parse_de_input(F)
             G = input('BC: ').strip()
             H = parse_de_condition(G, N, O)if G != ''else None
@@ -4577,9 +4603,9 @@ def main():
                 if len(A) == 0 or A[-1] != C:
                     print(C)
         else:
-            print('Mode must be 1 or 2.')
+            print('Bad mode.')
     except Exception as P:
-        print('Input error: ' + str(P))
+        print('Err: ' + str(P))
 
 
 run = main

@@ -27,9 +27,13 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (runs MicroPython
 - **Numbers**: Integers, decimals, or fractions
 - **Constants**: `pi`, `e`
 - **Trig Functions**: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
-- **Other Functions**: `exp`, `log`, `log10`, `sqrt`, `abs`, `atan`
-- **Operators**: `+`, `-`, `*`, `/`, `^`
+- **Inverse trig**: `asin`, `acos`, `atan`, `arcsin`, `arccos`, `arctan`
+- **Other Functions**: `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`
+- **Operators**: `+`, `-`, `*`, `/`, `^`, `**`
 - **Grouping**: Parentheses `()`
+- **Compact forms**: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
+- **Explicit variable**: `expr,x`
+- **DE input**: `dy/dx=...` or `dY/dX=...`, with optional `BC` like `y=2,x=0`
 
 ## Mode 1: Integrals
 
@@ -230,32 +234,45 @@ Output:
 ## Integration Methods
 
 ### Direct Integration
-- Power rule: ∫x^n dx = x^(n+1)/(n+1) + C
-- ∫e^x dx = e^x + C
-- ∫1/x dx = ln|x| + C
-- ∫cos(x) dx = sin(x) + C
-- ∫sin(x) dx = -cos(x) + C
+- Power rule and rational powers
+- `e^x`, `e^(ax+b)`, `exp(...)`
+- `1/x`, `1/(ax+b)`, `f'(x)/f(x)`
+- `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
+- `sec^2`, `cosec^2`, `sec*tan`, `cosec*cot`
+- `1/(x^2+a^2)` and `1/sqrt(a^2-b^2*x^2)`
 
 ### Trigonometric
-- ∫sin^n(x)cos(x) dx = sin^(n+1)(x)/(n+1) + C
-- ∫cos^n(x)sin(x) dx = -cos^(n+1)(x)/(n+1) + C
+- power reduction for `sin^2`, `cos^2`
+- odd powers like `cos^3 x`
+- same-angle products and product-to-sum rewrites
 
 ### Substitution
 - u-substitution for composite functions
+- reverse-chain matches
+- compact inputs like `1/(x ln x)`
 
 ### Integration by Parts
-- ∫u dv = uv - ∫v du
-- Choose u using LIATE (Log, Inverse trig, Algebraic, Trig, Exponential)
+- products with logs and inverse trig
+- cyclic `e^x*sin x` and `e^x*cos x`
 
-### Partial Fractions
-- Decompose rational functions into simpler fractions
-- Then integrate each term
+### Rational Methods
+- polynomial division
+- linear partial fractions
+- some linear×quadratic / two-linear+quadratic cases
 
 ## Error Handling
 
-- Invalid input shows "Input error: [message]"
-- Unsupported integrals show "This integral is outside the supported A-level method set."
+- Invalid input shows `Err: ...`
+- Unsupported questions show `Out of scope.`
+- Unsupported families now fail cleanly instead of crashing
 - Division by zero is caught and reported
+
+## Notes
+
+- Parser accepts both `^` and `**`
+- Compact function syntax is supported (`sin x`, `sin^2 x`, `ln x`)
+- The engine covers many elementary forms, but not every integral is elementary
+- Some questions will still return `Out of scope.` when no supported route matches
 
 ## Notes
 

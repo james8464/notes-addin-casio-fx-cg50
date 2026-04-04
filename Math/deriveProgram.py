@@ -1149,6 +1149,9 @@ def parse(text):
         elif text[i : i + 2] == "**":
             toks.append("**")
             i += 2
+        elif ch == "^":
+            toks.append("**")
+            i += 1
         elif ch in "()+-*/=,":
             toks.append(ch)
             i += 1
@@ -1229,11 +1232,24 @@ def parse(text):
                 t = "log"
             elif t == "csc":
                 t = "cosec"
-            if cur() == "(" and t in FUNC_NAMES:
-                eat("(")
-                out = expr()
-                eat(")")
-                return fn(t, out)
+            if t in FUNC_NAMES:
+                if cur() == "**":
+                    eat("**")
+                    if cur() == "(":
+                        eat("(")
+                        exp = expr()
+                        eat(")")
+                    else:
+                        exp = atom()
+                    out = atom()
+                    return power(fn(t, out), exp)
+                if cur() == "(":
+                    eat("(")
+                    out = expr()
+                    eat(")")
+                    return fn(t, out)
+                if starts_implicit(cur()):
+                    return fn(t, atom())
             return sym(t)
         raise ValueError("Unexpected end.")
 
@@ -1914,17 +1930,17 @@ def get_cos_arg(node):
 # ============================================================================
 
 def main():
-    print("1 normal")
-    print("2 implicit")
-    print("3 param")
-    mode = input("Mode: ").strip()
+    print("1 n")
+    print("2 imp")
+    print("3 par")
+    mode = input("M: ").strip()
     if mode == "":
         mode = "1"
     begin_user_action()
 
     try:
         if mode == "1":
-            text = input("y = ").strip()
+            text = input("y: ").strip()
             var, steps, final, formatted = solve_normal_mode(text)
 
             i = 1
@@ -1938,9 +1954,9 @@ def main():
                 print("dy/d" + var + " = " + show(formatted))
 
         elif mode == "2":
-            text = input("Eqn: ").strip()
+            text = input("Eq: ").strip()
             if "=" not in text:
-                raise ValueError("Use left=right for implicit differentiation.")
+                raise ValueError("Use left=right.")
             left_text, right_text = text.split("=", 1)
             left = trig_normal(parse(left_text))
             right = trig_normal(parse(right_text))
@@ -1953,7 +1969,7 @@ def main():
             if is_one(cleared_den):
                 step = 1
             else:
-                print("1. Clear fractions")
+                print("1. Clear fracs")
                 print("2. " + show(cleared) + " = 0")
                 step = 3
             dleft = sim(diff(work, var, [dep]))
@@ -1962,33 +1978,33 @@ def main():
             coef, rest = coeff_d(whole, dname)
             if is_zero(coef):
                 if not depends(work, [dep]):
-                    raise ValueError("The equation does not contain " + dep + ".")
-                raise ValueError("Could not find " + dname + ".")
+                    raise ValueError("No " + dep + ".")
+                raise ValueError("No " + dname + ".")
             ans = prefer_trig_recip(tidy(div(neg(rest), coef)))
-            print(str(step) + ". d/d" + var + "(LHS) = d/d" + var + "(RHS)")
+            print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + show(dleft) + " = " + show(dright))
-            print(str(step + 2) + ". Make " + dname + " the subject")
+            print(str(step + 2) + ". Make " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
             print(str(step + 3) + ". " + grouped + " = 0")
             print(dname + " = " + show(ans))
 
         elif mode == "3":
-            xt = trig_normal(parse(input("x(t) = ").strip()))
-            yt = trig_normal(parse(input("y(t) = ").strip()))
+            xt = trig_normal(parse(input("x(t): ").strip()))
+            yt = trig_normal(parse(input("y(t): ").strip()))
             dx = sim(diff(xt, "t", []))
             dy = sim(diff(yt, "t", []))
             if is_zero(dx):
-                raise ValueError("dx/dt = 0: dy/dx undefined.")
+                raise ValueError("dx/dt=0.")
             ans = prefer_trig_recip(tidy(div(dy, dx)))
             print("dx/dt = " + show(dx))
             print("dy/dt = " + show(dy))
             print("dy/dx = (dy/dt)/(dx/dt) = " + show(ans))
 
         else:
-            print("Mode must be 1, 2 or 3.")
+            print("Bad mode.")
 
     except Exception as err:
-        print("Input error: " + str(err))
+        print("Err: " + str(err))
 
 
 run = main

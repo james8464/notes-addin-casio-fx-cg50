@@ -2219,16 +2219,41 @@ def parse(text):
                 return fn('log', atom())
             if low in FUNC_ALIASES:
                 actual_name = FUNC_ALIASES[low]
+                if cur() == '^' or cur() == '**':
+                    eat(cur())
+                    if cur() == '(':
+                        eat('(')
+                        exp = expr()
+                        eat(')')
+                    else:
+                        exp = atom()
+                    out = atom()
+                    return power(fn(actual_name, out), exp)
                 if cur() == '(' and actual_name in FUNC_NAMES:
                     eat('(')
                     out = expr()
                     eat(')')
                     return fn(actual_name, out)
-            if cur() == '(' and low in FUNC_NAMES:
-                eat('(')
-                out = expr()
-                eat(')')
-                return fn(low, out)
+                if starts_implicit(cur()) and actual_name in FUNC_NAMES:
+                    return fn(actual_name, atom())
+            if low in FUNC_NAMES:
+                if cur() == '^' or cur() == '**':
+                    eat(cur())
+                    if cur() == '(':
+                        eat('(')
+                        exp = expr()
+                        eat(')')
+                    else:
+                        exp = atom()
+                    out = atom()
+                    return power(fn(low, out), exp)
+                if cur() == '(':
+                    eat('(')
+                    out = expr()
+                    eat(')')
+                    return fn(low, out)
+                if starts_implicit(cur()):
+                    return fn(low, atom())
             if low in ('pi', 'e'):
                 return PI() if low == 'pi' else E()
             if len(t) == 1:
@@ -2470,6 +2495,18 @@ def trig_identity_description(source, target):
             return num(0)
         return coeff
 
+    if source[0] == 'add':
+        bits = flat(source, 'add')
+        if len(bits) == 2:
+            if same(bits[0], num(1)) and bits[1][0] == 'mul' and is_minus_one(bits[1][1][0]) and bits[1][1][1][0] == 'fn' and bits[1][1][1][1] == 'cos':
+                arg = bits[1][1][1][2]
+                if same(target, mul([num(2), power(fn('sin', div(arg, num(2))), num(2))])):
+                    return 'Use 1-cos(2A) = 2sin^2(A)'
+            if same(bits[0], num(1)) and bits[1][0] == 'fn' and bits[1][1] == 'cos':
+                arg = bits[1][2]
+                if same(target, mul([num(2), power(fn('cos', div(arg, num(2))), num(2))])):
+                    return 'Use 1+cos(2A) = 2cos^2(A)'
+
     i = 0
     while i < len(items):
         sin_arg = is_pow_of_fn(items[i], 'sin', num(2))
@@ -2557,6 +2594,20 @@ def target_route_steps(source, target):
         if same(candidate, target):
             return [(desc, target)]
         return [(desc, candidate), ("Rewrite to target form", target)]
+
+    fitted = solve_target_coefficients(source, target)
+    if fitted is not None:
+        coeffs, fitted_target = fitted
+        names = sorted(coeffs.keys())
+        parts = []
+        i = 0
+        while i < len(names):
+            parts.append(names[i] + ' = ' + show(coeffs[names[i]]))
+            i += 1
+        if len(parts) > 0:
+            if same(fitted_target, target):
+                return [("Match coefficients: " + ', '.join(parts), target)]
+            return [("Match coefficients: " + ', '.join(parts), fitted_target), ("Rewrite to target form", target)]
 
     trig_desc = trig_identity_description(source, target)
     if trig_desc is not None:
@@ -3206,23 +3257,23 @@ def compare_expressions(expr1, expr2):
 
 
 def main():
-    print('1 compare')
-    print('2 transform')
-    print('3 expand')
-    print('4 poly ops')
-    print('5 complete sq')
+    print('1 cmp')
+    print('2 xform')
+    print('3 exp')
+    print('4 poly')
+    print('5 comp sq')
     print('6 solve')
-    print('7 composite')
-    print('8 inverse')
-    print('9 rewrite')
-    mode = input('Mode: ').strip()
+    print('7 comp')
+    print('8 inv')
+    print('9 rw')
+    mode = input('M: ').strip()
     if mode == '':
         mode = '1'
     begin_user_action()
     try:
         if mode == '1':
-            text1 = input('Expr1: ').strip()
-            text2 = input('Expr2: ').strip()
+            text1 = input('E1: ').strip()
+            text2 = input('E2: ').strip()
             expr1 = parse(text1)
             expr2 = parse(text2)
             print('1. expr1 = ' + show(expr1))
@@ -3243,9 +3294,9 @@ def main():
             else:
                 print(str(len(steps) + 6) + '. RESULT: Not equivalent')
         elif mode == '2':
-            text1 = input('Source: ').strip()
+            text1 = input('Src: ').strip()
             expr1 = parse(text1)
-            text2 = input('Target form (with A,B): ').strip()
+            text2 = input('Tgt: ').strip()
             expr2 = parse(text2)
             print('1. Source = ' + show(expr1))
             print('2. Target = ' + show(expr2))
@@ -3257,9 +3308,9 @@ def main():
                 i += 1
             print(str(len(steps) + 3) + '. Final = ' + show(result))
         elif mode == '3':
-            text1 = input('Expression: ').strip()
+            text1 = input('Expr: ').strip()
             expr1 = parse(text1)
-            max_terms_str = input('Max terms (Enter for all): ').strip()
+            max_terms_str = input('Max: ').strip()
             max_terms = None
             if max_terms_str != '':
                 try:
@@ -3300,13 +3351,13 @@ def main():
                 print('2. Cannot expand (not binomial)')
                 print('3. Output = ' + show(expr1))
         elif mode == '4':
-            print('1 add polys')
-            print('2 subtract polys')
-            print('3 multiply polys')
-            submode = input('Operation: ').strip()
+            print('1 add')
+            print('2 sub')
+            print('3 mul')
+            submode = input('Op: ').strip()
             if submode == '1' or submode == '2' or submode == '3':
-                text1 = input('Poly1: ').strip()
-                text2 = input('Poly2: ').strip()
+                text1 = input('P1: ').strip()
+                text2 = input('P2: ').strip()
                 p1 = parse(text1)
                 p2 = parse(text2)
                 print('1. p1 = ' + show(p1))
@@ -3329,15 +3380,15 @@ def main():
             print('1. Input = ' + show(expr1))
             result, note = complete_the_square(expr1)
             if result is None:
-                print('2. Cannot complete square')
-                print('3. Output = ' + show(expr1))
+                print('2. No comp sq')
+                print('3. Out = ' + show(expr1))
             else:
-                print('2. ' + (note if note else 'Result'))
-                print('3. Result = ' + show(result))
+                print('2. ' + (note if note else 'Ans'))
+                print('3. Ans = ' + show(result))
         elif mode == '6':
-            text1 = input('Equation (set = 0): ').strip()
+            text1 = input('Eq: ').strip()
             if '=' not in text1:
-                print('Input should be in form f(x)=0 or expression=0')
+                print('Use f(x)=0')
             else:
                 parts = text1.split('=')
                 left = parse(parts[0].strip())
@@ -3360,13 +3411,13 @@ def main():
                 else:
                     print('2. ' + (note if note else 'No solution'))
         elif mode == '7':
-            print('Composite functions f(g(x))')
-            f_text = input('f(x): ').strip()
-            g_text = input('g(x): ').strip()
+            print('Comp f(g(x))')
+            f_text = input('f: ').strip()
+            g_text = input('g: ').strip()
             if f_text == '':
                 f_text = '2*x+1'
                 g_text = 'x^2'
-                print('Using: f(x)=' + f_text + ', g(x)=' + g_text)
+                print('Use: f=' + f_text + ', g=' + g_text)
             result, steps = compose_functions(f_text, g_text)
             print('1. f(x) = ' + f_text)
             print('2. g(x) = ' + g_text)
@@ -3378,11 +3429,11 @@ def main():
             else:
                 print('3. ' + steps[0])
         elif mode == '8':
-            print('Inverse functions')
-            f_text = input('f(x): ').strip()
+            print('Inv fn')
+            f_text = input('f: ').strip()
             if f_text == '':
                 f_text = '2*x+1'
-                print('Using: f(x)=' + f_text)
+                print('Use: f=' + f_text)
             result, steps = inverse_function(f_text)
             print('1. f(x) = ' + f_text)
             if result:
@@ -3393,12 +3444,12 @@ def main():
             else:
                 print('2. ' + steps[0])
         elif mode == '9':
-            text = input('Rewrite: ').strip()
-            print('Enter allowed terms one per line.')
-            print('Press Enter on an empty line to finish.')
+            text = input('Rw: ').strip()
+            print('1 term/line')
+            print('Blank = end')
             terms = []
             while True:
-                term = input('Term: ').strip()
+                term = input('T: ').strip()
                 if term == '':
                     break
                 terms.append(term)
@@ -3408,9 +3459,9 @@ def main():
                 print(str(i + 1) + '. ' + lines[i])
                 i += 1
         else:
-            print('Mode must be 1-9.')
+            print('Bad mode.')
     except Exception as err:
-        print('Input error: ' + str(err))
+        print('Err: ' + str(err))
 
 
 run = main

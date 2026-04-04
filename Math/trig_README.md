@@ -16,10 +16,37 @@ A comprehensive trigonometric manipulation program for the CASIO fx-cg50 calcula
 - **Numbers**: Integers, decimals, or fractions
 - **Constants**: `pi`, `e`
 - **Trig Functions**: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
-- **Inverse Trig**: `asin`, `acos`, `atan`
+- **Inverse Trig**: `asin`, `acos`, `atan`, `arcsin`, `arccos`, `arctan`
 - **Other Functions**: `exp`, `log`, `ln`, `sqrt`, `abs`
-- **Operators**: `+`, `-`, `*`, `/`, `^`
+- **Operators**: `+`, `-`, `*`, `/`, `^`, `**`
 - **Grouping**: Parentheses `()`
+- **Compact forms**: `sin x`, `sec x`, `sin^2(x)`, `cos^2(x)`
+- **Solve mode**: `equation,var`, `equation,var,start,end`, `equation,var,a<x<b`
+- **Extrema mode**: `expr,max,x` or `expr,min,x`
+
+## Coverage Notes
+
+- Parser accepts calculator-style no-parentheses trig input
+- Power forms like `sin^2(x)` and `cos^2(x)` are supported
+- Route/proof/solve output is compacted for short screens
+- CLI errors now show `Err: ...`
+
+## Error Handling
+
+- Invalid input shows `Err: ...`
+- Unsupported identities or routes return a short direct message
+- Equations with no solutions are reported
+
+## Notes
+
+- Works on MicroPython v1.9.4 (CASIO fx-cg50)
+- Uses only `math` import (available on calculator)
+- Optimized for calculator-friendly trig rewrites and solving
+- Accepts both `^` and `**`
+
+## Mode 1: Prove/Show Identity
+
+Proves trigonometric identities with step-by-step working.
 
 ## Mode 1: Prove/Show Identity
 

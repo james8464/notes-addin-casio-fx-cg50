@@ -21,9 +21,35 @@ A general algebraic manipulation program for the CASIO fx-cg50 calculator (runs 
 - **Variables**: Single letters (x, y, z, etc.)
 - **Numbers**: Integers, decimals, or fractions (e.g., `3/4`, `2.5`)
 - **Constants**: `e`, `pi`
-- **Operators**: `+`, `-`, `*`, `/`, `^` (power)
-- **Functions**: `sin`, `cos`, `tan`, `exp`, `log`, `ln`, `sqrt`, `abs`
+- **Operators**: `+`, `-`, `*`, `/`, `^`, `**`
+- **Functions**: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `exp`, `log`, `ln`, `sqrt`, `abs`, `asin`, `acos`, `atan`
+- **Aliases**: `arcsin`, `arccos`, `arctan`, `csc`
 - **Grouping**: Parentheses `()`
+- **Compact forms**: `sin x`, `sin^2(x)`, `cos^3 x`, `ln x`, `(x+1)(x+2)`, `2x+3x`
+
+## Coverage Notes
+
+- Parser accepts both `^` and `**`
+- Implicit multiplication is supported in many calculator-style forms
+- Compact trig/log forms are supported without extra imports
+- CLI messages now use short labels for the calculator screen
+
+## Error Handling
+
+- Invalid input shows `Err: ...`
+- Division by zero is caught and reported
+- Malformed expressions are detected during parsing
+
+## Notes
+
+- Works on MicroPython v1.9.4 (CASIO fx-cg50)
+- Keeps runtime lightweight: no new imports, bounded caches, simple parser logic
+- Limited binomial expansion is still used for performance on large inputs
+- Some non-polynomial transforms may still be out of scope for exact matching
+
+## Mode 1: Compare Expressions
+
+Compares two algebraic expressions to determine equivalence with step-by-step simplification.
 
 ## Mode 1: Compare Expressions
 
