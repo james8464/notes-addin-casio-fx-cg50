@@ -356,6 +356,14 @@ TRIG_HIGH_POWER_IDENTITIES = {
      3): (
         'Use cos^2 x = 1-sin^2 x.',
         'odd_cos'),
+    ('sin',
+     4): (
+        'Use sin^2 x = (1-cos(2x))/2.',
+        'sin4'),
+    ('cos',
+     5): (
+        'Use cos^2 x = 1-sin^2 x.',
+        'cos5'),
     ('sec',
      4): (
         'Use sec^2 x = 1+tan^2 x.',
@@ -483,6 +491,10 @@ def trig_high_power_rewrite(name, exp, arg):
         B = mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
     elif D == 'odd_cos':
         B = mul([fn('cos', A), add([num(1), neg(power(fn('sin', A), num(2)))])])
+    elif D == 'sin4':
+        B = div(add([num(3), neg(mul([num(4), fn('cos', mul([num(2), A]))])), fn('cos', mul([num(4), A]))]), num(8))
+    elif D == 'cos5':
+        B = expand_small(add([fn('cos', A), neg(mul([num(2), power(fn('sin', A), num(2)), fn('cos', A)])), mul([power(fn('sin', A), num(4)), fn('cos', A)])]))
     elif D == 'sec4':
         B = mul([power(fn('sec', A), num(2)), add(
             [num(1), power(fn('tan', A), num(2))])])
@@ -1332,23 +1344,10 @@ def substitution_work(node, var, inner, d, uexpr, work, uans, ans):
     C = inner
     B = var
     A = [
-        'Let I = ' +
-        int_text(
-            node,
-            B),
-        'Let u = ' +
-        pretty(C),
-        'du/d' +
-        B +
-        ' = ' +
-        pretty(d),
-        du_equals_text(
-            d,
-            B)]
-    E = solve_for_u_back(C, B)
-    if E is not None:
-        A.append(E)
-    A.append('So I = ' + int_text(D, 'u'))
+        'u = ' + pretty(C),
+        'du/d' + B + ' = ' + pretty(d),
+        du_equals_text(d, B)]
+    A.append('I = ' + int_text(D, 'u'))
     if not same(work, D):
         A.append('= ' + int_text(work, 'u'))
     A.append('= ' + pretty(uans) + ' + C')
@@ -2611,9 +2610,8 @@ def integrate_standard_term(node, var):
         if B is not None:
             D = div(B, G)
             if O in ('tan', 'cot', 'sec', 'cosec', 'asin', 'acos', 'atan'):
-                return D, []
-            return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(
-                diff(B, C)), 'So I = ' + pretty(D) + ' + C']
+                return D, ['Std.', '= ' + pretty(D) + ' + C']
+            return D, ['Std.', '= ' + pretty(D) + ' + C']
     if A[0] == 'pow' and linear_info(A[1], C) is not None and is_num(A[2]):
         G, M = linear_info(A[1], C)
         if same(A[2], num(-1)):
@@ -2625,7 +2623,7 @@ def integrate_standard_term(node, var):
             D = div(B, mul([G, I]))
         return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(div(
             G, A[1])if B[0] == 'fn' and B[1] == 'log'else diff(B, C)), 'So I = ' + pretty(D) + ' + C']
-    if A[0] == 'pow' and A[1][0] == 'fn' and same(A[2], num(2)):
+    if A[0] == 'pow' and A[1][0] == 'fn' and is_int_num(A[2]):
         O = A[1][1]
         J = A[1][2]
         K = linear_info(J, C)
@@ -2634,8 +2632,12 @@ def integrate_standard_term(node, var):
             B = primitive_of_named_power(O, J, A[2])
             if B is not None:
                 D = div(B, G)
-                return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(
-                    diff(B, C)), 'So I = ' + pretty(D) + ' + C']
+                return D, ['Std.', '= ' + pretty(D) + ' + C']
+        F2, E2 = trig_high_power_rewrite(O, A[2], J)
+        if E2 is not None:
+            R, Q = integrate_standard(expand_small(E2), C)
+            if R is not None:
+                return R, [F2, '= ' + pretty(R) + ' + C']
     if A[0] == 'mul':
         L = list(A[1])
         if len(L) == 2 and L[0][0] == 'fn' and L[1][0] == 'fn' and same(
@@ -3180,9 +3182,8 @@ def integrate_by_parts(node, var, depth=0):
         return None, None
     L = add([mul([C, D]), neg(K)])
     B = [
-        'Let u = ' + pretty(C),
+        'u = ' + pretty(C),
         'du/d' + A + ' = ' + pretty(J),
-        'dv/d' + A + ' = ' + pretty(M),
         'v = ' + pretty(D),
         'I = u*v-Int[' + pretty(E) + '] d' + A]
     if F:

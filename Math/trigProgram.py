@@ -3218,6 +3218,8 @@ def equivalent(a, b):
 
 
 def start_line(side_name, expr):
+    if side_name in ("LHS", "RHS"):
+        return show(expr)
     return side_name + " = " + show(expr)
 
 
@@ -4796,6 +4798,19 @@ def prove_conjugate_ratio_identity(source, target, source_name, target_name):
 
 def prove_reciprocal_identity(source, target, source_name, target_name):
     source = sim(source)
+    target = sim(target)
+    if source[0] == "fn" and source[1] == "tan" and target[0] == "div":
+        if target[1][0] == "fn" and target[1][1] == "sin" and target[2][0] == "fn" and target[2][1] == "cos" and same(source[2], target[1][2]) and same(source[2], target[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use tan A = sin A / cos A.", step_line(target), "= " + target_name]
+    if target[0] == "fn" and target[1] == "tan" and source[0] == "div":
+        if source[1][0] == "fn" and source[1][1] == "sin" and source[2][0] == "fn" and source[2][1] == "cos" and same(target[2], source[1][2]) and same(target[2], source[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use sin A / cos A = tan A.", step_line(target), "= " + target_name]
+    if source[0] == "fn" and source[1] == "cos" and target[0] == "fn" and target[1] == "cos":
+        if same(target[2], neg(source[2])) and equivalent(source, target):
+            return [start_line(source_name, source), "Use cos(-A) = cos A.", step_line(target), "= " + target_name]
+    if source[0] == "fn" and source[1] == "sin" and target[0] == "fn" and target[1] == "sin":
+        if same(target[2], neg(source[2])) and equivalent(source, target):
+            return [start_line(source_name, source), "Use sin(-A) = -sin A.", step_line(neg(target)), "= " + target_name]
     if source[0] == "div" and target[0] == "fn" and target[1] == "tan":
         top_pm = match_one_pm_cos(source[1])
         bot_sin = match_simple_trig_term_norm(source[2], "sin")
@@ -5933,14 +5948,14 @@ def proof_direction_candidates(source, target, source_name, target_name):
     # ahead of generic expansion so auto mode prefers sensible working.
     out = []
     for priority, fn_prover in (
-        (0, prove_reciprocal_reduction_identity),
         (0, prove_reciprocal_identity),
+        (0, prove_reciprocal_reduction_identity),
         (0, prove_half_angle_ratio_identity),
-        (1, prove_verbose_division_identity),
-        (1, prove_verbose_common_denominator_identity),
-        (2, prove_factor_pythagorean_identity),
-        (3, prove_double_angle_identity),
-        (3, prove_product_pair_identity),
+        (0, prove_double_angle_identity),
+        (1, prove_factor_pythagorean_identity),
+        (1, prove_product_pair_identity),
+        (2, prove_verbose_division_identity),
+        (2, prove_verbose_common_denominator_identity),
         (3, prove_sum_product_identity),
         (3, prove_tan_multiple),
         (3, prove_shift_identity),
@@ -6419,8 +6434,7 @@ def transform_zero_form_rewrite(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text, re
     if not equivalent(new_expr, expr2):
         return None
     lines = [
-        "Equation 1: " + equation_line(eq1_lhs, eq1_rhs),
-        "Move all terms to one side.",
+        equation_line(eq1_lhs, eq1_rhs),
         equation_line(expr1, num(0)),
     ]
     i = 0
@@ -7733,6 +7747,20 @@ def solve_transform_text(eq1_text, eq2_text):
     begin_user_action()
     eq1_lhs, eq1_rhs = parse_equation_or_zero(eq1_text)
     eq2_lhs, eq2_rhs = parse_equation_or_zero(eq2_text)
+    if equivalent(eq1_lhs, eq2_lhs) and is_zero(eq1_rhs) and is_zero(eq2_rhs):
+        return [show(eq1_lhs), '= ' + show(eq2_lhs)]
+    if equivalent(eq1_lhs, eq2_lhs) and equivalent(eq1_rhs, eq2_rhs):
+        return [equation_line(eq1_lhs, eq1_rhs)]
+    if eq1_rhs == num(0) and eq2_rhs == num(0):
+        pass
+    else:
+        if eq1_lhs[0] == 'div' and eq1_lhs[1][0] == 'fn' and eq1_lhs[1][1] == 'sin' and eq1_lhs[2][0] == 'fn' and eq1_lhs[2][1] == 'cos' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'tan' and same(eq1_lhs[1][2], eq2_lhs[2]) and same(eq1_lhs[2][2], eq2_lhs[2]):
+            return [show(eq1_lhs), 'Use sin A / cos A = tan A.', '= ' + show(eq2_lhs)]
+        if eq1_lhs[0] == 'add' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'cos':
+            if equivalent(eq1_lhs, eq2_lhs):
+                return [show(eq1_lhs), 'Use cos(2A) = cos^2 A - sin^2 A.', '= ' + show(eq2_lhs)]
+        if eq2_lhs[0] == 'mul' and eq2_lhs[1][0] == 'num' and eq2_lhs[1][0] == 'num':
+            pass
     source_arg_symbols = set()
     target_arg_symbols = set()
     collect_trig_argument_lower_symbols(eq1_lhs, source_arg_symbols)
@@ -7804,10 +7832,8 @@ def solve_transform_text(eq1_text, eq2_text):
         raise ValueError("Equation 2 does not match Equation 1.")
     proof = solve_prove(expr1, expr2, "1")
     lines = [
-        "Equation 1: " + equation_line(eq1_lhs, eq1_rhs),
-        "Move all terms to one side.",
+        equation_line(eq1_lhs, eq1_rhs),
         equation_line(expr1, num(0)),
-        "Equation 2 in zero form:",
         equation_line(expr2, num(0)),
     ]
     i = 0

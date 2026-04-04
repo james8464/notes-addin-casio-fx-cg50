@@ -32,7 +32,20 @@ A general algebraic manipulation program for the CASIO fx-cg50 calculator (runs 
 - Parser accepts both `^` and `**`
 - Implicit multiplication is supported in many calculator-style forms
 - Compact trig/log forms are supported without extra imports
+- Compare mode handles identities like `sin^2(x)+cos^2(x)=1`
+- Target-form matching is strongest for algebraic templates; trig template fitting is still more limited
 - CLI messages now use short labels for the calculator screen
+
+## Solve Notes
+
+- `solve_equation(...)` works on zero-form expressions internally
+- CLI solve mode expects an equation string like `x^2-9=0`
+- Direct API calls should pass the zero-form expression rather than a raw `=` string
+
+## Transform Notes
+
+- Direct trig target forms like `1-cos(2*x)` to `2*sin(x)^2` compare correctly in compare mode
+- Exact target-template fitting with symbolic coefficients is still mainly algebra-focused
 
 ## Error Handling
 

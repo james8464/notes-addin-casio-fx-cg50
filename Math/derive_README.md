@@ -29,6 +29,7 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (runs MicroPy
 
 - Supports compact no-parentheses function input in normal mode
 - Handles inverse trig aliases and powers like `sin^2(x)`
+- Working is now shorter and closer to markscheme style
 - Invalid input now shows `Err: ...` in the CLI
 - Implicit mode still expects an equation and parametric mode still uses `t`
 

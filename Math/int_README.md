@@ -253,7 +253,17 @@ Output:
 
 ### Integration by Parts
 - products with logs and inverse trig
+- `x*atan(x)`
 - cyclic `e^x*sin x` and `e^x*cos x`
+
+### More supported compact families
+- `asin(2*x)`, `acos(3*x+1)`, `atan(2*x+1)`
+- `sin^2 x`, `cos^3 x`, `sec x tan x`
+- `x/(x^2+a^2)`, `1/(a^2+x^2)`, `1/sqrt(a^2-x^2)`
+
+### Still limited
+- some inverse-trig-by-parts reductions such as `x*asin(x)` and `x*acos(x)` are not fully covered yet
+- non-elementary integrals still return `Out of scope.`
 
 ### Rational Methods
 - polynomial division
@@ -271,6 +281,7 @@ Output:
 
 - Parser accepts both `^` and `**`
 - Compact function syntax is supported (`sin x`, `sin^2 x`, `ln x`)
+- Working has been shortened toward markscheme style for common methods
 - The engine covers many elementary forms, but not every integral is elementary
 - Some questions will still return `Out of scope.` when no supported route matches
 

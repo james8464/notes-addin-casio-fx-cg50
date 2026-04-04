@@ -1657,8 +1657,8 @@ def inverse_function(f_text, var='x'):
         steps = []
         steps.append("f(x) = " + f_text)
         f_y = substitute(f, sym(var), sym('y'))
-        steps.append("Set y = " + show(f_y))
-        steps.append("Swap x and y: x = " + show(f_y))
+        steps.append("Let y = " + show(f_y))
+        steps.append("Swap: x = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
             steps.append("f^-1(x) = " + show(inv))
@@ -1676,11 +1676,10 @@ def inverse_function(f_text, var='x'):
         if steps and steps[-1].startswith("No inverse on all real x"):
             return None, steps
 
-        steps.append("No supported inverse method for this function")
+        steps.append("No inverse method")
         return None, steps
     except Exception as err:
-        return None, ["Error: " + str(err)]
-
+        return None, ["Err: " + str(err)]
 
 def sim(node):
     kind = node[0]
@@ -2481,6 +2480,14 @@ def expand_mul_distribute(node):
 def trig_identity_description(source, target):
     source = sim(source)
     target = sim(target)
+
+    if same(source, add([num(1), neg(fn('cos', mul([num(2), sym('x')])))])):
+        if same(target, mul([num(2), power(fn('sin', sym('x')), num(2))])):
+            return 'Use 1-cos(2A) = 2sin^2(A)'
+    if same(source, add([num(1), fn('cos', mul([num(2), sym('x')]))])):
+        if same(target, mul([num(2), power(fn('cos', sym('x')), num(2))])):
+            return 'Use 1+cos(2A) = 2cos^2(A)'
+
     items = flat(source, 'add') if source[0] == 'add' else [source]
     coeff_map = {}
     i = 0
@@ -2494,18 +2501,6 @@ def trig_identity_description(source, target):
         if coeff is None:
             return num(0)
         return coeff
-
-    if source[0] == 'add':
-        bits = flat(source, 'add')
-        if len(bits) == 2:
-            if same(bits[0], num(1)) and bits[1][0] == 'mul' and is_minus_one(bits[1][1][0]) and bits[1][1][1][0] == 'fn' and bits[1][1][1][1] == 'cos':
-                arg = bits[1][1][1][2]
-                if same(target, mul([num(2), power(fn('sin', div(arg, num(2))), num(2))])):
-                    return 'Use 1-cos(2A) = 2sin^2(A)'
-            if same(bits[0], num(1)) and bits[1][0] == 'fn' and bits[1][1] == 'cos':
-                arg = bits[1][2]
-                if same(target, mul([num(2), power(fn('cos', div(arg, num(2))), num(2))])):
-                    return 'Use 1+cos(2A) = 2cos^2(A)'
 
     i = 0
     while i < len(items):

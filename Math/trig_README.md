@@ -28,7 +28,9 @@ A comprehensive trigonometric manipulation program for the CASIO fx-cg50 calcula
 
 - Parser accepts calculator-style no-parentheses trig input
 - Power forms like `sin^2(x)` and `cos^2(x)` are supported
-- Route/proof/solve output is compacted for short screens
+- Proof mode handles direct double-angle identities like `1-cos(2x)=2sin^2(x)` and `1+cos(2x)=2cos^2(x)`
+- Solve mode handles compact forms like `sin x = 0,x` and `sec x = 2,x`
+- Route/proof/solve output is compacted for short screens and a shorter markscheme style
 - CLI errors now show `Err: ...`
 
 ## Error Handling
