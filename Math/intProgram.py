@@ -21,7 +21,7 @@ _ENGINE_CACHES = {}
 E = 'const', 'e'
 PI = 'const', 'pi'
 U = 'sym', 'u'
-FUNC_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp', 'log', 'log10', 'sqrt', 'abs', 'ln', 'atan'
+FUNC_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp', 'log', 'log10', 'sqrt', 'abs', 'ln', 'atan', 'asin', 'acos'
 
 
 def apply_runtime_profile(low_memory=None):
@@ -327,7 +327,9 @@ FUNCTION_DERIVATIVES = {
                                 'fn', 'exp', 1), 'log': (
                                     'inv',), 'sqrt': (
                                         'inv_twice_sqrt',), 'atan': (
-                                            'inv_one_plus_square',)}
+                                            'inv_one_plus_square',), 'asin': (
+                                                'inv_sqrt_one_minus_square',), 'acos': (
+                                                    'neg_inv_sqrt_one_minus_square',)}
 TRIG_SQUARE_IDENTITIES = {
     'tan': (
         'Use tan^2 x = sec^2 x - 1.',
@@ -430,6 +432,10 @@ def derivative_from_rule(rule, arg, d):
         return div(d, mul([num(2), fn('sqrt', C)]))
     if D == 'inv_one_plus_square':
         return div(d, add([num(1), power(C, num(2))]))
+    if D == 'inv_sqrt_one_minus_square':
+        return div(d, fn('sqrt', add([num(1), neg(power(C, num(2)))])))
+    if D == 'neg_inv_sqrt_one_minus_square':
+        return neg(div(d, fn('sqrt', add([num(1), neg(power(C, num(2)))]))))
 
 
 def derivative_of_named_function(name, arg, d):
@@ -1526,6 +1532,12 @@ def parse(text):
             B = A.lower()
             if B == 'ln':
                 B = 'log'
+            elif B == 'arcsin':
+                B = 'asin'
+            elif B == 'arccos':
+                B = 'acos'
+            elif B == 'arctan':
+                B = 'atan'
             if B == 'pi':
                 return PI
             if B == 'e':
@@ -1617,7 +1629,14 @@ def split_input_var(text):
 def parse_input(text):
     A = split_input_var(text)
     if A is None:
-        return parse(text), 'x'
+        B = parse(text)
+        C = set()
+        collect_symbols(B, C)
+        if 'x' in C:
+            return B, 'x'
+        if len(C) == 1:
+            return B, next(iter(C))
+        return B, 'x'
     return parse(A[0]), A[1]
 
 
@@ -2068,6 +2087,39 @@ def split_const_mul(node, var):
     return A, num(1)
 
 
+def sqrt_like_radicand(node):
+    A = node
+    if A[0] == 'fn' and A[1] == 'sqrt':
+        return A[2]
+    if A[0] == 'pow' and same(A[2], num(1, 2)):
+        return A[1]
+
+
+def same_sqrt_like(a, b):
+    if cheap_same(a, b) or same(a, b):
+        return True
+    C = sqrt_like_radicand(a)
+    D = sqrt_like_radicand(b)
+    return C is not None and D is not None and same(C, D)
+
+
+def sqrt_basis_power(node, basis):
+    B = sqrt_like_radicand(basis)
+    A = node
+    if B is None:
+        return
+    if same_sqrt_like(A, basis):
+        return num(1)
+    if is_sym(A) and same(A, B):
+        return num(2)
+    if A[0] == 'pow' and same(A[1], B) and is_num(A[2]):
+        C = A[2]
+        if C[2] == 2:
+            return num(C[1])
+        if C[2] == 1:
+            return num(2 * C[1])
+
+
 def _rewrite_in_u(node, inner, var):
     C = var
     B = inner
@@ -2077,10 +2129,24 @@ def _rewrite_in_u(node, inner, var):
     if B[0] == 'add':
         D = flat(B, 'add')
         if len(D) == 2:
-            if not depends(D[0], C) and cheap_same(A, D[1]):
-                return add([U, neg(D[0])])
-            if not depends(D[1], C) and cheap_same(A, D[0]):
-                return add([U, neg(D[1])])
+            if not depends(D[0], C):
+                E, F = split_coeff(D[1])
+                if is_num(E):
+                    G = div(add([U, neg(D[0])]), E)
+                    if same_sqrt_like(A, F):
+                        return G
+                    H = sqrt_basis_power(A, F)
+                    if H is not None:
+                        return power(G, H)
+            if not depends(D[1], C):
+                E, F = split_coeff(D[0])
+                if is_num(E):
+                    G = div(add([U, neg(D[1])]), E)
+                    if same_sqrt_like(A, F):
+                        return G
+                    H = sqrt_basis_power(A, F)
+                    if H is not None:
+                        return power(G, H)
     L = linear_info(B, C)
     if is_sym(A) and A[1] == C and L is not None:
         return div(add([U, neg(L[1])]), L[0])
@@ -2461,7 +2527,6 @@ def integrate_standard_term(node, var):
                 return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
                                'So I = ' + pretty(result) + ' + C']
     
-    # Add pattern for 1/sqrt(a^2 - x^2) = arcsin(x/a) + C
     if A[0] == 'div' and is_one(A[1]) and (
             A[2][0] == 'fn' and A[2][1] == 'sqrt' or A[2][0] == 'pow' and same(A[2][2], num(1, 2))):
         J = A[2][2]if A[2][0] == 'fn'else A[2][1]
@@ -2482,46 +2547,20 @@ def integrate_standard_term(node, var):
             D = div(fn('asin', W), T)
             return D, [
                 'Use the standard result for 1/sqrt(a^2-b^2*' + C + '^2).', 'So I = ' + pretty(D) + ' + C']
-        # Additional check for a^2 - x^2 form
-        if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(H[2]) and is_num(H[0]):
-            # Check if we have form a^2 - x^2
-            if H[2][1] < 0 and H[0][1] > 0:  # a^2 - x^2 where a^2 > 0
-                a_squared = H[0]
-                a = fn('sqrt', a_squared)
-                result = fn('asin', div(sym(C), a))
-                return result, ['Use the standard result for 1/sqrt(' + pretty(a_squared) + '-' + C + '^2).',
-                               'So I = ' + pretty(result) + ' + C']
-        G, M = linear_info(A[2][1], C)
-        N = neg(A[2][2])
-        if N == num(-1):
-            B = fn('log', fn('abs', A[2][1]))
-            D = div(B, G)
-        else:
-            I = addq(N, num(1))
-            B = power(A[2][1], I)
-            D = div(B, mul([G, I]))
-        return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(diff(B, C)if not (
-            B[0] == 'fn' and B[1] == 'log')else div(G, A[2][1])), 'So I = ' + pretty(D) + ' + C']
-    if A[0] == 'div' and is_one(A[1]) and (
-            A[2][0] == 'fn' and A[2][1] == 'sqrt' or A[2][0] == 'pow' and same(A[2][2], num(1, 2))):
-        J = A[2][2]if A[2][0] == 'fn'else A[2][1]
-        H = poly_num(J, C)
-        if H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
-            B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
-            return B, [
-                'Use the standard result for 1/sqrt(' + C + '^2+a).', 'So I = ' + pretty(B) + ' + C']
-        if same(J, add([num(1), neg(power(F, num(2)))])) or same(
-                J, add([neg(power(F, num(2))), num(1)])):
-            return fn('asin', F), [
-                'Use the standard result for 1/sqrt(1-' + C + '^2).', 'So I = asin(' + C + ') + C']
-        if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(
-                H[0]) and is_num(H[2]) and H[0][1] > 0 and H[2][1] < 0:
-            V = fn('sqrt', H[0])
-            T = fn('sqrt', negq(H[2]))
-            W = div(mul([T, F]), V)
-            D = div(fn('asin', W), T)
-            return D, [
-                'Use the standard result for 1/sqrt(a^2-b^2*' + C + '^2).', 'So I = ' + pretty(D) + ' + C']
+        K = linear_info(J, C)
+        if K is not None:
+            G, M = K
+            N = num(-1, 2)
+            if N == num(-1):
+                B = fn('log', fn('abs', J))
+                D = div(B, G)
+            else:
+                I = addq(N, num(1))
+                B = power(J, I)
+                D = div(B, mul([G, I]))
+            return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(diff(B, C)if not (
+                B[0] == 'fn' and B[1] == 'log')else div(G, J)), 'So I = ' + pretty(D) + ' + C']
+        return None, None
     if A[0] == 'pow' and same(A[1], E):
         K = linear_info(A[2], C)
         if K is None:
@@ -2735,6 +2774,35 @@ def solve_u_expr(node):
         return A
 
 
+def normalize_den_powers(node):
+    A = node
+    if A[0] == 'add':
+        return sim(add([normalize_den_powers(B) for B in flat(A, 'add')]))
+    if A[0] == 'mul':
+        return sim(mul([normalize_den_powers(B) for B in flat(A, 'mul')]))
+    if A[0] == 'pow':
+        return sim(power(normalize_den_powers(A[1]), normalize_den_powers(A[2])))
+    if A[0] != 'div':
+        return A
+    B = normalize_den_powers(A[1])
+    C = normalize_den_powers(A[2])
+    D = flat(C, 'mul') if C[0] == 'mul' else [C]
+    E = [B]
+    F = []
+    G = False
+    for H in D:
+        if H[0] == 'pow' and is_num(H[2]) and H[2][1] < 0:
+            E.append(power(H[1], neg(H[2])))
+            G = True
+        else:
+            F.append(H)
+    if not G:
+        return sim(div(B, C))
+    I = make_mul(E)
+    J = make_mul(F)
+    return sim(I if is_one(J) else div(I, J))
+
+
 def cancel_u_radical(node):
     A = node
     if A[0] != 'div':
@@ -2779,7 +2847,9 @@ def integrate_substitution(node, var, forced_u=None):
             if F is not None:
                 A = rewrite_in_u(F, D, C)
                 if A is not None:
+                    A = normalize_den_powers(A)
                     A = cancel_u_radical(A)
+                    A = normalize_den_powers(A)
                     K = expand_small(A)
                     L = K if not same(K, A)else A
                     I = solve_u_expr(L)
@@ -2951,46 +3021,51 @@ def integrate_cyclic_parts(node, var):
     A, B = split_const_mul(node, var)
     C = flat(B, 'mul') if B[0] == 'mul' else [B]
     D = None
-    E = None
-    F = []
-    for G in C:
-        if G[0] == 'fn' and G[1] == 'exp' and D is None:
-            D = G
-        elif G[0] == 'fn' and G[1] in ('sin', 'cos') and E is None:
-            E = G
-        else:
-            F.append(G)
-    if D is None or E is None or len(F) > 0:
+    F = None
+    G = []
+    for H in C:
+        if D is None:
+            if H[0] == 'fn' and H[1] == 'exp':
+                D = H
+                continue
+            if H[0] == 'pow' and same(H[1], E):
+                D = fn('exp', H[2])
+                continue
+        if F is None and H[0] == 'fn' and H[1] in ('sin', 'cos'):
+            F = H
+            continue
+        G.append(H)
+    if D is None or F is None or len(G) > 0:
         return None, None
-    H = linear_info(D[2], var)
-    I = linear_info(E[2], var)
-    if H is None or I is None:
+    I = linear_info(D[2], var)
+    J = linear_info(F[2], var)
+    if I is None or J is None:
         return None, None
-    J = H[0]
     K = I[0]
-    L = add([mul([J, J]), mul([K, K])])
-    M = fn('exp', D[2])
-    if E[1] == 'sin':
-        N = add([mul([J, fn('sin', E[2])]), neg(mul([K, fn('cos', E[2])]))])
-        O = 'Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.'
+    L = J[0]
+    M = add([mul([K, K]), mul([L, L])])
+    N = fn('exp', D[2])
+    if F[1] == 'sin':
+        O = add([mul([K, fn('sin', F[2])]), neg(mul([L, fn('cos', F[2])]))])
+        P = 'Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.'
     else:
-        N = add([mul([J, fn('cos', E[2])]), mul([K, fn('sin', E[2])])])
-        O = 'Use the standard result for Int[e^(ax+b)cos(cx+d)] dx.'
-    P = sim(div(mul([A, M, N]), L))
-    return P, [O, '= ' + pretty(P) + ' + C']
+        O = add([mul([K, fn('cos', F[2])]), mul([L, fn('sin', F[2])])])
+        P = 'Use the standard result for Int[e^(ax+b)cos(cx+d)] dx.'
+    Q = sim(div(mul([A, N, O]), M))
+    return Q, [P, '= ' + pretty(Q) + ' + C']
 
 
 def choose_parts(node, var):
     F = var
     E = node
     J = sym(F)
-    if E[0] == 'fn' and E[1] == 'log' and same(E[2], J):
+    if E[0] == 'fn' and E[1] in ('log', 'asin', 'acos', 'atan') and same(E[2], J):
         return E, num(1), J
     if E[0] == 'pow' and E[1][0] == 'fn' and E[1][1] == 'log' and same(
             E[1][2], J) and is_int_num(E[2]) and E[2][1] > 0:
         return E, num(1), J
     N, C = split_const_mul(E, F)
-    if C[0] == 'fn' and C[1] == 'log' and same(C[2], J):
+    if C[0] == 'fn' and C[1] in ('log', 'asin', 'acos', 'atan') and same(C[2], J):
         D, _ = integrate_dv_subproblem(N, F, 0)
         if D is not None:
             return C, N, D
@@ -3283,6 +3358,9 @@ def auto_route_substitution(node, var, depth):
 
 
 def auto_route_parts(node, var, depth):
+    A, B = integrate_cyclic_parts(node, var)
+    if A is not None:
+        return 'parts', A, B
     A, B = integrate_by_parts(node, var, depth)
     if A is not None:
         return 'parts', A, B
@@ -4256,7 +4334,7 @@ def integrate_auto(node, var, depth=0, allow_termwise=True, return_kind=False):
         I, A, B = H(C, D, F)
         if A is not None:
             return E(I, A, B)
-    return E('pf', None, None)
+    return E(None, None, None)
 
 
 def is_faxb_term(node, var):
@@ -4338,7 +4416,7 @@ def solve(node, var, method, forced_u=None):
         return finish_integral_solve('Partial fractions', A, B)
     G, A, B = integrate_auto(C, D, 0, True, True)
     if A is None:
-        return 'Partial fractions', A, B
+        return 'Automatic integration', A, B
     if G == 'direct':
         return finish_integral_solve(standard_title(C, D), A, B)
     if G == 'reverse':
