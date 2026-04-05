@@ -95,6 +95,8 @@ TREE_SIZE_CACHE = {}
 RECIPROCAL_BURDEN_CACHE = {}
 TRIG_ARG_KEYS_CACHE = {}
 SOLVE_FEATURE_CACHE = {}
+FINAL_ANGLE_TEXT_CACHE = {}
+SOLUTION_LIST_CACHE = {}
 
 
 def cache_store(cache, key, value, limit):
@@ -133,6 +135,8 @@ ALL_ENGINE_CACHES = (
     RECIPROCAL_BURDEN_CACHE,
     TRIG_ARG_KEYS_CACHE,
     SOLVE_FEATURE_CACHE,
+    FINAL_ANGLE_TEXT_CACHE,
+    SOLUTION_LIST_CACHE,
 )
 
 
@@ -1135,6 +1139,8 @@ def _sim_uncached(node):
         if is_one(bot):
             return top
         if same(top, bot):
+            if has_variable_dependency(top):
+                return ("div", top, bot)
             return num(1)
         if top[0] == "div":
             return div(top[1], mul([top[2], bot]))
@@ -1748,7 +1754,7 @@ def named_reciprocal_trig(node):
         bot = named_reciprocal_trig(node[2])
         top_coeff, top_rest = split_coeff(top)
         bot_coeff, bot_rest = split_coeff(bot)
-        coeff = full_simplify(div(top_coeff, bot_coeff))
+        coeff = div(top_coeff, bot_coeff)
         out = None
         if is_one(top_rest):
             if bot_rest[0] == "fn":
@@ -1915,9 +1921,6 @@ def half_angle_expand(node):
         if name == "sin":
             return div(add([num(1), neg(fn("cos", doubled))]), num(2)), "Use sin^2(A/2) = (1-cos A)/2."
         return div(add([num(1), fn("cos", doubled)]), num(2)), "Use cos^2(A/2) = (1+cos A)/2."
-    coeff = maybe_scalar_times_var(arg, "__dummy__")
-    if coeff is not None:
-        return None, None
     return None, None
 
 
@@ -3007,53 +3010,61 @@ def reduce_identities(node):
     return sim((kind, tuple(out)))
 
 
+def has_variable_dependency(node):
+    names = set()
+    collect_symbols(node, names)
+    return len(names) != 0
+
+
 def simplify_fraction(node):
     node = sim(node)
     if node[0] != "div":
         return node
-    num, den = node[1], node[2]
+    numer, denom = node[1], node[2]
+    if same(numer, denom) and has_variable_dependency(denom):
+        return node
+
     def cancel_factor(expr, factor):
         if same(expr, factor):
+            if has_variable_dependency(factor):
+                return expr
             return num(1)
         if expr[0] == "mul":
             items = list(flat(expr, "mul"))
-            for i in range(len(items)):
+            i = 0
+            while i < len(items):
                 if same(items[i], factor):
-                    items.pop(i)
-                    if len(items) == 0:
-                        return num(1)
-                    elif len(items) == 1:
-                        return items[0]
-                    else:
-                        return mul(*items)
-            # Check for powers
-            for i in range(len(items)):
+                    if has_variable_dependency(factor):
+                        return expr
+                    reduced = items[:i] + items[i + 1 :]
+                    return make_mul(reduced)
+                i += 1
+            i = 0
+            while i < len(items):
                 if items[i][0] == "pow" and same(items[i][1], factor) and items[i][2][0] == "num":
+                    if has_variable_dependency(factor):
+                        return expr
                     e = items[i][2][1]
                     if e > 1:
-                        items[i] = pow(factor, num(e - 1))
-                        if len(items) == 1:
-                            return items[0]
-                        else:
-                            return mul(*items)
-                    elif e == 1:
-                        items.pop(i)
-                        if len(items) == 0:
-                            return num(1)
-                        elif len(items) == 1:
-                            return items[0]
-                        else:
-                            return mul(*items)
+                        reduced = items[:i] + [power(factor, num(e - 1))] + items[i + 1 :]
+                        return make_mul(reduced)
+                    if e == 1:
+                        reduced = items[:i] + items[i + 1 :]
+                        return make_mul(reduced)
+                i += 1
         if expr[0] == "pow" and same(expr[1], factor) and expr[2][0] == "num":
+            if has_variable_dependency(factor):
+                return expr
             e = expr[2][1]
             if e > 1:
-                return pow(factor, num(e - 1))
-            elif e == 1:
+                return power(factor, num(e - 1))
+            if e == 1:
                 return num(1)
         return expr
-    new_num = cancel_factor(num, den)
-    if not same(new_num, num):
-        return new_num
+
+    new_numer = cancel_factor(numer, denom)
+    if not same(new_numer, numer):
+        return new_numer
     return node
 
 
@@ -3150,9 +3161,20 @@ def eval_numeric_mode(node, env, deg_mode):
 
 
 def _equivalent_uncached(a, b):
-    diff = full_simplify(add([a, neg(b)]))
-    if is_zero(diff):
+    if same(a, b) and has_variable_dependency(a):
         return True
+    diff = full_simplify(add([a, neg(b)]))
+    diff_size = tree_size(diff)
+    if diff_size > 80:
+        return False
+    if is_zero(diff):
+        if a[0] == "div" and same(a[1], a[2]) and has_variable_dependency(a[1]):
+            return False
+        if b[0] == "div" and same(b[1], b[2]) and has_variable_dependency(b[1]):
+            return False
+        return True
+    if (a[0] == "div" and same(a[1], a[2]) and has_variable_dependency(a[1]) and same(b, num(1))) or (b[0] == "div" and same(b[1], b[2]) and has_variable_dependency(b[1]) and same(a, num(1))):
+        return False
     if math is None:
         return False
     names = set()
@@ -4799,6 +4821,24 @@ def prove_conjugate_ratio_identity(source, target, source_name, target_name):
 def prove_reciprocal_identity(source, target, source_name, target_name):
     source = sim(source)
     target = sim(target)
+    if source[0] == "fn" and source[1] == "sec" and target[0] == "div":
+        if is_one(target[1]) and target[2][0] == "fn" and target[2][1] == "cos" and same(source[2], target[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use sec A = 1 / cos A.", step_line(target), "= " + target_name]
+    if target[0] == "fn" and target[1] == "sec" and source[0] == "div":
+        if is_one(source[1]) and source[2][0] == "fn" and source[2][1] == "cos" and same(target[2], source[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use 1 / cos A = sec A.", step_line(target), "= " + target_name]
+    if source[0] == "fn" and source[1] == "cosec" and target[0] == "div":
+        if is_one(target[1]) and target[2][0] == "fn" and target[2][1] == "sin" and same(source[2], target[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use cosec A = 1 / sin A.", step_line(target), "= " + target_name]
+    if target[0] == "fn" and target[1] == "cosec" and source[0] == "div":
+        if is_one(source[1]) and source[2][0] == "fn" and source[2][1] == "sin" and same(target[2], source[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use 1 / sin A = cosec A.", step_line(target), "= " + target_name]
+    if source[0] == "fn" and source[1] == "cot" and target[0] == "div":
+        if target[1][0] == "fn" and target[1][1] == "cos" and target[2][0] == "fn" and target[2][1] == "sin" and same(source[2], target[1][2]) and same(source[2], target[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use cot A = cos A / sin A.", step_line(target), "= " + target_name]
+    if target[0] == "fn" and target[1] == "cot" and source[0] == "div":
+        if source[1][0] == "fn" and source[1][1] == "cos" and source[2][0] == "fn" and source[2][1] == "sin" and same(target[2], source[1][2]) and same(target[2], source[2][2]) and equivalent(source, target):
+            return [start_line(source_name, source), "Use cos A / sin A = cot A.", step_line(target), "= " + target_name]
     if source[0] == "fn" and source[1] == "tan" and target[0] == "div":
         if target[1][0] == "fn" and target[1][1] == "sin" and target[2][0] == "fn" and target[2][1] == "cos" and same(source[2], target[1][2]) and same(source[2], target[2][2]) and equivalent(source, target):
             return [start_line(source_name, source), "Use tan A = sin A / cos A.", step_line(target), "= " + target_name]
@@ -6491,6 +6531,18 @@ def transform_same_angle_ratio(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text):
     return None
 
 
+def transform_half_angle_ratio(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs):
+    if not (is_zero(eq1_rhs) and is_zero(eq2_rhs)):
+        return None
+    rewritten = half_angle_ratio_rewrite(eq1_lhs)
+    if rewritten is None:
+        return None
+    new_expr, note = rewritten
+    if not equivalent(new_expr, eq2_lhs):
+        return None
+    return [show(eq1_lhs), note, "= " + show(eq2_lhs)]
+
+
 def detect_transform_var(*nodes):
     i = 0
     fallback = None
@@ -7747,15 +7799,110 @@ def solve_transform_text(eq1_text, eq2_text):
     begin_user_action()
     eq1_lhs, eq1_rhs = parse_equation_or_zero(eq1_text)
     eq2_lhs, eq2_rhs = parse_equation_or_zero(eq2_text)
-    if equivalent(eq1_lhs, eq2_lhs) and is_zero(eq1_rhs) and is_zero(eq2_rhs):
+    expression_only = is_zero(eq1_rhs) and is_zero(eq2_rhs)
+    if same(eq1_lhs, eq2_lhs) and expression_only:
         return [show(eq1_lhs), '= ' + show(eq2_lhs)]
-    if equivalent(eq1_lhs, eq2_lhs) and equivalent(eq1_rhs, eq2_rhs):
+    if same(eq1_lhs, eq2_lhs) and same(eq1_rhs, eq2_rhs):
         return [equation_line(eq1_lhs, eq1_rhs)]
-    if eq1_rhs == num(0) and eq2_rhs == num(0):
-        pass
-    else:
+    if equivalent(eq1_lhs, eq2_lhs) and not same(eq1_lhs, eq2_lhs) and same(eq2_lhs, num(1)) and eq1_lhs[0] == 'div' and same(eq1_lhs[1], eq1_lhs[2]) and has_variable_dependency(eq1_lhs[1]):
+        raise ValueError('Equation 2 does not match Equation 1 under domain restrictions.')
+    if equivalent(eq1_lhs, eq2_lhs) and equivalent(eq1_rhs, eq2_rhs) and not expression_only:
+        return [equation_line(eq1_lhs, eq1_rhs)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if expression_only:
         if eq1_lhs[0] == 'div' and eq1_lhs[1][0] == 'fn' and eq1_lhs[1][1] == 'sin' and eq1_lhs[2][0] == 'fn' and eq1_lhs[2][1] == 'cos' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'tan' and same(eq1_lhs[1][2], eq2_lhs[2]) and same(eq1_lhs[2][2], eq2_lhs[2]):
             return [show(eq1_lhs), 'Use sin A / cos A = tan A.', '= ' + show(eq2_lhs)]
+        if eq1_lhs[0] == 'div' and is_one(eq1_lhs[1]) and eq1_lhs[2][0] == 'fn' and eq1_lhs[2][1] == 'cos' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'sec' and same(eq1_lhs[2][2], eq2_lhs[2]):
+            return [show(eq1_lhs), 'Use 1 / cos A = sec A.', '= ' + show(eq2_lhs)]
+        if eq1_lhs[0] == 'div' and is_one(eq1_lhs[1]) and eq1_lhs[2][0] == 'fn' and eq1_lhs[2][1] == 'sin' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'cosec' and same(eq1_lhs[2][2], eq2_lhs[2]):
+            return [show(eq1_lhs), 'Use 1 / sin A = cosec A.', '= ' + show(eq2_lhs)]
+        if eq1_lhs[0] == 'div' and eq1_lhs[1][0] == 'fn' and eq1_lhs[1][1] == 'cos' and eq1_lhs[2][0] == 'fn' and eq1_lhs[2][1] == 'sin' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'cot' and same(eq1_lhs[1][2], eq2_lhs[2]) and same(eq1_lhs[2][2], eq2_lhs[2]):
+            return [show(eq1_lhs), 'Use cos A / sin A = cot A.', '= ' + show(eq2_lhs)]
+        lines = transform_half_angle_ratio(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs)
+        if lines is not None:
+            return compact_lines(lines)
         if eq1_lhs[0] == 'add' and eq2_lhs[0] == 'fn' and eq2_lhs[1] == 'cos':
             if equivalent(eq1_lhs, eq2_lhs):
                 return [show(eq1_lhs), 'Use cos(2A) = cos^2 A - sin^2 A.', '= ' + show(eq2_lhs)]
@@ -8029,6 +8176,14 @@ def rewrite_local_to_allowed_terms(node, info):
             if name == "cot" and rewrite_allowed_has_fn(info, "tan", arg):
                 return div(num(1), fn("tan", arg)), "Rewrite cot(A) as 1/tan(A)."
         if name == "sin":
+            double_base = match_numeric_multiple_arg(arg, 2)
+            if double_base is not None:
+                if rewrite_allowed_has_fn(info, "tan", double_base):
+                    tan_base = fn("tan", double_base)
+                    return div(mul([num(2), tan_base]), add([num(1), power(tan_base, num(2))])), "Use sin(2A) = 2tan(A)/(1+tan^2(A))."
+                if rewrite_allowed_has_fn(info, "cot", double_base):
+                    cot_base = fn("cot", double_base)
+                    return div(mul([num(2), cot_base]), add([power(cot_base, num(2)), num(1)])), "Use sin(2A) = 2cot(A)/(1+cot^2(A))."
             if rewrite_allowed_has_fn(info, "tan", arg) and rewrite_allowed_has_fn(info, "sec", arg):
                 return div(fn("tan", arg), fn("sec", arg)), "Rewrite sin(A) as tan(A)/sec(A)."
             if rewrite_allowed_has_fn(info, "cosec", arg):
@@ -8042,7 +8197,6 @@ def rewrite_local_to_allowed_terms(node, info):
         if rewritten is not None and rewrite_burden(rewritten, info) < rewrite_burden(node, info):
             return rewritten, note
         return None, None
-
     if node[0] == "pow" and is_int_num(node[2]) and node[1][0] == "fn":
         name = node[1][1]
         arg = node[1][2]
@@ -8188,6 +8342,34 @@ def rewrite_local_to_allowed_terms(node, info):
                 if equivalent(coeffs["cot"], neg(coeffs["tan"])) and rewrite_allowed_has_fn(info, "cot", double_arg):
                     rewritten = sim(add([const, mul([num(2), coeffs["cot"], fn("cot", double_arg)])]))
                     return rewritten, "Use cot(A)-tan(A) = 2cot(2A)."
+            pm_cos = match_one_pm_cos_norm(node)
+            if pm_cos is not None:
+                half = half_angle_expr(pm_cos[1])
+                if half is not None:
+                    if pm_cos[0] < 0 and rewrite_allowed_has_fn(info, "tan", half):
+                        tan_half = fn("tan", half)
+                        return div(mul([num(2), power(tan_half, num(2))]), add([num(1), power(tan_half, num(2))])), "Use 1-cos(2A) = 2tan^2(A)/(1+tan^2(A))."
+                    if pm_cos[0] > 0 and rewrite_allowed_has_fn(info, "tan", half):
+                        tan_half = fn("tan", half)
+                        return div(num(2), add([num(1), power(tan_half, num(2))])), "Use 1+cos(2A) = 2/(1+tan^2(A))."
+                    if pm_cos[0] < 0 and rewrite_allowed_has_fn(info, "cot", half):
+                        cot_half = fn("cot", half)
+                        return div(num(2), add([num(1), power(cot_half, num(2))])), "Use 1-cos(2A) = 2/(1+cot^2(A))."
+                    if pm_cos[0] > 0 and rewrite_allowed_has_fn(info, "cot", half):
+                        cot_half = fn("cot", half)
+                        return div(mul([num(2), power(cot_half, num(2))]), add([num(1), power(cot_half, num(2))])), "Use 1+cos(2A) = 2cot^2(A)/(1+cot^2(A))."
+                    if pm_cos[0] < 0 and rewrite_allowed_has_fn(info, "sec", half):
+                        sec_half = fn("sec", half)
+                        return add([num(2), neg(div(num(2), power(sec_half, num(2))))]), "Use 1-cos(2A) = 2-2/sec^2(A)."
+                    if pm_cos[0] > 0 and rewrite_allowed_has_fn(info, "cosec", half):
+                        cosec_half = fn("cosec", half)
+                        return add([num(2), neg(div(num(2), power(cosec_half, num(2))))]), "Use 1+cos(2A) = 2-2/cosec^2(A)."
+                    if pm_cos[0] > 0 and rewrite_allowed_has_fn(info, "sec", half):
+                        sec_half = fn("sec", half)
+                        return div(num(2), power(sec_half, num(2))), "Use 1+cos(2A) = 2/sec^2(A)."
+                    if pm_cos[0] < 0 and rewrite_allowed_has_fn(info, "cosec", half):
+                        cosec_half = fn("cosec", half)
+                        return div(num(2), power(cosec_half, num(2))), "Use 1-cos(2A) = 2/cosec^2(A)."
         rewritten, note = direct_double_angle_rewrite(node)
         if rewritten is not None and rewrite_burden(rewritten, info) < rewrite_burden(node, info):
             return rewritten, note
@@ -8229,11 +8411,17 @@ def rewrite_first_local(node, info):
 
 def rewrite_candidate_steps(expr, info, var):
     candidates = []
+    seen = set()
+    expr_burden = rewrite_burden(expr, info)
 
     def add_candidate(note, candidate):
         candidate = normalise_rewrite_trig_signs(sim(candidate))
         if same(candidate, expr):
             return
+        key = sig(candidate)
+        if key in seen:
+            return
+        seen.add(key)
         candidates.append((candidate, note))
 
     local, note = rewrite_first_local(expr, info)
@@ -8241,35 +8429,36 @@ def rewrite_candidate_steps(expr, info, var):
         add_candidate(note, local)
 
     candidate = reciprocal_trig(expr)
-    if rewrite_burden(candidate, info) < rewrite_burden(expr, info):
+    if rewrite_burden(candidate, info) < expr_burden:
         add_candidate("Write tan, cot, sec and cosec in terms of sin and cos.", candidate)
 
     candidate = named_reciprocal_trig(expr)
-    if rewrite_burden(candidate, info) < rewrite_burden(expr, info):
+    if rewrite_burden(candidate, info) < expr_burden:
         add_candidate("Rewrite ratios as named trig functions.", candidate)
 
     candidate = reduce_identities(expr)
-    if rewrite_burden(candidate, info) <= rewrite_burden(expr, info) and (not same(candidate, expr)):
+    if rewrite_burden(candidate, info) <= expr_burden and (not same(candidate, expr)):
         add_candidate("Use Pythagorean identities.", candidate)
 
     candidate = reduce_sec_cosec_squares(expr)
-    if rewrite_burden(candidate, info) <= rewrite_burden(expr, info) and (not same(candidate, expr)):
+    if rewrite_burden(candidate, info) <= expr_burden and (not same(candidate, expr)):
         add_candidate("Use sec^2(A) = 1+tan^2(A) and cosec^2(A) = 1+cot^2(A).", candidate)
 
     candidate = expand_safe_trig_tree(expr)
-    if rewrite_burden(candidate, info) < rewrite_burden(expr, info):
+    if rewrite_burden(candidate, info) < expr_burden:
         add_candidate("Expand compound trig expressions.", candidate)
 
-    candidate = expand_trig_tree(expr)
-    if rewrite_burden(candidate, info) < rewrite_burden(expr, info):
-        add_candidate("Use standard trig identities.", candidate)
+    if tree_size(expr) <= 24:
+        candidate = expand_trig_tree(expr)
+        if rewrite_burden(candidate, info) < expr_burden:
+            add_candidate("Use standard trig identities.", candidate)
 
     candidate = expand_embedded_small(expr)
-    if rewrite_burden(candidate, info) <= rewrite_burden(expr, info) and not same(candidate, expr):
+    if rewrite_burden(candidate, info) <= expr_burden and not same(candidate, expr):
         add_candidate("Expand and simplify.", candidate)
 
     candidate = full_simplify(expr)
-    if rewrite_burden(candidate, info) <= rewrite_burden(expr, info) and not same(candidate, expr):
+    if rewrite_burden(candidate, info) <= expr_burden and not same(candidate, expr):
         add_candidate("Simplify.", candidate)
 
     if expr[0] == "div":
@@ -8706,10 +8895,35 @@ def final_exact_text_or_float(value, dp=4):
 
 
 def final_angle_text(value, deg_mode, dp=4):
+    rounded = round(value, 10)
+    key = (rounded, deg_mode, dp)
+    cached = FINAL_ANGLE_TEXT_CACHE.get(key)
+    if cached is not None:
+        return cached
     node = infer_exact_angle_node(value, deg_mode)
     if node is not None:
-        return show(node)
-    return fixed_float_text(value, dp)
+        text = show(node)
+    else:
+        text = fixed_float_text(value, dp)
+    return cache_store(FINAL_ANGLE_TEXT_CACHE, key, text, CACHE_LIMIT_MEDIUM)
+
+
+def solution_list_text(values, deg_mode):
+    rounded = []
+    i = 0
+    while i < len(values):
+        rounded.append(round(values[i], 10))
+        i += 1
+    key = (tuple(rounded), deg_mode)
+    cached = SOLUTION_LIST_CACHE.get(key)
+    if cached is not None:
+        return cached
+    bits = []
+    i = 0
+    while i < len(values):
+        bits.append(final_angle_text(values[i], deg_mode))
+        i += 1
+    return cache_store(SOLUTION_LIST_CACHE, key, bits, CACHE_LIMIT_SMALL)
 
 
 def dedupe_values(values, tol=1e-6):
@@ -9005,7 +9219,7 @@ def estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span):
     estimate_solve_periods(lhs, var, deg_mode, periods)
     estimate_solve_periods(rhs, var, deg_mode, periods)
     if len(periods) == 0:
-        base_step = span / 1024.0
+        base_step = span / 768.0
     else:
         best = periods[0]
         i = 1
@@ -9013,14 +9227,14 @@ def estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span):
             if periods[i] < best:
                 best = periods[i]
             i += 1
-        base_step = best / 96.0
+        base_step = best / 80.0
     if base_step <= 1e-12:
-        base_step = span / 1024.0
+        base_step = span / 768.0
     samples = int(math.ceil(span / base_step))
-    if samples < 512:
-        samples = 512
-    if samples > 4096:
-        samples = 4096
+    if samples < 384:
+        samples = 384
+    if samples > 3072:
+        samples = 3072
     return samples
 
 
@@ -10647,6 +10861,27 @@ def trig_base_solutions(name, value, deg_mode):
     return uniq
 
 
+def solve_n_range_for_interval(mult, offset, base_angle, step, start_val, end_val):
+    if abs(mult) < 1e-12 or abs(step) < 1e-12:
+        return None
+    low = mult * start_val + offset - base_angle
+    high = mult * end_val + offset - base_angle
+    if low > high:
+        low, high = high, low
+    start_n = int(math.floor(low / step)) - 1
+    end_n = int(math.ceil(high / step)) + 1
+    return start_n, end_n
+
+
+def append_unique_float(values, value, tol=1e-7):
+    i = 0
+    while i < len(values):
+        if abs(values[i] - value) < tol:
+            return
+        i += 1
+    values.append(value)
+
+
 def solve_angle_value(name, mult_node, offset_node, target_value, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
     mult = eval_numeric(mult_node, {})
     offset = eval_numeric(offset_node, {})
@@ -10660,30 +10895,16 @@ def solve_angle_value(name, mult_node, offset_node, target_value, start_val, end
     angles = []
     i = 0
     while i < len(base):
-        n = -20
-        while n <= 20:
-            angle = base[i] + n * base_period
-            x_val = (angle - offset) / mult
-            if within_interval(x_val, start_val, end_val, start_inclusive, end_inclusive):
-                dup_angle = False
-                j = 0
-                while j < len(angles):
-                    if abs(angles[j] - angle) < 1e-7:
-                        dup_angle = True
-                        break
-                    j += 1
-                if not dup_angle:
-                    angles.append(angle)
-                dup = False
-                j = 0
-                while j < len(sols):
-                    if abs(sols[j] - x_val) < 1e-7:
-                        dup = True
-                        break
-                    j += 1
-                if not dup:
-                    sols.append(x_val)
-            n += 1
+        n_range = solve_n_range_for_interval(mult, offset, base[i], base_period, start_val, end_val)
+        if n_range is not None:
+            n = n_range[0]
+            while n <= n_range[1]:
+                angle = base[i] + n * base_period
+                x_val = (angle - offset) / mult
+                if within_interval(x_val, start_val, end_val, start_inclusive, end_inclusive):
+                    append_unique_float(angles, angle)
+                    append_unique_float(sols, x_val)
+                n += 1
         i += 1
     sols.sort()
     angles.sort()
@@ -11822,20 +12043,24 @@ def half_angle_ratio_rewrite(node):
     if part is None:
         return None
     coeff, top, bot = part
-    top_pm = match_one_pm_cos_norm(top)
-    bot_pm = match_one_pm_cos_norm(bot)
-    top_sin = match_simple_trig_term_norm(top, "sin")
-    bot_sin = match_simple_trig_term_norm(bot, "sin")
-    if top_pm is not None and bot_sin is not None and is_one(bot_sin[0]) and cheap_same(top_pm[1], bot_sin[1]):
+    top_outer, top_core = split_coeff(top)
+    bot_outer, bot_core = split_coeff(bot)
+    top_pm = match_one_pm_cos_norm(top_core)
+    bot_pm = match_one_pm_cos_norm(bot_core)
+    top_sin = match_simple_trig_term_norm(top_core, "sin")
+    bot_sin = match_simple_trig_term_norm(bot_core, "sin")
+    if top_pm is not None and bot_sin is not None and cheap_same(top_pm[1], bot_sin[1]):
         half = div(top_pm[1], num(2))
+        total_coeff = sim(mul([coeff, top_outer, div(num(1), mul([bot_outer, bot_sin[0]]))]))
         if top_pm[0] < 0:
-            return sim(mul([coeff, fn("tan", half)])), "Use half-angle ratio identities."
-        return sim(mul([coeff, fn("cot", half)])), "Use half-angle ratio identities."
-    if top_sin is not None and bot_pm is not None and is_one(top_sin[0]) and cheap_same(top_sin[1], bot_pm[1]):
+            return sim(mul([total_coeff, fn("tan", half)])), "Use half-angle ratio identities."
+        return sim(mul([total_coeff, fn("cot", half)])), "Use half-angle ratio identities."
+    if top_sin is not None and bot_pm is not None and cheap_same(top_sin[1], bot_pm[1]):
         half = div(top_sin[1], num(2))
+        total_coeff = sim(mul([coeff, top_outer, top_sin[0], div(num(1), bot_outer)]))
         if bot_pm[0] > 0:
-            return sim(mul([coeff, fn("tan", half)])), "Use half-angle ratio identities."
-        return sim(mul([coeff, fn("cot", half)])), "Use half-angle ratio identities."
+            return sim(mul([total_coeff, fn("tan", half)])), "Use half-angle ratio identities."
+        return sim(mul([total_coeff, fn("cot", half)])), "Use half-angle ratio identities."
     return None
 
 
@@ -12381,58 +12606,46 @@ def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_in
     pair2 = linear_pair(second[2], var)
     if pair1 is None or pair2 is None:
         return None
+
+    def append_linear_solution(target_expr, sols):
+        linear = linear_pair(target_expr, var)
+        if linear is not None and not is_zero(linear[0]):
+            value = eval_numeric_mode(sim(div(neg(linear[1]), linear[0])), {}, deg_mode)
+            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
+                append_unique_solve_value(sols, value)
+
+    def append_periodic_solutions(base_target, shift, sols):
+        linear = linear_pair(base_target, var)
+        if linear is None:
+            return
+        coeff = eval_numeric_mode(linear[0], {}, deg_mode)
+        const = eval_numeric_mode(linear[1], {}, deg_mode)
+        n_range = solve_n_range_for_interval(coeff, const, 0.0, shift, start_val, end_val)
+        if n_range is None:
+            return
+        n = n_range[0]
+        while n <= n_range[1]:
+            append_linear_solution(sim(add([base_target, neg(number_node(n * shift))])), sols)
+            n += 1
+
     name = first[1]
     full_turn = 360.0 if deg_mode else 2.0 * math.pi
     half_turn = 180.0 if deg_mode else math.pi
     sols = []
     if name in ("tan", "cot"):
-        n = -24
-        while n <= 24:
-            target = sim(add([first[2], neg(second[2]), neg(number_node(n * half_turn))]))
-            linear = linear_pair(target, var)
-            if linear is not None and not is_zero(linear[0]):
-                value = eval_numeric_mode(sim(div(neg(linear[1]), linear[0])), {}, deg_mode)
-                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                    append_unique_solve_value(sols, value)
-            n += 1
+        append_periodic_solutions(sim(add([first[2], neg(second[2])])), half_turn, sols)
         lines = [
             "For " + name + "(A) = " + name + "(B), A = B + n*pi.",
         ]
     elif name == "sin":
-        n = -12
-        while n <= 12:
-            target1 = sim(add([first[2], neg(second[2]), neg(number_node(n * full_turn))]))
-            linear1 = linear_pair(target1, var)
-            if linear1 is not None and not is_zero(linear1[0]):
-                value = eval_numeric_mode(sim(div(neg(linear1[1]), linear1[0])), {}, deg_mode)
-                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                    append_unique_solve_value(sols, value)
-            target2 = sim(add([first[2], second[2], neg(number_node(180.0 if deg_mode else math.pi)), neg(number_node(n * full_turn))]))
-            linear2 = linear_pair(target2, var)
-            if linear2 is not None and not is_zero(linear2[0]):
-                value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                    append_unique_solve_value(sols, value)
-            n += 1
+        append_periodic_solutions(sim(add([first[2], neg(second[2])])), full_turn, sols)
+        append_periodic_solutions(sim(add([first[2], second[2], neg(number_node(180.0 if deg_mode else math.pi))])), full_turn, sols)
         lines = [
             "For sin(A) = sin(B), A = B + 2*n*pi or A = pi-B + 2*n*pi.",
         ]
     else:
-        n = -12
-        while n <= 12:
-            target1 = sim(add([first[2], neg(second[2]), neg(number_node(n * full_turn))]))
-            linear1 = linear_pair(target1, var)
-            if linear1 is not None and not is_zero(linear1[0]):
-                value = eval_numeric_mode(sim(div(neg(linear1[1]), linear1[0])), {}, deg_mode)
-                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                    append_unique_solve_value(sols, value)
-            target2 = sim(add([first[2], second[2], neg(number_node(n * full_turn))]))
-            linear2 = linear_pair(target2, var)
-            if linear2 is not None and not is_zero(linear2[0]):
-                value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                    append_unique_solve_value(sols, value)
-            n += 1
+        append_periodic_solutions(sim(add([first[2], neg(second[2])])), full_turn, sols)
+        append_periodic_solutions(sim(add([first[2], second[2]])), full_turn, sols)
         lines = [
             "For cos(A) = cos(B), A = B + 2*n*pi or A = -B + 2*n*pi.",
         ]
@@ -12467,24 +12680,31 @@ def solve_equal_complementary_trig_expr(expr, var, start_val, end_val, deg_mode,
     cos_pair = linear_pair(cos_arg, var)
     if sin_pair is None or cos_pair is None:
         return None
+
+    def append_periodic_solutions(base_target, start_shift, sols):
+        linear = linear_pair(base_target, var)
+        if linear is None:
+            return
+        coeff = eval_numeric_mode(linear[0], {}, deg_mode)
+        const = eval_numeric_mode(linear[1], {}, deg_mode)
+        n_range = solve_n_range_for_interval(coeff, const, start_shift, full_turn, start_val, end_val)
+        if n_range is None:
+            return
+        n = n_range[0]
+        while n <= n_range[1]:
+            target = sim(add([base_target, neg(number_node(start_shift + n * full_turn))]))
+            linear2 = linear_pair(target, var)
+            if linear2 is not None and not is_zero(linear2[0]):
+                value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
+                if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
+                    append_unique_solve_value(sols, value)
+            n += 1
+
     quarter_turn = 90.0 if deg_mode else math.pi / 2.0
     full_turn = 360.0 if deg_mode else 2.0 * math.pi
     sols = []
-    n = -12
-    while n <= 12:
-        target1 = sim(add([sin_arg, cos_arg, neg(number_node(quarter_turn + n * full_turn))]))
-        linear1 = linear_pair(target1, var)
-        if linear1 is not None and not is_zero(linear1[0]):
-            value = eval_numeric_mode(sim(div(neg(linear1[1]), linear1[0])), {}, deg_mode)
-            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                append_unique_solve_value(sols, value)
-        target2 = sim(add([sin_arg, neg(cos_arg), neg(number_node(quarter_turn + n * full_turn))]))
-        linear2 = linear_pair(target2, var)
-        if linear2 is not None and not is_zero(linear2[0]):
-            value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                append_unique_solve_value(sols, value)
-        n += 1
+    append_periodic_solutions(sim(add([sin_arg, cos_arg])), quarter_turn, sols)
+    append_periodic_solutions(sim(add([sin_arg, neg(cos_arg)])), quarter_turn, sols)
     sols = dedupe_values(sols)
     quarter_text = "90" if deg_mode else "pi/2"
     full_text = "360" if deg_mode else "2*pi"
@@ -12532,23 +12752,21 @@ def solve_equal_tan_cot_expr(expr, var, start_val, end_val, deg_mode, start_incl
         return None
     period = math.pi
     sols = []
-    n = -20
-    while n <= 20:
-        target = sim(add([first[1], neg(second[1]), neg(number_node(n * period))]))
-        linear = linear_pair(target, var)
-        if linear is not None and not is_zero(linear[0]):
-            value = eval_numeric_mode(sim(div(neg(linear[1]), linear[0])), {}, deg_mode)
-            if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                dup = False
-                i = 0
-                while i < len(sols):
-                    if abs(sols[i] - value) < 1e-7:
-                        dup = True
-                        break
-                    i += 1
-                if not dup:
-                    sols.append(value)
-        n += 1
+    linear = linear_pair(sim(add([first[1], neg(second[1])])), var)
+    if linear is not None:
+        coeff = eval_numeric_mode(linear[0], {}, deg_mode)
+        const = eval_numeric_mode(linear[1], {}, deg_mode)
+        n_range = solve_n_range_for_interval(coeff, const, 0.0, period, start_val, end_val)
+        if n_range is not None:
+            n = n_range[0]
+            while n <= n_range[1]:
+                target = sim(add([first[1], neg(second[1]), neg(number_node(n * period))]))
+                linear2 = linear_pair(target, var)
+                if linear2 is not None and not is_zero(linear2[0]):
+                    value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
+                    if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
+                        append_unique_solve_value(sols, value)
+                n += 1
     sols = dedupe_values(sols)
     lines = [
         "For " + name + "(A) = " + name + "(B), A = B + n*pi.",
@@ -12804,12 +13022,8 @@ def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_in
         if len(uniq) == 0:
             lines.append("No solutions in the interval.")
             return [], compact_lines(lines)
-        sol_text = []
-        i = 0
-        while i < len(uniq):
-            sol_text.append(final_angle_text(uniq[i], deg_mode))
-            i += 1
-        lines.append(var + " = [" + ", ".join(sol_text) + "]")
+        sol_text = solution_list_text(uniq, deg_mode)
+        lines.append("Combined solutions: " + var + " = [" + ", ".join(sol_text) + "]")
         return uniq, compact_lines(lines)
     poly = extract_polynomial_trig(expr, var, 4)
     if poly is not None:
@@ -13020,17 +13234,14 @@ def solve_factor_product_expr(expr, var, start_val, end_val, deg_mode, start_inc
             j += 1
         j = 0
         while j < len(result):
-            all_solutions.append(result[j])
+            value = solve_numeric_value(expr, var, result[j], deg_mode)
+            if value is not None and abs(value) < 1e-6:
+                all_solutions.append(result[j])
             j += 1
         i += 1
     uniq = dedupe_values(all_solutions)
     if len(uniq) != 0:
-        bits = []
-        i = 0
-        while i < len(uniq):
-            bits.append(final_angle_text(uniq[i], deg_mode))
-            i += 1
-        lines.append(var + " = [" + ", ".join(bits) + "]")
+        lines.append("Combined solutions: " + var + " = [" + ", ".join(solution_list_text(uniq, deg_mode)) + "]")
     return uniq, compact_lines(lines)
 
 
@@ -13083,6 +13294,15 @@ def solve_rewrite_pipeline(expr, var, start_val, end_val, deg_mode, start_inclus
 
 
 def direct_single_trig_info(expr, var):
+    if expr[0] == "add":
+        terms = list(flat(expr, "add"))
+        if len(terms) == 2:
+            coeff1, rest1 = split_coeff(terms[0])
+            coeff2, rest2 = split_coeff(terms[1])
+            if same(coeff1, num(1)) and same(coeff2, num(-1)) and rest1[0] == "div" and same(rest1[1], rest1[2]) and has_variable_dependency(rest1[1]) and same(rest2, num(1)):
+                return None
+            if same(coeff2, num(1)) and same(coeff1, num(-1)) and rest2[0] == "div" and same(rest2[1], rest2[2]) and has_variable_dependency(rest2[1]) and same(rest1, num(1)):
+                return None
     quad = extract_quadratic_trig(expr, var)
     if quad is not None and is_zero(quad[4]) and not is_zero(quad[5]):
         return quad
@@ -13095,6 +13315,53 @@ def direct_single_trig_info(expr, var):
     if degree == 1:
         return poly
     return None
+
+
+
+def solve_domain_restricted_identity_expr(lhs, rhs, expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    lhs = sim(lhs)
+    rhs = sim(rhs)
+    if not is_domain_restricted_identity_pair(lhs, rhs):
+        return None
+    restricted = lhs if lhs[0] == "div" and same(lhs[1], lhs[2]) else rhs
+    denom = restricted[2]
+    lines = [
+        "This is only true where the denominator is defined.",
+        show(denom) + " != 0",
+    ]
+    candidates = []
+    span = abs(end_val - start_val)
+    samples = estimate_numeric_scan_samples(denom, num(0), var, deg_mode, span)
+    step = span * 1.0 / samples if samples > 0 else 0.0
+    x1 = start_val
+    y1 = solve_numeric_value(denom, var, x1, deg_mode)
+    if y1 is not None and abs(y1) < 1e-6 and within_interval(x1, start_val, end_val, start_inclusive, end_inclusive):
+        candidates.append(x1)
+    i = 1
+    while i <= samples:
+        x2 = start_val + step * i
+        y2 = solve_numeric_value(denom, var, x2, deg_mode)
+        if y2 is not None and abs(y2) < 1e-6 and within_interval(x2, start_val, end_val, start_inclusive, end_inclusive):
+            candidates.append(x2)
+        if y1 is not None and y2 is not None and y1 * y2 < 0:
+            root = refine_numeric_zero_bracket(denom, var, x1, x2, y1, y2, deg_mode)
+            if root is not None and within_interval(root, start_val, end_val, start_inclusive, end_inclusive):
+                candidates.append(root)
+        x1 = x2
+        y1 = y2
+        i += 1
+    candidates = dedupe_values(candidates)
+    if len(candidates) == 0:
+        lines.append("No denominator zeros found in the interval, so all values in the interval work.")
+        return return_all_in_interval(var, start_val, end_val, deg_mode, lines)
+    bits = []
+    i = 0
+    while i < len(candidates):
+        bits.append(final_angle_text(candidates[i], deg_mode))
+        i += 1
+    lines.append("Exclude " + var + " = [" + ", ".join(bits) + "]")
+    lines.append(var + " = all values in the interval except those exclusions.")
+    return {"all_values_except": candidates, "var": var, "start": start_val, "end": end_val, "deg_mode": deg_mode}, compact_lines(lines)
 
 
 def solve_feature_scan(expr, var):
@@ -13881,10 +14148,22 @@ def match_scaled_reciprocal_identity_zero(expr, var, first_name, second_name):
     return arg
 
 
+def is_domain_restricted_identity_pair(lhs, rhs):
+    lhs = sim(lhs)
+    rhs = sim(rhs)
+    if same(rhs, num(1)) and lhs[0] == "div" and same(lhs[1], lhs[2]) and has_variable_dependency(lhs[1]):
+        return True
+    if same(lhs, num(1)) and rhs[0] == "div" and same(rhs[1], rhs[2]) and has_variable_dependency(rhs[1]):
+        return True
+    return False
+
+
 def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs=None, rhs=None):
     expr = sim(expr)
 
     if is_num(expr):
+        if lhs is not None and rhs is not None and is_domain_restricted_identity_pair(lhs, rhs):
+            return None
         if expr == num(0) or (isinstance(expr, tuple) and expr[0] == "num" and expr[1] == 0):
             if lhs is not None and rhs is not None:
                 lhs_sim = sim(lhs)
@@ -13896,8 +14175,9 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
     if lhs is not None and rhs is not None:
         lhs_sim = sim(lhs)
         rhs_sim = sim(rhs)
-        if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
-            return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
+        if not is_domain_restricted_identity_pair(lhs_sim, rhs_sim):
+            if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
+                return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
 
     identity_name = None
     if match_scaled_reciprocal_identity_zero(expr, var, "sec", "tan") is not None:
@@ -13966,6 +14246,7 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
             out.append("No solutions in the interval.")
         return [], out
     sols, angles = solve_angle_value(name, mult, offset, target_value, start_val, end_val, deg_mode)
+    sols = dedupe_values(sols)
     if len(angles) != 0:
         bits = []
         i = 0
@@ -14214,6 +14495,9 @@ def try_solver_on_candidates(candidates, solver, var, start_val, end_val, deg_mo
 
 
 def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines):
+    restricted_identity = solve_domain_restricted_identity_expr(lhs, rhs, expr, var, start_val, end_val, deg_mode)
+    if restricted_identity is not None:
+        return restricted_identity
     identity_result = try_identity_candidates([expr], var, start_val, end_val, deg_mode, lines, lhs, rhs)
     if identity_result is not None:
         return identity_result
@@ -14276,17 +14560,21 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
 
 
 def solution_list_line(var, values, deg_mode):
-    bits = []
-    i = 0
-    while i < len(values):
-        bits.append(final_angle_text(values[i], deg_mode))
-        i += 1
-    return var + " = [" + ", ".join(bits) + "]"
+    return var + " = [" + ", ".join(solution_list_text(values, deg_mode)) + "]"
 
 
 def drop_trailing_solution_line(lines, var):
-    prefix = var + " = ["
-    while len(lines) != 0 and lines[-1].startswith(prefix):
+    prefixes = (var + " = [", "Combined solutions: " + var + " = [")
+    while len(lines) != 0:
+        keep = True
+        i = 0
+        while i < len(prefixes):
+            if lines[-1].startswith(prefixes[i]):
+                keep = False
+                break
+            i += 1
+        if keep:
+            break
         lines.pop()
 
 
@@ -14430,6 +14718,8 @@ def solve_prove_text(text, route):
     lines = special_text_proof(text, route)
     if lines is not None:
         return compact_lines(lines)
+    if is_domain_restricted_identity_pair(lhs, rhs):
+        raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
     return solve_prove(lhs, rhs, route)
 
 

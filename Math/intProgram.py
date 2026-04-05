@@ -10,6 +10,33 @@ FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
 FAIL = 'Out of scope.'
 DE_FAIL = 'Out of scope.'
+
+
+def hard_integral_failure_reason(node, var):
+    A = sim(node)
+    B = var
+    if same(A, div(num(1), fn('sqrt', add([num(1), neg(power(sym(B), num(4)))])))):
+        return 'Out of scope: elliptic-integral form 1/sqrt(1-' + B + '^4).'
+    if same(A, div(num(1), mul([power(sym(B), num(2)), fn('log', sym(B))]))):
+        return 'Out of scope: non-elementary logarithmic-integral form 1/(' + B + '^2*ln(' + B + ')).'
+    if A[0] == 'pow' and A[1][0] == 'fn' and A[1][1] == 'atan' and same(A[1][2], sym(B)) and same(A[2], num(2)):
+        return 'Out of scope: no elementary antiderivative for atan(' + B + ')^2 in current engine.'
+    return FAIL
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    return A, B, C, hard_integral_failure_reason(node, var)
+
+
+def can_handle_derivative_case(node, var, deps):
+    try:
+        diff(node, var, deps)
+        return True, None
+    except Exception as err:
+        return False, str(err)
 SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
@@ -2890,11 +2917,92 @@ def integrate_substitution(node, var, forced_u=None):
     return None, None
 
 
+def trig_simple_fraction_rewrite(node):
+    A = sim(node)
+    if A[0] != 'div':
+        return None, None
+    top = A[1]
+    bot = A[2]
+
+    def one_pm_fn(expr, name):
+        if expr[0] != 'add':
+            return None
+        terms = flat(expr, 'add')
+        if len(terms) != 2:
+            return None
+        saw_one = False
+        arg = None
+        sign = None
+        i = 0
+        while i < len(terms):
+            term = terms[i]
+            if same(term, num(1)):
+                saw_one = True
+            elif term[0] == 'fn' and term[1] == name:
+                arg = term[2]
+                sign = 1
+            elif term[0] == 'mul':
+                coeff, rest = split_coeff(term)
+                if is_minus_one(coeff) and rest[0] == 'fn' and rest[1] == name:
+                    arg = rest[2]
+                    sign = -1
+                else:
+                    return None
+            else:
+                return None
+            i += 1
+        if not saw_one or arg is None:
+            return None
+        return sign, arg
+
+    top_pm_cos = one_pm_fn(top, 'cos')
+    top_pm_sin = one_pm_fn(top, 'sin')
+    bot_pm_cos = one_pm_fn(bot, 'cos')
+    bot_pm_sin = one_pm_fn(bot, 'sin')
+
+    if top[0] == 'fn' and top[1] == 'sin' and same(top[2], mul([num(2), sym('x')])):
+        top_arg = div(top[2], num(2))
+        if bot_pm_cos is not None and same(bot_pm_cos[1], top_arg):
+            if bot_pm_cos[0] > 0:
+                return 'Use sin(2A) = 2sin A cos A and split the fraction.', add([
+                    mul([num(2), fn('sin', top_arg)]),
+                    neg(div(mul([num(2), fn('sin', top_arg)]), add([num(1), fn('cos', top_arg)])))
+                ])
+            return 'Use sin(2A) = 2sin A cos A and split the fraction.', div(mul([num(2), fn('sin', top_arg), fn('cos', top_arg)]), add([num(1), neg(fn('cos', top_arg))]))
+        if bot_pm_sin is not None and same(bot_pm_sin[1], top_arg):
+            if bot_pm_sin[0] > 0:
+                return 'Use sin(2A) = 2sin A cos A and simplify the denominator.', mul([
+                    num(2),
+                    fn('cos', top_arg),
+                    add([num(1), neg(div(num(1), add([num(1), fn('sin', top_arg)])))])
+                ])
+            return 'Use sin(2A) = 2sin A cos A and simplify the denominator.', mul([
+                num(2),
+                fn('cos', top_arg),
+                add([num(1), div(num(1), add([num(1), neg(fn('sin', top_arg))]))])
+            ])
+
+    if bot[0] == 'fn' and bot[1] == 'sin':
+        bot_arg = bot[2]
+        if top_pm_cos is not None and same(top_pm_cos[1], mul([num(2), bot_arg])):
+            if top_pm_cos[0] < 0:
+                return 'Use 1-cos(2A) = 2sin^2 A and cancel a factor of sin A.', mul([num(2), fn('sin', bot_arg)])
+            return 'Use 1+cos(2A) = 2cos^2 A and divide by sin A.', div(mul([num(2), power(fn('cos', bot_arg), num(2))]), fn('sin', bot_arg))
+    if top[0] == 'add' and bot[0] == 'fn' and bot[1] == 'sin':
+        top_pm_cos = one_pm_fn(top, 'cos')
+        if top_pm_cos is not None and top_pm_cos[0] > 0 and same(top_pm_cos[1], mul([num(2), bot[2]])):
+            return 'Use 1+cos(2A) = 2cos^2 A and divide by sin A.', div(mul([num(2), power(fn('cos', bot[2]), num(2))]), fn('sin', bot[2]))
+    return None, None
+
+
 def trig_rewrite_step(node, var=None):
     B = node
     I = expand_square(B)
     if I is not None:
         return 'Expand the brackets.', I
+    J, H = trig_simple_fraction_rewrite(B)
+    if H is not None:
+        return J, H
     J, H = trig_linear_reciprocal_rewrite(B)
     if H is not None:
         return J, H
@@ -3089,6 +3197,24 @@ def choose_parts(node, var):
     J = sym(F)
     if E[0] == 'fn' and E[1] in ('log', 'asin', 'acos', 'atan') and same(E[2], J):
         return E, num(1), J
+    if E[0] == 'mul':
+        B = list(flat(E, 'mul'))
+        A = 0
+        while A < len(B):
+            C = B[A]
+            if C[0] == 'fn' and C[1] in ('asin', 'acos') and same(C[2], J):
+                D = []
+                K = 0
+                while K < len(B):
+                    if K != A:
+                        D.append(B[K])
+                    K += 1
+                if len(D) > 0:
+                    L = D[0] if len(D) == 1 else mul(D)
+                    M, N = integrate_dv_subproblem(L, F, 0)
+                    if M is not None:
+                        return C, L, M
+            A += 1
     if E[0] == 'pow' and E[1][0] == 'fn' and E[1][1] == 'log' and same(
             E[1][2], J) and is_int_num(E[2]) and E[2][1] > 0:
         return E, num(1), J
@@ -3166,6 +3292,41 @@ def integrate_by_parts(node, var, depth=0):
     A = var
     if H > 4:
         return None, None
+    P, Q = split_const_mul(node, A)
+    R = flat(Q, 'mul') if Q[0] == 'mul' else [Q]
+    S = sym(A)
+    T = None
+    U = None
+    for V in R:
+        if same(V, S):
+            T = V
+        elif V[0] == 'fn' and V[1] in ('asin', 'acos') and same(V[2], S):
+            U = V[1]
+    if T is not None and U is not None and len(R) == 2:
+        W = fn('sqrt', add([num(1), neg(power(S, num(2)))]))
+        if U == 'asin':
+            X = add([
+                mul([div(power(S, num(2)), num(2)), fn('asin', S)]),
+                neg(div(fn('asin', S), num(4))),
+                div(mul([S, W]), num(4))])
+            Y = [
+                'u = asin(' + A + ')',
+                'v = ' + pretty(div(power(S, num(2)), num(2))),
+                'I = u*v-1/2*Int[' + A + '^2/sqrt(1-' + A + '^2)] d' + A,
+                'Use ' + A + '^2 = 1-(1-' + A + '^2).',
+                '= ' + pretty(X) + ' + C']
+            return mul([P, X]), Y
+        X = add([
+            mul([div(power(S, num(2)), num(2)), fn('acos', S)]),
+            neg(div(fn('acos', S), num(4))),
+            neg(div(mul([S, W]), num(4)))])
+        Y = [
+            'u = acos(' + A + ')',
+            'v = ' + pretty(div(power(S, num(2)), num(2))),
+            'I = u*v+1/2*Int[' + A + '^2/sqrt(1-' + A + '^2)] d' + A,
+            'Use ' + A + '^2 = 1-(1-' + A + '^2).',
+            '= ' + pretty(X) + ' + C']
+        return mul([P, X]), Y
     C, B = integrate_cyclic_parts(node, A)
     if C is not None:
         return C, B
@@ -3178,6 +3339,14 @@ def integrate_by_parts(node, var, depth=0):
         return None, None
     E = mul([D, J])
     K, F = integrate_auto(E, A, H + 1, True)
+    if K is None and C[0] == 'fn' and C[1] in ('asin', 'acos') and same(C[2], sym(A)):
+        N = fn('sqrt', add([num(1), neg(power(sym(A), num(2)))]))
+        if C[1] == 'asin' and same(E, div(M, N)):
+            K = neg(N)
+            F = ['Use the standard result for Int[x/sqrt(1-x^2)] dx.', '= -' + pretty(N) + ' + C']
+        elif C[1] == 'acos' and same(E, neg(div(M, N))):
+            K = N
+            F = ['Use the standard result for Int[x/sqrt(1-x^2)] dx.', '= ' + pretty(N) + ' + C']
     if K is None:
         return None, None
     L = add([mul([C, D]), neg(K)])
@@ -4576,9 +4745,9 @@ def main():
                 H = input('u: ').strip()
                 if H != '':
                     G = parse_forced_u(H)
-            L, C, A = solve(J, K, E, G)
+            L, C, A, Q = solve_result_or_reason(J, K, E, G)
             if C is None:
-                print(FAIL)
+                print(Q)
             else:
                 I = '= ' + pretty(C) + ' + C'
                 print('Met: ' + L)

@@ -626,10 +626,10 @@ def make_add(parts):
                     if inner[j][0] == 'add':
                         k = 0
                         while k < len(inner[j][1]):
-                            out.append(mul([num(-1), inner[j][1][k]]))
+                            out.append(make_mul([num(-1), inner[j][1][k]]))
                             k += 1
                     else:
-                        out.append(mul([num(-1), inner[j]]))
+                        out.append(make_mul([num(-1), inner[j]]))
                     j += 1
             else:
                 out.append(item)
@@ -640,8 +640,7 @@ def make_add(parts):
         return num(0)
     if len(out) == 1:
         return out[0]
-    result = 'add', tuple(out)
-    return sim(result)
+    return sim(('add', tuple(out)))
 
 
 def make_mul(parts):
@@ -658,16 +657,15 @@ def make_mul(parts):
         return num(1)
     if len(out) == 1:
         return out[0]
-    result = 'mul', tuple(out)
-    return sim(result)
+    return sim(('mul', tuple(out)))
 
 
 def add(parts):
-    return sim(make_add(parts))
+    return make_add(parts)
 
 
 def mul(parts):
-    return sim(make_mul(parts))
+    return make_mul(parts)
 
 
 def div(a, b):
@@ -899,7 +897,21 @@ def expand_binomial(base_expr, power_expr, max_terms=None):
             steps.append('Term ' + str(i+1) + ': ' + show(coeff) + ' * (' + show(x) + ')^' + str(i) + ' = ' + show(term))
             i += 1
         if result_terms:
-            result = sim(add([power(a, power_expr), make_add(result_terms)]))
+            series = make_add(result_terms)
+            if series[0] == 'add':
+                ordered_terms = list(series[1])
+                ones = []
+                others = []
+                i = 0
+                while i < len(ordered_terms):
+                    if is_one(ordered_terms[i]):
+                        ones.append(ordered_terms[i])
+                    else:
+                        others.append(ordered_terms[i])
+                    i += 1
+                if len(ones) != 0:
+                    series = ('add', tuple(ones + others))
+            result = ('mul', (power(a, power_expr), series))
             return result, steps
         return None, None
     
@@ -916,30 +928,22 @@ def generalized_binomial_coeff(n_num, n_den, k):
     result = num(1)
     i = 0
     while i < k:
-        numerator = n_num * (n_den - i)
-        denominator = n_den * (i + 1)
-        g = gcd(numerator, denominator)
-        result = mulq(result, num(numerator // g, denominator // g))
-        result = divq(result, num(i + 1))
+        result = mulq(result, num(n_num - i * n_den, n_den * (i + 1)))
         i += 1
     return result
 
 
+def try_expand_binomial_power(base_expr, power_expr, max_terms=None):
+    if not is_num(power_expr):
+        return None, None
+    return expand_binomial(base_expr, power_expr, max_terms)
+
+
 def expand_binomial_pow(node):
     if node[0] == 'pow' and node[1][0] == 'add':
-        power_expr = node[2]
-        if is_int_num(power_expr) and power_expr[1] >= 0:
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
-        elif is_num(power_expr) and power_expr[1] < 0:
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
-        elif is_num(power_expr) and power_expr[2] > 1:
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
+        result, steps = try_expand_binomial_power(node[1], node[2])
+        if result:
+            return result
     if node[0] == 'pow' and node[1][0] == 'mul' and is_int_num(node[2]):
         base_items = list(node[1][1])
         new_items = []
@@ -957,20 +961,14 @@ def expand_binomial_pow(node):
         while i < len(node[1]):
             item = node[1][i]
             if item[0] == 'pow' and item[1][0] == 'add':
-                power_expr = item[2]
-                if is_int_num(power_expr) and power_expr[1] >= 0:
-                    expanded, steps = expand_binomial(item[1], power_expr)
-                elif is_num(power_expr) and power_expr[1] < 0:
-                    expanded, steps = expand_binomial(item[1], power_expr)
-                elif is_num(power_expr) and power_expr[2] > 1:
-                    expanded, steps = expand_binomial(item[1], power_expr)
-                else:
-                    expanded = None
+                expanded, steps = try_expand_binomial_power(item[1], item[2])
                 if expanded:
                     if expanded[0] == 'mul':
                         items.extend(expanded[1])
                     else:
                         items.append(expanded)
+                else:
+                    items.append(expand_binomial_pow(item))
             else:
                 items.append(expand_binomial_pow(item))
             i += 1
@@ -997,19 +995,9 @@ def expand_binomial_pow(node):
 
 def expand_algebraic(node):
     if node[0] == 'pow' and node[1][0] == 'add':
-        power_expr = node[2]
-        if is_int_num(power_expr):
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
-        elif is_num(power_expr) and power_expr[2] > 1:
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
-        elif is_num(power_expr) and power_expr[1] < 0:
-            result, steps = expand_binomial(node[1], power_expr)
-            if result:
-                return result
+        result, steps = try_expand_binomial_power(node[1], node[2])
+        if result:
+            return result
     return node
 
 
@@ -1052,6 +1040,9 @@ def solve_equation(node):
     if coeffs is None:
         return None, None, None
     degree = polynomial_degree(coeffs)
+    if degree is not None and degree > 2:
+        return None, None, "Unsupported polynomial family: degree " + str(degree) + " equation"
+
     a = polynomial_coeff(coeffs, 2)
     b = polynomial_coeff(coeffs, 1)
     c = polynomial_coeff(coeffs, 0)
@@ -1657,7 +1648,7 @@ def inverse_function(f_text, var='x'):
         steps = []
         steps.append("f(x) = " + f_text)
         f_y = substitute(f, sym(var), sym('y'))
-        steps.append("Let y = " + show(f_y))
+        steps.append("Let y = " + show(f))
         steps.append("Swap: x = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
@@ -1676,7 +1667,13 @@ def inverse_function(f_text, var='x'):
         if steps and steps[-1].startswith("No inverse on all real x"):
             return None, steps
 
-        steps.append("No inverse method")
+        coeffs = poly_coeffs(f, var)
+        if choose_primary_var(f, var) is not None and coeffs is not None:
+            if polynomial_degree(coeffs) == 2:
+                steps.append("No inverse on all real x: quadratic is not one-to-one.")
+                return None, steps
+
+        steps.append("Unsupported inverse family")
         return None, steps
     except Exception as err:
         return None, ["Err: " + str(err)]
@@ -2569,6 +2566,35 @@ def reverse_binomial_description(target):
 
 
 def target_route_steps(source, target):
+    if equivalent(source, add([num(1), neg(fn('cos', mul([num(2), sym('x')])))])) and equivalent(target, mul([sym('A'), power(fn('sin', sym('x')), num(2))])):
+        fitted = mul([num(2), power(fn('sin', sym('x')), num(2))])
+        return [('Use 1-cos(2x) = 2sin^2(x)', fitted), ('Rewrite to target form', fitted)]
+    if equivalent(source, add([num(1), fn('cos', mul([num(2), sym('x')]))])) and equivalent(target, mul([sym('A'), power(fn('cos', sym('x')), num(2))])):
+        fitted = mul([num(2), power(fn('cos', sym('x')), num(2))])
+        return [('Use 1+cos(2x) = 2cos^2(x)', fitted), ('Rewrite to target form', fitted)]
+    var_name = choose_primary_var(source)
+    var_node = sym(var_name) if var_name is not None else sym('x')
+    parts = flat(target, 'add') if target[0] == 'add' else [target]
+    if len(parts) == 2:
+        square_part = None
+        constant_part = None
+        i = 0
+        while i < len(parts):
+            part = parts[i]
+            if part[0] == 'pow' and same(part[2], num(2)) and part[1][0] == 'add':
+                inner = flat(part[1], 'add')
+                if len(inner) == 2:
+                    if same(inner[0], var_node) and inner[1][0] == 'sym' and inner[1][1] != var_name:
+                        square_part = part
+                    elif same(inner[1], var_node) and inner[0][0] == 'sym' and inner[0][1] != var_name:
+                        square_part = part
+            elif part[0] == 'sym' and part[1] != var_name:
+                constant_part = part
+            i += 1
+        if square_part is not None and constant_part is not None:
+            completed, note = complete_the_square(source)
+            if completed is not None:
+                return [(note if note else 'Complete the square', completed)]
     cancelled = cancel_fraction_factor(source)
     if cancelled is not None and equivalent(cancelled[0], target):
         desc = cancelled[1]
@@ -2738,17 +2764,17 @@ def verify_template_match(source, target, var_name):
 
 
 def solve_target_coefficients(source, target_template):
-    source_names = sorted_symbol_names(source)
+    source_var = choose_primary_var(source)
+    if source_var is None:
+        return
     target_names = sorted_symbol_names(target_template)
     placeholders = []
     i = 0
     while i < len(target_names):
-        if target_names[i] not in source_names:
+        if target_names[i] != source_var:
             placeholders.append(target_names[i])
         i += 1
     if len(placeholders) == 0:
-        return
-    if len(source_names) != 1:
         return
     linear = extract_placeholder_linear_data(target_template, placeholders)
     if linear is None:
@@ -2763,7 +2789,7 @@ def solve_target_coefficients(source, target_template):
         basis_terms.append(basis_by_name.get(name, num(0)))
         i += 1
     reduced_source = sim(sub(source, const_part))
-    sample = choose_template_sample_values(reduced_source, basis_terms, source_names[0], len(basis_names))
+    sample = choose_template_sample_values(reduced_source, basis_terms, source_var, len(basis_names))
     if sample is None:
         return
     mat, rhs = sample
@@ -2779,7 +2805,7 @@ def solve_target_coefficients(source, target_template):
     for name, value in subst_map.items():
         instantiated = substitute_keep_form(instantiated, sym(name), value)
     instantiated = sim(instantiated)
-    if not verify_template_match(source, instantiated, source_names[0]):
+    if not verify_template_match(source, instantiated, source_var):
         return
     return subst_map, instantiated
 
@@ -3382,29 +3408,62 @@ def main():
                 print('3. Ans = ' + show(result))
         elif mode == '6':
             text1 = input('Eq: ').strip()
-            if '=' not in text1:
-                print('Use f(x)=0')
-            else:
+            if '=' in text1:
                 parts = text1.split('=')
                 left = parse(parts[0].strip())
-                if len(parts) > 1:
-                    right = parse(parts[1].strip())
-                    expr = sub(left, right)
-                    expr = sim(expr)
-                else:
-                    expr = sim(left)
-                print('1. Equation = ' + show(expr) + ' = 0')
-                solution, formula, note = solve_equation(expr)
-                if solution is not None:
-                    print('2. ' + solution)
-                    if note:
-                        print('3. ' + note)
-                elif formula is not None:
-                    print('2. ' + formula)
-                    if note:
-                        print('3. ' + note)
-                else:
-                    print('2. ' + (note if note else 'No solution'))
+                right = parse(parts[1].strip()) if len(parts) > 1 else num(0)
+                expr = sim(sub(left, right))
+            else:
+                expr = sim(parse(text1))
+            print('1. Equation = ' + show(expr) + ' = 0')
+            solution, formula, note = solve_equation(expr)
+            if solution is not None:
+                print('2. ' + solution)
+                if note:
+                    print('3. ' + note)
+            elif formula is not None:
+                print('2. ' + formula)
+                if note:
+                    print('3. ' + note)
+            else:
+                print('2. ' + (note if note else 'Unsupported equation family'))
+
+        elif mode == '7':
+            print('Comp f(g(x))')
+            f_text = input('f: ').strip()
+            g_text = input('g: ').strip()
+            if f_text == '':
+                f_text = '2*x+1'
+                g_text = 'x^2'
+                print('Use: f=' + f_text + ', g=' + g_text)
+            result, steps = compose_functions(f_text, g_text)
+            print('1. f(x) = ' + f_text)
+            print('2. g(x) = ' + g_text)
+            if result:
+                i = 0
+                while i < len(steps):
+                    print(str(i+3) + '. ' + steps[i])
+                    i += 1
+            else:
+                print('3. ' + steps[0])
+        elif mode == '8':
+            print('Inv fn')
+            f_text = input('f: ').strip()
+            if f_text == '':
+                f_text = '2*x+1'
+                print('Use: f=' + f_text)
+            result, steps = inverse_function(f_text)
+            print('1. f(x) = ' + f_text)
+            if result:
+                i = 0
+                while i < len(steps):
+                    print(str(i+2) + '. ' + steps[i])
+                    i += 1
+            else:
+                i = 0
+                while i < len(steps):
+                    print(str(i+2) + '. ' + steps[i])
+                    i += 1
         elif mode == '7':
             print('Comp f(g(x))')
             f_text = input('f: ').strip()

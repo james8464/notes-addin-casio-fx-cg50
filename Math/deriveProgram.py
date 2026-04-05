@@ -1372,10 +1372,19 @@ def explain(node, var, deps):
                 lines.append("Exp rule")
                 lines.append("= " + show(d))
             else:
-                lines.append("Exp rule")
+                lines.append("Exponential chain rule")
                 lines.append("a^u*ln(a)*du/d" + var)
                 lines.append("= " + show(d))
             return d, lines
+        if not depends(exp, [var] + deps):
+            lines.append("Generalized power rule")
+            lines.append("= " + show(d))
+            return d, lines
+        lines.append("Log-differentiate style rule")
+        lines.append("y = " + show(node))
+        lines.append("dy/d" + var + " = y*(v*du/u+ln(u)*dv/d" + var + ")")
+        lines.append("= " + show(d))
+        return d, lines
     if node[0] == "fn":
         name = node[1]
         arg = node[2]

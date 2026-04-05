@@ -1,294 +1,201 @@
-# Integration Program (intProgram.py)
+# Integration Program (`intProgram.py`)
 
-A symbolic integration engine for the CASIO fx-cg50 calculator (runs MicroPython v1.9.4).
+A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
 
 ## Features
 
-| Mode | Feature | Description |
-|------|---------|-------------|
-| 1 | Integral | Calculate indefinite integrals |
-| 2 | DE | Solve differential equations |
+| Mode | Label shown | Feature | What it does |
+|---|---|---|---|
+| 1 | `int` | Integral | Computes indefinite integrals |
+| 2 | `de` | Differential equations | Solves supported first-order differential equations |
 
-## Integration Methods (Mode 1)
+## Integration methods (Mode 1)
 
-| Option | Method | Description |
-|--------|--------|-------------|
-| 1 | auto | Let program choose best method |
-| 2 | direct | Direct integration |
-| 3 | trig | Trigonometric integration |
-| 4 | sub | Substitution |
-| 5 | parts | Integration by parts |
-| 6 | pf | Partial fractions |
-| 7 | divide | Division |
+| Option | Label shown | Meaning |
+|---|---|---|
+| 1 | `auto` | Let the engine choose a route |
+| 2 | `dir` | Direct integration |
+| 3 | `trig` | Trigonometric identities / trig reductions |
+| 4 | `sub` | Substitution |
+| 5 | `pts` | Integration by parts |
+| 6 | `pf` | Partial fractions |
+| 7 | `div` | Polynomial division |
 
-## Input Syntax
+## Input syntax
 
-- **Variables**: Single letters (x, t, etc.)
-- **Numbers**: Integers, decimals, or fractions
-- **Constants**: `pi`, `e`
-- **Trig Functions**: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
-- **Inverse trig**: `asin`, `acos`, `atan`, `arcsin`, `arccos`, `arctan`
-- **Other Functions**: `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`
-- **Operators**: `+`, `-`, `*`, `/`, `^`, `**`
-- **Grouping**: Parentheses `()`
-- **Compact forms**: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
-- **Explicit variable**: `expr,x`
-- **DE input**: `dy/dx=...` or `dY/dX=...`, with optional `BC` like `y=2,x=0`
+- Variables: `x`, `t`, ...
+- Numbers: integers, decimals, fractions
+- Constants: `pi`, `e`
+- Functions: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`, `asin`, `acos`, `atan`
+- Operators: `+`, `-`, `*`, `/`, `^`, `**`
+- Compact forms: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
+- Explicit variable form: `expr,x`
+- DE input: `dy/dx=...` with optional boundary condition like `y=3,x=0`
 
-## Mode 1: Integrals
+## Notes
 
-### Example 1: Power Rule
+- Accepts both `^` and `**`
+- Auto mode already covers many direct, trig, substitution, parts, partial-fraction, and DE families
+- Working is short and calculator-friendly
+- Some non-elementary families still return out-of-scope messages
+- CLI errors show `Err: ...`
 
+## Mode 1: Integral (`int`)
+
+Choose the method, then enter the integrand.
+
+### Example 1: auto / exponential-trig special form
+
+```text
+M: 1
+f: e^(5*x)*sin(7*x)
+Met: 1
 ```
-Mode: 1
-f = x^2
-Method: 1
 
 Output:
-Method: direct
-1. Add 1 to power: 2+1 = 3
-2. Divide by new power: 1/3
-= x^3/3 + C
+
+```text
+Met: Integration by parts
+1. Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.
+2. = 1*e^(5*x)*(5*sin(7*x)-7*cos(7*x))/74 + C
 ```
 
-### Example 2: Trigonometric
+### Example 2: substitution
 
+```text
+M: 1
+f: (3*x^2+1)/(x^3+x+7)
+Met: 4
+u: x^3+x+7
 ```
-Mode: 1
-f = cos(x)
-Method: 1
 
 Output:
-Method: direct
-1. Integral of cos(x)
-= sin(x) + C
+
+```text
+Met: Integration by substitution
+1. u = x^3+x+7
+2. du/dx = 3*x^2+1
+3. du = 3*x^2+1 dx
+4. I = Int[1/u] du
+5. = ln|u| + C
+6. = ln|x^3+x+7| + C
 ```
 
-### Example 3: Exponential
+### Example 3: trig reduction
 
-```
-Mode: 1
-f = exp(x)
-Method: 1
-
-Output:
-Method: direct
-1. Integral of e^x
-= e^x + C
+```text
+Input family: sin(x)^4
+Method: 3
 ```
 
-### Example 4: Substitution
+Typical output shape:
 
-```
-Mode: 1
-f = 2*x*(x^2+1)^2
-Method: 4
-u = x^2+1
-
-Output:
-Method: sub
-1. Let u = x^2+1
-2. du/dx = 2*x
-3. dx = du/(2*x)
-4. Substituting...
-5. Integral = u^3/3 + C
-= (x^2+1)^3/3 + C
+```text
+Use sin^2 x = (1-cos(2x))/2.
+So I = Int[...]
+= -1/4*sin(2*x)+1/32*sin(4*x)+3/8*x + C
 ```
 
-### Example 5: Integration by Parts
+### Example 4: partial fractions
 
-```
-Mode: 1
-f = x*exp(x)
-Method: 5
-
-Output:
-Method: parts
-1. u = x, dv = e^x dx
-2. du = dx, v = e^x
-3. ∫u dv = uv - ∫v du
-4. = x*e^x - ∫e^x dx
-5. = x*e^x - e^x + C
-= e^x*(x-1) + C
-```
-
-### Example 6: 1/x
-
-```
-Mode: 1
-f = 1/x
-Method: 1
-
-Output:
-Method: direct
-1. ln|x| + C
-= ln(x) + C
-```
-
-### Example 7: 1/(x+1)
-
-```
-Mode: 1
-f = 1/(x+1)
-Method: 1
-
-Output:
-Method: direct
-1. ln|x+1| + C
-= ln(x+1) + C
-```
-
-### Example 8: sec(x)tan(x)
-
-```
-Mode: 1
-f = sec(x)*tan(x)
-Method: 1
-
-Output:
-Method: direct
-1. Integral of sec(x)tan(x)
-= sec(x) + C
-```
-
-### Example 9: sec^2(x)
-
-```
-Mode: 1
-f = sec(x)^2
-Method: 1
-
-Output:
-Method: direct
-1. Integral of sec^2(x)
-= tan(x) + C
-```
-
-### Example 10: Partial Fractions
-
-```
-Mode: 1
-f = 1/(x^2-1)
+```text
+Input family: 1/(x^4-1)
 Method: 6
-
-Output:
-Method: pf
-1. 1/(x^2-1) = 1/[(x-1)(x+1)]
-2. = A/(x-1) + B/(x+1)
-3. Solving: A = 1/2, B = -1/2
-4. = 1/2*1/(x-1) - 1/2*1/(x+1)
-5. Integral = 1/2*ln|x-1| - 1/2*ln|x+1| + C
 ```
 
-## Mode 2: Differential Equations
+Typical output shape:
 
-Solve first-order differential equations with optional boundary conditions.
-
-### Example 1: Basic DE
-
+```text
+Use partial fractions.
+1/(x^4-1) = A/(x-1)+B/(x+1)+(C*x+D)/(x^2+1)
+A = 1/4, B = -1/4, C = 0, D = -1/2
+So I = 1/4*ln|1-x|-1/4*ln|x+1|-1/2*atan(x) + C
 ```
-Mode: 2
-dy/dx = 2*x
-BC: 
+
+### Example 5: division
+
+```text
+Input family: (x^4+1)/(x^2+1)
+Method: 7
+```
+
+Typical output shape:
+
+```text
+Divide the numerator by the denominator.
+So I = Int[x^2+2/(x^2+1)-1] dx
+= 1/3*x^3+2*atan(x)-x + C
+```
+
+## Mode 2: Differential equations (`de`)
+
+Solves supported first-order differential equations with optional boundary conditions.
+
+### Example
+
+```text
+M: 2
+dy/dx: dy/dx=2*x*y
+BC: y=3,x=0
+```
 
 Output:
+
+```text
 1. Separate variables
-2. dy = 2*x dx
-3. Integrate both sides
-4. ∫dy = ∫2*x dx
-5. y = x^2 + C
+2. Int[1/y] dy = Int[2*x] dx
+3. ln|y| = x^2 + C
+4. Use y = 3 when x = 0.
+5. C = ln(3)
+6. ln|y| = x^2+ln(3)
+7. So y = 3*e^(x^2)
+y = 3*e^(x^2)
 ```
 
-### Example 2: With Boundary Condition
+## Supported method families
 
-```
-Mode: 2
-dy/dx = 3*x^2
-BC: y(0)=2
-
-Output:
-1. Separate variables
-2. dy = 3*x^2 dx
-3. Integrate both sides
-4. ∫dy = ∫3*x^2 dx
-5. y = x^3 + C
-6. Using y(0) = 2: C = 2
-7. y = x^3 + 2
-```
-
-### Example 3: dy/dx = ky
-
-```
-Mode: 2
-dy/dx = 2*y
-BC: 
-
-Output:
-1. Separate variables
-2. dy/y = 2 dx
-3. Integrate both sides
-4. ln|y| = 2x + C
-5. y = C*e^(2x)
-```
-
-## Integration Methods
-
-### Direct Integration
-- Power rule and rational powers
-- `e^x`, `e^(ax+b)`, `exp(...)`
-- `1/x`, `1/(ax+b)`, `f'(x)/f(x)`
-- `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
+### Direct (`dir`)
+- power rule and rational powers
+- `exp(x)` and simple exponential forms
+- `1/x`, `1/(a*x+b)`, and log-derivative style cases
+- basic trig integrals such as `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
 - `sec^2`, `cosec^2`, `sec*tan`, `cosec*cot`
-- `1/(x^2+a^2)` and `1/sqrt(a^2-b^2*x^2)`
+- `1/(x^2+a^2)` style atan forms
 
-### Trigonometric
-- power reduction for `sin^2`, `cos^2`
-- odd powers like `cos^3 x`
-- same-angle products and product-to-sum rewrites
+### Trig (`trig`)
+- power reduction such as `sin^2`, `sin^4`, `cos^2`
+- odd trig-power families
+- product-to-sum and same-angle rewrites
 
-### Substitution
-- u-substitution for composite functions
-- reverse-chain matches
-- compact inputs like `1/(x ln x)`
+### Substitution (`sub`)
+- standard `u` substitution
+- reverse-chain style matches
+- rational/log composite forms
 
-### Integration by Parts
-- products with logs and inverse trig
-- `x*atan(x)`
-- cyclic `e^x*sin x` and `e^x*cos x`
+### Parts (`pts`)
+- polynomial × trig / exponential
+- inverse-trig and log products in supported cases
+- cyclic exponential-trig forms
 
-### More supported compact families
-- `asin(2*x)`, `acos(3*x+1)`, `atan(2*x+1)`
-- `sin^2 x`, `cos^3 x`, `sec x tan x`
-- `x/(x^2+a^2)`, `1/(a^2+x^2)`, `1/sqrt(a^2-x^2)`
+### Partial fractions (`pf`)
+- linear factor splits
+- selected linear/quadratic decompositions
+- some higher-value hard-coded rational families
 
-### Still limited
-- some inverse-trig-by-parts reductions such as `x*asin(x)` and `x*acos(x)` are not fully covered yet
-- non-elementary integrals still return `Out of scope.`
+### Division (`div`)
+- polynomial numerator / lower-degree denominator division before integration
 
-### Rational Methods
-- polynomial division
-- linear partial fractions
-- some linear×quadratic / two-linear+quadratic cases
+## Out-of-scope examples
 
-## Error Handling
+The engine now reports some hard families more explicitly, for example:
+- `1/sqrt(1-x^4)`
+- `1/(x^2*ln(x))`
+- `atan(x)^2`
+- `exp(x^2)`
+- `ln(ln(x))`
+
+## Error handling
 
 - Invalid input shows `Err: ...`
-- Unsupported questions show `Out of scope.`
-- Unsupported families now fail cleanly instead of crashing
+- Unsupported questions report a direct out-of-scope message
 - Division by zero is caught and reported
-
-## Notes
-
-- Parser accepts both `^` and `**`
-- Compact function syntax is supported (`sin x`, `sin^2 x`, `ln x`)
-- Working has been shortened toward markscheme style for common methods
-- The engine covers many elementary forms, but not every integral is elementary
-- Some questions will still return `Out of scope.` when no supported route matches
-
-## Notes
-
-- Works on MicroPython v1.9.4 (CASIO fx-cg50)
-- Uses only `math` import (available on calculator)
-- Optimized for A-level mathematics
-- Supports various integration techniques
-- Shows step-by-step working

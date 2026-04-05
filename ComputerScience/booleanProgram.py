@@ -131,7 +131,16 @@ def expand_vars(token):
     token = token.upper()
     if len(token) <= 1:
         return [token]
-    return list(token)
+    result = []
+    current = token[0]
+    for ch in token[1:]:
+        if "A" <= ch <= "Z":
+            result.append(current)
+            current = ch
+        else:
+            current += ch
+    result.append(current)
+    return result
 
 
 def parse(text):
@@ -380,6 +389,29 @@ def step(node):
                 j += 1
             i += 1
 
+    if kind == "o":
+        i = 0
+        while i < len(parts):
+            left = kids(parts[i], "a")
+            j = i + 1
+            while j < len(parts):
+                right = kids(parts[j], "a")
+                for li in left:
+                    for rj in right:
+                        if comp(li, rj):
+                            rest_l = rem1(left[:], li)
+                            rest_r = rem1(right[:], rj)
+                            if rest_l and rest_r:
+                                consensus = mk("a", rest_l + rest_r)
+                                k = 0
+                                while k < len(parts):
+                                    if k != i and k != j and same(parts[k], consensus):
+                                        new = parts[:k] + parts[k + 1:]
+                                        return (mk("o", new), "Consensus theorem")
+                                    k += 1
+                j += 1
+            i += 1
+
     i = 0
     while i < len(parts):
         left = kids(parts[i], "a" if kind == "o" else "o")
@@ -428,13 +460,7 @@ def step(node):
                 for item in kids(parts[i], "o"):
                     out.append(mk("a", [item] + rest))
                 cand = mk("o", out)
-                ok = direct(cand)
-                if not ok:
-                    for item in out:
-                        if direct(item):
-                            ok = True
-                            break
-                if ok:
+                if len(short(cand)) <= len(short(mk(kind, parts))):
                     return (cand, "Expansion of brackets")
             i += 1
     else:
@@ -451,13 +477,7 @@ def step(node):
                 for item in kids(parts[i], "a"):
                     out.append(mk("o", rest + [item]))
                 cand = mk("a", out)
-                ok = direct(cand)
-                if not ok:
-                    for item in out:
-                        if direct(item):
-                            ok = True
-                            break
-                if ok:
+                if len(short(cand)) <= len(short(mk(kind, parts))):
                     return (cand, "Expansion of brackets")
             i += 1
 
@@ -474,7 +494,7 @@ def to_nand(node):
         child = node[1]
         if child == Z or child == O:
             return node
-        return to_nand(child)
+        return ("n", to_nand(child))
     if kind == "a":
         parts = kids(node, "a")
         nanded = []
@@ -501,7 +521,7 @@ def to_nor(node):
         child = node[1]
         if child == Z or child == O:
             return node
-        return to_nor(child)
+        return ("n", to_nor(child))
     if kind == "o":
         parts = kids(node, "o")
         nored = []
@@ -566,7 +586,7 @@ def prove(lhs_text, rhs_text):
     if lhs_steps:
         lines.append("Simplify LHS:")
         for i, (expr, reason) in enumerate(lhs_steps):
-            lines.append(str(i + 1) + ". " + show(expr) + "  (" + reason + ")")
+            lines.append(str(i + 1) + ". " + expr + "  (" + reason + ")")
         lines.append("= " + show(lhs_final))
     else:
         lines.append("LHS final: " + show(lhs_final))
@@ -576,7 +596,7 @@ def prove(lhs_text, rhs_text):
     if rhs_steps:
         lines.append("Simplify RHS:")
         for i, (expr, reason) in enumerate(rhs_steps):
-            lines.append(str(i + 1) + ". " + show(expr) + "  (" + reason + ")")
+            lines.append(str(i + 1) + ". " + expr + "  (" + reason + ")")
         lines.append("= " + show(rhs_final))
     else:
         lines.append("RHS final: " + show(rhs_final))
