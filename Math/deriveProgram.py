@@ -265,6 +265,10 @@ def add(parts):
     return sim(("add", tuple(parts)))
 
 
+def sub(a, b):
+    return sim(("add", (a, neg(b))))
+
+
 def mul(parts):
     return sim(("mul", tuple(parts)))
 
@@ -797,28 +801,29 @@ def sim(node):
 # SECTION 9: Core Differentiation
 # ============================================================================
 
-def diff(node, var, deps):
+def diff(node, var, deps_list):
+    deps_list_list = list(deps_list.keys()) if isinstance(deps_list, dict) else []
     kind = node[0]
     if kind == "num" or kind == "const":
         return num(0)
     if kind == "sym":
         if node[1] == var:
             return num(1)
-        if node[1] in deps:
+        if node[1] in deps_list:
             return sym("d" + node[1] + "/d" + var)
         return num(0)
     if kind == "add":
         out = []
         for item in node[1]:
-            out.append(diff(item, var, deps))
+            out.append(diff(item, var, deps_list))
         return add(out)
     if kind == "mul":
         items = list(node[1])
         n = len(items)
         if n == 2:
             a, b = items[0], items[1]
-            da = diff(a, var, deps)
-            db = diff(b, var, deps)
+            da = diff(a, var, deps_list)
+            db = diff(b, var, deps_list)
             return add([mul([a, db]), mul([b, da])])
         out = []
         i = 0
@@ -827,7 +832,7 @@ def diff(node, var, deps):
             j = 0
             while j < n:
                 if i == j:
-                    bit.append(diff(items[j], var, deps))
+                    bit.append(diff(items[j], var, deps_list))
                 else:
                     bit.append(items[j])
                 j += 1
@@ -837,25 +842,27 @@ def diff(node, var, deps):
     if kind == "div":
         u = node[1]
         v = node[2]
-        du = diff(u, var, deps)
-        dv = diff(v, var, deps)
+        du = diff(u, var, deps_list)
+        dv = diff(v, var, deps_list)
         return div(add([mul([v, du]), neg(mul([u, dv]))]), power(v, num(2)))
     if kind == "pow":
         base = node[1]
         exp = node[2]
         if is_num(exp):
-            return mul([exp, power(base, subq(exp, num(1))), diff(base, var, deps)])
+            return mul([exp, power(base, subq(exp, num(1))), diff(base, var, deps_list)])
         if is_num(base) and base[1] <= 0:
             raise ValueError("Exponential base must be positive.")
-        if not depends(base, [var] + deps):
-            return mul([power(base, exp), fn("log", base), diff(exp, var, deps)])
-        if not depends(exp, [var] + deps):
-            return mul([exp, power(base, subq(exp, num(1))), diff(base, var, deps)])
-        return mul([power(base, exp), add([mul([exp, div(diff(base, var, deps), base)]), mul([fn("log", base), diff(exp, var, deps)])])])
+        if not depends(base, [var] + deps_list_list):
+            return mul([power(base, exp), fn("log", base), diff(exp, var, deps_list)])
+        if not depends(exp, [var] + deps_list_list):
+            if is_num(exp):
+                return mul([exp, power(base, subq(exp, num(1))), diff(base, var, deps_list)])
+            return mul([exp, power(base, sub(exp, num(1))), diff(base, var, deps_list)])
+        return mul([power(base, exp), add([mul([exp, div(diff(base, var, deps_list), base)]), mul([fn("log", base), diff(exp, var, deps_list)])])])
     if kind == "fn":
         name = node[1]
         arg = node[2]
-        darg = diff(arg, var, deps)
+        darg = diff(arg, var, deps_list)
         if name == "exp":
             return mul([fn("exp", arg), darg])
         if name == "sin":
@@ -1322,8 +1329,8 @@ def parse_normal_input(text):
 # SECTION 12: Differentiation with Working Steps
 # ============================================================================
 
-def explain(node, var, deps):
-    d = tidy(diff(node, var, deps))
+def explain(node, var, deps_list):
+    d = tidy(diff(node, var, deps_list))
     lines = []
     if node[0] == "add":
         lines.append("Term by term")
@@ -1333,8 +1340,8 @@ def explain(node, var, deps):
         items = list(node[1])
         u = items[0]
         v = make_mul(items[1:])
-        du = tidy(diff(u, var, deps))
-        dv = tidy(diff(v, var, deps))
+        du = tidy(diff(u, var, deps_list))
+        dv = tidy(diff(v, var, deps_list))
         lines.append("Product rule")
         lines.append("u = " + show(u) + ", v = " + show(v))
         lines.append("u*dv/d" + var + "+v*du/d" + var)
@@ -1343,8 +1350,8 @@ def explain(node, var, deps):
     if node[0] == "div":
         u = node[1]
         v = node[2]
-        du = tidy(diff(u, var, deps))
-        dv = tidy(diff(v, var, deps))
+        du = tidy(diff(u, var, deps_list))
+        dv = tidy(diff(v, var, deps_list))
         lines.append("Quotient rule")
         lines.append("u = " + show(u) + ", v = " + show(v))
         lines.append("(v*du-u*dv)/v^2")
@@ -1354,7 +1361,7 @@ def explain(node, var, deps):
         base = node[1]
         exp = node[2]
         if is_num(exp):
-            db = tidy(diff(base, var, deps))
+            db = tidy(diff(base, var, deps_list))
             if same(base, sym(var)):
                 lines.append("Power rule")
                 lines.append("= " + show(d))
@@ -1366,8 +1373,8 @@ def explain(node, var, deps):
             return d, lines
         if is_num(base) and base[1] <= 0:
             raise ValueError("Exponential base must be positive.")
-        if not depends(base, [var] + deps):
-            de = tidy(diff(exp, var, deps))
+        if not depends(base, [var] + deps_list_list):
+            de = tidy(diff(exp, var, deps_list))
             if same(base, E):
                 lines.append("Exp rule")
                 lines.append("= " + show(d))
@@ -1376,7 +1383,7 @@ def explain(node, var, deps):
                 lines.append("a^u*ln(a)*du/d" + var)
                 lines.append("= " + show(d))
             return d, lines
-        if not depends(exp, [var] + deps):
+        if not depends(exp, [var] + deps_list_list):
             lines.append("Generalized power rule")
             lines.append("= " + show(d))
             return d, lines
@@ -1388,7 +1395,7 @@ def explain(node, var, deps):
     if node[0] == "fn":
         name = node[1]
         arg = node[2]
-        darg = tidy(diff(arg, var, deps))
+        darg = tidy(diff(arg, var, deps_list))
         if same(arg, sym(var)) or arg[0] == "sym":
             label = {
                 "sin": "sin rule", "cos": "cos rule", "tan": "tan rule",

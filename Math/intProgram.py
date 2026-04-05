@@ -398,7 +398,27 @@ TRIG_HIGH_POWER_IDENTITIES = {
     ('cosec',
      4): (
         'Use cosec^2 x = 1+cot^2 x.',
-        'cosec4')}
+        'cosec4'),
+    ('sin',
+     6): (
+        'Use sin^2 x = (1-cos(2x))/2.',
+        'sin6'),
+    ('cos',
+     4): (
+        'Use cos^2 x = (1+cos(2x))/2.',
+        'cos4'),
+    ('cos',
+     6): (
+        'Use cos^2 x = (1+cos(2x))/2.',
+        'cos6'),
+    ('tan',
+     3): (
+        'Use tan^2 x = sec^2 x - 1.',
+        'tan3'),
+    ('tan',
+     4): (
+        'Write tan^4 as tan^2 * tan^2.',
+        'tan4')}
 TRIG_PRODUCT_IDENTITIES = {('sin',
                             'cos'): 'Use sin 2A = 2sin A cos A.',
                            ('cos',
@@ -518,16 +538,30 @@ def trig_high_power_rewrite(name, exp, arg):
         B = mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
     elif D == 'odd_cos':
         B = mul([fn('cos', A), add([num(1), neg(power(fn('sin', A), num(2)))])])
+    elif D == 'odd_sec':
+        B = mul([fn('sec', A), add([num(1), neg(power(fn('tan', A), num(2)))])])
+    elif D == 'odd_cosec':
+        B = mul([fn('cosec', A), add([num(1), neg(power(fn('cot', A), num(2)))])])
     elif D == 'sin4':
         B = div(add([num(3), neg(mul([num(4), fn('cos', mul([num(2), A]))])), fn('cos', mul([num(4), A]))]), num(8))
+    elif D == 'sin6':
+        B = mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
+    elif D == 'cos4':
+        B = div(add([num(3), fn('cos', mul([num(2), A])), neg(fn('cos', mul([num(4), A])))]), num(4))
     elif D == 'cos5':
         B = expand_small(add([fn('cos', A), neg(mul([num(2), power(fn('sin', A), num(2)), fn('cos', A)])), mul([power(fn('sin', A), num(4)), fn('cos', A)])]))
+    elif D == 'cos6':
+        B = mul([fn('cos', A), add([num(1), neg(power(fn('sin', A), num(2)))])])
+    elif D == 'tan3':
+        B = mul([fn('tan', A), add([num(-1), power(fn('sec', A), num(2))])])
+    elif D == 'tan4':
+        B = mul([power(fn('tan', A), num(2)), fn('tan', A)])
     elif D == 'sec4':
-        B = mul([power(fn('sec', A), num(2)), add(
-            [num(1), power(fn('tan', A), num(2))])])
+        B = mul([power(fn('sec', A), num(2)), add([num(1), power(fn('tan', A), num(2))])])
+    elif D == 'sec5':
+        B = mul([fn('sec', A), add([num(1), power(fn('tan', A), num(2))])])
     else:
-        B = mul([power(fn('cosec', A), num(2)), add(
-            [num(1), power(fn('cot', A), num(2))])])
+        B = mul([power(fn('cosec', A), num(2)), add([num(1), power(fn('cot', A), num(2))])])
     return C[0], B
 
 
@@ -892,6 +926,14 @@ def sim(node):
         if S == 'log' and (N[0] == 'pow' and same(N[1], E)
                            or N[0] == 'fn' and N[1] == 'exp'):
             return N[2]
+        if S == 'log' and N[0] == 'pow' and is_num(N[2]):
+            return mul([N[2], ('fn', 'log', fn('abs', N[1]))])
+        if S == 'log' and N[0] == 'mul':
+            parts = list(N[1])
+            if len(parts) == 2:
+                return add([('fn', 'log', fn('abs', parts[0])), ('fn', 'log', fn('abs', parts[1]))])
+        if S == 'log' and N[0] == 'div':
+            return add([('fn', 'log', fn('abs', N[1])), ('mul', (num(-1), ('fn', 'log', fn('abs', N[2]))))])
         if S == 'log' and N[0] == 'fn' and N[1] == 'abs' and (
                 N[2][0] == 'pow' and same(N[2][1], E) or N[2][0] == 'fn' and N[2][1] == 'exp'):
             return N[2][2]
@@ -2613,6 +2655,25 @@ def integrate_standard_term(node, var):
             return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(diff(B, C)if not (
                 B[0] == 'fn' and B[1] == 'log')else div(G, J)), 'So I = ' + pretty(D) + ' + C']
         return None, None
+    # Add support for a^x where a is a constant (not e)
+    if A[0] == 'pow' and is_num(A[1]) and A[1][1] > 0 and A[1] != E:
+        # a^x integration: ∫a^x dx = a^x/ln(a) + C
+        base = A[1]
+        exp = A[2]
+        # Check if exponent is linear in var (i.e., a^(kx) or a^x)
+        K = linear_info(exp, C)
+        if K is None:
+            return None, None
+        G, M = K
+        # For a^(kx), result is a^(kx)/(k*ln(a))
+        # For a^x, result is a^x/ln(a)
+        log_base = fn('log', base)
+        if is_one(G):
+            result = div(A, log_base)
+            return result, ['Use the standard result: ∫a^x dx = a^x/ln(a) + C', '= ' + pretty(result) + ' + C']
+        else:
+            result = div(power(base, exp), mul([G, log_base]))
+            return result, ['Use the standard result: ∫a^(kx) dx = a^(kx)/(k*ln(a)) + C', '= ' + pretty(result) + ' + C']
     if A[0] == 'pow' and same(A[1], E):
         K = linear_info(A[2], C)
         if K is None:
@@ -3251,6 +3312,16 @@ def choose_parts(node, var):
     A = 0
     while A < len(B):
         if B[A][0] == 'fn' and B[A][1] in ('log', 'asin', 'acos', 'atan') and same(B[A][2], J):
+            G = []
+            K = 0
+            while K < len(B):
+                if K != A:
+                    G.append(B[K])
+                K += 1
+            D = M(B[A], G)
+            if D is not None:
+                return D
+        if B[A][0] == 'pow' and B[A][1][0] == 'fn' and B[A][1][1] == 'log' and same(B[A][1][2], J) and B[A][2][0] == 'num' and B[A][2][1] > 0:
             G = []
             K = 0
             while K < len(B):
