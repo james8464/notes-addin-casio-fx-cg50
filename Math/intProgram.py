@@ -910,6 +910,11 @@ def sim(node):
     if R == 'fn':
         S = L[1]
         N = sim(L[2])
+        # Handle two-argument log: log(base, exp) = ln(exp)/ln(base)
+        if S == 'log' and N[0] == 'mul' and len(N[1]) == 2:
+            base = N[1][0]
+            exp = N[1][1]
+            return div(fn('log', exp), fn('log', base))
         if S == 'abs' and is_num(N):
             return num(abs(N[1]), N[2])
         if S == 'abs' and (N[0] == 'pow' and same(N[1], E)
@@ -926,6 +931,19 @@ def sim(node):
         if S == 'log' and (N[0] == 'pow' and same(N[1], E)
                            or N[0] == 'fn' and N[1] == 'exp'):
             return N[2]
+        # Handle log(base, exp) where both are numeric: log(10, 100) = 2
+        if S == 'log' and N[0] == 'mul' and len(N[1]) == 2 and is_num(N[1][0]) and is_num(N[1][1]):
+            base = N[1][0]
+            exp = N[1][1]
+            if base[1] > 0 and exp[1] > 0:
+                # Try to find if exp = base^n for some integer n
+                b_val = base[1] / base[2]
+                e_val = exp[1] / exp[2]
+                if b_val > 0 and b_val != 1:
+                    import math as _math
+                    n = _math.log(e_val, b_val)
+                    if abs(n - round(n)) < 1e-10:
+                        return num(round(n))
         if S == 'log' and N[0] == 'pow' and is_num(N[2]):
             return mul([N[2], ('fn', 'log', fn('abs', N[1]))])
         if S == 'log' and N[0] == 'mul':
@@ -1638,9 +1656,19 @@ def parse(text):
                     return power(fn(B, consume_func_arg()), C)
                 if F() == '(':
                     D('(')
-                    C = L()
-                    D(')')
-                    return fn(B, C)
+                    arg1 = L()
+                    if F() == ',':
+                        D(',')
+                        arg2 = L()
+                        D(')')
+                        # For log, handle two-argument form: log(base, exp) = ln(exp)/ln(base)
+                        if B == 'log':
+                            return div(fn('log', arg2), fn('log', arg1))
+                        else:
+                            return fn(B, ('mul', (arg1, arg2)))
+                    else:
+                        D(')')
+                        return fn(B, arg1)
                 if O(F()):
                     return fn(B, P())
             return sym(A)
@@ -3138,7 +3166,7 @@ def integrate_trig(node, var, allow_steps=True):
         G += 1
     if not F:
         return None, None
-    A, I = integrate_after_trig_rewrite(B, C, 0)
+    A, I = integrate_after_trig_rewrite(B, C, 1)
     if A is None:
         A, I = integrate_division(B, C, True)
         if A is None:
@@ -3189,6 +3217,9 @@ def integrate_u_subproblem(node, var='u', depth=0):
     A, E = integrate_standard(B, C)
     if A is not None:
         return A, []
+    A, E = integrate_by_parts(B, C, D)
+    if A is not None:
+        return A, []
     return integrate_trig(B, C, False)
 
 
@@ -3205,12 +3236,6 @@ def integrate_after_trig_rewrite(node, var, depth=0):
     if A is not None:
         return A, []
     A, D = integrate_reverse_chain(B, C)
-    if A is not None:
-        return A, []
-    A, D = integrate_trig(B, C, False)
-    if A is not None:
-        return A, []
-    A, D = integrate_substitution(B, C, None)
     if A is not None:
         return A, []
     return None, None

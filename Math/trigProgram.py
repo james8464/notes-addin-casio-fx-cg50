@@ -1480,9 +1480,20 @@ def parse(text):
                     return power(fn(low, out), exp)
                 if cur() == "(":
                     eat("(")
-                    out = expr()
-                    eat(")")
-                    return fn(low, out)
+                    if low == "log" and cur() != ")":
+                        arg1 = expr()
+                        if cur() == ",":
+                            eat(",")
+                            arg2 = expr()
+                            eat(")")
+                            return div(fn("log", arg2), fn("log", arg1))
+                        else:
+                            eat(")")
+                            return fn(low, arg1)
+                    else:
+                        out = expr()
+                        eat(")")
+                        return fn(low, out)
                 if starts_implicit(cur()):
                     return fn(low, atom())
             return sym(tok)
