@@ -1424,24 +1424,26 @@ def substitution_work(node, var, inner, d, uexpr, work, uans, ans):
     return A
 
 
-def combine_logs(node):
+def _combine_logs_uncached(node, _depth=0):
+    if _depth > 10:
+        return node
     A = node
     A = sim(A)
     B = A[0]
     if B in ('num', 'sym', 'const'):
         return A
     if B == 'fn':
-        return 'fn', A[1], combine_logs(A[2])
+        return 'fn', A[1], _combine_logs_uncached(A[2], _depth+1)
     if B in ('pow', 'div'):
-        return sim((B, combine_logs(A[1]), combine_logs(A[2])))
+        return sim((B, _combine_logs_uncached(A[1], _depth+1), _combine_logs_uncached(A[2], _depth+1)))
     if B == 'mul':
         G = []
         for F in flat(A, 'mul'):
-            G.append(combine_logs(F))
+            G.append(_combine_logs_uncached(F, _depth+1))
         return sim(('mul', tuple(G)))
     C = []
     for F in flat(A, 'add'):
-        C.append(combine_logs(F))
+        C.append(_combine_logs_uncached(F, _depth+1))
     if len(C) == 2:
         H, D = split_coeff(C[0])
         I, E = split_coeff(C[1])
@@ -4780,14 +4782,14 @@ def ordered_candidates(node, var, mode):
             mode))
 
 
-_combine_logs_uncached = combine_logs
+_combine_logs_uncached = _combine_logs_uncached
 
 
 def combine_logs(node):
     A = _cache_get('combine_logs', node)
     if A is not _CACHE_MISS:
         return A
-    return _cache_set('combine_logs', node, _combine_logs_uncached(node))
+    return _cache_set('combine_logs', node, _combine_logs_uncached(node, 0))
 
 
 def main():

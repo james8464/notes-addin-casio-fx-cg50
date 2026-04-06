@@ -292,3 +292,40 @@ Output:
 - Invalid input shows `Err: ...`
 - Unsupported equation families are reported directly
 - Malformed expressions are rejected during parsing
+
+## Python API
+
+```python
+import sys
+sys.path.insert(0, 'Math')
+sys._algebra_no_autorun = True
+import algebraProgram as ap
+
+# Compare expressions
+result = ap.compare_expressions(ap.parse('(x+1)^5-(x-1)^5'), ap.parse('10*x^4+20*x^2+2'))
+print(result)  # (True, [...])
+
+# Transform (use trigProgram for algebraic transforms)
+import trigProgram as tp
+result = tp.solve_transform_text('1-cos(2*x)', '2*sin(x)^2')
+
+# Expand binomial - takes (expr, power)
+result = ap.expand_binomial(ap.parse('(x+1)^5'), ap.parse('5'))
+print(ap.show(result))  # x^5+5*x^4+10*x^3+10*x^2+5*x+1
+
+# Complete square
+result = ap.complete_the_square(ap.parse('x^2+4*x+1'))
+print(ap.show(result))  # (x+2)^2-3
+
+# Solve equation - takes node only (auto-detects variable)
+result = ap.solve_equation(ap.parse('x^2-4'))
+print(result)  # ('x = 2 or x = -2', ...)
+
+# Factor expression
+result = ap.factor_expression(ap.parse('x^2-1'))
+print(ap.show(result))  # (x-1)*(x+1)
+
+# Find inverse - takes string expression and variable
+result = ap.inverse_function('3*x-7', 'x')
+print(ap.show(result))  # (x+7)/3
+```

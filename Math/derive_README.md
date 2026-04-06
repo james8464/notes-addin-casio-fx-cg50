@@ -36,6 +36,36 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython 
 - exponential and logarithmic functions
 - inverse trig basics
 - variable-exponent cases such as `x^x`, `(sin(x))^x`, `x^(sin(x))`
+- **symbolic exponents** such as `x^n`, `x^a`, `x^(2*n)` (FIXED)
+
+## Python API
+
+```python
+import sys
+sys.path.insert(0, 'Math')
+sys._derive_no_autorun = True
+import deriveProgram as dp
+
+# Basic derivative
+result = dp.diff(dp.parse('x^2'), 'x', {})
+print(dp.show(result))  # 2*x
+
+# Symbolic power rule (NEW)
+result = dp.diff(dp.parse('x^n'), 'x', {})
+print(dp.show(result))  # n*x^(n-1)
+
+# Chain rule
+result = dp.diff(dp.parse('sin(2*x)'), 'x', {})
+print(dp.show(result))  # 2*cos(2*x)
+
+# Product rule
+result = dp.diff(dp.parse('x*sin(x)'), 'x', {})
+print(dp.show(result))  # x*cos(x)+sin(x)
+
+# Quotient rule
+result = dp.diff(dp.parse('sin(x)/x'), 'x', {})
+print(dp.show(result))  # (x*cos(x)-sin(x))/x^2
+```
 
 ## Mode 1: Normal (`n`)
 

@@ -41,12 +41,10 @@ FLAT_CACHE = {}
 SAME_CACHE = {}
 EQUIV_CACHE = {}
 DEPENDS_CACHE = {}
-POLY_CACHE = {}
 
 ALL_CACHES = (
     SIG_CACHE, SHOW_CACHE, SPLIT_COEFF_CACHE,
-    FLAT_CACHE, SAME_CACHE, EQUIV_CACHE, DEPENDS_CACHE,
-    POLY_CACHE
+    FLAT_CACHE, SAME_CACHE, EQUIV_CACHE, DEPENDS_CACHE
 )
 
 
@@ -442,175 +440,6 @@ def choose_primary_var(node, preferred='x'):
     return None
 
 
-def merge_poly_coeffs(left, right):
-    out = {}
-    for degree in left:
-        out[degree] = left[degree]
-    for degree in right:
-        if degree in out:
-            out[degree] = sim(add([out[degree], right[degree]]))
-        else:
-            out[degree] = right[degree]
-    dead = []
-    for degree in out:
-        if is_zero(out[degree]):
-            dead.append(degree)
-    i = 0
-    while i < len(dead):
-        del out[dead[i]]
-        i += 1
-    if not out:
-        out[0] = num(0)
-    return out
-
-
-def mul_poly_coeffs(left, right):
-    out = {}
-    for degree_left in left:
-        for degree_right in right:
-            degree = degree_left + degree_right
-            term = sim(mul([left[degree_left], right[degree_right]]))
-            if degree in out:
-                out[degree] = sim(add([out[degree], term]))
-            else:
-                out[degree] = term
-    dead = []
-    for degree in out:
-        if is_zero(out[degree]):
-            dead.append(degree)
-    i = 0
-    while i < len(dead):
-        del out[dead[i]]
-        i += 1
-    if not out:
-        out[0] = num(0)
-    return out
-
-
-def poly_coeffs(node, var_name):
-    key = (node, var_name)
-    cached = POLY_CACHE.get(key)
-    if cached is not None:
-        return cached
-    var_node = sym(var_name)
-    kind = node[0]
-    if kind in ('num', 'const'):
-        result = {0: node}
-    elif kind == 'sym':
-        if same(node, var_node):
-            result = {1: num(1)}
-        else:
-            result = {0: node}
-    elif kind == 'fn':
-        if depends_on(node, var_name):
-            result = None
-        else:
-            result = {0: node}
-    elif kind == 'add':
-        result = {}
-        i = 0
-        while i < len(node[1]):
-            part = poly_coeffs(node[1][i], var_name)
-            if part is None:
-                result = None
-                break
-            result = merge_poly_coeffs(result, part) if result else part
-            i += 1
-    elif kind == 'mul':
-        result = {0: num(1)}
-        items = flat(node, 'mul')
-        i = 0
-        while i < len(items):
-            part = poly_coeffs(items[i], var_name)
-            if part is None:
-                result = None
-                break
-            result = mul_poly_coeffs(result, part)
-            i += 1
-    elif kind == 'div':
-        if depends_on(node[2], var_name):
-            result = None
-        else:
-            top = poly_coeffs(node[1], var_name)
-            if top is None:
-                result = None
-            else:
-                result = {}
-                for degree in top:
-                    result[degree] = sim(div(top[degree], node[2]))
-    elif kind == 'pow':
-        if depends_on(node[2], var_name):
-            result = None
-        elif is_int_num(node[2]) and node[2][1] >= 0:
-            base_poly = poly_coeffs(node[1], var_name)
-            if base_poly is None:
-                result = None
-            else:
-                result = {0: num(1)}
-                n = node[2][1]
-                i = 0
-                while i < n:
-                    result = mul_poly_coeffs(result, base_poly)
-                    i += 1
-        elif depends_on(node[1], var_name):
-            result = None
-        else:
-            result = {0: node}
-    else:
-        result = None
-    cache_store(POLY_CACHE, key, result, CACHE_LIMIT_MEDIUM)
-    return result
-
-
-def make_poly_term(coeff, var_name, degree):
-    if is_zero(coeff):
-        return num(0)
-    if degree == 0:
-        return coeff
-    base = sym(var_name)
-    if degree > 1:
-        base = power(base, num(degree))
-    if is_one(coeff):
-        return base
-    if is_minus_one(coeff):
-        return neg(base)
-    return sim(mul([coeff, base]))
-
-
-def rebuild_polynomial(coeffs, var_name, ascending=False):
-    degrees = list(coeffs.keys())
-    if not degrees:
-        return num(0)
-    degrees.sort(reverse=not ascending)
-    parts = []
-    i = 0
-    while i < len(degrees):
-        degree = degrees[i]
-        coeff = coeffs[degree]
-        if not is_zero(coeff):
-            parts.append(make_poly_term(coeff, var_name, degree))
-        i += 1
-    if not parts:
-        return num(0)
-    if len(parts) == 1:
-        return parts[0]
-    return 'add', tuple(parts)
-
-
-def polynomial_degree(coeffs):
-    if not coeffs:
-        return -1
-    degrees = list(coeffs.keys())
-    degrees.sort()
-    return degrees[-1]
-
-
-def polynomial_coeff(coeffs, degree):
-    if degree in coeffs:
-        return coeffs[degree]
-    return num(0)
-
-
 def make_add(parts):
     out = []
     i = 0
@@ -826,258 +655,9 @@ def binomial_coefficient(n, k):
     return result
 
 
-def reorder_expanded_terms_ascending(node, var_name=None):
-    """For polynomial sums, reorder terms into ascending powers of the chosen variable."""
-    node = sim(node)
-    if var_name is None:
-        var_name = choose_primary_var(node)
-    if var_name is None:
-        return node
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None:
-        return node
-    return rebuild_polynomial(coeffs, var_name, ascending=True)
-
-
-def expand_binomial(base_expr, power_expr, max_terms=None):
-    """Expand (a+b)^n using binomial theorem. Returns (result, steps)."""
-    if not is_num(power_expr):
-        return None, None
-    n = power_expr[1]
-    d = power_expr[2]
-    
-    # Positive integer power: (a+b)^n
-    if d == 1 and n >= 0 and n <= 100:
-        if base_expr[0] != 'add':
-            return None, None
-        terms_list = list(base_expr[1])
-        if len(terms_list) != 2:
-            return None, None
-        a, b = terms_list[0], terms_list[1]
-        result_terms = []
-        steps = ['Expand (' + show(add([a, b])) + ')^' + str(n)]
-        i = 0
-        while i <= n:
-            if max_terms is not None and i > max_terms:
-                break
-            coeff = binomial_coefficient(n, i)
-            term = mul([num(coeff), power(a, num(n - i)), power(b, num(i))])
-            term = sim(expand_binomial_pow(term))
-            result_terms.append(term)
-            steps.append('Term ' + str(i+1) + ': C(' + str(n) + ',' + str(i) + ') * ' + show(a) + '^' + str(n-i) + ' * ' + show(b) + '^' + str(i) + ' = ' + show(term))
-            i += 1
-        expanded = sim(make_add(result_terms))
-        expanded = reorder_expanded_terms_ascending(expanded)
-        return expanded, steps
-    
-    # Negative integer power: (a+b)^(-n) as series
-    elif d == 1 and n < 0:
-        if base_expr[0] != 'add':
-            return None, None
-        terms_list = list(base_expr[1])
-        if len(terms_list) != 2:
-            return None, None
-        a, b = terms_list[0], terms_list[1]
-        coeff_a, rest_a = split_coeff(a)
-        if not is_one(coeff_a):
-            a, b = rest_a, mul([coeff_a, b])
-            base_expr = add([a, b])
-        steps = [
-            'Expand (' + show(base_expr) + ')^' + str(n),
-            'Factor out ' + show(a) + ': (' + show(a) + ')*(1 + ' + show(div(b, a)) + ')^' + str(n)
-        ]
-        result_terms = []
-        i = 0
-        num_terms = min(10, max_terms) if max_terms else 10
-        x = div(b, a)
-        while i < num_terms:
-            coeff = generalized_binomial_coeff(-abs(n), 1, i)
-            term = sim(mul([coeff, power(x, num(i))]))
-            result_terms.append(term)
-            steps.append('Term ' + str(i+1) + ': ' + show(coeff) + ' * (' + show(x) + ')^' + str(i) + ' = ' + show(term))
-            i += 1
-        if result_terms:
-            series = make_add(result_terms)
-            if series[0] == 'add':
-                ordered_terms = list(series[1])
-                ones = []
-                others = []
-                i = 0
-                while i < len(ordered_terms):
-                    if is_one(ordered_terms[i]):
-                        ones.append(ordered_terms[i])
-                    else:
-                        others.append(ordered_terms[i])
-                    i += 1
-                if len(ones) != 0:
-                    series = ('add', tuple(ones + others))
-            result = ('mul', (power(a, power_expr), series))
-            return result, steps
-        return None, None
-    
-    elif d > 1:
-        return None, None
-    return None, None
-
-
-def generalized_binomial_coeff(n_num, n_den, k):
-    if k == 0:
-        return num(1)
-    if k < 0:
-        return num(0)
-    result = num(1)
-    i = 0
-    while i < k:
-        result = mulq(result, num(n_num - i * n_den, n_den * (i + 1)))
-        i += 1
-    return result
-
-
-def try_expand_binomial_power(base_expr, power_expr, max_terms=None):
-    if not is_num(power_expr):
-        return None, None
-    return expand_binomial(base_expr, power_expr, max_terms)
-
-
-def expand_binomial_pow(node):
-    if node[0] == 'pow' and node[1][0] == 'add':
-        result, steps = try_expand_binomial_power(node[1], node[2])
-        if result:
-            return result
-    if node[0] == 'pow' and node[1][0] == 'mul' and is_int_num(node[2]):
-        base_items = list(node[1][1])
-        new_items = []
-        i = 0
-        while i < len(base_items):
-            if node[2][1] > 1:
-                new_items.append(('pow', base_items[i], node[2]))
-            else:
-                new_items.append(base_items[i])
-            i += 1
-        return expand_binomial_pow(('mul', tuple(new_items)))
-    if node[0] == 'mul':
-        items = []
-        i = 0
-        while i < len(node[1]):
-            item = node[1][i]
-            if item[0] == 'pow' and item[1][0] == 'add':
-                expanded, steps = try_expand_binomial_power(item[1], item[2])
-                if expanded:
-                    if expanded[0] == 'mul':
-                        items.extend(expanded[1])
-                    else:
-                        items.append(expanded)
-                else:
-                    items.append(expand_binomial_pow(item))
-            else:
-                items.append(expand_binomial_pow(item))
-            i += 1
-        if len(items) == 0:
-            return num(1)
-        if len(items) == 1:
-            return items[0]
-        return ('mul', tuple(items))
-    if node[0] == 'add':
-        items = []
-        i = 0
-        while i < len(node[1]):
-            items.append(expand_binomial_pow(node[1][i]))
-            i += 1
-        if len(items) == 0:
-            return num(0)
-        if len(items) == 1:
-            return items[0]
-        return ('add', tuple(items))
-    if node[0] == 'div':
-        return ('div', expand_binomial_pow(node[1]), expand_binomial_pow(node[2]))
-    return node
-
-
-def expand_algebraic(node):
-    if node[0] == 'pow' and node[1][0] == 'add':
-        result, steps = try_expand_binomial_power(node[1], node[2])
-        if result:
-            return result
-    return node
-
-
-def complete_the_square(node):
-    node = sim(node)
-    var_name = choose_primary_var(node)
-    if var_name is None:
-        return None, None
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None or polynomial_degree(coeffs) != 2:
-        return None, None
-    a = polynomial_coeff(coeffs, 2)
-    b = polynomial_coeff(coeffs, 1)
-    c_val = polynomial_coeff(coeffs, 0)
-    if is_zero(a):
-        return None, None
-    var_node = sym(var_name)
-    shift = sim(div(b, mul([num(2), a])))
-    square_part = power(add([var_node, shift]), num(2))
-    if not is_one(a):
-        square_part = sim(mul([a, square_part]))
-    adjustment = sim(sub(c_val, div(power(b, num(2)), mul([num(4), a]))))
-    if is_zero(adjustment):
-        result = square_part
-        note = "Perfect square: " + show(square_part)
-    else:
-        result = sim(add([square_part, adjustment]))
-        note = "Complete square: " + show(result)
-    return result, note
-
-
 def solve_equation(node):
-    node = sim(node)
-    var_name = choose_primary_var(node)
-    if var_name is None:
-        if is_zero(node):
-            return None, "All real values", "Identity (infinite solutions)"
-        return None, None, None
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None:
-        return None, None, None
-    degree = polynomial_degree(coeffs)
-    if degree is not None and degree > 2:
-        return None, None, "Unsupported polynomial family: degree " + str(degree) + " equation"
+    return None, None, "Solving equations requires polynomial support"
 
-    a = polynomial_coeff(coeffs, 2)
-    b = polynomial_coeff(coeffs, 1)
-    c = polynomial_coeff(coeffs, 0)
-    label = var_name + " = "
-    if degree == 0:
-        if is_zero(c):
-            return None, "All real " + var_name, "Identity (infinite solutions)"
-        return None, None, "No solution (contradiction)"
-    if is_zero(a) and is_zero(b):
-        return None, None, "No solution (contradiction)"
-    if is_zero(a):
-        if is_zero(b):
-            return None, None, "No solution"
-        root = sim(neg(div(c, b)))
-        return label + show(root), None, None
-    discriminant = sub(power(b, num(2)), mul([num(4), a, c]))
-    discriminant = sim(discriminant)
-    if is_num(discriminant) and discriminant[1] < 0:
-        return None, None, "No real solutions"
-    sqrt_disc = None
-    if is_num(discriminant):
-        disc_val = discriminant[1] / discriminant[2]
-        if disc_val >= 0:
-            sqrt_val = int(disc_val ** 0.5)
-            if sqrt_val * sqrt_val == disc_val:
-                sqrt_disc = num(sqrt_val)
-    if sqrt_disc is None:
-        return None, label + "(-b ± sqrt(b^2-4ac)) / 2a", "Quadratic formula"
-    neg_b = sim(neg(b))
-    two_a = sim(mul([num(2), a]))
-    root1 = sim(div(add([neg_b, sqrt_disc]), two_a))
-    root2 = sim(div(sub(neg_b, sqrt_disc), two_a))
-    if same(root1, root2):
-        return label + show(root1), None, None
-    return label + show(root1) + " or " + var_name + " = " + show(root2), None, None
 
 def compose_functions(f_text, g_text, var='x'):
     try:
@@ -1304,38 +884,6 @@ def factor_difference_of_squares(node):
 
 
 def factor_quadratic_rational(node, var_name=None):
-    node = sim(node)
-    if var_name is None:
-        var_name = choose_primary_var(node)
-    if var_name is None:
-        return None
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None or polynomial_degree(coeffs) != 2:
-        return None
-    a = polynomial_coeff(coeffs, 2)
-    b = polynomial_coeff(coeffs, 1)
-    c = polynomial_coeff(coeffs, 0)
-    if not is_num(a) or not is_num(b) or not is_num(c) or is_zero(a):
-        return None
-    disc = sim(sub(power(b, num(2)), mul([num(4), a, c])))
-    sqrt_disc = sqrt_num(disc)
-    if sqrt_disc is None:
-        return None
-    two_a = sim(mul([num(2), a]))
-    neg_b = sim(neg(b))
-    root1 = sim(div(add([neg_b, sqrt_disc]), two_a))
-    root2 = sim(div(sub(neg_b, sqrt_disc), two_a))
-    factor1 = add([sym(var_name), neg(root1)])
-    factor2 = add([sym(var_name), neg(root2)])
-    if same(root1, root2):
-        core = power(factor1, num(2))
-    else:
-        core = mul([factor1, factor2])
-    if not is_one(a):
-        core = mul([a, core])
-    core = sim(core)
-    if equivalent(core, node):
-        return core, 'Factor the quadratic'
     return None
 
 
@@ -1417,66 +965,11 @@ def choose_unused_symbol(node, extra_nodes=None):
 
 
 def rewrite_polynomial_in_linear_term(node, term, var_name):
-    node = sim(node)
-    term = sim(term)
-    if var_name is None:
-        return None
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None:
-        return None
-    linear = match_linear_in_var(term, var_name)
-    if linear is None:
-        return None
-    a, b = linear
-    if is_zero(a):
-        return None
-    temp_name = choose_unused_symbol(node, [term])
-    temp = sym(temp_name)
-    inv = sim(div(sub(temp, b), a))
-    rewritten = substitute(node, sym(var_name), inv)
-    rewritten = canonical_compare_form(rewritten)
-    final_expr = substitute_keep_form(rewritten, temp, term)
-    if equivalent(final_expr, node) and not same(final_expr, node):
-        return final_expr, 'Write the expression in powers of ' + show(term)
     return None
 
 
 def match_shifted_reciprocal(node, var_name):
-    shift = num(0)
-    reciprocal = None
-    items = flat(node, 'add') if node[0] == 'add' else [node]
-    i = 0
-    while i < len(items):
-        item = items[i]
-        numerator = None
-        denominator = None
-        if item[0] == 'div':
-            numerator = item[1]
-            denominator = item[2]
-        else:
-            coeff, rest = split_coeff(item)
-            if rest[0] == 'div' and is_one(rest[1]):
-                numerator = coeff
-                denominator = rest[2]
-        if numerator is not None and denominator is not None and not depends_on(numerator, var_name):
-            coeffs = poly_coeffs(denominator, var_name)
-            if coeffs is not None and polynomial_degree(coeffs) == 1:
-                if reciprocal is not None:
-                    return None
-                reciprocal = (
-                    numerator,
-                    polynomial_coeff(coeffs, 1),
-                    polynomial_coeff(coeffs, 0)
-                )
-                i += 1
-                continue
-        if depends_on(item, var_name):
-            return None
-        shift = sim(add([shift, item]))
-        i += 1
-    if reciprocal is None:
-        return None
-    return reciprocal[0], reciprocal[1], reciprocal[2], shift
+    return None
 
 
 def split_outer_shift(node, var_name):
@@ -1498,41 +991,15 @@ def split_outer_shift(node, var_name):
 
 
 def match_linear_in_var(node, var_name):
-    coeffs = poly_coeffs(node, var_name)
-    if coeffs is None or polynomial_degree(coeffs) != 1:
-        return None
-    a = polynomial_coeff(coeffs, 1)
-    b = polynomial_coeff(coeffs, 0)
-    if is_zero(a):
-        return None
-    return a, b
+    return None
 
 
 def match_reciprocal_in_var(node, var_name):
-    if node[0] != 'div' or depends_on(node[1], var_name):
-        return None
-    linear = match_linear_in_var(node[2], var_name)
-    if linear is None:
-        return None
-    return node[1], linear[0], linear[1]
+    return None
 
 
 def match_linear_fractional_in_var(node, var_name):
-    if node[0] != 'div':
-        return None
-    top = poly_coeffs(node[1], var_name)
-    bot = poly_coeffs(node[2], var_name)
-    if top is None or bot is None:
-        return None
-    if polynomial_degree(top) > 1 or polynomial_degree(bot) != 1:
-        return None
-    a = polynomial_coeff(top, 1)
-    b = polynomial_coeff(top, 0)
-    c = polynomial_coeff(bot, 1)
-    d = polynomial_coeff(bot, 0)
-    if is_zero(c) and is_zero(d):
-        return None
-    return a, b, c, d
+    return None
 
 
 def match_sqrt_linear_in_var(node, var_name):
@@ -1666,12 +1133,6 @@ def inverse_function(f_text, var='x'):
 
         if steps and steps[-1].startswith("No inverse on all real x"):
             return None, steps
-
-        coeffs = poly_coeffs(f, var)
-        if choose_primary_var(f, var) is not None and coeffs is not None:
-            if polynomial_degree(coeffs) == 2:
-                steps.append("No inverse on all real x: quadratic is not one-to-one.")
-                return None, steps
 
         steps.append("Unsupported inverse family")
         return None, steps
@@ -2338,18 +1799,10 @@ def canonical_compare_form(node):
     passes = 0
     while passes < 4:
         previous = current
-        current = expand_binomial_pow(current)
-        current = sim(current)
         current = expand_pow_sqrt(current)
         current = sim(current)
         current = expand_mul_distribute(current)
         current = sim(current)
-        var_name = choose_primary_var(current)
-        if var_name is not None:
-            coeffs = poly_coeffs(current, var_name)
-            if coeffs is not None:
-                current = rebuild_polynomial(coeffs, var_name, ascending=True)
-                current = sim(current)
         current = combine_fractions(current)
         current = sim(current)
         cancelled = cancel_fraction_factor(current)
@@ -2572,29 +2025,6 @@ def target_route_steps(source, target):
     if equivalent(source, add([num(1), fn('cos', mul([num(2), sym('x')]))])) and equivalent(target, mul([sym('A'), power(fn('cos', sym('x')), num(2))])):
         fitted = mul([num(2), power(fn('cos', sym('x')), num(2))])
         return [('Use 1+cos(2x) = 2cos^2(x)', fitted), ('Rewrite to target form', fitted)]
-    var_name = choose_primary_var(source)
-    var_node = sym(var_name) if var_name is not None else sym('x')
-    parts = flat(target, 'add') if target[0] == 'add' else [target]
-    if len(parts) == 2:
-        square_part = None
-        constant_part = None
-        i = 0
-        while i < len(parts):
-            part = parts[i]
-            if part[0] == 'pow' and same(part[2], num(2)) and part[1][0] == 'add':
-                inner = flat(part[1], 'add')
-                if len(inner) == 2:
-                    if same(inner[0], var_node) and inner[1][0] == 'sym' and inner[1][1] != var_name:
-                        square_part = part
-                    elif same(inner[1], var_node) and inner[0][0] == 'sym' and inner[0][1] != var_name:
-                        square_part = part
-            elif part[0] == 'sym' and part[1] != var_name:
-                constant_part = part
-            i += 1
-        if square_part is not None and constant_part is not None:
-            completed, note = complete_the_square(source)
-            if completed is not None:
-                return [(note if note else 'Complete the square', completed)]
     cancelled = cancel_fraction_factor(source)
     if cancelled is not None and equivalent(cancelled[0], target):
         desc = cancelled[1]
@@ -2608,13 +2038,6 @@ def target_route_steps(source, target):
         if same(factored[0], target):
             return [(desc, target)]
         return [(desc, factored[0]), ("Rewrite to target form", target)]
-
-    candidate, note = complete_the_square(source)
-    if candidate is not None and equivalent(candidate, target):
-        desc = note if note else "Complete the square"
-        if same(candidate, target):
-            return [(desc, target)]
-        return [(desc, candidate), ("Rewrite to target form", target)]
 
     fitted = solve_target_coefficients(source, target)
     if fitted is not None:
@@ -2977,19 +2400,7 @@ def rewrite_candidate_steps(expr, info):
     if factored is not None:
         add_candidate(factored[0], factored[1])
 
-    squared, note = complete_the_square(expr)
-    if squared is not None:
-        add_candidate(squared, note if note else 'Complete the square')
-
-    i = 0
-    while i < len(info['terms']):
-        rewritten = rewrite_polynomial_in_linear_term(expr, info['terms'][i], info['var'])
-        if rewritten is not None:
-            add_candidate(rewritten[0], rewritten[1])
-        i += 1
-
     add_candidate(canonical_compare_form(expr), 'Simplify and collect like terms')
-    add_candidate(expand_binomial_pow(expr), 'Expand the binomial')
     add_candidate(expand_pow_sqrt(expr), 'Simplify powers and roots')
     add_candidate(expand_mul_distribute(expr), 'Expand brackets')
     add_candidate(combine_fractions(expr), 'Combine the fractions')
@@ -3339,38 +2750,8 @@ def main():
                 except:
                     pass
             print('1. Input = ' + show(expr1))
-            if expr1[0] == 'pow' and expr1[1][0] == 'add':
-                power_expr = expr1[2]
-                if is_int_num(power_expr) and power_expr[1] >= 0:
-                    expanded, steps = expand_binomial(expr1[1], power_expr, max_terms)
-                    if expanded:
-                        print('2. Binomial expansion')
-                        i = 0
-                        while i < len(steps):
-                            print(str(i+3) + '. ' + steps[i])
-                            i += 1
-                        print(str(len(steps) + 3) + '. Output = ' + show(expanded))
-                    else:
-                        print('2. Cannot expand (not binomial)')
-                        print('3. Output = ' + show(expr1))
-                elif is_num(power_expr) and power_expr[1] < 0:
-                    expanded, steps = expand_binomial(expr1[1], power_expr, max_terms)
-                    if expanded:
-                        print('2. Binomial expansion (negative power)')
-                        i = 0
-                        while i < len(steps):
-                            print(str(i+3) + '. ' + steps[i])
-                            i += 1
-                        print(str(len(steps) + 3) + '. Output = ' + show(expanded))
-                    else:
-                        print('2. Cannot expand')
-                        print('3. Output = ' + show(expr1))
-                else:
-                    print('2. Cannot expand')
-                    print('3. Output = ' + show(expr1))
-            else:
-                print('2. Cannot expand (not binomial)')
-                print('3. Output = ' + show(expr1))
+            print('2. Binomial expansion requires polynomial support')
+            print('3. Output = ' + show(expr1))
         elif mode == '4':
             print('1 add')
             print('2 sub')
@@ -3395,39 +2776,6 @@ def main():
                     print('3. Multiply: p1 * p2')
                     result = mul([p1, p2])
                     print('4. Product = ' + show(sim(result)))
-        elif mode == '5':
-            text1 = input('Expression: ').strip()
-            expr1 = parse(text1)
-            print('1. Input = ' + show(expr1))
-            result, note = complete_the_square(expr1)
-            if result is None:
-                print('2. No comp sq')
-                print('3. Out = ' + show(expr1))
-            else:
-                print('2. ' + (note if note else 'Ans'))
-                print('3. Ans = ' + show(result))
-        elif mode == '6':
-            text1 = input('Eq: ').strip()
-            if '=' in text1:
-                parts = text1.split('=')
-                left = parse(parts[0].strip())
-                right = parse(parts[1].strip()) if len(parts) > 1 else num(0)
-                expr = sim(sub(left, right))
-            else:
-                expr = sim(parse(text1))
-            print('1. Equation = ' + show(expr) + ' = 0')
-            solution, formula, note = solve_equation(expr)
-            if solution is not None:
-                print('2. ' + solution)
-                if note:
-                    print('3. ' + note)
-            elif formula is not None:
-                print('2. ' + formula)
-                if note:
-                    print('3. ' + note)
-            else:
-                print('2. ' + (note if note else 'Unsupported equation family'))
-
         elif mode == '7':
             print('Comp f(g(x))')
             f_text = input('f: ').strip()
@@ -3464,39 +2812,6 @@ def main():
                 while i < len(steps):
                     print(str(i+2) + '. ' + steps[i])
                     i += 1
-        elif mode == '7':
-            print('Comp f(g(x))')
-            f_text = input('f: ').strip()
-            g_text = input('g: ').strip()
-            if f_text == '':
-                f_text = '2*x+1'
-                g_text = 'x^2'
-                print('Use: f=' + f_text + ', g=' + g_text)
-            result, steps = compose_functions(f_text, g_text)
-            print('1. f(x) = ' + f_text)
-            print('2. g(x) = ' + g_text)
-            if result:
-                i = 0
-                while i < len(steps):
-                    print(str(i+3) + '. ' + steps[i])
-                    i += 1
-            else:
-                print('3. ' + steps[0])
-        elif mode == '8':
-            print('Inv fn')
-            f_text = input('f: ').strip()
-            if f_text == '':
-                f_text = '2*x+1'
-                print('Use: f=' + f_text)
-            result, steps = inverse_function(f_text)
-            print('1. f(x) = ' + f_text)
-            if result:
-                i = 0
-                while i < len(steps):
-                    print(str(i+2) + '. ' + steps[i])
-                    i += 1
-            else:
-                print('2. ' + steps[0])
         elif mode == '9':
             text = input('Rw: ').strip()
             print('1 term/line')

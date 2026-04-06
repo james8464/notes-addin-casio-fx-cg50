@@ -157,6 +157,7 @@ y = 3*e^(x^2)
 ### Direct (`dir`)
 - power rule and rational powers
 - `exp(x)` and simple exponential forms
+- **exponential with any base**: `a^x` for any constant `a` (NEW)
 - `1/x`, `1/(a*x+b)`, and log-derivative style cases
 - basic trig integrals such as `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
 - `sec^2`, `cosec^2`, `sec*tan`, `cosec*cot`
@@ -164,6 +165,7 @@ y = 3*e^(x^2)
 
 ### Trig (`trig`)
 - power reduction such as `sin^2`, `sin^4`, `cos^2`
+- **high-power trig identities**: `sin^6`, `cos^4`, `tan^3`, `tan^4` (NEW)
 - odd trig-power families
 - product-to-sum and same-angle rewrites
 
@@ -174,6 +176,7 @@ y = 3*e^(x^2)
 
 ### Parts (`pts`)
 - polynomial × trig / exponential
+- **log powers**: `ln(x)^n` by parts (NEW)
 - inverse-trig and log products in supported cases
 - cyclic exponential-trig forms
 
@@ -184,6 +187,35 @@ y = 3*e^(x^2)
 
 ### Division (`div`)
 - polynomial numerator / lower-degree denominator division before integration
+
+## Python API
+
+```python
+import sys
+sys.path.insert(0, 'Math')
+sys._int_no_autorun = True
+import intProgram as ip
+
+# Basic polynomial integration
+J, K = ip.parse_input('x^2')
+result, reason, steps = ip.solve(J, K, '1')
+print('Result exists:', result is not None)
+
+# a^x integration (NEW)
+J, K = ip.parse_input('2^x')
+result, reason, steps = ip.solve(J, K, '1')
+print('2^x integral works:', result is not None)
+
+# ln(x)^n by parts (NEW)
+J, K = ip.parse_input('(ln(x))^3')
+result, reason, steps = ip.solve(J, K, '1')
+print('ln(x)^3 integral works:', result is not None)
+
+# High-power trig (NEW)
+J, K = ip.parse_input('sin(x)^6')
+result, reason, steps = ip.solve(J, K, '1')
+print('sin(x)^6 integral works:', result is not None)
+```
 
 ## Out-of-scope examples
 

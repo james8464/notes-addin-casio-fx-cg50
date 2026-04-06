@@ -183,6 +183,7 @@ Final = 2*sin(x)^2
 - reciprocal identities
 - Pythagorean identities
 - double-angle formulas
+- triple-angle formulas (sin(3x), cos(3x), tan(3x))
 - sum / difference formulas
 - sum-to-product and product-to-sum routes
 - power reduction
@@ -191,6 +192,29 @@ Final = 2*sin(x)^2
   - `(1-cos(x))/sin(x) -> tan(x/2)`
   - `(1+cos(x))/sin(x) -> cot(x/2)`
   - `sin(x)/(1-cos(x)) -> cot(x/2)`
+
+## Python API
+
+```python
+import sys
+sys.path.insert(0, 'Math')
+sys._trig_no_autorun = True
+import trigProgram as tp
+
+# Simplify expressions
+result = tp.full_simplify(tp.parse('sin(x)^2+cos(x)^2'))
+print(tp.show(result))  # 1
+
+# Prove identities
+lhs = tp.parse('sin(x)+sin(y)')
+rhs = tp.parse('2*sin((x+y)/2)*cos((x-y)/2)')
+result = tp.prove_general(lhs, rhs)
+print('Prove works:', result is not None)
+
+# Transform expressions  
+result = tp.solve_transform_text('sin(x)/cos(x)', 'tan(x)')
+print('Transform works:', result is not None)
+```
 
 ## Error handling
 
