@@ -29,7 +29,8 @@ PI = ("const", "pi")
 
 FUNC_NAMES = (
     "sin", "cos", "tan", "sec", "cosec", "cot",
-    "asin", "acos", "atan", "log", "log10", "sqrt", "exp", "abs"
+    "asin", "acos", "atan", "log", "log10", "sqrt", "exp", "abs",
+    "sinh", "cosh", "tanh"
 )
 
 FUNC_ALIASES = {
@@ -538,6 +539,12 @@ def rule_u(name):
         return neg(fn("sin", u))
     if name == "tan":
         return power(fn("sec", u), num(2))
+    if name == "sinh":
+        return fn("cosh", u)
+    if name == "cosh":
+        return fn("sinh", u)
+    if name == "tanh":
+        return div(num(1), power(fn("cosh", u), num(2)))
     if name == "sec":
         return mul([fn("sec", u), fn("tan", u)])
     if name == "cosec":
@@ -871,6 +878,12 @@ def diff(node, var, deps_list):
             return neg(mul([fn("sin", arg), darg]))
         if name == "tan":
             return mul([power(fn("sec", arg), num(2)), darg])
+        if name == "sinh":
+            return mul([fn("cosh", arg), darg])
+        if name == "cosh":
+            return mul([fn("sinh", arg), darg])
+        if name == "tanh":
+            return div(darg, power(fn("cosh", arg), num(2)))
         if name == "sec":
             return mul([fn("sec", arg), fn("tan", arg), darg])
         if name == "cosec":
@@ -1384,6 +1397,7 @@ def explain(node, var, deps_list):
             return d, lines
         if is_num(base) and base[1] <= 0:
             raise ValueError("Exponential base must be positive.")
+        deps_list_list = list(deps_list.keys()) if isinstance(deps_list, dict) else []
         if not depends(base, [var] + deps_list_list):
             de = tidy(diff(exp, var, deps_list))
             if same(base, E):
@@ -1398,9 +1412,9 @@ def explain(node, var, deps_list):
             lines.append("Generalized power rule")
             lines.append("= " + show(d))
             return d, lines
-        lines.append("Log-differentiate style rule")
+        lines.append("Log diff")
         lines.append("y = " + show(node))
-        lines.append("dy/d" + var + " = y*(v*du/u+ln(u)*dv/d" + var + ")")
+        lines.append("dy/d" + var + " = y*(u'/u+ln(u)*v')")
         lines.append("= " + show(d))
         return d, lines
     if node[0] == "fn":
@@ -1413,7 +1427,8 @@ def explain(node, var, deps_list):
                 "sec": "sec rule", "cosec": "cosec rule", "cot": "cot rule",
                 "asin": "asin rule", "acos": "acos rule", "atan": "atan rule",
                 "log": "ln rule", "log10": "log10 rule", "exp": "exp rule",
-                "sqrt": "sqrt rule", "abs": "abs rule"
+                "sqrt": "sqrt rule", "abs": "abs rule",
+                "sinh": "sinh rule", "cosh": "cosh rule", "tanh": "tanh rule"
             }.get(name, "Diff")
             lines.append(label)
             lines.append("= " + show(d))
@@ -1953,6 +1968,8 @@ def main():
     try:
         if mode == "1":
             text = input("y: ").strip()
+            if text == "":
+                raise ValueError("Enter an expression.")
             var, steps, final, formatted = solve_normal_mode(text)
 
             i = 1

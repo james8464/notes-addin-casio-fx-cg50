@@ -655,9 +655,1027 @@ def binomial_coefficient(n, k):
     return result
 
 
-def solve_equation(node):
-    return None, None, "Solving equations requires polynomial support"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def split_rewrite_arrow(text):
+    if '->' not in text:
+        return None
+    left, right = text.split('->', 1)
+    return left.strip(), right.strip()
+
+
+def equation_has_trig_content(lhs, rhs):
+    return False
+
+
+def solve_linear_parameter_text(eq_text, var):
+    raise ValueError('Param solve not ready')
+
+
+def solve_x_equation_text(eq_text, var, extra):
+    raise ValueError('Trig solve not supported here')
+
+
+def solve_extremum_text(text, kind, var):
+    raise ValueError('Extremum not supported here')
+
+
+def parse_identity_or_zero(text):
+    return parse_equation_or_zero(text)
+
+
+def special_text_proof(text, route):
+    return None
+
+
+def is_domain_restricted_identity_pair(lhs, rhs):
+    return False
+
+
+def solve_prove(lhs, rhs, route):
+    return ['Proof route not implemented']
+
+
+def numeric_evaluation_text(text):
+    return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def choose_rewrite_var(expr, term):
+    return choose_primary_var(expr)
+
+
+def extract_polynomial_symbol(expr, var_name, max_degree=2):
+    coeffs, degree = polynomial_coeff_list(expr, var_name, max_degree)
+    if coeffs is None:
+        return None
+    out = {}
+    i = 0
+    while i <= max_degree:
+        out[i] = coeffs[i]
+        i += 1
+    return out
+
+
+def polynomial_degree_coeff_map(coeffs, max_deg):
+    degree = max_deg
+    while degree > 0 and is_zero(coeffs[degree]):
+        degree -= 1
+    return degree
+
+
+def polynomial_coeff_nodes_low(coeffs, degree):
+    out = []
+    i = 0
+    while i <= degree:
+        out.append(coeffs[i])
+        i += 1
+    return out
+
+
+def quadratic_roots_from_nodes(coeff_nodes):
+    return rational_roots_for_quadratic(coeff_nodes)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def factor_text_mode(text):
+    return factor_text(text)
+
+
+def rewrite_text_mode(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+
+
+
+
+
+
+def rewrite_in_term(expr_text, term_text):
+    return rewrite_in_term_text(expr_text, term_text)
+
+
+def factor_expr_text(expr_text):
+    return factor_text(expr_text)
+
+
+def solve_expr_text(expr_text):
+    return solve_equation_text(expr_text)
+
+
+def poly_mode_output(expr_text):
+    return factor_text(expr_text)
+
+
+def split_equation_text(text):
+    return parse_equation_or_zero(text)
+
+
+def expr_depends_on(node, var_name):
+    return depends_on(node, var_name)
+
+
+def collect_roots_text(var_name, roots):
+    return format_solution_line(var_name, roots)
+
+
+def solve_equation_cli(text):
+    return solve_equation_text(text)
+
+
+def factor_cli(text):
+    return factor_text(text)
+
+
+def rewrite_cli(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def transform_cli(text1, text2):
+    return solve_transform_text(text1, text2)
+
+
+def prove_cli(text, route='1'):
+    return solve_prove_text(text, route)
+
+
+def simplify_cli(text1, text2):
+    return compare_expressions(parse(text1), parse(text2))
+
+
+def poly_cli(text):
+    return factor_text(text)
+
+
+def inverse_cli(text):
+    return inverse_function(text)
+
+
+def comp_cli(f_text, g_text):
+    return compose_functions(f_text, g_text)
+
+
+def rw_cli(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+def solve_cli(text):
+    return solve_equation_text(text)
+
+
+def factor_quadratic_text(text):
+    return factor_text(text)
+
+
+def parse_cli_expr(text):
+    return parse(text)
+
+
+def parse_cli_equation(text):
+    return parse_equation_or_zero(text)
+
+
+def rewrite_in_u_cli(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def solve_poly_cli(text):
+    return solve_equation_text(text)
+
+
+def factor_poly_cli(text):
+    return factor_text(text)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def solve_hint(text):
+    return solve_equation_text(text)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def build_rewrite_term_symbol(node, term):
+    return choose_unused_symbol(node, [term])
+
+
+def quadratic_factor_text(expr_text):
+    return factor_text(expr_text)
+
+
+def quadratic_solve_text(expr_text):
+    return solve_equation_text(expr_text)
+
+
+def rewrite_term_symbol(node, term):
+    return build_rewrite_term_symbol(node, term)
+
+
+
+
+
+
+
+
+
+
+
+
+def rewrite_term_if_possible(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def solve_if_possible(text):
+    return solve_equation_text(text)
+
+
+def factor_if_possible(text):
+    return factor_text(text)
+
+
+def quadratic_factor_if_possible(node):
+    return factor_quadratic_rational(node)
+
+
+def quadratic_solve_if_possible(node):
+    return solve_equation(node)
+
+
+def linear_term_rewrite_if_possible(node, term, var_name):
+    return rewrite_polynomial_in_linear_term(node, term, var_name)
+
+
+def shifted_reciprocal_if_possible(node, var_name):
+    return match_shifted_reciprocal(node, var_name)
+
+
+def solve_display_text(text):
+    return solve_equation_text(text)
+
+
+def factor_display_text(text):
+    return factor_text(text)
+
+
+def rewrite_display_text(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+
+
+
+
+
+
+def solve_with_polynomial_support(text):
+    return solve_equation_text(text)
+
+
+def factor_with_polynomial_support(text):
+    return factor_text(text)
+
+
+def rewrite_with_polynomial_support(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def normalize_solution_roots(roots):
+    out = []
+    i = 0
+    while i < len(roots):
+        duplicate = False
+        j = 0
+        while j < len(out):
+            if equivalent(out[j], roots[i]):
+                duplicate = True
+                break
+            j += 1
+        if not duplicate:
+            out.append(roots[i])
+        i += 1
+    return out
+
+
+def format_solution_line(var_name, roots):
+    bits = []
+    i = 0
+    while i < len(roots):
+        bits.append(show(roots[i]))
+        i += 1
+    return var_name + ' = ' + (bits[0] if len(bits) == 1 else '[' + ', '.join(bits) + ']')
+
+
+def factor_from_roots(var_node, roots):
+    factors = []
+    i = 0
+    while i < len(roots):
+        factors.append(add([var_node, neg(roots[i])]))
+        i += 1
+    return sim(make_mul(factors))
+
+
+def polynomial_coeff_map(node, var_name, max_degree=2):
+    node = sim(node)
+    if not depends_on(node, var_name):
+        return {0: node}, 0
+    if node == sym(var_name):
+        return {0: num(0), 1: num(1)}, 1
+    if node[0] == 'pow' and node[1] == sym(var_name) and is_int_num(node[2]):
+        deg = node[2][1]
+        if deg < 0 or deg > max_degree:
+            return None, None
+        out = {0: num(0), deg: num(1)}
+        i = 1
+        while i < deg:
+            out[i] = num(0)
+            i += 1
+        return out, deg
+    if node[0] == 'add':
+        out = {0: num(0)}
+        degree = 0
+        i = 0
+        while i < len(node[1]):
+            cur, cur_deg = polynomial_coeff_map(node[1][i], var_name, max_degree)
+            if cur is None:
+                return None, None
+            for deg in cur:
+                out[deg] = sim(add([out.get(deg, num(0)), cur[deg]]))
+                if deg > degree and not is_zero(out[deg]):
+                    degree = deg
+            i += 1
+        return out, degree
+    if node[0] == 'mul':
+        coeffs = {0: num(1)}
+        degree = 0
+        i = 0
+        while i < len(node[1]):
+            cur, _cur_deg = polynomial_coeff_map(node[1][i], var_name, max_degree)
+            if cur is None:
+                return None, None
+            new_coeffs = {}
+            for d1 in coeffs:
+                for d2 in cur:
+                    deg = d1 + d2
+                    if deg > max_degree:
+                        return None, None
+                    term = sim(mul([coeffs[d1], cur[d2]]))
+                    new_coeffs[deg] = sim(add([new_coeffs.get(deg, num(0)), term]))
+            coeffs = new_coeffs
+            degree = 0
+            for deg in coeffs:
+                if not is_zero(coeffs[deg]) and deg > degree:
+                    degree = deg
+            i += 1
+        return coeffs, degree
+    if node[0] == 'div' and not depends_on(node[2], var_name):
+        top, degree = polynomial_coeff_map(node[1], var_name, max_degree)
+        if top is None:
+            return None, None
+        out = {}
+        for deg in top:
+            out[deg] = sim(div(top[deg], node[2]))
+        return out, degree
+    return None, None
+
+
+def polynomial_coeff_list(node, var_name, max_degree=2):
+    coeffs, degree = polynomial_coeff_map(node, var_name, max_degree)
+    if coeffs is None:
+        return None, None
+    out = []
+    i = 0
+    while i <= max_degree:
+        out.append(sim(coeffs.get(i, num(0))))
+        i += 1
+    while degree > 0 and is_zero(out[degree]):
+        degree -= 1
+    return out, degree
+
+
+def rational_roots_for_quadratic(coeff_nodes):
+    a = coeff_nodes[2]
+    b = coeff_nodes[1]
+    c = coeff_nodes[0]
+    if is_zero(a):
+        if is_zero(b):
+            return []
+        return [sim(div(neg(c), b))]
+    disc = sim(sub(power(b, num(2)), mul([num(4), a, c])))
+    disc_root = sqrt_num(disc)
+    if disc_root is None:
+        return []
+    denom = sim(mul([num(2), a]))
+    return [sim(div(add([neg(b), disc_root]), denom)), sim(div(add([neg(b), neg(disc_root)]), denom))]
+
+
+def expand_algebraic(node):
+    return canonical_compare_form(node)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def parse_expr_or_equation(text):
+    body = text.strip()
+    if body == '':
+        raise ValueError('Enter input.')
+    if '=' in body:
+        left_text, right_text = body.split('=', 1)
+        return sim(sub(parse(left_text.strip()), parse(right_text.strip())))
+    return parse(body)
+
+
+def print_lines(lines):
+    i = 0
+    while i < len(lines):
+        print(str(i + 1) + '. ' + lines[i])
+        i += 1
+
+
+def compact_lines(lines):
+    return lines
+
+
+def parse_equation_or_zero(text):
+    body = text.strip()
+    if '=' not in body:
+        return parse(body), num(0)
+    left_text, right_text = body.split('=', 1)
+    return parse(left_text.strip()), parse(right_text.strip())
+
+
+def parse_identity(text):
+    return parse_equation_or_zero(text)
+
+
+def solve_transform_text(text1, text2):
+    expr1 = parse(text1.strip())
+    expr2 = parse(text2.strip())
+    steps, result = rearrange_to_target(expr1, expr2)
+    lines = ['Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
+    i = 0
+    while i < len(steps):
+        _num, desc, _node = steps[i]
+        lines.append(desc)
+        i += 1
+    lines.append('Final = ' + show(result))
+    return lines
+
+
+def solve_prove_text(text, route):
+    lhs, rhs = parse_identity(text)
+    if equivalent(lhs, rhs):
+        return [show(lhs), '= ' + show(rhs)]
+    return [show(lhs), '!= ' + show(rhs)]
+
+
+
+
+def split_top_level(text, sep):
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == sep and depth == 0:
+            return text[:i], text[i + 1:]
+        i += 1
+    return None
+
+
+def split_top_level_all(text, sep):
+    out = []
+    depth = 0
+    start = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == sep and depth == 0:
+            out.append(text[start:i])
+            start = i + 1
+        i += 1
+    out.append(text[start:])
+    return out
+
+
+def expand_small(node):
+    return canonical_compare_form(node)
+
+
+def rewrite_verified_equivalent(a, b):
+    return equivalent(a, b)
+
+
+def depends_any(node, names):
+    i = 0
+    while i < len(names):
+        if depends_on(node, names[i]):
+            return True
+        i += 1
+    return False
+
+
+def has_variable_dependency(node):
+    var_name = choose_primary_var(node)
+    return var_name is not None and depends_on(node, var_name)
+
+
+def solve_square_sum_reduction_expr(*args, **kwargs):
+    return None
+
+
+def solve_pythag_single_expr(*args, **kwargs):
+    return None
+
+
+def solve_weighted_pythag_expr(*args, **kwargs):
+    return None
+
+
+def solve_cos_double_single_expr(*args, **kwargs):
+    return None
+
+
+def solve_sin_double_single_expr(*args, **kwargs):
+    return None
+
+
+def rewrite_tan_double_factor_polynomial_expr(*args, **kwargs):
+    return None
+
+
+def solve_sin_tan_expr(*args, **kwargs):
+    return None
+
+
+def solve_cos_cot_expr(*args, **kwargs):
+    return None
+
+
+def solve_sin_cot_expr(*args, **kwargs):
+    return None
+
+
+def solve_cos_tan_expr(*args, **kwargs):
+    return None
+
+
+def solve_sin2_tan_expr(*args, **kwargs):
+    return None
+
+
+def solve_sin2_cot_expr(*args, **kwargs):
+    return None
+
+
+def solve_sec_tan_mix_expr(*args, **kwargs):
+    return None
+
+
+def solve_cosec_cot_mix_expr(*args, **kwargs):
+    return None
+
+
+def rewrite_half_angle_ratio_terms(*args, **kwargs):
+    return None
+
+
+def rewrite_sum_product_terms(*args, **kwargs):
+    return None
+
+
+def rewrite_product_to_sum_terms(*args, **kwargs):
+    return None
+
+
+def solve_double_product_reduction_expr(*args, **kwargs):
+    return None
+
+
+def transform_zero_form_rewrite(*args, **kwargs):
+    return None
+
+
+def transform_fit_constant_template(*args, **kwargs):
+    return None
+
+
+def prove_cot_quadratic_equation(*args, **kwargs):
+    return None
+
+
+def transform_constant_factor_template(*args, **kwargs):
+    return None
+
+
+def transform_linear_combo_shift(*args, **kwargs):
+    return None
+
+
+def transform_factor_quadratic(*args, **kwargs):
+    return None
+
+
+def transform_same_angle_ratio(*args, **kwargs):
+    return None
+
+
+def transform_r_sin_cos_form(*args, **kwargs):
+    return None
+
+
+def transform_sin_cos_2x_form(*args, **kwargs):
+    return None
+
+
+def collect_trig_argument_lower_symbols(*args, **kwargs):
+    return None
+
+
+def start_line(name, expr):
+    return name + ' = ' + show(expr)
+
+
+def step_line(expr):
+    return '= ' + show(expr)
+
+
+def solve_input_text(text):
+    return solve_equation_text(text)
+
+
+def compare_mode_text(text1, text2):
+    return compare_expressions(parse(text1), parse(text2))
+
+
+def exact_text_or_float(node):
+    return show(node)
+
+
+def display_root_list(var_name, roots):
+    return format_solution_line(var_name, roots)
+
+
+def normalise_fit_constant(node):
+    return sim(node)
+
+
+def preferred_var_or_default(node, default='x'):
+    var_name = choose_primary_var(node)
+    return default if var_name is None else var_name
+
+
+def simplify_expr_cli(text):
+    return canonical_compare_form(parse(text))
+
+
+
+
+
+
+
+
+def algebra_mode_6_text(text):
+    return solve_equation_text(text)
+
+
+def algebra_mode_3_text(text):
+    return factor_text(text)
+
+
+def algebra_mode_9_text(text, term_texts):
+    return solve_rewrite_text(text, term_texts)
+
+
+def polynomial_expr_coeffs(node, var_name, max_degree=2):
+    return polynomial_coeff_list(node, var_name, max_degree)
+
+
+def make_solution_lines(var_name, roots, label):
+    return [label, format_solution_line(var_name, roots)]
+
+
+def factor_lines(expr, factored, label):
+    return ['Input = ' + show(expr), label, '= ' + show(factored)]
+
+
+def rewrite_lines(expr, term, u, out):
+    return ['u = ' + show(term), show(expr), '= ' + show(out)]
+
+
+def solve_lines(expr, var_name, roots, label):
+    return ['Expr = ' + show(expr), label, format_solution_line(var_name, roots)]
+
+
+def build_quadratic_from_roots(r1, r2, var_name='x'):
+    return factor_from_roots(sym(var_name), [r1, r2])
+
+
+def choose_rewrite_symbol(node, term):
+    return choose_unused_symbol(node, [term])
+
+
+def try_factor_quadratic(node):
+    return factor_quadratic_rational(node)
+
+
+def try_solve_quadratic(node):
+    return solve_equation(node)
+
+
+def try_rewrite_linear_term(node, term, var_name):
+    return rewrite_polynomial_in_linear_term(node, term, var_name)
+
+
+def try_match_shifted_reciprocal(node, var_name):
+    return match_shifted_reciprocal(node, var_name)
+
+
+def factor_expr(node):
+    return factor_expression(node)
+
+
+def solve_expr(node):
+    return solve_equation(node)
+
+
+def rewrite_expr(node, term, var_name):
+    return rewrite_polynomial_in_linear_term(node, term, var_name)
+
+
+def solve_text(text):
+    return solve_equation_text(text)
+
+
+def factor_hint(text):
+    return factor_text(text)
+
+
+def rewrite_hint(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def factor_general_text(text):
+    return factor_text(text)
+
+
+def solve_general_text(text):
+    return solve_equation_text(text)
+
+
+def rewrite_general_text(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def short_solution_label(label):
+    return label
+
+
+def polynomial_mode_text(expr_text):
+    return factor_text(expr_text)
+
+
+def algebra_solve_text(expr_text):
+    return solve_equation_text(expr_text)
+
+
+def algebra_factor_text(expr_text):
+    return factor_text(expr_text)
+
+
+def algebra_rewrite_term_text(expr_text, term_text):
+    return rewrite_in_term_text(expr_text, term_text)
+
+
+def roots_text(var_name, roots):
+    return format_solution_line(var_name, roots)
 
 def compose_functions(f_text, g_text, var='x'):
     try:
@@ -883,8 +1901,6 @@ def factor_difference_of_squares(node):
     return None
 
 
-def factor_quadratic_rational(node, var_name=None):
-    return None
 
 
 def factor_expression(node, preferred_var=None):
@@ -964,12 +1980,8 @@ def choose_unused_symbol(node, extra_nodes=None):
         index += 1
 
 
-def rewrite_polynomial_in_linear_term(node, term, var_name):
-    return None
 
 
-def match_shifted_reciprocal(node, var_name):
-    return None
 
 
 def split_outer_shift(node, var_name):
@@ -991,15 +2003,38 @@ def split_outer_shift(node, var_name):
 
 
 def match_linear_in_var(node, var_name):
-    return None
+    node = sim(node)
+    zero_sub = substitute_keep_form(node, sym(var_name), num(0))
+    one_sub = substitute_keep_form(node, sym(var_name), num(1))
+    two_sub = substitute_keep_form(node, sym(var_name), num(2))
+    if depends_on(zero_sub, var_name) or depends_on(one_sub, var_name) or depends_on(two_sub, var_name):
+        return None
+    coeff = sim(sub(one_sub, zero_sub))
+    expected_two = sim(add([zero_sub, mul([num(2), coeff])]))
+    if is_zero(coeff) or not equivalent(two_sub, expected_two):
+        return None
+    return coeff, sim(zero_sub)
 
 
 def match_reciprocal_in_var(node, var_name):
-    return None
+    node = sim(node)
+    if node[0] != 'div' or depends_on(node[1], var_name):
+        return None
+    linear = match_linear_in_var(node[2], var_name)
+    if linear is None:
+        return None
+    return node[1], linear[0], linear[1]
 
 
 def match_linear_fractional_in_var(node, var_name):
-    return None
+    node = sim(node)
+    if node[0] != 'div':
+        return None
+    top = match_linear_in_var(node[1], var_name)
+    bot = match_linear_in_var(node[2], var_name)
+    if top is None or bot is None or is_zero(bot[0]):
+        return None
+    return top[0], top[1], bot[0], bot[1]
 
 
 def match_sqrt_linear_in_var(node, var_name):
@@ -1009,12 +2044,21 @@ def match_sqrt_linear_in_var(node, var_name):
 
 
 def match_power_linear_in_var(node, var_name):
-    if node[0] != 'pow' or not is_int_num(node[2]) or node[2][1] <= 0:
+    if node[0] != 'pow' or not is_num(node[2]):
         return None
     linear = match_linear_in_var(node[1], var_name)
     if linear is None:
         return None
-    return linear[0], linear[1], node[2][1]
+    exp = node[2]
+    if is_int_num(exp):
+        if exp[1] <= 0:
+            return None
+        return linear[0], linear[1], exp[1], exp
+    if exp[1] > 0 and exp[2] % exp[1] == 0:
+        denom = exp[2] // exp[1]
+        if denom % 2 == 1:
+            return linear[0], linear[1], None, exp
+    return None
 
 
 def match_exp_linear_in_var(node, var_name):
@@ -1075,14 +2119,70 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
 
     power_linear = match_power_linear_in_var(rhs_node, 'y')
     if power_linear is not None:
-        a, b, n = power_linear
-        if n % 2 == 0:
-            steps.append("No inverse on all real x for an even power")
+        a, b, n, exp = power_linear
+        if n is not None and n % 2 == 0:
+            steps.append("No inv on all reals")
             return None
-        rooted = sim(power(lhs_expr, num(1, n)))
+        rooted = sim(power(lhs_expr, div(num(1), exp)))
         numerator = sim(sub(rooted, b))
         inv = sim(div(numerator, a))
         steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
+        steps.append("y = " + show(inv))
+        return inv
+
+    if rhs_node[0] == 'div' and is_one(rhs_node[1]) and rhs_node[2][0] == 'pow':
+        power_linear = match_power_linear_in_var(rhs_node[2], 'y')
+        if power_linear is not None:
+            a, b, n, exp = power_linear
+            if n is not None and n % 2 == 0:
+                steps.append("No inv on all reals")
+                return None
+            rooted = sim(power(div(num(1), lhs_expr), div(num(1), exp)))
+            numerator = sim(sub(rooted, b))
+            inv = sim(div(numerator, a))
+            steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
+            steps.append("y = " + show(inv))
+            return inv
+
+    if rhs_node[0] == 'fn' and rhs_node[1] == 'sqrt' and rhs_node[2][0] == 'pow':
+        power_linear = match_power_linear_in_var(rhs_node[2], 'y')
+        if power_linear is not None:
+            a, b, _n, exp = power_linear
+            rooted = sim(power(lhs_expr, div(num(2), exp)))
+            numerator = sim(sub(rooted, b))
+            inv = sim(div(numerator, a))
+            steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
+            steps.append("y = " + show(inv))
+            return inv
+
+    if rhs_node[0] == 'add':
+        items = flat(rhs_node, 'add')
+        shift = num(0)
+        dep = []
+        i = 0
+        while i < len(items):
+            if depends_on(items[i], 'y'):
+                dep.append(items[i])
+            else:
+                shift = sim(add([shift, items[i]]))
+            i += 1
+        if len(dep) == 1 and not is_zero(shift):
+            reduced_lhs = sim(sub(lhs_expr, shift))
+            steps.append(show(reduced_lhs) + " = " + show(dep[0]))
+            return solve_inverse_core(reduced_lhs, dep[0], steps)
+
+    if rhs_node[0] == 'div' and not depends_on(rhs_node[2], 'y'):
+        scaled_lhs = sim(mul([lhs_expr, rhs_node[2]]))
+        steps.append(show(scaled_lhs) + " = " + show(rhs_node[1]))
+        return solve_inverse_core(scaled_lhs, rhs_node[1], steps)
+
+    exp_linear = match_exp_linear_in_var(rhs_node, 'y')
+    if exp_linear is not None:
+        a, b = exp_linear
+        logged = sim(fn('log', lhs_expr))
+        numerator = sim(sub(logged, b))
+        inv = sim(div(numerator, a))
+        steps.append("ln(" + show(lhs_expr) + ") = " + show(add([mul([a, sym('y')]), b])))
         steps.append("y = " + show(inv))
         return inv
 
@@ -1113,10 +2213,9 @@ def inverse_function(f_text, var='x'):
     try:
         f = normalise_negative_power_div(sim(parse(f_text)))
         steps = []
-        steps.append("f(x) = " + f_text)
         f_y = substitute(f, sym(var), sym('y'))
-        steps.append("Let y = " + show(f))
-        steps.append("Swap: x = " + show(f_y))
+        steps.append("y = " + show(f))
+        steps.append("x = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
             steps.append("f^-1(x) = " + show(inv))
@@ -2498,32 +3597,6 @@ def format_rewrite_lines(original_text, expr, final_expr, steps, allowed_terms, 
     return lines
 
 
-def solve_rewrite_text(text, term_texts):
-    begin_user_action()
-    if len(term_texts) == 0:
-        raise ValueError('Enter at least one allowed term.')
-    allowed_terms = []
-    i = 0
-    while i < len(term_texts):
-        allowed_terms.append(parse(term_texts[i].strip()))
-        i += 1
-    if '=' in text:
-        parts = text.split('=', 1)
-        lhs = parse(parts[0].strip())
-        rhs = parse(parts[1].strip())
-        expr = sim(sub(lhs, rhs))
-        is_equation = True
-    else:
-        expr = parse(text.strip())
-        is_equation = False
-    final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
-    if final_expr is None:
-        if rewrite_allowed_only(expr, info):
-            final_expr = expr
-            steps = []
-        else:
-            raise ValueError('This expression cannot be written using only the requested terms.')
-    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
 
 
 def simplify_trig_identity(node):
@@ -2699,6 +3772,517 @@ def compare_expressions(expr1, expr2):
     return False, steps
 
 
+def solve_polynomial_expr(node, var_name):
+    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    if coeffs is None:
+        return None, None
+    if degree == 0:
+        return ('identity' if is_zero(coeffs[0]) else 'none'), []
+    if degree == 1:
+        return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
+    roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
+    if len(roots) == 0:
+        return None, None
+    return 'quad', roots
+
+
+# Final algebra overrides
+
+def _final_rewrite_substitution(term, var_name, u_name):
+    linear = match_linear_in_var(term, var_name)
+    if linear is not None:
+        a, b = linear
+        if not is_zero(a):
+            return sim(div(add([sym(u_name), neg(b)]), a))
+    reciprocal = match_reciprocal_in_var(term, var_name)
+    if reciprocal is not None:
+        a, b, c = reciprocal
+        if not is_zero(b):
+            return sim(div(add([div(a, sym(u_name)), neg(c)]), b))
+    shifted = match_shifted_reciprocal(term, var_name)
+    if shifted is not None:
+        a, b, c, shift = shifted
+        shifted_u = sim(add([sym(u_name), neg(shift)]))
+        if not is_zero(b):
+            return sim(div(add([div(a, shifted_u), neg(c)]), b))
+    return None
+
+
+def factor_quadratic_rational(node, var_name=None):
+    node = sim(node)
+    if var_name is None:
+        var_name = choose_primary_var(node)
+    if var_name is None:
+        return None
+    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    if coeffs is None or degree != 2:
+        return None
+    roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
+    if len(roots) != 2:
+        return None
+    factored = factor_from_roots(sym(var_name), roots)
+    if not is_one(coeffs[2]):
+        factored = sim(mul([coeffs[2], factored]))
+    if equivalent(factored, node):
+        return factored, 'Factor quad'
+    return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def valid_roots_for_expr(expr, var_name, roots):
+    valid = []
+    i = 0
+    while i < len(roots):
+        check = eval_with_values(expr, {var_name: roots[i]})
+        if check is not None and is_zero(check):
+            valid.append(roots[i])
+        i += 1
+    return normalize_solution_roots(valid)
+
+
+
+
+
+
+
+
+
+
+
+
+
+def match_shifted_reciprocal(node, var_name):
+    node = sim(node)
+    dependent, shift = split_outer_shift(node, var_name)
+    if dependent is None:
+        return None
+    reciprocal = match_reciprocal_in_var(dependent, var_name)
+    if reciprocal is None:
+        return None
+    return reciprocal[0], reciprocal[1], reciprocal[2], shift
+
+
+
+
+def solve_equation_text(text):
+    expr = parse_expr_or_equation(text)
+    var_name, roots, label = solve_equation(expr)
+    lines = ['Expr = ' + show(expr)]
+    if label == 'Identity':
+        lines.append('All x')
+        return lines
+    if label == 'No solution':
+        lines.append('No sol')
+        return lines
+    if roots is None:
+        lines.append(label)
+        return lines
+    lines.append(label)
+    lines.append(format_solution_line(var_name, roots))
+    return lines
+
+
+
+
+
+
+
+
+
+
+def solve_mode_lines(text):
+    return solve_equation_text(text)
+
+
+def rewrite_mode_lines(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+def factor_mode_lines(text):
+    return factor_text(text)
+
+
+def expand_mode_lines(text):
+    return poly_expand_text(text)
+
+
+def format_lines(lines):
+    return lines
+
+
+def print_mode_lines(lines):
+    i = 0
+    while i < len(lines):
+        print(str(i + 1) + '. ' + lines[i])
+        i += 1
+
+
+def rewrite_in_u_text(text, term_text):
+    return rewrite_in_term_text(text, term_text)
+
+
+def solve_poly_text(text):
+    return solve_equation_text(text)
+
+
+def factor_poly_text(text):
+    return factor_text(text)
+
+
+def rewrite_poly_text(text, term_texts):
+    return solve_rewrite_text(text, term_texts)
+
+
+def solve_branch_lines(text):
+    return solve_equation_text(text)
+
+
+def factor_branch_lines(text):
+    return factor_text(text)
+
+
+def rewrite_branch_lines(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+def poly_branch_lines(text):
+    return poly_expand_text(text)
+
+
+
+
+
+
+
+
+
+
+def cli_print_lines(lines):
+    print_mode_lines(lines)
+
+
+def algebra_mode_6_lines(text):
+    return solve_equation_text(text)
+
+
+def algebra_mode_9_lines(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+def algebra_mode_3_lines(text):
+    return poly_expand_text(text)
+
+
+
+
+
+
+
+
+def poly_expand_text(text):
+    expr = parse(text.strip())
+    out = canonical_compare_form(expr)
+    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+
+
+def cli_lines_for_mode(mode, text, terms=None):
+    if mode == '6':
+        return solve_equation_text(text)
+    if mode == '9':
+        return solve_rewrite_text(text, terms or [])
+    if mode == '3':
+        return poly_expand_text(text)
+    if mode == '4':
+        return factor_text(text)
+    return []
+
+
+def print_cli_lines(lines):
+    i = 0
+    while i < len(lines):
+        print(str(i + 1) + '. ' + lines[i])
+        i += 1
+
+
+def final_factor_text(text):
+    return factor_text(text)
+
+
+def final_solve_text(text):
+    return solve_equation_text(text)
+
+
+def final_rewrite_text(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+def final_poly_text(text):
+    return poly_expand_text(text)
+
+
+def mode_text_lines(mode, text, terms=None):
+    return cli_lines_for_mode(mode, text, terms)
+
+
+def show_mode_lines(lines):
+    print_cli_lines(lines)
+
+
+
+
+
+
+
+
+def final_poly_expand_text(text):
+    expr = parse(text.strip())
+    out = canonical_compare_form(expr)
+    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+
+
+def solve_mode_text(text):
+    return solve_equation_text(text)
+
+
+def rewrite_mode_text(text, terms):
+    return solve_rewrite_text(text, terms)
+
+
+
+
+def factor_mode_text(text):
+    return factor_text(text)
+
+def clear_denominator_once(expr):
+    expr = sim(expr)
+    if expr[0] != 'add':
+        return expr
+    terms = list(flat(expr, 'add'))
+    denoms = []
+    i = 0
+    while i < len(terms):
+        if terms[i][0] == 'div':
+            denoms.append(terms[i][2])
+        i += 1
+    if len(denoms) == 0:
+        return expr
+    common = make_mul(denoms)
+    out = []
+    i = 0
+    while i < len(terms):
+        if terms[i][0] == 'div':
+            others = []
+            removed = False
+            j = 0
+            while j < len(denoms):
+                if not removed and equivalent(denoms[j], terms[i][2]):
+                    removed = True
+                else:
+                    others.append(denoms[j])
+                j += 1
+            out.append(sim(mul([terms[i][1], make_mul(others)])))
+        else:
+            out.append(sim(mul([terms[i], common])))
+        i += 1
+    return sim(make_add(out))
+
+
+def solve_rational_equation(expr, var_name):
+    reduced = canonical_compare_form(expr)
+    cleared = clear_denominator_once(reduced)
+    if same(cleared, reduced):
+        return None
+    label, roots = solve_polynomial_expr(cleared, var_name)
+    if roots is None:
+        return None
+    valid = []
+    i = 0
+    while i < len(roots):
+        value = eval_with_values(expr, {var_name: roots[i]})
+        if value is not None and is_zero(value):
+            valid.append(roots[i])
+        i += 1
+    valid = normalize_solution_roots(valid)
+    if len(valid) == 0:
+        return None
+    return 'Clear den', valid
+
+
+def solve_equation(node):
+    expr = sim(node)
+    var_name = choose_primary_var(expr)
+    if var_name is None:
+        return None, None, 'Choose a variable.'
+    label, roots = solve_polynomial_expr(expr, var_name)
+    if label == 'identity':
+        return None, [], 'Identity'
+    if label == 'none':
+        return None, [], 'No solution'
+    if roots is not None:
+        return var_name, roots, ('Solve ' + label)
+    rational = solve_rational_equation(expr, var_name)
+    if rational is not None:
+        return var_name, rational[1], rational[0]
+    return None, None, 'Needs poly support'
+
+
+def rewrite_polynomial_in_linear_term(node, term, var_name):
+    node = sim(node)
+    term = sim(term)
+    linear = match_linear_in_var(term, var_name)
+    if linear is None:
+        return None
+    a, b = linear
+    if is_zero(a):
+        return None
+    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    if coeffs is None:
+        return None
+    u_name = choose_unused_symbol(node, [term])
+    u = sym(u_name)
+    if degree == 0:
+        candidate = coeffs[0]
+    elif degree == 1:
+        candidate = sim(add([
+            mul([div(coeffs[1], a), u]),
+            sub(coeffs[0], div(mul([coeffs[1], b]), a)),
+        ]))
+    else:
+        quad_coeff = sim(div(coeffs[2], power(a, num(2))))
+        lin_coeff = sim(div(sub(mul([coeffs[1], a]), mul([num(2), coeffs[2], b])), power(a, num(2))))
+        const_coeff = sim(div(add([
+            mul([coeffs[0], power(a, num(2))]),
+            neg(mul([coeffs[1], a, b])),
+            mul([coeffs[2], power(b, num(2))]),
+        ]), power(a, num(2))))
+        parts = [mul([quad_coeff, power(u, num(2))])]
+        if not is_zero(lin_coeff):
+            parts.append(mul([lin_coeff, u]))
+        if not is_zero(const_coeff):
+            parts.append(const_coeff)
+        candidate = sim(add(parts))
+    back_sub = substitute_keep_form(candidate, u, term)
+    samples = [num(-3), num(-2), num(-1), num(0), num(1), num(2), num(3)]
+    ok_count = 0
+    i = 0
+    while i < len(samples):
+        left = eval_with_values(node, {var_name: samples[i]})
+        right = eval_with_values(back_sub, {var_name: samples[i]})
+        if left is not None and right is not None:
+            if not same(left, right):
+                return None
+            ok_count += 1
+        i += 1
+    if ok_count >= 3:
+        return u_name, candidate
+    return None
+
+def rewrite_in_term_text(text, term_text):
+    expr = parse(text.strip())
+    term = parse(term_text.strip())
+    var_name = choose_primary_var(expr)
+    if var_name is None:
+        raise ValueError('Choose a variable.')
+    variants = [expr]
+    simplified = canonical_compare_form(expr)
+    if not same(simplified, expr):
+        variants.append(simplified)
+    i = 0
+    while i < len(variants):
+        rewritten = rewrite_polynomial_in_linear_term(variants[i], term, var_name)
+        if rewritten is not None:
+            _u_name, out = rewritten
+            lines = ['u = ' + show(term), show(expr)]
+            if i != 0:
+                lines.append('Retry')
+            lines.append('= ' + show(out))
+            return lines
+        i += 1
+    shifted = match_shifted_reciprocal(term, var_name)
+    if shifted is not None:
+        coeff, a, b, shift = shifted
+        u_name = choose_unused_symbol(expr, [term])
+        u = sym(u_name)
+        recip = div(coeff, add([u, neg(shift)]))
+        x_sub = sim(div(add([recip, neg(b)]), a))
+        candidate = canonical_compare_form(substitute_keep_form(expr, sym(var_name), x_sub))
+        back_sub = substitute_keep_form(candidate, u, term)
+        samples = [num(-3), num(-2), num(-1), num(0), num(1), num(2), num(3)]
+        ok_count = 0
+        i = 0
+        while i < len(samples):
+            try:
+                left = eval_with_values(expr, {var_name: samples[i]})
+                right = eval_with_values(back_sub, {var_name: samples[i]})
+            except Exception:
+                i += 1
+                continue
+            if left is not None and right is not None:
+                if not same(left, right):
+                    raise ValueError('Cannot rewrite in that term.')
+                ok_count += 1
+            i += 1
+        if ok_count >= 3:
+            return ['u = ' + show(term), show(expr), '= ' + show(candidate)]
+    raise ValueError('Cannot rewrite in that term.')
+
+
+def poly_mode_text(text):
+    expr = parse(text.strip())
+    factored = factor_quadratic_rational(expr)
+    if factored is not None:
+        return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+    out = canonical_compare_form(expr)
+    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+
+
+
+
+
+
+
+def solve_rewrite_text(text, term_texts):
+    if len(term_texts) != 1:
+        raise ValueError('Use one target term.')
+    return rewrite_in_term_text(text, term_texts[0])
+
+
+def factor_text(text):
+    expr = parse(text.strip())
+    factored = factor_expression(expr)
+    if factored is None:
+        quad = factor_quadratic_rational(expr)
+        if quad is not None:
+            return ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+        return ['Input = ' + show(expr), 'No factor']
+    return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+
+
 def main():
     print('1 cmp')
     print('2 xform')
@@ -2764,29 +4348,21 @@ def main():
             print('2. Binomial expansion requires polynomial support')
             print('3. Output = ' + show(expr1))
         elif mode == '4':
-            print('1 add')
-            print('2 sub')
-            print('3 mul')
-            submode = input('Op: ').strip()
-            if submode == '1' or submode == '2' or submode == '3':
-                text1 = input('P1: ').strip()
-                text2 = input('P2: ').strip()
-                p1 = parse(text1)
-                p2 = parse(text2)
-                print('1. p1 = ' + show(p1))
-                print('2. p2 = ' + show(p2))
-                if submode == '1':
-                    print('3. Add: p1 + p2')
-                    result = add([p1, p2])
-                    print('4. Sum = ' + show(sim(result)))
-                elif submode == '2':
-                    print('3. Subtract: p1 - p2')
-                    result = sub(p1, p2)
-                    print('4. Difference = ' + show(sim(result)))
-                else:
-                    print('3. Multiply: p1 * p2')
-                    result = mul([p1, p2])
-                    print('4. Product = ' + show(sim(result)))
+            text = input('Poly: ').strip()
+            if text == '':
+                raise ValueError('Enter a polynomial.')
+            lines = poly_mode_text(text)
+            i = 0
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
+                i += 1
+        elif mode == '6':
+            text = input('Eq: ').strip()
+            lines = solve_equation_text(text)
+            i = 0
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
+                i += 1
         elif mode == '7':
             print('Comp f(g(x))')
             f_text = input('f: ').strip()

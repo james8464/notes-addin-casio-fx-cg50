@@ -16,11 +16,19 @@ def hard_integral_failure_reason(node, var):
     A = sim(node)
     B = var
     if same(A, div(num(1), fn('sqrt', add([num(1), neg(power(sym(B), num(4)))])))):
-        return 'Out of scope: elliptic-integral form 1/sqrt(1-' + B + '^4).'
+        return 'Out of scope: 1/sqrt(1-' + B + '^4).'
     if same(A, div(num(1), mul([power(sym(B), num(2)), fn('log', sym(B))]))):
-        return 'Out of scope: non-elementary logarithmic-integral form 1/(' + B + '^2*ln(' + B + ')).'
+        return 'Out of scope: 1/(' + B + '^2*ln(' + B + ')).'
     if A[0] == 'pow' and A[1][0] == 'fn' and A[1][1] == 'atan' and same(A[1][2], sym(B)) and same(A[2], num(2)):
-        return 'Out of scope: no elementary antiderivative for atan(' + B + ')^2 in current engine.'
+        return 'Out of scope: atan(' + B + ')^2.'
+    if (A[0] == 'fn' and A[1] == 'exp' and same(A[2], power(sym(B), num(2)))) or (A[0] == 'pow' and same(A[1], E) and same(A[2], power(sym(B), num(2)))):
+        return 'Out of scope: e^(' + B + '^2).'
+    if same(A, div(fn('sin', sym(B)), sym(B))):
+        return 'Out of scope: sin(' + B + ')/' + B + '.'
+    if same(A, div(num(1), fn('log', sym(B)))):
+        return 'Out of scope: 1/ln(' + B + ').'
+    if A[0] == 'fn' and A[1] == 'cos' and same(A[2], power(sym(B), num(2))):
+        return 'Out of scope: cos(' + B + '^2).'
     return FAIL
 
 
@@ -725,6 +733,25 @@ def trig_same_angle_power_rewrite(node):
         if I > 1:
             J.append(K('sin', 0, (I - 1) // 2))
         return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
+    # Handle sin^m(x) * cos^n(x) where both m and n are even
+    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0:
+        # sin^2(x)*cos^2(x) = (1/4)*sin^2(2x)
+        # sin^4(x)*cos^4(x) = (1/16)*sin^4(2x), etc.
+        new_pow = (H // 2) + (I // 2)
+        coeff = num(1, 2 ** ((H // 2) + (I // 2)))
+        # Actually: sin^2*cos^2 = (sin(2x))^2/4 = (1-cos(4x))/8
+        # For general even powers: sin^m * cos^n with m,n even:
+        # Use formula: sin^2(2x) = 4*sin^2(x)*cos^2(x)
+        # So sin^2(x)*cos^2(x) = sin^2(2x)/4
+        double_arg = mul([num(2), G])
+        sin_2x = fn('sin', double_arg)
+        new_expr = power(sin_2x, num(H // 2 + I // 2))
+        if H // 2 + I // 2 > 1:
+            new_expr = power(sin_2x, num(H // 2 + I // 2))
+        else:
+            new_expr = sin_2x
+        result = mul([num(1, 2 ** ((H // 2) + (I // 2))), new_expr])
+        return 'Use sin(2x) = 2sin(x)cos(x).', expand_small(result)
     return None, None
 
 
@@ -2650,6 +2677,64 @@ def integrate_standard_term(node, var):
                 result = mul([coeff, fn('log', fn('abs', denominator))])
                 return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
                                'So I = ' + pretty(result) + ' + C']
+    
+    # Pattern: f(x)/sqrt(1-f(x)^2) integrates to asin(f(x)) + C
+    # Also handles: f(x)/(1+f(x)^2) integrates to atan(f(x)) + C
+    if A[0] == 'div':
+        numerator = A[1]
+        denominator = A[2]
+        
+        # Handle pow with 1/2 exponent (sqrt)
+        inner_sqrt = None
+        if denominator[0] == 'pow' and same(denominator[2], num(1, 2)):
+            inner_sqrt = denominator[1]
+        elif denominator[0] == 'fn' and denominator[1] == 'sqrt':
+            inner_sqrt = denominator[2]
+        
+        # Check for sqrt(1-g(x)^2)
+        if inner_sqrt is not None and inner_sqrt[0] == 'add' and len(inner_sqrt[1]) == 2:
+            terms = list(inner_sqrt[1])
+            # Check for 1 - g(x)^2
+            if (same(terms[0], num(1)) and terms[1][0] == 'pow' and 
+                same(terms[1][2], num(2))):
+                g = terms[1][1]
+                deriv_g = safe_diff(g, C)
+                if deriv_g is not None and same(deriv_g, numerator):
+                    return fn('asin', g), ['Use the standard result.',
+                                          'So I = asin(' + pretty(g) + ') + C']
+            # Check for -g(x)^2 + 1 (which is 1 - g(x)^2)
+            # terms[0] is like ('mul', (-1, x^2)) and terms[1] is 1
+            if (terms[1] == num(1) and terms[0][0] == 'mul' and 
+                len(terms[0][1]) == 2):
+                coeff_part = terms[0][1][0]
+                pow_part = terms[0][1][1]
+                # Check if coefficient is -1 and rest is x^2
+                if is_minus_one(coeff_part) and pow_part[0] == 'pow' and same(pow_part[2], num(2)):
+                    g = pow_part[1]
+                    deriv_g = safe_diff(g, C)
+                    if deriv_g is not None and same(deriv_g, numerator):
+                        return fn('asin', g), ['Use the standard result.',
+                                              'So I = asin(' + pretty(g) + ') + C']
+        
+        # Check for 1 + g(x)^2 in denominator (for atan)
+        if denominator[0] == 'add' and len(denominator[1]) == 2:
+            terms = list(denominator[1])
+            # Check for 1 + g(x)^2
+            if (same(terms[0], num(1)) and terms[1][0] == 'pow' and 
+                same(terms[1][2], num(2))):
+                g = terms[1][1]
+                deriv_g = safe_diff(g, C)
+                if deriv_g is not None and same(deriv_g, numerator):
+                    return fn('atan', g), ['Use the standard result.',
+                                          'So I = atan(' + pretty(g) + ') + C']
+            # Also check g(x)^2 + 1
+            if (terms[1] == num(1) and terms[0][0] == 'add' and 
+                terms[0][1][0][0] == 'pow' and same(terms[0][1][0][2], num(2))):
+                g = terms[0][1][0][1]
+                deriv_g = safe_diff(g, C)
+                if deriv_g is not None and same(deriv_g, numerator):
+                    return fn('atan', g), ['Use the standard result.',
+                                          'So I = atan(' + pretty(g) + ') + C']
     
     if A[0] == 'div' and is_one(A[1]) and (
             A[2][0] == 'fn' and A[2][1] == 'sqrt' or A[2][0] == 'pow' and same(A[2][2], num(1, 2))):
@@ -4663,9 +4748,9 @@ def standard_title(node, var):
     B = 0
     while B < len(C):
         if is_faxb_term(C[B], var):
-            return 'Integrating f(ax+b)'
+            return 'f(ax+b)'
         B += 1
-    return 'Integrating standard functions'
+    return 'std'
 
 
 def finish_integral_solve(title, ans, lines):
@@ -4675,12 +4760,11 @@ def finish_integral_solve(title, ans, lines):
     return title, A, B
 
 
-def solve(node, var, method, forced_u=None):
+def _solve_with_method(node, var, method, forced_u=None):
     F = forced_u
     E = method
     D = var
-    C = node
-    C = sim(C)
+    C = sim(node)
     if F is not None:
         F = sim(F)
     if E == '2':
@@ -4695,8 +4779,7 @@ def solve(node, var, method, forced_u=None):
             if A is not None:
                 return finish_integral_solve('Reverse chain rule', A, B)
             A, B = integrate_substitution(C, D, None)
-            return finish_integral_solve(
-                'Integration by substitution', A, B)
+            return finish_integral_solve('Integration by substitution', A, B)
         A, B = integrate_substitution(C, D, F)
         return finish_integral_solve('Integration by substitution', A, B)
     if E == '5':
@@ -4722,6 +4805,21 @@ def solve(node, var, method, forced_u=None):
     if G == 'parts':
         return finish_integral_solve('Integration by parts', A, B)
     return finish_integral_solve('Partial fractions', A, B)
+
+
+def solve(node, var, method, forced_u=None):
+    title, ans, lines = _solve_with_method(node, var, method, forced_u)
+    if ans is not None or method == '1':
+        return title, ans, lines
+    retry_order = ('2', '3', '4', '5', '6', '7')
+    i = 0
+    while i < len(retry_order):
+        if retry_order[i] != method:
+            retry_title, retry_ans, retry_lines = _solve_with_method(node, var, retry_order[i], forced_u)
+            if retry_ans is not None:
+                return retry_title, retry_ans, retry_lines
+        i += 1
+    return title, ans, lines
 
 
 def subst(node, name, value):
@@ -4807,9 +4905,6 @@ def ordered_candidates(node, var, mode):
             mode))
 
 
-_combine_logs_uncached = _combine_logs_uncached
-
-
 def combine_logs(node):
     A = _cache_get('combine_logs', node)
     if A is not _CACHE_MISS:
@@ -4827,6 +4922,8 @@ def main():
     try:
         if D == '1':
             F = input('f: ').strip()
+            if F == '':
+                raise ValueError('Enter f.')
             J, K = parse_input(F)
             print('1 auto')
             print('2 dir')
@@ -4848,7 +4945,9 @@ def main():
                 print(Q)
             else:
                 I = '= ' + pretty(C) + ' + C'
-                print('Met: ' + L)
+                if L.startswith('Met '):
+                    L = L[4:]
+                print('Met ' + L)
                 B = 0
                 while B < len(A):
                     print(str(B + 1) + '. ' + A[B])

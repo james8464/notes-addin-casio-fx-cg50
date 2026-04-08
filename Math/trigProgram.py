@@ -14691,7 +14691,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     return valid, compact_lines(lines)
 
 
-def solve_solve_text(text):
+def _solve_solve_text_once(text):
     begin_user_action()
     bits = split_top_level_all(text, ",")
     if len(bits) < 2:
@@ -14711,6 +14711,19 @@ def solve_solve_text(text):
     if var == "x" or len(extra) != 0 or equation_has_trig_content(lhs, rhs):
         return solve_x_equation_text(eq_text, var, extra)
     return solve_linear_parameter_text(eq_text, var)
+
+
+def solve_solve_text(text):
+    try:
+        return _solve_solve_text_once(text)
+    except Exception:
+        if "," not in text:
+            raise
+        first, rest = text.split(",", 1)
+        expanded_first = show(expand_embedded_small(replace_exact_trig_quiet(sim(expand_trig_tree(parse(first.strip()))))))
+        retry_text = expanded_first + "," + rest
+        return _solve_solve_text_once(retry_text)
+
 
 
 def solve_prove_text(text, route):
@@ -15245,21 +15258,53 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
             return None
         i += 1
     # Convert using: sin(x)cos(x) = sin(2x)/2, cos²(x) = (1+cos(2x))/2, sin²(x) = (1-cos(2x))/2
-    coeff_sin2x = eval_numeric(sim(div(a_sincos, num(2))), {})
-    coeff_cos2x = eval_numeric(sim(add([b_cos2, neg(c_sin2)])), {})
-    const_term = eval_numeric(sim(add([b_cos2, c_sin2])), {})
+    coeff_sin2x_expr = full_simplify(div(a_sincos, num(2)))
+    coeff_cos2x_expr = full_simplify(div(add([b_cos2, neg(c_sin2)]), num(2)))
+    const_expr = full_simplify(add([const, div(add([b_cos2, c_sin2]), num(2))]))
+    rewritten_expr = full_simplify(add([
+        const_expr,
+        mul([coeff_sin2x_expr, fn("sin", mul([num(2), sym(var)]))]),
+        mul([coeff_cos2x_expr, fn("cos", mul([num(2), sym(var)]))]),
+    ]))
+    coeff_sin2x = eval_numeric(coeff_sin2x_expr, {})
+    coeff_cos2x = eval_numeric(coeff_cos2x_expr, {})
+    const_term = eval_numeric(const_expr, {})
     if coeff_sin2x is None or coeff_cos2x is None or const_term is None:
         return None
     lines = [
         "Start with " + equation_line(eq1_lhs, eq1_rhs),
-        "Use sin(2" + var + ") = 2 sin(" + var + ") cos(" + var + "), so sin(" + var + ") cos(" + var + ") = sin(2" + var + ")/2.",
-        "Use cos(2" + var + ") = 2 cos^2(" + var + ") - 1, so cos^2(" + var + ") = (1 + cos(2" + var + "))/2.",
-        "Use cos(2" + var + ") = 1 - 2 sin^2(" + var + "), so sin^2(" + var + ") = (1 - cos(2" + var + "))/2.",
-        "Rewrite in terms of sin(2" + var + "), cos(2" + var + ") and constants.",
-        "a = " + format_float(coeff_sin2x),
-        "b = " + format_float(coeff_cos2x),
-        "c = " + format_float(const_term),
+        "sin(2" + var + ") = 2sin(" + var + ")cos(" + var + "), so sin(" + var + ")cos(" + var + ") = sin(2" + var + ")/2.",
+        "cos(2" + var + ") = 2cos^2(" + var + ") - 1, so cos^2(" + var + ") = (1 + cos(2" + var + "))/2.",
+        "cos(2" + var + ") = 1 - 2sin^2(" + var + "), so sin^2(" + var + ") = (1 - cos(2" + var + "))/2.",
+        "Write in sin(2" + var + "), cos(2" + var + "), const.",
     ]
+
+    template_expr = sim(add([eq2_lhs, neg(eq2_rhs)]))
+    params = detect_template_params(rewritten_expr, template_expr, var)
+    if len(params) != 0:
+        basis_equations = fit_constant_basis_equations(full_simplify(add([rewritten_expr, neg(template_expr)])), params, var)
+        if basis_equations is not None:
+            eq_exprs = []
+            i = 0
+            while i < len(basis_equations):
+                eq_exprs.append(basis_equations[i][1])
+                i += 1
+            values = solve_linear_param_system(eq_exprs, params)
+            if values is None:
+                values, _sampled_angles = solve_linear_param_system_by_sampling(eq_exprs, params, var)
+            if values is not None:
+                i = 0
+                while i < len(params):
+                    lines.append(params[i] + " = " + show(full_simplify(values[params[i]])))
+                    i += 1
+                return compact_lines(lines)
+
+    if not is_zero(coeff_sin2x_expr):
+        lines.append("a = " + format_float(coeff_sin2x))
+    if not is_zero(coeff_cos2x_expr):
+        lines.append("b = " + format_float(coeff_cos2x))
+    if not is_zero(const_expr):
+        lines.append("c = " + format_float(const_term))
     return compact_lines(lines)
 # ---------------------------------------------------------------------------
 # Display helpers and CLI entrypoint
@@ -15477,6 +15522,8 @@ def main():
     try:
         if mode == "1":
             text = input("Id: ").strip()
+            if text == "":
+                raise ValueError("Enter an identity.")
             print("1 auto")
             print("2 lhs")
             print("3 rhs")
@@ -15489,14 +15536,20 @@ def main():
         elif mode == "2":
             eq1 = input("E1: ").strip()
             eq2 = input("E2: ").strip()
+            if eq1 == "" or eq2 == "":
+                raise ValueError("Enter E1 and E2.")
             lines = solve_transform_text(eq1, eq2)
             print_lines(lines)
         elif mode == "3":
             text = input("Eq: ").strip()
+            if text == "":
+                raise ValueError("Enter an equation.")
             _result, lines = solve_solve_text(text)
             print_lines(lines)
         elif mode == "4":
             text = input("Rw: ").strip()
+            if text == "":
+                raise ValueError("Enter an expression.")
             print("1 term/line")
             print("Blank = end")
             terms = []

@@ -176,15 +176,70 @@ def node_to_float(node):
     if node is None:
         return None
     node = sim(node)
-    if node[0] == 'num':
+    kind = node[0]
+    if kind == 'num':
         return node[1] / node[2]
-    if node[0] == 'const':
+    if kind == 'const':
         if node[1] == 'e':
             return math.e if math is not None else 2.718281828459045
         if node[1] == 'pi':
             return math.pi if math is not None else 3.141592653589793
         if node[1] == 'g':
             return G_DEFAULT_FLOAT
+        return None
+    if kind == 'sym':
+        return None
+    if kind == 'add':
+        total = 0.0
+        i = 0
+        while i < len(node[1]):
+            part = node_to_float(node[1][i])
+            if part is None:
+                return None
+            total += part
+            i += 1
+        return total
+    if kind == 'mul':
+        total = 1.0
+        i = 0
+        while i < len(node[1]):
+            part = node_to_float(node[1][i])
+            if part is None:
+                return None
+            total *= part
+            i += 1
+        return total
+    if kind == 'div':
+        top = node_to_float(node[1])
+        bot = node_to_float(node[2])
+        if top is None or bot is None or bot == 0:
+            return None
+        return top / bot
+    if kind == 'pow':
+        base = node_to_float(node[1])
+        exp = node_to_float(node[2])
+        if base is None or exp is None:
+            return None
+        try:
+            return base ** exp
+        except Exception:
+            return None
+    if kind == 'fn':
+        arg = node_to_float(node[2])
+        if arg is None or math is None:
+            return None
+        name = node[1]
+        try:
+            if name == 'sqrt':
+                return math.sqrt(arg)
+            if name == 'log':
+                return math.log(arg)
+            if name == 'exp':
+                return math.exp(arg)
+            if name == 'abs':
+                return abs(arg)
+        except Exception:
+            return None
     return None
 
 
@@ -389,6 +444,84 @@ def split_coeff(node):
     return result
 
 
+def norm_pow_base(node):
+    a = node
+    if a[0] != 'pow' or not is_num(a[1]):
+        return a
+    n = a[1]
+    exp = a[2]
+    if n[1] <= 0 or n[2] != 1:
+        return a
+    value = n[1]
+    d = 2
+    while d * d <= value:
+        if value % d == 0:
+            count = 0
+            while value % d == 0:
+                value //= d
+                count += 1
+            if value == 1 and count > 1:
+                return 'pow', num(d), add([num(count), neg(num(0)), exp])
+            return a
+        d += 1
+    return a
+
+
+def factor_map(node):
+    items = list(node[1]) if node[0] == 'mul' else [node]
+    coeff = num(1)
+    order = []
+    data = {}
+    i = 0
+    while i < len(items):
+        item = norm_pow_base(items[i])
+        if is_num(item):
+            coeff = mulq(coeff, item)
+        elif item[0] == 'fn' and item[1] == 'sqrt':
+            key = sig(item[2])
+            if key not in data:
+                order.append(key)
+                data[key] = [item[2], num(0)]
+            old = data[key][1]
+            data[key][1] = addq(old, num(1, 2)) if is_num(old) else add([old, num(1, 2)])
+        elif item[0] == 'pow':
+            key = sig(item[1])
+            if key not in data:
+                order.append(key)
+                data[key] = [item[1], num(0)]
+            old = data[key][1]
+            data[key][1] = addq(old, item[2]) if is_num(old) and is_num(item[2]) else add([old, item[2]])
+        else:
+            key = sig(item)
+            if key not in data:
+                order.append(key)
+                data[key] = [item, num(0)]
+            old = data[key][1]
+            data[key][1] = addq(old, num(1)) if is_num(old) else add([old, num(1)])
+        i += 1
+    return coeff, order, data
+
+
+def all_neg_add(node):
+    if node[0] != 'add':
+        return False
+    items = flat(node, 'add')
+    i = 0
+    while i < len(items):
+        coeff, _ = split_coeff(items[i])
+        if coeff[1] >= 0 or is_zero(coeff):
+            return False
+        i += 1
+    return True
+
+
+def flip_add(node):
+    out = []
+    for item in flat(node, 'add'):
+        out.append(neg(item))
+    return add(out)
+
+
 def depends(node, name):
     kind = node[0]
     if kind == 'sym':
@@ -403,6 +536,25 @@ def depends(node, name):
         i = 0
         while i < len(node[1]):
             if depends(node[1][i], name):
+                return True
+            i += 1
+    return False
+
+
+def contains_const(node, name):
+    kind = node[0]
+    if kind == 'const':
+        return node[1] == name
+    if kind in ('num', 'sym'):
+        return False
+    if kind == 'fn':
+        return contains_const(node[2], name)
+    if kind in ('pow', 'div'):
+        return contains_const(node[1], name) or contains_const(node[2], name)
+    if kind in ('add', 'mul'):
+        i = 0
+        while i < len(node[1]):
+            if contains_const(node[1][i], name):
                 return True
             i += 1
     return False
@@ -598,21 +750,50 @@ def sim(node):
             return top
         if same(top, bot):
             return num(1)
-        if is_num(top) and is_num(bot):
-            return divq(top, bot)
+        if all_neg_add(bot):
+            return div(neg(top), flip_add(bot))
         if top[0] == 'div':
             return div(top[1], mul([top[2], bot]))
         if bot[0] == 'div':
             return div(mul([top, bot[2]]), bot[1])
-        if top[0] == 'pow' and same(top[1], bot) and is_int_num(top[2]) and top[2][1] > 1:
-            return power(bot, num(top[2][1] - 1))
-        if top[0] == 'pow' and bot[0] == 'pow' and same(top[1], bot[1]) and is_int_num(top[2]) and is_int_num(bot[2]):
-            new_exp = num(top[2][1] - bot[2][1])
-            if is_zero(new_exp):
-                return num(1)
-            if new_exp[1] > 0:
-                return power(top[1], new_exp)
-        return 'div', top, bot
+        if is_num(top) and is_num(bot):
+            return divq(top, bot)
+        top_coeff, top_order, top_data = factor_map(top)
+        bot_coeff, bot_order, bot_data = factor_map(bot)
+        coeff = divq(top_coeff, bot_coeff)
+        i = 0
+        while i < len(top_order):
+            key = top_order[i]
+            if key in bot_data:
+                top_data[key][1] = add([top_data[key][1], neg(bot_data[key][1])])
+                bot_data[key][1] = num(0)
+            i += 1
+        num_parts = []
+        den_parts = []
+        if not is_one(coeff):
+            if coeff[2] == 1:
+                num_parts.append(num(coeff[1]))
+            else:
+                if coeff[1] != 1:
+                    num_parts.append(num(coeff[1], 1))
+                den_parts.append(num(coeff[2], 1))
+        i = 0
+        while i < len(top_order):
+            base, exp = top_data[top_order[i]]
+            if not is_zero(exp):
+                num_parts.append(base if is_one(exp) else ('pow', base, exp))
+            i += 1
+        i = 0
+        while i < len(bot_order):
+            base, exp = bot_data[bot_order[i]]
+            if not is_zero(exp):
+                den_parts.append(base if is_one(exp) else ('pow', base, exp))
+            i += 1
+        num_node = make_mul(num_parts)
+        den_node = make_mul(den_parts)
+        if is_one(den_node):
+            return num_node
+        return 'div', num_node, den_node
     return node
 
 
@@ -631,6 +812,49 @@ def pr(node):
     if kind in ('mul', 'div'):
         return 2
     return 1
+
+
+def display_recip(node):
+    a = node
+    if a[0] == 'div' and is_one(a[1]):
+        return a[2]
+    if a[0] == 'pow' and is_minus_one(a[2]):
+        return a[1]
+    return None
+
+
+def display_rearrange(node):
+    a = node
+    kind = a[0]
+    if kind in ('num', 'sym', 'const'):
+        return a
+    if kind == 'fn':
+        return 'fn', a[1], display_rearrange(a[2])
+    if kind in ('pow', 'div'):
+        return kind, display_rearrange(a[1]), display_rearrange(a[2])
+    if kind == 'mul':
+        num_bits = []
+        den_bits = []
+        for item in flat(a, 'mul'):
+            item = display_rearrange(item)
+            recip = display_recip(item)
+            if recip is None:
+                num_bits.append(item)
+            else:
+                den_bits.append(recip)
+        if len(den_bits) == 0:
+            return make_mul(num_bits)
+        num_node = make_mul(num_bits)
+        den_node = make_mul(den_bits)
+        if is_one(num_node):
+            return 'div', num(1), den_node
+        return 'div', num_node, den_node
+    out = []
+    for item in flat(a, 'add'):
+        out.append(display_rearrange(item))
+    if len(out) == 2 and is_num(out[1]) and out[1][1] > 0 and display_neg(out[0]):
+        return 'add', (out[1], out[0])
+    return 'add', tuple(out)
 
 
 def display_neg(node):
@@ -766,7 +990,7 @@ def show(node, parent=0):
     cached = SHOW_CACHE.get(key)
     if cached is not None:
         return cached
-    result = _show(sim(node), parent)
+    result = _show(display_rearrange(sim(node)), parent)
     SHOW_CACHE[key] = result
     return result
 
@@ -1022,6 +1246,49 @@ def detect_presets(text):
     return overrides
 
 
+def dedupe_solution_nodes(nodes):
+    out = []
+    i = 0
+    while i < len(nodes):
+        node = sim(nodes[i])
+        seen = False
+        j = 0
+        while j < len(out):
+            if same(out[j], node):
+                seen = True
+                break
+            j += 1
+        if not seen:
+            out.append(node)
+        i += 1
+    return out
+
+
+def format_solution_texts(result_node, sig_figs=None):
+    nodes = result_node if isinstance(result_node, list) else [result_node]
+    nodes = dedupe_solution_nodes(nodes)
+    exact_bits = []
+    dec_bits = []
+    allow_decimal = True
+    i = 0
+    while i < len(nodes):
+        exact_bits.append(show(nodes[i]))
+        if contains_const(nodes[i], 'g'):
+            allow_decimal = False
+        else:
+            dec_val = format_decimal(node_to_float(nodes[i]), sig_figs)
+            if dec_val is not None:
+                dec_bits.append(dec_val)
+        i += 1
+    exact_text = ' or '.join(exact_bits)
+    if not allow_decimal or len(dec_bits) != len(exact_bits):
+        return exact_text, None
+    dec_text = ' or '.join(dec_bits)
+    if dec_text == exact_text:
+        return exact_text, None
+    return exact_text, dec_text
+
+
 # ============================================================================
 # SUVAT Engine
 # ============================================================================
@@ -1105,11 +1372,11 @@ def _sub_s3(s_val, u_val, v_val, a_val, t_val):
 
 
 def _sub_s4(s_val, u_val, v_val, a_val, t_val):
-    return 's = (' + show(v_val) + '^2 - ' + show(u_val) + '^2) / (2*' + show(a_val) + ')'
+    return 's = (' + show(power(v_val, num(2))) + ' - ' + show(power(u_val, num(2))) + ') / (' + show(mul([num(2), a_val])) + ')'
 
 
 def _sub_u(s_val, u_val, v_val, a_val, t_val):
-    return 'u = (' + show(s_val) + ' - 1/2*' + show(a_val) + '*' + show(t_val) + ') / ' + show(t_val)
+    return 'u = (' + show(s_val) + ' - 1/2*' + show(a_val) + '*' + show(power(t_val, num(2))) + ') / (' + show(t_val) + ')'
 
 
 def _sub_u2(s_val, u_val, v_val, a_val, t_val):
@@ -1117,7 +1384,7 @@ def _sub_u2(s_val, u_val, v_val, a_val, t_val):
 
 
 def _sub_u3(s_val, u_val, v_val, a_val, t_val):
-    return 'u = 2*' + show(s_val) + '/' + show(t_val) + ' - ' + show(v_val)
+    return 'u = 2*' + show(s_val) + '/(' + show(t_val) + ') - ' + show(v_val)
 
 
 def _sub_v(s_val, u_val, v_val, a_val, t_val):
@@ -1125,31 +1392,31 @@ def _sub_v(s_val, u_val, v_val, a_val, t_val):
 
 
 def _sub_v2(s_val, u_val, v_val, a_val, t_val):
-    return 'v = ' + show(s_val) + '/' + show(t_val) + ' + 1/2*' + show(a_val) + '*' + show(t_val)
+    return 'v = ' + show(s_val) + '/(' + show(t_val) + ') + 1/2*' + show(a_val) + '*' + show(t_val)
 
 
 def _sub_v3(s_val, u_val, v_val, a_val, t_val):
-    return 'v = sqrt(' + show(u_val) + '^2 + 2*' + show(a_val) + '*' + show(s_val) + ')'
+    return 'v = sqrt(' + show(power(u_val, num(2))) + ' + 2*' + show(a_val) + '*' + show(s_val) + ')'
 
 
 def _sub_a(s_val, u_val, v_val, a_val, t_val):
-    return 'a = (' + show(v_val) + ' - ' + show(u_val) + ') / ' + show(t_val)
+    return 'a = (' + show(v_val) + ' - ' + show(u_val) + ') / (' + show(t_val) + ')'
 
 
 def _sub_a2(s_val, u_val, v_val, a_val, t_val):
-    return 'a = 2*(' + show(s_val) + ' - ' + show(u_val) + '*' + show(t_val) + ') / ' + show(t_val) + '^2'
+    return 'a = 2*(' + show(s_val) + ' - ' + show(u_val) + '*' + show(t_val) + ') / (' + show(power(t_val, num(2))) + ')'
 
 
 def _sub_a3(s_val, u_val, v_val, a_val, t_val):
-    return 'a = (' + show(v_val) + '^2 - ' + show(u_val) + '^2) / (2*' + show(s_val) + ')'
+    return 'a = (' + show(power(v_val, num(2))) + ' - ' + show(power(u_val, num(2))) + ') / (' + show(mul([num(2), s_val])) + ')'
 
 
 def _sub_a4(s_val, u_val, v_val, a_val, t_val):
-    return 'a = 2*(' + show(v_val) + '*' + show(t_val) + ' - ' + show(s_val) + ') / ' + show(t_val) + '^2'
+    return 'a = 2*(' + show(v_val) + '*' + show(t_val) + ' - ' + show(s_val) + ') / (' + show(power(t_val, num(2))) + ')'
 
 
 def _sub_t(s_val, u_val, v_val, a_val, t_val):
-    return 't = (' + show(v_val) + ' - ' + show(u_val) + ') / ' + show(a_val)
+    return 't = (' + show(v_val) + ' - ' + show(u_val) + ') / (' + show(a_val) + ')'
 
 
 def _sub_t2(s_val, u_val, v_val, a_val, t_val):
@@ -1269,7 +1536,60 @@ def solve_quadratic_v(u_val, a_val, s_val):
     inside_val = _exact_value(inside)
     if inside_val is not None and inside_val[1] < 0:
         return None, 'No real solution (u^2 + 2as = ' + show(inside) + ' is negative).'
-    return power(inside, num(1, 2)), None
+    root = power(inside, num(1, 2))
+    return dedupe_solution_nodes([root, neg(root)]), None
+
+
+def resolve_target_inputs(parsed_values):
+    target = None
+    values = list(parsed_values)
+    blanks = []
+    i = 0
+    while i < len(values):
+        if values[i] == 'target':
+            if target is not None:
+                return None, None, 'Error: Mark only one target variable with ,.'
+            target = VAR_NAMES[i]
+            values[i] = None
+        elif values[i] is None:
+            blanks.append(VAR_NAMES[i])
+        i += 1
+    if target is None:
+        if len(blanks) == 0:
+            return None, None, 'Error: No target variable specified. Use , to mark the unknown.'
+        if len(blanks) > 1:
+            return None, None, 'Error: Multiple unknowns detected (' + ', '.join(blanks) + '). Use , to mark exactly one target.'
+        target = blanks[0]
+    return tuple(values), target, None
+
+
+def should_show_all_variables(target, values):
+    missing = []
+    i = 0
+    while i < len(values):
+        if values[i] is None and VAR_NAMES[i] != target:
+            missing.append(VAR_NAMES[i])
+        i += 1
+    return len(missing) == 0
+
+
+def format_all_variables(values, target, sig_figs=None):
+    results = {}
+    i = 0
+    while i < len(VAR_NAMES):
+        var_name = VAR_NAMES[i]
+        node = values[i]
+        if node is not None:
+            exact, dec = format_solution_texts(node, sig_figs)
+            results[var_name] = (exact, dec)
+        elif var_name == target:
+            result_node, _equation, _original_eq, _sub_text = _build_suvat_solution_data(
+                values[0], values[1], values[2], values[3], values[4], var_name
+            )
+            if result_node is not None:
+                results[var_name] = format_solution_texts(result_node, sig_figs)
+        i += 1
+    return results
 
 
 def find_equation(target, vals):
@@ -1283,7 +1603,7 @@ def find_equation(target, vals):
     return candidates[0]
 
 
-def build_suvat_solution(s_val, u_val, v_val, a_val, t_val, target):
+def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
     vals = (s_val, u_val, v_val, a_val, t_val)
 
     if target == 't':
@@ -1316,13 +1636,13 @@ def build_suvat_solution(s_val, u_val, v_val, a_val, t_val, target):
         result, err = solve_quadratic_v(u_val, a_val, s_val)
         if err:
             return None, err, None, None
-        sub_text = 'v = sqrt(' + show(u_val) + '^2 + 2*' + show(a_val) + '*' + show(s_val) + ')'
-        return show(result), 'v^2 = u^2 + 2as', 'v^2 = u^2 + 2as', sub_text
+        sub_text = 'v = ±sqrt(' + show(power(u_val, num(2))) + ' + 2*' + show(a_val) + '*' + show(s_val) + ')'
+        return result, 'v^2 = u^2 + 2as', 'v^2 = u^2 + 2as', sub_text
 
     if target == 't' and s_val is not None and u_val is not None and a_val is not None and v_val is None:
         result, steps, roots = solve_quadratic_time(s_val, u_val, v_val, a_val, t_val)
         if result is not None:
-            return show(result), 's = ut + 1/2at^2 (quadratic)', 's = ut + 1/2at^2', steps[-1] if steps else None
+            return sim(result), 's = ut + 1/2at^2 (quadratic)', 's = ut + 1/2at^2', steps[-1] if steps else None
         else:
             return None, steps[-1] if steps else 'No quadratic solution for t.', None, None
 
@@ -1331,51 +1651,36 @@ def build_suvat_solution(s_val, u_val, v_val, a_val, t_val, target):
         return None, 'insufficient information', None, None
 
     _, _, formula_name, base_equation, build_fn, sub_fn, _ = eq
-    result = build_fn(s_val, u_val, v_val, a_val, t_val)
+    result = sim(build_fn(s_val, u_val, v_val, a_val, t_val))
     sub_text = sub_fn(s_val, u_val, v_val, a_val, t_val)
 
-    return show(result), formula_name, base_equation, sub_text
+    return result, formula_name, base_equation, sub_text
 
 
-def solve_all_variables(s_val, u_val, v_val, a_val, t_val):
-    """Given 3 knowns, compute all remaining variables. Returns dict of {var: (exact_node, decimal_str)}."""
-    results = {}
-    for var_name in VAR_NAMES:
-        vals = (s_val, u_val, v_val, a_val, t_val)
-        if vals[VAR_MAP[var_name]] is not None:
-            node = vals[VAR_MAP[var_name]]
-            dec = format_decimal(node_to_float(node))
-            results[var_name] = (show(node), dec)
-            continue
-        result, equation, _, sub_text = build_suvat_solution(s_val, u_val, v_val, a_val, t_val, var_name)
-        if result is not None:
-            node = None
-            for v in (s_val, u_val, v_val, a_val, t_val):
-                pass
-            dec = None
-            if var_name == 's':
-                dec = format_decimal(node_to_float(build_suvat_solution(s_val, u_val, v_val, a_val, t_val, 's')[0]))
-            elif var_name == 'u':
-                dec = format_decimal(node_to_float(build_suvat_solution(s_val, u_val, v_val, a_val, t_val, 'u')[0]))
-            elif var_name == 'v':
-                dec = format_decimal(node_to_float(build_suvat_solution(s_val, u_val, v_val, a_val, t_val, 'v')[0]))
-            elif var_name == 'a':
-                dec = format_decimal(node_to_float(build_suvat_solution(s_val, u_val, v_val, a_val, t_val, 'a')[0]))
-            elif var_name == 't':
-                dec = format_decimal(node_to_float(build_suvat_solution(s_val, u_val, v_val, a_val, t_val, 't')[0]))
-            results[var_name] = (result, dec)
-    return results
+def build_suvat_solution(s_val, u_val, v_val, a_val, t_val, target):
+    result, formula_name, base_equation, sub_text = _build_suvat_solution_data(
+        s_val, u_val, v_val, a_val, t_val, target
+    )
+    if result is None:
+        return None, formula_name, base_equation, sub_text
+    exact_text, _dec_text = format_solution_texts(result)
+    return exact_text, formula_name, base_equation, sub_text
 
 
-def format_output_with_units(target, result, equation, original_eq, sub_text, sig_figs):
-    """Format the output with decimal approximation and units."""
+def solve_all_variables(s_val, u_val, v_val, a_val, t_val, sig_figs=None):
+    return format_all_variables((s_val, u_val, v_val, a_val, t_val), None, sig_figs)
+
+
+def format_output_with_units(target, exact_text, dec_text, equation, original_eq, sub_text, unit):
     lines = []
     if original_eq != equation:
         lines.append('= ' + original_eq)
     lines.append(equation)
     if sub_text is not None:
         lines.append('= ' + sub_text)
-    lines.append(target + ' = ' + result)
+    lines.append(target + ' = ' + exact_text)
+    if dec_text is not None:
+        lines.append(target + ' = ' + dec_text + (' ' + unit if unit else ''))
     return lines
 
 
@@ -1384,12 +1689,6 @@ def format_output_with_units(target, result, equation, original_eq, sub_text, si
 # ============================================================================
 
 def solve_suvat():
-    print('SUVAT Solver')
-    print('Enter values (leave blank for unknown, use , for target)')
-    print('Keywords: dropped, from rest, gravity, max height, returns to ground')
-    print('Use g for gravity constant (9.8 m/s^2)')
-    print()
-
     s_text = input('s: ').strip()
     u_text = input('u: ').strip()
     v_text = input('v: ').strip()
@@ -1399,46 +1698,19 @@ def solve_suvat():
     all_text = ' '.join([s_text, u_text, v_text, a_text, t_text]).lower()
     presets = detect_presets(all_text)
 
-    target = None
-
-    s = parse_value(s_text)
-    if s == 'target':
-        target = 's'
-        s = None
-    elif s is None:
-        target = 's'
-
-    u = parse_value(u_text)
-    if u == 'target':
-        target = 'u'
-        u = None
-    elif u is None and target is None:
-        target = 'u'
-
-    v = parse_value(v_text)
-    if v == 'target':
-        target = 'v'
-        v = None
-    elif v is None and target is None:
-        target = 'v'
-
-    a = parse_value(a_text)
-    if a == 'target':
-        target = 'a'
-        a = None
-    elif a is None and target is None:
-        target = 'a'
-
-    t = parse_value(t_text)
-    if t == 'target':
-        target = 't'
-        t = None
-    elif t is None and target is None:
-        target = 't'
-
-    if target is None:
-        print('Error: No target variable specified. Use , to mark the unknown.')
+    parsed_values = (
+        parse_value(s_text),
+        parse_value(u_text),
+        parse_value(v_text),
+        parse_value(a_text),
+        parse_value(t_text),
+    )
+    values, target, target_error = resolve_target_inputs(parsed_values)
+    if target_error is not None:
+        print(target_error)
         return
+
+    s, u, v, a, t = values
 
     knowns = sum(1 for x in (s, u, v, a, t) if x is not None)
     if knowns < 2:
@@ -1446,24 +1718,16 @@ def solve_suvat():
         return
 
     if presets:
+        current_values = [s, u, v, a, t]
         for var, val in presets.items():
             idx = VAR_MAP[var]
-            current = (s, u, v, a, t)[idx]
-            if current is None:
-                if var == 's':
-                    s = val
-                elif var == 'u':
-                    u = val
-                elif var == 'v':
-                    v = val
-                elif var == 'a':
-                    a = val
-                elif var == 't':
-                    t = val
+            if current_values[idx] is None:
+                current_values[idx] = val
+        s, u, v, a, t = tuple(current_values)
 
-    result, equation, original_eq, sub_text = build_suvat_solution(s, u, v, a, t, target)
+    result_node, equation, original_eq, sub_text = _build_suvat_solution_data(s, u, v, a, t, target)
 
-    if result is None:
+    if result_node is None:
         print('Error: ' + equation)
         return
 
@@ -1475,36 +1739,33 @@ def solve_suvat():
             if sf > sig_figs:
                 sig_figs = sf
 
-    result_node = None
-    for v_name in (s, u, v, a, t):
-        if v_name is not None:
-            pass
-    result_val = node_to_float(result)
-    dec_str = format_decimal(result_val, sig_figs)
-
+    exact_text, dec_text = format_solution_texts(result_node, sig_figs)
     unit = VAR_UNITS.get(target, '')
 
     print()
-    if original_eq != equation:
-        print('= ' + original_eq)
-    print(equation)
-    if sub_text is not None:
-        print('= ' + sub_text)
-    print(target + ' = ' + result)
-    if dec_str is not None and result != dec_str:
-        print(target + ' = ' + dec_str + (' ' + unit if unit else ''))
+    output_lines = format_output_with_units(target, exact_text, dec_text, equation, original_eq, sub_text, unit)
+    i = 0
+    while i < len(output_lines):
+        print(output_lines[i])
+        i += 1
 
-    print()
-    print('--- All variables ---')
-    all_results = solve_all_variables(s, u, v, a, t)
-    for var_name in VAR_NAMES:
-        if var_name in all_results:
-            exact, dec = all_results[var_name]
-            unit = VAR_UNITS.get(var_name, '')
-            if dec is not None and exact != dec:
-                print(var_name + ' = ' + exact + ' (' + dec + ' ' + unit + ')')
-            else:
-                print(var_name + ' = ' + exact + (' ' + unit if unit else ''))
+    if should_show_all_variables(target, (s, u, v, a, t)):
+        print()
+        print('--- All variables ---')
+        all_results = format_all_variables((s, u, v, a, t), target, sig_figs)
+        for var_name in VAR_NAMES:
+            if var_name in all_results:
+                exact, dec = all_results[var_name]
+                unit = VAR_UNITS.get(var_name, '')
+                if dec is not None:
+                    print(var_name + ' = ' + exact + ' (' + dec + ' ' + unit + ')')
+                else:
+                    print(var_name + ' = ' + exact + (' ' + unit if unit else ''))
+    else:
+        print()
+        print('--- All variables ---')
+        print('Not shown because more than one variable is unknown.')
+        print('Use , to mark exactly one target and fill the others to see a full consistent set.')
 
 
 def main():
