@@ -200,6 +200,8 @@ def to_degrees(value):
 
 
 def is_finite_value(value):
+    if value is None:
+        return False
     if FAST_ISFINITE is not None:
         return FAST_ISFINITE(value)
     inf = float("inf")
@@ -5201,6 +5203,18 @@ def prove_log_exp_identity(source, target, source_name, target_name):
             step1 = mul([inner[2], fn("log", inner[1])])
             lines = [start_line(source_name, source), "Use ln(A^n) = n ln A.", step_line(step1)]
             if equivalent(step1, target):
+                bridge_to_target(lines, step1, target, target_name)
+                return lines
+    if source[0] == "div" and source[1][0] == "fn" and source[1][1] == "log" and source[2][0] == "fn" and source[2][1] == "log":
+        inner = source[1][2]
+        if inner[0] == "pow":
+            step1 = div(mul([inner[2], fn("log", inner[1])]), source[2])
+            lines = [
+                start_line(source_name, source),
+                "Use log_b(A^n) = n log_b(A), valid when A > 0.",
+                step_line(step1),
+            ]
+            if same(step1, target) or equivalent(step1, target):
                 bridge_to_target(lines, step1, target, target_name)
                 return lines
     if source[0] == "pow" and same(source[1], E):
@@ -14896,22 +14910,30 @@ def solve_rewrite_text(text, term_texts):
     begin_user_action()
     if len(term_texts) == 0:
         raise ValueError("Enter at least one allowed term.")
+    text_is_node = isinstance(text, tuple)
+    original_text = show(sim(text)) if text_is_node else text.strip()
     allowed_terms = []
     i = 0
     while i < len(term_texts):
-        allowed_terms.append(parse(term_texts[i].strip()))
+        if isinstance(term_texts[i], tuple):
+            allowed_terms.append(sim(term_texts[i]))
+        else:
+            allowed_terms.append(parse(term_texts[i].strip()))
         i += 1
-    parts = split_top_level(text, "=")
-    is_equation = parts is not None
-    expr = None
-    if is_equation:
-        lhs, rhs = parse_equation_or_zero(text)
-        expr = sim(add([lhs, neg(rhs)]))
+    if text_is_node:
+        is_equation = False
+        expr = sim(text)
     else:
-        expr = parse(text.strip())
+        parts = split_top_level(original_text, "=")
+        is_equation = parts is not None
+        if is_equation:
+            lhs, rhs = parse_equation_or_zero(original_text)
+            expr = sim(add([lhs, neg(rhs)]))
+        else:
+            expr = parse(original_text)
     identity_candidate = full_simplify(reduce_identities(expr))
     if equivalent(expr, num(1)) or equivalent(identity_candidate, num(1)):
-        return format_rewrite_lines(text, expr, num(1), [("Use a standard identity.", num(1))], allowed_terms, is_equation)
+        return format_rewrite_lines(original_text, expr, num(1), [("Use a standard identity.", num(1))], allowed_terms, is_equation)
     final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
     if final_expr is None:
         if rewrite_allowed_only(identity_candidate, info) and not same(identity_candidate, expr):
@@ -14922,7 +14944,7 @@ def solve_rewrite_text(text, term_texts):
             steps = [("Use a standard identity.", num(1))]
 
         if final_expr is not None:
-            return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+            return format_rewrite_lines(original_text, expr, final_expr, steps or [], allowed_terms, is_equation)
         if equivalent(identity_candidate, num(1)):
             final_expr = num(1)
             steps = [("Use a standard identity.", num(1))]
@@ -14958,7 +14980,7 @@ def solve_rewrite_text(text, term_texts):
             steps = []
         else:
             raise ValueError("This expression cannot be written using only the requested terms.")
-    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+    return format_rewrite_lines(original_text, expr, final_expr, steps or [], allowed_terms, is_equation)
 
 
 def solve_extremum_text(text, kind, var):

@@ -5,6 +5,10 @@ Tests are designed to be as hard/long as possible while still being valid.
 """
 import sys
 import traceback
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1] / "src" / "Math"
+sys.path.insert(0, str(ROOT))
 
 TOTAL_PASS = 0
 TOTAL_FAIL = 0
@@ -40,8 +44,8 @@ def run_test(label, fn):
 # ============================================================================
 def test_intprogram():
     sys._int_no_autorun = True
-    from Math.intProgram import parse, show, solve, sim, diff
-    from Math.intProgram import (
+    from intProgram import parse, show, solve, sim, diff
+    from intProgram import (
         integrate_standard, integrate_trig, integrate_reverse_chain,
         integrate_substitution, integrate_by_parts, integrate_partial,
         integrate_division, solve_separable_de, solve_linear_de, solve_de
@@ -257,7 +261,7 @@ def test_intprogram():
     ]
     for rhs_expr, desc in de_tests:
         try:
-            from Math.intProgram import parse_de_equation, solve_de
+            from intProgram import parse_de_equation, solve_de
             rhs_text = f"dy/dx = {rhs_expr}"
             rhs_node, xvar, yvar = parse_de_equation(rhs_text)
             result = solve_de(rhs_node, xvar, yvar)
@@ -273,7 +277,7 @@ def test_intprogram():
     ]
     for rhs_expr, desc in linear_de_tests:
         try:
-            from Math.intProgram import parse_de_equation, solve_de
+            from intProgram import parse_de_equation, solve_de
             rhs_text = f"dy/dx = {rhs_expr}"
             rhs_node, xvar, yvar = parse_de_equation(rhs_text)
             result = solve_de(rhs_node, xvar, yvar)
@@ -288,7 +292,7 @@ def test_intprogram():
 # ============================================================================
 def test_deriveprogram():
     sys._derive_no_autorun = True
-    from Math.deriveProgram import parse, show, diff, explain
+    from deriveProgram import parse, show, diff, explain
 
     # --- Mode 1: Normal differentiation ---
     print("\n--- Workflow: normal diff (explain) ---")
@@ -371,7 +375,7 @@ def test_deriveprogram():
     ]
     for expr, desc in implicit_tests:
         try:
-            from Math.deriveProgram import parse as dp_parse, trig_normal, diff, pick_implicit_vars, coeff_d, prefer_trig_recip, tidy, as_rat, add, neg, sim, is_one, is_zero, div
+            from deriveProgram import parse as dp_parse, trig_normal, diff, pick_implicit_vars, coeff_d, prefer_trig_recip, tidy, as_rat, add, neg, sim, is_one, is_zero, div
             left_text, right_text = expr.split("=", 1)
             left = trig_normal(dp_parse(left_text))
             right = trig_normal(dp_parse(right_text))
@@ -401,7 +405,7 @@ def test_deriveprogram():
     ]
     for xt, yt, desc in parametric_tests:
         try:
-            from Math.deriveProgram import parse as dp_parse, trig_normal, diff, sim, is_zero, prefer_trig_recip, tidy, div
+            from deriveProgram import parse as dp_parse, trig_normal, diff, sim, is_zero, prefer_trig_recip, tidy, div
             x_node = trig_normal(dp_parse(xt))
             y_node = trig_normal(dp_parse(yt))
             dx = sim(diff(x_node, "t", []))
@@ -420,7 +424,7 @@ def test_deriveprogram():
 # ============================================================================
 def test_algebraprogram():
     sys._algebra_no_autorun = True
-    from Math.algebraProgram import parse, show, sim, compare_expressions, rearrange_to_target, compose_functions, inverse_function, equivalent
+    from algebraProgram import parse, show, sim, compare_expressions, rearrange_to_target, compose_functions, inverse_function, equivalent
 
     # --- Mode 1: cmp (compare) ---
     print("\n--- Workflow: cmp (compare) ---")
@@ -471,7 +475,7 @@ def test_algebraprogram():
     ]
     for e1, e2, desc in poly_add_tests:
         try:
-            from Math.algebraProgram import add
+            from algebraProgram import add
             n1, n2 = parse(e1), parse(e2)
             result = add([n1, n2])
             record(True, f"poly add: {desc}", f"= {show(sim(result))}")
@@ -484,7 +488,7 @@ def test_algebraprogram():
     ]
     for e1, e2, desc in poly_sub_tests:
         try:
-            from Math.algebraProgram import add, neg
+            from algebraProgram import add, neg
             n1, n2 = parse(e1), parse(e2)
             result = add([n1, neg(n2)])
             record(True, f"poly sub: {desc}", f"= {show(sim(result))}")
@@ -498,7 +502,7 @@ def test_algebraprogram():
     ]
     for e1, e2, desc in poly_mul_tests:
         try:
-            from Math.algebraProgram import mul
+            from algebraProgram import mul
             n1, n2 = parse(e1), parse(e2)
             result = mul([n1, n2])
             record(True, f"poly mul: {desc}", f"= {show(sim(result))}")
@@ -545,7 +549,7 @@ def test_algebraprogram():
     # --- Mode 9: rw (rewrite) ---
     print("\n--- Workflow: rw (rewrite) ---")
     try:
-        from Math.algebraProgram import solve_rewrite_text
+        from algebraProgram import solve_rewrite_text
         rw_tests = [
             ("sin(x)^2+cos(x)^2", ["1"], "Pythagorean -> 1"),
             ("x^2+2*x+1", ["(x+1)^2"], "Complete square"),
@@ -567,7 +571,7 @@ def test_algebraprogram():
 # ============================================================================
 def test_trigprogram():
     sys._trig_no_autorun = True
-    from Math.trigProgram import parse, show, sim
+    from trigProgram import parse, show, sim
 
     # --- Mode 1: prove (auto) ---
     print("\n--- Workflow: prove auto ---")
@@ -589,7 +593,7 @@ def test_trigprogram():
     ]
     for expr, desc in prove_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'auto')
             record(result is not None, f"prove auto: {desc}",
                    result if result else "None")
@@ -604,7 +608,7 @@ def test_trigprogram():
     ]
     for expr, desc in lhs_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'lhs')
             record(result is not None, f"prove lhs: {desc}",
                    result if result else "None")
@@ -618,7 +622,7 @@ def test_trigprogram():
     ]
     for expr, desc in rhs_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'rhs')
             record(result is not None, f"prove rhs: {desc}",
                    result if result else "None")
@@ -632,7 +636,7 @@ def test_trigprogram():
     ]
     for expr, desc in both_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'both')
             record(result is not None, f"prove both: {desc}",
                    result if result else "None")
@@ -647,7 +651,7 @@ def test_trigprogram():
     ]
     for expr, desc in diff_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'auto')
             record(result is not None, f"prove diff: {desc}",
                    result if result else "None")
@@ -667,7 +671,7 @@ def test_trigprogram():
     ]
     for expr in numeric_tests:
         try:
-            from Math.trigProgram import solve_prove_text
+            from trigProgram import solve_prove_text
             result = solve_prove_text(expr, 'auto')
             record(result is not None, f"numeric: {expr}",
                    result if result else "None")
@@ -682,7 +686,7 @@ def test_trigprogram():
     ]
     for e1, e2, desc in xform_tests:
         try:
-            from Math.trigProgram import solve_transform_text
+            from trigProgram import solve_transform_text
             result = solve_transform_text(e1, e2)
             record(result is not None, f"xform: {desc}",
                    result if result else "None")
@@ -700,7 +704,7 @@ def test_trigprogram():
     ]
     for eq, var, interval, desc in solve_deg_tests:
         try:
-            from Math.trigProgram import solve_solve_text
+            from trigProgram import solve_solve_text
             result = solve_solve_text(f"{eq},{var},{interval}")
             record(result is not None, f"solve deg: {desc}",
                    result if result else "None")
@@ -718,7 +722,7 @@ def test_trigprogram():
     ]
     for eq, var, interval, desc in solve_rad_tests:
         try:
-            from Math.trigProgram import solve_solve_text
+            from trigProgram import solve_solve_text
             result = solve_solve_text(f"{eq},{var},{interval}")
             record(result is not None, f"solve rad: {desc}",
                    result if result else "None")
@@ -733,7 +737,7 @@ def test_trigprogram():
     ]
     for eq, var, desc in solve_default_tests:
         try:
-            from Math.trigProgram import solve_solve_text
+            from trigProgram import solve_solve_text
             result = solve_solve_text(f"{eq},{var}")
             record(result is not None, f"solve default: {desc}",
                    result if result else "None")
@@ -751,7 +755,7 @@ def test_trigprogram():
     ]
     for expr, ext, var, desc in extremum_tests:
         try:
-            from Math.trigProgram import solve_solve_text
+            from trigProgram import solve_solve_text
             result = solve_solve_text(f"{expr},{ext},{var}")
             record(result is not None, f"extremum: {desc}",
                    result if result else "None")
@@ -761,7 +765,7 @@ def test_trigprogram():
     # --- Mode 4: rw (rewrite) ---
     print("\n--- Workflow: rw (rewrite) ---")
     try:
-        from Math.trigProgram import solve_rewrite_text
+        from trigProgram import solve_rewrite_text
         rw_tests = [
             ("sin(x)^2+cos(x)^2", ["1"], "Pythagorean -> 1"),
             ("tan(x)", ["sin(x)/cos(x)"], "tan -> sin/cos"),

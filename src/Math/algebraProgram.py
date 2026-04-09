@@ -1489,6 +1489,39 @@ def split_top_level_all(text, sep):
     return out
 
 
+def top_level_power_suffix(text):
+    depth = 0
+    i = len(text) - 1
+    while i >= 0:
+        ch = text[i]
+        if ch == ')':
+            depth += 1
+        elif ch == '(':
+            depth -= 1
+        elif ch == '^' and depth == 0:
+            power_text = text[i + 1:]
+            if power_text.isdigit():
+                return text[:i], int(power_text)
+            return None
+        i -= 1
+    return None
+
+
+def text_has_even_log_power(text):
+    compact = ''.join(text.split())
+    if compact.startswith('ln(') and compact.endswith(')'):
+        info = top_level_power_suffix(compact[3:-1])
+        return info is not None and info[1] % 2 == 0
+    if compact.startswith('log(') and compact.endswith(')'):
+        inner = compact[4:-1]
+        bits = split_top_level(inner, ',')
+        if bits is None:
+            return False
+        info = top_level_power_suffix(bits[1])
+        return info is not None and info[1] % 2 == 0
+    return False
+
+
 def expand_small(node):
     return canonical_compare_form(node)
 
@@ -2210,10 +2243,83 @@ def match_exp_linear_in_var(node, var_name):
     return None
 
 
+def match_const_base_exp_linear_in_var(node, var_name):
+    node = sim(node)
+    if node[0] != 'pow' or depends_on(node[1], var_name):
+        return None
+    base = node[1]
+    if same(base, E()) or same(base, num(1)):
+        return None
+    if is_num(base) and base[1] <= 0:
+        return None
+    linear = match_linear_in_var(node[2], var_name)
+    if linear is None:
+        return None
+    return base, linear[0], linear[1]
+
+
 def match_log_linear_in_var(node, var_name):
     if node[0] == 'fn' and node[1] == 'log':
         return match_linear_in_var(node[2], var_name)
     return None
+
+
+def match_const_base_log_linear_in_var(node, var_name):
+    node = sim(node)
+    if node[0] != 'div' or depends_on(node[2], var_name):
+        return None
+    if node[1][0] != 'fn' or node[1][1] != 'log':
+        return None
+    if node[2][0] != 'fn' or node[2][1] != 'log' or depends_on(node[2][2], var_name):
+        return None
+    base = node[2][2]
+    if same(base, E()) or same(base, num(1)):
+        return None
+    if is_num(base) and base[1] <= 0:
+        return None
+    linear = match_linear_in_var(node[1][2], var_name)
+    if linear is None:
+        return None
+    return base, linear[0], linear[1]
+
+
+def match_log_power_linear_in_var(node, var_name):
+    if node[0] != 'fn' or node[1] != 'log':
+        return None
+    return match_power_linear_in_var(node[2], var_name)
+
+
+def match_const_base_log_power_linear_in_var(node, var_name):
+    node = sim(node)
+    if node[0] != 'div' or depends_on(node[2], var_name):
+        return None
+    if node[1][0] != 'fn' or node[1][1] != 'log':
+        return None
+    if node[2][0] != 'fn' or node[2][1] != 'log' or depends_on(node[2][2], var_name):
+        return None
+    base = node[2][2]
+    if same(base, E()) or same(base, num(1)):
+        return None
+    if is_num(base) and base[1] <= 0:
+        return None
+    power_linear = match_power_linear_in_var(node[1][2], var_name)
+    if power_linear is None:
+        return None
+    return (base,) + power_linear
+
+
+def raw_even_log_power_inverse(node, var_name):
+    dependent, _shift = split_outer_shift(node, var_name)
+    if dependent is None:
+        dependent = node
+    if dependent[0] == 'fn' and dependent[1] == 'log':
+        power_linear = match_power_linear_in_var(dependent[2], var_name)
+        return power_linear is not None and power_linear[2] is not None and power_linear[2] % 2 == 0
+    if dependent[0] == 'div' and not depends_on(dependent[2], var_name):
+        if dependent[1][0] == 'fn' and dependent[1][1] == 'log':
+            power_linear = match_power_linear_in_var(dependent[1][2], var_name)
+            return power_linear is not None and power_linear[2] is not None and power_linear[2] % 2 == 0
+    return False
 
 
 def solve_inverse_core(lhs_expr, rhs_node, steps):
@@ -2257,6 +2363,19 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
         steps.append(show(squared) + " = " + show(add([mul([a, sym('y')]), b])))
         steps.append("y = " + show(inv))
         return inv
+
+    if rhs_node[0] == 'div' and is_one(rhs_node[1]) and rhs_node[2][0] == 'fn' and rhs_node[2][1] == 'sqrt':
+        sqrt_linear = match_linear_in_var(rhs_node[2][2], 'y')
+        if sqrt_linear is not None:
+            a, b = sqrt_linear
+            reciprocal = sim(div(num(1), lhs_expr))
+            squared = sim(power(reciprocal, num(2)))
+            numerator = sim(sub(squared, b))
+            inv = sim(div(numerator, a))
+            steps.append(show(reciprocal) + " = " + show(rhs_node[2]))
+            steps.append(show(squared) + " = " + show(rhs_node[2][2]))
+            steps.append("y = " + show(inv))
+            return inv
 
     power_linear = match_power_linear_in_var(rhs_node, 'y')
     if power_linear is not None:
@@ -2312,10 +2431,51 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
             steps.append(show(reduced_lhs) + " = " + show(dep[0]))
             return solve_inverse_core(reduced_lhs, dep[0], steps)
 
+    coeff, rest = split_coeff(rhs_node)
+    if not is_one(coeff) and depends_on(rest, 'y') and not depends_on(coeff, 'y'):
+        scaled_lhs = sim(div(lhs_expr, coeff))
+        steps.append(show(scaled_lhs) + " = " + show(rest))
+        return solve_inverse_core(scaled_lhs, rest, steps)
+
+    const_base_log_power = match_const_base_log_power_linear_in_var(rhs_node, 'y')
+    if const_base_log_power is not None:
+        base, a, b, n, exp = const_base_log_power
+        if n is not None and n % 2 == 0:
+            steps.append("No inverse on all reals")
+            return None
+        expo = sim(power(base, lhs_expr))
+        rooted = sim(power(expo, div(num(1), exp)))
+        numerator = sim(sub(rooted, b))
+        inv = sim(div(numerator, a))
+        steps.append(show(expo) + " = " + show(rhs_node[1][2]))
+        steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
+        steps.append("y = " + show(inv))
+        return inv
+
+    const_base_log = match_const_base_log_linear_in_var(rhs_node, 'y')
+    if const_base_log is not None:
+        base, a, b = const_base_log
+        expo = sim(power(base, lhs_expr))
+        numerator = sim(sub(expo, b))
+        inv = sim(div(numerator, a))
+        steps.append(show(expo) + " = " + show(add([mul([a, sym('y')]), b])))
+        steps.append("y = " + show(inv))
+        return inv
+
     if rhs_node[0] == 'div' and not depends_on(rhs_node[2], 'y'):
         scaled_lhs = sim(mul([lhs_expr, rhs_node[2]]))
         steps.append(show(scaled_lhs) + " = " + show(rhs_node[1]))
         return solve_inverse_core(scaled_lhs, rhs_node[1], steps)
+
+    const_base_exp = match_const_base_exp_linear_in_var(rhs_node, 'y')
+    if const_base_exp is not None:
+        base, a, b = const_base_exp
+        logged = sim(div(fn('log', lhs_expr), fn('log', base)))
+        numerator = sim(sub(logged, b))
+        inv = sim(div(numerator, a))
+        steps.append(show(logged) + " = " + show(add([mul([a, sym('y')]), b])))
+        steps.append("y = " + show(inv))
+        return inv
 
     exp_linear = match_exp_linear_in_var(rhs_node, 'y')
     if exp_linear is not None:
@@ -2334,6 +2494,21 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
         numerator = sim(sub(logged, b))
         inv = sim(div(numerator, a))
         steps.append("ln(" + show(lhs_expr) + ") = " + show(add([mul([a, sym('y')]), b])))
+        steps.append("y = " + show(inv))
+        return inv
+
+    log_power = match_log_power_linear_in_var(rhs_node, 'y')
+    if log_power is not None:
+        a, b, n, exp = log_power
+        if n is not None and n % 2 == 0:
+            steps.append("No inverse on all reals")
+            return None
+        expo = sim(fn('exp', lhs_expr))
+        rooted = sim(power(expo, div(num(1), exp)))
+        numerator = sim(sub(rooted, b))
+        inv = sim(div(numerator, a))
+        steps.append(show(expo) + " = " + show(rhs_node[2]))
+        steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
         steps.append("y = " + show(inv))
         return inv
 
@@ -2352,7 +2527,15 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
 
 def inverse_function(f_text, var='x'):
     try:
-        f = normalise_negative_power_div(sim(parse(f_text)))
+        if text_has_even_log_power(f_text):
+            return None, ["y = " + ''.join(f_text.split()), "No inverse on all real x"]
+        raw_f = normalise_negative_power_div(parse(f_text))
+        raw_y = substitute_keep_form(raw_f, sym(var), sym('y'))
+        if raw_even_log_power_inverse(raw_y, 'y'):
+            shown = show(sim(raw_f))
+            shown_y = show(raw_y)
+            return None, ["y = " + shown, "x = " + shown_y, "No inverse on all real x"]
+        f = normalise_negative_power_div(sim(raw_f))
         steps = []
         f_y = substitute(f, sym(var), sym('y'))
         steps.append("y = " + show(f))
@@ -2723,7 +2906,7 @@ def show(node, parent=0):
     if kind == 'pow':
         left = show(node[1], 3)
         right = show(node[2], 3)
-        if node[1][0] == 'fn' or (is_num(node[1]) and (node[1][2] != 1 or node[1][1] < 0)) or node[1][0] == 'mul':
+        if node[1][0] in ('fn', 'mul', 'pow') or (is_num(node[1]) and (node[1][2] != 1 or node[1][1] < 0)):
             left = '(' + left + ')'
         if is_num(node[2]) and node[2][2] != 1:
             right = '(' + right + ')'
@@ -3859,6 +4042,77 @@ def rewrite_term_equivalent(node, info):
     return None
 
 
+def power_term_ratio(node, term, var_name):
+    A = sim(node)
+    B = sim(term)
+    if same(A, B) or equivalent(A, B):
+        return B
+    if A[0] == 'pow' and same(A[1], B) and not depends_on(A[2], var_name):
+        return ('pow', B, A[2])
+    if A[0] != 'pow' or B[0] != 'pow':
+        return None
+    if not same(canonical_compare_form(A[1]), canonical_compare_form(B[1])) and not equivalent(A[1], B[1]):
+        return None
+    if not is_num(A[2]) or not is_num(B[2]) or is_zero(B[2]):
+        return None
+    ratio = divq(A[2], B[2])
+    if not is_int_num(ratio) or ratio[1] <= 0:
+        return None
+    if ratio == num(1):
+        return B
+    return ('pow', B, ratio)
+
+
+def rewrite_power_terms_recursive(node, info):
+    var_name = info['var']
+    if var_name is None or not depends_on(node, var_name):
+        return node
+    direct = rewrite_term_equivalent(node, info)
+    if direct is not None:
+        return direct
+    if rewrite_allowed_only(node, info):
+        return node
+    i = 0
+    while i < len(info['terms']):
+        direct = power_term_ratio(node, info['terms'][i], var_name)
+        if direct is not None:
+            return direct
+        i += 1
+    if node[0] == 'add' or node[0] == 'mul':
+        items = []
+        changed = False
+        i = 0
+        while i < len(node[1]):
+            child = node[1][i]
+            rewritten = rewrite_power_terms_recursive(child, info) if depends_on(child, var_name) else child
+            if rewritten is None:
+                return None
+            if not same(rewritten, child):
+                changed = True
+            items.append(rewritten)
+            i += 1
+        if not changed:
+            return None
+        return node[0], tuple(items)
+    if node[0] == 'div':
+        left = rewrite_power_terms_recursive(node[1], info) if depends_on(node[1], var_name) else node[1]
+        right = rewrite_power_terms_recursive(node[2], info) if depends_on(node[2], var_name) else node[2]
+        if left is None or right is None:
+            return None
+        if same(left, node[1]) and same(right, node[2]):
+            return None
+        return 'div', left, right
+    if node[0] == 'pow':
+        base = rewrite_power_terms_recursive(node[1], info) if depends_on(node[1], var_name) else node[1]
+        exp = rewrite_power_terms_recursive(node[2], info) if depends_on(node[2], var_name) else node[2]
+        if base is None or exp is None:
+            return None
+        if same(base, node[1]) and same(exp, node[2]):
+            return None
+        return 'pow', base, exp
+    return None
+
+
 def rewrite_allowed_only(node, info):
     var_name = info['var']
     if var_name is None or not depends_on(node, var_name):
@@ -3930,6 +4184,7 @@ def rewrite_candidate_steps(expr, info):
     add_candidate(expand_mul_distribute(expr), 'Expand brackets')
     add_candidate(combine_fractions(expr), 'Combine the fractions')
     add_candidate(simplify_trig_identity(expr), 'Use a standard identity')
+    add_candidate(rewrite_power_terms_recursive(expr, info), 'Rewrite powers in the requested term')
 
     exact = rewrite_term_equivalent(expr, info)
     if exact is not None and not same(exact, expr):
@@ -3948,6 +4203,9 @@ def rewrite_equivalent(a, b):
 def search_rewrite_expression(expr, allowed_terms):
     info = build_rewrite_allowed_info(expr, allowed_terms)
     start = sim(expr)
+    direct_power = rewrite_power_terms_recursive(start, info)
+    if direct_power is not None and not same(direct_power, start) and rewrite_allowed_only(direct_power, info) and rewrite_equivalent(direct_power, expr):
+        return direct_power, [('Rewrite powers in the requested term', direct_power)], info
     if rewrite_allowed_only(start, info) and rewrite_equivalent(start, expr):
         if equivalent(start, num(1)):
             return num(1), [('Use a standard identity', num(1))], info
@@ -4876,23 +5134,32 @@ def poly_mode_text(text):
 def solve_rewrite_text(text, term_texts):
     if len(term_texts) == 0:
         raise ValueError('Use at least one target term.')
-    if len(term_texts) == 1:
+    text_is_node = isinstance(text, tuple)
+    original_text = show(sim(text)) if text_is_node else text.strip()
+    if len(term_texts) == 1 and not text_is_node and not isinstance(term_texts[0], tuple):
         try:
-            return rewrite_in_term_text(text, term_texts[0])
+            return rewrite_in_term_text(original_text, term_texts[0])
         except ValueError:
             pass
     allowed_terms = []
     i = 0
     while i < len(term_texts):
-        allowed_terms.append(parse(term_texts[i].strip()))
+        if isinstance(term_texts[i], tuple):
+            allowed_terms.append(sim(term_texts[i]))
+        else:
+            allowed_terms.append(parse(term_texts[i].strip()))
         i += 1
-    parts = split_top_level(text, '=')
-    is_equation = parts is not None
-    if is_equation:
-        lhs, rhs = parse_equation_or_zero(text)
-        expr = sim(sub(lhs, rhs))
+    if text_is_node:
+        is_equation = False
+        expr = sim(text)
     else:
-        expr = parse(text.strip())
+        parts = split_top_level(original_text, '=')
+        is_equation = parts is not None
+        if is_equation:
+            lhs, rhs = parse_equation_or_zero(original_text)
+            expr = sim(sub(lhs, rhs))
+        else:
+            expr = parse(original_text)
     final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
     if final_expr is None:
         if rewrite_allowed_only(expr, info):
@@ -4903,7 +5170,7 @@ def solve_rewrite_text(text, term_texts):
             steps = [('Use a standard identity', num(1))]
         else:
             raise ValueError('Cannot rewrite in that term.')
-    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+    return format_rewrite_lines(original_text, expr, final_expr, steps or [], allowed_terms, is_equation)
 
 
 def factor_text(text):

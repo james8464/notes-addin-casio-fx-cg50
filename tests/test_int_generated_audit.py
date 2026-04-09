@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-ROOT = Path('/Users/james/Developer/Python/CASIO/Math')
+ROOT = Path(__file__).resolve().parents[1] / 'src' / 'Math'
 PY = '/Users/james/Developer/Python/CASIO/.venv/bin/python'
 
 PASS = 0

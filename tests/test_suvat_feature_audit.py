@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-ROOT = Path('/Users/james/Developer/Python/CASIO/Math')
+ROOT = Path(__file__).resolve().parents[1] / 'src' / 'Math'
 sys.path.insert(0, str(ROOT))
 sys._suvat_no_autorun = True
 

@@ -4,7 +4,9 @@ Tests edge cases, crash scenarios, incorrect answers, and poor working output.
 """
 
 import sys
-sys.path.insert(0, '/Users/james/Developer/Python/CASIO/Math')
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'Math'))
 sys._suvat_no_autorun = True
 
 import SUVATprogram as sp

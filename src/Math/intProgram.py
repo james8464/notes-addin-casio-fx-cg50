@@ -219,6 +219,8 @@ def sig(node):
     if B in ('num', 'sym', 'const'):
         return A
     if B == 'fn':
+        if A[1] == 'exp':
+            return 'pow', ('const', 'e'), sig(A[2])
         return 'fn', A[1], sig(A[2])
     if B == 'pow':
         return 'pow', sig(A[1]), sig(A[2])
@@ -913,6 +915,49 @@ def sqrt_num(node):
     if B is None or C is None:
         return
     return num(B, C)
+
+
+def square_root_term_candidate(node, var):
+    A = sim(node)
+    if not depends(A, var):
+        return sqrt_num(A)
+    if A[0] == 'fn' and A[1] == 'exp':
+        return fn('exp', div(A[2], num(2)))
+    if A[0] == 'pow' and is_num(A[2]):
+        if is_int_num(A[2]) and A[2][1] > 0 and A[2][1] % 2 == 0:
+            return power(A[1], num(A[2][1] // 2))
+        if A[2][1] > 0 and A[2][1] % 2 == 0:
+            return power(A[1], divq(A[2], num(2)))
+    if A[0] == 'mul':
+        roots = []
+        B = 0
+        while B < len(A[1]):
+            C = square_root_term_candidate(A[1][B], var)
+            if C is None:
+                return
+            roots.append(C)
+            B += 1
+        return sim(mul(roots))
+
+
+def plus_square_inner_info(node, var):
+    A = sim(node)
+    if A[0] != 'add':
+        return
+    B = flat(A, 'add')
+    if len(B) != 2:
+        return
+    C = 0
+    while C < 2:
+        D = B[C]
+        E = B[1 - C]
+        if depends(D, var) or is_zero(E):
+            C += 1
+            continue
+        F = square_root_term_candidate(E, var)
+        if F is not None and depends(F, var):
+            return D, F
+        C += 1
 
 
 def special_trig_value(name, arg):
@@ -1656,8 +1701,12 @@ def diff(node, var):
         raise ValueError(FAIL)
     if C == 'fn':
         N = A[2]
-        S = diff(N, B)
         T = A[1]
+        if T == 'log' and N[0] == 'fn' and N[1] == 'abs':
+            return div(diff(N[2], B), N[2])
+        S = diff(N, B)
+        if T == 'abs':
+            return div(mul([N, S]), fn('abs', N))
         O = derivative_of_named_function(T, N, S)
         if O is not None:
             return O
@@ -2980,12 +3029,13 @@ def integrate_standard_term(node, var):
         D = div(B, G)
         return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(
             div(G, A[2])), 'So I = ' + pretty(D) + ' + C']
-    if A[0] == 'div' and A[2][0] == 'fn' and A[2][1] == 'sqrt':
-        inner = A[2][2]
+    if A[0] == 'div' and ((A[2][0] == 'fn' and A[2][1] == 'sqrt') or (A[2][0] == 'pow' and same(A[2][2], num(1, 2)))):
+        inner = A[2][2] if A[2][0] == 'fn' else A[2][1]
         deriv_inner = safe_diff(inner, C)
         if deriv_inner is not None and not is_zero(deriv_inner):
-            coeff, rest = split_coeff(deriv_inner)
-            if same(rest, A[1]) and is_num(coeff):
+            ratio = quotient_by_target(deriv_inner, A[1])
+            if ratio is not None and is_num(ratio):
+                coeff = ratio
                 result = div(mul([num(2), A[2]]), coeff)
                 return result, ['Use the standard result for f\'(x)/sqrt(f(x)).', 'So I = ' + pretty(result) + ' + C']
     S, U = integrate_quadratic_rational(A, C)
@@ -3014,7 +3064,26 @@ def integrate_standard_term(node, var):
                 result = div(fn('atan', div(sym(C), a)), a)
                 return result, ['Use the standard result: 1/(' + C + '^2 + ' + pretty(constant_term) + ') -> (1/' + pretty(a) + ')*arctan(' + C + '/' + pretty(a) + ')',
                                'So I = ' + pretty(result) + ' + C']
-    
+
+    if A[0] == 'div':
+        numerator = A[1]
+        denominator = A[2]
+        square_info = plus_square_inner_info(denominator, C)
+        if square_info is not None:
+            constant_term, inner = square_info
+            if not is_num(constant_term) or constant_term[1] > 0:
+                deriv_inner = safe_diff(inner, C)
+                if deriv_inner is not None and not is_zero(deriv_inner):
+                    coeff = quotient_by_target(deriv_inner, numerator)
+                    if coeff is not None and is_num(coeff):
+                        scale = sqrt_num(constant_term)
+                        if scale is None:
+                            scale = fn('sqrt', constant_term)
+                        result = div(fn('atan', div(inner, scale)), mul([coeff, scale]))
+                        return result, [
+                            'Use the standard result for f\'(x)/(a^2+f(x)^2).',
+                            'So I = ' + pretty(result) + ' + C']
+
     # Add pattern for f'(x)/f(x) = ln|f(x)| + C (general logarithmic integration)
     if A[0] == 'div':
         numerator = A[1]
@@ -3259,6 +3328,10 @@ def integrate_standard_term(node, var):
 def integrate_standard(node, var):
     C = var
     B = node
+    if B[0] != 'add':
+        A, E = integrate_standard_term(B, C)
+        if A is not None:
+            return A, E
     D = expand_small(B)
     if not same(D, B):
         A, E = integrate_standard(D, C)
@@ -4488,9 +4561,9 @@ def auto_route_parts(node, var, depth):
 
 def auto_integral_routes(rational, allow_termwise):
     A = []
+    A.extend([auto_route_standard, auto_route_reverse, auto_route_trig])
     if allow_termwise:
         A.append(auto_route_termwise)
-    A.extend([auto_route_standard, auto_route_reverse, auto_route_trig])
     if rational:
         A.append(auto_route_division)
     A.extend([auto_route_substitution, auto_route_parts])
