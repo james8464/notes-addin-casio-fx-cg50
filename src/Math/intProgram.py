@@ -604,6 +604,27 @@ def trig_product_to_sum_rewrite(left_name, right_name, left_arg, right_arg, var)
     return None, None
 
 
+def trig_cubic_linear_combo_rewrite(node):
+    A = sim(node)
+    if A[0] != 'mul':
+        return None, None
+    B = list(flat(A, 'mul'))
+    i = 0
+    while i < len(B):
+        C = B[i]
+        if C[0] == 'pow' and C[1][0] == 'fn' and same(C[2], num(3)) and C[1][1] in ('sin', 'cos'):
+            D = C[1][2]
+            if C[1][1] == 'sin':
+                E = div(add([mul([num(3), fn('sin', D)]), neg(fn('sin', mul([num(3), D])))]), num(4))
+                F = 'Use sin(3A) = 3sin(A)-4sin^3(A).'
+            else:
+                E = div(add([mul([num(3), fn('cos', D)]), fn('cos', mul([num(3), D]))]), num(4))
+                F = 'Use cos(3A) = 4cos^3(A)-3cos(A).'
+            return F, expand_small(mul(B[:i] + [E] + B[i + 1:]))
+        i += 1
+    return None, None
+
+
 def strip_simple_minus(node):
     A, B = split_coeff(node)
     if is_num(A) and A[1] < 0:
@@ -3080,9 +3101,12 @@ def integrate_standard_term(node, var):
                         if scale is None:
                             scale = fn('sqrt', constant_term)
                         result = div(fn('atan', div(inner, scale)), mul([coeff, scale]))
-                        return result, [
-                            'Use the standard result for f\'(x)/(a^2+f(x)^2).',
-                            'So I = ' + pretty(result) + ' + C']
+                        lines = []
+                        if not same(inner, F) or not same(constant_term, num(1)):
+                            lines.append('Write the denominator as ' + pretty(add([power(inner, num(2)), constant_term])) + '.')
+                        lines.append('Use the standard result for f\'(x)/(a^2+f(x)^2).')
+                        lines.append('So I = ' + pretty(result) + ' + C')
+                        return result, lines
 
     # Add pattern for f'(x)/f(x) = ln|f(x)| + C (general logarithmic integration)
     if A[0] == 'div':
@@ -3206,6 +3230,14 @@ def integrate_standard_term(node, var):
                 return B, [
                     'Complete the square in the radical.',
                     'Use the standard result for 1/sqrt(u^2+a).', 'So I = ' + pretty(B) + ' + C']
+            if is_num(constant) and constant[1] < 0:
+                a_sq = negq(constant)
+                B = fn('log', fn('abs', add([shifted, power(add([power(shifted, num(2)), constant]), num(1, 2))])))
+                return B, [
+                    'Complete the square in the radical.',
+                    'Write the denominator as sqrt(u^2-' + pretty(a_sq) + ').',
+                    'Use the standard result for 1/sqrt(u^2-a^2).',
+                    'So I = ' + pretty(B) + ' + C']
         if is_one(numerator) and H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
             B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
             return B, [
@@ -3702,6 +3734,9 @@ def trig_rewrite_step(node, var=None):
         return F, E
     if B[0] == 'mul':
         A = list(B[1])
+        F, E = trig_cubic_linear_combo_rewrite(B)
+        if E is not None:
+            return F, E
         if len(A) == 2 and A[0][0] == 'fn' and A[1][0] == 'fn' and A[0][1] == 'sin' and A[1][1] == 'cos' and same(
                 A[0][2], A[1][2]):
             return trig_product_rewrite(A[0][1], A[1][1], A[0][2])
@@ -3892,6 +3927,9 @@ def integrate_dv_subproblem(node, var, depth=0):
     A, D = integrate_reverse_chain(B, C)
     if A is not None:
         return A, []
+    A, D = integrate_cyclic_parts(B, C)
+    if A is not None:
+        return A, []
     return integrate_trig(B, C, False)
 
 
@@ -3946,6 +3984,12 @@ def integrate_after_trig_rewrite(node, var, depth=0):
     if A is not None:
         return A, D
     A, D = integrate_reverse_chain(B, C)
+    if A is not None:
+        return A, D
+    A, D = integrate_cyclic_parts(B, C)
+    if A is not None:
+        return A, D
+    A, D = integrate_by_parts(B, C, E)
     if A is not None:
         return A, D
     return None, None
@@ -5722,6 +5766,21 @@ def ensure_working_lines(node, var, title, ans, lines):
     if lines is not None and len(lines) > 0:
         return lines
     if title in ('std', 'f(ax+b)'):
+        simplified = sim(node)
+        if simplified[0] == 'div' and is_one(simplified[1]):
+            poly = poly_num(simplified[2], var)
+            if poly is not None and len(poly) == 3 and poly[2] == num(1) and not is_zero(poly[1]):
+                half_lin = divq(poly[1], num(2)) if is_num(poly[1]) else div(poly[1], num(2))
+                shifted = add([sym(var), half_lin])
+                constant = sim(sub(poly[0], power(half_lin, num(2))))
+                if is_num(constant) and constant[1] > 0:
+                    completed = add([power(shifted, num(2)), constant])
+                    return [
+                        'Complete the square in the denominator.',
+                        pretty(simplified[2]) + ' = ' + pretty(completed),
+                        'Use the standard result for 1/(u^2+a^2).',
+                        'So I = ' + pretty(ans) + ' + C',
+                    ]
         return [
             'Use the standard integral for ' + pretty(node) + '.',
             'So I = ' + pretty(ans) + ' + C',

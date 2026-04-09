@@ -113,6 +113,10 @@ def gcd(a, b):
     return a or 1
 
 
+def lcm(a, b):
+    return abs(a * b) // gcd(a, b)
+
+
 def num(a, b=1):
     if b == 0:
         raise ValueError('Division by zero.')
@@ -1374,11 +1378,145 @@ def rational_roots_for_quadratic(coeff_nodes):
             return []
         return [sim(div(neg(c), b))]
     disc = sim(sub(power(b, num(2)), mul([num(4), a, c])))
+    if is_num(disc) and disc[1] < 0:
+        return []
     disc_root = sqrt_num(disc)
     if disc_root is None:
-        return []
+        disc_root = fn('sqrt', disc)
     denom = sim(mul([num(2), a]))
     return [sim(div(add([neg(b), disc_root]), denom)), sim(div(add([neg(b), neg(disc_root)]), denom))]
+
+
+def positive_divisors(n):
+    n = abs(n)
+    if n == 0:
+        return [0]
+    out = []
+    i = 1
+    while i * i <= n:
+        if n % i == 0:
+            out.append(i)
+            if i * i != n:
+                out.append(n // i)
+        i += 1
+    out.sort()
+    return out
+
+
+def rational_root_candidates(coeff_nodes, degree):
+    common_den = 1
+    i = 0
+    while i <= degree:
+        if not is_num(coeff_nodes[i]):
+            return []
+        common_den = lcm(common_den, coeff_nodes[i][2])
+        i += 1
+    ints = []
+    i = 0
+    while i <= degree:
+        ints.append(coeff_nodes[i][1] * (common_den // coeff_nodes[i][2]))
+        i += 1
+    lead = ints[degree]
+    const = ints[0]
+    if lead == 0:
+        return []
+    numerators = positive_divisors(const)
+    denominators = positive_divisors(lead)
+    seen = set()
+    out = []
+    i = 0
+    while i < len(numerators):
+        j = 0
+        while j < len(denominators):
+            p = numerators[i]
+            q = denominators[j]
+            if q != 0:
+                g = gcd(p, q)
+                p2 = p // g
+                q2 = q // g
+                key = (p2, q2)
+                if key not in seen:
+                    seen.add(key)
+                    out.append(num(p2, q2))
+                    out.append(num(-p2, q2))
+            j += 1
+        i += 1
+    if const == 0:
+        out.append(num(0))
+    return normalize_solution_roots(out)
+
+
+def polynomial_value_at(coeff_nodes, degree, x_node):
+    total = num(0)
+    power_term = num(1)
+    i = 0
+    while i <= degree:
+        total = sim(add([total, mul([coeff_nodes[i], power_term])]))
+        power_term = sim(mul([power_term, x_node]))
+        i += 1
+    return total
+
+
+def deflate_polynomial_coeffs(coeff_nodes, degree, root):
+    if degree <= 0:
+        return None, None
+    desc = []
+    i = degree
+    while i >= 0:
+        desc.append(coeff_nodes[i])
+        i -= 1
+    new_desc = [desc[0]]
+    i = 1
+    while i < len(desc):
+        new_desc.append(sim(add([desc[i], mul([root, new_desc[-1]])])))
+        i += 1
+    remainder = new_desc[-1]
+    quotient_desc = new_desc[:-1]
+    quotient = []
+    i = len(quotient_desc) - 1
+    while i >= 0:
+        quotient.append(sim(quotient_desc[i]))
+        i -= 1
+    return quotient, remainder
+
+
+def rational_roots_for_polynomial(coeff_nodes, degree):
+    coeffs = list(coeff_nodes[:degree + 1])
+    current_degree = degree
+    roots = []
+    while current_degree > 2:
+        candidates = rational_root_candidates(coeffs, current_degree)
+        found = None
+        i = 0
+        while i < len(candidates):
+            value = polynomial_value_at(coeffs, current_degree, candidates[i])
+            if value is not None and is_zero(value):
+                found = candidates[i]
+                break
+            i += 1
+        if found is None:
+            break
+        roots.append(found)
+        coeffs, remainder = deflate_polynomial_coeffs(coeffs, current_degree, found)
+        if coeffs is None or remainder is None or not is_zero(remainder):
+            return None
+        current_degree -= 1
+    if current_degree == 2:
+        quad_roots = rational_roots_for_quadratic(coeffs)
+        if len(quad_roots) == 0:
+            disc = sim(sub(power(coeffs[1], num(2)), mul([num(4), coeffs[2], coeffs[0]])))
+            if len(roots) != 0 and is_num(disc) and disc[1] < 0:
+                return normalize_solution_roots(roots)
+            return None
+        roots.extend(quad_roots)
+    elif current_degree == 1:
+        if is_zero(coeffs[1]):
+            return None
+        roots.append(sim(div(neg(coeffs[0]), coeffs[1])))
+    elif current_degree == 0:
+        if not is_zero(coeffs[0]):
+            return None
+    return normalize_solution_roots(roots)
 
 
 def expand_algebraic(node):
@@ -3411,13 +3549,18 @@ def compare_expressions(expr1, expr2):
 
 
 def solve_polynomial_expr(node, var_name):
-    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    coeffs, degree = polynomial_coeff_list(node, var_name, 8)
     if coeffs is None:
         return None, None
     if degree == 0:
         return ('identity' if is_zero(coeffs[0]) else 'none'), []
     if degree == 1:
         return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
+    if degree > 2:
+        roots = rational_roots_for_polynomial(coeffs, degree)
+        if roots is not None and len(roots) != 0:
+            return 'poly', roots
+        return None, None
     disc = sim(sub(power(coeffs[1], num(2)), mul([num(4), coeffs[2], coeffs[0]])))
     disc_root = sqrt_num(disc)
     if disc_root is None:
@@ -4476,13 +4619,18 @@ def compare_expressions(expr1, expr2):
 
 
 def solve_polynomial_expr(node, var_name):
-    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    coeffs, degree = polynomial_coeff_list(node, var_name, 8)
     if coeffs is None:
         return None, None
     if degree == 0:
         return ('identity' if is_zero(coeffs[0]) else 'none'), []
     if degree == 1:
         return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
+    if degree > 2:
+        roots = rational_roots_for_polynomial(coeffs, degree)
+        if roots is None or len(roots) == 0:
+            return None, None
+        return 'poly', roots
     roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
     if len(roots) == 0:
         return None, None

@@ -1398,8 +1398,8 @@ def explain(node, var, deps_list):
                 lines.append("Exp rule")
                 lines.append("= " + show(d))
             else:
-                lines.append("Exponential chain rule")
-                lines.append("a^u*ln(a)*du/d" + var)
+                lines.append("Chain rule")
+                lines.append("For a^u, use a^u*ln(a)*du/d" + var)
                 lines.append("= " + show(d))
             return d, lines
         if not depends(exp, [var] + deps_list_list):
