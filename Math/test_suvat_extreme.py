@@ -52,6 +52,8 @@ def run_test(label, s, u, v, a, t, target, expect_result=None, expect_error=None
 
         if check_fn is not None:
             check_fn(result, equation, original_eq, sub_text, label)
+        elif expect_result is None:
+            report(label, True)
 
         # Check for poor working output
         if sub_text is not None:
@@ -159,7 +161,8 @@ run_test('One positive, one negative root',
 
 # Both negative roots (s=10, u=-8, a=-1: disc=44)
 run_test('Both negative roots',
-         sp.num(10), sp.num(-8), None, sp.num(-1), None, 't')
+         sp.num(10), sp.num(-8), None, sp.num(-1), None, 't',
+         expect_error='time must be positive')
 
 # Perfect square discriminant
 run_test('Perfect square discriminant',
@@ -493,15 +496,18 @@ print('\n========== TEST GROUP 18: Division By Zero ==========')
 
 # t=0 in s = ut + 1/2at^2 rearrangement
 run_test('t=0 in u = s/t - 1/2at',
-         sp.num(10), None, sp.num(5), sp.num(2), sp.num(0), 'u')
+         sp.num(10), None, sp.num(5), sp.num(2), sp.num(0), 'u',
+         expect_error='t=0 but s!=0')
 
 # a=0 in t = (v-u)/a
 run_test('a=0 in t = (v-u)/a',
-         sp.num(10), sp.num(5), sp.num(10), sp.num(0), None, 't')
+         sp.num(10), sp.num(5), sp.num(10), sp.num(0), None, 't',
+         expect_error='a=0 but v!=u')
 
 # u+v=0 in t = 2s/(u+v)
 run_test('u+v=0 in t = 2s/(u+v)',
-         sp.num(10), sp.num(5), sp.num(-5), sp.num(2), None, 't')
+         sp.num(10), sp.num(5), sp.num(-5), None, None, 't',
+         expect_error='division')
 
 
 # ============================================================================

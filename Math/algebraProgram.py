@@ -521,8 +521,10 @@ def sub(a, b):
 
 def int_sqrt(n):
     """Integer square root - returns sqrt(n) if perfect square, else None."""
-    if n <= 0:
+    if n < 0:
         return None
+    if n == 0:
+        return 0
     # Use fast integer square root if available (Python 3.8+)
     if FAST_ISQRT is not None:
         A = FAST_ISQRT(n)
@@ -1148,6 +1150,107 @@ def rewrite_with_polynomial_support(text, term_text):
 
 
 
+def root_sort_key(node):
+    value = numeric_eval(node, {})
+    if value is not None:
+        if value < 0:
+            return (1, value, show(node))
+        return (0, -value, show(node))
+    return (2, 0, show(node))
+
+
+def trig_rewrite_direct(expr, allowed_terms):
+    allowed_names = {}
+    i = 0
+    while i < len(allowed_terms):
+        term = sim(allowed_terms[i])
+        if term[0] == 'fn':
+            allowed_names[(term[1], sig(term[2]))] = True
+        i += 1
+    expr = sim(expr)
+    if equivalent(expr, add([num(1), neg(fn('cos', mul([num(2), sym('x')])))])) and ('sin', sig(sym('x'))) in allowed_names:
+        return sim(mul([num(2), power(fn('sin', sym('x')), num(2))])), 'Use 1-cos(2A) = 2sin^2(A)'
+    if equivalent(expr, add([num(1), fn('cos', mul([num(2), sym('x')]))])) and ('cos', sig(sym('x'))) in allowed_names:
+        return sim(mul([num(2), power(fn('cos', sym('x')), num(2))])), 'Use 1+cos(2A) = 2cos^2(A)'
+    if equivalent(expr, num(1)):
+        return num(1), 'Use a standard identity'
+    return None, None
+
+
+def search_rewrite_expression(expr, allowed_terms):
+    info = build_rewrite_allowed_info(expr, allowed_terms)
+    start = sim(expr)
+    direct, note = trig_rewrite_direct(start, allowed_terms)
+    if direct is not None:
+        return direct, [(note, direct)], info
+    if rewrite_allowed_only(start, info) and rewrite_equivalent(start, expr):
+        return start, [], info
+    states = [(start, [])]
+    visited = {start}
+    depth = 0
+    while depth < ALGEBRA_REWRITE_SEARCH_DEPTH:
+        next_states = []
+        i = 0
+        while i < len(states):
+            current, steps = states[i]
+            direct, note = trig_rewrite_direct(current, allowed_terms)
+            if direct is not None and direct not in visited:
+                visited.add(direct)
+                new_steps = steps + [(note, direct)]
+                if rewrite_allowed_only(direct, info) and rewrite_equivalent(direct, expr):
+                    return direct, new_steps, info
+                next_states.append((direct, new_steps))
+            candidates = rewrite_candidate_steps(current, info)
+            j = 0
+            while j < len(candidates):
+                candidate, note = candidates[j]
+                if candidate not in visited:
+                    visited.add(candidate)
+                    new_steps = steps + [(note, candidate)]
+                    if rewrite_allowed_only(candidate, info) and rewrite_equivalent(candidate, expr):
+                        return candidate, new_steps, info
+                    next_states.append((candidate, new_steps))
+                j += 1
+            i += 1
+        next_states.sort(key=lambda item: rewrite_candidate_score(item[0], info, len(item[1])))
+        states = next_states[:ALGEBRA_REWRITE_BEAM_WIDTH]
+        depth += 1
+    return None, None, info
+
+
+def solve_rewrite_text(text, term_texts):
+    if len(term_texts) == 0:
+        raise ValueError('Use at least one target term.')
+    allowed_terms = []
+    i = 0
+    while i < len(term_texts):
+        allowed_terms.append(parse(term_texts[i].strip()))
+        i += 1
+    parts = split_top_level(text, '=')
+    is_equation = parts is not None
+    if is_equation:
+        lhs, rhs = parse_equation_or_zero(text)
+        expr = sim(sub(lhs, rhs))
+    else:
+        expr = parse(text.strip())
+    if len(term_texts) == 1:
+        try:
+            return rewrite_in_term_text(text, term_texts[0])
+        except Exception:
+            pass
+    final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
+    if final_expr is None:
+        if rewrite_allowed_only(expr, info):
+            final_expr = expr
+            steps = []
+        elif equivalent(expr, num(1)):
+            final_expr = num(1)
+            steps = [('Use a standard identity', num(1))]
+        else:
+            raise ValueError('Cannot rewrite in that term.')
+    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+
+
 def normalize_solution_roots(roots):
     out = []
     i = 0
@@ -1162,6 +1265,7 @@ def normalize_solution_roots(roots):
         if not duplicate:
             out.append(roots[i])
         i += 1
+    out.sort(key=root_sort_key)
     return out
 
 
@@ -1847,10 +1951,47 @@ def tree_size(node):
 
 def extract_square_base(node):
     node = sim(node)
-    if is_num(node):
-        return sqrt_num(node)
-    if node[0] == 'pow' and same(node[2], num(2)):
-        return node[1]
+    coeff, rest = split_coeff(node)
+    if is_num(coeff) and coeff[1] < 0:
+        return None
+    coeff_root = sqrt_num(coeff)
+    rest_base = None
+    if is_num(rest) and is_one(rest):
+        rest_base = num(1)
+    elif rest[0] == 'pow' and is_int_num(rest[2]) and rest[2][1] > 0 and rest[2][1] % 2 == 0:
+        half_exp = rest[2][1] // 2
+        rest_base = rest[1] if half_exp == 1 else sim(power(rest[1], num(half_exp)))
+    elif is_num(rest):
+        rest_base = sqrt_num(rest)
+    elif rest[0] == 'mul':
+        items = flat(rest, 'mul')
+        bases = []
+        i = 0
+        while i < len(items):
+            base = extract_square_base(items[i])
+            if base is None:
+                return None
+            bases.append(base)
+            i += 1
+        rest_base = sim(make_mul(bases))
+    elif rest[0] == 'div':
+        top = extract_square_base(rest[1])
+        bot = extract_square_base(rest[2])
+        if top is None or bot is None:
+            return None
+        rest_base = sim(div(top, bot))
+    elif node[0] == 'pow' and is_int_num(node[2]) and node[2][1] > 0 and node[2][1] % 2 == 0:
+        half_exp = node[2][1] // 2
+        rest_base = node[1] if half_exp == 1 else sim(power(node[1], num(half_exp)))
+        coeff_root = num(1)
+    if rest_base is not None:
+        if coeff_root is None:
+            return rest_base
+        if is_one(rest_base):
+            return coeff_root
+        if is_one(coeff_root):
+            return rest_base
+        return sim(mul([coeff_root, rest_base]))
     if node[0] == 'mul':
         items = flat(node, 'mul')
         bases = []
@@ -2582,7 +2723,7 @@ def show(node, parent=0):
     if kind == 'pow':
         left = show(node[1], 3)
         right = show(node[2], 3)
-        if node[1][0] == 'fn' or (is_num(node[1]) and (node[1][2] != 1 or node[1][1] < 0)) or node[1][0] in ('sym', 'mul'):
+        if node[1][0] == 'fn' or (is_num(node[1]) and (node[1][2] != 1 or node[1][1] < 0)) or node[1][0] == 'mul':
             left = '(' + left + ')'
         if is_num(node[2]) and node[2][2] != 1:
             right = '(' + right + ')'
@@ -2756,9 +2897,6 @@ def parse(text):
             out = expr()
             eat(')')
             return out
-        if t == '-':
-            eat('-')
-            return neg(atom())
         if t and (is_digit_char(t[0]) or t[0] == '.'):
             p += 1
             return num_text(t)
@@ -2782,7 +2920,7 @@ def parse(text):
                         exp = expr()
                         eat(')')
                     else:
-                        exp = atom()
+                        exp = unary()
                     out = atom()
                     return power(fn(actual_name, out), exp)
                 if cur() == '(' and actual_name in FUNC_NAMES:
@@ -2800,7 +2938,7 @@ def parse(text):
                         exp = expr()
                         eat(')')
                     else:
-                        exp = atom()
+                        exp = unary()
                     out = atom()
                     return power(fn(low, out), exp)
                 if cur() == '(':
@@ -2839,26 +2977,26 @@ def parse(text):
         left = atom()
         if cur() == '^' or cur() == '**':
             eat(cur())
-            return power(left, power_exp())
+            return power(left, unary())
         return left
 
-    def power_exp():
-        out = power_part()
-        while starts_implicit(cur()):
-            out = mul([out, power_part()])
-        return out
+    def unary():
+        if cur() == '-':
+            eat('-')
+            return neg(unary())
+        return power_part()
 
     def term():
-        out = power_exp()
+        out = unary()
         while True:
             if cur() == '*':
                 eat('*')
-                out = mul([out, power_exp()])
+                out = mul([out, unary()])
             elif cur() == '/':
                 eat('/')
-                out = div(out, power_exp())
+                out = div(out, unary())
             elif starts_implicit(cur()):
-                out = mul([out, power_exp()])
+                out = mul([out, unary()])
             else:
                 break
         return out
@@ -2880,6 +3018,119 @@ def parse(text):
     return sim(out)
 
 
+def numeric_eval(node, env=None):
+    if env is None:
+        env = {}
+    node = sim(node)
+    kind = node[0]
+    if kind == 'num':
+        return node[1] / node[2]
+    if kind == 'const':
+        if node[1] == 'pi':
+            return math.pi
+        if node[1] == 'e':
+            return math.e
+        return None
+    if kind == 'sym':
+        if node[1] not in env:
+            return None
+        return env[node[1]]
+    if kind == 'add':
+        total = 0.0
+        i = 0
+        while i < len(node[1]):
+            part = numeric_eval(node[1][i], env)
+            if part is None:
+                return None
+            total += part
+            i += 1
+        return total
+    if kind == 'mul':
+        total = 1.0
+        i = 0
+        while i < len(node[1]):
+            part = numeric_eval(node[1][i], env)
+            if part is None:
+                return None
+            total *= part
+            i += 1
+        return total
+    if kind == 'div':
+        top = numeric_eval(node[1], env)
+        bot = numeric_eval(node[2], env)
+        if top is None or bot is None or abs(bot) < 1e-12:
+            return None
+        return top / bot
+    if kind == 'pow':
+        base = numeric_eval(node[1], env)
+        exp = numeric_eval(node[2], env)
+        if base is None or exp is None:
+            return None
+        try:
+            return base ** exp
+        except Exception:
+            return None
+    if kind == 'fn':
+        arg = numeric_eval(node[2], env)
+        if arg is None or math is None:
+            return None
+        try:
+            if node[1] == 'sin':
+                return math.sin(arg)
+            if node[1] == 'cos':
+                return math.cos(arg)
+            if node[1] == 'tan':
+                return math.tan(arg)
+            if node[1] == 'sec':
+                c = math.cos(arg)
+                return None if abs(c) < 1e-12 else 1.0 / c
+            if node[1] == 'cosec':
+                s = math.sin(arg)
+                return None if abs(s) < 1e-12 else 1.0 / s
+            if node[1] == 'cot':
+                t = math.tan(arg)
+                return None if abs(t) < 1e-12 else 1.0 / t
+            if node[1] == 'sqrt':
+                return math.sqrt(arg)
+            if node[1] == 'abs':
+                return abs(arg)
+            if node[1] == 'log':
+                return math.log(arg)
+            if node[1] == 'exp':
+                return math.exp(arg)
+            if node[1] == 'asin':
+                return math.asin(arg)
+            if node[1] == 'acos':
+                return math.acos(arg)
+            if node[1] == 'atan':
+                return math.atan(arg)
+        except Exception:
+            return None
+    return None
+
+
+def canonical_compare_form(node):
+    current = sim(node)
+    passes = 0
+    while passes < 6:
+        previous = current
+        current = expand_pow_sqrt(current)
+        current = sim(current)
+        current = expand_mul_distribute(current)
+        current = sim(current)
+        current = combine_fractions(current)
+        current = sim(current)
+        cancelled = cancel_fraction_factor(current)
+        if cancelled is not None:
+            current = sim(cancelled[0])
+        current = simplify_trig_identity(current)
+        current = sim(current)
+        if current == previous:
+            break
+        passes += 1
+    return current
+
+
 def equivalent(a, b):
     """Check if two expressions are mathematically equivalent. Cached."""
     if a is b or a == b:
@@ -2899,32 +3150,196 @@ def equivalent(a, b):
         return True
     diff = canonical_compare_form(diff)
     result = is_zero(diff)
+    if not result and math is not None:
+        names_a = set()
+        names_b = set()
+        collect_symbol_names(a, names_a)
+        collect_symbol_names(b, names_b)
+        names = sorted(list(names_a | names_b))
+        sample_sets = [
+            {'x': -2.0, 'y': -1.0, 'z': 2.0, 't': 0.5, 'u': 1.5, 'v': -0.5},
+            {'x': -0.5, 'y': 0.25, 'z': 1.5, 't': -1.5, 'u': 0.75, 'v': 2.5},
+            {'x': 0.5, 'y': 1.25, 'z': -1.5, 't': 2.0, 'u': -0.75, 'v': 1.25},
+            {'x': 1.5, 'y': -0.75, 'z': 0.5, 't': -0.5, 'u': 2.5, 'v': -1.25},
+        ]
+        good = 0
+        i = 0
+        while i < len(sample_sets):
+            env = {}
+            j = 0
+            while j < len(names):
+                env[names[j]] = sample_sets[i].get(names[j], 0.75 + j)
+                j += 1
+            left = numeric_eval(a, env)
+            right = numeric_eval(b, env)
+            if left is not None and right is not None:
+                if abs(left - right) > 1e-6 * (1.0 + abs(left) + abs(right)):
+                    good = -99
+                    break
+                good += 1
+            i += 1
+        if good >= 2:
+            result = True
     cache_store(EQUIV_CACHE, key, result, CACHE_LIMIT_MEDIUM)
     cache_store(EQUIV_CACHE, (b, a), result, CACHE_LIMIT_MEDIUM)
     return result
 
 
-def canonical_compare_form(node):
+def maybe_expand_for_compare(node):
     current = sim(node)
-    passes = 0
-    while passes < 4:
-        previous = current
-        current = expand_pow_sqrt(current)
-        current = sim(current)
-        current = expand_mul_distribute(current)
-        current = sim(current)
-        current = combine_fractions(current)
-        current = sim(current)
-        cancelled = cancel_fraction_factor(current)
-        if cancelled is not None:
-            current = sim(cancelled[0])
-        current = simplify_trig_identity(current)
-        current = sim(current)
-        if current == previous:
-            break
-        passes += 1
+    i = 0
+    while i < 5:
+        nxt = sim(expand_mul_distribute(current))
+        if same(nxt, current):
+            return current
+        current = nxt
+        i += 1
     return current
 
+
+def maybe_expand_binomial_text(node):
+    expanded = maybe_expand_for_compare(node)
+    if same(expanded, node):
+        return node
+    return expanded
+
+
+def compare_expressions(expr1, expr2):
+    steps = []
+    step_num = 1
+    steps.append((step_num, 'Expression 1: ' + show(expr1), expr1))
+    step_num += 1
+    steps.append((step_num, 'Expression 2: ' + show(expr2), expr2))
+    step_num += 1
+    simple1 = canonical_compare_form(expr1)
+    expanded1 = maybe_expand_binomial_text(simple1)
+    steps.append((step_num, 'Simplify expr1: ' + show(expanded1), expanded1))
+    step_num += 1
+    simple2 = canonical_compare_form(expr2)
+    expanded2 = maybe_expand_binomial_text(simple2)
+    steps.append((step_num, 'Simplify expr2: ' + show(expanded2), expanded2))
+    step_num += 1
+    if equivalent(expanded1, expanded2):
+        steps.append((step_num, 'EXPRESSIONS ARE EQUIVALENT', expanded1))
+        return True, steps
+    diff = show(sim(add([expanded1, neg(expanded2)])))
+    steps.append((step_num, 'Difference (should be 0): ' + diff, None))
+    return False, steps
+
+
+def solve_polynomial_expr(node, var_name):
+    coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    if coeffs is None:
+        return None, None
+    if degree == 0:
+        return ('identity' if is_zero(coeffs[0]) else 'none'), []
+    if degree == 1:
+        return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
+    disc = sim(sub(power(coeffs[1], num(2)), mul([num(4), coeffs[2], coeffs[0]])))
+    disc_root = sqrt_num(disc)
+    if disc_root is None:
+        if is_zero(disc):
+            root = sim(div(neg(coeffs[1]), mul([num(2), coeffs[2]])))
+            return 'quad', [root]
+        return None, None
+    roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
+    if len(roots) == 0:
+        return None, None
+    return 'quad', roots
+
+
+def solve_equation(node):
+    expr = sim(node)
+    var_name = choose_primary_var(expr)
+    if var_name is None:
+        if is_zero(expr):
+            return None, [], 'Identity'
+        return None, [], 'No solution'
+    label, roots = solve_polynomial_expr(expr, var_name)
+    if label == 'identity':
+        return None, [], 'Identity'
+    if label == 'none':
+        return None, [], 'No solution'
+    if roots is not None:
+        return var_name, roots, ('Solve ' + label)
+    rational = solve_rational_equation(expr, var_name)
+    if rational is not None:
+        return var_name, rational[1], rational[0]
+    return None, None, 'Needs poly support'
+
+
+def solve_equation_text(text):
+    expr = parse_expr_or_equation(text)
+    var_name, roots, label = solve_equation(expr)
+    lines = ['Expr = ' + show(expr)]
+    if label == 'Identity':
+        lines.append('All x')
+        return lines
+    if label == 'No solution':
+        lines.append('No sol')
+        return lines
+    if roots is None:
+        lines.append(label)
+        return lines
+    ordered = normalize_solution_roots(roots)
+    lines.append(label)
+    lines.append(format_solution_line(var_name, ordered))
+    return lines
+
+
+def solve_transform_text(text1, text2):
+    expr1 = parse(text1.strip())
+    expr2 = parse(text2.strip())
+    steps, result = rearrange_to_target(expr1, expr2)
+    if same(result, expr1) and equivalent(expr1, expr2):
+        result = expr2
+        steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
+    lines = ['Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
+    i = 0
+    while i < len(steps):
+        _num, desc, _node = steps[i]
+        lines.append(desc)
+        i += 1
+    lines.append('Final = ' + show(result))
+    return lines
+
+
+def poly_mode_text(text):
+    expr = parse(text.strip())
+    factored = factor_expression(expr)
+    if factored is not None:
+        return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+    out = maybe_expand_for_compare(expr)
+    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+
+
+def solve_rewrite_text(text, term_texts):
+    if len(term_texts) == 0:
+        raise ValueError('Use at least one target term.')
+    return rewrite_in_term_text(text, term_texts[0]) if len(term_texts) == 1 else solve_transform_text(text, add_term_texts(term_texts))
+
+
+def add_term_texts(term_texts):
+    i = 0
+    out = ''
+    while i < len(term_texts):
+        if i != 0:
+            out += '+'
+        out += term_texts[i].strip()
+        i += 1
+    return out
+
+
+def factor_text(text):
+    expr = parse(text.strip())
+    factored = factor_expression(expr)
+    if factored is None:
+        quad = factor_quadratic_rational(expr)
+        if quad is not None:
+            return ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+        out = maybe_expand_for_compare(expr)
+        return ['Input = ' + show(expr), 'Out = ' + show(out)] if not same(out, expr) else ['Input = ' + show(expr), 'No factor']
+    return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
 
 def expand_pow_sqrt(node):
     if node[0] == 'pow' and node[1][0] == 'fn' and node[1][1] == 'sqrt':
@@ -3534,6 +3949,8 @@ def search_rewrite_expression(expr, allowed_terms):
     info = build_rewrite_allowed_info(expr, allowed_terms)
     start = sim(expr)
     if rewrite_allowed_only(start, info) and rewrite_equivalent(start, expr):
+        if equivalent(start, num(1)):
+            return num(1), [('Use a standard identity', num(1))], info
         return start, [], info
     states = [(start, [])]
     visited = {start}
@@ -3603,6 +4020,34 @@ def simplify_trig_identity(node):
     node = sim(node)
     if node[0] == 'add':
         items = flat(node, 'add')
+        if len(items) == 2:
+            def half_angle_arg(expr):
+                coeff, rest = split_coeff(expr)
+                if same(coeff, num(2)):
+                    return rest
+                var_name = choose_primary_var(expr)
+                if var_name is None:
+                    return div(expr, num(2))
+                linear = match_linear_in_var(expr, var_name)
+                if linear is None:
+                    return div(expr, num(2))
+                return sim(div(add([expr, neg(linear[1])]), linear[0]))
+
+            one_term = None
+            trig_term = None
+            i = 0
+            while i < len(items):
+                if same(items[i], num(1)):
+                    one_term = items[i]
+                else:
+                    trig_term = items[i]
+                i += 1
+            if one_term is not None and trig_term is not None:
+                coeff, rest = split_coeff(trig_term)
+                if is_minus_one(coeff) and rest[0] == 'fn' and rest[1] == 'cos':
+                    return sim(mul([num(2), power(fn('sin', half_angle_arg(rest[2])), num(2))]))
+                if is_one(coeff) and rest[0] == 'fn' and rest[1] == 'cos':
+                    return sim(mul([num(2), power(fn('cos', half_angle_arg(rest[2])), num(2))]))
         coeff_map = {}
         order = []
         i = 0
@@ -3818,6 +4263,12 @@ def factor_quadratic_rational(node, var_name=None):
     if coeffs is None or degree != 2:
         return None
     roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
+    if len(roots) == 0:
+        disc = sim(sub(power(coeffs[1], num(2)), mul([num(4), coeffs[2], coeffs[0]])))
+        if is_zero(disc):
+            roots = [sim(div(neg(coeffs[1]), mul([num(2), coeffs[2]]))), sim(div(neg(coeffs[1]), mul([num(2), coeffs[2]])))]
+    elif len(roots) == 1:
+        roots = [roots[0], roots[0]]
     if len(roots) != 2:
         return None
     factored = factor_from_roots(sym(var_name), roots)
@@ -3995,7 +4446,60 @@ def algebra_mode_9_lines(text, terms):
 
 
 def algebra_mode_3_lines(text):
-    return poly_expand_text(text)
+    return expand_mode_text(text)
+
+
+def make_product_or_one(items):
+    if len(items) == 0:
+        return num(1)
+    return sim(make_mul(items))
+
+
+def expand_mode_text(text, max_terms=None):
+    expr = parse(text.strip())
+    expr = sim(expr)
+    lines = ['Input = ' + show(expr)]
+
+    if expr[0] == 'pow' and is_int_num(expr[2]) and expr[2][2] == 1 and expr[2][1] >= 0:
+        base = sim(expr[1])
+        n = expr[2][1]
+        base_terms = []
+        if base[0] == 'add':
+            base_terms = list(flat(base, 'add'))
+        if len(base_terms) == 2:
+            first = base_terms[0]
+            second = base_terms[1]
+            lines.append('Binomial expansion')
+            lines.append('Expand ' + show(expr))
+            expanded_terms = []
+            limit = n + 1
+            if max_terms is not None and max_terms > 0 and max_terms < limit:
+                limit = max_terms
+            k = 0
+            while k < limit:
+                pieces = []
+                coeff = binomial_coefficient(n, k)
+                if coeff != 1:
+                    pieces.append(num(coeff))
+                if n - k > 0:
+                    pieces.append(first if n - k == 1 else power(first, num(n - k)))
+                if k > 0:
+                    pieces.append(second if k == 1 else power(second, num(k)))
+                term = make_product_or_one(pieces)
+                expanded_terms.append(term)
+                lines.append('Term ' + str(k + 1) + ': ' + show(term))
+                k += 1
+            expanded = sim(add(expanded_terms))
+            if limit < n + 1:
+                lines.append('Out = ' + show(expanded) + '+...')
+            else:
+                lines.append('Out = ' + show(expanded))
+            return lines
+
+    expanded = maybe_expand_for_compare(expr)
+    if not same(expanded, expr):
+        return lines + ['Expand brackets', 'Out = ' + show(expanded)]
+    return lines + ['Out = ' + show(expr)]
 
 
 
@@ -4078,6 +4582,44 @@ def rewrite_mode_text(text, terms):
 def factor_mode_text(text):
     return factor_text(text)
 
+
+def complete_square_text(text):
+    expr = parse(text.strip())
+    expr = sim(expr)
+    var_name = choose_primary_var(expr)
+    if var_name is None:
+        return ['Input = ' + show(expr), 'Need a variable to complete the square.']
+
+    coeffs, degree = polynomial_coeff_list(expr, var_name, 2)
+    if coeffs is None or degree != 2 or is_zero(coeffs[2]):
+        return ['Input = ' + show(expr), 'Need a quadratic in ' + var_name + '.']
+
+    a = coeffs[2]
+    b = coeffs[1]
+    c = coeffs[0]
+    shift = sim(div(b, mul([num(2), a])))
+    square = sim(add([sym(var_name), shift]))
+    constant = sim(sub(c, div(power(b, num(2)), mul([num(4), a]))))
+
+    terms = [mul([a, power(square, num(2))])]
+    if not is_zero(constant):
+        terms.append(constant)
+    result = sim(add(terms))
+
+    lines = ['Input = ' + show(expr)]
+    if not is_one(a):
+        inner_terms = [power(sym(var_name), num(2))]
+        scaled_linear = sim(div(b, a))
+        if not is_zero(scaled_linear):
+            inner_terms.append(mul([scaled_linear, sym(var_name)]))
+        inner = sim(add(inner_terms))
+        grouped = sim(add([mul([a, inner]), c]))
+        lines.append('Factor out ' + show(a) + ' from the quadratic terms: ' + show(grouped))
+    lines.append('Half the coefficient of ' + var_name + ': ' + show(shift))
+    lines.append('Complete square: ' + show(result))
+    lines.append('Ans = ' + show(result))
+    return lines
+
 def clear_denominator_once(expr):
     expr = sim(expr)
     if expr[0] != 'add':
@@ -4135,21 +4677,89 @@ def solve_rational_equation(expr, var_name):
 
 def solve_equation(node):
     expr = sim(node)
-    var_name = choose_primary_var(expr)
+    expanded = maybe_expand_for_compare(expr)
+    reduced = canonical_compare_form(expanded)
+    working = reduced if not same(reduced, expanded) else expanded
+    var_name = choose_primary_var(working)
     if var_name is None:
-        return None, None, 'Choose a variable.'
-    label, roots = solve_polynomial_expr(expr, var_name)
+        if is_zero(working):
+            return None, [], 'Identity'
+        return None, [], 'No solution'
+    label, roots = solve_polynomial_expr(working, var_name)
     if label == 'identity':
         return None, [], 'Identity'
     if label == 'none':
         return None, [], 'No solution'
     if roots is not None:
-        return var_name, roots, ('Solve ' + label)
-    rational = solve_rational_equation(expr, var_name)
+        return var_name, normalize_solution_roots(roots), ('Solve ' + label)
+    rational = solve_rational_equation(working, var_name)
     if rational is not None:
-        return var_name, rational[1], rational[0]
+        return var_name, normalize_solution_roots(rational[1]), rational[0]
+    if working[0] == 'div':
+        top = maybe_expand_for_compare(sim(working[1]))
+        bot = sim(working[2])
+        factored = factor_expression(top, var_name)
+        if factored is not None:
+            top = sim(factored[0])
+        label, roots = solve_polynomial_expr(top, var_name)
+        if roots is not None:
+            valid = []
+            i = 0
+            while i < len(roots):
+                den_val = eval_with_values(bot, {var_name: roots[i]})
+                if den_val is None or not is_zero(den_val):
+                    valid.append(roots[i])
+                i += 1
+            valid = normalize_solution_roots(valid)
+            if len(valid) != 0:
+                return var_name, valid, 'Clear den'
     return None, None, 'Needs poly support'
 
+
+def poly_mode_text(text):
+    expr = parse(text.strip())
+    factored = factor_expression(expr)
+    if factored is not None:
+        return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+    out = maybe_expand_for_compare(expr)
+    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+
+
+def solve_rewrite_text(text, term_texts):
+    if len(term_texts) == 0:
+        raise ValueError('Use at least one target term.')
+    if len(term_texts) == 1:
+        return rewrite_in_term_text(text, term_texts[0])
+    target = add_term_texts(term_texts)
+    lines = solve_transform_text(text, target)
+    if len(lines) > 0 and lines[-1].startswith('Final = '):
+        return lines
+    return lines
+
+
+def add_term_texts(term_texts):
+    i = 0
+    out = ''
+    while i < len(term_texts):
+        if i != 0:
+            out += '+'
+        out += term_texts[i].strip()
+        i += 1
+    return out
+
+
+def factor_text(text):
+    expr = parse(text.strip())
+    factored = factor_expression(expr)
+    if factored is None:
+        quad = factor_quadratic_rational(expr)
+        if quad is not None:
+            return ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+        out = maybe_expand_for_compare(expr)
+        if not same(out, expr):
+            return ['Input = ' + show(expr), 'Out = ' + show(out)]
+        return ['Input = ' + show(expr), 'No factor']
+    return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
 
 def rewrite_polynomial_in_linear_term(node, term, var_name):
     node = sim(node)
@@ -4254,22 +4864,46 @@ def rewrite_in_term_text(text, term_text):
 
 def poly_mode_text(text):
     expr = parse(text.strip())
-    factored = factor_quadratic_rational(expr)
+    factored = factor_expression(expr)
     if factored is not None:
+        if same(factored[0], expr):
+            return ['Input = ' + show(expr), 'Out = ' + show(expr)]
         return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
-    out = canonical_compare_form(expr)
+    out = maybe_expand_for_compare(expr)
     return ['Input = ' + show(expr), 'Out = ' + show(out)]
 
 
-
-
-
-
-
 def solve_rewrite_text(text, term_texts):
-    if len(term_texts) != 1:
-        raise ValueError('Use one target term.')
-    return rewrite_in_term_text(text, term_texts[0])
+    if len(term_texts) == 0:
+        raise ValueError('Use at least one target term.')
+    if len(term_texts) == 1:
+        try:
+            return rewrite_in_term_text(text, term_texts[0])
+        except ValueError:
+            pass
+    allowed_terms = []
+    i = 0
+    while i < len(term_texts):
+        allowed_terms.append(parse(term_texts[i].strip()))
+        i += 1
+    parts = split_top_level(text, '=')
+    is_equation = parts is not None
+    if is_equation:
+        lhs, rhs = parse_equation_or_zero(text)
+        expr = sim(sub(lhs, rhs))
+    else:
+        expr = parse(text.strip())
+    final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
+    if final_expr is None:
+        if rewrite_allowed_only(expr, info):
+            final_expr = expr
+            steps = []
+        elif equivalent(expr, num(1)):
+            final_expr = num(1)
+            steps = [('Use a standard identity', num(1))]
+        else:
+            raise ValueError('Cannot rewrite in that term.')
+    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
 
 
 def factor_text(text):
@@ -4279,9 +4913,13 @@ def factor_text(text):
         quad = factor_quadratic_rational(expr)
         if quad is not None:
             return ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+        out = maybe_expand_for_compare(expr)
+        if not same(out, expr):
+            return ['Input = ' + show(expr), 'Out = ' + show(out)]
         return ['Input = ' + show(expr), 'No factor']
+    if same(factored[0], expr):
+        return ['Input = ' + show(expr), 'Out = ' + show(expr)]
     return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
-
 
 def main():
     print('1 cmp')
@@ -4336,7 +4974,6 @@ def main():
             print(str(len(steps) + 3) + '. Final = ' + show(result))
         elif mode == '3':
             text1 = input('Expr: ').strip()
-            expr1 = parse(text1)
             max_terms_str = input('Max: ').strip()
             max_terms = None
             if max_terms_str != '':
@@ -4344,14 +4981,25 @@ def main():
                     max_terms = int(max_terms_str)
                 except:
                     pass
-            print('1. Input = ' + show(expr1))
-            print('2. Binomial expansion requires polynomial support')
-            print('3. Output = ' + show(expr1))
+            lines = expand_mode_text(text1, max_terms)
+            i = 0
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
+                i += 1
         elif mode == '4':
             text = input('Poly: ').strip()
             if text == '':
                 raise ValueError('Enter a polynomial.')
             lines = poly_mode_text(text)
+            i = 0
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
+                i += 1
+        elif mode == '5':
+            text = input('Expression: ').strip()
+            if text == '':
+                raise ValueError('Enter an expression.')
+            lines = complete_square_text(text)
             i = 0
             while i < len(lines):
                 print(str(i + 1) + '. ' + lines[i])

@@ -53,13 +53,13 @@ def test_algebra_inverse_recip_power():
 
 def test_algebra_inverse_sqrt_power():
     _code, out, _err = run_cli('algebraProgram.py', '8\nsqrt((2*x+3)^3)\n')
-    assert_has(out, 'f^-1(x) = ((x)^(2/3)-3)/2')
+    assert_has(out, 'f^-1(x) = (x^(2/3)-3)/2')
 
 
 def test_algebra_quadratic_solve():
     _code, out, _err = run_cli('algebraProgram.py', '6\nx^2+5*x+6=0\n')
     assert_has(out, 'Solve quad')
-    assert_has(out, 'x = [-2, -3]')
+    assert_has(out, 'x = [-3, -2]')
 
 
 def test_algebra_rational_solve():
@@ -77,7 +77,7 @@ def test_algebra_fraction_sum_solve():
 def test_algebra_rewrite_in_u():
     _code, out, _err = run_cli('algebraProgram.py', '9\nx^2+5*x+6\n2*x+1\n\n')
     assert_has(out, 'u = 2*x+1')
-    assert_has(out, '= (1/4)*(T)^2+2*T+15/4')
+    assert_has(out, '= (1/4)*T^2+2*T+15/4')
 
 
 def test_algebra_rewrite_in_reciprocal_shift_term():
@@ -95,7 +95,7 @@ def test_derive_log_diff_text():
 
 def test_int_method_line_is_not_doubled():
     _code, out, _err = run_cli('intProgram.py', '1\n1/x\n2\n')
-    assert_has(out, 'Met std')
+    assert_has(out, 'Method: Direct integration')
     assert_not_has(out, 'Met: Met:')
 
 

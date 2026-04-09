@@ -613,6 +613,13 @@ def sim(node):
         if is_one(base):
             return num(1)
         if is_num(exp) and is_int_num(exp):
+            if base[0] == 'fn' and base[1] == 'sqrt' and exp[1] > 0:
+                whole = exp[1] // 2
+                if exp[1] % 2 == 0:
+                    return base[2] if whole == 1 else power(base[2], num(whole))
+                if whole == 0:
+                    return base
+                return mul([base, base[2] if whole == 1 else power(base[2], num(whole))])
             if is_num(base):
                 return int_pow(base, exp[1])
             if base[0] == 'pow' and is_num(base[2]):
@@ -1499,13 +1506,25 @@ def solve_quadratic_time(s_val, u_val, v_val, a_val, t_val):
 
         t1_val = _exact_value(t1)
         t2_val = _exact_value(t2)
+        t1_float = node_to_float(t1)
+        t2_float = node_to_float(t2)
+
+        def is_negative_exact_or_float(exact_val, float_val):
+            if exact_val is not None:
+                return exact_val[1] < 0
+            return float_val is not None and float_val < -1e-9
+
+        def is_nonnegative_exact_or_float(exact_val, float_val):
+            if exact_val is not None:
+                return exact_val[1] >= 0
+            return float_val is not None and float_val >= -1e-9
 
         if t1_val is not None and t2_val is not None and same(t1_val, t2_val):
             steps.append('t = ' + show(t1))
             return t1, steps, [t1]
 
-        t1_neg = t1_val is not None and t1_val[1] < 0
-        t2_neg = t2_val is not None and t2_val[1] < 0
+        t1_neg = is_negative_exact_or_float(t1_val, t1_float)
+        t2_neg = is_negative_exact_or_float(t2_val, t2_float)
 
         if t1_neg and t2_neg:
             steps.append('t = ' + show(t1) + ' or t = ' + show(t2))
@@ -1515,6 +1534,12 @@ def solve_quadratic_time(s_val, u_val, v_val, a_val, t_val):
             steps.append('t = ' + show(t1) + ' (positive root)')
             return t1, steps, [t1]
         if t1_neg:
+            steps.append('t = ' + show(t2) + ' (positive root)')
+            return t2, steps, [t2]
+        if is_nonnegative_exact_or_float(t1_val, t1_float) and not is_nonnegative_exact_or_float(t2_val, t2_float):
+            steps.append('t = ' + show(t1) + ' (positive root)')
+            return t1, steps, [t1]
+        if is_nonnegative_exact_or_float(t2_val, t2_float) and not is_nonnegative_exact_or_float(t1_val, t1_float):
             steps.append('t = ' + show(t2) + ' (positive root)')
             return t2, steps, [t2]
 
@@ -1642,17 +1667,110 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
     if target == 't' and s_val is not None and u_val is not None and a_val is not None and v_val is None:
         result, steps, roots = solve_quadratic_time(s_val, u_val, v_val, a_val, t_val)
         if result is not None:
+            root_values = []
+            i = 0
+            while i < len(roots):
+                exact = _exact_value(roots[i])
+                if exact is not None:
+                    root_values.append(exact)
+                else:
+                    approx = node_to_float(roots[i])
+                    if approx is not None:
+                        root_values.append(num(int(round(approx * 1000000)), 1000000))
+                i += 1
+            if len(root_values) == 0:
+                return sim(result), 's = ut + 1/2at^2 (quadratic)', 's = ut + 1/2at^2', steps[-1] if steps else None
+            has_nonnegative = False
+            i = 0
+            while i < len(root_values):
+                if root_values[i][1] >= 0:
+                    has_nonnegative = True
+                    break
+                i += 1
+            if not has_nonnegative:
+                return None, 'No solution: time must be positive.', None, None
             return sim(result), 's = ut + 1/2at^2 (quadratic)', 's = ut + 1/2at^2', steps[-1] if steps else None
         else:
             return None, steps[-1] if steps else 'No quadratic solution for t.', None, None
+
+    if target == 't' and a_val is not None:
+        a_num = _exact_value(a_val)
+        if a_num is not None and is_zero(a_num):
+            return None, 'No solution: division by zero in t formula.', None, None
+
+    if target == 't' and u_val is not None and v_val is not None and a_val is not None:
+        t_direct = sim(_build_t(s_val, u_val, v_val, a_val, t_val))
+        t_exact = _exact_value(t_direct)
+        if t_exact is not None and t_exact[1] < 0:
+            return None, 'No solution: time must be positive.', None, None
+
+    if target == 's' and u_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_s(s_val, u_val, v_val, a_val, t_val)), 's = ut + 1/2at^2', 's = ut + 1/2at^2', _sub_s(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 't' and s_val is not None and u_val is not None and v_val is not None:
+        uv_sum = _exact_value(add([u_val, v_val]))
+        if uv_sum is not None and is_zero(uv_sum):
+            return None, 'No solution: division by zero in t formula.', None, None
+        return sim(_build_t2(s_val, u_val, v_val, a_val, t_val)), 't = 2s/(u+v)', 's = 1/2(u+v)t', _sub_t2(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'a' and v_val is not None and u_val is not None and s_val is not None:
+        return sim(_build_a3(s_val, u_val, v_val, a_val, t_val)), 'a = (v^2-u^2)/2s', 'v^2 = u^2 + 2as', _sub_a3(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 's' and u_val is not None and v_val is not None and t_val is not None:
+        return sim(_build_s3(s_val, u_val, v_val, a_val, t_val)), 's = 1/2(u+v)t', 's = 1/2(u+v)t', _sub_s3(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'v' and u_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_v(s_val, u_val, v_val, a_val, t_val)), 'v = u + at', 'v = u + at', _sub_v(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'u' and v_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_u2(s_val, u_val, v_val, a_val, t_val)), 'u = v - at', 'v = u + at', _sub_u2(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'a' and v_val is not None and u_val is not None and t_val is not None:
+        return sim(_build_a(s_val, u_val, v_val, a_val, t_val)), 'a = (v-u)/t', 'v = u + at', _sub_a(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 't' and v_val is not None and u_val is not None and a_val is not None:
+        return sim(_build_t(s_val, u_val, v_val, a_val, t_val)), 't = (v-u)/a', 'v = u + at', _sub_t(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'u' and s_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_u(s_val, u_val, v_val, a_val, t_val)), 'u = s/t - 1/2at', 's = ut + 1/2at^2', _sub_u(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'a' and s_val is not None and u_val is not None and t_val is not None:
+        return sim(_build_a2(s_val, u_val, v_val, a_val, t_val)), 'a = 2(s-ut)/t^2', 's = ut + 1/2at^2', _sub_a2(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'v' and s_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_v2(s_val, u_val, v_val, a_val, t_val)), 'v = s/t + 1/2at', 's = ut + 1/2at^2', _sub_v2(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'u' and s_val is not None and v_val is not None and t_val is not None:
+        return sim(_build_u3(s_val, u_val, v_val, a_val, t_val)), 'u = 2s/t - v', 's = 1/2(u+v)t', _sub_u3(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'a' and v_val is not None and s_val is not None and t_val is not None:
+        return sim(_build_a4(s_val, u_val, v_val, a_val, t_val)), 'a = 2(vt-s)/t^2', 's = vt - 1/2at^2', _sub_a4(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 's' and v_val is not None and a_val is not None and t_val is not None:
+        return sim(_build_s2(s_val, u_val, v_val, a_val, t_val)), 's = vt - 1/2at^2', 's = vt - 1/2at^2', _sub_s2(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 's' and u_val is not None and v_val is not None and a_val is not None:
+        return sim(_build_s4(s_val, u_val, v_val, a_val, t_val)), 's = (v^2-u^2)/2a', 'v^2 = u^2 + 2as', _sub_s4(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 'v' and u_val is not None and a_val is not None and s_val is not None and t_val is None:
+        result, err = solve_quadratic_v(u_val, a_val, s_val)
+        if err:
+            return None, err, None, None
+        sub_text = 'v = ±sqrt(' + show(power(u_val, num(2))) + ' + 2*' + show(a_val) + '*' + show(s_val) + ')'
+        return result, 'v^2 = u^2 + 2as', 'v^2 = u^2 + 2as', sub_text
+
+    eq = find_equation(target, vals)
 
     eq = find_equation(target, vals)
     if eq is None:
         return None, 'insufficient information', None, None
 
     _, _, formula_name, base_equation, build_fn, sub_fn, _ = eq
-    result = sim(build_fn(s_val, u_val, v_val, a_val, t_val))
-    sub_text = sub_fn(s_val, u_val, v_val, a_val, t_val)
+    try:
+        result = sim(build_fn(s_val, u_val, v_val, a_val, t_val))
+        sub_text = sub_fn(s_val, u_val, v_val, a_val, t_val)
+    except ValueError as err:
+        return None, 'No solution: ' + str(err), None, None
 
     return result, formula_name, base_equation, sub_text
 

@@ -334,6 +334,7 @@ def div(a, b): return sim(('div', a, b))
 def power(a, b): return sim(('pow', a, b))
 def fn(name, arg): return sim(('fn', name, arg))
 def neg(node): return mul([num(-1), node])
+def sub(a, b): return add([a, neg(b)])
 def log_abs(node): return fn('log', fn('abs', node))
 
 
@@ -755,6 +756,45 @@ def trig_same_angle_power_rewrite(node):
     return None, None
 
 
+def trig_weighted_square_rewrite(node):
+    A = sim(node)
+    if A[0] != 'add':
+        return None, None
+    B = flat(A, 'add')
+    if len(B) != 2:
+        return None, None
+    C = None
+    D = None
+    E = None
+    F = 0
+    while F < len(B):
+        G, H = split_coeff(B[F])
+        if H[0] == 'pow' and H[1][0] == 'fn' and same(H[2], num(2)):
+            if H[1][1] == 'sin':
+                C = G
+                E = H[1][2] if E is None else E
+                if not same(E, H[1][2]):
+                    return None, None
+            elif H[1][1] == 'cos':
+                D = G
+                E = H[1][2] if E is None else E
+                if not same(E, H[1][2]):
+                    return None, None
+            else:
+                return None, None
+        else:
+            return None, None
+        F += 1
+    if C is None or D is None or E is None:
+        return None, None
+    I = div(add([C, D]), num(2))
+    J = div(add([D, neg(C)]), num(2))
+    K = [I]
+    if not is_zero(J):
+        K.append(mul([J, fn('cos', mul([num(2), E]))]))
+    return 'Use sin^2 x = (1-cos(2x))/2 and cos^2 x = (1+cos(2x))/2.', expand_small(add(K))
+
+
 def split_coeff(node):
     B = node
     if is_num(B):
@@ -987,6 +1027,8 @@ def sim(node):
             return A
         if S == 'exp' and is_zero(N):
             return num(1)
+        if S == 'exp' and N[0] == 'fn' and N[1] == 'log':
+            return N[2]
         if S == 'exp':
             return 'fn', 'exp', N
         return 'fn', S, N
@@ -1089,6 +1131,15 @@ def sim(node):
                 return num(0)
             if is_num(H):
                 V = mulq(V, H)
+            elif H[0] == 'fn' and H[1] == 'exp':
+                D = E
+                B = H[2]
+                G = sig(D)
+                if G not in K:
+                    O.append(G)
+                    K[G] = [D, num(0)]
+                Q = K[G][1]
+                K[G][1] = addq(Q, B)if is_num(Q) and is_num(B)else add([Q, B])
             elif H[0] == 'fn' and H[1] == 'sqrt':
                 G = sig(H[2])
                 if G not in K:
@@ -1441,6 +1492,71 @@ def _show(node, parent=0):
 def show(node, parent=0): return _show(display_rearrange(sim(node)), parent)
 def pretty(node): return _show(display_rearrange(combine_logs(node)), 0)
 def int_text(node, var): return 'Int[' + pretty(node) + '] d' + var
+
+
+def exam_group_text(node):
+    A = sim(node)
+    B = pretty(A)
+    if A[0] in ('add', 'div'):
+        return '(' + B + ')'
+    return B
+
+
+def signed_value_text(node):
+    A = sim(node)
+    if is_zero(A):
+        return ''
+    if is_one(A):
+        return '+ 1'
+    if is_minus_one(A):
+        return '- 1'
+    if is_num(A) and A[1] < 0:
+        return '- ' + pretty(neg(A))
+    return '+ ' + pretty(A)
+
+
+def signed_term_text(coeff, text):
+    A = sim(coeff)
+    if is_zero(A):
+        return ''
+    if is_one(A):
+        return '+ ' + text
+    if is_minus_one(A):
+        return '- ' + text
+    if is_num(A) and A[1] < 0:
+        return '- ' + pretty(neg(A)) + '*' + text
+    return '+ ' + pretty(A) + '*' + text
+
+
+def direct_quadratic_surd_lines(var, radical, shifted, constant, coeff, result):
+    A = sim(add([power(shifted, num(2)), constant]))
+    B = int_text(div(shifted, fn('sqrt', A)), var)
+    C = int_text(div(num(1), fn('sqrt', A)), var)
+    D = 'I = ' + B
+    E = signed_term_text(coeff, C)
+    if E != '':
+        D += ' ' + E
+    F = 'Rewrite the numerator: ' + pretty(sym(var)) + ' = ' + exam_group_text(shifted)
+    G = signed_value_text(coeff)
+    if G != '':
+        F += ' ' + G
+    F += '.'
+    H = pretty(constant)
+    I = pretty(A)
+    J = 'ln|' + pretty(shifted) + '+sqrt(' + I + ')|'
+    K = 'I = sqrt(' + I + ')'
+    L = signed_term_text(coeff, J)
+    if L != '':
+        K += ' ' + L
+    K += ' + C'
+    return [
+        'Complete the square: ' + pretty(radical) + ' = ' + I + '.',
+        F,
+        D,
+        'Let u = ' + pretty(shifted) + '.',
+        'Use Int[u/sqrt(u^2+' + H + ')] du = sqrt(u^2+' + H + ') and Int[1/sqrt(u^2+' + H + ')] du = ln|u+sqrt(u^2+' + H + ')|.',
+        K,
+        'So I = ' + pretty(result) + ' + C']
 
 
 def du_equals_text(d, var):
@@ -1838,13 +1954,120 @@ def parse_de_equation(text):
     return G, C, B
 
 
-def parse_de_input(text):
-    A = text
-    A = A.strip()
-    if '=' in A:
-        return parse_de_equation(A)
-    return parse(A), 'x', 'y'
+def parse_de_balanced_equation(text):
+    if '=' not in text:
+        raise ValueError("Equation must contain '='.")
+    left_text, right_text = text.split('=', 1)
+    left = left_text.replace(' ', '')
+    if not left.startswith('d') or '/d' not in left:
+        raise ValueError('Equation must look like dY/dX = ...')
+    cut = left.find('/d')
+    dep = left[1:cut]
+    rest = left[cut + 2:]
+    if dep == '' or rest == '':
+        raise ValueError('Bad differential equation.')
+    i = 0
+    while i < len(dep):
+        if not is_name_char(dep[i]):
+            raise ValueError('Bad dependent variable.')
+        i += 1
+    indep = ''
+    i = 0
+    while i < len(rest) and is_name_char(rest[i]):
+        indep += rest[i]
+        i += 1
+    if indep == '':
+        raise ValueError('Bad independent variable.')
+    tail = rest[i:]
+    rhs = parse(right_text.strip())
+    if tail != '':
+        if tail[0] == '+':
+            rhs = add([rhs, neg(parse(tail[1:]))])
+        elif tail[0] == '-':
+            rhs = add([rhs, parse(tail[1:])])
+        else:
+            rhs = add([rhs, neg(parse(tail))])
+    syms = set()
+    collect_symbols(rhs, syms)
+    indep = resolve_symbol_name(indep, syms)
+    dep = resolve_symbol_name(dep, syms)
+    return rhs, indep, dep
 
+
+def parse_de_input(text):
+    A = text.strip()
+    if '=' not in A:
+        raise ValueError("Equation must contain '='.")
+    try:
+        return parse_de_equation(A)
+    except ValueError:
+        return parse_de_balanced_equation(A)
+
+
+def cancellation_requested():
+    return False
+
+
+def integral_candidate_score(title, ans, lines):
+    if ans is None:
+        return 10**9
+    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6}.get(title, 7)
+    return (len(pretty(ans)), len(lines or []), title_score)
+
+
+def fallback_attempts(node, var, forced_u=None):
+    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    best = None
+    best_title = None
+    best_lines = None
+    out_lines = []
+    i = 0
+    while i < len(attempts):
+        if cancellation_requested():
+            break
+        method, label = attempts[i]
+        title, ans, lines = _solve_with_method(node, var, method, forced_u)
+        if ans is not None:
+            out_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
+            j = 0
+            while lines is not None and j < len(lines):
+                out_lines.append(lines[j])
+                j += 1
+            score = integral_candidate_score(title, ans, lines)
+            if best is None or score < best:
+                best = score
+                best_title = title
+                best_lines = lines
+        i += 1
+    if best is None:
+        return None, None, None
+    return best_title, best_lines, out_lines
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    title, best_lines, attempt_lines = fallback_attempts(node, var, forced_u)
+    if title is not None:
+        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, {'std':'2','f(ax+b)':'2','Reverse chain rule':'4','Integration by substitution':'4','Using trigonometric identities':'3','Integration by parts':'5','Partial fractions':'6'}.get(title, '2'), forced_u)
+        merged = list(attempt_lines)
+        if retry_lines:
+            merged.append('Choose the simplest successful attempt.')
+            i = 0
+            while i < len(retry_lines):
+                merged.append(retry_lines[i])
+                i += 1
+        return title, retry_ans, merged, None
+    return A, B, C, hard_integral_failure_reason(node, var)
+
+
+def can_handle_derivative_case(node, var, deps):
+    try:
+        diff(node, var, deps)
+        return True, None
+    except Exception as err:
+        return False, str(err)
 
 def parse_de_condition(text, xvar, yvar):
     D = text.strip()
@@ -2629,6 +2852,14 @@ def integrate_standard_term(node, var):
         D = div(B, G)
         return D, ['Consider y = ' + pretty(B), 'dy/d' + C + ' = ' + pretty(
             div(G, A[2])), 'So I = ' + pretty(D) + ' + C']
+    if A[0] == 'div' and A[2][0] == 'fn' and A[2][1] == 'sqrt':
+        inner = A[2][2]
+        deriv_inner = safe_diff(inner, C)
+        if deriv_inner is not None and not is_zero(deriv_inner):
+            coeff, rest = split_coeff(deriv_inner)
+            if same(rest, A[1]) and is_num(coeff):
+                result = div(mul([num(2), A[2]]), coeff)
+                return result, ['Use the standard result for f\'(x)/sqrt(f(x)).', 'So I = ' + pretty(result) + ' + C']
     S, U = integrate_quadratic_rational(A, C)
     if S is not None:
         return S, U
@@ -2661,19 +2892,28 @@ def integrate_standard_term(node, var):
         deriv_denom = safe_diff(denominator, C)
         if deriv_denom is None:
             deriv_denom = num(0)
-        if same(deriv_denom, numerator) or (is_num(numerator) and is_num(deriv_denom) and 
-                                            divq(numerator, deriv_denom) and is_one(divq(numerator, deriv_denom))):
+        same_ratio = False
+        if same(deriv_denom, numerator):
+            same_ratio = True
+        elif is_num(numerator) and is_num(deriv_denom) and not is_zero(deriv_denom):
+            ratio = divq(numerator, deriv_denom)
+            same_ratio = is_one(ratio)
+        if same_ratio:
             result = fn('log', fn('abs', denominator))
             return result, ['Use the standard result for f\'(x)/f(x) -> ln|f(x)|.',
                            'So I = ' + pretty(result) + ' + C']
-        # Special case: k*f'(x)/f(x) = k*ln|f(x)| + C  
         coeff, base_numer = split_coeff(numerator)
         if not is_one(coeff):
             deriv_check = safe_diff(denominator, C)
             if deriv_check is None:
                 deriv_check = num(0)
-            if same(deriv_check, base_numer) or (is_num(base_numer) and is_num(deriv_check) and 
-                                                divq(base_numer, deriv_check) and is_one(divq(base_numer, deriv_check))):
+            same_ratio = False
+            if same(deriv_check, base_numer):
+                same_ratio = True
+            elif is_num(base_numer) and is_num(deriv_check) and not is_zero(deriv_check):
+                ratio = divq(base_numer, deriv_check)
+                same_ratio = is_one(ratio)
+            if same_ratio:
                 result = mul([coeff, fn('log', fn('abs', denominator))])
                 return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
                                'So I = ' + pretty(result) + ' + C']
@@ -2736,10 +2976,36 @@ def integrate_standard_term(node, var):
                     return fn('atan', g), ['Use the standard result.',
                                           'So I = atan(' + pretty(g) + ') + C']
     
-    if A[0] == 'div' and is_one(A[1]) and (
+    if A[0] == 'div' and (
             A[2][0] == 'fn' and A[2][1] == 'sqrt' or A[2][0] == 'pow' and same(A[2][2], num(1, 2))):
+        numerator = A[1]
         J = A[2][2]if A[2][0] == 'fn'else A[2][1]
         H = poly_num(J, C)
+        if numerator == F and H is not None and len(H) == 3 and H[2] == num(1):
+            lin = H[1]
+            half_lin = divq(lin, num(2)) if is_num(lin) else div(lin, num(2))
+            shifted = add([F, half_lin])
+            constant = sim(sub(H[0], power(half_lin, num(2))))
+            if is_num(constant) and constant[1] > 0:
+                coeff = sim(neg(half_lin))
+                term1 = fn('sqrt', J)
+                term2 = neg(mul([half_lin, fn('log', fn('abs', add([shifted, fn('sqrt', J)])))]))
+                result = sim(add([term1, term2]))
+                return result, direct_quadratic_surd_lines(C, J, shifted, constant, coeff, result)
+        if is_one(numerator) and H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
+            B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
+            return B, [
+                'Use the standard result for 1/sqrt(' + C + '^2+a).', 'So I = ' + pretty(B) + ' + C']
+        if is_one(numerator) and H is not None and len(H) == 3 and H[2] == num(1):
+            lin = H[1]
+            half_lin = divq(lin, num(2)) if is_num(lin) else div(lin, num(2))
+            shifted = add([F, half_lin])
+            constant = sim(sub(H[0], power(half_lin, num(2))))
+            if is_num(constant) and constant[1] > 0:
+                B = fn('log', fn('abs', add([shifted, power(add([power(shifted, num(2)), constant]), num(1, 2))])))
+                return B, [
+                    'Complete the square in the radical.',
+                    'Use the standard result for 1/sqrt(u^2+a).', 'So I = ' + pretty(B) + ' + C']
         if H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
             B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
             return B, [
@@ -2812,9 +3078,7 @@ def integrate_standard_term(node, var):
         B = primitive_of_named_function(O, J)
         if B is not None:
             D = div(B, G)
-            if O in ('tan', 'cot', 'sec', 'cosec', 'asin', 'acos', 'atan'):
-                return D, ['Std.', '= ' + pretty(D) + ' + C']
-            return D, ['Std.', '= ' + pretty(D) + ' + C']
+            return D, ['Use the standard integral for ' + pretty(A) + '.', 'So I = ' + pretty(D) + ' + C']
     if A[0] == 'pow' and linear_info(A[1], C) is not None and is_num(A[2]):
         G, M = linear_info(A[1], C)
         if same(A[2], num(-1)):
@@ -2835,7 +3099,7 @@ def integrate_standard_term(node, var):
             B = primitive_of_named_power(O, J, A[2])
             if B is not None:
                 D = div(B, G)
-                return D, ['Std.', '= ' + pretty(D) + ' + C']
+                return D, ['Use the standard integral for ' + pretty(A) + '.', 'So I = ' + pretty(D) + ' + C']
         F2, E2 = trig_high_power_rewrite(O, A[2], J)
         if E2 is not None:
             R, Q = integrate_standard(expand_small(E2), C)
@@ -3140,7 +3404,10 @@ def trig_simple_fraction_rewrite(node):
         top_arg = div(top[2], num(2))
         if bot_pm_cos is not None and same(bot_pm_cos[1], top_arg):
             if bot_pm_cos[0] > 0:
-                return 'Use sin(2A) = 2sin A cos A and split the fraction.', add([
+                return [
+                    'Use sin(2A) = 2sin A cos A.',
+                    'Write 2sin(A)cos(A)/(1+cos(A)) = 2sin(A) - 2sin(A)/(1+cos(A)).'
+                ], add([
                     mul([num(2), fn('sin', top_arg)]),
                     neg(div(mul([num(2), fn('sin', top_arg)]), add([num(1), fn('cos', top_arg)])))
                 ])
@@ -3176,6 +3443,9 @@ def trig_rewrite_step(node, var=None):
     I = expand_square(B)
     if I is not None:
         return 'Expand the brackets.', I
+    J, H = trig_weighted_square_rewrite(B)
+    if H is not None:
+        return J, H
     J, H = trig_simple_fraction_rewrite(B)
     if H is not None:
         return J, H
@@ -3246,7 +3516,13 @@ def integrate_trig(node, var, allow_steps=True):
         B = H
         F = True
         if E:
-            D.append(J)
+            if isinstance(J, list):
+                K = 0
+                while K < len(J):
+                    D.append(J[K])
+                    K += 1
+            else:
+                D.append(J)
             D.append('So I = ' + int_text(B, C))
         G += 1
     if not F:
@@ -3259,10 +3535,119 @@ def integrate_trig(node, var, allow_steps=True):
     if A is None:
         return None, None
     if E:
-        D.append('= ' + pretty(A) + ' + C')
+        if I is not None:
+            K = 0
+            while K < len(I):
+                D.append(I[K])
+                K += 1
+        if len(D) == 0 or D[-1] != '= ' + pretty(A) + ' + C':
+            D.append('= ' + pretty(A) + ' + C')
         return A, D
-    return A, []
+    return A, I or []
 
+
+def _solve_with_method(node, var, method, forced_u=None):
+    F = forced_u
+    E = method
+    D = var
+    C = node if E == '4' and F is not None else sim(node)
+    if F is not None:
+        F = sim(F)
+    if E == '2':
+        A, B = integrate_standard(C, D)
+        return finish_integral_solve(standard_title(C, D), A, B)
+    if E == '3':
+        A, B = integrate_trig(C, D, True)
+        return finish_integral_solve('Using trigonometric identities', A, B)
+    if E == '4':
+        if F is None:
+            A, B = integrate_reverse_chain(C, D)
+            if A is not None:
+                return finish_integral_solve('Reverse chain rule', A, B)
+            A, B = integrate_substitution(C, D, None)
+            return finish_integral_solve('Integration by substitution', A, B)
+        A, B = integrate_substitution(C, D, F)
+        return finish_integral_solve('Integration by substitution', A, B)
+    if E == '5':
+        A, B = integrate_by_parts(C, D, 0)
+        return finish_integral_solve('Integration by parts', A, B)
+    if E == '6':
+        A, B = integrate_partial(C, D)
+        return finish_integral_solve('Partial fractions', A, B)
+    if E == '7':
+        A, B = integrate_division(C, D, True)
+        return finish_integral_solve('Partial fractions', A, B)
+    G, A, B = integrate_auto(C, D, 0, True, True)
+    if A is None:
+        return 'Automatic integration', A, B
+    if G == 'direct':
+        return finish_integral_solve(standard_title(C, D), A, B)
+    if G == 'reverse':
+        return finish_integral_solve('Reverse chain rule', A, B)
+    if G == 'trig':
+        return finish_integral_solve('Using trigonometric identities', A, B)
+    if G == 'sub':
+        return finish_integral_solve('Integration by substitution', A, B)
+    if G == 'parts':
+        return finish_integral_solve('Integration by parts', A, B)
+    return finish_integral_solve('Partial fractions', A, B)
+
+
+def fallback_attempts(node, var, forced_u=None):
+    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    best = None
+    best_ans = None
+    best_title = None
+    best_lines = None
+    attempt_lines = []
+    i = 0
+    while i < len(attempts):
+        if cancellation_requested():
+            break
+        method, label = attempts[i]
+        title, ans, lines = _solve_with_method(node, var, method, forced_u)
+        if ans is not None:
+            lines = format_attempt_lines(lines)
+            block = format_attempt_block(i + 1, label, lines)
+            j = 0
+            while j < len(block):
+                attempt_lines.append(block[j])
+                j += 1
+            score = integral_candidate_score(title, ans, lines)
+            if best is None or score < best:
+                best = score
+                best_title = title
+                best_ans = ans
+                best_lines = lines
+        i += 1
+    if best is None:
+        return None, None, None
+    return best_title, (best_ans, best_lines), attempt_lines
+
+
+def solve(node, var, method, forced_u=None):
+    title, ans, lines = _solve_with_method(node, var, method, forced_u)
+    if ans is not None:
+        return title, ans, lines
+    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
+    if fallback_title is not None:
+        best_ans, best_lines = fallback_payload
+        merged = list(attempt_lines or [])
+        if best_lines:
+            merged.append('Choose the simplest successful attempt.')
+            i = 0
+            while i < len(best_lines):
+                merged.append(best_lines[i])
+                i += 1
+        return fallback_title, best_ans, simplify_attempt_lines(merged)
+    return title, ans, lines
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    return A, B, C, hard_integral_failure_reason(node, var)
 
 def integrate_termwise_with(node, var, solver, depth):
     if node[0] != 'add':
@@ -3314,17 +3699,179 @@ def integrate_after_trig_rewrite(node, var, depth=0):
     B = node
     if E > 4:
         return None, None
+    if B[0] == 'add':
+        parts = flat(B, 'add')
+        solved = []
+        i = 0
+        while i < len(parts):
+            A, D = integrate_after_trig_rewrite(parts[i], C, E + 1)
+            if A is None:
+                solved = None
+                break
+            solved.append((parts[i], A, D or []))
+            i += 1
+        if solved is not None:
+            total = add([item[1] for item in solved])
+            lines = ['Integrate each term separately.']
+            i = 0
+            while i < len(solved):
+                lines.append('Int[' + pretty(solved[i][0]) + '] d' + C + ' = ' + pretty(solved[i][1]))
+                i += 1
+            lines.append('= ' + pretty(total) + ' + C')
+            return total, lines
     A, D = integrate_termwise_with(B, C, integrate_after_trig_rewrite, E)
     if A is not None:
-        return A, []
+        return A, ['Integrate each term separately.', '= ' + pretty(A) + ' + C']
     A, D = integrate_standard(B, C)
     if A is not None:
-        return A, []
+        return A, D
     A, D = integrate_reverse_chain(B, C)
     if A is not None:
-        return A, []
+        return A, D
     return None, None
 
+
+def choose_best_integral_candidate(candidates):
+    if len(candidates) == 0:
+        return None
+    best = candidates[0]
+    i = 1
+    while i < len(candidates):
+        score_a = integral_candidate_score(best[0], best[1], best[2])
+        score_b = integral_candidate_score(candidates[i][0], candidates[i][1], candidates[i][2])
+        if score_b < score_a:
+            best = candidates[i]
+        i += 1
+    return best
+
+
+def format_attempt_block(index, label, lines):
+    out = ['Attempt ' + str(index) + ' (' + label + ')']
+    i = 0
+    while lines is not None and i < len(lines):
+        out.append(lines[i])
+        i += 1
+    return out
+
+
+def fallback_attempts(node, var, forced_u=None):
+    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    found = []
+    attempt_lines = []
+    i = 0
+    while i < len(attempts):
+        if cancellation_requested():
+            break
+        method, label = attempts[i]
+        title, ans, lines = _solve_with_method(node, var, method, forced_u)
+        if ans is not None:
+            lines = format_attempt_lines(lines)
+            block = format_attempt_block(i + 1, label, lines)
+            j = 0
+            while j < len(block):
+                attempt_lines.append(block[j])
+                j += 1
+            found.append((title, ans, lines, label))
+        i += 1
+    best = choose_best_integral_candidate(found)
+    if best is None:
+        return None, None, None
+    return best[0], (best[1], best[2]), attempt_lines
+
+
+def solve(node, var, method, forced_u=None):
+    title, ans, lines = _solve_with_method(node, var, method, forced_u)
+    if ans is not None:
+        return title, ans, lines
+    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
+    if fallback_title is not None:
+        best_ans, best_lines = fallback_payload
+        merged = list(attempt_lines or [])
+        merged.append('Choose the simplest successful attempt.')
+        i = 0
+        while best_lines is not None and i < len(best_lines):
+            merged.append(best_lines[i])
+            i += 1
+        return fallback_title, best_ans, simplify_attempt_lines(merged)
+    return title, ans, lines
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    return A, B, C, hard_integral_failure_reason(node, var)
+
+def simplify_attempt_lines(lines):
+    if lines is None:
+        return None
+    out = []
+    i = 0
+    while i < len(lines):
+        if len(out) == 0 or lines[i] != out[-1]:
+            out.append(lines[i])
+        i += 1
+    return out
+
+
+def format_attempt_lines(lines):
+    return simplify_attempt_lines(lines or [])
+
+
+def fallback_attempts(node, var, forced_u=None):
+    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    best = None
+    best_title = None
+    best_ans = None
+    best_lines = None
+    attempt_lines = []
+    i = 0
+    while i < len(attempts):
+        if cancellation_requested():
+            break
+        method, label = attempts[i]
+        title, ans, lines = _solve_with_method(node, var, method, forced_u)
+        if ans is not None:
+            lines = format_attempt_lines(lines)
+            attempt_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
+            j = 0
+            while j < len(lines):
+                attempt_lines.append(lines[j])
+                j += 1
+            score = integral_candidate_score(title, ans, lines)
+            if best is None or score < best:
+                best = score
+                best_title = title
+                best_ans = ans
+                best_lines = lines
+        i += 1
+    if best is None:
+        return None, None, None
+    return best_title, (best_ans, best_lines), attempt_lines
+
+
+def solve(node, var, method, forced_u=None):
+    title, ans, lines = _solve_with_method(node, var, method, forced_u)
+    if ans is not None:
+        return title, ans, lines
+    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
+    if fallback_title is not None:
+        best_ans, best_lines = fallback_payload
+        merged = list(attempt_lines or [])
+        merged.append('Choose the simplest successful attempt.')
+        i = 0
+        while best_lines is not None and i < len(best_lines):
+            merged.append(best_lines[i])
+            i += 1
+        return fallback_title, best_ans, simplify_attempt_lines(merged)
+    return title, ans, lines
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    return A, B, C, hard_integral_failure_reason(node, var)
 
 def integrate_cyclic_parts(node, var):
     A, B = split_const_mul(node, var)
@@ -4261,35 +4808,40 @@ def de_rewrite_factor(node):
     return None, None
 
 
-def de_log_target(node):
-    A = node
+def de_scaled_log_abs(node):
+    A = sim(node)
     if A[0] == 'fn' and A[1] == 'log' and A[2][0] == 'fn' and A[2][1] == 'abs':
         return num(1), A[2][2]
     C, B = split_coeff(A)
     if is_num(
             C) and B[0] == 'fn' and B[1] == 'log' and B[2][0] == 'fn' and B[2][1] == 'abs':
         return C, B[2][2]
+    if A[0] == 'div' and is_num(A[2]):
+        D, E = de_scaled_log_abs(A[1])
+        if D is not None:
+            return divq(D, A[2]), E
     return None, None
 
 
+def de_log_target(node):
+    return de_scaled_log_abs(node)
+
+
 def de_log_argument(node):
-    A = node
-    if A[0] == 'fn' and A[1] == 'log' and A[2][0] == 'fn' and A[2][1] == 'abs':
-        return A[2][2]
-    D, B = split_coeff(A)
-    if is_num(
-            D) and B[0] == 'fn' and B[1] == 'log' and B[2][0] == 'fn' and B[2][1] == 'abs':
-        return power(B[2][2], D)
+    C, D = de_scaled_log_abs(node)
+    if D is not None:
+        return D if is_one(C) else power(D, C)
+    A = sim(node)
     if A[0] == 'add':
         E = []
-        C = 0
+        B = 0
         F = flat(A, 'add')
-        while C < len(F):
-            G = de_log_argument(F[C])
+        while B < len(F):
+            G = de_log_argument(F[B])
             if G is None:
                 return
             E.append(G)
-            C += 1
+            B += 1
         return make_mul(E)
 
 
@@ -4753,6 +5305,13 @@ def standard_title(node, var):
     return 'std'
 
 
+def display_method_title(title):
+    return {
+        'std': 'Direct integration',
+        'f(ax+b)': 'Direct integration',
+    }.get(title, title)
+
+
 def finish_integral_solve(title, ans, lines):
     if ans is None:
         return title, ans, lines
@@ -4790,7 +5349,7 @@ def _solve_with_method(node, var, method, forced_u=None):
         return finish_integral_solve('Partial fractions', A, B)
     if E == '7':
         A, B = integrate_division(C, D, True)
-        return finish_integral_solve('Partial fractions', A, B)
+        return finish_integral_solve('Polynomial division', A, B)
     G, A, B = integrate_auto(C, D, 0, True, True)
     if A is None:
         return 'Automatic integration', A, B
@@ -4809,18 +5368,84 @@ def _solve_with_method(node, var, method, forced_u=None):
 
 def solve(node, var, method, forced_u=None):
     title, ans, lines = _solve_with_method(node, var, method, forced_u)
-    if ans is not None or method == '1':
+    if ans is not None:
         return title, ans, lines
-    retry_order = ('2', '3', '4', '5', '6', '7')
-    i = 0
-    while i < len(retry_order):
-        if retry_order[i] != method:
-            retry_title, retry_ans, retry_lines = _solve_with_method(node, var, retry_order[i], forced_u)
-            if retry_ans is not None:
-                return retry_title, retry_ans, retry_lines
-        i += 1
+    fallback_title, fallback_lines, attempt_lines = fallback_attempts(node, var, forced_u)
+    if fallback_title is not None:
+        method_map = {
+            'std': '2',
+            'f(ax+b)': '2',
+            'Reverse chain rule': '4',
+            'Integration by substitution': '4',
+            'Using trigonometric identities': '3',
+            'Integration by parts': '5',
+            'Partial fractions': '6',
+            'Polynomial division': '7',
+        }
+        best_method = method_map.get(fallback_title, '2')
+        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, best_method, forced_u)
+        merged = list(attempt_lines or [])
+        if retry_lines:
+            merged.append('Choose the simplest successful attempt.')
+            i = 0
+            while i < len(retry_lines):
+                merged.append(retry_lines[i])
+                i += 1
+        return retry_title, retry_ans, merged
     return title, ans, lines
 
+
+def fallback_attempts(node, var, forced_u=None):
+    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    best = None
+    best_title = None
+    attempt_lines = []
+    i = 0
+    while i < len(attempts):
+        if cancellation_requested():
+            break
+        method, label = attempts[i]
+        title, ans, lines = _solve_with_method(node, var, method, forced_u)
+        if ans is not None:
+            attempt_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
+            j = 0
+            while lines is not None and j < len(lines):
+                attempt_lines.append(lines[j])
+                j += 1
+            score = integral_candidate_score(title, ans, lines)
+            if best is None or score < best:
+                best = score
+                best_title = title
+        i += 1
+    if best is None:
+        return None, None, None
+    return best_title, None, attempt_lines
+
+
+def cancellation_requested():
+    return False
+
+
+def integral_candidate_score(title, ans, lines):
+    if ans is None:
+        return (10**9, 10**9, 10**9)
+    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6, 'Polynomial division': 6}.get(title, 7)
+    return (len(pretty(ans)), len(lines or []), title_score)
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    return A, B, C, hard_integral_failure_reason(node, var)
+
+
+def can_handle_derivative_case(node, var, deps):
+    try:
+        diff(node, var, deps)
+        return True, None
+    except Exception as err:
+        return False, str(err)
 
 def subst(node, name, value):
     C = value
@@ -4945,9 +5570,7 @@ def main():
                 print(Q)
             else:
                 I = '= ' + pretty(C) + ' + C'
-                if L.startswith('Met '):
-                    L = L[4:]
-                print('Met ' + L)
+                print('Method: ' + display_method_title(L))
                 B = 0
                 while B < len(A):
                     print(str(B + 1) + '. ' + A[B])
@@ -4956,7 +5579,11 @@ def main():
                     print(I)
         elif D == '2':
             F = input('dy/dx: ').strip()
-            M, N, O = parse_de_input(F)
+            try:
+                M, N, O = parse_de_input(F)
+            except Exception:
+                print(DE_FAIL)
+                return
             G = input('BC: ').strip()
             H = parse_de_condition(G, N, O)if G != ''else None
             C, A = solve_de(M, N, O, H)

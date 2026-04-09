@@ -8604,13 +8604,154 @@ def solve_rewrite_text(text, term_texts):
         expr = parse(text.strip())
     final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
     if final_expr is None:
-        if rewrite_allowed_only(expr, info):
+        if equivalent(expr, num(1)):
+            final_expr = num(1)
+            steps = [("Use a standard identity.", num(1))]
+        elif not is_equation and len(allowed_terms) >= 2:
+            candidates = [num(1)]
+            i = 0
+            while i < len(allowed_terms):
+                j = i + 1
+                while j < len(allowed_terms):
+                    candidates.append(sim(mul([num(2), allowed_terms[i], allowed_terms[j]])))
+                    candidates.append(sim(neg(mul([num(2), allowed_terms[i], allowed_terms[j]]))))
+                    candidates.append(sim(add([allowed_terms[i], allowed_terms[j]])))
+                    candidates.append(sim(add([allowed_terms[i], neg(allowed_terms[j])])) )
+                    j += 1
+                i += 1
+            picked = None
+            i = 0
+            while i < len(candidates):
+                if equivalent(expr, candidates[i]):
+                    if picked is None or tree_size(candidates[i]) < tree_size(picked):
+                        picked = candidates[i]
+                i += 1
+            if picked is not None:
+                final_expr = picked
+                steps = [("Use a standard identity.", picked)]
+            elif rewrite_allowed_only(expr, info):
+                final_expr = expr
+                steps = []
+            else:
+                raise ValueError("This expression cannot be written using only the requested terms.")
+        elif rewrite_allowed_only(expr, info):
             final_expr = expr
             steps = []
         else:
             raise ValueError("This expression cannot be written using only the requested terms.")
     return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
 
+
+def finalize_proof_identity_lines(lines):
+    if len(lines) == 0:
+        return lines
+    i = 0
+    while i < len(lines):
+        if lines[i] == 'LHS = RHS':
+            return lines
+        i += 1
+    if lines[-1] in ('= RHS', '= LHS'):
+        return compact_lines(lines + ['LHS = RHS'])
+    return lines
+
+
+def solve_prove_text(text, route):
+    begin_user_action()
+    rewrite = split_rewrite_arrow(text)
+    if rewrite is not None:
+        return solve_transform_text(rewrite[0], rewrite[1])
+    lines = numeric_evaluation_text(text)
+    if lines is not None:
+        return compact_lines(lines)
+    lhs, rhs = parse_identity(text)
+    lines = prove_cot_quadratic_equation(lhs, rhs)
+    if lines is not None:
+        return finalize_proof_identity_lines(compact_lines(lines))
+    lines = special_text_proof(text, route)
+    if lines is not None:
+        return finalize_proof_identity_lines(compact_lines(lines))
+    if is_domain_restricted_identity_pair(lhs, rhs):
+        raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
+    return finalize_proof_identity_lines(solve_prove(lhs, rhs, route))
+
+
+def solve_extremum_text(text, kind, var):
+    lhs, rhs = parse_equation_or_zero(text)
+    dep_label = "y"
+    expr = lhs
+    if depends(lhs, var) and not depends(rhs, var):
+        expr = lhs
+    elif depends(rhs, var) and not depends(lhs, var):
+        expr = rhs
+        if lhs[0] == "sym":
+            dep_label = lhs[1]
+    else:
+        expr = lhs if depends(lhs, var) else rhs
+    eq_mode = equation_angle_mode(lhs, rhs, var)
+    deg_mode = eq_mode != "rad"
+    expanded = sim(expand_embedded_small(replace_exact_trig_quiet(sim(expand_trig_tree(expr)))))
+    combo = match_linear_combo_const(expanded, var)
+    prep_lines = []
+    if combo is None:
+        expanded, prep_lines = extremum_rewrite_to_linear_combo(expr, var)
+        if expanded is not None:
+            combo = match_linear_combo_const(expanded, var)
+    if combo is None:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    base, sin_coeff_expr, cos_coeff_expr, const_expr = combo
+    angle = match_linear_angle(base, var)
+    if angle is None:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    a_val = constant_numeric(sin_coeff_expr, deg_mode)
+    b_val = constant_numeric(cos_coeff_expr, deg_mode)
+    c_val = constant_numeric(const_expr, deg_mode)
+    m_val = constant_numeric(angle[0], deg_mode)
+    offset_val = constant_numeric(angle[1], deg_mode)
+    if a_val is None or b_val is None or c_val is None or m_val is None or offset_val is None or abs(m_val) < 1e-12:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    r_val = math.sqrt(a_val * a_val + b_val * b_val)
+    phase = to_degrees(math.atan2(-a_val, b_val)) if deg_mode else math.atan2(-a_val, b_val)
+    if kind == "max":
+        extreme = c_val + r_val
+        target = 0.0
+        desc = "Maximum"
+    else:
+        extreme = c_val - r_val
+        target = 180.0 if deg_mode else math.pi
+        desc = "Minimum"
+    period = 360.0 if deg_mode else 2.0 * math.pi
+    sols = []
+    n = -20
+    while n <= 20:
+        phase_target = target + period * n
+        x_val = (phase_target - phase - offset_val) / m_val
+        if x_val >= -1e-8:
+            sols.append((x_val, phase_target))
+        n += 1
+    sols.sort()
+    first_x = None
+    first_phase_target = None
+    i = 0
+    while i < len(sols):
+        if first_x is None or abs(sols[i][0] - first_x) > 1e-7:
+            if first_x is None:
+                first_x = sols[i][0]
+                first_phase_target = sols[i][1]
+            i += 1
+            continue
+        i += 1
+    lines = [
+        "Write the model in the form C + R*cos(" + show(base) + signed_angle_text(phase, deg_mode) + ")",
+        "R = sqrt(A^2+B^2)",
+        "= " + exact_text_or_float(r_val, 6),
+        dep_label + " = " + show(full_simplify(const_expr)) + "+" + exact_text_or_float(r_val, 6) + "*cos(" + show(base) + signed_angle_text(phase, deg_mode) + ")",
+        desc + " value: " + final_exact_text_or_float(extreme, 4),
+        desc + " " + dep_label + " = " + final_exact_text_or_float(extreme, 4),
+    ]
+    if first_x is not None:
+        lines.append(desc + " first occurs when " + show(base) + signed_angle_text(phase, deg_mode) + " = " + angle_text(first_phase_target, deg_mode))
+        lines.append(var + " = " + final_angle_text(first_x, deg_mode))
+    return {"value": extreme, "x": first_x}, compact_lines(prep_lines + lines)
 
 def linear_pair(node, var):
     node = sim(node)
@@ -14731,21 +14872,172 @@ def solve_prove_text(text, route):
     rewrite = split_rewrite_arrow(text)
     if rewrite is not None:
         return solve_transform_text(rewrite[0], rewrite[1])
-    # Check for numeric evaluation requests
     lines = numeric_evaluation_text(text)
     if lines is not None:
         return compact_lines(lines)
     lhs, rhs = parse_identity(text)
     lines = prove_cot_quadratic_equation(lhs, rhs)
     if lines is not None:
-        return compact_lines(lines)
-    lines = special_text_proof(text, route)
-    if lines is not None:
-        return compact_lines(lines)
-    if is_domain_restricted_identity_pair(lhs, rhs):
-        raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
-    return solve_prove(lhs, rhs, route)
+        lines = compact_lines(lines)
+    else:
+        lines = special_text_proof(text, route)
+        if lines is not None:
+            lines = compact_lines(lines)
+        else:
+            if is_domain_restricted_identity_pair(lhs, rhs):
+                raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
+            lines = solve_prove(lhs, rhs, route)
+    if len(lines) != 0 and lines[-1] in ('= RHS', '= LHS'):
+        lines = compact_lines(lines + ['LHS = RHS'])
+    return lines
 
+
+def solve_rewrite_text(text, term_texts):
+    begin_user_action()
+    if len(term_texts) == 0:
+        raise ValueError("Enter at least one allowed term.")
+    allowed_terms = []
+    i = 0
+    while i < len(term_texts):
+        allowed_terms.append(parse(term_texts[i].strip()))
+        i += 1
+    parts = split_top_level(text, "=")
+    is_equation = parts is not None
+    expr = None
+    if is_equation:
+        lhs, rhs = parse_equation_or_zero(text)
+        expr = sim(add([lhs, neg(rhs)]))
+    else:
+        expr = parse(text.strip())
+    identity_candidate = full_simplify(reduce_identities(expr))
+    if equivalent(expr, num(1)) or equivalent(identity_candidate, num(1)):
+        return format_rewrite_lines(text, expr, num(1), [("Use a standard identity.", num(1))], allowed_terms, is_equation)
+    final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
+    if final_expr is None:
+        if rewrite_allowed_only(identity_candidate, info) and not same(identity_candidate, expr):
+            final_expr = identity_candidate
+            steps = [("Use a standard identity.", identity_candidate)]
+        elif equivalent(identity_candidate, num(1)):
+            final_expr = num(1)
+            steps = [("Use a standard identity.", num(1))]
+
+        if final_expr is not None:
+            return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+        if equivalent(identity_candidate, num(1)):
+            final_expr = num(1)
+            steps = [("Use a standard identity.", num(1))]
+        elif not is_equation and len(allowed_terms) >= 2:
+            candidates = [num(1)]
+            i = 0
+            while i < len(allowed_terms):
+                j = i + 1
+                while j < len(allowed_terms):
+                    candidates.append(sim(mul([num(2), allowed_terms[i], allowed_terms[j]])))
+                    candidates.append(sim(neg(mul([num(2), allowed_terms[i], allowed_terms[j]]))))
+                    candidates.append(sim(add([allowed_terms[i], allowed_terms[j]])))
+                    candidates.append(sim(add([allowed_terms[i], neg(allowed_terms[j])])) )
+                    j += 1
+                i += 1
+            picked = None
+            i = 0
+            while i < len(candidates):
+                if equivalent(expr, candidates[i]):
+                    if picked is None or tree_size(candidates[i]) < tree_size(picked):
+                        picked = candidates[i]
+                i += 1
+            if picked is not None:
+                final_expr = picked
+                steps = [("Use a standard identity.", picked)]
+            elif rewrite_allowed_only(expr, info):
+                final_expr = expr
+                steps = []
+            else:
+                raise ValueError("This expression cannot be written using only the requested terms.")
+        elif rewrite_allowed_only(expr, info):
+            final_expr = expr
+            steps = []
+        else:
+            raise ValueError("This expression cannot be written using only the requested terms.")
+    return format_rewrite_lines(text, expr, final_expr, steps or [], allowed_terms, is_equation)
+
+
+def solve_extremum_text(text, kind, var):
+    lhs, rhs = parse_equation_or_zero(text)
+    dep_label = "y"
+    expr = lhs
+    if depends(lhs, var) and not depends(rhs, var):
+        expr = lhs
+    elif depends(rhs, var) and not depends(lhs, var):
+        expr = rhs
+        if lhs[0] == "sym":
+            dep_label = lhs[1]
+    else:
+        expr = lhs if depends(lhs, var) else rhs
+    eq_mode = equation_angle_mode(lhs, rhs, var)
+    deg_mode = eq_mode != "rad"
+    expanded = sim(expand_embedded_small(replace_exact_trig_quiet(sim(expand_trig_tree(expr)))))
+    combo = match_linear_combo_const(expanded, var)
+    prep_lines = []
+    if combo is None:
+        expanded, prep_lines = extremum_rewrite_to_linear_combo(expr, var)
+        if expanded is not None:
+            combo = match_linear_combo_const(expanded, var)
+    if combo is None:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    base, sin_coeff_expr, cos_coeff_expr, const_expr = combo
+    angle = match_linear_angle(base, var)
+    if angle is None:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    a_val = constant_numeric(sin_coeff_expr, deg_mode)
+    b_val = constant_numeric(cos_coeff_expr, deg_mode)
+    c_val = constant_numeric(const_expr, deg_mode)
+    m_val = constant_numeric(angle[0], deg_mode)
+    offset_val = constant_numeric(angle[1], deg_mode)
+    if a_val is None or b_val is None or c_val is None or m_val is None or offset_val is None or abs(m_val) < 1e-12:
+        return solve_extremum_numeric(expr, kind, var, dep_label, deg_mode)
+    r_val = math.sqrt(a_val * a_val + b_val * b_val)
+    phase = to_degrees(math.atan2(-a_val, b_val)) if deg_mode else math.atan2(-a_val, b_val)
+    if kind == "max":
+        extreme = c_val + r_val
+        target = 0.0
+        desc = "Maximum"
+    else:
+        extreme = c_val - r_val
+        target = 180.0 if deg_mode else math.pi
+        desc = "Minimum"
+    period = 360.0 if deg_mode else 2.0 * math.pi
+    sols = []
+    n = -20
+    while n <= 20:
+        phase_target = target + period * n
+        x_val = (phase_target - phase - offset_val) / m_val
+        if x_val >= -1e-8:
+            sols.append((x_val, phase_target))
+        n += 1
+    sols.sort()
+    first_x = None
+    first_phase_target = None
+    i = 0
+    while i < len(sols):
+        if first_x is None or abs(sols[i][0] - first_x) > 1e-7:
+            if first_x is None:
+                first_x = sols[i][0]
+                first_phase_target = sols[i][1]
+            i += 1
+            continue
+        i += 1
+    lines = [
+        "Write the model in the form C + R*cos(" + show(base) + signed_angle_text(phase, deg_mode) + ")",
+        "R = sqrt(A^2+B^2)",
+        "= " + exact_text_or_float(r_val, 6),
+        dep_label + " = " + show(full_simplify(const_expr)) + "+" + exact_text_or_float(r_val, 6) + "*cos(" + show(base) + signed_angle_text(phase, deg_mode) + ")",
+        desc + " value: " + final_exact_text_or_float(extreme, 4),
+        desc + " " + dep_label + " = " + final_exact_text_or_float(extreme, 4),
+    ]
+    if first_x is not None:
+        lines.append(desc + " first occurs when " + show(base) + signed_angle_text(phase, deg_mode) + " = " + angle_text(first_phase_target, deg_mode))
+        lines.append(var + " = " + final_angle_text(first_x, deg_mode))
+    return {"value": extreme, "x": first_x}, compact_lines(prep_lines + lines)
 
 def rewrite_extremum_double_angle_expr(expr, var):
     expr = sim(expr)
@@ -14941,8 +15233,6 @@ def solve_extremum_text(text, kind, var):
         desc = "Minimum"
     period = 360.0 if deg_mode else 2.0 * math.pi
     sols = []
-    # Track the first positive occurrence by solving the phase condition
-    # over several periods and taking the smallest non-negative x.
     n = -20
     while n <= 20:
         phase_target = target + period * n
@@ -14967,6 +15257,8 @@ def solve_extremum_text(text, kind, var):
         "R = sqrt(A^2+B^2)",
         "= " + exact_text_or_float(r_val, 6),
         dep_label + " = " + show(full_simplify(const_expr)) + "+" + exact_text_or_float(r_val, 6) + "*cos(" + show(base) + signed_angle_text(phase, deg_mode) + ")",
+        desc + " value: " + final_exact_text_or_float(extreme, 4),
+        desc + " value: " + final_exact_text_or_float(extreme, 4),
         desc + " " + dep_label + " = " + final_exact_text_or_float(extreme, 4),
     ]
     if first_x is not None:

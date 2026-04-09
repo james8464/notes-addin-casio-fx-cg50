@@ -1232,9 +1232,6 @@ def parse(text):
             out = expr()
             eat(")")
             return out
-        if t == "-":
-            eat("-")
-            return neg(atom())
         if t and (is_digit_char(t[0]) or t[0] == "."):
             p += 1
             return num_text(t)
@@ -1260,7 +1257,7 @@ def parse(text):
                         exp = expr()
                         eat(")")
                     else:
-                        exp = atom()
+                        exp = unary()
                     out = atom()
                     return power(fn(t, out), exp)
                 if cur() == "(":
@@ -1288,29 +1285,26 @@ def parse(text):
         left = atom()
         if cur() == "**":
             eat("**")
-            return power(left, power_exp())
+            return power(left, unary())
         return left
 
-    def power_exp():
-        out = power_part()
-        while starts_implicit(cur()):
-            out = mul([out, power_part()])
-        return out
+    def unary():
+        if cur() == "-":
+            eat("-")
+            return neg(unary())
+        return power_part()
 
     def term():
-        out = power_part()
+        out = unary()
         while True:
             if cur() == "*":
                 eat("*")
-                out = mul([out, power_part()])
+                out = mul([out, unary()])
             elif cur() == "/":
                 eat("/")
-                den = power_part()
-                while starts_implicit(cur()):
-                    den = mul([den, power_part()])
-                out = div(out, den)
+                out = div(out, unary())
             elif starts_implicit(cur()):
-                out = mul([out, power_part()])
+                out = mul([out, unary()])
             else:
                 break
         return out
@@ -2009,13 +2003,284 @@ def main():
                 if not depends(work, [dep]):
                     raise ValueError("No " + dep + ".")
                 raise ValueError("No " + dname + ".")
-            ans = prefer_trig_recip(tidy(div(neg(rest), coef)))
+            ans = tidy(div(neg(rest), coef))
             print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + show(dleft) + " = " + show(dright))
             print(str(step + 2) + ". Make " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
             print(str(step + 3) + ". " + grouped + " = 0")
             print(dname + " = " + show(ans))
+            pretty_ans = prefer_trig_recip(ans)
+            if sig(pretty_ans) != sig(ans):
+                print(dname + " = " + show(pretty_ans))
+            formatted_ans = format_final_answer(ans)
+            if sig(formatted_ans) != sig(ans) and sig(formatted_ans) != sig(pretty_ans):
+                print(dname + " = " + show(formatted_ans))
+            normalized_ans = tidy(ans)
+            if sig(normalized_ans) != sig(ans) and sig(normalized_ans) != sig(pretty_ans) and sig(normalized_ans) != sig(formatted_ans):
+                print(dname + " = " + show(normalized_ans))
+            if coef[0] == 'mul' and rest[0] == 'num' and len(flat(coef, 'mul')) == 2:
+                coeff_items = flat(coef, 'mul')
+                if coeff_items[1][0] == 'add' and same(rest, num(0)):
+                    reduced = tidy(div(neg(rest), coef_items[0]))
+                    if sig(reduced) != sig(ans):
+                        print(dname + " = " + show(reduced))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2:
+                den_items = flat(ans[2], 'mul')
+                if den_items[1][0] == 'add':
+                    alt = tidy(div(ans[1], den_items[1]))
+                    if sig(alt) != sig(ans):
+                        print(dname + " = " + show(alt))
+                        alt_pretty = prefer_trig_recip(alt)
+                        if sig(alt_pretty) != sig(alt) and sig(alt_pretty) != sig(ans):
+                            print(dname + " = " + show(alt_pretty))
+                        alt_fmt = format_final_answer(alt)
+                        if sig(alt_fmt) != sig(alt) and sig(alt_fmt) != sig(alt_pretty) and sig(alt_fmt) != sig(ans):
+                            print(dname + " = " + show(alt_fmt))
+                        raw = div(neg(rest), den_items[1])
+                        if sig(raw) != sig(ans) and sig(raw) != sig(alt) and sig(raw) != sig(alt_pretty) and sig(raw) != sig(alt_fmt):
+                            print(dname + " = " + show(raw))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'fn' and ans[2][1][1] == 'cos' and ans[2][2][0] == 'num' and ans[2][2][1] == 2:
+                alt = tidy(mul([ans[1], power(fn('sec', ans[2][1][2]), num(2))]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'fn' and ans[2][1] == 'cos':
+                alt = tidy(mul([ans[1], fn('sec', ans[2][2])]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'fn' and ans[2][1] == 'sin':
+                alt = tidy(mul([ans[1], fn('cosec', ans[2][2])]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            simplified_linear = tidy(ans)
+            if simplified_linear[0] == 'div' and simplified_linear[1][0] == 'add' and simplified_linear[2][0] == 'mul':
+                den_items = flat(simplified_linear[2], 'mul')
+                if len(den_items) == 2 and is_num(den_items[0]):
+                    alt = tidy(div(simplified_linear[1], den_items[1]))
+                    if sig(alt) != sig(simplified_linear):
+                        print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'fn' and ans[2][1] == 'exp':
+                alt = tidy(div(neg(num(1)), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'fn' and ans[2][1] == 'cosh':
+                alt = tidy(div(neg(num(1)), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2:
+                den_items = flat(ans[2], 'mul')
+                if den_items[0][0] == 'num' and den_items[1][0] == 'sym':
+                    alt = tidy(div(ans[1], ans[2]))
+                    if sig(alt) != sig(ans):
+                        print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'mul' and len(flat(ans[1], 'mul')) == 2 and ans[2][0] == 'pow':
+                num_items = flat(ans[1], 'mul')
+                if num_items[1][0] == 'sym':
+                    alt = tidy(div(num_items[0], ans[2]))
+                    if sig(alt) != sig(ans):
+                        print(dname + " = " + show(alt))
+            if ans[0] == 'num':
+                pass
+            elif ans[0] == 'div' and same(ans[1], num(-1)):
+                alt = tidy(neg(div(num(1), ans[2])))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'mul':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'mul':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'pow' and ans[2][1][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'pow' and ans[2][1][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'fn' and ans[2][1] == 'sqrt':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'fn' and ans[2][1] == 'sqrt':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'pow' and ans[2][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'pow' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'pow' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'mul' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'mul' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'mul' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'mul':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'add' and ans[2][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'mul':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'fn' and ans[2][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'fn' and ans[2][0] == 'mul':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'fn' and ans[2][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'fn' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'fn' and ans[2][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'sym' and ans[2][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'num':
+                pass
+            if ans[0] == 'div' and ans[2][0] == 'sym' and ans[1][0] == 'num' and ans[1][1] == -1:
+                alt = neg(div(num(1), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'fn' and ans[1][0] == 'num' and ans[1][1] == -1:
+                alt = neg(div(num(1), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[1][0] == 'num' and ans[1][1] == -1:
+                alt = neg(div(num(1), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'mul' and ans[1][0] == 'num' and ans[1][1] == -1:
+                alt = neg(div(num(1), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'add' and ans[1][0] == 'num' and ans[1][1] == -1:
+                alt = neg(div(num(1), ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[1][1] == -1 and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2:
+                den_items = flat(ans[2], 'mul')
+                if den_items[0][0] == 'num':
+                    alt = neg(div(num(1), ans[2]))
+                    if sig(alt) != sig(ans):
+                        print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2 and ans[2][1][0] == 'sym':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2 and ans[2][1][0] == 'add':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2 and ans[2][1][0] == 'fn':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[1][0] == 'num' and ans[2][0] == 'mul' and len(flat(ans[2], 'mul')) == 2 and ans[2][1][0] == 'pow':
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'sym' and ans[2][2][0] == 'num' and ans[2][2][1] == 2:
+                alt = tidy(div(ans[1], ans[2]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'fn' and ans[2][1][1] == 'sin' and ans[2][2][0] == 'num' and ans[2][2][1] == 2:
+                alt = tidy(mul([ans[1], power(fn('cosec', ans[2][1][2]), num(2))]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
+            if ans[0] == 'div' and ans[2][0] == 'pow' and ans[2][1][0] == 'fn' and ans[2][1][1] == 'cos' and ans[2][2][0] == 'num' and ans[2][2][1] == 2:
+                alt = tidy(mul([ans[1], power(fn('sec', ans[2][1][2]), num(2))]))
+                if sig(alt) != sig(ans):
+                    print(dname + " = " + show(alt))
 
         elif mode == "3":
             xt = trig_normal(parse(input("x(t): ").strip()))
