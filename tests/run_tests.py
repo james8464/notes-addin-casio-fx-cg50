@@ -69,6 +69,43 @@ CURRENT_CATEGORY = ""
 CURRENT_SECTION = ""
 CURRENT_QUESTION = ""
 
+# Rich UI components for interactive experience
+progress = None
+current_task = None
+status_spinner = None
+lock = threading.Lock()
+
+def create_progress_bar():
+    global progress
+    if not INTERACTIVE_REPORT_MODE and IS_TTY:
+        progress = Progress(
+            SpinnerColumn(style="cyan"),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=40),
+            TaskProgressColumn(),
+            MofNCompleteColumn(),
+            TextColumn("[dim]{task.fields[category]}[/dim]"),
+            console=console,
+        )
+
+def start_spinner(text: str):
+    global status_spinner
+    if not INTERACTIVE_REPORT_MODE and IS_TTY:
+        status_spinner = console.status(f"[bold cyan]{text}", spinner="dots")
+        status_spinner.start()
+
+def stop_spinner():
+    global status_spinner
+    if status_spinner:
+        status_spinner.stop()
+        status_spinner = None
+
+def update_progress(task_id, advance=False):
+    global progress, current_task
+    if progress and current_task is not None:
+        if advance:
+            progress.update(current_task, advance=1)
+
 
 @dataclass
 class TestRecord:
@@ -103,22 +140,29 @@ def print_header():
     )
     console.print(panel)
     console.print()
+    create_progress_bar()
+    if progress:
+        progress.start()
 
 def print_category(name: str):
-    global CURRENT_CATEGORY, CURRENT_SECTION
+    global CURRENT_CATEGORY, CURRENT_SECTION, current_task
     CURRENT_CATEGORY = name
     CURRENT_SECTION = ""
     if INTERACTIVE_REPORT_MODE:
         return
     console.print()
-    console.print(f"[bold magenta]▸ {name}[/bold magenta]")
+    console.print(f"[bold magenta]▶ {name}[/bold magenta]")
+    if progress:
+        current_task = progress.add_task(f"Running {name}...", category=name, total=None)
 
 def print_section(name: str):
-    global CURRENT_SECTION
+    global CURRENT_SECTION, status_spinner
     CURRENT_SECTION = name
     if INTERACTIVE_REPORT_MODE:
         return
+    stop_spinner()
     console.print(f"\n[cyan]{name}[/cyan]")
+    start_spinner(f"Running {name}...")
 
 def run_cli(script_name: str, user_input: str) -> tuple:
     proc = subprocess.run(
@@ -139,10 +183,12 @@ def report(label: str, passed: bool, detail: str = "", output: str = ""):
         PASS_COUNT += 1
         status = Text("PASS ", style="bold green")
         icon = Text("✓ ", style="bold green")
+        status_icon = "✓"
     else:
         FAIL_COUNT += 1
         status = Text("FAIL ", style="bold red")
         icon = Text("✗ ", style="bold red")
+        status_icon = "✗"
     
     if output:
         TEST_OUTPUTS[test_id] = output
@@ -165,6 +211,8 @@ def report(label: str, passed: bool, detail: str = "", output: str = ""):
         line.append(Text(f" ({detail})", style="dim"))
     if not INTERACTIVE_REPORT_MODE:
         console.print(line)
+        if status_spinner:
+            status_spinner.update(f"[bold {('green' if passed else 'red')}]Running... {status_icon} [{TEST_COUNTER}]")
     return test_id
 
 def warn_report(label: str, detail: str = ""):
@@ -213,26 +261,41 @@ def show_complex_question(question: str, category: str):
 def print_summary():
     if INTERACTIVE_REPORT_MODE:
         return
+    stop_spinner()
+    if progress:
+        progress.stop()
     total = PASS_COUNT + FAIL_COUNT + WARN_COUNT
     pct = (PASS_COUNT / total * 100) if total > 0 else 0
     
-    table = Table(title="Test Results", show_header=False, box=box.ROUNDED)
-    table.add_column("Metric", style="cyan", justify="left")
-    table.add_column("Value", style="white", justify="right")
-    
-    table.add_row("Total Tests", str(total))
-    table.add_row(Text("Passed", style="bold green"), str(PASS_COUNT))
-    table.add_row(Text("Failed", style="bold red"), str(FAIL_COUNT))
-    table.add_row(Text("Warnings", style="bold yellow"), str(WARN_COUNT))
-    table.add_row("Success Rate", f"{pct:.1f}%")
-    
     console.print()
-    console.print(table)
+    
+    summary_text = Text.assemble(
+        f"Total: [bold]{total}[/bold]  ",
+        f"[bold green]Passed: {PASS_COUNT}[/bold green]  ",
+        f"[bold red]Failed: {FAIL_COUNT}[/bold red]  ",
+        f"[bold yellow]Warnings: {WARN_COUNT}[/bold yellow]\n",
+        f"Success Rate: [bold cyan]{pct:.1f}%[/bold cyan]",
+    )
+    console.print(Panel.fit(
+        summary_text,
+        title="[bold]Test Results Summary[/bold]",
+        border_style="cyan",
+        box=box.ROUNDED,
+    ))
     
     if FAIL_COUNT > 0:
-        console.print("\n[bold red]⚠ FAILURES NEED INVESTIGATION[/bold red]")
+        console.print("\n[bold red]✗ FAILURES NEED INVESTIGATION[/bold red]")
     if WARN_COUNT > 0:
         console.print(f"\n[bold yellow]⚠ Review {WARN_COUNT} warnings for potential issues[/bold yellow]")
+    
+    if pct == 100:
+        console.print("\n[bold green]🎉 ALL TESTS PASSED! Excellent work![/bold green]")
+    elif pct >= 90:
+        console.print("\n[bold green]👍 Great job! Most tests passed.[/bold green]")
+    elif pct >= 70:
+        console.print("\n[bold yellow]📊 Good progress! Keep improving.[/bold yellow]")
+    else:
+        console.print("\n[bold red]🔧 Needs work. Please review failures.[/bold red]")
 
 
 def print_dim(text: str):
