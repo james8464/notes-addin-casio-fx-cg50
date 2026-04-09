@@ -556,7 +556,7 @@ def trig_high_power_rewrite(name, exp, arg):
     elif D == 'sin6':
         B = mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
     elif D == 'cos4':
-        B = div(add([num(3), fn('cos', mul([num(2), A])), neg(fn('cos', mul([num(4), A])))]), num(4))
+        B = div(add([num(3), mul([num(4), fn('cos', mul([num(2), A]))]), fn('cos', mul([num(4), A]))]), num(8))
     elif D == 'cos5':
         B = expand_small(add([fn('cos', A), neg(mul([num(2), power(fn('sin', A), num(2)), fn('cos', A)])), mul([power(fn('sin', A), num(4)), fn('cos', A)])]))
     elif D == 'cos6':
@@ -2429,7 +2429,13 @@ def split_linear_quadratic_product(node, var):
     B = var
     A = flat(node, 'mul')
     if len(A) != 2:
-        return
+        C = poly_num(node, B)
+        if C is None or len(C) != 4:
+            return
+        D, E = factor_poly_linear_partial(C, 1)
+        if len(D) != 1 or len(E) != 3:
+            return
+        return add([sym(B), neg(D[0])]), poly_to_node(E, B)
     C = linear_info(A[0], B) is not None
     D = linear_info(A[1], B) is not None
     E = quad_scale(A[0], B) is not None
@@ -2438,6 +2444,23 @@ def split_linear_quadratic_product(node, var):
         return A[0], A[1]
     if D and E:
         return A[1], A[0]
+
+
+def split_repeated_linear_quadratic_product(node, var):
+    B = var
+    A = flat(node, 'mul')
+    if len(A) == 2:
+        if A[0][0] == 'pow' and is_int_num(A[0][2]) and A[0][2][1] == 2 and linear_info(A[0][1], B) is not None and quad_info(A[1], B) is not None:
+            return A[0][1], A[1]
+        if A[1][0] == 'pow' and is_int_num(A[1][2]) and A[1][2][1] == 2 and linear_info(A[1][1], B) is not None and quad_info(A[0], B) is not None:
+            return A[1][1], A[0]
+    C = poly_num(node, B)
+    if C is None or len(C) != 5:
+        return
+    D, E = factor_poly_linear_partial(C, 2)
+    if len(D) != 2 or not same(D[0], D[1]) or len(E) != 3:
+        return
+    return add([sym(B), neg(D[0])]), poly_to_node(E, B)
 
 
 def split_const_mul(node, var):
@@ -2562,6 +2585,21 @@ def _rewrite_in_u(node, inner, var):
     if B[0] == 'fn' and B[1] == 'exp' and A[0] == 'fn' and A[1] == 'exp':
         if same(A[2], B[2]):
             return U
+    if B[0] == 'pow' and same(B[1], ('const', 'e')):
+        if A[0] == 'pow' and same(A[1], ('const', 'e')):
+            D = quotient_by_target(A[2], B[2])
+            if D is not None and not depends(D, C):
+                return U if is_one(D) else power(U, D)
+    if B[0] == 'fn' and B[1] == 'log' and same(B[2], sym(C)):
+        if is_sym(A) and A[1] == C:
+            return power(('const', 'e'), U)
+        if A[0] == 'pow' and A[1] == sym(C) and is_num(A[2]):
+            return power(power(('const', 'e'), U), A[2])
+    if B[0] == 'pow' and B[1] == sym(C) and is_num(B[2]) and not is_zero(B[2]):
+        if is_sym(A) and A[1] == C:
+            return power(U, divq(num(1), B[2]))
+        if A[0] == 'pow' and A[1] == sym(C) and is_num(A[2]):
+            return power(U, divq(A[2], B[2]))
     G = A[0]
     if G in ('num', 'const'):
         return A
@@ -2723,6 +2761,93 @@ def direct_u_form(node):
                 return mul([B, C])
 
 
+def integrate_special_direct_term(node, var):
+    A = node
+    F = sym(var)
+
+    def sqrt_inner(expr):
+        if expr[0] == 'fn' and expr[1] == 'sqrt':
+            return expr[2]
+        if expr[0] == 'pow' and same(expr[2], num(1, 2)):
+            return expr[1]
+
+    B = sqrt_inner(A)
+    H = poly_num(B, var) if B is not None else None
+    if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(H[0]) and is_num(H[2]) and H[0][1] > 0 and H[2][1] < 0:
+        T = fn('sqrt', negq(H[2]))
+        V = fn('sqrt', H[0])
+        W = div(mul([T, F]), V)
+        X = sim(add([
+            div(mul([F, fn('sqrt', B)]), num(2)),
+            mul([div(H[0], mul([num(2), T])), fn('asin', W)])]))
+        return X, [
+            'Use the standard result for Int[sqrt(a^2-b^2*' + var + '^2)] d' + var + '.',
+            'So I = ' + pretty(X) + ' + C']
+
+    if A[0] == 'div':
+        B = sqrt_inner(A[2])
+        H = poly_num(B, var) if B is not None else None
+        if same(A[1], power(F, num(2))) and H is not None and len(H) == 3 and is_zero(H[1]) and is_num(H[0]) and is_num(H[2]) and H[0][1] > 0 and H[2][1] < 0:
+            T = fn('sqrt', negq(H[2]))
+            V = fn('sqrt', H[0])
+            W = div(mul([T, F]), V)
+            X = sim(add([
+                mul([div(H[0], mul([num(2), T, T, T])), fn('asin', W)]),
+                neg(div(mul([F, fn('sqrt', B)]), mul([num(2), T, T])))]))
+            return X, [
+                'Write ' + var + '^2 in terms of the radical.',
+                'Use the standard results for 1/sqrt(a^2-b^2*' + var + '^2) and sqrt(a^2-b^2*' + var + '^2).',
+                'So I = ' + pretty(X) + ' + C']
+
+        if is_one(A[1]):
+            I = quad_info(A[2], var)
+            if I is not None and is_num(I[0]) and is_num(I[1]) and is_num(I[2]):
+                J = subq(mulq(I[1], I[1]), mulq(num(4), mulq(I[0], I[2])))
+                if is_zero(J):
+                    K = divq(I[1], mulq(num(2), I[0]))
+                    L = add([F, K])
+                    X = neg(div(num(1), mul([I[0], L])))
+                    return X, [
+                        'Complete the square in the denominator.',
+                        'Use Int[(u)^-2] du = -(u)^-1 + C.',
+                        'So I = ' + pretty(X) + ' + C']
+
+            C = flat(A[2], 'mul') if A[2][0] == 'mul' else [A[2]]
+            D = False
+            E = None
+            G = []
+            for Y in C:
+                if not D and Y[0] == 'pow' and same(Y[1], F) and same(Y[2], num(2)):
+                    D = True
+                elif E is None:
+                    Z = sqrt_inner(Y)
+                    if Z is not None:
+                        E = Z
+                    else:
+                        G.append(Y)
+                else:
+                    G.append(Y)
+            if D and E is not None and len(G) == 0:
+                H = poly_num(E, var)
+                if H is not None and len(H) == 3 and is_zero(H[1]) and same(H[2], num(1)) and is_num(H[0]) and H[0][1] > 0:
+                    X = sim(neg(div(fn('sqrt', E), mul([H[0], F]))))
+                    return X, [
+                        'Use the standard reverse-derivative pattern.',
+                        'd/d' + var + '[sqrt(' + pretty(E) + ')/' + var + '] = -' + pretty(H[0]) + '/(' + var + '^2*sqrt(' + pretty(E) + '))',
+                        'So I = ' + pretty(X) + ' + C']
+
+        if same(A[1], power(F, num(2))) and A[2][0] == 'pow' and same(A[2][2], num(2)):
+            C = A[2][1]
+            if same(C, add([num(1), power(F, num(2))])) or same(C, add([power(F, num(2)), num(1)])):
+                X = add([
+                    div(fn('atan', F), num(2)),
+                    neg(div(F, mul([num(2), add([num(1), power(F, num(2))])])))] )
+                return sim(X), [
+                    'Rewrite the integrand using d/d' + var + '[' + var + '/(1+' + var + '^2)] and the standard result for 1/(1+' + var + '^2).',
+                    'So I = ' + pretty(sim(X)) + ' + C']
+    return None, None
+
+
 def expand_square(node):
     A = node
     if A[0] == 'pow' and same(A[2], num(2)) and A[1][0] == 'add':
@@ -2834,6 +2959,9 @@ def integrate_standard_term(node, var):
         return D, Q
     if A == F:
         return div(power(F, num(2)), num(2)), []
+    S, U = integrate_special_direct_term(A, C)
+    if S is not None:
+        return S, U
     if A[0] == 'pow' and A[1] == F and is_num(A[2]) and A[2] != num(-1):
         I = addq(A[2], num(1))
         return div(power(F, I), I), []
@@ -2864,20 +2992,23 @@ def integrate_standard_term(node, var):
     if S is not None:
         return S, U
     
-    # Add pattern for 1/(x^2 + a^2) = (1/a) * arctan(x/a) + C  
+    # Add pattern for 1/(x^2 + a) = (1/sqrt(a)) * arctan(x/sqrt(a)) + C
     if A[0] == 'div' and is_one(A[1]) and A[2][0] == 'add':
         terms = flat(A[2], 'add')
         if len(terms) == 2:
-            # Look for x^2 and positive constant terms
+            # Look for x^2 and an x-independent positive-style term
             x_squared_term = None
             constant_term = None
             for term in terms:
                 if term[0] == 'pow' and term[1] == sym(C) and same(term[2], num(2)):
                     x_squared_term = term
-                elif is_num(term) and term[1] > 0:
+                elif not depends(term, C):
                     constant_term = term
             
             # If we found the pattern, apply arctan formula
+            if x_squared_term is not None and constant_term is not None:
+                if is_num(constant_term) and constant_term[1] <= 0:
+                    constant_term = None
             if x_squared_term is not None and constant_term is not None:
                 a = fn('sqrt', constant_term)
                 result = div(fn('atan', div(sym(C), a)), a)
@@ -3006,15 +3137,16 @@ def integrate_standard_term(node, var):
                 return B, [
                     'Complete the square in the radical.',
                     'Use the standard result for 1/sqrt(u^2+a).', 'So I = ' + pretty(B) + ' + C']
-        if H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
+        if is_one(numerator) and H is not None and len(H) == 3 and is_zero(H[1]) and H[2] == num(1):
             B = fn('log', fn('abs', add([F, power(J, num(1, 2))])))
             return B, [
                 'Use the standard result for 1/sqrt(' + C + '^2+a).', 'So I = ' + pretty(B) + ' + C']
-        if same(J, add([num(1), neg(power(F, num(2)))])) or same(
-                J, add([neg(power(F, num(2))), num(1)])):
+        if is_one(numerator) and (
+                same(J, add([num(1), neg(power(F, num(2)))])) or
+                same(J, add([neg(power(F, num(2))), num(1)]))):
             return fn('asin', F), [
                 'Use the standard result for 1/sqrt(1-' + C + '^2).', 'So I = asin(' + C + ') + C']
-        if H is not None and len(H) == 3 and is_zero(H[1]) and is_num(
+        if is_one(numerator) and H is not None and len(H) == 3 and is_zero(H[1]) and is_num(
                 H[0]) and is_num(H[2]) and H[0][1] > 0 and H[2][1] < 0:
             V = fn('sqrt', H[0])
             T = fn('sqrt', negq(H[2]))
@@ -3023,7 +3155,7 @@ def integrate_standard_term(node, var):
             return D, [
                 'Use the standard result for 1/sqrt(a^2-b^2*' + C + '^2).', 'So I = ' + pretty(D) + ' + C']
         K = linear_info(J, C)
-        if K is not None:
+        if is_one(numerator) and K is not None:
             G, M = K
             N = num(-1, 2)
             if N == num(-1):
@@ -3104,7 +3236,11 @@ def integrate_standard_term(node, var):
         if E2 is not None:
             R, Q = integrate_standard(expand_small(E2), C)
             if R is not None:
-                return R, [F2, '= ' + pretty(R) + ' + C']
+                return R, [
+                    F2,
+                    'So I = ' + int_text(expand_small(E2), C),
+                    'Integrate each term separately.',
+                    '= ' + pretty(R) + ' + C']
     if A[0] == 'mul':
         L = list(A[1])
         if len(L) == 2 and L[0][0] == 'fn' and L[1][0] == 'fn' and same(
@@ -3142,7 +3278,7 @@ def integrate_standard(node, var):
     return integrate_standard_term(B, C)
 
 
-FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp', 'log'
+FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp', 'log', 'asin', 'acos', 'atan'
 
 
 def ordered_candidates(node, var, mode):
@@ -3281,6 +3417,17 @@ def normalize_den_powers(node):
         return A
     B = normalize_den_powers(A[1])
     C = normalize_den_powers(A[2])
+    if C[0] == 'mul':
+        K = flat(C, 'mul')
+        i = 0
+        while i < len(K):
+            if same(K[i], U):
+                J = K[:i] + K[i + 1:]
+                if len(J) == 1 and J[0][0] == 'add':
+                    L = flat(J[0], 'add')
+                    if len(L) == 2 and ((same(L[0], U) and same(L[1], power(U, num(-1)))) or (same(L[1], U) and same(L[0], power(U, num(-1))))):
+                        return sim(div(B, add([power(U, num(2)), num(1)])))
+            i += 1
     D = flat(C, 'mul') if C[0] == 'mul' else [C]
     E = [B]
     F = []
@@ -3915,14 +4062,14 @@ def choose_parts(node, var):
     F = var
     E = node
     J = sym(F)
-    if E[0] == 'fn' and E[1] in ('log', 'asin', 'acos', 'atan') and same(E[2], J):
+    if E[0] == 'fn' and E[1] in ('log', 'asin', 'acos', 'atan') and depends(E[2], F):
         return E, num(1), J
     if E[0] == 'mul':
         B = list(flat(E, 'mul'))
         A = 0
         while A < len(B):
             C = B[A]
-            if C[0] == 'fn' and C[1] in ('asin', 'acos') and same(C[2], J):
+            if C[0] == 'fn' and C[1] in ('asin', 'acos') and depends(C[2], F):
                 D = []
                 K = 0
                 while K < len(B):
@@ -3935,21 +4082,21 @@ def choose_parts(node, var):
                     if M is not None:
                         return C, L, M
             A += 1
-    if E[0] == 'pow' and E[1][0] == 'fn' and E[1][1] == 'log' and same(
-            E[1][2], J) and is_int_num(E[2]) and E[2][1] > 0:
+    if E[0] == 'pow' and E[1][0] == 'fn' and E[1][1] == 'log' and depends(
+            E[1][2], F) and is_int_num(E[2]) and E[2][1] > 0:
         return E, num(1), J
     N, C = split_const_mul(E, F)
-    if C[0] == 'fn' and C[1] in ('log', 'asin', 'acos', 'atan') and same(C[2], J):
+    if C[0] == 'fn' and C[1] in ('log', 'asin', 'acos', 'atan') and depends(C[2], F):
         D, _ = integrate_dv_subproblem(N, F, 0)
         if D is not None:
             return C, N, D
-    if C[0] == 'pow' and C[1][0] == 'fn' and C[1][1] == 'log' and same(
-            C[1][2], J) and is_int_num(C[2]) and C[2][1] > 0:
+    if C[0] == 'pow' and C[1][0] == 'fn' and C[1][1] == 'log' and depends(
+            C[1][2], F) and is_int_num(C[2]) and C[2][1] > 0:
         D, _ = integrate_dv_subproblem(N, F, 0)
         if D is not None:
             return C, N, D
-    if C[0] == 'div' and C[1][0] == 'fn' and C[1][1] == 'log' and same(
-            C[1][2], J):
+    if C[0] == 'div' and C[1][0] == 'fn' and C[1][1] == 'log' and depends(
+            C[1][2], F):
         O = mul([N, div(num(1), C[2])])
         P, S = integrate_dv_subproblem(O, F, 0)
         if P is not None:
@@ -3970,7 +4117,7 @@ def choose_parts(node, var):
             return u, A, B
     A = 0
     while A < len(B):
-        if B[A][0] == 'fn' and B[A][1] in ('log', 'asin', 'acos', 'atan') and same(B[A][2], J):
+        if B[A][0] == 'fn' and B[A][1] in ('log', 'asin', 'acos', 'atan') and depends(B[A][2], F):
             G = []
             K = 0
             while K < len(B):
@@ -3980,7 +4127,7 @@ def choose_parts(node, var):
             D = M(B[A], G)
             if D is not None:
                 return D
-        if B[A][0] == 'pow' and B[A][1][0] == 'fn' and B[A][1][1] == 'log' and same(B[A][1][2], J) and B[A][2][0] == 'num' and B[A][2][1] > 0:
+        if B[A][0] == 'pow' and B[A][1][0] == 'fn' and B[A][1][1] == 'log' and depends(B[A][1][2], F) and B[A][2][0] == 'num' and B[A][2][1] > 0:
             G = []
             K = 0
             while K < len(B):
@@ -4022,6 +4169,45 @@ def integrate_by_parts(node, var, depth=0):
     A = var
     if H > 4:
         return None, None
+    P, Q = split_const_mul(node, A)
+    if Q[0] == 'fn' and Q[1] == 'log' and Q[2][0] == 'add':
+        R = flat(Q[2], 'add')
+        if len(R) == 2:
+            S = None
+            T = None
+            for U in R:
+                if S is None and same(U, sym(A)):
+                    S = U
+                elif T is None and ((U[0] == 'fn' and U[1] == 'sqrt') or (U[0] == 'pow' and same(U[2], num(1, 2)))):
+                    T = U[2] if U[0] == 'fn' else U[1]
+            if S is not None and T is not None and same(T, add([power(sym(A), num(2)), num(-1)])):
+                V = fn('sqrt', T)
+                W = sim(mul([P, add([mul([sym(A), Q]), neg(V)])]))
+                return W, [
+                    'u = ' + pretty(Q),
+                    'dv = d' + A,
+                    'du/d' + A + ' = 1/sqrt(' + A + '^2-1)',
+                    'v = ' + A,
+                    'I = u*v-Int[' + A + '/sqrt(' + A + '^2-1)] d' + A,
+                    'Int[' + A + '/sqrt(' + A + '^2-1)] d' + A + ' = ' + pretty(V),
+                    'I = ' + pretty(W) + ' + C']
+    if Q[0] == 'pow' and Q[1][0] == 'fn' and Q[1][1] == 'sec' and same(Q[2], num(3)):
+        R = linear_info(Q[1][2], A)
+        if R is not None:
+            S = fn('sec', Q[1][2])
+            T = fn('tan', Q[1][2])
+            U = fn('log', fn('abs', add([S, T])))
+            V = sim(div(mul([P, add([mul([S, T]), U])]), mul([num(2), R[0]])))
+            W = pretty(power(S, num(2)))
+            return V, [
+                'u = ' + pretty(S),
+                'dv = ' + pretty(power(S, num(2))) + ' d' + A,
+                'du/d' + A + ' = ' + pretty(diff(S, A)),
+                'v = ' + pretty(div(T, R[0])),
+                'I = u*v-Int[' + pretty(div(mul([S, power(T, num(2))]), R[0])) + '] d' + A,
+                'Use tan^2 = sec^2-1.',
+                'So 2I = ' + pretty(div(mul([S, T]), R[0])) + '+' + pretty(div(U, R[0])),
+                'I = ' + pretty(V) + ' + C']
     P, Q = split_const_mul(node, A)
     R = flat(Q, 'mul') if Q[0] == 'mul' else [Q]
     S = sym(A)
@@ -4236,10 +4422,17 @@ def integral_is_rational_division(node, var):
 
 
 def auto_route_termwise(node, var, depth):
+    C = node
+    D = expand_small(node)
+    E = []
+    if C[0] != 'add' and D[0] == 'add' and not same(C, D):
+        C = D
+        E = ['Split the integral into simpler terms.',
+             'So I = ' + int_text(C, var)]
     A, B = integrate_termwise_with(
-        node, var, lambda n, v, d: integrate_auto(n, v, d, False), depth)
+        C, var, lambda n, v, d: integrate_auto(n, v, d, False), depth)
     if A is not None:
-        return 'direct', A, [
+        return 'direct', A, E + [
             'Integrate each term separately.',
             integral_answer_line(A)]
     return None, None, None
@@ -4456,6 +4649,65 @@ def integrate_partial_linear_quadratic(node, var):
     return U, Z
 
 
+def integrate_partial_repeated_linear_quadratic(node, var):
+    A = node
+    B = var
+    if A[0] != 'div':
+        return None, None
+    C = poly_num(A[1], B)
+    D = poly_num(A[2], B)
+    if C is None or D is None or len(C) >= len(D):
+        return None, None
+    E = split_repeated_linear_quadratic_product(A[2], B)
+    if E is None:
+        return None, None
+    F, G = E
+    H = poly_num(F, B)
+    I = poly_num(G, B)
+    if H is None or I is None:
+        return None, None
+    J = pad_coeffs(C, len(D) - 1)
+    K = poly_mul_num(H, I)
+    L = poly_mul_num(H, H)
+    M = [
+        pad_coeffs(K, len(D) - 1),
+        pad_coeffs(I, len(D) - 1),
+        pad_coeffs(poly_mul_num([num(0), num(1)], L), len(D) - 1),
+        pad_coeffs(L, len(D) - 1)]
+    N = []
+    O = 0
+    while O < len(J):
+        N.append([M[0][O], M[1][O], M[2][O], M[3][O]])
+        O += 1
+    P = solve_linear_system(N, list(J))
+    if P is None:
+        return None, None
+    Q, R, S, T = P
+    U = add([
+        div(Q, F),
+        div(R, power(F, num(2))),
+        div(add([mul([S, sym(B)]), T]), G)])
+    V = add([
+        div(sym('A'), F),
+        div(sym('B'), power(F, num(2))),
+        div(add([mul([sym('C'), sym(B)]), sym('D')]), G)])
+    W = []
+    for X in flat(U, 'add'):
+        Y, Z = integrate_standard(X, B)
+        if Y is None:
+            Y, Z = integrate_quadratic_rational(X, B)
+        if Y is None:
+            return None, None
+        W.append(Y)
+    a = add(W)
+    b = [
+        'Use partial fractions.',
+        pretty(A) + ' = ' + pretty(V),
+        'A = ' + pretty(Q) + ', B = ' + pretty(R) + ', C = ' + pretty(S) + ', D = ' + pretty(T),
+        'So I = ' + pretty(a) + ' + C']
+    return a, b
+
+
 def integrate_partial_two_linear_quadratic(node, var):
     A = node
     B = var
@@ -4519,6 +4771,9 @@ def integrate_partial(node, var):
     C = pf_factor_list(D[2], E)
     if C is None:
         A, B = integrate_partial_linear_quadratic(D, E)
+        if A is not None:
+            return A, B
+        A, B = integrate_partial_repeated_linear_quadratic(D, E)
         if A is not None:
             return A, B
         return integrate_partial_two_linear_quadratic(D, E)
@@ -5369,7 +5624,7 @@ def _solve_with_method(node, var, method, forced_u=None):
 def solve(node, var, method, forced_u=None):
     title, ans, lines = _solve_with_method(node, var, method, forced_u)
     if ans is not None:
-        return title, ans, lines
+        return title, ans, ensure_working_lines(node, var, title, ans, lines)
     fallback_title, fallback_lines, attempt_lines = fallback_attempts(node, var, forced_u)
     if fallback_title is not None:
         method_map = {
@@ -5384,15 +5639,51 @@ def solve(node, var, method, forced_u=None):
         }
         best_method = method_map.get(fallback_title, '2')
         retry_title, retry_ans, retry_lines = _solve_with_method(node, var, best_method, forced_u)
-        merged = list(attempt_lines or [])
-        if retry_lines:
-            merged.append('Choose the simplest successful attempt.')
-            i = 0
-            while i < len(retry_lines):
-                merged.append(retry_lines[i])
-                i += 1
-        return retry_title, retry_ans, merged
+        return retry_title, retry_ans, ensure_working_lines(node, var, retry_title, retry_ans, retry_lines)
     return title, ans, lines
+
+
+def ensure_working_lines(node, var, title, ans, lines):
+    if ans is None:
+        return lines
+    if lines is not None and len(lines) > 0:
+        return lines
+    if title in ('std', 'f(ax+b)'):
+        return [
+            'Use the standard integral for ' + pretty(node) + '.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Reverse chain rule':
+        return [
+            'Use reverse chain rule.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Integration by substitution':
+        return [
+            'Use substitution.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Integration by parts':
+        return [
+            'Use integration by parts.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Using trigonometric identities':
+        return [
+            'Use a trigonometric identity first.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Partial fractions':
+        return [
+            'Use partial fractions.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Polynomial division':
+        return [
+            'Divide the numerator by the denominator first.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    return ['So I = ' + pretty(ans) + ' + C']
 
 
 def fallback_attempts(node, var, forced_u=None):
