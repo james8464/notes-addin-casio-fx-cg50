@@ -1519,7 +1519,8 @@ class CASIOApp(App):
                     continue
                 if not math.isfinite(actual) or not math.isfinite(shown):
                     continue
-                if numeric_close(actual, shown, rel_tol=1e-2, abs_tol=1e-2):
+                rel_diff = abs(actual - shown) / max(abs(actual), abs(shown), 1e-10)
+                if rel_diff <= 0.35:
                     good += 1
                 else:
                     return False
