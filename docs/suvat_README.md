@@ -234,6 +234,10 @@ print(sp.show(node))  # 12
 node = sp.parse('sqrt(2)')
 print(sp.show(node))  # sqrt(2)
 
+# Parse a raw value (for numeric inputs)
+node = sp.parse_value('3.14')
+print(sp.show(node))  # 157/50
+
 # Build a solution directly
 result, eq, orig, sub = sp.build_suvat_solution(
     sp.num(36),   # s

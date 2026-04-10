@@ -259,95 +259,6 @@ RHS: A
 8. Both simplify to: A
 ```
 
-```
-Enter: A.1
-Using: A.1
-
-Output:
-Start: A.1
-1. A.1 = A    (Identity)
-Result: A
-```
-
-### Example 3: Idempotent Law
-
-```
-Enter: A.A
-Using: A.A
-
-Output:
-Start: A.A
-1. A.A = A    (Idempotent)
-Result: A
-```
-
-### Example 4: Absorption
-
-```
-Enter: A+A.B
-Using: A+A.B
-
-Output:
-Start: A+A.B
-1. A+A.B = A    (Absorption)
-Result: A
-```
-
-### Example 5: Distributive
-
-```
-Enter: A.(B+C)
-Using: A.(B+C)
-
-Output:
-Start: A.(B+C)
-1. A.(B+C) = A.B+A.C    (Distribute)
-Result: A.B+A.C
-```
-
-### Example 6: De Morgan
-
-```
-Enter: (A.B),
-Using: (A.B),
-
-Output:
-Start: (A.B),
-1. (A.B), = A,+B,    (De Morgan)
-Result: A,+B,
-```
-
-### Example 7: Double Negation
-
-```
-Enter: A,,
-Using: A,,
-
-Output:
-Start: A,,
-1. A,, = A    (Double NOT)
-Result: A
-```
-
-### Example 8: Complex Simplification
-
-```
-Enter: ((B,.A),.B,),+A.B
-Using: ((B,.A),.B,),+A.B
-
-Output:
-Start: ((B,.A),.B,),+A.B
-1. (B,.A), = B,+A,    (De Morgan)
-2. (B,+A,).B, = B,.B,+A,.B    (Distribute)
-3. B,.B = 0    (Contradiction)
-4. 0+A,.B = A,.B    (Identity)
-5. A,.B+A.B = (A.+A).B+(A.A,).B    (Distribute)
-6. A.+A = 1    (Complement)
-7. A.A, = 0    (Contradiction)
-8. 1.B+0 = B    (Identity)
-Result: B
-```
-
 ## Mode 2: NAND Form
 
 Convert a Boolean expression to NAND-only form (all operations are NAND gates).
@@ -355,41 +266,49 @@ Convert a Boolean expression to NAND-only form (all operations are NAND gates).
 ### Example 1: Simple AND to NAND
 
 ```
-Enter: A.B
+Mode: 2
+Expression: A.B
 Using: A.B
 
 Output:
-NAND form: (A.B).(A.B)
+1. A.B
+2. NAND form: (A.B).(A.B)
 ```
 
 ### Example 2: OR to NAND
 
 ```
-Enter: A+B
+Mode: 2
+Expression: A+B
 Using: A+B
 
 Output:
-NAND form: (A.A)+(B.B)
+1. A+B
+2. NAND form: (A.A)+(B.B)
 ```
 
 ### Example 3: NOT to NAND
 
 ```
-Enter: A
+Mode: 2
+Expression: A
 Using: A
 
 Output:
-NAND form: A.A
+1. A
+2. NAND form: A.A
 ```
 
 ### Example 4: Complex Expression
 
 ```
-Enter: A.B+C
+Mode: 2
+Expression: A.B+C
 Using: A.B+C
 
 Output:
-NAND form: ((A.B).(A.B)).((C.C).(C.C))
+1. A.B+C
+2. NAND form: ((A.B).(A.B)).((C.C).(C.C))
 ```
 
 ## Mode 3: NOR Form
@@ -399,31 +318,37 @@ Convert a Boolean expression to NOR-only form (all operations are NOR gates).
 ### Example 1: Simple OR to NOR
 
 ```
-Enter: A+B
+Mode: 3
+Expression: A+B
 Using: A+B
 
 Output:
-NOR form: (A+B)+(A+B)
+1. A+B
+2. NOR form: (A+B)+(A+B)
 ```
 
 ### Example 2: AND to NOR
 
 ```
-Enter: A.B
+Mode: 3
+Expression: A.B
 Using: A.B
 
 Output:
-NOR form: (A,+B,)+(A,+B,)
+1. A.B
+2. NOR form: (A,+B,)+(A,+B,)
 ```
 
 ### Example 3: NOT to NOR
 
 ```
-Enter: A
+Mode: 3
+Expression: A
 Using: A
 
 Output:
-NOR form: A+A
+1. A
+2. NOR form: A+A
 ```
 
 ## Mode 4: Prove Identity
@@ -433,6 +358,7 @@ Prove that two Boolean expressions are equivalent, showing the simplification of
 ### Example 1: Distributive Law
 
 ```
+Mode: 4
 LHS: A.(B+C)
 RHS: A.B+A.C
 
@@ -451,6 +377,7 @@ IDENTITY PROVEN
 ### Example 2: De Morgan
 
 ```
+Mode: 4
 LHS: (A.B),
 RHS: A,+B,
 
@@ -469,6 +396,7 @@ IDENTITY PROVEN
 ### Example 3: Absorption
 
 ```
+Mode: 4
 LHS: A+A.B
 RHS: A
 
