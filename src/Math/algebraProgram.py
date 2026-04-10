@@ -3518,6 +3518,65 @@ def maybe_expand_for_compare(node):
     return current
 
 
+def expand_integer_power_for_solving(node):
+    node = sim(node)
+    if node[0] == 'pow' and is_int_num(node[2]) and node[2][2] == 1 and 0 <= node[2][1] <= 8:
+        base = sim(node[1])
+        if base[0] == 'add':
+            base_terms = list(flat(base, 'add'))
+            if len(base_terms) == 2:
+                first = expand_integer_power_for_solving(base_terms[0])
+                second = expand_integer_power_for_solving(base_terms[1])
+                n = node[2][1]
+                expanded_terms = []
+                k = 0
+                while k <= n:
+                    pieces = []
+                    coeff = binomial_coefficient(n, k)
+                    if coeff != 1:
+                        pieces.append(num(coeff))
+                    if n - k > 0:
+                        pieces.append(first if n - k == 1 else power(first, num(n - k)))
+                    if k > 0:
+                        pieces.append(second if k == 1 else power(second, num(k)))
+                    expanded_terms.append(make_product_or_one(pieces))
+                    k += 1
+                return sim(add(expanded_terms))
+    if node[0] == 'add':
+        items = []
+        i = 0
+        while i < len(node[1]):
+            items.append(expand_integer_power_for_solving(node[1][i]))
+            i += 1
+        return sim(make_add(items))
+    if node[0] == 'mul':
+        items = []
+        i = 0
+        while i < len(node[1]):
+            items.append(expand_integer_power_for_solving(node[1][i]))
+            i += 1
+        return sim(make_mul(items))
+    if node[0] == 'div':
+        return sim(div(expand_integer_power_for_solving(node[1]), expand_integer_power_for_solving(node[2])))
+    if node[0] == 'fn':
+        return 'fn', node[1], expand_integer_power_for_solving(node[2])
+    if node[0] == 'pow':
+        return 'pow', expand_integer_power_for_solving(node[1]), expand_integer_power_for_solving(node[2])
+    return node
+
+
+def expand_for_solving(node):
+    current = sim(node)
+    i = 0
+    while i < 4:
+        nxt = sim(expand_mul_distribute(expand_integer_power_for_solving(current)))
+        if same(nxt, current):
+            break
+        current = nxt
+        i += 1
+    return canonical_compare_form(current)
+
+
 def maybe_expand_binomial_text(node):
     expanded = maybe_expand_for_compare(node)
     if same(expanded, node):
@@ -5086,6 +5145,9 @@ def solve_equation(node):
     expanded = maybe_expand_for_compare(expr)
     reduced = canonical_compare_form(expanded)
     working = reduced if not same(reduced, expanded) else expanded
+    expanded_working = expand_for_solving(working)
+    if not same(expanded_working, working):
+        working = expanded_working
     var_name = choose_primary_var(working)
     if var_name is None:
         if is_zero(working):

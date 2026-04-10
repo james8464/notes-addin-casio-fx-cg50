@@ -3266,6 +3266,82 @@ def equation_line(left, right):
     return show(left) + " = " + show(right)
 
 
+def match_ratio_identity_pair(left, right):
+    left = sim(left)
+    right = sim(right)
+    pairs = [
+        ("tan", "sin", "cos"),
+        ("cot", "cos", "sin"),
+    ]
+    i = 0
+    while i < len(pairs):
+        name, top_name, bot_name = pairs[i]
+        if left[0] == "fn" and left[1] == name and right[0] == "div":
+            top = sim(right[1])
+            bot = sim(right[2])
+            if top[0] == "fn" and bot[0] == "fn" and top[1] == top_name and bot[1] == bot_name and same(left[2], top[2]) and same(left[2], bot[2]):
+                return name, left[2], False
+        if right[0] == "fn" and right[1] == name and left[0] == "div":
+            top = sim(left[1])
+            bot = sim(left[2])
+            if top[0] == "fn" and bot[0] == "fn" and top[1] == top_name and bot[1] == bot_name and same(right[2], top[2]) and same(right[2], bot[2]):
+                return name, right[2], True
+        i += 1
+    if left[0] == "fn" and left[1] == "sec" and right[0] == "div" and same(right[1], num(1)) and right[2][0] == "fn" and right[2][1] == "cos" and same(left[2], right[2][2]):
+        return "sec", left[2], False
+    if right[0] == "fn" and right[1] == "sec" and left[0] == "div" and same(left[1], num(1)) and left[2][0] == "fn" and left[2][1] == "cos" and same(right[2], left[2][2]):
+        return "sec", right[2], True
+    if left[0] == "fn" and left[1] == "cosec" and right[0] == "div" and same(right[1], num(1)) and right[2][0] == "fn" and right[2][1] == "sin" and same(left[2], right[2][2]):
+        return "cosec", left[2], False
+    if right[0] == "fn" and right[1] == "cosec" and left[0] == "div" and same(left[1], num(1)) and left[2][0] == "fn" and left[2][1] == "sin" and same(right[2], left[2][2]):
+        return "cosec", right[2], True
+    return None
+
+
+def standard_ratio_identity_lines(lhs, rhs):
+    match = match_ratio_identity_pair(lhs, rhs)
+    if match is None:
+        return None
+    name, arg, reversed_side = match
+    if name == "tan":
+        note = "Use tan(A) = sin(A)/cos(A)."
+        rewritten = div(fn("sin", arg), fn("cos", arg))
+    elif name == "cot":
+        note = "Use cot(A) = cos(A)/sin(A)."
+        rewritten = div(fn("cos", arg), fn("sin", arg))
+    elif name == "sec":
+        note = "Use sec(A) = 1/cos(A)."
+        rewritten = div(num(1), fn("cos", arg))
+    else:
+        note = "Use cosec(A) = 1/sin(A)."
+        rewritten = div(num(1), fn("sin", arg))
+    source = rhs if reversed_side else lhs
+    source_name = "RHS" if reversed_side else "LHS"
+    target_name = "LHS" if reversed_side else "RHS"
+    return compact_lines([
+        start_line(source_name, source),
+        note,
+        step_line(rewritten),
+        "= " + target_name,
+        "LHS = RHS",
+    ])
+
+
+def direct_expression_transform_lines(source_expr, target_expr, target_text):
+    rewritten, note = direct_double_angle_rewrite(source_expr)
+    if rewritten is not None and equivalent(rewritten, target_expr):
+        return compact_lines([
+            show(source_expr),
+            note,
+            "= " + show(rewritten),
+            "Hence " + target_text.strip(),
+        ])
+    ratio_lines = standard_ratio_identity_lines(source_expr, target_expr)
+    if ratio_lines is not None:
+        return compact_lines(list(ratio_lines[:-1]) + ["Hence " + target_text.strip()])
+    return None
+
+
 def ordered_sum_text(nodes):
     out = ""
     i = 0
@@ -6282,9 +6358,15 @@ def solve_prove(lhs, rhs, route):
     rhs = sim(rhs)
     if same(lhs, rhs):
         return ["LHS = RHS"]
+    ratio_lines = standard_ratio_identity_lines(lhs, rhs)
+    if ratio_lines is not None:
+        return ratio_lines
     lines = prove_direct(lhs, rhs, route)
     if lines is not None:
-        return compact_lines(finalize_proof_lines(lines))
+        lines = compact_lines(finalize_proof_identity_lines(finalize_proof_lines(lines)))
+        if len(lines) != 0 and lines[-1] != "LHS = RHS" and equivalent(lhs, rhs):
+            lines = compact_lines(lines + ["LHS = RHS"])
+        return lines
     if equivalent(lhs, rhs):
         lines = prove_by_difference_zero(lhs, rhs)
         if lines is not None:
@@ -7829,6 +7911,10 @@ def solve_transform_text(eq1_text, eq2_text):
         return [show(eq1_lhs), '= ' + show(eq2_lhs)]
     if same(eq1_lhs, eq2_lhs) and same(eq1_rhs, eq2_rhs):
         return [equation_line(eq1_lhs, eq1_rhs)]
+    if expression_only:
+        direct_lines = direct_expression_transform_lines(eq1_lhs, eq2_lhs, eq2_text)
+        if direct_lines is not None:
+            return direct_lines
     if equivalent(eq1_lhs, eq2_lhs) and not same(eq1_lhs, eq2_lhs) and same(eq2_lhs, num(1)) and eq1_lhs[0] == 'div' and same(eq1_lhs[1], eq1_lhs[2]) and has_variable_dependency(eq1_lhs[1]):
         raise ValueError('Equation 2 does not match Equation 1 under domain restrictions.')
     if equivalent(eq1_lhs, eq2_lhs) and equivalent(eq1_rhs, eq2_rhs) and not expression_only:
@@ -14890,17 +14976,22 @@ def solve_prove_text(text, route):
     if lines is not None:
         return compact_lines(lines)
     lhs, rhs = parse_identity(text)
-    lines = prove_cot_quadratic_equation(lhs, rhs)
-    if lines is not None:
-        lines = compact_lines(lines)
-    else:
-        lines = special_text_proof(text, route)
+    try:
+        lines = prove_cot_quadratic_equation(lhs, rhs)
         if lines is not None:
             lines = compact_lines(lines)
         else:
-            if is_domain_restricted_identity_pair(lhs, rhs):
-                raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
-            lines = solve_prove(lhs, rhs, route)
+            lines = special_text_proof(text, route)
+            if lines is not None:
+                lines = compact_lines(lines)
+            else:
+                if is_domain_restricted_identity_pair(lhs, rhs):
+                    raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
+                lines = solve_prove(lhs, rhs, route)
+    except ValueError as err:
+        if "Division by zero" in str(err) and not equivalent(lhs, rhs):
+            raise ValueError("This is not an identity, so prove/show mode cannot be used.")
+        raise
     if len(lines) != 0 and lines[-1] in ('= RHS', '= LHS'):
         lines = compact_lines(lines + ['LHS = RHS'])
     return lines

@@ -2477,14 +2477,38 @@ def integrate_quadratic_rational(node, var):
     F = quad_info(A[2], D)
     if B is None or F is None or len(B) > 2:
         return None, None
-    G = quad_scale(A[2], D)
-    if G is None:
-        return None, None
     J, K, M = F
     H = B[1]if len(B) > 1 else num(0)
     L = B[0]
     E = divq(H, mulq(num(2), J))if not is_zero(H)else num(0)
     I = subq(L, mulq(E, K))
+    G = quad_scale(A[2], D)
+    disc = subq(mulq(K, K), mulq(num(4), mulq(J, M)))
+    lines = []
+    if not is_zero(E) and not is_zero(I):
+        lines.append('Split the numerator into a multiple of the derivative of the denominator plus a constant.')
+    elif not is_zero(E):
+        lines.append('Use the standard result for f\'(x)/f(x).')
+    elif not is_zero(I):
+        lines.append('Use the standard result for 1/quadratic.')
+    if G is None:
+        if is_num(disc) and disc[1] > 0:
+            root = sqrt_num(disc)
+            if root is None:
+                root = fn('sqrt', disc)
+            linear = add([mul([num(2), J, sym(D)]), K])
+            G = mul([div(num(1), root), fn('log', fn('abs', div(add([linear, neg(root)]), add([linear, root]))))])
+            if not is_zero(I):
+                lines.append('Use the standard result for 1/(u^2-a^2).')
+        elif is_zero(disc):
+            linear = add([mul([num(2), J, sym(D)]), K])
+            G = neg(div(num(2), linear))
+            if not is_zero(I):
+                lines.append('Use the repeated-root quadratic standard result.')
+        else:
+            return None, None
+    elif not is_zero(I):
+        lines.append('Use the standard result for 1/(u^2+a^2).')
     C = []
     if not is_zero(E):
         C.append(mul([E, fn('log', fn('abs', A[2]))]))
@@ -2492,7 +2516,7 @@ def integrate_quadratic_rational(node, var):
         C.append(mul([I, G]))
     if len(C) == 0:
         return num(0), []
-    return add(C), []
+    return add(C), lines
 
 
 def split_linear_quadratic_product(node, var):
