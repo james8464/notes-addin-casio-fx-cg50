@@ -1071,6 +1071,8 @@ def sim(node):
     if R == 'fn':
         S = L[1]
         N = sim(L[2])
+        if S == 'exp' and N[0] == 'fn' and N[1] == 'log':
+            return N[2]
         # Handle two-argument log: log(base, exp) = ln(exp)/ln(base)
         if S == 'log' and N[0] == 'mul' and len(N[1]) == 2:
             base = N[1][0]
@@ -1129,6 +1131,8 @@ def sim(node):
     if R == 'pow':
         D = sim(L[1])
         B = sim(L[2])
+        if same(D, E) and B[0] == 'fn' and B[1] == 'log':
+            return B[2]
         if is_num(B):
             if is_zero(B):
                 return num(1)
@@ -3275,31 +3279,34 @@ def integrate_standard_term(node, var):
         deriv_denom = safe_diff(denominator, C)
         if deriv_denom is None:
             deriv_denom = num(0)
-        same_ratio = False
-        if same(deriv_denom, numerator):
-            same_ratio = True
-        elif is_num(numerator) and is_num(deriv_denom) and not is_zero(deriv_denom):
-            ratio = divq(numerator, deriv_denom)
-            same_ratio = is_one(ratio)
-        if same_ratio:
-            result = fn('log', fn('abs', denominator))
-            return result, ['Use the standard result for f\'(x)/f(x) -> ln|f(x)|.',
-                           'So I = ' + pretty(result) + ' + C']
-        coeff, base_numer = split_coeff(numerator)
-        if not is_one(coeff):
-            deriv_check = safe_diff(denominator, C)
-            if deriv_check is None:
-                deriv_check = num(0)
-            same_ratio = False
-            if same(deriv_check, base_numer):
-                same_ratio = True
-            elif is_num(base_numer) and is_num(deriv_check) and not is_zero(deriv_check):
-                ratio = divq(base_numer, deriv_check)
-                same_ratio = is_one(ratio)
-            if same_ratio:
-                result = mul([coeff, fn('log', fn('abs', denominator))])
-                return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
+        deriv_forms = [
+            deriv_denom,
+            normalize_add_coeffs(expand_small_recursive(deriv_denom)),
+        ]
+        numerator_forms = [
+            numerator,
+            normalize_add_coeffs(expand_small_recursive(numerator)),
+        ]
+        coeff = None
+        i = 0
+        while i < len(numerator_forms) and coeff is None:
+            j = 0
+            while j < len(deriv_forms):
+                if not is_zero(deriv_forms[j]):
+                    candidate = quotient_by_target(numerator_forms[i], deriv_forms[j])
+                    if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
+                        coeff = sim(candidate)
+                        break
+                j += 1
+            i += 1
+        if coeff is not None:
+            log_part = fn('log', fn('abs', denominator))
+            result = log_part if is_one(coeff) else mul([coeff, log_part])
+            if is_one(coeff):
+                return result, ['Use the standard result for f\'(x)/f(x) -> ln|f(x)|.',
                                'So I = ' + pretty(result) + ' + C']
+            return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
+                           'So I = ' + pretty(result) + ' + C']
     
     # Pattern: f(x)/sqrt(1-f(x)^2) integrates to asin(f(x)) + C
     # Also handles: f(x)/(1+f(x)^2) integrates to atan(f(x)) + C
@@ -3916,10 +3923,69 @@ def trig_rewrite_step(node, var=None):
     return None, None
 
 
+def integrate_shifted_sinodd_cos2(node, var):
+    coeff, rest = split_const_mul(node, var)
+    factors = list(flat(rest, 'mul')) if rest[0] == 'mul' else [rest]
+    sin_arg = None
+    cos_arg = None
+    used = [False] * len(factors)
+    i = 0
+    while i < len(factors):
+        factor = factors[i]
+        if factor[0] == 'pow' and is_int_num(factor[2]):
+            base = factor[1]
+            power_value = factor[2][1]
+            if base[0] == 'fn' and base[1] == 'sin' and power_value == 5 and sin_arg is None:
+                sin_arg = base[2]
+                used[i] = True
+            elif base[0] == 'fn' and base[1] == 'cos' and power_value == 2 and cos_arg is None:
+                cos_arg = base[2]
+                used[i] = True
+        i += 1
+    if sin_arg is None or cos_arg is None:
+        return None, None
+    i = 0
+    while i < len(factors):
+        if not used[i] and not is_one(factors[i]):
+            return None, None
+        i += 1
+    if linear_info(sin_arg, var) is None or linear_info(cos_arg, var) is None:
+        return None, None
+
+    terms = []
+    for mult, base_coeff in ((1, 10), (3, -5), (5, 1)):
+        u = sim(mul([num(mult), sin_arg]))
+        v = sim(mul([num(2), cos_arg]))
+        terms.append(mul([coeff, num(base_coeff, 32), fn('sin', u)]))
+        terms.append(mul([coeff, num(base_coeff, 64), fn('sin', add([u, v]))]))
+        terms.append(mul([coeff, num(base_coeff, 64), fn('sin', add([u, neg(v)]))]))
+    expanded = normalize_add_coeffs(expand_small_recursive(add(terms)))
+    ans, ans_lines = integrate_standard(expanded, var)
+    if ans is None:
+        return None, None
+    lines = [
+        'Use sin^5(A) = (10sin(A)-5sin(3A)+sin(5A))/16.',
+        'Use cos^2(B) = (1+cos(2B))/2.',
+        'Use sin(P)cos(Q) = 1/2[sin(P+Q)+sin(P-Q)].',
+        'So I = Int[' + pretty(expanded) + '] d' + var,
+    ]
+    if ans_lines is not None:
+        i = 0
+        while i < len(ans_lines):
+            if ans_lines[i] not in lines:
+                lines.append(ans_lines[i])
+            i += 1
+    lines.append('= ' + pretty(ans) + ' + C')
+    return ans, lines
+
+
 def integrate_trig(node, var, allow_steps=True):
     E = allow_steps
     C = var
     B = node
+    shifted_ans, shifted_lines = integrate_shifted_sinodd_cos2(B, C)
+    if shifted_ans is not None:
+        return shifted_ans, shifted_lines if E else []
     D = []
     F = False
     G = 0
@@ -4078,7 +4144,7 @@ def integrate_termwise_with(node, var, solver, depth):
 def integrate_dv_subproblem(node, var, depth=0):
     C = var
     B = node
-    if depth > 4:
+    if depth > 24:
         return None, None
     A, D = integrate_standard(B, C)
     if A is not None:
@@ -4096,7 +4162,7 @@ def integrate_u_subproblem(node, var='u', depth=0):
     D = depth
     C = var
     B = node
-    if D > 4:
+    if D > 24:
         return None, None
     A, E = integrate_termwise_with(B, C, integrate_u_subproblem, D)
     if A is not None:
@@ -4443,7 +4509,7 @@ def choose_parts(node, var):
 def integrate_by_parts(node, var, depth=0):
     H = depth
     A = var
-    if H > 4:
+    if H > 24:
         return None, None
     P, Q = split_const_mul(node, A)
     if Q[0] == 'fn' and Q[1] == 'log' and Q[2][0] == 'add':
@@ -5038,6 +5104,47 @@ def integrate_partial(node, var):
     D = node
     if D[0] != 'div':
         return None, None
+    if is_one(D[1]) and quad_info(D[2], E) is not None:
+        A, B = integrate_quadratic_rational(D, E)
+        if A is not None:
+            lines = [
+                'Use partial fractions, first checking for common factors.',
+                'After cancellation the integrand is ' + pretty(D) + ', so no decomposition is needed.',
+            ]
+            if B is not None:
+                i = 0
+                while i < len(B):
+                    if B[i] not in lines:
+                        lines.append(B[i])
+                    i += 1
+            lines.append('So I = ' + pretty(A) + ' + C')
+            return A, lines
+    if D[2][0] == 'mul':
+        factors = list(flat(D[2], 'mul'))
+        i = 0
+        while i < len(factors):
+            coeff = quotient_by_target(D[1], factors[i])
+            if coeff is not None and not depends(coeff, E):
+                remaining = make_mul(factors[:i] + factors[i + 1:])
+                reduced = div(coeff, remaining)
+                A, B = integrate_standard(reduced, E)
+                if A is None:
+                    A, B = integrate_quadratic_rational(reduced, E)
+                if A is not None:
+                    lines = [
+                        'Use partial fractions, first checking for common factors.',
+                        'Cancel the common factor ' + pretty(factors[i]) + '.',
+                        pretty(D) + ' = ' + pretty(reduced),
+                    ]
+                    if B is not None:
+                        j = 0
+                        while j < len(B):
+                            if B[j] not in lines:
+                                lines.append(B[j])
+                            j += 1
+                    lines.append('So I = ' + pretty(A) + ' + C')
+                    return A, lines
+            i += 1
     J = poly_num(D[1], E)
     F = poly_num(D[2], E)
     if J is None or F is None:
@@ -5808,7 +5915,7 @@ def integrate_auto(node, var, depth=0, allow_termwise=True, return_kind=False):
         if return_kind:
             return kind, ans, A
         return ans, A
-    if F > 4:
+    if F > 24:
         return E(None, None, None)
     G = integral_is_rational_division(C, D)
     for H in auto_integral_routes(G, allow_termwise):

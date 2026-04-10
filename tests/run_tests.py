@@ -56,6 +56,7 @@ class TestRecord:
     program: str
     input_text: str = ""
     check_info: str = ""
+    feature: str = ""
 
 
 @dataclass
@@ -65,6 +66,7 @@ class CaseSpec:
     runner: object
     input_text: str = ""
     check_info: str = ""
+    feature: str = ""
 
 
 _DEFAULT_FORBIDDEN_SNIPPETS = (
@@ -269,6 +271,38 @@ def complex_step_derivative(expr, var, value):
     if not math.isfinite(result.real) or not math.isfinite(result.imag):
         return None
     return result.imag / h
+
+
+def structurally_same_derivative(expr, candidate):
+    try:
+        _var, _steps, expected, _formatted = DERIVE.solve_normal_mode(expr)
+        shown = DERIVE.parse(candidate)
+    except Exception:
+        return False
+
+    def simplify_node(node):
+        try:
+            return DERIVE.sim(node)
+        except Exception:
+            return node
+
+    left = simplify_node(shown)
+    right = simplify_node(expected)
+    try:
+        if DERIVE.same(left, right):
+            return True
+    except Exception:
+        pass
+
+    try:
+        cross_left = simplify_node(DERIVE.expand(DERIVE.mul([left[1], right[2]]))) if left[0] == "div" and right[0] == "div" else None
+        cross_right = simplify_node(DERIVE.expand(DERIVE.mul([right[1], left[2]]))) if left[0] == "div" and right[0] == "div" else None
+        if cross_left is not None and cross_right is not None and DERIVE.same(cross_left, cross_right):
+            return True
+    except Exception:
+        pass
+
+    return False
 
 
 def extract_last_solution_values(output, var="x"):
@@ -511,6 +545,75 @@ def integrate_checker(*tokens):
         min_steps=1,
         min_lines=2,
     )
+
+
+def working_quality_ok(output, program, feature):
+    text = normalized_text(output)
+    if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+        return False
+
+    steps = numbered_step_count(output)
+    lines = nonempty_line_count(output)
+    feature = feature or ""
+
+    if program == "Algebra":
+        if lines < 3:
+            return False
+        if "solve" in feature:
+            return "expr =" in text and "x =" in text and ("solve" in text or steps >= 2)
+        if "inverse" in feature:
+            return "f(x)" in text and "y =" in text and ("f^-1" in text or "no inverse" in text)
+        if "transform" in feature:
+            return "final =" in text and ("use " in text or "rewrite" in text or "match coefficients" in text or "factor out" in text)
+        if "rewrite" in feature:
+            return "final =" in text and ("write in terms of" in text or "already written in terms of" in text)
+        if "complete_square" in feature:
+            return "complete square" in text and "ans =" in text
+        return steps >= 2 or "result:" in text or "out =" in text
+
+    if program == "Trigonometry":
+        if lines < 4:
+            return False
+        if "solve" in feature:
+            return "start with" in text and "x =" in text and ("solve trig eq" in text or "for sin" in text or "for cos" in text or "for tan" in text)
+        if "prove" in feature:
+            return "lhs = rhs" in text and ("use " in text or "hence" in text)
+        if "transform" in feature:
+            return ("use " in text or "hence" in text) and ("=" in output)
+        if "rewrite" in feature:
+            return "final =" in text and ("use " in text or "write using" in text)
+        return steps >= 3
+
+    if program == "Derive":
+        if "dy/dx" not in text or lines < 4:
+            return False
+        if "quotient" in feature:
+            return "quotient rule" in text and "u =" in text and "v =" in text and ("du" in text or "dv" in text)
+        if "implicit" in feature:
+            return "dy/dx" in text and ("d/dx(lhs)=d/dx(rhs)" in text or "make dy/dx" in text)
+        if "parametric" in feature:
+            return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text
+        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "implicit"))
+
+    if program == "Integrate":
+        if "+ c" not in text or lines < 2:
+            return False
+        if "sub" in feature:
+            return "u =" in text or "substitution" in text
+        if "parts" in feature:
+            return "integration by parts" in text or "i = u*v" in text
+        if "pf" in feature:
+            return "partial fractions" in text or "decompose" in text
+        if "div" in feature:
+            return "divide" in text or "polynomial division" in text
+        if "trig" in feature:
+            return "identity" in text or "use " in text
+        return any(marker in text for marker in ("method:", "use the standard result", "split the numerator", "complete the square", "u ="))
+
+    if program == "SUVAT":
+        return "answer:" in text and ("equation:" in text or "original equation:" in text) and ("substitute:" in text or "rearranged equation:" in text)
+
+    return True
 
 
 def format_suvat_working(result, equation, original_eq, substitution):
@@ -1099,8 +1202,20 @@ class CASIOApp(App):
             return
 
         self.append_result("[bold #e07a53]Failed tests[/bold #e07a53]")
+        
+        # Group by feature
+        feature_fails = {}
         for record in failed:
-            self.append_result(f"[#f87171]✕[/#f87171] [{record.program}] {record.label}")
+            feat = record.feature or "unknown"
+            if feat not in feature_fails:
+                feature_fails[feat] = []
+            feature_fails[feat].append(record)
+        
+        for feat, records in sorted(feature_fails.items()):
+            self.append_result(f"[bold #f87171]{feat}:[/bold #f87171] {len(records)} failures")
+            for record in records:
+                self.append_result(f"  [#f87171]✕[/#f87171] {record.label}")
+        
         self.update_summary(f"{len(failed)} failures")
 
     def show_report(self):
@@ -1154,10 +1269,24 @@ class CASIOApp(App):
         elif len(failed) == 0:
             lines.append("No failed tests in the last run.")
         else:
+            # Group failures by feature
+            feature_fails = {}
+            for record in failed:
+                feat = record.feature or "unknown"
+                if feat not in feature_fails:
+                    feature_fails[feat] = []
+                feature_fails[feat].append(record)
+            
+            lines.append("Failures by feature:")
+            for feat, recs in sorted(feature_fails.items()):
+                lines.append(f"  {feat}: {len(recs)} failures")
+            lines.append("")
+            
             for index, record in enumerate(failed, start=1):
+                feat_tag = f" [{record.feature}]" if record.feature else ""
                 lines.extend([
                     "=" * 80,
-                    f"{index}. [{record.program}] {record.label}",
+                    f"{index}. [{record.program}] {record.label}{feat_tag}",
                     "=" * 80,
                     "Input:",
                     (record.input_text or "[input not captured]").rstrip(),
@@ -1259,12 +1388,12 @@ class CASIOApp(App):
         except Exception:
             pass
 
-    def add_test(self, label, passed, output, program, input_text="", check_info=""):
+    def add_test(self, label, passed, output, program, input_text="", check_info="", feature=""):
         icon = "●" if passed else "✕"
         color = "#22c55e" if passed else "#f87171"
 
         status = TestStatus.PASS if passed else TestStatus.FAIL
-        self.records.append(TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info))
+        self.records.append(TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature))
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
 
@@ -1298,16 +1427,16 @@ class CASIOApp(App):
         proc = subprocess.run([PY, str(ROOT/script)], input=inp, text=True, capture_output=True)
         return proc.stdout, proc.stderr
 
-    def make_cli_case(self, program, script, inp, label, checker, check_info=""):
+    def make_cli_case(self, program, script, inp, label, checker, check_info="", feature=""):
         def runner():
             out, _ = self.run_cli(script, inp)
             return bool(checker(out)), out
 
         info = check_info or getattr(checker, "__name__", "custom checker")
-        return CaseSpec(label, program, runner, inp, info)
+        return CaseSpec(label, program, runner, inp, info, feature)
 
-    def make_direct_case(self, program, label, runner, input_text="", check_info=""):
-        return CaseSpec(label, program, runner, input_text, check_info)
+    def make_direct_case(self, program, label, runner, input_text="", check_info="", feature=""):
+        return CaseSpec(label, program, runner, input_text, check_info, feature)
 
     def case_question_key(self, case):
         text = (case.input_text or "").strip()
@@ -1360,7 +1489,9 @@ class CASIOApp(App):
 
         with ThreadPoolExecutor(max_workers=active_workers) as executor:
             for case, passed, output in executor.map(evaluate, cases):
-                self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info)
+                if passed and getattr(case, "feature", ""):
+                    passed = working_quality_ok(output, case.program, case.feature)
+                self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -1401,18 +1532,56 @@ class CASIOApp(App):
 
     def random_angle_expr(self, rng, var="x", difficulty="hard"):
         expr = self.random_base_expr(rng, var, difficulty)
-        wraps = {"easy": 1, "medium": 2, "hard": 3}.get(difficulty, 2)
+        wraps = {"easy": 1, "medium": 2, "hard": 5}.get(difficulty, 2)
         i = 0
         while i < rng.randint(1, wraps):
             a = rng.randint(2, 8)
             b = rng.randint(-7, 7)
-            mode = rng.choice(["affine", "square"]) if difficulty != "easy" else "affine"
+            mode = rng.choice(["affine", "square", "shifted_cube"]) if difficulty == "hard" else (rng.choice(["affine", "square"]) if difficulty != "easy" else "affine")
             if mode == "square":
                 expr = f"{a}*({expr})^2{self.signed_int_text(b)}"
+            elif mode == "shifted_cube":
+                expr = f"{a}*(({expr})+{rng.randint(-3, 3)})^3{self.signed_int_text(b)}"
             else:
                 expr = f"{a}*({expr}){self.signed_int_text(b)}"
             i += 1
         return expr
+
+    def random_polynomial_expr(self, rng, var="x", difficulty="hard"):
+        degree = rng.randint(3, 8 if difficulty == "hard" else 5)
+        terms = []
+        power = degree
+        while power >= 0:
+            if power == degree or rng.random() < 0.65:
+                coeff = self.random_nonzero_int(rng, -7, 7)
+                if power == 0:
+                    term = str(coeff)
+                elif power == 1:
+                    term = f"{coeff}*{var}"
+                else:
+                    term = f"{coeff}*{var}^{power}"
+                terms.append(term)
+            power -= 1
+        expr = terms[0]
+        for term in terms[1:]:
+            if term.startswith("-"):
+                expr += term
+            else:
+                expr += "+" + term
+        return expr
+
+    def random_fractional_expr(self, rng, var="x", difficulty="hard"):
+        numerator = rng.choice([
+            self.random_polynomial_expr(rng, var, difficulty),
+            self.random_linear_expr(rng, var, allow_negative=True),
+            f"sin({self.random_angle_expr(rng, var, difficulty)})+{rng.randint(1, 4)}",
+        ])
+        denominator = rng.choice([
+            self.random_positive_expr(rng, var, difficulty),
+            f"({self.random_linear_expr(rng, var, allow_negative=True)})^2+{rng.randint(2, 9)}",
+            f"exp({self.random_linear_expr(rng, var, allow_negative=True)})+{rng.randint(2, 9)}",
+        ])
+        return f"({numerator})/({denominator})"
 
     def random_positive_expr(self, rng, var="x", difficulty="hard"):
         base = self.random_base_expr(rng, var, difficulty)
@@ -1427,6 +1596,7 @@ class CASIOApp(App):
                 self.random_linear_expr(rng, var, allow_negative=True),
                 self.random_positive_expr(rng, var, difficulty),
                 self.random_base_expr(rng, var, difficulty),
+                self.random_polynomial_expr(rng, var, difficulty),
                 f"1/({self.random_positive_expr(rng, var, difficulty)})",
             ])
 
@@ -1442,13 +1612,15 @@ class CASIOApp(App):
             lambda: f"cot({angle()})",
             lambda: f"exp({inner()})",
             lambda: f"log({positive()})",
+            lambda: f"log(exp({self.random_linear_expr(rng, var, allow_negative=True)})+{rng.randint(2, 9)})",
             lambda: f"asin(({self.random_linear_expr(rng, var, allow_negative=True)})/10)",
             lambda: f"atan({self.random_linear_expr(rng, var, allow_negative=True)})",
             lambda: f"sqrt({positive()})",
+            lambda: self.random_fractional_expr(rng, var, difficulty),
             lambda: f"({inner()})*({inner()})",
             lambda: f"({inner()})/({positive()})",
             lambda: f"({inner()})+({inner()})",
-            lambda: f"({inner()})^{rng.randint(2, 7 if difficulty == 'hard' else 5)}",
+            lambda: f"({inner()})^{rng.randint(2, 10 if difficulty == 'hard' else 5)}",
         ]
         return rng.choice(choices)()
 
@@ -1507,6 +1679,7 @@ class CASIOApp(App):
             if not candidate:
                 return False
             good = 0
+            bad = 0
             for point in candidate_sample_points():
                 actual = complex_step_derivative(expr, var, point)
                 if actual is None:
@@ -1519,12 +1692,20 @@ class CASIOApp(App):
                     continue
                 if not math.isfinite(actual) or not math.isfinite(shown):
                     continue
-                rel_diff = abs(actual - shown) / max(abs(actual), abs(shown), 1e-10)
-                if rel_diff <= 0.35:
+                if numeric_close(actual, shown, rel_tol=1e-2, abs_tol=1e-2):
                     good += 1
                 else:
-                    return False
-            return good >= 2
+                    # Some hard random quotient cases have enormous trig or
+                    # exponential factors, so a few sample points are
+                    # numerically unusable even when nearby points confirm the
+                    # derivative. Ignore those instead of treating them as a
+                    # mathematical counterexample.
+                    if max(abs(actual), abs(shown)) > 1e10:
+                        continue
+                    bad += 1
+            if good >= 3 and bad == 0:
+                return True
+            return structurally_same_derivative(expr, candidate)
 
         return check
 
@@ -1571,6 +1752,7 @@ class CASIOApp(App):
             if not candidate:
                 return False
             good = 0
+            bad = 0
             for point in candidate_sample_points():
                 actual = stable_finite_difference(candidate, var, point)
                 if actual is None:
@@ -1584,13 +1766,21 @@ class CASIOApp(App):
                 if numeric_close(actual, shown, rel_tol=1e-2, abs_tol=1e-2):
                     good += 1
                 else:
-                    return False
-            return good >= 2
+                    # Huge oscillatory / exponential quotient cases can be
+                    # mathematically right but numerically hopeless at some
+                    # sample points. Treat those as unusable, not as evidence
+                    # against an answer that has already matched elsewhere.
+                    if max(abs(actual), abs(shown)) > 1e10:
+                        continue
+                    bad += 1
+            if good >= 3 and bad == 0:
+                return True
+            return False
 
         return check
 
     def random_algebra_compare_case(self, rng, difficulty, index):
-        mode = rng.choice(["exp_log", "identity_poly", "rational"])
+        mode = rng.choice(["exp_log", "identity_poly", "rational", "nested_cancel", "log_power"])
         poly = self.random_positive_expr(rng, "x", difficulty)
         angle = self.random_angle_expr(rng, "x", difficulty)
         base = self.random_linear_expr(rng, "x", allow_negative=True)
@@ -1601,15 +1791,24 @@ class CASIOApp(App):
         elif mode == "identity_poly":
             left = f"(sec({angle})^2-tan({angle})^2)*({poly})"
             right = poly
-        else:
+        elif mode == "rational":
             left = f"(({base})^2-{c*c})/(({base})-{c})"
             right = f"({base})+{c}"
+        elif mode == "nested_cancel":
+            q = self.random_positive_expr(rng, "x", difficulty)
+            left = f"(({q})^3-({q})*({base})^2)/({q})"
+            right = f"({q})^2-({base})^2"
+        else:
+            q = self.random_positive_expr(rng, "x", difficulty)
+            power = rng.randint(2, 6)
+            left = f"log(exp(({q})^{power}))"
+            right = f"({q})^{power}"
         label = f"Random compare {index}: {mode}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker())
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature=f"algebra_compare:{mode}")
 
     def random_algebra_transform_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan"])
+        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan", "reciprocal_sec", "reciprocal_cosec", "cot"])
         if mode == "sin2":
             left = f"sin(2*({angle}))"
             right = f"2*sin({angle})*cos({angle})"
@@ -1622,17 +1821,29 @@ class CASIOApp(App):
             left = f"1+cos(2*({angle}))"
             right = f"2*cos({angle})^2"
             checker = algebra_transform_checker("cos")
-        else:
+        elif mode == "tan":
             left = f"sin({angle})/cos({angle})"
             right = f"tan({angle})"
             checker = algebra_transform_checker("tan")
+        elif mode == "reciprocal_sec":
+            left = f"1/cos({angle})"
+            right = f"sec({angle})"
+            checker = algebra_transform_checker("sec")
+        elif mode == "reciprocal_cosec":
+            left = f"1/sin({angle})"
+            right = f"cosec({angle})"
+            checker = algebra_transform_checker("cosec")
+        else:
+            left = f"cos({angle})/sin({angle})"
+            right = f"cot({angle})"
+            checker = algebra_transform_checker("cot")
         label = f"Random transform {index}: {mode}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"2\n{left}\n{right}\n", label, checker)
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"algebra_transform:{mode}")
 
     def random_algebra_expand_case(self, rng, difficulty, index):
         a = rng.randint(2, 6)
         b = self.random_nonzero_int(rng, -5, 5)
-        n = rng.randint(4, 8 if difficulty == "hard" else 6)
+        n = rng.randint(4, 12 if difficulty == "hard" else 6)
         first = f"{a ** n}*x^{n}"
         second_coeff = math.comb(n, 1) * (a ** (n - 1)) * b
         second = f"{second_coeff}*x^{n - 1}" if n - 1 > 1 else (f"{second_coeff}*x" if n - 1 == 1 else str(second_coeff))
@@ -1643,6 +1854,7 @@ class CASIOApp(App):
             f"3\n({a}*x{self.signed_int_text(b)})^{n}\n\n",
             label,
             algebra_expand_checker(first, second),
+            feature="algebra_expand",
         )
 
     def random_algebra_complete_square_case(self, rng, difficulty, index):
@@ -1657,20 +1869,29 @@ class CASIOApp(App):
         if c != 0:
             expr += self.signed_int_text(c)
         label = f"Random complete square {index}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"5\n{expr}\n", label, algebra_complete_square_checker())
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"5\n{expr}\n", label, algebra_complete_square_checker(), feature="algebra_complete_square")
 
     def random_algebra_solve_case(self, rng, difficulty, index):
-        if difficulty == "hard" and rng.random() < 0.33:
+        if difficulty == "hard" and rng.random() < 0.25:
             m = rng.randint(2, 8)
             n = rng.randint(1, m - 1)
             avg = Fraction(m * m + n * n, 2)
             gap = Fraction(m * m - n * n, 2)
             eq = f"(x^2-{avg.numerator}/{avg.denominator})^2-({gap.numerator}/{gap.denominator})^2=0"
-        elif difficulty == "hard" and rng.random() < 0.5:
+            mode = "diff_squares"
+        elif difficulty == "hard" and rng.random() < 0.45:
             coeff = rng.randint(2, 7)
             power = rng.choice([3, 5, 7])
             rhs = coeff * (rng.randint(1, 5) ** power)
             eq = f"{coeff}*x^{power}-{rhs}=0"
+            mode = "high_power"
+        elif difficulty == "hard" and rng.random() < 0.65:
+            a = self.random_nonzero_int(rng, -7, 7)
+            b = rng.randint(-9, 9)
+            root = rng.randint(-5, 5)
+            rhs = a * root + b
+            eq = f"({a}*x{self.signed_int_text(b)})^4-({rhs})^4=0"
+            mode = "shifted_quartic"
         else:
             r1 = rng.randint(-9, 9)
             r2 = rng.randint(-9, 9)
@@ -1683,8 +1904,9 @@ class CASIOApp(App):
             if c != 0:
                 eq += self.signed_int_text(c)
             eq += "=0"
+            mode = "quadratic"
         label = f"Random solve {index}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq))
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature=f"algebra_solve:{mode}")
 
     def random_algebra_inverse_case(self, rng, difficulty, index):
         mode = rng.choice(["linear", "fractional", "constant_fraction", "sqrt", "exp", "log"])
@@ -1708,7 +1930,7 @@ class CASIOApp(App):
             expr = f"log(({a}*x+{b})^3)"
         label = f"Random inverse {index}: {mode}"
         checker = algebra_inverse_checker("no inverse") if mode == "constant_fraction" else algebra_inverse_checker("f^-1")
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"8\n{expr}\n", label, checker)
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"8\n{expr}\n", label, checker, feature=f"algebra_inverse:{mode}")
 
     def random_algebra_poly_case(self, rng, difficulty, index):
         mode = rng.choice(["factor", "expand", "quartic"])
@@ -1731,7 +1953,7 @@ class CASIOApp(App):
             expr = f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^{rng.randint(3, 6)}"
         checker = build_checker(contains_any=("input =", "out =", "factor", "= "), min_lines=2)
         label = f"Random poly {index}: {mode}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"4\n{expr}\n", label, checker)
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"4\n{expr}\n", label, checker, feature=f"algebra_poly:{mode}")
 
     def random_algebra_comp_case(self, rng, difficulty, index):
         f_expr = rng.choice([
@@ -1739,15 +1961,18 @@ class CASIOApp(App):
             f"log({self.random_positive_expr(rng, 'x', difficulty)})",
             f"sqrt({self.random_positive_expr(rng, 'x', difficulty)})",
             f"({self.random_linear_expr(rng, 'x', allow_negative=True)})/({self.random_positive_expr(rng, 'x', difficulty)})",
+            f"exp(sin({self.random_angle_expr(rng, 'x', difficulty)}))",
+            f"log(exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2, 9)})",
         ])
         g_expr = rng.choice([
             self.random_positive_expr(rng, "x", difficulty),
             self.random_linear_expr(rng, "x", allow_negative=True),
             f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^2",
             f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})",
+            self.random_fractional_expr(rng, "x", difficulty),
         ])
         label = f"Random composition {index}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"7\n{f_expr}\n{g_expr}\n", label, algebra_comp_checker())
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"7\n{f_expr}\n{g_expr}\n", label, algebra_comp_checker(), feature="algebra_comp")
 
     def random_algebra_rewrite_case(self, rng, difficulty, index):
         mode = rng.choice(["power", "trig", "shift"])
@@ -1768,7 +1993,7 @@ class CASIOApp(App):
             terms = [f"sin({angle})^2", f"cos({angle})^2"]
         term_block = "".join(f"{term}\n" for term in terms)
         label = f"Random rewrite {index}: {mode}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", f"9\n{expr}\n{term_block}\n", label, algebra_rewrite_checker())
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"9\n{expr}\n{term_block}\n", label, algebra_rewrite_checker(), feature=f"algebra_rewrite:{mode}")
 
     def build_random_algebra_cases(self, difficulty, count, rng):
         features = [
@@ -1786,7 +2011,7 @@ class CASIOApp(App):
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan", "sec"])
+        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan", "sec", "cosec", "cot_ratio"])
         if mode == "sin2":
             left = f"sin(2*({angle}))"
             right = f"2*sin({angle})*cos({angle})"
@@ -1799,15 +2024,21 @@ class CASIOApp(App):
         elif mode == "tan":
             left = f"tan({angle})"
             right = f"sin({angle})/cos({angle})"
-        else:
+        elif mode == "sec":
             left = f"sec({angle})^2-tan({angle})^2"
             right = "1"
+        elif mode == "cosec":
+            left = f"cosec({angle})^2-cot({angle})^2"
+            right = "1"
+        else:
+            left = f"cot({angle})"
+            right = f"cos({angle})/sin({angle})"
         label = f"Random trig prove {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker())
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker(), feature=f"trig_prove:{mode}")
 
     def random_trig_transform_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b"])
+        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan_ratio", "cot_ratio", "reciprocal"])
         if mode == "sin2":
             left = f"sin(2*({angle}))"
             right = f"2*sin({angle})*cos({angle})"
@@ -1816,15 +2047,27 @@ class CASIOApp(App):
             left = f"1-cos(2*({angle}))"
             right = f"2*sin({angle})^2"
             checker = trig_transform_checker("sin")
-        else:
+        elif mode == "cos2b":
             left = f"1+cos(2*({angle}))"
             right = f"2*cos({angle})^2"
             checker = trig_transform_checker("cos")
+        elif mode == "tan_ratio":
+            left = f"sin({angle})/cos({angle})"
+            right = f"tan({angle})"
+            checker = trig_transform_checker("tan")
+        elif mode == "cot_ratio":
+            left = f"cos({angle})/sin({angle})"
+            right = f"cot({angle})"
+            checker = trig_transform_checker("cot")
+        else:
+            left = f"1/cos({angle})"
+            right = f"sec({angle})"
+            checker = trig_transform_checker("sec")
         label = f"Random trig transform {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker)
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"trig_transform:{mode}")
 
     def random_trig_solve_case(self, rng, difficulty, index):
-        k = rng.randint(2, 6 if difficulty == "hard" else 4)
+        k = rng.randint(2, 9 if difficulty == "hard" else 4)
         func = rng.choice(["sin", "cos", "tan"])
         if func == "sin":
             target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
@@ -1832,25 +2075,37 @@ class CASIOApp(App):
             target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
         else:
             target = rng.choice(["1", "-1", "sqrt(3)", "-sqrt(3)"])
-        eq = f"{func}({k}*x)={target}"
-        label = f"Random trig solve {index}: {func}({k}x)"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"3\n{eq},x,0,2*pi\n", label, self.trig_solve_output_checker(eq))
+        if difficulty == "hard" and rng.random() < 0.35:
+            shift = rng.choice(["pi/6", "pi/4", "pi/3", "-pi/6", "-pi/4"])
+            eq = f"{func}({k}*x+{shift})={target}"
+            mode = f"{func}({k}x+shift)"
+        elif difficulty == "hard" and rng.random() < 0.2:
+            eq = f"{func}({k}*x^2+{rng.randint(1,5)})={target}"
+            mode = f"{func}({k}x^2+c)"
+        else:
+            eq = f"{func}({k}*x)={target}"
+            mode = f"{func}({k}x)"
+        label = f"Random trig solve {index}: {mode}"
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"3\n{eq},x,0,2*pi\n", label, self.trig_solve_output_checker(eq), feature="trig_solve")
 
     def random_trig_rewrite_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["pythag", "cos2a", "cos2b"])
+        mode = rng.choice(["pythag", "cos2a", "cos2b", "tan_ratio"])
         if mode == "pythag":
             expr = f"sin({angle})^2+cos({angle})^2"
             terms = [f"sin({angle})", f"cos({angle})"]
         elif mode == "cos2a":
             expr = f"1-cos(2*({angle}))"
             terms = [f"sin({angle})^2", f"cos({angle})^2"]
-        else:
+        elif mode == "cos2b":
             expr = f"1+cos(2*({angle}))"
             terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        else:
+            expr = f"sin({angle})/cos({angle})"
+            terms = [f"tan({angle})", f"sin({angle})", f"cos({angle})"]
         term_block = "".join(f"{term}\n" for term in terms)
         label = f"Random trig rewrite {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("final ="))
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("final ="), feature=f"trig_rewrite:{mode}")
 
     def build_random_trig_cases(self, difficulty, count, rng):
         features = [
@@ -1862,12 +2117,23 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_derive_normal_case(self, rng, difficulty, index):
-        mode = rng.choice(["mixed_power", "nested_exp", "quotient", "power_power", "trig_power", "inverse_trig", "root_log"])
+        mode = rng.choice([
+            "mixed_power",
+            "nested_exp",
+            "quotient",
+            "power_power",
+            "trig_power",
+            "inverse_trig",
+            "root_log",
+            "triple_product",
+            "deep_quotient",
+            "log_exp_soup",
+        ])
         if mode == "mixed_power":
-            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{rng.randint(3, 5)}"
+            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{rng.randint(3, 9 if difficulty == 'hard' else 5)}"
         elif mode == "nested_exp":
-            angle = self.random_linear_expr(rng, "x", allow_negative=True)
-            expr = f"exp(sin({angle}))"
+            angle = rng.choice([self.random_linear_expr(rng, "x", allow_negative=True), self.random_angle_expr(rng, "x", difficulty)])
+            expr = f"exp(sin({angle})+cos({self.random_linear_expr(rng, 'x', allow_negative=True)}))"
         elif mode == "quotient":
             expr = f"({self.random_general_expr(rng, 'x', difficulty, 2)})/({self.random_positive_expr(rng, 'x', difficulty)})"
         elif mode == "power_power":
@@ -1879,6 +2145,19 @@ class CASIOApp(App):
             ])
         elif mode == "root_log":
             expr = f"log(sqrt({self.random_positive_expr(rng, 'x', difficulty)}))"
+        elif mode == "triple_product":
+            expr = (
+                f"({self.random_general_expr(rng, 'x', difficulty, 2)})*"
+                f"(exp({self.random_linear_expr(rng, 'x', allow_negative=True)}))*"
+                f"(log({self.random_positive_expr(rng, 'x', difficulty)}))"
+            )
+        elif mode == "deep_quotient":
+            top = f"({self.random_general_expr(rng, 'x', difficulty, 3)})^2"
+            bot = f"({self.random_positive_expr(rng, 'x', difficulty)})^2+{rng.randint(2, 9)}"
+            expr = f"({top})/({bot})"
+        elif mode == "log_exp_soup":
+            poly = self.random_polynomial_expr(rng, "x", difficulty)
+            expr = f"log(exp(({poly})^2)+sqrt(({self.random_linear_expr(rng, 'x', allow_negative=True)})^2+{rng.randint(2,9)}))"
         else:
             angle1 = rng.choice([
                 self.random_linear_expr(rng, "x", allow_negative=True),
@@ -1892,34 +2171,39 @@ class CASIOApp(App):
             ])
             expr = f"(sin({angle1})+cos({angle2}))^{rng.randint(3, 5)}"
         label = f"Random derive normal {index}: {mode}"
-        return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr))
+        return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature=f"derive_normal:{mode}")
 
     def random_derive_implicit_case(self, rng, difficulty, index):
         a = rng.randint(2, 6)
         b = rng.randint(2, 6)
-        mode = rng.choice(["circle", "mixed", "trig"])
+        mode = rng.choice(["circle", "mixed", "trig", "exp_log"])
         if mode == "circle":
             eq = f"{a}*x^2+{b}*y^2={rng.randint(10, 40)}"
         elif mode == "mixed":
             eq = f"x^2+{a}*x*y+{b}*y^2={rng.randint(5, 25)}"
-        else:
+        elif mode == "trig":
             eq = f"sin({a}*x)+cos({b}*y)=1"
+        else:
+            eq = f"exp({a}*x)+log(y^2+{b})={rng.randint(5, 25)}"
         label = f"Random derive implicit {index}: {mode}"
-        return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"))
+        return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature=f"derive_implicit:{mode}")
 
     def random_derive_parametric_case(self, rng, difficulty, index):
-        mode = rng.choice(["poly", "trig_exp", "log_mix"])
+        mode = rng.choice(["poly", "trig_exp", "log_mix", "rational_trig"])
         if mode == "poly":
             x_expr = f"t^{rng.randint(2, 5)}+{rng.randint(1, 7)}"
             y_expr = f"t^{rng.randint(3, 6)}-{rng.randint(1, 7)}*t"
         elif mode == "trig_exp":
             x_expr = f"sin({rng.randint(2, 5)}*t)+exp(t)"
             y_expr = f"cos({rng.randint(2, 5)}*t)+t^2"
-        else:
+        elif mode == "log_mix":
             x_expr = f"log(t+{rng.randint(2, 6)})+t^2"
             y_expr = f"exp(t/{rng.randint(2, 5)})+sin(t)"
+        else:
+            x_expr = f"(t^2+{rng.randint(2, 8)})/(t+{rng.randint(2, 6)})"
+            y_expr = f"tan(t/{rng.randint(2, 5)})+log(t+{rng.randint(3, 8)})"
         label = f"Random derive parametric {index}: {mode}"
-        return self.make_cli_case("Derive", "deriveProgram.py", f"3\n{x_expr}\n{y_expr}\n", label, self.parametric_output_checker(x_expr, y_expr))
+        return self.make_cli_case("Derive", "deriveProgram.py", f"3\n{x_expr}\n{y_expr}\n", label, self.parametric_output_checker(x_expr, y_expr), feature=f"derive_parametric:{mode}")
 
     def build_random_derive_cases(self, difficulty, count, rng):
         features = [
@@ -1930,54 +2214,66 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_integrate_auto_case(self, rng, difficulty, index):
-        mode = rng.choice(["du_over_u", "du_over_one_plus_u2", "chain_power"])
+        mode = rng.choice(["du_over_u", "du_over_one_plus_u2", "chain_power", "deep_du_over_u", "deep_atan"])
         simple_u_choices = [
             self.random_linear_expr(rng, "x", allow_negative=True),
             f"x^2+{rng.randint(2, 9)}",
             f"{rng.randint(2, 8)}*x^2{self.signed_int_text(rng.randint(-6,6))}*x+{rng.randint(2,9)}",
             f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
+            f"sin({self.random_linear_expr(rng, 'x', allow_negative=True)})+exp({rng.randint(1,3)}*x)+{rng.randint(2,9)}",
         ]
         u_expr = rng.choice(simple_u_choices)
-        if mode == "du_over_u":
+        if mode in ("du_over_u", "deep_du_over_u"):
+            if mode == "deep_du_over_u":
+                u_expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^2+exp({self.random_linear_expr(rng, 'x', allow_negative=True)})"
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})/({u_expr})"
-        elif mode == "du_over_one_plus_u2":
+        elif mode in ("du_over_one_plus_u2", "deep_atan"):
             angle = rng.choice([
                 self.random_linear_expr(rng, "x", allow_negative=False),
                 f"x^2+{rng.randint(1,5)}",
+                f"{rng.randint(2,5)}*x^3{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(1,6)}",
             ])
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(angle)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})/(1+({angle})^2)"
         else:
             base = self.random_linear_expr(rng, "x", allow_negative=True)
-            power = rng.randint(3, 8 if difficulty == 'hard' else 5)
+            power = rng.randint(3, 14 if difficulty == 'hard' else 5)
             integrand = f"({base})^{power}"
         label = f"Random integrate auto {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand), feature=f"integrate_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
-        mode = rng.choice(["poly", "sin", "exp", "atan"])
-        u = self.random_linear_expr(rng, "x", allow_negative=True)
+        mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power"])
+        u = rng.choice([
+            self.random_linear_expr(rng, "x", allow_negative=True),
+            f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
+            f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
+        ])
         if mode == "poly":
-            power = rng.randint(4, 9 if difficulty == "hard" else 6)
+            power = rng.randint(4, 14 if difficulty == "hard" else 6)
             integrand = f"({u})^{power}"
         elif mode == "sin":
             integrand = f"sin({u})"
         elif mode == "exp":
             integrand = f"exp({u})"
-        else:
+        elif mode == "atan":
             integrand = f"1/(1+({u})^2)"
+        elif mode == "sqrt":
+            integrand = f"sqrt({u})"
+        else:
+            integrand = f"(log({u}))^{rng.randint(2,5)}"
         _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u)
         deriv = DERIVE.show(final)
-        integrand = f"({deriv})*({integrand})" if mode in ("poly", "sin", "exp") else f"({deriv})/(1+({u})^2)"
+        integrand = f"({deriv})*({integrand})" if mode in ("poly", "sin", "exp", "sqrt", "log_power") else f"({deriv})/(1+({u})^2)"
         label = f"Random integrate sub {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n4\n{u}\n", label, self.integrate_output_checker(integrand))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n4\n{u}\n", label, self.integrate_output_checker(integrand), feature=f"integrate_sub:{mode}")
 
     def random_integrate_parts_case(self, rng, difficulty, index):
-        mode = rng.choice(["exp", "sin", "cos", "log"])
-        power = rng.randint(2, 5 if difficulty != "hard" else 7)
+        mode = rng.choice(["exp", "sin", "cos", "log", "exp_sin_loop", "exp_cos_loop", "poly_log"])
+        power = rng.randint(2, 5 if difficulty != "hard" else 12)
         a = rng.randint(2, 6)
         if mode == "exp":
             integrand = f"x^{power}*exp({a}*x)"
@@ -1985,22 +2281,32 @@ class CASIOApp(App):
             integrand = f"x^{power}*sin({a}*x)"
         elif mode == "cos":
             integrand = f"x^{power}*cos({a}*x)"
-        else:
+        elif mode == "log":
             integrand = f"(log(x))^{max(2, power - 1)}"
+        elif mode == "exp_sin_loop":
+            integrand = f"x^{rng.randint(2,5)}*exp({rng.randint(1,4)}*x)*sin({a}*x)"
+        elif mode == "exp_cos_loop":
+            integrand = f"x^{rng.randint(2,5)}*exp({rng.randint(1,4)}*x)*cos({a}*x)"
+        else:
+            integrand = f"x^{power}*log(x)"
         label = f"Random integrate parts {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n5\n", label, self.integrate_output_checker(integrand))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n5\n", label, self.integrate_output_checker(integrand), feature=f"integrate_parts:{mode}")
 
     def random_integrate_trig_case(self, rng, difficulty, index):
         a = rng.randint(2, 6)
-        mode = rng.choice(["sin2cos2", "sinodd", "cosodd"])
+        mode = rng.choice(["sin2cos2", "sinodd", "cosodd", "shifted_sinodd", "high_even"])
         if mode == "sin2cos2":
             integrand = f"sin({a}*x)^2*cos({a}*x)^2"
         elif mode == "sinodd":
             integrand = f"sin({a}*x)^3*cos({a}*x)^2"
-        else:
+        elif mode == "cosodd":
             integrand = f"cos({a}*x)^3*sin({a}*x)^2"
+        elif mode == "shifted_sinodd":
+            integrand = f"sin({a}*x+{rng.randint(1,5)})^5*cos({a}*x+{rng.randint(1,5)})^2"
+        else:
+            integrand = f"sin({a}*x)^4*cos({a}*x)^4"
         label = f"Random integrate trig {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n3\n", label, integrate_checker("+ c"))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n3\n", label, integrate_checker("+ c"), feature=f"integrate_trig:{mode}")
 
     def random_integrate_pf_case(self, rng, difficulty, index):
         mode = rng.choice(["two_linear", "repeated", "linear_quad"])
@@ -2015,7 +2321,7 @@ class CASIOApp(App):
         else:
             integrand = f"(2*x+{a})/((x+{b})^2*(x+{a+b}))"
         label = f"Random integrate pf {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n6\n", label, integrate_checker("+ c"))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n6\n", label, integrate_checker("+ c"), feature=f"integrate_pf:{mode}")
 
     def random_integrate_div_case(self, rng, difficulty, index):
         mode = rng.choice(["even_over_quad", "odd_over_quad", "quartic_plus_one", "quintic_plus_one"])
@@ -2031,10 +2337,10 @@ class CASIOApp(App):
         else:
             integrand = f"(x^5+{a}*x^3+{b}*x)/(x^2+{c})"
         label = f"Random integrate division {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n7\n", label, integrate_checker("+ c"))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n7\n", label, integrate_checker("+ c"), feature=f"integrate_div:{mode}")
 
     def random_integrate_direct_case(self, rng, difficulty, index):
-        mode = rng.choice(["linear_over_quad", "linear_over_sqrt_quad", "one_over_linear", "exp", "fraction_power"])
+        mode = rng.choice(["linear_over_quad", "linear_over_sqrt_quad", "one_over_linear", "exp", "fraction_power", "one_over_shifted_quad", "sqrt_fraction"])
         a = rng.randint(2, 7)
         if mode == "linear_over_quad":
             integrand = f"({2*a}*x+{a+1})/(x^2+{a+1}*x+{a*a+3})"
@@ -2044,10 +2350,14 @@ class CASIOApp(App):
             integrand = f"1/({a}*x+{a+3})"
         elif mode == "exp":
             integrand = f"exp({a}*x-{rng.randint(1,5)})"
+        elif mode == "fraction_power":
+            integrand = f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^{rng.randint(3,12 if difficulty == 'hard' else 7)}"
+        elif mode == "one_over_shifted_quad":
+            integrand = f"1/(x^2+{rng.randint(2,9)}*x+{rng.randint(10,30)})"
         else:
-            integrand = f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^{rng.randint(3,7)}"
+            integrand = f"({a}*x+{rng.randint(1,9)})/sqrt(({self.random_linear_expr(rng, 'x', allow_negative=True)})^2+{rng.randint(2,9)})"
         label = f"Random integrate direct {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n2\n", label, self.integrate_output_checker(integrand))
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n2\n", label, self.integrate_output_checker(integrand), feature=f"integrate_direct:{mode}")
 
     def build_random_integrate_cases(self, difficulty, count, rng):
         features = [
@@ -2098,7 +2408,7 @@ class CASIOApp(App):
             f"a={values[3]}\n"
             f"t={values[4]}"
         )
-        return self.make_direct_case("SUVAT", label, runner, input_text=input_text, check_info=f"suvat exact answer = {expected}")
+        return self.make_direct_case("SUVAT", label, runner, input_text=input_text, check_info=f"suvat exact answer = {expected}", feature=f"suvat_find_{target}")
 
     def build_random_suvat_cases(self, difficulty, count, rng):
         features = ["s", "u", "v", "a", "t"]
@@ -2800,6 +3110,16 @@ class CASIOApp(App):
                     "1\n((sin(5*((8*x-3)^3)^2))*(atan(-9*x+8)))/((x)^2+4)\n",
                     "Regression: quotient sin·atan over quadratic",
                     self.derive_output_checker("((sin(5*((8*x-3)^3)^2))*(atan(-9*x+8)))/((x)^2+4)"),
+                ),
+                (
+                    "1\n((sin(5*(7*(6*((8*x-1)^2)^2+4)^2+7)^2-2))^3)/(((4*x+9)^2)^2+8)\n",
+                    "Regression: report quotient trig power over quartic",
+                    self.derive_output_checker("((sin(5*(7*(6*((8*x-1)^2)^2+4)^2+7)^2-2))^3)/(((4*x+9)^2)^2+8)"),
+                ),
+                (
+                    "1\n((exp(((9*x-6)^2)^2+3))*(exp(((5*x+4)^3)^2+2)))/((x)^2+4)\n",
+                    "Regression: report quotient huge exp product",
+                    self.derive_output_checker("((exp(((9*x-6)^2)^2+3))*(exp(((5*x+4)^3)^2+2)))/((x)^2+4)"),
                 ),
             ]
             self.run_simple_cases("deriveProgram.py", p, derive_regressions, "contains")

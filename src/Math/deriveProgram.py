@@ -328,6 +328,20 @@ def sig(node):
     return (kind, tuple(parts))
 
 
+def tree_size(node):
+    kind = node[0]
+    if kind in ("num", "sym", "const"):
+        return 1
+    if kind == "fn":
+        return 1 + tree_size(node[2])
+    if kind in ("pow", "div"):
+        return 1 + tree_size(node[1]) + tree_size(node[2])
+    total = 1
+    for item in flat(node, kind):
+        total += tree_size(item)
+    return total
+
+
 def depends(node, names):
     kind = node[0]
     if kind == "sym":
@@ -1500,6 +1514,8 @@ def tidy(node):
         newer = sim(expand(out))
         if sig(newer) == sig(out):
             return newer
+        if tree_size(newer) > 220 and tree_size(newer) > tree_size(out) * 2:
+            return out
         out = newer
         i += 1
     return out
@@ -1819,7 +1835,7 @@ def format_final_answer(node):
         bot = result[2]
         if bot[0] == "pow" and bot[1][0] == "add" and bot[2][0] == "num" and bot[2][1] == 2:
             expanded = expand(bot)
-            if sig(expanded) != sig(bot):
+            if sig(expanded) != sig(bot) and tree_size(result[1]) <= 60 and tree_size(expanded) <= 120:
                 return sim(("div", result[1], expanded))
 
     return result

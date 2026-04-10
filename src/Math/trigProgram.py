@@ -5652,6 +5652,11 @@ def prove_double_angle_identity(source, target, source_name, target_name):
     if not equivalent(rewritten, target):
         return None
     lines = [start_line(source_name, source)]
+    if same(rewritten, target):
+        lines.append(note)
+        lines.append(step_line(rewritten))
+        lines.append("= " + target_name)
+        return lines
     rewritten = detail_trig_expansion(lines, rewritten, target, target_name, note)
     if equivalent(rewritten, target):
         bridge_to_target(lines, rewritten, target, target_name)
@@ -9547,7 +9552,7 @@ def solve_numeric_trig_fallback(lhs, rhs, expr, var, start_val, end_val, deg_mod
         i += 1
     verified = dedupe_values(verified)
     lines = [
-        "No clean rewrite route, so scan the interval numerically.",
+        "Solve trig eq numerically because no clean exact rewrite route matches.",
         "Scan f(" + var + ") = " + show(expr) + " for sign changes and verify each candidate in the original equation.",
     ]
     if len(verified) == 0:
@@ -15162,6 +15167,34 @@ def solve_prove_text(text, route):
     return lines
 
 
+def direct_ratio_target_rewrite(expr, allowed_terms):
+    expr = sim(expr)
+    if expr[0] != "div":
+        return None
+    top = sim(expr[1])
+    bot = sim(expr[2])
+    candidates = []
+    if top[0] == "fn" and bot[0] == "fn" and same(top[2], bot[2]):
+        if top[1] == "sin" and bot[1] == "cos":
+            candidates.append((fn("tan", top[2]), "Use tan(A) = sin(A)/cos(A)."))
+        elif top[1] == "cos" and bot[1] == "sin":
+            candidates.append((fn("cot", top[2]), "Use cot(A) = cos(A)/sin(A)."))
+        elif top[1] == "cos" and bot[1] == "sec":
+            candidates.append((power(fn("cos", top[2]), num(2)), "Use sec(A) = 1/cos(A)."))
+        elif top[1] == "sin" and bot[1] == "cosec":
+            candidates.append((power(fn("sin", top[2]), num(2)), "Use cosec(A) = 1/sin(A)."))
+    i = 0
+    while i < len(candidates):
+        rewritten, note = candidates[i]
+        j = 0
+        while j < len(allowed_terms):
+            if same(rewritten, allowed_terms[j]) or equivalent(rewritten, allowed_terms[j]):
+                return allowed_terms[j], note
+            j += 1
+        i += 1
+    return None
+
+
 def solve_rewrite_text(text, term_texts):
     begin_user_action()
     if len(term_texts) == 0:
@@ -15190,6 +15223,13 @@ def solve_rewrite_text(text, term_texts):
     identity_candidate = full_simplify(reduce_identities(expr))
     if equivalent(expr, num(1)) or equivalent(identity_candidate, num(1)):
         return format_rewrite_lines(original_text, expr, num(1), [("Use a standard identity.", num(1))], allowed_terms, is_equation)
+
+    if not is_equation:
+        ratio_rewrite = direct_ratio_target_rewrite(expr, allowed_terms)
+        if ratio_rewrite is not None:
+            final_expr, note = ratio_rewrite
+            return format_rewrite_lines(original_text, expr, final_expr, [(note, final_expr)], allowed_terms, is_equation)
+
     final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
     if final_expr is None:
         if rewrite_allowed_only(identity_candidate, info) and not same(identity_candidate, expr):
