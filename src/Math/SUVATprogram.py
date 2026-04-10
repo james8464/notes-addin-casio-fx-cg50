@@ -1703,6 +1703,8 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
         t_exact = _exact_value(t_direct)
         if t_exact is not None and t_exact[1] < 0:
             return None, 'No solution: time must be positive.', None, None
+        if t_exact is not None:
+            return t_direct, 't = (v-u)/a', 'v = u + at', _sub_t(s_val, u_val, v_val, a_val, t_val)
 
     if target == 's' and u_val is not None and a_val is not None and t_val is not None:
         return sim(_build_s(s_val, u_val, v_val, a_val, t_val)), 's = ut + 1/2at^2', 's = ut + 1/2at^2', _sub_s(s_val, u_val, v_val, a_val, t_val)

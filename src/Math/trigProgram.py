@@ -3716,20 +3716,33 @@ def replace_exact_trig_quiet(node):
 
 
 def match_double_angle_arg(node):
-    node = sim(node)
-    if node[0] == "mul":
-        items = list(flat(node, "mul"))
-        if len(items) == 2 and is_num(items[0]) and same(items[0], num(2)) and items[1][0] == "sym":
-            return items[1]
-    return None
+    return match_numeric_multiple_arg(node, 2)
 
 
 def match_numeric_multiple_arg(node, value):
     node = sim(node)
     if node[0] == "mul":
         items = list(flat(node, "mul"))
-        if len(items) == 2 and is_num(items[0]) and same(items[0], num(value)):
-            return items[1]
+        coeff = num(1)
+        rest = []
+        i = 0
+        while i < len(items):
+            item = items[i]
+            if is_num(item):
+                coeff = mulq(coeff, item)
+            else:
+                rest.append(item)
+            i += 1
+        if len(rest) == 0:
+            return None
+        target_coeff = num(value)
+        scaled = divq(coeff, target_coeff)
+        if not same(mulq(scaled, target_coeff), coeff):
+            return None
+        base = rest[0] if len(rest) == 1 else make_mul(rest)
+        if is_one(scaled):
+            return base
+        return sim(mul([scaled, base]))
     return None
 
 
@@ -12869,32 +12882,29 @@ def solve_equal_same_trig_expr_symbolic(first, second, var, start_val, end_val, 
     
     coeff = var_pair[0]  # e.g., num(2) for 2*x
     const = var_pair[1]  # e.g., num(0) for 2*x + 0
-    
-    # Get the constant numeric value for exact pi angles
-    const_val = eval_numeric(const_arg, {})
-    if const_val is None:
-        return None
-    
+
     half_pi = num(180) if deg_mode else PI
     full_turn = num(360) if deg_mode else mul([num(2), PI])
     
     sols = []
     lines = []
     
-    def append_from_linear_and_period(base_expr, period, sols_list):
-        base_pair = linear_pair(base_expr, var)
+    def append_from_linear_and_period(target_expr, period, sols_list):
+        base_pair = linear_pair(target_expr, var)
         if base_pair is None:
             return
         coeff_val = eval_numeric_mode(base_pair[0], {}, deg_mode)
         const_val2 = eval_numeric_mode(base_pair[1], {}, deg_mode)
         period_float = eval_numeric_mode(period, {}, deg_mode)
+        if coeff_val is None or const_val2 is None or period_float is None:
+            return
         n_range = solve_n_range_for_interval(coeff_val, const_val2, 0.0, period_float, start_val, end_val)
         if n_range is None:
             return
         n = n_range[0]
         while n <= n_range[1]:
-            shift = number_node(n * period_float)
-            target = sim(add([base_expr, neg(shift)]))
+            shift = mul([num(n), period])
+            target = sim(add([target_expr, neg(shift)]))
             linear2 = linear_pair(target, var)
             if linear2 is not None and not is_zero(linear2[0]):
                 value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
@@ -12904,84 +12914,46 @@ def solve_equal_same_trig_expr_symbolic(first, second, var, start_val, end_val, 
     
     if name == "sin":
         lines = ["For sin(A) = sin(B), A = B + 2*n*pi or A = pi-B + 2*n*pi."]
-        # First set: A = B + 2*n*pi
-        base1 = sim(add([const_arg, neg(const)]))
-        base1_pair = linear_pair(base1, var)
-        if base1_pair is not None and not is_zero(base1_pair[0]):
-            append_from_linear_and_period(base1, full_turn, sols)
-        
-        # Second set: A = pi - B + 2*n*pi
-        pi_minus_b = sim(add([half_pi, neg(const_arg)]))
-        base2 = sim(add([pi_minus_b, neg(const)]))
+        base1 = sim(add([var_arg, neg(const_arg)]))
+        append_from_linear_and_period(base1, full_turn, sols)
+
+        base2 = sim(add([var_arg, const_arg, neg(half_pi)]))
         if not same(base2, base1):
             append_from_linear_and_period(base2, full_turn, sols)
     
     elif name == "cos":
         lines = ["For cos(A) = cos(B), A = B + 2*n*pi or A = -B + 2*n*pi."]
-        # First set: A = B + 2*n*pi
-        base1 = sim(add([const_arg, neg(const)]))
-        base_pair = linear_pair(base1, var)
-        if base_pair is not None and not is_zero(base_pair[0]):
-            coeff_val = eval_numeric_mode(base_pair[0], {}, deg_mode)
-            const_val2 = eval_numeric_mode(base_pair[1], {}, deg_mode)
-            period_float = eval_numeric_mode(full_turn, {}, deg_mode)
-            n_range = solve_n_range_for_interval(coeff_val, const_val2, 0.0, period_float, start_val, end_val)
-            if n_range is not None:
-                n = n_range[0]
-                while n <= n_range[1]:
-                    shift = number_node(n * period_float)
-                    target = sim(add([base1, neg(shift)]))
-                    linear2 = linear_pair(target, var)
-                    if linear2 is not None and not is_zero(linear2[0]):
-                        value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-                        if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                            append_unique_solve_value(sols, value)
-                    n += 1
-        
-        # Second set: A = -B + 2*n*pi
-        neg_b = sim(neg(const_arg))
-        base2 = sim(add([neg_b, neg(const)]))
-        if not same(base2, base1) and not same(base2, const):
-            coeff_val = eval_numeric_mode(linear_pair(base2, var)[0], {}, deg_mode)
-            const_val2 = eval_numeric_mode(linear_pair(base2, var)[1], {}, deg_mode)
-            n_range = solve_n_range_for_interval(coeff_val, const_val2, 0.0, period_float, start_val, end_val)
-            if n_range is not None:
-                n = n_range[0]
-                while n <= n_range[1]:
-                    shift = number_node(n * period_float)
-                    target = sim(add([base2, neg(shift)]))
-                    linear2 = linear_pair(target, var)
-                    if linear2 is not None and not is_zero(linear2[0]):
-                        value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-                        if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                            append_unique_solve_value(sols, value)
-                    n += 1
+        base1 = sim(add([var_arg, neg(const_arg)]))
+        append_from_linear_and_period(base1, full_turn, sols)
+
+        base2 = sim(add([var_arg, const_arg]))
+        if not same(base2, base1):
+            append_from_linear_and_period(base2, full_turn, sols)
     
     else:  # tan, cot
         lines = ["For " + name + "(A) = " + name + "(B), A = B + n*pi."]
-        base1 = sim(add([const_arg, neg(const)]))
-        base_pair = linear_pair(base1, var)
-        if base_pair is not None and not is_zero(base_pair[0]):
-            coeff_val = eval_numeric_mode(base_pair[0], {}, deg_mode)
-            const_val2 = eval_numeric_mode(base_pair[1], {}, deg_mode)
-            period_float = eval_numeric_mode(half_pi, {}, deg_mode)
-            n_range = solve_n_range_for_interval(coeff_val, const_val2, 0.0, period_float, start_val, end_val)
-            if n_range is not None:
-                n = n_range[0]
-                while n <= n_range[1]:
-                    shift = number_node(n * period_float)
-                    target = sim(add([base1, neg(shift)]))
-                    linear2 = linear_pair(target, var)
-                    if linear2 is not None and not is_zero(linear2[0]):
-                        value = eval_numeric_mode(sim(div(neg(linear2[1]), linear2[0])), {}, deg_mode)
-                        if within_interval(value, start_val, end_val, start_inclusive, end_inclusive):
-                            append_unique_solve_value(sols, value)
-                    n += 1
+        base1 = sim(add([var_arg, neg(const_arg)]))
+        append_from_linear_and_period(base1, half_pi, sols)
     
     sols = dedupe_values(sols)
     if len(sols) == 0:
         lines.append("No solutions in the interval.")
     else:
+        coeff_val = eval_numeric_mode(coeff, {}, deg_mode)
+        const_offset = eval_numeric_mode(const, {}, deg_mode)
+        if coeff_val is not None and const_offset is not None:
+            arg_values = []
+            i = 0
+            while i < len(sols):
+                append_unique_solve_value(arg_values, coeff_val * sols[i] + const_offset)
+                i += 1
+            if len(arg_values) != 0:
+                bits = []
+                i = 0
+                while i < len(arg_values):
+                    bits.append(angle_text(arg_values[i], deg_mode))
+                    i += 1
+                lines.append(show(var_arg) + " = [" + ", ".join(bits) + "]" + (" rad" if not deg_mode else ""))
         bits = []
         i = 0
         while i < len(sols):
@@ -13065,8 +13037,10 @@ def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_in
             n += 1
 
     name = first[1]
-    half_turn = 180.0 if deg_mode else math.pi
-    full_turn = 360.0 if deg_mode else 2.0 * math.pi
+    half_turn_node = num(180) if deg_mode else PI
+    full_turn_node = num(360) if deg_mode else mul([num(2), PI])
+    half_turn = eval_numeric_mode(half_turn_node, {}, deg_mode)
+    full_turn = eval_numeric_mode(full_turn_node, {}, deg_mode)
     sols = []
     if name in ("tan", "cot"):
         append_periodic_solutions(sim(add([first[2], neg(second[2])])), half_turn, sols)
@@ -13075,7 +13049,7 @@ def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_in
         ]
     elif name == "sin":
         append_periodic_solutions(sim(add([first[2], neg(second[2])])), full_turn, sols)
-        append_periodic_solutions(sim(add([first[2], second[2], neg(half_turn)])), full_turn, sols)
+        append_periodic_solutions(sim(add([first[2], second[2], neg(half_turn_node)])), full_turn, sols)
         lines = [
             "For sin(A) = sin(B), A = B + 2*n*pi or A = pi-B + 2*n*pi.",
         ]
@@ -14939,6 +14913,15 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
     if identity_result is not None:
         return identity_result
 
+    for equality_solver in (
+        solve_equal_same_trig_expr,
+        solve_equal_complementary_trig_expr,
+        solve_equal_tan_cot_expr,
+    ):
+        equality_result = equality_solver(expr_before_expand, var, start_val, end_val, deg_mode)
+        if equality_result is not None:
+            return equality_result[0], compact_lines(list(lines) + list(equality_result[1]))
+
     rhs_val = constant_numeric(rhs, deg_mode)
     if rhs_val is not None and lhs[0] == "div":
         tan2_info = match_tan_squared_fraction(lhs)
@@ -15024,9 +15007,6 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     if derived is not None:
         expr = derived[4]
         lines.append("Rewrite the equation in standard trig form")
-        lines.append(equation_line(expr, num(0)))
-    else:
-        lines.append("Move all terms to one side")
         lines.append(equation_line(expr, num(0)))
     expr_named = named_reciprocal_trig(expr)
     if not cheap_same(expr_named, expr):

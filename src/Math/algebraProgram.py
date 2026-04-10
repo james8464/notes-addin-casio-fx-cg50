@@ -2675,6 +2675,12 @@ def inverse_function(f_text, var='x'):
             return None, ["y = " + shown, "x = " + shown_y, "No inverse on all real x"]
         f = normalise_negative_power_div(sim(raw_f))
         steps = []
+        if not depends_on(f, var):
+            steps.append("y = " + show(f))
+            steps.append("x = " + show(f))
+            steps.append("Constant function")
+            steps.append("No inverse on all real x")
+            return None, steps
         f_y = substitute(f, sym(var), sym('y'))
         steps.append("y = " + show(f))
         steps.append("x = " + show(f_y))
@@ -3616,6 +3622,24 @@ def solve_polynomial_expr(node, var_name):
     if degree == 1:
         return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
     if degree > 2:
+        monomial_only = True
+        i = 1
+        while i < degree:
+            if not is_zero(coeffs[i]):
+                monomial_only = False
+                break
+            i += 1
+        if monomial_only and not is_zero(coeffs[degree]):
+            leading = coeffs[degree]
+            target = sim(div(neg(coeffs[0]), leading))
+            if degree % 2 == 1:
+                return 'poly', [sim(power(target, num(1, degree)))]
+            if eval_with_values(target, {}) is not None:
+                target_num = eval_with_values(target, {})
+                if is_num(target_num) and target_num[1] >= 0:
+                    root = sim(power(target, num(1, degree)))
+                    return 'poly', normalize_solution_roots([root, sim(neg(root))])
+    if degree > 2:
         roots = rational_roots_for_polynomial(coeffs, degree)
         if roots is not None and len(roots) != 0:
             return 'poly', roots
@@ -4249,6 +4273,12 @@ def power_term_ratio(node, term, var_name):
     B = sim(term)
     if same(A, B) or equivalent(A, B):
         return B
+    n = 2
+    while n <= 8:
+        candidate = ('pow', B, num(n))
+        if same(A, sim(candidate)) or equivalent(A, candidate):
+            return candidate
+        n += 1
     if A[0] == 'pow' and same(A[1], B) and not depends_on(A[2], var_name):
         return ('pow', B, A[2])
     if A[0] != 'pow' or B[0] != 'pow':
@@ -4686,6 +4716,22 @@ def solve_polynomial_expr(node, var_name):
     if degree == 1:
         return 'lin', [sim(div(neg(coeffs[0]), coeffs[1]))]
     if degree > 2:
+        monomial_only = True
+        i = 1
+        while i < degree:
+            if not is_zero(coeffs[i]):
+                monomial_only = False
+                break
+            i += 1
+        if monomial_only and not is_zero(coeffs[degree]):
+            leading = coeffs[degree]
+            target = sim(div(neg(coeffs[0]), leading))
+            if degree % 2 == 1:
+                return 'poly', [sim(power(target, num(1, degree)))]
+            target_num = eval_with_values(target, {})
+            if target_num is not None and is_num(target_num) and target_num[1] >= 0:
+                root = sim(power(target, num(1, degree)))
+                return 'poly', normalize_solution_roots([root, sim(neg(root))])
         roots = rational_roots_for_polynomial(coeffs, degree)
         if roots is None or len(roots) == 0:
             return None, None
@@ -5240,6 +5286,11 @@ def rewrite_polynomial_in_linear_term(node, term, var_name):
         return None
     coeffs, degree = polynomial_coeff_list(node, var_name, 2)
     if coeffs is None:
+        expanded = expand_for_solving(node)
+        if not same(expanded, node):
+            node = expanded
+            coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+    if coeffs is None:
         return None
     u_name = choose_unused_symbol(node, [term])
     u = sym(u_name)
@@ -5286,6 +5337,14 @@ def rewrite_in_term_text(text, term_text):
     var_name = choose_primary_var(expr)
     if var_name is None:
         raise ValueError('Choose a variable.')
+    info = build_rewrite_allowed_info(expr, [term])
+    if rewrite_allowed_only(expr, info):
+        return [
+            'Start with ' + show(expr),
+            'Write in terms of ' + show(term) + ' only.',
+            'Already written in terms of ' + show(term) + '.',
+            'Final = ' + show(expr),
+        ]
     variants = [expr]
     simplified = canonical_compare_form(expr)
     if not same(simplified, expr):
@@ -5294,11 +5353,11 @@ def rewrite_in_term_text(text, term_text):
     while i < len(variants):
         rewritten = rewrite_polynomial_in_linear_term(variants[i], term, var_name)
         if rewritten is not None:
-            _u_name, out = rewritten
-            lines = ['u = ' + show(term), show(expr)]
+            u_name, out = rewritten
+            lines = ['Start with ' + show(expr), 'Write in terms of ' + show(term) + ' only.', u_name + ' = ' + show(term)]
             if i != 0:
-                lines.append('Retry')
-            lines.append('= ' + show(out))
+                lines.append('Expand and collect like terms first.')
+            lines.append('Final = ' + show(out))
             return lines
         i += 1
     shifted = match_shifted_reciprocal(term, var_name)
@@ -5326,7 +5385,7 @@ def rewrite_in_term_text(text, term_text):
                 ok_count += 1
             i += 1
         if ok_count >= 3:
-            return ['u = ' + show(term), show(expr), '= ' + show(candidate)]
+            return ['Start with ' + show(expr), 'Write in terms of ' + show(term) + ' only.', u_name + ' = ' + show(term), 'Final = ' + show(candidate)]
     raise ValueError('Cannot rewrite in that term.')
 
 

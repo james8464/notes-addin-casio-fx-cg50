@@ -938,6 +938,34 @@ def sqrt_num(node):
     return num(B, C)
 
 
+def split_square_factor(n):
+    outside = 1
+    inside = n
+    k = 2
+    while k * k <= inside:
+        square = k * k
+        while inside % square == 0:
+            outside *= k
+            inside //= square
+        k += 1
+    return outside, inside
+
+
+def sqrt_factor_expr(node):
+    if not is_num(node) or node[1] <= 0:
+        return fn('sqrt', node)
+    top_out, top_in = split_square_factor(node[1])
+    bot_out, bot_in = split_square_factor(node[2])
+    coeff = num(top_out, bot_out)
+    inside = num(top_in, bot_in)
+    if is_one(inside):
+        return coeff
+    root = fn('sqrt', inside)
+    if is_one(coeff):
+        return root
+    return mul([coeff, root])
+
+
 def square_root_term_candidate(node, var):
     A = sim(node)
     if not depends(A, var):
@@ -2462,7 +2490,7 @@ def quad_scale(node, var):
     B = subq(mulq(num(4), mulq(D, F)), mulq(A, A))
     if not is_num(B) or B[1] <= 0:
         return
-    E = fn('sqrt', B)
+    E = sqrt_factor_expr(B)
     G = sym(var)
     H = div(add([mul([num(2), D, G]), A]), E)
     return mul([div(num(2), E), fn('atan', H)])
@@ -2532,12 +2560,119 @@ def split_linear_quadratic_product(node, var):
         return add([sym(B), neg(D[0])]), poly_to_node(E, B)
     C = linear_info(A[0], B) is not None
     D = linear_info(A[1], B) is not None
-    E = quad_scale(A[0], B) is not None
-    F = quad_scale(A[1], B) is not None
+    E = quad_info(A[0], B) is not None
+    F = quad_info(A[1], B) is not None
     if C and F:
         return A[0], A[1]
     if D and E:
         return A[1], A[0]
+
+
+def log_abs(node):
+    return fn('log', fn('abs', node))
+
+
+def symbolic_monic_quadratic(var, p):
+    return add([power(sym(var), num(2)), mul([p, sym(var)]), num(1)])
+
+
+def integrate_symbolic_linear_over_monic_quadratic(m, n, p, var):
+    q = symbolic_monic_quadratic(var, p)
+    log_part = mul([div(m, num(2)), log_abs(q)])
+    disc = sim(sub(num(4), power(p, num(2))))
+    sqrt_disc = fn('sqrt', disc)
+    atan_part = mul([
+        mul([sub(n, mul([m, p, num(1, 2)])), div(num(2), sqrt_disc)]),
+        fn('atan', div(add([mul([num(2), sym(var)]), p]), sqrt_disc)),
+    ])
+    if is_zero(sim(div(m, num(2)))):
+        return sim(atan_part)
+    if is_zero(sim(sub(n, mul([m, p, num(1, 2)])))):
+        return sim(log_part)
+    return sim(add([log_part, atan_part]))
+
+
+def matches_x4_plus_one(node, var):
+    coeffs = poly_num(node, var)
+    if coeffs is None or len(coeffs) != 5:
+        return False
+    return is_one(coeffs[0]) and is_zero(coeffs[1]) and is_zero(coeffs[2]) and is_zero(coeffs[3]) and is_one(coeffs[4])
+
+
+def matches_x5_plus_one(node, var):
+    coeffs = poly_num(node, var)
+    if coeffs is None or len(coeffs) != 6:
+        return False
+    return is_one(coeffs[0]) and is_zero(coeffs[1]) and is_zero(coeffs[2]) and is_zero(coeffs[3]) and is_zero(coeffs[4]) and is_one(coeffs[5])
+
+
+def integrate_special_division_remainder(node, var):
+    if node[0] != 'div':
+        return None, None
+    num_coeffs = poly_num(node[1], var)
+    den = node[2]
+    if num_coeffs is None:
+        return None, None
+
+    if matches_x4_plus_one(den, var):
+        if len(num_coeffs) == 1 or (len(num_coeffs) == 3 and is_zero(num_coeffs[1])):
+            a = num_coeffs[0]
+            b = num(0) if len(num_coeffs) == 1 else num_coeffs[2]
+            sqrt2 = fn('sqrt', num(2))
+            p = sqrt2
+            q = neg(sqrt2)
+            m1 = div(sub(a, b), mul([num(2), sqrt2]))
+            n1 = div(a, num(2))
+            m2 = neg(m1)
+            n2 = n1
+            q1 = symbolic_monic_quadratic(var, p)
+            q2 = symbolic_monic_quadratic(var, q)
+            ans = sim(add([
+                integrate_symbolic_linear_over_monic_quadratic(m1, n1, p, var),
+                integrate_symbolic_linear_over_monic_quadratic(m2, n2, q, var),
+            ]))
+            lines = [
+                'Factor x^4+1 into two quadratics.',
+                pretty(node) + ' = ' + pretty(add([
+                    div(add([mul([m1, sym(var)]), n1]), q1),
+                    div(add([mul([m2, sym(var)]), n2]), q2),
+                ])),
+                'Integrate each quadratic term.',
+                'So I = ' + pretty(ans) + ' + C',
+            ]
+            return ans, lines
+
+    if matches_x5_plus_one(den, var):
+        if len(num_coeffs) == 3 and is_zero(num_coeffs[1]) and same(num_coeffs[2], num(-1)):
+            c = num_coeffs[0]
+            sqrt5 = fn('sqrt', num(5))
+            p = div(add([sqrt5, num(-1)]), num(2))
+            q = neg(div(add([sqrt5, num(1)]), num(2)))
+            A = div(add([c, neg(num(1))]), num(5))
+            B = add([div(add([num(1), neg(c)]), num(10)), mul([div(add([c, num(1)]), num(10)), sqrt5])])
+            C = add([div(add([mul([num(4), c]), num(1)]), num(10)), div(sqrt5, num(10))])
+            D = add([div(add([num(1), neg(c)]), num(10)), neg(mul([div(add([c, num(1)]), num(10)), sqrt5]))])
+            E = add([div(add([mul([num(4), c]), num(1)]), num(10)), neg(div(sqrt5, num(10)))])
+            q1 = symbolic_monic_quadratic(var, p)
+            q2 = symbolic_monic_quadratic(var, q)
+            ans = sim(add([
+                mul([A, log_abs(add([sym(var), num(1)]))]),
+                integrate_symbolic_linear_over_monic_quadratic(B, C, p, var),
+                integrate_symbolic_linear_over_monic_quadratic(D, E, q, var),
+            ]))
+            lines = [
+                'Factor x^5+1 into one linear factor and two quadratics.',
+                pretty(node) + ' = ' + pretty(add([
+                    div(A, add([sym(var), num(1)])),
+                    div(add([mul([B, sym(var)]), C]), q1),
+                    div(add([mul([D, sym(var)]), E]), q2),
+                ])),
+                'Integrate each partial fraction term.',
+                'So I = ' + pretty(ans) + ' + C',
+            ]
+            return ans, lines
+
+    return None, None
 
 
 def split_repeated_linear_quadratic_product(node, var):
@@ -5048,7 +5183,26 @@ def integrate_division(node, var, follow):
     if follow:
         G, K = integrate_auto(C, A, 0, True)
         if G is None:
-            return None, None
+            quotient_ans, quotient_lines = integrate_auto(I, A, 0, True) if not is_zero(I) else (num(0), [])
+            special_ans, special_lines = integrate_special_division_remainder(J, A) if not is_zero(J) else (num(0), [])
+            if special_ans is None:
+                return None, None
+            if quotient_ans is None:
+                return None, None
+            total = special_ans if is_zero(quotient_ans) else add([quotient_ans, special_ans])
+            out_lines = ['Divide the numerator by the denominator.', 'So I = ' + int_text(C, A)]
+            i = 0
+            while i < len(special_lines):
+                out_lines.append(special_lines[i])
+                i += 1
+            if len(quotient_lines) != 0:
+                i = 0
+                while i < len(quotient_lines):
+                    if quotient_lines[i] not in out_lines:
+                        out_lines.append(quotient_lines[i])
+                    i += 1
+            out_lines.append('= ' + pretty(total) + ' + C')
+            return total, out_lines
         return G, ['Divide the numerator by the denominator.',
                    'So I = ' + int_text(C, A), '= ' + pretty(G) + ' + C']
     return C, ['Divide the numerator by the denominator.',
