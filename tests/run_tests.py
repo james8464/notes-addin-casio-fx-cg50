@@ -363,6 +363,34 @@ def candidate_sample_points():
     return (0.0, 0.05, -0.05, 0.1, -0.1, 0.2, -0.2, 0.35, -0.35, 0.6, -0.6, 1.0)
 
 
+def domain_aware_sample_points(*exprs, var="x"):
+    base = [
+        0.0, 0.05, -0.05, 0.1, -0.1, 0.2, -0.2, 0.35, -0.35, 0.6, -0.6, 1.0,
+        -1.0, 1.5, -1.5, 2.0, -2.0, 2.5, -2.5, 3.0, -3.0, 3.5, -3.5,
+        4.0, -4.0, 5.0, -5.0, 6.0, -6.0, 8.0, -8.0, 10.0, -10.0,
+    ]
+    out = []
+    seen = set()
+    for point in base:
+        key = round(point, 10)
+        if key in seen:
+            continue
+        usable = True
+        for expr in exprs:
+            try:
+                value = safe_eval_expr(expr, {var: point})
+            except Exception:
+                usable = False
+                break
+            if not math.isfinite(value):
+                usable = False
+                break
+        if usable:
+            out.append(point)
+            seen.add(key)
+    return tuple(out)
+
+
 def normalized_text(text):
     return " ".join((text or "").lower().split())
 
@@ -1753,8 +1781,13 @@ class CASIOApp(App):
                 return False
             good = 0
             bad = 0
-            for point in candidate_sample_points():
-                actual = stable_finite_difference(candidate, var, point)
+            sample_points = domain_aware_sample_points(integrand, candidate, var=var)
+            if not sample_points:
+                sample_points = candidate_sample_points()
+            for point in sample_points:
+                actual = complex_step_derivative(candidate, var, point)
+                if actual is None:
+                    actual = stable_finite_difference(candidate, var, point)
                 if actual is None:
                     continue
                 try:

@@ -3953,6 +3953,10 @@ def reverse_binomial_description(target):
 
 
 def target_route_steps(source, target):
+    direct_trig = direct_trig_target_steps(source, target)
+    if direct_trig is not None:
+        return direct_trig
+
     if equivalent(source, add([num(1), neg(fn('cos', mul([num(2), sym('x')])))])) and equivalent(target, mul([sym('A'), power(fn('sin', sym('x')), num(2))])):
         fitted = mul([num(2), power(fn('sin', sym('x')), num(2))])
         return [('Use 1-cos(2x) = 2sin^2(x)', fitted), ('Rewrite to target form', fitted)]
@@ -3999,6 +4003,66 @@ def target_route_steps(source, target):
     if binomial_desc is not None and equivalent(source, target):
         return [(binomial_desc, target)]
 
+    return None
+
+
+def direct_trig_target_steps(source, target):
+    source = sim(source)
+    target = sim(target)
+    if source[0] == 'div' and source[1][0] == 'fn' and source[2][0] == 'fn':
+        top = source[1]
+        bot = source[2]
+        if same(top[2], bot[2]):
+            if top[1] == 'cos' and bot[1] == 'sin':
+                candidate = fn('cot', top[2])
+                if same(candidate, target):
+                    return [('Use cot(A) = cos(A)/sin(A)', target)]
+            if top[1] == 'sin' and bot[1] == 'cos':
+                candidate = fn('tan', top[2])
+                if same(candidate, target):
+                    return [('Use tan(A) = sin(A)/cos(A)', target)]
+    if source[0] == 'fn' and source[1] == 'sin':
+        base = half_angle_expr_for_transform(source[2])
+        if base is not None:
+            candidate = mul([num(2), fn('sin', base), fn('cos', base)])
+            if same(candidate, target):
+                return [('Use sin(2A) = 2sin(A)cos(A)', target)]
+    if source[0] == 'add':
+        parts = list(flat(source, 'add'))
+        if len(parts) == 2:
+            one_seen = False
+            cos_term = None
+            sign = None
+            i = 0
+            while i < len(parts):
+                if same(parts[i], num(1)):
+                    one_seen = True
+                else:
+                    coeff, rest = split_coeff(parts[i])
+                    if rest[0] == 'fn' and rest[1] == 'cos':
+                        cos_term = rest
+                        sign = -1 if is_minus_one(coeff) else 1
+                i += 1
+            if one_seen and cos_term is not None:
+                base = half_angle_expr_for_transform(cos_term[2])
+                if base is not None and sign == -1:
+                    candidate = mul([num(2), power(fn('sin', base), num(2))])
+                    if same(candidate, target):
+                        return [('Use 1-cos(2A) = 2sin^2(A)', target)]
+                if base is not None and sign == 1:
+                    candidate = mul([num(2), power(fn('cos', base), num(2))])
+                    if same(candidate, target):
+                        return [('Use 1+cos(2A) = 2cos^2(A)', target)]
+    return None
+
+
+def half_angle_expr_for_transform(arg):
+    coeff, rest = split_coeff(arg)
+    if same(coeff, num(2)):
+        return rest
+    half = sim(div(arg, num(2)))
+    if same(sim(mul([num(2), half])), sim(arg)):
+        return half
     return None
 
 

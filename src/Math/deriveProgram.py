@@ -287,6 +287,8 @@ def fn(name, arg):
 
 
 def neg(x):
+    if x[0] == "add":
+        return add([neg(item) for item in flat(x, "add")])
     return mul([num(-1), x])
 
 
@@ -734,6 +736,8 @@ def sim(node):
                 rest.append(base)
             else:
                 rest.append(("pow", base, exp))
+        if is_minus_one(coeff) and len(rest) == 1 and rest[0][0] == "add":
+            return neg(rest[0])
         out.extend(rest)
         if len(out) == 0:
             return num(1)
@@ -2305,7 +2309,7 @@ def main():
             dy = sim(diff(yt, "t", []))
             if is_zero(dx):
                 raise ValueError("dx/dt=0.")
-            ans = prefer_trig_recip(tidy(div(dy, dx)))
+            ans = prefer_trig_recip(sim(div(dy, dx)))
             print("dx/dt = " + show(dx))
             print("dy/dt = " + show(dy))
             print("dy/dx = (dy/dt)/(dx/dt) = " + show(ans))

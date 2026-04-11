@@ -1679,6 +1679,7 @@ def substitution_work(node, var, inner, d, uexpr, work, uans, ans):
     if not same(work, D):
         A.append('= ' + int_text(work, 'u'))
     A.append('= ' + pretty(uans) + ' + C')
+    A.append('Substitute back u = ' + pretty(C) + '.')
     A.append('= ' + pretty(ans) + ' + C')
     return A
 
@@ -2468,6 +2469,40 @@ def poly_to_node(coeffs, var):
     return add(B)
 
 
+def expand_polynomial_parts(node, var):
+    A = sim(node)
+    B = poly_num(A, var)
+    if B is not None and len(B) <= 24:
+        return poly_to_node(B, var)
+    if A[0] == 'fn':
+        if A[1] == 'exp':
+            return A
+        return 'fn', A[1], expand_polynomial_parts(A[2], var)
+    if A[0] == 'pow':
+        C = sim(('pow', expand_polynomial_parts(A[1], var), A[2]))
+        B = poly_num(C, var)
+        if B is not None and len(B) <= 24:
+            return poly_to_node(B, var)
+        return C
+    if A[0] == 'div':
+        return sim(('div', expand_polynomial_parts(A[1], var), expand_polynomial_parts(A[2], var)))
+    if A[0] == 'add':
+        C = []
+        for D in flat(A, 'add'):
+            C.append(expand_polynomial_parts(D, var))
+        return normalize_add_coeffs(expand_small_recursive(add(C)))
+    if A[0] == 'mul':
+        C = []
+        for D in flat(A, 'mul'):
+            C.append(expand_polynomial_parts(D, var))
+        E = normalize_add_coeffs(expand_small_recursive(mul(C)))
+        B = poly_num(E, var)
+        if B is not None and len(B) <= 24:
+            return poly_to_node(B, var)
+        return E
+    return A
+
+
 def linear_info(node, var):
     A = poly_num(node, var)
     if A is None or len(A) > 2:
@@ -2525,9 +2560,7 @@ def integrate_quadratic_rational(node, var):
         lines.append('Use the standard result for 1/quadratic.')
     if G is None:
         if is_num(disc) and disc[1] > 0:
-            root = sqrt_num(disc)
-            if root is None:
-                root = fn('sqrt', disc)
+            root = sqrt_factor_expr(disc)
             linear = add([mul([num(2), J, sym(D)]), K])
             G = mul([div(num(1), root), fn('log', fn('abs', div(add([linear, neg(root)]), add([linear, root]))))])
             if not is_zero(I):
@@ -3282,10 +3315,12 @@ def integrate_standard_term(node, var):
         deriv_forms = [
             deriv_denom,
             normalize_add_coeffs(expand_small_recursive(deriv_denom)),
+            expand_polynomial_parts(deriv_denom, C),
         ]
         numerator_forms = [
             numerator,
             normalize_add_coeffs(expand_small_recursive(numerator)),
+            expand_polynomial_parts(numerator, C),
         ]
         coeff = None
         i = 0

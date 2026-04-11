@@ -9177,7 +9177,7 @@ def final_exact_text_or_float(value, dp=4):
     return fixed_float_text(value, dp)
 
 
-def final_angle_text(value, deg_mode, dp=4):
+def final_angle_text(value, deg_mode, dp=6):
     rounded = round(value, 10)
     key = (rounded, deg_mode, dp)
     cached = FINAL_ANGLE_TEXT_CACHE.get(key)
@@ -14682,6 +14682,194 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
     return sols, out
 
 
+def single_trig_poly_angle_info(expr, var, max_degree=6):
+    expr = sim(expr)
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
+    atom = None
+    coeff = num(0)
+    const = num(0)
+    i = 0
+    while i < len(terms):
+        term = sim(terms[i])
+        if not depends(term, var):
+            const = sim(add([const, term]))
+            i += 1
+            continue
+        term_coeff, rest = split_const_factor(term, var)
+        if rest[0] != "fn" or rest[1] not in ("sin", "cos", "tan", "cot", "sec", "cosec"):
+            return None
+        if atom is None:
+            atom = rest
+        elif not same(atom, rest):
+            return None
+        if depends(term_coeff, var):
+            return None
+        coeff = sim(add([coeff, term_coeff]))
+        i += 1
+    if atom is None or is_zero(coeff):
+        return None
+    arg = expand_embedded_small(atom[2])
+    poly = extract_polynomial_symbol(arg, var, max_degree)
+    if poly is None:
+        return None
+    degree = polynomial_degree_coeff_map(poly, max_degree)
+    if degree <= 1:
+        return None
+    return atom[1], atom[2], arg, coeff, const, poly, degree
+
+
+def polynomial_value_range_on_interval(coeffs, degree, start_val, end_val):
+    points = [start_val, end_val]
+    if degree == 2:
+        try:
+            a = eval_numeric(coeffs[2], {})
+            b = eval_numeric(coeffs[1], {})
+        except Exception:
+            a = None
+            b = None
+        if a is not None and abs(a) > 1e-12 and b is not None:
+            vertex = -b / (2.0 * a)
+            if start_val <= vertex <= end_val:
+                points.append(vertex)
+    elif degree > 2:
+        i = 1
+        while i < 80:
+            points.append(start_val + (end_val - start_val) * i / 80.0)
+            i += 1
+    values = []
+    i = 0
+    while i < len(points):
+        value = 0.0
+        j = degree
+        while j >= 0:
+            try:
+                coeff_val = eval_numeric(coeffs[j], {})
+            except Exception:
+                return None
+            value = value * points[i] + coeff_val
+            j -= 1
+        values.append(value)
+        i += 1
+    return min(values), max(values)
+
+
+def exact_angle_value_node(value, deg_mode):
+    node = infer_exact_angle_node(value, deg_mode)
+    if node is not None:
+        return node
+    return number_node(value)
+
+
+def periodic_angle_value_node(base_value, n, period_node, deg_mode):
+    whole = infer_exact_angle_node(base_value + n * eval_numeric(period_node, {}), deg_mode)
+    if whole is not None:
+        return whole
+    base_node = exact_angle_value_node(base_value, deg_mode)
+    if n == 0:
+        return base_node
+    return full_simplify(add([base_node, mul([num(n), period_node])]))
+
+
+def solve_direct_trig_polynomial_angle_equation(expr, var, start_val, end_val, deg_mode, lines):
+    info = single_trig_poly_angle_info(expr, var)
+    if info is None:
+        return None
+    name, original_arg, expanded_arg, coeff, const, poly, degree = info
+    target_expr = full_simplify(div(neg(const), coeff))
+    target_value = constant_numeric(target_expr, deg_mode)
+    if target_value is None:
+        return None
+    base = trig_base_solutions(name, target_value, deg_mode)
+    if len(base) == 0:
+        out = list(lines)
+        out.append("Let A = " + show(expanded_arg) + ".")
+        out.append(equation_line(fn(name, sym("A")), target_expr))
+        out.append("No real values of A satisfy this equation.")
+        return [], out
+    period_node = num(360) if deg_mode else mul([num(2), PI])
+    if name in ("tan", "cot"):
+        period_node = num(180) if deg_mode else PI
+    period_value = eval_numeric(period_node, {})
+    value_range = polynomial_value_range_on_interval(poly, degree, start_val, end_val)
+    if value_range is None:
+        return None
+    low, high = value_range
+    values = []
+    value_nodes = []
+    angle_texts = []
+    i = 0
+    while i < len(base):
+        n_start = int(math.floor((low - base[i]) / period_value)) - 1
+        n_end = int(math.ceil((high - base[i]) / period_value)) + 1
+        n = n_start
+        while n <= n_end:
+            angle_value = base[i] + n * period_value
+            if low - 1e-8 <= angle_value <= high + 1e-8:
+                theta_node = periodic_angle_value_node(base[i], n, period_node, deg_mode)
+                coeff_nodes = polynomial_coeff_nodes_low(poly, degree)
+                coeff_nodes[0] = full_simplify(add([coeff_nodes[0], neg(theta_node)]))
+                exact_roots = solve_polynomial_exact_low_degree(coeff_nodes, degree)
+                if exact_roots is not None:
+                    j = 0
+                    while j < len(exact_roots["values"]):
+                        root_value = exact_roots["values"][j]
+                        if within_interval(root_value, start_val, end_val, True, True):
+                            append_unique_float(values, root_value)
+                            value_nodes.append((root_value, exact_roots["nodes"][j]))
+                        j += 1
+                else:
+                    roots = solve_polynomial_numeric_interval({k: coeff_nodes[k] for k in range(degree + 1)}, degree, start_val, end_val)
+                    if roots is not None:
+                        j = 0
+                        while j < len(roots):
+                            if within_interval(roots[j], start_val, end_val, True, True):
+                                append_unique_float(values, roots[j])
+                                value_nodes.append((roots[j], None))
+                            j += 1
+                angle_texts.append((angle_value, show(theta_node)))
+            n += 1
+        i += 1
+    values = dedupe_values(values)
+    values.sort()
+    value_nodes.sort(key=lambda item: item[0])
+    exact_bits = []
+    used = []
+    i = 0
+    while i < len(value_nodes):
+        duplicate = False
+        j = 0
+        while j < len(used):
+            if abs(value_nodes[i][0] - used[j]) < 1e-7:
+                duplicate = True
+                break
+            j += 1
+        if not duplicate:
+            exact_bits.append(concise_root_text(value_nodes[i][1], value_nodes[i][0], 6, 80))
+            used.append(value_nodes[i][0])
+        i += 1
+    out = list(lines)
+    out.append("Let A = " + show(expanded_arg) + ".")
+    if not is_one(coeff):
+        out.append(equation_line(mul([coeff, fn(name, sym("A"))]), neg(const)))
+    out.append(equation_line(fn(name, sym("A")), target_expr))
+    out.append("Solve the standard trig equation for A.")
+    angle_texts.sort(key=lambda item: item[0])
+    shown_angles = []
+    i = 0
+    while i < len(angle_texts):
+        if angle_texts[i][1] not in shown_angles:
+            shown_angles.append(angle_texts[i][1])
+        i += 1
+    if len(shown_angles) != 0:
+        out.append("In the interval, A = [" + ", ".join(shown_angles) + "]" + (" rad" if not deg_mode else ""))
+        out.append("Solve " + show(expanded_arg) + " = A and keep roots in the original interval.")
+    if len(exact_bits) != 0:
+        out.append("Exact form: " + var + " = [" + ", ".join(exact_bits) + "]")
+    elif len(values) == 0:
+        out.append("No solutions in the interval.")
+    return values, out
+
+
 # ---------------------------------------------------------------------------
 # Solve cos^4(2x) - sin^4(2x) = k form
 # Using identity: cos^4(A) - sin^4(A) = (cos^2(A) - sin^2(A))(cos^2(A) + sin^2(A))
@@ -14940,6 +15128,10 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
     if direct_result is not None:
         return direct_result
 
+    direct_poly_result = try_solver_on_candidates([(expr_before_expand, None), (expanded_expr, None)], solve_direct_trig_polynomial_angle_equation, var, start_val, end_val, deg_mode, lines)
+    if direct_poly_result is not None:
+        return direct_poly_result
+
     shifted_tan_cot = try_solver_on_candidates(
         [(expr, None), (expanded_expr, None)],
         solve_shifted_tan_cot_expr,
@@ -15195,6 +15387,59 @@ def direct_ratio_target_rewrite(expr, allowed_terms):
     return None
 
 
+def direct_identity_target_rewrite(expr, allowed_terms):
+    expr = sim(expr)
+    candidates = []
+    if expr[0] == "add":
+        parts = list(flat(expr, "add"))
+        if len(parts) == 2:
+            one_seen = False
+            cos_term = None
+            cos_sign = 1
+            i = 0
+            while i < len(parts):
+                if same(parts[i], num(1)):
+                    one_seen = True
+                else:
+                    coeff, rest = signed_unit_term(parts[i])
+                    if rest[0] == "fn" and rest[1] == "cos":
+                        cos_term = rest
+                        cos_sign = -1 if is_minus_one(coeff) else 1
+                i += 1
+            if one_seen and cos_term is not None:
+                base = half_angle_expr(cos_term[2])
+                if base is not None and cos_sign < 0:
+                    candidates.append((mul([num(2), power(fn("sin", base), num(2))]), "Use 1 - cos(2A) = 2sin^2(A)."))
+                if base is not None and cos_sign > 0:
+                    candidates.append((mul([num(2), power(fn("cos", base), num(2))]), "Use 1 + cos(2A) = 2cos^2(A)."))
+    if expr[0] == "fn" and expr[1] == "sin":
+        base = half_angle_expr(expr[2])
+        if base is not None:
+            candidates.append((mul([num(2), fn("sin", base), fn("cos", base)]), "Use sin(2A) = 2sin(A)cos(A)."))
+    i = 0
+    while i < len(candidates):
+        rewritten, note = candidates[i]
+        if allowed_expression_from_terms(rewritten, allowed_terms):
+            return rewritten, note
+        i += 1
+    return None
+
+
+def allowed_expression_from_terms(expr, allowed_terms):
+    info = build_rewrite_allowed_info(allowed_terms)
+    if rewrite_allowed_only(expr, info):
+        return True
+    if expr[0] == "mul":
+        parts = list(flat(expr, "mul"))
+        i = 0
+        while i < len(parts):
+            if is_num(parts[i]):
+                if rewrite_allowed_only(make_mul(parts[:i] + parts[i + 1:]), info):
+                    return True
+            i += 1
+    return False
+
+
 def solve_rewrite_text(text, term_texts):
     begin_user_action()
     if len(term_texts) == 0:
@@ -15228,6 +15473,10 @@ def solve_rewrite_text(text, term_texts):
         ratio_rewrite = direct_ratio_target_rewrite(expr, allowed_terms)
         if ratio_rewrite is not None:
             final_expr, note = ratio_rewrite
+            return format_rewrite_lines(original_text, expr, final_expr, [(note, final_expr)], allowed_terms, is_equation)
+        identity_rewrite = direct_identity_target_rewrite(expr, allowed_terms)
+        if identity_rewrite is not None:
+            final_expr, note = identity_rewrite
             return format_rewrite_lines(original_text, expr, final_expr, [(note, final_expr)], allowed_terms, is_equation)
 
     final_expr, steps, info = search_rewrite_expression(expr, allowed_terms)
