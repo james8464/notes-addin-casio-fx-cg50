@@ -9177,7 +9177,7 @@ def final_exact_text_or_float(value, dp=4):
     return fixed_float_text(value, dp)
 
 
-def final_angle_text(value, deg_mode, dp=6):
+def final_angle_text(value, deg_mode, dp=8):
     rounded = round(value, 10)
     key = (rounded, deg_mode, dp)
     cached = FINAL_ANGLE_TEXT_CACHE.get(key)

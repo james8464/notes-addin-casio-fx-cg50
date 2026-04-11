@@ -1,0 +1,20 @@
+# CASIO Calculator Compile Commands
+# Run from /Users/james/Developer/Python/CASIO
+
+# algebraProgram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/algebraProgram.mpy src/Math/algebraProgram.py
+
+# deriveProgram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/deriveProgram.mpy src/Math/deriveProgram.py
+
+# intProgram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/intProgram.mpy src/Math/intProgram.py
+
+# trigProgram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/trigProgram.mpy src/Math/trigProgram.py
+
+# SUVATprogram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/SUVATprogram.mpy src/Math/SUVATprogram.py
+
+# booleanProgram.py
+/Users/james/micropython/mpy-cross/mpy-cross -X heapsize=4194304 -msmall-int-bits=31 -mno-unicode -o src/calc_files/booleanProgram.mpy src/ComputerScience/booleanProgram.py

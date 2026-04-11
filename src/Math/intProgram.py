@@ -2960,6 +2960,14 @@ def _quotient_by_target(node, target):
     A = node
     if cheap_same(A, B) or same(A, B):
         return num(1)
+    if A[0] == 'div' and B[0] == 'div' and (cheap_same(A[2], B[2]) or same(A[2], B[2])):
+        return _quotient_by_target(A[1], B[1])
+    if A[0] == 'div' and B[0] == 'div':
+        C = _quotient_by_target(A[1], B[1])
+        if C is not None:
+            D = _quotient_by_target(A[2], B[2])
+            if D is not None:
+                return div(C, D)
     H, L = factor_add_num(B)
     if not is_one(H):
         C = _quotient_by_target(A, L)
@@ -2995,6 +3003,107 @@ def _quotient_by_target(node, target):
 
 
 def quotient_by_target(node, target): return _quotient_by_target(node, target)
+
+
+def expand_polynomial_subexpressions(node, var):
+    A = node
+    B = A[0]
+    if B in ('num', 'sym', 'const'):
+        return A
+    if B == 'fn':
+        return fn(A[1], expand_polynomial_subexpressions(A[2], var))
+    if B == 'pow':
+        C = power(expand_polynomial_subexpressions(A[1], var), expand_polynomial_subexpressions(A[2], var))
+        D = expand_polynomial_parts(C, var)
+        return D if D is not None else C
+    if B == 'add':
+        C = add([expand_polynomial_subexpressions(D, var) for D in A[1]])
+        D = expand_polynomial_parts(C, var)
+        return D if D is not None else C
+    if B == 'mul':
+        C = mul([expand_polynomial_subexpressions(D, var) for D in A[1]])
+        if poly_num(C, var) is not None:
+            D = expand_polynomial_parts(C, var)
+            return D if D is not None else C
+        return C
+    if B == 'div':
+        return div(expand_polynomial_subexpressions(A[1], var), expand_polynomial_subexpressions(A[2], var))
+    return A
+
+
+def equivalent_derivative_forms(node, var):
+    A = [node]
+    try:
+        A.append(normalize_add_coeffs(expand_small_recursive(node)))
+    except Exception:
+        pass
+    try:
+        A.append(expand_polynomial_parts(node, var))
+    except Exception:
+        pass
+    try:
+        A.append(expand_polynomial_subexpressions(node, var))
+    except Exception:
+        pass
+    if node[0] == 'div':
+        try:
+            A.append(div(expand_polynomial_subexpressions(node[1], var), node[2]))
+        except Exception:
+            pass
+        try:
+            A.append(div(expand_polynomial_parts(node[1], var), node[2]))
+        except Exception:
+            pass
+        try:
+            A.append(div(expand_polynomial_subexpressions(node[1], var), expand_polynomial_subexpressions(node[2], var)))
+        except Exception:
+            pass
+    B = []
+    C = 0
+    while C < len(A):
+        D = A[C]
+        if D is not None:
+            E = False
+            F = 0
+            while F < len(B):
+                if cheap_same(D, B[F]) or same(D, B[F]):
+                    E = True
+                    break
+                F += 1
+            if not E:
+                B.append(D)
+        C += 1
+    return B
+
+
+def quotient_by_equivalent_target(node, target, var):
+    C = [node]
+    try:
+        C.append(expand_polynomial_subexpressions(node, var))
+    except Exception:
+        pass
+    A = equivalent_derivative_forms(target, var)
+    D = 0
+    while D < len(C):
+        B = 0
+        while B < len(A):
+            E = quotient_by_target(C[D], A[B])
+            if E is not None:
+                return E
+            B += 1
+        D += 1
+
+
+def rewrite_in_equivalent_u(node, inner, var):
+    A = rewrite_in_u(node, inner, var)
+    if A is not None:
+        return A
+    try:
+        B = expand_polynomial_subexpressions(inner, var)
+        if not (cheap_same(B, inner) or same(B, inner)):
+            return rewrite_in_u(node, B, var)
+    except Exception:
+        pass
 
 
 def direct_u_form(node):
@@ -3250,11 +3359,41 @@ def integrate_standard_term(node, var):
         inner = A[2][2] if A[2][0] == 'fn' else A[2][1]
         deriv_inner = safe_diff(inner, C)
         if deriv_inner is not None and not is_zero(deriv_inner):
-            ratio = quotient_by_target(deriv_inner, A[1])
-            if ratio is not None and is_num(ratio):
-                coeff = ratio
-                result = div(mul([num(2), A[2]]), coeff)
-                return result, ['Use the standard result for f\'(x)/sqrt(f(x)).', 'So I = ' + pretty(result) + ' + C']
+            deriv_forms = [
+                deriv_inner,
+                normalize_add_coeffs(expand_small_recursive(deriv_inner)),
+                expand_polynomial_parts(deriv_inner, C),
+            ]
+            numerator_forms = [
+                A[1],
+                normalize_add_coeffs(expand_small_recursive(A[1])),
+                expand_polynomial_parts(A[1], C),
+            ]
+            coeff = None
+            i = 0
+            while i < len(numerator_forms) and coeff is None:
+                j = 0
+                while j < len(deriv_forms):
+                    if not is_zero(deriv_forms[j]):
+                        candidate = quotient_by_target(numerator_forms[i], deriv_forms[j])
+                        if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
+                            coeff = sim(candidate)
+                            break
+                    j += 1
+                i += 1
+            if coeff is not None:
+                result = mul([num(2), coeff, A[2]])
+                lines = [
+                    'Let u = ' + pretty(inner) + '.',
+                    'Then du/d' + C + ' = ' + pretty(deriv_inner) + '.',
+                ]
+                if is_one(coeff):
+                    lines.append('The integrand is (du/d' + C + ')/sqrt(u).')
+                else:
+                    lines.append('The integrand is ' + pretty(coeff) + '*(du/d' + C + ')/sqrt(u).')
+                lines.append('Use Int[u^(-1/2)] du = 2*sqrt(u).')
+                lines.append('So I = ' + pretty(result) + ' + C')
+                return result, lines
     S, U = integrate_quadratic_rational(A, C)
     if S is not None:
         return S, U
@@ -3665,9 +3804,9 @@ def integrate_reverse_chain(node, var):
         C = I[E]
         F = safe_diff(C, B)
         if F is not None and not is_zero(F):
-            J = quotient_by_target(D, F)
+            J = quotient_by_equivalent_target(D, F, B)
             if J is not None:
-                G = rewrite_in_u(J, C, B)
+                G = rewrite_in_equivalent_u(J, C, B)
                 if G is not None:
                     H = expand_small(G)
                     A = direct_u_form(H)
@@ -3789,11 +3928,11 @@ def integrate_substitution(node, var, forced_u=None):
         D = G[H]
         E = safe_diff(D, C)
         if E is not None and not is_zero(E):
-            F = quotient_by_target(B, E)
+            F = quotient_by_equivalent_target(B, E, C)
             if F is None:
                 F = div(B, E)
             if F is not None:
-                A = rewrite_in_u(F, D, C)
+                A = rewrite_in_equivalent_u(F, D, C)
                 if A is not None:
                     A = normalize_den_powers(A)
                     A = cancel_u_radical(A)
