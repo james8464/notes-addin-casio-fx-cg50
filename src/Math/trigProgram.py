@@ -6123,7 +6123,10 @@ def proof_direction_candidates(source, target, source_name, target_name):
         (4, prove_log_exp_identity),
         (6, prove_formula_identity),
     ):
-        lines = fn_prover(source, target, source_name, target_name)
+        try:
+            lines = fn_prover(source, target, source_name, target_name)
+        except Exception:
+            lines = None
         if lines is not None:
             out.append(((priority, len(lines)), lines))
     return out

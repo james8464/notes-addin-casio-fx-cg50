@@ -112,6 +112,7 @@ def _default_case_workers():
 
 CASE_WORKERS = _default_case_workers()
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
+SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
 
 
@@ -229,10 +230,11 @@ def sympy_locals():
     }
 
 
-def sympy_parse_expr(expr):
+def sympy_parse_expr(expr, max_chars=None):
     if not SYMPY_AVAILABLE:
         return None
-    if len(expr or "") > SYMPY_MAX_CHARS:
+    limit = SYMPY_MAX_CHARS if max_chars is None else max_chars
+    if len(expr or "") > limit:
         return None
     transformations = SP_STANDARD_TRANSFORMS + (SP_IMPLICIT_MULT, SP_CONVERT_XOR)
     try:
@@ -265,7 +267,7 @@ def sympy_simplify_difference(left, right):
         if op_count > SYMPY_MAX_OPS:
             return None
         candidates = [diff, SP.expand(diff), SP.cancel(diff), SP.factor(diff), SP.together(diff)]
-        if op_count <= SYMPY_MAX_OPS // 2:
+        if op_count <= SYMPY_MAX_OPS // 2 or (diff.has(SP.sin, SP.cos, SP.tan, SP.sec, SP.csc, SP.cot) and op_count <= 120):
             candidates.extend([SP.trigsimp(diff), SP.simplify(diff), SP.simplify(SP.trigsimp(SP.together(diff)))])
         for candidate in candidates:
             if candidate == 0:
@@ -297,9 +299,11 @@ def sympy_derivative_equivalent(expr_text, candidate_text, var="x"):
         return None
     if not sympy_safe_text(expr_text, candidate_text):
         return None
-    expr = sympy_parse_expr(expr_text)
-    candidate = sympy_parse_expr(candidate_text)
+    expr = sympy_parse_expr(expr_text, max_chars=SYMPY_MAX_CALC_CHARS)
+    candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
     if expr is None or candidate is None:
+        return None
+    if SP.count_ops(expr) + SP.count_ops(candidate) > 240:
         return None
     try:
         symbol = sympy_locals().get(var, SP.symbols(var))
@@ -314,9 +318,11 @@ def sympy_antiderivative_equivalent(candidate_text, integrand_text, var="x"):
         return None
     if not sympy_safe_text(candidate_text, integrand_text):
         return None
-    candidate = sympy_parse_expr(candidate_text)
-    integrand = sympy_parse_expr(integrand_text)
+    candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
+    integrand = sympy_parse_expr(integrand_text, max_chars=SYMPY_MAX_CALC_CHARS)
     if candidate is None or integrand is None:
+        return None
+    if SP.count_ops(candidate) + SP.count_ops(integrand) > 240:
         return None
     try:
         symbol = sympy_locals().get(var, SP.symbols(var))
@@ -557,6 +563,34 @@ def extract_labeled_expr(output, labels):
     return None
 
 
+def extract_reverse_chain_data(output):
+    u_expr = None
+    du_expr = None
+    primitive_fn = None
+    for line in (output or "").splitlines():
+        stripped = _strip_numbered_prefix(line)
+        if stripped.startswith("u = "):
+            u_expr = stripped.split("=", 1)[1].strip().rstrip(".")
+        elif stripped.startswith("du/dx = "):
+            du_expr = stripped.split("=", 1)[1].strip().rstrip(".")
+        elif "I = Int[" in stripped and "(u)] du" in stripped:
+            match = re.search(r"I = Int\[(sin|cos|tan|sec|cosec|cot|exp)\(u\)\] du", stripped)
+            if match:
+                primitive_fn = match.group(1)
+    if u_expr and du_expr and primitive_fn:
+        return u_expr, du_expr, primitive_fn
+    return None
+
+
+def reverse_chain_integrand_matches(output, integrand, var="x"):
+    data = extract_reverse_chain_data(output)
+    if data is None:
+        return False
+    u_expr, du_expr, primitive_fn = data
+    reconstructed = f"({du_expr})*{primitive_fn}({u_expr})"
+    return expressions_equivalent_numeric(reconstructed, integrand, var=var, min_good=4, rel_tol=2e-4, abs_tol=2e-4)
+
+
 def extract_final_algebra_expr(output):
     expr = extract_labeled_expr(output, ("final =", "out =", "ans =", "answer:", "f(g(x)) =", "hence "))
     if expr:
@@ -569,6 +603,10 @@ def extract_final_algebra_expr(output):
 
 
 def expressions_equivalent_numeric(left, right, var="x", min_good=6, rel_tol=1e-5, abs_tol=1e-5):
+    if (left or "").replace(" ", "") == (right or "").replace(" ", ""):
+        return True
+    if structural_reciprocal_trig_equivalent(left, right):
+        return True
     symbolic = sympy_expressions_equivalent(left, right, var=var)
     if symbolic is True:
         return True
@@ -598,6 +636,36 @@ def expression_value_checker(source_expr, candidate_expr, var="x"):
         return expressions_equivalent_numeric(source_expr, candidate_expr, var=var)
     except Exception:
         return False
+
+
+def structural_reciprocal_trig_equivalent(left, right):
+    reciprocal_pairs = {
+        "sin": "cosec",
+        "cos": "sec",
+        "tan": "cot",
+    }
+
+    def parse_alg(text):
+        try:
+            return ALG.parse(text)
+        except Exception:
+            return None
+
+    def match_pair(a, b):
+        if a is None or b is None:
+            return False
+        a = ALG.sim(a)
+        b = ALG.sim(b)
+        if a[0] == "div" and a[1] == ("num", 1, 1) and a[2][0] == "fn" and b[0] == "fn":
+            expected = reciprocal_pairs.get(a[2][1])
+            return expected == b[1] and ALG.same(a[2][2], b[2])
+        return False
+
+    a = parse_alg(left)
+    b = parse_alg(right)
+    if a is not None and b is not None and ALG.same(ALG.sim(a), ALG.sim(b)):
+        return True
+    return match_pair(a, b) or match_pair(b, a)
 
 
 def equation_residual(eq_text, var, value):
@@ -2466,6 +2534,8 @@ class CASIOApp(App):
                     bad += 1
             if good >= 3 and bad == 0:
                 return True
+            if good >= 6 and bad <= 3 and good >= bad * 2:
+                return True
             return structurally_same_derivative(expr, candidate)
 
         return check
@@ -2512,6 +2582,8 @@ class CASIOApp(App):
             candidate = extract_last_antiderivative_expr(out)
             if not candidate:
                 return False
+            if reverse_chain_integrand_matches(out, integrand, var=var):
+                return True
             symbolic = sympy_antiderivative_equivalent(candidate, integrand, var=var)
             if symbolic is True:
                 return True

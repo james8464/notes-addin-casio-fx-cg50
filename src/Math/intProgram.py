@@ -1093,11 +1093,6 @@ def sim(node):
         N = sim(L[2])
         if S == 'exp' and N[0] == 'fn' and N[1] == 'log':
             return N[2]
-        # Handle two-argument log: log(base, exp) = ln(exp)/ln(base)
-        if S == 'log' and N[0] == 'mul' and len(N[1]) == 2:
-            base = N[1][0]
-            exp = N[1][1]
-            return div(fn('log', exp), fn('log', base))
         if S == 'abs' and is_num(N):
             return num(abs(N[1]), N[2])
         if S == 'abs' and (N[0] == 'pow' and same(N[1], E)
@@ -1114,25 +1109,8 @@ def sim(node):
         if S == 'log' and (N[0] == 'pow' and same(N[1], E)
                            or N[0] == 'fn' and N[1] == 'exp'):
             return N[2]
-        # Handle log(base, exp) where both are numeric: log(10, 100) = 2
-        if S == 'log' and N[0] == 'mul' and len(N[1]) == 2 and is_num(N[1][0]) and is_num(N[1][1]):
-            base = N[1][0]
-            exp = N[1][1]
-            if base[1] > 0 and exp[1] > 0:
-                # Try to find if exp = base^n for some integer n
-                b_val = base[1] / base[2]
-                e_val = exp[1] / exp[2]
-                if b_val > 0 and b_val != 1:
-                    import math as _math
-                    n = _math.log(e_val, b_val)
-                    if abs(n - round(n)) < 1e-10:
-                        return num(round(n))
         if S == 'log' and N[0] == 'pow' and is_num(N[2]):
             return mul([N[2], ('fn', 'log', fn('abs', N[1]))])
-        if S == 'log' and N[0] == 'mul':
-            parts = list(N[1])
-            if len(parts) == 2:
-                return add([('fn', 'log', fn('abs', parts[0])), ('fn', 'log', fn('abs', parts[1]))])
         if S == 'log' and N[0] == 'div':
             return add([('fn', 'log', fn('abs', N[1])), ('mul', (num(-1), ('fn', 'log', fn('abs', N[2]))))])
         if S == 'log' and N[0] == 'fn' and N[1] == 'abs' and (
@@ -3096,6 +3074,104 @@ def equivalent_derivative_forms(node, var):
     return B
 
 
+def eval_float_node(node, var, value):
+    A = sim(node)
+    K = A[0]
+    if K == 'num':
+        return A[1] * 1.0 / A[2]
+    if K == 'const':
+        if A[1] == 'pi':
+            return math.pi
+        if A[1] == 'e':
+            return math.e
+        raise ValueError('Unknown constant.')
+    if K == 'sym':
+        if A[1] == var:
+            return value
+        raise ValueError('Unknown symbol.')
+    if K == 'add':
+        total = 0.0
+        for B in flat(A, 'add'):
+            total += eval_float_node(B, var, value)
+        return total
+    if K == 'mul':
+        total = 1.0
+        for B in flat(A, 'mul'):
+            total *= eval_float_node(B, var, value)
+        return total
+    if K == 'div':
+        return eval_float_node(A[1], var, value) / eval_float_node(A[2], var, value)
+    if K == 'pow':
+        return eval_float_node(A[1], var, value) ** eval_float_node(A[2], var, value)
+    if K == 'fn':
+        arg = eval_float_node(A[2], var, value)
+        if A[1] in ('log', 'ln'):
+            return math.log(arg)
+        if A[1] == 'sqrt':
+            return math.sqrt(arg)
+        if A[1] == 'exp':
+            return math.exp(arg)
+        if A[1] == 'sin':
+            return math.sin(arg)
+        if A[1] == 'cos':
+            return math.cos(arg)
+        if A[1] == 'tan':
+            return math.tan(arg)
+        if A[1] == 'sec':
+            return 1.0 / math.cos(arg)
+        if A[1] == 'cosec':
+            return 1.0 / math.sin(arg)
+        if A[1] == 'cot':
+            return 1.0 / math.tan(arg)
+        if A[1] == 'asin':
+            return math.asin(arg)
+        if A[1] == 'acos':
+            return math.acos(arg)
+        if A[1] == 'atan':
+            return math.atan(arg)
+    raise ValueError('Cannot evaluate.')
+
+
+def float_to_simple_num(value):
+    if not math.isfinite(value):
+        return None
+    rounded = round(value)
+    if abs(value - rounded) < 1e-8:
+        return num(int(rounded))
+    den = 2
+    while den <= 64:
+        top = round(value * den)
+        if abs(value - top / den) < 1e-8:
+            return num(int(top), den)
+        den += 1
+    return None
+
+
+def numerical_constant_quotient(node, target, var):
+    samples = (-1.7, -0.9, -0.35, 0.25, 0.8, 1.4, 2.1)
+    ratios = []
+    for sample in samples:
+        try:
+            bot = eval_float_node(target, var, sample)
+            if abs(bot) < 1e-9 or not math.isfinite(bot):
+                continue
+            top = eval_float_node(node, var, sample)
+            if not math.isfinite(top):
+                continue
+            ratios.append(top / bot)
+        except Exception:
+            pass
+    if len(ratios) < 4:
+        return None
+    base = ratios[0]
+    i = 1
+    while i < len(ratios):
+        if abs(ratios[i] - base) > 1e-7 * max(1.0, abs(base)):
+            return None
+        i += 1
+    return float_to_simple_num(base)
+
+
 def quotient_by_equivalent_target(node, target, var):
     C = [node]
     try:
@@ -3112,6 +3188,7 @@ def quotient_by_equivalent_target(node, target, var):
                 return E
             B += 1
         D += 1
+    return numerical_constant_quotient(node, target, var)
 
 
 def rewrite_in_equivalent_u(node, inner, var):
@@ -3863,6 +3940,16 @@ def integrate_reverse_chain(node, var):
         F = safe_diff(C, B)
         if F is not None and not is_zero(F):
             J = quotient_by_equivalent_target(D, F, B)
+            if J is None:
+                for Q in ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp'):
+                    R = fn(Q, C)
+                    S = quotient_by_target(D, R)
+                    if S is None:
+                        continue
+                    T = quotient_by_equivalent_target(S, F, B)
+                    if T is not None and not depends(T, B):
+                        J = R if is_one(T) else mul([T, R])
+                        break
             if J is not None:
                 G = rewrite_in_equivalent_u(J, C, B)
                 if G is not None:
@@ -3987,6 +4074,16 @@ def integrate_substitution(node, var, forced_u=None):
         E = safe_diff(D, C)
         if E is not None and not is_zero(E):
             F = quotient_by_equivalent_target(B, E, C)
+            if F is None:
+                for N in ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp'):
+                    O = fn(N, D)
+                    P = quotient_by_target(B, O)
+                    if P is None:
+                        continue
+                    Q = quotient_by_equivalent_target(P, E, C)
+                    if Q is not None and not depends(Q, C):
+                        F = O if is_one(Q) else mul([Q, O])
+                        break
             if F is None:
                 F = div(B, E)
             if F is not None:

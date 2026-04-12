@@ -4009,6 +4009,22 @@ def target_route_steps(source, target):
 def direct_trig_target_steps(source, target):
     source = sim(source)
     target = sim(target)
+    if source[0] == 'div' and is_one(source[1]) and source[2][0] == 'fn' and target[0] == 'fn':
+        arg = source[2][2]
+        if source[2][1] == 'sin' and target[1] == 'cosec' and same(arg, target[2]):
+            return [('Use cosec(A) = 1/sin(A)', target)]
+        if source[2][1] == 'cos' and target[1] == 'sec' and same(arg, target[2]):
+            return [('Use sec(A) = 1/cos(A)', target)]
+        if source[2][1] == 'tan' and target[1] == 'cot' and same(arg, target[2]):
+            return [('Use cot(A) = 1/tan(A)', target)]
+    if target[0] == 'div' and is_one(target[1]) and target[2][0] == 'fn' and source[0] == 'fn':
+        arg = target[2][2]
+        if target[2][1] == 'sin' and source[1] == 'cosec' and same(arg, source[2]):
+            return [('Use cosec(A) = 1/sin(A)', target)]
+        if target[2][1] == 'cos' and source[1] == 'sec' and same(arg, source[2]):
+            return [('Use sec(A) = 1/cos(A)', target)]
+        if target[2][1] == 'tan' and source[1] == 'cot' and same(arg, source[2]):
+            return [('Use cot(A) = 1/tan(A)', target)]
     if source[0] == 'div' and source[1][0] == 'fn' and source[2][0] == 'fn':
         top = source[1]
         bot = source[2]
