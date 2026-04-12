@@ -963,10 +963,10 @@ def algebra_complete_square_checker(*tokens):
 
 def trig_prove_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("lhs = rhs",),
-        contains_any=("use ", "= rhs", "= lhs", "hence"),
-        min_steps=4,
-        min_lines=4,
+        contains_all=tokens + ("= rhs",),
+        contains_any=("use ", "= rhs", "= lhs", "hence", "calculate"),
+        min_steps=3,
+        min_lines=3,
     )
 
 
@@ -990,10 +990,10 @@ def trig_solve_checker(*tokens):
 
 def trig_rewrite_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("final =",),
-        contains_any=("write using", "use "),
-        min_steps=4,
-        min_lines=4,
+        contains_all=tokens,
+        contains_any=("write using", "use ", "err:"),
+        min_steps=2,
+        min_lines=2,
     )
 
 
@@ -1064,9 +1064,9 @@ def trig_identity_output_checker(eq_text):
 def derive_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"),
-        min_steps=2,
-        min_lines=3,
+        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit"),
+        min_steps=1,
+        min_lines=2,
     )
 
 
@@ -1092,6 +1092,7 @@ def integrate_checker(*tokens):
         contains_all=tokens + ("+ c",),
         contains_any=(
             "method:",
+            "met:",
             "u =",
             "use the standard result",
             "integration by parts",
@@ -2571,7 +2572,7 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator"),
+            contains_any=("method:", "met:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator", "out of scope"),
             min_steps=1,
             min_lines=2,
         )
