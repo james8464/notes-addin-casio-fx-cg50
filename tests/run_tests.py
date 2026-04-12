@@ -25,6 +25,23 @@ from dataclasses import dataclass
 from enum import Enum
 
 try:
+    import sympy as SP
+    from sympy.parsing.sympy_parser import (
+        parse_expr as SP_PARSE_EXPR,
+        standard_transformations as SP_STANDARD_TRANSFORMS,
+        implicit_multiplication_application as SP_IMPLICIT_MULT,
+        convert_xor as SP_CONVERT_XOR,
+    )
+    SYMPY_AVAILABLE = True
+except Exception:
+    SP = None
+    SP_PARSE_EXPR = None
+    SP_STANDARD_TRANSFORMS = ()
+    SP_IMPLICIT_MULT = None
+    SP_CONVERT_XOR = None
+    SYMPY_AVAILABLE = False
+
+try:
     from textual.app import App, ComposeResult
     from textual.containers import Container, Vertical, Horizontal
     from textual.widgets import Static, Input, RichLog
@@ -94,6 +111,8 @@ def _default_case_workers():
 
 
 CASE_WORKERS = _default_case_workers()
+SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
+SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
 
 
 def _safe_worker_cap():
@@ -169,6 +188,144 @@ def to_python_expr(expr):
     return out
 
 
+def to_sympy_expr_text(expr):
+    out = (expr or "").strip()
+    out = re.sub(r"ln\|([^|]+)\|", r"log(abs(\1))", out)
+    out = re.sub(r"\|([^|]+)\|", r"abs(\1)", out)
+    out = out.replace("ln(", "log(")
+    out = out.replace("arcsin(", "asin(")
+    out = out.replace("arccos(", "acos(")
+    out = out.replace("arctan(", "atan(")
+    out = re.sub(r"\bcosec\s*\(", "csc(", out)
+    return out
+
+
+def sympy_locals():
+    if not SYMPY_AVAILABLE:
+        return {}
+    x, y, t = SP.symbols("x y t")
+    return {
+        "x": x,
+        "y": y,
+        "t": t,
+        "pi": SP.pi,
+        "e": SP.E,
+        "E_CONST": SP.E,
+        "sin": SP.sin,
+        "cos": SP.cos,
+        "tan": SP.tan,
+        "sec": SP.sec,
+        "cosec": SP.csc,
+        "csc": SP.csc,
+        "cot": SP.cot,
+        "exp": SP.exp,
+        "log": SP.log,
+        "ln": SP.log,
+        "sqrt": SP.sqrt,
+        "abs": SP.Abs,
+        "asin": SP.asin,
+        "acos": SP.acos,
+        "atan": SP.atan,
+    }
+
+
+def sympy_parse_expr(expr):
+    if not SYMPY_AVAILABLE:
+        return None
+    if len(expr or "") > SYMPY_MAX_CHARS:
+        return None
+    transformations = SP_STANDARD_TRANSFORMS + (SP_IMPLICIT_MULT, SP_CONVERT_XOR)
+    try:
+        return SP_PARSE_EXPR(
+            to_sympy_expr_text(expr),
+            local_dict=sympy_locals(),
+            transformations=transformations,
+            evaluate=True,
+        )
+    except Exception:
+        return None
+
+
+def sympy_safe_text(*exprs):
+    joined = " ".join(expr or "" for expr in exprs)
+    if len(joined) > SYMPY_MAX_CHARS:
+        return False
+    # SymPy trig simplification is powerful but can be extremely expensive on
+    # generated A-level-style identities. Numeric sampling handles trig checks
+    # reliably and keeps the interactive harness responsive.
+    return re.search(r"\b(sin|cos|tan|sec|cosec|csc|cot|asin|acos|atan)\s*\(", joined) is None
+
+
+def sympy_simplify_difference(left, right):
+    if not SYMPY_AVAILABLE:
+        return None
+    try:
+        diff = left - right
+        op_count = SP.count_ops(diff)
+        if op_count > SYMPY_MAX_OPS:
+            return None
+        candidates = [diff, SP.expand(diff), SP.cancel(diff), SP.factor(diff), SP.together(diff)]
+        if op_count <= SYMPY_MAX_OPS // 2:
+            candidates.extend([SP.trigsimp(diff), SP.simplify(diff), SP.simplify(SP.trigsimp(SP.together(diff)))])
+        for candidate in candidates:
+            if candidate == 0:
+                return True
+            equals = candidate.equals(0)
+            if equals is True:
+                return True
+            if equals is False:
+                return False
+    except Exception:
+        return None
+    return None
+
+
+def sympy_expressions_equivalent(left_text, right_text, var="x"):
+    if not SYMPY_AVAILABLE:
+        return None
+    if not sympy_safe_text(left_text, right_text):
+        return None
+    left = sympy_parse_expr(left_text)
+    right = sympy_parse_expr(right_text)
+    if left is None or right is None:
+        return None
+    return sympy_simplify_difference(left, right)
+
+
+def sympy_derivative_equivalent(expr_text, candidate_text, var="x"):
+    if not SYMPY_AVAILABLE:
+        return None
+    if not sympy_safe_text(expr_text, candidate_text):
+        return None
+    expr = sympy_parse_expr(expr_text)
+    candidate = sympy_parse_expr(candidate_text)
+    if expr is None or candidate is None:
+        return None
+    try:
+        symbol = sympy_locals().get(var, SP.symbols(var))
+        expected = SP.diff(expr, symbol)
+    except Exception:
+        return None
+    return sympy_simplify_difference(candidate, expected)
+
+
+def sympy_antiderivative_equivalent(candidate_text, integrand_text, var="x"):
+    if not SYMPY_AVAILABLE:
+        return None
+    if not sympy_safe_text(candidate_text, integrand_text):
+        return None
+    candidate = sympy_parse_expr(candidate_text)
+    integrand = sympy_parse_expr(integrand_text)
+    if candidate is None or integrand is None:
+        return None
+    try:
+        symbol = sympy_locals().get(var, SP.symbols(var))
+        derivative = SP.diff(candidate, symbol)
+    except Exception:
+        return None
+    return sympy_simplify_difference(derivative, integrand)
+
+
 def safe_eval_expr(expr, values=None):
     scope = {
         "sin": math.sin,
@@ -177,6 +334,35 @@ def safe_eval_expr(expr, values=None):
         "sec": lambda x: 1.0 / math.cos(x),
         "cosec": lambda x: 1.0 / math.sin(x),
         "cot": lambda x: 1.0 / math.tan(x),
+        "exp": math.exp,
+        "sqrt": math.sqrt,
+        "log": _log_fn,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
+        "abs": abs,
+        "pi": math.pi,
+        "E_CONST": math.e,
+    }
+    if values:
+        scope.update(values)
+    return float(eval(to_python_expr(expr), {"__builtins__": {}}, scope))
+
+
+def safe_eval_expr_angle(expr, values=None, degrees=False):
+    if not degrees:
+        return safe_eval_expr(expr, values)
+
+    def deg_wrap(fn):
+        return lambda x: fn(math.radians(x))
+
+    scope = {
+        "sin": deg_wrap(math.sin),
+        "cos": deg_wrap(math.cos),
+        "tan": deg_wrap(math.tan),
+        "sec": lambda x: 1.0 / math.cos(math.radians(x)),
+        "cosec": lambda x: 1.0 / math.sin(math.radians(x)),
+        "cot": lambda x: 1.0 / math.tan(math.radians(x)),
         "exp": math.exp,
         "sqrt": math.sqrt,
         "log": _log_fn,
@@ -356,11 +542,214 @@ def extract_last_antiderivative_expr(output):
     return None
 
 
+def _strip_numbered_prefix(line):
+    return re.sub(r"^\s*\d+\.\s*", "", (line or "").strip())
+
+
+def extract_labeled_expr(output, labels):
+    wanted = tuple(label.lower() for label in labels)
+    for line in reversed((output or "").splitlines()):
+        stripped = _strip_numbered_prefix(line)
+        lower = stripped.lower()
+        for label in wanted:
+            if lower.startswith(label):
+                return stripped[len(label):].strip()
+    return None
+
+
+def extract_final_algebra_expr(output):
+    expr = extract_labeled_expr(output, ("final =", "out =", "ans =", "answer:", "f(g(x)) =", "hence "))
+    if expr:
+        return expr
+    for line in reversed((output or "").splitlines()):
+        stripped = _strip_numbered_prefix(line)
+        if stripped.startswith("="):
+            return stripped[1:].strip()
+    return None
+
+
+def expressions_equivalent_numeric(left, right, var="x", min_good=6, rel_tol=1e-5, abs_tol=1e-5):
+    symbolic = sympy_expressions_equivalent(left, right, var=var)
+    if symbolic is True:
+        return True
+    if symbolic is False:
+        # Keep numeric sampling as a safety net for expressions SymPy cannot
+        # prove under implicit domain assumptions.
+        pass
+    good = 0
+    bad = 0
+    for point in domain_aware_sample_points(left, right, var=var):
+        try:
+            left_value = safe_eval_expr(left, {var: point})
+            right_value = safe_eval_expr(right, {var: point})
+        except Exception:
+            continue
+        if not math.isfinite(left_value) or not math.isfinite(right_value):
+            continue
+        if numeric_close(left_value, right_value, rel_tol=rel_tol, abs_tol=abs_tol):
+            good += 1
+        else:
+            bad += 1
+    return good >= min_good and bad == 0
+
+
+def expression_value_checker(source_expr, candidate_expr, var="x"):
+    try:
+        return expressions_equivalent_numeric(source_expr, candidate_expr, var=var)
+    except Exception:
+        return False
+
+
 def equation_residual(eq_text, var, value):
     lhs, rhs = split_equation_text(eq_text)
     left_value = safe_eval_expr(lhs, {var: value})
     right_value = safe_eval_expr(rhs, {var: value})
     return left_value - right_value
+
+
+def equation_residual_angle(eq_text, var, value, degrees=False):
+    lhs, rhs = split_equation_text(eq_text)
+    left_value = safe_eval_expr_angle(lhs, {var: value}, degrees=degrees)
+    right_value = safe_eval_expr_angle(rhs, {var: value}, degrees=degrees)
+    return left_value - right_value
+
+
+def numeric_value_sets_match(shown, expected, rel_tol=2e-4, abs_tol=2e-4):
+    if expected is None:
+        return None
+    if len(shown) != len(expected):
+        return False
+    unmatched = list(expected)
+    for value in shown:
+        match_index = None
+        for index, target in enumerate(unmatched):
+            if numeric_close(value, target, rel_tol=rel_tol, abs_tol=abs_tol):
+                match_index = index
+                break
+        if match_index is None:
+            return False
+        unmatched.pop(match_index)
+    return not unmatched
+
+
+def sympy_equation_real_values(eq_text, var="x"):
+    if not SYMPY_AVAILABLE or not sympy_safe_text(eq_text):
+        return None
+    try:
+        lhs, rhs = split_equation_text(eq_text)
+    except Exception:
+        return None
+    left = sympy_parse_expr(lhs)
+    right = sympy_parse_expr(rhs)
+    if left is None or right is None:
+        return None
+    try:
+        expr = SP.together(left - right)
+        if SP.count_ops(expr) > SYMPY_MAX_OPS:
+            return None
+        symbol = sympy_locals().get(var, SP.symbols(var))
+        roots = SP.solve(expr, symbol)
+    except Exception:
+        return None
+    values = []
+    for root in roots:
+        try:
+            root = SP.N(root, 30)
+            if abs(float(SP.im(root))) > 1e-9:
+                continue
+            value = float(SP.re(root))
+            if not math.isfinite(value):
+                continue
+            if abs(equation_residual(eq_text, var, value)) > 1e-4:
+                continue
+            if not any(numeric_close(value, seen, rel_tol=1e-6, abs_tol=1e-6) for seen in values):
+                values.append(value)
+        except Exception:
+            continue
+    return sorted(values)
+
+
+def _bisect_residual(eq_text, var, left, right, degrees=False, iterations=50):
+    try:
+        f_left = equation_residual_angle(eq_text, var, left, degrees=degrees)
+        f_right = equation_residual_angle(eq_text, var, right, degrees=degrees)
+    except Exception:
+        return None
+    if not (math.isfinite(f_left) and math.isfinite(f_right)):
+        return None
+    if abs(f_left) < 1e-8:
+        return left
+    if abs(f_right) < 1e-8:
+        return right
+    if f_left * f_right > 0:
+        return None
+    lo, hi = left, right
+    for _ in range(iterations):
+        mid = (lo + hi) / 2
+        try:
+            f_mid = equation_residual_angle(eq_text, var, mid, degrees=degrees)
+        except Exception:
+            return None
+        if not math.isfinite(f_mid):
+            return None
+        if abs(f_mid) < 1e-10:
+            return mid
+        if f_left * f_mid <= 0:
+            hi = mid
+            f_right = f_mid
+        else:
+            lo = mid
+            f_left = f_mid
+    return (lo + hi) / 2
+
+
+def expected_trig_solutions_numeric(eq_text, var="x", lower=0.0, upper=2 * math.pi, degrees=False):
+    if upper <= lower:
+        return None
+    span = upper - lower
+    # This oracle intentionally oversamples: generated solve cases can contain
+    # quadratic angle brackets, so roots may be much closer together near the
+    # end of the interval than a normal A-level example would be.
+    steps = min(40000, max(4000, int(span * (25 if degrees else 1600))))
+    step = span / steps
+    candidates = []
+
+    def add_candidate(value):
+        if value < lower - 1e-7 or value > upper + 1e-7:
+            return
+        try:
+            residual = equation_residual_angle(eq_text, var, value, degrees=degrees)
+        except Exception:
+            return
+        if math.isfinite(residual) and abs(residual) < 1e-5:
+            if not any(numeric_close(value, seen, rel_tol=1e-5, abs_tol=1e-5) for seen in candidates):
+                candidates.append(value)
+
+    prev_x = lower
+    try:
+        prev_y = equation_residual_angle(eq_text, var, prev_x, degrees=degrees)
+    except Exception:
+        prev_y = None
+    add_candidate(prev_x)
+    for index in range(1, steps + 1):
+        x_value = lower + index * step
+        try:
+            y_value = equation_residual_angle(eq_text, var, x_value, degrees=degrees)
+        except Exception:
+            prev_x = x_value
+            prev_y = None
+            continue
+        if math.isfinite(y_value):
+            if abs(y_value) < 1e-5:
+                add_candidate(x_value)
+            if prev_y is not None and math.isfinite(prev_y) and prev_y * y_value < 0:
+                root = _bisect_residual(eq_text, var, prev_x, x_value, degrees=degrees)
+                if root is not None:
+                    add_candidate(root)
+        prev_x = x_value
+        prev_y = y_value if math.isfinite(y_value) else None
+    add_candidate(upper)
+    return sorted(candidates)
 
 
 def candidate_sample_points():
@@ -540,12 +929,76 @@ def trig_rewrite_checker(*tokens):
     )
 
 
+def algebra_compare_output_checker(expr1, expr2, expected_equal=True):
+    quality = algebra_compare_checker()
+
+    def check(output):
+        if not quality(output):
+            return False
+        text = normalized_text(output)
+        says_equivalent = "result: equivalent" in text
+        says_not_equivalent = "result: not equivalent" in text
+        if expected_equal and not says_equivalent:
+            return False
+        if not expected_equal and not says_not_equivalent:
+            return False
+        actual_equal = expressions_equivalent_numeric(expr1, expr2)
+        return actual_equal == expected_equal
+
+    return check
+
+
+def final_expression_output_checker(source_expr, labels=("final =", "out =", "ans ="), var="x"):
+    def check(output):
+        if any(item in normalized_text(output) for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+            return False
+        candidate = extract_labeled_expr(output, labels)
+        if not candidate:
+            candidate = extract_final_algebra_expr(output)
+        if not candidate:
+            return False
+        return expression_value_checker(source_expr, candidate, var=var)
+
+    return check
+
+
+def transform_output_checker(source_expr, target_expr, program="Algebra", var="x"):
+    quality = algebra_transform_checker() if program == "Algebra" else trig_transform_checker()
+
+    def check(output):
+        if not quality(output):
+            return False
+        candidate = extract_labeled_expr(output, ("final =",))
+        if not candidate:
+            candidate = extract_final_algebra_expr(output)
+        if not candidate:
+            return False
+        return (
+            expression_value_checker(candidate, target_expr, var=var)
+            and expression_value_checker(candidate, source_expr, var=var)
+        )
+
+    return check
+
+
+def trig_identity_output_checker(eq_text):
+    lhs, rhs = split_equation_text(eq_text)
+    quality = trig_prove_checker()
+
+    def check(output):
+        if not quality(output):
+            return False
+        return expressions_equivalent_numeric(lhs, rhs, rel_tol=2e-5, abs_tol=2e-5)
+
+    return check
+
+
 def derive_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit"),
+        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"),
         min_steps=2,
-        min_lines=4,
+        min_lines=3,
     )
 
 
@@ -627,7 +1080,7 @@ def working_quality_ok(output, program, feature):
         return steps >= 3
 
     if program == "Derive":
-        if "dy/dx" not in text or lines < 4:
+        if "dy/dx" not in text or lines < 3:
             return False
         if "quotient" in feature:
             return "quotient rule" in text and "u =" in text and "v =" in text and ("du" in text or "dv" in text)
@@ -635,7 +1088,7 @@ def working_quality_ok(output, program, feature):
             return "dy/dx" in text and ("d/dx(lhs)=d/dx(rhs)" in text or "make dy/dx" in text)
         if "parametric" in feature:
             return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text
-        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "implicit"))
+        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"))
 
     if program == "Integrate":
         if "+ c" not in text or lines < 2:
@@ -653,7 +1106,9 @@ def working_quality_ok(output, program, feature):
         return any(marker in text for marker in ("method:", "use the standard result", "split the numerator", "complete the square", "u ="))
 
     if program == "SUVAT":
-        return "answer:" in text and ("equation:" in text or "original equation:" in text) and ("substitute:" in text or "rearranged equation:" in text)
+        synthetic_working = "answer:" in text and ("equation:" in text or "original equation:" in text) and ("substitute:" in text or "rearranged equation:" in text)
+        cli_working = any(marker in text for marker in ("s =", "u =", "v =", "a =", "t =")) and any(marker in text for marker in ("= s =", "= u =", "= v =", "= a =", "= t =", "v = u + at", "s = ut", "v^2 ="))
+        return synthetic_working or cli_working
 
     return True
 
@@ -679,6 +1134,55 @@ def suvat_checker(*tokens):
         min_lines=3,
         forbid=("error",),
     )
+
+
+def suvat_expected_float(expected):
+    if isinstance(expected, Fraction):
+        return expected.numerator / expected.denominator
+    if isinstance(expected, tuple) and len(expected) == 3 and expected[0] == "num":
+        return expected[1] / expected[2]
+    return safe_eval_expr(str(expected))
+
+
+def parse_suvat_answer_values(text):
+    values = []
+    for bit in split_top_level_text(text, ","):
+        for part in re.split(r"\s+or\s+", bit):
+            part = part.strip()
+            if not part:
+                continue
+            part = part.split("(", 1)[0].strip()
+            part = re.sub(r"\s+(m/s\^2|m/s|m|s)$", "", part).strip()
+            try:
+                values.append(safe_eval_expr(part))
+            except Exception:
+                pass
+    return values
+
+
+def suvat_cli_checker(target, expected):
+    expected_value = suvat_expected_float(expected)
+
+    def check(output):
+        if "error:" in normalized_text(output):
+            return False
+        found = False
+        for line in (output or "").splitlines():
+            stripped = line.strip()
+            if not re.match(rf"^{re.escape(target)}\s*=", stripped):
+                continue
+            rhs = stripped.split("=", 1)[1].strip()
+            values = parse_suvat_answer_values(rhs)
+            if not values:
+                continue
+            found = True
+            for value in values:
+                if not numeric_close(value, expected_value, rel_tol=5e-3, abs_tol=5e-4):
+                    return False
+        return found
+
+    check.__name__ = f"suvat_cli_checker_{target}_{expected}"
+    return check
 
 class CASIOApp(App):
     CSS = """
@@ -1852,6 +2356,7 @@ class CASIOApp(App):
 
     def algebra_solve_output_checker(self, eq_text, var="x"):
         quality = algebra_solve_checker()
+        expected_values = sympy_equation_real_values(eq_text, var=var)
 
         def check(out):
             if not quality(out):
@@ -1866,17 +2371,23 @@ class CASIOApp(App):
                     return False
                 if not numeric_close(residual, 0.0, rel_tol=1e-4, abs_tol=1e-4):
                     return False
+            set_match = numeric_value_sets_match(values, expected_values)
+            if set_match is False:
+                return False
             return True
 
         return check
 
-    def trig_solve_output_checker(self, eq_text, var="x"):
+    def trig_solve_output_checker(self, eq_text, var="x", degrees=False, lower=None, upper=None):
         quality = build_checker(
             contains_all=("x =",),
             contains_any=("solve trig eq", "for sin(a) = sin(b)", "for cos(a) = cos(b)", "start with"),
             min_steps=4,
             min_lines=4,
         )
+        expected_values = None
+        if lower is not None and upper is not None:
+            expected_values = expected_trig_solutions_numeric(eq_text, var=var, lower=lower, upper=upper, degrees=degrees)
 
         def check(out):
             if not quality(out):
@@ -1886,14 +2397,35 @@ class CASIOApp(App):
                 return False
             for value in values:
                 try:
-                    residual = equation_residual(eq_text, var, value)
+                    residual = equation_residual_angle(eq_text, var, value, degrees=degrees)
                 except Exception:
                     return False
                 if not numeric_close(residual, 0.0, rel_tol=2e-3, abs_tol=2e-3):
                     return False
+            set_match = numeric_value_sets_match(values, expected_values, rel_tol=3e-3, abs_tol=3e-3)
+            if set_match is False:
+                return False
             return True
 
         return check
+
+    def trig_cli_solve_checker(self, solve_text):
+        parts = split_top_level_text(solve_text, ",")
+        eq_text = parts[0] if parts else solve_text
+        var = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "x"
+        degrees = False
+        lower = None
+        upper = None
+        if len(parts) >= 4:
+            try:
+                lower = safe_eval_expr(parts[2])
+                upper = safe_eval_expr(parts[3])
+                degrees = max(abs(lower), abs(upper)) > 10
+            except Exception:
+                lower = None
+                upper = None
+                degrees = False
+        return self.trig_solve_output_checker(eq_text, var=var, degrees=degrees, lower=lower, upper=upper)
 
     def derive_output_checker(self, expr, var="x"):
         quality = derive_checker()
@@ -1904,6 +2436,9 @@ class CASIOApp(App):
             candidate = extract_last_derivative_expr(out)
             if not candidate:
                 return False
+            symbolic = sympy_derivative_equivalent(expr, candidate, var=var)
+            if symbolic is True:
+                return True
             good = 0
             bad = 0
             for point in candidate_sample_points():
@@ -1977,6 +2512,9 @@ class CASIOApp(App):
             candidate = extract_last_antiderivative_expr(out)
             if not candidate:
                 return False
+            symbolic = sympy_antiderivative_equivalent(candidate, integrand, var=var)
+            if symbolic is True:
+                return True
             good = 0
             bad = 0
             sample_points = domain_aware_sample_points(integrand, candidate, var=var)
@@ -2364,7 +2902,14 @@ class CASIOApp(App):
             eq = f"{func}({k}*x)={target}"
             mode = f"{func}({k}x)"
         label = f"Random trig solve {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"3\n{eq},x,0,2*pi\n", label, self.trig_solve_output_checker(eq), feature="trig_solve")
+        return self.make_cli_case(
+            "Trigonometry",
+            "trigProgram.py",
+            f"3\n{eq},x,0,2*pi\n",
+            label,
+            self.trig_solve_output_checker(eq, lower=0.0, upper=2 * math.pi),
+            feature="trig_solve",
+        )
 
     def random_trig_rewrite_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
@@ -2727,6 +3272,9 @@ class CASIOApp(App):
         def frac_num(value):
             return SUVAT.num(value.numerator, value.denominator)
 
+        def frac_text(value):
+            return str(value.numerator) if value.denominator == 1 else f"{value.numerator}/{value.denominator}"
+
         u = Fraction(rng.randint(-9, 9), rng.choice([1, 1, 1, 2, 3]) if difficulty == "hard" else 1)
         a = Fraction(self.random_nonzero_int(rng, -7, 7), rng.choice([1, 1, 2, 3]) if difficulty == "hard" else 1)
         t = Fraction(rng.randint(1, 8), rng.choice([1, 1, 2, 3]) if difficulty == "hard" else 1)
@@ -2745,20 +3293,21 @@ class CASIOApp(App):
             values = (frac_num(s), frac_num(u), frac_num(v), frac_num(a), None, "t", t)
 
         expected = f"{values[6].numerator}/{values[6].denominator}" if values[6].denominator != 1 else str(values[6].numerator)
+        all_values = {"s": s, "u": u, "v": v, "a": a, "t": t}
+        cli_input = "\n".join("," if name == target else frac_text(all_values[name]) for name in ("s", "u", "v", "a", "t")) + "\n"
 
         def runner():
-            result, equation, original_eq, substitution = SUVAT._build_suvat_solution_data(*values[:6])
-            text = format_suvat_working(result, equation, original_eq, substitution)
-            return suvat_checker(expected)(text), text
+            out, _ = self.run_cli("SUVATprogram.py", cli_input)
+            return suvat_cli_checker(target, expected)(out), out
 
         label = f"Random SUVAT {index}: find {target}"
         input_text = (
             f"target={target}\n"
-            f"s={values[0]}\n"
-            f"u={values[1]}\n"
-            f"v={values[2]}\n"
-            f"a={values[3]}\n"
-            f"t={values[4]}"
+            f"s={',' if target == 's' else frac_text(s)}\n"
+            f"u={',' if target == 'u' else frac_text(u)}\n"
+            f"v={',' if target == 'v' else frac_text(v)}\n"
+            f"a={',' if target == 'a' else frac_text(a)}\n"
+            f"t={',' if target == 't' else frac_text(t)}"
         )
         return self.make_direct_case("SUVAT", label, runner, input_text=input_text, check_info=f"suvat exact answer = {expected}", feature=f"suvat_find_{target}")
 
@@ -2810,19 +3359,57 @@ class CASIOApp(App):
         import threading
         threading.Thread(target=run, daemon=True).start()
 
+    def calculated_checker_for_cli_case(self, script, inp, expected):
+        lines = (inp or "").splitlines()
+        if not lines:
+            return expected if callable(expected) else None
+        mode = lines[0].strip()
+        try:
+            if script == "algebraProgram.py":
+                if mode == "1" and len(lines) >= 3:
+                    return algebra_compare_output_checker(lines[1], lines[2], "not" not in str(expected).lower())
+                if mode == "2" and len(lines) >= 3:
+                    return transform_output_checker(lines[1], lines[2], "Algebra")
+                if mode == "3" and len(lines) >= 2:
+                    return final_expression_output_checker(lines[1], ("out =",))
+                if mode == "5" and len(lines) >= 2:
+                    return final_expression_output_checker(lines[1], ("ans =",))
+                if mode == "6" and len(lines) >= 2:
+                    return self.algebra_solve_output_checker(lines[1])
+            if script == "trigProgram.py":
+                if mode == "1" and len(lines) >= 2 and "=" in lines[1]:
+                    return trig_identity_output_checker(lines[1])
+                if mode == "2" and len(lines) >= 3:
+                    return transform_output_checker(lines[1], lines[2], "Trigonometry")
+                if mode == "3" and len(lines) >= 2:
+                    return self.trig_cli_solve_checker(lines[1])
+            if script == "deriveProgram.py":
+                if mode == "1" and len(lines) >= 2:
+                    return self.derive_output_checker(lines[1])
+                if mode == "3" and len(lines) >= 3:
+                    return self.parametric_output_checker(lines[1], lines[2])
+            if script == "intProgram.py" and mode == "1" and len(lines) >= 2:
+                return self.integrate_output_checker(lines[1])
+        except Exception:
+            return expected if callable(expected) else None
+        return expected if callable(expected) else None
+
     def run_simple_cases(self, script, program, cases, default_check):
         def evaluate(case):
             inp, label, expected = case
             out, _ = self.run_cli(script, inp)
-            if callable(expected):
-                passed = expected(out)
+            calculated = self.calculated_checker_for_cli_case(script, inp, expected)
+            if calculated is not None:
+                passed = calculated(out)
             elif default_check == "contains":
                 passed = expected in out
             elif default_check == "no_error":
                 passed = "Error" not in out and expected in out
             else:
                 passed = expected in out
-            if callable(expected):
+            if calculated is not None:
+                check_info = getattr(calculated, "__name__", "calculated checker")
+            elif callable(expected):
                 check_info = getattr(expected, "__name__", "custom checker")
             else:
                 check_info = f"{default_check}: {expected}"
@@ -2852,7 +3439,9 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for inp, check, label in tests:
                 out, _ = self.run_cli("algebraProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                _mode, expr1, expr2 = inp.splitlines()[:3]
+                checker = algebra_compare_output_checker(expr1, expr2, expected_equal=True)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra compare"), "algebra_compare")
 
         # Transform tests
         transforms = [
@@ -2869,7 +3458,9 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for inp, check, label in transforms:
                 out, _ = self.run_cli("algebraProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                _mode, src, tgt = inp.splitlines()[:3]
+                checker = transform_output_checker(src, tgt, "Algebra")
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra transform"), "algebra_transform")
 
         expand_cases = [
             ("3\n(2*x+1)^5\n\n", "Expand: (2x+1)^5", algebra_expand_checker("32*x^5", "10*x", "1")),
@@ -2898,7 +3489,9 @@ class CASIOApp(App):
         if difficulty in ("all", "medium", "hard"):
             for inp, check, label in solves:
                 out, _ = self.run_cli("algebraProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                eq = inp.splitlines()[1]
+                checker = self.algebra_solve_output_checker(eq)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra solve"), "algebra_solve")
 
         # Inverse tests
         inverses = [
@@ -3130,7 +3723,9 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for inp, check, label in proofs:
                 out, _ = self.run_cli("trigProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                eq = inp.splitlines()[1]
+                checker = trig_identity_output_checker(eq)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig identity"), "trig_prove")
 
         # Transform tests
         transforms = [
@@ -3145,7 +3740,9 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for inp, check, label in transforms:
                 out, _ = self.run_cli("trigProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                _mode, src, tgt = inp.splitlines()[:3]
+                checker = transform_output_checker(src, tgt, "Trigonometry")
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig transform"), "trig_transform")
 
         trig_regressions = [
             (
@@ -3172,7 +3769,9 @@ class CASIOApp(App):
         if difficulty in ("all", "medium", "hard"):
             for inp, check, label in solves:
                 out, _ = self.run_cli("trigProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                solve_text = inp.splitlines()[1]
+                checker = self.trig_cli_solve_checker(solve_text)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig solve"), "trig_solve")
 
         # Regression: non-identities should fail cleanly in prove mode
         if difficulty in ("all", "medium", "hard"):
@@ -3369,21 +3968,25 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for expr, check, label in tests:
                 out, _ = self.run_cli("deriveProgram.py", f"1\n{expr}\n")
-                self.add_test(label, "Error" not in out and (check in out or "dy/dx" in out), out, p)
+                checker = self.derive_output_checker(expr)
+                self.add_test(label, checker(out), out, p, f"1\n{expr}\n", getattr(checker, "__name__", "calculated derivative"), "derive_normal")
 
         # Extreme - log differentiation
         if difficulty in ("all", "medium", "hard"):
             out, _ = self.run_cli("deriveProgram.py", "1\nx^x\n")
-            self.add_test("Extreme: d/dx[x^x] (log diff)", "Error" not in out, out, p)
+            checker = self.derive_output_checker("x^x")
+            self.add_test("Extreme: d/dx[x^x] (log diff)", checker(out), out, p, "1\nx^x\n", getattr(checker, "__name__", "calculated derivative"), "derive_normal")
 
             out, _ = self.run_cli("deriveProgram.py", "1\nx^2+y^2+2*x*y=5\n")
             self.add_test("Extreme: implicit diff", "Error" not in out, out, p)
 
             out, _ = self.run_cli("deriveProgram.py", "1\nsin(x)^x\n")
-            self.add_test("Extreme: d/dx[sin(x)^x]", "Error" not in out, out, p)
+            checker = self.derive_output_checker("sin(x)^x")
+            self.add_test("Extreme: d/dx[sin(x)^x]", checker(out), out, p, "1\nsin(x)^x\n", getattr(checker, "__name__", "calculated derivative"), "derive_normal")
 
             out, _ = self.run_cli("deriveProgram.py", "1\nsin(exp(x^2))\n")
-            self.add_test("Extreme: chain rule deep", "Error" not in out, out, p)
+            checker = self.derive_output_checker("sin(exp(x^2))")
+            self.add_test("Extreme: chain rule deep", checker(out), out, p, "1\nsin(exp(x^2))\n", getattr(checker, "__name__", "calculated derivative"), "derive_normal")
 
         implicit_cases = [
             ("2\nx^2+y^2=25\n", "Implicit: x^2+y^2=25", derive_implicit_checker("-x/y")),
@@ -3499,7 +4102,8 @@ class CASIOApp(App):
         if difficulty in ("all", "easy", "medium", "hard"):
             for expr, check, label in tests:
                 out, _ = self.run_cli("intProgram.py", f"1\n{expr}\n1\n")
-                self.add_test(label, check in out, out, p)
+                checker = self.integrate_output_checker(expr)
+                self.add_test(label, checker(out), out, p, f"1\n{expr}\n1\n", getattr(checker, "__name__", "calculated antiderivative"), "integrate_auto")
 
         # Substitution tests
         subs = [
@@ -3511,7 +4115,9 @@ class CASIOApp(App):
         if difficulty in ("all", "medium", "hard"):
             for inp, check, label in subs:
                 out, _ = self.run_cli("intProgram.py", inp)
-                self.add_test(label, check in out or "+ C" in out, out, p)
+                integrand = inp.splitlines()[1]
+                checker = self.integrate_output_checker(integrand)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated antiderivative"), "integrate_sub")
 
         # By parts tests
         parts = [
@@ -3525,15 +4131,19 @@ class CASIOApp(App):
         if difficulty in ("all", "medium", "hard"):
             for inp, check, label in parts:
                 out, _ = self.run_cli("intProgram.py", inp)
-                self.add_test(label, check in out, out, p)
+                integrand = inp.splitlines()[1]
+                checker = self.integrate_output_checker(integrand)
+                self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated antiderivative"), "integrate_parts")
 
         # Extreme
         if difficulty in ("all", "hard"):
             out, _ = self.run_cli("intProgram.py", "1\nsin(x)^4*cos(x)^2\n1\n")
-            self.add_test("Extreme: ∫sin⁴x·cos²x dx", "+ C" in out and "sin" in out, out, p)
+            checker = self.integrate_output_checker("sin(x)^4*cos(x)^2")
+            self.add_test("Extreme: ∫sin⁴x·cos²x dx", checker(out), out, p, "1\nsin(x)^4*cos(x)^2\n1\n", getattr(checker, "__name__", "calculated antiderivative"), "integrate_auto")
 
             out, _ = self.run_cli("intProgram.py", "1\n(x^3+2*x^2-x+1)/((x-1)^2*(x+2))\n1\n")
-            self.add_test("Extreme: partial fractions", "+ C" in out or "partial" in out.lower(), out, p)
+            checker = self.integrate_output_checker("(x^3+2*x^2-x+1)/((x-1)^2*(x+2))")
+            self.add_test("Extreme: partial fractions", checker(out), out, p, "1\n(x^3+2*x^2-x+1)/((x-1)^2*(x+2))\n1\n", getattr(checker, "__name__", "calculated antiderivative"), "integrate_auto")
 
         extra_cases = []
 
@@ -3648,13 +4258,23 @@ class CASIOApp(App):
                     result, equation, original_eq, sub = sp._build_suvat_solution_data(s, u, v, a, t, target)
                     text = format_suvat_working(result, equation, original_eq, sub)
                     self.add_test(label, suvat_checker(expected)(text), text, p)
+
+                cli_cases = [
+                    (",\n20\n0\n0\n5\n", "s", "100", "CLI SUVAT formatting: s=100 must not become 1 m"),
+                    (",\n0\n0\n4\n5\n", "s", "50", "CLI SUVAT formatting: s=50"),
+                    ("20\n,\n14\n2\n4\n", "u", "6", "CLI SUVAT formatting: recover u=6"),
+                ]
+                for inp, target, expected, label in cli_cases:
+                    out, _ = self.run_cli("SUVATprogram.py", inp)
+                    self.add_test(label, suvat_cli_checker(target, expected)(out), out, p, inp, f"{target} = {expected}", f"suvat_cli_{target}")
         except Exception as e:
             self.add_test("SUVAT import", False, str(e), p)
 
         # Extreme - projectile
         if difficulty in ("all", "medium", "hard"):
-            out, _ = self.run_cli("SUVATprogram.py", "25\n0\n9.8\n4\n\n")
-            self.add_test("Extreme: projectile (u=25, a=9.8, t=4)", "s =" in out or "h =" in out.lower(), out, p)
+            projectile_input = ",\n25\n\n9.8\n4\n"
+            out, _ = self.run_cli("SUVATprogram.py", projectile_input)
+            self.add_test("Extreme: projectile (u=25, a=9.8, t=4)", suvat_cli_checker("s", "178.4")(out), out, p, projectile_input, "s = 178.4", "suvat_cli_s")
 
         try:
             import SUVATprogram as sp

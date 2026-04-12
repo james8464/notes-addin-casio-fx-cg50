@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "105560ec30b5573f",
+        "id": "78dde635126236cb",
         "type": "tabs",
         "children": [
           {
-            "id": "4b78f21c75e59848",
+            "id": "2c6242e7166b2172",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "3d-graph-view-global",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "orbit",
+              "title": "Global 3D Graph"
             }
           }
         ]
@@ -173,15 +173,16 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "bases:Create new base": false,
+      "3d-graph-new:Global 3D Graph": false
     }
   },
-  "active": "4b78f21c75e59848",
+  "active": "2c6242e7166b2172",
   "lastOpenFiles": [
+    "AGENTS.md",
     "tests/reports/failure_report_20260410_190440.txt",
     "tests/reports/failure_report_20260410_190404.txt",
     "CLAUDE.md",
-    "AGENTS.md",
     "docs/int_README.md"
   ]
 }

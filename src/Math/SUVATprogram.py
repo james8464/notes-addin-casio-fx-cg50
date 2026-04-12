@@ -254,7 +254,10 @@ def format_decimal(value, sig_figs=None):
         order = _m.floor(_m.log10(abs(value)))
         decimals = max(0, sig_figs - 1 - order)
         decimals = min(decimals, 10)
-        return '{:.{}f}'.format(value, decimals).rstrip('0').rstrip('.')
+        text = '{:.{}f}'.format(value, decimals)
+        if '.' in text:
+            return text.rstrip('0').rstrip('.')
+        return text
     s = '{:.10f}'.format(value).rstrip('0').rstrip('.')
     return s
 
@@ -1649,7 +1652,7 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
                 if s_num is not None and not is_zero(s_num):
                     return None, 'No solution: t=0 but s!=0.', None, None
 
-    if target == 'a' and s_val is not None:
+    if target == 'a' and s_val is not None and t_val is None:
         s_num = _exact_value(s_val)
         if s_num is not None and is_zero(s_num) and u_val is not None and v_val is not None:
             u_num = _exact_value(u_val)
@@ -1706,6 +1709,16 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
         if t_exact is not None:
             return t_direct, 't = (v-u)/a', 'v = u + at', _sub_t(s_val, u_val, v_val, a_val, t_val)
 
+    if target == 'a' and v_val is not None and u_val is not None and t_val is not None:
+        t_num = _exact_value(t_val)
+        if t_num is not None and is_zero(t_num):
+            v_num = _exact_value(v_val)
+            u_num = _exact_value(u_val)
+            if v_num is not None and u_num is not None and same(v_num, u_num):
+                return None, 'Infinite solutions: t=0 and v=u.', None, None
+            return None, 'No solution: division by zero in a formula.', None, None
+        return sim(_build_a(s_val, u_val, v_val, a_val, t_val)), 'a = (v-u)/t', 'v = u + at', _sub_a(s_val, u_val, v_val, a_val, t_val)
+
     if target == 's' and u_val is not None and a_val is not None and t_val is not None:
         return sim(_build_s(s_val, u_val, v_val, a_val, t_val)), 's = ut + 1/2at^2', 's = ut + 1/2at^2', _sub_s(s_val, u_val, v_val, a_val, t_val)
 
@@ -1726,9 +1739,6 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
 
     if target == 'u' and v_val is not None and a_val is not None and t_val is not None:
         return sim(_build_u2(s_val, u_val, v_val, a_val, t_val)), 'u = v - at', 'v = u + at', _sub_u2(s_val, u_val, v_val, a_val, t_val)
-
-    if target == 'a' and v_val is not None and u_val is not None and t_val is not None:
-        return sim(_build_a(s_val, u_val, v_val, a_val, t_val)), 'a = (v-u)/t', 'v = u + at', _sub_a(s_val, u_val, v_val, a_val, t_val)
 
     if target == 't' and v_val is not None and u_val is not None and a_val is not None:
         return sim(_build_t(s_val, u_val, v_val, a_val, t_val)), 't = (v-u)/a', 'v = u + at', _sub_t(s_val, u_val, v_val, a_val, t_val)

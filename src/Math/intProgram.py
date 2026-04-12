@@ -758,7 +758,27 @@ def trig_same_angle_power_rewrite(node):
             J.append(K('sin', 0, (I - 1) // 2))
         return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
     # Handle sin^m(x) * cos^n(x) where both m and n are even
-    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0:
+    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0 and ((H == 4 and I == 2) or (H == 2 and I == 4)):
+        double_arg = mul([num(2), G])
+        four_arg = mul([num(4), G])
+        six_arg = mul([num(6), G])
+        if H == 4:
+            reduced = add([
+                num(1, 16),
+                neg(mul([num(1, 32), fn('cos', double_arg)])),
+                neg(mul([num(1, 16), fn('cos', four_arg)])),
+                mul([num(1, 32), fn('cos', six_arg)]),
+            ])
+        else:
+            reduced = add([
+                num(1, 16),
+                mul([num(1, 32), fn('cos', double_arg)]),
+                neg(mul([num(1, 16), fn('cos', four_arg)])),
+                neg(mul([num(1, 32), fn('cos', six_arg)])),
+            ])
+        J.append(reduced)
+        return 'Use power-reduction identities for the even powers of sin and cos.', expand_small(make_mul(J))
+    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0 and H == I:
         # sin^2(x)*cos^2(x) = (1/4)*sin^2(2x)
         # sin^4(x)*cos^4(x) = (1/16)*sin^4(2x), etc.
         new_pow = (H // 2) + (I // 2)
@@ -3481,6 +3501,44 @@ def integrate_standard_term(node, var):
                                'So I = ' + pretty(result) + ' + C']
             return result, ['Use the standard result for k*f\'(x)/f(x) -> k*ln|f(x)|.',
                            'So I = ' + pretty(result) + ' + C']
+        if denominator[0] == 'mul':
+            factors = flat(denominator, 'mul')
+            i = 0
+            while i < len(factors):
+                cofactor = factors[i]
+                inner = quotient_by_target(denominator, cofactor)
+                if inner is not None and not is_one(inner):
+                    deriv_inner = safe_diff(inner, C)
+                    if deriv_inner is not None and not is_zero(deriv_inner):
+                        target = mul([cofactor, deriv_inner])
+                        target_forms = [
+                            target,
+                            normalize_add_coeffs(expand_small_recursive(target)),
+                            expand_polynomial_parts(target, C),
+                        ]
+                        coeff = None
+                        a = 0
+                        while a < len(numerator_forms) and coeff is None:
+                            b = 0
+                            while b < len(target_forms):
+                                if not is_zero(target_forms[b]):
+                                    candidate = quotient_by_target(numerator_forms[a], target_forms[b])
+                                    if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
+                                        coeff = sim(candidate)
+                                        break
+                                b += 1
+                            a += 1
+                        if coeff is not None:
+                            log_part = fn('log', fn('abs', inner))
+                            result = log_part if is_one(coeff) else mul([coeff, log_part])
+                            lines = [
+                                'Cancel the shared factor ' + pretty(cofactor) + ' in the numerator and denominator.',
+                                'The remaining integrand is f\'(x)/f(x) with f(x) = ' + pretty(inner) + '.',
+                                'Use the standard result for f\'(x)/f(x) -> ln|f(x)|.',
+                                'So I = ' + pretty(result) + ' + C',
+                            ]
+                            return result, lines
+                i += 1
     
     # Pattern: f(x)/sqrt(1-f(x)^2) integrates to asin(f(x)) + C
     # Also handles: f(x)/(1+f(x)^2) integrates to atan(f(x)) + C
