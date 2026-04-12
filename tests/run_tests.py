@@ -2208,6 +2208,53 @@ class CASIOApp(App):
             return str(nume)
         return f"{nume}/{den}"
 
+    def random_edge_case_expr(self, rng, var="x", difficulty="hard"):
+        edge_cases = [
+            lambda: f"1/({self.random_positive_expr(rng, var, difficulty)})",
+            lambda: f"({var}-1)/({var}^2-1)",
+            lambda: f"exp({var})/exp({var})",
+            lambda: f"log(exp({var}))",
+            lambda: f"sin({var})/cos({var})",
+            lambda: f"(sin({var})^2+cos({var})^2)",
+            lambda: f"tan({var})*cos({var})",
+            lambda: f"sec({var})-tan({var})*sin({var})",
+            lambda: f"(exp({var})-1)/exp({var})",
+            lambda: f"sqrt({var}^2)",
+        ]
+        return rng.choice(edge_cases)()
+
+    def random_hard_inverse_expr(self, rng, var="x", difficulty="hard"):
+        return rng.choice([
+            f"asin(sin({self.random_linear_expr(rng, var)}))",
+            f"atan(tan({self.random_linear_expr(rng, var)}))",
+            f"log(exp({self.random_linear_expr(rng, var, allow_negative=True)}))",
+            f"exp(log({self.random_positive_expr(rng, var, difficulty)}))",
+            f"sin(arcsin({var}))",
+            f"cos(arccos({var}))",
+        ])
+
+    def random_compound_trig_expr(self, rng, var="x", difficulty="hard"):
+        angle = self.random_angle_expr(rng, var, difficulty)
+        return rng.choice([
+            f"sin({angle})+cos({angle})",
+            f"sin({angle})^2+cos({angle})^2",
+            f"sin(2*{angle})",
+            f"cos(2*{angle})",
+            f"sin({angle})+sin({self.random_angle_expr(rng, var, difficulty)})",
+            f"cos({angle})*cos({self.random_angle_expr(rng, var, difficulty)})",
+        ])
+
+    def random_nested_log_exp(self, rng, var="x", depth=3):
+        expr = var
+        for _ in range(depth):
+            expr = rng.choice([
+                f"exp({expr})",
+                f"log({expr})",
+                f"log(exp({expr}))",
+                f"exp(log({expr}))",
+            ])
+        return expr
+
     def random_pi_shift_text(self, rng):
         return rng.choice([
             "pi/6", "pi/4", "pi/3", "pi/2",
@@ -2631,7 +2678,11 @@ class CASIOApp(App):
             "factor_cancel",
             "sqrt_square",
             "reciprocal_identity",
-            "trig_ratio_named",
+            "hard_simplify",
+            "sqrt_nested",
+            "fraction_of_fraction",
+            "exp_log_inverse",
+            "power_of_power",
         ])
         poly = rng.choice([
             self.random_positive_expr(rng, "x", difficulty),
@@ -2909,7 +2960,7 @@ class CASIOApp(App):
 
     def random_trig_transform_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan_ratio", "cot_ratio", "reciprocal"])
+        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan_ratio", "cot_ratio", "reciprocal", "hard_pythag", "triple_angle", "sum_to_product"])
         if mode == "sin2":
             left = f"sin(2*({angle}))"
             right = f"2*sin({angle})*cos({angle})"
@@ -2986,7 +3037,7 @@ class CASIOApp(App):
 
     def random_trig_rewrite_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["pythag", "cos2a", "cos2b", "tan_ratio"])
+        mode = rng.choice(["pythag", "cos2a", "cos2b", "tan_ratio", "hard_cos2a", "hard_cos2b", "half_angle"])
         if mode == "pythag":
             expr = f"sin({angle})^2+cos({angle})^2"
             terms = [f"sin({angle})", f"cos({angle})"]
@@ -2996,6 +3047,15 @@ class CASIOApp(App):
         elif mode == "cos2b":
             expr = f"1+cos(2*({angle}))"
             terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        elif mode == "hard_cos2a":
+            expr = f"1-cos(2*(({self.random_affine_expr(rng,'x',difficulty)}/2))"
+            terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        elif mode == "hard_cos2b":
+            expr = f"1+cos(2*(({self.random_affine_expr(rng,'x',difficulty)}/2))"
+            terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        elif mode == "half_angle":
+            expr = f"sin({angle})"
+            terms = [f"sin({angle}/2)", f"cos({angle}/2)"]
         else:
             expr = f"sin({angle})/cos({angle})"
             terms = [f"tan({angle})", f"sin({angle})", f"cos({angle})"]
@@ -3025,6 +3085,14 @@ class CASIOApp(App):
             "deep_quotient",
             "log_exp_soup",
             "random_composite",
+            "edge_case_inverse",
+            "hard_nested_log_exp",
+            "inverse_trig_composite",
+            "sec_tan_power",
+            "log_of_sum",
+            "arcsin_arccos",
+            "compound_trig",
+            "nested_sqrt",
             "nested_product_quotient",
             "inverse_trig_chain",
         ])
@@ -3142,6 +3210,13 @@ class CASIOApp(App):
             "du_over_sqrt",
             "exp_chain",
             "trig_chain",
+            "hard_sub_expr",
+            "nested_exp_log",
+            "sec_cosec",
+            "tan_power",
+            "arcsin_arc",
+            "sqrt_compound",
+            "log_squared",
         ])
         simple_u_choices = [
             self.random_linear_expr(rng, "x", allow_negative=True),
@@ -3196,7 +3271,7 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand), feature=f"integrate_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
-        mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power", "cos", "reciprocal", "nested_u"])
+        mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power", "cos", "reciprocal", "nested_u", "hard_log", "arcsin_sub", "sec_tan", "cot_cosec"])
         u = rng.choice([
             self.random_linear_expr(rng, "x", allow_negative=True),
             f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
@@ -3232,7 +3307,7 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n4\n{u}\n", label, self.integrate_output_checker(integrand), feature=f"integrate_sub:{mode}")
 
     def random_integrate_parts_case(self, rng, difficulty, index):
-        mode = rng.choice(["exp", "sin", "cos", "log", "exp_sin_loop", "exp_cos_loop", "poly_log", "poly_atan", "nested_log"])
+        mode = rng.choice(["exp", "sin", "cos", "log", "exp_sin_loop", "exp_cos_loop", "poly_log", "poly_atan", "nested_log", "high_poly_sin", "high_poly_cos", "high_poly_exp", "tan_exp", "sec_exp"])
         power = rng.randint(2, 5 if difficulty != "hard" else 12)
         a = rng.randint(2, 6)
         if mode == "exp":
