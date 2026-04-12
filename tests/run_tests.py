@@ -927,6 +927,7 @@ class CASIOApp(App):
             "/programs": "List available test programs",
             "/help": "Show useful commands",
             "/filter all": "Show every program",
+            "/compile": "Delete and recompile all .mpy files in calc_files",
             "/filter algebra": "Only run Algebra tests",
             "/filter trigonometry": "Only run Trigonometry tests",
             "/filter derive": "Only run Derive tests",
@@ -1147,6 +1148,8 @@ class CASIOApp(App):
             self.show_help()
         elif value in ("/generateReport", "/generatereport"):
             self.generate_report_file()
+        elif value_lower == "/compile":
+            self.action_compile()
         elif value_lower.startswith("/filter "):
             raw = value.split(" ", 1)[1].strip().lower()
             selected = self.normalize_program_name(raw)
@@ -1381,6 +1384,69 @@ class CASIOApp(App):
         self.query_one("#command-suggestions", Static).update("")
         self.query_one("#command-help", Static).update("? for shortcuts")
         self.update_summary("Ready")
+
+    def action_compile(self):
+        import subprocess
+        import os
+        from pathlib import Path
+
+        self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
+        self.update_summary("Compiling...")
+        import shutil
+
+        calc_files = Path(__file__).resolve().parents[1] / "src" / "calc_files"
+        mpy_cross = Path.home() / "micropython" / "mpy-cross" / "mpy-cross"
+
+        if not calc_files.exists():
+            self.append_result(f"[bold #f59e0b]Folder not found:[/bold #f59e0b] {calc_files}")
+            self.update_summary("Compile failed")
+            return
+
+        source_dirs = {
+            "algebraProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "algebraProgram.py",
+            "trigProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "trigProgram.py",
+            "deriveProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "deriveProgram.py",
+            "intProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "intProgram.py",
+            "SUVATprogram": Path(__file__).resolve().parents[1] / "src" / "Math" / "SUVATprogram.py",
+            "booleanProgram": Path(__file__).resolve().parents[1] / "src" / "ComputerScience" / "booleanProgram.py",
+        }
+
+        compiled = 0
+        failed = 0
+
+        for name, src_path in source_dirs.items():
+            mpy_path = calc_files / f"{name}.mpy"
+
+            if mpy_path.exists():
+                trash_dir = calc_files / "deleted"
+                trash_dir.mkdir(exist_ok=True)
+                shutil.move(str(mpy_path), str(trash_dir / mpy_path.name))
+                self.append_result(f"[dim]Deleted:[/dim] {mpy_path.name}")
+
+            if not src_path.exists():
+                self.append_result(f"[bold #f59e0b]Source not found:[/bold #f59e0b] {src_path}")
+                failed += 1
+                continue
+
+            result = subprocess.run(
+                [str(mpy_cross), "-X", "heapsize=4194304", "-msmall-int-bits=31", "-mno-unicode",
+                 "-o", str(mpy_path), str(src_path)],
+                capture_output=True,
+                text=True
+            )
+
+            if mpy_path.exists():
+                self.append_result(f"[bold #22c55e]Compiled:[/bold #22c55e] {name}.mpy")
+                compiled += 1
+            else:
+                err = result.stderr[:100] if result.stderr else "unknown"
+                self.append_result(f"[bold #f87171]Failed:[/bold #f87171] {name} - {err}")
+                failed += 1
+
+        if failed == 0:
+            self.update_summary(f"Compiled {compiled} files")
+        else:
+            self.update_summary(f"Compiled {compiled}, failed {failed}")
 
     def action_quit(self):
         self.exit()
