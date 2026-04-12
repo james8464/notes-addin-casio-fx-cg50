@@ -6420,8 +6420,7 @@ def combine_logs(node):
 
 
 def main():
-    print('1 int')
-    print('2 de')
+    print('1 int | 2 de')
     D = input('M: ').strip()
     if D == '':
         D = '1'
@@ -6432,13 +6431,7 @@ def main():
             if F == '':
                 raise ValueError('Enter f.')
             J, K = parse_input(F)
-            print('1 auto')
-            print('2 dir')
-            print('3 trig')
-            print('4 sub')
-            print('5 pts')
-            print('6 pf')
-            print('7 div')
+            print('1 auto | 2 dir | 3 trig | 4 sub | 5 pts | 6 pf | 7 div')
             E = input('Met: ').strip()
             if E == '':
                 E = '1'

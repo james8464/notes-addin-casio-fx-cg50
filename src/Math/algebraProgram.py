@@ -5522,15 +5522,7 @@ def factor_text(text):
     return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
 
 def main():
-    print('1 cmp')
-    print('2 xform')
-    print('3 exp')
-    print('4 poly')
-    print('5 comp sq')
-    print('6 solve')
-    print('7 comp')
-    print('8 inv')
-    print('9 rw')
+    print('1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw')
     mode = input('M: ').strip()
     if mode == '':
         mode = '1'

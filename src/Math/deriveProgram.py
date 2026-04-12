@@ -1971,9 +1971,7 @@ def get_cos_arg(node):
 # ============================================================================
 
 def main():
-    print("1 n")
-    print("2 imp")
-    print("3 par")
+    print("1 n | 2 imp | 3 par")
     mode = input("M: ").strip()
     if mode == "":
         mode = "1"
