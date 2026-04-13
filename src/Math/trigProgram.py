@@ -3178,7 +3178,7 @@ def _equivalent_uncached(a, b):
         return True
     diff = full_simplify(add([a, neg(b)]))
     diff_size = tree_size(diff)
-    if diff_size > 80:
+    if diff_size > 600:
         return False
     if is_zero(diff):
         if a[0] == "div" and same(a[1], a[2]) and has_variable_dependency(a[1]):
@@ -3328,6 +3328,23 @@ def standard_ratio_identity_lines(lhs, rhs):
 
 
 def direct_expression_transform_lines(source_expr, target_expr, target_text):
+    if same(target_expr, num(1)):
+        var = detect_transform_var(source_expr, target_expr) or single_symbol_name(source_expr) or "x"
+        diff_expr = sim(add([source_expr, neg(target_expr)]))
+        if match_scaled_reciprocal_identity_zero(diff_expr, var, "sec", "tan") is not None:
+            return compact_lines([
+                show(source_expr),
+                "Use sec^2(A)-tan^2(A) = 1.",
+                "= 1",
+                "Hence " + target_text.strip(),
+            ])
+        if match_scaled_reciprocal_identity_zero(diff_expr, var, "cosec", "cot") is not None:
+            return compact_lines([
+                show(source_expr),
+                "Use cosec^2(A)-cot^2(A) = 1.",
+                "= 1",
+                "Hence " + target_text.strip(),
+            ])
     rewritten, note = direct_double_angle_rewrite(source_expr)
     if rewritten is not None and equivalent(rewritten, target_expr):
         return compact_lines([
@@ -8220,7 +8237,7 @@ def rewrite_allowed_has_fn(info, name, arg):
     if group is not None and name in group["names"]:
         return True
     for existing in info["trig_terms"].values():
-        if name in existing["names"] and same(existing["arg"], arg):
+        if name in existing["names"] and (same(existing["arg"], arg) or equivalent(existing["arg"], arg)):
             return True
     return False
 
@@ -8446,6 +8463,17 @@ def rewrite_local_to_allowed_terms(node, info):
                 return num(1), "Use tan(A)cot(A) = 1."
 
     if node[0] == "div":
+        if is_one(node[1]) and node[2][0] == "fn":
+            denom_name = node[2][1]
+            denom_arg = node[2][2]
+            if denom_name == "cos" and rewrite_allowed_has_fn(info, "sec", denom_arg):
+                return fn("sec", denom_arg), "Use sec(A) = 1/cos(A)."
+            if denom_name == "sin" and rewrite_allowed_has_fn(info, "cosec", denom_arg):
+                return fn("cosec", denom_arg), "Use cosec(A) = 1/sin(A)."
+            if denom_name == "tan" and rewrite_allowed_has_fn(info, "cot", denom_arg):
+                return fn("cot", denom_arg), "Use cot(A) = 1/tan(A)."
+            if denom_name == "cot" and rewrite_allowed_has_fn(info, "tan", denom_arg):
+                return fn("tan", denom_arg), "Use tan(A) = 1/cot(A)."
         tan2_info = match_tan_squared_fraction(node)
         if tan2_info is not None and rewrite_allowed_has_fn(info, "tan", tan2_info[1]):
             coeff, base = tan2_info
@@ -8631,10 +8659,36 @@ def rewrite_verified_equivalent(candidate, expr):
     return valid >= 4
 
 
+def rewrite_prefers_named_reciprocal(node, info):
+    node = sim(node)
+    if node[0] == "div" and is_one(node[1]) and node[2][0] == "fn":
+        denom_name = node[2][1]
+        denom_arg = node[2][2]
+        if denom_name == "cos" and rewrite_allowed_has_fn(info, "sec", denom_arg):
+            return True
+        if denom_name == "sin" and rewrite_allowed_has_fn(info, "cosec", denom_arg):
+            return True
+        if denom_name == "tan" and rewrite_allowed_has_fn(info, "cot", denom_arg):
+            return True
+        if denom_name == "cot" and rewrite_allowed_has_fn(info, "tan", denom_arg):
+            return True
+    if node[0] == "add" or node[0] == "mul":
+        i = 0
+        while i < len(node[1]):
+            if rewrite_prefers_named_reciprocal(node[1][i], info):
+                return True
+            i += 1
+    if node[0] in ("pow", "div"):
+        return rewrite_prefers_named_reciprocal(node[1], info) or rewrite_prefers_named_reciprocal(node[2], info)
+    if node[0] == "fn":
+        return rewrite_prefers_named_reciprocal(node[2], info)
+    return False
+
+
 def search_rewrite_expression(expr, allowed_terms):
     info = build_rewrite_allowed_info(allowed_terms)
     start = sim(expr)
-    if rewrite_allowed_only(start, info):
+    if rewrite_allowed_only(start, info) and not rewrite_prefers_named_reciprocal(start, info):
         return start, [], info
     beam = [(start, [])]
     visited = {sig(start): 1}

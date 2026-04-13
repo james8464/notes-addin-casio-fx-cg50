@@ -5471,13 +5471,22 @@ def rewrite_in_term_text(text, term_text):
 
 def poly_mode_text(text):
     expr = parse(text.strip())
+    expanded = expand_for_solving(expr)
+    if not same(expanded, expr):
+        return [
+            'Input = ' + show(expr),
+            'Expand brackets and collect like terms.',
+            'Out = ' + show(expanded),
+        ]
     factored = factor_expression(expr)
     if factored is not None:
         if same(factored[0], expr):
-            return ['Input = ' + show(expr), 'Out = ' + show(expr)]
-        return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+            return ['Input = ' + show(expr), 'Already expanded or factorised.', 'Out = ' + show(expr)]
+        return ['Input = ' + show(expr), factored[1], 'Out = ' + show(factored[0])]
     out = maybe_expand_for_compare(expr)
-    return ['Input = ' + show(expr), 'Out = ' + show(out)]
+    if same(out, expr):
+        return ['Input = ' + show(expr), 'Already expanded or no further polynomial expansion found.', 'Out = ' + show(expr)]
+    return ['Input = ' + show(expr), 'Expand brackets and collect like terms.', 'Out = ' + show(out)]
 
 
 def solve_rewrite_text(text, term_texts):

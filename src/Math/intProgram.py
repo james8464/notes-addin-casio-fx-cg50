@@ -3858,6 +3858,135 @@ def integrate_standard(node, var):
     return integrate_standard_term(B, C)
 
 
+def linear_outer_function_factor(node, var):
+    A = sim(node)
+    if A[0] == 'fn' and A[1] in ('sin', 'cos', 'exp'):
+        B = linear_info(A[2], var)
+        if B is not None:
+            return A[1], A[2], B[0]
+    if A[0] == 'pow' and same(A[1], E):
+        B = linear_info(A[2], var)
+        if B is not None:
+            return 'exp', A[2], B[0]
+    return None
+
+
+def split_poly_outer_product(node, var, names):
+    P, A = split_numeric_term(node)
+    A = sim(A)
+    if A[0] == 'div' and is_num(A[2]):
+        P = divq(P, A[2])
+        A = sim(A[1])
+    B = flat(A, 'mul') if A[0] == 'mul' else [A]
+    found_index = None
+    found = None
+    i = 0
+    while i < len(B):
+        C = linear_outer_function_factor(B[i], var)
+        if C is not None and C[0] in names:
+            if found is not None:
+                return None
+            found = C
+            found_index = i
+        i += 1
+    if found is None:
+        return None
+    C = B[:found_index] + B[found_index + 1:]
+    D = mul([P, make_mul(C)])
+    E = poly_num(D, var)
+    if E is None:
+        return None
+    return D, found[0], found[1], found[2]
+
+
+def integrate_poly_exp_repeated(poly_expr, arg, k, var):
+    B = poly_expr
+    C = num(1)
+    D = []
+    while not is_zero(B):
+        D.append(mul([C, div(B, k)]))
+        B = diff(B, var)
+        C = neg(div(C, k))
+    return mul([fn('exp', arg), add(D)])
+
+
+def integrate_poly_trig_repeated(poly_expr, trig_name, arg, k, var):
+    A = poly_expr
+    B = k
+    C = []
+    D = 0
+    while not is_zero(A):
+        if trig_name == 'sin':
+            pattern = (('cos', -1), ('sin', 1), ('cos', 1), ('sin', -1))
+        else:
+            pattern = (('sin', 1), ('cos', 1), ('sin', -1), ('cos', -1))
+        E, F = pattern[D % 4]
+        G = div(mul([A, fn(E, arg)]), B)
+        C.append(neg(G) if F < 0 else G)
+        A = diff(A, var)
+        B = mul([B, k])
+        D += 1
+    return add(C)
+
+
+def integrate_poly_linear_parts(node, var):
+    A = split_poly_outer_product(node, var, ('sin', 'cos', 'exp'))
+    if A is None:
+        return None, None
+    B, C, D, E = A
+    F = poly_num(B, var)
+    if F is None or len(F) <= 1:
+        return None, None
+    if len(F) > 18:
+        return None, None
+    if C == 'exp':
+        G = integrate_poly_exp_repeated(B, D, E, var)
+        H = [
+            'Use integration by parts repeatedly.',
+            'Let p = ' + pretty(B) + ' and dv = e^(' + pretty(D) + ') d' + var + '.',
+            'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
+            'Continue until the polynomial derivative is 0.',
+            '= ' + pretty(G) + ' + C']
+        return G, H
+    G = integrate_poly_trig_repeated(B, C, D, E, var)
+    H = [
+        'Use integration by parts repeatedly.',
+        'Let p = ' + pretty(B) + ' and dv = ' + C + '(' + pretty(D) + ') d' + var + '.',
+        'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
+        'Continue until the polynomial derivative is 0.',
+        '= ' + pretty(G) + ' + C']
+    return G, H
+
+
+def integrate_derivative_times_outer(node, var):
+    A = sim(node)
+    B = flat(A, 'mul') if A[0] == 'mul' else [A]
+    i = 0
+    while i < len(B):
+        C = B[i]
+        if C[0] == 'fn' and C[1] in ('sin', 'cos', 'exp'):
+            D = C[2]
+            E = safe_diff(D, var)
+            if E is not None and not is_zero(E):
+                F = make_mul(B[:i] + B[i + 1:])
+                G = quotient_by_equivalent_target(F, E, var)
+                if G is not None and not depends(G, var):
+                    if C[1] == 'sin':
+                        H = neg(fn('cos', D))
+                    elif C[1] == 'cos':
+                        H = fn('sin', D)
+                    else:
+                        H = fn('exp', D)
+                    I = sim(mul([G, H]))
+                    return I, [
+                        'Recognise reverse chain rule.',
+                        'Let u = ' + pretty(D) + ', so du/d' + var + ' = ' + pretty(E) + '.',
+                        'The remaining factor is ' + pretty(G) + ' times du/d' + var + '.',
+                        '= ' + pretty(I) + ' + C']
+        i += 1
+    return None, None
+
+
 FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp', 'log', 'asin', 'acos', 'atan'
 
 
@@ -3933,6 +4062,9 @@ def u_power_info(node):
 def integrate_reverse_chain(node, var):
     D = node
     B = var
+    A, M = integrate_derivative_times_outer(D, B)
+    if A is not None:
+        return A, M
     I = ordered_candidates(D, B, 'reverse')
     E = 0
     while E < len(I):
@@ -4840,6 +4972,9 @@ def integrate_by_parts(node, var, depth=0):
     A = var
     if H > 24:
         return None, None
+    X, Y = integrate_poly_linear_parts(node, A)
+    if X is not None:
+        return X, Y
     P, Q = split_const_mul(node, A)
     if Q[0] == 'fn' and Q[1] == 'log' and Q[2][0] == 'add':
         R = flat(Q[2], 'add')
