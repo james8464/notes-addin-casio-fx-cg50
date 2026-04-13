@@ -6575,8 +6575,7 @@ def combine_logs(node):
 
 
 def main():
-    print('1 int | 2 de')
-    D = input('M: ').strip()
+    D = input('1 int | 2 de | M: ').strip()
     if D == '':
         D = '1'
     begin_user_action()
@@ -6586,8 +6585,7 @@ def main():
             if F == '':
                 raise ValueError('Enter f.')
             J, K = parse_input(F)
-            print('1 auto | 2 dir | 3 trig | 4 sub | 5 pts | 6 pf | 7 div')
-            E = input('Met: ').strip()
+            E = input('1 auto | 2 dir | 3 trig | 4 sub | 5 pts | 6 pf | 7 div | Met: ').strip()
             if E == '':
                 E = '1'
             G = None

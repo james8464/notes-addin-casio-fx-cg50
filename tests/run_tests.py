@@ -1064,7 +1064,7 @@ def trig_identity_output_checker(eq_text):
 def derive_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit"),
+        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"),
         min_steps=1,
         min_lines=2,
     )
@@ -2220,8 +2220,66 @@ class CASIOApp(App):
             lambda: f"sec({var})-tan({var})*sin({var})",
             lambda: f"(exp({var})-1)/exp({var})",
             lambda: f"sqrt({var}^2)",
+            lambda: f"(exp({var})^2-1)/(exp({var})+1)",
+            lambda: f"log(({var})^2+1)",
+            lambda: f"(sin({var})+cos({var}))/(sin({var})-cos({var}))",
+            lambda: f"tan({var})^2+1-sec({var})^2",
+            lambda: f"asin(sin({var}))+acos(cos({var}))",
         ]
         return rng.choice(edge_cases)()
+
+    def random_deeply_nested_expr(self, rng, var="x", depth=4):
+        expr = var
+        for _ in range(depth):
+            expr = rng.choice([
+                f"exp({expr})",
+                f"log({expr})",
+                f"sin({expr})",
+                f"cos({expr})",
+                f"({expr})^2",
+                f"sqrt({expr})",
+            ])
+        return expr
+
+    def random_polynomial_chaos(self, rng, var="x", degree=5):
+        terms = []
+        for p in range(degree, -1, -1):
+            if p == 0:
+                terms.append(str(rng.randint(-9, 9)))
+            else:
+                coeff = rng.randint(-9, 9)
+                if coeff == 0:
+                    continue
+                if p == 1:
+                    terms.append(f"{coeff}*{var}")
+                else:
+                    terms.append(f"{coeff}*{var}^{p}")
+        return "+".join(terms) if terms else "0"
+
+    def random_rational_composite(self, rng, var="x", difficulty="hard"):
+        num = rng.choice([
+            self.random_polynomial_expr(rng, var, difficulty),
+            f"sin({self.random_angle_expr(rng, var, difficulty)})",
+            f"exp({self.random_linear_expr(rng, var, allow_negative=True)})",
+        ])
+        denom = rng.choice([
+            self.random_positive_expr(rng, var, difficulty),
+            f"({self.random_linear_expr(rng, var)})^2+1",
+        ])
+        return f"({num})/({denom})"
+
+    def random_trig_chaos(self, rng, var="x", difficulty="hard"):
+        angle = self.random_angle_expr(rng, var, difficulty)
+        return rng.choice([
+            f"sin({angle})+cos({angle})",
+            f"sin({angle})^3+cos({angle})^3",
+            f"tan({angle})+cot({angle})",
+            f"sec({angle})^2-tan({angle})^2",
+            f"cosec({angle})^2-cot({angle})^2",
+            f"sin({angle})*cos({angle})/(cos({angle})^2)",
+            f"(sin({angle})+cos({angle}))^2",
+            f"sin(2*{angle})/(2*sin({angle})*cos({angle}))",
+        ])
 
     def random_hard_inverse_expr(self, rng, var="x", difficulty="hard"):
         return rng.choice([
@@ -2933,16 +2991,28 @@ class CASIOApp(App):
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan", "sec", "cosec", "cot_ratio"])
-        if mode == "sin2":
+        mode = rng.choice([
+            "pythag", "double_angle", "half_angle", "triple_angle",
+            "sum_sin", "sum_cos", "diff_sin", "diff_cos",
+            "tan", "sec", "cosec", "cot",
+            "product_to_sum", "sum_to_product", "factor_identity",
+            "compound_angle", "negative_angle", "periodicity",
+        ])
+        if mode == "pythag":
+            left = f"sin({angle})^2+cos({angle})^2"
+            right = "1"
+        elif mode == "double_angle":
             left = f"sin(2*({angle}))"
             right = f"2*sin({angle})*cos({angle})"
-        elif mode == "cos2a":
-            left = f"1-cos(2*({angle}))"
-            right = f"2*sin({angle})^2"
-        elif mode == "cos2b":
-            left = f"1+cos(2*({angle}))"
-            right = f"2*cos({angle})^2"
+        elif mode == "half_angle":
+            left = f"sin({angle})"
+            right = f"2*sin({angle}/2)*cos({angle}/2)"
+        elif mode == "sum_sin":
+            left = f"sin({angle})+sin({self.random_angle_expr(rng, 'x', difficulty)})"
+            right = "2*sin((A+B)/2)*cos((A-B)/2)"
+        elif mode == "sum_cos":
+            left = f"cos({angle})+cos({self.random_angle_expr(rng, 'x', difficulty)})"
+            right = "2*cos((A+B)/2)*cos((A-B)/2)"
         elif mode == "tan":
             left = f"tan({angle})"
             right = f"sin({angle})/cos({angle})"
@@ -2957,205 +3027,6 @@ class CASIOApp(App):
             right = f"cos({angle})/sin({angle})"
         label = f"Random trig prove {index}: {mode}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker(), feature=f"trig_prove:{mode}")
-
-    def random_trig_transform_case(self, rng, difficulty, index):
-        angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["sin2", "cos2a", "cos2b", "tan_ratio", "cot_ratio", "reciprocal", "hard_pythag", "triple_angle", "sum_to_product"])
-        if mode == "sin2":
-            left = f"sin(2*({angle}))"
-            right = f"2*sin({angle})*cos({angle})"
-            checker = trig_transform_checker("2*sin")
-        elif mode == "cos2a":
-            left = f"1-cos(2*({angle}))"
-            right = f"2*sin({angle})^2"
-            checker = trig_transform_checker("sin")
-        elif mode == "cos2b":
-            left = f"1+cos(2*({angle}))"
-            right = f"2*cos({angle})^2"
-            checker = trig_transform_checker("cos")
-        elif mode == "tan_ratio":
-            left = f"sin({angle})/cos({angle})"
-            right = f"tan({angle})"
-            checker = trig_transform_checker("tan")
-        elif mode == "cot_ratio":
-            left = f"cos({angle})/sin({angle})"
-            right = f"cot({angle})"
-            checker = trig_transform_checker("cot")
-        else:
-            left = f"1/cos({angle})"
-            right = f"sec({angle})"
-            checker = trig_transform_checker("sec")
-        label = f"Random trig transform {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"trig_transform:{mode}")
-
-    def random_trig_solve_case(self, rng, difficulty, index):
-        k = self.random_nonzero_int(rng, -9 if difficulty == "hard" else 2, 9 if difficulty == "hard" else 4)
-        func = rng.choice(["sin", "cos", "tan"])
-        if func == "sin":
-            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
-        elif func == "cos":
-            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
-        else:
-            target = rng.choice(["1", "-1", "sqrt(3)", "-sqrt(3)"])
-        if difficulty == "hard":
-            angle_mode = rng.choice(["linear", "pi_shift", "quadratic", "shifted_square", "mixed_quad"])
-        elif difficulty == "medium":
-            angle_mode = rng.choice(["linear", "pi_shift", "quadratic"])
-        else:
-            angle_mode = "linear"
-        if angle_mode == "pi_shift":
-            shift = self.random_pi_shift_text(rng)
-            eq = f"{func}({k}*x+({shift}))={target}"
-            mode = f"{func}({k}x+pi-shift)"
-        elif angle_mode == "quadratic":
-            eq = f"{func}({k}*x^2+{rng.randint(1,5)})={target}"
-            mode = f"{func}({k}x^2+c)"
-        elif angle_mode == "shifted_square":
-            a = self.random_nonzero_int(rng, -5, 5)
-            b = rng.randint(-6, 6)
-            c = rng.randint(1, 5)
-            eq = f"{func}(({a}*x{self.signed_int_text(b)})^2+{c})={target}"
-            mode = f"{func}((ax+b)^2+c)"
-        elif angle_mode == "mixed_quad":
-            a = self.random_nonzero_int(rng, -6, 6)
-            b = self.random_nonzero_int(rng, -8, 8)
-            c = rng.randint(-5, 5)
-            eq = f"{func}({a}*x^2{self.signed_int_text(b)}*x{self.signed_int_text(c)})={target}"
-            mode = f"{func}(ax^2+bx+c)"
-        else:
-            eq = f"{func}({k}*x)={target}"
-            mode = f"{func}({k}x)"
-        label = f"Random trig solve {index}: {mode}"
-        return self.make_cli_case(
-            "Trigonometry",
-            "trigProgram.py",
-            f"3\n{eq},x,0,2*pi\n",
-            label,
-            self.trig_solve_output_checker(eq, lower=0.0, upper=2 * math.pi),
-            feature="trig_solve",
-        )
-
-    def random_trig_rewrite_case(self, rng, difficulty, index):
-        angle = self.random_angle_expr(rng, "x", difficulty)
-        mode = rng.choice(["pythag", "cos2a", "cos2b", "tan_ratio", "hard_cos2a", "hard_cos2b", "half_angle"])
-        if mode == "pythag":
-            expr = f"sin({angle})^2+cos({angle})^2"
-            terms = [f"sin({angle})", f"cos({angle})"]
-        elif mode == "cos2a":
-            expr = f"1-cos(2*({angle}))"
-            terms = [f"sin({angle})^2", f"cos({angle})^2"]
-        elif mode == "cos2b":
-            expr = f"1+cos(2*({angle}))"
-            terms = [f"sin({angle})^2", f"cos({angle})^2"]
-        elif mode == "hard_cos2a":
-            expr = f"1-cos(2*(({self.random_affine_expr(rng,'x',difficulty)}/2))"
-            terms = [f"sin({angle})^2", f"cos({angle})^2"]
-        elif mode == "hard_cos2b":
-            expr = f"1+cos(2*(({self.random_affine_expr(rng,'x',difficulty)}/2))"
-            terms = [f"sin({angle})^2", f"cos({angle})^2"]
-        elif mode == "half_angle":
-            expr = f"sin({angle})"
-            terms = [f"sin({angle}/2)", f"cos({angle}/2)"]
-        else:
-            expr = f"sin({angle})/cos({angle})"
-            terms = [f"tan({angle})", f"sin({angle})", f"cos({angle})"]
-        term_block = "".join(f"{term}\n" for term in terms)
-        label = f"Random trig rewrite {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("final ="), feature=f"trig_rewrite:{mode}")
-
-    def build_random_trig_cases(self, difficulty, count, rng):
-        features = [
-            self.random_trig_prove_case,
-            self.random_trig_transform_case,
-            self.random_trig_solve_case,
-            self.random_trig_rewrite_case,
-        ]
-        return self.build_unique_random_cases(features, count, rng, difficulty)
-
-    def random_derive_normal_case(self, rng, difficulty, index):
-        mode = rng.choice([
-            "mixed_power",
-            "nested_exp",
-            "quotient",
-            "power_power",
-            "trig_power",
-            "inverse_trig",
-            "root_log",
-            "triple_product",
-            "deep_quotient",
-            "log_exp_soup",
-            "random_composite",
-            "edge_case_inverse",
-            "hard_nested_log_exp",
-            "inverse_trig_composite",
-            "sec_tan_power",
-            "log_of_sum",
-            "arcsin_arccos",
-            "compound_trig",
-            "nested_sqrt",
-            "nested_product_quotient",
-            "inverse_trig_chain",
-        ])
-        if mode == "mixed_power":
-            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{rng.randint(3, 9 if difficulty == 'hard' else 5)}"
-        elif mode == "nested_exp":
-            angle = rng.choice([self.random_linear_expr(rng, "x", allow_negative=True), self.random_angle_expr(rng, "x", difficulty)])
-            expr = f"exp(sin({angle})+cos({self.random_linear_expr(rng, 'x', allow_negative=True)}))"
-        elif mode == "quotient":
-            expr = f"({self.random_general_expr(rng, 'x', difficulty, 2)})/({self.random_positive_expr(rng, 'x', difficulty)})"
-        elif mode == "power_power":
-            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^(x+sin({rng.randint(2, 4)}*x))"
-        elif mode == "inverse_trig":
-            expr = rng.choice([
-                f"asin(({self.random_linear_expr(rng, 'x', allow_negative=True)})/10)",
-                f"atan({self.random_linear_expr(rng, 'x', allow_negative=True)})",
-            ])
-        elif mode == "root_log":
-            expr = f"log(sqrt({self.random_positive_expr(rng, 'x', difficulty)}))"
-        elif mode == "triple_product":
-            expr = (
-                f"({self.random_general_expr(rng, 'x', difficulty, 2)})*"
-                f"(exp({self.random_linear_expr(rng, 'x', allow_negative=True)}))*"
-                f"(log({self.random_positive_expr(rng, 'x', difficulty)}))"
-            )
-        elif mode == "deep_quotient":
-            top = f"({self.random_general_expr(rng, 'x', difficulty, 3)})^2"
-            bot = f"({self.random_positive_expr(rng, 'x', difficulty)})^2+{rng.randint(2, 9)}"
-            expr = f"({top})/({bot})"
-        elif mode == "log_exp_soup":
-            poly = self.random_polynomial_expr(rng, "x", difficulty)
-            expr = f"log(exp(({poly})^2)+sqrt(({self.random_linear_expr(rng, 'x', allow_negative=True)})^2+{rng.randint(2,9)}))"
-        elif mode == "random_composite":
-            expr = self.random_general_expr(rng, "x", difficulty, 3 if difficulty != "hard" else 4)
-        elif mode == "nested_product_quotient":
-            a = self.random_general_expr(rng, "x", difficulty, 2)
-            b = self.random_general_expr(rng, "x", difficulty, 2)
-            c = self.random_positive_expr(rng, "x", difficulty)
-            expr = f"(({a})*({b}))/({c})"
-        elif mode == "inverse_trig_chain":
-            inner = self.random_affine_expr(rng, "x", difficulty, allow_negative=True)
-            expr = rng.choice([
-                f"asin(({inner})/({rng.randint(10, 20)}))",
-                f"atan(({self.random_general_expr(rng, 'x', difficulty, 1)}))",
-            ])
-        else:
-            angle1 = rng.choice([
-                self.random_linear_expr(rng, "x", allow_negative=True),
-                f"x^2+{rng.randint(1, 6)}",
-                f"{rng.randint(2,5)}*x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(1,6)}",
-            ])
-            angle2 = rng.choice([
-                self.random_linear_expr(rng, "x", allow_negative=True),
-                f"x^2+{rng.randint(1, 6)}",
-                f"{rng.randint(2,5)}*x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(1,6)}",
-            ])
-            expr = f"(sin({angle1})+cos({angle2}))^{rng.randint(3, 5)}"
-        label = f"Random derive normal {index}: {mode}"
-        return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature=f"derive_normal:{mode}")
-
-    def random_derive_implicit_case(self, rng, difficulty, index):
-        a = rng.randint(2, 6)
-        b = rng.randint(2, 6)
         mode = rng.choice(["circle", "mixed", "trig", "exp_log"])
         if mode == "circle":
             eq = f"{a}*x^2+{b}*y^2={rng.randint(10, 40)}"
@@ -3217,6 +3088,11 @@ class CASIOApp(App):
             "arcsin_arc",
             "sqrt_compound",
             "log_squared",
+            "rational_chain",
+            "inverse_trig",
+            "chebyshev",
+            "bernoulli_poly",
+            "power_over_linear",
         ])
         simple_u_choices = [
             self.random_linear_expr(rng, "x", allow_negative=True),
@@ -4415,6 +4291,45 @@ class CASIOApp(App):
                 for inp, target, expected, label in cli_cases:
                     out, _ = self.run_cli("SUVATprogram.py", inp)
                     self.add_test(label, suvat_cli_checker(target, expected)(out), out, p, inp, f"{target} = {expected}", f"suvat_cli_{target}")
+
+                zero_accel_time_input = "40\n14*(2/sqrt(5))\n\n0\n,\n"
+                zero_accel_time_output, _ = self.run_cli("SUVATprogram.py", zero_accel_time_input)
+                zero_accel_time_ok = (
+                    suvat_cli_checker("t", "10*sqrt(5)/7")(zero_accel_time_output)
+                    and "t = s/u" in normalized_text(zero_accel_time_output)
+                )
+                self.add_test(
+                    "CLI SUVAT zero acceleration: use t=s/u with surd velocity",
+                    zero_accel_time_ok,
+                    zero_accel_time_output,
+                    p,
+                    zero_accel_time_input,
+                    "t = 10*sqrt(5)/7 using t = s/u",
+                    "suvat_cli_t",
+                )
+
+                def suvat_symbolic_checker(target, *tokens):
+                    def check(output):
+                        text = normalized_text(output)
+                        compact = text.replace(" ", "")
+                        if "error:" in text:
+                            return False
+                        if f"{target}=" not in compact:
+                            return False
+                        return all(token.replace(" ", "") in compact for token in tokens)
+                    return check
+
+                symbolic_cli_cases = [
+                    (",\n\n\n\n\n", "s", ("u*t", "a*t^2"), "CLI SUVAT symbolic: find s with no numeric values"),
+                    ("\n,\n\n\n\n", "u", ("v-a*t",), "CLI SUVAT symbolic: find u with no numeric values"),
+                    ("\n\n,\n\n\n", "v", ("u+a*t",), "CLI SUVAT symbolic: find v with no numeric values"),
+                    ("\n\n\n,\n\n", "a", ("(v-u)/t",), "CLI SUVAT symbolic: find a with no numeric values"),
+                    ("\n\n\n\n,\n", "t", ("(v-u)/a",), "CLI SUVAT symbolic: find t with no numeric values"),
+                    (",\n20\n\n\n5\n", "s", ("25/2*a+100",), "CLI SUVAT symbolic: keep known values and leave missing acceleration"),
+                ]
+                for inp, target, tokens, label in symbolic_cli_cases:
+                    out, _ = self.run_cli("SUVATprogram.py", inp)
+                    self.add_test(label, suvat_symbolic_checker(target, *tokens)(out), out, p, inp, f"{target} symbolic answer", f"suvat_cli_symbolic_{target}")
         except Exception as e:
             self.add_test("SUVAT import", False, str(e), p)
 

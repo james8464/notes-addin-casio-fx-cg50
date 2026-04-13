@@ -16374,8 +16374,7 @@ def compact_lines(lines):
 
 
 def main():
-    print("1 prove | 2 xform | 3 solve | 4 rw")
-    mode = input("M: ").strip()
+    mode = input("1 prove | 2 xform | 3 solve | 4 rw | M: ").strip()
     if mode == "":
         mode = "1"
     try:
@@ -16383,8 +16382,7 @@ def main():
             text = input("Id: ").strip()
             if text == "":
                 raise ValueError("Enter an identity.")
-            print("1 auto | 2 lhs | 3 rhs | 4 both")
-            route = input("R: ").strip()
+            route = input("1 auto | 2 lhs | 3 rhs | 4 both | R: ").strip()
             if route == "":
                 route = "1"
             lines = solve_prove_text(text, route)
@@ -16406,10 +16404,11 @@ def main():
             text = input("Rw: ").strip()
             if text == "":
                 raise ValueError("Enter an expression.")
-            print("1 term/line | Blank = end")
             terms = []
+            first = True
             while True:
-                term = input("T: ").strip()
+                term = input("1 term/line | Blank = end | T: " if first else "T: ").strip()
+                first = False
                 if term == "":
                     break
                 terms.append(term)

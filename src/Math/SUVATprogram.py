@@ -1369,6 +1369,10 @@ def _build_t2(s_val, u_val, v_val, a_val, t_val):
     return div(mul([num(2), s_val]), add([u_val, v_val]))
 
 
+def _build_t3(s_val, u_val, v_val, a_val, t_val):
+    return div(s_val, u_val)
+
+
 def _sub_s(s_val, u_val, v_val, a_val, t_val):
     return 's = ' + show(u_val) + '*' + show(t_val) + ' + 1/2*' + show(a_val) + '*' + show(t_val) + '^2'
 
@@ -1433,6 +1437,10 @@ def _sub_t2(s_val, u_val, v_val, a_val, t_val):
     return 't = 2*' + show(s_val) + ' / (' + show(u_val) + ' + ' + show(v_val) + ')'
 
 
+def _sub_t3(s_val, u_val, v_val, a_val, t_val):
+    return 't = ' + show(s_val) + ' / (' + show(u_val) + ')'
+
+
 EQUATIONS = [
     ('s', ('u', 'a', 't'), 's = ut + 1/2at^2', 's = ut + 1/2at^2', _build_s, _sub_s, 1),
     ('s', ('v', 'a', 't'), 's = vt - 1/2at^2', 's = vt - 1/2at^2', _build_s2, _sub_s2, 2),
@@ -1479,7 +1487,14 @@ def solve_quadratic_time(s_val, u_val, v_val, a_val, t_val):
         return None, ['Insufficient information for quadratic time solution.'], []
     a_num = _exact_value(a_val)
     if a_num is not None and is_zero(a_num):
-        return None, ['Acceleration is zero; use t = s/u instead.'], []
+        u_num = _exact_value(u_val)
+        s_num = _exact_value(s_val)
+        if u_num is not None and is_zero(u_num):
+            if s_num is not None and is_zero(s_num):
+                return None, ['Infinite solutions: a=0, u=0 and s=0.'], []
+            return None, ['No solution: a=0 and u=0 but s!=0.'], []
+        result = sim(_build_t3(s_val, u_val, v_val, a_val, t_val))
+        return result, ['Since a = 0, use s = ut.', 't = ' + show(result)], [result]
 
     half = num(1, 2)
     A = mul([half, a_val])
@@ -1631,6 +1646,46 @@ def find_equation(target, vals):
     return candidates[0]
 
 
+def _symbolic_values(vals):
+    out = []
+    i = 0
+    while i < len(VAR_NAMES):
+        if vals[i] is None:
+            out.append(sym(VAR_NAMES[i]))
+        else:
+            out.append(vals[i])
+        i += 1
+    return tuple(out)
+
+
+def find_symbolic_equation(target, vals):
+    candidates = []
+    for eq in EQUATIONS:
+        if eq[0] != target:
+            continue
+        missing = 0
+        for name in eq[1]:
+            if vals[VAR_MAP[name]] is None:
+                missing += 1
+        candidates.append((missing, eq[6], eq))
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    filled = _symbolic_values(vals)
+
+    for _missing, _priority, eq in candidates:
+        _target, _required, formula_name, base_equation, build_fn, sub_fn, _ = eq
+        try:
+            result = sim(build_fn(filled[0], filled[1], filled[2], filled[3], filled[4]))
+            sub_text = sub_fn(filled[0], filled[1], filled[2], filled[3], filled[4])
+            return result, formula_name, base_equation, sub_text
+        except Exception:
+            pass
+
+    return None
+
+
 def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
     vals = (s_val, u_val, v_val, a_val, t_val)
 
@@ -1668,6 +1723,21 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
         return result, 'v^2 = u^2 + 2as', 'v^2 = u^2 + 2as', sub_text
 
     if target == 't' and s_val is not None and u_val is not None and a_val is not None and v_val is None:
+        a_num = _exact_value(a_val)
+        if a_num is not None and is_zero(a_num):
+            u_num = _exact_value(u_val)
+            s_num = _exact_value(s_val)
+            if u_num is not None and is_zero(u_num):
+                if s_num is not None and is_zero(s_num):
+                    return None, 'Infinite solutions: a=0, u=0 and s=0.', None, None
+                return None, 'No solution: a=0 and u=0 but s!=0.', None, None
+            result = sim(_build_t3(s_val, u_val, v_val, a_val, t_val))
+            result_float = node_to_float(result)
+            if result_float is not None and result_float < -1e-9:
+                return None, 'No solution: time must be positive.', None, None
+            return result, 't = s/u', 's = ut', _sub_t3(s_val, u_val, v_val, a_val, t_val)
+
+    if target == 't' and s_val is not None and u_val is not None and a_val is not None and v_val is None:
         result, steps, roots = solve_quadratic_time(s_val, u_val, v_val, a_val, t_val)
         if result is not None:
             root_values = []
@@ -1695,11 +1765,6 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
             return sim(result), 's = ut + 1/2at^2 (quadratic)', 's = ut + 1/2at^2', steps[-1] if steps else None
         else:
             return None, steps[-1] if steps else 'No quadratic solution for t.', None, None
-
-    if target == 't' and a_val is not None:
-        a_num = _exact_value(a_val)
-        if a_num is not None and is_zero(a_num):
-            return None, 'No solution: division by zero in t formula.', None, None
 
     if target == 't' and u_val is not None and v_val is not None and a_val is not None:
         t_direct = sim(_build_t(s_val, u_val, v_val, a_val, t_val))
@@ -1772,9 +1837,10 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
         return result, 'v^2 = u^2 + 2as', 'v^2 = u^2 + 2as', sub_text
 
     eq = find_equation(target, vals)
-
-    eq = find_equation(target, vals)
     if eq is None:
+        symbolic = find_symbolic_equation(target, vals)
+        if symbolic is not None:
+            return symbolic
         return None, 'insufficient information', None, None
 
     _, _, formula_name, base_equation, build_fn, sub_fn, _ = eq
@@ -1841,11 +1907,6 @@ def solve_suvat():
         return
 
     s, u, v, a, t = values
-
-    knowns = sum(1 for x in (s, u, v, a, t) if x is not None)
-    if knowns < 2:
-        print('Error: At least 2 known values are required.')
-        return
 
     if presets:
         current_values = [s, u, v, a, t]

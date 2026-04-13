@@ -5538,8 +5538,7 @@ def factor_text(text):
     return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
 
 def main():
-    print('1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw')
-    mode = input('M: ').strip()
+    mode = input('1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: ').strip()
     if mode == '':
         mode = '1'
     begin_user_action()
@@ -5657,11 +5656,11 @@ def main():
                     i += 1
         elif mode == '9':
             text = input('Rw: ').strip()
-            print('1 term/line')
-            print('Blank = end')
             terms = []
+            first = True
             while True:
-                term = input('T: ').strip()
+                term = input('1 term/line | Blank = end | T: ' if first else 'T: ').strip()
+                first = False
                 if term == '':
                     break
                 terms.append(term)
