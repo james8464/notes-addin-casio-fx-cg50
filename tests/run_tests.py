@@ -1162,19 +1162,21 @@ def working_quality_ok(output, program, feature):
     if program == "Integrate":
         if "+ c" not in text or lines < 2:
             return False
-        if "sub" in feature:
+        if feature.startswith("integrate_sub"):
             return "u =" in text or "substitution" in text
-        if "parts" in feature:
+        if feature.startswith("integrate_parts"):
             return "integration by parts" in text or "i = u*v" in text
-        if "pf" in feature:
+        if feature.startswith("integrate_pf"):
             return "partial fractions" in text or "decompose" in text
-        if "div" in feature:
+        if feature.startswith("integrate_div"):
             return "divide" in text or "polynomial division" in text
-        if "trig" in feature:
+        if feature.startswith("integrate_trig"):
             return "identity" in text or "use " in text or "reverse chain rule" in text or "u =" in text
         return any(marker in text for marker in ("method:", "use the standard result", "split the numerator", "complete the square", "u ="))
 
     if program == "SUVAT":
+        if feature.startswith("suvat_expected_error"):
+            return "no solution" in text or "infinite solutions" in text
         synthetic_working = "answer:" in text and ("equation:" in text or "original equation:" in text) and ("substitute:" in text or "rearranged equation:" in text)
         cli_working = any(marker in text for marker in ("s =", "u =", "v =", "a =", "t =")) and any(marker in text for marker in ("= s =", "= u =", "= v =", "= a =", "= t =", "v = u + at", "s = ut", "v^2 ="))
         return synthetic_working or cli_working
@@ -1251,6 +1253,31 @@ def suvat_cli_checker(target, expected):
         return found
 
     check.__name__ = f"suvat_cli_checker_{target}_{expected}"
+    return check
+
+
+def suvat_symbolic_output_checker(target, *tokens):
+    def check(output):
+        text = normalized_text(output)
+        compact = text.replace(" ", "")
+        if "error:" in text:
+            return False
+        if f"{target}=" not in compact:
+            return False
+        return all(token.replace(" ", "") in compact for token in tokens)
+
+    check.__name__ = f"suvat_symbolic_output_checker_{target}"
+    return check
+
+
+def suvat_expected_error_checker(*tokens):
+    def check(output):
+        text = normalized_text(output)
+        if "error:" not in text and "no solution" not in text and "infinite solutions" not in text:
+            return False
+        return all(token.lower() in text for token in tokens)
+
+    check.__name__ = "suvat_expected_error_checker"
     return check
 
 class CASIOApp(App):
@@ -3008,11 +3035,13 @@ class CASIOApp(App):
             left = f"sin({angle})"
             right = f"2*sin({angle}/2)*cos({angle}/2)"
         elif mode == "sum_sin":
-            left = f"sin({angle})+sin({self.random_angle_expr(rng, 'x', difficulty)})"
-            right = "2*sin((A+B)/2)*cos((A-B)/2)"
+            other = self.random_angle_expr(rng, "x", difficulty)
+            left = f"sin({angle})+sin({other})"
+            right = f"2*sin((({angle})+({other}))/2)*cos((({angle})-({other}))/2)"
         elif mode == "sum_cos":
-            left = f"cos({angle})+cos({self.random_angle_expr(rng, 'x', difficulty)})"
-            right = "2*cos((A+B)/2)*cos((A-B)/2)"
+            other = self.random_angle_expr(rng, "x", difficulty)
+            left = f"cos({angle})+cos({other})"
+            right = f"2*cos((({angle})+({other}))/2)*cos((({angle})-({other}))/2)"
         elif mode == "tan":
             left = f"tan({angle})"
             right = f"sin({angle})/cos({angle})"
@@ -3027,6 +3056,170 @@ class CASIOApp(App):
             right = f"cos({angle})/sin({angle})"
         label = f"Random trig prove {index}: {mode}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker(), feature=f"trig_prove:{mode}")
+
+    def random_trig_transform_case(self, rng, difficulty, index):
+        angle = self.random_angle_expr(rng, "x", difficulty)
+        mode = rng.choice([
+            "double_angle",
+            "cos2_sin",
+            "cos2_cos",
+            "tan_ratio",
+            "cot_ratio",
+            "sec_recip",
+            "cosec_recip",
+            "pythag_sec",
+            "pythag_cosec",
+        ])
+        if mode == "double_angle":
+            left = f"sin(2*({angle}))"
+            right = f"2*sin({angle})*cos({angle})"
+            checker = trig_transform_checker("2*sin")
+        elif mode == "cos2_sin":
+            left = f"1-cos(2*({angle}))"
+            right = f"2*sin({angle})^2"
+            checker = trig_transform_checker("sin")
+        elif mode == "cos2_cos":
+            left = f"1+cos(2*({angle}))"
+            right = f"2*cos({angle})^2"
+            checker = trig_transform_checker("cos")
+        elif mode == "tan_ratio":
+            left = f"sin({angle})/cos({angle})"
+            right = f"tan({angle})"
+            checker = trig_transform_checker("tan")
+        elif mode == "cot_ratio":
+            left = f"cos({angle})/sin({angle})"
+            right = f"cot({angle})"
+            checker = trig_transform_checker("cot")
+        elif mode == "sec_recip":
+            left = f"1/cos({angle})"
+            right = f"sec({angle})"
+            checker = trig_transform_checker("sec")
+        elif mode == "cosec_recip":
+            left = f"1/sin({angle})"
+            right = f"cosec({angle})"
+            checker = trig_transform_checker("cosec")
+        elif mode == "pythag_sec":
+            left = f"sec({angle})^2-tan({angle})^2"
+            right = "1"
+            checker = trig_transform_checker("1")
+        else:
+            left = f"cosec({angle})^2-cot({angle})^2"
+            right = "1"
+            checker = trig_transform_checker("1")
+        label = f"Random trig transform {index}: {mode}"
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"trig_transform:{mode}")
+
+    def random_trig_solve_case(self, rng, difficulty, index):
+        func = rng.choice(["sin", "cos", "tan"])
+        if func == "sin":
+            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
+        elif func == "cos":
+            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
+        else:
+            target = rng.choice(["1", "-1", "sqrt(3)", "-sqrt(3)"])
+
+        mode = rng.choice(["linear", "shifted_linear", "quadratic"] if difficulty != "easy" else ["linear"])
+        if mode == "shifted_linear":
+            k = self.random_nonzero_int(rng, -6, 6)
+            shift = self.random_pi_shift_text(rng)
+            eq = f"{func}({k}*x+({shift}))={target}"
+        elif mode == "quadratic":
+            k = self.random_nonzero_int(rng, 1, 5)
+            c = rng.randint(0, 4)
+            eq = f"{func}({k}*x^2+{c})={target}"
+        else:
+            k = self.random_nonzero_int(rng, -8 if difficulty == "hard" else 2, 8 if difficulty == "hard" else 5)
+            eq = f"{func}({k}*x)={target}"
+
+        label = f"Random trig solve {index}: {mode}"
+        return self.make_cli_case(
+            "Trigonometry",
+            "trigProgram.py",
+            f"3\n{eq},x,0,2*pi\n",
+            label,
+            self.trig_solve_output_checker(eq, lower=0.0, upper=2 * math.pi),
+            feature=f"trig_solve:{mode}",
+        )
+
+    def random_trig_rewrite_case(self, rng, difficulty, index):
+        angle = self.random_angle_expr(rng, "x", difficulty)
+        mode = rng.choice(["pythag", "cos2_sin", "cos2_cos", "tan_ratio", "cot_ratio", "reciprocal"])
+        if mode == "pythag":
+            expr = f"sin({angle})^2+cos({angle})^2"
+            terms = [f"sin({angle})", f"cos({angle})"]
+        elif mode == "cos2_sin":
+            expr = f"1-cos(2*({angle}))"
+            terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        elif mode == "cos2_cos":
+            expr = f"1+cos(2*({angle}))"
+            terms = [f"sin({angle})^2", f"cos({angle})^2"]
+        elif mode == "tan_ratio":
+            expr = f"sin({angle})/cos({angle})"
+            terms = [f"tan({angle})", f"sin({angle})", f"cos({angle})"]
+        elif mode == "cot_ratio":
+            expr = f"cos({angle})/sin({angle})"
+            terms = [f"cot({angle})", f"sin({angle})", f"cos({angle})"]
+        else:
+            expr = f"1/cos({angle})"
+            terms = [f"sec({angle})", f"cos({angle})"]
+        term_block = "".join(f"{term}\n" for term in terms)
+        label = f"Random trig rewrite {index}: {mode}"
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("final ="), feature=f"trig_rewrite:{mode}")
+
+    def build_random_trig_cases(self, difficulty, count, rng):
+        features = [
+            self.random_trig_prove_case,
+            self.random_trig_transform_case,
+            self.random_trig_solve_case,
+            self.random_trig_rewrite_case,
+        ]
+        return self.build_unique_random_cases(features, count, rng, difficulty)
+
+    def random_derive_normal_case(self, rng, difficulty, index):
+        mode = rng.choice([
+            "chain_power",
+            "nested_exp",
+            "quotient",
+            "product",
+            "log_chain",
+            "inverse_trig",
+            "root_chain",
+            "trig_composite",
+            "power_power",
+        ])
+        if mode == "chain_power":
+            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{rng.randint(3, 9 if difficulty == 'hard' else 5)}"
+        elif mode == "nested_exp":
+            expr = f"exp(sin({self.random_angle_expr(rng, 'x', difficulty)})+cos({self.random_linear_expr(rng, 'x', allow_negative=True)}))"
+        elif mode == "quotient":
+            expr = f"({self.random_general_expr(rng, 'x', difficulty, 2)})/({self.random_positive_expr(rng, 'x', difficulty)})"
+        elif mode == "product":
+            expr = (
+                f"({self.random_general_expr(rng, 'x', difficulty, 1)})*"
+                f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})*"
+                f"log({self.random_positive_expr(rng, 'x', difficulty)})"
+            )
+        elif mode == "log_chain":
+            expr = f"log(sqrt({self.random_positive_expr(rng, 'x', difficulty)}))"
+        elif mode == "inverse_trig":
+            expr = rng.choice([
+                f"asin(({self.random_linear_expr(rng, 'x', allow_negative=True)})/10)",
+                f"atan({self.random_general_expr(rng, 'x', difficulty, 1)})",
+            ])
+        elif mode == "root_chain":
+            expr = f"sqrt(({self.random_linear_expr(rng, 'x', allow_negative=True)})^2+{rng.randint(2, 12)})"
+        elif mode == "power_power":
+            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^(x+{rng.randint(1, 4)})"
+        else:
+            a1 = self.random_angle_expr(rng, "x", difficulty)
+            a2 = self.random_angle_expr(rng, "x", difficulty)
+            expr = f"(sin({a1})+cos({a2}))^{rng.randint(2, 5 if difficulty != 'hard' else 7)}"
+        label = f"Random derive normal {index}: {mode}"
+        return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature=f"derive_normal:{mode}")
+
+    def random_derive_implicit_case(self, rng, difficulty, index):
+        a = rng.randint(2, 6)
+        b = rng.randint(2, 6)
         mode = rng.choice(["circle", "mixed", "trig", "exp_log"])
         if mode == "circle":
             eq = f"{a}*x^2+{b}*y^2={rng.randint(10, 40)}"
@@ -3335,9 +3528,120 @@ class CASIOApp(App):
         )
         return self.make_direct_case("SUVAT", label, runner, input_text=input_text, check_info=f"suvat exact answer = {expected}", feature=f"suvat_find_{target}")
 
+    def random_suvat_edge_case(self, rng, difficulty, index, target):
+        def frac_text(value):
+            return str(value.numerator) if value.denominator == 1 else f"{value.numerator}/{value.denominator}"
+
+        def make_case(label, cli_input, checker, check_info, feature):
+            def runner():
+                out, _ = self.run_cli("SUVATprogram.py", cli_input)
+                return checker(out), out
+
+            return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, check_info=check_info, feature=feature)
+
+        if target == "t":
+            mode = rng.choice([
+                "zero_accel_surd_missing_v",
+                "zero_accel_fraction_missing_v",
+                "quadratic_missing_v",
+                "average_velocity_no_a",
+                "symbolic_time",
+            ])
+            if mode == "zero_accel_surd_missing_v":
+                distance = rng.randint(12, 80)
+                coeff = rng.randint(2, 18)
+                radicand = rng.choice([2, 3, 5, 7, 11])
+                divisor = rng.randint(1, 5)
+                u_expr = f"{coeff}*(sqrt({radicand})/{divisor})"
+                expected = f"{distance}*{divisor}/({coeff}*sqrt({radicand}))"
+                cli_input = f"{distance}\n{u_expr}\n\n0\n,\n"
+                checker = lambda out, expected=expected: suvat_cli_checker("t", expected)(out) and "t = s/u" in normalized_text(out)
+            elif mode == "zero_accel_fraction_missing_v":
+                distance = Fraction(rng.randint(8, 90), rng.choice([1, 2, 3]))
+                velocity = Fraction(self.random_nonzero_int(rng, -12, 12), rng.choice([1, 2, 3]))
+                if velocity < 0:
+                    distance = -distance
+                expected_fraction = distance / velocity
+                cli_input = f"{frac_text(distance)}\n{frac_text(velocity)}\n\n0\n,\n"
+                checker = lambda out, expected=frac_text(expected_fraction): suvat_cli_checker("t", expected)(out) and "t = s/u" in normalized_text(out)
+            elif mode == "quadratic_missing_v":
+                t_val = Fraction(rng.randint(1, 8), rng.choice([1, 2, 3]))
+                u_val = Fraction(rng.randint(1, 8), rng.choice([1, 2]))
+                a_val = Fraction(rng.randint(1, 6), rng.choice([1, 2, 3]))
+                s_val = u_val * t_val + Fraction(1, 2) * a_val * t_val * t_val
+                cli_input = f"{frac_text(s_val)}\n{frac_text(u_val)}\n\n{frac_text(a_val)}\n,\n"
+                checker = lambda out, expected=frac_text(t_val): suvat_cli_checker("t", expected)(out) and "quadratic" in normalized_text(out)
+            elif mode == "average_velocity_no_a":
+                t_val = Fraction(rng.randint(1, 8), rng.choice([1, 2, 3]))
+                u_val = Fraction(rng.randint(-6, 6), 1)
+                v_val = Fraction(self.random_nonzero_int(rng, -8, 8), 1)
+                if u_val + v_val == 0:
+                    v_val += 1
+                s_val = Fraction(1, 2) * (u_val + v_val) * t_val
+                cli_input = f"{frac_text(s_val)}\n{frac_text(u_val)}\n{frac_text(v_val)}\n\n,\n"
+                checker = lambda out, expected=frac_text(t_val): suvat_cli_checker("t", expected)(out) and "t = 2s/(u+v)" in normalized_text(out)
+            else:
+                cli_input = "\n\n\n0\n,\n"
+                checker = suvat_symbolic_output_checker("t", "2*s/(u+v)")
+        elif target == "s":
+            mode = rng.choice(["zero_accel", "symbolic"])
+            if mode == "zero_accel":
+                u_val = Fraction(self.random_nonzero_int(rng, -12, 12), rng.choice([1, 2, 3]))
+                t_val = Fraction(rng.randint(1, 9), rng.choice([1, 2, 3]))
+                expected = u_val * t_val
+                cli_input = f",\n{frac_text(u_val)}\n\n0\n{frac_text(t_val)}\n"
+                checker = suvat_cli_checker("s", frac_text(expected))
+            else:
+                cli_input = ",\n\n\n\n\n"
+                checker = suvat_symbolic_output_checker("s", "u*t", "a*t^2")
+            mode = f"{mode}_{target}"
+        elif target == "v":
+            mode = rng.choice(["zero_accel", "symbolic"])
+            if mode == "zero_accel":
+                u_val = Fraction(self.random_nonzero_int(rng, -12, 12), rng.choice([1, 2, 3]))
+                t_val = Fraction(rng.randint(1, 9), rng.choice([1, 2, 3]))
+                cli_input = f"\n{frac_text(u_val)}\n,\n0\n{frac_text(t_val)}\n"
+                checker = suvat_cli_checker("v", frac_text(u_val))
+            else:
+                cli_input = "\n\n,\n\n\n"
+                checker = suvat_symbolic_output_checker("v", "u+a*t")
+            mode = f"{mode}_{target}"
+        elif target == "u":
+            mode = rng.choice(["zero_accel", "symbolic"])
+            if mode == "zero_accel":
+                v_val = Fraction(self.random_nonzero_int(rng, -12, 12), rng.choice([1, 2, 3]))
+                t_val = Fraction(rng.randint(1, 9), rng.choice([1, 2, 3]))
+                cli_input = f"\n,\n{frac_text(v_val)}\n0\n{frac_text(t_val)}\n"
+                checker = suvat_cli_checker("u", frac_text(v_val))
+            else:
+                cli_input = "\n,\n\n\n\n"
+                checker = suvat_symbolic_output_checker("u", "v-a*t")
+            mode = f"{mode}_{target}"
+        else:
+            mode = rng.choice(["zero_time_consistent", "symbolic"])
+            if mode == "zero_time_consistent":
+                u_val = Fraction(rng.randint(-8, 8), 1)
+                v_val = u_val
+                cli_input = f"\n{frac_text(u_val)}\n{frac_text(v_val)}\n,\n0\n"
+                checker = suvat_expected_error_checker("infinite solutions")
+                feature_prefix = "suvat_expected_error"
+            else:
+                cli_input = "\n\n\n,\n\n"
+                checker = suvat_symbolic_output_checker("a", "(v-u)/t")
+                feature_prefix = "suvat_edge"
+            mode = f"{mode}_{target}"
+        if target != "a":
+            feature_prefix = "suvat_edge"
+
+        label = f"Random SUVAT edge {index}: {mode}"
+        return make_case(label, cli_input, checker, f"suvat edge family = {mode}", f"{feature_prefix}:{mode}")
+
     def build_random_suvat_cases(self, difficulty, count, rng):
         features = ["s", "u", "v", "a", "t"]
-        generators = [lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_case(local_rng, local_difficulty, idx, target) for target in features]
+        generators = []
+        for target in features:
+            generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_case(local_rng, local_difficulty, idx, target))
+            generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_edge_case(local_rng, local_difficulty, idx, target))
         return self.build_unique_random_cases(generators, count, rng, difficulty)
 
     def run_random_tests(self, difficulty, count, workers=None):
