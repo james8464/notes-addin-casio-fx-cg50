@@ -3270,9 +3270,9 @@ def show(node, parent=0):
                 text = show(item, 1)
         else:
             if coeff[1] < 0:
-                text += '-' + show(mul([num(-coeff[1], coeff[2]), rest]), 1)
+                text += ' - ' + show(mul([num(-coeff[1], coeff[2]), rest]), 1)
             else:
-                text += '+' + show(item, 1)
+                text += ' + ' + show(item, 1)
         i += 1
     if 1 < parent:
         result = '(' + text + ')'

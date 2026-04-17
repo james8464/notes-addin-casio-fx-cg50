@@ -1083,9 +1083,9 @@ def show(node, parent=0):
                     text = "-" + text
             else:
                 if neg_term(item):
-                    text += "-" + show(abs_term(item), pr(node))
+                    text += " - " + show(abs_term(item), pr(node))
                 else:
-                    text += "+" + show(item, pr(node))
+                    text += " + " + show(item, pr(node))
             i += 1
     if pr(node) < parent:
         return "(" + text + ")"
@@ -1564,6 +1564,111 @@ def as_rat(node):
     return node, num(1)
 
 
+def make_display_mul(parts):
+    out = []
+    for item in parts:
+        if is_one(item):
+            continue
+        if item[0] == "mul":
+            out.extend(flat(item, "mul"))
+        else:
+            out.append(item)
+    if len(out) == 0:
+        return num(1)
+    if len(out) == 1:
+        return out[0]
+    return ("mul", tuple(out))
+
+
+def make_display_add(parts):
+    out = []
+    for item in parts:
+        if item[0] == "add":
+            out.extend(flat(item, "add"))
+        else:
+            out.append(item)
+    if len(out) == 0:
+        return num(0)
+    if len(out) == 1:
+        return out[0]
+    return ("add", tuple(out))
+
+
+def as_rat_display(node):
+    kind = node[0]
+    if kind in ("num", "sym", "const", "fn"):
+        return node, num(1)
+    if kind == "pow":
+        if is_num(node[2]) and is_int_num(node[2]) and node[2][1] < 0:
+            return num(1), power(node[1], num(-node[2][1]))
+        return node, num(1)
+    if kind == "div":
+        n1, d1 = as_rat_display(node[1])
+        n2, d2 = as_rat_display(node[2])
+        return make_display_mul([n1, d2]), make_display_mul([d1, n2])
+    if kind == "mul":
+        tops = []
+        bots = []
+        for item in flat(node, "mul"):
+            ni, di = as_rat_display(item)
+            tops.append(ni)
+            bots.append(di)
+        return make_display_mul(tops), make_display_mul(bots)
+    if kind == "add":
+        parts = []
+        denominators = []
+        for item in flat(node, "add"):
+            ni, di = as_rat_display(item)
+            den_items = [] if is_one(di) else (flat(di, "mul") if di[0] == "mul" else [di])
+            parts.append((ni, den_items))
+            denominators.append(den_items)
+        common_bits = []
+        for den_items in denominators:
+            common_bits.extend(den_items)
+        out = []
+        i = 0
+        while i < len(parts):
+            ni, _di = parts[i]
+            multiplier = []
+            j = 0
+            while j < len(denominators):
+                if j != i:
+                    multiplier.extend(denominators[j])
+                j += 1
+            out.append(make_display_mul([ni] + multiplier))
+            i += 1
+        return make_display_add(out), make_display_mul(common_bits)
+    return node, num(1)
+
+
+def readable_show(node):
+    text = show(node)
+    out = ""
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+            out += ch
+        elif ch == ")":
+            depth -= 1
+            out += ch
+        elif ch in "+-" and i != 0:
+            prev = text[i - 1]
+            next_ch = text[i + 1] if i + 1 < len(text) else ""
+            if prev in "*/^(":
+                out += ch
+            elif prev == " " or next_ch == " ":
+                out += ch
+            else:
+                out += " " + ch + " "
+        else:
+            out += ch
+        i += 1
+    return out
+
+
 # ============================================================================
 # SECTION 15: Trigonometric Reciprocal Conversion
 # ============================================================================
@@ -1924,12 +2029,12 @@ def simplify_complex_fractions(node):
 
 def collect_and_factor_terms(coef, rest, dname):
     dterm = ("mul", (coef, sym(dname)))
-    text = show(dterm)
+    text = readable_show(dterm)
     if not is_zero(rest):
         if neg_term(rest):
-            text += " - " + show(abs_term(rest))
+            text += " - " + readable_show(abs_term(rest))
         else:
-            text += " + " + show(rest)
+            text += " + " + readable_show(rest)
     return text
 
 
@@ -2102,10 +2207,10 @@ def main():
                 print(str(i) + ". " + steps[i - 1])
                 i += 1
 
-            print("dy/d" + var + " = " + show(final))
+            print("dy/d" + var + " = " + readable_show(final))
 
             if sig(formatted) != sig(final):
-                print("dy/d" + var + " = " + show(formatted))
+                print("dy/d" + var + " = " + readable_show(formatted))
 
         elif mode == "2":
             text = input("Eq: ").strip()
@@ -2116,7 +2221,9 @@ def main():
             right = trig_normal(parse(right_text))
             var, dep = pick_implicit_vars(left, right)
             dname = "d" + dep + "/d" + var
+            start_display = make_display_add([left, neg(right)])
             start = tidy(add([left, neg(right)]))
+            display_cleared, display_den = as_rat_display(start_display)
             cleared, cleared_den = as_rat(start)
             cleared = tidy(cleared)
             work = cleared
@@ -2124,7 +2231,10 @@ def main():
                 step = 1
             else:
                 print("1. Clear fracs")
-                print("2. " + show(cleared) + " = 0")
+                if not is_one(display_den):
+                    print("2. " + readable_show(display_cleared) + " = 0")
+                else:
+                    print("2. " + readable_show(cleared) + " = 0")
                 step = 3
             dleft = sim(diff(work, var, [dep]))
             dright = num(0)
@@ -2136,20 +2246,20 @@ def main():
                 raise ValueError("No " + dname + ".")
             ans = tidy(div(neg(rest), coef))
             print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
-            print(str(step + 1) + ". " + show(dleft) + " = " + show(dright))
+            print(str(step + 1) + ". " + readable_show(dleft) + " = " + readable_show(dright))
             print(str(step + 2) + ". Make " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
             print(str(step + 3) + ". " + grouped + " = 0")
-            print(dname + " = " + show(ans))
+            print(dname + " = " + readable_show(ans))
             pretty_ans = prefer_trig_recip(ans)
             if sig(pretty_ans) != sig(ans):
-                print(dname + " = " + show(pretty_ans))
+                print(dname + " = " + readable_show(pretty_ans))
             formatted_ans = format_final_answer(ans)
             if sig(formatted_ans) != sig(ans) and sig(formatted_ans) != sig(pretty_ans):
-                print(dname + " = " + show(formatted_ans))
+                print(dname + " = " + readable_show(formatted_ans))
             normalized_ans = tidy(ans)
             if sig(normalized_ans) != sig(ans) and sig(normalized_ans) != sig(pretty_ans) and sig(normalized_ans) != sig(formatted_ans):
-                print(dname + " = " + show(normalized_ans))
+                print(dname + " = " + readable_show(normalized_ans))
             if coef[0] == 'mul' and rest[0] == 'num' and len(flat(coef, 'mul')) == 2:
                 coeff_items = flat(coef, 'mul')
                 if coeff_items[1][0] == 'add' and same(rest, num(0)):

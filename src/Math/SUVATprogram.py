@@ -986,9 +986,9 @@ def _show(node, parent=0):
                 if display_neg(bits[i]):
                     text = '-' + text
             elif display_neg(bits[i]):
-                text += '-' + _show(display_abs(bits[i]), pr(node))
+                text += ' - ' + _show(display_abs(bits[i]), pr(node))
             else:
-                text += '+' + _show(bits[i], pr(node))
+                text += ' + ' + _show(bits[i], pr(node))
             i += 1
     if pr(node) < parent:
         return '(' + text + ')'

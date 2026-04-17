@@ -1576,9 +1576,9 @@ def _show(node, parent=0):
                 if display_neg(F[C]):
                     B = '-' + B
             elif display_neg(F[C]):
-                B += '-' + _show(display_abs(F[C]), pr(A))
+                B += ' - ' + _show(display_abs(F[C]), pr(A))
             else:
-                B += '+' + _show(F[C], pr(A))
+                B += ' + ' + _show(F[C], pr(A))
             C += 1
     if pr(A) < P:
         return '(' + B + ')'

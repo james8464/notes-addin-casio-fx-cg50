@@ -1341,9 +1341,9 @@ def _show_uncached(node, parent=0):
                     chunk = _show(display_abs(item), pr(node))
                     if display_abs(item)[0] == "add":
                         chunk = "(" + _show(display_abs(item), 0) + ")"
-                    text += "-" + chunk
+                    text += " - " + chunk
                 else:
-                    text += "+" + _show(item, pr(node))
+                    text += " + " + _show(item, pr(node))
             i += 1
     if pr(node) < parent:
         return "(" + text + ")"
