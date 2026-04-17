@@ -1,0 +1,1247 @@
+CASIO Test Failure Report
+Generated: 2026-04-14T22:09:34
+Last command: /random 9999 10
+Current program: all
+Current difficulty: hard
+Summary: 9419 passed, 69 failed, 9488 total
+
+Failures by feature:
+  algebra_compare:exp_log_inverse: 24 failures
+  derive_normal:quotient: 1 failures
+  trig_prove:half_angle: 39 failures
+  trig_prove:triple_angle: 1 failures
+  trig_rewrite:reciprocal: 1 failures
+  trig_solve:quadratic: 3 failures
+
+================================================================================
+1. [Algebra] Random compare 125: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(6*(4*(8*((4/6)*x+(-5/6))+3)+1)^2+6)/sin(6*(4*(8*((4/6)*x+(-5/6))+3)+1)^2+6)
+cot(6*(4*(8*((4/6)*x+(-5/6))+3)+1)^2+6)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)/sin(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+2. expr2 = cot(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+3. Simplify both...
+4. expr1 = cos(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)/sin(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+5. expr2 = cot(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+6. Expression 1: cos(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)/sin(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+7. Expression 2: cot(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+8. Simplify expr1: cos(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)/sin(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+9. Simplify expr2: cot(6*(4*(8*((2/3)*x-5/6)+3)+1)^2+6)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+2. [Algebra] Random compare 141: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(2*((7/6)*x+(8/3))-2*x)/cos(2*((7/6)*x+(8/3))-2*x)
+tan(2*((7/6)*x+(8/3))-2*x)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(2*((7/6)*x+8/3)-2*x)/cos(2*((7/6)*x+8/3)-2*x)
+2. expr2 = tan(2*((7/6)*x+8/3)-2*x)
+3. Simplify both...
+4. expr1 = sin(2*((7/6)*x+8/3)-2*x)/cos(2*((7/6)*x+8/3)-2*x)
+5. expr2 = tan(2*((7/6)*x+8/3)-2*x)
+6. Expression 1: sin(2*((7/6)*x+8/3)-2*x)/cos(2*((7/6)*x+8/3)-2*x)
+7. Expression 2: tan(2*((7/6)*x+8/3)-2*x)
+8. Simplify expr1: sin(2*((7/6)*x+8/3)-2*x)/cos(2*((7/6)*x+8/3)-2*x)
+9. Simplify expr2: tan(2*((7/6)*x+8/3)-2*x)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+3. [Algebra] Random compare 173: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)/cos((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+tan((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)/cos((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+2. expr2 = tan((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+3. Simplify both...
+4. expr1 = sin((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)/cos((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+5. expr2 = tan((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+6. Expression 1: sin((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)/cos((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+7. Expression 2: tan((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+8. Simplify expr1: sin((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)/cos((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+9. Simplify expr2: tan((2/3)*(5*(6*x^2-2*x+5)-7*x)+4)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+4. [Algebra] Random compare 97: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(8*(6*(5*x-6))-6*x)/sin(8*(6*(5*x-6))-6*x)
+cot(8*(6*(5*x-6))-6*x)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(48*(5*x-6)-6*x)/sin(48*(5*x-6)-6*x)
+2. expr2 = cot(48*(5*x-6)-6*x)
+3. Simplify both...
+4. expr1 = cos(48*(5*x-6)-6*x)/sin(48*(5*x-6)-6*x)
+5. expr2 = cot(48*(5*x-6)-6*x)
+6. Expression 1: cos(48*(5*x-6)-6*x)/sin(48*(5*x-6)-6*x)
+7. Expression 2: cot(48*(5*x-6)-6*x)
+8. Simplify expr1: cos(48*(5*x-6)-6*x)/sin(48*(5*x-6)-6*x)
+9. Simplify expr2: cot(48*(5*x-6)-6*x)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+5. [Algebra] Random compare 134: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)/sin((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+cot((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)/sin((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+2. expr2 = cot((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+3. Simplify both...
+4. expr1 = cos((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)/sin((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+5. expr2 = cot((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+6. Expression 1: cos((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)/sin((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+7. Expression 2: cot((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+8. Simplify expr1: cos((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)/sin((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+9. Simplify expr2: cot((4/3)*(6*(4*x^2-5*x+9)-6*x)+2)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+6. [Algebra] Random compare 25: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(8*(4*x^2+2*x+-1)^2+5)/cos(8*(4*x^2+2*x+-1)^2+5)
+tan(8*(4*x^2+2*x+-1)^2+5)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(8*(4*x^2+2*x-1)^2+5)/cos(8*(4*x^2+2*x-1)^2+5)
+2. expr2 = tan(8*(4*x^2+2*x-1)^2+5)
+3. Simplify both...
+4. expr1 = sin(8*(4*x^2+2*x-1)^2+5)/cos(8*(4*x^2+2*x-1)^2+5)
+5. expr2 = tan(8*(4*x^2+2*x-1)^2+5)
+6. Expression 1: sin(8*(4*x^2+2*x-1)^2+5)/cos(8*(4*x^2+2*x-1)^2+5)
+7. Expression 2: tan(8*(4*x^2+2*x-1)^2+5)
+8. Simplify expr1: sin(8*(4*x^2+2*x-1)^2+5)/cos(8*(4*x^2+2*x-1)^2+5)
+9. Simplify expr2: tan(8*(4*x^2+2*x-1)^2+5)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+7. [Algebra] Random compare 42: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(4*(3*(x)+7)+pi/2)/sin(4*(3*(x)+7)+pi/2)
+cot(4*(3*(x)+7)+pi/2)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(4*(3*x+7)+pi/2)/sin(4*(3*x+7)+pi/2)
+2. expr2 = cot(4*(3*x+7)+pi/2)
+3. Simplify both...
+4. expr1 = cos(4*(3*x+7)+pi/2)/sin(4*(3*x+7)+pi/2)
+5. expr2 = cot(4*(3*x+7)+pi/2)
+6. Expression 1: cos(4*(3*x+7)+pi/2)/sin(4*(3*x+7)+pi/2)
+7. Expression 2: cot(4*(3*x+7)+pi/2)
+8. Simplify expr1: cos(4*(3*x+7)+pi/2)/sin(4*(3*x+7)+pi/2)
+9. Simplify expr2: cot(4*(3*x+7)+pi/2)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+8. [Algebra] Random compare 60: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos((1/8)*(6*(x)+-pi/4)+3)/sin((1/8)*(6*(x)+-pi/4)+3)
+cot((1/8)*(6*(x)+-pi/4)+3)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos((1/8)*(6*x+(-1*pi)/4)+3)/sin((1/8)*(6*x+(-1*pi)/4)+3)
+2. expr2 = cot((1/8)*(6*x+(-1*pi)/4)+3)
+3. Simplify both...
+4. expr1 = cos((1/8)*(6*x+(-1*pi)/4)+3)/sin((1/8)*(6*x+(-1*pi)/4)+3)
+5. expr2 = cot((1/8)*(6*x+(-1*pi)/4)+3)
+6. Expression 1: cos((1/8)*(6*x+(-1*pi)/4)+3)/sin((1/8)*(6*x+(-1*pi)/4)+3)
+7. Expression 2: cot((1/8)*(6*x+(-1*pi)/4)+3)
+8. Simplify expr1: cos((1/8)*(6*x+(-1*pi)/4)+3)/sin((1/8)*(6*x+(-1*pi)/4)+3)
+9. Simplify expr2: cot((1/8)*(6*x+(-1*pi)/4)+3)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+9. [Algebra] Random compare 120: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(2*(2*(2*((-8*x-5)^2)+5)+pi/6)+-pi/6)/cos(2*(2*(2*((-8*x-5)^2)+5)+pi/6)+-pi/6)
+tan(2*(2*(2*((-8*x-5)^2)+5)+pi/6)+-pi/6)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)/cos(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+2. expr2 = tan(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+3. Simplify both...
+4. expr1 = sin(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)/cos(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+5. expr2 = tan(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+6. Expression 1: sin(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)/cos(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+7. Expression 2: tan(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+8. Simplify expr1: sin(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)/cos(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+9. Simplify expr2: tan(2*(2*(2*(-8*x-5)^2+5)+pi/6)+(-1*pi)/6)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+10. [Algebra] Random compare 175: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)/sin(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+cot(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)/sin(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+2. expr2 = cot(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+3. Simplify both...
+4. expr1 = cos(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)/sin(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+5. expr2 = cot(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+6. Expression 1: cos(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)/sin(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+7. Expression 2: cot(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+8. Simplify expr1: cos(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)/sin(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+9. Simplify expr2: cot(6*(6*(2*(-3*x+1)+pi/4)^2+6)+7)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+11. [Algebra] Random compare 169: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(7*(7*(-1*x+4)+3)^2+7)/sin(7*(7*(-1*x+4)+3)^2+7)
+cot(7*(7*(-1*x+4)+3)^2+7)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(7*(7*(-x+4)+3)^2+7)/sin(7*(7*(-x+4)+3)^2+7)
+2. expr2 = cot(7*(7*(-x+4)+3)^2+7)
+3. Simplify both...
+4. expr1 = cos(7*(7*(-x+4)+3)^2+7)/sin(7*(7*(-x+4)+3)^2+7)
+5. expr2 = cot(7*(7*(-x+4)+3)^2+7)
+6. Expression 1: cos(7*(7*(-x+4)+3)^2+7)/sin(7*(7*(-x+4)+3)^2+7)
+7. Expression 2: cot(7*(7*(-x+4)+3)^2+7)
+8. Simplify expr1: cos(7*(7*(-x+4)+3)^2+7)/sin(7*(7*(-x+4)+3)^2+7)
+9. Simplify expr2: cot(7*(7*(-x+4)+3)^2+7)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+12. [Algebra] Random compare 200: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos((-3/3)*(2*(7*(-4*x+5)^2-5)+-pi/4)+5)/sin((-3/3)*(2*(7*(-4*x+5)^2-5)+-pi/4)+5)
+cot((-3/3)*(2*(7*(-4*x+5)^2-5)+-pi/4)+5)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(-2*(7*(-4*x+5)^2-5)+pi/4+5)/sin(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+2. expr2 = cot(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+3. Simplify both...
+4. expr1 = cos(-2*(7*(-4*x+5)^2-5)+pi/4+5)/sin(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+5. expr2 = cot(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+6. Expression 1: cos(-2*(7*(-4*x+5)^2-5)+pi/4+5)/sin(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+7. Expression 2: cot(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+8. Simplify expr1: cos(-2*(7*(-4*x+5)^2-5)+pi/4+5)/sin(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+9. Simplify expr2: cot(-2*(7*(-4*x+5)^2-5)+pi/4+5)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+13. [Algebra] Random compare 17: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(5*(6*((-1/6)*x+(4/3))+-pi/4)^2-1)/sin(5*(6*((-1/6)*x+(4/3))+-pi/4)^2-1)
+cot(5*(6*((-1/6)*x+(4/3))+-pi/4)^2-1)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)/sin(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+2. expr2 = cot(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+3. Simplify both...
+4. expr1 = cos(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)/sin(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+5. expr2 = cot(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+6. Expression 1: cos(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)/sin(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+7. Expression 2: cot(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+8. Simplify expr1: cos(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)/sin(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+9. Simplify expr2: cot(5*(6*(-(1/6)*x+4/3)+(-1*pi)/4)^2-1)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+14. [Algebra] Random compare 104: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(4*(5*(-1*x+8)+-pi/3)-6*x)/cos(4*(5*(-1*x+8)+-pi/3)-6*x)
+tan(4*(5*(-1*x+8)+-pi/3)-6*x)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(4*(5*(-x+8)+(-1*pi)/3)-6*x)/cos(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+2. expr2 = tan(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+3. Simplify both...
+4. expr1 = sin(4*(5*(-x+8)+(-1*pi)/3)-6*x)/cos(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+5. expr2 = tan(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+6. Expression 1: sin(4*(5*(-x+8)+(-1*pi)/3)-6*x)/cos(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+7. Expression 2: tan(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+8. Simplify expr1: sin(4*(5*(-x+8)+(-1*pi)/3)-6*x)/cos(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+9. Simplify expr2: tan(4*(5*(-x+8)+(-1*pi)/3)-6*x)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+15. [Algebra] Random compare 78: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(5*((2*(3*(-5*x+8)-1)-3*x)+-1)^3+3)/cos(5*((2*(3*(-5*x+8)-1)-3*x)+-1)^3+3)
+tan(5*((2*(3*(-5*x+8)-1)-3*x)+-1)^3+3)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)/cos(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+2. expr2 = tan(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+3. Simplify both...
+4. expr1 = sin(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)/cos(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+5. expr2 = tan(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+6. Expression 1: sin(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)/cos(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+7. Expression 2: tan(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+8. Simplify expr1: sin(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)/cos(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+9. Simplify expr2: tan(5*(2*(3*(-5*x+8)-1)-3*x-1)^3+3)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+16. [Algebra] Random compare 119: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin((2/2)*(3*x^2+2*x+8)-5)/cos((2/2)*(3*x^2+2*x+8)-5)
+tan((2/2)*(3*x^2+2*x+8)-5)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(3*x^2+2*x+3)/cos(3*x^2+2*x+3)
+2. expr2 = tan(3*x^2+2*x+3)
+3. Simplify both...
+4. expr1 = sin(3*x^2+2*x+3)/cos(3*x^2+2*x+3)
+5. expr2 = tan(3*x^2+2*x+3)
+6. Expression 1: sin(3*x^2+2*x+3)/cos(3*x^2+2*x+3)
+7. Expression 2: tan(3*x^2+2*x+3)
+8. Simplify expr1: sin(3*x^2+2*x+3)/cos(3*x^2+2*x+3)
+9. Simplify expr2: tan(3*x^2+2*x+3)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+17. [Algebra] Random compare 189: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(5*(4*((1*x-4)^2)^2+3)-5*x)/cos(5*(4*((1*x-4)^2)^2+3)-5*x)
+tan(5*(4*((1*x-4)^2)^2+3)-5*x)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(5*(4*(x-4)^4+3)-5*x)/cos(5*(4*(x-4)^4+3)-5*x)
+2. expr2 = tan(5*(4*(x-4)^4+3)-5*x)
+3. Simplify both...
+4. expr1 = sin(5*(4*(x-4)^4+3)-5*x)/cos(5*(4*(x-4)^4+3)-5*x)
+5. expr2 = tan(5*(4*(x-4)^4+3)-5*x)
+6. Expression 1: sin(5*(4*(x-4)^4+3)-5*x)/cos(5*(4*(x-4)^4+3)-5*x)
+7. Expression 2: tan(5*(4*(x-4)^4+3)-5*x)
+8. Simplify expr1: sin(5*(4*(x-4)^4+3)-5*x)/cos(5*(4*(x-4)^4+3)-5*x)
+9. Simplify expr2: tan(5*(4*(x-4)^4+3)-5*x)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+18. [Algebra] Random compare 99: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(5*(7*(6*((-3/5)*(-1*x-6)+6)-2*x)+pi/4)^2-4)/cos(5*(7*(6*((-3/5)*(-1*x-6)+6)-2*x)+pi/4)^2-4)
+tan(5*(7*(6*((-3/5)*(-1*x-6)+6)-2*x)+pi/4)^2-4)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)/cos(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+2. expr2 = tan(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+3. Simplify both...
+4. expr1 = sin(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)/cos(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+5. expr2 = tan(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+6. Expression 1: sin(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)/cos(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+7. Expression 2: tan(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+8. Simplify expr1: sin(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)/cos(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+9. Simplify expr2: tan(5*(7*(6*(-(3/5)*(-x-6)+6)-2*x)+pi/4)^2-4)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+19. [Algebra] Random compare 65: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(8*(4*(3*x^2+6*x+6)^2-6)-4)/cos(8*(4*(3*x^2+6*x+6)^2-6)-4)
+tan(8*(4*(3*x^2+6*x+6)^2-6)-4)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(8*(4*(3*x^2+6*x+6)^2-6)-4)/cos(8*(4*(3*x^2+6*x+6)^2-6)-4)
+2. expr2 = tan(8*(4*(3*x^2+6*x+6)^2-6)-4)
+3. Simplify both...
+4. expr1 = sin(8*(4*(3*x^2+6*x+6)^2-6)-4)/cos(8*(4*(3*x^2+6*x+6)^2-6)-4)
+5. expr2 = tan(8*(4*(3*x^2+6*x+6)^2-6)-4)
+6. Expression 1: sin(8*(4*(3*x^2+6*x+6)^2-6)-4)/cos(8*(4*(3*x^2+6*x+6)^2-6)-4)
+7. Expression 2: tan(8*(4*(3*x^2+6*x+6)^2-6)-4)
+8. Simplify expr1: sin(8*(4*(3*x^2+6*x+6)^2-6)-4)/cos(8*(4*(3*x^2+6*x+6)^2-6)-4)
+9. Simplify expr2: tan(8*(4*(3*x^2+6*x+6)^2-6)-4)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+20. [Algebra] Random compare 81: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(3*(2*(6*(5*(8*x-2)+6)+-pi/6)^2)-6)/cos(3*(2*(6*(5*(8*x-2)+6)+-pi/6)^2)-6)
+tan(3*(2*(6*(5*(8*x-2)+6)+-pi/6)^2)-6)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)/cos(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+2. expr2 = tan(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+3. Simplify both...
+4. expr1 = sin(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)/cos(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+5. expr2 = tan(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+6. Expression 1: sin(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)/cos(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+7. Expression 2: tan(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+8. Simplify expr1: sin(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)/cos(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+9. Simplify expr2: tan(6*(6*(5*(8*x-2)+6)+(-1*pi)/6)^2-6)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+21. [Algebra] Random compare 67: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos(3*(7*((6*(3*(-2*x-3)-5*x)+2)+-3)^3-5)-6*x)/sin(3*(7*((6*(3*(-2*x-3)-5*x)+2)+-3)^3-5)-6*x)
+cot(3*(7*((6*(3*(-2*x-3)-5*x)+2)+-3)^3-5)-6*x)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)/sin(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+2. expr2 = cot(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+3. Simplify both...
+4. expr1 = cos(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)/sin(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+5. expr2 = cot(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+6. Expression 1: cos(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)/sin(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+7. Expression 2: cot(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+8. Simplify expr1: cos(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)/sin(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+9. Simplify expr2: cot(3*(7*(6*(3*(-2*x-3)-5*x)-1)^3-5)-6*x)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+22. [Algebra] Random compare 112: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(3*((4/2)*(8*x^2+4*x+6)-6)-5)/cos(3*((4/2)*(8*x^2+4*x+6)-6)-5)
+tan(3*((4/2)*(8*x^2+4*x+6)-6)-5)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(3*(2*(8*x^2+4*x+6)-6)-5)/cos(3*(2*(8*x^2+4*x+6)-6)-5)
+2. expr2 = tan(3*(2*(8*x^2+4*x+6)-6)-5)
+3. Simplify both...
+4. expr1 = sin(3*(2*(8*x^2+4*x+6)-6)-5)/cos(3*(2*(8*x^2+4*x+6)-6)-5)
+5. expr2 = tan(3*(2*(8*x^2+4*x+6)-6)-5)
+6. Expression 1: sin(3*(2*(8*x^2+4*x+6)-6)-5)/cos(3*(2*(8*x^2+4*x+6)-6)-5)
+7. Expression 2: tan(3*(2*(8*x^2+4*x+6)-6)-5)
+8. Simplify expr1: sin(3*(2*(8*x^2+4*x+6)-6)-5)/cos(3*(2*(8*x^2+4*x+6)-6)-5)
+9. Simplify expr2: tan(3*(2*(8*x^2+4*x+6)-6)-5)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+23. [Algebra] Random compare 151: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+cos((7/6)*(2*(7*(8*x)^2-4)+pi/2)+6)/sin((7/6)*(2*(7*(8*x)^2-4)+pi/2)+6)
+cot((7/6)*(2*(7*(8*x)^2-4)+pi/2)+6)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = cos((7/6)*(2*(448*x^2-4)+pi/2)+6)/sin((7/6)*(2*(448*x^2-4)+pi/2)+6)
+2. expr2 = cot((7/6)*(2*(448*x^2-4)+pi/2)+6)
+3. Simplify both...
+4. expr1 = cos((7/6)*(2*(448*x^2-4)+pi/2)+6)/sin((7/6)*(2*(448*x^2-4)+pi/2)+6)
+5. expr2 = cot((7/6)*(2*(448*x^2-4)+pi/2)+6)
+6. Expression 1: cos((7/6)*(2*(448*x^2-4)+pi/2)+6)/sin((7/6)*(2*(448*x^2-4)+pi/2)+6)
+7. Expression 2: cot((7/6)*(2*(448*x^2-4)+pi/2)+6)
+8. Simplify expr1: cos((7/6)*(2*(448*x^2-4)+pi/2)+6)/sin((7/6)*(2*(448*x^2-4)+pi/2)+6)
+9. Simplify expr2: cot((7/6)*(2*(448*x^2-4)+pi/2)+6)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+24. [Algebra] Random compare 181: exp_log_inverse [algebra_compare:exp_log_inverse]
+================================================================================
+Input:
+1
+sin(4*(5*(9*x^2+1*x+9)-1)+1)/cos(4*(5*(9*x^2+1*x+9)-1)+1)
+tan(4*(5*(9*x^2+1*x+9)-1)+1)
+
+Check:
+check
+
+Output:
+1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: E1: E2: 1. expr1 = sin(4*(5*(9*x^2+x+9)-1)+1)/cos(4*(5*(9*x^2+x+9)-1)+1)
+2. expr2 = tan(4*(5*(9*x^2+x+9)-1)+1)
+3. Simplify both...
+4. expr1 = sin(4*(5*(9*x^2+x+9)-1)+1)/cos(4*(5*(9*x^2+x+9)-1)+1)
+5. expr2 = tan(4*(5*(9*x^2+x+9)-1)+1)
+6. Expression 1: sin(4*(5*(9*x^2+x+9)-1)+1)/cos(4*(5*(9*x^2+x+9)-1)+1)
+7. Expression 2: tan(4*(5*(9*x^2+x+9)-1)+1)
+8. Simplify expr1: sin(4*(5*(9*x^2+x+9)-1)+1)/cos(4*(5*(9*x^2+x+9)-1)+1)
+9. Simplify expr2: tan(4*(5*(9*x^2+x+9)-1)+1)
+10. EXPRESSIONS ARE EQUIVALENT
+11. RESULT: Equivalent
+
+================================================================================
+25. [Trigonometry] Random trig prove 450: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(8*(1*x-7)^2-2)=2*sin(8*(1*x-7)^2-2/2)*cos(8*(1*x-7)^2-2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+26. [Trigonometry] Random trig prove 131: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*(7*(6*x^2-2*x+1)+4)+1)=2*sin(7*(7*(6*x^2-2*x+1)+4)+1/2)*cos(7*(7*(6*x^2-2*x+1)+4)+1/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+27. [Trigonometry] Random trig prove 90: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*(9*x-5)+pi/4)=2*sin(7*(9*x-5)+pi/4/2)*cos(7*(9*x-5)+pi/4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+28. [Trigonometry] Random trig prove 290: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(4*(2*((3*(8*x^2-2*x+0)^2+1)+2)^3+5)-7)=2*sin(4*(2*((3*(8*x^2-2*x+0)^2+1)+2)^3+5)-7/2)*cos(4*(2*((3*(8*x^2-2*x+0)^2+1)+2)^3+5)-7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+29. [Trigonometry] Random trig prove 129: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(6*(7*((8/6)*((-8*x)^3)-6)-3*x)+1)=2*sin(6*(7*((8/6)*((-8*x)^3)-6)-3*x)+1/2)*cos(6*(7*((8/6)*((-8*x)^3)-6)-3*x)+1/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+30. [Trigonometry] Random trig prove 219: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(2*(5*((x)+-3)^3-6)^2-3)=2*sin(2*(5*((x)+-3)^3-6)^2-3/2)*cos(2*(5*((x)+-3)^3-6)^2-3/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+31. [Trigonometry] Random trig prove 26: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(5*((5*x^2-1*x+4)+1)^3-2)=2*sin(5*((5*x^2-1*x+4)+1)^3-2/2)*cos(5*((5*x^2-1*x+4)+1)^3-2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+32. [Trigonometry] Random trig prove 311: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(6*(1*x+8)+-pi/2)=2*sin(6*(1*x+8)+-pi/2/2)*cos(6*(1*x+8)+-pi/2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+33. [Trigonometry] Random trig prove 272: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin((4/6)*(6*(8*(6*(6*x^2+3*x+-1)^2-4)+-pi/2)-5*x)-2)=2*sin((4/6)*(6*(8*(6*(6*x^2+3*x+-1)^2-4)+-pi/2)-5*x)-2/2)*cos((4/6)*(6*(8*(6*(6*x^2+3*x+-1)^2-4)+-pi/2)-5*x)-2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+34. [Trigonometry] Random trig prove 371: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(5*((2*(8*(5*x+2)+-pi/2)-3*x)+-1)^3-4)=2*sin(5*((2*(8*(5*x+2)+-pi/2)-3*x)+-1)^3-4/2)*cos(5*((2*(8*(5*x+2)+-pi/2)-3*x)+-1)^3-4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+35. [Trigonometry] Random trig prove 254: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*(2*((3*x+9)^2)-7)-6*x)=2*sin(7*(2*((3*x+9)^2)-7)-6*x/2)*cos(7*(2*((3*x+9)^2)-7)-6*x/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+36. [Trigonometry] Random trig prove 217: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(3*(7*(4*(1*x-5)^2+6)-3*x)+pi/3)=2*sin(3*(7*(4*(1*x-5)^2+6)-3*x)+pi/3/2)*cos(3*(7*(4*(1*x-5)^2+6)-3*x)+pi/3/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+37. [Trigonometry] Random trig prove 304: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(3*((-9/3)*(2*((6*x^2-1*x+-3)+2)^3+6)+4)-4)=2*sin(3*((-9/3)*(2*((6*x^2-1*x+-3)+2)^3+6)+4)-4/2)*cos(3*((-9/3)*(2*((6*x^2-1*x+-3)+2)^3+6)+4)-4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+38. [Trigonometry] Random trig prove 12: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(8*(2*(5*(7*x^2-2*x+3)+-pi/6)^2-7)-7*x)=2*sin(8*(2*(5*(7*x^2-2*x+3)+-pi/6)^2-7)-7*x/2)*cos(8*(2*(5*(7*x^2-2*x+3)+-pi/6)^2-7)-7*x/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+39. [Trigonometry] Random trig prove 416: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*((-4/5)*x+(4/8))^2+6)=2*sin(7*((-4/5)*x+(4/8))^2+6/2)*cos(7*((-4/5)*x+(4/8))^2+6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+40. [Trigonometry] Random trig prove 76: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(5*(4*x^2+6*x+6)-7*x)=2*sin(5*(4*x^2+6*x+6)-7*x/2)*cos(5*(4*x^2+6*x+6)-7*x/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+41. [Trigonometry] Random trig prove 167: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*(6*(((7*x+2)^2)+1)^3-5)-6)=2*sin(7*(6*(((7*x+2)^2)+1)^3-5)-6/2)*cos(7*(6*(((7*x+2)^2)+1)^3-5)-6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+42. [Trigonometry] Random trig prove 204: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(4*(5*((-5/2)*(2*x^2-6*x+5))+1)+-pi/6)=2*sin(4*(5*((-5/2)*(2*x^2-6*x+5))+1)+-pi/6/2)*cos(4*(5*((-5/2)*(2*x^2-6*x+5))+1)+-pi/6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+43. [Trigonometry] Random trig solve 1397: quadratic [trig_solve:quadratic]
+================================================================================
+Input:
+3
+sin(4*x^2+0)=0,x,0,2*pi
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Eq: 1. Start with sin(4*x^2) = 0
+2. Let A = 4*x^2.
+3. sin(A) = 0
+4. Solve the standard trig equation for A
+5. In the interval, A = [0, pi, 2*pi, 3*pi, 4*pi, 5*pi, 6*pi, 7*pi, 8*pi, 9*pi, 10*pi, 11*pi, 12*pi, 13*pi, 14*pi, 15*pi, 16*pi, 17*pi, 18*pi, 19*pi, 20*pi, 21*pi, 22*pi, 23*pi, 24*pi, 25*pi, 26*pi, 27*pi, 28*pi, 29*pi, 30*pi, 31*pi, 32*pi, 33*pi, 34*pi, 35*pi, 36*pi, 37*pi, 38*pi, 39*pi, 40*pi, 41*pi, 42*pi, 43*pi, 44*pi, 45*pi, 46*pi, 47*pi, 48*pi, 49*pi, 50*pi] rad
+6. Solve 4*x^2 = A and keep roots in the original interval
+7. Exact form: x = [0, sqrt(16*pi)/8, sqrt(32*pi)/8, sqrt(48*pi)/8, sqrt(64*pi)/8, sqrt(80*pi)/8, sqrt(96*pi)/8, sqrt(112*pi)/8, sqrt(128*pi)/8, sqrt(144*pi)/8, sqrt(160*pi)/8, sqrt(176*pi)/8, sqrt(192*pi)/8, sqrt(208*pi)/8, sqrt(224*pi)/8, sqrt(240*pi)/8, sqrt(256*pi)/8, sqrt(272*pi)/8, sqrt(288*pi)/8, sqrt(304*pi)/8, sqrt(320*pi)/8, sqrt(336*pi)/8, sqrt(352*pi)/8, sqrt(368*pi)/8, sqrt(384*pi)/8, sqrt(400*pi)/8, sqrt(416*pi)/8, sqrt(432*pi)/8, sqrt(448*pi)/8, sqrt(464*pi)/8, sqrt(480*pi)/8, sqrt(496*pi)/8, sqrt(512*pi)/8, sqrt(528*pi)/8, sqrt(544*pi)/8, sqrt(560*pi)/8, sqrt(576*pi)/8, sqrt(592*pi)/8, sqrt(608*pi)/8, sqrt(624*pi)/8, sqrt(640*pi)/8, sqrt(656*pi)/8, sqrt(672*pi)/8, sqrt(688*pi)/8, sqrt(704*pi)/8, sqrt(720*pi)/8, sqrt(736*pi)/8, sqrt(752*pi)/8, sqrt(768*pi)/8, sqrt(784*pi)/8, sqrt(800*pi)/8]
+8. x = [0, 0.88622693, 1.25331414, 1.53499006, 1.77245385, 1.98166365, 2.17080376, 2.34473605, 2.50662827, 2.65868078, 2.80249561, 2.93928219, 3.06998012, 3.19533662, 3.31595752, 3.43234212, 3.54490770, 3.65400722, 3.75994241, 3.86297361, 3.96332730, 4.06120197, 4.15677274, 4.25019503, 4.34160753, 4.43113463, 4.51888839, 4.60497019, 4.68947210, 4.77247805, 4.85406478, 4.93430269, 5.01325655, 5.09098609, 5.16754657, 5.24298920, 5.31736155, 5.39070794, 5.46306967, 5.53448538, 5.60499122, 5.67462111, 5.74340690, 5.81137858, 5.87856438, 5.94499095, 6.01068345, 6.07566570, 6.13996025, 6.20358848, 6.26657069]
+
+================================================================================
+44. [Trigonometry] Random trig rewrite 1796: reciprocal [trig_rewrite:reciprocal]
+================================================================================
+Input:
+4
+1/cos((-1/2)*(8*((8*((-1/8)*x+(9/6))^2-6)+0)^3+3))
+sec((-1/2)*(8*((8*((-1/8)*x+(9/6))^2-6)+0)^3+3))
+cos((-1/2)*(8*((8*((-1/8)*x+(9/6))^2-6)+0)^3+3))
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Rw: 1 term/line | Blank = end | T: T: T: 1. Start with 1/cos(-(3+8*(-6+8*(3/2-(x)/8)^2)^3)/2)
+2. Write using sec(-(3+8*(-6+8*(3/2-(x)/8)^2)^3)/2), cos(-(3+8*(-6+8*(3/2-(x)/8)^2)^3)/2) only
+3. Final = 1/cos(-(3+8*(-6+8*(3/2-(x)/8)^2)^3)/2)
+
+================================================================================
+45. [Trigonometry] Random trig prove 253: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(3*((-5/5)*(6*(7*(x)+-pi/6)+-pi/6)-6)+pi/6)=2*sin(3*((-5/5)*(6*(7*(x)+-pi/6)+-pi/6)-6)+pi/6/2)*cos(3*((-5/5)*(6*(7*(x)+-pi/6)+-pi/6)-6)+pi/6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+46. [Trigonometry] Random trig solve 1048: quadratic [trig_solve:quadratic]
+================================================================================
+Input:
+3
+sin(5*x^2+0)=0,x,0,2*pi
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Eq: 1. Start with sin(5*x^2) = 0
+2. Let A = 5*x^2.
+3. sin(A) = 0
+4. Solve the standard trig equation for A
+5. In the interval, A = [0, pi, 2*pi, 3*pi, 4*pi, 5*pi, 6*pi, 7*pi, 8*pi, 9*pi, 10*pi, 11*pi, 12*pi, 13*pi, 14*pi, 15*pi, 16*pi, 17*pi, 18*pi, 19*pi, 20*pi, 21*pi, 22*pi, 23*pi, 24*pi, 25*pi, 26*pi, 27*pi, 28*pi, 29*pi, 30*pi, 31*pi, 32*pi, 33*pi, 34*pi, 35*pi, 36*pi, 37*pi, 38*pi, 39*pi, 40*pi, 41*pi, 42*pi, 43*pi, 44*pi, 45*pi, 46*pi, 47*pi, 48*pi, 49*pi, 50*pi, 51*pi, 52*pi, 53*pi, 54*pi, 55*pi, 56*pi, 57*pi, 58*pi, 59*pi, 60*pi, 61*pi, 62*pi] rad
+6. Solve 5*x^2 = A and keep roots in the original interval
+7. Exact form: x = [0, sqrt(20*pi)/10, sqrt(40*pi)/10, sqrt(60*pi)/10, sqrt(80*pi)/10, sqrt(100*pi)/10, sqrt(120*pi)/10, sqrt(140*pi)/10, sqrt(160*pi)/10, sqrt(180*pi)/10, sqrt(200*pi)/10, sqrt(220*pi)/10, sqrt(240*pi)/10, sqrt(260*pi)/10, sqrt(280*pi)/10, sqrt(300*pi)/10, sqrt(320*pi)/10, sqrt(340*pi)/10, sqrt(360*pi)/10, sqrt(380*pi)/10, sqrt(400*pi)/10, sqrt(420*pi)/10, sqrt(440*pi)/10, sqrt(460*pi)/10, sqrt(480*pi)/10, sqrt(500*pi)/10, sqrt(520*pi)/10, sqrt(540*pi)/10, sqrt(560*pi)/10, sqrt(580*pi)/10, sqrt(600*pi)/10, sqrt(620*pi)/10, sqrt(640*pi)/10, sqrt(660*pi)/10, sqrt(680*pi)/10, sqrt(700*pi)/10, sqrt(720*pi)/10, sqrt(740*pi)/10, sqrt(760*pi)/10, sqrt(780*pi)/10, sqrt(800*pi)/10, sqrt(820*pi)/10, sqrt(840*pi)/10, sqrt(860*pi)/10, sqrt(880*pi)/10, sqrt(900*pi)/10, sqrt(920*pi)/10, sqrt(940*pi)/10, sqrt(960*pi)/10, sqrt(980*pi)/10, sqrt(1000*pi)/10, sqrt(1020*pi)/10, sqrt(1040*pi)/10, sqrt(1060*pi)/10, sqrt(1080*pi)/10, sqrt(1100*pi)/10, sqrt(1120*pi)/10, sqrt(1140*pi)/10, sqrt(1160*pi)/10, sqrt(1180*pi)/10, sqrt(1200*pi)/10, sqrt(1220*pi)/10, sqrt(1240*pi)/10]
+8. x = [0, 0.79266546, 1.12099824, 1.37293685, 1.58533092, 1.77245385, 1.94162591, 2.09719568, 2.24199649, 2.37799638, 2.50662827, 2.62897391, 2.74587370, 2.85799596, 2.96588257, 3.06998012, 3.17066184, 3.26824342, 3.36299473, 3.45514863, 3.54490770, 3.63244947, 3.71793056, 3.80149000, 3.88325183, 3.96332730, 4.04181665, 4.11881055, 4.19439136, 4.26863414, 4.34160753, 4.41337450, 4.48399297, 4.55351639, 4.62199416, 4.68947210, 4.75599276, 4.82159576, 4.88631806, 4.95019421, 5.01325655, 5.07553542, 5.13705930, 5.19785502, 5.25794783, 5.31736155, 5.37611871, 5.43424060, 5.49174740, 5.54865822, 5.60499122, 5.66076365, 5.71599192, 5.77069165, 5.82487774, 5.87856438, 5.93176514, 5.98449298, 6.03676029, 6.08857892, 6.13996025, 6.19091515, 6.24145407]
+
+================================================================================
+47. [Trigonometry] Random trig solve 1254: quadratic [trig_solve:quadratic]
+================================================================================
+Input:
+3
+sin(3*x^2+0)=0,x,0,2*pi
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Eq: 1. Start with sin(3*x^2) = 0
+2. Let A = 3*x^2.
+3. sin(A) = 0
+4. Solve the standard trig equation for A
+5. In the interval, A = [0, pi, 2*pi, 3*pi, 4*pi, 5*pi, 6*pi, 7*pi, 8*pi, 9*pi, 10*pi, 11*pi, 12*pi, 13*pi, 14*pi, 15*pi, 16*pi, 17*pi, 18*pi, 19*pi, 20*pi, 21*pi, 22*pi, 23*pi, 24*pi, 25*pi, 26*pi, 27*pi, 28*pi, 29*pi, 30*pi, 31*pi, 32*pi, 33*pi, 34*pi, 35*pi, 36*pi, 37*pi] rad
+6. Solve 3*x^2 = A and keep roots in the original interval
+7. Exact form: x = [0, sqrt(12*pi)/6, sqrt(24*pi)/6, sqrt(36*pi)/6, sqrt(48*pi)/6, sqrt(60*pi)/6, sqrt(72*pi)/6, sqrt(84*pi)/6, sqrt(96*pi)/6, sqrt(108*pi)/6, sqrt(120*pi)/6, sqrt(132*pi)/6, sqrt(144*pi)/6, sqrt(156*pi)/6, sqrt(168*pi)/6, sqrt(180*pi)/6, sqrt(192*pi)/6, sqrt(204*pi)/6, sqrt(216*pi)/6, sqrt(228*pi)/6, sqrt(240*pi)/6, sqrt(252*pi)/6, sqrt(264*pi)/6, sqrt(276*pi)/6, sqrt(288*pi)/6, sqrt(300*pi)/6, sqrt(312*pi)/6, sqrt(324*pi)/6, sqrt(336*pi)/6, sqrt(348*pi)/6, sqrt(360*pi)/6, sqrt(372*pi)/6, sqrt(384*pi)/6, sqrt(396*pi)/6, sqrt(408*pi)/6, sqrt(420*pi)/6, sqrt(432*pi)/6, sqrt(444*pi)/6]
+8. x = [0, 1.02332671, 1.44720251, 1.77245385, 2.04665342, 2.28822808, 2.50662827, 2.70746798, 2.89440502, 3.06998012, 3.23604319, 3.39399073, 3.54490770, 3.68965692, 3.82893794, 3.96332730, 4.09330683, 4.21928411, 4.34160753, 4.46057771, 4.57645616, 4.68947210, 4.79982772, 4.90770248, 5.01325655, 5.11663354, 5.21796285, 5.31736155, 5.41493596, 5.51078297, 5.60499122, 5.69764198, 5.78881004, 5.87856438, 5.96696881, 6.05408245, 6.13996025, 6.22465336]
+
+================================================================================
+48. [Trigonometry] Random trig prove 293: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(2*((2/8)*(8*((-2/3)*x+(5/4))-3*x)-7)^2-4)=2*sin(2*((2/8)*(8*((-2/3)*x+(5/4))-3*x)-7)^2-4/2)*cos(2*((2/8)*(8*((-2/3)*x+(5/4))-3*x)-7)^2-4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+49. [Trigonometry] Random trig prove 433: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin((9/4)*(5*((5*x^2-5*x+3)+3)^3)+6)=2*sin((9/4)*(5*((5*x^2-5*x+3)+3)^3)+6/2)*cos((9/4)*(5*((5*x^2-5*x+3)+3)^3)+6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+50. [Trigonometry] Random trig prove 459: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin((-7/8)*((-9/2)*(-5*x+2)-2)-7)=2*sin((-7/8)*((-9/2)*(-5*x+2)-2)-7/2)*cos((-7/8)*((-9/2)*(-5*x+2)-2)-7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+51. [Trigonometry] Random trig prove 458: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(8*(7*((-1*x+9)^2+(1*x+3))+-pi/2)-6*x)=2*sin(8*(7*((-1*x+9)^2+(1*x+3))+-pi/2)-6*x/2)*cos(8*(7*((-1*x+9)^2+(1*x+3))+-pi/2)-6*x/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+52. [Trigonometry] Random trig prove 229: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(5*(8*((-2*x+6)+3)^3+2)-7)=2*sin(5*(8*((-2*x+6)+3)^3+2)-7/2)*cos(5*(8*((-2*x+6)+3)^3+2)-7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+53. [Trigonometry] Random trig prove 180: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(6*(6*(((-5*x+5)^5)+-1)^3-5)+5)=2*sin(6*(6*(((-5*x+5)^5)+-1)^3-5)+5/2)*cos(6*(6*(((-5*x+5)^5)+-1)^3-5)+5/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+54. [Trigonometry] Random trig prove 137: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(4*((2*x^2-4*x+-3)+3)^3+7)=2*sin(4*((2*x^2-4*x+-3)+3)^3+7/2)*cos(4*((2*x^2-4*x+-3)+3)^3+7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+55. [Trigonometry] Random trig prove 452: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*((7*x^2*x+4)+0)^3-7)=2*sin(7*((7*x^2*x+4)+0)^3-7/2)*cos(7*((7*x^2*x+4)+0)^3-7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+56. [Trigonometry] Random trig prove 318: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*((-2*x)^3)^2+7)=2*sin(7*((-2*x)^3)^2+7/2)*cos(7*((-2*x)^3)^2+7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+57. [Trigonometry] Random trig prove 468: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(6*(8*((2/8)*(6*x^2-2*x+3)+5)^2-5)^2+2)=2*sin(6*(8*((2/8)*(6*x^2-2*x+3)+5)^2-5)^2+2/2)*cos(6*(8*((2/8)*(6*x^2-2*x+3)+5)^2-5)^2+2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+58. [Trigonometry] Random trig prove 485: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin((-5/5)*(3*(x))+7)=2*sin((-5/5)*(3*(x))+7/2)*cos((-5/5)*(3*(x))+7/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+59. [Trigonometry] Random trig prove 195: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(2*((5*((-4*x+7)^5)-3)+-2)^3+6)=2*sin(2*((5*((-4*x+7)^5)-3)+-2)^3+6/2)*cos(2*((5*((-4*x+7)^5)-3)+-2)^3+6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+60. [Trigonometry] Random trig prove 357: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(2*((4*(7*x^2-6*x+7)-7)+-1)^3-3)=2*sin(2*((4*(7*x^2-6*x+7)-7)+-1)^3-3/2)*cos(2*((4*(7*x^2-6*x+7)-7)+-1)^3-3/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+61. [Trigonometry] Random trig prove 182: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(4*(6*(4*((5*x^2+4*x+8)+3)^3-6)-5)+-pi/4)=2*sin(4*(6*(4*((5*x^2+4*x+8)+3)^3-6)-5)+-pi/4/2)*cos(4*(6*(4*((5*x^2+4*x+8)+3)^3-6)-5)+-pi/4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+62. [Trigonometry] Random trig prove 132: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*(7*x^2+6*x+4)+-pi/6)=2*sin(7*(7*x^2+6*x+4)+-pi/6/2)*cos(7*(7*x^2+6*x+4)+-pi/6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+63. [Trigonometry] Random trig prove 462: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(8*((6*(3*((-4/8)*x+(9/2))-3*x)+pi/6)+2)^3-4)=2*sin(8*((6*(3*((-4/8)*x+(9/2))-3*x)+pi/6)+2)^3-4/2)*cos(8*((6*(3*((-4/8)*x+(9/2))-3*x)+pi/6)+2)^3-4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+64. [Trigonometry] Random trig prove 419: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin((-9/8)*(7*(8*(x)-3)^2-1)+6)=2*sin((-9/8)*(7*(8*(x)-3)^2-1)+6/2)*cos((-9/8)*(7*(8*(x)-3)^2-1)+6/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+65. [Trigonometry] Random trig prove 407: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(7*((-2/4)*(2*x^2-3*x+-7))+-pi/2)=2*sin(7*((-2/4)*(2*x^2-3*x+-7))+-pi/2/2)*cos(7*((-2/4)*(2*x^2-3*x+-7))+-pi/2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+66. [Trigonometry] Random trig prove 159: triple_angle [trig_prove:triple_angle]
+================================================================================
+Input:
+1
+cot(2*(2*(3*x)-6*x)+7)=cos(2*(2*(3*x)-6*x)+7)/sin(2*(2*(3*x)-6*x)+7)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: 1. Calculate cot(2*(2*(3*x)-6*x)+7)
+2. cot(2*(2*(3*x)-6*x)+7) = 8.144346428
+3. = cos(2*(2*(3*x)-6*x)+7)/sin(2*(2*(3*x)-6*x)+7)
+
+================================================================================
+67. [Trigonometry] Random trig prove 179: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(6*((2*(3*((5*x-6)^2+(-5*x+6))+-pi/3)^2-5)+-2)^3-2)=2*sin(6*((2*(3*((5*x-6)^2+(-5*x+6))+-pi/3)^2-5)+-2)^3-2/2)*cos(6*((2*(3*((5*x-6)^2+(-5*x+6))+-pi/3)^2-5)+-2)^3-2/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+68. [Trigonometry] Random trig prove 233: half_angle [trig_prove:half_angle]
+================================================================================
+Input:
+1
+sin(8*((8*(5*x-2)+-pi/3)+-3)^3+4)=2*sin(8*((8*(5*x-2)+-pi/3)+-3)^3+4/2)*cos(8*((8*(5*x-2)+-pi/3)+-3)^3+4/2)
+1
+
+Check:
+check
+
+Output:
+1 prove | 2 xform | 3 solve | 4 rw | M: Id: 1 auto | 2 lhs | 3 rhs | 4 both | R: Err: This is not an identity, so prove/show mode cannot be used.
+
+================================================================================
+69. [Derive] Random derive normal 356: quotient [derive_normal:quotient]
+================================================================================
+Input:
+1
+((((-6*x^8+2*x^5+1*x^4-3*x^2-7*x-3)/(((4*x+8)^2+(-6*x+6)^2+4)^2+(5*x-8)^2+9))+(sec(5*(4*((-6/2)*x+(6/8))+6)^2+1)^2-tan(5*(4*((-6/2)*x+(6/8))+6)^2+1)^2+cot(5*(4*((-6/2)*x+(6/8))+6)^2+1)))+(sin(2*(6*((5*((9*x^2+1*x+4)+3)^3-6)+2)^3-6)^2-2)^2+cos(2*(6*((5*((9*x^2+1*x+4)+3)^3-6)+2)^3-6)^2-2)^2+3*tan(2*(6*((5*((9*x^2+1*x+4)+3)^3-6)+2)^3-6)^2-2)))/(((-6*x-7)^2+(-9*x-3))^2+5)
+
+Check:
+check
+
+Output:
+1 n | 2 imp | 3 par | M: y: 1. Quotient rule
+2. u = (-6*x^8+2*x^5+x^4-3*x^2-7*x-3)/(((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)+(sec(5*(4*(3/4-3*x)+6)^2+1))^2-(tan(5*(4*(3/4-3*x)+6)^2+1))^2+cot(5*(4*(3/4-3*x)+6)^2+1)+(sin(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+(cos(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+3*tan(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2), v = ((-6*x-7)^2-9*x-3)^2+5
+3. (v*du-u*dv)/v^2
+4. = ((((-6*x-7)^2-9*x-3)^2+5)*(((((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)*(-48*x^7+10*x^4+4*x^3-6*x-7)-(-6*x^8+2*x^5+x^4-3*x^2-7*x-3)*(2*((4*x+8)^2+(6-6*x)^2+4)*(8*(4*x+8)-12*(6-6*x))+10*(5*x-8)))/(((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)^2+120*(cosec(5*(4*(3/4-3*x)+6)^2+1))^2*(4*(3/4-3*x)+6)+3240*(sec(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2*(6*(5*(9*x^2+x+7)^3-4)^3-6)*(5*(9*x^2+x+7)^3-4)^2*(9*x^2+x+7)^2*(18*x+1))-2*((-6*x^8+2*x^5+x^4-3*x^2-7*x-3)/(((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)+(sec(5*(4*(3/4-3*x)+6)^2+1))^2-(tan(5*(4*(3/4-3*x)+6)^2+1))^2+cot(5*(4*(3/4-3*x)+6)^2+1)+(sin(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+(cos(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+3*tan(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))*((-6*x-7)^2-9*x-3)*(-12*(-6*x-7)-9))/(((-6*x-7)^2-9*x-3)^2+5)^2
+dy/dx = ((((-6*x-7)^2-9*x-3)^2+5)*(((((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)*(-48*x^7+10*x^4+4*x^3-6*x-7)-(-6*x^8+2*x^5+x^4-3*x^2-7*x-3)*(2*((4*x+8)^2+(6-6*x)^2+4)*(8*(4*x+8)-12*(6-6*x))+10*(5*x-8)))/(((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)^2+120*(cosec(5*(4*(3/4-3*x)+6)^2+1))^2*(4*(3/4-3*x)+6)+3240*(sec(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2*(6*(5*(9*x^2+x+7)^3-4)^3-6)*(5*(9*x^2+x+7)^3-4)^2*(9*x^2+x+7)^2*(18*x+1))-2*((-6*x^8+2*x^5+x^4-3*x^2-7*x-3)/(((4*x+8)^2+(6-6*x)^2+4)^2+(5*x-8)^2+9)+(sec(5*(4*(3/4-3*x)+6)^2+1))^2-(tan(5*(4*(3/4-3*x)+6)^2+1))^2+cot(5*(4*(3/4-3*x)+6)^2+1)+(sin(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+(cos(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))^2+3*tan(2*(6*(5*(9*x^2+x+7)^3-4)^3-6)^2-2))*((-6*x-7)^2-9*x-3)*(-12*(-6*x-7)-9))/(((-6*x-7)^2-9*x-3)^2+5)^2
+

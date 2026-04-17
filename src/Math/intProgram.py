@@ -1994,7 +1994,77 @@ def split_input_var(text):
     return H, D
 
 
+def cartesian_linear_pair(node, var_name):
+    A = sim(node)
+    B = var_name
+    if not depends(A, B):
+        return num(0), A
+    if A == sym(B):
+        return num(1), num(0)
+    if A[0] == 'add':
+        C = num(0)
+        D = num(0)
+        E = flat(A, 'add')
+        F = 0
+        while F < len(E):
+            G = cartesian_linear_pair(E[F], B)
+            if G is None:
+                return None
+            C = sim(add([C, G[0]]))
+            D = sim(add([D, G[1]]))
+            F += 1
+        return C, D
+    if A[0] == 'mul':
+        H = []
+        I = []
+        E = flat(A, 'mul')
+        F = 0
+        while F < len(E):
+            if depends(E[F], B):
+                H.append(E[F])
+            else:
+                I.append(E[F])
+            F += 1
+        if len(H) != 1:
+            return None
+        G = cartesian_linear_pair(H[0], B)
+        if G is None:
+            return None
+        J = make_mul(I)
+        return sim(mul([J, G[0]])), sim(mul([J, G[1]]))
+    if A[0] == 'div':
+        if depends(A[2], B):
+            return None
+        G = cartesian_linear_pair(A[1], B)
+        if G is None:
+            return None
+        return sim(div(G[0], A[2])), sim(div(G[1], A[2]))
+    return None
+
+
+def cartesian_integrand_from_equation(text):
+    A = text.strip()
+    if '=' not in A:
+        return None
+    B, C = A.split('=', 1)
+    D = parse(B.strip())
+    E = parse(C.strip())
+    if D == sym('y') and not depends(E, 'y'):
+        return E, 'x'
+    if E == sym('y') and not depends(D, 'y'):
+        return D, 'x'
+    F = sim(add([D, neg(E)]))
+    G = cartesian_linear_pair(F, 'y')
+    if G is None or is_zero(G[0]):
+        return None
+    H = sim(div(neg(G[1]), G[0]))
+    return H, 'x'
+
+
 def parse_input(text):
+    D = cartesian_integrand_from_equation(text)
+    if D is not None:
+        return D
     A = split_input_var(text)
     if A is None:
         B = parse(text)
@@ -6710,7 +6780,7 @@ def combine_logs(node):
 
 
 def main():
-    D = input('1 int | 2 de | M: ').strip()
+    D = input('1 int | 2 de | 3 param area | M: ').strip()
     if D == '':
         D = '1'
     begin_user_action()
@@ -6759,6 +6829,29 @@ def main():
                     B += 1
                 if len(A) == 0 or A[-1] != C:
                     print(C)
+        elif D == '3':
+            F = input('x(t): ').strip()
+            G = input('y(t): ').strip()
+            if F == '' or G == '':
+                raise ValueError('Enter x(t) and y(t).')
+            H = parse(F)
+            I = parse(G)
+            J = diff(H, 't')
+            K = sim(mul([I, J]))
+            L, C, A, Q = solve_result_or_reason(K, 't', '1', None)
+            print('dx/dt = ' + pretty(J))
+            print('Int[y dx] = Int[' + pretty(K) + '] dt')
+            if C is None:
+                print(Q)
+            else:
+                print('Method: ' + display_method_title(L))
+                B = 0
+                while B < len(A):
+                    print(str(B + 1) + '. ' + A[B])
+                    B += 1
+                M = '= ' + pretty(C) + ' + C'
+                if len(A) == 0 or A[-1] != M:
+                    print(M)
         else:
             print('Bad mode.')
     except Exception as P:

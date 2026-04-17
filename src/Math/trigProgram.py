@@ -17,6 +17,9 @@ FUNC_NAMES = (
     "sin",
     "cos",
     "tan",
+    "asin",
+    "acos",
+    "atan",
     "sec",
     "cosec",
     "cot",
@@ -3132,6 +3135,12 @@ def eval_numeric_mode(node, env, deg_mode):
             if abs(c) < 1e-12:
                 raise ValueError("tan undefined")
             return math.sin(trig_arg) / c
+        if name == "asin":
+            return math.asin(arg)
+        if name == "acos":
+            return math.acos(arg)
+        if name == "atan":
+            return math.atan(arg)
         if name == "sec":
             c = math.cos(trig_arg)
             if abs(c) < 1e-12:
@@ -9218,6 +9227,36 @@ def angle_text(value, deg_mode, dp=1):
     return float_text(value, 3 if dp < 3 else dp)
 
 
+def tidy_exact_angle_node(node):
+    node = full_simplify(expand_embedded_small(node))
+    if node[0] != "add":
+        return node
+    pi_total = num(0)
+    rest = []
+    items = list(flat(node, "add"))
+    i = 0
+    while i < len(items):
+        pi_mult = exact_pi_multiple(items[i])
+        if pi_mult is None:
+            rest.append(items[i])
+        else:
+            pi_total = addq(pi_total, pi_mult)
+        i += 1
+    if not is_zero(pi_total):
+        rest.append(pi_multiple_node(pi_total[1], pi_total[2]))
+    if len(rest) == 0:
+        return num(0)
+    return full_simplify(make_add(rest))
+
+
+def exact_angle_node_text(node, fallback_value, deg_mode, final=False):
+    if node is not None:
+        return show(tidy_exact_angle_node(node))
+    if final:
+        return final_angle_text(fallback_value, deg_mode)
+    return angle_text(fallback_value, deg_mode)
+
+
 def signed_angle_text(value, deg_mode, dp=1):
     node = infer_exact_angle_node(abs(value), deg_mode)
     if node is not None:
@@ -11222,6 +11261,92 @@ def append_unique_float(values, value, tol=1e-7):
     values.append(value)
 
 
+def append_unique_value_node(values, nodes, value, node, tol=1e-7):
+    i = 0
+    while i < len(values):
+        if abs(values[i] - value) < tol:
+            if nodes[i] is None and node is not None:
+                nodes[i] = node
+            return
+        i += 1
+    values.append(value)
+    nodes.append(node)
+
+
+def sort_values_with_nodes(values, nodes):
+    pairs = []
+    i = 0
+    while i < len(values):
+        pairs.append((values[i], nodes[i]))
+        i += 1
+    pairs.sort(key=lambda item: item[0])
+    sorted_values = []
+    sorted_nodes = []
+    i = 0
+    while i < len(pairs):
+        sorted_values.append(pairs[i][0])
+        sorted_nodes.append(pairs[i][1])
+        i += 1
+    return sorted_values, sorted_nodes
+
+
+def inverse_angle_node(name, target_expr, deg_mode):
+    target_expr = full_simplify(expand_embedded_small(target_expr))
+    if name == "sec":
+        return inverse_angle_node("cos", full_simplify(div(num(1), target_expr)), deg_mode)
+    if name == "cosec":
+        return inverse_angle_node("sin", full_simplify(div(num(1), target_expr)), deg_mode)
+    if name == "cot":
+        if is_zero(target_expr):
+            base = div(PI, num(2))
+        else:
+            base = fn("atan", full_simplify(div(num(1), target_expr)))
+    elif name == "tan":
+        base = fn("atan", target_expr)
+    elif name == "cos":
+        base = fn("acos", target_expr)
+    else:
+        base = fn("asin", target_expr)
+    if deg_mode:
+        return full_simplify(div(mul([num(180), base]), PI))
+    return full_simplify(base)
+
+
+def exact_base_solution_nodes(name, target_value, target_expr, deg_mode):
+    base_values = trig_base_solutions(name, target_value, deg_mode)
+    out = []
+    if len(base_values) == 0:
+        return out
+    if target_expr is None:
+        i = 0
+        while i < len(base_values):
+            out.append(infer_exact_angle_node(base_values[i], deg_mode))
+            i += 1
+        return out
+    if name == "sec":
+        return exact_base_solution_nodes("cos", 1.0 / target_value, full_simplify(div(num(1), target_expr)), deg_mode)
+    if name == "cosec":
+        return exact_base_solution_nodes("sin", 1.0 / target_value, full_simplify(div(num(1), target_expr)), deg_mode)
+    alpha = inverse_angle_node(name, target_expr, deg_mode)
+    half_turn = num(180) if deg_mode else PI
+    candidates = [alpha]
+    if name == "sin":
+        candidates.append(full_simplify(add([half_turn, neg(alpha)])))
+    elif name == "cos":
+        candidates.append(full_simplify(neg(alpha)))
+    i = 0
+    while i < len(base_values):
+        known = infer_exact_angle_node(base_values[i], deg_mode)
+        if known is not None:
+            out.append(known)
+        elif i < len(candidates):
+            out.append(candidates[i])
+        else:
+            out.append(None)
+        i += 1
+    return out
+
+
 def solve_angle_value(name, mult_node, offset_node, target_value, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
     mult = eval_numeric(mult_node, {})
     offset = eval_numeric(offset_node, {})
@@ -11249,6 +11374,46 @@ def solve_angle_value(name, mult_node, offset_node, target_value, start_val, end
     sols.sort()
     angles.sort()
     return sols, angles
+
+
+def solve_angle_value_exact(name, mult_node, offset_node, target_value, target_expr, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    mult = eval_numeric(mult_node, {})
+    offset = eval_numeric(offset_node, {})
+    period = 360.0 if deg_mode else 2.0 * math.pi
+    period_node = num(360) if deg_mode else mul([num(2), PI])
+    if name in ("tan", "cot"):
+        base_period = 180.0 if deg_mode else math.pi
+        base_period_node = num(180) if deg_mode else PI
+    else:
+        base_period = period
+        base_period_node = period_node
+    base = trig_base_solutions(name, target_value, deg_mode)
+    base_nodes = exact_base_solution_nodes(name, target_value, target_expr, deg_mode)
+    sols = []
+    sol_nodes = []
+    angles = []
+    angle_nodes = []
+    i = 0
+    while i < len(base):
+        n_range = solve_n_range_for_interval(mult, offset, base[i], base_period, start_val, end_val)
+        if n_range is not None:
+            n = n_range[0]
+            while n <= n_range[1]:
+                angle = base[i] + n * base_period
+                x_val = (angle - offset) / mult
+                if within_interval(x_val, start_val, end_val, start_inclusive, end_inclusive):
+                    angle_node = None
+                    x_node = None
+                    if i < len(base_nodes) and base_nodes[i] is not None:
+                        angle_node = full_simplify(add([base_nodes[i], mul([num(n), base_period_node])]))
+                        x_node = full_simplify(div(add([angle_node, neg(offset_node)]), mult_node))
+                    append_unique_value_node(angles, angle_nodes, angle, angle_node)
+                    append_unique_value_node(sols, sol_nodes, x_val, x_node)
+                n += 1
+        i += 1
+    sols, sol_nodes = sort_values_with_nodes(sols, sol_nodes)
+    angles, angle_nodes = sort_values_with_nodes(angles, angle_nodes)
+    return sols, angles, sol_nodes, angle_nodes
 
 
 def number_node(value):
@@ -13392,10 +13557,16 @@ def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_incl
     offset_val = constant_numeric(angle[1], deg_mode)
     if mult_val is None or offset_val is None:
         return None
-    sols, angles = solve_angle_value("sin", number_node(mult_val), number_node(offset_val + alpha), target, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    alpha_node = infer_exact_angle_node(alpha, deg_mode)
+    solve_mult_node = angle[0]
+    if alpha_node is not None:
+        solve_offset_node = full_simplify(add([angle[1], alpha_node]))
+    else:
+        solve_offset_node = number_node(offset_val + alpha)
     r_expr = full_simplify(fn("sqrt", add([power(sin_coeff_expr, num(2)), power(cos_coeff_expr, num(2))])))
     tan_expr = full_simplify(div(cos_coeff_expr, sin_coeff_expr)) if abs(sin_coeff) > 1e-12 else None
-    target_expr = full_simplify(div(neg(const_expr), r_expr)) if not is_zero(const_expr) else num(0)
+    target_expr = full_simplify(expand_embedded_small(div(neg(const_expr), r_expr))) if not is_zero(const_expr) else num(0)
+    sols, angles, sol_nodes, angle_nodes = solve_angle_value_exact("sin", solve_mult_node, solve_offset_node, target, target_expr, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
     lines = []
     if expanded_note:
         lines.append("Expand the trig identities.")
@@ -13407,14 +13578,14 @@ def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_incl
     lines.append("= " + show(r_expr))
     if tan_expr is not None:
         lines.append("tan(a) = B/A = " + show(tan_expr))
-    lines.append("a = " + angle_text(alpha, deg_mode))
+    lines.append("a = " + exact_angle_node_text(alpha_node, alpha, deg_mode))
     shift_text = signed_angle_text(alpha, deg_mode)
     lines.append("sin(" + show(base) + shift_text + ") = " + show(full_simplify(target_expr)))
     if len(angles) != 0:
         bits = []
         i = 0
         while i < len(angles):
-            bits.append(angle_text(angles[i], deg_mode))
+            bits.append(exact_angle_node_text(angle_nodes[i] if i < len(angle_nodes) else None, angles[i], deg_mode))
             i += 1
         lines.append(show(base) + shift_text + " = [" + ", ".join(bits) + "]")
     if len(sols) == 0:
@@ -13423,7 +13594,7 @@ def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_incl
         bits = []
         i = 0
         while i < len(sols):
-            bits.append(final_angle_text(sols[i], deg_mode))
+            bits.append(exact_angle_node_text(sol_nodes[i] if i < len(sol_nodes) else None, sols[i], deg_mode, True))
             i += 1
         lines.append(var + " = [" + ", ".join(bits) + "]")
     return sols, compact_lines(lines)
@@ -14699,7 +14870,7 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
             return None
         coeff = coeffs[1]
         const = coeffs[0]
-    target_expr = full_simplify(div(neg(const), coeff))
+    target_expr = full_simplify(expand_embedded_small(div(neg(const), coeff)))
     target_value = constant_numeric(target_expr, deg_mode)
     if target_value is None:
         return None
@@ -14718,13 +14889,12 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
         else:
             out.append("No solutions in the interval.")
         return [], out
-    sols, angles = solve_angle_value(name, mult, offset, target_value, start_val, end_val, deg_mode)
-    sols = dedupe_values(sols)
+    sols, angles, sol_nodes, angle_nodes = solve_angle_value_exact(name, mult, offset, target_value, target_expr, start_val, end_val, deg_mode)
     if len(angles) != 0:
         bits = []
         i = 0
         while i < len(angles):
-            bits.append(angle_text(angles[i], deg_mode))
+            bits.append(exact_angle_node_text(angle_nodes[i] if i < len(angle_nodes) else None, angles[i], deg_mode))
             i += 1
         out.append(show(arg) + " = [" + ", ".join(bits) + "]" + (" rad" if not deg_mode else ""))
     if len(sols) == 0:
@@ -14733,7 +14903,7 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
     bits = []
     i = 0
     while i < len(sols):
-        bits.append(final_angle_text(sols[i], deg_mode))
+        bits.append(exact_angle_node_text(sol_nodes[i] if i < len(sol_nodes) else None, sols[i], deg_mode, True))
         i += 1
     out.append(var + " = [" + ", ".join(bits) + "]")
     return sols, out
@@ -15233,8 +15403,45 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
     return try_identity_candidates([expr, expanded_expr], var, start_val, end_val, deg_mode, lines, lhs, rhs)
 
 
-def solution_list_line(var, values, deg_mode):
-    return var + " = [" + ", ".join(solution_list_text(values, deg_mode)) + "]"
+def solution_list_line(var, values, deg_mode, exact_texts=None):
+    if exact_texts is None:
+        return var + " = [" + ", ".join(solution_list_text(values, deg_mode)) + "]"
+    bits = []
+    i = 0
+    while i < len(values):
+        key = round(values[i], 10)
+        if key in exact_texts:
+            bits.append(exact_texts[key])
+        else:
+            bits.append(final_angle_text(values[i], deg_mode))
+        i += 1
+    return var + " = [" + ", ".join(bits) + "]"
+
+
+def trailing_solution_texts(lines, var, values):
+    if len(lines) == 0:
+        return None
+    prefixes = (var + " = [", "Combined solutions: " + var + " = [")
+    line = lines[-1]
+    prefix = None
+    i = 0
+    while i < len(prefixes):
+        if line.startswith(prefixes[i]) and line.endswith("]"):
+            prefix = prefixes[i]
+            break
+        i += 1
+    if prefix is None:
+        return None
+    body = line[len(prefix) : -1]
+    bits = split_top_level_all(body, ",")
+    if len(bits) != len(values):
+        return None
+    out = {}
+    i = 0
+    while i < len(values):
+        out[round(values[i], 10)] = bits[i]
+        i += 1
+    return out
 
 
 def drop_trailing_solution_line(lines, var):
@@ -15313,6 +15520,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         lines.append(extra[i])
         i += 1
 
+    exact_solution_texts = trailing_solution_texts(lines, var, result)
     drop_trailing_solution_line(lines, var)
     valid = []
     invalid = []
@@ -15341,10 +15549,10 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         if len(picked) == 0:
             lines.append("No valid solutions.")
         else:
-            lines.append(solution_list_line(var, picked, deg_mode))
+            lines.append(solution_list_line(var, picked, deg_mode, exact_solution_texts))
         valid = picked
     elif len(valid) != 0:
-        lines.append(solution_list_line(var, valid, deg_mode))
+        lines.append(solution_list_line(var, valid, deg_mode, exact_solution_texts))
 
     if want_meta:
         return valid, compact_lines(lines), deg_mode

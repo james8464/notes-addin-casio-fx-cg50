@@ -1750,6 +1750,120 @@ def pick_implicit_vars(left, right):
     return main, dep
 
 
+def collect_symbols(node, out):
+    kind = node[0]
+    if kind == "sym":
+        out.add(node[1])
+        return
+    if kind in ("num", "const"):
+        return
+    if kind == "fn":
+        collect_symbols(node[2], out)
+        return
+    if kind in ("pow", "div"):
+        collect_symbols(node[1], out)
+        collect_symbols(node[2], out)
+        return
+    for item in node[1]:
+        collect_symbols(item, out)
+
+
+def linear_pair(node, var_name):
+    node = sim(node)
+    if not depends(node, [var_name]):
+        return num(0), node
+    if node == sym(var_name):
+        return num(1), num(0)
+    if node[0] == "add":
+        coeff = num(0)
+        rest = num(0)
+        for item in flat(node, "add"):
+            pair = linear_pair(item, var_name)
+            if pair is None:
+                return None
+            coeff = sim(add([coeff, pair[0]]))
+            rest = sim(add([rest, pair[1]]))
+        return coeff, rest
+    if node[0] == "mul":
+        dep = []
+        const_bits = []
+        for item in flat(node, "mul"):
+            if depends(item, [var_name]):
+                dep.append(item)
+            else:
+                const_bits.append(item)
+        if len(dep) != 1:
+            return None
+        pair = linear_pair(dep[0], var_name)
+        if pair is None:
+            return None
+        const_factor = make_mul(const_bits)
+        return sim(mul([const_factor, pair[0]])), sim(mul([const_factor, pair[1]]))
+    if node[0] == "div":
+        if depends(node[2], [var_name]):
+            return None
+        pair = linear_pair(node[1], var_name)
+        if pair is None:
+            return None
+        return sim(div(pair[0], node[2])), sim(div(pair[1], node[2]))
+    return None
+
+
+def cartesian_term(base_name, offset):
+    core = sym(base_name)
+    if not is_zero(offset):
+        core = add([core, neg(offset)])
+    return power(core, num(2))
+
+
+def match_shifted_scaled_trig(node, trig_name, param):
+    node = sim(node)
+    terms = flat(node, "add") if node[0] == "add" else [node]
+    offset = num(0)
+    scaled = None
+    for item in terms:
+        if depends(item, [param]):
+            coeff, rest = split_coeff(item)
+            if rest[0] == "fn" and rest[1] == trig_name and rest[2] == sym(param) and scaled is None:
+                scaled = coeff
+            else:
+                return None
+        else:
+            offset = sim(add([offset, item]))
+    if scaled is None or is_zero(scaled):
+        return None
+    return offset, scaled
+
+
+def cartesian_from_param_exprs(x_expr, y_expr, param="t"):
+    if x_expr == sym(param):
+        return sym("y"), sim(subst(y_expr, param, sym("x"))), "Substitute t = x."
+    if y_expr == sym(param):
+        return sym("x"), sim(subst(x_expr, param, sym("y"))), "Substitute t = y."
+    x_pair = linear_pair(x_expr, param)
+    if x_pair is not None and not is_zero(x_pair[0]):
+        t_expr = sim(div(add([sym("x"), neg(x_pair[1])]), x_pair[0]))
+        return sym("y"), sim(subst(y_expr, param, t_expr)), "Cartesian form"
+    y_pair = linear_pair(y_expr, param)
+    if y_pair is not None and not is_zero(y_pair[0]):
+        t_expr = sim(div(add([sym("y"), neg(y_pair[1])]), y_pair[0]))
+        return sym("x"), sim(subst(x_expr, param, t_expr)), "Cartesian form"
+    x_cos = match_shifted_scaled_trig(x_expr, "cos", param)
+    y_sin = match_shifted_scaled_trig(y_expr, "sin", param)
+    x_sin = match_shifted_scaled_trig(x_expr, "sin", param)
+    y_cos = match_shifted_scaled_trig(y_expr, "cos", param)
+    pair = (x_cos, y_sin) if x_cos is not None and y_sin is not None else (x_sin, y_cos)
+    if pair[0] is not None and pair[1] is not None:
+        x_off, x_scale = pair[0]
+        y_off, y_scale = pair[1]
+        left = add([
+            div(cartesian_term("x", x_off), power(x_scale, num(2))),
+            div(cartesian_term("y", y_off), power(y_scale, num(2))),
+        ])
+        return sim(left), num(1), "Cartesian form"
+    return None
+
+
 # ============================================================================
 # SECTION 17: Post-Output Simplification
 # ============================================================================
@@ -2310,6 +2424,9 @@ def main():
             print("dx/dt = " + show(dx))
             print("dy/dt = " + show(dy))
             print("dy/dx = (dy/dt)/(dx/dt) = " + show(ans))
+            cart = cartesian_from_param_exprs(xt, yt, "t")
+            if cart is not None:
+                print(cart[2] + ": " + show(cart[0]) + " = " + show(cart[1]))
 
         else:
             print("Bad mode.")

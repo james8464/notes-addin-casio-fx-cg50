@@ -1566,6 +1566,167 @@ def parse_equation_or_zero(text):
     return parse(left_text.strip()), parse(right_text.strip())
 
 
+def cartesian_linear_pair(node, var_name):
+    node = sim(node)
+    if not cartesian_depends(node, var_name):
+        return num(0), node
+    if node == sym(var_name):
+        return num(1), num(0)
+    if node[0] == 'add':
+        coeff = num(0)
+        rest = num(0)
+        items = flat(node, 'add')
+        i = 0
+        while i < len(items):
+            pair = cartesian_linear_pair(items[i], var_name)
+            if pair is None:
+                return None
+            coeff = sim(add([coeff, pair[0]]))
+            rest = sim(add([rest, pair[1]]))
+            i += 1
+        return coeff, rest
+    if node[0] == 'mul':
+        items = flat(node, 'mul')
+        dep = []
+        const_bits = []
+        i = 0
+        while i < len(items):
+            if cartesian_depends(items[i], var_name):
+                dep.append(items[i])
+            else:
+                const_bits.append(items[i])
+            i += 1
+        if len(dep) != 1:
+            return None
+        pair = cartesian_linear_pair(dep[0], var_name)
+        if pair is None:
+            return None
+        const_factor = make_mul(const_bits)
+        return sim(mul([const_factor, pair[0]])), sim(mul([const_factor, pair[1]]))
+    if node[0] == 'div':
+        if cartesian_depends(node[2], var_name):
+            return None
+        pair = cartesian_linear_pair(node[1], var_name)
+        if pair is None:
+            return None
+        return sim(div(pair[0], node[2])), sim(div(pair[1], node[2]))
+    return None
+
+
+def pick_cartesian_dep(lhs, rhs):
+    if lhs[0] == 'sym' and lhs[1] != 'x':
+        return lhs[1]
+    if rhs[0] == 'sym' and rhs[1] != 'x':
+        return rhs[1]
+    names = set()
+    collect_symbol_names(lhs, names)
+    collect_symbol_names(rhs, names)
+    if 'y' in names:
+        return 'y'
+    if 'Y' in names:
+        return 'Y'
+    if lhs[0] == 'sym':
+        return lhs[1]
+    if rhs[0] == 'sym':
+        return rhs[1]
+    return None
+
+
+def cartesian_depends(node, var_name):
+    names = set()
+    collect_symbol_names(node, names)
+    return var_name in names
+
+
+def cartesian_equation_lines(text):
+    if '=' not in text:
+        return None
+    lhs, rhs = parse_equation_or_zero(text)
+    dep = pick_cartesian_dep(lhs, rhs)
+    if dep is None:
+        return None
+    expr = sim(sub(lhs, rhs))
+    pair = cartesian_linear_pair(expr, dep)
+    if pair is None or is_zero(pair[0]):
+        return None
+    solved = canonical_compare_form(sim(div(neg(pair[1]), pair[0])))
+    return [
+        'Cartesian equation: ' + show(lhs) + ' = ' + show(rhs),
+        'Collect the ' + dep + ' terms.',
+        dep + ' = ' + show(solved),
+    ]
+
+
+def cartesian_term(base_name, offset):
+    core = sym(base_name)
+    if not is_zero(offset):
+        core = add([core, neg(offset)])
+    return power(core, num(2))
+
+
+def match_shifted_scaled_trig(node, trig_name, param):
+    node = sim(node)
+    terms = flat(node, 'add') if node[0] == 'add' else [node]
+    offset = num(0)
+    scaled = None
+    i = 0
+    while i < len(terms):
+        if cartesian_depends(terms[i], param):
+            coeff, rest = split_coeff(terms[i])
+            if rest[0] == 'fn' and rest[1] == trig_name and rest[2] == sym(param) and scaled is None:
+                scaled = coeff
+            else:
+                return None
+        else:
+            offset = sim(add([offset, terms[i]]))
+        i += 1
+    if scaled is None or is_zero(scaled):
+        return None
+    return offset, scaled
+
+
+def cartesian_from_param_exprs(x_expr, y_expr, param='t'):
+    if x_expr == sym(param):
+        return sym('y'), sim(substitute(y_expr, sym(param), sym('x'))), 'Substitute t = x.'
+    if y_expr == sym(param):
+        return sym('x'), sim(substitute(x_expr, sym(param), sym('y'))), 'Substitute t = y.'
+    x_pair = cartesian_linear_pair(x_expr, param)
+    if x_pair is not None and not is_zero(x_pair[0]):
+        t_expr = sim(div(add([sym('x'), neg(x_pair[1])]), x_pair[0]))
+        return sym('y'), sim(substitute(y_expr, sym(param), t_expr)), 'Rearrange x(t) to make t the subject, then substitute into y(t).'
+    y_pair = cartesian_linear_pair(y_expr, param)
+    if y_pair is not None and not is_zero(y_pair[0]):
+        t_expr = sim(div(add([sym('y'), neg(y_pair[1])]), y_pair[0]))
+        return sym('x'), sim(substitute(x_expr, sym(param), t_expr)), 'Rearrange y(t) to make t the subject, then substitute into x(t).'
+    x_cos = match_shifted_scaled_trig(x_expr, 'cos', param)
+    y_sin = match_shifted_scaled_trig(y_expr, 'sin', param)
+    x_sin = match_shifted_scaled_trig(x_expr, 'sin', param)
+    y_cos = match_shifted_scaled_trig(y_expr, 'cos', param)
+    pair = (x_cos, y_sin) if x_cos is not None and y_sin is not None else (x_sin, y_cos)
+    if pair[0] is not None and pair[1] is not None:
+        x_off, x_scale = pair[0]
+        y_off, y_scale = pair[1]
+        x_term = cartesian_term('x', x_off)
+        y_term = cartesian_term('y', y_off)
+        left = add([div(x_term, power(x_scale, num(2))), div(y_term, power(y_scale, num(2)))])
+        return sim(left), num(1), 'Use sin(t)^2+cos(t)^2 = 1.'
+    return None
+
+
+def cartesian_parametric_lines(x_text, y_text, param='t'):
+    x_expr = parse(x_text.strip())
+    y_expr = parse(y_text.strip())
+    result = cartesian_from_param_exprs(x_expr, y_expr, param)
+    lines = ['x(' + param + ') = ' + show(x_expr), 'y(' + param + ') = ' + show(y_expr)]
+    if result is None:
+        lines.append('Could not eliminate ' + param + ' in this form.')
+        return lines
+    lhs, rhs, note = result
+    lines.append(note)
+    lines.append('Cartesian: ' + show(lhs) + ' = ' + show(rhs))
+    return lines
+
+
 def parse_identity(text):
     return parse_equation_or_zero(text)
 
@@ -3678,6 +3839,9 @@ def solve_equation(node):
 
 
 def solve_equation_text(text):
+    cartesian = cartesian_equation_lines(text)
+    if cartesian is not None:
+        return cartesian
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
     lines = ['Expr = ' + show(expr)]
@@ -4932,6 +5096,9 @@ def match_shifted_reciprocal(node, var_name):
 
 
 def solve_equation_text(text):
+    cartesian = cartesian_equation_lines(text)
+    if cartesian is not None:
+        return cartesian
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
     lines = ['Expr = ' + show(expr)]
@@ -5547,7 +5714,7 @@ def factor_text(text):
     return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
 
 def main():
-    mode = input('1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | M: ').strip()
+    mode = input('1 cmp | 2 xform | 3 exp | 4 poly | 5 comp sq | 6 solve | 7 comp | 8 inv | 9 rw | 10 cart | M: ').strip()
     if mode == '':
         mode = '1'
     begin_user_action()
@@ -5674,6 +5841,18 @@ def main():
                     break
                 terms.append(term)
             lines = solve_rewrite_text(text, terms)
+            i = 0
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
+                i += 1
+        elif mode == '10':
+            print('Cartesian from parametric')
+            x_text = input('x(t): ').strip()
+            y_text = input('y(t): ').strip()
+            param = input('Param: ').strip()
+            if param == '':
+                param = 't'
+            lines = cartesian_parametric_lines(x_text, y_text, param)
             i = 0
             while i < len(lines):
                 print(str(i + 1) + '. ' + lines[i])
