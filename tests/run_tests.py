@@ -88,6 +88,8 @@ class CaseSpec:
     input_text: str = ""
     check_info: str = ""
     feature: str = ""
+    script: str = ""
+    checker: object = None
 
 
 _DEFAULT_FORBIDDEN_SNIPPETS = (
@@ -252,10 +254,7 @@ def sympy_safe_text(*exprs):
     joined = " ".join(expr or "" for expr in exprs)
     if len(joined) > SYMPY_MAX_CHARS:
         return False
-    # SymPy trig simplification is powerful but can be extremely expensive on
-    # generated A-level-style identities. Numeric sampling handles trig checks
-    # reliably and keeps the interactive harness responsive.
-    return re.search(r"\b(sin|cos|tan|sec|cosec|csc|cot|asin|acos|atan)\s*\(", joined) is None
+    return True
 
 
 def sympy_simplify_difference(left, right):
@@ -866,6 +865,61 @@ def numbered_step_count(text):
 
 def nonempty_line_count(text):
     return sum(1 for line in (text or "").splitlines() if line.strip())
+
+
+_DENSE_LOW_PRECEDENCE_OP = re.compile(r"(?<![eE])(?<=[A-Za-z0-9)\]])[+-](?=[A-Za-z0-9(])")
+_MATH_RESULT_MARKERS = (
+    " = ",
+    "dy/dx",
+    "dx/dt",
+    "dy/dt",
+    "out =",
+    "ans =",
+    "final =",
+    "answer:",
+    "equation:",
+    "substitute:",
+    "rearranged equation:",
+)
+_READABILITY_SKIP_MARKERS = (
+    "write the equation in the form",
+    "let a*sin",
+    "d/dx(lhs)=d/dx(rhs)",
+    "dx/dt=dx/dt",
+)
+
+
+def output_readability_issues(output):
+    issues = []
+    for raw_line in (output or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lower = line.lower()
+        if any(marker in lower for marker in _READABILITY_SKIP_MARKERS):
+            continue
+        if not any(marker in lower for marker in _MATH_RESULT_MARKERS):
+            continue
+
+        matches = _DENSE_LOW_PRECEDENCE_OP.findall(line)
+        if len(matches) >= 2:
+            issues.append(f"dense low-precedence operators: {line}")
+        if re.search(r"/\s*[A-Za-z_][A-Za-z0-9_^*]*[+-]", line):
+            issues.append(f"ungrouped compound denominator: {line}")
+    return issues
+
+
+def output_readability_ok(output):
+    return not output_readability_issues(output)
+
+
+def readable_output_checker(base_checker=None, *, contains_all=(), contains_any=()):
+    quality = base_checker or build_checker(contains_all=contains_all, contains_any=contains_any)
+
+    def check(output):
+        return bool(quality(output)) and output_readability_ok(output)
+
+    return check
 
 
 def build_checker(*, contains_all=(), contains_any=(), min_steps=0, min_lines=0, forbid=()):
@@ -2141,7 +2195,7 @@ class CASIOApp(App):
             return bool(checker(out)), out
 
         info = check_info or getattr(checker, "__name__", "custom checker")
-        return CaseSpec(label, program, runner, inp, info, feature)
+        return CaseSpec(label, program, runner, inp, info, feature, script, checker)
 
     def make_direct_case(self, program, label, runner, input_text="", check_info="", feature=""):
         return CaseSpec(label, program, runner, input_text, check_info, feature)
@@ -2174,6 +2228,7 @@ class CASIOApp(App):
             max_attempts = max(50, feature_count * 40)
             while made < feature_count and attempts < max_attempts:
                 case = feature(rng, difficulty, len(cases) + 1)
+                case = self.with_random_format_fuzz(case, rng, difficulty)
                 key = self.case_question_key(case)
                 attempts += 1
                 if key in batch_seen or key in self.session_random_question_keys:
@@ -2199,6 +2254,8 @@ class CASIOApp(App):
             for case, passed, output in executor.map(evaluate, cases):
                 if passed and getattr(case, "feature", ""):
                     passed = working_quality_ok(output, case.program, case.feature)
+                if passed and getattr(case, "feature", ""):
+                    passed = output_readability_ok(output)
                 self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
 
     def balanced_counts(self, total, parts):
@@ -2227,6 +2284,142 @@ class CASIOApp(App):
         if difficulty == "medium":
             return medium
         return hard
+
+    def fuzz_atom_format(self, text, rng, difficulty):
+        if not text or not text.strip():
+            return text
+        text = text.strip()
+        intensity = {"easy": 0.25, "medium": 0.45, "hard": 0.7}.get(difficulty, 0.45)
+
+        def maybe_wrap_var(match):
+            name = match.group(0)
+            return f"({name})" if rng.random() < intensity * 0.25 else name
+
+        def maybe_wrap_number(match):
+            number = match.group(0)
+            return f"({number})" if rng.random() < intensity * 0.18 else number
+
+        text = re.sub(r"(?<![A-Za-z_])(x|y|t)(?![A-Za-z_])", maybe_wrap_var, text)
+        text = re.sub(r"(?<![A-Za-z_])\d+(?:\.\d+)?(?![A-Za-z_])", maybe_wrap_number, text)
+
+        out = []
+        i = 0
+        while i < len(text):
+            if text.startswith("**", i):
+                op = "**"
+                i += 2
+            else:
+                char = text[i]
+                if char == "^" and rng.random() < intensity * 0.55:
+                    op = "**"
+                    i += 1
+                elif char in "+-*/^=":
+                    op = char
+                    i += 1
+                else:
+                    out.append(char)
+                    i += 1
+                    continue
+            left = rng.choice(["", " ", "  "]) if rng.random() < intensity else ""
+            right = rng.choice(["", " ", "  "]) if rng.random() < intensity else ""
+            out.append(f"{left}{op}{right}")
+        text = "".join(out)
+
+        if rng.random() < intensity * 0.45:
+            text = re.sub(r"(?<=\d)\s*\*\s*(?=[A-Za-z_(])", "", text)
+        if rng.random() < intensity * 0.35:
+            text = re.sub(r"(?<=\))\s*\*\s*(?=[A-Za-z_(])", "", text)
+        if rng.random() < intensity * 0.25:
+            text = re.sub(r"(?<=[A-Za-z_])\s*\*\s*(?=\()", "", text)
+        if rng.random() < intensity * 0.6 and not (text.startswith("(") and text.endswith(")")):
+            text = f"({text})"
+        return text
+
+    def fuzz_input_line_format(self, line, rng, difficulty):
+        stripped = line.strip()
+        if stripped == "" or stripped == ",":
+            return line
+        if re.fullmatch(r"\d+", stripped):
+            return line
+        if "," in line:
+            parts = split_top_level_text(line, ",")
+            if len(parts) > 1:
+                fuzzed = []
+                for i, part in enumerate(parts):
+                    part_strip = part.strip()
+                    if i == 1 and re.fullmatch(r"[A-Za-z_]\w*", part_strip):
+                        fuzzed.append(part_strip)
+                    else:
+                        fuzzed.append(self.fuzz_atom_format(part_strip, rng, difficulty))
+                pieces = []
+                for i, part in enumerate(fuzzed):
+                    if i:
+                        pieces.append(rng.choice([",", ", ", " , ", " ,"]))
+                    pieces.append(part)
+                return "".join(pieces)
+        return self.fuzz_atom_format(line, rng, difficulty)
+
+    def fuzz_cli_input_format(self, input_text, rng, difficulty):
+        lines = (input_text or "").splitlines()
+        if not lines:
+            return input_text
+        trailing_newline = input_text.endswith("\n")
+        fuzzed = []
+        for index, line in enumerate(lines):
+            if index == 0:
+                fuzzed.append(line)
+            else:
+                fuzzed.append(self.fuzz_input_line_format(line, rng, difficulty))
+        text = "\n".join(fuzzed)
+        if trailing_newline:
+            text += "\n"
+        return text
+
+    def fuzz_suvat_cli_input_format(self, input_text, rng, difficulty):
+        lines = (input_text or "").splitlines()
+        trailing_newline = input_text.endswith("\n")
+        fuzzed = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped == "":
+                fuzzed.append(line)
+            elif stripped == ",":
+                fuzzed.append(rng.choice([",", " ,", ", "]))
+            else:
+                fuzzed.append(self.fuzz_atom_format(stripped, rng, difficulty))
+        text = "\n".join(fuzzed)
+        if trailing_newline:
+            text += "\n"
+        return text
+
+    def with_random_format_fuzz(self, case, rng, difficulty):
+        if not case or not case.script or not callable(case.checker):
+            return case
+        fuzzed_input = self.fuzz_cli_input_format(case.input_text, rng, difficulty)
+        if fuzzed_input == case.input_text:
+            return case
+        checker = case.checker
+        script = case.script
+
+        def runner():
+            out, _ = self.run_cli(script, fuzzed_input)
+            return bool(checker(out)), out
+
+        info = case.check_info
+        if info:
+            info += "; random input formatting fuzzed"
+        else:
+            info = "random input formatting fuzzed"
+        return CaseSpec(
+            f"{case.label} [format fuzz]",
+            case.program,
+            runner,
+            fuzzed_input,
+            info,
+            case.feature,
+            script,
+            checker,
+        )
 
     def random_small_rational_text(self, rng, allow_negative=True):
         den = rng.choice([2, 3, 4, 5, 6, 8])
@@ -3512,32 +3705,27 @@ class CASIOApp(App):
         expected = f"{values[6].numerator}/{values[6].denominator}" if values[6].denominator != 1 else str(values[6].numerator)
         all_values = {"s": s, "u": u, "v": v, "a": a, "t": t}
         cli_input = "\n".join("," if name == target else frac_text(all_values[name]) for name in ("s", "u", "v", "a", "t")) + "\n"
+        cli_input = self.fuzz_suvat_cli_input_format(cli_input, rng, difficulty)
 
         def runner():
             out, _ = self.run_cli("SUVATprogram.py", cli_input)
             return suvat_cli_checker(target, expected)(out), out
 
         label = f"Random SUVAT {index}: find {target}"
-        input_text = (
-            f"target={target}\n"
-            f"s={',' if target == 's' else frac_text(s)}\n"
-            f"u={',' if target == 'u' else frac_text(u)}\n"
-            f"v={',' if target == 'v' else frac_text(v)}\n"
-            f"a={',' if target == 'a' else frac_text(a)}\n"
-            f"t={',' if target == 't' else frac_text(t)}"
-        )
-        return self.make_direct_case("SUVAT", label, runner, input_text=input_text, check_info=f"suvat exact answer = {expected}", feature=f"suvat_find_{target}")
+        return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, check_info=f"suvat exact answer = {expected}; random input formatting fuzzed", feature=f"suvat_find_{target}")
 
     def random_suvat_edge_case(self, rng, difficulty, index, target):
         def frac_text(value):
             return str(value.numerator) if value.denominator == 1 else f"{value.numerator}/{value.denominator}"
 
         def make_case(label, cli_input, checker, check_info, feature):
+            cli_input = self.fuzz_suvat_cli_input_format(cli_input, rng, difficulty)
+
             def runner():
                 out, _ = self.run_cli("SUVATprogram.py", cli_input)
                 return checker(out), out
 
-            return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, check_info=check_info, feature=feature)
+            return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, check_info=f"{check_info}; random input formatting fuzzed", feature=feature)
 
         if target == "t":
             mode = rng.choice([
@@ -3803,6 +3991,22 @@ class CASIOApp(App):
         if difficulty in ("all", "medium", "hard"):
             self.run_simple_cases("algebraProgram.py", p, expand_cases, "contains")
             self.run_simple_cases("algebraProgram.py", p, complete_square_cases, "contains")
+
+        if difficulty in ("all", "easy", "medium", "hard"):
+            inp = "3\n(2*x+1)^5\n\n"
+            out, _ = self.run_cli("algebraProgram.py", inp)
+            checker = readable_output_checker(
+                algebra_expand_checker("(2*x + 1)^5", "32*x^5 + 80*x^4", "Out =")
+            )
+            self.add_test(
+                "Formatting: algebra groups expanded factors and spaced sums",
+                checker(out),
+                out,
+                p,
+                inp,
+                "readable output with bracketed factors and spaced sums",
+                "algebra_formatting",
+            )
 
         # Solve tests
         solves = [
@@ -4101,6 +4305,21 @@ class CASIOApp(App):
                 checker = self.trig_cli_solve_checker(solve_text)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig solve"), "trig_solve")
 
+        if difficulty in ("all", "easy", "medium", "hard"):
+            inp = "3\n4*pi**2=72-(72*cos(x)),x,0,(2*pi)\n"
+            out, _ = self.run_cli("trigProgram.py", inp)
+            base = self.trig_cli_solve_checker(inp.splitlines()[1])
+            checker = readable_output_checker(base)
+            self.add_test(
+                "Formatting: trig solve keeps exact grouped answers readable",
+                checker(out) and "1 - pi^2/18" in out and "(3*pi)/2" in out,
+                out,
+                p,
+                inp,
+                "readable exact-form trig solve with grouped constants",
+                "trig_formatting",
+            )
+
         # Regression: non-identities should fail cleanly in prove mode
         if difficulty in ("all", "medium", "hard"):
             out, _ = self.run_cli("trigProgram.py", "1\n2*sin(x-30)=5*cos(x)\n1\n")
@@ -4332,6 +4551,22 @@ class CASIOApp(App):
             self.run_simple_cases("deriveProgram.py", p, implicit_cases, "contains")
             self.run_simple_cases("deriveProgram.py", p, param_cases, "contains")
 
+        if difficulty in ("all", "easy", "medium", "hard"):
+            inp = "2\n(x/(x+1))+(y/(y+1))=x**2\n"
+            out, _ = self.run_cli("deriveProgram.py", inp)
+            checker = readable_output_checker(
+                derive_implicit_checker("(y + 1)", "(x + 1)", "(2*x - x^3 - x^2 + 1)")
+            )
+            self.add_test(
+                "Formatting: implicit derivative spaces and brackets compound factors",
+                checker(out),
+                out,
+                p,
+                inp,
+                "readable implicit derivative with bracketed compound factors",
+                "derive_formatting",
+            )
+
         extra_exprs = []
 
         for a in range(2, 12):
@@ -4432,6 +4667,20 @@ class CASIOApp(App):
                 out, _ = self.run_cli("intProgram.py", f"1\n{expr}\n1\n")
                 checker = self.integrate_output_checker(expr)
                 self.add_test(label, checker(out), out, p, f"1\n{expr}\n1\n", getattr(checker, "__name__", "calculated antiderivative"), "integrate_auto")
+
+        if difficulty in ("all", "easy", "medium", "hard"):
+            inp = "1\n(x+1)^2\n1\n"
+            out, _ = self.run_cli("intProgram.py", inp)
+            checker = readable_output_checker(self.integrate_output_checker("(x+1)^2"))
+            self.add_test(
+                "Formatting: integration keeps shifted powers grouped",
+                checker(out) and "(x + 1)^3" in out,
+                out,
+                p,
+                inp,
+                "readable antiderivative with grouped shifted power",
+                "integrate_formatting",
+            )
 
         # Substitution tests
         subs = [
@@ -4634,6 +4883,18 @@ class CASIOApp(App):
                 for inp, target, tokens, label in symbolic_cli_cases:
                     out, _ = self.run_cli("SUVATprogram.py", inp)
                     self.add_test(label, suvat_symbolic_checker(target, *tokens)(out), out, p, inp, f"{target} symbolic answer", f"suvat_cli_symbolic_{target}")
+
+                formatting_input = ",\n\n\n\n\n"
+                formatting_output, _ = self.run_cli("SUVATprogram.py", formatting_input)
+                self.add_test(
+                    "Formatting: SUVAT symbolic equation keeps products explicit",
+                    output_readability_ok(formatting_output) and "u*t + 1/2*a*t^2" in formatting_output,
+                    formatting_output,
+                    p,
+                    formatting_input,
+                    "readable symbolic SUVAT equation with explicit products",
+                    "suvat_formatting",
+                )
         except Exception as e:
             self.add_test("SUVAT import", False, str(e), p)
 
