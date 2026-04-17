@@ -116,6 +116,12 @@ CASE_WORKERS = _default_case_workers()
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
+CASE_TIMEOUT_SECONDS = float(os.environ.get("CASIO_TEST_TIMEOUT", "5"))
+CALCULATED_CHECK_MAX_INPUT_CHARS = int(os.environ.get("CASIO_CALCULATED_CHECK_MAX_INPUT_CHARS", "80"))
+
+
+def limited_by(limit, value):
+    return limit > 0 and value > limit
 
 
 def _safe_worker_cap():
@@ -236,7 +242,7 @@ def sympy_parse_expr(expr, max_chars=None):
     if not SYMPY_AVAILABLE:
         return None
     limit = SYMPY_MAX_CHARS if max_chars is None else max_chars
-    if len(expr or "") > limit:
+    if limited_by(limit, len(expr or "")):
         return None
     transformations = SP_STANDARD_TRANSFORMS + (SP_IMPLICIT_MULT, SP_CONVERT_XOR)
     try:
@@ -252,7 +258,7 @@ def sympy_parse_expr(expr, max_chars=None):
 
 def sympy_safe_text(*exprs):
     joined = " ".join(expr or "" for expr in exprs)
-    if len(joined) > SYMPY_MAX_CHARS:
+    if limited_by(SYMPY_MAX_CHARS, len(joined)):
         return False
     return True
 
@@ -263,10 +269,10 @@ def sympy_simplify_difference(left, right):
     try:
         diff = left - right
         op_count = SP.count_ops(diff)
-        if op_count > SYMPY_MAX_OPS:
+        if limited_by(SYMPY_MAX_OPS, op_count):
             return None
         candidates = [diff, SP.expand(diff), SP.cancel(diff), SP.factor(diff), SP.together(diff)]
-        if op_count <= SYMPY_MAX_OPS // 2 or (diff.has(SP.sin, SP.cos, SP.tan, SP.sec, SP.csc, SP.cot) and op_count <= 120):
+        if SYMPY_MAX_OPS <= 0 or op_count <= SYMPY_MAX_OPS // 2 or (diff.has(SP.sin, SP.cos, SP.tan, SP.sec, SP.csc, SP.cot) and op_count <= 120):
             candidates.extend([SP.trigsimp(diff), SP.simplify(diff), SP.simplify(SP.trigsimp(SP.together(diff)))])
         for candidate in candidates:
             if candidate == 0:
@@ -302,11 +308,37 @@ def sympy_derivative_equivalent(expr_text, candidate_text, var="x"):
     candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
     if expr is None or candidate is None:
         return None
-    if SP.count_ops(expr) + SP.count_ops(candidate) > 240:
+    if limited_by(SYMPY_MAX_CALC_CHARS, len(expr_text or "") + len(candidate_text or "")):
+        return None
+    if limited_by(SYMPY_MAX_OPS * 3 if SYMPY_MAX_OPS > 0 else 0, SP.count_ops(expr) + SP.count_ops(candidate)):
         return None
     try:
         symbol = sympy_locals().get(var, SP.symbols(var))
         expected = SP.diff(expr, symbol)
+    except Exception:
+        return None
+    return sympy_simplify_difference(candidate, expected)
+
+
+def sympy_implicit_derivative_equivalent(eq_text, candidate_text):
+    if not SYMPY_AVAILABLE:
+        return None
+    if not sympy_safe_text(eq_text, candidate_text):
+        return None
+    try:
+        lhs, rhs = split_equation_text(eq_text)
+    except Exception:
+        return None
+    left = sympy_parse_expr(lhs, max_chars=SYMPY_MAX_CALC_CHARS)
+    right = sympy_parse_expr(rhs, max_chars=SYMPY_MAX_CALC_CHARS)
+    candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
+    if left is None or right is None or candidate is None:
+        return None
+    try:
+        x = sympy_locals().get("x", SP.symbols("x"))
+        y = sympy_locals().get("y", SP.symbols("y"))
+        relation = left - right
+        expected = -SP.diff(relation, x) / SP.diff(relation, y)
     except Exception:
         return None
     return sympy_simplify_difference(candidate, expected)
@@ -321,7 +353,9 @@ def sympy_antiderivative_equivalent(candidate_text, integrand_text, var="x"):
     integrand = sympy_parse_expr(integrand_text, max_chars=SYMPY_MAX_CALC_CHARS)
     if candidate is None or integrand is None:
         return None
-    if SP.count_ops(candidate) + SP.count_ops(integrand) > 240:
+    if limited_by(SYMPY_MAX_CALC_CHARS, len(candidate_text or "") + len(integrand_text or "")):
+        return None
+    if limited_by(SYMPY_MAX_OPS * 3 if SYMPY_MAX_OPS > 0 else 0, SP.count_ops(candidate) + SP.count_ops(integrand)):
         return None
     try:
         symbol = sympy_locals().get(var, SP.symbols(var))
@@ -712,7 +746,7 @@ def sympy_equation_real_values(eq_text, var="x"):
         return None
     try:
         expr = SP.together(left - right)
-        if SP.count_ops(expr) > SYMPY_MAX_OPS:
+        if limited_by(SYMPY_MAX_OPS, SP.count_ops(expr)):
             return None
         symbol = sympy_locals().get(var, SP.symbols(var))
         roots = SP.solve(expr, symbol)
@@ -906,6 +940,8 @@ def output_readability_issues(output):
             issues.append(f"dense low-precedence operators: {line}")
         if re.search(r"/\s*[A-Za-z_][A-Za-z0-9_^*]*[+-]", line):
             issues.append(f"ungrouped compound denominator: {line}")
+        if line.count("(") != line.count(")"):
+            issues.append(f"unbalanced brackets: {line}")
     return issues
 
 
@@ -1238,6 +1274,80 @@ def working_quality_ok(output, program, feature):
     return True
 
 
+_EXAM_REASONING_MARKERS = (
+    "use ",
+    "let ",
+    "hence",
+    "so ",
+    "therefore",
+    "method:",
+    "substitute",
+    "rearranged",
+    "differentiate",
+    "integrat",
+    "expand",
+    "factor",
+    "solve",
+    "rule",
+    "equation:",
+    "original equation:",
+)
+
+
+def exam_working_quality_issues(output, program, feature):
+    issues = []
+    text = normalized_text(output)
+    feature = feature or ""
+
+    if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+        issues.append("contains an error/unsupported marker")
+    if not working_quality_ok(output, program, feature):
+        issues.append("missing program-specific working expected for this feature")
+
+    readability = output_readability_issues(output)
+    issues.extend(f"readability: {issue}" for issue in readability)
+
+    lines = nonempty_line_count(output)
+    steps = numbered_step_count(output)
+    if program != "SUVAT" and not feature.startswith("suvat_expected_error"):
+        if lines < 3:
+            issues.append("too few non-empty lines for exam-style working")
+        if steps < 2 and program not in ("Integrate",):
+            issues.append("too few numbered steps")
+        if not any(marker in text for marker in _EXAM_REASONING_MARKERS):
+            issues.append("working lacks explanatory method/reasoning language")
+
+    if program == "Algebra":
+        if not any(marker in text for marker in ("result:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))")):
+            issues.append("missing a clear algebra conclusion")
+    elif program == "Trigonometry":
+        if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity")):
+            issues.append("missing a clear trig conclusion")
+    elif program == "Derive":
+        if "dy/dx" not in text:
+            issues.append("missing derivative conclusion")
+    elif program == "Integrate":
+        if "+ c" not in text:
+            issues.append("missing constant of integration")
+        if not any(marker in text for marker in ("method:", "u =", "integration by parts", "partial fractions", "divide", "standard result")):
+            issues.append("missing integration method marker")
+    elif program == "SUVAT":
+        if feature.startswith("suvat_expected_error"):
+            if not any(marker in text for marker in ("no solution", "infinite solutions")):
+                issues.append("expected error case did not explain the issue")
+        else:
+            if not any(marker in text for marker in ("equation:", "original equation:", "s =", "u =", "v =", "a =", "t =")):
+                issues.append("missing SUVAT equation line")
+            if not any(marker in text for marker in ("answer:", "s =", "u =", "v =", "a =", "t =")):
+                issues.append("missing SUVAT answer line")
+
+    return issues
+
+
+def exam_working_quality_ok(output, program, feature):
+    return not exam_working_quality_issues(output, program, feature)
+
+
 def format_suvat_working(result, equation, original_eq, substitution):
     lines = []
     if original_eq:
@@ -1568,7 +1678,8 @@ class CASIOApp(App):
             "/run suvat medium": "Run medium SUVAT tests",
             "/run suvat hard": "Run hard SUVAT tests",
             "/random": "Run randomly generated tests across every program",
-            "/random 1000": "Run 1000 random tests split across all programs and features",
+            "/random 1000": "Run 1000 chaos random tests split across all programs and features",
+            "/random chaos 1000": "Run 1000 unbounded-difficulty random tests",
             "/random hard 1000": "Run 1000 hard random tests split across all programs and features",
             "/random hard 1000 8": "Run 1000 hard random tests with 8 parallel workers",
             "/rerun": "Run the previous test scope again",
@@ -1682,6 +1793,9 @@ class CASIOApp(App):
             "easy": "easy",
             "medium": "medium",
             "hard": "hard",
+            "chaos": "chaos",
+            "unbounded": "chaos",
+            "wild": "chaos",
         }
         return mapping.get(value.lower())
 
@@ -1690,7 +1804,8 @@ class CASIOApp(App):
         if not parts or parts[0].lower() != "/run":
             return None
         if len(parts) == 1:
-            return self.current_program, self.current_difficulty
+            difficulty = "hard" if self.current_difficulty == "chaos" else self.current_difficulty
+            return self.current_program, difficulty
         if len(parts) == 2 and parts[1].lower() == "all":
             return "all", "all"
 
@@ -1707,13 +1822,15 @@ class CASIOApp(App):
                 difficulty = maybe_difficulty
                 continue
             return None
+        if difficulty == "chaos":
+            difficulty = "hard"
         return program, difficulty
 
     def parse_random_scope(self, value: str):
         parts = value.split()
         if not parts or parts[0].lower() != "/random":
             return None
-        difficulty = self.current_difficulty if self.current_difficulty != "all" else "hard"
+        difficulty = self.current_difficulty if self.current_difficulty not in ("all", "easy", "medium", "hard") else "chaos"
         count = None
         workers = None
         i = 1
@@ -2186,16 +2303,39 @@ class CASIOApp(App):
             pass
 
     def run_cli(self, script, inp):
-        proc = subprocess.run([PY, str(ROOT/script)], input=inp, text=True, capture_output=True)
+        try:
+            proc = subprocess.run(
+                [PY, str(ROOT/script)],
+                input=inp,
+                text=True,
+                capture_output=True,
+                timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
+            )
+        except subprocess.TimeoutExpired as err:
+            stdout = err.stdout if isinstance(err.stdout, str) else ""
+            stderr = err.stderr if isinstance(err.stderr, str) else ""
+            return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
         return proc.stdout, proc.stderr
 
     def make_cli_case(self, program, script, inp, label, checker, check_info="", feature=""):
+        calculated = None
+        if not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or "")):
+            calculated = self.calculated_checker_for_cli_case(script, inp, checker)
+        checkers = [checker]
+        if calculated is not None and calculated is not checker:
+            checkers.append(calculated)
+
+        def combined_checker(output):
+            return all(bool(item(output)) for item in checkers)
+
         def runner():
             out, _ = self.run_cli(script, inp)
-            return bool(checker(out)), out
+            return combined_checker(out), out
 
         info = check_info or getattr(checker, "__name__", "custom checker")
-        return CaseSpec(label, program, runner, inp, info, feature, script, checker)
+        if calculated is not None and calculated is not checker:
+            info = f"{info}; calculated answer correctness"
+        return CaseSpec(label, program, runner, inp, info, feature, script, combined_checker)
 
     def make_direct_case(self, program, label, runner, input_text="", check_info="", feature=""):
         return CaseSpec(label, program, runner, input_text, check_info, feature)
@@ -2227,8 +2367,9 @@ class CASIOApp(App):
             attempts = 0
             max_attempts = max(50, feature_count * 40)
             while made < feature_count and attempts < max_attempts:
-                case = feature(rng, difficulty, len(cases) + 1)
-                case = self.with_random_format_fuzz(case, rng, difficulty)
+                case_difficulty = self.random_case_difficulty(rng, difficulty)
+                case = feature(rng, case_difficulty, len(cases) + 1)
+                case = self.with_random_format_fuzz(case, rng, case_difficulty)
                 key = self.case_question_key(case)
                 attempts += 1
                 if key in batch_seen or key in self.session_random_question_keys:
@@ -2253,9 +2394,11 @@ class CASIOApp(App):
         with ThreadPoolExecutor(max_workers=active_workers) as executor:
             for case, passed, output in executor.map(evaluate, cases):
                 if passed and getattr(case, "feature", ""):
-                    passed = working_quality_ok(output, case.program, case.feature)
-                if passed and getattr(case, "feature", ""):
-                    passed = output_readability_ok(output)
+                    issues = exam_working_quality_issues(output, case.program, case.feature)
+                    if issues:
+                        passed = False
+                        detail = "; ".join(issues[:4])
+                        case.check_info = f"{case.check_info}; exam-quality issues: {detail}" if case.check_info else f"exam-quality issues: {detail}"
                 self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
 
     def balanced_counts(self, total, parts):
@@ -2283,7 +2426,54 @@ class CASIOApp(App):
             return easy
         if difficulty == "medium":
             return medium
+        if difficulty == "chaos":
+            return self.random_unbounded_count(random, minimum=hard)
         return hard
+
+    def random_unbounded_count(self, rng, minimum=1, continue_probability=0.28):
+        count = minimum
+        while rng.random() < continue_probability:
+            count += 1
+            continue_probability *= 0.985
+        return count
+
+    def random_case_difficulty(self, rng, requested):
+        if requested == "chaos":
+            return rng.choice(["easy", "medium", "hard", "hard", "chaos", "chaos"])
+        if requested == "all":
+            return rng.choice(["easy", "medium", "hard", "chaos"])
+        if requested == "hard" and rng.random() < 0.35:
+            return "chaos"
+        if requested == "medium" and rng.random() < 0.18:
+            return "chaos"
+        if requested == "easy" and rng.random() < 0.08:
+            return "chaos"
+        return requested
+
+    def random_chaos_int(self, rng, base_low, base_high):
+        magnitude = self.random_unbounded_count(rng, minimum=max(abs(base_low), abs(base_high), 1), continue_probability=0.32)
+        value = rng.randint(1, magnitude)
+        if base_low < 0 and rng.random() < 0.5:
+            value = -value
+        return value
+
+    def random_power_limit(self, rng, difficulty, easy=2, medium=3, hard=5):
+        if difficulty == "easy":
+            return easy
+        if difficulty == "medium":
+            return medium
+        if difficulty == "chaos":
+            return self.random_unbounded_count(rng, minimum=hard, continue_probability=0.25)
+        return hard
+
+    def random_depth_for_difficulty(self, rng, difficulty):
+        if difficulty == "easy":
+            return 1
+        if difficulty == "medium":
+            return rng.randint(2, 3)
+        if difficulty == "chaos":
+            return self.random_unbounded_count(rng, minimum=4, continue_probability=0.22)
+        return rng.randint(3, 5)
 
     def fuzz_atom_format(self, text, rng, difficulty):
         if not text or not text.strip():
@@ -2549,48 +2739,57 @@ class CASIOApp(App):
         return out
 
     def random_affine_expr(self, rng, var="x", difficulty="hard", allow_negative=True, fractions=False):
-        if fractions and difficulty == "hard" and rng.random() < 0.35:
+        if fractions and difficulty in ("hard", "chaos") and rng.random() < (0.55 if difficulty == "chaos" else 0.35):
             a = self.random_small_rational_text(rng, allow_negative=allow_negative)
             b = self.random_small_rational_text(rng, allow_negative=True)
             return f"({a})*{var}+({b})"
         return self.random_linear_expr(rng, var, allow_negative=allow_negative)
 
     def random_shifted_power_expr(self, rng, var="x", difficulty="hard"):
-        base = self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty == "hard")
-        powers = [2] if difficulty == "easy" else ([2, 3] if difficulty == "medium" else [2, 3, 4, 5])
-        return f"({base})^{rng.choice(powers)}"
+        base = self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos"))
+        if difficulty == "chaos":
+            power = self.random_power_limit(rng, difficulty, hard=5)
+        else:
+            powers = [2] if difficulty == "easy" else ([2, 3] if difficulty == "medium" else [2, 3, 4, 5])
+            power = rng.choice(powers)
+        return f"({base})^{power}"
 
     def random_base_expr(self, rng, var="x", difficulty="hard"):
         choices = [
             var,
             self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=False),
         ]
-        if difficulty in ("medium", "hard"):
+        if difficulty in ("medium", "hard", "chaos"):
             choices.append(self.random_shifted_power_expr(rng, var, "medium"))
             choices.append(f"{rng.randint(2, 7)}*{var}^2{self.signed_int_text(rng.randint(-7, 7))}*{var}+{rng.randint(1, 9)}")
-        if difficulty == "hard":
+        if difficulty in ("hard", "chaos"):
             choices.extend([
                 self.random_shifted_power_expr(rng, var, difficulty),
                 f"({self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=False)})^2+({self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=False)})",
                 f"({self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=False)})^3{self.signed_int_text(rng.randint(-6, 6))}",
+            ])
+        if difficulty == "chaos":
+            choices.extend([
+                f"({self.random_polynomial_expr(rng, var, 'chaos')})/({self.random_positive_expr(rng, var, 'hard')})",
+                f"(({self.random_affine_expr(rng, var, 'chaos', allow_negative=True, fractions=True)})^{self.random_power_limit(rng, 'chaos', hard=4)})",
             ])
         return rng.choice(choices)
 
     def random_angle_expr(self, rng, var="x", difficulty="hard"):
         expr = rng.choice([
             self.random_base_expr(rng, var, difficulty),
-            self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty == "hard"),
+            self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos")),
             f"{rng.randint(2, 9)}*{var}^2{self.signed_int_text(rng.randint(-6, 6))}*{var}+{rng.randint(-7, 9)}",
         ])
-        wraps = {"easy": 1, "medium": 2, "hard": 4}.get(difficulty, 2)
+        wraps = self.random_unbounded_count(rng, minimum=4, continue_probability=0.2) if difficulty == "chaos" else {"easy": 1, "medium": 2, "hard": 4}.get(difficulty, 2)
         i = 0
         while i < rng.randint(1, wraps):
             a = rng.randint(2, 8)
             b = rng.randint(-7, 7)
             mode_pool = ["affine"]
-            if difficulty in ("medium", "hard"):
+            if difficulty in ("medium", "hard", "chaos"):
                 mode_pool.extend(["square", "difference"])
-            if difficulty == "hard":
+            if difficulty in ("hard", "chaos"):
                 mode_pool.extend(["shifted_cube", "pi_shift", "fraction_scale"])
             mode = rng.choice(mode_pool)
             if mode == "square":
@@ -2609,7 +2808,10 @@ class CASIOApp(App):
         return expr
 
     def random_polynomial_expr(self, rng, var="x", difficulty="hard"):
-        degree = rng.randint(3, 8 if difficulty == "hard" else 5)
+        if difficulty == "chaos":
+            degree = self.random_unbounded_count(rng, minimum=8, continue_probability=0.25)
+        else:
+            degree = rng.randint(3, 8 if difficulty == "hard" else 5)
         terms = []
         power = degree
         while power >= 0:
@@ -2649,7 +2851,7 @@ class CASIOApp(App):
         return f"({numerator})/({denominator})"
 
     def random_positive_expr(self, rng, var="x", difficulty="hard"):
-        mode = rng.choice(["square", "sum_squares", "exp_plus", "sqrt_guard"] if difficulty == "hard" else ["square", "sum_squares"])
+        mode = rng.choice(["square", "sum_squares", "exp_plus", "sqrt_guard"] if difficulty in ("hard", "chaos") else ["square", "sum_squares"])
         if mode == "sum_squares":
             left = self.random_affine_expr(rng, var, difficulty, allow_negative=True)
             right = self.random_affine_expr(rng, var, difficulty, allow_negative=True)
@@ -2665,10 +2867,10 @@ class CASIOApp(App):
 
     def random_factorised_polynomial_expr(self, rng, var="x", difficulty="hard"):
         factors = []
-        count = self.difficulty_number(difficulty, easy=2, medium=3, hard=rng.randint(3, 5))
+        count = self.random_unbounded_count(rng, minimum=5, continue_probability=0.22) if difficulty == "chaos" else self.difficulty_number(difficulty, easy=2, medium=3, hard=rng.randint(3, 5))
         for _ in range(count):
             root = rng.randint(-8, 8)
-            mult = 1 if difficulty == "easy" else rng.choice([1, 1, 2])
+            mult = rng.choice([1, 1, 2, 3, self.random_power_limit(rng, "chaos", hard=3)]) if difficulty == "chaos" else (1 if difficulty == "easy" else rng.choice([1, 1, 2]))
             factor = f"({var}{self.signed_int_text(-root)})"
             factors.append(f"{factor}^{mult}" if mult != 1 else factor)
         coeff = rng.choice([1, 1, -1, rng.randint(2, 5)])
@@ -2686,17 +2888,17 @@ class CASIOApp(App):
             return rng.choice([f"sin({angle})/cos({angle})", f"cos({angle})/sin({angle})"])
         if mode == "reciprocal_mix":
             return f"sec({angle})^2-tan({angle})^2+cot({angle})"
-        return f"sin({angle})^{rng.randint(2, 5)}+cos({angle})^{rng.randint(2, 5)}"
+        return f"sin({angle})^{self.random_power_limit(rng, difficulty, hard=5)}+cos({angle})^{self.random_power_limit(rng, difficulty, hard=5)}"
 
     def random_expression_family(self, rng, var="x", difficulty="hard", allow_trig=True):
         families = ["affine", "shifted_power", "polynomial", "factorised", "positive", "rational"]
         if allow_trig:
             families.append("trig_combo")
-        if difficulty in ("medium", "hard"):
+        if difficulty in ("medium", "hard", "chaos"):
             families.extend(["exp_safe", "log_safe", "sqrt_safe"])
         family = rng.choice(families)
         if family == "affine":
-            return self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty == "hard")
+            return self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos"))
         if family == "shifted_power":
             return self.random_shifted_power_expr(rng, var, difficulty)
         if family == "polynomial":
@@ -2717,7 +2919,7 @@ class CASIOApp(App):
 
     def random_general_expr(self, rng, var="x", difficulty="hard", depth=None):
         if depth is None:
-            depth = {"easy": 1, "medium": 2, "hard": 4}.get(difficulty, 2)
+            depth = self.random_depth_for_difficulty(rng, difficulty)
         if depth <= 0:
             return self.random_expression_family(rng, var, difficulty)
 
@@ -2744,7 +2946,7 @@ class CASIOApp(App):
             lambda: f"({inner()})-({inner()})",
             lambda: f"({inner()})+({self.random_trig_combo_expr(rng, var, difficulty)})",
             lambda: f"({inner()})/(({self.random_expression_family(rng, var, difficulty, allow_trig=False)})^2+{rng.randint(2, 9)})",
-            lambda: f"({inner()})^{rng.randint(2, 10 if difficulty == 'hard' else 5)}",
+            lambda: f"({inner()})^{self.random_power_limit(rng, difficulty, hard=10)}",
         ]
         return rng.choice(choices)()
 
@@ -2863,6 +3065,22 @@ class CASIOApp(App):
             if good >= 6 and bad <= 3 and good >= bad * 2:
                 return True
             return structurally_same_derivative(expr, candidate)
+
+        return check
+
+    def derive_implicit_output_checker(self, eq_text):
+        quality = derive_implicit_checker("dy/dx")
+
+        def check(out):
+            if not quality(out):
+                return False
+            candidate = extract_last_derivative_expr(out)
+            if not candidate:
+                return False
+            symbolic = sympy_implicit_derivative_equivalent(eq_text, candidate)
+            if symbolic is not None:
+                return symbolic is True
+            return True
 
         return check
 
@@ -3043,7 +3261,7 @@ class CASIOApp(App):
     def random_algebra_expand_case(self, rng, difficulty, index):
         a = rng.randint(2, 6)
         b = self.random_nonzero_int(rng, -5, 5)
-        n = rng.randint(4, 12 if difficulty == "hard" else 6)
+        n = self.random_unbounded_count(rng, minimum=8, continue_probability=0.2) if difficulty == "chaos" else rng.randint(4, 12 if difficulty == "hard" else 6)
         first = f"{a ** n}*x^{n}"
         second_coeff = math.comb(n, 1) * (a ** (n - 1)) * b
         second = f"{second_coeff}*x^{n - 1}" if n - 1 > 1 else (f"{second_coeff}*x" if n - 1 == 1 else str(second_coeff))
@@ -3058,7 +3276,7 @@ class CASIOApp(App):
         )
 
     def random_algebra_complete_square_case(self, rng, difficulty, index):
-        a = rng.randint(1, 5 if difficulty != "hard" else 7)
+        a = self.random_chaos_int(rng, 1, 9) if difficulty == "chaos" else rng.randint(1, 5 if difficulty != "hard" else 7)
         h = rng.randint(-6, 6)
         k = rng.randint(-9, 12)
         b = 2 * a * h
@@ -3072,26 +3290,27 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"5\n{expr}\n", label, algebra_complete_square_checker(), feature="algebra_complete_square")
 
     def random_algebra_solve_case(self, rng, difficulty, index):
-        if difficulty == "hard" and rng.random() < 0.25:
-            m = rng.randint(2, 8)
+        if difficulty in ("hard", "chaos") and rng.random() < 0.25:
+            m = self.random_unbounded_count(rng, minimum=8, continue_probability=0.28) if difficulty == "chaos" else rng.randint(2, 8)
             n = rng.randint(1, m - 1)
             avg = Fraction(m * m + n * n, 2)
             gap = Fraction(m * m - n * n, 2)
             eq = f"(x^2-{avg.numerator}/{avg.denominator})^2-({gap.numerator}/{gap.denominator})^2=0"
             mode = "diff_squares"
-        elif difficulty == "hard" and rng.random() < 0.45:
+        elif difficulty in ("hard", "chaos") and rng.random() < 0.45:
             coeff = rng.randint(2, 7)
-            power = rng.choice([3, 5, 7])
+            power = self.random_power_limit(rng, difficulty, hard=7)
             rhs = coeff * (rng.randint(1, 5) ** power)
             eq = f"{coeff}*x^{power}-{rhs}=0"
             mode = "high_power"
-        elif difficulty == "hard" and rng.random() < 0.65:
+        elif difficulty in ("hard", "chaos") and rng.random() < 0.65:
             a = self.random_nonzero_int(rng, -7, 7)
             b = rng.randint(-9, 9)
             root = rng.randint(-5, 5)
             rhs = a * root + b
-            eq = f"({a}*x{self.signed_int_text(b)})^4-({rhs})^4=0"
-            mode = "shifted_quartic"
+            power = self.random_power_limit(rng, difficulty, hard=4)
+            eq = f"({a}*x{self.signed_int_text(b)})^{power}-({rhs})^{power}=0"
+            mode = "shifted_power"
         else:
             r1 = rng.randint(-9, 9)
             r2 = rng.randint(-9, 9)
@@ -3321,7 +3540,10 @@ class CASIOApp(App):
             c = rng.randint(0, 4)
             eq = f"{func}({k}*x^2+{c})={target}"
         else:
-            k = self.random_nonzero_int(rng, -8 if difficulty == "hard" else 2, 8 if difficulty == "hard" else 5)
+            if difficulty == "chaos":
+                k = self.random_chaos_int(rng, -8, 8)
+            else:
+                k = self.random_nonzero_int(rng, -8 if difficulty == "hard" else 2, 8 if difficulty == "hard" else 5)
             eq = f"{func}({k}*x)={target}"
 
         label = f"Random trig solve {index}: {mode}"
@@ -3381,7 +3603,7 @@ class CASIOApp(App):
             "power_power",
         ])
         if mode == "chain_power":
-            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{rng.randint(3, 9 if difficulty == 'hard' else 5)}"
+            expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^{self.random_power_limit(rng, difficulty, hard=9)}"
         elif mode == "nested_exp":
             expr = f"exp(sin({self.random_angle_expr(rng, 'x', difficulty)})+cos({self.random_linear_expr(rng, 'x', allow_negative=True)}))"
         elif mode == "quotient":
@@ -3406,7 +3628,7 @@ class CASIOApp(App):
         else:
             a1 = self.random_angle_expr(rng, "x", difficulty)
             a2 = self.random_angle_expr(rng, "x", difficulty)
-            expr = f"(sin({a1})+cos({a2}))^{rng.randint(2, 5 if difficulty != 'hard' else 7)}"
+            expr = f"(sin({a1})+cos({a2}))^{self.random_power_limit(rng, difficulty, medium=5, hard=7)}"
         label = f"Random derive normal {index}: {mode}"
         return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature=f"derive_normal:{mode}")
 
@@ -3458,6 +3680,7 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_integrate_auto_case(self, rng, difficulty, index):
+        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
         mode = rng.choice([
             "du_over_u",
             "du_over_one_plus_u2",
@@ -3486,12 +3709,12 @@ class CASIOApp(App):
             f"{rng.randint(2, 8)}*x^2{self.signed_int_text(rng.randint(-6,6))}*x+{rng.randint(2,9)}",
             f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
             f"sin({self.random_linear_expr(rng, 'x', allow_negative=True)})+exp({rng.randint(1,3)}*x)+{rng.randint(2,9)}",
-            f"sqrt({self.random_positive_expr(rng, 'x', difficulty)})+{rng.randint(2,9)}",
+            f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
         ]
         u_expr = rng.choice(simple_u_choices)
         if mode in ("du_over_u", "deep_du_over_u"):
             if mode == "deep_du_over_u":
-                u_expr = f"({self.random_positive_expr(rng, 'x', difficulty)})^2+exp({self.random_linear_expr(rng, 'x', allow_negative=True)})"
+                u_expr = f"({self.random_positive_expr(rng, 'x', helper_difficulty)})^2+exp({self.random_linear_expr(rng, 'x', allow_negative=True)})"
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})/({u_expr})"
@@ -3505,7 +3728,7 @@ class CASIOApp(App):
             deriv = DERIVE.show(final)
             integrand = f"({deriv})/(1+({angle})^2)"
         elif mode == "du_over_sqrt":
-            u_expr = self.random_positive_expr(rng, "x", difficulty)
+            u_expr = self.random_positive_expr(rng, "x", helper_difficulty)
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})/sqrt({u_expr})"
@@ -3513,36 +3736,37 @@ class CASIOApp(App):
             u_expr = rng.choice([
                 self.random_linear_expr(rng, "x", allow_negative=True),
                 f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
-                f"sqrt({self.random_positive_expr(rng, 'x', difficulty)})+{rng.randint(1, 6)}",
-                f"log({self.random_positive_expr(rng, 'x', difficulty)})+{rng.randint(1, 6)}",
+                f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(1, 6)}",
+                f"log({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(1, 6)}",
                 f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(1, 6)}",
             ])
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})*exp({u_expr})"
         elif mode == "trig_chain":
-            u_expr = self.random_angle_expr(rng, "x", difficulty)
+            u_expr = self.random_angle_expr(rng, "x", helper_difficulty)
             _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
             deriv = DERIVE.show(final)
             integrand = f"({deriv})*{rng.choice(['sin', 'cos'])}({u_expr})"
         else:
             base = self.random_linear_expr(rng, "x", allow_negative=True)
-            power = rng.randint(3, 14 if difficulty == 'hard' else 5)
+            power = self.random_power_limit(rng, difficulty, medium=5, hard=14)
             integrand = f"({base})^{power}"
         label = f"Random integrate auto {index}: {mode}"
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand), feature=f"integrate_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
+        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
         mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power", "cos", "reciprocal", "nested_u", "hard_log", "arcsin_sub", "sec_tan", "cot_cosec"])
         u = rng.choice([
             self.random_linear_expr(rng, "x", allow_negative=True),
             f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
             f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
-            f"sqrt({self.random_positive_expr(rng, 'x', difficulty)})+{rng.randint(2,9)}",
-            f"log({self.random_positive_expr(rng, 'x', difficulty)})+{rng.randint(2,9)}",
+            f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
+            f"log({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
         ])
         if mode == "poly":
-            power = rng.randint(4, 14 if difficulty == "hard" else 6)
+            power = self.random_power_limit(rng, difficulty, medium=6, hard=14)
             integrand = f"({u})^{power}"
         elif mode == "sin":
             integrand = f"sin({u})"
@@ -3570,7 +3794,7 @@ class CASIOApp(App):
 
     def random_integrate_parts_case(self, rng, difficulty, index):
         mode = rng.choice(["exp", "sin", "cos", "log", "exp_sin_loop", "exp_cos_loop", "poly_log", "poly_atan", "nested_log", "high_poly_sin", "high_poly_cos", "high_poly_exp", "tan_exp", "sec_exp"])
-        power = rng.randint(2, 5 if difficulty != "hard" else 12)
+        power = self.random_power_limit(rng, difficulty, medium=5, hard=12)
         a = rng.randint(2, 6)
         if mode == "exp":
             integrand = f"x^{power}*exp({a}*x)"
@@ -3658,7 +3882,7 @@ class CASIOApp(App):
         elif mode == "exp":
             integrand = f"exp({a}*x-{rng.randint(1,5)})"
         elif mode == "fraction_power":
-            integrand = f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^{rng.randint(3,12 if difficulty == 'hard' else 7)}"
+            integrand = f"({self.random_linear_expr(rng, 'x', allow_negative=True)})^{self.random_power_limit(rng, difficulty, medium=7, hard=12)}"
         elif mode == "one_over_shifted_quad":
             integrand = f"1/(x^2+{rng.randint(2,9)}*x+{rng.randint(10,30)})"
         else:
@@ -3685,9 +3909,12 @@ class CASIOApp(App):
         def frac_text(value):
             return str(value.numerator) if value.denominator == 1 else f"{value.numerator}/{value.denominator}"
 
-        u = Fraction(rng.randint(-9, 9), rng.choice([1, 1, 1, 2, 3]) if difficulty == "hard" else 1)
-        a = Fraction(self.random_nonzero_int(rng, -7, 7), rng.choice([1, 1, 2, 3]) if difficulty == "hard" else 1)
-        t = Fraction(rng.randint(1, 8), rng.choice([1, 1, 2, 3]) if difficulty == "hard" else 1)
+        den_pool = [1, 1, 1, 2, 3]
+        if difficulty == "chaos":
+            den_pool = [1, 2, 3, 5, 8, self.random_unbounded_count(rng, minimum=5, continue_probability=0.25)]
+        u = Fraction(rng.randint(-9, 9), rng.choice(den_pool) if difficulty in ("hard", "chaos") else 1)
+        a = Fraction(self.random_nonzero_int(rng, -7, 7), rng.choice(den_pool) if difficulty in ("hard", "chaos") else 1)
+        t = Fraction(rng.randint(1, 8), rng.choice(den_pool) if difficulty in ("hard", "chaos") else 1)
         v = u + a * t
         s = u * t + Fraction(1, 2) * a * t * t
 
@@ -3902,6 +4129,8 @@ class CASIOApp(App):
             if script == "deriveProgram.py":
                 if mode == "1" and len(lines) >= 2:
                     return self.derive_output_checker(lines[1])
+                if mode == "2" and len(lines) >= 2:
+                    return self.derive_implicit_output_checker(lines[1])
                 if mode == "3" and len(lines) >= 3:
                     return self.parametric_output_checker(lines[1], lines[2])
             if script == "intProgram.py" and mode == "1" and len(lines) >= 2:
