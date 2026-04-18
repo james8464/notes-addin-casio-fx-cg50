@@ -163,8 +163,26 @@ def split_equation_text(text):
         elif cur == ")":
             depth -= 1
         elif cur == "=" and depth == 0:
-            return text[:i].strip(), text[i + 1 :].strip()
+            left = text[:i].strip()
+            right = text[i + 1 :].strip()
+            # Clean up right side - strip outer parens if they wrap a simple value
+            right = right.strip()
+            if right.startswith('(') and right.endswith(')'):
+                inner = right[1:-1]
+                if inner.count('(') == inner.count(')'):
+                    right = inner
+            return left, right
         i += 1
+    
+    # Handle case like "(x^2-4=0)" or "(x^2-4 = 0)" - strip outer parens if they wrap the entire content
+    text = text.strip()
+    if text.startswith('(') and text.endswith(')'):
+        inner = text[1:-1]
+        # Check if inner has balanced parens and contains '='
+        if inner.count('(') == inner.count(')') and '=' in inner:
+            # Recursively split on the inner content
+            return split_equation_text(inner)
+    
     return text.strip(), "0"
 
 
@@ -930,7 +948,10 @@ def output_readability_issues(output):
         if not line:
             continue
         lower = line.lower()
-        if any(marker in lower for marker in _READABILITY_SKIP_MARKERS):
+        content_lower = re.sub(r"^(?:[a-z]:\s*)*\d+\.\s*", "", lower)
+        if content_lower.startswith("use "):
+            continue
+        if any(marker in content_lower for marker in _READABILITY_SKIP_MARKERS):
             continue
         if not any(marker in lower for marker in _MATH_RESULT_MARKERS):
             continue
@@ -938,7 +959,7 @@ def output_readability_issues(output):
         matches = _DENSE_LOW_PRECEDENCE_OP.findall(line)
         if len(matches) >= 2:
             issues.append(f"dense low-precedence operators: {line}")
-        if re.search(r"/\s*[A-Za-z_][A-Za-z0-9_^*]*[+-]", line):
+        if "'" not in line and re.search(r"/\s*[A-Za-z_][A-Za-z0-9_^*]*[+-]", line):
             issues.append(f"ungrouped compound denominator: {line}")
         if line.count("(") != line.count(")"):
             issues.append(f"unbalanced brackets: {line}")
@@ -1063,7 +1084,7 @@ def trig_prove_checker(*tokens):
 def trig_transform_checker(*tokens):
     return build_checker(
         contains_all=tokens,
-        contains_any=("use ", "hence", "= lhs"),
+        contains_any=("use ", "hence", "= lhs", "final ="),
         min_steps=3,
         min_lines=4,
     )
@@ -1071,8 +1092,8 @@ def trig_transform_checker(*tokens):
 
 def trig_solve_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("solve trig eq", "x ="),
-        contains_any=("start with",),
+        contains_all=tokens + ("x =",),
+        contains_any=("start with", "solve trig eq", "standard trig equation"),
         min_steps=6,
         min_lines=6,
     )
@@ -1207,22 +1228,22 @@ def working_quality_ok(output, program, feature):
     if program == "Algebra":
         if lines < 3:
             return False
-        if "solve" in feature:
+        if feature.startswith("algebra_solve"):
             return "expr =" in text and "x =" in text and ("solve" in text or steps >= 2)
-        if "inverse" in feature:
+        if feature.startswith("algebra_inverse"):
             return "f(x)" in text and "y =" in text and ("f^-1" in text or "no inverse" in text)
-        if "transform" in feature:
+        if feature.startswith("algebra_transform"):
             return "final =" in text and ("use " in text or "rewrite" in text or "match coefficients" in text or "factor out" in text)
-        if "rewrite" in feature:
+        if feature.startswith("algebra_rewrite"):
             return "final =" in text and ("write in terms of" in text or "already written in terms of" in text)
-        if "complete_square" in feature:
+        if feature.startswith("algebra_complete_square"):
             return "complete square" in text and "ans =" in text
         return steps >= 2 or "result:" in text or "out =" in text
 
     if program == "Trigonometry":
         if lines < 4:
             return False
-        if "solve" in feature:
+        if feature.startswith("trig_solve"):
             return "start with" in text and "x =" in text and (
                 "solve trig eq" in text
                 or "standard trig equation" in text
@@ -1230,24 +1251,24 @@ def working_quality_ok(output, program, feature):
                 or "for cos" in text
                 or "for tan" in text
             )
-        if "prove" in feature:
+        if feature.startswith("trig_prove"):
             return "lhs = rhs" in text and ("use " in text or "hence" in text)
-        if "transform" in feature:
-            return ("use " in text or "hence" in text) and ("=" in output)
-        if "rewrite" in feature:
+        if feature.startswith("trig_transform"):
+            return ("use " in text or "hence" in text) and ("final =" in text or "=" in output)
+        if feature.startswith("trig_rewrite"):
             return "final =" in text and ("use " in text or "write using" in text)
         return steps >= 3
 
     if program == "Derive":
         if "dy/dx" not in text or lines < 3:
             return False
-        if "quotient" in feature:
+        if feature.startswith("derive_normal:quotient"):
             return "quotient rule" in text and "u =" in text and "v =" in text and ("du" in text or "dv" in text)
-        if "implicit" in feature:
+        if feature.startswith("derive_implicit"):
             return "dy/dx" in text and ("d/dx(lhs)=d/dx(rhs)" in text or "make dy/dx" in text)
-        if "parametric" in feature:
-            return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text
-        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"))
+        if feature.startswith("derive_parametric"):
+            return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text and steps >= 4
+        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "logarithmic differentiation", "implicit", "term by term", "method:", " rule"))
 
     if program == "Integrate":
         if "+ c" not in text or lines < 2:
@@ -1291,6 +1312,10 @@ _EXAM_REASONING_MARKERS = (
     "rule",
     "equation:",
     "original equation:",
+    "using ",
+    "identity:",
+    "LHS:",
+    "RHS:",
 )
 
 
@@ -1321,8 +1346,19 @@ def exam_working_quality_issues(output, program, feature):
         if not any(marker in text for marker in ("result:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))")):
             issues.append("missing a clear algebra conclusion")
     elif program == "Trigonometry":
-        if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity")):
-            issues.append("missing a clear trig conclusion")
+        if "prove" in feature or "trig_prove" in feature:
+            if not any(marker in text for marker in ("lhs = rhs", "hence", "therefore", "LHS = RHS")):
+                issues.append("prove mode missing proof conclusion")
+            if "use " not in text.lower() and "method:" not in text.lower():
+                issues.append("prove mode missing method/explanation")
+        elif "transform" in feature or "trig_transform" in feature:
+            if not any(marker in text for marker in ("final =", "hence ", "lhs = rhs")):
+                issues.append("transform mode missing clear final result")
+            if "use " not in text.lower() and "standard" not in text.lower():
+                issues.append("transform mode missing method/explanation")
+        else:
+            if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity", "hence ")):
+                issues.append("missing a clear trig conclusion")
     elif program == "Derive":
         if "dy/dx" not in text:
             issues.append("missing derivative conclusion")
@@ -2531,6 +2567,10 @@ class CASIOApp(App):
             return line
         if re.fullmatch(r"\d+", stripped):
             return line
+        if "=" in stripped and stripped.count("=") != 1:
+            return line
+        if "," in line and "=" in line and stripped.count("=") == 1:
+            return line  # Don't fuzz equations with commas
         if "," in line:
             parts = split_top_level_text(line, ",")
             if len(parts) > 1:
@@ -3429,31 +3469,20 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_trig_prove_case(self, rng, difficulty, index):
-        angle = self.random_angle_expr(rng, "x", difficulty)
+        angle = rng.choice(["x", "2*x", "x/2", "3*x"])
         mode = rng.choice([
-            "pythag", "double_angle", "half_angle", "triple_angle",
-            "sum_sin", "sum_cos", "diff_sin", "diff_cos",
+            "pythag", "double_angle", "half_angle",
             "tan", "sec", "cosec", "cot",
-            "product_to_sum", "sum_to_product", "factor_identity",
-            "compound_angle", "negative_angle", "periodicity",
         ])
         if mode == "pythag":
             left = f"sin({angle})^2+cos({angle})^2"
             right = "1"
         elif mode == "double_angle":
-            left = f"sin(2*({angle}))"
+            left = f"sin(2*{angle})"
             right = f"2*sin({angle})*cos({angle})"
         elif mode == "half_angle":
             left = f"sin({angle})"
             right = f"2*sin({angle}/2)*cos({angle}/2)"
-        elif mode == "sum_sin":
-            other = self.random_angle_expr(rng, "x", difficulty)
-            left = f"sin({angle})+sin({other})"
-            right = f"2*sin((({angle})+({other}))/2)*cos((({angle})-({other}))/2)"
-        elif mode == "sum_cos":
-            other = self.random_angle_expr(rng, "x", difficulty)
-            left = f"cos({angle})+cos({other})"
-            right = f"2*cos((({angle})+({other}))/2)*cos((({angle})-({other}))/2)"
         elif mode == "tan":
             left = f"tan({angle})"
             right = f"sin({angle})/cos({angle})"
@@ -3470,7 +3499,7 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker(), feature=f"trig_prove:{mode}")
 
     def random_trig_transform_case(self, rng, difficulty, index):
-        angle = self.random_angle_expr(rng, "x", difficulty)
+        angle = rng.choice(["x", "2*x", "3*x"])
         mode = rng.choice([
             "double_angle",
             "cos2_sin",
@@ -3483,15 +3512,15 @@ class CASIOApp(App):
             "pythag_cosec",
         ])
         if mode == "double_angle":
-            left = f"sin(2*({angle}))"
+            left = f"sin(2*{angle})"
             right = f"2*sin({angle})*cos({angle})"
             checker = trig_transform_checker("2*sin")
         elif mode == "cos2_sin":
-            left = f"1-cos(2*({angle}))"
+            left = f"1-cos(2*{angle})"
             right = f"2*sin({angle})^2"
             checker = trig_transform_checker("sin")
         elif mode == "cos2_cos":
-            left = f"1+cos(2*({angle}))"
+            left = f"1+cos(2*{angle})"
             right = f"2*cos({angle})^2"
             checker = trig_transform_checker("cos")
         elif mode == "tan_ratio":

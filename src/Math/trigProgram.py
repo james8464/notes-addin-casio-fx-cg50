@@ -1439,6 +1439,15 @@ def parse(text):
         p += 1
         return here
 
+    def is_atom_start(tok):
+        if tok is None:
+            return False
+        if tok == "(":
+            return True
+        if tok in ("+", "-", "*", "/", "**", ")", ",", "="):
+            return False
+        return True
+
     def starts_implicit(tok):
         if tok is None:
             return False
@@ -1528,7 +1537,7 @@ def parse(text):
             elif tok == "/":
                 eat("/")
                 out = div(out, unary())
-            elif starts_implicit(tok):
+            elif is_atom_start(tok):
                 out = mul([out, unary()])
             else:
                 return out
@@ -1562,6 +1571,14 @@ def split_top_level(text, ch):
         elif cur == ch and depth == 0:
             return text[:i], text[i + 1 :]
         i += 1
+    
+    # Handle case like "(x+y=z)" - strip outer parens if balanced and contains ch
+    text = text.strip()
+    if text.startswith("(") and text.endswith(")"):
+        inner = text[1:-1]
+        if inner.count("(") == inner.count(")") and ch in inner:
+            return split_top_level(inner, ch)
+    
     return None
 
 
@@ -1585,12 +1602,25 @@ def split_top_level_all(text, ch):
 
 
 def parse_identity(text):
+    text = text.strip()
+    while text.startswith("(") and text.endswith(")"):
+        inner = text[1:-1]
+        if inner.count("(") == inner.count(")") and "=" in inner:
+            text = inner
+        elif inner.count("(") == inner.count(")") and inner.count("=") == 1:
+            text = inner
+        else:
+            break
+    text = _balance_parens(text)
     parts = split_top_level(text, "=")
     if parts is None:
         raise ValueError("Identity input must contain '='.")
-    left = parse(parts[0].strip())
-    right = parse(parts[1].strip())
-    return left, right
+    try:
+        left = parse(parts[0].strip())
+        right = parse(parts[1].strip())
+        return left, right
+    except Exception:
+        raise ValueError("Identity input contains invalid syntax.")
 
 
 def split_rewrite_arrow(text):
@@ -3337,6 +3367,7 @@ def standard_ratio_identity_lines(lhs, rhs):
 
 
 def direct_expression_transform_lines(source_expr, target_expr, target_text):
+    final_line = "Final = " + show(target_expr)
     if same(target_expr, num(1)):
         var = detect_transform_var(source_expr, target_expr) or single_symbol_name(source_expr) or "x"
         diff_expr = sim(add([source_expr, neg(target_expr)]))
@@ -3346,6 +3377,7 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
                 "Use sec^2(A)-tan^2(A) = 1.",
                 "= 1",
                 "Hence " + target_text.strip(),
+                final_line,
             ])
         if match_scaled_reciprocal_identity_zero(diff_expr, var, "cosec", "cot") is not None:
             return compact_lines([
@@ -3353,6 +3385,7 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
                 "Use cosec^2(A)-cot^2(A) = 1.",
                 "= 1",
                 "Hence " + target_text.strip(),
+                final_line,
             ])
     rewritten, note = direct_double_angle_rewrite(source_expr)
     if rewritten is not None and equivalent(rewritten, target_expr):
@@ -3361,10 +3394,11 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
             note,
             "= " + show(rewritten),
             "Hence " + target_text.strip(),
+            final_line,
         ])
     ratio_lines = standard_ratio_identity_lines(source_expr, target_expr)
     if ratio_lines is not None:
-        return compact_lines(list(ratio_lines[:-1]) + ["Hence " + target_text.strip()])
+        return compact_lines(list(ratio_lines[:-1]) + ["Hence " + target_text.strip(), final_line])
     return None
 
 
@@ -6196,6 +6230,14 @@ def split_identity_text_raw(text):
         elif ch == "=" and depth == 0:
             return text[:i].strip(), text[i + 1 :].strip()
         i += 1
+    
+    # Handle case like "(x+y=z)" - strip outer parens if balanced
+    text = text.strip()
+    if text.startswith("(") and text.endswith(")"):
+        inner = text[1:-1]
+        if inner.count("(") == inner.count(")") and "=" in inner:
+            return split_identity_text_raw(inner)
+    
     raise ValueError("Identity must contain '='.")
 
 
@@ -7953,6 +7995,8 @@ def solve_transform_text(eq1_text, eq2_text):
     begin_user_action()
     eq1_lhs, eq1_rhs = parse_equation_or_zero(eq1_text)
     eq2_lhs, eq2_rhs = parse_equation_or_zero(eq2_text)
+    if eq1_lhs is None or eq2_lhs is None:
+        raise ValueError("Unable to parse equation.")
     expression_only = is_zero(eq1_rhs) and is_zero(eq2_rhs)
     if same(eq1_lhs, eq2_lhs) and expression_only:
         return [show(eq1_lhs), '= ' + show(eq2_lhs)]
@@ -8150,10 +8194,54 @@ def solve_transform_text(eq1_text, eq2_text):
 
 
 def parse_equation_or_zero(text):
+    text_original = text
+    text = text.strip()
+    while text.startswith("(") and text.endswith(")") and text.count("(") == text.count(")"):
+        inner = text[1:-1].strip()
+        if inner == "":
+            break
+        if "=" in inner:
+            text = inner
+            break
+        text = inner
+    text = _balance_parens(text)
     parts = split_top_level(text, "=")
     if parts is None:
-        return parse(text.strip()), num(0)
-    return parse(parts[0].strip()), parse(parts[1].strip())
+        try:
+            return parse(text.strip()), num(0)
+        except Exception:
+            return None, None
+    try:
+        return parse(parts[0].strip()), parse(parts[1].strip())
+    except Exception:
+        return None, None
+
+
+def _balance_parens(text):
+    text = text.strip()
+    depth = 0
+    for c in text:
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+    if depth > 0:
+        text = text + ")" * depth
+    elif depth < 0:
+        i = 0
+        new_depth = 0
+        result = ""
+        for c in text:
+            if c == "(":
+                new_depth += 1
+            elif c == ")":
+                if new_depth > 0:
+                    new_depth -= 1
+                    result += c
+                continue
+            result += c
+        text = result
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -9326,6 +9414,7 @@ def dedupe_values(values, tol=1e-6):
 def parse_interval_bound(text, is_start):
     text = text.strip()
     inclusive = True
+    original_text = text
     if is_start:
         if len(text) != 0 and text[0] in "([":
             inclusive = (text[0] == "[")
@@ -9338,7 +9427,13 @@ def parse_interval_bound(text, is_start):
             text = text[:-1].strip()
         if len(text) != 0 and text[0] in "([":
             text = text[1:].strip()
-    node = parse(text)
+    try:
+        node = parse(text)
+    except ValueError as e:
+        if original_text != text:
+            node = parse(original_text)
+        else:
+            raise
     value = eval_numeric(node, {})
     return value, contains_pi(node), inclusive
 
@@ -15582,6 +15677,22 @@ def _solve_solve_text_once(text):
 
 
 def solve_solve_text(text):
+    text = text.strip()
+    if "," in text:
+        bits = text.split(",", 3)
+        cleaned_bits = []
+        for bit in bits:
+            bit = bit.strip()
+            while bit.startswith("(") and bit.endswith(")") and bit.count("(") == bit.count(")"):
+                inner = bit[1:-1].strip()
+                if inner == "":
+                    break
+                bit = inner
+            cleaned_bits.append(bit)
+        if len(cleaned_bits) >= 2 and len(cleaned_bits) <= 4:
+            cleaned_text = ",".join(cleaned_bits)
+            if cleaned_text != text:
+                text = cleaned_text
     try:
         return _solve_solve_text_once(text)
     except Exception:
@@ -15602,7 +15713,12 @@ def solve_prove_text(text, route):
     lines = numeric_evaluation_text(text)
     if lines is not None:
         return compact_lines(lines)
-    lhs, rhs = parse_identity(text)
+    try:
+        lhs, rhs = parse_identity(text)
+    except ValueError as err:
+        if "Identity input must contain" in str(err):
+            return ["Err: Invalid identity format. Use lhs=rhs."]
+        raise
     try:
         lines = prove_cot_quadratic_equation(lhs, rhs)
         if lines is not None:
@@ -16106,21 +16222,27 @@ def numeric_evaluation_text(text):
     text = text.strip()
     # Check if it looks like a numeric expression (no variable dependency)
     if "=" not in text:
-        # This is a standalone expression like "tan(75)" or "sin(30) + cos(60)"
-        node = parse(text)
-        if node is None:
+        try:
+            node = parse(text)
+            if node is None:
+                return None
+            if depends(node, "x") or depends(node, "theta") or depends(node, "a") or depends(node, "A"):
+                return None
+            result = eval_numeric(node, {})
+            if result is not None:
+                lines = ["Calculate " + text + "."]
+                lines.append(text + " = " + format_numeric_result(result))
+                return lines
             return None
-        if depends(node, "x") or depends(node, "theta") or depends(node, "a") or depends(node, "A"):
+        except Exception:
             return None
-        result = eval_numeric(node, {})
-        if result is not None:
-            lines = ["Calculate " + text + "."]
-            lines.append(text + " = " + format_numeric_result(result))
-            return lines
+    
+    # Use split_top_level to handle equations like "(cot(...)=cos(...)/sin(...))"
+    parts = split_top_level(text, "=")
+    if parts is None:
         return None
-    lhs_text, rhs_text = text.split("=", 1)
-    lhs_text = lhs_text.strip()
-    rhs_text = rhs_text.strip()
+    lhs_text, rhs_text = parts
+    
     lhs = parse(lhs_text)
     if lhs is None:
         return None

@@ -1157,6 +1157,11 @@ def rewrite_with_polynomial_support(text, term_text):
 def root_sort_key(node):
     value = numeric_eval(node, {})
     if value is not None:
+        if isinstance(value, complex):
+            if abs(value.imag) < 1e-10:
+                value = value.real
+            else:
+                return (2, value.real, value.imag, show(node))
         if value < 0:
             return (1, value, show(node))
         return (0, -value, show(node))
@@ -1542,7 +1547,18 @@ def parse_expr_or_equation(text):
     if body == '':
         raise ValueError('Enter input.')
     if '=' in body:
-        left_text, right_text = body.split('=', 1)
+        # Strip outer parentheses for proper splitting, but only if balanced
+        body = body.strip()
+        if body.startswith('(') and body.endswith(')'):
+            inner = body[1:-1]
+            if inner.count('(') == inner.count(')'):
+                top_level_eq = split_top_level(inner, '=')
+                if top_level_eq is not None:
+                    body = inner
+        parts = split_top_level(body, '=')
+        if parts is None:
+            return parse(body)
+        left_text, right_text = parts
         return sim(sub(parse(left_text.strip()), parse(right_text.strip())))
     return parse(body)
 
@@ -1562,7 +1578,20 @@ def parse_equation_or_zero(text):
     body = text.strip()
     if '=' not in body:
         return parse(body), num(0)
-    left_text, right_text = body.split('=', 1)
+    # Strip outer parentheses for proper splitting, but only if they are balanced
+    body = body.strip()
+    if body.startswith('(') and body.endswith(')'):
+        inner = body[1:-1]
+        # Check if stripping leaves balanced parens and contains top-level '='
+        if inner.count('(') == inner.count(')'):
+            # Find if there's a top-level '='
+            top_level_eq = split_top_level(inner, '=')
+            if top_level_eq is not None:
+                body = inner
+    parts = split_top_level(body, '=')
+    if parts is None:
+        return parse(body), num(0)
+    left_text, right_text = parts
     return parse(left_text.strip()), parse(right_text.strip())
 
 
@@ -1766,6 +1795,14 @@ def split_top_level(text, sep):
         elif ch == sep and depth == 0:
             return text[:i], text[i + 1:]
         i += 1
+    
+    # Handle case like "(x+y=z)" - strip outer parens if balanced and contains sep
+    text = text.strip()
+    if text.startswith('(') and text.endswith(')'):
+        inner = text[1:-1]
+        if inner.count('(') == inner.count(')') and sep in inner:
+            return split_top_level(inner, sep)
+    
     return None
 
 
@@ -2119,11 +2156,13 @@ def compose_functions(f_text, g_text, var='x'):
         g = parse(g_text)
         
         steps = []
-        steps.append("f(x) = " + f_text)
-        steps.append("g(x) = " + g_text)
+        steps.append("f(x) = " + show(f))
+        steps.append("g(x) = " + show(g))
+        steps.append("Substitute g(x) into f.")
         
         fg = substitute(f, sym(var), g)
         fg = sim(fg)
+        steps.append("Simplify the result.")
         
         fg = expand_algebraic(fg)
         fg = sim(fg)
@@ -3374,7 +3413,7 @@ def parse(text):
         if not is_atom_start(t):
             return False
         if t in FUNC_NAMES:
-            return False
+            return True
         return True
 
     def atom():
@@ -3775,7 +3814,7 @@ def compare_expressions(expr1, expr2):
 
 
 def solve_polynomial_expr(node, var_name):
-    coeffs, degree = polynomial_coeff_list(node, var_name, 8)
+    coeffs, degree = polynomial_coeff_list(node, var_name, 20)
     if coeffs is None:
         return None, None
     if degree == 0:
@@ -4933,26 +4972,28 @@ def is_pow_of_fn(node, fn_name, exp):
 def compare_expressions(expr1, expr2):
     steps = []
     step_num = 1
-    steps.append((step_num, 'Expression 1: ' + show(expr1), expr1))
+    steps.append((step_num, 'Using simplify.', expr1))
     step_num += 1
-    steps.append((step_num, 'Expression 2: ' + show(expr2), expr2))
+    steps.append((step_num, 'Expr1: ' + show(expr1), expr1))
+    step_num += 1
+    steps.append((step_num, 'Expr2: ' + show(expr2), expr2))
     step_num += 1
     simple1 = canonical_compare_form(expr1)
-    steps.append((step_num, 'Simplify expr1: ' + show(simple1), simple1))
+    steps.append((step_num, 'Simplify: ' + show(simple1), simple1))
     step_num += 1
     simple2 = canonical_compare_form(expr2)
-    steps.append((step_num, 'Simplify expr2: ' + show(simple2), simple2))
+    steps.append((step_num, 'Simplify: ' + show(simple2), simple2))
     step_num += 1
     if equivalent(simple1, simple2):
-        steps.append((step_num, 'EXPRESSIONS ARE EQUIVALENT', simple1))
+        steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         return True, steps
     diff = show(sim(add([simple1, neg(simple2)])))
-    steps.append((step_num, 'Difference (should be 0): ' + diff, None))
+    steps.append((step_num, 'Difference: ' + diff, None))
     return False, steps
 
 
 def solve_polynomial_expr(node, var_name):
-    coeffs, degree = polynomial_coeff_list(node, var_name, 8)
+    coeffs, degree = polynomial_coeff_list(node, var_name, 20)
     if coeffs is None:
         return None, None
     if degree == 0:
@@ -5724,23 +5765,20 @@ def main():
             text2 = input('E2: ').strip()
             expr1 = parse(text1)
             expr2 = parse(text2)
-            print('1. expr1 = ' + show(expr1))
-            print('2. expr2 = ' + show(expr2))
-            print('3. Simplify both...')
+            print('1. Compare expressions.')
             s1 = sim(expr1)
             s2 = sim(expr2)
-            print('4. expr1 = ' + show(s1))
-            print('5. expr2 = ' + show(s2))
+            print('2. Simplify both.')
             equal, steps = compare_expressions(expr1, expr2)
             i = 0
             while i < len(steps):
                 num, desc, _ = steps[i]
-                print(str(num + 5) + '. ' + desc)
+                print(str(num + 2) + '. ' + desc)
                 i += 1
             if equal:
-                print(str(len(steps) + 6) + '. RESULT: Equivalent')
+                print(str(len(steps) + 3) + '. Result: Equivalent.')
             else:
-                print(str(len(steps) + 6) + '. RESULT: Not equivalent')
+                print(str(len(steps) + 3) + '. Result: Not equivalent.')
         elif mode == '2':
             text1 = input('Src: ').strip()
             expr1 = parse(text1)
@@ -5803,15 +5841,13 @@ def main():
                 g_text = 'x^2'
                 print('Use: f=' + f_text + ', g=' + g_text)
             result, steps = compose_functions(f_text, g_text)
-            print('1. f(x) = ' + f_text)
-            print('2. g(x) = ' + g_text)
             if result:
                 i = 0
                 while i < len(steps):
-                    print(str(i+3) + '. ' + steps[i])
+                    print(str(i+1) + '. ' + steps[i])
                     i += 1
             else:
-                print('3. ' + steps[0])
+                print('1. ' + steps[0])
         elif mode == '8':
             print('Inv fn')
             f_text = input('f: ').strip()
@@ -5819,16 +5855,15 @@ def main():
                 f_text = '2*x+1'
                 print('Use: f=' + f_text)
             result, steps = inverse_function(f_text)
-            print('1. f(x) = ' + f_text)
             if result:
                 i = 0
                 while i < len(steps):
-                    print(str(i+2) + '. ' + steps[i])
+                    print(str(i+1) + '. ' + steps[i])
                     i += 1
             else:
                 i = 0
                 while i < len(steps):
-                    print(str(i+2) + '. ' + steps[i])
+                    print(str(i+1) + '. ' + steps[i])
                     i += 1
         elif mode == '9':
             text = input('Rw: ').strip()

@@ -1144,6 +1144,30 @@ def decompose_name_word(word, next_char):
         ". Use single-letter variables.")
 
 
+def split_at_equals(text):
+    """Split equation text at top-level equals, handling parentheses."""
+    text = text.strip()
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            return text[:i].strip(), text[i + 1:].strip()
+        i += 1
+    
+    # Handle case like "(x+y=1)" - strip outer parens if balanced
+    if text.startswith("(") and text.endswith(")"):
+        inner = text[1:-1]
+        if inner.count("(") == inner.count(")") and "=" in inner:
+            return split_at_equals(inner)
+    
+    return None, text
+
+
 def split_explicit_var(text):
     body = text.strip()
     if body[:1] == "(" and body[-1:] == ")":
@@ -1345,10 +1369,10 @@ def parse(text):
 
 
 def parse_normal_input(text):
-    equals_pos = text.find("=")
-    if equals_pos != -1:
-        left_side = text[:equals_pos].strip()
-        right_side = text[equals_pos+1:].strip()
+    left_text, right_text = split_at_equals(text)
+    if left_text is not None:
+        left_side = left_text.strip()
+        right_side = right_text.strip()
         if left_side == "y" or left_side.startswith("f("):
             return parse(right_side), "x"
         else:
@@ -1424,9 +1448,10 @@ def explain(node, var, deps_list):
             lines.append("Generalized power rule")
             lines.append("= " + show(d))
             return d, lines
-        lines.append("Log diff")
+        lines.append("Method: logarithmic differentiation.")
         lines.append("y = " + show(node))
-        lines.append("dy/d" + var + " = y*(u'/u+ln(u)*v')")
+        lines.append("Let u = " + show(base) + " and v = " + show(exp) + ".")
+        lines.append("dy/d" + var + " = y*((u')/u + ln(u)*v')")
         lines.append("= " + show(d))
         return d, lines
     if node[0] == "fn":
@@ -2216,7 +2241,9 @@ def main():
             text = input("Eq: ").strip()
             if "=" not in text:
                 raise ValueError("Use left=right.")
-            left_text, right_text = text.split("=", 1)
+            left_text, right_text = split_at_equals(text)
+            if left_text is None:
+                left_text, right_text = text.split("=", 1)
             left = trig_normal(parse(left_text))
             right = trig_normal(parse(right_text))
             var, dep = pick_implicit_vars(left, right)
@@ -2245,9 +2272,10 @@ def main():
                     raise ValueError("No " + dep + ".")
                 raise ValueError("No " + dname + ".")
             ans = tidy(div(neg(rest), coef))
+            print(str(step) + ". Method: differentiate implicitly.")
             print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + readable_show(dleft) + " = " + readable_show(dright))
-            print(str(step + 2) + ". Make " + dname)
+            print(str(step + 2) + ". Rearrange: make " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
             print(str(step + 3) + ". " + grouped + " = 0")
             print(dname + " = " + readable_show(ans))
@@ -2531,12 +2559,15 @@ def main():
             if is_zero(dx):
                 raise ValueError("dx/dt=0.")
             ans = prefer_trig_recip(sim(div(dy, dx)))
-            print("dx/dt = " + show(dx))
-            print("dy/dt = " + show(dy))
-            print("dy/dx = (dy/dt)/(dx/dt) = " + show(ans))
+            print("1. Differentiate x(t) with respect to t.")
+            print("2. dx/dt = " + readable_show(dx))
+            print("3. Differentiate y(t) with respect to t.")
+            print("4. dy/dt = " + readable_show(dy))
+            print("5. Use dy/dx = (dy/dt)/(dx/dt).")
+            print("6. dy/dx = " + readable_show(ans))
             cart = cartesian_from_param_exprs(xt, yt, "t")
             if cart is not None:
-                print(cart[2] + ": " + show(cart[0]) + " = " + show(cart[1]))
+                print("7. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
 
         else:
             print("Bad mode.")

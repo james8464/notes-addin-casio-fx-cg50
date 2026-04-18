@@ -4495,9 +4495,9 @@ def integrate_shifted_sinodd_cos2(node, var):
     if ans is None:
         return None, None
     lines = [
-        'Use sin^5(A) = (10sin(A)-5sin(3A)+sin(5A))/16.',
-        'Use cos^2(B) = (1+cos(2B))/2.',
-        'Use sin(P)cos(Q) = 1/2[sin(P+Q)+sin(P-Q)].',
+        'Use sin^5(A) = (10*sin(A) - 5*sin(3*A) + sin(5*A))/16.',
+        'Use cos^2(B) = (1 + cos(2*B))/2.',
+        'Use sin(P)*cos(Q) = (1/2)*[sin(P + Q) + sin(P - Q)].',
         'So I = Int[' + pretty(expanded) + '] d' + var,
     ]
     if ans_lines is not None:
