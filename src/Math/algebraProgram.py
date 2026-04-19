@@ -3908,7 +3908,7 @@ def solve_equation_text(text):
         return ensure_reasoning_marker(cartesian)
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
-    lines = ['Method: Solve equation', 'Input = ' + show(expr)]
+    lines = ['Method: Solve equation']
     if label == 'Identity':
         lines.append('All x satisfy this identity')
         lines.append('Solution: all real x')
@@ -3934,7 +3934,7 @@ def solve_transform_text(text1, text2):
     if same(result, expr1) and equivalent(expr1, expr2):
         result = expr2
         steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
-    lines = ['Method: Transform expression to target form', 'Start with: ' + show(expr1), 'Target: ' + show(expr2)]
+    lines = ['Method: Transform expression to target form']
     i = 0
     while i < len(steps):
         _num, desc, _node = steps[i]
@@ -3978,24 +3978,22 @@ def factor_text(text):
     if factored is None:
         quad = factor_quadratic_rational(expr)
         if quad is not None:
-            lines = ['Method: Factor quadratic', 'Input = ' + show(expr), quad[1], 'Factored form: ' + show(quad[0])]
+            lines = ['Method: Factor quadratic', quad[1], 'Factored form: ' + show(quad[0])]
             return ensure_reasoning_marker(lines)
         out = maybe_expand_for_compare(expr)
-        lines = ['Method: Test for factors', 'Input = ' + show(expr)]
+        lines = ['Method: Test for factors']
         if not same(out, expr):
             lines.append('Expanded form: ' + show(out))
             lines.append('Not easily factorable')
         else:
             lines.append('Already in simplest form')
         return ensure_reasoning_marker(lines)
-    lines = ['Method: Factor expression', 'Input = ' + show(expr)]
+    lines = ['Method: Factor expression']
     i = 0
     while i < len(factored):
         factored[i] + '\n'
         i += 1
     lines.append('Factored form: ' + factored[1] + ' = ' + show(factored[0]))
-    return ensure_reasoning_marker(lines)
-    lines = ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
     return ensure_reasoning_marker(lines)
 
 def expand_pow_sqrt(node):

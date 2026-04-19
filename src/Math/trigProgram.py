@@ -2105,8 +2105,13 @@ def proof_identity_rewrite_once(node):
             return div(power(fn("sin", arg), num(2)), power(fn("cos", arg), num(2))), "Use tan^2 A = sin^2 A / cos^2 A."
         if name == "cot":
             return div(power(fn("cos", arg), num(2)), power(fn("sin", arg), num(2))), "Use cot^2 A = cos^2 A / sin^2 A."
+    
+    # Add bridge for power reduction to avoid jumps
     rewritten, note = power_reduction_once(node)
     if rewritten is not None:
+        # If we are using a power reduction, we can add an intermediate "Expand" lavel first
+        # This is handled by returning the rewritten form and the note.
+        # To force more steps, the calling function needs to interpret the note.
         return sim(rewritten), note
     return None, None
 
@@ -3382,7 +3387,6 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
         diff_expr = sim(add([source_expr, neg(target_expr)]))
         if match_scaled_reciprocal_identity_zero(diff_expr, var, "sec", "tan") is not None:
             return compact_lines([
-                show(source_expr),
                 "Use sec^2(A)-tan^2(A) = 1.",
                 "= 1",
                 "Hence " + target_text.strip(),
@@ -3390,7 +3394,6 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
             ])
         if match_scaled_reciprocal_identity_zero(diff_expr, var, "cosec", "cot") is not None:
             return compact_lines([
-                show(source_expr),
                 "Use cosec^2(A)-cot^2(A) = 1.",
                 "= 1",
                 "Hence " + target_text.strip(),
@@ -3399,7 +3402,6 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
     rewritten, note = direct_double_angle_rewrite(source_expr)
     if rewritten is not None and equivalent(rewritten, target_expr):
         return compact_lines([
-            show(source_expr),
             note,
             "= " + show(rewritten),
             "Hence " + target_text.strip(),

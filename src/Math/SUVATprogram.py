@@ -1759,8 +1759,7 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
             if result_float is not None and result_float < -1e-9:
                 return None, 'No solution: time must be positive.', None, None
             return result, 't = s/u', 's = ut', _sub_t3(s_val, u_val, v_val, a_val, t_val)
-
-    if target == 't' and s_val is not None and u_val is not None and a_val is not None and v_val is None:
+        
         result, steps, roots = solve_quadratic_time(s_val, u_val, v_val, a_val, t_val)
         if result is not None:
             root_values = []

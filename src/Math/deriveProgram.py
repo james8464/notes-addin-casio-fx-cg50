@@ -1414,7 +1414,7 @@ def parse_normal_input(text):
 
 def explain(node, var, deps_list):
     d = tidy(diff(node, var, deps_list))
-    lines = ['Method: Differentiate with respect to ' + var, 'Input: ' + show(node)]
+    lines = ['Method: Differentiate with respect to ' + var]
     if node[0] == "add":
         lines.append("Term by term differentiation")
         lines.append("dy/d" + var + " = " + show(d))
