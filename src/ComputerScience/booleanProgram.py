@@ -617,19 +617,109 @@ def prove(lhs_text, rhs_text):
 FAIL = "Could not prove identity. Check input."
 
 
+MENU_LINE_WIDTH = 20
+MENU_PAGE_LINES = 4
+
+
+def wrap_menu_text(text, width=MENU_LINE_WIDTH):
+    text = text.strip()
+    if text == "":
+        return [""]
+    out = []
+    remaining = text
+    while remaining != "":
+        if len(remaining) <= width:
+            out.append(remaining)
+            break
+        split = remaining.rfind(" ", 0, width + 1)
+        if split <= 0:
+            out.append(remaining[:width])
+            remaining = remaining[width:]
+        else:
+            out.append(remaining[:split])
+            remaining = remaining[split + 1:]
+        while remaining[:1] == " ":
+            remaining = remaining[1:]
+    return out
+
+
+def build_menu_pages(options):
+    pages = []
+    page = []
+    used = 0
+    i = 0
+    while i < len(options):
+        key, label = options[i]
+        lines = wrap_menu_text(key + " " + label)
+        if used > 0 and used + len(lines) > MENU_PAGE_LINES:
+            pages.append(page)
+            page = []
+            used = 0
+        page.append(lines)
+        used += len(lines)
+        i += 1
+    if len(page) == 0:
+        pages.append([])
+    else:
+        pages.append(page)
+    return pages
+
+
+def paged_menu_input(prompt_label, options, default=None):
+    pages = build_menu_pages(options)
+    valid = {}
+    i = 0
+    while i < len(options):
+        valid[options[i][0]] = True
+        i += 1
+    page_index = 0
+    while True:
+        page = pages[page_index]
+        i = 0
+        while i < len(page):
+            lines = page[i]
+            j = 0
+            while j < len(lines):
+                print(lines[j])
+                j += 1
+            i += 1
+        prompt = prompt_label
+        if len(pages) > 1:
+            prompt += " " + str(page_index + 1) + "/" + str(len(pages)) + " n/p"
+        prompt += ": "
+        choice = input(prompt).strip()
+        if choice == "":
+            if default is not None:
+                return default
+        else:
+            lowered = choice.lower()
+            if lowered == "n" and len(pages) > 1:
+                page_index += 1
+                if page_index >= len(pages):
+                    page_index = 0
+                continue
+            if lowered == "p" and len(pages) > 1:
+                page_index -= 1
+                if page_index < 0:
+                    page_index = len(pages) - 1
+                continue
+            if choice in valid:
+                return choice
+        print("Mode must be 1-4.")
+
+
 print("Syntax:")
 print("  , for NOT (e.g. A, = NOT A)")
 print("  . for AND (e.g. A.B = A AND B)")
 print("  + for OR (e.g. A+B = A OR B)")
 print("Variables: single letters (A, B) or multi-letter (AB = A AND B)")
 print("")
-print("1 simplify")
-print("2 nand form")
-print("3 nor form")
-print("4 prove")
-mode = input("Mode: ").strip()
-if mode == "":
-    mode = "1"
+mode = paged_menu_input("Mode", [
+    ("1", "simplify"),
+    ("2", "nand form"),
+    ("3", "nor form"),
+    ("4", "prove"),
+], "1")
 
 print("")
 try:
