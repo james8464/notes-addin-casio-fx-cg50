@@ -767,45 +767,25 @@ def trig_same_angle_power_rewrite(node):
         if I > 1:
             J.append(K('sin', 0, (I - 1) // 2))
         return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
-    # Handle sin^m(x) * cos^n(x) where both m and n are even
-    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0 and ((H == 4 and I == 2) or (H == 2 and I == 4)):
-        double_arg = mul([num(2), G])
-        four_arg = mul([num(4), G])
-        six_arg = mul([num(6), G])
-        if H == 4:
-            reduced = add([
-                num(1, 16),
-                neg(mul([num(1, 32), fn('cos', double_arg)])),
-                neg(mul([num(1, 16), fn('cos', four_arg)])),
-                mul([num(1, 32), fn('cos', six_arg)]),
-            ])
-        else:
-            reduced = add([
-                num(1, 16),
-                mul([num(1, 32), fn('cos', double_arg)]),
-                neg(mul([num(1, 16), fn('cos', four_arg)])),
-                neg(mul([num(1, 32), fn('cos', six_arg)])),
-            ])
+# Handle sin^m(x) * cos^n(x) where both m and n are even (general case)
+    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0:
+        from math import comb as binomial
+        terms = []
+        half_h = H // 2
+        half_i = I // 2
+        for m in range(half_h + 1):
+            for n in range(half_i + 1):
+                coeff_val = binomial(half_h, m) * binomial(half_i, n)
+                sign = (-1) ** (m + n)
+                power_val = 2 * (m + n)
+                coeff = num(sign * coeff_val, 2 ** (half_h + half_i))
+                if power_val == 0:
+                    terms.append(coeff)
+                else:
+                    terms.append(mul([coeff, fn('cos', mul([num(power_val), G]))]))
+        reduced = make_add(terms)
         J.append(reduced)
-        return 'Use power-reduction identities for the even powers of sin and cos.', expand_small(make_mul(J))
-    if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0 and H == I:
-        # sin^2(x)*cos^2(x) = (1/4)*sin^2(2x)
-        # sin^4(x)*cos^4(x) = (1/16)*sin^4(2x), etc.
-        new_pow = (H // 2) + (I // 2)
-        coeff = num(1, 2 ** ((H // 2) + (I // 2)))
-        # Actually: sin^2*cos^2 = (sin(2x))^2/4 = (1-cos(4x))/8
-        # For general even powers: sin^m * cos^n with m,n even:
-        # Use formula: sin^2(2x) = 4*sin^2(x)*cos^2(x)
-        # So sin^2(x)*cos^2(x) = sin^2(2x)/4
-        double_arg = mul([num(2), G])
-        sin_2x = fn('sin', double_arg)
-        new_expr = power(sin_2x, num(H // 2 + I // 2))
-        if H // 2 + I // 2 > 1:
-            new_expr = power(sin_2x, num(H // 2 + I // 2))
-        else:
-            new_expr = sin_2x
-        result = mul([num(1, 2 ** ((H // 2) + (I // 2))), new_expr])
-        return 'Use sin(2x) = 2sin(x)cos(x).', expand_small(result)
+        return 'Use power-reduction identities: sin^m(x)cos^n(x) = sum of cos(kx).', expand_small(make_mul(J))
     return None, None
 
 
@@ -6607,7 +6587,7 @@ def ensure_working_lines(node, var, title, ans, lines):
     if ans is None:
         return lines
     if lines is not None and len(lines) > 0:
-        return lines
+        return ensure_reasoning_marker(lines)
     if title in ('std', 'f(ax+b)'):
         simplified = sim(node)
         if simplified[0] == 'div' and is_one(simplified[1]):
@@ -6618,21 +6598,24 @@ def ensure_working_lines(node, var, title, ans, lines):
                 constant = sim(sub(poly[0], power(half_lin, num(2))))
                 if is_num(constant) and constant[1] > 0:
                     completed = add([power(shifted, num(2)), constant])
-                    return [
+                    result_lines = [
                         'Complete the square in the denominator.',
                         pretty(simplified[2]) + ' = ' + pretty(completed),
                         'Use the standard result for 1/(u^2+a^2).',
                         'So I = ' + pretty(ans) + ' + C',
                     ]
-        return [
+                    return ensure_reasoning_marker(result_lines)
+        result_lines = [
             'Use the standard integral for ' + pretty(node) + '.',
             'So I = ' + pretty(ans) + ' + C',
         ]
+        return ensure_reasoning_marker(result_lines)
     if title == 'Reverse chain rule':
-        return [
+        result_lines = [
             'Use reverse chain rule.',
             'So I = ' + pretty(ans) + ' + C',
         ]
+        return ensure_reasoning_marker(result_lines)
     if title == 'Integration by substitution':
         return [
             'Use substitution.',

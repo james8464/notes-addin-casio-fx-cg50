@@ -1316,6 +1316,11 @@ _EXAM_REASONING_MARKERS = (
     "identity:",
     "LHS:",
     "RHS:",
+    "start with",
+    "write in terms",
+    "already written",
+    "final =",
+    "rewrite to target",
 )
 
 
@@ -1687,32 +1692,12 @@ class CASIOApp(App):
         self.current_program = "all"
         self.current_difficulty = "all"
         self.last_run_scope = ("all", "all")
-        self.last_command = "/run all"
+        self.last_command = "/random chaos 9999"
         self.last_report_path = None
         self.current_random_workers = None
         self.current_run_question_keys = set()
         self.session_random_question_keys = set()
         self.command_items = {
-            "/run": "Run all tests in the current scope",
-            "/run all": "Run every test across every program",
-            "/run easy": "Run easy tests for every program",
-            "/run medium": "Run medium tests for every program",
-            "/run hard": "Run hard tests for every program",
-            "/run algebra easy": "Run easy Algebra tests",
-            "/run algebra medium": "Run medium Algebra tests",
-            "/run algebra hard": "Run hard Algebra tests",
-            "/run trigonometry easy": "Run easy Trigonometry tests",
-            "/run trigonometry medium": "Run medium Trigonometry tests",
-            "/run trigonometry hard": "Run hard Trigonometry tests",
-            "/run derive easy": "Run easy Derive tests",
-            "/run derive medium": "Run medium Derive tests",
-            "/run derive hard": "Run hard Derive tests",
-            "/run integrate easy": "Run easy Integrate tests",
-            "/run integrate medium": "Run medium Integrate tests",
-            "/run integrate hard": "Run hard Integrate tests",
-            "/run suvat easy": "Run easy SUVAT tests",
-            "/run suvat medium": "Run medium SUVAT tests",
-            "/run suvat hard": "Run hard SUVAT tests",
             "/random": "Run randomly generated tests across every program",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
             "/random chaos 1000": "Run 1000 unbounded-difficulty random tests",
@@ -1837,7 +1822,7 @@ class CASIOApp(App):
 
     def parse_run_scope(self, value: str):
         parts = value.split()
-        if not parts or parts[0].lower() != "/run":
+        if not parts or parts[0].lower() != "/random":
             return None
         if len(parts) == 1:
             difficulty = "hard" if self.current_difficulty == "chaos" else self.current_difficulty
@@ -5237,7 +5222,66 @@ class CASIOApp(App):
 def main():
     parser = argparse.ArgumentParser(description="CASIO Test Suite")
     parser.add_argument("--plain", action="store_true", help="Plain output mode")
+    parser.add_argument("--run", type=str, metavar="CMD",
+        help="Run tests directly: chaos N, random N, hard N, or program feature (e.g., 'trig simple')")
+    parser.add_argument("--workers", type=int, default=None, metavar="N",
+        help="Number of parallel workers (default: auto)")
     args = parser.parse_args()
+
+    if args.run:
+        if not TEXTUAL_AVAILABLE:
+            print("Textual required. Install: pip install textual")
+            sys.exit(1)
+
+        class RunnerApp(CASIOApp):
+            auto_exit = True
+
+            def on_mount(self) -> None:
+                cmd = args.run.strip()
+                parts = cmd.split()
+                difficulty = "chaos"
+                count = 1000
+                workers = args.workers
+                program = None
+
+                if len(parts) >= 1:
+                    first = parts[0].lower()
+                    if first in ("random", "chaos", "hard"):
+                        difficulty = first
+                        if len(parts) >= 2:
+                            try:
+                                count = int(parts[1])
+                            except ValueError:
+                                pass
+                    elif first in ("algebra", "trig", "derive", "integrate", "suvat"):
+                        program = first.capitalize()
+                        difficulty = "simple"
+                        if len(parts) >= 2:
+                            difficulty = parts[1].lower()
+                        if len(parts) >= 3:
+                            try:
+                                count = int(parts[2])
+                            except ValueError:
+                                pass
+
+                self.notify(f"Running: {difficulty} {count} (workers={workers or 'auto'})")
+                self.action_random_tests(difficulty, count, workers)
+
+        original_render_summary = CASIOApp.render_summary
+        def patched_render_summary(self):
+            original_render_summary(self)
+            if getattr(self, 'auto_exit', False):
+                import threading
+                def delayed_exit():
+                    import time
+                    time.sleep(0.5)
+                    self.exit()
+                threading.Thread(target=delayed_exit, daemon=True).start()
+        CASIOApp.render_summary = patched_render_summary
+
+        app = RunnerApp()
+        app.run()
+        return
 
     if not TEXTUAL_AVAILABLE:
         print("Textual required. Install: pip install textual")

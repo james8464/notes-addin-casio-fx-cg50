@@ -2876,28 +2876,30 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
 def inverse_function(f_text, var='x'):
     try:
         if text_has_even_log_power(f_text):
-            return None, ["y = " + ''.join(f_text.split()), "No inverse on all real x"]
+            lines = ["Method: Solve for x in y = f(x)", "y = " + ''.join(f_text.split()), "No inverse on all real x"]
+            return None, ensure_reasoning_marker(lines)
         raw_f = normalise_negative_power_div(parse(f_text))
         raw_y = substitute_keep_form(raw_f, sym(var), sym('y'))
         if raw_even_log_power_inverse(raw_y, 'y'):
             shown = show(sim(raw_f))
             shown_y = show(raw_y)
-            return None, ["y = " + shown, "x = " + shown_y, "No inverse on all real x"]
+            lines = ["Method: Solve for x in y = f(x)", "y = " + shown, "x = " + shown_y, "No inverse on all real x"]
+            return None, ensure_reasoning_marker(lines)
         f = normalise_negative_power_div(sim(raw_f))
-        steps = []
+        steps = ["Method: Solve for x in y = f(x)"]
         if not depends_on(f, var):
             steps.append("y = " + show(f))
             steps.append("x = " + show(f))
             steps.append("Constant function")
             steps.append("No inverse on all real x")
-            return None, steps
+            return None, ensure_reasoning_marker(steps)
         f_y = substitute(f, sym(var), sym('y'))
         steps.append("y = " + show(f))
         steps.append("x = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
             steps.append("f^-1(x) = " + show(inv))
-            return show(inv), steps
+            return show(inv), ensure_reasoning_marker(steps)
 
         dependent, shift = split_outer_shift(f_y, 'y')
         if dependent is not None and not is_zero(shift):
@@ -2906,15 +2908,15 @@ def inverse_function(f_text, var='x'):
             inv = solve_inverse_core(lhs_expr, dependent, steps)
             if inv is not None:
                 steps.append("f^-1(x) = " + show(inv))
-                return show(inv), steps
+                return show(inv), ensure_reasoning_marker(steps)
 
         if steps and steps[-1].startswith("No inverse on all real x"):
-            return None, steps
+            return None, ensure_reasoning_marker(steps)
 
         steps.append("Unsupported inverse family")
-        return None, steps
+        return None, ensure_reasoning_marker(steps)
     except Exception as err:
-        return None, ["Err: " + str(err)]
+        return None, ensure_reasoning_marker(["Method: Solve for x in y = f(x)", "Err: " + str(err)])
 
 def sim(node):
     kind = node[0]
@@ -3903,23 +3905,23 @@ def solve_equation(node):
 def solve_equation_text(text):
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
-        return cartesian
+        return ensure_reasoning_marker(cartesian)
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
     lines = ['Expr = ' + show(expr)]
     if label == 'Identity':
         lines.append('All x')
-        return lines
+        return ensure_reasoning_marker(lines)
     if label == 'No solution':
         lines.append('No sol')
-        return lines
+        return ensure_reasoning_marker(lines)
     if roots is None:
         lines.append(label)
-        return lines
+        return ensure_reasoning_marker(lines)
     ordered = normalize_solution_roots(roots)
     lines.append(label)
     lines.append(format_solution_line(var_name, ordered))
-    return lines
+    return ensure_reasoning_marker(lines)
 
 
 def solve_transform_text(text1, text2):
@@ -3929,21 +3931,22 @@ def solve_transform_text(text1, text2):
     if same(result, expr1) and equivalent(expr1, expr2):
         result = expr2
         steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
-    lines = ['Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
+    lines = ['Method: Rewrite expression to target form', 'Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
     i = 0
     while i < len(steps):
         _num, desc, _node = steps[i]
         lines.append(desc)
         i += 1
     lines.append('Final = ' + show(result))
-    return lines
+    return ensure_reasoning_marker(lines)
 
 
 def poly_mode_text(text):
     expr = parse(text.strip())
     factored = factor_expression(expr)
     if factored is not None:
-        return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+        lines = ['Method: Factor expression', 'Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+        return ensure_reasoning_marker(lines)
     out = maybe_expand_for_compare(expr)
     return ['Input = ' + show(expr), 'Out = ' + show(out)]
 
@@ -3951,7 +3954,8 @@ def poly_mode_text(text):
 def solve_rewrite_text(text, term_texts):
     if len(term_texts) == 0:
         raise ValueError('Use at least one target term.')
-    return rewrite_in_term_text(text, term_texts[0]) if len(term_texts) == 1 else solve_transform_text(text, add_term_texts(term_texts))
+    result = rewrite_in_term_text(text, term_texts[0]) if len(term_texts) == 1 else solve_transform_text(text, add_term_texts(term_texts))
+    return ensure_reasoning_marker(result) if result else result
 
 
 def add_term_texts(term_texts):
@@ -3971,10 +3975,13 @@ def factor_text(text):
     if factored is None:
         quad = factor_quadratic_rational(expr)
         if quad is not None:
-            return ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+            lines = ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+            return ensure_reasoning_marker(lines)
         out = maybe_expand_for_compare(expr)
-        return ['Input = ' + show(expr), 'Out = ' + show(out)] if not same(out, expr) else ['Input = ' + show(expr), 'No factor']
-    return ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+        lines = ['Input = ' + show(expr), 'Out = ' + show(out)] if not same(out, expr) else ['Input = ' + show(expr), 'No factor']
+        return ensure_reasoning_marker(lines)
+    lines = ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
+    return ensure_reasoning_marker(lines)
 
 def expand_pow_sqrt(node):
     if node[0] == 'pow' and node[1][0] == 'fn' and node[1][1] == 'sqrt':
@@ -5280,7 +5287,7 @@ def make_product_or_one(items):
 def expand_mode_text(text, max_terms=None):
     expr = parse(text.strip())
     expr = sim(expr)
-    lines = ['Input = ' + show(expr)]
+    lines = ['Method: Expand expression', 'Input = ' + show(expr)]
 
     if expr[0] == 'pow' and is_int_num(expr[2]) and expr[2][2] == 1 and expr[2][1] >= 0:
         base = sim(expr[1])
@@ -5316,7 +5323,7 @@ def expand_mode_text(text, max_terms=None):
                 lines.append('Out = ' + show(expanded) + '+...')
             else:
                 lines.append('Out = ' + show(expanded))
-            return lines
+            return ensure_reasoning_marker(lines)
 
     expanded = maybe_expand_for_compare(expr)
     if not same(expanded, expr):
@@ -5342,7 +5349,7 @@ def cli_lines_for_mode(mode, text, terms=None):
     if mode == '9':
         return solve_rewrite_text(text, terms or [])
     if mode == '3':
-        return poly_expand_text(text)
+        return expand_mode_text(text)
     if mode == '4':
         return factor_text(text)
     return []
