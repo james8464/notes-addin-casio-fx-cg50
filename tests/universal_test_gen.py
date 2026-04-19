@@ -707,14 +707,14 @@ class UniversalTestRunner:
             
             # If quality check failed, it's not a complete pass
             if not quality_ok:
-                return False, f"Quality issues: {', '.join(issues)}"
+                return False, f"Quality issues: {', '.join(issues)} | Input: {test_case.input_text.strip()}"
             
             return True, output
             
         except subprocess.TimeoutExpired:
-            return False, "Timeout"
+            return False, f"Timeout | Input: {test_case.input_text.strip()}"
         except Exception as e:
-            return False, str(e)
+            return False, f"Error: {str(e)} | Input: {test_case.input_text.strip()}"
     
     def run_tests(self, test_cases: List[TestCase], workers: int = 4,
                   progress_callback: Callable = None) -> Dict:
