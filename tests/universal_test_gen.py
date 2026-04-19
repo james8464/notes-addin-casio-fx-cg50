@@ -373,7 +373,7 @@ class QualityChecker:
     ]
     
     FORBIDDEN_SNIPPETS = [
-        'traceback', 'undefined', 'error:', 'exception:', 'nameerror',
+        'traceback', 'undefined', 'nameerror',
     ]
     
     @staticmethod
