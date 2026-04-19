@@ -3908,19 +3908,22 @@ def solve_equation_text(text):
         return ensure_reasoning_marker(cartesian)
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
-    lines = ['Expr = ' + show(expr)]
+    lines = ['Method: Solve equation', 'Input = ' + show(expr)]
     if label == 'Identity':
-        lines.append('All x')
+        lines.append('All x satisfy this identity')
+        lines.append('Solution: all real x')
         return ensure_reasoning_marker(lines)
     if label == 'No solution':
-        lines.append('No sol')
+        lines.append('No solution exists')
+        lines.append('Solution: none')
         return ensure_reasoning_marker(lines)
     if roots is None:
         lines.append(label)
         return ensure_reasoning_marker(lines)
     ordered = normalize_solution_roots(roots)
+    lines.append('Solve for ' + var_name + ':')
     lines.append(label)
-    lines.append(format_solution_line(var_name, ordered))
+    lines.append('Solution: ' + format_solution_line(var_name, ordered))
     return ensure_reasoning_marker(lines)
 
 
@@ -3931,11 +3934,11 @@ def solve_transform_text(text1, text2):
     if same(result, expr1) and equivalent(expr1, expr2):
         result = expr2
         steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
-    lines = ['Method: Rewrite expression to target form', 'Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
+    lines = ['Method: Transform expression to target form', 'Start with: ' + show(expr1), 'Target: ' + show(expr2)]
     i = 0
     while i < len(steps):
         _num, desc, _node = steps[i]
-        lines.append(desc)
+        lines.append('Step ' + str(i+1) + ': ' + desc)
         i += 1
     lines.append('Final = ' + show(result))
     return ensure_reasoning_marker(lines)
@@ -3975,11 +3978,23 @@ def factor_text(text):
     if factored is None:
         quad = factor_quadratic_rational(expr)
         if quad is not None:
-            lines = ['Input = ' + show(expr), quad[1], '= ' + show(quad[0])]
+            lines = ['Method: Factor quadratic', 'Input = ' + show(expr), quad[1], 'Factored form: ' + show(quad[0])]
             return ensure_reasoning_marker(lines)
         out = maybe_expand_for_compare(expr)
-        lines = ['Input = ' + show(expr), 'Out = ' + show(out)] if not same(out, expr) else ['Input = ' + show(expr), 'No factor']
+        lines = ['Method: Test for factors', 'Input = ' + show(expr)]
+        if not same(out, expr):
+            lines.append('Expanded form: ' + show(out))
+            lines.append('Not easily factorable')
+        else:
+            lines.append('Already in simplest form')
         return ensure_reasoning_marker(lines)
+    lines = ['Method: Factor expression', 'Input = ' + show(expr)]
+    i = 0
+    while i < len(factored):
+        factored[i] + '\n'
+        i += 1
+    lines.append('Factored form: ' + factored[1] + ' = ' + show(factored[0]))
+    return ensure_reasoning_marker(lines)
     lines = ['Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
     return ensure_reasoning_marker(lines)
 

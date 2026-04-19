@@ -1414,10 +1414,10 @@ def parse_normal_input(text):
 
 def explain(node, var, deps_list):
     d = tidy(diff(node, var, deps_list))
-    lines = []
+    lines = ['Method: Differentiate with respect to ' + var, 'Input: ' + show(node)]
     if node[0] == "add":
-        lines.append("Term by term")
-        lines.append("= " + show(d))
+        lines.append("Term by term differentiation")
+        lines.append("dy/d" + var + " = " + show(d))
         return d, lines
     if node[0] == "mul":
         items = list(node[1])
@@ -1425,9 +1425,9 @@ def explain(node, var, deps_list):
         v = make_mul(items[1:])
         du = tidy(diff(u, var, deps_list))
         dv = tidy(diff(v, var, deps_list))
-        lines.append("Product rule")
-        lines.append("u = " + show(u) + ", v = " + show(v))
-        lines.append("u*dv/d" + var + "+v*du/d" + var)
+        lines.append("Using product rule")
+        lines.append("Let u = " + show(u) + ", v = " + show(v))
+        lines.append("dy/d" + var + " = u*dv/d" + var + "+v*du/d" + var)
         lines.append("= " + show(tidy(add([mul([u, dv]), mul([v, du])]))))
         return d, lines
     if node[0] == "div":
@@ -1435,9 +1435,9 @@ def explain(node, var, deps_list):
         v = node[2]
         du = tidy(diff(u, var, deps_list))
         dv = tidy(diff(v, var, deps_list))
-        lines.append("Quotient rule")
-        lines.append("u = " + show(u) + ", v = " + show(v))
-        lines.append("(v*du-u*dv)/v^2")
+        lines.append("Using quotient rule")
+        lines.append("Let u = " + show(u) + ", v = " + show(v))
+        lines.append("dy/d" + var + " = (v*du-u*dv)/v^2")
         lines.append("= " + show(d))
         return d, lines
     if node[0] == "pow":
@@ -1446,12 +1446,12 @@ def explain(node, var, deps_list):
         if is_num(exp):
             db = tidy(diff(base, var, deps_list))
             if same(base, sym(var)):
-                lines.append("Power rule")
-                lines.append("= " + show(d))
+                lines.append("Using power rule")
+                lines.append("dy/d" + var + " = " + show(d))
             else:
-                lines.append("Chain rule")
-                lines.append("u = " + show(base))
-                lines.append(show(exp) + "*u^(" + show(subq(exp, num(1))) + ")*du/d" + var)
+                lines.append("Using chain rule")
+                lines.append("Let u = " + show(base))
+                lines.append("dy/d" + var + " = " + show(exp) + "*u^(" + show(subq(exp, num(1))) + ")*du/d" + var)
                 lines.append("= " + show(d))
             return d, lines
         if is_num(base) and base[1] <= 0:
@@ -1468,12 +1468,12 @@ def explain(node, var, deps_list):
                 lines.append("= " + show(d))
             return d, lines
         if not depends(exp, [var] + deps_list_list):
-            lines.append("Generalized power rule")
-            lines.append("= " + show(d))
+            lines.append("Using generalized power rule")
+            lines.append("dy/d" + var + " = " + show(d))
             return d, lines
-        lines.append("Method: logarithmic differentiation.")
-        lines.append("y = " + show(node))
-        lines.append("Let u = " + show(base) + " and v = " + show(exp) + ".")
+        lines.append("Using logarithmic differentiation")
+        lines.append("Let y = " + show(node))
+        lines.append("Let u = " + show(base) + " and v = " + show(exp))
         lines.append("dy/d" + var + " = y*((u')/u + ln(u)*v')")
         lines.append("= " + show(d))
         return d, lines
@@ -1483,15 +1483,15 @@ def explain(node, var, deps_list):
         darg = tidy(diff(arg, var, deps_list))
         if same(arg, sym(var)) or arg[0] == "sym":
             label = {
-                "sin": "sin rule", "cos": "cos rule", "tan": "tan rule",
-                "sec": "sec rule", "cosec": "cosec rule", "cot": "cot rule",
-                "asin": "asin rule", "acos": "acos rule", "atan": "atan rule",
-                "log": "ln rule", "log10": "log10 rule", "exp": "exp rule",
-                "sqrt": "sqrt rule", "abs": "abs rule",
-                "sinh": "sinh rule", "cosh": "cosh rule", "tanh": "tanh rule"
-            }.get(name, "Diff")
+                "sin": "Using sin rule", "cos": "Using cos rule", "tan": "Using tan rule",
+                "sec": "Using sec rule", "cosec": "Using cosec rule", "cot": "Using cot rule",
+                "asin": "Using asin rule", "acos": "Using acos rule", "atan": "Using atan rule",
+                "log": "Using log rule", "log10": "Using log10 rule", "exp": "Using exp rule",
+                "sqrt": "Using sqrt rule", "abs": "Using abs rule",
+                "sinh": "Using sinh rule", "cosh": "Using cosh rule", "tanh": "Using tanh rule"
+            }.get(name, "Differentiate")
             lines.append(label)
-            lines.append("= " + show(d))
+            lines.append("dy/d" + var + " = " + show(d))
         else:
             dydu = rule_u(name)
             subbed = tidy(mul([subst(dydu, "u", arg), darg]))
