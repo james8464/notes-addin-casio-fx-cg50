@@ -25,7 +25,7 @@ G_ALIASES = ('g', 'G')
 REASONING_MARKERS = (
     "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
     "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule ", "equation:", "original equation:",
+    "factor ", "solve ", "rule", "equation:", "original equation:",
     "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
     "final =", "result:", "answer:", "working:"
 )
