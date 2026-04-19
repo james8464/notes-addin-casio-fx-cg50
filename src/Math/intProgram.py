@@ -395,51 +395,20 @@ TRIG_SQUARE_IDENTITIES = {
         'Use cos^2 x = (1+cos(2x))/2.',
         'half_one_plus_cos2')}
 TRIG_HIGH_POWER_IDENTITIES = {
-    (
-        'sin',
-        3): (
-            'Use sin^2 x = 1-cos^2 x.',
-            'odd_sin'),
-    ('cos',
-     3): (
-        'Use cos^2 x = 1-sin^2 x.',
-        'odd_cos'),
-    ('sin',
-     4): (
-        'Use sin^2 x = (1-cos(2x))/2.',
-        'sin4'),
-    ('cos',
-     5): (
-        'Use cos^2 x = 1-sin^2 x.',
-        'cos5'),
-    ('sec',
-     4): (
-        'Use sec^2 x = 1+tan^2 x.',
-        'sec4'),
-    ('cosec',
-     4): (
-        'Use cosec^2 x = 1+cot^2 x.',
-        'cosec4'),
-    ('sin',
-     6): (
-        'Use sin^2 x = (1-cos(2x))/2.',
-        'sin6'),
-    ('cos',
-     4): (
-        'Use cos^2 x = (1+cos(2x))/2.',
-        'cos4'),
-    ('cos',
-     6): (
-        'Use cos^2 x = (1+cos(2x))/2.',
-        'cos6'),
-    ('tan',
-     3): (
-        'Use tan^2 x = sec^2 x - 1.',
-        'tan3'),
-    ('tan',
-     4): (
-        'Write tan^4 as tan^2 * tan^2.',
-        'tan4')}
+    ('sin', 3): ('Use sin^2 x = 1-cos^2 x.', 'odd_sin'),
+    ('cos', 3): ('Use cos^2 x = 1-sin^2 x.', 'odd_cos'),
+    ('sin', 4): ('Use sin^2 x = (1-cos(2x))/2.', 'sin4'),
+    ('cos', 4): ('Use cos^2 x = (1+cos(2x))/2.', 'cos4'),
+    ('sin', 5): ('Use sin^2 x = 1-cos^2 x.', 'odd_sin'),
+    ('cos', 5): ('Use cos^2 x = 1-sin^2 x.', 'odd_cos'),
+    ('sin', 6): ('Use sin^2 x = (1-cos(2x))/2.', 'sin6'),
+    ('cos', 6): ('Use cos^2 x = (1+cos(2x))/2.', 'cos6'),
+    ('sin', 7): ('Use sin^2 x = 1-cos^2 x.', 'odd_sin'),
+    ('cos', 7): ('Use cos^2 x = 1-sin^2 x.', 'odd_cos'),
+    ('sec', 4): ('Use sec^2 x = 1+tan^2 x.', 'sec4'),
+    ('cosec', 4): ('Use cosec^2 x = 1+cot^2 x.', 'cosec4'),
+    ('tan', 3): ('Use tan^2 x = sec^2 x - 1.', 'tan3'),
+    ('tan', 4): ('Write tan^4 as tan^2 * tan^2.', 'tan4')}
 TRIG_PRODUCT_IDENTITIES = {('sin',
                             'cos'): 'Use sin 2A = 2sin A cos A.',
                            ('cos',
@@ -551,7 +520,13 @@ def trig_high_power_rewrite(name, exp, arg):
     A = arg
     if not is_int_num(exp):
         return None, None
-    C = TRIG_HIGH_POWER_IDENTITIES.get((name, exp[1]))
+    power_val = exp[1]
+    if power_val == 3 or power_val >= 5:
+        if name == 'sin':
+            return 'Use sin^2 x = 1-cos^2 x.', mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
+        if name == 'cos':
+            return 'Use cos^2 x = 1-sin^2 x.', mul([fn('cos', A), add([num(1), neg(power(fn('sin', A), num(2)))])])
+    C = TRIG_HIGH_POWER_IDENTITIES.get((name, power_val))
     if C is None:
         return None, None
     D = C[1]
