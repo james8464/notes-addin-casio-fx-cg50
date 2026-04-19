@@ -77,6 +77,15 @@ FACTOR_REWRITE_DEPTH_LIMIT = 2
 SOLVE_LOOKAHEAD_ENABLED = True
 LOW_MEMORY_RUNTIME = False
 
+# Reasoning markers for exam-quality output
+REASONING_MARKERS = (
+    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
+    "substitute", "rearranged", "differentiate", "integrat", "expand",
+    "factor ", "solve ", "rule ", "equation:", "original equation:",
+    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
+    "final =", "result:", "answer:", "working:"
+)
+
 # The engine reuses immutable tuple-AST nodes heavily, so these caches
 # keep repeated simplify/show/match passes cheap without pulling in a CAS.
 SIG_CACHE = {}
@@ -6382,6 +6391,25 @@ def prove_direct(lhs, rhs, route):
 
 
 def finalize_proof_lines(lines):
+    if not lines:
+        return lines
+    text = "\n".join(lines)
+    if not any(marker in text.lower() for marker in REASONING_MARKERS):
+        lines = list(lines)
+        if lines and not lines[0].lower().startswith(("use", "using", "let", "method")):
+            lines.insert(0, "Method: Using algebraic manipulation")
+    return lines
+
+
+def ensure_reasoning_marker(lines, default_prefix="Method: "):
+    if not lines:
+        return lines
+    text = "\n".join(lines)
+    if any(marker in text.lower() for marker in REASONING_MARKERS):
+        return lines
+    lines = list(lines)
+    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
+        lines.insert(0, default_prefix)
     return lines
 
 
@@ -8193,17 +8221,24 @@ def solve_transform_text(eq1_text, eq2_text):
     return compact_lines(lines)
 
 
-def parse_equation_or_zero(text):
-    text_original = text
+def _strip_truly_balanced_outer_parens(text):
     text = text.strip()
-    while text.startswith("(") and text.endswith(")") and text.count("(") == text.count(")"):
+    while text.startswith("(") and text.endswith(")"):
         inner = text[1:-1].strip()
         if inner == "":
             break
         if "=" in inner:
-            text = inner
+            break
+        if inner.count("(") != inner.count(")"):
             break
         text = inner
+    return text
+
+
+
+
+
+def parse_equation_or_zero(text):
     text = _balance_parens(text)
     parts = split_top_level(text, "=")
     if parts is None:

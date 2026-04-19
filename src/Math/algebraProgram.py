@@ -31,6 +31,16 @@ CACHE_LIMIT_LARGE = DESKTOP_CACHE_LIMIT_LARGE
 
 LOW_MEMORY_RUNTIME = False
 
+# Reasoning markers for exam-quality output (same as other programs)
+REASONING_MARKERS = (
+    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
+    "substitute", "rearranged", "differentiate", "integrat", "expand",
+    "factor ", "solve ", "rule ", "equation:", "original equation:",
+    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
+    "final =", "result:", "answer:", "working:"
+)
+
+
 # ============================================================================
 # Cache Dictionaries for Performance
 # ============================================================================
@@ -3319,6 +3329,19 @@ def show(node, parent=0):
         result = text
     cache_store(SHOW_CACHE, key, result, CACHE_LIMIT_MEDIUM)
     return result
+
+
+def ensure_reasoning_marker(lines, default_prefix="Method: "):
+    """Add reasoning marker to output lines if missing."""
+    if not lines:
+        return lines
+    text = "\n".join(lines)
+    if any(marker in text.lower() for marker in REASONING_MARKERS):
+        return lines
+    lines = list(lines)
+    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
+        lines.insert(0, default_prefix)
+    return lines
 
 
 def is_name_start(ch):

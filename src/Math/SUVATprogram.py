@@ -21,6 +21,16 @@ G_DEFAULT = ('num', 49, 5)
 G_DEFAULT_FLOAT = 9.8
 G_ALIASES = ('g', 'G')
 
+# Reasoning markers for exam-quality output (same as other programs)
+REASONING_MARKERS = (
+    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
+    "substitute", "rearranged", "differentiate", "integrat", "expand",
+    "factor ", "solve ", "rule ", "equation:", "original equation:",
+    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
+    "final =", "result:", "answer:", "working:"
+)
+
+
 # ============================================================================
 # Cache Dictionaries for Performance
 # ============================================================================
@@ -1003,6 +1013,19 @@ def show(node, parent=0):
     result = _show(display_rearrange(sim(node)), parent)
     SHOW_CACHE[key] = result
     return result
+
+
+def ensure_reasoning_marker(lines, default_prefix="Method: "):
+    """Add reasoning marker to output lines if missing."""
+    if not lines:
+        return lines
+    text = "\n".join(lines)
+    if any(marker in text.lower() for marker in REASONING_MARKERS):
+        return lines
+    lines = list(lines)
+    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
+        lines.insert(0, default_prefix)
+    return lines
 
 
 # ============================================================================

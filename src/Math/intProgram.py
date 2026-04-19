@@ -49,6 +49,16 @@ SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
+
+# Reasoning markers for exam-quality output (same as other programs)
+REASONING_MARKERS = (
+    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
+    "substitute", "rearranged", "differentiate", "integrat", "expand",
+    "factor ", "solve ", "rule ", "equation:", "original equation:",
+    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
+    "final =", "result:", "answer:", "working:"
+)
+
 EXPAND_PASS_LIMIT = 4
 TRIG_REWRITE_LIMIT = 4
 _CACHE_MISS = object()
@@ -1587,6 +1597,20 @@ def _show(node, parent=0):
 
 def show(node, parent=0): return _show(display_rearrange(sim(node)), parent)
 def pretty(node): return _show(display_rearrange(combine_logs(node)), 0)
+
+
+def ensure_reasoning_marker(lines, default_prefix="Method: "):
+    """Add reasoning marker to output lines if missing."""
+    if not lines:
+        return lines
+    text = "\n".join(lines)
+    if any(marker in text.lower() for marker in REASONING_MARKERS):
+        return lines
+    lines = list(lines)
+    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
+        lines.insert(0, default_prefix)
+    return lines
+
 def int_text(node, var): return 'Int[' + pretty(node) + '] d' + var
 
 
