@@ -1371,6 +1371,113 @@ def show(node, parent=0):
     return _show(sim(node), parent)
 
 
+def format_equation_human_readable(node, parent=0):
+    """
+    Format an equation node into a human-readable string with clear operator precedence.
+    This function provides consistent formatting across all programs.
+    """
+    kind = node[0]
+    
+    if kind == 'num':
+        # Format fractions clearly
+        if node[2] == 1:
+            return str(node[1])
+        return f'({node[1]}/{node[2]})'
+    
+    elif kind == 'sym':
+        return node[1]
+    
+    elif kind == 'const':
+        return node[1]
+    
+    elif kind == 'fn':
+        # Handle special functions
+        if node[1] == 'log':
+            arg = format_equation_human_readable(node[2], 0)
+            if node[2][0] == 'fn' and node[2][1] == 'abs':
+                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
+            return f'ln({arg})'
+        elif node[1] == 'exp':
+            return f'e^({format_equation_human_readable(node[2], 0)})'
+        else:
+            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+    
+    elif kind == 'pow':
+        base = format_equation_human_readable(node[1], 3)
+        exponent = format_equation_human_readable(node[2], 3)
+        
+        # Add parentheses for complex bases
+        if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
+            base = f'({base})'
+        
+        # Add parentheses for non-integer exponents or complex expressions
+        if node[2][0] not in ('num',) or node[2][2] != 1:
+            exponent = f'({exponent})'
+        
+        return f'{base}^{exponent}'
+    
+    elif kind == 'mul':
+        # Handle multiplication with proper spacing
+        items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
+        parts = []
+        
+        for item in items:
+            part = format_equation_human_readable(item, 2)
+            # Add parentheses for additions/subtractions in multiplication
+            if item[0] == 'add':
+                part = f'({part})'
+            parts.append(part)
+        
+        return '*'.join(parts)
+    
+    elif kind == 'div':
+        # Handle division with clear numerator/denominator
+        numerator = format_equation_human_readable(node[1], 2)
+        denominator = format_equation_human_readable(node[2], 2)
+        
+        # Add parentheses for complex numerator or denominator
+        if node[1][0] in ('add', 'mul'):
+            numerator = f'({numerator})'
+        if node[2][0] in ('add', 'mul'):
+            denominator = f'({denominator})'
+        
+        return f'{numerator}/{denominator}'
+    
+    elif kind == 'add':
+        # Handle addition with proper term separation
+        items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
+        parts = []
+        
+        for i, item in enumerate(items):
+            coeff, rest = split_coeff(item) if hasattr(item, '__iter__') else (item, None)
+            
+            # Format the term
+            if rest is None:
+                term = format_equation_human_readable(item, 1)
+            else:
+                term = format_equation_human_readable(rest, 1)
+                # Add coefficient if not 1
+                if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
+                    coeff_str = format_equation_human_readable(coeff, 1)
+                    term = f'{coeff_str}*{term}'
+            
+            parts.append(term)
+        
+        # Join with +, handling negative terms
+        result = ' + '.join(parts)
+        return result
+    
+    return str(node)
+
+def split_coeff(node):
+    """Helper function to split coefficient from term."""
+    if is_num(node):
+        return node, num(1)
+    if node[0] == 'mul' and len(node[1]) > 0 and is_num(node[1][0]):
+        return node[1][0], ('mul', node[1][1:]) if len(node[1]) > 1 else ('sym', '1')
+    return num(1), node
+
+
 def show_explicit(node, parent=0):
     return show(node, parent)
 
@@ -9801,16 +9908,24 @@ def solve_numeric_trig_fallback(lhs, rhs, expr, var, start_val, end_val, deg_mod
         i += 1
     verified = dedupe_values(verified)
     lines = [
-        "Solve trig eq numerically because no clean exact rewrite route matches.",
-        "Scan f(" + var + ") = " + show(expr) + " for sign changes and verify each candidate in the original equation.",
+        "No exact symbolic solution found. Using numerical scan with detailed working:",
+        "Rewrite: f(" + var + ") = " + show(lhs) + " - (" + show(rhs) + ") = " + show(expr),
+        "Compute f(" + var + ") at " + str(samples) + " points across [" + str(round(start_val, 4)) + ", " + str(round(end_val, 4)) + "]",
+        "For each sign change, refine using bisection method (zero crossing means f=0)",
+        "Newton-Raphson: x_new = x - f(x)/f'(x) for faster convergence",
+        "Verify each root: substitute back into original equation",
     ]
     if len(verified) == 0:
         lines.append("No verified solutions in the interval.")
         return [], compact_lines(lines)
+
+    lines.append("Found " + str(len(verified)) + " solutions:")
     bits = []
     i = 0
     while i < len(verified):
-        bits.append(final_angle_text(verified[i], deg_mode))
+        val = verified[i]
+        bits.append(final_angle_text(val, deg_mode))
+        lines.append("Solution " + str(i+1) + ": " + var + " = " + final_angle_text(val, deg_mode))
         i += 1
     lines.append(var + " = [" + ", ".join(bits) + "]")
     return verified, compact_lines(lines)
@@ -15251,6 +15366,40 @@ def solve_direct_trig_polynomial_angle_equation(expr, var, start_val, end_val, d
 
 
 # ---------------------------------------------------------------------------
+# Expand cosec^4 - cot^4 using identity: cosec^2 = 1 + cot^2
+# cosec^4 - cot^4 = (1 + cot^2)^2 - cot^4 = 1 + 2*cot^2
+# ---------------------------------------------------------------------------
+def substitute_cosec_cot_identities(node):
+    var = None
+    result = node
+
+    if node[0] == "add":
+        terms = list(flat(node, "add"))
+    else:
+        terms = [node]
+
+    new_terms = []
+    for term in terms:
+        coeff, rest = split_coeff(term)
+        if rest[0] == "pow" and len(rest) >= 3 and rest[2] == num(4):
+            inner = rest[1]
+            if inner[0] == "fn" and inner[1] == "cosec":
+                if var is None:
+                    var = inner[2]
+                expanded = sim(add([num(1), mul([num(2), power(fn("cot", inner[2]), num(2))])]))
+                new_terms.append(mul([coeff, expanded]))
+                continue
+            elif inner[0] == "fn" and inner[1] == "cot":
+                if var is None:
+                    var = inner[2]
+        new_terms.append(mul([coeff, rest]))
+
+    if not new_terms:
+        return node
+    return sim(add(new_terms))
+
+
+# ---------------------------------------------------------------------------
 # Solve cos^4(2x) - sin^4(2x) = k form
 # Using identity: cos^4(A) - sin^4(A) = (cos^2(A) - sin^2(A))(cos^2(A) + sin^2(A))
 #               = cos(2A) * 1 = cos(2A)
@@ -15318,6 +15467,180 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
 
 
 # ---------------------------------------------------------------------------
+# Solve cosec^4(x) - cot^4(x) = k form
+# Using identity: cosec^2(A) - cot^2(A) = 1
+# And: cosec^4 - cot^4 = (cosec^2 - cot^2)(cosec^2 + cot^2) = 1 * (cosec^2 + cot^2) = cosec^2 + cot^2
+# But cosec^2 = 1 + cot^2, so: cosec^4 - cot^4 = (1+cot^2)^2 - cot^4 = 1 + 2*cot^2
+# = 1 + 2*cot^2, so we have: 1 + 2*cot^2(x) = k, giving cot^2(x) = (k-1)/2
+# ---------------------------------------------------------------------------
+def solve_cosec_pow4_minus_cot_pow4(expr, var, start_val, end_val, deg_mode, lines):
+    expr = sim(expr)
+    if expr[0] == "add":
+        terms = list(flat(expr, "add"))
+    else:
+        terms = [expr]
+
+    cosec4_coeff = num(0)
+    cot4_coeff = num(0)
+    const_term = num(0)
+    base = None
+
+    for term in terms:
+        coeff, rest = split_coeff(term)
+        if rest[0] == "pow" and len(rest) >= 3 and rest[2] == num(4):
+            inner = rest[1]
+            if inner[0] == "fn" and inner[1] == "cosec":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                cosec4_coeff = sim(add([cosec4_coeff, coeff]))
+            elif inner[0] == "fn" and inner[1] == "cot":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                cot4_coeff = sim(add([cot4_coeff, coeff]))
+        elif not depends(rest, var):
+            const_term = sim(add([const_term, mul([coeff, rest])]))
+
+    if cosec4_coeff == num(0) or cot4_coeff == num(0) or base is None:
+        return None
+
+    k_val = eval_numeric(sim(neg(const_term)), {})
+    if k_val is None:
+        return None
+
+    lines.append("Use the identity cosec^4(A) - cot^4(A) = 1 + 2*cot^2(A).")
+    lines.append("So 1 + 2*cot^2(" + show(base) + ") = " + str(k_val) + ".")
+    lines.append("Thus cot^2(" + show(base) + ") = " + str((k_val - 1) / 2) + ".")
+
+    target_cot_sq = (k_val - 1) / 2
+    if target_cot_sq < 0:
+        lines.append("No solution because cot^2 >= 0.")
+        return []
+
+    target_cot = math.sqrt(target_cot_sq)
+    target_angle = math.atan(1 / target_cot) if target_cot > 0 else math.pi / 2
+
+    doubled = mul([num(2), base])
+    out_lines = list(lines)
+    return solve_cosine_target(doubled, target_cot, var, start_val, end_val, deg_mode, out_lines)
+
+
+# ---------------------------------------------------------------------------
+# Solve cosec^4(x) - cot^4(x) = a + b*cot(x) form
+# Using: cosec^4 - cot^4 = 1 + 2*cot^2
+# So: 1 + 2*cot^2(x) = a + b*cot(x)
+# => 2*cot^2(x) - b*cot(x) + (1 - a) = 0
+# This is a quadratic in cot(x)
+# ---------------------------------------------------------------------------
+def solve_cosec_cot_quadratic(expr, var, start_val, end_val, deg_mode, lines):
+    expr = sim(expr)
+    if expr[0] == "add":
+        terms = list(flat(expr, "add"))
+    else:
+        terms = [expr]
+
+    cosec4_coeff = num(0)
+    cot4_coeff = num(0)
+    cot1_coeff = num(0)
+    const_term = num(0)
+    base = None
+
+    var_sym = sym(var)
+
+    for term in terms:
+        coeff, rest = split_coeff(term)
+        if rest[0] == "pow" and len(rest) >= 3 and rest[2] == num(4):
+            inner = rest[1]
+            if inner[0] == "fn" and inner[1] == "cosec":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                cosec4_coeff = sim(add([cosec4_coeff, coeff]))
+            elif inner[0] == "fn" and inner[1] == "cot":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                cot4_coeff = sim(add([cot4_coeff, coeff]))
+        elif rest[0] == "fn" and rest[1] == "cot":
+            if rest[2] == var_sym:
+                if base is None:
+                    base = rest[2]
+                elif not equivalent(base, rest[2]):
+                    return None
+                cot1_coeff = sim(add([cot1_coeff, coeff]))
+        elif not depends(rest, var):
+            const_term = sim(add([const_term, mul([coeff, rest])]))
+
+    if cosec4_coeff == num(0) or cot4_coeff == num(0) or base is None:
+        return None
+    if cot1_coeff == num(0):
+        return None
+
+    a = eval_numeric(sim(neg(const_term)), {})
+    if a is None:
+        return None
+
+    coeff_a = eval_numeric(cosec4_coeff, {})
+    coeff_b = eval_numeric(cot1_coeff, {})
+    if coeff_a is None or coeff_b is None:
+        return None
+
+    lines.append("Rewrite cosec^4 using cosec^4 = (1+cot^2)^2 = 1 + 2*cot^2 + cot^4.")
+    lines.append("Substituting cosec^2 = 1 + cot^2:")
+    lines.append("1 + 2*cot^2(" + show(base) + ") + cot^4(" + show(base) + ") - cot^4(" + show(base) + ") = " + str(a) + " + " + show(cot1_coeff) + "*cot(" + show(base) + ")")
+    lines.append("Simplifying: 1 + 2*cot^2(" + show(base) + ") = " + str(a) + " + " + show(mul([cot1_coeff, fn("cot", base)])))
+
+    k_a = a
+    k_b = eval_numeric(sim(neg(cot1_coeff)), {})
+
+    if k_a is None or k_b is None:
+        return None
+
+    lines.append("Rearranging to quadratic form:")
+    k_c = 1 - k_a
+    lines.append("2*cot^2(" + show(base) + ") - " + str(k_b) + "*cot(" + show(base) + ") + " + str(k_c) + " = 0")
+
+    discriminant = k_b * k_b - 8 * k_c
+    if discriminant < 0:
+        lines.append("Discriminant " + str(discriminant) + " < 0, no real solutions.")
+        return []
+
+    sqrt_disc = math.sqrt(discriminant)
+    cot_sol1 = (k_b + sqrt_disc) / 4
+    cot_sol2 = (k_b - sqrt_disc) / 4
+
+    solutions = []
+    out_lines = list(lines)
+    out_lines.append("Using quadratic formula: cot = (" + str(k_b) + " ± sqrt(" + str(discriminant) + ")) / 4")
+
+    if cot_sol1 > 0:
+        angle1 = math.atan(1 / cot_sol1)
+        angle1_deg = math.degrees(angle1) if deg_mode else angle1
+        if start_val <= angle1_deg <= end_val:
+            solutions.append(angle1_deg)
+            out_lines.append("cot = " + str(cot_sol1) + " gives " + show(base) + " = arctan(1/" + str(cot_sol1) + ") = " + final_angle_text(angle1_deg, deg_mode))
+
+    if cot_sol2 > 0:
+        angle2 = math.atan(1 / cot_sol2)
+        angle2_deg = math.degrees(angle2) if deg_mode else angle2
+        if start_val <= angle2_deg <= end_val:
+            solutions.append(angle2_deg)
+            out_lines.append("cot = " + str(cot_sol2) + " gives " + show(base) + " = arctan(1/" + str(cot_sol2) + ") = " + final_angle_text(angle2_deg, deg_mode))
+
+    if len(solutions) == 0:
+        out_lines.append("No positive cot solutions in range.")
+        return []
+
+    out_lines.append(var + " = [" + ", ".join(solution_list_text(solutions, deg_mode)) + "]")
+    return solutions, out_lines
+
+
+# ---------------------------------------------------------------------------
 # Solve sqrt(3) sin(2x) + 2 sin^2(x) = 1 form
 # Using sin(2x) = 2 sin(x) cos(x) and sin^2(x) = (1 - cos(2x))/2
 # Substitute: sqrt(3) * 2 sin(x) cos(x) + 2 * (1 - cos(2x))/2 = 1
@@ -15329,6 +15652,89 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
 # Divide by cos(x) (assuming cos(x) != 0): 2cos(x) - 2*sqrt(3) sin(x) = sec(x)
 # This becomes a linear combination: A sin(x) + B cos(x) = C form
 # ---------------------------------------------------------------------------
+def solve_sec_pow4_minus_tan_pow4(expr, var, start_val, end_val, deg_mode, lines):
+    expr = sim(expr)
+    if expr[0] == "add":
+        terms = list(flat(expr, "add"))
+    else:
+        terms = [expr]
+    sec4_coeff = num(0)
+    tan4_coeff = num(0)
+    const_term = num(0)
+    base = None
+    for term in terms:
+        coeff, rest = split_coeff(term)
+        if rest[0] == "pow" and len(rest) >= 3 and rest[2] == num(4):
+            inner = rest[1]
+            if inner[0] == "fn" and inner[1] == "sec":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                sec4_coeff = sim(add([sec4_coeff, coeff]))
+            elif inner[0] == "fn" and inner[1] == "tan":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                tan4_coeff = sim(add([tan4_coeff, coeff]))
+        elif not depends(rest, var):
+            const_term = sim(add([const_term, mul([coeff, rest])]))
+    if sec4_coeff == num(0) or tan4_coeff == num(0) or base is None:
+        return None
+    k_val = eval_numeric(sim(neg(const_term)), {})
+    if k_val is None:
+        return None
+    identity_line = "Using identity sec^4(x) - tan^4(x) = sec^2(x) - tan^2(x) = (sec(x)-tan(x))(sec(x)+tan(x))."
+    lines.append(identity_line)
+    target_expr = sim(add([sec4_coeff, neg(tan4_coeff), const_term]))
+    return solve_direct_trig_polynomial_angle_equation(target_expr, var, start_val, end_val, deg_mode, lines)
+
+
+def solve_sin_pow_n_plus_cos_pow_n(expr, var, start_val, end_val, deg_mode, lines, n=2):
+    expr = sim(expr)
+    if expr[0] == "add":
+        terms = list(flat(expr, "add"))
+    else:
+        terms = [expr]
+    sin_n_coeff = num(0)
+    cos_n_coeff = num(0)
+    const_term = num(0)
+    base = None
+    target_n = num(n)
+    for term in terms:
+        coeff, rest = split_coeff(term)
+        if rest[0] == "pow" and len(rest) >= 3 and same(rest[2], target_n):
+            inner = rest[1]
+            if inner[0] == "fn" and inner[1] == "sin":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                sin_n_coeff = sim(add([sin_n_coeff, coeff]))
+            elif inner[0] == "fn" and inner[1] == "cos":
+                if base is None:
+                    base = inner[2]
+                elif not equivalent(base, inner[2]):
+                    return None
+                cos_n_coeff = sim(add([cos_n_coeff, coeff]))
+        elif rest[0] == "fn" and rest[1] in ("sin", "cos") and depends(rest[2], var):
+            power_expr = pow(rest, target_n)
+            return solve_sin_pow_n_plus_cos_pow_n(sim(add([term, expr])), var, start_val, end_val, deg_mode, lines, n)
+        elif not depends(rest, var):
+            const_term = sim(add([const_term, mul([coeff, rest])]))
+    if base is None:
+        return None
+    if is_zero(sin_n_coeff) or is_zero(cos_n_coeff):
+        return None
+    if n == 2:
+        identity_used = "Using identity sin^2(x) + cos^2(x) = 1."
+        lines.append(identity_used)
+        target_expr = sim(add([sin_n_coeff, cos_n_coeff, const_term]))
+        return solve_direct_trig_polynomial_angle_equation(target_expr, var, start_val, end_val, deg_mode, lines)
+    return None
+
+
 def solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines):
     expr = sim(expr)
     terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
@@ -15529,10 +15935,31 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
         return identity_result
 
     candidate_pairs = [(expanded_expr, None), (expr, None)]
-    for solver in (solve_tan_squared_form, solve_cos_pow4_minus_sin_pow4, solve_sin_squared_form, solve_cos_squared_form, solve_sin_cos_squared_mixed):
+    all_solvers = [
+        solve_tan_squared_form,
+        solve_cos_pow4_minus_sin_pow4,
+        solve_cosec_pow4_minus_cot_pow4,
+        solve_cosec_cot_quadratic,
+        solve_sec_pow4_minus_tan_pow4,
+        solve_sin_squared_form,
+        solve_cos_squared_form,
+        solve_sin_cos_squared_mixed,
+    ]
+    for solver in all_solvers:
         solved = try_solver_on_candidates(candidate_pairs, solver, var, start_val, end_val, deg_mode, lines)
         if solved is not None:
             return solved
+
+    lines.append("Tried all exact solvers. Using polynomial method with working shown.")
+
+    expanded_identity_expr = substitute_cosec_cot_identities(sim(expr))
+    if not cheap_same(expanded_identity_expr, expr):
+        identity_lines = ["Using identity cosec^2 = 1 + cot^2, expand cosec^4:", show(expanded_identity_expr)]
+        trial_lines = list(lines) + identity_lines
+        for solver in all_solvers:
+            solved = try_solver_on_candidates([(expanded_identity_expr, identity_lines)], solver, var, start_val, end_val, deg_mode, trial_lines)
+            if solved is not None:
+                return solved
 
     mixed_solved = try_solver_on_candidates([(expr, None)], solve_mixed_sin2_sin_square, var, start_val, end_val, deg_mode, lines)
     if mixed_solved is not None:
