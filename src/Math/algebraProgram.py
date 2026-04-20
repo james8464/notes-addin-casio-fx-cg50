@@ -3333,6 +3333,64 @@ def show(node, parent=0):
     return result
 
 
+def show_explicit(node, parent=0):
+    """Convert expression to exam-style string with explicit parentheses."""
+    if node is None:
+        return '0'
+    
+    kind = node[0]
+    if kind == 'num':
+        if node[2] == 1:
+            return str(node[1])
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
+    if kind == 'sym':
+        return node[1]
+    if kind == 'const':
+        return node[1]
+    if kind == 'fn':
+        if node[1] == 'log':
+            return 'ln(' + show_explicit(node[2], 0) + ')'
+        if node[1] == 'abs':
+            return '|' + show_explicit(node[2], 0) + '|'
+        return node[1] + '(' + show_explicit(node[2], 0) + ')'
+    if kind == 'pow':
+        base = show_explicit(node[1], 3)
+        exp = show_explicit(node[2], 3)
+        if node[1][0] in ('add',):
+            base = '(' + base + ')'
+        return base + '^' + exp
+    if kind == 'mul':
+        items = flat(node, 'mul')
+        parts = []
+        for item in items:
+            part = show_explicit(item, 2)
+            if item[0] == 'div' or (is_num(item) and item[2] != 1 and parent > 0):
+                part = '(' + part + ')'
+            parts.append(part)
+        return '*'.join(parts)
+    if kind == 'div':
+        num = show_explicit(node[1], 0)
+        den = show_explicit(node[2], 0)
+        if node[1][0] == 'add':
+            num = '(' + num + ')'
+        if node[2][0] in ('add', 'mul', 'div'):
+            den = '(' + den + ')'
+        return num + '/' + den
+    if kind == 'add':
+        bits = flat(node, 'add')
+        if not bits:
+            return '0'
+        parts = []
+        for i, item in enumerate(bits):
+            term = show(item, 1)
+            if i == 0:
+                parts.append(term)
+            else:
+                parts.append('+ ' + term if not term.startswith('-') else '- ' + term[1:])
+        return ' '.join(parts)
+    return show(node, parent)
+
+
 def ensure_reasoning_marker(lines, default_prefix="Method: "):
     """Add reasoning marker to output lines if missing."""
     if not lines:
