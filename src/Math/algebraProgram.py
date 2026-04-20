@@ -342,6 +342,92 @@ def same(a, b):
     return result
 
 
+def format_equation_human_readable(node, parent=0):
+    """
+    Format an equation node into a human-readable string with clear operator precedence.
+    """
+    kind = node[0]
+    
+    if kind == 'num':
+        if node[2] == 1:
+            return str(node[1])
+        return f'({node[1]}/{node[2]})'
+    
+    elif kind == 'sym':
+        return node[1]
+    
+    elif kind == 'const':
+        return node[1]
+    
+    elif kind == 'fn':
+        if node[1] == 'log':
+            arg = format_equation_human_readable(node[2], 0)
+            if node[2][0] == 'fn' and node[2][1] == 'abs':
+                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
+            return f'ln({arg})'
+        elif node[1] == 'exp':
+            return f'e^({format_equation_human_readable(node[2], 0)})'
+        else:
+            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+    
+    elif kind == 'pow':
+        base = format_equation_human_readable(node[1], 3)
+        exponent = format_equation_human_readable(node[2], 3)
+        
+        if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
+            base = f'({base})'
+        
+        if node[2][0] not in ('num',) or node[2][2] != 1:
+            exponent = f'({exponent})'
+        
+        return f'{base}^{exponent}'
+    
+    elif kind == 'mul':
+        items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
+        parts = []
+        
+        for item in items:
+            part = format_equation_human_readable(item, 2)
+            if item[0] == 'add':
+                part = f'({part})'
+            parts.append(part)
+        
+        return '*'.join(parts)
+    
+    elif kind == 'div':
+        numerator = format_equation_human_readable(node[1], 2)
+        denominator = format_equation_human_readable(node[2], 2)
+        
+        if node[1][0] in ('add', 'mul'):
+            numerator = f'({numerator})'
+        if node[2][0] in ('add', 'mul'):
+            denominator = f'({denominator})'
+        
+        return f'{numerator}/{denominator}'
+    
+    elif kind == 'add':
+        items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
+        parts = []
+        
+        for i, item in enumerate(items):
+            coeff, rest = split_coeff(item) if hasattr(item, '__iter__') else (item, None)
+            
+            if rest is None:
+                term = format_equation_human_readable(item, 1)
+            else:
+                term = format_equation_human_readable(rest, 1)
+                if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
+                    coeff_str = format_equation_human_readable(coeff, 1)
+                    term = f'{coeff_str}*{term}'
+            
+            parts.append(term)
+        
+        result = ' + '.join(parts)
+        return result
+    
+    return str(node)
+
+
 def split_coeff(node):
     """Split coefficient and base from a term. Cached for performance."""
     # Check cache
