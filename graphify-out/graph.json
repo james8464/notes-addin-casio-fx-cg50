@@ -9,7 +9,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L1",
       "id": "universal_test_gen",
-      "community": 8
+      "community": 10
     },
     {
       "label": "ExprGrammar",
@@ -17,7 +17,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L31",
       "id": "universal_test_gen_exprgrammar",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".__init__()",
@@ -25,7 +25,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L34",
       "id": "universal_test_gen_exprgrammar_init",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".set_scale()",
@@ -33,7 +33,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L43",
       "id": "universal_test_gen_exprgrammar_set_scale",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate()",
@@ -41,7 +41,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L50",
       "id": "universal_test_gen_exprgrammar_generate",
-      "community": 8
+      "community": 10
     },
     {
       "label": "._base_expr()",
@@ -49,7 +49,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L58",
       "id": "universal_test_gen_exprgrammar_base_expr",
-      "community": 8
+      "community": 10
     },
     {
       "label": "._expr()",
@@ -57,7 +57,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L95",
       "id": "universal_test_gen_exprgrammar_expr",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_polynomial()",
@@ -65,7 +65,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L176",
       "id": "universal_test_gen_exprgrammar_generate_polynomial",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_rational()",
@@ -73,7 +73,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L202",
       "id": "universal_test_gen_exprgrammar_generate_rational",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_trig()",
@@ -81,7 +81,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L210",
       "id": "universal_test_gen_exprgrammar_generate_trig",
-      "community": 8
+      "community": 10
     },
     {
       "label": "ProgramSpec",
@@ -89,7 +89,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L238",
       "id": "universal_test_gen_programspec",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".__init__()",
@@ -97,7 +97,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L241",
       "id": "universal_test_gen_programspec_init",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".add_function()",
@@ -105,7 +105,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L247",
       "id": "universal_test_gen_programspec_add_function",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Verifier",
@@ -113,7 +113,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L272",
       "id": "universal_test_gen_verifier",
-      "community": 8
+      "community": 10
     },
     {
       "label": "sympy_derivative()",
@@ -121,7 +121,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L276",
       "id": "universal_test_gen_sympy_derivative",
-      "community": 8
+      "community": 10
     },
     {
       "label": "sympy_integrate()",
@@ -129,7 +129,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L289",
       "id": "universal_test_gen_sympy_integrate",
-      "community": 8
+      "community": 10
     },
     {
       "label": "sympy_solve()",
@@ -137,7 +137,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L302",
       "id": "universal_test_gen_sympy_solve",
-      "community": 8
+      "community": 10
     },
     {
       "label": "numeric_derivative()",
@@ -145,7 +145,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L315",
       "id": "universal_test_gen_numeric_derivative",
-      "community": 8
+      "community": 10
     },
     {
       "label": "inverse_verify()",
@@ -153,7 +153,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L334",
       "id": "universal_test_gen_inverse_verify",
-      "community": 8
+      "community": 10
     },
     {
       "label": "QualityChecker",
@@ -161,7 +161,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L359",
       "id": "universal_test_gen_qualitychecker",
-      "community": 8
+      "community": 10
     },
     {
       "label": "has_reasoning_markers()",
@@ -169,7 +169,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L380",
       "id": "universal_test_gen_has_reasoning_markers",
-      "community": 8
+      "community": 10
     },
     {
       "label": "no_forbidden()",
@@ -177,7 +177,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L391",
       "id": "universal_test_gen_no_forbidden",
-      "community": 8
+      "community": 10
     },
     {
       "label": "has_working_steps()",
@@ -185,7 +185,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L400",
       "id": "universal_test_gen_has_working_steps",
-      "community": 8
+      "community": 10
     },
     {
       "label": "check_quality()",
@@ -193,7 +193,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L408",
       "id": "universal_test_gen_check_quality",
-      "community": 8
+      "community": 10
     },
     {
       "label": "TestCase",
@@ -201,7 +201,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L425",
       "id": "universal_test_gen_testcase",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".__init__()",
@@ -209,7 +209,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L428",
       "id": "universal_test_gen_testcase_init",
-      "community": 8
+      "community": 10
     },
     {
       "label": "UniversalTestGenerator",
@@ -217,7 +217,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L440",
       "id": "universal_test_gen_universaltestgenerator",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".__init__()",
@@ -225,7 +225,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L443",
       "id": "universal_test_gen_universaltestgenerator_init",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_algebra_cases()",
@@ -233,7 +233,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L452",
       "id": "universal_test_gen_universaltestgenerator_generate_algebra_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_trig_cases()",
@@ -241,7 +241,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L502",
       "id": "universal_test_gen_universaltestgenerator_generate_trig_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_derive_cases()",
@@ -249,7 +249,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L544",
       "id": "universal_test_gen_universaltestgenerator_generate_derive_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_integrate_cases()",
@@ -257,7 +257,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L578",
       "id": "universal_test_gen_universaltestgenerator_generate_integrate_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_suvat_cases()",
@@ -265,7 +265,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L619",
       "id": "universal_test_gen_universaltestgenerator_generate_suvat_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".generate_all_cases()",
@@ -273,7 +273,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L642",
       "id": "universal_test_gen_universaltestgenerator_generate_all_cases",
-      "community": 8
+      "community": 10
     },
     {
       "label": "UniversalTestRunner",
@@ -281,7 +281,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L669",
       "id": "universal_test_gen_universaltestrunner",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".__init__()",
@@ -289,7 +289,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L680",
       "id": "universal_test_gen_universaltestrunner_init",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".run_case()",
@@ -297,7 +297,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L687",
       "id": "universal_test_gen_universaltestrunner_run_case",
-      "community": 8
+      "community": 10
     },
     {
       "label": ".run_tests()",
@@ -305,7 +305,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L719",
       "id": "universal_test_gen_universaltestrunner_run_tests",
-      "community": 8
+      "community": 10
     },
     {
       "label": "main()",
@@ -313,7 +313,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L773",
       "id": "universal_test_gen_main",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Universal Test Generator - Generates random tests for ALL programs with comprehe",
@@ -321,7 +321,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L1",
       "id": "universal_test_gen_rationale_1",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Recursive grammar for generating random mathematical expressions.",
@@ -329,7 +329,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L32",
       "id": "universal_test_gen_rationale_32",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Set scaling parameters.",
@@ -337,7 +337,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L44",
       "id": "universal_test_gen_rationale_44",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate a random expression.",
@@ -345,7 +345,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L51",
       "id": "universal_test_gen_rationale_51",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate a base expression (no recursion).",
@@ -353,7 +353,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L59",
       "id": "universal_test_gen_rationale_59",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate expression with given depth budget.",
@@ -361,7 +361,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L96",
       "id": "universal_test_gen_rationale_96",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate a polynomial of given degree.",
@@ -369,7 +369,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L177",
       "id": "universal_test_gen_rationale_177",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate a rational expression (fraction).",
@@ -377,7 +377,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L203",
       "id": "universal_test_gen_rationale_203",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate a trig expression.",
@@ -385,7 +385,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L211",
       "id": "universal_test_gen_rationale_211",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Specification for a program's testable functions.",
@@ -393,7 +393,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L239",
       "id": "universal_test_gen_rationale_239",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Add a testable function.",
@@ -401,7 +401,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L249",
       "id": "universal_test_gen_rationale_249",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Multiple verification methods for test results.",
@@ -409,7 +409,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L273",
       "id": "universal_test_gen_rationale_273",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Verify derivative using SymPy.",
@@ -417,7 +417,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L277",
       "id": "universal_test_gen_rationale_277",
-      "community": 18
+      "community": 15
     },
     {
       "label": "Verify integral using SymPy.",
@@ -425,7 +425,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L290",
       "id": "universal_test_gen_rationale_290",
-      "community": 19
+      "community": 16
     },
     {
       "label": "Verify solution using SymPy.",
@@ -433,7 +433,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L303",
       "id": "universal_test_gen_rationale_303",
-      "community": 20
+      "community": 17
     },
     {
       "label": "Numerical derivative using central difference.",
@@ -441,7 +441,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L316",
       "id": "universal_test_gen_rationale_316",
-      "community": 21
+      "community": 18
     },
     {
       "label": "Verify using inverse operation.",
@@ -449,7 +449,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L335",
       "id": "universal_test_gen_rationale_335",
-      "community": 22
+      "community": 19
     },
     {
       "label": "Check quality of working out - LENIENT VERSION.",
@@ -457,7 +457,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L360",
       "id": "universal_test_gen_rationale_360",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Check if output has reasoning markers - LENIENT.",
@@ -465,7 +465,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L381",
       "id": "universal_test_gen_rationale_381",
-      "community": 23
+      "community": 20
     },
     {
       "label": "Check for forbidden snippets.",
@@ -473,7 +473,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L392",
       "id": "universal_test_gen_rationale_392",
-      "community": 24
+      "community": 21
     },
     {
       "label": "Check if output has step-by-step working - LENIENT.",
@@ -481,7 +481,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L401",
       "id": "universal_test_gen_rationale_401",
-      "community": 25
+      "community": 22
     },
     {
       "label": "Run all quality checks - LENIENT VERSION.",
@@ -489,7 +489,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L409",
       "id": "universal_test_gen_rationale_409",
-      "community": 26
+      "community": 23
     },
     {
       "label": "Generates and runs tests for all programs.",
@@ -497,7 +497,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L441",
       "id": "universal_test_gen_rationale_441",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate algebra test cases.",
@@ -505,7 +505,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L453",
       "id": "universal_test_gen_rationale_453",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate trigonometry test cases.",
@@ -513,7 +513,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L503",
       "id": "universal_test_gen_rationale_503",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate derivative test cases.",
@@ -521,7 +521,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L545",
       "id": "universal_test_gen_rationale_545",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate integration test cases.",
@@ -529,7 +529,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L579",
       "id": "universal_test_gen_rationale_579",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate SUVAT test cases.",
@@ -537,7 +537,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L620",
       "id": "universal_test_gen_rationale_620",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Generate test cases for all programs.",
@@ -545,7 +545,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L643",
       "id": "universal_test_gen_rationale_643",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Runs tests for all programs.",
@@ -553,7 +553,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L670",
       "id": "universal_test_gen_rationale_670",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Run a single test case.",
@@ -561,7 +561,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L688",
       "id": "universal_test_gen_rationale_688",
-      "community": 8
+      "community": 10
     },
     {
       "label": "Run all test cases with parallelism.",
@@ -569,7 +569,7 @@
       "source_file": "tests/universal_test_gen.py",
       "source_location": "L721",
       "id": "universal_test_gen_rationale_721",
-      "community": 8
+      "community": 10
     },
     {
       "label": "run_tests.py",
@@ -2241,7 +2241,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1",
       "id": "suvatprogram",
-      "community": 4
+      "community": 3
     },
     {
       "label": "clear_all_caches()",
@@ -2249,7 +2249,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L47",
       "id": "suvatprogram_clear_all_caches",
-      "community": 4
+      "community": 3
     },
     {
       "label": "begin_user_action()",
@@ -2257,7 +2257,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L54",
       "id": "suvatprogram_begin_user_action",
-      "community": 4
+      "community": 3
     },
     {
       "label": "gcd()",
@@ -2265,7 +2265,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L64",
       "id": "suvatprogram_gcd",
-      "community": 4
+      "community": 3
     },
     {
       "label": "num()",
@@ -2273,7 +2273,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L76",
       "id": "suvatprogram_num",
-      "community": 4
+      "community": 3
     },
     {
       "label": "num_text()",
@@ -2281,7 +2281,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L86",
       "id": "suvatprogram_num_text",
-      "community": 4
+      "community": 3
     },
     {
       "label": "sym()",
@@ -2289,7 +2289,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L106",
       "id": "suvatprogram_sym",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_num()",
@@ -2297,7 +2297,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L110",
       "id": "suvatprogram_is_num",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_zero()",
@@ -2305,7 +2305,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L114",
       "id": "suvatprogram_is_zero",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_one()",
@@ -2313,7 +2313,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L118",
       "id": "suvatprogram_is_one",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_minus_one()",
@@ -2321,7 +2321,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L122",
       "id": "suvatprogram_is_minus_one",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_int_num()",
@@ -2329,7 +2329,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L126",
       "id": "suvatprogram_is_int_num",
-      "community": 4
+      "community": 3
     },
     {
       "label": "addq()",
@@ -2337,7 +2337,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L130",
       "id": "suvatprogram_addq",
-      "community": 4
+      "community": 3
     },
     {
       "label": "mulq()",
@@ -2345,7 +2345,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L134",
       "id": "suvatprogram_mulq",
-      "community": 4
+      "community": 3
     },
     {
       "label": "divq()",
@@ -2353,7 +2353,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L138",
       "id": "suvatprogram_divq",
-      "community": 4
+      "community": 3
     },
     {
       "label": "negq()",
@@ -2361,7 +2361,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L142",
       "id": "suvatprogram_negq",
-      "community": 4
+      "community": 3
     },
     {
       "label": "subq()",
@@ -2369,7 +2369,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L146",
       "id": "suvatprogram_subq",
-      "community": 4
+      "community": 3
     },
     {
       "label": "int_pow()",
@@ -2377,7 +2377,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L150",
       "id": "suvatprogram_int_pow",
-      "community": 4
+      "community": 3
     },
     {
       "label": "int_sqrt()",
@@ -2385,7 +2385,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L156",
       "id": "suvatprogram_int_sqrt",
-      "community": 4
+      "community": 3
     },
     {
       "label": "simplify_surd()",
@@ -2393,7 +2393,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L168",
       "id": "suvatprogram_simplify_surd",
-      "community": 4
+      "community": 3
     },
     {
       "label": "node_to_float()",
@@ -2401,7 +2401,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L184",
       "id": "suvatprogram_node_to_float",
-      "community": 4
+      "community": 3
     },
     {
       "label": "format_decimal()",
@@ -2409,7 +2409,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L256",
       "id": "suvatprogram_format_decimal",
-      "community": 4
+      "community": 3
     },
     {
       "label": "count_sig_figs()",
@@ -2417,7 +2417,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L275",
       "id": "suvatprogram_count_sig_figs",
-      "community": 4
+      "community": 3
     },
     {
       "label": "flat()",
@@ -2425,7 +2425,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L289",
       "id": "suvatprogram_flat",
-      "community": 4
+      "community": 3
     },
     {
       "label": "make_add()",
@@ -2433,7 +2433,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L314",
       "id": "suvatprogram_make_add",
-      "community": 4
+      "community": 3
     },
     {
       "label": "make_mul()",
@@ -2441,7 +2441,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L346",
       "id": "suvatprogram_make_mul",
-      "community": 4
+      "community": 3
     },
     {
       "label": "add()",
@@ -2449,7 +2449,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L363",
       "id": "suvatprogram_add",
-      "community": 4
+      "community": 3
     },
     {
       "label": "mul()",
@@ -2457,7 +2457,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L367",
       "id": "suvatprogram_mul",
-      "community": 4
+      "community": 3
     },
     {
       "label": "div()",
@@ -2465,7 +2465,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L371",
       "id": "suvatprogram_div",
-      "community": 4
+      "community": 3
     },
     {
       "label": "power()",
@@ -2473,7 +2473,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L375",
       "id": "suvatprogram_power",
-      "community": 4
+      "community": 3
     },
     {
       "label": "fn()",
@@ -2481,7 +2481,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L379",
       "id": "suvatprogram_fn",
-      "community": 4
+      "community": 3
     },
     {
       "label": "neg()",
@@ -2489,7 +2489,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L385",
       "id": "suvatprogram_neg",
-      "community": 4
+      "community": 3
     },
     {
       "label": "sub()",
@@ -2497,7 +2497,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L389",
       "id": "suvatprogram_sub",
-      "community": 4
+      "community": 3
     },
     {
       "label": "sig()",
@@ -2505,7 +2505,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L397",
       "id": "suvatprogram_sig",
-      "community": 4
+      "community": 3
     },
     {
       "label": "same()",
@@ -2513,7 +2513,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L425",
       "id": "suvatprogram_same",
-      "community": 4
+      "community": 3
     },
     {
       "label": "split_coeff()",
@@ -2521,7 +2521,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L438",
       "id": "suvatprogram_split_coeff",
-      "community": 4
+      "community": 3
     },
     {
       "label": "norm_pow_base()",
@@ -2529,7 +2529,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L460",
       "id": "suvatprogram_norm_pow_base",
-      "community": 4
+      "community": 3
     },
     {
       "label": "factor_map()",
@@ -2537,7 +2537,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L483",
       "id": "suvatprogram_factor_map",
-      "community": 4
+      "community": 3
     },
     {
       "label": "all_neg_add()",
@@ -2545,7 +2545,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L518",
       "id": "suvatprogram_all_neg_add",
-      "community": 4
+      "community": 3
     },
     {
       "label": "flip_add()",
@@ -2553,7 +2553,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L531",
       "id": "suvatprogram_flip_add",
-      "community": 4
+      "community": 3
     },
     {
       "label": "depends()",
@@ -2561,7 +2561,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L538",
       "id": "suvatprogram_depends",
-      "community": 4
+      "community": 3
     },
     {
       "label": "contains_const()",
@@ -2569,7 +2569,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L557",
       "id": "suvatprogram_contains_const",
-      "community": 4
+      "community": 3
     },
     {
       "label": "sim()",
@@ -2577,7 +2577,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L580",
       "id": "suvatprogram_sim",
-      "community": 4
+      "community": 3
     },
     {
       "label": "pr()",
@@ -2585,7 +2585,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L824",
       "id": "suvatprogram_pr",
-      "community": 4
+      "community": 3
     },
     {
       "label": "display_recip()",
@@ -2593,7 +2593,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L837",
       "id": "suvatprogram_display_recip",
-      "community": 4
+      "community": 3
     },
     {
       "label": "display_rearrange()",
@@ -2601,7 +2601,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L846",
       "id": "suvatprogram_display_rearrange",
-      "community": 4
+      "community": 3
     },
     {
       "label": "display_neg()",
@@ -2609,7 +2609,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L880",
       "id": "suvatprogram_display_neg",
-      "community": 4
+      "community": 3
     },
     {
       "label": "display_abs()",
@@ -2617,7 +2617,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L891",
       "id": "suvatprogram_display_abs",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_show()",
@@ -2625,7 +2625,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L907",
       "id": "suvatprogram_show",
-      "community": 4
+      "community": 3
     },
     {
       "label": "ensure_reasoning_marker()",
@@ -2633,7 +2633,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1018",
       "id": "suvatprogram_ensure_reasoning_marker",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_name_start()",
@@ -2641,7 +2641,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1039",
       "id": "suvatprogram_is_name_start",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_name_char()",
@@ -2649,7 +2649,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1043",
       "id": "suvatprogram_is_name_char",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_digit_char()",
@@ -2657,7 +2657,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1047",
       "id": "suvatprogram_is_digit_char",
-      "community": 4
+      "community": 3
     },
     {
       "label": "is_num_token_start()",
@@ -2665,7 +2665,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1051",
       "id": "suvatprogram_is_num_token_start",
-      "community": 4
+      "community": 3
     },
     {
       "label": "parse()",
@@ -2673,7 +2673,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1056",
       "id": "suvatprogram_parse",
-      "community": 4
+      "community": 3
     },
     {
       "label": "parse_value()",
@@ -2681,7 +2681,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1234",
       "id": "suvatprogram_parse_value",
-      "community": 4
+      "community": 3
     },
     {
       "label": "detect_presets()",
@@ -2689,7 +2689,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1270",
       "id": "suvatprogram_detect_presets",
-      "community": 4
+      "community": 3
     },
     {
       "label": "dedupe_solution_nodes()",
@@ -2697,7 +2697,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1282",
       "id": "suvatprogram_dedupe_solution_nodes",
-      "community": 4
+      "community": 3
     },
     {
       "label": "format_solution_texts()",
@@ -2705,7 +2705,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1300",
       "id": "suvatprogram_format_solution_texts",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_s()",
@@ -2713,7 +2713,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1329",
       "id": "suvatprogram_build_s",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_s2()",
@@ -2721,7 +2721,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1334",
       "id": "suvatprogram_build_s2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_s3()",
@@ -2729,7 +2729,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1339",
       "id": "suvatprogram_build_s3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_s4()",
@@ -2737,7 +2737,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1343",
       "id": "suvatprogram_build_s4",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_u()",
@@ -2745,7 +2745,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1347",
       "id": "suvatprogram_build_u",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_u2()",
@@ -2753,7 +2753,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1351",
       "id": "suvatprogram_build_u2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_u3()",
@@ -2761,7 +2761,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1355",
       "id": "suvatprogram_build_u3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_v()",
@@ -2769,7 +2769,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1359",
       "id": "suvatprogram_build_v",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_v2()",
@@ -2777,7 +2777,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1363",
       "id": "suvatprogram_build_v2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_v3()",
@@ -2785,7 +2785,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1367",
       "id": "suvatprogram_build_v3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_a()",
@@ -2793,7 +2793,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1371",
       "id": "suvatprogram_build_a",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_a2()",
@@ -2801,7 +2801,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1375",
       "id": "suvatprogram_build_a2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_a3()",
@@ -2809,7 +2809,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1379",
       "id": "suvatprogram_build_a3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_a4()",
@@ -2817,7 +2817,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1383",
       "id": "suvatprogram_build_a4",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_t()",
@@ -2825,7 +2825,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1387",
       "id": "suvatprogram_build_t",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_t2()",
@@ -2833,7 +2833,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1391",
       "id": "suvatprogram_build_t2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_t3()",
@@ -2841,7 +2841,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1395",
       "id": "suvatprogram_build_t3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_s()",
@@ -2849,7 +2849,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1399",
       "id": "suvatprogram_sub_s",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_s2()",
@@ -2857,7 +2857,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1403",
       "id": "suvatprogram_sub_s2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_s3()",
@@ -2865,7 +2865,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1407",
       "id": "suvatprogram_sub_s3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_s4()",
@@ -2873,7 +2873,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1411",
       "id": "suvatprogram_sub_s4",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_u()",
@@ -2881,7 +2881,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1415",
       "id": "suvatprogram_sub_u",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_u2()",
@@ -2889,7 +2889,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1419",
       "id": "suvatprogram_sub_u2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_u3()",
@@ -2897,7 +2897,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1423",
       "id": "suvatprogram_sub_u3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_v()",
@@ -2905,7 +2905,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1427",
       "id": "suvatprogram_sub_v",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_v2()",
@@ -2913,7 +2913,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1431",
       "id": "suvatprogram_sub_v2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_v3()",
@@ -2921,7 +2921,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1435",
       "id": "suvatprogram_sub_v3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_a()",
@@ -2929,7 +2929,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1439",
       "id": "suvatprogram_sub_a",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_a2()",
@@ -2937,7 +2937,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1443",
       "id": "suvatprogram_sub_a2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_a3()",
@@ -2945,7 +2945,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1447",
       "id": "suvatprogram_sub_a3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_a4()",
@@ -2953,7 +2953,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1451",
       "id": "suvatprogram_sub_a4",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_t()",
@@ -2961,7 +2961,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1455",
       "id": "suvatprogram_sub_t",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_t2()",
@@ -2969,7 +2969,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1459",
       "id": "suvatprogram_sub_t2",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_sub_t3()",
@@ -2977,7 +2977,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1463",
       "id": "suvatprogram_sub_t3",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_has_required()",
@@ -2985,7 +2985,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1491",
       "id": "suvatprogram_has_required",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_exact_value()",
@@ -2993,7 +2993,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1498",
       "id": "suvatprogram_exact_value",
-      "community": 4
+      "community": 3
     },
     {
       "label": "solve_quadratic_time()",
@@ -3001,7 +3001,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1507",
       "id": "suvatprogram_solve_quadratic_time",
-      "community": 4
+      "community": 3
     },
     {
       "label": "solve_quadratic_v()",
@@ -3009,7 +3009,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1597",
       "id": "suvatprogram_solve_quadratic_v",
-      "community": 4
+      "community": 3
     },
     {
       "label": "resolve_target_inputs()",
@@ -3017,7 +3017,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1609",
       "id": "suvatprogram_resolve_target_inputs",
-      "community": 4
+      "community": 3
     },
     {
       "label": "should_show_all_variables()",
@@ -3025,7 +3025,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1632",
       "id": "suvatprogram_should_show_all_variables",
-      "community": 4
+      "community": 3
     },
     {
       "label": "format_all_variables()",
@@ -3033,7 +3033,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1642",
       "id": "suvatprogram_format_all_variables",
-      "community": 4
+      "community": 3
     },
     {
       "label": "find_equation()",
@@ -3041,7 +3041,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1661",
       "id": "suvatprogram_find_equation",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_symbolic_values()",
@@ -3049,7 +3049,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1672",
       "id": "suvatprogram_symbolic_values",
-      "community": 4
+      "community": 3
     },
     {
       "label": "find_symbolic_equation()",
@@ -3057,7 +3057,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1684",
       "id": "suvatprogram_find_symbolic_equation",
-      "community": 4
+      "community": 3
     },
     {
       "label": "_build_suvat_solution_data()",
@@ -3065,7 +3065,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1712",
       "id": "suvatprogram_build_suvat_solution_data",
-      "community": 4
+      "community": 3
     },
     {
       "label": "build_suvat_solution()",
@@ -3073,7 +3073,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1878",
       "id": "suvatprogram_build_suvat_solution",
-      "community": 4
+      "community": 3
     },
     {
       "label": "solve_all_variables()",
@@ -3081,7 +3081,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1888",
       "id": "suvatprogram_solve_all_variables",
-      "community": 4
+      "community": 3
     },
     {
       "label": "format_output_with_units()",
@@ -3089,7 +3089,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1892",
       "id": "suvatprogram_format_output_with_units",
-      "community": 4
+      "community": 3
     },
     {
       "label": "solve_suvat()",
@@ -3097,7 +3097,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1909",
       "id": "suvatprogram_solve_suvat",
-      "community": 4
+      "community": 3
     },
     {
       "label": "main()",
@@ -3105,7 +3105,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1984",
       "id": "suvatprogram_main",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Simplify sqrt(n) into (coeff, remainder) where sqrt(n) = coeff * sqrt(remainder)",
@@ -3113,7 +3113,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L169",
       "id": "suvatprogram_rationale_169",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Convert a numeric AST node to float. Returns None if not purely numeric.",
@@ -3121,7 +3121,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L185",
       "id": "suvatprogram_rationale_185",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Format a float to a clean decimal string.",
@@ -3129,7 +3129,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L257",
       "id": "suvatprogram_rationale_257",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Estimate significant figures from input text.",
@@ -3137,7 +3137,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L276",
       "id": "suvatprogram_rationale_276",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Add reasoning marker to output lines if missing.",
@@ -3145,7 +3145,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1019",
       "id": "suvatprogram_rationale_1019",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Detect keyword presets in input text. Returns dict of variable overrides.",
@@ -3153,7 +3153,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1271",
       "id": "suvatprogram_rationale_1271",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Solve for t using the quadratic from s = ut + 1/2at^2.",
@@ -3161,7 +3161,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1508",
       "id": "suvatprogram_rationale_1508",
-      "community": 4
+      "community": 3
     },
     {
       "label": "Solve for v using v^2 = u^2 + 2as.",
@@ -3169,7 +3169,7 @@
       "source_file": "src/Math/SUVATprogram.py",
       "source_location": "L1598",
       "id": "suvatprogram_rationale_1598",
-      "community": 4
+      "community": 3
     },
     {
       "label": "deriveProgram.py",
@@ -8833,7 +8833,7 @@
       "source_file": "src/Math/trig_test_suite.py",
       "source_location": "L1",
       "id": "trig_test_suite",
-      "community": 17
+      "community": 14
     },
     {
       "label": "run_solve()",
@@ -8841,7 +8841,7 @@
       "source_file": "src/Math/trig_test_suite.py",
       "source_location": "L14",
       "id": "trig_test_suite_run_solve",
-      "community": 17
+      "community": 14
     },
     {
       "label": "get_solution_count()",
@@ -8849,7 +8849,7 @@
       "source_file": "src/Math/trig_test_suite.py",
       "source_location": "L18",
       "id": "trig_test_suite_get_solution_count",
-      "community": 17
+      "community": 14
     },
     {
       "label": "has_solutions()",
@@ -8857,7 +8857,7 @@
       "source_file": "src/Math/trig_test_suite.py",
       "source_location": "L26",
       "id": "trig_test_suite_has_solutions",
-      "community": 17
+      "community": 14
     },
     {
       "label": "run_tests()",
@@ -8865,7 +8865,7 @@
       "source_file": "src/Math/trig_test_suite.py",
       "source_location": "L30",
       "id": "trig_test_suite_run_tests",
-      "community": 17
+      "community": 14
     },
     {
       "label": "trigProgram.py",
@@ -8873,7 +8873,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1",
       "id": "trigprogram",
-      "community": 3
+      "community": 4
     },
     {
       "label": "cache_store()",
@@ -8881,7 +8881,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L114",
       "id": "trigprogram_cache_store",
-      "community": 9
+      "community": 11
     },
     {
       "label": "clear_engine_caches()",
@@ -8889,7 +8889,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L155",
       "id": "trigprogram_clear_engine_caches",
-      "community": 3
+      "community": 4
     },
     {
       "label": "apply_runtime_profile()",
@@ -8897,7 +8897,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L164",
       "id": "trigprogram_apply_runtime_profile",
-      "community": 3
+      "community": 4
     },
     {
       "label": "begin_user_action()",
@@ -8905,7 +8905,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L192",
       "id": "trigprogram_begin_user_action",
-      "community": 10
+      "community": 4
     },
     {
       "label": "_force_low_memory_runtime()",
@@ -8913,7 +8913,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L199",
       "id": "trigprogram_force_low_memory_runtime",
-      "community": 3
+      "community": 4
     },
     {
       "label": "to_radians()",
@@ -8921,7 +8921,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L206",
       "id": "trigprogram_to_radians",
-      "community": 3
+      "community": 4
     },
     {
       "label": "to_degrees()",
@@ -8929,7 +8929,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L210",
       "id": "trigprogram_to_degrees",
-      "community": 3
+      "community": 7
     },
     {
       "label": "is_finite_value()",
@@ -8937,7 +8937,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L214",
       "id": "trigprogram_is_finite_value",
-      "community": 13
+      "community": 7
     },
     {
       "label": "gcd()",
@@ -8945,7 +8945,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L226",
       "id": "trigprogram_gcd",
-      "community": 3
+      "community": 4
     },
     {
       "label": "num()",
@@ -8953,7 +8953,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L238",
       "id": "trigprogram_num",
-      "community": 7
+      "community": 8
     },
     {
       "label": "num_text()",
@@ -8961,7 +8961,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L248",
       "id": "trigprogram_num_text",
-      "community": 3
+      "community": 4
     },
     {
       "label": "sym()",
@@ -8969,7 +8969,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L271",
       "id": "trigprogram_sym",
-      "community": 3
+      "community": 7
     },
     {
       "label": "is_num()",
@@ -8977,7 +8977,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L275",
       "id": "trigprogram_is_num",
-      "community": 11
+      "community": 5
     },
     {
       "label": "is_sym()",
@@ -8985,7 +8985,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L279",
       "id": "trigprogram_is_sym",
-      "community": 3
+      "community": 4
     },
     {
       "label": "is_const()",
@@ -8993,7 +8993,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L283",
       "id": "trigprogram_is_const",
-      "community": 3
+      "community": 4
     },
     {
       "label": "is_zero()",
@@ -9001,7 +9001,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L287",
       "id": "trigprogram_is_zero",
-      "community": 7
+      "community": 8
     },
     {
       "label": "is_one()",
@@ -9009,7 +9009,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L291",
       "id": "trigprogram_is_one",
-      "community": 5
+      "community": 11
     },
     {
       "label": "is_minus_one()",
@@ -9025,7 +9025,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L299",
       "id": "trigprogram_is_int_num",
-      "community": 15
+      "community": 9
     },
     {
       "label": "addq()",
@@ -9033,7 +9033,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L303",
       "id": "trigprogram_addq",
-      "community": 11
+      "community": 5
     },
     {
       "label": "mulq()",
@@ -9041,7 +9041,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L307",
       "id": "trigprogram_mulq",
-      "community": 11
+      "community": 5
     },
     {
       "label": "divq()",
@@ -9049,7 +9049,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L311",
       "id": "trigprogram_divq",
-      "community": 11
+      "community": 5
     },
     {
       "label": "negq()",
@@ -9057,7 +9057,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L315",
       "id": "trigprogram_negq",
-      "community": 3
+      "community": 4
     },
     {
       "label": "int_pow()",
@@ -9065,7 +9065,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L319",
       "id": "trigprogram_int_pow",
-      "community": 11
+      "community": 5
     },
     {
       "label": "make_add()",
@@ -9073,7 +9073,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L326",
       "id": "trigprogram_make_add",
-      "community": 9
+      "community": 11
     },
     {
       "label": "make_mul()",
@@ -9081,7 +9081,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L343",
       "id": "trigprogram_make_mul",
-      "community": 9
+      "community": 5
     },
     {
       "label": "make_display_mul()",
@@ -9097,7 +9097,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L384",
       "id": "trigprogram_add",
-      "community": 7
+      "community": 8
     },
     {
       "label": "mul()",
@@ -9105,7 +9105,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L388",
       "id": "trigprogram_mul",
-      "community": 7
+      "community": 8
     },
     {
       "label": "div()",
@@ -9113,7 +9113,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L392",
       "id": "trigprogram_div",
-      "community": 7
+      "community": 9
     },
     {
       "label": "power()",
@@ -9121,7 +9121,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L396",
       "id": "trigprogram_power",
-      "community": 7
+      "community": 9
     },
     {
       "label": "fn()",
@@ -9129,7 +9129,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L400",
       "id": "trigprogram_fn",
-      "community": 7
+      "community": 8
     },
     {
       "label": "neg()",
@@ -9137,7 +9137,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L408",
       "id": "trigprogram_neg",
-      "community": 7
+      "community": 8
     },
     {
       "label": "flat()",
@@ -9153,7 +9153,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L447",
       "id": "trigprogram_sig_uncached",
-      "community": 3
+      "community": 5
     },
     {
       "label": "sig()",
@@ -9161,7 +9161,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L464",
       "id": "trigprogram_sig",
-      "community": 9
+      "community": 11
     },
     {
       "label": "same()",
@@ -9177,7 +9177,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L478",
       "id": "trigprogram_cheap_same",
-      "community": 5
+      "community": 9
     },
     {
       "label": "_symbols_uncached()",
@@ -9185,7 +9185,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L488",
       "id": "trigprogram_symbols_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "symbols_of()",
@@ -9193,7 +9193,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L533",
       "id": "trigprogram_symbols_of",
-      "community": 9
+      "community": 11
     },
     {
       "label": "_function_names_uncached()",
@@ -9201,7 +9201,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L545",
       "id": "trigprogram_function_names_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "function_names_of()",
@@ -9209,7 +9209,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L604",
       "id": "trigprogram_function_names_of",
-      "community": 9
+      "community": 11
     },
     {
       "label": "_kind_names_uncached()",
@@ -9217,7 +9217,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L614",
       "id": "trigprogram_kind_names_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "kind_names_of()",
@@ -9225,7 +9225,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L646",
       "id": "trigprogram_kind_names_of",
-      "community": 9
+      "community": 11
     },
     {
       "label": "_tree_size_uncached()",
@@ -9233,7 +9233,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L656",
       "id": "trigprogram_tree_size_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "tree_size()",
@@ -9241,7 +9241,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L672",
       "id": "trigprogram_tree_size",
-      "community": 9
+      "community": 11
     },
     {
       "label": "_reciprocal_burden_uncached()",
@@ -9249,7 +9249,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L682",
       "id": "trigprogram_reciprocal_burden_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "reciprocal_burden()",
@@ -9257,7 +9257,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L703",
       "id": "trigprogram_reciprocal_burden",
-      "community": 9
+      "community": 11
     },
     {
       "label": "_trig_arg_keys_uncached()",
@@ -9265,7 +9265,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L713",
       "id": "trigprogram_trig_arg_keys_uncached",
-      "community": 9
+      "community": 11
     },
     {
       "label": "trig_arg_keys_of()",
@@ -9273,7 +9273,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L775",
       "id": "trigprogram_trig_arg_keys_of",
-      "community": 9
+      "community": 11
     },
     {
       "label": "depends()",
@@ -9281,7 +9281,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L785",
       "id": "trigprogram_depends",
-      "community": 15
+      "community": 8
     },
     {
       "label": "collect_symbols()",
@@ -9289,7 +9289,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L789",
       "id": "trigprogram_collect_symbols",
-      "community": 13
+      "community": 4
     },
     {
       "label": "split_coeff()",
@@ -9305,7 +9305,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L817",
       "id": "trigprogram_split_num_factor",
-      "community": 11
+      "community": 5
     },
     {
       "label": "split_const_factor()",
@@ -9313,7 +9313,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L833",
       "id": "trigprogram_split_const_factor",
-      "community": 15
+      "community": 7
     },
     {
       "label": "int_sqrt()",
@@ -9321,7 +9321,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L857",
       "id": "trigprogram_int_sqrt",
-      "community": 11
+      "community": 4
     },
     {
       "label": "sqrt_num()",
@@ -9329,7 +9329,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L873",
       "id": "trigprogram_sqrt_num",
-      "community": 11
+      "community": 4
     },
     {
       "label": "norm_pow_base()",
@@ -9337,7 +9337,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L889",
       "id": "trigprogram_norm_pow_base",
-      "community": 11
+      "community": 5
     },
     {
       "label": "factor_map()",
@@ -9345,7 +9345,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L911",
       "id": "trigprogram_factor_map",
-      "community": 11
+      "community": 5
     },
     {
       "label": "display_neg()",
@@ -9353,7 +9353,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L954",
       "id": "trigprogram_display_neg",
-      "community": 3
+      "community": 5
     },
     {
       "label": "display_abs()",
@@ -9361,7 +9361,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L965",
       "id": "trigprogram_display_abs",
-      "community": 13
+      "community": 5
     },
     {
       "label": "_sim_uncached()",
@@ -9369,7 +9369,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L977",
       "id": "trigprogram_sim_uncached",
-      "community": 11
+      "community": 5
     },
     {
       "label": "sim()",
@@ -9377,7 +9377,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1210",
       "id": "trigprogram_sim",
-      "community": 5
+      "community": 9
     },
     {
       "label": "pr()",
@@ -9385,7 +9385,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1220",
       "id": "trigprogram_pr",
-      "community": 13
+      "community": 5
     },
     {
       "label": "needs_div_brackets()",
@@ -9393,7 +9393,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1233",
       "id": "trigprogram_needs_div_brackets",
-      "community": 13
+      "community": 5
     },
     {
       "label": "_sort_key_uncached()",
@@ -9401,7 +9401,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1243",
       "id": "trigprogram_sort_key_uncached",
-      "community": 3
+      "community": 4
     },
     {
       "label": "sort_key()",
@@ -9409,7 +9409,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1257",
       "id": "trigprogram_sort_key",
-      "community": 3
+      "community": 4
     },
     {
       "label": "_show_uncached()",
@@ -9417,7 +9417,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1264",
       "id": "trigprogram_show_uncached",
-      "community": 13
+      "community": 5
     },
     {
       "label": "_show()",
@@ -9425,7 +9425,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1362",
       "id": "trigprogram_show",
-      "community": 13
+      "community": 5
     },
     {
       "label": "is_digit_char()",
@@ -9433,7 +9433,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1374",
       "id": "trigprogram_is_digit_char",
-      "community": 14
+      "community": 13
     },
     {
       "label": "is_alpha_char()",
@@ -9441,7 +9441,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1378",
       "id": "trigprogram_is_alpha_char",
-      "community": 14
+      "community": 13
     },
     {
       "label": "is_name_start()",
@@ -9449,7 +9449,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1382",
       "id": "trigprogram_is_name_start",
-      "community": 14
+      "community": 13
     },
     {
       "label": "is_name_char()",
@@ -9457,7 +9457,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1386",
       "id": "trigprogram_is_name_char",
-      "community": 14
+      "community": 13
     },
     {
       "label": "is_num_token_start()",
@@ -9465,7 +9465,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1390",
       "id": "trigprogram_is_num_token_start",
-      "community": 14
+      "community": 13
     },
     {
       "label": "parse()",
@@ -9473,7 +9473,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1398",
       "id": "trigprogram_parse",
-      "community": 14
+      "community": 13
     },
     {
       "label": "split_top_level()",
@@ -9481,7 +9481,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1571",
       "id": "trigprogram_split_top_level",
-      "community": 10
+      "community": 4
     },
     {
       "label": "split_top_level_all()",
@@ -9489,7 +9489,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1594",
       "id": "trigprogram_split_top_level_all",
-      "community": 3
+      "community": 4
     },
     {
       "label": "parse_identity()",
@@ -9497,7 +9497,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1613",
       "id": "trigprogram_parse_identity",
-      "community": 10
+      "community": 4
     },
     {
       "label": "split_rewrite_arrow()",
@@ -9505,7 +9505,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1635",
       "id": "trigprogram_split_rewrite_arrow",
-      "community": 10
+      "community": 4
     },
     {
       "label": "exact_num_value()",
@@ -9513,7 +9513,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1650",
       "id": "trigprogram_exact_num_value",
-      "community": 11
+      "community": 5
     },
     {
       "label": "maybe_scalar_times_var()",
@@ -9521,7 +9521,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1656",
       "id": "trigprogram_maybe_scalar_times_var",
-      "community": 11
+      "community": 5
     },
     {
       "label": "split_sum()",
@@ -9529,7 +9529,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1669",
       "id": "trigprogram_split_sum",
-      "community": 13
+      "community": 5
     },
     {
       "label": "divide_terms_by_two_for_display()",
@@ -9537,7 +9537,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1683",
       "id": "trigprogram_divide_terms_by_two_for_display",
-      "community": 7
+      "community": 8
     },
     {
       "label": "half_sum_diff_args()",
@@ -9545,7 +9545,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1698",
       "id": "trigprogram_half_sum_diff_args",
-      "community": 13
+      "community": 8
     },
     {
       "label": "signed_unit_term()",
@@ -9585,7 +9585,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1764",
       "id": "trigprogram_trig_name",
-      "community": 3
+      "community": 4
     },
     {
       "label": "reciprocal_trig()",
@@ -9593,7 +9593,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1770",
       "id": "trigprogram_reciprocal_trig",
-      "community": 5
+      "community": 9
     },
     {
       "label": "named_reciprocal_trig()",
@@ -9601,7 +9601,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1798",
       "id": "trigprogram_named_reciprocal_trig",
-      "community": 5
+      "community": 9
     },
     {
       "label": "trig_formula_expand()",
@@ -9609,7 +9609,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1853",
       "id": "trigprogram_trig_formula_expand",
-      "community": 7
+      "community": 5
     },
     {
       "label": "sum_product_expand()",
@@ -9617,7 +9617,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1910",
       "id": "trigprogram_sum_product_expand",
-      "community": 13
+      "community": 8
     },
     {
       "label": "half_angle_expand()",
@@ -9625,7 +9625,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1964",
       "id": "trigprogram_half_angle_expand",
-      "community": 7
+      "community": 9
     },
     {
       "label": "power_reduction_once()",
@@ -9633,7 +9633,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L1982",
       "id": "trigprogram_power_reduction_once",
-      "community": 7
+      "community": 9
     },
     {
       "label": "special_trig_identity_once()",
@@ -9665,7 +9665,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2081",
       "id": "trigprogram_proof_identity_rewrite_once",
-      "community": 7
+      "community": 9
     },
     {
       "label": "rewrite_one_term_in_sum_for_display()",
@@ -9737,7 +9737,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2348",
       "id": "trigprogram_cancel_fraction_common_factor_for_display",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_fraction_denominator_double_angle()",
@@ -9777,7 +9777,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2516",
       "id": "trigprogram_remove_factor_from_term",
-      "community": 5
+      "community": 9
     },
     {
       "label": "factor_common_term_once()",
@@ -9793,7 +9793,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2607",
       "id": "trigprogram_factor_common_term_for_proof",
-      "community": 9
+      "community": 11
     },
     {
       "label": "factor_fraction_terms_for_display()",
@@ -9801,7 +9801,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2649",
       "id": "trigprogram_factor_fraction_terms_for_display",
-      "community": 9
+      "community": 11
     },
     {
       "label": "named_power_product_info()",
@@ -9817,7 +9817,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2708",
       "id": "trigprogram_build_named_power_term",
-      "community": 7
+      "community": 4
     },
     {
       "label": "build_named_power_product()",
@@ -9825,7 +9825,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2716",
       "id": "trigprogram_build_named_power_product",
-      "community": 3
+      "community": 4
     },
     {
       "label": "factor_trig_power_pair_for_proof()",
@@ -9849,7 +9849,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2833",
       "id": "trigprogram_expand_square",
-      "community": 5
+      "community": 9
     },
     {
       "label": "expand_powered_monomial()",
@@ -9857,7 +9857,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2844",
       "id": "trigprogram_expand_powered_monomial",
-      "community": 11
+      "community": 5
     },
     {
       "label": "expand_product()",
@@ -9865,7 +9865,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2864",
       "id": "trigprogram_expand_product",
-      "community": 5
+      "community": 9
     },
     {
       "label": "expand_fraction()",
@@ -9873,7 +9873,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2883",
       "id": "trigprogram_expand_fraction",
-      "community": 5
+      "community": 9
     },
     {
       "label": "expand_small()",
@@ -9881,7 +9881,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2900",
       "id": "trigprogram_expand_small",
-      "community": 5
+      "community": 9
     },
     {
       "label": "expand_embedded_small()",
@@ -9889,7 +9889,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2918",
       "id": "trigprogram_expand_embedded_small",
-      "community": 3
+      "community": 9
     },
     {
       "label": "rewrite_children()",
@@ -9897,7 +9897,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2941",
       "id": "trigprogram_rewrite_children",
-      "community": 3
+      "community": 4
     },
     {
       "label": "expand_trig_tree()",
@@ -9905,7 +9905,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2959",
       "id": "trigprogram_expand_trig_tree",
-      "community": 3
+      "community": 9
     },
     {
       "label": "expand_safe_trig_tree()",
@@ -9913,7 +9913,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2978",
       "id": "trigprogram_expand_safe_trig_tree",
-      "community": 5
+      "community": 9
     },
     {
       "label": "is_square_of()",
@@ -9921,7 +9921,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L2991",
       "id": "trigprogram_is_square_of",
-      "community": 3
+      "community": 5
     },
     {
       "label": "reduce_special_add()",
@@ -9937,7 +9937,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3052",
       "id": "trigprogram_reduce_identities",
-      "community": 5
+      "community": 9
     },
     {
       "label": "has_variable_dependency()",
@@ -9945,7 +9945,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3073",
       "id": "trigprogram_has_variable_dependency",
-      "community": 10
+      "community": 4
     },
     {
       "label": "simplify_fraction()",
@@ -9953,7 +9953,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3079",
       "id": "trigprogram_simplify_fraction",
-      "community": 5
+      "community": 9
     },
     {
       "label": "_full_simplify_uncached()",
@@ -9961,7 +9961,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3131",
       "id": "trigprogram_full_simplify_uncached",
-      "community": 5
+      "community": 9
     },
     {
       "label": "full_simplify()",
@@ -9969,7 +9969,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3148",
       "id": "trigprogram_full_simplify",
-      "community": 9
+      "community": 11
     },
     {
       "label": "eval_numeric_mode()",
@@ -9977,7 +9977,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3155",
       "id": "trigprogram_eval_numeric_mode",
-      "community": 3
+      "community": 7
     },
     {
       "label": "_equivalent_uncached()",
@@ -9985,7 +9985,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3229",
       "id": "trigprogram_equivalent_uncached",
-      "community": 13
+      "community": 4
     },
     {
       "label": "equivalent()",
@@ -9993,7 +9993,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3291",
       "id": "trigprogram_equivalent",
-      "community": 5
+      "community": 4
     },
     {
       "label": "start_line()",
@@ -10017,7 +10017,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3318",
       "id": "trigprogram_equation_line",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_ratio_identity_pair()",
@@ -10025,7 +10025,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3322",
       "id": "trigprogram_match_ratio_identity_pair",
-      "community": 10
+      "community": 5
     },
     {
       "label": "standard_ratio_identity_lines()",
@@ -10033,7 +10033,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3354",
       "id": "trigprogram_standard_ratio_identity_lines",
-      "community": 10
+      "community": 4
     },
     {
       "label": "direct_expression_transform_lines()",
@@ -10041,7 +10041,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3383",
       "id": "trigprogram_direct_expression_transform_lines",
-      "community": 10
+      "community": 4
     },
     {
       "label": "ordered_sum_text()",
@@ -10049,7 +10049,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3416",
       "id": "trigprogram_ordered_sum_text",
-      "community": 3
+      "community": 5
     },
     {
       "label": "quadratic_standard_text()",
@@ -10057,7 +10057,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3434",
       "id": "trigprogram_quadratic_standard_text",
-      "community": 7
+      "community": 8
     },
     {
       "label": "exact_pi_multiple()",
@@ -10065,7 +10065,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3438",
       "id": "trigprogram_exact_pi_multiple",
-      "community": 11
+      "community": 5
     },
     {
       "label": "contains_pi()",
@@ -10073,7 +10073,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3497",
       "id": "trigprogram_contains_pi",
-      "community": 14
+      "community": 13
     },
     {
       "label": "collect_angle_units()",
@@ -10081,7 +10081,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3515",
       "id": "trigprogram_collect_angle_units",
-      "community": 14
+      "community": 13
     },
     {
       "label": "angle_to_degree()",
@@ -10089,7 +10089,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3541",
       "id": "trigprogram_angle_to_degree",
-      "community": 11
+      "community": 4
     },
     {
       "label": "degree_mod_360()",
@@ -10097,7 +10097,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3551",
       "id": "trigprogram_degree_mod_360",
-      "community": 11
+      "community": 4
     },
     {
       "label": "degree_int()",
@@ -10105,7 +10105,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3562",
       "id": "trigprogram_degree_int",
-      "community": 11
+      "community": 4
     },
     {
       "label": "reference_degree()",
@@ -10113,7 +10113,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3569",
       "id": "trigprogram_reference_degree",
-      "community": 11
+      "community": 4
     },
     {
       "label": "quadrant_of_degree()",
@@ -10121,7 +10121,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3580",
       "id": "trigprogram_quadrant_of_degree",
-      "community": 11
+      "community": 4
     },
     {
       "label": "exact_first_quadrant()",
@@ -10129,7 +10129,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3595",
       "id": "trigprogram_exact_first_quadrant",
-      "community": 7
+      "community": 8
     },
     {
       "label": "exact_trig_value()",
@@ -10137,7 +10137,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3671",
       "id": "trigprogram_exact_trig_value",
-      "community": 11
+      "community": 4
     },
     {
       "label": "exact_trig_lines()",
@@ -10145,7 +10145,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3700",
       "id": "trigprogram_exact_trig_lines",
-      "community": 11
+      "community": 4
     },
     {
       "label": "replace_exact_trig()",
@@ -10153,7 +10153,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3751",
       "id": "trigprogram_replace_exact_trig",
-      "community": 11
+      "community": 4
     },
     {
       "label": "replace_exact_trig_quiet()",
@@ -10161,7 +10161,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3785",
       "id": "trigprogram_replace_exact_trig_quiet",
-      "community": 3
+      "community": 11
     },
     {
       "label": "match_double_angle_arg()",
@@ -10169,7 +10169,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3789",
       "id": "trigprogram_match_double_angle_arg",
-      "community": 16
+      "community": 5
     },
     {
       "label": "match_numeric_multiple_arg()",
@@ -10185,7 +10185,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3820",
       "id": "trigprogram_match_same_angle_sin_cos_product",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_cot_term()",
@@ -10233,7 +10233,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L3994",
       "id": "trigprogram_nonzero_equation_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "derive_cot_quadratic_expr()",
@@ -10241,7 +10241,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4002",
       "id": "trigprogram_derive_cot_quadratic_expr",
-      "community": 7
+      "community": 5
     },
     {
       "label": "prove_cot_quadratic_equation()",
@@ -10249,7 +10249,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4031",
       "id": "trigprogram_prove_cot_quadratic_equation",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_shift_side()",
@@ -10257,7 +10257,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4100",
       "id": "trigprogram_match_shift_side",
-      "community": 11
+      "community": 5
     },
     {
       "label": "independent_of_names()",
@@ -10265,7 +10265,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4146",
       "id": "trigprogram_independent_of_names",
-      "community": 13
+      "community": 4
     },
     {
       "label": "match_generic_shift_side()",
@@ -10273,7 +10273,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4158",
       "id": "trigprogram_match_generic_shift_side",
-      "community": 13
+      "community": 5
     },
     {
       "label": "match_shift_target()",
@@ -10281,7 +10281,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4182",
       "id": "trigprogram_match_shift_target",
-      "community": 13
+      "community": 4
     },
     {
       "label": "split_trig_term()",
@@ -10305,7 +10305,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4248",
       "id": "trigprogram_shift_placeholder",
-      "community": 11
+      "community": 4
     },
     {
       "label": "show_shift_form()",
@@ -10313,7 +10313,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4253",
       "id": "trigprogram_show_shift_form",
-      "community": 5
+      "community": 4
     },
     {
       "label": "bridge_to_target()",
@@ -10329,7 +10329,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4306",
       "id": "trigprogram_prove_shift_compare",
-      "community": 11
+      "community": 4
     },
     {
       "label": "prove_shift_identity()",
@@ -10353,7 +10353,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4459",
       "id": "trigprogram_product_to_sum_once",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_plus_minus_pair()",
@@ -10361,7 +10361,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4488",
       "id": "trigprogram_match_plus_minus_pair",
-      "community": 13
+      "community": 4
     },
     {
       "label": "match_cos_sq_minus_sin_sq()",
@@ -10385,7 +10385,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4554",
       "id": "trigprogram_prove_product_pair_identity",
-      "community": 7
+      "community": 8
     },
     {
       "label": "prove_sum_product_identity()",
@@ -10465,7 +10465,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L4911",
       "id": "trigprogram_prove_conjugate_ratio_identity",
-      "community": 5
+      "community": 9
     },
     {
       "label": "prove_reciprocal_identity()",
@@ -10481,7 +10481,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L5146",
       "id": "trigprogram_match_reciprocal_minus_base_proof",
-      "community": 7
+      "community": 9
     },
     {
       "label": "match_cosec_cot_double_proof()",
@@ -10489,7 +10489,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L5179",
       "id": "trigprogram_match_cosec_cot_double_proof",
-      "community": 7
+      "community": 8
     },
     {
       "label": "prove_reciprocal_reduction_identity()",
@@ -10497,7 +10497,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L5216",
       "id": "trigprogram_prove_reciprocal_reduction_identity",
-      "community": 7
+      "community": 5
     },
     {
       "label": "prove_log_exp_identity()",
@@ -10513,7 +10513,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L5423",
       "id": "trigprogram_prove_power_identity",
-      "community": 5
+      "community": 9
     },
     {
       "label": "prove_half_angle_ratio_identity()",
@@ -10521,7 +10521,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L5592",
       "id": "trigprogram_prove_half_angle_ratio_identity",
-      "community": 7
+      "community": 8
     },
     {
       "label": "direct_double_angle_rewrite()",
@@ -10601,7 +10601,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6111",
       "id": "trigprogram_generic_side_path",
-      "community": 5
+      "community": 9
     },
     {
       "label": "prove_general()",
@@ -10609,7 +10609,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6147",
       "id": "trigprogram_prove_general",
-      "community": 5
+      "community": 4
     },
     {
       "label": "proof_complexity_score()",
@@ -10617,7 +10617,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6155",
       "id": "trigprogram_proof_complexity_score",
-      "community": 9
+      "community": 11
     },
     {
       "label": "proof_direction_candidates()",
@@ -10625,7 +10625,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6176",
       "id": "trigprogram_proof_direction_candidates",
-      "community": 10
+      "community": 4
     },
     {
       "label": "best_proof_direction()",
@@ -10633,7 +10633,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6206",
       "id": "trigprogram_best_proof_direction",
-      "community": 10
+      "community": 4
     },
     {
       "label": "normalize_route()",
@@ -10641,7 +10641,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6219",
       "id": "trigprogram_normalize_route",
-      "community": 10
+      "community": 4
     },
     {
       "label": "split_identity_text_raw()",
@@ -10649,7 +10649,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6232",
       "id": "trigprogram_split_identity_text_raw",
-      "community": 10
+      "community": 4
     },
     {
       "label": "split_equation_text_raw_or_zero()",
@@ -10657,7 +10657,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6255",
       "id": "trigprogram_split_equation_text_raw_or_zero",
-      "community": 10
+      "community": 4
     },
     {
       "label": "has_outer_parens_text()",
@@ -10665,7 +10665,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6262",
       "id": "trigprogram_has_outer_parens_text",
-      "community": 10
+      "community": 4
     },
     {
       "label": "clean_expr_text()",
@@ -10673,7 +10673,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6279",
       "id": "trigprogram_clean_expr_text",
-      "community": 10
+      "community": 4
     },
     {
       "label": "special_text_proof()",
@@ -10681,7 +10681,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6286",
       "id": "trigprogram_special_text_proof",
-      "community": 10
+      "community": 4
     },
     {
       "label": "prove_direct()",
@@ -10689,7 +10689,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6355",
       "id": "trigprogram_prove_direct",
-      "community": 10
+      "community": 4
     },
     {
       "label": "finalize_proof_lines()",
@@ -10697,7 +10697,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6395",
       "id": "trigprogram_finalize_proof_lines",
-      "community": 10
+      "community": 4
     },
     {
       "label": "ensure_reasoning_marker()",
@@ -10705,7 +10705,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6406",
       "id": "trigprogram_ensure_reasoning_marker",
-      "community": 3
+      "community": 4
     },
     {
       "label": "prove_by_difference_zero()",
@@ -10713,7 +10713,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6418",
       "id": "trigprogram_prove_by_difference_zero",
-      "community": 3
+      "community": 9
     },
     {
       "label": "solve_prove()",
@@ -10721,7 +10721,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6472",
       "id": "trigprogram_solve_prove",
-      "community": 10
+      "community": 4
     },
     {
       "label": "extract_linear_combo_equation()",
@@ -10729,7 +10729,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6497",
       "id": "trigprogram_extract_linear_combo_equation",
-      "community": 13
+      "community": 4
     },
     {
       "label": "extract_shift_equation()",
@@ -10737,7 +10737,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6513",
       "id": "trigprogram_extract_shift_equation",
-      "community": 13
+      "community": 4
     },
     {
       "label": "shift_angle_from_combo()",
@@ -10745,7 +10745,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6529",
       "id": "trigprogram_shift_angle_from_combo",
-      "community": 3
+      "community": 7
     },
     {
       "label": "transform_linear_combo_shift()",
@@ -10753,7 +10753,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6543",
       "id": "trigprogram_transform_linear_combo_shift",
-      "community": 13
+      "community": 4
     },
     {
       "label": "factor_linear_term_from_root()",
@@ -10761,7 +10761,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6625",
       "id": "trigprogram_factor_linear_term_from_root",
-      "community": 7
+      "community": 8
     },
     {
       "label": "transform_factor_quadratic()",
@@ -10769,7 +10769,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6633",
       "id": "trigprogram_transform_factor_quadratic",
-      "community": 7
+      "community": 8
     },
     {
       "label": "single_symbol_name()",
@@ -10777,7 +10777,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6682",
       "id": "trigprogram_single_symbol_name",
-      "community": 10
+      "community": 4
     },
     {
       "label": "transform_zero_form_rewrite()",
@@ -10785,7 +10785,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6690",
       "id": "trigprogram_transform_zero_form_rewrite",
-      "community": 10
+      "community": 4
     },
     {
       "label": "transform_same_angle_ratio()",
@@ -10793,7 +10793,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6714",
       "id": "trigprogram_transform_same_angle_ratio",
-      "community": 7
+      "community": 8
     },
     {
       "label": "transform_half_angle_ratio()",
@@ -10801,7 +10801,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6760",
       "id": "trigprogram_transform_half_angle_ratio",
-      "community": 10
+      "community": 4
     },
     {
       "label": "detect_transform_var()",
@@ -10809,7 +10809,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6772",
       "id": "trigprogram_detect_transform_var",
-      "community": 9
+      "community": 11
     },
     {
       "label": "depends_any()",
@@ -10817,7 +10817,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6789",
       "id": "trigprogram_depends_any",
-      "community": 9
+      "community": 11
     },
     {
       "label": "collect_symbol_order()",
@@ -10825,7 +10825,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6818",
       "id": "trigprogram_collect_symbol_order",
-      "community": 3
+      "community": 4
     },
     {
       "label": "detect_template_params()",
@@ -10833,7 +10833,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6840",
       "id": "trigprogram_detect_template_params",
-      "community": 9
+      "community": 11
     },
     {
       "label": "collect_trig_argument_lower_symbols()",
@@ -10841,7 +10841,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6854",
       "id": "trigprogram_collect_trig_argument_lower_symbols",
-      "community": 10
+      "community": 4
     },
     {
       "label": "zero_param_coeff_map()",
@@ -10849,7 +10849,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6882",
       "id": "trigprogram_zero_param_coeff_map",
-      "community": 9
+      "community": 11
     },
     {
       "label": "add_param_coeff_maps()",
@@ -10857,7 +10857,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6891",
       "id": "trigprogram_add_param_coeff_maps",
-      "community": 9
+      "community": 11
     },
     {
       "label": "scale_param_coeff_map()",
@@ -10865,7 +10865,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6900",
       "id": "trigprogram_scale_param_coeff_map",
-      "community": 9
+      "community": 11
     },
     {
       "label": "extract_linear_param_expr()",
@@ -10873,7 +10873,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6909",
       "id": "trigprogram_extract_linear_param_expr",
-      "community": 9
+      "community": 11
     },
     {
       "label": "normalise_fit_constant()",
@@ -10881,7 +10881,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6972",
       "id": "trigprogram_normalise_fit_constant",
-      "community": 9
+      "community": 11
     },
     {
       "label": "extract_template_basis_terms()",
@@ -10889,7 +10889,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L6978",
       "id": "trigprogram_extract_template_basis_terms",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_double_angles_to_allowed_basis()",
@@ -10897,7 +10897,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7011",
       "id": "trigprogram_rewrite_double_angles_to_allowed_basis",
-      "community": 7
+      "community": 11
     },
     {
       "label": "rewrite_ratio_square_to_allowed_basis()",
@@ -10913,7 +10913,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7074",
       "id": "trigprogram_rewrite_single_square_basis_to_allowed_terms",
-      "community": 7
+      "community": 11
     },
     {
       "label": "extract_template_allowed_terms_raw()",
@@ -10921,7 +10921,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7109",
       "id": "trigprogram_extract_template_allowed_terms_raw",
-      "community": 9
+      "community": 11
     },
     {
       "label": "add_transform_constant_candidate()",
@@ -10929,7 +10929,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7143",
       "id": "trigprogram_add_transform_constant_candidate",
-      "community": 9
+      "community": 11
     },
     {
       "label": "generate_constant_fit_candidates()",
@@ -10937,7 +10937,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7152",
       "id": "trigprogram_generate_constant_fit_candidates",
-      "community": 9
+      "community": 11
     },
     {
       "label": "split_fit_basis_scalar()",
@@ -10945,7 +10945,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7197",
       "id": "trigprogram_split_fit_basis_scalar",
-      "community": 9
+      "community": 11
     },
     {
       "label": "fit_constant_basis_equations()",
@@ -10953,7 +10953,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7225",
       "id": "trigprogram_fit_constant_basis_equations",
-      "community": 9
+      "community": 11
     },
     {
       "label": "solve_linear_param_system()",
@@ -10961,7 +10961,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7288",
       "id": "trigprogram_solve_linear_param_system",
-      "community": 9
+      "community": 11
     },
     {
       "label": "simplify_rational_vector()",
@@ -10969,7 +10969,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7361",
       "id": "trigprogram_simplify_rational_vector",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_homogeneous_param_ratio_system()",
@@ -10977,7 +10977,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7394",
       "id": "trigprogram_solve_homogeneous_param_ratio_system",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_linear_param_system_by_sampling()",
@@ -10985,7 +10985,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7479",
       "id": "trigprogram_solve_linear_param_system_by_sampling",
-      "community": 9
+      "community": 11
     },
     {
       "label": "render_constant_fit_equations()",
@@ -10993,7 +10993,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7508",
       "id": "trigprogram_render_constant_fit_equations",
-      "community": 7
+      "community": 11
     },
     {
       "label": "preferred_positive_ratio_params()",
@@ -11001,7 +11001,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7521",
       "id": "trigprogram_preferred_positive_ratio_params",
-      "community": 9
+      "community": 11
     },
     {
       "label": "combine_fraction_sum_once()",
@@ -11009,7 +11009,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7539",
       "id": "trigprogram_combine_fraction_sum_once",
-      "community": 9
+      "community": 11
     },
     {
       "label": "force_single_fraction()",
@@ -11017,7 +11017,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7581",
       "id": "trigprogram_force_single_fraction",
-      "community": 9
+      "community": 11
     },
     {
       "label": "normalise_constant_fit_fraction()",
@@ -11025,7 +11025,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7619",
       "id": "trigprogram_normalise_constant_fit_fraction",
-      "community": 9
+      "community": 11
     },
     {
       "label": "generate_constant_fit_template_variants()",
@@ -11033,7 +11033,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7653",
       "id": "trigprogram_generate_constant_fit_template_variants",
-      "community": 9
+      "community": 5
     },
     {
       "label": "transform_fit_constant_template()",
@@ -11041,7 +11041,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7678",
       "id": "trigprogram_transform_fit_constant_template",
-      "community": 9
+      "community": 11
     },
     {
       "label": "match_constant_factor_template()",
@@ -11049,7 +11049,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7843",
       "id": "trigprogram_match_constant_factor_template",
-      "community": 9
+      "community": 11
     },
     {
       "label": "match_inner_to_template_constants()",
@@ -11057,7 +11057,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7921",
       "id": "trigprogram_match_inner_to_template_constants",
-      "community": 5
+      "community": 11
     },
     {
       "label": "substitute_symbols()",
@@ -11065,7 +11065,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7949",
       "id": "trigprogram_substitute_symbols",
-      "community": 9
+      "community": 11
     },
     {
       "label": "transform_constant_factor_template()",
@@ -11073,7 +11073,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L7968",
       "id": "trigprogram_transform_constant_factor_template",
-      "community": 9
+      "community": 11
     },
     {
       "label": "solve_transform_text()",
@@ -11081,7 +11081,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8024",
       "id": "trigprogram_solve_transform_text",
-      "community": 10
+      "community": 4
     },
     {
       "label": "_strip_truly_balanced_outer_parens()",
@@ -11089,7 +11089,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8226",
       "id": "trigprogram_strip_truly_balanced_outer_parens",
-      "community": 3
+      "community": 4
     },
     {
       "label": "parse_equation_or_zero()",
@@ -11097,7 +11097,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8243",
       "id": "trigprogram_parse_equation_or_zero",
-      "community": 10
+      "community": 4
     },
     {
       "label": "_balance_parens()",
@@ -11105,7 +11105,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8257",
       "id": "trigprogram_balance_parens",
-      "community": 10
+      "community": 4
     },
     {
       "label": "is_lowercase_symbol_name()",
@@ -11121,7 +11121,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8296",
       "id": "trigprogram_build_rewrite_allowed_info",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_term_exact()",
@@ -11137,7 +11137,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8339",
       "id": "trigprogram_normalise_rewrite_trig_signs",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_allowed_has_fn()",
@@ -11145,7 +11145,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8367",
       "id": "trigprogram_rewrite_allowed_has_fn",
-      "community": 5
+      "community": 11
     },
     {
       "label": "rewrite_allowed_has_power()",
@@ -11161,7 +11161,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8393",
       "id": "trigprogram_constant_fit_preserve_named_trig",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_allowed_only()",
@@ -11185,7 +11185,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8446",
       "id": "trigprogram_rewrite_local_to_allowed_terms",
-      "community": 5
+      "community": 9
     },
     {
       "label": "rewrite_first_local()",
@@ -11193,7 +11193,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8674",
       "id": "trigprogram_rewrite_first_local",
-      "community": 5
+      "community": 9
     },
     {
       "label": "rewrite_candidate_steps()",
@@ -11201,7 +11201,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8706",
       "id": "trigprogram_rewrite_candidate_steps",
-      "community": 5
+      "community": 9
     },
     {
       "label": "rewrite_candidate_score()",
@@ -11209,7 +11209,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8772",
       "id": "trigprogram_rewrite_candidate_score",
-      "community": 9
+      "community": 11
     },
     {
       "label": "rewrite_verified_equivalent()",
@@ -11217,7 +11217,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8776",
       "id": "trigprogram_rewrite_verified_equivalent",
-      "community": 9
+      "community": 4
     },
     {
       "label": "rewrite_prefers_named_reciprocal()",
@@ -11225,7 +11225,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8796",
       "id": "trigprogram_rewrite_prefers_named_reciprocal",
-      "community": 5
+      "community": 11
     },
     {
       "label": "search_rewrite_expression()",
@@ -11233,7 +11233,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8822",
       "id": "trigprogram_search_rewrite_expression",
-      "community": 9
+      "community": 11
     },
     {
       "label": "format_rewrite_lines()",
@@ -11249,7 +11249,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8897",
       "id": "trigprogram_solve_rewrite_text",
-      "community": 5
+      "community": 4
     },
     {
       "label": "finalize_proof_identity_lines()",
@@ -11257,7 +11257,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8954",
       "id": "trigprogram_finalize_proof_identity_lines",
-      "community": 10
+      "community": 4
     },
     {
       "label": "solve_prove_text()",
@@ -11265,7 +11265,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8967",
       "id": "trigprogram_solve_prove_text",
-      "community": 10
+      "community": 4
     },
     {
       "label": "solve_extremum_text()",
@@ -11273,7 +11273,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L8987",
       "id": "trigprogram_solve_extremum_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "linear_pair()",
@@ -11281,7 +11281,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9065",
       "id": "trigprogram_linear_pair",
-      "community": 3
+      "community": 7
     },
     {
       "label": "infer_constant_value()",
@@ -11289,7 +11289,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9114",
       "id": "trigprogram_infer_constant_value",
-      "community": 13
+      "community": 7
     },
     {
       "label": "constant_numeric()",
@@ -11297,7 +11297,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9153",
       "id": "trigprogram_constant_numeric",
-      "community": 3
+      "community": 7
     },
     {
       "label": "normalise_constant_trig_args()",
@@ -11305,7 +11305,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9161",
       "id": "trigprogram_normalise_constant_trig_args",
-      "community": 3
+      "community": 9
     },
     {
       "label": "float_text()",
@@ -11313,7 +11313,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9187",
       "id": "trigprogram_float_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "signed_float_text()",
@@ -11321,7 +11321,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9199",
       "id": "trigprogram_signed_float_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "fixed_float_text()",
@@ -11329,7 +11329,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9204",
       "id": "trigprogram_fixed_float_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "infer_rational_node()",
@@ -11337,7 +11337,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9211",
       "id": "trigprogram_infer_rational_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "exact_constant_candidates()",
@@ -11345,7 +11345,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9230",
       "id": "trigprogram_exact_constant_candidates",
-      "community": 7
+      "community": 8
     },
     {
       "label": "infer_exact_constant_node()",
@@ -11353,7 +11353,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9262",
       "id": "trigprogram_infer_exact_constant_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "pi_multiple_node()",
@@ -11361,7 +11361,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9280",
       "id": "trigprogram_pi_multiple_node",
-      "community": 7
+      "community": 8
     },
     {
       "label": "infer_exact_angle_node()",
@@ -11369,7 +11369,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9291",
       "id": "trigprogram_infer_exact_angle_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "exact_text_or_float()",
@@ -11377,7 +11377,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9331",
       "id": "trigprogram_exact_text_or_float",
-      "community": 3
+      "community": 7
     },
     {
       "label": "concise_root_text()",
@@ -11385,7 +11385,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9338",
       "id": "trigprogram_concise_root_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "angle_text()",
@@ -11393,7 +11393,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9346",
       "id": "trigprogram_angle_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "tidy_exact_angle_node()",
@@ -11401,7 +11401,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9355",
       "id": "trigprogram_tidy_exact_angle_node",
-      "community": 11
+      "community": 5
     },
     {
       "label": "exact_angle_node_text()",
@@ -11409,7 +11409,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9377",
       "id": "trigprogram_exact_angle_node_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "signed_angle_text()",
@@ -11417,7 +11417,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9385",
       "id": "trigprogram_signed_angle_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "final_exact_text_or_float()",
@@ -11425,7 +11425,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9394",
       "id": "trigprogram_final_exact_text_or_float",
-      "community": 3
+      "community": 7
     },
     {
       "label": "final_angle_text()",
@@ -11433,7 +11433,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9401",
       "id": "trigprogram_final_angle_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solution_list_text()",
@@ -11441,7 +11441,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9415",
       "id": "trigprogram_solution_list_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "dedupe_values()",
@@ -11449,7 +11449,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9433",
       "id": "trigprogram_dedupe_values",
-      "community": 3
+      "community": 7
     },
     {
       "label": "parse_interval_bound()",
@@ -11457,7 +11457,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9451",
       "id": "trigprogram_parse_interval_bound",
-      "community": 14
+      "community": 13
     },
     {
       "label": "looks_like_interval_relation()",
@@ -11465,7 +11465,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9477",
       "id": "trigprogram_looks_like_interval_relation",
-      "community": 14
+      "community": 13
     },
     {
       "label": "parse_interval_relation()",
@@ -11473,7 +11473,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9491",
       "id": "trigprogram_parse_interval_relation",
-      "community": 14
+      "community": 13
     },
     {
       "label": "text_has_decimal()",
@@ -11481,7 +11481,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9521",
       "id": "trigprogram_text_has_decimal",
-      "community": 14
+      "community": 13
     },
     {
       "label": "within_interval()",
@@ -11489,7 +11489,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9525",
       "id": "trigprogram_within_interval",
-      "community": 3
+      "community": 7
     },
     {
       "label": "estimate_solve_periods()",
@@ -11497,7 +11497,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9541",
       "id": "trigprogram_estimate_solve_periods",
-      "community": 3
+      "community": 7
     },
     {
       "label": "default_no_interval_span()",
@@ -11505,7 +11505,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9569",
       "id": "trigprogram_default_no_interval_span",
-      "community": 14
+      "community": 13
     },
     {
       "label": "trim_default_no_interval_solutions()",
@@ -11513,7 +11513,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9586",
       "id": "trigprogram_trim_default_no_interval_solutions",
-      "community": 3
+      "community": 7
     },
     {
       "label": "looks_like_radian_value()",
@@ -11521,7 +11521,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9618",
       "id": "trigprogram_looks_like_radian_value",
-      "community": 14
+      "community": 13
     },
     {
       "label": "validate_x_solution()",
@@ -11529,7 +11529,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9638",
       "id": "trigprogram_validate_x_solution",
-      "community": 3
+      "community": 7
     },
     {
       "label": "equation_has_trig_content()",
@@ -11537,7 +11537,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9651",
       "id": "trigprogram_equation_has_trig_content",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_numeric_value()",
@@ -11545,7 +11545,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9661",
       "id": "trigprogram_solve_numeric_value",
-      "community": 3
+      "community": 7
     },
     {
       "label": "refine_numeric_near_guess()",
@@ -11553,7 +11553,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9671",
       "id": "trigprogram_refine_numeric_near_guess",
-      "community": 3
+      "community": 7
     },
     {
       "label": "refine_numeric_zero_bracket()",
@@ -11561,7 +11561,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9690",
       "id": "trigprogram_refine_numeric_zero_bracket",
-      "community": 3
+      "community": 7
     },
     {
       "label": "estimate_numeric_scan_samples()",
@@ -11569,7 +11569,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9726",
       "id": "trigprogram_estimate_numeric_scan_samples",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_numeric_trig_fallback()",
@@ -11577,7 +11577,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9752",
       "id": "trigprogram_solve_numeric_trig_fallback",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_linear_parameter_text()",
@@ -11585,7 +11585,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9798",
       "id": "trigprogram_solve_linear_parameter_text",
-      "community": 7
+      "community": 8
     },
     {
       "label": "show_trig_simplification_steps()",
@@ -11593,7 +11593,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9846",
       "id": "trigprogram_show_trig_simplification_steps",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_linear_angle()",
@@ -11601,7 +11601,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9935",
       "id": "trigprogram_match_linear_angle",
-      "community": 3
+      "community": 7
     },
     {
       "label": "classify_solve_angle_arg()",
@@ -11609,7 +11609,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9959",
       "id": "trigprogram_classify_solve_angle_arg",
-      "community": 3
+      "community": 4
     },
     {
       "label": "collect_solve_angle_units()",
@@ -11617,7 +11617,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9992",
       "id": "trigprogram_collect_solve_angle_units",
-      "community": 3
+      "community": 4
     },
     {
       "label": "equation_angle_mode()",
@@ -11625,7 +11625,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10015",
       "id": "trigprogram_equation_angle_mode",
-      "community": 3
+      "community": 4
     },
     {
       "label": "interval_angle_mode()",
@@ -11633,7 +11633,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10037",
       "id": "trigprogram_interval_angle_mode",
-      "community": 14
+      "community": 13
     },
     {
       "label": "match_cot_simple_term()",
@@ -11641,7 +11641,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10051",
       "id": "trigprogram_match_cot_simple_term",
-      "community": 16
+      "community": 5
     },
     {
       "label": "match_tan_double_term()",
@@ -11649,7 +11649,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10069",
       "id": "trigprogram_match_tan_double_term",
-      "community": 16
+      "community": 5
     },
     {
       "label": "match_sec_cosec_product()",
@@ -11673,7 +11673,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10168",
       "id": "trigprogram_solve_half_sec_square_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_fn_power_term()",
@@ -11681,7 +11681,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10193",
       "id": "trigprogram_match_fn_power_term",
-      "community": 7
+      "community": 9
     },
     {
       "label": "match_double_fn_term()",
@@ -11689,7 +11689,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10228",
       "id": "trigprogram_match_double_fn_term",
-      "community": 9
+      "community": 5
     },
     {
       "label": "collect_same_arg_terms()",
@@ -11697,7 +11697,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10256",
       "id": "trigprogram_collect_same_arg_terms",
-      "community": 7
+      "community": 8
     },
     {
       "label": "reduce_sec_cosec_squares()",
@@ -11705,7 +11705,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10303",
       "id": "trigprogram_reduce_sec_cosec_squares",
-      "community": 7
+      "community": 9
     },
     {
       "label": "match_linear_combo_const()",
@@ -11713,7 +11713,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10328",
       "id": "trigprogram_match_linear_combo_const",
-      "community": 3
+      "community": 7
     },
     {
       "label": "split_var_trig_term()",
@@ -11721,7 +11721,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10365",
       "id": "trigprogram_split_var_trig_term",
-      "community": 15
+      "community": 5
     },
     {
       "label": "expand_negative_add_terms()",
@@ -11729,7 +11729,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10394",
       "id": "trigprogram_expand_negative_add_terms",
-      "community": 7
+      "community": 9
     },
     {
       "label": "extract_quadratic_trig()",
@@ -11737,7 +11737,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10423",
       "id": "trigprogram_extract_quadratic_trig",
-      "community": 15
+      "community": 5
     },
     {
       "label": "extract_polynomial_trig()",
@@ -11745,7 +11745,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10467",
       "id": "trigprogram_extract_polynomial_trig",
-      "community": 15
+      "community": 7
     },
     {
       "label": "extract_polynomial_symbol()",
@@ -11753,7 +11753,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10510",
       "id": "trigprogram_extract_polynomial_symbol",
-      "community": 15
+      "community": 7
     },
     {
       "label": "rewrite_square_for_polynomial()",
@@ -11761,7 +11761,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10538",
       "id": "trigprogram_rewrite_square_for_polynomial",
-      "community": 7
+      "community": 9
     },
     {
       "label": "merge_tan_sub_base()",
@@ -11769,7 +11769,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10619",
       "id": "trigprogram_merge_tan_sub_base",
-      "community": 15
+      "community": 8
     },
     {
       "label": "tan_sub_base()",
@@ -11777,7 +11777,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10635",
       "id": "trigprogram_tan_sub_base",
-      "community": 15
+      "community": 8
     },
     {
       "label": "tan_substitute_node()",
@@ -11785,7 +11785,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10678",
       "id": "trigprogram_tan_substitute_node",
-      "community": 7
+      "community": 8
     },
     {
       "label": "extract_shifted_linear_angle()",
@@ -11793,7 +11793,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10727",
       "id": "trigprogram_extract_shifted_linear_angle",
-      "community": 13
+      "community": 4
     },
     {
       "label": "match_shifted_tan_cot_term()",
@@ -11801,7 +11801,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10748",
       "id": "trigprogram_match_shifted_tan_cot_term",
-      "community": 13
+      "community": 7
     },
     {
       "label": "shifted_tan_sub_expr()",
@@ -11809,7 +11809,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10772",
       "id": "trigprogram_shifted_tan_sub_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_shifted_tan_cot_expr()",
@@ -11817,7 +11817,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10782",
       "id": "trigprogram_solve_shifted_tan_cot_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "quadratic_roots()",
@@ -11825,7 +11825,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L10995",
       "id": "trigprogram_quadratic_roots",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_polynomial_exact_low_degree()",
@@ -11841,7 +11841,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11097",
       "id": "trigprogram_lcm",
-      "community": 3
+      "community": 4
     },
     {
       "label": "divisors()",
@@ -11849,7 +11849,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11105",
       "id": "trigprogram_divisors",
-      "community": 3
+      "community": 4
     },
     {
       "label": "integer_poly_coeffs()",
@@ -11857,7 +11857,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11121",
       "id": "trigprogram_integer_poly_coeffs",
-      "community": 3
+      "community": 4
     },
     {
       "label": "poly_eval_float()",
@@ -11865,7 +11865,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11137",
       "id": "trigprogram_poly_eval_float",
-      "community": 3
+      "community": 4
     },
     {
       "label": "synthetic_divide_float()",
@@ -11873,7 +11873,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11146",
       "id": "trigprogram_synthetic_divide_float",
-      "community": 3
+      "community": 4
     },
     {
       "label": "rational_root_candidates()",
@@ -11881,7 +11881,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11155",
       "id": "trigprogram_rational_root_candidates",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_polynomial_numeric()",
@@ -11889,7 +11889,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11182",
       "id": "trigprogram_solve_polynomial_numeric",
-      "community": 3
+      "community": 7
     },
     {
       "label": "polynomial_degree_coeff_map()",
@@ -11897,7 +11897,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11233",
       "id": "trigprogram_polynomial_degree_coeff_map",
-      "community": 3
+      "community": 7
     },
     {
       "label": "polynomial_float_coeffs()",
@@ -11905,7 +11905,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11240",
       "id": "trigprogram_polynomial_float_coeffs",
-      "community": 3
+      "community": 7
     },
     {
       "label": "polynomial_coeff_nodes_low()",
@@ -11913,7 +11913,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11249",
       "id": "trigprogram_polynomial_coeff_nodes_low",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_polynomial_numeric_interval()",
@@ -11921,7 +11921,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11258",
       "id": "trigprogram_solve_polynomial_numeric_interval",
-      "community": 3
+      "community": 7
     },
     {
       "label": "polynomial_real_root_bound()",
@@ -11929,7 +11929,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11303",
       "id": "trigprogram_polynomial_real_root_bound",
-      "community": 3
+      "community": 7
     },
     {
       "label": "trig_base_solutions()",
@@ -11937,7 +11937,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11318",
       "id": "trigprogram_trig_base_solutions",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_n_range_for_interval()",
@@ -11945,7 +11945,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11375",
       "id": "trigprogram_solve_n_range_for_interval",
-      "community": 3
+      "community": 7
     },
     {
       "label": "append_unique_float()",
@@ -11953,7 +11953,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11387",
       "id": "trigprogram_append_unique_float",
-      "community": 3
+      "community": 7
     },
     {
       "label": "append_unique_value_node()",
@@ -11961,7 +11961,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11396",
       "id": "trigprogram_append_unique_value_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "sort_values_with_nodes()",
@@ -11969,7 +11969,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11408",
       "id": "trigprogram_sort_values_with_nodes",
-      "community": 3
+      "community": 7
     },
     {
       "label": "inverse_angle_node()",
@@ -11977,7 +11977,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11425",
       "id": "trigprogram_inverse_angle_node",
-      "community": 7
+      "community": 8
     },
     {
       "label": "exact_base_solution_nodes()",
@@ -11993,7 +11993,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11482",
       "id": "trigprogram_solve_angle_value",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_angle_value_exact()",
@@ -12001,7 +12001,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11511",
       "id": "trigprogram_solve_angle_value_exact",
-      "community": 3
+      "community": 7
     },
     {
       "label": "number_node()",
@@ -12009,7 +12009,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11551",
       "id": "trigprogram_number_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_sec_cosec_product_expr()",
@@ -12017,7 +12017,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11561",
       "id": "trigprogram_solve_sec_cosec_product_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_tan2_cot_product()",
@@ -12025,7 +12025,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11598",
       "id": "trigprogram_match_tan2_cot_product",
-      "community": 16
+      "community": 5
     },
     {
       "label": "solve_tan2_cot_expr()",
@@ -12033,7 +12033,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11633",
       "id": "trigprogram_solve_tan2_cot_expr",
-      "community": 16
+      "community": 5
     },
     {
       "label": "solve_tan2_tan_expr()",
@@ -12041,7 +12041,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11707",
       "id": "trigprogram_solve_tan2_tan_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sec_tan_linear_expr()",
@@ -12049,7 +12049,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11753",
       "id": "trigprogram_solve_sec_tan_linear_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cosec_cot_linear_expr()",
@@ -12057,7 +12057,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11769",
       "id": "trigprogram_solve_cosec_cot_linear_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sec_cosec_linear_expr()",
@@ -12065,7 +12065,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11785",
       "id": "trigprogram_solve_sec_cosec_linear_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sec2_cosec_expr()",
@@ -12073,7 +12073,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11801",
       "id": "trigprogram_solve_sec2_cosec_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cosec2_sec_expr()",
@@ -12081,7 +12081,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11819",
       "id": "trigprogram_solve_cosec2_sec_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sec_tan_mix_expr()",
@@ -12089,7 +12089,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11837",
       "id": "trigprogram_solve_sec_tan_mix_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cosec_cot_mix_expr()",
@@ -12097,7 +12097,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11856",
       "id": "trigprogram_solve_cosec_cot_mix_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sin_cot_expr()",
@@ -12105,7 +12105,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11875",
       "id": "trigprogram_solve_sin_cot_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cos_tan_expr()",
@@ -12113,7 +12113,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11893",
       "id": "trigprogram_solve_cos_tan_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sin_sec_expr()",
@@ -12121,7 +12121,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11911",
       "id": "trigprogram_solve_sin_sec_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cos_cosec_expr()",
@@ -12129,7 +12129,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11929",
       "id": "trigprogram_solve_cos_cosec_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_tan_cot_linear_expr()",
@@ -12137,7 +12137,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11947",
       "id": "trigprogram_solve_tan_cot_linear_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cosec_cot_halfangle_expr()",
@@ -12145,7 +12145,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L11963",
       "id": "trigprogram_solve_cosec_cot_halfangle_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_reciprocal_conjugate_pair_expr()",
@@ -12161,7 +12161,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12019",
       "id": "trigprogram_match_nonzero_reciprocal_factor",
-      "community": 15
+      "community": 4
     },
     {
       "label": "solve_cancel_nonzero_reciprocal_factor_expr()",
@@ -12169,7 +12169,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12027",
       "id": "trigprogram_solve_cancel_nonzero_reciprocal_factor_expr",
-      "community": 15
+      "community": 4
     },
     {
       "label": "solve_conjugate_fraction_expr()",
@@ -12177,7 +12177,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12053",
       "id": "trigprogram_solve_conjugate_fraction_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "rewrite_sec_tan_fraction_term()",
@@ -12185,7 +12185,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12104",
       "id": "trigprogram_rewrite_sec_tan_fraction_term",
-      "community": 7
+      "community": 9
     },
     {
       "label": "solve_sec_tan_fraction_expr()",
@@ -12193,7 +12193,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12142",
       "id": "trigprogram_solve_sec_tan_fraction_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_ratio_one_minus_cos_plus_sin()",
@@ -12209,7 +12209,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12231",
       "id": "trigprogram_solve_ratio_one_minus_cos_plus_sin_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cos3_over_sin_plus_sin3_over_cos_expr()",
@@ -12217,7 +12217,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12254",
       "id": "trigprogram_solve_cos3_over_sin_plus_sin3_over_cos_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_cos_times_cot()",
@@ -12225,7 +12225,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12303",
       "id": "trigprogram_match_cos_times_cot",
-      "community": 11
+      "community": 8
     },
     {
       "label": "solve_cosec_minus_sin_vs_cos_cot_expr()",
@@ -12233,7 +12233,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12330",
       "id": "trigprogram_solve_cosec_minus_sin_vs_cos_cot_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sin_tan_expr()",
@@ -12241,7 +12241,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12381",
       "id": "trigprogram_solve_sin_tan_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cos_cot_expr()",
@@ -12249,7 +12249,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12399",
       "id": "trigprogram_solve_cos_cot_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_pythag_single_expr()",
@@ -12257,7 +12257,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12417",
       "id": "trigprogram_solve_pythag_single_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_weighted_pythag_expr()",
@@ -12265,7 +12265,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12447",
       "id": "trigprogram_solve_weighted_pythag_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_cos_double_single_expr()",
@@ -12273,7 +12273,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12481",
       "id": "trigprogram_solve_cos_double_single_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sin_double_single_expr()",
@@ -12281,7 +12281,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12505",
       "id": "trigprogram_solve_sin_double_single_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_signed_sin_cos_square()",
@@ -12289,7 +12289,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12537",
       "id": "trigprogram_match_signed_sin_cos_square",
-      "community": 5
+      "community": 8
     },
     {
       "label": "solve_square_sum_reduction_expr()",
@@ -12297,7 +12297,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12587",
       "id": "trigprogram_solve_square_sum_reduction_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_simple_trig_term()",
@@ -12305,7 +12305,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12605",
       "id": "trigprogram_match_simple_trig_term",
-      "community": 7
+      "community": 9
     },
     {
       "label": "match_simple_trig_term_norm()",
@@ -12313,7 +12313,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12610",
       "id": "trigprogram_match_simple_trig_term_norm",
-      "community": 7
+      "community": 9
     },
     {
       "label": "same_double_angle()",
@@ -12321,7 +12321,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12628",
       "id": "trigprogram_same_double_angle",
-      "community": 7
+      "community": 8
     },
     {
       "label": "same_double_angle_norm()",
@@ -12329,7 +12329,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12632",
       "id": "trigprogram_same_double_angle_norm",
-      "community": 7
+      "community": 8
     },
     {
       "label": "half_angle_expr()",
@@ -12337,7 +12337,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12637",
       "id": "trigprogram_half_angle_expr",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_one_pm_cos()",
@@ -12345,7 +12345,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12644",
       "id": "trigprogram_match_one_pm_cos",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_one_pm_trig_norm()",
@@ -12353,7 +12353,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12649",
       "id": "trigprogram_match_one_pm_trig_norm",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_one_pm_cos_norm()",
@@ -12361,7 +12361,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12674",
       "id": "trigprogram_match_one_pm_cos_norm",
-      "community": 5
+      "community": 9
     },
     {
       "label": "half_angle_ratio_rewrite()",
@@ -12369,7 +12369,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12678",
       "id": "trigprogram_half_angle_ratio_rewrite",
-      "community": 7
+      "community": 9
     },
     {
       "label": "rewrite_half_angle_ratio_terms()",
@@ -12377,7 +12377,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12704",
       "id": "trigprogram_rewrite_half_angle_ratio_terms",
-      "community": 7
+      "community": 8
     },
     {
       "label": "match_scaled_div()",
@@ -12385,7 +12385,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12727",
       "id": "trigprogram_match_scaled_div",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_scaled_div_norm()",
@@ -12393,7 +12393,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12732",
       "id": "trigprogram_match_scaled_div_norm",
-      "community": 9
+      "community": 11
     },
     {
       "label": "solve_sin2_tan_expr()",
@@ -12401,7 +12401,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12739",
       "id": "trigprogram_solve_sin2_tan_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_sin2_cot_expr()",
@@ -12409,7 +12409,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12784",
       "id": "trigprogram_solve_sin2_cot_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "rewrite_sum_product_terms()",
@@ -12417,7 +12417,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12829",
       "id": "trigprogram_rewrite_sum_product_terms",
-      "community": 7
+      "community": 8
     },
     {
       "label": "rewrite_product_to_sum_terms()",
@@ -12425,7 +12425,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12870",
       "id": "trigprogram_rewrite_product_to_sum_terms",
-      "community": 13
+      "community": 8
     },
     {
       "label": "multiply_by_base_square_expr()",
@@ -12433,7 +12433,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12893",
       "id": "trigprogram_multiply_by_base_square_expr",
-      "community": 7
+      "community": 9
     },
     {
       "label": "rewrite_square_basis_expr()",
@@ -12441,7 +12441,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12925",
       "id": "trigprogram_rewrite_square_basis_expr",
-      "community": 7
+      "community": 9
     },
     {
       "label": "rewrite_tan_double_factor_polynomial_expr()",
@@ -12449,7 +12449,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L12948",
       "id": "trigprogram_rewrite_tan_double_factor_polynomial_expr",
-      "community": 7
+      "community": 9
     },
     {
       "label": "match_double_single_product_term()",
@@ -12457,7 +12457,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13004",
       "id": "trigprogram_match_double_single_product_term",
-      "community": 16
+      "community": 5
     },
     {
       "label": "solve_double_product_reduction_expr()",
@@ -12465,7 +12465,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13036",
       "id": "trigprogram_solve_double_product_reduction_expr",
-      "community": 7
+      "community": 8
     },
     {
       "label": "solve_same_angle_ratio_expr()",
@@ -12473,7 +12473,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13103",
       "id": "trigprogram_solve_same_angle_ratio_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_compound_ratio_expr()",
@@ -12481,7 +12481,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13143",
       "id": "trigprogram_solve_compound_ratio_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "append_unique_solve_value()",
@@ -12489,7 +12489,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13214",
       "id": "trigprogram_append_unique_solve_value",
-      "community": 3
+      "community": 7
     },
     {
       "label": "match_equal_simple_trig_term()",
@@ -12497,7 +12497,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13223",
       "id": "trigprogram_match_equal_simple_trig_term",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_equal_same_trig_expr_symbolic()",
@@ -12505,7 +12505,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13232",
       "id": "trigprogram_solve_equal_same_trig_expr_symbolic",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_equal_same_trig_expr()",
@@ -12513,7 +12513,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13325",
       "id": "trigprogram_solve_equal_same_trig_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_equal_complementary_trig_expr()",
@@ -12521,7 +12521,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13434",
       "id": "trigprogram_solve_equal_complementary_trig_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_equal_tan_cot_expr()",
@@ -12529,7 +12529,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13496",
       "id": "trigprogram_solve_equal_tan_cot_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_tan_substitution_expr()",
@@ -12537,7 +12537,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13556",
       "id": "trigprogram_solve_tan_substitution_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_direct_double_angle_expr()",
@@ -12553,7 +12553,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13660",
       "id": "trigprogram_solve_linear_combo_shift",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_factor_equation_expr()",
@@ -12561,7 +12561,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13735",
       "id": "trigprogram_solve_factor_equation_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_factor_equation_pipeline()",
@@ -12569,7 +12569,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13950",
       "id": "trigprogram_solve_factor_equation_pipeline",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_factor_product_expr()",
@@ -12577,7 +12577,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L13986",
       "id": "trigprogram_solve_factor_product_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_basic_zero_expr()",
@@ -12585,7 +12585,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14024",
       "id": "trigprogram_solve_basic_zero_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_rewrite_pipeline()",
@@ -12593,7 +12593,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14031",
       "id": "trigprogram_solve_rewrite_pipeline",
-      "community": 3
+      "community": 4
     },
     {
       "label": "direct_single_trig_info()",
@@ -12601,7 +12601,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14072",
       "id": "trigprogram_direct_single_trig_info",
-      "community": 15
+      "community": 5
     },
     {
       "label": "solve_domain_restricted_identity_expr()",
@@ -12609,7 +12609,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14097",
       "id": "trigprogram_solve_domain_restricted_identity_expr",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_feature_scan()",
@@ -12617,7 +12617,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14143",
       "id": "trigprogram_solve_feature_scan",
-      "community": 9
+      "community": 11
     },
     {
       "label": "solve_shape_rank()",
@@ -12625,7 +12625,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14203",
       "id": "trigprogram_solve_shape_rank",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_expr_score()",
@@ -12633,7 +12633,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14223",
       "id": "trigprogram_solve_expr_score",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_label_rank()",
@@ -12641,7 +12641,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14236",
       "id": "trigprogram_solve_label_rank",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_candidate()",
@@ -12649,7 +12649,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14262",
       "id": "trigprogram_solve_candidate",
-      "community": 3
+      "community": 9
     },
     {
       "label": "reciprocal_family_transforms()",
@@ -12657,7 +12657,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14283",
       "id": "trigprogram_reciprocal_family_transforms",
-      "community": 3
+      "community": 8
     },
     {
       "label": "angle_reduction_transforms()",
@@ -12665,7 +12665,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14345",
       "id": "trigprogram_angle_reduction_transforms",
-      "community": 7
+      "community": 9
     },
     {
       "label": "ratio_family_transforms()",
@@ -12673,7 +12673,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14392",
       "id": "trigprogram_ratio_family_transforms",
-      "community": 3
+      "community": 4
     },
     {
       "label": "sum_product_transforms()",
@@ -12681,7 +12681,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14413",
       "id": "trigprogram_sum_product_transforms",
-      "community": 3
+      "community": 4
     },
     {
       "label": "factorisation_transforms()",
@@ -12689,7 +12689,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14426",
       "id": "trigprogram_factorisation_transforms",
-      "community": 3
+      "community": 9
     },
     {
       "label": "shift_form_transforms()",
@@ -12697,7 +12697,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14447",
       "id": "trigprogram_shift_form_transforms",
-      "community": 3
+      "community": 9
     },
     {
       "label": "solve_group_is_expensive()",
@@ -12705,7 +12705,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14467",
       "id": "trigprogram_solve_group_is_expensive",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_candidate_is_stopworthy()",
@@ -12713,7 +12713,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14471",
       "id": "trigprogram_solve_candidate_is_stopworthy",
-      "community": 3
+      "community": 4
     },
     {
       "label": "match_tan_squared_fraction()",
@@ -12721,7 +12721,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14475",
       "id": "trigprogram_match_tan_squared_fraction",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_cot_squared_fraction()",
@@ -12729,7 +12729,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14494",
       "id": "trigprogram_match_cot_squared_fraction",
-      "community": 5
+      "community": 9
     },
     {
       "label": "best_solve_rewrite()",
@@ -12737,7 +12737,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14513",
       "id": "trigprogram_best_solve_rewrite",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_tan_squared_form()",
@@ -12745,7 +12745,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14552",
       "id": "trigprogram_solve_tan_squared_form",
-      "community": 5
+      "community": 8
     },
     {
       "label": "solve_tan_squared_target()",
@@ -12753,7 +12753,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14608",
       "id": "trigprogram_solve_tan_squared_target",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_sin_squared_form()",
@@ -12761,7 +12761,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14657",
       "id": "trigprogram_solve_sin_squared_form",
-      "community": 5
+      "community": 8
     },
     {
       "label": "solve_cos_squared_form()",
@@ -12769,7 +12769,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14686",
       "id": "trigprogram_solve_cos_squared_form",
-      "community": 5
+      "community": 8
     },
     {
       "label": "match_sin_squared_term()",
@@ -12777,7 +12777,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14715",
       "id": "trigprogram_match_sin_squared_term",
-      "community": 5
+      "community": 9
     },
     {
       "label": "match_cos_squared_term()",
@@ -12785,7 +12785,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14729",
       "id": "trigprogram_match_cos_squared_term",
-      "community": 5
+      "community": 9
     },
     {
       "label": "_is_sin_squared_term()",
@@ -12793,7 +12793,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14743",
       "id": "trigprogram_is_sin_squared_term",
-      "community": 3
+      "community": 4
     },
     {
       "label": "_is_cos_squared_term()",
@@ -12801,7 +12801,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14747",
       "id": "trigprogram_is_cos_squared_term",
-      "community": 3
+      "community": 4
     },
     {
       "label": "_solve_trig_squared()",
@@ -12809,7 +12809,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14751",
       "id": "trigprogram_solve_trig_squared",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_cosine_target()",
@@ -12817,7 +12817,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14809",
       "id": "trigprogram_solve_cosine_target",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_sin_cos_squared_mixed()",
@@ -12825,7 +12825,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14845",
       "id": "trigprogram_solve_sin_cos_squared_mixed",
-      "community": 5
+      "community": 7
     },
     {
       "label": "match_scaled_reciprocal_identity_zero()",
@@ -12833,7 +12833,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14912",
       "id": "trigprogram_match_scaled_reciprocal_identity_zero",
-      "community": 7
+      "community": 4
     },
     {
       "label": "is_domain_restricted_identity_pair()",
@@ -12841,7 +12841,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14927",
       "id": "trigprogram_is_domain_restricted_identity_pair",
-      "community": 10
+      "community": 4
     },
     {
       "label": "solve_trig_identity_expr()",
@@ -12849,7 +12849,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14937",
       "id": "trigprogram_solve_trig_identity_expr",
-      "community": 3
+      "community": 4
     },
     {
       "label": "return_all_in_interval()",
@@ -12857,7 +12857,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14971",
       "id": "trigprogram_return_all_in_interval",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_direct_trig_equation()",
@@ -12865,7 +12865,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L14989",
       "id": "trigprogram_solve_direct_trig_equation",
-      "community": 3
+      "community": 7
     },
     {
       "label": "single_trig_poly_angle_info()",
@@ -12873,7 +12873,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15044",
       "id": "trigprogram_single_trig_poly_angle_info",
-      "community": 15
+      "community": 7
     },
     {
       "label": "polynomial_value_range_on_interval()",
@@ -12881,7 +12881,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15080",
       "id": "trigprogram_polynomial_value_range_on_interval",
-      "community": 3
+      "community": 7
     },
     {
       "label": "exact_angle_value_node()",
@@ -12889,7 +12889,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15115",
       "id": "trigprogram_exact_angle_value_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "periodic_angle_value_node()",
@@ -12897,7 +12897,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15122",
       "id": "trigprogram_periodic_angle_value_node",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_direct_trig_polynomial_angle_equation()",
@@ -12905,7 +12905,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15132",
       "id": "trigprogram_solve_direct_trig_polynomial_angle_equation",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_cos_pow4_minus_sin_pow4()",
@@ -12913,7 +12913,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15238",
       "id": "trigprogram_solve_cos_pow4_minus_sin_pow4",
-      "community": 5
+      "community": 8
     },
     {
       "label": "solve_mixed_sin2_sin_square()",
@@ -12921,7 +12921,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15311",
       "id": "trigprogram_solve_mixed_sin2_sin_square",
-      "community": 7
+      "community": 8
     },
     {
       "label": "parse_solve_interval_context()",
@@ -12929,7 +12929,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15388",
       "id": "trigprogram_parse_solve_interval_context",
-      "community": 14
+      "community": 13
     },
     {
       "label": "try_identity_candidates()",
@@ -12937,7 +12937,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15424",
       "id": "trigprogram_try_identity_candidates",
-      "community": 3
+      "community": 7
     },
     {
       "label": "try_solver_on_candidates()",
@@ -12945,7 +12945,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15439",
       "id": "trigprogram_try_solver_on_candidates",
-      "community": 3
+      "community": 7
     },
     {
       "label": "try_special_solve_routes()",
@@ -12953,7 +12953,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15460",
       "id": "trigprogram_try_special_solve_routes",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solution_list_line()",
@@ -12961,7 +12961,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15538",
       "id": "trigprogram_solution_list_line",
-      "community": 3
+      "community": 7
     },
     {
       "label": "trailing_solution_texts()",
@@ -12969,7 +12969,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15553",
       "id": "trigprogram_trailing_solution_texts",
-      "community": 3
+      "community": 4
     },
     {
       "label": "drop_trailing_solution_line()",
@@ -12977,7 +12977,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15579",
       "id": "trigprogram_drop_trailing_solution_line",
-      "community": 3
+      "community": 7
     },
     {
       "label": "solve_x_equation_text()",
@@ -12985,7 +12985,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15594",
       "id": "trigprogram_solve_x_equation_text",
-      "community": 3
+      "community": 7
     },
     {
       "label": "_solve_solve_text_once()",
@@ -12993,7 +12993,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15694",
       "id": "trigprogram_solve_solve_text_once",
-      "community": 3
+      "community": 4
     },
     {
       "label": "solve_solve_text()",
@@ -13001,7 +13001,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15716",
       "id": "trigprogram_solve_solve_text",
-      "community": 3
+      "community": 9
     },
     {
       "label": "direct_ratio_target_rewrite()",
@@ -13009,7 +13009,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15780",
       "id": "trigprogram_direct_ratio_target_rewrite",
-      "community": 5
+      "community": 4
     },
     {
       "label": "direct_identity_target_rewrite()",
@@ -13025,7 +13025,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L15846",
       "id": "trigprogram_allowed_expression_from_terms",
-      "community": 9
+      "community": 5
     },
     {
       "label": "rewrite_extremum_double_angle_expr()",
@@ -13033,7 +13033,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16027",
       "id": "trigprogram_rewrite_extremum_double_angle_expr",
-      "community": 5
+      "community": 9
     },
     {
       "label": "extremum_rewrite_to_linear_combo()",
@@ -13041,7 +13041,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16072",
       "id": "trigprogram_extremum_rewrite_to_linear_combo",
-      "community": 3
+      "community": 9
     },
     {
       "label": "solve_extremum_numeric()",
@@ -13049,7 +13049,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16107",
       "id": "trigprogram_solve_extremum_numeric",
-      "community": 3
+      "community": 7
     },
     {
       "label": "numeric_evaluation_text()",
@@ -13057,7 +13057,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16258",
       "id": "trigprogram_numeric_evaluation_text",
-      "community": 10
+      "community": 4
     },
     {
       "label": "format_numeric_result()",
@@ -13065,7 +13065,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16303",
       "id": "trigprogram_format_numeric_result",
-      "community": 10
+      "community": 4
     },
     {
       "label": "numeric_eval()",
@@ -13073,7 +13073,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16313",
       "id": "trigprogram_numeric_eval",
-      "community": 3
+      "community": 4
     },
     {
       "label": "eval_numeric()",
@@ -13081,7 +13081,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16419",
       "id": "trigprogram_eval_numeric",
-      "community": 3
+      "community": 7
     },
     {
       "label": "transform_r_sin_cos_form()",
@@ -13089,7 +13089,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16427",
       "id": "trigprogram_transform_r_sin_cos_form",
-      "community": 3
+      "community": 7
     },
     {
       "label": "format_float()",
@@ -13097,7 +13097,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16464",
       "id": "trigprogram_format_float",
-      "community": 3
+      "community": 7
     },
     {
       "label": "transform_sin_cos_2x_form()",
@@ -13105,7 +13105,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16470",
       "id": "trigprogram_transform_sin_cos_2x_form",
-      "community": 9
+      "community": 11
     },
     {
       "label": "parse_display_value()",
@@ -13113,7 +13113,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16595",
       "id": "trigprogram_parse_display_value",
-      "community": 14
+      "community": 13
     },
     {
       "label": "compress_display_list()",
@@ -13121,7 +13121,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16609",
       "id": "trigprogram_compress_display_list",
-      "community": 14
+      "community": 13
     },
     {
       "label": "display_line_short()",
@@ -13129,7 +13129,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16656",
       "id": "trigprogram_display_line_short",
-      "community": 14
+      "community": 13
     },
     {
       "label": "split_multi_identity_use_line()",
@@ -13137,7 +13137,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16726",
       "id": "trigprogram_split_multi_identity_use_line",
-      "community": 3
+      "community": 4
     },
     {
       "label": "print_lines()",
@@ -13145,7 +13145,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16776",
       "id": "trigprogram_print_lines",
-      "community": 14
+      "community": 13
     },
     {
       "label": "compact_lines()",
@@ -13153,7 +13153,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16783",
       "id": "trigprogram_compact_lines",
-      "community": 3
+      "community": 7
     },
     {
       "label": "wrap_menu_text()",
@@ -13161,7 +13161,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16801",
       "id": "trigprogram_wrap_menu_text",
-      "community": 3
+      "community": 4
     },
     {
       "label": "build_menu_pages()",
@@ -13169,7 +13169,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16823",
       "id": "trigprogram_build_menu_pages",
-      "community": 3
+      "community": 4
     },
     {
       "label": "paged_menu_input()",
@@ -13177,7 +13177,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16845",
       "id": "trigprogram_paged_menu_input",
-      "community": 3
+      "community": 4
     },
     {
       "label": "main()",
@@ -13185,7 +13185,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16888",
       "id": "trigprogram_main",
-      "community": 10
+      "community": 4
     },
     {
       "label": "Append intermediate simplification steps from cur to target before '= RHS'.",
@@ -13209,7 +13209,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L9847",
       "id": "trigprogram_rationale_9847",
-      "community": 7
+      "community": 8
     },
     {
       "label": "Numeric evaluation for prove/show mode with degree support.",
@@ -13217,7 +13217,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16314",
       "id": "trigprogram_rationale_16314",
-      "community": 3
+      "community": 4
     },
     {
       "label": "Wrapper that calls numeric_eval with degree mode for backward compatibility.",
@@ -13225,7 +13225,7 @@
       "source_file": "src/Math/trigProgram.py",
       "source_location": "L16420",
       "id": "trigprogram_rationale_16420",
-      "community": 3
+      "community": 7
     },
     {
       "label": "booleanProgram.py",
@@ -13433,7 +13433,7 @@
       "source_file": "src/calc_files/trig.py",
       "source_location": "L1",
       "id": "trig",
-      "community": 3
+      "community": 4
     },
     {
       "label": "algebra.py",
@@ -13465,7 +13465,7 @@
       "source_file": "src/calc_files/SUVAT.py",
       "source_location": "L1",
       "id": "suvat",
-      "community": 4
+      "community": 3
     },
     {
       "label": "int.py",
