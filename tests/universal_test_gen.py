@@ -500,13 +500,31 @@ class UniversalTestGenerator:
         return cases
     
     def generate_trig_cases(self, count: int = 100) -> List[TestCase]:
-        """Generate trigonometry test cases."""
+        """Generate trigonometry test cases using SymPy for synthetic pairs."""
         cases = []
         
         for _ in range(count):
-            mode = self.rng.choice(['prove', 'transform', 'solve', 'rewrite'])
+            mode = self.rng.choice(['prove', 'transform', 'solve', 'rewrite', 'sympy_synthetic'])
             
-            if mode == 'prove':
+            if mode == 'sympy_synthetic' and SYMPY_AVAILABLE:
+                x = sp.Symbol('x')
+                exprs = [
+                    sp.sin(x) + sp.cos(x),
+                    sp.sin(2*x) - sp.cos(2*x),
+                    sp.tan(x) - sp.sin(x)/sp.cos(x),
+                    sp.sin(x)**2 + sp.cos(x)**2,
+                    sp.sec(x) - 1/sp.cos(x),
+                ]
+                src = self.rng.choice(exprs)
+                tgt = sp.trigsimp(src) if self.rng.random() > 0.5 else sp.expand(src)
+                src_str = str(src).replace('sin', 'sin(').replace('cos', 'cos(').replace('tan', 'tan(').replace(')','))').replace('e','E')
+                tgt_str = str(tgt)
+                cases.append(TestCase(
+                    'trig', 'transform',
+                    f"2\n{src_str}\n{tgt_str}\n",
+                    metadata={'expected_action': 'transform'}
+                ))
+            elif mode == 'prove':
                 a = self.rng.randint(1, 3)
                 expr = f"sin({a}*x)+cos({a}*x)=tan({a}*x/2+pi/4)"
                 cases.append(TestCase(
@@ -514,7 +532,6 @@ class UniversalTestGenerator:
                     f"1\n{expr}\n",
                     metadata={'expected_action': 'prove'}
                 ))
-            
             elif mode == 'transform':
                 expr = self.grammar.generate_trig('x')
                 cases.append(TestCase(
@@ -522,7 +539,6 @@ class UniversalTestGenerator:
                     f"2\n{expr}\n",
                     metadata={'expected_action': 'transform'}
                 ))
-            
             elif mode == 'solve':
                 expr = f"sin({self.rng.randint(1, 3)}*x)={self.rng.choice(['0', '1', '-1'])}"
                 cases.append(TestCase(
@@ -530,7 +546,6 @@ class UniversalTestGenerator:
                     f"3\n{expr}\n",
                     metadata={'expected_action': 'solve'}
                 ))
-            
             else:
                 expr = self.grammar.generate_trig('x')
                 cases.append(TestCase(
@@ -576,20 +591,33 @@ class UniversalTestGenerator:
         return cases
     
     def generate_integrate_cases(self, count: int = 100) -> List[TestCase]:
-        """Generate integration test cases."""
+        """Generate integration and DE test cases."""
         cases = []
         
         for _ in range(count):
-            mode = self.rng.choice(['direct', 'by_parts', 'substitution', 'trig'])
+            mode = self.rng.choice(['direct', 'by_parts', 'substitution', 'trig', 'de_separable', 'de_linear'])
             
-            if mode == 'direct':
+            if mode == 'de_separable' or mode == 'de_linear':
+                k = self.rng.randint(1, 3)
+                if mode == 'de_separable':
+                    cases.append(TestCase(
+                        'integrate', 'de_separable',
+                        f"2\ndy/dx: {k}*y\n",
+                        metadata={'expected_action': 'de'}
+                    ))
+                else:
+                    cases.append(TestCase(
+                        'integrate', 'de_linear',
+                        f"2\ndy/dx: y/{k} + x\n",
+                        metadata={'expected_action': 'de'}
+                    ))
+            elif mode == 'direct':
                 expr = self.grammar._expr('x', self.rng.randint(1, 3))
                 cases.append(TestCase(
                     'integrate', 'direct',
                     f"1\n{expr}\n2\n",
                     metadata={'expected_action': 'integrate', 'verify': 'inverse'}
                 ))
-            
             elif mode == 'by_parts':
                 expr = f"x*exp(x)"
                 cases.append(TestCase(
@@ -597,7 +625,6 @@ class UniversalTestGenerator:
                     f"1\n{expr}\n4\n",
                     metadata={'expected_action': 'integrate_by_parts'}
                 ))
-            
             elif mode == 'substitution':
                 expr = f"x*exp(x^2)"
                 cases.append(TestCase(
@@ -605,7 +632,6 @@ class UniversalTestGenerator:
                     f"1\n{expr}\n5\n",
                     metadata={'expected_action': 'u_substitution'}
                 ))
-            
             else:
                 expr = self.grammar.generate_trig('x')
                 cases.append(TestCase(
