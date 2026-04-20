@@ -6470,8 +6470,6 @@ def prove_by_difference_zero(lhs, rhs):
 # Proof mode entrypoint
 # ---------------------------------------------------------------------------
 def solve_prove(lhs, rhs, route):
-    # Proof mode stays deliberately narrower than solve mode so the output
-    # remains a tidy textbook proof rather than a long rewrite trace.
     route = normalize_route(route)
     lhs = sim(lhs)
     rhs = sim(rhs)
@@ -6492,6 +6490,19 @@ def solve_prove(lhs, rhs, route):
             return lines
         return ["LHS = RHS"]
     raise ValueError("This is not an identity, so prove/show mode cannot be used.")
+
+
+def solve_prove_equation(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs):
+    expr1 = sim(add([eq1_lhs, neg(eq1_rhs)]))
+    expr2 = sim(add([eq2_lhs, neg(eq2_rhs)]))
+    if equivalent(expr1, expr2):
+        return [equation_line(expr1, num(0)), equation_line(expr2, num(0))]
+    prove_lines = prove_direct(expr1, expr2, "1")
+    if prove_lines is not None and equivalent(expr1, expr2):
+        return prove_lines
+    if equivalent(expr1, expr2):
+        return [equation_line(expr1, num(0)), equation_line(expr2, num(0))]
+    raise ValueError("This is not an identity (equation transformation failed).")
 
 
 def extract_linear_combo_equation(lhs, rhs):
@@ -8208,6 +8219,12 @@ def solve_transform_text(eq1_text, eq2_text):
                 + equation_line(final_expr, num(0))
             )
     if not equivalent(expr1, expr2):
+        try:
+            solve_result, solve_lines = solve_solve_text(eq1_text + ",x,0,360")
+            if solve_lines is not None and len(solve_lines) > 0:
+                return solve_lines
+        except Exception as e:
+            pass
         raise ValueError("Equation 2 does not match Equation 1.")
     proof = solve_prove(expr1, expr2, "1")
     lines = [
