@@ -1371,6 +1371,10 @@ def show(node, parent=0):
     return _show(sim(node), parent)
 
 
+def show_explicit(node, parent=0):
+    return show(node, parent)
+
+
 def is_digit_char(ch):
     return "0" <= ch <= "9"
 
