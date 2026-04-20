@@ -5448,7 +5448,7 @@ def complete_square_text(text):
         terms.append(constant)
     result = sim(add(terms))
 
-    lines = ['Input = ' + show(expr)]
+    lines = ['Method: Complete square', 'Input = ' + show(expr)]
     if not is_one(a):
         inner_terms = [power(sym(var_name), num(2))]
         scaled_linear = sim(div(b, a))
