@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-20)
 
 ## Corpus Check
-- 15 files · ~310,106 words
+- 15 files · ~310,727 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1685 nodes · 8243 edges · 25 communities detected
+- 1687 nodes · 8258 edges · 25 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
@@ -23,21 +23,21 @@
 
 ## Surprising Connections (you probably didn't know these)
 - `flat()` --calls--> `cache_store()`  [EXTRACTED]
-  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 7_
-- `sig()` --calls--> `cache_store()`  [EXTRACTED]
   src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 8_
-- `sim()` --calls--> `cache_store()`  [EXTRACTED]
-  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 6_
-- `equivalent()` --calls--> `cache_store()`  [EXTRACTED]
-  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 10_
-- `final_angle_text()` --calls--> `cache_store()`  [EXTRACTED]
+- `sig()` --calls--> `cache_store()`  [EXTRACTED]
   src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 11_
+- `split_num_factor()` --calls--> `cache_store()`  [EXTRACTED]
+  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 12_
+- `equivalent()` --calls--> `cache_store()`  [EXTRACTED]
+  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 9_
+- `final_angle_text()` --calls--> `cache_store()`  [EXTRACTED]
+  src/Math/trigProgram.py → src/Math/trigProgram.py  _Bridges community 3 → community 7_
 
 ## Communities
 
 ### Community 0 - "Community 0"
 Cohesion: 0.02
-Nodes (305): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mode_3_lines(), algebra_mode_3_text(), algebra_mode_6_lines(), algebra_mode_6_text() (+297 more)
+Nodes (307): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mode_3_lines(), algebra_mode_3_text(), algebra_mode_6_lines(), algebra_mode_6_text() (+299 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.05
@@ -48,8 +48,8 @@ Cohesion: 0.03
 Nodes (81): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+73 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.03
-Nodes (137): append_unique_value_node(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store() (+129 more)
+Cohesion: 0.04
+Nodes (119): apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), classify_solve_angle_arg() (+111 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
@@ -61,39 +61,39 @@ Nodes (104): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), 
 
 ### Community 6 - "Community 6"
 Cohesion: 0.11
-Nodes (102): add(), angle_reduction_transforms(), build_named_power_term(), collect_same_arg_terms(), depends(), derive_cot_quadratic_expr(), divide_terms_by_two_for_display(), equation_line() (+94 more)
+Nodes (87): add(), angle_reduction_transforms(), build_named_power_term(), collect_same_arg_terms(), depends(), derive_cot_quadratic_expr(), equation_line(), exact_constant_candidates() (+79 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.08
-Nodes (76): addq(), allowed_expression_from_terms(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info() (+68 more)
+Cohesion: 0.07
+Nodes (83): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), concise_root_text(), constant_numeric(), dedupe_values(), estimate_solve_periods() (+75 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.09
-Nodes (73): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), constant_numeric(), depends_any(), detect_transform_var() (+65 more)
+Cohesion: 0.08
+Nodes (83): allowed_expression_from_terms(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info(), display_abs() (+75 more)
 
 ### Community 9 - "Community 9"
+Cohesion: 0.09
+Nodes (78): bridge_to_target(), common_denominator_step(), detail_trig_expansion(), direct_ratio_target_rewrite(), div(), equivalent(), expand_safe_trig_tree(), expand_small() (+70 more)
+
+### Community 10 - "Community 10"
 Cohesion: 0.05
 Nodes (34): check_quality(), ExprGrammar, has_working_steps(), main(), no_forbidden(), ProgramSpec, QualityChecker, Universal Test Generator - Generates random tests for ALL programs with comprehe (+26 more)
 
-### Community 10 - "Community 10"
-Cohesion: 0.11
-Nodes (58): angle_to_degree(), bridge_to_target(), cancel_fraction_common_factor_for_display(), common_denominator_step(), degree_int(), degree_mod_360(), detail_trig_expansion(), direct_ratio_target_rewrite() (+50 more)
-
 ### Community 11 - "Community 11"
-Cohesion: 0.1
-Nodes (55): angle_text(), append_unique_float(), append_unique_solve_value(), concise_root_text(), dedupe_values(), estimate_solve_periods(), eval_numeric(), eval_numeric_mode() (+47 more)
+Cohesion: 0.14
+Nodes (39): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any() (+31 more)
 
 ### Community 12 - "Community 12"
+Cohesion: 0.13
+Nodes (29): addq(), angle_to_degree(), degree_int(), degree_mod_360(), divq(), exact_num_value(), exact_pi_multiple(), exact_trig_lines() (+21 more)
+
+### Community 13 - "Community 13"
 Cohesion: 0.2
 Nodes (24): build_menu_pages(), comp(), direct(), expand_vars(), has(), kids(), mk(), normalise() (+16 more)
 
-### Community 13 - "Community 13"
-Cohesion: 0.13
-Nodes (20): collect_angle_units(), compress_display_list(), contains_pi(), default_no_interval_span(), display_line_short(), interval_angle_mode(), is_alpha_char(), is_digit_char() (+12 more)
-
 ### Community 14 - "Community 14"
-Cohesion: 0.18
-Nodes (19): half_angle_expr(), _is_cos_squared_term(), is_lowercase_symbol_name(), _is_sin_squared_term(), match_cos_squared_term(), match_cot_squared_fraction(), match_one_pm_cos(), match_one_pm_cos_norm() (+11 more)
+Cohesion: 0.11
+Nodes (22): collect_angle_units(), collect_solve_angle_units(), compress_display_list(), contains_pi(), default_no_interval_span(), display_line_short(), equation_angle_mode(), interval_angle_mode() (+14 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.7
@@ -160,9 +160,9 @@ Nodes (1): Run all quality checks - LENIENT VERSION.
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `sim()` connect `Community 6` to `Community 3`, `Community 7`, `Community 8`, `Community 10`, `Community 11`, `Community 13`, `Community 14`?**
+- **Why does `sim()` connect `Community 8` to `Community 3`, `Community 6`, `Community 7`, `Community 9`, `Community 11`, `Community 12`, `Community 14`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
-- **Why does `num()` connect `Community 6` to `Community 3`, `Community 7`, `Community 8`, `Community 10`, `Community 11`, `Community 14`?**
+- **Why does `num()` connect `Community 6` to `Community 3`, `Community 7`, `Community 8`, `Community 9`, `Community 11`, `Community 12`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **What connects `Universal Test Generator - Generates random tests for ALL programs with comprehe`, `Recursive grammar for generating random mathematical expressions.`, `Set scaling parameters.` to the rest of the system?**
   _60 weakly-connected nodes found - possible documentation gaps or missing edges._
@@ -173,4 +173,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 3` be split into smaller, more focused modules?**
-  _Cohesion score 0.03 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.04 - nodes in this community are weakly interconnected._
