@@ -50,17 +50,14 @@ E2: 10*x^4+20*x^2+2
 Output:
 
 ```text
-1. expr1 = (x+1)^5-(x-1)^5
-2. expr2 = 10*(x)^4+20*(x)^2+2
-3. Simplify both...
-4. expr1 = (x+1)^5-(x-1)^5
-5. expr2 = 10*(x)^4+20*(x)^2+2
-6. Expression 1: (x+1)^5-(x-1)^5
-7. Expression 2: 10*(x)^4+20*(x)^2+2
-8. Simplify expr1: 20*(x)^2+10*(x)^4+2
-9. Simplify expr2: 20*(x)^2+10*(x)^4+2
-10. EXPRESSIONS ARE EQUIVALENT
-11. RESULT: Equivalent
+Method: Compare expressions
+expr1 = (x+1)^5-(x-1)^5
+expr2 = 10*x^4+20*x^2+2
+Simplify both...
+Simplify expr1: 20*x^2+10*x^4+2
+Simplify expr2: 20*x^2+10*x^4+2
+EXPRESSIONS ARE EQUIVALENT
+RESULT: Equivalent
 ```
 
 ## Mode 2: Transform (`xform`)
@@ -78,11 +75,11 @@ Tgt: 2*sin(x)^2
 Output:
 
 ```text
-1. Source = -cos(2*x)+1
-2. Target = 2*(sin(x))^2
-3. Original: -cos(2*x)+1
-4. Use 1-cos(2A) = 2sin^2(A): 2*(sin(x))^2
-5. Final = 2*(sin(x))^2
+Method: Transform expression to target form
+Use 1 - cos(2A) = 2sin^2 A.
+= 2*sin(x)^2
+Hence 2*sin(x)^2
+Final = 2*sin(x)^2
 ```
 
 ## Mode 3: Expand (`exp`)
@@ -105,12 +102,18 @@ Max:
 Output:
 
 ```text
-1. Input = (2*x-3)^6
-2. Binomial expansion
-3. Expand (2*x-3)^6
-4. Term 1: C(6,0) * 2*x^6 * -3^0 = 64*(x)^6
-...
-11. Output = 729-2916*x+4860*(x)^2-4320*(x)^3+2160*(x)^4-576*(x)^5+64*(x)^6
+Method: Expand expression
+Input = (2*x - 3)^6
+Binomial expansion
+Expand (2*x - 3)^6
+Term 1: 64*x^6
+Term 2: -576*x^5
+Term 3: 2160*x^4
+Term 4: -4320*x^3
+Term 5: 4860*x^2
+Term 6: -2916*x
+Term 7: 729
+Out = 64*x^6 - 576*x^5 + 2160*x^4 - 4320*x^3 + 4860*x^2 - 2916*x + 729
 ```
 
 ### Example 2: negative power series
@@ -153,10 +156,11 @@ P2: x^2-4*x
 Output:
 
 ```text
-1. p1 = 2*(x)^2+3*x
-2. p2 = (x)^2-4*x
-3. Add: p1 + p2
-4. Sum = 3*(x)^2-x
+Method: Polynomial operations
+p1 = 2*x^2 + 3*x
+p2 = x^2 - 4*x
+Add: p1 + p2
+Sum = 3*x^2 - x
 ```
 
 ## Mode 5: Complete square (`comp sq`)
@@ -173,9 +177,10 @@ Expression: 3*x^2+12*x-7
 Output:
 
 ```text
-1. Input = 3*(x)^2+12*x-7
-2. Complete square: 3*(x+2)^2-19
-3. Ans = 3*(x+2)^2-19
+Method: Complete square
+Input = 3*x^2 + 12*x - 7
+Complete square: 3*(x+2)^2-19
+Ans = 3*(x+2)^2-19
 ```
 
 ## Mode 6: Solve (`solve`)
@@ -196,8 +201,10 @@ Eq: 6*x^2-5*x-6=0
 Output:
 
 ```text
-1. Equation = 6*(x)^2-5*x-6 = 0
-2. x = 3/2 or x = -2/3
+Method: Solve equation
+Solve for x:
+Using quadratic formula
+Solution: x = [3/2, -2/3]
 ```
 
 ## Mode 7: Composite (`comp`)
@@ -236,13 +243,13 @@ f: 3*x-7
 Output:
 
 ```text
-1. f(x) = 3*x-7
-2. f(x) = 3*x-7
-3. Let y = 3*x-7
-4. Swap: x = 3*y-7
-5. x+7 = 3*y
-6. y = (x+7)/3
-7. f^-1(x) = (x+7)/3
+Method: Find inverse function
+f(x) = 3*x-7
+Let y = 3*x-7
+Swap: x = 3*y-7
+x+7 = 3*y
+y = (x+7)/3
+f^-1(x) = (x+7)/3
 ```
 
 ### Example 2: unsupported quadratic inverse
@@ -280,11 +287,12 @@ T:
 Output:
 
 ```text
-1. Start with (x)^2-1
-2. Write in terms of x-1, x+1 only.
-3. Factor as a difference of squares
-4. = (x-1)*(x+1)
-5. Final = (x-1)*(x+1)
+Method: Rewrite expression
+Start with x^2 - 1
+Write in terms of x-1, x+1 only.
+Factor as a difference of squares
+= (x-1)*(x+1)
+Final = (x-1)*(x+1)
 ```
 
 ## Error handling

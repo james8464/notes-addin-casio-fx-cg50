@@ -95,11 +95,11 @@ M: 1
 y: sin(2*x)
 ```
 
-Typical output shape:
+Output:
 
 ```text
-1. d/dx[sin(2*x)]
-2. = cos(2*x)*2
+Method: Differentiate with respect to x
+Using chain rule
 dy/dx = 2*cos(2*x)
 ```
 
@@ -117,10 +117,11 @@ Eq: x^2+x*y+y^2=7
 Output:
 
 ```text
-1. d/dx(LHS)=d/dx(RHS)
-2. 2*x+x*dy/dx+y+2*y*dy/dx = 0
-3. Make dy/dx
-4. (x+2*y)*dy/dx + 2*x+y = 0
+Method: Implicit differentiation
+d/dx(LHS)=d/dx(RHS)
+2*x + x*dy/dx + y + 2*y*dy/dx = 0
+Make dy/dx
+(x+2*y)*dy/dx + 2*x+y = 0
 dy/dx = (-2*x-y)/(x+2*y)
 ```
 
@@ -139,9 +140,10 @@ y(t): t^4+t
 Output:
 
 ```text
+Method: Parametric differentiation
 dx/dt = 3*t^2-3
 dy/dt = 4*t^3+1
-dy/dx = (dy/dt)/(dx/dt) = (4*t^3+1)/(3*(t^2-1))
+dy/dx = (4*t^3+1)/(3*(t^2-1))
 ```
 
 ## Error handling

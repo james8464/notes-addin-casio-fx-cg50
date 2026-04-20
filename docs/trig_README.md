@@ -49,11 +49,11 @@ R: 1
 Output:
 
 ```text
-2*sin((x+y)/2)*cos((x-y)/2)
+Method: Prove identity
 Use 2sin A cos B = sin(A+B) + sin(A-B).
-= sin((x+y)/2+(x-y)/2)+sin(-(x-y)/2+(x+y)/2)
 = sin(x)+sin(y)
 = LHS
+Proven ✓
 ```
 
 ## Mode 2: Transform (`xform`)
@@ -71,9 +71,11 @@ E2: 3*tan(x/2)
 Output:
 
 ```text
-(3*(1-cos(x)))/sin(x)
+Method: Transform expression
 Use half-angle ratio identities.
 = 3*tan(x/2)
+Hence 3*tan(x/2)
+Final = 3*tan(x/2)
 ```
 
 ### Example 2: core named trig route
@@ -84,12 +86,14 @@ E1: sin(x)/cos(x)
 E2: tan(x)
 ```
 
-Typical output shape:
+Output:
 
 ```text
-sin(x)/cos(x)
+Method: Transform expression
 Use sin A / cos A = tan A.
 = tan(x)
+Hence tan(x)
+Final = tan(x)
 ```
 
 ## Mode 3: Solve (`solve`)
@@ -112,6 +116,7 @@ Eq: sec(x)=2,x,0,2*pi
 Output:
 
 ```text
+Method: Solve trig equation
 Start with sec(x) = 2
 Move all terms to one side
 -2+sec(x) = 0
@@ -130,9 +135,10 @@ Eq: 2*sin(x)^2-3*sin(x)+1,x,0,2*pi
 Output:
 
 ```text
-Start with 1-3*sin(x)+2*sin(x)^2 = 0
+Method: Solve trig equation
+Start with 2*sin(x)^2-3*sin(x)+1 = 0
 Move all terms to one side
-1-3*sin(x)+2*sin(x)^2 = 0
+2*sin(x)^2-3*sin(x)+1 = 0
 Let u = sin(x).
 2*u^2-3*u+1 = 0
 u = [1, 1/2]
@@ -171,6 +177,7 @@ T:
 Output:
 
 ```text
+Method: Rewrite expression
 Start with 1-cos(2*x)
 Write in terms of sin(x) only.
 Use 1 - cos(2A) = 2sin^2 A.
