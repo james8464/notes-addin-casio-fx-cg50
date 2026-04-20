@@ -1392,14 +1392,20 @@ def parse(text):
 
 
 def parse_normal_input(text):
+    text = text.strip()
     left_text, right_text = split_at_equals(text)
     if left_text is not None:
         left_side = left_text.strip()
         right_side = right_text.strip()
-        if left_side == "y" or left_side.startswith("f("):
+        if left_side in ("y", "EQ1") or left_side.startswith("f("):
             return parse(right_side), "x"
         else:
-            raise ValueError("For equations, use implicit mode (mode 2). Or for y = f(x), put just f(x) on right side.")
+            parts = split_explicit_var(text)
+            if parts is not None:
+                expr_text, var_text = parts
+                var = normalize_explicit_var(var_text)
+                return parse(expr_text), var
+            raise ValueError("For equations, use implicit mode (mode 2). Or for EQ1 = f(x), put just f(x) on right side.")
     parts = split_explicit_var(text)
     if parts is not None:
         expr_text, var_text = parts

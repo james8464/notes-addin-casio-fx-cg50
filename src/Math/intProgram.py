@@ -2026,8 +2026,18 @@ def cartesian_integrand_from_equation(text):
     if '=' not in A:
         return None
     B, C = A.split('=', 1)
-    D = parse(B.strip())
-    E = parse(C.strip())
+    left = B.strip()
+    right = C.strip()
+    if left in ("y", "EQ1"):
+        D = parse(right)
+        if not depends(D, 'y'):
+            return D, 'x'
+    if right in ("y", "EQ1"):
+        D = parse(left)
+        if not depends(D, 'y'):
+            return D, 'x'
+    D = parse(left)
+    E = parse(right)
     if D == sym('y') and not depends(E, 'y'):
         return E, 'x'
     if E == sym('y') and not depends(D, 'y'):

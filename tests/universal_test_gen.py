@@ -567,12 +567,12 @@ class UniversalTestGenerator:
                 expr = self.grammar.generate('x', self.rng.randint(2, 6))
                 cases.append(TestCase(
                     'derive', 'normal',
-                    f"1\n{expr}\n",
+                    f"1\nEQ1={expr}\n",
                     metadata={'expected_action': 'differentiate', 'verify': 'sympy'}
                 ))
-            
+
             elif mode == 'implicit':
-                expr = f"{self.grammar.generate('x', 2)}={self.grammar.generate('y', 2)}"
+                expr = f"EQ1={self.grammar.generate('x', 2)}={self.grammar.generate('y', 2)}"
                 cases.append(TestCase(
                     'derive', 'implicit',
                     f"2\n{expr}\n",
@@ -615,28 +615,28 @@ class UniversalTestGenerator:
                 expr = self.grammar._expr('x', self.rng.randint(1, 3))
                 cases.append(TestCase(
                     'integrate', 'direct',
-                    f"1\n{expr}\n2\n",
+                    f"1\nEQ1={expr}\n2\n",
                     metadata={'expected_action': 'integrate', 'verify': 'inverse'}
                 ))
             elif mode == 'by_parts':
                 expr = f"x*exp(x)"
                 cases.append(TestCase(
                     'integrate', 'by_parts',
-                    f"1\n{expr}\n4\n",
+                    f"1\nEQ1={expr}\n4\n",
                     metadata={'expected_action': 'integrate_by_parts'}
                 ))
             elif mode == 'substitution':
                 expr = f"x*exp(x^2)"
                 cases.append(TestCase(
                     'integrate', 'substitution',
-                    f"1\n{expr}\n5\n",
+                    f"1\nEQ1={expr}\n5\n",
                     metadata={'expected_action': 'u_substitution'}
                 ))
             else:
                 expr = self.grammar.generate_trig('x')
                 cases.append(TestCase(
                     'integrate', 'trig',
-                    f"1\n{expr}\n3\n",
+                    f"1\nEQ1={expr}\n3\n",
                     metadata={'expected_action': 'trig_integrate'}
                 ))
         
@@ -665,6 +665,103 @@ class UniversalTestGenerator:
         
         return cases
     
+    def generate_weakness_cases(self, count: int = 50) -> List[TestCase]:
+        """Generate cases that target known weaknesses."""
+        cases = []
+        
+        for _ in range(count):
+            mode = self.rng.choice([
+                'nested_power', 'deep_fraction', 'zero_edge', 'negative_power',
+                'trig_hard', 'symbolic_explosion', 'sqrt_nested', 'exp_chain'
+            ])
+            
+            if mode == 'nested_power':
+                base = self.grammar._expr('x', 2)
+                inner = f"{self.rng.randint(2, 4)}*({base})^{self.rng.randint(2, 3)}"
+                power = self.rng.randint(2, 4)
+                expr = f"({inner})^{power}"
+                cases.append(TestCase(
+                    'derive', 'nested_power',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'nested_power', 'expected_action': 'differentiate'}
+                ))
+                
+            elif mode == 'deep_fraction':
+                num = self.grammar._expr('x', 3)
+                denom = self.grammar._expr('x', 2)
+                expr = f"({num})/({denom})"
+                cases.append(TestCase(
+                    'derive', 'deep_fraction',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'deep_fraction', 'expected_action': 'differentiate'}
+                ))
+                
+            elif mode == 'zero_edge':
+                expr = self.rng.choice([
+                    f"0*{self.grammar._expr('x', 2)}",
+                    f"{self.rng.randint(1, 5)}*0",
+                    f"({self.grammar._expr('x', 2)})/0",
+                ])
+                cases.append(TestCase(
+                    'integrate', 'zero_edge',
+                    f"1\nEQ1={expr}\n2\n",
+                    metadata={'weakness': 'zero_division', 'expected_action': 'integrate'}
+                ))
+                
+            elif mode == 'negative_power':
+                power = self.rng.randint(-5, -1)
+                base = self.grammar._expr('x', 2)
+                expr = f"({base})^{power}"
+                cases.append(TestCase(
+                    'derive', 'negative_power',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'negative_exponent', 'expected_action': 'differentiate'}
+                ))
+                
+            elif mode == 'trig_hard':
+                arg = self.grammar._expr('x', 3)
+                expr = self.rng.choice([
+                    f"sin({arg})^2",
+                    f"cos({arg})^2",
+                    f"tan({arg})",
+                    f"sec({arg})",
+                    f"cosec({arg})",
+                ])
+                cases.append(TestCase(
+                    'integrate', 'trig_hard',
+                    f"1\nEQ1={expr}\n3\n",
+                    metadata={'weakness': 'trig_hard', 'expected_action': 'integrate'}
+                ))
+                
+            elif mode == 'symbolic_explosion':
+                terms = [self.grammar._expr('x', 2) for _ in range(self.rng.randint(3, 6))]
+                expr = "+".join(f"({t})" for t in terms)
+                cases.append(TestCase(
+                    'derive', 'symbolic_explosion',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'symbolic_explosion', 'expected_action': 'differentiate'}
+                ))
+                
+            elif mode == 'sqrt_nested':
+                inner = self.grammar._expr('x', 3)
+                expr = f"sqrt({inner})"
+                cases.append(TestCase(
+                    'derive', 'sqrt_nested',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'sqrt_nested', 'expected_action': 'differentiate'}
+                ))
+                
+            else:  # exp_chain
+                base = self.grammar._expr('x', 2)
+                expr = f"exp({base})"
+                cases.append(TestCase(
+                    'derive', 'exp_chain',
+                    f"1\nEQ1={expr}\n",
+                    metadata={'weakness': 'exp_chain', 'expected_action': 'differentiate'}
+                ))
+        
+        return cases
+    
     def generate_all_cases(self, count_per_program: int = 100) -> List[TestCase]:
         """Generate test cases for all programs."""
         all_cases = []
@@ -683,6 +780,9 @@ class UniversalTestGenerator:
         
         print("Generating suvat cases...")
         all_cases.extend(self.generate_suvat_cases(count_per_program))
+
+        print("Generating weakness-targeted cases...")
+        all_cases.extend(self.generate_weakness_cases(count_per_program // 2))
         
         self.rng.shuffle(all_cases)
         return all_cases

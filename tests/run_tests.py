@@ -2188,6 +2188,7 @@ class CASIOApp(App):
 
         calc_files = Path(__file__).resolve().parents[1] / "src" / "calc_files"
         mpy_cross = Path.home() / "micropython" / "mpy-cross" / "mpy-cross"
+        calculator_volume = Path("/Volumes/NO NAME")
 
         if not calc_files.exists():
             self.append_result(f"[bold #f59e0b]Folder not found:[/bold #f59e0b] {calc_files}")
@@ -2234,6 +2235,31 @@ class CASIOApp(App):
                 err = result.stderr[:100] if result.stderr else "unknown"
                 self.append_result(f"[bold #f87171]Failed:[/bold #f87171] {name} - {err}")
                 failed += 1
+
+        if calculator_volume.exists():
+            self.append_result("[dim]Calculator detected. Copying files...[/dim]")
+            for name in source_dirs.keys():
+                py_file = calc_files / f"{name}.py"
+                mpy_file = calc_files / f"{name}.mpy"
+                
+                calculator_py_file = calculator_volume / f"{name}.py"
+                calculator_mpy_file = calculator_volume / f"{name}.mpy"
+                
+                if calculator_py_file.exists():
+                    os.remove(calculator_py_file)
+                    self.append_result(f"[dim]Deleted:[/dim] {calculator_py_file.name}")
+                
+                if calculator_mpy_file.exists():
+                    os.remove(calculator_mpy_file)
+                    self.append_result(f"[dim]Deleted:[/dim] {calculator_mpy_file.name}")
+                
+                if py_file.exists():
+                    shutil.copy2(py_file, calculator_py_file)
+                    self.append_result(f"[bold #22c55e]Copied:[/bold #22c55e] {py_file.name}")
+                
+                if mpy_file.exists():
+                    shutil.copy2(mpy_file, calculator_mpy_file)
+                    self.append_result(f"[bold #22c55e]Copied:[/bold #22c55e] {mpy_file.name}")
 
         if failed == 0:
             self.update_summary(f"Compiled {compiled} files")
