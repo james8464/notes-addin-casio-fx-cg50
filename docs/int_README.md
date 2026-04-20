@@ -30,11 +30,12 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 - Operators: `+`, `-`, `*`, `/`, `^`, `**`
 - Compact forms: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
 - Explicit variable form: `expr,x`
-- DE input: `dy/dx=...` with optional boundary condition like `y=3,x=0`
+- DE input: `dy/dx=...` or `dy/dx: ...` with optional boundary condition like `y=3,x=0`
 
 ## Notes
 
 - Accepts both `^` and `**`
+- DE mode accepts both `dy/dx = ...` and `dy/dx: ...` syntax
 - Auto mode already covers many direct, trig, substitution, parts, partial-fraction, and DE families
 - Working is short and calculator-friendly
 - Some non-elementary families still return out-of-scope messages
@@ -187,6 +188,44 @@ y = 3*e^(x^2)
 
 ### Division (`div`)
 - polynomial numerator / lower-degree denominator division before integration
+
+## Mode 2: Differential Equations (`de`)
+
+Solves first-order differential equations (separable and linear).
+
+### Example 1: Separable DE
+
+```text
+M: 2
+dy/dx: -k*y**(1/3)
+```
+
+Output:
+
+```text
+Separate variables
+Int[-1/(k*y^(1/3))] dy = Int[1] dx
+-3*y^(2/3)/(2*k) = x + C
+```
+
+### Example 2: Linear DE
+
+```text
+M: 2
+dy/dx: y + x
+```
+
+Output:
+
+```text
+Rearrange to dy/dx + (-1)*y = x
+Int[-1] dx = -x
+Integrating factor = e^(-x)
+Multiply through by e^(-x)
+d/dx[y*e^(-x)] = x*e^(-x)
+y*e^(-x) = -x*e^(-x) - e^(-x) + C
+So y = -x - 1 + C*e^x
+```
 
 ## Python API
 

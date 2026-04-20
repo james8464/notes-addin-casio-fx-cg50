@@ -15,6 +15,7 @@ An algebra manipulation program for the CASIO fx-cg50 calculator (MicroPython v1
 | 7 | `comp` | Composite | Finds `f(g(x))` |
 | 8 | `inv` | Inverse | Finds inverse functions for supported one-to-one families |
 | 9 | `rw` | Rewrite | Rewrites an expression using only the user-supplied target terms |
+| 10 | `dom/rng` | Domain & Range | Determines domain restrictions and range for expressions |
 
 ## Input syntax
 
@@ -293,6 +294,52 @@ Write in terms of x-1, x+1 only.
 Factor as a difference of squares
 = (x-1)*(x+1)
 Final = (x-1)*(x+1)
+```
+
+## Mode 10: Domain & Range (`dom/rng`)
+
+Determines domain restrictions and range for expressions.
+
+### Example 1: Rational function
+
+```text
+M: 10
+Expr: 1/x
+```
+
+Output:
+
+```text
+Method: Determine Domain
+Input = 1/x
+Denominator cannot be zero: x != 0
+Domain: all real x except where restrictions apply.
+
+Method: Determine Range
+Input = 1/x
+Constant function.
+Range: single value
+```
+
+### Example 2: Quadratic
+
+```text
+M: 10
+Expr: x^2
+```
+
+Output:
+
+```text
+Method: Determine Domain
+Input = x^2
+No restrictions found.
+Domain: all real x
+
+Method: Determine Range
+Input = x^2
+Quadratic opens upward.
+Range: y >= minimum value
 ```
 
 ## Error handling
