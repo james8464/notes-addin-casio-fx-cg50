@@ -2146,12 +2146,17 @@ def parse_de_balanced_equation(text):
 
 def parse_de_input(text):
     A = text.strip()
-    if '=' not in A:
-        raise ValueError("Equation must contain '='.")
-    try:
-        return parse_de_equation(A)
-    except ValueError:
-        return parse_de_balanced_equation(A)
+    if '=' in A:
+        try:
+            return parse_de_equation(A)
+        except ValueError:
+            return parse_de_balanced_equation(A)
+    if ':' in A:
+        parts = A.split(':', 1)
+        return parse(parts[1].strip()), 'x', 'y'
+    if A.lower().startswith('dy/dx'):
+        return parse(A[5:].strip()), 'x', 'y'
+    return parse(A), 'x', 'y'
 
 
 def cancellation_requested():
