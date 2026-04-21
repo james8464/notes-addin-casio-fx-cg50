@@ -22,7 +22,7 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython 
 ## Notes
 
 - Accepts both `^` and `**`
-- Normal mode accepts plain expressions, `expr,x`, or `y=expr`
+- Normal mode accepts plain expressions, `expr,x`, `y=expr`, or `EQ1=expr`
 - Implicit mode requires `left=right`
 - Parametric mode expects `t` as the parameter
 - Working is short and calculator-friendly

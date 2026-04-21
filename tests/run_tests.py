@@ -2234,6 +2234,7 @@ class CASIOApp(App):
 
         calc_files = Path(__file__).resolve().parents[1] / "src" / "calc_files"
         mpy_cross = Path.home() / "micropython" / "mpy-cross" / "mpy-cross"
+        heapsize = "52428800"
         calculator_volume = Path("/Volumes/NO NAME")
 
         if not calc_files.exists():
@@ -2268,7 +2269,7 @@ class CASIOApp(App):
                 continue
 
             result = subprocess.run(
-                [str(mpy_cross), "-X", "heapsize=4194304", "-msmall-int-bits=31", "-mno-unicode",
+                [str(mpy_cross), "-X", f"heapsize={heapsize}",
                  "-o", str(mpy_path), str(src_path)],
                 capture_output=True,
                 text=True

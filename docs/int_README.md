@@ -30,6 +30,7 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 - Operators: `+`, `-`, `*`, `/`, `^`, `**`
 - Compact forms: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
 - Explicit variable form: `expr,x`
+- Equation form: `EQ1=expr` or `y=expr` or `expr=expr`
 - DE input: `dy/dx=...` or `dy/dx: ...` with optional boundary condition like `y=3,x=0`
 
 ## Notes
