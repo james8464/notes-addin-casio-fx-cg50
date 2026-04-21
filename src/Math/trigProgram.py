@@ -112,6 +112,7 @@ SOLUTION_LIST_CACHE = {}
 
 
 def cache_store(cache, key, value, limit):
+    global _TOTAL_CACHE_MEMORY
     if limit <= 0:
         return value
     if key not in cache and len(cache) >= limit:
@@ -122,8 +123,12 @@ def cache_store(cache, key, value, limit):
         while i < trim and len(cache) >= limit:
             oldest = next(iter(cache))
             del cache[oldest]
+            _TOTAL_CACHE_MEMORY -= 1
             i += 1
     cache[key] = value
+    _TOTAL_CACHE_MEMORY += 1
+    if _TOTAL_CACHE_MEMORY > _TOTAL_CACHE_LIMIT:
+        _enforce_total_cache_limit()
     return value
 
 
@@ -150,6 +155,24 @@ ALL_ENGINE_CACHES = (
     FINAL_ANGLE_TEXT_CACHE,
     SOLUTION_LIST_CACHE,
 )
+
+_TOTAL_CACHE_MEMORY = 0
+_TOTAL_CACHE_LIMIT = 16384
+
+
+def _enforce_total_cache_limit():
+    global _TOTAL_CACHE_MEMORY
+    if _TOTAL_CACHE_MEMORY > _TOTAL_CACHE_LIMIT:
+        drop = min(512, _TOTAL_CACHE_MEMORY // 8)
+        for cache in ALL_ENGINE_CACHES:
+            for key in list(cache.keys())[:drop]:
+                try:
+                    del cache[key]
+                    _TOTAL_CACHE_MEMORY -= 1
+                except KeyError:
+                    pass
+                if _TOTAL_CACHE_MEMORY <= _TOTAL_CACHE_LIMIT:
+                    return
 
 
 def clear_engine_caches():
@@ -8406,6 +8429,15 @@ def _balance_parens(text):
                 continue
             result += c
         text = result
+    if not text:
+        return text
+    for c in text:
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        if depth < 0:
+            return text[:text.find(c)]
     return text
 
 
@@ -9907,14 +9939,6 @@ def solve_numeric_trig_fallback(lhs, rhs, expr, var, start_val, end_val, deg_mod
             verified.append(candidates[i])
         i += 1
     verified = dedupe_values(verified)
-    lines = [
-        "No exact symbolic solution found. Using numerical scan with detailed working:",
-        "Rewrite: f(" + var + ") = " + show(lhs) + " - (" + show(rhs) + ") = " + show(expr),
-        "Compute f(" + var + ") at " + str(samples) + " points across [" + str(round(start_val, 4)) + ", " + str(round(end_val, 4)) + "]",
-        "For each sign change, refine using bisection method (zero crossing means f=0)",
-        "Newton-Raphson: x_new = x - f(x)/f'(x) for faster convergence",
-        "Verify each root: substitute back into original equation",
-    ]
     if len(verified) == 0:
         lines.append("No verified solutions in the interval.")
         return [], compact_lines(lines)
@@ -14646,40 +14670,49 @@ def match_cot_squared_fraction(node):
     return coeff, base
 
 
+_SOLVE_REWRITE_DEPTH = 0
+_SOLVE_REWRITE_MAX_DEPTH = 12
+
+
 def best_solve_rewrite(expr, var, visited):
-    # Keep candidate choice shallow and cheap for calculator runtime:
-    # rank direct school-method shapes first and avoid recursive lookahead.
-    features = solve_feature_scan(expr, var)
-    current = solve_expr_score(expr, var, features)
-    if current[0] == 0:
+    global _SOLVE_REWRITE_DEPTH
+    if _SOLVE_REWRITE_DEPTH >= _SOLVE_REWRITE_MAX_DEPTH:
         return None
-    best = None
-    group_i = 0
-    while group_i < len(SOLVE_REWRITE_GROUPS):
-        if LOW_MEMORY_RUNTIME and solve_group_is_expensive(group_i) and best is not None:
-            break
-        group_best = None
-        family_i = 0
-        while family_i < len(SOLVE_REWRITE_GROUPS[group_i]):
-            candidates = SOLVE_REWRITE_GROUPS[group_i][family_i](expr, var, features)
-            i = 0
-            while i < len(candidates):
-                candidate = candidates[i]
-                key = candidate["expr"]
-                if key not in visited:
-                    if candidate["score"] < current:
-                        choice = (candidate["score"], candidate["label_rank"], len(candidate["lines"]))
-                        if group_best is None or choice < (group_best["score"], group_best["label_rank"], len(group_best["lines"])):
-                            group_best = candidate
-                i += 1
-            family_i += 1
-        if group_best is not None:
-            if best is None or (group_best["score"], group_best["label_rank"], len(group_best["lines"])) < (best["score"], best["label_rank"], len(best["lines"])):
-                best = group_best
-            if solve_candidate_is_stopworthy(group_best):
-                return group_best
-        group_i += 1
-    return best
+    _SOLVE_REWRITE_DEPTH += 1
+    try:
+        features = solve_feature_scan(expr, var)
+        current = solve_expr_score(expr, var, features)
+        if current[0] == 0:
+            return None
+        best = None
+        group_i = 0
+        while group_i < len(SOLVE_REWRITE_GROUPS):
+            if LOW_MEMORY_RUNTIME and solve_group_is_expensive(group_i) and best is not None:
+                break
+            group_best = None
+            family_i = 0
+            while family_i < len(SOLVE_REWRITE_GROUPS[group_i]):
+                candidates = SOLVE_REWRITE_GROUPS[group_i][family_i](expr, var, features)
+                i = 0
+                while i < len(candidates):
+                    candidate = candidates[i]
+                    key = candidate["expr"]
+                    if key not in visited:
+                        if candidate["score"] < current:
+                            choice = (candidate["score"], candidate["label_rank"], len(candidate["lines"]))
+                            if group_best is None or choice < (group_best["score"], group_best["label_rank"], len(group_best["lines"])):
+                                group_best = candidate
+                    i += 1
+                family_i += 1
+            if group_best is not None:
+                if best is None or (group_best["score"], group_best["label_rank"], len(group_best["lines"])) < (best["score"], best["label_rank"], len(best["lines"])):
+                    best = group_best
+                if solve_candidate_is_stopworthy(group_best):
+                    return group_best
+            group_i += 1
+        return best
+    finally:
+        _SOLVE_REWRITE_DEPTH -= 1
 
 
 # ---------------------------------------------------------------------------
@@ -15950,7 +15983,7 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
         if solved is not None:
             return solved
 
-    lines.append("Tried all exact solvers. Using polynomial method with working shown.")
+    lines.append("Rewrite using sin^2 + cos^2 = 1 identity.")
 
     expanded_identity_expr = substitute_cosec_cot_identities(sim(expr))
     if not cheap_same(expanded_identity_expr, expr):

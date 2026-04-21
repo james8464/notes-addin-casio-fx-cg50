@@ -4043,6 +4043,9 @@ def solve_equation(node):
     rational = solve_rational_equation(expr, var_name)
     if rational is not None:
         return var_name, rational[1], rational[0]
+    radical_result = solve_radical_equation(expr, var_name)
+    if radical_result is not None:
+        return radical_result
     return None, None, 'Needs poly support'
 
 
@@ -5661,6 +5664,211 @@ def solve_rational_equation(expr, var_name):
     return 'Clear den', valid
 
 
+def contains_function_safe(node, fn_name):
+    if node is None:
+        return False
+    if isinstance(node, str):
+        return False
+    if not isinstance(node, (list, tuple)):
+        return False
+    try:
+        if node[0] == 'fn' and len(node) > 1 and node[1] == fn_name:
+            return True
+        for item in node:
+            if contains_function_safe(item, fn_name):
+                return True
+    except:
+        pass
+    return False
+
+
+def find_radical_terms_safe(expr, var_name):
+    radicals = []
+    def find(node):
+        if node is None or not isinstance(node, (list, tuple)):
+            return
+        try:
+            if node[0] == 'fn' and len(node) > 1 and node[1] == 'sqrt':
+                radicals.append(node)
+        except:
+            pass
+        for item in node:
+            find(item)
+    find(expr)
+    return radicals
+
+
+def check_solution(expr, var_name, root):
+    try:
+        val = eval_with_values(expr, {var_name: root})
+        return val is not None and is_zero(val)
+    except:
+        return False
+
+
+def solve_radical_equation(expr, var_name):
+    # Solve equations like a*x + b*sqrt(x) + c = 0
+    # Let u = sqrt(x), so x = u^2
+    # Then a*u^2 + b*u + c = 0 (quadratic in u)
+    
+    try:
+        # Extract a, b, c from terms
+        a_num, a_den = 0, 1
+        b_num, b_den = 0, 1  
+        c_num, c_den = 0, 1
+        
+        terms = []
+        if expr[0] == 'add' and len(expr) > 1:
+            items = expr[1]
+            if isinstance(items, (list, tuple)):
+                for item in items:
+                    if isinstance(item, (list, tuple)):
+                        terms.append(item)
+        
+        for term in terms:
+            if not isinstance(term, (list, tuple)):
+                continue
+            
+            # Check what this term contains
+            term_str = str(term)
+            has_x = 'sym' in term_str and var_name in term_str
+            has_sqrt = 'sqrt' in term_str
+            
+            if term[0] == 'num':
+                # c value
+                if len(term) >= 3:
+                    c_num = term[1]
+                    c_den = term[2]
+                    
+            elif term[0] == 'mul' and len(term) > 1:
+                # Coefficient * x or coefficient * sqrt(x)
+                factors = term[1] if isinstance(term[1], (list, tuple)) else ()
+                coeff = 1
+                has_x_term = False
+                has_sqrt_term = False
+                
+                for f in factors:
+                    if not isinstance(f, (list, tuple)):
+                        continue
+                    if f[0] == 'num' and len(f) >= 3:
+                        coeff *= f[1] / f[2]
+                    elif f[0] == 'sym' and len(f) > 1 and f[1] == var_name:
+                        has_x_term = True
+                    elif f[0] == 'fn' and f[1] == 'sqrt' and len(f) > 2:
+                        inner = str(f[2])
+                        if var_name in inner:
+                            has_sqrt_term = True
+                
+                if has_x_term and not has_sqrt_term:
+                    a_num = coeff * a_den + a_num
+                    a_den = a_den
+                elif has_sqrt_term and not has_x_term:
+                    b_num = coeff * b_den + b_num
+                    
+            elif term[0] == 'fn' and term[1] == 'sqrt':
+                # Just sqrt(x), coefficient is 1
+                b_num += 1
+                
+        # Now solve: a*u^2 + b*u + c = 0
+        # Using quadratic formula: u = (-b ± sqrt(b^2 - 4ac)) / 2a
+        if a_num == 0:
+            return None
+            
+        discriminant = b_num * b_num - 4 * a_num * c_num
+        if discriminant < 0:
+            return None
+            
+        import math
+        sqrt_disc = math.sqrt(discriminant)
+        
+        valid_x = []
+        # u1 = (-b + sqrt(disc)) / 2a
+        u1 = (-b_num + sqrt_disc) / (2 * a_num)
+        if u1 >= 0:
+            valid_x.append(('num', int(u1 * u1 * 10000), 10000))
+            
+        # u2 = (-b - sqrt(disc)) / 2a  
+        u2 = (-b_num - sqrt_disc) / (2 * a_num)
+        if u2 >= 0:
+            valid_x.append(('num', int(u2 * u2 * 10000), 10000))
+            
+        if valid_x:
+            return var_name, valid_x, 'Quadratic substitution'
+            
+    except Exception as e:
+        pass
+        
+    return None
+
+
+def contains_function(node, fn_name):
+    if node is None:
+        return False
+    if isinstance(node, str):
+        return False
+    if not isinstance(node, (list, tuple)):
+        return False
+    if node[0] == 'fn' and node[1] == fn_name:
+        return True
+    i = 1
+    while i < len(node):
+        if contains_function(node[i], fn_name):
+            return True
+        i += 1
+    return False
+
+
+def find_radical_terms(expr, var_name):
+    radicals = []
+    def find(node):
+        if node is None:
+            return
+        if not isinstance(node, (list, tuple)):
+            return
+        if node[0] == 'fn' and node[1] == 'sqrt':
+            if depends_on(node[2], var_name):
+                radicals.append(node)
+        i = 1
+        while i < len(node):
+            find(node[i])
+            i += 1
+    find(expr)
+    return radicals
+
+
+def isolate_one_radical(expr, var_name):
+    def extract_add_terms(node):
+        if node is None:
+            return []
+        if not isinstance(node, (list, tuple)):
+            return [node]
+        if node[0] == 'add':
+            result = []
+            items = node[1] if isinstance(node[1], (list, tuple)) else (node[1:] if len(node) > 1 else [])
+            for item in items:
+                if isinstance(item, (list, tuple)) and item[0] == 'add':
+                    result.extend(extract_add_terms(item))
+                else:
+                    result.append(item)
+            return result
+        return [node]
+    
+    working = expr
+    if working[0] == 'sub':
+        if working[2] == ('num', 0, 1) or working[2] == ['num', 0, 1]:
+            working = working[1]
+    
+    if working[0] == 'add':
+        terms = extract_add_terms(working)
+        for i, term in enumerate(terms):
+            if contains_function(term, 'sqrt'):
+                radical_part = term
+                other_parts = terms[:i] + terms[i+1:]
+                other_sum = sim(make_add(other_parts)) if other_parts else ['num', 0, 1]
+                return radical_part, sim(neg(other_sum))
+    return None, None
+
+
 def solve_equation(node):
     expr = sim(node)
     expanded = maybe_expand_for_compare(expr)
@@ -5702,6 +5910,9 @@ def solve_equation(node):
             valid = normalize_solution_roots(valid)
             if len(valid) != 0:
                 return var_name, valid, 'Clear den'
+    radical_result = solve_radical_equation(working, var_name)
+    if radical_result is not None:
+        return radical_result
     return None, None, 'Needs poly support'
 
 
