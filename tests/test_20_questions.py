@@ -1,128 +1,82 @@
 #!/usr/bin/env python3
-"""Manual test runner for the 20 exam questions."""
+"""Test 20 hard MadAsMaths questions against CASIO programs."""
 
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / "src" / "Math"
-PY = sys.executable
+PY = Path(__file__).resolve().parents[1] / ".venv" / "bin" / "python3"
+ROOT = Path(__file__).resolve().parents[1]
 
-def run_program(prog, inp):
-    result = subprocess.run(
-        [PY, str(ROOT / prog)],
-        input=inp,
-        text=True,
-        capture_output=True,
-        timeout=30,
-    )
-    return result.stdout
+programs = {
+    "algebra": "src/Math/algebraProgram.py",
+    "trig": "src/Math/trigProgram.py",
+    "derive": "src/Math/deriveProgram.py",
+    "integrate": "src/Math/intProgram.py",
+    "suvat": "src/Math/SUVATprogram.py",
+}
 
-print("="*60)
-print("Q1: ALGEBRA - Hidden Quadratic: 2x + sqrt(x) - 15 = 0")
-print("="*60)
-print(run_program("algebraProgram.py", "6\n2*x + sqrt(x) - 15\n"))
+questions = [
+    ("Q1", "algebra", "6\nx^(2/3)+16/x^(2/3)=17\nx\n", "Hidden Quadratic"),
+    ("Q2", "algebra", "6\n(x-2)^2+(y+3)^2=10\n11\ny=k*x-5\nx\n", "Circle-Line Tangency"),
+    ("Q3", "algebra", "6\n(k+1)*x^2+2*k*x+(k-2)=0\nx\n", "Discriminant"),
+    ("Q4", "algebra", "6\nx^3+x^2-11*x+1=0\nx\n", "Cubic Factorisation"),
+    ("Q5", "trig", "1\nsin(3*theta)/sin(theta)-cos(3*theta)/cos(theta)=2\n4\n", "Trig Identity"),
+    ("Q6", "trig", "3\ncos(2*theta)=3*sin(theta)+2,theta,0,2pi\n", "Trig Equation"),
+    ("Q7", "trig", "3\n4*cos(2*x)^2-7*cos(2*x)-2=0,x,0,180\n", "Multiple Angles"),
+    ("Q8", "trig", "1\natan(1/2)+atan(1/3)=pi/4\n4\n", "Inverse Trig"),
+    ("Q9", "derive", "1\nx^2*exp(3*x)*sin(2*x)\n", "Triple Product"),
+    ("Q10", "derive", "1\nlog(sec(3*x)+tan(3*x))\n", "Chain Rule Log"),
+    ("Q11", "derive", "3\nx^2+3*x*y+y^2=11\ny=2\nx=1\n", "Implicit Tangent"),
+    ("Q12", "derive", "2\ncos(t)\nsin(2*t)\nt=pi/4\n", "Parametric"),
+    ("Q13", "derive", "1\nx^x\n", "Logarithmic Diff"),
+    ("Q14", "integrate", "1\nx^2*sin(x)\n", "Repeated Parts"),
+    ("Q15", "integrate", "1\n(5*x^2-2*x+11)/((x+1)*(x^2+4))\n", "Partial Fractions"),
+    ("Q16", "integrate", "1\ncos(x)^4\n", "Trig Power"),
+    ("Q17", "integrate", "1\n1/(1+sqrt(x))\n", "Substitution Surds"),
+    ("Q18", "suvat", "8\n2\n6*t-4\n0\n0\n1\n", "Variable Accel"),
+    ("Q19", "suvat", "5\n28\n3/4\n18\n", "Projectile"),
+    ("Q20", "suvat", "7\nU\n60\n2\n0.6\n", "Advanced SUVAT"),
+]
 
-print("="*60)
-print("Q2: ALGEBRA - Circle-Line Intersection")
-print("y = 3x - 10, x^2 + y^2 - 4x - 2y - 20 = 0")
-print("="*60)
-print(run_program("algebraProgram.py", "6\ny = 3*x - 10\nx^2 + y^2 - 4*x - 2*y - 20 = 0\n"))
+def run_test(qnum, prog, inp, label):
+    script = programs.get(prog, "")
+    if not script:
+        return "SKIP", f"No program: {prog}"
+    try:
+        result = subprocess.run(
+            [str(PY), str(ROOT / script)],
+            input=inp,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+        output = result.stdout
+        if "err:" in output.lower() or "traceback" in output.lower():
+            return "FAIL", output[:200]
+        return "PASS", output[:300]
+    except subprocess.TimeoutExpired:
+        return "TIMEOUT", "Test timed out"
+    except Exception as e:
+        return "ERROR", str(e)[:100]
 
-print("="*60)
-print("Q3: ALGEBRA - Discriminant (find k)")
-print("kx^2 + 4x + (k-3) = 0 has real roots")
-print("="*60)
-print(run_program("algebraProgram.py", "6\nk*x^2 + 4*x + (k-3)\n"))
+print("=" * 60)
+print("Testing 20 Hard MadAsMaths Questions")
+print("=" * 60)
+results = []
+for qnum, prog, inp, label in questions:
+    status, output = run_test(qnum, prog, inp, label)
+    results.append((qnum, label, status, output))
+    print(f"\n{qnum}: {label}")
+    print(f"   Status: {status}")
+    if status != "PASS":
+        print(f"   Output: {output[:150]}")
 
-print("="*60)
-print("Q4: ALGEBRA - Completing Square")
-print("11 - 8x - 2x^2")
-print("="*60)
-print(run_program("algebraProgram.py", "5\n11 - 8*x - 2*x^2\n"))
+passed = sum(1 for r in results if r[2] == "PASS")
+failed = sum(1 for r in results if r[2] == "FAIL")
+skipped = sum(1 for r in results if r[2] == "SKIP")
+errors = sum(1 for r in results if r[2] in ("ERROR", "TIMEOUT"))
 
-print("="*60)
-print("Q5: TRIG - Prove Identity")
-print("(1+sinθ)/cosθ + cosθ/(1+sinθ) = 2secθ")
-print("="*60)
-print(run_program("trigProgram.py", "1\n(1+sin(x))/cos(x) + cos(x)/(1+sin(x))\n1\n"))
-
-print("="*60)
-print("Q6: TRIG - Solve 3cos²θ + 8sinθ = 0")
-print("0° ≤ θ ≤ 360°")
-print("="*60)
-print(run_program("trigProgram.py", "2\n3*cos(x)^2 + 8*sin(x)\n1\nd\n0\n360\n"))
-
-print("="*60)
-print("Q7: TRIG - Solve sin(3x - π/6) = 1/2")
-print("0 ≤ x ≤ π")
-print("="*60)
-print(run_program("trigProgram.py", "2\nsin(3*x - pi/6)\n1\n0.5\nr\n0\n3.14159\n"))
-
-print("="*60)
-print("Q8: TRIG - Solve 2tan²x + 3secx = 0")
-print("0 ≤ x ≤ 2π")
-print("="*60)
-print(run_program("trigProgram.py", "2\n2*tan(x)^2 + 3*sec(x)\n1\nr\n0\n6.283\n"))
-
-print("="*60)
-print("Q9: DERIVE - Product Rule: x³ln(4x)")
-print("="*60)
-print(run_program("deriveProgram.py", "1\nx^3*ln(4*x)\n"))
-
-print("="*60)
-print("Q10: DERIVE - Chain Rule: √(1+cos²x)")
-print("="*60)
-print(run_program("deriveProgram.py", "1\nsqrt(1+cos(x)^2)\n"))
-
-print("="*60)
-print("Q11: DERIVE - Quotient: e^(2x)/sin(3x)")
-print("="*60)
-print(run_program("deriveProgram.py", "1\ne^(2*x)/sin(3*x)\n"))
-
-print("="*60)
-print("Q12: DERIVE - Implicit: 2x² - 3xy + y³ = 7 at (2,1)")
-print("="*60)
-print(run_program("deriveProgram.py", "2\n2*x^2 - 3*x*y + y^3 = 7\n"))
-
-print("="*60)
-print("Q13: DERIVE - Parametric: x=ln(t+2), y=1/(t+1)")
-print("="*60)
-print(run_program("deriveProgram.py", "3\nln(t+2)\n1/(t+1)\n"))
-
-print("="*60)
-print("Q14: INTEGRATE - By Parts: x²ln(x)")
-print("="*60)
-print(run_program("intProgram.py", "1\nx^2*log(x)\n\n"))
-
-print("="*60)
-print("Q15: INTEGRATE - By Parts twice: e^(2x)sin(x)")
-print("="*60)
-print(run_program("intProgram.py", "1\ne^(2*x)*sin(x)\n\n"))
-
-print("="*60)
-print("Q16: INTEGRATE - Partial Fractions")
-print("(2x-1)/((x-1)*(2x-3))")
-print("="*60)
-print(run_program("intProgram.py", "1\n(2*x-1)/((x-1)*(2*x-3))\n\n"))
-
-print("="*60)
-print("Q17: INTEGRATE - Trig Power: cos³x")
-print("="*60)
-print(run_program("intProgram.py", "1\ncos(x)^3\n\n"))
-
-print("="*60)
-print("Q18: INTEGRATE - Substitution: x/√(2x+1)")
-print("="*60)
-print(run_program("intProgram.py", "1\nx/sqrt(2*x+1)\n4\n2*x+1\n"))
-
-print("="*60)
-print("Q19: SUVAT - Projectile: u=28m/s at 30°")
-print("Find time to max height")
-print("="*60)
-print(run_program("SUVATprogram.py", "\n28*sin(30/180*pi)\n\n\n-9.8\nt\n"))
-
-print("="*60)
-print("Q20: SUVAT - Find u: a=0.5, t=12, v=10")
-print("="*60)
-print(run_program("SUVATprogram.py", "\n\nu=10\n0.5\n12\n"))
+print("\n" + "=" * 60)
+print(f"Summary: {passed}/20 passed, {failed} failed, {errors} errors, {skipped} skipped")
+print("=" * 60)

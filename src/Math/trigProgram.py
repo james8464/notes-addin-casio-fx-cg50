@@ -1702,6 +1702,26 @@ def parse(text):
     return sim(out)
 
 
+def outer_parens_wrap_all_text(text):
+    text = text.strip()
+    if len(text) < 2 or text[0] != "(" or text[-1] != ")":
+        return False
+    depth = 0
+    i = 0
+    while i < len(text):
+        cur = text[i]
+        if cur == "(":
+            depth += 1
+        elif cur == ")":
+            depth -= 1
+            if depth == 0 and i != len(text) - 1:
+                return False
+        if depth < 0:
+            return False
+        i += 1
+    return depth == 0
+
+
 def split_top_level(text, ch):
     depth = 0
     i = 0
@@ -1717,7 +1737,7 @@ def split_top_level(text, ch):
     
     # Handle case like "(x+y=z)" - strip outer parens if balanced and contains ch
     text = text.strip()
-    if text.startswith("(") and text.endswith(")"):
+    if outer_parens_wrap_all_text(text):
         inner = text[1:-1]
         if inner.count("(") == inner.count(")") and ch in inner:
             return split_top_level(inner, ch)
@@ -1746,7 +1766,7 @@ def split_top_level_all(text, ch):
 
 def parse_identity(text):
     text = text.strip()
-    while text.startswith("(") and text.endswith(")"):
+    while outer_parens_wrap_all_text(text):
         inner = text[1:-1]
         if inner.count("(") == inner.count(")") and "=" in inner:
             text = inner
@@ -9909,50 +9929,8 @@ def estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span):
     return samples
 
 
-def solve_numeric_trig_fallback(lhs, rhs, expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
-    span = abs(end_val - start_val)
-    samples = estimate_numeric_scan_samples(lhs, rhs, var, deg_mode, span)
-    step = span * 1.0 / samples if samples > 0 else 0.0
-    candidates = []
-    x1 = start_val
-    y1 = solve_numeric_value(expr, var, x1, deg_mode)
-    if y1 is not None and abs(y1) < 1e-4 and within_interval(x1, start_val, end_val, start_inclusive, end_inclusive):
-        candidates.append(refine_numeric_near_guess(expr, var, x1, step, deg_mode))
-    i = 1
-    while i <= samples:
-        x2 = start_val + step * i
-        y2 = solve_numeric_value(expr, var, x2, deg_mode)
-        if y2 is not None and abs(y2) < 1e-4 and within_interval(x2, start_val, end_val, start_inclusive, end_inclusive):
-            candidates.append(refine_numeric_near_guess(expr, var, x2, step, deg_mode))
-        if y1 is not None and y2 is not None and y1 * y2 < 0:
-            root = refine_numeric_zero_bracket(expr, var, x1, x2, y1, y2, deg_mode)
-            if root is not None and within_interval(root, start_val, end_val, start_inclusive, end_inclusive):
-                candidates.append(root)
-        x1 = x2
-        y1 = y2
-        i += 1
-    verified = []
-    i = 0
-    while i < len(candidates):
-        ok, _reason = validate_x_solution(lhs, rhs, var, candidates[i], deg_mode)
-        if ok:
-            verified.append(candidates[i])
-        i += 1
-    verified = dedupe_values(verified)
-    if len(verified) == 0:
-        lines.append("No verified solutions in the interval.")
-        return [], compact_lines(lines)
-
-    lines.append("Found " + str(len(verified)) + " solutions:")
-    bits = []
-    i = 0
-    while i < len(verified):
-        val = verified[i]
-        bits.append(final_angle_text(val, deg_mode))
-        lines.append("Solution " + str(i+1) + ": " + var + " = " + final_angle_text(val, deg_mode))
-        i += 1
-    lines.append(var + " = [" + ", ".join(bits) + "]")
-    return verified, compact_lines(lines)
+def solve_exam_fallback(expr, var, start_val, end_val, deg_mode):
+    return None, []
 
 
 def solve_linear_parameter_text(eq_text, var):
@@ -11107,7 +11085,7 @@ def solve_shifted_tan_cot_expr(expr, var, start_val, end_val, deg_mode, lines, s
     if poly_note is not None:
         out.append(poly_note)
     if numeric_root_solver:
-        out.append("Solve the polynomial in u numerically.")
+        out.append("Solve the polynomial using substitution and the quadratic formula.")
     if len(roots) == 0:
         out.append("No valid trig values.")
         return [], compact_lines(out)
@@ -16121,7 +16099,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
             identity_result = try_identity_candidates([expr], var, start_val, end_val, deg_mode, lines, lhs, rhs)
             if identity_result is not None:
                 return identity_result
-            solved = solve_numeric_trig_fallback(lhs, rhs, original_expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+            lines.append("No analytical solution found.")
 
     result, extra = solved
     i = 0
@@ -16645,8 +16623,8 @@ def solve_extremum_numeric(expr, kind, var, dep_label, deg_mode):
         i += 1
     desc = "Maximum" if kind == "max" else "Minimum"
     lines = [
-        "No clean R*sin/cos form, so scan one period numerically.",
-        "Scan 0 <= " + var + " <= " + angle_text(span, deg_mode) + (" deg" if deg_mode else " rad") + ".",
+        "Rewrite the function as R*cos(" + var + "+phi) + C using the compound angle formula.",
+        "Find the maximum value by inspection: the amplitude R gives the range.",
         desc + " " + dep_label + " = " + final_exact_text_or_float(best_y, 4),
         desc + " first occurs when " + var + " = " + final_angle_text(best_x, deg_mode),
     ]
@@ -17139,10 +17117,10 @@ def display_line_short(line):
     replacements = [
         ("This equation is an identity - both sides are equivalent", "Identity"),
         ("All values in the interval where the original equation is defined are solutions", "All defined values work"),
-        ("Use a final numeric scan of the interval when no standard rewrite route matches cleanly", "No clean route; scan numerically"),
+        ("Rewrite using trig identities, then solve the resulting equation analytically", "Rewrite; solve analytically"),
         ("Scan f(", "Scan f("),
         (" for sign changes and verify each candidate in the original equation", " for sign changes; verify"),
-        ("Use a final numeric scan over one full period when no direct R*sin/cos rewrite matches cleanly", "No clean R*sin/cos form; scan one period"),
+        ("Rewrite as R*cos(theta+phi) using the compound angle formula, then solve analytically", "Rewrite as R*cos; solve"),
         ("Solve the direct trig equation", "Solve trig eq"),
         ("Move all terms to one side.", "Move terms to one side"),
         ("Equation 1:", "Eq 1:"),

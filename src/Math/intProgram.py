@@ -8,7 +8,7 @@ except ImportError:
     sys = None
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
-FAIL = 'Out of scope.'
+FAIL = 'No standard exam-method antiderivative found after trying direct integration, substitution, trigonometric identities, parts, partial fractions, and division.'
 DE_FAIL = 'Out of scope.'
 
 
@@ -35,6 +35,8 @@ def hard_integral_failure_reason(node, var):
 def solve_result_or_reason(node, var, method, forced_u=None):
     A, B, C = solve(node, var, method, forced_u)
     if B is not None:
+        return A, B, C, None
+    if C:
         return A, B, C, None
     return A, B, C, hard_integral_failure_reason(node, var)
 
@@ -1674,7 +1676,13 @@ def ensure_reasoning_marker(lines, default_prefix="Method: "):
         return lines
     lines = list(lines)
     if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        lines.insert(0, default_prefix)
+        prefix = default_prefix.rstrip()
+        if prefix.lower().startswith("method"):
+            prefix = "Use a standard method."
+        elif prefix and prefix.endswith(":"):
+            prefix = prefix[:-1]
+        if prefix:
+            lines.insert(0, prefix)
     return lines
 
 def int_text(node, var): return 'Int[' + pretty(node) + '] d' + var
@@ -4615,10 +4623,88 @@ def integrate_shifted_sinodd_cos2(node, var):
     return ans, lines
 
 
+def trig_power_factor_info(node):
+    if node[0] == 'fn' and node[1] in ('sin', 'cos'):
+        return node[1], node[2], 1
+    if node[0] == 'pow' and node[1][0] == 'fn' and node[1][1] in ('sin', 'cos') and is_int_num(node[2]) and node[2][1] > 0:
+        return node[1][1], node[1][2], node[2][1]
+    return None
+
+
+def integrate_known_even_trig_power(node, var):
+    coeff, rest = split_const_mul(node, var)
+    factors = list(flat(rest, 'mul')) if rest[0] == 'mul' else [rest]
+    sin_power = 0
+    cos_power = 0
+    arg = None
+    i = 0
+    while i < len(factors):
+        info = trig_power_factor_info(factors[i])
+        if info is None:
+            if not is_one(factors[i]):
+                return None, None
+            i += 1
+            continue
+        name, this_arg, power_value = info
+        if arg is None:
+            arg = this_arg
+        elif not same(arg, this_arg):
+            return None, None
+        if name == 'sin':
+            sin_power += power_value
+        else:
+            cos_power += power_value
+        i += 1
+    if arg is None:
+        return None, None
+    info = linear_info(arg, var)
+    if info is None:
+        return None, None
+    k, _const = info
+
+    def over(term, denom):
+        return div(term, mul([num(denom), k]))
+
+    A = arg
+    sin2 = fn('sin', mul([num(2), A]))
+    sin4 = fn('sin', mul([num(4), A]))
+    sin6 = fn('sin', mul([num(6), A]))
+    sin8 = fn('sin', mul([num(8), A]))
+    ans = None
+    if sin_power == 2 and cos_power == 0:
+        ans = add([over(A, 2), neg(over(sin2, 4))])
+    elif sin_power == 0 and cos_power == 2:
+        ans = add([over(A, 2), over(sin2, 4)])
+    elif sin_power == 4 and cos_power == 0:
+        ans = add([mul([num(3), over(A, 8)]), neg(over(sin2, 4)), over(sin4, 32)])
+    elif sin_power == 0 and cos_power == 4:
+        ans = add([mul([num(3), over(A, 8)]), over(sin2, 4), over(sin4, 32)])
+    elif sin_power == 6 and cos_power == 0:
+        ans = add([mul([num(5), over(A, 16)]), neg(mul([num(15), over(sin2, 64)])), mul([num(3), over(sin4, 64)]), neg(over(sin6, 192))])
+    elif sin_power == 0 and cos_power == 6:
+        ans = add([mul([num(5), over(A, 16)]), mul([num(15), over(sin2, 64)]), mul([num(3), over(sin4, 64)]), over(sin6, 192)])
+    elif sin_power == 2 and cos_power == 2:
+        ans = add([over(A, 8), neg(over(sin4, 32))])
+    elif sin_power == 4 and cos_power == 4:
+        ans = add([mul([num(3), over(A, 128)]), neg(over(sin4, 128)), over(sin8, 1024)])
+    if ans is None:
+        return None, None
+    ans = sim(mul([coeff, ans]))
+    lines = [
+        'Use power-reduction identities.',
+        'So I = ' + pretty(ans) + ' + C',
+        '= ' + pretty(ans) + ' + C',
+    ]
+    return ans, lines
+
+
 def integrate_trig(node, var, allow_steps=True):
     E = allow_steps
     C = var
     B = node
+    known_ans, known_lines = integrate_known_even_trig_power(B, C)
+    if known_ans is not None:
+        return known_ans, known_lines if E else []
     shifted_ans, shifted_lines = integrate_shifted_sinodd_cos2(B, C)
     if shifted_ans is not None:
         return shifted_ans, shifted_lines if E else []
@@ -4762,6 +4848,8 @@ def solve(node, var, method, forced_u=None):
 def solve_result_or_reason(node, var, method, forced_u=None):
     A, B, C = solve(node, var, method, forced_u)
     if B is not None:
+        return A, B, C, None
+    if C:
         return A, B, C, None
     return A, B, C, hard_integral_failure_reason(node, var)
 
@@ -4925,6 +5013,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     A, B, C = solve(node, var, method, forced_u)
     if B is not None:
         return A, B, C, None
+    if C:
+        return A, B, C, None
     return A, B, C, hard_integral_failure_reason(node, var)
 
 def simplify_attempt_lines(lines):
@@ -4995,6 +5085,8 @@ def solve(node, var, method, forced_u=None):
 def solve_result_or_reason(node, var, method, forced_u=None):
     A, B, C = solve(node, var, method, forced_u)
     if B is not None:
+        return A, B, C, None
+    if C:
         return A, B, C, None
     return A, B, C, hard_integral_failure_reason(node, var)
 
@@ -6666,21 +6758,9 @@ def solve(node, var, method, forced_u=None):
     title, ans, lines = _solve_with_method(node, var, method, forced_u)
     if ans is not None:
         return title, ans, ensure_working_lines(node, var, title, ans, lines)
-    fallback_title, fallback_lines, attempt_lines = fallback_attempts(node, var, forced_u)
-    if fallback_title is not None:
-        method_map = {
-            'std': '2',
-            'f(ax+b)': '2',
-            'Reverse chain rule': '4',
-            'Integration by substitution': '4',
-            'Using trigonometric identities': '3',
-            'Integration by parts': '5',
-            'Partial fractions': '6',
-            'Polynomial division': '7',
-        }
-        best_method = method_map.get(fallback_title, '2')
-        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, best_method, forced_u)
-        return retry_title, retry_ans, ensure_working_lines(node, var, retry_title, retry_ans, retry_lines)
+    fallback_title, fallback_ans, fallback_lines, attempt_lines = fallback_attempts(node, var, forced_u)
+    if fallback_ans is not None:
+        return fallback_title, fallback_ans, ensure_working_lines(node, var, fallback_title, fallback_ans, attempt_lines or fallback_lines)
     return title, ans, lines
 
 
@@ -6749,6 +6829,8 @@ def fallback_attempts(node, var, forced_u=None):
     attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
     best = None
     best_title = None
+    best_ans = None
+    best_lines = None
     attempt_lines = []
     i = 0
     while i < len(attempts):
@@ -6766,10 +6848,54 @@ def fallback_attempts(node, var, forced_u=None):
             if best is None or score < best:
                 best = score
                 best_title = title
+                best_ans = ans
+                best_lines = lines
         i += 1
     if best is None:
-        return None, None, None
-    return best_title, None, attempt_lines
+        return None, None, None, None
+    return best_title, best_ans, best_lines, attempt_lines
+
+
+def exam_failure_lines(node, var, attempt_lines, reason):
+    lines = []
+    if attempt_lines:
+        lines.extend(attempt_lines)
+    if not lines:
+        lines.append('Tried direct integration, substitution, trigonometric identities, parts, partial fractions, and division.')
+    lines.append(reason)
+    return lines
+
+
+def print_exam_failure(lines):
+    i = 0
+    while i < len(lines):
+        print(str(i + 1) + '. ' + lines[i])
+        i += 1
+    return lines
+
+
+def fallback_failure_reason(node, var):
+    specific = hard_integral_failure_reason(node, var)
+    if specific != FAIL:
+        return specific
+    return FAIL
+
+
+def solve_result_or_reason(node, var, method, forced_u=None):
+    A, B, C = solve(node, var, method, forced_u)
+    if B is not None:
+        return A, B, C, None
+    if C:
+        return A, B, C, None
+    return A, B, C, fallback_failure_reason(node, var)
+
+
+def can_handle_derivative_case(node, var, deps):
+    try:
+        diff(node, var, deps)
+        return True, None
+    except Exception as err:
+        return False, str(err)
 
 
 def cancellation_requested():
@@ -6786,6 +6912,8 @@ def integral_candidate_score(title, ans, lines):
 def solve_result_or_reason(node, var, method, forced_u=None):
     A, B, C = solve(node, var, method, forced_u)
     if B is not None:
+        return A, B, C, None
+    if C:
         return A, B, C, None
     return A, B, C, hard_integral_failure_reason(node, var)
 
@@ -7007,6 +7135,9 @@ def main():
                     G = parse_forced_u(H)
             L, C, A, Q = solve_result_or_reason(J, K, E, G)
             if C is None:
+                if A:
+                    print('Method: ' + display_method_title(L))
+                    print_exam_failure(A)
                 print(Q)
             else:
                 I = '= ' + pretty(C) + ' + C'
@@ -7049,6 +7180,9 @@ def main():
             print('dx/dt = ' + pretty(J))
             print('Int[y dx] = Int[' + pretty(K) + '] dt')
             if C is None:
+                if A:
+                    print('Method: ' + display_method_title(L))
+                    print_exam_failure(A)
                 print(Q)
             else:
                 print('Method: ' + display_method_title(L))

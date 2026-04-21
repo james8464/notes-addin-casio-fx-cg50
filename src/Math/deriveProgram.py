@@ -1544,7 +1544,7 @@ def explain(node, var, deps_list):
         dv = tidy(diff(v, var, deps_list))
         lines.append("Using product rule")
         lines.append("Let u = " + show(u) + ", v = " + show(v))
-        lines.append("dy/d" + var + " = u*dv/d" + var + "+v*du/d" + var)
+        lines.append("dy/d" + var + " = u*(dv/d" + var + ") + v*(du/d" + var + ")")
         lines.append("= " + show(tidy(add([mul([u, dv]), mul([v, du])]))))
         return d, lines
     if node[0] == "div":

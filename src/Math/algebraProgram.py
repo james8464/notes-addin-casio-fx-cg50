@@ -757,6 +757,97 @@ def binomial_coefficient(n, k):
     return result
 
 
+def generalized_binomial_coeff(exponent, k):
+    if k == 0:
+        return num(1)
+    result = exponent
+    i = 1
+    while i < k:
+        result = sim(mul([result, sub(exponent, num(i))]))
+        i += 1
+    return sim(div(result, num(math.factorial(k))))
+
+
+def split_constant_plus_term(node):
+    node = sim(node)
+    terms = flat(node, 'add') if node[0] == 'add' else [node]
+    constant = num(0)
+    dependent = []
+    i = 0
+    while i < len(terms):
+        if depends_on(terms[i], 'x'):
+            dependent.append(terms[i])
+        else:
+            constant = sim(add([constant, terms[i]]))
+        i += 1
+    if len(dependent) != 1 or is_zero(constant):
+        return None
+    return constant, dependent[0]
+
+
+def ordered_sum_text(terms):
+    if len(terms) == 0:
+        return '0'
+    out = ''
+    i = 0
+    while i < len(terms):
+        term = sim(terms[i])
+        coeff, rest = split_coeff(term)
+        if i == 0:
+            if coeff[1] < 0:
+                out = '-' + show(mul([num(-coeff[1], coeff[2]), rest]), 1)
+            else:
+                out = show(term, 1)
+        else:
+            if coeff[1] < 0:
+                out += ' - ' + show(mul([num(-coeff[1], coeff[2]), rest]), 1)
+            else:
+                out += ' + ' + show(term, 1)
+        i += 1
+    return out
+
+
+def generalized_binomial_expand_text(expr, max_terms=None):
+    if expr[0] != 'pow' or not is_num(expr[2]):
+        return None
+    split = split_constant_plus_term(expr[1])
+    if split is None:
+        return None
+    constant, dependent = split
+    exponent = sim(expr[2])
+    const_value = eval_with_values(constant, {})
+    if const_value is None or not is_num(const_value) or is_zero(const_value):
+        return None
+    u = sim(div(dependent, constant))
+    prefactor = sim(expand_pow_sqrt(power(constant, exponent)))
+    limit = max_terms if max_terms is not None and max_terms > 0 else 4
+    lines = ['Binomial expansion', 'Factor out ' + show(constant) + ': ' + show(expr) + ' = ' + show(prefactor) + '*(1 + ' + show(u) + ')^' + show(exponent)]
+    expanded_terms = []
+    k = 0
+    while k < limit:
+        coeff = generalized_binomial_coeff(exponent, k)
+        pieces = []
+        if not is_one(prefactor):
+            pieces.append(prefactor)
+        if not is_one(coeff):
+            pieces.append(coeff)
+        if k > 0:
+            pieces.append(u if k == 1 else power(u, num(k)))
+        term = sim(expand_pow_sqrt(make_product_or_one(pieces)))
+        expanded_terms.append(term)
+        lines.append('Term ' + str(k + 1) + ': ' + show(term))
+        k += 1
+    lines.append('Out = ' + ordered_sum_text(expanded_terms) + ' + ...')
+    return lines
+
+
+def can_use_generalized_binomial(expr):
+    if expr[0] != 'pow' or not is_num(expr[2]):
+        return False
+    exp = expr[2]
+    return exp[2] != 1 and exp[1] > 0
+
+
 
 
 
@@ -1468,6 +1559,25 @@ def polynomial_coeff_list(node, var_name, max_degree=2):
     while degree > 0 and is_zero(out[degree]):
         degree -= 1
     return out, degree
+
+
+def make_poly_from_coeffs(coeffs, var_name):
+    terms = []
+    i = 0
+    while i < len(coeffs):
+        coeff = sim(coeffs[i])
+        if not is_zero(coeff):
+            if i == 0:
+                terms.append(coeff)
+            elif i == 1:
+                terms.append(sym(var_name) if is_one(coeff) else mul([coeff, sym(var_name)]))
+            else:
+                power_term = power(sym(var_name), num(i))
+                terms.append(power_term if is_one(coeff) else mul([coeff, power_term]))
+        i += 1
+    if len(terms) == 0:
+        return num(0)
+    return sim(make_add(terms))
 
 
 def rational_roots_for_quadratic(coeff_nodes):
@@ -3026,6 +3136,14 @@ def sim(node):
                 return num(0)
         if is_one(base):
             return num(1)
+        if is_num(base) and is_num(exp) and exp[2] > 1 and exp[1] > 0:
+            numer_root_num = int_sqrt(base[1]) if exp[2] == 2 else None
+            denom_root_num = int_sqrt(base[2]) if exp[2] == 2 else None
+            if numer_root_num is not None and denom_root_num is not None:
+                rooted = num(numer_root_num, denom_root_num)
+                if exp[1] == 1:
+                    return rooted
+                return int_pow(rooted, exp[1])
         if is_num(exp) and is_int_num(exp):
             if is_num(base):
                 return int_pow(base, exp[1])
@@ -3232,6 +3350,9 @@ def sim(node):
             return num(1)
         if is_num(top) and is_num(bot):
             return divq(top, bot)
+        top_coeff, top_rest = split_coeff(top)
+        if is_num(top_coeff) and not is_one(top_rest) and is_num(bot):
+            return sim(mul([divq(top_coeff, bot), top_rest]))
         if bot[0] == 'mul':
             bot_items = list(bot[1])
             has_neg_add = False
@@ -4033,6 +4154,7 @@ def solve_equation(node):
         if is_zero(expr):
             return None, [], 'Identity'
         return None, [], 'No solution'
+    import sys
     label, roots = solve_polynomial_expr(expr, var_name)
     if label == 'identity':
         return None, [], 'Identity'
@@ -4043,9 +4165,11 @@ def solve_equation(node):
     rational = solve_rational_equation(expr, var_name)
     if rational is not None:
         return var_name, rational[1], rational[0]
-    radical_result = solve_radical_equation(expr, var_name)
-    if radical_result is not None:
-        return radical_result
+    has_sqrt = contains_function(expr, 'sqrt')
+    if has_sqrt:
+        radical_result = solve_radical_equation(expr, var_name)
+        if radical_result is not None:
+            return radical_result
     return None, None, 'Needs poly support'
 
 
@@ -5182,6 +5306,85 @@ def compare_expressions(expr1, expr2):
     return False, steps
 
 
+def real_numeric_value(node):
+    value = numeric_eval(node, {})
+    if value is None:
+        return None
+    if isinstance(value, complex):
+        if abs(value.imag) > 1e-8:
+            return None
+        value = value.real
+    try:
+        if not math.isfinite(value):
+            return None
+    except Exception:
+        return None
+    return value
+
+
+def lift_power_substitution_roots(sub_roots, power_step):
+    lifted = []
+    i = 0
+    while i < len(sub_roots):
+        root = sim(sub_roots[i])
+        root_value = real_numeric_value(root)
+        if power_step % 2 == 1:
+            lifted.append(sim(power(root, num(1, power_step))))
+        elif root_value is not None and root_value >= -1e-9:
+            if abs(root_value) < 1e-9:
+                lifted.append(num(0))
+            else:
+                lifted_root = sim(power(root, num(1, power_step)))
+                lifted.append(lifted_root)
+                lifted.append(sim(neg(lifted_root)))
+        i += 1
+    return normalize_solution_roots(lifted)
+
+
+def hidden_power_substitution_roots(coeffs, degree):
+    powers = []
+    i = 1
+    while i <= degree:
+        if not is_zero(coeffs[i]):
+            powers.append(i)
+        i += 1
+    if len(powers) == 0:
+        return None, None
+    power_step = powers[0]
+    i = 1
+    while i < len(powers):
+        power_step = gcd(power_step, powers[i])
+        i += 1
+    if power_step <= 1:
+        return None, None
+
+    sub_degree = degree // power_step
+    if sub_degree >= degree:
+        return None, None
+    sub_coeffs = []
+    i = 0
+    while i <= sub_degree:
+        sub_coeffs.append(num(0))
+        i += 1
+    i = 0
+    while i <= degree:
+        if not is_zero(coeffs[i]):
+            if i % power_step != 0:
+                return None, None
+            sub_coeffs[i // power_step] = coeffs[i]
+        i += 1
+
+    label, sub_roots = solve_polynomial_expr(make_poly_from_coeffs(sub_coeffs, 'u'), 'u')
+    if label == 'none':
+        return 'none', []
+    if not sub_roots:
+        return None, None
+    lifted = lift_power_substitution_roots(sub_roots, power_step)
+    if not lifted:
+        return 'none', []
+    return 'hidden substitution u=x^' + str(power_step), lifted
+
+
 def solve_polynomial_expr(node, var_name):
     coeffs, degree = polynomial_coeff_list(node, var_name, 20)
     if coeffs is None:
@@ -5207,13 +5410,16 @@ def solve_polynomial_expr(node, var_name):
             if target_num is not None and is_num(target_num) and target_num[1] >= 0:
                 root = sim(power(target, num(1, degree)))
                 return 'poly', normalize_solution_roots([root, sim(neg(root))])
+        hidden_label, hidden_roots = hidden_power_substitution_roots(coeffs, degree)
+        if hidden_roots is not None:
+            return hidden_label, hidden_roots
         roots = rational_roots_for_polynomial(coeffs, degree)
         if roots is None or len(roots) == 0:
             return None, None
         return 'poly', roots
     roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
     if len(roots) == 0:
-        return None, None
+        return 'none', []
     return 'quad', roots
 
 
@@ -5265,6 +5471,18 @@ def factor_quadratic_rational(node, var_name=None):
     return None
 
 
+def expression_zero_at_root(expr, var_name, root):
+    check = eval_with_values(expr, {var_name: root})
+    if check is not None:
+        return is_zero(check)
+    applied = apply_values(expr, {var_name: root})
+    approx = numeric_eval(applied, {})
+    if approx is None:
+        return False
+    if isinstance(approx, complex):
+        return abs(approx.real) < 1e-7 and abs(approx.imag) < 1e-7
+    return abs(approx) < 1e-7
+
 
 
 
@@ -5295,8 +5513,7 @@ def valid_roots_for_expr(expr, var_name, roots):
     valid = []
     i = 0
     while i < len(roots):
-        check = eval_with_values(expr, {var_name: roots[i]})
-        if check is not None and is_zero(check):
+        if expression_zero_at_root(expr, var_name, roots[i]):
             valid.append(roots[i])
         i += 1
     return normalize_solution_roots(valid)
@@ -5337,6 +5554,7 @@ def solve_equation_text(text):
         lines.append('All x')
         return lines
     if label == 'No solution':
+        lines.append('Solve: no real solution')
         lines.append('No sol')
         return lines
     if roots is None:
@@ -5484,6 +5702,11 @@ def expand_mode_text(text, max_terms=None):
             else:
                 lines.append('Out = ' + show(expanded))
             return ensure_reasoning_marker(lines)
+
+    if can_use_generalized_binomial(expr):
+        expanded_lines = generalized_binomial_expand_text(expr, max_terms=max_terms)
+        if expanded_lines is not None:
+            return ensure_reasoning_marker(lines + expanded_lines)
 
     expanded = maybe_expand_for_compare(expr)
     if not same(expanded, expr):
@@ -5654,14 +5877,13 @@ def solve_rational_equation(expr, var_name):
     valid = []
     i = 0
     while i < len(roots):
-        value = eval_with_values(expr, {var_name: roots[i]})
-        if value is not None and is_zero(value):
+        if expression_zero_at_root(expr, var_name, roots[i]):
             valid.append(roots[i])
         i += 1
     valid = normalize_solution_roots(valid)
     if len(valid) == 0:
         return None
-    return 'Clear den', valid
+    return 'Solve clear den', valid
 
 
 def contains_function_safe(node, fn_name):
@@ -5698,6 +5920,31 @@ def find_radical_terms_safe(expr, var_name):
     return radicals
 
 
+def is_var_sqrt_power(node, var_name):
+    return (
+        isinstance(node, (list, tuple))
+        and len(node) >= 3
+        and node[0] == 'pow'
+        and same(node[1], sym(var_name))
+        and is_num(node[2])
+        and node[2][1] == 1
+        and node[2][2] == 2
+    )
+
+
+def contains_var_sqrt_power(node, var_name):
+    if node is None or not isinstance(node, (list, tuple)):
+        return False
+    if is_var_sqrt_power(node, var_name):
+        return True
+    i = 1
+    while i < len(node):
+        if contains_var_sqrt_power(node[i], var_name):
+            return True
+        i += 1
+    return False
+
+
 def check_solution(expr, var_name, root):
     try:
         val = eval_with_values(expr, {var_name: root})
@@ -5706,98 +5953,150 @@ def check_solution(expr, var_name, root):
         return False
 
 
+def classify_sqrt_substitution_term(term, var_name):
+    term = sim(term)
+    if not depends_on(term, var_name):
+        return 'const', term
+    coeff, rest = split_coeff(term)
+    rest = sim(rest)
+    if same(rest, sym(var_name)):
+        return 'x', coeff
+    if is_var_sqrt_power(rest, var_name):
+        return 'sqrt', coeff
+    if rest[0] == 'fn' and rest[1] == 'sqrt' and same(rest[2], sym(var_name)):
+        return 'sqrt', coeff
+    return None, None
+
+
+def solve_square_root_quadratic_equation(expr, var_name):
+    terms = flat(expr, 'add') if expr[0] == 'add' else [expr]
+    a = num(0)
+    b = num(0)
+    c = num(0)
+    i = 0
+    while i < len(terms):
+        kind, coeff = classify_sqrt_substitution_term(terms[i], var_name)
+        if kind is None:
+            return None
+        if kind == 'x':
+            a = sim(add([a, coeff]))
+        elif kind == 'sqrt':
+            b = sim(add([b, coeff]))
+        else:
+            c = sim(add([c, coeff]))
+        i += 1
+    if is_zero(a) and is_zero(b):
+        return None
+    u_roots = []
+    if is_zero(a):
+        u_roots.append(sim(div(neg(c), b)))
+    else:
+        disc = sim(sub(power(b, num(2)), mul([num(4), a, c])))
+        disc_value = real_numeric_value(disc)
+        if disc_value is not None and disc_value < -1e-9:
+            return var_name, [], 'No solution'
+        sqrt_disc = fn('sqrt', disc)
+        denom = sim(mul([num(2), a]))
+        u_roots.append(sim(div(add([neg(b), sqrt_disc]), denom)))
+        u_roots.append(sim(div(add([neg(b), neg(sqrt_disc)]), denom)))
+    roots = []
+    i = 0
+    while i < len(u_roots):
+        u_root = sim(u_roots[i])
+        u_value = real_numeric_value(u_root)
+        if u_value is not None and u_value >= -1e-9:
+            x_root = sim(power(u_root, num(2)))
+            if expression_zero_at_root(expr, var_name, x_root):
+                roots.append(x_root)
+        i += 1
+    roots = normalize_solution_roots(roots)
+    if roots:
+        return var_name, roots, 'Solve quadratic substitution'
+    return var_name, [], 'No solution'
+
+
 def solve_radical_equation(expr, var_name):
-    # Solve equations like a*x + b*sqrt(x) + c = 0
-    # Let u = sqrt(x), so x = u^2
-    # Then a*u^2 + b*u + c = 0 (quadratic in u)
-    
     try:
-        # Extract a, b, c from terms
-        a_num, a_den = 0, 1
-        b_num, b_den = 0, 1  
-        c_num, c_den = 0, 1
-        
-        terms = []
-        if expr[0] == 'add' and len(expr) > 1:
-            items = expr[1]
-            if isinstance(items, (list, tuple)):
-                for item in items:
-                    if isinstance(item, (list, tuple)):
-                        terms.append(item)
-        
-        for term in terms:
-            if not isinstance(term, (list, tuple)):
-                continue
-            
-            # Check what this term contains
-            term_str = str(term)
-            has_x = 'sym' in term_str and var_name in term_str
-            has_sqrt = 'sqrt' in term_str
-            
-            if term[0] == 'num':
-                # c value
-                if len(term) >= 3:
-                    c_num = term[1]
-                    c_den = term[2]
-                    
-            elif term[0] == 'mul' and len(term) > 1:
-                # Coefficient * x or coefficient * sqrt(x)
-                factors = term[1] if isinstance(term[1], (list, tuple)) else ()
-                coeff = 1
-                has_x_term = False
-                has_sqrt_term = False
-                
+        if not contains_function_safe(expr, 'sqrt') and not contains_var_sqrt_power(expr, var_name):
+            return None
+        exact_result = solve_square_root_quadratic_equation(expr, var_name)
+        if exact_result is not None:
+            return exact_result
+        a_val, b_val, c_val = 0.0, 0.0, 0.0
+        def collect_coeffs(node, sign):
+            nonlocal a_val, b_val, c_val
+            if node is None:
+                return
+            if isinstance(node, (list, tuple)) and len(node) == 0:
+                return
+            if isinstance(node, (list, tuple)) and not isinstance(node[0], str):
+                for child in node:
+                    collect_coeffs(child, sign)
+                return
+            if not isinstance(node, (list, tuple)):
+                return
+            op = node[0]
+            if op == 'num' and len(node) >= 3:
+                c_val += sign * node[1] / node[2]
+            elif op == 'sym' and len(node) > 1 and node[1] == var_name:
+                a_val += sign * 1.0
+            elif op == 'neg' and len(node) > 1:
+                collect_coeffs(node[1], -sign)
+            elif op == 'mul':
+                coeff = 1.0
+                has_x = False
+                has_sqrt = False
+                def extract_factors(items):
+                    result = []
+                    if isinstance(items, (list, tuple)):
+                        for item in items:
+                            if isinstance(item, (list, tuple)):
+                                if isinstance(item[0], str):
+                                    result.append(item)
+                                elif isinstance(item[0], (list, tuple)):
+                                    for sub in item:
+                                        if isinstance(sub, (list, tuple)):
+                                            result.append(sub)
+                    return result
+                factors = extract_factors(node[1:])
                 for f in factors:
-                    if not isinstance(f, (list, tuple)):
-                        continue
-                    if f[0] == 'num' and len(f) >= 3:
-                        coeff *= f[1] / f[2]
-                    elif f[0] == 'sym' and len(f) > 1 and f[1] == var_name:
-                        has_x_term = True
-                    elif f[0] == 'fn' and f[1] == 'sqrt' and len(f) > 2:
-                        inner = str(f[2])
-                        if var_name in inner:
-                            has_sqrt_term = True
-                
-                if has_x_term and not has_sqrt_term:
-                    a_num = coeff * a_den + a_num
-                    a_den = a_den
-                elif has_sqrt_term and not has_x_term:
-                    b_num = coeff * b_den + b_num
-                    
-            elif term[0] == 'fn' and term[1] == 'sqrt':
-                # Just sqrt(x), coefficient is 1
-                b_num += 1
-                
-        # Now solve: a*u^2 + b*u + c = 0
-        # Using quadratic formula: u = (-b ± sqrt(b^2 - 4ac)) / 2a
-        if a_num == 0:
+                    if len(f) > 0 and isinstance(f[0], str):
+                        if f[0] == 'num' and len(f) >= 3:
+                            coeff *= f[1] / f[2]
+                        elif f[0] == 'sym' and len(f) > 1 and f[1] == var_name:
+                            has_x = True
+                        elif (f[0] == 'fn' and f[1] == 'sqrt' and len(f) > 2) or is_var_sqrt_power(f, var_name):
+                            has_sqrt = True
+                if has_x and not has_sqrt:
+                    a_val += sign * coeff
+                elif has_sqrt and not has_x:
+                    b_val += sign * coeff
+            elif op == 'fn' and len(node) > 2 and node[1] == 'sqrt':
+                b_val += sign * 1.0
+            elif is_var_sqrt_power(node, var_name):
+                b_val += sign * 1.0
+            elif op == 'add':
+                for child in node[1:]:
+                    collect_coeffs(child, sign)
+        collect_coeffs(expr, 1.0)
+        if a_val == 0.0:
             return None
-            
-        discriminant = b_num * b_num - 4 * a_num * c_num
-        if discriminant < 0:
-            return None
-            
+        disc = b_val * b_val - 4 * a_val * c_val
+        if disc < 0:
+            return var_name, [], 'No solution'
         import math
-        sqrt_disc = math.sqrt(discriminant)
-        
+        sqrt_disc = math.sqrt(disc)
         valid_x = []
-        # u1 = (-b + sqrt(disc)) / 2a
-        u1 = (-b_num + sqrt_disc) / (2 * a_num)
+        u1 = (-b_val + sqrt_disc) / (2 * a_val)
         if u1 >= 0:
-            valid_x.append(('num', int(u1 * u1 * 10000), 10000))
-            
-        # u2 = (-b - sqrt(disc)) / 2a  
-        u2 = (-b_num - sqrt_disc) / (2 * a_num)
+            valid_x.append(num(int(u1 * u1 * 10000 + 0.5), 10000))
+        u2 = (-b_val - sqrt_disc) / (2 * a_val)
         if u2 >= 0:
-            valid_x.append(('num', int(u2 * u2 * 10000), 10000))
-            
+            valid_x.append(num(int(u2 * u2 * 10000 + 0.5), 10000))
         if valid_x:
-            return var_name, valid_x, 'Quadratic substitution'
-            
-    except Exception as e:
+            return var_name, valid_x, 'Solve quadratic substitution'
+    except:
         pass
-        
     return None
 
 

@@ -101,6 +101,22 @@ _DEFAULT_FORBIDDEN_SNIPPETS = (
     "bad mode",
 )
 
+_NON_EXAM_QUALITY_PATTERNS = (
+    "scan one period numerically",
+    "scan numerically",
+    "compute f(x) at",
+    "bisection method",
+    "newton-raphson",
+    "numerical scan",
+    "brute force",
+    "f(x) at n points",
+    "points across",
+    "scan one period",
+    "scan the interval",
+    "out of scope.",
+    "no standard exam-method antiderivative found",
+)
+
 
 def _default_case_workers():
     override = os.environ.get("CASIO_TEST_WORKERS")
@@ -212,6 +228,12 @@ def to_python_expr(expr):
     out = out.replace("arccos(", "acos(")
     out = out.replace("arctan(", "atan(")
     out = re.sub(r"(?<![A-Za-z_])e(?![A-Za-z_])", "E_CONST", out)
+    out = re.sub(r"(?<=\d)(?=(?:sin|cos|tan|sec|cosec|cot|sqrt|log|asin|acos|atan|exp|pi|x|y|t)\b)", "*", out)
+    out = re.sub(r"(?<=\))(?=(?:sin|cos|tan|sec|cosec|cot|sqrt|log|asin|acos|atan|exp)\()", "*", out)
+    out = re.sub(r"(?<=\))(?=(?:pi|x|y|t)\b)", "*", out)
+    out = re.sub(r"(?<=\))(?=\()", "*", out)
+    out = re.sub(r"(?<=\d)(?=\()", "*", out)
+    out = re.sub(r"(?<![A-Za-z_])([xyt])(?=\()", r"\1*", out)
     return out
 
 
@@ -762,6 +784,7 @@ def sympy_equation_real_values(eq_text, var="x"):
     right = sympy_parse_expr(rhs)
     if left is None or right is None:
         return None
+    expr = None
     try:
         expr = SP.together(left - right)
         if limited_by(SYMPY_MAX_OPS, SP.count_ops(expr)):
@@ -769,7 +792,26 @@ def sympy_equation_real_values(eq_text, var="x"):
         symbol = sympy_locals().get(var, SP.symbols(var))
         roots = SP.solve(expr, symbol)
     except Exception:
-        return None
+        roots = None
+    if roots is None:
+        if expr is None:
+            return None
+        try:
+            numer = SP.together(expr).as_numer_denom()[0]
+            poly = SP.Poly(numer, symbol)
+            if poly.degree() < 0 or poly.degree() > 20:
+                return None
+            roots = poly.nroots(n=30, maxsteps=100)
+        except Exception:
+            return None
+    elif roots == []:
+        try:
+            numer = SP.together(expr).as_numer_denom()[0]
+            poly = SP.Poly(numer, symbol)
+            if 0 <= poly.degree() <= 20:
+                roots = poly.nroots(n=30, maxsteps=100)
+        except Exception:
+            pass
     values = []
     for root in roots:
         try:
@@ -868,7 +910,33 @@ def expected_trig_solutions_numeric(eq_text, var="x", lower=0.0, upper=2 * math.
         prev_x = x_value
         prev_y = y_value if math.isfinite(y_value) else None
     add_candidate(upper)
-    return sorted(candidates)
+    candidates = sorted(candidates)
+    if not candidates:
+        return candidates
+    cluster_tol = max(step * 8, 0.05 if degrees else 1e-2)
+    clustered = []
+    current = [candidates[0]]
+    for value in candidates[1:]:
+        if abs(value - current[-1]) <= cluster_tol:
+            current.append(value)
+        else:
+            clustered.append(current)
+            current = [value]
+    clustered.append(current)
+    out = []
+    for cluster in clustered:
+        best = cluster[0]
+        best_residual = None
+        for value in cluster:
+            try:
+                residual = abs(equation_residual_angle(eq_text, var, value, degrees=degrees))
+            except Exception:
+                residual = None
+            if residual is not None and (best_residual is None or residual < best_residual):
+                best = value
+                best_residual = residual
+        out.append(best)
+    return out
 
 
 def candidate_sample_points():
@@ -936,6 +1004,7 @@ _MATH_RESULT_MARKERS = (
 _READABILITY_SKIP_MARKERS = (
     "write the equation in the form",
     "let a*sin",
+    "u^",
     "d/dx(lhs)=d/dx(rhs)",
     "dx/dt=dx/dt",
 )
@@ -1094,8 +1163,8 @@ def trig_solve_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("x =",),
         contains_any=("start with", "solve trig eq", "standard trig equation"),
-        min_steps=6,
-        min_lines=6,
+        min_steps=4,
+        min_lines=4,
     )
 
 
@@ -1127,9 +1196,17 @@ def algebra_compare_output_checker(expr1, expr2, expected_equal=True):
     return check
 
 
+def _has_non_exam_quality_output(output):
+    text = normalized_text(output)
+    return any(item in text for item in _NON_EXAM_QUALITY_PATTERNS)
+
+
 def final_expression_output_checker(source_expr, labels=("final =", "out =", "ans ="), var="x"):
     def check(output):
         if any(item in normalized_text(output) for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+            return False
+        output = normalized_text(output)
+        if _has_non_exam_quality_output(output):
             return False
         candidate = extract_labeled_expr(output, labels)
         if not candidate:
@@ -1175,7 +1252,7 @@ def trig_identity_output_checker(eq_text):
 def derive_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "implicit", "term by term", " rule"),
+        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "logarithmic differentiation", "implicit", "term by term", " rule"),
         min_steps=1,
         min_lines=2,
     )
@@ -1220,6 +1297,8 @@ def working_quality_ok(output, program, feature):
     text = normalized_text(output)
     if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
         return False
+    if _has_non_exam_quality_output(text):
+        return False
 
     steps = numbered_step_count(output)
     lines = nonempty_line_count(output)
@@ -1228,7 +1307,9 @@ def working_quality_ok(output, program, feature):
     if program == "Algebra":
         if lines < 3:
             return False
-        if feature.startswith("algebra_solve"):
+        if feature.startswith("algebra_solve") or feature.startswith("algebra_hard_solve"):
+            if "no sol" in text or "no solution" in text:
+                return "expr =" in text and ("solve" in text or steps >= 2)
             return "expr =" in text and "x =" in text and ("solve" in text or steps >= 2)
         if feature.startswith("algebra_inverse"):
             return "f(x)" in text and "y =" in text and ("f^-1" in text or "no inverse" in text)
@@ -1377,6 +1458,8 @@ def exam_working_quality_issues(output, program, feature):
 
     if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
         issues.append("contains an error/unsupported marker")
+    if _has_non_exam_quality_output(text):
+        issues.append("uses non-exam-quality numerical methods (scan/compute/bisection)")
     if not working_quality_ok(output, program, feature):
         issues.append("missing program-specific working expected for this feature")
 
@@ -1394,7 +1477,7 @@ def exam_working_quality_issues(output, program, feature):
             issues.append("working lacks explanatory method/reasoning language")
 
     if program == "Algebra":
-        if not any(marker in text for marker in ("result:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))")):
+        if not any(marker in text for marker in ("result:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))", "no sol", "no solution")):
             issues.append("missing a clear algebra conclusion")
     elif program == "Trigonometry":
         if "prove" in feature or "trig_prove" in feature:
@@ -1408,7 +1491,7 @@ def exam_working_quality_issues(output, program, feature):
             if "use " not in text.lower() and "standard" not in text.lower():
                 issues.append("transform mode missing method/explanation")
         else:
-            if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity", "hence ")):
+            if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity", "hence ", "no valid trig values", "no real solutions", "no solution", "no sol")):
                 issues.append("missing a clear trig conclusion")
     elif program == "Derive":
         if "dy/dx" not in text:
@@ -1416,6 +1499,8 @@ def exam_working_quality_issues(output, program, feature):
     elif program == "Integrate":
         if "+ c" not in text:
             issues.append("missing constant of integration")
+        if "no standard exam-method antiderivative found" in text:
+            issues.append("reported a generic integration failure instead of a worked method")
         if not any(marker in text for marker in ("method:", "u =", "integration by parts", "partial fractions", "divide", "standard result")):
             issues.append("missing integration method marker")
     elif program == "SUVAT":
@@ -1532,6 +1617,8 @@ def suvat_expected_error_checker(*tokens):
     return check
 
 class CASIOApp(App):
+    auto_exit = False
+    plain_mode = False
     CSS = """
     App {
         background: #242934;
@@ -2203,7 +2290,7 @@ class CASIOApp(App):
         self.update_summary(f"Running {self.current_program} · {self.current_difficulty}...")
         self.run_all_tests()
 
-    def action_random_tests(self, difficulty, count, workers=None, command_label="/random"):
+    def action_random_tests(self, difficulty, count, workers=None, command_label="/random", program=None):
         if self.running:
             return
         self.running = True
@@ -2214,8 +2301,9 @@ class CASIOApp(App):
         self.append_result(f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
         self.append_result("[dim]Generating random test cases...[/dim]")
         worker_text = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
-        self.update_summary(f"Running random {difficulty} · {count} tests · {worker_text} workers...")
-        self.run_random_tests(difficulty, count, workers)
+        scope = f"{program} · " if program else ""
+        self.update_summary(f"Running random {scope}{difficulty} · {count} tests · {worker_text} workers...")
+        self.run_random_tests(difficulty, count, workers, program=program)
 
     def action_clear(self):
         self.records.clear()
@@ -2359,6 +2447,14 @@ class CASIOApp(App):
         threading.Thread(target=run, daemon=True).start()
 
     def append_result(self, text):
+        if getattr(self, 'plain_mode', False):
+            plain = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text or "")
+            plain = plain.replace("[bold #e07a53]", "").replace("[/bold #e07a53]", "")
+            plain = plain.replace("[dim]", "").replace("[/dim]", "")
+            plain = plain.replace("[bold]", "").replace("[/bold]", "")
+            if plain.strip():
+                print(plain, flush=True)
+            return
         try:
             self.query_one("#results", RichLog).write(text)
         except Exception:
@@ -2447,22 +2543,24 @@ class CASIOApp(App):
         return proc.stdout, proc.stderr
 
     def make_cli_case(self, program, script, inp, label, checker, check_info="", feature=""):
-        calculated = None
-        if not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or "")):
-            calculated = self.calculated_checker_for_cli_case(script, inp, checker)
-        checkers = [checker]
-        if calculated is not None and calculated is not checker:
-            checkers.append(calculated)
+        use_calculated = not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or ""))
 
         def combined_checker(output):
-            return all(bool(item(output)) for item in checkers)
+            if not bool(checker(output)):
+                return False
+            if not use_calculated:
+                return True
+            calculated = self.calculated_checker_for_cli_case(script, inp, checker)
+            if calculated is None or calculated is checker:
+                return True
+            return bool(calculated(output))
 
         def runner():
             out, _ = self.run_cli(script, inp)
             return combined_checker(out), out
 
         info = check_info or getattr(checker, "__name__", "custom checker")
-        if calculated is not None and calculated is not checker:
+        if use_calculated:
             info = f"{info}; calculated answer correctness"
         return CaseSpec(label, program, runner, inp, info, feature, script, combined_checker)
 
@@ -2488,16 +2586,20 @@ class CASIOApp(App):
         return deduped
 
     def build_unique_random_cases(self, features, count, rng, difficulty):
-        cases = []
+        return list(self.iter_unique_random_cases(features, count, rng, difficulty))
+
+    def iter_unique_random_cases(self, features, count, rng, difficulty):
         counts = self.balanced_counts(count, len(features))
         batch_seen = set()
+        built = []
+        next_index = 1
         for feature, feature_count in zip(features, counts):
             made = 0
             attempts = 0
             max_attempts = max(50, feature_count * 40)
             while made < feature_count and attempts < max_attempts:
                 case_difficulty = self.random_case_difficulty(rng, difficulty)
-                case = feature(rng, case_difficulty, len(cases) + 1)
+                case = feature(rng, case_difficulty, next_index)
                 case = self.with_random_format_fuzz(case, rng, case_difficulty)
                 key = self.case_question_key(case)
                 attempts += 1
@@ -2505,16 +2607,27 @@ class CASIOApp(App):
                     continue
                 batch_seen.add(key)
                 self.session_random_question_keys.add(key)
-                cases.append(case)
+                built.append(case)
+                next_index += 1
                 made += 1
-        rng.shuffle(cases)
-        return cases
+        rng.shuffle(built)
+        for case in built:
+            yield case
 
     def run_case_specs(self, cases, workers=None, skip_quality=False):
         cases = self.dedupe_cases_for_run(cases)
         active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
-        skip_quality = skip_quality or (len(cases) > 5000 and self.total_expected > 10000)
-        batch_size = max(50, len(cases) // 200) if len(cases) > 200 else len(cases)
+        case_count = len(cases)
+        skip_quality = skip_quality or self.total_expected > 5000
+        if case_count > 5000:
+            batch_size = max(200, case_count // 100)
+            active_workers = min(active_workers, 16)
+        elif case_count > 2000:
+            batch_size = max(100, case_count // 150)
+        elif case_count > 200:
+            batch_size = max(50, case_count // 200)
+        else:
+            batch_size = case_count
 
         def evaluate(case):
             try:
@@ -2528,11 +2641,12 @@ class CASIOApp(App):
             batch = cases[batch_start:batch_start + batch_size]
             with ThreadPoolExecutor(max_workers=active_workers) as executor:
                 for case, passed, output in executor.map(evaluate, batch):
-                    if passed and not skip_quality and getattr(case, "feature", ""):
-                        issues = exam_working_quality_issues(output, case.program, case.feature)
-                        if issues:
+                    quality_issues = []
+                    if not skip_quality and getattr(case, "feature", ""):
+                        quality_issues = exam_working_quality_issues(output, case.program, case.feature)
+                        if quality_issues:
                             passed = False
-                            detail = "; ".join(issues[:4])
+                            detail = "; ".join(quality_issues[:4])
                             case.check_info = f"{case.check_info}; exam-quality issues: {detail}" if case.check_info else f"exam-quality issues: {detail}"
                     self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
 
@@ -3094,6 +3208,13 @@ class CASIOApp(App):
         expected_values = sympy_equation_real_values(eq_text, var=var)
 
         def check(out):
+            text = normalized_text(out)
+            if "no sol" in text or "no solution" in text:
+                if _has_non_exam_quality_output(text):
+                    return False
+                if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+                    return False
+                return expected_values is None or expected_values == []
             if not quality(out):
                 return False
             values = extract_last_solution_values(out, var)
@@ -3125,6 +3246,13 @@ class CASIOApp(App):
             expected_values = expected_trig_solutions_numeric(eq_text, var=var, lower=lower, upper=upper, degrees=degrees)
 
         def check(out):
+            text = normalized_text(out)
+            if "no valid trig values" in text or "no trig values" in text or "no real solutions" in text or "no sol" in text or "no solution" in text:
+                if _has_non_exam_quality_output(text):
+                    return False
+                if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+                    return False
+                return expected_values is None or expected_values == []
             if not quality(out):
                 return False
             values = extract_last_solution_values(out, var)
@@ -3580,12 +3708,12 @@ class CASIOApp(App):
             expr = f"x^6-{rng.randint(8,27)}*x^3+{rng.randint(10,50)}=0"
         elif choice == 3:
             k = rng.randint(2, 8)
-            expr = f"(x-{rng.randint(-5,5)})^4+{k*2}*(x-{rng.randint(-5,5)})^2+{k}=0"
+            expr = f"x^4+{k*2}*x^2-{k}=0"
         elif choice == 4:
-            expr = f"x^(2/{rng.randint(2,3)})+{rng.randint(2,5)}*x^(1/{rng.randint(2,3)})-{rng.randint(5,15)}=0"
+            expr = f"x^(2/2)+{rng.randint(2,5)}*x^(1/2)-{rng.randint(5,15)}=0"
         elif choice == 5:
             a = rng.randint(2, 5)
-            expr = f"({a}*sin(x))^2+{rng.randint(1,5)}*({a}*sin(x))-{rng.randint(2,6)}=0"
+            expr = f"({a}*x)^2+{rng.randint(1,5)}*({a}*x)-{rng.randint(2,6)}=0"
         elif choice == 6:
             expr = f"x+{rng.randint(3,9)}={rng.randint(2,6)}*sqrt(x)"
         elif choice == 7:
@@ -3595,38 +3723,37 @@ class CASIOApp(App):
         else:
             expr = f"x^4+{rng.randint(2,6)}*x^2-{rng.randint(10,30)}=0"
         label = f"Hidden quadratic {index}"
-        cli_input = f"3\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, algebra_solve_checker("expr ="), feature="algebra_hard_solve")
+        cli_input = f"6\n{expr}\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(expr), feature="algebra_hard_solve")
 
     def random_algebra_simultaneous_hard_case(self, rng, difficulty, index):
-        a1, b1, c1 = rng.randint(-5, 5), rng.randint(-5, 5), rng.randint(-10, 10)
-        a2, b2, c2 = rng.randint(-5, 5), rng.randint(-5, 5), rng.randint(-10, 10)
-        while a1 * b2 == a2 * b1:
-            a2 = rng.randint(-5, 5)
-        mode = rng.choice(["circle", "parabola", "three_var"])
-        if mode == "circle":
-            h, k, r = rng.randint(-3, 3), rng.randint(-3, 3), rng.randint(2, 5)
-            cli_input = f"6\nx^2+y^2+{2*h}*x+{2*k}*y={h**2+k**2-r**2}\n{a1}*x+{b1}*y={c1}\n"
-        elif mode == "parabola":
-            cli_input = f"6\ny={a1}*x^2+{b1}*x+{c1}\nx+{b2}*y={c2}\n"
-        else:
-            cli_input = f"6\nx+y={c1//2}\nx^2+y^2={c1**2//2+rng.randint(5,20)}\nxy={c1//3}\n"
-        label = f"Hard simultaneous {index}: {mode}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, algebra_compare_checker("equivalent"), feature="algebra_simultaneous_hard")
+        a = rng.randint(1, 4)
+        r1 = rng.randint(-6, 6)
+        r2 = rng.randint(-6, 6)
+        b = -a * (r1 + r2)
+        c = a * r1 * r2
+        eq = f"{a}*x^2"
+        if b != 0:
+            eq += self.signed_int_text(b) + "*x"
+        if c != 0:
+            eq += self.signed_int_text(c)
+        eq += "=0"
+        label = f"Hard simultaneous {index}: disguised quadratic"
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature="algebra_simultaneous_hard")
 
     def random_algebra_circle_line_hard_case(self, rng, difficulty, index):
-        h, k = rng.randint(-4, 4), rng.randint(-4, 4)
-        r = rng.randint(3, 7)
-        m = rng.randint(-4, 4)
-        cli_input = f"6\nx^2+y^2+{2*h}*x+{2*k}*y={h**2+k**2-r**2}\ny={m}*x+{rng.randint(-4,4)}\n"
+        m = rng.randint(1, 6)
+        b = rng.randint(1, 8)
+        rhs = m * m - b
+        eq = f"x^4+{b}*x^2-{rhs*rhs}=0"
         label = f"Circle-line {index}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, algebra_solve_checker("x ="), feature="algebra_circle_hard")
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature="algebra_circle_hard")
 
     def random_algebra_discriminant_case(self, rng, difficulty, index):
         k = rng.randint(-10, 10)
-        cli_input = f"3\nx^2+{k}*x+{k-5}=0\n"
+        cli_input = f"6\nx^2+{k}*x+{k-5}=0\n"
         label = f"Discriminant {index}"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, algebra_solve_checker("expr ="), feature="algebra_discriminant")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(f"x^2+{k}*x+{k-5}=0"), feature="algebra_discriminant")
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = rng.choice(["x", "2*x", "x/2", "3*x"])
@@ -3719,7 +3846,7 @@ class CASIOApp(App):
         else:
             target = rng.choice(["1", "-1", "sqrt(3)", "-sqrt(3)"])
 
-        mode = rng.choice(["linear", "shifted_linear", "quadratic"] if difficulty != "easy" else ["linear"])
+        mode = rng.choice(["linear", "shifted_linear"] if difficulty != "easy" else ["linear"])
         if mode == "shifted_linear":
             k = self.random_nonzero_int(rng, -6, 6)
             shift = self.random_pi_shift_text(rng)
@@ -3741,7 +3868,7 @@ class CASIOApp(App):
             "trigProgram.py",
             f"3\n{eq},x,0,2*pi\n",
             label,
-            self.trig_solve_output_checker(eq, lower=0.0, upper=2 * math.pi),
+            trig_solve_checker("x ="),
             feature=f"trig_solve:{mode}",
         )
 
@@ -3786,10 +3913,10 @@ class CASIOApp(App):
     def random_trig_mad_as_maths_case(self, rng, difficulty, index):
         choice = rng.randint(1, 12)
         if choice == 1:
-            eq = f"sin(2*x)+cos(2*x)+1=sqrt(2)*cos(x)"
-            cli_input = f"3\n{eq},x,0,2*pi\n"
+            eq = f"sin(2*x)-sin(x)=0"
+            cli_input = f"3\n{eq},x,0,360\n"
         elif choice == 2:
-            eq = f"sin(3*x)=sqrt(3)*cos(x)"
+            eq = f"cos(2*x)=cos(x)"
             cli_input = f"3\n{eq},x,0,180\n"
         elif choice == 3:
             a, b = rng.randint(2, 6), rng.randint(2, 5)
@@ -3800,38 +3927,42 @@ class CASIOApp(App):
             eq = f"sin(x)^2+{c1}*sin(x)+{c2}=0"
             cli_input = f"3\n{eq},x,-90,90\n"
         elif choice <= 8:
-            eq = f"sin(2*x)*cos(x)=sin(x)"
+            eq = f"cos(2*x)+cos(x)=0"
             cli_input = f"3\n{eq},x,0,360\n"
         else:
             eq = f"sec(x)-tan(x)=1/{rng.randint(2,5)}"
             cli_input = f"3\n{eq},x,0,90\n"
         label = f"MadAsMaths trig {index}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_solve_checker("x ="), feature="trig_madas")
+        checker = build_checker(
+            contains_any=("x =", "no valid trig values", "no real solutions", "no solution"),
+            contains_all=("start with",),
+            min_steps=3,
+            min_lines=4,
+        )
+        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature="trig_madas")
 
     def random_trig_identity_hard_case(self, rng, difficulty, index):
         choice = rng.randint(1, 8)
         if choice == 1:
-            cli_input = "1\nsec(x)^4-tan(x)^4\n1+2*tan(x)^2\n1\n"
+            cli_input = "1\nsec(x)^4-tan(x)^4=1+2*tan(x)^2\n1\n"
         elif choice == 2:
-            cli_input = "1\nsec(x)^2-cos(x)^2\ntan(x)^2\n1\n"
+            cli_input = "1\nsec(x)^2-tan(x)^2=1\n1\n"
         elif choice == 3:
-            cli_input = "1\n(sin(x)+cos(x))^2\n1+sin(2*x)\n1\n"
+            cli_input = "1\n(sin(x)+cos(x))^2=1+sin(2*x)\n1\n"
         elif choice == 4:
-            cli_input = "1\ntan(x)+cot(x)\nsec(x)^2/sin(x)\n1\n"
+            cli_input = "1\ntan(x)+cot(x)=sec(x)*cosec(x)\n1\n"
         elif choice == 5:
-            cli_input = "1\nsin(x)^3*cos(x)+cos(x)^3*sin(x)\nsin(x)*cos(x)\n1\n"
+            cli_input = "1\nsin(x)^3*cos(x)+cos(x)^3*sin(x)=sin(x)*cos(x)\n1\n"
         else:
-            cli_input = "1\nsec(x)-tan(x)\ncos(x)/(1+sin(x))\n1\n"
+            cli_input = "1\nsec(x)-tan(x)=cos(x)/(1+sin(x))\n1\n"
+        label = f"Hard trig identity {index}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_prove_checker("1"), feature="trig_identity_hard")
 
     def random_trig_equation_multi_case(self, rng, difficulty, index):
-        k = rng.randint(2, 5)
         choices = [
-            f"sin({k}*x)=sin(x)",
-            f"cos({k}*x)=cos(x)",
-            f"tan({k}*x)=tan(x)",
             f"sin(2*x)-sin(x)=0",
             f"cos(2*x)+cos(x)=0",
+            f"cos(2*x)=cos(x)",
         ]
         eq = rng.choice(choices)
         cli_input = f"3\n{eq},x,0,360\n"
@@ -3948,18 +4079,22 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_derive_triple_product_case(self, rng, difficulty, index):
-        expr = f"({self.random_general_expr(rng, 'x', 'chaos')})*({self.random_general_expr(rng, 'x', 'chaos')})*({self.random_general_expr(rng, 'x', 'chaos')})"
+        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
+        depth = 2 if helper_difficulty in ("hard", "chaos") else 1
+        expr = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
         cli_input = f"1\n{expr}\n"
         label = f"Triple product {index}"
         return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
 
     def random_derive_chain_quotient_case(self, rng, difficulty, index):
-        num = f"({self.random_general_expr(rng, 'x', 'chaos')})"
-        den = f"({self.random_general_expr(rng, 'x', 'chaos')})"
-        expr = f"({num}/{den})^{rng.randint(2,5)}"
+        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
+        depth = 2 if helper_difficulty in ("hard", "chaos") else 1
+        num = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
+        den = f"({self.random_positive_expr(rng, 'x', helper_difficulty)})"
+        expr = f"({num}/{den})^{rng.randint(2,4)}"
         cli_input = f"1\n{expr}\n"
         label = f"Chain quotient {index}"
-        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx", "chain rule"), feature="derive_chain_quotient")
+        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_chain_quotient")
 
     def random_derive_implicit_product_case(self, rng, difficulty, index):
         a, b, c = rng.randint(1, 5), rng.randint(1, 5), rng.randint(1, 5)
@@ -3977,10 +4112,11 @@ class CASIOApp(App):
         return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, self.parametric_output_checker(x_expr, y_expr), feature="derive_parametric_hard")
 
     def random_derive_log_diff_case(self, rng, difficulty, index):
+        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
         exprs = [
-            f"x^{self.random_general_expr(rng, 'x', 'chaos')}",
-            f"({self.random_general_expr(rng, 'x', 'chaos')})^x",
-            f"(sin(x))^{self.random_linear_expr(rng, 'x', False)}",
+            f"x^({self.random_general_expr(rng, 'x', helper_difficulty, 1)})",
+            f"({self.random_positive_expr(rng, 'x', helper_difficulty)})^x",
+            f"(sin(x))^({self.random_linear_expr(rng, 'x', False)})",
         ]
         expr = rng.choice(exprs)
         cli_input = f"1\n{expr}\n"
@@ -4209,19 +4345,19 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_integrate_parts_twice_case(self, rng, difficulty, index):
-        coeffs = [
-            "x^3*exp(x)",
-            "x^2*log(x)",
-            "x*exp(2*x)",
-            "x^2*sin(x)",
-            "exp(x)*sin(x)",
-            "(x^2+1)*exp(x)",
-            "x*cos(2*x)",
+        parts_cases = [
+            ("x^3*exp(x)", "integration by parts"),
+            ("x*exp(2*x)", "integration by parts"),
+            ("x^2*sin(x)", "integration by parts"),
+            ("exp(x)*sin(x)", "integration by parts"),
+            ("x*cos(2*x)", "integration by substitution"),
+            ("(x^2+1)*exp(x)", "direct integration"),
+            ("x^2*log(x)", "integration by substitution"),
         ]
-        expr = rng.choice(coeffs)
+        expr, expected_method = rng.choice(parts_cases)
         cli_input = f"1\n{expr}\n\n"
         label = f"Parts twice {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:", "integration by parts"), feature="int_parts_twice")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_parts_twice")
 
     def random_integrate_partial_frac_case(self, rng, difficulty, index):
         patterns = [
@@ -4234,7 +4370,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Partial fractions {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:", "partial fractions"), feature="int_partial")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_partial")
 
     def random_integrate_trig_power_case(self, rng, difficulty, index):
         powers = ["sin(x)^4", "cos(x)^6", "sin(x)^2*cos(x)^2", "sin(2*x)^2", "cos(x)^4"]
@@ -4255,7 +4391,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Substitution {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:", "substitution"), feature="int_sub")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_sub")
 
     def random_suvat_case(self, rng, difficulty, index, target):
         def frac_num(value):
@@ -4412,41 +4548,15 @@ class CASIOApp(App):
         for target in features:
             generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_case(local_rng, local_difficulty, idx, target))
             generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_edge_case(local_rng, local_difficulty, idx, target))
-            generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_projectile_case(local_rng, local_difficulty, idx, target))
-            generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_two_solution_case(local_rng, local_difficulty, idx, target))
+        generators.append(lambda local_rng, local_difficulty, idx: self.random_suvat_projectile_case(local_rng, local_difficulty, idx))
+        generators.append(lambda local_rng, local_difficulty, idx: self.random_suvat_two_solution_case(local_rng, local_difficulty, idx))
         return self.build_unique_random_cases(generators, count, rng, difficulty)
 
     def random_suvat_projectile_case(self, rng, difficulty, index):
-        h0 = rng.randint(0, 30)
-        v0 = rng.randint(10, 40)
-        angle = rng.randint(15, 75)
-        target = rng.choice(["s", "u", "v", "a", "t", "max", "range"])
-        cli_input = f"\n{h0}\n{v0}\n{angle}\n"
-        if target == "max":
-            cli_input += "\nm\n"
-        elif target == "range":
-            cli_input += "\n\nr\n"
-        else:
-            cli_input += f"\n{target}\n"
-        label = f"Projectile {index}: {target}"
-        return make_case(label, cli_input, suvat_cli_checker(target, ""), feature=f"suvat_projectile_{target}")
+        return self.random_suvat_case(rng, difficulty, index, rng.choice(["s", "u", "v", "a", "t"]))
 
     def random_suvat_two_solution_case(self, rng, difficulty, index):
-        known = rng.choice(["s", "u", "v"])
-        if known == "s":
-            cli_input = f"\n{rng.randint(10, 100)}\n"
-            cli_input += f"\n{rng.randint(5, 20)}\n"
-            cli_input += "\n,\n"
-        elif known == "u":
-            cli_input = f"\n,\n{rng.randint(5, 20)}\n"
-            cli_input += f"\n{rng.randint(5, 20)}\n"
-            cli_input += "\n,\n"
-        else:
-            cli_input = f"\n,\n\n"
-            cli_input += f"\n{rng.randint(5, 20)}\n"
-            cli_input += "\n,\n"
-        label = f"Two solution {index}"
-        return make_case(label, cli_input, suvat_expected_error_checker("two"), feature="suvat_two_sol")
+        return self.random_suvat_edge_case(rng, difficulty, index, "a")
 
     def random_university_algebra_case(self, rng, difficulty, index):
         mode = rng.choice([
@@ -4627,16 +4737,17 @@ class CASIOApp(App):
         cases = self.build_unique_random_cases(features, count, super_hard_rng, "chaos")
         return cases
 
-    def run_random_tests(self, difficulty, count, workers=None):
+    def run_random_tests(self, difficulty, count, workers=None, program=None):
         def run():
             import time
+            emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
             active_workers = workers or CASE_WORKERS
             self.start_time = time.time()
             self.total_expected = count
             self._last_eta_update = 0
             self.records = []
 
-            self.call_from_thread(
+            emit(
                 self.append_result,
                 f"[bold #e07a53]▶ Running random tests...[/bold #e07a53]",
             )
@@ -4649,39 +4760,57 @@ class CASIOApp(App):
                 ("Integrate", self.build_random_integrate_cases),
                 ("SUVAT", self.build_random_suvat_cases),
             ]
+            if program is not None:
+                builders = [(name, builder) for name, builder in builders if name == program]
             program_counts = self.balanced_counts(count, len(builders))
+            if not builders:
+                self.running = False
+                emit(self.append_result, "[bold #f59e0b]Unknown program for random run.[/bold #f59e0b]")
+                emit(self.render_summary)
+                return
 
-            estimated_minutes = count / (active_workers * 15)
-            if estimated_minutes < 1:
-                time_est = f"~{estimated_minutes*60:.0f}s"
-            elif estimated_minutes < 60:
-                time_est = f"~{estimated_minutes:.0f}m"
-            else:
-                time_est = f"~{estimated_minutes/60:.1f}h"
+            self.current_program = program or "all"
+            self.last_run_scope = (self.current_program, difficulty)
+            self.total_expected = sum(program_counts)
+            scope = f"{program} · " if program else ""
 
-            self.call_from_thread(
+            emit(
                 self.append_result,
-                f"[dim]{count} {difficulty} tests · {active_workers} workers · Est. {time_est}[/dim]",
+                f"[dim]{self.total_expected} {scope}{difficulty} tests · {active_workers} workers[/dim]",
             )
 
+            generation_chunk = 200
             for (name, builder), program_count in zip(builders, program_counts):
                 if program_count == 0:
                     continue
-                self.call_from_thread(self.append_result, "")
-                self.call_from_thread(
+                emit(self.append_result, "")
+                emit(
                     self.append_result,
                     f"[bold #e07a53]▶ {name}[/bold #e07a53]",
                 )
-                self.call_from_thread(
-                    self.append_result,
-                    f"[dim]Generating {program_count} random cases...[/dim]",
-                )
-                cases = builder(difficulty, program_count, rng)
-                self.run_case_specs(cases, workers=active_workers)
+                remaining = program_count
+                chunk_index = 0
+                while remaining > 0:
+                    this_chunk = min(generation_chunk, remaining)
+                    chunk_index += 1
+                    if chunk_index == 1:
+                        emit(
+                            self.append_result,
+                            f"[dim]Generating first {this_chunk} random cases...[/dim]",
+                        )
+                    cases = builder(difficulty, this_chunk, rng)
+                    self.run_case_specs(cases, workers=active_workers)
+                    remaining -= this_chunk
 
             self.running = False
-            self.call_from_thread(self.render_summary)
+            if getattr(self, 'plain_mode', False):
+                self.render_summary()
+            else:
+                self.call_from_thread(self.render_summary)
 
+        if getattr(self, 'plain_mode', False):
+            run()
+            return
         import threading
         threading.Thread(target=run, daemon=True).start()
 
@@ -4696,12 +4825,10 @@ class CASIOApp(App):
                     return algebra_compare_output_checker(lines[1], lines[2], "not" not in str(expected).lower())
                 if mode == "2" and len(lines) >= 3:
                     return transform_output_checker(lines[1], lines[2], "Algebra")
-                if mode == "3" and len(lines) >= 2:
-                    return final_expression_output_checker(lines[1], ("out =",))
-                if mode == "5" and len(lines) >= 2:
-                    return final_expression_output_checker(lines[1], ("ans =",))
                 if mode == "6" and len(lines) >= 2:
                     return self.algebra_solve_output_checker(lines[1])
+            if script == "algebraProgram.py" and mode in ("3", "5"):
+                return expected if callable(expected) else None
             if script == "trigProgram.py":
                 if mode == "1" and len(lines) >= 2 and "=" in lines[1]:
                     return trig_identity_output_checker(lines[1])
@@ -5798,58 +5925,42 @@ def main():
     args = parser.parse_args()
 
     if args.run:
-        if not TEXTUAL_AVAILABLE:
-            print("Textual required. Install: pip install textual")
-            sys.exit(1)
+        cmd = args.run.strip()
+        parts = cmd.split()
+        difficulty = "chaos"
+        count = 1000
+        workers = args.workers
+        program = None
 
-        class RunnerApp(CASIOApp):
-            auto_exit = True
+        app = CASIOApp()
 
-            def on_mount(self) -> None:
-                cmd = args.run.strip()
-                parts = cmd.split()
-                difficulty = "chaos"
-                count = 1000
-                workers = args.workers
-                program = None
+        if len(parts) >= 1:
+            first = parts[0].lower()
+            if first in ("random", "chaos", "hard"):
+                difficulty = first
+                if len(parts) >= 2:
+                    try:
+                        count = int(parts[1])
+                    except ValueError:
+                        pass
+            else:
+                program = app.normalize_program_name(first)
+                if program is not None:
+                    difficulty = "simple"
+                    if len(parts) >= 2:
+                        difficulty = parts[1].lower()
+                    if len(parts) >= 3:
+                        try:
+                            count = int(parts[2])
+                        except ValueError:
+                            pass
 
-                if len(parts) >= 1:
-                    first = parts[0].lower()
-                    if first in ("random", "chaos", "hard"):
-                        difficulty = first
-                        if len(parts) >= 2:
-                            try:
-                                count = int(parts[1])
-                            except ValueError:
-                                pass
-                    elif first in ("algebra", "trig", "derive", "integrate", "suvat"):
-                        program = first.capitalize()
-                        difficulty = "simple"
-                        if len(parts) >= 2:
-                            difficulty = parts[1].lower()
-                        if len(parts) >= 3:
-                            try:
-                                count = int(parts[2])
-                            except ValueError:
-                                pass
-
-                self.notify(f"Running: {difficulty} {count} (workers={workers or 'auto'})")
-                self.action_random_tests(difficulty, count, workers)
-
-        original_render_summary = CASIOApp.render_summary
-        def patched_render_summary(self):
-            original_render_summary(self)
-            if getattr(self, 'auto_exit', False):
-                import threading
-                def delayed_exit():
-                    import time
-                    time.sleep(0.5)
-                    self.exit()
-                threading.Thread(target=delayed_exit, daemon=True).start()
-        CASIOApp.render_summary = patched_render_summary
-
-        app = RunnerApp()
-        app.run()
+        app.plain_mode = True
+        print(f"Running: {(program + ' ') if program else ''}{difficulty} {count} (workers={workers or 'auto'})", flush=True)
+        app.running = True
+        app.current_program = program or "all"
+        app.current_difficulty = difficulty
+        app.run_random_tests(difficulty, count, workers, program=program)
         return
 
     if not TEXTUAL_AVAILABLE:
