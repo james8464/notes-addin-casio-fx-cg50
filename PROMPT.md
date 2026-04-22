@@ -679,15 +679,6 @@ python3 tests/run_tests.py
 
 ---
 
-## GRAPH REBUILD
-
-After all code changes:
-```bash
-python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"
-```
-
----
-
 ## FILES TO EDIT
 
 1. src/Math/deriveProgram.py - Fix cot/sec/cosec rules, add new solvers
@@ -919,14 +910,6 @@ Answer: [result]
 2. Remove old test results
 3. Add new known issues if any discovered
 4. Document any new optimizations added
-
----
-
-### Update 8.3: GRAPH_REPORT.md
-
-**File:** graphify-out/GRAPH_REPORT.md
-
-**Action:** After all code changes, rebuild the graph and update any sections that changed significantly.
 
 ---
 
@@ -1356,7 +1339,6 @@ python3 tests/run_tests.py /run random 9999 --workers 24
 - [ ] Verify MicroPython syntax
 - [ ] Update PROMPT.md if adding features
 - [ ] Update corresponding README.md
-- [ ] Rebuild graphify if changing structure
 
 ### Before Release
 
