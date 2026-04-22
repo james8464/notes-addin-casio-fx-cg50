@@ -8,6 +8,17 @@ try:
 except ImportError:
     sys = None
 
+try:
+    from src.shared_cache import clear_all_caches as shared_clear_all_caches
+    from src.shared_reasoning_markers import REASONING_MARKERS
+except ImportError:
+    import os
+    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
+    if sys is not None and _SHARED_DIR not in sys.path:
+        sys.path.insert(0, _SHARED_DIR)
+    from shared_cache import clear_all_caches as shared_clear_all_caches
+    from shared_reasoning_markers import REASONING_MARKERS
+
 SKIP_AUTORUN = sys is not None and getattr(sys, '_suvat_no_autorun', False)
 
 # ============================================================================
@@ -20,16 +31,6 @@ FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
 G_DEFAULT = ('num', 49, 5)
 G_DEFAULT_FLOAT = 9.8
 G_ALIASES = ('g', 'G')
-
-# Reasoning markers for exam-quality output (same as other programs)
-REASONING_MARKERS = (
-    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
-    "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule", "equation:", "original equation:",
-    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
-    "final =", "result:", "answer:", "working:"
-)
-
 
 # ============================================================================
 # Cache Dictionaries for Performance
@@ -45,10 +46,7 @@ ALL_CACHES = (SIG_CACHE, SHOW_CACHE, SPLIT_COEFF_CACHE, FLAT_CACHE, SAME_CACHE)
 
 
 def clear_all_caches():
-    i = 0
-    while i < len(ALL_CACHES):
-        ALL_CACHES[i].clear()
-        i += 1
+    shared_clear_all_caches(*ALL_CACHES)
 
 
 def begin_user_action():

@@ -6,30 +6,93 @@ try:
     import sys
 except ImportError:
     sys = None
+
+try:
+    from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_reasoning_markers import REASONING_MARKERS
+except ImportError:
+    import os
+    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
+    if sys is not None and _SHARED_DIR not in sys.path:
+        sys.path.insert(0, _SHARED_DIR)
+    from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_reasoning_markers import REASONING_MARKERS
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
-FAIL = 'No standard exam-method antiderivative found after trying direct integration, substitution, trigonometric identities, parts, partial fractions, and division.'
-DE_FAIL = 'Out of scope.'
+FAIL = 'This integral does not reduce to an elementary antiderivative by the standard methods tried.'
+DE_FAIL = 'Method: Differential equation attempt\n1. The equation was not in a separable or linear form recognised by this program.\nAnswer: no closed-form elementary solution was produced.'
 
 
 def hard_integral_failure_reason(node, var):
+    lines, answer = hard_integral_failure_working(node, var)
+    if answer:
+        return answer
+    return FAIL
+
+
+def hard_integral_failure_working(node, var):
     A = sim(node)
     B = var
+    tried = [
+        'Tried direct integration, substitution, trigonometric identities, integration by parts, partial fractions, and division.',
+    ]
     if same(A, div(num(1), fn('sqrt', add([num(1), neg(power(sym(B), num(4)))])))):
-        return 'Out of scope: 1/sqrt(1-' + B + '^4).'
+        return tried + [
+            'Recognise 1/sqrt(1-' + B + '^4) as an elliptic integral pattern.',
+            'Use the binomial series: (1-' + B + '^4)^(-1/2) = 1 + (1/2)' + B + '^4 + (3/8)' + B + '^8 + ...',
+            'Integrate term by term: I = ' + B + ' + ' + B + '^5/10 + ' + B + '^9/24 + ... + C.',
+        ], 'Answer: non-elementary elliptic integral; series form above + C'
     if same(A, div(num(1), mul([power(sym(B), num(2)), fn('log', sym(B))]))):
-        return 'Out of scope: 1/(' + B + '^2*ln(' + B + ')).'
+        return tried + [
+            'Let u = 1/' + B + ', so du = -1/' + B + '^2 d' + B + '.',
+            'Since ln(' + B + ') = -ln(u), the integral becomes Int[1/ln(u)] du.',
+            'This is the logarithmic integral function li(u).',
+        ], 'Answer: li(1/' + B + ') + C'
     if A[0] == 'pow' and A[1][0] == 'fn' and A[1][1] == 'atan' and same(A[1][2], sym(B)) and same(A[2], num(2)):
-        return 'Out of scope: atan(' + B + ')^2.'
+        return tried + [
+            'Use integration by parts with u = atan(' + B + ')^2 and dv = d' + B + '.',
+            'Then du = 2*atan(' + B + ')/(1+' + B + '^2) d' + B + '.',
+            'The remaining integral involves logarithmic/dilogarithmic terms, so it is not elementary in the usual exam-function set.',
+        ], 'Answer: no elementary antiderivative; express using special functions or a definite numerical value if limits are given'
     if (A[0] == 'fn' and A[1] == 'exp' and same(A[2], power(sym(B), num(2)))) or (A[0] == 'pow' and same(A[1], E) and same(A[2], power(sym(B), num(2)))):
-        return 'Out of scope: e^(' + B + '^2).'
+        return tried + [
+            'The derivative of e^(' + B + '^2) is 2' + B + '*e^(' + B + '^2), so no reverse-chain factor is present.',
+            'This antiderivative is non-elementary.',
+            'Use the imaginary error function: d/d' + B + '[(sqrt(pi)/2)*erfi(' + B + ')] = e^(' + B + '^2).',
+        ], 'Answer: (sqrt(pi)/2)*erfi(' + B + ') + C'
     if same(A, div(fn('sin', sym(B)), sym(B))):
-        return 'Out of scope: sin(' + B + ')/' + B + '.'
+        return tried + [
+            'Use the series sin(' + B + ')/' + B + ' = 1 - ' + B + '^2/6 + ' + B + '^4/120 - ...',
+            'Integrate term by term: I = ' + B + ' - ' + B + '^3/18 + ' + B + '^5/600 - ... + C.',
+            'This is the sine integral function Si(' + B + ').',
+        ], 'Answer: Si(' + B + ') + C'
+    if same(A, div(fn('cos', sym(B)), sym(B))):
+        return tried + [
+            'The integral of cos(' + B + ')/' + B + ' is the cosine integral family.',
+            'Using series: cos(' + B + ')/' + B + ' = 1/' + B + ' - ' + B + '/2 + ' + B + '^3/24 - ...',
+            'Integrate term by term: I = ln|' + B + '| - ' + B + '^2/4 + ' + B + '^4/96 - ... + C.',
+        ], 'Answer: Ci(' + B + ') + C'
     if same(A, div(num(1), fn('log', sym(B)))):
-        return 'Out of scope: 1/ln(' + B + ').'
+        return tried + [
+            'This is the defining derivative pattern for the logarithmic integral.',
+            'd/d' + B + '[li(' + B + ')] = 1/ln(' + B + ').',
+        ], 'Answer: li(' + B + ') + C'
+    if A[0] == 'fn' and A[1] == 'sin' and same(A[2], power(sym(B), num(2))):
+        return tried + [
+            'Use the series sin(' + B + '^2) = ' + B + '^2 - ' + B + '^6/6 + ' + B + '^10/120 - ...',
+            'Integrate term by term: I = ' + B + '^3/3 - ' + B + '^7/42 + ' + B + '^11/1320 - ... + C.',
+            'Equivalently use the Fresnel S function.',
+        ], 'Answer: sqrt(pi/2)*S(sqrt(2/pi)*' + B + ') + C'
     if A[0] == 'fn' and A[1] == 'cos' and same(A[2], power(sym(B), num(2))):
-        return 'Out of scope: cos(' + B + '^2).'
-    return FAIL
+        return tried + [
+            'Use the series cos(' + B + '^2) = 1 - ' + B + '^4/2 + ' + B + '^8/24 - ...',
+            'Integrate term by term: I = ' + B + ' - ' + B + '^5/10 + ' + B + '^9/216 - ... + C.',
+            'Equivalently use the Fresnel C function.',
+        ], 'Answer: sqrt(pi/2)*C(sqrt(2/pi)*' + B + ') + C'
+    return tried + [
+        'No elementary antiderivative was produced by the standard methods.',
+        'For an exam answer, state that the antiderivative is non-elementary unless the question supplies limits or a special-function convention.',
+    ], 'Answer: no elementary antiderivative in the standard function set'
 
 
 def solve_result_or_reason(node, var, method, forced_u=None):
@@ -38,7 +101,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -51,15 +115,6 @@ SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
-
-# Reasoning markers for exam-quality output (same as other programs)
-REASONING_MARKERS = (
-    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
-    "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule", "equation:", "original equation:",
-    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
-    "final =", "result:", "answer:", "working:"
-)
 
 EXPAND_PASS_LIMIT = 4
 TRIG_REWRITE_LIMIT = 4
@@ -89,7 +144,7 @@ def begin_user_action():
 
 
 def clear_engine_caches():
-    _ENGINE_CACHES.clear()
+    shared_clear_all_caches(_ENGINE_CACHES)
 
 
 def _cache_limit(name):
@@ -126,13 +181,7 @@ def _cache_set(name, key, value):
     if bucket is None:
         bucket = {}
         _ENGINE_CACHES[name] = bucket
-    if len(bucket) >= _cache_limit(name):
-        try:
-            bucket.pop(next(iter(bucket)))
-        except StopIteration:
-            pass
-    bucket[key] = value
-    return value
+    return shared_cache_store(bucket, key, value, _cache_limit(name))
 
 
 def _force_low_memory_runtime(flag): apply_runtime_profile(flag)
@@ -643,6 +692,27 @@ def normalize_trig_signs(node):
     return sim((B, tuple(normalize_trig_signs(C) for C in A[1])))
 
 
+def cos_power_reduction_expr(arg, power_val):
+    if power_val == 0:
+        return num(1)
+    if math is None or not hasattr(math, 'comb'):
+        return None
+    terms = []
+    denom = 2 ** power_val
+    j = 0
+    while j <= power_val:
+        freq = power_val - 2 * j
+        if freq < 0:
+            freq = -freq
+        coeff = num(math.comb(power_val, j), denom)
+        if freq == 0:
+            terms.append(coeff)
+        else:
+            terms.append(mul([coeff, fn('cos', mul([num(freq), arg]))]))
+        j += 1
+    return expand_small(make_add(terms))
+
+
 def trig_linear_reciprocal_rewrite(node):
     A = node
     if A[0] != 'div' or not is_one(A[1]) or A[2][0] != 'add':
@@ -746,20 +816,21 @@ def trig_same_angle_power_rewrite(node):
         return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
 # Handle sin^m(x) * cos^n(x) where both m and n are even (general case)
     if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0:
-        from math import comb as binomial
+        if math is None or not hasattr(math, 'comb'):
+            return None, None
         terms = []
         half_h = H // 2
         half_i = I // 2
+        double_arg = mul([num(2), G])
         for m in range(half_h + 1):
             for n in range(half_i + 1):
-                coeff_val = binomial(half_h, m) * binomial(half_i, n)
-                sign = (-1) ** (m + n)
-                power_val = 2 * (m + n)
+                coeff_val = math.comb(half_h, m) * math.comb(half_i, n)
+                sign = (-1) ** m
                 coeff = num(sign * coeff_val, 2 ** (half_h + half_i))
-                if power_val == 0:
-                    terms.append(coeff)
-                else:
-                    terms.append(mul([coeff, fn('cos', mul([num(power_val), G]))]))
+                power_expr = cos_power_reduction_expr(double_arg, m + n)
+                if power_expr is None:
+                    return None, None
+                terms.append(mul([coeff, power_expr]))
         reduced = make_add(terms)
         J.append(reduced)
         return 'Use power-reduction identities: sin^m(x)cos^n(x) = sum of cos(kx).', expand_small(make_mul(J))
@@ -2343,7 +2414,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
                 merged.append(retry_lines[i])
                 i += 1
         return title, retry_ans, merged, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -4945,7 +5017,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 def integrate_termwise_with(node, var, solver, depth):
     if node[0] != 'add':
@@ -5109,7 +5182,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 def simplify_attempt_lines(lines):
     if lines is None:
@@ -5182,7 +5256,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 def integrate_cyclic_parts(node, var):
     A, B = split_const_mul(node, var)
@@ -6998,7 +7073,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, fallback_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -7026,7 +7102,8 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     if C:
         return A, B, C, None
-    return A, B, C, hard_integral_failure_reason(node, var)
+    failure_lines, failure_answer = hard_integral_failure_working(node, var)
+    return 'Integration attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):

@@ -19,6 +19,16 @@ try:
 except ImportError:
     sys = None
 
+try:
+    from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_reasoning_markers import REASONING_MARKERS
+except ImportError:
+    import os
+    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
+    if sys is not None and _SHARED_DIR not in sys.path:
+        sys.path.insert(0, _SHARED_DIR)
+    from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_reasoning_markers import REASONING_MARKERS
 
 # ============================================================================
 # SECTION 1: Core Constants and Configuration
@@ -45,15 +55,6 @@ SKIP_AUTORUN = sys is not None and getattr(sys, "_derive_no_autorun", False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 LOW_MEMORY_RUNTIME = False
 
-# Reasoning markers for exam-quality output (same as other programs)
-REASONING_MARKERS = (
-    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
-    "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule", "equation:", "original equation:",
-    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
-    "final =", "result:", "answer:", "working:"
-)
-
 TIDY_EXPAND_LIMIT = 5
 _CACHE_MISS = object()
 _ENGINE_CACHES = {}
@@ -72,7 +73,7 @@ def begin_user_action():
 
 
 def clear_engine_caches():
-    _ENGINE_CACHES.clear()
+    shared_clear_all_caches(_ENGINE_CACHES)
 
 
 def _cache_limit(name):
@@ -105,13 +106,7 @@ def _cache_set(name, key, value):
     if bucket is None:
         bucket = {}
         _ENGINE_CACHES[name] = bucket
-    if len(bucket) >= _cache_limit(name):
-        try:
-            bucket.pop(next(iter(bucket)))
-        except StopIteration:
-            pass
-    bucket[key] = value
-    return value
+    return shared_cache_store(bucket, key, value, _cache_limit(name))
 
 
 def _force_low_memory_runtime(flag):

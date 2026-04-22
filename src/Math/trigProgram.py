@@ -7,6 +7,24 @@ try:
 except ImportError:
     sys = None
 
+try:
+    from src.shared_cache import (
+        cache_store as shared_cache_store,
+        clear_all_caches as shared_clear_all_caches,
+        enforce_total_cache_limit,
+    )
+    from src.shared_reasoning_markers import REASONING_MARKERS
+except ImportError:
+    import os
+    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
+    if sys is not None and _SHARED_DIR not in sys.path:
+        sys.path.insert(0, _SHARED_DIR)
+    from shared_cache import (
+        cache_store as shared_cache_store,
+        clear_all_caches as shared_clear_all_caches,
+        enforce_total_cache_limit,
+    )
+    from shared_reasoning_markers import REASONING_MARKERS
 
 # ---------------------------------------------------------------------------
 # Core constants and runtime profile
@@ -77,15 +95,6 @@ FACTOR_REWRITE_DEPTH_LIMIT = 2
 SOLVE_LOOKAHEAD_ENABLED = True
 LOW_MEMORY_RUNTIME = False
 
-# Reasoning markers for exam-quality output
-REASONING_MARKERS = (
-    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
-    "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule", "equation:", "original equation:",
-    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
-    "final =", "result:", "answer:", "working:"
-)
-
 # The engine reuses immutable tuple-AST nodes heavily, so these caches
 # keep repeated simplify/show/match passes cheap without pulling in a CAS.
 SIG_CACHE = {}
@@ -112,24 +121,9 @@ SOLUTION_LIST_CACHE = {}
 
 
 def cache_store(cache, key, value, limit):
-    global _TOTAL_CACHE_MEMORY
-    if limit <= 0:
-        return value
-    if key not in cache and len(cache) >= limit:
-        trim = limit // 8
-        if trim < 1:
-            trim = 1
-        i = 0
-        while i < trim and len(cache) >= limit:
-            oldest = next(iter(cache))
-            del cache[oldest]
-            _TOTAL_CACHE_MEMORY -= 1
-            i += 1
-    cache[key] = value
-    _TOTAL_CACHE_MEMORY += 1
-    if _TOTAL_CACHE_MEMORY > _TOTAL_CACHE_LIMIT:
-        _enforce_total_cache_limit()
-    return value
+    out = shared_cache_store(cache, key, value, limit)
+    _enforce_total_cache_limit()
+    return out
 
 
 ALL_ENGINE_CACHES = (
@@ -162,26 +156,16 @@ _TOTAL_CACHE_LIMIT = 16384
 
 def _enforce_total_cache_limit():
     global _TOTAL_CACHE_MEMORY
-    if _TOTAL_CACHE_MEMORY > _TOTAL_CACHE_LIMIT:
-        drop = min(512, _TOTAL_CACHE_MEMORY // 8)
-        for cache in ALL_ENGINE_CACHES:
-            for key in list(cache.keys())[:drop]:
-                try:
-                    del cache[key]
-                    _TOTAL_CACHE_MEMORY -= 1
-                except KeyError:
-                    pass
-                if _TOTAL_CACHE_MEMORY <= _TOTAL_CACHE_LIMIT:
-                    return
+    enforce_total_cache_limit(ALL_ENGINE_CACHES, _TOTAL_CACHE_LIMIT)
+    _TOTAL_CACHE_MEMORY = 0
+    for cache in ALL_ENGINE_CACHES:
+        _TOTAL_CACHE_MEMORY += len(cache)
 
 
 def clear_engine_caches():
     # Low-memory calculators benefit more from clearing a handful of hot caches
     # between user actions than from holding onto lots of old subtrees.
-    i = 0
-    while i < len(ALL_ENGINE_CACHES):
-        ALL_ENGINE_CACHES[i].clear()
-        i += 1
+    shared_clear_all_caches(*ALL_ENGINE_CACHES)
 
 
 def apply_runtime_profile(low_memory=None):
@@ -10164,7 +10148,7 @@ def equation_angle_mode(lhs, rhs, var):
             saw_rad = True
         i += 1
     if saw_deg and saw_rad:
-        raise ValueError("Mixed degree and radian input is not supported in solve mode.")
+        return "rad"
     if saw_rad:
         return "rad"
     if saw_deg:
@@ -13979,7 +13963,9 @@ def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_in
             if poly_note is not None:
                 lines.append(poly_note)
             if numeric_fallback:
-                lines.append("Solve the polynomial in u numerically.")
+                lines.append("Exact factor/quadratic methods do not give a usable root for u.")
+                lines.append("Use decimal iteration on P(u): u_next = u - P(u)/P'(u).")
+                lines.append("Check each decimal root against the original trig equation.")
             lines.append("No valid trig values.")
             return [], compact_lines(lines)
         if roots is not None and len(roots) != 0:
@@ -14000,7 +13986,9 @@ def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_in
             if poly_note is not None:
                 lines.append(poly_note)
             if numeric_fallback:
-                lines.append("Solve the polynomial in u numerically.")
+                lines.append("Exact factor/quadratic methods do not give every required root for u.")
+                lines.append("Use decimal iteration on P(u): u_next = u - P(u)/P'(u).")
+                lines.append("Check each decimal root against the original trig equation.")
             root_bits = []
             i = 0
             while i < len(roots):
@@ -15790,7 +15778,7 @@ def solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines):
             used_product = True
             continue
         return None
-    if base is None or is_zero(sin2x_coeff) or (is_zero(sin_sq_coeff) and is_zero(cos2x_coeff)):
+    if base is None or is_zero(sin2x_coeff):
         return None
     doubled = mul([num(2), base])
     rewritten = []
@@ -15834,27 +15822,31 @@ def parse_solve_interval_context(lhs, rhs, var, interval_bits):
     if len(interval_bits) == 1 and looks_like_interval_relation(interval_bits[0], var):
         start_val, start_pi, start_inclusive, end_val, end_pi, end_inclusive, start_text, end_text = parse_interval_relation(interval_bits[0], var)
         interval_mode = interval_angle_mode([start_text, end_text], start_val, end_val, start_pi, end_pi)
-        if eq_mode is not None and eq_mode != interval_mode:
-            raise ValueError("Mixed degree and radian input is not supported in solve mode.")
-        deg_mode = (eq_mode or interval_mode) != "rad"
+        chosen_mode = eq_mode or interval_mode
+        deg_mode = chosen_mode != "rad"
         if deg_mode:
             if start_pi:
                 start_val = to_degrees(start_val)
             if end_pi:
                 end_val = to_degrees(end_val)
+        elif interval_mode == "deg":
+            start_val = to_radians(start_val)
+            end_val = to_radians(end_val)
         return start_val, end_val, start_inclusive, end_inclusive, deg_mode, no_interval_mode
     if len(interval_bits) == 2:
         start_val, start_pi, start_inclusive = parse_interval_bound(interval_bits[0], True)
         end_val, end_pi, end_inclusive = parse_interval_bound(interval_bits[1], False)
         interval_mode = interval_angle_mode(interval_bits, start_val, end_val, start_pi, end_pi)
-        if eq_mode is not None and eq_mode != interval_mode:
-            raise ValueError("Mixed degree and radian input is not supported in solve mode.")
-        deg_mode = (eq_mode or interval_mode) != "rad"
+        chosen_mode = eq_mode or interval_mode
+        deg_mode = chosen_mode != "rad"
         if deg_mode:
             if start_pi:
                 start_val = to_degrees(start_val)
             if end_pi:
                 end_val = to_degrees(end_val)
+        elif interval_mode == "deg":
+            start_val = to_radians(start_val)
+            end_val = to_radians(end_val)
         return start_val, end_val, start_inclusive, end_inclusive, deg_mode, no_interval_mode
     raise ValueError("Use equation,var or equation,var,start,end or equation,var,0<x<pi")
 
@@ -16055,7 +16047,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     original_expr = sim(add([lhs, neg(rhs)]))
     derived = derive_cot_quadratic_expr(lhs, rhs)
     expr = sim(add([lhs, neg(rhs)]))
-    lines = ["Start with " + equation_line(lhs, rhs)]
+    lines = ["Method: Solve trigonometric equation", "Start with " + equation_line(lhs, rhs)]
     if derived is not None:
         expr = derived[4]
         lines.append("Rewrite the equation in standard trig form")
@@ -16144,6 +16136,11 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         valid = picked
     elif len(valid) != 0:
         lines.append(solution_list_line(var, valid, deg_mode, exact_solution_texts))
+
+    if len(valid) != 0:
+        lines.append("Answer: " + solution_list_line(var, valid, deg_mode, exact_solution_texts))
+    else:
+        lines.append("Answer: no solution in the interval")
 
     if want_meta:
         return valid, compact_lines(lines), deg_mode
@@ -17147,7 +17144,7 @@ def display_line_short(line):
         ("Use a common denominator.", "Use a common denom"),
         ("Use common denominator.", "Use a common denom"),
         ("Use half-angle ratio identities.", "Use half-angle ratio identities."),
-        ("Mixed degree and radian input is not supported in solve mode.", "Mixed degree/radian input is not supported."),
+        ("Mixed degree and radian input is converted to one angle unit in solve mode.", "Mixed angle units are converted."),
         ("This expression cannot be written using only the requested terms.", "This can't be written in the requested terms."),
         ("This expression is undefined on the interval used for the extremum search.", "This is undefined on the search interval."),
         ("No solutions because the shifted trig value lies outside [-1,1].", "No solutions: shifted trig value is outside [-1,1]."),

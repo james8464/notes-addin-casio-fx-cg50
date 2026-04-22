@@ -8,6 +8,17 @@ try:
 except ImportError:
     sys = None
 
+try:
+    from src.shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_reasoning_markers import REASONING_MARKERS
+except ImportError:
+    import os
+    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
+    if sys is not None and _SHARED_DIR not in sys.path:
+        sys.path.insert(0, _SHARED_DIR)
+    from shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_reasoning_markers import REASONING_MARKERS
+
 # ============================================================================
 # Core Constants and Configuration
 # ============================================================================
@@ -31,16 +42,6 @@ CACHE_LIMIT_LARGE = DESKTOP_CACHE_LIMIT_LARGE
 
 LOW_MEMORY_RUNTIME = False
 
-# Reasoning markers for exam-quality output (same as other programs)
-REASONING_MARKERS = (
-    "Use ", "Using ", "let ", "hence", "so ", "therefore", "method:",
-    "substitute", "rearranged", "differentiate", "integrat", "expand",
-    "factor ", "solve ", "rule", "equation:", "original equation:",
-    "identity:", "LHS:", "RHS:", "Hence ", "Therefore ", "Thus ",
-    "final =", "result:", "answer:", "working:"
-)
-
-
 # ============================================================================
 # Cache Dictionaries for Performance
 # ============================================================================
@@ -60,31 +61,7 @@ ALL_CACHES = (
 
 def clear_all_caches():
     """Clear all caches to free memory."""
-    i = 0
-    while i < len(ALL_CACHES):
-        ALL_CACHES[i].clear()
-        i += 1
-
-
-def cache_store(cache, key, value, limit):
-    """Store value in cache with bounded incremental eviction."""
-    if len(cache) >= limit:
-        drop = 1
-        if limit >= 32:
-            drop = limit // 8
-        i = 0
-        while i < drop and cache:
-            try:
-                first_key = next(iter(cache))
-            except StopIteration:
-                break
-            try:
-                del cache[first_key]
-            except KeyError:
-                break
-            i += 1
-    cache[key] = value
-    return value
+    shared_clear_all_caches(*ALL_CACHES)
 
 
 def apply_runtime_profile(low_memory=None):
@@ -642,6 +619,44 @@ def int_sqrt(n):
     return A
 
 
+def int_nth_root(n, power_value):
+    if n < 0 or power_value <= 0:
+        return None
+    if n in (0, 1):
+        return n
+    lo = 1
+    hi = 1
+    while hi ** power_value < n:
+        hi *= 2
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        val = mid ** power_value
+        if val == n:
+            return mid
+        if val < n:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return None
+
+
+def exact_nth_root_num(node, power_value):
+    if not is_num(node) or power_value <= 0:
+        return None
+    sign = 1
+    numerator = node[1]
+    if numerator < 0:
+        if power_value % 2 == 0:
+            return None
+        sign = -1
+        numerator = -numerator
+    top = int_nth_root(numerator, power_value)
+    bottom = int_nth_root(node[2], power_value)
+    if top is None or bottom is None:
+        return None
+    return num(sign * top, bottom)
+
+
 def sqrt_num(node):
     if not is_num(node) or node[1] < 0:
         return None
@@ -896,15 +911,15 @@ def equation_has_trig_content(lhs, rhs):
 
 
 def solve_linear_parameter_text(eq_text, var):
-    raise ValueError('Param solve not ready')
+    raise ValueError('Use a linear equation in the chosen parameter, then collect terms and solve.')
 
 
 def solve_x_equation_text(eq_text, var, extra):
-    raise ValueError('Trig solve not supported here')
+    raise ValueError('Use Trigonometry solve mode for trig equations; algebra solve handles polynomial, rational, radical, and substitution forms.')
 
 
 def solve_extremum_text(text, kind, var):
-    raise ValueError('Extremum not supported here')
+    raise ValueError('Use Trigonometry extremum mode for sine/cosine extrema; algebra mode has no extremum operation.')
 
 
 def parse_identity_or_zero(text):
@@ -4170,7 +4185,7 @@ def solve_equation(node):
         radical_result = solve_radical_equation(expr, var_name)
         if radical_result is not None:
             return radical_result
-    return None, None, 'Needs poly support'
+    return None, None, 'Tried polynomial, rational, radical, and substitution methods; no closed-form real root was produced.'
 
 
 def solve_equation_text(text):
@@ -4183,10 +4198,12 @@ def solve_equation_text(text):
     if label == 'Identity':
         lines.append('All x satisfy this identity')
         lines.append('Solution: all real x')
+        lines.append('Answer: all real x')
         return ensure_reasoning_marker(lines)
     if label == 'No solution':
         lines.append('No solution exists')
         lines.append('Solution: none')
+        lines.append('Answer: no solution')
         return ensure_reasoning_marker(lines)
     if roots is None:
         lines.append(label)
@@ -4194,7 +4211,9 @@ def solve_equation_text(text):
     ordered = normalize_solution_roots(roots)
     lines.append('Solve for ' + var_name + ':')
     lines.append(label)
-    lines.append('Solution: ' + format_solution_line(var_name, ordered))
+    solution = format_solution_line(var_name, ordered)
+    lines.append('Solution: ' + solution)
+    lines.append('Answer: ' + solution)
     return ensure_reasoning_marker(lines)
 
 
@@ -5385,6 +5404,64 @@ def hidden_power_substitution_roots(coeffs, degree):
     return 'hidden substitution u=x^' + str(power_step), lifted
 
 
+def depressed_cubic_cardano_roots(coeffs):
+    if len(coeffs) < 4 or is_zero(coeffs[3]) or not is_zero(coeffs[2]):
+        return None
+    a = coeffs[3]
+    p = sim(div(coeffs[1], a))
+    q = sim(div(coeffs[0], a))
+    half_q = sim(div(q, num(2)))
+    third_p = sim(div(p, num(3)))
+    discriminant = sim(add([power(half_q, num(2)), power(third_p, num(3))]))
+    disc_value = real_numeric_value(discriminant)
+    if disc_value is None or disc_value < -1e-9:
+        return None
+    disc_root = sqrt_num(discriminant)
+    if disc_root is None:
+        disc_root = fn('sqrt', discriminant)
+    first = sim(add([neg(half_q), disc_root]))
+    second = sim(add([neg(half_q), neg(disc_root)]))
+    root = sim(add([power(first, num(1, 3)), power(second, num(1, 3))]))
+    return [root]
+
+
+def depressed_cubic_cardano_numeric_roots(expr, var_name):
+    if math is None:
+        return []
+    coeffs, degree = polynomial_coeff_list(expr, var_name, 20)
+    if coeffs is None or degree != 3 or not is_zero(coeffs[2]):
+        return []
+    a = real_numeric_value(coeffs[3])
+    c = real_numeric_value(coeffs[1])
+    d = real_numeric_value(coeffs[0])
+    if a is None or c is None or d is None or abs(a) < 1e-12:
+        return []
+    p = c / a
+    q = d / a
+    discriminant = (q / 2) ** 2 + (p / 3) ** 3
+    if discriminant < -1e-12:
+        return []
+    if discriminant < 0:
+        discriminant = 0
+
+    def cbrt(value):
+        if value < 0:
+            return -((-value) ** (1 / 3))
+        return value ** (1 / 3)
+
+    root = cbrt(-q / 2 + math.sqrt(discriminant)) + cbrt(-q / 2 - math.sqrt(discriminant))
+    return [root]
+
+
+def format_decimal_solution_line(var_name, roots):
+    bits = []
+    i = 0
+    while i < len(roots):
+        bits.append(("{:.12g}".format(roots[i])).rstrip("0").rstrip("."))
+        i += 1
+    return var_name + ' = ' + (bits[0] if len(bits) == 1 else '[' + ', '.join(bits) + ']')
+
+
 def solve_polynomial_expr(node, var_name):
     coeffs, degree = polynomial_coeff_list(node, var_name, 20)
     if coeffs is None:
@@ -5414,9 +5491,13 @@ def solve_polynomial_expr(node, var_name):
         if hidden_roots is not None:
             return hidden_label, hidden_roots
         roots = rational_roots_for_polynomial(coeffs, degree)
-        if roots is None or len(roots) == 0:
-            return None, None
-        return 'poly', roots
+        if roots is not None and len(roots) != 0:
+            return 'poly', roots
+        if degree == 3:
+            cardano_roots = depressed_cubic_cardano_roots(coeffs)
+            if cardano_roots is not None:
+                return 'cubic by Cardano formula', cardano_roots
+        return None, None
     roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
     if len(roots) == 0:
         return 'none', []
@@ -5549,19 +5630,28 @@ def solve_equation_text(text):
         return cartesian
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
-    lines = ['Expr = ' + show(expr)]
+    lines = ['Method: Solve equation', 'Expr = ' + show(expr)]
     if label == 'Identity':
-        lines.append('All x')
+        lines.append('All x satisfy the equation')
+        lines.append('Answer: all real x')
         return lines
     if label == 'No solution':
         lines.append('Solve: no real solution')
         lines.append('No sol')
+        lines.append('Answer: no solution')
         return lines
     if roots is None:
         lines.append(label)
+        lines.append('Answer: no closed-form solution found')
         return lines
     lines.append(label)
-    lines.append(format_solution_line(var_name, roots))
+    solution = format_solution_line(var_name, roots)
+    lines.append(solution)
+    if 'Cardano' in label:
+        decimal_roots = depressed_cubic_cardano_numeric_roots(expr, var_name)
+        if decimal_roots:
+            lines.append(format_decimal_solution_line(var_name, decimal_roots))
+    lines.append('Answer: ' + solution)
     return lines
 
 
@@ -5882,8 +5972,47 @@ def solve_rational_equation(expr, var_name):
         i += 1
     valid = normalize_solution_roots(valid)
     if len(valid) == 0:
+        return 'No solution', []
+    return 'Solve by clearing denominators', valid
+
+
+def solve_shifted_power_equation(expr, var_name):
+    expr = sim(expr)
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    power_term = None
+    constant = num(0)
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        match = match_power_linear_in_var(rest, var_name)
+        if match is not None:
+            if power_term is not None:
+                return None
+            power_term = (coeff,) + match
+        elif depends_on(terms[i], var_name):
+            return None
+        else:
+            constant = sim(add([constant, terms[i]]))
+        i += 1
+    if power_term is None:
         return None
-    return 'Solve clear den', valid
+    coeff, a, b, n_value, exp = power_term
+    if n_value is None or is_zero(a) or is_zero(coeff):
+        return None
+    target = sim(div(neg(constant), coeff))
+    target_value = real_numeric_value(target)
+    if n_value % 2 == 0 and (target_value is None or target_value < -1e-9):
+        return 'No solution', []
+    root_mag = exact_nth_root_num(target, n_value)
+    if root_mag is None:
+        root_mag = sim(power(target, num(1, n_value)))
+    roots = []
+    if n_value % 2 == 0:
+        roots.append(sim(div(add([root_mag, neg(b)]), a)))
+        roots.append(sim(div(add([neg(root_mag), neg(b)]), a)))
+    else:
+        roots.append(sim(div(add([root_mag, neg(b)]), a)))
+    return 'Solve shifted power directly', normalize_solution_roots(roots)
 
 
 def contains_function_safe(node, fn_name):
@@ -6170,6 +6299,13 @@ def isolate_one_radical(expr, var_name):
 
 def solve_equation(node):
     expr = sim(node)
+    direct_var = choose_primary_var(expr)
+    if direct_var is not None:
+        shifted_power = solve_shifted_power_equation(expr, direct_var)
+        if shifted_power is not None:
+            if shifted_power[0] == 'No solution':
+                return direct_var, [], 'No solution'
+            return direct_var, shifted_power[1], shifted_power[0]
     expanded = maybe_expand_for_compare(expr)
     reduced = canonical_compare_form(expanded)
     working = reduced if not same(reduced, expanded) else expanded
@@ -6190,6 +6326,8 @@ def solve_equation(node):
         return var_name, normalize_solution_roots(roots), ('Solve ' + label)
     rational = solve_rational_equation(working, var_name)
     if rational is not None:
+        if rational[0] == 'No solution':
+            return var_name, [], 'No solution'
         return var_name, normalize_solution_roots(rational[1]), rational[0]
     if working[0] == 'div':
         top = maybe_expand_for_compare(sim(working[1]))
@@ -6212,7 +6350,7 @@ def solve_equation(node):
     radical_result = solve_radical_equation(working, var_name)
     if radical_result is not None:
         return radical_result
-    return None, None, 'Needs poly support'
+    return None, None, 'Tried polynomial, rational, radical, and substitution methods; no closed-form real root was produced.'
 
 
 def poly_mode_text(text):

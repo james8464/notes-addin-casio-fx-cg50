@@ -49,14 +49,37 @@ try:
 except ImportError:
     TEXTUAL_AVAILABLE = False
 
-ROOT = Path(__file__).resolve().parents[1] / 'src' / 'Math'
+SRC_ROOT = Path(__file__).resolve().parents[1] / 'src'
+ROOT = SRC_ROOT / 'Math'
 PY = sys.executable
+sys.path.insert(0, str(SRC_ROOT))
 sys.path.insert(0, str(ROOT))
 sys._algebra_no_autorun = True
 sys._trig_no_autorun = True
 sys._derive_no_autorun = True
 sys._int_no_autorun = True
 sys._suvat_no_autorun = True
+
+try:
+    from shared_quality import (
+        has_working_steps as shared_has_working_steps,
+        has_solution as shared_has_solution,
+        is_exam_format as shared_is_exam_format,
+    )
+    from shared_reasoning_markers import REASONING_MARKERS as SHARED_REASONING_MARKERS
+except Exception:
+    SHARED_REASONING_MARKERS = ("method:", "use ", "let ", "solve ", "answer:")
+
+    def shared_has_working_steps(output):
+        text = normalized_text(output) if "normalized_text" in globals() else (output or "").lower()
+        return any(marker.lower() in text for marker in SHARED_REASONING_MARKERS)
+
+    def shared_has_solution(output):
+        text = normalized_text(output) if "normalized_text" in globals() else (output or "").lower()
+        return any(marker in text for marker in ("answer:", "ans =", "final =", "result:", "x =", "dy/dx", "+ c"))
+
+    def shared_is_exam_format(output):
+        return shared_has_working_steps(output) and shared_has_solution(output)
 
 import algebraProgram as ALG
 import trigProgram as TRIG
@@ -1376,78 +1399,56 @@ def working_quality_ok(output, program, feature):
     return True
 
 
-_EXAM_REASONING_MARKERS = (
-    "use ",
-    "let ",
-    "hence",
-    "so ",
-    "therefore",
-    "method:",
-    "substitute",
-    "rearranged",
-    "differentiate",
-    "integrat",
-    "expand",
-    "factor",
-    "solve",
-    "rule",
-    "equation:",
-    "original equation:",
-    "using ",
-    "identity:",
-    "LHS:",
-    "RHS:",
-    "start with",
-    "coefficient of",
-    "half the",
-    "complete square",
-    "input =",
-    "step",
-    "rewrite",
-    "method",
-    "move terms",
-    "collect terms",
-    "square:",
-    "write in terms",
-    "already written",
-    "final =",
-    "rewrite to target",
-    "M ",
-    "n/p",
-    "Expression:",
-    "Input =",
-    "Ans =",
-    "Half",
-    "check",
-    "verify",
-    "simplif",
-    "derive ",
-    "differentiate ",
-    "integrate ",
-    "d/dx",
-    "dy/dx",
-    "du/dx",
-    "dv/dx",
-    "u'",
-    "v'",
-    "by parts",
-    "by substitution",
-    "by the standard",
-    "reverse chain",
-    "power-reduce",
-    "angle ",
-    "substitu",
-    "evaluate",
-    "apply ",
-    "split ",
-    "separate",
-    "partial fraction",
-    "decompos",
-    "simplest form",
-    "collect like",
-    "multiply both",
-    "divide both",
-    "common denominator",
+_EXAM_REASONING_MARKERS = tuple(
+    dict.fromkeys(
+        tuple(marker.lower() for marker in SHARED_REASONING_MARKERS)
+        + (
+            "start with",
+            "coefficient of",
+            "half the",
+            "complete square",
+            "input =",
+            "step",
+            "rewrite",
+            "method",
+            "move terms",
+            "collect terms",
+            "square:",
+            "write in terms",
+            "already written",
+            "rewrite to target",
+            "m ",
+            "n/p",
+            "expression:",
+            "check",
+            "verify",
+            "simplif",
+            "derive ",
+            "d/dx",
+            "dy/dx",
+            "du/dx",
+            "dv/dx",
+            "u'",
+            "v'",
+            "by parts",
+            "by substitution",
+            "by the standard",
+            "reverse chain",
+            "power-reduce",
+            "angle ",
+            "evaluate",
+            "apply ",
+            "split ",
+            "separate",
+            "partial fraction",
+            "decompos",
+            "simplest form",
+            "collect like",
+            "multiply both",
+            "divide both",
+            "common denominator",
+        )
+    )
 )
 
 
@@ -1460,6 +1461,11 @@ def exam_working_quality_issues(output, program, feature):
         issues.append("contains an error/unsupported marker")
     if _has_non_exam_quality_output(text):
         issues.append("uses non-exam-quality numerical methods (scan/compute/bisection)")
+    if program != "SUVAT":
+        if not shared_has_working_steps(output):
+            issues.append("shared quality check did not find reasoning language")
+        if not shared_has_solution(output):
+            issues.append("shared quality check did not find a conclusion marker")
     if not working_quality_ok(output, program, feature):
         issues.append("missing program-specific working expected for this feature")
 
@@ -3382,7 +3388,7 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator", "out of scope"),
+            contains_any=("method:", "met:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator"),
             min_steps=1,
             min_lines=2,
         )
@@ -3456,6 +3462,7 @@ class CASIOApp(App):
         base = self.random_linear_expr(rng, "x", allow_negative=True)
         c = rng.randint(1, 7)
         if mode == "exp_log":
+            poly = self.random_positive_expr(rng, "x", difficulty)
             left = f"exp(log({poly}))"
             right = poly
         elif mode == "identity_poly":
@@ -4079,7 +4086,19 @@ class CASIOApp(App):
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_derive_triple_product_case(self, rng, difficulty, index):
-        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
+        if difficulty == "random":
+            choices = [
+                self.random_affine_expr(rng, "x", "medium", allow_negative=True),
+                self.random_shifted_power_expr(rng, "x", "medium"),
+                f"sin({self.random_angle_expr(rng, 'x', 'medium')})",
+                f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})",
+                f"log(({rng.randint(2, 6)}*x+{rng.randint(3, 9)})^2+1)",
+            ]
+            expr = f"({rng.choice(choices)})*({rng.choice(choices)})*({rng.choice(choices)})"
+            cli_input = f"1\n{expr}\n"
+            label = f"Triple product {index}"
+            return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
+        helper_difficulty = "hard" if difficulty == "chaos" else ("medium" if difficulty == "random" else difficulty)
         depth = 2 if helper_difficulty in ("hard", "chaos") else 1
         expr = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
         cli_input = f"1\n{expr}\n"
@@ -4087,7 +4106,19 @@ class CASIOApp(App):
         return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
 
     def random_derive_chain_quotient_case(self, rng, difficulty, index):
-        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
+        if difficulty == "random":
+            num = rng.choice([
+                self.random_shifted_power_expr(rng, "x", "medium"),
+                f"sin({self.random_angle_expr(rng, 'x', 'medium')})",
+                f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})",
+                f"log(({rng.randint(2, 6)}*x+{rng.randint(3, 9)})^2+1)",
+            ])
+            den = f"({rng.randint(2, 7)}*x{self.signed_int_text(rng.randint(1, 9))})^2+{rng.randint(2, 9)}"
+            expr = f"(({num})/({den}))^{rng.randint(2,3)}"
+            cli_input = f"1\n{expr}\n"
+            label = f"Chain quotient {index}"
+            return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_chain_quotient")
+        helper_difficulty = "hard" if difficulty == "chaos" else ("medium" if difficulty == "random" else difficulty)
         depth = 2 if helper_difficulty in ("hard", "chaos") else 1
         num = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
         den = f"({self.random_positive_expr(rng, 'x', helper_difficulty)})"
@@ -4923,8 +4954,8 @@ class CASIOApp(App):
         ]
 
         complete_square_cases = [
-            ("5\nx^2+6*x+13\n", "Complete square: x^2+6x+13", algebra_complete_square_checker("(x+3)^2+4")),
-            ("5\n4*x^2-12*x+25\n", "Complete square: 4x^2-12x+25", algebra_complete_square_checker("(x-3/2)^2", "+16")),
+            ("5\nx^2+6*x+13\n", "Complete square: x^2+6x+13", algebra_complete_square_checker("(x + 3)^2 + 4")),
+            ("5\n4*x^2-12*x+25\n", "Complete square: 4x^2-12x+25", algebra_complete_square_checker("4*(x - 3/2)^2 + 16")),
         ]
 
         if difficulty in ("all", "medium", "hard"):
@@ -4963,6 +4994,23 @@ class CASIOApp(App):
                 eq = inp.splitlines()[1]
                 checker = self.algebra_solve_output_checker(eq)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra solve"), "algebra_solve")
+
+            algebra_solve_regressions = [
+                ("6\nx^3+2*x=50\n", "Regression: depressed cubic solved by Cardano", ("cardano", "answer:", "x =")),
+                ("6\n1/x+1/(x+1)=1/2\n", "Regression: reciprocal equation uses common denominator", ("clearing denominators", "answer:", "x =")),
+            ]
+            for inp, label, tokens in algebra_solve_regressions:
+                out, _ = self.run_cli("algebraProgram.py", inp)
+                eq = inp.splitlines()[1]
+                text = normalized_text(out)
+                checker = self.algebra_solve_output_checker(eq)
+                passed = (
+                    checker(out)
+                    and shared_is_exam_format(out)
+                    and all(token in text for token in tokens)
+                    and not _has_non_exam_quality_output(out)
+                )
+                self.add_test(label, passed, out, p, inp, "analytical solve with exam-style conclusion", "algebra_solve")
 
         # Inverse tests
         inverses = [
@@ -5187,6 +5235,7 @@ class CASIOApp(App):
             ("1\n1+cos(2*x)=2*cos(x)^2\n1\n", "LHS = RHS", "Prove: 1+cos(2x)=2cos²x"),
             ("1\ntan(x)=sin(x)/cos(x)\n1\n", "LHS = RHS", "Prove: tanx=sinx/cosx"),
             ("1\ncot(x)=cos(x)/sin(x)\n1\n", "LHS = RHS", "Prove: cotx=cosx/sinx"),
+            ("1\nsec(x)^4-tan(x)^4=1+2*tan(x)^2\n1\n", "LHS = RHS", "Prove: sec⁴x-tan⁴x=1+2tan²x"),
             ("1\nsin(3*x)=3*sin(x)-4*sin(x)^3\n1\n", "LHS = RHS", "Prove: sin(3x)=3sinx-4sin³x"),
             ("1\ncos(3*x)=4*cos(x)^3-3*cos(x)\n1\n", "LHS = RHS", "Prove: cos(3x)=4cos³x-3cosx"),
         ]
@@ -5243,6 +5292,23 @@ class CASIOApp(App):
                 solve_text = inp.splitlines()[1]
                 checker = self.trig_cli_solve_checker(solve_text)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig solve"), "trig_solve")
+
+            mixed_angle_cases = [
+                ("3\nsin(x+pi/6)=1/2,x,0,360\n", "Regression: mixed radian angle with degree interval"),
+                ("3\nsin(x+30)=1/2,x,0,2*pi\n", "Regression: mixed degree angle with radian interval"),
+                ("3\ntan(x)^2=1,x,0,360\n", "Regression: squared tangent solve"),
+                ("3\nsin(2*x)=cos(x),x,0,360\n", "Regression: double-angle solve"),
+            ]
+            for inp, label in mixed_angle_cases:
+                out, _ = self.run_cli("trigProgram.py", inp)
+                text = normalized_text(out)
+                passed = (
+                    "error:" not in text
+                    and "x =" in text
+                    and shared_is_exam_format(out)
+                    and not _has_non_exam_quality_output(out)
+                )
+                self.add_test(label, passed, out, p, inp, "trig solve output with method, working, and answer", "trig_solve")
 
         if difficulty in ("all", "easy", "medium", "hard"):
             inp = "3\n4*pi**2=72-(72*cos(x)),x,0,(2*pi)\n"
@@ -5427,7 +5493,7 @@ class CASIOApp(App):
 
         rewrite_cases = [
             ("4\nsin(2*x)^2+cos(2*x)^2\nsin(2*x)\ncos(2*x)\n\n", "Rewrite: sin(2x)^2+cos(2x)^2", trig_rewrite_checker("= 1")),
-            ("4\n1-cos(2*(x+1))\nsin(x+1)^2\ncos(x+1)^2\n\n", "Rewrite: 1-cos(2(x+1))", trig_rewrite_checker("2*sin(1+x)^2")),
+            ("4\n1-cos(2*(x+1))\nsin(x+1)^2\ncos(x+1)^2\n\n", "Rewrite: 1-cos(2(x+1))", trig_rewrite_checker("sin(1 + x)^2", "cos(1 + x)^2")),
         ]
 
         rng.shuffle(extreme_cases)
@@ -5621,6 +5687,32 @@ class CASIOApp(App):
                 "integrate_formatting",
             )
 
+            def non_elementary_integral_checker(*tokens):
+                def check(output):
+                    text = normalized_text(output)
+                    return (
+                        shared_is_exam_format(output)
+                        and "+ c" in text
+                        and "out of scope" not in text
+                        and "no standard exam-method antiderivative found" not in text
+                        and all(token.lower() in text for token in tokens)
+                    )
+
+                check.__name__ = "non_elementary_integral_checker"
+                return check
+
+            non_elementary_cases = [
+                ("1\nexp(x^2)\n1\n", "Regression: ∫e^(x²) uses erfi notation", ("erfi", "non-elementary")),
+                ("1\nsin(x)/x\n1\n", "Regression: ∫sin(x)/x uses Si notation", ("si(x)", "series")),
+                ("1\n1/log(x)\n1\n", "Regression: ∫1/ln(x) uses logarithmic integral", ("li(x)", "logarithmic integral")),
+                ("1\nsin(x^2)\n1\n", "Regression: ∫sin(x²) uses Fresnel notation", ("fresnel", "series")),
+                ("1\n1/sqrt(1-x^4)\n1\n", "Regression: elliptic integral fallback is worked", ("elliptic", "series")),
+            ]
+            for inp, label, tokens in non_elementary_cases:
+                out, _ = self.run_cli("intProgram.py", inp)
+                checker = non_elementary_integral_checker(*tokens)
+                self.add_test(label, checker(out), out, p, inp, "worked non-elementary antiderivative explanation", "integrate_auto")
+
         # Substitution tests
         subs = [
             ("1\n(3*x^2+1)/(x^3+x+7)\n4\nx^3+x+7\n", "x^3+x+7", "Sub: ∫(3x²+1)/(x³+x+7) dx"),
@@ -5799,6 +5891,41 @@ class CASIOApp(App):
                     "t = 10*sqrt(5)/7 using t = s/u",
                     "suvat_cli_t",
                 )
+
+                edge_cli_cases = [
+                    (
+                        "\n12\n,\n0\n5\n",
+                        "v",
+                        "12",
+                        "CLI SUVAT a=0: velocity remains constant",
+                        "v = u + at",
+                    ),
+                    (
+                        ",\n5\n\n2\n0\n",
+                        "s",
+                        "0",
+                        "CLI SUVAT t=0: displacement is zero",
+                        "s = ut + 1/2at^2",
+                    ),
+                    (
+                        "\n10\n0\n-2\n,\n",
+                        "t",
+                        "5",
+                        "CLI SUVAT v=0: comes to rest",
+                        "t = (v-u)/a",
+                    ),
+                    (
+                        ",\n0\n\n4\n5\n",
+                        "s",
+                        "50",
+                        "CLI SUVAT u=0: starts from rest",
+                        "s = ut + 1/2at^2",
+                    ),
+                ]
+                for inp, target, expected, label, method_token in edge_cli_cases:
+                    out, _ = self.run_cli("SUVATprogram.py", inp)
+                    passed = suvat_cli_checker(target, expected)(out) and method_token.lower() in normalized_text(out)
+                    self.add_test(label, passed, out, p, inp, f"{target} = {expected} with {method_token}", f"suvat_cli_{target}")
 
                 def suvat_symbolic_checker(target, *tokens):
                     def check(output):

@@ -1,3 +1,26 @@
+def numbered_steps(lines):
+    out = []
+    i = 0
+    while i < len(lines):
+        line = str(lines[i]).strip()
+        if line:
+            out.append(str(len(out) + 1) + ". " + line)
+        i += 1
+    return out
+
+
+def format_exam_working(method, steps, answer=None):
+    lines = ["Method: " + str(method).strip()]
+    lines.extend(numbered_steps(steps or []))
+    if answer is not None and str(answer).strip():
+        text = str(answer).strip()
+        if text.lower().startswith("answer:"):
+            lines.append(text)
+        else:
+            lines.append("Answer: " + text)
+    return lines
+
+
 def format_equation_human_readable(node, parent=0):
     kind = node[0]
     
