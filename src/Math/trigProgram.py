@@ -79,6 +79,11 @@ MICROPYTHON_RUNTIME = (
     and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 )
 
+# Parser limits
+MAX_NESTING_DEPTH = 200
+MAX_INPUT_LENGTH = 10000
+MAX_TOKEN_COUNT = 2000
+
 DESKTOP_CACHE_LIMIT_SMALL = 2048
 DESKTOP_CACHE_LIMIT_MEDIUM = 4096
 DESKTOP_CACHE_LIMIT_LARGE = 8192
@@ -1516,6 +1521,10 @@ def is_num_token_start(text, i):
 def parse(text):
     # Keep tokenization deliberately small and calculator-friendly:
     # no imports, no eval, and accept both ** and ^ for powers.
+    if not text:
+        return None
+    if len(text) > MAX_INPUT_LENGTH:
+        raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []
     i = 0
     while i < len(text):
@@ -1680,10 +1689,13 @@ def parse(text):
                 out = add([out, neg(term())])
         return out
 
-    out = expr()
-    if p != len(toks):
-        raise ValueError("Unexpected token: " + repr(cur()))
-    return sim(out)
+    try:
+        out = expr()
+        if p != len(toks):
+            raise ValueError("Unexpected token: " + repr(cur()))
+        return sim(out)
+    except RecursionError:
+        raise ValueError("Expression too nested (simplify before solving).")
 
 
 def outer_parens_wrap_all_text(text):

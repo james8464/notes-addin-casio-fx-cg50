@@ -43,6 +43,13 @@ CACHE_LIMIT_LARGE = DESKTOP_CACHE_LIMIT_LARGE
 LOW_MEMORY_RUNTIME = False
 
 # ============================================================================
+# Parser Limits (for crash prevention)
+# ============================================================================
+MAX_NESTING_DEPTH = 200
+MAX_INPUT_LENGTH = 10000
+MAX_TOKEN_COUNT = 2000
+
+# ============================================================================
 # Cache Dictionaries for Performance
 # ============================================================================
 SIG_CACHE = {}
@@ -3648,6 +3655,10 @@ FUNC_ALIASES = {'csc': 'cosec', 'arcsin': 'asin', 'arccos': 'acos', 'arctan': 'a
 
 
 def parse(text):
+    if not text:
+        return None
+    if len(text) > MAX_INPUT_LENGTH:
+        raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []
     i = 0
     while i < len(text):
@@ -3690,7 +3701,11 @@ def parse(text):
         else:
             raise ValueError('Unexpected character: ' + ch)
 
+    if len(toks) > MAX_TOKEN_COUNT:
+        raise ValueError('Expression too complex (max ' + str(MAX_TOKEN_COUNT) + ' tokens).')
+
     p = 0
+    _depth = 0
 
     def cur():
         if p >= len(toks):
@@ -3722,12 +3737,16 @@ def parse(text):
         return True
 
     def atom():
-        nonlocal p
+        nonlocal p, _depth
         t = cur()
         if t == '(':
+            if _depth > MAX_NESTING_DEPTH:
+                raise ValueError('Expression too nested (max ' + str(MAX_NESTING_DEPTH) + ' levels).')
+            _depth += 1
             eat('(')
             out = expr()
             eat(')')
+            _depth -= 1
             return out
         if t and (is_digit_char(t[0]) or t[0] == '.'):
             p += 1
@@ -3844,10 +3863,13 @@ def parse(text):
                 out = add([out, neg(term())])
         return out
 
-    out = expr()
-    if cur():
-        raise ValueError('Unexpected token: ' + cur())
-    return sim(out)
+    try:
+        out = expr()
+        if cur():
+            raise ValueError('Unexpected token: ' + cur())
+        return sim(out)
+    except RecursionError:
+        raise ValueError('Expression too nested (simplify before solving).')
 
 
 def numeric_eval(node, env=None):

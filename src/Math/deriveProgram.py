@@ -51,6 +51,11 @@ FUNC_ALIASES = {
     "arctan": "atan"
 }
 
+# Parser limits
+MAX_NESTING_DEPTH = 200
+MAX_INPUT_LENGTH = 10000
+MAX_TOKEN_COUNT = 2000
+
 SKIP_AUTORUN = sys is not None and getattr(sys, "_derive_no_autorun", False)
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 LOW_MEMORY_RUNTIME = False
@@ -1331,6 +1336,10 @@ def normalize_explicit_var(name):
 
 
 def parse(text):
+    if not text:
+        return None
+    if len(text) > MAX_INPUT_LENGTH:
+        raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []
     i = 0
     while i < len(text):
@@ -1491,10 +1500,13 @@ def parse(text):
                 out = add([out, neg(term())])
         return out
 
-    out = expr()
-    if cur():
-        raise ValueError("Unexpected token: " + cur())
-    return sim(out)
+    try:
+        out = expr()
+        if cur():
+            raise ValueError("Unexpected token: " + cur())
+        return sim(out)
+    except RecursionError:
+        raise ValueError("Expression too nested (simplify before solving).")
 
 
 def parse_normal_input(text):

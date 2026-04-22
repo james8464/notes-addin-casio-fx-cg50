@@ -116,6 +116,11 @@ MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
 
+# Parser limits
+MAX_NESTING_DEPTH = 200
+MAX_INPUT_LENGTH = 10000
+MAX_TOKEN_COUNT = 2000
+
 EXPAND_PASS_LIMIT = 4
 TRIG_REWRITE_LIMIT = 4
 _CACHE_MISS = object()
@@ -1953,6 +1958,10 @@ def is_num_token_start(text, i):
 
 
 def parse(text):
+    if not text:
+        return None
+    if len(text) > MAX_INPUT_LENGTH:
+        raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     C = text
     G = []
     A = 0
@@ -2125,10 +2134,13 @@ def parse(text):
                 D('-')
                 A = add([A, neg(K())])
         return A
-    Q = L()
-    if I != len(G):
-        raise ValueError('Unexpected token: ' + repr(F()))
-    return sim(Q)
+    try:
+        Q = L()
+        if I != len(G):
+            raise ValueError('Unexpected token: ' + repr(F()))
+        return sim(Q)
+    except RecursionError:
+        raise ValueError('Expression too nested (simplify before solving).')
 
 
 def is_supported_explicit_var(name):

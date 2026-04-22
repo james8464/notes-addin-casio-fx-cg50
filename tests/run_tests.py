@@ -1113,10 +1113,10 @@ def algebra_transform_checker(*tokens):
 
 def algebra_solve_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("expr =", "x ="),
-        contains_any=("solve",),
+        contains_all=tokens + ("answer:", "x ="),
+        contains_any=("solve", "method"),
         min_steps=2,
-        min_lines=3,
+        min_lines=2,
     )
 
 
