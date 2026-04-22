@@ -2295,7 +2295,7 @@ def cancellation_requested():
 def integral_candidate_score(title, ans, lines):
     if ans is None:
         return 10**9
-    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6}.get(title, 7)
+    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6, 'Polynomial × Quadratic Exponential': 2}.get(title, 7)
     return (len(pretty(ans)), len(lines or []), title_score)
 
 
@@ -4054,6 +4054,98 @@ def linear_outer_function_factor(node, var):
     return None
 
 
+def quadratic_exp_factor(node, var):
+    A = sim(node)
+    if A[0] == 'mul':
+        poly_part = None
+        exp_part = None
+        for factor in A[1]:
+            if factor[0] == 'fn' and factor[1] == 'exp':
+                exp_inner = factor[2]
+                if quadratic_info(exp_inner, var):
+                    exp_part = factor
+            elif factor[0] == 'pow' and same(factor[1], E):
+                exp_inner = factor[2]
+                if quadratic_info(exp_inner, var):
+                    exp_part = factor
+            else:
+                poly_check = poly_num(factor, var)
+                if poly_check is not None:
+                    poly_part = factor
+        if poly_part is not None and exp_part is not None:
+            exp_inner = exp_part[2] if exp_part[0] == 'fn' else exp_part[2]
+            qinfo = quadratic_info(exp_inner, var)
+            if qinfo:
+                return poly_part, exp_part, qinfo
+    return None
+
+
+def quadratic_info(node, var):
+    A = node
+    if A[0] == 'mul' and len(A[1]) == 2:
+        coef = None
+        power_term = None
+        for B in A[1]:
+            if B[0] == 'num':
+                coef = B[1]
+            elif B[0] == 'pow' and same(B[1], sym(var)):
+                if B[2][0] == 'num' and B[2][1] == 2:
+                    power_term = B[1]
+        if power_term is not None:
+            c = coef if coef is not None else 1
+            return c, power_term
+    if A[0] == 'pow' and same(A[1], sym(var)):
+        if A[2][0] == 'num' and A[2][1] == 2:
+            return 1, sym(var)
+    if A[0] == 'num' or (A[0] == 'mul' and all(B[0] == 'num' for B in A[1])):
+        return 0, None
+    return None
+
+
+def integrate_poly_quadratic_exp(node, var):
+    result = quadratic_exp_factor(node, var)
+    if result is None:
+        return None, None
+    poly_part, exp_part, qinfo = result
+    a, x_sym = qinfo
+    if a == 0:
+        return None, None
+    
+    poly_coeffs = poly_num(poly_part, var)
+    if poly_coeffs is None:
+        return None, None
+    
+    exp_expr = exp_part[2] if exp_part[0] == 'fn' else exp_part[2]
+    max_degree = len(poly_coeffs) - 1
+    
+    terms = []
+    current_poly = poly_part
+    factorial = 1
+    power = 1
+    
+    for n in range(max_degree + 1):
+        deriv = current_poly
+        for _ in range(n):
+            deriv = diff(deriv, var)
+        coeff = divq(num(1), num(power * factorial))
+        term = mul([coeff, deriv])
+        terms.append(term)
+        current_poly = diff(current_poly, var)
+        factorial *= (n + 1)
+        power *= a
+    
+    result_expr = mul([fn('exp', exp_expr), add(terms)])
+    
+    lines = [
+        'Use the pattern for ∫P(x)e^(ax²)dx.',
+        'For polynomial P(x) multiplied by e^(ax²),',
+        '∫P(x)e^(ax²)dx = e^(ax²) × Σ (dⁿP/dxⁿ)/(aⁿn!).',
+        '= ' + pretty(result_expr) + ' + C'
+    ]
+    
+    return result_expr, lines
+
+
 def split_poly_outer_product(node, var, names):
     P, A = split_numeric_term(node)
     A = sim(A)
@@ -4734,6 +4826,8 @@ def integrate_trig(node, var, allow_steps=True):
         A, I = integrate_division(B, C, True)
         if A is None:
             A, I = integrate_partial(B, C)
+            if A is None:
+                A, I = integrate_substitution(B, C, None)
     if A is None:
         return None, None
     if E:
@@ -5559,6 +5653,13 @@ def auto_route_parts(node, var, depth):
     return None, None, None
 
 
+def auto_route_poly_quad_exp(node, var, depth):
+    A, B = integrate_poly_quadratic_exp(node, var)
+    if A is not None:
+        return 'poly_quad_exp', A, B
+    return None, None, None
+
+
 def auto_integral_routes(rational, allow_termwise):
     A = []
     A.extend([auto_route_standard, auto_route_reverse, auto_route_trig])
@@ -5569,6 +5670,7 @@ def auto_integral_routes(rational, allow_termwise):
     A.extend([auto_route_substitution, auto_route_parts])
     if not rational:
         A.append(auto_route_division)
+    A.append(auto_route_poly_quad_exp)
     return A
 
 
@@ -6714,6 +6816,23 @@ def _solve_with_method(node, var, method, forced_u=None):
     C = sim(node)
     if F is not None:
         F = sim(F)
+    if E == '1':
+        G, A, B = integrate_auto(C, D, 0, True, True)
+        if A is None:
+            return 'Automatic integration', A, B
+        if G == 'direct':
+            return finish_integral_solve(standard_title(C, D), A, B)
+        if G == 'reverse':
+            return finish_integral_solve('Reverse chain rule', A, B)
+        if G == 'trig':
+            return finish_integral_solve('Using trigonometric identities', A, B)
+        if G == 'sub':
+            return finish_integral_solve('Integration by substitution', A, B)
+        if G == 'parts':
+            return finish_integral_solve('Integration by parts', A, B)
+        if G == 'poly_quad_exp':
+            return finish_integral_solve('Polynomial × Quadratic Exponential', A, B)
+        return finish_integral_solve('Partial fractions', A, B)
     if E == '2':
         A, B = integrate_standard(C, D)
         return finish_integral_solve(standard_title(C, D), A, B)
@@ -6738,20 +6857,7 @@ def _solve_with_method(node, var, method, forced_u=None):
     if E == '7':
         A, B = integrate_division(C, D, True)
         return finish_integral_solve('Polynomial division', A, B)
-    G, A, B = integrate_auto(C, D, 0, True, True)
-    if A is None:
-        return 'Automatic integration', A, B
-    if G == 'direct':
-        return finish_integral_solve(standard_title(C, D), A, B)
-    if G == 'reverse':
-        return finish_integral_solve('Reverse chain rule', A, B)
-    if G == 'trig':
-        return finish_integral_solve('Using trigonometric identities', A, B)
-    if G == 'sub':
-        return finish_integral_solve('Integration by substitution', A, B)
-    if G == 'parts':
-        return finish_integral_solve('Integration by parts', A, B)
-    return finish_integral_solve('Partial fractions', A, B)
+    return 'Unknown method', None, None
 
 
 def solve(node, var, method, forced_u=None):
@@ -6820,6 +6926,11 @@ def ensure_working_lines(node, var, title, ans, lines):
     if title == 'Polynomial division':
         return [
             'Divide the numerator by the denominator first.',
+            'So I = ' + pretty(ans) + ' + C',
+        ]
+    if title == 'Polynomial × Quadratic Exponential':
+        return [
+            'Use the repeated differentiation pattern for P(x)e^(ax²).',
             'So I = ' + pretty(ans) + ' + C',
         ]
     return ['So I = ' + pretty(ans) + ' + C']
