@@ -16,6 +16,7 @@ An algebra manipulation program for the CASIO fx-cg50 calculator (MicroPython v1
 | 8 | `inv` | Inverse | Finds inverse functions for supported one-to-one families |
 | 9 | `rw` | Rewrite | Rewrites an expression using only the user-supplied target terms |
 | 10 | `dom/rng` | Domain & Range | Determines domain restrictions and range for expressions |
+| 11 | `cart` | Cartesian | Converts parametric equations to Cartesian form |
 
 ## Input syntax
 
@@ -339,6 +340,30 @@ Method: Determine Range
 Input = x^2
 Quadratic opens upward.
 Range: y >= minimum value
+```
+
+## Mode 11: Cartesian from parametric (`cart`)
+
+Converts parametric equations x(t), y(t) to Cartesian form by eliminating the parameter.
+
+### Example
+
+```text
+M: 11
+x(t): t^2
+y(t): 2*t+1
+Param: t
+```
+
+Output:
+
+```text
+Method: Eliminate parameter
+x = t^2
+y = 2*t+1
+t = (y-1)/2
+Substitute: x = ((y-1)/2)^2
+Answer: 4*x = (y-1)^2
 ```
 
 ## Error handling

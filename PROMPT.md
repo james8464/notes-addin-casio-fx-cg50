@@ -996,3 +996,372 @@ Answer: [result]
 9. ✅ All README files updated
 10. ✅ AGENTS.md updated
 11. ✅ Graph rebuilt after changes
+
+---
+
+## PART 11: CODE ORGANIZATION & STRUCTURE
+
+### 11.1: Consolidate Shared Helpers
+
+**Location:** `src/Math/shared_helpers.py` (create if not exists)
+
+**Purpose:** All programs share utility functions. Consolidate to avoid duplication.
+
+**Required Functions:**
+```python
+def same(a, b):  # structural equality check
+def sim(node):    # simplify node
+def show(node):   # format for display
+def parse(text):  # parse input text
+def depends_on(node, var):  # check variable dependency
+def is_one(node):  # check if equals 1
+def is_zero(node): # check if equals 0
+def num(n):       # create number node
+def sym(name):    # create symbol node
+def mul(nodes):   # create multiplication
+def add(nodes):   # create addition
+def power(a, b):  # create power
+def div(a, b):    # create division
+def sub(a, b):    # create subtraction
+```
+
+**Usage in each program:**
+```python
+# At top of each program file
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[0]))
+try:
+    from shared_helpers import (
+        same, sim, show, parse, depends_on,
+        is_one, is_zero, num, sym, mul, add, power, div, sub
+    )
+except ImportError:
+    # Inline fallbacks if import fails
+    from helpers import same, sim, show, parse, depends_on, ...
+```
+
+### 11.2: Standardize Function Signatures
+
+**Pattern for all mode functions:**
+```python
+def mode_TEXT(some_input):
+    """
+    Brief description of what this mode does.
+
+    Args:
+        some_input: Description of input
+
+    Returns:
+        List of output lines (strings)
+    """
+    lines = []
+    # Implementation
+    return compact_duplicate_lines(lines)
+```
+
+**Pattern for CLI main:**
+```python
+def main():
+    try:
+        mode = paged_menu_input('M', [
+            ('1', 'label'),
+            ('2', 'label'),
+        ], '1')
+        begin_user_action()
+        if mode == '1':
+            # Get inputs
+            lines = mode_1_text(input_text)
+            print_lines(lines)
+        elif mode == '2':
+            # ...
+    except Exception as err:
+        print('Err: ' + str(err))
+```
+
+### 11.3: Remove Dead Code
+
+**Before each release, search for:**
+- Unused functions (grep for `def <name>` with no calls)
+- Duplicate implementations (same function in multiple files)
+- Commented-out code blocks
+- Old section headers like `# === SECTION ===`
+
+**Command to find dead code:**
+```bash
+# Find functions defined but not called elsewhere
+for func in $(grep -h "^def " src/Math/*.py | sed 's/def \([a-z_]*\).*/\1/'); do
+    count=$(grep -r "$func(" src/Math/*.py | grep -v "def $func" | wc -l)
+    if [ $count -eq 0 ]; then
+        echo "UNUSED: $func"
+    fi
+done
+```
+
+---
+
+## PART 12: MICROPYTHON v1.9.4 COMPATIBILITY
+
+### 12.1: F-String Prohibition
+
+**All string formatting must use % or .format(), NEVER f-strings:**
+
+```python
+# WRONG (Python 3.6+ only)
+result = f"x = {value}"
+lines.append(f"Term {i}: {term}")
+
+# CORRECT (MicroPython compatible)
+result = "x = %s" % value
+lines.append("Term %d: %s" % (i, term))
+# OR
+result = "x = {}".format(value)
+lines.append("Term {}: {}".format(i, term))
+```
+
+### 12.2: Type Checking
+
+**Use TYPE_CHECK for isinstance:**
+
+```python
+# WRONG
+if type(x) == int:
+
+# CORRECT
+if isinstance(x, int):
+```
+
+### 12.3: No Walrus Operator
+
+```python
+# WRONG
+if (x := compute()):
+    pass
+
+# CORRECT
+x = compute()
+if x:
+    pass
+```
+
+### 12.4: No Positional-Only Arguments
+
+```python
+# WRONG
+def func(a, /, b):
+    pass
+
+# CORRECT
+def func(a, b):
+    pass
+```
+
+### 12.5: No match/case
+
+```python
+# WRONG
+match value:
+    case 1:
+        pass
+    case _:
+        pass
+
+# CORRECT
+if value == 1:
+    pass
+else:
+    pass
+```
+
+---
+
+## PART 13: COMMENTING STANDARDS
+
+### 13.1: Required Header Block
+
+**Every file must have:**
+```python
+"""
+File: algebraProgram.py
+Purpose: Symbolic algebra manipulation for CASIO fx-cg50
+Author: [name]
+Date: 2024
+MicroPython: v1.9.4 compatible
+"""
+
+import sys
+import math
+from pathlib import Path
+# ... other imports
+```
+
+### 13.2: Function Docstrings
+
+**All exported functions:**
+```python
+def parse(text):
+    """
+    Parse input text into expression tree.
+
+    Args:
+        text (str): Input expression like "x^2 + 3*x"
+
+    Returns:
+        tuple: Expression tree node
+
+    Examples:
+        >>> parse("x")
+        ('sym', 'x')
+        >>> parse("1")
+        ('num', 1, 1)
+    """
+    # Implementation
+```
+
+### 13.3: Inline Comments Rules
+
+**When to add comments:**
+- Non-obvious algorithm steps
+- Mathematical transformations
+- Edge case handling
+- MicroPython compatibility workarounds
+
+**When NOT to add comments:**
+- Obvious code (self-explanatory)
+- Section dividers
+- TODO placeholders (use actual TODO markers)
+
+```python
+# Good comment
+result = sim(div(numerator, a))  # Use div for exact rational division
+
+# Bad comment
+result = sim(div(numerator, a))  # Divide numerator by a
+```
+
+---
+
+## PART 14: OUTPUT OPTIMIZATION RULES
+
+### 14.1: Compactness Hierarchy
+
+**Integration Output (MAX 4 lines):**
+```
+Method: [short name]
+Use: [key formula or substitution]
+= [working]
+Answer: [final result]
+```
+
+**Differentiation Output (MAX 3 lines):**
+```
+Method: [rule used]
+= [simplified result]
+Answer: [final result]
+```
+
+**Algebra Solve Output (MAX 4 lines):**
+```
+Expr = [factored form]
+[method used]
+Answer: x = [solutions]
+```
+
+### 14.2: Skip Redundant Lines
+
+**Skip when:**
+- Constant factor = 1 (binomial expansion)
+- Already in target form (transform)
+- Single-step solution (simple cases)
+- Duplicate method + answer lines
+
+### 14.3: Reasoning Markers
+
+**Required in working steps:**
+- "Method:" or "Using:" - what rule/method
+- "Let:" - variable substitution
+- "Use:" - identity or formula
+- "Answer:" or "=" - final step
+
+---
+
+## PART 15: TESTING PROTOCOL
+
+### 15.1: Per-Feature Testing
+
+**After changing ANY mode:**
+```bash
+# Test all modes for regressions
+python3 tests/run_tests.py /run random 50
+
+# Test specific mode
+python3 tests/run_tests.py /filter algebra
+python3 tests/run_tests.py /run random 100 --workers 8
+```
+
+### 15.2: MadAsMaths I.Y.G.B. Validation
+
+**Run sample questions:**
+```bash
+python3 tests/test_madasmaths.py
+```
+
+**All 38 core questions must pass.**
+
+### 15.3: Consistency Testing
+
+**Run same seed 3 times:**
+```bash
+# Seed fixed for reproducibility
+python3 tests/run_tests.py /run random 9999 --workers 24
+python3 tests/run_tests.py /run random 9999 --workers 24
+python3 tests/run_tests.py /run random 9999 --workers 24
+```
+
+---
+
+## PART 16: FUTURE FEATURE PRIORITIES
+
+### High Priority (Next Sprint)
+
+1. **Simultaneous equations** - 2 equations, 2 unknowns
+2. **Parametric differentiation** - Already working, verify edge cases
+3. **3D vector operations** - Basic dot/cross product
+4. **Complex numbers** - Basic operations
+
+### Medium Priority
+
+5. **Partial differentiation** - f(x,y) with respect to one variable
+6. **Multiple integrals** - Double integral areas
+7. **Series convergence** - Ratio/root/comparison tests
+8. **Matrix operations** - 2x2 determinant, inverse
+
+### Low Priority (Nice to Have)
+
+9. **Polynomial long division**
+10. **Binomial coefficient expansion** - Negative/fractional n
+11. **Second-order DE** - ay'' + by' + cy = 0
+12. **Probability distributions** - Normal, binomial probabilities
+
+---
+
+## APPENDIX: FILE CHECKLIST
+
+### Before Any Commit
+
+- [ ] Run `random 100` tests - 100% pass
+- [ ] Run `random 500` tests - 100% pass
+- [ ] Test specific changed mode manually
+- [ ] Check no f-strings introduced
+- [ ] Check no unused imports
+- [ ] Verify MicroPython syntax
+- [ ] Update PROMPT.md if adding features
+- [ ] Update corresponding README.md
+- [ ] Rebuild graphify if changing structure
+
+### Before Release
+
+- [ ] Run `random 9999` three times - 100% all runs
+- [ ] Verify all MadAsMaths questions pass
+- [ ] Test on actual CASIO device (if possible)
+- [ ] Final README review
+- [ ] Archive old prompts

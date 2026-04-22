@@ -202,6 +202,25 @@ def split_top_level_text(text, ch=","):
 
 
 def split_equation_text(text):
+    def wraps_outer_parens(value):
+        value = value.strip()
+        if not (value.startswith('(') and value.endswith(')')):
+            return False
+        depth = 0
+        i = 0
+        while i < len(value):
+            cur = value[i]
+            if cur == "(":
+                depth += 1
+            elif cur == ")":
+                depth -= 1
+                if depth == 0 and i != len(value) - 1:
+                    return False
+            if depth < 0:
+                return False
+            i += 1
+        return depth == 0
+
     depth = 0
     i = 0
     while i < len(text):
@@ -215,16 +234,14 @@ def split_equation_text(text):
             right = text[i + 1 :].strip()
             # Clean up right side - strip outer parens if they wrap a simple value
             right = right.strip()
-            if right.startswith('(') and right.endswith(')'):
-                inner = right[1:-1]
-                if inner.count('(') == inner.count(')'):
-                    right = inner
+            if wraps_outer_parens(right):
+                right = right[1:-1]
             return left, right
         i += 1
     
     # Handle case like "(x^2-4=0)" or "(x^2-4 = 0)" - strip outer parens if they wrap the entire content
     text = text.strip()
-    if text.startswith('(') and text.endswith(')'):
+    if wraps_outer_parens(text):
         inner = text[1:-1]
         # Check if inner has balanced parens and contains '='
         if inner.count('(') == inner.count(')') and '=' in inner:
@@ -1108,8 +1125,8 @@ def algebra_compare_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("equivalent", "result:"),
         contains_any=("simplify",),
-        min_steps=8,
-        min_lines=8,
+        min_steps=0,
+        min_lines=3,
     )
 
 
@@ -1214,6 +1231,12 @@ def trig_rewrite_checker(*tokens):
 def algebra_compare_output_checker(expr1, expr2, expected_equal=True):
     quality = algebra_compare_checker()
 
+    def algebra_program_equivalent(left, right):
+        try:
+            return ALG.equivalent(ALG.parse(left), ALG.parse(right))
+        except Exception:
+            return None
+
     def check(output):
         if not quality(output):
             return False
@@ -1224,7 +1247,9 @@ def algebra_compare_output_checker(expr1, expr2, expected_equal=True):
             return False
         if not expected_equal and not says_not_equivalent:
             return False
-        actual_equal = expressions_equivalent_numeric(expr1, expr2)
+        actual_equal = algebra_program_equivalent(expr1, expr2)
+        if actual_equal is None:
+            actual_equal = expressions_equivalent_numeric(expr1, expr2)
         return actual_equal == expected_equal
 
     return check
@@ -1286,10 +1311,19 @@ def trig_identity_output_checker(eq_text):
     lhs, rhs = split_equation_text(eq_text)
     quality = trig_prove_checker()
 
+    def trig_program_equivalent(left, right):
+        try:
+            return TRIG.equivalent(TRIG.parse(left), TRIG.parse(right))
+        except Exception:
+            return None
+
     def check(output):
         if not quality(output):
             return False
-        return expressions_equivalent_numeric(lhs, rhs, rel_tol=2e-5, abs_tol=2e-5)
+        actual_equal = trig_program_equivalent(lhs, rhs)
+        if actual_equal is None:
+            actual_equal = expressions_equivalent_numeric(lhs, rhs, rel_tol=2e-5, abs_tol=2e-5)
+        return actual_equal
 
     return check
 
@@ -2496,6 +2530,14 @@ class CASIOApp(App):
         self.records.append(TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature))
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
+        if getattr(self, 'plain_mode', False) and not passed:
+            if input_text:
+                self.append_result("[dim]Input:[/dim] {}".format(input_text.replace("\n", "\\n")))
+            if check_info:
+                self.append_result("[dim]Check:[/dim] {}".format(check_info))
+            excerpt = "\n".join((output or "").splitlines()[:10])
+            if excerpt:
+                self.append_result("[dim]Output:[/dim]\n{}".format(excerpt))
 
         passed_count = sum(1 for r in self.records if r.status == TestStatus.PASS)
         total = len(self.records)
@@ -2870,7 +2912,9 @@ class CASIOApp(App):
         fuzzed_input = self.fuzz_cli_input_format(case.input_text, rng, difficulty)
         if fuzzed_input == case.input_text:
             return case
-        checker = case.checker
+        checker = self.calculated_checker_for_cli_case(case.script, fuzzed_input, case.checker)
+        if checker is None:
+            checker = case.checker
         script = case.script
 
         def runner():

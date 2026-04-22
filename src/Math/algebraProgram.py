@@ -870,7 +870,13 @@ def generalized_binomial_expand_text(expr, max_terms=None):
     u = sim(div(dependent, constant))
     prefactor = sim(expand_pow_sqrt(power(constant, exponent)))
     limit = max_terms if max_terms is not None and max_terms > 0 else 4
-    lines = ['Binomial expansion', 'Factor out ' + show(constant) + ': ' + show(expr) + ' = ' + show(prefactor) + '*(1 + ' + show(u) + ')^' + show(exponent)]
+    original_expr = show(expr)
+    if is_one(constant):
+        lines = ['Binomial expansion']
+    elif is_one(prefactor):
+        lines = ['Binomial expansion', 'Factor out ' + show(constant) + ': ' + original_expr + ' = (1 + ' + show(u) + ')^' + show(exponent)]
+    else:
+        lines = ['Binomial expansion', 'Factor out ' + show(constant) + ': ' + original_expr + ' = ' + show(prefactor) + '*(1 + ' + show(u) + ')^' + show(exponent)]
     expanded_terms = []
     k = 0
     while k < limit:
@@ -2917,14 +2923,12 @@ def raw_even_log_power_inverse(node, var_name):
 
 
 def solve_inverse_core(lhs_expr, rhs_node, steps):
+    steps.append("Method: Solve for x in y = f(x)")
     linear = match_linear_in_var(rhs_node, 'y')
     if linear is not None:
         a, b = linear
-        numerator = sim(sub(lhs_expr, b))
-        inv = sim(div(numerator, a))
-        if not is_zero(b):
-            steps.append(show(numerator) + " = " + show(mul([a, sym('y')])))
-        steps.append("y = " + show(inv))
+        inv = sim(div(sim(sub(lhs_expr, b)), a))
+        steps.append("f^-1(x) = " + show(inv))
         return inv
 
     reciprocal = match_reciprocal_in_var(rhs_node, 'y')
@@ -3122,29 +3126,33 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
 def inverse_function(f_text, var='x'):
     try:
         if text_has_even_log_power(f_text):
-            lines = ["Method: Solve for x in y = f(x)", "y = " + ''.join(f_text.split()), "No inverse on all real x"]
+            lines = ["Method: Find inverse function", "f(x) = " + f_text.strip(), "y = " + f_text.strip(), "Answer: No inverse on all real x"]
             return None, ensure_reasoning_marker(lines)
         raw_f = normalise_negative_power_div(parse(f_text))
         raw_y = substitute_keep_form(raw_f, sym(var), sym('y'))
         if raw_even_log_power_inverse(raw_y, 'y'):
             shown = show(sim(raw_f))
             shown_y = show(raw_y)
-            lines = ["Method: Solve for x in y = f(x)", "y = " + shown, "x = " + shown_y, "No inverse on all real x"]
+            lines = ["Method: Find inverse function", "f(x) = " + shown, "y = " + shown_y, "Answer: No inverse on all real x"]
             return None, ensure_reasoning_marker(lines)
         f = normalise_negative_power_div(sim(raw_f))
-        steps = ["Method: Solve for x in y = f(x)"]
+        shown_f = show(f)
+        steps = ["Method: Find inverse function", "f(x) = " + shown_f]
         if not depends_on(f, var):
-            steps.append("y = " + show(f))
-            steps.append("x = " + show(f))
-            steps.append("Constant function")
-            steps.append("No inverse on all real x")
+            steps.append("y = " + shown_f)
+            steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
         f_y = substitute(f, sym(var), sym('y'))
-        steps.append("y = " + show(f))
-        steps.append("x = " + show(f_y))
+        if not depends_on(f_y, 'y'):
+            steps.append("y = " + show(f_y))
+            steps.append("Answer: No inverse on all real x - constant function")
+            return None, ensure_reasoning_marker(steps)
+        steps.append("y = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
-            steps.append("f^-1(x) = " + show(inv))
+            if len(steps) == 0 or not steps[-1].startswith("f^-1"):
+                steps.append("f^-1(x) = " + show(inv))
+            steps.append("Answer: f^-1(x) = " + show(inv))
             return show(inv), ensure_reasoning_marker(steps)
 
         dependent, shift = split_outer_shift(f_y, 'y')
@@ -4931,7 +4939,7 @@ def rearrange_to_target(source, target_template):
     target = sim(target_template)
     source_canon = canonical_compare_form(current)
     if not same(current, source_canon):
-        steps.append((1, 'Simplify source using identities: ' + show(source_canon), source_canon))
+        steps.append((1, 'Simplify source: ' + show(source_canon), source_canon))
         current = source_canon
     fitted = solve_fraction_target_coefficients(current, target)
     if fitted is None:
@@ -4945,11 +4953,10 @@ def rearrange_to_target(source, target_template):
             parts.append(names[i] + ' = ' + show(coeffs[names[i]]))
             i += 1
         if len(parts) > 0:
-            steps.append((len(steps) + 1, 'Match coefficients: ' + ', '.join(parts), target))
-            steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(target), target))
+            steps.append((len(steps) + 1, 'Match ' + ', '.join(parts), target))
             return steps, target
     if same(current, target):
-        steps.append((len(steps) + 1, 'Already in target form.', target))
+        steps.append((len(steps) + 1, 'In target form.', target))
         return steps, target
     route_steps = target_route_steps(current, target)
     if route_steps is not None:
@@ -5272,16 +5279,10 @@ def simplify_trig_identity(node):
         items = flat(node, 'add')
         if len(items) == 2:
             def half_angle_arg(expr):
-                coeff, rest = split_coeff(expr)
-                if same(coeff, num(2)):
-                    return rest
-                var_name = choose_primary_var(expr)
-                if var_name is None:
-                    return div(expr, num(2))
-                linear = match_linear_in_var(expr, var_name)
-                if linear is None:
-                    return div(expr, num(2))
-                return sim(div(add([expr, neg(linear[1])]), linear[0]))
+                half = half_angle_expr_for_transform(expr)
+                if half is not None:
+                    return half
+                return sim(div(expr, num(2)))
 
             one_term = None
             trig_term = None
@@ -5310,6 +5311,85 @@ def simplify_trig_identity(node):
             else:
                 coeff_map[key][1] = addq(coeff_map[key][1], coeff)
             i += 1
+
+        def append_coeff_term(out, coeff, rest):
+            if is_zero(coeff):
+                return
+            if is_one(coeff):
+                out.append(rest)
+            elif is_minus_one(coeff):
+                out.append(neg(rest))
+            else:
+                out.append(mul([coeff, rest]))
+
+        def split_trig_square_product(rest):
+            factors = list(flat(rest, 'mul')) if rest[0] == 'mul' else [rest]
+            i_factor = 0
+            while i_factor < len(factors):
+                for name in ('sin', 'cos', 'tan', 'sec', 'cot', 'cosec'):
+                    arg = is_pow_of_fn(factors[i_factor], name, num(2))
+                    if arg is not None:
+                        common = []
+                        j_factor = 0
+                        while j_factor < len(factors):
+                            if j_factor != i_factor:
+                                common.append(factors[j_factor])
+                            j_factor += 1
+                        return name, arg, sim(make_mul(common))
+                i_factor += 1
+            return None
+
+        def replace_product_identity(first_name, second_name, opposite_signs):
+            groups = {}
+            i_group = 0
+            while i_group < len(order):
+                key = order[i_group]
+                rest, coeff = coeff_map[key]
+                info = split_trig_square_product(rest)
+                if info is not None:
+                    name, arg, common = info
+                    if name == first_name or name == second_name:
+                        group_key = (sig(arg), sig(common))
+                        if group_key not in groups:
+                            groups[group_key] = {}
+                        groups[group_key][name] = (key, rest, coeff, common)
+                i_group += 1
+
+            for group_key in groups:
+                pair = groups[group_key]
+                if first_name not in pair or second_name not in pair:
+                    continue
+                first_key, first_rest, first_coeff, common = pair[first_name]
+                second_key, second_rest, second_coeff, _common2 = pair[second_name]
+                if opposite_signs:
+                    if not is_zero(sim(add([first_coeff, second_coeff]))):
+                        continue
+                elif not same(first_coeff, second_coeff):
+                    continue
+
+                out = []
+                j = 0
+                while j < len(order):
+                    key = order[j]
+                    if key == first_key or key == second_key:
+                        j += 1
+                        continue
+                    rest, coeff = coeff_map[key]
+                    append_coeff_term(out, coeff, rest)
+                    j += 1
+                append_coeff_term(out, first_coeff, common)
+                return sim(make_add(out))
+            return None
+
+        replaced = replace_product_identity('sin', 'cos', False)
+        if replaced is not None:
+            return replaced
+        replaced = replace_product_identity('sec', 'tan', True)
+        if replaced is not None:
+            return replaced
+        replaced = replace_product_identity('cosec', 'cot', True)
+        if replaced is not None:
+            return replaced
 
         def coeff_for(rest):
             item = coeff_map.get(sig(rest))
@@ -5447,20 +5527,22 @@ def is_pow_of_fn(node, fn_name, exp):
 
 
 def compare_expressions(expr1, expr2):
+    simple1 = canonical_compare_form(expr1)
+    simple2 = canonical_compare_form(expr2)
     steps = []
     step_num = 1
-    steps.append((step_num, 'Using simplify.', expr1))
-    step_num += 1
-    steps.append((step_num, 'Expr1: ' + show(expr1), expr1))
-    step_num += 1
-    steps.append((step_num, 'Expr2: ' + show(expr2), expr2))
-    step_num += 1
-    simple1 = canonical_compare_form(expr1)
     steps.append((step_num, 'Simplify: ' + show(simple1), simple1))
     step_num += 1
-    simple2 = canonical_compare_form(expr2)
     steps.append((step_num, 'Simplify: ' + show(simple2), simple2))
     step_num += 1
+    if equivalent(expr1, expr2):
+        if equivalent(simple1, simple2):
+            steps.append((step_num, 'Hence expressions are equivalent.', simple1))
+        else:
+            steps.append((step_num, 'Use trig identities before expanding products.', None))
+            step_num += 1
+            steps.append((step_num, 'Hence expressions are equivalent.', simple1))
+        return True, steps
     if equivalent(simple1, simple2):
         steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         return True, steps
@@ -6848,34 +6930,36 @@ def main():
             text2 = input('E2: ').strip()
             expr1 = parse(text1)
             expr2 = parse(text2)
-            print('1. Compare expressions.')
-            s1 = sim(expr1)
-            s2 = sim(expr2)
-            print('2. Simplify both.')
             equal, steps = compare_expressions(expr1, expr2)
             i = 0
             while i < len(steps):
                 num, desc, _ = steps[i]
-                print(str(num + 2) + '. ' + desc)
+                print(str(num) + '. ' + desc)
                 i += 1
             if equal:
-                print(str(len(steps) + 3) + '. Result: Equivalent.')
+                print(str(len(steps) + 1) + '. Result: Equivalent.')
             else:
-                print(str(len(steps) + 3) + '. Result: Not equivalent.')
+                print(str(len(steps) + 1) + '. Result: Not equivalent.')
         elif mode == '2':
             text1 = input('Src: ').strip()
             expr1 = parse(text1)
             text2 = input('Tgt: ').strip()
             expr2 = parse(text2)
-            print('1. Transform: source to target form')
             steps, result = rearrange_to_target(expr1, expr2)
             i = 0
             while i < len(steps):
                 num, desc, _ = steps[i]
-                if not desc.startswith('Answer:'):
-                    print(str(num + 1) + '. ' + desc)
+                print(str(num) + '. ' + desc)
                 i += 1
-            print(str(len(steps) + 2) + '. Answer: ' + show(result))
+            i = 0
+            while i < len(steps):
+                num, desc, _ = steps[i]
+                if desc.startswith('Answer:'):
+                    print(str(num) + '. ' + desc)
+                    break
+                i += 1
+            if i >= len(steps):
+                print(str(len(steps) + 1) + '. Answer: ' + show(result))
         elif mode == '3':
             text1 = input('Expr: ').strip()
             max_terms_str = input('Max: ').strip()
@@ -6938,16 +7022,10 @@ def main():
                 f_text = '2*x+1'
                 print('Use: f=' + f_text)
             result, steps = inverse_function(f_text)
-            if result:
-                i = 0
-                while i < len(steps):
-                    print(str(i+1) + '. ' + steps[i])
-                    i += 1
-            else:
-                i = 0
-                while i < len(steps):
-                    print(str(i+1) + '. ' + steps[i])
-                    i += 1
+            i = 0
+            while i < len(steps):
+                print(str(i+1) + '. ' + steps[i])
+                i += 1
         elif mode == '9':
             text = input('Rw: ').strip()
             terms = []

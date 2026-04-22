@@ -8,6 +8,7 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 |---|---|---|---|
 | 1 | `int` | Integral | Computes indefinite integrals |
 | 2 | `de` | Differential equations | Solves supported first-order differential equations |
+| 3 | `param area` | Parametric area | Computes area under parametric curve ∫y dx |
 
 ## Integration methods (Mode 1)
 
@@ -152,78 +153,26 @@ Output:
 y = 3*e^(x^2)
 ```
 
-## Supported method families
+## Mode 3: Parametric area (`param area`)
 
-### Direct (`dir`)
-- power rule and rational powers
-- `exp(x)` and simple exponential forms
-- **exponential with any base**: `a^x` for any constant `a` (NEW)
-- `1/x`, `1/(a*x+b)`, and log-derivative style cases
-- basic trig integrals such as `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`
-- `sec^2`, `cosec^2`, `sec*tan`, `cosec*cot`
-- `1/(x^2+a^2)` style atan forms
+Computes the area under a parametric curve using ∫y dx = ∫y (dx/dt) dt.
 
-### Trig (`trig`)
-- power reduction such as `sin^2`, `sin^4`, `cos^2`
-- **high-power trig identities**: `sin^6`, `cos^4`, `tan^3`, `tan^4` (NEW)
-- odd trig-power families
-- product-to-sum and same-angle rewrites
-
-### Substitution (`sub`)
-- standard `u` substitution
-- reverse-chain style matches
-- rational/log composite forms
-
-### Parts (`pts`)
-- polynomial × trig / exponential
-- **log powers**: `ln(x)^n` by parts (NEW)
-- inverse-trig and log products in supported cases
-- cyclic exponential-trig forms
-
-### Partial fractions (`pf`)
-- linear factor splits
-- selected linear/quadratic decompositions
-- some higher-value hard-coded rational families
-
-### Division (`div`)
-- polynomial numerator / lower-degree denominator division before integration
-
-## Mode 2: Differential Equations (`de`)
-
-Solves first-order differential equations (separable and linear).
-
-### Example 1: Separable DE
+### Example
 
 ```text
-M: 2
-dy/dx: -k*y**(1/3)
+M: 3
+x(t): t^2
+y(t): 2*t+1
 ```
 
 Output:
 
 ```text
-Separate variables
-Int[-1/(k*y^(1/3))] dy = Int[1] dx
--3*y^(2/3)/(2*k) = x + C
-```
-
-### Example 2: Linear DE
-
-```text
-M: 2
-dy/dx: y + x
-```
-
-Output:
-
-```text
-Rearrange to dy/dx + (-1)*y = x
-Int[-1] dx = -x
-Integrating factor = e^(-x)
-Multiply through by e^(-x)
-d/dx[y*e^(-x)] = x*e^(-x)
-y*e^(-x) = -x*e^(-x) - e^(-x) + C
-So y = -x - 1 + C*e^x
+dx/dt = 2*t
+Int[y dx] = Int[(2*t+1)*2*t] dt
+Method: Int[polynomial in t]
+Use power rule.
+= 4/3*t^3+t^2 + C
 ```
 
 ## Python API
