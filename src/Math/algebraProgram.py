@@ -5637,7 +5637,6 @@ def solve_equation_text(text):
         return lines
     if label == 'No solution':
         lines.append('Solve: no real solution')
-        lines.append('No sol')
         lines.append('Answer: no solution')
         return lines
     if roots is None:
@@ -6893,20 +6892,22 @@ def find_domain_text(text):
     check_restrictions(expr)
     
     if not restrictions:
-        lines.append('No restrictions found.')
         lines.append('Domain: all real ' + var_name)
         return ensure_reasoning_marker(lines)
     
+    constraints = []
     for r_type, r_node in restrictions:
         r_show = show(r_node)
         if r_type == 'den':
-            lines.append('Denominator cannot be zero: ' + r_show + ' != 0')
+            if r_node[0] == 'sym':
+                constraints.append(r_node[1] + ' != 0')
+            else:
+                constraints.append(r_show + ' != 0')
         elif r_type == 'sqrt':
-            lines.append('Expression inside sqrt/asin/acos must be >= 0: ' + r_show + ' >= 0')
+            constraints.append(r_show + ' >= 0')
         elif r_type == 'pos':
-            lines.append('Expression inside log must be > 0: ' + r_show + ' > 0')
-    
-    lines.append('Domain: all real ' + var_name + ' except where restrictions apply.')
+            constraints.append(r_show + ' > 0')
+    lines.append(', '.join(constraints))
     return ensure_reasoning_marker(lines)
 
 
@@ -6928,24 +6929,33 @@ def find_range_text(text):
         b = coeffs[1]
         c = coeffs[0]
         if is_num(a):
+            vertex = -b[1] / (2 * a[1]) if a[1] != 0 else 0
+            extrema_value = None
             if a[1] > 0:
-                lines.append('Quadratic opens upward.')
-                lines.append('Range: y >= minimum value')
+                extrema_value = (4*a[1]*c[1] - b[1]**2) / (4*a[1])
+                if isinstance(extrema_value, int):
+                    lines.append('Range: y >= ' + str(extrema_value))
+                else:
+                    lines.append('Range: y >= ' + str(extrema_value))
             elif a[1] < 0:
-                lines.append('Quadratic opens downward.')
-                lines.append('Range: y <= maximum value')
+                extrema_value = (4*a[1]*c[1] - b[1]**2) / (4*a[1])
+                if isinstance(extrema_value, int):
+                    lines.append('Range: y <= ' + str(extrema_value))
+                else:
+                    lines.append('Range: y <= ' + str(extrema_value))
             else:
-                lines.append('Linear in x.')
-                lines.append('Range: all real numbers')
+                lines.append('Range: all real y')
             return ensure_reasoning_marker(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):
-        lines.append('Constant function.')
-        lines.append('Range: single value')
+        lines.append('Range: ' + show(expr))
         return ensure_reasoning_marker(lines)
     
-    lines.append('Complex expression.')
-    lines.append('Range: depends on domain and limits.')
+    if is_num(expr):
+        lines.append('Range: ' + show(expr))
+        return ensure_reasoning_marker(lines)
+    
+    lines.append('Range: all real y')
     return ensure_reasoning_marker(lines)
 
 
