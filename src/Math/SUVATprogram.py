@@ -10,6 +10,7 @@ except ImportError:
 
 try:
     from src.shared_cache import clear_all_caches as shared_clear_all_caches
+    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, neg as shared_neg, same_by_sig
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -17,13 +18,11 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import clear_all_caches as shared_clear_all_caches
+    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, neg as shared_neg, same_by_sig
     from shared_reasoning_markers import REASONING_MARKERS
 
 SKIP_AUTORUN = sys is not None and getattr(sys, '_suvat_no_autorun', False)
 
-# ============================================================================
-# Core Constants and Configuration
-# ============================================================================
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
@@ -32,9 +31,6 @@ G_DEFAULT = ('num', 49, 5)
 G_DEFAULT_FLOAT = 9.8
 G_ALIASES = ('g', 'G')
 
-# ============================================================================
-# Cache Dictionaries for Performance
-# ============================================================================
 
 SIG_CACHE = {}
 SHOW_CACHE = {}
@@ -55,9 +51,6 @@ def begin_user_action():
 
 begin_user_action()
 
-# ============================================================================
-# Arithmetic Helpers
-# ============================================================================
 
 def gcd(a, b):
     if FAST_GCD is not None:
@@ -103,18 +96,6 @@ def num_text(text):
 
 def sym(name):
     return 'sym', name
-
-
-def is_num(node):
-    return node[0] == 'num'
-
-
-def is_zero(node):
-    return is_num(node) and node[1] == 0
-
-
-def is_one(node):
-    return is_num(node) and node[1] == node[2]
 
 
 def is_minus_one(node):
@@ -280,9 +261,6 @@ def count_sig_figs(text):
     return max(1, len(digits))
 
 
-# ============================================================================
-# AST Node Constructors
-# ============================================================================
 
 def flat(node, kind):
     key = (node, kind)
@@ -375,22 +353,17 @@ def power(a, b):
 
 
 def fn(name, arg):
-    if name == 'ln':
-        name = 'log'
-    return ('fn', name, arg)
+    return shared_fn(name, arg)
 
 
 def neg(node):
-    return mul([num(-1), node])
+    return shared_neg(node, num, mul)
 
 
 def sub(a, b):
     return add([a, neg(b)])
 
 
-# ============================================================================
-# AST Utilities
-# ============================================================================
 
 def sig(node):
     key = node
@@ -421,16 +394,7 @@ def sig(node):
 
 
 def same(a, b):
-    if a is b or a == b:
-        return True
-    key = (a, b)
-    cached = SAME_CACHE.get(key)
-    if cached is not None:
-        return cached
-    result = sig(a) == sig(b)
-    SAME_CACHE[key] = result
-    SAME_CACHE[(b, a)] = result
-    return result
+    return same_by_sig(a, b, sig, SAME_CACHE)
 
 
 def format_equation_human_readable(node, parent=0):
@@ -442,7 +406,7 @@ def format_equation_human_readable(node, parent=0):
     if kind == 'num':
         if node[2] == 1:
             return str(node[1])
-        return f'({node[1]}/{node[2]})'
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
     
     elif kind == 'sym':
         return node[1]
@@ -454,24 +418,24 @@ def format_equation_human_readable(node, parent=0):
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
-                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
-            return f'ln({arg})'
+                return 'ln|' + format_equation_human_readable(node[2][2], 0) + '|'
+            return 'ln(' + arg + ')'
         elif node[1] == 'exp':
-            return f'e^({format_equation_human_readable(node[2], 0)})'
+            return 'e^(' + format_equation_human_readable(node[2], 0) + ')'
         else:
-            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+            return node[1] + '(' + format_equation_human_readable(node[2], 0) + ')'
     
     elif kind == 'pow':
         base = format_equation_human_readable(node[1], 3)
         exponent = format_equation_human_readable(node[2], 3)
         
         if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
-            base = f'({base})'
+            base = '(' + base + ')'
         
         if node[2][0] not in ('num',) or node[2][2] != 1:
-            exponent = f'({exponent})'
+            exponent = '(' + exponent + ')'
         
-        return f'{base}^{exponent}'
+        return base + '^' + exponent
     
     elif kind == 'mul':
         items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
@@ -480,7 +444,7 @@ def format_equation_human_readable(node, parent=0):
         for item in items:
             part = format_equation_human_readable(item, 2)
             if item[0] == 'add':
-                part = f'({part})'
+                part = '(' + part + ')'
             parts.append(part)
         
         return '*'.join(parts)
@@ -490,11 +454,11 @@ def format_equation_human_readable(node, parent=0):
         denominator = format_equation_human_readable(node[2], 2)
         
         if node[1][0] in ('add', 'mul'):
-            numerator = f'({numerator})'
+            numerator = '(' + numerator + ')'
         if node[2][0] in ('add', 'mul'):
-            denominator = f'({denominator})'
+            denominator = '(' + denominator + ')'
         
-        return f'{numerator}/{denominator}'
+        return numerator + '/' + denominator
     
     elif kind == 'add':
         items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
@@ -509,7 +473,7 @@ def format_equation_human_readable(node, parent=0):
                 term = format_equation_human_readable(rest, 1)
                 if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
                     coeff_str = format_equation_human_readable(coeff, 1)
-                    term = f'{coeff_str}*{term}'
+                    term = coeff_str + '*' + term
             
             parts.append(term)
         
@@ -657,9 +621,6 @@ def contains_const(node, name):
     return False
 
 
-# ============================================================================
-# Simplification
-# ============================================================================
 
 def sim(node):
     kind = node[0]
@@ -901,9 +862,6 @@ def sim(node):
     return node
 
 
-# ============================================================================
-# Pretty-Printing
-# ============================================================================
 
 def pr(node):
     kind = node[0]
@@ -1099,22 +1057,6 @@ def show(node, parent=0):
     return result
 
 
-def ensure_reasoning_marker(lines, default_prefix="Method: "):
-    """Add reasoning marker to output lines if missing."""
-    if not lines:
-        return lines
-    text = "\n".join(lines)
-    if any(marker in text.lower() for marker in REASONING_MARKERS):
-        return lines
-    lines = list(lines)
-    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        lines.insert(0, default_prefix)
-    return lines
-
-
-# ============================================================================
-# Parsing
-# ============================================================================
 
 FUNC_NAMES = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp', 'log', 'sqrt', 'abs', 'ln', 'atan', 'asin', 'acos', 'sinh', 'cosh', 'tanh')
 FUNC_ALIASES = {'csc': 'cosec', 'arcsin': 'asin', 'arccos': 'acos', 'arctan': 'atan', 'ln': 'log'}
@@ -1324,9 +1266,6 @@ def parse_value(text):
     return parse(text)
 
 
-# ============================================================================
-# Keyword Presets
-# ============================================================================
 
 PRESET_KEYWORDS = {
     'dropped': {'u': num(0)},
@@ -1406,9 +1345,6 @@ def format_solution_texts(result_node, sig_figs=None):
     return exact_text, dec_text
 
 
-# ============================================================================
-# SUVAT Engine
-# ============================================================================
 
 def _build_s(s_val, u_val, v_val, a_val, t_val):
     half = num(1, 2)
@@ -1986,9 +1922,6 @@ def format_output_with_units(target, exact_text, dec_text, equation, original_eq
     return lines
 
 
-# ============================================================================
-# Main Solver
-# ============================================================================
 
 def solve_suvat():
     s_text = input('s: ').strip()

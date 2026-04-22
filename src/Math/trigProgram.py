@@ -13,6 +13,16 @@ try:
         clear_all_caches as shared_clear_all_caches,
         enforce_total_cache_limit,
     )
+    from src.shared_helpers import (
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -24,11 +34,18 @@ except ImportError:
         clear_all_caches as shared_clear_all_caches,
         enforce_total_cache_limit,
     )
+    from shared_helpers import (
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from shared_reasoning_markers import REASONING_MARKERS
 
-# ---------------------------------------------------------------------------
-# Core constants and runtime profile
-# ---------------------------------------------------------------------------
 E = ("const", "e")
 PI = ("const", "pi")
 FUNC_NAMES = (
@@ -52,7 +69,6 @@ FUNC_ALIASES = {
 }
 SKIP_AUTORUN = sys is not None and getattr(sys, "_trig_no_autorun", False)
 
-# Formula-booklet identities
 FORMULA_SIN_ADD = "Use sin(A+B) = sin A cos B + cos A sin B."
 FORMULA_SIN_SUB = "Use sin(A-B) = sin A cos B - cos A sin B."
 FORMULA_COS_ADD = "Use cos(A+B) = cos A cos B - sin A sin B."
@@ -79,7 +95,6 @@ MICROPYTHON_RUNTIME = (
     and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 )
 
-# Parser limits
 MAX_NESTING_DEPTH = 200
 MAX_INPUT_LENGTH = 10000
 MAX_TOKEN_COUNT = 2000
@@ -232,9 +247,6 @@ def is_finite_value(value):
     return value == value and value != inf and value != -inf
 
 
-# ---------------------------------------------------------------------------
-# Basic AST constructors and helpers
-# ---------------------------------------------------------------------------
 def gcd(a, b):
     if FAST_GCD is not None:
         return FAST_GCD(a, b) or 1
@@ -284,24 +296,8 @@ def sym(name):
     return ("sym", name)
 
 
-def is_num(node):
-    return node[0] == "num"
-
-
-def is_sym(node):
-    return node[0] == "sym"
-
-
 def is_const(node):
     return node[0] == "const"
-
-
-def is_zero(node):
-    return is_num(node) and node[1] == 0
-
-
-def is_one(node):
-    return is_num(node) and node[1] == node[2]
 
 
 def is_minus_one(node):
@@ -410,15 +406,11 @@ def power(a, b):
 
 
 def fn(name, arg):
-    if name == "ln":
-        name = "log"
-    if name == "csc":
-        name = "cosec"
-    return sim(("fn", name, arg))
+    return shared_fn(name, arg, sim)
 
 
 def neg(node):
-    return mul([num(-1), node])
+    return shared_neg(node, num, mul)
 
 
 def flat(node, kind):
@@ -484,7 +476,7 @@ def sig(node):
 
 
 def same(a, b):
-    return a == b or sig(a) == sig(b)
+    return same_by_sig(a, b, sig)
 
 
 def cheap_same(a, b):
@@ -1394,7 +1386,7 @@ def format_equation_human_readable(node, parent=0):
         # Format fractions clearly
         if node[2] == 1:
             return str(node[1])
-        return f'({node[1]}/{node[2]})'
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
     
     elif kind == 'sym':
         return node[1]
@@ -1407,12 +1399,12 @@ def format_equation_human_readable(node, parent=0):
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
-                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
-            return f'ln({arg})'
+                return 'ln|' + format_equation_human_readable(node[2][2], 0) + '|'
+            return 'ln(' + arg + ')'
         elif node[1] == 'exp':
-            return f'e^({format_equation_human_readable(node[2], 0)})'
+            return 'e^(' + format_equation_human_readable(node[2], 0) + ')'
         else:
-            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+            return node[1] + '(' + format_equation_human_readable(node[2], 0) + ')'
     
     elif kind == 'pow':
         base = format_equation_human_readable(node[1], 3)
@@ -1420,13 +1412,13 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex bases
         if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
-            base = f'({base})'
+            base = '(' + base + ')'
         
         # Add parentheses for non-integer exponents or complex expressions
         if node[2][0] not in ('num',) or node[2][2] != 1:
-            exponent = f'({exponent})'
+            exponent = '(' + exponent + ')'
         
-        return f'{base}^{exponent}'
+        return base + '^' + exponent
     
     elif kind == 'mul':
         # Handle multiplication with proper spacing
@@ -1437,7 +1429,7 @@ def format_equation_human_readable(node, parent=0):
             part = format_equation_human_readable(item, 2)
             # Add parentheses for additions/subtractions in multiplication
             if item[0] == 'add':
-                part = f'({part})'
+                part = '(' + part + ')'
             parts.append(part)
         
         return '*'.join(parts)
@@ -1449,11 +1441,11 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex numerator or denominator
         if node[1][0] in ('add', 'mul'):
-            numerator = f'({numerator})'
+            numerator = '(' + numerator + ')'
         if node[2][0] in ('add', 'mul'):
-            denominator = f'({denominator})'
+            denominator = '(' + denominator + ')'
         
-        return f'{numerator}/{denominator}'
+        return numerator + '/' + denominator
     
     elif kind == 'add':
         # Handle addition with proper term separation
@@ -1471,7 +1463,7 @@ def format_equation_human_readable(node, parent=0):
                 # Add coefficient if not 1
                 if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
                     coeff_str = format_equation_human_readable(coeff, 1)
-                    term = f'{coeff_str}*{term}'
+                    term = coeff_str + '*' + term
             
             parts.append(term)
         
@@ -1515,9 +1507,6 @@ def is_num_token_start(text, i):
     return is_digit_char(ch) or (ch == "." and i + 1 < len(text) and is_digit_char(text[i + 1]))
 
 
-# ---------------------------------------------------------------------------
-# Parsing
-# ---------------------------------------------------------------------------
 def parse(text):
     # Keep tokenization deliberately small and calculator-friendly:
     # no imports, no eval, and accept both ** and ^ for powers.
@@ -3531,7 +3520,7 @@ def standard_ratio_identity_lines(lhs, rhs):
 
 
 def direct_expression_transform_lines(source_expr, target_expr, target_text):
-    final_line = "Final = " + show(target_expr)
+    final_line = "Answer: " + show(target_expr)
     if same(target_expr, num(1)):
         var = detect_transform_var(source_expr, target_expr) or single_symbol_name(source_expr) or "x"
         diff_expr = sim(add([source_expr, neg(target_expr)]))
@@ -6553,18 +6542,6 @@ def finalize_proof_lines(lines):
     return lines
 
 
-def ensure_reasoning_marker(lines, default_prefix="Method: "):
-    if not lines:
-        return lines
-    text = "\n".join(lines)
-    if any(marker in text.lower() for marker in REASONING_MARKERS):
-        return lines
-    lines = list(lines)
-    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        lines.insert(0, default_prefix)
-    return lines
-
-
 def prove_by_difference_zero(lhs, rhs):
     lhs = sim(lhs)
     rhs = sim(rhs)
@@ -6616,9 +6593,6 @@ def prove_by_difference_zero(lhs, rhs):
     return compact_lines(lines)
 
 
-# ---------------------------------------------------------------------------
-# Proof mode entrypoint
-# ---------------------------------------------------------------------------
 def solve_prove(lhs, rhs, route):
     route = normalize_route(route)
     lhs = sim(lhs)
@@ -6957,9 +6931,6 @@ def depends_any(node, names):
     return False
 
 
-# ---------------------------------------------------------------------------
-# Transform mode helpers
-# ---------------------------------------------------------------------------
 FIT_TEMPLATE_SAMPLE_ANGLES = (
     num(0),
     div(PI, num(8)),
@@ -8457,9 +8428,6 @@ def _balance_parens(text):
     return text
 
 
-# ---------------------------------------------------------------------------
-# Rewrite mode
-# ---------------------------------------------------------------------------
 TRIG_REWRITE_FN_NAMES = ("sin", "cos", "tan", "sec", "cosec", "cot")
 REWRITE_SEARCH_DEPTH = 7
 REWRITE_BEAM_WIDTH = 20
@@ -9066,7 +9034,7 @@ def format_rewrite_lines(original_text, expr, final_expr, steps, allowed_terms, 
                 lines.append(step_line(steps[i][1]))
                 prev = steps[i][1]
             i += 1
-        lines.append("Final = " + show(final_expr))
+        lines.append("Answer: " + show(final_expr))
     return compact_lines(lines)
 
 
@@ -14415,9 +14383,6 @@ def solve_candidate(expr, result, var, label):
     }
 
 
-# ---------------------------------------------------------------------------
-# Solve rewrite families
-# ---------------------------------------------------------------------------
 def reciprocal_family_transforms(expr, var, features):
     out = []
     fn_names = features["fn_names"]
@@ -14693,9 +14658,7 @@ def best_solve_rewrite(expr, var, visited):
         _SOLVE_REWRITE_DEPTH -= 1
 
 
-# ---------------------------------------------------------------------------
 # Solve tan^2(x) = k form
-# ---------------------------------------------------------------------------
 def solve_tan_squared_form(expr, var, start_val, end_val, deg_mode, lines):
     # Handle equations like tan^2(x) = k or (1-cos2x)/(1+cos2x) = k
     expr = sim(expr)
@@ -14982,13 +14945,11 @@ def solve_cosine_target(arg, k_val, var, start_val, end_val, deg_mode, lines):
     return sols, lines
 
 
-# ---------------------------------------------------------------------------
 # Solve a*sin^2(x) + b*cos^2(x) = k form
 # Using identity: sin^2(x) = (1-cos(2x))/2, cos^2(x) = (1+cos(2x))/2
 # a*(1-cos(2x))/2 + b*(1+cos(2x))/2 = k
 # (a+b)/2 + (b-a)/2 * cos(2x) = k
 # cos(2x) = (2k - a - b) / (b - a)
-# ---------------------------------------------------------------------------
 def solve_sin_cos_squared_mixed(expr, var, start_val, end_val, deg_mode, lines):
     expr = sim(expr)
     if expr[0] == "add":
@@ -15052,10 +15013,8 @@ def solve_sin_cos_squared_mixed(expr, var, start_val, end_val, deg_mode, lines):
     return solve_cosine_target(doubled, cos2x_val, var, start_val, end_val, deg_mode, lines)
 
 
-# ---------------------------------------------------------------------------
 # Solve identity equations like tan^2(x) + 1 = sec^2(x), sec^2(x) - tan^2(x) = 1
 # These are true for all x (within domain constraints), so return all valid x
-# ---------------------------------------------------------------------------
 def match_scaled_reciprocal_identity_zero(expr, var, first_name, second_name):
     data = collect_same_arg_terms(expr, var, [(first_name + "2", first_name, 2, False), (second_name + "2", second_name, 2, False)])
     if data is None:
@@ -15129,10 +15088,8 @@ def return_all_in_interval(var, start_val, end_val, deg_mode, lines, message=Non
     }, lines
 
 
-# ---------------------------------------------------------------------------
 # Solve direct trig equations like tan(2x) = 1, sin(3x) = 0.5
 # These are simple equations where the LHS is a single trig function equals a constant
-# ---------------------------------------------------------------------------
 def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
     info = direct_single_trig_info(expr, var)
     if info is None:
@@ -15376,10 +15333,8 @@ def solve_direct_trig_polynomial_angle_equation(expr, var, start_val, end_val, d
     return values, out
 
 
-# ---------------------------------------------------------------------------
 # Expand cosec^4 - cot^4 using identity: cosec^2 = 1 + cot^2
 # cosec^4 - cot^4 = (1 + cot^2)^2 - cot^4 = 1 + 2*cot^2
-# ---------------------------------------------------------------------------
 def substitute_cosec_cot_identities(node):
     var = None
     result = node
@@ -15410,12 +15365,10 @@ def substitute_cosec_cot_identities(node):
     return sim(add(new_terms))
 
 
-# ---------------------------------------------------------------------------
 # Solve cos^4(2x) - sin^4(2x) = k form
 # Using identity: cos^4(A) - sin^4(A) = (cos^2(A) - sin^2(A))(cos^2(A) + sin^2(A))
 #               = cos(2A) * 1 = cos(2A)
 # So cos^4(2x) - sin^4(2x) = cos(4x)
-# ---------------------------------------------------------------------------
 def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines):
     # Check if equation is cos^4(2x) - sin^4(2x) = k
     expr = sim(expr)
@@ -15477,13 +15430,10 @@ def solve_cos_pow4_minus_sin_pow4(expr, var, start_val, end_val, deg_mode, lines
     return solve_cosine_target(doubled, k_val, var, start_val, end_val, deg_mode, lines)
 
 
-# ---------------------------------------------------------------------------
 # Solve cosec^4(x) - cot^4(x) = k form
 # Using identity: cosec^2(A) - cot^2(A) = 1
 # And: cosec^4 - cot^4 = (cosec^2 - cot^2)(cosec^2 + cot^2) = 1 * (cosec^2 + cot^2) = cosec^2 + cot^2
 # But cosec^2 = 1 + cot^2, so: cosec^4 - cot^4 = (1+cot^2)^2 - cot^4 = 1 + 2*cot^2
-# = 1 + 2*cot^2, so we have: 1 + 2*cot^2(x) = k, giving cot^2(x) = (k-1)/2
-# ---------------------------------------------------------------------------
 def solve_cosec_pow4_minus_cot_pow4(expr, var, start_val, end_val, deg_mode, lines):
     expr = sim(expr)
     if expr[0] == "add":
@@ -15539,13 +15489,10 @@ def solve_cosec_pow4_minus_cot_pow4(expr, var, start_val, end_val, deg_mode, lin
     return solve_cosine_target(doubled, target_cot, var, start_val, end_val, deg_mode, out_lines)
 
 
-# ---------------------------------------------------------------------------
 # Solve cosec^4(x) - cot^4(x) = a + b*cot(x) form
 # Using: cosec^4 - cot^4 = 1 + 2*cot^2
 # So: 1 + 2*cot^2(x) = a + b*cot(x)
-# => 2*cot^2(x) - b*cot(x) + (1 - a) = 0
 # This is a quadratic in cot(x)
-# ---------------------------------------------------------------------------
 def solve_cosec_cot_quadratic(expr, var, start_val, end_val, deg_mode, lines):
     expr = sim(expr)
     if expr[0] == "add":
@@ -15651,7 +15598,6 @@ def solve_cosec_cot_quadratic(expr, var, start_val, end_val, deg_mode, lines):
     return solutions, out_lines
 
 
-# ---------------------------------------------------------------------------
 # Solve sqrt(3) sin(2x) + 2 sin^2(x) = 1 form
 # Using sin(2x) = 2 sin(x) cos(x) and sin^2(x) = (1 - cos(2x))/2
 # Substitute: sqrt(3) * 2 sin(x) cos(x) + 2 * (1 - cos(2x))/2 = 1
@@ -15662,7 +15608,6 @@ def solve_cosec_cot_quadratic(expr, var, start_val, end_val, deg_mode, lines):
 # Rearranging: 2cos^2(x) - 2*sqrt(3) sin(x) cos(x) - 1 = 0
 # Divide by cos(x) (assuming cos(x) != 0): 2cos(x) - 2*sqrt(3) sin(x) = sec(x)
 # This becomes a linear combination: A sin(x) + B cos(x) = C form
-# ---------------------------------------------------------------------------
 def solve_sec_pow4_minus_tan_pow4(expr, var, start_val, end_val, deg_mode, lines):
     expr = sim(expr)
     if expr[0] == "add":
@@ -15820,9 +15765,6 @@ def solve_mixed_sin2_sin_square(expr, var, start_val, end_val, deg_mode, lines):
     return values, compact_lines(list(lines) + prelude + solved_lines)
 
 
-# ---------------------------------------------------------------------------
-# Solve mode entrypoint
-# ---------------------------------------------------------------------------
 def parse_solve_interval_context(lhs, rhs, var, interval_bits):
     eq_mode = equation_angle_mode(lhs, rhs, var)
     no_interval_mode = False
@@ -16288,6 +16230,7 @@ def direct_identity_target_rewrite(expr, allowed_terms):
                     one_seen = True
                 else:
                     coeff, rest = signed_unit_term(parts[i])
+                    rest = sim(rest)
                     if rest[0] == "fn" and rest[1] == "cos":
                         cos_term = rest
                         cos_sign = -1 if is_minus_one(coeff) else 1
@@ -16312,6 +16255,13 @@ def direct_identity_target_rewrite(expr, allowed_terms):
 
 
 def allowed_expression_from_terms(expr, allowed_terms):
+    expr = sim(expr)
+    i = 0
+    while i < len(allowed_terms):
+        term = sim(allowed_terms[i])
+        if same(expr, term) or equivalent(expr, term):
+            return True
+        i += 1
     info = build_rewrite_allowed_info(allowed_terms)
     if rewrite_allowed_only(expr, info):
         return True
@@ -16320,7 +16270,14 @@ def allowed_expression_from_terms(expr, allowed_terms):
         i = 0
         while i < len(parts):
             if is_num(parts[i]):
-                if rewrite_allowed_only(make_mul(parts[:i] + parts[i + 1:]), info):
+                rest = sim(make_mul(parts[:i] + parts[i + 1:]))
+                j = 0
+                while j < len(allowed_terms):
+                    term = sim(allowed_terms[j])
+                    if same(rest, term) or equivalent(rest, term):
+                        return True
+                    j += 1
+                if rewrite_allowed_only(rest, info):
                     return True
             i += 1
     return False
@@ -16720,9 +16677,6 @@ def solve_extremum_text(text, kind, var):
     return {"value": extreme, "x": first_x}, compact_lines(prep_lines + lines)
 
 
-# ---------------------------------------------------------------------------
-# Numeric evaluation for prove/show mode
-# ---------------------------------------------------------------------------
 def numeric_evaluation_text(text):
     text = text.strip()
     # Check if it looks like a numeric expression (no variable dependency)
@@ -16889,9 +16843,7 @@ def eval_numeric(node, env):
     return numeric_eval(node, env, True)
 
 
-# ---------------------------------------------------------------------------
 # Transform mode: R sin(x+alpha) and R cos(x+alpha) forms
-# ---------------------------------------------------------------------------
 def transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     var = detect_transform_var(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs)
     expr = sim(add([eq1_lhs, neg(eq1_rhs)]))
@@ -17057,9 +17009,6 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     if not is_zero(const_expr):
         lines.append("c = " + format_float(const_term))
     return compact_lines(lines)
-# ---------------------------------------------------------------------------
-# Display helpers and CLI entrypoint
-# ---------------------------------------------------------------------------
 def parse_display_value(text):
     text = text.strip()
     if text.endswith(" rad"):
@@ -17259,7 +17208,26 @@ def compact_lines(lines):
                 out.append(expanded[j])
             j += 1
         i += 1
-    return out
+    method_line = None
+    filtered = []
+    i = 0
+    while i < len(out):
+        if out[i].startswith("Method: "):
+            if method_line is None:
+                method_line = out[i]
+        else:
+            filtered.append(out[i])
+        i += 1
+    if method_line is not None:
+        if method_line == "Method: Using algebraic manipulation":
+            j = 0
+            while j < len(filtered):
+                if "2sin^2" in filtered[j] or "2*sin" in filtered[j]:
+                    method_line = "Method: Transform to 2sin^2(A)"
+                    break
+                j += 1
+        return [method_line] + filtered
+    return filtered
 
 
 MENU_LINE_WIDTH = 20

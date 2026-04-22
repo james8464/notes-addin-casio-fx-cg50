@@ -9,6 +9,16 @@ except ImportError:
 
 try:
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_helpers import (
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -16,6 +26,16 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_helpers import (
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from shared_reasoning_markers import REASONING_MARKERS
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
@@ -116,7 +136,6 @@ MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
 
-# Parser limits
 MAX_NESTING_DEPTH = 200
 MAX_INPUT_LENGTH = 10000
 MAX_TOKEN_COUNT = 2000
@@ -239,11 +258,6 @@ def num_text(text):
 
 
 def sym(name): return 'sym', name
-def is_num(node): return node[0] == 'num'
-def is_sym(node): return node[0] == 'sym'
-def is_zero(node): return is_num(node) and node[1] == 0
-def is_one(node):
-    return is_num(node) and node[1] == node[2]
 
 
 def is_minus_one(node):
@@ -315,7 +329,8 @@ def cheap_same(a, b):
     return a[1] == b[1]
 
 
-def same(a, b): return cheap_same(a, b) or sig(a) == sig(b)
+def same(a, b):
+    return cheap_same(a, b) or same_by_sig(a, b, sig)
 
 
 def depends(node, name):
@@ -400,8 +415,8 @@ def add(parts): return sim(make_add(parts))
 def mul(parts): return sim(make_mul(parts))
 def div(a, b): return sim(('div', a, b))
 def power(a, b): return sim(('pow', a, b))
-def fn(name, arg): return sim(('fn', name, arg))
-def neg(node): return mul([num(-1), node])
+def fn(name, arg): return shared_fn(name, arg, sim)
+def neg(node): return shared_neg(node, num, mul)
 def sub(a, b): return add([a, neg(b)])
 def log_abs(node): return fn('log', fn('abs', node))
 
@@ -1642,7 +1657,7 @@ def format_equation_human_readable(node, parent=0):
         # Format fractions clearly
         if node[2] == 1:
             return str(node[1])
-        return f'({node[1]}/{node[2]})'
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
     
     elif kind == 'sym':
         return node[1]
@@ -1655,12 +1670,12 @@ def format_equation_human_readable(node, parent=0):
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
-                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
-            return f'ln({arg})'
+                return 'ln|' + format_equation_human_readable(node[2][2], 0) + '|'
+            return 'ln(' + arg + ')'
         elif node[1] == 'exp':
-            return f'e^({format_equation_human_readable(node[2], 0)})'
+            return 'e^(' + format_equation_human_readable(node[2], 0) + ')'
         else:
-            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+            return node[1] + '(' + format_equation_human_readable(node[2], 0) + ')'
     
     elif kind == 'pow':
         base = format_equation_human_readable(node[1], 3)
@@ -1668,13 +1683,13 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex bases
         if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
-            base = f'({base})'
+            base = '(' + base + ')'
         
         # Add parentheses for non-integer exponents or complex expressions
         if node[2][0] not in ('num',) or node[2][2] != 1:
-            exponent = f'({exponent})'
+            exponent = '(' + exponent + ')'
         
-        return f'{base}^{exponent}'
+        return base + '^' + exponent
     
     elif kind == 'mul':
         # Handle multiplication with proper spacing
@@ -1685,7 +1700,7 @@ def format_equation_human_readable(node, parent=0):
             part = format_equation_human_readable(item, 2)
             # Add parentheses for additions/subtractions in multiplication
             if item[0] == 'add':
-                part = f'({part})'
+                part = '(' + part + ')'
             parts.append(part)
         
         return '*'.join(parts)
@@ -1697,11 +1712,11 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex numerator or denominator
         if node[1][0] in ('add', 'mul'):
-            numerator = f'({numerator})'
+            numerator = '(' + numerator + ')'
         if node[2][0] in ('add', 'mul'):
-            denominator = f'({denominator})'
+            denominator = '(' + denominator + ')'
         
-        return f'{numerator}/{denominator}'
+        return numerator + '/' + denominator
     
     elif kind == 'add':
         # Handle addition with proper term separation
@@ -1719,7 +1734,7 @@ def format_equation_human_readable(node, parent=0):
                 # Add coefficient if not 1
                 if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
                     coeff_str = format_equation_human_readable(coeff, 1)
-                    term = f'{coeff_str}*{term}'
+                    term = coeff_str + '*' + term
             
             parts.append(term)
         
@@ -1743,23 +1758,12 @@ def split_coeff(node):
 def pretty(node): return _show(display_rearrange(combine_logs(node)), 0)
 
 
-def ensure_reasoning_marker(lines, default_prefix="Method: "):
-    """Add reasoning marker to output lines if missing."""
-    if not lines:
-        return lines
-    text = "\n".join(lines)
-    if any(marker in text.lower() for marker in REASONING_MARKERS):
-        return lines
-    lines = list(lines)
-    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        prefix = default_prefix.rstrip()
-        if prefix.lower().startswith("method"):
-            prefix = "Use a standard method."
-        elif prefix and prefix.endswith(":"):
-            prefix = prefix[:-1]
-        if prefix:
-            lines.insert(0, prefix)
-    return lines
+def pretty_answer(node):
+    text = pretty(node)
+    while text.startswith('1*'):
+        text = text[2:]
+    return text
+
 
 def int_text(node, var): return 'Int[' + pretty(node) + '] d' + var
 
@@ -5301,12 +5305,13 @@ def integrate_cyclic_parts(node, var):
     N = fn('exp', D[2])
     if F[1] == 'sin':
         O = add([mul([K, fn('sin', F[2])]), neg(mul([L, fn('cos', F[2])]))])
-        P = 'Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.'
+        P = 'Use: = e^(ax+b)*(a*sin(cx+d) - c*cos(cx+d))/(a^2+c^2) + C'
     else:
         O = add([mul([K, fn('cos', F[2])]), mul([L, fn('sin', F[2])])])
-        P = 'Use the standard result for Int[e^(ax+b)cos(cx+d)] dx.'
-    Q = sim(div(mul([A, N, O]), M))
-    return Q, [P, '= ' + pretty(Q) + ' + C']
+        P = 'Use: = e^(ax+b)*(a*cos(cx+d) + c*sin(cx+d))/(a^2+c^2) + C'
+    factors = [N, O] if is_one(A) else [A, N, O]
+    Q = sim(div(mul(factors), M))
+    return Q, [P, '= ' + pretty_answer(Q) + ' + C']
 
 
 def choose_parts(node, var):
@@ -5536,7 +5541,7 @@ def integrate_by_parts(node, var, depth=0):
 
 
 def integral_answer_line(node):
-    return '= ' + pretty(node) + ' + C'
+    return '= ' + pretty_answer(node) + ' + C'
 
 
 def split_numeric_term(node):
@@ -5730,6 +5735,13 @@ def auto_route_substitution(node, var, depth):
     return None, None, None
 
 
+def auto_route_cyclic_parts(node, var, depth):
+    A, B = integrate_cyclic_parts(node, var)
+    if A is not None:
+        return 'cyclic', A, B
+    return None, None, None
+
+
 def auto_route_parts(node, var, depth):
     A, B = integrate_cyclic_parts(node, var)
     if A is not None:
@@ -5754,7 +5766,7 @@ def auto_integral_routes(rational, allow_termwise):
         A.append(auto_route_termwise)
     if rational:
         A.append(auto_route_division)
-    A.extend([auto_route_substitution, auto_route_parts])
+    A.extend([auto_route_cyclic_parts, auto_route_substitution, auto_route_parts])
     if not rational:
         A.append(auto_route_division)
     A.append(auto_route_poly_quad_exp)
@@ -6896,6 +6908,16 @@ def finish_integral_solve(title, ans, lines):
     return title, A, B
 
 
+def cyclic_method_title(lines):
+    if lines and len(lines) > 0:
+        first = lines[0]
+        if 'sin(cx+d)' in first:
+            return 'Int[e^(ax+b)sin(cx+d)]'
+        if 'cos(cx+d)' in first:
+            return 'Int[e^(ax+b)cos(cx+d)]'
+    return 'Integration by parts'
+
+
 def _solve_with_method(node, var, method, forced_u=None):
     F = forced_u
     E = method
@@ -6917,6 +6939,8 @@ def _solve_with_method(node, var, method, forced_u=None):
             return finish_integral_solve('Integration by substitution', A, B)
         if G == 'parts':
             return finish_integral_solve('Integration by parts', A, B)
+        if G == 'cyclic':
+            return finish_integral_solve(cyclic_method_title(B), A, B)
         if G == 'poly_quad_exp':
             return finish_integral_solve('Polynomial × Quadratic Exponential', A, B)
         return finish_integral_solve('Partial fractions', A, B)
@@ -7306,6 +7330,31 @@ def paged_menu_input(prompt_label, options, default=None):
         print('Bad mode.')
 
 
+def compact_integral_output_lines(lines, answer_text):
+    answer_line = 'Answer: ' + answer_text + ' + C'
+    final_line = '= ' + answer_text + ' + C'
+    out = []
+    i = 0
+    while i < len(lines) and len(out) < 1:
+        line = lines[i]
+        low = line.lower().strip()
+        if low == '' or low == 'simplify.':
+            i += 1
+            continue
+        if line == final_line or line == answer_line:
+            i += 1
+            continue
+        if low.startswith('substitute back') and len(out) != 0:
+            i += 1
+            continue
+        out.append(line)
+        i += 1
+    if len(out) == 0 or out[-1] != final_line:
+        out.append(final_line)
+    out.append(answer_line)
+    return out
+
+
 def main():
     D = paged_menu_input('M', [
         ('1', 'int'),
@@ -7340,14 +7389,13 @@ def main():
                     print_exam_failure(A)
                 print(Q)
             else:
-                I = '= ' + pretty(C) + ' + C'
+                answer_text = pretty_answer(C)
                 print('Method: ' + display_method_title(L))
+                compact_lines = compact_integral_output_lines(A, answer_text)
                 B = 0
-                while B < len(A):
-                    print(str(B + 1) + '. ' + A[B])
+                while B < len(compact_lines):
+                    print(compact_lines[B])
                     B += 1
-                if len(A) == 0 or A[-1] != I:
-                    print(I)
         elif D == '2':
             F = input('dy/dx: ').strip()
             try:

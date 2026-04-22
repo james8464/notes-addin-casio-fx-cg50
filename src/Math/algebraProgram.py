@@ -10,6 +10,17 @@ except ImportError:
 
 try:
     from src.shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_helpers import (
+        compact_duplicate_answer_lines,
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -17,11 +28,19 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_helpers import (
+        compact_duplicate_answer_lines,
+        ensure_reasoning_marker,
+        fn as shared_fn,
+        is_num,
+        is_one,
+        is_sym,
+        is_zero,
+        neg as shared_neg,
+        same_by_sig,
+    )
     from shared_reasoning_markers import REASONING_MARKERS
 
-# ============================================================================
-# Core Constants and Configuration
-# ============================================================================
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
@@ -42,16 +61,10 @@ CACHE_LIMIT_LARGE = DESKTOP_CACHE_LIMIT_LARGE
 
 LOW_MEMORY_RUNTIME = False
 
-# ============================================================================
-# Parser Limits (for crash prevention)
-# ============================================================================
 MAX_NESTING_DEPTH = 200
 MAX_INPUT_LENGTH = 10000
 MAX_TOKEN_COUNT = 2000
 
-# ============================================================================
-# Cache Dictionaries for Performance
-# ============================================================================
 SIG_CACHE = {}
 SHOW_CACHE = {}
 SPLIT_COEFF_CACHE = {}
@@ -153,22 +166,6 @@ def PI():
     return 'const', 'pi'
 
 
-def is_num(node):
-    return node[0] == 'num'
-
-
-def is_sym(node):
-    return node[0] == 'sym'
-
-
-def is_zero(node):
-    return is_num(node) and node[1] == 0
-
-
-def is_one(node):
-    return is_num(node) and node[1] == node[2]
-
-
 def is_minus_one(node):
     return is_num(node) and node[1] == -node[2]
 
@@ -229,6 +226,53 @@ def solve_linear_system(mat, rhs):
             row += 1
         col += 1
     return b
+
+
+def solve_linear_system_float(mat, rhs):
+    n = len(rhs)
+    a = [list(row) for row in mat]
+    b = list(rhs)
+    col = 0
+    while col < n:
+        pivot = col
+        while pivot < n and abs(a[pivot][col]) < 1e-10:
+            pivot += 1
+        if pivot == n:
+            return
+        if pivot != col:
+            a[col], a[pivot] = a[pivot], a[col]
+            b[col], b[pivot] = b[pivot], b[col]
+        pivot_val = a[col][col]
+        j = col
+        while j < n:
+            a[col][j] = a[col][j] / pivot_val
+            j += 1
+        b[col] = b[col] / pivot_val
+        row = 0
+        while row < n:
+            if row != col and abs(a[row][col]) >= 1e-10:
+                factor = a[row][col]
+                j = col
+                while j < n:
+                    a[row][j] = a[row][j] - factor * a[col][j]
+                    j += 1
+                b[row] = b[row] - factor * b[col]
+            row += 1
+        col += 1
+    return b
+
+
+def rational_from_float(value):
+    if abs(value) < 1e-9:
+        return num(0)
+    den = 1
+    while den <= 64:
+        top = int(round(value * den))
+        if abs(value - float(top) / float(den)) < 1e-8:
+            return num(top, den)
+        den += 1
+    scale = 1000000
+    return num(int(round(value * scale)), scale)
 
 
 def int_pow(a, n):
@@ -308,22 +352,7 @@ def sig(node):
 
 
 def same(a, b):
-    """Check if two expression trees are equivalent. Cached."""
-    # Quick identity check
-    if a is b or a == b:
-        return True
-    
-    # Check cache using pair of ids
-    key = (a, b)
-    cached = SAME_CACHE.get(key)
-    if cached is not None:
-        return cached
-    
-    # Compare signatures
-    result = sig(a) == sig(b)
-    cache_store(SAME_CACHE, key, result, CACHE_LIMIT_LARGE)
-    cache_store(SAME_CACHE, (b, a), result, CACHE_LIMIT_LARGE)
-    return result
+    return same_by_sig(a, b, sig, SAME_CACHE, cache_store, CACHE_LIMIT_LARGE)
 
 
 def format_equation_human_readable(node, parent=0):
@@ -335,7 +364,7 @@ def format_equation_human_readable(node, parent=0):
     if kind == 'num':
         if node[2] == 1:
             return str(node[1])
-        return f'({node[1]}/{node[2]})'
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
     
     elif kind == 'sym':
         return node[1]
@@ -347,24 +376,24 @@ def format_equation_human_readable(node, parent=0):
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
-                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
-            return f'ln({arg})'
+                return 'ln|' + format_equation_human_readable(node[2][2], 0) + '|'
+            return 'ln(' + arg + ')'
         elif node[1] == 'exp':
-            return f'e^({format_equation_human_readable(node[2], 0)})'
+            return 'e^(' + format_equation_human_readable(node[2], 0) + ')'
         else:
-            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+            return node[1] + '(' + format_equation_human_readable(node[2], 0) + ')'
     
     elif kind == 'pow':
         base = format_equation_human_readable(node[1], 3)
         exponent = format_equation_human_readable(node[2], 3)
         
         if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
-            base = f'({base})'
+            base = '(' + base + ')'
         
         if node[2][0] not in ('num',) or node[2][2] != 1:
-            exponent = f'({exponent})'
+            exponent = '(' + exponent + ')'
         
-        return f'{base}^{exponent}'
+        return base + '^' + exponent
     
     elif kind == 'mul':
         items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
@@ -373,7 +402,7 @@ def format_equation_human_readable(node, parent=0):
         for item in items:
             part = format_equation_human_readable(item, 2)
             if item[0] == 'add':
-                part = f'({part})'
+                part = '(' + part + ')'
             parts.append(part)
         
         return '*'.join(parts)
@@ -383,11 +412,11 @@ def format_equation_human_readable(node, parent=0):
         denominator = format_equation_human_readable(node[2], 2)
         
         if node[1][0] in ('add', 'mul'):
-            numerator = f'({numerator})'
+            numerator = '(' + numerator + ')'
         if node[2][0] in ('add', 'mul'):
-            denominator = f'({denominator})'
+            denominator = '(' + denominator + ')'
         
-        return f'{numerator}/{denominator}'
+        return numerator + '/' + denominator
     
     elif kind == 'add':
         items = node[1] if hasattr(node, '__iter__') and len(node) > 1 else [node]
@@ -402,7 +431,7 @@ def format_equation_human_readable(node, parent=0):
                 term = format_equation_human_readable(rest, 1)
                 if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
                     coeff_str = format_equation_human_readable(coeff, 1)
-                    term = f'{coeff_str}*{term}'
+                    term = coeff_str + '*' + term
             
             parts.append(term)
         
@@ -590,13 +619,11 @@ def power(a, b):
 
 
 def fn(name, arg):
-    if name == 'ln':
-        name = 'log'
-    return sim(('fn', name, arg))
+    return shared_fn(name, arg, sim)
 
 
 def neg(node):
-    return mul([num(-1), node])
+    return shared_neg(node, num, mul)
 
 
 def sub(a, b):
@@ -1992,13 +2019,14 @@ def solve_transform_text(text1, text2):
     expr1 = parse(text1.strip())
     expr2 = parse(text2.strip())
     steps, result = rearrange_to_target(expr1, expr2)
-    lines = ['Src = ' + show(expr1), 'Tgt = ' + show(expr2)]
+    lines = ['Transform: source to target form']
     i = 0
     while i < len(steps):
         _num, desc, _node = steps[i]
-        lines.append(desc)
+        if not desc.startswith('Answer:'):
+            lines.append(desc)
         i += 1
-    lines.append('Final = ' + show(result))
+    lines.append('Answer: ' + show(result))
     return lines
 
 
@@ -3620,19 +3648,6 @@ def show_explicit(node, parent=0):
     return show(node, parent)
 
 
-def ensure_reasoning_marker(lines, default_prefix="Method: "):
-    """Add reasoning marker to output lines if missing."""
-    if not lines:
-        return lines
-    text = "\n".join(lines)
-    if any(marker in text.lower() for marker in REASONING_MARKERS):
-        return lines
-    lines = list(lines)
-    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        lines.insert(0, default_prefix)
-    return lines
-
-
 def is_name_start(ch):
     return ('A' <= ch <= 'Z') or ('a' <= ch <= 'z') or ch == '_'
 
@@ -4219,12 +4234,10 @@ def solve_equation_text(text):
     lines = ['Method: Solve equation']
     if label == 'Identity':
         lines.append('All x satisfy this identity')
-        lines.append('Solution: all real x')
         lines.append('Answer: all real x')
         return ensure_reasoning_marker(lines)
     if label == 'No solution':
         lines.append('No solution exists')
-        lines.append('Solution: none')
         lines.append('Answer: no solution')
         return ensure_reasoning_marker(lines)
     if roots is None:
@@ -4234,7 +4247,6 @@ def solve_equation_text(text):
     lines.append('Solve for ' + var_name + ':')
     lines.append(label)
     solution = format_solution_line(var_name, ordered)
-    lines.append('Solution: ' + solution)
     lines.append('Answer: ' + solution)
     return ensure_reasoning_marker(lines)
 
@@ -4250,9 +4262,10 @@ def solve_transform_text(text1, text2):
     i = 0
     while i < len(steps):
         _num, desc, _node = steps[i]
-        lines.append('Step ' + str(i+1) + ': ' + desc)
+        if not desc.startswith('Answer:'):
+            lines.append('Step ' + str(i+1) + ': ' + desc)
         i += 1
-    lines.append('Final = ' + show(result))
+    lines.append('Answer: ' + show(result))
     return ensure_reasoning_marker(lines)
 
 
@@ -4742,6 +4755,37 @@ def choose_template_sample_values(source, basis_map, var_name, count):
     return rows, rhs
 
 
+def choose_template_sample_values_numeric(source, basis_map, var_name, count):
+    if math is None:
+        return
+    tried = [-2.5, -1.75, -1.0, -0.5, 0.5, 1.0, 1.75, 2.5, 3.25]
+    rows = []
+    rhs = []
+    i = 0
+    while i < len(tried) and len(rows) < count:
+        value = tried[i]
+        row = []
+        ok = True
+        j = 0
+        while j < len(basis_map):
+            basis_val = numeric_eval(basis_map[j], {var_name: value})
+            if basis_val is None:
+                ok = False
+                break
+            row.append(basis_val)
+            j += 1
+        source_val = numeric_eval(source, {var_name: value})
+        if source_val is None:
+            ok = False
+        if ok:
+            rows.append(row)
+            rhs.append(source_val)
+        i += 1
+    if len(rows) < count:
+        return
+    return rows, rhs
+
+
 def verify_template_match(source, target, var_name):
     checks = [num(-4), num(-3), num(-2), num(-1), num(1), num(2), num(3), num(4), num(1, 2), num(3, 2), num(5, 2)]
     seen = 0
@@ -4756,6 +4800,61 @@ def verify_template_match(source, target, var_name):
             seen += 1
         i += 1
     return seen >= 4
+
+
+def verify_template_match_numeric(source, target, var_name):
+    if math is None:
+        return False
+    checks = [-2.75, -1.5, -0.75, 0.4, 0.9, 1.6, 2.4, 3.1]
+    seen = 0
+    i = 0
+    while i < len(checks):
+        value = checks[i]
+        left = numeric_eval(source, {var_name: value})
+        right = numeric_eval(target, {var_name: value})
+        if left is not None and right is not None:
+            if abs(left - right) > 1e-6 * (1.0 + abs(left) + abs(right)):
+                return False
+            seen += 1
+        i += 1
+    return seen >= 3
+
+
+def fit_linear_template(source, placeholders, const_part, basis_by_name, source_var):
+    basis_names = []
+    basis_terms = []
+    i = 0
+    while i < len(placeholders):
+        name = placeholders[i]
+        basis_names.append(name)
+        basis_terms.append(basis_by_name.get(name, num(0)))
+        i += 1
+    reduced_source = sim(sub(source, const_part))
+    sample = choose_template_sample_values(reduced_source, basis_terms, source_var, len(basis_names))
+    if sample is not None:
+        mat, rhs = sample
+        solved = solve_linear_system([list(row) for row in mat], list(rhs))
+    else:
+        sample = choose_template_sample_values_numeric(reduced_source, basis_terms, source_var, len(basis_names))
+        if sample is None:
+            return
+        mat, rhs = sample
+        float_solution = solve_linear_system_float([list(row) for row in mat], list(rhs))
+        if float_solution is None:
+            return
+        solved = []
+        i = 0
+        while i < len(float_solution):
+            solved.append(rational_from_float(float_solution[i]))
+            i += 1
+    if solved is None:
+        return
+    subst_map = {}
+    i = 0
+    while i < len(basis_names):
+        subst_map[basis_names[i]] = solved[i]
+        i += 1
+    return subst_map
 
 
 def solve_target_coefficients(source, target_template):
@@ -4775,32 +4874,53 @@ def solve_target_coefficients(source, target_template):
     if linear is None:
         return
     const_part, basis_by_name = linear
-    basis_names = []
-    basis_terms = []
-    i = 0
-    while i < len(placeholders):
-        name = placeholders[i]
-        basis_names.append(name)
-        basis_terms.append(basis_by_name.get(name, num(0)))
-        i += 1
-    reduced_source = sim(sub(source, const_part))
-    sample = choose_template_sample_values(reduced_source, basis_terms, source_var, len(basis_names))
-    if sample is None:
+    subst_map = fit_linear_template(source, placeholders, const_part, basis_by_name, source_var)
+    if subst_map is None:
         return
-    mat, rhs = sample
-    solved = solve_linear_system([list(row) for row in mat], list(rhs))
-    if solved is None:
-        return
-    subst_map = {}
-    i = 0
-    while i < len(basis_names):
-        subst_map[basis_names[i]] = solved[i]
-        i += 1
     instantiated = target_template
     for name, value in subst_map.items():
         instantiated = substitute_keep_form(instantiated, sym(name), value)
     instantiated = sim(instantiated)
-    if not verify_template_match(source, instantiated, source_var):
+    if not verify_template_match(source, instantiated, source_var) and not verify_template_match_numeric(source, instantiated, source_var):
+        return
+    return subst_map, instantiated
+
+
+def solve_fraction_target_coefficients(source, target_template):
+    if target_template[0] != 'div':
+        return
+    source_var = choose_primary_var(source)
+    if source_var is None:
+        return
+    target_names = sorted_symbol_names(target_template)
+    placeholders = []
+    i = 0
+    while i < len(target_names):
+        if target_names[i] != source_var:
+            placeholders.append(target_names[i])
+        i += 1
+    if len(placeholders) == 0:
+        return
+    denom_names = set()
+    collect_symbol_names(target_template[2], denom_names)
+    i = 0
+    while i < len(placeholders):
+        if placeholders[i] in denom_names:
+            return
+        i += 1
+    linear = extract_placeholder_linear_data(target_template[1], placeholders)
+    if linear is None:
+        return
+    const_part, basis_by_name = linear
+    scaled_source = canonical_compare_form(mul([source, target_template[2]]))
+    subst_map = fit_linear_template(scaled_source, placeholders, const_part, basis_by_name, source_var)
+    if subst_map is None:
+        return
+    numerator = target_template[1]
+    for name, value in subst_map.items():
+        numerator = substitute_keep_form(numerator, sym(name), value)
+    instantiated = sim(div(numerator, target_template[2]))
+    if not verify_template_match(source, instantiated, source_var) and not verify_template_match_numeric(source, instantiated, source_var):
         return
     return subst_map, instantiated
 
@@ -4808,9 +4928,14 @@ def solve_target_coefficients(source, target_template):
 def rearrange_to_target(source, target_template):
     steps = []
     current = sim(source)
-    steps.append((1, 'Original: ' + show(current), current))
     target = sim(target_template)
-    fitted = solve_target_coefficients(current, target)
+    source_canon = canonical_compare_form(current)
+    if not same(current, source_canon):
+        steps.append((1, 'Simplify source using identities: ' + show(source_canon), source_canon))
+        current = source_canon
+    fitted = solve_fraction_target_coefficients(current, target)
+    if fitted is None:
+        fitted = solve_target_coefficients(current, target)
     if fitted is not None:
         coeffs, target = fitted
         names = sorted(coeffs.keys())
@@ -4820,11 +4945,11 @@ def rearrange_to_target(source, target_template):
             parts.append(names[i] + ' = ' + show(coeffs[names[i]]))
             i += 1
         if len(parts) > 0:
-            steps.append((2, 'Match coefficients: ' + ', '.join(parts), target))
-            steps.append((3, 'Rewrite to target form: ' + show(target), target))
+            steps.append((len(steps) + 1, 'Match coefficients: ' + ', '.join(parts), target))
+            steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(target), target))
             return steps, target
     if same(current, target):
-        steps.append((len(steps) + 1, 'Already in target form: ' + show(target), target))
+        steps.append((len(steps) + 1, 'Already in target form.', target))
         return steps, target
     route_steps = target_route_steps(current, target)
     if route_steps is not None:
@@ -4837,10 +4962,7 @@ def rearrange_to_target(source, target_template):
             steps.append((len(steps) + 1, text, node))
             i += 1
         return steps, target
-    source_canon = canonical_compare_form(current)
     target_canon = canonical_compare_form(target)
-    if not same(current, source_canon):
-        steps.append((2, 'Simplify: ' + show(source_canon), source_canon))
     if same(source_canon, target):
         steps.append((len(steps) + 1, 'Match target form: ' + show(target), target))
         return steps, target
@@ -5138,7 +5260,7 @@ def format_rewrite_lines(original_text, expr, final_expr, steps, allowed_terms, 
                 lines.append('= ' + show(steps[i][1]))
                 prev = steps[i][1]
             i += 1
-        lines.append('Final = ' + show(final_expr))
+        lines.append('Answer: ' + show(final_expr))
     return lines
 
 
@@ -5526,7 +5648,6 @@ def solve_polynomial_expr(node, var_name):
     return 'quad', roots
 
 
-# Final algebra overrides
 
 def _final_rewrite_substitution(term, var_name, u_name):
     linear = match_linear_in_var(term, var_name)
@@ -5652,7 +5773,12 @@ def solve_equation_text(text):
         return cartesian
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
-    lines = ['Method: Solve equation', 'Expr = ' + show(expr)]
+    shown_expr = expr
+    if roots is not None and var_name is not None:
+        factored_info = factor_expression(expr, var_name)
+        if factored_info is not None and not same(factored_info[0], expr):
+            shown_expr = factored_info[0]
+    lines = ['Method: Solve equation', 'Expr = ' + show(shown_expr)]
     if label == 'Identity':
         lines.append('All x satisfy the equation')
         lines.append('Answer: all real x')
@@ -5664,16 +5790,15 @@ def solve_equation_text(text):
     if roots is None:
         lines.append(label)
         lines.append('Answer: no closed-form solution found')
-        return lines
+        return compact_duplicate_answer_lines(lines)
     lines.append(label)
     solution = format_solution_line(var_name, roots)
-    lines.append(solution)
     if 'Cardano' in label:
         decimal_roots = depressed_cubic_cardano_numeric_roots(expr, var_name)
         if decimal_roots:
             lines.append(format_decimal_solution_line(var_name, decimal_roots))
     lines.append('Answer: ' + solution)
-    return lines
+    return compact_duplicate_answer_lines(lines)
 
 
 
@@ -6390,7 +6515,7 @@ def solve_rewrite_text(text, term_texts):
         return rewrite_in_term_text(text, term_texts[0])
     target = add_term_texts(term_texts)
     lines = solve_transform_text(text, target)
-    if len(lines) > 0 and lines[-1].startswith('Final = '):
+    if len(lines) > 0 and lines[-1].startswith('Answer: '):
         return lines
     return lines
 
@@ -6487,7 +6612,7 @@ def rewrite_in_term_text(text, term_text):
             'Start with ' + show(expr),
             'Write in terms of ' + show(term) + ' only.',
             'Already written in terms of ' + show(term) + '.',
-            'Final = ' + show(expr),
+            'Answer: ' + show(expr),
         ]
     variants = [expr]
     simplified = canonical_compare_form(expr)
@@ -6501,7 +6626,7 @@ def rewrite_in_term_text(text, term_text):
             lines = ['Start with ' + show(expr), 'Write in terms of ' + show(term) + ' only.', u_name + ' = ' + show(term)]
             if i != 0:
                 lines.append('Expand and collect like terms first.')
-            lines.append('Final = ' + show(out))
+            lines.append('Answer: ' + show(out))
             return lines
         i += 1
     shifted = match_shifted_reciprocal(term, var_name)
@@ -6529,7 +6654,7 @@ def rewrite_in_term_text(text, term_text):
                 ok_count += 1
             i += 1
         if ok_count >= 3:
-            return ['Start with ' + show(expr), 'Write in terms of ' + show(term) + ' only.', u_name + ' = ' + show(term), 'Final = ' + show(candidate)]
+            return ['Start with ' + show(expr), 'Write in terms of ' + show(term) + ' only.', u_name + ' = ' + show(term), 'Answer: ' + show(candidate)]
     raise ValueError('Cannot rewrite in that term.')
 
 
@@ -6742,15 +6867,15 @@ def main():
             expr1 = parse(text1)
             text2 = input('Tgt: ').strip()
             expr2 = parse(text2)
-            print('1. Source = ' + show(expr1))
-            print('2. Target = ' + show(expr2))
+            print('1. Transform: source to target form')
             steps, result = rearrange_to_target(expr1, expr2)
             i = 0
             while i < len(steps):
                 num, desc, _ = steps[i]
-                print(str(num + 2) + '. ' + desc)
+                if not desc.startswith('Answer:'):
+                    print(str(num + 1) + '. ' + desc)
                 i += 1
-            print(str(len(steps) + 3) + '. Final = ' + show(result))
+            print(str(len(steps) + 2) + '. Answer: ' + show(result))
         elif mode == '3':
             text1 = input('Expr: ').strip()
             max_terms_str = input('Max: ').strip()
@@ -6888,8 +7013,10 @@ def find_domain_text(text):
         if node is None:
             return
         if node[0] == 'add' or node[0] == 'mul':
-            for k in node[1:]:
-                check_restrictions(k)
+            k = 0
+            while k < len(node[1]):
+                check_restrictions(node[1][k])
+                k += 1
         elif node[0] == 'div':
             num_node, den_node = node[1], node[2]
             check_restrictions(num_node)
@@ -6917,19 +7044,47 @@ def find_domain_text(text):
         lines.append('Domain: all real ' + var_name)
         return ensure_reasoning_marker(lines)
     
+    def solve_linear_domain_constraint(r_type, r_node):
+        linear = match_linear_in_var(r_node, var_name)
+        if linear is None:
+            return None
+        a, b = linear
+        if not is_num(a) or is_zero(a):
+            return None
+        root = sim(div(neg(b), a))
+        if r_type == 'den':
+            return var_name + ' != ' + show(root)
+        op = '>=' if r_type == 'sqrt' else '>'
+        if a[1] < 0:
+            op = '<=' if r_type == 'sqrt' else '<'
+        return var_name + ' ' + op + ' ' + show(root)
+
     constraints = []
+    solved_constraints = []
     for r_type, r_node in restrictions:
         r_show = show(r_node)
         if r_type == 'den':
             if r_node[0] == 'sym':
-                constraints.append(r_node[1] + ' != 0')
+                constraint = r_node[1] + ' != 0'
             else:
-                constraints.append(r_show + ' != 0')
+                constraint = r_show + ' != 0'
         elif r_type == 'sqrt':
-            constraints.append(r_show + ' >= 0')
+            constraint = r_show + ' >= 0'
         elif r_type == 'pos':
-            constraints.append(r_show + ' > 0')
+            constraint = r_show + ' > 0'
+        else:
+            constraint = r_show
+        constraints.append(constraint)
+        solved = solve_linear_domain_constraint(r_type, r_node)
+        if solved is not None:
+            solved_constraints.append(solved)
     lines.append(', '.join(constraints))
+    if len(solved_constraints) != 0:
+        solved_text = ' and '.join(solved_constraints)
+        lines.append('Solve: ' + solved_text)
+        lines.append('Domain: ' + solved_text)
+    else:
+        lines.append('Domain: all real ' + var_name + ' except where restrictions apply.')
     return ensure_reasoning_marker(lines)
 
 

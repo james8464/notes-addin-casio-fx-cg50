@@ -79,8 +79,7 @@ Output:
 Method: Transform expression to target form
 Use 1 - cos(2A) = 2sin^2 A.
 = 2*sin(x)^2
-Hence 2*sin(x)^2
-Final = 2*sin(x)^2
+Answer: 2*sin(x)^2
 ```
 
 ## Mode 3: Expand (`exp`)
@@ -205,7 +204,7 @@ Output:
 Method: Solve equation
 Solve for x:
 Using quadratic formula
-Solution: x = [3/2, -2/3]
+Answer: x = [3/2, -2/3]
 ```
 
 ## Mode 7: Composite (`comp`)
@@ -293,7 +292,7 @@ Start with x^2 - 1
 Write in terms of x-1, x+1 only.
 Factor as a difference of squares
 = (x-1)*(x+1)
-Final = (x-1)*(x+1)
+Answer: (x-1)*(x+1)
 ```
 
 ## Mode 10: Domain & Range (`dom/rng`)

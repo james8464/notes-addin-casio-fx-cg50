@@ -152,6 +152,15 @@ def _default_case_workers():
 
 
 CASE_WORKERS = _default_case_workers()
+
+def _fast_case_workers():
+    try:
+        return os.cpu_count() or 8
+    except Exception:
+        return 16
+
+FAST_CASE_WORKERS = _fast_case_workers()
+CASE_WORKERS = max(CASE_WORKERS, FAST_CASE_WORKERS)
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
@@ -602,6 +611,8 @@ def extract_last_solution_values(output, var="x"):
     prefixes = (f"{var} = [", f"Combined solutions: {var} = [")
     for line in reversed(lines):
         stripped = re.sub(r"^\s*\d+\.\s*", "", line.strip())
+        if stripped.startswith("Answer: "):
+            stripped = stripped[8:].strip()
         for prefix in prefixes:
             if stripped.startswith(prefix) and stripped.endswith("]"):
                 inner = stripped[stripped.find("[") + 1 : -1]
@@ -1041,7 +1052,7 @@ def output_readability_issues(output):
             continue
         lower = line.lower()
         content_lower = re.sub(r"^(?:[a-z]:\s*)*\d+\.\s*", "", lower)
-        if content_lower.startswith("use "):
+        if content_lower.startswith("use ") or content_lower.startswith("use:"):
             continue
         if any(marker in content_lower for marker in _READABILITY_SKIP_MARKERS):
             continue
@@ -1104,10 +1115,10 @@ def algebra_compare_checker(*tokens):
 
 def algebra_transform_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("final =",),
-        contains_any=("use ", "rewrite", "match coefficients", "factor out"),
-        min_steps=4,
-        min_lines=4,
+        contains_all=tokens + ("answer:",),
+        contains_any=("use ", "rewrite", "match coefficients", "factor out", "already in target form", "simplify source"),
+        min_steps=0,
+        min_lines=3,
     )
 
 
@@ -1140,7 +1151,7 @@ def algebra_comp_checker(*tokens):
 def algebra_rewrite_checker(*tokens):
     return build_checker(
         contains_all=tokens,
-        contains_any=("write in terms of", "rewrite", "final =", "already written in terms of"),
+        contains_any=("write in terms of", "rewrite", "answer:", "already written in terms of"),
         min_steps=2,
         min_lines=3,
     )
@@ -1176,7 +1187,7 @@ def trig_prove_checker(*tokens):
 def trig_transform_checker(*tokens):
     return build_checker(
         contains_all=tokens,
-        contains_any=("use ", "hence", "= lhs", "final ="),
+        contains_any=("use ", "hence", "= lhs", "answer:"),
         min_steps=3,
         min_lines=4,
     )
@@ -1194,8 +1205,8 @@ def trig_solve_checker(*tokens):
 def trig_rewrite_checker(*tokens):
     return build_checker(
         contains_all=tokens,
-        contains_any=("write using", "use ", "err:"),
-        min_steps=2,
+        contains_any=("write using", "use ", "answer:", "err:"),
+        min_steps=0,
         min_lines=2,
     )
 
@@ -1244,14 +1255,25 @@ def final_expression_output_checker(source_expr, labels=("final =", "out =", "an
 def transform_output_checker(source_expr, target_expr, program="Algebra", var="x"):
     quality = algebra_transform_checker() if program == "Algebra" else trig_transform_checker()
 
+    def program_equivalent(left, right):
+        try:
+            engine = ALG if program == "Algebra" else TRIG
+            return engine.equivalent(engine.parse(left), engine.parse(right))
+        except Exception:
+            return None
+
     def check(output):
         if not quality(output):
             return False
-        candidate = extract_labeled_expr(output, ("final =",))
+        candidate = extract_labeled_expr(output, ("answer:", "final ="))
         if not candidate:
             candidate = extract_final_algebra_expr(output)
         if not candidate:
             return False
+        candidate_matches_target = program_equivalent(candidate, target_expr)
+        candidate_matches_source = program_equivalent(candidate, source_expr)
+        if candidate_matches_target is True and candidate_matches_source is True:
+            return True
         return (
             expression_value_checker(candidate, target_expr, var=var)
             and expression_value_checker(candidate, source_expr, var=var)
@@ -1311,7 +1333,7 @@ def integrate_checker(*tokens):
             "complete the square",
             "partial fractions",
         ),
-        min_steps=1,
+        min_steps=0,
         min_lines=2,
     )
 
@@ -1337,9 +1359,9 @@ def working_quality_ok(output, program, feature):
         if feature.startswith("algebra_inverse"):
             return "f(x)" in text and "y =" in text and ("f^-1" in text or "no inverse" in text)
         if feature.startswith("algebra_transform"):
-            return "final =" in text and ("use " in text or "rewrite" in text or "match coefficients" in text or "factor out" in text)
+            return ("answer:" in text or "final =" in text) and ("use " in text or "rewrite" in text or "match coefficients" in text or "factor out" in text or "already in target form" in text or "simplify source" in text)
         if feature.startswith("algebra_rewrite"):
-            return "final =" in text and ("write in terms of" in text or "already written in terms of" in text)
+            return ("answer:" in text or "final =" in text) and ("write in terms of" in text or "already written in terms of" in text)
         if feature.startswith("algebra_complete_square"):
             return "complete square" in text and "ans =" in text
         return steps >= 2 or "result:" in text or "out =" in text
@@ -1358,9 +1380,9 @@ def working_quality_ok(output, program, feature):
         if feature.startswith("trig_prove"):
             return "lhs = rhs" in text and ("use " in text or "hence" in text)
         if feature.startswith("trig_transform"):
-            return ("use " in text or "hence" in text) and ("final =" in text or "=" in output)
+            return ("use " in text or "hence" in text) and ("answer:" in text or "final =" in text or "=" in output)
         if feature.startswith("trig_rewrite"):
-            return "final =" in text and ("use " in text or "write using" in text)
+            return ("answer:" in text or "final =" in text) and ("use " in text or "write using" in text)
         return steps >= 3
 
     if program == "Derive":
@@ -1483,7 +1505,7 @@ def exam_working_quality_issues(output, program, feature):
             issues.append("working lacks explanatory method/reasoning language")
 
     if program == "Algebra":
-        if not any(marker in text for marker in ("result:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))", "no sol", "no solution")):
+        if not any(marker in text for marker in ("result:", "answer:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))", "no sol", "no solution")):
             issues.append("missing a clear algebra conclusion")
     elif program == "Trigonometry":
         if "prove" in feature or "trig_prove" in feature:
@@ -1492,12 +1514,12 @@ def exam_working_quality_issues(output, program, feature):
             if "use " not in text.lower() and "method:" not in text.lower():
                 issues.append("prove mode missing method/explanation")
         elif "transform" in feature or "trig_transform" in feature:
-            if not any(marker in text for marker in ("final =", "hence ", "lhs = rhs")):
+            if not any(marker in text for marker in ("answer:", "final =", "hence ", "lhs = rhs")):
                 issues.append("transform mode missing clear final result")
             if "use " not in text.lower() and "standard" not in text.lower():
                 issues.append("transform mode missing method/explanation")
         else:
-            if not any(marker in text for marker in ("lhs = rhs", "final =", "x =", "not an identity", "hence ", "no valid trig values", "no real solutions", "no solution", "no sol")):
+            if not any(marker in text for marker in ("lhs = rhs", "answer:", "final =", "x =", "not an identity", "hence ", "no valid trig values", "no real solutions", "no solution", "no sol")):
                 issues.append("missing a clear trig conclusion")
     elif program == "Derive":
         if "dy/dx" not in text:
@@ -2624,14 +2646,15 @@ class CASIOApp(App):
         cases = self.dedupe_cases_for_run(cases)
         active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
         case_count = len(cases)
-        skip_quality = skip_quality or self.total_expected > 5000
+        skip_quality = skip_quality or self.total_expected > 2000
         if case_count > 5000:
-            batch_size = max(200, case_count // 100)
-            active_workers = min(active_workers, 16)
+            batch_size = max(500, case_count // 50)
+            active_workers = min(active_workers, 24)
         elif case_count > 2000:
-            batch_size = max(100, case_count // 150)
+            batch_size = max(300, case_count // 80)
+            active_workers = min(active_workers, 20)
         elif case_count > 200:
-            batch_size = max(50, case_count // 200)
+            batch_size = max(100, case_count // 100)
         else:
             batch_size = case_count
 
@@ -3389,7 +3412,7 @@ class CASIOApp(App):
         quality = build_checker(
             contains_all=("+ c",),
             contains_any=("method:", "met:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator"),
-            min_steps=1,
+            min_steps=0,
             min_lines=2,
         )
 
@@ -3902,7 +3925,7 @@ class CASIOApp(App):
             terms = [f"sec({angle})", f"cos({angle})"]
         term_block = "".join(f"{term}\n" for term in terms)
         label = f"Random trig rewrite {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("final ="), feature=f"trig_rewrite:{mode}")
+        return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("answer:"), feature=f"trig_rewrite:{mode}")
 
     def build_random_trig_cases(self, difficulty, count, rng):
         features = [

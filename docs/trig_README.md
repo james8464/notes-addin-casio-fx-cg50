@@ -74,8 +74,7 @@ Output:
 Method: Transform expression
 Use half-angle ratio identities.
 = 3*tan(x/2)
-Hence 3*tan(x/2)
-Final = 3*tan(x/2)
+Answer: 3*tan(x/2)
 ```
 
 ### Example 2: core named trig route
@@ -92,8 +91,7 @@ Output:
 Method: Transform expression
 Use sin A / cos A = tan A.
 = tan(x)
-Hence tan(x)
-Final = tan(x)
+Answer: tan(x)
 ```
 
 ## Mode 3: Solve (`solve`)
@@ -182,7 +180,7 @@ Start with 1-cos(2*x)
 Write in terms of sin(x) only.
 Use 1 - cos(2A) = 2sin^2 A.
 = 2*sin(x)^2
-Final = 2*sin(x)^2
+Answer: 2*sin(x)^2
 ```
 
 ## Supported identity families

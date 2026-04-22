@@ -21,6 +21,7 @@ except ImportError:
 
 try:
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -28,11 +29,9 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig
     from shared_reasoning_markers import REASONING_MARKERS
 
-# ============================================================================
-# SECTION 1: Core Constants and Configuration
-# ============================================================================
 
 E = ("const", "e")
 PI = ("const", "pi")
@@ -51,7 +50,6 @@ FUNC_ALIASES = {
     "arctan": "atan"
 }
 
-# Parser limits
 MAX_NESTING_DEPTH = 200
 MAX_INPUT_LENGTH = 10000
 MAX_TOKEN_COUNT = 2000
@@ -121,9 +119,6 @@ def _force_low_memory_runtime(flag):
 apply_runtime_profile()
 
 
-# ============================================================================
-# SECTION 2: Character Classification Utilities
-# ============================================================================
 
 def is_digit_char(ch):
     return "0" <= ch <= "9"
@@ -155,9 +150,6 @@ def is_valid_symbol_name(text):
     return True
 
 
-# ============================================================================
-# SECTION 3: Arithmetic Operations
-# ============================================================================
 
 def gcd(a, b):
     if math is not None and hasattr(math, "gcd"):
@@ -208,28 +200,12 @@ def sym(name):
     return ("sym", name)
 
 
-def is_num(x):
-    return x[0] == "num"
-
-
 def is_const(x):
     return x[0] == "const"
 
 
-def is_zero(x):
-    return is_num(x) and x[1] == 0
-
-
-def is_one(x):
-    return is_num(x) and x[1] == x[2]
-
-
 def is_minus_one(x):
     return is_num(x) and x[1] == -x[2]
-
-
-def same(a, b):
-    return a == b or sig(a) == sig(b)
 
 
 def addq(a, b):
@@ -268,9 +244,6 @@ def int_pow(a, n):
     return out
 
 
-# ============================================================================
-# SECTION 4: AST Node Constructors
-# ============================================================================
 
 def add(parts):
     return sim(("add", tuple(parts)))
@@ -293,7 +266,7 @@ def power(a, b):
 
 
 def fn(name, arg):
-    return sim(("fn", name, arg))
+    return shared_fn(name, arg, sim)
 
 
 def neg(x):
@@ -302,9 +275,6 @@ def neg(x):
     return mul([num(-1), x])
 
 
-# ============================================================================
-# SECTION 5: AST Utilities
-# ============================================================================
 
 def flat(node, kind):
     if node[0] != kind:
@@ -338,6 +308,10 @@ def sig(node):
         parts.append(sig(item))
     parts.sort()
     return (kind, tuple(parts))
+
+
+def same(a, b):
+    return same_by_sig(a, b, sig)
 
 
 def tree_size(node):
@@ -415,9 +389,6 @@ def factor_map(node):
     return coeff, order, data
 
 
-# ============================================================================
-# SECTION 6: Power Normalization
-# ============================================================================
 
 def single_prime_power(n):
     if n <= 1:
@@ -551,9 +522,6 @@ def subst(node, name, value):
     return (kind, tuple(out))
 
 
-# ============================================================================
-# SECTION 7: Differentiation Rules
-# ============================================================================
 
 def rule_u(name):
     u = sym("u")
@@ -594,9 +562,6 @@ def rule_u(name):
     raise ValueError("Unsupported function: " + name)
 
 
-# ============================================================================
-# SECTION 8: Symbolic Simplification
-# ============================================================================
 
 def sim(node):
     kind = node[0]
@@ -832,9 +797,6 @@ def sim(node):
     return node
 
 
-# ============================================================================
-# SECTION 9: Core Differentiation
-# ============================================================================
 
 def diff(node, var, deps_list):
     deps_list_list = list(deps_list.keys()) if isinstance(deps_list, dict) else []
@@ -984,9 +946,6 @@ def coeff_d(node, dname):
     return num(0), node
 
 
-# ============================================================================
-# SECTION 10: Pretty-Printing
-# ============================================================================
 
 def pr(node):
     kind = node[0]
@@ -1113,7 +1072,7 @@ def format_equation_human_readable(node, parent=0):
         # Format fractions clearly
         if node[2] == 1:
             return str(node[1])
-        return f'({node[1]}/{node[2]})'
+        return '(' + str(node[1]) + '/' + str(node[2]) + ')'
     
     elif kind == 'sym':
         return node[1]
@@ -1126,12 +1085,12 @@ def format_equation_human_readable(node, parent=0):
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
-                return f'ln|{format_equation_human_readable(node[2][2], 0)}|'
-            return f'ln({arg})'
+                return 'ln|' + format_equation_human_readable(node[2][2], 0) + '|'
+            return 'ln(' + arg + ')'
         elif node[1] == 'exp':
-            return f'e^({format_equation_human_readable(node[2], 0)})'
+            return 'e^(' + format_equation_human_readable(node[2], 0) + ')'
         else:
-            return f'{node[1]}({format_equation_human_readable(node[2], 0)})'
+            return node[1] + '(' + format_equation_human_readable(node[2], 0) + ')'
     
     elif kind == 'pow':
         base = format_equation_human_readable(node[1], 3)
@@ -1139,13 +1098,13 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex bases
         if node[1][0] in ('add', 'mul', 'div') or (node[1][0] == 'num' and node[1][2] != 1):
-            base = f'({base})'
+            base = '(' + base + ')'
         
         # Add parentheses for non-integer exponents or complex expressions
         if node[2][0] not in ('num',) or node[2][2] != 1:
-            exponent = f'({exponent})'
+            exponent = '(' + exponent + ')'
         
-        return f'{base}^{exponent}'
+        return base + '^' + exponent
     
     elif kind == 'mul':
         # Handle multiplication with proper spacing
@@ -1156,7 +1115,7 @@ def format_equation_human_readable(node, parent=0):
             part = format_equation_human_readable(item, 2)
             # Add parentheses for additions/subtractions in multiplication
             if item[0] == 'add':
-                part = f'({part})'
+                part = '(' + part + ')'
             parts.append(part)
         
         return '*'.join(parts)
@@ -1168,11 +1127,11 @@ def format_equation_human_readable(node, parent=0):
         
         # Add parentheses for complex numerator or denominator
         if node[1][0] in ('add', 'mul'):
-            numerator = f'({numerator})'
+            numerator = '(' + numerator + ')'
         if node[2][0] in ('add', 'mul'):
-            denominator = f'({denominator})'
+            denominator = '(' + denominator + ')'
         
-        return f'{numerator}/{denominator}'
+        return numerator + '/' + denominator
     
     elif kind == 'add':
         # Handle addition with proper term separation
@@ -1190,7 +1149,7 @@ def format_equation_human_readable(node, parent=0):
                 # Add coefficient if not 1
                 if not (coeff[0] == 'num' and coeff[1] == 1 and coeff[2] == 1):
                     coeff_str = format_equation_human_readable(coeff, 1)
-                    term = f'{coeff_str}*{term}'
+                    term = coeff_str + '*' + term
             
             parts.append(term)
         
@@ -1213,22 +1172,6 @@ def split_coeff(node):
     return num(1), node
 
 
-def ensure_reasoning_marker(lines, default_prefix="Method: "):
-    """Add reasoning marker to output lines if missing."""
-    if not lines:
-        return lines
-    text = "\n".join(lines)
-    if any(marker in text.lower() for marker in REASONING_MARKERS):
-        return lines
-    lines = list(lines)
-    if lines and not any(lines[0].lower().startswith(k) for k in ("use", "using", "let", "method", "hence", "therefore", "thus")):
-        lines.insert(0, default_prefix)
-    return lines
-
-
-# ============================================================================
-# SECTION 11: Parsing
-# ============================================================================
 
 KNOWN_PARSE_NAMES = tuple(
     sorted(
@@ -1532,9 +1475,75 @@ def parse_normal_input(text):
     return parse(text), "x"
 
 
-# ============================================================================
-# SECTION 12: Differentiation with Working Steps
-# ============================================================================
+def parse_second_derivative_input(text):
+    raw = text.strip()
+    if raw == "":
+        return None
+    left = None
+    expr_text = None
+    if "=" in raw:
+        parts = raw.split("=", 1)
+        left = parts[0].strip()
+        expr_text = parts[1].strip()
+    elif ":" in raw:
+        parts = raw.split(":", 1)
+        left = parts[0].strip()
+        expr_text = parts[1].strip()
+    else:
+        bits = raw.split(None, 1)
+        if len(bits) == 2:
+            left = bits[0].strip()
+            expr_text = bits[1].strip()
+    if left is None or expr_text is None or expr_text == "":
+        return None
+    head = left.replace(chr(178), "2").replace("^", "").replace(" ", "")
+    if head.startswith("d2/d") and head.endswith("2"):
+        var = head[4:-1]
+    elif head.startswith("d2y/d") and head.endswith("2"):
+        var = head[5:-1]
+    elif head.startswith("d2f/d") and head.endswith("2"):
+        var = head[5:-1]
+    else:
+        return None
+    if not is_valid_symbol_name(var) or len(var) != 1:
+        raise ValueError("Use a single-letter variable in d2/dx2.")
+    return parse(expr_text), var
+
+
+
+def reciprocal_trig_quotient_steps(name, arg, var, darg, final):
+    lines = ["Method: Convert to sin/cos"]
+    if name == "sec":
+        top = num(1)
+        bot = fn("cos", arg)
+        dtop = num(0)
+        dbot = neg(fn("sin", arg))
+        raw = div(fn("sin", arg), power(fn("cos", arg), num(2)))
+        lines.append("sec(" + show(arg) + ") = 1/cos(" + show(arg) + ")")
+    elif name == "cosec":
+        top = num(1)
+        bot = fn("sin", arg)
+        dtop = num(0)
+        dbot = fn("cos", arg)
+        raw = neg(div(fn("cos", arg), power(fn("sin", arg), num(2))))
+        lines.append("cosec(" + show(arg) + ") = 1/sin(" + show(arg) + ")")
+    else:
+        top = fn("cos", arg)
+        bot = fn("sin", arg)
+        dtop = neg(fn("sin", arg))
+        dbot = fn("cos", arg)
+        raw = neg(div(add([power(fn("sin", arg), num(2)), power(fn("cos", arg), num(2))]), power(fn("sin", arg), num(2))))
+        lines.append("cot(" + show(arg) + ") = cos(" + show(arg) + ")/sin(" + show(arg) + ")")
+    lines.append("Use quotient rule: d/d" + var + "[u/v] = (u'v - uv')/v^2")
+    lines.append("u = " + show(top) + ", v = " + show(bot))
+    lines.append("u' = " + show(dtop) + ", v' = " + show(dbot))
+    lines.append("dy/d" + var + " = (" + show(dtop) + "*" + show(bot) + " - " + show(top) + "*" + show(dbot) + ")/" + show(power(bot, num(2))))
+    lines.append("= " + show(raw))
+    if not is_one(darg):
+        lines.append("Chain rule: multiply by d/d" + var + "[" + show(arg) + "] = " + show(darg))
+    lines.append("= " + show(final))
+    return lines
+
 
 def explain(node, var, deps_list):
     d = tidy(diff(node, var, deps_list))
@@ -1605,10 +1614,12 @@ def explain(node, var, deps_list):
         name = node[1]
         arg = node[2]
         darg = tidy(diff(arg, var, deps_list))
+        if name in ("sec", "cosec", "cot"):
+            lines = reciprocal_trig_quotient_steps(name, arg, var, darg, d)
+            return d, lines
         if same(arg, sym(var)) or arg[0] == "sym":
             label = {
                 "sin": "Using sin rule", "cos": "Using cos rule", "tan": "Using tan rule",
-                "sec": "Using sec rule", "cosec": "Using cosec rule", "cot": "Using cot rule",
                 "asin": "Using asin rule", "acos": "Using acos rule", "atan": "Using atan rule",
                 "log": "Using log rule", "log10": "Using log10 rule", "exp": "Using exp rule",
                 "sqrt": "Using sqrt rule", "abs": "Using abs rule",
@@ -1628,9 +1639,6 @@ def explain(node, var, deps_list):
     return d, lines
 
 
-# ============================================================================
-# SECTION 13: Expansion and Tidying
-# ============================================================================
 
 def expand(node):
     node = sim(node)
@@ -1697,9 +1705,6 @@ def tidy(node):
     return out
 
 
-# ============================================================================
-# SECTION 14: Rational Number Conversion
-# ============================================================================
 
 def as_rat(node):
     node = sim(node)
@@ -1841,9 +1846,6 @@ def readable_show(node):
     return out
 
 
-# ============================================================================
-# SECTION 15: Trigonometric Reciprocal Conversion
-# ============================================================================
 
 def prefer_trig_recip(node):
     kind = node[0]
@@ -1976,9 +1978,6 @@ def reduce_trig_mul(items):
     return items
 
 
-# ============================================================================
-# SECTION 16: Trig-Friendly Output
-# ============================================================================
 
 def trig_normal(node):
     kind = node[0]
@@ -2141,9 +2140,6 @@ def cartesian_from_param_exprs(x_expr, y_expr, param="t"):
     return None
 
 
-# ============================================================================
-# SECTION 17: Post-Output Simplification
-# ============================================================================
 
 def convert_neg_powers_to_fractions(node):
     if node[0] == "pow":
@@ -2237,12 +2233,40 @@ def format_final_answer(node):
 
 
 def solve_normal_mode(text):
+    second = parse_second_derivative_input(text)
+    if second is not None:
+        expr, var = second
+        expr = trig_normal(expr)
+        first = tidy(diff(expr, var, []))
+        second_ans = tidy(diff(first, var, []))
+        final = prefer_trig_recip(second_ans)
+        formatted = format_final_answer(final)
+        label = "d2y/d" + var + "2"
+        steps = [
+            "Method: Find second derivative with respect to " + var,
+            "First differentiate y = " + show(expr),
+            "dy/d" + var + " = " + show(first),
+            "Differentiate again.",
+            label + " = " + show(final),
+        ]
+        return var, steps, final, formatted
     expr, var = parse_normal_input(text)
     expr = trig_normal(expr)
     ans, steps = explain(expr, var, [])
     final = prefer_trig_recip(tidy(ans))
     formatted = format_final_answer(final)
     return var, steps, final, formatted
+
+
+def normal_derivative_label(steps, var):
+    if steps:
+        i = 0
+        prefix = "d2y/d" + var + "2"
+        while i < len(steps):
+            if steps[i].startswith(prefix):
+                return prefix
+            i += 1
+    return "dy/d" + var
 
 
 _depends_uncached = depends
@@ -2448,9 +2472,6 @@ def paged_menu_input(prompt_label, options, default=None):
         print("Bad mode.")
 
 
-# ============================================================================
-# SECTION 18: CLI Entrypoint
-# ============================================================================
 
 def main():
     mode = paged_menu_input("M", [
@@ -2472,10 +2493,11 @@ def main():
                 print(str(i) + ". " + steps[i - 1])
                 i += 1
 
-            print("dy/d" + var + " = " + readable_show(final))
+            out_label = normal_derivative_label(steps, var)
+            print(out_label + " = " + readable_show(final))
 
             if sig(formatted) != sig(final):
-                print("dy/d" + var + " = " + readable_show(formatted))
+                print(out_label + " = " + readable_show(formatted))
 
         elif mode == "2":
             text = input("Eq: ").strip()

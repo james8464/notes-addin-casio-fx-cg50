@@ -38,7 +38,7 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 - Accepts both `^` and `**`
 - DE mode accepts both `dy/dx = ...` and `dy/dx: ...` syntax
 - Auto mode already covers many direct, trig, substitution, parts, partial-fraction, and DE families
-- Working is short and calculator-friendly
+- Working is compact and calculator-friendly: method, key formula/substitution, working, and answer
 - Some non-elementary families still return out-of-scope messages
 - CLI errors show `Err: ...`
 
@@ -57,9 +57,10 @@ Met: 1
 Output:
 
 ```text
-Met: Integration by parts
-1. Use the standard result for Int[e^(ax+b)sin(cx+d)] dx.
-2. = 1*e^(5*x)*(5*sin(7*x)-7*cos(7*x))/74 + C
+Method: Int[e^(ax+b)sin(cx+d)]
+Use: = e^(ax+b)*(a*sin(cx+d) - c*cos(cx+d))/(a^2+c^2) + C
+= e^(5*x)*(5*sin(7*x) - 7*cos(7*x))/74 + C
+Answer: e^(5*x)*(5*sin(7*x) - 7*cos(7*x))/74 + C
 ```
 
 ### Example 2: substitution
@@ -74,13 +75,10 @@ u: x^3+x+7
 Output:
 
 ```text
-Met: Integration by substitution
-1. u = x^3+x+7
-2. du/dx = 3*x^2+1
-3. du = 3*x^2+1 dx
-4. I = Int[1/u] du
-5. = ln|u| + C
-6. = ln|x^3+x+7| + C
+Method: Integration by substitution
+u = x^3+x+7
+= ln|x^3+x+7| + C
+Answer: ln|x^3+x+7| + C
 ```
 
 ### Example 3: trig reduction

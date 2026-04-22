@@ -26,6 +26,8 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython 
 - Implicit mode requires `left=right`
 - Parametric mode expects `t` as the parameter
 - Working is short and calculator-friendly
+- `sec`, `cosec`, and `cot` derivatives are shown by converting to sin/cos and applying the quotient rule
+- Simple second-derivative input forms such as `d2/dx2 x^3` and `d^2/dx^2 x^3` are accepted in normal mode
 - CLI errors show `Err: ...`
 
 ## Supported differentiation families
