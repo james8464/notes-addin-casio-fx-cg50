@@ -36,3 +36,12 @@
 - `src/Math/intProgram.py` - compact integration output
 - `tests/run_tests.py` - quality gates updated for `Answer:` output and compact integration
 - `tests/test_madasmaths.py` - MadAsMaths regression coverage
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
