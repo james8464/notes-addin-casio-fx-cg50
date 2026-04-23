@@ -9,6 +9,7 @@
 6. **Added fastest_model()** - Prefers smaller/faster models (qwen3.5:9b, qwen2.5:14b, gemma4:e4b)
 7. **Improved response parsing** - Better handling of reasoning chains (Thinking, etc.)
 8. **Performance optimizations** - Skip LLM for passing tests (sample 5%), increase workers to 8
+9. **API-based Ollama** - Using HTTP API instead of CLI for faster response extraction
 
 ### Test Results
 - `random 30`: 30/30 passed
@@ -19,8 +20,15 @@
 ### LLM Verified Working Cases
 - sin(30)=0.5 → CORRECT ✓
 - cos(0)=1 → CORRECT ✓
-- Expand (x+1)^2 → CORRECT ✓
+- Expand (x+1)^2 = x^2+2x+1 → CORRECT ✓
 - Identity sin^2+cos^2=1 → CORRECT ✓
+
+### Working Quality Checking (Limitation Found)
+- LLM is NOT reliably detecting bad working (skipped steps, "hence" without justification)
+- Both good and bad working get marked as CORRECT
+- Root cause: Reasoning models (qwen3.5) are too lenient with working quality evaluation
+- Current behavior: LLM verifies ANSWER correctness, not working quality
+- Future work: May need stricter prompt engineering or different model
 
 ### Performance Optimizations
 - Skip LLM for 95% of passing tests (only sample 5%)
@@ -29,10 +37,9 @@
 - Cache TTL: 1 hour
 
 ### Known Issues
-- LLM VERY slow on this machine (~60s per verification)
-- qwen3.5:9b works but slow
-- Reasoning models add "Thinking..." chains that need special parsing
-- LLM integration runs AFTER tests complete (non-blocking)
+- LLM ~20s per verification on this machine
+- qwen3.5:9b works but reasoning chains need special parsing
+- Working quality checking NOT reliable - see above
 
 ### Key Files
 - `src/shared_llm.py` - Ollama interface with caching, model selection

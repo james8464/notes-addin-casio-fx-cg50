@@ -222,7 +222,7 @@ class LLMManager:
         """Disable LLM verification."""
         self.enabled = False
     
-    def verify(self, program_output, expected, context=""):
+    def verify(self, program_output, expected, context="", check_working_quality=False):
         """
         Verify program output using LLM.
         
@@ -230,6 +230,7 @@ class LLMManager:
             program_output: The CASIO program output string
             expected: The expected answer string
             context: Additional context (question, method, etc.)
+            check_working_quality: If True, check working quality not just answer
         
         Returns:
             dict with keys: verdict, explanation, confidence, cached
@@ -239,6 +240,15 @@ class LLMManager:
                 "verdict": "DISABLED",
                 "explanation": "LLM not enabled",
                 "confidence": 0,
+                "cached": False
+            }
+        
+        if check_working_quality:
+            verdict, explanation = self._check_working_quality(program_output)
+            return {
+                "verdict": verdict,
+                "explanation": explanation,
+                "confidence": 0.95,
                 "cached": False
             }
         
@@ -332,6 +342,50 @@ EXPECTED ANSWER: {expected}
             "explanation": explanation.strip()[:500],
             "confidence": confidence
         }
+    
+    def _check_working_quality(self, program_output):
+        """Check working quality by pattern matching."""
+        import re
+        lines = program_output.strip().split('\n')
+
+        working_lines = []
+        use_lines = []
+        calc_lines = []
+        for line in lines:
+            stripped = line.strip()
+
+            if stripped.startswith('Method:'):
+                continue
+            if stripped.startswith('Answer:'):
+                continue
+            if 'Hence' in stripped:
+                continue
+
+            patterns = ['Let ', 'let ', 'dy/dx', 'du/dx', 'substitute', 'Using ', 'using ', 'Use ', 'use ']
+            has_pattern = any(p in stripped for p in patterns)
+
+            content = re.sub(r'^\d+\.\s*', '', stripped)
+
+            if content.startswith('= '):
+                has_pattern = True
+
+            if has_pattern:
+                if 'Use ' in stripped or 'use ' in stripped:
+                    use_lines.append(stripped)
+                else:
+                    working_lines.append(stripped)
+                    if any(p in content for p in ['Let ', 'dy/dx', 'du/dx', '=', 'substitute']):
+                        calc_lines.append(stripped)
+
+        all_working = working_lines + use_lines
+
+        if len(all_working) == 0:
+            return "INCORRECT", "No working steps shown (just Method/Hence/Answer)"
+
+        if len(calc_lines) == 0 and len(use_lines) == 1:
+            return "INCORRECT", f"Only identity shown, no calculation steps: '{use_lines[0][:50]}'"
+
+        return "CORRECT", f"Working steps shown ({len(all_working)} lines)"
     
     def get_status(self):
         """Get current status of LLM manager."""

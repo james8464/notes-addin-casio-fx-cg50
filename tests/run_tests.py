@@ -1919,6 +1919,13 @@ class CASIOApp(App):
         self._last_eta_update = 0
         self.llm_manager = None
         self.llm_enabled_for_tests = False
+        self._test_times = []
+        self._llm_times = []
+        self._test_timestamps = []
+        self._llm_timestamps = []
+        self._eta_decay = 0.9
+        self._weighted_rate = 0.0
+        self._weighted_llm_rate = 0.0
         
         self.command_items = {
             "/random": "Run randomly generated tests across every program",
@@ -2688,22 +2695,63 @@ class CASIOApp(App):
         if self.start_time is not None:
             import time
             elapsed = time.time() - self.start_time
-            rate = total / elapsed if elapsed > 0 else 0
-            if self.total_expected > 0 and rate > 0:
-                remaining_tests = self.total_expected - total
-                eta_seconds = remaining_tests / rate
-                if eta_seconds < 60:
-                    eta_str = f"{eta_seconds:.0f}s"
-                elif eta_seconds < 3600:
-                    eta_str = f"{eta_seconds/60:.1f}m"
+            total = len(self.records)
+            remaining_tests = max(0, self.total_expected - total)
+
+            rate = 0.0
+            eta_seconds = 0.0
+            if elapsed > 0 and total > 0:
+                current_rate = total / elapsed
+                decay = self._eta_decay
+                self._weighted_rate = decay * self._weighted_rate + (1 - decay) * current_rate if self._weighted_rate > 0 else current_rate
+
+                self._test_timestamps.append((elapsed, total))
+                if len(self._test_timestamps) > 100:
+                    self._test_timestamps = self._test_timestamps[-50:]
+
+                test_time_variance = 0.0
+                if len(self._test_times) >= 10:
+                    import statistics
+                    recent_times = self._test_times[-50:]
+                    avg_time = statistics.mean(recent_times)
+                    stdev_time = statistics.stdev(recent_times) if len(recent_times) > 2 else 0
+                    time_variance = stdev_time * 2
                 else:
-                    eta_str = f"{eta_seconds/3600:.1f}h"
-                rate_str = f"{rate:.0f}/s"
-                self.update_summary(f"{passed_count}/{total} ({pct:.0f}%) · {rate_str} · ETA {eta_str}")
-            elif self.total_expected > 0:
-                self.update_summary(f"{passed_count}/{total} ({pct:.0f}%)")
+                    time_variance = 0.0
+
+                if self._weighted_rate > 0:
+                    base_eta = remaining_tests / self._weighted_rate
+                    eta_seconds = base_eta + time_variance * remaining_tests
+
+            llm_remaining = 0.0
+            llm_to_verify = int(remaining_tests * 0.05) if remaining_tests > 50 else 0
+            if llm_to_verify > 0:
+                llm_avg = getattr(self, '_llm_avg_time', 0.0)
+                llm_estimated = getattr(self, '_llm_estimated_per_test', 0.0)
+                llm_weight = llm_avg if llm_avg > 0 else llm_estimated
+
+                if self._llm_times:
+                    current_llm_rate = len(self._llm_times) / sum(self._llm_times) if sum(self._llm_times) > 0 else 0
+                    decay = self._eta_decay
+                    self._weighted_llm_rate = decay * self._weighted_llm_rate + (1 - decay) * current_llm_rate if self._weighted_llm_rate > 0 else current_llm_rate
+                    if self._weighted_llm_rate > 0:
+                        llm_remaining = llm_to_verify / self._weighted_llm_rate
+
+            total_eta = max(0, eta_seconds + llm_remaining)
+
+            if total_eta < 60:
+                eta_str = f"{total_eta:.0f}s"
+            elif total_eta < 3600:
+                eta_str = f"{total_eta/60:.1f}m"
             else:
-                self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
+                eta_str = f"{total_eta/3600:.1f}h"
+
+            rate_str = f"{self._weighted_rate:.0f}/s"
+            if llm_remaining > 0:
+                rate_str += f" +LLM({self._weighted_llm_rate:.1f}/s)"
+            self.update_summary(f"{passed_count}/{total} ({pct:.0f}%) · {rate_str} · ETA {eta_str}")
+        elif self.total_expected > 0:
+            self.update_summary(f"{passed_count}/{total} ({pct:.0f}%)")
         else:
             self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
         return record
@@ -2842,6 +2890,17 @@ class CASIOApp(App):
         case_count = len(cases)
         skip_quality = skip_quality or self.total_expected > 2000
         use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
+        llm_estimated_per_test = 0.0
+        if use_llm:
+            model = getattr(self.llm_manager, 'model', None) or 'unknown'
+            if 'qwen3.5' in model or 'qwen2.5' in model:
+                llm_estimated_per_test = 20.0
+            elif 'llama2' in model or 'falcon' in model:
+                llm_estimated_per_test = 2.0
+            elif 'gemma' in model:
+                llm_estimated_per_test = 8.0
+            else:
+                llm_estimated_per_test = 10.0
 
         if case_count > 5000:
             batch_size = max(500, case_count // 50)
@@ -2854,12 +2913,15 @@ class CASIOApp(App):
         else:
             batch_size = case_count
 
-        def evaluate(case):
+        def evaluate_timed(case):
+            import time
+            start = time.time()
             try:
                 passed, output = case.runner()
             except Exception as err:
                 passed, output = False, str(err)
-            return case, passed, output
+            elapsed = time.time() - start
+            return case, passed, output, elapsed
 
         def llm_verify(record):
             if not use_llm:
@@ -2879,7 +2941,7 @@ class CASIOApp(App):
             try:
                 context = f"{record.program}: {record.label}"
                 expected = record.check_info or context
-                result = self.llm_manager.verify(record.output, expected, context)
+                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=True)
                 return (result.get("verdict", ""), result.get("explanation", ""))
             except Exception:
                 return ("", "")
@@ -2890,7 +2952,11 @@ class CASIOApp(App):
         for batch_start in range(0, len(cases), batch_size):
             batch = cases[batch_start:batch_start + batch_size]
             with ThreadPoolExecutor(max_workers=active_workers) as executor:
-                for case, passed, output in executor.map(evaluate, batch):
+                for case, passed, output, elapsed in executor.map(evaluate_timed, batch):
+                    if elapsed > 0:
+                        self._test_times.append(elapsed)
+                        if len(self._test_times) > 500:
+                            self._test_times = self._test_times[-200:]
                     quality_issues = []
                     if not skip_quality and getattr(case, "feature", ""):
                         quality_issues = exam_working_quality_issues(output, case.program, case.feature)
@@ -2901,15 +2967,33 @@ class CASIOApp(App):
                     record = self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
                     pending_records.append(record)
 
-        if use_llm and pending_records:
-            emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
-            emit(self.append_result, "[dim]Running LLM verification (sampling)...[/dim]")
-            llm_workers = min(8, active_workers, max(2, (self.total_expected or 100) // 20))
-            with ThreadPoolExecutor(max_workers=llm_workers) as llm_executor:
-                for record, (verdict, explanation) in zip(pending_records, llm_executor.map(llm_verify, pending_records)):
-                    if verdict:
-                        record.llm_verdict = verdict
-                        record.llm_explanation = explanation
+            if use_llm and pending_records:
+                emit = (lambda fn, *args: fn(*args) if fn else None) if getattr(self, 'plain_mode', False) else self.call_from_thread
+                emit(self.append_result, "[dim]Running LLM verification (sampling)...[/dim]")
+                llm_workers = min(8, active_workers, max(2, (self.total_expected or 100) // 20))
+
+                def llm_verify_timed(record):
+                    import time
+                    start = time.time()
+                    result = llm_verify(record)
+                    elapsed = time.time() - start
+                    return (result[0], result[1], elapsed)
+
+                verified = 0
+                with ThreadPoolExecutor(max_workers=llm_workers) as llm_executor:
+                    for record, (verdict, explanation, elapsed) in llm_executor.map(llm_verify_timed, pending_records):
+                        if verdict:
+                            record.llm_verdict = verdict
+                            record.llm_explanation = explanation
+                        if elapsed > 0:
+                            self._llm_times.append(elapsed)
+                            if len(self._llm_times) > 100:
+                                self._llm_times = self._llm_times[-50:]
+                        verified += 1
+                        if verified % max(1, len(pending_records) // 10) == 0 and self._llm_times:
+                            import statistics
+                            recent = self._llm_times[-20:]
+                            self._llm_avg_time = statistics.mean(recent)
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -5034,6 +5118,12 @@ class CASIOApp(App):
             self.total_expected = count
             self._last_eta_update = 0
             self.records = []
+            self._test_times = []
+            self._llm_times = []
+            self._test_timestamps = []
+            self._llm_timestamps = []
+            self._weighted_rate = 0.0
+            self._weighted_llm_rate = 0.0
 
             emit(
                 self.append_result,
