@@ -22,13 +22,13 @@ ALGEBRA_QUESTIONS = [
 ]
 
 TRIG_QUESTIONS = [
-    ("41", "Prove sec^2 x + csc^2 x = sec^2 x csc^2 x", "1\nsec(x)^2+csc(x)^2=sec(x)^2*csc(x)^2\n1\n"),
+    ("41", "Prove sec^2 x + csc^2 x = sec^2 x csc^2 x", "1\nsec(x)^2+csc(x)^2\nsec(x)^2*csc(x)^2\n1\n"),
     ("42", "Solve 2cos^2 theta + sin theta = 1", "3\n2*cos(theta)^2+sin(theta)=1,theta,0,360\n"),
-    ("43", "Prove sin3t/sin t - cos3t/cos t = 2", "1\nsin(3*theta)/sin(theta)-cos(3*theta)/cos(theta)=2\n1\n"),
+    ("43", "Prove sin3t/sin t - cos3t/cos t = 2", "1\nsin(3*theta)/sin(theta)-cos(3*theta)/cos(theta)\n2\n1\n"),
     # ("44", "Find exact sin(15 degrees)", "2\nsin(15)\n1\n"),  # Not in trig program scope
     ("45", "Solve tan 2x = sqrt(3) for 0 to pi", "3\ntan(2*x)=sqrt(3),x,0,pi\n"),
-    ("46", "Express 3sin x + 4cos x as Rsin(x+alpha)", "2\n3*sin(x)+4*cos(x)\n1\n"),
-    ("47", "Prove cos 4theta = 8cos^4 theta - 8cos^2 theta + 1", "1\ncos(4*theta)=8*cos(theta)^4-8*cos(theta)^2+1\n1\n"),
+    ("46", "Express 3sin x + 4cos x as Rsin(x+alpha)", "2\n3*sin(x)+4*cos(x)\nR*sin(x+a)\n"),
+    ("47", "Prove cos 4theta = 8cos^4 theta - 8cos^2 theta + 1", "1\ncos(4*theta)\n8*cos(theta)^4-8*cos(theta)^2+1\n1\n"),
     ("48", "Solve sin theta = cos theta for 0 to 2pi", "3\nsin(theta)=cos(theta),theta,0,360\n"),
     # Q49 not trig program - geometry
     ("50", "Solve 2sin^2 x - 3cos x = 0", "3\n2*sin(x)^2-3*cos(x)=0,x,0,360\n"),

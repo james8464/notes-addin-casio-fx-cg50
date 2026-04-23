@@ -13,6 +13,11 @@ except ImportError:
     except ImportError:
         REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
+# Mathematical constants
+E = ("const", "e")
+PI = ("const", "pi")
+
+
 def is_num(node):
     """Check if node is a number."""
     return node is not None and node[0] == 'num'

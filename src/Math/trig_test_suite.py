@@ -152,7 +152,7 @@ def run_tests():
         ("cos(x+pi/5)=cos(x+2pi/5),x,0,2pi", has_solutions),
     ]
     
-    print(f"Running {len(tests)} tests...")
+    print("Running " + str(len(tests)) + " tests...")
     
     for i, test in enumerate(tests):
         eq, check = test
@@ -166,20 +166,26 @@ def run_tests():
             if check(result):
                 passed += 1
                 if i < 50:  # Show first 50
-                    print(f"PASS: {desc}")
+                    print("PASS: " + desc)
             else:
                 failed += 1
                 if failed <= 20:
-                    print(f"FAIL #{failed}: {desc}")
+                    print("FAIL #" + str(failed) + ": " + desc)
         except Exception as e:
             errors += 1
             if errors <= 10:
-                print(f"ERR: {desc[:40]} - {str(e)[:30]}")
+                 print("ERR: " + desc[:40] + " - " + str(e)[:30])
     
     total = passed + failed + errors
-    print(f"\n{'='*60}")
-    print(f"RESULTS: {passed} passed | {failed} failed | {errors} errors | {total} total")
-    print(f"Success rate: {100*passed/total:.1f}%")
+    print("\n" + "="*60)
+    print("RESULTS: " + str(passed) + " passed | " + str(failed) + " failed | " + str(errors) + " errors | " + str(total) + " total")
+    if total > 0:
+        success_rate = 100 * passed / total
+        # Format to 1 decimal place without f-string
+        success_rate_str = ("%.1f" % success_rate)
+    else:
+        success_rate_str = "0.0"
+    print("Success rate: " + success_rate_str + "%")
     
 
 if __name__ == "__main__":

@@ -63,6 +63,9 @@ FUNC_NAMES = (
     "abs",
     "ln",
     "log",
+    "sinh",
+    "cosh",
+    "tanh",
 )
 FUNC_ALIASES = {
     "csc": "cosec",
@@ -270,13 +273,29 @@ def num(a, b=1):
 
 
 def num_text(text):
+    if not text or text.strip() == "":
+        raise ValueError("Empty number.")
+    text = text.strip()
+    if text in (".", "+.", "-."):
+        raise ValueError("Invalid number format.")
     if "." not in text:
-        return num(int(text))
+        # Handle integer case
+        if text == "-" or text == "+":
+            raise ValueError("Invalid number format.")
+        if text.lstrip("+-").isdigit():
+            return num(int(text))
+        raise ValueError("Invalid number format.")
+    # Handle decimal case
     left, right = text.split(".", 1)
     if left == "":
         left = "0"
     if right == "":
         right = "0"
+    # Validate that we have valid digits
+    if not left.lstrip("-").isdigit() and left not in ("+", "-"):
+        raise ValueError("Invalid number format.")
+    if not right.isdigit():
+        raise ValueError("Invalid number format.")
     scale = 1
     i = 0
     while i < len(right):
@@ -285,6 +304,8 @@ def num_text(text):
     sign = 1
     if left[:1] == "-":
         sign = -1
+        left = left[1:]
+    elif left[:1] == "+":
         left = left[1:]
     whole = left + right
     if whole == "":
@@ -986,6 +1007,10 @@ def _sim_uncached(node):
         name = node[1]
         arg = sim(node[2])
         if name == "exp":
+            if is_zero(arg):
+                return num(1)
+            if is_one(arg):
+                return E
             return power(E, arg)
         if name == "sqrt":
             if arg[0] == "pow" and same(arg[1], E):
@@ -3390,6 +3415,8 @@ def _equivalent_uncached(a, b):
     if len(names) == 0:
         try:
             value = eval_numeric(diff, {})
+            if value is None or not is_finite_value(value):
+                return False
             return abs(value) < 1e-8
         except (ValueError, ZeroDivisionError):
             return False
@@ -3550,6 +3577,231 @@ def direct_expression_transform_lines(source_expr, target_expr, target_text):
     if ratio_lines is not None:
         return compact_lines(list(ratio_lines[:-1]) + ["Hence " + target_text.strip(), final_line])
     return None
+
+
+def match_constant_trig_equation(lhs, rhs):
+    options = [
+        (sim(lhs), full_simplify(rhs)),
+        (sim(rhs), full_simplify(lhs)),
+    ]
+    i = 0
+    while i < len(options):
+        trig_node, value_node = options[i]
+        if trig_node[0] == "fn" and trig_node[1] in ("sin", "cos", "tan", "cot", "sec", "cosec"):
+            names = set()
+            collect_symbols(trig_node[2], names)
+            if independent_of_names(value_node, names):
+                return trig_node[1], trig_node[2], full_simplify(value_node)
+        i += 1
+    return None
+
+
+def build_known_value_branch(label, branch_line, sin_value, cos_value):
+    branch = {
+        "label": label,
+        "branch_line": branch_line,
+        "sin": full_simplify(sin_value),
+        "cos": full_simplify(cos_value),
+    }
+    if is_zero(branch["cos"]):
+        branch["tan"] = None
+        branch["sec"] = None
+    else:
+        branch["tan"] = full_simplify(div(branch["sin"], branch["cos"]))
+        branch["sec"] = full_simplify(div(num(1), branch["cos"]))
+    if is_zero(branch["sin"]):
+        branch["cot"] = None
+        branch["cosec"] = None
+    else:
+        branch["cot"] = full_simplify(div(branch["cos"], branch["sin"]))
+        branch["cosec"] = full_simplify(div(num(1), branch["sin"]))
+    return branch
+
+
+def build_known_trig_value_branches(name, arg, value):
+    value = full_simplify(value)
+    arg_text = show(arg)
+    if name == "sin":
+        rem = full_simplify(add([num(1), neg(power(value, num(2)))]))
+        cos_mag = full_simplify(fn("sqrt", rem))
+        common = [
+            "Use sin^2(A)+cos^2(A) = 1.",
+            "cos(" + arg_text + ") = +/-sqrt(1-" + show(value) + "^2)",
+            "= +/-" + show(cos_mag),
+        ]
+        if is_zero(cos_mag):
+            return common, [build_known_value_branch("right-angle branch", "cos(" + arg_text + ") = 0", value, num(0))]
+        return common, [
+            build_known_value_branch("acute branch", "cos(" + arg_text + ") = " + show(cos_mag), value, cos_mag),
+            build_known_value_branch("obtuse branch", "cos(" + arg_text + ") = " + show(neg(cos_mag)), value, neg(cos_mag)),
+        ]
+    if name == "cos":
+        rem = full_simplify(add([num(1), neg(power(value, num(2)))]))
+        sin_mag = full_simplify(fn("sqrt", rem))
+        common = [
+            "Use sin^2(A)+cos^2(A) = 1.",
+            "sin(" + arg_text + ") = +/-sqrt(1-" + show(value) + "^2)",
+            "= +/-" + show(sin_mag),
+        ]
+        if is_zero(sin_mag):
+            return common, [build_known_value_branch("axis branch", "sin(" + arg_text + ") = 0", num(0), value)]
+        return common, [
+            build_known_value_branch("first-quadrant branch", "sin(" + arg_text + ") = " + show(sin_mag), sin_mag, value),
+            build_known_value_branch("fourth-quadrant branch", "sin(" + arg_text + ") = " + show(neg(sin_mag)), neg(sin_mag), value),
+        ]
+    if name == "tan":
+        sec_mag = full_simplify(fn("sqrt", add([num(1), power(value, num(2))])))
+        common = [
+            "Use sec^2(A) = 1+tan^2(A).",
+            "sec(" + arg_text + ") = +/-sqrt(1+" + show(value) + "^2)",
+            "= +/-" + show(sec_mag),
+        ]
+        pos_sec = sec_mag
+        neg_sec = neg(sec_mag)
+        return common, [
+            build_known_value_branch("positive sec branch", "sec(" + arg_text + ") = " + show(pos_sec), full_simplify(div(value, pos_sec)), full_simplify(div(num(1), pos_sec))),
+            build_known_value_branch("negative sec branch", "sec(" + arg_text + ") = " + show(neg_sec), full_simplify(div(value, neg_sec)), full_simplify(div(num(1), neg_sec))),
+        ]
+    if name == "cot":
+        cosec_mag = full_simplify(fn("sqrt", add([num(1), power(value, num(2))])))
+        common = [
+            "Use cosec^2(A) = 1+cot^2(A).",
+            "cosec(" + arg_text + ") = +/-sqrt(1+" + show(value) + "^2)",
+            "= +/-" + show(cosec_mag),
+        ]
+        pos_cosec = cosec_mag
+        neg_cosec = neg(cosec_mag)
+        pos_sin = full_simplify(div(num(1), pos_cosec))
+        neg_sin = full_simplify(div(num(1), neg_cosec))
+        return common, [
+            build_known_value_branch("positive cosec branch", "cosec(" + arg_text + ") = " + show(pos_cosec), pos_sin, full_simplify(mul([value, pos_sin]))),
+            build_known_value_branch("negative cosec branch", "cosec(" + arg_text + ") = " + show(neg_cosec), neg_sin, full_simplify(mul([value, neg_sin]))),
+        ]
+    if name == "sec":
+        cos_value = full_simplify(div(num(1), value))
+        tan_mag = full_simplify(fn("sqrt", add([power(value, num(2)), neg(num(1))])))
+        common = [
+            "Use sec(A) = 1/cos(A).",
+            "cos(" + arg_text + ") = " + show(cos_value),
+            "Use tan^2(A) = sec^2(A)-1.",
+            "tan(" + arg_text + ") = +/-sqrt(" + show(value) + "^2-1)",
+            "= +/-" + show(tan_mag),
+        ]
+        pos_tan = tan_mag
+        neg_tan = neg(tan_mag)
+        return common, [
+            build_known_value_branch("positive tan branch", "tan(" + arg_text + ") = " + show(pos_tan), full_simplify(mul([pos_tan, cos_value])), cos_value),
+            build_known_value_branch("negative tan branch", "tan(" + arg_text + ") = " + show(neg_tan), full_simplify(mul([neg_tan, cos_value])), cos_value),
+        ]
+    if name == "cosec":
+        sin_value = full_simplify(div(num(1), value))
+        cot_mag = full_simplify(fn("sqrt", add([power(value, num(2)), neg(num(1))])))
+        common = [
+            "Use cosec(A) = 1/sin(A).",
+            "sin(" + arg_text + ") = " + show(sin_value),
+            "Use cot^2(A) = cosec^2(A)-1.",
+            "cot(" + arg_text + ") = +/-sqrt(" + show(value) + "^2-1)",
+            "= +/-" + show(cot_mag),
+        ]
+        pos_cot = cot_mag
+        neg_cot = neg(cot_mag)
+        return common, [
+            build_known_value_branch("positive cot branch", "cot(" + arg_text + ") = " + show(pos_cot), sin_value, full_simplify(mul([pos_cot, sin_value]))),
+            build_known_value_branch("negative cot branch", "cot(" + arg_text + ") = " + show(neg_cot), sin_value, full_simplify(mul([neg_cot, sin_value]))),
+        ]
+    return None, None
+
+
+def branch_target_value(branch, target_name, target_arg, base_arg):
+    if same(target_arg, base_arg):
+        if target_name == "sin":
+            return branch["sin"], "Use Equation 1 directly."
+        if target_name == "cos":
+            return branch["cos"], "Use the branch value."
+        if target_name == "tan" and branch["tan"] is not None:
+            return branch["tan"], "Use tan(A) = sin(A)/cos(A)."
+        if target_name == "cot" and branch["cot"] is not None:
+            return branch["cot"], "Use cot(A) = cos(A)/sin(A)."
+        if target_name == "sec" and branch["sec"] is not None:
+            return branch["sec"], "Use sec(A) = 1/cos(A)."
+        if target_name == "cosec" and branch["cosec"] is not None:
+            return branch["cosec"], "Use cosec(A) = 1/sin(A)."
+        return None, None
+    double_base = match_numeric_multiple_arg(target_arg, 2)
+    if double_base is None or not same(double_base, base_arg):
+        return None, None
+    sin_value = branch["sin"]
+    cos_value = branch["cos"]
+    if target_name == "sin":
+        return full_simplify(mul([num(2), sin_value, cos_value])), "Use sin(2A) = 2sin(A)cos(A)."
+    cos2_value = full_simplify(add([power(cos_value, num(2)), neg(power(sin_value, num(2)))]))
+    if target_name == "cos":
+        return cos2_value, "Use cos(2A) = cos^2(A)-sin^2(A)."
+    tan_value = branch["tan"]
+    if tan_value is None:
+        return None, None
+    if target_name == "tan":
+        return full_simplify(div(mul([num(2), tan_value]), add([num(1), neg(power(tan_value, num(2)))]))), "Use tan(2A) = 2tan(A)/(1-tan^2(A))."
+    if target_name == "cot":
+        return full_simplify(div(add([num(1), neg(power(tan_value, num(2)))]), mul([num(2), tan_value]))), "Use cot(2A) = (1-tan^2(A))/(2tan(A))."
+    if is_zero(cos2_value):
+        return None, None
+    if target_name == "sec":
+        return full_simplify(div(num(1), cos2_value)), "Use sec(2A) = 1/cos(2A)."
+    sin2_value = full_simplify(mul([num(2), sin_value, cos_value]))
+    if target_name == "cosec" and not is_zero(sin2_value):
+        return full_simplify(div(num(1), sin2_value)), "Use cosec(2A) = 1/sin(2A)."
+    return None, None
+
+
+def transform_known_trig_value_equation(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text):
+    source = match_constant_trig_equation(eq1_lhs, eq1_rhs)
+    target = match_constant_trig_equation(eq2_lhs, eq2_rhs)
+    if source is None or target is None:
+        return None
+    source_name, base_arg, source_value = source
+    target_name, target_arg, target_value = target
+    common_lines, branches = build_known_trig_value_branches(source_name, base_arg, source_value)
+    if common_lines is None or branches is None:
+        return None
+    fn_target = fn(target_name, target_arg)
+    outcomes = []
+    matches = []
+    i = 0
+    while i < len(branches):
+        branch_value, note = branch_target_value(branches[i], target_name, target_arg, base_arg)
+        if branch_value is not None:
+            outcomes.append((branches[i], branch_value, note))
+            if equivalent(branch_value, target_value):
+                matches.append((branches[i], branch_value, note))
+        i += 1
+    if len(matches) == 0:
+        return None
+    chosen_branch, chosen_value, chosen_note = matches[0]
+    lines = ["Equation 1: " + equation_line(eq1_lhs, eq1_rhs)]
+    i = 0
+    while i < len(common_lines):
+        lines.append(common_lines[i])
+        i += 1
+    if len(outcomes) > 1:
+        i = 0
+        while i < len(outcomes):
+            branch, branch_value, _note = outcomes[i]
+            lines.append(branch["label"] + ": " + branch["branch_line"])
+            lines.append(show(fn_target) + " = " + show(branch_value))
+            i += 1
+        if len(matches) == 1:
+            lines.append("Choose the " + chosen_branch["label"] + ".")
+    elif chosen_branch.get("branch_line"):
+        lines.append(chosen_branch["branch_line"])
+    if match_numeric_multiple_arg(target_arg, 2) is not None and target_name in ("tan", "cot") and chosen_branch["tan"] is not None:
+        lines.append("tan(" + show(base_arg) + ") = " + show(chosen_branch["tan"]))
+    if chosen_note not in (None, "", "Use Equation 1 directly."):
+        lines.append(chosen_note)
+    lines.append(show(fn_target) + " = " + show(chosen_value))
+    lines.append("Hence " + eq2_text.strip())
+    lines.append("Answer: " + eq2_text.strip())
+    return compact_lines(lines)
 
 
 def ordered_sum_text(nodes):
@@ -8295,6 +8547,9 @@ def solve_transform_text(eq1_text, eq2_text):
     lines = transform_same_angle_ratio(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text)
     if lines is not None:
         return compact_lines(lines)
+    lines = transform_known_trig_value_equation(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text)
+    if lines is not None:
+        return compact_lines(lines)
     # Try R sin(x+alpha) or R cos(x+alpha) form
     lines = transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text)
     if lines is not None:
@@ -8340,13 +8595,20 @@ def solve_transform_text(eq1_text, eq2_text):
                 + equation_line(final_expr, num(0))
             )
     if not equivalent(expr1, expr2):
-        try:
-            solve_result, solve_lines = solve_solve_text(eq1_text + ",x,0,360")
-            if solve_lines is not None and len(solve_lines) > 0:
-                return solve_lines
-        except Exception as e:
-            pass
         raise ValueError("Equation 2 does not match Equation 1.")
+    final_target_text = display_target_text(eq2_lhs, eq2_rhs, eq2_text)
+    if expression_only:
+        direct = best_proof_direction(eq1_lhs, eq2_lhs, "Start", final_target_text)
+        if direct is not None:
+            lines = ["Method: Transform expression to target form"]
+            body = compact_lines(direct[1])
+            i = 0
+            while i < len(body):
+                if body[i] != "LHS = RHS":
+                    lines.append(body[i])
+                i += 1
+            lines.append("Answer: " + final_target_text)
+            return compact_lines(lines)
     proof = solve_prove(expr1, expr2, "1")
     lines = [
         equation_line(eq1_lhs, eq1_rhs),
@@ -8357,7 +8619,7 @@ def solve_transform_text(eq1_text, eq2_text):
     while i < len(proof):
         lines.append(proof[i])
         i += 1
-    lines.append("Hence " + eq2_text.strip())
+    lines.append("Hence " + final_target_text)
     return compact_lines(lines)
 
 
@@ -8390,6 +8652,17 @@ def parse_equation_or_zero(text):
         return parse(parts[0].strip()), parse(parts[1].strip())
     except Exception:
         return None, None
+
+
+def display_target_text(lhs, rhs, raw_text):
+    raw_text = raw_text.strip()
+    if lhs is None or rhs is None:
+        return raw_text
+    if "=" in raw_text:
+        return equation_line(lhs, rhs)
+    if is_zero(rhs):
+        return show(lhs)
+    return equation_line(lhs, rhs)
 
 
 def _balance_parens(text):
@@ -9106,26 +9379,6 @@ def finalize_proof_identity_lines(lines):
     if lines[-1] in ('= RHS', '= LHS'):
         return compact_lines(lines + ['LHS = RHS'])
     return lines
-
-
-def solve_prove_text(text, route):
-    begin_user_action()
-    rewrite = split_rewrite_arrow(text)
-    if rewrite is not None:
-        return solve_transform_text(rewrite[0], rewrite[1])
-    lines = numeric_evaluation_text(text)
-    if lines is not None:
-        return compact_lines(lines)
-    lhs, rhs = parse_identity(text)
-    lines = prove_cot_quadratic_equation(lhs, rhs)
-    if lines is not None:
-        return finalize_proof_identity_lines(compact_lines(lines))
-    lines = special_text_proof(text, route)
-    if lines is not None:
-        return finalize_proof_identity_lines(compact_lines(lines))
-    if is_domain_restricted_identity_pair(lhs, rhs):
-        raise ValueError("Identity depends on domain restrictions, so prove/show mode cannot use it as a clean identity.")
-    return finalize_proof_identity_lines(solve_prove(lhs, rhs, route))
 
 
 def solve_extremum_text(text, kind, var):
@@ -12737,10 +12990,7 @@ def same_double_angle_norm(arg, base):
 
 
 def half_angle_expr(arg):
-    half = sim(div(arg, num(2)))
-    if equivalent(sim(arg), sim(mul([num(2), half]))):
-        return half
-    return None
+    return sim(div(arg, num(2)))
 
 
 def match_one_pm_cos(node):
@@ -15088,6 +15338,17 @@ def return_all_in_interval(var, start_val, end_val, deg_mode, lines, message=Non
     }, lines
 
 
+def direct_trig_family_line(name, target_expr, deg_mode):
+    target_text = show(target_expr)
+    full_turn_text = "360" if deg_mode else "2*pi"
+    tan_turn_text = "180" if deg_mode else "pi"
+    if name == "sin":
+        return "For sin(A) = " + target_text + ", use A = alpha or A = pi - alpha, where alpha = arcsin(" + target_text + "), then add multiples of " + full_turn_text + "."
+    if name == "cos":
+        return "For cos(A) = " + target_text + ", use A = +/-alpha, where alpha = arccos(" + target_text + "), then add multiples of " + full_turn_text + "."
+    return "For tan(A) = " + target_text + ", use A = alpha + n*pi, where alpha = arctan(" + target_text + ") and the period is " + tan_turn_text + "."
+
+
 # Solve direct trig equations like tan(2x) = 1, sin(3x) = 0.5
 # These are simple equations where the LHS is a single trig function equals a constant
 def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
@@ -15116,6 +15377,7 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
     if not is_one(coeff):
         out.append(equation_line(mul([coeff, atom]), neg(const)))
     out.append(equation_line(atom, target_expr))
+    out.append(direct_trig_family_line(name, target_expr, deg_mode))
     base = trig_base_solutions(name, target_value, deg_mode)
     if len(base) == 0:
         if name in ("sin", "cos"):
@@ -16187,6 +16449,22 @@ def solve_prove_text(text, route):
     return lines
 
 
+def solve_prove_pair_text(eq1_text, eq2_text, route):
+    begin_user_action()
+    eq1_text = eq1_text.strip()
+    eq2_text = eq2_text.strip()
+    if eq1_text == "" or eq2_text == "":
+        raise ValueError("Enter E1 and E2.")
+    eq1_parts = split_top_level(_balance_parens(eq1_text), "=")
+    eq2_parts = split_top_level(_balance_parens(eq2_text), "=")
+    if eq1_parts is None and eq2_parts is None:
+        lhs = parse(eq1_text)
+        rhs = parse(eq2_text)
+        lines = solve_prove(lhs, rhs, route)
+        return finalize_proof_identity_lines(compact_lines(lines))
+    return solve_transform_text(eq1_text, eq2_text)
+
+
 def direct_ratio_target_rewrite(expr, allowed_terms):
     expr = sim(expr)
     if expr[0] != "div":
@@ -17072,6 +17350,8 @@ def compress_display_list(rhs, sep, neg_keep, pos_keep):
 
 def display_line_short(line):
     line = line.strip()
+    if not MICROPYTHON_RUNTIME:
+        return line
     replacements = [
         ("This equation is an identity - both sides are equivalent", "Identity"),
         ("All values in the interval where the original equation is defined are solutions", "All defined values work"),
@@ -17330,16 +17610,17 @@ def main():
     ], "1")
     try:
         if mode == "1":
-            text = input("Id: ").strip()
-            if text == "":
-                raise ValueError("Enter an identity.")
+            eq1 = input("E1: ").strip()
+            eq2 = input("E2: ").strip()
+            if eq1 == "" or eq2 == "":
+                raise ValueError("Enter E1 and E2.")
             route = paged_menu_input("R", [
                 ("1", "auto"),
                 ("2", "lhs"),
                 ("3", "rhs"),
                 ("4", "both"),
             ], "1")
-            lines = solve_prove_text(text, route)
+            lines = solve_prove_pair_text(eq1, eq2, route)
             print_lines(lines)
         elif mode == "2":
             eq1 = input("E1: ").strip()

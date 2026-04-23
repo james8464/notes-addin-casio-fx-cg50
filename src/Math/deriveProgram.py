@@ -59,6 +59,7 @@ MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, "implementation",
 LOW_MEMORY_RUNTIME = False
 
 TIDY_EXPAND_LIMIT = 5
+TIDY_SKIP_SIZE = 260
 _CACHE_MISS = object()
 _ENGINE_CACHES = {}
 
@@ -174,6 +175,9 @@ def num(a, b=1):
 
 
 def num_text(text):
+    text = text.strip()
+    if text == "" or text in (".", "+.", "-."):
+        raise ValueError("Invalid number format.")
     if "." not in text:
         return num(int(text))
     left, right = text.split(".", 1)
@@ -1607,7 +1611,7 @@ def explain(node, var, deps_list):
         lines.append("Using logarithmic differentiation")
         lines.append("Let y = " + show(node))
         lines.append("Let u = " + show(base) + " and v = " + show(exp))
-        lines.append("dy/d" + var + " = y*((u')/u + ln(u)*v')")
+        lines.append("dy/d" + var + " = y*(v*(u')/u + ln(u)*v')")
         lines.append("= " + show(d))
         return d, lines
     if node[0] == "fn":
@@ -1693,6 +1697,8 @@ def expand(node):
 
 def tidy(node):
     out = sim(node)
+    if tree_size(out) > TIDY_SKIP_SIZE:
+        return out
     i = 0
     while i < TIDY_EXPAND_LIMIT:
         newer = sim(expand(out))
@@ -2494,7 +2500,7 @@ def main():
                 i += 1
 
             out_label = normal_derivative_label(steps, var)
-            print(out_label + " = " + readable_show(final))
+            print("Answer: " + out_label + " = " + readable_show(final))
 
             if sig(formatted) != sig(final):
                 print(out_label + " = " + readable_show(formatted))
@@ -2535,12 +2541,12 @@ def main():
                 raise ValueError("No " + dname + ".")
             ans = tidy(div(neg(rest), coef))
             print(str(step) + ". Method: differentiate implicitly.")
-            print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
-            print(str(step + 1) + ". " + readable_show(dleft) + " = " + readable_show(dright))
-            print(str(step + 2) + ". Rearrange: make " + dname)
+            print(str(step + 1) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
+            print(str(step + 2) + ". " + readable_show(dleft) + " = " + readable_show(dright))
+            print(str(step + 3) + ". Rearrange: make " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
-            print(str(step + 3) + ". " + grouped + " = 0")
-            print(dname + " = " + readable_show(ans))
+            print(str(step + 4) + ". " + grouped + " = 0")
+            print(str(step + 5) + ". Answer: " + dname + " = " + readable_show(ans))
             pretty_ans = prefer_trig_recip(ans)
             if sig(pretty_ans) != sig(ans):
                 print(dname + " = " + readable_show(pretty_ans))
@@ -2826,7 +2832,7 @@ def main():
             print("3. Differentiate y(t) with respect to t.")
             print("4. dy/dt = " + readable_show(dy))
             print("5. Use dy/dx = (dy/dt)/(dx/dt).")
-            print("6. dy/dx = " + readable_show(ans))
+            print("6. Answer: dy/dx = " + readable_show(ans))
             cart = cartesian_from_param_exprs(xt, yt, "t")
             if cart is not None:
                 print("7. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))

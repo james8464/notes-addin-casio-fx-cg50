@@ -75,6 +75,9 @@ def num(a, b=1):
 
 
 def num_text(text):
+    text = text.strip()
+    if text == '' or text in ('.', '+.', '-.'):
+        raise ValueError('Invalid number format')
     if '.' not in text:
         return num(int(text))
     left, right = text.split('.', 1)
@@ -296,7 +299,7 @@ def make_add(parts):
             out.extend(item[1])
         elif item[0] == 'mul':
             inner = list(item[1])
-            if len(inner) >= 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
+            if len(inner) == 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
                 j = 1
                 while j < len(inner):
                     if inner[j][0] == 'add':
@@ -1915,7 +1918,11 @@ def format_output_with_units(target, exact_text, dec_text, equation, original_eq
         lines.append('= ' + original_eq)
     lines.append(equation)
     if sub_text is not None:
-        lines.append('= ' + sub_text)
+        prefix = target + ' = '
+        if sub_text.startswith(prefix):
+            lines.append('= ' + sub_text[len(prefix):])
+        else:
+            lines.append('= ' + sub_text)
     lines.append(target + ' = ' + exact_text)
     if dec_text is not None:
         lines.append(target + ' = ' + dec_text + (' ' + unit if unit else ''))

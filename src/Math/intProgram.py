@@ -237,7 +237,9 @@ def num(a, b=1):
 
 
 def num_text(text):
-    C = text
+    C = text.strip()
+    if C == '' or C in ('.', '+.', '-.'):
+        raise ValueError('Invalid number format')
     if '.'not in C:
         return num(int(C))
     A, B = C.split('.', 1)
@@ -3743,7 +3745,7 @@ def integrate_standard_term(node, var):
                 j = 0
                 while j < len(deriv_forms):
                     if not is_zero(deriv_forms[j]):
-                        candidate = quotient_by_target(numerator_forms[i], deriv_forms[j])
+                        candidate = quotient_by_equivalent_target(numerator_forms[i], deriv_forms[j], C)
                         if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
                             coeff = sim(candidate)
                             break
@@ -3798,7 +3800,7 @@ def integrate_standard_term(node, var):
             if not is_num(constant_term) or constant_term[1] > 0:
                 deriv_inner = safe_diff(inner, C)
                 if deriv_inner is not None and not is_zero(deriv_inner):
-                    coeff = quotient_by_target(deriv_inner, numerator)
+                    coeff = quotient_by_equivalent_target(deriv_inner, numerator, C)
                     if coeff is not None and is_num(coeff):
                         scale = sqrt_num(constant_term)
                         if scale is None:
@@ -3835,7 +3837,7 @@ def integrate_standard_term(node, var):
             j = 0
             while j < len(deriv_forms):
                 if not is_zero(deriv_forms[j]):
-                    candidate = quotient_by_target(numerator_forms[i], deriv_forms[j])
+                    candidate = quotient_by_equivalent_target(numerator_forms[i], deriv_forms[j], C)
                     if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
                         coeff = sim(candidate)
                         break
@@ -3870,7 +3872,7 @@ def integrate_standard_term(node, var):
                             b = 0
                             while b < len(target_forms):
                                 if not is_zero(target_forms[b]):
-                                    candidate = quotient_by_target(numerator_forms[a], target_forms[b])
+                                    candidate = quotient_by_equivalent_target(numerator_forms[a], target_forms[b], C)
                                     if candidate is not None and not is_zero(candidate) and not depends(candidate, C):
                                         coeff = sim(candidate)
                                         break
@@ -4394,6 +4396,10 @@ def ordered_candidates(node, var, mode):
             return
         if E == 'add':
             B(A)
+        elif E == 'mul':
+            const_part, rest_part = split_const_mul(A, F)
+            if not is_one(const_part) and depends(rest_part, F):
+                B(A)
         elif linear_info(A, F) is not None:
             B(A)
         if E in ('add', 'mul'):

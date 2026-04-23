@@ -20,6 +20,8 @@ try:
         is_zero,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
@@ -38,6 +40,8 @@ except ImportError:
         is_zero,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from shared_reasoning_markers import REASONING_MARKERS
 
@@ -135,22 +139,43 @@ def num(a, b=1):
 
 
 def num_text(text):
+    # Handle edge cases for better robustness
+    if not text or text.strip() == '':
+        raise ValueError('Empty number')
+
+    text = text.strip()
+    if text in ('.', '+.', '-.'):
+        raise ValueError('Invalid number format')
     if '.' not in text:
+        # Handle integer case
+        if text == '-' or text == '+':
+            raise ValueError('Invalid number format')
         return num(int(text))
+
+    # Handle decimal case
     left, right = text.split('.', 1)
     if left == '':
         left = '0'
     if right == '':
         right = '0'
+
+    # Validate that we have valid digits
+    if not left.lstrip('-').isdigit() and left != '':
+        raise ValueError('Invalid number format')
+    if not right.isdigit() and right != '':
+        raise ValueError('Invalid number format')
+
     scale = 1
-    i = 0
-    while i < len(right):
+    for _ in right:
         scale *= 10
-        i += 1
+
     sign = 1
-    if left[:1] == '-':
+    if left.startswith('-'):
         sign = -1
         left = left[1:]
+        if left == '':  # Handle case like "-.5"
+            left = '0'
+
     return num(sign * int(left + right), scale)
 
 
@@ -158,12 +183,7 @@ def sym(name):
     return 'sym', name
 
 
-def E():
-    return 'const', 'e'
 
-
-def PI():
-    return 'const', 'pi'
 
 
 def is_minus_one(node):
@@ -562,7 +582,7 @@ def make_add(parts):
             out.extend(item[1])
         elif item[0] == 'mul':
             inner = list(item[1])
-            if len(inner) >= 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
+            if len(inner) == 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
                 j = 1
                 while j < len(inner):
                     if inner[j][0] == 'add':
@@ -731,13 +751,13 @@ def fn_simplify(name, arg):
             return result
     if name == 'abs' and is_num(arg):
         return num(abs(arg[1]), arg[2])
-    if name == 'abs' and (arg[0] == 'pow' and same(arg[1], E()) or arg[0] == 'fn' and arg[1] == 'exp'):
+    if name == 'abs' and (arg[0] == 'pow' and same(arg[1], E) or arg[0] == 'fn' and arg[1] == 'exp'):
         return arg
     if name == 'log' and is_one(arg):
         return num(0)
-    if name == 'log' and same(arg, E()):
+    if name == 'log' and same(arg, E):
         return num(1)
-    if name == 'log' and arg[0] == 'pow' and same(arg[1], E()):
+    if name == 'log' and arg[0] == 'pow' and same(arg[1], E):
         return arg[2]
     if name == 'log' and arg[0] == 'fn' and arg[1] == 'exp':
         return arg[2]
@@ -773,7 +793,7 @@ def fn_simplify(name, arg):
     if name == 'exp' and is_zero(arg):
         return num(1)
     if name == 'exp' and is_one(arg):
-        return E()
+        return E
     if name == 'exp' and arg[0] == 'fn' and arg[1] == 'log':
         return arg[2]
     if name == 'exp':
@@ -781,9 +801,9 @@ def fn_simplify(name, arg):
         if log_combo is not None:
             return log_combo
     if name == 'exp':
-        return power(E(), arg)
-    if name == 'sqrt' and arg[0] == 'pow' and same(arg[1], E()) and is_num(arg[2]) and arg[2][1] == 2 and arg[2][2] == 1:
-        return power(E(), num(1, 2))
+        return power(E, arg)
+    if name == 'sqrt' and arg[0] == 'pow' and same(arg[1], E) and is_num(arg[2]) and arg[2][1] == 2 and arg[2][2] == 1:
+        return power(E, num(1, 2))
     if name == 'sqrt' and is_int_num(arg) and arg[1] > 0:
         sq = int_sqrt(arg[1])
         if sq is not None:
@@ -2021,28 +2041,6 @@ def parse_identity(text):
     return parse_equation_or_zero(text)
 
 
-def solve_transform_text(text1, text2):
-    expr1 = parse(text1.strip())
-    expr2 = parse(text2.strip())
-    steps, result = rearrange_to_target(expr1, expr2)
-    lines = ['Transform: source to target form']
-    i = 0
-    while i < len(steps):
-        _num, desc, _node = steps[i]
-        if not desc.startswith('Answer:'):
-            lines.append(desc)
-        i += 1
-    lines.append('Answer: ' + show(result))
-    return lines
-
-
-def solve_prove_text(text, route):
-    lhs, rhs = parse_identity(text)
-    if equivalent(lhs, rhs):
-        return [show(lhs), '= ' + show(rhs)]
-    return [show(lhs), '!= ' + show(rhs)]
-
-
 
 
 def split_top_level(text, sep):
@@ -2214,46 +2212,6 @@ def solve_double_product_reduction_expr(*args, **kwargs):
     return None
 
 
-def transform_zero_form_rewrite(*args, **kwargs):
-    return None
-
-
-def transform_fit_constant_template(*args, **kwargs):
-    return None
-
-
-def prove_cot_quadratic_equation(*args, **kwargs):
-    return None
-
-
-def transform_constant_factor_template(*args, **kwargs):
-    return None
-
-
-def transform_linear_combo_shift(*args, **kwargs):
-    return None
-
-
-def transform_factor_quadratic(*args, **kwargs):
-    return None
-
-
-def transform_same_angle_ratio(*args, **kwargs):
-    return None
-
-
-def transform_r_sin_cos_form(*args, **kwargs):
-    return None
-
-
-def transform_sin_cos_2x_form(*args, **kwargs):
-    return None
-
-
-def collect_trig_argument_lower_symbols(*args, **kwargs):
-    return None
-
-
 def start_line(name, expr):
     return name + ' = ' + show(expr)
 
@@ -2266,7 +2224,58 @@ def solve_input_text(text):
     return solve_equation_text(text)
 
 
+def display_equation_text(lhs, rhs):
+    return show(lhs) + ' = ' + show(rhs)
+
+
+def has_explicit_equation_text(text):
+    body = text.strip()
+    if body == '':
+        return False
+    if body.startswith('(') and body.endswith(')'):
+        inner = body[1:-1]
+        if inner.count('(') == inner.count(')') and split_top_level(inner, '=') is not None:
+            body = inner
+    return split_top_level(body, '=') is not None
+
+
+def text_has_trig_function(text):
+    body = text.lower()
+    markers = ('sin', 'cos', 'tan', 'cot', 'sec', 'cosec')
+    i = 0
+    while i < len(markers):
+        if markers[i] in body:
+            return True
+        i += 1
+    return False
+
+
+_TRIG_TRANSFORM_MODULE = None
+
+
+def load_trig_transform_module():
+    global _TRIG_TRANSFORM_MODULE
+    if _TRIG_TRANSFORM_MODULE is not None:
+        return _TRIG_TRANSFORM_MODULE
+    old_flag = False
+    if sys is not None:
+        old_flag = getattr(sys, '_trig_no_autorun', False)
+        sys._trig_no_autorun = True
+    try:
+        _TRIG_TRANSFORM_MODULE = __import__('trigProgram')
+    finally:
+        if sys is not None:
+            sys._trig_no_autorun = old_flag
+    return _TRIG_TRANSFORM_MODULE
+
+
 def compare_mode_text(text1, text2):
+    if has_explicit_equation_text(text1) or has_explicit_equation_text(text2):
+        lhs1, rhs1 = parse_equation_or_zero(text1)
+        lhs2, rhs2 = parse_equation_or_zero(text2)
+        expr1 = sim(add([lhs1, neg(rhs1)]))
+        expr2 = sim(add([lhs2, neg(rhs2)]))
+        return compare_expressions(expr1, expr2)
     return compare_expressions(parse(text1), parse(text2))
 
 
@@ -2777,14 +2786,20 @@ def split_outer_shift(node, var_name):
 
 
 def match_linear_in_var(node, var_name):
-    node = sim(node)
-    zero_sub = substitute_keep_form(node, sym(var_name), num(0))
-    one_sub = substitute_keep_form(node, sym(var_name), num(1))
-    two_sub = substitute_keep_form(node, sym(var_name), num(2))
+    try:
+        node = sim(node)
+        zero_sub = substitute_keep_form(node, sym(var_name), num(0))
+        one_sub = substitute_keep_form(node, sym(var_name), num(1))
+        two_sub = substitute_keep_form(node, sym(var_name), num(2))
+    except (ValueError, ZeroDivisionError):
+        return None
     if depends_on(zero_sub, var_name) or depends_on(one_sub, var_name) or depends_on(two_sub, var_name):
         return None
-    coeff = sim(sub(one_sub, zero_sub))
-    expected_two = sim(add([zero_sub, mul([num(2), coeff])]))
+    try:
+        coeff = sim(sub(one_sub, zero_sub))
+        expected_two = sim(add([zero_sub, mul([num(2), coeff])]))
+    except (ValueError, ZeroDivisionError):
+        return None
     if is_zero(coeff) or not equivalent(two_sub, expected_two):
         return None
     return coeff, sim(zero_sub)
@@ -2838,7 +2853,7 @@ def match_power_linear_in_var(node, var_name):
 def match_exp_linear_in_var(node, var_name):
     if node[0] == 'fn' and node[1] == 'exp':
         return match_linear_in_var(node[2], var_name)
-    if node[0] == 'pow' and same(node[1], E()):
+    if node[0] == 'pow' and same(node[1], E):
         return match_linear_in_var(node[2], var_name)
     return None
 
@@ -2848,7 +2863,7 @@ def match_const_base_exp_linear_in_var(node, var_name):
     if node[0] != 'pow' or depends_on(node[1], var_name):
         return None
     base = node[1]
-    if same(base, E()) or same(base, num(1)):
+    if same(base, E) or same(base, num(1)):
         return None
     if is_num(base) and base[1] <= 0:
         return None
@@ -2873,7 +2888,7 @@ def match_const_base_log_linear_in_var(node, var_name):
     if node[2][0] != 'fn' or node[2][1] != 'log' or depends_on(node[2][2], var_name):
         return None
     base = node[2][2]
-    if same(base, E()) or same(base, num(1)):
+    if same(base, E) or same(base, num(1)):
         return None
     if is_num(base) and base[1] <= 0:
         return None
@@ -2898,7 +2913,7 @@ def match_const_base_log_power_linear_in_var(node, var_name):
     if node[2][0] != 'fn' or node[2][1] != 'log' or depends_on(node[2][2], var_name):
         return None
     base = node[2][2]
-    if same(base, E()) or same(base, num(1)):
+    if same(base, E) or same(base, num(1)):
         return None
     if is_num(base) and base[1] <= 0:
         return None
@@ -3299,8 +3314,6 @@ def sim(node):
         order = []
         data = {}
         counted_sym_keys = set()  # Track keys that had all occurrences counted
-        has_neg_add = False
-        neg_add_items = None
         other_items = []
         i = 0
         while i < len(items):
@@ -3309,19 +3322,6 @@ def sim(node):
                 return num(0)
             if is_num(item):
                 coeff = mulq(coeff, item)
-            elif item[0] == 'mul':
-                inner = list(item[1])
-                if len(inner) >= 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
-                    has_neg_add = True
-                    neg_add_items = list(inner[1][1])
-                elif len(inner) == 2 and same(inner[0], inner[1]):
-                    key = sig(inner[0])
-                    if key not in data:
-                        order.append(key)
-                        data[key] = [inner[0], num(0)]
-                    data[key][1] = add([data[key][1], num(2)])
-                else:
-                    other_items.append(item)
             elif item[0] == 'sym':
                 key = sig(item)
                 if key in counted_sym_keys:
@@ -3345,23 +3345,11 @@ def sim(node):
                 data[key][1] = add([data[key][1], num(count)])
                 counted_sym_keys.add(key)
             elif item[0] == 'pow':
-                if item[1][0] == 'mul':
-                    inner = list(item[1][1])
-                    if len(inner) >= 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
-                        has_neg_add = True
-                        neg_add_items = list(inner[1][1])
-                    else:
-                        key = sig(item[1])
-                        if key not in data:
-                            order.append(key)
-                            data[key] = [item[1], num(0)]
-                        data[key][1] = add([data[key][1], item[2]])
-                else:
-                    key = sig(item[1])
-                    if key not in data:
-                        order.append(key)
-                        data[key] = [item[1], num(0)]
-                    data[key][1] = add([data[key][1], item[2]])
+                key = sig(item[1])
+                if key not in data:
+                    order.append(key)
+                    data[key] = [item[1], num(0)]
+                data[key][1] = add([data[key][1], item[2]])
             else:
                 other_items.append(item)
             i += 1
@@ -3385,13 +3373,6 @@ def sim(node):
         while i < len(other_items):
             temp_out.append(other_items[i])
             i += 1
-        if has_neg_add and neg_add_items is not None:
-            new_items = []
-            j = 0
-            while j < len(neg_add_items):
-                new_items.append(mul([num(-1), neg_add_items[j]]))
-                j += 1
-            return make_add(temp_out + new_items)
         if len(temp_out) == 0:
             return num(1)
         if len(temp_out) == 1:
@@ -3411,36 +3392,6 @@ def sim(node):
         top_coeff, top_rest = split_coeff(top)
         if is_num(top_coeff) and not is_one(top_rest) and is_num(bot):
             return sim(mul([divq(top_coeff, bot), top_rest]))
-        if bot[0] == 'mul':
-            bot_items = list(bot[1])
-            has_neg_add = False
-            neg_add_items = None
-            new_bot_items = []
-            i = 0
-            while i < len(bot_items):
-                item = bot_items[i]
-                if item[0] == 'mul':
-                    inner = list(item[1])
-                    if len(inner) >= 2 and is_num(inner[0]) and is_minus_one(inner[0]) and inner[1][0] == 'add':
-                        has_neg_add = True
-                        neg_add_items = list(inner[1][1])
-                    else:
-                        new_bot_items.append(item)
-                else:
-                    new_bot_items.append(item)
-                i += 1
-            if has_neg_add and neg_add_items is not None:
-                new_items = []
-                j = 0
-                while j < len(neg_add_items):
-                    new_items.append(mul([num(-1), neg_add_items[j]]))
-                    j += 1
-                new_top = add([top] + new_items)
-                if len(new_bot_items) == 0:
-                    return new_top
-                if len(new_bot_items) == 1:
-                    return div(new_top, new_bot_items[0])
-                return div(new_top, make_mul(new_bot_items))
         if top[0] == 'pow' and same(top[1], bot):
             if is_int_num(top[2]) and top[2][1] > 1:
                 return power(bot, num(top[2][1] - 1))
@@ -3776,10 +3727,10 @@ def parse(text):
             return num_text(t)
         if t == 'e':
             p += 1
-            return E()
+            return E
         if t == 'pi':
             p += 1
-            return PI()
+            return PI
         if t:
             p += 1
             low = t.lower()
@@ -3834,7 +3785,7 @@ def parse(text):
                 if starts_implicit(cur()):
                     return fn(low, atom())
             if low in ('pi', 'e'):
-                return PI() if low == 'pi' else E()
+                return PI if low == 'pi' else E
             if len(t) == 1:
                 return sym(t)
             if t.isalpha():
@@ -4260,8 +4211,35 @@ def solve_equation_text(text):
 
 
 def solve_transform_text(text1, text2):
-    expr1 = parse(text1.strip())
-    expr2 = parse(text2.strip())
+    text1 = text1.strip()
+    text2 = text2.strip()
+    if text_has_trig_function(text1) or text_has_trig_function(text2):
+        trig_module = load_trig_transform_module()
+        return trig_module.solve_transform_text(text1, text2)
+    if has_explicit_equation_text(text1) or has_explicit_equation_text(text2):
+        lhs1, rhs1 = parse_equation_or_zero(text1)
+        lhs2, rhs2 = parse_equation_or_zero(text2)
+        expr1 = sim(add([lhs1, neg(rhs1)]))
+        expr2 = sim(add([lhs2, neg(rhs2)]))
+        steps, result = rearrange_to_target(expr1, expr2)
+        if same(result, expr1) and equivalent(expr1, expr2):
+            result = expr2
+            steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
+        lines = ['Method: Transform equation to target form', 'Equation 1: ' + display_equation_text(lhs1, rhs1)]
+        if not is_zero(rhs1):
+            lines.append('Move all terms to one side.')
+            lines.append(display_equation_text(expr1, num(0)))
+        i = 0
+        while i < len(steps):
+            _num, desc, _node = steps[i]
+            if not desc.startswith('Answer:'):
+                lines.append('Step ' + str(i + 1) + ': ' + desc)
+            i += 1
+        lines.append('Hence ' + text2)
+        lines.append('Answer: ' + text2)
+        return ensure_reasoning_marker(lines)
+    expr1 = parse(text1)
+    expr2 = parse(text2)
     steps, result = rearrange_to_target(expr1, expr2)
     if same(result, expr1) and equivalent(expr1, expr2):
         result = expr2
@@ -4586,24 +4564,27 @@ def target_route_steps(source, target):
 
 
 def direct_trig_target_steps(source, target):
+    def answer_steps(note, node):
+        return [(note, node), ('Rewrite to target form', node)]
+
     source = sim(source)
     target = sim(target)
     if source[0] == 'div' and is_one(source[1]) and source[2][0] == 'fn' and target[0] == 'fn':
         arg = source[2][2]
         if source[2][1] == 'sin' and target[1] == 'cosec' and same(arg, target[2]):
-            return [('Use cosec(A) = 1/sin(A)', target)]
+            return answer_steps('Use cosec(A) = 1/sin(A)', target)
         if source[2][1] == 'cos' and target[1] == 'sec' and same(arg, target[2]):
-            return [('Use sec(A) = 1/cos(A)', target)]
+            return answer_steps('Use sec(A) = 1/cos(A)', target)
         if source[2][1] == 'tan' and target[1] == 'cot' and same(arg, target[2]):
-            return [('Use cot(A) = 1/tan(A)', target)]
+            return answer_steps('Use cot(A) = 1/tan(A)', target)
     if target[0] == 'div' and is_one(target[1]) and target[2][0] == 'fn' and source[0] == 'fn':
         arg = target[2][2]
         if target[2][1] == 'sin' and source[1] == 'cosec' and same(arg, source[2]):
-            return [('Use cosec(A) = 1/sin(A)', target)]
+            return answer_steps('Use cosec(A) = 1/sin(A)', target)
         if target[2][1] == 'cos' and source[1] == 'sec' and same(arg, source[2]):
-            return [('Use sec(A) = 1/cos(A)', target)]
+            return answer_steps('Use sec(A) = 1/cos(A)', target)
         if target[2][1] == 'tan' and source[1] == 'cot' and same(arg, source[2]):
-            return [('Use cot(A) = 1/tan(A)', target)]
+            return answer_steps('Use cot(A) = 1/tan(A)', target)
     if source[0] == 'div' and source[1][0] == 'fn' and source[2][0] == 'fn':
         top = source[1]
         bot = source[2]
@@ -4611,11 +4592,11 @@ def direct_trig_target_steps(source, target):
             if top[1] == 'cos' and bot[1] == 'sin':
                 candidate = fn('cot', top[2])
                 if same(candidate, target):
-                    return [('Use cot(A) = cos(A)/sin(A)', target)]
+                    return answer_steps('Use cot(A) = cos(A)/sin(A)', target)
             if top[1] == 'sin' and bot[1] == 'cos':
                 candidate = fn('tan', top[2])
                 if same(candidate, target):
-                    return [('Use tan(A) = sin(A)/cos(A)', target)]
+                    return answer_steps('Use tan(A) = sin(A)/cos(A)', target)
     if source[0] == 'fn' and source[1] == 'sin':
         base = half_angle_expr_for_transform(source[2])
         if base is not None:
@@ -5275,6 +5256,22 @@ def format_rewrite_lines(original_text, expr, final_expr, steps, allowed_terms, 
 
 def simplify_trig_identity(node):
     node = sim(node)
+    if node[0] == 'div':
+        top = node[1]
+        bot = node[2]
+        if is_one(top) and bot[0] == 'fn':
+            if bot[1] == 'sin':
+                return fn('cosec', bot[2])
+            if bot[1] == 'cos':
+                return fn('sec', bot[2])
+            if bot[1] == 'tan':
+                return fn('cot', bot[2])
+        if top[0] == 'fn' and bot[0] == 'fn' and same(top[2], bot[2]):
+            if top[1] == 'cos' and bot[1] == 'sin':
+                return fn('cot', top[2])
+            if top[1] == 'sin' and bot[1] == 'cos':
+                return fn('tan', top[2])
+        return 'div', simplify_trig_identity(top), simplify_trig_identity(bot)
     if node[0] == 'add':
         items = flat(node, 'add')
         if len(items) == 2:
@@ -5510,8 +5507,6 @@ def simplify_trig_identity(node):
             items.append(simplify_trig_identity(node[1][i]))
             i += 1
         return make_mul(items)
-    if node[0] == 'div':
-        return 'div', simplify_trig_identity(node[1]), simplify_trig_identity(node[2])
     if node[0] == 'pow':
         return 'pow', simplify_trig_identity(node[1]), simplify_trig_identity(node[2])
     if node[0] == 'fn':
@@ -5531,6 +5526,10 @@ def compare_expressions(expr1, expr2):
     simple2 = canonical_compare_form(expr2)
     steps = []
     step_num = 1
+    steps.append((step_num, 'Expression 1: ' + show(expr1), expr1))
+    step_num += 1
+    steps.append((step_num, 'Expression 2: ' + show(expr2), expr2))
+    step_num += 1
     steps.append((step_num, 'Simplify: ' + show(simple1), simple1))
     step_num += 1
     steps.append((step_num, 'Simplify: ' + show(simple2), simple2))
@@ -6928,9 +6927,7 @@ def main():
         if mode == '1':
             text1 = input('E1: ').strip()
             text2 = input('E2: ').strip()
-            expr1 = parse(text1)
-            expr2 = parse(text2)
-            equal, steps = compare_expressions(expr1, expr2)
+            equal, steps = compare_mode_text(text1, text2)
             i = 0
             while i < len(steps):
                 num, desc, _ = steps[i]
@@ -6942,24 +6939,12 @@ def main():
                 print(str(len(steps) + 1) + '. Result: Not equivalent.')
         elif mode == '2':
             text1 = input('Src: ').strip()
-            expr1 = parse(text1)
             text2 = input('Tgt: ').strip()
-            expr2 = parse(text2)
-            steps, result = rearrange_to_target(expr1, expr2)
+            lines = solve_transform_text(text1, text2)
             i = 0
-            while i < len(steps):
-                num, desc, _ = steps[i]
-                print(str(num) + '. ' + desc)
+            while i < len(lines):
+                print(str(i + 1) + '. ' + lines[i])
                 i += 1
-            i = 0
-            while i < len(steps):
-                num, desc, _ = steps[i]
-                if desc.startswith('Answer:'):
-                    print(str(num) + '. ' + desc)
-                    break
-                i += 1
-            if i >= len(steps):
-                print(str(len(steps) + 1) + '. Answer: ' + show(result))
         elif mode == '3':
             text1 = input('Expr: ').strip()
             max_terms_str = input('Max: ').strip()

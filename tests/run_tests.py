@@ -251,6 +251,12 @@ def split_equation_text(text):
     return text.strip(), "0"
 
 
+def trig_prove_cli(left, right=None, route="1"):
+    if right is None:
+        left, right = split_equation_text(left)
+    return "1\n{}\n{}\n{}\n".format(left, right, route)
+
+
 def _log_fn(*args):
     if len(args) == 1:
         return math.log(args[0])
@@ -653,6 +659,8 @@ def extract_last_solution_values(output, var="x"):
 def extract_last_derivative_expr(output):
     for line in reversed((output or "").splitlines()):
         stripped = re.sub(r"^\s*\d+\.\s*", "", line.strip())
+        if stripped.lower().startswith("answer:"):
+            stripped = stripped.split(":", 1)[1].strip()
         if stripped.startswith("dy/d") and "=" in stripped:
             return stripped.rsplit("=", 1)[1].strip()
     return None
@@ -3857,7 +3865,7 @@ class CASIOApp(App):
             left = f"cot({angle})"
             right = f"cos({angle})/sin({angle})"
         label = f"Random trig prove {index}: {mode}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", f"1\n{left}={right}\n1\n", label, trig_prove_checker(), feature=f"trig_prove:{mode}")
+        return self.make_cli_case("Trigonometry", "trigProgram.py", trig_prove_cli(left, right), label, trig_prove_checker(), feature=f"trig_prove:{mode}")
 
     def random_trig_transform_case(self, rng, difficulty, index):
         angle = rng.choice(["x", "2*x", "3*x"])
@@ -4018,17 +4026,17 @@ class CASIOApp(App):
     def random_trig_identity_hard_case(self, rng, difficulty, index):
         choice = rng.randint(1, 8)
         if choice == 1:
-            cli_input = "1\nsec(x)^4-tan(x)^4=1+2*tan(x)^2\n1\n"
+            cli_input = trig_prove_cli("sec(x)^4-tan(x)^4", "1+2*tan(x)^2")
         elif choice == 2:
-            cli_input = "1\nsec(x)^2-tan(x)^2=1\n1\n"
+            cli_input = trig_prove_cli("sec(x)^2-tan(x)^2", "1")
         elif choice == 3:
-            cli_input = "1\n(sin(x)+cos(x))^2=1+sin(2*x)\n1\n"
+            cli_input = trig_prove_cli("(sin(x)+cos(x))^2", "1+sin(2*x)")
         elif choice == 4:
-            cli_input = "1\ntan(x)+cot(x)=sec(x)*cosec(x)\n1\n"
+            cli_input = trig_prove_cli("tan(x)+cot(x)", "sec(x)*cosec(x)")
         elif choice == 5:
-            cli_input = "1\nsin(x)^3*cos(x)+cos(x)^3*sin(x)=sin(x)*cos(x)\n1\n"
+            cli_input = trig_prove_cli("sin(x)^3*cos(x)+cos(x)^3*sin(x)", "sin(x)*cos(x)")
         else:
-            cli_input = "1\nsec(x)-tan(x)=cos(x)/(1+sin(x))\n1\n"
+            cli_input = trig_prove_cli("sec(x)-tan(x)", "cos(x)/(1+sin(x))")
         label = f"Hard trig identity {index}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_prove_checker("1"), feature="trig_identity_hard")
 
@@ -4695,10 +4703,10 @@ class CASIOApp(App):
             "complex_solve", "exact_value", "hard_identity",
         ])
         if mode == "hard_ident_1":
-            cli_input = "1\nsec(x)^4-tan(x)^4\n1+2*tan(x)^2\n1\n"
+            cli_input = trig_prove_cli("sec(x)^4-tan(x)^4", "1+2*tan(x)^2")
             checker = trig_prove_checker("1+2*tan")
         elif mode == "hard_ident_2":
-            cli_input = "1\n(sec(x)-tan(x))^2\ntan(x)^2-sin(x)^2\n1\n"
+            cli_input = trig_prove_cli("(sec(x)-tan(x))^2", "tan(x)^2-sin(x)^2")
             checker = trig_prove_checker("tan")
         elif mode == "solve_quad_trig":
             cli_input = "3\ntan(x)^2+sec(x)^2+5*sec(x)=2,x,0,2*pi\n"
@@ -4710,7 +4718,7 @@ class CASIOApp(App):
             cli_input = "3\nsin(4*x)=sqrt(2)/2,x,pi/4,pi/2\n"
             checker = trig_solve_checker("x =")
         else:
-            cli_input = "1\ncot(x)^2*cosec(x)^2-cosec(x)^2\ncot(x)^2\n1\n"
+            cli_input = trig_prove_cli("cot(x)^2*cosec(x)^2-cosec(x)^2", "cot(x)^2")
             checker = trig_prove_checker("cot")
         label = f"University trig {index}: {mode}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature=f"trig_uni:{mode}")
@@ -4928,6 +4936,8 @@ class CASIOApp(App):
             if script == "algebraProgram.py" and mode in ("3", "5"):
                 return expected if callable(expected) else None
             if script == "trigProgram.py":
+                if mode == "1" and len(lines) >= 3 and lines[2].strip() not in ("1", "2", "3", "4"):
+                    return trig_identity_output_checker(lines[1] + "=" + lines[2])
                 if mode == "1" and len(lines) >= 2 and "=" in lines[1]:
                     return trig_identity_output_checker(lines[1])
                 if mode == "2" and len(lines) >= 3:
@@ -5293,24 +5303,25 @@ class CASIOApp(App):
 
         # Core identity proofs
         proofs = [
-            ("1\nsin(x)^2+cos(x)^2=1\n1\n", "LHS = RHS", "Prove: sin²x+cos²x=1"),
-            ("1\nsec(x)^2-tan(x)^2=1\n1\n", "LHS = RHS", "Prove: sec²x-tan²x=1"),
-            ("1\ncosec(x)^2-cot(x)^2=1\n1\n", "LHS = RHS", "Prove: csc²x-cot²x=1"),
-            ("1\nsin(2*x)=2*sin(x)*cos(x)\n1\n", "LHS = RHS", "Prove: sin(2x)=2sinxcosx"),
-            ("1\ncos(2*x)=cos(x)^2-sin(x)^2\n1\n", "LHS = RHS", "Prove: cos(2x)=cos²x-sin²x"),
-            ("1\n1-cos(2*x)=2*sin(x)^2\n1\n", "LHS = RHS", "Prove: 1-cos(2x)=2sin²x"),
-            ("1\n1+cos(2*x)=2*cos(x)^2\n1\n", "LHS = RHS", "Prove: 1+cos(2x)=2cos²x"),
-            ("1\ntan(x)=sin(x)/cos(x)\n1\n", "LHS = RHS", "Prove: tanx=sinx/cosx"),
-            ("1\ncot(x)=cos(x)/sin(x)\n1\n", "LHS = RHS", "Prove: cotx=cosx/sinx"),
-            ("1\nsec(x)^4-tan(x)^4=1+2*tan(x)^2\n1\n", "LHS = RHS", "Prove: sec⁴x-tan⁴x=1+2tan²x"),
-            ("1\nsin(3*x)=3*sin(x)-4*sin(x)^3\n1\n", "LHS = RHS", "Prove: sin(3x)=3sinx-4sin³x"),
-            ("1\ncos(3*x)=4*cos(x)^3-3*cos(x)\n1\n", "LHS = RHS", "Prove: cos(3x)=4cos³x-3cosx"),
+            (trig_prove_cli("sin(x)^2+cos(x)^2", "1"), "LHS = RHS", "Prove: sin²x+cos²x=1"),
+            (trig_prove_cli("sec(x)^2-tan(x)^2", "1"), "LHS = RHS", "Prove: sec²x-tan²x=1"),
+            (trig_prove_cli("cosec(x)^2-cot(x)^2", "1"), "LHS = RHS", "Prove: csc²x-cot²x=1"),
+            (trig_prove_cli("sin(2*x)", "2*sin(x)*cos(x)"), "LHS = RHS", "Prove: sin(2x)=2sinxcosx"),
+            (trig_prove_cli("cos(2*x)", "cos(x)^2-sin(x)^2"), "LHS = RHS", "Prove: cos(2x)=cos²x-sin²x"),
+            (trig_prove_cli("1-cos(2*x)", "2*sin(x)^2"), "LHS = RHS", "Prove: 1-cos(2x)=2sin²x"),
+            (trig_prove_cli("1+cos(2*x)", "2*cos(x)^2"), "LHS = RHS", "Prove: 1+cos(2x)=2cos²x"),
+            (trig_prove_cli("tan(x)", "sin(x)/cos(x)"), "LHS = RHS", "Prove: tanx=sinx/cosx"),
+            (trig_prove_cli("cot(x)", "cos(x)/sin(x)"), "LHS = RHS", "Prove: cotx=cosx/sinx"),
+            (trig_prove_cli("sec(x)^4-tan(x)^4", "1+2*tan(x)^2"), "LHS = RHS", "Prove: sec⁴x-tan⁴x=1+2tan²x"),
+            (trig_prove_cli("sin(3*x)", "3*sin(x)-4*sin(x)^3"), "LHS = RHS", "Prove: sin(3x)=3sinx-4sin³x"),
+            (trig_prove_cli("cos(3*x)", "4*cos(x)^3-3*cos(x)"), "LHS = RHS", "Prove: cos(3x)=4cos³x-3cosx"),
         ]
 
         if difficulty in ("all", "easy", "medium", "hard"):
             for inp, check, label in proofs:
                 out, _ = self.run_cli("trigProgram.py", inp)
-                eq = inp.splitlines()[1]
+                lines = inp.splitlines()
+                eq = lines[1] + "=" + lines[2]
                 checker = trig_identity_output_checker(eq)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig identity"), "trig_prove")
 
@@ -5394,11 +5405,11 @@ class CASIOApp(App):
 
         # Regression: non-identities should fail cleanly in prove mode
         if difficulty in ("all", "medium", "hard"):
-            out, _ = self.run_cli("trigProgram.py", "1\n2*sin(x-30)=5*cos(x)\n1\n")
+            out, _ = self.run_cli("trigProgram.py", trig_prove_cli("2*sin(x-30)", "5*cos(x)"))
             self.add_test("Reject non-identity cleanly: 2sin(x-30)=5cos(x)", "not an identity" in out.lower(), out, p)
 
         # NEW: Additional proofs
-            out, _ = self.run_cli("trigProgram.py", "1\ntan(x)+cot(x)=2*cosec(2*x)\n1\n")
+            out, _ = self.run_cli("trigProgram.py", trig_prove_cli("tan(x)+cot(x)", "2*cosec(2*x)"))
             self.add_test("Prove: tanx+cotx=2csc(2x)", "LHS = RHS" in out, out, p)
 
         # NEW: Solve more complex equations
@@ -5410,24 +5421,24 @@ class CASIOApp(App):
 
         # Extreme tests
         if difficulty in ("all", "hard"):
-            out, _ = self.run_cli("trigProgram.py", "1\nsin(6*x)=6*sin(x)*cos(x)^5-20*sin(x)^3*cos(x)^3+16*sin(x)^5*cos(x)\n1\n")
+            out, _ = self.run_cli("trigProgram.py", trig_prove_cli("sin(6*x)", "6*sin(x)*cos(x)^5-20*sin(x)^3*cos(x)^3+16*sin(x)^5*cos(x)"))
             self.add_test("Extreme: sin(6x) identity", "LHS = RHS" in out or "RHS" in out, out, p)
 
         extra_cases = []
 
         proof_templates = [
-            ("1\nsin(4*x)=2*sin(2*x)*cos(2*x)\n1\n", "Generated proof: sin(4x)", "LHS = RHS"),
-            ("1\ncos(4*x)=cos(2*x)^2-sin(2*x)^2\n1\n", "Generated proof: cos(4x)", "LHS = RHS"),
-            ("1\n1-cos(4*x)=2*sin(2*x)^2\n1\n", "Generated proof: 1-cos(4x)", "LHS = RHS"),
-            ("1\n1+cos(4*x)=2*cos(2*x)^2\n1\n", "Generated proof: 1+cos(4x)", "LHS = RHS"),
-            ("1\nsin(6*x)=2*sin(3*x)*cos(3*x)\n1\n", "Generated proof: sin(6x)", "LHS = RHS"),
-            ("1\ncos(6*x)=cos(3*x)^2-sin(3*x)^2\n1\n", "Generated proof: cos(6x)", "LHS = RHS"),
-            ("1\ntan(2*x)=sin(2*x)/cos(2*x)\n1\n", "Generated proof: tan(2x)", "LHS = RHS"),
-            ("1\nsec(2*x)^2-tan(2*x)^2=1\n1\n", "Generated proof: sec²(2x)-tan²(2x)", "LHS = RHS"),
-            ("1\ncosec(2*x)^2-cot(2*x)^2=1\n1\n", "Generated proof: csc²(2x)-cot²(2x)", "LHS = RHS"),
-            ("1\nsin(3*x)=3*sin(x)-4*sin(x)^3\n1\n", "Generated proof: sin(3x) repeat", "LHS = RHS"),
-            ("1\ncos(3*x)=4*cos(x)^3-3*cos(x)\n1\n", "Generated proof: cos(3x) repeat", "LHS = RHS"),
-            ("1\ntan(x)+cot(x)=2*cosec(2*x)\n1\n", "Generated proof: tan+cot", "LHS = RHS"),
+            (trig_prove_cli("sin(4*x)", "2*sin(2*x)*cos(2*x)"), "Generated proof: sin(4x)", "LHS = RHS"),
+            (trig_prove_cli("cos(4*x)", "cos(2*x)^2-sin(2*x)^2"), "Generated proof: cos(4x)", "LHS = RHS"),
+            (trig_prove_cli("1-cos(4*x)", "2*sin(2*x)^2"), "Generated proof: 1-cos(4x)", "LHS = RHS"),
+            (trig_prove_cli("1+cos(4*x)", "2*cos(2*x)^2"), "Generated proof: 1+cos(4x)", "LHS = RHS"),
+            (trig_prove_cli("sin(6*x)", "2*sin(3*x)*cos(3*x)"), "Generated proof: sin(6x)", "LHS = RHS"),
+            (trig_prove_cli("cos(6*x)", "cos(3*x)^2-sin(3*x)^2"), "Generated proof: cos(6x)", "LHS = RHS"),
+            (trig_prove_cli("tan(2*x)", "sin(2*x)/cos(2*x)"), "Generated proof: tan(2x)", "LHS = RHS"),
+            (trig_prove_cli("sec(2*x)^2-tan(2*x)^2", "1"), "Generated proof: sec²(2x)-tan²(2x)", "LHS = RHS"),
+            (trig_prove_cli("cosec(2*x)^2-cot(2*x)^2", "1"), "Generated proof: csc²(2x)-cot²(2x)", "LHS = RHS"),
+            (trig_prove_cli("sin(3*x)", "3*sin(x)-4*sin(x)^3"), "Generated proof: sin(3x) repeat", "LHS = RHS"),
+            (trig_prove_cli("cos(3*x)", "4*cos(x)^3-3*cos(x)"), "Generated proof: cos(3x) repeat", "LHS = RHS"),
+            (trig_prove_cli("tan(x)+cot(x)", "2*cosec(2*x)"), "Generated proof: tan+cot", "LHS = RHS"),
         ]
         extra_cases.extend(proof_templates * 4)
 
@@ -5455,18 +5466,18 @@ class CASIOApp(App):
         extra_cases.extend(solve_templates * 4)
 
         complex_cases = [
-            ("1\nsin(2*x+1)^2+cos(2*x+1)^2=1\n1\n", "Complex proof: shifted Pythagorean identity", "LHS = RHS"),
-            ("1\n1-cos(2*(3*x-1))=2*sin(3*x-1)^2\n1\n", "Complex proof: nested double-angle", "LHS = RHS"),
-            ("1\ntan(3*x-2)=sin(3*x-2)/cos(3*x-2)\n1\n", "Complex proof: shifted tan identity", "LHS = RHS"),
-            ("1\nsec(3*x+1)^2-tan(3*x+1)^2=1\n1\n", "Complex proof: shifted sec identity", "LHS = RHS"),
+            (trig_prove_cli("sin(2*x+1)^2+cos(2*x+1)^2", "1"), "Complex proof: shifted Pythagorean identity", "LHS = RHS"),
+            (trig_prove_cli("1-cos(2*(3*x-1))", "2*sin(3*x-1)^2"), "Complex proof: nested double-angle", "LHS = RHS"),
+            (trig_prove_cli("tan(3*x-2)", "sin(3*x-2)/cos(3*x-2)"), "Complex proof: shifted tan identity", "LHS = RHS"),
+            (trig_prove_cli("sec(3*x+1)^2-tan(3*x+1)^2", "1"), "Complex proof: shifted sec identity", "LHS = RHS"),
             ("2\n1-cos(2*(x+1))\n2*sin(x+1)^2\n", "Complex transform: nested double-angle", "sin"),
             ("2\nsin(2*(2*x-1))\n2*sin(2*x-1)*cos(2*x-1)\n", "Complex transform: nested sin double-angle", "2*sin"),
             ("3\nsin(2*x)=sqrt(3)/2,x,0,360\n", "Complex solve: sin(2x)=√3/2", "x ="),
             ("3\ncos(3*x)=1/2,x,0,360\n", "Complex solve: cos(3x)=1/2", "x ="),
             ("3\ntan(2*x)=-1,x,0,360\n", "Complex solve: tan(2x)=-1", "x ="),
             ("3\nsin(x+0.5)=0,x,0,6.283\n", "Complex solve: shifted radian sine", "x ="),
-            ("1\nsin(4*x+1)=2*sin(2*x+0.5)*cos(2*x+0.5)\n1\n", "Complex proof: offset doubled angle", "LHS = RHS"),
-            ("1\ncos(4*x-2)=cos(2*x-1)^2-sin(2*x-1)^2\n1\n", "Complex proof: offset cosine double-angle", "LHS = RHS"),
+            (trig_prove_cli("sin(4*x+1)", "2*sin(2*x+0.5)*cos(2*x+0.5)"), "Complex proof: offset doubled angle", "LHS = RHS"),
+            (trig_prove_cli("cos(4*x-2)", "cos(2*x-1)^2-sin(2*x-1)^2"), "Complex proof: offset cosine double-angle", "LHS = RHS"),
         ]
         extra_cases.extend(complex_cases)
 
@@ -5483,22 +5494,22 @@ class CASIOApp(App):
         ]
         for arg in proof_args:
             extreme_cases.append((
-                f"1\nsin(2*({arg}))=2*sin({arg})*cos({arg})\n1\n",
+                trig_prove_cli("sin(2*({}))".format(arg), "2*sin({})*cos({})".format(arg, arg)),
                 f"Extreme proof: sin(2({arg}))",
                 trig_prove_checker(),
             ))
             extreme_cases.append((
-                f"1\n1-cos(2*({arg}))=2*sin({arg})^2\n1\n",
+                trig_prove_cli("1-cos(2*({}))".format(arg), "2*sin({})^2".format(arg)),
                 f"Extreme proof: 1-cos(2({arg}))",
                 trig_prove_checker(),
             ))
             extreme_cases.append((
-                f"1\n1+cos(2*({arg}))=2*cos({arg})^2\n1\n",
+                trig_prove_cli("1+cos(2*({}))".format(arg), "2*cos({})^2".format(arg)),
                 f"Extreme proof: 1+cos(2({arg}))",
                 trig_prove_checker(),
             ))
             extreme_cases.append((
-                f"1\nsec({arg})^2-tan({arg})^2=1\n1\n",
+                trig_prove_cli("sec({})^2-tan({})^2".format(arg, arg), "1"),
                 f"Extreme proof: sec²({arg})-tan²({arg})",
                 trig_prove_checker(),
             ))
@@ -5538,12 +5549,12 @@ class CASIOApp(App):
 
         for scale in range(2, 7):
             extreme_cases.append((
-                f"1\nsin(2*({scale}*x^2+1))=2*sin({scale}*x^2+1)*cos({scale}*x^2+1)\n1\n",
+                trig_prove_cli("sin(2*({}*x^2+1))".format(scale), "2*sin({}*x^2+1)*cos({}*x^2+1)".format(scale, scale)),
                 f"Extreme proof: quadratic-angle sin double scale={scale}",
                 trig_prove_checker(),
             ))
             extreme_cases.append((
-                f"1\n1-cos(2*({scale}*x^2-1))=2*sin({scale}*x^2-1)^2\n1\n",
+                trig_prove_cli("1-cos(2*({}*x^2-1))".format(scale), "2*sin({}*x^2-1)^2".format(scale)),
                 f"Extreme proof: quadratic-angle cosine scale={scale}",
                 trig_prove_checker(),
             ))
@@ -5553,7 +5564,7 @@ class CASIOApp(App):
                 trig_transform_checker("2*sin"),
             ))
             extreme_cases.append((
-                f"1\ntan({scale}*x^2+1)=sin({scale}*x^2+1)/cos({scale}*x^2+1)\n1\n",
+                trig_prove_cli("tan({}*x^2+1)".format(scale), "sin({}*x^2+1)/cos({}*x^2+1)".format(scale, scale)),
                 f"Extreme proof: tan({scale}x^2+1)",
                 trig_prove_checker(),
             ))
