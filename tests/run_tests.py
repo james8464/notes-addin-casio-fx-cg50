@@ -68,6 +68,16 @@ try:
     )
     from shared_reasoning_markers import REASONING_MARKERS as SHARED_REASONING_MARKERS
 except Exception:
+    pass
+
+try:
+    from shared_llm import LLMManager, check_ollama_available, get_ollama_models
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+    LLMManager = None
+    check_ollama_available = None
+    get_ollama_models = None
     SHARED_REASONING_MARKERS = ("method:", "use ", "let ", "solve ", "answer:")
 
     def shared_has_working_steps(output):
@@ -101,6 +111,9 @@ class TestRecord:
     input_text: str = ""
     check_info: str = ""
     feature: str = ""
+    sympy_verdict: str = ""
+    llm_verdict: str = ""
+    llm_explanation: str = ""
 
 
 @dataclass
@@ -1903,6 +1916,9 @@ class CASIOApp(App):
         self.start_time = None
         self.total_expected = 0
         self._last_eta_update = 0
+        self.llm_manager = None
+        self.llm_enabled_for_tests = False
+        
         self.command_items = {
             "/random": "Run randomly generated tests across every program",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
@@ -1925,6 +1941,9 @@ class CASIOApp(App):
             "/filter derive": "Only run Derive tests",
             "/filter integrate": "Only run Integrate tests",
             "/filter suvat": "Only run SUVAT tests",
+            "/llm": "Configure LLM verification (select model, enable/disable)",
+            "/llm status": "Show current LLM configuration",
+            "/llm disable": "Disable LLM verification",
         }
 
     def compose(self):
@@ -2148,6 +2167,12 @@ class CASIOApp(App):
             self.generate_report_file()
         elif value_lower == "/compile":
             self.action_compile()
+        elif value_lower == "/llm" or value_lower == "/llm status":
+            self.handle_llm_status()
+        elif value_lower == "/llm disable":
+            self.handle_llm_disable()
+        elif value_lower.startswith("/llm "):
+            self.handle_llm_select(value)
         elif value_lower.startswith("/filter "):
             raw = value.split(" ", 1)[1].strip().lower()
             selected = self.normalize_program_name(raw)
@@ -2207,6 +2232,113 @@ class CASIOApp(App):
         self.append_result("")
         self.append_result("[dim]Tip: type / to browse matching commands interactively.[/dim]")
         self.update_summary("Help")
+
+    def handle_llm_status(self):
+        """Show LLM status and allow model selection."""
+        self.append_result("[bold #e07a53]LLM Verification Status[/bold #e07a53]")
+        
+        if not LLM_AVAILABLE:
+            self.append_result("")
+            self.append_result("[bold #f59e0b]LLM Module Not Available[/bold #f59e0b]")
+            self.append_result("Install shared_llm.py in src/ directory")
+            self.update_summary("LLM not available")
+            return
+        
+        from shared_llm import check_ollama_available, get_ollama_models
+        
+        available = check_ollama_available()
+        if not available:
+            self.append_result("")
+            self.append_result("[bold #f59e0b]Ollama Not Running[/bold #f59e0b]")
+            self.append_result("Start Ollama with: [bold]ollama serve[/bold]")
+            self.append_result("Or install from: https://ollama.ai")
+            self.update_summary("Ollama not running")
+            return
+        
+        models = get_ollama_models()
+        if not models:
+            self.append_result("")
+            self.append_result("[bold #f59e0b]No Models Found[/bold #f59e0b]")
+            self.append_result("Download a model: [bold]ollama pull <name>[/bold]")
+            self.update_summary("No models")
+            return
+        
+        self.append_result("")
+        self.append_result("[bold]Available Models:[/bold]")
+        for i, m in enumerate(models):
+            marker = "[#22c55e]*[/#22c55e]" if self.llm_manager and self.llm_manager.selected_model == m["name"] else " "
+            self.append_result(f"  {marker} {i+1}. {m['name']} ({m['size']})")
+        
+        self.append_result("")
+        
+        if self.llm_manager and self.llm_manager.enabled:
+            status = self.llm_manager.get_status()
+            self.append_result(f"[#22c55e]Enabled[/#22c55e] with: {status['selected_model']}")
+            if status.get('cache_stats'):
+                cs = status['cache_stats']
+                self.append_result(f"Cache: {cs['size']} entries, {cs['hit_rate']} hit rate")
+        else:
+            self.append_result("[dim]LLM verification disabled[/dim]")
+            self.append_result("Type /llm <number> to enable (e.g., /llm 1)")
+        
+        self.append_result("")
+        self.append_result("Type [bold]/llm <number>[/bold] to select and enable a model")
+        self.update_summary("LLM Status")
+
+    def handle_llm_select(self, value):
+        """Handle LLM model selection."""
+        parts = value.split()
+        if len(parts) < 2:
+            self.handle_llm_status()
+            return
+        
+        try:
+            idx = int(parts[1]) - 1
+        except ValueError:
+            model_name = parts[1]
+            idx = None
+        
+        if self.llm_manager is None:
+            if LLM_AVAILABLE:
+                from shared_llm import LLMManager
+                self.llm_manager = LLMManager()
+            else:
+                self.append_result("[bold #f59e0b]LLM not available[/bold #f59e0b]")
+                return
+        
+        models = self.llm_manager.list_models()
+        if not models:
+            self.append_result("[bold #f59e0b]No models available[/bold #f59e0b]")
+            return
+        
+        if idx is not None:
+            if 0 <= idx < len(models):
+                success = self.llm_manager.select_model(idx)
+            else:
+                self.append_result(f"[bold #f59e0b]Invalid model number: {idx+1}[/bold #f59e0b]")
+                return
+        else:
+            success = self.llm_manager.select_model(model_name)
+        
+        if success:
+            self.llm_manager.enable()
+            self.llm_enabled_for_tests = True
+            self.append_result(f"[#22c55e]Enabled[/#22c55e] LLM verification with: {self.llm_manager.selected_model}")
+            self.append_result("Run /random tests to use LLM verification")
+        else:
+            self.append_result(f"[bold #f59e0b]Model not found: {model_name}[/bold #f59e0b]")
+        
+        self.update_summary("LLM Model Selected")
+
+    def handle_llm_disable(self):
+        """Disable LLM verification."""
+        if self.llm_manager:
+            self.llm_manager.disable()
+            self.llm_enabled_for_tests = False
+            self.append_result("[bold #f59e0b]LLM verification disabled[/bold #f59e0b]")
+        else:
+            self.append_result("[dim]LLM was not enabled[/dim]")
+        self.update_summary("LLM Disabled")
 
     def show_programs(self):
         self.append_result("[bold #e07a53]Programs[/bold #e07a53]")
@@ -2535,7 +2667,8 @@ class CASIOApp(App):
         color = "#22c55e" if passed else "#f87171"
 
         status = TestStatus.PASS if passed else TestStatus.FAIL
-        self.records.append(TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature))
+        record = TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature)
+        self.records.append(record)
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
         if getattr(self, 'plain_mode', False) and not passed:
@@ -2572,6 +2705,7 @@ class CASIOApp(App):
                 self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
         else:
             self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
+        return record
 
     def render_summary(self):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
@@ -2595,6 +2729,15 @@ class CASIOApp(App):
         else:
             msg = f"● {passed}/{total} passed ({pct:.0f}%){elapsed_str}"
             color = "#fbbf24"
+
+        if self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
+            llm_count = sum(1 for r in self.records if r.llm_verdict == "CORRECT")
+            llm_total = sum(1 for r in self.records if r.llm_verdict)
+            if llm_total > 0:
+                msg += f" · LLM: {llm_count}/{llm_total} verified"
+                cache_stats = self.llm_manager.cache.stats()
+                if cache_stats.get("hits", 0) > 0:
+                    msg += f" ({cache_stats['hit_rate']} cache)"
 
         self.append_result(f"\n[bold]Results:[/bold] [bold {color}]{msg}[/bold {color}]\n")
         self.update_summary(msg)
@@ -2697,6 +2840,8 @@ class CASIOApp(App):
         active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
         case_count = len(cases)
         skip_quality = skip_quality or self.total_expected > 2000
+        use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
+
         if case_count > 5000:
             batch_size = max(500, case_count // 50)
             active_workers = min(active_workers, 24)
@@ -2715,7 +2860,18 @@ class CASIOApp(App):
                 passed, output = False, str(err)
             return case, passed, output
 
+        def llm_verify(record):
+            if not use_llm:
+                return ("", "")
+            try:
+                result = self.llm_manager.verify(record.output, record.check_info, record.label)
+                return (result.get("verdict", ""), result.get("explanation", ""))
+            except Exception:
+                return ("", "")
+
         total_batches = (len(cases) + batch_size - 1) // batch_size
+        pending_records = []
+
         for batch_start in range(0, len(cases), batch_size):
             batch = cases[batch_start:batch_start + batch_size]
             with ThreadPoolExecutor(max_workers=active_workers) as executor:
@@ -2727,7 +2883,17 @@ class CASIOApp(App):
                             passed = False
                             detail = "; ".join(quality_issues[:4])
                             case.check_info = f"{case.check_info}; exam-quality issues: {detail}" if case.check_info else f"exam-quality issues: {detail}"
-                    self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
+                    record = self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
+                    pending_records.append(record)
+
+        if use_llm and pending_records:
+            emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
+            emit(self.append_result, "[dim]Running LLM verification...[/dim]")
+            with ThreadPoolExecutor(max_workers=min(4, active_workers)) as llm_executor:
+                for record, (verdict, explanation) in zip(pending_records, llm_executor.map(llm_verify, pending_records)):
+                    if verdict:
+                        record.llm_verdict = verdict
+                        record.llm_explanation = explanation
 
     def balanced_counts(self, total, parts):
         base = total // parts

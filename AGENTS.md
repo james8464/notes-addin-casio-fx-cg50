@@ -27,14 +27,41 @@
 ### Known Remaining Work
 - No current automated random-suite blocker is known.
 - The explicit 100-question prompt list is not present as a standalone checked-in test file; current validation uses `tests/test_madasmaths.py` plus the generated random/chaos suites.
+- LLM three-way verification: consensus algorithm (SymPy + CASIO + LLM) not yet implemented - currently runs all three but treats LLM as separate; may need to adjust final pass/fail based on consensus
+
+## LLM Integration (2026-04-23)
+
+### Implemented
+- `src/shared_llm.py` - Ollama interface with caching, model selection, verification
+- `tests/run_tests.py` - Added LLM commands (`/llm`, `/llm status`, `/llm disable`, `/llm select`)
+- `tests/run_tests.py` - Three-way verification in `run_case_specs()` - LLM verification runs in parallel after CASIO tests
+- `TestRecord` - Added `llm_verdict` and `llm_explanation` fields
+- `render_summary` - Shows LLM verification stats with cache hit rate
+
+### Architecture
+- `LLMManager` class in shared_llm.py handles Ollama communication
+- `LLMCache` provides TTL-based response caching (3600s TTL, 1000 max entries)
+- ThreadPoolExecutor runs LLM verification in parallel (max 4 workers)
+- Tests run CASIO first, then batch LLM verification afterward
+
+### Next Steps for Consensus
+- Implement consensus logic: pass if >=2 of (SymPy, CASIO, LLM) agree
+- May need to update `add_test` or `run_case_specs` to apply consensus verdict
+- Consider adding LLM verdict indicator in test output (e.g., "● LLM✓")
+
+### Completed (2026-04-23)
+- `TestRecord` - Added `sympy_verdict` field for SymPy verification results
+- `run_case_specs()` - Now tracks SymPy verdict during test execution via `sympy_expressions_equivalent()`
+- Three-way consensus ready: CASIO passed, SymPy equivalent → pass; if LLM available and disagrees, flag for review
 
 ### Key Files
 - `src/shared_helpers.py` - shared predicates/builders/output helpers
+- `src/shared_llm.py` - Ollama interface with caching, model selection, verification
 - `src/Math/algebraProgram.py` - transform, solve, domain, answer formatting
 - `src/Math/trigProgram.py` - rewrite/transform formatting and allowed-term robustness
 - `src/Math/deriveProgram.py` - reciprocal trig quotient-rule working
 - `src/Math/intProgram.py` - compact integration output
-- `tests/run_tests.py` - quality gates updated for `Answer:` output and compact integration
+- `tests/run_tests.py` - quality gates updated for `Answer:` output, compact integration, and LLM integration
 - `tests/test_madasmaths.py` - MadAsMaths regression coverage
 
 ## graphify
