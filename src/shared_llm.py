@@ -293,7 +293,7 @@ EXPECTED ANSWER: {expected}
     def _query_ollama(self, prompt):
         """Send query to Ollama."""
         cmd = [
-            "ollama", "generate",
+            "ollama", "run",
             self.selected_model,
             prompt
         ]
