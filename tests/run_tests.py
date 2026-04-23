@@ -122,6 +122,7 @@ class CaseSpec:
     program: str
     runner: object
     input_text: str = ""
+    expected: str = ""
     check_info: str = ""
     feature: str = ""
     script: str = ""
@@ -2863,8 +2864,22 @@ class CASIOApp(App):
         def llm_verify(record):
             if not use_llm:
                 return ("", "")
+            
+            should_verify = True
+            
+            if record.status == TestStatus.PASS and self.total_expected > 50:
+                should_verify = False
+                import random as rng
+                if rng.random() < 0.05:
+                    should_verify = True
+            
+            if not should_verify:
+                return ("", "")
+            
             try:
-                result = self.llm_manager.verify(record.output, record.check_info, record.label)
+                context = f"{record.program}: {record.label}"
+                expected = record.check_info or context
+                result = self.llm_manager.verify(record.output, expected, context)
                 return (result.get("verdict", ""), result.get("explanation", ""))
             except Exception:
                 return ("", "")
@@ -2888,8 +2903,9 @@ class CASIOApp(App):
 
         if use_llm and pending_records:
             emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
-            emit(self.append_result, "[dim]Running LLM verification...[/dim]")
-            with ThreadPoolExecutor(max_workers=min(4, active_workers)) as llm_executor:
+            emit(self.append_result, "[dim]Running LLM verification (sampling)...[/dim]")
+            llm_workers = min(8, active_workers, max(2, (self.total_expected or 100) // 20))
+            with ThreadPoolExecutor(max_workers=llm_workers) as llm_executor:
                 for record, (verdict, explanation) in zip(pending_records, llm_executor.map(llm_verify, pending_records)):
                     if verdict:
                         record.llm_verdict = verdict

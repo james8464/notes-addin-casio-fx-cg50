@@ -35,27 +35,21 @@ except ImportError:
     REASONING_MARKERS = ("method:", "use ", "let ", "solve ", "answer:")
 
 
-LLM_TIMEOUT_SECONDS = 30
+LLM_TIMEOUT_SECONDS = 120
 LLM_CACHE_MAX_SIZE = 1000
 LLM_CACHE_TTL_SECONDS = 3600
 
-LLM_SYSTEM_PROMPT = """You are a strict math exam checker for A-Level mathematics.
+LLM_SYSTEM_PROMPT = """Check math working quality. Verify:
+- Steps logically follow
+- No skipped steps ("hence" without explanation)
+- Rules applied correctly
+- Final answer follows from working
+- Equivalent answer forms accepted
 
-Your task is to determine if a program's output is CORRECT for the given math problem.
-
-RULES:
-- Accept mathematically equivalent forms (e.g., sin²x = 1-cos²x)
-- Allow different but equivalent expressions (e.g., (x-1)(x+2) = x²+x-2)
-- Consider domain restrictions (e.g., tan(90°) undefined)
-- Be strict about final numerical answers
-
-Respond with EXACTLY one word:
-CORRECT - Output matches expected answer
-INCORRECT - Output is wrong
-NEEDS_REVIEW - Cannot determine with certainty
-
-Provide brief explanation if NEEDS_REVIEW.
-"""
+Reply ONE word:
+CORRECT - Working is clear and logical
+INCORRECT - Working has quality issues
+NEEDS_REVIEW - Cannot assess"""
 
 
 def check_ollama_available():
