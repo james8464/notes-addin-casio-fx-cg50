@@ -21,7 +21,7 @@ except ImportError:
 
 try:
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
-    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig
+    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, same_by_sig, E, PI
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -29,7 +29,7 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
-    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig, E, PI
+    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, same_by_sig, E, PI
     from shared_reasoning_markers import REASONING_MARKERS
 
 
@@ -1282,6 +1282,7 @@ def normalize_explicit_var(name):
 def parse(text):
     if not text:
         return None
+    text = normalize_input_text(text)
     if len(text) > MAX_INPUT_LENGTH:
         raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []

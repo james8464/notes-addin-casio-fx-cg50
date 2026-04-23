@@ -16,6 +16,7 @@ try:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
         E,
@@ -35,8 +36,11 @@ except ImportError:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from shared_reasoning_markers import REASONING_MARKERS
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
@@ -1977,6 +1981,7 @@ def is_num_token_start(text, i):
 def parse(text):
     if not text:
         return None
+    text = normalize_input_text(text)
     if len(text) > MAX_INPUT_LENGTH:
         raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     C = text

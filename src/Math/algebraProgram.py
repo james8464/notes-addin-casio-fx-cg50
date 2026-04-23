@@ -18,6 +18,7 @@ try:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
         E,
@@ -38,6 +39,7 @@ except ImportError:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
         E,
@@ -3631,6 +3633,7 @@ FUNC_ALIASES = {'csc': 'cosec', 'arcsin': 'asin', 'arccos': 'acos', 'arctan': 'a
 def parse(text):
     if not text:
         return None
+    text = normalize_input_text(text)
     if len(text) > MAX_INPUT_LENGTH:
         raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []

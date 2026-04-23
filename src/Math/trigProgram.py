@@ -20,6 +20,7 @@ try:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
         E,
@@ -43,6 +44,7 @@ except ImportError:
         is_one,
         is_sym,
         is_zero,
+        normalize_input_text,
         neg as shared_neg,
         same_by_sig,
         E,
@@ -1542,6 +1544,7 @@ def parse(text):
     # no imports, no eval, and accept both ** and ^ for powers.
     if not text:
         return None
+    text = normalize_input_text(text)
     if len(text) > MAX_INPUT_LENGTH:
         raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
     toks = []
@@ -4934,6 +4937,85 @@ def prove_tan_multiple(source, target, source_name, target_name):
     return None
 
 
+def prove_tan_sum_identity(source, target, source_name, target_name):
+    source = sim(source)
+    if source[0] != "add":
+        return None
+    parts = list(flat(source, "add"))
+    if len(parts) != 2:
+        return None
+    if parts[0][0] != "fn" or parts[0][1] != "tan" or parts[1][0] != "fn" or parts[1][1] != "tan":
+        return None
+    a = parts[0][2]
+    b = parts[1][2]
+    expected = div(fn("sin", add([a, b])), mul([fn("cos", a), fn("cos", b)]))
+    if not equivalent(expected, target):
+        return None
+    top = add([
+        mul([fn("sin", a), fn("cos", b)]),
+        mul([fn("cos", a), fn("sin", b)]),
+    ])
+    lines = [
+        start_line(source_name, source),
+        "Use tan(A) = sin(A)/cos(A).",
+        "= sin(" + show(a) + ")/cos(" + show(a) + ") + sin(" + show(b) + ")/cos(" + show(b) + ")",
+        "Take the common denominator cos(" + show(a) + ")*cos(" + show(b) + ").",
+        "= (" + show(top) + ")/(cos(" + show(a) + ")*cos(" + show(b) + "))",
+        FORMULA_SIN_ADD,
+        "= sin(" + show(add([a, b])) + ")/(cos(" + show(a) + ")*cos(" + show(b) + "))",
+        "= " + target_name,
+    ]
+    return lines
+
+
+def prove_tan_add_formula_identity(source, target, source_name, target_name):
+    source = sim(source)
+    if source[0] != "fn" or source[1] != "tan":
+        return None
+    arg = source[2]
+    if arg[0] != "add":
+        return None
+    parts = list(flat(arg, "add"))
+    if len(parts) != 2:
+        return None
+    a = parts[0]
+    b = parts[1]
+    expected = div(
+        add([fn("tan", a), fn("tan", b)]),
+        add([num(1), neg(mul([fn("tan", a), fn("tan", b)]))]),
+    )
+    if not equivalent(expected, target):
+        return None
+    lines = [
+        start_line(source_name, source),
+        "Use tan(A+B) = (tan A + tan B)/(1 - tan A tan B).",
+        "= (tan(" + show(a) + ") + tan(" + show(b) + "))/(1 - tan(" + show(a) + ")*tan(" + show(b) + "))",
+        "= " + target_name,
+    ]
+    return lines
+
+
+def prove_exact_value_identity(source, target, source_name, target_name):
+    if has_variable_dependency(source) or has_variable_dependency(target):
+        return None
+    exact_lines = []
+    rewritten = replace_exact_trig(source, exact_lines)
+    rewritten = full_simplify(rewritten)
+    if same(rewritten, source) and not contains_pi(source):
+        return None
+    if not equivalent(rewritten, target):
+        return None
+    lines = ["Method: Exact trig value", start_line(source_name, source)]
+    i = 0
+    while i < len(exact_lines):
+        lines.append(exact_lines[i])
+        i += 1
+    if len(exact_lines) == 0 or not same(rewritten, source):
+        lines.append(step_line(rewritten))
+    bridge_to_target(lines, rewritten, target, target_name)
+    return lines
+
+
 def product_to_sum_once(node):
     node = sim(node)
     coeff, rest = split_coeff(node)
@@ -6195,6 +6277,9 @@ def direct_double_angle_rewrite(node):
 
 
 def prove_double_angle_identity(source, target, source_name, target_name):
+    if source[0] == "fn" and source[1] in ("sin", "cos", "tan"):
+        if match_numeric_multiple_arg(source[2], 2) is None:
+            return None
     rewritten, note = direct_double_angle_rewrite(source)
     if rewritten is None:
         return None
@@ -6664,11 +6749,14 @@ def proof_direction_candidates(source, target, source_name, target_name):
         (1, prove_product_pair_identity),
         (2, prove_verbose_division_identity),
         (2, prove_verbose_common_denominator_identity),
+        (2, prove_tan_sum_identity),
+        (2, prove_tan_add_formula_identity),
         (3, prove_sum_product_identity),
         (3, prove_tan_multiple),
         (3, prove_shift_identity),
         (3, prove_shift_compare),
         (4, prove_power_identity),
+        (4, prove_exact_value_identity),
         (4, prove_log_exp_identity),
         (6, prove_formula_identity),
     ):
@@ -6833,20 +6921,15 @@ def special_text_proof(text, route):
 def prove_direct(lhs, rhs, route):
     route = normalize_route(route)
     if route == "1":
-        left_first = proof_complexity_score(lhs) >= proof_complexity_score(rhs)
-        first = best_proof_direction(lhs, rhs, "LHS", "RHS") if left_first else best_proof_direction(rhs, lhs, "RHS", "LHS")
-        second = best_proof_direction(rhs, lhs, "RHS", "LHS") if left_first else best_proof_direction(lhs, rhs, "LHS", "RHS")
-        if first is not None and second is not None:
-            if second[0] < first[0]:
-                return second[1]
-            return first[1]
-        if first is not None:
-            return first[1]
-        if second is not None:
-            return second[1]
+        left = best_proof_direction(lhs, rhs, "LHS", "RHS")
+        if left is not None:
+            return left[1]
         both = prove_general(lhs, rhs)
         if both is not None:
             return both
+        right = best_proof_direction(rhs, lhs, "RHS", "LHS")
+        if right is not None:
+            return right[1]
         return None
     if route == "2":
         best = best_proof_direction(lhs, rhs, "LHS", "RHS")
@@ -15374,7 +15457,81 @@ def is_domain_restricted_identity_pair(lhs, rhs):
         return True
     if same(lhs, num(1)) and rhs[0] == "div" and same(rhs[1], rhs[2]) and has_variable_dependency(rhs[1]):
         return True
+    pairs = (
+        ("asin", "sin"),
+        ("acos", "cos"),
+        ("atan", "tan"),
+    )
+    i = 0
+    while i < len(pairs):
+        outer = pairs[i][0]
+        inner = pairs[i][1]
+        if lhs[0] == "fn" and lhs[1] == outer and lhs[2][0] == "fn" and lhs[2][1] == inner and same(lhs[2][2], rhs):
+            return True
+        if rhs[0] == "fn" and rhs[1] == outer and rhs[2][0] == "fn" and rhs[2][1] == inner and same(rhs[2][2], lhs):
+            return True
+        i += 1
     return False
+
+
+def domain_restriction_identity_lines(lhs, rhs):
+    lhs = sim(lhs)
+    rhs = sim(rhs)
+    if same(rhs, num(1)) and lhs[0] == "div" and same(lhs[1], lhs[2]) and has_variable_dependency(lhs[1]):
+        return [
+            "Method: Domain restriction",
+            show(lhs) + " = 1 only where " + show(lhs[1]) + " is defined.",
+            "Answer: not an identity for all values because the denominator can be zero.",
+        ]
+    if same(lhs, num(1)) and rhs[0] == "div" and same(rhs[1], rhs[2]) and has_variable_dependency(rhs[1]):
+        return [
+            "Method: Domain restriction",
+            show(rhs) + " = 1 only where " + show(rhs[1]) + " is defined.",
+            "Answer: not an identity for all values because the denominator can be zero.",
+        ]
+    if lhs[0] == "fn" and lhs[1] == "asin" and lhs[2][0] == "fn" and lhs[2][1] == "sin" and same(lhs[2][2], rhs):
+        x_text = show(rhs)
+        return [
+            "Method: Principal value restriction",
+            "asin(sin(" + x_text + ")) = " + x_text + " only for -pi/2 <= " + x_text + " <= pi/2.",
+            "Answer: not an identity for all values.",
+        ]
+    if rhs[0] == "fn" and rhs[1] == "asin" and rhs[2][0] == "fn" and rhs[2][1] == "sin" and same(rhs[2][2], lhs):
+        x_text = show(lhs)
+        return [
+            "Method: Principal value restriction",
+            "asin(sin(" + x_text + ")) = " + x_text + " only for -pi/2 <= " + x_text + " <= pi/2.",
+            "Answer: not an identity for all values.",
+        ]
+    if lhs[0] == "fn" and lhs[1] == "acos" and lhs[2][0] == "fn" and lhs[2][1] == "cos" and same(lhs[2][2], rhs):
+        x_text = show(rhs)
+        return [
+            "Method: Principal value restriction",
+            "acos(cos(" + x_text + ")) = " + x_text + " only for 0 <= " + x_text + " <= pi.",
+            "Answer: not an identity for all values.",
+        ]
+    if rhs[0] == "fn" and rhs[1] == "acos" and rhs[2][0] == "fn" and rhs[2][1] == "cos" and same(rhs[2][2], lhs):
+        x_text = show(lhs)
+        return [
+            "Method: Principal value restriction",
+            "acos(cos(" + x_text + ")) = " + x_text + " only for 0 <= " + x_text + " <= pi.",
+            "Answer: not an identity for all values.",
+        ]
+    if lhs[0] == "fn" and lhs[1] == "atan" and lhs[2][0] == "fn" and lhs[2][1] == "tan" and same(lhs[2][2], rhs):
+        x_text = show(rhs)
+        return [
+            "Method: Principal value restriction",
+            "atan(tan(" + x_text + ")) = " + x_text + " only for -pi/2 < " + x_text + " < pi/2.",
+            "Answer: not an identity for all values.",
+        ]
+    if rhs[0] == "fn" and rhs[1] == "atan" and rhs[2][0] == "fn" and rhs[2][1] == "tan" and same(rhs[2][2], lhs):
+        x_text = show(lhs)
+        return [
+            "Method: Principal value restriction",
+            "atan(tan(" + x_text + ")) = " + x_text + " only for -pi/2 < " + x_text + " < pi/2.",
+            "Answer: not an identity for all values.",
+        ]
+    return None
 
 
 def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs=None, rhs=None):
@@ -16474,6 +16631,13 @@ def _solve_solve_text_once(text):
 
 def solve_solve_text(text):
     text = text.strip()
+    if "," not in text:
+        lhs, rhs = parse_equation_or_zero(text)
+        if lhs is None or rhs is None:
+            raise ValueError("Enter equation or equation,var or equation,var,start,end or equation,var,0<x<pi")
+        if equation_has_trig_content(lhs, rhs):
+            return solve_x_equation_text(text, detect_transform_var(lhs, rhs) or "x", [])
+        return _solve_solve_text_once(text + ",x")
     if "," in text:
         bits = text.split(",", 3)
         cleaned_bits = []
@@ -16547,6 +16711,12 @@ def solve_prove_pair_text(eq1_text, eq2_text, route):
     if not eq1_has_equals and not eq2_has_equals:
         lhs = parse(eq1_text)
         rhs = parse(eq2_text)
+        restriction_lines = domain_restriction_identity_lines(lhs, rhs)
+        if restriction_lines is not None:
+            return compact_lines(restriction_lines)
+        exact_lines = prove_exact_value_identity(lhs, rhs, "LHS", "RHS")
+        if exact_lines is not None:
+            return finalize_proof_identity_lines(compact_lines(finalize_proof_lines(exact_lines)))
         if equivalent(lhs, rhs):
             lines = solve_prove(lhs, rhs, route)
             return finalize_proof_identity_lines(compact_lines(lines))
@@ -17225,8 +17395,8 @@ def numeric_eval(node, env, deg_mode=True):
 
 
 def eval_numeric(node, env):
-    """Wrapper that calls numeric_eval with degree mode for backward compatibility."""
-    return numeric_eval(node, env, True)
+    """Use radians for exact-pi expressions, degrees for ordinary trig values."""
+    return numeric_eval(node, env, not contains_pi(node))
 
 
 # Transform mode: R sin(x+alpha) and R cos(x+alpha) forms
@@ -17610,7 +17780,7 @@ def compact_lines(lines):
         if method_line == "Method: Using algebraic manipulation":
             j = 0
             while j < len(filtered):
-                if "2sin^2" in filtered[j] or ("2*sin" in filtered[j] and "^2" in filtered[j]):
+                if filtered[j].startswith("= 2*sin(") and filtered[j].endswith("^2") and "/" not in filtered[j] and "tan" not in filtered[j]:
                     method_line = "Method: Transform to 2sin^2(A)"
                     break
                 j += 1

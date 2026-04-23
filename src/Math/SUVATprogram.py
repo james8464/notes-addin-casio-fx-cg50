@@ -10,7 +10,7 @@ except ImportError:
 
 try:
     from src.shared_cache import clear_all_caches as shared_clear_all_caches
-    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, neg as shared_neg, same_by_sig
+    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
     import os
@@ -18,7 +18,7 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import clear_all_caches as shared_clear_all_caches
-    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, neg as shared_neg, same_by_sig
+    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig
     from shared_reasoning_markers import REASONING_MARKERS
 
 SKIP_AUTORUN = sys is not None and getattr(sys, '_suvat_no_autorun', False)
@@ -1083,6 +1083,7 @@ def is_num_token_start(text, i):
 
 
 def parse(text):
+    text = normalize_input_text(text)
     toks = []
     i = 0
     while i < len(text):

@@ -168,6 +168,60 @@ def is_name_char(ch):
     return is_name_start(ch) or is_digit_char(ch)
 
 
+def _previous_significant_char(text, index):
+    i = index - 1
+    while i >= 0:
+        ch = text[i]
+        if ch not in " \t\r\n":
+            return ch
+        i -= 1
+    return None
+
+
+def _should_open_abs_pipe(text, index):
+    prev = _previous_significant_char(text, index)
+    if prev is None:
+        return True
+    return prev in "([{,+-*/^=<>"
+
+
+def _convert_abs_pipes(text):
+    if text.count('|') % 2 != 0:
+        return text
+    out = []
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '|':
+            if depth == 0 or _should_open_abs_pipe(text, i):
+                out.append('abs(')
+                depth += 1
+            else:
+                out.append(')')
+                depth -= 1
+        else:
+            out.append(ch)
+        i += 1
+    if depth != 0:
+        return text
+    return ''.join(out)
+
+
+def normalize_input_text(text):
+    """Normalize user-facing maths syntax into parser-friendly ASCII."""
+    if text is None:
+        return text
+    text = text.replace('\u2212', '-')
+    text = text.replace('\u00d7', '*')
+    text = text.replace('\u00f7', '/')
+    text = text.replace('\u03c0', 'pi')
+    text = text.replace('\u00b0', '')
+    if '|' in text:
+        text = _convert_abs_pipes(text)
+    return text
+
+
 def ensure_reasoning_marker(lines, default_prefix="Method: "):
     """Add a reasoning marker to output lines when one is missing."""
     if not lines:
