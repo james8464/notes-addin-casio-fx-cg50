@@ -46,7 +46,7 @@ class TransformRegressionTests(unittest.TestCase):
         output = run_cli("algebraProgram.py", "2\nx^2-1=0\n(x-1)*(x+1)=0\n")
         self.assertNotIn("Err:", output)
         self.assertIn("Method: Transform equation to target form", output)
-        self.assertIn("Answer: (x-1)*(x+1)=0", output)
+        self.assertIn("Answer:(x-1)*(x+1)=0", output.replace(" ", ""))
 
     def test_algebra_transform_delegates_trig_equations(self):
         output = run_cli("algebraProgram.py", "2\nsin(x)=12/13\ncot(2*x)=119/120\n")

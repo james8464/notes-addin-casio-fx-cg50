@@ -3932,6 +3932,12 @@ def numeric_eval(node, env=None):
                 return math.acos(arg)
             if node[1] == 'atan':
                 return math.atan(arg)
+            if node[1] == 'sinh':
+                return math.sinh(arg)
+            if node[1] == 'cosh':
+                return math.cosh(arg)
+            if node[1] == 'tanh':
+                return math.tanh(arg)
         except Exception:
             return None
     return None
@@ -3985,10 +3991,14 @@ def equivalent(a, b):
         collect_symbol_names(b, names_b)
         names = sorted(list(names_a | names_b))
         sample_sets = [
-            {'x': -2.0, 'y': -1.0, 'z': 2.0, 't': 0.5, 'u': 1.5, 'v': -0.5},
-            {'x': -0.5, 'y': 0.25, 'z': 1.5, 't': -1.5, 'u': 0.75, 'v': 2.5},
-            {'x': 0.5, 'y': 1.25, 'z': -1.5, 't': 2.0, 'u': -0.75, 'v': 1.25},
-            {'x': 1.5, 'y': -0.75, 'z': 0.5, 't': -0.5, 'u': 2.5, 'v': -1.25},
+            {'x': -1.7, 'y': -1.1, 'z': 2.3, 't': 0.4, 'u': 1.3, 'v': -0.6},
+            {'x': -1.1, 'y': 0.3, 'z': 1.7, 't': -1.4, 'u': 0.8, 'v': 2.1},
+            {'x': -0.4, 'y': 0.9, 'z': -1.4, 't': 1.7, 'u': -0.8, 'v': 1.4},
+            {'x': 0.4, 'y': -0.9, 'z': 0.7, 't': -0.7, 'u': 2.1, 'v': -1.3},
+            {'x': 0.9, 'y': 1.4, 'z': -0.6, 't': 0.9, 'u': -1.2, 'v': 0.6},
+            {'x': 1.3, 'y': -0.4, 'z': 0.9, 't': 1.3, 'u': 1.9, 'v': -0.9},
+            {'x': 1.8, 'y': 0.6, 'z': -1.9, 't': -0.4, 'u': 0.6, 'v': 1.8},
+            {'x': 2.2, 'y': -1.3, 'z': 1.1, 't': 2.2, 'u': -0.6, 'v': 0.9},
         ]
         good = 0
         i = 0
@@ -4222,6 +4232,7 @@ def solve_transform_text(text1, text2):
         expr1 = sim(add([lhs1, neg(rhs1)]))
         expr2 = sim(add([lhs2, neg(rhs2)]))
         steps, result = rearrange_to_target(expr1, expr2)
+        failed = len(steps) != 0 and steps[-1][1].startswith('Target is not equivalent')
         if same(result, expr1) and equivalent(expr1, expr2):
             result = expr2
             steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
@@ -4235,12 +4246,17 @@ def solve_transform_text(text1, text2):
             if not desc.startswith('Answer:'):
                 lines.append('Step ' + str(i + 1) + ': ' + desc)
             i += 1
-        lines.append('Hence ' + text2)
-        lines.append('Answer: ' + text2)
+        if failed:
+            lines.append('Answer: Equation 2 is not equivalent to Equation 1.')
+            return ensure_reasoning_marker(lines)
+        final_target = display_equation_text(lhs2, rhs2)
+        lines.append('Hence ' + final_target)
+        lines.append('Answer: ' + final_target)
         return ensure_reasoning_marker(lines)
     expr1 = parse(text1)
     expr2 = parse(text2)
     steps, result = rearrange_to_target(expr1, expr2)
+    failed = len(steps) != 0 and steps[-1][1].startswith('Target is not equivalent')
     if same(result, expr1) and equivalent(expr1, expr2):
         result = expr2
         steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
@@ -4251,6 +4267,9 @@ def solve_transform_text(text1, text2):
         if not desc.startswith('Answer:'):
             lines.append('Step ' + str(i+1) + ': ' + desc)
         i += 1
+    if failed:
+        lines.append('Answer: target form is not equivalent to the source.')
+        return ensure_reasoning_marker(lines)
     lines.append('Answer: ' + show(result))
     return ensure_reasoning_marker(lines)
 
@@ -5534,19 +5553,23 @@ def compare_expressions(expr1, expr2):
     step_num += 1
     steps.append((step_num, 'Simplify: ' + show(simple2), simple2))
     step_num += 1
+    diff = canonical_compare_form(sim(add([simple1, neg(simple2)])))
     if equivalent(expr1, expr2):
+        steps.append((step_num, 'Difference expr1 - expr2: ' + show(diff), diff))
+        step_num += 1
         if equivalent(simple1, simple2):
             steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         else:
-            steps.append((step_num, 'Use trig identities before expanding products.', None))
+            steps.append((step_num, 'Use standard identities before comparing.', None))
             step_num += 1
             steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         return True, steps
     if equivalent(simple1, simple2):
+        steps.append((step_num, 'Difference expr1 - expr2: ' + show(diff), diff))
+        step_num += 1
         steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         return True, steps
-    diff = show(sim(add([simple1, neg(simple2)])))
-    steps.append((step_num, 'Difference: ' + diff, None))
+    steps.append((step_num, 'Difference expr1 - expr2: ' + show(diff), diff))
     return False, steps
 
 
@@ -6938,8 +6961,8 @@ def main():
             else:
                 print(str(len(steps) + 1) + '. Result: Not equivalent.')
         elif mode == '2':
-            text1 = input('Src: ').strip()
-            text2 = input('Tgt: ').strip()
+            text1 = input('E1: ').strip()
+            text2 = input('E2: ').strip()
             lines = solve_transform_text(text1, text2)
             i = 0
             while i < len(lines):
@@ -7071,7 +7094,71 @@ def find_domain_text(text):
     
     lines = ['Method: Determine Domain', 'Input = ' + show(expr)]
     restrictions = []
-    
+
+    def inequality_text(rel, value):
+        return var_name + ' ' + rel + ' ' + show(value)
+
+    def bounded_text(left, left_rel, right, right_rel):
+        return show(left) + ' ' + left_rel + ' ' + var_name + ' ' + right_rel + ' ' + show(right)
+
+    def solve_constraint_text(node, relation):
+        linear = match_linear_in_var(node, var_name)
+        if linear is not None:
+            coeff, constant = linear
+            if not is_num(coeff) or is_zero(coeff):
+                return None
+            root = sim(div(neg(constant), coeff))
+            if relation == '!=':
+                return inequality_text('!=', root)
+            coeff_positive = coeff[1] > 0
+            if relation in ('>', '>='):
+                rel = '>' if coeff_positive else '<'
+            else:
+                rel = '<' if coeff_positive else '>'
+            if relation in ('>=', '<='):
+                rel += '='
+            return inequality_text(rel, root)
+        coeffs, degree = polynomial_coeff_list(node, var_name, 2)
+        if coeffs is None or degree != 2 or not is_num(coeffs[2]):
+            return None
+        roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
+        roots.sort(key=lambda item: real_numeric_value(item) if real_numeric_value(item) is not None else show(item))
+        lead_positive = coeffs[2][1] > 0
+        if len(roots) == 0:
+            if relation in ('>', '>='):
+                return 'all real ' + var_name if lead_positive else 'no real ' + var_name
+            return 'all real ' + var_name if not lead_positive else 'no real ' + var_name
+        if len(roots) == 1:
+            root = roots[0]
+            if relation == '>':
+                return 'all real ' + var_name + ' except ' + show(root) if lead_positive else 'no real ' + var_name
+            if relation == '>=':
+                return 'all real ' + var_name if lead_positive else var_name + ' = ' + show(root)
+            if relation == '<':
+                return 'all real ' + var_name + ' except ' + show(root) if not lead_positive else 'no real ' + var_name
+            if relation == '<=':
+                return 'all real ' + var_name if not lead_positive else var_name + ' = ' + show(root)
+            return None
+        left = roots[0]
+        right = roots[1]
+        if relation == '>':
+            if lead_positive:
+                return inequality_text('<', left) + ' or ' + inequality_text('>', right)
+            return bounded_text(left, '<', right, '<')
+        if relation == '>=':
+            if lead_positive:
+                return inequality_text('<=', left) + ' or ' + inequality_text('>=', right)
+            return bounded_text(left, '<=', right, '<=')
+        if relation == '<':
+            if lead_positive:
+                return bounded_text(left, '<', right, '<')
+            return inequality_text('<', left) + ' or ' + inequality_text('>', right)
+        if relation == '<=':
+            if lead_positive:
+                return bounded_text(left, '<=', right, '<=')
+            return inequality_text('<=', left) + ' or ' + inequality_text('>=', right)
+        return None
+
     def check_restrictions(node):
         if node is None:
             return
@@ -7083,65 +7170,53 @@ def find_domain_text(text):
         elif node[0] == 'div':
             num_node, den_node = node[1], node[2]
             check_restrictions(num_node)
-            check_restrictions(den_node)
-            if not is_zero(den_node):
-                restrictions.append(('den', den_node))
+            if den_node[0] == 'fn' and den_node[1] == 'sqrt':
+                check_restrictions(den_node[2])
+                restrictions.append(('>', den_node[2]))
+            else:
+                check_restrictions(den_node)
+                if not is_zero(den_node):
+                    restrictions.append(('!=', den_node))
         elif node[0] == 'pow':
             base, exp = node[1], node[2]
             check_restrictions(base)
             check_restrictions(exp)
             if is_num(exp) and exp[1] % 2 == 0 and exp[1] < 0:
-                restrictions.append(('den', base))
+                restrictions.append(('!=', base))
         elif node[0] == 'fn':
             name = node[1]
             arg = node[2]
             check_restrictions(arg)
             if name in ('sqrt', 'asin', 'acos'):
-                restrictions.append(('sqrt', arg))
+                restrictions.append(('>=', arg))
             elif name in ('ln', 'log', 'log10'):
-                restrictions.append(('pos', arg))
-    
+                restrictions.append(('>', arg))
+
     check_restrictions(expr)
-    
+
     if not restrictions:
         lines.append('Domain: all real ' + var_name)
         return ensure_reasoning_marker(lines)
-    
-    def solve_linear_domain_constraint(r_type, r_node):
-        linear = match_linear_in_var(r_node, var_name)
-        if linear is None:
-            return None
-        a, b = linear
-        if not is_num(a) or is_zero(a):
-            return None
-        root = sim(div(neg(b), a))
-        if r_type == 'den':
-            return var_name + ' != ' + show(root)
-        op = '>=' if r_type == 'sqrt' else '>'
-        if a[1] < 0:
-            op = '<=' if r_type == 'sqrt' else '<'
-        return var_name + ' ' + op + ' ' + show(root)
 
     constraints = []
     solved_constraints = []
-    for r_type, r_node in restrictions:
-        r_show = show(r_node)
-        if r_type == 'den':
-            if r_node[0] == 'sym':
-                constraint = r_node[1] + ' != 0'
-            else:
-                constraint = r_show + ' != 0'
-        elif r_type == 'sqrt':
-            constraint = r_show + ' >= 0'
-        elif r_type == 'pos':
-            constraint = r_show + ' > 0'
+    seen_constraints = {}
+    seen_solutions = {}
+    for relation, node in restrictions:
+        shown = show(node)
+        if relation == '!=':
+            constraint = shown + ' != 0'
         else:
-            constraint = r_show
-        constraints.append(constraint)
-        solved = solve_linear_domain_constraint(r_type, r_node)
-        if solved is not None:
+            constraint = shown + ' ' + relation + ' 0'
+        if constraint not in seen_constraints:
+            seen_constraints[constraint] = 1
+            constraints.append(constraint)
+        solved = solve_constraint_text(node, relation)
+        if solved is not None and solved not in seen_solutions:
+            seen_solutions[solved] = 1
             solved_constraints.append(solved)
-    lines.append(', '.join(constraints))
+    if len(constraints) != 0:
+        lines.append(', '.join(constraints))
     if len(solved_constraints) != 0:
         solved_text = ' and '.join(solved_constraints)
         lines.append('Solve: ' + solved_text)
@@ -7162,30 +7237,38 @@ def find_range_text(text):
         return ['Err: No variable found to determine range.']
     
     lines = ['Method: Determine Range', 'Input = ' + show(expr)]
-    
+
+    def quadratic_vertex_value(coeffs):
+        return sim(sub(coeffs[0], div(power(coeffs[1], num(2)), mul([num(4), coeffs[2]]))))
+
     coeffs, degree = polynomial_coeff_list(expr, var_name, 2)
-    if coeffs is not None and degree == 2:
-        a = coeffs[2]
-        b = coeffs[1]
-        c = coeffs[0]
-        if is_num(a):
-            vertex = -b[1] / (2 * a[1]) if a[1] != 0 else 0
-            extrema_value = None
-            if a[1] > 0:
-                extrema_value = (4*a[1]*c[1] - b[1]**2) / (4*a[1])
-                if isinstance(extrema_value, int):
-                    lines.append('Range: y >= ' + str(extrema_value))
-                else:
-                    lines.append('Range: y >= ' + str(extrema_value))
-            elif a[1] < 0:
-                extrema_value = (4*a[1]*c[1] - b[1]**2) / (4*a[1])
-                if isinstance(extrema_value, int):
-                    lines.append('Range: y <= ' + str(extrema_value))
-                else:
-                    lines.append('Range: y <= ' + str(extrema_value))
-            else:
-                lines.append('Range: all real y')
-            return ensure_reasoning_marker(lines)
+    if coeffs is not None and degree == 2 and is_num(coeffs[2]):
+        extrema_value = quadratic_vertex_value(coeffs)
+        if coeffs[2][1] > 0:
+            lines.append('Range: y >= ' + show(extrema_value))
+        elif coeffs[2][1] < 0:
+            lines.append('Range: y <= ' + show(extrema_value))
+        else:
+            lines.append('Range: all real y')
+        return ensure_reasoning_marker(lines)
+
+    if expr[0] == 'fn' and expr[1] == 'sqrt':
+        inner_coeffs, inner_degree = polynomial_coeff_list(expr[2], var_name, 2)
+        if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
+            top = quadratic_vertex_value(inner_coeffs)
+            lines.append('Range: 0 <= y <= ' + show(fn('sqrt', top)))
+        else:
+            lines.append('Range: y >= 0')
+        return ensure_reasoning_marker(lines)
+
+    if expr[0] == 'div' and is_one(expr[1]) and expr[2][0] == 'fn' and expr[2][1] == 'sqrt':
+        inner_coeffs, inner_degree = polynomial_coeff_list(expr[2][2], var_name, 2)
+        if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
+            top = quadratic_vertex_value(inner_coeffs)
+            lines.append('Range: y >= ' + show(sim(div(num(1), fn('sqrt', top)))))
+        else:
+            lines.append('Range: y > 0')
+        return ensure_reasoning_marker(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):
         lines.append('Range: ' + show(expr))

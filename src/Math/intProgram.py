@@ -18,6 +18,8 @@ try:
         is_zero,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
@@ -144,10 +146,19 @@ EXPAND_PASS_LIMIT = 4
 TRIG_REWRITE_LIMIT = 4
 _CACHE_MISS = object()
 _ENGINE_CACHES = {}
-E = 'const', 'e'
-PI = 'const', 'pi'
 U = 'sym', 'u'
-FUNC_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'exp', 'log', 'log10', 'sqrt', 'abs', 'ln', 'atan', 'asin', 'acos'
+FUNC_NAMES = (
+    'sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
+    'exp', 'log', 'log10', 'sqrt', 'abs', 'ln',
+    'atan', 'asin', 'acos', 'sinh', 'cosh', 'tanh'
+)
+FUNC_ALIASES = {
+    'ln': 'log',
+    'csc': 'cosec',
+    'arcsin': 'asin',
+    'arccos': 'acos',
+    'arctan': 'atan',
+}
 
 
 def apply_runtime_profile(low_memory=None):
@@ -2065,14 +2076,8 @@ def parse(text):
             if A[0].isdigit() or A[0] == '.':
                 return num_text(A)
             B = A.lower()
-            if B == 'ln':
-                B = 'log'
-            elif B == 'arcsin':
-                B = 'asin'
-            elif B == 'arccos':
-                B = 'acos'
-            elif B == 'arctan':
-                B = 'atan'
+            if B in FUNC_ALIASES:
+                B = FUNC_ALIASES[B]
             if B == 'pi':
                 return PI
             if B == 'e':
@@ -2452,7 +2457,21 @@ def parse_de_condition(text, xvar, yvar):
     C = None
     E = None
     for A in B:
+        compact = A.replace(' ', '')
+        prefix = yvar + '('
+        if compact.startswith(prefix) and compact.endswith(')'):
+            inner = compact[len(prefix):-1]
+            C = parse(inner)
+            continue
         if '='not in A:
+            compact = A.replace(' ', '')
+            if compact.startswith(prefix) and ')=' in compact:
+                close = compact.find(')')
+                inner = compact[len(prefix):close]
+                rhs = compact[close + 2:]
+                C = parse(inner)
+                E = parse(rhs)
+                continue
             raise ValueError(
                 'Boundary condition must look like ' +
                 yvar +
@@ -2465,6 +2484,10 @@ def parse_de_condition(text, xvar, yvar):
         if H == xvar:
             C = I
         elif H == yvar:
+            E = I
+        elif H.replace(' ', '').startswith(prefix) and H.strip().endswith(')'):
+            inner = H.strip()[len(prefix):-1]
+            C = parse(inner)
             E = I
         else:
             raise ValueError(
@@ -7409,7 +7432,7 @@ def main():
             except Exception:
                 print(DE_FAIL)
                 return
-            G = input('BC: ').strip()
+            G = input('BC (e.g. y(1)=2 or x=1,y=2): ').strip()
             H = parse_de_condition(G, N, O)if G != ''else None
             C, A = solve_de(M, N, O, H)
             if C is None:
@@ -7435,18 +7458,22 @@ def main():
             print('Int[y dx] = Int[' + pretty(K) + '] dt')
             if C is None:
                 if A:
-                    print('Method: ' + display_method_title(L))
+                    print('Method: Parametric area')
+                    print('Use Int[y dx] = Int[y*(dx/dt)] dt')
+                    print('dx/dt = ' + pretty(J))
+                    print('Int[y dx] = Int[' + pretty(K) + '] dt')
                     print_exam_failure(A)
                 print(Q)
             else:
-                print('Method: ' + display_method_title(L))
+                print('Method: Parametric area')
+                print('Use Int[y dx] = Int[y*(dx/dt)] dt')
+                print('dx/dt = ' + pretty(J))
+                print('Int[y dx] = Int[' + pretty(K) + '] dt')
+                compact_lines = compact_integral_output_lines(A, pretty_answer(C))
                 B = 0
-                while B < len(A):
-                    print(str(B + 1) + '. ' + A[B])
+                while B < len(compact_lines):
+                    print(compact_lines[B])
                     B += 1
-                M = '= ' + pretty(C) + ' + C'
-                if len(A) == 0 or A[-1] != M:
-                    print(M)
         else:
             print('Bad mode.')
     except Exception as P:

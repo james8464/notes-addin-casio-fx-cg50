@@ -1931,6 +1931,7 @@ def format_output_with_units(target, exact_text, dec_text, equation, original_eq
 
 
 def solve_suvat():
+    print('Use , to mark exactly one target and enter the other known values.')
     s_text = input('s: ').strip()
     u_text = input('u: ').strip()
     v_text = input('v: ').strip()

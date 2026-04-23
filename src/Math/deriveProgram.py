@@ -29,12 +29,9 @@ except ImportError:
     if sys is not None and _SHARED_DIR not in sys.path:
         sys.path.insert(0, _SHARED_DIR)
     from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
-    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig
+    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, same_by_sig, E, PI
     from shared_reasoning_markers import REASONING_MARKERS
 
-
-E = ("const", "e")
-PI = ("const", "pi")
 
 FUNC_NAMES = (
     "sin", "cos", "tan", "sec", "cosec", "cot",
@@ -1564,6 +1561,7 @@ def explain(node, var, deps_list):
         dv = tidy(diff(v, var, deps_list))
         lines.append("Using product rule")
         lines.append("Let u = " + show(u) + ", v = " + show(v))
+        lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv))
         lines.append("dy/d" + var + " = u*(dv/d" + var + ") + v*(du/d" + var + ")")
         lines.append("= " + show(tidy(add([mul([u, dv]), mul([v, du])]))))
         return d, lines
@@ -1574,7 +1572,9 @@ def explain(node, var, deps_list):
         dv = tidy(diff(v, var, deps_list))
         lines.append("Using quotient rule")
         lines.append("Let u = " + show(u) + ", v = " + show(v))
+        lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv))
         lines.append("dy/d" + var + " = (v*du-u*dv)/v^2")
+        lines.append("= " + show(tidy(div(add([mul([v, du]), neg(mul([u, dv]))]), power(v, num(2))))))
         lines.append("= " + show(d))
         return d, lines
     if node[0] == "pow":
@@ -1611,6 +1611,7 @@ def explain(node, var, deps_list):
         lines.append("Using logarithmic differentiation")
         lines.append("Let y = " + show(node))
         lines.append("Let u = " + show(base) + " and v = " + show(exp))
+        lines.append("u' = " + show(tidy(diff(base, var, deps_list))) + ", v' = " + show(tidy(diff(exp, var, deps_list))))
         lines.append("dy/d" + var + " = y*(v*(u')/u + ln(u)*v')")
         lines.append("= " + show(d))
         return d, lines
@@ -1636,6 +1637,7 @@ def explain(node, var, deps_list):
             subbed = tidy(mul([subst(dydu, "u", arg), darg]))
             lines.append("Chain rule")
             lines.append("u = " + show(arg))
+            lines.append("du/d" + var + " = " + show(darg))
             lines.append("= " + show(subbed))
         return d, lines
     lines.append("Diff")

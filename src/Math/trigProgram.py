@@ -22,6 +22,8 @@ try:
         is_zero,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
@@ -43,11 +45,10 @@ except ImportError:
         is_zero,
         neg as shared_neg,
         same_by_sig,
+        E,
+        PI,
     )
     from shared_reasoning_markers import REASONING_MARKERS
-
-E = ("const", "e")
-PI = ("const", "pi")
 FUNC_NAMES = (
     "sin",
     "cos",
@@ -69,6 +70,10 @@ FUNC_NAMES = (
 )
 FUNC_ALIASES = {
     "csc": "cosec",
+    "ln": "log",
+    "arcsin": "asin",
+    "arccos": "acos",
+    "arctan": "atan",
 }
 SKIP_AUTORUN = sys is not None and getattr(sys, "_trig_no_autorun", False)
 
@@ -3410,7 +3415,7 @@ def _equivalent_uncached(a, b):
     names = set()
     collect_symbols(diff, names)
     names = sorted(list(names))
-    samples = [0.23, 0.61, 1.11, 1.63]
+    samples = [0.23, 0.47, 0.61, 0.89, 1.11, 1.37, 1.63, 1.91]
     good = 0
     if len(names) == 0:
         try:
@@ -3436,7 +3441,16 @@ def _equivalent_uncached(a, b):
             i += 1
         return good >= 2
     if len(names) == 2:
-        pts = [(0.23, 0.41), (0.61, 0.9), (1.11, 0.37), (1.63, 0.74)]
+        pts = [
+            (0.23, 0.41),
+            (0.47, 0.83),
+            (0.61, 0.9),
+            (0.89, 0.52),
+            (1.11, 0.37),
+            (1.37, 0.68),
+            (1.63, 0.74),
+            (1.91, 1.07),
+        ]
         i = 0
         while i < len(pts):
             env = {names[0]: pts[i][0], names[1]: pts[i][1]}
@@ -3478,7 +3492,14 @@ def start_line(side_name, expr):
 
 
 def step_line(expr):
-    return "= " + show(expr)
+    shown = show(expr)
+    if shown.startswith("(") or shown.startswith("1/"):
+        return "= " + shown
+    return "= " + shown
+
+
+def equation_step_line(left, right):
+    return show(left) + " = " + show(right)
 
 
 def equation_line(left, right):
@@ -3547,7 +3568,73 @@ def standard_ratio_identity_lines(lhs, rhs):
 
 
 def direct_expression_transform_lines(source_expr, target_expr, target_text):
+    def reciprocal_square_step(node):
+        node = sim(node)
+        if node[0] != "div" or not is_one(node[1]):
+            return None, None
+        denom_items = list(flat(node[2], "mul")) if node[2][0] == "mul" else [node[2]]
+        i = 0
+        while i < len(denom_items):
+            item = denom_items[i]
+            if item[0] == "pow" and item[1][0] == "fn" and same(item[2], num(2)):
+                if item[1][1] == "sec":
+                    numer = power(fn("cos", item[1][2]), num(2))
+                    note = "Use 1/sec^2(A) = cos^2(A)."
+                elif item[1][1] == "cosec":
+                    numer = power(fn("sin", item[1][2]), num(2))
+                    note = "Use 1/cosec^2(A) = sin^2(A)."
+                else:
+                    i += 1
+                    continue
+                rest = make_mul(denom_items[:i] + denom_items[i + 1 :])
+                return sim(div(numer, rest)), note
+            i += 1
+        return None, None
+
     final_line = "Answer: " + show(target_expr)
+    if source_expr[0] == "div":
+        simplified = simplify_fraction(source_expr)
+        if not same(simplified, source_expr) and equivalent(simplified, target_expr):
+            return compact_lines([
+                "Start with " + show(source_expr),
+                "Simplify the fraction.",
+                "= " + show(simplified),
+                "Hence " + target_text.strip(),
+                final_line,
+            ])
+        factored_raw, factor_note = factor_fraction_terms_for_display(source_expr)
+        if factored_raw is not None:
+            factored = sim(factored_raw)
+            if equivalent(factored, target_expr):
+                reciprocal, reciprocal_note = reciprocal_square_step(factored)
+                if reciprocal is not None and equivalent(reciprocal, target_expr):
+                    return compact_lines([
+                        "Start with " + show(source_expr),
+                        factor_note,
+                        "= " + show(factored),
+                        reciprocal_note,
+                        "= " + show(reciprocal),
+                        "Hence " + target_text.strip(),
+                        final_line,
+                    ])
+                return compact_lines([
+                    "Start with " + show(source_expr),
+                    factor_note,
+                    "= " + show(factored),
+                    "Hence " + target_text.strip(),
+                    final_line,
+                ])
+            cancelled = cancel_fraction_common_factor_for_display(factored_raw)
+            if cancelled is not None and equivalent(cancelled, target_expr):
+                return compact_lines([
+                    "Start with " + show(source_expr),
+                    factor_note,
+                    "= " + show(factored),
+                    "Cancel a common factor.",
+                    "= " + show(cancelled),
+                    "Hence " + target_text.strip(),
+                    final_line,
+                ])
     if same(target_expr, num(1)):
         var = detect_transform_var(source_expr, target_expr) or single_symbol_name(source_expr) or "x"
         diff_expr = sim(add([source_expr, neg(target_expr)]))
@@ -8413,7 +8500,7 @@ def solve_transform_text(eq1_text, eq2_text):
         raise ValueError("Unable to parse equation.")
     expression_only = is_zero(eq1_rhs) and is_zero(eq2_rhs)
     if same(eq1_lhs, eq2_lhs) and expression_only:
-        return [show(eq1_lhs), '= ' + show(eq2_lhs)]
+        return [equation_line(eq1_lhs, num(0))]
     if same(eq1_lhs, eq2_lhs) and same(eq1_rhs, eq2_rhs):
         return [equation_line(eq1_lhs, eq1_rhs)]
     if expression_only:
@@ -16455,13 +16542,16 @@ def solve_prove_pair_text(eq1_text, eq2_text, route):
     eq2_text = eq2_text.strip()
     if eq1_text == "" or eq2_text == "":
         raise ValueError("Enter E1 and E2.")
-    eq1_parts = split_top_level(_balance_parens(eq1_text), "=")
-    eq2_parts = split_top_level(_balance_parens(eq2_text), "=")
-    if eq1_parts is None and eq2_parts is None:
+    eq1_has_equals = split_top_level(_balance_parens(eq1_text), "=") is not None
+    eq2_has_equals = split_top_level(_balance_parens(eq2_text), "=") is not None
+    if not eq1_has_equals and not eq2_has_equals:
         lhs = parse(eq1_text)
         rhs = parse(eq2_text)
-        lines = solve_prove(lhs, rhs, route)
-        return finalize_proof_identity_lines(compact_lines(lines))
+        if equivalent(lhs, rhs):
+            lines = solve_prove(lhs, rhs, route)
+            return finalize_proof_identity_lines(compact_lines(lines))
+        eq1_text = eq1_text + "=0"
+        eq2_text = eq2_text + "=0"
     return solve_transform_text(eq1_text, eq2_text)
 
 
@@ -17053,6 +17143,24 @@ def numeric_eval(node, env, deg_mode=True):
             return 1.0 / math.sin(arg_val) if abs(math.sin(arg_val)) > 1e-12 else None
         if fn_name == "sqrt":
             return math.sqrt(arg_val) if arg_val >= 0 else None
+        if fn_name == "asin":
+            return math.asin(arg_val)
+        if fn_name == "acos":
+            return math.acos(arg_val)
+        if fn_name == "atan":
+            return math.atan(arg_val)
+        if fn_name == "log":
+            return math.log(arg_val) if arg_val > 0 else None
+        if fn_name == "exp":
+            return math.exp(arg_val)
+        if fn_name == "abs":
+            return abs(arg_val)
+        if fn_name == "sinh":
+            return math.sinh(arg_val)
+        if fn_name == "cosh":
+            return math.cosh(arg_val)
+        if fn_name == "tanh":
+            return math.tanh(arg_val)
         return None
     # Handle add/mul/div/pow - check if node[1] is a tuple (multiple terms) or binary
     if kind == "add":
@@ -17502,7 +17610,7 @@ def compact_lines(lines):
         if method_line == "Method: Using algebraic manipulation":
             j = 0
             while j < len(filtered):
-                if "2sin^2" in filtered[j] or "2*sin" in filtered[j]:
+                if "2sin^2" in filtered[j] or ("2*sin" in filtered[j] and "^2" in filtered[j]):
                     method_line = "Method: Transform to 2sin^2(A)"
                     break
                 j += 1
