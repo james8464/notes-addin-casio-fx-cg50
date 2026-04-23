@@ -2449,38 +2449,55 @@ class CASIOApp(App):
 
         if total == 0:
             lines.append("No run data available yet.")
-        elif len(failed) == 0:
-            lines.append("No failed tests in the last run.")
         else:
-            # Group failures by feature
-            feature_fails = {}
-            for record in failed:
-                feat = record.feature or "unknown"
-                if feat not in feature_fails:
-                    feature_fails[feat] = []
-                feature_fails[feat].append(record)
-            
-            lines.append("Failures by feature:")
-            for feat, recs in sorted(feature_fails.items()):
-                lines.append(f"  {feat}: {len(recs)} failures")
-            lines.append("")
-            
-            for index, record in enumerate(failed, start=1):
-                feat_tag = f" [{record.feature}]" if record.feature else ""
-                lines.extend([
-                    "=" * 80,
-                    f"{index}. [{record.program}] {record.label}{feat_tag}",
-                    "=" * 80,
-                    "Input:",
-                    (record.input_text or "[input not captured]").rstrip(),
-                    "",
-                    "Check:",
-                    record.check_info or "[check info not captured]",
-                    "",
-                    "Output:",
-                    (record.output or "").rstrip(),
-                    "",
-                ])
+            llm_flagged = [r for r in self.records if getattr(r, 'llm_verdict', '') in ('INCORRECT', 'NEEDS_REVIEW')]
+            if llm_flagged:
+                lines.append("LLM Flagged (working quality issues):")
+                for record in llm_flagged:
+                    feat_tag = f" [{record.feature}]" if record.feature else ""
+                    lines.extend([
+                        "-" * 60,
+                        f"[{record.program}] {record.label}{feat_tag}",
+                        f"  LLM Verdict: {record.llm_verdict}",
+                        f"  LLM Comment: {getattr(record, 'llm_explanation', 'N/A')[:200]}",
+                    ])
+                lines.append("")
+
+            failed = [r for r in self.records if r.status == TestStatus.FAIL]
+            if len(failed) == 0:
+                lines.append("No failed tests in the last run.")
+            else:
+                feature_fails = {}
+                for record in failed:
+                    feat = record.feature or "unknown"
+                    if feat not in feature_fails:
+                        feature_fails[feat] = []
+                    feature_fails[feat].append(record)
+
+                lines.append("Failures by feature:")
+                for feat, recs in sorted(feature_fails.items()):
+                    lines.append(f"  {feat}: {len(recs)} failures")
+                lines.append("")
+
+                for index, record in enumerate(failed, start=1):
+                    feat_tag = f" [{record.feature}]" if record.feature else ""
+                    llm_info = ""
+                    if getattr(record, 'llm_verdict', ''):
+                        llm_info = f"\n  LLM: {record.llm_verdict} - {getattr(record, 'llm_explanation', '')[:100]}"
+                    lines.extend([
+                        "=" * 80,
+                        f"{index}. [{record.program}] {record.label}{feat_tag}{llm_info}",
+                        "=" * 80,
+                        "Input:",
+                        (record.input_text or "[input not captured]").rstrip(),
+                        "",
+                        "Check:",
+                        record.check_info or "[check info not captured]",
+                        "",
+                        "Output:",
+                        (record.output or "").rstrip(),
+                        "",
+                    ])
 
         report_path.write_text("\n".join(lines) + "\n")
         self.last_report_path = str(report_path)
@@ -2926,22 +2943,29 @@ class CASIOApp(App):
         def llm_verify(record):
             if not use_llm:
                 return ("", "")
-            
+
             should_verify = True
-            
+
             if record.status == TestStatus.PASS and self.total_expected > 50:
                 should_verify = False
                 import random as rng
                 if rng.random() < 0.05:
                     should_verify = True
-            
+
             if not should_verify:
                 return ("", "")
-            
+
+            def stream_callback(text):
+                if text.strip():
+                    try:
+                        emit(self.append_result, f"[dim]LLM:[/dim] {text.rstrip()}")
+                    except Exception:
+                        pass
+
             try:
                 context = f"{record.program}: {record.label}"
                 expected = record.check_info or context
-                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=True)
+                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False, stream_callback=stream_callback)
                 return (result.get("verdict", ""), result.get("explanation", ""))
             except Exception:
                 return ("", "")
@@ -2952,7 +2976,8 @@ class CASIOApp(App):
         for batch_start in range(0, len(cases), batch_size):
             batch = cases[batch_start:batch_start + batch_size]
             with ThreadPoolExecutor(max_workers=active_workers) as executor:
-                for case, passed, output, elapsed in executor.map(evaluate_timed, batch):
+                results = executor.map(evaluate_timed, batch)
+                for case, passed, output, elapsed in results:
                     if elapsed > 0:
                         self._test_times.append(elapsed)
                         if len(self._test_times) > 500:
@@ -2981,7 +3006,8 @@ class CASIOApp(App):
 
                 verified = 0
                 with ThreadPoolExecutor(max_workers=llm_workers) as llm_executor:
-                    for record, (verdict, explanation, elapsed) in llm_executor.map(llm_verify_timed, pending_records):
+                    llm_results = llm_executor.map(llm_verify_timed, pending_records)
+                    for record, (verdict, explanation, elapsed) in zip(pending_records, llm_results):
                         if verdict:
                             record.llm_verdict = verdict
                             record.llm_explanation = explanation
@@ -5125,6 +5151,34 @@ class CASIOApp(App):
             self._weighted_rate = 0.0
             self._weighted_llm_rate = 0.0
 
+            if self.llm_manager and self.llm_manager.enabled:
+                emit(self.append_result, "[dim]LLM:[/dim] Verifying connection to Ollama...")
+                try:
+                    status = self.llm_manager.get_status()
+                    model = status.get("selected_model", "unknown")
+                    available = status.get("available", False)
+                    if available:
+                        emit(self.append_result, f"[dim]LLM:[/dim] [green]Connected[/green] · Model: {model}")
+                    else:
+                        emit(self.append_result, f"[dim]LLM:[/dim] [yellow]Ollama not available[/yellow]")
+                except Exception as e:
+                    emit(self.append_result, f"[dim]LLM:[/dim] [red]Error: {e}[/red]")
+            elif self.llm_manager:
+                emit(self.append_result, "[dim]LLM:[/dim] [yellow]LLM disabled[/yellow]")
+            elif LLM_AVAILABLE:
+                from shared_llm import LLMManager
+                self.llm_manager = LLMManager()
+                models = self.llm_manager.list_models()
+                if models:
+                    self.llm_manager.select_model(0)
+                    self.llm_manager.enable()
+                    self.llm_enabled_for_tests = True
+                    emit(self.append_result, f"[dim]LLM:[/dim] [green]Auto-enabled[/green] · Model: {self.llm_manager.selected_model}")
+                else:
+                    emit(self.append_result, "[dim]LLM:[/dim] [yellow]Ollama available but no models[/yellow]")
+            else:
+                emit(self.append_result, "[dim]LLM:[/dim] [dim]No LLM configured[/dim]")
+
             emit(
                 self.append_result,
                 f"[bold #e07a53]▶ Running random tests...[/bold #e07a53]",
@@ -6399,6 +6453,7 @@ def main():
         help="Run tests directly: chaos N, random N, hard N, or program feature (e.g., 'trig simple')")
     parser.add_argument("--workers", type=int, default=None, metavar="N",
         help="Number of parallel workers (default: auto)")
+    parser.add_argument("--report", action="store_true", help="Generate report after tests")
     args = parser.parse_args()
 
     if args.run:
@@ -6438,6 +6493,8 @@ def main():
         app.current_program = program or "all"
         app.current_difficulty = difficulty
         app.run_random_tests(difficulty, count, workers, program=program)
+        if args.report:
+            app.generate_report_file()
         return
 
     if not TEXTUAL_AVAILABLE:

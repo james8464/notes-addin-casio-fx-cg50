@@ -222,16 +222,17 @@ class LLMManager:
         """Disable LLM verification."""
         self.enabled = False
     
-    def verify(self, program_output, expected, context="", check_working_quality=False):
+    def verify(self, program_output, expected, context="", check_working_quality=False, stream_callback=None):
         """
         Verify program output using LLM.
-        
+
         Args:
             program_output: The CASIO program output string
             expected: The expected answer string
             context: Additional context (question, method, etc.)
             check_working_quality: If True, check working quality not just answer
-        
+            stream_callback: Optional callback for streaming responses
+
         Returns:
             dict with keys: verdict, explanation, confidence, cached
         """
@@ -242,25 +243,25 @@ class LLMManager:
                 "confidence": 0,
                 "cached": False
             }
-        
+
         if check_working_quality:
-            verdict, explanation = self._check_working_quality(program_output)
+            verdict, explanation = self._check_working_quality(program_output, stream_callback)
             return {
                 "verdict": verdict,
                 "explanation": explanation,
                 "confidence": 0.95,
                 "cached": False
             }
-        
+
         prompt = self._build_prompt(program_output, expected, context)
-        
+
         cached = self.cache.get(self.selected_model, prompt)
         if cached:
             cached["cached"] = True
             return cached
-        
+
         try:
-            result = self._query_ollama(prompt)
+            result = self._query_ollama(prompt, stream_callback)
             response = self._parse_response(result)
             
             output = {
@@ -294,25 +295,44 @@ EXPECTED ANSWER: {expected}
 
 {LLM_SYSTEM_PROMPT}"""
     
-    def _query_ollama(self, prompt):
-        """Send query to Ollama."""
+    def _query_ollama(self, prompt, stream_callback=None):
+        """Send query to Ollama with optional streaming."""
         cmd = [
             "ollama", "run",
             self.selected_model,
             prompt
         ]
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=LLM_TIMEOUT_SECONDS
-        )
-        
-        if result.returncode != 0:
-            raise Exception(f"Ollama error: {result.stderr}")
-        
-        return result.stdout.strip()
+
+        if stream_callback:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+            output_lines = []
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    output_lines.append(line)
+                    stream_callback(line)
+                if not line and process.poll() is not None:
+                    break
+            process.wait()
+            if process.returncode != 0:
+                stderr = process.stderr.read()
+                raise Exception(f"Ollama error: {stderr}")
+            return ''.join(output_lines).strip()
+        else:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=LLM_TIMEOUT_SECONDS
+            )
+            if result.returncode != 0:
+                raise Exception(f"Ollama error: {result.stderr}")
+            return result.stdout.strip()
     
     def _parse_response(self, response_text):
         """Parse LLM response into structured data."""
@@ -343,8 +363,10 @@ EXPECTED ANSWER: {expected}
             "confidence": confidence
         }
     
-    def _check_working_quality(self, program_output):
+    def _check_working_quality(self, program_output, stream_callback=None):
         """Check working quality by pattern matching."""
+        if stream_callback:
+            stream_callback("Checking working quality...\n")
         import re
         lines = program_output.strip().split('\n')
 
