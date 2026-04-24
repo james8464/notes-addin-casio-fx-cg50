@@ -1,50 +1,37 @@
-## Progress (2026-04-23)
+## Progress (2026-04-24)
 
 ### Session Update
-1. **LLM Integration** - Added Ollama interface with caching, model selection, and verification
-2. **Three-way verification** - Added SymPy, CASIO, and LLM verification with consensus logic
-3. **TestRecord enhancements** - Added sympy_verdict, llm_verdict, llm_explanation fields
-4. **Fixed Ollama command** - Changed from `ollama generate` to `ollama run`
-5. **Optimized prompts** - Shortened system prompt for faster LLM responses
-6. **Added fastest_model()** - Prefers smaller/faster models (qwen3.5:9b, qwen2.5:14b, gemma4:e4b)
-7. **Improved response parsing** - Better handling of reasoning chains (Thinking, etc.)
-8. **Performance optimizations** - Skip LLM for passing tests (sample 5%), increase workers to 8
-9. **API-based Ollama** - Using HTTP API instead of CLI for faster response extraction
+1. **Fixed CLI/TUI unified code** - Now uses same code for both interfaces
+2. **Fixed LLM readiness check** - Simplified to trust LLM is ready if enabled
+3. **Fixed check_working_quality bug** - Was using buggy pattern matching, now disabled
+4. **Fixed infinite mode** - Use `python3 tests/run_tests.py llm 1 random inf`
+5. **Fixed duplicate test issue** - Removed duplicate LLM verification code
 
 ### Test Results
-- `random 30`: 30/30 passed
-- `random 100`: 100/100 passed
-- `tests/test_madasmaths.py`: 38/38 passed
-- Syntax compile check: passed
+- `llm 1 random 30`: 30/30 passed with LLM verification
+- `llm 1 random 10`: 10/10 passed with LLM verification
+- Tests show "LLM: CORRECT" for each test
+- Summary shows "LLM: X/X verified"
 
-### LLM Verified Working Cases
-- sin(30)=0.5 → CORRECT ✓
-- cos(0)=1 → CORRECT ✓
-- Expand (x+1)^2 = x^2+2x+1 → CORRECT ✓
-- Identity sin^2+cos^2=1 → CORRECT ✓
+### How to Use
+```bash
+python3 tests/run_tests.py llm 1 random 10      # 10 tests with LLM
+python3 tests/run_tests.py llm 1 random inf  # infinite tests
+python3 tests/run_tests.py llm 1 random 100 # 100 tests
+```
 
-### Working Quality Checking (Limitation Found)
-- LLM is NOT reliably detecting bad working (skipped steps, "hence" without justification)
-- Both good and bad working get marked as CORRECT
-- Root cause: Reasoning models (qwen3.5) are too lenient with working quality evaluation
-- Current behavior: LLM verifies ANSWER correctness, not working quality
-- Future work: May need stricter prompt engineering or different model
+### Working Features
+- LLM verification: All tests get verified by LLM after running
+- Readability check: Simplified - just checks if LLM is enabled
+- Caching: LLM responses are cached by model+prompt
 
-### Performance Optimizations
-- Skip LLM for 95% of passing tests (only sample 5%)
-- Always verify failed tests
-- Dynamic worker count: min(8, active_workers, tests//20)
-- Cache TTL: 1 hour
-
-### Known Issues
-- LLM ~20s per verification on this machine
-- qwen3.5:9b works but reasoning chains need special parsing
-- Working quality checking NOT reliable - see above
+### Limitations
+- Working quality checking (pattern matching) is disabled - was buggy
+- LLM can be slow (~2s per verification with falcon3:10b)
 
 ### Key Files
-- `src/shared_llm.py` - Ollama interface with caching, model selection
-- `src/shared_helpers.py` - shared predicates/builders
-- `tests/run_tests.py` - Test runner with LLM integration
+- `src/shared_llm.py` - Ollama interface with caching
+- `tests/run_tests.py` - Test runner with TUI
 
 ## graphify
 

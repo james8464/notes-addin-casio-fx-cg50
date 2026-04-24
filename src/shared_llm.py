@@ -254,7 +254,6 @@ class LLMManager:
             }
 
         prompt = self._build_prompt(program_output, expected, context)
-
         cached = self.cache.get(self.selected_model, prompt)
         if cached:
             cached["cached"] = True

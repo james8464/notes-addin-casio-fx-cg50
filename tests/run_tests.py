@@ -1925,8 +1925,7 @@ class CASIOApp(App):
         self.records = []
         self.run_state = RunState.IDLE
         self.current_program = "all"
-        self.current_difficulty = "all"
-        self.last_run_scope = ("all", "all")
+        self.last_run_scope = ("all", "chaos")
         self.last_command = "/random"
         self.last_report_path = None
         self.current_random_workers = None
@@ -1944,13 +1943,13 @@ class CASIOApp(App):
         self._eta_decay = 0.9
         self._weighted_rate = 0.0
         self._weighted_llm_rate = 0.0
+        self._report_path = None
         
         self.command_items = {
             "/random": "Run randomly generated tests (infinite until stopped)",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
-            "/random chaos 1000": "Run 1000 unbounded-difficulty random tests",
-            "/random hard 1000": "Run 1000 hard random tests split across all programs and features",
-            "/random hard 1000 8": "Run 1000 hard random tests with 8 parallel workers",
+            "/random 1000 8": "Run 1000 chaos random tests with 8 parallel workers",
+            "/infinite": "Run tests infinitely until stopped",
             "/rerun": "Run the previous test scope again",
             "/clear": "Reset the output view",
             "/stop": "Stop running tests (in infinite mode)",
@@ -1961,13 +1960,7 @@ class CASIOApp(App):
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
-            "/filter all": "Show every program",
             "/compile": "Delete and recompile all .mpy files in calc_files",
-            "/filter algebra": "Only run Algebra tests",
-            "/filter trigonometry": "Only run Trigonometry tests",
-            "/filter derive": "Only run Derive tests",
-            "/filter integrate": "Only run Integrate tests",
-            "/filter suvat": "Only run SUVAT tests",
             "/llm": "Configure LLM verification (select model, enable/disable)",
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
@@ -2090,58 +2083,35 @@ class CASIOApp(App):
         return mapping.get(value.lower())
 
     def normalize_difficulty(self, value: str):
-        mapping = {
-            "all": "all",
-            "easy": "easy",
-            "medium": "medium",
-            "hard": "hard",
-            "chaos": "chaos",
-            "unbounded": "chaos",
-            "wild": "chaos",
-        }
-        return mapping.get(value.lower())
+        return "chaos"
 
     def parse_run_scope(self, value: str):
         parts = value.split()
         if not parts or parts[0].lower() != "/random":
             return None
         if len(parts) == 1:
-            difficulty = "hard" if self.current_difficulty == "chaos" else self.current_difficulty
-            return self.current_program, difficulty
+            return self.current_program, "chaos"
         if len(parts) == 2 and parts[1].lower() == "all":
-            return "all", "all"
+            return "all", "chaos"
 
         program = self.current_program
-        difficulty = self.current_difficulty
 
         for token in parts[1:]:
             maybe_program = self.normalize_program_name(token)
-            maybe_difficulty = self.normalize_difficulty(token)
             if maybe_program is not None:
                 program = maybe_program
                 continue
-            if maybe_difficulty is not None:
-                difficulty = maybe_difficulty
-                continue
             return None
-        if difficulty == "chaos":
-            difficulty = "hard"
-        return program, difficulty
+        return program, "chaos"
 
     def parse_random_scope(self, value: str):
         parts = value.split()
         if not parts or parts[0].lower() != "/random":
             return None
-        difficulty = self.current_difficulty if self.current_difficulty not in ("all", "easy", "medium", "hard") else "chaos"
         count = None
         workers = None
         i = 1
         while i < len(parts):
-            maybe_difficulty = self.normalize_difficulty(parts[i])
-            if maybe_difficulty is not None:
-                difficulty = maybe_difficulty
-                i += 1
-                continue
             if parts[i].isdigit():
                 if count is None:
                     count = int(parts[i])
@@ -2157,7 +2127,7 @@ class CASIOApp(App):
             return None
         if workers is not None and workers <= 0:
             return None
-        return difficulty, count, workers, infinite_mode
+        return "chaos", count, workers, infinite_mode
 
     def on_key(self, event) -> None:
         if event.key == "ctrl+p":
@@ -2181,7 +2151,6 @@ class CASIOApp(App):
         if run_scope is not None:
             program, difficulty = run_scope
             self.current_program = program
-            self.current_difficulty = difficulty
             self.last_command = value
             self.action_run_tests(command_label=value)
             return
@@ -2189,7 +2158,6 @@ class CASIOApp(App):
         random_scope = self.parse_random_scope(value)
         if random_scope is not None:
             difficulty, count, workers, infinite_mode = random_scope
-            self.current_difficulty = difficulty
             self.current_random_workers = workers
             self.last_command = value
             self.action_random_tests(difficulty, count, workers, command_label=value)
@@ -2200,16 +2168,17 @@ class CASIOApp(App):
             rerun_random = self.parse_random_scope(self.last_command)
             if rerun_random is not None:
                 difficulty, count, workers, infinite_mode = rerun_random
-                self.current_difficulty = difficulty
                 self.current_random_workers = workers
                 self.action_random_tests(difficulty, count, workers, command_label="/rerun")
             else:
-                self.current_program, self.current_difficulty = self.last_run_scope
+                self.current_program, _ = self.last_run_scope
                 self.action_run_tests(command_label="/rerun")
         elif value_lower == "/clear":
             self.action_clear()
         elif value_lower == "/stop":
             self.action_stop()
+        elif value_lower == "/infinite":
+            self.action_random_tests("chaos", None, command_label="/infinite")
         elif value_lower == "/quit":
             self.action_quit()
         elif value_lower == "/status":
@@ -2248,7 +2217,7 @@ class CASIOApp(App):
             f"Generated: {datetime.now().isoformat(timespec='seconds')}",
             f"Last command: {self.last_command}",
             f"Current program: {self.current_program}",
-            f"Current difficulty: {self.current_difficulty}",
+            f"Difficulty: chaos",
             f"Summary: {passed} passed, {len(failed)} failed, {total} total",
             "",
         ]
@@ -2316,11 +2285,11 @@ class CASIOApp(App):
         self.transition_run_state(RunState.RUNNING)
         self.records.clear()
         self.current_run_question_keys.clear()
-        self.last_run_scope = (self.current_program, self.current_difficulty)
+        self.last_run_scope = (self.current_program, "chaos")
         self.query_one("#results", RichLog).clear()
         self.append_result(f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
         self.append_result("[dim]Booting test harness...[/dim]")
-        self.update_summary(f"Running {self.current_program} · {self.current_difficulty}...")
+        self.update_summary(f"Running {self.current_program} · chaos...")
         self.run_all_tests()
 
     def action_random_tests(self, difficulty, count, workers=None, command_label="/random", program=None):
@@ -2330,13 +2299,16 @@ class CASIOApp(App):
         self.records.clear()
         self.current_run_question_keys.clear()
         self.last_run_scope = ("random", difficulty)
-        self.query_one("#results", RichLog).clear()
+        
+        if not getattr(self, 'plain_mode', False):
+            self.query_one("#results", RichLog).clear()
+        
         self.append_result(f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
         self.append_result("[dim]Generating random test cases...[/dim]")
-        worker_text = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
-        scope = f"{program} · " if program else ""
-        infinite_mode = count is None or count <= 0
-        self.update_summary(f"Running random {scope}{difficulty} · {'∞' if infinite_mode else count} tests · {worker_text} workers...")
+        
+        if self.llm_manager and self.llm_manager.enabled:
+            self.append_result(f"[dim]LLM: {self.llm_manager.selected_model}[/dim]")
+        
         self.run_random_tests(difficulty, count, workers, program=program)
 
     def action_clear(self):
@@ -2368,7 +2340,7 @@ class CASIOApp(App):
         import shutil
 
         calc_files = Path(__file__).resolve().parents[1] / "src" / "calc_files"
-        mpy_cross = Path.home() / "micropython" / "mpy-cross" / "mpy-cross"
+        mpy_cross = Path("/Users/james/micropython/mpy-cross/build/mpy-cross")
         heapsize = "52428800"
         calculator_volume = Path("/Volumes/NO NAME")
 
@@ -2437,10 +2409,11 @@ class CASIOApp(App):
                 
                 if py_file.exists():
                     shutil.copy2(py_file, calculator_py_file)
-                    self.append_result(f"[bold #22c55e]Copied:[/bold #22c55e] {py_file.name}")
+                    self.append_result(f"[dim]Copied:[/dim] {calculator_py_file.name}")
                 
                 if mpy_file.exists():
                     shutil.copy2(mpy_file, calculator_mpy_file)
+                    self.append_result(f"[dim]Copied:[/dim] {calculator_mpy_file.name}")
                     self.append_result(f"[bold #22c55e]Copied:[/bold #22c55e] {mpy_file.name}")
 
         if failed == 0:
@@ -2564,9 +2537,9 @@ class CASIOApp(App):
         failed = total - passed
         self.append_result("[bold #e07a53]Status[/bold #e07a53]")
         self.append_result(f"[dim]Current program:[/dim] {self.current_program}")
-        self.append_result(f"[dim]Current difficulty:[/dim] {self.current_difficulty}")
+        self.append_result(f"[dim]Difficulty:[/dim] chaos")
         self.append_result(f"[dim]Last command:[/dim] {self.last_command}")
-        self.append_result(f"[dim]Last run scope:[/dim] {self.last_run_scope[0]} · {self.last_run_scope[1]}")
+        self.append_result(f"[dim]Last run scope:[/dim] {self.last_run_scope[0]} · chaos")
         self.append_result(f"[dim]Last run totals:[/dim] {passed} passed, {failed} failed, {total} total")
         self.update_summary(f"Status · {passed}/{total} passed" if total else "Status")
 
@@ -2641,7 +2614,7 @@ class CASIOApp(App):
             )
             self.call_from_thread(
                 self.append_result,
-                f"[dim]Streaming live results from {self.current_program} · {self.current_difficulty}[/dim]",
+                f"[dim]Streaming live results from {self.current_program} · chaos[/dim]",
             )
 
             programs = [
@@ -2665,7 +2638,7 @@ class CASIOApp(App):
                     self.append_result,
                     "[dim]────────────────────────────────────────[/dim]",
                 )
-                func(self.current_difficulty)
+                func("chaos")
             self.transition_run_state(RunState.STOPPED)
             self.call_from_thread(self.render_summary)
 
@@ -2695,6 +2668,10 @@ class CASIOApp(App):
         self.records.append(record)
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
+        
+        if not passed:
+            self._append_to_report(record)
+        
         if getattr(self, 'plain_mode', False) and not passed:
             if input_text:
                 self.append_result("[dim]Input:[/dim] {}".format(input_text.replace("\n", "\\n")))
@@ -2774,6 +2751,35 @@ class CASIOApp(App):
         else:
             self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
         return record
+
+    def _append_to_report(self, record):
+        from pathlib import Path
+        from datetime import datetime
+        
+        if self._report_path is None:
+            report_dir = Path(__file__).resolve().parent / "reports"
+            report_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self._report_path = report_dir / f"failure_report_{stamp}.txt"
+            with open(self._report_path, "w") as f:
+                f.write(f"CASIO Test Report - {datetime.now().isoformat(timespec='seconds')}\n")
+                f.write("=" * 60 + "\n\n")
+        
+        llm_v = getattr(record, 'llm_verdict', '') or ''
+        llm_e = getattr(record, 'llm_explanation', '') or ''
+        
+        with open(self._report_path, "a") as f:
+            f.write(f"[{record.status.name}] {record.label}\n")
+            f.write(f"Program: {record.program}\n")
+            if record.input_text:
+                f.write(f"Input: {record.input_text[:200]}\n")
+            if record.check_info:
+                f.write(f"Check: {record.check_info}\n")
+            if llm_v:
+                f.write(f"LLM: {llm_v}\n")
+                if llm_e:
+                    f.write(f"Note: {llm_e[:200]}\n")
+            f.write("-" * 40 + "\n")
 
     def render_summary(self):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
@@ -2972,17 +2978,10 @@ class CASIOApp(App):
             if not use_llm:
                 return ("", "")
 
-            def stream_callback(text):
-                if text.strip():
-                    try:
-                        emit(self.append_result, f"[dim]LLM:[/dim] {text.rstrip()}")
-                    except Exception:
-                        pass
-
             try:
                 context = f"{record.program}: {record.label}"
                 expected = record.check_info or context
-                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False, stream_callback=stream_callback)
+                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False)
                 return (result.get("verdict", ""), result.get("explanation", ""))
             except Exception:
                 return ("", "")
@@ -3012,9 +3011,7 @@ class CASIOApp(App):
                     pending_records.append(record)
 
             if use_llm and pending_records:
-                emit = (lambda fn, *args: fn(*args) if fn else None) if getattr(self, 'plain_mode', False) else self.call_from_thread
-                emit(self.append_result, "[dim]Running LLM verification for every output...[/dim]")
-                llm_workers = min(8, active_workers, max(2, (self.total_expected or 100) // 20))
+                llm_workers = min(4, max(1, active_workers // 2))
 
                 def llm_verify_timed(record):
                     import time
@@ -3030,6 +3027,8 @@ class CASIOApp(App):
                         if verdict:
                             record.llm_verdict = verdict
                             record.llm_explanation = explanation
+                            llm_color = "#22c55e" if verdict == "CORRECT" else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
+                            self.append_result(f"[dim]  └─ LLM: [{llm_color}]{verdict}[/{llm_color}][/dim]")
                         if elapsed > 0:
                             self._llm_times.append(elapsed)
                             if len(self._llm_times) > 100:
@@ -3079,14 +3078,14 @@ class CASIOApp(App):
 
     def random_case_difficulty(self, rng, requested):
         if requested == "chaos":
-            return rng.choice(["easy", "medium", "hard", "hard", "chaos", "chaos"])
+            return rng.choice(["medium", "hard", "hard", "chaos", "chaos", "chaos"])
         if requested == "all":
             return rng.choice(["easy", "medium", "hard", "chaos"])
-        if requested == "hard" and rng.random() < 0.35:
+        if requested == "hard" and rng.random() < 0.5:
             return "chaos"
-        if requested == "medium" and rng.random() < 0.18:
+        if requested == "medium" and rng.random() < 0.3:
             return "chaos"
-        if requested == "easy" and rng.random() < 0.08:
+        if requested == "easy" and rng.random() < 0.15:
             return "chaos"
         return requested
 
@@ -3243,11 +3242,11 @@ class CASIOApp(App):
 
         info = case.check_info
         if info:
-            info += "; random input formatting fuzzed"
+            info += "; format fuzz"
         else:
-            info = "random input formatting fuzzed"
+            info = "format fuzz"
         return CaseSpec(
-            f"{case.label} [format fuzz]",
+            case.label,
             case.program,
             runner,
             fuzzed_input,
@@ -6556,74 +6555,34 @@ class CASIOApp(App):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CASIO Test Suite")
-    parser.add_argument("--plain", action="store_true", help="Plain output mode")
-    parser.add_argument("--stop", action="store_true", help="Stop running tests (in infinite mode)")
-    parser.add_argument("--run", type=str, metavar="CMD",
-        help="Run tests directly: chaos N, random N, hard N, or program feature (e.g., 'trig simple')")
-    parser.add_argument("--workers", type=int, default=None, metavar="N",
-        help="Number of parallel workers (default: auto)")
-    parser.add_argument("--report", action="store_true", help="Generate report after tests")
-    args = parser.parse_args()
-
-    if args.stop:
-        import os
-        stop_file = os.path.expanduser("~/.casio_stop")
-        with open(stop_file, "w") as f:
-            f.write("stop")
-        print("Stop signal sent. Current test run will stop after current batch.")
-        return
-
-    if args.run:
-        cmd = args.run.strip()
-        if cmd.startswith('/'):
-            cmd = cmd[1:]  # Strip leading /
-        parts = cmd.split()
-        difficulty = "chaos"
-        count = None  # None means infinite
-        workers = args.workers
-        program = None
-
+    import sys
+    
+    if len(sys.argv) > 1:
         app = CASIOApp()
-
-        if len(parts) >= 1:
-            first = parts[0].lower()
-            if first in ("random", "chaos", "hard"):
-                difficulty = first
-                if len(parts) >= 2:
-                    try:
-                        count = int(parts[1])
-                    except ValueError:
-                        pass
-            else:
-                program = app.normalize_program_name(first)
-                if program is not None:
-                    difficulty = "simple"
-                    if len(parts) >= 2:
-                        difficulty = parts[1].lower()
-                    if len(parts) >= 3:
-                        try:
-                            count = int(parts[2])
-                        except ValueError:
-                            pass
-
         app.plain_mode = True
-        infinite_mode = count is None or count <= 0
-        if infinite_mode:
-            print(f"Running: {(program + ' ') if program else ''}{difficulty} ∞ (workers={workers or 'auto'})", flush=True)
-        else:
-            print(f"Running: {(program + ' ') if program else ''}{difficulty} {count} (workers={workers or 'auto'})", flush=True)
-        app.transition_run_state(RunState.RUNNING)
-        app.current_program = program or "all"
-        app.current_difficulty = difficulty
-        app.run_random_tests(difficulty, count, workers, program=program)
-        if args.report:
-            app.generate_report_file()
-        return
+        
+        args = sys.argv[1:]
+        
+        for i, value in enumerate(args):
+            first = value.lower() if value else ""
+            
+            if first == "llm":
+                app.handle_llm_select(" ".join(args[i:]))
+                
+            elif first == "random":
+                count = 100
+                if i + 1 < len(args):
+                    try:
+                        count = int(args[i + 1])
+                    except (ValueError, IndexError):
+                        pass
+                app.action_random_tests("chaos", count, command_label="/random")
+                
+            elif first == "compile":
+                app.action_compile()
 
-    if not TEXTUAL_AVAILABLE:
-        print("Textual required. Install: pip install textual")
-        sys.exit(1)
+        print(f"Ran {len(app.records)} tests")
+        return
 
     app = CASIOApp()
     app.run()

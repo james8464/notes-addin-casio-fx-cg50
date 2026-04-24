@@ -1,0 +1,3616 @@
+CASIO Test Failure Report
+Generated: 2026-04-24T21:16:42
+Last command: /random inf
+Current program: all
+Current difficulty: chaos
+Summary: 5672 passed, 132 failed, 5804 total
+
+LLM Flagged (working quality issues):
+------------------------------------------------------------
+[Algebra] Random complete square 9 [format fuzz] [algebra_complete_square]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Radian hard 23 [trig_radian]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 1: quotient [format fuzz] [derive_normal:quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random expand 5: (5x+2)^6 [format fuzz] [algebra_expand]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random compare 2: power_of_power [format fuzz] [algebra_compare:power_of_power]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig rewrite 12: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 19 [format fuzz] [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 3: reciprocal_cosec [format fuzz] [algebra_transform:reciprocal_cosec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: the logarithmic differentiation of \( \log(\text{diff}(25)) \). The problem[7D[K problem statement seems to be requesting a simple logarithmic differentiati[13D[K differentiation which isn't accur
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: description seems to be about a circle and line problem (tagged as "24 [for[4D[K [format fuzz]"), but the algebraic steps presented solve a quartic polynomi[8D[K polynomial equation instead. The s
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 19 [format fuzz] [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: description seems to be about a circle and line problem (tagged as "24 [for[4D[K [format fuzz]"), but the algebraic steps presented solve a quartic polynomi[8D[K polynomial equation instead. The s
+------------------------------------------------------------
+[Derive] Log diff 25 [format fuzz] [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive normal 3: product [format fuzz] [derive_normal:product]
+  LLM Verdict: INCORRECT
+  LLM Comment: sequence of mathematical symbols and expressions, which does not logically [K follow from the problem statement. There are no clear steps or explanations[12D[K explanations given, and it appears to
+------------------------------------------------------------
+[Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random compare 1: power_of_power [format fuzz] [algebra_compare:power_of_power]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 14: find a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 3: reciprocal_sec [format fuzz] [algebra_transform:reciprocal_sec]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive normal 3: quotient [format fuzz] [derive_normal:quotient]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: problem statement "Derive: Log diff 23 [format fuzz]". The derivation shown[5D[K shown seems unrelated to a logarithm of 23 and lacks context or clear steps[5D[K steps relating to the given instru
+------------------------------------------------------------
+[Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random inverse 16: constant_fraction [format fuzz] [algebra_inverse:constant_fraction]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: tan_ratio [format fuzz] [trig_transform:tan_ratio]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 3: sin2 [format fuzz] [algebra_transform:sin2]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 12 [format fuzz] [algebra_solve:quadratic]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random inverse 16: constant_fraction [format fuzz] [algebra_inverse:constant_fraction]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 3: product [format fuzz] [derive_normal:product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 11 [format fuzz] [algebra_solve:quadratic]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Hidden quadratic 19 [format fuzz] [algebra_hard_solve]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 4: cot [format fuzz] [algebra_transform:cot]
+  LLM Verdict: INCORRECT
+  LLM Comment: explained or logically connected.
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: cos2_sin [format fuzz] [trig_transform:cos2_sin]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM Verdict: INCORRECT
+  LLM Comment: which asks for integration using parts twice for a specific function, but t[1D[K the solution given seems to be for a different integral. Also, the format a[1D[K and structure of the solution are 
+------------------------------------------------------------
+[Trigonometry] Random trig rewrite 13: tan_ratio [format fuzz] [trig_rewrite:tan_ratio]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM Verdict: INCORRECT
+  LLM Comment: which asks for integration using parts twice for a specific function, but t[1D[K the solution given seems to be for a different integral. Also, the format a[1D[K and structure of the solution are 
+------------------------------------------------------------
+[Algebra] Random solve 12 [format fuzz] [algebra_solve:quadratic]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: cosec_recip [format fuzz] [trig_transform:cosec_recip]
+  LLM Verdict: INCORRECT
+  LLM Comment: explanation for the "hence" step and unclear justification for moving from [K "= 1/sin(x)" to "= LHS". The format and presentation could also be improved[8D[K improved for clarity.
+------------------------------------------------------------
+[Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM Verdict: INCORRECT
+  LLM Comment: which asks for integration using parts twice for a specific function, but t[1D[K the solution given seems to be for a different integral. Also, the format a[1D[K and structure of the solution are 
+------------------------------------------------------------
+[Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random solve 12 [format fuzz] [algebra_solve:shifted_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: progression, making it difficult to verify the correctness of each step. Th[2D[K The format and notation used are not standard, which complicates understand[10D[K understanding and verification of
+------------------------------------------------------------
+[Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: derivative calculation, which does not directly address the initial request[7D[K request for "Log diff 24" in a fuzzed format. There's a need for clarity in[2D[K in how the input relates to the ou
+------------------------------------------------------------
+[Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM Verdict: INCORRECT
+  LLM Comment: which asks for integration using parts twice for a specific function, but t[1D[K the solution given seems to be for a different integral. Also, the format a[1D[K and structure of the solution are 
+------------------------------------------------------------
+[SUVAT] Random SUVAT 23: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 20 [format fuzz] [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 15: find a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random composition 14 [format fuzz] [algebra_comp]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 11 [format fuzz] [algebra_solve:shifted_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random complete square 9 [format fuzz] [algebra_complete_square]
+  LLM Verdict: INCORRECT
+  LLM Comment: transformations, and uses non-standard notation (e.g., "1 cmp," "2 xform").[8D[K xform"). Additionally, the problem asks for a complete square of 9, but the[3D[K the working given is for a quadrat
+------------------------------------------------------------
+[Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: inverse_trig [integrate_auto:inverse_trig]
+  LLM Verdict: INCORRECT
+  LLM Comment: prompt. The prompt suggests integrating an inverse trigonometric function, [K but the provided solution is for a different algebraic expression.
+------------------------------------------------------------
+[Algebra] Random expand 5: (4x-4)^4 [format fuzz] [algebra_expand]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hidden quadratic 20 [format fuzz] [algebra_hard_solve]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig rewrite 11: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 6: cot_ratio [format fuzz] [trig_transform:cot_ratio]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hard simultaneous 22: disguised quadratic [format fuzz] [algebra_simultaneous_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 3: quotient [format fuzz] [derive_normal:quotient]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT 19: find t
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 23 [format fuzz] [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 1. **Skipped Steps**: The transition from "poly" to solving the equation is[2D[K is not clearly explained. It's implied that the polynomial transformation l[1D[K leads directly to solving for \(x\
+------------------------------------------------------------
+[Trigonometry] Random trig transform 6: cot_ratio [format fuzz] [trig_transform:cot_ratio]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: du_over_sqrt [format fuzz] [integrate_auto:du_over_sqrt]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 2: root_chain [format fuzz] [derive_normal:root_chain]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 4: trig_composite [format fuzz] [derive_normal:trig_composite]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: chebyshev [format fuzz] [integrate_auto:chebyshev]
+  LLM Verdict: INCORRECT
+  LLM Comment: and it seems there might be a formatting issue or missing context that coul[4D[K could affect the verification process.
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 3: tan [format fuzz] [algebra_transform:tan]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: cos2_cos [format fuzz] [trig_transform:cos2_cos]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 3: inverse_trig [format fuzz] [derive_normal:inverse_trig]
+  LLM Verdict: INCORRECT
+  LLM Comment: incomplete, making it difficult to assess the correctness of the working.
+------------------------------------------------------------
+[Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 1: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random composition 13 [format fuzz] [algebra_comp]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig rewrite 12: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: pythag_sec [format fuzz] [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 2: root_chain [format fuzz] [derive_normal:root_chain]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 1: du_over_sqrt [format fuzz] [integrate_auto:du_over_sqrt]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hard simultaneous 22: disguised quadratic [format fuzz] [algebra_simultaneous_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: pythag_sec [format fuzz] [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM Verdict: INCORRECT
+  LLM Comment: seems that the differentiation process has not been simplified or checked f[1D[K for correctness. There are numerous steps and intermediate results that cou[3D[K could be verified for accuracy. Al
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 20 [format fuzz] [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive implicit 7: exp_log [format fuzz] [derive_implicit:exp_log]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 25 [format fuzz] [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [format fuzz] [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Implicit product 18 [format fuzz] [derive_implicit_product]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Hidden quadratic 20 [format fuzz] [algebra_hard_solve]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+
+Failures by feature:
+  algebra_circle_hard: 4 failures
+  algebra_comp: 2 failures
+  algebra_compare:power_of_power: 2 failures
+  algebra_complete_square: 2 failures
+  algebra_discriminant: 3 failures
+  algebra_expand: 2 failures
+  algebra_hard_solve: 3 failures
+  algebra_inverse:constant_fraction: 2 failures
+  algebra_simultaneous_hard: 2 failures
+  algebra_solve:quadratic: 3 failures
+  algebra_solve:shifted_power: 2 failures
+  algebra_transform:cot: 1 failures
+  algebra_transform:reciprocal_cosec: 1 failures
+  algebra_transform:reciprocal_sec: 1 failures
+  algebra_transform:sin2: 1 failures
+  algebra_transform:tan: 1 failures
+  derive_chain_quotient: 9 failures
+  derive_implicit:exp_log: 1 failures
+  derive_implicit_product: 1 failures
+  derive_log_diff: 11 failures
+  derive_normal:inverse_trig: 1 failures
+  derive_normal:product: 2 failures
+  derive_normal:quotient: 3 failures
+  derive_normal:root_chain: 2 failures
+  derive_normal:trig_composite: 1 failures
+  derive_parametric_hard: 3 failures
+  derive_triple_product: 17 failures
+  int_parts_twice: 4 failures
+  int_sub: 6 failures
+  integrate_auto:chebyshev: 1 failures
+  integrate_auto:du_over_sqrt: 2 failures
+  integrate_auto:inverse_trig: 1 failures
+  trig_identity_hard: 2 failures
+  trig_radian: 1 failures
+  trig_rewrite:cos2_sin: 3 failures
+  trig_rewrite:tan_ratio: 1 failures
+  trig_transform:cos2_cos: 1 failures
+  trig_transform:cos2_sin: 1 failures
+  trig_transform:cosec_recip: 1 failures
+  trig_transform:cot_ratio: 2 failures
+  trig_transform:pythag_cosec: 3 failures
+  trig_transform:pythag_sec: 2 failures
+  trig_transform:tan_ratio: 1 failures
+  unknown: 17 failures
+
+================================================================================
+1. [Algebra] Random complete square 9 [format fuzz] [algebra_complete_square]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+5
+3(x)  **2+(11)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Expression: 1. Method: Complete square
+2. Input = 3*x^2 + 11
+3. Factor out 3 from the quadratic terms: 3*x^2 + 11
+4. Half the coefficient of x: 0
+5. Complete square: 3*x^2 + 11
+6. Ans = 3*x^2 + 11
+
+================================================================================
+2. [Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+6
+(x)  **2+  -10*x+-15=0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (x - (1/2)*(sqrt(160) + 10))*(x - (1/2)*(-sqrt(160) + 10))
+3. Solve quad
+4. Answer: x = [(1/2)*(sqrt(160) + 10), (1/2)*(-sqrt(160) + 10)]
+
+================================================================================
+3. [Trigonometry] Radian hard 23 [trig_radian]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+3
+tan(x)=-1,x,0,pi
+
+Check:
+check; calculated answer correctness
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: Eq: 1. Method: Solve trigonometric equation
+2. Start with tan(x) = -1
+3. Solve the direct trig equation.
+4. tan(x) = -1
+5. For tan(A) = -1, use A = alpha + n*pi, where alpha = arctan(-1) and the period is pi.
+6. x = [(3*pi)/4]
+7. Answer: x = [(3*pi)/4]
+
+================================================================================
+4. [Derive] Random derive normal 1: quotient [format fuzz] [derive_normal:quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((log(exp(-8*x+(6))+8))/((-7*x+4)^2+(9*x  +6) ^2+7))/((6*x -8) ^2  +(- 8*x-(7))^2+8)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = ln(exp(6 - 8*x) + 8), v = ((4 - 7*x)^2 + (9*x + 6)^2 + 7)*((6*x - 8)^2 + (-8*x - 7)^2 + 8)
+4. du/dx = -8*exp(6 - 8*x)/(exp(6 - 8*x) + 8), dv/dx = 21840*x^2 + 44924*x + 52000*x^3 + 7236
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (-58240*x^3*exp(6 - 8*x) - 179696*x^2*exp(6 - 8*x) - 57888*x*exp(6 - 8*x) - 104000*x^4*exp(6 - 8*x) - 57112*exp(6 - 8*x) - 21840*ln(exp(6 - 8*x) + 8)*x^2*exp(6 - 8*x) - 174720*ln(exp(6 - 8*x) + 8)*x^2 - 44924*ln(exp(6 - 8*x) + 8)*x*exp(6 - 8*x) - 359392*ln(exp(6 - 8*x) + 8)*x - 52000*ln(exp(6 - 8*x) + 8)*x^3*exp(6 - 8*x) - 416000*ln(exp(6 - 8*x) + 8)*x^3 - 7236*ln(exp(6 - 8*x) + 8)*exp(6 - 8*x) - 57888*ln(exp(6 - 8*x) + 8))/((exp(6 - 8*x) + 8)*((4 - 7*x)^2 + (9*x + 6)^2 + 7)^2*((6*x - 8)^2 + (-8*x - 7)^2 + 8)^2)
+7. = (-58240*x^3*exp(6 - 8*x) - 179696*x^2*exp(6 - 8*x) - 57888*x*exp(6 - 8*x) - 104000*x^4*exp(6 - 8*x) - 57112*exp(6 - 8*x) - 21840*ln(exp(6 - 8*x) + 8)*x^2*exp(6 - 8*x) - 174720*ln(exp(6 - 8*x) + 8)*x^2 - 44924*ln(exp(6 - 8*x) + 8)*x*exp(6 - 8*x) - 359392*ln(exp(6 - 8*x) + 8)*x - 52000*ln(exp(6 - 8*x) + 8)*x^3*exp(6 - 8*x) - 416000*ln(exp(6 - 8*x) + 8)*x^3 - 7236*ln(exp(6 - 8*x) + 8)*exp(6 - 8*x) - 57888*ln(exp(6 - 8*x) + 8))/((exp(6 - 8*x) + 8)*((4 - 7*x)^2 + (9*x + 6)^2 + 7)^2*((6*x - 8)^2 + (-8*x - 7)^2 + 8)^2)
+Answer: dy/dx = (-58240*x^3*exp(6 - 8*x) - 179696*x^2*exp(6 - 8*x) - 57888*x*exp(6 - 8*x) - 104000*x^4*exp(6 - 8*x) - 57112*exp(6 - 8*x) - 21840*ln(exp(6 - 8*x) + 8)*x^2*exp(6 - 8*x) - 174720*ln(exp(6 - 8*x) + 8)*x^2 - 44924*ln(exp(6 - 8*x) + 8)*x*exp(6 - 8*x) - 359392*ln(exp(6 - 8*x) + 8)*x - 52000*ln(exp(6 - 8*x) + 8)*x^3*exp(6 - 8*x) - 416000*ln(exp(6 - 8*x) + 8)*x^3 - 7236*ln(exp(6 - 8*x) + 8)*exp(6 - 8*x) - 57888*ln(exp(6 - 8*x) + 8))/((exp(6 - 8*x) + 8)*((4 - 7*x)^2 + (9*x + 6)^2 + 7)^2*((6*x - 8)^2 + (-8*x - 7)^2 + 8)^2)
+
+================================================================================
+5. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((exp(1x  -6))*  (5x-1))+  (atan(8x-(3))))*((cos(6((6(8((4x^2  +1x +2)+ 2)**3  - 1)  +-pi/  3)+0)**3- 5))  /(((-  1x  -2)  ^(2)+(-1x -5))^  2+7))*  ((cosec((-5 /  6)*(4((5x +  (6))+2)^3  +  (1)) +1))**  10)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10, v = ((-x - 2)^2 - x - 5)^2 + 7
+4. du/dx = (5*exp(x - 6) + (5*x - 1)*exp(x - 6) + 8/((8*x - 3)^2 + 1))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 - 288*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*sin((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^2*(4*x^2 + x + 4)^2*(8*x + 1)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 + 500*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*cot(1 - (5/6)*(4*(5*x + 8)^3 + 1))*(5*x + 8)^2, dv/dx = 4*x^3 + 18*x^2 + 14*x - 6
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((((-x - 2)^2 - x - 5)^2 + 7)*((5*exp(x - 6) + (5*x - 1)*exp(x - 6) + 8/((8*x - 3)^2 + 1))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 - 288*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*sin((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^2*(4*x^2 + x + 4)^2*(8*x + 1)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 + 500*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*cot(1 - (5/6)*(4*(5*x + 8)^3 + 1))*(5*x + 8)^2) - (exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*(4*x^3 + 18*x^2 + 14*x - 6))/(((-x - 2)^2 - x - 5)^2 + 7)^2
+7. = ((((-x - 2)^2 - x - 5)^2 + 7)*((5*exp(x - 6) + (5*x - 1)*exp(x - 6) + 8/((8*x - 3)^2 + 1))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 - 288*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*sin((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^2*(4*x^2 + x + 4)^2*(8*x + 1)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 + 500*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*cot(1 - (5/6)*(4*(5*x + 8)^3 + 1))*(5*x + 8)^2) - 2*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*((-x - 2)^2 - x - 5)*(-2*(-x - 2) - 1))/(((-x - 2)^2 - x - 5)^2 + 7)^2
+Answer: dy/dx = ((((-x - 2)^2 - x - 5)^2 + 7)*((5*exp(x - 6) + (5*x - 1)*exp(x - 6) + 8/((8*x - 3)^2 + 1))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 - 288*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*sin((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^2*(4*x^2 + x + 4)^2*(8*x + 1)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10 + 500*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*cot(1 - (5/6)*(4*(5*x + 8)^3 + 1))*(5*x + 8)^2) - 2*(exp(x - 6)*(5*x - 1) + atan(8*x - 3))*cos((2*(18*(8*(4*x^2 + x + 4)^3 - 1) - pi)^3 - 45)/9)*(cosec(1 - (5/6)*(4*(5*x + 8)^3 + 1)))^10*((-x - 2)^2 - x - 5)*(-2*(-x - 2) - 1))/(((-x - 2)^2 - x - 5)^2 + 7)^2
+
+================================================================================
+6. [Algebra] Random expand 5: (5x+2)^6 [format fuzz] [algebra_expand]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+3
+((5)*x +  2)  **  6
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Expr: Max: 1. Method: Expand expression
+2. Input = (5*x + 2)^6
+3. Binomial expansion
+4. Expand (5*x + 2)^6
+5. Term 1: 15625*x^6
+6. Term 2: 37500*x^5
+7. Term 3: 37500*x^4
+8. Term 4: 20000*x^3
+9. Term 5: 6000*x^2
+10. Term 6: 960*x
+11. Term 7: 64
+12. Out = 15625*x^6 + 37500*x^5 + 37500*x^4 + 20000*x^3 + 6000*x^2 + 960*x + 64
+
+================================================================================
+7. [Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((atan(-4*x-1))/  (( -3*x  ^7  +(4) *x ^  6 +3* x**5 +5  *x^4  -4* x^2+5  * (x))^2+4))*(asin((6  *x+2)/10))*((- 5*x-7)/  (exp(5*(x)-5) +(7)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = atan(-4*x - 1)*asin((6*x + 2)/10)*(-5*x - 7), v = ((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*(exp(5*x - 5) + 7)
+4. du/dx = (20*asin((6*x + 2)/10)*x + 28*asin((6*x + 2)/10))/((-4*x - 1)^2 + 1) + (-15*atan(-4*x - 1)*x - 21*atan(-4*x - 1))/(5*sqrt((100 - (6*x + 2)^2)/100)) - 5*atan(-4*x - 1)*asin((6*x + 2)/10), dv/dx = 5*((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*exp(5*x - 5) + 2*(exp(5*x - 5) + 7)*(-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)*(5 - 21*x^6 + 24*x^5 + 15*x^4 + 20*x^3 - 8*x)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*(exp(5*x - 5) + 7)*((20*asin((6*x + 2)/10)*x + 28*asin((6*x + 2)/10))/((-4*x - 1)^2 + 1) + (-15*atan(-4*x - 1)*x - 21*atan(-4*x - 1))/(5*sqrt((100 - (6*x + 2)^2)/100)) - 5*atan(-4*x - 1)*asin((6*x + 2)/10)) - atan(-4*x - 1)*asin((6*x + 2)/10)*(-5*x - 7)*(5*((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*exp(5*x - 5) + 2*(exp(5*x - 5) + 7)*(-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)*(5 - 21*x^6 + 24*x^5 + 15*x^4 + 20*x^3 - 8*x)))/(((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)^2*(exp(5*x - 5) + 7)^2)
+7. = (((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*(exp(5*x - 5) + 7)*(-4*asin((6*x + 2)/10)*(-5*x - 7)/((-4*x - 1)^2 + 1) + 3*atan(-4*x - 1)*(-5*x - 7)/(5*sqrt((100 - (6*x + 2)^2)/100)) - 5*atan(-4*x - 1)*asin((6*x + 2)/10)) - atan(-4*x - 1)*asin((6*x + 2)/10)*(-5*x - 7)*(5*((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*exp(5*x - 5) + 2*(exp(5*x - 5) + 7)*(-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)*(5 - 21*x^6 + 24*x^5 + 15*x^4 + 20*x^3 - 8*x)))/(((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)^2*(exp(5*x - 5) + 7)^2)
+Answer: dy/dx = (((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*(exp(5*x - 5) + 7)*(-4*asin((6*x + 2)/10)*(-5*x - 7)/((-4*x - 1)^2 + 1) + 3*atan(-4*x - 1)*(-5*x - 7)/(5*sqrt((100 - (6*x + 2)^2)/100)) - 5*atan(-4*x - 1)*asin((6*x + 2)/10)) - atan(-4*x - 1)*asin((6*x + 2)/10)*(-5*x - 7)*(5*((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)*exp(5*x - 5) + 2*(exp(5*x - 5) + 7)*(-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)*(5 - 21*x^6 + 24*x^5 + 15*x^4 + 20*x^3 - 8*x)))/(((-3*x^7 + 4*x^6 + 3*x^5 + 5*x^4 - 4*x^2 + 5*x)^2 + 4)^2*(exp(5*x - 5) + 7)^2)
+
+================================================================================
+8. [Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+1/  (x  *sqrt((x)-1))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by substitution
+u = sqrt(x - 1)
+= 2*atan(sqrt(x - 1)) + C
+Answer: 2*atan(sqrt(x - 1)) + C
+
+================================================================================
+9. [Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+(x ^2+ - 2  *x+-7 = (0))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (x - (1/2)*(sqrt(32) + 2))*(x - (1/2)*(-sqrt(32) + 2))
+3. Solve quad
+4. Answer: x = [(1/2)*(sqrt(32) + 2), (1/2)*(-sqrt(32) + 2)]
+
+================================================================================
+10. [Algebra] Random compare 2: power_of_power [format fuzz] [algebra_compare:power_of_power]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(cos(4*(x)-1)/sin(4*(x)-1))
+cot(4*(x)-1)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. Expression 1: cos(4*x - 1)/sin(4*x - 1)
+2. Expression 2: cot(4*x - 1)
+3. Simplify: cot(4*x - 1)
+4. Simplify: cot(4*x - 1)
+5. Difference expr1 - expr2: 0
+6. Hence expressions are equivalent.
+7. Result: Equivalent.
+
+================================================================================
+11. [Trigonometry] Random trig rewrite 12: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+4
+1 -cos(2(3(( -  (2)x  -  9)  ^ 2  +((8)x +6))  +-  pi  /3))
+(sin(3 *((-2* x-9)** 2+(8  * x+ 6))+  - pi/ 3)^  2)
+cos(3((-  2x- 9)  ^2  +(8x+6))+ -pi  /(3))  ^ 2
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: Rw: 1 term/line | Blank = end | T: T: T: 1. Start with 1 - cos(2*(-pi/3 + 3*(6 + (-9 - 2*x)^2 + 8*x)))
+2. Write in terms of sin(-pi/3 + 3*(6 + (-9 - 2*x)^2 + 8*x))^2, cos(-pi/3 + 3*(6 + (-9 - 2*x)^2 + 8*x))^2 only.
+3. Use 1 - cos(2A) = 2sin^2(A).
+4. = 2*sin(-pi/3 + 3*(6 + (-9 - 2*x)^2 + 8*x))^2
+5. Answer: 2*sin(-pi/3 + 3*(6 + (-9 - 2*x)^2 + 8*x))^2
+
+================================================================================
+12. [Trigonometry] Hard trig identity 19 [format fuzz] [trig_identity_hard]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+sec(x)**  4-tan(x) ^4
+1 +2*  tan(x)^2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1 auto
+2 lhs
+3 rhs
+4 both
+R: 1. Method: Using algebraic manipulation
+2. sec(x)^4 - tan(x)^4
+3. Use the standard trig identity.
+4. = (1/cos(x))^4 - (sin(x)/cos(x))^4
+5. Rewrite in named trig form.
+6. = sec(x)^4 - tan(x)^4
+7. = 1 + 2*tan(x)^2
+8. = RHS
+9. LHS = RHS
+
+================================================================================
+13. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((((((sin(8*(6 *(9*(x)^2  + 3*x+5)+  2)^ 2-  1)+2)  /((-  9*x-6) ^  2  +  (6)))^ 10)(sqrt(exp(7 *  (x)+1)+(2))))/ (exp(-7*x +(5))+8))**2)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*(sqrt(exp(7*x + 1) + 2))^2, v = ((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)^2
+4. du/dx = 7*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*exp(7*x + 1) + 1920*(sqrt(exp(7*x + 1) + 2))^2*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^19*cos(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1)*(6*(9*x^2 + 3*x + 5) + 2)*(18*x + 3), dv/dx = -14*(81*x^2 + 108*x + 42)^20*exp(10 - 14*x) - 112*(81*x^2 + 108*x + 42)^20*exp(5 - 7*x) + 3240*exp(10 - 14*x)*(81*x^2 + 108*x + 42)^19*x + 2160*exp(10 - 14*x)*(81*x^2 + 108*x + 42)^19 + 51840*exp(5 - 7*x)*(81*x^2 + 108*x + 42)^19*x + 34560*exp(5 - 7*x)*(81*x^2 + 108*x + 42)^19 + 207360*(81*x^2 + 108*x + 42)^19*x + 138240*(81*x^2 + 108*x + 42)^19
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)^2*(7*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*exp(7*x + 1) + 1920*(sqrt(exp(7*x + 1) + 2))^2*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^19*cos(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1)*(6*(9*x^2 + 3*x + 5) + 2)*(18*x + 3)) - (sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*(sqrt(exp(7*x + 1) + 2))^2*(-14*(81*x^2 + 108*x + 42)^20*exp(10 - 14*x) - 112*(81*x^2 + 108*x + 42)^20*exp(5 - 7*x) + 3240*exp(10 - 14*x)*(81*x^2 + 108*x + 42)^19*x + 2160*exp(10 - 14*x)*(81*x^2 + 108*x + 42)^19 + 51840*exp(5 - 7*x)*(81*x^2 + 108*x + 42)^19*x + 34560*exp(5 - 7*x)*(81*x^2 + 108*x + 42)^19 + 207360*(81*x^2 + 108*x + 42)^19*x + 138240*(81*x^2 + 108*x + 42)^19))/(((-9*x - 6)^2 + 6)^40*(exp(5 - 7*x) + 8)^4)
+7. = (((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)^2*(7*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*exp(7*x + 1) + 1920*(sqrt(exp(7*x + 1) + 2))^2*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^19*cos(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1)*(6*(9*x^2 + 3*x + 5) + 2)*(18*x + 3)) - (sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*(sqrt(exp(7*x + 1) + 2))^2*(-14*((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)*exp(5 - 7*x) - 360*(exp(5 - 7*x) + 8)^2*((-9*x - 6)^2 + 6)^19*(-9*x - 6)))/(((-9*x - 6)^2 + 6)^40*(exp(5 - 7*x) + 8)^4)
+Answer: dy/dx = (((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)^2*(7*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*exp(7*x + 1) + 1920*(sqrt(exp(7*x + 1) + 2))^2*(sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^19*cos(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1)*(6*(9*x^2 + 3*x + 5) + 2)*(18*x + 3)) - (sin(8*(6*(9*x^2 + 3*x + 5) + 2)^2 - 1) + 2)^20*(sqrt(exp(7*x + 1) + 2))^2*(-14*((-9*x - 6)^2 + 6)^20*(exp(5 - 7*x) + 8)*exp(5 - 7*x) - 360*(exp(5 - 7*x) + 8)^2*((-9*x - 6)^2 + 6)^19*(-9*x - 6)))/(((-9*x - 6)^2 + 6)^40*(exp(5 - 7*x) + 8)^4)
+
+================================================================================
+14. [Algebra] Random transform 3: reciprocal_cosec [format fuzz] [algebra_transform:reciprocal_cosec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+(1/sin(2(((2)  *(6(2x **2+6x  + -6)  -6x)^2- 1)  + 2)^3 -(4)))
+cosec(2*(((2)*(6 *(2  *  x^2  +6 *x+-(6)) -6*x)**2-(1))+2)^3 -4)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. cosec(-4 + 2*(1 + 2*(-6*x + 6*(-6 + 2*x^2 + 6*x))^2)^3)
+2. Use cosec(A) = 1/sin(A).
+3. = 1/sin(-4 + 2*(1 + 2*(-6*x + 6*(-6 + 2*x^2 + 6*x))^2)^3)
+4. = LHS
+5. Hence cosec(2*(((2)*(6 *(2  *  x^2  +6 *x+-(6)) -6*x)**2-(1))+2)^3 -4)
+6. Answer: cosec(-4 + 2*(1 + 2*(-6*x + 6*(-6 + 2*x^2 + 6*x))^2)^3)
+
+================================================================================
+15. [Derive] Log diff 25 [derive_log_diff]
+  LLM: INCORRECT - the logarithmic differentiation of \( \log(\text{diff}(25)) \). The problem[7D[K problem statement
+================================================================================
+Input:
+1
+(sin(x))^(3*x+2)
+
+Check:
+check; calculated answer correctness
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = (sin(x))^(3*x + 2)
+4. Let u = sin(x) and v = 3*x + 2
+5. u' = cos(x), v' = 3
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = 3*(sin(x))^(3*x + 1)*x*cos(x) + 2*(sin(x))^(3*x + 1)*cos(x) + 3*(sin(x))^(3*x + 2)*ln(sin(x))
+Answer: dy/dx = 3*(sin(x))^(3*x + 1)*x*cos(x) + 2*(sin(x))^(3*x + 1)*cos(x) + 3*(sin(x))^(3*x + 2)*ln(sin(x))
+
+================================================================================
+16. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((asin((6x -8)/10))  /  ((-7x-2)  ^2+(  -  2(x)+  (2))  **  2 +9))**2)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (asin((6*x - 8)/10))^2, v = ((-7*x - 2)^2 + (2 - 2*x)^2 + 9)^2
+4. du/dx = 6*asin((6*x - 8)/10)/(5*sqrt((100 - (6*x - 8)^2)/100)), dv/dx = 11236*x^3 + 6360*x^2 + 4404*x + 680
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (16854*x^4*asin((6*x - 8)/10) + 12720*x^3*asin((6*x - 8)/10) + 13212*x^2*asin((6*x - 8)/10) + 4080*x*asin((6*x - 8)/10) + 1734*asin((6*x - 8)/10) - 56180*(asin((6*x - 8)/10))^2*x^3*sqrt((36 - 36*x^2 + 96*x)/100) - 31800*(asin((6*x - 8)/10))^2*x^2*sqrt((36 - 36*x^2 + 96*x)/100) - 22020*(asin((6*x - 8)/10))^2*x*sqrt((36 - 36*x^2 + 96*x)/100) - 3400*(asin((6*x - 8)/10))^2*sqrt((36 - 36*x^2 + 96*x)/100))/(5*sqrt((100 - (6*x - 8)^2)/100)*((-7*x - 2)^2 + (2 - 2*x)^2 + 9)^4)
+7. = (16854*x^4*asin((6*x - 8)/10) + 12720*x^3*asin((6*x - 8)/10) + 13212*x^2*asin((6*x - 8)/10) + 4080*x*asin((6*x - 8)/10) + 1734*asin((6*x - 8)/10) - 56180*(asin((6*x - 8)/10))^2*x^3*sqrt((36 - 36*x^2 + 96*x)/100) - 31800*(asin((6*x - 8)/10))^2*x^2*sqrt((36 - 36*x^2 + 96*x)/100) - 22020*(asin((6*x - 8)/10))^2*x*sqrt((36 - 36*x^2 + 96*x)/100) - 3400*(asin((6*x - 8)/10))^2*sqrt((36 - 36*x^2 + 96*x)/100))/(5*sqrt((100 - (6*x - 8)^2)/100)*((-7*x - 2)^2 + (2 - 2*x)^2 + 9)^4)
+Answer: dy/dx = (16854*x^4*asin((6*x - 8)/10) + 12720*x^3*asin((6*x - 8)/10) + 13212*x^2*asin((6*x - 8)/10) + 4080*x*asin((6*x - 8)/10) + 1734*asin((6*x - 8)/10) - 56180*(asin((6*x - 8)/10))^2*x^3*sqrt((36 - 36*x^2 + 96*x)/100) - 31800*(asin((6*x - 8)/10))^2*x^2*sqrt((36 - 36*x^2 + 96*x)/100) - 22020*(asin((6*x - 8)/10))^2*x*sqrt((36 - 36*x^2 + 96*x)/100) - 3400*(asin((6*x - 8)/10))^2*sqrt((36 - 36*x^2 + 96*x)/100))/(5*sqrt((100 - (6*x - 8)^2)/100)*((-7*x - 2)^2 + (2 - 2*x)^2 + 9)^4)
+
+================================================================================
+17. [Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+((atan(-7*x  +6))  **  10)* ((tan(5  *( - (9)  * x)+5)) +(sin(2*  (6* x**  2 + 7  *x+  8) -(4)*(x))  /  cos((2)  *  ((6)*x** 2  +  7 *  x+8)  -4* (x))))  *(cos(7  *((6* ((4  * (4  *(7* x **2 + 1 *x+4) +-pi /2)**2  + 2)+  - 1) **3 -7)+  3)** (3)  -6))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = (atan(6 - 7*x))^10, v = (tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)
+4. du/dx = -70*(atan(6 - 7*x))^9/((6 - 7*x)^2 + 1), dv/dx = (-tan(5 - 45*x)*sin(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4) - 45*cos(2*(6*x^2 + 7*x + 8) - 4*x)*(sec(5 - 45*x))^2 + cos(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x) - 6048*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*sin(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^2*((8*(7*x^2 + x + 4) - pi)^2 + 1)^2*(8*(7*x^2 + x + 4) - pi)*(14*x + 1)*sec(2*(6*x^2 + 7*x + 8) - 4*x) + (tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)*tan(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = ((atan(6 - 7*x))^10*((-tan(5 - 45*x)*sin(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4) - 45*cos(2*(6*x^2 + 7*x + 8) - 4*x)*(sec(5 - 45*x))^2 + cos(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x) - 6048*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*sin(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^2*((8*(7*x^2 + x + 4) - pi)^2 + 1)^2*(8*(7*x^2 + x + 4) - pi)*(14*x + 1)*sec(2*(6*x^2 + 7*x + 8) - 4*x) + (tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)*tan(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4))*((6 - 7*x)^2 + 1) - 70*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)*(atan(6 - 7*x))^9)/((6 - 7*x)^2 + 1)
+Answer: dy/dx = -70*(atan(6 - 7*x))^9*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)/((6 - 7*x)^2 + 1) + (atan(6 - 7*x))^10*(-tan(5 - 45*x)*sin(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4) - 45*cos(2*(6*x^2 + 7*x + 8) - 4*x)*(sec(5 - 45*x))^2 + cos(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x) - 6048*(atan(6 - 7*x))^10*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*sin(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^2*((8*(7*x^2 + x + 4) - pi)^2 + 1)^2*(8*(7*x^2 + x + 4) - pi)*(14*x + 1)*sec(2*(6*x^2 + 7*x + 8) - 4*x) + (atan(6 - 7*x))^10*(tan(5 - 45*x)*cos(2*(6*x^2 + 7*x + 8) - 4*x) + sin(2*(6*x^2 + 7*x + 8) - 4*x))*cos(7*(6*((8*(7*x^2 + x + 4) - pi)^2 + 1)^3 - 4)^3 - 6)*sec(2*(6*x^2 + 7*x + 8) - 4*x)*tan(2*(6*x^2 + 7*x + 8) - 4*x)*(2*(12*x + 7) - 4)
+
+================================================================================
+18. [Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(1/((x)  *sqrt(x-1)))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by substitution
+u = sqrt(x - 1)
+= 2*atan(sqrt(x - 1)) + C
+Answer: 2*atan(sqrt(x - 1)) + C
+
+================================================================================
+19. [Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM: INCORRECT - description seems to be about a circle and line problem (tagged as "24 [for[4D[K [format fuzz]"), 
+================================================================================
+Input:
+6
+(x) ^4+6  *x^2-100=0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x^4 + 6*x^2 - 100
+3. Solve hidden substitution u=x^2
+4. Answer: x = [((1/2)*(sqrt(436) - 6))^(1/2), -1*((1/2)*(sqrt(436) - 6))^(1/2)]
+
+================================================================================
+20. [Trigonometry] Hard trig identity 19 [format fuzz] [trig_identity_hard]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sec(x)^  2- tan(x)^2)
+1
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1 auto
+2 lhs
+3 rhs
+4 both
+R: 1. Method: Using algebraic manipulation
+2. sec(x)^2 - tan(x)^2
+3. Use sec^2 A - tan^2 A = 1.
+4. = 1
+5. = RHS
+6. LHS = RHS
+
+================================================================================
+21. [Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+x^((sin((-3  / 8)(6(-3(x)-4)-7x) - 7)/cos((-3/ 8)(6(-3x -4)-7x)-7))+  (sin(7(8((-7/  8)((6/ 5)x+  (  -9/6))+2)  +  -pi/3)  ^2-6)  ^  5+cos(7(8((  -7/8)((6/ 5)(x) + (- 9/ 6))+2)+ -pi/3) ^  2-6)**5))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = x^(tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5)
+4. Let u = x and v = tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5
+5. u' = 1, v' = (75/8)*(sec(-(3/8)*(6*(-3*x - 4) - 7*x) - 7))^2 - 196*(sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi) + 196*(cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = x^(tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 - 1)*(tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + ln(x)*((75/8)*(sec(-(3/8)*(6*(-3*x - 4) - 7*x) - 7))^2 - 196*(sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi) + 196*(cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi))*x)
+Answer: dy/dx = x^(tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 - 1)*(tan(-(3/8)*(6*(-3*x - 4) - 7*x) - 7) + (sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + (cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^5 + ln(x)*((75/8)*(sec(-(3/8)*(6*(-3*x - 4) - 7*x) - 7))^2 - 196*(sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi) + 196*(cos((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9))^4*sin((7*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi)^2 - 54)/9)*(24*(2 - (7/8)*((6/5)*x - 3/2)) - pi))*x)
+
+================================================================================
+22. [Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM: INCORRECT - description seems to be about a circle and line problem (tagged as "24 [for[4D[K [format fuzz]"), 
+================================================================================
+Input:
+6
+x^4+6*x**2-100= 0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x^4 + 6*x^2 - 100
+3. Solve hidden substitution u=x^2
+4. Answer: x = [((1/2)*(sqrt(436) - 6))^(1/2), -1*((1/2)*(sqrt(436) - 6))^(1/2)]
+
+================================================================================
+23. [Derive] Log diff 25 [format fuzz] [derive_log_diff]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+((x)^ 2+4)^(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = (x^2 + 4)^x
+4. Let u = x^2 + 4 and v = x
+5. u' = 2*x, v' = 1
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = 2*(x^2 + 4)^(x - 1)*x^2 + (x^2 + 4)^(x - 1)*ln(x^2 + 4)*x^2 + 4*(x^2 + 4)^(x - 1)*ln(x^2 + 4)
+Answer: dy/dx = 2*(x^2 + 4)^(x - 1)*x^2 + (x^2 + 4)^(x - 1)*ln(x^2 + 4)*x^2 + 4*(x^2 + 4)^(x - 1)*ln(x^2 + 4)
+
+================================================================================
+24. [Algebra] Circle-line 24 [format fuzz] [algebra_circle_hard]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+(x^  4 + 7 *(x)^2 - 841 =0)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x^4 + 7*x^2 - 841
+3. Solve hidden substitution u=x^2
+4. Answer: x = [((1/2)*(sqrt(3413) - 7))^(1/2), -1*((1/2)*(sqrt(3413) - 7))^(1/2)]
+
+================================================================================
+25. [Derive] Random derive normal 3: product [format fuzz] [derive_normal:product]
+  LLM: INCORRECT - sequence of mathematical symbols and expressions, which does not logically [K follow from the probl
+================================================================================
+Input:
+1
+(cot(2 * (3*(4* x**2  -5  *x+5) -4*x)  ^2-1)) *exp(9*x+(8))* log((-5*x  -3) ^2+(-  5* x-7)^ 2+4)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = cot(2*(3*(4*x^2 - 5*x + 5) - 4*x)^2 - 1), v = exp(9*x + 8)*ln((-5*x - 3)^2 + (-5*x - 7)^2 + 4)
+4. du/dx = -1152*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^3 + 2736*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^2 - 2884*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x + 1140*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2, dv/dx = (100*exp(9*x + 8)*x + 100*exp(9*x + 8) + 450*ln(50*x^2 + 100*x + 62)*exp(9*x + 8)*x^2 + 900*ln(50*x^2 + 100*x + 62)*exp(9*x + 8)*x + 558*ln(50*x^2 + 100*x + 62)*exp(9*x + 8))/((-5*x - 3)^2 + (-5*x - 7)^2 + 4)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (cot(2*(3*(4*x^2 - 5*x + 5) - 4*x)^2 - 1)*(100*exp(9*x + 8)*x + 100*exp(9*x + 8) + 450*ln(50*x^2 + 100*x + 62)*exp(9*x + 8)*x^2 + 900*ln(50*x^2 + 100*x + 62)*exp(9*x + 8)*x + 558*ln(50*x^2 + 100*x + 62)*exp(9*x + 8)) + exp(9*x + 8)*ln((-5*x - 3)^2 + (-5*x - 7)^2 + 4)*(-1152*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^3 + 2736*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^2 - 2884*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x + 1140*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2)*((-5*x - 3)^2 + (-5*x - 7)^2 + 4))/((-5*x - 3)^2 + (-5*x - 7)^2 + 4)
+Answer: dy/dx = -1152*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^3*exp(9*x + 8)*ln(50*x^2 + 100*x + 62) + 2736*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x^2*exp(9*x + 8)*ln(50*x^2 + 100*x + 62) - 2884*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*x*exp(9*x + 8)*ln(50*x^2 + 100*x + 62) + 1140*(cosec(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449))^2*exp(9*x + 8)*ln(50*x^2 + 100*x + 62) + 9*cot(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449)*exp(9*x + 8)*ln(50*x^2 + 100*x + 62) + (100*cot(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449)*exp(9*x + 8)*x + 100*cot(288*x^4 - 912*x^3 + 1442*x^2 - 1140*x + 449)*exp(9*x + 8))/((-5*x - 3)^2 + (-5*x - 7)^2 + 4)
+
+================================================================================
+26. [Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((((log(exp( -9*  x)+ 5))  /(((( -6/  2)x+(-5 /3))^3)**2 +4))  +((exp(-7  *x-4))^  10))/((-9*(x)- 3)**(2)+( -1*  x-  8)  ^  2  +6)) **  2
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))^2, v = ((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2
+4. du/dx = -18*ln(exp(-9*x) + 5)*exp(-9*x)/(exp(-9*x) + 5) - 36*ln(exp(-9*x) + 5)*exp(-70*x - 40)*(-3*x - 5/3)^5 - 140*ln(exp(-9*x) + 5)*(-3*x - 5/3)^6*exp(-70*x - 40) - 560*ln(exp(-9*x) + 5)*exp(-70*x - 40) + -18*exp(-70*x - 40)*(-3*x - 5/3)^6*exp(-9*x)/(exp(-9*x) + 5) - 36*exp(-140*x - 80)*(-3*x - 5/3)^11 - 140*exp(-140*x - 80)*(-3*x - 5/3)^12 - 1120*exp(-140*x - 80)*(-3*x - 5/3)^6 + -72*exp(-70*x - 40)*exp(-9*x)/(exp(-9*x) + 5) - 144*exp(-140*x - 80)*(-3*x - 5/3)^5 - 2240*exp(-140*x - 80), dv/dx = 26896*(-3*x - 5/3)^12*x^3 + 34440*(-3*x - 5/3)^12*x^2 + 35712*(-3*x - 5/3)^12*x + 11060*(-3*x - 5/3)^12 + 215168*(-3*x - 5/3)^6*x^3 + 275520*(-3*x - 5/3)^6*x^2 + 285696*(-3*x - 5/3)^6*x + 88480*(-3*x - 5/3)^6 + 430336*x^3 + 551040*x^2 + 571392*x - 242064*x^4*(-3*x - 5/3)^11 - 968256*x^4*(-3*x - 5/3)^5 - 413280*x^3*(-3*x - 5/3)^11 - 1653120*x^3*(-3*x - 5/3)^5 - 642816*x^2*(-3*x - 5/3)^11 - 2571264*x^2*(-3*x - 5/3)^5 - 398160*x*(-3*x - 5/3)^11 - 1592640*x*(-3*x - 5/3)^5 - 224676*(-3*x - 5/3)^11 - 898704*(-3*x - 5/3)^5 + 176960
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2*(-18*ln(exp(-9*x) + 5)*exp(-9*x)/(exp(-9*x) + 5) - 36*ln(exp(-9*x) + 5)*exp(-70*x - 40)*(-3*x - 5/3)^5 - 140*ln(exp(-9*x) + 5)*(-3*x - 5/3)^6*exp(-70*x - 40) - 560*ln(exp(-9*x) + 5)*exp(-70*x - 40) + -18*exp(-70*x - 40)*(-3*x - 5/3)^6*exp(-9*x)/(exp(-9*x) + 5) - 36*exp(-140*x - 80)*(-3*x - 5/3)^11 - 140*exp(-140*x - 80)*(-3*x - 5/3)^12 - 1120*exp(-140*x - 80)*(-3*x - 5/3)^6 + -72*exp(-70*x - 40)*exp(-9*x)/(exp(-9*x) + 5) - 144*exp(-140*x - 80)*(-3*x - 5/3)^5 - 2240*exp(-140*x - 80)) - (ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))^2*(26896*(-3*x - 5/3)^12*x^3 + 34440*(-3*x - 5/3)^12*x^2 + 35712*(-3*x - 5/3)^12*x + 11060*(-3*x - 5/3)^12 + 215168*(-3*x - 5/3)^6*x^3 + 275520*(-3*x - 5/3)^6*x^2 + 285696*(-3*x - 5/3)^6*x + 88480*(-3*x - 5/3)^6 + 430336*x^3 + 551040*x^2 + 571392*x - 242064*x^4*(-3*x - 5/3)^11 - 968256*x^4*(-3*x - 5/3)^5 - 413280*x^3*(-3*x - 5/3)^11 - 1653120*x^3*(-3*x - 5/3)^5 - 642816*x^2*(-3*x - 5/3)^11 - 2571264*x^2*(-3*x - 5/3)^5 - 398160*x*(-3*x - 5/3)^11 - 1592640*x*(-3*x - 5/3)^5 - 224676*(-3*x - 5/3)^11 - 898704*(-3*x - 5/3)^5 + 176960))/(((-3*x - 5/3)^6 + 4)^4*((-9*x - 3)^2 + (-x - 8)^2 + 6)^4)
+7. = (2*((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2*(ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))*(-9*exp(-9*x)/(exp(-9*x) + 5) - 18*exp(10*(-7*x - 4))*(-3*x - 5/3)^5 - 70*((-3*x - 5/3)^6 + 4)*exp(10*(-7*x - 4))) - (ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))^2*(2*((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)*(-18*(-9*x - 3) - 2*(-x - 8)) - 36*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2*((-3*x - 5/3)^6 + 4)*(-3*x - 5/3)^5))/(((-3*x - 5/3)^6 + 4)^4*((-9*x - 3)^2 + (-x - 8)^2 + 6)^4)
+Answer: dy/dx = (2*((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2*(ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))*(-9*exp(-9*x)/(exp(-9*x) + 5) - 18*exp(10*(-7*x - 4))*(-3*x - 5/3)^5 - 70*((-3*x - 5/3)^6 + 4)*exp(10*(-7*x - 4))) - (ln(exp(-9*x) + 5) + exp(10*(-7*x - 4))*((-3*x - 5/3)^6 + 4))^2*(2*((-3*x - 5/3)^6 + 4)^2*((-9*x - 3)^2 + (-x - 8)^2 + 6)*(-18*(-9*x - 3) - 2*(-x - 8)) - 36*((-9*x - 3)^2 + (-x - 8)^2 + 6)^2*((-3*x - 5/3)^6 + 4)*(-3*x - 5/3)^5))/(((-3*x - 5/3)^6 + 4)^4*((-9*x - 3)^2 + (-x - 8)^2 + 6)^4)
+
+================================================================================
+27. [Integrate] Substitution 21 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+1/  (x  *  sqrt(x -  1))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by substitution
+u = sqrt(x - 1)
+= 2*atan(sqrt(x - 1)) + C
+Answer: 2*atan(sqrt(x - 1)) + C
+
+================================================================================
+28. [Algebra] Random compare 1: power_of_power [format fuzz] [algebra_compare:power_of_power]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+sin(7*(6*  x-5))/cos(7*(6*  x-5))
+tan(7*(6*x-5))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. Expression 1: sin(7*(6*x - 5))/cos(7*(6*x - 5))
+2. Expression 2: tan(7*(6*x - 5))
+3. Simplify: tan(7*(6*x - 5))
+4. Simplify: tan(7*(6*x - 5))
+5. Difference expr1 - expr2: 0
+6. Hence expressions are equivalent.
+7. Result: Equivalent.
+
+================================================================================
+29. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((( -9*x-1)^ 2+(8 *x-1)**2+3)+(sec(5*(-5*x+8)+4)**  2 -tan(5 *(- 5*x+8)+4)^2+  cot((5)*(-5*x+ 8)+4)))*(log(exp(3*x-7)+9))*  (tan(5  *(-  9*x-(5))+3))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = (-9*x - 1)^2 + (8*x - 1)^2 + (sec(5*(8 - 5*x) + 4))^2 - (tan(5*(8 - 5*x) + 4))^2 + cot(5*(8 - 5*x) + 4) + 3, v = ln(exp(3*x - 7) + 9)*tan(5*(-9*x - 5) + 3)
+4. du/dx = 290*x + 25*(cosec(44 - 25*x))^2 + 2, dv/dx = (-45*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2*exp(3*x - 7) - 405*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 + 3*tan(-45*x - 22)*exp(3*x - 7))/(exp(3*x - 7) + 9)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (((-9*x - 1)^2 + (8*x - 1)^2 + (sec(5*(8 - 5*x) + 4))^2 - (tan(5*(8 - 5*x) + 4))^2 + cot(5*(8 - 5*x) + 4) + 3)*(-45*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2*exp(3*x - 7) - 405*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 + 3*tan(-45*x - 22)*exp(3*x - 7)) + ln(exp(3*x - 7) + 9)*tan(5*(-9*x - 5) + 3)*(290*x + 25*(cosec(44 - 25*x))^2 + 2)*(exp(3*x - 7) + 9))/(exp(3*x - 7) + 9)
+Answer: dy/dx = 290*x*ln(exp(3*x - 7) + 9)*tan(-45*x - 22) + 25*(cosec(44 - 25*x))^2*ln(exp(3*x - 7) + 9)*tan(-45*x - 22) + 2*ln(exp(3*x - 7) + 9)*tan(-45*x - 22) + (435*x^2*exp(3*x - 7)*tan(-45*x - 22) + 6*x*exp(3*x - 7)*tan(-45*x - 22) + 3*(sec(44 - 25*x))^2*exp(3*x - 7)*tan(-45*x - 22) - 3*(tan(44 - 25*x))^2*exp(3*x - 7)*tan(-45*x - 22) + 3*cot(44 - 25*x)*exp(3*x - 7)*tan(-45*x - 22) + 15*exp(3*x - 7)*tan(-45*x - 22))/(exp(3*x - 7) + 9) - 6525*x^2*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 - 90*x*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 - 45*(sec(44 - 25*x))^2*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 + 45*(tan(44 - 25*x))^2*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 - 45*cot(44 - 25*x)*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2 - 225*ln(exp(3*x - 7) + 9)*(sec(-45*x - 22))^2
+
+================================================================================
+30. [SUVAT] Random SUVAT 14: find a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+(23/50)
+(-4 /3)
+43 /15
+ ,
+(3/5)
+
+Check:
+suvat_find_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: 
+= v = u + at
+a = (v-u)/t
+= (43/15 - -4/3) / (3/5)
+a = 7
+
+--- All variables ---
+s = 23/50 (0.46 m)
+u = -4/3 (-1.33 m/s)
+v = 43/15 (2.87 m/s)
+a = 7 m/s^2
+t = 3/5 (0.6 s)
+
+================================================================================
+31. [Algebra] Random transform 3: reciprocal_sec [format fuzz] [algebra_transform:reciprocal_sec]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+2
+1  /cos(2*(2*(7*  x- 2)  -  4*x)-6*x)
+(sec(2  *((2)  *(7* x-2)-4* x)- 6*x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. sec(-6*x + 2*(-4*x + 2*(-2 + 7*x)))
+2. Use sec(A) = 1/cos(A).
+3. = 1/cos(-6*x + 2*(-4*x + 2*(-2 + 7*x)))
+4. = LHS
+5. Hence (sec(2  *((2)  *(7* x-2)-4* x)- 6*x))
+6. Answer: sec(-6*x + 2*(-4*x + 2*(-2 + 7*x)))
+
+================================================================================
+32. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(exp((-1*x ^ 7-(1) * (x)  ^6+(4)*x^5+4)*(((3*x -8) ^2+(- 5 *  x  -3))^ 2  +7))) *((asin((-  8*x+1)/  10))+(cosec(8 *(7*(((  -7* x-7)  **2 +(-1*x +2))  + -1)^3+  4)  - (6))))*((exp(-3*(x)-(5)))+  ((sqrt(((-8*  x- 7) ^3) ^(2)+8)+(1))/ (sqrt((x)^2+  4)+3)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1), v = sqrt(x^2 + 4) + 3
+4. du/dx = exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(2*(4 - x^7 - x^6 + 4*x^5)*((3*x - 8)^2 - 5*x - 3)*(6*(3*x - 8) - 5) + (((3*x - 8)^2 - 5*x - 3)^2 + 7)*(-7*x^6 - 6*x^5 + 20*x^4))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(-840*cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*cot(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*((-7*x - 7)^2 - x + 1)^2*(-14*(-7*x - 7) - 1)*sqrt((100 - (1 - 8*x)^2)/100) - 4)*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)/(5*sqrt((100 - (1 - 8*x)^2)/100)) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*((exp(-3*x - 5)*x - 3*(sqrt(x^2 + 4) + 3)*exp(-3*x - 5)*sqrt(x^2 + 4))*sqrt((-8*x - 7)^6 + 8) - 24*(-8*x - 7)^5*sqrt(x^2 + 4))/(sqrt(x^2 + 4)*sqrt((-8*x - 7)^6 + 8)), dv/dx = x/sqrt(x^2 + 4)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((sqrt(x^2 + 4) + 3)*(exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(2*(4 - x^7 - x^6 + 4*x^5)*((3*x - 8)^2 - 5*x - 3)*(6*(3*x - 8) - 5) + (((3*x - 8)^2 - 5*x - 3)^2 + 7)*(-7*x^6 - 6*x^5 + 20*x^4))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(-840*cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*cot(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*((-7*x - 7)^2 - x + 1)^2*(-14*(-7*x - 7) - 1)*sqrt((100 - (1 - 8*x)^2)/100) - 4)*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)/(5*sqrt((100 - (1 - 8*x)^2)/100)) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*((exp(-3*x - 5)*x - 3*(sqrt(x^2 + 4) + 3)*exp(-3*x - 5)*sqrt(x^2 + 4))*sqrt((-8*x - 7)^6 + 8) - 24*(-8*x - 7)^5*sqrt(x^2 + 4))/(sqrt(x^2 + 4)*sqrt((-8*x - 7)^6 + 8)))*sqrt(x^2 + 4) - exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)*x)/(sqrt(x^2 + 4)*(sqrt(x^2 + 4) + 3)^2)
+7. = ((sqrt(x^2 + 4) + 3)*(exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(2*(4 - x^7 - x^6 + 4*x^5)*((3*x - 8)^2 - 5*x - 3)*(6*(3*x - 8) - 5) + (((3*x - 8)^2 - 5*x - 3)^2 + 7)*(-7*x^6 - 6*x^5 + 20*x^4))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(-840*cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*cot(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*((-7*x - 7)^2 - x + 1)^2*(-14*(-7*x - 7) - 1)*sqrt((100 - (1 - 8*x)^2)/100) - 4)*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)/(5*sqrt((100 - (1 - 8*x)^2)/100)) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*((exp(-3*x - 5)*x - 3*(sqrt(x^2 + 4) + 3)*exp(-3*x - 5)*sqrt(x^2 + 4))*sqrt((-8*x - 7)^6 + 8) - 24*(-8*x - 7)^5*sqrt(x^2 + 4))/(sqrt(x^2 + 4)*sqrt((-8*x - 7)^6 + 8)))*sqrt(x^2 + 4) - exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)*x)/(sqrt(x^2 + 4)*(sqrt(x^2 + 4) + 3)^2)
+Answer: dy/dx = ((sqrt(x^2 + 4) + 3)*(exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(2*(4 - x^7 - x^6 + 4*x^5)*((3*x - 8)^2 - 5*x - 3)*(6*(3*x - 8) - 5) + (((3*x - 8)^2 - 5*x - 3)^2 + 7)*(-7*x^6 - 6*x^5 + 20*x^4))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(-840*cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*cot(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6)*((-7*x - 7)^2 - x + 1)^2*(-14*(-7*x - 7) - 1)*sqrt((100 - (1 - 8*x)^2)/100) - 4)*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)/(5*sqrt((100 - (1 - 8*x)^2)/100)) + exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*((exp(-3*x - 5)*x - 3*(sqrt(x^2 + 4) + 3)*exp(-3*x - 5)*sqrt(x^2 + 4))*sqrt((-8*x - 7)^6 + 8) - 24*(-8*x - 7)^5*sqrt(x^2 + 4))/(sqrt(x^2 + 4)*sqrt((-8*x - 7)^6 + 8)))*sqrt(x^2 + 4) - exp((4 - x^7 - x^6 + 4*x^5)*(((3*x - 8)^2 - 5*x - 3)^2 + 7))*(asin((1 - 8*x)/10) + cosec(8*(7*((-7*x - 7)^2 - x + 1)^3 + 4) - 6))*(exp(-3*x - 5)*(sqrt(x^2 + 4) + 3) + sqrt((-8*x - 7)^6 + 8) + 1)*x)/(sqrt(x^2 + 4)*(sqrt(x^2 + 4) + 3)^2)
+
+================================================================================
+33. [Derive] Random derive normal 3: quotient [format fuzz] [derive_normal:quotient]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+(((sqrt(((  -7*  (x)+ (2))  ^ (3))  **2+8)+1)/ (((  -4*x-1)  /(exp(- 8*(x)+  (4))+8))  **  2+(7)))+(tan((4)*(2*(((5)  *(4 * x **  2 +5  *x+  7)^  2 -6)+0)  ^3 +3)**  (2)+6)))/(sqrt((( - 7 *  (x)  +(3))^3) ^ 2+8) +4)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)^2 + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2), v = ((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sqrt((3 - 7*x)^6 + 8) + 4)
+4. du/dx = (-16*(sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)*exp(4 - 8*x)*sqrt((2 - 7*x)^6 + 8) - 21*(exp(4 - 8*x) + 8)^2*(2 - 7*x)^5)/sqrt((2 - 7*x)^6 + 8) + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x)) + 480*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sec(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6))^2*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)*(5*(4*x^2 + 5*x + 7)^2 - 6)^2*(4*x^2 + 5*x + 7)*(8*x + 5), dv/dx = (-336*x^2*(3 - 7*x)^5 - 168*x*(3 - 7*x)^5 - 147*exp(8 - 16*x)*(3 - 7*x)^5 - 2352*exp(4 - 8*x)*(3 - 7*x)^5 - 9429*(3 - 7*x)^5 + 32*(sqrt((3 - 7*x)^6 + 8))^2*x - 112*(sqrt((3 - 7*x)^6 + 8))^2*exp(8 - 16*x) - 896*(sqrt((3 - 7*x)^6 + 8))^2*exp(4 - 8*x) + 8*(sqrt((3 - 7*x)^6 + 8))^2 + 128*x*sqrt((3 - 7*x)^6 + 8) - 448*exp(8 - 16*x)*sqrt((3 - 7*x)^6 + 8) - 3584*exp(4 - 8*x)*sqrt((3 - 7*x)^6 + 8) + 32*sqrt((3 - 7*x)^6 + 8))/sqrt((3 - 7*x)^6 + 8)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sqrt((3 - 7*x)^6 + 8) + 4)*((-16*(sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)*exp(4 - 8*x)*sqrt((2 - 7*x)^6 + 8) - 21*(exp(4 - 8*x) + 8)^2*(2 - 7*x)^5)/sqrt((2 - 7*x)^6 + 8) + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x)) + 480*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sec(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6))^2*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)*(5*(4*x^2 + 5*x + 7)^2 - 6)^2*(4*x^2 + 5*x + 7)*(8*x + 5))*sqrt((3 - 7*x)^6 + 8) - ((sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)^2 + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2))*(-336*x^2*(3 - 7*x)^5 - 168*x*(3 - 7*x)^5 - 147*exp(8 - 16*x)*(3 - 7*x)^5 - 2352*exp(4 - 8*x)*(3 - 7*x)^5 - 9429*(3 - 7*x)^5 + 32*(sqrt((3 - 7*x)^6 + 8))^2*x - 112*(sqrt((3 - 7*x)^6 + 8))^2*exp(8 - 16*x) - 896*(sqrt((3 - 7*x)^6 + 8))^2*exp(4 - 8*x) + 8*(sqrt((3 - 7*x)^6 + 8))^2 + 128*x*sqrt((3 - 7*x)^6 + 8) - 448*exp(8 - 16*x)*sqrt((3 - 7*x)^6 + 8) - 3584*exp(4 - 8*x)*sqrt((3 - 7*x)^6 + 8) + 32*sqrt((3 - 7*x)^6 + 8)))/(sqrt((3 - 7*x)^6 + 8)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)^2*(sqrt((3 - 7*x)^6 + 8) + 4)^2)
+7. = (((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sqrt((3 - 7*x)^6 + 8) + 4)*((-16*(sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)*exp(4 - 8*x)*sqrt((2 - 7*x)^6 + 8) - 21*(exp(4 - 8*x) + 8)^2*(2 - 7*x)^5)/sqrt((2 - 7*x)^6 + 8) + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x)) + 480*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sec(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6))^2*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)*(5*(4*x^2 + 5*x + 7)^2 - 6)^2*(4*x^2 + 5*x + 7)*(8*x + 5))*sqrt((3 - 7*x)^6 + 8) - ((sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)^2 + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2))*(-21*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(3 - 7*x)^5 + (sqrt((3 - 7*x)^6 + 8) + 4)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x))*sqrt((3 - 7*x)^6 + 8)))/(sqrt((3 - 7*x)^6 + 8)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)^2*(sqrt((3 - 7*x)^6 + 8) + 4)^2)
+Answer: dy/dx = (((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sqrt((3 - 7*x)^6 + 8) + 4)*((-16*(sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)*exp(4 - 8*x)*sqrt((2 - 7*x)^6 + 8) - 21*(exp(4 - 8*x) + 8)^2*(2 - 7*x)^5)/sqrt((2 - 7*x)^6 + 8) + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x)) + 480*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(sec(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6))^2*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)*(5*(4*x^2 + 5*x + 7)^2 - 6)^2*(4*x^2 + 5*x + 7)*(8*x + 5))*sqrt((3 - 7*x)^6 + 8) - ((sqrt((2 - 7*x)^6 + 8) + 1)*(exp(4 - 8*x) + 8)^2 + tan(4*(2*(5*(4*x^2 + 5*x + 7)^2 - 6)^3 + 3)^2 + 6)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2))*(-21*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)*(3 - 7*x)^5 + (sqrt((3 - 7*x)^6 + 8) + 4)*(-8*(-4*x - 1) - 112*(exp(4 - 8*x) + 8)*exp(4 - 8*x))*sqrt((3 - 7*x)^6 + 8)))/(sqrt((3 - 7*x)^6 + 8)*((-4*x - 1)^2 + 7*(exp(4 - 8*x) + 8)^2)^2*(sqrt((3 - 7*x)^6 + 8) + 4)^2)
+
+================================================================================
+34. [Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM: INCORRECT - problem statement "Derive: Log diff 23 [format fuzz]". The derivation shown[5D[K shown seems unrel
+================================================================================
+Input:
+1
+x^ (sqrt(exp(6  *x +  6)+(4)))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = x^sqrt(exp(6*x + 6) + 4)
+4. Let u = x and v = sqrt(exp(6*x + 6) + 4)
+5. u' = 1, v' = 3*exp(6*x + 6)/sqrt(exp(6*x + 6) + 4)
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = (x^(sqrt(exp(6*x + 6) + 4) - 1)*(sqrt(exp(6*x + 6) + 4))^2 + 3*x^sqrt(exp(6*x + 6) + 4)*ln(x)*exp(6*x + 6))/sqrt(exp(6*x + 6) + 4)
+Answer: dy/dx = (x^(sqrt(exp(6*x + 6) + 4) - 1)*(sqrt(exp(6*x + 6) + 4))^2 + 3*x^sqrt(exp(6*x + 6) + 4)*ln(x)*exp(6*x + 6))/sqrt(exp(6*x + 6) + 4)
+
+================================================================================
+35. [Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(x)/sqrt(x**2  +1)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Let u = x^2 + 1.
+= sqrt(x^2 + 1) + C
+Answer: sqrt(x^2 + 1) + C
+
+================================================================================
+36. [Algebra] Random inverse 16: constant_fraction [format fuzz] [algebra_inverse:constant_fraction]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+8
+(4*x+2)/(4 *x+2)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Inv fn
+f: 1. Method: Find inverse function
+2. f(x) = 1
+3. y = 1
+4. Answer: No inverse on all real x - constant function
+
+================================================================================
+37. [Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(x/ sqrt((x)**2+  1))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Let u = x^2 + 1.
+= sqrt(x^2 + 1) + C
+Answer: sqrt(x^2 + 1) + C
+
+================================================================================
+38. [Trigonometry] Random trig transform 5: tan_ratio [format fuzz] [trig_transform:tan_ratio]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+sin(x) /  cos(x)
+(tan(x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. tan(x)
+2. Use tan(A) = sin(A)/cos(A).
+3. = sin(x)/cos(x)
+4. = LHS
+5. Hence (tan(x))
+6. Answer: tan(x)
+
+================================================================================
+39. [Algebra] Random transform 3: sin2 [format fuzz] [algebra_transform:sin2]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+2
+sin(2*(2  *(3*(5  *  ((-4/8)*(9* x+1)+1) ^2 -7) +- pi /2)+pi /4))
+2*sin(2*(3*(5 *((  -4  /8)*  (9*x+  1) +1)^  2-7)+-pi/2) +pi/ 4)*  cos(2*  (3*(5*((  -4 / 8)*(9  * x+1) +(1))**2-7)+  -pi/2)+pi  /4)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. Use sin(2A) = 2sin A cos A.
+2. = 2*sin(pi/4 + 2*(-pi/2 + 3*(-7 + 5*(1 - (1 + 9*x)/2)^2)))*cos(pi/4 + 2*(-pi/2 + 3*(-7 + 5*(1 - (1 + 9*x)/2)^2)))
+3. Hence 2*sin(2*(3*(5 *((  -4  /8)*  (9*x+  1) +1)^  2-7)+-pi/2) +pi/ 4)*  cos(2*  (3*(5*((  -4 / 8)*(9  * x+1) +(1))**2-7)+  -pi/2)+pi  /4)
+4. Answer: 2*sin(pi/4 + 2*(-pi/2 + 3*(-7 + 5*(1 - (1 + 9*x)/2)^2)))*cos(pi/4 + 2*(-pi/2 + 3*(-7 + 5*(1 - (1 + 9*x)/2)^2)))
+
+================================================================================
+40. [Algebra] Random solve 12 [format fuzz] [algebra_solve:quadratic]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+2*x  ^ 2+16* (x) =0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = 2*x*(x + 8)
+3. Solve quad
+4. Answer: x = [0, -8]
+
+================================================================================
+41. [Algebra] Random inverse 16: constant_fraction [format fuzz] [algebra_inverse:constant_fraction]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+8
+(6*x+1) /  (6 *x+ 1)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Inv fn
+f: 1. Method: Find inverse function
+2. f(x) = 1
+3. y = 1
+4. Answer: No inverse on all real x - constant function
+
+================================================================================
+42. [Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(tan(8*(x)+(1)))*((sin(6*(-  6*x-  (3))+  7)+1)/((-8*x+3) **2+(-4*x-1)^2+  (4)))*(((- 4*x**3+5 *x^2+2*x)/(sqrt((9*x  +1) ^2 +7)+2))*((4*x^3+1*x)/((-3*x+3)^2+(5*x+3)^2+6)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x), v = ((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)
+4. du/dx = 8*(sec(8*x + 1))^2*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) - 36*tan(8*x + 1)*cos(6*(-6*x - 3) + 7)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(2 - 12*x^2 + 10*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(12*x^2 + 1), dv/dx = -1200*x^2*sqrt(81*x^2 + 18*x + 8) + 10880*x^3*sqrt(81*x^2 + 18*x + 8) + 3832*x*sqrt(81*x^2 + 18*x + 8) - 2400*x^2 + 21760*x^3 + 7664*x - 792*sqrt(81*x^2 + 18*x + 8) + (3024 - 46908*x^2 + 151596*x^3 + 20088*x - 7920*x^4 + 220320*x^5)/sqrt((9*x + 1)^2 + 7) - 1584
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)*(8*(sec(8*x + 1))^2*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) - 36*tan(8*x + 1)*cos(6*(-6*x - 3) + 7)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(2 - 12*x^2 + 10*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(12*x^2 + 1)) - tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x)*(-1200*x^2*sqrt(81*x^2 + 18*x + 8) + 10880*x^3*sqrt(81*x^2 + 18*x + 8) + 3832*x*sqrt(81*x^2 + 18*x + 8) - 2400*x^2 + 21760*x^3 + 7664*x - 792*sqrt(81*x^2 + 18*x + 8) + (3024 - 46908*x^2 + 151596*x^3 + 20088*x - 7920*x^4 + 220320*x^5)/sqrt((9*x + 1)^2 + 7) - 1584))/(((3 - 8*x)^2 + (-4*x - 1)^2 + 4)^2*(sqrt((9*x + 1)^2 + 7) + 2)^2*((3 - 3*x)^2 + (5*x + 3)^2 + 6)^2)
+7. = (((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)*(8*(sec(8*x + 1))^2*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) - 36*tan(8*x + 1)*cos(6*(-6*x - 3) + 7)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(2 - 12*x^2 + 10*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(12*x^2 + 1)) - tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x)*((-16*(3 - 8*x) - 8*(-4*x - 1))*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6) + 9*((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(9*x + 1)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)/sqrt((9*x + 1)^2 + 7) + ((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*(-6*(3 - 3*x) + 10*(5*x + 3))))/(((3 - 8*x)^2 + (-4*x - 1)^2 + 4)^2*(sqrt((9*x + 1)^2 + 7) + 2)^2*((3 - 3*x)^2 + (5*x + 3)^2 + 6)^2)
+Answer: dy/dx = (((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)*(8*(sec(8*x + 1))^2*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) - 36*tan(8*x + 1)*cos(6*(-6*x - 3) + 7)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(2 - 12*x^2 + 10*x)*(4*x^3 + x) + tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(12*x^2 + 1)) - tan(8*x + 1)*(sin(6*(-6*x - 3) + 7) + 1)*(-4*x^3 + 5*x^2 + 2*x)*(4*x^3 + x)*((-16*(3 - 8*x) - 8*(-4*x - 1))*(sqrt((9*x + 1)^2 + 7) + 2)*((3 - 3*x)^2 + (5*x + 3)^2 + 6) + 9*((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(9*x + 1)*((3 - 3*x)^2 + (5*x + 3)^2 + 6)/sqrt((9*x + 1)^2 + 7) + ((3 - 8*x)^2 + (-4*x - 1)^2 + 4)*(sqrt((9*x + 1)^2 + 7) + 2)*(-6*(3 - 3*x) + 10*(5*x + 3))))/(((3 - 8*x)^2 + (-4*x - 1)^2 + 4)^2*(sqrt((9*x + 1)^2 + 7) + 2)^2*((3 - 3*x)^2 + (5*x + 3)^2 + 6)^2)
+
+================================================================================
+43. [Derive] Random derive normal 3: product [format fuzz] [derive_normal:product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(cos((4  /(3))(6*((-4/ 6)(2  *  (  -3*(x)  -  (6))-2*x)- 4)  -4*x)+3))exp(7* x+  4)log(sqrt((-3*x-  6) ^ 2  +9) + 3)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = cos((4/3)*(6*(-(2/3)*(2*(-3*x - 6) - 2*x) - 4) - 4*x) + 3), v = exp(7*x + 4)*ln(sqrt((-3*x - 6)^2 + 9) + 3)
+4. du/dx = -(112/3)*sin((112/3)*x + 35), dv/dx = (9*exp(7*x + 4)*x + 18*exp(7*x + 4) + 7*ln(sqrt(9*x^2 + 36*x + 45) + 3)*exp(7*x + 4)*(sqrt(9*x^2 + 36*x + 45))^2 + 21*ln(sqrt(9*x^2 + 36*x + 45) + 3)*exp(7*x + 4)*sqrt(9*x^2 + 36*x + 45))/(sqrt((-3*x - 6)^2 + 9)*(sqrt((-3*x - 6)^2 + 9) + 3))
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (9*cos((112/3)*x + 35)*exp(7*x + 4)*x + 18*cos((112/3)*x + 35)*exp(7*x + 4) + 7*cos((112/3)*x + 35)*ln(sqrt(9*x^2 + 36*x + 45) + 3)*exp(7*x + 4)*(sqrt(9*x^2 + 36*x + 45))^2 + 21*cos((112/3)*x + 35)*ln(sqrt(9*x^2 + 36*x + 45) + 3)*exp(7*x + 4)*sqrt(9*x^2 + 36*x + 45) - (112/3)*exp(7*x + 4)*ln(sqrt(9*x^2 + 36*x + 45) + 3)*sin((112/3)*x + 35)*(sqrt(9*x^2 + 36*x + 45))^2 - 112*exp(7*x + 4)*ln(sqrt(9*x^2 + 36*x + 45) + 3)*sin((112/3)*x + 35)*sqrt(9*x^2 + 36*x + 45))/(sqrt((-3*x - 6)^2 + 9)*(sqrt((-3*x - 6)^2 + 9) + 3))
+Answer: dy/dx = -(112/3)*sin((112/3)*x + 35)*exp(7*x + 4)*ln(sqrt(9*x^2 + 36*x + 45) + 3) + 7*cos((112/3)*x + 35)*exp(7*x + 4)*ln(sqrt(9*x^2 + 36*x + 45) + 3) + (9*cos((112/3)*x + 35)*exp(7*x + 4)*x + 18*cos((112/3)*x + 35)*exp(7*x + 4))/(sqrt((-3*x - 6)^2 + 9)*(sqrt((-3*x - 6)^2 + 9) + 3))
+
+================================================================================
+44. [Algebra] Discriminant 25 [format fuzz] [algebra_discriminant]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+x^  2 +- 1*x  +-  6=0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (x - 3)*(x + 2)
+3. Solve quad
+4. Answer: x = [3, -2]
+
+================================================================================
+45. [Algebra] Random solve 11 [format fuzz] [algebra_solve:quadratic]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+2*  x^2  -(4)*  (x) =0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = 2*x*(x - 2)
+3. Solve quad
+4. Answer: x = [2, 0]
+
+================================================================================
+46. [Algebra] Hidden quadratic 19 [format fuzz] [algebra_hard_solve]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+6
+x+  9  =2sqrt(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x - 2*sqrt(x) + 9
+3. Solve: no real solution
+4. Answer: no solution
+
+================================================================================
+47. [Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+x^  (sin(4*  (8*((5  *  (5* x **(2)  -4* x+7)  -4  *x)+  -  3)^3+2)  + pi/3))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = x^sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3)
+4. Let u = x and v = sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3)
+5. u' = 1, v' = 3000000*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)*x^5 - 7200000*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)*x^4 + 13209600*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)*x^3 - 12386304*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)*x^2 + 8454144*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)*x - 2359296*cos((96*(25*x^2 - 24*x + 32)^3 + pi + 24)/3)
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = x^(sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3) - 1)*(sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3) + 96*ln(x)*cos((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3)*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^2*(5*(10*x - 4) - 4)*x)
+Answer: dy/dx = x^(sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3) - 1)*(sin((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3) + 96*ln(x)*cos((12*(8*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^3 + 2) + pi)/3)*(5*(5*x^2 - 4*x + 7) - 4*x - 3)^2*(5*(10*x - 4) - 4)*x)
+
+================================================================================
+48. [Algebra] Random transform 4: cot [format fuzz] [algebra_transform:cot]
+  LLM: INCORRECT - explained or logically connected.
+================================================================================
+Input:
+2
+(cos(2  *((3/5)  * (-  3*  x)-3)  **2-  7)/ sin(2 *((3/5)  * (-3  *  x)-  (3))**2-7))
+(cot(2 *((3  / 5) *(  - 3 *x)- 3)  ^2  -7))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. cot(-7 + 2*(-3 - (9*x)/5)^2)
+2. Use cot(A) = cos(A)/sin(A).
+3. = cos(-7 + 2*(-3 - (9*x)/5)^2)/sin(-7 + 2*(-3 - (9*x)/5)^2)
+4. = LHS
+5. Hence (cot(2 *((3  / 5) *(  - 3 *x)- 3)  ^2  -7))
+6. Answer: cot(-7 + 2*(-3 - (9*x)/5)^2)
+
+================================================================================
+49. [Trigonometry] Random trig transform 7: cos2_sin [format fuzz] [trig_transform:cos2_sin]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+(1 -cos(2*2*x))
+2  *sin(2*x)  ^2
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use 1 - cos(2A) = 2sin^2 A.
+2. = 2*sin(2*x)^2
+3. Hence 2  *sin(2*x)  ^2
+4. Answer: 2*sin(2*x)^2
+
+================================================================================
+50. [Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM: INCORRECT - which asks for integration using parts twice for a specific function, but t[1D[K the solution give
+================================================================================
+Input:
+1
+(x)^ (2)sin(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by parts
+Use integration by parts repeatedly.
+= -x^2*cos(x) + 2*x*sin(x) + 2*cos(x) + C
+Answer: -x^2*cos(x) + 2*x*sin(x) + 2*cos(x) + C
+
+================================================================================
+51. [Trigonometry] Random trig rewrite 13: tan_ratio [format fuzz] [trig_rewrite:tan_ratio]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+4
+sin(5* ((4*x ^9-(7)*x^ 7-5 * x^6- 3*(x)^3  -2*x^  2  - 2*  x)/  ((((6)* x-6)**3- 6)^2 + (4))) -6*x) /cos(5*((4*  x  ^9-7*x^7-(5) *x^6- 3 * x^ 3-2 *  (x)  ^2 -2*x)/(((6*x-6)^(3)-6)^2 +4))- 6*x)
+(tan((5)*((4*  x **9-7*x^  7 -5  *x^6-3 *(x) ^3 - 2 *  (x)^2-2 * x)/  (((6*x-6)^(3)- 6)  ^2+ 4))- 6*x))
+(sin(5((4x  ^9-7x  ^7-5x ^6-3x ^3-2x**2  -2(x))/(((6x-6)^ 3-6) ^2+4)) -  6x))
+cos(5*((4 *  x**(9)-7* x^  7-5* x ^6-3*x ^3-  2*x**2-2*  x)/(((6  *x-6)^(3)-(6))^2+  4))-6  *x)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: Rw: 1 term/line | Blank = end | T: T: T: T: 1. Start with sin((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x)/cos((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x)
+2. Write in terms of tan((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x), sin((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x), cos((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x) only.
+3. Use tan(A) = sin(A)/cos(A).
+4. = tan((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x)
+5. Answer: tan((5*(-2*x - 2*x^2 - 3*x^3 - 5*x^6 - 7*x^7 + 4*x^9))/(4 + (-6 + (-6 + 6*x)^3)^2) - 6*x)
+
+================================================================================
+52. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(log((- 7x+ 3)^ 2+9))*  (tan(6(7(4x^  2  +3x+2) +pi/6) ^2+4))*(sec(2((7((4)*  (4((3(x) -(9))^2)+-pi/(2))^2-3)+2)+-3)^3 -3))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = ln((3 - 7*x)^2 + 9), v = tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)
+4. du/dx = (98*x - 42)/((3 - 7*x)^2 + 9), dv/dx = 4032*tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*tan(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^2*(8*(3*x - 9)^2 - pi)*(3*x - 9) + 14*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(sec(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6))^2*(42*(4*x^2 + 3*x + 2) + pi)*(8*x + 3)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (ln((3 - 7*x)^2 + 9)*(4032*tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*tan(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^2*(8*(3*x - 9)^2 - pi)*(3*x - 9) + 14*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(sec(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6))^2*(42*(4*x^2 + 3*x + 2) + pi)*(8*x + 3))*((3 - 7*x)^2 + 9) + tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(98*x - 42))/((3 - 7*x)^2 + 9)
+Answer: dy/dx = -14*(3 - 7*x)*tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)/((3 - 7*x)^2 + 9) + 14*ln((3 - 7*x)^2 + 9)*(sec(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6))^2*(42*(4*x^2 + 3*x + 2) + pi)*(8*x + 3)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3) + 4032*ln((3 - 7*x)^2 + 9)*tan(((42*(4*x^2 + 3*x + 2) + pi)^2 + 24)/6)*sec(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*tan(2*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^3 - 3)*(7*((8*(3*x - 9)^2 - pi)^2 - 3) - 1)^2*(8*(3*x - 9)^2 - pi)*(3*x - 9)
+
+================================================================================
+53. [Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM: INCORRECT - which asks for integration using parts twice for a specific function, but t[1D[K the solution give
+================================================================================
+Input:
+1
+x^  3 *exp(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by parts
+Use integration by parts repeatedly.
+= e^x*(x^3 - 3*x^2 + 6*x - 6) + C
+Answer: e^x*(x^3 - 3*x^2 + 6*x - 6) + C
+
+================================================================================
+54. [Algebra] Random solve 12 [format fuzz] [algebra_solve:quadratic]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+1(x)^2-(15) *x+  54  =0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (x - 9)*(x - 6)
+3. Solve quad
+4. Answer: x = [9, 6]
+
+================================================================================
+55. [Trigonometry] Random trig transform 5: cosec_recip [format fuzz] [trig_transform:cosec_recip]
+  LLM: INCORRECT - explanation for the "hence" step and unclear justification for moving from [K "= 1/sin(x)" to "= LH
+================================================================================
+Input:
+2
+(1  /sin(x))
+cosec(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. cosec(x)
+2. Use cosec(A) = 1/sin(A).
+3. = 1/sin(x)
+4. = LHS
+5. Hence cosec(x)
+6. Answer: cosec(x)
+
+================================================================================
+56. [Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM: INCORRECT - which asks for integration using parts twice for a specific function, but t[1D[K the solution give
+================================================================================
+Input:
+1
+(x)** 2*sin(x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by parts
+Use integration by parts repeatedly.
+= -x^2*cos(x) + 2*x*sin(x) + 2*cos(x) + C
+Answer: -x^2*cos(x) + 2*x*sin(x) + 2*cos(x) + C
+
+================================================================================
+57. [Integrate] Substitution 22 [format fuzz] [int_sub]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+x/sqrt(x^ 2+1)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Let u = x^2 + 1.
+= sqrt(x^2 + 1) + C
+Answer: sqrt(x^2 + 1) + C
+
+================================================================================
+58. [Algebra] Random solve 12 [format fuzz] [algebra_solve:shifted_power]
+  LLM: INCORRECT - progression, making it difficult to verify the correctness of each step. Th[2D[K The format and no
+================================================================================
+Input:
+6
+(4x  -1)**4 - (-5) ^4=  0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = ((4*x - 1)^2 - 25)*((4*x - 1)^2 + 25)
+3. Solve shifted power directly
+4. Answer: x = [3/2, -1]
+
+================================================================================
+59. [Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM: INCORRECT - derivative calculation, which does not directly address the initial request[7D[K request for "Log 
+================================================================================
+Input:
+1
+x**(asin((  -  2x)/10))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = x^asin(-x/5)
+4. Let u = x and v = asin(-x/5)
+5. u' = 1, v' = -1/(5*sqrt((25 - x^2)/25))
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = (5*x^(asin(-x/5) - 1)*asin(-x/5)*sqrt((25 - x^2)/25) - x^asin(-x/5)*ln(x))/(5*sqrt((25 - x^2)/25))
+Answer: dy/dx = (5*x^(asin(-x/5) - 1)*asin(-x/5)*sqrt((25 - x^2)/25) - x^asin(-x/5)*ln(x))/(5*sqrt((25 - x^2)/25))
+
+================================================================================
+60. [Integrate] Parts twice 7 [format fuzz] [int_parts_twice]
+  LLM: INCORRECT - which asks for integration using parts twice for a specific function, but t[1D[K the solution give
+================================================================================
+Input:
+1
+(x^3  *exp(x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Integration by parts
+Use integration by parts repeatedly.
+= e^x*(x^3 - 3*x^2 + 6*x - 6) + C
+Answer: e^x*(x^3 - 3*x^2 + 6*x - 6) + C
+
+================================================================================
+61. [SUVAT] Random SUVAT 23: find s
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+, 
+0
+7/6
+(1/ 2)
+(7 /3)
+
+Check:
+suvat_find_s
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: 
+s = ut + 1/2at^2
+= 0*7/3 + 1/2*1/2*7/3^2
+s = 49/36
+s = 1.36 m
+
+--- All variables ---
+s = 49/36 (1.36 m)
+u = 0 m/s
+v = 7/6 (1.17 m/s)
+a = 1/2 (0.5 m/s^2)
+t = 7/3 (2.33 s)
+
+================================================================================
+62. [Derive] Parametric hard 20 [format fuzz] [derive_parametric_hard]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+3
+((t)^5 +5*t)
+t**5  -5t^5
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: x(t): y(t): 1. Differentiate x(t) with respect to t.
+2. dx/dt = 5*t^4 + 5
+3. Differentiate y(t) with respect to t.
+4. dy/dt = -20*t^4
+5. Use dy/dx = (dy/dt)/(dx/dt).
+6. Answer: dy/dx = -4*t^4/(t^4 + 1)
+
+================================================================================
+63. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((tan(5* ((-5/8)*(4*(  -  1* x-6) ^  2+  1)  -3) **2+ 1))-(cot(5  *((3)*(((3)  *x+1) +  (0))**3 -(4))^  2  - 7)))* (sec(6  *  (3 *x  ^2-  1 *x  + 9)  +  -pi  /6))* ((cosec((2)  *  (8  *(3*  x^2+1*x+  0) - 5 *x)  -3))/ (((-1 *x  - 9) ^2+  (4*x +6)) **  2  +2))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3), v = ((-x - 9)^2 + 4*x + 6)^2 + 2
+4. du/dx = (50*(sec(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1))^2*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)*(-x - 6) + 270*(cosec(5*(3*(3*x + 1)^3 - 4)^2 - 7))^2*(3*(3*x + 1)^3 - 4)*(3*x + 1)^2)*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) + 6*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*tan((36*(3*x^2 - x + 9) - pi)/6)*(6*x - 1)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*cot(2*(8*(3*x^2 + x) - 5*x) - 3)*(8*(6*x + 1) - 5), dv/dx = 4*x^3 + 132*x^2 + 1316*x + 3828
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((((-x - 9)^2 + 4*x + 6)^2 + 2)*((50*(sec(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1))^2*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)*(-x - 6) + 270*(cosec(5*(3*(3*x + 1)^3 - 4)^2 - 7))^2*(3*(3*x + 1)^3 - 4)*(3*x + 1)^2)*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) + 6*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*tan((36*(3*x^2 - x + 9) - pi)/6)*(6*x - 1)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*cot(2*(8*(3*x^2 + x) - 5*x) - 3)*(8*(6*x + 1) - 5)) - (tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*(4*x^3 + 132*x^2 + 1316*x + 3828))/(((-x - 9)^2 + 4*x + 6)^2 + 2)^2
+7. = ((((-x - 9)^2 + 4*x + 6)^2 + 2)*((50*(sec(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1))^2*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)*(-x - 6) + 270*(cosec(5*(3*(3*x + 1)^3 - 4)^2 - 7))^2*(3*(3*x + 1)^3 - 4)*(3*x + 1)^2)*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) + 6*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*tan((36*(3*x^2 - x + 9) - pi)/6)*(6*x - 1)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*cot(2*(8*(3*x^2 + x) - 5*x) - 3)*(8*(6*x + 1) - 5)) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*((-x - 9)^2 + 4*x + 6)*(4 - 2*(-x - 9)))/(((-x - 9)^2 + 4*x + 6)^2 + 2)^2
+Answer: dy/dx = ((((-x - 9)^2 + 4*x + 6)^2 + 2)*((50*(sec(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1))^2*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)*(-x - 6) + 270*(cosec(5*(3*(3*x + 1)^3 - 4)^2 - 7))^2*(3*(3*x + 1)^3 - 4)*(3*x + 1)^2)*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) + 6*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*tan((36*(3*x^2 - x + 9) - pi)/6)*(6*x - 1)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*cot(2*(8*(3*x^2 + x) - 5*x) - 3)*(8*(6*x + 1) - 5)) - 2*(tan(5*(-(5/8)*(4*(-x - 6)^2 + 1) - 3)^2 + 1) - cot(5*(3*(3*x + 1)^3 - 4)^2 - 7))*sec((36*(3*x^2 - x + 9) - pi)/6)*cosec(2*(8*(3*x^2 + x) - 5*x) - 3)*((-x - 9)^2 + 4*x + 6)*(4 - 2*(-x - 9)))/(((-x - 9)^2 + 4*x + 6)^2 + 2)^2
+
+================================================================================
+64. [SUVAT] Random SUVAT 15: find a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+104/  27
+4
+16  / 9
+, 
+((4)  /3)
+
+Check:
+suvat_find_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: 
+= v = u + at
+a = (v-u)/t
+= (16/9 - 4) / (4/3)
+a = -5/3
+a = -1.67 m/s^2
+
+--- All variables ---
+s = 104/27 (3.85 m)
+u = 4 m/s
+v = 16/9 (1.78 m/s)
+a = -5/3 (-1.67 m/s^2)
+t = 4/3 (1.33 s)
+
+================================================================================
+65. [Algebra] Random composition 14 [format fuzz] [algebra_comp]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+7
+(sqrt(((-7*x-1)  ^3)^2  +2))
+(4x-  7)^2+(6x- 4)^(2)+7
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Comp f(g(x))
+f: g: 1. f(x) = sqrt((-7*x - 1)^6 + 2)
+2. g(x) = (4*x - 7)^2 + (6*x - 4)^2 + 7
+3. Substitute g(x) into f.
+4. Simplify the result.
+5. f(g(x)) = sqrt((-7*((4*x - 7)^2 + (6*x - 4)^2 + 7) - 1)^6 + 2)
+
+================================================================================
+66. [Algebra] Random solve 11 [format fuzz] [algebra_solve:shifted_power]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+((7*x-8)  **  4- (-22) **4=0)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = ((7*x - 8)^2 - 484)*((7*x - 8)^2 + 484)
+3. Solve shifted power directly
+4. Answer: x = [30/7, -2]
+
+================================================================================
+67. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(exp((sin(5 *(5*  (9*x ** 2 +2  * (x)  +- (5)) -  5  *x)  +  pi  /  3)  + 1)/(exp(  - 7* x  +3)  + 2)))(log(exp(  - 5* x - 8) + 5))(((((3  /8)x+(  -  3/ 5))  ** 5) **10)(cosec(7* (6  *  ((6*(((5*x-  8) **2+  (6  *x  -1))+3)^ 3+  5) +  -(3))^3+ 5)  ** 2 -  (7))))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2)), v = ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)
+4. du/dx = exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*(5*(exp(3 - 7*x) + 2)*cos((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3)*(5*(18*x + 2) - 5) + 7*(sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)*exp(3 - 7*x))/(exp(3 - 7*x) + 2)^2, dv/dx = -5*exp(-5*x - 8)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)/(exp(-5*x - 8) + 5) + (75/4)*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^49*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7) - 4536*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*cot(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^2*((5*x - 8)^2 + 6*x + 2)^2*(10*(5*x - 8) + 6)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*(-5*exp(-5*x - 8)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)/(exp(-5*x - 8) + 5) + (75/4)*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^49*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7) - 4536*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*cot(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^2*((5*x - 8)^2 + 6*x + 2)^2*(10*(5*x - 8) + 6))*(exp(3 - 7*x) + 2)^2 + ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*(5*(exp(3 - 7*x) + 2)*cos((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3)*(5*(18*x + 2) - 5) + 7*(sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)*exp(3 - 7*x)))/(exp(3 - 7*x) + 2)^2
+Answer: dy/dx = exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*(5*(exp(3 - 7*x) + 2)*cos((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3)*(5*(18*x + 2) - 5) + 7*(sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)*exp(3 - 7*x))*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)/(exp(3 - 7*x) + 2)^2 + -5*exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*exp(-5*x - 8)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)/(exp(-5*x - 8) + 5) + (75/4)*exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^49*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7) - 4536*exp((sin((15*(5*(9*x^2 + 2*x - 5) - 5*x) + pi)/3) + 1)/(exp(3 - 7*x) + 2))*ln(exp(-5*x - 8) + 5)*((3/8)*x - 3/5)^50*cosec(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*cot(7*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)^2 - 7)*(6*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^3 + 5)*(6*((5*x - 8)^2 + 6*x + 2)^3 + 2)^2*((5*x - 8)^2 + 6*x + 2)^2*(10*(5*x - 8) + 6)
+
+================================================================================
+68. [Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+((((-(2)*x -3)**2)^2+3)**x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = ((-2*x - 3)^4 + 3)^x
+4. Let u = (-2*x - 3)^4 + 3 and v = x
+5. u' = -8*(-2*x - 3)^3, v' = 1
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = -8*((-2*x - 3)^4 + 3)^(x - 1)*x*(-2*x - 3)^3 + ((-2*x - 3)^4 + 3)^(x - 1)*ln((-2*x - 3)^4 + 3)*(-2*x - 3)^4 + 3*((-2*x - 3)^4 + 3)^(x - 1)*ln((-2*x - 3)^4 + 3)
+Answer: dy/dx = -8*((-2*x - 3)^4 + 3)^(x - 1)*x*(-2*x - 3)^3 + ((-2*x - 3)^4 + 3)^(x - 1)*ln((-2*x - 3)^4 + 3)*(-2*x - 3)^4 + 3*((-2*x - 3)^4 + 3)^(x - 1)*ln((-2*x - 3)^4 + 3)
+
+================================================================================
+69. [Algebra] Random complete square 9 [format fuzz] [algebra_complete_square]
+  LLM: INCORRECT - transformations, and uses non-standard notation (e.g., "1 cmp," "2 xform").[8D[K xform"). Addition
+================================================================================
+Input:
+5
+4 *x^2  +16 *x+8
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Expression: 1. Method: Complete square
+2. Input = 4*x^2 + 16*x + 8
+3. Factor out 4 from the quadratic terms: 4*(x^2 + 4*x) + 8
+4. Half the coefficient of x: 2
+5. Complete square: 4*(x + 2)^2 - 8
+6. Ans = 4*(x + 2)^2 - 8
+
+================================================================================
+70. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sin(7*(8*x-8)))*(((x)^2+  7)^2)*((-5 *x^4+(2)*x+1)^2)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = sin(7*(8*x - 8)), v = (x^2 + 7)^2*(1 - 5*x^4 + 2*x)^2
+4. du/dx = 56*cos(56*x - 56), dv/dx = 196 - 4880*x^4 + 9720*x^7 - 180*x^8 + 300*x^11 - 816*x^5 + 168*x^2 - 1960*x^6 + 3500*x^9 - 1732*x^3 + 420*x
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = sin(7*(8*x - 8))*(196 - 4880*x^4 + 9720*x^7 - 180*x^8 + 300*x^11 - 816*x^5 + 168*x^2 - 1960*x^6 + 3500*x^9 - 1732*x^3 + 420*x) + 56*(x^2 + 7)^2*(1 - 5*x^4 + 2*x)^2*cos(56*x - 56)
+Answer: dy/dx = 56*cos(7*(8*x - 8))*(x^2 + 7)^2*(1 - 5*x^4 + 2*x)^2 + 4*sin(7*(8*x - 8))*(x^2 + 7)*x*(1 - 5*x^4 + 2*x)^2 + 2*sin(7*(8*x - 8))*(x^2 + 7)^2*(1 - 5*x^4 + 2*x)*(2 - 20*x^3)
+
+================================================================================
+71. [Integrate] Random integrate auto 2: inverse_trig [integrate_auto:inverse_trig]
+  LLM: INCORRECT - prompt. The prompt suggests integrating an inverse trigonometric function, [K but the provided solu
+================================================================================
+Input:
+1
+(6*x-7)^15
+1
+
+Check:
+check; calculated answer correctness
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Consider y = (6*x - 7)^16
+= 1/96*(6*x - 7)^16 + C
+Answer: 1/96*(6*x - 7)^16 + C
+
+================================================================================
+72. [Algebra] Random expand 5: (4x-4)^4 [format fuzz] [algebra_expand]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+3
+(4 *x  -4) ^4
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Expr: Max: 1. Method: Expand expression
+2. Input = (4*x - 4)^4
+3. Binomial expansion
+4. Expand (4*x - 4)^4
+5. Term 1: 256*x^4
+6. Term 2: -1024*x^3
+7. Term 3: 1536*x^2
+8. Term 4: -1024*x
+9. Term 5: 256
+10. Out = 256*x^4 - 1024*x^3 + 1536*x^2 - 1024*x + 256
+
+================================================================================
+73. [Algebra] Hidden quadratic 20 [format fuzz] [algebra_hard_solve]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+6
+(x+3=3sqrt((x)))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x - 3*sqrt(x) + 3
+3. Solve: no real solution
+4. Answer: no solution
+
+================================================================================
+74. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((atan(-4x-3))  /((8x  +7)^2+7)) ^  4
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (atan(-4*x - 3))^4, v = ((8*x + 7)^2 + 7)^4
+4. du/dx = -16*(atan(-4*x - 3))^3/((-4*x - 3)^2 + 1), dv/dx = 512*(64*x^2 + 112*x + 56)^3*x + 448*(64*x^2 + 112*x + 56)^3
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (-16*(64*x^2 + 112*x + 56)^4*(atan(-4*x - 3))^3 - 8192*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^3 - 19456*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^2 - 15872*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x - 4480*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3)/(((-4*x - 3)^2 + 1)*((8*x + 7)^2 + 7)^8)
+7. = (-16*(64*x^2 + 112*x + 56)^4*(atan(-4*x - 3))^3 - 8192*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^3 - 19456*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^2 - 15872*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x - 4480*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3)/(((-4*x - 3)^2 + 1)*((8*x + 7)^2 + 7)^8)
+Answer: dy/dx = (-16*(64*x^2 + 112*x + 56)^4*(atan(-4*x - 3))^3 - 8192*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^3 - 19456*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x^2 - 15872*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3*x - 4480*(atan(-4*x - 3))^4*(64*x^2 + 112*x + 56)^3)/(((-4*x - 3)^2 + 1)*((8*x + 7)^2 + 7)^8)
+
+================================================================================
+75. [Trigonometry] Random trig rewrite 11: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+4
+1-cos(2* (2*(4* ((3)  * ((1/ 4)  *  (6*(x)^2-4  *  x+5)-  6)-(5) *(x))  -  (2))-3*x))
+sin(2*(4*  (3*((1/  (4))*(6*x  ^(2) -4  *x+5)-  6)-5 *x) -2) -3* x)^2
+cos(2  *(4*  (3*((1  /4)*(6*x^2-  4* x+5)  -6)-5*  x)  - (2)) -3*x)**2
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: Rw: 1 term/line | Blank = end | T: T: T: 1. Start with 1 - cos(2*(-3*x + 2*(-2 + 4*(-5*x + 3*(-6 + (5 - 4*x + 6*x^2)/4)))))
+2. Write in terms of sin(-3*x + 2*(-2 + 4*(-5*x + 3*(-6 + (5 - 4*x + 6*x^2)/4))))^2, cos(-3*x + 2*(-2 + 4*(-5*x + 3*(-6 + (5 - 4*x + 6*x^2)/4))))^2 only.
+3. Use 1 - cos(2A) = 2sin^2(A).
+4. = 2*sin(-3*x + 2*(-2 + 4*(-5*x + 3*(-6 + (5 - 4*x + 6*x^2)/4))))^2
+5. Answer: 2*sin(-3*x + 2*(-2 + 4*(-5*x + 3*(-6 + (5 - 4*x + 6*x^2)/4))))^2
+
+================================================================================
+76. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((tan(5*(9*x **  2-  1*x+  - 4)+2))/((x)**2+  8))**2
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (tan(5*(9*x^2 - x - 4) + 2))^2, v = (x^2 + 8)^2
+4. du/dx = 180*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2*x - 10*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2, dv/dx = 4*x^3 + 32*x
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (180*x^5*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 10*x^4*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 2880*x^3*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 160*x^2*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 11520*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2*x - 640*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 4*(tan(45*x^2 - 5*x - 18))^2*x^3 - 32*(tan(45*x^2 - 5*x - 18))^2*x)/(x^2 + 8)^4
+7. = (180*x^5*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 10*x^4*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 2880*x^3*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 160*x^2*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 11520*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2*x - 640*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 4*(tan(45*x^2 - 5*x - 18))^2*x^3 - 32*(tan(45*x^2 - 5*x - 18))^2*x)/(x^2 + 8)^4
+Answer: dy/dx = (180*x^5*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 10*x^4*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 2880*x^3*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 160*x^2*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 + 11520*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2*x - 640*tan(45*x^2 - 5*x - 18)*(sec(45*x^2 - 5*x - 18))^2 - 4*(tan(45*x^2 - 5*x - 18))^2*x^3 - 32*(tan(45*x^2 - 5*x - 18))^2*x)/(x^2 + 8)^4
+
+================================================================================
+77. [Trigonometry] Random trig transform 6: cot_ratio [format fuzz] [trig_transform:cot_ratio]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+cos(x) /sin(x)
+(cot(x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. cot(x)
+2. Use cot(A) = cos(A)/sin(A).
+3. = cos(x)/sin(x)
+4. = LHS
+5. Hence (cot(x))
+6. Answer: cot(x)
+
+================================================================================
+78. [Derive] Log diff 25 [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sin(x))^(7*x+2)
+
+Check:
+check; calculated answer correctness
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = (sin(x))^(7*x + 2)
+4. Let u = sin(x) and v = 7*x + 2
+5. u' = cos(x), v' = 7
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = 7*(sin(x))^(7*x + 1)*x*cos(x) + 2*(sin(x))^(7*x + 1)*cos(x) + 7*(sin(x))^(7*x + 2)*ln(sin(x))
+Answer: dy/dx = 7*(sin(x))^(7*x + 1)*x*cos(x) + 2*(sin(x))^(7*x + 1)*cos(x) + 7*(sin(x))^(7*x + 2)*ln(sin(x))
+
+================================================================================
+79. [Algebra] Hard simultaneous 22: disguised quadratic [format fuzz] [algebra_simultaneous_hard]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+6
+1* x  **2+  5 *x +4=0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (x + 4)*(x + 1)
+3. Solve quad
+4. Answer: x = [-4, -1]
+
+================================================================================
+80. [Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((-1x^  5 -7x^4-2x**2+4)+((3)*  sin(8(4(5x **2+ 1x+-  6)+7)^2-(1))  -3cos(8((4)  *(5(x) ^ 2+ 1(x)+ - 6)  +(7))^  2  -  1))) /((1x-1)^2+( -8x+6)**  2+7))^3
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^3, v = ((x - 1)^2 + (6 - 8*x)^2 + 7)^3
+4. du/dx = 3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^2*(-5*x^4 - 28*x^3 - 4*x + 192*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1) + 192*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1)), dv/dx = 1647750*x^5 - 6210750*x^4 + 9721920*x^3 - 7868616*x^2 + 3290496*x - 569184
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (3*((x - 1)^2 + (6 - 8*x)^2 + 7)^3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^2*(-5*x^4 - 28*x^3 - 4*x + 192*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1) + 192*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1)) - (4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^3*(1647750*x^5 - 6210750*x^4 + 9721920*x^3 - 7868616*x^2 + 3290496*x - 569184))/((x - 1)^2 + (6 - 8*x)^2 + 7)^6
+7. = (3*((x - 1)^2 + (6 - 8*x)^2 + 7)^3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^2*(-5*x^4 - 28*x^3 - 4*x + 192*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1) + 192*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1)) - 3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^3*((x - 1)^2 + (6 - 8*x)^2 + 7)^2*(2*(x - 1) - 16*(6 - 8*x)))/((x - 1)^2 + (6 - 8*x)^2 + 7)^6
+Answer: dy/dx = (3*((x - 1)^2 + (6 - 8*x)^2 + 7)^3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^2*(-5*x^4 - 28*x^3 - 4*x + 192*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1) + 192*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1)*(4*(5*x^2 + x - 6) + 7)*(10*x + 1)) - 3*(4 - x^5 - 7*x^4 - 2*x^2 + 3*sin(8*(4*(5*x^2 + x - 6) + 7)^2 - 1) - 3*cos(8*(4*(5*x^2 + x - 6) + 7)^2 - 1))^3*((x - 1)^2 + (6 - 8*x)^2 + 7)^2*(2*(x - 1) - 16*(6 - 8*x)))/((x - 1)^2 + (6 - 8*x)^2 + 7)^6
+
+================================================================================
+81. [Derive] Random derive normal 3: quotient [format fuzz] [derive_normal:quotient]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+((log(exp(-1 *x-3)+  (9)))/ ((log((8*x-5)**2+6)) ^2+ 8))/  ((- 6*x-5)**2+(3  *x-  3)**(2)+ 7)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = ln(exp(-x - 3) + 9), v = ((ln((8*x - 5)^2 + 6))^2 + 8)*((-6*x - 5)^2 + (3*x - 3)^2 + 7)
+4. du/dx = -exp(-x - 3)/(exp(-x - 3) + 9), dv/dx = (5760*(ln(64*x^2 - 80*x + 31))^2*x^3 - 4512*(ln(64*x^2 - 80*x + 31))^2*x^2 - 570*(ln(64*x^2 - 80*x + 31))^2*x + 1302*(ln(64*x^2 - 80*x + 31))^2 + 46080*x^3 - 36096*x^2 - 4560*x + 11520*x^3*ln(64*x^2 - 80*x + 31) + 3552*x^2*ln(64*x^2 - 80*x + 31) + 3776*x*ln(64*x^2 - 80*x + 31) - 6560*ln(64*x^2 - 80*x + 31) + 10416)/((8*x - 5)^2 + 6)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (-((ln((8*x - 5)^2 + 6))^2 + 8)*((-6*x - 5)^2 + (3*x - 3)^2 + 7)*exp(-x - 3)*((8*x - 5)^2 + 6) - ln(exp(-x - 3) + 9)*(5760*(ln(64*x^2 - 80*x + 31))^2*x^3 - 4512*(ln(64*x^2 - 80*x + 31))^2*x^2 - 570*(ln(64*x^2 - 80*x + 31))^2*x + 1302*(ln(64*x^2 - 80*x + 31))^2 + 46080*x^3 - 36096*x^2 - 4560*x + 11520*x^3*ln(64*x^2 - 80*x + 31) + 3552*x^2*ln(64*x^2 - 80*x + 31) + 3776*x*ln(64*x^2 - 80*x + 31) - 6560*ln(64*x^2 - 80*x + 31) + 10416)*(exp(-x - 3) + 9))/((exp(-x - 3) + 9)*((8*x - 5)^2 + 6)*((ln((8*x - 5)^2 + 6))^2 + 8)^2*((-6*x - 5)^2 + (3*x - 3)^2 + 7)^2)
+7. = (-((ln((8*x - 5)^2 + 6))^2 + 8)*((-6*x - 5)^2 + (3*x - 3)^2 + 7)*exp(-x - 3)*((8*x - 5)^2 + 6) - ln(exp(-x - 3) + 9)*(((ln((8*x - 5)^2 + 6))^2 + 8)*(-12*(-6*x - 5) + 6*(3*x - 3))*((8*x - 5)^2 + 6) + 32*((-6*x - 5)^2 + (3*x - 3)^2 + 7)*ln((8*x - 5)^2 + 6)*(8*x - 5))*(exp(-x - 3) + 9))/((exp(-x - 3) + 9)*((8*x - 5)^2 + 6)*((ln((8*x - 5)^2 + 6))^2 + 8)^2*((-6*x - 5)^2 + (3*x - 3)^2 + 7)^2)
+Answer: dy/dx = (-((ln((8*x - 5)^2 + 6))^2 + 8)*((-6*x - 5)^2 + (3*x - 3)^2 + 7)*exp(-x - 3)*((8*x - 5)^2 + 6) - ln(exp(-x - 3) + 9)*(((ln((8*x - 5)^2 + 6))^2 + 8)*(-12*(-6*x - 5) + 6*(3*x - 3))*((8*x - 5)^2 + 6) + 32*((-6*x - 5)^2 + (3*x - 3)^2 + 7)*ln((8*x - 5)^2 + 6)*(8*x - 5))*(exp(-x - 3) + 9))/((exp(-x - 3) + 9)*((8*x - 5)^2 + 6)*((ln((8*x - 5)^2 + 6))^2 + 8)^2*((-6*x - 5)^2 + (3*x - 3)^2 + 7)^2)
+
+================================================================================
+82. [SUVAT] Random SUVAT 19: find t
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+-52
+1
+-27
+-7
+,
+
+Check:
+suvat_find_t
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: 
+= v = u + at
+t = (v-u)/a
+= (-27 - 1) / (-7)
+t = 4
+
+--- All variables ---
+s = -52 m
+u = 1 m/s
+v = -27 m/s
+a = -7 m/s^2
+t = 4 s
+
+================================================================================
+83. [Algebra] Circle-line 23 [format fuzz] [algebra_circle_hard]
+  LLM: INCORRECT - 1. **Skipped Steps**: The transition from "poly" to solving the equation is[2D[K is not clearly ex
+================================================================================
+Input:
+6
+x^(4)+2  *  x^2-196=0
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x^4 + 2*x^2 - 196
+3. Solve hidden substitution u=x^2
+4. Answer: x = [((1/2)*(sqrt(788) - 2))^(1/2), -1*((1/2)*(sqrt(788) - 2))^(1/2)]
+
+================================================================================
+84. [Trigonometry] Random trig transform 6: cot_ratio [format fuzz] [trig_transform:cot_ratio]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+cos(x)  / sin(x)
+(cot(x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. cot(x)
+2. Use cot(A) = cos(A)/sin(A).
+3. = cos(x)/sin(x)
+4. = LHS
+5. Hence (cot(x))
+6. Answer: cot(x)
+
+================================================================================
+85. [Derive] Log diff 24 [format fuzz] [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sqrt((1*x + 3) **  2  +  6)+ 1)**x
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = (sqrt((x + 3)^2 + 6) + 1)^x
+4. Let u = sqrt((x + 3)^2 + 6) + 1 and v = x
+5. u' = (x + 3)/sqrt((x + 3)^2 + 6), v' = 1
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = ((sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*x^2 + 3*(sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*x + (sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*ln(sqrt(x^2 + 6*x + 15) + 1)*(sqrt(x^2 + 6*x + 15))^2 + (sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*ln(sqrt(x^2 + 6*x + 15) + 1)*sqrt(x^2 + 6*x + 15))/sqrt((x + 3)^2 + 6)
+Answer: dy/dx = ((sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*x^2 + 3*(sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*x + (sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*ln(sqrt(x^2 + 6*x + 15) + 1)*(sqrt(x^2 + 6*x + 15))^2 + (sqrt(x^2 + 6*x + 15) + 1)^(x - 1)*ln(sqrt(x^2 + 6*x + 15) + 1)*sqrt(x^2 + 6*x + 15))/sqrt((x + 3)^2 + 6)
+
+================================================================================
+86. [Integrate] Random integrate auto 2: du_over_sqrt [format fuzz] [integrate_auto:du_over_sqrt]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(146 * x   - 50) /  sqrt((-8*  x+5) ^2+(3*x  +  (5))^2+6)
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Let u = (5 - 8*x)^2 + (3*x + 5)^2 + 6.
+= 2*sqrt((5 - 8*x)^2 + (3*x + 5)^2 + 6) + C
+Answer: 2*sqrt((5 - 8*x)^2 + (3*x + 5)^2 + 6) + C
+
+================================================================================
+87. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((6*  x**5-5*x^4 +  2*  x**2- 6*(x) +1) /  (((3*x+5)/((8*  x-1) ^2+4)) ^2+3))  *(sqrt((x)^  2+ 2))*  (log((6*x+3)**(2)+ (8 *x+  2)^(2)+8))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8), v = (3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2
+4. du/dx = (30*x^4 - 20*x^3 + 4*x - 6)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + 32*(6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)*(8*x - 1)*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*x*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)/sqrt(x^2 + 2) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*(12*(6*x + 3) + 16*(8*x + 2))/((6*x + 3)^2 + (8*x + 2)^2 + 8), dv/dx = 5394*x + 49152*x^3 - 18432*x^2 - 450
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)*((30*x^4 - 20*x^3 + 4*x - 6)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + 32*(6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)*(8*x - 1)*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*x*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)/sqrt(x^2 + 2) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*(12*(6*x + 3) + 16*(8*x + 2))/((6*x + 3)^2 + (8*x + 2)^2 + 8)) - (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)*(5394*x + 49152*x^3 - 18432*x^2 - 450))/((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)^2
+7. = (((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)*((30*x^4 - 20*x^3 + 4*x - 6)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + 32*(6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)*(8*x - 1)*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*x*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)/sqrt(x^2 + 2) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*(12*(6*x + 3) + 16*(8*x + 2))/((6*x + 3)^2 + (8*x + 2)^2 + 8)) - (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)*(6*(3*x + 5) + 96*((8*x - 1)^2 + 4)*(8*x - 1)))/((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)^2
+Answer: dy/dx = (((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)*((30*x^4 - 20*x^3 + 4*x - 6)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + 32*(6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)*(8*x - 1)*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*x*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)/sqrt(x^2 + 2) + (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*(12*(6*x + 3) + 16*(8*x + 2))/((6*x + 3)^2 + (8*x + 2)^2 + 8)) - (6*x^5 - 5*x^4 + 2*x^2 - 6*x + 1)*((8*x - 1)^2 + 4)^2*sqrt(x^2 + 2)*ln((6*x + 3)^2 + (8*x + 2)^2 + 8)*(6*(3*x + 5) + 96*((8*x - 1)^2 + 4)*(8*x - 1)))/((3*x + 5)^2 + 3*((8*x - 1)^2 + 4)^2)^2
+
+================================================================================
+88. [Derive] Random derive normal 2: root_chain [format fuzz] [derive_normal:root_chain]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+sqrt((-  2x- 7)  ^  2+  11)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Chain rule
+3. u = (-2*x - 7)^2 + 11
+4. du/dx = 8*x + 28
+5. = (8*x + 28)/(2*sqrt((-2*x - 7)^2 + 11))
+Answer: dy/dx = (4*x + 14)/sqrt((-2*x - 7)^2 + 11)
+
+================================================================================
+89. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+-  8
+-(8)
+,
+(0)
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+90. [Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+cosec(2*x) ^2-cot(2*x)**2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use cosec^2(A)-cot^2(A) = 1.
+2. = 1
+3. Hence 1
+4. Answer: 1
+
+================================================================================
+91. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sin(6*(7* x+4)- (5))) *(sec(6*(3 *(x)+3)+1))*(tan((7)*(-2*x  +4)-2))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = sin(6*(7*x + 4) - 5), v = sec(6*(3*x + 3) + 1)*tan(7*(4 - 2*x) - 2)
+4. du/dx = 42*cos(42*x + 19), dv/dx = -14*sec(18*x + 19)*(sec(26 - 14*x))^2 + 18*tan(26 - 14*x)*sec(18*x + 19)*tan(18*x + 19)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = -14*sin(42*x + 19)*sec(18*x + 19)*(sec(26 - 14*x))^2 + 18*sin(42*x + 19)*tan(26 - 14*x)*sec(18*x + 19)*tan(18*x + 19) + 42*sec(18*x + 19)*tan(26 - 14*x)*cos(42*x + 19)
+Answer: dy/dx = 42*cos(42*x + 19)*sec(18*x + 19)*tan(26 - 14*x) + 18*sin(42*x + 19)*sec(18*x + 19)*tan(18*x + 19)*tan(26 - 14*x) - 14*sin(42*x + 19)*sec(18*x + 19)*(sec(26 - 14*x))^2
+
+================================================================================
+92. [Derive] Random derive normal 4: trig_composite [format fuzz] [derive_normal:trig_composite]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sin(7((6 /2) *(8((  -9x- 1)^  (2))  ^2  +3) -5) -  6x)+ cos(6((-7/5) * x+(9/2))+pi/  6))^ 7
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using chain rule
+3. Let u = sin(7*(3*(8*(-9*x - 1)^4 + 3) - 5) - 6*x) + cos((36*(9/2 - (7/5)*x) + pi)/6)
+4. dy/dx = 7*u^(6)*du/dx
+5. = -42336*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*cos(168*(-9*x - 1)^4 - 6*x + 28)*(-9*x - 1)^3 - 42*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*cos(168*(-9*x - 1)^4 - 6*x + 28) + (294/5)*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*sin((162 - (252/5)*x + pi)/6)
+Answer: dy/dx = -42336*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*cos(168*(-9*x - 1)^4 - 6*x + 28)*(-9*x - 1)^3 - 42*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*cos(168*(-9*x - 1)^4 - 6*x + 28) + (294/5)*(sin(168*(-9*x - 1)^4 - 6*x + 28) + cos((162 - (252/5)*x + pi)/6))^6*sin((162 - (252/5)*x + pi)/6)
+
+================================================================================
+93. [Integrate] Random integrate auto 2: chebyshev [format fuzz] [integrate_auto:chebyshev]
+  LLM: INCORRECT - and it seems there might be a formatting issue or missing context that coul[4D[K could affect the 
+================================================================================
+Input:
+1
+(-6 *  x- 4) **14
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Consider y = (-6*x - 4)^15
+= -1/90*(-6*x - 4)^15 + C
+Answer: -1/90*(-6*x - 4)^15 + C
+
+================================================================================
+94. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+( -(8))
+ -(8)
+,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+95. [Algebra] Random transform 3: tan [format fuzz] [algebra_transform:tan]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+sin((8/ 2)((8  / (8))x+  ((8)/2)) +  (3))  /cos((8/2)((8/ 8)x+((8)/2))+3)
+tan((8/2)  *((8/8)*x + (8/2)) +3)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: E1: E2: 1. tan(3 + 4*(4 + x))
+2. Use tan(A) = sin(A)/cos(A).
+3. = sin(3 + 4*(4 + x))/cos(3 + 4*(4 + x))
+4. = LHS
+5. Hence tan((8/2)  *((8/8)*x + (8/2)) +3)
+6. Answer: tan(3 + 4*(4 + x))
+
+================================================================================
+96. [Trigonometry] Random trig transform 7: cos2_cos [format fuzz] [trig_transform:cos2_cos]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+2
+(1+cos(2*2* (x)))
+(2cos(2x)**(2))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use 1 + cos(2A) = 2cos^2 A.
+2. = 2*cos(2*x)^2
+3. Hence (2cos(2x)**(2))
+4. Answer: 2*cos(2*x)^2
+
+================================================================================
+97. [Derive] Log diff 23 [format fuzz] [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(x^  (tan((  -7 /8)  * ((4/3)*(3 *((6*((2 /8)*(x)  +  (8/5)) -2*x)+0) ^3  -6)-  2)+3)))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = x^tan(3 - (7/8)*((4/3)*(3*(6*((1/4)*x + 8/5) - 2*x)^3 - 6) - 2))
+4. Let u = x and v = tan(3 - (7/8)*((4/3)*(3*(6*((1/4)*x + 8/5) - 2*x)^3 - 6) - 2))
+5. u' = 1, v' = (12096/25)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2 - (252/5)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2*x + (21/16)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2*x^2
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) - 1)*tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + (12096/25)*x^tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2 - (252/5)*x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + 1)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2 + (21/16)*x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + 2)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2
+Answer: dy/dx = x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) - 1)*tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + (12096/25)*x^tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2 - (252/5)*x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + 1)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2 + (21/16)*x^(tan(47/4 - (7/2)*(48/5 - (1/2)*x)^3) + 2)*ln(x)*(sec(47/4 - (7/2)*(48/5 - (1/2)*x)^3))^2
+
+================================================================================
+98. [Derive] Random derive normal 3: inverse_trig [format fuzz] [derive_normal:inverse_trig]
+  LLM: INCORRECT - incomplete, making it difficult to assess the correctness of the working.
+================================================================================
+Input:
+1
+asin((4  *x -3)/10)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Chain rule
+3. u = (4*x - 3)/10
+4. du/dx = 2/5
+5. = 2/(5*sqrt((100 - (4*x - 3)^2)/100))
+Answer: dy/dx = 2/(5*sqrt((100 - (4*x - 3)^2)/100))
+
+================================================================================
+99. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+((sqrt(((5*x  +5)^ (3)-1)^ (2)+ 5)) - (log(exp(-3*  x + 6) +(4))))  *  ((cosec((5) *((4*(2  *  x- 7) -5)+3) ^3-4)) -((log(((3  * x+7)^ 3  -(5)) ^  2+ (2)))/ ((exp(1* x  +  5)+7)**(2)+  5)))* (atan(7 *x -5))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5), v = (exp(x + 5) + 7)^2 + 5
+4. du/dx = (15*((5*x + 5)^3 - 1)*(5*x + 5)^2*(exp(6 - 3*x) + 4) + 3*exp(6 - 3*x)*sqrt(((5*x + 5)^3 - 1)^2 + 5))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)/(sqrt(((5*x + 5)^3 - 1)^2 + 5)*(exp(6 - 3*x) + 4)) + (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(2*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*(exp(x + 5) + 7)*exp(x + 5) - 120*((exp(x + 5) + 7)^2 + 5)*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*cot(5*(4*(2*x - 7) - 2)^3 - 4)*(4*(2*x - 7) - 2)^2 + -18*((3*x + 7)^3 - 5)*(3*x + 7)^2/(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5) + 7*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))/((7*x - 5)^2 + 1), dv/dx = 2*exp(2*x + 10) + 14*exp(x + 5)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((exp(x + 5) + 7)^2 + 5)*((15*((5*x + 5)^3 - 1)*(5*x + 5)^2*(exp(6 - 3*x) + 4) + 3*exp(6 - 3*x)*sqrt(((5*x + 5)^3 - 1)^2 + 5))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)/(sqrt(((5*x + 5)^3 - 1)^2 + 5)*(exp(6 - 3*x) + 4)) + (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(2*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*(exp(x + 5) + 7)*exp(x + 5) - 120*((exp(x + 5) + 7)^2 + 5)*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*cot(5*(4*(2*x - 7) - 2)^3 - 4)*(4*(2*x - 7) - 2)^2 + -18*((3*x + 7)^3 - 5)*(3*x + 7)^2/(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5) + 7*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))/((7*x - 5)^2 + 1)) - (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)*(2*exp(2*x + 10) + 14*exp(x + 5)))/((exp(x + 5) + 7)^2 + 5)^2
+7. = (((exp(x + 5) + 7)^2 + 5)*((15*((5*x + 5)^3 - 1)*(5*x + 5)^2*(exp(6 - 3*x) + 4) + 3*exp(6 - 3*x)*sqrt(((5*x + 5)^3 - 1)^2 + 5))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)/(sqrt(((5*x + 5)^3 - 1)^2 + 5)*(exp(6 - 3*x) + 4)) + (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(2*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*(exp(x + 5) + 7)*exp(x + 5) - 120*((exp(x + 5) + 7)^2 + 5)*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*cot(5*(4*(2*x - 7) - 2)^3 - 4)*(4*(2*x - 7) - 2)^2 + -18*((3*x + 7)^3 - 5)*(3*x + 7)^2/(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5) + 7*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))/((7*x - 5)^2 + 1)) - 2*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)*(exp(x + 5) + 7)*exp(x + 5))/((exp(x + 5) + 7)^2 + 5)^2
+Answer: dy/dx = (((exp(x + 5) + 7)^2 + 5)*((15*((5*x + 5)^3 - 1)*(5*x + 5)^2*(exp(6 - 3*x) + 4) + 3*exp(6 - 3*x)*sqrt(((5*x + 5)^3 - 1)^2 + 5))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)/(sqrt(((5*x + 5)^3 - 1)^2 + 5)*(exp(6 - 3*x) + 4)) + (sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(2*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*(exp(x + 5) + 7)*exp(x + 5) - 120*((exp(x + 5) + 7)^2 + 5)*cosec(5*(4*(2*x - 7) - 2)^3 - 4)*cot(5*(4*(2*x - 7) - 2)^3 - 4)*(4*(2*x - 7) - 2)^2 + -18*((3*x + 7)^3 - 5)*(3*x + 7)^2/(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5) + 7*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))/((7*x - 5)^2 + 1)) - 2*(sqrt(((5*x + 5)^3 - 1)^2 + 5) - ln(exp(6 - 3*x) + 4))*(cosec(5*(4*(2*x - 7) - 2)^3 - 4)*((exp(x + 5) + 7)^2 + 5) - ln(((3*x + 7)^3 - 5)^2 + 2))*atan(7*x - 5)*(exp(x + 5) + 7)*exp(x + 5))/((exp(x + 5) + 7)^2 + 5)^2
+
+================================================================================
+100. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+(-8)
+(-8)
+,
+(0)
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+101. [Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+cosec(2*x)^2 -cot(2  *  x)**2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use cosec^2(A)-cot^2(A) = 1.
+2. = 1
+3. Hence 1
+4. Answer: 1
+
+================================================================================
+102. [Derive] Chain quotient 16 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((cot(8((6)  *((7)*(x)^  2 - 3x+  - 3)  +  -pi/6)^  2+  6))/(exp((9) *x  -(5))+3))^3)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^3, v = (exp(9*x - 5) + 3)^3
+4. du/dx = -48*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(cosec((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(36*(7*x^2 - 3*x - 3) - pi)*(14*x - 3), dv/dx = 27*exp(18*x - 10)*exp(9*x - 5) + 162*exp(18*x - 10) + 243*exp(9*x - 5)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (-48*(exp(9*x - 5) + 3)^3*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(cosec((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(36*(7*x^2 - 3*x - 3) - pi)*(14*x - 3) - (cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^3*(27*exp(18*x - 10)*exp(9*x - 5) + 162*exp(18*x - 10) + 243*exp(9*x - 5)))/(exp(9*x - 5) + 3)^6
+7. = (-48*(exp(9*x - 5) + 3)^3*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(cosec((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(36*(7*x^2 - 3*x - 3) - pi)*(14*x - 3) - 27*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^3*(exp(9*x - 5) + 3)^2*exp(9*x - 5))/(exp(9*x - 5) + 3)^6
+Answer: dy/dx = (-48*(exp(9*x - 5) + 3)^3*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(cosec((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^2*(36*(7*x^2 - 3*x - 3) - pi)*(14*x - 3) - 27*(cot((2*(36*(7*x^2 - 3*x - 3) - pi)^2 + 54)/9))^3*(exp(9*x - 5) + 3)^2*exp(9*x - 5))/(exp(9*x - 5) + 3)^6
+
+================================================================================
+103. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((5)x ^  6-1 *  x^5 - 2*  x **4  +1 *  x  ** 3+  6)/(((8 *  x+ 2)^  2 +  6)  ^2 + (3* (x)  -  4)  ^(2)  +  8))(log(exp(4 * x+4)+  6))((cot((6  /  8)(6 *  ((4)((-6* x+  6)** 2  +(2*  (x)+9)) +    -  pi/2)-  4*  (x)) +6))  ^10)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10, v = ((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8
+4. du/dx = (30*x^5 - 5*x^4 - 8*x^3 + 3*x^2)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10 + 4*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*exp(4*x + 4)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10/(exp(4*x + 4) + 6) - (15/2)*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^9*(cosec((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^2*(24*(2 - 12*(6 - 6*x)) - 4), dv/dx = 16384*x^3 + 12288*x^2 + 4626*x + 616
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)*((30*x^5 - 5*x^4 - 8*x^3 + 3*x^2)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10 + 4*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*exp(4*x + 4)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10/(exp(4*x + 4) + 6) - (15/2)*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^9*(cosec((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^2*(24*(2 - 12*(6 - 6*x)) - 4)) - (5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10*(16384*x^3 + 12288*x^2 + 4626*x + 616))/(((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)^2
+7. = ((((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)*((30*x^5 - 5*x^4 - 8*x^3 + 3*x^2)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10 + 4*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*exp(4*x + 4)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10/(exp(4*x + 4) + 6) - (15/2)*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^9*(cosec((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^2*(24*(2 - 12*(6 - 6*x)) - 4)) - (5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10*(32*((8*x + 2)^2 + 6)*(8*x + 2) + 6*(3*x - 4)))/(((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)^2
+Answer: dy/dx = ((((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)*((30*x^5 - 5*x^4 - 8*x^3 + 3*x^2)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10 + 4*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*exp(4*x + 4)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10/(exp(4*x + 4) + 6) - (15/2)*(5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^9*(cosec((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^2*(24*(2 - 12*(6 - 6*x)) - 4)) - (5*x^6 - x^5 - 2*x^4 + x^3 + 6)*ln(exp(4*x + 4) + 6)*(cot((3/4)*(3*(8*((6 - 6*x)^2 + 2*x + 9) - pi) - 4*x) + 6))^10*(32*((8*x + 2)^2 + 6)*(8*x + 2) + 6*(3*x - 4)))/(((8*x + 2)^2 + 6)^2 + (3*x - 4)^2 + 8)^2
+
+================================================================================
+104. [SUVAT] Random SUVAT 1: find s
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+,
+4
+19
+3
+5
+
+Check:
+suvat_find_s
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: 
+s = ut + 1/2at^2
+= 4*5 + 1/2*3*5^2
+s = 115/2
+s = 57.5 m
+
+--- All variables ---
+s = 115/2 (57.5 m)
+u = 4 m/s
+v = 19 m/s
+a = 3 m/s^2
+t = 5 s
+
+================================================================================
+105. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+(7)
+7
+ ,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+106. [Derive] Triple product 11 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(sec(6*(3 *(4 *(3 *  x**2  +  6*x+  - (1))-4 *(x))+- pi /2) - 5)) * (((log((9* x)^ 2+ (7*  x -(8))  ^2  +6))-(9  *(x))) **  (10)) *(((6* (x)  ** 8  - 2*x** 7 +2*x  ^ 6 -6 *x ** 5-5 *x**  4)+(log(sqrt((((4/ 8) *(x)+(-9/ 3))^4)  **2+  5) +2)))  +(5 * sin(7 *(x)^  2+3)+2*cos(7*(x)**2 + 3)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = sec(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5), v = (ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3))
+4. du/dx = 432*sec(216*x^2 + 360*x - 3*pi - 77)*tan(216*x^2 + 360*x - 3*pi - 77)*x + 360*sec(216*x^2 + 360*x - 3*pi - 77)*tan(216*x^2 + 360*x - 3*pi - 77), dv/dx = ((ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(48*x^7 - 14*x^6 + 12*x^5 - 30*x^4 - 20*x^3 + 2*((1/2)*x - 3)^7/(sqrt(((1/2)*x - 3)^8 + 5)*(sqrt(((1/2)*x - 3)^8 + 5) + 2)) + 70*cos(7*x^2 + 3)*x - 28*sin(7*x^2 + 3)*x)*(81*x^2 + (7*x - 8)^2 + 6) + 10*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3))*(ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^9*(162*x + 14*(7*x - 8) - 9*(81*x^2 + (7*x - 8)^2 + 6)))/(81*x^2 + (7*x - 8)^2 + 6)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (sec(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5)*((ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(48*x^7 - 14*x^6 + 12*x^5 - 30*x^4 - 20*x^3 + 2*((1/2)*x - 3)^7/(sqrt(((1/2)*x - 3)^8 + 5)*(sqrt(((1/2)*x - 3)^8 + 5) + 2)) + 70*cos(7*x^2 + 3)*x - 28*sin(7*x^2 + 3)*x)*(81*x^2 + (7*x - 8)^2 + 6) + 10*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3))*(ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^9*(162*x + 14*(7*x - 8) - 9*(81*x^2 + (7*x - 8)^2 + 6))) + (ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3))*(432*sec(216*x^2 + 360*x - 3*pi - 77)*tan(216*x^2 + 360*x - 3*pi - 77)*x + 360*sec(216*x^2 + 360*x - 3*pi - 77)*tan(216*x^2 + 360*x - 3*pi - 77))*(81*x^2 + (7*x - 8)^2 + 6))/(81*x^2 + (7*x - 8)^2 + 6)
+Answer: dy/dx = 18*sec(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5)*tan(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5)*(4*(6*x + 6) - 4)*(ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3)) + 10*sec(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5)*(ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^9*(162*x + 14*(7*x - 8) - 9*(81*x^2 + (7*x - 8)^2 + 6))*(6*x^8 - 2*x^7 + 2*x^6 - 6*x^5 - 5*x^4 + ln(sqrt(((1/2)*x - 3)^8 + 5) + 2) + 5*sin(7*x^2 + 3) + 2*cos(7*x^2 + 3))/(81*x^2 + (7*x - 8)^2 + 6) + sec(3*(6*(4*(3*x^2 + 6*x - 1) - 4*x) - pi) - 5)*(ln(81*x^2 + (7*x - 8)^2 + 6) - 9*x)^10*(48*x^7 - 14*x^6 + 12*x^5 - 30*x^4 - 20*x^3 + 2*((1/2)*x - 3)^7/(sqrt(((1/2)*x - 3)^8 + 5)*(sqrt(((1/2)*x - 3)^8 + 5) + 2)) + 70*cos(7*x^2 + 3)*x - 28*sin(7*x^2 + 3)*x)
+
+================================================================================
+107. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+(  -3)
+(- 3)
+, 
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+108. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+-5
+-5
+ ,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+109. [Algebra] Random composition 13 [format fuzz] [algebra_comp]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+7
+sqrt((4*x-4)^2+(-4*x -9)**2+4)
+(6  *x-6) /(((1* x-8)^ 2+9)**2+(5 *x-  8)^2+8)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Comp f(g(x))
+f: g: 1. f(x) = sqrt((4*x - 4)^2 + (-4*x - 9)^2 + 4)
+2. g(x) = (6*x - 6)/(((x - 8)^2 + 9)^2 + (5*x - 8)^2 + 8)
+3. Substitute g(x) into f.
+4. Simplify the result.
+5. f(g(x)) = sqrt(((4*(6*x - 6))/(((x - 8)^2 + 9)^2 + (5*x - 8)^2 + 8) - 4)^2 + ((-4*(6*x - 6))/(((x - 8)^2 + 9)^2 + (5*x - 8)^2 + 8) - 9)^2 + 4)
+
+================================================================================
+110. [Trigonometry] Random trig rewrite 12: cos2_sin [format fuzz] [trig_rewrite:cos2_sin]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+4
+1  - cos(2  *((-2 /3)  *  (7 *(((8) * ((  -7*(x) -  9) +-  2)^(3)-1)+ -1)^  3+ 1)))
+sin(( -2/3)  *(7((8((-(7)*(x)-9) +  -  2)** 3  -  1)  +-1)**  3  +  1))  **2
+cos((  - 2/3) *(7  *  ((8 *  ((-7*(x) -(9)) +-2)^3-1) + - 1)  ^  3  +  1))**  2
+
+Check:
+check; random input formatting fuzzed; exam-quality issues: contains an error/unsupported marker; shared quality check did not find a conclusion marker; missing program-specific working expected for this feature; too few numbered steps
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: Rw: 1 term/line | Blank = end | T: T: T: Err: This expression cannot be written using only the requested terms.
+
+================================================================================
+111. [Trigonometry] Random trig transform 5: pythag_sec [format fuzz] [trig_transform:pythag_sec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+sec(3*x)^2 -tan(3*x)^ 2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use sec^2(A)-tan^2(A) = 1.
+2. = 1
+3. Hence 1
+4. Answer: 1
+
+================================================================================
+112. [Derive] Random derive normal 2: root_chain [format fuzz] [derive_normal:root_chain]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+sqrt((7*x-5) ^  2+7)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Chain rule
+3. u = (7*x - 5)^2 + 7
+4. du/dx = 98*x - 70
+5. = (98*x - 70)/(2*sqrt((7*x - 5)^2 + 7))
+Answer: dy/dx = (49*x - 35)/sqrt((7*x - 5)^2 + 7)
+
+================================================================================
+113. [Integrate] Random integrate auto 1: du_over_sqrt [format fuzz] [integrate_auto:du_over_sqrt]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+1
+(136 *(x) - 28)/sqrt((2* x  -3)**2+  (8*x-1)^2+ 2)
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 int
+2 de
+3 param area
+M: f: 1 auto
+2 dir
+3 trig
+4 sub
+Met 1/2 n/p: Method: Direct integration
+Let u = (2*x - 3)^2 + (8*x - 1)^2 + 2.
+= 2*sqrt((2*x - 3)^2 + (8*x - 1)^2 + 2) + C
+Answer: 2*sqrt((2*x - 3)^2 + (8*x - 1)^2 + 2) + C
+
+================================================================================
+114. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+-(4)
+  -4
+ ,
+(0)
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+115. [Algebra] Hard simultaneous 22: disguised quadratic [format fuzz] [algebra_simultaneous_hard]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+6
+(4x  **2-4  =0)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = (2*x - 2)*(2*x + 2)
+3. Solve shifted power directly
+4. Answer: x = [1, -1]
+
+================================================================================
+116. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+((((log((8*  x+8)**2 +(-  1*x-  1) ^2  +6)) -(  -8  *x  +  1))/((  -  2 *x+2) ^2+((9)  *x+3)**2 +9))^4)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (ln((8*x + 8)^2 + (-x - 1)^2 + 6) + 8*x - 1)^4, v = ((2 - 2*x)^2 + (9*x + 3)^2 + 9)^4
+4. du/dx = (4680*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x + 2080*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x^2 + 2792*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3)/((8*x + 8)^2 + (-x - 1)^2 + 6), dv/dx = 680*(46*x + 85*x^2 + 22)^3*x + 184*(46*x + 85*x^2 + 22)^3
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (4680*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x + 2080*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x^2 + 2792*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3 - 44200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^3 - 100360*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^2 - 72200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x - 13064*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3)/(((8*x + 8)^2 + (-x - 1)^2 + 6)*((2 - 2*x)^2 + (9*x + 3)^2 + 9)^8)
+7. = (4680*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x + 2080*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x^2 + 2792*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3 - 44200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^3 - 100360*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^2 - 72200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x - 13064*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3)/(((8*x + 8)^2 + (-x - 1)^2 + 6)*((2 - 2*x)^2 + (9*x + 3)^2 + 9)^8)
+Answer: dy/dx = (4680*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x + 2080*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3*x^2 + 2792*(46*x + 85*x^2 + 22)^4*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^3 - 44200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^3 - 100360*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x^2 - 72200*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3*x - 13064*(ln(65*x^2 + 130*x + 71) + 8*x - 1)^4*(46*x + 85*x^2 + 22)^3)/(((8*x + 8)^2 + (-x - 1)^2 + 6)*((2 - 2*x)^2 + (9*x + 3)^2 + 9)^8)
+
+================================================================================
+117. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+-  7
+(-7)
+ ,
+(0)
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+118. [Trigonometry] Random trig transform 5: pythag_sec [format fuzz] [trig_transform:pythag_sec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+sec(2*x) ^ 2-tan(2*  (x))**2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use sec^2(A)-tan^2(A) = 1.
+2. = 1
+3. Hence 1
+4. Answer: 1
+
+================================================================================
+119. [Derive] Chain quotient 15 [format fuzz] [derive_chain_quotient]
+  LLM: INCORRECT - seems that the differentiation process has not been simplified or checked f[1D[K for correctness. 
+================================================================================
+Input:
+1
+((((sqrt(((6 *x+3)^2)^ 2  +3))+ (((1)*  x+8)^2))  * ((-  9 *x-5)/((sqrt(((  -2*x-1)**2+(-2*  x+  1))**2  +2) + 2)^2+ ( -3*  x- 1)^2 +6)))/ (sqrt((((2)*  (x)- 6)^2)**(2) +4)+  2))  ^(2)
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)^2, v = ((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)^2
+4. du/dx = (-18*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)*sqrt((6*x + 3)^4 + 3) + 2*(-9*x - 5)^2*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)*(12*(6*x + 3)^3 + 2*(x + 8)*sqrt((6*x + 3)^4 + 3)))/sqrt((6*x + 3)^4 + 3), dv/dx = (8*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)*(2*x - 6)^3*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2*(sqrt((2*x - 6)^4 + 4) + 2)^2*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)*(2*(sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)*((-2*x - 1)^2 - 2*x + 1)*(-4*(-2*x - 1) - 2) - 6*(-3*x - 1)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2))*sqrt((2*x - 6)^4 + 4))/(sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2))
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)^2*(-18*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)*sqrt((6*x + 3)^4 + 3) + 2*(-9*x - 5)^2*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)*(12*(6*x + 3)^3 + 2*(x + 8)*sqrt((6*x + 3)^4 + 3)))*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) - (sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)^2*(8*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)*(2*x - 6)^3*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2*(sqrt((2*x - 6)^4 + 4) + 2)^2*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)*(2*(sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)*((-2*x - 1)^2 - 2*x + 1)*(-4*(-2*x - 1) - 2) - 6*(-3*x - 1)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2))*sqrt((2*x - 6)^4 + 4))*sqrt((6*x + 3)^4 + 3))/(sqrt((6*x + 3)^4 + 3)*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2)*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^4*(sqrt((2*x - 6)^4 + 4) + 2)^4)
+7. = (((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)^2*(-18*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)*sqrt((6*x + 3)^4 + 3) + 2*(-9*x - 5)^2*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)*(12*(6*x + 3)^3 + 2*(x + 8)*sqrt((6*x + 3)^4 + 3)))*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) - (sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)^2*(8*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)*(2*x - 6)^3*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2*(sqrt((2*x - 6)^4 + 4) + 2)^2*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)*(2*(sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)*((-2*x - 1)^2 - 2*x + 1)*(-4*(-2*x - 1) - 2) - 6*(-3*x - 1)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2))*sqrt((2*x - 6)^4 + 4))*sqrt((6*x + 3)^4 + 3))/(sqrt((6*x + 3)^4 + 3)*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2)*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^4*(sqrt((2*x - 6)^4 + 4) + 2)^4)
+Answer: dy/dx = (((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)^2*(-18*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)*sqrt((6*x + 3)^4 + 3) + 2*(-9*x - 5)^2*(sqrt((6*x + 3)^4 + 3) + (x + 8)^2)*(12*(6*x + 3)^3 + 2*(x + 8)*sqrt((6*x + 3)^4 + 3)))*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) - (sqrt((6*x + 3)^4 + 3) + (x + 8)^2)^2*(-9*x - 5)^2*(8*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^2*(sqrt((2*x - 6)^4 + 4) + 2)*(2*x - 6)^3*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2*(sqrt((2*x - 6)^4 + 4) + 2)^2*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)*(2*(sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)*((-2*x - 1)^2 - 2*x + 1)*(-4*(-2*x - 1) - 2) - 6*(-3*x - 1)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2))*sqrt((2*x - 6)^4 + 4))*sqrt((6*x + 3)^4 + 3))/(sqrt((6*x + 3)^4 + 3)*sqrt((2*x - 6)^4 + 4)*sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2)*((sqrt(((-2*x - 1)^2 - 2*x + 1)^2 + 2) + 2)^2 + (-3*x - 1)^2 + 6)^4*(sqrt((2*x - 6)^4 + 4) + 2)^4)
+
+================================================================================
+120. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+- (4)
+(  -4)
+,
+(0)
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+121. [Trigonometry] Random trig transform 7: pythag_cosec [format fuzz] [trig_transform:pythag_cosec]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+cosec(2*x)^2 -cot(2  *x)^ 2
+1
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 prove
+2 xform
+3 solve
+4 rw
+M: E1: E2: 1. Use cosec^2(A)-cot^2(A) = 1.
+2. = 1
+3. Hence 1
+4. Answer: 1
+
+================================================================================
+122. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+(0)
+0
+,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+123. [Derive] Parametric hard 20 [format fuzz] [derive_parametric_hard]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+3
+(t ^ 2 + 2(t))
+(t)  ^ 2-  5  * t ** 2
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: x(t): y(t): 1. Differentiate x(t) with respect to t.
+2. dx/dt = 2*t + 2
+3. Differentiate y(t) with respect to t.
+4. dy/dt = -8*t
+5. Use dy/dx = (dy/dt)/(dx/dt).
+6. Answer: dy/dx = -4*t/(t + 1)
+
+================================================================================
+124. [Derive] Triple product 13 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(tan(7(6(x) ^2-5x+  -4)-  2x)) *(((4x  -  2)*  ((4x +5)^  2))-((((1x+  4)^2)^2 +7)/((- 5x -1)^ 2 + 6)))*  ((atan(-6(x)+5))  *(log(sqrt(((x))^2+  6)+1)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1), v = (-5*x - 1)^2 + 6
+4. du/dx = (sec(7*(6*x^2 - 5*x - 4) - 2*x))^2*(7*(12*x - 5) - 2)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*(4*(4*x + 5)^2*((-5*x - 1)^2 + 6) + 8*(4*x - 2)*(4*x + 5)*((-5*x - 1)^2 + 6) - 10*(4*x - 2)*(4*x + 5)^2*(-5*x - 1) - 4*(x + 4)^3)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + -6*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*ln(sqrt(x^2 + 6) + 1)/((5 - 6*x)^2 + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*x/(sqrt(x^2 + 6)*(sqrt(x^2 + 6) + 1)), dv/dx = 50*x + 10
+5. dy/dx = (v*du-u*dv)/v^2
+6. = (((-5*x - 1)^2 + 6)*((sec(7*(6*x^2 - 5*x - 4) - 2*x))^2*(7*(12*x - 5) - 2)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*(4*(4*x + 5)^2*((-5*x - 1)^2 + 6) + 8*(4*x - 2)*(4*x + 5)*((-5*x - 1)^2 + 6) - 10*(4*x - 2)*(4*x + 5)^2*(-5*x - 1) - 4*(x + 4)^3)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + -6*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*ln(sqrt(x^2 + 6) + 1)/((5 - 6*x)^2 + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*x/(sqrt(x^2 + 6)*(sqrt(x^2 + 6) + 1))) - tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1)*(50*x + 10))/((-5*x - 1)^2 + 6)^2
+7. = (((-5*x - 1)^2 + 6)*((sec(7*(6*x^2 - 5*x - 4) - 2*x))^2*(7*(12*x - 5) - 2)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*(4*(4*x + 5)^2*((-5*x - 1)^2 + 6) + 8*(4*x - 2)*(4*x + 5)*((-5*x - 1)^2 + 6) - 10*(4*x - 2)*(4*x + 5)^2*(-5*x - 1) - 4*(x + 4)^3)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + -6*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*ln(sqrt(x^2 + 6) + 1)/((5 - 6*x)^2 + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*x/(sqrt(x^2 + 6)*(sqrt(x^2 + 6) + 1))) + 10*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1)*(-5*x - 1))/((-5*x - 1)^2 + 6)^2
+Answer: dy/dx = (((-5*x - 1)^2 + 6)*((sec(7*(6*x^2 - 5*x - 4) - 2*x))^2*(7*(12*x - 5) - 2)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*(4*(4*x + 5)^2*((-5*x - 1)^2 + 6) + 8*(4*x - 2)*(4*x + 5)*((-5*x - 1)^2 + 6) - 10*(4*x - 2)*(4*x + 5)^2*(-5*x - 1) - 4*(x + 4)^3)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1) + -6*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*ln(sqrt(x^2 + 6) + 1)/((5 - 6*x)^2 + 1) + tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*x/(sqrt(x^2 + 6)*(sqrt(x^2 + 6) + 1))) + 10*tan(7*(6*x^2 - 5*x - 4) - 2*x)*((4*x - 2)*(4*x + 5)^2*((-5*x - 1)^2 + 6) - (x + 4)^4 - 7)*atan(5 - 6*x)*ln(sqrt(x^2 + 6) + 1)*(-5*x - 1))/((-5*x - 1)^2 + 6)^2
+
+================================================================================
+125. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+6
+6
+,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+126. [Derive] Random derive implicit 7: exp_log [format fuzz] [derive_implicit:exp_log]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+2
+exp(3x)+  log((y)  ^2 +(5)) = 8
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: Eq: 1. Method: differentiate implicitly.
+2. d/dx(LHS)=d/dx(RHS)
+3. (3*exp(3*x)*(y^2 + 5) + 2*y*dy/dx)/(y^2 + 5) = 0
+4. Rearrange: make dy/dx
+5. (2*y/(y^2 + 5))*dy/dx + 3*exp(3*x) = 0
+6. Answer: dy/dx = (-3*exp(3*x)*y^2 - 15*exp(3*x))/(2*y)
+dy/dx = (-3*exp(3*x)*y^2 - 15*exp(3*x))/y
+
+================================================================================
+127. [Derive] Log diff 25 [format fuzz] [derive_log_diff]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(((6  *  x  + 6)  **2 + (-4  *x  +  3)^ 2+ 6)^x)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using logarithmic differentiation
+3. Let y = ((6*x + 6)^2 + (3 - 4*x)^2 + 6)^x
+4. Let u = (6*x + 6)^2 + (3 - 4*x)^2 + 6 and v = x
+5. u' = 104*x + 48, v' = 1
+6. dy/dx = y*(v*(u')/u + ln(u)*v')
+7. = 104*(52*x^2 + 48*x + 51)^(x - 1)*x^2 + 48*(52*x^2 + 48*x + 51)^(x - 1)*x + 52*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)*x^2 + 48*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)*x + 51*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)
+Answer: dy/dx = 104*(52*x^2 + 48*x + 51)^(x - 1)*x^2 + 48*(52*x^2 + 48*x + 51)^(x - 1)*x + 52*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)*x^2 + 48*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)*x + 51*(52*x^2 + 48*x + 51)^(x - 1)*ln(52*x^2 + 48*x + 51)
+
+================================================================================
+128. [SUVAT] Random SUVAT edge 16: zero_time_consistent_a
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+
+-8
+-8
+,
+0
+
+Check:
+suvat_expected_error:zero_time_consistent_a
+
+Output:
+Use , to mark exactly one target and enter the other known values.
+s: u: v: a: t: Error: Infinite solutions: t=0 and v=u.
+
+================================================================================
+129. [Derive] Parametric hard 21 [format fuzz] [derive_parametric_hard]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+3
+(t)^(3)+1*t
+(t)**3-3t^3
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: x(t): y(t): 1. Differentiate x(t) with respect to t.
+2. dx/dt = 3*t^2 + 1
+3. Differentiate y(t) with respect to t.
+4. dy/dt = -6*t^2
+5. Use dy/dx = (dy/dt)/(dx/dt).
+6. Answer: dy/dx = -6*t^2/(3*t^2 + 1)
+
+================================================================================
+130. [Derive] Implicit product 18 [format fuzz] [derive_implicit_product]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+2
+x  ^2+1  *x* y+1*y^(2)+(5)*x=(5)
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: Eq: 1. Method: differentiate implicitly.
+2. d/dx(LHS)=d/dx(RHS)
+3. 2*x + x*dy/dx + y + 2*y*dy/dx + 5 = 0
+4. Rearrange: make dy/dx
+5. (x + 2*y)*dy/dx + 2*x + y + 5 = 0
+6. Answer: dy/dx = (-2*x - y - 5)/(x + 2*y)
+
+================================================================================
+131. [Algebra] Hidden quadratic 20 [format fuzz] [algebra_hard_solve]
+  LLM: INCORRECT - 
+================================================================================
+Input:
+6
+(x+  8  =5*sqrt(x))
+
+Check:
+check; calculated answer correctness; random input formatting fuzzed
+
+Output:
+1 cmp
+2 xform
+3 exp
+4 poly
+M 1/3 n/p: Eq: 1. Method: Solve equation
+2. Expr = x - 5*sqrt(x) + 8
+3. Solve: no real solution
+4. Answer: no solution
+
+================================================================================
+132. [Derive] Triple product 12 [format fuzz] [derive_triple_product]
+  LLM: NEEDS_REVIEW - NEEDS_REVIEW
+================================================================================
+Input:
+1
+(cot(2  *  ((4 * (8 *((2) *x  ** 2+(2)*  x +  - 1)  -4  *  x)-3)+ 3) ^3-  3)) *(asin(((7)  *  (x)+1)/10))*  ((( -3*x** 6-(1) *x**3  -  3 * x  + (7))/  (exp( - 5 *  x  +8)  +2))  +(sin(3*  ((5* (7*  ((-2*x-4)+ 2)  **3+ 2) +pi/  (4))+0)  ** 3+  6)**2  +cos(3  *((5*(7*  ((- 2*(x)- 4)+  2)**  3  +2)  +pi/4)  +  (0)) ^  3+6)  ^ 2 +4 *tan(3*((5 *(7  *((- 2*(x)-  4)+  2)  **  3  +  2)+pi/ (4))+  0)  ** 3 + 6)))
+
+Check:
+check; random input formatting fuzzed
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = cot(128*(8*(2*x^2 + 2*x - 1) - 4*x)^3 - 3), v = asin((7*x + 1)/10)*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))
+4. du/dx = -3145728*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^5 - 5898240*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^4 - 393216*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^3 + 2875392*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^2 + 98304*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x - 294912*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2, dv/dx = (10*asin((7*x + 1)/10)*(((exp(8 - 5*x) + 2)*(-18*x^5 - 3*x^2 - 3) + 5*(7 - 3*x^6 - x^3 - 3*x)*exp(8 - 5*x))/(exp(8 - 5*x) + 2)^2 + -945*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + 945*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + -945*(sec((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/2)*sqrt((100 - (7*x + 1)^2)/100) + 7*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)))/(10*sqrt((100 - (7*x + 1)^2)/100))
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (cot(128*(8*(2*x^2 + 2*x - 1) - 4*x)^3 - 3)*(10*asin((7*x + 1)/10)*(((exp(8 - 5*x) + 2)*(-18*x^5 - 3*x^2 - 3) + 5*(7 - 3*x^6 - x^3 - 3*x)*exp(8 - 5*x))/(exp(8 - 5*x) + 2)^2 + -945*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + 945*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + -945*(sec((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/2)*sqrt((100 - (7*x + 1)^2)/100) + 7*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))) + 10*asin((7*x + 1)/10)*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))*(-3145728*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^5 - 5898240*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^4 - 393216*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^3 + 2875392*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x^2 + 98304*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2*x - 294912*(cosec(128*(16*x^2 + 12*x - 8)^3 - 3))^2)*sqrt((100 - (7*x + 1)^2)/100))/(10*sqrt((100 - (7*x + 1)^2)/100))
+Answer: dy/dx = -384*(cosec(128*(8*(2*x^2 + 2*x - 1) - 4*x)^3 - 3))^2*(8*(2*x^2 + 2*x - 1) - 4*x)^2*(8*(4*x + 2) - 4)*asin((7*x + 1)/10)*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)) + 7*cot(128*(8*(2*x^2 + 2*x - 1) - 4*x)^3 - 3)*((7 - 3*x^6 - x^3 - 3*x)/(exp(8 - 5*x) + 2) + (sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + (cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2 + 4*tan((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))/(10*sqrt((100 - (7*x + 1)^2)/100)) + cot(128*(8*(2*x^2 + 2*x - 1) - 4*x)^3 - 3)*asin((7*x + 1)/10)*(((exp(8 - 5*x) + 2)*(-18*x^5 - 3*x^2 - 3) + 5*(7 - 3*x^6 - x^3 - 3*x)*exp(8 - 5*x))/(exp(8 - 5*x) + 2)^2 + -945*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + 945*cos((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*sin((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64)*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/4 + -945*(sec((3*(20*(7*(-2*x - 2)^3 + 2) + pi)^3 + 384)/64))^2*(20*(7*(-2*x - 2)^3 + 2) + pi)^2*(-2*x - 2)^2/2)
+
