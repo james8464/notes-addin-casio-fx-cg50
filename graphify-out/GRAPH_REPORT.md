@@ -1,19 +1,19 @@
-# Graph Report - .  (2026-04-23)
+# Graph Report - .  (2026-04-24)
 
 ## Corpus Check
-- 22 files · ~184,442 words
+- 21 files · ~185,099 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1822 nodes · 8487 edges · 18 communities detected
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.5)
+- 1831 nodes · 8510 edges · 16 communities detected
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## God Nodes (most connected - your core abstractions)
 1. `sim()` - 255 edges
 2. `num()` - 241 edges
-3. `add()` - 153 edges
-4. `CASIOApp` - 152 edges
+3. `CASIOApp` - 164 edges
+4. `add()` - 153 edges
 5. `mul()` - 135 edges
 6. `flat()` - 134 edges
 7. `same()` - 111 edges
@@ -22,15 +22,15 @@
 10. `num()` - 101 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Show LLM status and allow model selection.` --uses--> `LLMManager`  [INFERRED]
-  tests/run_tests.py → src/shared_llm.py
-- `Handle LLM model selection.` --uses--> `LLMManager`  [INFERRED]
-  tests/run_tests.py → src/shared_llm.py
-- `Disable LLM verification.` --uses--> `LLMManager`  [INFERRED]
-  tests/run_tests.py → src/shared_llm.py
 - `TestStatus` --uses--> `LLMManager`  [INFERRED]
   tests/run_tests.py → src/shared_llm.py
+- `RunState` --uses--> `LLMManager`  [INFERRED]
+  tests/run_tests.py → src/shared_llm.py
 - `TestRecord` --uses--> `LLMManager`  [INFERRED]
+  tests/run_tests.py → src/shared_llm.py
+- `CaseSpec` --uses--> `LLMManager`  [INFERRED]
+  tests/run_tests.py → src/shared_llm.py
+- `RandomTestBatch` --uses--> `LLMManager`  [INFERRED]
   tests/run_tests.py → src/shared_llm.py
 
 ## Communities
@@ -41,7 +41,7 @@ Nodes (333): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mod
 
 ### Community 1 - "Community 1"
 Cohesion: 0.02
-Nodes (118): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+110 more)
+Nodes (119): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+111 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.04
@@ -49,35 +49,35 @@ Nodes (261): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integra
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (117): angle_to_degree(), append_unique_value_node(), apply_runtime_profile(), best_proof_direction(), build_menu_pages(), clean_expr_text(), clear_engine_caches(), collect_angle_units() (+109 more)
+Nodes (147): allowed_expression_from_terms(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), build_named_power_product() (+139 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
 Nodes (111): add(), addq(), all_neg_add(), begin_user_action(), _build_a(), _build_a2(), _build_a3(), _build_a4() (+103 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.09
-Nodes (113): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), derive_cot_quadratic_expr() (+105 more)
-
-### Community 6 - "Community 6"
 Cohesion: 0.07
 Nodes (105): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+97 more)
 
+### Community 6 - "Community 6"
+Cohesion: 0.07
+Nodes (101): cheap_same(), classify_reciprocal_conjugate_binomial(), depends(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info(), divq(), eval_numeric() (+93 more)
+
 ### Community 7 - "Community 7"
 Cohesion: 0.07
-Nodes (85): angle_text(), append_unique_float(), append_unique_solve_value(), classify_solve_angle_arg(), concise_root_text(), dedupe_values(), depends(), direct_single_trig_info() (+77 more)
+Nodes (80): angle_to_degree(), bridge_to_target(), cancel_fraction_common_factor_for_display(), common_denominator_step(), degree_int(), degree_mod_360(), detail_trig_expansion(), direct_expression_transform_lines() (+72 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.06
-Nodes (83): _balance_parens(), begin_user_action(), best_solve_rewrite(), collect_trig_argument_lower_symbols(), compact_lines(), constant_numeric(), detect_transform_var(), direct_expression_transform_lines() (+75 more)
+Cohesion: 0.07
+Nodes (79): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), concise_root_text(), constant_numeric(), dedupe_values(), drop_trailing_solution_line() (+71 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.1
-Nodes (75): bridge_to_target(), cancel_fraction_common_factor_for_display(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), detail_trig_expansion(), display_abs(), equivalent() (+67 more)
+Cohesion: 0.12
+Nodes (76): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), collect_same_arg_terms(), derive_cot_quadratic_expr(), div(), divide_terms_by_two_for_display() (+68 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.06
-Nodes (75): add_param_coeff_maps(), add_transform_constant_candidate(), addq(), allowed_expression_from_terms(), build_named_power_product(), build_rewrite_allowed_info(), cache_store(), collect_symbol_order() (+67 more)
+Cohesion: 0.08
+Nodes (74): add_param_coeff_maps(), add_transform_constant_candidate(), addq(), build_known_value_branch(), collect_symbol_order(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any() (+66 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.06
@@ -92,30 +92,22 @@ Cohesion: 0.27
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 14 - "Community 14"
-Cohesion: 0.42
-Nodes (9): collect_symbols(), extract_linear_combo_equation(), extract_shift_equation(), independent_of_names(), match_constant_trig_equation(), match_linear_combo(), match_shift_target(), split_trig_term() (+1 more)
-
-### Community 15 - "Community 15"
 Cohesion: 0.6
 Nodes (4): format_equation_human_readable(), format_exam_working(), numbered_steps(), split_coeff()
 
-### Community 16 - "Community 16"
-Cohesion: 0.7
-Nodes (4): get_solution_count(), has_solutions(), run_solve(), run_tests()
-
-### Community 17 - "Community 17"
+### Community 15 - "Community 15"
 Cohesion: 0.67
 Nodes (3): main(), Run a single test and return pass/fail., run_test()
 
 ## Knowledge Gaps
-- **70 isolated node(s):** `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite.  Provides Ollama-based verification f`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.`, `Simple TTL-based cache for LLM responses.` (+65 more)
+- **71 isolated node(s):** `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite.  Provides Ollama-based verification f`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.`, `Simple TTL-based cache for LLM responses.` (+66 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What connects `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite.  Provides Ollama-based verification f`, `Check if Ollama is installed and a server is running.` to the rest of the system?**
-  _70 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _71 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.02 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
@@ -127,4 +119,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 4` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._
 - **Should `Community 5` be split into smaller, more focused modules?**
-  _Cohesion score 0.09 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07 - nodes in this community are weakly interconnected._

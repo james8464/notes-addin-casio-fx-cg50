@@ -6269,6 +6269,11 @@ def direct_double_angle_rewrite(node):
                     base = match_numeric_multiple_arg(rest2[2], 2)
                     if base is not None:
                         return mul([num(2), power(fn("sin", base), num(2))]), "Use 1 - cos(2A) = 2sin^2 A."
+                rest2 = sim(rest2)
+                if is_one(rest1) and is_one(coeff1) and coeff2[1] < 0 and rest2[0] == "fn" and rest2[1] == "cos":
+                    base = match_numeric_multiple_arg(rest2[2], 2)
+                    if base is not None:
+                        return mul([num(2), power(fn("sin", base), num(2))]), "Use 1 - cos(2A) = 2sin^2 A."
                 if is_one(rest1) and is_one(coeff1) and is_one(coeff2) and rest2[0] == "fn" and rest2[1] == "cos":
                     base = match_numeric_multiple_arg(rest2[2], 2)
                     if base is not None:
@@ -6277,7 +6282,7 @@ def direct_double_angle_rewrite(node):
 
 
 def prove_double_angle_identity(source, target, source_name, target_name):
-    if source[0] == "fn" and source[1] in ("sin", "cos", "tan"):
+    if source[0] == "fn" and source[1] == "tan":
         if match_numeric_multiple_arg(source[2], 2) is None:
             return None
     rewritten, note = direct_double_angle_rewrite(source)
@@ -7257,6 +7262,7 @@ def transform_zero_form_rewrite(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_text, re
     if not equivalent(new_expr, expr2):
         return None
     lines = [
+        "Method: Transform equation with trig identities",
         equation_line(eq1_lhs, eq1_rhs),
         equation_line(expr1, num(0)),
     ]

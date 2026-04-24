@@ -101,6 +101,14 @@ class TestStatus(Enum):
     PASS = "pass"
     FAIL = "fail"
 
+
+class RunState(Enum):
+    IDLE = "idle"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+
+
 @dataclass
 class TestRecord:
     test_id: int
@@ -127,6 +135,16 @@ class CaseSpec:
     feature: str = ""
     script: str = ""
     checker: object = None
+
+
+@dataclass
+class RandomTestBatch:
+    program: str
+    builder: object
+    count: int
+    cycle: int
+    chunk_index: int
+    first_for_program: bool
 
 
 _DEFAULT_FORBIDDEN_SNIPPETS = (
@@ -1905,11 +1923,11 @@ class CASIOApp(App):
     def __init__(self):
         super().__init__()
         self.records = []
-        self.running = False
+        self.run_state = RunState.IDLE
         self.current_program = "all"
         self.current_difficulty = "all"
         self.last_run_scope = ("all", "all")
-        self.last_command = "/random chaos 9999"
+        self.last_command = "/random"
         self.last_report_path = None
         self.current_random_workers = None
         self.current_run_question_keys = set()
@@ -1928,13 +1946,14 @@ class CASIOApp(App):
         self._weighted_llm_rate = 0.0
         
         self.command_items = {
-            "/random": "Run randomly generated tests across every program",
+            "/random": "Run randomly generated tests (infinite until stopped)",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
             "/random chaos 1000": "Run 1000 unbounded-difficulty random tests",
             "/random hard 1000": "Run 1000 hard random tests split across all programs and features",
             "/random hard 1000 8": "Run 1000 hard random tests with 8 parallel workers",
             "/rerun": "Run the previous test scope again",
             "/clear": "Reset the output view",
+            "/stop": "Stop running tests (in infinite mode)",
             "/quit": "Exit the test harness",
             "/status": "Show the current scope and last run summary",
             "/report": "Show detailed failures from the last run",
@@ -1953,6 +1972,35 @@ class CASIOApp(App):
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
         }
+
+    @property
+    def running(self):
+        return self.run_state == RunState.RUNNING
+
+    @running.setter
+    def running(self, value):
+        self.transition_run_state(RunState.RUNNING if value else RunState.STOPPED)
+
+    def transition_run_state(self, new_state):
+        if self.run_state == new_state:
+            return
+        allowed = {
+            RunState.IDLE: (RunState.RUNNING, RunState.STOPPED),
+            RunState.RUNNING: (RunState.STOPPING, RunState.STOPPED),
+            RunState.STOPPING: (RunState.STOPPED,),
+            RunState.STOPPED: (RunState.RUNNING, RunState.IDLE),
+        }
+        if new_state in allowed.get(self.run_state, ()):
+            self.run_state = new_state
+            return
+        self.run_state = new_state
+
+    def request_stop(self):
+        if self.run_state == RunState.RUNNING:
+            self.transition_run_state(RunState.STOPPING)
+
+    def is_stopping(self):
+        return self.run_state in (RunState.STOPPING, RunState.STOPPED)
 
     def compose(self):
         with Container(id="shell"):
@@ -2140,7 +2188,7 @@ class CASIOApp(App):
 
         random_scope = self.parse_random_scope(value)
         if random_scope is not None:
-            difficulty, count, workers = random_scope
+            difficulty, count, workers, infinite_mode = random_scope
             self.current_difficulty = difficulty
             self.current_random_workers = workers
             self.last_command = value
@@ -2151,7 +2199,7 @@ class CASIOApp(App):
             self.append_result(f"[bold #e07a53]Re-running:[/bold #e07a53] {self.last_command}")
             rerun_random = self.parse_random_scope(self.last_command)
             if rerun_random is not None:
-                difficulty, count, workers = rerun_random
+                difficulty, count, workers, infinite_mode = rerun_random
                 self.current_difficulty = difficulty
                 self.current_random_workers = workers
                 self.action_random_tests(difficulty, count, workers, command_label="/rerun")
@@ -2160,6 +2208,8 @@ class CASIOApp(App):
                 self.action_run_tests(command_label="/rerun")
         elif value_lower == "/clear":
             self.action_clear()
+        elif value_lower == "/stop":
+            self.action_stop()
         elif value_lower == "/quit":
             self.action_quit()
         elif value_lower == "/status":
@@ -2182,251 +2232,6 @@ class CASIOApp(App):
             self.handle_llm_disable()
         elif value_lower.startswith("/llm "):
             self.handle_llm_select(value)
-        elif value_lower.startswith("/filter "):
-            raw = value.split(" ", 1)[1].strip().lower()
-            selected = self.normalize_program_name(raw)
-            if selected is None:
-                self.append_result(f"[bold #f59e0b]Unknown filter:[/bold #f59e0b] {raw}")
-                self.update_summary("Unknown filter")
-            else:
-                self.current_program = selected
-                self.append_result(f"[bold #e07a53]Filter set:[/bold #e07a53] {selected}")
-                self.update_summary(f"Selected: {selected} · {self.current_difficulty}")
-        else:
-            self.append_result(f"[bold #f59e0b]Unknown command:[/bold #f59e0b] {value}")
-            self.update_summary("Unknown command")
-
-    def update_command_help(self, value: str):
-        help_widget = self.query_one("#command-help", Static)
-        suggestions_widget = self.query_one("#command-suggestions", Static)
-
-        if not value:
-            help_widget.update("? for shortcuts")
-            suggestions_widget.update("")
-            return
-
-        if not value.startswith("/"):
-            help_widget.update("Commands start with /")
-            suggestions_widget.update("")
-            return
-
-        value_lower = value.lower()
-        matches = [(cmd, desc) for cmd, desc in self.command_items.items() if cmd.lower().startswith(value_lower)]
-        if matches:
-            help_widget.update(f"{len(matches)} command match{'es' if len(matches) != 1 else ''}")
-            width = max(len(cmd) for cmd, _ in matches[:6]) + 2
-            lines = []
-            for index, (cmd, desc) in enumerate(matches[:6]):
-                if index == 0:
-                    lines.append(
-                        f"[bold #e07a53]{cmd.ljust(width)}[/bold #e07a53]"
-                        f"[#cfd3dc]{desc}[/#cfd3dc]"
-                    )
-                else:
-                    lines.append(
-                        f"[#8f95a3]{cmd.ljust(width)}[/#8f95a3]"
-                        f"[#b7bcc7]{desc}[/#b7bcc7]"
-                    )
-            suggestions_widget.update("\n".join(lines))
-        else:
-            help_widget.update("No matching commands")
-            suggestions_widget.update("")
-
-    def show_help(self):
-        self.append_result("[bold #e07a53]Available commands[/bold #e07a53]")
-        self.append_result("")
-        width = max(len(cmd) for cmd in self.command_items) + 2
-        for cmd, desc in self.command_items.items():
-            self.append_result(f"[bold #e07a53]{cmd.ljust(width)}[/bold #e07a53][dim]{desc}[/dim]")
-        self.append_result("")
-        self.append_result("[dim]Tip: type / to browse matching commands interactively.[/dim]")
-        self.update_summary("Help")
-
-    def handle_llm_status(self):
-        """Show LLM status and allow model selection."""
-        self.append_result("[bold #e07a53]LLM Verification Status[/bold #e07a53]")
-        
-        if not LLM_AVAILABLE:
-            self.append_result("")
-            self.append_result("[bold #f59e0b]LLM Module Not Available[/bold #f59e0b]")
-            self.append_result("Install shared_llm.py in src/ directory")
-            self.update_summary("LLM not available")
-            return
-        
-        from shared_llm import check_ollama_available, get_ollama_models
-        
-        available = check_ollama_available()
-        if not available:
-            self.append_result("")
-            self.append_result("[bold #f59e0b]Ollama Not Running[/bold #f59e0b]")
-            self.append_result("Start Ollama with: [bold]ollama serve[/bold]")
-            self.append_result("Or install from: https://ollama.ai")
-            self.update_summary("Ollama not running")
-            return
-        
-        models = get_ollama_models()
-        if not models:
-            self.append_result("")
-            self.append_result("[bold #f59e0b]No Models Found[/bold #f59e0b]")
-            self.append_result("Download a model: [bold]ollama pull <name>[/bold]")
-            self.update_summary("No models")
-            return
-        
-        self.append_result("")
-        self.append_result("[bold]Available Models:[/bold]")
-        for i, m in enumerate(models):
-            marker = "[#22c55e]*[/#22c55e]" if self.llm_manager and self.llm_manager.selected_model == m["name"] else " "
-            self.append_result(f"  {marker} {i+1}. {m['name']} ({m['size']})")
-        
-        self.append_result("")
-        
-        if self.llm_manager and self.llm_manager.enabled:
-            status = self.llm_manager.get_status()
-            self.append_result(f"[#22c55e]Enabled[/#22c55e] with: {status['selected_model']}")
-            if status.get('cache_stats'):
-                cs = status['cache_stats']
-                self.append_result(f"Cache: {cs['size']} entries, {cs['hit_rate']} hit rate")
-        else:
-            self.append_result("[dim]LLM verification disabled[/dim]")
-            self.append_result("Type /llm <number> to enable (e.g., /llm 1)")
-        
-        self.append_result("")
-        self.append_result("Type [bold]/llm <number>[/bold] to select and enable a model")
-        self.update_summary("LLM Status")
-
-    def handle_llm_select(self, value):
-        """Handle LLM model selection."""
-        parts = value.split()
-        if len(parts) < 2:
-            self.handle_llm_status()
-            return
-        
-        try:
-            idx = int(parts[1]) - 1
-        except ValueError:
-            model_name = parts[1]
-            idx = None
-        
-        if self.llm_manager is None:
-            if LLM_AVAILABLE:
-                from shared_llm import LLMManager
-                self.llm_manager = LLMManager()
-            else:
-                self.append_result("[bold #f59e0b]LLM not available[/bold #f59e0b]")
-                return
-        
-        models = self.llm_manager.list_models()
-        if not models:
-            self.append_result("[bold #f59e0b]No models available[/bold #f59e0b]")
-            return
-        
-        if idx is not None:
-            if 0 <= idx < len(models):
-                success = self.llm_manager.select_model(idx)
-            else:
-                self.append_result(f"[bold #f59e0b]Invalid model number: {idx+1}[/bold #f59e0b]")
-                return
-        else:
-            success = self.llm_manager.select_model(model_name)
-        
-        if success:
-            self.llm_manager.enable()
-            self.llm_enabled_for_tests = True
-            self.append_result(f"[#22c55e]Enabled[/#22c55e] LLM verification with: {self.llm_manager.selected_model}")
-            self.append_result("Run /random tests to use LLM verification")
-        else:
-            self.append_result(f"[bold #f59e0b]Model not found: {model_name}[/bold #f59e0b]")
-        
-        self.update_summary("LLM Model Selected")
-
-    def handle_llm_disable(self):
-        """Disable LLM verification."""
-        if self.llm_manager:
-            self.llm_manager.disable()
-            self.llm_enabled_for_tests = False
-            self.append_result("[bold #f59e0b]LLM verification disabled[/bold #f59e0b]")
-        else:
-            self.append_result("[dim]LLM was not enabled[/dim]")
-        self.update_summary("LLM Disabled")
-
-    def show_programs(self):
-        self.append_result("[bold #e07a53]Programs[/bold #e07a53]")
-        self.append_result("[dim]Algebra[/dim] — symbolic comparison, transforms, solving, inverses")
-        self.append_result("[dim]Trigonometry[/dim] — identities, transforms, equation solving")
-        self.append_result("[dim]Derive[/dim] — differentiation and harder chain-rule cases")
-        self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
-        self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
-        self.update_summary("Programs")
-
-    def show_status(self):
-        total = len(self.records)
-        passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
-        failed = total - passed
-        self.append_result("[bold #e07a53]Status[/bold #e07a53]")
-        self.append_result(f"[dim]Current program:[/dim] {self.current_program}")
-        self.append_result(f"[dim]Current difficulty:[/dim] {self.current_difficulty}")
-        if self.current_random_workers is not None:
-            self.append_result(f"[dim]Random workers:[/dim] {self.current_random_workers}")
-        self.append_result(f"[dim]Last command:[/dim] {self.last_command}")
-        self.append_result(f"[dim]Last run scope:[/dim] {self.last_run_scope[0]} · {self.last_run_scope[1]}")
-        self.append_result(f"[dim]Last run totals:[/dim] {passed} passed, {failed} failed, {total} total")
-        if self.last_report_path:
-            self.append_result(f"[dim]Last report:[/dim] {self.last_report_path}")
-        self.update_summary(f"Status · {passed}/{total} passed" if total else "Status · no runs yet")
-
-    def show_fails(self):
-        failed = [r for r in self.records if r.status == TestStatus.FAIL]
-        if not self.records:
-            self.append_result("[bold #f59e0b]No run data available yet.[/bold #f59e0b]")
-            self.update_summary("No runs yet")
-            return
-        if not failed:
-            self.append_result("[bold #22c55e]No failed tests in the last run.[/bold #22c55e]")
-            self.update_summary("No failures")
-            return
-
-        self.append_result("[bold #e07a53]Failed tests[/bold #e07a53]")
-        
-        # Group by feature
-        feature_fails = {}
-        for record in failed:
-            feat = record.feature or "unknown"
-            if feat not in feature_fails:
-                feature_fails[feat] = []
-            feature_fails[feat].append(record)
-        
-        for feat, records in sorted(feature_fails.items()):
-            self.append_result(f"[bold #f87171]{feat}:[/bold #f87171] {len(records)} failures")
-            for record in records:
-                self.append_result(f"  [#f87171]✕[/#f87171] {record.label}")
-        
-        self.update_summary(f"{len(failed)} failures")
-
-    def show_report(self):
-        failed = [r for r in self.records if r.status == TestStatus.FAIL]
-        if not self.records:
-            self.append_result("[bold #f59e0b]No run data available yet.[/bold #f59e0b]")
-            self.update_summary("No runs yet")
-            return
-        if not failed:
-            self.append_result("[bold #22c55e]All tests passed in the last run.[/bold #22c55e]")
-            self.update_summary("All tests passed")
-            return
-
-        self.append_result("[bold #e07a53]Failure report[/bold #e07a53]")
-        for index, record in enumerate(failed, start=1):
-            self.append_result(f"[bold #f87171]{index}. [{record.program}] {record.label}[/bold #f87171]")
-            output = (record.output or "").strip()
-            if not output:
-                self.append_result("[dim]No captured output.[/dim]")
-            else:
-                lines = output.splitlines()
-                for line in lines[:12]:
-                    self.append_result(f"[dim]    {line}[/dim]")
-                if len(lines) > 12:
-                    self.append_result("[dim]    ... output truncated ...[/dim]")
-            self.append_result("")
-        self.update_summary(f"Report · {len(failed)} failures")
 
     def generate_report_file(self):
         report_dir = Path(__file__).resolve().parent / "reports"
@@ -2508,7 +2313,7 @@ class CASIOApp(App):
     def action_run_tests(self, command_label="/run"):
         if self.running:
             return
-        self.running = True
+        self.transition_run_state(RunState.RUNNING)
         self.records.clear()
         self.current_run_question_keys.clear()
         self.last_run_scope = (self.current_program, self.current_difficulty)
@@ -2521,7 +2326,7 @@ class CASIOApp(App):
     def action_random_tests(self, difficulty, count, workers=None, command_label="/random", program=None):
         if self.running:
             return
-        self.running = True
+        self.transition_run_state(RunState.RUNNING)
         self.records.clear()
         self.current_run_question_keys.clear()
         self.last_run_scope = ("random", difficulty)
@@ -2530,7 +2335,8 @@ class CASIOApp(App):
         self.append_result("[dim]Generating random test cases...[/dim]")
         worker_text = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
         scope = f"{program} · " if program else ""
-        self.update_summary(f"Running random {scope}{difficulty} · {count} tests · {worker_text} workers...")
+        infinite_mode = count is None or count <= 0
+        self.update_summary(f"Running random {scope}{difficulty} · {'∞' if infinite_mode else count} tests · {worker_text} workers...")
         self.run_random_tests(difficulty, count, workers, program=program)
 
     def action_clear(self):
@@ -2541,6 +2347,16 @@ class CASIOApp(App):
         self.query_one("#command-suggestions", Static).update("")
         self.query_one("#command-help", Static).update("? for shortcuts")
         self.update_summary("Ready")
+
+    def action_stop(self):
+        if self.running:
+            self.request_stop()
+            self.append_result("[dim]Stop requested - current random batch will finish first.[/dim]")
+            self.update_summary("Stopping...")
+        elif self.records:
+            self.render_summary()
+        else:
+            self.update_summary("Stopped")
 
     def action_compile(self):
         import subprocess
@@ -2635,6 +2451,188 @@ class CASIOApp(App):
     def action_quit(self):
         self.exit()
 
+    def show_help(self):
+        self.append_result("[bold #e07a53]Available commands[/bold #e07a53]")
+        self.append_result("")
+        width = max(len(cmd) for cmd in self.command_items) + 2
+        for cmd, desc in self.command_items.items():
+            self.append_result(f"[bold #e07a53]{cmd.ljust(width)}[/bold #e07a53][dim]{desc}[/dim]")
+        self.append_result("")
+        self.append_result("[dim]Tip: type / to browse matching commands interactively.[/dim]")
+        self.update_summary("Help")
+
+    def handle_llm_status(self):
+        self.append_result("[bold #e07a53]LLM Verification Status[/bold #e07a53]")
+
+        if not LLM_AVAILABLE:
+            self.append_result("[bold #f59e0b]LLM Module Not Available[/bold #f59e0b]")
+            self.update_summary("LLM not available")
+            return
+
+        from shared_llm import check_ollama_available, get_ollama_models
+
+        available = check_ollama_available()
+        if not available:
+            self.append_result("[bold #f59e0b]Ollama Not Running[/bold #f59e0b]")
+            self.update_summary("Ollama not running")
+            return
+
+        models = get_ollama_models()
+        if not models:
+            self.append_result("[bold #f59e0b]No Models Found[/bold #f59e0b]")
+            self.update_summary("No models")
+            return
+
+        self.append_result("[bold]Available Models:[/bold]")
+        for i, m in enumerate(models):
+            marker = "[#22c55e]*[/#22c55e]" if self.llm_manager and self.llm_manager.selected_model == m["name"] else " "
+            self.append_result(f"  {marker} {i+1}. {m['name']} ({m['size']})")
+
+        if self.llm_manager and self.llm_manager.enabled:
+            status = self.llm_manager.get_status()
+            self.append_result(f"[#22c55e]Enabled[/#22c55e] with: {status['selected_model']}")
+        else:
+            self.append_result("[dim]LLM verification disabled[/dim]")
+
+        self.update_summary("LLM Status")
+
+    def handle_llm_select(self, value):
+        parts = value.split()
+        if len(parts) < 2:
+            self.handle_llm_status()
+            return
+
+        try:
+            idx = int(parts[1]) - 1
+        except ValueError:
+            model_name = parts[1]
+            idx = None
+
+        if self.llm_manager is None:
+            if LLM_AVAILABLE:
+                from shared_llm import LLMManager
+                self.llm_manager = LLMManager()
+            else:
+                self.append_result("[bold #f59e0b]LLM not available[/bold #f59e0b]")
+                return
+
+        models = self.llm_manager.list_models()
+        if not models:
+            self.append_result("[bold #f59e0b]No models available[/bold #f59e0b]")
+            return
+
+        if idx is not None:
+            if 0 <= idx < len(models):
+                success = self.llm_manager.select_model(idx)
+            else:
+                self.append_result(f"[bold #f59e0b]Invalid model number: {idx+1}[/bold #f59e0b]")
+                return
+        else:
+            success = self.llm_manager.select_model(model_name)
+
+        if success:
+            self.llm_manager.enable()
+            self.llm_enabled_for_tests = True
+            self.append_result(f"[#22c55e]Enabled[/#22c55e] LLM verification with: {self.llm_manager.selected_model}")
+            self.append_result("Run /random tests to use LLM verification")
+        else:
+            self.append_result(f"[bold #f59e0b]Model not found: {model_name}[/bold #f59e0b]")
+
+        self.update_summary("LLM Model Selected")
+
+    def handle_llm_disable(self):
+        if self.llm_manager:
+            self.llm_manager.disable()
+            self.llm_enabled_for_tests = False
+            self.append_result("[bold #f59e0b]LLM verification disabled[/bold #f59e0b]")
+        else:
+            self.append_result("[dim]LLM was not enabled[/dim]")
+        self.update_summary("LLM Disabled")
+
+    def show_programs(self):
+        self.append_result("[bold #e07a53]Programs[/bold #e07a53]")
+        self.append_result("[dim]Algebra[/dim] — symbolic comparison, transforms, solving, inverses")
+        self.append_result("[dim]Trigonometry[/dim] — identities, transforms, equation solving")
+        self.append_result("[dim]Derive[/dim] — differentiation and harder chain-rule cases")
+        self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
+        self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
+        self.update_summary("Programs")
+
+    def show_status(self):
+        total = len(self.records)
+        passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
+        failed = total - passed
+        self.append_result("[bold #e07a53]Status[/bold #e07a53]")
+        self.append_result(f"[dim]Current program:[/dim] {self.current_program}")
+        self.append_result(f"[dim]Current difficulty:[/dim] {self.current_difficulty}")
+        self.append_result(f"[dim]Last command:[/dim] {self.last_command}")
+        self.append_result(f"[dim]Last run scope:[/dim] {self.last_run_scope[0]} · {self.last_run_scope[1]}")
+        self.append_result(f"[dim]Last run totals:[/dim] {passed} passed, {failed} failed, {total} total")
+        self.update_summary(f"Status · {passed}/{total} passed" if total else "Status")
+
+    def show_fails(self):
+        failed = [r for r in self.records if r.status == TestStatus.FAIL]
+        if not self.records:
+            self.append_result("[bold #f59e0b]No run data available yet.[/bold #f59e0b]")
+            self.update_summary("No runs yet")
+            return
+        if not failed:
+            self.append_result("[bold #22c55e]No failed tests in the last run.[/bold #22c55e]")
+            self.update_summary("No failures")
+            return
+
+        self.append_result("[bold #e07a53]Failed tests[/bold #e07a53]")
+
+        feature_fails = {}
+        for record in failed:
+            feat = record.feature or "unknown"
+            if feat not in feature_fails:
+                feature_fails[feat] = []
+            feature_fails[feat].append(record)
+
+        for feat, records in sorted(feature_fails.items()):
+            self.append_result(f"[bold #f87171]{feat}:[/bold #f87171] {len(records)} failures")
+            for record in records:
+                self.append_result(f"  [#f87171]✕[/#f87171] {record.label}")
+
+        self.update_summary(f"{len(failed)} failures")
+
+    def show_report(self):
+        failed = [r for r in self.records if r.status == TestStatus.FAIL]
+        if not self.records:
+            self.append_result("[bold #f59e0b]No run data available yet.[/bold #f59e0b]")
+            self.update_summary("No runs yet")
+            return
+        if not failed:
+            self.append_result("[bold #22c55e]No failed tests in the last run.[/bold #22c55e]")
+            self.update_summary("No failures")
+            return
+
+        self.append_result("[bold #e07a53]Failure Report[/bold #e07a53]")
+        self.append_result("")
+
+        feature_fails = {}
+        for record in failed:
+            feat = record.feature or "unknown"
+            if feat not in feature_fails:
+                feature_fails[feat] = []
+            feature_fails[feat].append(record)
+
+        for feat, records in sorted(feature_fails.items()):
+            self.append_result(f"[bold #f87171]{feat}:[/bold #f87171]")
+            for record in records:
+                self.append_result(f"  [#f87171]✕[/#f87171] {record.label}")
+                if record.check_info:
+                    self.append_result(f"     Check: {record.check_info}")
+                output_lines = (record.output or "").split("\n")[:3]
+                for line in output_lines:
+                    self.append_result(f"     {line}")
+                if len((record.output or "").splitlines()) > 3:
+                    self.append_result(f"     [dim]... output truncated ...[/dim]")
+            self.append_result("")
+
+        self.update_summary(f"Report · {len(failed)} failures")
+
     def run_all_tests(self):
         def run():
             self.call_from_thread(
@@ -2668,7 +2666,7 @@ class CASIOApp(App):
                     "[dim]────────────────────────────────────────[/dim]",
                 )
                 func(self.current_difficulty)
-            self.running = False
+            self.transition_run_state(RunState.STOPPED)
             self.call_from_thread(self.render_summary)
 
         import threading
@@ -2742,7 +2740,10 @@ class CASIOApp(App):
                     eta_seconds = base_eta + time_variance * remaining_tests
 
             llm_remaining = 0.0
-            llm_to_verify = int(remaining_tests * 0.05) if remaining_tests > 50 else 0
+            if self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
+                llm_to_verify = remaining_tests
+            else:
+                llm_to_verify = 0
             if llm_to_verify > 0:
                 llm_avg = getattr(self, '_llm_avg_time', 0.0)
                 llm_estimated = getattr(self, '_llm_estimated_per_test', 0.0)
@@ -2814,6 +2815,32 @@ class CASIOApp(App):
             self.query_one("#status-line", Static).update(text)
         except Exception:
             pass
+
+    def update_command_help(self, value: str):
+        help_widget = self.query_one("#command-help", Static)
+        suggestions_widget = self.query_one("#command-suggestions", Static)
+
+        if not value:
+            help_widget.update("? for shortcuts")
+            suggestions_widget.update("")
+            return
+
+        if not value.startswith("/"):
+            help_widget.update("Commands start with /")
+            suggestions_widget.update("")
+            return
+
+        value_lower = value.lower()
+        matches = [(cmd, desc) for cmd, desc in self.command_items.items() if cmd.lower().startswith(value_lower)]
+
+        if not matches:
+            help_widget.update("No matching commands")
+            suggestions_widget.update("")
+            return
+
+        help_widget.update(matches[0][0])
+        suggestions = "\n".join(f"[dim]{cmd}[/dim]  {desc}" for cmd, desc in matches)
+        suggestions_widget.update(suggestions)
 
     def run_cli(self, script, inp):
         try:
@@ -2902,7 +2929,7 @@ class CASIOApp(App):
         for case in built:
             yield case
 
-    def run_case_specs(self, cases, workers=None, skip_quality=False):
+    def run_case_specs(self, cases, workers=None, skip_quality=False, infinite_mode=False):
         cases = self.dedupe_cases_for_run(cases)
         active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
         case_count = len(cases)
@@ -2910,7 +2937,7 @@ class CASIOApp(App):
         use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
         llm_estimated_per_test = 0.0
         if use_llm:
-            model = getattr(self.llm_manager, 'model', None) or 'unknown'
+            model = getattr(self.llm_manager, 'selected_model', None) or 'unknown'
             if 'qwen3.5' in model or 'qwen2.5' in model:
                 llm_estimated_per_test = 20.0
             elif 'llama2' in model or 'falcon' in model:
@@ -2945,17 +2972,6 @@ class CASIOApp(App):
             if not use_llm:
                 return ("", "")
 
-            should_verify = True
-
-            if record.status == TestStatus.PASS and self.total_expected > 50:
-                should_verify = False
-                import random as rng
-                if rng.random() < 0.05:
-                    should_verify = True
-
-            if not should_verify:
-                return ("", "")
-
             def stream_callback(text):
                 if text.strip():
                     try:
@@ -2975,6 +2991,8 @@ class CASIOApp(App):
         pending_records = []
 
         for batch_start in range(0, len(cases), batch_size):
+            if not self.running:
+                break
             batch = cases[batch_start:batch_start + batch_size]
             with ThreadPoolExecutor(max_workers=active_workers) as executor:
                 results = executor.map(evaluate_timed, batch)
@@ -2995,7 +3013,7 @@ class CASIOApp(App):
 
             if use_llm and pending_records:
                 emit = (lambda fn, *args: fn(*args) if fn else None) if getattr(self, 'plain_mode', False) else self.call_from_thread
-                emit(self.append_result, "[dim]Running LLM verification (sampling)...[/dim]")
+                emit(self.append_result, "[dim]Running LLM verification for every output...[/dim]")
                 llm_workers = min(8, active_workers, max(2, (self.total_expected or 100) // 20))
 
                 def llm_verify_timed(record):
@@ -3021,6 +3039,7 @@ class CASIOApp(App):
                             import statistics
                             recent = self._llm_times[-20:]
                             self._llm_avg_time = statistics.mean(recent)
+                pending_records = []
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -5137,49 +5156,133 @@ class CASIOApp(App):
         cases = self.build_unique_random_cases(features, count, super_hard_rng, "chaos")
         return cases
 
+    def random_builders_for_program(self, program):
+        builders = [
+            ("Algebra", self.build_random_algebra_cases),
+            ("Trigonometry", self.build_random_trig_cases),
+            ("Derive", self.build_random_derive_cases),
+            ("Integrate", self.build_random_integrate_cases),
+            ("SUVAT", self.build_random_suvat_cases),
+        ]
+        if program is None:
+            return builders
+        return [(name, builder) for name, builder in builders if name == program]
+
+    def random_program_counts(self, total_count, builder_count, infinite_mode):
+        if infinite_mode:
+            return [None] * builder_count
+        return self.balanced_counts(total_count, builder_count)
+
+    def iter_random_test_batches(self, builders, program_counts, generation_chunk, infinite_mode):
+        cycle = 0
+        while True:
+            cycle += 1
+            # Outer cycle: in infinite mode this is the forever loop. It ends
+            # only when the caller stops consuming batches after /stop.
+            for index, item in enumerate(builders):
+                program_name, builder = item
+                remaining = program_counts[index]
+                if not infinite_mode and remaining <= 0:
+                    continue
+
+                chunk_index = 0
+                # Inner loop: finite runs may need several chunks for one
+                # program. Infinite runs yield one chunk per program per cycle
+                # so every program keeps receiving coverage.
+                while infinite_mode or remaining > 0:
+                    chunk_index += 1
+                    if infinite_mode:
+                        this_count = generation_chunk
+                    else:
+                        this_count = min(generation_chunk, remaining)
+                        remaining -= this_count
+                    yield RandomTestBatch(
+                        program_name,
+                        builder,
+                        this_count,
+                        cycle,
+                        chunk_index,
+                        chunk_index == 1,
+                    )
+                    if infinite_mode:
+                        break
+            if not infinite_mode:
+                break
+
+    def random_stop_file_path(self):
+        return os.path.expanduser("~/.casio_stop")
+
+    def consume_random_stop_file(self):
+        stop_file = self.random_stop_file_path()
+        if os.path.exists(stop_file):
+            os.remove(stop_file)
+            return True
+        return False
+
+    def random_stop_requested(self, emit, message="[dim]Stop requested - ending after this batch[/dim]"):
+        if self.is_stopping():
+            return True
+        if self.consume_random_stop_file():
+            self.request_stop()
+            emit(self.append_result, message)
+            return True
+        return False
+
+    def reset_random_run_metrics(self, expected_count):
+        import time
+        self.start_time = time.time()
+        self.total_expected = expected_count
+        self._last_eta_update = 0
+        self.records = []
+        self._test_times = []
+        self._llm_times = []
+        self._test_timestamps = []
+        self._llm_timestamps = []
+        self._weighted_rate = 0.0
+        self._weighted_llm_rate = 0.0
+
+    def announce_random_llm_status(self, emit):
+        if self.llm_manager and self.llm_manager.enabled:
+            emit(self.append_result, "[dim]LLM:[/dim] Verifying connection to Ollama...")
+            try:
+                status = self.llm_manager.get_status()
+                model = status.get("selected_model", "unknown")
+                available = status.get("available", False)
+                if available:
+                    self.llm_enabled_for_tests = True
+                    emit(self.append_result, f"[dim]LLM:[/dim] [green]Connected[/green] · Model: {model}")
+                else:
+                    self.llm_enabled_for_tests = False
+                    emit(self.append_result, "[dim]LLM:[/dim] [yellow]Ollama not available[/yellow]")
+            except Exception as err:
+                self.llm_enabled_for_tests = False
+                emit(self.append_result, f"[dim]LLM:[/dim] [red]Error: {err}[/red]")
+            return
+
+        if self.llm_manager:
+            self.llm_enabled_for_tests = False
+            emit(self.append_result, "[dim]LLM:[/dim] [yellow]LLM disabled[/yellow]")
+            return
+
+        if LLM_AVAILABLE:
+            emit(self.append_result, "[dim]LLM:[/dim] [dim]Not enabled. Run /llm 1 before /random to verify every output.[/dim]")
+        else:
+            emit(self.append_result, "[dim]LLM:[/dim] [dim]No LLM module available[/dim]")
+
     def run_random_tests(self, difficulty, count, workers=None, program=None):
+        actual_count = count if count else 200
+        infinite_mode = count is None or count <= 0
         def run():
-            import time
             emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
             active_workers = workers or CASE_WORKERS
-            self.start_time = time.time()
-            self.total_expected = count
-            self._last_eta_update = 0
-            self.records = []
-            self._test_times = []
-            self._llm_times = []
-            self._test_timestamps = []
-            self._llm_timestamps = []
-            self._weighted_rate = 0.0
-            self._weighted_llm_rate = 0.0
+            if self.run_state != RunState.RUNNING:
+                self.transition_run_state(RunState.RUNNING)
+            if self.consume_random_stop_file():
+                self.transition_run_state(RunState.STOPPED)
+                emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
+                return
 
-            if self.llm_manager and self.llm_manager.enabled:
-                emit(self.append_result, "[dim]LLM:[/dim] Verifying connection to Ollama...")
-                try:
-                    status = self.llm_manager.get_status()
-                    model = status.get("selected_model", "unknown")
-                    available = status.get("available", False)
-                    if available:
-                        emit(self.append_result, f"[dim]LLM:[/dim] [green]Connected[/green] · Model: {model}")
-                    else:
-                        emit(self.append_result, f"[dim]LLM:[/dim] [yellow]Ollama not available[/yellow]")
-                except Exception as e:
-                    emit(self.append_result, f"[dim]LLM:[/dim] [red]Error: {e}[/red]")
-            elif self.llm_manager:
-                emit(self.append_result, "[dim]LLM:[/dim] [yellow]LLM disabled[/yellow]")
-            elif LLM_AVAILABLE:
-                from shared_llm import LLMManager
-                self.llm_manager = LLMManager()
-                models = self.llm_manager.list_models()
-                if models:
-                    self.llm_manager.select_model(0)
-                    self.llm_manager.enable()
-                    self.llm_enabled_for_tests = True
-                    emit(self.append_result, f"[dim]LLM:[/dim] [green]Auto-enabled[/green] · Model: {self.llm_manager.selected_model}")
-                else:
-                    emit(self.append_result, "[dim]LLM:[/dim] [yellow]Ollama available but no models[/yellow]")
-            else:
-                emit(self.append_result, "[dim]LLM:[/dim] [dim]No LLM configured[/dim]")
+            self.announce_random_llm_status(emit)
 
             emit(
                 self.append_result,
@@ -5187,64 +5290,60 @@ class CASIOApp(App):
             )
 
             rng = random.Random()
-            builders = [
-                ("Algebra", self.build_random_algebra_cases),
-                ("Trigonometry", self.build_random_trig_cases),
-                ("Derive", self.build_random_derive_cases),
-                ("Integrate", self.build_random_integrate_cases),
-                ("SUVAT", self.build_random_suvat_cases),
-            ]
-            if program is not None:
-                builders = [(name, builder) for name, builder in builders if name == program]
-            program_counts = self.balanced_counts(count, len(builders))
+            builders = self.random_builders_for_program(program)
+
             if not builders:
-                self.running = False
+                self.transition_run_state(RunState.STOPPED)
                 emit(self.append_result, "[bold #f59e0b]Unknown program for random run.[/bold #f59e0b]")
                 emit(self.render_summary)
                 return
 
+            generation_chunk = 200
+            if infinite_mode and self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
+                generation_chunk = 25
+
+            program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
+            expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
+            self.reset_random_run_metrics(expected_count)
+
             self.current_program = program or "all"
             self.last_run_scope = (self.current_program, difficulty)
-            self.total_expected = sum(program_counts)
             scope = f"{program} · " if program else ""
 
             emit(
                 self.append_result,
-                f"[dim]{self.total_expected} {scope}{difficulty} tests · {active_workers} workers[/dim]",
+                f"[dim]{self.total_expected} {scope}{difficulty} tests · {active_workers} workers[/dim]" if not infinite_mode else f"[dim]{scope}{difficulty} infinite tests · {active_workers} workers[/dim]",
             )
 
-            generation_chunk = 200
-            infinite_mode = count is None or count <= 0
             if infinite_mode:
-                emit(self.append_result, "[dim]Infinite mode: press Ctrl+C or /clear to stop[/dim]")
-                program_counts = [999999] * len(builders)
-                self.total_expected = 999999
+                emit(self.append_result, "[dim]Infinite mode: press /stop to end[/dim]")
 
-            for (name, builder), program_count in zip(builders, program_counts):
-                if program_count == 0 and not infinite_mode:
-                    continue
-                emit(self.append_result, "")
-                emit(
-                    self.append_result,
-                    f"[bold #e07a53]▶ {name}[/bold #e07a53]",
-                )
-                remaining = program_count
-                chunk_index = 0
-                while remaining > 0 and (infinite_mode or self.running):
-                    this_chunk = min(generation_chunk, remaining)
-                    chunk_index += 1
-                    if chunk_index == 1:
-                        emit(
-                            self.append_result,
-                            f"[dim]Generating first {this_chunk} random cases...[/dim]" if not infinite_mode else "[dim]Generating cases...[/dim]",
-                        )
-                    cases = builder(difficulty, this_chunk, rng)
-                    self.run_case_specs(cases, workers=active_workers)
-                    remaining -= this_chunk
+            last_program = None
+            for batch in self.iter_random_test_batches(builders, program_counts, generation_chunk, infinite_mode):
+                # The batch iterator owns generation order. This loop owns stop
+                # checks and execution; it exits on /stop, stop-file, or after
+                # the finite generator is exhausted.
+                if self.random_stop_requested(emit):
+                    break
+                if batch.program != last_program:
+                    emit(self.append_result, "")
+                    emit(self.append_result, f"[bold #e07a53]▶ {batch.program}[/bold #e07a53]")
+                    last_program = batch.program
+                if batch.first_for_program:
                     if infinite_mode:
-                        self.total_expected = len(self.records) + 999999
+                        emit(self.append_result, "[dim]Generating cases...[/dim]")
+                    else:
+                        emit(self.append_result, f"[dim]Generating first {batch.count} random cases...[/dim]")
 
-            self.running = False
+                cases = batch.builder(difficulty, batch.count, rng)
+                self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
+                if infinite_mode:
+                    self.total_expected = len(self.records) + generation_chunk * len(builders)
+                if self.random_stop_requested(emit):
+                    break
+
+            if self.run_state == RunState.RUNNING:
+                self.transition_run_state(RunState.STOPPED)
             if getattr(self, 'plain_mode', False):
                 self.render_summary()
             else:
@@ -6459,6 +6558,7 @@ class CASIOApp(App):
 def main():
     parser = argparse.ArgumentParser(description="CASIO Test Suite")
     parser.add_argument("--plain", action="store_true", help="Plain output mode")
+    parser.add_argument("--stop", action="store_true", help="Stop running tests (in infinite mode)")
     parser.add_argument("--run", type=str, metavar="CMD",
         help="Run tests directly: chaos N, random N, hard N, or program feature (e.g., 'trig simple')")
     parser.add_argument("--workers", type=int, default=None, metavar="N",
@@ -6466,11 +6566,21 @@ def main():
     parser.add_argument("--report", action="store_true", help="Generate report after tests")
     args = parser.parse_args()
 
+    if args.stop:
+        import os
+        stop_file = os.path.expanduser("~/.casio_stop")
+        with open(stop_file, "w") as f:
+            f.write("stop")
+        print("Stop signal sent. Current test run will stop after current batch.")
+        return
+
     if args.run:
         cmd = args.run.strip()
+        if cmd.startswith('/'):
+            cmd = cmd[1:]  # Strip leading /
         parts = cmd.split()
         difficulty = "chaos"
-        count = 1000
+        count = None  # None means infinite
         workers = args.workers
         program = None
 
@@ -6498,8 +6608,12 @@ def main():
                             pass
 
         app.plain_mode = True
-        print(f"Running: {(program + ' ') if program else ''}{difficulty} {count} (workers={workers or 'auto'})", flush=True)
-        app.running = True
+        infinite_mode = count is None or count <= 0
+        if infinite_mode:
+            print(f"Running: {(program + ' ') if program else ''}{difficulty} ∞ (workers={workers or 'auto'})", flush=True)
+        else:
+            print(f"Running: {(program + ' ') if program else ''}{difficulty} {count} (workers={workers or 'auto'})", flush=True)
+        app.transition_run_state(RunState.RUNNING)
         app.current_program = program or "all"
         app.current_difficulty = difficulty
         app.run_random_tests(difficulty, count, workers, program=program)
