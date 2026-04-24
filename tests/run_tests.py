@@ -2104,11 +2104,12 @@ class CASIOApp(App):
                 i += 1
                 continue
             return None
-        if count is None or count <= 0:
+        infinite_mode = count is None
+        if count is not None and count <= 0:
             return None
         if workers is not None and workers <= 0:
             return None
-        return difficulty, count, workers
+        return difficulty, count, workers, infinite_mode
 
     def on_key(self, event) -> None:
         if event.key == "ctrl+p":
@@ -2849,7 +2850,7 @@ class CASIOApp(App):
         info = check_info or getattr(checker, "__name__", "custom checker")
         if use_calculated:
             info = f"{info}; calculated answer correctness"
-        return CaseSpec(label, program, runner, inp, info, feature, script, combined_checker)
+        return CaseSpec(label, program, runner, inp, '', info, feature, script, combined_checker)
 
     def make_direct_case(self, program, label, runner, input_text="", check_info="", feature=""):
         return CaseSpec(label, program, runner, input_text, check_info, feature)
@@ -3231,6 +3232,7 @@ class CASIOApp(App):
             case.program,
             runner,
             fuzzed_input,
+            '',
             info,
             case.feature,
             script,
@@ -5212,8 +5214,14 @@ class CASIOApp(App):
             )
 
             generation_chunk = 200
+            infinite_mode = count is None or count <= 0
+            if infinite_mode:
+                emit(self.append_result, "[dim]Infinite mode: press Ctrl+C or /clear to stop[/dim]")
+                program_counts = [999999] * len(builders)
+                self.total_expected = 999999
+
             for (name, builder), program_count in zip(builders, program_counts):
-                if program_count == 0:
+                if program_count == 0 and not infinite_mode:
                     continue
                 emit(self.append_result, "")
                 emit(
@@ -5222,17 +5230,19 @@ class CASIOApp(App):
                 )
                 remaining = program_count
                 chunk_index = 0
-                while remaining > 0:
+                while remaining > 0 and (infinite_mode or self.running):
                     this_chunk = min(generation_chunk, remaining)
                     chunk_index += 1
                     if chunk_index == 1:
                         emit(
                             self.append_result,
-                            f"[dim]Generating first {this_chunk} random cases...[/dim]",
+                            f"[dim]Generating first {this_chunk} random cases...[/dim]" if not infinite_mode else "[dim]Generating cases...[/dim]",
                         )
                     cases = builder(difficulty, this_chunk, rng)
                     self.run_case_specs(cases, workers=active_workers)
                     remaining -= this_chunk
+                    if infinite_mode:
+                        self.total_expected = len(self.records) + 999999
 
             self.running = False
             if getattr(self, 'plain_mode', False):
