@@ -2,24 +2,45 @@ try:
     import math
 except ImportError:
     math = None
-
 try:
     import sys
 except ImportError:
     sys = None
 
 try:
+    from src.shared_helpers import (
+        ensure_reasoning_marker, fn as shared_fn, is_num,
+        is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig,
+    )
     from src.shared_cache import clear_all_caches as shared_clear_all_caches
-    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
-    import os
-    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
-    if sys is not None and _SHARED_DIR not in sys.path:
-        sys.path.insert(0, _SHARED_DIR)
-    from shared_cache import clear_all_caches as shared_clear_all_caches
-    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig
-    from shared_reasoning_markers import REASONING_MARKERS
+    try:
+        from shared_helpers import (
+            ensure_reasoning_marker, fn as shared_fn, is_num,
+            is_one, is_zero, normalize_input_text, neg as shared_neg, same_by_sig,
+        )
+        from shared_cache import clear_all_caches as shared_clear_all_caches
+        from shared_reasoning_markers import REASONING_MARKERS
+    except ImportError:
+        try:
+            from shared_fallback import (
+                clear_all_caches as shared_clear_all_caches,
+                ensure_reasoning_marker, fn as shared_fn, is_num,
+                is_one, is_zero, normalize_input_text, neg as shared_neg,
+                same_by_sig, REASONING_MARKERS,
+            )
+        except ImportError:
+            shared_clear_all_caches = lambda *c: None
+            ensure_reasoning_marker = lambda x: x
+            shared_fn = lambda *a: tuple(a)
+            is_num = lambda n: n is not None and n[0] == 'num'
+            is_one = lambda n: is_num(n) and n[1] == n[2]
+            is_zero = lambda n: is_num(n) and n[1] == 0
+            normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
+            shared_neg = lambda n: n
+            same_by_sig = lambda a, b: a == b
+            REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
 SKIP_AUTORUN = sys is not None and getattr(sys, '_suvat_no_autorun', False)
 

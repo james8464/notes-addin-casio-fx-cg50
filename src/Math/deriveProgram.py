@@ -13,24 +13,46 @@ try:
     import math
 except ImportError:
     math = None
-
 try:
     import sys
 except ImportError:
     sys = None
 
 try:
+    from src.shared_helpers import (
+        ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+        is_zero, normalize_input_text, same_by_sig, E, PI,
+    )
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
-    from src.shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, same_by_sig, E, PI
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
-    import os
-    _SHARED_DIR = os.path.dirname(os.path.dirname(__file__))
-    if sys is not None and _SHARED_DIR not in sys.path:
-        sys.path.insert(0, _SHARED_DIR)
-    from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
-    from shared_helpers import ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_zero, normalize_input_text, same_by_sig, E, PI
-    from shared_reasoning_markers import REASONING_MARKERS
+    try:
+        from shared_helpers import (
+            ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+            is_zero, normalize_input_text, same_by_sig, E, PI,
+        )
+        from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
+        from shared_reasoning_markers import REASONING_MARKERS
+    except ImportError:
+        try:
+            from shared_fallback import (
+                cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
+                ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+                is_zero, normalize_input_text, same_by_sig, E, PI, REASONING_MARKERS,
+            )
+        except ImportError:
+            shared_cache_store = lambda c, k, v, l: c.__setitem__(k, v) or v
+            shared_clear_all_caches = lambda *c: None
+            ensure_reasoning_marker = lambda x: x
+            shared_fn = lambda *a: tuple(a)
+            is_num = lambda n: n is not None and n[0] == 'num'
+            is_one = lambda n: is_num(n) and n[1] == n[2]
+            is_zero = lambda n: is_num(n) and n[1] == 0
+            normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
+            same_by_sig = lambda a, b: a == b
+            E = ("const", "e")
+            PI = ("const", "pi")
+            REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
 
 FUNC_NAMES = (

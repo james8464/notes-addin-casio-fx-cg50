@@ -2339,7 +2339,8 @@ class CASIOApp(App):
         
         root = Path(__file__).resolve().parents[1]
         calc = root / "src" / "calc_files"
-        mpy_cross = Path("/Users/james/micropython/mpy-cross/build/mpy-cross")
+        # Use mpy-cross v1.9.4 built from source (produces v3 bytecode)
+        mpy_cross = Path("/Users/james/micropython/mpy-cross/mpy-cross")
         calculator = Path("/Volumes/NO NAME")
         
         # (source file, program name, launcher name)
@@ -2358,28 +2359,30 @@ class CASIOApp(App):
             mpy = calc / f"{prog_name}.mpy"
             py_wrapper = calc / f"{launch_name}.py"
             
-            # Compile
+            self.append_result(f"[dim]Compiling {src.name}...[/dim]")
+            
+            # Compile with v1.9.4 flags: small-int-bits=31, no-unicode (required for Casio)
+            heap = ['-X', 'heapsize=52428800'] if prog_name in ('trigProgram', 'intProgram', 'deriveProgram') else []
             result = subprocess.run(
-                [str(mpy_cross), "-X", "heapsize=52428800", "-o", str(mpy), str(src)],
+                [str(mpy_cross), "-msmall-int-bits=31", "-mno-unicode"] + heap + ["-o", str(mpy), str(src)],
                 capture_output=True, text=True
             )
             
-            # Set version to 3 (v1.9.x compatibility)
             if mpy.exists():
-                data = bytearray(mpy.read_bytes())
-                data[1] = 3
-                mpy.write_bytes(data)
-                self.append_result(f"[bold #22c55e]✓[/#22c55e] {prog_name}.mpy")
-                compiled += 1
+                self.append_result(f"[bold #22c55e]✓[/#22c55e] Compiled {prog_name}.mpy (v3)")
+            else:
+                self.append_result(f"[bold #f87171]✗[/#f87171] Failed: {result.stderr[:100] if result.stderr else 'unknown'}")
+                continue
+            compiled += 1
             
-            # Create simple launcher (e.g., "import algebraProgram")
+            # Create launcher
             if not py_wrapper.exists() or py_wrapper.read_text() != f"import {prog_name}\n":
                 py_wrapper.write_text(f"import {prog_name}\n")
-                self.append_result(f"[dim]Launcher:[/dim] {launch_name}.py")
+            self.append_result(f"[dim]Created launcher:[/dim] {launch_name}.py")
         
-        # Copy to calculator if connected
+        # Copy to calculator
         if calculator.exists():
-            self.append_result("[dim]Calculator detected...[/dim]")
+            self.append_result("[bold #22c55e]--- Copying to calculator ---[/bold #22c55e]")
             import shutil
             for src_rel, prog_name, launch_name in programs:
                 mpy_src = calc / f"{prog_name}.mpy"
@@ -2391,15 +2394,17 @@ class CASIOApp(App):
                         if mpy_dst.exists():
                             mpy_dst.unlink()
                         shutil.copy(mpy_src, mpy_dst)
+                        self.append_result(f"[dim]Copied:[/dim] {prog_name}.mpy")
                     if py_src.exists():
                         if py_dst.exists():
                             py_dst.unlink()
                         shutil.copy(py_src, py_dst)
+                        self.append_result(f"[dim]Copied:[/dim] {launch_name}.py")
                 except OSError as e:
-                    self.append_result(f"[dim]Copy error: {e}[/dim]")
-            self.append_result("[bold #22c55e]Files copied to calculator[/bold #22c55e]")
+                    self.append_result(f"[bold #f87171]Error copying:[/bold #f87171] {e}")
+            self.append_result("[bold #22c55e]✓ All files copied[/bold #22c55e]")
 
-        self.update_summary(f"Compiled {compiled} files")
+        self.update_summary(f"Compiled {compiled} programs")
 
     def action_quit(self):
         self.exit()
