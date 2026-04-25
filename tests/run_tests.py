@@ -2639,9 +2639,14 @@ class CASIOApp(App):
             if plain.strip():
                 print(plain, flush=True)
             return
+        # Use print() for immediate output, bypass Textual buffering
+        import sys
+        plain = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text or "")
+        plain = plain.replace("[dim]", "").replace("[/dim]", "")
+        sys.stdout.write(plain + "\n")
+        sys.stdout.flush()
         try:
             self.query_one("#results", RichLog).write(text)
-            self.screen.refresh()  # Force immediate display
         except Exception:
             pass
 

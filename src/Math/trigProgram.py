@@ -17796,7 +17796,7 @@ def compact_lines(lines):
 
 
 MENU_LINE_WIDTH = 20
-MENU_PAGE_LINES = 4
+MENU_PAGE_LINES = 5
 
 
 def wrap_menu_text(text, width=MENU_LINE_WIDTH):
