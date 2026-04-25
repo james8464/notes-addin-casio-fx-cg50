@@ -2342,20 +2342,21 @@ class CASIOApp(App):
         mpy_cross = Path("/Users/james/micropython/mpy-cross/build/mpy-cross")
         calculator = Path("/Volumes/NO NAME")
         
+        # (source file, program name, launcher name)
         programs = [
-            ("Math/algebraProgram.py", "algebraProgram"),
-            ("Math/trigProgram.py", "trigProgram"),
-            ("Math/deriveProgram.py", "deriveProgram"),
-            ("Math/intProgram.py", "intProgram"),
-            ("Math/SUVATprogram.py", "SUVATprogram"),
-            ("ComputerScience/booleanProgram.py", "booleanProgram"),
+            ("Math/algebraProgram.py", "algebraProgram", "algebra"),
+            ("Math/trigProgram.py", "trigProgram", "trig"),
+            ("Math/deriveProgram.py", "deriveProgram", "derive"),
+            ("Math/intProgram.py", "intProgram", "int"),
+            ("Math/SUVATprogram.py", "SUVATprogram", "SUVAT"),
+            ("ComputerScience/booleanProgram.py", "booleanProgram", "boolean"),
         ]
 
         compiled = 0
-        for src_rel, name in programs:
+        for src_rel, prog_name, launch_name in programs:
             src = root / "src" / src_rel
-            mpy = calc / f"{name}.mpy"
-            py_wrapper = calc / f"{name}.py"
+            mpy = calc / f"{prog_name}.mpy"
+            py_wrapper = calc / f"{launch_name}.py"
             
             # Compile
             result = subprocess.run(
@@ -2368,32 +2369,34 @@ class CASIOApp(App):
                 data = bytearray(mpy.read_bytes())
                 data[1] = 3
                 mpy.write_bytes(data)
-                self.append_result(f"[bold #22c55e]✓[/#22c55e] {name}.mpy")
+                self.append_result(f"[bold #22c55e]✓[/#22c55e] {prog_name}.mpy")
                 compiled += 1
             
-            # Create simple wrapper (e.g., "import algebraProgram")
-            if not py_wrapper.exists() or py_wrapper.read_text() != f"import {name}\n":
-                py_wrapper.write_text(f"import {name}\n")
-                self.append_result(f"[dim]Wrapper:[/dim] {name}.py")
+            # Create simple launcher (e.g., "import algebraProgram")
+            if not py_wrapper.exists() or py_wrapper.read_text() != f"import {prog_name}\n":
+                py_wrapper.write_text(f"import {prog_name}\n")
+                self.append_result(f"[dim]Launcher:[/dim] {launch_name}.py")
         
         # Copy to calculator if connected
         if calculator.exists():
             self.append_result("[dim]Calculator detected...[/dim]")
-            for _, name in programs:
-                mpy_src = calc / f"{name}.mpy"
-                mpy_dst = calculator / f"{name}.mpy"
-                py_src = calc / f"{name}.py"
-                py_dst = calculator / f"{name}.py"
-                if mpy_src.exists():
-                    import shutil
-                    if mpy_dst.exists():
-                        mpy_dst.unlink()
-                    shutil.copy2(mpy_src, mpy_dst)
-                if py_src.exists():
-                    import shutil
-                    if py_dst.exists():
-                        py_dst.unlink()
-                    shutil.copy2(py_src, py_dst)
+            import shutil
+            for src_rel, prog_name, launch_name in programs:
+                mpy_src = calc / f"{prog_name}.mpy"
+                mpy_dst = calculator / f"{prog_name}.mpy"
+                py_src = calc / f"{launch_name}.py"
+                py_dst = calculator / f"{launch_name}.py"
+                try:
+                    if mpy_src.exists():
+                        if mpy_dst.exists():
+                            mpy_dst.unlink()
+                        shutil.copy(mpy_src, mpy_dst)
+                    if py_src.exists():
+                        if py_dst.exists():
+                            py_dst.unlink()
+                        shutil.copy(py_src, py_dst)
+                except OSError as e:
+                    self.append_result(f"[dim]Copy error: {e}[/dim]")
             self.append_result("[bold #22c55e]Files copied to calculator[/bold #22c55e]")
 
         self.update_summary(f"Compiled {compiled} files")
