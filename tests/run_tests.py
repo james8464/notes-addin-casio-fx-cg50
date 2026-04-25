@@ -2940,9 +2940,8 @@ class CASIOApp(App):
             max_attempts = max(50, feature_count * 40)
             while made < feature_count and attempts < max_attempts:
                 case_difficulty = self.random_case_difficulty(rng, difficulty)
-                
-                case = None
-                llm_gen_used = False
+                case = feature(rng, case_difficulty, next_index)
+                case = self.with_random_format_fuzz(case, rng, case_difficulty)
                 
                 if use_llm_gen and rng.random() < LLM_GENERATION_CHANCE:
                     prog_name = feature_prog_map.get(feature.__name__, "Algebra")
@@ -2950,8 +2949,6 @@ class CASIOApp(App):
                     if llm_result:
                         case.label = f"[LLM] {case.label}"
                 
-                case = feature(rng, case_difficulty, next_index)
-                case = self.with_random_format_fuzz(case, rng, case_difficulty)
                 key = self.case_question_key(case)
                 attempts += 1
                 if key in batch_seen or key in self.session_random_question_keys:

@@ -1,0 +1,26 @@
+CASIO Test Report - 2026-04-25T22:23:47
+============================================================
+
+[FAIL] Random compare 1: exp_log_inverse
+Program: Algebra
+Input: 1
+cos(8((8)*  ((  - 6  /  2) *(( -  1x + 8) **  (3))  -  5) -  4x)+   -pi/  2) / sin(8(8((-6 /2)  *((  -  1x +8)  ** 3) -  5)  -  (4) *  x)+   -  pi /2)
+cot(8(8((  -  6 /  (2))* ((  - (1) *x+ 8) **3) 
+Check: check; format fuzz; exam-quality issues: contains an error/unsupported marker; shared quality check did not find reasoning language; shared quality check did not find a conclusion marker; missing program-specific working expected for this feature
+----------------------------------------
+[FAIL] Random trig prove 1: cot
+Program: Trigonometry
+Input: 1
+(cot(x/ 2))
+(cos(x  / 2) /sin(x  /2))
+1
+
+Check: check; calculated answer correctness; format fuzz; exam-quality issues: shared quality check did not find reasoning language; shared quality check did not find a conclusion marker; missing program-specific working expected for this feature; too few non-empty lines for exam-style working
+----------------------------------------
+[FAIL] Random derive normal 1: power_power
+Program: Derive
+Input: 1
+((  -7 *  (x)-2) ^2 +7) **  ((x)  +(2))
+
+Check: check; calculated answer correctness; format fuzz; exam-quality issues: contains an error/unsupported marker; shared quality check did not find reasoning language; shared quality check did not find a conclusion marker; missing program-specific working expected for this feature
+----------------------------------------
