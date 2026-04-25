@@ -1,0 +1,1 @@
+{"nodes": [{"id": "intprogram", "label": "intProgram.py", "file_type": "code", "source_file": "src/calc_files/intProgram.py", "source_location": "L1"}], "edges": [{"source": "intprogram", "target": "intprogram", "relation": "imports", "confidence": "EXTRACTED", "source_file": "src/calc_files/intProgram.py", "source_location": "L1", "weight": 1.0}]}

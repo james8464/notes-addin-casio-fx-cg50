@@ -2331,103 +2331,72 @@ class CASIOApp(App):
             self.update_summary("Stopped")
 
     def action_compile(self):
-        import subprocess
-        import os
         from pathlib import Path
+        import subprocess
 
         self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
         self.update_summary("Compiling...")
-        import shutil
-
-        calc_files = Path(__file__).resolve().parents[1] / "src" / "calc_files"
+        
+        root = Path(__file__).resolve().parents[1]
+        calc = root / "src" / "calc_files"
         mpy_cross = Path("/Users/james/micropython/mpy-cross/build/mpy-cross")
-        heapsize = "52428800"
-        calculator_volume = Path("/Volumes/NO NAME")
-        calculator_volume = Path("/Volumes/NO NAME")
-
-        if not calc_files.exists():
-            self.append_result(f"[bold #f59e0b]Folder not found:[/bold #f59e0b] {calc_files}")
-            self.update_summary("Compile failed")
-            return
-
-        source_dirs = {
-            "algebraProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "algebraProgram.py",
-            "trigProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "trigProgram.py",
-            "deriveProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "deriveProgram.py",
-            "intProgram": Path(__file__).resolve().parents[1] / "src" / "Math" / "intProgram.py",
-            "SUVATprogram": Path(__file__).resolve().parents[1] / "src" / "Math" / "SUVATprogram.py",
-            "booleanProgram": Path(__file__).resolve().parents[1] / "src" / "ComputerScience" / "booleanProgram.py",
-        }
+        calculator = Path("/Volumes/NO NAME")
+        
+        programs = [
+            ("Math/algebraProgram.py", "algebraProgram"),
+            ("Math/trigProgram.py", "trigProgram"),
+            ("Math/deriveProgram.py", "deriveProgram"),
+            ("Math/intProgram.py", "intProgram"),
+            ("Math/SUVATprogram.py", "SUVATprogram"),
+            ("ComputerScience/booleanProgram.py", "booleanProgram"),
+        ]
 
         compiled = 0
-        failed = 0
-
-        for name, src_path in source_dirs.items():
-            mpy_path = calc_files / f"{name}.mpy"
-
-            if mpy_path.exists():
-                trash_dir = calc_files / "deleted"
-                trash_dir.mkdir(exist_ok=True)
-                shutil.move(str(mpy_path), str(trash_dir / mpy_path.name))
-                self.append_result(f"[dim]Deleted:[/dim] {mpy_path.name}")
-
-            if not src_path.exists():
-                self.append_result(f"[bold #f59e0b]Source not found:[/bold #f59e0b] {src_path}")
-                failed += 1
-                continue
-
+        for src_rel, name in programs:
+            src = root / "src" / src_rel
+            mpy = calc / f"{name}.mpy"
+            py_wrapper = calc / f"{name}.py"
+            
+            # Compile
             result = subprocess.run(
-                [str(mpy_cross), "-X", f"heapsize={heapsize}",
-                 "-o", str(mpy_path), str(src_path)],
-                capture_output=True,
-                text=True
+                [str(mpy_cross), "-X", "heapsize=52428800", "-o", str(mpy), str(src)],
+                capture_output=True, text=True
             )
-
-            if mpy_path.exists():
-                # Set version byte to 3 (for MicroPython v1.9.x compatibility) after compilation
-                with open(mpy_path, 'rb') as f:
-                    data = bytearray(f.read())
-                if len(data) >= 2 and data[1] != 3:
-                    data[1] = 3  # Change from current version to v3
-                    with open(mpy_path, 'wb') as f:
-                        f.write(data)
-                self.append_result(f"[bold #22c55e]Compiled:[/bold #22c55e] {name}.mpy")
+            
+            # Set version to 3 (v1.9.x compatibility)
+            if mpy.exists():
+                data = bytearray(mpy.read_bytes())
+                data[1] = 3
+                mpy.write_bytes(data)
+                self.append_result(f"[bold #22c55e]✓[/#22c55e] {name}.mpy")
                 compiled += 1
-            else:
-                err = result.stderr[:100] if result.stderr else "unknown"
-                self.append_result(f"[bold #f87171]Failed:[/bold #f87171] {name} - {err}")
-                failed += 1
+            
+            # Create simple wrapper (e.g., "import algebraProgram")
+            if not py_wrapper.exists() or py_wrapper.read_text() != f"import {name}\n":
+                py_wrapper.write_text(f"import {name}\n")
+                self.append_result(f"[dim]Wrapper:[/dim] {name}.py")
+        
+        # Copy to calculator if connected
+        if calculator.exists():
+            self.append_result("[dim]Calculator detected...[/dim]")
+            for _, name in programs:
+                mpy_src = calc / f"{name}.mpy"
+                mpy_dst = calculator / f"{name}.mpy"
+                py_src = calc / f"{name}.py"
+                py_dst = calculator / f"{name}.py"
+                if mpy_src.exists():
+                    import shutil
+                    if mpy_dst.exists():
+                        mpy_dst.unlink()
+                    shutil.copy2(mpy_src, mpy_dst)
+                if py_src.exists():
+                    import shutil
+                    if py_dst.exists():
+                        py_dst.unlink()
+                    shutil.copy2(py_src, py_dst)
+            self.append_result("[bold #22c55e]Files copied to calculator[/bold #22c55e]")
 
-        if calculator_volume.exists():
-            self.append_result("[dim]Calculator detected. Copying files...[/dim]")
-            for name in source_dirs.keys():
-                py_file = calc_files / f"{name}.py"
-                mpy_file = calc_files / f"{name}.mpy"
-                
-                calculator_py_file = calculator_volume / f"{name}.py"
-                calculator_mpy_file = calculator_volume / f"{name}.mpy"
-                
-                if calculator_py_file.exists():
-                    os.remove(calculator_py_file)
-                    self.append_result(f"[dim]Deleted:[/dim] {calculator_py_file.name}")
-                
-                if calculator_mpy_file.exists():
-                    os.remove(calculator_mpy_file)
-                    self.append_result(f"[dim]Deleted:[/dim] {calculator_mpy_file.name}")
-                
-                if py_file.exists():
-                    shutil.copy2(py_file, calculator_py_file)
-                    self.append_result(f"[dim]Copied:[/dim] {calculator_py_file.name}")
-                
-                if mpy_file.exists():
-                    shutil.copy2(mpy_file, calculator_mpy_file)
-                    self.append_result(f"[dim]Copied:[/dim] {calculator_mpy_file.name}")
-                    self.append_result(f"[bold #22c55e]Copied:[/bold #22c55e] {mpy_file.name}")
-
-        if failed == 0:
-            self.update_summary(f"Compiled {compiled} files")
-        else:
-            self.update_summary(f"Compiled {compiled}, failed {failed}")
+        self.update_summary(f"Compiled {compiled} files")
 
     def action_quit(self):
         self.exit()
