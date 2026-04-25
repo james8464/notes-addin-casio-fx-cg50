@@ -16456,16 +16456,82 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
 def solution_list_line(var, values, deg_mode, exact_texts=None):
     if exact_texts is None:
         return var + " = [" + ", ".join(solution_list_text(values, deg_mode)) + "]"
+    
+    # Check if we can show general solution
+    general = detect_general_solution(values, deg_mode)
+    if general is not None:
+        return var + " = " + general
+    
     bits = []
     i = 0
     while i < len(values):
         key = round(values[i], 10)
-        if key in exact_texts:
+        if exact_texts is not None and key in exact_texts:
             bits.append(exact_texts[key])
         else:
             bits.append(final_angle_text(values[i], deg_mode))
         i += 1
     return var + " = [" + ", ".join(bits) + "]"
+
+
+def detect_general_solution(values, deg_mode):
+    # Detect if solutions are evenly spaced (periodic)
+    if len(values) < 3:
+        return None
+    
+    # Check spacing between consecutive solutions
+    diffs = []
+    i = 1
+    while i < len(values):
+        diffs.append(round(values[i] - values[i-1], 10))
+        i += 1
+    
+    # All diffs should be the same (or negatives for alternating)
+    period = diffs[0]
+    all_same = True
+    for d in diffs[1:]:
+        if abs(d - period) > 1:
+            all_same = False
+            break
+    
+    if not all_same:
+        return None
+    
+    # Found period - determine general form
+    # Get principal solution (smallest positive or closest to 0)
+    principal = values[0]
+    
+    # Normalize period to positive
+    if period < 0:
+        period = -period
+    
+    # Format based on degrees or radians
+    if deg_mode:
+        # Degrees
+        if period == 180:
+            if principal == 0:
+                return "n*180 (n any integer)"
+            elif abs(principal % 180) < 1:
+                return "n*180 (n any integer)"
+            else:
+                return str(int(principal)) + " + n*180 (n any integer)"
+        elif period == 90:
+            return str(int(principal)) + " + n*90 (n any integer)"
+        elif period == 360:
+            return str(int(principal)) + " + n*360 (n any integer)"
+    else:
+        # Radians
+        if abs(period - 3.14159) < 1:
+            if abs(principal) < 0.01:
+                return "n*pi (n any integer)"
+            else:
+                return format(principal, ".2f") + " + n*pi (n any integer)"
+        elif abs(period - 1.5708) < 1:
+            return format(principal, ".2f") + " + n*pi/2 (n any integer)"
+        elif abs(period - 6.2832) < 1:
+            return format(principal, ".2f") + " + n*2pi (n any integer)"
+    
+    return None
 
 
 def trailing_solution_texts(lines, var, values):

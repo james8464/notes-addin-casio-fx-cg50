@@ -4305,6 +4305,13 @@ def poly_mode_text(text):
         lines = ['Method: Factor expression', 'Input = ' + show(expr), factored[1], '= ' + show(factored[0])]
         return ensure_reasoning_marker(lines)
     out = maybe_expand_for_compare(expr)
+    # Check if it's a rational function that could do partial fractions if factored
+    if out[0] == 'div':
+        num, den = out[1], out[2]
+        # If denominator is (x+a)(x+b) form, suggest factoring first
+        if den[0] == 'add':
+            expanded = sim(den)
+            lines.append('Note: Try expanding the denominator first')
     return ['Input = ' + show(expr), 'Out = ' + show(out)]
 
 

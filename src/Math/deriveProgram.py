@@ -2509,6 +2509,7 @@ def main():
         ("1", "n"),
         ("2", "imp"),
         ("3", "par"),
+        ("4", "2nd"),
     ], "1")
     begin_user_action()
 
@@ -2861,6 +2862,31 @@ def main():
             cart = cartesian_from_param_exprs(xt, yt, "t")
             if cart is not None:
                 print("7. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
+
+        elif mode == "4":
+            text = input("y: ").strip()
+            if text == "":
+                raise ValueError("Enter an expression.")
+            var, steps, final, formatted = solve_normal_mode(text)
+            out_label = normal_derivative_label(steps, var)
+            first_deriv = final
+            print("First derivative found:")
+            i = 1
+            while i <= len(steps):
+                print(str(i) + ". " + steps[i - 1])
+                i += 1
+            print("dy/dx = " + readable_show(first_deriv))
+            print()
+            print("Now differentiating dy/dx:")
+            var2, steps2, final2, formatted2 = solve_normal_mode(show(first_deriv))
+            out_label2 = "d2y/dx2" if var == "x" else "d/dx(" + out_label + ")"
+            i = 1
+            while i <= len(steps2):
+                print(str(len(steps) + i) + ". " + steps2[i - 1])
+                i += 1
+            print("Answer: " + out_label2 + " = " + readable_show(final2))
+            if sig(formatted2) != sig(final2):
+                print(out_label2 + " = " + readable_show(formatted2))
 
         else:
             print("Bad mode.")
