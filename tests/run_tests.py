@@ -4081,6 +4081,9 @@ class CASIOApp(App):
             self.random_algebra_comp_case,
             self.random_algebra_inverse_case,
             self.random_algebra_rewrite_case,
+            self.random_algebra_domain_case,
+            self.random_algebra_range_case,
+            self.random_algebra_cartesian_case,
             self.random_algebra_hidden_quadratic_case,
             self.random_algebra_simultaneous_hard_case,
             self.random_algebra_circle_line_hard_case,
@@ -4143,6 +4146,54 @@ class CASIOApp(App):
         cli_input = f"6\nx^2+{k}*x+{k-5}=0\n"
         label = f"Discriminant {index}"
         return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(f"x^2+{k}*x+{k-5}=0"), feature="algebra_discriminant")
+
+    def random_algebra_domain_case(self, rng, difficulty, index):
+        exprs = [
+            "1/x",
+            "x^2",
+            "sqrt(x)",
+            "1/sqrt(x)",
+            "log(x)",
+            "exp(x)",
+            "1/(x-1)",
+            "sqrt(x-1)",
+            "1/(x^2-1)",
+            "sqrt(x)+x",
+        ]
+        expr = rng.choice(exprs)
+        label = f"Domain {index}: {expr}"
+        cli_input = f"10\n{expr}\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("domain:", "x >", "x <", "x >=", "x <=", "x !="), feature="algebra_domain")
+
+    def random_algebra_range_case(self, rng, difficulty, index):
+        exprs = [
+            "x^2",
+            "x^2+1",
+            "1/x",
+            "sqrt(x)",
+            "exp(x)",
+            "-x^2",
+            "sin(x)",
+            "x^3",
+        ]
+        expr = rng.choice(exprs)
+        label = f"Range {index}: {expr}"
+        cli_input = f"10\n{expr}\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("range:", "y >", "y <", "y >=", "y <=", "y !=", "all real y"), feature="algebra_range")
+
+    def random_algebra_cartesian_case(self, rng, difficulty, index):
+        # Parametric to Cartesian
+        forms = [
+            ("t", "t+1", "t"),
+            ("t", "t^2", "t"),
+            ("t+1", "t-1", "t"),
+            ("2*t", "t^2", "t"),
+            ("sin(t)", "cos(t)", "t"),
+        ]
+        x_expr, y_expr, param = rng.choice(forms)
+        label = f"Cartesian {index}: x={x_expr}, y={y_expr}"
+        cli_input = f"11\n{x_expr}\n{y_expr}\n{param}\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("cartesian", "x =", "y ="), feature="algebra_cartesian")
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = rng.choice(["x", "2*x", "x/2", "3*x"])
@@ -4464,6 +4515,7 @@ class CASIOApp(App):
             self.random_derive_implicit_product_case,
             self.random_derive_parametric_hard_case,
             self.random_derive_log_diff_case,
+            self.random_derive_second_derivative_case,
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
@@ -4535,6 +4587,23 @@ class CASIOApp(App):
         cli_input = f"1\n{expr}\n"
         label = f"Log diff {index}"
         return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx", "log"), feature="derive_log_diff")
+
+    def random_derive_second_derivative_case(self, rng, difficulty, index):
+        # Second derivative (Mode 4 in derive)
+        exprs = [
+            "x^2",
+            "x^3", 
+            "sin(x)",
+            "exp(x)",
+            "x*exp(x)",
+            "x^2+1",
+            "log(x)",
+            "sqrt(x)",
+        ]
+        expr = rng.choice(exprs)
+        cli_input = f"4\n{expr}\n"
+        label = f"2nd deriv {index}: {expr}"
+        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, contains_any_checker("dy/dx", "d2y/dx2"), feature="derive_2nd_derivative")
 
     def random_integrate_auto_case(self, rng, difficulty, index):
         helper_difficulty = "hard" if difficulty == "chaos" else difficulty
