@@ -3946,40 +3946,126 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"5\n{expr}\n", label, algebra_complete_square_checker(), feature="algebra_complete_square")
 
     def random_algebra_solve_case(self, rng, difficulty, index):
-        if difficulty in ("hard", "chaos") and rng.random() < 0.25:
-            m = self.random_unbounded_count(rng, minimum=8, continue_probability=0.28) if difficulty == "chaos" else rng.randint(2, 8)
-            n = rng.randint(1, m - 1)
-            avg = Fraction(m * m + n * n, 2)
-            gap = Fraction(m * m - n * n, 2)
-            eq = f"(x^2-{avg.numerator}/{avg.denominator})^2-({gap.numerator}/{gap.denominator})^2=0"
-            mode = "diff_squares"
-        elif difficulty in ("hard", "chaos") and rng.random() < 0.45:
-            coeff = rng.randint(2, 7)
-            power = self.random_power_limit(rng, difficulty, hard=7)
-            rhs = coeff * (rng.randint(1, 5) ** power)
-            eq = f"{coeff}*x^{power}-{rhs}=0"
-            mode = "high_power"
-        elif difficulty in ("hard", "chaos") and rng.random() < 0.65:
-            a = self.random_nonzero_int(rng, -7, 7)
-            b = rng.randint(-9, 9)
-            root = rng.randint(-5, 5)
-            rhs = a * root + b
-            power = self.random_power_limit(rng, difficulty, hard=4)
-            eq = f"({a}*x{self.signed_int_text(b)})^{power}-({rhs})^{power}=0"
-            mode = "shifted_power"
+        # Totally chaotic equation generator
+        if difficulty == "chaos":
+            # Generate completely chaotic polynomial equations
+            degree = max(2, rng.randint(1, 8))
+            coeff_list = []
+            for d in range(degree + 1):
+                coeff_list.append(rng.randint(-50 if d > 0 else 1, 50))
+            # Build polynomial
+            terms = []
+            for d in range(degree, -1, -1):
+                c = coeff_list[degree - d]
+                if c != 0:
+                    if d == 0:
+                        terms.append(str(c))
+                    elif d == 1:
+                        terms.append(f"{c}*x")
+                    else:
+                        terms.append(f"{c}*x^{d}")
+            eq = "+".join(terms).replace("+-", "-").replace("1*x", "x").replace("1*x^", "x^")
+            eq = f"{eq}=0"
+            mode = "chaos_polynomial"
+        elif difficulty == "hard":
+            # Hard mode - varied equation types
+            types = [
+                "bivariate", "quartic", "cubic_rational", "exponential", "absolute", 
+                "nested_sqrt", "log_eq", "reciprocal", "complex_quadratic", "trig_style"
+            ]
+            eq_type = rng.choice(types)
+            
+            if eq_type == "bivariate":
+                a, b = rng.randint(1, 5), rng.randint(1, 5)
+                c, d = rng.randint(-5, 5), rng.randint(-5, 5)
+                eq = f"x*y={a*b}\n{a}*x+{b}*y+{c}=0"
+                mode = "bivariate"
+            elif eq_type == "quartic":
+                a = rng.randint(1, 3)
+                b = rng.randint(-5, 5)
+                eq = f"x^4+{a}*x^2+{b}=0"
+                mode = "quartic"
+            elif eq_type == "cubic_rational":
+                a = rng.randint(1, 4)
+                eq = f"x^3+{a}/x=0"
+                mode = "cubic_rational"
+            elif eq_type == "exponential":
+                a, b = rng.randint(2, 5), rng.randint(2, 5)
+                eq = f"{a}^x={a**rng.randint(3,6)}"
+                mode = "exponential"
+            elif eq_type == "absolute":
+                a, b, c = rng.randint(1, 4), rng.randint(-4, 4), rng.randint(-4, 4)
+                eq = f"|{a}*x+{b}|={c}"
+                mode = "absolute"
+            elif eq_type == "nested_sqrt":
+                a, b = rng.randint(1, 3), rng.randint(1, 3)
+                eq = f"sqrt(x+{a})+sqrt(x+{b})={rng.randint(3,8)}"
+                mode = "nested_sqrt"
+            elif eq_type == "log_eq":
+                a = rng.randint(2, 5)
+                eq = f"log(x)+log({a}*x)={rng.randint(1,3)}"
+                mode = "log_eq"
+            elif eq_type == "reciprocal":
+                a = rng.randint(1, 4)
+                eq = f"1/x+1/{a*x}={rng.randint(2,5)}"
+                mode = "reciprocal"
+            elif eq_type == "complex_quadratic":
+                a, b, c = rng.randint(-4, 4), rng.randint(-4, 4), rng.randint(-4, 4)
+                while a == 0: a = rng.randint(-4, 4)
+                eq = f"x^2+{b}*x+{c}=0"
+                mode = "complex_quadratic"
+            else:  # trig_style
+                eq = f"sin(x)={rng.choice([0, 1, -1])}"
+                mode = "trig_style"
         else:
-            r1 = rng.randint(-9, 9)
-            r2 = rng.randint(-9, 9)
-            a = rng.randint(1, 4)
-            b = -a * (r1 + r2)
-            c = a * r1 * r2
-            eq = f"{a}*x^2"
-            if b != 0:
-                eq += self.signed_int_text(b) + "*x"
-            if c != 0:
-                eq += self.signed_int_text(c)
-            eq += "=0"
-            mode = "quadratic"
+            # Normal difficulty
+            types = ["linear", "quadratic", "factorable", "diff_squares", "high_power", "shifted_power"]
+            eq_type = rng.choice(types) if difficulty != "chaos" else rng.choice(types + ["linear"])
+            
+            if eq_type == "linear":
+                a = self.random_nonzero_int(rng, -9, 9)
+                b = rng.randint(-9, 9)
+                c = rng.randint(-9, 9)
+                eq = f"{a}*x+{b}={c if -c != 0 else 0}"
+                mode = "linear"
+            elif eq_type == "quadratic":
+                r1, r2 = rng.randint(-6, 6), rng.randint(-6, 6)
+                a = 1
+                b = -r1 - r2
+                c = r1 * r2
+                eq = f"x^2"
+                if b != 0:
+                    eq += self.signed_int_text(b) + "*x"
+                if c != 0:
+                    eq += self.signed_int_text(c)
+                eq += "=0"
+                mode = "quadratic"
+            elif eq_type == "factorable":
+                a = rng.randint(1, 3)
+                b = rng.randint(-4, 4)
+                c = rng.randint(-4, 4)
+                eq = f"{a}*x^2+{a*b*x}+{a*c}=0"
+                mode = "factorable"
+            elif eq_type == "diff_squares":
+                m = rng.randint(3, 9)
+                n = rng.randint(1, m-1)
+                eq = f"x^2-{m}^2=0"
+                mode = "diff_squares"
+            elif eq_type == "high_power":
+                coeff = rng.randint(2, 5)
+                power = rng.randint(2, 5)
+                rhs = coeff * (rng.randint(1, 4) ** power)
+                eq = f"{coeff}*x^{power}={rhs}"
+                mode = "high_power"
+            else:  # shifted_power
+                a = self.random_nonzero_int(rng, -4, 4)
+                b = rng.randint(-4, 4)
+                root = rng.randint(1, 4)
+                power = rng.randint(2, 4)
+                rhs = a * (root ** power) + b
+                eq = f"({a}*x{self.signed_int_text(b)})^{power}={rhs}"
+                mode = "shifted_power"
+        
         label = f"Random solve {index}"
         return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature=f"algebra_solve:{mode}")
 
@@ -4278,35 +4364,60 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"trig_transform:{mode}")
 
     def random_trig_solve_case(self, rng, difficulty, index):
-        func = rng.choice(["sin", "cos", "tan"])
-        if func == "sin":
-            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
-        elif func == "cos":
-            target = rng.choice(["0", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-1/2"])
+        # Totally random/truly unpredictable trig equations
+        func = rng.choice(["sin", "cos", "tan", "sec", "cosec", "cot"])
+        
+        # Random angle forms
+        angle_forms = [
+            f"{rng.randint(1,9)}*x",
+            f"x/{rng.randint(2,5)}",
+            f"{rng.randint(1,4)}*x+{rng.randint(1,4)}",
+            f"{rng.randint(1,3)}*x-{rng.randint(1,5)}",
+            f"(x+{rng.randint(1,3)})/{rng.randint(2,4)}",
+            f"sin(x)",
+            f"cos(x)",
+            f"tan(x)",
+        ]
+        
+        if difficulty == "chaos":
+            # Chaotic mode - wild equations
+            angle = rng.choice(angle_forms + [
+                f"{rng.randint(1,7)}*x+{rng.randint(1,9)}*pi/{rng.randint(2,12)}",
+                f"x^2" if rng.random() < 0.3 else f"x",
+                f"log(x)" if rng.random() < 0.3 else f"exp(x)",
+            ])
+            # Random RHS
+            target_choices = ["0", "1", "-1", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-sqrt(3)/3", 
+                           f"{rng.randint(1,3)}", f"-{rng.randint(1,3)}", "sqrt(2)", "-sqrt(2)"]
+            target = rng.choice(target_choices)
+        elif difficulty == "hard":
+            angle = rng.choice(angle_forms + [
+                f"sin(x)+{rng.randint(1,3)}",
+                f"cos(x)-{rng.randint(1,3)}",
+                f"{rng.randint(2,5)}*x+pi/{rng.randint(2,8)}",
+            ])
+            target = rng.choice(["0", "1", "-1", "1/2", "sqrt(2)/2"])
         else:
-            target = rng.choice(["1", "-1", "sqrt(3)", "-sqrt(3)"])
-
-        mode = rng.choice(["linear", "shifted_linear"] if difficulty != "easy" else ["linear"])
-        if mode == "shifted_linear":
-            k = self.random_nonzero_int(rng, -6, 6)
-            shift = self.random_pi_shift_text(rng)
-            eq = f"{func}({k}*x+({shift}))={target}"
-        elif mode == "quadratic":
-            k = self.random_nonzero_int(rng, 1, 5)
-            c = rng.randint(0, 4)
-            eq = f"{func}({k}*x^2+{c})={target}"
+            angle = rng.choice([f"{rng.randint(1,5)}*x", f"x+{rng.randint(1,3)}", f"x-{rng.randint(1,3)}"])
+            target = rng.choice(["0", "1", "-1"])
+        
+        # Build equation
+        eq = f"{func}({angle})={target}"
+        
+        # Random intervals
+        if difficulty == "chaos":
+            interval = rng.choice(["0,2*pi", "0,360", "-pi,pi", "0,pi", "-180,180"])
+        elif difficulty == "hard":
+            interval = rng.choice(["0,360", "0,2*pi", "0,180"])
         else:
-            if difficulty == "chaos":
-                k = self.random_chaos_int(rng, -8, 8)
-            else:
-                k = self.random_nonzero_int(rng, -8 if difficulty == "hard" else 2, 8 if difficulty == "hard" else 5)
-            eq = f"{func}({k}*x)={target}"
-
-        label = f"Random trig solve {index}: {mode}"
+            interval = "0,360"
+        
+        mode = "chaos_trig" if difficulty == "chaos" else "hard_trig" if difficulty == "hard" else "easy_trig"
+        label = f"Trig solve {index}: {func}({angle[:10]})={target[:8]}"
         return self.make_cli_case(
             "Trigonometry",
             "trigProgram.py",
-            f"3\n{eq},x,0,2*pi\n",
+            f"3\n{eq},{interval}\n",
             label,
             trig_solve_checker("x ="),
             feature=f"trig_solve:{mode}",
@@ -4606,29 +4717,101 @@ class CASIOApp(App):
         return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, contains_any_checker("dy/dx", "d2y/dx2"), feature="derive_2nd_derivative")
 
     def random_integrate_auto_case(self, rng, difficulty, index):
-        helper_difficulty = "hard" if difficulty == "chaos" else difficulty
-        mode = rng.choice([
-            "du_over_u",
-            "du_over_one_plus_u2",
-            "chain_power",
-            "deep_du_over_u",
-            "deep_atan",
-            "du_over_sqrt",
-            "exp_chain",
-            "trig_chain",
-            "hard_sub_expr",
-            "nested_exp_log",
-            "sec_cosec",
-            "tan_power",
-            "arcsin_arc",
-            "sqrt_compound",
-            "log_squared",
-            "rational_chain",
-            "inverse_trig",
-            "chebyshev",
-            "bernoulli_poly",
-            "power_over_linear",
-        ])
+        # Totally random/unpredictable integrand generation
+        if difficulty == "chaos":
+            # Complete chaos - truly unpredictable integrands
+            integrand_types = [
+                "polynomial", "trig", "exp", "log", "rational", "nested", "sqrt", "inverse_trig", "product", "chain"
+            ]
+            itype = rng.choice(integrand_types)
+            
+            if itype == "polynomial":
+                # Random polynomial of any degree
+                degree = rng.randint(1, 8)
+                terms = []
+                for d in range(degree + 1):
+                    c = rng.randint(-9, 9)
+                    if c != 0:
+                        if d == 0:
+                            terms.append(str(c))
+                        elif d == 1:
+                            terms.append(f"{c}*x" if c != 1 else "x")
+                        else:
+                            terms.append(f"{c}*x^{d}")
+                expr = "+".join(terms).replace("+-", "-").replace("1*x", "x")
+                mode = "chaos_poly"
+            elif itype == "trig":
+                funcs = ["sin", "cos", "tan", "sec", "cosec", "cot"]
+                f = rng.choice(funcs)
+                coef = rng.randint(1, 4)
+                power = rng.randint(1, 3)
+                expr = f"{coef}*{f}(x)^{power}" if power > 1 else f"{coef}*{f}(x)"
+                mode = "chaos_trig"
+            elif itype == "exp":
+                a = rng.randint(2, 5)
+                power = rng.randint(1, 3)
+                expr = f"{a}^{power}*exp({a}*x)" if rng.random() < 0.5 else f"x*exp({a}*x)"
+                mode = "chaos_exp"
+            elif itype == "log":
+                expr = f"log({rng.randint(2,5)}*x)" if rng.random() < 0.5 else f"x*log(x)"
+                mode = "chaos_log"
+            elif itype == "rational":
+                a, b = rng.randint(1, 5), rng.randint(1, 5)
+                expr = f"{a}/(x+{b})" if rng.random() < 0.5 else f"{a}*x/(x+{b})"
+                mode = "chaos_rational"
+            elif itype == "nested":
+                funcs = ["sin", "cos", "exp", "log"]
+                f1, f2 = rng.choice(funcs), rng.choice(funcs)
+                expr = f"{f1}({f2}(x))"
+                mode = "chaos_nested"
+            elif itype == "sqrt":
+                a = rng.randint(2, 5)
+                expr = f"sqrt({a}*x+{rng.randint(1,5)})" if rng.random() < 0.5 else f"x/sqrt(x+{rng.randint(1,3)})"
+                mode = "chaos_sqrt"
+            elif itype == "inverse_trig":
+                funcs = ["asin", "acos", "atan"]
+                expr = f"{rng.choice(funcs)}(x/{rng.randint(2,5)})"
+                mode = "chaos_inv_trig"
+            elif itype == "product":
+                a, b = rng.randint(1, 4), rng.randint(1, 4)
+                expr = f"{a}*x^{rng.randint(1,3)}*exp({b}*x)"
+                mode = "chaos_product"
+            else:  # chain
+                a, b = rng.randint(2, 5), rng.randint(1, 5)
+                expr = f"sin({a}*x+{b})"
+                mode = "chaos_chain"
+        elif difficulty == "hard":
+            # Hard mode - varied
+            types = ["polynomial", "trig_power", "exp_poly", "rational", "u_sub"]
+            itype = rng.choice(types)
+            
+            if itype == "polynomial":
+                degree = rng.randint(2, 5)
+                terms = [f"{rng.randint(1,5)}*x^{d}" for d in range(1, degree+1)]
+                expr = "+".join(terms)
+                mode = "hard_poly"
+            elif itype == "trig_power":
+                p = rng.randint(2, 4)
+                expr = f"sin(x)^{p}" if rng.random() < 0.5 else f"cos(x)^{p}"
+                mode = "hard_trig"
+            elif itype == "exp_poly":
+                expr = f"x^{rng.randint(2,3)}*exp({rng.randint(1,3)}*x)"
+                mode = "hard_exp"
+            elif itype == "rational":
+                a, b = rng.randint(1, 3), rng.randint(1, 3)
+                expr = f"{a}*x/(x+{b})"
+                mode = "hard_rational"
+            else:
+                a = rng.randint(2, 4)
+                expr = f"{a}*x+{rng.randint(1,3)}"
+                mode = "hard_sub"
+        else:
+            # Easy - simple
+            expr = f"{rng.randint(1,5)}*x^{rng.randint(1,3)}"
+            mode = "easy"
+        
+        label = f"Integrate {index}: {expr[:25]}"
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n\n", label, integrate_checker("method:", "answer:"), feature=f"int_auto:{mode}")
         simple_u_choices = [
             self.random_linear_expr(rng, "x", allow_negative=True),
             f"x^2+{rng.randint(2, 9)}",
