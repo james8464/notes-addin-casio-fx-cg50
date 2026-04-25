@@ -49,7 +49,7 @@ except ImportError:
             is_one = lambda n: is_num(n) and n[1] == n[2]
             is_zero = lambda n: is_num(n) and n[1] == 0
             normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
-            same_by_sig = lambda a, b: a == b
+            same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")

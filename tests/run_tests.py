@@ -3273,7 +3273,7 @@ ANSWER: {result}""",
             ans_line = [l for l in lines if l.startswith("ANSWER:")]
             if not eq_line or not ans_line:
                 return None
-            return eq_line[0][4:].strip() + "=0", ans_line[4:].strip()
+            return eq_line[0][4:].strip() + "=0", ans_line[0][8:].strip()
         
         elif program_name == "Derive":
             expr_line = [l for l in lines if l.startswith("EXPR:")]

@@ -48,7 +48,7 @@ except ImportError:
             is_zero = lambda n: is_num(n) and n[1] == 0
             normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
             shared_neg = lambda n: n
-            same_by_sig = lambda a, b: a == b
+            same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
@@ -187,7 +187,10 @@ _TOTAL_CACHE_LIMIT = 16384
 
 def _enforce_total_cache_limit():
     global _TOTAL_CACHE_MEMORY
-    enforce_total_cache_limit(ALL_ENGINE_CACHES, _TOTAL_CACHE_LIMIT)
+    try:
+        enforce_total_cache_limit(ALL_ENGINE_CACHES, _TOTAL_CACHE_LIMIT)
+    except NameError:
+        pass
     _TOTAL_CACHE_MEMORY = 0
     for cache in ALL_ENGINE_CACHES:
         _TOTAL_CACHE_MEMORY += len(cache)
