@@ -2343,6 +2343,7 @@ class CASIOApp(App):
         mpy_cross = Path("/Users/james/micropython/mpy-cross/build/mpy-cross")
         heapsize = "52428800"
         calculator_volume = Path("/Volumes/NO NAME")
+        calculator_volume = Path("/Volumes/NO NAME")
 
         if not calc_files.exists():
             self.append_result(f"[bold #f59e0b]Folder not found:[/bold #f59e0b] {calc_files}")
@@ -2383,6 +2384,13 @@ class CASIOApp(App):
             )
 
             if mpy_path.exists():
+                # Set version byte to 3 (for MicroPython v1.9.x compatibility) after compilation
+                with open(mpy_path, 'rb') as f:
+                    data = bytearray(f.read())
+                if len(data) >= 2 and data[1] != 3:
+                    data[1] = 3  # Change from current version to v3
+                    with open(mpy_path, 'wb') as f:
+                        f.write(data)
                 self.append_result(f"[bold #22c55e]Compiled:[/bold #22c55e] {name}.mpy")
                 compiled += 1
             else:
@@ -3078,14 +3086,14 @@ class CASIOApp(App):
 
     def random_case_difficulty(self, rng, requested):
         if requested == "chaos":
-            return rng.choice(["medium", "hard", "hard", "chaos", "chaos", "chaos"])
+            return rng.choice(["hard", "hard", "chaos", "chaos", "chaos", "chaos", "chaos"])
         if requested == "all":
-            return rng.choice(["easy", "medium", "hard", "chaos"])
-        if requested == "hard" and rng.random() < 0.5:
+            return rng.choice(["medium", "hard", "chaos", "chaos"])
+        if requested == "hard" and rng.random() < 0.6:
             return "chaos"
-        if requested == "medium" and rng.random() < 0.3:
+        if requested == "medium" and rng.random() < 0.45:
             return "chaos"
-        if requested == "easy" and rng.random() < 0.15:
+        if requested == "easy" and rng.random() < 0.25:
             return "chaos"
         return requested
 
@@ -3102,31 +3110,31 @@ class CASIOApp(App):
         if difficulty == "medium":
             return medium
         if difficulty == "chaos":
-            return self.random_unbounded_count(rng, minimum=hard, continue_probability=0.25)
+            return self.random_unbounded_count(rng, minimum=hard, continue_probability=0.35)
         return hard
 
     def random_depth_for_difficulty(self, rng, difficulty):
         if difficulty == "easy":
             return 1
         if difficulty == "medium":
-            return rng.randint(2, 3)
+            return rng.randint(2, 4)
         if difficulty == "chaos":
-            return self.random_unbounded_count(rng, minimum=4, continue_probability=0.22)
-        return rng.randint(3, 5)
+            return self.random_unbounded_count(rng, minimum=5, continue_probability=0.30)
+        return rng.randint(4, 7)
 
     def fuzz_atom_format(self, text, rng, difficulty):
         if not text or not text.strip():
             return text
         text = text.strip()
-        intensity = {"easy": 0.25, "medium": 0.45, "hard": 0.7}.get(difficulty, 0.45)
+        intensity = {"easy": 0.30, "medium": 0.55, "hard": 0.80, "chaos": 0.90}.get(difficulty, 0.55)
 
         def maybe_wrap_var(match):
             name = match.group(0)
-            return f"({name})" if rng.random() < intensity * 0.25 else name
+            return f"({name})" if rng.random() < intensity * 0.30 else name
 
         def maybe_wrap_number(match):
             number = match.group(0)
-            return f"({number})" if rng.random() < intensity * 0.18 else number
+            return f"({number})" if rng.random() < intensity * 0.22 else number
 
         text = re.sub(r"(?<![A-Za-z_])(x|y|t)(?![A-Za-z_])", maybe_wrap_var, text)
         text = re.sub(r"(?<![A-Za-z_])\d+(?:\.\d+)?(?![A-Za-z_])", maybe_wrap_number, text)
@@ -3385,7 +3393,7 @@ class CASIOApp(App):
         return out
 
     def random_affine_expr(self, rng, var="x", difficulty="hard", allow_negative=True, fractions=False):
-        if fractions and difficulty in ("hard", "chaos") and rng.random() < (0.55 if difficulty == "chaos" else 0.35):
+        if fractions and difficulty in ("hard", "chaos") and rng.random() < (0.70 if difficulty == "chaos" else 0.45):
             a = self.random_small_rational_text(rng, allow_negative=allow_negative)
             b = self.random_small_rational_text(rng, allow_negative=True)
             return f"({a})*{var}+({b})"
@@ -3394,9 +3402,9 @@ class CASIOApp(App):
     def random_shifted_power_expr(self, rng, var="x", difficulty="hard"):
         base = self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos"))
         if difficulty == "chaos":
-            power = self.random_power_limit(rng, difficulty, hard=5)
+            power = self.random_power_limit(rng, difficulty, hard=7)
         else:
-            powers = [2] if difficulty == "easy" else ([2, 3] if difficulty == "medium" else [2, 3, 4, 5])
+            powers = [2] if difficulty == "easy" else ([2, 3] if difficulty == "medium" else [2, 3, 4, 5, 6])
             power = rng.choice(powers)
         return f"({base})^{power}"
 
@@ -3497,29 +3505,32 @@ class CASIOApp(App):
         return f"({numerator})/({denominator})"
 
     def random_positive_expr(self, rng, var="x", difficulty="hard"):
-        mode = rng.choice(["square", "sum_squares", "exp_plus", "sqrt_guard"] if difficulty in ("hard", "chaos") else ["square", "sum_squares"])
+        mode = rng.choice(["square", "sum_squares", "exp_plus", "sqrt_guard", "log_guard"] if difficulty in ("hard", "chaos") else ["square", "sum_squares"])
         if mode == "sum_squares":
             left = self.random_affine_expr(rng, var, difficulty, allow_negative=True)
             right = self.random_affine_expr(rng, var, difficulty, allow_negative=True)
-            return f"({left})^2+({right})^2+{rng.randint(2, 9)}"
+            return f"({left})^2+({right})^2+{rng.randint(2, 12)}"
         if mode == "exp_plus":
-            return f"exp({self.random_affine_expr(rng, var, difficulty, allow_negative=True)})+{rng.randint(2, 9)}"
+            return f"exp({self.random_affine_expr(rng, var, difficulty, allow_negative=True)})+{rng.randint(2, 12)}"
         if mode == "sqrt_guard":
             base = self.random_base_expr(rng, var, difficulty)
-            return f"sqrt(({base})^2+{rng.randint(2, 9)})+{rng.randint(1, 5)}"
+            return f"sqrt(({base})^2+{rng.randint(2, 12)})+{rng.randint(1, 7)}"
+        if mode == "log_guard":
+            inner = self.random_affine_expr(rng, var, difficulty, allow_negative=True)
+            return f"log(abs({inner})+{rng.randint(2, 12)})"
         base = self.random_base_expr(rng, var, difficulty)
-        extra = rng.randint(2, 9)
+        extra = rng.randint(2, 12)
         return f"({base})^2+{extra}"
 
     def random_factorised_polynomial_expr(self, rng, var="x", difficulty="hard"):
         factors = []
-        count = self.random_unbounded_count(rng, minimum=5, continue_probability=0.22) if difficulty == "chaos" else self.difficulty_number(difficulty, easy=2, medium=3, hard=rng.randint(3, 5))
+        count = self.random_unbounded_count(rng, minimum=7, continue_probability=0.28) if difficulty == "chaos" else self.difficulty_number(difficulty, easy=2, medium=3, hard=rng.randint(3, 6))
         for _ in range(count):
-            root = rng.randint(-8, 8)
-            mult = rng.choice([1, 1, 2, 3, self.random_power_limit(rng, "chaos", hard=3)]) if difficulty == "chaos" else (1 if difficulty == "easy" else rng.choice([1, 1, 2]))
+            root = rng.randint(-10, 10)
+            mult = rng.choice([1, 1, 2, 2, 3, self.random_power_limit(rng, "chaos", hard=4)]) if difficulty == "chaos" else (1 if difficulty == "easy" else rng.choice([1, 1, 2]))
             factor = f"({var}{self.signed_int_text(-root)})"
             factors.append(f"{factor}^{mult}" if mult != 1 else factor)
-        coeff = rng.choice([1, 1, -1, rng.randint(2, 5)])
+        coeff = rng.choice([1, 1, -1, rng.randint(2, 7)])
         body = "*".join(factors)
         return body if coeff == 1 else f"{coeff}*{body}"
 
@@ -4950,8 +4961,11 @@ class CASIOApp(App):
                 checker = suvat_expected_error_checker("infinite solutions")
                 feature_prefix = "suvat_expected_error"
             else:
-                cli_input = "\n\n\n,\n\n"
-                checker = suvat_symbolic_output_checker("a", "(v-u)/t")
+                s_val = Fraction(rng.randint(-20, 20), 1)
+                u_val = Fraction(rng.randint(-10, 10), 1)
+                t_val = Fraction(rng.randint(1, 8), 1)
+                cli_input = f"{frac_text(s_val)}\n{frac_text(u_val)}\n,\n0\n{frac_text(t_val)}\n"
+                checker = suvat_symbolic_output_checker("a", "(s-u*t)/(t^2)")
                 feature_prefix = "suvat_edge"
             mode = f"{mode}_{target}"
         if target != "a":

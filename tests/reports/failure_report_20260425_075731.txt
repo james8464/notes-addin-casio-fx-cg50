@@ -1,0 +1,1080 @@
+CASIO Test Failure Report
+Generated: 2026-04-25T07:57:31
+Last command: /random
+Current program: all
+Difficulty: chaos
+Summary: 15806 passed, 7 failed, 15813 total
+
+LLM Flagged (working quality issues):
+------------------------------------------------------------
+[Algebra] Hard simultaneous 22: disguised quadratic [algebra_simultaneous_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: integration example given in the program output. The problem seems to invol[5D[K involve a trigonometric integral, while the example integrates a polynomial[10D[K polynomial expression. Additional
+------------------------------------------------------------
+[Derive] Random derive parametric 10: log_mix [derive_parametric:log_mix]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 23 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive parametric 10: log_mix [derive_parametric:log_mix]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Implicit product 19 [derive_implicit_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 3: power_power [derive_normal:power_power]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: INCORRECT
+  LLM Comment: for the integration of arcsin(arc), but the provided solution integrates a [K polynomial expression. There is no direct connection between the problem an[2D[K and the solution presented. Additional
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: by the problem, making it difficult to verify the correctness of the soluti[6D[K solution.
+------------------------------------------------------------
+[Trigonometry] Random trig transform 7: cot_ratio [trig_transform:cot_ratio]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: tan_power [integrate_auto:tan_power]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 1: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations for x(t) and y(t). These should be provided before differentiatin[14D[K differentiating them with respect to t.
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random solve 11 [algebra_solve:quadratic]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random composition 14 [algebra_comp]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations (x(t) and y(t)) which are necessary to derive dy/dx. Without thes[4D[K these equations, it's impossible to verify the correctness of the steps or [K the final answer.
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations (x(t) and y(t)) which are necessary to derive dy/dx. Without thes[4D[K these equations, it's impossible to verify the correctness of the steps or [K the final answer.
+------------------------------------------------------------
+[Derive] Chain quotient 15 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations (x(t) and y(t)) which are necessary to derive dy/dx. Without thes[4D[K these equations, it's impossible to verify the correctness of the steps or [K the final answer.
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: INCORRECT
+  LLM Comment: match. The integral given seems to be arcsin or related, but the solution p[1D[K provided is for a polynomial function. There is a mismatch between the prob[4D[K problem and the solution presented
+------------------------------------------------------------
+[Algebra] Random composition 13 [algebra_comp]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 24 [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations (x(t) and y(t)) which are necessary to derive dy/dx. Without thes[4D[K these equations, it's impossible to verify the correctness of the steps or [K the final answer.
+------------------------------------------------------------
+[Integrate] Random integrate auto 3: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: problem asks for the integration of a trigonometric function, while the sol[3D[K solution provided is for a polynomial function.
+------------------------------------------------------------
+[SUVAT] Random SUVAT 23: find a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: tan_power [integrate_auto:tan_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random composition 13 [algebra_comp]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] MadAsMaths trig 16 [trig_madas]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Hidden quadratic 20 [algebra_hard_solve]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 7: find u
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 4: inverse_trig [derive_normal:inverse_trig]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Parts twice 6 [int_parts_twice]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Hard simultaneous 22: disguised quadratic [algebra_simultaneous_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Chain quotient 15 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive parametric 9: poly [derive_parametric:poly]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT 2: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random transform 3: cot [algebra_transform:cot]
+  LLM Verdict: INCORRECT
+  LLM Comment: cotangent function to its equivalent form using sine and cosine is correctl[8D[K correctly shown, but the intermediate steps are not clearly justified. For [K instance, the step "Hence cot(3*(4*x ^
+------------------------------------------------------------
+[Algebra] Random transform 4: cot [algebra_transform:cot]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 2: quotient [derive_normal:quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Parts twice 6 [int_parts_twice]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Triple product 11 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive parametric 9: poly [derive_parametric:poly]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: stated. The problem asks to integrate a trigonometric function, but the out[3D[K output discusses a polynomial function integration. This discrepancy indica[6D[K indicates an error or misalignment
+------------------------------------------------------------
+[Integrate] Parts twice 6 [int_parts_twice]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Parts twice 6 [int_parts_twice]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: du_over_one_plus_u2 [integrate_auto:du_over_one_plus_u2]
+  LLM Verdict: INCORRECT
+  LLM Comment: presented in the problem. The integral given, \( \int \frac{du}{1+u^2} \), [K is a standard form that integrates to \( \arctan(u) + C \), not the complic[7D[K complicated polynomial inside the arct
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 23 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Implicit product 18 [derive_implicit_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: and `cosec(x)`, but the provided solution integrates `(2*x + 8)^15`. There'[6D[K There's a mismatch between the problem and the solution.
+------------------------------------------------------------
+[Derive] Chain quotient 14 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: unrelated to the differentiation process shown. The steps provided seem to [K address a different problem involving logarithmic differentiation of a more[4D[K more complex function, not a simple lo
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Chain quotient 14 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: INCORRECT
+  LLM Comment: integration problem, which seems to involve the arcsine function rather tha[3D[K than a polynomial for direct integration. Additionally, the explanation of [K steps and methods does not align with 
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: equations to differentiate, which are necessary to verify the correctness o[1D[K of the derivation process. The steps provided seem to be a template or an e[1D[K example of how to differentiate pa
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 20 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: du_over_one_plus_u2 [integrate_auto:du_over_one_plus_u2]
+  LLM Verdict: INCORRECT
+  LLM Comment: presented in the problem. The integral given, \( \int \frac{du}{1+u^2} \), [K is a standard form that integrates to \( \arctan(u) + C \), not the complic[7D[K complicated polynomial inside the arct
+------------------------------------------------------------
+[Integrate] Random integrate auto 3: tan_power [integrate_auto:tan_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: the example integration shown. The prompt asks for an integration involving[9D[K involving "tan_power," but the given solution integrates a polynomial funct[5D[K function. There's no clear link be
+------------------------------------------------------------
+[Integrate] Parts twice 7 [int_parts_twice]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 18 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 20 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 4: inverse_trig [derive_normal:inverse_trig]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 2: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 2: quotient [derive_normal:quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 1: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 3: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hidden quadratic 19 [algebra_hard_solve]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive parametric 10: poly [derive_parametric:poly]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 20 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 16 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 1: inverse_trig [derive_normal:inverse_trig]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: du_over_u [integrate_auto:du_over_u]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 6: find u
+  LLM Verdict: INCORRECT
+  LLM Comment: problem. The problem asks to find 'u' given certain values, but the calcula[7D[K calculations presented do not reflect the initial conditions mentioned.
+------------------------------------------------------------
+[Algebra] Random rewrite 18: shift [algebra_rewrite:shift]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Chain quotient 15 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: du_over_u [integrate_auto:du_over_u]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Chain quotient 16 [derive_chain_quotient]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random composition 14 [algebra_comp]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 13 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: and lacks clarity in explaining the transformation from one equation to ano[3D[K another.
+------------------------------------------------------------
+[Derive] Random derive normal 4: trig_composite [derive_normal:trig_composite]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hidden quadratic 19 [algebra_hard_solve]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random rewrite 18: shift [algebra_rewrite:shift]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 11 [algebra_solve:shifted_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: detailed enough to perform a thorough check. The format of the output is un[2D[K unclear, and essential information like the original equation and each step[4D[K step's explanation is missing. The
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 14 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 14 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Implicit product 17 [derive_implicit_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 4: reciprocal_cosec [algebra_transform:reciprocal_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: the format could be clearer by explicitly stating each transformation step [K and its justification. The use of "hence" is somewhat vague without additio[7D[K additional context, which could lead t
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 22 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Implicit product 19 [derive_implicit_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random solve 12 [algebra_solve:diff_squares]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 22: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 16 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 11 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 3: find s
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: pythag_sec [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random transform 3: sin2 [algebra_transform:sin2]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random solve 11 [algebra_solve:diff_squares]
+  LLM Verdict: INCORRECT
+  LLM Comment: incorrectly applied, and the final answer follows from the working.
+------------------------------------------------------------
+[Derive] Log diff 23 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 24 [derive_log_diff]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 16 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: bernoulli_poly [integrate_auto:bernoulli_poly]
+  LLM Verdict: INCORRECT
+  LLM Comment: example does not match the stated problem involving Bernoulli polynomials.
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 15: find a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 13: zero_accel_v
+  LLM Verdict: INCORRECT
+  LLM Comment: = u + at, but since acceleration (a) is zero, the correct application would[5D[K would simplify to v = u, not v = 10 + 0*2.
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Hidden quadratic 20 [algebra_hard_solve]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 12 [algebra_solve:diff_squares]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 15 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig transform 5: pythag_sec [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive normal 1: product [derive_normal:product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: du_over_one_plus_u2 [integrate_auto:du_over_one_plus_u2]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Circle-line 24 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Parametric hard 20 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT 3: find s
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Chain quotient 15 [derive_chain_quotient]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Triple product 13 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 1: tan_power [integrate_auto:tan_power]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Hard trig identity 15 [trig_identity_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Algebra] Random composition 13 [algebra_comp]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random solve 12 [algebra_solve:diff_squares]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: inverse_trig [integrate_auto:inverse_trig]
+  LLM Verdict: INCORRECT
+  LLM Comment: inverse trigonometric functions, but the provided solution seems to be inte[4D[K integrating a polynomial function. The method applied does not align with t[1D[K the specified requirement of "inve
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random transform 3: cos2a [algebra_transform:cos2a]
+  LLM Verdict: INCORRECT
+  LLM Comment: lack of clarity in the transformation steps.
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive normal 3: nested_exp [derive_normal:nested_exp]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive normal 1: trig_composite [derive_normal:trig_composite]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Random complete square 10 [algebra_complete_square]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Parametric hard 20 [derive_parametric_hard]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig transform 6: pythag_sec [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: INCORRECT
+  LLM Comment: inverse trigonometric functions (arcsin and arc), but the provided solution[8D[K solution appears to integrate a polynomial function. There's no clear conne[5D[K connection between the problem sta
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 4: tan_power [integrate_auto:tan_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: the tangent function, but the provided output calculates the integral of \([2D[K \((5 - 6x)^{16}\). There's a mismatch between the stated problem and the gi[2D[K given solution. Furthermore, there
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive parametric 8: nested_trig_log [derive_parametric:nested_trig_log]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 2: tan_power [integrate_auto:tan_power]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive parametric 8: nested_trig_log [derive_parametric:nested_trig_log]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[SUVAT] Random SUVAT edge 25: zero_time_consistent_a
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Algebra] Circle-line 23 [algebra_circle_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive parametric 10: poly [derive_parametric:poly]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Parametric hard 21 [derive_parametric_hard]
+  LLM Verdict: INCORRECT
+  LLM Comment: deriving a parametric hard 21 problem. The steps outlined seem to be differ[6D[K differentiating parametric equations but do not reflect a typical hard 21 s[1D[K scenario or any known mathematical
+------------------------------------------------------------
+[Integrate] Random integrate auto 5: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: the integration problem stated by the user. The integration of `sec(x)csc(x[12D[K `sec(x)csc(x)` should result in a trigonometric function, not the polynomia[9D[K polynomial expansion shown in the
+------------------------------------------------------------
+[Integrate] Random integrate auto 3: sec_cosec [integrate_auto:sec_cosec]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig prove 2: tan [trig_prove:tan]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Random derive parametric 10: poly [derive_parametric:poly]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Triple product 12 [derive_triple_product]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Trigonometry] Random trig prove 2: tan [trig_prove:tan]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Trigonometry] Random trig transform 6: pythag_sec [trig_transform:pythag_sec]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Derive] Random derive parametric 10: poly [derive_parametric:poly]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+------------------------------------------------------------
+[Integrate] Random integrate auto 3: du_over_one_plus_u2 [integrate_auto:du_over_one_plus_u2]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Derive] Log diff 25 [derive_log_diff]
+  LLM Verdict: INCORRECT
+  LLM Comment: 
+------------------------------------------------------------
+[Integrate] Random integrate auto 1: arcsin_arc [integrate_auto:arcsin_arc]
+  LLM Verdict: NEEDS_REVIEW
+  LLM Comment: NEEDS_REVIEW
+
+Failures by feature:
+  derive_triple_product: 7 failures
+
+================================================================================
+1. [Derive] Triple product 11 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(((sqrt((-8  *x +7)^2+(-8* x+3)  **  2  +3))* (sin((2)*((7*  ((7*(((4/(3))  *x+(3/2))+1) ^3+  5) +  -1) ^3)+2)^3-(4))^5+cos(2 *((7*(((7)  * (((4  /(3))  * x+(3/2))+ 1) ^  3+ 5)+-  1)^(3))  +2)^ 3- 4)^  5))  +(log(sqrt((3 * x+5)^2+4)+5)))*((asin((2*x  + 9)/  10))/(exp(4 *  x-  3) +9))*(cos(3*(-2  *x+1)+  pi /(6)))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6), v = exp(4*x - 3) + 9
+4. du/dx = ((2*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))^2*(17640*(sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2 - 17640*(cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2) + ((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5)*(-16*(7 - 8*x) - 16*(3 - 8*x)))*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5) + 6*(3*x + 5)*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)/(2*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5)) + (sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*cos((18*(1 - 2*x) + pi)/6)/(5*sqrt((100 - (2*x + 9)^2)/100)) + 6*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*sin((18*(1 - 2*x) + pi)/6), dv/dx = 4*exp(4*x - 3)
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((exp(4*x - 3) + 9)*(((2*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))^2*(17640*(sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2 - 17640*(cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2) + ((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5)*(-16*(7 - 8*x) - 16*(3 - 8*x)))*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5) + 6*(3*x + 5)*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)/(2*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5)) + (sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*cos((18*(1 - 2*x) + pi)/6)/(5*sqrt((100 - (2*x + 9)^2)/100)) + 6*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*sin((18*(1 - 2*x) + pi)/6)) - 4*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)*exp(4*x - 3))/(exp(4*x - 3) + 9)^2
+7. = ((exp(4*x - 3) + 9)*(((2*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))^2*(17640*(sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2 - 17640*(cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2) + ((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5)*(-16*(7 - 8*x) - 16*(3 - 8*x)))*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5) + 6*(3*x + 5)*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)/(2*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5)) + (sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*cos((18*(1 - 2*x) + pi)/6)/(5*sqrt((100 - (2*x + 9)^2)/100)) + 6*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*sin((18*(1 - 2*x) + pi)/6)) - 4*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)*exp(4*x - 3))/(exp(4*x - 3) + 9)^2
+Answer: dy/dx = ((exp(4*x - 3) + 9)*(((2*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))^2*(17640*(sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2 - 17640*(cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^4*sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4)*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^2*(7*((4/3)*x + 5/2)^3 + 4)^2*((4/3)*x + 5/2)^2) + ((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5)*(-16*(7 - 8*x) - 16*(3 - 8*x)))*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5) + 6*(3*x + 5)*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)/(2*sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*sqrt((3*x + 5)^2 + 4)*(sqrt((3*x + 5)^2 + 4) + 5)) + (sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*cos((18*(1 - 2*x) + pi)/6)/(5*sqrt((100 - (2*x + 9)^2)/100)) + 6*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*sin((18*(1 - 2*x) + pi)/6)) - 4*(sqrt((7 - 8*x)^2 + (3 - 8*x)^2 + 3)*((sin(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5 + (cos(2*(7*(7*((4/3)*x + 5/2)^3 + 4)^3 + 2)^3 - 4))^5) + ln(sqrt((3*x + 5)^2 + 4) + 5))*asin((2*x + 9)/10)*cos((18*(1 - 2*x) + pi)/6)*exp(4*x - 3))/(exp(4*x - 3) + 9)^2
+
+================================================================================
+2. [Derive] Triple product 11 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(atan((4)*x  +3))*(exp((log((( - 2 *x  +  5)^  2 +(-2*x -(6)))**  2  +6)) ^10))*(sec(6  * (6* (8*  (7*  x ^2-1  * x + 2)  ^2+5)  +4) +1))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = atan(4*x + 3), v = exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)
+4. du/dx = 4/((4*x + 3)^2 + 1), dv/dx = (576*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*tan(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*(7*x^2 - x + 2)*(14*x - 1)*(((5 - 2*x)^2 - 2*x - 6)^2 + 6) + 20*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*(ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^9*((5 - 2*x)^2 - 2*x - 6)*(-4*(5 - 2*x) - 2))/(((5 - 2*x)^2 - 2*x - 6)^2 + 6)
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (atan(4*x + 3)*(576*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*tan(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*(7*x^2 - x + 2)*(14*x - 1)*(((5 - 2*x)^2 - 2*x - 6)^2 + 6) + 20*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*(ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^9*((5 - 2*x)^2 - 2*x - 6)*(-4*(5 - 2*x) - 2))*((4*x + 3)^2 + 1) + 4*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*(((5 - 2*x)^2 - 2*x - 6)^2 + 6))/((((5 - 2*x)^2 - 2*x - 6)^2 + 6)*((4*x + 3)^2 + 1))
+Answer: dy/dx = 4*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)/((4*x + 3)^2 + 1) + 20*atan(4*x + 3)*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*(ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^9*((5 - 2*x)^2 - 2*x - 6)*(-4*(5 - 2*x) - 2)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)/(((5 - 2*x)^2 - 2*x - 6)^2 + 6) + 576*atan(4*x + 3)*exp((ln(((5 - 2*x)^2 - 2*x - 6)^2 + 6))^10)*sec(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*tan(6*(6*(8*(7*x^2 - x + 2)^2 + 5) + 4) + 1)*(7*x^2 - x + 2)*(14*x - 1)
+
+================================================================================
+3. [Derive] Triple product 12 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+((exp(- (1)*(x+8)*(x+ 7)*(x-  1) **2*(x-8)  ^2*(x-7)))/(((1*x-6)  ^2+(4*x  +6)) ^2+2))*  (((exp(4* (x)+4)+5) /  (((x)*(x+2)*(x+5))^ 2  +9))  +((log(sqrt((((  -8  /8) *x+(5/2))^ 4) ^ 2+6) +2))+  (exp((2)* x+ 2))))*  (sin(6  *(7*x+  2)- (6)*(x)))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x), v = ((x - 6)^2 + 4*x + 6)^2 + 2
+4. du/dx = exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*(-(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7) + (-x - 8)*(x - 1)^2*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)^2*(x - 8)*(x - 7) + (-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2)*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((4*(x^2*(x + 2)^2*(x + 5)^2 + 9)*exp(4*x + 4) - (exp(4*x + 4) + 5)*(2*x*(x + 2)^2*(x + 5)^2 + 2*x^2*(x + 2)*(x + 5)^2 + 2*x^2*(x + 2)^2*(x + 5)))/(x^2*(x + 2)^2*(x + 5)^2 + 9)^2 + -4*(5/2 - x)^7/(sqrt((5/2 - x)^8 + 6)*(sqrt((5/2 - x)^8 + 6) + 2)) + 2*exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + 36*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*cos(6*(7*x + 2) - 6*x), dv/dx = 4*x^3 - 48*x^2 + 296*x - 672
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((((x - 6)^2 + 4*x + 6)^2 + 2)*(exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*(-(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7) + (-x - 8)*(x - 1)^2*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)^2*(x - 8)*(x - 7) + (-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2)*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((4*(x^2*(x + 2)^2*(x + 5)^2 + 9)*exp(4*x + 4) - (exp(4*x + 4) + 5)*(2*x*(x + 2)^2*(x + 5)^2 + 2*x^2*(x + 2)*(x + 5)^2 + 2*x^2*(x + 2)^2*(x + 5)))/(x^2*(x + 2)^2*(x + 5)^2 + 9)^2 + -4*(5/2 - x)^7/(sqrt((5/2 - x)^8 + 6)*(sqrt((5/2 - x)^8 + 6) + 2)) + 2*exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + 36*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*cos(6*(7*x + 2) - 6*x)) - exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x)*(4*x^3 - 48*x^2 + 296*x - 672))/(((x - 6)^2 + 4*x + 6)^2 + 2)^2
+7. = ((((x - 6)^2 + 4*x + 6)^2 + 2)*(exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*(-(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7) + (-x - 8)*(x - 1)^2*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)^2*(x - 8)*(x - 7) + (-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2)*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((4*(x^2*(x + 2)^2*(x + 5)^2 + 9)*exp(4*x + 4) - (exp(4*x + 4) + 5)*(2*x*(x + 2)^2*(x + 5)^2 + 2*x^2*(x + 2)*(x + 5)^2 + 2*x^2*(x + 2)^2*(x + 5)))/(x^2*(x + 2)^2*(x + 5)^2 + 9)^2 + -4*(5/2 - x)^7/(sqrt((5/2 - x)^8 + 6)*(sqrt((5/2 - x)^8 + 6) + 2)) + 2*exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + 36*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*cos(6*(7*x + 2) - 6*x)) - 2*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x)*((x - 6)^2 + 4*x + 6)*(2*(x - 6) + 4))/(((x - 6)^2 + 4*x + 6)^2 + 2)^2
+Answer: dy/dx = ((((x - 6)^2 + 4*x + 6)^2 + 2)*(exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*(-(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7) + (-x - 8)*(x - 1)^2*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)*(x - 8)^2*(x - 7) + 2*(-x - 8)*(x + 7)*(x - 1)^2*(x - 8)*(x - 7) + (-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2)*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((4*(x^2*(x + 2)^2*(x + 5)^2 + 9)*exp(4*x + 4) - (exp(4*x + 4) + 5)*(2*x*(x + 2)^2*(x + 5)^2 + 2*x^2*(x + 2)*(x + 5)^2 + 2*x^2*(x + 2)^2*(x + 5)))/(x^2*(x + 2)^2*(x + 5)^2 + 9)^2 + -4*(5/2 - x)^7/(sqrt((5/2 - x)^8 + 6)*(sqrt((5/2 - x)^8 + 6) + 2)) + 2*exp(2*x + 2))*sin(6*(7*x + 2) - 6*x) + 36*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*cos(6*(7*x + 2) - 6*x)) - 2*exp((-x - 8)*(x + 7)*(x - 1)^2*(x - 8)^2*(x - 7))*((exp(4*x + 4) + 5)/(x^2*(x + 2)^2*(x + 5)^2 + 9) + ln(sqrt((5/2 - x)^8 + 6) + 2) + exp(2*x + 2))*sin(6*(7*x + 2) - 6*x)*((x - 6)^2 + 4*x + 6)*(2*(x - 6) + 4))/(((x - 6)^2 + 4*x + 6)^2 + 2)^2
+
+================================================================================
+4. [Derive] Triple product 12 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+((exp(sqrt(sqrt((3*x+2)^2+5)+5)))+  (sec(((4)/8)(4*(9  *x^2+3*  x+3)  -4*x) +6)))((asin((1 *x  -4) /  10))+  (log(exp(5*x+ 5) +6)))((exp(exp(1*x+7)))(asin((4  *  x +  2)  /10)))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6), v = (asin((x - 4)/10) + ln(exp(5*x + 5) + 6))*exp(exp(x + 7))*asin((4*x + 2)/10)
+4. du/dx = (9*exp(sqrt(sqrt(9*x^2 + 12*x + 9) + 5))*x + 6*exp(sqrt(sqrt(9*x^2 + 12*x + 9) + 5)) + 72*sec(18*x^2 + 4*x + 12)*tan(18*x^2 + 4*x + 12)*x*sqrt(9*x^2 + 12*x + 9)*sqrt(sqrt(9*x^2 + 12*x + 9) + 5) + 8*sec(18*x^2 + 4*x + 12)*tan(18*x^2 + 4*x + 12)*sqrt(9*x^2 + 12*x + 9)*sqrt(sqrt(9*x^2 + 12*x + 9) + 5))/(2*sqrt((3*x + 2)^2 + 5)*sqrt(sqrt((3*x + 2)^2 + 5) + 5)), dv/dx = (exp(5*x + 5)*exp(exp(x + 7))*asin((4*x + 2)/10) + 50*exp(5*x + 5)*sqrt((84 - x^2 + 8*x)/100)*exp(exp(x + 7))*asin((4*x + 2)/10) + 6*exp(exp(x + 7))*asin((4*x + 2)/10))/(10*sqrt((100 - (x - 4)^2)/100)*(exp(5*x + 5) + 6)) + asin((x - 4)/10)*exp(exp(x + 7))*exp(x + 7)*asin((4*x + 2)/10) + ln(exp(5*x + 5) + 6)*exp(exp(x + 7))*exp(x + 7)*asin((4*x + 2)/10) + (2*asin((x - 4)/10)*exp(exp(x + 7)) + 2*ln(exp(5*x + 5) + 6)*exp(exp(x + 7)))/(5*sqrt((100 - (4*x + 2)^2)/100))
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (2*(exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6))*((exp(5*x + 5)*exp(exp(x + 7))*asin((4*x + 2)/10) + 50*exp(5*x + 5)*sqrt((84 - x^2 + 8*x)/100)*exp(exp(x + 7))*asin((4*x + 2)/10) + 6*exp(exp(x + 7))*asin((4*x + 2)/10))/(10*sqrt((100 - (x - 4)^2)/100)*(exp(5*x + 5) + 6)) + asin((x - 4)/10)*exp(exp(x + 7))*exp(x + 7)*asin((4*x + 2)/10) + ln(exp(5*x + 5) + 6)*exp(exp(x + 7))*exp(x + 7)*asin((4*x + 2)/10) + (2*asin((x - 4)/10)*exp(exp(x + 7)) + 2*ln(exp(5*x + 5) + 6)*exp(exp(x + 7)))/(5*sqrt((100 - (4*x + 2)^2)/100)))*sqrt((3*x + 2)^2 + 5)*sqrt(sqrt((3*x + 2)^2 + 5) + 5) + (asin((x - 4)/10) + ln(exp(5*x + 5) + 6))*exp(exp(x + 7))*asin((4*x + 2)/10)*(9*exp(sqrt(sqrt(9*x^2 + 12*x + 9) + 5))*x + 6*exp(sqrt(sqrt(9*x^2 + 12*x + 9) + 5)) + 72*sec(18*x^2 + 4*x + 12)*tan(18*x^2 + 4*x + 12)*x*sqrt(9*x^2 + 12*x + 9)*sqrt(sqrt(9*x^2 + 12*x + 9) + 5) + 8*sec(18*x^2 + 4*x + 12)*tan(18*x^2 + 4*x + 12)*sqrt(9*x^2 + 12*x + 9)*sqrt(sqrt(9*x^2 + 12*x + 9) + 5)))/(2*sqrt((3*x + 2)^2 + 5)*sqrt(sqrt((3*x + 2)^2 + 5) + 5))
+Answer: dy/dx = (3*exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5))*(3*x + 2) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6)*tan((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6)*(4*(18*x + 3) - 4)*sqrt((3*x + 2)^2 + 5)*sqrt(sqrt((3*x + 2)^2 + 5) + 5))*(asin((x - 4)/10) + ln(exp(5*x + 5) + 6))*exp(exp(x + 7))*asin((4*x + 2)/10)/(2*sqrt((3*x + 2)^2 + 5)*sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + (exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6))*(exp(5*x + 5) + 50*exp(5*x + 5)*sqrt((100 - (x - 4)^2)/100) + 6)*exp(exp(x + 7))*asin((4*x + 2)/10)/(10*sqrt((100 - (x - 4)^2)/100)*(exp(5*x + 5) + 6)) + (exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6))*(asin((x - 4)/10) + ln(exp(5*x + 5) + 6))*exp(exp(x + 7))*exp(x + 7)*asin((4*x + 2)/10) + 2*(exp(sqrt(sqrt((3*x + 2)^2 + 5) + 5)) + sec((1/2)*(4*(9*x^2 + 3*x + 3) - 4*x) + 6))*(asin((x - 4)/10) + ln(exp(5*x + 5) + 6))*exp(exp(x + 7))/(5*sqrt((100 - (4*x + 2)^2)/100))
+
+================================================================================
+5. [Derive] Triple product 12 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+((log(sqrt(((8*  x  - 7) **3+6)^ 2+  5)  +2))  +  (sec(2* ((5*(8 * ((2*(3*x ^2-  1  *x+  6)^(2)+  (3))+  2) ^3-(2))) +    -  1)**  3+7)**2  - tan((2)*  ((5*(8 *  (((2)  *  (3*  x **2  -1*x  +(6))^ 2+3)+2)  ^3 -  2)) + -1)^3+ 7) ^ (2) +cot(2 *((5 *(8*((2*((3)  *  x^2- 1  *x+6)**  2+3)+2)  **(3) -  2))+  -(1))^3  +7))) *(sin(2 *(( -9/ 8)*(5*(3  *x ^ 2  -6*x +- 2) ^2 + 4) - 1) +  pi  / 2))*(cosec(6* ((5 /  2)  *  (8 *  ((5* (x)-(6))^ 2+  (8*  x +4))-  (7)* x)  + 4)^2 +  4))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = ln(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2) + (sec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 - (tan(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 + cot(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7), v = sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)
+4. du/dx = (24*((8*x - 7)^3 + 6)*(8*x - 7)^2 - 2880*(cosec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^2*(2*(3*x^2 - x + 6)^2 + 5)^2*(3*x^2 - x + 6)*(6*x - 1)*sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2))/(sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2)), dv/dx = (-60*sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*cot(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)*(8*(10*(5*x - 6) + 8) - 7) - 45*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*cos((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*(3*x^2 - 6*x - 2)*(6*x - 6))/2
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = ((ln(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2) + (sec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 - (tan(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 + cot(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))*(-60*sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*cot(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)*(8*(10*(5*x - 6) + 8) - 7) - 45*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*cos((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*(3*x^2 - 6*x - 2)*(6*x - 6))*sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2) + 2*sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*(24*((8*x - 7)^3 + 6)*(8*x - 7)^2 - 2880*(cosec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^2*(2*(3*x^2 - x + 6)^2 + 5)^2*(3*x^2 - x + 6)*(6*x - 1)*sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2)))/(2*sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2))
+Answer: dy/dx = (24*((8*x - 7)^3 + 6)*(8*x - 7)^2 - 2880*(cosec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^2*(2*(3*x^2 - x + 6)^2 + 5)^2*(3*x^2 - x + 6)*(6*x - 1)*sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2))*sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)/(sqrt(((8*x - 7)^3 + 6)^2 + 5)*(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2)) + -45*(ln(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2) + (sec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 - (tan(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 + cot(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))*cos((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*(3*x^2 - 6*x - 2)*(6*x - 6)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)/2 - 30*(ln(sqrt(((8*x - 7)^3 + 6)^2 + 5) + 2) + (sec(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 - (tan(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))^2 + cot(2*(5*(8*(2*(3*x^2 - x + 6)^2 + 5)^3 - 2) - 1)^3 + 7))*sin((4*(-(9/8)*(5*(3*x^2 - 6*x - 2)^2 + 4) - 1) + pi)/2)*cosec(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*cot(6*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)^2 + 4)*((5/2)*(8*((5*x - 6)^2 + 8*x + 4) - 7*x) + 4)*(8*(10*(5*x - 6) + 8) - 7)
+
+================================================================================
+6. [Derive] Triple product 12 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+((tan((2/4)*(4*((-8  /2) *(( -1/3) *(-2*x-  6)-1)-(6))  ^2  +  6)  -5))+(cos(6*((7)  * ((-4/2)*  (4*(4*x)**2+  7) +1) -4)+-pi/ 4)))*((sqrt((2*  x^ 2 *x+ (6))**2+  6))/(((-7*x  +5) ^2+(-9*x-  5) **2+ 4) ^2  +9))*((sec(8  *(8*(6*x^2- 3* x+1)  -5)^  2  +1))+((7*(x)^(6)-4*x^  4+  6* x^3-3*x  ^2-(5)  *(x) - 4)+(sin(4 * ((4 *((5*((-3*x- 5)^2)+pi /2)+ 2)  ^ 3- 4)+ - 1)^ 3+ 6) ^5+  cos(4* ((4* ((5*(( -(3)*x-5)^2)+pi/2)+2)^3 -4)+  -  1)^3+6)^ (5))))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using quotient rule
+3. Let u = (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4), v = ((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9
+4. du/dx = (-(32/3)*(sec((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5))^2*(-4*(-(1/3)*(-2*x - 6) - 1) - 6) + 10752*sin((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4)*x)*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4) + 6*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*(2*x^3 + 6)*x^2*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)/sqrt((2*x^3 + 6)^2 + 6) + (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(128*sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*tan(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*(8*(6*x^2 - 3*x + 1) - 5)*(12*x - 3) + 42*x^5 - 16*x^3 + 18*x^2 - 6*x - 1350*(sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) + 1350*(cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) - 5), dv/dx = 15600*x^2 + 28880*x + 67600*x^3 + 2160
+5. dy/dx = (v*du-u*dv)/v^2
+6. = ((((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)*((-(32/3)*(sec((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5))^2*(-4*(-(1/3)*(-2*x - 6) - 1) - 6) + 10752*sin((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4)*x)*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4) + 6*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*(2*x^3 + 6)*x^2*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)/sqrt((2*x^3 + 6)^2 + 6) + (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(128*sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*tan(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*(8*(6*x^2 - 3*x + 1) - 5)*(12*x - 3) + 42*x^5 - 16*x^3 + 18*x^2 - 6*x - 1350*(sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) + 1350*(cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) - 5)) - (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)*(15600*x^2 + 28880*x + 67600*x^3 + 2160))/(((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)^2
+7. = ((((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)*((-(32/3)*(sec((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5))^2*(-4*(-(1/3)*(-2*x - 6) - 1) - 6) + 10752*sin((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4)*x)*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4) + 6*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*(2*x^3 + 6)*x^2*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)/sqrt((2*x^3 + 6)^2 + 6) + (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(128*sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*tan(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*(8*(6*x^2 - 3*x + 1) - 5)*(12*x - 3) + 42*x^5 - 16*x^3 + 18*x^2 - 6*x - 1350*(sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) + 1350*(cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) - 5)) - 2*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)*((5 - 7*x)^2 + (-9*x - 5)^2 + 4)*(-14*(5 - 7*x) - 18*(-9*x - 5)))/(((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)^2
+Answer: dy/dx = ((((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)*((-(32/3)*(sec((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5))^2*(-4*(-(1/3)*(-2*x - 6) - 1) - 6) + 10752*sin((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4)*x)*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4) + 6*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*(2*x^3 + 6)*x^2*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)/sqrt((2*x^3 + 6)^2 + 6) + (tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(128*sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*tan(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1)*(8*(6*x^2 - 3*x + 1) - 5)*(12*x - 3) + 42*x^5 - 16*x^3 + 18*x^2 - 6*x - 1350*(sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) + 1350*(cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^4*sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2)*((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^2*(10*(-3*x - 5)^2 + pi + 4)^2*(-3*x - 5) - 5)) - 2*(tan((1/2)*(4*(-4*(-(1/3)*(-2*x - 6) - 1) - 6)^2 + 6) - 5) + cos((24*(7*(1 - 2*(64*x^2 + 7)) - 4) - pi)/4))*sqrt((2*x^3 + 6)^2 + 6)*(sec(8*(8*(6*x^2 - 3*x + 1) - 5)^2 + 1) + 7*x^6 - 4*x^4 + 6*x^3 - 3*x^2 - 5*x + (sin((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 + (cos((((10*(-3*x - 5)^2 + pi + 4)^3 - 10)^3 + 12)/2))^5 - 4)*((5 - 7*x)^2 + (-9*x - 5)^2 + 4)*(-14*(5 - 7*x) - 18*(-9*x - 5)))/(((5 - 7*x)^2 + (-9*x - 5)^2 + 4)^2 + 9)^2
+
+================================================================================
+7. [Derive] Triple product 11 [derive_triple_product]
+  LLM: CORRECT - 
+================================================================================
+Input:
+1
+(cot(6(6(7(8((3x^  2- 1x+5)+  -1)**3+1)^2) ^2+7)+ -pi/6))*(sqrt((-3x  -  5)^(2)+(-7(x)-3)  ^  2  +  3))*(cos(7((8(( -  7/4)* (6x **2 -  (4)  *  (x) +  7)-2)^ 2 + 5)  + 2)  ^ 3  +1))
+
+Check:
+check; format fuzz
+
+Output:
+1 n
+2 imp
+3 par
+M: y: 1. Method: Differentiate with respect to x
+2. Using product rule
+3. Let u = cot((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6), v = sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3)*cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)
+4. du/dx = -169344*(cosec((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6))^2*(8*(3*x^2 - x + 4)^3 + 1)^3*(3*x^2 - x + 4)^2*(6*x - 1), dv/dx = (1176*(sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3))^2*sin(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^2*(-(7/4)*(6*x^2 - 4*x + 7) - 2)*(12*x - 4) + cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(-6*(-3*x - 5) - 14*(-7*x - 3)))/(2*sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3))
+5. dy/dx = u*(dv/dx) + v*(du/dx)
+6. = (cot((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6)*(1176*(sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3))^2*sin(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^2*(-(7/4)*(6*x^2 - 4*x + 7) - 2)*(12*x - 4) + cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(-6*(-3*x - 5) - 14*(-7*x - 3))) - 338688*(sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3))^2*cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(cosec((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6))^2*(8*(3*x^2 - x + 4)^3 + 1)^3*(3*x^2 - x + 4)^2*(6*x - 1))/(2*sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3))
+Answer: dy/dx = -169344*(cosec((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6))^2*(8*(3*x^2 - x + 4)^3 + 1)^3*(3*x^2 - x + 4)^2*(6*x - 1)*sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3)*cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1) + cot((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6)*(-6*(-3*x - 5) - 14*(-7*x - 3))*cos(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)/(2*sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3)) + 588*cot((36*(294*(8*(3*x^2 - x + 4)^3 + 1)^4 + 7) - pi)/6)*sqrt((-3*x - 5)^2 + (-7*x - 3)^2 + 3)*sin(7*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^3 + 1)*(8*(-(7/4)*(6*x^2 - 4*x + 7) - 2)^2 + 7)^2*(-(7/4)*(6*x^2 - 4*x + 7) - 2)*(12*x - 4)
+
