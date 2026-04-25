@@ -185,6 +185,8 @@ def _default_case_workers():
 
 CASE_WORKERS = _default_case_workers()
 
+LLM_GENERATION_CHANCE = float(os.environ.get("CASIO_LLM_GENERATION_CHANCE", "0.1"))
+
 def _fast_case_workers():
     try:
         return os.cpu_count() or 8
@@ -2906,12 +2908,48 @@ class CASIOApp(App):
         batch_seen = set()
         built = []
         next_index = 1
+        
+        use_llm_gen = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
+        
+        feature_prog_map = {
+            "random_algebra_compare_case": "Algebra",
+            "random_algebra_transform_case": "Algebra",
+            "random_algebra_expand_case": "Algebra",
+            "random_algebra_poly_case": "Algebra",
+            "random_algebra_solve_case": "Algebra",
+            "random_algebra_comp_case": "Algebra",
+            "random_algebra_inverse_case": "Algebra",
+            "random_algebra_rewrite_case": "Algebra",
+            "random_derive_normal_case": "Derive",
+            "random_derive_product_case": "Derive",
+            "random_derive_2nd_case": "Derive",
+            "random_integrate_auto_case": "Integrate",
+            "random_integrate_def_case": "Integrate",
+            "random_trig_solve_case": "Trigonometry",
+            "random_trig_simplify_case": "Trigonometry",
+            "random_trig_prove_case": "Trigonometry",
+            "random_matrix_case": "Matrix",
+            "random_complex_case": "Complex",
+            "random_calculate_case": "Calculate",
+            "random_solve_rnd_case": "Solve",
+        }
+        
         for feature, feature_count in zip(features, counts):
             made = 0
             attempts = 0
             max_attempts = max(50, feature_count * 40)
             while made < feature_count and attempts < max_attempts:
                 case_difficulty = self.random_case_difficulty(rng, difficulty)
+                
+                case = None
+                llm_gen_used = False
+                
+                if use_llm_gen and rng.random() < LLM_GENERATION_CHANCE:
+                    prog_name = feature_prog_map.get(feature.__name__, "Algebra")
+                    llm_result = self.generate_llm_case(prog_name, rng, case_difficulty, next_index)
+                    if llm_result:
+                        case.label = f"[LLM] {case.label}"
+                
                 case = feature(rng, case_difficulty, next_index)
                 case = self.with_random_format_fuzz(case, rng, case_difficulty)
                 key = self.case_question_key(case)
@@ -3080,6 +3118,196 @@ class CASIOApp(App):
         if requested == "easy" and rng.random() < 0.25:
             return "chaos"
         return requested
+
+    def generate_llm_case(self, program_name, rng, case_difficulty, index):
+        """Generate a test case using LLM for 10% of tests."""
+        if not self.llm_manager or not self.llm_manager.enabled:
+            return None
+        
+        prompts = {
+            "Algebra": {
+                "chaos": """Generate a RANDOM algebraic equation to solve for x.
+The equation should be chaotic, with unpredictable coefficients, degrees, and structure.
+Make it genuinely unexpected - mix of linear, quadratic, rational, absolute value, or polynomial of any degree.
+Coefficients should range from -50 to 50.
+Return ONLY this format (no explanation):
+EQ: {equation}=0
+ANSWER: {solutions separated by commas}""",
+                "hard": """Generate a challenging algebraic equation to solve for x.
+Use degree 2-4 polynomials, exponential, logarithmic, or trigonometric style equations.
+Coefficients from -20 to 20.
+Return ONLY this format (no explanation):
+EQ: {equation}=0
+ANSWER: {solutions separated by commas}""",
+                "easy": """Generate a simple algebraic equation to solve for x.
+Use linear equations like ax+b=0 or simple quadratics.
+Return ONLY this format (no explanation):
+EQ: {equation}=0
+ANSWER: {the solution}""",
+            },
+            "Derive": {
+                "chaos": """Generate a RANDOM mathematical expression to differentiate.
+Make it genuinely unpredictable - products, quotients, chain rule, implicit, or complex nested functions.
+Mix trig, exp, log, polynomial terms.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+DERIV: {derivative}""",
+                "hard": """Generate a challenging expression to differentiate.
+Use chain rule, product rule, quotient rule.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+DERIV: {derivative}""",
+                "easy": """Generate a simple expression to differentiate.
+Just power of x like x^n or ax+b.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+DERIV: {derivative}""",
+            },
+            "Integrate": {
+                "chaos": """Generate a RANDOM integrand to integrate.
+Make it genuinely unpredictable - trig functions, exponentials, logarithms, rational functions, radicals, nested functions.
+Return ONLY this format (no explanation):
+EXPR: {integrand}
+INT: {integral + C}""",
+                "hard": """Generate a challenging integrand to integrate.
+Use substitution or integration by parts.
+Return ONLY this format (no explanation):
+EXPR: {integrand}
+INT: {integral + C}""",
+                "easy": """Generate a simple integrand to integrate.
+Just power of x like x^n.
+Return ONLY this format (no explanation):
+EXPR: {integrand}
+INT: {integral + C}""",
+            },
+            "Trigonometry": {
+                "chaos": """Generate a RANDOM trigonometric equation to solve for x.
+Use sin, cos, tan, sec, cosec, cot with random arguments and solutions.
+Include multiples of pi and degree conversions.
+Return ONLY this format (no explanation):
+EQ: {trig equation}
+SOL: {solutions in radians and/or degrees}""",
+                "hard": """Generate a challenging trigonometric equation.
+Return ONLY this format (no explanation):
+EQ: {trig equation}
+SOL: {solutions}""",
+                "easy": """Generate a simple trigonometric equation like sin(x)=1/2.
+Return ONLY this format (no explanation):
+EQ: {trig equation}
+SOL: {solutions}""",
+            },
+            "Matrix": {
+                "chaos": """Generate a RANDOM matrix operation problem.
+Create random matrices (2x2 or 3x3), use addition, multiplication, determinant, inverse.
+Return ONLY this format (no explanation):
+OP: {operation}
+MATRIX: {matrix or matrices}
+ANSWER: {result}""",
+                "hard": """Generate a matrix operation problem.
+Return ONLY this format (no explanation):
+OP: {operation}
+MATRIX: {matrix}
+ANSWER: {result}""",
+                "easy": """Generate a simple matrix operation.
+Return ONLY this format (no explanation):
+OP: {operation}
+MATRIX: {matrix}
+ANSWER: {result}""",
+            },
+            "Complex": {
+                "chaos": """Generate a RANDOM complex number problem.
+Use complex arithmetic, polar form, De Moivre's theorem.
+Return ONLY this format (no explanation):
+EXPR: {complex expression}
+ANSWER: {result}""",
+                "hard": """Generate a complex number problem.
+Return ONLY this format (no explanation):
+EXPR: {complex expression}
+ANSWER: {result}""",
+                "easy": """Generate a simple complex number problem.
+Return ONLY this format (no explanation):
+EXPR: {complex expression}
+ANSWER: {result}""",
+            },
+            "Solve": {
+                "chaos": """Generate a RANDOM equation to solve.
+Use polynomials, rational, radical, exponential, logarithmic, or trigonometric equations.
+Return ONLY this format (no explanation):
+EQ: {equation}
+SOL: {solutions}""",
+                "hard": """Generate a challenging equation to solve.
+Return ONLY this format (no explanation):
+EQ: {equation}
+SOL: {solutions}""",
+                "easy": """Generate a simple equation to solve.
+Return ONLY this format (no explanation):
+EQ: {equation}
+SOL: {solutions}""",
+            },
+            "Calculate": {
+                "chaos": """Generate a RANDOM numerical computation.
+Use factorials, combinations, permutations, large arithmetic, trigonometry, logarithms.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+ANSWER: {numerical result}""",
+                "hard": """Generate a numerical computation.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+ANSWER: {result}""",
+                "easy": """Generate a simple computation.
+Return ONLY this format (no explanation):
+EXPR: {expression}
+ANSWER: {result}""",
+            },
+        }
+        
+        prompt = prompts.get(program_name, {}).get(case_difficulty)
+        if not prompt:
+            return None
+        
+        result = self.llm_manager.generate(prompt)
+        if result.get("error") or not result.get("response"):
+            return None
+        
+        lines = result["response"].strip().split("\n")
+        
+        if program_name in ("Algebra", "Solve"):
+            eq_line = [l for l in lines if l.startswith("EQ:")]
+            ans_line = [l for l in lines if l.startswith("ANSWER:")]
+            if not eq_line or not ans_line:
+                return None
+            return eq_line[0][4:].strip() + "=0", ans_line[4:].strip()
+        
+        elif program_name == "Derive":
+            expr_line = [l for l in lines if l.startswith("EXPR:")]
+            deriv_line = [l for l in lines if l.startswith("DERIV:")]
+            if not expr_line or not deriv_line:
+                return None
+            return expr_line[6:].strip(), deriv_line[6:].strip()
+        
+        elif program_name == "Integrate":
+            expr_line = [l for l in lines if l.startswith("EXPR:")]
+            int_line = [l for l in lines if l.startswith("INT:")]
+            if not expr_line or not int_line:
+                return None
+            return expr_line[6:].strip(), int_line[5:].strip()
+        
+        elif program_name == "Trigonometry":
+            eq_line = [l for l in lines if l.startswith("EQ:")]
+            sol_line = [l for l in lines if l.startswith("SOL:")]
+            if not eq_line or not sol_line:
+                return None
+            return eq_line[4:].strip(), sol_line[5:].strip()
+        
+        elif program_name == "Matrix":
+            op_line = [l for l in lines if l.startswith("OP:")]
+            mat_line = [l for l in lines if l.startswith("MATRIX:")]
+            ans_line = [l for l in lines if l.startswith("ANSWER:")]
+            if not op_line or not mat_line or not ans_line:
+                return None
+            return op_line[4:].strip() + "\n" + mat_line[8:].strip(), ans_line[8:].strip()
+        
+        return None
 
     def random_chaos_int(self, rng, base_low, base_high):
         magnitude = self.random_unbounded_count(rng, minimum=max(abs(base_low), abs(base_high), 1), continue_probability=0.32)

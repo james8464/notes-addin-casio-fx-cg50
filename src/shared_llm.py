@@ -419,6 +419,38 @@ EXPECTED ANSWER: {expected}
             "last_error": self.last_error
         }
 
+    def generate(self, prompt, stream_callback=None):
+        """
+        Generate a response from LLM for custom prompt.
+        
+        Args:
+            prompt: The prompt to send to LLM
+            stream_callback: Optional callback for streaming responses
+        
+        Returns:
+            dict with keys: response, error, cached
+        """
+        if not self.enabled or not self.selected_model:
+            return {
+                "response": "",
+                "error": "LLM not enabled or no model selected",
+                "cached": False
+            }
+        
+        try:
+            result = self._query_ollama(prompt, stream_callback)
+            return {
+                "response": result.strip(),
+                "error": "",
+                "cached": False
+            }
+        except Exception as e:
+            return {
+                "response": "",
+                "error": str(e),
+                "cached": False
+            }
+
 
 def quick_verify(program_output, expected, context=""):
     """
