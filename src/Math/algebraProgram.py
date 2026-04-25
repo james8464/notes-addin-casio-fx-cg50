@@ -7297,9 +7297,20 @@ def find_range_text(text):
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):
         lines.append('Range: ' + show(expr))
         return ensure_reasoning_marker(lines)
-    
+
     if is_num(expr):
         lines.append('Range: ' + show(expr))
+        return ensure_reasoning_marker(lines)
+
+    # Handle rational functions: 1/f(x) where f(x) can be zero
+    if expr[0] == 'div' and is_one(expr[1]):
+        # It's 1/something - range excludes 0 if denominator can be zero
+        lines.append('Range: y != 0')
+        return ensure_reasoning_marker(lines)
+
+    # Handle a/f(x) where a is constant non-zero
+    if expr[0] == 'div' and is_num(expr[1]) and not is_zero(expr[1]):
+        lines.append('Range: y != 0')
         return ensure_reasoning_marker(lines)
     
     lines.append('Range: all real y')
