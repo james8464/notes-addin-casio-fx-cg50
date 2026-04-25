@@ -2641,6 +2641,7 @@ class CASIOApp(App):
             return
         try:
             self.query_one("#results", RichLog).write(text)
+            self.screen.refresh()  # Force immediate display
         except Exception:
             pass
 
@@ -2804,6 +2805,7 @@ class CASIOApp(App):
     def update_summary(self, text):
         try:
             self.query_one("#status-line", Static).update(text)
+            self.screen.refresh()  # Force immediate display
         except Exception:
             pass
 
