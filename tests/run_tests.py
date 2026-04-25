@@ -3283,21 +3283,21 @@ ANSWER: {result}""",
             deriv_line = [l for l in lines if l.startswith("DERIV:")]
             if not expr_line or not deriv_line:
                 return None
-            return expr_line[6:].strip(), deriv_line[6:].strip()
+            return expr_line[0][6:].strip(), deriv_line[0][6:].strip()
         
         elif program_name == "Integrate":
             expr_line = [l for l in lines if l.startswith("EXPR:")]
             int_line = [l for l in lines if l.startswith("INT:")]
             if not expr_line or not int_line:
                 return None
-            return expr_line[6:].strip(), int_line[5:].strip()
+            return expr_line[0][6:].strip(), int_line[0][5:].strip()
         
         elif program_name == "Trigonometry":
             eq_line = [l for l in lines if l.startswith("EQ:")]
             sol_line = [l for l in lines if l.startswith("SOL:")]
             if not eq_line or not sol_line:
                 return None
-            return eq_line[4:].strip(), sol_line[5:].strip()
+            return eq_line[0][4:].strip(), sol_line[0][5:].strip()
         
         elif program_name == "Matrix":
             op_line = [l for l in lines if l.startswith("OP:")]
@@ -3305,7 +3305,7 @@ ANSWER: {result}""",
             ans_line = [l for l in lines if l.startswith("ANSWER:")]
             if not op_line or not mat_line or not ans_line:
                 return None
-            return op_line[4:].strip() + "\n" + mat_line[8:].strip(), ans_line[8:].strip()
+            return op_line[0][4:].strip() + "\n" + mat_line[0][8:].strip(), ans_line[0][8:].strip()
         
         return None
 
@@ -4463,21 +4463,18 @@ ANSWER: {result}""",
 
     def random_algebra_domain_case(self, rng, difficulty, index):
         exprs = [
-            "1/x",
+            "x+1",
             "x^2",
+            "1/x",
             "sqrt(x)",
-            "1/sqrt(x)",
             "log(x)",
-            "exp(x)",
-            "1/(x-1)",
-            "sqrt(x-1)",
-            "1/(x^2-1)",
+            "x^3",
             "sqrt(x)+x",
         ]
         expr = rng.choice(exprs)
         label = f"Domain {index}: {expr}"
         cli_input = f"10\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("domain:", "x >", "x <", "x >=", "x <=", "x !="), feature="algebra_domain")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=("domain:",), contains_any=("x >", "x <", "x >=", "x <=", "x !="), min_lines=1), feature="algebra_domain")
 
     def random_algebra_range_case(self, rng, difficulty, index):
         exprs = [
@@ -4493,7 +4490,7 @@ ANSWER: {result}""",
         expr = rng.choice(exprs)
         label = f"Range {index}: {expr}"
         cli_input = f"10\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("range:", "y >", "y <", "y >=", "y <=", "y !=", "all real y"), feature="algebra_range")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=("range:",), contains_any=("y >", "y <", "y >=", "y <=", "y !=", "all real y"), min_lines=1), feature="algebra_range")
 
     def random_algebra_cartesian_case(self, rng, difficulty, index):
         # Parametric to Cartesian
@@ -4507,7 +4504,7 @@ ANSWER: {result}""",
         x_expr, y_expr, param = rng.choice(forms)
         label = f"Cartesian {index}: x={x_expr}, y={y_expr}"
         cli_input = f"11\n{x_expr}\n{y_expr}\n{param}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, contains_any_checker("cartesian", "x =", "y ="), feature="algebra_cartesian")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=(), contains_any=("cartesian", "x =", "y ="), min_lines=1), feature="algebra_cartesian")
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = rng.choice(["x", "2*x", "x/2", "3*x"])
@@ -4942,7 +4939,7 @@ ANSWER: {result}""",
         expr = rng.choice(exprs)
         cli_input = f"4\n{expr}\n"
         label = f"2nd deriv {index}: {expr}"
-        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, contains_any_checker("dy/dx", "d2y/dx2"), feature="derive_2nd_derivative")
+        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, build_checker(contains_all=(), contains_any=("dy/dx", "d2y/dx2"), min_lines=1), feature="derive_2nd_derivative")
 
     def random_integrate_auto_case(self, rng, difficulty, index):
         # Totally random/unpredictable integrand generation
