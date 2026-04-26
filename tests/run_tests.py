@@ -8,11 +8,11 @@ CASIO Test Suite - Interactive TUI
 Expandable test results with rich interface.
 """
 
-import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from fractions import Fraction
 import cmath
+import json
 import math
 import os
 import random
@@ -125,6 +125,10 @@ class TestRecord:
     sympy_verdict: str = ""
     llm_verdict: str = ""
     llm_explanation: str = ""
+    # Aligned with status; updated to LLM-weighted result when the random runner uses LLM.
+    passed: bool = True
+    # Result from the harness checker only; not modified after add_test.
+    harness_status: TestStatus = TestStatus.PASS
 
 
 @dataclass
@@ -2027,7 +2031,6 @@ class CASIOApp(App):
         self._eta_decay = 0.9
         self._weighted_rate = 0.0
         self._weighted_llm_rate = 0.0
-        self._report_path = None
         self._feature_stats = {}
         self._show_chaos_feature_gaps = False
         
@@ -2042,7 +2045,7 @@ class CASIOApp(App):
             "/quit": "Exit the test harness",
             "/status": "Show the current scope and last run summary",
             "/report": "Show detailed failures from the last run",
-            "/generateReport": "Save a full failure report with outputs to a text file",
+            "/generateReport": "Write tests/reports/failure_report_latest.txt (last run: failures + LLM review notes)",
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
@@ -2289,82 +2292,94 @@ class CASIOApp(App):
         elif value_lower.startswith("/llm "):
             self.handle_llm_select(value)
 
+    def _failure_report_record_ids(self):
+        """Records to include: harness failure, or LLM incorrect / needs review."""
+        ids = []
+        for r in self.records:
+            llm = (getattr(r, "llm_verdict", "") or "").strip()
+            if r.status == TestStatus.FAIL or llm in ("INCORRECT", "NEEDS_REVIEW"):
+                ids.append(r.test_id)
+        return ids
+
     def generate_report_file(self):
         report_dir = Path(__file__).resolve().parent / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path = report_dir / f"failure_report_{stamp}.txt"
+        # Single canonical file per /generateReport (overwritten; avoids many failure_report_*.txt runs)
+        report_path = report_dir / "failure_report_latest.txt"
+        want_ids = set(self._failure_report_record_ids())
+        report_records = [r for r in self.records if r.test_id in want_ids]
 
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
         failed = [r for r in self.records if r.status == TestStatus.FAIL]
+        llm_review = sum(1 for r in self.records if (getattr(r, "llm_verdict", "") or "").strip() in ("INCORRECT", "NEEDS_REVIEW"))
         total = len(self.records)
+        try:
+            scope_s = f"{self.last_run_scope[0]!r} · {self.last_run_scope[1]!r}"
+        except (TypeError, ValueError, IndexError):
+            scope_s = "unknown"
 
+        now = datetime.now()
         lines = [
             "CASIO Test Failure Report",
-            f"Generated: {datetime.now().isoformat(timespec='seconds')}",
+            f"Generated: {now.isoformat(timespec='seconds')}",
             f"Last command: {self.last_command}",
             f"Current program: {self.current_program}",
-            f"Difficulty: chaos",
-            f"Summary: {passed} passed, {len(failed)} failed, {total} total",
+            f"Last run scope: {scope_s}",
+            f"Summary: {passed} passed (after LLM weighting when used), {len(failed)} failed, {llm_review} with raw LLM INCORRECT/NEEDS_REVIEW verdicts, {total} total in session",
+            f"In this file: {len(report_records)} record(s) (failures and/or tests needing follow-up).",
             "",
         ]
 
         if total == 0:
-            lines.append("No run data available yet.")
+            lines.append("No run data available yet. Run a suite first, then /generateReport.")
+        elif not report_records:
+            lines.append("Nothing in this report: no harness failures and no LLM flags (INCORRECT/NEEDS_REVIEW) in the last run.")
         else:
-            llm_flagged = [r for r in self.records if getattr(r, 'llm_verdict', '') in ('INCORRECT', 'NEEDS_REVIEW')]
-            if llm_flagged:
-                lines.append("LLM Flagged (working quality issues):")
-                for record in llm_flagged:
-                    feat_tag = f" [{record.feature}]" if record.feature else ""
-                    lines.extend([
-                        "-" * 60,
-                        f"[{record.program}] {record.label}{feat_tag}",
-                        f"  LLM Verdict: {record.llm_verdict}",
-                        f"  LLM Comment: {getattr(record, 'llm_explanation', 'N/A')[:200]}",
-                    ])
+            feature_fails = {}
+            for record in [r for r in self.records if r.status == TestStatus.FAIL]:
+                feat = record.feature or "unknown"
+                if feat not in feature_fails:
+                    feature_fails[feat] = 0
+                feature_fails[feat] += 1
+            if feature_fails:
+                lines.append("Failures by feature (final status, counts):")
+                for feat, n in sorted(feature_fails.items()):
+                    lines.append(f"  {feat}: {n}")
                 lines.append("")
 
-            failed = [r for r in self.records if r.status == TestStatus.FAIL]
-            if len(failed) == 0:
-                lines.append("No failed tests in the last run.")
-            else:
-                feature_fails = {}
-                for record in failed:
-                    feat = record.feature or "unknown"
-                    if feat not in feature_fails:
-                        feature_fails[feat] = []
-                    feature_fails[feat].append(record)
-
-                lines.append("Failures by feature:")
-                for feat, recs in sorted(feature_fails.items()):
-                    lines.append(f"  {feat}: {len(recs)} failures")
+            for index, record in enumerate(sorted(report_records, key=lambda r: r.test_id), start=1):
+                feat_tag = f" [{record.feature}]" if record.feature else ""
+                lines.extend(["=" * 80, f"{index}. [{record.program}] {record.label}{feat_tag}", "=" * 80])
+                lines.append(
+                    f"Final: {record.status.name.upper()}  |  harness (pre-LLM): {record.harness_status.name.upper()}"
+                )
+                lines.append("Input:")
+                lines.append((record.input_text or "[input not captured]").rstrip())
                 lines.append("")
-
-                for index, record in enumerate(failed, start=1):
-                    feat_tag = f" [{record.feature}]" if record.feature else ""
-                    llm_info = ""
-                    if getattr(record, 'llm_verdict', ''):
-                        llm_info = f"\n  LLM: {record.llm_verdict} - {getattr(record, 'llm_explanation', '')[:100]}"
-                    lines.extend([
-                        "=" * 80,
-                        f"{index}. [{record.program}] {record.label}{feat_tag}{llm_info}",
-                        "=" * 80,
-                        "Input:",
-                        (record.input_text or "[input not captured]").rstrip(),
-                        "",
-                        "Check:",
-                        record.check_info or "[check info not captured]",
-                        "",
-                        "Output:",
-                        (record.output or "").rstrip(),
-                        "",
-                    ])
+                lines.append("Check:")
+                lines.append(record.check_info or "[check info not captured]")
+                lines.append("")
+                v = (getattr(record, "llm_verdict", "") or "").strip()
+                if v:
+                    lines.append(f"LLM verdict: {v}")
+                    expl = (getattr(record, "llm_explanation", "") or "").rstrip() or "N/A"
+                    lines.append("LLM notes:")
+                    lines.append(expl)
+                else:
+                    lines.append("LLM: (not run or no verdict for this test)")
+                lines.append("")
+                lines.append("Output:")
+                lines.append((record.output or "").rstrip())
+                lines.append("")
 
         report_path.write_text("\n".join(lines) + "\n")
         self.last_report_path = str(report_path)
         self.append_result(f"[bold #22c55e]Saved report:[/bold #22c55e] {report_path}")
-        self.update_summary(f"Saved report · {report_path.name}")
+        if self._wants_json_export():
+            json_path = report_dir / "failure_report_latest.json"
+            self._write_json_report(json_path)
+            self.append_result(f"[bold #22c55e]Saved JSON:[/bold #22c55e] {json_path}")
+        self.update_summary(f"Saved report · {report_path.name} ({len(report_records)} case(s))")
 
     def action_run_tests(self, command_label="/run"):
         if self.running:
@@ -2749,7 +2764,9 @@ class CASIOApp(App):
         color = "#22c55e" if passed else "#f87171"
 
         status = TestStatus.PASS if passed else TestStatus.FAIL
-        record = TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature)
+        record = TestRecord(
+            len(self.records) + 1, label, status, output, program, input_text, check_info, feature, passed=passed, harness_status=status
+        )
         self.records.append(record)
         if feature:
             st = self._feature_stats.setdefault(feature, [0, 0])
@@ -2758,9 +2775,6 @@ class CASIOApp(App):
                 st[0] += 1
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
-        
-        if not passed:
-            self._append_to_report(record)
         
         if getattr(self, 'plain_mode', False) and not passed:
             if input_text:
@@ -2840,36 +2854,55 @@ class CASIOApp(App):
             self.update_summary(f"{passed_count}/{total} ({pct:.0f}%)")
         else:
             self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
+        self._bump_tui_progress_if_random()
         return record
 
-    def _append_to_report(self, record):
-        from pathlib import Path
-        from datetime import datetime
-        
-        if self._report_path is None:
-            report_dir = Path(__file__).resolve().parent / "reports"
-            report_dir.mkdir(parents=True, exist_ok=True)
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self._report_path = report_dir / f"failure_report_{stamp}.txt"
-            with open(self._report_path, "w") as f:
-                f.write(f"CASIO Test Report - {datetime.now().isoformat(timespec='seconds')}\n")
-                f.write("=" * 60 + "\n\n")
-        
-        llm_v = getattr(record, 'llm_verdict', '') or ''
-        llm_e = getattr(record, 'llm_explanation', '') or ''
-        
-        with open(self._report_path, "a") as f:
-            f.write(f"[{record.status.name}] {record.label}\n")
-            f.write(f"Program: {record.program}\n")
-            if record.input_text:
-                f.write(f"Input: {record.input_text[:200]}\n")
-            if record.check_info:
-                f.write(f"Check: {record.check_info}\n")
-            if llm_v:
-                f.write(f"LLM: {llm_v}\n")
-                if llm_e:
-                    f.write(f"Note: {llm_e[:200]}\n")
-            f.write("-" * 40 + "\n")
+    def apply_llm_weighted_status(self, record, final_verdict):
+        """Set record.status and record.passed from LLM-weighted final_verdict; update feature stats on flips."""
+        if final_verdict == "CORRECT":
+            new_status = TestStatus.PASS
+        else:
+            new_status = TestStatus.FAIL
+        old_status = record.status
+        if old_status != new_status and getattr(record, "feature", ""):
+            st = self._feature_stats.setdefault(record.feature, [0, 0])
+            if old_status == TestStatus.PASS and new_status == TestStatus.FAIL:
+                st[0] = max(0, st[0] - 1)
+            elif old_status == TestStatus.FAIL and new_status == TestStatus.PASS:
+                st[0] = min(st[1], st[0] + 1)
+        record.status = new_status
+        record.passed = new_status == TestStatus.PASS
+
+    def _wants_json_export(self):
+        if getattr(self, "_force_export_json", False):
+            return True
+        return os.environ.get("CASIO_TEST_EXPORT_JSON", "").lower() in ("1", "true", "yes")
+
+    def _write_json_report(self, path: Path):
+        payload = {
+            "generated": datetime.now().isoformat(timespec="seconds"),
+            "last_command": self.last_command,
+            "current_program": self.current_program,
+            "last_run_scope": [self.last_run_scope[0], self.last_run_scope[1]] if self.last_run_scope is not None else None,
+            "records": [
+                {
+                    "test_id": r.test_id,
+                    "label": r.label,
+                    "status": r.status.name,
+                    "harness_status": r.harness_status.name,
+                    "passed": r.passed,
+                    "program": r.program,
+                    "feature": r.feature,
+                    "check_info": r.check_info,
+                    "llm_verdict": (getattr(r, "llm_verdict", "") or ""),
+                    "llm_explanation": (getattr(r, "llm_explanation", "") or ""),
+                    "input_text": r.input_text,
+                    "output": r.output,
+                }
+                for r in self.records
+            ],
+        }
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def render_summary(self):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
@@ -2979,6 +3012,21 @@ class CASIOApp(App):
             self.query_one("#progress-bar", Static).update("")
         except Exception:
             pass
+
+    def _bump_tui_progress_if_random(self):
+        """Keep the /random and /infinite status bar in sync (TUI only, not plain/CLI)."""
+        if getattr(self, "plain_mode", False) or not self.running:
+            return
+        t = int(self.total_expected) if self.total_expected else 0
+        if t <= 0:
+            return
+        c = len(self.records)
+        if c < 1:
+            return
+        step = max(1, t // 200)
+        if c != 1 and c != t and c % step != 0:
+            return
+        self.call_from_thread(self.update_progress_bar, c, t)
 
     def update_running_count(self, current, total):
         if total > 0:
@@ -3256,13 +3304,10 @@ class CASIOApp(App):
                             record.llm_explanation = explanation
                             llm_color = "#22c55e" if verdict == "CORRECT" else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
                             self.append_result(f"[dim]  └─ LLM: [{llm_color}]{verdict}[/{llm_color}][/dim]")
-                        
+
                         code_verdict = "CORRECT" if passed else "INCORRECT"
                         final_verdict = weighted_verdict(code_verdict, verdict)
-                        if final_verdict == "CORRECT":
-                            record.passed = True
-                        else:
-                            record.passed = passed
+                        self.apply_llm_weighted_status(record, final_verdict)
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -5953,6 +5998,9 @@ class CASIOApp(App):
             if infinite_mode:
                 emit(self.append_result, "[dim]Infinite mode: press /stop to end[/dim]")
 
+            if not getattr(self, "plain_mode", False) and self.total_expected > 0:
+                emit(self.update_progress_bar, 0, self.total_expected)
+
             last_program = None
             for batch in self.iter_random_test_batches(builders, program_counts, generation_chunk, infinite_mode):
                 # The batch iterator owns generation order. This loop owns stop
@@ -7241,35 +7289,86 @@ class CASIOApp(App):
             self.add_test("Generated SUVAT batch", False, str(e), p)
 
 
+def _cli_help():
+    return """CASIO test harness (CLI batch mode when arguments are present).
+
+  python3 tests/run_tests.py
+      Interactive TUI (type /help, /random, /generateReport, etc.)
+
+  python3 tests/run_tests.py random [N]
+      Run N chaos random tests (default 100) and print a summary.
+
+  python3 tests/run_tests.py llm <model> ...
+      Configure LLM selection (see /llm in TUI). Everything after 'llm' is one string.
+
+  python3 tests/run_tests.py compile
+      Compile .mpy targets (local paths; see action_compile in run_tests).
+
+  python3 tests/run_tests.py [--json] generatereport
+      With previous CLI steps in the same process, write tests/reports/
+      failure_report_latest.txt, and (with --json or env below) failure_report_latest.json
+      of all self.records. Example:  random 5 generatereport
+
+  Common environment variables
+      CASIO_TEST_TIMEOUT           Per-case timeout (default 12 seconds)
+      CASIO_TEST_WORKERS           Max parallel case workers
+      CASIO_LLM_GENERATION_CHANCE  Chance to tag LLM-generated ideas in random mode
+      CASIO_TEST_EXPORT_JSON       1/yes/true also writes JSON when you run /generateReport or
+                                   CLI generatereport
+      Exits 1 in CLI mode if any test has final status FAIL; otherwise 0.
+"""
+
+
 def main():
     import sys
-    
+
     if len(sys.argv) > 1:
+        first = (sys.argv[1] or "").lower()
+        if first in ("-h", "--help", "help"):
+            print(_cli_help().rstrip())
+            return
         app = CASIOApp()
         app.plain_mode = True
-        
-        args = sys.argv[1:]
-        
-        for i, value in enumerate(args):
-            first = value.lower() if value else ""
-            
-            if first == "llm":
-                app.handle_llm_select(" ".join(args[i:]))
-                
-            elif first == "random":
-                count = 100
-                if i + 1 < len(args):
-                    try:
-                        count = int(args[i + 1])
-                    except (ValueError, IndexError):
-                        pass
-                app.action_random_tests("chaos", count, command_label="/random")
-                
-            elif first == "compile":
-                app.action_compile()
+        app._force_export_json = False
+        if os.environ.get("CASIO_TEST_EXPORT_JSON", "").lower() in ("1", "true", "yes"):
+            app._force_export_json = True
 
-        print(f"Ran {len(app.records)} tests")
-        return
+        raw = sys.argv[1:]
+        if "--json" in raw:
+            app._force_export_json = True
+            raw = [a for a in raw if a != "--json"]
+
+        i = 0
+        while i < len(raw):
+            tok = (raw[i] or "").lower()
+            if tok == "llm":
+                app.handle_llm_select(" ".join(raw[i:]))
+                break
+            if tok == "random":
+                count = 100
+                if i + 1 < len(raw):
+                    try:
+                        count = int(raw[i + 1])
+                    except (ValueError, TypeError, IndexError):
+                        pass
+                    else:
+                        i += 1
+                i += 1
+                app.action_random_tests("chaos", count, command_label="/random")
+                continue
+            if tok == "compile":
+                app.action_compile()
+                i += 1
+                continue
+            if tok in ("generatereport", "/generatereport"):
+                app.generate_report_file()
+                i += 1
+                continue
+            i += 1
+
+        print("Ran {0} tests".format(len(app.records)))
+        any_fail = any(r.status == TestStatus.FAIL for r in app.records)
+        raise SystemExit(1 if any_fail else 0)
 
     app = CASIOApp()
     app.run()
