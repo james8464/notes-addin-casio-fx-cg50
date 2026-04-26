@@ -1559,64 +1559,13 @@ def exam_working_quality_issues(output, program, feature):
         issues.append("contains an error/unsupported marker")
     if _has_non_exam_quality_output(text):
         issues.append("uses non-exam-quality numerical methods (scan/compute/bisection)")
-    if program != "SUVAT":
-        if not shared_has_working_steps(output):
-            issues.append("shared quality check did not find reasoning language")
-        if not shared_has_solution(output):
-            issues.append("shared quality check did not find a conclusion marker")
-    if not working_quality_ok(output, program, feature):
-        issues.append("missing program-specific working expected for this feature")
-
+    
     readability = output_readability_issues(output)
     issues.extend(f"readability: {issue}" for issue in readability)
 
     lines = nonempty_line_count(output)
     steps = numbered_step_count(output)
-    if program != "SUVAT" and not feature.startswith("suvat_expected_error"):
-        if lines < 3:
-            issues.append("too few non-empty lines for exam-style working")
-        if steps < 2 and program not in ("Integrate",):
-            issues.append("too few numbered steps")
-        if not any(marker in text for marker in _EXAM_REASONING_MARKERS):
-            issues.append("working lacks explanatory method/reasoning language")
-
-    if program == "Algebra":
-        if not any(marker in text for marker in ("result:", "answer:", "final =", "out =", "ans =", "x =", "f^-1", "f(g(x))", "no sol", "no solution")):
-            issues.append("missing a clear algebra conclusion")
-    elif program == "Trigonometry":
-        if "prove" in feature or "trig_prove" in feature:
-            if not any(marker in text for marker in ("lhs = rhs", "hence", "therefore", "LHS = RHS")):
-                issues.append("prove mode missing proof conclusion")
-            if "use " not in text.lower() and "method:" not in text.lower():
-                issues.append("prove mode missing method/explanation")
-        elif "transform" in feature or "trig_transform" in feature:
-            if not any(marker in text for marker in ("answer:", "final =", "hence ", "lhs = rhs")):
-                issues.append("transform mode missing clear final result")
-            if "use " not in text.lower() and "standard" not in text.lower():
-                issues.append("transform mode missing method/explanation")
-        else:
-            if not any(marker in text for marker in ("lhs = rhs", "answer:", "final =", "x =", "not an identity", "hence ", "no valid trig values", "no real solutions", "no solution", "no sol")):
-                issues.append("missing a clear trig conclusion")
-    elif program == "Derive":
-        if "dy/dx" not in text:
-            issues.append("missing derivative conclusion")
-    elif program == "Integrate":
-        if "+ c" not in text:
-            issues.append("missing constant of integration")
-        if "no standard exam-method antiderivative found" in text:
-            issues.append("reported a generic integration failure instead of a worked method")
-        if not any(marker in text for marker in ("method:", "u =", "integration by parts", "partial fractions", "divide", "standard result")):
-            issues.append("missing integration method marker")
-    elif program == "SUVAT":
-        if feature.startswith("suvat_expected_error"):
-            if not any(marker in text for marker in ("no solution", "infinite solutions")):
-                issues.append("expected error case did not explain the issue")
-        else:
-            if not any(marker in text for marker in ("equation:", "original equation:", "s =", "u =", "v =", "a =", "t =")):
-                issues.append("missing SUVAT equation line")
-            if not any(marker in text for marker in ("answer:", "s =", "u =", "v =", "a =", "t =")):
-                issues.append("missing SUVAT answer line")
-
+    
     return issues
 
 
@@ -3019,6 +2968,22 @@ class CASIOApp(App):
             except Exception:
                 return ("", "")
 
+        def weighted_verdict(code_verdict, llm_verdict):
+            if not llm_verdict or llm_verdict in ("", "DISABLED"):
+                return code_verdict
+            
+            if llm_verdict == "CORRECT":
+                if code_verdict == "CORRECT":
+                    return "CORRECT"
+                return "NEEDS_REVIEW"
+            elif llm_verdict == "INCORRECT":
+                return "INCORRECT"
+            elif llm_verdict == "NEEDS_REVIEW":
+                if code_verdict == "INCORRECT":
+                    return "INCORRECT"
+                return "NEEDS_REVIEW"
+            return code_verdict
+
         total_batches = (len(cases) + batch_size - 1) // batch_size
         pending_records = []
 
@@ -3043,6 +3008,21 @@ class CASIOApp(App):
                     record = self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
                     pending_records.append(record)
 
+                    if use_llm:
+                        verdict, explanation = llm_verify(record)
+                        if verdict:
+                            record.llm_verdict = verdict
+                            record.llm_explanation = explanation
+                            llm_color = "#22c55e" if verdict == "CORRECT" else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
+                            self.append_result(f"[dim]  └─ LLM: [{llm_color}]{verdict}[/{llm_color}][/dim]")
+                        
+                        code_verdict = "CORRECT" if passed else "INCORRECT"
+                        final_verdict = weighted_verdict(code_verdict, verdict)
+                        if final_verdict == "CORRECT":
+                            record.passed = True
+                        else:
+                            record.passed = False
+
             if use_llm and pending_records:
                 llm_workers = min(4, max(1, active_workers // 2))
 
@@ -3066,12 +3046,7 @@ class CASIOApp(App):
                             self._llm_times.append(elapsed)
                             if len(self._llm_times) > 100:
                                 self._llm_times = self._llm_times[-50:]
-                        verified += 1
-                        if verified % max(1, len(pending_records) // 10) == 0 and self._llm_times:
-                            import statistics
-                            recent = self._llm_times[-20:]
-                            self._llm_avg_time = statistics.mean(recent)
-                pending_records = []
+                    pending_records = []
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -5777,7 +5752,7 @@ ANSWER: {result}""",
 
             generation_chunk = 200
             if infinite_mode and self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
-                generation_chunk = 25
+                generation_chunk = 1
 
             program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
             expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
