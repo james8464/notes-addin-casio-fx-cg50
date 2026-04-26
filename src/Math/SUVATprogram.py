@@ -61,8 +61,19 @@ SHOW_CACHE = {}
 SPLIT_COEFF_CACHE = {}
 FLAT_CACHE = {}
 SAME_CACHE = {}
+CACHE_LIMIT = 512
 
 ALL_CACHES = (SIG_CACHE, SHOW_CACHE, SPLIT_COEFF_CACHE, FLAT_CACHE, SAME_CACHE)
+
+
+def _cache_set(cache, key, value, limit=CACHE_LIMIT):
+    if key not in cache and len(cache) >= limit:
+        try:
+            del cache[next(iter(cache))]
+        except (KeyError, StopIteration):
+            pass
+    cache[key] = value
+    return value
 
 
 def clear_all_caches():
@@ -297,8 +308,7 @@ def flat(node, kind):
     first = items[0] if items else None
     if first is None or first[0] != kind:
         result = list(items)
-        FLAT_CACHE[key] = result
-        return result
+        return _cache_set(FLAT_CACHE, key, result)
     out = []
     i = 0
     while i < len(items):
@@ -307,8 +317,7 @@ def flat(node, kind):
         else:
             out.append(items[i])
         i += 1
-    FLAT_CACHE[key] = out
-    return out
+    return _cache_set(FLAT_CACHE, key, out)
 
 
 def make_add(parts):
@@ -413,8 +422,7 @@ def sig(node):
         result = (kind, tuple(parts))
     else:
         result = node
-    SIG_CACHE[key] = result
-    return result
+    return _cache_set(SIG_CACHE, key, result)
 
 
 def same(a, b):
@@ -525,8 +533,7 @@ def split_coeff(node):
             result = (num(1), node)
     else:
         result = (num(1), node)
-    SPLIT_COEFF_CACHE[key] = result
-    return result
+    return _cache_set(SPLIT_COEFF_CACHE, key, result)
 
 
 def norm_pow_base(node):
@@ -1077,8 +1084,7 @@ def show(node, parent=0):
     if cached is not None:
         return cached
     result = _show(display_rearrange(sim(node)), parent)
-    SHOW_CACHE[key] = result
-    return result
+    return _cache_set(SHOW_CACHE, key, result)
 
 
 
