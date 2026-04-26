@@ -2765,6 +2765,13 @@ class CASIOApp(App):
         except Exception:
             pass
 
+    def update_running_count(self, current, total):
+        if total > 0:
+            pct = int(current / total * 100)
+            self.update_summary(f"Running: {current}/{total} tests ({pct}%)")
+        else:
+            self.update_summary(f"Running: {current} tests...")
+
     def update_command_help(self, value: str):
         help_widget = self.query_one("#command-help", Static)
         suggestions_widget = self.query_one("#command-suggestions", Static)
@@ -5777,6 +5784,8 @@ ANSWER: {result}""",
                 self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
                 test_count = len(self.records)
                 emit(self.append_result, f"[dim]Running: {test_count} tests...[/dim]")
+                test_total = self.total_expected if self.total_expected > 0 else test_count
+                emit(self.update_summary, f"Running: {test_count}/{test_total} tests ({int(test_count/test_total*100)}%)")
                 if infinite_mode:
                     self.total_expected = len(self.records) + generation_chunk * len(builders)
                 if self.random_stop_requested(emit):
