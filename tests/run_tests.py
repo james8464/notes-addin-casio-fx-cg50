@@ -2844,8 +2844,14 @@ class CASIOApp(App):
 
     def run_cli(self, script, inp):
         try:
+            cmd = [
+                sys.executable,
+                '-c',
+                'import sys; sys.path.insert(0, "src"); sys.path.insert(0, "src/Math"); '
+                f'exec(open("{ROOT/script}").read())'
+            ]
             proc = subprocess.run(
-                [PY, str(ROOT/script)],
+                cmd,
                 input=inp,
                 text=True,
                 capture_output=True,

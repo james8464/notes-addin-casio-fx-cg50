@@ -1,0 +1,10 @@
+CASIO Test Report - 2026-04-26T10:25:07
+============================================================
+
+[FAIL] Trig solve 3: cosec(x)=sqrt(2)
+Program: Trigonometry
+Input: 3
+cosec(x)=sqrt(2),0,2*pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker; shared quality check did not find reasoning language; shared quality check did not find a conclusion marker; missing program-specific working expected for this feature
+----------------------------------------
