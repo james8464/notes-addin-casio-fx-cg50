@@ -3147,12 +3147,19 @@ class CASIOApp(App):
         
         lines = result["response"].strip().split("\n")
         
-        if program_name in ("Algebra", "Solve"):
+        if program_name == "Algebra":
             eq_line = [l for l in lines if l.startswith("EQ:")]
             ans_line = [l for l in lines if l.startswith("ANSWER:")]
             if not eq_line or not ans_line:
                 return None
             return eq_line[0][4:].strip() + "=0", ans_line[0][8:].strip()
+
+        elif program_name == "Solve":
+            eq_line = [l for l in lines if l.startswith("EQ:")]
+            sol_line = [l for l in lines if l.startswith("SOL:")]
+            if not eq_line or not sol_line:
+                return None
+            return eq_line[0][4:].strip(), sol_line[0][5:].strip()
         
         elif program_name == "Derive":
             expr_line = [l for l in lines if l.startswith("EXPR:")]
