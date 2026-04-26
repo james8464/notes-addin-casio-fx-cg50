@@ -1,7 +1,7 @@
 # Graph Report - .  (2026-04-26)
 
 ## Corpus Check
-- 25 files · ~183,463 words
+- 25 files · ~183,523 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -49,7 +49,7 @@ Nodes (260): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integra
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (179): angle_to_degree(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), classify_solve_angle_arg() (+171 more)
+Nodes (149): append_unique_value_node(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), classify_solve_angle_arg() (+141 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
@@ -64,24 +64,24 @@ Cohesion: 0.03
 Nodes (80): Enum, RunState, TestStatus, casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker() (+72 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.1
-Nodes (103): add(), addq(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms() (+95 more)
+Cohesion: 0.11
+Nodes (98): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), derive_cot_quadratic_expr() (+90 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.07
-Nodes (100): allowed_expression_from_terms(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), combine_fraction_sum_once(), common_denominator_step(), direct_double_angle_rewrite(), direct_identity_target_rewrite() (+92 more)
+Nodes (89): angle_text(), append_unique_float(), append_unique_solve_value(), compact_lines(), concise_root_text(), constant_numeric(), dedupe_values(), depends() (+81 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.07
-Nodes (79): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), concise_root_text(), constant_numeric(), dedupe_values(), direct_single_trig_info() (+71 more)
+Nodes (81): addq(), allowed_expression_from_terms(), build_named_power_product(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_ratio_target_rewrite(), direct_single_trig_info(), display_abs() (+73 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.1
-Nodes (47): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), collect_trig_argument_lower_symbols(), constant_fit_preserve_named_trig(), depends_any() (+39 more)
+Cohesion: 0.07
+Nodes (78): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any() (+70 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.14
-Nodes (46): bridge_to_target(), detail_trig_expansion(), direct_ratio_target_rewrite(), equivalent(), expand_safe_trig_tree(), expand_small(), finish_verbose_proof(), _full_simplify_uncached() (+38 more)
+Cohesion: 0.11
+Nodes (59): angle_to_degree(), bridge_to_target(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), degree_int(), degree_mod_360(), detail_trig_expansion() (+51 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.19
