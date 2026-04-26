@@ -7350,7 +7350,7 @@ def _append_domain_interval_lines(lines, expr, var_name, low_node, high_node):
         a0, b0 = b0, a0
     ok, n = _count_defined_samples_on_interval(expr, var_name, a0, b0, 41)
     lines.append(
-        "On [" + f"{a0:.6g}" + ", " + f"{b0:.6g}" + "]: defined at " + str(ok) + " / " + str(n) + " sample " + var_name + "-values."
+        "On [" + ("%g" % a0) + ", " + ("%g" % b0) + "]: defined at " + str(ok) + " / " + str(n) + " sample " + var_name + "-values."
     )
     if ok == 0:
         lines.append("Caution: the expression appears undefined for every sample; it may be outside the natural domain on the whole range.")
@@ -7374,10 +7374,10 @@ def _append_range_interval_lines(lines, expr, var_name, low_node, high_node):
         lines.append("On the interval: could not estimate y; check the domain and whether the function is real-valued on the range.")
         return
     if abs(ymn - ymx) < 1e-6 * max(1.0, abs(ymn), abs(ymx)):
-        lines.append("On the interval, y is about " + f"{ymn:.6g}" + " (vertex/endpoint or numeric check).")
+        lines.append("On the interval, y is about " + ("%g" % ymn) + " (vertex/endpoint or numeric check).")
     else:
         lines.append(
-            "On the interval, y ranges approximately from " + f"{ymn:.6g}" + " to " + f"{ymx:.6g}" + " (endpoints, vertex for quadratics, and numeric scan)."
+            "On the interval, y ranges approximately from " + ("%g" % ymn) + " to " + ("%g" % ymx) + " (endpoints, vertex for quadratics, and numeric scan)."
         )
 
 
@@ -7572,7 +7572,20 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
     def quadratic_vertex_value(coeffs):
         return sim(sub(coeffs[0], div(power(coeffs[1], num(2)), mul([num(4), coeffs[2]]))))
 
-    coeffs, degree = polynomial_coeff_list(expr, var_name, 2)
+    def _quadratic_coeffs(node):
+        cc, dd = polynomial_coeff_list(node, var_name, 2)
+        if cc is not None and dd == 2 and is_num(cc[2]):
+            return cc, dd
+        try:
+            expanded = sim(expand_integer_power_for_solving(node))
+        except Exception:
+            return cc, dd
+        cc2, dd2 = polynomial_coeff_list(expanded, var_name, 2)
+        if cc2 is not None and dd2 == 2 and is_num(cc2[2]):
+            return cc2, dd2
+        return cc, dd
+
+    coeffs, degree = _quadratic_coeffs(expr)
     if coeffs is not None and degree == 2 and is_num(coeffs[2]):
         extrema_value = quadratic_vertex_value(coeffs)
         if coeffs[2][1] > 0:
@@ -7584,7 +7597,7 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
         return _finish_range(lines)
 
     if expr[0] == 'fn' and expr[1] == 'sqrt':
-        inner_coeffs, inner_degree = polynomial_coeff_list(expr[2], var_name, 2)
+        inner_coeffs, inner_degree = _quadratic_coeffs(expr[2])
         if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
             top = quadratic_vertex_value(inner_coeffs)
             lines.append('Unrestricted: Range: 0 <= y <= ' + show(fn('sqrt', top)))
@@ -7593,7 +7606,7 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
         return _finish_range(lines)
 
     if expr[0] == 'div' and is_one(expr[1]) and expr[2][0] == 'fn' and expr[2][1] == 'sqrt':
-        inner_coeffs, inner_degree = polynomial_coeff_list(expr[2][2], var_name, 2)
+        inner_coeffs, inner_degree = _quadratic_coeffs(expr[2][2])
         if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
             top = quadratic_vertex_value(inner_coeffs)
             lines.append('Unrestricted: Range: y >= ' + show(sim(div(num(1), fn('sqrt', top)))))
