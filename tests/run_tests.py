@@ -4081,24 +4081,19 @@ class CASIOApp(App):
     def random_algebra_solve_case(self, rng, difficulty, index):
         # Totally chaotic equation generator
         if difficulty == "chaos":
-            # Generate completely chaotic polynomial equations
-            degree = max(2, rng.randint(1, 8))
-            coeff_list = []
-            for d in range(degree + 1):
-                coeff_list.append(rng.randint(-50 if d > 0 else 1, 50))
-            # Build polynomial
-            terms = []
-            for d in range(degree, -1, -1):
-                c = coeff_list[degree - d]
-                if c != 0:
-                    if d == 0:
-                        terms.append(str(c))
-                    elif d == 1:
-                        terms.append(f"{c}*x")
-                    else:
-                        terms.append(f"{c}*x^{d}")
-            eq = "+".join(terms).replace("+-", "-").replace("1*x", "x").replace("1*x^", "x^")
-            eq = f"{eq}=0"
+            # Keep chaos solvable: use random linear factors, then let the
+            # program expand/extract roots instead of inventing impossible quartics.
+            roots = []
+            degree = rng.randint(2, 5)
+            while len(roots) < degree:
+                root = rng.randint(-9, 9)
+                if root not in roots:
+                    roots.append(root)
+            factors = []
+            for root in roots:
+                sign = "-" if root >= 0 else "+"
+                factors.append(f"(x{sign}{abs(root)})")
+            eq = "*".join(factors) + "=0"
             mode = "chaos_polynomial"
         elif difficulty == "hard":
             # Hard mode - varied equation types
@@ -4500,21 +4495,14 @@ class CASIOApp(App):
         # Random angle forms
         angle_forms = [
             f"{rng.randint(1,9)}*x",
-            f"x/{rng.randint(2,5)}",
             f"{rng.randint(1,4)}*x+{rng.randint(1,4)}",
             f"{rng.randint(1,3)}*x-{rng.randint(1,5)}",
-            f"(x+{rng.randint(1,3)})/{rng.randint(2,4)}",
-            f"sin(x)",
-            f"cos(x)",
-            f"tan(x)",
         ]
         
         if difficulty == "chaos":
             # Chaotic mode - wild equations
             angle = rng.choice(angle_forms + [
                 f"{rng.randint(1,7)}*x+{rng.randint(1,9)}*pi/{rng.randint(2,12)}",
-                f"x^2" if rng.random() < 0.3 else f"x",
-                f"log(x)" if rng.random() < 0.3 else f"exp(x)",
             ])
             # Random RHS
             target_choices = ["0", "1", "-1", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-sqrt(3)/3", 

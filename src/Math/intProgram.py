@@ -3689,6 +3689,15 @@ def integrate_standard_term(node, var):
     S, U = integrate_special_direct_term(A, C)
     if S is not None:
         return S, U
+    if A[0] == 'fn' and A[1] == 'log' and linear_info(A[2], C) is not None:
+        G, M = linear_info(A[2], C)
+        B = A[2]
+        L = fn('log', fn('abs', B))
+        R = div(add([mul([B, L]), neg(B)]), G)
+        return R, [
+            'Let u = ' + pretty(B) + '.',
+            'Use Int[ln(u)] du = u*ln|u|-u.',
+            'So I = ' + pretty(R) + ' + C']
     if A[0] == 'pow' and A[1] == F and is_num(A[2]) and A[2] != num(-1):
         I = addq(A[2], num(1))
         return div(power(F, I), I), []

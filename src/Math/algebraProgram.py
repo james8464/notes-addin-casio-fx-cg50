@@ -6625,6 +6625,46 @@ def isolate_one_radical(expr, var_name):
     return None, None
 
 
+def solve_abs_linear_equation(expr, var_name):
+    """Solve coeff*abs(linear)+constant = 0 without falling through all methods."""
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    abs_term = None
+    rest = []
+    i = 0
+    while i < len(terms):
+        coeff, core = split_coeff(terms[i])
+        if core[0] == 'fn' and core[1] == 'abs' and depends_on(core[2], var_name):
+            if abs_term is not None:
+                return None
+            abs_term = (coeff, core[2])
+        else:
+            rest.append(terms[i])
+        i += 1
+    if abs_term is None:
+        return None
+    const_part = sim(make_add(rest)) if rest else num(0)
+    if depends_on(const_part, var_name):
+        return None
+    coeff, inner = abs_term
+    if is_zero(coeff):
+        return None
+    target = sim(div(neg(const_part), coeff))
+    target_value = real_numeric_value(target)
+    if target_value is not None and target_value < -1e-9:
+        return var_name, [], 'No solution'
+    roots = []
+    label, pos_roots = solve_polynomial_expr(sim(add([inner, neg(target)])), var_name)
+    if pos_roots is not None:
+        roots.extend(pos_roots)
+    if target_value is None or target_value > 1e-9:
+        label, neg_roots = solve_polynomial_expr(sim(add([inner, target])), var_name)
+        if neg_roots is not None:
+            roots.extend(neg_roots)
+    if len(roots) == 0:
+        return None
+    return var_name, normalize_solution_roots(roots), 'Abs linear'
+
+
 def solve_equation(node):
     expr = sim(node)
     direct_var = choose_primary_var(expr)
@@ -6645,6 +6685,9 @@ def solve_equation(node):
         if is_zero(working):
             return None, [], 'Identity'
         return None, [], 'No solution'
+    abs_result = solve_abs_linear_equation(working, var_name)
+    if abs_result is not None:
+        return abs_result
     label, roots = solve_polynomial_expr(working, var_name)
     if label == 'identity':
         return None, [], 'Identity'
