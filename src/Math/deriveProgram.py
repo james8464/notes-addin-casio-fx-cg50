@@ -1437,8 +1437,11 @@ def parse(text):
             i = j
         else:
             raise ValueError("Unexpected character: " + ch)
+    if len(toks) > MAX_TOKEN_COUNT:
+        raise ValueError('Too many tokens (max ' + str(MAX_TOKEN_COUNT) + ').')
 
     p = 0
+    parse_depth = 0
 
     def cur():
         if p >= len(toks):
@@ -1466,12 +1469,16 @@ def parse(text):
         return is_atom_start(t)
 
     def atom():
-        nonlocal p
+        nonlocal p, parse_depth
         t = cur()
         if t == "(":
+            parse_depth += 1
+            if parse_depth > MAX_NESTING_DEPTH:
+                raise ValueError('Expression too nested (max ' + str(MAX_NESTING_DEPTH) + ').')
             eat("(")
             out = expr()
             eat(")")
+            parse_depth -= 1
             return out
         if t and (is_digit_char(t[0]) or t[0] == "."):
             p += 1

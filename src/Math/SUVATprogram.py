@@ -1208,6 +1208,8 @@ def parse(text):
     def atom():
         nonlocal p
         t = cur()
+        if t == '':
+            raise ValueError('Unexpected end of input.')
         if t == '(':
             eat('(')
             out = expr()
@@ -1250,6 +1252,8 @@ def parse(text):
                     return fn(low, out)
                 if starts_implicit(cur()):
                     return fn(low, atom())
+            if not is_name_start(t[0]):
+                raise ValueError('Unexpected token: ' + t)
             return sym(t)
         raise ValueError('Unexpected token: ' + t)
 
@@ -1305,7 +1309,10 @@ def parse(text):
                 lhs = sub(lhs, rhs)
         return lhs
 
-    return sim(expr())
+    out = sim(expr())
+    if cur():
+        raise ValueError('Unexpected token: ' + cur())
+    return out
 
 
 def parse_value(text):

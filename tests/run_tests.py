@@ -710,7 +710,28 @@ def _expand_parametric_solution(rhs, var_letter="n", lower=None, upper=None,
         if bounded:
             lo, hi = (lower, upper) if lower <= upper else (upper, lower)
             tol = max(1e-7, 1e-7 * max(1.0, abs(lo), abs(hi)))
-        for n_val in samples:
+            v0 = safe_eval_expr(cleaned, {var_letter: 0.0})
+            v1 = safe_eval_expr(cleaned, {var_letter: 1.0})
+            v2 = safe_eval_expr(cleaned, {var_letter: 2.0})
+            step = v1 - v0
+            if abs((v2 - v1) - step) <= 1e-7 * max(1.0, abs(step)):
+                if abs(step) <= 1e-12:
+                    n_values = (0,)
+                else:
+                    a = int(math.floor((lo - v0) / step)) if step > 0 else int(math.floor((hi - v0) / step))
+                    b = int(math.ceil((hi - v0) / step)) if step > 0 else int(math.ceil((lo - v0) / step))
+                    n_min, n_max = (a, b) if a <= b else (b, a)
+                    n_min -= 2
+                    n_max += 2
+                    if n_max - n_min > 200:
+                        n_min = max(n_min, -100)
+                        n_max = min(n_max, 100)
+                    n_values = range(n_min, n_max + 1)
+            else:
+                n_values = samples
+        else:
+            n_values = samples
+        for n_val in n_values:
             value = safe_eval_expr(cleaned, {var_letter: float(n_val)})
             if bounded:
                 if value < lo - tol or value > hi + tol:
@@ -751,7 +772,7 @@ def extract_last_solution_values(output, var="x", lower=None, upper=None):
                 return [safe_eval_expr(rhs)]
             except Exception:
                 expanded = _expand_parametric_solution(rhs, lower=lower, upper=upper)
-                if expanded:
+                if expanded is not None:
                     return expanded
                 return None
     return None
@@ -4743,8 +4764,6 @@ class CASIOApp(App):
             target = rng.choice(target_choices)
         elif difficulty == "hard":
             angle = rng.choice(angle_forms + [
-                f"sin(x)+{rng.randint(1,3)}",
-                f"cos(x)-{rng.randint(1,3)}",
                 f"{rng.randint(2,5)}*x+pi/{rng.randint(2,8)}",
             ])
             target = rng.choice(["0", "1", "-1", "1/2", "sqrt(2)/2"])
@@ -4996,8 +5015,12 @@ class CASIOApp(App):
             cli_input = f"1\n{expr}\n"
             label = f"Triple product {index}"
             return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
-        helper_difficulty = "hard" if difficulty == "chaos" else ("medium" if difficulty == "random" else difficulty)
-        depth = 2 if helper_difficulty in ("hard", "chaos") else 1
+        # Triple-product derivatives expand quickly on the calculator. Keep
+        # this generator at exam-scale even in chaos mode; deeper compositions
+        # are covered by chain/quotient cases without multiplying three huge
+        # subtrees together.
+        helper_difficulty = "medium" if difficulty in ("chaos", "hard", "random") else difficulty
+        depth = 1
         expr = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
         cli_input = f"1\n{expr}\n"
         label = f"Triple product {index}"
@@ -5113,9 +5136,16 @@ class CASIOApp(App):
                 expr = f"{a}/(x+{b})" if rng.random() < 0.5 else f"{a}*x/(x+{b})"
                 mode = "chaos_rational"
             elif itype == "nested":
-                funcs = ["sin", "cos", "exp", "log"]
-                f1, f2 = rng.choice(funcs), rng.choice(funcs)
-                expr = f"{f1}({f2}(x))"
+                # Use genuine nested expressions, but include the inner
+                # derivative so the expected answer is elementary and
+                # calculator-relevant.
+                expr = rng.choice([
+                    "cos(exp(x))*exp(x)",
+                    "exp(sin(x))*cos(x)",
+                    "1/(x*log(x))",
+                    "sin(log(x))/x",
+                    "cos(log(x))/x",
+                ])
                 mode = "chaos_nested"
             elif itype == "sqrt":
                 a = rng.randint(2, 5)

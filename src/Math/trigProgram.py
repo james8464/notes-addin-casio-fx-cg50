@@ -3383,11 +3383,18 @@ def eval_numeric_mode(node, env, deg_mode):
                 raise ValueError("tan undefined")
             return math.sin(trig_arg) / c
         if name == "asin":
-            return math.asin(arg)
+            if arg < -1 or arg > 1:
+                raise ValueError("asin domain")
+            out = math.asin(arg)
+            return out * 180.0 / PI_FLOAT if deg_mode else out
         if name == "acos":
-            return math.acos(arg)
+            if arg < -1 or arg > 1:
+                raise ValueError("acos domain")
+            out = math.acos(arg)
+            return out * 180.0 / PI_FLOAT if deg_mode else out
         if name == "atan":
-            return math.atan(arg)
+            out = math.atan(arg)
+            return out * 180.0 / PI_FLOAT if deg_mode else out
         if name == "sec":
             c = math.cos(trig_arg)
             if abs(c) < 1e-12:
@@ -16504,14 +16511,25 @@ def solution_list_line(var, values, deg_mode, exact_texts=None):
     return var + " = [" + ", ".join(bits) + "]"
 
 
+def _trim_float_text(value, places):
+    text = ("%." + str(places) + "f") % value
+    while "." in text and text.endswith("0"):
+        text = text[:-1]
+    if text.endswith("."):
+        text = text[:-1]
+    if text == "-0":
+        text = "0"
+    return text
+
+
 def _principal_text(principal, deg_mode):
     if deg_mode:
         if abs(principal - round(principal)) < 1e-6:
             return str(int(round(principal)))
-        return format(principal, "g")
+        return _trim_float_text(principal, 6)
     if abs(principal - round(principal)) < 1e-9:
         return str(int(round(principal)))
-    return format(principal, ".4f")
+    return _trim_float_text(principal, 4)
 
 
 def detect_general_solution(values, deg_mode):
@@ -16674,6 +16692,10 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
             if identity_result is not None:
                 return identity_result
             lines.append("No analytical solution found.")
+            lines.append("Answer: no closed-form solution found")
+            if want_meta:
+                return [], compact_lines(lines), deg_mode
+            return [], compact_lines(lines)
 
     result, extra = solved
     i = 0
@@ -17421,38 +17443,44 @@ def numeric_eval(node, env, deg_mode=True):
             return None
         if deg_mode and fn_name in ("sin", "cos", "tan", "cot", "sec", "cosec"):
             arg_val = arg_val * PI_FLOAT / 180.0
-        if fn_name == "sin":
-            return math.sin(arg_val)
-        if fn_name == "cos":
-            return math.cos(arg_val)
-        if fn_name == "tan":
-            return math.tan(arg_val)
-        if fn_name == "cot":
-            return 1.0 / math.tan(arg_val) if abs(math.tan(arg_val)) > 1e-12 else None
-        if fn_name == "sec":
-            return 1.0 / math.cos(arg_val) if abs(math.cos(arg_val)) > 1e-12 else None
-        if fn_name == "cosec":
-            return 1.0 / math.sin(arg_val) if abs(math.sin(arg_val)) > 1e-12 else None
-        if fn_name == "sqrt":
-            return math.sqrt(arg_val) if arg_val >= 0 else None
-        if fn_name == "asin":
-            return math.asin(arg_val)
-        if fn_name == "acos":
-            return math.acos(arg_val)
-        if fn_name == "atan":
-            return math.atan(arg_val)
-        if fn_name == "log":
-            return math.log(arg_val) if arg_val > 0 else None
-        if fn_name == "exp":
-            return math.exp(arg_val)
-        if fn_name == "abs":
-            return abs(arg_val)
-        if fn_name == "sinh":
-            return math.sinh(arg_val)
-        if fn_name == "cosh":
-            return math.cosh(arg_val)
-        if fn_name == "tanh":
-            return math.tanh(arg_val)
+        try:
+            if fn_name == "sin":
+                return math.sin(arg_val)
+            if fn_name == "cos":
+                return math.cos(arg_val)
+            if fn_name == "tan":
+                return math.tan(arg_val)
+            if fn_name == "cot":
+                tan_val = math.tan(arg_val)
+                return 1.0 / tan_val if abs(tan_val) > 1e-12 else None
+            if fn_name == "sec":
+                cos_val = math.cos(arg_val)
+                return 1.0 / cos_val if abs(cos_val) > 1e-12 else None
+            if fn_name == "cosec":
+                sin_val = math.sin(arg_val)
+                return 1.0 / sin_val if abs(sin_val) > 1e-12 else None
+            if fn_name == "sqrt":
+                return math.sqrt(arg_val) if arg_val >= 0 else None
+            if fn_name == "asin":
+                return math.asin(arg_val) if -1 <= arg_val <= 1 else None
+            if fn_name == "acos":
+                return math.acos(arg_val) if -1 <= arg_val <= 1 else None
+            if fn_name == "atan":
+                return math.atan(arg_val)
+            if fn_name == "log":
+                return math.log(arg_val) if arg_val > 0 else None
+            if fn_name == "exp":
+                return math.exp(arg_val)
+            if fn_name == "abs":
+                return abs(arg_val)
+            if fn_name == "sinh":
+                return math.sinh(arg_val)
+            if fn_name == "cosh":
+                return math.cosh(arg_val)
+            if fn_name == "tanh":
+                return math.tanh(arg_val)
+        except (ValueError, ZeroDivisionError, OverflowError):
+            return None
         return None
     # Handle add/mul/div/pow - check if node[1] is a tuple (multiple terms) or binary
     if kind == "add":
@@ -17510,7 +17538,8 @@ def numeric_eval(node, env, deg_mode=True):
         exp = numeric_eval(node[2], env, deg_mode)
         if base is None or exp is None:
             return None
-        if base < 0 and exp != int(exp):
+        nearest_int = int(round(exp))
+        if base < 0 and abs(exp - nearest_int) > 1e-10:
             return None
         return base ** exp
     return None

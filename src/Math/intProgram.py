@@ -777,11 +777,24 @@ def normalize_trig_signs(node):
     return sim((B, tuple(normalize_trig_signs(C) for C in A[1])))
 
 
+def small_comb(n, k):
+    if k < 0 or k > n:
+        return 0
+    if math is not None and hasattr(math, 'comb'):
+        return math.comb(n, k)
+    if k > n - k:
+        k = n - k
+    out = 1
+    i = 1
+    while i <= k:
+        out = (out * (n - k + i)) // i
+        i += 1
+    return out
+
+
 def cos_power_reduction_expr(arg, power_val):
     if power_val == 0:
         return num(1)
-    if math is None or not hasattr(math, 'comb'):
-        return None
     terms = []
     denom = 2 ** power_val
     j = 0
@@ -789,7 +802,7 @@ def cos_power_reduction_expr(arg, power_val):
         freq = power_val - 2 * j
         if freq < 0:
             freq = -freq
-        coeff = num(math.comb(power_val, j), denom)
+        coeff = num(small_comb(power_val, j), denom)
         if freq == 0:
             terms.append(coeff)
         else:
@@ -875,7 +888,7 @@ def trig_same_angle_power_rewrite(node):
         L = []
         M = 0
         while M <= count:
-            N = math.comb(count, M) if math is not None and hasattr(math, 'comb') else 1
+            N = small_comb(count, M)
             O = start_pow + 2 * M
             P = fn(base_name, G) if O == 1 else power(fn(base_name, G), num(O))
             Q = P if N == 1 else mul([num(N), P])
@@ -901,15 +914,13 @@ def trig_same_angle_power_rewrite(node):
         return 'Use cos^2 x = 1-sin^2 x.', expand_small(make_mul(J))
 # Handle sin^m(x) * cos^n(x) where both m and n are even (general case)
     if H > 0 and I > 0 and H % 2 == 0 and I % 2 == 0:
-        if math is None or not hasattr(math, 'comb'):
-            return None, None
         terms = []
         half_h = H // 2
         half_i = I // 2
         double_arg = mul([num(2), G])
         for m in range(half_h + 1):
             for n in range(half_i + 1):
-                coeff_val = math.comb(half_h, m) * math.comb(half_i, n)
+                coeff_val = small_comb(half_h, m) * small_comb(half_i, n)
                 sign = (-1) ** m
                 coeff = num(sign * coeff_val, 2 ** (half_h + half_i))
                 power_expr = cos_power_reduction_expr(double_arg, m + n)
@@ -2056,7 +2067,10 @@ def parse(text):
             A = B
         else:
             raise ValueError('Unexpected character: ' + H)
+    if len(G) > MAX_TOKEN_COUNT:
+        raise ValueError('Too many tokens (max ' + str(MAX_TOKEN_COUNT) + ').')
     I = 0
+    parse_depth = 0
 
     def F():
         if I >= len(G):
@@ -2108,11 +2122,16 @@ def parse(text):
         return True
 
     def P():
+        nonlocal parse_depth
         A = F()
         if A == '(':
+            parse_depth += 1
+            if parse_depth > MAX_NESTING_DEPTH:
+                raise ValueError('Expression too nested (max ' + str(MAX_NESTING_DEPTH) + ').')
             D('(')
             C = L()
             D(')')
+            parse_depth -= 1
             return C
         if A is None:
             raise ValueError('Unexpected end.')

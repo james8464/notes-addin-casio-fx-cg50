@@ -101,6 +101,7 @@ except ImportError:
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
+FAST_ISFINITE = math.isfinite if math is not None and hasattr(math, 'isfinite') else None
 SKIP_AUTORUN = sys is not None and (
     getattr(sys, '_algebra_no_autorun', False) or
     len(sys.argv) > 1
@@ -5689,8 +5690,15 @@ def real_numeric_value(node):
             return None
         value = value.real
     try:
-        if not math.isfinite(value):
-            return None
+        if FAST_ISFINITE is not None:
+            if not FAST_ISFINITE(value):
+                return None
+        else:
+            if value != value:
+                return None
+            inf = float('inf')
+            if value == inf or value == -inf:
+                return None
     except Exception:
         return None
     return value
@@ -6001,6 +6009,10 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
     lines = ['Method: Solve equation', 'Expr = ' + show(shown_expr)]
     if has_int and var_name is not None:
         lines.append('Interval: ' + var_name + ' in [' + show(sim(low_node)) + ', ' + show(sim(high_node)) + ']')
+        if real_numeric_value(sim(low_node)) is None or real_numeric_value(sim(high_node)) is None:
+            lines.append('Interval bounds must be numeric to filter roots.')
+            lines.append('Answer: no interval-filtered answer')
+            return compact_duplicate_answer_lines(lines)
     if label == 'Identity':
         lines.append('All ' + (var_name or 'x') + ' satisfy the equation')
         lines.append('Answer: all real ' + (var_name or 'x'))
