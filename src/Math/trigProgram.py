@@ -1521,15 +1521,6 @@ def format_equation_human_readable(node, parent=0):
     
     return str(node)
 
-def split_coeff(node):
-    """Helper function to split coefficient from term."""
-    if is_num(node):
-        return node, num(1)
-    if node[0] == 'mul' and len(node[1]) > 0 and is_num(node[1][0]):
-        return node[1][0], ('mul', node[1][1:]) if len(node[1]) > 1 else ('sym', '1')
-    return num(1), node
-
-
 def show_explicit(node, parent=0):
     return show(node, parent)
 
