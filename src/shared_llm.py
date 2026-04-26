@@ -118,6 +118,7 @@ class LLMCache:
             stored_time, response = self.cache[key]
             if time.time() - stored_time < self.ttl:
                 self.hits += 1
+                self.access_times[key] = time.time()
                 return response
             else:
                 del self.cache[key]
@@ -129,6 +130,8 @@ class LLMCache:
     
     def set(self, model, prompt, response):
         """Store response in cache."""
+        if self.max_size <= 0:
+            return
         if len(self.cache) >= self.max_size:
             oldest_key = min(self.access_times.keys(), 
                            key=lambda k: self.access_times[k])

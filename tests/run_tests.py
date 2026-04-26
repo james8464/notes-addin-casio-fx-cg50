@@ -2308,6 +2308,10 @@ class CASIOApp(App):
         # Use mpy-cross v1.9.4 built from source (produces v3 bytecode)
         mpy_cross = Path("/Users/james/micropython/mpy-cross/mpy-cross")
         calculator = Path("/Volumes/NO NAME")
+        if not mpy_cross.exists():
+            self.append_result(f"[bold #f87171]mpy-cross missing:[/bold #f87171] {mpy_cross}")
+            self.update_summary("Compile failed")
+            return
         
         # (source file, program name, launcher name)
         programs = [
@@ -2326,6 +2330,8 @@ class CASIOApp(App):
             py_wrapper = calc / f"{launch_name}.py"
             
             self.append_result(f"[dim]Compiling {src.name}...[/dim]")
+            if mpy.exists():
+                mpy.unlink()
             
             # Compile with v1.9.4 flags: small-int-bits=31, no-unicode (required for Casio)
             heap = ['-X', 'heapsize=52428800'] if prog_name in ('trigProgram', 'intProgram', 'deriveProgram') else []
@@ -2334,7 +2340,7 @@ class CASIOApp(App):
                 capture_output=True, text=True
             )
             
-            if mpy.exists():
+            if result.returncode == 0 and mpy.exists():
                 self.append_result(f"[bold #22c55e]✓[/#22c55e] Compiled {prog_name}.mpy (v3)")
             else:
                 self.append_result(f"[bold #f87171]✗[/#f87171] Failed: {result.stderr[:100] if result.stderr else 'unknown'}")
@@ -3145,50 +3151,65 @@ class CASIOApp(App):
         if result.get("error") or not result.get("response"):
             return None
         
-        lines = result["response"].strip().split("\n")
+        def tag_value(tag):
+            prefix = tag.upper() + ":"
+            for raw in result["response"].strip().split("\n"):
+                line = raw.strip()
+                if line.upper().startswith(prefix):
+                    return line[len(prefix):].strip()
+            return None
         
         if program_name == "Algebra":
-            eq_line = [l for l in lines if l.startswith("EQ:")]
-            ans_line = [l for l in lines if l.startswith("ANSWER:")]
-            if not eq_line or not ans_line:
+            eq_value = tag_value("EQ")
+            ans_value = tag_value("ANSWER")
+            if not eq_value or not ans_value:
                 return None
-            return eq_line[0][4:].strip() + "=0", ans_line[0][8:].strip()
+            if "=" not in eq_value:
+                eq_value += "=0"
+            return eq_value, ans_value
 
         elif program_name == "Solve":
-            eq_line = [l for l in lines if l.startswith("EQ:")]
-            sol_line = [l for l in lines if l.startswith("SOL:")]
-            if not eq_line or not sol_line:
+            eq_value = tag_value("EQ")
+            sol_value = tag_value("SOL")
+            if not eq_value or not sol_value:
                 return None
-            return eq_line[0][4:].strip(), sol_line[0][5:].strip()
+            return eq_value, sol_value
         
         elif program_name == "Derive":
-            expr_line = [l for l in lines if l.startswith("EXPR:")]
-            deriv_line = [l for l in lines if l.startswith("DERIV:")]
-            if not expr_line or not deriv_line:
+            expr_value = tag_value("EXPR")
+            deriv_value = tag_value("DERIV")
+            if not expr_value or not deriv_value:
                 return None
-            return expr_line[0][6:].strip(), deriv_line[0][6:].strip()
+            return expr_value, deriv_value
         
         elif program_name == "Integrate":
-            expr_line = [l for l in lines if l.startswith("EXPR:")]
-            int_line = [l for l in lines if l.startswith("INT:")]
-            if not expr_line or not int_line:
+            expr_value = tag_value("EXPR")
+            int_value = tag_value("INT")
+            if not expr_value or not int_value:
                 return None
-            return expr_line[0][6:].strip(), int_line[0][5:].strip()
+            return expr_value, int_value
         
         elif program_name == "Trigonometry":
-            eq_line = [l for l in lines if l.startswith("EQ:")]
-            sol_line = [l for l in lines if l.startswith("SOL:")]
-            if not eq_line or not sol_line:
+            eq_value = tag_value("EQ")
+            sol_value = tag_value("SOL")
+            if not eq_value or not sol_value:
                 return None
-            return eq_line[0][4:].strip(), sol_line[0][5:].strip()
+            return eq_value, sol_value
         
         elif program_name == "Matrix":
-            op_line = [l for l in lines if l.startswith("OP:")]
-            mat_line = [l for l in lines if l.startswith("MATRIX:")]
-            ans_line = [l for l in lines if l.startswith("ANSWER:")]
-            if not op_line or not mat_line or not ans_line:
+            op_value = tag_value("OP")
+            mat_value = tag_value("MATRIX")
+            ans_value = tag_value("ANSWER")
+            if not op_value or not mat_value or not ans_value:
                 return None
-            return op_line[0][4:].strip() + "\n" + mat_line[0][8:].strip(), ans_line[0][8:].strip()
+            return op_value + "\n" + mat_value, ans_value
+
+        elif program_name in ("Complex", "Calculate"):
+            expr_value = tag_value("EXPR")
+            ans_value = tag_value("ANSWER")
+            if not expr_value or not ans_value:
+                return None
+            return expr_value, ans_value
         
         return None
 
