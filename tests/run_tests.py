@@ -4547,7 +4547,7 @@ class CASIOApp(App):
         return self.make_cli_case(
             "Trigonometry",
             "trigProgram.py",
-            f"3\n{eq},{interval}\n",
+            f"3\n{eq},x,{interval}\n",
             label,
             trig_solve_checker("x ="),
             feature=f"trig_solve:{mode}",

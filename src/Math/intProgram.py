@@ -6885,7 +6885,14 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if B is not None:
         return A, B, C, None
     if C:
-        return A, B, C, None
+        failure_lines, failure_answer = hard_integral_failure_working(node, var)
+        merged = list(C)
+        i = 0
+        while failure_lines is not None and i < len(failure_lines):
+            if len(merged) == 0 or merged[-1] != failure_lines[i]:
+                merged.append(failure_lines[i])
+            i += 1
+        return A, B, merged, failure_answer
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
     return 'Int attempt', B, failure_lines, failure_answer
 
