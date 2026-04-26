@@ -6,6 +6,10 @@ try:
     import sys
 except ImportError:
     sys = None
+try:
+    RecursionError
+except NameError:
+    RecursionError = RuntimeError
 
 try:
     from src.shared_helpers import (

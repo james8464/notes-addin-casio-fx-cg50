@@ -1,8 +1,0 @@
-[FAIL] Integrate 1: sin(exp(x))
-Program: Integrate
-Input: 1
-(sin(exp((x))))
-
-
-Check: check; calculated answer correctness; format fuzz
-----------------------------------------

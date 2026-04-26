@@ -1,6 +1,11 @@
 # Minimal fallback stubs for calculator (no external modules)
 # These are used when shared_cache/shared_helpers aren't available
 
+try:
+    RecursionError
+except NameError:
+    RecursionError = RuntimeError
+
 def cache_store(cache, key, value, limit):
     cache[key] = value
     return value
