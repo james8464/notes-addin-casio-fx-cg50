@@ -1838,6 +1838,13 @@ class CASIOApp(App):
         background: #242934;
     }
 
+    #progress-bar {
+        height: 1;
+        padding: 0 1;
+        color: #22c55e;
+        background: #242934;
+    }
+
     Input {
         background: #242934;
     }
@@ -1990,6 +1997,7 @@ class CASIOApp(App):
             yield Static("", id="command-help")
             yield Static("", id="command-suggestions")
             yield Static("Ready", id="status-line")
+            yield Static("", id="progress-bar")
 
     def on_mount(self):
         self.title = "CASIO Test Suite"
@@ -2762,6 +2770,33 @@ class CASIOApp(App):
         try:
             self.query_one("#status-line", Static).update(text)
             self.screen.refresh()  # Force immediate display
+        except Exception:
+            pass
+
+    def update_progress_bar(self, current, total):
+        if total <= 0:
+            total = current
+        if total <= 0:
+            self._hide_progress_bar()
+            return
+        
+        pct = current / total
+        bar_width = 20
+        filled = int(pct * bar_width)
+        bar = "█" * filled + "░" * (bar_width - filled)
+        pct_int = int(pct * 100)
+        
+        try:
+            self.query_one("#progress-bar", Static).update(
+                f"[#22c55e]{bar}[/] {pct_int}% ({current}/{total})"
+            )
+            self.screen.refresh()
+        except Exception:
+            pass
+    
+    def _hide_progress_bar(self):
+        try:
+            self.query_one("#progress-bar", Static).update("")
         except Exception:
             pass
 
@@ -5785,7 +5820,7 @@ ANSWER: {result}""",
                 test_count = len(self.records)
                 emit(self.append_result, f"[dim]Running: {test_count} tests...[/dim]")
                 test_total = self.total_expected if self.total_expected > 0 else test_count
-                emit(self.update_summary, f"Running: {test_count}/{test_total} tests ({int(test_count/test_total*100)}%)")
+                emit(self.update_progress_bar, test_count, test_total)
                 if infinite_mode:
                     self.total_expected = len(self.records) + generation_chunk * len(builders)
                 if self.random_stop_requested(emit):
