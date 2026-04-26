@@ -31,8 +31,10 @@ except ImportError:
                 same_by_sig, REASONING_MARKERS,
             )
         except ImportError:
-            shared_clear_all_caches = lambda *c: None
-            ensure_reasoning_marker = lambda *a: a[0] if a else a
+            def shared_clear_all_caches(*c):
+                return None
+            def ensure_reasoning_marker(*a):
+                return a[0] if a else a
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -40,16 +42,21 @@ except ImportError:
                     name = 'cosec'
                 node = ('fn', name, arg)
                 return sim_func(node) if sim_func is not None else node
-            is_num = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
-            is_one = lambda n: is_num(n) and n[1] == n[2]
-            is_zero = lambda n: is_num(n) and n[1] == 0
-            normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
+            def is_num(n, *args):
+                return isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
+            def is_one(n, *args):
+                return is_num(n) and n[1] == n[2]
+            def is_zero(n, *args):
+                return is_num(n) and n[1] == 0
+            def normalize_input_text(t, *args):
+                return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
                 n = num_func(-1) if num_func is not None else ('num', -1, 1)
                 return mul_func([n, node]) if mul_func is not None else ('mul', (n, node))
-            same_by_sig = lambda a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None: a == b
+            def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None, *args):
+                return a == b
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
 SKIP_AUTORUN = sys is not None and (
@@ -2051,8 +2058,12 @@ def main():
     begin_user_action()
     try:
         solve_suvat()
-    except Exception as err:
+    except EOFError:
+        return
+    except ValueError as err:
         print('Err: ' + str(err))
+    except Exception:
+        print('Err: internal error.')
 
 
 run = main

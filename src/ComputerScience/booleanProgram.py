@@ -799,5 +799,9 @@ try:
                 i += 1
     else:
         print("Mode must be 1-4.")
-except Exception as err:
+except EOFError:
+    pass
+except ValueError as err:
     print("Input error: " + str(err))
+except Exception:
+    print("Input error: internal error.")

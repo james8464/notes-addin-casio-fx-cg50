@@ -48,9 +48,13 @@ except ImportError:
                 casio_hw_sim_from_env,
             )
         except ImportError:
-            shared_cache_store = lambda c, k, v, l: c.__setitem__(k, v) or v
-            shared_clear_all_caches = lambda *c: None
-            ensure_reasoning_marker = lambda *a: a[0] if a else a
+            def shared_cache_store(c, k, v, l=None, *args):
+                c[k] = v
+                return v
+            def shared_clear_all_caches(*c):
+                return None
+            def ensure_reasoning_marker(*a):
+                return a[0] if a else a
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -58,15 +62,21 @@ except ImportError:
                     name = 'cosec'
                 node = ('fn', name, arg)
                 return sim_func(node) if sim_func is not None else node
-            is_num = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
-            is_one = lambda n: is_num(n) and n[1] == n[2]
-            is_zero = lambda n: is_num(n) and n[1] == 0
-            normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
-            same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
+            def is_num(n, *args):
+                return isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
+            def is_one(n, *args):
+                return is_num(n) and n[1] == n[2]
+            def is_zero(n, *args):
+                return is_num(n) and n[1] == 0
+            def normalize_input_text(t, *args):
+                return t.strip() if isinstance(t, str) else t
+            def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None, *args):
+                return a == b
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
-            casio_hw_sim_from_env = lambda: False
+            def casio_hw_sim_from_env(*args):
+                return False
 
 
 FUNC_NAMES = (
@@ -3061,8 +3071,12 @@ def main():
         else:
             print("Bad mode.")
 
-    except Exception as err:
+    except EOFError:
+        return
+    except ValueError as err:
         print("Err: " + str(err))
+    except Exception:
+        print("Err: internal error.")
 
 
 run = main
