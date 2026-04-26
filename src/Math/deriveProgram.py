@@ -1272,20 +1272,6 @@ def format_equation_human_readable(node, parent=0):
     
     return str(node)
 
-def split_coeff(node):
-    """Helper function to split coefficient from term."""
-    if is_num(node):
-        return node, num(1)
-    if node[0] == "mul":
-        items = list(flat(node, "mul"))
-        if items and is_num(items[0]):
-            if len(items) == 2:
-                return items[0], items[1]
-            return items[0], ("mul", tuple(items[1:]))
-    return num(1), node
-
-
-
 KNOWN_PARSE_NAMES = tuple(
     sorted(
         set(FUNC_NAMES) |
