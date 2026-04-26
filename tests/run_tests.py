@@ -198,6 +198,27 @@ def _fast_case_workers():
 
 FAST_CASE_WORKERS = _fast_case_workers()
 CASE_WORKERS = max(CASE_WORKERS, FAST_CASE_WORKERS)
+
+# Feature tags used by random chaos so we can report gaps (prefix of CaseSpec.feature).
+RANDOM_CHAOS_EXPECTED_ALGEBRA = (
+    "algebra_compare",
+    "algebra_transform",
+    "algebra_expand",
+    "algebra_poly",
+    "algebra_complete_square",
+    "algebra_solve",
+    "algebra_comp",
+    "algebra_inverse",
+    "algebra_rewrite",
+    "algebra_domain",
+    "algebra_range",
+    "algebra_domain_interval",
+    "algebra_cartesian",
+    "algebra_hidden_quadratic",
+    "algebra_simultaneous_hard",
+    "algebra_circle_hard",
+    "algebra_discriminant",
+)
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
@@ -693,6 +714,18 @@ def extract_last_solution_values(output, var="x"):
     return None
 
 
+def infer_algebra_solve_var_from_eq_line(eq_text):
+    if not eq_text or "=" not in eq_text:
+        return "x"
+    try:
+        left, right = eq_text.split("=", 1)
+        node = ALG.parse(left.strip() + "-(" + right.strip() + ")")
+        v = ALG.choose_primary_var(node)
+        return v if v is not None else "x"
+    except Exception:
+        return "x"
+
+
 def extract_last_derivative_expr(output):
     for line in reversed((output or "").splitlines()):
         stripped = re.sub(r"^\s*\d+\.\s*", "", line.strip())
@@ -1186,7 +1219,7 @@ def algebra_transform_checker(*tokens):
 
 def algebra_solve_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("answer:", "x ="),
+        contains_all=tokens + ("answer:",),
         contains_any=("solve", "method"),
         min_steps=2,
         min_lines=2,
@@ -1909,6 +1942,8 @@ class CASIOApp(App):
         self._weighted_rate = 0.0
         self._weighted_llm_rate = 0.0
         self._report_path = None
+        self._feature_stats = {}
+        self._show_chaos_feature_gaps = False
         
         self.command_items = {
             "/random": "Run randomly generated tests (infinite until stopped)",
@@ -2565,6 +2600,7 @@ class CASIOApp(App):
 
     def run_all_tests(self):
         def run():
+            self._show_chaos_feature_gaps = False
             self.call_from_thread(
                 self.append_result,
                 "[bold #e07a53]▶ Running tests...[/bold #e07a53]",
@@ -2629,6 +2665,11 @@ class CASIOApp(App):
         status = TestStatus.PASS if passed else TestStatus.FAIL
         record = TestRecord(len(self.records)+1, label, status, output, program, input_text, check_info, feature)
         self.records.append(record)
+        if feature:
+            st = self._feature_stats.setdefault(feature, [0, 0])
+            st[1] += 1
+            if passed:
+                st[0] += 1
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
         
@@ -2777,7 +2818,47 @@ class CASIOApp(App):
                     msg += f" ({cache_stats['hit_rate']} cache)"
 
         self.append_result(f"\n[bold]Results:[/bold] [bold {color}]{msg}[/bold {color}]\n")
+        self._append_feature_weakness_and_gaps()
         self.update_summary(msg)
+
+    def _append_feature_weakness_and_gaps(self):
+        st = getattr(self, "_feature_stats", None) or {}
+        if not st:
+            return
+        rows = []
+        for feat, (ok, n) in st.items():
+            if n <= 0:
+                continue
+            rows.append((ok / n, n, ok, feat))
+        rows.sort()
+        if rows:
+            self.append_result("[dim]Weakest feature tags (pass rate, at least 2 tests):[/dim]")
+            shown = 0
+            for rate, n, ok, feat in rows:
+                if n < 2:
+                    continue
+                if rate >= 0.999:
+                    continue
+                self.append_result(f"  [dim]{feat}[/dim] {ok}/{n} ({100*rate:.0f}%)")
+                shown += 1
+                if shown >= 10:
+                    break
+            if shown == 0:
+                self.append_result("  [dim](all multi-run tags at 100% or single-run only)[/dim]")
+
+        def _covers(expected_id, feature_keys):
+            for feat in feature_keys:
+                if feat == expected_id or feat.startswith(expected_id + ":"):
+                    return True
+            return False
+
+        fkeys = st.keys()
+        if getattr(self, "_show_chaos_feature_gaps", False) and fkeys and len(self.records) > 5:
+            missing = [p for p in RANDOM_CHAOS_EXPECTED_ALGEBRA if not _covers(p, fkeys)]
+            if missing:
+                self.append_result(
+                    f"[dim]Chaos run did not hit these algebra feature tags: {', '.join(missing[:12])}[/dim]"
+                )
 
     def update_summary(self, text):
         try:
@@ -2881,8 +2962,9 @@ class CASIOApp(App):
             return bool(calculated(output))
 
         def runner():
-            out, _ = self.run_cli(script, inp)
-            return combined_checker(out), out
+            out, err = self.run_cli(script, inp)
+            combined = out if not err else out + "\n" + err
+            return combined_checker(combined), combined
 
         info = check_info or getattr(checker, "__name__", "custom checker")
         if use_calculated:
@@ -2930,6 +3012,14 @@ class CASIOApp(App):
             "random_algebra_comp_case": "Algebra",
             "random_algebra_inverse_case": "Algebra",
             "random_algebra_rewrite_case": "Algebra",
+            "random_algebra_complete_square_case": "Algebra",
+            "random_algebra_domain_case": "Algebra",
+            "random_algebra_range_case": "Algebra",
+            "random_algebra_domain_interval_case": "Algebra",
+            "random_algebra_solve_letter_case": "Algebra",
+            "random_algebra_compare_letter_case": "Algebra",
+            "random_algebra_expand_letter_case": "Algebra",
+            "random_algebra_cartesian_case": "Algebra",
             "random_derive_normal_case": "Derive",
             "random_derive_product_case": "Derive",
             "random_derive_2nd_case": "Derive",
@@ -4287,15 +4377,19 @@ class CASIOApp(App):
     def build_random_algebra_cases(self, difficulty, count, rng):
         features = [
             self.random_algebra_compare_case,
+            self.random_algebra_compare_letter_case,
             self.random_algebra_transform_case,
             self.random_algebra_expand_case,
+            self.random_algebra_expand_letter_case,
             self.random_algebra_poly_case,
             self.random_algebra_complete_square_case,
             self.random_algebra_solve_case,
+            self.random_algebra_solve_letter_case,
             self.random_algebra_comp_case,
             self.random_algebra_inverse_case,
             self.random_algebra_rewrite_case,
             self.random_algebra_domain_case,
+            self.random_algebra_domain_interval_case,
             self.random_algebra_range_case,
             self.random_algebra_cartesian_case,
             self.random_algebra_hidden_quadratic_case,
@@ -4362,35 +4456,86 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(f"x^2+{k}*x+{k-5}=0"), feature="algebra_discriminant")
 
     def random_algebra_domain_case(self, rng, difficulty, index):
+        v = rng.choice(["x", "t", "u", "k"])
         exprs = [
-            "x+1",
-            "x^2",
-            "1/x",
-            "sqrt(x)",
-            "log(x)",
-            "x^3",
-            "sqrt(x)+x",
+            f"{v}+1",
+            f"{v}^2",
+            f"1/{v}",
+            f"sqrt({v})",
+            f"log({v})" if v != "k" or rng.random() > 0.5 else f"{v}^2-4",
+            f"{v}^3",
+            f"sqrt({v})+{v}",
         ]
         expr = rng.choice(exprs)
         label = f"Domain {index}: {expr}"
-        cli_input = f"10\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=("domain:",), contains_any=("x >", "x <", "x >=", "x <=", "x !="), min_lines=1), feature="algebra_domain")
+        cli = f"10\n{expr}\n" if v == "x" and rng.random() < 0.4 else f"10\n{expr}, {v}\n"
+        return self.make_cli_case(
+            "Algebra", "algebraProgram.py", cli, label,
+            build_checker(contains_all=("domain:", "variable ="), contains_any=("all real", "!=", ">", "<", ">=", "<=", "except", "and", "solve:"), min_lines=2),
+            feature="algebra_domain",
+        )
+
+    def random_algebra_domain_interval_case(self, rng, difficulty, index):
+        v = rng.choice(["t", "u", "k"])
+        a = self.random_chaos_int(rng, 0, 3) if difficulty == "chaos" else rng.randint(0, 3)
+        b = self.random_chaos_int(rng, 2, 10) if difficulty == "chaos" else rng.randint(2, 9)
+        if a >= b:
+            a, b = 0, 4
+        exprs = [f"1/({v}+1)", f"sqrt({v}+{rng.randint(1, 3)})", f"({v}-1)^2", f"{v}^2+1"]
+        expr = rng.choice(exprs)
+        label = f"Domain interval {index}: {expr} on [{a},{b}]"
+        cli_input = f"10\n{expr}, {v}, {a}, {b}\n"
+        return self.make_cli_case(
+            "Algebra", "algebraProgram.py", cli_input, label,
+            build_checker(contains_all=("domain:", "interval of interest", "variable =", "on ["), min_lines=4),
+            feature="algebra_domain_interval",
+        )
+
+    def random_algebra_solve_letter_case(self, rng, difficulty, index):
+        v = rng.choice(["t", "u", "k"])
+        c = self.random_chaos_int(rng, 2, 8) if difficulty == "chaos" else rng.randint(2, 6)
+        rhs = c * (rng.randint(2, 4))
+        label = f"Solve letter {index}: {c}*{v}={rhs}"
+        eq = f"{c}*{v}={rhs}"
+        return self.make_cli_case(
+            "Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq, var=v), feature="algebra_solve:letter",
+        )
+
+    def random_algebra_compare_letter_case(self, rng, difficulty, index):
+        v = rng.choice(["t", "u", "k", "a"])
+        n = rng.randint(2, 4)
+        label = f"Compare {v} {index}"
+        if n == 2:
+            cli = f"1\n({v}+1)^2\n{v}^2+2*{v}+1\n"
+        else:
+            cli = f"1\n({v}-2)*({v}+2)\n{v}^2-4\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, algebra_compare_checker(), feature="algebra_compare:letter")
+
+    def random_algebra_expand_letter_case(self, rng, difficulty, index):
+        v = rng.choice(["t", "u", "k"])
+        a = self.random_chaos_int(rng, 2, 3) if difficulty == "chaos" else 2
+        p = 4 if rng.random() < 0.5 else 3
+        label = f"Expand letter {v} {index}"
+        cli = f"3\n({a}*{v}+1)^{p}\n\n"
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, build_checker(contains_all=("out =",), min_lines=2), feature="algebra_expand:letter")
 
     def random_algebra_range_case(self, rng, difficulty, index):
-        exprs = [
-            "x^2",
-            "x^2+1",
-            "1/x",
-            "sqrt(x)",
-            "exp(x)",
-            "-x^2",
-            "sin(x)",
-            "x^3",
-        ]
+        v = rng.choice(["x", "t", "m"])
+        exprs = [f"{v}^2", f"{v}^2+1", f"1/{v}", f"sqrt({v})", f"exp({v})", f"-{v}^2", f"sin({v})", f"{v}^3"]
         expr = rng.choice(exprs)
         label = f"Range {index}: {expr}"
-        cli_input = f"10\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=("range:",), contains_any=("y >", "y <", "y >=", "y <=", "y !=", "all real y"), min_lines=1), feature="algebra_range")
+        cli = f"10\n{expr}\n" if v == "x" and rng.random() < 0.3 else f"10\n{expr}, {v}\n"
+        use_interval = rng.random() < 0.2 and v != "m"
+        if use_interval:
+            lo, hi = rng.randint(-1, 1), rng.randint(1, 4)
+            if lo >= hi:
+                lo, hi = -1, 2
+            cli = f"10\n{expr}, {v}, {lo}, {hi}\n"
+        return self.make_cli_case(
+            "Algebra", "algebraProgram.py", cli, label,
+            build_checker(contains_all=("range:", "variable =", "unrestricted"), min_lines=2),
+            feature="algebra_range",
+        )
 
     def random_algebra_cartesian_case(self, rng, difficulty, index):
         # Parametric to Cartesian
@@ -5607,6 +5752,7 @@ class CASIOApp(App):
         self._llm_timestamps = []
         self._weighted_rate = 0.0
         self._weighted_llm_rate = 0.0
+        self._feature_stats = {}
 
     def announce_random_llm_status(self, emit):
         if self.llm_manager and self.llm_manager.enabled:
@@ -5649,6 +5795,7 @@ class CASIOApp(App):
                 emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
                 return
 
+            self._show_chaos_feature_gaps = True
             self.announce_random_llm_status(emit)
 
             emit(
@@ -5741,7 +5888,8 @@ class CASIOApp(App):
                 if mode == "2" and len(lines) >= 3:
                     return transform_output_checker(lines[1], lines[2], "Algebra")
                 if mode == "6" and len(lines) >= 2:
-                    return self.algebra_solve_output_checker(lines[1])
+                    v = infer_algebra_solve_var_from_eq_line(lines[1])
+                    return self.algebra_solve_output_checker(lines[1], var=v)
             if script == "algebraProgram.py" and mode in ("3", "5"):
                 return expected if callable(expected) else None
             if script == "trigProgram.py":
@@ -5880,6 +6028,25 @@ class CASIOApp(App):
                 eq = inp.splitlines()[1]
                 checker = self.algebra_solve_output_checker(eq)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra solve"), "algebra_solve")
+
+            dr = (
+                "10\n(t-1)^2+1, t, 0, 4\n",
+                "Mode 10: domain and range on an interval in t with explicit bounds",
+            )
+            out, _ = self.run_cli("algebraProgram.py", dr[0])
+            dchk = build_checker(
+                contains_all=("domain:", "variable = t", "interval of interest", "on [", "range:", "unrestricted", "on the interval", "t"),
+                min_lines=5,
+            )
+            self.add_test(
+                dr[1],
+                dchk(out) and "err:" not in normalized_text(out) and "err" not in normalized_text(out)[:20],
+                out,
+                p,
+                dr[0],
+                "domain/range with interval and alternate letter t",
+                "algebra_domain_range_interval",
+            )
 
             algebra_solve_regressions = [
                 ("6\nx^3+2*x=50\n", "Regression: depressed cubic solved by Cardano", ("cardano", "answer:", "x =")),

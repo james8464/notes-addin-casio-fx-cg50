@@ -58,10 +58,16 @@ except ImportError:
                 REASONING_MARKERS, casio_hw_sim_from_env,
             )
         except ImportError:
-            cache_store = None
-            shared_clear_all_caches = lambda *c: None
-            compact_duplicate_answer_lines = lambda x: x
-            ensure_reasoning_marker = lambda *a: a[0] if a else a
+            def cache_store(cache, key, value, limit=None, *args):
+                if cache is not None:
+                    cache[key] = value
+                return value
+            def shared_clear_all_caches(*c):
+                return None
+            def compact_duplicate_answer_lines(x, *args):
+                return x
+            def ensure_reasoning_marker(*a):
+                return a[0] if a else a
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -69,21 +75,28 @@ except ImportError:
                     name = 'cosec'
                 node = ('fn', name, arg)
                 return sim_func(node) if sim_func is not None else node
-            is_num = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
-            is_one = lambda n: is_num(n) and n[1] == n[2]
-            is_sym = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'sym'
-            is_zero = lambda n: is_num(n) and n[1] == 0
-            normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
+            def is_num(n, *args):
+                return isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
+            def is_one(n, *args):
+                return is_num(n) and n[1] == n[2]
+            def is_sym(n, *args):
+                return isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'sym'
+            def is_zero(n, *args):
+                return is_num(n) and n[1] == 0
+            def normalize_input_text(t, *args):
+                return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
                 n = num_func(-1) if num_func is not None else ('num', -1, 1)
                 return mul_func([n, node]) if mul_func is not None else ('mul', (n, node))
-            same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
+            def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None, *args):
+                return a == b
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
-            casio_hw_sim_from_env = lambda: False
+            def casio_hw_sim_from_env(*args):
+                return False
 
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
@@ -2511,8 +2524,10 @@ def compose_functions(f_text, g_text, var='x'):
         
         return show(fg), steps
         
-    except Exception as err:
+    except ValueError as err:
         return None, ["Error: " + str(err)]
+    except Exception:
+        return None, ["Error: internal compose failure."]
 
 
 def substitute(node, old, new):
@@ -3262,8 +3277,10 @@ def inverse_function(f_text, var='x'):
 
         steps.append("Unsupported inverse family")
         return None, ensure_reasoning_marker(steps)
-    except Exception as err:
+    except ValueError as err:
         return None, ensure_reasoning_marker(["Method: Solve for x in y = f(x)", "Err: " + str(err)])
+    except Exception:
+        return None, ensure_reasoning_marker(["Method: Solve for x in y = f(x)", "Err: internal inverse failure."])
 
 def sim(node):
     kind = node[0]
@@ -7181,16 +7198,31 @@ def main():
                 print(str(i + 1) + '. ' + lines[i])
                 i += 1
         elif mode == '10':
-            text = input('Expr: ').strip()
-            if text == '':
+            user_text = input('Expr (or expr, var, low, high): ').strip()
+            if user_text == '':
                 raise ValueError('Enter an expression.')
-            lines = find_domain_text(text)
+            expr_str, uvar, ulow, uhigh = parse_user_domain_range_input(user_text)
+            lo_node = None
+            hi_node = None
+            if ulow is not None:
+                try:
+                    lo_node = parse(ulow.strip())
+                except:
+                    raise ValueError('Could not parse the lower bound for the interval.')
+            if uhigh is not None:
+                try:
+                    hi_node = parse(uhigh.strip())
+                except:
+                    raise ValueError('Could not parse the upper bound for the interval.')
+            if (ulow is None) != (uhigh is None):
+                raise ValueError('Give both a lower and an upper bound, or neither, for the interval.')
+            lines = find_domain_text(expr_str, var_override=uvar, low_node=lo_node, high_node=hi_node)
             i = 0
             while i < len(lines):
                 print(str(i + 1) + '. ' + lines[i])
                 i += 1
             print()
-            lines = find_range_text(text)
+            lines = find_range_text(expr_str, var_override=uvar, low_node=lo_node, high_node=hi_node)
             i = 0
             while i < len(lines):
                 print(str(i + 1) + '. ' + lines[i])
@@ -7209,21 +7241,168 @@ def main():
                 i += 1
         else:
             print('Bad mode.')
-    except Exception as err:
+    except EOFError:
+        return
+    except ValueError as err:
         print('Err: ' + str(err))
+    except Exception:
+        print('Err: internal error.')
 
 
-def find_domain_text(text):
+def parse_user_domain_range_input(user_text):
+    t = (user_text or "").strip()
+    if t == "":
+        raise ValueError("Enter an expression, or: expr, var, lower, upper (comma separated).")
+    parts = split_top_level_all(t, ",")
+    parts = [p.strip() for p in parts]
+    n = len(parts)
+    if n == 1:
+        return parts[0], None, None, None
+    if n == 2:
+        return parts[0], parts[1], None, None
+    if n == 4:
+        return parts[0], parts[1], parts[2], parts[3]
+    raise ValueError("Use a single expression, or expr, var, or all four: expr, var, lower, upper (comma separated).")
+
+
+def user_domain_range_var_ensure_in_expr(node, var_name):
+    if not var_name:
+        return
+    names = set()
+    collect_symbol_names(node, names)
+    v = str(var_name).strip()
+    if v not in names:
+        raise ValueError("Variable " + v + " is not in the expression.")
+
+
+def _count_defined_samples_on_interval(expr, var_name, a, b, sample_count=41):
+    if a is None or b is None:
+        return 0, 0
+    if b < a:
+        a, b = b, a
+    ok = 0
+    i = 0
+    while i < sample_count:
+        t = a + (b - a) * (i / (sample_count - 1)) if sample_count > 1 else a
+        v = numeric_eval(expr, {var_name: t})
+        if v is not None:
+            if isinstance(v, complex):
+                if abs(v.imag) < 1e-8:
+                    ok += 1
+            else:
+                ok += 1
+        i += 1
+    return ok, sample_count
+
+
+def _quadratic_value_float_at_t(c0, c1, c2, t):
+    c = real_numeric_value(c0)
+    b_ = real_numeric_value(c1)
+    a_ = real_numeric_value(c2)
+    if a_ is None or b_ is None or c is None:
+        return None
+    return c + b_ * t + a_ * t * t
+
+
+def _range_on_closed_interval_numerical(expr, var_name, a, b):
+    a0, b0 = a, b
+    if b0 < a0 - 1e-15:
+        a0, b0 = b0, a0
+    coeffs, degree = polynomial_coeff_list(expr, var_name, 2)
+    candidates = []
+    if coeffs is not None and degree == 2 and is_num(coeffs[2]) and not is_zero(coeffs[2]):
+        a_c = real_numeric_value(coeffs[2])
+        b_c = real_numeric_value(coeffs[1])
+        if a_c is not None and b_c is not None and abs(a_c) > 1e-15:
+            v0 = -b_c / (2.0 * a_c)
+            for t in (a0, b0, v0):
+                if t + 1e-9 >= a0 and t - 1e-9 <= b0:
+                    y = _quadratic_value_float_at_t(coeffs[0], coeffs[1], coeffs[2], t)
+                    if y is not None:
+                        candidates.append(y)
+    if len(candidates) < 2:
+        candidates = []
+        j = 0
+        while j <= 200:
+            t = a0 + (b0 - a0) * (j / 200.0)
+            v = numeric_eval(expr, {var_name: t})
+            if v is not None:
+                if isinstance(v, complex) and abs(v.imag) > 1e-8:
+                    v = None
+                if v is not None and not isinstance(v, complex):
+                    candidates.append(v)
+                elif v is not None and isinstance(v, complex):
+                    candidates.append(v.real)
+            j += 1
+    if not candidates:
+        return None, None
+    return min(candidates), max(candidates)
+
+
+def _append_domain_interval_lines(lines, expr, var_name, low_node, high_node):
+    a = real_numeric_value(sim(low_node))
+    b = real_numeric_value(sim(high_node))
+    if a is None or b is None:
+        lines.append("Interval check: use numeric lower and upper to sample the expression on a closed range.")
+        return
+    a0, b0 = a, b
+    if b0 < a0:
+        a0, b0 = b0, a0
+    ok, n = _count_defined_samples_on_interval(expr, var_name, a0, b0, 41)
+    lines.append(
+        "On [" + f"{a0:.6g}" + ", " + f"{b0:.6g}" + "]: defined at " + str(ok) + " / " + str(n) + " sample " + var_name + "-values."
+    )
+    if ok == 0:
+        lines.append("Caution: the expression appears undefined for every sample; it may be outside the natural domain on the whole range.")
+    elif ok < n:
+        lines.append("Caution: some sample points are undefined; intersect the interval with the natural domain (singularities, log, square roots).")
+    else:
+        lines.append("All samples lie where the expression is defined (recheck any boundary behaviour against exact rules above).")
+
+
+def _append_range_interval_lines(lines, expr, var_name, low_node, high_node):
+    a = real_numeric_value(sim(low_node))
+    b = real_numeric_value(sim(high_node))
+    if a is None or b is None:
+        lines.append("On the closed interval: use numeric lower and upper to estimate the minimum and maximum of y (symbolic range on a segment is not available here).")
+        return
+    a0, b0 = a, b
+    if b0 < a0:
+        a0, b0 = b0, a0
+    ymn, ymx = _range_on_closed_interval_numerical(expr, var_name, a0, b0)
+    if ymn is None or ymx is None:
+        lines.append("On the interval: could not estimate y; check the domain and whether the function is real-valued on the range.")
+        return
+    if abs(ymn - ymx) < 1e-6 * max(1.0, abs(ymn), abs(ymx)):
+        lines.append("On the interval, y is about " + f"{ymn:.6g}" + " (vertex/endpoint or numeric check).")
+    else:
+        lines.append(
+            "On the interval, y ranges approximately from " + f"{ymn:.6g}" + " to " + f"{ymx:.6g}" + " (endpoints, vertex for quadratics, and numeric scan)."
+        )
+
+
+def find_domain_text(text, var_override=None, low_node=None, high_node=None):
     try:
         expr = parse(text.strip())
     except:
         return ['Err: Unable to parse expression.']
-    
-    var_name = choose_primary_var(expr)
+    if var_override is not None:
+        user_domain_range_var_ensure_in_expr(expr, var_override)
+        var_name = str(var_override).strip()
+    else:
+        var_name = choose_primary_var(expr)
     if var_name is None:
         return ['Err: No variable found to determine domain.']
-    
-    lines = ['Method: Determine Domain', 'Input = ' + show(expr)]
+
+    has_int = low_node is not None and high_node is not None
+
+    lines = [
+        "Method: Determine Domain",
+        "Input = " + show(expr),
+        "Variable = " + var_name,
+    ]
+    if has_int:
+        lines.append("Interval of interest: " + var_name + " in [" + show(sim(low_node)) + ", " + show(sim(high_node)) + "]")
     restrictions = []
 
     def inequality_text(rel, value):
@@ -7327,6 +7506,8 @@ def find_domain_text(text):
 
     if not restrictions:
         lines.append('Domain: all real ' + var_name)
+        if has_int:
+            _append_domain_interval_lines(lines, expr, var_name, low_node, high_node)
         return ensure_reasoning_marker(lines)
 
     constraints = []
@@ -7347,27 +7528,46 @@ def find_domain_text(text):
             seen_solutions[solved] = 1
             solved_constraints.append(solved)
     if len(constraints) != 0:
-        lines.append(', '.join(constraints))
+        lines.append('Restate restrictions: ' + ", ".join(constraints))
     if len(solved_constraints) != 0:
         solved_text = ' and '.join(solved_constraints)
         lines.append('Solve: ' + solved_text)
         lines.append('Domain: ' + solved_text)
     else:
         lines.append('Domain: all real ' + var_name + ' except where restrictions apply.')
+    if has_int:
+        _append_domain_interval_lines(lines, expr, var_name, low_node, high_node)
     return ensure_reasoning_marker(lines)
 
 
-def find_range_text(text):
+def find_range_text(text, var_override=None, low_node=None, high_node=None):
     try:
         expr = parse(text.strip())
     except:
         return ['Err: Unable to parse expression.']
-    
-    var_name = choose_primary_var(expr)
+
+    if var_override is not None:
+        user_domain_range_var_ensure_in_expr(expr, var_override)
+        var_name = str(var_override).strip()
+    else:
+        var_name = choose_primary_var(expr)
     if var_name is None:
         return ['Err: No variable found to determine range.']
-    
-    lines = ['Method: Determine Range', 'Input = ' + show(expr)]
+
+    has_int = low_node is not None and high_node is not None
+
+    lines = [
+        'Method: Determine Range',
+        'Input = ' + show(expr),
+        "Variable = " + var_name,
+    ]
+    if has_int:
+        lines.append("Interval of interest: " + var_name + " in [" + show(sim(low_node)) + ", " + show(sim(high_node)) + "]")
+
+    def _finish_range(out):
+        if has_int:
+            _append_range_interval_lines(out, expr, var_name, low_node, high_node)
+        return ensure_reasoning_marker(out)
 
     def quadratic_vertex_value(coeffs):
         return sim(sub(coeffs[0], div(power(coeffs[1], num(2)), mul([num(4), coeffs[2]]))))
@@ -7376,52 +7576,52 @@ def find_range_text(text):
     if coeffs is not None and degree == 2 and is_num(coeffs[2]):
         extrema_value = quadratic_vertex_value(coeffs)
         if coeffs[2][1] > 0:
-            lines.append('Range: y >= ' + show(extrema_value))
+            lines.append('Unrestricted: Range: y >= ' + show(extrema_value))
         elif coeffs[2][1] < 0:
-            lines.append('Range: y <= ' + show(extrema_value))
+            lines.append('Unrestricted: Range: y <= ' + show(extrema_value))
         else:
-            lines.append('Range: all real y')
-        return ensure_reasoning_marker(lines)
+            lines.append('Unrestricted: Range: all real y')
+        return _finish_range(lines)
 
     if expr[0] == 'fn' and expr[1] == 'sqrt':
         inner_coeffs, inner_degree = polynomial_coeff_list(expr[2], var_name, 2)
         if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
             top = quadratic_vertex_value(inner_coeffs)
-            lines.append('Range: 0 <= y <= ' + show(fn('sqrt', top)))
+            lines.append('Unrestricted: Range: 0 <= y <= ' + show(fn('sqrt', top)))
         else:
-            lines.append('Range: y >= 0')
-        return ensure_reasoning_marker(lines)
+            lines.append('Unrestricted: Range: y >= 0')
+        return _finish_range(lines)
 
     if expr[0] == 'div' and is_one(expr[1]) and expr[2][0] == 'fn' and expr[2][1] == 'sqrt':
         inner_coeffs, inner_degree = polynomial_coeff_list(expr[2][2], var_name, 2)
         if inner_coeffs is not None and inner_degree == 2 and is_num(inner_coeffs[2]) and inner_coeffs[2][1] < 0:
             top = quadratic_vertex_value(inner_coeffs)
-            lines.append('Range: y >= ' + show(sim(div(num(1), fn('sqrt', top)))))
+            lines.append('Unrestricted: Range: y >= ' + show(sim(div(num(1), fn('sqrt', top)))))
         else:
-            lines.append('Range: y > 0')
-        return ensure_reasoning_marker(lines)
+            lines.append('Unrestricted: Range: y > 0')
+        return _finish_range(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):
-        lines.append('Range: ' + show(expr))
-        return ensure_reasoning_marker(lines)
+        lines.append('Unrestricted: Range: ' + show(expr))
+        return _finish_range(lines)
 
     if is_num(expr):
-        lines.append('Range: ' + show(expr))
-        return ensure_reasoning_marker(lines)
+        lines.append('Unrestricted: Range: ' + show(expr))
+        return _finish_range(lines)
 
     # Handle rational functions: 1/f(x) where f(x) can be zero
     if expr[0] == 'div' and is_one(expr[1]):
         # It's 1/something - range excludes 0 if denominator can be zero
-        lines.append('Range: y != 0')
-        return ensure_reasoning_marker(lines)
+        lines.append('Unrestricted: Range: y != 0')
+        return _finish_range(lines)
 
     # Handle a/f(x) where a is constant non-zero
     if expr[0] == 'div' and is_num(expr[1]) and not is_zero(expr[1]):
-        lines.append('Range: y != 0')
-        return ensure_reasoning_marker(lines)
+        lines.append('Unrestricted: Range: y != 0')
+        return _finish_range(lines)
     
-    lines.append('Range: all real y')
-    return ensure_reasoning_marker(lines)
+    lines.append('Unrestricted: Range: all real y')
+    return _finish_range(lines)
 
 
 run = main
