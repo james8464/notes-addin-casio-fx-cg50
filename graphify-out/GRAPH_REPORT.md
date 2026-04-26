@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-26)
 
 ## Corpus Check
-- 26 files · ~182,838 words
+- 25 files · ~182,614 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1881 nodes · 8602 edges · 24 communities detected
+- 1879 nodes · 8601 edges · 21 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -48,8 +48,8 @@ Cohesion: 0.04
 Nodes (260): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integral_routes(), auto_route_cyclic_parts(), auto_route_division(), auto_route_parts() (+252 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.04
-Nodes (160): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), best_solve_rewrite(), build_menu_pages(), build_named_power_product(), classify_reciprocal_conjugate_binomial() (+152 more)
+Cohesion: 0.03
+Nodes (120): angle_to_degree(), append_unique_value_node(), apply_runtime_profile(), _balance_parens(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), classify_solve_angle_arg() (+112 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
@@ -60,40 +60,40 @@ Cohesion: 0.07
 Nodes (109): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+101 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.1
-Nodes (106): add(), addq(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms() (+98 more)
+Cohesion: 0.07
+Nodes (106): allowed_expression_from_terms(), build_named_power_product(), cache_store(), depends(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info(), divq() (+98 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.07
-Nodes (83): add_param_coeff_maps(), add_transform_constant_candidate(), allowed_expression_from_terms(), build_rewrite_allowed_info(), cache_store(), cancel_fraction_common_factor_for_display(), combine_fraction_sum_once(), constant_fit_preserve_named_trig() (+75 more)
+Cohesion: 0.1
+Nodes (101): add(), addq(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms() (+93 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.08
-Nodes (69): cheap_same(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info(), display_abs(), display_neg(), divq(), exact_pi_multiple() (+61 more)
+Cohesion: 0.07
+Nodes (94): angle_text(), append_unique_float(), append_unique_solve_value(), compact_lines(), concise_root_text(), constant_numeric(), dedupe_values(), display_neg() (+86 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.1
-Nodes (61): bridge_to_target(), common_denominator_step(), detail_trig_expansion(), direct_ratio_target_rewrite(), domain_restriction_identity_lines(), equivalent(), _equivalent_uncached(), expand_fraction() (+53 more)
+Cohesion: 0.07
+Nodes (68): begin_user_action(), bridge_to_target(), cancel_fraction_common_factor_for_display(), common_denominator_step(), detail_trig_expansion(), detect_transform_var(), direct_expression_transform_lines(), direct_ratio_target_rewrite() (+60 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.05
 Nodes (35): Enum, RunState, TestStatus, check_ollama_available(), get_ollama_models(), LLMCache, LLMManager, quick_verify() (+27 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.06
-Nodes (45): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char(), is_const() (+37 more)
+Cohesion: 0.1
+Nodes (52): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), collect_symbol_order(), collect_trig_argument_lower_symbols(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any() (+44 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.07
-Nodes (46): _balance_parens(), begin_user_action(), best_proof_direction(), clean_expr_text(), collect_symbols(), collect_trig_argument_lower_symbols(), compress_display_list(), display_line_short() (+38 more)
+Cohesion: 0.06
+Nodes (45): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char(), is_const() (+37 more)
 
 ### Community 13 - "Community 13"
 Cohesion: 0.2
 Nodes (24): build_menu_pages(), comp(), direct(), expand_vars(), has(), kids(), mk(), normalise() (+16 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.18
-Nodes (18): depends(), extract_polynomial_symbol(), extract_polynomial_trig(), is_int_num(), match_nonzero_reciprocal_factor(), merge_tan_sub_base(), ratio_family_transforms(), reciprocal_family_transforms() (+10 more)
+Cohesion: 0.2
+Nodes (16): cheap_same(), classify_reciprocal_conjugate_binomial(), half_angle_expr(), match_cot_squared_fraction(), match_one_pm_cos(), match_one_pm_cos_norm(), match_one_pm_trig_norm(), match_ratio_one_minus_cos_plus_sin() (+8 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.16
@@ -104,44 +104,30 @@ Cohesion: 0.27
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 17 - "Community 17"
-Cohesion: 0.33
-Nodes (11): angle_to_degree(), degree_int(), degree_mod_360(), exact_trig_lines(), exact_trig_value(), match_shift_side(), prove_shift_compare(), quadrant_of_degree() (+3 more)
-
-### Community 18 - "Community 18"
 Cohesion: 0.67
 Nodes (5): _autorun_off_bootstrap(), _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 19 - "Community 19"
+### Community 18 - "Community 18"
 Cohesion: 0.6
 Nodes (4): format_equation_human_readable(), format_exam_working(), numbered_steps(), split_coeff()
 
-### Community 20 - "Community 20"
+### Community 19 - "Community 19"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 21 - "Community 21"
+### Community 20 - "Community 20"
 Cohesion: 0.67
 Nodes (3): main(), Run a single test and return pass/fail., run_test()
-
-### Community 22 - "Community 22"
-Cohesion: 0.67
-Nodes (3): apply_runtime_profile(), clear_engine_caches(), _force_low_memory_runtime()
-
-### Community 23 - "Community 23"
-Cohesion: 1.0
-Nodes (0): 
 
 ## Knowledge Gaps
 - **75 isolated node(s):** `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.`, `Simple TTL-based cache for LLM responses.` (+70 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 23`** (2 nodes): `dedupe_intprogram_blocks.py`, `main()`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 1` to `Community 10`?**
-  _High betweenness centrality (0.137) - this node is a cross-community bridge._
+  _High betweenness centrality (0.138) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 10` to `Community 1`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **What connects `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol`, `Check if Ollama is installed and a server is running.` to the rest of the system?**
@@ -153,4 +139,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.04 - nodes in this community are weakly interconnected._
 - **Should `Community 3` be split into smaller, more focused modules?**
-  _Cohesion score 0.04 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03 - nodes in this community are weakly interconnected._
