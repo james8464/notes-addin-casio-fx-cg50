@@ -3028,7 +3028,7 @@ class CASIOApp(App):
                         if final_verdict == "CORRECT":
                             record.passed = True
                         else:
-                            record.passed = record.passed and passed
+                            record.passed = passed
 
     def balanced_counts(self, total, parts):
         base = total // parts
@@ -5722,6 +5722,10 @@ ANSWER: {result}""",
                 self.append_result,
                 f"[bold #e07a53]▶ Running random tests...[/bold #e07a53]",
             )
+            emit(
+                self.append_result,
+                f"[dim]Press /stop to end · Tests run: 0[/dim]",
+            )
 
             rng = random.Random()
             builders = self.random_builders_for_program(program)
@@ -5771,6 +5775,8 @@ ANSWER: {result}""",
 
                 cases = batch.builder(difficulty, batch.count, rng)
                 self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
+                test_count = len(self.records)
+                emit(self.append_result, f"[dim]Running: {test_count} tests...[/dim]")
                 if infinite_mode:
                     self.total_expected = len(self.records) + generation_chunk * len(builders)
                 if self.random_stop_requested(emit):
