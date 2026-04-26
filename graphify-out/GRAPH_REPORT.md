@@ -1,7 +1,7 @@
 # Graph Report - .  (2026-04-26)
 
 ## Corpus Check
-- 22 files · ~185,534 words
+- 22 files · ~185,550 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -49,7 +49,7 @@ Nodes (86): App, algebra_comp_checker(), algebra_compare_checker(), algebra_comp
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (166): append_unique_value_node(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), classify_solve_angle_arg() (+158 more)
+Nodes (114): angle_to_degree(), append_unique_value_node(), apply_runtime_profile(), _balance_parens(), best_solve_rewrite(), build_menu_pages(), classify_reciprocal_conjugate_binomial(), clear_engine_caches() (+106 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
@@ -60,40 +60,40 @@ Cohesion: 0.07
 Nodes (105): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+97 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.06
-Nodes (101): allowed_expression_from_terms(), build_named_power_product(), cache_store(), cheap_same(), classify_reciprocal_conjugate_binomial(), combine_fraction_sum_once(), direct_double_angle_rewrite(), direct_identity_target_rewrite() (+93 more)
+Cohesion: 0.1
+Nodes (108): add(), addq(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms() (+100 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.11
-Nodes (97): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), derive_cot_quadratic_expr() (+89 more)
+Cohesion: 0.07
+Nodes (80): add_param_coeff_maps(), add_transform_constant_candidate(), allowed_expression_from_terms(), build_named_power_product(), build_rewrite_allowed_info(), cache_store(), cancel_fraction_common_factor_for_display(), collect_symbol_order() (+72 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.09
-Nodes (65): angle_text(), append_unique_float(), append_unique_solve_value(), concise_root_text(), dedupe_values(), depends(), eval_numeric(), eval_numeric_mode() (+57 more)
+Nodes (69): begin_user_action(), best_proof_direction(), bridge_to_target(), clean_expr_text(), common_denominator_step(), detail_trig_expansion(), direct_expression_transform_lines(), display_target_text() (+61 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.1
-Nodes (64): angle_to_degree(), bridge_to_target(), common_denominator_step(), degree_int(), degree_mod_360(), detail_trig_expansion(), direct_ratio_target_rewrite(), equivalent() (+56 more)
+Cohesion: 0.07
+Nodes (68): append_unique_float(), append_unique_solve_value(), classify_solve_angle_arg(), concise_root_text(), dedupe_values(), depends(), detect_general_solution(), direct_single_trig_info() (+60 more)
 
 ### Community 10 - "Community 10"
+Cohesion: 0.09
+Nodes (61): cheap_same(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), display_abs(), divq(), exact_pi_multiple(), extract_binomial(), factor_common_term_once() (+53 more)
+
+### Community 11 - "Community 11"
+Cohesion: 0.1
+Nodes (58): angle_text(), compact_lines(), constant_numeric(), detect_transform_var(), equation_has_trig_content(), exact_angle_node_text(), exact_base_solution_nodes(), exact_text_or_float() (+50 more)
+
+### Community 12 - "Community 12"
 Cohesion: 0.05
 Nodes (35): Enum, RunState, TestStatus, check_ollama_available(), get_ollama_models(), LLMCache, LLMManager, quick_verify() (+27 more)
 
-### Community 11 - "Community 11"
-Cohesion: 0.09
-Nodes (47): add_param_coeff_maps(), add_transform_constant_candidate(), addq(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), constant_fit_preserve_named_trig(), depends_any() (+39 more)
-
-### Community 12 - "Community 12"
+### Community 13 - "Community 13"
 Cohesion: 0.06
 Nodes (43): cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char(), is_const(), is_digit_char() (+35 more)
 
-### Community 13 - "Community 13"
-Cohesion: 0.2
-Nodes (24): build_menu_pages(), comp(), direct(), expand_vars(), has(), kids(), mk(), normalise() (+16 more)
-
 ### Community 14 - "Community 14"
 Cohesion: 0.2
-Nodes (18): half_angle_expr(), _is_cos_squared_term(), is_lowercase_symbol_name(), _is_sin_squared_term(), match_cos_squared_term(), match_cot_squared_fraction(), match_one_pm_cos(), match_one_pm_cos_norm() (+10 more)
+Nodes (24): build_menu_pages(), comp(), direct(), expand_vars(), has(), kids(), mk(), normalise() (+16 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.18
@@ -118,9 +118,9 @@ Nodes (3): main(), Run a single test and return pass/fail., run_test()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CASIOApp` connect `Community 2` to `Community 10`?**
+- **Why does `CASIOApp` connect `Community 2` to `Community 12`?**
   _High betweenness centrality (0.137) - this node is a cross-community bridge._
-- **Why does `LLMManager` connect `Community 10` to `Community 2`?**
+- **Why does `LLMManager` connect `Community 12` to `Community 2`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **What connects `Run a single test and return pass/fail.`, `Shared LLM Interface for CASIO Test Suite.  Provides Ollama-based verification f`, `Check if Ollama is installed and a server is running.` to the rest of the system?**
   _72 weakly-connected nodes found - possible documentation gaps or missing edges._
