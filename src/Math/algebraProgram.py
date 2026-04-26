@@ -1870,7 +1870,20 @@ def parse_expr_or_equation(text):
         if parts is None:
             return parse(body)
         left_text, right_text = parts
+        # Handle expr,var format after equals (e.g., "x=sec(y)^2+tan(y),y")
+        if ',' in right_text:
+            right_parts = split_top_level(right_text.strip(), ',')
+            if right_parts is not None:
+                right_text = right_parts[0].strip()
         return sim(sub(parse(left_text.strip()), parse(right_text.strip())))
+    # Handle expr,var format without equals
+    if ',' in body:
+        parts = split_top_level(body.strip(), ',')
+        if parts is not None:
+            expr_text, var_text = parts
+            # Check if var_text is a single letter (valid variable)
+            if var_text.strip() and len(var_text.strip()) == 1 and var_text.strip().isalpha():
+                return parse(expr_text.strip())
     return parse(body)
 
 

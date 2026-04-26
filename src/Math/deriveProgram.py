@@ -1275,30 +1275,26 @@ def split_at_equals(text):
     return None, text
 
 
-def split_explicit_var(text):
-    body = text.strip()
-    if body[:1] == "(" and body[-1:] == ")":
-        body = body[1:-1].strip()
+def split_expr_var(text):
+    """Split expression,var at top-level comma, handling parentheses."""
+    text = text.strip()
+    if not text:
+        return None
     depth = 0
-    split_at = -1
     i = 0
-    while i < len(body):
-        ch = body[i]
+    while i < len(text):
+        ch = text[i]
         if ch == "(":
             depth += 1
         elif ch == ")":
             depth -= 1
         elif ch == "," and depth == 0:
-            split_at = i
-            break
-        i += 1
-    if split_at == -1:
-        return None
-    expr = body[:split_at].strip()
-    var = body[split_at + 1:].strip()
-    if expr == "" or var == "":
-        raise ValueError("Use expr,var with a single-letter variable.")
-    return expr, var
+            expr = text[:i].strip()
+            var = text[i + 1:].strip()
+            if not var:
+                return None
+            return expr, var
+    return None
 
 
 def normalize_explicit_var(name):
@@ -1485,6 +1481,13 @@ def parse(text):
 
 def parse_normal_input(text):
     text = text.strip()
+    # Handle expr,var format first (e.g., "sec(y)^2+tan(y),y")
+    parts = split_expr_var(text)
+    if parts is not None:
+        expr_text, var_text = parts
+        var = normalize_explicit_var(var_text)
+        return parse(expr_text), var
+    # Handle equation format
     left_text, right_text = split_at_equals(text)
     if left_text is not None:
         left_side = left_text.strip()
@@ -1492,9 +1495,10 @@ def parse_normal_input(text):
         if left_side in ("y", "EQ1") or left_side.startswith("f("):
             return parse(right_side), "x"
         else:
-            parts = split_explicit_var(text)
-            if parts is not None:
-                expr_text, var_text = parts
+            # Check if equation also has explicit var (e.g., "x=sec(y)^2+tan(y),y")
+            eq_parts = split_expr_var(right_side)
+            if eq_parts is not None:
+                expr_text, var_text = eq_parts
                 var = normalize_explicit_var(var_text)
                 return parse(expr_text), var
             raise ValueError("For equations, use implicit mode (mode 2). Or for EQ1 = f(x), put just f(x) on right side.")
