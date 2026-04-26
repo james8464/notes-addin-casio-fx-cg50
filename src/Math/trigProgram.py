@@ -16504,63 +16504,82 @@ def solution_list_line(var, values, deg_mode, exact_texts=None):
     return var + " = [" + ", ".join(bits) + "]"
 
 
+def _principal_text(principal, deg_mode):
+    if deg_mode:
+        if abs(principal - round(principal)) < 1e-6:
+            return str(int(round(principal)))
+        return format(principal, "g")
+    if abs(principal - round(principal)) < 1e-9:
+        return str(int(round(principal)))
+    return format(principal, ".4f")
+
+
 def detect_general_solution(values, deg_mode):
-    # Detect if solutions are evenly spaced (periodic)
     if len(values) < 3:
         return None
-    
-    # Check spacing between consecutive solutions
+
     diffs = []
     i = 1
     while i < len(values):
-        diffs.append(round(values[i] - values[i-1], 10))
+        diffs.append(values[i] - values[i-1])
         i += 1
-    
-    # All diffs should be the same (or negatives for alternating)
+
     period = diffs[0]
+    if abs(period) < 1e-9:
+        return None
+    tol = max(1e-6, 1e-4 * abs(period))
     all_same = True
     for d in diffs[1:]:
-        if abs(d - period) > 1:
+        if abs(d - period) > tol:
             all_same = False
             break
-    
     if not all_same:
         return None
-    
-    # Found period - determine general form
-    # Get principal solution (smallest positive or closest to 0)
+
     principal = values[0]
-    
-    # Normalize period to positive
     if period < 0:
         period = -period
-    
-    # Format based on degrees or radians
+
     if deg_mode:
-        # Degrees
-        if period == 180:
-            if principal == 0:
+        if abs(period - 180) < 1e-4:
+            ptxt = _principal_text(principal, True)
+            if abs(principal) < 1e-6:
                 return "n*180 (n any integer)"
-            elif abs(principal % 180) < 1:
-                return "n*180 (n any integer)"
-            else:
-                return str(int(principal)) + " + n*180 (n any integer)"
-        elif period == 90:
-            return str(int(principal)) + " + n*90 (n any integer)"
-        elif period == 360:
-            return str(int(principal)) + " + n*360 (n any integer)"
-    else:
-        # Radians
-        if abs(period - 3.14159) < 1:
-            if abs(principal) < 0.01:
-                return "n*pi (n any integer)"
-            else:
-                return format(principal, ".2f") + " + n*pi (n any integer)"
-        elif abs(period - 1.5708) < 1:
-            return format(principal, ".2f") + " + n*pi/2 (n any integer)"
-        elif abs(period - 6.2832) < 1:
-            return format(principal, ".2f") + " + n*2pi (n any integer)"
-    
+            return ptxt + " + n*180 (n any integer)"
+        if abs(period - 90) < 1e-4:
+            ptxt = _principal_text(principal, True)
+            if abs(principal) < 1e-6:
+                return "n*90 (n any integer)"
+            return ptxt + " + n*90 (n any integer)"
+        if abs(period - 360) < 1e-4:
+            ptxt = _principal_text(principal, True)
+            if abs(principal) < 1e-6:
+                return "n*360 (n any integer)"
+            return ptxt + " + n*360 (n any integer)"
+        if abs(period - 60) < 1e-4:
+            ptxt = _principal_text(principal, True)
+            if abs(principal) < 1e-6:
+                return "n*60 (n any integer)"
+            return ptxt + " + n*60 (n any integer)"
+        if abs(period - 45) < 1e-4:
+            ptxt = _principal_text(principal, True)
+            if abs(principal) < 1e-6:
+                return "n*45 (n any integer)"
+            return ptxt + " + n*45 (n any integer)"
+        return None
+    pi_v = 3.141592653589793
+    if abs(period - pi_v) < 1e-3:
+        if abs(principal) < 1e-3:
+            return "n*pi (n any integer)"
+        return _principal_text(principal, False) + " + n*pi (n any integer)"
+    if abs(period - pi_v / 2.0) < 1e-3:
+        if abs(principal) < 1e-3:
+            return "n*pi/2 (n any integer)"
+        return _principal_text(principal, False) + " + n*pi/2 (n any integer)"
+    if abs(period - 2.0 * pi_v) < 1e-3:
+        if abs(principal) < 1e-3:
+            return "n*2pi (n any integer)"
+        return _principal_text(principal, False) + " + n*2pi (n any integer)"
     return None
 
 

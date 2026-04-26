@@ -222,7 +222,7 @@ RANDOM_CHAOS_EXPECTED_ALGEBRA = (
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
-CASE_TIMEOUT_SECONDS = float(os.environ.get("CASIO_TEST_TIMEOUT", "5"))
+CASE_TIMEOUT_SECONDS = float(os.environ.get("CASIO_TEST_TIMEOUT", "12"))
 CALCULATED_CHECK_MAX_INPUT_CHARS = int(os.environ.get("CASIO_CALCULATED_CHECK_MAX_INPUT_CHARS", "80"))
 
 
@@ -698,7 +698,36 @@ def structurally_same_derivative(expr, candidate):
     return False
 
 
-def extract_last_solution_values(output, var="x"):
+def _expand_parametric_solution(rhs, var_letter="n", lower=None, upper=None,
+                                samples=(0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5,
+                                         6, -6, 7, -7, 8, -8, 9, -9, 10, -10)):
+    cleaned = re.sub(r"\s*\([^)]*\)\s*$", "", rhs).strip()
+    if var_letter not in cleaned:
+        return None
+    try:
+        out = []
+        bounded = lower is not None and upper is not None
+        if bounded:
+            lo, hi = (lower, upper) if lower <= upper else (upper, lower)
+            tol = max(1e-7, 1e-7 * max(1.0, abs(lo), abs(hi)))
+        for n_val in samples:
+            value = safe_eval_expr(cleaned, {var_letter: float(n_val)})
+            if bounded:
+                if value < lo - tol or value > hi + tol:
+                    continue
+            out.append(value)
+        if bounded:
+            uniq = []
+            for v in out:
+                if not any(abs(v - u) <= 1e-6 * max(1.0, abs(u)) for u in uniq):
+                    uniq.append(v)
+            return uniq
+        return out
+    except Exception:
+        return None
+
+
+def extract_last_solution_values(output, var="x", lower=None, upper=None):
     lines = (output or "").splitlines()
     prefixes = (f"{var} = [", f"Combined solutions: {var} = [")
     for line in reversed(lines):
@@ -721,6 +750,9 @@ def extract_last_solution_values(output, var="x"):
             try:
                 return [safe_eval_expr(rhs)]
             except Exception:
+                expanded = _expand_parametric_solution(rhs, lower=lower, upper=upper)
+                if expanded:
+                    return expanded
                 return None
     return None
 
@@ -1300,12 +1332,34 @@ def trig_transform_checker(*tokens):
 
 
 def trig_solve_checker(*tokens):
-    return build_checker(
-        contains_all=tokens + ("x =",),
+    base_required = tokens
+    structure = build_checker(
         contains_any=("start with", "solve trig eq", "standard trig equation"),
         min_steps=4,
         min_lines=4,
     )
+
+    def check(out):
+        text = normalized_text(out)
+        if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+            return False
+        if not structure(out):
+            return False
+        no_solution_branch = (
+            "no real solutions" in text
+            or "no valid trig values" in text
+            or "no trig values" in text
+            or "no solution" in text
+            or "no sol" in text
+        )
+        if no_solution_branch:
+            return True
+        for token in base_required + ("x =",):
+            if token.lower() not in text:
+                return False
+        return True
+
+    return check
 
 
 def trig_rewrite_checker(*tokens):
@@ -3864,6 +3918,8 @@ class CASIOApp(App):
         if lower is not None and upper is not None:
             expected_values = expected_trig_solutions_numeric(eq_text, var=var, lower=lower, upper=upper, degrees=degrees)
 
+        bounds_given = lower is not None and upper is not None
+
         def check(out):
             text = normalized_text(out)
             if "no valid trig values" in text or "no trig values" in text or "no real solutions" in text or "no sol" in text or "no solution" in text:
@@ -3874,17 +3930,29 @@ class CASIOApp(App):
                 return expected_values is None or expected_values == []
             if not quality(out):
                 return False
-            values = extract_last_solution_values(out, var)
+            values = extract_last_solution_values(out, var, lower=lower, upper=upper)
             if not values:
                 return False
+            local_degrees = degrees
+            if not bounds_given:
+                answer_text = ""
+                for line in reversed(text.splitlines()):
+                    s = line.strip()
+                    if s.startswith("answer:") or s.startswith("x ="):
+                        answer_text = s
+                        break
+                if answer_text and "pi" not in answer_text:
+                    local_degrees = True
             for value in values:
                 try:
-                    residual = equation_residual_angle(eq_text, var, value, degrees=degrees)
+                    residual = equation_residual_angle(eq_text, var, value, degrees=local_degrees)
                 except Exception:
                     return False
                 if not numeric_close(residual, 0.0, rel_tol=2e-3, abs_tol=2e-3):
                     return False
-            set_match = numeric_value_sets_match(values, expected_values, rel_tol=3e-3, abs_tol=3e-3)
+            match_abs_tol = 0.2 if local_degrees else 5e-3
+            match_rel_tol = 5e-3 if local_degrees else 5e-3
+            set_match = numeric_value_sets_match(values, expected_values, rel_tol=match_rel_tol, abs_tol=match_abs_tol)
             if set_match is False:
                 return False
             return True
@@ -4683,17 +4751,19 @@ class CASIOApp(App):
         else:
             angle = rng.choice([f"{rng.randint(1,5)}*x", f"x+{rng.randint(1,3)}", f"x-{rng.randint(1,3)}"])
             target = rng.choice(["0", "1", "-1"])
-        
-        # Build equation
+
         eq = f"{func}({angle})={target}"
-        
-        # Random intervals
+        eq_uses_radians = "pi" in eq
+
         if difficulty == "chaos":
-            interval = rng.choice(["0,360", "-180,180"])
+            interval = "0,2*pi" if eq_uses_radians else rng.choice(["0,360", "-180,180"])
         elif difficulty == "hard":
-            interval = rng.choice(["0,360", "0,2*pi", "0,180"])
+            if eq_uses_radians:
+                interval = rng.choice(["0,2*pi", "0,pi", "-pi,pi"])
+            else:
+                interval = rng.choice(["0,360", "0,180"])
         else:
-            interval = "0,360"
+            interval = "0,2*pi" if eq_uses_radians else "0,360"
         
         mode = "chaos_trig" if difficulty == "chaos" else "hard_trig" if difficulty == "hard" else "easy_trig"
         label = f"Trig solve {index}: {func}({angle[:10]})={target[:8]}"

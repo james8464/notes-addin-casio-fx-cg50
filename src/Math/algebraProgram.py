@@ -2034,9 +2034,11 @@ def cartesian_equation_lines(text):
         return None
     solved = canonical_compare_form(sim(div(neg(pair[1]), pair[0])))
     return [
+        'Method: Solve linear equation',
         'Cartesian equation: ' + show(lhs) + ' = ' + show(rhs),
         'Collect the ' + dep + ' terms.',
         dep + ' = ' + show(solved),
+        'Answer: ' + dep + ' = ' + show(solved),
     ]
 
 
