@@ -2956,17 +2956,24 @@ class CASIOApp(App):
             elapsed = time.time() - start
             return case, passed, output, elapsed
 
-        def llm_verify(record):
+        def llm_verify(record, max_retries=3):
             if not use_llm:
                 return ("", "")
-
-            try:
-                context = f"{record.program}: {record.label}"
-                expected = record.check_info or context
-                result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False)
-                return (result.get("verdict", ""), result.get("explanation", ""))
-            except Exception:
-                return ("", "")
+            
+            for attempt in range(max_retries):
+                try:
+                    context = f"{record.program}: {record.label}"
+                    expected = record.check_info or context
+                    result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False)
+                    verdict = result.get("verdict", "")
+                    explanation = result.get("explanation", "")
+                    
+                    if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+                        return (verdict, explanation)
+                except Exception:
+                    pass
+            
+            return ("", "")
 
         def weighted_verdict(code_verdict, llm_verdict):
             if not llm_verdict or llm_verdict in ("", "DISABLED"):
@@ -3021,32 +3028,7 @@ class CASIOApp(App):
                         if final_verdict == "CORRECT":
                             record.passed = True
                         else:
-                            record.passed = False
-
-            if use_llm and pending_records:
-                llm_workers = min(4, max(1, active_workers // 2))
-
-                def llm_verify_timed(record):
-                    import time
-                    start = time.time()
-                    result = llm_verify(record)
-                    elapsed = time.time() - start
-                    return (result[0], result[1], elapsed)
-
-                verified = 0
-                with ThreadPoolExecutor(max_workers=llm_workers) as llm_executor:
-                    llm_results = llm_executor.map(llm_verify_timed, pending_records)
-                    for record, (verdict, explanation, elapsed) in zip(pending_records, llm_results):
-                        if verdict:
-                            record.llm_verdict = verdict
-                            record.llm_explanation = explanation
-                            llm_color = "#22c55e" if verdict == "CORRECT" else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
-                            self.append_result(f"[dim]  └─ LLM: [{llm_color}]{verdict}[/{llm_color}][/dim]")
-                        if elapsed > 0:
-                            self._llm_times.append(elapsed)
-                            if len(self._llm_times) > 100:
-                                self._llm_times = self._llm_times[-50:]
-                    pending_records = []
+                            record.passed = record.passed and passed
 
     def balanced_counts(self, total, parts):
         base = total // parts

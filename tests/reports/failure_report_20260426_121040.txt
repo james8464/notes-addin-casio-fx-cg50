@@ -1,0 +1,27 @@
+CASIO Test Report - 2026-04-26T12:10:40
+============================================================
+
+[FAIL] Random solve 6
+Program: Algebra
+Input: 6
+20*x**  6 + 2x**5 -16  *(x) **  4 - 48*(x) ^  3 - 1x**  (2) +4*  x  -  (38)  = 0
+
+Check: check; calculated answer correctness; format fuzz
+----------------------------------------
+[FAIL] Trig solve 5: sin(7*x+8*pi/1)=-sqrt(2)
+Program: Trigonometry
+Input: 3
+sin(7*x+8*pi/10)=-sqrt(2),-pi,pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker
+----------------------------------------
+[FAIL] Random SUVAT edge 8: symbolic_a
+Program: SUVAT
+Input: 17
+ -  6
+, 
+(0)
+7
+
+Check: suvat_edge:symbolic_a
+----------------------------------------

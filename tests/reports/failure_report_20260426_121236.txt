@@ -1,0 +1,24 @@
+CASIO Test Report - 2026-04-26T12:12:36
+============================================================
+
+[FAIL] Trig solve 7: sin(1*x-4)=-1
+Program: Trigonometry
+Input: 3
+sin(1*x-4)=-1,0,2*pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker
+----------------------------------------
+[FAIL] Trig solve 9: sec(6*x)=1/2
+Program: Trigonometry
+Input: 3
+sec(6*x)=1/2,0,2*pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker
+----------------------------------------
+[FAIL] Trig solve 8: sin(exp(x))=1/2
+Program: Trigonometry
+Input: 3
+sin(exp(x))=1/2,0,2*pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker
+----------------------------------------

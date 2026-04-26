@@ -1,0 +1,17 @@
+CASIO Test Report - 2026-04-26T12:10:34
+============================================================
+
+[FAIL] Random solve 6
+Program: Algebra
+Input: 6
+(x **6  +  44*  x**5 - 1x^ (4) -  (22)(x) ^3+18*x ^  (2)+(10)x- 44 =(0))
+
+Check: check; calculated answer correctness; format fuzz
+----------------------------------------
+[FAIL] Trig solve 3: cos(1*x-1)=sqrt(3)/
+Program: Trigonometry
+Input: 3
+cos(1*x-1)=sqrt(3)/2,0,pi
+
+Check: check; calculated answer correctness; exam-quality issues: contains an error/unsupported marker
+----------------------------------------
