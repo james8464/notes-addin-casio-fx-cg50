@@ -39,10 +39,13 @@ except ImportError:
             is_zero = lambda n: is_num(n) and n[1] == 0
             normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
             shared_neg = lambda n: n
-            same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
+            same_by_sig = lambda a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None: a == b
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
-SKIP_AUTORUN = sys is not None and getattr(sys, '_suvat_no_autorun', False)
+SKIP_AUTORUN = sys is not None and (
+    getattr(sys, '_suvat_no_autorun', False) or
+    len(sys.argv) > 1
+)
 
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None

@@ -42,7 +42,7 @@ def ensure_reasoning_marker(text):
 def normalize_input_text(text):
     return text.strip() if isinstance(text, str) else text
 
-def same_by_sig(a, b):
+def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None):
     return a == b
 
 def compact_duplicate_answer_lines(lines):

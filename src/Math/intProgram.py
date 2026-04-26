@@ -141,7 +141,10 @@ def can_handle_derivative_case(node, var, deps):
         return True, None
     except Exception as err:
         return False, str(err)
-SKIP_AUTORUN = sys is not None and getattr(sys, '_int_no_autorun', False)
+SKIP_AUTORUN = sys is not None and (
+    getattr(sys, '_int_no_autorun', False) or
+    len(sys.argv) > 1
+)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False

@@ -78,7 +78,10 @@ FUNC_ALIASES = {
     "arccos": "acos",
     "arctan": "atan",
 }
-SKIP_AUTORUN = sys is not None and getattr(sys, "_trig_no_autorun", False)
+SKIP_AUTORUN = sys is not None and (
+    getattr(sys, "_trig_no_autorun", False) or
+    len(sys.argv) > 1
+)
 
 FORMULA_SIN_ADD = "Use sin(A+B) = sin A cos B + cos A sin B."
 FORMULA_SIN_SUB = "Use sin(A-B) = sin A cos B - cos A sin B."
