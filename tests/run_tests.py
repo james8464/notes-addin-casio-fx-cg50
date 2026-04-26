@@ -3104,8 +3104,6 @@ class CASIOApp(App):
         value = 0
         while value == 0:
             value = rng.randint(low, high)
-            if low < 0:
-                value = rng.randint(low, high)
         return value
 
     def difficulty_number(self, difficulty, rng=None, easy=1, medium=2, hard=3):
