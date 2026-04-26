@@ -29,6 +29,7 @@ EXPECTED_MPY_FILES = (
 
 EXPECTED_ASCII = 0x4D  # 'M'
 EXPECTED_MPY_VERSION = 3
+EXPECTED_FEATURE_BYTE = 0x00
 EXPECTED_SMALL_INT_BITS = 0x1F  # 31
 
 _RECOMMEND_FLAGS = "-msmall-int-bits=31 -mno-unicode"
@@ -54,6 +55,12 @@ def check_one(path):
     if data[1] != EXPECTED_MPY_VERSION:
         out["reason"] = "mpy_version want=%s got=%s" % (EXPECTED_MPY_VERSION, data[1])
         return out
+    if data[2] != EXPECTED_FEATURE_BYTE:
+        out["reason"] = "feature_byte want=0x%02x got=0x%02x" % (
+            EXPECTED_FEATURE_BYTE,
+            data[2],
+        )
+        return out
     if data[3] != EXPECTED_SMALL_INT_BITS:
         out["reason"] = "small_int_bits want=0x%02x got=0x%02x" % (
             EXPECTED_SMALL_INT_BITS,
@@ -74,8 +81,9 @@ def main():
         paths = args
 
     print("Casio / MicroPython mpy build check")
-    print("Expected: magic 'M', mpy format version %s, small-int-bits %s" % (
+    print("Expected: magic 'M', mpy format version %s, feature byte 0x%02x, small-int-bits %s" % (
         EXPECTED_MPY_VERSION,
+        EXPECTED_FEATURE_BYTE,
         EXPECTED_SMALL_INT_BITS,
     ))
     print("Recommended mpy-cross flags: " + _RECOMMEND_FLAGS)
