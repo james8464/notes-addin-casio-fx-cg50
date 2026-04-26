@@ -36,17 +36,17 @@ def casio_hw_sim_from_env():
 
 def is_num(node):
     """Check if node is a number."""
-    return node is not None and node[0] == 'num'
+    return isinstance(node, (tuple, list)) and len(node) > 0 and node[0] == 'num'
 
 
 def is_sym(node):
     """Check if node is a symbol."""
-    return node is not None and node[0] == 'sym'
+    return isinstance(node, (tuple, list)) and len(node) > 0 and node[0] == 'sym'
 
 
 def is_const(node):
     """Check if node is a named constant."""
-    return node is not None and node[0] == 'const'
+    return isinstance(node, (tuple, list)) and len(node) > 0 and node[0] == 'const'
 
 
 def is_zero(node):

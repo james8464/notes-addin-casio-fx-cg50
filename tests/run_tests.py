@@ -6431,6 +6431,7 @@ class CASIOApp(App):
             ("2\nx^2+y^2=25\n", "Implicit: x^2+y^2=25", derive_implicit_checker("-x/y")),
             ("2\nx^2+x*y+y^2=7\n", "Implicit: x^2+xy+y^2=7", derive_implicit_checker("dy/dx")),
             ("2\nsin(x)+cos(y)=1\n", "Implicit: sin(x)+cos(y)=1", derive_implicit_checker("dy/dx")),
+            ("2\nx=sec(y)**2+tan(y)\n", "Implicit: sec(y)**2+tan(y)", derive_implicit_checker("dy/dx", "sec(y)")),
         ]
 
         param_cases = [

@@ -62,13 +62,23 @@ except ImportError:
             shared_clear_all_caches = lambda *c: None
             compact_duplicate_answer_lines = lambda x: x
             ensure_reasoning_marker = lambda *a: a[0] if a else a
-            shared_fn = lambda *a: tuple(a)
-            is_num = lambda n: n is not None and n[0] == 'num'
+            def shared_fn(name, arg, sim_func=None):
+                if name == 'ln':
+                    name = 'log'
+                if name == 'csc':
+                    name = 'cosec'
+                node = ('fn', name, arg)
+                return sim_func(node) if sim_func is not None else node
+            is_num = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
-            is_sym = lambda n: n is not None and n[0] == 'sym'
+            is_sym = lambda n: isinstance(n, (tuple, list)) and len(n) > 0 and n[0] == 'sym'
             is_zero = lambda n: is_num(n) and n[1] == 0
             normalize_input_text = lambda t: t.strip() if isinstance(t, str) else t
-            shared_neg = lambda n: n
+            def shared_neg(node, num_func=None, mul_func=None):
+                if is_num(node):
+                    return ('num', -node[1], node[2])
+                n = num_func(-1) if num_func is not None else ('num', -1, 1)
+                return mul_func([n, node]) if mul_func is not None else ('mul', (n, node))
             same_by_sig = lambda a, b, sig_func, cache=None, cache_store_func=None, cache_limit=None: a == b
             E = ("const", "e")
             PI = ("const", "pi")

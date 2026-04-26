@@ -22,10 +22,10 @@ E = ("const", "e")
 PI = ("const", "pi")
 
 def is_num(node):
-    return node is not None and node[0] == 'num'
+    return isinstance(node, (tuple, list)) and len(node) > 0 and node[0] == 'num'
 
 def is_sym(node):
-    return node is not None and node[0] == 'sym'
+    return isinstance(node, (tuple, list)) and len(node) > 0 and node[0] == 'sym'
 
 def is_zero(node):
     return is_num(node) and node[1] == 0
@@ -33,13 +33,25 @@ def is_zero(node):
 def is_one(node):
     return is_num(node) and node[1] == node[2]
 
-def fn(*args):
-    return tuple(args)
+def fn(name, arg, sim_func=None):
+    if name == 'ln':
+        name = 'log'
+    if name == 'csc':
+        name = 'cosec'
+    node = ('fn', name, arg)
+    if sim_func is not None:
+        return sim_func(node)
+    return node
 
-def neg(node):
+def neg(node, num_func=None, mul_func=None):
     if is_num(node):
         return ('num', -node[1], node[2])
-    return ('mul', ('num', -1), node)
+    n = ('num', -1, 1)
+    if num_func is not None:
+        n = num_func(-1)
+    if mul_func is not None:
+        return mul_func([n, node])
+    return ('mul', (n, node))
 
 def ensure_reasoning_marker(*args):
     # Match shared_helpers signature: may be called as (lines) or (lines, default_prefix).
@@ -47,8 +59,49 @@ def ensure_reasoning_marker(*args):
         return args
     return args[0]
 
+def _previous_significant_char(text, index):
+    i = index - 1
+    while i >= 0:
+        if text[i] not in " \t\r\n":
+            return text[i]
+        i -= 1
+    return None
+
+def _should_open_abs_pipe(text, index):
+    prev = _previous_significant_char(text, index)
+    if prev is None:
+        return True
+    return prev in "([{,+-*/^=<>"
+
+def _convert_abs_pipes(text):
+    if text.count('|') % 2 != 0:
+        return text
+    out = []
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '|':
+            if depth == 0 or _should_open_abs_pipe(text, i):
+                out.append('abs(')
+                depth += 1
+            else:
+                out.append(')')
+                depth -= 1
+        else:
+            out.append(ch)
+        i += 1
+    return ''.join(out)
+
 def normalize_input_text(text):
-    return text.strip() if isinstance(text, str) else text
+    if not isinstance(text, str):
+        return text
+    text = text.strip()
+    text = text.replace('π', 'pi')
+    text = text.replace('°', '')
+    if '|' in text:
+        text = _convert_abs_pipes(text)
+    return text
 
 def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None):
     return a == b
