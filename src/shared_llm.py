@@ -1,22 +1,14 @@
 """
-Shared LLM Interface for CASIO Test Suite.
+Shared LLM Interface for CASIO Test Suite - PC ONLY.
 
-Provides Ollama-based verification for math problem solutions.
-Uses local LLM models via Ollama for assessment.
-
-Requires:
-- Ollama installed and running
-- At least one model downloaded
-
-Usage:
-    from shared_llm import LLMManager, check_ollama_available
-    
-    manager = LLMManager()
-    if manager.is_available():
-        models = manager.list_models()
-        manager.select_model(0)
-        result = manager.verify("sin(30)", "0.5", "exact value")
+This module connects to Ollama for LLM verification.
+DO NOT DEPLOY TO CALCULATOR - uses unsupported modules.
 """
+
+# PC-ONLY GUARD - Remove this file from calculator deployments
+import sys
+if not hasattr(sys, 'oes'):
+    raise ImportError("PC-only module - not supported on calculator")
 
 import subprocess
 import time
