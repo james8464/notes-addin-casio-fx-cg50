@@ -2,6 +2,8 @@
 
 A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
 
+**On-screen copy** uses short method tags (small display): e.g. `Subst`, `Trig id`, `Parts`, `Pfrac`, `Rev chain`, `Poly div`, `PolyQ exp` — not the long English names.
+
 ## Features
 
 | Mode | Label shown | Feature | What it does |
@@ -18,7 +20,7 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 | 2 | `dir` | Direct integration |
 | 3 | `trig` | Trigonometric identities / trig reductions |
 | 4 | `sub` | Substitution |
-| 5 | `pts` | Integration by parts |
+| 5 | `pts` | Parts (integration by parts) |
 | 6 | `pf` | Partial fractions |
 | 7 | `div` | Polynomial division |
 
@@ -40,7 +42,7 @@ A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9
 - DE mode accepts both `dy/dx = ...` and `dy/dx: ...` syntax
 - Auto mode already covers many direct, trig, substitution, parts, partial-fraction, and DE families
 - Working is compact and calculator-friendly: method, key formula/substitution, working, and answer
-- Some non-elementary families still return out-of-scope messages
+- Some non-elementary families still return short out-of-scope / failure lines (look for `no elementary` where relevant)
 - CLI errors show `Err: ...`
 
 ## Mode 1: Integral (`int`)
@@ -76,7 +78,7 @@ u: x^3+x+7
 Output:
 
 ```text
-Method: Integration by substitution
+Method: Subst
 u = x^3+x+7
 = ln|x^3+x+7| + C
 Answer: ln|x^3+x+7| + C
@@ -86,8 +88,10 @@ Answer: ln|x^3+x+7| + C
 
 ```text
 Input family: sin(x)^4
-Method: 3
+Met: 3
 ```
+
+User picks menu method `3` (`trig`). Working may show `Method: Trig id` (or another tag if the engine routes differently).
 
 Typical output shape:
 
@@ -101,7 +105,7 @@ So I = Int[...]
 
 ```text
 Input family: 1/(x^4-1)
-Method: 6
+Met: 6
 ```
 
 Typical output shape:
@@ -117,7 +121,7 @@ So I = 1/4*ln|1-x|-1/4*ln|x+1|-1/2*atan(x) + C
 
 ```text
 Input family: (x^4+1)/(x^2+1)
-Method: 7
+Met: 7
 ```
 
 Typical output shape:

@@ -1,6 +1,6 @@
 # Differentiation Program (`deriveProgram.py`)
 
-A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
+A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4). **Working uses short `Method:` lines** where the engine can fold steps.
 
 ## Features
 
@@ -34,7 +34,7 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython 
 
 - constants, powers, sums, products, quotients
 - chain rule
-- trigonometric functions
+- trig functions
 - exponential and logarithmic functions
 - inverse trig basics
 - variable-exponent cases such as `x^x`, `(sin(x))^x`, `x^(sin(x))`

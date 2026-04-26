@@ -14504,7 +14504,7 @@ def solve_factor_equation_pipeline(expr, var, start_val, end_val, deg_mode, star
     lines = []
     expr_named = named_reciprocal_trig(expr)
     if not cheap_same(expr_named, expr):
-        lines.append("Use reciprocal trig forms.")
+        lines.append("Recip trig forms.")
         lines.append(equation_line(expr_named, num(0)))
         expr = expr_named
     solved = solve_basic_zero_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive, depth)
@@ -16600,11 +16600,11 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     lines = ["Method: Solve trig eq", "Start " + equation_line(lhs, rhs)]
     if derived is not None:
         expr = derived[4]
-        lines.append("Rewrite the equation in standard trig form")
+        lines.append("Std trig form")
         lines.append(equation_line(expr, num(0)))
     expr_named = named_reciprocal_trig(expr)
     if not cheap_same(expr_named, expr):
-        lines.append("Use reciprocal trig forms.")
+        lines.append("Recip trig forms.")
         lines.append(equation_line(expr_named, num(0)))
         expr = expr_named
 
@@ -17126,7 +17126,7 @@ def extremum_rewrite_to_linear_combo(expr, var):
     current = named_reciprocal_trig(expr)
     lines = []
     if not cheap_same(current, expr):
-        lines.append("Use reciprocal trig forms.")
+        lines.append("Recip trig forms.")
         lines.append("Expression becomes " + show(current) + ".")
     doubled = rewrite_extremum_double_angle_expr(current, var)
     if doubled is not None:
@@ -17747,7 +17747,7 @@ def display_line_short(line):
         ("Write ", "Write "),
         ("Square and add the two equations.", "Square, then add."),
         ("Divide the second equation by the first.", "Divide the second by the first."),
-        ("Use reciprocal trig forms.", "Use reciprocal trig"),
+        ("Recip trig forms.", "Recip trig"),
         ("Use Pythagorean identities.", "Use Pythagorean ids"),
         ("Use standard trig identities.", "Use trig ids"),
         ("Use a common denominator.", "Use a common denom"),

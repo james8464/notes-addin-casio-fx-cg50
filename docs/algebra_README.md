@@ -1,6 +1,6 @@
 # Algebra Program (`algebraProgram.py`)
 
-An algebra manipulation program for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
+An algebra manipulation program for the CASIO fx-cg50 calculator (MicroPython v1.9.4). **Output keeps `Method:` / working lines short** on the device.
 
 ## Features
 

@@ -1,6 +1,6 @@
 # Trigonometry Program (`trigProgram.py`)
 
-A trigonometric manipulation program for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
+A trigonometry manipulation program for the CASIO fx-cg50 calculator (MicroPython v1.9.4). **On-screen lines are shortened** (e.g. `Method: Solve trig eq`, `Recip trig forms.`, `Std trig form`) for the small display.
 
 ## Features
 
@@ -114,8 +114,8 @@ Eq: sec(x)=2,x,0,2*pi
 Output:
 
 ```text
-Method: Solve trig equation
-Start with sec(x) = 2
+Method: Solve trig eq
+Start sec(x) = 2
 Move all terms to one side
 -2+sec(x) = 0
 Solve the direct trig equation.
@@ -133,8 +133,8 @@ Eq: 2*sin(x)^2-3*sin(x)+1,x,0,2*pi
 Output:
 
 ```text
-Method: Solve trig equation
-Start with 2*sin(x)^2-3*sin(x)+1 = 0
+Method: Solve trig eq
+Start 2*sin(x)^2-3*sin(x)+1 = 0
 Move all terms to one side
 2*sin(x)^2-3*sin(x)+1 = 0
 Let u = sin(x).

@@ -50,10 +50,13 @@ except ImportError:
     TEXTUAL_AVAILABLE = False
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / 'src'
+_TESTS_DIR = Path(__file__).resolve().parent
 ROOT = SRC_ROOT / 'Math'
 PY = sys.executable
 sys.path.insert(0, str(SRC_ROOT))
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(_TESTS_DIR))
+from llm_test_prompts import LLM_GENERATION_PROMPTS
 sys._algebra_no_autorun = True
 sys._trig_no_autorun = True
 sys._derive_no_autorun = True
@@ -2934,7 +2937,7 @@ class CASIOApp(App):
         for feature, feature_count in zip(features, counts):
             made = 0
             attempts = 0
-            max_attempts = max(50, feature_count * 40)
+            max_attempts = max(300, feature_count * 100)
             while made < feature_count and attempts < max_attempts:
                 case_difficulty = self.random_case_difficulty(rng, difficulty)
                 case = feature(rng, case_difficulty, next_index)
@@ -2942,9 +2945,12 @@ class CASIOApp(App):
                 
                 if use_llm_gen and rng.random() < LLM_GENERATION_CHANCE:
                     prog_name = feature_prog_map.get(feature.__name__, "Algebra")
-                    llm_result = self.generate_llm_case(prog_name, rng, case_difficulty, next_index)
+                    llm_result = self.generate_llm_case(prog_name, case_difficulty)
                     if llm_result:
                         case.label = f"[LLM] {case.label}"
+                        if isinstance(llm_result, (tuple, list)) and len(llm_result) >= 2 and llm_result[1]:
+                            ref = f"llm_ans={llm_result[1]!s}"
+                            case.check_info = f"{case.check_info}; {ref}" if case.check_info else ref
                 
                 key = self.case_question_key(case)
                 attempts += 1
@@ -3092,13 +3098,14 @@ class CASIOApp(App):
                 value = rng.randint(low, high)
         return value
 
-    def difficulty_number(self, difficulty, easy=1, medium=2, hard=3):
+    def difficulty_number(self, difficulty, rng=None, easy=1, medium=2, hard=3):
+        r = rng or random
         if difficulty == "easy":
             return easy
         if difficulty == "medium":
             return medium
         if difficulty == "chaos":
-            return self.random_unbounded_count(random, minimum=hard)
+            return self.random_unbounded_count(r, minimum=hard)
         return hard
 
     def random_unbounded_count(self, rng, minimum=1, continue_probability=0.28):
@@ -3121,149 +3128,12 @@ class CASIOApp(App):
             return "chaos"
         return requested
 
-    def generate_llm_case(self, program_name, rng, case_difficulty, index):
-        """Generate a test case using LLM for 10% of tests."""
+    def generate_llm_case(self, program_name, case_difficulty):
+        """Call LLM for a reference answer; chance set by CASIO_LLM_GENERATION_CHANCE. Tags case label; does not replace runner input."""
         if not self.llm_manager or not self.llm_manager.enabled:
             return None
         
-        prompts = {
-            "Algebra": {
-                "chaos": """Generate a RANDOM algebraic equation to solve for x.
-The equation should be chaotic, with unpredictable coefficients, degrees, and structure.
-Make it genuinely unexpected - mix of linear, quadratic, rational, absolute value, or polynomial of any degree.
-Coefficients should range from -50 to 50.
-Return ONLY this format (no explanation):
-EQ: {equation}=0
-ANSWER: {solutions separated by commas}""",
-                "hard": """Generate a challenging algebraic equation to solve for x.
-Use degree 2-4 polynomials, exponential, logarithmic, or trigonometric style equations.
-Coefficients from -20 to 20.
-Return ONLY this format (no explanation):
-EQ: {equation}=0
-ANSWER: {solutions separated by commas}""",
-                "easy": """Generate a simple algebraic equation to solve for x.
-Use linear equations like ax+b=0 or simple quadratics.
-Return ONLY this format (no explanation):
-EQ: {equation}=0
-ANSWER: {the solution}""",
-            },
-            "Derive": {
-                "chaos": """Generate a RANDOM mathematical expression to differentiate.
-Make it genuinely unpredictable - products, quotients, chain rule, implicit, or complex nested functions.
-Mix trig, exp, log, polynomial terms.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-DERIV: {derivative}""",
-                "hard": """Generate a challenging expression to differentiate.
-Use chain rule, product rule, quotient rule.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-DERIV: {derivative}""",
-                "easy": """Generate a simple expression to differentiate.
-Just power of x like x^n or ax+b.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-DERIV: {derivative}""",
-            },
-            "Integrate": {
-                "chaos": """Generate a RANDOM integrand to integrate.
-Make it genuinely unpredictable - trig functions, exponentials, logarithms, rational functions, radicals, nested functions.
-Return ONLY this format (no explanation):
-EXPR: {integrand}
-INT: {integral + C}""",
-                "hard": """Generate a challenging integrand to integrate.
-Use substitution or integration by parts.
-Return ONLY this format (no explanation):
-EXPR: {integrand}
-INT: {integral + C}""",
-                "easy": """Generate a simple integrand to integrate.
-Just power of x like x^n.
-Return ONLY this format (no explanation):
-EXPR: {integrand}
-INT: {integral + C}""",
-            },
-            "Trigonometry": {
-                "chaos": """Generate a RANDOM trigonometric equation to solve for x.
-Use sin, cos, tan, sec, cosec, cot with random arguments and solutions.
-Include multiples of pi and degree conversions.
-Return ONLY this format (no explanation):
-EQ: {trig equation}
-SOL: {solutions in radians and/or degrees}""",
-                "hard": """Generate a challenging trigonometric equation.
-Return ONLY this format (no explanation):
-EQ: {trig equation}
-SOL: {solutions}""",
-                "easy": """Generate a simple trigonometric equation like sin(x)=1/2.
-Return ONLY this format (no explanation):
-EQ: {trig equation}
-SOL: {solutions}""",
-            },
-            "Matrix": {
-                "chaos": """Generate a RANDOM matrix operation problem.
-Create random matrices (2x2 or 3x3), use addition, multiplication, determinant, inverse.
-Return ONLY this format (no explanation):
-OP: {operation}
-MATRIX: {matrix or matrices}
-ANSWER: {result}""",
-                "hard": """Generate a matrix operation problem.
-Return ONLY this format (no explanation):
-OP: {operation}
-MATRIX: {matrix}
-ANSWER: {result}""",
-                "easy": """Generate a simple matrix operation.
-Return ONLY this format (no explanation):
-OP: {operation}
-MATRIX: {matrix}
-ANSWER: {result}""",
-            },
-            "Complex": {
-                "chaos": """Generate a RANDOM complex number problem.
-Use complex arithmetic, polar form, De Moivre's theorem.
-Return ONLY this format (no explanation):
-EXPR: {complex expression}
-ANSWER: {result}""",
-                "hard": """Generate a complex number problem.
-Return ONLY this format (no explanation):
-EXPR: {complex expression}
-ANSWER: {result}""",
-                "easy": """Generate a simple complex number problem.
-Return ONLY this format (no explanation):
-EXPR: {complex expression}
-ANSWER: {result}""",
-            },
-            "Solve": {
-                "chaos": """Generate a RANDOM equation to solve.
-Use polynomials, rational, radical, exponential, logarithmic, or trigonometric equations.
-Return ONLY this format (no explanation):
-EQ: {equation}
-SOL: {solutions}""",
-                "hard": """Generate a challenging equation to solve.
-Return ONLY this format (no explanation):
-EQ: {equation}
-SOL: {solutions}""",
-                "easy": """Generate a simple equation to solve.
-Return ONLY this format (no explanation):
-EQ: {equation}
-SOL: {solutions}""",
-            },
-            "Calculate": {
-                "chaos": """Generate a RANDOM numerical computation.
-Use factorials, combinations, permutations, large arithmetic, trigonometry, logarithms.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-ANSWER: {numerical result}""",
-                "hard": """Generate a numerical computation.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-ANSWER: {result}""",
-                "easy": """Generate a simple computation.
-Return ONLY this format (no explanation):
-EXPR: {expression}
-ANSWER: {result}""",
-            },
-        }
-        
-        prompt = prompts.get(program_name, {}).get(case_difficulty)
+        prompt = LLM_GENERATION_PROMPTS.get(program_name, {}).get(case_difficulty)
         if not prompt:
             return None
         
@@ -3738,7 +3608,7 @@ ANSWER: {result}""",
 
     def random_factorised_polynomial_expr(self, rng, var="x", difficulty="hard"):
         factors = []
-        count = self.random_unbounded_count(rng, minimum=7, continue_probability=0.28) if difficulty == "chaos" else self.difficulty_number(difficulty, easy=2, medium=3, hard=rng.randint(3, 6))
+        count = self.random_unbounded_count(rng, minimum=7, continue_probability=0.28) if difficulty == "chaos" else self.difficulty_number(difficulty, rng, easy=2, medium=3, hard=rng.randint(3, 6))
         for _ in range(count):
             root = rng.randint(-10, 10)
             mult = rng.choice([1, 1, 2, 2, 3, self.random_power_limit(rng, "chaos", hard=4)]) if difficulty == "chaos" else (1 if difficulty == "easy" else rng.choice([1, 1, 2]))

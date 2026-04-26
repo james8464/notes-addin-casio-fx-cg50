@@ -34,17 +34,13 @@ LLM_TIMEOUT_SECONDS = 120
 LLM_CACHE_MAX_SIZE = 1000
 LLM_CACHE_TTL_SECONDS = 3600
 
-LLM_SYSTEM_PROMPT = """Check math working quality. Verify:
-- Steps logically follow
-- No skipped steps ("hence" without explanation)
-- Rules applied correctly
-- Final answer follows from working
-- Equivalent answer forms accepted
+LLM_SYSTEM_PROMPT = """Check math working. Steps follow? no fake "hence"? rules ok? answer matches?
+Equiv forms ok.
 
-Reply ONE word:
-CORRECT - Working is clear and logical
-INCORRECT - Working has quality issues
-NEEDS_REVIEW - Cannot assess"""
+One word:
+CORRECT — clear
+INCORRECT — bad steps/answer
+NEEDS_REVIEW — unsure"""
 
 
 def check_ollama_available():
@@ -282,9 +278,9 @@ class LLMManager:
     def _build_prompt(self, program_output, expected, context):
         """Build verification prompt."""
         return (
-            "MATH PROBLEM: {0}\n\n"
-            "PROGRAM OUTPUT: {1}\n\n"
-            "EXPECTED ANSWER: {2}\n\n"
+            "CTX: {0}\n\n"
+            "OUT: {1}\n\n"
+            "EXP: {2}\n\n"
             "{3}"
         ).format(context, program_output, expected, LLM_SYSTEM_PROMPT)
     

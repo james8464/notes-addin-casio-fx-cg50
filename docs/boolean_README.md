@@ -1,6 +1,6 @@
 # Boolean Algebra Program (booleanProgram.py)
 
-A Boolean algebra simplification and logic gate program for the CASIO fx-cg50 calculator (runs MicroPython v1.9.4).
+A Boolean algebra simplification and logic gate program for the CASIO fx-cg50 calculator (runs MicroPython v1.9.4). Step text stays compact for the small screen.
 
 ## Features
 

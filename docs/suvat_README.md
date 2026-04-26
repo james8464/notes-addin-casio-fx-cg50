@@ -1,6 +1,6 @@
 # SUVAT Program (`SUVATprogram.py`)
 
-A kinematics solver for the CASIO fx-cg50 calculator (MicroPython v1.9.4). Solves SUVAT equations with exact rational arithmetic, symbolic working, and decimal approximations.
+A kinematics solver for the CASIO fx-cg50 calculator (MicroPython v1.9.4). Solves SUVAT with exact rationals, symbolic working, and decimals. Output lines are kept readable on a small screen (units + short phrases).
 
 ## Features
 
