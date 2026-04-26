@@ -81,7 +81,8 @@ def clear_all_caches():
 
 
 def begin_user_action():
-    clear_all_caches()
+    # Caches are bounded by _cache_set(); keep hot parse/show data between actions.
+    pass
 
 
 def gcd(a, b):
