@@ -32,7 +32,7 @@ except ImportError:
             )
         except ImportError:
             shared_clear_all_caches = lambda *c: None
-            ensure_reasoning_marker = lambda x: x
+            ensure_reasoning_marker = lambda *a: a[0] if a else a
             shared_fn = lambda *a: tuple(a)
             is_num = lambda n: n is not None and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
@@ -71,9 +71,6 @@ def clear_all_caches():
 
 def begin_user_action():
     clear_all_caches()
-
-
-begin_user_action()
 
 
 def gcd(a, b):
@@ -1102,6 +1099,8 @@ def is_digit_char(ch):
 
 
 def is_num_token_start(text, i):
+    if i >= len(text):
+        return False
     ch = text[i]
     return is_digit_char(ch) or (ch == '.' and i + 1 < len(text) and is_digit_char(text[i + 1]))
 

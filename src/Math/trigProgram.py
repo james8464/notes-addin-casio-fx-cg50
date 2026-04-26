@@ -15,6 +15,7 @@ try:
     from src.shared_helpers import (
         ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
         is_zero, normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
+        casio_hw_sim_from_env,
     )
     from src.shared_cache import (
         cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
@@ -26,6 +27,7 @@ except ImportError:
         from shared_helpers import (
             ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
             is_zero, normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
+            casio_hw_sim_from_env,
         )
         from shared_cache import (
             cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
@@ -39,12 +41,13 @@ except ImportError:
                 enforce_total_cache_limit as shared_enforce_total_cache_limit,
                 ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym, is_zero,
                 normalize_input_text, neg as shared_neg, same_by_sig, E, PI, REASONING_MARKERS,
+                casio_hw_sim_from_env,
             )
         except ImportError:
             shared_cache_store = lambda c, k, v, l: c.__setitem__(k, v) or v
             shared_clear_all_caches = lambda *c: None
             shared_enforce_total_cache_limit = lambda *a: None
-            ensure_reasoning_marker = lambda x: x
+            ensure_reasoning_marker = lambda *a: a[0] if a else a
             shared_fn = lambda *a: tuple(a)
             is_num = lambda n: n is not None and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
@@ -56,6 +59,7 @@ except ImportError:
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+            casio_hw_sim_from_env = lambda: False
 FUNC_NAMES = (
     "sin",
     "cos",
@@ -120,9 +124,10 @@ MAX_TOKEN_COUNT = 2000
 DESKTOP_CACHE_LIMIT_SMALL = 2048
 DESKTOP_CACHE_LIMIT_MEDIUM = 4096
 DESKTOP_CACHE_LIMIT_LARGE = 8192
-LOWMEM_CACHE_LIMIT_SMALL = 128
-LOWMEM_CACHE_LIMIT_MEDIUM = 256
-LOWMEM_CACHE_LIMIT_LARGE = 512
+# Slightly larger than minimal to cut thrashing when begin_user_action no longer clears.
+LOWMEM_CACHE_LIMIT_SMALL = 256
+LOWMEM_CACHE_LIMIT_MEDIUM = 512
+LOWMEM_CACHE_LIMIT_LARGE = 768
 
 CACHE_LIMIT_SMALL = DESKTOP_CACHE_LIMIT_SMALL
 CACHE_LIMIT_MEDIUM = DESKTOP_CACHE_LIMIT_MEDIUM
@@ -216,7 +221,7 @@ def apply_runtime_profile(low_memory=None):
     global SOLVE_PASS_LIMIT, FACTOR_REWRITE_PASS_LIMIT, FACTOR_REWRITE_DEPTH_LIMIT
     global SOLVE_LOOKAHEAD_ENABLED, LOW_MEMORY_RUNTIME
     if low_memory is None:
-        low_memory = MICROPYTHON_RUNTIME
+        low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
     LOW_MEMORY_RUNTIME = bool(low_memory)
     if LOW_MEMORY_RUNTIME:
         CACHE_LIMIT_SMALL = LOWMEM_CACHE_LIMIT_SMALL
@@ -238,10 +243,10 @@ def apply_runtime_profile(low_memory=None):
 
 
 def begin_user_action():
-    # Calculator runs are short and interactive, so clearing caches here keeps
-    # memory usage predictable without changing user-facing behaviour.
-    if LOW_MEMORY_RUNTIME:
-        clear_engine_caches()
+    # Caches are size-bounded via cache_store(); clearing on every operation
+    # on the calculator was defensive for RAM but costs a lot of CPU (cold
+    # sim/sig/show on each step). Rely on per-cache limits and total trim.
+    pass
 
 
 def _force_low_memory_runtime(flag):
@@ -1546,6 +1551,8 @@ def is_name_char(ch):
 
 
 def is_num_token_start(text, i):
+    if i >= len(text):
+        return False
     ch = text[i]
     return is_digit_char(ch) or (ch == "." and i + 1 < len(text) and is_digit_char(text[i + 1]))
 
@@ -16590,7 +16597,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     original_expr = sim(add([lhs, neg(rhs)]))
     derived = derive_cot_quadratic_expr(lhs, rhs)
     expr = sim(add([lhs, neg(rhs)]))
-    lines = ["Method: Solve trigonometric equation", "Start with " + equation_line(lhs, rhs)]
+    lines = ["Method: Solve trig eq", "Start " + equation_line(lhs, rhs)]
     if derived is not None:
         expr = derived[4]
         lines.append("Rewrite the equation in standard trig form")

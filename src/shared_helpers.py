@@ -18,6 +18,22 @@ E = ("const", "e")
 PI = ("const", "pi")
 
 
+def casio_hw_sim_from_env():
+    """
+    True when host sets CASIO_HW_SIM (used by run_device_sim.py for desktop
+    "calculator" cache limits; not the same as OS memory capping).
+    """
+    try:
+        import os
+        v = os.environ.get("CASIO_HW_SIM", "")
+    except (AttributeError, OSError, TypeError, ImportError):
+        return False
+    if v is None:
+        return False
+    v = v.lower()
+    return v in ("1", "true", "yes", "y", "on")
+
+
 def is_num(node):
     """Check if node is a number."""
     return node is not None and node[0] == 'num'

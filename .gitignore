@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Local tooling / lockfiles
+skills-lock.json
+.agents/
+
+# Graphify LLM cache (regenerates)
+graphify-out/cache/
+
+# Test failure dumps
+tests/reports/
+
+# IDE
+.idea/
+*.iml

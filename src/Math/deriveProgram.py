@@ -26,6 +26,7 @@ try:
     from src.shared_helpers import (
         ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
         is_zero, normalize_input_text, same_by_sig, E, PI,
+        casio_hw_sim_from_env,
     )
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
@@ -34,6 +35,7 @@ except ImportError:
         from shared_helpers import (
             ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
             is_zero, normalize_input_text, same_by_sig, E, PI,
+            casio_hw_sim_from_env,
         )
         from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
         from shared_reasoning_markers import REASONING_MARKERS
@@ -43,11 +45,12 @@ except ImportError:
                 cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
                 ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
                 is_zero, normalize_input_text, same_by_sig, E, PI, REASONING_MARKERS,
+                casio_hw_sim_from_env,
             )
         except ImportError:
             shared_cache_store = lambda c, k, v, l: c.__setitem__(k, v) or v
             shared_clear_all_caches = lambda *c: None
-            ensure_reasoning_marker = lambda x: x
+            ensure_reasoning_marker = lambda *a: a[0] if a else a
             shared_fn = lambda *a: tuple(a)
             is_num = lambda n: n is not None and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
@@ -57,6 +60,7 @@ except ImportError:
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+            casio_hw_sim_from_env = lambda: False
 
 
 FUNC_NAMES = (
@@ -93,13 +97,14 @@ _ENGINE_CACHES = {}
 def apply_runtime_profile(low_memory=None):
     global LOW_MEMORY_RUNTIME, TIDY_EXPAND_LIMIT
     if low_memory is None:
-        low_memory = MICROPYTHON_RUNTIME
+        low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
     LOW_MEMORY_RUNTIME = bool(low_memory)
     TIDY_EXPAND_LIMIT = 3 if LOW_MEMORY_RUNTIME else 5
 
 
 def begin_user_action():
-    clear_engine_caches()
+    # Size-bounded engine caches; skip full clear to save CPU on each action.
+    pass
 
 
 def clear_engine_caches():
@@ -113,6 +118,15 @@ def _cache_limit(name):
             "depends": 384,
             "show": 512,
             "format_final_answer": 96,
+            "sig": 1536,
+            "tree_size": 2048,
+            "flat": 1024,
+            "expand": 512,
+            "trig_normal": 640,
+            "prefer_trig_recip": 512,
+            "simplify_trig_identity": 256,
+            "has_fn": 1024,
+            "needs_expand": 1024,
         }
     else:
         limits = {
@@ -120,6 +134,15 @@ def _cache_limit(name):
             "depends": 2048,
             "show": 2048,
             "format_final_answer": 256,
+            "sig": 4096,
+            "tree_size": 4096,
+            "flat": 2048,
+            "expand": 1024,
+            "trig_normal": 1024,
+            "prefer_trig_recip": 1024,
+            "simplify_trig_identity": 512,
+            "has_fn": 2048,
+            "needs_expand": 2048,
         }
     return limits.get(name, 128)
 
@@ -146,6 +169,64 @@ def _force_low_memory_runtime(flag):
 apply_runtime_profile()
 
 
+def has_fn(node):
+    c = _cache_get("has_fn", node)
+    if c is not _CACHE_MISS:
+        return c
+    k = node[0]
+    if k == "fn":
+        return _cache_set("has_fn", node, True)
+    if k in ("num", "sym", "const"):
+        r = False
+    elif k in ("pow", "div"):
+        r = has_fn(node[1]) or has_fn(node[2])
+    else:
+        r = False
+        for item in node[1]:
+            if has_fn(item):
+                r = True
+                break
+    return _cache_set("has_fn", node, r)
+
+
+def needs_expand(node):
+    c = _cache_get("needs_expand", node)
+    if c is not _CACHE_MISS:
+        return c
+    k = node[0]
+    if k in ("num", "sym", "const"):
+        return _cache_set("needs_expand", node, False)
+    if k == "fn":
+        v = needs_expand(node[2])
+        return _cache_set("needs_expand", node, v)
+    if k == "add":
+        for it in node[1]:
+            if needs_expand(it):
+                return _cache_set("needs_expand", node, True)
+        return _cache_set("needs_expand", node, False)
+    if k == "mul":
+        for it in node[1]:
+            if it[0] == "add":
+                return _cache_set("needs_expand", node, True)
+        for it in node[1]:
+            if needs_expand(it):
+                return _cache_set("needs_expand", node, True)
+        return _cache_set("needs_expand", node, False)
+    if k == "div":
+        for side in (node[1], node[2]):
+            if side[0] == "add":
+                return _cache_set("needs_expand", node, True)
+            if needs_expand(side):
+                return _cache_set("needs_expand", node, True)
+        return _cache_set("needs_expand", node, False)
+    if k == "pow":
+        b, e = node[1], node[2]
+        if b[0] == "add" and is_num(e) and e[2] == 1 and e[1] == 2:
+            return _cache_set("needs_expand", node, True)
+        v = needs_expand(b) or needs_expand(e)
+        return _cache_set("needs_expand", node, v)
+    return _cache_set("needs_expand", node, False)
+
 
 def is_digit_char(ch):
     return "0" <= ch <= "9"
@@ -160,6 +241,8 @@ def is_name_char(ch):
 
 
 def is_num_token_start(text, i):
+    if i >= len(text):
+        return False
     ch = text[i]
     if is_digit_char(ch):
         return True
@@ -1294,7 +1377,13 @@ def split_expr_var(text):
             if not var:
                 return None
             return expr, var
+        i += 1
     return None
+
+
+def split_explicit_var(text):
+    """Split 'expression,var' at a top-level comma (same rules as split_expr_var)."""
+    return split_expr_var(text)
 
 
 def normalize_explicit_var(name):
@@ -1735,6 +1824,8 @@ def tidy(node):
     out = sim(node)
     if tree_size(out) > TIDY_SKIP_SIZE:
         return out
+    if not needs_expand(out):
+        return out
     i = 0
     while i < TIDY_EXPAND_LIMIT:
         newer = sim(expand(out))
@@ -1890,6 +1981,8 @@ def readable_show(node):
 
 
 def prefer_trig_recip(node):
+    if not has_fn(node):
+        return node
     kind = node[0]
     if kind in ("num", "sym", "const"):
         return node
@@ -2295,7 +2388,7 @@ def solve_normal_mode(text):
     expr, var = parse_normal_input(text)
     expr = trig_normal(expr)
     ans, steps = explain(expr, var, [])
-    final = prefer_trig_recip(tidy(ans))
+    final = tidy(ans)
     formatted = format_final_answer(final)
     return var, steps, final, formatted
 
@@ -2356,7 +2449,9 @@ def format_final_answer(node):
         _format_final_answer_uncached(node))
 
 
-def simplify_trig_identity(node):
+def _simplify_trig_identity_uncached(node):
+    if not has_fn(node):
+        return node
     if node[0] == "add":
         terms = list(flat(node, "add"))
         new_terms = []
@@ -2401,6 +2496,78 @@ def simplify_trig_identity(node):
         return ("fn", node[1], simplify_trig_identity(node[2]))
 
     return node
+
+
+_sig_uncached = sig
+
+
+def sig(node):
+    k = node[0]
+    if k in ("num", "sym", "const"):
+        return (k, node[1])
+    cached = _cache_get("sig", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("sig", node, _sig_uncached(node))
+
+
+_tree_size_uncached = tree_size
+
+
+def tree_size(node):
+    cached = _cache_get("tree_size", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("tree_size", node, _tree_size_uncached(node))
+
+
+_flat_uncached = flat
+
+
+def flat(node, kind):
+    key = (node, kind)
+    cached = _cache_get("flat", key)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("flat", key, _flat_uncached(node, kind))
+
+
+_expand_uncached = expand
+
+
+def expand(node):
+    cached = _cache_get("expand", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("expand", node, _expand_uncached(node))
+
+
+_prefer_trig_recip_uncached = prefer_trig_recip
+
+
+def prefer_trig_recip(node):
+    cached = _cache_get("prefer_trig_recip", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("prefer_trig_recip", node, _prefer_trig_recip_uncached(node))
+
+
+_trig_normal_uncached = trig_normal
+
+
+def trig_normal(node):
+    cached = _cache_get("trig_normal", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    return _cache_set("trig_normal", node, _trig_normal_uncached(node))
+
+
+def simplify_trig_identity(node):
+    cached = _cache_get("simplify_trig_identity", node)
+    if cached is not _CACHE_MISS:
+        return cached
+    r = _simplify_trig_identity_uncached(node)
+    return _cache_set("simplify_trig_identity", node, r)
 
 
 def is_sin_squared(node):

@@ -41,8 +41,11 @@ def neg(node):
         return ('num', -node[1], node[2])
     return ('mul', ('num', -1), node)
 
-def ensure_reasoning_marker(text):
-    return text
+def ensure_reasoning_marker(*args):
+    # Match shared_helpers signature: may be called as (lines) or (lines, default_prefix).
+    if not args:
+        return args
+    return args[0]
 
 def normalize_input_text(text):
     return text.strip() if isinstance(text, str) else text
@@ -54,3 +57,15 @@ def compact_duplicate_answer_lines(lines):
     return lines
 
 REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+
+
+def casio_hw_sim_from_env():
+    try:
+        import os
+        v = os.environ.get("CASIO_HW_SIM", "")
+    except (AttributeError, OSError, TypeError, ImportError):
+        return False
+    if v is None:
+        return False
+    v = v.lower()
+    return v in ("1", "true", "yes", "y", "on")

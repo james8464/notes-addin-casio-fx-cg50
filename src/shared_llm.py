@@ -5,10 +5,13 @@ This module connects to Ollama for LLM verification.
 DO NOT DEPLOY TO CALCULATOR - uses unsupported modules.
 """
 
-# PC-ONLY GUARD - Remove this file from calculator deployments
+# PC-ONLY GUARD
+# This module is intentionally not compatible with the fx-CG50 runtime.
+# On MicroPython (including Casio's port), fail fast on import.
 import sys
-if not hasattr(sys, 'oes'):
-    raise ImportError("PC-only module - not supported on calculator")
+_MICROPY = getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
+if _MICROPY:
+    raise ImportError("PC-only module - not supported on MicroPython")
 
 import subprocess
 import time
@@ -106,7 +109,7 @@ class LLMCache:
     def _make_key(self, model, prompt):
         """Create cache key from model and prompt."""
         short_prompt = prompt[:200]
-        return hashlib.md5(f"{model}:{short_prompt}".encode()).hexdigest()
+        return hashlib.md5(("{0}:{1}".format(model, short_prompt)).encode()).hexdigest()
     
     def get(self, model, prompt):
         """Get cached response if exists and not expired."""
@@ -146,7 +149,7 @@ class LLMCache:
             "size": len(self.cache),
             "hits": self.hits,
             "misses": self.misses,
-            "hit_rate": f"{hit_rate:.1f}%"
+            "hit_rate": "{0:.1f}%".format(hit_rate)
         }
 
 
@@ -271,20 +274,19 @@ class LLMManager:
             self.last_error = str(e)
             return {
                 "verdict": "ERROR",
-                "explanation": f"LLM error: {self.last_error}",
+                "explanation": "LLM error: {0}".format(self.last_error),
                 "confidence": 0,
                 "cached": False
             }
     
     def _build_prompt(self, program_output, expected, context):
         """Build verification prompt."""
-        return f"""MATH PROBLEM: {context}
-
-PROGRAM OUTPUT: {program_output}
-
-EXPECTED ANSWER: {expected}
-
-{LLM_SYSTEM_PROMPT}"""
+        return (
+            "MATH PROBLEM: {0}\n\n"
+            "PROGRAM OUTPUT: {1}\n\n"
+            "EXPECTED ANSWER: {2}\n\n"
+            "{3}"
+        ).format(context, program_output, expected, LLM_SYSTEM_PROMPT)
     
     def _query_ollama(self, prompt, stream_callback=None):
         """Send query to Ollama with optional streaming."""
@@ -312,7 +314,7 @@ EXPECTED ANSWER: {expected}
             process.wait()
             if process.returncode != 0:
                 stderr = process.stderr.read()
-                raise Exception(f"Ollama error: {stderr}")
+                raise Exception("Ollama error: {0}".format(stderr))
             return ''.join(output_lines).strip()
         else:
             result = subprocess.run(
@@ -322,7 +324,7 @@ EXPECTED ANSWER: {expected}
                 timeout=LLM_TIMEOUT_SECONDS
             )
             if result.returncode != 0:
-                raise Exception(f"Ollama error: {result.stderr}")
+                raise Exception("Ollama error: {0}".format(result.stderr))
             return result.stdout.strip()
     
     def _parse_response(self, response_text):
@@ -483,18 +485,18 @@ if __name__ == "__main__":
     print("=" * 40)
     
     available = check_ollama_available()
-    print(f"Ollama available: {available}")
+    print("Ollama available: {0}".format(available))
     
     if available:
         models = get_ollama_models()
-        print(f"Found {len(models)} models:")
+        print("Found {0} models:".format(len(models)))
         for i, m in enumerate(models[:5]):
-            print(f"  {i+1}. {m['name']} ({m['size']})")
+            print("  {0}. {1} ({2})".format(i + 1, m.get("name", "?"), m.get("size", "?")))
         
         print()
         print("Quick verification test...")
         
         result = quick_verify("sin(30)", "0.5", "Find sin(30)")
-        print(f"Result: {result}")
+        print("Result: {0}".format(result))
     else:
         print("Ollama not detected. Install from https://ollama.ai")

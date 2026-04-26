@@ -1,1 +1,0 @@
-{"nodes": [{"id": "booleanprogram", "label": "booleanProgram.py", "file_type": "code", "source_file": "src/calc_files/booleanProgram.py", "source_location": "L1"}], "edges": [{"source": "booleanprogram", "target": "booleanprogram", "relation": "imports", "confidence": "EXTRACTED", "source_file": "src/calc_files/booleanProgram.py", "source_location": "L1", "weight": 1.0}]}

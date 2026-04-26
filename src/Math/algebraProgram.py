@@ -25,6 +25,7 @@ try:
         same_by_sig,
         E,
         PI,
+        casio_hw_sim_from_env,
     )
     from src.shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
@@ -43,6 +44,7 @@ except ImportError:
             same_by_sig,
             E,
             PI,
+            casio_hw_sim_from_env,
         )
         from shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
         from shared_reasoning_markers import REASONING_MARKERS
@@ -53,13 +55,13 @@ except ImportError:
                 compact_duplicate_answer_lines, ensure_reasoning_marker,
                 fn as shared_fn, is_num, is_one, is_sym, is_zero,
                 normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
-                REASONING_MARKERS,
+                REASONING_MARKERS, casio_hw_sim_from_env,
             )
         except ImportError:
             cache_store = None
             shared_clear_all_caches = lambda *c: None
             compact_duplicate_answer_lines = lambda x: x
-            ensure_reasoning_marker = lambda x: x
+            ensure_reasoning_marker = lambda *a: a[0] if a else a
             shared_fn = lambda *a: tuple(a)
             is_num = lambda n: n is not None and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
@@ -71,6 +73,7 @@ except ImportError:
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+            casio_hw_sim_from_env = lambda: False
 
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
@@ -85,9 +88,10 @@ MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, 'implementation',
 DESKTOP_CACHE_LIMIT_SMALL = 1024
 DESKTOP_CACHE_LIMIT_MEDIUM = 2048
 DESKTOP_CACHE_LIMIT_LARGE = 4096
-LOWMEM_CACHE_LIMIT_SMALL = 128
-LOWMEM_CACHE_LIMIT_MEDIUM = 256
-LOWMEM_CACHE_LIMIT_LARGE = 512
+# Slightly larger than minimal to cut repeated sim/sig/show work on device.
+LOWMEM_CACHE_LIMIT_SMALL = 256
+LOWMEM_CACHE_LIMIT_MEDIUM = 512
+LOWMEM_CACHE_LIMIT_LARGE = 768
 
 CACHE_LIMIT_SMALL = DESKTOP_CACHE_LIMIT_SMALL
 CACHE_LIMIT_MEDIUM = DESKTOP_CACHE_LIMIT_MEDIUM
@@ -106,10 +110,13 @@ FLAT_CACHE = {}
 SAME_CACHE = {}
 EQUIV_CACHE = {}
 DEPENDS_CACHE = {}
+TREE_SIZE_CACHE = {}
+EXPAND_SMALL_CACHE = {}
 
 ALL_CACHES = (
     SIG_CACHE, SHOW_CACHE, SPLIT_COEFF_CACHE,
-    FLAT_CACHE, SAME_CACHE, EQUIV_CACHE, DEPENDS_CACHE
+    FLAT_CACHE, SAME_CACHE, EQUIV_CACHE, DEPENDS_CACHE,
+    TREE_SIZE_CACHE, EXPAND_SMALL_CACHE,
 )
 
 
@@ -121,7 +128,7 @@ def clear_all_caches():
 def apply_runtime_profile(low_memory=None):
     global LOW_MEMORY_RUNTIME, CACHE_LIMIT_SMALL, CACHE_LIMIT_MEDIUM, CACHE_LIMIT_LARGE
     if low_memory is None:
-        low_memory = MICROPYTHON_RUNTIME
+        low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
     LOW_MEMORY_RUNTIME = bool(low_memory)
     if LOW_MEMORY_RUNTIME:
         CACHE_LIMIT_SMALL = LOWMEM_CACHE_LIMIT_SMALL
@@ -135,8 +142,8 @@ def apply_runtime_profile(low_memory=None):
 
 
 def begin_user_action():
-    """Called at start of user action - reset caches for a fresh run."""
-    clear_all_caches()
+    """Start of a top-level user operation; caches are bounded, no full clear."""
+    pass
 
 
 apply_runtime_profile()
@@ -2161,8 +2168,17 @@ def text_has_even_log_power(text):
     return False
 
 
-def expand_small(node):
+def _expand_small_uncached(node):
     return canonical_compare_form(node)
+
+
+def expand_small(node):
+    c = EXPAND_SMALL_CACHE.get(node)
+    if c is not None:
+        return c
+    r = _expand_small_uncached(node)
+    cache_store(EXPAND_SMALL_CACHE, node, r, CACHE_LIMIT_MEDIUM)
+    return r
 
 
 def rewrite_verified_equivalent(a, b):
@@ -2616,7 +2632,7 @@ def equation_text(lhs, rhs):
     return show(lhs) + ' = ' + show(rhs)
 
 
-def tree_size(node):
+def _tree_size_uncached(node):
     kind = node[0]
     if kind in ('num', 'sym', 'const'):
         return 1
@@ -2632,6 +2648,15 @@ def tree_size(node):
             i += 1
         return total
     return 1
+
+
+def tree_size(node):
+    c = TREE_SIZE_CACHE.get(node)
+    if c is not None:
+        return c
+    r = _tree_size_uncached(node)
+    cache_store(TREE_SIZE_CACHE, node, r, CACHE_LIMIT_MEDIUM)
+    return r
 
 
 def extract_square_base(node):
@@ -3663,6 +3688,8 @@ def is_digit_char(ch):
 
 
 def is_num_token_start(text, i):
+    if i >= len(text):
+        return False
     ch = text[i]
     return is_digit_char(ch) or (ch == '.' and i + 1 < len(text) and is_digit_char(text[i + 1]))
 

@@ -15,7 +15,7 @@ try:
     from src.shared_helpers import (
         ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
         is_sym, is_zero, normalize_input_text, neg as shared_neg,
-        same_by_sig, E, PI,
+        same_by_sig, E, PI, casio_hw_sim_from_env,
     )
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
@@ -24,7 +24,7 @@ except ImportError:
         from shared_helpers import (
             ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
             is_sym, is_zero, normalize_input_text, neg as shared_neg,
-            same_by_sig, E, PI,
+            same_by_sig, E, PI, casio_hw_sim_from_env,
         )
         from shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
         from shared_reasoning_markers import REASONING_MARKERS
@@ -34,12 +34,12 @@ except ImportError:
                 cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
                 ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
                 is_sym, is_zero, normalize_input_text, neg as shared_neg,
-                same_by_sig, E, PI, REASONING_MARKERS,
+                same_by_sig, E, PI, REASONING_MARKERS, casio_hw_sim_from_env,
             )
         except ImportError:
             shared_cache_store = lambda c, k, v, l: c.__setitem__(k, v) or v
             shared_clear_all_caches = lambda *c: None
-            ensure_reasoning_marker = lambda x: x
+            ensure_reasoning_marker = lambda *a: a[0] if a else a
             shared_fn = lambda *a: tuple(a)
             is_num = lambda n: n is not None and n[0] == 'num'
             is_one = lambda n: is_num(n) and n[1] == n[2]
@@ -51,10 +51,11 @@ except ImportError:
             E = ("const", "e")
             PI = ("const", "pi")
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+            casio_hw_sim_from_env = lambda: False
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
-FAIL = 'This integral does not reduce to an elementary antiderivative by the standard methods tried.'
-DE_FAIL = 'Method: Differential equation attempt\n1. The equation was not in a separable or linear form recognised by this program.\nAnswer: no closed-form elementary solution was produced.'
+FAIL = 'No elementary antiderivative from methods tried here.'
+DE_FAIL = 'Method: DE attempt\n1. Not separable/linear in form this program uses.\nAnswer: no closed-form elementary solution.'
 
 
 def hard_integral_failure_reason(node, var):
@@ -68,7 +69,7 @@ def hard_integral_failure_working(node, var):
     A = sim(node)
     B = var
     tried = [
-        'Tried direct integration, substitution, trigonometric identities, integration by parts, partial fractions, and division.',
+        'Tried: direct, u-sub, trig id, parts, pfrac, div.',
     ]
     if same(A, div(num(1), fn('sqrt', add([num(1), neg(power(sym(B), num(4)))])))):
         return tried + [
@@ -84,10 +85,10 @@ def hard_integral_failure_working(node, var):
         ], 'Answer: li(1/' + B + ') + C'
     if A[0] == 'pow' and A[1][0] == 'fn' and A[1][1] == 'atan' and same(A[1][2], sym(B)) and same(A[2], num(2)):
         return tried + [
-            'Use integration by parts with u = atan(' + B + ')^2 and dv = d' + B + '.',
+            'parts: u=atan(' + B + ')^2, dv=d' + B + '.',
             'Then du = 2*atan(' + B + ')/(1+' + B + '^2) d' + B + '.',
-            'The remaining integral involves logarithmic/dilogarithmic terms, so it is not elementary in the usual exam-function set.',
-        ], 'Answer: no elementary antiderivative; express using special functions or a definite numerical value if limits are given'
+            'Rest needs log/dilog terms; not elem in exam set.',
+        ], 'Answer: no elementary antideriv; use spec fn or def integral if given limits'
     if (A[0] == 'fn' and A[1] == 'exp' and same(A[2], power(sym(B), num(2)))) or (A[0] == 'pow' and same(A[1], E) and same(A[2], power(sym(B), num(2)))):
         return tried + [
             'The derivative of e^(' + B + '^2) is 2' + B + '*e^(' + B + '^2), so no reverse-chain factor is present.',
@@ -124,9 +125,9 @@ def hard_integral_failure_working(node, var):
             'Equivalently use the Fresnel C function.',
         ], 'Answer: sqrt(pi/2)*C(sqrt(2/pi)*' + B + ') + C'
     return tried + [
-        'No elementary antiderivative was produced by the standard methods.',
-        'For an exam answer, state that the antiderivative is non-elementary unless the question supplies limits or a special-function convention.',
-    ], 'Answer: no elementary antiderivative in the standard function set'
+        'No elem antideriv from std methods.',
+        'Exam: say non-elementary if no limits/spec fn given.',
+    ], 'Answer: no elementary antideriv in std fn set'
 
 
 def solve_result_or_reason(node, var, method, forced_u=None):
@@ -136,7 +137,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -179,7 +180,7 @@ FUNC_ALIASES = {
 def apply_runtime_profile(low_memory=None):
     global LOW_MEMORY_RUNTIME, EXPAND_PASS_LIMIT, TRIG_REWRITE_LIMIT
     if low_memory is None:
-        low_memory = MICROPYTHON_RUNTIME
+        low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
     LOW_MEMORY_RUNTIME = bool(low_memory)
     if LOW_MEMORY_RUNTIME:
         EXPAND_PASS_LIMIT = 3
@@ -190,7 +191,8 @@ def apply_runtime_profile(low_memory=None):
 
 
 def begin_user_action():
-    clear_engine_caches()
+    # Per-cache limits in _cache_limit() bound memory; avoid full clear each op.
+    pass
 
 
 def clear_engine_caches():
@@ -206,7 +208,11 @@ def _cache_limit(name):
             'linear_info': 192,
             'ordered_candidates': 96,
             'combine_logs': 96,
-            'finalize_integral': 48}
+            'finalize_integral': 48,
+            'sig': 1536,
+            'flat': 1024,
+            'has_fn': 1024,
+        }
     else:
         limits = {
             'sim': 2048,
@@ -215,7 +221,11 @@ def _cache_limit(name):
             'linear_info': 768,
             'ordered_candidates': 256,
             'combine_logs': 256,
-            'finalize_integral': 128}
+            'finalize_integral': 128,
+            'sig': 4096,
+            'flat': 2048,
+            'has_fn': 2048,
+        }
     return limits.get(name, 128)
 
 
@@ -238,6 +248,28 @@ def _force_low_memory_runtime(flag): apply_runtime_profile(flag)
 
 
 apply_runtime_profile()
+
+
+def has_fn(node):
+    c = _cache_get('has_fn', node)
+    if c is not _CACHE_MISS:
+        return c
+    b = node[0]
+    if b == 'fn':
+        return _cache_set('has_fn', node, True)
+    if b in ('num', 'sym', 'const'):
+        r = False
+    elif b in ('pow', 'div'):
+        r = has_fn(node[1]) or has_fn(node[2])
+    else:
+        r = False
+        i = 0
+        while i < len(node[1]):
+            if has_fn(node[1][i]):
+                r = True
+                break
+            i += 1
+    return _cache_set('has_fn', node, r)
 
 
 def gcd(a, b):
@@ -1985,6 +2017,8 @@ def is_name_char(ch): return is_name_start(ch) or is_digit_char(ch)
 
 
 def is_num_token_start(text, i):
+    if i >= len(text):
+        return False
     ch = text[i]
     return is_digit_char(ch) or (ch == '.' and i + 1 < len(text) and is_digit_char(text[i + 1]))
 
@@ -2405,7 +2439,7 @@ def cancellation_requested():
 def integral_candidate_score(title, ans, lines):
     if ans is None:
         return 10**9
-    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6, 'Polynomial × Quadratic Exponential': 2}.get(title, 7)
+    title_score = {'std': 0, 'f(ax+b)': 1, 'Rev chain': 2, 'Subst': 3, 'Trig id': 4, 'Parts': 5, 'Pfrac': 6, 'PolyQ exp': 2}.get(title, 7)
     return (len(pretty(ans)), len(lines or []), title_score)
 
 
@@ -2444,7 +2478,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
         return A, B, C, None
     title, best_lines, attempt_lines = fallback_attempts(node, var, forced_u)
     if title is not None:
-        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, {'std':'2','f(ax+b)':'2','Reverse chain rule':'4','Integration by substitution':'4','Using trigonometric identities':'3','Integration by parts':'5','Partial fractions':'6'}.get(title, '2'), forced_u)
+        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, {'std':'2','f(ax+b)':'2','Rev chain':'4','Subst':'4','Trig id':'3','Parts':'5','Pfrac':'6'}.get(title, '2'), forced_u)
         merged = list(attempt_lines)
         if retry_lines:
             merged.append('Choose the simplest successful attempt.')
@@ -2454,7 +2488,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
                 i += 1
         return title, retry_ans, merged, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -4346,7 +4380,7 @@ def integrate_poly_linear_parts(node, var):
     if C == 'exp':
         G = integrate_poly_exp_repeated(B, D, E, var)
         H = [
-            'Use integration by parts repeatedly.',
+            'Use parts again.',
             'Let p = ' + pretty(B) + ' and dv = e^(' + pretty(D) + ') d' + var + '.',
             'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
             'Continue until the polynomial derivative is 0.',
@@ -4354,7 +4388,7 @@ def integrate_poly_linear_parts(node, var):
         return G, H
     G = integrate_poly_trig_repeated(B, C, D, E, var)
     H = [
-        'Use integration by parts repeatedly.',
+        'Use parts again.',
         'Let p = ' + pretty(B) + ' and dv = ' + C + '(' + pretty(D) + ') d' + var + '.',
         'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
         'Continue until the polynomial derivative is 0.',
@@ -4986,40 +5020,42 @@ def _solve_with_method(node, var, method, forced_u=None):
         A, B = integrate_standard(C, D)
         return finish_integral_solve(standard_title(C, D), A, B)
     if E == '3':
+        if not has_fn(C):
+            return finish_integral_solve('Trig id', None, None)
         A, B = integrate_trig(C, D, True)
-        return finish_integral_solve('Using trigonometric identities', A, B)
+        return finish_integral_solve('Trig id', A, B)
     if E == '4':
         if F is None:
             A, B = integrate_reverse_chain(C, D)
             if A is not None:
-                return finish_integral_solve('Reverse chain rule', A, B)
+                return finish_integral_solve('Rev chain', A, B)
             A, B = integrate_substitution(C, D, None)
-            return finish_integral_solve('Integration by substitution', A, B)
+            return finish_integral_solve('Subst', A, B)
         A, B = integrate_substitution(C, D, F)
-        return finish_integral_solve('Integration by substitution', A, B)
+        return finish_integral_solve('Subst', A, B)
     if E == '5':
         A, B = integrate_by_parts(C, D, 0)
-        return finish_integral_solve('Integration by parts', A, B)
+        return finish_integral_solve('Parts', A, B)
     if E == '6':
         A, B = integrate_partial(C, D)
-        return finish_integral_solve('Partial fractions', A, B)
+        return finish_integral_solve('Pfrac', A, B)
     if E == '7':
         A, B = integrate_division(C, D, True)
-        return finish_integral_solve('Partial fractions', A, B)
+        return finish_integral_solve('Pfrac', A, B)
     G, A, B = integrate_auto(C, D, 0, True, True)
     if A is None:
         return 'Automatic integration', A, B
     if G == 'direct':
         return finish_integral_solve(standard_title(C, D), A, B)
     if G == 'reverse':
-        return finish_integral_solve('Reverse chain rule', A, B)
+        return finish_integral_solve('Rev chain', A, B)
     if G == 'trig':
-        return finish_integral_solve('Using trigonometric identities', A, B)
+        return finish_integral_solve('Trig id', A, B)
     if G == 'sub':
-        return finish_integral_solve('Integration by substitution', A, B)
+        return finish_integral_solve('Subst', A, B)
     if G == 'parts':
-        return finish_integral_solve('Integration by parts', A, B)
-    return finish_integral_solve('Partial fractions', A, B)
+        return finish_integral_solve('Parts', A, B)
+    return finish_integral_solve('Pfrac', A, B)
 
 
 def fallback_attempts(node, var, forced_u=None):
@@ -5079,7 +5115,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 def integrate_termwise_with(node, var, solver, depth):
     if node[0] != 'add':
@@ -5244,7 +5280,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 def simplify_attempt_lines(lines):
     if lines is None:
@@ -5318,7 +5354,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 def integrate_cyclic_parts(node, var):
     A, B = split_const_mul(node, var)
@@ -6960,7 +6996,7 @@ def cyclic_method_title(lines):
             return 'Int[e^(ax+b)sin(cx+d)]'
         if 'cos(cx+d)' in first:
             return 'Int[e^(ax+b)cos(cx+d)]'
-    return 'Integration by parts'
+    return 'Parts'
 
 
 def _solve_with_method(node, var, method, forced_u=None):
@@ -6977,42 +7013,44 @@ def _solve_with_method(node, var, method, forced_u=None):
         if G == 'direct':
             return finish_integral_solve(standard_title(C, D), A, B)
         if G == 'reverse':
-            return finish_integral_solve('Reverse chain rule', A, B)
+            return finish_integral_solve('Rev chain', A, B)
         if G == 'trig':
-            return finish_integral_solve('Using trigonometric identities', A, B)
+            return finish_integral_solve('Trig id', A, B)
         if G == 'sub':
-            return finish_integral_solve('Integration by substitution', A, B)
+            return finish_integral_solve('Subst', A, B)
         if G == 'parts':
-            return finish_integral_solve('Integration by parts', A, B)
+            return finish_integral_solve('Parts', A, B)
         if G == 'cyclic':
             return finish_integral_solve(cyclic_method_title(B), A, B)
         if G == 'poly_quad_exp':
-            return finish_integral_solve('Polynomial × Quadratic Exponential', A, B)
-        return finish_integral_solve('Partial fractions', A, B)
+            return finish_integral_solve('PolyQ exp', A, B)
+        return finish_integral_solve('Pfrac', A, B)
     if E == '2':
         A, B = integrate_standard(C, D)
         return finish_integral_solve(standard_title(C, D), A, B)
     if E == '3':
+        if not has_fn(C):
+            return finish_integral_solve('Trig id', None, None)
         A, B = integrate_trig(C, D, True)
-        return finish_integral_solve('Using trigonometric identities', A, B)
+        return finish_integral_solve('Trig id', A, B)
     if E == '4':
         if F is None:
             A, B = integrate_reverse_chain(C, D)
             if A is not None:
-                return finish_integral_solve('Reverse chain rule', A, B)
+                return finish_integral_solve('Rev chain', A, B)
             A, B = integrate_substitution(C, D, None)
-            return finish_integral_solve('Integration by substitution', A, B)
+            return finish_integral_solve('Subst', A, B)
         A, B = integrate_substitution(C, D, F)
-        return finish_integral_solve('Integration by substitution', A, B)
+        return finish_integral_solve('Subst', A, B)
     if E == '5':
         A, B = integrate_by_parts(C, D, 0)
-        return finish_integral_solve('Integration by parts', A, B)
+        return finish_integral_solve('Parts', A, B)
     if E == '6':
         A, B = integrate_partial(C, D)
-        return finish_integral_solve('Partial fractions', A, B)
+        return finish_integral_solve('Pfrac', A, B)
     if E == '7':
         A, B = integrate_division(C, D, True)
-        return finish_integral_solve('Polynomial division', A, B)
+        return finish_integral_solve('Poly div', A, B)
     return 'Unknown method', None, None
 
 
@@ -7053,38 +7091,38 @@ def ensure_working_lines(node, var, title, ans, lines):
             'So I = ' + pretty(ans) + ' + C',
         ]
         return ensure_reasoning_marker(result_lines)
-    if title == 'Reverse chain rule':
+    if title == 'Rev chain':
         result_lines = [
             'Use reverse chain rule.',
             'So I = ' + pretty(ans) + ' + C',
         ]
         return ensure_reasoning_marker(result_lines)
-    if title == 'Integration by substitution':
+    if title == 'Subst':
         return [
             'Use substitution.',
             'So I = ' + pretty(ans) + ' + C',
         ]
-    if title == 'Integration by parts':
+    if title == 'Parts':
         return [
-            'Use integration by parts.',
+            'Use parts.',
             'So I = ' + pretty(ans) + ' + C',
         ]
-    if title == 'Using trigonometric identities':
+    if title == 'Trig id':
         return [
-            'Use a trigonometric identity first.',
+            'Use trig id first.',
             'So I = ' + pretty(ans) + ' + C',
         ]
-    if title == 'Partial fractions':
+    if title == 'Pfrac':
         return [
             'Use partial fractions.',
             'So I = ' + pretty(ans) + ' + C',
         ]
-    if title == 'Polynomial division':
+    if title == 'Poly div':
         return [
             'Divide the numerator by the denominator first.',
             'So I = ' + pretty(ans) + ' + C',
         ]
-    if title == 'Polynomial × Quadratic Exponential':
+    if title == 'PolyQ exp':
         return [
             'Use the repeated differentiation pattern for P(x)e^(ax²).',
             'So I = ' + pretty(ans) + ' + C',
@@ -7128,7 +7166,7 @@ def exam_failure_lines(node, var, attempt_lines, reason):
     if attempt_lines:
         lines.extend(attempt_lines)
     if not lines:
-        lines.append('Tried direct integration, substitution, trigonometric identities, parts, partial fractions, and division.')
+        lines.append('Tried: direct, u-sub, trig id, parts, pfrac, div.')
     lines.append(reason)
     return lines
 
@@ -7155,7 +7193,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -7173,7 +7211,7 @@ def cancellation_requested():
 def integral_candidate_score(title, ans, lines):
     if ans is None:
         return (10**9, 10**9, 10**9)
-    title_score = {'std': 0, 'f(ax+b)': 1, 'Reverse chain rule': 2, 'Integration by substitution': 3, 'Using trigonometric identities': 4, 'Integration by parts': 5, 'Partial fractions': 6, 'Polynomial division': 6}.get(title, 7)
+    title_score = {'std': 0, 'f(ax+b)': 1, 'Rev chain': 2, 'Subst': 3, 'Trig id': 4, 'Parts': 5, 'Pfrac': 6, 'Poly div': 6}.get(title, 7)
     return (len(pretty(ans)), len(lines or []), title_score)
 
 
@@ -7184,7 +7222,7 @@ def solve_result_or_reason(node, var, method, forced_u=None):
     if C:
         return A, B, C, None
     failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Integration attempt', B, failure_lines, failure_answer
+    return 'Int attempt', B, failure_lines, failure_answer
 
 
 def can_handle_derivative_case(node, var, deps):
@@ -7215,6 +7253,30 @@ def subst(node, name, value):
         F.append(subst(A[1][E], B, C))
         E += 1
     return D, tuple(F)
+
+
+_sig_uncached = sig
+
+
+def sig(node):
+    b = node[0]
+    if b in ('num', 'sym', 'const'):
+        return node
+    c = _cache_get('sig', node)
+    if c is not _CACHE_MISS:
+        return c
+    return _cache_set('sig', node, _sig_uncached(node))
+
+
+_flat_uncached = flat
+
+
+def flat(node, kind):
+    k = (node, kind)
+    c = _cache_get('flat', k)
+    if c is not _CACHE_MISS:
+        return c
+    return _cache_set('flat', k, _flat_uncached(node, kind))
 
 
 _depends_uncached = depends
