@@ -1,7 +1,7 @@
 # Graph Report - .  (2026-04-26)
 
 ## Corpus Check
-- 22 files · ~185,587 words
+- 22 files · ~185,534 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -49,7 +49,7 @@ Nodes (86): App, algebra_comp_checker(), algebra_compare_checker(), algebra_comp
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (148): apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), classify_solve_angle_arg() (+140 more)
+Nodes (166): append_unique_value_node(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), classify_solve_angle_arg() (+158 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
@@ -60,28 +60,28 @@ Cohesion: 0.07
 Nodes (105): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+97 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (90): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_named_power_term(), collect_same_arg_terms(), depends(), derive_cot_quadratic_expr() (+82 more)
+Cohesion: 0.06
+Nodes (101): allowed_expression_from_terms(), build_named_power_product(), cache_store(), cheap_same(), classify_reciprocal_conjugate_binomial(), combine_fraction_sum_once(), direct_double_angle_rewrite(), direct_identity_target_rewrite() (+93 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.06
-Nodes (90): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), concise_root_text(), constant_numeric(), dedupe_values(), detect_general_solution() (+82 more)
+Cohesion: 0.11
+Nodes (97): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), derive_cot_quadratic_expr() (+89 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.06
-Nodes (84): build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info(), display_abs(), display_neg() (+76 more)
+Cohesion: 0.09
+Nodes (65): angle_text(), append_unique_float(), append_unique_solve_value(), concise_root_text(), dedupe_values(), depends(), eval_numeric(), eval_numeric_mode() (+57 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.09
-Nodes (78): allowed_expression_from_terms(), bridge_to_target(), common_denominator_step(), detail_trig_expansion(), direct_ratio_target_rewrite(), equivalent(), expand_fraction(), expand_powered_monomial() (+70 more)
+Cohesion: 0.1
+Nodes (64): angle_to_degree(), bridge_to_target(), common_denominator_step(), degree_int(), degree_mod_360(), detail_trig_expansion(), direct_ratio_target_rewrite(), equivalent() (+56 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.05
 Nodes (35): Enum, RunState, TestStatus, check_ollama_available(), get_ollama_models(), LLMCache, LLMManager, quick_verify() (+27 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.11
-Nodes (52): add_param_coeff_maps(), add_transform_constant_candidate(), build_known_value_branch(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any() (+44 more)
+Cohesion: 0.09
+Nodes (47): add_param_coeff_maps(), add_transform_constant_candidate(), addq(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), constant_fit_preserve_named_trig(), depends_any() (+39 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.06
@@ -92,8 +92,8 @@ Cohesion: 0.2
 Nodes (24): build_menu_pages(), comp(), direct(), expand_vars(), has(), kids(), mk(), normalise() (+16 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.22
-Nodes (16): addq(), angle_to_degree(), degree_int(), degree_mod_360(), divq(), exact_pi_multiple(), exact_trig_lines(), exact_trig_value() (+8 more)
+Cohesion: 0.2
+Nodes (18): half_angle_expr(), _is_cos_squared_term(), is_lowercase_symbol_name(), _is_sin_squared_term(), match_cos_squared_term(), match_cot_squared_fraction(), match_one_pm_cos(), match_one_pm_cos_norm() (+10 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.18
