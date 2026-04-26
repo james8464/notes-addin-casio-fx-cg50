@@ -7249,6 +7249,21 @@ def main():
         print('Err: internal error.')
 
 
+def _looks_like_bare_identifier(s):
+    if not s:
+        return False
+    c = s[0]
+    if not (c == '_' or ('a' <= c <= 'z') or ('A' <= c <= 'Z')):
+        return False
+    i = 1
+    while i < len(s):
+        c = s[i]
+        if not (c == '_' or ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9')):
+            return False
+        i += 1
+    return True
+
+
 def parse_user_domain_range_input(user_text):
     t = (user_text or "").strip()
     if t == "":
@@ -7259,10 +7274,16 @@ def parse_user_domain_range_input(user_text):
     if n == 1:
         return parts[0], None, None, None
     if n == 2:
-        return parts[0], parts[1], None, None
+        var = parts[1] if parts[1] != "" else None
+        return parts[0], var, None, None
+    if n == 3:
+        if _looks_like_bare_identifier(parts[1]):
+            raise ValueError("With three parts, use: expr, lower, upper (or all four: expr, var, lower, upper).")
+        return parts[0], None, parts[1], parts[2]
     if n == 4:
-        return parts[0], parts[1], parts[2], parts[3]
-    raise ValueError("Use a single expression, or expr, var, or all four: expr, var, lower, upper (comma separated).")
+        var = parts[1] if parts[1] != "" else None
+        return parts[0], var, parts[2], parts[3]
+    raise ValueError("Use: expr | expr, var | expr, lower, upper | expr, var, lower, upper (comma separated).")
 
 
 def user_domain_range_var_ensure_in_expr(node, var_name):
@@ -7309,6 +7330,14 @@ def _range_on_closed_interval_numerical(expr, var_name, a, b):
     if b0 < a0 - 1e-15:
         a0, b0 = b0, a0
     coeffs, degree = polynomial_coeff_list(expr, var_name, 2)
+    if coeffs is None or degree != 2 or not is_num(coeffs[2]):
+        try:
+            expanded = sim(expand_integer_power_for_solving(expr))
+            coeffs2, degree2 = polynomial_coeff_list(expanded, var_name, 2)
+            if coeffs2 is not None and degree2 == 2 and is_num(coeffs2[2]):
+                coeffs, degree = coeffs2, degree2
+        except Exception:
+            pass
     candidates = []
     if coeffs is not None and degree == 2 and is_num(coeffs[2]) and not is_zero(coeffs[2]):
         a_c = real_numeric_value(coeffs[2])
@@ -7386,10 +7415,14 @@ def find_domain_text(text, var_override=None, low_node=None, high_node=None):
         expr = parse(text.strip())
     except:
         return ['Err: Unable to parse expression.']
-    if var_override is not None:
-        user_domain_range_var_ensure_in_expr(expr, var_override)
+    var_name = None
+    if var_override is not None and str(var_override).strip() != "":
         var_name = str(var_override).strip()
-    else:
+        try:
+            user_domain_range_var_ensure_in_expr(expr, var_name)
+        except ValueError as err:
+            return ['Err: ' + str(err)]
+    if var_name is None:
         var_name = choose_primary_var(expr)
     if var_name is None:
         return ['Err: No variable found to determine domain.']
@@ -7546,10 +7579,14 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
     except:
         return ['Err: Unable to parse expression.']
 
-    if var_override is not None:
-        user_domain_range_var_ensure_in_expr(expr, var_override)
+    var_name = None
+    if var_override is not None and str(var_override).strip() != "":
         var_name = str(var_override).strip()
-    else:
+        try:
+            user_domain_range_var_ensure_in_expr(expr, var_name)
+        except ValueError as err:
+            return ['Err: ' + str(err)]
+    if var_name is None:
         var_name = choose_primary_var(expr)
     if var_name is None:
         return ['Err: No variable found to determine range.']

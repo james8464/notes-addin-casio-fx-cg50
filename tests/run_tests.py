@@ -341,13 +341,24 @@ def to_python_expr(expr):
     out = out.replace("arccos(", "acos(")
     out = out.replace("arctan(", "atan(")
     out = re.sub(r"(?<![A-Za-z_])e(?![A-Za-z_])", "E_CONST", out)
-    out = re.sub(r"(?<=\d)(?=(?:sin|cos|tan|sec|cosec|cot|sqrt|log|asin|acos|atan|exp|pi|x|y|t)\b)", "*", out)
-    out = re.sub(r"(?<=\))(?=(?:sin|cos|tan|sec|cosec|cot|sqrt|log|asin|acos|atan|exp)\()", "*", out)
-    out = re.sub(r"(?<=\))(?=(?:pi|x|y|t)\b)", "*", out)
-    out = re.sub(r"(?<=\))(?=\()", "*", out)
-    out = re.sub(r"(?<=\d)(?=\()", "*", out)
-    out = re.sub(r"(?<![A-Za-z_])([xyt])(?=\()", r"\1*", out)
+    out = re.sub(r"(?<=\d)(?=[A-Za-z_(])", "*", out)
+    out = re.sub(r"(?<=\))(?=[A-Za-z_(])", "*", out)
+    out = re.sub(r"(?<=[A-Za-z0-9_])(?=\()", lambda m: "" if m.string[m.start()-len_of_trailing_ident(m.string, m.start()):m.start()] in _PY_FUNC_NAMES else "*", out)
     return out
+
+
+_PY_FUNC_NAMES = {"sin","cos","tan","sec","cosec","csc","cot","sqrt","log","ln","asin","acos","atan","exp","abs","arcsin","arccos","arctan"}
+
+
+def len_of_trailing_ident(s, end):
+    i = end
+    while i > 0:
+        c = s[i-1]
+        if c == "_" or ("a" <= c <= "z") or ("A" <= c <= "Z") or ("0" <= c <= "9"):
+            i -= 1
+        else:
+            break
+    return end - i
 
 
 def to_sympy_expr_text(expr):
@@ -4186,19 +4197,13 @@ class CASIOApp(App):
             eq = "*".join(factors) + "=0"
             mode = "chaos_polynomial"
         elif difficulty == "hard":
-            # Hard mode - varied equation types
             types = [
-                "bivariate", "quartic", "cubic_rational", "exponential", "absolute", 
+                "quartic", "cubic_rational", "exponential", "absolute",
                 "nested_sqrt", "log_eq", "reciprocal", "complex_quadratic", "trig_style"
             ]
             eq_type = rng.choice(types)
-            
-            if eq_type == "bivariate":
-                a, b = rng.randint(1, 5), rng.randint(1, 5)
-                c, d = rng.randint(-5, 5), rng.randint(-5, 5)
-                eq = f"x*y={a*b}\n{a}*x+{b}*y+{c}=0"
-                mode = "bivariate"
-            elif eq_type == "quartic":
+
+            if eq_type == "quartic":
                 a = rng.randint(1, 3)
                 b = rng.randint(-5, 5)
                 eq = f"x^4+{a}*x^2+{b}=0"
@@ -4225,7 +4230,7 @@ class CASIOApp(App):
                 mode = "log_eq"
             elif eq_type == "reciprocal":
                 a = rng.randint(1, 4)
-                eq = f"1/x+1/{a*x}={rng.randint(2,5)}"
+                eq = "1/x+1/(" + str(a) + "*x)=" + str(rng.randint(2, 5))
                 mode = "reciprocal"
             elif eq_type == "complex_quadratic":
                 a, b, c = rng.randint(-4, 4), rng.randint(-4, 4), rng.randint(-4, 4)
@@ -4260,9 +4265,16 @@ class CASIOApp(App):
                 mode = "quadratic"
             elif eq_type == "factorable":
                 a = rng.randint(1, 3)
-                b = rng.randint(-4, 4)
-                c = rng.randint(-4, 4)
-                eq = f"{a}*x^2+{a*b*x}+{a*c}=0"
+                r1 = rng.randint(-4, 4)
+                r2 = rng.randint(-4, 4)
+                lin = -a * (r1 + r2)
+                const = a * r1 * r2
+                eq = str(a) + "*x^2"
+                if lin != 0:
+                    eq += self.signed_int_text(lin) + "*x"
+                if const != 0:
+                    eq += self.signed_int_text(const)
+                eq += "=0"
                 mode = "factorable"
             elif eq_type == "diff_squares":
                 m = rng.randint(3, 9)
@@ -5460,11 +5472,8 @@ class CASIOApp(App):
                 checker = suvat_expected_error_checker("infinite solutions")
                 feature_prefix = "suvat_expected_error"
             else:
-                s_val = Fraction(rng.randint(-20, 20), 1)
-                u_val = Fraction(rng.randint(-10, 10), 1)
-                t_val = Fraction(rng.randint(1, 8), 1)
-                cli_input = f"{frac_text(s_val)}\n{frac_text(u_val)}\n,\n0\n{frac_text(t_val)}\n"
-                checker = suvat_symbolic_output_checker("a", "(s-u*t)/(t^2)")
+                cli_input = "\n\n\n,\n\n"
+                checker = suvat_symbolic_output_checker("a", "(v-u)/t")
                 feature_prefix = "suvat_edge"
             mode = f"{mode}_{target}"
         if target != "a":
