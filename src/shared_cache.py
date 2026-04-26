@@ -2,17 +2,15 @@ def cache_store(cache, key, value, limit):
     if limit <= 0:
         return value
     if key not in cache and len(cache) >= limit:
-        trim = limit // 8
-        if trim < 1:
-            trim = 1
-        i = 0
-        while i < trim and cache:
+        target = limit - (limit // 8)
+        if target < 0:
+            target = 0
+        while len(cache) > target and cache:
             try:
                 oldest = next(iter(cache))
                 del cache[oldest]
             except (KeyError, StopIteration):
                 break
-            i += 1
     cache[key] = value
     return value
 
