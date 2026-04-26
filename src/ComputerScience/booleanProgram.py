@@ -1,5 +1,18 @@
 Z = ("c", "0")
 O = ("c", "1")
+SIG_CACHE = {}
+SHOW_CACHE = {}
+CACHE_LIMIT = 512
+
+
+def cache_set(cache, key, value):
+    if key not in cache and len(cache) >= CACHE_LIMIT:
+        try:
+            del cache[next(iter(cache))]
+        except (KeyError, StopIteration):
+            pass
+    cache[key] = value
+    return value
 
 
 def mk(kind, items):
@@ -37,20 +50,23 @@ def same(a, b):
 
 
 def sig(node):
+    cached = SIG_CACHE.get(node)
+    if cached is not None:
+        return cached
     kind = node[0]
     if kind == "c":
-        return node[1]
+        return cache_set(SIG_CACHE, node, node[1])
     if kind == "v":
-        return node[1]
+        return cache_set(SIG_CACHE, node, node[1])
     if kind == "n":
-        return "n(" + sig(node[1]) + ")"
+        return cache_set(SIG_CACHE, node, "n(" + sig(node[1]) + ")")
     parts = []
     for child in kids(node, kind):
         parts.append(sig(child))
     parts.sort()
     if kind == "a":
-        return "a(" + ",".join(parts) + ")"
-    return "o(" + ",".join(parts) + ")"
+        return cache_set(SIG_CACHE, node, "a(" + ",".join(parts) + ")")
+    return cache_set(SIG_CACHE, node, "o(" + ",".join(parts) + ")")
 
 
 def comp(a, b):
@@ -97,6 +113,10 @@ def simple_not(node):
 
 
 def show(node, parent=0):
+    key = (node, parent)
+    cached = SHOW_CACHE.get(key)
+    if cached is not None:
+        return cached
     kind = node[0]
     if kind in ("c", "v"):
         text = node[1]
@@ -119,8 +139,8 @@ def show(node, parent=0):
             parts.append(part)
         text = joiner.join(parts)
     if prio(node) < parent:
-        return "(" + text + ")"
-    return text
+        return cache_set(SHOW_CACHE, key, "(" + text + ")")
+    return cache_set(SHOW_CACHE, key, text)
 
 
 def short(node):
