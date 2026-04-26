@@ -4008,44 +4008,47 @@ ANSWER: {result}""",
         def check(out):
             if not quality(out):
                 return False
+            text = normalized_text(out)
             candidate = extract_last_antiderivative_expr(out)
-            if not candidate:
-                return False
-            if reverse_chain_integrand_matches(out, integrand, var=var):
-                return True
-            symbolic = sympy_antiderivative_equivalent(candidate, integrand, var=var)
-            if symbolic is True:
-                return True
-            good = 0
-            bad = 0
-            sample_points = domain_aware_sample_points(integrand, candidate, var=var)
-            if not sample_points:
-                sample_points = candidate_sample_points()
-            for point in sample_points:
-                actual = complex_step_derivative(candidate, var, point)
-                if actual is None:
-                    actual = stable_finite_difference(candidate, var, point)
-                if actual is None:
-                    continue
-                try:
-                    shown = safe_eval_expr(integrand, {var: point})
-                except Exception:
-                    continue
-                if not math.isfinite(actual) or not math.isfinite(shown):
-                    continue
-                if numeric_close(actual, shown, rel_tol=1e-2, abs_tol=1e-2):
-                    good += 1
-                else:
-                    # Huge oscillatory / exponential quotient cases can be
-                    # mathematically right but numerically hopeless at some
-                    # sample points. Treat those as unusable, not as evidence
-                    # against an answer that has already matched elsewhere.
-                    if max(abs(actual), abs(shown)) > 1e10:
+            if candidate:
+                if reverse_chain_integrand_matches(out, integrand, var=var):
+                    return True
+                symbolic = sympy_antiderivative_equivalent(candidate, integrand, var=var)
+                if symbolic is True:
+                    return True
+                good = 0
+                bad = 0
+                sample_points = domain_aware_sample_points(integrand, candidate, var=var)
+                if not sample_points:
+                    sample_points = candidate_sample_points()
+                for point in sample_points:
+                    actual = complex_step_derivative(candidate, var, point)
+                    if actual is None:
+                        actual = stable_finite_difference(candidate, var, point)
+                    if actual is None:
                         continue
-                    bad += 1
-            if good >= 3 and bad == 0:
-                return True
+                    try:
+                        shown = safe_eval_expr(integrand, {var: point})
+                    except Exception:
+                        continue
+                    if not math.isfinite(actual) or not math.isfinite(shown):
+                        continue
+                    if numeric_close(actual, shown, rel_tol=1e-2, abs_tol=1e-2):
+                        good += 1
+                    else:
+                        if max(abs(actual), abs(shown)) > 1e10:
+                            continue
+                        bad += 1
+                if good >= 3 and bad == 0:
+                    return True
+            if "no elementary" in text or "non-elementary" in text:
+                if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+                    return False
+                good_steps = sum(1 for kw in ("tried", "method", "integration", "standard") if kw in text.lower())
+                return good_steps >= 2
             return False
+
+        return check
 
         return check
 
