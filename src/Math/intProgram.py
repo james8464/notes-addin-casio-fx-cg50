@@ -130,22 +130,6 @@ def hard_integral_failure_working(node, var):
     ], 'Answer: no elementary antideriv in std fn set'
 
 
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    if C:
-        return A, B, C, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
-
-
-def can_handle_derivative_case(node, var, deps):
-    try:
-        diff(node, var, deps)
-        return True, None
-    except Exception as err:
-        return False, str(err)
 SKIP_AUTORUN = sys is not None and (
     getattr(sys, '_int_no_autorun', False) or
     len(sys.argv) > 1
@@ -1804,17 +1788,7 @@ def format_equation_human_readable(node, parent=0):
     
     return str(node)
 
-def split_coeff(node):
-    """Helper function to split coefficient from term."""
-    if is_num(node):
-        return node, num(1)
-    if node[0] == 'mul':
-        A = node[1]
-        if len(A) > 0 and is_num(A[0]):
-            if len(A) == 2:
-                return A[0], A[1]
-            return A[0], ('mul', A[1:])
-    return num(1), node
+
 def pretty(node): return _show(display_rearrange(combine_logs(node)), 0)
 
 
@@ -2432,71 +2406,6 @@ def parse_de_input(text):
     return parse(A), 'x', 'y'
 
 
-def cancellation_requested():
-    return False
-
-
-def integral_candidate_score(title, ans, lines):
-    if ans is None:
-        return 10**9
-    title_score = {'std': 0, 'f(ax+b)': 1, 'Rev chain': 2, 'Subst': 3, 'Trig id': 4, 'Parts': 5, 'Pfrac': 6, 'PolyQ exp': 2}.get(title, 7)
-    return (len(pretty(ans)), len(lines or []), title_score)
-
-
-def fallback_attempts(node, var, forced_u=None):
-    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
-    best = None
-    best_title = None
-    best_lines = None
-    out_lines = []
-    i = 0
-    while i < len(attempts):
-        if cancellation_requested():
-            break
-        method, label = attempts[i]
-        title, ans, lines = _solve_with_method(node, var, method, forced_u)
-        if ans is not None:
-            out_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
-            j = 0
-            while lines is not None and j < len(lines):
-                out_lines.append(lines[j])
-                j += 1
-            score = integral_candidate_score(title, ans, lines)
-            if best is None or score < best:
-                best = score
-                best_title = title
-                best_lines = lines
-        i += 1
-    if best is None:
-        return None, None, None
-    return best_title, best_lines, out_lines
-
-
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    title, best_lines, attempt_lines = fallback_attempts(node, var, forced_u)
-    if title is not None:
-        retry_title, retry_ans, retry_lines = _solve_with_method(node, var, {'std':'2','f(ax+b)':'2','Rev chain':'4','Subst':'4','Trig id':'3','Parts':'5','Pfrac':'6'}.get(title, '2'), forced_u)
-        merged = list(attempt_lines)
-        if retry_lines:
-            merged.append('Choose the simplest successful attempt.')
-            i = 0
-            while i < len(retry_lines):
-                merged.append(retry_lines[i])
-                i += 1
-        return title, retry_ans, merged, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
-
-
-def can_handle_derivative_case(node, var, deps):
-    try:
-        diff(node, var, deps)
-        return True, None
-    except Exception as err:
-        return False, str(err)
 
 def parse_de_condition(text, xvar, yvar):
     D = text.strip()
@@ -5009,113 +4918,6 @@ def integrate_trig(node, var, allow_steps=True):
     return A, I or []
 
 
-def _solve_with_method(node, var, method, forced_u=None):
-    F = forced_u
-    E = method
-    D = var
-    C = node if E == '4' and F is not None else sim(node)
-    if F is not None:
-        F = sim(F)
-    if E == '2':
-        A, B = integrate_standard(C, D)
-        return finish_integral_solve(standard_title(C, D), A, B)
-    if E == '3':
-        if not has_fn(C):
-            return finish_integral_solve('Trig id', None, None)
-        A, B = integrate_trig(C, D, True)
-        return finish_integral_solve('Trig id', A, B)
-    if E == '4':
-        if F is None:
-            A, B = integrate_reverse_chain(C, D)
-            if A is not None:
-                return finish_integral_solve('Rev chain', A, B)
-            A, B = integrate_substitution(C, D, None)
-            return finish_integral_solve('Subst', A, B)
-        A, B = integrate_substitution(C, D, F)
-        return finish_integral_solve('Subst', A, B)
-    if E == '5':
-        A, B = integrate_by_parts(C, D, 0)
-        return finish_integral_solve('Parts', A, B)
-    if E == '6':
-        A, B = integrate_partial(C, D)
-        return finish_integral_solve('Pfrac', A, B)
-    if E == '7':
-        A, B = integrate_division(C, D, True)
-        return finish_integral_solve('Pfrac', A, B)
-    G, A, B = integrate_auto(C, D, 0, True, True)
-    if A is None:
-        return 'Automatic integration', A, B
-    if G == 'direct':
-        return finish_integral_solve(standard_title(C, D), A, B)
-    if G == 'reverse':
-        return finish_integral_solve('Rev chain', A, B)
-    if G == 'trig':
-        return finish_integral_solve('Trig id', A, B)
-    if G == 'sub':
-        return finish_integral_solve('Subst', A, B)
-    if G == 'parts':
-        return finish_integral_solve('Parts', A, B)
-    return finish_integral_solve('Pfrac', A, B)
-
-
-def fallback_attempts(node, var, forced_u=None):
-    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
-    best = None
-    best_ans = None
-    best_title = None
-    best_lines = None
-    attempt_lines = []
-    i = 0
-    while i < len(attempts):
-        if cancellation_requested():
-            break
-        method, label = attempts[i]
-        title, ans, lines = _solve_with_method(node, var, method, forced_u)
-        if ans is not None:
-            lines = format_attempt_lines(lines)
-            block = format_attempt_block(i + 1, label, lines)
-            j = 0
-            while j < len(block):
-                attempt_lines.append(block[j])
-                j += 1
-            score = integral_candidate_score(title, ans, lines)
-            if best is None or score < best:
-                best = score
-                best_title = title
-                best_ans = ans
-                best_lines = lines
-        i += 1
-    if best is None:
-        return None, None, None
-    return best_title, (best_ans, best_lines), attempt_lines
-
-
-def solve(node, var, method, forced_u=None):
-    title, ans, lines = _solve_with_method(node, var, method, forced_u)
-    if ans is not None:
-        return title, ans, lines
-    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
-    if fallback_title is not None:
-        best_ans, best_lines = fallback_payload
-        merged = list(attempt_lines or [])
-        if best_lines:
-            merged.append('Choose the simplest successful attempt.')
-            i = 0
-            while i < len(best_lines):
-                merged.append(best_lines[i])
-                i += 1
-        return fallback_title, best_ans, simplify_attempt_lines(merged)
-    return title, ans, lines
-
-
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    if C:
-        return A, B, C, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
 
 def integrate_termwise_with(node, var, solver, depth):
     if node[0] != 'add':
@@ -5208,153 +5010,6 @@ def integrate_after_trig_rewrite(node, var, depth=0):
     return None, None
 
 
-def choose_best_integral_candidate(candidates):
-    if len(candidates) == 0:
-        return None
-    best = candidates[0]
-    i = 1
-    while i < len(candidates):
-        score_a = integral_candidate_score(best[0], best[1], best[2])
-        score_b = integral_candidate_score(candidates[i][0], candidates[i][1], candidates[i][2])
-        if score_b < score_a:
-            best = candidates[i]
-        i += 1
-    return best
-
-
-def format_attempt_block(index, label, lines):
-    out = ['Attempt ' + str(index) + ' (' + label + ')']
-    i = 0
-    while lines is not None and i < len(lines):
-        out.append(lines[i])
-        i += 1
-    return out
-
-
-def fallback_attempts(node, var, forced_u=None):
-    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
-    found = []
-    attempt_lines = []
-    i = 0
-    while i < len(attempts):
-        if cancellation_requested():
-            break
-        method, label = attempts[i]
-        title, ans, lines = _solve_with_method(node, var, method, forced_u)
-        if ans is not None:
-            lines = format_attempt_lines(lines)
-            block = format_attempt_block(i + 1, label, lines)
-            j = 0
-            while j < len(block):
-                attempt_lines.append(block[j])
-                j += 1
-            found.append((title, ans, lines, label))
-        i += 1
-    best = choose_best_integral_candidate(found)
-    if best is None:
-        return None, None, None
-    return best[0], (best[1], best[2]), attempt_lines
-
-
-def solve(node, var, method, forced_u=None):
-    title, ans, lines = _solve_with_method(node, var, method, forced_u)
-    if ans is not None:
-        return title, ans, lines
-    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
-    if fallback_title is not None:
-        best_ans, best_lines = fallback_payload
-        merged = list(attempt_lines or [])
-        merged.append('Choose the simplest successful attempt.')
-        i = 0
-        while best_lines is not None and i < len(best_lines):
-            merged.append(best_lines[i])
-            i += 1
-        return fallback_title, best_ans, simplify_attempt_lines(merged)
-    return title, ans, lines
-
-
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    if C:
-        return A, B, C, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
-
-def simplify_attempt_lines(lines):
-    if lines is None:
-        return None
-    out = []
-    i = 0
-    while i < len(lines):
-        if len(out) == 0 or lines[i] != out[-1]:
-            out.append(lines[i])
-        i += 1
-    return out
-
-
-def format_attempt_lines(lines):
-    return simplify_attempt_lines(lines or [])
-
-
-def fallback_attempts(node, var, forced_u=None):
-    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
-    best = None
-    best_title = None
-    best_ans = None
-    best_lines = None
-    attempt_lines = []
-    i = 0
-    while i < len(attempts):
-        if cancellation_requested():
-            break
-        method, label = attempts[i]
-        title, ans, lines = _solve_with_method(node, var, method, forced_u)
-        if ans is not None:
-            lines = format_attempt_lines(lines)
-            attempt_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
-            j = 0
-            while j < len(lines):
-                attempt_lines.append(lines[j])
-                j += 1
-            score = integral_candidate_score(title, ans, lines)
-            if best is None or score < best:
-                best = score
-                best_title = title
-                best_ans = ans
-                best_lines = lines
-        i += 1
-    if best is None:
-        return None, None, None
-    return best_title, (best_ans, best_lines), attempt_lines
-
-
-def solve(node, var, method, forced_u=None):
-    title, ans, lines = _solve_with_method(node, var, method, forced_u)
-    if ans is not None:
-        return title, ans, lines
-    fallback_title, fallback_payload, attempt_lines = fallback_attempts(node, var, forced_u)
-    if fallback_title is not None:
-        best_ans, best_lines = fallback_payload
-        merged = list(attempt_lines or [])
-        merged.append('Choose the simplest successful attempt.')
-        i = 0
-        while best_lines is not None and i < len(best_lines):
-            merged.append(best_lines[i])
-            i += 1
-        return fallback_title, best_ans, simplify_attempt_lines(merged)
-    return title, ans, lines
-
-
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    if C:
-        return A, B, C, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
 
 def integrate_cyclic_parts(node, var):
     A, B = split_const_mul(node, var)
@@ -5852,6 +5507,19 @@ def auto_integral_routes(rational, allow_termwise):
         A.append(auto_route_division)
     A.append(auto_route_poly_quad_exp)
     return A
+
+
+def prioritized_auto_routes(rational, allow_termwise, node, var):
+    """Re-order auto integration routes: skip trig-rewrite when no fn(), try cheap paths first."""
+    routes = list(auto_integral_routes(rational, allow_termwise))
+    if not has_fn(node) and not rational:
+        head = [f for f in routes if f is not auto_route_trig]
+        tail = [f for f in routes if f is auto_route_trig]
+        return head + tail
+    if rational and auto_route_division in routes:
+        rest = [f for f in routes if f is not auto_route_division]
+        return [auto_route_division] + rest
+    return routes
 
 
 def pf_factor_list(node, var):
@@ -6931,7 +6599,7 @@ def integrate_auto(node, var, depth=0, allow_termwise=True, return_kind=False):
     if F > 24:
         return E(None, None, None)
     G = integral_is_rational_division(C, D)
-    for H in auto_integral_routes(G, allow_termwise):
+    for H in prioritized_auto_routes(G, allow_termwise, C, D):
         I, A, B = H(C, D, F)
         if A is not None:
             return E(I, A, B)
@@ -7130,8 +6798,34 @@ def ensure_working_lines(node, var, title, ans, lines):
     return ['So I = ' + pretty(ans) + ' + C']
 
 
+def cancellation_requested():
+    return False
+
+
+def integral_candidate_score(title, ans, lines):
+    if ans is None:
+        return (10**9, 10**9, 10**9)
+    title_score = {
+        'std': 0, 'f(ax+b)': 1, 'Rev chain': 2, 'Subst': 3, 'Trig id': 4,
+        'Parts': 5, 'Pfrac': 6, 'Poly div': 6, 'PolyQ exp': 2,
+    }.get(title, 7)
+    return (len(pretty(ans)), len(lines or []), title_score)
+
+
+def _ordered_integral_fallback_methods(node, var, forced_u):
+    """Heuristic method order: fewer failed attempts on typical shapes (no new math features)."""
+    base = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    if forced_u is not None:
+        return [('4', 'sub'), ('2', 'dir'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    if integral_is_rational_division(node, var):
+        return [('2', 'dir'), ('6', 'pf'), ('7', 'div'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts')]
+    if has_fn(node):
+        return [('2', 'dir'), ('3', 'trig'), ('4', 'sub'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    return base
+
+
 def fallback_attempts(node, var, forced_u=None):
-    attempts = [('2', 'dir'), ('4', 'sub'), ('3', 'trig'), ('5', 'pts'), ('6', 'pf'), ('7', 'div')]
+    attempts = _ordered_integral_fallback_methods(node, var, forced_u)
     best = None
     best_title = None
     best_ans = None
@@ -7203,34 +6897,6 @@ def can_handle_derivative_case(node, var, deps):
     except Exception as err:
         return False, str(err)
 
-
-def cancellation_requested():
-    return False
-
-
-def integral_candidate_score(title, ans, lines):
-    if ans is None:
-        return (10**9, 10**9, 10**9)
-    title_score = {'std': 0, 'f(ax+b)': 1, 'Rev chain': 2, 'Subst': 3, 'Trig id': 4, 'Parts': 5, 'Pfrac': 6, 'Poly div': 6}.get(title, 7)
-    return (len(pretty(ans)), len(lines or []), title_score)
-
-
-def solve_result_or_reason(node, var, method, forced_u=None):
-    A, B, C = solve(node, var, method, forced_u)
-    if B is not None:
-        return A, B, C, None
-    if C:
-        return A, B, C, None
-    failure_lines, failure_answer = hard_integral_failure_working(node, var)
-    return 'Int attempt', B, failure_lines, failure_answer
-
-
-def can_handle_derivative_case(node, var, deps):
-    try:
-        diff(node, var, deps)
-        return True, None
-    except Exception as err:
-        return False, str(err)
 
 def subst(node, name, value):
     C = value

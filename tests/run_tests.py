@@ -1555,7 +1555,11 @@ _EXAM_REASONING_MARKERS = tuple(
 
 def exam_working_quality_issues(output, program, feature):
     issues = []
+    if output is None:
+        return issues
     text = normalized_text(output)
+    if not text:
+        return issues
     feature = feature or ""
 
     if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):

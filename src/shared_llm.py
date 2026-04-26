@@ -103,9 +103,12 @@ class LLMCache:
         self.misses = 0
     
     def _make_key(self, model, prompt):
-        """Create cache key from model and prompt."""
-        short_prompt = prompt[:200]
-        return hashlib.md5(("{0}:{1}".format(model, short_prompt)).encode()).hexdigest()
+        """Create cache key; hash full prompt to avoid collision on long/ similar tails."""
+        h = hashlib.sha256()
+        h.update(model.encode("utf-8", errors="replace"))
+        h.update(b"\0")
+        h.update(prompt.encode("utf-8", errors="replace"))
+        return h.hexdigest()
     
     def get(self, model, prompt):
         """Get cached response if exists and not expired."""
