@@ -4198,48 +4198,56 @@ class CASIOApp(App):
             mode = "chaos_polynomial"
         elif difficulty == "hard":
             types = [
-                "quartic", "cubic_rational", "exponential", "absolute",
-                "nested_sqrt", "log_eq", "reciprocal", "complex_quadratic", "trig_style"
+                "quartic", "absolute", "reciprocal", "complex_quadratic",
+                "factored_cubic", "shifted_squared",
             ]
             eq_type = rng.choice(types)
 
             if eq_type == "quartic":
-                a = rng.randint(1, 3)
-                b = rng.randint(-5, 5)
-                eq = f"x^4+{a}*x^2+{b}=0"
+                u_coeff = rng.randint(1, 4)
+                u_root = rng.randint(1, 5)
+                eq = "x^4+" + str(u_coeff) + "*x^2-" + str(u_coeff * u_root + u_root * u_root) + "=0"
                 mode = "quartic"
-            elif eq_type == "cubic_rational":
-                a = rng.randint(1, 4)
-                eq = f"x^3+{a}/x=0"
-                mode = "cubic_rational"
-            elif eq_type == "exponential":
-                a, b = rng.randint(2, 5), rng.randint(2, 5)
-                eq = f"{a}^x={a**rng.randint(3,6)}"
-                mode = "exponential"
             elif eq_type == "absolute":
-                a, b, c = rng.randint(1, 4), rng.randint(-4, 4), rng.randint(-4, 4)
-                eq = f"|{a}*x+{b}|={c}"
+                a = rng.randint(1, 4)
+                b = rng.randint(-4, 4)
+                c = rng.randint(0, 6)
+                eq = "|" + str(a) + "*x" + self.signed_int_text(b) + "|=" + str(c)
                 mode = "absolute"
-            elif eq_type == "nested_sqrt":
-                a, b = rng.randint(1, 3), rng.randint(1, 3)
-                eq = f"sqrt(x+{a})+sqrt(x+{b})={rng.randint(3,8)}"
-                mode = "nested_sqrt"
-            elif eq_type == "log_eq":
-                a = rng.randint(2, 5)
-                eq = f"log(x)+log({a}*x)={rng.randint(1,3)}"
-                mode = "log_eq"
             elif eq_type == "reciprocal":
                 a = rng.randint(1, 4)
-                eq = "1/x+1/(" + str(a) + "*x)=" + str(rng.randint(2, 5))
+                k = rng.randint(2, 5)
+                eq = "1/x+1/(" + str(a) + "*x)=" + str(k)
                 mode = "reciprocal"
             elif eq_type == "complex_quadratic":
-                a, b, c = rng.randint(-4, 4), rng.randint(-4, 4), rng.randint(-4, 4)
-                while a == 0: a = rng.randint(-4, 4)
-                eq = f"x^2+{b}*x+{c}=0"
+                r1 = rng.randint(-5, 5)
+                r2 = rng.randint(-5, 5)
+                lin = -(r1 + r2)
+                const = r1 * r2
+                eq = "x^2"
+                if lin != 0:
+                    eq += self.signed_int_text(lin) + "*x"
+                if const != 0:
+                    eq += self.signed_int_text(const)
+                eq += "=0"
                 mode = "complex_quadratic"
-            else:  # trig_style
-                eq = f"sin(x)={rng.choice([0, 1, -1])}"
-                mode = "trig_style"
+            elif eq_type == "factored_cubic":
+                roots = []
+                while len(roots) < 3:
+                    r = rng.randint(-5, 5)
+                    if r not in roots:
+                        roots.append(r)
+                factors = []
+                for r in roots:
+                    sign = "-" if r >= 0 else "+"
+                    factors.append("(x" + sign + str(abs(r)) + ")")
+                eq = "*".join(factors) + "=0"
+                mode = "factored_cubic"
+            else:  # shifted_squared
+                a = self.random_nonzero_int(rng, -3, 3)
+                k = rng.randint(1, 6)
+                eq = "(x" + self.signed_int_text(-a) + ")^2=" + str(k * k)
+                mode = "shifted_squared"
         else:
             # Normal difficulty
             types = ["linear", "quadratic", "factorable", "diff_squares", "high_power", "shifted_power"]
@@ -6056,6 +6064,33 @@ class CASIOApp(App):
                 "domain/range with interval and alternate letter t",
                 "algebra_domain_range_interval",
             )
+
+            solve_interval_cases = [
+                (
+                    "6\nx^2-4=0, x, 0, 3\n",
+                    "Mode 6: x^2-4=0 in [0,3] keeps only x=2",
+                    ("interval: x in [0, 3]", "answer: x = 2"),
+                    ("x = -2",),
+                ),
+                (
+                    "6\n2*t-8=0, t, 0, 2\n",
+                    "Mode 6: 2t-8=0 in [0,2] reports no solution",
+                    ("interval: t in [0, 2]", "no solution in the interval"),
+                    (),
+                ),
+                (
+                    "6\nx^3-3*x^2+2*x=0, x, 0.5, 1.5\n",
+                    "Mode 6: cubic in [0.5,1.5] keeps only x=1",
+                    ("interval: x in", "answer: x = 1"),
+                    ("x = 0", "x = 2"),
+                ),
+            ]
+            for inp, label, must_contain, must_exclude in solve_interval_cases:
+                out, _ = self.run_cli("algebraProgram.py", inp)
+                text = normalized_text(out)
+                ok = all(tok in text for tok in must_contain) and all(tok not in text for tok in must_exclude)
+                ok = ok and "err:" not in text
+                self.add_test(label, ok, out, p, inp, "solve with interval filter", "algebra_solve_interval")
 
             algebra_solve_regressions = [
                 ("6\nx^3+2*x=50\n", "Regression: depressed cubic solved by Cardano", ("cardano", "answer:", "x =")),

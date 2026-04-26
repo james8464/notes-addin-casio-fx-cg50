@@ -5905,11 +5905,17 @@ def factor_quadratic_rational(node, var_name=None):
 
 
 def expression_zero_at_root(expr, var_name, root):
-    check = eval_with_values(expr, {var_name: root})
+    try:
+        check = eval_with_values(expr, {var_name: root})
+    except (ValueError, ZeroDivisionError, OverflowError):
+        return False
     if check is not None:
         return is_zero(check)
-    applied = apply_values(expr, {var_name: root})
-    approx = numeric_eval(applied, {})
+    try:
+        applied = apply_values(expr, {var_name: root})
+        approx = numeric_eval(applied, {})
+    except (ValueError, ZeroDivisionError, OverflowError):
+        return False
     if approx is None:
         return False
     if isinstance(approx, complex):
@@ -5976,21 +5982,26 @@ def match_shifted_reciprocal(node, var_name):
 
 
 
-def solve_equation_text(text):
+def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
         return cartesian
     expr = parse_expr_or_equation(text)
     var_name, roots, label = solve_equation(expr)
+    if var_override is not None and str(var_override).strip() != "":
+        var_name = str(var_override).strip()
     shown_expr = expr
     if roots is not None and var_name is not None:
         factored_info = factor_expression(expr, var_name)
         if factored_info is not None and not same(factored_info[0], expr):
             shown_expr = factored_info[0]
+    has_int = low_node is not None and high_node is not None
     lines = ['Method: Solve equation', 'Expr = ' + show(shown_expr)]
+    if has_int and var_name is not None:
+        lines.append('Interval: ' + var_name + ' in [' + show(sim(low_node)) + ', ' + show(sim(high_node)) + ']')
     if label == 'Identity':
-        lines.append('All x satisfy the equation')
-        lines.append('Answer: all real x')
+        lines.append('All ' + (var_name or 'x') + ' satisfy the equation')
+        lines.append('Answer: all real ' + (var_name or 'x'))
         return lines
     if label == 'No solution':
         lines.append('Solve: no real solution')
@@ -6001,13 +6012,92 @@ def solve_equation_text(text):
         lines.append('Answer: no closed-form solution found')
         return compact_duplicate_answer_lines(lines)
     lines.append(label)
-    solution = format_solution_line(var_name, roots)
+    solution_roots = roots
+    if has_int and var_name is not None:
+        solution_roots = _filter_roots_to_closed_interval(roots, var_name, low_node, high_node)
+        if not solution_roots:
+            lines.append('No roots lie inside the requested interval.')
+            lines.append('Answer: no solution in the interval')
+            return compact_duplicate_answer_lines(lines)
+    solution = format_solution_line(var_name, solution_roots)
     if 'Cardano' in label:
         decimal_roots = depressed_cubic_cardano_numeric_roots(expr, var_name)
         if decimal_roots:
-            lines.append(format_decimal_solution_line(var_name, decimal_roots))
+            if has_int:
+                decimal_roots = [d for d in decimal_roots if _value_inside_interval(d, low_node, high_node)]
+            if decimal_roots:
+                lines.append(format_decimal_solution_line(var_name, decimal_roots))
     lines.append('Answer: ' + solution)
     return compact_duplicate_answer_lines(lines)
+
+
+def _value_inside_interval(value, low_node, high_node):
+    a = real_numeric_value(sim(low_node))
+    b = real_numeric_value(sim(high_node))
+    if a is None or b is None or value is None:
+        return True
+    if b < a:
+        a, b = b, a
+    eps = 1e-6 * max(1.0, abs(a), abs(b))
+    return (a - eps) <= value <= (b + eps)
+
+
+def _filter_roots_to_closed_interval(roots, var_name, low_node, high_node):
+    a = real_numeric_value(sim(low_node))
+    b = real_numeric_value(sim(high_node))
+    if a is None or b is None:
+        return roots
+    if b < a:
+        a, b = b, a
+    out = []
+    eps = 1e-6 * max(1.0, abs(a), abs(b))
+    seen = []
+    for root in roots:
+        v = real_numeric_value(sim(root))
+        if v is None:
+            try:
+                v = numeric_eval(root, {})
+                if isinstance(v, complex):
+                    if abs(v.imag) > 1e-8:
+                        continue
+                    v = v.real
+            except Exception:
+                v = None
+        if v is None:
+            continue
+        if not ((a - eps) <= v <= (b + eps)):
+            continue
+        already = False
+        for prev in seen:
+            if abs(prev - v) <= eps:
+                already = True
+                break
+        if not already:
+            seen.append(v)
+            out.append(root)
+    return out
+
+
+def parse_user_solve_input(user_text):
+    t = (user_text or "").strip()
+    if t == "":
+        raise ValueError("Enter an equation, or: eq, var, lower, upper (comma separated).")
+    parts = split_top_level_all(t, ",")
+    parts = [p.strip() for p in parts]
+    n = len(parts)
+    if n == 1:
+        return parts[0], None, None, None
+    if n == 2:
+        var = parts[1] if parts[1] != "" else None
+        return parts[0], var, None, None
+    if n == 3:
+        if _looks_like_bare_identifier(parts[1]):
+            raise ValueError("With three parts, use: eq, lower, upper (or all four: eq, var, lower, upper).")
+        return parts[0], None, parts[1], parts[2]
+    if n == 4:
+        var = parts[1] if parts[1] != "" else None
+        return parts[0], var, parts[2], parts[3]
+    raise ValueError("Use: eq | eq, var | eq, lower, upper | eq, var, lower, upper (comma separated).")
 
 
 
@@ -7149,8 +7239,25 @@ def main():
                 print(str(i + 1) + '. ' + lines[i])
                 i += 1
         elif mode == '6':
-            text = input('Eq: ').strip()
-            lines = solve_equation_text(text)
+            user_text = input('Eq (or eq, var, low, high): ').strip()
+            if user_text == '':
+                raise ValueError('Enter an equation.')
+            eq_text, uvar, ulow, uhigh = parse_user_solve_input(user_text)
+            lo_node = None
+            hi_node = None
+            if ulow is not None:
+                try:
+                    lo_node = parse(ulow.strip())
+                except:
+                    raise ValueError('Could not parse the lower bound for the interval.')
+            if uhigh is not None:
+                try:
+                    hi_node = parse(uhigh.strip())
+                except:
+                    raise ValueError('Could not parse the upper bound for the interval.')
+            if (ulow is None) != (uhigh is None):
+                raise ValueError('Give both a lower and an upper bound, or neither, for the interval.')
+            lines = solve_equation_text(eq_text, var_override=uvar, low_node=lo_node, high_node=hi_node)
             i = 0
             while i < len(lines):
                 print(str(i + 1) + '. ' + lines[i])
