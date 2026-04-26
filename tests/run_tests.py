@@ -5818,7 +5818,6 @@ ANSWER: {result}""",
                 cases = batch.builder(difficulty, batch.count, rng)
                 self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
                 test_count = len(self.records)
-                emit(self.append_result, f"[dim]Running: {test_count} tests...[/dim]")
                 test_total = self.total_expected if self.total_expected > 0 else test_count
                 emit(self.update_progress_bar, test_count, test_total)
                 if infinite_mode:
