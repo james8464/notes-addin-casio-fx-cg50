@@ -2089,7 +2089,7 @@ class CASIOApp(App):
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
-            "/compile": "Delete and recompile all .mpy files in calc_files",
+            "/compile": "Recompile .mpy in calc_files; copy *Program.mpy + launcher .py + main.py to calc volume",
             "/llm": "Configure LLM verification (select model, enable/disable)",
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
@@ -2477,8 +2477,7 @@ class CASIOApp(App):
         for src_rel, prog_name, launch_name in programs:
             src = root / "src" / src_rel
             mpy = calc / f"{prog_name}.mpy"
-            py_wrapper = calc / f"{launch_name}.py"
-            
+
             self.append_result(f"[dim]Compiling {src.name}...[/dim]")
             if mpy.exists():
                 mpy.unlink()
@@ -2496,13 +2495,9 @@ class CASIOApp(App):
                 self.append_result(f"[bold #f87171]✗[/#f87171] Failed: {result.stderr[:100] if result.stderr else 'unknown'}")
                 continue
             compiled += 1
-            
-            # Create launcher
-            if not py_wrapper.exists() or py_wrapper.read_text() != f"import {prog_name}\n":
-                py_wrapper.write_text(f"import {prog_name}\n")
-            self.append_result(f"[dim]Created launcher:[/dim] {launch_name}.py")
-        
-        # Copy to calculator
+
+        # Copy to calculator: .mpy plus repo launcher .py (never auto-generate launchers here;
+        # they live in git with run() -> Program.main()).
         if calculator.exists():
             self.append_result("[bold #22c55e]--- Copying to calculator ---[/bold #22c55e]")
             import shutil
@@ -2522,8 +2517,20 @@ class CASIOApp(App):
                             py_dst.unlink()
                         shutil.copy(py_src, py_dst)
                         self.append_result(f"[dim]Copied:[/dim] {launch_name}.py")
+                    else:
+                        self.append_result(f"[bold #f59e0b]Missing launcher (skipped):[/bold #f59e0b] {py_src.name}")
                 except OSError as e:
                     self.append_result(f"[bold #f87171]Error copying:[/bold #f87171] {e}")
+            main_src = calc / "main.py"
+            main_dst = calculator / "main.py"
+            try:
+                if main_src.exists():
+                    if main_dst.exists():
+                        main_dst.unlink()
+                    shutil.copy(main_src, main_dst)
+                    self.append_result("[dim]Copied:[/dim] main.py")
+            except OSError as e:
+                self.append_result(f"[bold #f87171]Error copying main.py:[/bold #f87171] {e}")
             self.append_result("[bold #22c55e]✓ All files copied[/bold #22c55e]")
 
         self.update_summary(f"Compiled {compiled} programs")
@@ -4290,11 +4297,22 @@ class CASIOApp(App):
             min_steps=0,
             min_lines=2,
         )
+        # Non-elementary / cannot-integrate answers do not end with " + c"; use relaxed gates.
+        quality_no_elementary = build_checker(
+            contains_all=("answer:",),
+            contains_any=("method:", "met:", "tried", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator", "exam:"),
+            min_steps=0,
+            min_lines=2,
+        )
 
         def check(out):
-            if not quality(out):
-                return False
             text = normalized_text(out)
+            is_no_elementary = "no elementary" in text or "non-elementary" in text
+            if is_no_elementary:
+                if not quality_no_elementary(out):
+                    return False
+            elif not quality(out):
+                return False
             candidate = extract_last_antiderivative_expr(out)
             if candidate:
                 if reverse_chain_integrand_matches(out, integrand, var=var):
@@ -4330,11 +4348,9 @@ class CASIOApp(App):
             if "no elementary" in text or "non-elementary" in text:
                 if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
                     return False
-                good_steps = sum(1 for kw in ("tried", "method", "integration", "standard") if kw in text.lower())
+                good_steps = sum(1 for kw in ("tried", "method", "integration", "standard", "std") if kw in text.lower())
                 return good_steps >= 2
             return False
-
-        return check
 
         return check
 

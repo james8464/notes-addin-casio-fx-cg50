@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-27)
 
 ## Corpus Check
-- 27 files · ~227,495 words
+- 27 files · ~227,568 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2000 nodes · 9295 edges · 25 communities detected
+- 2000 nodes · 9295 edges · 26 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -49,55 +49,55 @@ Nodes (274): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integra
 
 ### Community 3 - "Community 3"
 Cohesion: 0.04
-Nodes (146): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), best_proof_direction(), build_menu_pages(), classify_solve_angle_arg(), clean_expr_text() (+138 more)
+Nodes (157): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), best_solve_rewrite(), build_menu_pages(), classify_solve_angle_arg(), collect_angle_units() (+149 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
 Nodes (121): add(), addq(), all_neg_add(), begin_user_action(), _build_a(), _build_a2(), _build_a3(), _build_a4() (+113 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.07
-Nodes (119): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+111 more)
+Cohesion: 0.1
+Nodes (127): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), depends() (+119 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.07
-Nodes (111): allowed_expression_from_terms(), bridge_to_target(), build_named_power_product(), cancel_fraction_common_factor_for_display(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), detail_trig_expansion() (+103 more)
+Nodes (119): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+111 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.1
-Nodes (105): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_named_power_term(), collect_same_arg_terms(), depends(), derive_cot_quadratic_expr() (+97 more)
+Cohesion: 0.07
+Nodes (85): addq(), allowed_expression_from_terms(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), direct_double_angle_rewrite(), direct_identity_target_rewrite() (+77 more)
 
 ### Community 8 - "Community 8"
+Cohesion: 0.11
+Nodes (65): bridge_to_target(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), detail_trig_expansion(), direct_expression_transform_lines(), direct_ratio_target_rewrite(), domain_restriction_identity_lines(), equivalent() (+57 more)
+
+### Community 9 - "Community 9"
 Cohesion: 0.05
 Nodes (32): Records to include: harness failure, or LLM incorrect / needs review., Set record.status and record.passed from LLM-weighted final_verdict; update feat, check_ollama_available(), get_ollama_models(), LLMCache, LLMManager, quick_verify(), Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol (+24 more)
 
-### Community 9 - "Community 9"
-Cohesion: 0.1
-Nodes (54): best_solve_rewrite(), equation_has_trig_content(), expand_embedded_small(), expand_fraction(), expand_product(), expand_safe_trig_tree(), expand_small(), expand_trig_tree() (+46 more)
-
 ### Community 10 - "Community 10"
-Cohesion: 0.12
-Nodes (49): add_param_coeff_maps(), add_transform_constant_candidate(), build_known_value_branch(), build_rewrite_allowed_info(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any(), detect_template_params() (+41 more)
+Cohesion: 0.07
+Nodes (50): _balance_parens(), begin_user_action(), best_proof_direction(), clean_expr_text(), collect_symbols(), collect_trig_argument_lower_symbols(), detect_transform_var(), display_target_text() (+42 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.06
 Nodes (45): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char(), is_const() (+37 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.09
-Nodes (46): _balance_parens(), begin_user_action(), collect_symbols(), collect_trig_argument_lower_symbols(), compact_lines(), direct_ratio_target_rewrite(), domain_restriction_identity_lines(), _equivalent_uncached() (+38 more)
+Cohesion: 0.1
+Nodes (30): cache_store(), direct_single_trig_info(), _enforce_total_cache_limit(), equation_has_trig_content(), extract_polynomial_trig(), extract_quadratic_trig(), factor_common_term_for_proof(), function_names_of() (+22 more)
 
 ### Community 13 - "Community 13"
 Cohesion: 0.19
 Nodes (26): build_menu_pages(), cache_set(), comp(), direct(), expand_vars(), has(), kids(), main() (+18 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.13
-Nodes (28): addq(), angle_to_degree(), degree_int(), degree_mod_360(), divq(), exact_num_value(), exact_pi_multiple(), exact_trig_lines() (+20 more)
+Cohesion: 0.14
+Nodes (25): add_param_coeff_maps(), add_transform_constant_candidate(), collect_symbol_order(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), depends_any(), detect_template_params(), extract_linear_param_expr() (+17 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.13
-Nodes (26): cache_store(), _enforce_total_cache_limit(), factor_common_term_for_proof(), factor_common_term_once(), factorisation_transforms(), function_names_of(), _function_names_uncached(), kind_names_of() (+18 more)
+Cohesion: 0.19
+Nodes (18): half_angle_expr(), _is_cos_squared_term(), is_lowercase_symbol_name(), _is_sin_squared_term(), match_cos_squared_term(), match_cot_squared_fraction(), match_one_pm_cos(), match_one_pm_cos_norm() (+10 more)
 
 ### Community 16 - "Community 16"
 Cohesion: 0.15
@@ -108,47 +108,51 @@ Cohesion: 0.25
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 18 - "Community 18"
+Cohesion: 0.54
+Nodes (8): angle_to_degree(), degree_int(), degree_mod_360(), exact_trig_lines(), exact_trig_value(), quadrant_of_degree(), reference_degree(), replace_exact_trig()
+
+### Community 19 - "Community 19"
 Cohesion: 0.6
 Nodes (4): format_equation_human_readable(), format_exam_working(), numbered_steps(), split_coeff()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.4
 Nodes (5): apply_runtime_profile(), casio_hw_sim_from_env(), clear_engine_caches(), _force_low_memory_runtime(), shared_clear_all_caches()
 
-### Community 20 - "Community 20"
+### Community 21 - "Community 21"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.7
 Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 24 - "Community 24"
+### Community 25 - "Community 25"
 Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
 - **76 isolated node(s):** `Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.`, `Simple TTL-based cache for LLM responses.`, `Create cache key; hash full prompt to avoid collision on long/ similar tails.` (+71 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 23`** (2 nodes): `trig.py`, `run()`
+- **Thin community `Community 24`** (2 nodes): `trig.py`, `run()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 24`** (2 nodes): `main.py`, `run()`
+- **Thin community `Community 25`** (2 nodes): `main.py`, `run()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CASIOApp` connect `Community 1` to `Community 8`?**
+- **Why does `CASIOApp` connect `Community 1` to `Community 9`?**
   _High betweenness centrality (0.142) - this node is a cross-community bridge._
-- **Why does `LLMManager` connect `Community 8` to `Community 1`?**
+- **Why does `LLMManager` connect `Community 9` to `Community 1`?**
   _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **What connects `Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.` to the rest of the system?**
   _76 weakly-connected nodes found - possible documentation gaps or missing edges._
