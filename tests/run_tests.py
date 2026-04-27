@@ -18,6 +18,7 @@ import os
 import random
 import re
 import resource
+import threading
 import subprocess
 import sys
 from pathlib import Path
@@ -228,6 +229,45 @@ SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
 CASE_TIMEOUT_SECONDS = float(os.environ.get("CASIO_TEST_TIMEOUT", "12"))
 CALCULATED_CHECK_MAX_INPUT_CHARS = int(os.environ.get("CASIO_CALCULATED_CHECK_MAX_INPUT_CHARS", "80"))
+
+# Exam-style random: higher weight = more cases per builder in chaos (see _feature_count_alloc).
+# Set CASIO_EXAM_STRESS=0 for flat round-robin. CASIO_EXAM_BOOST=name:mult,name2:mult overrides.
+EXAM_BUILDER_STRESS_WEIGHTS = {
+    "random_trig_equation_multi_case": 1.5,
+    "random_trig_solve_case": 1.28,
+    "random_trig_mad_as_maths_case": 1.22,
+    "random_trig_radian_hard_case": 1.15,
+    "random_trig_identity_hard_case": 1.08,
+    "random_algebra_solve_case": 1.3,
+    "random_algebra_hidden_quadratic_case": 1.2,
+    "random_algebra_simultaneous_hard_case": 1.15,
+    "random_algebra_circle_line_hard_case": 1.1,
+    "random_algebra_discriminant_case": 1.1,
+    "random_integrate_auto_case": 1.12,
+    "random_integrate_sub_case": 1.05,
+    "random_derive_normal_case": 1.1,
+    "random_suvat_edge_case": 1.12,
+}
+
+
+def _parse_casio_exam_boost_env():
+    raw = (os.environ.get("CASIO_EXAM_BOOST", "") or "").strip()
+    if not raw:
+        return {}
+    out = {}
+    for part in raw.split(","):
+        part = part.strip()
+        if not part or ":" not in part:
+            continue
+        k, v = part.split(":", 1)
+        k, v = k.strip(), v.strip()
+        if not k:
+            continue
+        try:
+            out[k] = float(v)
+        except ValueError:
+            pass
+    return out
 
 
 def limited_by(limit, value):
@@ -2019,6 +2059,8 @@ class CASIOApp(App):
         self.current_random_workers = None
         self.current_run_question_keys = set()
         self.session_random_question_keys = set()
+        self._random_infinite = False
+        self._session_report_lock = threading.Lock()
         self.start_time = None
         self.total_expected = 0
         self._last_eta_update = 0
@@ -2033,7 +2075,8 @@ class CASIOApp(App):
         self._weighted_llm_rate = 0.0
         self._feature_stats = {}
         self._show_chaos_feature_gaps = False
-        
+        self._in_run_case_specs = False
+
         self.command_items = {
             "/random": "Run randomly generated tests (infinite until stopped)",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
@@ -2045,7 +2088,6 @@ class CASIOApp(App):
             "/quit": "Exit the test harness",
             "/status": "Show the current scope and last run summary",
             "/report": "Show detailed failures from the last run",
-            "/generateReport": "Write tests/reports/failure_report_latest.txt (last run: failures + LLM review notes)",
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
@@ -2281,8 +2323,6 @@ class CASIOApp(App):
             self.show_programs()
         elif value_lower == "/help":
             self.show_help()
-        elif value in ("/generateReport", "/generatereport"):
-            self.generate_report_file()
         elif value_lower == "/compile":
             self.action_compile()
         elif value_lower == "/llm" or value_lower == "/llm status":
@@ -2301,85 +2341,68 @@ class CASIOApp(App):
                 ids.append(r.test_id)
         return ids
 
-    def generate_report_file(self):
-        report_dir = Path(__file__).resolve().parent / "reports"
-        report_dir.mkdir(parents=True, exist_ok=True)
-        # Single canonical file per /generateReport (overwritten; avoids many failure_report_*.txt runs)
-        report_path = report_dir / "failure_report_latest.txt"
-        want_ids = set(self._failure_report_record_ids())
-        report_records = [r for r in self.records if r.test_id in want_ids]
+    def _session_report_path(self):
+        return Path(__file__).resolve().parent / "reports" / "failure_report_latest.txt"
 
-        passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
-        failed = [r for r in self.records if r.status == TestStatus.FAIL]
-        llm_review = sum(1 for r in self.records if (getattr(r, "llm_verdict", "") or "").strip() in ("INCORRECT", "NEEDS_REVIEW"))
-        total = len(self.records)
+    def _init_session_report_file(self):
+        """Reset the on-disk log at the start of a run; failures append while tests execute."""
+        p = self._session_report_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.now().isoformat(timespec="seconds")
         try:
             scope_s = f"{self.last_run_scope[0]!r} · {self.last_run_scope[1]!r}"
         except (TypeError, ValueError, IndexError):
             scope_s = "unknown"
-
-        now = datetime.now()
-        lines = [
-            "CASIO Test Failure Report",
-            f"Generated: {now.isoformat(timespec='seconds')}",
-            f"Last command: {self.last_command}",
-            f"Current program: {self.current_program}",
-            f"Last run scope: {scope_s}",
-            f"Summary: {passed} passed (after LLM weighting when used), {len(failed)} failed, {llm_review} with raw LLM INCORRECT/NEEDS_REVIEW verdicts, {total} total in session",
-            f"In this file: {len(report_records)} record(s) (failures and/or tests needing follow-up).",
+        header = [
+            "CASIO live session report (appends for each failure / LLM follow-up while tests run)",
+            f"Started: {now}",
+            f"Command: {self.last_command}",
+            f"Program: {self.current_program}",
+            f"Scope: {scope_s}",
+            "See tests/reports/ — tail this file in another terminal for a live view.",
+            "=" * 72,
             "",
         ]
+        with self._session_report_lock:
+            p.write_text("\n".join(header) + "\n", encoding="utf-8")
+        self.last_report_path = str(p)
+        if not getattr(self, "plain_mode", False):
+            self.append_result(f"[dim]Session log:[/dim] {p}")
 
-        if total == 0:
-            lines.append("No run data available yet. Run a suite first, then /generateReport.")
-        elif not report_records:
-            lines.append("Nothing in this report: no harness failures and no LLM flags (INCORRECT/NEEDS_REVIEW) in the last run.")
-        else:
-            feature_fails = {}
-            for record in [r for r in self.records if r.status == TestStatus.FAIL]:
-                feat = record.feature or "unknown"
-                if feat not in feature_fails:
-                    feature_fails[feat] = 0
-                feature_fails[feat] += 1
-            if feature_fails:
-                lines.append("Failures by feature (final status, counts):")
-                for feat, n in sorted(feature_fails.items()):
-                    lines.append(f"  {feat}: {n}")
-                lines.append("")
-
-            for index, record in enumerate(sorted(report_records, key=lambda r: r.test_id), start=1):
-                feat_tag = f" [{record.feature}]" if record.feature else ""
-                lines.extend(["=" * 80, f"{index}. [{record.program}] {record.label}{feat_tag}", "=" * 80])
-                lines.append(
-                    f"Final: {record.status.name.upper()}  |  harness (pre-LLM): {record.harness_status.name.upper()}"
-                )
-                lines.append("Input:")
-                lines.append((record.input_text or "[input not captured]").rstrip())
-                lines.append("")
-                lines.append("Check:")
-                lines.append(record.check_info or "[check info not captured]")
-                lines.append("")
-                v = (getattr(record, "llm_verdict", "") or "").strip()
-                if v:
-                    lines.append(f"LLM verdict: {v}")
-                    expl = (getattr(record, "llm_explanation", "") or "").rstrip() or "N/A"
-                    lines.append("LLM notes:")
-                    lines.append(expl)
-                else:
-                    lines.append("LLM: (not run or no verdict for this test)")
-                lines.append("")
-                lines.append("Output:")
-                lines.append((record.output or "").rstrip())
-                lines.append("")
-
-        report_path.write_text("\n".join(lines) + "\n")
-        self.last_report_path = str(report_path)
-        self.append_result(f"[bold #22c55e]Saved report:[/bold #22c55e] {report_path}")
-        if self._wants_json_export():
-            json_path = report_dir / "failure_report_latest.json"
-            self._write_json_report(json_path)
-            self.append_result(f"[bold #22c55e]Saved JSON:[/bold #22c55e] {json_path}")
-        self.update_summary(f"Saved report · {report_path.name} ({len(report_records)} case(s))")
+    def _append_session_report_if_worthy(self, record):
+        """Append a compact block for failing or LLM-flagged tests (avoids a huge all-pass file)."""
+        llm = (getattr(record, "llm_verdict", "") or "").strip()
+        if record.status != TestStatus.FAIL and llm not in ("INCORRECT", "NEEDS_REVIEW"):
+            return
+        p = self._session_report_path()
+        lines = [
+            "-" * 72,
+            "#{0} [{1}] {2}{3}".format(
+                record.test_id,
+                record.program,
+                record.label,
+                " [" + record.feature + "]" if record.feature else "",
+            ),
+            "Final: {0}  |  harness: {1}".format(record.status.name, record.harness_status.name),
+        ]
+        if llm:
+            lines.append("LLM: {0}".format(llm))
+            expl = (getattr(record, "llm_explanation", "") or "").strip()
+            if expl:
+                lines.append("LLM notes: {0}".format(expl[:2000]))
+        lines.append("Input:")
+        lines.append((record.input_text or "").rstrip())
+        lines.append("Check:")
+        lines.append((record.check_info or "").rstrip())
+        out = record.output or ""
+        tail = out if len(out) < 8000 else "\n".join((out or "").splitlines()[-50:])
+        lines.append("Output:")
+        lines.append(tail.rstrip())
+        lines.append("")
+        block = "\n".join(lines) + "\n"
+        with self._session_report_lock:
+            with open(p, "a", encoding="utf-8") as fh:
+                fh.write(block)
 
     def action_run_tests(self, command_label="/run"):
         if self.running:
@@ -2387,7 +2410,9 @@ class CASIOApp(App):
         self.transition_run_state(RunState.RUNNING)
         self.records.clear()
         self.current_run_question_keys.clear()
+        self.session_random_question_keys.clear()
         self.last_run_scope = (self.current_program, "chaos")
+        self._init_session_report_file()
         self.query_one("#results", RichLog).clear()
         self.append_result(f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
         self.append_result("[dim]Booting test harness...[/dim]")
@@ -2400,8 +2425,9 @@ class CASIOApp(App):
         self.transition_run_state(RunState.RUNNING)
         self.records.clear()
         self.current_run_question_keys.clear()
+        self.session_random_question_keys.clear()
         self.last_run_scope = ("random", difficulty)
-        
+
         if not getattr(self, 'plain_mode', False):
             self.query_one("#results", RichLog).clear()
         
@@ -2855,6 +2881,8 @@ class CASIOApp(App):
         else:
             self.update_summary(f"Running... {passed_count}/{total} passed ({pct:.0f}%)")
         self._bump_tui_progress_if_random()
+        if not self._in_run_case_specs:
+            self._append_session_report_if_worthy(record)
         return record
 
     def apply_llm_weighted_status(self, record, final_verdict):
@@ -2938,6 +2966,11 @@ class CASIOApp(App):
 
         self.append_result(f"\n[bold]Results:[/bold] [bold {color}]{msg}[/bold {color}]\n")
         self._append_feature_weakness_and_gaps()
+        if self._wants_json_export() and self.records:
+            try:
+                self._write_json_report(self._session_report_path().parent / "failure_report_latest.json")
+            except Exception:
+                pass
         self.update_summary(msg)
 
     def _append_feature_weakness_and_gaps(self):
@@ -3115,6 +3148,18 @@ class CASIOApp(App):
         return f"{case.program}::LABEL::{case.label}"
 
     def dedupe_cases_for_run(self, cases):
+        # Infinite runs must not use a global key set: it exhausts the space and
+        # later batches become empty (harness looks "stuck" with no new tests).
+        if getattr(self, "_random_infinite", False):
+            deduped = []
+            local = set()
+            for case in cases:
+                key = self.case_question_key(case)
+                if key in local:
+                    continue
+                local.add(key)
+                deduped.append(case)
+            return deduped
         deduped = []
         seen = set(self.current_run_question_keys)
         for case in cases:
@@ -3130,7 +3175,7 @@ class CASIOApp(App):
         return list(self.iter_unique_random_cases(features, count, rng, difficulty))
 
     def iter_unique_random_cases(self, features, count, rng, difficulty):
-        counts = self.balanced_counts(count, len(features))
+        counts = self._feature_count_alloc(count, features, rng)
         batch_seen = set()
         built = []
         next_index = 1
@@ -3181,17 +3226,22 @@ class CASIOApp(App):
                     prog_name = feature_prog_map.get(feature.__name__, "Algebra")
                     llm_result = self.generate_llm_case(prog_name, case_difficulty)
                     if llm_result:
-                        case.label = f"[LLM] {case.label}"
+                        ref_note = ""
                         if isinstance(llm_result, (tuple, list)) and len(llm_result) >= 2 and llm_result[1]:
-                            ref = f"llm_ans={llm_result[1]!s}"
-                            case.check_info = f"{case.check_info}; {ref}" if case.check_info else ref
+                            ref_note = " [llm ref: {0}]".format(str(llm_result[1])[:160].replace("\n", " "))
+                        # Keep check_info = harness-only; a generated ref here often disagrees in units
+                        # with the CLI case and causes false LLM "INCORRECT" on correct calculator output.
+                        case.label = "[LLM] {0}{1}".format(case.label, ref_note)
                 
                 key = self.case_question_key(case)
                 attempts += 1
-                if key in batch_seen or key in self.session_random_question_keys:
+                if key in batch_seen:
+                    continue
+                if not getattr(self, "_random_infinite", False) and key in self.session_random_question_keys:
                     continue
                 batch_seen.add(key)
-                self.session_random_question_keys.add(key)
+                if not getattr(self, "_random_infinite", False):
+                    self.session_random_question_keys.add(key)
                 built.append(case)
                 next_index += 1
                 made += 1
@@ -3200,119 +3250,172 @@ class CASIOApp(App):
             yield case
 
     def run_case_specs(self, cases, workers=None, skip_quality=False, infinite_mode=False):
-        cases = self.dedupe_cases_for_run(cases)
-        active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
-        case_count = len(cases)
-        skip_quality = skip_quality or self.total_expected > 2000
-        use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
-        llm_estimated_per_test = 0.0
-        if use_llm:
-            model = getattr(self.llm_manager, 'selected_model', None) or 'unknown'
-            if 'qwen3.5' in model or 'qwen2.5' in model:
-                llm_estimated_per_test = 20.0
-            elif 'llama2' in model or 'falcon' in model:
-                llm_estimated_per_test = 2.0
-            elif 'gemma' in model:
-                llm_estimated_per_test = 8.0
-            else:
-                llm_estimated_per_test = 10.0
-
-        if case_count > 5000:
-            batch_size = max(500, case_count // 50)
-            active_workers = min(active_workers, 24)
-        elif case_count > 2000:
-            batch_size = max(300, case_count // 80)
-            active_workers = min(active_workers, 20)
-        elif case_count > 200:
-            batch_size = max(100, case_count // 100)
-        else:
-            batch_size = case_count
-
-        def evaluate_timed(case):
-            import time
-            start = time.time()
-            try:
-                passed, output = case.runner()
-            except Exception as err:
-                passed, output = False, str(err)
-            elapsed = time.time() - start
-            return case, passed, output, elapsed
-
-        def llm_verify(record, max_retries=3):
-            if not use_llm:
-                return ("", "")
-            
-            for attempt in range(max_retries):
-                try:
-                    context = f"{record.program}: {record.label}"
-                    expected = record.check_info or context
-                    result = self.llm_manager.verify(record.output, expected, context, check_working_quality=False)
-                    verdict = result.get("verdict", "")
-                    explanation = result.get("explanation", "")
-                    
-                    if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
-                        return (verdict, explanation)
-                except Exception:
+        self._in_run_case_specs = True
+        try:
+            cases = self.dedupe_cases_for_run(cases)
+            active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
+            case_count = len(cases)
+            skip_quality = skip_quality or self.total_expected > 2000
+            use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
+            if use_llm:
+                model = getattr(self.llm_manager, "selected_model", None) or "unknown"
+                if "qwen3.5" in model or "qwen2.5" in model:
                     pass
-            
-            return ("", "")
+                elif "llama2" in model or "falcon" in model:
+                    pass
 
-        def weighted_verdict(code_verdict, llm_verdict):
-            if not llm_verdict or llm_verdict in ("", "DISABLED"):
-                return code_verdict
-            
-            if llm_verdict == "CORRECT":
-                if code_verdict == "CORRECT":
-                    return "CORRECT"
-                return "NEEDS_REVIEW"
-            elif llm_verdict == "INCORRECT":
-                return "INCORRECT"
-            elif llm_verdict == "NEEDS_REVIEW":
-                if code_verdict == "INCORRECT":
+            if case_count > 5000:
+                batch_size = max(500, case_count // 50)
+                active_workers = min(active_workers, 24)
+            elif case_count > 2000:
+                batch_size = max(300, case_count // 80)
+                active_workers = min(active_workers, 20)
+            elif case_count > 200:
+                batch_size = max(100, case_count // 100)
+            else:
+                batch_size = case_count
+
+            def evaluate_timed(case):
+                import time
+                start = time.time()
+                try:
+                    passed, output = case.runner()
+                except Exception as err:
+                    passed, output = False, str(err)
+                elapsed = time.time() - start
+                return case, passed, output, elapsed
+
+            def llm_verify(record, max_retries=3):
+                if not use_llm:
+                    return ("", "")
+
+                for _attempt in range(max_retries):
+                    try:
+                        context = "{0}: {1}".format(record.program, record.label)
+                        expected = record.check_info or context
+                        result = self.llm_manager.verify(
+                            record.output, expected, context, check_working_quality=False
+                        )
+                        verdict = result.get("verdict", "")
+                        explanation = result.get("explanation", "")
+
+                        if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+                            return (verdict, explanation)
+                    except Exception:
+                        pass
+
+                return ("", "")
+
+            def weighted_verdict(code_verdict, llm_verdict):
+                if not llm_verdict or llm_verdict in ("", "DISABLED"):
+                    return code_verdict
+
+                if llm_verdict == "CORRECT":
+                    if code_verdict == "CORRECT":
+                        return "CORRECT"
+                    return "NEEDS_REVIEW"
+                if llm_verdict == "INCORRECT":
                     return "INCORRECT"
-                return "NEEDS_REVIEW"
-            return code_verdict
+                if llm_verdict == "NEEDS_REVIEW":
+                    if code_verdict == "INCORRECT":
+                        return "INCORRECT"
+                    return "NEEDS_REVIEW"
+                return code_verdict
 
-        total_batches = (len(cases) + batch_size - 1) // batch_size
-        pending_records = []
-
-        for batch_start in range(0, len(cases), batch_size):
-            if not self.running:
-                break
-            batch = cases[batch_start:batch_start + batch_size]
-            with ThreadPoolExecutor(max_workers=active_workers) as executor:
-                results = executor.map(evaluate_timed, batch)
-                for case, passed, output, elapsed in results:
-                    if elapsed > 0:
-                        self._test_times.append(elapsed)
-                        if len(self._test_times) > 500:
-                            self._test_times = self._test_times[-200:]
-                    quality_issues = []
-                    if not skip_quality and getattr(case, "feature", ""):
-                        quality_issues = exam_working_quality_issues(output, case.program, case.feature)
-                        if quality_issues:
-                            passed = False
-                            detail = "; ".join(quality_issues[:4])
-                            case.check_info = f"{case.check_info}; exam-quality issues: {detail}" if case.check_info else f"exam-quality issues: {detail}"
-                    record = self.add_test(case.label, passed, output, case.program, case.input_text, case.check_info, getattr(case, 'feature', ''))
-                    pending_records.append(record)
-
-                    if use_llm:
-                        verdict, explanation = llm_verify(record)
-                        if verdict:
-                            record.llm_verdict = verdict
-                            record.llm_explanation = explanation
-                            llm_color = "#22c55e" if verdict == "CORRECT" else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
-                            self.append_result(f"[dim]  └─ LLM: [{llm_color}]{verdict}[/{llm_color}][/dim]")
-
-                        code_verdict = "CORRECT" if passed else "INCORRECT"
-                        final_verdict = weighted_verdict(code_verdict, verdict)
-                        self.apply_llm_weighted_status(record, final_verdict)
+            for batch_start in range(0, len(cases), batch_size):
+                if not self.running:
+                    break
+                batch = cases[batch_start : batch_start + batch_size]
+                with ThreadPoolExecutor(max_workers=active_workers) as executor:
+                    results = executor.map(evaluate_timed, batch)
+                    for case, passed, output, elapsed in results:
+                        if elapsed > 0:
+                            self._test_times.append(elapsed)
+                            if len(self._test_times) > 500:
+                                self._test_times = self._test_times[-200:]
+                        quality_issues = []
+                        if not skip_quality and getattr(case, "feature", ""):
+                            quality_issues = exam_working_quality_issues(
+                                output, case.program, case.feature
+                            )
+                            if quality_issues:
+                                passed = False
+                                detail = "; ".join(quality_issues[:4])
+                                case.check_info = (
+                                    "{0}; exam-quality issues: {1}".format(
+                                        case.check_info, detail
+                                    )
+                                    if case.check_info
+                                    else "exam-quality issues: {0}".format(detail)
+                                )
+                        record = self.add_test(
+                            case.label,
+                            passed,
+                            output,
+                            case.program,
+                            case.input_text,
+                            case.check_info,
+                            getattr(case, "feature", ""),
+                        )
+                        verdict = ""
+                        if use_llm:
+                            verdict, explanation = llm_verify(record)
+                            if verdict:
+                                record.llm_verdict = verdict
+                                record.llm_explanation = explanation
+                                llm_color = (
+                                    "#22c55e"
+                                    if verdict == "CORRECT"
+                                    else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
+                                )
+                                self.append_result(
+                                    "[dim]  └─ LLM: [{0}]{1}[/{0}][/dim]".format(
+                                        llm_color, verdict
+                                    )
+                                )
+                            code_verdict = "CORRECT" if passed else "INCORRECT"
+                            final_verdict = weighted_verdict(code_verdict, verdict)
+                            self.apply_llm_weighted_status(record, final_verdict)
+                        self._append_session_report_if_worthy(record)
+        finally:
+            self._in_run_case_specs = False
 
     def balanced_counts(self, total, parts):
         base = total // parts
         extra = total % parts
         return [base + (1 if i < extra else 0) for i in range(parts)]
+
+    def _exam_stress_alloc_enabled(self):
+        return (os.environ.get("CASIO_EXAM_STRESS", "1") or "1").lower() not in ("0", "false", "no", "off")
+
+    def _weighted_count_alloc(self, n_total, weights, rng):
+        """Largest-remainder apportioning of n_total to len(weights) buckets (exam-style, jittered)."""
+        w = [max(0.05, float(wh) * rng.uniform(0.88, 1.12)) for wh in weights]
+        s = sum(w)
+        if s <= 0 or n_total <= 0:
+            return self.balanced_counts(n_total, len(weights))
+        exact = [n_total * (x / s) for x in w]
+        out = [int(t) for t in exact]
+        r = n_total - sum(out)
+        fr = sorted(
+            ((i, exact[i] - out[i]) for i in range(len(w))),
+            key=lambda z: -z[1],
+        )
+        for j in range(max(0, r)):
+            out[fr[j % len(out)][0]] += 1
+        return out
+
+    def _feature_count_alloc(self, n_total, features, rng):
+        if not self._exam_stress_alloc_enabled() or n_total <= 0 or not features:
+            return self.balanced_counts(n_total, len(features))
+        boost_map = _parse_casio_exam_boost_env()
+        w = []
+        for fn in features:
+            name = getattr(fn, "__name__", "")
+            base = float(EXAM_BUILDER_STRESS_WEIGHTS.get(name, 1.0))
+            base *= float(boost_map.get(name, 1.0))
+            w.append(base * rng.uniform(0.9, 1.1))
+        return self._weighted_count_alloc(n_total, w, rng)
 
     def signed_int_text(self, value):
         if value > 0:
@@ -4802,6 +4905,7 @@ class CASIOApp(App):
             # Chaotic mode - wild equations
             angle = rng.choice(angle_forms + [
                 f"{rng.randint(1,7)}*x+{rng.randint(1,9)}",
+                f"{rng.randint(2,5)}*x+pi/{rng.randint(2,8)}",
             ])
             # Random RHS
             target_choices = ["0", "1", "-1", "1/2", "sqrt(2)/2", "sqrt(3)/2", "-sqrt(3)/3", 
@@ -4927,13 +5031,38 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_prove_checker("1"), feature="trig_identity_hard")
 
     def random_trig_equation_multi_case(self, rng, difficulty, index):
-        choices = [
-            f"sin(2*x)-sin(x)=0",
-            f"cos(2*x)+cos(x)=0",
-            f"cos(2*x)=cos(x)",
+        # Exam-style: quadratics in sin/cos, factor, mixed angles (weighted more in EXAM_STRESS)
+        a, c = rng.randint(1, 3), rng.randint(0, 2)
+        param = f"cos(2*x)+{a}*cos(x)={c}" if a + c > 0 else "cos(2*x)+2*cos(x)=1"
+        base = [
+            "sin(2*x)-sin(x)=0",
+            "cos(2*x)+cos(x)=0",
+            "cos(2*x)=cos(x)",
+            param,
+            "cos(x)+cos(3*x)=0",
+            "sin(2*x)+cos(2*x)=0",
+            "2*sin(x)*cos(x)-sqrt(2)*cos(x)=0",
         ]
-        eq = rng.choice(choices)
-        cli_input = f"3\n{eq},x,0,360\n"
+        extra = [
+            "sin(2*x)+cos(x)=0",
+            f"cos({2*a}*x)+cos(x)=0" if 2 * a < 6 else f"cos(2*x)+cos(3*x)=0",
+        ]
+        chaos = [
+            "cos(x)*sin(2*x)=0",
+            "tan(2*x)-tan(x)=0",
+        ]
+        pool = list(base)
+        if difficulty in ("chaos", "hard"):
+            pool += extra
+        if difficulty == "chaos":
+            pool += chaos
+        eq = rng.choice(pool)
+        rdeg = rng.random() < 0.52
+        if difficulty == "chaos" and rdeg:
+            interval = rng.choice(["0,2*pi", "0,pi", "-pi,pi", "0,2*pi", "-pi,2*pi"])
+        else:
+            interval = rng.choice(["0,360", "0,180", "-180,180"])
+        cli_input = f"3\n{eq},x,{interval}\n"
         label = f"Multi trig {index}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_solve_checker("x ="), feature="trig_multi")
 
@@ -5908,6 +6037,8 @@ class CASIOApp(App):
         self.total_expected = expected_count
         self._last_eta_update = 0
         self.records = []
+        self.current_run_question_keys.clear()
+        self.session_random_question_keys.clear()
         self._test_times = []
         self._llm_times = []
         self._test_timestamps = []
@@ -5948,92 +6079,96 @@ class CASIOApp(App):
         actual_count = count if count else 200
         infinite_mode = count is None or count <= 0
         def run():
-            emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
-            active_workers = workers or CASE_WORKERS
-            if self.run_state != RunState.RUNNING:
-                self.transition_run_state(RunState.RUNNING)
-            if self.consume_random_stop_file():
-                self.transition_run_state(RunState.STOPPED)
-                emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
-                return
+            self._random_infinite = infinite_mode
+            try:
+                emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
+                active_workers = workers or CASE_WORKERS
+                if self.run_state != RunState.RUNNING:
+                    self.transition_run_state(RunState.RUNNING)
+                if self.consume_random_stop_file():
+                    self.transition_run_state(RunState.STOPPED)
+                    emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
+                    return
 
-            self._show_chaos_feature_gaps = True
-            self.announce_random_llm_status(emit)
+                self._show_chaos_feature_gaps = True
+                self.announce_random_llm_status(emit)
 
-            emit(
-                self.append_result,
-                f"[bold #e07a53]▶ Running random tests...[/bold #e07a53]",
-            )
-            emit(
-                self.append_result,
-                f"[dim]Press /stop to end · Tests run: 0[/dim]",
-            )
+                emit(
+                    self.append_result,
+                    f"[bold #e07a53]▶ Running random tests...[/bold #e07a53]",
+                )
+                emit(
+                    self.append_result,
+                    f"[dim]Press /stop to end · Tests run: 0[/dim]",
+                )
 
-            rng = random.Random()
-            builders = self.random_builders_for_program(program)
+                rng = random.Random()
+                builders = self.random_builders_for_program(program)
 
-            if not builders:
-                self.transition_run_state(RunState.STOPPED)
-                emit(self.append_result, "[bold #f59e0b]Unknown program for random run.[/bold #f59e0b]")
-                emit(self.render_summary)
-                return
+                if not builders:
+                    self.transition_run_state(RunState.STOPPED)
+                    emit(self.append_result, "[bold #f59e0b]Unknown program for random run.[/bold #f59e0b]")
+                    emit(self.render_summary)
+                    return
 
-            generation_chunk = 200
-            if infinite_mode and self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
-                generation_chunk = 1
+                generation_chunk = 200
+                if infinite_mode and self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
+                    generation_chunk = 1
 
-            program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
-            expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
-            self.reset_random_run_metrics(expected_count)
+                program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
+                expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
+                self.reset_random_run_metrics(expected_count)
 
-            self.current_program = program or "all"
-            self.last_run_scope = (self.current_program, difficulty)
-            scope = f"{program} · " if program else ""
+                self.current_program = program or "all"
+                self.last_run_scope = (self.current_program, difficulty)
+                self._init_session_report_file()
+                scope = f"{program} · " if program else ""
 
-            emit(
-                self.append_result,
-                f"[dim]{self.total_expected} {scope}{difficulty} tests · {active_workers} workers[/dim]" if not infinite_mode else f"[dim]{scope}{difficulty} infinite tests · {active_workers} workers[/dim]",
-            )
+                emit(
+                    self.append_result,
+                    f"[dim]{self.total_expected} {scope}{difficulty} tests · {active_workers} workers[/dim]" if not infinite_mode else f"[dim]{scope}{difficulty} infinite tests · {active_workers} workers[/dim]",
+                )
 
-            if infinite_mode:
-                emit(self.append_result, "[dim]Infinite mode: press /stop to end[/dim]")
-
-            if not getattr(self, "plain_mode", False) and self.total_expected > 0:
-                emit(self.update_progress_bar, 0, self.total_expected)
-
-            last_program = None
-            for batch in self.iter_random_test_batches(builders, program_counts, generation_chunk, infinite_mode):
-                # The batch iterator owns generation order. This loop owns stop
-                # checks and execution; it exits on /stop, stop-file, or after
-                # the finite generator is exhausted.
-                if self.random_stop_requested(emit):
-                    break
-                if batch.program != last_program:
-                    emit(self.append_result, "")
-                    emit(self.append_result, f"[bold #e07a53]▶ {batch.program}[/bold #e07a53]")
-                    last_program = batch.program
-                if batch.first_for_program:
-                    if infinite_mode:
-                        emit(self.append_result, "[dim]Generating cases...[/dim]")
-                    else:
-                        emit(self.append_result, f"[dim]Generating first {batch.count} random cases...[/dim]")
-
-                cases = batch.builder(difficulty, batch.count, rng)
-                self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
-                test_count = len(self.records)
-                test_total = self.total_expected if self.total_expected > 0 else test_count
-                emit(self.update_progress_bar, test_count, test_total)
                 if infinite_mode:
-                    self.total_expected = len(self.records) + generation_chunk * len(builders)
-                if self.random_stop_requested(emit):
-                    break
+                    emit(self.append_result, "[dim]Infinite mode: press /stop to end · dedupe is per-batch (long runs ok)[/dim]")
 
-            if self.run_state == RunState.RUNNING:
-                self.transition_run_state(RunState.STOPPED)
-            if getattr(self, 'plain_mode', False):
-                self.render_summary()
-            else:
-                self.call_from_thread(self.render_summary)
+                if not getattr(self, "plain_mode", False) and self.total_expected > 0:
+                    emit(self.update_progress_bar, 0, self.total_expected)
+
+                last_program = None
+                for batch in self.iter_random_test_batches(builders, program_counts, generation_chunk, infinite_mode):
+                    if self.random_stop_requested(emit):
+                        break
+                    if batch.program != last_program:
+                        emit(self.append_result, "")
+                        emit(self.append_result, f"[bold #e07a53]▶ {batch.program}[/bold #e07a53]")
+                        last_program = batch.program
+                    if batch.first_for_program:
+                        if infinite_mode:
+                            emit(self.append_result, "[dim]Generating cases...[/dim]")
+                        else:
+                            emit(self.append_result, f"[dim]Generating first {batch.count} random cases...[/dim]")
+
+                    cases = batch.builder(difficulty, batch.count, rng)
+                    if not cases and infinite_mode:
+                        emit(self.append_result, "[dim][skip] empty case batch (retry next cycle)[/dim]")
+                    self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
+                    test_count = len(self.records)
+                    test_total = self.total_expected if self.total_expected > 0 else test_count
+                    emit(self.update_progress_bar, test_count, test_total)
+                    if infinite_mode:
+                        self.total_expected = len(self.records) + generation_chunk * len(builders)
+                    if self.random_stop_requested(emit):
+                        break
+
+                if self.run_state == RunState.RUNNING:
+                    self.transition_run_state(RunState.STOPPED)
+                if getattr(self, 'plain_mode', False):
+                    self.render_summary()
+                else:
+                    self.call_from_thread(self.render_summary)
+            finally:
+                self._random_infinite = False
 
         if getattr(self, 'plain_mode', False):
             run()
@@ -7293,7 +7428,8 @@ def _cli_help():
     return """CASIO test harness (CLI batch mode when arguments are present).
 
   python3 tests/run_tests.py
-      Interactive TUI (type /help, /random, /generateReport, etc.)
+      Interactive TUI (type /help, /random, /infinite, etc.)
+      tests/reports/failure_report_latest.txt is rewritten at run start; failures append live.
 
   python3 tests/run_tests.py random [N]
       Run N chaos random tests (default 100) and print a summary.
@@ -7304,17 +7440,14 @@ def _cli_help():
   python3 tests/run_tests.py compile
       Compile .mpy targets (local paths; see action_compile in run_tests).
 
-  python3 tests/run_tests.py [--json] generatereport
-      With previous CLI steps in the same process, write tests/reports/
-      failure_report_latest.txt, and (with --json or env below) failure_report_latest.json
-      of all self.records. Example:  random 5 generatereport
-
   Common environment variables
       CASIO_TEST_TIMEOUT           Per-case timeout (default 12 seconds)
       CASIO_TEST_WORKERS           Max parallel case workers
       CASIO_LLM_GENERATION_CHANCE  Chance to tag LLM-generated ideas in random mode
-      CASIO_TEST_EXPORT_JSON       1/yes/true also writes JSON when you run /generateReport or
-                                   CLI generatereport
+      CASIO_TEST_EXPORT_JSON       1/yes/true writes JSON snapshot on each run summary
+      CASIO_EXAM_STRESS            1 (default): allocate chaos cases across builders with
+                                   jittered weights to stress high-yield / exam-relevant items.
+      CASIO_EXAM_BOOST             Optional: builder_name:mult pairs, e.g. random_trig_equation_multi_case:1.5
       Exits 1 in CLI mode if any test has final status FAIL; otherwise 0.
 """
 
@@ -7358,10 +7491,6 @@ def main():
                 continue
             if tok == "compile":
                 app.action_compile()
-                i += 1
-                continue
-            if tok in ("generatereport", "/generatereport"):
-                app.generate_report_file()
                 i += 1
                 continue
             i += 1
