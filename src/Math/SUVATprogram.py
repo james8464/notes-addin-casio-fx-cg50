@@ -59,12 +59,6 @@ except ImportError:
                 return a == b
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
 
-SKIP_AUTORUN = sys is not None and (
-    getattr(sys, '_suvat_no_autorun', False) or
-    len(sys.argv) > 1
-)
-
-
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
 
@@ -2074,5 +2068,5 @@ def main():
 
 
 run = main
-if not SKIP_AUTORUN:
+if __name__ == "__main__":
     main()

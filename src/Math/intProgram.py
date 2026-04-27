@@ -151,10 +151,6 @@ def hard_integral_failure_working(node, var):
     ], 'Answer: no elementary antideriv in std fn set'
 
 
-SKIP_AUTORUN = sys is not None and (
-    getattr(sys, '_int_no_autorun', False) or
-    len(sys.argv) > 1
-)
 MICROPYTHON_RUNTIME = sys is not None and getattr(
     getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 LOW_MEMORY_RUNTIME = False
@@ -7285,5 +7281,5 @@ def main():
 
 
 run = main
-if not SKIP_AUTORUN:
+if __name__ == "__main__":
     main()

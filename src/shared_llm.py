@@ -400,9 +400,9 @@ class LLMManager:
             return "INCORRECT", "No working steps shown (just Method/Hence/Answer)"
 
         if len(calc_lines) == 0 and len(use_lines) == 1:
-            return "INCORRECT", f"Only identity shown, no calculation steps: '{use_lines[0][:50]}'"
+            return "INCORRECT", "Only identity shown, no calculation steps: %r" % (use_lines[0][:50],)
 
-        return "CORRECT", f"Working steps shown ({len(all_working)} lines)"
+        return "CORRECT", "Working steps shown (%s lines)" % (len(all_working),)
     
     def get_status(self):
         """Get current status of LLM manager."""

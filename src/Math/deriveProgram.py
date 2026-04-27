@@ -97,10 +97,6 @@ MAX_NESTING_DEPTH = 200
 MAX_INPUT_LENGTH = 10000
 MAX_TOKEN_COUNT = 2000
 
-SKIP_AUTORUN = sys is not None and (
-    getattr(sys, "_derive_no_autorun", False) or
-    len(sys.argv) > 1
-)
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, "implementation", None), "name", "") == "micropython"
 LOW_MEMORY_RUNTIME = False
 
@@ -3087,5 +3083,5 @@ def main():
 
 
 run = main
-if not SKIP_AUTORUN:
+if __name__ == "__main__":
     main()

@@ -25,6 +25,8 @@ EXPECTED_MPY_FILES = (
     "intProgram.mpy",
     "SUVATprogram.mpy",
     "booleanProgram.mpy",  # compile target; may be missing until built
+    "compat_probe.mpy",
+    "main.mpy",
 )
 
 EXPECTED_ASCII = 0x4D  # 'M'

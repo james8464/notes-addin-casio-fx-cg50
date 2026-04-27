@@ -102,10 +102,6 @@ except ImportError:
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
 FAST_ISFINITE = math.isfinite if math is not None and hasattr(math, 'isfinite') else None
-SKIP_AUTORUN = sys is not None and (
-    getattr(sys, '_algebra_no_autorun', False) or
-    len(sys.argv) > 1
-)
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 
 # Cache size limits - adjust based on runtime
@@ -7796,5 +7792,5 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
 
 
 run = main
-if not SKIP_AUTORUN:
+if __name__ == "__main__":
     main()

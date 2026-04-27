@@ -728,80 +728,86 @@ def paged_menu_input(prompt_label, options, default=None):
         print("Mode must be 1-4.")
 
 
-print("Syntax:")
-print("  , for NOT (e.g. A, = NOT A)")
-print("  . for AND (e.g. A.B = A AND B)")
-print("  + for OR (e.g. A+B = A OR B)")
-print("Variables: single letters (A, B) or multi-letter (AB = A AND B)")
-print("")
-mode = paged_menu_input("Mode", [
-    ("1", "simplify"),
-    ("2", "nand form"),
-    ("3", "nor form"),
-    ("4", "prove"),
-], "1")
+def main():
+    print("Syntax:")
+    print("  , for NOT (e.g. A, = NOT A)")
+    print("  . for AND (e.g. A.B = A AND B)")
+    print("  + for OR (e.g. A+B = A OR B)")
+    print("Variables: single letters (A, B) or multi-letter (AB = A AND B)")
+    print("")
+    mode = paged_menu_input("Mode", [
+        ("1", "simplify"),
+        ("2", "nand form"),
+        ("3", "nor form"),
+        ("4", "prove"),
+    ], "1")
 
-print("")
-try:
-    if mode == "1":
-        s = input("Expression: ").strip()
-        if s == "":
-            s = "((B,.A),.B,),+A.B"
-            print("Using: " + s)
-        cur = parse(s)
-        print("1. " + show(cur))
-        n = 2
-        while n <= 50:
-            hit = step(cur)
-            if not hit:
-                break
-            cur = hit[0]
-            print(str(n) + ". " + show(cur) + "    (" + hit[1] + ")")
-            n += 1
-        print("Result: " + show(cur))
-    elif mode == "2":
-        s = input("Expression: ").strip()
-        if s == "":
-            s = "A.B"
-            print("Using: " + s)
-        cur = parse(s)
-        print("1. " + show(cur))
-        nanded = to_nand(cur)
-        nanded = normalise(nanded)
-        print("2. NAND form: " + show(nanded))
-    elif mode == "3":
-        s = input("Expression: ").strip()
-        if s == "":
-            s = "A+B"
-            print("Using: " + s)
-        cur = parse(s)
-        print("1. " + show(cur))
-        nored = to_nor(cur)
-        nored = normalise(nored)
-        print("2. NOR form: " + show(nored))
-    elif mode == "4":
-        lhs = input("LHS: ").strip()
-        if lhs == "":
-            lhs = "A.(B+C)"
-        rhs = input("RHS: ").strip()
-        if rhs == "":
-            rhs = "A.B+A.C"
-        print("1. LHS = " + lhs)
-        print("2. RHS = " + rhs)
-        lines, err = prove(lhs, rhs)
-        if err:
-            print("Error: " + err)
+    print("")
+    try:
+        if mode == "1":
+            s = input("Expression: ").strip()
+            if s == "":
+                s = "((B,.A),.B,),+A.B"
+                print("Using: " + s)
+            cur = parse(s)
+            print("1. " + show(cur))
+            n = 2
+            while n <= 50:
+                hit = step(cur)
+                if not hit:
+                    break
+                cur = hit[0]
+                print(str(n) + ". " + show(cur) + "    (" + hit[1] + ")")
+                n += 1
+            print("Result: " + show(cur))
+        elif mode == "2":
+            s = input("Expression: ").strip()
+            if s == "":
+                s = "A.B"
+                print("Using: " + s)
+            cur = parse(s)
+            print("1. " + show(cur))
+            nanded = to_nand(cur)
+            nanded = normalise(nanded)
+            print("2. NAND form: " + show(nanded))
+        elif mode == "3":
+            s = input("Expression: ").strip()
+            if s == "":
+                s = "A+B"
+                print("Using: " + s)
+            cur = parse(s)
+            print("1. " + show(cur))
+            nored = to_nor(cur)
+            nored = normalise(nored)
+            print("2. NOR form: " + show(nored))
+        elif mode == "4":
+            lhs = input("LHS: ").strip()
+            if lhs == "":
+                lhs = "A.(B+C)"
+            rhs = input("RHS: ").strip()
+            if rhs == "":
+                rhs = "A.B+A.C"
+            print("1. LHS = " + lhs)
+            print("2. RHS = " + rhs)
+            lines, err = prove(lhs, rhs)
+            if err:
+                print("Error: " + err)
+            else:
+                print("")
+                i = 3
+                for line in lines:
+                    print(str(i) + ". " + line)
+                    i += 1
         else:
-            print("")
-            i = 3
-            for line in lines:
-                print(str(i) + ". " + line)
-                i += 1
-    else:
-        print("Mode must be 1-4.")
-except EOFError:
-    pass
-except ValueError as err:
-    print("Input error: " + str(err))
-except Exception:
-    print("Input error: internal error.")
+            print("Mode must be 1-4.")
+    except EOFError:
+        pass
+    except ValueError as err:
+        print("Input error: " + str(err))
+    except Exception:
+        print("Input error: internal error.")
+
+
+run = main
+if __name__ == "__main__":
+    main()

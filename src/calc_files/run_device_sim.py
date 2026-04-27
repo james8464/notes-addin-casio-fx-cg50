@@ -29,15 +29,9 @@ REPO = Path(__file__).resolve().parents[2]
 DEFAULT_HEAP_KB = 64
 
 
-def _autorun_off_bootstrap() -> str:
-    return (
-        "import sys\n"
-        "setattr(sys, '_derive_no_autorun', True)\n"
-        "setattr(sys, '_trig_no_autorun', True)\n"
-        "setattr(sys, '_int_no_autorun', True)\n"
-        "setattr(sys, '_algebra_no_autorun', True)\n"
-        "setattr(sys, '_suvat_no_autorun', True)\n"
-    )
+def _autorun_off_bootstrap():
+    # Programs use "if __name__ == '__main__'"; import no longer runs interactive main.
+    return ""
 
 
 def _bootstrap_mpy_mode(project: Path, module: str, from_source: bool) -> str:
