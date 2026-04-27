@@ -4,6 +4,10 @@ Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai
 Run on a PC (Python 3) before copying .mpy to the calculator:
   python3 src/calc_files/check_mpy_build.py
 
+Also copy the small launcher .py files (algebra.py, trig.py, ...) and main.py
+from src/calc_files/ along with the .mpy files. Rebuilding *Program.mpy
+does not update those launchers; missing run() in algebra.py = silent import.
+
 On-device: optional; needs readable .mpy files in the same folder as this script
 or pass paths as arguments.
 

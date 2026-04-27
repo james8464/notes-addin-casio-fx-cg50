@@ -1,4 +1,4 @@
-# Usage: from algebra import * then run()  —  or  import algebra; algebra.run()
+# Usage: from algebra import * then run()  -  or  import algebra; algebra.run()
 import algebraProgram
 
 
