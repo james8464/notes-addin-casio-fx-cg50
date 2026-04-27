@@ -72,6 +72,12 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("Answer:", output)
         self.assertTrue("x = [" in output or "n any integer" in output, msg=output)
 
+    def test_trig_tan_equality_uses_degree_period(self):
+        output = run_cli("trigProgram.py", "3\ntan(2*x)=tan(x),x,0,360\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("n*180", output)
+        self.assertNotIn("n*pi", output)
+
     def test_pipe_absolute_value_normalization(self):
         trig_lhs, trig_rhs = trig_program.parse_equation_or_zero("|x|=1")
         alg_lhs, alg_rhs = algebra_program.parse_equation_or_zero("|x|=1")

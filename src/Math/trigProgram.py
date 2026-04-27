@@ -13857,7 +13857,8 @@ def solve_equal_same_trig_expr_symbolic(first, second, var, start_val, end_val, 
             append_from_linear_and_period(base2, full_turn, sols)
     
     else:  # tan, cot
-        lines = ["For " + name + "(A) = " + name + "(B), A = B + n*pi."]
+        period_text = "180" if deg_mode else "pi"
+        lines = ["For " + name + "(A) = " + name + "(B), A = B + n*" + period_text + "."]
         base1 = sim(add([var_arg, neg(const_arg)]))
         append_from_linear_and_period(base1, half_pi, sols)
     
@@ -13970,8 +13971,9 @@ def solve_equal_same_trig_expr(expr, var, start_val, end_val, deg_mode, start_in
     sols = []
     if name in ("tan", "cot"):
         append_periodic_solutions(sim(add([first[2], neg(second[2])])), half_turn, sols)
+        period_text = "180" if deg_mode else "pi"
         lines = [
-            "For " + name + "(A) = " + name + "(B), A = B + n*pi.",
+            "For " + name + "(A) = " + name + "(B), A = B + n*" + period_text + ".",
         ]
     elif name == "sin":
         append_periodic_solutions(sim(add([first[2], neg(second[2])])), full_turn, sols)
@@ -14087,7 +14089,7 @@ def solve_equal_tan_cot_expr(expr, var, start_val, end_val, deg_mode, start_incl
     pair2 = linear_pair(second[1], var)
     if pair1 is None or pair2 is None:
         return None
-    period = math.pi
+    period = 180.0 if deg_mode else math.pi
     sols = []
     linear = linear_pair(sim(add([first[1], neg(second[1])])), var)
     if linear is not None:
@@ -14105,8 +14107,9 @@ def solve_equal_tan_cot_expr(expr, var, start_val, end_val, deg_mode, start_incl
                         append_unique_solve_value(sols, value)
                 n += 1
     sols = dedupe_values(sols)
+    period_text = "180" if deg_mode else "pi"
     lines = [
-        "For " + name + "(A) = " + name + "(B), A = B + n*pi.",
+        "For " + name + "(A) = " + name + "(B), A = B + n*" + period_text + ".",
     ]
     if len(sols) == 0:
         lines.append("No solutions in the interval.")
