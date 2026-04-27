@@ -1,2 +1,1 @@
 import booleanProgram
-booleanProgram.run()
