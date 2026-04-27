@@ -189,6 +189,10 @@ def _default_case_workers():
 CASE_WORKERS = _default_case_workers()
 
 LLM_GENERATION_CHANCE = float(os.environ.get("CASIO_LLM_GENERATION_CHANCE", "0.1"))
+# Infinite /random: cases per program per cycle (was forced to 1 with LLM; now configurable).
+_CASIO_INFINITE_GENERATION_CHUNK = max(1, int(os.environ.get("CASIO_INFINITE_GENERATION_CHUNK", "12")))
+# LLM: verify N subprocess results per Ollama call (set 1 to disable batching).
+_CASIO_LLM_BATCH_SIZE = max(1, int(os.environ.get("CASIO_LLM_BATCH_SIZE", "10")))
 
 def _fast_case_workers():
     try:
@@ -3269,7 +3273,7 @@ class CASIOApp(App):
                 elapsed = time.time() - start
                 return case, passed, output, elapsed
 
-            def llm_verify(record, max_retries=3):
+            def llm_verify_one(record, max_retries=3):
                 if not use_llm:
                     return ("", "")
 
@@ -3306,6 +3310,68 @@ class CASIOApp(App):
                     return "NEEDS_REVIEW"
                 return code_verdict
 
+            def apply_llm_to_record(record, verdict, explanation, llm_elapsed=0.1):
+                record.llm_verdict = verdict or ""
+                record.llm_explanation = (explanation or "")
+                if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+                    llm_color = (
+                        "#22c55e"
+                        if verdict == "CORRECT"
+                        else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
+                    )
+                    self.append_result(
+                        "[dim]  └─ LLM: [{0}]{1}[/{0}][/dim]".format(llm_color, verdict)
+                    )
+                code_verdict = "CORRECT" if record.passed else "INCORRECT"
+                final_verdict = weighted_verdict(code_verdict, verdict)
+                self.apply_llm_weighted_status(record, final_verdict)
+                self._append_session_report_if_worthy(record)
+                if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW") and record.test_id is not None:
+                    import time as time_module
+                    tnow = time_module.time()
+                    self._llm_times.append(max(1e-4, float(llm_elapsed)))
+                    if len(self._llm_times) > 200:
+                        self._llm_times = self._llm_times[-150:]
+                    self._llm_timestamps.append((tnow, len(self._llm_times)))
+                    if len(self._llm_timestamps) > 80:
+                        self._llm_timestamps = self._llm_timestamps[-50:]
+
+            llm_pending = []
+            llm_bs = 1 if os.environ.get("CASIO_LLM_BATCH_DISABLE", "").lower() in ("1", "true", "yes") else _CASIO_LLM_BATCH_SIZE
+
+            def flush_llm_pending():
+                if not llm_pending or not use_llm:
+                    return
+                buf = list(llm_pending)
+                del llm_pending[:]
+                import time as time_module
+                t0 = time_module.time()
+                items = []
+                for rec in buf:
+                    ctx = "{0}: {1}".format(rec.program, rec.label)
+                    exp = rec.check_info or ctx
+                    items.append((rec.output, exp, ctx))
+                try:
+                    batch_out = self.llm_manager.verify_batch(items)
+                except Exception:
+                    batch_out = None
+                dt = max(1e-4, time_module.time() - t0)
+                per = dt / max(len(buf), 1)
+                if not batch_out or len(batch_out) != len(buf):
+                    for rec in buf:
+                        v, e = llm_verify_one(rec)
+                        apply_llm_to_record(rec, v, e, per)
+                    return
+                i = 0
+                while i < len(buf):
+                    r = batch_out[i] or {}
+                    v = r.get("verdict", "")
+                    e = r.get("explanation", "")
+                    if v not in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+                        v, e = llm_verify_one(buf[i])
+                    apply_llm_to_record(buf[i], v, e, per)
+                    i += 1
+
             for batch_start in range(0, len(cases), batch_size):
                 if not self.running:
                     break
@@ -3341,26 +3407,13 @@ class CASIOApp(App):
                             case.check_info,
                             getattr(case, "feature", ""),
                         )
-                        verdict = ""
                         if use_llm:
-                            verdict, explanation = llm_verify(record)
-                            if verdict:
-                                record.llm_verdict = verdict
-                                record.llm_explanation = explanation
-                                llm_color = (
-                                    "#22c55e"
-                                    if verdict == "CORRECT"
-                                    else ("#f59e0b" if verdict == "NEEDS_REVIEW" else "#f87171")
-                                )
-                                self.append_result(
-                                    "[dim]  └─ LLM: [{0}]{1}[/{0}][/dim]".format(
-                                        llm_color, verdict
-                                    )
-                                )
-                            code_verdict = "CORRECT" if passed else "INCORRECT"
-                            final_verdict = weighted_verdict(code_verdict, verdict)
-                            self.apply_llm_weighted_status(record, final_verdict)
-                        self._append_session_report_if_worthy(record)
+                            llm_pending.append(record)
+                            if len(llm_pending) >= llm_bs:
+                                flush_llm_pending()
+                        else:
+                            self._append_session_report_if_worthy(record)
+                flush_llm_pending()
         finally:
             self._in_run_case_specs = False
 
@@ -6107,8 +6160,8 @@ class CASIOApp(App):
                     return
 
                 generation_chunk = 200
-                if infinite_mode and self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
-                    generation_chunk = 1
+                if infinite_mode:
+                    generation_chunk = _CASIO_INFINITE_GENERATION_CHUNK
 
                 program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
                 expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
@@ -7443,6 +7496,10 @@ def _cli_help():
       CASIO_EXAM_STRESS            1 (default): allocate chaos cases across builders with
                                    jittered weights to stress high-yield / exam-relevant items.
       CASIO_EXAM_BOOST             Optional: builder_name:mult pairs, e.g. random_trig_equation_multi_case:1.5
+      CASIO_INFINITE_GENERATION_CHUNK  Cases per program per /infinite cycle (default 12)
+      CASIO_LLM_BATCH_SIZE         LLM verify N subprocess results per Ollama call (default 10)
+      CASIO_LLM_BATCH_DISABLE      1/true yes: one Ollama call per test (old behaviour)
+      CASIO_LLM_BATCH_OUT_CHARS    Max chars of each OUT in batch prompts (shared_llm; default 1200)
       Exits 1 in CLI mode if any test has final status FAIL; otherwise 0.
 """
 

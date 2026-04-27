@@ -17,6 +17,7 @@ import subprocess
 import time
 import hashlib
 import os
+import re
 from datetime import datetime
 
 try:
@@ -33,6 +34,8 @@ except ImportError:
 LLM_TIMEOUT_SECONDS = 120
 LLM_CACHE_MAX_SIZE = 1000
 LLM_CACHE_TTL_SECONDS = 3600
+# Truncate each program output in batch verify to keep argv / context reasonable.
+_LLM_BATCH_OUT_CHARS = max(400, int(os.environ.get("CASIO_LLM_BATCH_OUT_CHARS", "1200")))
 
 LLM_SYSTEM_PROMPT = """Check math working. Steps follow? no fake "hence"? rules ok? answer matches?
 Equiv forms ok.
@@ -280,7 +283,139 @@ class LLMManager:
                 "confidence": 0,
                 "cached": False
             }
-    
+
+    @staticmethod
+    def _truncate_out(text, max_len):
+        if text is None:
+            return ""
+        t = str(text)
+        if len(t) <= max_len:
+            return t
+        return t[: max_len - 20] + "\n...[truncated]..."
+
+    def verify_batch(self, items, check_working_quality=False, stream_callback=None):
+        """
+        Verify multiple program outputs in one Ollama call (faster for long / infinite runs).
+
+        items: list of (program_output, expected, context) same as verify().
+
+        Returns: list[dict] with verdict/explanation/..., len == len(items). On partial
+        parse failure, missing slots are filled via per-item verify().
+        """
+        n = len(items)
+        if n == 0:
+            return []
+        if not self.enabled or not self.selected_model:
+            bad = {
+                "verdict": "DISABLED",
+                "explanation": "LLM not enabled",
+                "confidence": 0,
+                "cached": False,
+            }
+            return [dict(bad) for _ in range(n)]
+
+        if check_working_quality:
+            return [self.verify(a, b, c, True, stream_callback) for a, b, c in items]
+
+        if n == 1:
+            a, b, c = items[0]
+            return [self.verify(a, b, c, False, stream_callback)]
+
+        out_ch = _LLM_BATCH_OUT_CHARS
+        body = []
+        i = 0
+        while i < n:
+            program_output, expected, context = items[i]
+            po = self._truncate_out(program_output, out_ch)
+            ex = self._truncate_out(expected, min(2000, out_ch * 2))
+            body.append("ITEM {0}\nCTX: {1}\n\nOUT: {2}\n\nEXP: {3}\n".format(i + 1, context, po, ex))
+            i += 1
+
+        header = (
+            "BATCH_VERIFY: {0} items. For EACH item, the working/answer should match the check.\n"
+            "Reply with EXACTLY {0} lines and nothing else before them. Each line format:\n"
+            "#N VERDICT\n"
+            "N is 1..{0}. VERDICT is one of: CORRECT, INCORRECT, NEEDS_REVIEW\n"
+            "Example for 2 items:\n"
+            "#1 CORRECT\n"
+            "#2 NEEDS_REVIEW\n\n"
+        ).format(n)
+
+        prompt = header + "\n".join(body) + "\n" + LLM_SYSTEM_PROMPT
+
+        cached = self.cache.get(self.selected_model, prompt)
+        if cached and cached.get("verdict") == "BATCH":
+            parsed = self._parse_batch_line_verdicts(cached.get("explanation", ""), n)
+            if all(v is not None for v in parsed):
+                out = []
+                j = 0
+                while j < n:
+                    out.append(
+                        {
+                            "verdict": parsed[j],
+                            "explanation": "batch cached",
+                            "confidence": 0.9,
+                            "cached": True,
+                        }
+                    )
+                    j += 1
+                return out
+
+        try:
+            batch_timeout = min(600, LLM_TIMEOUT_SECONDS + 20 * n)
+            result = self._query_ollama(prompt, stream_callback, timeout=batch_timeout)
+            parsed = self._parse_batch_line_verdicts(result, n)
+            out = []
+            j = 0
+            while j < n:
+                v = parsed[j] if j < len(parsed) else None
+                if v in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+                    out.append(
+                        {
+                            "verdict": v,
+                            "explanation": (result or "")[:500],
+                            "confidence": 0.9,
+                            "cached": False,
+                        }
+                    )
+                else:
+                    a, b, c = items[j]
+                    out.append(self.verify(a, b, c, False, None))
+                j += 1
+            if all(
+                o.get("verdict") in ("CORRECT", "INCORRECT", "NEEDS_REVIEW") for o in out
+            ):
+                self.cache.set(
+                    self.selected_model,
+                    prompt,
+                    {"verdict": "BATCH", "explanation": result, "confidence": 0, "cached": True},
+                )
+            return out
+        except Exception as e:
+            self.last_error = str(e)
+            out_fb = []
+            for i in range(n):
+                a, b, c = items[i]
+                out_fb.append(self.verify(a, b, c, False, None))
+            return out_fb
+
+    def _parse_batch_line_verdicts(self, response_text, n):
+        out = [None] * n
+        if not response_text:
+            return out
+        for line in response_text.splitlines():
+            s = line.strip()
+            m = re.match(
+                r"^#?\s*(\d+)\s*[:|]?\s*(CORRECT|INCORRECT|NEEDS_REVIEW)\b",
+                s,
+                re.IGNORECASE,
+            )
+            if m:
+                idx = int(m.group(1)) - 1
+                if 0 <= idx < n:
+                    out[idx] = m.group(2).upper()
+        return out
+
     def _build_prompt(self, program_output, expected, context):
         """Build verification prompt."""
         return (
@@ -290,8 +425,9 @@ class LLMManager:
             "{3}"
         ).format(context, program_output, expected, LLM_SYSTEM_PROMPT)
     
-    def _query_ollama(self, prompt, stream_callback=None):
+    def _query_ollama(self, prompt, stream_callback=None, timeout=None):
         """Send query to Ollama with optional streaming."""
+        to = LLM_TIMEOUT_SECONDS if timeout is None else timeout
         cmd = [
             "ollama", "run",
             self.selected_model,
@@ -323,7 +459,7 @@ class LLMManager:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=LLM_TIMEOUT_SECONDS
+                timeout=to
             )
             if result.returncode != 0:
                 raise Exception("Ollama error: {0}".format(result.stderr))
