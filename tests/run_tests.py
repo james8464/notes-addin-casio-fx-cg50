@@ -58,11 +58,6 @@ sys.path.insert(0, str(SRC_ROOT))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_TESTS_DIR))
 from llm_test_prompts import LLM_GENERATION_PROMPTS
-sys._algebra_no_autorun = True
-sys._trig_no_autorun = True
-sys._derive_no_autorun = True
-sys._int_no_autorun = True
-sys._suvat_no_autorun = True
 
 try:
     from shared_quality import (

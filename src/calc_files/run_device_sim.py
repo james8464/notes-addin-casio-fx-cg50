@@ -29,11 +29,6 @@ REPO = Path(__file__).resolve().parents[2]
 DEFAULT_HEAP_KB = 64
 
 
-def _autorun_off_bootstrap():
-    # Programs use "if __name__ == '__main__'"; import no longer runs interactive main.
-    return ""
-
-
 def _bootstrap_mpy_mode(project: Path, module: str, from_source: bool) -> str:
     src = str((project / "src").resolve()).replace("\\", "/")
     if from_source:
@@ -45,9 +40,7 @@ def _bootstrap_mpy_mode(project: Path, module: str, from_source: bool) -> str:
     return (
         "import sys\n"
         + path
-        + "\n"
-        + _autorun_off_bootstrap()
-        + "__import__(%r)\n" % module
+        + "\n__import__(%r)\n" % module
     )
 
 
@@ -106,7 +99,6 @@ def _run_cpython(
         "import os, sys\n"
         "os.environ['CASIO_HW_SIM'] = '1'\n"
         "sys.path[0:0] = [r'%s', r'%s', r'%s', r'%s']\n" % (smath, src, cfiles, pr)
-        + _autorun_off_bootstrap()
         + user_code
     )
     with tempfile.NamedTemporaryFile(

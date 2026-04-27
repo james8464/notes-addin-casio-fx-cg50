@@ -32,14 +32,15 @@ def run():
         else:
             print("sys.implementation: (none)")
     if gc is not None:
-        try:
-            print("gc.mem_free: %s" % (gc.mem_free(),))
-        except Exception as err:
-            print("gc.mem_free: err %s" % (err,))
-        try:
-            print("gc.mem_alloc: %s" % (gc.mem_alloc(),))
-        except Exception as err:
-            print("gc.mem_alloc: err %s" % (err,))
+        for attr in ("mem_free", "mem_alloc"):
+            fn = getattr(gc, attr, None)
+            if fn is None:
+                print("gc.%s: n/a" % (attr,))
+                continue
+            try:
+                print("gc.%s: %s" % (attr, fn()))
+            except Exception as err:
+                print("gc.%s: err %s" % (attr, err))
     try:
         import micropython
         # mem_info is void; some ports print to stdout

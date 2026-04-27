@@ -184,7 +184,6 @@ Use power rule.
 ```python
 import sys
 sys.path.insert(0, 'Math')
-sys._int_no_autorun = True
 import intProgram as ip
 
 # Basic polynomial integration

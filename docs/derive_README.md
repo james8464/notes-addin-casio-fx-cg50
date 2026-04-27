@@ -45,7 +45,6 @@ A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython 
 ```python
 import sys
 sys.path.insert(0, 'Math')
-sys._derive_no_autorun = True
 import deriveProgram as dp
 
 # Basic derivative

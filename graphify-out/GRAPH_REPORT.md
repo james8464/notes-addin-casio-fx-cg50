@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-27)
 
 ## Corpus Check
-- 27 files · ~188,314 words
+- 27 files · ~188,180 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1991 nodes · 9284 edges · 22 communities detected
+- 1990 nodes · 9281 edges · 21 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -49,7 +49,7 @@ Nodes (274): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integra
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (140): _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), clean_expr_text(), collect_angle_units() (+132 more)
+Nodes (170): _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), cache_store(), classify_solve_angle_arg(), clean_expr_text() (+162 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
@@ -60,28 +60,28 @@ Cohesion: 0.07
 Nodes (119): abs_term(), add(), addq(), all_neg_add(), apply_runtime_profile(), as_rat(), as_rat_display(), begin_user_action() (+111 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.1
-Nodes (115): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), derive_cot_quadratic_expr() (+107 more)
+Cohesion: 0.08
+Nodes (102): add_param_coeff_maps(), add_transform_constant_candidate(), allowed_expression_from_terms(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), combine_fraction_sum_once(), constant_fit_preserve_named_trig(), constant_numeric() (+94 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.06
-Nodes (111): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), classify_solve_angle_arg(), compact_lines(), concise_root_text(), constant_numeric() (+103 more)
+Cohesion: 0.1
+Nodes (101): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), depends() (+93 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.08
-Nodes (99): allowed_expression_from_terms(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), combine_fraction_sum_once(), common_denominator_step(), direct_double_angle_rewrite(), direct_identity_target_rewrite() (+91 more)
+Nodes (91): bridge_to_target(), build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), direct_double_angle_rewrite(), display_abs(), display_neg() (+83 more)
 
 ### Community 9 - "Community 9"
+Cohesion: 0.08
+Nodes (71): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), concise_root_text(), dedupe_values(), eval_numeric(), eval_numeric_mode() (+63 more)
+
+### Community 10 - "Community 10"
 Cohesion: 0.06
 Nodes (45): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char(), is_const() (+37 more)
 
-### Community 10 - "Community 10"
-Cohesion: 0.13
-Nodes (43): bridge_to_target(), detail_trig_expansion(), expand_fraction(), expand_product(), expand_safe_trig_tree(), expand_small(), finish_verbose_proof(), finish_verbose_proof_structured() (+35 more)
-
 ### Community 11 - "Community 11"
 Cohesion: 0.12
-Nodes (31): addq(), angle_to_degree(), degree_int(), degree_mod_360(), divq(), exact_num_value(), exact_pi_multiple(), exact_trig_lines() (+23 more)
+Nodes (30): addq(), angle_to_degree(), degree_int(), degree_mod_360(), direct_single_trig_info(), divq(), exact_num_value(), exact_pi_multiple() (+22 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.2
@@ -89,44 +89,40 @@ Nodes (26): build_menu_pages(), cache_set(), comp(), direct(), expand_vars(), ha
 
 ### Community 13 - "Community 13"
 Cohesion: 0.15
-Nodes (26): add_param_coeff_maps(), add_transform_constant_candidate(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_trig_argument_lower_symbols(), constant_fit_preserve_named_trig(), depends_any(), direct_expression_transform_lines() (+18 more)
-
-### Community 14 - "Community 14"
-Cohesion: 0.15
 Nodes (8): _convert_abs_pipes(), is_num(), is_one(), is_zero(), neg(), normalize_input_text(), _previous_significant_char(), _should_open_abs_pipe()
 
-### Community 15 - "Community 15"
+### Community 14 - "Community 14"
 Cohesion: 0.25
 Nodes (2): run_cli(), TransformRegressionTests
 
-### Community 16 - "Community 16"
-Cohesion: 0.67
-Nodes (5): _autorun_off_bootstrap(), _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
-
-### Community 17 - "Community 17"
+### Community 15 - "Community 15"
 Cohesion: 0.6
 Nodes (4): format_equation_human_readable(), format_exam_working(), numbered_steps(), split_coeff()
 
-### Community 18 - "Community 18"
+### Community 16 - "Community 16"
 Cohesion: 0.4
 Nodes (5): apply_runtime_profile(), casio_hw_sim_from_env(), clear_engine_caches(), _force_low_memory_runtime(), shared_clear_all_caches()
 
-### Community 19 - "Community 19"
+### Community 17 - "Community 17"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 20 - "Community 20"
+### Community 18 - "Community 18"
+Cohesion: 0.7
+Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
+
+### Community 19 - "Community 19"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 21 - "Community 21"
+### Community 20 - "Community 20"
 Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
 - **75 isolated node(s):** `Shared LLM Interface for CASIO Test Suite - PC ONLY.  This module connects to Ol`, `Check if Ollama is installed and a server is running.`, `Get list of available Ollama models.`, `Simple TTL-based cache for LLM responses.`, `Create cache key; hash full prompt to avoid collision on long/ similar tails.` (+70 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 21`** (2 nodes): `main.py`, `run()`
+- **Thin community `Community 20`** (2 nodes): `main.py`, `run()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions

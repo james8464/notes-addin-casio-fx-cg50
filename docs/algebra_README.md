@@ -377,7 +377,6 @@ Answer: 4*x = (y-1)^2
 ```python
 import sys
 sys.path.insert(0, 'Math')
-sys._algebra_no_autorun = True
 import algebraProgram as ap
 
 # Compare expressions

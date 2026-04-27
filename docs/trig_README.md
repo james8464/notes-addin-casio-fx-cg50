@@ -203,7 +203,6 @@ Answer: 2*sin(x)^2
 ```python
 import sys
 sys.path.insert(0, 'Math')
-sys._trig_no_autorun = True
 import trigProgram as tp
 
 # Simplify expressions

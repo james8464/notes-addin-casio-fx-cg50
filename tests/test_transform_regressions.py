@@ -12,8 +12,6 @@ PY = sys.executable
 MATH_ROOT = ROOT / "src" / "Math"
 if str(MATH_ROOT) not in sys.path:
     sys.path.insert(0, str(MATH_ROOT))
-sys._trig_no_autorun = True
-sys._algebra_no_autorun = True
 import trigProgram as trig_program
 import algebraProgram as algebra_program
 

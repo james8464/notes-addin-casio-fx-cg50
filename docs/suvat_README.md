@@ -223,7 +223,6 @@ t = 20/g (2.0408163265 s)
 ```python
 import sys
 sys.path.insert(0, 'Math')
-sys._suvat_no_autorun = True
 import SUVATprogram as sp
 
 # Parse a value

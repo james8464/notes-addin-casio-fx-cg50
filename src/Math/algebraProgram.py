@@ -2322,12 +2322,9 @@ def has_explicit_equation_text(text):
 
 def text_has_trig_function(text):
     body = text.lower()
-    markers = ('sin', 'cos', 'tan', 'cot', 'sec', 'cosec')
-    i = 0
-    while i < len(markers):
-        if markers[i] in body:
+    for name in ('sin', 'cos', 'tan', 'cot', 'sec', 'cosec'):
+        if name in body:
             return True
-        i += 1
     return False
 
 
@@ -2338,15 +2335,8 @@ def load_trig_transform_module():
     global _TRIG_TRANSFORM_MODULE
     if _TRIG_TRANSFORM_MODULE is not None:
         return _TRIG_TRANSFORM_MODULE
-    old_flag = False
-    if sys is not None:
-        old_flag = getattr(sys, '_trig_no_autorun', False)
-        sys._trig_no_autorun = True
-    try:
-        _TRIG_TRANSFORM_MODULE = __import__('trigProgram')
-    finally:
-        if sys is not None:
-            sys._trig_no_autorun = old_flag
+    # trigProgram only runs main under if __name__ == "__main__"; import is safe.
+    _TRIG_TRANSFORM_MODULE = __import__('trigProgram')
     return _TRIG_TRANSFORM_MODULE
 
 
