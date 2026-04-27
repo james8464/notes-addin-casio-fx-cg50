@@ -12,11 +12,11 @@ def run():
     except Exception:
         pass
     mod = __import__(_MODULE)
-    fn = getattr(mod, "run", None)
+    fn = getattr(mod, "run", None) or getattr(mod, "main", None)
     if fn is not None:
         fn()
     else:
-        print("Err: no run() in %s" % (_MODULE,))
+        print("Err: no run() or main() in %s" % (_MODULE,))
 
 
 if __name__ == "__main__":

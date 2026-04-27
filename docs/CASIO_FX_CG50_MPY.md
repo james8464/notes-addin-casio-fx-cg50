@@ -17,7 +17,7 @@
 
 ## Critical blockers (addressed in repo)
 
-1. **Import-time interactive `main` (boolean)** — `src/ComputerScience/booleanProgram.py` ran the menu on `import` (lines 731+). **Fix:** `def main():` + `run = main` + `if __name__ == "__main__": main()`. Launcher `src/calc_files/boolean.py` now calls `booleanProgram.run()`.
+1. **Import-time interactive `main` (boolean)** — `src/ComputerScience/booleanProgram.py` ran the menu on `import` (lines 731+). **Fix:** `def main():` + `if __name__ == "__main__": main()` only. Each `src/calc_files/<name>.py` launcher defines `run()` → `<name>Program.main()`. On REPL: `from algebra import *` then `run()`.
 2. **`SKIP_AUTORUN` vs scripted import** — `algebraProgram` / `deriveProgram` / `intProgram` / `SUVATprogram` used `SKIP_AUTORUN` to avoid `main` when `len(sys.argv)>1`, which is fragile and unlike explicit `__main__`. **Fix:** `run = main` and `if __name__ == "__main__": main()` only (matches `trigProgram`).
 
 ## Likely runtime incompatibilities (by pattern)
