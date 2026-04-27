@@ -4075,7 +4075,43 @@ class CASIOApp(App):
 
         def check(out):
             text = normalized_text(out)
-            if "no valid trig values" in text or "no trig values" in text or "no real solutions" in text or "no sol" in text or "no solution" in text:
+            values = extract_last_solution_values(out, var, lower=lower, upper=upper)
+            if values is not None and len(values) > 0:
+                if not quality(out):
+                    return False
+                local_degrees = degrees
+                if not bounds_given:
+                    answer_text = ""
+                    for line in reversed(text.splitlines()):
+                        s = line.strip()
+                        if s.startswith("answer:") or s.startswith("x ="):
+                            answer_text = s
+                            break
+                    if answer_text and "pi" not in answer_text:
+                        local_degrees = True
+                for value in values:
+                    try:
+                        residual = equation_residual_angle(eq_text, var, value, degrees=local_degrees)
+                    except Exception:
+                        return False
+                    if not numeric_close(residual, 0.0, rel_tol=2e-3, abs_tol=2e-3):
+                        return False
+                match_abs_tol = 0.2 if local_degrees else 5e-3
+                match_rel_tol = 5e-3 if local_degrees else 5e-3
+                set_match = numeric_value_sets_match(values, expected_values, rel_tol=match_rel_tol, abs_tol=match_abs_tol)
+                if set_match is False:
+                    return False
+                return True
+            if values is not None and len(values) == 0:
+                if not quality(out):
+                    return False
+                return expected_values is None or len(expected_values) == 0
+            if (
+                "no valid trig values" in text
+                or "no trig values" in text
+                or "no real solutions" in text
+                or "answer: no solution" in text
+            ):
                 if _has_non_exam_quality_output(text):
                     return False
                 if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
@@ -4083,32 +4119,7 @@ class CASIOApp(App):
                 return expected_values is None or expected_values == []
             if not quality(out):
                 return False
-            values = extract_last_solution_values(out, var, lower=lower, upper=upper)
-            if not values:
-                return False
-            local_degrees = degrees
-            if not bounds_given:
-                answer_text = ""
-                for line in reversed(text.splitlines()):
-                    s = line.strip()
-                    if s.startswith("answer:") or s.startswith("x ="):
-                        answer_text = s
-                        break
-                if answer_text and "pi" not in answer_text:
-                    local_degrees = True
-            for value in values:
-                try:
-                    residual = equation_residual_angle(eq_text, var, value, degrees=local_degrees)
-                except Exception:
-                    return False
-                if not numeric_close(residual, 0.0, rel_tol=2e-3, abs_tol=2e-3):
-                    return False
-            match_abs_tol = 0.2 if local_degrees else 5e-3
-            match_rel_tol = 5e-3 if local_degrees else 5e-3
-            set_match = numeric_value_sets_match(values, expected_values, rel_tol=match_rel_tol, abs_tol=match_abs_tol)
-            if set_match is False:
-                return False
-            return True
+            return False
 
         return check
 
