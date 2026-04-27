@@ -14580,7 +14580,9 @@ def solve_factor_product_expr(expr, var, start_val, end_val, deg_mode, start_inc
         result, extra = solved
         j = 0
         while j < len(extra):
-            lines.append(extra[j])
+            e = extra[j]
+            if not (e.startswith("Combined solutions: ") and var in e):
+                lines.append(e)
             j += 1
         j = 0
         while j < len(result):
@@ -16494,14 +16496,15 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
     return try_identity_candidates([expr, expanded_expr], var, start_val, end_val, deg_mode, lines, lhs, rhs)
 
 
-def solution_list_line(var, values, deg_mode, exact_texts=None):
+def solution_list_line(var, values, deg_mode, exact_texts=None, allow_general=True):
     if exact_texts is None:
         return var + " = [" + ", ".join(solution_list_text(values, deg_mode)) + "]"
     
     # Check if we can show general solution
-    general = detect_general_solution(values, deg_mode)
-    if general is not None:
-        return var + " = " + general
+    if allow_general:
+        general = detect_general_solution(values, deg_mode)
+        if general is not None:
+            return var + " = " + general
     
     bits = []
     i = 0
@@ -16734,19 +16737,28 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
         if len(valid) == 0:
             lines.append("No valid solutions in the interval.")
 
+    line_blob = " ".join(lines)
+    allow_general = "set each factor equal to 0" not in line_blob.lower()
+
     if no_interval_mode:
         picked = trim_default_no_interval_solutions(valid)
         lines.append("No interval given, so show 5 above 0 and 5 below.")
         if len(picked) == 0:
             lines.append("No valid solutions.")
         else:
-            lines.append(solution_list_line(var, picked, deg_mode, exact_solution_texts))
+            lines.append(
+                solution_list_line(var, picked, deg_mode, exact_solution_texts, allow_general=allow_general)
+            )
         valid = picked
     elif len(valid) != 0:
-        lines.append(solution_list_line(var, valid, deg_mode, exact_solution_texts))
+        lines.append(
+            solution_list_line(var, valid, deg_mode, exact_solution_texts, allow_general=allow_general)
+        )
 
     if len(valid) != 0:
-        lines.append("Answer: " + solution_list_line(var, valid, deg_mode, exact_solution_texts))
+        lines.append(
+            "Answer: " + solution_list_line(var, valid, deg_mode, exact_solution_texts, allow_general=allow_general)
+        )
     else:
         lines.append("Answer: no solution in the interval")
 

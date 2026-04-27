@@ -2334,7 +2334,7 @@ class CASIOApp(App):
         p.parent.mkdir(parents=True, exist_ok=True)
         now = datetime.now().isoformat(timespec="seconds")
         try:
-            scope_s = f"{self.last_run_scope[0]!r} · {self.last_run_scope[1]!r}"
+            scope_s = "{0!r} | {1!r}".format(self.last_run_scope[0], self.last_run_scope[1])
         except (TypeError, ValueError, IndexError):
             scope_s = "unknown"
         header = [
@@ -2343,7 +2343,7 @@ class CASIOApp(App):
             f"Command: {self.last_command}",
             f"Program: {self.current_program}",
             f"Scope: {scope_s}",
-            "See tests/reports/ — tail this file in another terminal for a live view.",
+            "See tests/reports/ - tail this file in another terminal for a live view.",
             "=" * 72,
             "",
         ]
