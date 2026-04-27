@@ -6,7 +6,7 @@ Run on a PC (Python 3) before copying .mpy to the calculator:
 
 Also copy the small launcher .py files (algebra.py, trig.py, ...) and main.py
 from src/calc_files/ along with the .mpy files. Rebuilding *Program.mpy
-does not update those launchers; missing run() in algebra.py = silent import.
+does not update those launchers; launchers call run() at import; still copy them with the .mpy files.
 
 On-device: optional; needs readable .mpy files in the same folder as this script
 or pass paths as arguments.

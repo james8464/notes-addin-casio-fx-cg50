@@ -1,6 +1,9 @@
-# Usage: from algebra import * then run()  -  or  import algebra; algebra.run()
+# First import runs menu; after exit, call run() again (module stays cached).
 import algebraProgram
 
 
 def run():
     algebraProgram.main()
+
+
+run()
