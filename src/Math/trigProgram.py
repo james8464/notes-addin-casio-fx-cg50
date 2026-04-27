@@ -108,11 +108,6 @@ FUNC_ALIASES = {
     "arccos": "acos",
     "arctan": "atan",
 }
-SKIP_AUTORUN = sys is not None and (
-    getattr(sys, "_trig_no_autorun", False) or
-    len(sys.argv) > 1
-)
-
 FORMULA_SIN_ADD = "Use sin(A+B) = sin A cos B + cos A sin B."
 FORMULA_SIN_SUB = "Use sin(A-B) = sin A cos B - cos A sin B."
 FORMULA_COS_ADD = "Use cos(A+B) = cos A cos B - sin A sin B."
@@ -10508,6 +10503,12 @@ def match_linear_angle(node, var):
         return coeff, num(0)
     if node == sym(var):
         return num(1), num(0)
+    if node[0] == "div" and is_num(node[2]):
+        d = node[2][1]
+        if d != 0:
+            nume_coeff = maybe_scalar_times_var(node[1], var)
+            if nume_coeff is not None:
+                return sim(div(nume_coeff, node[2])), num(0)
     pair = split_sum(node)
     if pair is not None:
         left, right, sign = pair
@@ -18089,5 +18090,5 @@ def main():
 
 
 run = main
-if not SKIP_AUTORUN:
+if __name__ == "__main__":
     main()

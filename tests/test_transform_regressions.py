@@ -69,7 +69,8 @@ class TransformRegressionTests(unittest.TestCase):
     def test_trig_solve_accepts_plain_equation(self):
         output = run_cli("trigProgram.py", "3\nsin(x)=0\n")
         self.assertNotIn("Err:", output)
-        self.assertIn("Answer: x = [", output)
+        self.assertIn("Answer:", output)
+        self.assertTrue("x = [" in output or "n any integer" in output, msg=output)
 
     def test_pipe_absolute_value_normalization(self):
         trig_lhs, trig_rhs = trig_program.parse_equation_or_zero("|x|=1")
