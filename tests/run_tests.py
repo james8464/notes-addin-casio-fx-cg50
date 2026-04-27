@@ -2082,7 +2082,6 @@ class CASIOApp(App):
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
             "/random 1000 8": "Run 1000 chaos random tests with 8 parallel workers",
             "/infinite": "Run tests infinitely until stopped",
-            "/rerun": "Run the previous test scope again",
             "/clear": "Reset the output view",
             "/stop": "Stop running tests (in infinite mode)",
             "/quit": "Exit the test harness",
@@ -2295,17 +2294,7 @@ class CASIOApp(App):
             self.action_random_tests(difficulty, count, workers, command_label=value)
             return
 
-        if value_lower == "/rerun":
-            self.append_result(f"[bold #e07a53]Re-running:[/bold #e07a53] {self.last_command}")
-            rerun_random = self.parse_random_scope(self.last_command)
-            if rerun_random is not None:
-                difficulty, count, workers, infinite_mode = rerun_random
-                self.current_random_workers = workers
-                self.action_random_tests(difficulty, count, workers, command_label="/rerun")
-            else:
-                self.current_program, _ = self.last_run_scope
-                self.action_run_tests(command_label="/rerun")
-        elif value_lower == "/clear":
+        if value_lower == "/clear":
             self.action_clear()
         elif value_lower == "/stop":
             self.action_stop()
