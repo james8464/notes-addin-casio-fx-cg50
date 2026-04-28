@@ -15665,6 +15665,15 @@ def direct_trig_family_line(name, target_expr, deg_mode):
         return "For sin(A) = " + target_text + ", use A = alpha or A = pi - alpha, where alpha = arcsin(" + target_text + "), then add multiples of " + full_turn_text + "."
     if name == "cos":
         return "For cos(A) = " + target_text + ", use A = +/-alpha, where alpha = arccos(" + target_text + "), then add multiples of " + full_turn_text + "."
+    if name == "sec":
+        reciprocal = full_simplify(div(num(1), target_expr))
+        return "Use sec(A) = 1/cos(A), so cos(A) = " + show(reciprocal) + ". " + direct_trig_family_line("cos", reciprocal, deg_mode)
+    if name == "cosec":
+        reciprocal = full_simplify(div(num(1), target_expr))
+        return "Use cosec(A) = 1/sin(A), so sin(A) = " + show(reciprocal) + ". " + direct_trig_family_line("sin", reciprocal, deg_mode)
+    if name == "cot":
+        reciprocal = full_simplify(div(num(1), target_expr))
+        return "Use cot(A) = 1/tan(A), so tan(A) = " + show(reciprocal) + ". " + direct_trig_family_line("tan", reciprocal, deg_mode)
     return "For tan(A) = " + target_text + ", use A = alpha + n*pi, where alpha = arctan(" + target_text + ") and the period is " + tan_turn_text + "."
 
 
@@ -16763,7 +16772,7 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
             lines.append("No valid solutions in the interval.")
 
     line_blob = " ".join(lines)
-    allow_general = "set each factor equal to 0" not in line_blob.lower()
+    allow_general = no_interval_mode and "set each factor equal to 0" not in line_blob.lower()
 
     if no_interval_mode:
         picked = trim_default_no_interval_solutions(valid)

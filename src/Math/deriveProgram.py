@@ -1710,6 +1710,20 @@ def explain(node, var, deps_list):
         return d, lines
     if node[0] == "mul":
         items = list(node[1])
+        if len(items) == 3:
+            u = items[0]
+            v = items[1]
+            w = items[2]
+            du = tidy(diff(u, var, deps_list))
+            dv = tidy(diff(v, var, deps_list))
+            dw = tidy(diff(w, var, deps_list))
+            combo = tidy(add([mul([du, v, w]), mul([u, dv, w]), mul([u, v, dw])]))
+            lines.append("Using product rule")
+            lines.append("Let u = " + show(u) + ", v = " + show(v) + ", w = " + show(w))
+            lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv) + ", dw/d" + var + " = " + show(dw))
+            lines.append("dy/d" + var + " = u'*v*w + u*v'*w + u*v*w'")
+            lines.append("= " + show(combo))
+            return d, lines
         u = items[0]
         v = make_mul(items[1:])
         du = tidy(diff(u, var, deps_list))
@@ -1743,6 +1757,7 @@ def explain(node, var, deps_list):
             else:
                 lines.append("Using chain rule")
                 lines.append("Let u = " + show(base))
+                lines.append("du/d" + var + " = " + show(db))
                 lines.append("dy/d" + var + " = " + show(exp) + "*u^(" + show(subq(exp, num(1))) + ")*du/d" + var)
                 lines.append("= " + show(d))
             return d, lines
@@ -2417,10 +2432,16 @@ def solve_normal_mode(text):
             label + " = " + show(final),
         ]
         return var, steps, final, formatted
-    expr, var = parse_normal_input(text)
-    expr = trig_normal(expr)
-    ans, steps = explain(expr, var, [])
-    final = core_prefer_simpler(tidy(ans))
+    raw_expr, var = parse_normal_input(text)
+    expr = trig_normal(raw_expr)
+    step_expr = expr
+    if raw_expr[0] in ("pow", "mul") and raw_expr[0] != expr[0]:
+        step_expr = raw_expr
+    ans, steps = explain(step_expr, var, [])
+    final_node = tidy(diff(expr, var, []))
+    if step_expr == expr:
+        final_node = tidy(ans)
+    final = core_prefer_simpler(final_node)
     formatted = format_final_answer(final)
     return var, steps, final, formatted
 

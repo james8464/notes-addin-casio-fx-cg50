@@ -244,9 +244,12 @@ def normalize_input_text(text):
     text = text.replace('\u00bc', '(1/4)')
     text = text.replace('\u00be', '(3/4)')
     text = _normalize_superscripts(text)
+    text = _normalize_inverse_trig_notation(text)
     text = _normalize_sqrt_symbol(text)
     if '|' in text:
+        text = _normalize_function_pipe_calls(text)
         text = _convert_abs_pipes(text)
+    text = _normalize_compact_function_words(text)
     return text
 
 
@@ -298,6 +301,110 @@ def _normalize_sqrt_symbol(text):
             out.append('sqrt(' + text[start:i] + ')')
         else:
             out.append('sqrt')
+    return ''.join(out)
+
+
+_COMPACT_FUNC_WORDS = (
+    'arcsin', 'arccos', 'arctan',
+    'cosec',
+    'asin', 'acos', 'atan',
+    'sinh', 'cosh', 'tanh',
+    'sqrt', 'sin', 'cos', 'tan', 'sec', 'cot',
+    'abs', 'exp', 'log', 'ln', 'csc',
+)
+
+
+def _normalize_inverse_trig_notation(text):
+    pairs = (
+        ('arcsin^-1', 'asin'),
+        ('arccos^-1', 'acos'),
+        ('arctan^-1', 'atan'),
+        ('sin**-1', 'asin'),
+        ('cos**-1', 'acos'),
+        ('tan**-1', 'atan'),
+        ('sin^-1', 'asin'),
+        ('cos^-1', 'acos'),
+        ('tan^-1', 'atan'),
+    )
+    i = 0
+    while i < len(pairs):
+        text = text.replace(pairs[i][0], pairs[i][1])
+        i += 1
+    return text
+
+
+def _split_compact_function_word(word):
+    low = word.lower()
+    if low in _COMPACT_FUNC_WORDS or low in ('pi', 'e'):
+        return None, None
+    i = 0
+    while i < len(_COMPACT_FUNC_WORDS):
+        token = _COMPACT_FUNC_WORDS[i]
+        if low.startswith(token) and len(word) > len(token):
+            rest = word[len(token):]
+            name = token
+            if name == 'ln':
+                name = 'log'
+            elif name == 'csc':
+                name = 'cosec'
+            return name, rest
+        i += 1
+    return None, None
+
+
+def _normalize_compact_function_words(text):
+    out = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if is_name_start(ch):
+            j = i + 1
+            while j < len(text) and is_name_char(text[j]):
+                j += 1
+            word = text[i:j]
+            name, rest = _split_compact_function_word(word)
+            if name is not None:
+                out.append(name)
+                out.append('(')
+                out.append(_normalize_compact_function_words(rest))
+                out.append(')')
+            else:
+                out.append(word)
+            i = j
+            continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def _normalize_function_pipe_calls(text):
+    out = []
+    i = 0
+    while i < len(text):
+        matched = False
+        j = 0
+        while j < len(_COMPACT_FUNC_WORDS):
+            token = _COMPACT_FUNC_WORDS[j]
+            end = i + len(token)
+            if text[i:end].lower() == token:
+                prev_ok = i == 0 or not is_name_char(text[i - 1])
+                if prev_ok and end < len(text) and text[end] == '|':
+                    close = end + 1
+                    while close < len(text) and text[close] != '|':
+                        close += 1
+                    if close < len(text):
+                        out.append(text[i:end])
+                        out.append('(')
+                        out.append(text[end:close + 1])
+                        out.append(')')
+                        i = close + 1
+                        matched = True
+                        break
+            j += 1
+        if matched:
+            continue
+        out.append(text[i])
+        i += 1
     return ''.join(out)
 
 

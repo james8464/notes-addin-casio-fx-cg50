@@ -125,6 +125,8 @@ class TestRecord:
     passed: bool = True
     # Result from the harness checker only; not modified after add_test.
     harness_status: TestStatus = TestStatus.PASS
+    # True when LLM disagrees or is unsure but the harness did not fail.
+    review_needed: bool = False
 
 
 @dataclass
@@ -2336,11 +2338,10 @@ class CASIOApp(App):
             self.handle_llm_select(value)
 
     def _failure_report_record_ids(self):
-        """Records to include: harness failure, or LLM incorrect / needs review."""
+        """Records to include: harness failure, or LLM disagreement worth review."""
         ids = []
         for r in self.records:
-            llm = (getattr(r, "llm_verdict", "") or "").strip()
-            if r.status == TestStatus.FAIL or llm in ("INCORRECT", "NEEDS_REVIEW"):
+            if r.harness_status == TestStatus.FAIL or getattr(r, "review_needed", False):
                 ids.append(r.test_id)
         return ids
 
@@ -2373,10 +2374,12 @@ class CASIOApp(App):
             self.append_result(f"[dim]Session log:[/dim] {p}")
 
     def _append_session_report_if_worthy(self, record):
-        """Append a compact block for failing or LLM-flagged tests (avoids a huge all-pass file)."""
+        """Append a compact block for harness failures or verifier disagreements."""
         llm = (getattr(record, "llm_verdict", "") or "").strip()
-        if record.status != TestStatus.FAIL and llm not in ("INCORRECT", "NEEDS_REVIEW"):
+        review_needed = bool(getattr(record, "review_needed", False))
+        if record.harness_status != TestStatus.FAIL and not review_needed:
             return
+        kind = "harness failure" if record.harness_status == TestStatus.FAIL else "verifier disagreement"
         p = self._session_report_path()
         lines = [
             "-" * 72,
@@ -2386,6 +2389,7 @@ class CASIOApp(App):
                 record.label,
                 " [" + record.feature + "]" if record.feature else "",
             ),
+            "Type: {0}".format(kind),
             "Final: {0}  |  harness: {1}".format(record.status.name, record.harness_status.name),
         ]
         if llm:
@@ -2938,20 +2942,18 @@ class CASIOApp(App):
         return record
 
     def apply_llm_weighted_status(self, record, final_verdict):
-        """Set record.status and record.passed from LLM-weighted final_verdict; update feature stats on flips."""
-        if final_verdict == "CORRECT":
-            new_status = TestStatus.PASS
-        else:
-            new_status = TestStatus.FAIL
-        old_status = record.status
-        if old_status != new_status and getattr(record, "feature", ""):
-            st = self._feature_stats.setdefault(record.feature, [0, 0])
-            if old_status == TestStatus.PASS and new_status == TestStatus.FAIL:
-                st[0] = max(0, st[0] - 1)
-            elif old_status == TestStatus.FAIL and new_status == TestStatus.PASS:
-                st[0] = min(st[1], st[0] + 1)
-        record.status = new_status
-        record.passed = new_status == TestStatus.PASS
+        """
+        Keep the harness as the authoritative pass/fail signal.
+
+        LLM disagreements still surface via review_needed so we can inspect them
+        without letting a noisy verifier turn mathematically-checked cases into
+        false failures.
+        """
+        record.review_needed = (
+            record.harness_status == TestStatus.PASS and final_verdict == "NEEDS_REVIEW"
+        )
+        record.status = record.harness_status
+        record.passed = record.harness_status == TestStatus.PASS
 
     def _wants_json_export(self):
         if getattr(self, "_force_export_json", False):
@@ -2971,6 +2973,7 @@ class CASIOApp(App):
                     "status": r.status.name,
                     "harness_status": r.harness_status.name,
                     "passed": r.passed,
+                    "review_needed": getattr(r, "review_needed", False),
                     "program": r.program,
                     "feature": r.feature,
                     "check_info": r.check_info,
@@ -3010,8 +3013,11 @@ class CASIOApp(App):
         if self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled:
             llm_count = sum(1 for r in self.records if r.llm_verdict == "CORRECT")
             llm_total = sum(1 for r in self.records if r.llm_verdict)
+            review_total = sum(1 for r in self.records if getattr(r, "review_needed", False))
             if llm_total > 0:
                 msg += f" · LLM: {llm_count}/{llm_total} verified"
+                if review_total > 0:
+                    msg += f" · review {review_total}"
                 cache_stats = self.llm_manager.cache.stats()
                 if cache_stats.get("hits", 0) > 0:
                     msg += f" ({cache_stats['hit_rate']} cache)"
@@ -3394,11 +3400,11 @@ class CASIOApp(App):
                     return code_verdict
 
                 if llm_verdict == "CORRECT":
-                    if code_verdict == "CORRECT":
-                        return "CORRECT"
-                    return "NEEDS_REVIEW"
+                    return code_verdict
                 if llm_verdict == "INCORRECT":
-                    return "INCORRECT"
+                    if code_verdict == "INCORRECT":
+                        return "INCORRECT"
+                    return "NEEDS_REVIEW"
                 if llm_verdict == "NEEDS_REVIEW":
                     if code_verdict == "INCORRECT":
                         return "INCORRECT"

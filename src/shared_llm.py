@@ -37,13 +37,20 @@ LLM_CACHE_TTL_SECONDS = 3600
 # Truncate each program output in batch verify to keep argv / context reasonable.
 _LLM_BATCH_OUT_CHARS = max(400, int(os.environ.get("CASIO_LLM_BATCH_OUT_CHARS", "1200")))
 
-LLM_SYSTEM_PROMPT = """Check math working. Steps follow? no fake "hence"? rules ok? answer matches?
-Equiv forms ok.
+LLM_SYSTEM_PROMPT = """Judge CASIO maths output conservatively.
 
-One word:
-CORRECT — clear
-INCORRECT — bad steps/answer
-NEEDS_REVIEW — unsure"""
+Rules:
+- Equivalent algebraic or trig forms are CORRECT.
+- Exact radicals, exact pi answers, and unsimplified-but-equivalent forms are CORRECT.
+- Interval questions only need roots inside the stated interval. Do not invent extra general-solution roots.
+- General-solution questions may use n*pi, 2*n*pi, degrees, or radians if mathematically equivalent.
+- If the harness-checked answer looks plausible but you cannot prove it wrong from the text, say NEEDS_REVIEW, not INCORRECT.
+- Use INCORRECT only for a clear mathematical error, missing required answer, or invalid working that changes the result.
+
+Reply with one word only:
+CORRECT
+INCORRECT
+NEEDS_REVIEW"""
 
 
 def check_ollama_available():
