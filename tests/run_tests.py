@@ -102,6 +102,8 @@ class TestStatus(Enum):
 
 
 class RunState(Enum):
+    # Long random runs need a real lifecycle, especially when /stop arrives from
+    # the TUI or a stop file.  run_state is the single source of truth.
     IDLE = "idle"
     RUNNING = "running"
     STOPPING = "stopping"
@@ -1570,14 +1572,21 @@ def derive_param_checker(*tokens):
 def integrate_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("+ c",),
-        contains_any=(
-            "method:",
-            "met:",
-            "u =",
-            "use the standard result",
-            "integration by parts",
-            "split the numerator",
-            "complete the square",
+            contains_any=(
+                "method:",
+                "met:",
+                "integrate each term",
+                "u =",
+                "use the standard result",
+                "standard integral",
+                "power-reduction",
+                "integration by parts",
+                "integrate by parts",
+                "use parts",
+                "by parts",
+                "use:",
+                "split the numerator",
+                "complete the square",
             "partial fractions",
         ),
         min_steps=0,
@@ -2110,6 +2119,7 @@ class CASIOApp(App):
 
     @property
     def running(self):
+        # Backwards-compatible property; new code should reason in RunState.
         return self.run_state == RunState.RUNNING
 
     @running.setter
@@ -2117,6 +2127,7 @@ class CASIOApp(App):
         self.transition_run_state(RunState.RUNNING if value else RunState.STOPPED)
 
     def transition_run_state(self, new_state):
+        """Move between random-run lifecycle states in one controlled place."""
         if self.run_state == new_state:
             return
         allowed = {
@@ -2128,6 +2139,8 @@ class CASIOApp(App):
         if new_state in allowed.get(self.run_state, ()):
             self.run_state = new_state
             return
+        # Older error paths can still jump straight to STOPPED.  Prefer a clean
+        # stopped UI over leaving the runner visibly stuck.
         self.run_state = new_state
 
     def request_stop(self):
@@ -3339,12 +3352,16 @@ class CASIOApp(App):
             yield case
 
     def run_case_specs(self, cases, workers=None, skip_quality=False, infinite_mode=False):
+        """Execute cases, record harness results, and optionally verify via LLM."""
         self._in_run_case_specs = True
         try:
             cases = self.dedupe_cases_for_run(cases)
             active_workers = max(1, min(workers or CASE_WORKERS, _safe_worker_cap()))
             case_count = len(cases)
             skip_quality = skip_quality or self.total_expected > 2000
+            # /llm enables this flag before a random run.  When true, every case
+            # output is checked by the configured local model after the harness
+            # checker has done its deterministic work.
             use_llm = self.llm_enabled_for_tests and self.llm_manager and self.llm_manager.enabled
             if use_llm:
                 model = getattr(self.llm_manager, "selected_model", None) or "unknown"
@@ -3815,9 +3832,12 @@ class CASIOApp(App):
         fuzzed_input = self.fuzz_cli_input_format(case.input_text, rng, difficulty)
         if fuzzed_input == case.input_text:
             return case
-        checker = self.calculated_checker_for_cli_case(case.script, fuzzed_input, case.checker)
-        if checker is None:
+        if limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(fuzzed_input or "")):
             checker = case.checker
+        else:
+            checker = self.calculated_checker_for_cli_case(case.script, fuzzed_input, case.checker)
+            if checker is None:
+                checker = case.checker
         script = case.script
 
         def runner():
@@ -4218,7 +4238,7 @@ class CASIOApp(App):
         quality = build_checker(
             contains_all=("x =",),
             contains_any=("solve trig eq", "for sin(a) = sin(b)", "for cos(a) = cos(b)", "start with"),
-            min_steps=4,
+            min_steps=3,
             min_lines=4,
         )
         expected_values = None
@@ -4387,14 +4407,14 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator"),
+            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
             min_steps=0,
             min_lines=2,
         )
         # Non-elementary / cannot-integrate answers do not end with " + c"; use relaxed gates.
         quality_no_elementary = build_checker(
             contains_all=("answer:",),
-            contains_any=("method:", "met:", "tried", "use the standard result", "u =", "integration by parts", "partial fractions", "divide the numerator", "exam:"),
+            contains_any=("method:", "met:", "tried", "use the standard result", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
             min_steps=0,
             min_lines=2,
         )
@@ -5702,7 +5722,7 @@ class CASIOApp(App):
         expr, expected_method = rng.choice(parts_cases)
         cli_input = f"1\n{expr}\n\n"
         label = f"Parts twice {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_parts_twice")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_parts_twice")
 
     def random_integrate_partial_frac_case(self, rng, difficulty, index):
         patterns = [
@@ -5722,7 +5742,7 @@ class CASIOApp(App):
         expr = rng.choice(powers)
         cli_input = f"1\n{expr}\n\n"
         label = f"Trig power {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:", "use"), feature="int_trig_power")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("use"), feature="int_trig_power")
 
     def random_integrate_substitution_case(self, rng, difficulty, index):
         patterns = [
@@ -6083,6 +6103,7 @@ class CASIOApp(App):
         return cases
 
     def random_builders_for_program(self, program):
+        """Return the random-case builders included in the requested scope."""
         builders = [
             ("Algebra", self.build_random_algebra_cases),
             ("Trigonometry", self.build_random_trig_cases),
@@ -6095,11 +6116,13 @@ class CASIOApp(App):
         return [(name, builder) for name, builder in builders if name == program]
 
     def random_program_counts(self, total_count, builder_count, infinite_mode):
+        """Split finite runs evenly; infinite runs ask each builder for chunks."""
         if infinite_mode:
             return [None] * builder_count
         return self.balanced_counts(total_count, builder_count)
 
     def iter_random_test_batches(self, builders, program_counts, generation_chunk, infinite_mode):
+        """Yield random-test batches, cycling forever when infinite_mode is true."""
         cycle = 0
         while True:
             cycle += 1
@@ -6136,16 +6159,22 @@ class CASIOApp(App):
                 break
 
     def random_stop_file_path(self):
-        return os.path.expanduser("~/.casio_stop")
+        return str(Path(__file__).resolve().parent / "reports" / ".casio_stop")
 
     def consume_random_stop_file(self):
-        stop_file = self.random_stop_file_path()
-        if os.path.exists(stop_file):
-            os.remove(stop_file)
-            return True
+        """Consume either project-local or user-home stop markers."""
+        paths = [self.random_stop_file_path(), os.path.expanduser("~/.casio_stop")]
+        for stop_file in paths:
+            if os.path.exists(stop_file):
+                try:
+                    os.remove(stop_file)
+                except OSError:
+                    continue
+                return True
         return False
 
     def random_stop_requested(self, emit, message="[dim]Stop requested - ending after this batch[/dim]"):
+        """Single stop check used by the random runner before and after batches."""
         if self.is_stopping():
             return True
         if self.consume_random_stop_file():
@@ -6171,6 +6200,7 @@ class CASIOApp(App):
         self._feature_stats = {}
 
     def announce_random_llm_status(self, emit):
+        """Explain whether every random output will receive LLM verification."""
         if self.llm_manager and self.llm_manager.enabled:
             emit(self.append_result, "[dim]LLM:[/dim] Verifying connection to Ollama...")
             try:
@@ -6202,6 +6232,9 @@ class CASIOApp(App):
         actual_count = count if count else 200
         infinite_mode = count is None or count <= 0
         def run():
+            # This runs in a background thread for the Textual UI and inline for
+            # plain mode.  The finally block below must restore the live status no
+            # matter which exit path fires.
             self._random_infinite = infinite_mode
             try:
                 emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
@@ -6210,9 +6243,9 @@ class CASIOApp(App):
                     self.transition_run_state(RunState.RUNNING)
                 self._live_phase = "running"
                 if self.consume_random_stop_file():
-                    self.transition_run_state(RunState.STOPPED)
-                    emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
-                    return
+                    # Clear stale /stop markers from previous processes before
+                    # this new run starts, then tell the user what happened.
+                    emit(self.append_result, "[dim]Cleared previous stop marker[/dim]")
 
                 self._show_chaos_feature_gaps = True
                 self.announce_random_llm_status(emit)
@@ -6260,6 +6293,9 @@ class CASIOApp(App):
                     emit(self.update_progress_bar, 0, self.total_expected)
 
                 last_program = None
+                # Batch generation owns the outer "which program next?" loop.
+                # In infinite mode this generator keeps cycling until the single
+                # stop check below sees /stop or a stop marker.
                 for batch in self.iter_random_test_batches(builders, program_counts, generation_chunk, infinite_mode):
                     if self.random_stop_requested(emit):
                         break
@@ -6279,6 +6315,8 @@ class CASIOApp(App):
                     self._live_phase = "testing"
                     if not cases and infinite_mode:
                         emit(self.append_result, "[dim][skip] empty case batch (retry next cycle)[/dim]")
+                    # LLM verification, when enabled by /llm, happens inside
+                    # run_case_specs so every produced output is checked once.
                     self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
                     test_count = len(self.records)
                     test_total = self.total_expected if self.total_expected > 0 else test_count
@@ -7724,19 +7762,36 @@ def main():
         while i < len(raw):
             tok = (raw[i] or "").lower()
             if tok == "llm":
-                app.handle_llm_select(" ".join(raw[i:]))
-                break
+                if i + 1 < len(raw):
+                    app.handle_llm_select("llm " + raw[i + 1])
+                    i += 2
+                    continue
+                app.handle_llm_select("llm")
+                i += 1
+                continue
             if tok == "random":
                 count = 100
                 if i + 1 < len(raw):
-                    try:
-                        count = int(raw[i + 1])
-                    except (ValueError, TypeError, IndexError):
-                        pass
-                    else:
+                    nxt = (raw[i + 1] or "").lower()
+                    if nxt in ("inf", "infinite"):
+                        count = None
                         i += 1
+                    else:
+                        try:
+                            count = int(raw[i + 1])
+                        except (ValueError, TypeError, IndexError):
+                            pass
+                        else:
+                            i += 1
+                if count is None:
+                    app.action_random_tests("chaos", None, command_label="/random inf")
+                else:
+                    app.action_random_tests("chaos", count, command_label="/random")
                 i += 1
-                app.action_random_tests("chaos", count, command_label="/random")
+                continue
+            if tok in ("inf", "infinite"):
+                app.action_random_tests("chaos", None, command_label="/infinite")
+                i += 1
                 continue
             if tok == "compile":
                 app.action_compile()

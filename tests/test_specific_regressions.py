@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""Targeted regressions for the CASIO harness and math program flows."""
+
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TESTS = Path(__file__).resolve().parent
+PY = sys.executable
+MATH_ROOT = ROOT / "src" / "Math"
+
+for path in (TESTS, ROOT, MATH_ROOT):
+    path_text = str(path)
+    if path_text not in sys.path:
+        sys.path.insert(0, path_text)
+
+from run_tests import CASIOApp, TestStatus, TestRecord  # noqa: E402
+import algebraProgram as algebra_program  # noqa: E402
+import trigProgram as trig_program  # noqa: E402
+from src.shared_cache import cache_store  # noqa: E402
+
+
+def run_cli(script_name, cli_input):
+    result = subprocess.run(
+        [PY, str(MATH_ROOT / script_name)],
+        input=cli_input,
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    return result.stdout
+
+
+class RuntimeSourceGuardTests(unittest.TestCase):
+    def test_calculator_runtime_does_not_import_sympy(self):
+        bad = []
+        for path in (ROOT / "src").rglob("*.py"):
+            if "legacy" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+            if "import sympy" in text or "from sympy" in text:
+                bad.append(str(path.relative_to(ROOT)))
+        self.assertEqual(bad, [])
+
+
+class HarnessLlmStatusTests(unittest.TestCase):
+    def test_apply_needs_review_marks_review_only(self):
+        app = CASIOApp()
+        app._feature_stats = {"trig_solve": [1, 1]}
+        record = TestRecord(
+            1, "a", TestStatus.PASS, "o", "Trigonometry", feature="trig_solve", passed=True, harness_status=TestStatus.PASS
+        )
+        app.apply_llm_weighted_status(record, "NEEDS_REVIEW")
+        self.assertEqual(record.status, TestStatus.PASS)
+        self.assertIs(record.passed, True)
+        self.assertEqual(record.harness_status, TestStatus.PASS)
+        self.assertIs(record.review_needed, True)
+        self.assertEqual(app._feature_stats["trig_solve"], [1, 1])
+
+    def test_apply_correct_does_not_save_code_fail(self):
+        app = CASIOApp()
+        app._feature_stats = {"a": [0, 1]}
+        record = TestRecord(
+            1, "a", TestStatus.FAIL, "o", "Algebra", feature="a", passed=False, harness_status=TestStatus.FAIL
+        )
+        app.apply_llm_weighted_status(record, "CORRECT")
+        self.assertEqual(record.status, TestStatus.FAIL)
+        self.assertIs(record.passed, False)
+        self.assertEqual(app._feature_stats["a"], [0, 1])
+        self.assertIs(record.review_needed, False)
+
+    def test_failure_report_ids_include_review_needed(self):
+        app = CASIOApp()
+        app.records = [
+            TestRecord(1, "ok", TestStatus.PASS, "o", "A", passed=True, harness_status=TestStatus.PASS),
+            TestRecord(2, "review", TestStatus.PASS, "o", "A", passed=True, harness_status=TestStatus.PASS, review_needed=True),
+            TestRecord(
+                3, "bad", TestStatus.FAIL, "e", "A", passed=False, llm_verdict="INCORRECT", harness_status=TestStatus.FAIL
+            ),
+        ]
+        self.assertEqual(app._failure_report_record_ids(), [2, 3])
+
+
+class TransformRegressionTests(unittest.TestCase):
+    def test_trig_transform_handles_obtuse_branch(self):
+        output = run_cli("trigProgram.py", "2\nsin(x)=12/13\ncot(2*x)=119/120\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("obtuse branch", output.lower())
+        self.assertIn("tan(x) = -12/5", output)
+        self.assertIn("Answer: cot(2*x)=119/120", output)
+
+    def test_trig_transform_handles_acute_branch(self):
+        output = run_cli("trigProgram.py", "2\nsin(x)=12/13\ncot(2*x)=-119/120\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("acute branch", output.lower())
+        self.assertIn("Answer: cot(2*x)=-119/120", output)
+
+    def test_trig_prove_uses_two_inputs(self):
+        output = run_cli("trigProgram.py", "1\ntan(x)\nsin(x)/cos(x)\n1\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("LHS = RHS", output)
+
+    def test_trig_prove_tan_add_uses_sum_formula(self):
+        output = run_cli("trigProgram.py", "1\ntan(x+y)\n(tan(x)+tan(y))/(1-tan(x)*tan(y))\n1\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Use tan(A+B)", output)
+        self.assertNotIn("Use tan(2A)", output)
+
+    def test_trig_prove_exact_pi_value(self):
+        output = run_cli("trigProgram.py", "1\nsin(pi/6)\n1/2\n1\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("sin(pi/6) = 1/2", output)
+        self.assertIn("LHS = RHS", output)
+
+    def test_trig_prove_inverse_trig_domain_message(self):
+        output = run_cli("trigProgram.py", "1\nasin(sin(x))\nx\n1\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Principal value restriction", output)
+        self.assertIn("not an identity for all values", output)
+
+    def test_trig_solve_accepts_plain_equation(self):
+        output = run_cli("trigProgram.py", "3\nsin(x)=0\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Answer:", output)
+        self.assertTrue("x = [" in output or "n any integer" in output, msg=output)
+
+    def test_trig_tan_equality_uses_degree_period(self):
+        output = run_cli("trigProgram.py", "3\ntan(2*x)=tan(x),x,0,360\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("n*180", output)
+        self.assertNotIn("n*pi", output)
+
+    def test_trig_interval_solver_lists_roots_not_general_family(self):
+        output = run_cli("trigProgram.py", "3\ntan(2*x)-tan(x)=0,x,-pi,pi\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Answer: x = [-pi, 0, pi]", output)
+
+    def test_trig_solver_accepts_compact_function_syntax(self):
+        output = run_cli("trigProgram.py", "3\nsinx=0,x,0,360\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("sin(x) = 0", output)
+        self.assertIn("Answer: x = [0, 180, 360]", output)
+
+    def test_trig_solver_reciprocal_working_uses_right_family(self):
+        output = run_cli("trigProgram.py", "3\ncosecx=2,x,0,360\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Use cosec(A) = 1/sin(A), so sin(A) = 1/2.", output)
+        self.assertIn("Answer: x = [30, 150]", output)
+
+    def test_pipe_absolute_value_normalization(self):
+        trig_lhs, trig_rhs = trig_program.parse_equation_or_zero("|x|=1")
+        alg_lhs, alg_rhs = algebra_program.parse_equation_or_zero("|x|=1")
+        self.assertEqual(trig_program.show(trig_lhs), "abs(x)")
+        self.assertEqual(trig_program.show(trig_rhs), "1")
+        self.assertEqual(algebra_program.show(alg_lhs), "abs(x)")
+        self.assertEqual(algebra_program.show(alg_rhs), "1")
+
+    def test_algebra_transform_accepts_equation_inputs(self):
+        output = run_cli("algebraProgram.py", "2\nx^2-1=0\n(x-1)*(x+1)=0\n")
+        self.assertNotIn("Err:", output)
+        self.assertNotIn("Method:", output)
+        self.assertNotIn("Step 1:", output)
+        self.assertIn("Factor as a difference of squares", output)
+        self.assertIn("Answer:(x-1)*(x+1)=0", output.replace(" ", ""))
+
+    def test_algebra_transform_delegates_trig_equations(self):
+        output = run_cli("algebraProgram.py", "2\nsin(x)=12/13\ncot(2*x)=119/120\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("obtuse branch", output.lower())
+        self.assertIn("Answer: cot(2*x)=119/120", output)
+
+    def test_derive_accepts_compact_inverse_trig_syntax(self):
+        output = run_cli("deriveProgram.py", "1\nsin^-1x\n")
+        self.assertNotIn("Err:", output)
+        self.assertNotIn("Method:", output)
+        self.assertNotIn("Using asin rule", output)
+        self.assertIn("Answer: dy/dx = 1/sqrt(1 - x^2)", output)
+
+    def test_integrate_accepts_compact_trig_syntax(self):
+        output = run_cli("intProgram.py", "1\nsinx\n1\n\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Use the standard integral for sin(x).", output)
+        self.assertIn("Answer: -cos(x) + C", output)
+
+    def test_derive_triple_product_keeps_three_factor_working(self):
+        expr = "(log(exp(9x-7)+8))(cosec(8(9x^2-(5)(x)+-6)+1))((exp(4x-6))+(6x-5))"
+        output = run_cli("deriveProgram.py", "1\n" + expr + "\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Let u = ln(exp(9*x - 7) + 8), v = cosec(8*(9*x^2 - 5*x - 6) + 1), w = exp(4*x - 6) + 6*x - 5", output)
+        self.assertIn("dy/dx = u'*v*w + u*v'*w + u*v*w'", output)
+
+    def test_derive_abs_notes_undefined_point(self):
+        output = run_cli("deriveProgram.py", "1\n|x|\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("d/dx|u| = (u/abs(u))*du/dx", output)
+        self.assertIn("undefined where x = 0", output)
+        self.assertIn("Answer: dy/dx = x/abs(x)", output)
+
+    def test_parametric_vertical_tangent_is_answer_not_error(self):
+        output = run_cli("deriveProgram.py", "3\n5\nt^2\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("dx/dt = 0", output)
+        self.assertIn("Answer: dy/dx undefined (vertical tangent)", output)
+
+    def test_cartesian_parametric_linear_offsets(self):
+        output = run_cli("algebraProgram.py", "11\nt+1\nt-1\n\n")
+        self.assertNotIn("Err:", output)
+        self.assertNotIn("Method:", output)
+        self.assertNotIn("Cartesian:", output)
+        self.assertIn("Answer: y = x - 2", output)
+
+    def test_integral_reciprocal_exp_substitution_shows_algebra(self):
+        output = run_cli("intProgram.py", "1\n((1/x**2)+(1/x**3))*exp(1/x)\n5\n")
+        self.assertNotIn("Method:", output)
+        self.assertNotIn("Attempt", output)
+        self.assertIn("du/dx = -1/x^2, so dx = -x^2 du.", output)
+        self.assertIn("x = 1/u, so 1/x^2 = u^2 and 1/x^3 = u^3.", output)
+        self.assertIn("I = Int[(- u - 1)*e^(u)] du.", output)
+        self.assertIn("= -u*e^(u) + C.", output)
+        self.assertIn("Answer: -e^(1/x)/x + C", output)
+
+    def test_short_chain_quotient_keeps_calculable_answer(self):
+        expr = "((atan(-3*x+4))/(sqrt(((9*x+3)^2+(4*x-7))^2+8)+1))^2"
+        output = run_cli("deriveProgram.py", "1\n" + expr + "\n")
+        self.assertNotIn("Answer: dy/dx = (D*dN - N*dD)/D^2", output)
+        self.assertIn("Quotient rule", output)
+        self.assertIn("atan(4 - 3*x)", output)
+
+    def test_long_chain_quotient_uses_compact_exam_symbols(self):
+        expr = "((sin((3)*(2*(9*x^2-4*x+4)-3)^2-7)^5+cos(3*(2*(9*x^2-4*x+4)-3)^2-7)^5)/(exp(5*x+5)+8))^4"
+        output = run_cli("deriveProgram.py", "1\n" + expr + "\n")
+        self.assertIn("Write y = N/D.", output)
+        self.assertIn("Let u = N and v = D.", output)
+        self.assertNotIn("Answer: dy/dx = (D*dN - N*dD)/D^2", output)
+        self.assertIn("Answer: dy/dx =", output)
+
+    def test_trig_grouped_general_solution_detection(self):
+        result = trig_program.detect_general_solution([30.0, 150.0, 390.0, 510.0], True)
+        self.assertEqual(result, "30 + n*360 or 150 + n*360 (n any integer)")
+
+    def test_trig_special_identity_rewrites_pythagorean_forms(self):
+        node = trig_program.parse("1-sin(x)^2")
+        reduced, note = trig_program.special_trig_identity_once(node)
+        self.assertIsNotNone(reduced)
+        self.assertEqual(trig_program.show(reduced), "cos(x)^2")
+        self.assertIn("1 - sin^2", note)
+
+    def test_trig_numeric_eval_overflow_returns_none(self):
+        node = trig_program.parse("exp(1000)")
+        self.assertIsNone(trig_program.numeric_eval(node, {}, False))
+
+    def test_suvat_zero_average_velocity_reports_no_solution(self):
+        output = run_cli("SUVATprogram.py", "10\n5\n-5\n\n,\n")
+        self.assertIn("No solution: division by zero in t formula", output)
+
+    def test_shared_cache_eviction_uses_snapshot_keys(self):
+        cache = {}
+        for i in range(10):
+            cache_store(cache, i, i, 4)
+        self.assertLessEqual(len(cache), 4)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,3 +1,11 @@
+"""
+Trigonometry program for the CASIO menu.
+
+The program has four public flows: prove, transform, solve, and rewrite.  Most
+of the length is the route ladder that chooses a recognisable identity before
+falling back to broader symbolic or numeric checks.
+"""
+
 try:
     import math
 except ImportError:
@@ -13,7 +21,7 @@ except NameError:
 
 try:
     from src.shared_helpers import (
-        ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
+        compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
         is_zero, normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
         casio_hw_sim_from_env,
     )
@@ -23,9 +31,11 @@ try:
     )
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
+    # Desktop tests import through src.*, while calculator builds often import
+    # beside the program file.  The fallback keeps the standalone file usable.
     try:
         from shared_helpers import (
-            ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
+            compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym,
             is_zero, normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
             casio_hw_sim_from_env,
         )
@@ -39,7 +49,7 @@ except ImportError:
             from shared_fallback import (
                 cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
                 enforce_total_cache_limit as shared_enforce_total_cache_limit,
-                ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym, is_zero,
+                compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one, is_sym, is_zero,
                 normalize_input_text, neg as shared_neg, same_by_sig, E, PI, REASONING_MARKERS,
                 casio_hw_sim_from_env,
             )
@@ -52,7 +62,38 @@ except ImportError:
             def shared_enforce_total_cache_limit(*args):
                 return None
             def ensure_reasoning_marker(*a):
-                return a[0] if a else a
+                return compact_working_lines(a[0]) if a else a
+            def compact_working_lines(x, *args):
+                if not x:
+                    return x
+                out = []
+                i = 0
+                while i < len(x):
+                    line = str(x[i]).strip()
+                    low = line.lower()
+                    if line == "" or low.startswith("method:") or low.startswith("attempt "):
+                        i += 1
+                        continue
+                    if low.startswith("equation 1:") or low.startswith("input = ") or low.startswith("expr = "):
+                        i += 1
+                        continue
+                    if low.startswith("solve for ") and low.endswith(":"):
+                        i += 1
+                        continue
+                    if low in ("no solution exists", "all x satisfy this identity"):
+                        i += 1
+                        continue
+                    if low in ("simplify", "simplify.", "diff", "differentiate", "term by term differentiation"):
+                        i += 1
+                        continue
+                    if line.startswith("Step ") and ": " in line:
+                        line = line.split(": ", 1)[1].strip()
+                    if line.startswith("Answer: ") and len(out) > 0 and out[-1] == line[8:].strip():
+                        out.pop()
+                    if len(out) == 0 or out[-1] != line:
+                        out.append(line)
+                    i += 1
+                return out
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -133,6 +174,10 @@ FORMULA_COS_MINUS_COS = "Use cos A - cos B = -2sin((A+B)/2)sin((A-B)/2)."
 FORMULA_LOG_BASE_CHANGE = "Use log_a x = log_b x / log_b a."
 FORMULA_EXP_BASE_CHANGE = "Use e^(x ln a) = a^x."
 
+# Formula strings are kept as constants so proof routes can cite the exact
+# identity they used.  That is what makes the output feel like working, not just
+# a symbolic equivalence verdict.
+
 FAST_GCD = math.gcd if math is not None and hasattr(math, "gcd") else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, "isqrt") else None
 FAST_ISFINITE = math.isfinite if math is not None and hasattr(math, "isfinite") else None
@@ -165,8 +210,8 @@ FACTOR_REWRITE_DEPTH_LIMIT = 2
 SOLVE_LOOKAHEAD_ENABLED = True
 LOW_MEMORY_RUNTIME = False
 
-# The engine reuses immutable tuple-AST nodes heavily, so these caches
-# keep repeated simplify/show/match passes cheap without pulling in a CAS.
+# The engine reuses immutable tuple-AST nodes heavily, so these caches keep
+# repeated simplify/show/match passes cheap without pulling in a full CAS.
 SIG_CACHE = {}
 SIM_CACHE = {}
 SHOW_CACHE = {}
@@ -1287,6 +1332,7 @@ def _sim_uncached(node):
 
 
 def sim(node):
+    """Memoized simplifier for the trig AST."""
     kind = node[0]
     if kind in ("num", "sym", "const"):
         return node
@@ -1643,6 +1689,8 @@ def parse(text):
         return True
 
     def starts_implicit(tok):
+        # Let students enter 2x, (x+1)(x+2), and sin x naturally.  The parser
+        # turns adjacency into multiplication instead of forcing every '*'.
         if tok is None:
             return False
         if tok == "(":
@@ -2235,6 +2283,15 @@ def special_trig_identity_once(node):
             return power(fn("sec", rest1[1][2]), num(2)), "Use 1 + tan^2 A = sec^2 A."
         if trig_pow_arg(rest1, "cot", 2) is not None and is_one(coeff1):
             return power(fn("cosec", rest1[1][2]), num(2)), "Use 1 + cot^2 A = cosec^2 A."
+    if is_one(coeff1) and is_one(coeff2):
+        arg1 = trig_pow_arg(rest1, "sin", 2)
+        arg2 = trig_pow_arg(rest2, "cos", 2)
+        if arg1 is not None and arg2 is not None and same(arg1, arg2):
+            return num(1), "Use sin^2 A + cos^2 A = 1."
+        arg1 = trig_pow_arg(rest1, "cos", 2)
+        arg2 = trig_pow_arg(rest2, "sin", 2)
+        if arg1 is not None and arg2 is not None and same(arg1, arg2):
+            return num(1), "Use sin^2 A + cos^2 A = 1."
     if is_one(coeff1) and is_minus_one(coeff2):
         arg1 = trig_pow_arg(rest1, "sec", 2)
         arg2 = trig_pow_arg(rest2, "tan", 2)
@@ -2250,6 +2307,18 @@ def special_trig_identity_once(node):
         arg1 = trig_pow_arg(rest1, "cosec", 2)
         if arg1 is not None and is_one(rest2):
             return power(fn("cot", arg1), num(2)), "Use cosec^2 A - 1 = cot^2 A."
+        arg1 = trig_pow_arg(rest1, "sin", 2)
+        if arg1 is not None and is_one(rest2):
+            return neg(power(fn("cos", arg1), num(2))), "Use sin^2 A - 1 = -cos^2 A."
+        arg1 = trig_pow_arg(rest1, "cos", 2)
+        if arg1 is not None and is_one(rest2):
+            return neg(power(fn("sin", arg1), num(2))), "Use cos^2 A - 1 = -sin^2 A."
+        arg2 = trig_pow_arg(rest2, "sin", 2)
+        if arg2 is not None and is_one(rest1):
+            return power(fn("cos", arg2), num(2)), "Use 1 - sin^2 A = cos^2 A."
+        arg2 = trig_pow_arg(rest2, "cos", 2)
+        if arg2 is not None and is_one(rest1):
+            return power(fn("sin", arg2), num(2)), "Use 1 - cos^2 A = sin^2 A."
     return None, None
 
 
@@ -8638,12 +8707,15 @@ def transform_constant_factor_template(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, eq2_t
 
 
 def solve_transform_text(eq1_text, eq2_text):
+    """Transform E1 into E2, proving equivalence with visible identity steps."""
     begin_user_action()
     eq1_lhs, eq1_rhs = parse_equation_or_zero(eq1_text)
     eq2_lhs, eq2_rhs = parse_equation_or_zero(eq2_text)
     if eq1_lhs is None or eq2_lhs is None:
         raise ValueError("Unable to parse equation.")
     expression_only = is_zero(eq1_rhs) and is_zero(eq2_rhs)
+    # No equals sign means "expression = 0" internally, but transform mode
+    # treats that as expression-only so it can show E1 -> E2 rather than solving.
     if same(eq1_lhs, eq2_lhs) and expression_only:
         return [equation_line(eq1_lhs, num(0))]
     if same(eq1_lhs, eq2_lhs) and same(eq1_rhs, eq2_rhs):
@@ -15567,42 +15639,42 @@ def domain_restriction_identity_lines(lhs, rhs):
     if lhs[0] == "fn" and lhs[1] == "asin" and lhs[2][0] == "fn" and lhs[2][1] == "sin" and same(lhs[2][2], rhs):
         x_text = show(rhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "asin(sin(" + x_text + ")) = " + x_text + " only for -pi/2 <= " + x_text + " <= pi/2.",
             "Answer: not an identity for all values.",
         ]
     if rhs[0] == "fn" and rhs[1] == "asin" and rhs[2][0] == "fn" and rhs[2][1] == "sin" and same(rhs[2][2], lhs):
         x_text = show(lhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "asin(sin(" + x_text + ")) = " + x_text + " only for -pi/2 <= " + x_text + " <= pi/2.",
             "Answer: not an identity for all values.",
         ]
     if lhs[0] == "fn" and lhs[1] == "acos" and lhs[2][0] == "fn" and lhs[2][1] == "cos" and same(lhs[2][2], rhs):
         x_text = show(rhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "acos(cos(" + x_text + ")) = " + x_text + " only for 0 <= " + x_text + " <= pi.",
             "Answer: not an identity for all values.",
         ]
     if rhs[0] == "fn" and rhs[1] == "acos" and rhs[2][0] == "fn" and rhs[2][1] == "cos" and same(rhs[2][2], lhs):
         x_text = show(lhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "acos(cos(" + x_text + ")) = " + x_text + " only for 0 <= " + x_text + " <= pi.",
             "Answer: not an identity for all values.",
         ]
     if lhs[0] == "fn" and lhs[1] == "atan" and lhs[2][0] == "fn" and lhs[2][1] == "tan" and same(lhs[2][2], rhs):
         x_text = show(rhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "atan(tan(" + x_text + ")) = " + x_text + " only for -pi/2 < " + x_text + " < pi/2.",
             "Answer: not an identity for all values.",
         ]
     if rhs[0] == "fn" and rhs[1] == "atan" and rhs[2][0] == "fn" and rhs[2][1] == "tan" and same(rhs[2][2], lhs):
         x_text = show(lhs)
         return [
-            "Method: Principal value restriction",
+            "Principal value restriction",
             "atan(tan(" + x_text + ")) = " + x_text + " only for -pi/2 < " + x_text + " < pi/2.",
             "Answer: not an identity for all values.",
         ]
@@ -16396,6 +16468,7 @@ def parse_solve_interval_context(lhs, rhs, var, interval_bits):
 
 
 def try_identity_candidates(candidates, var, start_val, end_val, deg_mode, lines, lhs, rhs):
+    """Try identity-style solves before using more mechanical solver routes."""
     seen = set()
     i = 0
     while i < len(candidates):
@@ -16411,6 +16484,7 @@ def try_identity_candidates(candidates, var, start_val, end_val, deg_mode, lines
 
 
 def try_solver_on_candidates(candidates, solver, var, start_val, end_val, deg_mode, lines):
+    """Run one solver over rewritten candidates without repeating the same AST."""
     seen = set()
     i = 0
     while i < len(candidates):
@@ -16432,6 +16506,7 @@ def try_solver_on_candidates(candidates, solver, var, start_val, end_val, deg_mo
 
 
 def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines):
+    """Route trig equations from most exam-specific to most general."""
     restricted_identity = solve_domain_restricted_identity_expr(lhs, rhs, expr, var, start_val, end_val, deg_mode)
     if restricted_identity is not None:
         return restricted_identity
@@ -16439,6 +16514,8 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
     if identity_result is not None:
         return identity_result
 
+    # Equal-trig equations such as sin A = sin B need branch-aware solving.
+    # Expanding them too early can hide the principal-angle logic.
     for equality_solver in (
         solve_equal_same_trig_expr,
         solve_equal_complementary_trig_expr,
@@ -16457,6 +16534,8 @@ def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, 
             trial_lines.append("Use the identity (1-cos(2A))/(1+cos(2A)) = tan^2(A).")
             return solve_tan_squared_target(base, frac_coeff, rhs_val, var, start_val, end_val, deg_mode, trial_lines)
 
+    # Direct equations like sin(x)=1/2 are handled before polynomial rewrites so
+    # the output starts with the recognisable inverse-trig step.
     direct_result = try_solver_on_candidates([(expr_before_expand, None)], solve_direct_trig_equation, var, start_val, end_val, deg_mode, lines)
     if direct_result is not None:
         return direct_result
@@ -16593,6 +16672,9 @@ def detect_general_solution(values, deg_mode):
             all_same = False
             break
     if not all_same:
+        grouped = detect_grouped_general_solution(values, deg_mode)
+        if grouped is not None:
+            return grouped
         return None
 
     principal = values[0]
@@ -16642,6 +16724,53 @@ def detect_general_solution(values, deg_mode):
     return None
 
 
+def _period_text(period, deg_mode):
+    if deg_mode:
+        for target, text in ((360, "360"), (180, "180"), (120, "120"), (90, "90"), (60, "60"), (45, "45"), (30, "30")):
+            if abs(period - target) < 1e-4:
+                return text
+        return None
+    pi_v = 3.141592653589793
+    for target, text in ((2.0 * pi_v, "2pi"), (pi_v, "pi"), (pi_v / 2.0, "pi/2"), (pi_v / 3.0, "pi/3"), (pi_v / 4.0, "pi/4"), (pi_v / 6.0, "pi/6")):
+        if abs(period - target) < 1e-3:
+            return text
+    return None
+
+
+def detect_grouped_general_solution(values, deg_mode):
+    n = len(values)
+    max_group = n // 2
+    group = 2
+    while group <= max_group:
+        if n >= group * 2:
+            period = values[group] - values[0]
+            if abs(period) > 1e-9:
+                tol = max(1e-6, 1e-4 * abs(period))
+                ok = True
+                i = group
+                while i < n:
+                    if abs((values[i] - values[i - group]) - period) > tol:
+                        ok = False
+                        break
+                    i += 1
+                if ok:
+                    ptxt = _period_text(abs(period), deg_mode)
+                    if ptxt is not None:
+                        parts = []
+                        i = 0
+                        while i < group:
+                            principal = values[i]
+                            base = _principal_text(principal, deg_mode)
+                            if abs(principal) < 1e-6:
+                                parts.append("n*" + ptxt)
+                            else:
+                                parts.append(base + " + n*" + ptxt)
+                            i += 1
+                        return " or ".join(parts) + " (n any integer)"
+        group += 1
+    return None
+
+
 def trailing_solution_texts(lines, var, values):
     if len(lines) == 0:
         return None
@@ -16684,11 +16813,12 @@ def drop_trailing_solution_line(lines, var):
 
 
 def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
+    """Solve a trig equation, choosing degree/radian mode from the input."""
     lhs, rhs = parse_equation_or_zero(eq_text)
     original_expr = sim(add([lhs, neg(rhs)]))
     derived = derive_cot_quadratic_expr(lhs, rhs)
     expr = sim(add([lhs, neg(rhs)]))
-    lines = ["Method: Solve trig eq", "Start " + equation_line(lhs, rhs)]
+    lines = ["Method: Solve trig eq", "Start with " + equation_line(lhs, rhs)]
     if derived is not None:
         expr = derived[4]
         lines.append("Std trig form")
@@ -16703,6 +16833,8 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     expanded_expr = expand_trig_tree(expr_before_expand)
     start_val, end_val, start_inclusive, end_inclusive, deg_mode, no_interval_mode = parse_solve_interval_context(lhs, rhs, var, interval_bits)
 
+    # The route ladder tries identities, branch equations, direct inverse trig,
+    # polynomial-in-trig substitutions, and finally structured rewrites.
     special_solved = try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines)
     solved = None
     chosen_extra = []
@@ -16824,6 +16956,7 @@ def _solve_solve_text_once(text):
 
 
 def solve_solve_text(text):
+    """User-facing solve parser with sensible defaults for plain equations."""
     text = text.strip()
     if "," not in text:
         lhs, rhs = parse_equation_or_zero(text)
@@ -16895,6 +17028,7 @@ def solve_prove_text(text, route):
 
 
 def solve_prove_pair_text(eq1_text, eq2_text, route):
+    """Prove/transform two entered equations, treating missing '=' as '= 0'."""
     begin_user_action()
     eq1_text = eq1_text.strip()
     eq2_text = eq2_text.strip()
@@ -16903,6 +17037,8 @@ def solve_prove_pair_text(eq1_text, eq2_text, route):
     eq1_has_equals = split_top_level(_balance_parens(eq1_text), "=") is not None
     eq2_has_equals = split_top_level(_balance_parens(eq2_text), "=") is not None
     if not eq1_has_equals and not eq2_has_equals:
+        # Expression-vs-expression proofs can use direct equivalence routes; as
+        # soon as either side has '=', we compare equation residuals instead.
         lhs = parse(eq1_text)
         rhs = parse(eq2_text)
         restriction_lines = domain_restriction_identity_lines(lhs, rhs)
@@ -17590,7 +17726,10 @@ def numeric_eval(node, env, deg_mode=True):
         nearest_int = int(round(exp))
         if base < 0 and abs(exp - nearest_int) > 1e-10:
             return None
-        return base ** exp
+        try:
+            return base ** exp
+        except (OverflowError, ValueError, ZeroDivisionError):
+            return None
     return None
 
 
@@ -17828,8 +17967,6 @@ def compress_display_list(rhs, sep, neg_keep, pos_keep):
 
 def display_line_short(line):
     line = line.strip()
-    if not MICROPYTHON_RUNTIME:
-        return line
     replacements = [
         ("This equation is an identity - both sides are equivalent", "Identity"),
         ("All values in the interval where the original equation is defined are solutions", "All defined values work"),
@@ -17966,25 +18103,24 @@ def compact_lines(lines):
                 out.append(expanded[j])
             j += 1
         i += 1
-    method_line = None
+    out = compact_working_lines(out)
     filtered = []
     i = 0
     while i < len(out):
-        if out[i].startswith("Method: "):
-            if method_line is None:
-                method_line = out[i]
-        else:
-            filtered.append(out[i])
+        line = out[i]
+        low = line.lower().strip()
+        if low in (
+            "solve the direct trig equation.",
+            "solve direct trig equation",
+            "rewrite using trig identities, then solve the resulting equation analytically",
+        ):
+            i += 1
+            continue
+        if line.startswith("Answer: ") and len(filtered) > 0 and filtered[-1] == line[8:].strip():
+            filtered.pop()
+        if len(filtered) == 0 or filtered[-1] != line:
+            filtered.append(line)
         i += 1
-    if method_line is not None:
-        if method_line == "Method: Using algebraic manipulation":
-            j = 0
-            while j < len(filtered):
-                if filtered[j].startswith("= 2*sin(") and filtered[j].endswith("^2") and "/" not in filtered[j] and "tan" not in filtered[j]:
-                    method_line = "Method: Transform to 2sin^2(A)"
-                    break
-                j += 1
-        return [method_line] + filtered
     return filtered
 
 

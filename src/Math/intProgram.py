@@ -1,3 +1,11 @@
+"""
+Integration program for the CASIO menu.
+
+The public flow is deliberately exam-shaped: pick a method, try the compact
+symbolic route, then print a short method/use/answer block rather than a CAS
+dump.  The implementation stays tuple-AST based for MicroPython compatibility.
+"""
+
 try:
     import math
 except ImportError:
@@ -13,16 +21,18 @@ except NameError:
 
 try:
     from src.shared_helpers import (
-        ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+        compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
         is_sym, is_zero, normalize_input_text, neg as shared_neg,
         same_by_sig, E, PI, casio_hw_sim_from_env,
     )
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
+    # The same file is used from desktop tests and calculator packaging, so the
+    # helper import path has to degrade gracefully.
     try:
         from shared_helpers import (
-            ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+            compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
             is_sym, is_zero, normalize_input_text, neg as shared_neg,
             same_by_sig, E, PI, casio_hw_sim_from_env,
         )
@@ -32,7 +42,7 @@ except ImportError:
         try:
             from shared_fallback import (
                 cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
-                ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+                compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
                 is_sym, is_zero, normalize_input_text, neg as shared_neg,
                 same_by_sig, E, PI, REASONING_MARKERS, casio_hw_sim_from_env,
             )
@@ -43,7 +53,38 @@ except ImportError:
             def shared_clear_all_caches(*c):
                 return None
             def ensure_reasoning_marker(*a):
-                return a[0] if a else a
+                return compact_working_lines(a[0]) if a else a
+            def compact_working_lines(x, *args):
+                if not x:
+                    return x
+                out = []
+                i = 0
+                while i < len(x):
+                    line = str(x[i]).strip()
+                    low = line.lower()
+                    if line == "" or low.startswith("method:") or low.startswith("attempt "):
+                        i += 1
+                        continue
+                    if low.startswith("equation 1:") or low.startswith("input = ") or low.startswith("expr = "):
+                        i += 1
+                        continue
+                    if low.startswith("solve for ") and low.endswith(":"):
+                        i += 1
+                        continue
+                    if low in ("no solution exists", "all x satisfy this identity"):
+                        i += 1
+                        continue
+                    if low in ("simplify", "simplify.", "diff", "differentiate", "term by term differentiation"):
+                        i += 1
+                        continue
+                    if line.startswith("Step ") and ": " in line:
+                        line = line.split(": ", 1)[1].strip()
+                    if line.startswith("Answer: ") and len(out) > 0 and out[-1] == line[8:].strip():
+                        out.pop()
+                    if len(out) == 0 or out[-1] != line:
+                        out.append(line)
+                    i += 1
+                return out
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -86,7 +127,7 @@ except ImportError:
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
 FAIL = 'No elementary antiderivative from methods tried here.'
-DE_FAIL = 'Method: DE attempt\n1. Not separable/linear in form this program uses.\nAnswer: no closed-form elementary solution.'
+DE_FAIL = '1. Not separable/linear in form this program uses.\nAnswer: no closed-form elementary solution.'
 
 
 def hard_integral_failure_reason(node, var):
@@ -97,6 +138,7 @@ def hard_integral_failure_reason(node, var):
 
 
 def hard_integral_failure_working(node, var):
+    """Give a useful explanation when the requested integral is non-elementary."""
     A = sim(node)
     B = var
     tried = [
@@ -1224,6 +1266,7 @@ def special_trig_value(name, arg):
 
 
 def sim(node):
+    """Simplify an integration AST while preserving exact fractions and logs."""
     L = node
     R = L[0]
     if R in ('num', 'sym', 'const'):
@@ -2036,11 +2079,15 @@ def is_num_token_start(text, i):
 
 
 def parse(text):
+    """Parse integrands using the calculator-friendly expression grammar."""
     if not text:
         return None
     text = normalize_input_text(text)
     if len(text) > MAX_INPUT_LENGTH:
         raise ValueError('Input too long (max ' + str(MAX_INPUT_LENGTH) + ' chars).')
+    # Older parts of this file use compact variable names to save calculator
+    # space.  Here C is the input text, G is the token list, and I is the token
+    # cursor used by the recursive-descent parser below.
     C = text
     G = []
     A = 0
@@ -4346,16 +4393,18 @@ def integrate_poly_linear_parts(node, var):
     if C == 'exp':
         G = integrate_poly_exp_repeated(B, D, E, var)
         H = [
-            'Use parts again.',
-            'Let p = ' + pretty(B) + ' and dv = e^(' + pretty(D) + ') d' + var + '.',
+            'Use integration by parts repeatedly.',
+            'Let u = ' + pretty(B) + ' and dv = e^(' + pretty(D) + ') d' + var + '.',
+            'Int u dv = u*v - Int v du.',
             'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
             'Continue until the polynomial derivative is 0.',
             '= ' + pretty(G) + ' + C']
         return G, H
     G = integrate_poly_trig_repeated(B, C, D, E, var)
     H = [
-        'Use parts again.',
-        'Let p = ' + pretty(B) + ' and dv = ' + C + '(' + pretty(D) + ') d' + var + '.',
+        'Use integration by parts repeatedly.',
+        'Let u = ' + pretty(B) + ' and dv = ' + C + '(' + pretty(D) + ') d' + var + '.',
+        'Int u dv = u*v - Int v du.',
         'Since d(' + pretty(D) + ')/d' + var + ' = ' + pretty(E) + ', each step reduces the degree of p.',
         'Continue until the polynomial derivative is 0.',
         '= ' + pretty(G) + ' + C']
@@ -4395,6 +4444,7 @@ FN_CANDIDATE_NAMES = 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot', 'sqrt', 'exp', 
 
 
 def ordered_candidates(node, var, mode):
+    """Find plausible u-substitution candidates from inside the integrand."""
     F = var
     D = []
     E = set()
@@ -6724,6 +6774,7 @@ def finish_integral_solve(title, ans, lines):
 
 
 def integrate_core_route(node, var, mode, forced_u=None):
+    """Let the shared core handle reusable special patterns before local routes."""
     if CASIO_CORE is None:
         return None, None, None
     try:
@@ -6752,6 +6803,7 @@ def cyclic_method_title(lines):
 
 
 def _solve_with_method(node, var, method, forced_u=None):
+    """Dispatch the selected integration method to the right solver family."""
     F = forced_u
     E = method
     D = var
@@ -6759,6 +6811,9 @@ def _solve_with_method(node, var, method, forced_u=None):
     if F is not None:
         F = sim(F)
     if E == '1':
+        # Automatic mode tries the most recognisable exact routes first, then
+        # lets integrate_auto choose among direct, reverse-chain, trig, parts,
+        # partial fractions, and division.
         core_title, core_ans, core_lines = integrate_core_route(C, D, 'auto', F)
         if core_ans is not None:
             return core_title, core_ans, core_lines
@@ -6816,16 +6871,18 @@ def _solve_with_method(node, var, method, forced_u=None):
 
 
 def solve(node, var, method, forced_u=None):
+    """Solve an integral and attach fallback working when the first route fails."""
     title, ans, lines = _solve_with_method(node, var, method, forced_u)
     if ans is not None:
         return title, ans, ensure_working_lines(node, var, title, ans, lines)
     fallback_title, fallback_ans, fallback_lines, attempt_lines = fallback_attempts(node, var, forced_u)
     if fallback_ans is not None:
-        return fallback_title, fallback_ans, ensure_working_lines(node, var, fallback_title, fallback_ans, attempt_lines or fallback_lines)
+        return fallback_title, fallback_ans, ensure_working_lines(node, var, fallback_title, fallback_ans, fallback_lines)
     return title, ans, lines
 
 
 def ensure_working_lines(node, var, title, ans, lines):
+    """Guarantee the final output has enough method detail for marking."""
     if ans is None:
         return lines
     if lines is not None and len(lines) > 0:
@@ -6931,11 +6988,6 @@ def fallback_attempts(node, var, forced_u=None):
         method, label = attempts[i]
         title, ans, lines = _solve_with_method(node, var, method, forced_u)
         if ans is not None:
-            attempt_lines.append('Attempt ' + str(i + 1) + ' (' + label + ')')
-            j = 0
-            while lines is not None and j < len(lines):
-                attempt_lines.append(lines[j])
-                j += 1
             score = integral_candidate_score(title, ans, lines)
             if best is None or score < best:
                 best = score
@@ -7204,21 +7256,22 @@ def paged_menu_input(prompt_label, options, default=None):
 
 
 def compact_integral_output_lines(lines, answer_text):
+    """Trim integration output to the compact four-line style used by tests."""
     answer_line = 'Answer: ' + answer_text + ' + C'
     final_line = '= ' + answer_text + ' + C'
-    max_working_lines = 5
+    lines = compact_working_lines(lines)
     out = []
     i = 0
-    while i < len(lines) and len(out) < max_working_lines:
+    while i < len(lines):
         line = lines[i]
         low = line.lower().strip()
         if low == '' or low == 'simplify.':
             i += 1
             continue
-        if line == final_line or line == answer_line:
+        if low.startswith('method:') or low.startswith('attempt '):
             i += 1
             continue
-        if low.startswith('substitute back') and len(out) != 0:
+        if line == final_line or line == answer_line:
             i += 1
             continue
         out.append(line)
@@ -7257,14 +7310,13 @@ def main():
                 if H != '':
                     G = parse_forced_u(H)
             L, C, A, Q = solve_result_or_reason(J, K, E, G)
+            print()
             if C is None:
                 if A:
-                    print('Method: ' + display_method_title(L))
                     print_exam_failure(A)
                 print(Q)
             else:
                 answer_text = pretty_answer(C)
-                print('Method: ' + display_method_title(L))
                 compact_lines = compact_integral_output_lines(A, answer_text)
                 B = 0
                 while B < len(compact_lines):
@@ -7300,20 +7352,13 @@ def main():
             K = sim(mul([I, J]))
             L, C, A, Q = solve_result_or_reason(K, 't', '1', None)
             print('dx/dt = ' + pretty(J))
+            print('Use Int[y dx] = Int[y*(dx/dt)] dt')
             print('Int[y dx] = Int[' + pretty(K) + '] dt')
             if C is None:
                 if A:
-                    print('Method: Parametric area')
-                    print('Use Int[y dx] = Int[y*(dx/dt)] dt')
-                    print('dx/dt = ' + pretty(J))
-                    print('Int[y dx] = Int[' + pretty(K) + '] dt')
                     print_exam_failure(A)
                 print(Q)
             else:
-                print('Method: Parametric area')
-                print('Use Int[y dx] = Int[y*(dx/dt)] dt')
-                print('dx/dt = ' + pretty(J))
-                print('Int[y dx] = Int[' + pretty(K) + '] dt')
                 compact_lines = compact_integral_output_lines(A, pretty_answer(C))
                 B = 0
                 while B < len(compact_lines):

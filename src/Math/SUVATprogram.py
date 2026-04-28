@@ -1,3 +1,10 @@
+"""
+SUVAT / mechanics helper for the CASIO menu.
+
+The program keeps exact rational/surd working where possible, then adds a
+decimal line only when that helps a calculator user read the physical answer.
+"""
+
 try:
     import math
 except ImportError:
@@ -15,6 +22,7 @@ try:
     from src.shared_cache import clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
+    # Run cleanly both in the desktop package and as a copied calculator file.
     try:
         from shared_helpers import (
             ensure_reasoning_marker, fn as shared_fn, is_num,
@@ -89,6 +97,7 @@ ALL_CACHES = (SIG_CACHE, SHOW_CACHE, SPLIT_COEFF_CACHE, FLAT_CACHE, SAME_CACHE)
 
 
 def _cache_set(cache, key, value, limit=CACHE_LIMIT):
+    """Small FIFO-ish cache helper; enough for repeated show/simplify calls."""
     if key not in cache and len(cache) >= limit:
         try:
             del cache[next(iter(cache))]
@@ -677,6 +686,7 @@ def contains_const(node, name):
 
 
 def sim(node):
+    """Simplify exact mechanics expressions without losing surd form."""
     kind = node[0]
     if kind in ('num', 'sym', 'const'):
         return node
@@ -1135,6 +1145,7 @@ def is_num_token_start(text, i):
 
 
 def parse(text):
+    """Parse scalar mechanics values and formulas, including implicit products."""
     text = normalize_input_text(text)
     toks = []
     i = 0
@@ -1168,6 +1179,9 @@ def parse(text):
             if low in FUNC_ALIASES or low in FUNC_NAMES or low in ('pi', 'e', 'g'):
                 toks.append(word)
             elif word.isalpha() and len(word) > 1:
+                # A bare multi-letter word is usually a product of variables in
+                # this tiny parser, not a named symbol; known constants/functions
+                # were already handled above.
                 k = 0
                 while k < len(word):
                     toks.append(word[k])
@@ -1616,6 +1630,8 @@ def solve_quadratic_time(s_val, u_val, v_val, a_val, t_val):
     steps.append('Discriminant = ' + show(discriminant))
 
     if disc_val is not None:
+        # Physical time should be real and usually non-negative.  Keep both roots
+        # only when they are mathematically plausible, and explain rejected signs.
         if disc_val[1] < 0:
             return None, ['No real solution (discriminant is negative: ' + show(discriminant) + '.'], steps
         disc_sqrt = int_sqrt(disc_val[1] * disc_val[2]) if disc_val[2] == 1 else None
@@ -1690,6 +1706,7 @@ def solve_quadratic_v(u_val, a_val, s_val):
 
 
 def resolve_target_inputs(parsed_values):
+    """Work out which SUVAT variable is unknown from blanks or the comma marker."""
     target = None
     values = list(parsed_values)
     blanks = []
@@ -1959,6 +1976,7 @@ def _build_suvat_solution_data(s_val, u_val, v_val, a_val, t_val, target):
 
 
 def build_suvat_solution(s_val, u_val, v_val, a_val, t_val, target):
+    """Return exact working for one requested SUVAT variable."""
     result, formula_name, base_equation, sub_text = _build_suvat_solution_data(
         s_val, u_val, v_val, a_val, t_val, target
     )
@@ -1973,6 +1991,7 @@ def solve_all_variables(s_val, u_val, v_val, a_val, t_val, sig_figs=None):
 
 
 def format_output_with_units(target, exact_text, dec_text, equation, original_eq, sub_text, unit):
+    """Print formula, substitution, exact answer, then optional units/decimal."""
     lines = []
     if original_eq != equation:
         lines.append('= ' + original_eq)
@@ -1991,6 +2010,7 @@ def format_output_with_units(target, exact_text, dec_text, equation, original_eq
 
 
 def solve_suvat():
+    """Interactive CLI flow used by both desktop tests and calculator runs."""
     print('Use , to mark exactly one target and enter the other known values.')
     s_text = input('s: ').strip()
     u_text = input('u: ').strip()

@@ -1,3 +1,11 @@
+"""
+Algebra program for the CASIO menu.
+
+This file is intentionally self-contained: it can run from the desktop tests,
+from the bundled calculator files, or with only the tiny fallback helpers.  The
+main jobs are parse -> simplify -> solve/transform -> print exam-style lines.
+"""
+
 try:
     import math
 except ImportError:
@@ -14,6 +22,7 @@ except NameError:
 try:
     from src.shared_helpers import (
         compact_duplicate_answer_lines,
+        compact_working_lines,
         ensure_reasoning_marker,
         fn as shared_fn,
         is_num,
@@ -30,9 +39,13 @@ try:
     from src.shared_cache import cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
+    # The calculator copy may not have the same package layout as the desktop
+    # repo, so imports fall through from package form to local form to a tiny
+    # inline fallback.  The behaviour should stay the same whichever path wins.
     try:
         from shared_helpers import (
             compact_duplicate_answer_lines,
+            compact_working_lines,
             ensure_reasoning_marker,
             fn as shared_fn,
             is_num,
@@ -52,7 +65,7 @@ except ImportError:
         try:
             from shared_fallback import (
                 cache_store, clear_all_caches as shared_clear_all_caches,
-                compact_duplicate_answer_lines, ensure_reasoning_marker,
+                compact_duplicate_answer_lines, compact_working_lines, ensure_reasoning_marker,
                 fn as shared_fn, is_num, is_one, is_sym, is_zero,
                 normalize_input_text, neg as shared_neg, same_by_sig, E, PI,
                 REASONING_MARKERS, casio_hw_sim_from_env,
@@ -66,8 +79,39 @@ except ImportError:
                 return None
             def compact_duplicate_answer_lines(x, *args):
                 return x
+            def compact_working_lines(x, *args):
+                if not x:
+                    return x
+                out = []
+                i = 0
+                while i < len(x):
+                    line = str(x[i]).strip()
+                    low = line.lower()
+                    if line == "" or low.startswith("method:") or low.startswith("attempt "):
+                        i += 1
+                        continue
+                    if low.startswith("equation 1:") or low.startswith("input = ") or low.startswith("expr = "):
+                        i += 1
+                        continue
+                    if low.startswith("solve for ") and low.endswith(":"):
+                        i += 1
+                        continue
+                    if low in ("no solution exists", "all x satisfy this identity"):
+                        i += 1
+                        continue
+                    if low in ("simplify", "simplify.", "diff", "differentiate", "term by term differentiation"):
+                        i += 1
+                        continue
+                    if line.startswith("Step ") and ": " in line:
+                        line = line.split(": ", 1)[1].strip()
+                    if line.startswith("Answer: ") and len(out) > 0 and out[-1] == line[8:].strip():
+                        out.pop()
+                    if len(out) == 0 or out[-1] != line:
+                        out.append(line)
+                    i += 1
+                return out
             def ensure_reasoning_marker(*a):
-                return a[0] if a else a
+                return compact_working_lines(a[0]) if a else a
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -115,7 +159,8 @@ FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
 FAST_ISFINITE = math.isfinite if math is not None and hasattr(math, 'isfinite') else None
 MICROPYTHON_RUNTIME = sys is not None and getattr(getattr(sys, 'implementation', None), 'name', '') == 'micropython'
 
-# Cache size limits - adjust based on runtime
+# Cache size limits - desktop tests can afford more memoization; the calculator
+# profile keeps the same behaviour but trims aggressively.
 DESKTOP_CACHE_LIMIT_SMALL = 1024
 DESKTOP_CACHE_LIMIT_MEDIUM = 2048
 DESKTOP_CACHE_LIMIT_LARGE = 4096
@@ -157,6 +202,7 @@ def clear_all_caches():
 
 
 def apply_runtime_profile(low_memory=None):
+    """Switch cache budgets between desktop and calculator-style runtimes."""
     global LOW_MEMORY_RUNTIME, CACHE_LIMIT_SMALL, CACHE_LIMIT_MEDIUM, CACHE_LIMIT_LARGE
     if low_memory is None:
         low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
@@ -1926,6 +1972,7 @@ def parse_expr_or_equation(text):
 
 
 def print_lines(lines):
+    lines = compact_working_lines(lines)
     i = 0
     while i < len(lines):
         print(str(i + 1) + '. ' + lines[i])
@@ -2113,10 +2160,12 @@ def cartesian_parametric_lines(x_text, y_text, param='t'):
     lines = ['x(' + param + ') = ' + show(x_expr), 'y(' + param + ') = ' + show(y_expr)]
     if result is None:
         lines.append('Could not eliminate ' + param + ' in this form.')
+        lines.append('Answer: no cartesian equation found in this supported form')
         return lines
     lhs, rhs, note = result
     lines.append(note)
-    lines.append('Cartesian: ' + show(lhs) + ' = ' + show(rhs))
+    answer = show(lhs) + ' = ' + show(rhs)
+    lines.append('Answer: ' + answer)
     return lines
 
 
@@ -3232,30 +3281,29 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
 
 
 def inverse_function(f_text, var='x'):
+    """Find f^-1 by rewriting y=f(x) and solving the result for y."""
     try:
         if text_has_even_log_power(f_text):
-            lines = ["Method: Find inverse function", "f(x) = " + f_text.strip(), "y = " + f_text.strip(), "Answer: No inverse on all real x"]
+            lines = ["f(x) = " + f_text.strip(), "Answer: No inverse on all real x"]
             return None, ensure_reasoning_marker(lines)
         raw_f = normalise_negative_power_div(parse(f_text))
         raw_y = substitute_keep_form(raw_f, sym(var), sym('y'))
         if raw_even_log_power_inverse(raw_y, 'y'):
             shown = show(sim(raw_f))
-            shown_y = show(raw_y)
-            lines = ["Method: Find inverse function", "f(x) = " + shown, "y = " + shown_y, "Answer: No inverse on all real x"]
+            lines = ["f(x) = " + shown, "Answer: No inverse on all real x"]
             return None, ensure_reasoning_marker(lines)
         f = normalise_negative_power_div(sim(raw_f))
         shown_f = show(f)
-        steps = ["Method: Find inverse function", "f(x) = " + shown_f]
+        steps = ["f(x) = " + shown_f, "y = " + shown_f]
         if not depends_on(f, var):
-            steps.append("y = " + shown_f)
             steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
         f_y = substitute(f, sym(var), sym('y'))
         if not depends_on(f_y, 'y'):
-            steps.append("y = " + show(f_y))
+            steps.append("Swap x and y: x = " + show(f_y))
             steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
-        steps.append("y = " + show(f_y))
+        steps.append("Swap x and y: x = " + show(f_y))
         inv = solve_inverse_core(sym('x'), f_y, steps)
         if inv is not None:
             if len(steps) == 0 or not steps[-1].startswith("f^-1"):
@@ -3283,6 +3331,7 @@ def inverse_function(f_text, var='x'):
         return None, ensure_reasoning_marker(["Method: Solve for x in y = f(x)", "Err: internal inverse failure."])
 
 def sim(node):
+    """Simplify one AST node into the normal algebra shape used by solvers."""
     kind = node[0]
     if kind in ('num', 'sym', 'const'):
         return node
@@ -3726,6 +3775,7 @@ FUNC_ALIASES = {'csc': 'cosec', 'arcsin': 'asin', 'arccos': 'acos', 'arctan': 'a
 
 
 def parse(text):
+    """Parse user algebra input, including implicit multiplication and functions."""
     if not text:
         return None
     text = normalize_input_text(text)
@@ -3763,6 +3813,8 @@ def parse(text):
             if low in FUNC_ALIASES or low in FUNC_NAMES or low in ('pi', 'e'):
                 toks.append(word)
             elif word.isalpha() and len(word) > 1:
+                # Split bare words like xy into x*y, but keep known function
+                # names and constants intact.  This mirrors handwritten algebra.
                 k = 0
                 while k < len(word):
                     toks.append(word[k])
@@ -4298,6 +4350,7 @@ def solve_equation(node):
 
 
 def solve_equation_text(text):
+    """Older public solve entry point kept for compatibility with tests/tools."""
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
         return ensure_reasoning_marker(cartesian)
@@ -4324,9 +4377,12 @@ def solve_equation_text(text):
 
 
 def solve_transform_text(text1, text2):
+    """Transform one expression/equation into the user's target form when valid."""
     text1 = text1.strip()
     text2 = text2.strip()
     if text_has_trig_function(text1) or text_has_trig_function(text2):
+        # Trig transforms have their own identity ladder; delegate so algebra
+        # does not accidentally prove a trig statement by opaque expansion only.
         trig_module = load_trig_transform_module()
         return trig_module.solve_transform_text(text1, text2)
     if has_explicit_equation_text(text1) or has_explicit_equation_text(text2):
@@ -6009,6 +6065,7 @@ def match_shifted_reciprocal(node, var_name):
 
 
 def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
+    """Main solve mode: parse, choose a variable, solve, then format the result."""
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
         return cartesian
@@ -6018,6 +6075,8 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
         var_name = str(var_override).strip()
     shown_expr = expr
     if roots is not None and var_name is not None:
+        # Show a factored equation when it is cleaner.  Students usually earn
+        # more marks from seeing (x-a)(x-b)=0 than from the expanded quadratic.
         factored_info = factor_expression(expr, var_name)
         if factored_info is not None and not same(factored_info[0], expr):
             shown_expr = factored_info[0]
@@ -6111,6 +6170,7 @@ def _filter_roots_to_closed_interval(roots, var_name, low_node, high_node):
 
 
 def parse_user_solve_input(user_text):
+    """Accept solve input as eq, eq,var, eq,lo,hi, or eq,var,lo,hi."""
     t = (user_text or "").strip()
     if t == "":
         raise ValueError("Enter an equation, or: eq, var, lower, upper (comma separated).")
@@ -6161,6 +6221,7 @@ def format_lines(lines):
 
 
 def print_mode_lines(lines):
+    lines = compact_working_lines(lines)
     i = 0
     while i < len(lines):
         print(str(i + 1) + '. ' + lines[i])
@@ -6811,7 +6872,7 @@ def solve_abs_linear_equation(expr, var_name):
             roots.extend(neg_roots)
     if len(roots) == 0:
         return None
-    return var_name, normalize_solution_roots(roots), 'Abs linear'
+    return var_name, normalize_solution_roots(roots), 'Solve abs linear'
 
 
 def solve_equation(node):
@@ -7234,10 +7295,7 @@ def main():
             text1 = input('E1: ').strip()
             text2 = input('E2: ').strip()
             lines = solve_transform_text(text1, text2)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '3':
             text1 = input('Expr: ').strip()
             max_terms_str = input('Max: ').strip()
@@ -7248,28 +7306,19 @@ def main():
                 except:
                     pass
             lines = expand_mode_text(text1, max_terms)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '4':
             text = input('Poly: ').strip()
             if text == '':
                 raise ValueError('Enter a polynomial.')
             lines = poly_mode_text(text)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '5':
             text = input('Expression: ').strip()
             if text == '':
                 raise ValueError('Enter an expression.')
             lines = complete_square_text(text)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '6':
             user_text = input('Eq (or eq, var, low, high): ').strip()
             if user_text == '':
@@ -7290,12 +7339,8 @@ def main():
             if (ulow is None) != (uhigh is None):
                 raise ValueError('Give both a lower and an upper bound, or neither, for the interval.')
             lines = solve_equation_text(eq_text, var_override=uvar, low_node=lo_node, high_node=hi_node)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '7':
-            print('Comp f(g(x))')
             f_text = input('f: ').strip()
             g_text = input('g: ').strip()
             if f_text == '':
@@ -7304,23 +7349,16 @@ def main():
                 print('Use: f=' + f_text + ', g=' + g_text)
             result, steps = compose_functions(f_text, g_text)
             if result:
-                i = 0
-                while i < len(steps):
-                    print(str(i+1) + '. ' + steps[i])
-                    i += 1
+                print_mode_lines(steps)
             else:
                 print('1. ' + steps[0])
         elif mode == '8':
-            print('Inv fn')
             f_text = input('f: ').strip()
             if f_text == '':
                 f_text = '2*x+1'
                 print('Use: f=' + f_text)
             result, steps = inverse_function(f_text)
-            i = 0
-            while i < len(steps):
-                print(str(i+1) + '. ' + steps[i])
-                i += 1
+            print_mode_lines(steps)
         elif mode == '9':
             text = input('Rw: ').strip()
             terms = []
@@ -7332,10 +7370,7 @@ def main():
                     break
                 terms.append(term)
             lines = solve_rewrite_text(text, terms)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '10':
             user_text = input('Expr (or expr, var, low, high): ').strip()
             if user_text == '':
@@ -7356,28 +7391,18 @@ def main():
             if (ulow is None) != (uhigh is None):
                 raise ValueError('Give both a lower and an upper bound, or neither, for the interval.')
             lines = find_domain_text(expr_str, var_override=uvar, low_node=lo_node, high_node=hi_node)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
             print()
             lines = find_range_text(expr_str, var_override=uvar, low_node=lo_node, high_node=hi_node)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         elif mode == '11':
-            print('Cartesian from parametric')
             x_text = input('x(t): ').strip()
             y_text = input('y(t): ').strip()
             param = input('Param: ').strip()
             if param == '':
                 param = 't'
             lines = cartesian_parametric_lines(x_text, y_text, param)
-            i = 0
-            while i < len(lines):
-                print(str(i + 1) + '. ' + lines[i])
-                i += 1
+            print_mode_lines(lines)
         else:
             print('Bad mode.')
     except EOFError:
@@ -7404,6 +7429,7 @@ def _looks_like_bare_identifier(s):
 
 
 def parse_user_domain_range_input(user_text):
+    """Parse optional domain/range variable and interval arguments."""
     t = (user_text or "").strip()
     if t == "":
         raise ValueError("Enter an expression, or: expr, var, lower, upper (comma separated).")
@@ -7436,6 +7462,7 @@ def user_domain_range_var_ensure_in_expr(node, var_name):
 
 
 def _count_defined_samples_on_interval(expr, var_name, a, b, sample_count=41):
+    """Lightweight numerical sanity check for domain reporting on an interval."""
     if a is None or b is None:
         return 0, 0
     if b < a:
@@ -7465,6 +7492,7 @@ def _quadratic_value_float_at_t(c0, c1, c2, t):
 
 
 def _range_on_closed_interval_numerical(expr, var_name, a, b):
+    """Estimate range on a closed interval, using exact quadratic data when easy."""
     a0, b0 = a, b
     if b0 < a0 - 1e-15:
         a0, b0 = b0, a0
@@ -7550,6 +7578,7 @@ def _append_range_interval_lines(lines, expr, var_name, low_node, high_node):
 
 
 def find_domain_text(text, var_override=None, low_node=None, high_node=None):
+    """Build the domain explanation, solving simple restrictions when possible."""
     try:
         expr = parse(text.strip())
     except:
@@ -7576,6 +7605,9 @@ def find_domain_text(text, var_override=None, low_node=None, high_node=None):
     if has_int:
         lines.append("Interval of interest: " + var_name + " in [" + show(sim(low_node)) + ", " + show(sim(high_node)) + "]")
     restrictions = []
+    # Restrictions are collected as human lines first, then collapsed to a final
+    # domain statement.  That keeps the working visible instead of hiding the
+    # important sqrt/log/denominator checks behind one answer line.
 
     def inequality_text(rel, value):
         return var_name + ' ' + rel + ' ' + show(value)

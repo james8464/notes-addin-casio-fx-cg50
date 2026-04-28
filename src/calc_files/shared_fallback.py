@@ -1,5 +1,6 @@
-# Minimal fallback stubs for calculator (no external modules)
-# These are used when shared_cache/shared_helpers aren't available
+# Minimal fallback stubs for calculator builds with no external modules.
+# Keep these intentionally small: they mirror the shared helpers closely enough
+# that copied program files still run if shared_cache/shared_helpers are absent.
 
 try:
     RecursionError
@@ -7,6 +8,21 @@ except NameError:
     RecursionError = RuntimeError
 
 def cache_store(cache, key, value, limit):
+    """Tiny bounded cache store for calculator memory limits."""
+    if limit is not None and limit > 0 and key not in cache and len(cache) >= limit:
+        keys = list(cache.keys())
+        target = limit - (limit // 8)
+        if target >= limit:
+            target = limit - 1
+        if target < 0:
+            target = 0
+        i = 0
+        while len(cache) > target and i < len(keys):
+            try:
+                del cache[keys[i]]
+            except KeyError:
+                pass
+            i += 1
     cache[key] = value
     return value
 
@@ -53,11 +69,47 @@ def neg(node, num_func=None, mul_func=None):
         return mul_func([n, node])
     return ('mul', (n, node))
 
+def compact_working_lines(lines):
+    """Trim repeated or purely scaffolding lines before printing answers."""
+    if not lines:
+        return lines
+    out = []
+    i = 0
+    while i < len(lines):
+        line = str(lines[i]).strip()
+        low = line.lower()
+        if line == "":
+            i += 1
+            continue
+        if low.startswith("method:") or low.startswith("attempt "):
+            i += 1
+            continue
+        if low.startswith("equation 1:") or low.startswith("input = ") or low.startswith("expr = "):
+            i += 1
+            continue
+        if low.startswith("solve for ") and low.endswith(":"):
+            i += 1
+            continue
+        if low in ("no solution exists", "all x satisfy this identity"):
+            i += 1
+            continue
+        if low in ("simplify", "simplify.", "diff", "differentiate", "term by term differentiation"):
+            i += 1
+            continue
+        if line.startswith("Step ") and ": " in line:
+            line = line.split(": ", 1)[1].strip()
+        if line.startswith("Answer: ") and len(out) > 0 and out[-1] == line[8:].strip():
+            out.pop()
+        if len(out) == 0 or out[-1] != line:
+            out.append(line)
+        i += 1
+    return out
+
 def ensure_reasoning_marker(*args):
     # Match shared_helpers signature: may be called as (lines) or (lines, default_prefix).
     if not args:
         return args
-    return args[0]
+    return compact_working_lines(args[0])
 
 def _previous_significant_char(text, index):
     i = index - 1
@@ -94,6 +146,7 @@ def _convert_abs_pipes(text):
     return ''.join(out)
 
 def normalize_input_text(text):
+    """Normalise the same common calculator symbols as shared_helpers."""
     if not isinstance(text, str):
         return text
     text = text.strip()

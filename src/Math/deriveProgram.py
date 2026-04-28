@@ -24,16 +24,19 @@ except NameError:
 
 try:
     from src.shared_helpers import (
-        ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+        compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
         is_zero, normalize_input_text, same_by_sig, E, PI,
         casio_hw_sim_from_env,
     )
     from src.shared_cache import cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches
     from src.shared_reasoning_markers import REASONING_MARKERS
 except ImportError:
+    # The desktop package, calculator folder, and fallback build all load this
+    # file slightly differently.  Keep the import ladder explicit so the maths
+    # code below does not need to care which environment it is running in.
     try:
         from shared_helpers import (
-            ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+            compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
             is_zero, normalize_input_text, same_by_sig, E, PI,
             casio_hw_sim_from_env,
         )
@@ -43,7 +46,7 @@ except ImportError:
         try:
             from shared_fallback import (
                 cache_store as shared_cache_store, clear_all_caches as shared_clear_all_caches,
-                ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
+                compact_working_lines, ensure_reasoning_marker, fn as shared_fn, is_num, is_one,
                 is_zero, normalize_input_text, same_by_sig, E, PI, REASONING_MARKERS,
                 casio_hw_sim_from_env,
             )
@@ -54,7 +57,38 @@ except ImportError:
             def shared_clear_all_caches(*c):
                 return None
             def ensure_reasoning_marker(*a):
-                return a[0] if a else a
+                return compact_working_lines(a[0]) if a else a
+            def compact_working_lines(x, *args):
+                if not x:
+                    return x
+                out = []
+                i = 0
+                while i < len(x):
+                    line = str(x[i]).strip()
+                    low = line.lower()
+                    if line == "" or low.startswith("method:") or low.startswith("attempt "):
+                        i += 1
+                        continue
+                    if low.startswith("equation 1:") or low.startswith("input = ") or low.startswith("expr = "):
+                        i += 1
+                        continue
+                    if low.startswith("solve for ") and low.endswith(":"):
+                        i += 1
+                        continue
+                    if low in ("no solution exists", "all x satisfy this identity"):
+                        i += 1
+                        continue
+                    if low in ("simplify", "simplify.", "diff", "differentiate", "term by term differentiation"):
+                        i += 1
+                        continue
+                    if line.startswith("Step ") and ": " in line:
+                        line = line.split(": ", 1)[1].strip()
+                    if line.startswith("Answer: ") and len(out) > 0 and out[-1] == line[8:].strip():
+                        out.pop()
+                    if len(out) == 0 or out[-1] != line:
+                        out.append(line)
+                    i += 1
+                return out
             def shared_fn(name, arg, sim_func=None):
                 if name == 'ln':
                     name = 'log'
@@ -112,11 +146,14 @@ LOW_MEMORY_RUNTIME = False
 
 TIDY_EXPAND_LIMIT = 5
 TIDY_SKIP_SIZE = 260
+COMPACT_DERIVATIVE_TREE_SIZE = 150
+COMPACT_DERIVATIVE_TEXT_LENGTH = 360
 _CACHE_MISS = object()
 _ENGINE_CACHES = {}
 
 
 def apply_runtime_profile(low_memory=None):
+    """Tune expansion aggressiveness for desktop tests or calculator memory."""
     global LOW_MEMORY_RUNTIME, TIDY_EXPAND_LIMIT
     if low_memory is None:
         low_memory = MICROPYTHON_RUNTIME or casio_hw_sim_from_env()
@@ -130,6 +167,7 @@ def begin_user_action():
 
 
 def core_prefer_simpler(node):
+    """Ask the shared core for a shorter equivalent form when it is cheap."""
     if CASIO_CORE is None:
         return node
     if tree_size(node) > 140:
@@ -676,6 +714,7 @@ def subst(node, name, value):
 
 
 def rule_u(name):
+    """Derivative table in terms of u, used by the chain-rule explainer."""
     u = sym("u")
     if name == "exp":
         return fn("exp", u)
@@ -716,6 +755,7 @@ def rule_u(name):
 
 
 def sim(node):
+    """Simplify derivative ASTs without expanding more than the display needs."""
     kind = node[0]
     if kind in ("num", "sym", "const"):
         return node
@@ -951,6 +991,7 @@ def sim(node):
 
 
 def diff(node, var, deps_list):
+    """Differentiate the AST; deps_list marks symbols that depend on var."""
     deps_list_list = list(deps_list.keys()) if isinstance(deps_list, dict) else []
     kind = node[0]
     if kind == "num" or kind == "const":
@@ -970,6 +1011,8 @@ def diff(node, var, deps_list):
         items = list(node[1])
         n = len(items)
         if n == 2:
+            # Use the two-factor product rule directly so the explanation can
+            # name u and v instead of showing a generic summation.
             a, b = items[0], items[1]
             da = diff(a, var, deps_list)
             db = diff(b, var, deps_list)
@@ -1419,6 +1462,7 @@ def normalize_explicit_var(name):
 
 
 def parse(text):
+    """Parse differentiation input into the shared tuple AST."""
     if not text:
         return None
     text = normalize_input_text(text)
@@ -1456,6 +1500,8 @@ def parse(text):
                 j += 1
             word = text[i:j]
             next_char = text[j] if j < len(text) else ""
+            # decompose_name_word lets dx, sinx, and xy-style inputs become the
+            # same AST shape as their more explicit calculator spelling.
             toks.extend(decompose_name_word(word, next_char))
             i = j
         else:
@@ -1668,7 +1714,8 @@ def parse_second_derivative_input(text):
 
 
 def reciprocal_trig_quotient_steps(name, arg, var, darg, final):
-    lines = ["Method: Convert to sin/cos"]
+    """Show sec/cosec/cot derivatives via sin/cos and the quotient rule."""
+    lines = []
     if name == "sec":
         top = num(1)
         bot = fn("cos", arg)
@@ -1701,9 +1748,41 @@ def reciprocal_trig_quotient_steps(name, arg, var, darg, final):
     return lines
 
 
-def explain(node, var, deps_list):
+def derivative_display_too_large(*nodes):
+    """Decide when a compact derivative explanation is kinder than a huge one."""
+    total = 0
+    chars = 0
+    i = 0
+    while i < len(nodes):
+        node = nodes[i]
+        try:
+            total += tree_size(node)
+        except Exception:
+            return True
+        if total > COMPACT_DERIVATIVE_TREE_SIZE:
+            return True
+        try:
+            chars += len(show(node))
+        except Exception:
+            return True
+        if chars > COMPACT_DERIVATIVE_TEXT_LENGTH:
+            return True
+        i += 1
+    return False
+
+
+def compact_quotient_derivative_node():
+    return div(add([mul([sym("D"), sym("dN")]), neg(mul([sym("N"), sym("dD")]))]), power(sym("D"), num(2)))
+
+
+def compact_power_derivative_node(exp):
+    return mul([exp, power(sym("u"), subq(exp, num(1))), sym("du")])
+
+
+def explain(node, var, deps_list, compact_allowed=True):
+    """Return both the derivative and the exam-style working lines."""
     d = tidy(diff(node, var, deps_list))
-    lines = ['Method: Differentiate with respect to ' + var]
+    lines = ['Differentiate with respect to ' + var]
     if node[0] == "add":
         lines.append("Term by term differentiation")
         lines.append("dy/d" + var + " = " + show(d))
@@ -1718,7 +1797,7 @@ def explain(node, var, deps_list):
             dv = tidy(diff(v, var, deps_list))
             dw = tidy(diff(w, var, deps_list))
             combo = tidy(add([mul([du, v, w]), mul([u, dv, w]), mul([u, v, dw])]))
-            lines.append("Using product rule")
+            lines.append("Product rule")
             lines.append("Let u = " + show(u) + ", v = " + show(v) + ", w = " + show(w))
             lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv) + ", dw/d" + var + " = " + show(dw))
             lines.append("dy/d" + var + " = u'*v*w + u*v'*w + u*v*w'")
@@ -1728,7 +1807,7 @@ def explain(node, var, deps_list):
         v = make_mul(items[1:])
         du = tidy(diff(u, var, deps_list))
         dv = tidy(diff(v, var, deps_list))
-        lines.append("Using product rule")
+        lines.append("Product rule")
         lines.append("Let u = " + show(u) + ", v = " + show(v))
         lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv))
         lines.append("dy/d" + var + " = u*(dv/d" + var + ") + v*(du/d" + var + ")")
@@ -1739,8 +1818,18 @@ def explain(node, var, deps_list):
         v = node[2]
         du = tidy(diff(u, var, deps_list))
         dv = tidy(diff(v, var, deps_list))
-        lines.append("Using quotient rule")
-        lines.append("Let u = " + show(u) + ", v = " + show(v))
+        if compact_allowed and derivative_display_too_large(u, v, du, dv, d):
+            compact = compact_quotient_derivative_node()
+            lines.append("Quotient rule")
+            lines.append("Write y = N/D.")
+            lines.append("Let u = N and v = D.")
+            lines.append("u = numerator of y; v = denominator of y.")
+            lines.append("du/d" + var + " = derivative of u; dv/d" + var + " = derivative of v.")
+            lines.append("dy/d" + var + " = (v*du/d" + var + " - u*dv/d" + var + ")/v^2")
+            lines.append("= " + show(compact))
+            return d, lines
+        lines.append("Quotient rule")
+        lines.append("u = " + show(u) + ", v = " + show(v))
         lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv))
         lines.append("dy/d" + var + " = (v*du-u*dv)/v^2")
         lines.append("= " + show(tidy(div(add([mul([v, du]), neg(mul([u, dv]))]), power(v, num(2))))))
@@ -1752,11 +1841,18 @@ def explain(node, var, deps_list):
         if is_num(exp):
             db = tidy(diff(base, var, deps_list))
             if same(base, sym(var)):
-                lines.append("Using power rule")
                 lines.append("dy/d" + var + " = " + show(d))
             else:
-                lines.append("Using chain rule")
-                lines.append("Let u = " + show(base))
+                if compact_allowed and derivative_display_too_large(base, db, d):
+                    compact = compact_power_derivative_node(exp)
+                    lines.append("Chain rule")
+                    lines.append("u = bracketed base.")
+                    lines.append("du/d" + var + " = derivative of u.")
+                    lines.append("dy/d" + var + " = " + show(exp) + "*u^(" + show(subq(exp, num(1))) + ")*du/d" + var)
+                    lines.append("= " + show(compact))
+                    return d, lines
+                lines.append("Chain rule")
+                lines.append("u = " + show(base))
                 lines.append("du/d" + var + " = " + show(db))
                 lines.append("dy/d" + var + " = " + show(exp) + "*u^(" + show(subq(exp, num(1))) + ")*du/d" + var)
                 lines.append("= " + show(d))
@@ -1775,12 +1871,11 @@ def explain(node, var, deps_list):
                 lines.append("= " + show(d))
             return d, lines
         if not depends(exp, [var] + deps_list_list):
-            lines.append("Using generalized power rule")
             lines.append("dy/d" + var + " = " + show(d))
             return d, lines
         lines.append("Using logarithmic differentiation")
-        lines.append("Let y = " + show(node))
-        lines.append("Let u = " + show(base) + " and v = " + show(exp))
+        lines.append("y = " + show(node))
+        lines.append("u = " + show(base) + " and v = " + show(exp))
         lines.append("u' = " + show(tidy(diff(base, var, deps_list))) + ", v' = " + show(tidy(diff(exp, var, deps_list))))
         lines.append("dy/d" + var + " = y*(v*(u')/u + ln(u)*v')")
         lines.append("= " + show(d))
@@ -1791,6 +1886,14 @@ def explain(node, var, deps_list):
         darg = tidy(diff(arg, var, deps_list))
         if name in ("sec", "cosec", "cot"):
             lines = reciprocal_trig_quotient_steps(name, arg, var, darg, d)
+            return d, lines
+        if name == "abs":
+            lines.append("Using abs rule")
+            lines.append("d/d" + var + "|u| = (u/abs(u))*du/d" + var + " for u != 0")
+            lines.append("u = " + show(arg))
+            lines.append("du/d" + var + " = " + show(darg))
+            lines.append("dy/d" + var + " = " + show(d))
+            lines.append("Note: derivative is undefined where " + show(arg) + " = 0.")
             return d, lines
         if same(arg, sym(var)) or arg[0] == "sym":
             label = {
@@ -2415,6 +2518,7 @@ def format_final_answer(node):
 
 
 def solve_normal_mode(text):
+    """Handle first and second derivative requests from the normal menu mode."""
     second = parse_second_derivative_input(text)
     if second is not None:
         expr, var = second
@@ -2425,7 +2529,6 @@ def solve_normal_mode(text):
         formatted = format_final_answer(final)
         label = "d2y/d" + var + "2"
         steps = [
-            "Method: Find second derivative with respect to " + var,
             "First differentiate y = " + show(expr),
             "dy/d" + var + " = " + show(first),
             "Differentiate again.",
@@ -2437,7 +2540,8 @@ def solve_normal_mode(text):
     step_expr = expr
     if raw_expr[0] in ("pow", "mul") and raw_expr[0] != expr[0]:
         step_expr = raw_expr
-    ans, steps = explain(step_expr, var, [])
+    compact_allowed = len(text) > 80
+    ans, steps = explain(step_expr, var, [], compact_allowed)
     final_node = tidy(diff(expr, var, []))
     if step_expr == expr:
         final_node = tidy(ans)
@@ -2734,6 +2838,53 @@ def paged_menu_input(prompt_label, options, default=None):
         print("Bad mode.")
 
 
+def compact_derivative_steps(steps, answer_label=None, answer_node=None):
+    lines = compact_working_lines(steps)
+    answer_text = None
+    if answer_label is not None and answer_node is not None:
+        answer_text = answer_label + " = " + readable_show(answer_node)
+    simple_rule_labels = (
+        "using sin rule", "using cos rule", "using tan rule",
+        "using asin rule", "using acos rule", "using atan rule",
+        "using log rule", "using log10 rule", "using exp rule",
+        "using sqrt rule", "using abs rule", "using power rule",
+        "using generalized power rule", "exp rule",
+    )
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        low = line.lower()
+        if low.startswith("differentiate with respect to "):
+            i += 1
+            continue
+        if low in simple_rule_labels:
+            i += 1
+            continue
+        if answer_text is not None and line == answer_text:
+            i += 1
+            continue
+        if answer_node is not None and line == "dy/dx = " + readable_show(answer_node):
+            i += 1
+            continue
+        if answer_node is not None and line == "= " + readable_show(answer_node):
+            i += 1
+            continue
+        if len(out) == 0 or out[-1] != line:
+            out.append(line)
+        i += 1
+    return out
+
+
+def print_compact_steps(steps, answer_label=None, answer_node=None, start_index=1):
+    lines = compact_derivative_steps(steps, answer_label, answer_node)
+    i = 0
+    while i < len(lines):
+        print(str(start_index + i) + ". " + lines[i])
+        i += 1
+    return len(lines)
+
+
 
 def main():
     mode = paged_menu_input("M", [
@@ -2751,12 +2902,8 @@ def main():
                 raise ValueError("Enter an expression.")
             var, steps, final, formatted = solve_normal_mode(text)
 
-            i = 1
-            while i <= len(steps):
-                print(str(i) + ". " + steps[i - 1])
-                i += 1
-
             out_label = normal_derivative_label(steps, var)
+            print_compact_steps(steps, out_label, final)
             print("Answer: " + out_label + " = " + readable_show(final))
 
             if sig(formatted) != sig(final):
@@ -2797,13 +2944,12 @@ def main():
                     raise ValueError("No " + dep + ".")
                 raise ValueError("No " + dname + ".")
             ans = core_prefer_simpler(tidy(div(neg(rest), coef)))
-            print(str(step) + ". Method: differentiate implicitly.")
-            print(str(step + 1) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
-            print(str(step + 2) + ". " + readable_show(dleft) + " = " + readable_show(dright))
-            print(str(step + 3) + ". Rearrange: make " + dname)
+            print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
+            print(str(step + 1) + ". " + readable_show(dleft) + " = " + readable_show(dright))
+            print(str(step + 2) + ". Rearrange for " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
-            print(str(step + 4) + ". " + grouped + " = 0")
-            print(str(step + 5) + ". Answer: " + dname + " = " + readable_show(ans))
+            print(str(step + 3) + ". " + grouped + " = 0")
+            print(str(step + 4) + ". Answer: " + dname + " = " + readable_show(ans))
             pretty_ans = prefer_trig_recip(ans)
             if sig(pretty_ans) != sig(ans):
                 print(dname + " = " + readable_show(pretty_ans))
@@ -3082,17 +3228,18 @@ def main():
             dx = sim(diff(xt, "t", []))
             dy = sim(diff(yt, "t", []))
             if is_zero(dx):
-                raise ValueError("dx/dt=0.")
+                print("1. dx/dt = " + readable_show(dx))
+                print("2. dy/dt = " + readable_show(dy))
+                print("3. Answer: dy/dx undefined (vertical tangent)")
+                return
             ans = core_prefer_simpler(prefer_trig_recip(sim(div(dy, dx))))
-            print("1. Differentiate x(t) with respect to t.")
-            print("2. dx/dt = " + readable_show(dx))
-            print("3. Differentiate y(t) with respect to t.")
-            print("4. dy/dt = " + readable_show(dy))
-            print("5. Use dy/dx = (dy/dt)/(dx/dt).")
-            print("6. Answer: dy/dx = " + readable_show(ans))
+            print("1. dx/dt = " + readable_show(dx))
+            print("2. dy/dt = " + readable_show(dy))
+            print("3. dy/dx = (dy/dt)/(dx/dt)")
+            print("4. Answer: dy/dx = " + readable_show(ans))
             cart = cartesian_from_param_exprs(xt, yt, "t")
             if cart is not None:
-                print("7. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
+                print("5. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
 
         elif mode == "4":
             text = input("y: ").strip()
@@ -3101,20 +3248,14 @@ def main():
             var, steps, final, formatted = solve_normal_mode(text)
             out_label = normal_derivative_label(steps, var)
             first_deriv = final
-            print("First derivative found:")
-            i = 1
-            while i <= len(steps):
-                print(str(i) + ". " + steps[i - 1])
-                i += 1
+            print("First derivative:")
+            first_count = print_compact_steps(steps, out_label, final)
             print("dy/dx = " + readable_show(first_deriv))
             print()
-            print("Now differentiating dy/dx:")
+            print("Second derivative:")
             var2, steps2, final2, formatted2 = solve_normal_mode(show(first_deriv))
             out_label2 = "d2y/dx2" if var == "x" else "d/dx(" + out_label + ")"
-            i = 1
-            while i <= len(steps2):
-                print(str(len(steps) + i) + ". " + steps2[i - 1])
-                i += 1
+            print_compact_steps(steps2, out_label2, final2, first_count + 1)
             print("Answer: " + out_label2 + " = " + readable_show(final2))
             if sig(formatted2) != sig(final2):
                 print(out_label2 + " = " + readable_show(formatted2))

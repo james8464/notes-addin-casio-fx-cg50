@@ -1,3 +1,12 @@
+"""
+Small shared maths core used by the standalone CASIO programs.
+
+The full programs still own their exam-style output, but this file keeps the
+common parser, normaliser, equivalence checks, and a few reusable integration
+patterns in one place.  It deliberately stays dependency-light so the same
+ideas can be copied into the calculator build when needed.
+"""
+
 try:
     import math
 except ImportError:
@@ -30,9 +39,13 @@ _SUPERSCRIPT_DIGITS = {
 
 
 def normalize_text(text):
+    """Turn friendly calculator input into the ASCII syntax the parser expects."""
     if not isinstance(text, str):
         return text
     text = text.strip()
+    # Normalise symbols students actually type before the tokenizer sees them.
+    # Keeping this here means every program accepts the same pi, degree, root,
+    # fraction, and absolute-value spellings.
     for pair in (
         ("−", "-"), ("–", "-"), ("—", "-"),
         ("×", "*"), ("∗", "*"), ("⋅", "*"),
@@ -52,6 +65,7 @@ def normalize_text(text):
 
 
 def _normalize_superscripts(text):
+    """Convert x², x⁻¹, etc. into x^2 style tokens."""
     out = []
     i = 0
     while i < len(text):
@@ -85,6 +99,7 @@ def _is_name_char(ch):
 
 
 def _normalize_sqrt_symbol(text):
+    """Accept both sqrt(x) and the calculator-style root symbol."""
     if "√" not in text:
         return text
     out = []
@@ -129,6 +144,7 @@ def _should_open_abs_pipe(text, index):
 
 
 def _convert_abs_pipes(text):
+    """Translate |x| into abs(x), while leaving malformed pipes untouched."""
     if text.count("|") % 2 != 0:
         return text
     out = []
@@ -162,6 +178,7 @@ _COMPACT_FUNC_WORDS = (
 
 
 def _normalize_inverse_trig_notation(text):
+    """Map common inverse trig spellings onto the internal asin/acos/atan names."""
     pairs = (
         ("arcsin^-1", "asin"),
         ("arccos^-1", "acos"),
@@ -200,6 +217,7 @@ def _split_compact_function_word(word):
 
 
 def _normalize_compact_function_words(text):
+    """Accept compact forms like sinx by expanding them to sin(x)."""
     out = []
     i = 0
     while i < len(text):
@@ -574,6 +592,7 @@ def format_expr(node, parent=0):
 
 
 def parse_expr(text):
+    """Parse a normalised expression into the tuple AST used across the project."""
     text = normalize_text(text)
     tokens = []
     i = 0
@@ -622,6 +641,8 @@ def parse_expr(text):
         return cur
 
     def starts_atom(tok):
+        # This is what gives us implicit multiplication: 2x, x(x+1),
+        # and sin x all become ordinary ASTs without asking users for '*'.
         if tok is None:
             return False
         if tok == "(" or tok == "-":
@@ -665,6 +686,8 @@ def parse_expr(text):
         if name == "e":
             return E
         if name in FUNC_NAMES:
+            # Functions can be written as sin(x), sin x, or sin^2(x).  The
+            # exponent-before-argument branch handles the last exam shorthand.
             if peek() in ("^", "**"):
                 take(peek())
                 exp = parse_unary()
@@ -775,6 +798,7 @@ def _is_exp_reciprocal(node, var):
 
 
 def _find_exp_reciprocal_case(node, var):
+    """Detect e^(c/x)*(A/x^2 + B/x^3), a useful substitution pattern."""
     node = simplify(node)
     factors = flat(node, "mul") if node[0] == "mul" else [node]
     exp_index = -1
@@ -807,7 +831,14 @@ def _find_exp_reciprocal_case(node, var):
     return c, coeff2, coeff3
 
 
+def _clean_work_expr(text):
+    text = text.replace("-1*u", "-u")
+    text = text.replace("1*u", "u")
+    return text
+
+
 def integrate_reciprocal_exp(node, var, forced_u=None):
+    """Integrate reciprocal-exponential forms by the substitution u = c/x."""
     data = _find_exp_reciprocal_case(node, var)
     if data is None:
         return None
@@ -827,18 +858,35 @@ def integrate_reciprocal_exp(node, var, forced_u=None):
         ans = x_part
     if same(c, num(1)):
         du_text = "-1/" + var + "^2"
+        dx_text = "-x^2 du"
+        power_text = "x = 1/u, so 1/" + var + "^2 = u^2 and 1/" + var + "^3 = u^3."
     else:
         du_text = "-" + format_expr(c) + "/" + var + "^2"
+        dx_text = "-" + var + "^2/" + format_expr(c) + " du"
+        power_text = (
+            var + " = " + format_expr(c) + "/u, so 1/" + var + "^2 = u^2/"
+            + format_expr(mulq(c, c)) + " and 1/" + var + "^3 = u^3/"
+            + format_expr(mulq(mulq(c, c), c)) + "."
+        )
+    A = negq(mulq(coeff2, one_over_c))
+    B = negq(mulq(coeff3, one_over_c2))
+    u = sym("u")
+    u_integrand = mul([add([A, mul([B, u])]), power(E, u)])
+    u_answer = mul([add([addq(A, negq(B)), mul([B, u])]), power(E, u)])
     lines = [
-        "Let u = " + format_expr(u_expr) + ".",
-        "du/d" + var + " = " + du_text,
-        "Rewrite the remaining powers of " + var + " in u.",
-        "Integrate in u, then substitute back.",
+        "u = " + format_expr(u_expr),
+        "du/d" + var + " = " + du_text + ", so d" + var + " = " + dx_text + ".",
+        power_text,
+        "I = Int[" + _clean_work_expr(format_expr(u_integrand)) + "] du.",
+        "Use Int[(A + B*u)e^u] du = (A + B*(u - 1))*e^u.",
+        "= " + _clean_work_expr(format_expr(u_answer)) + " + C.",
+        "Substitute u = " + format_expr(u_expr) + ".",
     ]
     return "sub", simplify(ans), lines
 
 
 def substitution_candidates(node, var, mode):
+    """Return suggested u-substitutions that other programs can surface."""
     out = []
     data = _find_exp_reciprocal_case(node, var)
     if data is not None:
@@ -1294,7 +1342,6 @@ def equivalence_lines(a, b, left_name="Expr1", right_name="Expr2"):
         return None
     diff = canonical_form(add([left, neg(right)]))
     return [
-        "Method: shared algebra/trig simplification.",
         left_name + " -> " + format_expr(left),
         right_name + " -> " + format_expr(right),
         "Difference -> " + format_expr(diff),
@@ -1303,6 +1350,7 @@ def equivalence_lines(a, b, left_name="Expr1", right_name="Expr2"):
 
 
 def rewrite_variants(node, purpose=None):
+    """Offer a short list of equivalent shapes for proof/transform attempts."""
     variants = [simplify(node)]
     canon = canonical_form(node)
     if not same(canon, variants[0]):
@@ -1318,6 +1366,7 @@ def differentiate(node, var="x"):
 
 
 def integrate(node, var="x", mode="auto", forced_u=None):
+    """Shared integration dispatch for patterns useful to more than one program."""
     if mode in ("auto", "1", "sub", "4"):
         out = integrate_reciprocal_exp(node, var, forced_u)
         if out is not None:

@@ -1,4 +1,5 @@
 def numbered_steps(lines):
+    """Prefix non-empty working lines with 1., 2., 3. for calculator display."""
     out = []
     i = 0
     while i < len(lines):
@@ -10,8 +11,8 @@ def numbered_steps(lines):
 
 
 def format_exam_working(method, steps, answer=None):
-    lines = ["Method: " + str(method).strip()]
-    lines.extend(numbered_steps(steps or []))
+    """Build a simple numbered block and make sure the final line says Answer."""
+    lines = numbered_steps(steps or [])
     if answer is not None and str(answer).strip():
         text = str(answer).strip()
         if text.lower().startswith("answer:"):
@@ -22,6 +23,7 @@ def format_exam_working(method, steps, answer=None):
 
 
 def format_equation_human_readable(node, parent=0):
+    """Render tuple AST nodes into a compact exam-friendly string."""
     kind = node[0]
     
     if kind == 'num':
@@ -36,6 +38,8 @@ def format_equation_human_readable(node, parent=0):
         return node[1]
     
     elif kind == 'fn':
+        # Logs are displayed as ln because that is the notation used throughout
+        # the calculus programs, even though the internal function name is log.
         if node[1] == 'log':
             arg = format_equation_human_readable(node[2], 0)
             if node[2][0] == 'fn' and node[2][1] == 'abs':
@@ -104,6 +108,7 @@ def format_equation_human_readable(node, parent=0):
     return str(node)
 
 def split_coeff(node):
+    """Pull a leading numeric coefficient out of a multiplication node."""
     if node[0] == 'mul' and len(node[1]) > 0 and node[1][0][0] == 'num':
         return node[1][0], ('mul', node[1][1:]) if len(node[1]) > 1 else ('sym', '1')
     return ('num', 1, 1), node
