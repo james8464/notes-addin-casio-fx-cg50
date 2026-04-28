@@ -73,6 +73,13 @@ except ImportError:
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
             def casio_hw_sim_from_env(*args):
                 return False
+try:
+    import casio_core as CASIO_CORE
+except ImportError:
+    try:
+        from src.Math import casio_core as CASIO_CORE
+    except ImportError:
+        CASIO_CORE = None
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd')else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt')else None
 FAIL = 'No elementary antiderivative from methods tried here.'
@@ -4435,8 +4442,15 @@ def ordered_candidates(node, var, mode):
                 C(A[1][G], D + 1)
                 G += 1
     C(node, 0)
-    if mode == 'sub':
-        B(fn('sqrt', G))
+    if mode == 'sub' and CASIO_CORE is not None:
+        try:
+            K = CASIO_CORE.substitution_candidates(node, F, mode)
+        except Exception:
+            K = []
+        L = 0
+        while L < len(K):
+            B(K[L])
+            L += 1
     return D
 
 
@@ -6702,6 +6716,24 @@ def finish_integral_solve(title, ans, lines):
     return title, A, B
 
 
+def integrate_core_route(node, var, mode, forced_u=None):
+    if CASIO_CORE is None:
+        return None, None, None
+    try:
+        out = CASIO_CORE.integrate(node, var, mode, forced_u)
+    except Exception:
+        return None, None, None
+    if out is None:
+        return None, None, None
+    kind, ans, lines = out
+    title = {
+        'sub': 'Subst',
+        'trig': 'Trig id',
+        'auto': 'CASIO core',
+    }.get(kind, 'CASIO core')
+    return finish_integral_solve(title, ans, lines)
+
+
 def cyclic_method_title(lines):
     if lines and len(lines) > 0:
         first = lines[0]
@@ -6720,6 +6752,9 @@ def _solve_with_method(node, var, method, forced_u=None):
     if F is not None:
         F = sim(F)
     if E == '1':
+        core_title, core_ans, core_lines = integrate_core_route(C, D, 'auto', F)
+        if core_ans is not None:
+            return core_title, core_ans, core_lines
         G, A, B = integrate_auto(C, D, 0, True, True)
         if A is None:
             return 'Automatic integration', A, B
@@ -6744,9 +6779,15 @@ def _solve_with_method(node, var, method, forced_u=None):
     if E == '3':
         if not has_fn(C):
             return finish_integral_solve('Trig id', None, None)
+        core_title, core_ans, core_lines = integrate_core_route(C, D, 'trig', F)
+        if core_ans is not None:
+            return core_title, core_ans, core_lines
         A, B = integrate_trig(C, D, True)
         return finish_integral_solve('Trig id', A, B)
     if E == '4':
+        core_title, core_ans, core_lines = integrate_core_route(C, D, 'sub', F)
+        if core_ans is not None:
+            return core_title, core_ans, core_lines
         if F is None:
             A, B = integrate_reverse_chain(C, D)
             if A is not None:
@@ -7158,9 +7199,10 @@ def paged_menu_input(prompt_label, options, default=None):
 def compact_integral_output_lines(lines, answer_text):
     answer_line = 'Answer: ' + answer_text + ' + C'
     final_line = '= ' + answer_text + ' + C'
+    max_working_lines = 5
     out = []
     i = 0
-    while i < len(lines) and len(out) < 1:
+    while i < len(lines) and len(out) < max_working_lines:
         line = lines[i]
         low = line.lower().strip()
         if low == '' or low == 'simplify.':

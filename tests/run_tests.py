@@ -2089,7 +2089,7 @@ class CASIOApp(App):
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
-            "/compile": "Recompile .mpy in calc_files; copy *Program.mpy + launcher .py + main.py to calc volume",
+            "/compile": "Recompile .mpy in calc_files; copy support modules, *Program.mpy, launchers, main.py",
             "/llm": "Configure LLM verification (select model, enable/disable)",
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
@@ -2472,8 +2472,31 @@ class CASIOApp(App):
             ("Math/SUVATprogram.py", "SUVATprogram", "SUVAT"),
             ("ComputerScience/booleanProgram.py", "booleanProgram", "boolean"),
         ]
+        support_modules = [
+            ("Math/casio_core.py", "casio_core"),
+        ]
 
         compiled = 0
+        for src_rel, prog_name in support_modules:
+            src = root / "src" / src_rel
+            mpy = calc / f"{prog_name}.mpy"
+
+            self.append_result(f"[dim]Compiling {src.name}...[/dim]")
+            if mpy.exists():
+                mpy.unlink()
+
+            result = subprocess.run(
+                [str(mpy_cross), "-msmall-int-bits=31", "-mno-unicode", "-o", str(mpy), str(src)],
+                capture_output=True, text=True
+            )
+
+            if result.returncode == 0 and mpy.exists():
+                self.append_result(f"[bold #22c55e]✓[/#22c55e] Compiled {prog_name}.mpy (v3)")
+            else:
+                self.append_result(f"[bold #f87171]✗[/#f87171] Failed: {result.stderr[:100] if result.stderr else 'unknown'}")
+                continue
+            compiled += 1
+
         for src_rel, prog_name, launch_name in programs:
             src = root / "src" / src_rel
             mpy = calc / f"{prog_name}.mpy"
@@ -2501,6 +2524,17 @@ class CASIOApp(App):
         if calculator.exists():
             self.append_result("[bold #22c55e]--- Copying to calculator ---[/bold #22c55e]")
             import shutil
+            for src_rel, prog_name in support_modules:
+                mpy_src = calc / f"{prog_name}.mpy"
+                mpy_dst = calculator / f"{prog_name}.mpy"
+                try:
+                    if mpy_src.exists():
+                        if mpy_dst.exists():
+                            mpy_dst.unlink()
+                        shutil.copy(mpy_src, mpy_dst)
+                        self.append_result(f"[dim]Copied:[/dim] {prog_name}.mpy")
+                except OSError as e:
+                    self.append_result(f"[bold #f87171]Error copying:[/bold #f87171] {e}")
             for src_rel, prog_name, launch_name in programs:
                 mpy_src = calc / f"{prog_name}.mpy"
                 mpy_dst = calculator / f"{prog_name}.mpy"
@@ -5335,7 +5369,7 @@ class CASIOApp(App):
         if difficulty == "chaos":
             # Complete chaos - truly unpredictable integrands
             integrand_types = [
-                "polynomial", "trig", "exp", "log", "rational", "nested", "sqrt", "inverse_trig", "product", "chain"
+                "polynomial", "trig", "exp", "log", "rational", "nested", "sqrt", "inverse_trig", "product", "chain", "reciprocal_exp", "trig_conjugate"
             ]
             itype = rng.choice(integrand_types)
             
@@ -5397,10 +5431,19 @@ class CASIOApp(App):
                 a, b = rng.randint(1, 4), rng.randint(1, 4)
                 expr = f"{a}*x^{rng.randint(1,3)}*exp({b}*x)"
                 mode = "chaos_product"
-            else:  # chain
+            elif itype == "chain":
                 a, b = rng.randint(2, 5), rng.randint(1, 5)
                 expr = f"sin({a}*x+{b})"
                 mode = "chaos_chain"
+            elif itype == "reciprocal_exp":
+                expr = "((1/(x^2))+(1/(x^3)))*exp(1/x)"
+                mode = "chaos_reciprocal_exp"
+            elif itype == "trig_conjugate":
+                expr = rng.choice([
+                    "(x*tan(x))/(tan(x)+sec(x))",
+                    "(x*sec(x))/(tan(x)+sec(x))",
+                ])
+                mode = "chaos_trig_conjugate"
         elif difficulty == "hard":
             # Hard mode - varied
             types = ["polynomial", "trig_power", "exp_poly", "rational", "u_sub"]
@@ -5432,58 +5475,14 @@ class CASIOApp(App):
             mode = "easy"
         
         label = f"Integrate {index}: {expr[:25]}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n\n", label, integrate_checker("method:", "answer:"), feature=f"int_auto:{mode}")
-        simple_u_choices = [
-            self.random_linear_expr(rng, "x", allow_negative=True),
-            f"x^2+{rng.randint(2, 9)}",
-            f"{rng.randint(2, 8)}*x^2{self.signed_int_text(rng.randint(-6,6))}*x+{rng.randint(2,9)}",
-            f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
-            f"sin({self.random_linear_expr(rng, 'x', allow_negative=True)})+exp({rng.randint(1,3)}*x)+{rng.randint(2,9)}",
-            f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
-        ]
-        u_expr = rng.choice(simple_u_choices)
-        if mode in ("du_over_u", "deep_du_over_u"):
-            if mode == "deep_du_over_u":
-                u_expr = f"({self.random_positive_expr(rng, 'x', helper_difficulty)})^2+exp({self.random_linear_expr(rng, 'x', allow_negative=True)})"
-            _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
-            deriv = DERIVE.show(final)
-            integrand = f"({deriv})/({u_expr})"
-        elif mode in ("du_over_one_plus_u2", "deep_atan"):
-            angle = rng.choice([
-                self.random_linear_expr(rng, "x", allow_negative=False),
-                f"x^2+{rng.randint(1,5)}",
-                f"{rng.randint(2,5)}*x^3{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(1,6)}",
-            ])
-            _var, _steps, final, _formatted = DERIVE.solve_normal_mode(angle)
-            deriv = DERIVE.show(final)
-            integrand = f"({deriv})/(1+({angle})^2)"
-        elif mode == "du_over_sqrt":
-            u_expr = self.random_positive_expr(rng, "x", helper_difficulty)
-            _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
-            deriv = DERIVE.show(final)
-            integrand = f"({deriv})/sqrt({u_expr})"
-        elif mode == "exp_chain":
-            u_expr = rng.choice([
-                self.random_linear_expr(rng, "x", allow_negative=True),
-                f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
-                f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(1, 6)}",
-                f"log({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(1, 6)}",
-                f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(1, 6)}",
-            ])
-            _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
-            deriv = DERIVE.show(final)
-            integrand = f"({deriv})*exp({u_expr})"
-        elif mode == "trig_chain":
-            u_expr = self.random_angle_expr(rng, "x", helper_difficulty)
-            _var, _steps, final, _formatted = DERIVE.solve_normal_mode(u_expr)
-            deriv = DERIVE.show(final)
-            integrand = f"({deriv})*{rng.choice(['sin', 'cos'])}({u_expr})"
-        else:
-            base = self.random_linear_expr(rng, "x", allow_negative=True)
-            power = self.random_power_limit(rng, difficulty, medium=5, hard=14)
-            integrand = f"({base})^{power}"
-        label = f"Random integrate auto {index}: {mode}"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand), feature=f"integrate_auto:{mode}")
+        base_checker = self.integrate_output_checker(expr)
+
+        def generated_integral_checker(output):
+            text = normalized_text(output)
+            return base_checker(output) and "no elementary" not in text and "no standard exam-method" not in text
+
+        generated_integral_checker.__name__ = "generated_integral_checker"
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, generated_integral_checker, feature=f"int_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
         helper_difficulty = "hard" if difficulty == "chaos" else difficulty
@@ -7099,8 +7098,48 @@ class CASIOApp(App):
                 hard_cases.append((f"1\n{expr}\n", label, derive_checker()))
             self.run_simple_cases("deriveProgram.py", p, hard_cases, "contains")
 
+    def run_symbolic_fixture_pack(self, program_name, program_file, feature_prefix):
+        fixture_path = _TESTS_DIR / "fixtures" / "symbolic_regressions.json"
+        if not fixture_path.exists():
+            return
+        with fixture_path.open("r", encoding="utf-8") as fh:
+            fixtures = json.load(fh)
+        for index, fixture in enumerate(fixtures):
+            if fixture.get("program") != program_name:
+                continue
+            input_lines = fixture.get("input_lines") or []
+            if not input_lines:
+                continue
+            inp = "\n".join(input_lines) + "\n"
+            out, _ = self.run_cli(program_file, inp)
+            text = normalized_text(out)
+            expr = input_lines[1] if len(input_lines) > 1 else ""
+            if fixture.get("oracle_kind") == "antiderivative" and expr:
+                checker = self.integrate_output_checker(expr)
+                passed = checker(out)
+            else:
+                expected = (fixture.get("expected_answer") or "").replace(" + C", "")
+                passed = expected == "" or normalized_text(expected) in text
+            for token in fixture.get("required_working", []):
+                if token.lower() not in text:
+                    passed = False
+            for token in fixture.get("forbidden_output", []):
+                if token.lower() in text:
+                    passed = False
+            self.add_test(
+                "Fixture: " + program_name + " " + str(index + 1),
+                passed,
+                out,
+                program_name,
+                inp,
+                fixture.get("oracle_kind", "fixture"),
+                feature_prefix + ":fixture",
+            )
+
     def run_integrate(self, difficulty="all"):
         p = "Integrate"
+        if difficulty in ("all", "easy", "medium", "hard"):
+            self.run_symbolic_fixture_pack(p, "intProgram.py", "integrate")
 
         tests = [
             ("x^7-3*x^2+4", "+ C", "∫x⁷-3x²+4 dx"),
@@ -7132,6 +7171,47 @@ class CASIOApp(App):
                 "readable antiderivative with grouped shifted power",
                 "integrate_formatting",
             )
+
+            disguised_solvable_cases = [
+                (
+                    "1\n((1/(x**2))+(1/(x**3)))*exp(1/x)\n1\n",
+                    "Regression: reciprocal exp u-sub auto",
+                    "((1/(x**2))+(1/(x**3)))*exp(1/x)",
+                    ("-e^(1/x)/x",),
+                    "integrate_reciprocal_exp_auto",
+                ),
+                (
+                    "1\n((1/(x**2))+(1/(x**3)))*exp(1/x)\n4\n1/x\n",
+                    "Regression: reciprocal exp forced u=1/x",
+                    "((1/(x**2))+(1/(x**3)))*exp(1/x)",
+                    ("-e^(1/x)/x",),
+                    "integrate_reciprocal_exp_forced",
+                ),
+                (
+                    "1\n(x*tan(x))/(tan(x)+sec(x))\n1\n",
+                    "Regression: trig conjugate ratio with x factor",
+                    "(x*tan(x))/(tan(x)+sec(x))",
+                    ("sec(x) - tan(x)", "ln|sin(x) + 1|"),
+                    "integrate_trig_conjugate_ratio",
+                ),
+            ]
+            for inp2, label2, expr2, required2, feature2 in disguised_solvable_cases:
+                out, _ = self.run_cli("intProgram.py", inp2)
+                checker2 = self.integrate_output_checker(expr2)
+                text2 = normalized_text(out)
+                passed2 = checker2(out) and "no elementary" not in text2
+                for token2 in required2:
+                    if token2.lower() not in text2:
+                        passed2 = False
+                self.add_test(
+                    label2,
+                    passed2,
+                    out,
+                    p,
+                    inp2,
+                    "solvable disguised integral with checked antiderivative",
+                    feature2,
+                )
 
             def non_elementary_integral_checker(*tokens):
                 def check(output):

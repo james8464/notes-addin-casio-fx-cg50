@@ -12,6 +12,19 @@ if str(_TESTS) not in sys.path:
 from run_tests import CASIOApp, TestStatus, TestRecord  # noqa: E402
 
 
+class RuntimeSourceGuardTests(unittest.TestCase):
+    def test_calculator_runtime_does_not_import_sympy(self):
+        root = Path(__file__).resolve().parents[1]
+        bad = []
+        for path in (root / "src").rglob("*.py"):
+            if "legacy" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+            if "import sympy" in text or "from sympy" in text:
+                bad.append(str(path.relative_to(root)))
+        self.assertEqual(bad, [])
+
+
 class HarnessLlmStatusTests(unittest.TestCase):
     def test_apply_needs_review_flips_stats(self):
         app = CASIOApp()
