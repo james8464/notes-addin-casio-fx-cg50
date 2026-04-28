@@ -6367,6 +6367,15 @@ def expand_mode_text(text, max_terms=None):
     expanded = maybe_expand_for_compare(expr)
     if not same(expanded, expr):
         return lines + ['Expand brackets', 'Out = ' + show(expanded)]
+    # For rational/power forms, the compare-expander may do nothing. Try the solver-grade
+    # expander (bounded) so outputs become more solvable / comparable (e.g. (a+bx)^2).
+    expanded2 = expand_for_solving(expr)
+    if expanded2 is not None and not same(expanded2, expr):
+        try:
+            if tree_size(expanded2) <= 600 and tree_size(expanded2) <= tree_size(expr) * 12:
+                return lines + ['Expand brackets', 'Out = ' + show(expanded2)]
+        except Exception:
+            return lines + ['Expand brackets', 'Out = ' + show(expanded2)]
     return lines + ['Out = ' + show(expr)]
 
 

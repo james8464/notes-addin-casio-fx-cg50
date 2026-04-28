@@ -310,6 +310,19 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("sqrt(-", out.replace(" ", ""))
         self.assertIn("Answer:", out)
 
+    def test_algebra_expand_expands_simple_power_denominator(self):
+        out = run_cli("algebraProgram.py", "3\n4/((2+3x)^2)\n5\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Out =", out)
+        # Expect expanded quadratic denominator (form may be reordered by canonicalisation).
+        compact = out.replace(" ", "")
+        self.assertTrue(
+            "4/(9*x^2+12*x+4)" in compact
+            or "4/(4+12*x+9*x^2)" in compact
+            or "4/(9*x^2+4+12*x)" in compact,
+            msg=out,
+        )
+
     def test_shared_cache_eviction_uses_snapshot_keys(self):
         cache = {}
         for i in range(10):
