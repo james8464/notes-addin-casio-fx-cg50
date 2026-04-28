@@ -228,14 +228,77 @@ def normalize_input_text(text):
     """Normalize user-facing maths syntax into parser-friendly ASCII."""
     if text is None:
         return text
+    text = text.strip()
     text = text.replace('\u2212', '-')
+    text = text.replace('\u2013', '-')
+    text = text.replace('\u2014', '-')
     text = text.replace('\u00d7', '*')
+    text = text.replace('\u2217', '*')
+    text = text.replace('\u22c5', '*')
     text = text.replace('\u00f7', '/')
+    text = text.replace('\u2044', '/')
     text = text.replace('\u03c0', 'pi')
+    text = text.replace('\u03a0', 'pi')
     text = text.replace('\u00b0', '')
+    text = text.replace('\u00bd', '(1/2)')
+    text = text.replace('\u00bc', '(1/4)')
+    text = text.replace('\u00be', '(3/4)')
+    text = _normalize_superscripts(text)
+    text = _normalize_sqrt_symbol(text)
     if '|' in text:
         text = _convert_abs_pipes(text)
     return text
+
+
+_SUPERSCRIPT_DIGITS = {
+    '\u2070': '0', '\u00b9': '1', '\u00b2': '2', '\u00b3': '3',
+    '\u2074': '4', '\u2075': '5', '\u2076': '6', '\u2077': '7',
+    '\u2078': '8', '\u2079': '9', '\u207b': '-', '\u207a': '+',
+}
+
+
+def _normalize_superscripts(text):
+    out = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch in _SUPERSCRIPT_DIGITS:
+            run = []
+            while i < len(text) and text[i] in _SUPERSCRIPT_DIGITS:
+                run.append(_SUPERSCRIPT_DIGITS[text[i]])
+                i += 1
+            out.append('^' + ''.join(run))
+            continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def _normalize_sqrt_symbol(text):
+    if '\u221a' not in text:
+        return text
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] != '\u221a':
+            out.append(text[i])
+            i += 1
+            continue
+        i += 1
+        while i < len(text) and text[i] in ' \t':
+            i += 1
+        if i < len(text) and text[i] == '(':
+            out.append('sqrt')
+            continue
+        start = i
+        if i < len(text) and (is_name_start(text[i]) or is_digit_char(text[i]) or text[i] == '.'):
+            i += 1
+            while i < len(text) and (is_name_char(text[i]) or text[i] == '.'):
+                i += 1
+            out.append('sqrt(' + text[start:i] + ')')
+        else:
+            out.append('sqrt')
+    return ''.join(out)
 
 
 def ensure_reasoning_marker(lines, default_prefix="Method: "):

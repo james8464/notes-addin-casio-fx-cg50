@@ -84,7 +84,10 @@ except ImportError:
             def is_zero(n, *args):
                 return is_num(n) and n[1] == 0
             def normalize_input_text(t, *args):
-                return t.strip() if isinstance(t, str) else t
+                try:
+                    return CASIO_CORE.normalize_text(t)
+                except Exception:
+                    return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
@@ -97,6 +100,14 @@ except ImportError:
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
             def casio_hw_sim_from_env(*args):
                 return False
+
+try:
+    import casio_core as CASIO_CORE
+except ImportError:
+    try:
+        from src.Math import casio_core as CASIO_CORE
+    except ImportError:
+        CASIO_CORE = None
 
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
@@ -4071,6 +4082,11 @@ def equivalent(a, b):
         return True
     diff = canonical_compare_form(diff)
     result = is_zero(diff)
+    if not result and CASIO_CORE is not None:
+        try:
+            result = CASIO_CORE.equivalent(a, b)
+        except Exception:
+            result = False
     if not result and math is not None:
         names_a = set()
         names_b = set()
@@ -5663,6 +5679,20 @@ def compare_expressions(expr1, expr2):
         step_num += 1
         steps.append((step_num, 'Hence expressions are equivalent.', simple1))
         return True, steps
+    if CASIO_CORE is not None:
+        try:
+            core_lines = CASIO_CORE.equivalence_lines(expr1, expr2, 'Expr1', 'Expr2')
+        except Exception:
+            core_lines = None
+        if core_lines is not None:
+            i = 0
+            while i < len(core_lines):
+                if not core_lines[i].startswith('Answer:'):
+                    steps.append((step_num, core_lines[i], None))
+                    step_num += 1
+                i += 1
+            steps.append((step_num, 'Hence expressions are equivalent.', simple1))
+            return True, steps
     steps.append((step_num, 'Difference expr1 - expr2: ' + show(diff), diff))
     return False, steps
 
@@ -6026,7 +6056,9 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
             if has_int:
                 decimal_roots = [d for d in decimal_roots if _value_inside_interval(d, low_node, high_node)]
             if decimal_roots:
-                lines.append(format_decimal_solution_line(var_name, decimal_roots))
+                lines.append('Exact: ' + solution)
+                lines.append('Answer: ' + format_decimal_solution_line(var_name, decimal_roots))
+                return compact_duplicate_answer_lines(lines)
     lines.append('Answer: ' + solution)
     return compact_duplicate_answer_lines(lines)
 

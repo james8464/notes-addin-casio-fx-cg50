@@ -60,7 +60,10 @@ except ImportError:
             def is_zero(n, *args):
                 return is_num(n) and n[1] == 0
             def normalize_input_text(t, *args):
-                return t.strip() if isinstance(t, str) else t
+                try:
+                    return CASIO_CORE.normalize_text(t)
+                except Exception:
+                    return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
@@ -2560,6 +2563,8 @@ def poly_divmod_num(a, b):
     b = poly_trim(list(b))
     if len(b) == 1 and is_zero(b[0]):
         return None, None
+    if len(b) == 1:
+        return poly_trim([divq(c, b[0]) for c in a]), [num(0)]
     if len(a) < len(b):
         return [num(0)], a
     D = [num(0)] * (len(a) - len(b) + 1)
@@ -5471,8 +5476,8 @@ def finalize_integral_result(ans, lines):
 
 
 def integral_is_rational_division(node, var):
-    return node[0] == 'div' and poly_num(node[1], var) is not None and poly_num(
-        node[2], var) is not None
+    return node[0] == 'div' and depends(node[2], var) and poly_num(
+        node[1], var) is not None and poly_num(node[2], var) is not None
 
 
 def auto_route_termwise(node, var, depth):
@@ -6013,6 +6018,8 @@ def integrate_division(node, var, follow):
     B = node
     A = var
     if B[0] != 'div':
+        return None, None
+    if not depends(B[2], A):
         return None, None
     D = poly_num(B[1], A)
     E = poly_num(B[2], A)

@@ -22,6 +22,90 @@ FUNC_ALIASES = {
 }
 
 
+_SUPERSCRIPT_DIGITS = {
+    "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+    "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+    "⁻": "-", "⁺": "+",
+}
+
+
+def normalize_text(text):
+    if not isinstance(text, str):
+        return text
+    text = text.strip()
+    for pair in (
+        ("−", "-"), ("–", "-"), ("—", "-"),
+        ("×", "*"), ("∗", "*"), ("⋅", "*"),
+        ("÷", "/"), ("⁄", "/"),
+        ("π", "pi"), ("Π", "pi"), ("°", ""),
+        ("½", "(1/2)"), ("¼", "(1/4)"), ("¾", "(3/4)"),
+    ):
+        text = text.replace(pair[0], pair[1])
+    text = _normalize_superscripts(text)
+    text = _normalize_sqrt_symbol(text)
+    return text
+
+
+def _normalize_superscripts(text):
+    out = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch in _SUPERSCRIPT_DIGITS:
+            run = []
+            while i < len(text) and text[i] in _SUPERSCRIPT_DIGITS:
+                run.append(_SUPERSCRIPT_DIGITS[text[i]])
+                i += 1
+            out.append("^" + "".join(run))
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _is_digit_char(ch):
+    return "0" <= ch <= "9"
+
+
+def _is_alpha_char(ch):
+    return ("A" <= ch <= "Z") or ("a" <= ch <= "z")
+
+
+def _is_name_start(ch):
+    return _is_alpha_char(ch) or ch == "_"
+
+
+def _is_name_char(ch):
+    return _is_name_start(ch) or _is_digit_char(ch)
+
+
+def _normalize_sqrt_symbol(text):
+    if "√" not in text:
+        return text
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] != "√":
+            out.append(text[i])
+            i += 1
+            continue
+        i += 1
+        while i < len(text) and text[i] in " \t":
+            i += 1
+        if i < len(text) and text[i] == "(":
+            out.append("sqrt")
+            continue
+        start = i
+        if i < len(text) and (_is_name_start(text[i]) or _is_digit_char(text[i]) or text[i] == "."):
+            i += 1
+            while i < len(text) and (_is_name_char(text[i]) or text[i] == "."):
+                i += 1
+            out.append("sqrt(" + text[start:i] + ")")
+        else:
+            out.append("sqrt")
+    return "".join(out)
+
+
 def _gcd(a, b):
     if a < 0:
         a = -a
@@ -341,7 +425,7 @@ def format_expr(node, parent=0):
 
 
 def parse_expr(text):
-    text = text.strip()
+    text = normalize_text(text)
     tokens = []
     i = 0
     while i < len(text):
@@ -402,6 +486,16 @@ def parse_expr(text):
             return False
         return True
 
+    def consume_func_arg():
+        if peek() == "(":
+            take("(")
+            out = parse_add()
+            take(")")
+            return out
+        if starts_atom(peek()):
+            return parse_atom()
+        raise ValueError("Bad function form.")
+
     def parse_atom():
         tok = peek()
         if tok == "(":
@@ -422,6 +516,10 @@ def parse_expr(text):
         if name == "e":
             return E
         if name in FUNC_NAMES:
+            if peek() in ("^", "**"):
+                take(peek())
+                exp = parse_unary()
+                return power(fn(name, consume_func_arg()), exp)
             if peek() == "(":
                 take("(")
                 arg = parse_add()
@@ -723,16 +821,347 @@ def integrate_trig_conjugate_ratio(node, var):
     ]
 
 
+def tree_size(node):
+    kind = node[0]
+    if kind in ("num", "sym", "const"):
+        return 1
+    if kind == "fn":
+        return 1 + tree_size(node[2])
+    if kind in ("pow", "div"):
+        return 1 + tree_size(node[1]) + tree_size(node[2])
+    total = 1
+    for child in node[1]:
+        total += tree_size(child)
+    return total
+
+
+def _mul_distribute_once(node, limit):
+    node = simplify(node)
+    if node[0] != "mul":
+        return node
+    factors = []
+    for item in flat(node, "mul"):
+        factors.append(expand_small(item, limit))
+    terms = [num(1)]
+    for factor in factors:
+        next_terms = []
+        items = flat(factor, "add") if factor[0] == "add" else [factor]
+        if len(terms) * len(items) > limit:
+            return simplify(("mul", tuple(factors)))
+        i = 0
+        while i < len(terms):
+            j = 0
+            while j < len(items):
+                next_terms.append(mul([terms[i], items[j]]))
+                j += 1
+            i += 1
+        terms = next_terms
+    return add(terms)
+
+
+def expand_small(node, limit=64):
+    node = simplify(node)
+    kind = node[0]
+    if kind in ("num", "sym", "const"):
+        return node
+    if kind == "fn":
+        return fn(node[1], expand_small(node[2], limit))
+    if kind == "div":
+        return div(expand_small(node[1], limit), expand_small(node[2], limit))
+    if kind == "add":
+        return add([expand_small(item, limit) for item in flat(node, "add")])
+    if kind == "mul":
+        return _mul_distribute_once(node, limit)
+    if kind == "pow":
+        base = expand_small(node[1], limit)
+        exp = simplify(node[2])
+        if is_int_num(exp) and 2 <= exp[1] <= 6 and tree_size(base) <= 28:
+            cur = num(1)
+            i = 0
+            while i < exp[1]:
+                cur = expand_small(mul([cur, base]), limit)
+                if tree_size(cur) > limit * 4:
+                    return power(base, exp)
+                i += 1
+            return cur
+        return power(base, exp)
+    return node
+
+
+def _square_of_named(node, name):
+    node = simplify(node)
+    if node[0] == "pow" and same(node[2], num(2)) and node[1][0] == "fn" and node[1][1] == name:
+        return node[1][2]
+    return None
+
+
+def _signed_term(node):
+    coeff, rest = _split_num_coeff(node)
+    sign = 1
+    if is_num(coeff) and coeff[1] < 0:
+        sign = -1
+        coeff = num(-coeff[1], coeff[2])
+    if is_one(coeff):
+        return sign, rest
+    return sign, mul([coeff, rest])
+
+
+def _pythagorean_add_once(node):
+    node = simplify(node)
+    if node[0] != "add":
+        return node
+    terms = list(flat(node, "add"))
+    used = [False] * len(terms)
+    out = []
+    changed = False
+    i = 0
+    while i < len(terms):
+        if used[i]:
+            i += 1
+            continue
+        sign_i, rest_i = _signed_term(terms[i])
+        matched = False
+        j = i + 1
+        while j < len(terms):
+            if not used[j]:
+                sign_j, rest_j = _signed_term(terms[j])
+                for pair in (("sin", "cos", 1), ("cos", "sin", 1), ("sec", "tan", -1), ("cosec", "cot", -1)):
+                    arg_i = _square_of_named(rest_i, pair[0])
+                    arg_j = _square_of_named(rest_j, pair[1])
+                    if arg_i is not None and arg_j is not None and same(arg_i, arg_j):
+                        if pair[2] == 1 and sign_i == 1 and sign_j == 1:
+                            out.append(num(1))
+                            used[i] = True
+                            used[j] = True
+                            matched = True
+                            changed = True
+                            break
+                        if pair[2] == -1 and sign_i == 1 and sign_j == -1:
+                            out.append(num(1))
+                            used[i] = True
+                            used[j] = True
+                            matched = True
+                            changed = True
+                            break
+                if matched:
+                    break
+            j += 1
+        if not matched and not used[i]:
+            out.append(terms[i])
+            used[i] = True
+        i += 1
+    if not changed:
+        return node
+    return add(out)
+
+
+def trig_reduce(node):
+    node = simplify(node)
+    kind = node[0]
+    if kind in ("num", "sym", "const"):
+        return node
+    if kind == "fn":
+        return fn(node[1], trig_reduce(node[2]))
+    if kind == "pow":
+        return power(trig_reduce(node[1]), trig_reduce(node[2]))
+    if kind == "div":
+        top = trig_reduce(node[1])
+        bot = trig_reduce(node[2])
+        if top[0] == "fn" and bot[0] == "fn" and same(top[2], bot[2]):
+            if top[1] == "sin" and bot[1] == "cos":
+                return fn("tan", top[2])
+            if top[1] == "cos" and bot[1] == "sin":
+                return fn("cot", top[2])
+        return div(top, bot)
+    if kind == "mul":
+        return mul([trig_reduce(item) for item in flat(node, "mul")])
+    if kind == "add":
+        return _pythagorean_add_once(add([trig_reduce(item) for item in flat(node, "add")]))
+    return node
+
+
+def canonical_form(node):
+    cur = simplify(node)
+    i = 0
+    while i < 4:
+        nxt = simplify(trig_reduce(expand_small(cur)))
+        if same(nxt, cur):
+            return nxt
+        cur = nxt
+        i += 1
+    return cur
+
+
+def _collect_symbols(node, out):
+    kind = node[0]
+    if kind == "sym":
+        if node[1] not in out:
+            out.append(node[1])
+        return
+    if kind in ("num", "const"):
+        return
+    if kind == "fn":
+        _collect_symbols(node[2], out)
+        return
+    if kind in ("pow", "div"):
+        _collect_symbols(node[1], out)
+        _collect_symbols(node[2], out)
+        return
+    for child in node[1]:
+        _collect_symbols(child, out)
+
+
+def numeric_eval(node, env):
+    try:
+        kind = node[0]
+        if kind == "num":
+            return float(node[1]) / float(node[2])
+        if kind == "sym":
+            return env.get(node[1], 0.0)
+        if kind == "const":
+            if node[1] == "pi":
+                return math.pi
+            if node[1] == "e":
+                return math.e
+            return None
+        if kind == "add":
+            total = 0.0
+            for child in flat(node, "add"):
+                v = numeric_eval(child, env)
+                if v is None:
+                    return None
+                total += v
+            return total
+        if kind == "mul":
+            total = 1.0
+            for child in flat(node, "mul"):
+                v = numeric_eval(child, env)
+                if v is None:
+                    return None
+                total *= v
+            return total
+        if kind == "div":
+            a = numeric_eval(node[1], env)
+            b = numeric_eval(node[2], env)
+            if a is None or b is None or abs(b) < 1e-12:
+                return None
+            return a / b
+        if kind == "pow":
+            a = numeric_eval(node[1], env)
+            b = numeric_eval(node[2], env)
+            if a is None or b is None:
+                return None
+            return a ** b
+        if kind == "fn":
+            v = numeric_eval(node[2], env)
+            if v is None:
+                return None
+            name = node[1]
+            if name == "sin":
+                return math.sin(v)
+            if name == "cos":
+                return math.cos(v)
+            if name == "tan":
+                return math.tan(v)
+            if name == "sec":
+                c = math.cos(v)
+                if abs(c) < 1e-12:
+                    return None
+                return 1.0 / c
+            if name == "cosec":
+                s = math.sin(v)
+                if abs(s) < 1e-12:
+                    return None
+                return 1.0 / s
+            if name == "cot":
+                t = math.tan(v)
+                if abs(t) < 1e-12:
+                    return None
+                return 1.0 / t
+            if name == "exp":
+                return math.exp(v)
+            if name == "log":
+                if v <= 0:
+                    return None
+                return math.log(v)
+            if name == "sqrt":
+                if v < 0:
+                    return None
+                return math.sqrt(v)
+            if name == "abs":
+                return abs(v)
+            if name == "asin":
+                if v < -1 or v > 1:
+                    return None
+                return math.asin(v)
+            if name == "acos":
+                if v < -1 or v > 1:
+                    return None
+                return math.acos(v)
+            if name == "atan":
+                return math.atan(v)
+    except Exception:
+        return None
+    return None
+
+
+def equivalent_exact(a, b, var="x"):
+    if same(simplify(a), simplify(b)):
+        return True
+    diff = canonical_form(add([a, neg(b)]))
+    return is_zero(diff) or same(diff, num(0))
+
+
+def equivalent(a, b, var="x"):
+    if equivalent_exact(a, b, var):
+        return True
+    if math is None:
+        return False
+    names = []
+    _collect_symbols(a, names)
+    _collect_symbols(b, names)
+    samples = (-2.3, -1.4, -0.7, 0.4, 1.1, 2.2)
+    good = 0
+    for base in samples:
+        env = {}
+        i = 0
+        while i < len(names):
+            env[names[i]] = base + 0.37 * i
+            i += 1
+        av = numeric_eval(a, env)
+        bv = numeric_eval(b, env)
+        if av is None or bv is None:
+            continue
+        if abs(av - bv) > 1e-6 * (1.0 + abs(av) + abs(bv)):
+            return False
+        good += 1
+    return good >= 3
+
+
+def equivalence_lines(a, b, left_name="Expr1", right_name="Expr2"):
+    left = canonical_form(a)
+    right = canonical_form(b)
+    if not equivalent_exact(left, right):
+        return None
+    diff = canonical_form(add([left, neg(right)]))
+    return [
+        "Method: shared algebra/trig simplification.",
+        left_name + " -> " + format_expr(left),
+        right_name + " -> " + format_expr(right),
+        "Difference -> " + format_expr(diff),
+        "Answer: Equivalent",
+    ]
+
+
 def rewrite_variants(node, purpose=None):
     variants = [simplify(node)]
+    canon = canonical_form(node)
+    if not same(canon, variants[0]):
+        variants.append(canon)
     trig = integrate_trig_conjugate_ratio(node, "x")
     if trig is not None:
         variants.append(trig[1])
     return variants
-
-
-def equivalent(a, b, var="x"):
-    return same(simplify(a), simplify(b))
 
 
 def differentiate(node, var="x"):

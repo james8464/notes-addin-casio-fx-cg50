@@ -69,7 +69,10 @@ except ImportError:
             def is_zero(n, *args):
                 return is_num(n) and n[1] == 0
             def normalize_input_text(t, *args):
-                return t.strip() if isinstance(t, str) else t
+                try:
+                    return CASIO_CORE.normalize_text(t)
+                except Exception:
+                    return t.strip() if isinstance(t, str) else t
             def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None, *args):
                 return a == b
             E = ("const", "e")
@@ -78,6 +81,13 @@ except ImportError:
             def casio_hw_sim_from_env(*args):
                 return False
 
+try:
+    import casio_core as CASIO_CORE
+except ImportError:
+    try:
+        from src.Math import casio_core as CASIO_CORE
+    except ImportError:
+        CASIO_CORE = None
 
 FUNC_NAMES = (
     "sin", "cos", "tan", "sec", "cosec", "cot",
@@ -117,6 +127,23 @@ def apply_runtime_profile(low_memory=None):
 def begin_user_action():
     # Size-bounded engine caches; skip full clear to save CPU on each action.
     pass
+
+
+def core_prefer_simpler(node):
+    if CASIO_CORE is None:
+        return node
+    if tree_size(node) > 140:
+        return node
+    try:
+        candidate = CASIO_CORE.canonical_form(node)
+        if tree_size(candidate) > 180:
+            return node
+        if CASIO_CORE.equivalent(candidate, node):
+            if len(readable_show(candidate)) <= len(readable_show(node)):
+                return candidate
+    except Exception:
+        pass
+    return node
 
 
 def clear_engine_caches():
@@ -2378,7 +2405,7 @@ def solve_normal_mode(text):
         expr, var = second
         expr = trig_normal(expr)
         first = tidy(diff(expr, var, []))
-        second_ans = tidy(diff(first, var, []))
+        second_ans = core_prefer_simpler(tidy(diff(first, var, [])))
         final = prefer_trig_recip(second_ans)
         formatted = format_final_answer(final)
         label = "d2y/d" + var + "2"
@@ -2393,7 +2420,7 @@ def solve_normal_mode(text):
     expr, var = parse_normal_input(text)
     expr = trig_normal(expr)
     ans, steps = explain(expr, var, [])
-    final = tidy(ans)
+    final = core_prefer_simpler(tidy(ans))
     formatted = format_final_answer(final)
     return var, steps, final, formatted
 
@@ -2748,7 +2775,7 @@ def main():
                 if not depends(work, [dep]):
                     raise ValueError("No " + dep + ".")
                 raise ValueError("No " + dname + ".")
-            ans = tidy(div(neg(rest), coef))
+            ans = core_prefer_simpler(tidy(div(neg(rest), coef)))
             print(str(step) + ". Method: differentiate implicitly.")
             print(str(step + 1) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
             print(str(step + 2) + ". " + readable_show(dleft) + " = " + readable_show(dright))
@@ -3035,7 +3062,7 @@ def main():
             dy = sim(diff(yt, "t", []))
             if is_zero(dx):
                 raise ValueError("dx/dt=0.")
-            ans = prefer_trig_recip(sim(div(dy, dx)))
+            ans = core_prefer_simpler(prefer_trig_recip(sim(div(dy, dx))))
             print("1. Differentiate x(t) with respect to t.")
             print("2. dx/dt = " + readable_show(dx))
             print("3. Differentiate y(t) with respect to t.")

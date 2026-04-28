@@ -69,7 +69,10 @@ except ImportError:
             def is_zero(n, *args):
                 return is_num(n) and n[1] == 0
             def normalize_input_text(t, *args):
-                return t.strip() if isinstance(t, str) else t
+                try:
+                    return CASIO_CORE.normalize_text(t)
+                except Exception:
+                    return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
@@ -82,6 +85,13 @@ except ImportError:
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
             def casio_hw_sim_from_env(*args):
                 return False
+try:
+    import casio_core as CASIO_CORE
+except ImportError:
+    try:
+        from src.Math import casio_core as CASIO_CORE
+    except ImportError:
+        CASIO_CORE = None
 FUNC_NAMES = (
     "sin",
     "cos",
@@ -3444,6 +3454,12 @@ def _equivalent_uncached(a, b):
         if b[0] == "div" and same(b[1], b[2]) and has_variable_dependency(b[1]):
             return False
         return True
+    if CASIO_CORE is not None and diff_size <= 220:
+        try:
+            if CASIO_CORE.equivalent_exact(a, b):
+                return True
+        except Exception:
+            pass
     if (a[0] == "div" and same(a[1], a[2]) and has_variable_dependency(a[1]) and same(b, num(1))) or (b[0] == "div" and same(b[1], b[2]) and has_variable_dependency(b[1]) and same(a, num(1))):
         return False
     if math is None:
@@ -7072,6 +7088,13 @@ def solve_prove(lhs, rhs, route):
         lines = prove_by_difference_zero(lhs, rhs)
         if lines is not None:
             return lines
+        if CASIO_CORE is not None:
+            try:
+                core_lines = CASIO_CORE.equivalence_lines(lhs, rhs, "LHS", "RHS")
+            except Exception:
+                core_lines = None
+            if core_lines is not None:
+                return compact_lines(finalize_proof_identity_lines(core_lines[:-1] + ["LHS = RHS"]))
         return ["LHS = RHS"]
     raise ValueError("This is not an identity, so prove/show mode cannot be used.")
 
@@ -14019,18 +14042,20 @@ def solve_equal_complementary_trig_expr(expr, var, start_val, end_val, deg_mode,
     if sin_pair is None or cos_pair is None:
         return None
 
-    def append_periodic_solutions(base_target, start_shift, sols):
+    def append_periodic_solutions(base_target, start_shift, step, sols):
         linear = linear_pair(base_target, var)
         if linear is None:
             return
         coeff = eval_numeric_mode(linear[0], {}, deg_mode)
         const = eval_numeric_mode(linear[1], {}, deg_mode)
-        n_range = solve_n_range_for_interval(coeff, const, start_shift, full_turn, start_val, end_val)
+        start_shift_value = eval_numeric_mode(start_shift, {}, deg_mode)
+        step_value = eval_numeric_mode(step, {}, deg_mode)
+        n_range = solve_n_range_for_interval(coeff, const, start_shift_value, step_value, start_val, end_val)
         if n_range is None:
             return
         n = n_range[0]
         while n <= n_range[1]:
-            shift_val = add([start_shift, mul([num(n), full_turn])])
+            shift_val = add([start_shift, mul([num(n), step])])
             target = sim(add([base_target, neg(shift_val)]))
             linear2 = linear_pair(target, var)
             if linear2 is not None and not is_zero(linear2[0]):
@@ -14042,8 +14067,8 @@ def solve_equal_complementary_trig_expr(expr, var, start_val, end_val, deg_mode,
     quarter_turn = num(90) if deg_mode else div(PI, num(2))
     full_turn = num(360) if deg_mode else mul([num(2), PI])
     sols = []
-    append_periodic_solutions(sim(add([sin_arg, cos_arg])), quarter_turn, sols)
-    append_periodic_solutions(sim(add([sin_arg, neg(cos_arg)])), quarter_turn, sols)
+    append_periodic_solutions(sim(add([sin_arg, cos_arg])), quarter_turn, full_turn, sols)
+    append_periodic_solutions(sim(add([sin_arg, neg(cos_arg)])), quarter_turn, full_turn, sols)
     sols = dedupe_values(sols)
     quarter_text = "90" if deg_mode else "pi/2"
     full_text = "360" if deg_mode else "2*pi"
@@ -16880,8 +16905,7 @@ def solve_prove_pair_text(eq1_text, eq2_text, route):
         if equivalent(lhs, rhs):
             lines = solve_prove(lhs, rhs, route)
             return finalize_proof_identity_lines(compact_lines(lines))
-        eq1_text = eq1_text + "=0"
-        eq2_text = eq2_text + "=0"
+        raise ValueError("This is not an identity, so prove/show mode cannot be used.")
     return solve_transform_text(eq1_text, eq2_text)
 
 

@@ -24,6 +24,7 @@ import sys
 # Programs shipped as calc_files/<name>.mpy (see tests/run_tests.py action_compile)
 EXPECTED_MPY_FILES = (
     "casio_core.mpy",
+    "shared_fallback.mpy",
     "algebraProgram.mpy",
     "trigProgram.mpy",
     "deriveProgram.mpy",

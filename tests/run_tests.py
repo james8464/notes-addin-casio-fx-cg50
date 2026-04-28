@@ -202,6 +202,10 @@ def _fast_case_workers():
 
 FAST_CASE_WORKERS = _fast_case_workers()
 CASE_WORKERS = max(CASE_WORKERS, FAST_CASE_WORKERS)
+try:
+    CASIO_TUI_FPS = max(4, min(30, int(os.environ.get("CASIO_TUI_FPS", "12"))))
+except ValueError:
+    CASIO_TUI_FPS = 12
 
 # Feature tags used by random chaos so we can report gaps (prefix of CaseSpec.feature).
 RANDOM_CHAOS_EXPECTED_ALGEBRA = (
@@ -2075,6 +2079,13 @@ class CASIOApp(App):
         self._feature_stats = {}
         self._show_chaos_feature_gaps = False
         self._in_run_case_specs = False
+        self._spinner_frames = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+        self._spinner_index = 0
+        self._summary_text = "Ready"
+        self._live_program = "idle"
+        self._live_phase = "ready"
+        self._last_event_label = ""
+        self._frame_timer = None
 
         self.command_items = {
             "/random": "Run randomly generated tests (infinite until stopped)",
@@ -2175,6 +2186,10 @@ class CASIOApp(App):
         self.sub_title = "Interactive maths harness"
         self.refresh_rule_lines()
         self.query_one("#command-input", Input).focus()
+        try:
+            self._frame_timer = self.set_interval(1.0 / CASIO_TUI_FPS, self.render_live_frame)
+        except Exception:
+            self._frame_timer = None
         self.action_clear()
 
     def on_resize(self, event) -> None:
@@ -2411,6 +2426,9 @@ class CASIOApp(App):
         if self.running:
             return
         self.transition_run_state(RunState.RUNNING)
+        self._live_program = program or "all"
+        self._live_phase = "preparing"
+        self._last_event_label = command_label
         self.records.clear()
         self.current_run_question_keys.clear()
         self.session_random_question_keys.clear()
@@ -2439,6 +2457,7 @@ class CASIOApp(App):
     def action_stop(self):
         if self.running:
             self.request_stop()
+            self._live_phase = "stopping"
             self.append_result("[dim]Stop requested - current random batch will finish first.[/dim]")
             self.update_summary("Stopping...")
         elif self.records:
@@ -2474,6 +2493,7 @@ class CASIOApp(App):
         ]
         support_modules = [
             ("Math/casio_core.py", "casio_core"),
+            ("calc_files/shared_fallback.py", "shared_fallback"),
         ]
 
         compiled = 0
@@ -2823,6 +2843,9 @@ class CASIOApp(App):
             len(self.records) + 1, label, status, output, program, input_text, check_info, feature, passed=passed, harness_status=status
         )
         self.records.append(record)
+        self._live_program = program or self._live_program
+        self._last_event_label = label
+        self._live_phase = "verifying" if self.llm_enabled_for_tests else "testing"
         if feature:
             st = self._feature_stats.setdefault(feature, [0, 0])
             st[1] += 1
@@ -3042,13 +3065,43 @@ class CASIOApp(App):
                 )
 
     def update_summary(self, text):
+        self._summary_text = text
         try:
             self.query_one("#status-line", Static).update(text)
             self.screen.refresh()  # Force immediate display
         except Exception:
             pass
 
-    def update_progress_bar(self, current, total):
+    def render_live_frame(self):
+        if getattr(self, "plain_mode", False):
+            return
+        try:
+            if not self.running:
+                return
+            frame = self._spinner_frames[self._spinner_index % len(self._spinner_frames)]
+            self._spinner_index += 1
+            passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
+            failed = sum(1 for r in self.records if r.status == TestStatus.FAIL)
+            total = len(self.records)
+            expected = self.total_expected if self.total_expected > 0 else total
+            program = self._live_program or self.current_program or "all"
+            phase = self._live_phase or "running"
+            tail = self._last_event_label
+            if tail:
+                tail = " · " + tail[:72]
+            status = (
+                frame + " " + phase + " · " + program +
+                " · " + str(total) + "/" + str(expected) +
+                " · pass " + str(passed) + " fail " + str(failed) + tail
+            )
+            self.query_one("#status-line", Static).update(status)
+            if expected > 0:
+                self.update_progress_bar(total, expected, frame)
+            self.screen.refresh()
+        except Exception:
+            pass
+
+    def update_progress_bar(self, current, total, frame=""):
         if total <= 0:
             total = current
         if total <= 0:
@@ -3062,8 +3115,9 @@ class CASIOApp(App):
         pct_int = int(pct * 100)
         
         try:
+            lead = (frame + " ") if frame else ""
             self.query_one("#progress-bar", Static).update(
-                f"[#22c55e]{bar}[/] {pct_int}% ({current}/{total})"
+                f"{lead}[#22c55e]{bar}[/] {pct_int}% ({current}/{total})"
             )
             self.screen.refresh()
         except Exception:
@@ -6148,6 +6202,7 @@ class CASIOApp(App):
                 active_workers = workers or CASE_WORKERS
                 if self.run_state != RunState.RUNNING:
                     self.transition_run_state(RunState.RUNNING)
+                self._live_phase = "running"
                 if self.consume_random_stop_file():
                     self.transition_run_state(RunState.STOPPED)
                     emit(self.append_result, "[dim]Stopped by previous --stop command[/dim]")
@@ -6203,6 +6258,8 @@ class CASIOApp(App):
                     if self.random_stop_requested(emit):
                         break
                     if batch.program != last_program:
+                        self._live_program = batch.program
+                        self._live_phase = "generating"
                         emit(self.append_result, "")
                         emit(self.append_result, f"[bold #e07a53]▶ {batch.program}[/bold #e07a53]")
                         last_program = batch.program
@@ -6213,6 +6270,7 @@ class CASIOApp(App):
                             emit(self.append_result, f"[dim]Generating first {batch.count} random cases...[/dim]")
 
                     cases = batch.builder(difficulty, batch.count, rng)
+                    self._live_phase = "testing"
                     if not cases and infinite_mode:
                         emit(self.append_result, "[dim][skip] empty case batch (retry next cycle)[/dim]")
                     self.run_case_specs(cases, workers=active_workers, infinite_mode=infinite_mode)
@@ -6232,6 +6290,7 @@ class CASIOApp(App):
                     self.call_from_thread(self.render_summary)
             finally:
                 self._random_infinite = False
+                self._live_phase = "ready" if self.run_state != RunState.RUNNING else self._live_phase
 
         if getattr(self, 'plain_mode', False):
             run()
@@ -6325,6 +6384,18 @@ class CASIOApp(App):
                 _mode, expr1, expr2 = inp.splitlines()[:3]
                 checker = algebra_compare_output_checker(expr1, expr2, expected_equal=True)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated algebra compare"), "algebra_compare")
+            inp = "1\n(x+1)²\nx²+2×x+1\n"
+            out, _ = self.run_cli("algebraProgram.py", inp)
+            checker = algebra_compare_output_checker("(x+1)^2", "x^2+2*x+1", expected_equal=True)
+            self.add_test(
+                "Abnormal input: unicode powers/multiply compare",
+                checker(out),
+                out,
+                p,
+                inp,
+                getattr(checker, "__name__", "calculated algebra compare"),
+                "algebra_compare:abnormal",
+            )
 
         # Transform tests
         transforms = [
@@ -6690,6 +6761,18 @@ class CASIOApp(App):
                 eq = lines[1] + "=" + lines[2]
                 checker = trig_identity_output_checker(eq)
                 self.add_test(label, checker(out), out, p, inp, getattr(checker, "__name__", "calculated trig identity"), "trig_prove")
+            inp = trig_prove_cli("sin²(x)+cos²(x)", "1")
+            out, _ = self.run_cli("trigProgram.py", inp)
+            checker = trig_identity_output_checker("sin(x)^2+cos(x)^2=1")
+            self.add_test(
+                "Abnormal input: unicode trig square identity",
+                checker(out),
+                out,
+                p,
+                inp,
+                getattr(checker, "__name__", "calculated trig identity"),
+                "trig_prove:abnormal",
+            )
 
         # Transform tests
         transforms = [
@@ -6966,6 +7049,17 @@ class CASIOApp(App):
                 out, _ = self.run_cli("deriveProgram.py", f"1\n{expr}\n")
                 checker = self.derive_output_checker(expr)
                 self.add_test(label, checker(out), out, p, f"1\n{expr}\n", getattr(checker, "__name__", "calculated derivative"), "derive_normal")
+            inp = "1\nsin²(x)+cos²(x)\n"
+            out, _ = self.run_cli("deriveProgram.py", inp)
+            self.add_test(
+                "Abnormal input: derivative of unicode identity",
+                "Answer: dy/dx = 0" in out,
+                out,
+                p,
+                inp,
+                "dy/dx = 0",
+                "derive_normal:abnormal",
+            )
 
         # Extreme - log differentiation
         if difficulty in ("all", "medium", "hard"):
@@ -7397,6 +7491,7 @@ class CASIOApp(App):
                     (",\n20\n0\n0\n5\n", "s", "100", "CLI SUVAT formatting: s=100 must not become 1 m"),
                     (",\n0\n0\n4\n5\n", "s", "50", "CLI SUVAT formatting: s=50"),
                     ("20\n,\n14\n2\n4\n", "u", "6", "CLI SUVAT formatting: recover u=6"),
+                    (",\n4\n\n½\n4\n", "s", "20", "Abnormal input: unicode half acceleration"),
                 ]
                 for inp, target, expected, label in cli_cases:
                     out, _ = self.run_cli("SUVATprogram.py", inp)

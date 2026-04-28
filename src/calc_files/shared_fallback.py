@@ -97,11 +97,92 @@ def normalize_input_text(text):
     if not isinstance(text, str):
         return text
     text = text.strip()
+    text = text.replace('−', '-')
+    text = text.replace('–', '-')
+    text = text.replace('—', '-')
+    text = text.replace('×', '*')
+    text = text.replace('∗', '*')
+    text = text.replace('⋅', '*')
+    text = text.replace('÷', '/')
+    text = text.replace('⁄', '/')
     text = text.replace('π', 'pi')
+    text = text.replace('Π', 'pi')
     text = text.replace('°', '')
+    text = text.replace('½', '(1/2)')
+    text = text.replace('¼', '(1/4)')
+    text = text.replace('¾', '(3/4)')
+    text = _normalize_superscripts(text)
+    text = _normalize_sqrt_symbol(text)
     if '|' in text:
         text = _convert_abs_pipes(text)
     return text
+
+
+_SUPERSCRIPT_DIGITS = {
+    '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+    '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+    '⁻': '-', '⁺': '+',
+}
+
+
+def _is_digit_char(ch):
+    return '0' <= ch <= '9'
+
+
+def _is_alpha_char(ch):
+    return ('A' <= ch <= 'Z') or ('a' <= ch <= 'z')
+
+
+def _is_name_start(ch):
+    return _is_alpha_char(ch) or ch == '_'
+
+
+def _is_name_char(ch):
+    return _is_name_start(ch) or _is_digit_char(ch)
+
+
+def _normalize_superscripts(text):
+    out = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch in _SUPERSCRIPT_DIGITS:
+            run = []
+            while i < len(text) and text[i] in _SUPERSCRIPT_DIGITS:
+                run.append(_SUPERSCRIPT_DIGITS[text[i]])
+                i += 1
+            out.append('^' + ''.join(run))
+            continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def _normalize_sqrt_symbol(text):
+    if '√' not in text:
+        return text
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] != '√':
+            out.append(text[i])
+            i += 1
+            continue
+        i += 1
+        while i < len(text) and text[i] in ' \t':
+            i += 1
+        if i < len(text) and text[i] == '(':
+            out.append('sqrt')
+            continue
+        start = i
+        if i < len(text) and (_is_name_start(text[i]) or _is_digit_char(text[i]) or text[i] == '.'):
+            i += 1
+            while i < len(text) and (_is_name_char(text[i]) or text[i] == '.'):
+                i += 1
+            out.append('sqrt(' + text[start:i] + ')')
+        else:
+            out.append('sqrt')
+    return ''.join(out)
 
 def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None):
     return a == b

@@ -49,7 +49,10 @@ except ImportError:
             def is_zero(n, *args):
                 return is_num(n) and n[1] == 0
             def normalize_input_text(t, *args):
-                return t.strip() if isinstance(t, str) else t
+                try:
+                    return CASIO_CORE.normalize_text(t)
+                except Exception:
+                    return t.strip() if isinstance(t, str) else t
             def shared_neg(node, num_func=None, mul_func=None):
                 if is_num(node):
                     return ('num', -node[1], node[2])
@@ -58,6 +61,14 @@ except ImportError:
             def same_by_sig(a, b, sig_func=None, cache=None, cache_store_func=None, cache_limit=None, *args):
                 return a == b
             REASONING_MARKERS = ("method:", "use ", "using ", "let ", "solve ", "answer:")
+
+try:
+    import casio_core as CASIO_CORE
+except ImportError:
+    try:
+        from src.Math import casio_core as CASIO_CORE
+    except ImportError:
+        CASIO_CORE = None
 
 FAST_GCD = math.gcd if math is not None and hasattr(math, 'gcd') else None
 FAST_ISQRT = math.isqrt if math is not None and hasattr(math, 'isqrt') else None
