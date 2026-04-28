@@ -2090,7 +2090,7 @@ def cartesian_equation_lines(text):
     solved = canonical_compare_form(sim(div(neg(pair[1]), pair[0])))
     return [
         'Method: Solve linear equation',
-        'Cartesian equation: ' + show(lhs) + ' = ' + show(rhs),
+        'Solve equation: ' + show(lhs) + ' = ' + show(rhs),
         'Collect the ' + dep + ' terms.',
         dep + ' = ' + show(solved),
         'Answer: ' + dep + ' = ' + show(solved),
@@ -2165,6 +2165,7 @@ def cartesian_parametric_lines(x_text, y_text, param='t'):
     lhs, rhs, note = result
     lines.append(note)
     answer = show(lhs) + ' = ' + show(rhs)
+    lines.append('Cartesian: ' + answer)
     lines.append('Answer: ' + answer)
     return lines
 
@@ -3296,11 +3297,13 @@ def inverse_function(f_text, var='x'):
         shown_f = show(f)
         steps = ["f(x) = " + shown_f, "y = " + shown_f]
         if not depends_on(f, var):
+            steps.append("A constant function is many-to-one.")
             steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
         f_y = substitute(f, sym(var), sym('y'))
         if not depends_on(f_y, 'y'):
             steps.append("Swap x and y: x = " + show(f_y))
+            steps.append("A constant function is many-to-one.")
             steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
         steps.append("Swap x and y: x = " + show(f_y))
@@ -5856,8 +5859,33 @@ def depressed_cubic_cardano_roots(coeffs):
         disc_root = fn('sqrt', discriminant)
     first = sim(add([neg(half_q), disc_root]))
     second = sim(add([neg(half_q), neg(disc_root)]))
-    root = sim(add([power(first, num(1, 3)), power(second, num(1, 3))]))
+    root = sim(add([real_cube_root_node(first), real_cube_root_node(second)]))
     return [root]
+
+
+def real_cube_root_node(node):
+    node = sim(node)
+    exact = exact_nth_root_num(node, 3)
+    if exact is not None:
+        return exact
+    value = real_numeric_value(node)
+    if value is not None and value < 0:
+        return sim(neg(power(positive_negation_node(node), num(1, 3))))
+    return sim(power(node, num(1, 3)))
+
+
+def positive_negation_node(node):
+    node = sim(node)
+    if is_num(node):
+        return num(-node[1], node[2])
+    if node[0] == 'add':
+        out = []
+        i = 0
+        while i < len(node[1]):
+            out.append(neg(node[1][i]))
+            i += 1
+        return sim(add(out))
+    return sim(neg(node))
 
 
 def depressed_cubic_cardano_numeric_roots(expr, var_name):

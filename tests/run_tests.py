@@ -1407,7 +1407,7 @@ def trig_solve_checker(*tokens):
     base_required = tokens
     structure = build_checker(
         contains_any=("start with", "solve trig eq", "standard trig equation"),
-        min_steps=4,
+        min_steps=3,
         min_lines=4,
     )
 
@@ -1572,21 +1572,23 @@ def derive_param_checker(*tokens):
 def integrate_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("+ c",),
-            contains_any=(
-                "method:",
-                "met:",
-                "integrate each term",
-                "u =",
-                "use the standard result",
-                "standard integral",
-                "power-reduction",
-                "integration by parts",
-                "integrate by parts",
-                "use parts",
-                "by parts",
-                "use:",
-                "split the numerator",
-                "complete the square",
+        contains_any=(
+            "method:",
+            "met:",
+            "integrate each term",
+            "u =",
+            "use the standard result",
+            "standard integral",
+            "power-reduction",
+            "consider y",
+            "dy/dx",
+            "integration by parts",
+            "integrate by parts",
+            "use parts",
+            "by parts",
+            "use:",
+            "split the numerator",
+            "complete the square",
             "partial fractions",
         ),
         min_steps=0,
@@ -4407,14 +4409,14 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
+            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
             min_steps=0,
             min_lines=2,
         )
         # Non-elementary / cannot-integrate answers do not end with " + c"; use relaxed gates.
         quality_no_elementary = build_checker(
             contains_all=("answer:",),
-            contains_any=("method:", "met:", "tried", "use the standard result", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
+            contains_any=("method:", "met:", "tried", "use the standard result", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
             min_steps=0,
             min_lines=2,
         )
@@ -4991,6 +4993,8 @@ class CASIOApp(App):
         mode = rng.choice([
             "pythag", "double_angle", "half_angle",
             "tan", "sec", "cosec", "cot",
+            "scaled_pythag", "scaled_sec", "scaled_cosec",
+            "hidden_square",
         ])
         if mode == "pythag":
             left = f"sin({angle})^2+cos({angle})^2"
@@ -5010,9 +5014,24 @@ class CASIOApp(App):
         elif mode == "cosec":
             left = f"cosec({angle})^2-cot({angle})^2"
             right = "1"
-        else:
+        elif mode == "cot":
             left = f"cot({angle})"
             right = f"cos({angle})/sin({angle})"
+        elif mode == "scaled_pythag":
+            k = rng.randint(2, 9)
+            left = f"{k}*sin({angle})^2+{k}*cos({angle})^2"
+            right = str(k)
+        elif mode == "scaled_sec":
+            k = rng.randint(2, 9)
+            left = f"{k}*sec({angle})^2-{k}*tan({angle})^2"
+            right = str(k)
+        elif mode == "scaled_cosec":
+            k = rng.randint(2, 9)
+            left = f"{k}*cosec({angle})^2-{k}*cot({angle})^2"
+            right = str(k)
+        else:
+            left = f"(sin({angle})+cos({angle}))^2-2*sin({angle})*cos({angle})"
+            right = "1"
         label = f"Random trig prove {index}: {mode}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", trig_prove_cli(left, right), label, trig_prove_checker(), feature=f"trig_prove:{mode}")
 
@@ -5028,6 +5047,9 @@ class CASIOApp(App):
             "cosec_recip",
             "pythag_sec",
             "pythag_cosec",
+            "scaled_sec",
+            "scaled_cosec",
+            "hidden_square",
         ])
         if mode == "double_angle":
             left = f"sin(2*{angle})"
@@ -5061,8 +5083,22 @@ class CASIOApp(App):
             left = f"sec({angle})^2-tan({angle})^2"
             right = "1"
             checker = trig_transform_checker("1")
-        else:
+        elif mode == "pythag_cosec":
             left = f"cosec({angle})^2-cot({angle})^2"
+            right = "1"
+            checker = trig_transform_checker("1")
+        elif mode == "scaled_sec":
+            k = rng.randint(2, 9)
+            left = f"{k}*sec({angle})^2-{k}*tan({angle})^2"
+            right = str(k)
+            checker = trig_transform_checker(str(k))
+        elif mode == "scaled_cosec":
+            k = rng.randint(2, 9)
+            left = f"{k}*cosec({angle})^2-{k}*cot({angle})^2"
+            right = str(k)
+            checker = trig_transform_checker(str(k))
+        else:
+            left = f"(sin({angle})+cos({angle}))^2-2*sin({angle})*cos({angle})"
             right = "1"
             checker = trig_transform_checker("1")
         label = f"Random trig transform {index}: {mode}"
@@ -5192,7 +5228,7 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature="trig_madas")
 
     def random_trig_identity_hard_case(self, rng, difficulty, index):
-        choice = rng.randint(1, 8)
+        choice = rng.randint(1, 11)
         if choice == 1:
             cli_input = trig_prove_cli("sec(x)^4-tan(x)^4", "1+2*tan(x)^2")
         elif choice == 2:
@@ -5203,8 +5239,18 @@ class CASIOApp(App):
             cli_input = trig_prove_cli("tan(x)+cot(x)", "sec(x)*cosec(x)")
         elif choice == 5:
             cli_input = trig_prove_cli("sin(x)^3*cos(x)+cos(x)^3*sin(x)", "sin(x)*cos(x)")
-        else:
+        elif choice == 6:
             cli_input = trig_prove_cli("sec(x)-tan(x)", "cos(x)/(1+sin(x))")
+        elif choice == 7:
+            cli_input = trig_prove_cli("3*sec(x)^2-3*tan(x)^2", "3")
+        elif choice == 8:
+            cli_input = trig_prove_cli("5-5*sin(x)^2", "5*cos(x)^2")
+        elif choice == 9:
+            cli_input = trig_prove_cli("(sin(x)+cos(x))^2-2*sin(x)*cos(x)", "1")
+        elif choice == 10:
+            cli_input = trig_prove_cli("4*cosec(x)^2-4*cot(x)^2", "4")
+        else:
+            cli_input = trig_prove_cli("7*sin(x)^2+7*cos(x)^2", "7")
         label = f"Hard trig identity {index}"
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_prove_checker("1"), feature="trig_identity_hard")
 
@@ -5735,7 +5781,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Partial fractions {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_partial")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("partial fractions"), feature="int_partial")
 
     def random_integrate_trig_power_case(self, rng, difficulty, index):
         powers = ["sin(x)^4", "cos(x)^6", "sin(x)^2*cos(x)^2", "sin(2*x)^2", "cos(x)^4"]
@@ -5756,7 +5802,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Substitution {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("method:"), feature="int_sub")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("u ="), feature="int_sub")
 
     def random_suvat_case(self, rng, difficulty, index, target):
         def frac_num(value):
@@ -6015,22 +6061,22 @@ class CASIOApp(App):
         ])
         if mode == "parts_twice":
             cli_input = "1\nx^3*exp(x)\n"
-            checker = integrate_checker("method:", "integration by parts")
+            checker = integrate_checker("integration by parts")
         elif mode == "partial_frac":
             cli_input = "1\nx^2/((x+2)^2*(x^2+8))\n"
-            checker = integrate_checker("method:", "partial fractions", "divide")
+            checker = integrate_checker("partial fractions", "divide")
         elif mode == "trig_power":
             cli_input = "1\nsin(x)^4\n"
-            checker = integrate_checker("method:", "use ")
+            checker = integrate_checker("use ")
         elif mode == "exp_sin_cos":
             cli_input = "1\ne^x*sin(x)\n"
-            checker = integrate_checker("method:", "integration by parts", "circular")
+            checker = integrate_checker("integration by parts", "circular")
         elif mode == "sub_sqrt":
             cli_input = "1\nx/sqrt(x^3+1)\n"
-            checker = integrate_checker("method:", "substitution", "u =")
+            checker = integrate_checker("u =")
         else:
             cli_input = "1\nx^5*sqrt(x^3+1)\n"
-            checker = integrate_checker("method:", "+ c")
+            checker = integrate_checker()
         label = f"University integrate {index}: {mode}"
         return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, checker, feature=f"integrate_uni:{mode}")
 

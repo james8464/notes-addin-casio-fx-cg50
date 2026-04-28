@@ -1663,8 +1663,11 @@ def parse(text):
             i = j
         else:
             raise ValueError("Unexpected character: " + ch)
+    if len(toks) > MAX_TOKEN_COUNT:
+        raise ValueError("Too many tokens (max " + str(MAX_TOKEN_COUNT) + ").")
 
     p = 0
+    parse_depth = 0
 
     def cur():
         if p >= len(toks):
@@ -1700,11 +1703,16 @@ def parse(text):
         return True
 
     def atom():
+        nonlocal parse_depth
         tok = cur()
         if tok == "(":
             eat("(")
+            parse_depth += 1
+            if parse_depth > MAX_NESTING_DEPTH:
+                raise ValueError("Expression too nested (max " + str(MAX_NESTING_DEPTH) + ").")
             out = expr()
             eat(")")
+            parse_depth -= 1
             return out
         if tok is None:
             raise ValueError("Unexpected end.")
@@ -3192,27 +3200,29 @@ def expand_small(node):
     return cur
 
 
-def expand_embedded_small(node):
+def expand_embedded_small(node, limit=260):
+    if tree_size(node) > limit:
+        return sim(node)
     kind = node[0]
     if kind in ("num", "sym", "const"):
         return node
     if kind == "fn":
-        cur = fn(node[1], expand_embedded_small(node[2]))
+        cur = fn(node[1], expand_embedded_small(node[2], limit))
     elif kind == "pow":
-        cur = power(expand_embedded_small(node[1]), expand_embedded_small(node[2]))
+        cur = power(expand_embedded_small(node[1], limit), expand_embedded_small(node[2], limit))
     elif kind == "div":
-        cur = div(expand_embedded_small(node[1]), expand_embedded_small(node[2]))
+        cur = div(expand_embedded_small(node[1], limit), expand_embedded_small(node[2], limit))
     else:
         out = []
         i = 0
         while i < len(node[1]):
-            out.append(expand_embedded_small(node[1][i]))
+            out.append(expand_embedded_small(node[1][i], limit))
             i += 1
         cur = sim((kind, tuple(out)))
     nxt = expand_small(cur)
-    if same(nxt, cur):
+    if tree_size(nxt) > limit or same(nxt, cur):
         return cur
-    return expand_embedded_small(nxt)
+    return expand_embedded_small(nxt, limit)
 
 
 def rewrite_children(node, fn_rewrite):
@@ -3269,6 +3279,57 @@ def is_square_of(name, node, arg):
     return node[0] == "pow" and same(node[2], num(2)) and node[1][0] == "fn" and node[1][1] == name and same(node[1][2], arg)
 
 
+def trig_square_info(node):
+    if node[0] == "pow" and same(node[2], num(2)) and node[1][0] == "fn":
+        name = node[1][1]
+        if name in ("sin", "cos", "tan", "sec", "cot", "cosec"):
+            return name, node[1][2]
+    return None
+
+
+def scaled_pythagorean_pair_value(coeff1, rest1, coeff2, rest2):
+    info1 = trig_square_info(rest1)
+    info2 = trig_square_info(rest2)
+    if info1 is None or info2 is None:
+        return None
+    name1, arg1 = info1
+    name2, arg2 = info2
+    if not same(arg1, arg2):
+        return None
+    if ((name1 == "sin" and name2 == "cos") or (name1 == "cos" and name2 == "sin")) and same(coeff1, coeff2):
+        return coeff1
+    if ((name1 == "sec" and name2 == "tan") or (name1 == "tan" and name2 == "sec")) and same(coeff1, neg(coeff2)):
+        return coeff1 if name1 == "sec" else coeff2
+    if ((name1 == "cosec" and name2 == "cot") or (name1 == "cot" and name2 == "cosec")) and same(coeff1, neg(coeff2)):
+        return coeff1 if name1 == "cosec" else coeff2
+    return None
+
+
+def scaled_constant_square_value(coeff1, rest1, coeff2, rest2):
+    if is_one(rest1):
+        square_info = trig_square_info(rest2)
+        const_coeff = coeff1
+        square_coeff = coeff2
+    elif is_one(rest2):
+        square_info = trig_square_info(rest1)
+        const_coeff = coeff2
+        square_coeff = coeff1
+    else:
+        return None
+    if square_info is None or not same(square_coeff, neg(const_coeff)):
+        return None
+    name, arg = square_info
+    if name == "sin":
+        return sim(mul([const_coeff, power(fn("cos", arg), num(2))]))
+    if name == "cos":
+        return sim(mul([const_coeff, power(fn("sin", arg), num(2))]))
+    if name == "tan":
+        return sim(mul([const_coeff, power(fn("sec", arg), num(2))]))
+    if name == "cot":
+        return sim(mul([const_coeff, power(fn("cosec", arg), num(2))]))
+    return None
+
+
 def reduce_special_add(node):
     node = sim(node)
     if node[0] != "add":
@@ -3283,15 +3344,15 @@ def reduce_special_add(node):
             j = i + 1
             while j < len(items):
                 coeff_j, rest_j = split_coeff(items[j])
-                if coeff_i == coeff_j:
-                    if rest_i[0] == "pow" and rest_j[0] == "pow" and same(rest_i[2], num(2)) and same(rest_j[2], num(2)):
-                        if rest_i[1][0] == "fn" and rest_j[1][0] == "fn" and same(rest_i[1][2], rest_j[1][2]):
-                            if (rest_i[1][1], rest_j[1][1]) in (("sin", "cos"), ("cos", "sin")):
-                                items.pop(j)
-                                items.pop(i)
-                                items.append(coeff_i)
-                                changed = True
-                                break
+                value = scaled_pythagorean_pair_value(coeff_i, rest_i, coeff_j, rest_j)
+                if value is None:
+                    value = scaled_constant_square_value(coeff_i, rest_i, coeff_j, rest_j)
+                if value is not None:
+                    items.pop(j)
+                    items.pop(i)
+                    items.append(value)
+                    changed = True
+                    break
                 j += 1
             if changed:
                 break
@@ -6807,11 +6868,16 @@ def generic_side_path(expr, side_name):
         lines.append("Expand the trig identities.")
         cur = full_simplify(nxt)
         lines.append(step_line(cur))
+    if tree_size(cur) <= 180:
+        nxt = expand_embedded_small(cur)
+        if tree_size(nxt) <= 260 and not same(nxt, cur):
+            lines.append("Expand brackets.")
+            cur = sim(nxt)
+            lines.append(step_line(cur))
     nxt = expand_small(cur)
-    nxt = full_simplify(nxt)
     if not same(nxt, cur):
-        lines.append("Expand and simplify.")
-        cur = nxt
+        lines.append("Simplify.")
+        cur = sim(nxt)
         lines.append(step_line(cur))
     nxt = reduce_identities(cur)
     nxt = full_simplify(nxt)
@@ -6834,6 +6900,10 @@ def prove_general(lhs, rhs):
     left_common, left_lines = generic_side_path(lhs, "LHS")
     right_common, right_lines = generic_side_path(rhs, "RHS")
     if equivalent(left_common, right_common):
+        if not same(lhs, left_common) and same(right_common, rhs):
+            return left_lines + ["= RHS"]
+        if not same(rhs, right_common) and same(left_common, lhs):
+            return right_lines + ["= LHS"]
         return left_lines + right_lines
     return None
 
@@ -15681,6 +15751,41 @@ def domain_restriction_identity_lines(lhs, rhs):
     return None
 
 
+def append_identity_difference_working(lines, lhs, rhs):
+    if lhs is None or rhs is None:
+        return
+    diff = sim(add([lhs, neg(rhs)]))
+    cur = diff
+    added = []
+    if same(cur, num(0)):
+        added.append("LHS - RHS = 0")
+    else:
+        added.append("LHS - RHS = " + show(cur))
+        if tree_size(cur) <= 180:
+            expanded = expand_embedded_small(cur)
+            if tree_size(expanded) <= 260 and not same(expanded, cur):
+                added.append("Expand brackets.")
+                added.append("= " + show(expanded))
+                cur = sim(expanded)
+        reduced = reduce_identities(cur)
+        reduced = full_simplify(reduced)
+        if not same(reduced, cur):
+            added.append("Use Pythagorean identities.")
+            added.append("= " + show(reduced))
+            cur = reduced
+        simplified = full_simplify(cur)
+        if not same(simplified, cur):
+            added.append("Simplify.")
+            added.append("= " + show(simplified))
+            cur = simplified
+    if same(cur, num(0)):
+        i = 0
+        while i < len(added):
+            if len(lines) == 0 or lines[-1] != added[i]:
+                lines.append(added[i])
+            i += 1
+
+
 def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs=None, rhs=None):
     expr = sim(expr)
 
@@ -15692,6 +15797,7 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
                 lhs_sim = sim(lhs)
                 rhs_sim = sim(rhs)
                 if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
+                    append_identity_difference_working(lines, lhs_sim, rhs_sim)
                     return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
         return None
 
@@ -15700,6 +15806,7 @@ def solve_trig_identity_expr(expr, var, start_val, end_val, deg_mode, lines, lhs
         rhs_sim = sim(rhs)
         if not is_domain_restricted_identity_pair(lhs_sim, rhs_sim):
             if same(lhs_sim, rhs_sim) or equivalent(lhs_sim, rhs_sim):
+                append_identity_difference_working(lines, lhs_sim, rhs_sim)
                 return return_all_in_interval(var, start_val, end_val, deg_mode, lines, "This equation is an identity - both sides are equivalent.")
 
     identity_name = None
@@ -15781,11 +15888,11 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
     base = trig_base_solutions(name, target_value, deg_mode)
     if len(base) == 0:
         if name in ("sin", "cos"):
-            out.append(show(atom) + " = " + show(target_expr) + " has no real solutions because valid " + name + " values lie in [-1,1].")
+            out.append("No sol: " + name + " in [-1,1].")
         elif name in ("sec", "cosec"):
-            out.append(show(atom) + " = " + show(target_expr) + " has no real solutions because " + name + " values have magnitude at least 1.")
+            out.append("No sol: |" + name + "|>=1.")
         else:
-            out.append("No solutions in the interval.")
+            out.append("None in interval.")
         return [], out
     sols, angles, sol_nodes, angle_nodes = solve_angle_value_exact(name, mult, offset, target_value, target_expr, start_val, end_val, deg_mode)
     if len(angles) != 0:
@@ -15796,7 +15903,8 @@ def solve_direct_trig_equation(expr, var, start_val, end_val, deg_mode, lines):
             i += 1
         out.append(show(arg) + " = [" + ", ".join(bits) + "]" + (" rad" if not deg_mode else ""))
     if len(sols) == 0:
-        out.append("No solutions in the interval.")
+        # Avoid "no sol*" substring here: other factor branches may still yield solutions.
+        out.append("None in interval.")
         return [], out
     bits = []
     i = 0
@@ -16840,7 +16948,9 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     chosen_extra = []
     if special_solved is not None:
         if isinstance(special_solved[0], dict):
-            return special_solved
+            if want_meta:
+                return special_solved[0], compact_lines(special_solved[1]), deg_mode
+            return special_solved[0], compact_lines(special_solved[1])
         lines = list(special_solved[1])
         solved = (special_solved[0], [])
     else:
@@ -16970,11 +17080,7 @@ def solve_solve_text(text):
         cleaned_bits = []
         for bit in bits:
             bit = bit.strip()
-            while bit.startswith("(") and bit.endswith(")") and bit.count("(") == bit.count(")"):
-                inner = bit[1:-1].strip()
-                if inner == "":
-                    break
-                bit = inner
+            bit = _strip_truly_balanced_outer_parens(bit)
             cleaned_bits.append(bit)
         if len(cleaned_bits) >= 2 and len(cleaned_bits) <= 4:
             cleaned_text = ",".join(cleaned_bits)
@@ -17970,6 +18076,7 @@ def display_line_short(line):
     replacements = [
         ("This equation is an identity - both sides are equivalent", "Identity"),
         ("All values in the interval where the original equation is defined are solutions", "All defined values work"),
+        ("No solutions in the interval", "None in interval"),
         ("Rewrite using trig identities, then solve the resulting equation analytically", "Rewrite; solve analytically"),
         ("Scan f(", "Scan f("),
         (" for sign changes and verify each candidate in the original equation", " for sign changes; verify"),

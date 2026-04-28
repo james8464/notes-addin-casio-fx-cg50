@@ -645,9 +645,9 @@ def parse_expr(text):
         # and sin x all become ordinary ASTs without asking users for '*'.
         if tok is None:
             return False
-        if tok == "(" or tok == "-":
+        if tok == "(":
             return True
-        return tok not in ("+", "*", "/", "^", "**", ")", ",", "=")
+        return tok not in ("+", "-", "*", "/", "^", "**", ")", ",", "=")
 
     def atom_ok(tok):
         if tok is None:
@@ -1092,15 +1092,56 @@ def _square_of_named(node, name):
     return None
 
 
-def _signed_term(node):
-    coeff, rest = _split_num_coeff(node)
-    sign = 1
-    if is_num(coeff) and coeff[1] < 0:
-        sign = -1
-        coeff = num(-coeff[1], coeff[2])
-    if is_one(coeff):
-        return sign, rest
-    return sign, mul([coeff, rest])
+def _square_info(node):
+    node = simplify(node)
+    if node[0] == "pow" and same(node[2], num(2)) and node[1][0] == "fn":
+        name = node[1][1]
+        if name in ("sin", "cos", "tan", "sec", "cot", "cosec"):
+            return name, node[1][2]
+    return None
+
+
+def _scaled_pythagorean_value(coeff1, rest1, coeff2, rest2):
+    info1 = _square_info(rest1)
+    info2 = _square_info(rest2)
+    if info1 is None or info2 is None:
+        return None
+    name1, arg1 = info1
+    name2, arg2 = info2
+    if not same(arg1, arg2):
+        return None
+    if ((name1 == "sin" and name2 == "cos") or (name1 == "cos" and name2 == "sin")) and same(coeff1, coeff2):
+        return coeff1
+    if ((name1 == "sec" and name2 == "tan") or (name1 == "tan" and name2 == "sec")) and same(coeff1, neg(coeff2)):
+        return coeff1 if name1 == "sec" else coeff2
+    if ((name1 == "cosec" and name2 == "cot") or (name1 == "cot" and name2 == "cosec")) and same(coeff1, neg(coeff2)):
+        return coeff1 if name1 == "cosec" else coeff2
+    return None
+
+
+def _scaled_constant_square_value(coeff1, rest1, coeff2, rest2):
+    if is_one(rest1):
+        const_coeff = coeff1
+        square_coeff = coeff2
+        square = _square_info(rest2)
+    elif is_one(rest2):
+        const_coeff = coeff2
+        square_coeff = coeff1
+        square = _square_info(rest1)
+    else:
+        return None
+    if square is None or not same(square_coeff, neg(const_coeff)):
+        return None
+    name, arg = square
+    if name == "sin":
+        return mul([const_coeff, power(fn("cos", arg), num(2))])
+    if name == "cos":
+        return mul([const_coeff, power(fn("sin", arg), num(2))])
+    if name == "tan":
+        return mul([const_coeff, power(fn("sec", arg), num(2))])
+    if name == "cot":
+        return mul([const_coeff, power(fn("cosec", arg), num(2))])
+    return None
 
 
 def _pythagorean_add_once(node):
@@ -1116,30 +1157,22 @@ def _pythagorean_add_once(node):
         if used[i]:
             i += 1
             continue
-        sign_i, rest_i = _signed_term(terms[i])
+        coeff_i, rest_i = _split_num_coeff(terms[i])
         matched = False
         j = i + 1
         while j < len(terms):
             if not used[j]:
-                sign_j, rest_j = _signed_term(terms[j])
-                for pair in (("sin", "cos", 1), ("cos", "sin", 1), ("sec", "tan", -1), ("cosec", "cot", -1)):
-                    arg_i = _square_of_named(rest_i, pair[0])
-                    arg_j = _square_of_named(rest_j, pair[1])
-                    if arg_i is not None and arg_j is not None and same(arg_i, arg_j):
-                        if pair[2] == 1 and sign_i == 1 and sign_j == 1:
-                            out.append(num(1))
-                            used[i] = True
-                            used[j] = True
-                            matched = True
-                            changed = True
-                            break
-                        if pair[2] == -1 and sign_i == 1 and sign_j == -1:
-                            out.append(num(1))
-                            used[i] = True
-                            used[j] = True
-                            matched = True
-                            changed = True
-                            break
+                coeff_j, rest_j = _split_num_coeff(terms[j])
+                value = _scaled_pythagorean_value(coeff_i, rest_i, coeff_j, rest_j)
+                if value is None:
+                    value = _scaled_constant_square_value(coeff_i, rest_i, coeff_j, rest_j)
+                if value is not None:
+                    out.append(value)
+                    used[i] = True
+                    used[j] = True
+                    matched = True
+                    changed = True
+                    break
                 if matched:
                     break
             j += 1

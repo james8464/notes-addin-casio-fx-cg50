@@ -706,10 +706,50 @@ def trig_high_power_rewrite(name, exp, arg):
         return None, None
     power_val = exp[1]
     if power_val == 3 or power_val >= 5:
+        k = (power_val - 1) // 2
+        def _drop_even_neg_pows(node):
+            node = sim(node)
+            kind = node[0]
+            if kind == 'pow' and node[1][0] == 'neg' and is_int_num(node[2]) and node[2][1] % 2 == 0:
+                return power(node[1][1], node[2])
+            if kind == 'pow' and is_int_num(node[2]) and node[2][1] % 2 == 0 and node[1][0] == 'mul':
+                items = list(flat(node[1], 'mul'))
+                if len(items) == 2 and same(items[0], num(-1)):
+                    return power(items[1], node[2])
+            if kind == 'fn':
+                return fn(node[1], _drop_even_neg_pows(node[2]))
+            if kind in ('add', 'mul'):
+                items = []
+                for item in node[1]:
+                    items.append(_drop_even_neg_pows(item))
+                return sim((kind, tuple(items)))
+            if kind == 'div':
+                return div(_drop_even_neg_pows(node[1]), _drop_even_neg_pows(node[2]))
+            if kind == 'neg':
+                return neg(_drop_even_neg_pows(node[1]))
+            return node
         if name == 'sin':
-            return 'Use sin^2 x = 1-cos^2 x.', mul([fn('sin', A), add([num(1), neg(power(fn('cos', A), num(2)))])])
+            core = add([num(1), neg(power(fn('cos', A), num(2)))])
+            if k > 1:
+                poly = core
+                i = 1
+                while i < k:
+                    poly = expand_small(mul([poly, core]))
+                    i += 1
+                poly = _drop_even_neg_pows(poly)
+                return 'Use sin^2 x = 1-cos^2 x.', expand_small(mul([fn('sin', A), poly]))
+            return 'Use sin^2 x = 1-cos^2 x.', mul([fn('sin', A), core])
         if name == 'cos':
-            return 'Use cos^2 x = 1-sin^2 x.', mul([fn('cos', A), add([num(1), neg(power(fn('sin', A), num(2)))])])
+            core = add([num(1), neg(power(fn('sin', A), num(2)))])
+            if k > 1:
+                poly = core
+                i = 1
+                while i < k:
+                    poly = expand_small(mul([poly, core]))
+                    i += 1
+                poly = _drop_even_neg_pows(poly)
+                return 'Use cos^2 x = 1-sin^2 x.', expand_small(mul([fn('cos', A), poly]))
+            return 'Use cos^2 x = 1-sin^2 x.', mul([fn('cos', A), core])
     C = TRIG_HIGH_POWER_IDENTITIES.get((name, power_val))
     if C is None:
         return None, None
@@ -7269,6 +7309,9 @@ def compact_integral_output_lines(lines, answer_text):
             i += 1
             continue
         if low.startswith('method:') or low.startswith('attempt '):
+            i += 1
+            continue
+        if low.startswith('so i =') and line != final_line:
             i += 1
             continue
         if line == final_line or line == answer_line:

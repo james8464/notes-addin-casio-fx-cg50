@@ -1796,23 +1796,40 @@ def explain(node, var, deps_list, compact_allowed=True):
             du = tidy(diff(u, var, deps_list))
             dv = tidy(diff(v, var, deps_list))
             dw = tidy(diff(w, var, deps_list))
-            combo = tidy(add([mul([du, v, w]), mul([u, dv, w]), mul([u, v, dw])]))
+            raw_combo = add([mul([du, v, w]), mul([u, dv, w]), mul([u, v, dw])])
+            tidy_combo = tidy(raw_combo)
+            combo = tidy_combo
+            if compact_allowed:
+                try:
+                    if len(show(tidy_combo)) > len(show(raw_combo)) + 80:
+                        combo = raw_combo
+                except Exception:
+                    combo = raw_combo
             lines.append("Product rule")
             lines.append("Let u = " + show(u) + ", v = " + show(v) + ", w = " + show(w))
             lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv) + ", dw/d" + var + " = " + show(dw))
             lines.append("dy/d" + var + " = u'*v*w + u*v'*w + u*v*w'")
             lines.append("= " + show(combo))
-            return d, lines
+            return combo, lines
         u = items[0]
         v = make_mul(items[1:])
         du = tidy(diff(u, var, deps_list))
         dv = tidy(diff(v, var, deps_list))
+        raw_combo = add([mul([u, dv]), mul([v, du])])
+        tidy_combo = tidy(raw_combo)
+        combo = tidy_combo
+        if compact_allowed:
+            try:
+                if len(show(tidy_combo)) > len(show(raw_combo)) + 80:
+                    combo = raw_combo
+            except Exception:
+                combo = raw_combo
         lines.append("Product rule")
         lines.append("Let u = " + show(u) + ", v = " + show(v))
         lines.append("du/d" + var + " = " + show(du) + ", dv/d" + var + " = " + show(dv))
         lines.append("dy/d" + var + " = u*(dv/d" + var + ") + v*(du/d" + var + ")")
-        lines.append("= " + show(tidy(add([mul([u, dv]), mul([v, du])]))))
-        return d, lines
+        lines.append("= " + show(combo))
+        return combo, lines
     if node[0] == "div":
         u = node[1]
         v = node[2]
@@ -1921,6 +1938,8 @@ def explain(node, var, deps_list, compact_allowed=True):
 
 def expand(node):
     node = sim(node)
+    if tree_size(node) > TIDY_SKIP_SIZE:
+        return node
     kind = node[0]
     if kind == "mul":
         items = []
@@ -1932,7 +1951,10 @@ def expand(node):
                 out = []
                 for part in items[i][1]:
                     out.append(expand(make_mul(items[:i] + [part] + items[i + 1 :])))
-                return sim(("add", tuple(out)))
+                expanded = sim(("add", tuple(out)))
+                if tree_size(expanded) > TIDY_SKIP_SIZE * 2:
+                    return node
+                return expanded
             i += 1
         return sim(("mul", tuple(items)))
     if kind == "add":
@@ -1963,7 +1985,10 @@ def expand(node):
                     out.append(expand(make_mul([parts[i], parts[j]])))
                     j += 1
                 i += 1
-            return sim(("add", tuple(out)))
+            expanded = sim(("add", tuple(out)))
+            if tree_size(expanded) > TIDY_SKIP_SIZE * 2:
+                return node
+            return expanded
         return sim(("pow", base, exp))
     if kind == "fn":
         return ("fn", node[1], expand(node[2]))
@@ -2544,7 +2569,7 @@ def solve_normal_mode(text):
     ans, steps = explain(step_expr, var, [], compact_allowed)
     final_node = tidy(diff(expr, var, []))
     if step_expr == expr:
-        final_node = tidy(ans)
+        final_node = ans
     final = core_prefer_simpler(final_node)
     formatted = format_final_answer(final)
     return var, steps, final, formatted

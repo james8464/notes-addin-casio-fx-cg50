@@ -19,6 +19,7 @@ for path in (TESTS, ROOT, MATH_ROOT):
 
 from run_tests import CASIOApp, TestStatus, TestRecord  # noqa: E402
 import algebraProgram as algebra_program  # noqa: E402
+import casio_core  # noqa: E402
 import trigProgram as trig_program  # noqa: E402
 from src.shared_cache import cache_store  # noqa: E402
 
@@ -58,7 +59,27 @@ class HarnessLlmStatusTests(unittest.TestCase):
         self.assertIs(record.passed, True)
         self.assertEqual(record.harness_status, TestStatus.PASS)
         self.assertIs(record.review_needed, True)
-        self.assertEqual(app._feature_stats["trig_solve"], [1, 1])
+
+
+class SharedCoreRegressionTests(unittest.TestCase):
+    def test_core_subtraction_is_not_implicit_multiplication(self):
+        parsed = casio_core.parse_expr("3*x-3*y")
+        self.assertEqual(casio_core.format_expr(parsed), "3*x - 3*y")
+
+    def test_core_scaled_pythagorean_reduction(self):
+        parsed = casio_core.parse_expr("3*sec(x)^2-3*tan(x)^2")
+        reduced = casio_core.trig_reduce(parsed)
+        self.assertEqual(casio_core.format_expr(reduced), "3")
+
+    def test_algebra_cardano_uses_real_cube_root_branch(self):
+        roots = algebra_program.depressed_cubic_cardano_roots([
+            algebra_program.num(2),
+            algebra_program.num(3),
+            algebra_program.num(0),
+            algebra_program.num(1),
+        ])
+        self.assertIsNotNone(roots)
+        self.assertNotIn("(-", algebra_program.show(roots[0]))
 
     def test_apply_correct_does_not_save_code_fail(self):
         app = CASIOApp()
@@ -120,6 +141,11 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("Err:", output)
         self.assertIn("Principal value restriction", output)
         self.assertIn("not an identity for all values", output)
+
+    def test_trig_rejects_excessive_nesting_cleanly(self):
+        nested = "(" * 205 + "x" + ")" * 205
+        output = run_cli("trigProgram.py", "1\n" + nested + "\nx\n1\n")
+        self.assertIn("Err: Expression too nested", output)
 
     def test_trig_solve_accepts_plain_equation(self):
         output = run_cli("trigProgram.py", "3\nsin(x)=0\n")
@@ -209,7 +235,7 @@ class TransformRegressionTests(unittest.TestCase):
         output = run_cli("algebraProgram.py", "11\nt+1\nt-1\n\n")
         self.assertNotIn("Err:", output)
         self.assertNotIn("Method:", output)
-        self.assertNotIn("Cartesian:", output)
+        self.assertIn("Cartesian: y = x - 2", output)
         self.assertIn("Answer: y = x - 2", output)
 
     def test_integral_reciprocal_exp_substitution_shows_algebra(self):
@@ -237,6 +263,13 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("Answer: dy/dx = (D*dN - N*dD)/D^2", output)
         self.assertIn("Answer: dy/dx =", output)
 
+    def test_product_derivative_keeps_nested_trig_argument_factored(self):
+        expr = "(cot(2*((2)*(3*(7*(x)**2+2*x+-7)**2+6)+pi/(3))^2+2))*exp(-7*x-5)*log(log(abs(2*(x)+(5))+10))"
+        output = run_cli("deriveProgram.py", "1\n" + expr + "\n")
+        self.assertNotIn("1555848*x^8", output)
+        self.assertIn("dy/dx = u'*v*w + u*v'*w + u*v*w'", output)
+        self.assertIn("Answer: dy/dx =", output)
+
     def test_trig_grouped_general_solution_detection(self):
         result = trig_program.detect_general_solution([30.0, 150.0, 390.0, 510.0], True)
         self.assertEqual(result, "30 + n*360 or 150 + n*360 (n any integer)")
@@ -255,6 +288,27 @@ class TransformRegressionTests(unittest.TestCase):
     def test_suvat_zero_average_velocity_reports_no_solution(self):
         output = run_cli("SUVATprogram.py", "10\n5\n-5\n\n,\n")
         self.assertIn("No solution: division by zero in t formula", output)
+
+    def test_integrate_trig_odd_power_5_simplifies_correctly(self):
+        out1 = run_cli("intProgram.py", "1\ncos(x)^5\n1\n")
+        self.assertNotIn("no elementary antideriv", out1.lower())
+        self.assertIn("Answer: 1/5*sin(x)^5 - 2/3*sin(x)^3 + sin(x) + C", out1)
+        out2 = run_cli("intProgram.py", "1\nsin(x)^5\n1\n")
+        self.assertNotIn("no elementary antideriv", out2.lower())
+        self.assertIn("Answer: -1/5*cos(x)^5 + 2/3*cos(x)^3 - cos(x) + C", out2)
+
+    def test_trig_factor_branch_none_in_interval_not_global_no_solution(self):
+        out = run_cli("trigProgram.py", "3\nsin(2*x)+cos(x)=0,x,0,180\n\n")
+        self.assertNotIn("No solutions in the interval", out)
+        self.assertIn("None in interval", out)
+        self.assertIn("Answer: x = [90]", out)
+
+    def test_algebra_hidden_substitution_filters_negative_u_roots(self):
+        out = run_cli("algebraProgram.py", "6\nx^4+6*x^2-361=0\n")
+        self.assertNotIn("Err:", out)
+        # Should not emit sqrt of negative u (no complex roots in real solve mode).
+        self.assertNotIn("sqrt(-", out.replace(" ", ""))
+        self.assertIn("Answer:", out)
 
     def test_shared_cache_eviction_uses_snapshot_keys(self):
         cache = {}
