@@ -234,6 +234,24 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("undefined where x = 0", output)
         self.assertIn("dy/dx = x/abs(x)", output)
 
+    def test_derive_mark_scheme_factored_forms_from_exam_pack(self):
+        out = run_cli("deriveProgram.py", "1\n(2*x+ln(x))^3\n")
+        self.assertNotIn("Err:", out)
+        self.assertNotIn("Answer: dy/dx", out)
+        self.assertIn("dy/dx = 3*(2 + 1/x)*(2*x + ln(x))^2", out)
+
+        out = run_cli("deriveProgram.py", "1\n(x+1)^2*exp(2*x)\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("dy/dx = 2*e^(2*x)*(x + 1)*(x + 2)", out)
+
+        out = run_cli("deriveProgram.py", "1\ncos(x)/(3-sin(x))\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("dy/dx = (1 - 3*sin(x))/(3 - sin(x))^2", out)
+
+        out = run_cli("deriveProgram.py", "1\nx*asin(2*x)\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("dy/dx = asin(2*x) + 2*x/sqrt(1 - 4*x^2)", out)
+
     def test_parametric_vertical_tangent_is_answer_not_error(self):
         output = run_cli("deriveProgram.py", "3\n5\nt^2\n")
         self.assertNotIn("Err:", output)
@@ -247,6 +265,25 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("Cartesian: y = x - 2", output)
         self.assertIn("Answer: y = x - 2", output)
 
+    def test_exam_pack_parametric_cartesian_trig_reciprocal_pair(self):
+        output = run_cli("algebraProgram.py", "11\ntan(t)-sec(t)\ncot(t)-cosec(t)\nt\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Use tan=sin/cos", output)
+        self.assertIn("Answer: (x^2 - 1)*(y^2 - 1) = 4*x*y", output)
+
+    def test_exam_pack_binomial_series_forms(self):
+        output = run_cli("algebraProgram.py", "3\n(1-3*x)^(-1/3)\n3\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Out = 1 + x + 2*x^2 + ...", output)
+
+        output = run_cli("algebraProgram.py", "3\n(8-3*x)^(1/3)\n3\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Out = 2 - (1/4)*x - (1/32)*x^2 + ...", output)
+
+        output = run_cli("algebraProgram.py", "3\nsqrt(225+15*x)\n3\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Out = 15 + (1/2)*x - (1/120)*x^2 + ...", output)
+
     def test_integral_reciprocal_exp_substitution_shows_algebra(self):
         output = run_cli("intProgram.py", "1\n((1/x**2)+(1/x**3))*exp(1/x)\n5\n")
         self.assertNotIn("Method:", output)
@@ -256,6 +293,17 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("I = Int[(- u - 1)*e^(u)] du.", output)
         self.assertIn("= -u*e^(u) + C.", output)
         self.assertIn("Answer: -e^(1/x)/x + C", output)
+
+    def test_exam_pack_trig_integrals_prefer_mark_scheme_rewrites(self):
+        out = run_cli("intProgram.py", "1\n1/(1+cos(2*x))\n1\n\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Use 1+cos(2A) = 2cos^2 A.", out)
+        self.assertIn("Answer: 1/2*tan(x) + C", out)
+
+        out = run_cli("intProgram.py", "1\ncos(x)^3/((1+sin(x)^2)*sin(x))\n1\n\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("(1-u^2)/(u(1+u^2)) = 1/u - 2u/(1+u^2).", out)
+        self.assertIn("Answer: ln|sin(x)/(sin(x)^2 + 1)| + C", out)
 
     def test_integration_handles_cosec_cubed(self):
         output = run_cli("intProgram.py", "1\ncosec(x)^3\n1\n")
@@ -286,6 +334,13 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("Use Pythagorean", output)
         self.assertIn("= 9", output)
         self.assertNotIn("cos(x)^2 - sin(x)^2", output)
+
+    def test_exam_pack_trig_product_to_sum_solver(self):
+        output = run_cli("trigProgram.py", "3\n2*cos(x)*cos(2*x)=cos(x)+sin(x),x,0,2*pi\n")
+        self.assertNotIn("Err:", output)
+        self.assertIn("Use 2cos(A)cos(B) = cos(A+B)+cos(A-B)", output)
+        self.assertIn("cos(3x) = sin(x)", output)
+        self.assertIn("pi/8", output)
 
     def test_short_chain_quotient_keeps_calculable_answer(self):
         expr = "((atan(-3*x+4))/(sqrt(((9*x+3)^2+(4*x-7))^2+8)+1))^2"

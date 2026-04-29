@@ -5166,6 +5166,70 @@ def integrate_sec_cosec_cubic(node, var):
     return ans, lines
 
 
+def integrate_cos_cubed_over_sin_quadratic(node, var):
+    expr = sim(node)
+    if expr[0] != 'div':
+        return None, None
+    coeff, top = split_coeff(expr[1])
+    if top[0] != 'pow' or not same(top[2], num(3)):
+        return None, None
+    if top[1][0] != 'fn' or top[1][1] != 'cos':
+        return None, None
+    arg = top[1][2]
+    info = linear_info(arg, var)
+    if info is None:
+        return None, None
+    k = info[0]
+    den_items = list(flat(expr[2], 'mul')) if expr[2][0] == 'mul' else [expr[2]]
+    saw_sin = False
+    saw_one_plus = False
+    i = 0
+    while i < len(den_items):
+        item = den_items[i]
+        if item[0] == 'fn' and item[1] == 'sin' and same(item[2], arg):
+            saw_sin = True
+        elif item[0] == 'add':
+            terms = list(flat(item, 'add'))
+            if len(terms) == 2:
+                ok_one = False
+                ok_sq = False
+                j = 0
+                while j < len(terms):
+                    if same(terms[j], num(1)):
+                        ok_one = True
+                    elif terms[j][0] == 'pow' and same(terms[j][2], num(2)) and \
+                            terms[j][1][0] == 'fn' and terms[j][1][1] == 'sin' and same(terms[j][1][2], arg):
+                        ok_sq = True
+                    j += 1
+                if ok_one and ok_sq:
+                    saw_one_plus = True
+                else:
+                    return None, None
+            else:
+                return None, None
+        else:
+            return None, None
+        i += 1
+    if not (saw_sin and saw_one_plus):
+        return None, None
+    u = fn('sin', arg)
+    base = log_abs(div(u, add([num(1), power(u, num(2))])))
+    scale = sim(div(coeff, k))
+    ans = sim(mul([scale, base]))
+    integral_line = 'I = Int[(1-u^2)/(u(1+u^2))] du.'
+    if not is_one(scale):
+        integral_line = 'I = ' + pretty(scale) + ' Int[(1-u^2)/(u(1+u^2))] du.'
+    lines = [
+        'Let u = sin(' + pretty(arg) + ').',
+        'du/d' + var + ' = ' + pretty(mul([k, fn('cos', arg)])) + '.',
+        'Use cos^2(' + pretty(arg) + ') = 1 - sin^2(' + pretty(arg) + ').',
+        integral_line,
+        '(1-u^2)/(u(1+u^2)) = 1/u - 2u/(1+u^2).',
+        '= ' + pretty(ans) + ' + C',
+    ]
+    return ans, lines
+
+
 def integrate_trig(node, var, allow_steps=True):
     E = allow_steps
     C = var
@@ -5173,6 +5237,9 @@ def integrate_trig(node, var, allow_steps=True):
     cubic_ans, cubic_lines = integrate_sec_cosec_cubic(B, C)
     if cubic_ans is not None:
         return cubic_ans, cubic_lines if E else []
+    special_ans, special_lines = integrate_cos_cubed_over_sin_quadratic(B, C)
+    if special_ans is not None:
+        return special_ans, special_lines if E else []
     known_ans, known_lines = integrate_known_even_trig_power(B, C)
     if known_ans is not None:
         return known_ans, known_lines if E else []

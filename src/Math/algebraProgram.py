@@ -1034,7 +1034,99 @@ def can_use_generalized_binomial(expr):
     if expr[0] != 'pow' or not is_num(expr[2]):
         return False
     exp = expr[2]
-    return exp[2] != 1 and exp[1] > 0
+    return exp[2] != 1 or exp[1] < 0
+
+
+def binomial_series_coeffs(expr, var_name, limit):
+    split = split_constant_plus_term(expr[1])
+    if split is None:
+        return None
+    constant, dependent = split
+    exponent = sim(expr[2])
+    const_value = eval_with_values(constant, {})
+    if const_value is None or not is_num(const_value) or is_zero(const_value):
+        return None
+    u = sim(div(dependent, constant))
+    prefactor = sim(expand_pow_sqrt(power(constant, exponent)))
+    coeffs = [num(0)] * limit
+    k = 0
+    while k < limit:
+        bc = generalized_binomial_coeff(exponent, k)
+        pieces = []
+        if not is_one(prefactor):
+            pieces.append(prefactor)
+        if not is_one(bc):
+            pieces.append(bc)
+        if k > 0:
+            pieces.append(u if k == 1 else power(u, num(k)))
+        term = sim(expand_pow_sqrt(make_product_or_one(pieces)))
+        term_coeffs, _degree = polynomial_coeff_list(term, var_name, limit - 1)
+        if term_coeffs is None:
+            return None
+        i = 0
+        while i < limit:
+            coeffs[i] = sim(add([coeffs[i], term_coeffs[i]]))
+            i += 1
+        k += 1
+    return coeffs
+
+
+def series_factor_coeffs(factor, var_name, limit):
+    factor = sim(factor)
+    if factor[0] == 'pow' and can_use_generalized_binomial(factor):
+        return binomial_series_coeffs(factor, var_name, limit)
+    coeffs, _degree = polynomial_coeff_list(factor, var_name, limit - 1)
+    if coeffs is None:
+        return None
+    return coeffs
+
+
+def truncated_series_coeffs(expr, var_name, limit):
+    expr = sim(expr)
+    if expr[0] == 'div' and expr[2][0] == 'pow' and is_num(expr[2][2]):
+        expr = mul([expr[1], ('pow', expr[2][1], num(-expr[2][2][1], expr[2][2][2]))])
+    factors = list(flat(expr, 'mul')) if expr[0] == 'mul' else [expr]
+    coeffs = [num(0)] * limit
+    coeffs[0] = num(1)
+    i = 0
+    while i < len(factors):
+        fc = series_factor_coeffs(factors[i], var_name, limit)
+        if fc is None:
+            return None
+        new_coeffs = [num(0)] * limit
+        a = 0
+        while a < limit:
+            b = 0
+            while b < limit - a:
+                new_coeffs[a + b] = sim(add([new_coeffs[a + b], mul([coeffs[a], fc[b]])]))
+                b += 1
+            a += 1
+        coeffs = new_coeffs
+        i += 1
+    return coeffs
+
+
+def truncated_series_expand_text(expr, max_terms=None):
+    limit = max_terms if max_terms is not None and max_terms > 0 else 4
+    coeffs = truncated_series_coeffs(expr, 'x', limit)
+    if coeffs is None:
+        return None
+    terms = []
+    i = 0
+    while i < limit:
+        coeff = sim(coeffs[i])
+        if not is_zero(coeff):
+            if i == 0:
+                terms.append(coeff)
+            elif i == 1:
+                terms.append(sym('x') if is_one(coeff) else mul([coeff, sym('x')]))
+            else:
+                xp = power(sym('x'), num(i))
+                terms.append(xp if is_one(coeff) else mul([coeff, xp]))
+        i += 1
+    if len(terms) == 0:
+        terms = [num(0)]
+    return ['Series expansion', 'Out = ' + ordered_sum_text(terms) + ' + ...']
 
 
 
@@ -3460,14 +3552,14 @@ def sim(node):
                 return num(0)
         if is_one(base):
             return num(1)
-        if is_num(base) and is_num(exp) and exp[2] > 1 and exp[1] > 0:
-            numer_root_num = int_sqrt(base[1]) if exp[2] == 2 else None
-            denom_root_num = int_sqrt(base[2]) if exp[2] == 2 else None
-            if numer_root_num is not None and denom_root_num is not None:
-                rooted = num(numer_root_num, denom_root_num)
+        if is_num(base) and is_num(exp) and exp[2] > 1:
+            rooted = exact_nth_root_num(base, exp[2])
+            if rooted is not None:
                 if exp[1] == 1:
                     return rooted
-                return int_pow(rooted, exp[1])
+                if exp[1] > 0:
+                    return int_pow(rooted, exp[1])
+                return div(num(1), int_pow(rooted, -exp[1]))
         if is_num(exp) and is_int_num(exp):
             if is_num(base):
                 return int_pow(base, exp[1])
@@ -6586,6 +6678,8 @@ def make_product_or_one(items):
 def expand_mode_text(text, max_terms=None):
     expr = parse(text.strip())
     expr = sim(expr)
+    if expr[0] == 'fn' and expr[1] == 'sqrt':
+        expr = ('pow', expr[2], num(1, 2))
     lines = ['Method: Expand expression', 'Input = ' + show(expr)]
 
     if expr[0] == 'pow' and is_int_num(expr[2]) and expr[2][2] == 1 and expr[2][1] >= 0:
@@ -6628,6 +6722,11 @@ def expand_mode_text(text, max_terms=None):
         expanded_lines = generalized_binomial_expand_text(expr, max_terms=max_terms)
         if expanded_lines is not None:
             return ensure_reasoning_marker(lines + expanded_lines)
+
+    series_lines = truncated_series_expand_text(expr, max_terms=max_terms)
+    series_exact_den = expr[0] == 'div' and not depends_on(expr[1], 'x')
+    if series_lines is not None and depends_on(expr, 'x') and (expr[0] == 'div' or expr[0] == 'mul') and not series_exact_den:
+        return ensure_reasoning_marker(lines + series_lines)
 
     expanded = maybe_expand_for_compare(expr)
     if not same(expanded, expr):

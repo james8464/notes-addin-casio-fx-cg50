@@ -399,6 +399,8 @@ def display_derivative_node(expr, var):
 
 def preferred_derivative_display(expr, var, final):
     try:
+        if expr[0] == "div":
+            return final
         candidate = display_derivative_node(expr, var)
         if not derivative_display_equivalent(candidate, final, var):
             return final
@@ -3030,6 +3032,14 @@ def format_final_answer(node):
             if is_one(items[1]):
                 return items[0]
 
+    if result[0] == "div":
+        try:
+            new_top = simplify_trig_identity(expand(result[1]))
+            if sig(new_top) != sig(result[1]) and tree_size(new_top) <= tree_size(result[1]) + 4:
+                result = sim(("div", new_top, result[2]))
+        except Exception:
+            pass
+
     return result
 
 
@@ -3154,6 +3164,34 @@ def _simplify_trig_identity_uncached(node):
 
         if len(new_terms) != len(terms):
             return sim(("add", tuple(new_terms)))
+
+        used = [False] * len(terms)
+        out_terms = []
+        changed = False
+        i = 0
+        while i < len(terms):
+            if used[i]:
+                i += 1
+                continue
+            paired = False
+            j = i + 1
+            while j < len(terms):
+                if not used[j]:
+                    if (is_sin_squared(terms[i]) and is_cos_squared(terms[j]) and same(get_sin_arg(terms[i]), get_cos_arg(terms[j]))) or \
+                       (is_cos_squared(terms[i]) and is_sin_squared(terms[j]) and same(get_cos_arg(terms[i]), get_sin_arg(terms[j]))):
+                        out_terms.append(num(1))
+                        used[i] = True
+                        used[j] = True
+                        paired = True
+                        changed = True
+                        break
+                j += 1
+            if not paired:
+                out_terms.append(terms[i])
+                used[i] = True
+            i += 1
+        if changed:
+            return sim(("add", tuple(out_terms)))
 
     if node[0] == "add" and len(flat(node, "add")) == 2:
         terms = flat(node, "add")
