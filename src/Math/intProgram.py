@@ -5087,9 +5087,14 @@ def integrate_sec_cosec_cubic(node, var):
         identity = 'Use cosec^3 A = cosec A(1+cot^2 A).'
         primitive = 'Int[cosec^3 A] dA = -(cosec A cot A + ln|cosec A + cot A|)/2.'
     ans = sim(mul([scale, base]))
+    integral_name = name + '^3'
+    scale_line = 'I = Int[' + integral_name + ' A] dA.'
+    if not same(scale, num(1)):
+        scale_line = 'I = ' + pretty(scale) + ' Int[' + integral_name + ' A] dA.'
     lines = [
         'Let A = ' + pretty(arg) + '.',
         'dA/d' + var + ' = ' + pretty(k) + '.',
+        scale_line,
         identity,
         primitive,
         'So I = ' + pretty(ans) + ' + C',

@@ -259,8 +259,15 @@ class TransformRegressionTests(unittest.TestCase):
     def test_integration_handles_cosec_cubed(self):
         output = run_cli("intProgram.py", "1\ncosec(x)^3\n1\n")
         self.assertNotIn("no elementary", output.lower())
+        self.assertIn("I = Int[cosec^3 A] dA.", output)
         self.assertIn("Int[cosec^3 A] dA", output)
         self.assertIn("Answer: -1/2*cosec(x)*cot(x) - 1/2*ln|cosec(x) + cot(x)| + C", output)
+
+    def test_harness_accepts_scaled_cosec_cubed_integral(self):
+        output = run_cli("intProgram.py", "1\n2*cosec(x)^3\n1\n")
+        app = CASIOApp()
+        self.assertIn("I = 2 Int[cosec^3 A] dA.", output)
+        self.assertTrue(app.integrate_output_checker("2*cosec(x)^3")(output), output)
 
     def test_algebra_cubic_numeric_fallback_after_rearrange(self):
         output = run_cli("algebraProgram.py", "6\n((4*x)**2=16*x^2*x-10)\n")

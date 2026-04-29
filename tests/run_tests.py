@@ -4487,14 +4487,14 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
+            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
             min_steps=0,
             min_lines=2,
         )
         # Non-elementary / cannot-integrate answers do not end with " + c"; use relaxed gates.
         quality_no_elementary = build_checker(
             contains_all=("answer:",),
-            contains_any=("method:", "met:", "tried", "use the standard result", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
+            contains_any=("method:", "met:", "tried", "use the standard result", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
             min_steps=0,
             min_lines=2,
         )
