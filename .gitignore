@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.pyo
+src/calc_files/*.mpy
 .venv/
 .eggs/
 *.egg-info/

@@ -1203,7 +1203,7 @@ def show(node, parent=0):
             right = show(node[2], pr(node))
             if node[1][0] == "fn" or (is_num(node[1]) and (node[1][2] != 1 or node[1][1] < 0)):
                 left = "(" + show(node[1], 0) + ")"
-            if not simple(node[2]) or (is_num(node[2]) and node[2][2] != 1):
+            if node[2][0] in ("fn", "pow") or not simple(node[2]) or (is_num(node[2]) and node[2][2] != 1):
                 right = "(" + show(node[2], 0) + ")"
             text = left + "^" + right
     elif kind == "mul":
@@ -1418,10 +1418,17 @@ def split_at_equals(text):
         i += 1
     
     # Handle case like "(x+y=1)" - strip outer parens if balanced
-    if text.startswith("(") and text.endswith(")"):
-        inner = text[1:-1]
-        if inner.count("(") == inner.count(")") and "=" in inner:
-            return split_at_equals(inner)
+    while text.startswith("(") and text.endswith(")"):
+        inner = text[1:-1].strip()
+        if inner == "":
+            break
+        if inner.count("(") != inner.count(")"):
+            break
+        # Only strip if it exposes a top-level '='
+        left, right = split_at_equals(inner)
+        if left is None:
+            break
+        return left, right
     
     return None, text
 
@@ -1781,6 +1788,9 @@ def compact_power_derivative_node(exp):
 
 def explain(node, var, deps_list, compact_allowed=True):
     """Return both the derivative and the exam-style working lines."""
+    # Normalization pass (lightweight): keep structure but simplify obvious
+    # algebra so pattern-based working triggers more reliably.
+    node = sim(node)
     d = tidy(diff(node, var, deps_list))
     lines = ['Differentiate with respect to ' + var]
     if node[0] == "add":
@@ -2154,6 +2164,12 @@ def readable_show(node):
     return out
 
 
+def _answer_text(node):
+    # Keep factored structure from show(); render exp(u) as e^(u) for display.
+    # Avoid readable_show(node) here: it can be identical, but we want stable factor form.
+    return show(node).replace("exp(", "e^(")
+
+
 
 def prefer_trig_recip(node):
     if not has_fn(node):
@@ -2521,6 +2537,116 @@ def format_final_answer(node):
     result = prefer_trig_recip(result)
     result = simplify_trig_identity(result)
 
+    # Prefer factored final form when it reduces size and keeps exactness.
+    # Heuristic: factor a common multiplicative piece across add terms (e.g. exp(-x^2)).
+    if result[0] == "add":
+        terms = list(flat(result, "add"))
+        if len(terms) >= 2:
+            maps = []
+            i = 0
+            while i < len(terms):
+                maps.append(factor_map(terms[i]))
+                i += 1
+            coeff0, order0, data0 = maps[0]
+            candidates = []
+            for key in order0:
+                base0, exp0 = data0.get(key, (None, None))
+                if base0 is None or exp0 is None:
+                    continue
+                if exp0[0] != "num" or exp0[1] <= 0:
+                    continue
+                ok = True
+                min_exp = exp0
+                j = 1
+                while j < len(maps):
+                    _c, _o, d = maps[j]
+                    got = d.get(key)
+                    if got is None:
+                        ok = False
+                        break
+                    _basej, expj = got
+                    if expj[0] != "num" or expj[1] <= 0:
+                        ok = False
+                        break
+                    try:
+                        if expj[1] * min_exp[2] < min_exp[1] * expj[2]:
+                            min_exp = expj
+                    except Exception:
+                        pass
+                    j += 1
+                if ok:
+                    candidates.append((base0, min_exp))
+            if candidates:
+                best = None
+                best_size = None
+                for base, expn in candidates:
+                    fac = base if (expn[1] == 1 and expn[2] == 1) else power(base, expn)
+                    try:
+                        reduced_terms = []
+                        for t in terms:
+                            reduced_terms.append(sim(div(t, fac)))
+                        candidate = sim(mul([fac, sim(add(reduced_terms))]))
+                        if tree_size(candidate) < tree_size(result):
+                            sz = tree_size(candidate)
+                            if best is None or sz < best_size:
+                                best = candidate
+                                best_size = sz
+                    except Exception:
+                        continue
+                if best is not None:
+                    result = best
+
+            # If pow-structured factors (e.g. e^(-x^2)) prevented exponent merging,
+            # fall back to an exact common-factor intersection across mul factors.
+            if result[0] == "add":
+                terms2 = list(flat(result, "add"))
+                if len(terms2) >= 2:
+                    factor_counts = {}
+                    # Initialize with factors from first term.
+                    first = terms2[0]
+                    first_factors = list(flat(first, "mul")) if first[0] == "mul" else [first]
+                    for f in first_factors:
+                        if is_num(f):
+                            continue
+                        k = sig(f)
+                        factor_counts[k] = [f, 1]
+                    # Intersect with remaining terms.
+                    j = 1
+                    while j < len(terms2) and factor_counts:
+                        termj = terms2[j]
+                        fj = list(flat(termj, "mul")) if termj[0] == "mul" else [termj]
+                        present = set(sig(f) for f in fj if not is_num(f))
+                        to_del = []
+                        for k in factor_counts:
+                            if k not in present:
+                                to_del.append(k)
+                        for k in to_del:
+                            del factor_counts[k]
+                        j += 1
+                    if factor_counts:
+                        # Choose the "largest" common factor by display length.
+                        best_fac = None
+                        best_len = None
+                        for k in factor_counts:
+                            fac = factor_counts[k][0]
+                            try:
+                                L = len(show(fac))
+                            except Exception:
+                                L = 0
+                            if best_fac is None or L > best_len:
+                                best_fac = fac
+                                best_len = L
+                        if best_fac is not None:
+                            try:
+                                reduced = []
+                                for t in terms2:
+                                    reduced.append(sim(div(t, best_fac)))
+                                candidate2 = ("mul", (best_fac, sim(("add", tuple(reduced)))))
+                                if tree_size(candidate2) + 2 < tree_size(result):
+                                    result = candidate2
+                            except Exception:
+                                pass
+
     if result[0] == "pow" and result[2][0] == "num" and result[2][1] == 1:
         return result[1]
 
@@ -2561,6 +2687,8 @@ def solve_normal_mode(text):
         ]
         return var, steps, final, formatted
     raw_expr, var = parse_normal_input(text)
+    # Normalization pass: keep expression in a stable (non-expanded) form.
+    # Avoid aggressive tidy() here; it can expand large nested arguments.
     expr = trig_normal(raw_expr)
     step_expr = expr
     if raw_expr[0] in ("pow", "mul") and raw_expr[0] != expr[0]:
@@ -2929,10 +3057,16 @@ def main():
 
             out_label = normal_derivative_label(steps, var)
             print_compact_steps(steps, out_label, final)
-            print("Answer: " + out_label + " = " + readable_show(final))
-
-            if sig(formatted) != sig(final):
-                print(out_label + " = " + readable_show(formatted))
+            shown = final
+            # Recompute best final form (factored) for display.
+            formatted2 = format_final_answer(final)
+            if sig(formatted2) != sig(final):
+                try:
+                    if tree_size(formatted2) + 2 < tree_size(final):
+                        shown = formatted2
+                except Exception:
+                    pass
+            print("Answer: " + out_label + " = " + _answer_text(shown))
 
         elif mode == "2":
             text = input("Eq: ").strip()
@@ -2941,8 +3075,9 @@ def main():
             left_text, right_text = split_at_equals(text)
             if left_text is None:
                 left_text, right_text = text.split("=", 1)
-            left = trig_normal(parse(left_text))
-            right = trig_normal(parse(right_text))
+            # Normalization pass: tidy + trig-normalize both sides.
+            left = tidy(trig_normal(parse(left_text)))
+            right = tidy(trig_normal(parse(right_text)))
             var, dep = pick_implicit_vars(left, right)
             dname = "d" + dep + "/d" + var
             start_display = make_display_add([left, neg(right)])
@@ -2969,21 +3104,41 @@ def main():
                     raise ValueError("No " + dep + ".")
                 raise ValueError("No " + dname + ".")
             ans = core_prefer_simpler(tidy(div(neg(rest), coef)))
+            formatted_ans = format_final_answer(ans)
+            if sig(formatted_ans) != sig(ans):
+                try:
+                    if tree_size(formatted_ans) + 2 < tree_size(ans):
+                        ans = formatted_ans
+                except Exception:
+                    pass
             print(str(step) + ". d/d" + var + "(LHS)=d/d" + var + "(RHS)")
             print(str(step + 1) + ". " + readable_show(dleft) + " = " + readable_show(dright))
             print(str(step + 2) + ". Rearrange for " + dname)
             grouped = collect_and_factor_terms(coef, rest, dname)
             print(str(step + 3) + ". " + grouped + " = 0")
-            print(str(step + 4) + ". Answer: " + dname + " = " + readable_show(ans))
+            printed = set()
+            ans_text = readable_show(ans)
+            printed.add(ans_text)
+            print(str(step + 4) + ". Answer: " + dname + " = " + ans_text)
             pretty_ans = prefer_trig_recip(ans)
             if sig(pretty_ans) != sig(ans):
-                print(dname + " = " + readable_show(pretty_ans))
+                t = readable_show(pretty_ans)
+                if t not in printed:
+                    printed.add(t)
+                    print(dname + " = " + t)
+            # formatted_ans may have been selected as ans above; only print if still distinct.
             formatted_ans = format_final_answer(ans)
             if sig(formatted_ans) != sig(ans) and sig(formatted_ans) != sig(pretty_ans):
-                print(dname + " = " + readable_show(formatted_ans))
+                t = readable_show(formatted_ans)
+                if t not in printed:
+                    printed.add(t)
+                    print(dname + " = " + t)
             normalized_ans = tidy(ans)
             if sig(normalized_ans) != sig(ans) and sig(normalized_ans) != sig(pretty_ans) and sig(normalized_ans) != sig(formatted_ans):
-                print(dname + " = " + readable_show(normalized_ans))
+                t = readable_show(normalized_ans)
+                if t not in printed:
+                    printed.add(t)
+                    print(dname + " = " + t)
             if coef[0] == 'mul' and rest[0] == 'num' and len(flat(coef, 'mul')) == 2:
                 coeff_items = flat(coef, 'mul')
                 if coeff_items[1][0] == 'add' and same(rest, num(0)):

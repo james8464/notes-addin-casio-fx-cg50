@@ -218,6 +218,14 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("Let u = ln(exp(9*x - 7) + 8), v = cosec(8*(9*x^2 - 5*x - 6) + 1), w = exp(4*x - 6) + 6*x - 5", output)
         self.assertIn("dy/dx = u'*v*w + u*v'*w + u*v*w'", output)
 
+    def test_derive_product_rule_final_answer_prefers_factored_common_exp(self):
+        out = run_cli("deriveProgram.py", "1\n(4*x-k)*exp(-x^2)\n")
+        self.assertNotIn("Err:", out)
+        # Only one final answer line.
+        self.assertEqual(out.count("Answer: dy/dx"), 1)
+        # Prefer factored form.
+        self.assertIn("e^(-x^2)*(", out.replace(" ", ""))
+
     def test_derive_abs_notes_undefined_point(self):
         output = run_cli("deriveProgram.py", "1\n|x|\n")
         self.assertNotIn("Err:", output)
@@ -247,6 +255,29 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("I = Int[(- u - 1)*e^(u)] du.", output)
         self.assertIn("= -u*e^(u) + C.", output)
         self.assertIn("Answer: -e^(1/x)/x + C", output)
+
+    def test_integration_handles_cosec_cubed(self):
+        output = run_cli("intProgram.py", "1\ncosec(x)^3\n1\n")
+        self.assertNotIn("no elementary", output.lower())
+        self.assertIn("Int[cosec^3 A] dA", output)
+        self.assertIn("Answer: -1/2*cosec(x)*cot(x) - 1/2*ln|cosec(x) + cot(x)| + C", output)
+
+    def test_algebra_cubic_numeric_fallback_after_rearrange(self):
+        output = run_cli("algebraProgram.py", "6\n((4*x)**2=16*x^2*x-10)\n")
+        self.assertNotIn("no closed-form solution found", output)
+        self.assertIn("bounded real-root scan", output)
+        self.assertIn("Answer: x = 1.345323724", output)
+
+    def test_algebra_range_exp_is_positive(self):
+        output = run_cli("algebraProgram.py", "10\nexp(m)\n")
+        self.assertIn("Since exp(u) is always positive.", output)
+        self.assertIn("Range: y > 0", output)
+
+    def test_trig_prove_scaled_sec_tan_reduces_directly(self):
+        output = run_cli("trigProgram.py", "1\n9*sec(2*x)^2-9*tan(2*x)^2\n9\n1\n")
+        self.assertIn("Use Pythagorean", output)
+        self.assertIn("= 9", output)
+        self.assertNotIn("cos(x)^2 - sin(x)^2", output)
 
     def test_short_chain_quotient_keeps_calculable_answer(self):
         expr = "((atan(-3*x+4))/(sqrt(((9*x+3)^2+(4*x-7))^2+8)+1))^2"

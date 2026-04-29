@@ -244,12 +244,14 @@ EXAM_BUILDER_STRESS_WEIGHTS = {
     "random_trig_solve_case": 1.28,
     "random_trig_mad_as_maths_case": 1.22,
     "random_trig_radian_hard_case": 1.15,
-    "random_trig_identity_hard_case": 1.08,
+    "random_trig_identity_hard_case": 1.18,
+    "random_trig_rearrange_case": 1.22,
     "random_algebra_solve_case": 1.3,
     "random_algebra_hidden_quadratic_case": 1.2,
     "random_algebra_simultaneous_hard_case": 1.15,
     "random_algebra_circle_line_hard_case": 1.1,
     "random_algebra_discriminant_case": 1.1,
+    "random_algebra_rearrange_case": 1.18,
     "random_integrate_auto_case": 1.12,
     "random_integrate_sub_case": 1.05,
     "random_derive_normal_case": 1.1,
@@ -478,6 +480,13 @@ def sympy_safe_text(*exprs):
     return True
 
 
+def sympy_safe_text_limit(limit, *exprs):
+    joined = " ".join(expr or "" for expr in exprs)
+    if limited_by(limit, len(joined)):
+        return False
+    return True
+
+
 def sympy_simplify_difference(left, right):
     if not SYMPY_AVAILABLE:
         return None
@@ -517,7 +526,7 @@ def sympy_expressions_equivalent(left_text, right_text, var="x"):
 def sympy_derivative_equivalent(expr_text, candidate_text, var="x"):
     if not SYMPY_AVAILABLE:
         return None
-    if not sympy_safe_text(expr_text, candidate_text):
+    if not sympy_safe_text_limit(SYMPY_MAX_CALC_CHARS, expr_text, candidate_text):
         return None
     expr = sympy_parse_expr(expr_text, max_chars=SYMPY_MAX_CALC_CHARS)
     candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
@@ -538,7 +547,7 @@ def sympy_derivative_equivalent(expr_text, candidate_text, var="x"):
 def sympy_implicit_derivative_equivalent(eq_text, candidate_text):
     if not SYMPY_AVAILABLE:
         return None
-    if not sympy_safe_text(eq_text, candidate_text):
+    if not sympy_safe_text_limit(SYMPY_MAX_CALC_CHARS, eq_text, candidate_text):
         return None
     try:
         lhs, rhs = split_equation_text(eq_text)
@@ -562,7 +571,7 @@ def sympy_implicit_derivative_equivalent(eq_text, candidate_text):
 def sympy_antiderivative_equivalent(candidate_text, integrand_text, var="x"):
     if not SYMPY_AVAILABLE:
         return None
-    if not sympy_safe_text(candidate_text, integrand_text):
+    if not sympy_safe_text_limit(SYMPY_MAX_CALC_CHARS, candidate_text, integrand_text):
         return None
     candidate = sympy_parse_expr(candidate_text, max_chars=SYMPY_MAX_CALC_CHARS)
     integrand = sympy_parse_expr(integrand_text, max_chars=SYMPY_MAX_CALC_CHARS)
@@ -730,13 +739,67 @@ def structurally_same_derivative(expr, candidate):
         except Exception:
             return node
 
-    left = simplify_node(shown)
-    right = simplify_node(expected)
+    def exp_pow_to_fn(node):
+        kind = node[0]
+        if kind in ("num", "sym", "const"):
+            return node
+        if kind == "pow" and node[1][0] == "const" and node[1][1] == "e":
+            arg = exp_pow_to_fn(node[2])
+            try:
+                if DERIVE.tree_size(arg) <= 240:
+                    arg = simplify_node(DERIVE.expand(arg))
+            except Exception:
+                pass
+            return DERIVE.sim(("fn", "exp", arg))
+        if kind == "fn":
+            arg = exp_pow_to_fn(node[2])
+            try:
+                if DERIVE.tree_size(arg) <= 240:
+                    arg = simplify_node(DERIVE.expand(arg))
+            except Exception:
+                pass
+            return DERIVE.sim(("fn", node[1], arg))
+        if kind == "pow":
+            return DERIVE.sim(("pow", exp_pow_to_fn(node[1]), exp_pow_to_fn(node[2])))
+        if kind == "div":
+            return DERIVE.sim(("div", exp_pow_to_fn(node[1]), exp_pow_to_fn(node[2])))
+        if kind == "mul":
+            items = [exp_pow_to_fn(item) for item in node[1]]
+            exp_args = []
+            kept = []
+            for item in items:
+                if item[0] == "fn" and item[1] == "exp":
+                    exp_args.append(item[2])
+                else:
+                    kept.append(item)
+            if len(exp_args) > 1:
+                kept.append(DERIVE.sim(("fn", "exp", DERIVE.sim(("add", tuple(exp_args))))))
+                return DERIVE.sim(("mul", tuple(kept)))
+            return DERIVE.sim(("mul", tuple(items)))
+        if kind == "add":
+            return DERIVE.sim(("add", tuple(exp_pow_to_fn(item) for item in node[1])))
+        return node
+
+    left = simplify_node(exp_pow_to_fn(shown))
+    right = simplify_node(exp_pow_to_fn(expected))
     try:
         if DERIVE.same(left, right):
             return True
     except Exception:
         pass
+
+    try:
+        size = DERIVE.tree_size(left) + DERIVE.tree_size(right)
+    except Exception:
+        size = 999999
+    if size <= 1400:
+        try:
+            left_expanded = simplify_node(DERIVE.expand(left))
+            right_expanded = simplify_node(DERIVE.expand(right))
+            if DERIVE.same(left_expanded, right_expanded):
+                return True
+        except Exception:
+            pass
 
     try:
         cross_left = simplify_node(DERIVE.expand(DERIVE.mul([left[1], right[2]]))) if left[0] == "div" and right[0] == "div" else None
@@ -2513,6 +2576,8 @@ class CASIOApp(App):
         support_modules = [
             ("Math/casio_core.py", "casio_core"),
             ("calc_files/shared_fallback.py", "shared_fallback"),
+            ("calc_files/compat_probe.py", "compat_probe"),
+            ("calc_files/main.py", "main"),
         ]
 
         compiled = 0
@@ -3303,6 +3368,7 @@ class CASIOApp(App):
             "random_algebra_compare_letter_case": "Algebra",
             "random_algebra_expand_letter_case": "Algebra",
             "random_algebra_cartesian_case": "Algebra",
+            "random_algebra_rearrange_case": "Algebra",
             "random_derive_normal_case": "Derive",
             "random_derive_product_case": "Derive",
             "random_derive_2nd_case": "Derive",
@@ -3311,6 +3377,7 @@ class CASIOApp(App):
             "random_trig_solve_case": "Trigonometry",
             "random_trig_simplify_case": "Trigonometry",
             "random_trig_prove_case": "Trigonometry",
+            "random_trig_rearrange_case": "Trigonometry",
             "random_matrix_case": "Matrix",
             "random_complex_case": "Complex",
             "random_calculate_case": "Calculate",
@@ -4211,6 +4278,14 @@ class CASIOApp(App):
 
         def check(out):
             text = normalized_text(out)
+            if "all real" in text or "all x satisfy" in text:
+                # Identity case: solver may correctly report "all real x" rather
+                # than enumerating roots.
+                if _has_non_exam_quality_output(text):
+                    return False
+                if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
+                    return False
+                return "answer:" in text
             if "no sol" in text or "no solution" in text:
                 if _has_non_exam_quality_output(text):
                     return False
@@ -4331,7 +4406,10 @@ class CASIOApp(App):
                 return True
             good = 0
             bad = 0
-            for point in candidate_sample_points():
+            points = domain_aware_sample_points(expr, candidate, var=var)
+            if len(points) < 3:
+                points = candidate_sample_points()
+            for point in points:
                 actual = complex_step_derivative(expr, var, point)
                 if actual is None:
                     actual = stable_finite_difference(expr, var, point)
@@ -4825,6 +4903,7 @@ class CASIOApp(App):
             self.random_algebra_comp_case,
             self.random_algebra_inverse_case,
             self.random_algebra_rewrite_case,
+            self.random_algebra_rearrange_case,
             self.random_algebra_domain_case,
             self.random_algebra_domain_interval_case,
             self.random_algebra_range_case,
@@ -4835,6 +4914,28 @@ class CASIOApp(App):
             self.random_algebra_discriminant_case,
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
+
+    def random_algebra_rearrange_case(self, rng, difficulty, index):
+        # These are designed to require rearrangement (common denominators,
+        # expansion, collecting) before the equation is solvable.
+        mode = rng.choice(["common_den", "diff_squares", "expand_then_solve", "rational_simplify"])
+        if mode == "common_den":
+            a = rng.randint(1, 5)
+            eq = f"1/(x+{a})+1/(x-{a})=2*x/(x^2-{a*a})"
+        elif mode == "diff_squares":
+            k = rng.randint(2, 9)
+            eq = f"(x+{k})*(x-{k})=x^2-{k*k}"
+        elif mode == "expand_then_solve":
+            a = rng.randint(2, 5)
+            b = rng.randint(-6, 6)
+            c = rng.randint(-12, 12)
+            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_int_text(2*a*b)}*x{self.signed_int_text(b*b+c)}"
+        else:
+            a = rng.randint(1, 6)
+            b = rng.randint(1, 6)
+            eq = f"(x^2+{a}*x)/(x+{b})=x+{a-b}"
+        label = f"Rearrange solve {index}: {mode}"
+        return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature=f"algebra_rearrange:{mode}")
 
     def random_algebra_hidden_quadratic_case(self, rng, difficulty, index):
         choice = rng.randint(1, 10)
@@ -5189,12 +5290,37 @@ class CASIOApp(App):
             self.random_trig_transform_case,
             self.random_trig_solve_case,
             self.random_trig_rewrite_case,
+            self.random_trig_rearrange_case,
             self.random_trig_mad_as_maths_case,
             self.random_trig_identity_hard_case,
             self.random_trig_equation_multi_case,
             self.random_trig_radian_hard_case,
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
+
+    def random_trig_rearrange_case(self, rng, difficulty, index):
+        # Solve cases that require identities / heavy rearrangement to land in a
+        # standard solve route (cross-multiply, convert tan(2x), etc).
+        mode = rng.choice(["tan2_as_sin_cos", "tan_diff_as_fraction", "pythagorean_rewrite", "sum_to_product"])
+        if mode == "tan2_as_sin_cos":
+            # tan(2x)=tan(x) but written with sin/cos forms.
+            eq = "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x)"
+            interval = rng.choice(["0,360", "0,180", "-180,180"])
+            cli_input = f"3\n{eq},x,{interval}\n"
+        elif mode == "tan_diff_as_fraction":
+            # tan(2x)-tan(x)=0 but expressed after rewrite.
+            eq = "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)-sin(x)/cos(x)=0"
+            interval = rng.choice(["-pi,pi", "0,2*pi", "0,pi"])
+            cli_input = f"3\n{eq},x,{interval}\n"
+        elif mode == "pythagorean_rewrite":
+            # Force using sin^2+cos^2=1 somewhere.
+            cli_input = trig_prove_cli("1-cos(2*x)", "2*sin(x)^2", "1")
+        else:
+            cli_input = trig_prove_cli("cos(x)+cos(3*x)", "2*cos(2*x)*cos(x)", "1")
+        label = f"Trig rearrange {index}: {mode}"
+        checker = trig_solve_checker("x =") if cli_input.startswith("3") else trig_prove_checker("1")
+        feat = "trig_rearrange:" + mode
+        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature=feat)
 
     def random_trig_mad_as_maths_case(self, rng, difficulty, index):
         choice = rng.randint(1, 12)

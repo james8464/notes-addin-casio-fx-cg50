@@ -2046,7 +2046,12 @@ def solve_suvat():
     result_node, equation, original_eq, sub_text = _build_suvat_solution_data(s, u, v, a, t, target)
 
     if result_node is None:
-        print('Error: ' + equation)
+        if equation.startswith('Infinite solutions'):
+            print('Condition: ' + equation)
+            print('Answer: ' + equation)
+        else:
+            print('No solution: ' + equation.replace('No solution: ', ''))
+            print('Answer: no solution')
         return
 
     sig_figs = 3

@@ -2650,6 +2650,66 @@ def rewrite_fraction_denominator_double_angle(node):
     return sim(raw), raw
 
 
+def rewrite_tan_double_sin_cos_fraction(node):
+    """Rewrite 2sinAcosA/(cos^2A-sin^2A) into tan(2A) when exact."""
+    node = sim(node)
+    if node[0] != "div":
+        return None
+    top = sim(node[1])
+    bot = sim(node[2])
+    # Match top: 2*sin(A)*cos(A)
+    prod = match_same_angle_sin_cos_product(top)
+    if prod is None or not same(prod[0], num(2)):
+        return None
+    A = prod[1]
+    # Match bot: cos(A)^2 - sin(A)^2 (either order)
+    if bot[0] != "add":
+        return None
+    bits = list(flat(bot, "add"))
+    if len(bits) != 2:
+        return None
+    t1 = sim(bits[0])
+    t2 = sim(bits[1])
+    def is_cos2(x):
+        return x[0] == "pow" and same(x[2], num(2)) and x[1][0] == "fn" and x[1][1] == "cos" and same(x[1][2], A)
+    def is_sin2(x):
+        return x[0] == "pow" and same(x[2], num(2)) and x[1][0] == "fn" and x[1][1] == "sin" and same(x[1][2], A)
+    # allow sign on sin^2 term
+    sgn1 = signed_unit_term(t1)
+    sgn2 = signed_unit_term(t2)
+    if sgn1 is not None and sgn2 is not None:
+        c1, r1 = sgn1
+        c2, r2 = sgn2
+        if is_cos2(r1) and is_sin2(r2) and is_one(c1) and is_minus_one(c2):
+            return fn("tan", mul([num(2), A]))
+        if is_cos2(r2) and is_sin2(r1) and is_one(c2) and is_minus_one(c1):
+            return fn("tan", mul([num(2), A]))
+    return None
+
+
+def rewrite_tan_double_sin_cos_fraction_tree(node):
+    node = sim(node)
+    k = node[0]
+    if k in ("num", "sym", "const"):
+        return node
+    if k == "fn":
+        return ("fn", node[1], rewrite_tan_double_sin_cos_fraction_tree(node[2]))
+    if k == "pow":
+        return ("pow", rewrite_tan_double_sin_cos_fraction_tree(node[1]), rewrite_tan_double_sin_cos_fraction_tree(node[2]))
+    if k == "div":
+        candidate = rewrite_tan_double_sin_cos_fraction(node)
+        if candidate is not None:
+            return sim(candidate)
+        return ("div", rewrite_tan_double_sin_cos_fraction_tree(node[1]), rewrite_tan_double_sin_cos_fraction_tree(node[2]))
+    if k in ("add", "mul"):
+        out = []
+        i = 0
+        while i < len(node[1]):
+            out.append(rewrite_tan_double_sin_cos_fraction_tree(node[1][i]))
+            i += 1
+        return sim((k, tuple(out)))
+    return node
+
 def proof_named_target_rewrite(node, target):
     node = sim(node)
     target = sim(target)
@@ -6531,6 +6591,17 @@ def prove_factor_pythagorean_identity(source, target, source_name, target_name):
     return None
 
 
+def prove_direct_pythagorean_reduction(source, target, source_name, target_name):
+    reduced = full_simplify(reduce_identities(source))
+    if same(reduced, source):
+        return None
+    if not equivalent(reduced, target):
+        return None
+    lines = [start_line(source_name, source), "Use Pythagorean identities.", step_line(reduced)]
+    bridge_to_target(lines, reduced, target, target_name)
+    return lines
+
+
 def finish_verbose_proof(lines, cur, target, target_name):
     cur = sim(cur)
     named, note = proof_named_target_rewrite(cur, target)
@@ -6858,10 +6929,20 @@ def prove_formula_identity(source, target, source_name, target_name):
 def generic_side_path(expr, side_name):
     lines = [start_line(side_name, expr)]
     cur = expr
+    nxt = full_simplify(reduce_identities(cur))
+    if not same(nxt, cur):
+        lines.append("Use Pythagorean identities.")
+        cur = nxt
+        lines.append(step_line(cur))
     nxt = reciprocal_trig(cur)
     if not same(nxt, cur):
         lines.append("Write tan, cot, sec and cosec using sin and cos.")
         cur = full_simplify(nxt)
+        lines.append(step_line(cur))
+    nxt = full_simplify(reduce_identities(cur))
+    if not same(nxt, cur):
+        lines.append("Use Pythagorean identities.")
+        cur = nxt
         lines.append(step_line(cur))
     nxt = expand_trig_tree(cur)
     if not same(nxt, cur):
@@ -6944,6 +7025,7 @@ def proof_direction_candidates(source, target, source_name, target_name):
         (2, prove_verbose_common_denominator_identity),
         (2, prove_tan_sum_identity),
         (2, prove_tan_add_formula_identity),
+        (3, prove_direct_pythagorean_reduction),
         (3, prove_sum_product_identity),
         (3, prove_tan_multiple),
         (3, prove_shift_identity),
@@ -8781,8 +8863,6 @@ def solve_transform_text(eq1_text, eq2_text):
     begin_user_action()
     eq1_lhs, eq1_rhs = parse_equation_or_zero(eq1_text)
     eq2_lhs, eq2_rhs = parse_equation_or_zero(eq2_text)
-    if eq1_lhs is None or eq2_lhs is None:
-        raise ValueError("Unable to parse equation.")
     expression_only = is_zero(eq1_rhs) and is_zero(eq2_rhs)
     # No equals sign means "expression = 0" internally, but transform mode
     # treats that as expression-only so it can show E1 -> E2 rather than solving.
@@ -8794,6 +8874,26 @@ def solve_transform_text(eq1_text, eq2_text):
         direct_lines = direct_expression_transform_lines(eq1_lhs, eq2_lhs, eq2_text)
         if direct_lines is not None:
             return direct_lines
+        # Fallback: try a small set of lightweight normal forms. This helps when
+        # the user inputs an expression that is equivalent but needs rearranging
+        # (e.g. reciprocal trig cleanup, exact-trig rewrites) before identity
+        # ladders match. Keep it bounded for calculator use.
+        try:
+            a0 = eq1_lhs
+            b0 = eq2_lhs
+            variants = [
+                (a0, b0),
+                (sim(a0), sim(b0)),
+                (replace_exact_trig_quiet(sim(a0)), replace_exact_trig_quiet(sim(b0))),
+            ]
+            i = 0
+            while i < len(variants):
+                direct_lines = direct_expression_transform_lines(variants[i][0], variants[i][1], eq2_text)
+                if direct_lines is not None:
+                    return direct_lines
+                i += 1
+        except Exception:
+            pass
     if equivalent(eq1_lhs, eq2_lhs) and not same(eq1_lhs, eq2_lhs) and same(eq2_lhs, num(1)) and eq1_lhs[0] == 'div' and same(eq1_lhs[1], eq1_lhs[2]) and has_variable_dependency(eq1_lhs[1]):
         raise ValueError('Equation 2 does not match Equation 1 under domain restrictions.')
     if equivalent(eq1_lhs, eq2_lhs) and equivalent(eq1_rhs, eq2_rhs) and not expression_only:
@@ -8999,13 +9099,15 @@ def solve_transform_text(eq1_text, eq2_text):
 
 def _strip_truly_balanced_outer_parens(text):
     text = text.strip()
-    while text.startswith("(") and text.endswith(")"):
+    while outer_parens_wrap_all_text(text):
         inner = text[1:-1].strip()
         if inner == "":
             break
-        if "=" in inner:
-            break
         if inner.count("(") != inner.count(")"):
+            break
+        # Only strip wrappers when the inner text contains a top-level '='.
+        # Do NOT strip expressions like "(1)+cos(x)" where only a prefix is parenthesized.
+        if split_top_level(inner, "=") is None:
             break
         text = inner
     return text
@@ -9016,16 +9118,11 @@ def _strip_truly_balanced_outer_parens(text):
 
 def parse_equation_or_zero(text):
     text = _balance_parens(text)
+    text = _strip_truly_balanced_outer_parens(text)
     parts = split_top_level(text, "=")
     if parts is None:
-        try:
-            return parse(text.strip()), num(0)
-        except Exception:
-            return None, None
-    try:
-        return parse(parts[0].strip()), parse(parts[1].strip())
-    except Exception:
-        return None, None
+        return parse(text.strip()), num(0)
+    return parse(parts[0].strip()), parse(parts[1].strip())
 
 
 def display_target_text(lhs, rhs, raw_text):
@@ -16923,9 +17020,11 @@ def drop_trailing_solution_line(lines, var):
 def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
     """Solve a trig equation, choosing degree/radian mode from the input."""
     lhs, rhs = parse_equation_or_zero(eq_text)
+    # Normalization pass: existing trig solve pipeline expects the raw
+    # trig function structure; only build a simplified work expression.
     original_expr = sim(add([lhs, neg(rhs)]))
     derived = derive_cot_quadratic_expr(lhs, rhs)
-    expr = sim(add([lhs, neg(rhs)]))
+    expr = rewrite_tan_double_sin_cos_fraction_tree(original_expr)
     lines = ["Method: Solve trig eq", "Start with " + equation_line(lhs, rhs)]
     if derived is not None:
         expr = derived[4]

@@ -2454,10 +2454,43 @@ def resolve_symbol_name(name, symbols):
     return A
 
 
+def _split_top_level_equals(text):
+    text = text.strip()
+    depth = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == '=' and depth == 0:
+            return text[:i].strip(), text[i + 1:].strip()
+        i += 1
+    return None
+
+
+def _strip_balanced_outer_parens_equation(text):
+    # Strip wrappers like "(dy/dx = f(x))" or "((...)=...)" safely.
+    out = text.strip()
+    while out.startswith('(') and out.endswith(')'):
+        inner = out[1:-1].strip()
+        if inner == '':
+            break
+        if inner.count('(') != inner.count(')'):
+            break
+        if _split_top_level_equals(inner) is None:
+            break
+        out = inner
+    return out
+
+
 def parse_de_equation(text):
-    if '='not in text:
+    text = _strip_balanced_outer_parens_equation(text)
+    parts = _split_top_level_equals(text)
+    if parts is None:
         raise ValueError("Equation must contain '='.")
-    H, I = text.split('=', 1)
+    H, I = parts
     D = H.replace(' ', '')
     if not D.startswith('d') or '/d'not in D:
         raise ValueError('Equation must look like dY/dX = ...')
@@ -2485,9 +2518,11 @@ def parse_de_equation(text):
 
 
 def parse_de_balanced_equation(text):
-    if '=' not in text:
+    text = _strip_balanced_outer_parens_equation(text)
+    parts = _split_top_level_equals(text)
+    if parts is None:
         raise ValueError("Equation must contain '='.")
-    left_text, right_text = text.split('=', 1)
+    left_text, right_text = parts
     left = left_text.replace(' ', '')
     if not left.startswith('d') or '/d' not in left:
         raise ValueError('Equation must look like dY/dX = ...')
@@ -5020,10 +5055,56 @@ def integrate_known_even_trig_power(node, var):
     return ans, lines
 
 
+def integrate_sec_cosec_cubic(node, var):
+    coeff, rest = split_const_mul(node, var)
+    if rest[0] != 'pow' or rest[1][0] != 'fn':
+        return None, None
+    if not same(rest[2], num(3)):
+        return None, None
+    name = rest[1][1]
+    if name not in ('sec', 'cosec'):
+        return None, None
+    arg = rest[1][2]
+    info = linear_info(arg, var)
+    if info is None:
+        return None, None
+    k, _shift = info
+    if is_zero(k):
+        return None, None
+    scale = sim(div(coeff, k))
+    if name == 'sec':
+        base = add([
+            mul([num(1, 2), fn('sec', arg), fn('tan', arg)]),
+            mul([num(1, 2), log_abs(add([fn('sec', arg), fn('tan', arg)]))]),
+        ])
+        identity = 'Use sec^3 A = sec A(1+tan^2 A).'
+        primitive = 'Int[sec^3 A] dA = (sec A tan A + ln|sec A + tan A|)/2.'
+    else:
+        base = add([
+            neg(mul([num(1, 2), fn('cosec', arg), fn('cot', arg)])),
+            neg(mul([num(1, 2), log_abs(add([fn('cosec', arg), fn('cot', arg)]))])),
+        ])
+        identity = 'Use cosec^3 A = cosec A(1+cot^2 A).'
+        primitive = 'Int[cosec^3 A] dA = -(cosec A cot A + ln|cosec A + cot A|)/2.'
+    ans = sim(mul([scale, base]))
+    lines = [
+        'Let A = ' + pretty(arg) + '.',
+        'dA/d' + var + ' = ' + pretty(k) + '.',
+        identity,
+        primitive,
+        'So I = ' + pretty(ans) + ' + C',
+        '= ' + pretty(ans) + ' + C',
+    ]
+    return ans, lines
+
+
 def integrate_trig(node, var, allow_steps=True):
     E = allow_steps
     C = var
     B = node
+    cubic_ans, cubic_lines = integrate_sec_cosec_cubic(B, C)
+    if cubic_ans is not None:
+        return cubic_ans, cubic_lines if E else []
     known_ans, known_lines = integrate_known_even_trig_power(B, C)
     if known_ans is not None:
         return known_ans, known_lines if E else []
@@ -6832,6 +6913,28 @@ def integrate_core_route(node, var, mode, forced_u=None):
     return finish_integral_solve(title, ans, lines)
 
 
+def _normalize_input_node_for_solve(node):
+    # Bounded, calculator-friendly normalization before route selection.
+    # Goal: get expression into a consistent shape for pattern matchers.
+    try:
+        out = sim(node)
+    except Exception:
+        out = node
+    try:
+        out = normalize_trig_signs(out)
+    except Exception:
+        pass
+    try:
+        out = normalize_den_powers(out)
+    except Exception:
+        pass
+    try:
+        out = sim(out)
+    except Exception:
+        pass
+    return out
+
+
 def cyclic_method_title(lines):
     if lines and len(lines) > 0:
         first = lines[0]
@@ -6847,9 +6950,9 @@ def _solve_with_method(node, var, method, forced_u=None):
     F = forced_u
     E = method
     D = var
-    C = sim(node)
+    C = _normalize_input_node_for_solve(node)
     if F is not None:
-        F = sim(F)
+        F = _normalize_input_node_for_solve(F)
     if E == '1':
         # Automatic mode tries the most recognisable exact routes first, then
         # lets integrate_auto choose among direct, reverse-chain, trig, parts,

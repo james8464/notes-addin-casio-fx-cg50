@@ -1942,14 +1942,16 @@ def parse_expr_or_equation(text):
     if body == '':
         raise ValueError('Enter input.')
     if '=' in body:
-        # Strip outer parentheses for proper splitting, but only if balanced
-        body = body.strip()
-        if body.startswith('(') and body.endswith(')'):
-            inner = body[1:-1]
-            if inner.count('(') == inner.count(')'):
-                top_level_eq = split_top_level(inner, '=')
-                if top_level_eq is not None:
-                    body = inner
+        # Strip balanced outer wrappers like "((x+1)=2)".
+        while body.startswith('(') and body.endswith(')'):
+            inner = body[1:-1].strip()
+            if inner == '':
+                break
+            if inner.count('(') != inner.count(')'):
+                break
+            if split_top_level(inner, '=') is None:
+                break
+            body = inner
         parts = split_top_level(body, '=')
         if parts is None:
             return parse(body)
@@ -1959,6 +1961,7 @@ def parse_expr_or_equation(text):
             right_parts = split_top_level(right_text.strip(), ',')
             if right_parts is not None:
                 right_text = right_parts[0].strip()
+        # Keep raw (moved) form; callers choose how aggressively to normalize.
         return sim(sub(parse(left_text.strip()), parse(right_text.strip())))
     # Handle expr,var format without equals
     if ',' in body:
@@ -1987,16 +1990,17 @@ def parse_equation_or_zero(text):
     body = text.strip()
     if '=' not in body:
         return parse(body), num(0)
-    # Strip outer parentheses for proper splitting, but only if they are balanced
-    body = body.strip()
-    if body.startswith('(') and body.endswith(')'):
-        inner = body[1:-1]
-        # Check if stripping leaves balanced parens and contains top-level '='
-        if inner.count('(') == inner.count(')'):
-            # Find if there's a top-level '='
-            top_level_eq = split_top_level(inner, '=')
-            if top_level_eq is not None:
-                body = inner
+    # Strip truly balanced outer parens even when it contains a top-level '='.
+    while body.startswith('(') and body.endswith(')'):
+        inner = body[1:-1].strip()
+        if inner == '':
+            break
+        if inner.count('(') != inner.count(')'):
+            break
+        # Only strip if this exposes a top-level equation.
+        if split_top_level(inner, '=') is None:
+            break
+        body = inner
     parts = split_top_level(body, '=')
     if parts is None:
         return parse(body), num(0)
@@ -4393,11 +4397,21 @@ def solve_transform_text(text1, text2):
         lhs2, rhs2 = parse_equation_or_zero(text2)
         expr1 = sim(add([lhs1, neg(rhs1)]))
         expr2 = sim(add([lhs2, neg(rhs2)]))
+        # Try the raw form first (keeps the nicest human steps like
+        # "Factor as a difference of squares"). Only fall back to a
+        # canonicalized pass if the raw pass fails equivalence checks.
         steps, result = rearrange_to_target(expr1, expr2)
         failed = len(steps) != 0 and steps[-1][1].startswith('Target is not equivalent')
-        if same(result, expr1) and equivalent(expr1, expr2):
-            result = expr2
-            steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
+        if failed:
+            expr1n = canonical_compare_form(expr1)
+            expr2n = canonical_compare_form(expr2)
+            steps, result = rearrange_to_target(expr1n, expr2n)
+        if not failed:
+            expr1n = expr1
+            expr2n = expr2
+        if same(result, expr1n) and equivalent(expr1, expr2):
+            result = expr2n
+            steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2n))
         lines = ['Method: Transform equation to target form', 'Equation 1: ' + display_equation_text(lhs1, rhs1)]
         if not is_zero(rhs1):
             lines.append('Move all terms to one side.')
@@ -4419,9 +4433,16 @@ def solve_transform_text(text1, text2):
     expr2 = parse(text2)
     steps, result = rearrange_to_target(expr1, expr2)
     failed = len(steps) != 0 and steps[-1][1].startswith('Target is not equivalent')
-    if same(result, expr1) and equivalent(expr1, expr2):
-        result = expr2
-        steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2))
+    if failed:
+        expr1n = canonical_compare_form(expr1)
+        expr2n = canonical_compare_form(expr2)
+        steps, result = rearrange_to_target(expr1n, expr2n)
+    else:
+        expr1n = expr1
+        expr2n = expr2
+    if same(result, expr1n) and equivalent(expr1, expr2):
+        result = expr2n
+        steps.append((len(steps) + 1, 'Rewrite to target form: ' + show(expr2), expr2n))
     lines = ['Method: Transform expression to target form']
     i = 0
     while i < len(steps):
@@ -5916,6 +5937,134 @@ def depressed_cubic_cardano_numeric_roots(expr, var_name):
     return [root]
 
 
+def _finite_float(value):
+    try:
+        if math is not None and hasattr(math, 'isfinite'):
+            return math.isfinite(value)
+    except Exception:
+        pass
+    return value == value and value != float('inf') and value != -float('inf')
+
+
+def _poly_float_coeffs(coeffs, degree):
+    out = []
+    i = 0
+    while i <= degree:
+        value = real_numeric_value(coeffs[i])
+        if value is None:
+            return None
+        out.append(float(value))
+        i += 1
+    return out
+
+
+def _poly_eval_float_coeffs(coeffs, value):
+    total = 0.0
+    i = len(coeffs) - 1
+    while i >= 0:
+        total = total * value + coeffs[i]
+        i -= 1
+    return total
+
+
+def _decimal_root_node(value):
+    scale = 1000000000
+    rounded = int(round(value * scale))
+    return num(rounded, scale)
+
+
+def numeric_real_roots_for_polynomial(coeffs, degree):
+    if math is None or degree < 1 or degree > 6:
+        return []
+    floats = _poly_float_coeffs(coeffs, degree)
+    if floats is None:
+        return []
+    lead = floats[degree]
+    if abs(lead) < 1e-12:
+        return []
+    bound = 1.0
+    i = 0
+    while i < degree:
+        cur = abs(floats[i] / lead)
+        if cur + 1.0 > bound:
+            bound = cur + 1.0
+        i += 1
+    if bound < 8.0:
+        bound = 8.0
+    if bound > 1000.0:
+        bound = 1000.0
+
+    samples = 1600 if degree <= 3 else 2400
+    step = (2.0 * bound) / samples
+    roots = []
+
+    def add_root(value):
+        if not _finite_float(value):
+            return
+        for prev in roots:
+            if abs(prev - value) <= 1e-6 * max(1.0, abs(prev), abs(value)):
+                return
+        roots.append(value)
+
+    x0 = -bound
+    try:
+        y0 = _poly_eval_float_coeffs(floats, x0)
+    except Exception:
+        y0 = None
+    if y0 is not None and abs(y0) < 1e-8:
+        add_root(x0)
+    i = 1
+    best_x = x0
+    best_abs = abs(y0) if y0 is not None and _finite_float(y0) else 1e99
+    while i <= samples:
+        x1 = -bound + i * step
+        try:
+            y1 = _poly_eval_float_coeffs(floats, x1)
+        except Exception:
+            y1 = None
+        if y1 is not None and _finite_float(y1):
+            ay = abs(y1)
+            if ay < best_abs:
+                best_abs = ay
+                best_x = x1
+            if ay < 1e-8:
+                add_root(x1)
+            if y0 is not None and _finite_float(y0) and y0 * y1 < 0:
+                lo = x0
+                hi = x1
+                flo = y0
+                fhi = y1
+                j = 0
+                while j < 70:
+                    mid = (lo + hi) / 2.0
+                    fm = _poly_eval_float_coeffs(floats, mid)
+                    if abs(fm) < 1e-12:
+                        lo = mid
+                        hi = mid
+                        break
+                    if flo * fm <= 0:
+                        hi = mid
+                        fhi = fm
+                    else:
+                        lo = mid
+                        flo = fm
+                    j += 1
+                add_root((lo + hi) / 2.0)
+        x0 = x1
+        y0 = y1
+        i += 1
+
+    if len(roots) == 0 and best_abs < 1e-5:
+        add_root(best_x)
+    roots.sort()
+    out = []
+    i = 0
+    while i < len(roots):
+        out.append(_decimal_root_node(roots[i]))
+        i += 1
+    return out
+
+
 def format_decimal_solution_line(var_name, roots):
     bits = []
     i = 0
@@ -5960,6 +6109,9 @@ def solve_polynomial_expr(node, var_name):
             cardano_roots = depressed_cubic_cardano_roots(coeffs)
             if cardano_roots is not None:
                 return 'cubic by Cardano formula', cardano_roots
+        numeric_roots = numeric_real_roots_for_polynomial(coeffs, degree)
+        if len(numeric_roots) != 0:
+            return 'numeric polynomial', numeric_roots
         return None, None
     roots = normalize_solution_roots(rational_roots_for_quadratic(coeffs))
     if len(roots) == 0:
@@ -6097,7 +6249,8 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
         return cartesian
-    expr = parse_expr_or_equation(text)
+    # Normalization pass (bounded): canonicalize the work expression for routing.
+    expr = canonical_compare_form(parse_expr_or_equation(text))
     var_name, roots, label = solve_equation(expr)
     if var_override is not None and str(var_override).strip() != "":
         var_name = str(var_override).strip()
@@ -6137,6 +6290,18 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
             lines.append('Answer: no solution in the interval')
             return compact_duplicate_answer_lines(lines)
     solution = format_solution_line(var_name, solution_roots)
+    if 'numeric polynomial' in label:
+        decimal_values = []
+        i = 0
+        while i < len(solution_roots):
+            value = real_numeric_value(solution_roots[i])
+            if value is not None:
+                decimal_values.append(value)
+            i += 1
+        if len(decimal_values) != 0:
+            lines.append('Use a bounded real-root scan after exact factor tests.')
+            lines.append('Answer: ' + format_decimal_solution_line(var_name, decimal_values))
+            return compact_duplicate_answer_lines(lines)
     if 'Cardano' in label:
         decimal_roots = depressed_cubic_cardano_numeric_roots(expr, var_name)
         if decimal_roots:
@@ -7075,6 +7240,11 @@ def rewrite_polynomial_in_linear_term(node, term, var_name):
 def rewrite_in_term_text(text, term_text):
     expr = parse(text.strip())
     term = parse(term_text.strip())
+    # Normalization pass (bounded): canonicalize to improve rewrite matching.
+    exprn = canonical_compare_form(expr)
+    termn = canonical_compare_form(term)
+    expr = exprn
+    term = termn
     var_name = choose_primary_var(expr)
     if var_name is None:
         raise ValueError('Choose a variable.')
@@ -7857,6 +8027,42 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
             lines.append('Unrestricted: Range: y >= ' + show(sim(div(num(1), fn('sqrt', top)))))
         else:
             lines.append('Unrestricted: Range: y > 0')
+        return _finish_range(lines)
+
+    if (expr[0] == 'fn' and expr[1] == 'exp') or (expr[0] == 'pow' and same(expr[1], ('const', 'e'))):
+        lines.append('Since exp(u) is always positive.')
+        lines.append('Unrestricted: Range: y > 0')
+        return _finish_range(lines)
+
+    exp_shift = num(0)
+    exp_coeff = None
+    exp_arg = None
+    exp_ok = False
+    if expr[0] == 'add':
+        terms = list(flat(expr, 'add'))
+    else:
+        terms = [expr]
+    if len(terms) <= 3:
+        exp_ok = True
+        i = 0
+        while i < len(terms):
+            if depends_on(terms[i], var_name):
+                coeff, rest = split_coeff(terms[i])
+                if ((rest[0] == 'fn' and rest[1] == 'exp') or (rest[0] == 'pow' and same(rest[1], ('const', 'e')))) and exp_coeff is None:
+                    exp_coeff = coeff
+                    exp_arg = rest[2] if rest[0] == 'fn' else rest[2]
+                else:
+                    exp_ok = False
+                    break
+            else:
+                exp_shift = sim(add([exp_shift, terms[i]]))
+            i += 1
+    if exp_ok and exp_coeff is not None and is_num(exp_coeff) and not is_zero(exp_coeff):
+        lines.append('Since exp(u) is always positive.')
+        if exp_coeff[1] > 0:
+            lines.append('Unrestricted: Range: y > ' + show(exp_shift))
+        else:
+            lines.append('Unrestricted: Range: y < ' + show(exp_shift))
         return _finish_range(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):
