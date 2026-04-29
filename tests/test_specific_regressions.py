@@ -361,6 +361,47 @@ class TransformRegressionTests(unittest.TestCase):
             msg=out,
         )
 
+    def test_exam_trig_phase_range_and_minimum_fixture(self):
+        out = run_cli("trigProgram.py", "2\n8+3*sin(x)*(cos(x)-2*sin(x))\nP+R*sin(2*x+a)\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("P = 5", out)
+        self.assertIn("R = 3/2*sqrt(5)", out)
+        self.assertIn("a = 1.107 rad", out)
+        rng = run_cli("algebraProgram.py", "10\n8+3*sin(x)*(cos(x)-2*sin(x)),x,0,2*pi\n")
+        self.assertNotIn("Err:", rng)
+        self.assertIn("Range: 5 - 3/2*sqrt(5) <= y <= 5 + 3/2*sqrt(5)", rng)
+
+    def test_exam_definite_integral_trig_conjugate_fixture(self):
+        out = run_cli("intProgram.py", "1\n(x*tan(x))/(tan(x)+sec(x)),x,0,pi\n1\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("tan(x)/(tan(x)+sec(x)) = sin(x)/(1+sin(x)).", out)
+        self.assertIn("[x - tan(x) + sec(x)]_0^pi = pi - 2.", out)
+        self.assertIn("Answer: 1/2*pi*(pi - 2)", out)
+
+    def test_exam_definite_integral_double_angle_fraction_fixture(self):
+        out = run_cli("intProgram.py", "1\n(sin(2*x))/(1+cos(x)),x,0,pi/2\n1\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Use sin(2A) = 2sin A cos A.", out)
+        self.assertIn("F(0) = 2*ln(2) - 2.", out)
+        self.assertIn("Answer: 2 - 2*ln(2)", out)
+
+    def test_exam_log_curve_tangent_fixture(self):
+        out = run_cli("deriveProgram.py", "1\nlog(2*x)/(2*x),e^2/2\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Gradient m = -2/e^4.", out)
+        self.assertIn("Answer: y = -2/e^4*x + 3/e^2", out)
+
+    def test_exam_parametric_cartesian_fixtures(self):
+        loop = run_cli("algebraProgram.py", "11\n2*sin(t)\n3*sin(2*t)\nt\n")
+        self.assertNotIn("Err:", loop)
+        self.assertIn("k = 3/2.", loop)
+        self.assertIn("Maximum radius = 10/3.", loop)
+        self.assertIn("Answer: y^2 = (9/4)*x^2*(-x^2 + 4)", loop)
+        circle = run_cli("algebraProgram.py", "11\n(t^2+9)/(t^2+3)\n6*sqrt(3)*t/(t^2+3)\nt\n")
+        self.assertNotIn("Err:", circle)
+        self.assertIn("9*(x - 2)^2 + y^2 simplifies to 9.", circle)
+        self.assertIn("Answer: 9*(x - 2)^2 + y^2 = 9", circle)
+
     def test_shared_cache_eviction_uses_snapshot_keys(self):
         cache = {}
         for i in range(10):

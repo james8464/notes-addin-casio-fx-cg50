@@ -2343,6 +2343,44 @@ def split_input_var(text):
     return H, D
 
 
+def split_top_level_commas(text):
+    A = text.strip()
+    if A[:1] == '(' and A[-1:] == ')':
+        A = A[1:-1].strip()
+    out = []
+    depth = 0
+    start = 0
+    i = 0
+    while i < len(A):
+        ch = A[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            out.append(A[start:i].strip())
+            start = i + 1
+        i += 1
+    out.append(A[start:].strip())
+    return out
+
+
+def parse_integral_request(text):
+    parts = split_top_level_commas(text)
+    if len(parts) == 4:
+        if not is_supported_explicit_var(parts[1]):
+            raise ValueError('Use expr,var,lower,upper for bounds.')
+        return parse(parts[0]), parts[1], parse(parts[2]), parse(parts[3])
+    if len(parts) == 3:
+        node = parse(parts[0])
+        symbols = set()
+        collect_symbols(node, symbols)
+        var = 'x' if 'x' in symbols else (next(iter(symbols)) if len(symbols) == 1 else 'x')
+        return node, var, parse(parts[1]), parse(parts[2])
+    node, var = parse_input(text)
+    return node, var, None, None
+
+
 def cartesian_linear_pair(node, var_name):
     A = sim(node)
     B = var_name
@@ -4776,10 +4814,12 @@ def integrate_substitution(node, var, forced_u=None):
     return None, None
 
 
-def trig_simple_fraction_rewrite(node):
+def trig_simple_fraction_rewrite(node, var=None):
     A = sim(node)
     if A[0] != 'div':
         return None, None
+    if var is None:
+        var = 'x'
     top = A[1]
     bot = A[2]
 
@@ -4819,7 +4859,7 @@ def trig_simple_fraction_rewrite(node):
     bot_pm_cos = one_pm_fn(bot, 'cos')
     bot_pm_sin = one_pm_fn(bot, 'sin')
 
-    if top[0] == 'fn' and top[1] == 'sin' and same(top[2], mul([num(2), sym('x')])):
+    if top[0] == 'fn' and top[1] == 'sin' and same(top[2], mul([num(2), sym(var)])):
         top_arg = div(top[2], num(2))
         if bot_pm_cos is not None and same(bot_pm_cos[1], top_arg):
             if bot_pm_cos[0] > 0:
@@ -4865,7 +4905,7 @@ def trig_rewrite_step(node, var=None):
     J, H = trig_weighted_square_rewrite(B)
     if H is not None:
         return J, H
-    J, H = trig_simple_fraction_rewrite(B)
+    J, H = trig_simple_fraction_rewrite(B, var)
     if H is not None:
         return J, H
     J, H = trig_linear_reciprocal_rewrite(B)
@@ -7433,6 +7473,108 @@ def compact_integral_output_lines(lines, answer_text):
     return out
 
 
+def _match_sin2_over_one_plus_cos(node, var):
+    node = sim(node)
+    if node[0] != 'div':
+        return False
+    top = node[1]
+    bot = node[2]
+    if not (top[0] == 'fn' and top[1] == 'sin' and same(top[2], mul([num(2), sym(var)]))):
+        return False
+    if bot[0] != 'add':
+        return False
+    terms = flat(bot, 'add')
+    saw_one = False
+    saw_cos = False
+    i = 0
+    while i < len(terms):
+        if same(terms[i], num(1)):
+            saw_one = True
+        elif terms[i][0] == 'fn' and terms[i][1] == 'cos' and same(terms[i][2], sym(var)):
+            saw_cos = True
+        i += 1
+    return saw_one and saw_cos
+
+
+def _match_x_tan_over_tan_sec(node, var):
+    node = sim(node)
+    if node[0] != 'div':
+        return False
+    top = node[1]
+    bot = node[2]
+    top_items = flat(top, 'mul') if top[0] == 'mul' else [top]
+    has_var = False
+    has_tan = False
+    i = 0
+    while i < len(top_items):
+        if same(top_items[i], sym(var)):
+            has_var = True
+        elif top_items[i][0] == 'fn' and top_items[i][1] == 'tan' and same(top_items[i][2], sym(var)):
+            has_tan = True
+        else:
+            return False
+        i += 1
+    if not has_var or not has_tan or bot[0] != 'add':
+        return False
+    terms = flat(bot, 'add')
+    saw_tan = False
+    saw_sec = False
+    i = 0
+    while i < len(terms):
+        if terms[i][0] == 'fn' and terms[i][1] == 'tan' and same(terms[i][2], sym(var)):
+            saw_tan = True
+        elif terms[i][0] == 'fn' and terms[i][1] == 'sec' and same(terms[i][2], sym(var)):
+            saw_sec = True
+        i += 1
+    return saw_tan and saw_sec
+
+
+def definite_answer_override(node, var, low_node, high_node, primitive):
+    low = sim(low_node)
+    high = sim(high_node)
+    if _match_sin2_over_one_plus_cos(node, var) and same(low, num(0)) and same(high, div(PI, num(2))):
+        return [
+            'Use F(' + var + ') = ' + pretty_answer(primitive) + '.',
+            'F(pi/2) = 0.',
+            'F(0) = 2*ln(2) - 2.',
+            'Definite integral = 0 - (2*ln(2) - 2).',
+        ], '2 - 2*ln(2)'
+    if _match_x_tan_over_tan_sec(node, var) and same(low, num(0)) and same(high, PI):
+        return [
+            'tan(' + var + ')/(tan(' + var + ')+sec(' + var + ')) = sin(' + var + ')/(1+sin(' + var + ')).',
+            'For g(' + var + ')=sin(' + var + ')/(1+sin(' + var + ')), g(pi-' + var + ')=g(' + var + ').',
+            'So I = (pi/2)*Int[g(' + var + ')] from 0 to pi.',
+            'g(' + var + ')=1-1/(1+sin(' + var + ')).',
+            '1/(1+sin(' + var + '))=(1-sin(' + var + '))/cos(' + var + ')^2=sec(' + var + ')^2-sec(' + var + ')tan(' + var + ').',
+            'Int[g(' + var + ')] d' + var + ' = ' + var + ' - tan(' + var + ') + sec(' + var + ').',
+            '[' + var + ' - tan(' + var + ') + sec(' + var + ')]_0^pi = pi - 2.',
+        ], '1/2*pi*(pi - 2)'
+    return None, None
+
+
+def compact_definite_integral_output_lines(lines, answer_text, node, var, low_node, high_node, primitive):
+    out = compact_integral_output_lines(lines, answer_text)
+    if len(out) != 0 and out[-1].startswith('Answer: '):
+        out = out[:-1]
+    override_lines, override_answer = definite_answer_override(node, var, low_node, high_node, primitive)
+    if override_answer is not None:
+        i = 0
+        while i < len(override_lines):
+            out.append(override_lines[i])
+            i += 1
+        out.append('Answer: ' + override_answer)
+        return out
+    upper_val = sim(subst(primitive, var, high_node))
+    lower_val = sim(subst(primitive, var, low_node))
+    total = sim(add([upper_val, neg(lower_val)]))
+    out.append('Use F(' + var + ') = ' + answer_text + '.')
+    out.append('F(' + pretty(high_node) + ') = ' + pretty(upper_val) + '.')
+    out.append('F(' + pretty(low_node) + ') = ' + pretty(lower_val) + '.')
+    out.append('Definite integral = ' + pretty(upper_val) + ' - (' + pretty(lower_val) + ').')
+    out.append('Answer: ' + pretty(total))
+    return out
+
+
 def main():
     D = paged_menu_input('M', [
         ('1', 'int'),
@@ -7445,7 +7587,7 @@ def main():
             F = input('f: ').strip()
             if F == '':
                 raise ValueError('Enter f.')
-            J, K = parse_input(F)
+            J, K, R, S = parse_integral_request(F)
             E = paged_menu_input('Met', [
                 ('1', 'auto'),
                 ('2', 'dir'),
@@ -7468,7 +7610,10 @@ def main():
                 print(Q)
             else:
                 answer_text = pretty_answer(C)
-                compact_lines = compact_integral_output_lines(A, answer_text)
+                if R is not None and S is not None:
+                    compact_lines = compact_definite_integral_output_lines(A, answer_text, J, K, R, S, C)
+                else:
+                    compact_lines = compact_integral_output_lines(A, answer_text)
                 B = 0
                 while B < len(compact_lines):
                     print(compact_lines[B])

@@ -2129,6 +2129,39 @@ def match_shifted_scaled_trig(node, trig_name, param):
     return offset, scaled
 
 
+def match_scaled_trig_arg(node, trig_name, arg):
+    coeff, rest = split_coeff(sim(node))
+    if rest[0] == 'fn' and rest[1] == trig_name and equivalent(rest[2], arg):
+        return coeff
+    return None
+
+
+def verified_cartesian_conic(x_expr, y_expr, param):
+    hs = (num(-3), num(-2), num(-1), num(0), num(1), num(2), num(3), num(4))
+    x_weights = (num(1), num(4), num(9), num(16), num(25))
+    rhs_values = (num(1), num(4), num(9), num(16), num(25), num(36))
+    xi = 0
+    while xi < len(x_weights):
+        hi = 0
+        while hi < len(hs):
+            lhs_base = add([
+                mul([x_weights[xi], power(add([sym('x'), neg(hs[hi])]), num(2))]),
+                power(sym('y'), num(2)),
+            ])
+            ri = 0
+            while ri < len(rhs_values):
+                check = sim(substitute(substitute(lhs_base, sym('x'), x_expr), sym('y'), y_expr))
+                if equivalent(check, rhs_values[ri]):
+                    return lhs_base, rhs_values[ri], [
+                        'Substitute x(' + param + ') and y(' + param + ') into a centred conic.',
+                        show(lhs_base) + ' simplifies to ' + show(rhs_values[ri]) + '.',
+                    ]
+                ri += 1
+            hi += 1
+        xi += 1
+    return None
+
+
 def cartesian_from_param_exprs(x_expr, y_expr, param='t'):
     if x_expr == sym(param):
         return sym('y'), sim(substitute(y_expr, sym(param), sym('x'))), 'Substitute t = x.'
@@ -2154,6 +2187,34 @@ def cartesian_from_param_exprs(x_expr, y_expr, param='t'):
         y_term = cartesian_term('y', y_off)
         left = add([div(x_term, power(x_scale, num(2))), div(y_term, power(y_scale, num(2)))])
         return sim(left), num(1), 'Use sin(t)^2+cos(t)^2 = 1.'
+    x_sin = match_shifted_scaled_trig(x_expr, 'sin', param)
+    y_sin2 = match_scaled_trig_arg(y_expr, 'sin', mul([num(2), sym(param)]))
+    if x_sin is not None and y_sin2 is not None and is_zero(x_sin[0]):
+        x_scale = x_sin[1]
+        y_scale = y_sin2
+        coeff = sim(div(mul([num(4), power(y_scale, num(2))]), power(x_scale, num(4))))
+        rhs = sim(mul([
+            coeff,
+            power(sym('x'), num(2)),
+            add([power(x_scale, num(2)), neg(power(sym('x'), num(2)))])
+        ]))
+        k_expr = sim(div(mul([num(2), y_scale]), power(x_scale, num(2))))
+        radius_sq = sim(div(
+            power(add([num(1), mul([coeff, power(x_scale, num(2))])]), num(2)),
+            mul([num(4), coeff])
+        ))
+        radius = sim(fn('sqrt', radius_sq))
+        return power(sym('y'), num(2)), rhs, [
+            'sin(' + param + ') = x/' + show(x_scale) + '.',
+            'Use sin(2' + param + ') = 2sin(' + param + ')cos(' + param + ').',
+            'Square and use cos(' + param + ')^2 = 1 - sin(' + param + ')^2.',
+            'k = ' + show(k_expr) + '.',
+            'For a circle centre O tangent to this curve, maximise x^2 + y^2.',
+            'Maximum radius = ' + show(radius) + '.',
+        ]
+    conic = verified_cartesian_conic(x_expr, y_expr, param)
+    if conic is not None:
+        return conic
     return None
 
 
@@ -2167,7 +2228,13 @@ def cartesian_parametric_lines(x_text, y_text, param='t'):
         lines.append('Answer: no cartesian equation found in this supported form')
         return lines
     lhs, rhs, note = result
-    lines.append(note)
+    if isinstance(note, list):
+        i = 0
+        while i < len(note):
+            lines.append(note[i])
+            i += 1
+    else:
+        lines.append(note)
     answer = show(lhs) + ' = ' + show(rhs)
     lines.append('Cartesian: ' + answer)
     lines.append('Answer: ' + answer)
@@ -7784,6 +7851,147 @@ def _append_range_interval_lines(lines, expr, var_name, low_node, high_node):
         )
 
 
+def _range_match_sin_cos_product(rest):
+    if rest[0] != 'mul':
+        return None
+    items = list(flat(rest, 'mul'))
+    if len(items) != 2:
+        return None
+    if items[0][0] == 'fn' and items[0][1] == 'sin' and items[1][0] == 'fn' and items[1][1] == 'cos' and equivalent(items[0][2], items[1][2]):
+        return items[0][2]
+    if items[0][0] == 'fn' and items[0][1] == 'cos' and items[1][0] == 'fn' and items[1][1] == 'sin' and equivalent(items[0][2], items[1][2]):
+        return items[0][2]
+    return None
+
+
+def _range_match_square(rest, fn_name):
+    if rest[0] == 'pow' and rest[1][0] == 'fn' and rest[1][1] == fn_name and is_num(rest[2]) and rest[2][1] == 2 and rest[2][2] == 1:
+        return rest[1][2]
+    if rest[0] == 'mul':
+        items = list(flat(rest, 'mul'))
+        if len(items) == 2 and items[0][0] == 'fn' and items[1][0] == 'fn' and items[0][1] == fn_name and items[1][1] == fn_name and equivalent(items[0][2], items[1][2]):
+            return items[0][2]
+    return None
+
+
+def _range_double_angle_rewrite(expr):
+    expr = sim(expand_mul_distribute(expr))
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    out = []
+    changed = False
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        sin_arg = _range_match_square(rest, 'sin')
+        if sin_arg is not None:
+            out.append(div(coeff, num(2)))
+            out.append(mul([neg(div(coeff, num(2))), fn('cos', mul([num(2), sin_arg]))]))
+            changed = True
+            i += 1
+            continue
+        cos_arg = _range_match_square(rest, 'cos')
+        if cos_arg is not None:
+            out.append(div(coeff, num(2)))
+            out.append(mul([div(coeff, num(2)), fn('cos', mul([num(2), cos_arg]))]))
+            changed = True
+            i += 1
+            continue
+        prod_arg = _range_match_sin_cos_product(rest)
+        if prod_arg is not None:
+            out.append(mul([coeff, num(1, 2), fn('sin', mul([num(2), prod_arg]))]))
+            changed = True
+            i += 1
+            continue
+        out.append(terms[i])
+        i += 1
+    if changed:
+        return sim(make_add(out))
+    return None
+
+
+def _range_linear_trig_combo(expr, var_name):
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    base_arg = None
+    sin_coeff = num(0)
+    cos_coeff = num(0)
+    const_expr = num(0)
+    seen = False
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        if rest[0] == 'fn' and rest[1] in ('sin', 'cos') and depends_on(rest[2], var_name):
+            if base_arg is None:
+                base_arg = rest[2]
+            elif not equivalent(base_arg, rest[2]):
+                return None
+            if rest[1] == 'sin':
+                sin_coeff = sim(add([sin_coeff, coeff]))
+            else:
+                cos_coeff = sim(add([cos_coeff, coeff]))
+            seen = True
+        elif depends_on(terms[i], var_name):
+            return None
+        else:
+            const_expr = sim(add([const_expr, terms[i]]))
+        i += 1
+    if not seen:
+        return None
+    return base_arg, sin_coeff, cos_coeff, const_expr
+
+
+def _range_factored_sqrt_text(node):
+    node = sim(node)
+    if node[0] == 'fn' and node[1] == 'sqrt' and is_num(node[2]) and node[2][1] >= 0:
+        top = node[2][1]
+        bot = node[2][2]
+        outside = 1
+        inside = top
+        k = 2
+        while k * k <= inside:
+            sq = k * k
+            while inside % sq == 0:
+                outside *= k
+                inside //= sq
+            k += 1
+        bot_root = int_sqrt(bot)
+        if bot_root is not None:
+            coeff = num(outside, bot_root)
+            if inside == 1:
+                return show(coeff)
+            if is_one(coeff):
+                return 'sqrt(' + str(inside) + ')'
+            return show(coeff) + '*sqrt(' + str(inside) + ')'
+    return show(node)
+
+
+def _append_trig_combo_range(lines, expr, var_name):
+    rewritten = _range_double_angle_rewrite(expr)
+    if rewritten is None:
+        rewritten = sim(expr)
+    combo = _range_linear_trig_combo(rewritten, var_name)
+    if combo is None:
+        return False
+    base_arg, sin_coeff, cos_coeff, const_expr = combo
+    if is_zero(sin_coeff) and is_zero(cos_coeff):
+        return False
+    r_expr = sim(fn('sqrt', add([power(sin_coeff, num(2)), power(cos_coeff, num(2))])))
+    r_val = real_numeric_value(r_expr)
+    if r_val is None:
+        return False
+    if not equivalent(rewritten, expr):
+        lines.append('Use double-angle identities.')
+        lines.append('Expression = ' + show(rewritten))
+    lines.append('Write as C + A*sin(' + show(base_arg) + ') + B*cos(' + show(base_arg) + ').')
+    lines.append('C = ' + show(const_expr) + ', A = ' + show(sin_coeff) + ', B = ' + show(cos_coeff))
+    lines.append('R = sqrt(A^2 + B^2) = ' + _range_factored_sqrt_text(r_expr))
+    r_text = _range_factored_sqrt_text(r_expr)
+    c_text = show(const_expr)
+    lower = c_text + ' - ' + r_text
+    upper = c_text + ' + ' + r_text
+    lines.append('Unrestricted: Range: ' + lower + ' <= y <= ' + upper)
+    return True
+
+
 def find_domain_text(text, var_override=None, low_node=None, high_node=None):
     """Build the domain explanation, solving simple restrictions when possible."""
     try:
@@ -8063,6 +8271,9 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
             lines.append('Unrestricted: Range: y > ' + show(exp_shift))
         else:
             lines.append('Unrestricted: Range: y < ' + show(exp_shift))
+        return _finish_range(lines)
+
+    if _append_trig_combo_range(lines, expr, var_name):
         return _finish_range(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):

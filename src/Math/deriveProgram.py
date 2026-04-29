@@ -763,6 +763,8 @@ def sim(node):
         arg = sim(node[2])
         if node[1] == "log" and same(arg, E):
             return num(1)
+        if node[1] == "log" and arg[0] == "pow" and same(arg[1], E) and is_num(arg[2]):
+            return arg[2]
         return ("fn", node[1], arg)
     if kind == "pow":
         base = sim(node[1])
@@ -1684,6 +1686,50 @@ def parse_normal_input(text):
     return parse(text), "x"
 
 
+def split_top_level_commas(text):
+    text = text.strip()
+    out = []
+    depth = 0
+    start = 0
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            out.append(text[start:i].strip())
+            start = i + 1
+        i += 1
+    out.append(text[start:].strip())
+    return out
+
+
+def infer_primary_var(expr):
+    names = set()
+    collect_symbols(expr, names)
+    if "x" in names:
+        return "x"
+    if len(names) == 1:
+        return next(iter(names))
+    return "x"
+
+
+def parse_tangent_request(text):
+    parts = split_top_level_commas(text)
+    if len(parts) == 2:
+        if is_valid_symbol_name(parts[1]) and len(parts[1]) == 1:
+            return None
+        expr = parse(parts[0])
+        return expr, infer_primary_var(expr), parse(parts[1])
+    if len(parts) == 3:
+        if not (is_valid_symbol_name(parts[1]) and len(parts[1]) == 1):
+            return None
+        return parse(parts[0]), parts[1], parse(parts[2])
+    return None
+
+
 def parse_second_derivative_input(text):
     raw = text.strip()
     if raw == "":
@@ -2437,6 +2483,13 @@ def match_shifted_scaled_trig(node, trig_name, param):
     return offset, scaled
 
 
+def match_scaled_trig_arg(node, trig_name, arg):
+    coeff, rest = split_coeff(sim(node))
+    if rest[0] == "fn" and rest[1] == trig_name and same(rest[2], arg):
+        return coeff
+    return None
+
+
 def cartesian_from_param_exprs(x_expr, y_expr, param="t"):
     if x_expr == sym(param):
         return sym("y"), sim(subst(y_expr, param, sym("x"))), "Substitute t = x."
@@ -2463,6 +2516,30 @@ def cartesian_from_param_exprs(x_expr, y_expr, param="t"):
             div(cartesian_term("y", y_off), power(y_scale, num(2))),
         ])
         return sim(left), num(1), "Cartesian form"
+    x_sin = match_shifted_scaled_trig(x_expr, "sin", param)
+    y_sin2 = match_scaled_trig_arg(y_expr, "sin", mul([num(2), sym(param)]))
+    if x_sin is not None and y_sin2 is not None and is_zero(x_sin[0]):
+        x_scale = x_sin[1]
+        y_scale = y_sin2
+        coeff = sim(div(mul([num(4), power(y_scale, num(2))]), power(x_scale, num(4))))
+        rhs = sim(mul([
+            coeff,
+            power(sym("x"), num(2)),
+            add([power(x_scale, num(2)), neg(power(sym("x"), num(2)))])
+        ]))
+        k_expr = sim(div(mul([num(2), y_scale]), power(x_scale, num(2))))
+        radius_sq = sim(div(
+            power(add([num(1), mul([coeff, power(x_scale, num(2))])]), num(2)),
+            mul([num(4), coeff])
+        ))
+        radius = sim(fn("sqrt", radius_sq))
+        return power(sym("y"), num(2)), rhs, [
+            "sin(t) = x/" + show(x_scale),
+            "sin(2t) = 2sin(t)cos(t)",
+            "Square; use cos(t)^2 = 1 - sin(t)^2",
+            "k = " + show(k_expr),
+            "Max centre-O tangent radius = " + show(radius),
+        ]
     return None
 
 
@@ -3053,7 +3130,14 @@ def main():
             text = input("y: ").strip()
             if text == "":
                 raise ValueError("Enter an expression.")
-            var, steps, final, formatted = solve_normal_mode(text)
+            tangent_req = parse_tangent_request(text)
+            if tangent_req is not None:
+                raw_expr, tangent_var, point = tangent_req
+                var, steps, final, formatted = solve_normal_mode(show(raw_expr) + "," + tangent_var)
+            else:
+                raw_expr = None
+                point = None
+                var, steps, final, formatted = solve_normal_mode(text)
 
             out_label = normal_derivative_label(steps, var)
             print_compact_steps(steps, out_label, final)
@@ -3067,6 +3151,15 @@ def main():
                 except Exception:
                     pass
             print("Answer: " + out_label + " = " + _answer_text(shown))
+            if tangent_req is not None:
+                expr = trig_normal(raw_expr)
+                y0 = tidy(subst(expr, var, point))
+                m = tidy(subst(shown, var, point))
+                c = tidy(add([y0, neg(mul([m, point]))]))
+                print("At " + var + " = " + readable_show(point) + ", y = " + readable_show(y0) + ".")
+                print("Gradient m = " + readable_show(m) + ".")
+                print("Tangent: y = " + readable_show(m) + "*" + var + " + " + readable_show(c))
+                print("Answer: y = " + readable_show(m) + "*" + var + " + " + readable_show(c))
 
         elif mode == "2":
             text = input("Eq: ").strip()
@@ -3419,7 +3512,16 @@ def main():
             print("4. Answer: dy/dx = " + readable_show(ans))
             cart = cartesian_from_param_exprs(xt, yt, "t")
             if cart is not None:
-                print("5. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
+                if isinstance(cart[2], list):
+                    idx = 5
+                    i = 0
+                    while i < len(cart[2]):
+                        print(str(idx) + ". " + cart[2][i])
+                        idx += 1
+                        i += 1
+                    print(str(idx) + ". Cartesian: " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
+                else:
+                    print("5. " + cart[2] + ": " + readable_show(cart[0]) + " = " + readable_show(cart[1]))
 
         elif mode == "4":
             text = input("y: ").strip()

@@ -17969,8 +17969,9 @@ def transform_r_sin_cos_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     if alpha_deg is None:
         return None
 
+    start_text = show(eq1_lhs) if is_zero(eq1_rhs) else equation_line(eq1_lhs, eq1_rhs)
     lines = [
-        "Start with " + equation_line(eq1_lhs, eq1_rhs),
+        "Start with " + start_text,
         "Write in the form A*sin(" + var + ") + B*cos(" + var + ") = C.",
         "A = " + show(sin_coeff) + ", B = " + show(cos_coeff) + ", C = " + show(const),
         "R = sqrt(A^2+B^2)",
@@ -17987,14 +17988,103 @@ def format_float(val):
     return str(round(val, 3))
 
 
+def factored_sqrt_text(node):
+    node = sim(node)
+    coeff = num(1)
+    rad = None
+    if node[0] == "mul":
+        items = flat(node, "mul")
+        i = 0
+        while i < len(items):
+            if items[i][0] == "fn" and items[i][1] == "sqrt" and rad is None:
+                rad = items[i][2]
+            else:
+                coeff = sim(mul([coeff, items[i]]))
+            i += 1
+    elif node[0] == "fn" and node[1] == "sqrt":
+        rad = node[2]
+    if rad is None or not is_num(rad) or rad[1] < 0:
+        return show(node)
+    top = rad[1]
+    bot = rad[2]
+    out_top = 1
+    inside_top = top
+    k = 2
+    while k * k <= inside_top:
+        sq = k * k
+        while inside_top % sq == 0:
+            out_top *= k
+            inside_top //= sq
+        k += 1
+    out_bot = int_sqrt(bot)
+    if out_bot is None:
+        return show(node)
+    outside = sim(mul([coeff, num(out_top, out_bot)]))
+    if inside_top == 1:
+        return show(outside)
+    core = "sqrt(" + str(inside_top) + ")"
+    if is_one(outside):
+        return core
+    if is_minus_one(outside):
+        return "-" + core
+    return show(outside) + "*" + core
+
+
+def transform_phase_double_angle_lines(lines, target_text, params, var, coeff_sin, coeff_cos, const_expr):
+    compact_target = target_text.replace(" ", "")
+    if "sin(2*" + var in compact_target or "sin(2" + var in compact_target:
+        name = "sin"
+    elif "cos(2*" + var in compact_target or "cos(2" + var in compact_target:
+        name = "cos"
+    else:
+        return None
+    if len(params) == 0:
+        return None
+    sin_val = eval_numeric(coeff_sin, {})
+    cos_val = eval_numeric(coeff_cos, {})
+    if sin_val is None or cos_val is None:
+        return None
+    r_expr = full_simplify(fn("sqrt", add([power(coeff_sin, num(2)), power(coeff_cos, num(2))])))
+    r_val = eval_numeric(r_expr, {})
+    if r_val is None or r_val <= 0:
+        return None
+    if name == "sin":
+        phase = math.atan2(cos_val, sin_val)
+        lines.append("Compare with P + R*sin(2" + var + " + a).")
+        lines.append("P = " + show(full_simplify(const_expr)))
+        lines.append("R*cos(a) = " + show(full_simplify(coeff_sin)))
+        lines.append("R*sin(a) = " + show(full_simplify(coeff_cos)))
+        lines.append("R = sqrt((" + show(full_simplify(coeff_sin)) + ")^2 + (" + show(full_simplify(coeff_cos)) + ")^2) = " + factored_sqrt_text(r_expr))
+        if abs(sin_val) > 1e-12:
+            lines.append("tan(a) = " + show(full_simplify(div(coeff_cos, coeff_sin))))
+        lines.append("a = " + fixed_float_text(phase, 3) + " rad")
+    else:
+        phase = math.atan2(-sin_val, cos_val)
+        lines.append("Compare with P + R*cos(2" + var + " + a).")
+        lines.append("P = " + show(full_simplify(const_expr)))
+        lines.append("R*cos(a) = " + show(full_simplify(coeff_cos)))
+        lines.append("-R*sin(a) = " + show(full_simplify(coeff_sin)))
+        lines.append("R = sqrt((" + show(full_simplify(coeff_sin)) + ")^2 + (" + show(full_simplify(coeff_cos)) + ")^2) = " + factored_sqrt_text(r_expr))
+        if abs(cos_val) > 1e-12:
+            lines.append("tan(a) = " + show(full_simplify(div(neg(coeff_sin), coeff_cos))))
+        lines.append("a = " + fixed_float_text(phase, 3) + " rad")
+    lines.append("Answer: P = " + show(full_simplify(const_expr)) + ", R = " + factored_sqrt_text(r_expr) + ", a = " + fixed_float_text(phase, 3) + " rad")
+    return compact_lines(lines)
+
+
 def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
     var = detect_transform_var(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs)
 
     def target_has_double_angle(node):
         node = sim(node)
+        direct_base = match_numeric_multiple_arg(node, 2)
+        if direct_base is not None and same(direct_base, sym(var)):
+            return True
         if node[0] == "fn" and node[1] in ("sin", "cos"):
             base = match_numeric_multiple_arg(node[2], 2)
-            return base is not None and same(base, sym(var))
+            if base is not None and same(base, sym(var)):
+                return True
+            return target_has_double_angle(node[2])
         if node[0] in ("add", "mul"):
             items = flat(node, node[0])
             i = 0
@@ -18014,6 +18104,7 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
         return None
     # Get the expression (move all to one side)
     expr = sim(add([eq1_lhs, neg(eq1_rhs)]))
+    expr = sim(expand_embedded_small(expr))
     # Extract coefficients of sin(x), cos(x), sin(x)cos(x), cos²(x), sin²(x)
     a_sin = num(0)
     b_cos = num(0)
@@ -18084,6 +18175,9 @@ def transform_sin_cos_2x_form(eq1_lhs, eq1_rhs, eq2_lhs, eq2_rhs, target_text):
 
     template_expr = sim(add([eq2_lhs, neg(eq2_rhs)]))
     params = detect_template_params(rewritten_expr, template_expr, var)
+    phase_lines = transform_phase_double_angle_lines(lines[:], target_text, params, var, coeff_sin2x_expr, coeff_cos2x_expr, const_expr)
+    if phase_lines is not None:
+        return phase_lines
     if len(params) != 0:
         basis_equations = fit_constant_basis_equations(full_simplify(add([rewritten_expr, neg(template_expr)])), params, var)
         if basis_equations is not None:
