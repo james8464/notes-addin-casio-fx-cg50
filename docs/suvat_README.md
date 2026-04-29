@@ -1,22 +1,39 @@
 # SUVAT Program (`SUVATprogram.py`)
 
-A kinematics solver for the CASIO fx-cg50 calculator (MicroPython v1.9.4). Solves SUVAT with exact rationals, symbolic working, and decimals. Output lines are kept readable on a small screen (units + short phrases).
+Exact-symbolic SUVAT solver for the CASIO menu flow.
+
+## CLI Flow
+
+The solver prints:
+
+- `Use , to mark exactly one target and enter the other known values.`
+- then prompts:
+  - `s:`
+  - `u:`
+  - `v:`
+  - `a:`
+  - `t:`
+
+Rules:
+
+- exactly one unknown target is required
+- unknown can be marked by blank, or explicitly by entering `,`
+- if multiple unknowns exist and no explicit target is set, input is rejected
 
 ## Features
 
 | Feature | Description |
 |---|---|
-| Exact arithmetic | All calculations use rational numbers — no floating-point rounding |
-| Symbolic working | Shows the equation used, substitution, and simplified result |
-| Decimal output | Approximate decimal shown alongside the exact answer |
-| Surd simplification | `sqrt(8)` → `2*sqrt(2)`, `sqrt(72)` → `6*sqrt(2)`, etc. |
-| Quadratic solver | Solves `s = ut + 1/2at^2` for `t` with both roots shown |
-| Gravity constant | Enter `g` for 9.8 m/s² |
-| Keyword presets | Detects phrases like `dropped`, `max height`, `returns to ground` |
-| Multi-variable output | After solving, all five variables (s, u, v, a, t) are computed |
-| Significant figures | Decimal output matches the precision of the input values |
-| Physical validation | Rejects impossible scenarios (negative discriminant, a=0 with v≠u, etc.) |
-| Units | Labels output with m, m/s, m/s², s |
+| Exact arithmetic | Rational-first calculations |
+| Symbolic working | Prints chosen equation + substitution + answer |
+| Decimal companion | Decimal line shown when meaningful |
+| Surd handling | Simplifies roots where possible |
+| Gravity token | `g` / `G` treated as 9.8 (`49/5`) |
+| Keyword presets | Text cues auto-fill common kinematics assumptions |
+| Quadratic-time branch | Uses quadratic form for `t` from `s,u,a` |
+| Two-root handling | Keeps mathematically valid roots and flags unphysical negative-time cases |
+| Units | `m`, `m/s`, `m/s^2`, `s` |
+| Significant-figures aware output | Decimal precision follows input precision |
 
 ## Input syntax
 
@@ -28,12 +45,11 @@ A kinematics solver for the CASIO fx-cg50 calculator (MicroPython v1.9.4). Solve
 - Aliases: `arcsin`, `arccos`, `arctan`, `csc`
 - Compact forms: `sin x`, `ln x`, `2x`, `3(x+1)`
 
-## How to use
+## Input Notes
 
-- Leave a field **blank** to mark it as unknown
-- Enter **`,`** to explicitly mark a variable as the target
-- Enter **expressions** like `12`, `3/2`, `g`, `sqrt(2)`, `9.8`
-- Enter **keywords** anywhere in the input to trigger presets
+- accepted values include expressions (`12`, `3/2`, `sqrt(2)`, `g`, etc.)
+- parser supports implicit multiplication and standard operators
+- text across all fields is scanned for keyword presets
 
 ## Keyword presets
 
@@ -62,15 +78,18 @@ All five standard equations, plus rearrangements:
 | `t = 2s/(u+v)` | s, u, v |
 | Quadratic for `t` from `s = ut + 1/2at²` | s, u, a |
 
+## Output Behavior Details
+
+- if a full consistent set is available, `--- All variables ---` shows all five values
+- if more than one variable remains unknown (besides target), that section is intentionally suppressed with an explanation
+- exact and decimal lines are both printed when decimal conversion is valid
+- symbolic `g` can be preserved in exact output; decimal shown separately where appropriate
+
 ## Notes
 
-- Accepts both `^` and `**`
-- Implicit multiplication is supported (`2x`, `3(x+1)`)
-- At least 2 known values are required
-- When solving for `t` with s, u, a the quadratic formula is used — both roots are shown if both are positive
-- When solving for `v` with u, a, s the program checks that `u² + 2as ≥ 0`
-- Division-by-zero edge cases are detected and reported
-- CLI errors show `Err: ...`
+- accepts both `^` and `**`
+- division-by-zero and impossible-physics branches are explicitly trapped
+- CLI errors use `Err: ...`
 
 ## Example 1: basic displacement
 

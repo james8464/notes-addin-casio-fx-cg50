@@ -184,6 +184,281 @@ def core_prefer_simpler(node):
     return node
 
 
+def raw_add(parts):
+    out = []
+    i = 0
+    while i < len(parts):
+        item = parts[i]
+        if not is_zero(item):
+            out.append(item)
+        i += 1
+    if len(out) == 0:
+        return num(0)
+    if len(out) == 1:
+        return out[0]
+    return ("add", tuple(out))
+
+
+def raw_mul(parts):
+    def add_factor(item, out, den):
+        if is_zero(item):
+            return None
+        if item[0] == "mul":
+            bits = list(flat(item, "mul"))
+            coeff = num(1)
+            k = 0
+            while k < len(bits):
+                got = add_factor(bits[k], out, den)
+                if got is None:
+                    return None
+                coeff = mulq(coeff, got)
+                k += 1
+            return coeff
+        if item[0] == "div":
+            got = add_factor(item[1], out, den)
+            if got is None:
+                return None
+            den.append(item[2])
+            return got
+        if is_num(item):
+            return item
+        if not is_one(item):
+            out.append(item)
+        return num(1)
+
+    def build(coeff, out):
+        if is_zero(coeff):
+            return num(0)
+        bits = list(out)
+        if not is_one(coeff):
+            bits.insert(0, coeff)
+        if len(bits) == 0:
+            return num(1)
+        if len(bits) == 1:
+            return bits[0]
+        return ("mul", tuple(bits))
+
+    out = []
+    den = []
+    coeff = num(1)
+    i = 0
+    while i < len(parts):
+        got = add_factor(parts[i], out, den)
+        if got is None:
+            return num(0)
+        coeff = mulq(coeff, got)
+        i += 1
+    kept_den = []
+    i = 0
+    while i < len(den):
+        removed = False
+        j = 0
+        while j < len(out):
+            if same(out[j], den[i]):
+                del out[j]
+                removed = True
+                break
+            j += 1
+        if not removed:
+            kept_den.append(den[i])
+        i += 1
+    den = kept_den
+    top = build(coeff, out)
+    if len(den) == 0:
+        return top
+    bot = build(num(1), den)
+    if is_one(bot):
+        return top
+    return ("div", top, bot)
+
+
+def divide_term_by_symbol_for_display(term, var):
+    coeff, rest = split_coeff(term)
+    if same(rest, sym(var)):
+        return coeff
+    if rest[0] == "mul":
+        items = list(flat(rest, "mul"))
+        out = []
+        removed = False
+        i = 0
+        while i < len(items):
+            if not removed and same(items[i], sym(var)):
+                removed = True
+            else:
+                out.append(items[i])
+            i += 1
+        if removed:
+            return raw_mul([coeff] + out)
+    return ("div", term, sym(var))
+
+
+def display_linear_over_var_sum(node, var):
+    node = sim(node)
+    if node[0] != "div" or not same(node[2], sym(var)):
+        return node
+    top = node[1]
+    if top[0] != "add":
+        return node
+    terms = list(flat(top, "add"))
+    out = []
+    i = 0
+    while i < len(terms):
+        out.append(divide_term_by_symbol_for_display(terms[i], var))
+        i += 1
+    return raw_add(out)
+
+
+def factor_linear_display(coeff, const, var):
+    if is_zero(coeff):
+        return const
+    shift = divq(const, coeff)
+    inside = raw_add([sym(var), shift])
+    return raw_mul([coeff, inside])
+
+
+def display_exp_power_bracket(base, n, dbase, dexp_arg, var):
+    if not (is_num(n) and is_num(dbase) and is_num(dexp_arg)):
+        return None
+    pair = linear_pair(base, var)
+    if pair is None:
+        return None
+    a, b = pair
+    if not (is_num(a) and is_num(b)):
+        return None
+    xcoeff = mulq(dexp_arg, a)
+    const = addq(mulq(dexp_arg, b), mulq(n, dbase))
+    if is_zero(xcoeff):
+        return const
+    return factor_linear_display(xcoeff, const, var)
+
+
+def display_derivative_node(expr, var):
+    expr = trig_normal(expr)
+    if expr[0] == "pow":
+        base = expr[1]
+        exp = expr[2]
+        if is_num(exp) and depends(base, [var]):
+            db = display_derivative_node(base, var)
+            base_pow = power(base, subq(exp, num(1)))
+            if base[0] == "fn":
+                return raw_mul([exp, base_pow, db])
+            return raw_mul([exp, db, base_pow])
+    if expr[0] == "mul":
+        items = list(flat(expr, "mul"))
+        exp_i = -1
+        pow_i = -1
+        dep_i = -1
+        i = 0
+        while i < len(items):
+            item = items[i]
+            if item[0] == "fn" and item[1] == "exp":
+                exp_i = i
+            elif item[0] == "pow" and is_num(item[2]) and depends(item[1], [var]):
+                pow_i = i
+            elif depends(item, [var]):
+                dep_i = i
+            i += 1
+        if exp_i >= 0 and (pow_i >= 0 or dep_i >= 0) and len(items) == 2:
+            exp_part = items[exp_i]
+            if pow_i >= 0:
+                pow_part = items[pow_i]
+                base = pow_part[1]
+                n = pow_part[2]
+            else:
+                base = items[dep_i]
+                n = num(1)
+            dbase = display_linear_over_var_sum(diff(base, var, []), var)
+            dexp_arg = display_linear_over_var_sum(diff(exp_part[2], var, []), var)
+            bracket = display_exp_power_bracket(base, n, dbase, dexp_arg, var)
+            if bracket is None:
+                bracket = raw_add([raw_mul([n, dbase]), raw_mul([dexp_arg, base])])
+            return raw_mul([exp_part, power(base, subq(n, num(1))), bracket])
+        terms = []
+        i = 0
+        while i < len(items):
+            bit = []
+            j = 0
+            while j < len(items):
+                if i == j:
+                    bit.append(display_derivative_node(items[j], var))
+                else:
+                    bit.append(items[j])
+                j += 1
+            terms.append(raw_mul(bit))
+            i += 1
+        return raw_add(terms)
+    if expr[0] == "add":
+        out = []
+        i = 0
+        while i < len(expr[1]):
+            out.append(display_derivative_node(expr[1][i], var))
+            i += 1
+        return raw_add(out)
+    return display_linear_over_var_sum(diff(expr, var, []), var)
+
+
+def preferred_derivative_display(expr, var, final):
+    try:
+        candidate = display_derivative_node(expr, var)
+        if not derivative_display_equivalent(candidate, final, var):
+            return final
+        shown_candidate = readable_show(candidate)
+        shown_final = readable_show(final)
+        if len(shown_candidate) <= len(shown_final) + 8:
+            return candidate
+        if expr[0] in ("pow", "mul") and len(shown_candidate) <= 180:
+            return candidate
+    except Exception:
+        pass
+    return final
+
+
+def derivative_display_equivalent(candidate, final, var):
+    if CASIO_CORE is None:
+        return True
+    try:
+        if CASIO_CORE.equivalent_exact(candidate, final, var):
+            return True
+    except Exception:
+        pass
+    try:
+        if CASIO_CORE.equivalent(candidate, final, var):
+            return True
+    except Exception:
+        pass
+    if math is None:
+        return False
+    try:
+        names = set()
+        collect_symbols(candidate, names)
+        collect_symbols(final, names)
+        names = list(names)
+        samples = (-0.45, -0.25, -0.1, 0.1, 0.25, 0.45, 0.7, 1.3)
+        good = 0
+        i = 0
+        while i < len(samples):
+            env = {}
+            j = 0
+            while j < len(names):
+                if names[j] == var:
+                    env[names[j]] = samples[i]
+                else:
+                    env[names[j]] = samples[i] + 0.19 * (j + 1)
+                j += 1
+            av = CASIO_CORE.numeric_eval(candidate, env)
+            bv = CASIO_CORE.numeric_eval(final, env)
+            if av is not None and bv is not None:
+                if abs(av - bv) > 1e-6 * (1.0 + abs(av) + abs(bv)):
+                    return False
+                good += 1
+                if good >= 3:
+                    return True
+            i += 1
+    except Exception:
+        pass
+    return False
+
+
 def clear_engine_caches():
     shared_clear_all_caches(_ENGINE_CACHES)
 
@@ -761,6 +1036,10 @@ def sim(node):
         return node
     if kind == "fn":
         arg = sim(node[2])
+        if node[1] == "sqrt" and same(arg, E):
+            return ("pow", E, num(1, 2))
+        if node[1] == "sqrt" and arg[0] == "pow" and same(arg[1], E) and is_num(arg[2]):
+            return ("pow", E, divq(arg[2], num(2)))
         if node[1] == "log" and same(arg, E):
             return num(1)
         if node[1] == "log" and arg[0] == "pow" and same(arg[1], E) and is_num(arg[2]):
@@ -2216,6 +2495,22 @@ def _answer_text(node):
     return show(node).replace("exp(", "e^(")
 
 
+def tangent_rhs_text(m, var, c):
+    if is_zero(m):
+        return readable_show(c)
+    if is_one(m):
+        first = var
+    elif is_minus_one(m):
+        first = "-" + var
+    else:
+        first = readable_show(m) + "*" + var
+    if is_zero(c):
+        return first
+    if neg_term(c):
+        return first + " - " + readable_show(abs_term(c))
+    return first + " + " + readable_show(c)
+
+
 
 def prefer_trig_recip(node):
     if not has_fn(node):
@@ -2735,13 +3030,6 @@ def format_final_answer(node):
             if is_one(items[1]):
                 return items[0]
 
-    if result[0] == "div":
-        bot = result[2]
-        if bot[0] == "pow" and bot[1][0] == "add" and bot[2][0] == "num" and bot[2][1] == 2:
-            expanded = expand(bot)
-            if sig(expanded) != sig(bot) and tree_size(result[1]) <= 60 and tree_size(expanded) <= 120:
-                return sim(("div", result[1], expanded))
-
     return result
 
 
@@ -2775,8 +3063,12 @@ def solve_normal_mode(text):
     final_node = tidy(diff(expr, var, []))
     if step_expr == expr:
         final_node = ans
-    final = core_prefer_simpler(final_node)
-    formatted = format_final_answer(final)
+    base_final = core_prefer_simpler(final_node)
+    final = preferred_derivative_display(expr, var, base_final)
+    if sig(final) != sig(base_final):
+        formatted = final
+    else:
+        formatted = format_final_answer(final)
     return var, steps, final, formatted
 
 
@@ -3100,6 +3392,9 @@ def compact_derivative_steps(steps, answer_label=None, answer_node=None):
         if answer_node is not None and line == "= " + readable_show(answer_node):
             i += 1
             continue
+        if answer_node is not None and line.startswith("= "):
+            i += 1
+            continue
         if len(out) == 0 or out[-1] != line:
             out.append(line)
         i += 1
@@ -3141,25 +3436,18 @@ def main():
 
             out_label = normal_derivative_label(steps, var)
             print_compact_steps(steps, out_label, final)
-            shown = final
-            # Recompute best final form (factored) for display.
-            formatted2 = format_final_answer(final)
-            if sig(formatted2) != sig(final):
-                try:
-                    if tree_size(formatted2) + 2 < tree_size(final):
-                        shown = formatted2
-                except Exception:
-                    pass
-            print("Answer: " + out_label + " = " + _answer_text(shown))
+            shown = formatted
+            print(out_label + " = " + _answer_text(shown))
             if tangent_req is not None:
                 expr = trig_normal(raw_expr)
                 y0 = tidy(subst(expr, var, point))
                 m = tidy(subst(shown, var, point))
                 c = tidy(add([y0, neg(mul([m, point]))]))
+                tangent_rhs = tangent_rhs_text(m, var, c)
                 print("At " + var + " = " + readable_show(point) + ", y = " + readable_show(y0) + ".")
                 print("Gradient m = " + readable_show(m) + ".")
-                print("Tangent: y = " + readable_show(m) + "*" + var + " + " + readable_show(c))
-                print("Answer: y = " + readable_show(m) + "*" + var + " + " + readable_show(c))
+                print("Tangent: y = " + tangent_rhs)
+                print("y = " + tangent_rhs)
 
         elif mode == "2":
             text = input("Eq: ").strip()

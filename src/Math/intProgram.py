@@ -4859,6 +4859,29 @@ def trig_simple_fraction_rewrite(node, var=None):
     bot_pm_cos = one_pm_fn(bot, 'cos')
     bot_pm_sin = one_pm_fn(bot, 'sin')
 
+    def half_double_angle(arg):
+        if arg[0] == 'mul':
+            coeff, rest = split_coeff(arg)
+            if same(coeff, num(2)):
+                return rest
+        target = mul([num(2), sym(var)])
+        if same(arg, target):
+            return sym(var)
+        return None
+
+    if same(top, num(1)) and bot_pm_cos is not None:
+        half_arg = half_double_angle(bot_pm_cos[1])
+        if half_arg is not None:
+            if bot_pm_cos[0] > 0:
+                return [
+                    'Use 1+cos(2A) = 2cos^2 A.',
+                    'So 1/(1+cos(2A)) = 1/2 sec^2 A.'
+                ], mul([num(1, 2), power(fn('sec', half_arg), num(2))])
+            return [
+                'Use 1-cos(2A) = 2sin^2 A.',
+                'So 1/(1-cos(2A)) = 1/2 cosec^2 A.'
+            ], mul([num(1, 2), power(fn('cosec', half_arg), num(2))])
+
     if top[0] == 'fn' and top[1] == 'sin' and same(top[2], mul([num(2), sym(var)])):
         top_arg = div(top[2], num(2))
         if bot_pm_cos is not None and same(bot_pm_cos[1], top_arg):

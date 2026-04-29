@@ -204,7 +204,8 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("Err:", output)
         self.assertNotIn("Method:", output)
         self.assertNotIn("Using asin rule", output)
-        self.assertIn("Answer: dy/dx = 1/sqrt(1 - x^2)", output)
+        self.assertNotIn("Answer: dy/dx", output)
+        self.assertIn("dy/dx = 1/sqrt(1 - x^2)", output)
 
     def test_integrate_accepts_compact_trig_syntax(self):
         output = run_cli("intProgram.py", "1\nsinx\n1\n\n")
@@ -222,17 +223,16 @@ class TransformRegressionTests(unittest.TestCase):
     def test_derive_product_rule_final_answer_prefers_factored_common_exp(self):
         out = run_cli("deriveProgram.py", "1\n(4*x-k)*exp(-x^2)\n")
         self.assertNotIn("Err:", out)
-        # Only one final answer line.
-        self.assertEqual(out.count("Answer: dy/dx"), 1)
         # Prefer factored form.
-        self.assertIn("e^(-x^2)*(", out.replace(" ", ""))
+        self.assertNotIn("Answer: dy/dx", out)
+        self.assertIn("dy/dx=e^(-x^2)*(4-2*x*(4*x-k))", out.replace(" ", ""))
 
     def test_derive_abs_notes_undefined_point(self):
         output = run_cli("deriveProgram.py", "1\n|x|\n")
         self.assertNotIn("Err:", output)
         self.assertIn("d/dx|u| = (u/abs(u))*du/dx", output)
         self.assertIn("undefined where x = 0", output)
-        self.assertIn("Answer: dy/dx = x/abs(x)", output)
+        self.assertIn("dy/dx = x/abs(x)", output)
 
     def test_parametric_vertical_tangent_is_answer_not_error(self):
         output = run_cli("deriveProgram.py", "3\n5\nt^2\n")
@@ -300,14 +300,14 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertIn("Write y = N/D.", output)
         self.assertIn("Let u = N and v = D.", output)
         self.assertNotIn("Answer: dy/dx = (D*dN - N*dD)/D^2", output)
-        self.assertIn("Answer: dy/dx =", output)
+        self.assertIn("dy/dx =", output)
 
     def test_product_derivative_keeps_nested_trig_argument_factored(self):
         expr = "(cot(2*((2)*(3*(7*(x)**2+2*x+-7)**2+6)+pi/(3))^2+2))*exp(-7*x-5)*log(log(abs(2*(x)+(5))+10))"
         output = run_cli("deriveProgram.py", "1\n" + expr + "\n")
         self.assertNotIn("1555848*x^8", output)
         self.assertIn("dy/dx = u'*v*w + u*v'*w + u*v*w'", output)
-        self.assertIn("Answer: dy/dx =", output)
+        self.assertIn("dy/dx =", output)
 
     def test_trig_grouped_general_solution_detection(self):
         result = trig_program.detect_general_solution([30.0, 150.0, 390.0, 510.0], True)
@@ -390,7 +390,7 @@ class TransformRegressionTests(unittest.TestCase):
         out = run_cli("deriveProgram.py", "1\nlog(2*x)/(2*x),e^2/2\n")
         self.assertNotIn("Err:", out)
         self.assertIn("Gradient m = -2/e^4.", out)
-        self.assertIn("Answer: y = -2/e^4*x + 3/e^2", out)
+        self.assertIn("y = -2/e^4*x + 3/e^2", out)
 
     def test_exam_parametric_cartesian_fixtures(self):
         loop = run_cli("algebraProgram.py", "11\n2*sin(t)\n3*sin(2*t)\nt\n")

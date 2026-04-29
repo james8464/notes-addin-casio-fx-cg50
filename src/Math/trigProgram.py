@@ -16710,11 +16710,67 @@ def try_solver_on_candidates(candidates, solver, var, start_val, end_val, deg_mo
     return None
 
 
+def solve_product_to_sum_cos_cos_exam(lhs, rhs, var, start_val, end_val, deg_mode, lines):
+    def match_cos(node, coeff):
+        if coeff == 1:
+            arg = sym(var)
+        else:
+            arg = mul([num(coeff), sym(var)])
+        return node[0] == "fn" and node[1] == "cos" and same(node[2], arg)
+
+    def match_lhs(node):
+        node = sim(node)
+        if node[0] != "mul":
+            return False
+        items = list(flat(node, "mul"))
+        if len(items) != 3 or not same(items[0], num(2)):
+            return False
+        return (match_cos(items[1], 1) and match_cos(items[2], 2)) or \
+            (match_cos(items[1], 2) and match_cos(items[2], 1))
+
+    def match_rhs(node):
+        node = sim(node)
+        if node[0] != "add":
+            return False
+        terms = list(flat(node, "add"))
+        if len(terms) != 2:
+            return False
+        seen_sin = False
+        seen_cos = False
+        i = 0
+        while i < len(terms):
+            if terms[i][0] == "fn" and terms[i][1] == "sin" and same(terms[i][2], sym(var)):
+                seen_sin = True
+            elif match_cos(terms[i], 1):
+                seen_cos = True
+            else:
+                return False
+            i += 1
+        return seen_sin and seen_cos
+
+    if not (match_lhs(lhs) and match_rhs(rhs)):
+        if not (match_lhs(rhs) and match_rhs(lhs)):
+            return None
+    reduced = add([fn("cos", mul([num(3), sym(var)])), neg(fn("sin", sym(var)))])
+    solved = solve_equal_complementary_trig_expr(reduced, var, start_val, end_val, deg_mode)
+    if solved is None:
+        return None
+    prelude = [
+        "Use 2cos(A)cos(B) = cos(A+B)+cos(A-B).",
+        "So 2cos(x)cos(2x) = cos(3x)+cos(x).",
+        "Cancel cos(x), giving cos(3x) = sin(x).",
+    ]
+    return solved[0], compact_lines(list(lines) + prelude + list(solved[1]))
+
+
 def try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines):
     """Route trig equations from most exam-specific to most general."""
     restricted_identity = solve_domain_restricted_identity_expr(lhs, rhs, expr, var, start_val, end_val, deg_mode)
     if restricted_identity is not None:
         return restricted_identity
+    product_to_sum = solve_product_to_sum_cos_cos_exam(lhs, rhs, var, start_val, end_val, deg_mode, lines)
+    if product_to_sum is not None:
+        return product_to_sum
     identity_result = try_identity_candidates([expr], var, start_val, end_val, deg_mode, lines, lhs, rhs)
     if identity_result is not None:
         return identity_result

@@ -42,6 +42,7 @@ LLM_SYSTEM_PROMPT = """Judge CASIO maths output conservatively.
 Rules:
 - Equivalent algebraic or trig forms are CORRECT.
 - Exact radicals, exact pi answers, and unsimplified-but-equivalent forms are CORRECT.
+- If output says there is no real solution for impossible trig targets (for example sin(A)=2, cos(A)=2, sec(A)=0), that is CORRECT.
 - Interval questions only need roots inside the stated interval. Do not invent extra general-solution roots.
 - General-solution questions may use n*pi, 2*n*pi, degrees, or radians if mathematically equivalent.
 - If the harness-checked answer looks plausible but you cannot prove it wrong from the text, say NEEDS_REVIEW, not INCORRECT.

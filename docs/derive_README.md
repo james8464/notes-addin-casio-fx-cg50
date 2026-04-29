@@ -1,155 +1,92 @@
 # Differentiation Program (`deriveProgram.py`)
 
-A symbolic differentiation engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4). **Working uses short `Method:` lines** where the engine can fold steps.
+Symbolic differentiation program with normal, implicit, parametric, and explicit second-derivative menu modes.
 
-## Features
+## Main Menu (`M`)
 
-| Mode | Label shown | Feature | What it does |
-|---|---|---|---|
-| 1 | `n` | Normal | Differentiates an expression with respect to the chosen variable |
-| 2 | `imp` | Implicit | Performs implicit differentiation on an equation |
-| 3 | `par` | Parametric | Computes `dy/dx` from `x(t)` and `y(t)` |
+- `1 n` - normal derivative
+- `2 imp` - implicit differentiation
+- `3 par` - parametric differentiation
+- `4 2nd` - first + second derivative workflow
 
-## Input syntax
+## Shared Syntax
 
-- Variables: `x`, `y`, `t`, ...
-- Numbers: integers, decimals, fractions
-- Constants: `pi`, `e`
-- Functions: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `asin`, `acos`, `atan`, `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`
-- Operators: `+`, `-`, `*`, `/`, `^`, `**`
-- Compact forms: `sin x`, `ln x`, `sin^2 x`, `cos^3 x`, `e^x`
-
-## Notes
-
-- Accepts both `^` and `**`
-- Normal mode accepts plain expressions, `expr,x`, `y=expr`, or `EQ1=expr`
-- Implicit mode requires `left=right`
-- Parametric mode expects `t` as the parameter
-- Working is short and calculator-friendly
-- `sec`, `cosec`, and `cot` derivatives are shown by converting to sin/cos and applying the quotient rule
-- Simple second-derivative input forms such as `d2/dx2 x^3` and `d^2/dx^2 x^3` are accepted in normal mode
-- CLI errors show `Err: ...`
-
-## Supported differentiation families
-
-- constants, powers, sums, products, quotients
-- chain rule
-- trig functions
-- exponential and logarithmic functions
-- inverse trig basics
-- variable-exponent cases such as `x^x`, `(sin(x))^x`, `x^(sin(x))`
-- **symbolic exponents** such as `x^n`, `x^a`, `x^(2*n)` (FIXED)
-
-## Python API
-
-```python
-import sys
-sys.path.insert(0, 'Math')
-import deriveProgram as dp
-
-# Basic derivative
-result = dp.diff(dp.parse('x^2'), 'x', {})
-print(dp.show(result))  # 2*x
-
-# Symbolic power rule (NEW)
-result = dp.diff(dp.parse('x^n'), 'x', {})
-print(dp.show(result))  # n*x^(n-1)
-
-# Chain rule
-result = dp.diff(dp.parse('sin(2*x)'), 'x', {})
-print(dp.show(result))  # 2*cos(2*x)
-
-# Product rule
-result = dp.diff(dp.parse('x*sin(x)'), 'x', {})
-print(dp.show(result))  # x*cos(x)+sin(x)
-
-# Quotient rule
-result = dp.diff(dp.parse('sin(x)/x'), 'x', {})
-print(dp.show(result))  # (x*cos(x)-sin(x))/x^2
-```
+- operators: `+ - * / ^ **`
+- implicit multiplication supported
+- functions: trig, inverse trig, `ln/log`, `sqrt`, `abs`, exponentials
+- constants: `pi`, `e`
+- compact forms like `sin x`, `sin^2 x`, `e^x` are accepted
 
 ## Mode 1: Normal (`n`)
 
-Computes the derivative of a normal expression.
+Prompt:
 
-### Example 1: variable-exponent / log-differentiate style case
+- `y:`
 
-```text
-M: 1
-y: ((x^2+1)/(x^2-1))^x
-```
+Accepted normal inputs include:
 
-Output:
+- plain expression
+- expression with explicit variable (`expr,x`)
+- equation wrappers like `y=expr` or `EQ1=expr`
+- second-derivative textual forms can also be recognized in this path (`d2/dx2 ...`, `d^2/dx^2 ...`)
+- tangent request forms:
+  - `expr,point`
+  - `expr,var,point`
 
-```text
-1. Log-differentiate style rule
-2. y = ((x^2+1)/(x^2-1))^x
-3. dy/dx = y*(v*du/u+ln(u)*dv/dx)
-4. = (-4*((x^2+1)/(x^2-1))^x*x^2+((x^2+1)/(x^2-1))^x*ln((x^2+1)/(x^2-1))*x^4-((x^2+1)/(x^2-1))^x*ln((x^2+1)/(x^2-1)))/((x^2-1)*(x^2+1))
-dy/dx = (-4*((x^2+1)/(x^2-1))^x*x^2+((x^2+1)/(x^2-1))^x*ln((x^2+1)/(x^2-1))*x^4-((x^2+1)/(x^2-1))^x*ln((x^2+1)/(x^2-1)))/((x^2-1)*(x^2+1))
-```
+When tangent request is used, output includes:
 
-### Example 2: simpler chain-rule style input
-
-```text
-M: 1
-y: sin(2*x)
-```
-
-Output:
-
-```text
-Method: Differentiate with respect to x
-Using chain rule
-dy/dx = 2*cos(2*x)
-```
+- derivative at point
+- gradient
+- tangent-line equation
 
 ## Mode 2: Implicit (`imp`)
 
-Differentiates an equation where `y` is not isolated.
+Prompt:
 
-### Example
+- `Eq:`
 
-```text
-M: 2
-Eq: x^2+x*y+y^2=7
-```
+Requirements:
 
-Output:
+- must contain `left=right`
+- variable pair is inferred (independent + dependent)
+- rearranges to isolate `d(dep)/d(indep)`
 
-```text
-Method: Implicit differentiation
-d/dx(LHS)=d/dx(RHS)
-2*x + x*dy/dx + y + 2*y*dy/dx = 0
-Make dy/dx
-(x+2*y)*dy/dx + 2*x+y = 0
-dy/dx = (-2*x-y)/(x+2*y)
-```
+Output includes derivative equation steps and final `Answer: d?/d? = ...`.
 
 ## Mode 3: Parametric (`par`)
 
-Computes `dy/dx = (dy/dt)/(dx/dt)`.
+Prompts:
 
-### Example
+- `x(t):`
+- `y(t):`
 
-```text
-M: 3
-x(t): t^3-3*t
-y(t): t^4+t
-```
+Behavior:
 
-Output:
+- computes `dx/dt`, `dy/dt`, then `dy/dx=(dy/dt)/(dx/dt)`
+- reports undefined vertical tangent case when `dx/dt = 0`
+- also attempts a cartesian relation summary for supported parametric families
 
-```text
-Method: Parametric differentiation
-dx/dt = 3*t^2-3
-dy/dt = 4*t^3+1
-dy/dx = (4*t^3+1)/(3*(t^2-1))
-```
+## Mode 4: Second Derivative (`2nd`)
 
-## Error handling
+Prompt:
 
-- Invalid input shows `Err: ...`
-- Missing `=` in implicit mode is rejected
-- `dx/dt = 0` in parametric mode is rejected
-- Unsupported forms fail directly rather than guessing
+- `y:`
+
+Behavior:
+
+- runs normal-derivative flow first (prints compact first-derivative working)
+- then differentiates that result again
+- prints final second derivative as `Answer: d2y/dx2 = ...` (or equivalent label for non-`x` variable)
+
+## Covered Rule Families
+
+- constants, sums, products, quotients, chain rule
+- trig + inverse trig base derivatives
+- log/exponential rules
+- variable exponents (`x^x`, `x^n`, `x^(f(x))`, `(f(x))^x`)
+
+## Error Handling
+
+- invalid/missing input -> `Err: ...`
+- implicit mode without `=` -> rejected
+- parser/unsupported structures fail explicitly (no silent guessing)

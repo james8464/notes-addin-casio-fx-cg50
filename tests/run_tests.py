@@ -2452,12 +2452,14 @@ class CASIOApp(App):
             self.append_result(f"[dim]Session log:[/dim] {p}")
 
     def _append_session_report_if_worthy(self, record):
-        """Append a compact block for harness failures or verifier disagreements."""
+        """Append a compact block for high-signal failures only."""
         llm = (getattr(record, "llm_verdict", "") or "").strip()
         review_needed = bool(getattr(record, "review_needed", False))
-        if record.harness_status != TestStatus.FAIL and not review_needed:
+        # Keep report actionable: always log harness failures; skip plain
+        # NEEDS_REVIEW noise from verifier disagreements.
+        if record.harness_status != TestStatus.FAIL:
             return
-        kind = "harness failure" if record.harness_status == TestStatus.FAIL else "verifier disagreement"
+        kind = "harness failure"
         p = self._session_report_path()
         lines = [
             "-" * 72,
@@ -3498,6 +3500,10 @@ class CASIOApp(App):
                 return code_verdict
 
             def apply_llm_to_record(record, verdict, explanation, llm_elapsed=0.1):
+                # Conservative policy: when harness already proved correctness,
+                # treat raw LLM INCORRECT as review-needed noise, not a hard call.
+                if verdict == "INCORRECT" and record.passed:
+                    verdict = "NEEDS_REVIEW"
                 record.llm_verdict = verdict or ""
                 record.llm_explanation = (explanation or "")
                 if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):

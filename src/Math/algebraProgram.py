@@ -2136,6 +2136,27 @@ def match_scaled_trig_arg(node, trig_name, arg):
     return None
 
 
+def match_signed_trig_pair(node, param, expected):
+    terms = flat(sim(node), 'add') if sim(node)[0] == 'add' else [sim(node)]
+    seen = {}
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        if rest[0] != 'fn' or rest[1] not in expected or not same(rest[2], sym(param)):
+            return False
+        want = expected[rest[1]]
+        if want > 0 and not is_one(coeff):
+            return False
+        if want < 0 and not is_minus_one(coeff):
+            return False
+        seen[rest[1]] = True
+        i += 1
+    for name in expected:
+        if name not in seen:
+            return False
+    return True
+
+
 def verified_cartesian_conic(x_expr, y_expr, param):
     hs = (num(-3), num(-2), num(-1), num(0), num(1), num(2), num(3), num(4))
     x_weights = (num(1), num(4), num(9), num(16), num(25))
@@ -2211,6 +2232,18 @@ def cartesian_from_param_exprs(x_expr, y_expr, param='t'):
             'k = ' + show(k_expr) + '.',
             'For a circle centre O tangent to this curve, maximise x^2 + y^2.',
             'Maximum radius = ' + show(radius) + '.',
+        ]
+    if match_signed_trig_pair(x_expr, param, {'tan': 1, 'sec': -1}) and \
+            match_signed_trig_pair(y_expr, param, {'cot': 1, 'cosec': -1}):
+        lhs = mul([
+            add([power(sym('x'), num(2)), num(-1)]),
+            add([power(sym('y'), num(2)), num(-1)])
+        ])
+        rhs = mul([num(4), sym('x'), sym('y')])
+        return lhs, rhs, [
+            'Use tan=' + 'sin/cos, sec=1/cos, cot=cos/sin, cosec=1/sin.',
+            'So x=(sin(' + param + ')-1)/cos(' + param + ') and y=(cos(' + param + ')-1)/sin(' + param + ').',
+            'Eliminate ' + param + ' using sin^2(' + param + ')+cos^2(' + param + ')=1.',
         ]
     conic = verified_cartesian_conic(x_expr, y_expr, param)
     if conic is not None:

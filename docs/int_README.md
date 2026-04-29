@@ -1,223 +1,110 @@
 # Integration Program (`intProgram.py`)
 
-A symbolic integration engine for the CASIO fx-cg50 calculator (MicroPython v1.9.4).
+Symbolic integration + first-order DE solver + parametric area helper for CASIO fx-cg50 (MicroPython 1.9.4 compatible).
 
-**On-screen copy** uses short method tags (small display): e.g. `Subst`, `Trig id`, `Parts`, `Pfrac`, `Rev chain`, `Poly div`, `PolyQ exp` — not the long English names.
+## Main Menu
 
-## Features
+`M` prompt:
 
-| Mode | Label shown | Feature | What it does |
-|---|---|---|---|
-| 1 | `int` | Integral | Computes indefinite integrals |
-| 2 | `de` | Differential equations | Solves supported first-order differential equations |
-| 3 | `param area` | Parametric area | Computes area under parametric curve ∫y dx |
-
-## Integration methods (Mode 1)
-
-| Option | Label shown | Meaning |
-|---|---|---|
-| 1 | `auto` | Let the engine choose a route |
-| 2 | `dir` | Direct integration |
-| 3 | `trig` | Trigonometric identities / trig reductions |
-| 4 | `sub` | Substitution |
-| 5 | `pts` | Parts (integration by parts) |
-| 6 | `pf` | Partial fractions |
-| 7 | `div` | Polynomial division |
-
-## Input syntax
-
-- Variables: `x`, `t`, ...
-- Numbers: integers, decimals, fractions
-- Constants: `pi`, `e`
-- Functions: `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `exp`, `log`, `log10`, `sqrt`, `abs`, `ln`, `asin`, `acos`, `atan`
-- Operators: `+`, `-`, `*`, `/`, `^`, `**`
-- Compact forms: `sin x`, `ln x`, `sec x tan x`, `sin^2 x`, `cos^3 x`
-- Explicit variable form: `expr,x`
-- Equation form: `EQ1=expr` or `y=expr` or `expr=expr`
-- DE input: `dy/dx=...` or `dy/dx: ...` with optional boundary condition like `y=3,x=0`
-
-## Notes
-
-- Accepts both `^` and `**`
-- DE mode accepts both `dy/dx = ...` and `dy/dx: ...` syntax
-- Auto mode already covers many direct, trig, substitution, parts, partial-fraction, and DE families
-- Working is compact and calculator-friendly: method, key formula/substitution, working, and answer
-- Some non-elementary families still return short out-of-scope / failure lines (look for `no elementary` where relevant)
-- CLI errors show `Err: ...`
+- `1 int` - Integral mode
+- `2 de` - Differential equation mode
+- `3 param area` - Parametric area mode
 
 ## Mode 1: Integral (`int`)
 
-Choose the method, then enter the integrand.
+Prompt sequence:
 
-### Example 1: auto / exponential-trig special form
+- `f:` integral request
+- `Met:` method selection
+- optional `u:` only when `Met = 4` (substitution), to force a specific `u`
 
-```text
-M: 1
-f: e^(5*x)*sin(7*x)
-Met: 1
-```
+### `f:` accepted input forms
 
-Output:
+- `expr` -> indefinite integral with inferred variable
+- `expr,var` -> indefinite integral with explicit variable
+- `expr,var,lower,upper` -> definite integral
+- `expr,lower,upper` -> definite integral with inferred variable
+- equation-style cartesian forms are accepted when they can be rearranged to `y=f(x)`:
+  - `y=...`
+  - `EQ1=...`
+  - `expr=expr` (if linear in `y`)
 
-```text
-Method: Int[e^(ax+b)sin(cx+d)]
-Use: = e^(ax+b)*(a*sin(cx+d) - c*cos(cx+d))/(a^2+c^2) + C
-= e^(5*x)*(5*sin(7*x) - 7*cos(7*x))/74 + C
-Answer: e^(5*x)*(5*sin(7*x) - 7*cos(7*x))/74 + C
-```
+### `Met:` method menu
 
-### Example 2: substitution
+- `1 auto` - route chooser (direct, reverse-chain, trig rewrite, substitution, parts/cyclic parts, partial fractions, division)
+- `2 dir` - direct/basic pattern integration
+- `3 trig` - trig identity/reduction routes
+- `4 sub` - substitution route (`u:` optional)
+- `5 pts` - integration by parts/cyclic parts
+- `6 pf` - partial fractions
+- `7 div` - polynomial/rational division
 
-```text
-M: 1
-f: (3*x^2+1)/(x^3+x+7)
-Met: 4
-u: x^3+x+7
-```
+### `u:` (forced substitution) accepted forms
 
-Output:
+- `u=x^3+x+7`
+- `x^3+x+7`
+- `u^2=...` / `u**2=...` (treated as `u=sqrt(...)`)
 
-```text
-Method: Subst
-u = x^3+x+7
-= ln|x^3+x+7| + C
-Answer: ln|x^3+x+7| + C
-```
+## Mode 2: Differential Equations (`de`)
 
-### Example 3: trig reduction
+Prompt sequence:
 
-```text
-Input family: sin(x)^4
-Met: 3
-```
+- `dy/dx:` DE input
+- `BC (e.g. y(1)=2 or x=1,y=2):` optional boundary condition
 
-User picks menu method `3` (`trig`). Working may show `Method: Trig id` (or another tag if the engine routes differently).
+### `dy/dx:` accepted forms
 
-Typical output shape:
+- `dy/dx=...`
+- `dy/dx: ...`
+- full symbolic derivative variables such as `dY/dX=...`
+- plain RHS expression (defaults to dependent `y`, independent `x`)
 
-```text
-Use sin^2 x = (1-cos(2x))/2.
-So I = Int[...]
-= -1/4*sin(2*x)+1/32*sin(4*x)+3/8*x + C
-```
+### What `BC (e.g. y(1)=2 or x=1,y=2):` means
 
-### Example 4: partial fractions
+This field is optional. Leave blank for a general `+C` answer.
 
-```text
-Input family: 1/(x^4-1)
-Met: 6
-```
+Accepted BC formats:
 
-Typical output shape:
+- point form: `y(1)=2`
+- comma form: `x=1,y=2` or `y=2,x=1`
+- `"at"` also works: `y=2 at x=1`
 
-```text
-Use partial fractions.
-1/(x^4-1) = A/(x-1)+B/(x+1)+(C*x+D)/(x^2+1)
-A = 1/4, B = -1/4, C = 0, D = -1/2
-So I = 1/4*ln|1-x|-1/4*ln|x+1|-1/2*atan(x) + C
-```
+Rules:
 
-### Example 5: division
+- it must include both independent and dependent values
+- variable names must match the DE variables (`x`/`y`, or whatever was parsed)
+- invalid BC formats are rejected
 
-```text
-Input family: (x^4+1)/(x^2+1)
-Met: 7
-```
+## Mode 3: Parametric Area (`param area`)
 
-Typical output shape:
+Prompt sequence:
 
-```text
-Divide the numerator by the denominator.
-So I = Int[x^2+2/(x^2+1)-1] dx
-= 1/3*x^3+2*atan(x)-x + C
-```
+- `x(t):`
+- `y(t):`
 
-## Mode 2: Differential equations (`de`)
+Computes:
 
-Solves supported first-order differential equations with optional boundary conditions.
+- `dx/dt`
+- integrand `y * (dx/dt)`
+- integrates with respect to `t`
 
-### Example
+Output starts with:
 
-```text
-M: 2
-dy/dx: dy/dx=2*x*y
-BC: y=3,x=0
-```
+- `dx/dt = ...`
+- `Use Int[y dx] = Int[y*(dx/dt)] dt`
 
-Output:
+## Parser and Syntax Coverage
 
-```text
-1. Separate variables
-2. Int[1/y] dy = Int[2*x] dx
-3. ln|y| = x^2 + C
-4. Use y = 3 when x = 0.
-5. C = ln(3)
-6. ln|y| = x^2+ln(3)
-7. So y = 3*e^(x^2)
-y = 3*e^(x^2)
-```
+- operators: `+ - * / ^ **`
+- implicit multiplication supported (`2x`, `sin x`, `x(x+1)`)
+- constants: `pi`, `e`
+- inverse trig aliases accepted (`arcsin`, `arccos`, `arctan`)
+- compact trig/log forms accepted
+- expression variable is auto-detected when omitted
 
-## Mode 3: Parametric area (`param area`)
+## Practical Notes
 
-Computes the area under a parametric curve using ∫y dx = ∫y (dx/dt) dt.
-
-### Example
-
-```text
-M: 3
-x(t): t^2
-y(t): 2*t+1
-```
-
-Output:
-
-```text
-dx/dt = 2*t
-Int[y dx] = Int[(2*t+1)*2*t] dt
-Method: Int[polynomial in t]
-Use power rule.
-= 4/3*t^3+t^2 + C
-```
-
-## Python API
-
-```python
-import sys
-sys.path.insert(0, 'Math')
-import intProgram as ip
-
-# Basic polynomial integration
-J, K = ip.parse_input('x^2')
-result, reason, steps = ip.solve(J, K, '1')
-print('Result exists:', result is not None)
-
-# a^x integration (NEW)
-J, K = ip.parse_input('2^x')
-result, reason, steps = ip.solve(J, K, '1')
-print('2^x integral works:', result is not None)
-
-# ln(x)^n by parts (NEW)
-J, K = ip.parse_input('(ln(x))^3')
-result, reason, steps = ip.solve(J, K, '1')
-print('ln(x)^3 integral works:', result is not None)
-
-# High-power trig (NEW)
-J, K = ip.parse_input('sin(x)^6')
-result, reason, steps = ip.solve(J, K, '1')
-print('sin(x)^6 integral works:', result is not None)
-```
-
-## Out-of-scope examples
-
-The engine now reports some hard families more explicitly, for example:
-- `1/sqrt(1-x^4)`
-- `1/(x^2*ln(x))`
-- `atan(x)^2`
-- `exp(x^2)`
-- `ln(ln(x))`
-
-## Error handling
-
-- Invalid input shows `Err: ...`
-- Unsupported questions report a direct out-of-scope message
-- Division by zero is caught and reported
+- output is intentionally compact for calculator screen width
+- definite integrals print `F(upper)-F(lower)` working when relevant
+- unsupported/non-elementary families return explicit failure text
+- CLI failures use `Err: ...`
