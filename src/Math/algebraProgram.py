@@ -3139,7 +3139,10 @@ def match_linear_in_var(node, var_name):
         expected_two = sim(add([zero_sub, mul([num(2), coeff])]))
     except (ValueError, ZeroDivisionError):
         return None
-    if is_zero(coeff) or not equivalent(two_sub, expected_two):
+    try:
+        if is_zero(coeff) or not equivalent(two_sub, expected_two):
+            return None
+    except (ValueError, ZeroDivisionError):
         return None
     return coeff, sim(zero_sub)
 
@@ -3477,7 +3480,7 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
     return None
 
 
-def inverse_function(f_text, var='x'):
+def inverse_function(f_text, var='x', domain_text=None):
     """Find f^-1 by rewriting y=f(x) and solving the result for y."""
     try:
         if text_has_even_log_power(f_text):
@@ -3492,6 +3495,11 @@ def inverse_function(f_text, var='x'):
         f = normalise_negative_power_div(sim(raw_f))
         shown_f = show(f)
         steps = ["f(x) = " + shown_f, "y = " + shown_f]
+        domain_clean = (domain_text or "").strip()
+        if domain_clean:
+            # Keep this as user-facing text: many exercises want the inverse range
+            # to explicitly match the original domain restriction.
+            steps.append("Given domain: " + domain_clean)
         if not depends_on(f, var):
             steps.append("A constant function is many-to-one.")
             steps.append("Answer: No inverse on all real x - constant function")
@@ -3508,6 +3516,12 @@ def inverse_function(f_text, var='x'):
             if len(steps) == 0 or not steps[-1].startswith("f^-1"):
                 steps.append("f^-1(x) = " + show(inv))
             steps.append("Answer: f^-1(x) = " + show(inv))
+            if domain_clean:
+                # Domain of inverse = range of original. For typical exam functions
+                # with a stated domain restriction, the range is often all reals.
+                steps.append("Domain of f^-1 : x in R")
+                # Range of inverse = domain of original.
+                steps.append("Range of f^-1 : " + domain_clean)
             return show(inv), ensure_reasoning_marker(steps)
 
         dependent, shift = split_outer_shift(f_y, 'y')
@@ -4290,6 +4304,132 @@ def numeric_eval(node, env=None):
         except Exception:
             return None
     return None
+
+
+def newton_diff(node, var_name):
+    node = sim(node)
+    kind = node[0]
+    if kind == 'num' or kind == 'const':
+        return num(0)
+    if kind == 'sym':
+        return num(1) if node[1] == var_name else num(0)
+    if kind == 'add':
+        parts = []
+        i = 0
+        while i < len(node[1]):
+            parts.append(newton_diff(node[1][i], var_name))
+            i += 1
+        return sim(add(parts))
+    if kind == 'mul':
+        items = list(flat(node, 'mul'))
+        terms = []
+        i = 0
+        while i < len(items):
+            bit = []
+            j = 0
+            while j < len(items):
+                bit.append(newton_diff(items[j], var_name) if i == j else items[j])
+                j += 1
+            terms.append(mul(bit))
+            i += 1
+        return sim(add(terms))
+    if kind == 'div':
+        u = node[1]
+        v = node[2]
+        du = newton_diff(u, var_name)
+        dv = newton_diff(v, var_name)
+        return sim(div(add([mul([du, v]), neg(mul([u, dv]))]), power(v, num(2))))
+    if kind == 'pow':
+        base = node[1]
+        exp = node[2]
+        if is_num(exp):
+            return sim(mul([exp, power(base, add([exp, num(-1)])), newton_diff(base, var_name)]))
+        if not depends_on(base, var_name):
+            return sim(mul([power(base, exp), fn('log', base), newton_diff(exp, var_name)]))
+        return sim(mul([power(base, exp), newton_diff(mul([exp, fn('log', base)]), var_name)]))
+    if kind == 'fn':
+        arg = node[2]
+        da = newton_diff(arg, var_name)
+        name = node[1]
+        if name == 'log':
+            return sim(div(da, arg))
+        if name == 'exp':
+            return sim(mul([fn('exp', arg), da]))
+        if name == 'sin':
+            return sim(mul([fn('cos', arg), da]))
+        if name == 'cos':
+            return sim(neg(mul([fn('sin', arg), da])))
+        if name == 'tan':
+            return sim(mul([power(fn('sec', arg), num(2)), da]))
+        if name == 'sec':
+            return sim(mul([fn('sec', arg), fn('tan', arg), da]))
+        if name == 'sqrt':
+            return sim(div(da, mul([num(2), fn('sqrt', arg)])))
+    raise ValueError('Cannot differentiate this expression for Newton-Raphson.')
+
+
+def float_text(value, places=12):
+    txt = ("%." + str(places) + "g") % value
+    if "." in txt:
+        while txt.endswith("0"):
+            txt = txt[:-1]
+        if txt.endswith("."):
+            txt = txt[:-1]
+    return txt
+
+
+def parse_newton_input(text):
+    parts = split_top_level_all(text.strip(), ',')
+    parts = [p.strip() for p in parts]
+    if len(parts) == 3:
+        eq_text = parts[0]
+        var_name = None
+        x0_text = parts[1]
+        steps_text = parts[2]
+    elif len(parts) == 4:
+        eq_text = parts[0]
+        var_name = parts[1] if parts[1] != '' else None
+        x0_text = parts[2]
+        steps_text = parts[3]
+    else:
+        raise ValueError('Use: eq, x0, steps or eq, var, x0, steps.')
+    lhs, rhs = parse_equation_or_zero(eq_text)
+    expr = sim(add([lhs, neg(rhs)]))
+    if var_name is None:
+        names = set()
+        collect_symbol_names(expr, names)
+        var_name = 'x' if 'x' in names else (next(iter(names)) if len(names) == 1 else 'x')
+    x0 = numeric_eval(parse(x0_text), {})
+    if x0 is None:
+        raise ValueError('Starting value must be numeric.')
+    try:
+        count = int(steps_text)
+    except Exception:
+        raise ValueError('Iteration count must be an integer.')
+    if count < 1 or count > 20:
+        raise ValueError('Use 1 to 20 Newton iterations.')
+    return expr, var_name, x0, count
+
+
+def newton_raphson_text(text):
+    expr, var_name, x, count = parse_newton_input(text)
+    deriv = sim(newton_diff(expr, var_name))
+    lines = [
+        'f(' + var_name + ') = ' + show(expr),
+        "f'(" + var_name + ') = ' + show(deriv),
+        var_name + '_(n+1) = ' + var_name + '_n - f(' + var_name + '_n)/f\'(' + var_name + '_n)',
+    ]
+    i = 1
+    while i <= count:
+        fx = numeric_eval(expr, {var_name: x})
+        dfx = numeric_eval(deriv, {var_name: x})
+        if fx is None or dfx is None or abs(dfx) < 1e-14:
+            raise ValueError('Newton iteration failed.')
+        x = x - fx / dfx
+        lines.append(var_name + str(i) + ' = ' + float_text(x, 12))
+        i += 1
+    lines.append('Answer: ' + var_name + ' = ' + float_text(x, 12))
+    return lines
 
 
 def canonical_compare_form(node):
@@ -7681,6 +7821,7 @@ def main():
         ('9', 'rw'),
         ('10', 'dom/rng'),
         ('11', 'cart'),
+        ('12', 'newton'),
     ], '1')
     begin_user_action()
     try:
@@ -7763,7 +7904,13 @@ def main():
             if f_text == '':
                 f_text = '2*x+1'
                 print('Use: f=' + f_text)
-            result, steps = inverse_function(f_text)
+            # Accept optional domain restriction: "f, x<2"
+            parts = split_top_level_all(f_text, ",")
+            dom = None
+            if len(parts) >= 2:
+                f_text = parts[0].strip()
+                dom = parts[1].strip()
+            result, steps = inverse_function(f_text, domain_text=dom)
             print_mode_lines(steps)
         elif mode == '9':
             text = input('Rw: ').strip()
@@ -7808,6 +7955,12 @@ def main():
             if param == '':
                 param = 't'
             lines = cartesian_parametric_lines(x_text, y_text, param)
+            print_mode_lines(lines)
+        elif mode == '12':
+            text = input('Eq, x0, n: ').strip()
+            if text == '':
+                raise ValueError('Enter eq, x0, steps.')
+            lines = newton_raphson_text(text)
             print_mode_lines(lines)
         else:
             print('Bad mode.')

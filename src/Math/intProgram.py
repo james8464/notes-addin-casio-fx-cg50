@@ -6661,7 +6661,35 @@ def de_quadratic_target(node, yvar):
 
 
 def de_finish_target(target, rhs, yvar, y0=None):
-    B = rhs
+    def _simplify_exp_log_powers(node):
+        # Turn exp(k*ln(A) + rest) into A^k * exp(rest) for small integer k.
+        # This is primarily to match exam-mark-scheme forms like (x+1)^2*e^(-x).
+        if node is None or node[0] != 'fn' or node[1] != 'exp':
+            return node
+        arg = node[2]
+        terms = flat(arg, 'add') if arg[0] == 'add' else [arg]
+        pow_factors = []
+        other = []
+        for t in terms:
+            coeff, rest = split_coeff(t)
+            if rest[0] == 'fn' and rest[1] in ('ln', 'log') and is_num(coeff) and is_int_num(coeff):
+                n = coeff[1]
+                if n != 0:
+                    base = rest[2]
+                    if base[0] == 'fn' and base[1] == 'abs' and n % 2 == 0:
+                        base = base[2]
+                    pow_factors.append(power(base, num(n)))
+                continue
+            other.append(t)
+        if not pow_factors:
+            return node
+        factor = make_mul(pow_factors) if len(pow_factors) > 1 else pow_factors[0]
+        if not other:
+            return factor
+        rest = make_add(other) if len(other) > 1 else other[0]
+        return make_mul([factor, fn('exp', rest)])
+
+    B = _simplify_exp_log_powers(rhs)
     A = target
     C, D = de_log_target(A)
     if D is not None:
@@ -7732,6 +7760,7 @@ def main():
             G = input('y(t): ').strip()
             if F == '' or G == '':
                 raise ValueError('Enter x(t) and y(t).')
+            bounds_text = input('Bounds t0,t1 (blank for indefinite): ').strip()
             H = parse(F)
             I = parse(G)
             J = diff(H, 't')
@@ -7745,11 +7774,27 @@ def main():
                     print_exam_failure(A)
                 print(Q)
             else:
-                compact_lines = compact_integral_output_lines(A, pretty_answer(C))
-                B = 0
-                while B < len(compact_lines):
-                    print(compact_lines[B])
-                    B += 1
+                if bounds_text:
+                    parts = [p.strip() for p in bounds_text.split(",")]
+                    if len(parts) != 2:
+                        raise ValueError('Bounds must be: t0,t1')
+                    t0 = parse(parts[0].strip())
+                    t1 = parse(parts[1].strip())
+                    Fnode = C
+                    v1 = sim(subst(Fnode, 't', t1))
+                    v0 = sim(subst(Fnode, 't', t0))
+                    ans_def = sim(add([v1, neg(v0)]))
+                    print('Use F(t) = ' + pretty(Fnode) + '.')
+                    print('F(' + pretty(t1) + ') = ' + pretty(v1) + '.')
+                    print('F(' + pretty(t0) + ') = ' + pretty(v0) + '.')
+                    print('Definite integral = ' + pretty(v1) + ' - (' + pretty(v0) + ').')
+                    print('Answer: ' + pretty_answer(ans_def))
+                else:
+                    compact_lines = compact_integral_output_lines(A, pretty_answer(C))
+                    B = 0
+                    while B < len(compact_lines):
+                        print(compact_lines[B])
+                        B += 1
         else:
             print('Bad mode.')
     except EOFError:
