@@ -474,25 +474,72 @@ class LLMManager:
     
     def _parse_response(self, response_text):
         """Parse LLM response into structured data."""
-        lines = response_text.strip().split("\n")
-        
-        first_line = lines[0].strip().upper()
-        
-        if "CORRECT" in first_line and "INCORRECT" not in first_line:
-            verdict = "CORRECT"
+        text = (response_text or "").strip()
+        if not text:
+            return {
+                "verdict": "UNPARSED",
+                "explanation": "",
+                "confidence": 0.30
+            }
+
+        lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+        first_line = lines[0].upper() if lines else ""
+
+        # Strict first-line parse: only trust explicit standalone verdicts.
+        m = re.match(r"^#?\s*\d*\s*[:|]?\s*(CORRECT|INCORRECT|NEEDS_REVIEW)\b", first_line)
+        if m:
+            verdict = m.group(1)
             explanation = " ".join(lines[1:]) if len(lines) > 1 else ""
-            confidence = 0.95
-        elif "INCORRECT" in first_line:
-            verdict = "INCORRECT"
-            explanation = " ".join(lines[1:]) if len(lines) > 1 else ""
-            confidence = 0.90
-        elif "NEEDS_REVIEW" in first_line:
+            confidence = 0.95 if verdict == "CORRECT" else (0.90 if verdict == "INCORRECT" else 0.50)
+            return {
+                "verdict": verdict,
+                "explanation": explanation.strip()[:500],
+                "confidence": confidence
+            }
+
+        upper_text = text.upper()
+        has_correct = "CORRECT" in upper_text
+        has_incorrect = "INCORRECT" in upper_text
+        has_review = "NEEDS_REVIEW" in upper_text
+
+        # Refusal / inability style answers are uncertainty, not incorrectness.
+        refusal_markers = (
+            "I'M SORRY", "AS AN AI", "CANNOT", "CAN'T", "UNABLE",
+            "DO NOT HAVE", "I CAN HELP ANALYZE", "NEEDS_REVIE"
+        )
+        i = 0
+        has_refusal = False
+        while i < len(refusal_markers):
+            if refusal_markers[i] in upper_text:
+                has_refusal = True
+                break
+            i += 1
+
+        if has_refusal:
             verdict = "NEEDS_REVIEW"
-            explanation = response_text
+            explanation = text
+            confidence = 0.40
+        elif (has_correct and has_incorrect) or ((has_correct or has_incorrect) and has_review):
+            # Mixed verdict words in free-form output => ambiguous.
+            verdict = "NEEDS_REVIEW"
+            explanation = text
+            confidence = 0.45
+        elif has_review:
+            verdict = "NEEDS_REVIEW"
+            explanation = text
             confidence = 0.50
+        elif has_correct:
+            verdict = "CORRECT"
+            explanation = text
+            confidence = 0.70
+        elif has_incorrect:
+            # Only accept INCORRECT from strict first-line parse above.
+            verdict = "NEEDS_REVIEW"
+            explanation = text
+            confidence = 0.45
         else:
             verdict = "UNPARSED"
-            explanation = response_text[:200]
+            explanation = text[:200]
             confidence = 0.30
         
         return {

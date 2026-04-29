@@ -21,6 +21,7 @@ from run_tests import CASIOApp, TestStatus, TestRecord  # noqa: E402
 import algebraProgram as algebra_program  # noqa: E402
 import casio_core  # noqa: E402
 import trigProgram as trig_program  # noqa: E402
+from src.shared_llm import LLMManager  # noqa: E402
 from src.shared_cache import cache_store  # noqa: E402
 
 
@@ -407,6 +408,13 @@ class TransformRegressionTests(unittest.TestCase):
         for i in range(10):
             cache_store(cache, i, i, 4)
         self.assertLessEqual(len(cache), 4)
+
+    def test_llm_response_parser_refusal_goes_to_needs_review(self):
+        manager = LLMManager()
+        parsed = manager._parse_response(
+            "I'm sorry, but as an AI language model...\n#1 CORRECT\n#2 INCORRECT"
+        )
+        self.assertEqual(parsed.get("verdict"), "NEEDS_REVIEW")
 
 
 if __name__ == "__main__":
