@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 33 files · ~383,917 words
+- 33 files · ~383,897 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2403 nodes · 10825 edges · 25 communities detected
+- 2403 nodes · 10825 edges · 26 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -48,24 +48,24 @@ Cohesion: 0.04
 Nodes (310): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integral_routes(), auto_route_cyclic_parts(), auto_route_division(), auto_route_parts() (+302 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.03
-Nodes (173): addq(), angle_to_degree(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages() (+165 more)
-
-### Community 4 - "Community 4"
 Cohesion: 0.05
 Nodes (164): abs_term(), add(), addq(), all_neg_add(), _answer_text(), apply_runtime_profile(), as_rat(), as_rat_display() (+156 more)
+
+### Community 4 - "Community 4"
+Cohesion: 0.03
+Nodes (147): append_unique_value_node(), apply_runtime_profile(), _balance_parens(), begin_user_action(), best_proof_direction(), best_solve_rewrite(), build_menu_pages(), casio_hw_sim_from_env() (+139 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.04
 Nodes (135): cache_store(), clear_all_caches(), enforce_total_cache_limit(), Store one cache value and trim gently when the small-device limit is hit., Keep a group of independent caches under one shared memory budget., Clear regular caches and nested per-name cache dictionaries., add(), addq() (+127 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.09
-Nodes (128): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), depends() (+120 more)
+Cohesion: 0.1
+Nodes (124): add(), angle_reduction_transforms(), branch_target_value(), build_known_trig_value_branches(), build_known_value_branch(), build_named_power_term(), collect_same_arg_terms(), depends() (+116 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.06
-Nodes (96): angle_text(), append_unique_float(), append_unique_solve_value(), append_unique_value_node(), compact_lines(), concise_root_text(), constant_numeric(), dedupe_values() (+88 more)
+Cohesion: 0.07
+Nodes (98): angle_text(), append_unique_float(), append_unique_solve_value(), compact_lines(), concise_root_text(), constant_numeric(), dedupe_values(), display_neg() (+90 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.08
@@ -73,23 +73,23 @@ Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbol
 
 ### Community 9 - "Community 9"
 Cohesion: 0.07
-Nodes (84): build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), common_denominator_step(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), display_abs(), display_neg() (+76 more)
+Nodes (85): build_named_power_product(), cheap_same(), classify_reciprocal_conjugate_binomial(), combine_fraction_sum_once(), common_denominator_step(), direct_double_angle_rewrite(), direct_identity_target_rewrite(), direct_single_trig_info() (+77 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.05
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 11 - "Community 11"
-Cohesion: 0.1
-Nodes (67): append_identity_difference_working(), bridge_to_target(), detail_trig_expansion(), direct_ratio_target_rewrite(), domain_restriction_identity_lines(), equivalent(), _equivalent_uncached(), expand_embedded_small() (+59 more)
-
-### Community 12 - "Community 12"
 Cohesion: 0.05
 Nodes (63): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char() (+55 more)
 
-### Community 13 - "Community 13"
+### Community 12 - "Community 12"
 Cohesion: 0.1
-Nodes (48): add_param_coeff_maps(), add_transform_constant_candidate(), allowed_expression_from_terms(), build_rewrite_allowed_info(), cancel_fraction_common_factor_for_display(), collect_symbol_order(), combine_fraction_sum_once(), constant_fit_preserve_named_trig() (+40 more)
+Nodes (62): bridge_to_target(), detail_trig_expansion(), domain_restriction_identity_lines(), equivalent(), _equivalent_uncached(), expand_safe_trig_tree(), expand_small(), finish_verbose_proof() (+54 more)
+
+### Community 13 - "Community 13"
+Cohesion: 0.09
+Nodes (57): add_param_coeff_maps(), add_transform_constant_candidate(), allowed_expression_from_terms(), append_identity_difference_working(), build_rewrite_allowed_info(), cache_store(), cancel_fraction_common_factor_for_display(), constant_fit_preserve_named_trig() (+49 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.19
@@ -100,47 +100,51 @@ Cohesion: 0.11
 Nodes (20): cache_store(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), _is_alpha_char(), _is_digit_char(), _is_name_char(), _is_name_start() (+12 more)
 
 ### Community 16 - "Community 16"
+Cohesion: 0.17
+Nodes (23): addq(), angle_to_degree(), degree_int(), degree_mod_360(), exact_num_value(), exact_pi_multiple(), exact_trig_lines(), exact_trig_value() (+15 more)
+
+### Community 17 - "Community 17"
 Cohesion: 0.25
 Nodes (14): convert_rtf_to_txt(), _eval_newton_consistency(), _extract_answer_roots(), extract_expected_answer(), main(), map_to_program_input(), normalize(), normalize_compact() (+6 more)
 
-### Community 17 - "Community 17"
+### Community 18 - "Community 18"
 Cohesion: 0.28
 Nodes (8): format_equation_human_readable(), format_exam_working(), numbered_steps(), Pull a leading numeric coefficient out of a multiplication node., Build a simple numbered block and make sure the final line says Answer., Prefix non-empty working lines with 1., 2., 3. for calculator display., Render tuple AST nodes into a compact exam-friendly string., split_coeff()
 
-### Community 18 - "Community 18"
+### Community 19 - "Community 19"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.7
 Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 20 - "Community 20"
+### Community 21 - "Community 21"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.67
 Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
 Cohesion: 0.67
 Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 24 - "Community 24"
+### Community 25 - "Community 25"
 Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
 - **187 isolated node(s):** `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.`, `Keep a group of independent caches under one shared memory budget.`, `Clear regular caches and nested per-name cache dictionaries.` (+182 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 23`** (2 nodes): `trig.py`, `run()`
+- **Thin community `Community 24`** (2 nodes): `trig.py`, `run()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 24`** (2 nodes): `main.py`, `run()`
+- **Thin community `Community 25`** (2 nodes): `main.py`, `run()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions

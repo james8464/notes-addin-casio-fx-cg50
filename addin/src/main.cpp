@@ -21,6 +21,30 @@ static void draw_centered(const char *s)
     dupdate();
 }
 
+static void view_lines(const char *title, std::vector<std::string> const &lines)
+{
+    int idx = 0;
+    while(true) {
+        dclear(C_WHITE);
+        dtext(2, 2, C_BLACK, title ? title : "");
+        dline(0, 18, DWIDTH - 1, 18, C_BLACK);
+        for(int row = 0; row < 9; row++) {
+            int li = idx + row;
+            if(li >= (int)lines.size()) break;
+            dtext(2, 22 + row * 16, C_BLACK, lines[li].c_str());
+        }
+        dtext(2, DHEIGHT - 18, C_BLACK, "EXE next  EXIT back");
+        dupdate();
+        key_event_t e2 = getkey();
+        if(e2.type != KEYEV_DOWN) continue;
+        if(e2.key == KEY_EXIT) break;
+        if(e2.key == KEY_EXE) {
+            idx += 9;
+            if(idx >= (int)lines.size()) idx = 0;
+        }
+    }
+}
+
 int main(void)
 {
     casio::Arena arena;
@@ -36,44 +60,65 @@ int main(void)
         if(ev.key == KEY_EXIT) break;
         if(ev.key == KEY_EXE)
         {
-            std::string expr = "A.(B+C)";
-            if(!casio::ui::text_input(expr, "Boolean expr", "EXE ok  EXIT cancel")) {
-                draw_centered("Cancelled");
-                continue;
-            }
             try {
-                auto cur = casio::boolean::parse(expr);
-                // Build output lines like python mode 1 (limit 50).
                 std::vector<std::string> lines;
-                lines.push_back("1. " + casio::boolean::show(cur));
-                for(int n = 2; n <= 50; n++) {
-                    auto hit = casio::boolean::step(cur);
-                    if(!hit.first) break;
-                    cur = hit.first;
-                    lines.push_back(std::to_string(n) + ". " + casio::boolean::show(cur) + " (" + hit.second + ")");
-                }
-                lines.push_back("Result: " + casio::boolean::show(cur));
+                lines.push_back("1 simplify");
+                lines.push_back("2 nand form");
+                lines.push_back("3 nor form");
+                lines.push_back("4 prove");
+                view_lines("Boolean menu", lines);
 
-                // Simple viewer: page through lines with EXE, exit with EXIT.
-                int idx = 0;
+                // Simple key menu: 1-4
+                int mode = 1;
                 while(true) {
-                    dclear(C_WHITE);
-                    dtext(2, 2, C_BLACK, "Boolean simplify");
-                    dline(0, 18, DWIDTH - 1, 18, C_BLACK);
-                    for(int row = 0; row < 9; row++) {
-                        int li = idx + row;
-                        if(li >= (int)lines.size()) break;
-                        dtext(2, 22 + row * 16, C_BLACK, lines[li].c_str());
+                    key_event_t km = getkey();
+                    if(km.type != KEYEV_DOWN) continue;
+                    if(km.key == KEY_EXIT) { mode = 0; break; }
+                    if(km.key == KEY_1) { mode = 1; break; }
+                    if(km.key == KEY_2) { mode = 2; break; }
+                    if(km.key == KEY_3) { mode = 3; break; }
+                    if(km.key == KEY_4) { mode = 4; break; }
+                }
+
+                if(mode == 0) continue;
+
+                if(mode == 1) {
+                    std::string expr = "A.(B+C)";
+                    if(!casio::ui::text_input(expr, "Simplify", "EXE ok  EXIT cancel")) continue;
+                    auto cur = casio::boolean::parse(expr);
+                    std::vector<std::string> out;
+                    out.push_back("1. " + casio::boolean::show(cur));
+                    for(int n = 2; n <= 50; n++) {
+                        auto hit = casio::boolean::step(cur);
+                        if(!hit.first) break;
+                        cur = hit.first;
+                        out.push_back(std::to_string(n) + ". " + casio::boolean::show(cur) + " (" + hit.second + ")");
                     }
-                    dtext(2, DHEIGHT - 18, C_BLACK, "EXE next  EXIT back");
-                    dupdate();
-                    key_event_t e2 = getkey();
-                    if(e2.type != KEYEV_DOWN) continue;
-                    if(e2.key == KEY_EXIT) break;
-                    if(e2.key == KEY_EXE) {
-                        idx += 9;
-                        if(idx >= (int)lines.size()) idx = 0;
-                    }
+                    out.push_back("Result: " + casio::boolean::show(cur));
+                    view_lines("Simplify", out);
+                }
+                else if(mode == 2) {
+                    std::string expr = "A.B";
+                    if(!casio::ui::text_input(expr, "To NAND", "EXE ok  EXIT cancel")) continue;
+                    auto cur = casio::boolean::parse(expr);
+                    auto nanded = casio::boolean::normalise(casio::boolean::to_nand(cur));
+                    view_lines("NAND form", { "1. " + casio::boolean::show(cur), "2. " + casio::boolean::show(nanded) });
+                }
+                else if(mode == 3) {
+                    std::string expr = "A+B";
+                    if(!casio::ui::text_input(expr, "To NOR", "EXE ok  EXIT cancel")) continue;
+                    auto cur = casio::boolean::parse(expr);
+                    auto nored = casio::boolean::normalise(casio::boolean::to_nor(cur));
+                    view_lines("NOR form", { "1. " + casio::boolean::show(cur), "2. " + casio::boolean::show(nored) });
+                }
+                else if(mode == 4) {
+                    std::string lhs = "A.(B+C)";
+                    std::string rhs = "A.B+A.C";
+                    if(!casio::ui::text_input(lhs, "Prove LHS", "EXE ok  EXIT cancel")) continue;
+                    if(!casio::ui::text_input(rhs, "Prove RHS", "EXE ok  EXIT cancel")) continue;
+                    auto [plines, err] = casio::boolean::prove(lhs, rhs);
+                    if(!err.empty()) view_lines("Prove", { "Error:", err });
+                    else view_lines("Prove", plines);
                 }
             }
             catch(...) {
