@@ -210,6 +210,23 @@ std::string show(NodeRef const &node)
     return text;
 }
 
+std::string short_text(NodeRef const &node)
+{
+    std::string s = show(node);
+    // Port: show(node).replace(" + ", "+")
+    std::string out;
+    out.reserve(s.size());
+    for(std::size_t i = 0; i < s.size(); i++) {
+        if(i + 2 < s.size() && s[i] == ' ' && s[i + 1] == '+' && s[i + 2] == ' ') {
+            out.push_back('+');
+            i += 2;
+            continue;
+        }
+        out.push_back(s[i]);
+    }
+    return out;
+}
+
 NodeRef parse(std::string const &text)
 {
     // Port of booleanProgram.parse().
@@ -401,7 +418,311 @@ std::pair<NodeRef, std::string> step(NodeRef const &node)
         }
     }
 
+    // Absorption
+    if(kind == Kind::Or) {
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            std::vector<NodeRef> small;
+            kids(parts[i], Kind::And, small);
+            for(std::size_t j = 0; j < parts.size(); j++) {
+                if(i == j) continue;
+                std::vector<NodeRef> big;
+                kids(parts[j], Kind::And, big);
+                if(big.size() > small.size() && sub(small, big)) {
+                    auto newp = parts;
+                    newp.erase(newp.begin() + j);
+                    return {mk(Kind::Or, std::move(newp)), "Absorption"};
+                }
+            }
+        }
+    }
+    else {
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            std::vector<NodeRef> small;
+            kids(parts[i], Kind::Or, small);
+            for(std::size_t j = 0; j < parts.size(); j++) {
+                if(i == j) continue;
+                std::vector<NodeRef> big;
+                kids(parts[j], Kind::Or, big);
+                if(big.size() > small.size() && sub(small, big)) {
+                    auto newp = parts;
+                    newp.erase(newp.begin() + j);
+                    return {mk(Kind::And, std::move(newp)), "Absorption"};
+                }
+            }
+        }
+    }
+
+    // Consensus theorem (only in OR case in python)
+    if(kind == Kind::Or) {
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            std::vector<NodeRef> left;
+            kids(parts[i], Kind::And, left);
+            for(std::size_t j = i + 1; j < parts.size(); j++) {
+                std::vector<NodeRef> right;
+                kids(parts[j], Kind::And, right);
+                for(auto const &li : left) {
+                    for(auto const &rj : right) {
+                        if(comp(li, rj)) {
+                            auto rest_l = rem1(left, li);
+                            auto rest_r = rem1(right, rj);
+                            if(!rest_l.empty() && !rest_r.empty()) {
+                                auto consensus = mk(Kind::And, [&]{
+                                    std::vector<NodeRef> tmp = rest_l;
+                                    tmp.insert(tmp.end(), rest_r.begin(), rest_r.end());
+                                    return tmp;
+                                }());
+                                for(std::size_t k = 0; k < parts.size(); k++) {
+                                    if(k != i && k != j && same(parts[k], consensus)) {
+                                        auto newp = parts;
+                                        newp.erase(newp.begin() + k);
+                                        return {mk(Kind::Or, std::move(newp)), "Consensus theorem"};
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Factorisation of common terms
+    for(std::size_t i = 0; i < parts.size(); i++) {
+        auto leftKind = (kind == Kind::Or) ? Kind::And : Kind::Or;
+        std::vector<NodeRef> left;
+        kids(parts[i], leftKind, left);
+        for(std::size_t j = i + 1; j < parts.size(); j++) {
+            std::vector<NodeRef> right;
+            kids(parts[j], leftKind, right);
+            std::vector<NodeRef> common;
+            for(auto const &it : left) {
+                if(has(right, it) && !has(common, it)) common.push_back(it);
+            }
+            if(!common.empty()) {
+                auto a2 = left;
+                auto b2 = right;
+                for(auto const &c : common) {
+                    a2 = rem1(a2, c);
+                    b2 = rem1(b2, c);
+                }
+                if(!a2.empty() && !b2.empty()) {
+                    NodeRef rep;
+                    if(kind == Kind::Or) {
+                        rep = mk(Kind::And, {
+                            mk(Kind::And, common),
+                            mk(Kind::Or, { mk(Kind::And, a2), mk(Kind::And, b2) })
+                        });
+                    }
+                    else {
+                        rep = mk(Kind::Or, {
+                            mk(Kind::Or, common),
+                            mk(Kind::And, { mk(Kind::Or, a2), mk(Kind::Or, b2) })
+                        });
+                    }
+                    auto newp = parts;
+                    // replace i with rep, remove j
+                    newp[i] = rep;
+                    newp.erase(newp.begin() + j);
+                    auto cand = mk(kind, newp);
+                    if(short_text(cand).size() <= short_text(mk(kind, parts)).size()) {
+                        return {cand, "Distributive law"};
+                    }
+                }
+            }
+        }
+    }
+
+    // Expansion of brackets (with length check)
+    if(kind == Kind::And) {
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            if(parts[i] && parts[i]->kind == Kind::Or) {
+                std::vector<NodeRef> rest;
+                for(std::size_t j = 0; j < parts.size(); j++) if(j != i) rest.push_back(parts[j]);
+                std::vector<NodeRef> out;
+                std::vector<NodeRef> inner;
+                kids(parts[i], Kind::Or, inner);
+                for(auto const &item : inner) {
+                    std::vector<NodeRef> term;
+                    term.reserve(rest.size() + 1);
+                    term.push_back(item);
+                    term.insert(term.end(), rest.begin(), rest.end());
+                    out.push_back(mk(Kind::And, term));
+                }
+                auto cand = mk(Kind::Or, out);
+                if(short_text(cand).size() <= short_text(mk(kind, parts)).size()) {
+                    return {cand, "Expansion of brackets"};
+                }
+            }
+        }
+    }
+    else {
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            if(parts[i] && parts[i]->kind == Kind::And) {
+                std::vector<NodeRef> rest;
+                for(std::size_t j = 0; j < parts.size(); j++) if(j != i) rest.push_back(parts[j]);
+                std::vector<NodeRef> out;
+                std::vector<NodeRef> inner;
+                kids(parts[i], Kind::And, inner);
+                for(auto const &item : inner) {
+                    std::vector<NodeRef> term = rest;
+                    term.push_back(item);
+                    out.push_back(mk(Kind::Or, term));
+                }
+                auto cand = mk(Kind::And, out);
+                if(short_text(cand).size() <= short_text(mk(kind, parts)).size()) {
+                    return {cand, "Expansion of brackets"};
+                }
+            }
+        }
+    }
+
     return {nullptr, ""};
+}
+
+NodeRef to_nand(NodeRef const &node)
+{
+    if(!node) return node;
+    if(node->kind == Kind::Const || node->kind == Kind::Var) return node;
+    if(node->kind == Kind::Not) {
+        auto child = node->kids.at(0);
+        if(same(child, Z()) || same(child, O())) return node;
+        return make1(Kind::Not, to_nand(child));
+    }
+    if(node->kind == Kind::And) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::And, parts);
+        std::vector<NodeRef> nanded;
+        for(auto const &it : parts) nanded.push_back(make1(Kind::Not, to_nand(it)));
+        return mk(Kind::Or, std::move(nanded));
+    }
+    if(node->kind == Kind::Or) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::Or, parts);
+        std::vector<NodeRef> converted;
+        for(auto const &it : parts) converted.push_back(to_nand(it));
+        auto inner = mk(Kind::And, std::move(converted));
+        return make1(Kind::Not, inner);
+    }
+    return node;
+}
+
+NodeRef to_nor(NodeRef const &node)
+{
+    if(!node) return node;
+    if(node->kind == Kind::Const || node->kind == Kind::Var) return node;
+    if(node->kind == Kind::Not) {
+        auto child = node->kids.at(0);
+        if(same(child, Z()) || same(child, O())) return node;
+        return make1(Kind::Not, to_nor(child));
+    }
+    if(node->kind == Kind::Or) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::Or, parts);
+        std::vector<NodeRef> nored;
+        for(auto const &it : parts) nored.push_back(make1(Kind::Not, to_nor(it)));
+        return mk(Kind::And, std::move(nored));
+    }
+    if(node->kind == Kind::And) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::And, parts);
+        std::vector<NodeRef> converted;
+        for(auto const &it : parts) converted.push_back(to_nor(it));
+        auto inner = mk(Kind::Or, std::move(converted));
+        return make1(Kind::Not, inner);
+    }
+    return node;
+}
+
+NodeRef normalise(NodeRef const &node)
+{
+    if(!node) return node;
+    if(node->kind == Kind::Const || node->kind == Kind::Var) return node;
+    if(node->kind == Kind::Not) return make1(Kind::Not, normalise(node->kids.at(0)));
+    if(node->kind == Kind::And) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::And, parts);
+        for(auto &it : parts) it = normalise(it);
+        return mk(Kind::And, std::move(parts));
+    }
+    if(node->kind == Kind::Or) {
+        std::vector<NodeRef> parts;
+        kids(node, Kind::Or, parts);
+        for(auto &it : parts) it = normalise(it);
+        return mk(Kind::Or, std::move(parts));
+    }
+    return node;
+}
+
+std::pair<NodeRef, std::vector<std::pair<std::string, std::string>>> prove_both(
+    NodeRef const &node,
+    int max_steps
+)
+{
+    std::vector<std::pair<std::string, std::string>> steps;
+    NodeRef cur = node;
+    for(int n = 1; n <= max_steps; n++) {
+        auto hit = step(cur);
+        if(!hit.first) break;
+        cur = hit.first;
+        steps.push_back({show(cur), hit.second});
+    }
+    return {cur, steps};
+}
+
+std::pair<std::vector<std::string>, std::string> prove(
+    std::string const &lhs_text,
+    std::string const &rhs_text
+)
+{
+    NodeRef lhs;
+    NodeRef rhs;
+    try {
+        lhs = parse(lhs_text);
+        rhs = parse(rhs_text);
+    }
+    catch(std::exception const &e) {
+        return {{}, std::string("Parse error: ") + e.what()};
+    }
+
+    lhs = normalise(lhs);
+    rhs = normalise(rhs);
+
+    if(same(lhs, rhs)) return {{"LHS = RHS (already equal)"}, ""};
+
+    auto [lhs_final, lhs_steps] = prove_both(lhs);
+    auto [rhs_final, rhs_steps] = prove_both(rhs);
+
+    std::vector<std::string> lines;
+    if(!lhs_steps.empty()) {
+        lines.push_back("Simplify LHS:");
+        for(std::size_t i = 0; i < lhs_steps.size(); i++) {
+            lines.push_back(std::to_string(i + 1) + ". " + lhs_steps[i].first + "  (" + lhs_steps[i].second + ")");
+        }
+        lines.push_back("= " + show(lhs_final));
+    }
+    else {
+        lines.push_back("LHS final: " + show(lhs_final));
+    }
+    lines.push_back("");
+    if(!rhs_steps.empty()) {
+        lines.push_back("Simplify RHS:");
+        for(std::size_t i = 0; i < rhs_steps.size(); i++) {
+            lines.push_back(std::to_string(i + 1) + ". " + rhs_steps[i].first + "  (" + rhs_steps[i].second + ")");
+        }
+        lines.push_back("= " + show(rhs_final));
+    }
+    else {
+        lines.push_back("RHS final: " + show(rhs_final));
+    }
+    lines.push_back("");
+    if(same(lhs_final, rhs_final)) {
+        lines.push_back("Both simplify to: " + show(lhs_final));
+    }
+    else {
+        lines.push_back("LHS final: " + show(lhs_final));
+        lines.push_back("RHS final: " + show(rhs_final));
+    }
+    return {lines, ""};
 }
 
 } // namespace casio::boolean

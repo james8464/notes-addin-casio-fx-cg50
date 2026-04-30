@@ -25,6 +25,7 @@ int main(int argc, char **argv)
         if(is_bool) {
             auto n = casio::boolean::parse(expr);
             std::cout << "BOOL: " << casio::boolean::show(n) << "\n";
+            std::cout << "SHORT: " << casio::boolean::short_text(n) << "\n";
             auto hit = casio::boolean::step(n);
             if(hit.first) {
                 std::cout << "STEP: " << casio::boolean::show(hit.first) << "\n";
