@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 66 files · ~402,385 words
+- 66 files · ~402,835 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2547 nodes · 11160 edges · 23 communities detected
+- 2548 nodes · 11164 edges · 23 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -61,14 +61,14 @@ Nodes (135): cache_store(), clear_all_caches(), enforce_total_cache_limit(), Sto
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
-Nodes (74): Arena, fn_text(), format_equation_human_readable(), format_exam_working(), num_text(), numbered_steps(), split_coeff(), fn_name() (+66 more)
+Nodes (75): Arena, fn_text(), format_equation_human_readable(), format_exam_working(), num_text(), numbered_steps(), split_coeff(), fn_name() (+67 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.08
 Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbols(), _convert_abs_pipes(), div(), divq() (+77 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.05
+Cohesion: 0.06
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
@@ -135,7 +135,7 @@ Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree su
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 2` to `Community 8`?**
-  _High betweenness centrality (0.120) - this node is a cross-community bridge._
+  _High betweenness centrality (0.119) - this node is a cross-community bridge._
 - **Why does `TransformRegressionTests` connect `Community 8` to `Community 2`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 2` to `Community 8`?**
