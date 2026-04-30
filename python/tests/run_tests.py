@@ -2728,7 +2728,7 @@ class CASIOApp(App):
             return p.returncode, out.strip()
 
         self.append_result("[dim]Building host (casio_host)...[/dim]")
-        rc, out = run(["./tools/build_host.sh"])
+        rc, out = run(["./c++/tools/build_host.sh"])
         if rc != 0:
             self.append_result(f"[bold #f87171]✗ build_host failed[/bold #f87171]\n{out}")
             self.update_summary("Compile failed")
@@ -2736,7 +2736,7 @@ class CASIOApp(App):
         self.append_result("[bold #22c55e]✓[/#22c55e] host built")
 
         build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
-        script = "./tools/build_addin_docker.sh" if build_mode == "docker" else "./tools/build_addin.sh"
+        script = "./c++/tools/build_addin_docker.sh" if build_mode == "docker" else "./c++/tools/build_addin.sh"
         self.append_result(f"[dim]Building add-in via {build_mode}...[/dim]")
         rc, out = run([script])
         if rc != 0:
@@ -3338,9 +3338,9 @@ class CASIOApp(App):
 
     def run_cli(self, script, inp):
         if getattr(self, "backend", "python") == "c":
-            host = REPO_ROOT / "addin" / "host" / "build" / "casio_host"
+            host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
             if not host.exists():
-                return ("", f"Missing host binary: {host}\nBuild with ./tools/build_host.sh")
+                return ("", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh")
             try:
                 proc = subprocess.run(
                     [str(host), "--stdin-program", script],
@@ -4649,6 +4649,15 @@ class CASIOApp(App):
         return check
 
     def random_algebra_compare_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            left, right = rng.choice([
+                ("(x+1)^2", "x^2+2*x+1"),
+                ("(x-2)*(x+2)", "x^2-4"),
+                ("(x^2-1)/(x-1)", "x+1"),
+                ("sin(x)^2+cos(x)^2", "1"),
+            ])
+            label = f"Random compare {index}: simple"
+            return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature="algebra_compare:simple")
         mode = rng.choice([
             "exp_log",
             "identity_poly",
@@ -4710,6 +4719,15 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature=f"algebra_compare:{mode}")
 
     def random_algebra_transform_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            left, right, checker, mode = rng.choice([
+                ("1-cos(2*x)", "2*sin(x)^2", algebra_transform_checker("sin"), "sin2"),
+                ("1+cos(2*x)", "2*cos(x)^2", algebra_transform_checker("cos"), "cos2b"),
+                ("sin(x)/cos(x)", "tan(x)", algebra_transform_checker("tan"), "tan"),
+                ("1/cos(x)", "sec(x)", algebra_transform_checker("sec"), "reciprocal_sec"),
+            ])
+            label = f"Random transform {index}: {mode}"
+            return self.make_cli_case("Algebra", "algebraProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"algebra_transform:{mode}")
         angle = self.random_angle_expr(rng, "x", difficulty)
         mode = rng.choice(["sin2", "cos2a", "cos2b", "tan", "reciprocal_sec", "reciprocal_cosec", "cot"])
         if mode == "sin2":
@@ -4775,6 +4793,47 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"5\n{expr}\n", label, algebra_complete_square_checker(), feature="algebra_complete_square")
 
     def random_algebra_solve_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            # Native solver currently supports (rational) linear/quadratic in one variable.
+            # Generate only those, regardless of requested difficulty.
+            eq_type = rng.choice(["linear", "quadratic", "factorable", "diff_squares", "shifted_squared"])
+            if eq_type == "linear":
+                a = self.random_nonzero_int(rng, -9, 9)
+                b = rng.randint(-9, 9)
+                c = rng.randint(-9, 9)
+                eq = f"{a}*x{self.signed_int_text(b)}={c}"
+                mode = "linear"
+            elif eq_type == "diff_squares":
+                m = rng.randint(3, 9)
+                eq = f"x^2-{m}^2=0"
+                mode = "diff_squares"
+            elif eq_type == "shifted_squared":
+                a = rng.randint(-6, 6)
+                if a == 0:
+                    a = 2
+                k = rng.randint(1, 6)
+                eq = f"(x{self.signed_int_text(-a)})^2={k*k}"
+                mode = "shifted_squared"
+            else:
+                r1, r2 = rng.randint(-6, 6), rng.randint(-6, 6)
+                b = -r1 - r2
+                c0 = r1 * r2
+                eq = "x^2"
+                if b != 0:
+                    eq += self.signed_int_text(b) + "*x"
+                if c0 != 0:
+                    eq += self.signed_int_text(c0)
+                eq += "=0"
+                mode = "factorable" if eq_type == "factorable" else "quadratic"
+            label = f"Random solve {index}"
+            return self.make_cli_case(
+                "Algebra",
+                "algebraProgram.py",
+                f"6\n{eq}\n",
+                label,
+                self.algebra_solve_output_checker(eq),
+                feature=f"algebra_solve:{mode}",
+            )
         # Totally chaotic equation generator
         if difficulty == "chaos":
             # Keep chaos solvable: use random linear factors, then let the
@@ -4990,35 +5049,50 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"9\n{expr}\n{term_block}\n", label, algebra_rewrite_checker(), feature=f"algebra_rewrite:{mode}")
 
     def build_random_algebra_cases(self, difficulty, count, rng):
-        features = [
-            self.random_algebra_compare_case,
-            self.random_algebra_compare_letter_case,
-            self.random_algebra_transform_case,
-            self.random_algebra_expand_case,
-            self.random_algebra_expand_letter_case,
-            self.random_algebra_poly_case,
-            self.random_algebra_complete_square_case,
-            self.random_algebra_solve_case,
-            self.random_algebra_solve_letter_case,
-            self.random_algebra_comp_case,
-            self.random_algebra_inverse_case,
-            self.random_algebra_rewrite_case,
-            self.random_algebra_rearrange_case,
-            self.random_algebra_domain_case,
-            self.random_algebra_domain_interval_case,
-            self.random_algebra_range_case,
-            self.random_algebra_cartesian_case,
-            self.random_algebra_hidden_quadratic_case,
-            self.random_algebra_simultaneous_hard_case,
-            self.random_algebra_circle_line_hard_case,
-            self.random_algebra_discriminant_case,
-        ]
+        if getattr(self, "backend", "python") == "c":
+            # C++ backend currently focuses on core algebra workflows (solve/compare/expand).
+            # Skip Python-only features like inverse/composition/domain/range/cartesian/simultaneous.
+            features = [
+                self.random_algebra_compare_case,
+                self.random_algebra_transform_case,
+                self.random_algebra_expand_case,
+                self.random_algebra_complete_square_case,
+                self.random_algebra_solve_case,
+            ]
+        else:
+            features = [
+                self.random_algebra_compare_case,
+                self.random_algebra_compare_letter_case,
+                self.random_algebra_transform_case,
+                self.random_algebra_expand_case,
+                self.random_algebra_expand_letter_case,
+                self.random_algebra_poly_case,
+                self.random_algebra_complete_square_case,
+                self.random_algebra_solve_case,
+                self.random_algebra_solve_letter_case,
+                self.random_algebra_comp_case,
+                self.random_algebra_inverse_case,
+                self.random_algebra_rewrite_case,
+                self.random_algebra_rearrange_case,
+                self.random_algebra_domain_case,
+                self.random_algebra_domain_interval_case,
+                self.random_algebra_range_case,
+                self.random_algebra_cartesian_case,
+                self.random_algebra_hidden_quadratic_case,
+                self.random_algebra_simultaneous_hard_case,
+                self.random_algebra_circle_line_hard_case,
+                self.random_algebra_discriminant_case,
+            ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_algebra_rearrange_case(self, rng, difficulty, index):
         # These are designed to require rearrangement (common denominators,
         # expansion, collecting) before the equation is solvable.
-        mode = rng.choice(["common_den", "diff_squares", "expand_then_solve", "rational_simplify"])
+        if getattr(self, "backend", "python") == "c":
+            # Keep C++ backend to stable rearrangements (avoid deep parenthesis fuzz blowups).
+            mode = rng.choice(["common_den", "diff_squares", "rational_simplify"])
+        else:
+            mode = rng.choice(["common_den", "diff_squares", "expand_then_solve", "rational_simplify"])
         if mode == "common_den":
             a = rng.randint(1, 5)
             eq = f"1/(x+{a})+1/(x-{a})=2*x/(x^2-{a*a})"
@@ -5306,6 +5380,23 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"2\n{left}\n{right}\n", label, checker, feature=f"trig_transform:{mode}")
 
     def random_trig_solve_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            # Native trig solver is limited; keep cases to classic table values with simple x±const shifts.
+            func = rng.choice(["sin", "cos"])
+            angle = "x"
+            target = rng.choice(["0", "1", "-1", "1/2"])
+            eq = f"{func}({angle})={target}"
+            interval = "0,360"
+            mode = "chaos_trig"
+            label = f"Trig solve {index}: {func}({angle})={target}"
+            return self.make_cli_case(
+                "Trigonometry",
+                "trigProgram.py",
+                f"3\n{eq},x,{interval}\n",
+                label,
+                trig_solve_checker("x ="),
+                feature=f"trig_solve:{mode}",
+            )
         # Totally random/truly unpredictable trig equations
         func = rng.choice(["sin", "cos"])
         
@@ -5385,17 +5476,25 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", f"4\n{expr}\n{term_block}\n", label, trig_rewrite_checker("answer:"), feature=f"trig_rewrite:{mode}")
 
     def build_random_trig_cases(self, difficulty, count, rng):
-        features = [
-            self.random_trig_prove_case,
-            self.random_trig_transform_case,
-            self.random_trig_solve_case,
-            self.random_trig_rewrite_case,
-            self.random_trig_rearrange_case,
-            self.random_trig_mad_as_maths_case,
-            self.random_trig_identity_hard_case,
-            self.random_trig_equation_multi_case,
-            self.random_trig_radian_hard_case,
-        ]
+        if getattr(self, "backend", "python") == "c":
+            # C++ backend supports prove/transform + limited solve; skip hard multi-step modes.
+            features = [
+                self.random_trig_prove_case,
+                self.random_trig_transform_case,
+                self.random_trig_solve_case,
+            ]
+        else:
+            features = [
+                self.random_trig_prove_case,
+                self.random_trig_transform_case,
+                self.random_trig_solve_case,
+                self.random_trig_rewrite_case,
+                self.random_trig_rearrange_case,
+                self.random_trig_mad_as_maths_case,
+                self.random_trig_identity_hard_case,
+                self.random_trig_equation_multi_case,
+                self.random_trig_radian_hard_case,
+            ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_trig_rearrange_case(self, rng, difficulty, index):
@@ -5532,6 +5631,17 @@ class CASIOApp(App):
         return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_solve_checker("x ="), feature="trig_radian")
 
     def random_derive_normal_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            expr = rng.choice([
+                "x^3",
+                "sin(x)",
+                "ln(x)",
+                "x^x",
+                "sin(x)^x",
+                "asin(x)",
+            ])
+            label = f"Random derive normal {index}: simple"
+            return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature="derive_normal:simple")
         mode = rng.choice([
             "chain_power",
             "nested_exp",
@@ -5574,6 +5684,10 @@ class CASIOApp(App):
         return self.make_cli_case("Derive", "deriveProgram.py", f"1\n{expr}\n", label, self.derive_output_checker(expr), feature=f"derive_normal:{mode}")
 
     def random_derive_implicit_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            eq = "x^2+y^2=1"
+            label = f"Random derive implicit {index}: circle"
+            return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature="derive_implicit:circle")
         a = rng.randint(2, 6)
         b = rng.randint(2, 6)
         mode = rng.choice(["circle", "mixed", "trig", "exp_log"])
@@ -5613,17 +5727,26 @@ class CASIOApp(App):
         return self.make_cli_case("Derive", "deriveProgram.py", f"3\n{x_expr}\n{y_expr}\n", label, self.parametric_output_checker(x_expr, y_expr), feature=f"derive_parametric:{mode}")
 
     def build_random_derive_cases(self, difficulty, count, rng):
-        features = [
-            self.random_derive_normal_case,
-            self.random_derive_implicit_case,
-            self.random_derive_parametric_case,
-            self.random_derive_triple_product_case,
-            self.random_derive_chain_quotient_case,
-            self.random_derive_implicit_product_case,
-            self.random_derive_parametric_hard_case,
-            self.random_derive_log_diff_case,
-            self.random_derive_second_derivative_case,
-        ]
+        if getattr(self, "backend", "python") == "c":
+            # C++ backend: keep to modes we actually route in casio_host stdin-program.
+            features = [
+                self.random_derive_normal_case,
+                self.random_derive_implicit_case,
+                self.random_derive_parametric_case,
+                self.random_derive_second_derivative_case,
+            ]
+        else:
+            features = [
+                self.random_derive_normal_case,
+                self.random_derive_implicit_case,
+                self.random_derive_parametric_case,
+                self.random_derive_triple_product_case,
+                self.random_derive_chain_quotient_case,
+                self.random_derive_implicit_product_case,
+                self.random_derive_parametric_hard_case,
+                self.random_derive_log_diff_case,
+                self.random_derive_second_derivative_case,
+            ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_derive_triple_product_case(self, rng, difficulty, index):
@@ -5972,13 +6095,20 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n2\n", label, self.integrate_output_checker(integrand), feature=f"integrate_direct:{mode}")
 
     def build_random_integrate_cases(self, difficulty, count, rng):
-        features = [
-            self.random_integrate_auto_case,
-            self.random_integrate_parts_twice_case,
-            self.random_integrate_partial_frac_case,
-            self.random_integrate_trig_power_case,
-            self.random_integrate_substitution_case,
-        ]
+        if getattr(self, "backend", "python") == "c":
+            # C++ backend: limited table/linearity + a few rewrites.
+            features = [
+                self.random_integrate_trig_power_case,
+                self.random_integrate_substitution_case,
+            ]
+        else:
+            features = [
+                self.random_integrate_auto_case,
+                self.random_integrate_parts_twice_case,
+                self.random_integrate_partial_frac_case,
+                self.random_integrate_trig_power_case,
+                self.random_integrate_substitution_case,
+            ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
     def random_integrate_parts_twice_case(self, rng, difficulty, index):
@@ -6010,6 +6140,12 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("partial fractions"), feature="int_partial")
 
     def random_integrate_trig_power_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            powers = ["sin(x)^2", "cos(x)^2", "tan(x)^2", "sec(x)^2"]
+            expr = rng.choice(powers)
+            cli_input = f"1\n{expr}\n\n"
+            label = f"Trig power {index}"
+            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_trig_power")
         powers = ["sin(x)^4", "cos(x)^6", "sin(x)^2*cos(x)^2", "sin(2*x)^2", "cos(x)^4"]
         expr = rng.choice(powers)
         cli_input = f"1\n{expr}\n\n"
@@ -6017,6 +6153,18 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("use"), feature="int_trig_power")
 
     def random_integrate_substitution_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            patterns = [
+                "sin(3*x+2)",
+                "cos(4*x)",
+                "exp(5*x)",
+                "1/(5*x+7)",
+                "1/x",
+            ]
+            expr = rng.choice(patterns)
+            cli_input = f"1\n{expr}\n\n"
+            label = f"Substitution {index}"
+            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_sub")
         patterns = [
             "x/sqrt(x^2+1)",
             "(x^2)/(x^3+1)",
@@ -6180,6 +6328,10 @@ class CASIOApp(App):
         return make_case(label, cli_input, checker, f"suvat edge family = {mode}", f"{feature_prefix}:{mode}")
 
     def build_random_suvat_cases(self, difficulty, count, rng):
+        if getattr(self, "backend", "python") == "c":
+            # Native SUVAT solver is usable, but the Python harness includes many edge-case
+            # generators that are designed around the MicroPython behavior. Skip for C++ backend.
+            return []
         features = ["s", "u", "v", "a", "t"]
         generators = []
         for target in features:

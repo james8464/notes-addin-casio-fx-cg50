@@ -1,8 +1,0 @@
-sin^-1x + √x + |x| + 2x
-sin^2(x)+cos^2(x)
-log(2,8)
-ln|x|
-exp(2x)
-3*x-3*y
-sqrt(1-x^4)
-(x+1)^2*exp(2*x)

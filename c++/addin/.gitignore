@@ -1,0 +1,7 @@
+# fxSDK and host build outputs
+build/
+host/build/
+
+# macOS noise
+.DS_Store
+
