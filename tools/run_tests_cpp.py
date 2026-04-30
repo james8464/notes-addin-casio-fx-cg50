@@ -15,6 +15,10 @@ def run(cmd: list[str]) -> int:
 
 
 def main() -> int:
+    if "--tui" in sys.argv:
+        # Launch Textual TUI runner (drives C++ host via --stdin-program).
+        return run([sys.executable, "tools/tests_cpp/run_tests_tui.py"])
+
     # Build host first (uses pip --user cmake when needed).
     rc = run(["./tools/build_host.sh"])
     if rc != 0:

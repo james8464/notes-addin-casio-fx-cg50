@@ -12,7 +12,111 @@
 #include "modules/derive/derive.hpp"
 
 #include <iostream>
+#include <sstream>
 #include <string>
+
+static std::string read_all_stdin()
+{
+    std::ostringstream oss;
+    oss << std::cin.rdbuf();
+    return oss.str();
+}
+
+static std::vector<std::string> split_lines(std::string const &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    for(char c : s) {
+        if(c == '\n') {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else if(c != '\r') cur.push_back(c);
+    }
+    out.push_back(cur);
+    return out;
+}
+
+static int run_stdin_program(casio::Arena &arena, std::string const &program, std::string const &stdin_text)
+{
+    auto lines = split_lines(stdin_text);
+    auto get = [&](std::size_t i) -> std::string {
+        if(i >= lines.size()) return "";
+        return lines[i];
+    };
+
+    // Program dispatch by file name (matches python/tests/run_tests.py usage).
+    if(program == "deriveProgram.py") {
+        int mode = 1;
+        try { mode = std::stoi(get(0)); } catch(...) {}
+        casio::derive::Request req;
+        req.mode = mode;
+        if(mode == 1) req.expr = get(1);
+        else if(mode == 2) req.expr = get(1);
+        else if(mode == 3) req.expr = get(1) + "," + get(2) + ",t";
+        else if(mode == 4) req.expr = get(1);
+        auto out = casio::derive::run(arena, req);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
+    if(program == "intProgram.py") {
+        // mode 1: integrate, input lines: 1, <f>, <method>
+        std::string mode = get(0);
+        if(mode != "1") {
+            std::cout << "Err: int mode not supported yet.\n";
+            return 0;
+        }
+        casio::integrate::Request req;
+        req.mode = 1;
+        req.expr = get(1);
+        auto out = casio::integrate::run(arena, req);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
+    if(program == "algebraProgram.py") {
+        // Only mode 6 (solve) supported in C++ now.
+        std::string mode = get(0);
+        if(mode != "6") {
+            std::cout << "Err: algebra mode not supported yet.\n";
+            return 0;
+        }
+        casio::algebra::Request req;
+        req.mode = 6;
+        req.expr = get(1);
+        auto out = casio::algebra::run(arena, req);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
+    if(program == "trigProgram.py") {
+        // Only mode 3 (solve) supported in C++ now.
+        std::string mode = get(0);
+        if(mode != "3") {
+            std::cout << "Err: trig mode not supported yet.\n";
+            return 0;
+        }
+        casio::trig::Request req;
+        req.mode = 3;
+        req.expr = get(1);
+        auto out = casio::trig::run(arena, req);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
+    if(program == "SUVATprogram.py") {
+        // Inputs are 5 lines: s,u,v,a,t (blank for unknown). Target inferred in C++ by blank.
+        casio::suvat::Inputs in;
+        in.s = get(0);
+        in.u = get(1);
+        in.v = get(2);
+        in.a = get(3);
+        in.t = get(4);
+        auto out = casio::suvat::solve_all(arena, in);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
+
+    std::cout << "Err: unknown --stdin-program.\n";
+    return 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -23,6 +127,7 @@ int main(int argc, char **argv)
     }
 
     std::string flag = argv[1];
+    bool is_stdin_program = (flag == "--stdin-program");
     bool is_bool = (flag == "--bool");
     bool is_bool_nand = (flag == "--nand");
     bool is_bool_nor = (flag == "--nor");
@@ -34,10 +139,14 @@ int main(int argc, char **argv)
     bool is_trig = (flag == "--trig");
     bool is_derive = (flag == "--derive");
 
-    std::string expr = (any_bool || is_suvat || is_int || is_alg || is_trig || is_derive) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (is_stdin_program || any_bool || is_suvat || is_int || is_alg || is_trig || is_derive) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
 
     try {
+        if(is_stdin_program) {
+            std::string stdin_text = read_all_stdin();
+            return run_stdin_program(arena, expr, stdin_text);
+        }
         if(is_suvat) {
             // Usage: --suvat "s=...,u=...,v=...,a=...,t=...,target=v"
             casio::suvat::Inputs in;
