@@ -377,14 +377,40 @@ static void append_fraction(FixedString<96> &line, Fraction const &f)
     }
 }
 
+static void append_surd_root(FixedString<96> &line, int base, char op, int disc, int den)
+{
+    if(den < 0) {
+        den = -den;
+        base = -base;
+        op = (op == '+') ? '-' : '+';
+    }
+
+    line.append("(");
+    line.append_int(base);
+    line.append(op == '+' ? " + sqrt(" : " - sqrt(");
+    line.append_int(disc);
+    line.append("))/");
+    line.append_int(den);
+}
+
 static bool solve_simplify(const char *input, OutputLines &out)
 {
     char s[128];
     int n = compact(input, s, (int)sizeof(s));
     Linear expr = parse_linear_range(s, 0, n);
     if(!expr.ok) {
-        out.add("Unsupported: use terms like 2x+3-x+4.");
-        return false;
+        Poly poly = parse_poly(input);
+        if(!poly.ok) {
+            out.add("Unsupported: use polynomial terms up to x^5.");
+            return false;
+        }
+
+        add_input_line(out, "1. Start: ", input);
+        out.add("2. Collect like powers of x.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: ");
+        append_poly(ans, poly);
+        return true;
     }
 
     add_input_line(out, "1. Start: ", input);
@@ -438,8 +464,13 @@ static bool solve_algebra(const char *input, OutputLines &out)
             return true;
         }
         if(!is_square_int(disc, root)) {
-            out.add("Answer: exact surd roots not displayed yet.");
-            return false;
+            out.add("4. Discriminant is not a square, keep exact surds.");
+            FixedString<96> &ans = out.next();
+            ans.append("Answer: x = ");
+            append_surd_root(ans, -b2, '-', disc, 2 * a2);
+            ans.append(" or x = ");
+            append_surd_root(ans, -b2, '+', disc, 2 * a2);
+            return true;
         }
 
         out.add("4. Use x = (-b +/- sqrt(D))/(2a).");
@@ -746,12 +777,20 @@ static bool solve_suvat(const char *input, OutputLines &out)
         ans.append_int(in.u + in.a * in.t);
         return true;
     }
-    if(in.target == 's' && in.has_u && in.has_a && in.has_t) {
-        out.add("2. Use s = ut + (1/2)at^2.");
-        out.add("3. Substitute known values.");
+    if(in.target == 'u' && in.has_v && in.has_a && in.has_t) {
+        out.add("2. Use v = u + at.");
+        out.add("3. Rearrange to u = v - at.");
         FixedString<96> &ans = out.next();
-        ans.append("Answer: s = ");
-        append_fraction_value(ans, 2 * in.u * in.t + in.a * in.t * in.t, 2);
+        ans.append("Answer: u = ");
+        ans.append_int(in.v - in.a * in.t);
+        return true;
+    }
+    if(in.target == 'a' && in.has_v && in.has_u && in.has_t && in.t != 0) {
+        out.add("2. Use v = u + at.");
+        out.add("3. Rearrange to a = (v-u)/t.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: a = ");
+        append_fraction_value(ans, in.v - in.u, in.t);
         return true;
     }
     if(in.target == 't' && in.has_u && in.has_v && in.has_a && in.a != 0) {
@@ -760,6 +799,62 @@ static bool solve_suvat(const char *input, OutputLines &out)
         FixedString<96> &ans = out.next();
         ans.append("Answer: t = ");
         append_fraction_value(ans, in.v - in.u, in.a);
+        return true;
+    }
+    if(in.target == 's' && in.has_u && in.has_a && in.has_t) {
+        out.add("2. Use s = ut + (1/2)at^2.");
+        out.add("3. Substitute known values.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: s = ");
+        append_fraction_value(ans, 2 * in.u * in.t + in.a * in.t * in.t, 2);
+        return true;
+    }
+    if(in.target == 'u' && in.has_s && in.has_a && in.has_t && in.t != 0) {
+        out.add("2. Use s = ut + (1/2)at^2.");
+        out.add("3. Rearrange to u = (s - at^2/2)/t.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: u = ");
+        append_fraction_value(ans, 2 * in.s - in.a * in.t * in.t, 2 * in.t);
+        return true;
+    }
+    if(in.target == 'a' && in.has_s && in.has_u && in.has_t && in.t != 0) {
+        out.add("2. Use s = ut + (1/2)at^2.");
+        out.add("3. Rearrange to a = 2(s-ut)/t^2.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: a = ");
+        append_fraction_value(ans, 2 * (in.s - in.u * in.t), in.t * in.t);
+        return true;
+    }
+    if(in.target == 's' && in.has_u && in.has_v && in.has_t) {
+        out.add("2. Use s = ((u+v)/2)t.");
+        out.add("3. Substitute known values.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: s = ");
+        append_fraction_value(ans, (in.u + in.v) * in.t, 2);
+        return true;
+    }
+    if(in.target == 'u' && in.has_s && in.has_v && in.has_t && in.t != 0) {
+        out.add("2. Use s = ((u+v)/2)t.");
+        out.add("3. Rearrange to u = 2s/t - v.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: u = ");
+        append_fraction_value(ans, 2 * in.s - in.v * in.t, in.t);
+        return true;
+    }
+    if(in.target == 'v' && in.has_s && in.has_u && in.has_t && in.t != 0) {
+        out.add("2. Use s = ((u+v)/2)t.");
+        out.add("3. Rearrange to v = 2s/t - u.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: v = ");
+        append_fraction_value(ans, 2 * in.s - in.u * in.t, in.t);
+        return true;
+    }
+    if(in.target == 't' && in.has_s && in.has_u && in.has_v && in.u + in.v != 0) {
+        out.add("2. Use s = ((u+v)/2)t.");
+        out.add("3. Rearrange to t = 2s/(u+v).");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: t = ");
+        append_fraction_value(ans, 2 * in.s, in.u + in.v);
         return true;
     }
 

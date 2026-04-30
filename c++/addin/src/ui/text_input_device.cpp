@@ -1,8 +1,8 @@
 #include "ui/text_input_device.hpp"
 
 #include "device/fixed_string.hpp"
+#include "ui/theme.hpp"
 
-#include <gint/display.h>
 #include <gint/keyboard.h>
 
 namespace casio::ui
@@ -17,9 +17,8 @@ static int text_len(const char *s)
 
 static void draw_input(const char *title, const char *help, const char *text, int cursor)
 {
-    dclear(C_WHITE);
-    dtext(2, 2, C_BLACK, title ? title : "");
-    dline(0, 18, DWIDTH - 1, 18, C_BLACK);
+    draw_frame(title, "INPUT");
+    draw_section_label(4, kContentTop, "Expression");
 
     int len = text_len(text);
     if(cursor < 0) cursor = 0;
@@ -36,15 +35,25 @@ static void draw_input(const char *title, const char *help, const char *text, in
         shown.append_char(text[i]);
     }
 
-    dtext(2, 28, C_BLACK, shown.c_str());
-    int cursor_x = 2 + (cursor - start + (start > 0 ? 3 : 0)) * 7;
-    if(cursor_x < 2) cursor_x = 2;
-    if(cursor_x > DWIDTH - 8) cursor_x = DWIDTH - 8;
-    dline(cursor_x, 44, cursor_x + 6, 44, C_BLACK);
-    dline(0, 56, DWIDTH - 1, 56, C_BLACK);
-    dtext(2, 62, C_BLACK, help ? help : "");
-    dtext(2, 82, C_BLACK, "F1 s  F2 u  F3 v  F4 a  F5 t  F6 ?");
-    dtext(2, DHEIGHT - 18, C_BLACK, "EXE ok  DEL back  LEFT/RIGHT  AC clear");
+    int box_y0 = kContentTop + 22;
+    int box_y1 = box_y0 + 28;
+    drect(4, box_y0, DWIDTH - 12, box_y1, kPaper);
+    dline(4, box_y0, DWIDTH - 12, box_y0, kInk);
+    dline(4, box_y1, DWIDTH - 12, box_y1, kInk);
+    dline(4, box_y0, 4, box_y1, kInk);
+    dline(DWIDTH - 12, box_y0, DWIDTH - 12, box_y1, kInk);
+    dtext(10, box_y0 + 8, kInk, shown.c_str());
+
+    int cursor_x = 10 + (cursor - start + (start > 0 ? 3 : 0)) * 7;
+    if(cursor_x < 10) cursor_x = 10;
+    if(cursor_x > DWIDTH - 20) cursor_x = DWIDTH - 20;
+    dline(cursor_x, box_y1 - 5, cursor_x + 6, box_y1 - 5, kInk);
+
+    dtext(4, box_y1 + 12, kBlue, "Hint");
+    draw_limited_text(42, box_y1 + 12, kInk, help ? help : "", 36);
+    dtext(4, box_y1 + 30, kInk, "EXE ok  DEL back  AC clear");
+    dtext(4, box_y1 + 46, kInk, "Arrows edit, F-keys insert vars");
+    draw_softkeys("s", "u", "v", "a", "t", "?");
     dupdate();
 }
 

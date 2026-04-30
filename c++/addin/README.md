@@ -74,6 +74,9 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
   - polynomial derivative/integral rules up to `x^5`
   - exact common-angle trig with degree inputs and simple `pi` multiples
   - selected SUVAT rearrangements
+- The add-in UI is intentionally dense and KhiCAS-inspired: top status strip,
+  blue section labels, black active rows, right-hand scrollbars, and bottom
+  soft-key labels. The home screen also supports `F1`-`F6` quick launches.
 - Richer host functionality remains available through `casio_host` while device features are ported module by module.
 
 ### Host build (fast local testing)

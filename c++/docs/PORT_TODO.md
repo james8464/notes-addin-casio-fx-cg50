@@ -14,9 +14,11 @@ This file lists what still must be done to claim **FULL conversion** (all progra
 ## Phase 0 — repo hygiene + tooling (must do first)
 
 0) **Fix hardware-visible add-in UX**
-- Set a non-empty `.g3a` menu name so the calculator menu does not show a blank tile.
-- Add selected/unselected CG icon PNGs so the add-in is not a black box.
-- Ensure every visible add-in menu item either runs real bounded device functionality or clearly says it is unsupported because of input scope, not because it is still host-only.
+- [x] Set a non-empty `.g3a` menu name so the calculator menu does not show a blank tile.
+- [x] Add selected/unselected CG icon PNGs so the add-in is not a black box.
+- [x] Ensure every visible add-in menu item runs real bounded device functionality or reports a scoped unsupported input.
+- [x] Add KhiCAS-inspired device UI chrome: status strip, dense catalog rows, selection bar, scrollbar, and soft-key bar.
+- [ ] Add a hardware screenshot pass after installing each release candidate, checking icon visibility, menu labels, text density, and long worked-solution readability.
 
 1) **Ignore local junk**
 - Add root `.gitignore` entries for:
@@ -83,9 +85,9 @@ This file lists what still must be done to claim **FULL conversion** (all progra
 - Add cursor movement and insert (optional but strongly recommended).
 
 9) **Output viewer improvements**
-- Current viewer assumes each line fits screen width.
-- Add line wrapping / clipping strategy.
-- Add page up/down keys (not only EXE).
+- [x] Add line wrapping/chunking for long exam-working lines.
+- [x] Add page up/down keys (LEFT/RIGHT) in addition to row scrolling.
+- [ ] Add optional horizontal pan only if real hardware shows wrapped chunks are still too cramped.
 
 ---
 

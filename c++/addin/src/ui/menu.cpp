@@ -1,6 +1,8 @@
 #include "menu.hpp"
 
-#include <gint/display.h>
+#include "device/fixed_string.hpp"
+#include "ui/theme.hpp"
+
 #include <gint/keyboard.h>
 
 namespace casio::ui
@@ -10,27 +12,24 @@ namespace
 
 static void draw_menu(const char *title, MenuItem const *items, int count, int sel, int top)
 {
-    dclear(C_WHITE);
-    dtext(2, 2, C_BLACK, title ? title : "");
-    dline(0, 18, DWIDTH - 1, 18, C_BLACK);
+    draw_frame(title, "RAD");
+    draw_section_label(4, kContentTop, "Function Catalog");
 
-    int rows = 9;
+    int rows = visible_rows() - 1;
     for(int r = 0; r < rows; r++) {
         int i = top + r;
         if(i >= count) break;
-        int y = 22 + r * 16;
-        bool active = (i == sel);
-        const char *label = items[i].label ? items[i].label : "";
-        if(active) {
-            drect(0, y - 1, DWIDTH - 1, y + 14, C_BLACK);
-            dtext(2, y, C_WHITE, label);
-        }
-        else {
-            dtext(2, y, C_BLACK, label);
-        }
+        int y = kContentTop + 18 + r * kRowH;
+
+        casio::device::FixedString<80> label;
+        label.append_int(i + 1);
+        label.append("  ");
+        label.append(items[i].label ? items[i].label : "");
+        draw_list_row(y, label.c_str(), i == sel);
     }
 
-    dtext(2, DHEIGHT - 18, C_BLACK, "UP/DOWN move  EXE select  EXIT back");
+    draw_scrollbar(top, rows, count);
+    draw_softkeys("SEL", "UP", "DOWN", "HELP", "", "EXIT");
     dupdate();
 }
 
@@ -45,7 +44,7 @@ int menu_select(const char *title, MenuItem const *items, int count, int start_i
     int top = 0;
 
     auto ensure_visible = [&]() {
-        int rows = 9;
+        int rows = visible_rows() - 1;
         if(sel < top) top = sel;
         if(sel >= top + rows) top = sel - rows + 1;
         if(top < 0) top = 0;
