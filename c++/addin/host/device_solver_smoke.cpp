@@ -40,6 +40,7 @@ int main()
     ok = check(casio::device::Module::Derive, "3x^2+2x+1", "Answer: dy/dx = 6x + 2") && ok;
     ok = check(casio::device::Module::Integrate, "3x^2+2x+1", "Answer: x^3 + x^2 + x + C") && ok;
     ok = check(casio::device::Module::Trig, "sin(30)", "Answer: 1/2") && ok;
+    ok = check(casio::device::Module::Trig, "cos(5*pi/3)", "Answer: 1/2") && ok;
     ok = check(casio::device::Module::Suvat, "s=10,u=0,v=?,a=2,t=5", "Answer: v = 10") && ok;
     return ok ? 0 : 1;
 }

@@ -72,7 +72,7 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 - The current device build uses a bounded freestanding solver slice for:
   - linear simplify/algebra and simple quadratic equations
   - polynomial derivative/integral rules up to `x^5`
-  - exact common-angle trig
+  - exact common-angle trig with degree inputs and simple `pi` multiples
   - selected SUVAT rearrangements
 - Richer host functionality remains available through `casio_host` while device features are ported module by module.
 

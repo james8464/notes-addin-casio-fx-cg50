@@ -55,6 +55,8 @@ Run this after building `CasioCAS.g3a` with `fxsdk build-cg`.
 
 - Input: `sin(30)`
 - Expected: unit-circle table line, answer `1/2`
+- Input: `cos(5*pi/3)`
+- Expected: unit-circle table line, answer `1/2`
 
 ## Unsupported inputs
 

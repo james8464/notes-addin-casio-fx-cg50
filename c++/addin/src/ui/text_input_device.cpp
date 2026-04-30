@@ -76,6 +76,8 @@ static const char *key_to_text(int key)
     if(key == KEY_SIN) return "sin(";
     if(key == KEY_COS) return "cos(";
     if(key == KEY_TAN) return "tan(";
+    if(key == KEY_LOG) return "pi";
+    if(key == KEY_LN) return "ln(";
     if(key == KEY_F1) return "s";
     if(key == KEY_F2) return "u";
     if(key == KEY_F3) return "v";

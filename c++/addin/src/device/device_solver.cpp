@@ -591,6 +591,43 @@ static const char *exact_trig(const char *fn, int deg)
     return nullptr;
 }
 
+static bool parse_angle_degrees(const char *s, int begin, int end, int &deg)
+{
+    int i = begin;
+    bool neg = false;
+    if(i < end && s[i] == '-') {
+        neg = true;
+        i++;
+    }
+
+    int whole = 0;
+    int before = i;
+    bool has_number = read_int(s, i, end, whole);
+
+    if(i < end && s[i] == '*') i++;
+    if(i + 1 < end && s[i] == 'p' && s[i + 1] == 'i') {
+        i += 2;
+        int num = has_number ? whole : 1;
+        int den = 1;
+        if(i < end && s[i] == '/') {
+            i++;
+            if(!read_int(s, i, end, den) || den == 0) return false;
+        }
+        if(i != end) return false;
+        int scaled = 180 * num;
+        if(scaled % den != 0) return false;
+        deg = scaled / den;
+        if(neg) deg = -deg;
+        return true;
+    }
+
+    i = before;
+    int value = 0;
+    if(!read_int(s, i, end, value) || i != end) return false;
+    deg = neg ? -value : value;
+    return true;
+}
+
 static bool solve_trig(const char *input, OutputLines &out)
 {
     char s[64];
@@ -607,18 +644,11 @@ static bool solve_trig(const char *input, OutputLines &out)
     for(int i = 0; i < fn_len; i++) fn[i] = s[i];
     fn[fn_len] = '\0';
 
-    int i = lp + 1;
     int deg = 0;
-    bool neg = false;
-    if(s[i] == '-') {
-        neg = true;
-        i++;
-    }
-    if(!read_int(s, i, rp, deg) || i != rp) {
-        out.add("Unsupported: common degree angles only for now.");
+    if(!parse_angle_degrees(s, lp + 1, rp, deg)) {
+        out.add("Unsupported: use degrees or simple pi fractions.");
         return false;
     }
-    if(neg) deg = -deg;
 
     const char *value = exact_trig(fn, deg);
     if(value == nullptr) {
