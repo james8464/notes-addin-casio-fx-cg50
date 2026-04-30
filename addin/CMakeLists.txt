@@ -45,8 +45,8 @@ target_compile_options(CasioCAS PRIVATE
 # Note: icons/metadata will be wired once we add `assets/` and decide names.
 include(GenerateG3A)
 generate_g3a(TARGET CasioCAS
-  NAME "CasioCAS"
-  INTERNAL_NAME "@CASIOCAS"
+  # Empty NAME avoids over-icon text; set to non-empty to show a label.
+  NAME ""
   VERSION "00.01.0000"
 )
 
