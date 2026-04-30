@@ -37,11 +37,19 @@ static void view_lines(const char *title, std::vector<std::string> const &lines)
             if(li >= (int)lines.size()) break;
             dtext(2, 22 + row * 16, C_BLACK, lines[li].c_str());
         }
-        dtext(2, DHEIGHT - 18, C_BLACK, "EXE next  EXIT back");
+        dtext(2, DHEIGHT - 18, C_BLACK, "UP/DOWN scroll  EXE page  EXIT back");
         dupdate();
         key_event_t e2 = getkey();
         if(e2.type != KEYEV_DOWN) continue;
         if(e2.key == KEY_EXIT) break;
+        if(e2.key == KEY_UP) {
+            if(idx > 0) idx--;
+            continue;
+        }
+        if(e2.key == KEY_DOWN) {
+            if(idx + 1 < (int)lines.size()) idx++;
+            continue;
+        }
         if(e2.key == KEY_EXE) {
             idx += 9;
             if(idx >= (int)lines.size()) idx = 0;
