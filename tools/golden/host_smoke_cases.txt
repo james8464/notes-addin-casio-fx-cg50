@@ -1,0 +1,15 @@
+# format: <mode>\t<expr>\t<expected_line>
+# modes: int, alg, trig
+
+trig	sin(30)	Answer: 1/2
+trig	cos(5*pi/3)	Answer: 1/2
+trig	sin(7*pi/6)	Answer: -1/2
+
+int	x^2	Answer: x^3/3 + C
+int	sin(3x+2)	Answer: -cos(3*x + 2)/3 + C
+int	1/(5x+7)	Answer: log(abs(5*x + 7))/5 + C
+int	sec(x)^2	Answer: tan(x) + C
+int	sec(x)*tan(x)	Answer: sec(x) + C
+
+alg	2x+3=7	x = 2
+alg	x^2-5x+6=0	x = 3
