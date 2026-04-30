@@ -1,5 +1,6 @@
 #include "integrate.hpp"
 
+#include "core/exam_work.hpp"
 #include "core/format_expr.hpp"
 #include "core/parse.hpp"
 #include "core/simplify.hpp"
@@ -269,25 +270,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter f."};
 
-    NodeId node = parse_expr(arena, req.expr);
-    node = casio::simplify(arena, node);
+    NodeId parsed = parse_expr(arena, req.expr);
+    auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
+    NodeId node = casio::simplify(arena, parsed);
 
     auto prim = integrate_simple(arena, node, req.var);
     if(!prim) {
-        return {
-            "Failed: integral not recognised (limited port).",
-            "Expr: " + format_expr(arena, node),
-        };
+        return casio::exam_fallback(
+            "integration (limited)",
+            pre,
+            "Full symbolic integral route not available for this form.",
+            "Integral not recognised."
+        );
     }
 
     NodeId simp = casio::simplify(arena, *prim);
     std::string ans = format_expr_human(arena, simp);
-    return {
-        "Method: direct table / linearity (limited port)",
-        "Integrate each term where possible.",
-        "Simplify the result.",
-        "Answer: " + ans + " + C",
-    };
+    return casio::exam_block(
+        "direct table / linearity (limited)",
+        {
+            "Normalize: " + pre.norm,
+            "Parse: " + pre.parsed,
+            "Simplify: " + pre.simplified,
+            "Integrate each term where possible.",
+            "Simplify the result.",
+        },
+        ans + " + C"
+    );
 }
 
 } // namespace casio::integrate

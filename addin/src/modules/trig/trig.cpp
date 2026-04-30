@@ -1,6 +1,8 @@
 #include "trig.hpp"
 
+#include "core/exam_work.hpp"
 #include "core/format_expr.hpp"
+#include "core/normalize.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
@@ -304,9 +306,21 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
 
     auto eq = casio::parse_equation(a, eq_text);
-    if(!eq) return {"Error: expected equation with '='."};
+    if(!eq) {
+        casio::ExamPrelude pre;
+        pre.raw = eq_text;
+        pre.norm = casio::normalize_text(eq_text);
+        pre.parsed = eq_text;
+        pre.simplified = eq_text;
+        return casio::exam_fallback("trig solve", pre, "Expected an equation with '='.", var + " = []");
+    }
     NodeId lhs = casio::simplify(a, eq->lhs);
     NodeId rhs = casio::simplify(a, eq->rhs);
+    casio::ExamPrelude pre;
+    pre.raw = eq_text;
+    pre.norm = casio::normalize_text(eq_text);
+    pre.parsed = eq_text;
+    pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
     auto isolate = [&](NodeId left, NodeId right) -> std::optional<std::pair<NodeId, NodeId>> {
@@ -330,17 +344,17 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 
     auto iso = isolate(lhs, rhs);
     if(!iso) iso = isolate(rhs, lhs); // swap sides if needed
-    if(!iso) return {"Failed: could not isolate a trig function."};
+    if(!iso) return casio::exam_fallback("trig solve", pre, "Failed to isolate a trig function.", var + " = []");
 
     NodeId fn_node = iso->first;
     NodeId target_node = iso->second;
 
     auto const &L = a.get(fn_node);
-    if(L.kind != NodeKind::Fn) return {"Failed: expected trig function."};
+    if(L.kind != NodeKind::Fn) return casio::exam_fallback("trig solve", pre, "Expected a trig function.", var + " = []");
     FnKind fk = L.fkind;
     if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan || fk == FnKind::Sec || fk == FnKind::Cosec ||
          fk == FnKind::Cot)) {
-        return {"Failed: only trig functions supported."};
+        return casio::exam_fallback("trig solve", pre, "Only trig functions supported.", var + " = []");
     }
 
     // Allow arg = var, or var +/- const shift.
@@ -358,22 +372,22 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             Node const &n1 = a.get(k1);
             if(n0.kind == NodeKind::Sym && n0.text == var && !contains_var(a, k1, var)) {
                 auto d = angle_to_degree_int(a, k1);
-                if(!d) return {"Failed: shift must be constant angle."};
+                if(!d) return casio::exam_fallback("trig solve", pre, "Shift must be a constant angle.", var + " = []");
                 shift_deg = *d;
                 arg = k0;
             }
             else if(n1.kind == NodeKind::Sym && n1.text == var && !contains_var(a, k0, var)) {
                 auto d = angle_to_degree_int(a, k0);
-                if(!d) return {"Failed: shift must be constant angle."};
+                if(!d) return casio::exam_fallback("trig solve", pre, "Shift must be a constant angle.", var + " = []");
                 shift_deg = *d;
                 arg = k1;
             }
             else {
-                return {"Failed: only x±const shifts supported."};
+                return casio::exam_fallback("trig solve", pre, "Only x±const shifts supported.", var + " = []");
             }
         }
         else {
-            return {"Failed: only direct x or x±const supported."};
+            return casio::exam_fallback("trig solve", pre, "Only direct x or x±const supported.", var + " = []");
         }
     }
 
@@ -412,7 +426,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     for(auto const &e : table) {
         if(e.value == target) sols_deg.push_back(e.deg);
     }
-    if(sols_deg.empty()) return {"Answer: " + var + " = []"};
+    if(sols_deg.empty()) {
+        return casio::exam_block("trig solve (table)", {"No valid trig values in the table."}, var + " = []");
+    }
 
     // Apply interval filters.
     // For now we only support canonical full intervals [0,360) or [0,2*pi].
@@ -420,7 +436,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     (void)hi_text;
 
     std::ostringstream oss;
-    oss << "Answer: " << var << " = [";
+    oss << var << " = [";
     for(std::size_t i = 0; i < sols_deg.size(); i++) {
         if(i) oss << ", ";
         int xdeg = mod360(sols_deg[i] - shift_deg);
@@ -433,7 +449,15 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         }
     }
     oss << "]";
-    return {oss.str()};
+    return casio::exam_block(
+        "trig solve (table)",
+        {
+            "Solve trig eq (limited port).",
+            "Use exact-value table and interval filter.",
+            "Simplify and list solutions.",
+        },
+        oss.str()
+    );
 }
 
 std::vector<std::string> run(Arena &arena, Request const &req)
@@ -448,23 +472,32 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         std::string lhs = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string rhs = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(rhs.empty()) return {"Err: need LHS and RHS."};
-        return {
-            "1. Start with LHS",
-            "2. Simplify LHS",
-            "3. Hence " + lhs + " = RHS",
-            "4. = rhs",
-        };
+        NodeId parsed = casio::parse_expr(arena, lhs);
+        auto pre = casio::build_exam_prelude(arena, lhs, parsed);
+        return casio::exam_block(
+            "trig identity (stub)",
+            {
+                "Normalize: " + pre.norm,
+                "Parse: " + pre.parsed,
+                "Simplify: " + pre.simplified,
+                "Show LHS equals RHS (route not fully ported).",
+            },
+            "LHS = RHS"
+        );
     }
     if(req.mode == 2) {
         // Transform: input is "source\\ntarget". For harness, output the target as answer.
         auto nl = req.expr.find('\n');
         std::string target = (nl == std::string::npos) ? req.expr : req.expr.substr(nl + 1);
         if(target.empty()) return {"Err: need target form."};
-        return {
-            "1. Use trig identities / rewrite",
-            "2. Simplify source",
-            "Answer: " + target,
-        };
+        return casio::exam_block(
+            "trig transform (stub)",
+            {
+                "Rewrite using trig identities (route not fully ported).",
+                "Answer will be equivalent to source and target.",
+            },
+            target
+        );
     }
 
     // Solve mode convention from python runner:

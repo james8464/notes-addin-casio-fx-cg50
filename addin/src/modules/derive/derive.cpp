@@ -1,6 +1,8 @@
 #include "derive.hpp"
 
+#include "core/exam_work.hpp"
 #include "core/format_expr.hpp"
+#include "core/normalize.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
@@ -200,7 +202,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string expr = parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
 
-            NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
+            NodeId parsed = casio::parse_expr(arena, expr);
+            auto pre = casio::build_exam_prelude(arena, expr, parsed);
+            NodeId n = casio::simplify(arena, parsed);
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
             NodeId out = d1;
             std::string label = "dy/d" + var;
@@ -209,9 +213,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out = d2;
                 label = "d2y/d" + var + "2";
             }
-            return {
-                "Answer: " + label + " = " + format_expr_human(arena, out),
-            };
+            return casio::exam_block(
+                (req.mode == 4) ? "second derivative" : "differentiate",
+                {
+                    "Normalize: " + pre.norm,
+                    "Parse: " + pre.parsed,
+                    "Simplify: " + pre.simplified,
+                    "Differentiate using rules.",
+                    "Simplify the result.",
+                },
+                label + " = " + format_expr_human(arena, out)
+            );
         }
         if(req.mode == 2) {
             auto eq = casio::parse_equation(arena, req.expr);
@@ -225,12 +237,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string dname = "d" + dep + "/d" + var;
             auto [coef, rest] = coeff_of(arena, d, dname);
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, rest), coef));
-            return {
-                "Implicit differentiation (limited port).",
-                "d/dx(lhs)=d/dx(rhs)",
-                "Make dy/dx the subject.",
-                "Answer: " + dname + " = " + format_expr_human(arena, ans),
-            };
+            casio::ExamPrelude pre;
+            pre.raw = req.expr;
+            pre.norm = casio::normalize_text(req.expr);
+            pre.parsed = req.expr;
+            pre.simplified = casio::format_expr(arena, left) + " = " + casio::format_expr(arena, right);
+            return casio::exam_block(
+                "implicit differentiation (limited)",
+                {
+                    "Normalize: " + pre.norm,
+                    "Parse: " + pre.parsed,
+                    "Simplify: " + pre.simplified,
+                    "d/dx(lhs)=d/dx(rhs)",
+                    "Make dy/dx the subject.",
+                },
+                dname + " = " + format_expr_human(arena, ans)
+            );
         }
         if(req.mode == 3) {
             auto parts = split_csv(req.expr);
@@ -243,12 +265,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId dxdt = casio::simplify(arena, diff(arena, xnode, tvar));
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
-            return {
-                "Parametric differentiation (limited port).",
-                "dx/dt = " + format_expr_human(arena, dxdt),
-                "dy/dt = " + format_expr_human(arena, dydt),
-                "Answer: dy/dx = " + format_expr_human(arena, dydx),
-            };
+            return casio::exam_block(
+                "parametric differentiation (limited)",
+                {
+                    "dx/dt = " + format_expr_human(arena, dxdt),
+                    "dy/dt = " + format_expr_human(arena, dydt),
+                    "dy/dx = (dy/dt)/(dx/dt)",
+                    "Simplify the result.",
+                },
+                "dy/dx = " + format_expr_human(arena, dydx)
+            );
         }
         return {"Error: unknown mode."};
     }
