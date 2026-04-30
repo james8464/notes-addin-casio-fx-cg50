@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 65 files · ~400,750 words
+- 65 files · ~402,261 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2541 nodes · 11144 edges · 23 communities detected
+- 2546 nodes · 11155 edges · 23 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -22,15 +22,15 @@
 10. `num()` - 113 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `TransformRegressionTests` --uses--> `TestStatus`  [INFERRED]
+  python/tests/test_specific_regressions.py → python/tests/run_tests.py
+- `TransformRegressionTests` --uses--> `TestRecord`  [INFERRED]
+  python/tests/test_specific_regressions.py → python/tests/run_tests.py
+- `TransformRegressionTests` --uses--> `CASIOApp`  [INFERRED]
+  python/tests/test_specific_regressions.py → python/tests/run_tests.py
 - `Move between random-run lifecycle states in one controlled place.` --uses--> `LLMManager`  [INFERRED]
   python/tests/run_tests.py → python/src/shared_llm.py
-- `Reset the on-disk log at the start of a run; failures append while tests execute` --uses--> `LLMManager`  [INFERRED]
-  python/tests/run_tests.py → python/src/shared_llm.py
-- `Append a compact block for high-signal failures only.` --uses--> `LLMManager`  [INFERRED]
-  python/tests/run_tests.py → python/src/shared_llm.py
-- `Keep the /random and /infinite status bar in sync (TUI only, not plain/CLI).` --uses--> `LLMManager`  [INFERRED]
-  python/tests/run_tests.py → python/src/shared_llm.py
-- `Execute cases, record harness results, and optionally verify via LLM.` --uses--> `LLMManager`  [INFERRED]
+- `Records to include: harness failure, or LLM disagreement worth review.` --uses--> `LLMManager`  [INFERRED]
   python/tests/run_tests.py → python/src/shared_llm.py
 
 ## Communities
@@ -44,32 +44,32 @@ Cohesion: 0.02
 Nodes (441): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mode_3_lines(), algebra_mode_3_text(), algebra_mode_6_lines(), algebra_mode_6_text() (+433 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.04
-Nodes (310): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integral_routes(), auto_route_cyclic_parts(), auto_route_division(), auto_route_parts() (+302 more)
+Cohesion: 0.01
+Nodes (142): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+134 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.02
-Nodes (100): App, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker(), algebra_rewrite_checker() (+92 more)
+Cohesion: 0.04
+Nodes (310): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integral_routes(), auto_route_cyclic_parts(), auto_route_division(), auto_route_parts() (+302 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
 Nodes (164): abs_term(), add(), addq(), all_neg_add(), _answer_text(), apply_runtime_profile(), as_rat(), as_rat_display() (+156 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.02
-Nodes (44): Enum, RandomTestBatch, Records to include: harness failure, or LLM disagreement worth review., Keep the harness as the authoritative pass/fail signal.          LLM disagreemen, Return the random-case builders included in the requested scope., Yield random-test batches, cycling forever when infinite_mode is true., Explain whether every random output will receive LLM verification., RunState (+36 more)
-
-### Community 6 - "Community 6"
 Cohesion: 0.04
 Nodes (135): cache_store(), clear_all_caches(), enforce_total_cache_limit(), Store one cache value and trim gently when the small-device limit is hit., Keep a group of independent caches under one shared memory budget., Clear regular caches and nested per-name cache dictionaries., add(), addq() (+127 more)
 
-### Community 7 - "Community 7"
+### Community 6 - "Community 6"
 Cohesion: 0.04
-Nodes (67): Arena, fn_text(), format_equation_human_readable(), format_exam_working(), num_text(), numbered_steps(), split_coeff(), fn_name() (+59 more)
+Nodes (73): Arena, fn_text(), format_equation_human_readable(), format_exam_working(), num_text(), numbered_steps(), split_coeff(), fn_name() (+65 more)
 
-### Community 8 - "Community 8"
+### Community 7 - "Community 7"
 Cohesion: 0.08
 Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbols(), _convert_abs_pipes(), div(), divq() (+77 more)
+
+### Community 8 - "Community 8"
+Cohesion: 0.06
+Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
 Cohesion: 0.05
@@ -121,11 +121,11 @@ Nodes (3): run(), _try_import(), _try_mpl()
 
 ### Community 21 - "Community 21"
 Cohesion: 0.67
-Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
+Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
 ### Community 22 - "Community 22"
 Cohesion: 0.67
-Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
 ## Knowledge Gaps
 - **188 isolated node(s):** `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.`, `Keep a group of independent caches under one shared memory budget.` (+183 more)
@@ -134,11 +134,11 @@ Nodes (3): format_equation_human_readable(), Format an equation node into a huma
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CASIOApp` connect `Community 3` to `Community 5`?**
+- **Why does `CASIOApp` connect `Community 2` to `Community 8`?**
   _High betweenness centrality (0.120) - this node is a cross-community bridge._
-- **Why does `TransformRegressionTests` connect `Community 5` to `Community 3`?**
+- **Why does `TransformRegressionTests` connect `Community 8` to `Community 2`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `LLMManager` connect `Community 5` to `Community 3`?**
+- **Why does `LLMManager` connect `Community 2` to `Community 8`?**
   _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `CASIOApp` (e.g. with `LLMManager` and `RuntimeSourceGuardTests`) actually correct?**
   _`CASIOApp` has 5 INFERRED edges - model-reasoned connections that need verification._
