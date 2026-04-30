@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 namespace casio
 {
@@ -257,6 +258,96 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
         }
         else out.push_back(s);
     }
+
+    // Cancel simple symbolic inverses: x*(1/x) and x*x^-1.
+    // This is intentionally narrow but fixes common derivative forms (eg x*(1/x)).
+    {
+        std::unordered_map<std::string, int> sym_count;
+        std::unordered_map<std::string, int> inv_count;
+        sym_count.reserve(out.size());
+        inv_count.reserve(out.size());
+
+        auto is_one_node = [&](NodeId id) -> bool {
+            Node const &n = a.get(id);
+            return n.kind == NodeKind::Num && n.num.num == n.num.den;
+        };
+        auto is_minus_one_node = [&](NodeId id) -> bool {
+            Node const &n = a.get(id);
+            return n.kind == NodeKind::Num && n.num.den == 1 && n.num.num == -1;
+        };
+
+        for(NodeId id : out) {
+            Node const &n = a.get(id);
+            if(n.kind == NodeKind::Sym) sym_count[n.text]++;
+            else if(n.kind == NodeKind::Div) {
+                if(is_one_node(n.a)) {
+                    Node const &b = a.get(n.b);
+                    if(b.kind == NodeKind::Sym) inv_count[b.text]++;
+                }
+            }
+            else if(n.kind == NodeKind::Pow) {
+                Node const &b = a.get(n.a);
+                Node const &e = a.get(n.b);
+                if(b.kind == NodeKind::Sym && (is_minus_one_node(n.b) || (e.kind == NodeKind::Num && e.num.den == 1 && e.num.num == -1))) {
+                    inv_count[b.text]++;
+                }
+            }
+        }
+
+        for(auto const &[name, sc] : sym_count) {
+            auto it = inv_count.find(name);
+            if(it == inv_count.end()) continue;
+            int cancel = std::min(sc, it->second);
+            if(cancel > 0) {
+                sym_count[name] -= cancel;
+                inv_count[name] -= cancel;
+            }
+        }
+
+        if(!sym_count.empty() || !inv_count.empty()) {
+            std::vector<NodeId> filtered;
+            filtered.reserve(out.size());
+            for(NodeId id : out) {
+                Node const &n = a.get(id);
+                if(n.kind == NodeKind::Sym) {
+                    int &k = sym_count[n.text];
+                    if(k > 0) {
+                        filtered.push_back(id);
+                        k--;
+                    }
+                    continue;
+                }
+                if(n.kind == NodeKind::Div) {
+                    if(is_one_node(n.a)) {
+                        Node const &b = a.get(n.b);
+                        if(b.kind == NodeKind::Sym) {
+                            int &k = inv_count[b.text];
+                            if(k > 0) {
+                                filtered.push_back(id);
+                                k--;
+                            }
+                            continue;
+                        }
+                    }
+                }
+                if(n.kind == NodeKind::Pow) {
+                    Node const &b = a.get(n.a);
+                    Node const &e = a.get(n.b);
+                    if(b.kind == NodeKind::Sym && e.kind == NodeKind::Num && e.num.den == 1 && e.num.num == -1) {
+                        int &k = inv_count[b.text];
+                        if(k > 0) {
+                            filtered.push_back(id);
+                            k--;
+                        }
+                        continue;
+                    }
+                }
+                filtered.push_back(id);
+            }
+            out.swap(filtered);
+        }
+    }
+
     if(c.num == 0) return num(a, 0);
     if(!(c.num == c.den)) out.insert(out.begin(), num(a, c.num, c.den));
     if(out.empty()) return num(a, 1);

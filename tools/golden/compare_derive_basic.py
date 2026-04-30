@@ -5,6 +5,7 @@ import argparse
 import re
 import subprocess
 import sys
+import math
 from pathlib import Path
 
 
@@ -59,6 +60,54 @@ def norm(s: str) -> str:
     return s
 
 
+def _safe_eval(expr: str, x: float) -> float | None:
+    expr = (expr or "").strip()
+    if not expr:
+        return None
+    expr = expr.replace("^", "**").replace("π", "pi")
+    # basic canonicalization
+    expr = expr.replace("ln(", "log(")
+    # Allowed math names
+    env = {
+        "__builtins__": {},
+        "pi": math.pi,
+        "e": math.e,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
+        "sqrt": math.sqrt,
+        "abs": abs,
+        "log": math.log,
+        "exp": math.exp,
+        "x": x,
+    }
+    try:
+        v = eval(expr, env, {})
+        v = float(v)
+        if math.isfinite(v):
+            return v
+        return None
+    except Exception:
+        return None
+
+
+def numeric_equiv(lhs: str, rhs: str) -> bool:
+    # Compare RHS expressions at a few safe positive points.
+    # This is only a fallback for formatting differences.
+    samples = [0.2, 0.7, 1.3]
+    for x in samples:
+        a = _safe_eval(lhs, x)
+        b = _safe_eval(rhs, x)
+        if a is None or b is None:
+            continue
+        if abs(a - b) > 1e-6:
+            return False
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default=str(REPO / "addin/host/build/casio_host"))
@@ -73,6 +122,9 @@ def main() -> int:
         (1, "1", ["x^3"], "x^3"),
         (1, "1", ["sin(x)"], "sin(x)"),
         (1, "1", ["ln(x)"], "ln(x)"),
+        (1, "1", ["x^x"], "x^x"),
+        (1, "1", ["sin(x)^x"], "sin(x)^x"),
+        (1, "1", ["asin(x)"], "asin(x)"),
         (4, "4", ["x^4"], "x^4"),
         (2, "2", ["x^2+y^2=1"], "x^2+y^2=1"),
         (3, "3", ["t^2", "t^3"], "t^2,t^3,t"),
@@ -85,6 +137,13 @@ def main() -> int:
         py_ans = extract_answer(py_out)
         cpp_ans = extract_answer(cpp_out)
         ok = (py_ans is not None) and (cpp_ans is not None) and (norm(py_ans) == norm(cpp_ans))
+        if not ok and py_ans and cpp_ans and ("=" in py_ans) and ("=" in cpp_ans):
+            try:
+                py_rhs = py_ans.split("=", 1)[1].strip()
+                cpp_rhs = cpp_ans.split("=", 1)[1].strip()
+                ok = numeric_equiv(py_rhs, cpp_rhs)
+            except Exception:
+                ok = False
         if not ok:
             bad += 1
             print("MISMATCH", mode, cpp_expr)

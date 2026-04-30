@@ -44,6 +44,34 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     return x.num;
 }
 
+static bool is_atomic(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const;
+}
+
+static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
+{
+    // Conservative guard: reject cases known to explode in exam-style working.
+    // Match: (non-atomic base)^(large int) where base depends on var.
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        auto er = as_num(a, x.b);
+        if(er && er->den == 1) {
+            std::int64_t e = er->num;
+            if(e < 0) e = -e;
+            if(e >= 10 && !is_atomic(a, x.a) && depends_on(a, x.a, var)) return true;
+        }
+    }
+    if(x.kind == NodeKind::Fn) return exam_guard_too_complex(a, x.a, var);
+    if(x.kind == NodeKind::Div) return exam_guard_too_complex(a, x.a, var) || exam_guard_too_complex(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(exam_guard_too_complex(a, k, var)) return true;
+    }
+    return false;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -127,6 +155,27 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             return casio::simplify(a, casio::div(a, up, casio::mul(a, {casio::num(a, 2), a.fn(FnKind::Sqrt, u)})));
         case FnKind::Abs:
             return casio::simplify(a, casio::mul(a, {casio::div(a, u, a.fn(FnKind::Abs, u)), up}));
+        case FnKind::Asin: {
+            // d/dx asin(u) = u'/sqrt(1-u^2)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = a.fn(FnKind::Sqrt, casio::add(a, {one, casio::neg(a, u2)}));
+            return casio::simplify(a, casio::div(a, up, den));
+        }
+        case FnKind::Acos: {
+            // d/dx acos(u) = -u'/sqrt(1-u^2)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = a.fn(FnKind::Sqrt, casio::add(a, {one, casio::neg(a, u2)}));
+            return casio::simplify(a, casio::neg(a, casio::div(a, up, den)));
+        }
+        case FnKind::Atan: {
+            // d/dx atan(u) = u'/(1+u^2)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = casio::add(a, {one, u2});
+            return casio::simplify(a, casio::div(a, up, den));
+        }
         default:
             return casio::num(a, 0);
         }
@@ -205,6 +254,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
+
+            if(exam_guard_too_complex(arena, n, var)) {
+                return casio::exam_block(
+                    "differentiate (guard)",
+                    {
+                        "Normalize: " + pre.norm,
+                        "Parse: " + pre.parsed,
+                        "Simplify: " + pre.simplified,
+                        "Too complex for exam-style working.",
+                    },
+                    "simplify(" + pre.simplified + ")"
+                );
+            }
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
             NodeId out = d1;
             std::string label = "dy/d" + var;
