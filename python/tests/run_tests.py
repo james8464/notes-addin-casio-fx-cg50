@@ -2180,6 +2180,7 @@ class CASIOApp(App):
         self._compile_running = False
 
         self.command_items = {
+            "/run": "Run the current program scope once",
             "/random": "Run randomly generated tests (infinite until stopped)",
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
             "/random 1000 8": "Run 1000 chaos random tests with 8 parallel workers",
@@ -2201,20 +2202,34 @@ class CASIOApp(App):
             "/llm disable": "Disable LLM verification",
         }
 
+    def backend_label(self, backend=None) -> str:
+        b = (backend or getattr(self, "backend", "python") or "python").strip().lower()
+        if b in ("c", "cpp", "c++"):
+            return "C++ host + CG50 .g3a"
+        return "Python/CasioPython"
+
+    def ready_summary(self) -> str:
+        return f"Ready · backend {self.backend_label()}"
+
     def switch_backend(self, backend: str) -> None:
         b = (backend or "").strip().lower()
         if b in ("cpp", "c++"):
             b = "c"
         if b not in ("python", "c"):
             return
+        os.environ["CASIO_BACKEND"] = b
         if getattr(self, "backend", "python") == b:
             if not getattr(self, "plain_mode", False):
-                self.append_result(f"[dim]Backend already:[/dim] {b}")
+                self.append_result(f"[dim]Backend already:[/dim] {self.backend_label(b)}")
+            self.update_summary(self.ready_summary())
             return
         self.backend = b
-        if not getattr(self, "plain_mode", False):
-            self.append_result(f"[bold #e07a53]▶ Backend:[/bold #e07a53] {b}")
-        self.update_summary(f"Backend: {b}")
+        self.append_result(f"[bold #e07a53]▶ Backend:[/bold #e07a53] {self.backend_label(b)}")
+        if b == "c":
+            self.append_result("[dim]/compile will build casio_host, then the Docker fxSDK .g3a add-in.[/dim]")
+        else:
+            self.append_result("[dim]/compile will build the CasioPython .mpy files.[/dim]")
+        self.update_summary(self.ready_summary())
 
     @property
     def running(self):
@@ -2271,7 +2286,7 @@ class CASIOApp(App):
                     with Container(id="hero-right"):
                         yield Static(
                             "[bold #a66552]Tips for getting started[/bold #a66552]\n"
-                            "Run [bold]/run[/bold] to execute the CASIO test suite.\n\n"
+                            "Run [bold]/run[/bold] for tests, or [bold]/switch c[/bold] then [bold]/compile[/bold] for the .g3a.\n\n"
                             "[bold #a66552]Recent activity[/bold #a66552]\n"
                             "[dim]Now[/dim] Ready to run algebra, trig, derive, integrate, and SUVAT checks.\n"
                             "[dim]Hint[/dim] Type [bold]/[/bold] to browse commands.\n"
@@ -2305,6 +2320,8 @@ class CASIOApp(App):
         except Exception:
             self._frame_timer = None
         self.action_clear()
+        self.append_result(f"[dim]Backend:[/dim] {self.backend_label()}")
+        self.append_result("[dim]Use /switch c, then /compile to build c++/addin/build-cg/CasioCAS.g3a.[/dim]")
 
     def on_resize(self, event) -> None:
         self.refresh_rule_lines()
@@ -2422,7 +2439,11 @@ class CASIOApp(App):
             self.action_random_tests(difficulty, count, workers, command_label=value)
             return
 
-        if value_lower == "/clear":
+        if value_lower == "/run":
+            self.current_program = "all"
+            self.last_command = value
+            self.action_run_tests(command_label="/run")
+        elif value_lower == "/clear":
             self.action_clear()
         elif value_lower == "/stop":
             self.action_stop()
@@ -2576,7 +2597,7 @@ class CASIOApp(App):
         log.write("")
         self.query_one("#command-suggestions", Static).update("")
         self.query_one("#command-help", Static).update("? for shortcuts")
-        self.update_summary("Ready")
+        self.update_summary(self.ready_summary())
 
     def action_stop(self):
         if self.running:
@@ -2970,6 +2991,7 @@ class CASIOApp(App):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
         failed = total - passed
         self.append_result("[bold #e07a53]Status[/bold #e07a53]")
+        self.append_result(f"[dim]Backend:[/dim] {self.backend_label()}")
         self.append_result(f"[dim]Current program:[/dim] {self.current_program}")
         self.append_result(f"[dim]Difficulty:[/dim] chaos")
         self.append_result(f"[dim]Last command:[/dim] {self.last_command}")
@@ -8304,13 +8326,33 @@ def main():
 
         i = 0
         while i < len(raw):
-            tok = (raw[i] or "").lower()
+            tok_raw = raw[i] or ""
+            tok = tok_raw.lower().lstrip("/")
+            if tok in ("--backend", "-b", "backend", "switch", "swtich"):
+                if i + 1 < len(raw):
+                    app.switch_backend(raw[i + 1])
+                    i += 2
+                    continue
+                i += 1
+                continue
+            if tok in ("c", "cpp", "c++"):
+                app.switch_backend("c")
+                i += 1
+                continue
+            if tok == "python":
+                app.switch_backend("python")
+                i += 1
+                continue
             if tok == "llm":
                 if i + 1 < len(raw):
                     app.handle_llm_select("llm " + raw[i + 1])
                     i += 2
                     continue
                 app.handle_llm_select("llm")
+                i += 1
+                continue
+            if tok == "run":
+                app.action_run_tests(command_label="/run")
                 i += 1
                 continue
             if tok == "random":
