@@ -27,6 +27,7 @@ add_executable(CasioCAS
   src/core/parse.cpp
   src/core/parse_equation.cpp
   src/core/sig.cpp
+  src/core/same.cpp
   src/core/format_expr.cpp
   src/core/format_exam.cpp
 )
