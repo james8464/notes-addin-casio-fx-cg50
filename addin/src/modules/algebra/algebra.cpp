@@ -142,6 +142,105 @@ static std::optional<Poly2> poly_of(Arena &a, NodeId n, std::string const &var)
     return std::nullopt;
 }
 
+struct RatPoly2
+{
+    Poly2 num;
+    Poly2 den;
+    bool ok = true;
+};
+
+static RatPoly2 ratpoly_of(Arena &a, NodeId n, std::string const &var)
+{
+    auto p = poly_of(a, n, var);
+    if(!p || !p->ok) return RatPoly2{{}, {}, false};
+    Poly2 one{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}, true};
+    return RatPoly2{*p, one, true};
+}
+
+static RatPoly2 ratpoly_mul(RatPoly2 const &x, RatPoly2 const &y)
+{
+    if(!x.ok || !y.ok) return RatPoly2{{}, {}, false};
+    Poly2 n = mul_poly(x.num, y.num);
+    Poly2 d = mul_poly(x.den, y.den);
+    if(!n.ok || !d.ok) return RatPoly2{{}, {}, false};
+    return RatPoly2{n, d, true};
+}
+
+static RatPoly2 ratpoly_add(RatPoly2 const &x, RatPoly2 const &y)
+{
+    if(!x.ok || !y.ok) return RatPoly2{{}, {}, false};
+    // x.num/x.den + y.num/y.den = (x.num*y.den + y.num*x.den) / (x.den*y.den)
+    Poly2 n1 = mul_poly(x.num, y.den);
+    Poly2 n2 = mul_poly(y.num, x.den);
+    Poly2 n = add_poly(n1, n2);
+    Poly2 d = mul_poly(x.den, y.den);
+    if(!n.ok || !d.ok) return RatPoly2{{}, {}, false};
+    return RatPoly2{n, d, true};
+}
+
+static RatPoly2 ratpoly_div(RatPoly2 const &x, RatPoly2 const &y)
+{
+    if(!x.ok || !y.ok) return RatPoly2{{}, {}, false};
+    // x / y = (x.num/x.den) / (y.num/y.den) = (x.num*y.den)/(x.den*y.num)
+    Poly2 n = mul_poly(x.num, y.den);
+    Poly2 d = mul_poly(x.den, y.num);
+    if(!n.ok || !d.ok) return RatPoly2{{}, {}, false};
+    return RatPoly2{n, d, true};
+}
+
+static RatPoly2 ratpoly_of_node(Arena &a, NodeId n, std::string const &var)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        RatPoly2 acc = ratpoly_of(a, casio::num(a, 0), var);
+        for(auto kid : x.kids) {
+            acc = ratpoly_add(acc, ratpoly_of_node(a, kid, var));
+            if(!acc.ok) return acc;
+        }
+        return acc;
+    }
+    if(x.kind == NodeKind::Mul) {
+        RatPoly2 acc = ratpoly_of(a, casio::num(a, 1), var);
+        for(auto kid : x.kids) {
+            acc = ratpoly_mul(acc, ratpoly_of_node(a, kid, var));
+            if(!acc.ok) return acc;
+        }
+        return acc;
+    }
+    if(x.kind == NodeKind::Div) {
+        return ratpoly_div(ratpoly_of_node(a, x.a, var), ratpoly_of_node(a, x.b, var));
+    }
+    if(x.kind == NodeKind::Pow) {
+        // Support (poly)^k for k in {-2,-1,0,1,2}
+        auto expn = a.get(x.b);
+        if(expn.kind == NodeKind::Num && expn.num.den == 1) {
+            auto k = expn.num.num;
+            if(k >= -2 && k <= 2) {
+                auto base = poly_of(a, x.a, var);
+                if(!base || !base->ok) return RatPoly2{{}, {}, false};
+                Poly2 one{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}, true};
+                auto pow_poly = [&](Poly2 const &p, int e) -> Poly2 {
+                    if(e == 0) return one;
+                    if(e == 1) return p;
+                    if(e == 2) return mul_poly(p, p);
+                    return Poly2{{}, {}, {}, false};
+                };
+                if(k >= 0) {
+                    auto p = pow_poly(*base, (int)k);
+                    if(!p.ok) return RatPoly2{{}, {}, false};
+                    return RatPoly2{p, one, true};
+                }
+                // negative -> denominator
+                auto p = pow_poly(*base, (int)(-k));
+                if(!p.ok) return RatPoly2{{}, {}, false};
+                return RatPoly2{one, p, true};
+            }
+        }
+    }
+    // Fallback to polynomial
+    return ratpoly_of(a, n, var);
+}
+
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
 {
     // Solve a2 x^2 + a1 x + a0 = 0
@@ -224,13 +323,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         out.push_back("Rearrange:");
         out.push_back(format_expr(arena, rearr) + " = " + format_expr(arena, zero));
 
-        auto p = poly_of(arena, rearr, "x");
-        if(!p || !p->ok) {
-            out.push_back("Failed: only linear/quadratic in x supported (for now).");
+        auto rp = ratpoly_of_node(arena, rearr, "x");
+        if(!rp.ok) {
+            out.push_back("Failed: only (rational) linear/quadratic in x supported (for now).");
             return out;
         }
 
-        auto sols = solve_poly2(arena, *p);
+        // Solve numerator = 0 for rational expressions.
+        auto sols = solve_poly2(arena, rp.num);
         out.push_back("Answer:");
         for(auto const &s : sols) out.push_back(s);
         return out;

@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 70 files · ~405,149 words
+- 71 files · ~406,689 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2574 nodes · 11226 edges · 23 communities detected
+- 2587 nodes · 11260 edges · 25 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -24,14 +24,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `run()` --calls--> `exact_trig()`  [EXTRACTED]
   python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
-- `run()` --calls--> `poly_of()`  [EXTRACTED]
+- `run()` --calls--> `split_csv()`  [EXTRACTED]
+  python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
+- `run()` --calls--> `solve_simple_trig_eq()`  [EXTRACTED]
+  python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
+- `run()` --calls--> `ratpoly_of_node()`  [EXTRACTED]
   python/src/calc_files/algebra.py → addin/src/modules/algebra/algebra.cpp
 - `run()` --calls--> `solve_poly2()`  [EXTRACTED]
   python/src/calc_files/algebra.py → addin/src/modules/algebra/algebra.cpp
-- `TransformRegressionTests` --uses--> `TestStatus`  [INFERRED]
-  python/tests/test_specific_regressions.py → python/tests/run_tests.py
-- `TransformRegressionTests` --uses--> `TestRecord`  [INFERRED]
-  python/tests/test_specific_regressions.py → python/tests/run_tests.py
 
 ## Communities
 
@@ -57,7 +57,7 @@ Nodes (164): abs_term(), add(), addq(), all_neg_add(), _answer_text(), apply_run
 
 ### Community 5 - "Community 5"
 Cohesion: 0.03
-Nodes (99): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+91 more)
+Nodes (106): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+98 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
@@ -77,73 +77,81 @@ Nodes (63): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_line
 
 ### Community 10 - "Community 10"
 Cohesion: 0.11
-Nodes (51): comp(), expand_vars(), has(), kids(), make1(), make_const(), make_var(), mk() (+43 more)
-
-### Community 11 - "Community 11"
-Cohesion: 0.11
 Nodes (20): cache_store(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), _is_alpha_char(), _is_digit_char(), _is_name_char(), _is_name_start() (+12 more)
 
+### Community 11 - "Community 11"
+Cohesion: 0.23
+Nodes (25): comp(), expand_vars(), has(), kids(), make1(), make_const(), make_var(), mk() (+17 more)
+
 ### Community 12 - "Community 12"
+Cohesion: 0.22
+Nodes (26): build_menu_pages(), cache_set(), comp(), direct(), expand_vars(), has(), kids(), main() (+18 more)
+
+### Community 13 - "Community 13"
 Cohesion: 0.25
 Nodes (14): convert_rtf_to_txt(), _eval_newton_consistency(), _extract_answer_roots(), extract_expected_answer(), main(), map_to_program_input(), normalize(), normalize_compact() (+6 more)
 
-### Community 13 - "Community 13"
+### Community 14 - "Community 14"
+Cohesion: 0.36
+Nodes (9): extract_alg_roots_numeric(), extract_alg_solutions(), extract_answer_lines(), main(), map_fixture_to_host(), Convert the python program stdin payload to our host CLI input.     Only handles, run_cpp(), run_python() (+1 more)
+
+### Community 15 - "Community 15"
 Cohesion: 0.28
 Nodes (8): format_equation_human_readable(), format_exam_working(), numbered_steps(), Pull a leading numeric coefficient out of a multiplication node., Build a simple numbered block and make sure the final line says Answer., Prefix non-empty working lines with 1., 2., 3. for calculator display., Render tuple AST nodes into a compact exam-friendly string., split_coeff()
 
-### Community 14 - "Community 14"
+### Community 16 - "Community 16"
 Cohesion: 0.7
 Nodes (4): extract_exact_answer(), main(), run_cpp(), run_python()
 
-### Community 15 - "Community 15"
+### Community 17 - "Community 17"
 Cohesion: 0.7
 Nodes (4): _import_rtf_runner(), main(), _read_txt_lines(), _write_jsonl()
 
-### Community 16 - "Community 16"
+### Community 18 - "Community 18"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 17 - "Community 17"
+### Community 19 - "Community 19"
 Cohesion: 0.7
 Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 18 - "Community 18"
+### Community 20 - "Community 20"
 Cohesion: 0.83
 Nodes (3): main(), py_oracle(), run_host()
 
-### Community 19 - "Community 19"
+### Community 21 - "Community 21"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 20 - "Community 20"
+### Community 22 - "Community 22"
 Cohesion: 1.0
 Nodes (2): main(), run_host()
 
-### Community 21 - "Community 21"
+### Community 23 - "Community 23"
 Cohesion: 0.67
 Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
-### Community 22 - "Community 22"
+### Community 24 - "Community 24"
 Cohesion: 0.67
 Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
 ## Knowledge Gaps
-- **188 isolated node(s):** `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.`, `Keep a group of independent caches under one shared memory budget.` (+183 more)
+- **189 isolated node(s):** `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.` (+184 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 2` to `Community 8`?**
-  _High betweenness centrality (0.118) - this node is a cross-community bridge._
+  _High betweenness centrality (0.117) - this node is a cross-community bridge._
 - **Why does `TransformRegressionTests` connect `Community 8` to `Community 2`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 2` to `Community 8`?**
   _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `CASIOApp` (e.g. with `LLMManager` and `RuntimeSourceGuardTests`) actually correct?**
   _`CASIOApp` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.` to the rest of the system?**
-  _188 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex` to the rest of the system?**
+  _189 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.02 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**

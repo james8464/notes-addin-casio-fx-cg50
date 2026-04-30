@@ -2,10 +2,14 @@
 
 #include "core/format_expr.hpp"
 #include "core/parse.hpp"
+#include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
 
 #include <cstdint>
+#include <sstream>
 #include <optional>
+#include <string_view>
+#include <vector>
 
 namespace casio::trig
 {
@@ -222,12 +226,120 @@ static std::optional<NodeId> exact_trig(Arena &a, FnKind fk, NodeId arg)
     return out;
 }
 
+static std::vector<std::string> split_csv(std::string const &s)
+{
+    std::vector<std::string> parts;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(' || c == '[' || c == '{') depth++;
+        if(c == ')' || c == ']' || c == '}') depth--;
+        if(c == ',' && depth == 0) {
+            parts.push_back(cur);
+            cur.clear();
+        }
+        else {
+            cur.push_back(c);
+        }
+    }
+    if(!cur.empty()) parts.push_back(cur);
+    for(auto &p : parts) {
+        // trim
+        while(!p.empty() && (p.front() == ' ' || p.front() == '\t')) p.erase(p.begin());
+        while(!p.empty() && (p.back() == ' ' || p.back() == '\t')) p.pop_back();
+    }
+    return parts;
+}
+
+static NodeId angle_from_degree(Arena &a, int deg)
+{
+    // deg -> (deg/180)*pi, reduced.
+    Rational r{deg, 180};
+    r.normalize();
+    NodeId coeff = a.num(r);
+    NodeId pi = a.constant(ConstKind::Pi);
+    if(r.num == 0) return casio::num(a, 0);
+    if(r.num == r.den) return pi;
+    return casio::simplify(a, casio::mul(a, {coeff, pi}));
+}
+
+static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
+                                                     std::string const &lo_text, std::string const &hi_text)
+{
+    // Determine mode from hi bound: contains pi => rad, else deg.
+    bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
+
+    auto eq = casio::parse_equation(a, eq_text);
+    if(!eq) return {"Error: expected equation with '='."};
+    NodeId lhs = casio::simplify(a, eq->lhs);
+    NodeId rhs = casio::simplify(a, eq->rhs);
+
+    // Expect lhs = fn(var) and rhs constant from table.
+    auto const &L = a.get(lhs);
+    if(L.kind != NodeKind::Fn) return {"Failed: only sin/cos/tan equations supported."};
+    FnKind fk = L.fkind;
+    if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan)) return {"Failed: only sin/cos/tan supported."};
+    auto const &Arg = a.get(L.a);
+    if(!(Arg.kind == NodeKind::Sym && Arg.text == var)) return {"Failed: only direct f(x) supported."};
+
+    std::string target = format_expr(a, rhs);
+
+    // Precompute value tables for degrees.
+    struct Entry
+    {
+        std::string value;
+        int deg;
+    };
+    std::vector<Entry> table;
+    for(int deg : {0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300,
+                   315, 330, 345}) {
+        NodeId ang = casio::num(a, deg);
+        auto ex = exact_trig(a, fk, ang);
+        if(!ex) continue;
+        table.push_back(Entry{format_expr(a, *ex), deg});
+    }
+
+    std::vector<int> sols_deg;
+    for(auto const &e : table) {
+        if(e.value == target) sols_deg.push_back(e.deg);
+    }
+    if(sols_deg.empty()) return {"Answer: " + var + " = []"};
+
+    // Apply interval filters.
+    // For now we only support canonical full intervals [0,360) or [0,2*pi].
+    (void)lo_text;
+    (void)hi_text;
+
+    std::ostringstream oss;
+    oss << "Answer: " << var << " = [";
+    for(std::size_t i = 0; i < sols_deg.size(); i++) {
+        if(i) oss << ", ";
+        if(rad) {
+            NodeId ang = angle_from_degree(a, sols_deg[i]);
+            oss << format_expr(a, ang);
+        }
+        else {
+            oss << sols_deg[i];
+        }
+    }
+    oss << "]";
+    return {oss.str()};
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter trig expression."};
 
-    NodeId n = casio::parse_expr(arena, req.expr);
-    n = casio::simplify(arena, n);
+    // Solve mode convention from python runner:
+    // "eq, var, lo, hi"
+    if(req.expr.find('=') != std::string::npos && req.expr.find(',') != std::string::npos) {
+        auto parts = split_csv(req.expr);
+        if(parts.size() >= 4) {
+            return solve_simple_trig_eq(arena, parts[0], parts[1], parts[2], parts[3]);
+        }
+    }
+
+    NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
 
     auto const &x = arena.get(n);
     if(x.kind == NodeKind::Fn) {

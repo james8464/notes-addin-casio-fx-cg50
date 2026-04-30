@@ -11,12 +11,9 @@ namespace
 {
 
 static bool is_num(Node const &n) { return n.kind == NodeKind::Num; }
-static bool is_sym(Node const &n) { return n.kind == NodeKind::Sym; }
-static bool is_const(Node const &n) { return n.kind == NodeKind::Const; }
 
 static bool is_zero(Node const &n) { return is_num(n) && n.num.num == 0; }
 static bool is_one(Node const &n) { return is_num(n) && n.num.num == n.num.den; }
-static bool is_minus_one(Node const &n) { return is_num(n) && n.num.num == -n.num.den; }
 static bool is_int_num(Node const &n) { return is_num(n) && n.num.den == 1; }
 
 static Rational addq(Rational a, Rational b)
@@ -48,25 +45,6 @@ static Rational negq(Rational a)
 {
     a.num = -a.num;
     return a;
-}
-
-static bool same_const_e(Node const &n)
-{
-    return n.kind == NodeKind::Const && n.ckind == ConstKind::E;
-}
-
-static void flat_kind(Arena &a, NodeId node, NodeKind kind, std::vector<NodeId> &out)
-{
-    Node const &n = a.get(node);
-    if(n.kind != kind) {
-        out.push_back(node);
-        return;
-    }
-    for(NodeId kid : n.kids) {
-        Node const &k = a.get(kid);
-        if(k.kind == kind) flat_kind(a, kid, kind, out);
-        else out.push_back(kid);
-    }
 }
 
 static NodeId make_add(Arena &a, std::vector<NodeId> parts);
@@ -136,6 +114,13 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     if(is_num(tn) && is_num(bn)) {
         Rational q = divq(tn.num, bn.num);
         return num(a, q.num, q.den);
+    }
+    // Divide by a rational constant -> multiply by reciprocal (avoids ambiguous "…/1/2").
+    if(is_num(bn)) {
+        if(bn.num.num == 0) throw std::runtime_error("division by zero");
+        Rational inv{bn.num.den, bn.num.num};
+        inv.normalize();
+        return simplify(a, a.mul({t, num(a, inv.num, inv.den)}));
     }
     // div by pow(x, n) -> mul(top, pow(x, -n)) when exponent numeric
     if(bn.kind == NodeKind::Pow && is_num(a.get(bn.b))) {
