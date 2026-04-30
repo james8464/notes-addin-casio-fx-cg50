@@ -59,6 +59,144 @@ static void view_lines(const char *title, std::vector<std::string> const &lines)
     }
 }
 
+static void shell_draw(std::vector<std::string> const &scrollback, std::string const &cmd)
+{
+    dclear(C_WHITE);
+    dtext(2, 2, C_BLACK, "CAS Shell");
+    dline(0, 18, DWIDTH - 1, 18, C_BLACK);
+
+    // Show last 8 lines of scrollback.
+    int max_lines = 8;
+    int start = 0;
+    if((int)scrollback.size() > max_lines) start = (int)scrollback.size() - max_lines;
+    for(int row = 0; row < max_lines; row++) {
+        int li = start + row;
+        if(li >= (int)scrollback.size()) break;
+        dtext(2, 22 + row * 14, C_BLACK, scrollback[li].c_str());
+    }
+
+    dline(0, DHEIGHT - 44, DWIDTH - 1, DHEIGHT - 44, C_BLACK);
+    std::string prompt = "> " + cmd;
+    dtext(2, DHEIGHT - 40, C_BLACK, prompt.c_str());
+    dtext(2, DHEIGHT - 18, C_BLACK, "EXE edit/run  F1 hist  F2 clear  EXIT back");
+    dupdate();
+}
+
+static std::string replace_word(std::string s, std::string const &name, std::string const &value)
+{
+    if(name.empty()) return s;
+    std::string out;
+    out.reserve(s.size() + value.size());
+    auto is_word = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'; };
+    for(std::size_t i = 0; i < s.size();) {
+        bool match = false;
+        if(i + name.size() <= s.size() && s.compare(i, name.size(), name) == 0) {
+            char left = (i == 0) ? '\0' : s[i - 1];
+            char right = (i + name.size() >= s.size()) ? '\0' : s[i + name.size()];
+            if(!is_word(left) && !is_word(right)) match = true;
+        }
+        if(match) {
+            out += value;
+            i += name.size();
+        }
+        else {
+            out.push_back(s[i]);
+            i++;
+        }
+    }
+    return out;
+}
+
+static void run_shell(casio::Arena &arena)
+{
+    std::vector<std::string> scrollback;
+    std::vector<std::string> history;
+    std::string ans_expr;
+    std::string cmd;
+
+    scrollback.push_back("Type: expr | eqn | diff(x^2) | int(x^2)");
+    while(true) {
+        shell_draw(scrollback, cmd);
+        key_event_t ev = getkey();
+        if(ev.type != KEYEV_DOWN) continue;
+        if(ev.key == KEY_EXIT) return;
+
+        if(ev.key == KEY_F2) {
+            scrollback.clear();
+            scrollback.push_back("Cleared.");
+            continue;
+        }
+        if(ev.key == KEY_F1) {
+            if(history.empty()) continue;
+            int pick = casio::ui::menu_select("History", history, (int)history.size() - 1);
+            if(pick >= 0 && pick < (int)history.size()) cmd = history[pick];
+            continue;
+        }
+        if(ev.key != KEY_EXE) continue;
+
+        std::string edit = cmd;
+        if(!casio::ui::text_input(edit, "CAS Shell", "EXE ok  EXIT cancel")) continue;
+        cmd = edit;
+        if(cmd.empty()) continue;
+        history.push_back(cmd);
+        if(history.size() > 50) history.erase(history.begin());
+
+        std::string run = cmd;
+        if(!ans_expr.empty()) run = replace_word(run, "ans", ans_expr);
+
+        try {
+            std::vector<std::string> out;
+            if(run.rfind("diff(", 0) == 0 && run.size() >= 6 && run.back() == ')') {
+                casio::derive::Request req;
+                req.mode = 1;
+                req.expr = run.substr(5, run.size() - 6);
+                out = casio::derive::run(arena, req);
+            }
+            else if(run.rfind("int(", 0) == 0 && run.size() >= 5 && run.back() == ')') {
+                casio::integrate::Request req;
+                req.mode = 1;
+                req.expr = run.substr(4, run.size() - 5);
+                out = casio::integrate::run(arena, req);
+            }
+            else if(run.find('=') != std::string::npos) {
+                casio::algebra::Request req;
+                req.mode = 6;
+                req.expr = run;
+                out = casio::algebra::run(arena, req);
+            }
+            else {
+                NodeId parsed = casio::parse_expr(arena, run);
+                NodeId simp = casio::simplify(arena, parsed);
+                std::string h = casio::format_expr_human(arena, simp);
+                out = casio::format_exam_working("simplify", {"Normalize: " + casio::normalize_text(run)}, h);
+            }
+
+            scrollback.push_back("> " + cmd);
+            for(auto const &ln : out) scrollback.push_back(ln);
+
+            // Update ans from last Answer: line if present.
+            for(auto const &ln : out) {
+                std::string low;
+                low.reserve(ln.size());
+                for(char c : ln) low.push_back((char)std::tolower((unsigned char)c));
+                auto pos = low.find("answer:");
+                if(pos != std::string::npos) {
+                    std::string rhs = ln.substr(pos + 7);
+                    while(!rhs.empty() && (rhs.front() == ' ' || rhs.front() == '\t')) rhs.erase(rhs.begin());
+                    ans_expr = rhs;
+                }
+            }
+        }
+        catch(...) {
+            scrollback.push_back("> " + cmd);
+            scrollback.push_back("ERR: failed to evaluate.");
+        }
+        if(scrollback.size() > 200) {
+            scrollback.erase(scrollback.begin(), scrollback.begin() + (scrollback.size() - 200));
+        }
+    }
+}
+
 int main(void)
 {
     casio::Arena arena;
@@ -76,6 +214,7 @@ int main(void)
         {
             try {
                 std::vector<std::string> home = {
+                    "CAS Shell",
                     "Boolean",
                     "SUVAT",
                     "Derive",
@@ -87,6 +226,9 @@ int main(void)
                 if(app < 0) continue;
 
                 if(app == 0) {
+                    run_shell(arena);
+                }
+                else if(app == 1) {
                     std::vector<std::string> lines;
                     lines.push_back("simplify");
                     lines.push_back("nand form");
@@ -135,7 +277,7 @@ int main(void)
                     else view_lines("Prove", plines);
                     }
                 }
-                else if(app == 1) {
+                else if(app == 2) {
                     casio::suvat::Inputs in;
                     in.s = "10";
                     in.u = "0";
@@ -151,7 +293,7 @@ int main(void)
                     auto lines = casio::suvat::solve_all(arena, in);
                     view_lines("SUVAT", lines);
                 }
-                else if(app == 2) {
+                else if(app == 3) {
                     casio::derive::Request req;
                     req.mode = 1;
                     req.expr = "x^2";
@@ -159,21 +301,21 @@ int main(void)
                     auto lines = casio::derive::run(arena, req);
                     view_lines("Derive", lines);
                 }
-                else if(app == 3) {
+                else if(app == 4) {
                     casio::integrate::Request req;
                     req.expr = "sinx";
                     casio::ui::text_input(req.expr, "Integrate", "enter integrand");
                     auto lines = casio::integrate::run(arena, req);
                     view_lines("Integrate", lines);
                 }
-                else if(app == 4) {
+                else if(app == 5) {
                     casio::algebra::Request req;
                     req.expr = "2x+3=7";
                     casio::ui::text_input(req.expr, "Algebra", "enter expression/equation");
                     auto lines = casio::algebra::run(arena, req);
                     view_lines("Algebra", lines);
                 }
-                else if(app == 5) {
+                else if(app == 6) {
                     casio::trig::Request req;
                     req.expr = "sin(30)";
                     casio::ui::text_input(req.expr, "Trig", "enter trig expression");
