@@ -244,6 +244,11 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("Err:", out)
         self.assertIn("dy/dx = 2*e^(2*x)*(x + 1)*(x + 2)", out)
 
+        out = run_cli("deriveProgram.py", "4\n(x+1)^2*exp(2*x)\n")
+        self.assertNotIn("Err:", out)
+        self.assertNotIn("Answer: d2y/dx2", out)
+        self.assertIn("d2y/dx2 = 2*exp(2*x)*(2*x^2 + 8*x + 7)", out)
+
         out = run_cli("deriveProgram.py", "1\ncos(x)/(3-sin(x))\n")
         self.assertNotIn("Err:", out)
         self.assertIn("dy/dx = (1 - 3*sin(x))/(3 - sin(x))^2", out)
@@ -328,6 +333,40 @@ class TransformRegressionTests(unittest.TestCase):
         output = run_cli("algebraProgram.py", "10\nexp(m)\n")
         self.assertIn("Since exp(u) is always positive.", output)
         self.assertIn("Range: y > 0", output)
+
+    def test_algebra_inverse_restricted_quadratic_and_exp_range(self):
+        inv = run_cli("algebraProgram.py", "8\n3*(x-3)^2-6,x>=3\n\n")
+        self.assertNotIn("Err:", inv)
+        self.assertIn("Use restricted branch y - 3 >= 0", inv)
+        self.assertIn("Answer: f^-1(x) = ((1/3)*(x + 6))^(1/2) + 3", inv)
+        self.assertIn("Domain of f^-1 : x >= -6", inv)
+        self.assertIn("Range of f^-1 : x>=3", inv)
+
+        inv = run_cli("algebraProgram.py", "8\nln(4-2*x),x<2\n\n")
+        self.assertNotIn("Err:", inv)
+        self.assertIn("Answer: f^-1(x) = (4 - e^x)/2", inv)
+        self.assertIn("Range of f^-1 : x<2", inv)
+
+        rng = run_cli("algebraProgram.py", "10\n(4-exp(x))/2\n")
+        self.assertNotIn("Err:", rng)
+        self.assertIn("Since exp(u) is always positive.", rng)
+        self.assertIn("Range: y < 2", rng)
+
+    def test_algebra_abs_linear_pair_and_reciprocal_inverse(self):
+        out = run_cli("algebraProgram.py", "6\nabs(x-sqrt(2))=abs(x+5*sqrt(2)),x\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Square both sides: |u|=|v| gives u=v or u=-v", out)
+        self.assertIn("Answer: x = -2*sqrt(2)", out)
+
+        inv = run_cli("algebraProgram.py", "8\n4-1/(x-1),x>1\n\n")
+        self.assertNotIn("Err:", inv)
+        self.assertIn("Answer: f^-1(x) = 1 - 1/(x - 4)", inv)
+        self.assertIn("Domain of f^-1 : x < 4", inv)
+        self.assertIn("Range of f^-1 : x>1", inv)
+
+        rng = run_cli("algebraProgram.py", "10\n1-1/(x-4)\n")
+        self.assertNotIn("Err:", rng)
+        self.assertIn("Range: y != 1", rng)
 
     def test_trig_prove_scaled_sec_tan_reduces_directly(self):
         output = run_cli("trigProgram.py", "1\n9*sec(2*x)^2-9*tan(2*x)^2\n9\n1\n")
@@ -426,6 +465,13 @@ class TransformRegressionTests(unittest.TestCase):
         rng = run_cli("algebraProgram.py", "10\n8+3*sin(x)*(cos(x)-2*sin(x)),x,0,2*pi\n")
         self.assertNotIn("Err:", rng)
         self.assertIn("Range: 5 - 3/2*sqrt(5) <= y <= 5 + 3/2*sqrt(5)", rng)
+
+    def test_exam_inverse_trig_equation_fixture(self):
+        out = run_cli("trigProgram.py", "3\n3*asin(y)=2*acos(y),y,-1,1\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Use acos(u) = pi/2 - asin(u)", out)
+        self.assertIn("5*asin(y) = pi", out)
+        self.assertIn("Answer: y = [sin(pi/5)]", out)
 
     def test_exam_definite_integral_trig_conjugate_fixture(self):
         out = run_cli("intProgram.py", "1\n(x*tan(x))/(tan(x)+sec(x)),x,0,pi\n1\n")

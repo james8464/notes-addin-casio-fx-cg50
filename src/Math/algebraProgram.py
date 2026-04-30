@@ -3279,7 +3279,87 @@ def raw_even_log_power_inverse(node, var_name):
     return False
 
 
-def solve_inverse_core(lhs_expr, rhs_node, steps):
+def _flip_relation(op):
+    if op == "<":
+        return ">"
+    if op == ">":
+        return "<"
+    if op == "<=":
+        return ">="
+    if op == ">=":
+        return "<="
+    return op
+
+
+def _domain_relation_for_var(domain_text, var_name):
+    s = (domain_text or "").strip()
+    if not s:
+        return None
+    s = s.replace(" ", "")
+    s = s.replace("≤", "<=").replace("≥", ">=")
+    s = s.replace("−", "-")
+    ops = ("<=", ">=", "<", ">")
+    i = 0
+    while i < len(ops):
+        op = ops[i]
+        idx = s.find(op)
+        if idx >= 0:
+            left = s[:idx]
+            right = s[idx + len(op):]
+            if left == var_name and right:
+                try:
+                    return op, sim(parse(right))
+                except Exception:
+                    return None
+            if right == var_name and left:
+                try:
+                    return _flip_relation(op), sim(parse(left))
+                except Exception:
+                    return None
+        i += 1
+    return None
+
+
+def _node_float_if_constant(node):
+    try:
+        if is_num(node):
+            return float(node[1]) / float(node[2])
+        val = numeric_eval(node, {})
+        if val is not None:
+            return float(val)
+    except Exception:
+        pass
+    return None
+
+
+def inverse_even_branch_sign_from_domain(domain_text, linear_a, linear_b, var_name):
+    relation = _domain_relation_for_var(domain_text, var_name)
+    if relation is None:
+        return 0
+    op, boundary = relation
+    av = _node_float_if_constant(linear_a)
+    bv = _node_float_if_constant(linear_b)
+    cv = _node_float_if_constant(boundary)
+    if av is None or bv is None or cv is None:
+        return 0
+    root_at_boundary = av * cv + bv
+    if abs(root_at_boundary) > 1e-8:
+        return 0
+    if op == ">" or op == ">=":
+        return 1 if av > 0 else -1
+    if op == "<" or op == "<=":
+        return -1 if av > 0 else 1
+    return 0
+
+
+def inverse_branch_line(a, b, sign):
+    lhs = show(add([mul([a, sym('y')]), b]))
+    if sign > 0:
+        return "Use restricted branch " + lhs + " >= 0"
+    return "Use restricted branch " + lhs + " <= 0"
+
+
+def solve_inverse_core(lhs_expr, rhs_node, steps, domain_text=None):
     steps.append("Method: Solve for x in y = f(x)")
     linear = match_linear_in_var(rhs_node, 'y')
     if linear is not None:
@@ -3336,9 +3416,14 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
     if power_linear is not None:
         a, b, n, exp = power_linear
         if n is not None and n % 2 == 0:
-            steps.append("No inv on all reals")
-            return None
+            branch = inverse_even_branch_sign_from_domain(domain_text, a, b, 'x')
+            if branch == 0:
+                steps.append("No inv on all reals")
+                return None
+            steps.append(inverse_branch_line(a, b, branch))
         rooted = sim(power(lhs_expr, div(num(1), exp)))
+        if n is not None and n % 2 == 0 and branch < 0:
+            rooted = sim(neg(rooted))
         numerator = sim(sub(rooted, b))
         inv = sim(div(numerator, a))
         steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
@@ -3350,9 +3435,14 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
         if power_linear is not None:
             a, b, n, exp = power_linear
             if n is not None and n % 2 == 0:
-                steps.append("No inv on all reals")
-                return None
+                branch = inverse_even_branch_sign_from_domain(domain_text, a, b, 'x')
+                if branch == 0:
+                    steps.append("No inv on all reals")
+                    return None
+                steps.append(inverse_branch_line(a, b, branch))
             rooted = sim(power(div(num(1), lhs_expr), div(num(1), exp)))
+            if n is not None and n % 2 == 0 and branch < 0:
+                rooted = sim(neg(rooted))
             numerator = sim(sub(rooted, b))
             inv = sim(div(numerator, a))
             steps.append(show(rooted) + " = " + show(add([mul([a, sym('y')]), b])))
@@ -3384,13 +3474,13 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
         if len(dep) == 1 and not is_zero(shift):
             reduced_lhs = sim(sub(lhs_expr, shift))
             steps.append(show(reduced_lhs) + " = " + show(dep[0]))
-            return solve_inverse_core(reduced_lhs, dep[0], steps)
+            return solve_inverse_core(reduced_lhs, dep[0], steps, domain_text)
 
     coeff, rest = split_coeff(rhs_node)
     if not is_one(coeff) and depends_on(rest, 'y') and not depends_on(coeff, 'y'):
         scaled_lhs = sim(div(lhs_expr, coeff))
         steps.append(show(scaled_lhs) + " = " + show(rest))
-        return solve_inverse_core(scaled_lhs, rest, steps)
+        return solve_inverse_core(scaled_lhs, rest, steps, domain_text)
 
     const_base_log_power = match_const_base_log_power_linear_in_var(rhs_node, 'y')
     if const_base_log_power is not None:
@@ -3420,7 +3510,7 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
     if rhs_node[0] == 'div' and not depends_on(rhs_node[2], 'y'):
         scaled_lhs = sim(mul([lhs_expr, rhs_node[2]]))
         steps.append(show(scaled_lhs) + " = " + show(rhs_node[1]))
-        return solve_inverse_core(scaled_lhs, rhs_node[1], steps)
+        return solve_inverse_core(scaled_lhs, rhs_node[1], steps, domain_text)
 
     const_base_exp = match_const_base_exp_linear_in_var(rhs_node, 'y')
     if const_base_exp is not None:
@@ -3480,6 +3570,167 @@ def solve_inverse_core(lhs_expr, rhs_node, steps):
     return None
 
 
+def inverse_affine_fraction_text(node):
+    node = sim(node)
+    coeff, rest = split_coeff(node)
+    if not is_num(coeff) or coeff[2] == 1 or rest[0] != 'add':
+        return None
+    terms = list(flat(rest, 'add'))
+    if len(terms) != 2:
+        return None
+    const = None
+    other = None
+    neg_other = False
+    i = 0
+    while i < len(terms):
+        if is_num(terms[i]) and const is None:
+            const = terms[i]
+        else:
+            c, r = split_coeff(terms[i])
+            if is_num(c) and c[1] < 0 and other is None and abs(c[1]) == c[2]:
+                other = r
+                neg_other = True
+            elif other is None:
+                other = terms[i]
+        i += 1
+    if const is None or other is None:
+        return None
+    if coeff[1] == -1:
+        # (-1/q)*(A-c) -> (c-A)/q.
+        if const[1] < 0 and not neg_other:
+            top_const = num(-const[1], const[2])
+            return "(" + show(top_const) + " - " + show(other) + ")/" + str(coeff[2])
+    if coeff[1] == 1 and neg_other and const[1] > 0:
+        return "(" + show(const) + " - " + show(other) + ")/" + str(coeff[2])
+    return None
+
+
+def inverse_sqrt_shift_text(node):
+    node = sim(node)
+    if node[0] != 'add':
+        return None
+    terms = list(flat(node, 'add'))
+    if len(terms) != 2:
+        return None
+    const = None
+    root = None
+    i = 0
+    while i < len(terms):
+        if is_num(terms[i]) and const is None:
+            const = terms[i]
+        elif terms[i][0] == 'fn' and terms[i][1] == 'sqrt' and root is None:
+            root = terms[i]
+        i += 1
+    if const is None or root is None:
+        return None
+    arg = sim(root[2])
+    coeff, rest = split_coeff(arg)
+    if is_num(coeff) and coeff[1] == 1 and coeff[2] != 1:
+        root_text = "sqrt((" + show(rest) + ")/" + str(coeff[2]) + ")"
+    else:
+        root_text = show(root)
+    if const[1] >= 0:
+        return show(const) + " + " + root_text
+    return root_text + " - " + show(num(-const[1], const[2]))
+
+
+def inverse_shifted_reciprocal_text(node):
+    node = sim(node)
+    if node[0] != 'add':
+        return None
+    terms = list(flat(node, 'add'))
+    if len(terms) != 2:
+        return None
+    const = None
+    frac = None
+    i = 0
+    while i < len(terms):
+        if is_num(terms[i]) and const is None:
+            const = terms[i]
+        elif terms[i][0] == 'div' and frac is None:
+            frac = terms[i]
+        i += 1
+    if const is None or frac is None or not is_num(frac[1]) or frac[1][1] >= 0:
+        return None
+    top = num(-frac[1][1], frac[1][2])
+    if is_one(top):
+        frac_text = "1/" + show(frac[2], 3)
+    else:
+        frac_text = show(top) + "/" + show(frac[2], 3)
+    return show(const) + " - " + frac_text
+
+
+def inverse_result_text(node):
+    text = inverse_affine_fraction_text(node)
+    if text is not None:
+        return text
+    text = inverse_sqrt_shift_text(node)
+    if text is not None:
+        return text
+    text = inverse_shifted_reciprocal_text(node)
+    if text is not None:
+        return text
+    return show(node)
+
+
+def inverse_domain_from_original_range(f, var_name, domain_text):
+    f = sim(f)
+    if f[0] == 'fn' and f[1] == 'log':
+        return 'x in R'
+    if f[0] == 'div' and is_one(f[1]) and f[2][0] == 'fn' and f[2][1] == 'sqrt':
+        return 'x > 0'
+    if f[0] == 'div' and is_num(f[1]) and not is_zero(f[1]) and f[2][0] == 'fn' and f[2][1] == 'sqrt':
+        return 'x > 0' if f[1][1] > 0 else 'x < 0'
+
+    recip = match_shifted_reciprocal(f, var_name)
+    if recip is not None:
+        a, b, c, shift = recip
+        den_sign = inverse_even_branch_sign_from_domain(domain_text, b, c, var_name)
+        av = _node_float_if_constant(a)
+        if den_sign != 0 and av is not None:
+            value_sign = den_sign if av > 0 else -den_sign
+            if value_sign > 0:
+                return 'x > ' + show(shift)
+            return 'x < ' + show(shift)
+
+    dep, shift = split_outer_shift(f, var_name)
+    if dep is not None:
+        if dep[0] == 'fn' and dep[1] == 'log':
+            return 'x in R'
+        if dep[0] == 'fn' and dep[1] == 'sqrt':
+            return 'x >= ' + show(shift)
+        if dep[0] == 'div' and is_one(dep[1]) and dep[2][0] == 'fn' and dep[2][1] == 'sqrt':
+            return 'x > ' + show(shift)
+        coeff, rest = split_coeff(dep)
+        if rest[0] == 'fn' and rest[1] == 'sqrt' and is_num(coeff):
+            if coeff[1] > 0:
+                return 'x >= ' + show(shift)
+            return 'x <= ' + show(shift)
+        powered = match_power_linear_in_var(rest, var_name)
+        if powered is not None and is_num(coeff):
+            _a, _b, n, _exp = powered
+            if n is not None and n % 2 == 0:
+                if coeff[1] > 0:
+                    return 'x >= ' + show(shift)
+                return 'x <= ' + show(shift)
+
+    coeffs, degree = polynomial_coeff_list(f, var_name, 2)
+    if coeffs is None:
+        try:
+            expanded_f = sim(expand_integer_power_for_solving(f))
+            coeffs, degree = polynomial_coeff_list(expanded_f, var_name, 2)
+        except Exception:
+            pass
+    if coeffs is not None and degree == 2 and is_num(coeffs[2]):
+        vertex = sim(sub(coeffs[0], div(power(coeffs[1], num(2)), mul([num(4), coeffs[2]]))))
+        if coeffs[2][1] > 0:
+            return 'x >= ' + show(vertex)
+        if coeffs[2][1] < 0:
+            return 'x <= ' + show(vertex)
+
+    return 'x in R'
+
+
 def inverse_function(f_text, var='x', domain_text=None):
     """Find f^-1 by rewriting y=f(x) and solving the result for y."""
     try:
@@ -3511,27 +3762,30 @@ def inverse_function(f_text, var='x', domain_text=None):
             steps.append("Answer: No inverse on all real x - constant function")
             return None, ensure_reasoning_marker(steps)
         steps.append("Swap x and y: x = " + show(f_y))
-        inv = solve_inverse_core(sym('x'), f_y, steps)
+        inv = solve_inverse_core(sym('x'), f_y, steps, domain_clean)
         if inv is not None:
+            inv_text = inverse_result_text(inv)
             if len(steps) == 0 or not steps[-1].startswith("f^-1"):
-                steps.append("f^-1(x) = " + show(inv))
-            steps.append("Answer: f^-1(x) = " + show(inv))
+                steps.append("f^-1(x) = " + inv_text)
+            steps.append("Answer: f^-1(x) = " + inv_text)
             if domain_clean:
                 # Domain of inverse = range of original. For typical exam functions
-                # with a stated domain restriction, the range is often all reals.
-                steps.append("Domain of f^-1 : x in R")
+                # with a stated domain restriction, infer the simple range rather
+                # than hiding a branch error behind "all real".
+                steps.append("Domain of f^-1 : " + inverse_domain_from_original_range(f, var, domain_clean))
                 # Range of inverse = domain of original.
                 steps.append("Range of f^-1 : " + domain_clean)
-            return show(inv), ensure_reasoning_marker(steps)
+            return inv_text, ensure_reasoning_marker(steps)
 
         dependent, shift = split_outer_shift(f_y, 'y')
         if dependent is not None and not is_zero(shift):
             lhs_expr = sim(sub(sym('x'), shift))
             steps.append(show(lhs_expr) + " = " + show(dependent))
-            inv = solve_inverse_core(lhs_expr, dependent, steps)
+            inv = solve_inverse_core(lhs_expr, dependent, steps, domain_clean)
             if inv is not None:
-                steps.append("f^-1(x) = " + show(inv))
-                return show(inv), ensure_reasoning_marker(steps)
+                inv_text = inverse_result_text(inv)
+                steps.append("f^-1(x) = " + inv_text)
+                return inv_text, ensure_reasoning_marker(steps)
 
         if steps and steps[-1].startswith("No inverse on all real x"):
             return None, ensure_reasoning_marker(steps)
@@ -6999,6 +7253,7 @@ def complete_square_text(text):
     lines.append('Half the coefficient of ' + var_name + ': ' + show(shift))
     lines.append('Complete square: ' + show(result))
     lines.append('Ans = ' + show(result))
+    lines.append('Answer: ' + show(result))
     return lines
 
 def clear_denominator_once(expr):
@@ -7416,6 +7671,37 @@ def solve_abs_linear_equation(expr, var_name):
     return var_name, normalize_solution_roots(roots), 'Solve abs linear'
 
 
+def solve_abs_abs_linear_equation(expr, var_name):
+    """Solve |linear| = |linear| by squaring, giving the two linear branches."""
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    abs_terms = []
+    rest = []
+    i = 0
+    while i < len(terms):
+        coeff, core = split_coeff(terms[i])
+        if core[0] == 'fn' and core[1] == 'abs' and depends_on(core[2], var_name):
+            abs_terms.append((coeff, core[2]))
+        else:
+            rest.append(terms[i])
+        i += 1
+    if len(abs_terms) != 2 or len(rest) != 0:
+        return None
+    c1, u = abs_terms[0]
+    c2, v = abs_terms[1]
+    if not is_zero(sim(add([c1, c2]))):
+        return None
+    roots = []
+    label, roots1 = solve_polynomial_expr(sim(add([u, neg(v)])), var_name)
+    if roots1 is not None:
+        roots.extend(roots1)
+    label, roots2 = solve_polynomial_expr(sim(add([u, v])), var_name)
+    if roots2 is not None:
+        roots.extend(roots2)
+    if len(roots) == 0:
+        return None
+    return var_name, normalize_solution_roots(roots), 'Square both sides: |u|=|v| gives u=v or u=-v'
+
+
 def solve_equation(node):
     expr = sim(node)
     direct_var = choose_primary_var(expr)
@@ -7436,6 +7722,9 @@ def solve_equation(node):
         if is_zero(working):
             return None, [], 'Identity'
         return None, [], 'No solution'
+    abs_result = solve_abs_abs_linear_equation(working, var_name)
+    if abs_result is not None:
+        return abs_result
     abs_result = solve_abs_linear_equation(working, var_name)
     if abs_result is not None:
         return abs_result
@@ -8531,10 +8820,17 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
     exp_coeff = None
     exp_arg = None
     exp_ok = False
-    if expr[0] == 'add':
-        terms = list(flat(expr, 'add'))
+    exp_expr = expr
+    try:
+        expanded_exp_expr = sim(expand_mul_distribute(expr))
+        if expanded_exp_expr[0] == 'add':
+            exp_expr = expanded_exp_expr
+    except Exception:
+        pass
+    if exp_expr[0] == 'add':
+        terms = list(flat(exp_expr, 'add'))
     else:
-        terms = [expr]
+        terms = [exp_expr]
     if len(terms) <= 3:
         exp_ok = True
         i = 0
@@ -8559,6 +8855,12 @@ def find_range_text(text, var_override=None, low_node=None, high_node=None):
         return _finish_range(lines)
 
     if _append_trig_combo_range(lines, expr, var_name):
+        return _finish_range(lines)
+
+    shifted_recip = match_shifted_reciprocal(expr, var_name)
+    if shifted_recip is not None:
+        _a, _b, _c, shift = shifted_recip
+        lines.append('Unrestricted: Range: y != ' + show(shift))
         return _finish_range(lines)
     
     if expr[0] == 'sym' or (expr[0] == 'mul' and expr[1][0] == 'num'):

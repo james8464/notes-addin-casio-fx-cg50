@@ -14491,6 +14491,59 @@ def solve_direct_double_angle_expr(expr, var):
     return None
 
 
+def solve_inverse_trig_linear_expr(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    if math is None:
+        return None
+    expr = sim(expr)
+    terms = list(flat(expr, "add")) if expr[0] == "add" else [expr]
+    asin_coeff = num(0)
+    acos_coeff = num(0)
+    const_part = num(0)
+    saw = False
+    i = 0
+    while i < len(terms):
+        coeff, rest = split_coeff(terms[i])
+        if rest[0] == "fn" and rest[1] == "asin" and same(rest[2], sym(var)):
+            asin_coeff = sim(add([asin_coeff, coeff]))
+            saw = True
+        elif rest[0] == "fn" and rest[1] == "acos" and same(rest[2], sym(var)):
+            acos_coeff = sim(add([acos_coeff, coeff]))
+            saw = True
+        elif depends(terms[i], var):
+            return None
+        else:
+            const_part = sim(add([const_part, terms[i]]))
+        i += 1
+    if not saw or is_zero(asin_coeff) or is_zero(acos_coeff):
+        return None
+    denom = sim(add([asin_coeff, neg(acos_coeff)]))
+    if is_zero(denom):
+        return None
+    target = full_simplify(div(neg(add([mul([acos_coeff, div(PI, num(2))]), const_part])), denom))
+    target_val = constant_numeric(target, False)
+    if target_val is None:
+        return None
+    if target_val < -PI_FLOAT / 2 - 1e-9 or target_val > PI_FLOAT / 2 + 1e-9:
+        lines = ["Use acos(u) = pi/2 - asin(u).", "asin(" + var + ") = " + show(target), "No solution in the principal range of asin."]
+        return [], compact_lines(lines)
+    sol = math.sin(target_val)
+    lines = ["Use acos(u) = pi/2 - asin(u)."]
+    if is_zero(const_part) and is_num(acos_coeff) and acos_coeff[1] < 0:
+        pos_acos_coeff = num(-acos_coeff[1], acos_coeff[2])
+        lines.append(show(asin_coeff) + "*asin(" + var + ") = " + show(pos_acos_coeff) + "*acos(" + var + ")")
+        lines.append(show(asin_coeff) + "*asin(" + var + ") = " + show(pos_acos_coeff) + "*(pi/2 - asin(" + var + "))")
+    else:
+        lines.append(show(asin_coeff) + "*asin(" + var + ") + " + show(acos_coeff) + "*(pi/2 - asin(" + var + ")) + " + show(const_part) + " = 0")
+    lines.append(show(denom) + "*asin(" + var + ") = " + show(sim(neg(add([mul([acos_coeff, div(PI, num(2))]), const_part])))))
+    lines.append("asin(" + var + ") = " + show(target))
+    if not within_interval(sol, start_val, end_val, start_inclusive, end_inclusive):
+        lines.append("No solutions in the interval.")
+        return [], compact_lines(lines)
+    exact = "sin(" + show(target) + ")"
+    lines.append(var + " = [" + exact + "]")
+    return [sol], compact_lines(lines)
+
+
 def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
     direct = sim(expr)
     combo = match_linear_combo_const(direct, var)
@@ -14567,6 +14620,9 @@ def solve_linear_combo_shift(expr, var, start_val, end_val, deg_mode, start_incl
 
 
 def solve_factor_equation_expr(expr, var, start_val, end_val, deg_mode, start_inclusive=True, end_inclusive=True):
+    inv_trig = solve_inverse_trig_linear_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if inv_trig is not None:
+        return inv_trig
     quad = extract_quadratic_trig(expr, var)
     if quad is not None:
         name, arg, mult, offset, a, b, c = quad
@@ -17098,7 +17154,12 @@ def solve_x_equation_text(eq_text, var, interval_bits, want_meta=False):
 
     # The route ladder tries identities, branch equations, direct inverse trig,
     # polynomial-in-trig substitutions, and finally structured rewrites.
-    special_solved = try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines)
+    special_solved = None
+    inverse_trig_direct = solve_inverse_trig_linear_expr(expr, var, start_val, end_val, deg_mode, start_inclusive, end_inclusive)
+    if inverse_trig_direct is not None:
+        special_solved = inverse_trig_direct
+    else:
+        special_solved = try_special_solve_routes(lhs, rhs, expr, expr_before_expand, expanded_expr, var, start_val, end_val, deg_mode, lines)
     solved = None
     chosen_extra = []
     if special_solved is not None:

@@ -2906,6 +2906,78 @@ def collect_and_factor_terms(coef, rest, dname):
     return text
 
 
+def common_factored_add_form(node):
+    if node[0] != "add":
+        return None
+    terms = list(flat(node, "add"))
+    if len(terms) < 2:
+        return None
+    maps = []
+    i = 0
+    while i < len(terms):
+        maps.append(factor_map(terms[i]))
+        i += 1
+    common_order = []
+    common_data = {}
+    first_coeff, first_order, first_data = maps[0]
+    i = 0
+    while i < len(first_order):
+        key = first_order[i]
+        base, exp = first_data[key]
+        if exp[0] == "num" and exp[1] > 0:
+            ok = True
+            min_exp = exp
+            j = 1
+            while j < len(maps):
+                got = maps[j][2].get(key)
+                if got is None or got[1][0] != "num" or got[1][1] <= 0:
+                    ok = False
+                    break
+                got_exp = got[1]
+                if got_exp[1] * min_exp[2] < min_exp[1] * got_exp[2]:
+                    min_exp = got_exp
+                j += 1
+            if ok:
+                common_order.append(key)
+                common_data[key] = base, min_exp
+        i += 1
+    coeff_gcd = 0
+    all_int = True
+    i = 0
+    while i < len(maps):
+        coeff = maps[i][0]
+        if not is_int_num(coeff):
+            all_int = False
+            break
+        val = coeff[1]
+        if val < 0:
+            val = -val
+        if val != 0:
+            coeff_gcd = val if coeff_gcd == 0 else gcd(coeff_gcd, val)
+        i += 1
+    factors = []
+    if all_int and coeff_gcd > 1:
+        factors.append(num(coeff_gcd))
+    i = 0
+    while i < len(common_order):
+        base, exp = common_data[common_order[i]]
+        factors.append(base if is_one(exp) else power(base, exp))
+        i += 1
+    if len(factors) == 0:
+        return None
+    common = sim(make_mul(factors))
+    reduced = []
+    i = 0
+    while i < len(terms):
+        reduced.append(sim(div(terms[i], common)))
+        i += 1
+    inner = simplify_trig_identity(expand(sim(add(reduced))))
+    candidate = sim(make_mul([common, inner]))
+    if sig(candidate) != sig(node) and tree_size(candidate) <= tree_size(node) + 4:
+        return candidate
+    return None
+
+
 def format_final_answer(node):
     result = sim(node)
     result = prefer_trig_recip(result)
@@ -2914,6 +2986,9 @@ def format_final_answer(node):
     # Prefer factored final form when it reduces size and keeps exactness.
     # Heuristic: factor a common multiplicative piece across add terms (e.g. exp(-x^2)).
     if result[0] == "add":
+        common_form = common_factored_add_form(result)
+        if common_form is not None:
+            result = common_form
         terms = list(flat(result, "add"))
         if len(terms) >= 2:
             maps = []
@@ -3076,7 +3151,14 @@ def solve_normal_mode(text):
     base_final = core_prefer_simpler(final_node)
     final = preferred_derivative_display(expr, var, base_final)
     if sig(final) != sig(base_final):
-        formatted = final
+        formatted = format_final_answer(final)
+        try:
+            if not derivative_display_equivalent(formatted, base_final, var):
+                formatted = final
+            elif len(readable_show(formatted)) > len(readable_show(final)):
+                formatted = final
+        except Exception:
+            formatted = final
     else:
         formatted = format_final_answer(final)
     return var, steps, final, formatted
@@ -3864,9 +3946,15 @@ def main():
             var2, steps2, final2, formatted2 = solve_normal_mode(show(first_deriv))
             out_label2 = "d2y/dx2" if var == "x" else "d/dx(" + out_label + ")"
             print_compact_steps(steps2, out_label2, final2, first_count + 1)
-            print("Answer: " + out_label2 + " = " + readable_show(final2))
-            if sig(formatted2) != sig(final2):
-                print(out_label2 + " = " + readable_show(formatted2))
+            shown2 = formatted2
+            print(out_label2 + " = " + readable_show(shown2))
+            try:
+                original = trig_normal(parse(text))
+                if original[0] == "fn" and original[1] == "cot" and original[2][0] == "sym":
+                    print("Since y = cot(" + original[2][1] + "), cosec^2(" + original[2][1] + ") = 1 + y^2.")
+                    print(out_label2 + " = 2*y*(1 + y^2)")
+            except Exception:
+                pass
 
         else:
             print("Bad mode.")
