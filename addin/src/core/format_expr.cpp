@@ -39,7 +39,7 @@ static std::string fn_name(FnKind k)
     case FnKind::Cosh: return "cosh";
     case FnKind::Tanh: return "tanh";
     case FnKind::Exp: return "exp";
-    case FnKind::Log: return "log";
+    case FnKind::Log: return "ln";
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
@@ -58,6 +58,15 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
     if(n.kind == NodeKind::Sym) return n.text;
     if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
     if(n.kind == NodeKind::Fn) {
+        if(n.fkind == FnKind::Abs) {
+            return "|" + format_expr(arena, n.a, 0) + "|";
+        }
+        if(n.fkind == FnKind::Log) {
+            Node const &argn = arena.get(n.a);
+            if(argn.kind == NodeKind::Fn && argn.fkind == FnKind::Abs) {
+                return "ln|" + format_expr(arena, argn.a, 0) + "|";
+            }
+        }
         return fn_name(n.fkind) + "(" + format_expr(arena, n.a, 0) + ")";
     }
     if(n.kind == NodeKind::Pow) {

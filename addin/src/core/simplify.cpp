@@ -115,8 +115,9 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
         Rational q = divq(tn.num, bn.num);
         return num(a, q.num, q.den);
     }
-    // Divide by a rational constant -> multiply by reciprocal (avoids ambiguous "…/1/2").
-    if(is_num(bn)) {
+    // Divide by a non-integer rational -> multiply by reciprocal (avoids ambiguous "…/1/2").
+    // Keep division by integer constants as Div so formatting stays "x^3/3" instead of "1/3*x^3".
+    if(is_num(bn) && bn.num.den != 1) {
         if(bn.num.num == 0) throw std::runtime_error("division by zero");
         Rational inv{bn.num.den, bn.num.num};
         inv.normalize();

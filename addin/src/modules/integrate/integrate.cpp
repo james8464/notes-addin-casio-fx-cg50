@@ -195,8 +195,8 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
         if(x.fkind == FnKind::Sin) {
             if(auto aff = match_affine(a, arg, var)) {
                 // ∫ sin(kx+b) dx = -cos(kx+b)/k
-                return casio::simplify(
-                    a, casio::div(a, casio::neg(a, a.fn(FnKind::Cos, arg)), aff->k));
+                NodeId coeff = casio::div(a, casio::num(a, -1), aff->k);
+                return casio::simplify(a, casio::mul(a, {coeff, a.fn(FnKind::Cos, arg)}));
             }
         }
         if(x.fkind == FnKind::Cos) {
@@ -236,6 +236,11 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
             }
             if(f.fkind == FnKind::Cosec && is_sym(a, arg, var)) {
                 return casio::neg(a, a.fn(FnKind::Cot, arg));
+            }
+            if(f.fkind == FnKind::Tan && is_sym(a, arg, var)) {
+                // ∫ tan^2 x dx = tan x - x
+                NodeId v = casio::sym(a, var);
+                return casio::simplify(a, casio::add(a, {a.fn(FnKind::Tan, arg), casio::neg(a, v)}));
             }
         }
     }

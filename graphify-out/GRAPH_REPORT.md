@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 71 files · ~407,371 words
+- 72 files · ~407,700 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2591 nodes · 11271 edges · 25 communities detected
+- 2597 nodes · 11280 edges · 26 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -100,38 +100,42 @@ Cohesion: 0.28
 Nodes (8): format_equation_human_readable(), format_exam_working(), numbered_steps(), Pull a leading numeric coefficient out of a multiplication node., Build a simple numbered block and make sure the final line says Answer., Prefix non-empty working lines with 1., 2., 3. for calculator display., Render tuple AST nodes into a compact exam-friendly string., split_coeff()
 
 ### Community 16 - "Community 16"
-Cohesion: 0.7
-Nodes (4): extract_exact_answer(), main(), run_cpp(), run_python()
+Cohesion: 0.6
+Nodes (5): extract_answer(), main(), norm(), run_cpp(), run_python()
 
 ### Community 17 - "Community 17"
 Cohesion: 0.7
-Nodes (4): _import_rtf_runner(), main(), _read_txt_lines(), _write_jsonl()
+Nodes (4): extract_exact_answer(), main(), run_cpp(), run_python()
 
 ### Community 18 - "Community 18"
+Cohesion: 0.7
+Nodes (4): _import_rtf_runner(), main(), _read_txt_lines(), _write_jsonl()
+
+### Community 19 - "Community 19"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.7
 Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 20 - "Community 20"
+### Community 21 - "Community 21"
 Cohesion: 0.83
 Nodes (3): main(), py_oracle(), run_host()
 
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
 Cohesion: 1.0
 Nodes (2): main(), run_host()
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 0.67
 Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
-### Community 24 - "Community 24"
+### Community 25 - "Community 25"
 Cohesion: 0.67
 Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
@@ -143,11 +147,11 @@ Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree su
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 2` to `Community 8`?**
-  _High betweenness centrality (0.117) - this node is a cross-community bridge._
+  _High betweenness centrality (0.116) - this node is a cross-community bridge._
 - **Why does `TransformRegressionTests` connect `Community 8` to `Community 2`?**
   _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 2` to `Community 8`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `CASIOApp` (e.g. with `LLMManager` and `RuntimeSourceGuardTests`) actually correct?**
   _`CASIOApp` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex` to the rest of the system?**
