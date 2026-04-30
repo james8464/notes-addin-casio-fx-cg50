@@ -8,6 +8,7 @@
 #include "core/format_exam.hpp"
 
 #include "modules/boolean/boolean.hpp"
+#include "modules/suvat/suvat.hpp"
 #include "ui/text_input.hpp"
 
 static void draw_centered(const char *s)
@@ -50,7 +51,7 @@ int main(void)
     casio::Arena arena;
     (void)arena;
 
-    draw_centered("CasioCAS (Boolean MVP)");
+    draw_centered("CasioCAS (MVP)");
 
     while(true)
     {
@@ -61,28 +62,43 @@ int main(void)
         if(ev.key == KEY_EXE)
         {
             try {
-                std::vector<std::string> lines;
-                lines.push_back("1 simplify");
-                lines.push_back("2 nand form");
-                lines.push_back("3 nor form");
-                lines.push_back("4 prove");
-                view_lines("Boolean menu", lines);
+                std::vector<std::string> home;
+                home.push_back("1 Boolean");
+                home.push_back("2 SUVAT");
+                view_lines("Home", home);
 
-                // Simple key menu: 1-4
-                int mode = 1;
+                int app = 1;
                 while(true) {
                     key_event_t km = getkey();
                     if(km.type != KEYEV_DOWN) continue;
-                    if(km.key == KEY_EXIT) { mode = 0; break; }
-                    if(km.key == KEY_1) { mode = 1; break; }
-                    if(km.key == KEY_2) { mode = 2; break; }
-                    if(km.key == KEY_3) { mode = 3; break; }
-                    if(km.key == KEY_4) { mode = 4; break; }
+                    if(km.key == KEY_EXIT) { app = 0; break; }
+                    if(km.key == KEY_1) { app = 1; break; }
+                    if(km.key == KEY_2) { app = 2; break; }
                 }
 
-                if(mode == 0) continue;
+                if(app == 0) continue;
 
-                if(mode == 1) {
+                if(app == 1) {
+                    std::vector<std::string> lines;
+                    lines.push_back("1 simplify");
+                    lines.push_back("2 nand form");
+                    lines.push_back("3 nor form");
+                    lines.push_back("4 prove");
+                    view_lines("Boolean menu", lines);
+
+                    int mode = 1;
+                    while(true) {
+                        key_event_t km = getkey();
+                        if(km.type != KEYEV_DOWN) continue;
+                        if(km.key == KEY_EXIT) { mode = 0; break; }
+                        if(km.key == KEY_1) { mode = 1; break; }
+                        if(km.key == KEY_2) { mode = 2; break; }
+                        if(km.key == KEY_3) { mode = 3; break; }
+                        if(km.key == KEY_4) { mode = 4; break; }
+                    }
+                    if(mode == 0) continue;
+
+                    if(mode == 1) {
                     std::string expr = "A.(B+C)";
                     if(!casio::ui::text_input(expr, "Simplify", "EXE ok  EXIT cancel")) continue;
                     auto cur = casio::boolean::parse(expr);
@@ -96,22 +112,22 @@ int main(void)
                     }
                     out.push_back("Result: " + casio::boolean::show(cur));
                     view_lines("Simplify", out);
-                }
-                else if(mode == 2) {
+                    }
+                    else if(mode == 2) {
                     std::string expr = "A.B";
                     if(!casio::ui::text_input(expr, "To NAND", "EXE ok  EXIT cancel")) continue;
                     auto cur = casio::boolean::parse(expr);
                     auto nanded = casio::boolean::normalise(casio::boolean::to_nand(cur));
                     view_lines("NAND form", { "1. " + casio::boolean::show(cur), "2. " + casio::boolean::show(nanded) });
-                }
-                else if(mode == 3) {
+                    }
+                    else if(mode == 3) {
                     std::string expr = "A+B";
                     if(!casio::ui::text_input(expr, "To NOR", "EXE ok  EXIT cancel")) continue;
                     auto cur = casio::boolean::parse(expr);
                     auto nored = casio::boolean::normalise(casio::boolean::to_nor(cur));
                     view_lines("NOR form", { "1. " + casio::boolean::show(cur), "2. " + casio::boolean::show(nored) });
-                }
-                else if(mode == 4) {
+                    }
+                    else if(mode == 4) {
                     std::string lhs = "A.(B+C)";
                     std::string rhs = "A.B+A.C";
                     if(!casio::ui::text_input(lhs, "Prove LHS", "EXE ok  EXIT cancel")) continue;
@@ -119,6 +135,23 @@ int main(void)
                     auto [plines, err] = casio::boolean::prove(lhs, rhs);
                     if(!err.empty()) view_lines("Prove", { "Error:", err });
                     else view_lines("Prove", plines);
+                    }
+                }
+                else if(app == 2) {
+                    casio::suvat::Inputs in;
+                    in.s = "10";
+                    in.u = "0";
+                    in.v = "";
+                    in.a = "2";
+                    in.t = "5";
+                    in.target = "v";
+                    casio::ui::text_input(in.s, "s", "blank or ,target");
+                    casio::ui::text_input(in.u, "u", "blank or ,target");
+                    casio::ui::text_input(in.v, "v", "blank or ,target");
+                    casio::ui::text_input(in.a, "a", "blank or ,target");
+                    casio::ui::text_input(in.t, "t", "blank or ,target");
+                    auto lines = casio::suvat::solve(arena, in);
+                    view_lines("SUVAT", lines);
                 }
             }
             catch(...) {
