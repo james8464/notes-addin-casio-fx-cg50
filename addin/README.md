@@ -34,3 +34,16 @@ This should produce a `.g3a` in the build output folder (exact path depends on f
 - The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
 - We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
 
+### Host build (fast local testing)
+
+This repo installs `cmake` via pip (`--user`) on macOS, so `cmake` may live at `$(python3 -c 'import site; print(site.USER_BASE)')/bin`.
+
+Build the host runner from the repo root:
+
+```bash
+./tools/build_host.sh
+./addin/host/build/casio_host --alg "2x+3=7"
+./addin/host/build/casio_host --int "sin(3x+2)"
+./addin/host/build/casio_host --trig "cos(5*pi/3)"
+```
+
