@@ -59,6 +59,7 @@ static std::optional<Rational> pi_multiple_coeff(Arena &a, NodeId n)
     auto const &x = a.get(n);
     if(x.kind == NodeKind::Const && x.ckind == ConstKind::Pi) return Rational{1, 1};
     if(x.kind == NodeKind::Mul) {
+        // Multiply together numeric factors and at most one pi-multiple subexpression.
         bool saw_pi = false;
         Rational coeff{1, 1};
         for(auto kid : x.kids) {
@@ -68,11 +69,25 @@ static std::optional<Rational> pi_multiple_coeff(Arena &a, NodeId n)
                 saw_pi = true;
                 continue;
             }
-            auto q = as_num(a, kid);
-            if(!q) return std::nullopt;
-            coeff.num *= q->num;
-            coeff.den *= q->den;
-            coeff.normalize();
+            if(auto q = as_num(a, kid)) {
+                coeff.num *= q->num;
+                coeff.den *= q->den;
+                coeff.normalize();
+                continue;
+            }
+            // Allow nested (pi/3) style factors.
+            if(auto sub = pi_multiple_coeff(a, kid)) {
+                if(saw_pi) {
+                    // already has pi from another factor; multiplying two pi-multiples -> pi^2 (not supported here)
+                    return std::nullopt;
+                }
+                saw_pi = true;
+                coeff.num *= sub->num;
+                coeff.den *= sub->den;
+                coeff.normalize();
+                continue;
+            }
+            return std::nullopt;
         }
         if(saw_pi) return coeff;
     }
