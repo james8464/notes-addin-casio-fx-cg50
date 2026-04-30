@@ -2177,6 +2177,7 @@ class CASIOApp(App):
         self._live_phase = "ready"
         self._last_event_label = ""
         self._frame_timer = None
+        self._compile_running = False
 
         self.command_items = {
             "/random": "Run randomly generated tests (infinite until stopped)",
@@ -2191,9 +2192,10 @@ class CASIOApp(App):
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
-            "/compile": "Recompile .mpy in calc_files; copy support modules, *Program.mpy, launchers, main.py",
+            "/compile": "Compile current backend; C++ builds casio_host and the .g3a with live progress",
             "/switch python": "Switch backend to Python (legacy/oracle)",
             "/switch c": "Switch backend to C++ (host + add-in)",
+            "/swtich c": "Typo alias for /switch c",
             "/llm": "Configure LLM verification (select model, enable/disable)",
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
@@ -2440,9 +2442,9 @@ class CASIOApp(App):
             self.show_help()
         elif value_lower == "/compile":
             self.action_compile()
-        elif value_lower == "/switch python":
+        elif value_lower in ("/switch python", "/swtich python"):
             self.switch_backend("python")
-        elif value_lower == "/switch c":
+        elif value_lower in ("/switch c", "/swtich c"):
             self.switch_backend("c")
         elif value_lower == "/llm" or value_lower == "/llm status":
             self.handle_llm_status()
@@ -2718,33 +2720,140 @@ class CASIOApp(App):
 
     def action_compile_cpp(self):
         import subprocess
+        import time
 
-        self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
-        self.update_summary("Compiling (C++ host + .g3a)...")
-
-        def run(cmd, cwd=None):
-            p = subprocess.run(cmd, cwd=str(cwd or REPO_ROOT), text=True, capture_output=True)
-            out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
-            return p.returncode, out.strip()
-
-        self.append_result("[dim]Building host (casio_host)...[/dim]")
-        rc, out = run(["./c++/tools/build_host.sh"])
-        if rc != 0:
-            self.append_result(f"[bold #f87171]✗ build_host failed[/bold #f87171]\n{out}")
-            self.update_summary("Compile failed")
+        if getattr(self, "_compile_running", False):
+            self.append_result("[bold #f59e0b]Compile already running.[/bold #f59e0b]")
             return
-        self.append_result("[bold #22c55e]✓[/#22c55e] host built")
 
-        build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
-        script = "./c++/tools/build_addin_docker.sh" if build_mode == "docker" else "./c++/tools/build_addin.sh"
-        self.append_result(f"[dim]Building add-in via {build_mode}...[/dim]")
-        rc, out = run([script])
-        if rc != 0:
-            self.append_result(f"[bold #f87171]✗ add-in build failed[/bold #f87171]\n{out}")
-            self.update_summary("Compile failed")
-            return
-        self.append_result("[bold #22c55e]✓[/#22c55e] add-in built")
-        self.update_summary("Compile OK")
+        self._compile_running = True
+        plain = getattr(self, "plain_mode", False)
+
+        def emit(fn, *args):
+            if plain:
+                fn(*args)
+            else:
+                self.call_from_thread(fn, *args)
+
+        def log(message):
+            emit(self.append_result, message)
+
+        def summary(message):
+            emit(self.update_summary, message)
+
+        def run_stream(label, cmd, cwd=None, show_output=True):
+            log(f"[dim]▶ start: {label}[/dim]")
+            start = time.monotonic()
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(cwd or REPO_ROOT),
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    bufsize=1,
+                )
+            except OSError as err:
+                log(f"[bold #f87171]✗ failed to start {label}:[/bold #f87171] {err}")
+                return 127
+
+            tail = []
+            if proc.stdout is not None:
+                for raw in proc.stdout:
+                    line = raw.rstrip()
+                    if not line:
+                        continue
+                    tail.append(line)
+                    if len(tail) > 12:
+                        tail.pop(0)
+                    if show_output:
+                        log(f"[dim]  {line}[/dim]")
+
+            rc = proc.wait()
+            elapsed = time.monotonic() - start
+            if rc == 0:
+                log(f"[bold #22c55e]✓ finish: {label} ({elapsed:.1f}s)[/bold #22c55e]")
+            else:
+                log(f"[bold #f87171]✗ finish: {label} failed with exit {rc} ({elapsed:.1f}s)[/bold #f87171]")
+                if tail:
+                    log("[dim]Last output:[/dim]\n" + "\n".join(tail))
+            return rc
+
+        def compile_job():
+            try:
+                log("[bold #e07a53]▶ /compile (C++ backend)[/bold #e07a53]")
+                summary("Compiling (C++ host + .g3a)...")
+
+                log("[dim]--- Building host (casio_host) ---[/dim]")
+                if run_stream("cmake configure", ["cmake", "-S", "c++/addin/host", "-B", "c++/addin/host/build"]) != 0:
+                    summary("Compile failed")
+                    return
+                if run_stream("cmake build host", ["cmake", "--build", "c++/addin/host/build", "-j"]) != 0:
+                    summary("Compile failed")
+                    return
+                if run_stream("device solver smoke test", ["c++/addin/host/build/device_solver_smoke"]) != 0:
+                    summary("Compile failed")
+                    return
+                log("[bold #22c55e]✓ host ready[/bold #22c55e]")
+                log("[dim]Output:[/dim] c++/addin/host/build/casio_host")
+
+                log("")
+                log("[dim]--- Building add-in (.g3a) ---[/dim]")
+                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
+
+                if build_mode == "docker":
+                    docker_build = [
+                        "docker", "build", "--progress=plain",
+                        "-f", "c++/tools/docker/Dockerfile.fxsdk",
+                        "-t", "casio-fxsdk:latest",
+                        ".",
+                    ]
+                    if run_stream("fxSDK Docker image", docker_build) != 0:
+                        summary("Compile failed")
+                        return
+                    log("[bold #22c55e]✓ Docker image ready[/bold #22c55e]")
+
+                    docker_run = [
+                        "docker", "run", "--rm",
+                        "-v", f"{REPO_ROOT}:/work",
+                        "-w", "/work/c++/addin",
+                        "casio-fxsdk:latest",
+                        "bash", "-lc", "fxsdk build-cg",
+                    ]
+                    if run_stream("fxsdk build-cg in Docker", docker_run) != 0:
+                        summary("Compile failed")
+                        return
+                else:
+                    if run_stream("native fxSDK add-in build", ["./c++/tools/build_addin.sh"]) != 0:
+                        summary("Compile failed")
+                        return
+
+                log("[dim]--- Verifying outputs ---[/dim]")
+                g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
+                if not g3as:
+                    log("[bold #f87171]✗ no .g3a found under c++/addin/build-cg/[/bold #f87171]")
+                    summary("Compile failed")
+                    return
+
+                for p in g3as:
+                    size_kb = p.stat().st_size / 1024
+                    log(f"[bold #22c55e]✓ .g3a:[/bold #22c55e] {p} ({size_kb:.1f} KB)")
+
+                size_cmd = ["python3", "c++/tools/check_g3a_size.py"] + [str(p) for p in g3as]
+                if run_stream("g3a size gate", size_cmd) != 0:
+                    summary("Compile failed")
+                    return
+
+                log("")
+                log("[bold #22c55e]✓ Compile complete: .g3a ready[/bold #22c55e]")
+                summary("Compile OK")
+            finally:
+                self._compile_running = False
+
+        if plain:
+            compile_job()
+        else:
+            threading.Thread(target=compile_job, daemon=True).start()
 
     def action_quit(self):
         self.exit()
@@ -2972,18 +3081,29 @@ class CASIOApp(App):
         threading.Thread(target=run, daemon=True).start()
 
     def append_result(self, text):
+        def plain_text(value):
+            plain = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", value or "")
+            for tag in (
+                "[bold #e07a53]", "[/bold #e07a53]",
+                "[bold #22c55e]", "[/bold #22c55e]",
+                "[bold #f87171]", "[/bold #f87171]",
+                "[bold #f59e0b]", "[/bold #f59e0b]",
+                "[#22c55e]", "[/#22c55e]",
+                "[#f87171]", "[/#f87171]",
+                "[dim]", "[/dim]",
+                "[bold]", "[/bold]",
+            ):
+                plain = plain.replace(tag, "")
+            return plain
+
         if getattr(self, 'plain_mode', False):
-            plain = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text or "")
-            plain = plain.replace("[bold #e07a53]", "").replace("[/bold #e07a53]", "")
-            plain = plain.replace("[dim]", "").replace("[/dim]", "")
-            plain = plain.replace("[bold]", "").replace("[/bold]", "")
+            plain = plain_text(text)
             if plain.strip():
                 print(plain, flush=True)
             return
         # Use print() for immediate output, bypass Textual buffering
         import sys
-        plain = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text or "")
-        plain = plain.replace("[dim]", "").replace("[/dim]", "")
+        plain = plain_text(text)
         sys.stdout.write(plain + "\n")
         sys.stdout.flush()
         try:

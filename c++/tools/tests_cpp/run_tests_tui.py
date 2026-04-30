@@ -47,38 +47,66 @@ def _run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str]:
 
 
 def _build_host(log) -> bool:
-    log("[dim]Building host (casio_host)...[/dim]")
-    rc, out = _run(["./tools/build_host.sh"])
+    log("[dim]--- Building host (casio_host) ---[/dim]")
+    log("[dim]Running cmake configure...[/dim]")
+    rc, out = _run(["cmake", "-S", "c++/addin/host", "-B", "c++/addin/host/build"])
     if rc != 0:
-        log(f"[bold #f87171]✗ build_host failed[/bold #f87171]\n{out}")
+        log(f"[bold #f87171]✗ cmake configure failed[/bold #f87171]\n{out}")
         return False
-    log("[bold #22c55e]✓[/#22c55e] host built")
+    log("[dim]Compiling C++ (host)...[/dim]")
+    rc, out = _run(["cmake", "--build", "c++/addin/host/build", "-j"])
+    if rc != 0:
+        log(f"[bold #f87171]✗ cmake build failed[/bold #f87171]\n{out}")
+        return False
+    log("[dim]Running smoke test...[/dim]")
+    rc, out = _run(["c++/addin/host/build/device_solver_smoke"])
+    if rc != 0:
+        log(f"[bold #f87171]✗ smoke test failed[/bold #f87171]\n{out}")
+        return False
+    log("[bold #22c55e]✓[/#22c55e] host built successfully")
+    log(f"[dim]Output:[/dim] c++/addin/host/build/casio_host")
     return True
 
 
 def _build_addin(log) -> bool:
-    # Prefer Docker build on macOS; fall back to native fxsdk if present.
+    log("[dim]--- Building add-in (.g3a) ---[/dim]")
     docker_script = REPO / "tools" / "build_addin_docker.sh"
     native_script = REPO / "tools" / "build_addin.sh"
 
     if docker_script.exists() and (os.environ.get("CASIO_BUILD_ADDIN", "docker") == "docker"):
-        log("[dim]Building add-in (.g3a) via Docker...[/dim]")
-        rc, out = _run([str(docker_script)])
+        log("[dim]Building fxSDK Docker image...[/dim]")
+        rc, out = _run(["docker", "build", "-f", "c++/tools/docker/Dockerfile.fxsdk", "-t", "casio-fxsdk:latest", "."])
+        if rc != 0:
+            log(f"[bold #f87171]✗ Docker image build failed[/bold #f87171]\n{out}")
+            return False
+        log("[bold #22c55e]✓[/#22c55e] Docker image ready")
+        log("[dim]Running container build (fxsdk build-cg)...[/dim]")
+        rc, out = _run([
+            "docker", "run", "--rm",
+            "-v", f"{REPO}:/work",
+            "-w", "/work/c++/addin",
+            "casio-fxsdk:latest",
+            "bash", "-lc", "fxsdk build-cg"
+        ])
+        if rc != 0:
+            log(f"[bold #f87171]✗ add-in build failed[/bold #f87171]\n{out}")
+            return False
     else:
-        log("[dim]Building add-in (.g3a) via native fxSDK...[/dim]")
+        log("[dim]Building add-in via native fxSDK...[/dim]")
         rc, out = _run([str(native_script)])
+        if rc != 0:
+            log(f"[bold #f87171]✗ add-in build failed[/bold #f87171]\n{out}")
+            return False
 
-    if rc != 0:
-        log(f"[bold #f87171]✗ add-in build failed[/bold #f87171]\n{out}")
-        return False
-    log("[bold #22c55e]✓[/#22c55e] add-in built")
-    # Print resulting g3a paths (if any)
-    g3as = sorted((REPO / "addin" / "build").glob("*.g3a"))
+    log("[dim]Verifying .g3a output...[/dim]")
+    g3as = sorted((REPO / "addin" / "build-cg").glob("*.g3a"))
     if g3as:
         for p in g3as:
-            log(f"[dim]Output:[/dim] {p}")
+            size_kb = p.stat().st_size / 1024
+            log(f"[bold #22c55e]✓[/#22c55e] {p.name} ({size_kb:.1f} KB)")
     else:
-        log("[dim]Note:[/dim] no .g3a found under addin/build/")
+        log("[bold #f87171]✗ no .g3a found under addin/build-cg/[/bold #f87171]")
+        return False
     return True
 
 
@@ -122,22 +150,8 @@ def main() -> int:
     AppCls.run_cli = patched_run_cli  # type: ignore[attr-defined]
 
     def patched_compile(self):  # type: ignore[no-redef]
-        # Mirror the Python TUI "/compile", but for C++:
-        # - build host binary
-        # - build add-in (.g3a)
-        # - optionally send to calculator (Linux only)
-        self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
-        self.update_summary("Compiling (host + add-in)...")
-
-        def log(msg: str) -> None:
-            self.append_result(msg)
-
-        ok = _build_host(log) and _build_addin(log)
-        if ok:
-            _maybe_send_to_calc(log)
-            self.update_summary("Compile OK")
-        else:
-            self.update_summary("Compile failed")
+        self.backend = "c"
+        return AppCls.action_compile_cpp(self)
 
     AppCls.action_compile = patched_compile  # type: ignore[attr-defined]
 
@@ -151,4 +165,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
