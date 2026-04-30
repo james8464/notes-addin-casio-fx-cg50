@@ -15,25 +15,6 @@ static std::string num_text(Rational const &q)
     return "(" + std::to_string(q.num) + "/" + std::to_string(q.den) + ")";
 }
 
-static int prio(Node const &n)
-{
-    switch(n.kind) {
-    case NodeKind::Num:
-    case NodeKind::Sym:
-    case NodeKind::Const:
-    case NodeKind::Fn:
-        return 4;
-    case NodeKind::Pow:
-        return 3;
-    case NodeKind::Mul:
-    case NodeKind::Div:
-        return 2;
-    case NodeKind::Add:
-        return 1;
-    }
-    return 0;
-}
-
 static std::string fn_text(FnKind k)
 {
     switch(k) {
@@ -133,7 +114,6 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
         if(n.fkind == FnKind::Log) {
             Node const &arg = arena.get(n.a);
             if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Abs) {
-                Node const &inner = arena.get(arg.a);
                 return "ln|" + format_equation_human_readable(arena, arg.a, 0) + "|";
             }
             return "ln(" + format_equation_human_readable(arena, n.a, 0) + ")";

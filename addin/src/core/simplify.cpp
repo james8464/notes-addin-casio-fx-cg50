@@ -333,24 +333,33 @@ NodeId neg(Arena &a, NodeId node)
 
 NodeId simplify(Arena &a, NodeId node)
 {
+    if(a.has_simplify_cache(node)) return a.get_simplify_cache(node);
     Node const &n = a.get(node);
+    NodeId out = node;
     switch(n.kind) {
     case NodeKind::Num:
     case NodeKind::Sym:
     case NodeKind::Const:
-        return node;
+        out = node;
+        break;
     case NodeKind::Fn:
-        return simplify_fn(a, n.fkind, n.a);
+        out = simplify_fn(a, n.fkind, n.a);
+        break;
     case NodeKind::Pow:
-        return simplify_pow(a, n.a, n.b);
+        out = simplify_pow(a, n.a, n.b);
+        break;
     case NodeKind::Div:
-        return simplify_div(a, n.a, n.b);
+        out = simplify_div(a, n.a, n.b);
+        break;
     case NodeKind::Add:
-        return make_add(a, n.kids);
+        out = make_add(a, n.kids);
+        break;
     case NodeKind::Mul:
-        return make_mul(a, n.kids);
+        out = make_mul(a, n.kids);
+        break;
     }
-    return node;
+    a.set_simplify_cache(node, out);
+    return out;
 }
 
 } // namespace casio

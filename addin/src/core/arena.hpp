@@ -27,8 +27,15 @@ public:
 
     std::size_t size() const { return nodes.size(); }
 
+    // Simplify memoization (per-node, per-arena).
+    // Returned NodeId is the simplified version of the corresponding node id.
+    bool has_simplify_cache(NodeId id) const;
+    NodeId get_simplify_cache(NodeId id) const;
+    void set_simplify_cache(NodeId id, NodeId simplified);
+
 private:
     std::vector<Node> nodes;
+    std::vector<NodeId> simplify_cache;
 };
 
 } // namespace casio

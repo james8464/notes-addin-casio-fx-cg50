@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 76 files · ~410,488 words
+- 76 files · ~410,555 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2618 nodes · 11322 edges · 28 communities detected
+- 2620 nodes · 11324 edges · 28 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -45,7 +45,7 @@ Nodes (441): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mod
 
 ### Community 2 - "Community 2"
 Cohesion: 0.01
-Nodes (146): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+138 more)
+Nodes (142): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+134 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.04
@@ -73,7 +73,7 @@ Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
 Cohesion: 0.05
-Nodes (59): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char() (+51 more)
+Nodes (63): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char() (+55 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.11
