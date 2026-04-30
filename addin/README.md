@@ -14,12 +14,25 @@ Typical workflow (Linux/WSL is the smoothest; macOS may need tweaks):
 - Install via GiteaPC (recommended by fxSDK): `giteapc install Lephenixnoir/fxsdk`
 - Ensure `fxsdk` is on PATH.
 
+Quick verify:
+
+```bash
+fxsdk --version
+fxsdk new -t addin-cg50 /tmp/fxsdk-smoke && rm -rf /tmp/fxsdk-smoke
+```
+
 ### Build the add-in
 
 From this directory:
 
 ```bash
 fxsdk build-cg
+```
+
+Or from repo root:
+
+```bash
+./tools/build_addin.sh
 ```
 
 This should produce a `.g3a` in the build output folder (exact path depends on fxSDK version/template).
