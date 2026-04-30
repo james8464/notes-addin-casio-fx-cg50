@@ -13,6 +13,11 @@ class Arena
 public:
     Arena();
 
+    // Hard budget to prevent hangs/crashes on pathological inputs.
+    // 0 means unlimited.
+    void set_max_nodes(std::size_t n) { max_nodes = n; }
+    std::size_t get_max_nodes() const { return max_nodes; }
+
     NodeId num(Rational r);
     NodeId sym(std::string_view name);
     NodeId constant(ConstKind k);
@@ -34,8 +39,10 @@ public:
     void set_simplify_cache(NodeId id, NodeId simplified);
 
 private:
+    void push(Node &&n);
     std::vector<Node> nodes;
     std::vector<NodeId> simplify_cache;
+    std::size_t max_nodes = 0;
 };
 
 } // namespace casio

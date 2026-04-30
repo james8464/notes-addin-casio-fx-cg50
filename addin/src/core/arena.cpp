@@ -1,5 +1,7 @@
 #include "arena.hpp"
 
+#include <stdexcept>
+
 namespace casio
 {
 
@@ -11,15 +13,23 @@ Arena::Arena()
     simplify_cache.reserve(4096);
 }
 
+void Arena::push(Node &&n)
+{
+    if(max_nodes != 0 && nodes.size() >= max_nodes) {
+        throw std::runtime_error("Arena node limit exceeded.");
+    }
+    nodes.push_back(std::move(n));
+    simplify_cache.push_back(kUnset);
+}
+
 NodeId Arena::num(Rational r)
 {
     r.normalize();
     Node n;
     n.kind = NodeKind::Num;
     n.num = r;
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::sym(std::string_view name)
@@ -27,9 +37,8 @@ NodeId Arena::sym(std::string_view name)
     Node n;
     n.kind = NodeKind::Sym;
     n.text = std::string(name);
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::constant(ConstKind k)
@@ -37,9 +46,8 @@ NodeId Arena::constant(ConstKind k)
     Node n;
     n.kind = NodeKind::Const;
     n.ckind = k;
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::fn(FnKind k, NodeId arg)
@@ -48,9 +56,8 @@ NodeId Arena::fn(FnKind k, NodeId arg)
     n.kind = NodeKind::Fn;
     n.fkind = k;
     n.a = arg;
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::add(std::vector<NodeId> terms)
@@ -58,9 +65,8 @@ NodeId Arena::add(std::vector<NodeId> terms)
     Node n;
     n.kind = NodeKind::Add;
     n.kids = std::move(terms);
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::mul(std::vector<NodeId> factors)
@@ -68,9 +74,8 @@ NodeId Arena::mul(std::vector<NodeId> factors)
     Node n;
     n.kind = NodeKind::Mul;
     n.kids = std::move(factors);
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::pow(NodeId base, NodeId exp)
@@ -79,9 +84,8 @@ NodeId Arena::pow(NodeId base, NodeId exp)
     n.kind = NodeKind::Pow;
     n.a = base;
     n.b = exp;
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 NodeId Arena::div(NodeId nnum, NodeId dden)
@@ -90,9 +94,8 @@ NodeId Arena::div(NodeId nnum, NodeId dden)
     n.kind = NodeKind::Div;
     n.a = nnum;
     n.b = dden;
-    nodes.push_back(std::move(n));
-    simplify_cache.push_back(kUnset);
-    return static_cast<NodeId>(nodes.size() - 1);
+    push(std::move(n));
+    return static_cast<NodeId>(nodes.size() - 1u);
 }
 
 bool Arena::has_simplify_cache(NodeId id) const

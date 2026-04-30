@@ -5,12 +5,14 @@
 
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 
 namespace casio
 {
 
-static void sig_rec(Arena &arena, NodeId node, std::ostringstream &out)
+static void sig_rec(Arena &arena, NodeId node, std::ostringstream &out, int depth)
 {
+    if(depth > 512) throw std::runtime_error("sig() recursion limit exceeded.");
     node = simplify(arena, node);
     Node const &n = arena.get(node);
     switch(n.kind) {
@@ -25,22 +27,22 @@ static void sig_rec(Arena &arena, NodeId node, std::ostringstream &out)
         return;
     case NodeKind::Fn: {
         out << "fn(" << static_cast<int>(n.fkind) << ",";
-        sig_rec(arena, n.a, out);
+        sig_rec(arena, n.a, out, depth + 1);
         out << ")";
         return;
     }
     case NodeKind::Pow:
         out << "pow(";
-        sig_rec(arena, n.a, out);
+        sig_rec(arena, n.a, out, depth + 1);
         out << ",";
-        sig_rec(arena, n.b, out);
+        sig_rec(arena, n.b, out, depth + 1);
         out << ")";
         return;
     case NodeKind::Div:
         out << "div(";
-        sig_rec(arena, n.a, out);
+        sig_rec(arena, n.a, out, depth + 1);
         out << ",";
-        sig_rec(arena, n.b, out);
+        sig_rec(arena, n.b, out, depth + 1);
         out << ")";
         return;
     case NodeKind::Add:
@@ -49,7 +51,7 @@ static void sig_rec(Arena &arena, NodeId node, std::ostringstream &out)
         kids.reserve(n.kids.size());
         for(auto k : n.kids) {
             std::ostringstream tmp;
-            sig_rec(arena, k, tmp);
+            sig_rec(arena, k, tmp, depth + 1);
             kids.push_back(tmp.str());
         }
         std::sort(kids.begin(), kids.end());
@@ -67,7 +69,7 @@ static void sig_rec(Arena &arena, NodeId node, std::ostringstream &out)
 std::string sig(Arena &arena, NodeId node)
 {
     std::ostringstream out;
-    sig_rec(arena, node, out);
+    sig_rec(arena, node, out, 0);
     return out.str();
 }
 

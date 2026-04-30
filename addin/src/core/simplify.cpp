@@ -333,6 +333,18 @@ NodeId neg(Arena &a, NodeId node)
 
 NodeId simplify(Arena &a, NodeId node)
 {
+    static thread_local int depth = 0;
+    struct Guard
+    {
+        int &d;
+        explicit Guard(int &dd) : d(dd)
+        {
+            d++;
+            if(d > 512) throw std::runtime_error("Simplify recursion limit exceeded.");
+        }
+        ~Guard() { d--; }
+    } guard(depth);
+
     if(a.has_simplify_cache(node)) return a.get_simplify_cache(node);
     Node const &n = a.get(node);
     NodeId out = node;

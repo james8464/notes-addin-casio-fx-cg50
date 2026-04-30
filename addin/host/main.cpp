@@ -14,6 +14,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 
 static std::string read_all_stdin()
 {
@@ -142,6 +143,15 @@ int main(int argc, char **argv)
 
     std::string expr = (is_stdin_program || any_bool || is_suvat || is_int || is_alg || is_trig || is_derive) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
+    // Resource budget: cap node growth (prevents pathological hangs/crashes).
+    if(char const *env = std::getenv("CASIO_MAX_NODES")) {
+        try {
+            arena.set_max_nodes(static_cast<std::size_t>(std::stoul(env)));
+        } catch(...) {
+            arena.set_max_nodes(50000);
+        }
+    }
+    else arena.set_max_nodes(50000);
 
     try {
         if(is_stdin_program) {
