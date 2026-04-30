@@ -17,6 +17,7 @@ add_executable(casio_host
   ../src/core/simplify.cpp
   ../src/core/tokenize.cpp
   ../src/core/parse.cpp
+  ../src/core/parse_equation.cpp
   ../src/core/format_expr.cpp
   ../src/core/format_exam.cpp
 )
