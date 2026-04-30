@@ -35,11 +35,12 @@ target_compile_options(CasioCAS PRIVATE
   -fno-rtti
 )
 
-# Generate the .g3a container.
-# Note: icons/metadata will be wired once we add `assets/` and decide names.
+# Generate the .g3a container with visible CG menu metadata.
 include(GenerateG3A)
 generate_g3a(TARGET CasioCAS
-  # Empty NAME avoids over-icon text; set to non-empty to show a label.
-  NAME ""
+  NAME "CasioCAS"
   VERSION "00.01.0000"
+  ICONS
+    assets/icon-cg-uns.png
+    assets/icon-cg-sel.png
 )

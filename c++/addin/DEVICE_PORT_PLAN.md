@@ -199,7 +199,8 @@ Goal:
 Deliverables:
 - freestanding-safe home screen
 - paged line viewer
-- explicit "host-only for now" module placeholders
+- visible add-in name and icons in the calculator menu
+- real bounded module flows for every visible device menu item
 
 ### Phase 1: Build the Device Support Layer
 

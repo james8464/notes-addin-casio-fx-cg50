@@ -13,6 +13,11 @@ This file lists what still must be done to claim **FULL conversion** (all progra
 
 ## Phase 0 — repo hygiene + tooling (must do first)
 
+0) **Fix hardware-visible add-in UX**
+- Set a non-empty `.g3a` menu name so the calculator menu does not show a blank tile.
+- Add selected/unselected CG icon PNGs so the add-in is not a black box.
+- Ensure every visible add-in menu item either runs real bounded device functionality or clearly says it is unsupported because of input scope, not because it is still host-only.
+
 1) **Ignore local junk**
 - Add root `.gitignore` entries for:
   - `.DS_Store`, `.idea/`, `python/.DS_Store`
@@ -212,4 +217,3 @@ You can call this “fully converted” only when:
 - Outputs (working + Answer) match Python for a large fixture set
 - Add-in stable on hardware (no frequent resets/hangs)
 - `.g3a` visible in main menu (size under limit or external data workaround)
-
