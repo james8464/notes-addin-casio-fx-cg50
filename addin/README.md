@@ -1,0 +1,36 @@
+## fx-CG50 add-in (g3a) — native port target
+
+This folder is the start of a **native** fx-CG50 add-in built with **fxSDK + gint**.
+
+### Build prerequisites (one-time)
+
+Install **fxSDK** (which pulls in the SuperH toolchain, gint, fxlibc, OpenLibm, etc.).
+
+Authoritative docs:
+- fxSDK: `https://git.planet-casio.com/Lephenixnoir/fxsdk/src/branch/master/README.md`
+- gint: `https://git.planet-casio.com/Lephenixnoir/gint/src/branch/master/README.md`
+
+Typical workflow (Linux/WSL is the smoothest; macOS may need tweaks):
+- Install via GiteaPC (recommended by fxSDK): `giteapc install Lephenixnoir/fxsdk`
+- Ensure `fxsdk` is on PATH.
+
+### Build the add-in
+
+From this directory:
+
+```bash
+fxsdk build-cg
+```
+
+This should produce a `.g3a` in the build output folder (exact path depends on fxSDK version/template).
+
+### Install onto calculator
+
+- **Manual**: copy the built `.g3a` onto the calculator’s USB storage.
+- **fxSDK send helper** (Linux + UDisks2): `fxsdk send-cg`
+
+### Notes for this project
+
+- The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
+- We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
+

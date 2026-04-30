@@ -1,0 +1,155 @@
+#include "format_expr.hpp"
+
+#include "simplify.hpp"
+
+#include <sstream>
+
+namespace casio
+{
+namespace
+{
+
+static int prec(Node const &n)
+{
+    if(n.kind == NodeKind::Add) return 1;
+    if(n.kind == NodeKind::Mul || n.kind == NodeKind::Div) return 2;
+    if(n.kind == NodeKind::Pow) return 3;
+    return 4;
+}
+
+static std::string num_text(Rational const &q)
+{
+    if(q.den == 1) return std::to_string(q.num);
+    return std::to_string(q.num) + "/" + std::to_string(q.den);
+}
+
+static std::string fn_name(FnKind k)
+{
+    switch(k) {
+    case FnKind::Sin: return "sin";
+    case FnKind::Cos: return "cos";
+    case FnKind::Tan: return "tan";
+    case FnKind::Sec: return "sec";
+    case FnKind::Cosec: return "cosec";
+    case FnKind::Cot: return "cot";
+    case FnKind::Asin: return "asin";
+    case FnKind::Acos: return "acos";
+    case FnKind::Atan: return "atan";
+    case FnKind::Sinh: return "sinh";
+    case FnKind::Cosh: return "cosh";
+    case FnKind::Tanh: return "tanh";
+    case FnKind::Exp: return "exp";
+    case FnKind::Log: return "log";
+    case FnKind::Log10: return "log10";
+    case FnKind::Sqrt: return "sqrt";
+    case FnKind::Abs: return "abs";
+    }
+    return "fn";
+}
+
+} // namespace
+
+std::string format_expr(Arena &arena, NodeId node, int parent_prec)
+{
+    node = simplify(arena, node);
+    Node const &n = arena.get(node);
+
+    if(n.kind == NodeKind::Num) return num_text(n.num);
+    if(n.kind == NodeKind::Sym) return n.text;
+    if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
+    if(n.kind == NodeKind::Fn) {
+        return fn_name(n.fkind) + "(" + format_expr(arena, n.a, 0) + ")";
+    }
+    if(n.kind == NodeKind::Pow) {
+        Node const &base = arena.get(n.a);
+        std::string text;
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+            text = "e^(" + format_expr(arena, n.b, 0) + ")";
+        }
+        else {
+            text = format_expr(arena, n.a, 3) + "^" + format_expr(arena, n.b, 3);
+        }
+        if(prec(n) < parent_prec) return "(" + text + ")";
+        return text;
+    }
+    if(n.kind == NodeKind::Div) {
+        std::string text = format_expr(arena, n.a, 2) + "/" + format_expr(arena, n.b, 3);
+        if(prec(n) < parent_prec) return "(" + text + ")";
+        return text;
+    }
+    if(n.kind == NodeKind::Mul) {
+        std::ostringstream oss;
+        bool first = true;
+        for(NodeId kid : n.kids) {
+            if(!first) oss << "*";
+            first = false;
+            oss << format_expr(arena, kid, 2);
+        }
+        std::string text = oss.str();
+        if(prec(n) < parent_prec) return "(" + text + ")";
+        return text;
+    }
+    if(n.kind == NodeKind::Add) {
+        std::vector<std::string> parts;
+        parts.reserve(n.kids.size());
+
+        for(NodeId kid : n.kids) {
+            Node const &it = arena.get(kid);
+
+            // Negative number: "- <abs>"
+            if(it.kind == NodeKind::Num && it.num.num < 0) {
+                Rational q = it.num;
+                q.num = -q.num;
+                parts.push_back(std::string("- ") + num_text(q));
+                continue;
+            }
+
+            // Negative leading coefficient in multiplication: "- <rest>"
+            if(it.kind == NodeKind::Mul && !it.kids.empty()) {
+                Node const &k0 = arena.get(it.kids.front());
+                if(k0.kind == NodeKind::Num && k0.num.num < 0) {
+                    std::ostringstream term;
+                    term << "- ";
+                    bool mf = true;
+                    for(std::size_t i = 0; i < it.kids.size(); i++) {
+                        if(i == 0) {
+                            Rational q = k0.num;
+                            q.num = -q.num;
+                            bool coeff_is_one = (q.den == 1 && q.num == 1);
+                            if(!(coeff_is_one && it.kids.size() > 1)) {
+                                if(!mf) term << "*";
+                                mf = false;
+                                term << num_text(q);
+                            }
+                        }
+                        else {
+                            if(!mf) term << "*";
+                            mf = false;
+                            term << format_expr(arena, it.kids[i], 2);
+                        }
+                    }
+                    parts.push_back(term.str());
+                    continue;
+                }
+            }
+
+            // Ordinary term: first as-is, later prefixed with "+ ".
+            if(parts.empty()) parts.push_back(format_expr(arena, kid, 1));
+            else parts.push_back(std::string("+ ") + format_expr(arena, kid, 1));
+        }
+
+        std::ostringstream oss;
+        for(std::size_t i = 0; i < parts.size(); i++) {
+            if(i) oss << " ";
+            oss << parts[i];
+        }
+
+        std::string text = oss.str();
+        if(prec(n) < parent_prec) return "(" + text + ")";
+        return text;
+    }
+    return "<node>";
+}
+
+} // namespace casio
+
