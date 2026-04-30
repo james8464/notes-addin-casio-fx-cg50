@@ -28,6 +28,18 @@ static bool is_const(Arena &a, NodeId n)
     return x.kind == NodeKind::Num || x.kind == NodeKind::Const;
 }
 
+static std::optional<NodeId> const_times_var(Arena &a, NodeId n, std::string const &var)
+{
+    // Match k*x or x*k where k is numeric constant.
+    auto const &x = a.get(n);
+    if(x.kind != NodeKind::Mul || x.kids.size() != 2) return std::nullopt;
+    auto n0 = as_num(a, x.kids[0]);
+    auto n1 = as_num(a, x.kids[1]);
+    if(n0 && is_sym(a, x.kids[1], var)) return x.kids[0];
+    if(n1 && is_sym(a, x.kids[0], var)) return x.kids[1];
+    return std::nullopt;
+}
+
 static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string const &var);
 
 static std::optional<NodeId> integrate_mul(Arena &a, NodeId expr, std::string const &var)
@@ -103,17 +115,40 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
         return casio::simplify(a, casio::div(a, pow, a.num(np1)));
     }
 
+    // Exponential: ∫ e^(kx) dx = e^(kx)/k
+    if(x.kind == NodeKind::Pow) {
+        auto const &base = a.get(x.a);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+            if(is_sym(a, x.b, var)) return expr;
+            if(auto k = const_times_var(a, x.b, var)) {
+                return casio::simplify(a, casio::div(a, expr, *k));
+            }
+        }
+    }
+
     // Basic trig/exp/log
     if(x.kind == NodeKind::Fn) {
         NodeId arg = x.a;
-        if(x.fkind == FnKind::Sin && is_sym(a, arg, var)) {
-            return casio::simplify(a, casio::neg(a, a.fn(FnKind::Cos, arg)));
+        if(x.fkind == FnKind::Sin) {
+            if(is_sym(a, arg, var)) return casio::simplify(a, casio::neg(a, a.fn(FnKind::Cos, arg)));
+            if(auto k = const_times_var(a, arg, var)) {
+                // ∫ sin(kx) dx = -cos(kx)/k
+                return casio::simplify(a, casio::div(a, casio::neg(a, a.fn(FnKind::Cos, arg)), *k));
+            }
         }
-        if(x.fkind == FnKind::Cos && is_sym(a, arg, var)) {
-            return casio::simplify(a, a.fn(FnKind::Sin, arg));
+        if(x.fkind == FnKind::Cos) {
+            if(is_sym(a, arg, var)) return casio::simplify(a, a.fn(FnKind::Sin, arg));
+            if(auto k = const_times_var(a, arg, var)) {
+                // ∫ cos(kx) dx = sin(kx)/k
+                return casio::simplify(a, casio::div(a, a.fn(FnKind::Sin, arg), *k));
+            }
         }
-        if(x.fkind == FnKind::Exp && is_sym(a, arg, var)) {
-            return expr;
+        if(x.fkind == FnKind::Exp) {
+            if(is_sym(a, arg, var)) return expr;
+            if(auto k = const_times_var(a, arg, var)) {
+                // ∫ exp(kx) dx = exp(kx)/k
+                return casio::simplify(a, casio::div(a, expr, *k));
+            }
         }
         if(x.fkind == FnKind::Log && is_sym(a, arg, var)) {
             // ∫ ln(x) dx = x ln(x) - x
