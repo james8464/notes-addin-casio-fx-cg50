@@ -9,6 +9,9 @@ python/.DS_Store
 # Local build outputs (fxSDK + host cmake)
 addin/build/
 addin/host/build/
+c++/addin/build/
+c++/addin/build-cg/
+c++/addin/host/build/
 
 # Graphify outputs
 graphify-out/cache/
@@ -16,4 +19,3 @@ graphify-out/cache/
 # Python bytecode
 **/__pycache__/
 *.pyc
-

@@ -8,7 +8,7 @@ namespace casio::ui
 namespace
 {
 
-static void draw_menu(const char *title, std::vector<std::string> const &items, int sel, int top)
+static void draw_menu(const char *title, MenuItem const *items, int count, int sel, int top)
 {
     dclear(C_WHITE);
     dtext(2, 2, C_BLACK, title ? title : "");
@@ -17,15 +17,16 @@ static void draw_menu(const char *title, std::vector<std::string> const &items, 
     int rows = 9;
     for(int r = 0; r < rows; r++) {
         int i = top + r;
-        if(i >= (int)items.size()) break;
+        if(i >= count) break;
         int y = 22 + r * 16;
         bool active = (i == sel);
+        const char *label = items[i].label ? items[i].label : "";
         if(active) {
             drect(0, y - 1, DWIDTH - 1, y + 14, C_BLACK);
-            dtext(2, y, C_WHITE, items[i].c_str());
+            dtext(2, y, C_WHITE, label);
         }
         else {
-            dtext(2, y, C_BLACK, items[i].c_str());
+            dtext(2, y, C_BLACK, label);
         }
     }
 
@@ -35,12 +36,12 @@ static void draw_menu(const char *title, std::vector<std::string> const &items, 
 
 } // namespace
 
-int menu_select(const char *title, std::vector<std::string> const &items, int start_index)
+int menu_select(const char *title, MenuItem const *items, int count, int start_index)
 {
-    if(items.empty()) return -1;
+    if(items == nullptr || count <= 0) return -1;
     int sel = start_index;
     if(sel < 0) sel = 0;
-    if(sel >= (int)items.size()) sel = (int)items.size() - 1;
+    if(sel >= count) sel = count - 1;
     int top = 0;
 
     auto ensure_visible = [&]() {
@@ -48,13 +49,13 @@ int menu_select(const char *title, std::vector<std::string> const &items, int st
         if(sel < top) top = sel;
         if(sel >= top + rows) top = sel - rows + 1;
         if(top < 0) top = 0;
-        int max_top = (int)items.size() - rows;
+        int max_top = count - rows;
         if(max_top < 0) max_top = 0;
         if(top > max_top) top = max_top;
     };
 
     ensure_visible();
-    draw_menu(title, items, sel, top);
+    draw_menu(title, items, count, sel, top);
 
     while(true) {
         key_event_t ev = getkey();
@@ -64,17 +65,16 @@ int menu_select(const char *title, std::vector<std::string> const &items, int st
         if(ev.key == KEY_UP) {
             if(sel > 0) sel--;
             ensure_visible();
-            draw_menu(title, items, sel, top);
+            draw_menu(title, items, count, sel, top);
             continue;
         }
         if(ev.key == KEY_DOWN) {
-            if(sel + 1 < (int)items.size()) sel++;
+            if(sel + 1 < count) sel++;
             ensure_visible();
-            draw_menu(title, items, sel, top);
+            draw_menu(title, items, count, sel, top);
             continue;
         }
     }
 }
 
 } // namespace casio::ui
-

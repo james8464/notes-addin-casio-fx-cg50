@@ -1,41 +1,60 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Repo root (this script lives in c++/tools/)
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE_TAG="casio-fxsdk:latest"
+
+# Diagnostics
+echo "=== Docker Build Diagnostics ==="
+echo "Host: $(uname -s)"
+docker --version || (echo "ERROR: Docker not found"; exit 1)
+echo ""
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker not found. Install Docker Desktop then retry."
   exit 1
 fi
 
-echo "Building fxSDK Docker image (cached)..."
+echo "=== Building fxSDK Docker image ==="
 docker build \
-  -f "${ROOT_DIR}/tools/docker/Dockerfile.fxsdk" \
+  -f "${ROOT_DIR}/c++/tools/docker/Dockerfile.fxsdk" \
   -t "${IMAGE_TAG}" \
   "${ROOT_DIR}"
 
 echo ""
-echo "Building add-in in container..."
+echo "=== Building add-in in container ==="
 docker run --rm \
   -v "${ROOT_DIR}:/work" \
-  -w /work/addin \
+  -w /work/c++/addin \
   "${IMAGE_TAG}" \
-  bash -lc "fxsdk build-cg"
+  bash -lc "
+    echo 'Container environment check:' && \
+    giteapc --help > /dev/null && echo '✓ giteapc available' || echo '✗ giteapc missing' && \
+    fxsdk --version && echo '✓ fxsdk available' || echo '✗ fxsdk missing' && \
+    echo '' && \
+    echo 'Building add-in...' && \
+    fxsdk build-cg
+  "
 
 echo ""
-echo "Build outputs:"
-if compgen -G "${ROOT_DIR}/addin/build/*.g3a" >/dev/null; then
-  for f in "${ROOT_DIR}"/addin/build/*.g3a; do
-    echo "  - ${f}"
+echo "=== Build Results ==="
+g3a_files=()
+while IFS= read -r f; do
+  g3a_files+=("${f}")
+done < <(find "${ROOT_DIR}/c++/addin/build-cg" -type f -name '*.g3a' | sort)
+
+if [[ ${#g3a_files[@]} -gt 0 ]]; then
+  for f in "${g3a_files[@]}"; do
+    echo "✓ Output: ${f}"
   done
 else
-  echo "  (no .g3a found under addin/build/)"
+  echo "✗ No .g3a files found under c++/addin/build-cg/"
+  exit 1
 fi
 
 echo ""
-echo "Next:"
-echo "  - Run: python3 tools/check_g3a_size.py addin/build/*.g3a"
-echo "  - Copy the .g3a to the calculator and safely eject."
-echo "  - Follow: addin/DEVICE_SMOKE_CHECKLIST.md"
-
+echo "=== Next Steps ==="
+echo "1. Verify size:     python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a"
+echo "2. Transfer:        Copy .g3a to calculator"
+echo "3. Verify:          Follow c++/addin/DEVICE_SMOKE_CHECKLIST.md"
