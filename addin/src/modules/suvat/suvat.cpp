@@ -5,6 +5,9 @@
 #include "core/simplify.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
 
 namespace casio::suvat
 {
@@ -31,6 +34,33 @@ static bool is_blank(std::string const &s)
 }
 
 static NodeId half(Arena &a) { return num(a, 1, 2); }
+
+static int count_sig_figs(std::string const &txt)
+{
+    // Approx port: count digits ignoring sign and decimal point, trim leading zeros.
+    std::string s;
+    for(char c : txt) {
+        if((c >= '0' && c <= '9') || c == '.') s.push_back(c);
+    }
+    if(s.empty()) return 0;
+    // remove decimal
+    s.erase(std::remove(s.begin(), s.end(), '.'), s.end());
+    // trim leading zeros
+    std::size_t i = 0;
+    while(i < s.size() && s[i] == '0') i++;
+    int n = int(s.size() - i);
+    return n > 0 ? n : 1;
+}
+
+static std::string format_decimal(double v, int sig_figs)
+{
+    if(!std::isfinite(v)) return "";
+    if(sig_figs < 1) sig_figs = 3;
+    std::ostringstream oss;
+    oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
+    oss << std::setprecision(sig_figs) << std::defaultfloat << v;
+    return oss.str();
+}
 
 static double *node_to_double(Arena &arena, NodeId node, double &out)
 {
@@ -126,6 +156,34 @@ Inputs normalize_inputs(Inputs in)
 std::vector<std::string> solve(Arena &arena, Inputs const &raw)
 {
     Inputs in = normalize_inputs(raw);
+
+    // Presets (small subset of python PRESET_KEYWORDS):
+    // If text contains keywords and variable blank, fill.
+    std::string all = (in.s + " " + in.u + " " + in.v + " " + in.a + " " + in.t);
+    std::string low;
+    low.reserve(all.size());
+    for(char c : all) low.push_back(char(std::tolower((unsigned char)c)));
+    auto fill_if_blank = [&](std::string &field, std::string const &val) {
+        if(is_blank(field)) field = val;
+    };
+    if(low.find("dropped") != std::string::npos || low.find("from rest") != std::string::npos ||
+       low.find("at rest") != std::string::npos || low.find("stationary") != std::string::npos) {
+        fill_if_blank(in.u, "0");
+    }
+    if(low.find("falls") != std::string::npos || low.find("free fall") != std::string::npos ||
+       low.find("gravity") != std::string::npos || low.find("thrown up") != std::string::npos ||
+       low.find("thrown upwards") != std::string::npos || low.find("projectile") != std::string::npos) {
+        fill_if_blank(in.a, "-98/10");
+    }
+    if(low.find("maximum height") != std::string::npos || low.find("max height") != std::string::npos ||
+       low.find("highest point") != std::string::npos || low.find("comes to rest") != std::string::npos ||
+       low.find("stops") != std::string::npos) {
+        fill_if_blank(in.v, "0");
+    }
+    if(low.find("returns to ground") != std::string::npos || low.find("back to start") != std::string::npos) {
+        fill_if_blank(in.s, "0");
+    }
+
     auto parse_opt = [&](std::string const &s) -> std::pair<bool, NodeId> {
         if(is_blank(s)) return {false, 0};
         return {true, parse_expr(arena, s)};
@@ -138,37 +196,58 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
     auto [has_t, t] = parse_opt(in.t);
 
     std::vector<std::string> out;
-    out.push_back("Target: " + in.target);
+    std::string unit = "";
+    if(in.target == "s") unit = "m";
+    if(in.target == "u") unit = "m/s";
+    if(in.target == "v") unit = "m/s";
+    if(in.target == "a") unit = "m/s^2";
+    if(in.target == "t") unit = "s";
 
     auto show = [&](NodeId n) { return format_expr(arena, n); };
 
-    auto emit = [&](std::string const &method, std::string const &eq, NodeId res) {
-        out.push_back("Use " + method);
+    auto emit = [&](std::string const &eq, std::string const &sub, NodeId res) {
         out.push_back(eq);
-        out.push_back("Answer: " + in.target + " = " + show(res));
+        if(!sub.empty()) out.push_back("= " + sub);
+        out.push_back(in.target + " = " + show(res));
+        double dv = 0;
+        if(node_to_double(arena, res, dv)) {
+            // sig figs: max of numeric input sig figs, default 3
+            int sf = 3;
+            for(auto const &txt : {in.s, in.u, in.v, in.a, in.t}) {
+                std::string t = txt;
+                if(is_blank(t) || t == ",") continue;
+                bool numeric = true;
+                for(char c : t) {
+                    if(!(std::isdigit((unsigned char)c) || c == '.' || c == '-' || c == '+')) { numeric = false; break; }
+                }
+                if(numeric) sf = std::max(sf, count_sig_figs(t));
+            }
+            std::string dec = format_decimal(dv, sf);
+            if(!dec.empty() && dec != show(res)) out.push_back(in.target + " = " + dec + (unit.empty() ? "" : (" " + unit)));
+        }
     };
 
     // Direct formulas first
     if(in.target == "v" && has_u && has_a && has_t) {
         NodeId res = add(arena, {u, mul(arena, {a, t})});
-        emit("v = u + at", "v = u + at", res);
+        emit("v = u + at", "v = " + show(u) + " + " + show(a) + "*" + show(t), res);
         return out;
     }
     if(in.target == "u" && has_v && has_a && has_t) {
         NodeId res = add(arena, {v, neg(arena, mul(arena, {a, t}))});
-        emit("u = v - at", "v = u + at", res);
+        emit("u = v - at", "u = " + show(v) + " - " + show(a) + "*" + show(t), res);
         return out;
     }
     if(in.target == "a" && has_v && has_u && has_t) {
         NodeId nume = add(arena, {v, neg(arena, u)});
         NodeId res = div(arena, nume, t);
-        emit("a = (v-u)/t", "v = u + at", res);
+        emit("a = (v-u)/t", "a = (" + show(v) + " - " + show(u) + ")/(" + show(t) + ")", res);
         return out;
     }
     if(in.target == "t" && has_v && has_u && has_a) {
         NodeId nume = add(arena, {v, neg(arena, u)});
         NodeId res = div(arena, nume, a);
-        emit("t = (v-u)/a", "v = u + at", res);
+        emit("t = (v-u)/a", "t = (" + show(v) + " - " + show(u) + ")/(" + show(a) + ")", res);
         return out;
     }
 
@@ -176,7 +255,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId term1 = mul(arena, {u, t});
         NodeId term2 = mul(arena, {half(arena), a, power(arena, t, num(arena, 2))});
         NodeId res = add(arena, {term1, term2});
-        emit("s = ut + 1/2at^2", "s = ut + 1/2at^2", res);
+        emit("s = ut + 1/2at^2", "s = " + show(u) + "*" + show(t) + " + 1/2*" + show(a) + "*" + show(t) + "^2", res);
         return out;
     }
     if(in.target == "s" && has_v && has_a && has_t) {
@@ -205,7 +284,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId inside = add(arena, {power(arena, u, num(arena, 2)), mul(arena, {num(arena, 2), a, s})});
         NodeId root = power(arena, inside, num(arena, 1, 2));
         out.push_back("v^2 = u^2 + 2as");
-        out.push_back("v = ±sqrt(u^2 + 2as)");
+        out.push_back("= " + std::string("±sqrt(") + show(power(arena, u, num(arena,2))) + " + 2*" + show(a) + "*" + show(s) + ")");
         out.push_back("v = " + show(root) + " or " + show(neg(arena, root)));
         return out;
     }
@@ -242,7 +321,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         return out;
     }
 
-    out.push_back("Err: unsupported input combo (MVP)");
+    out.push_back("Err: unsupported input combo (SUVAT WIP)");
     return out;
 }
 
