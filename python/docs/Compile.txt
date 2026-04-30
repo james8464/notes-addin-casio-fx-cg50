@@ -1,0 +1,4 @@
+/Users/james/micropython/mpy-cross/mpy-cross -msmall-int-bits=31 -mno-unicode /Users/james/Developer/Python/CASIO/intProgram.py 2>&1 && echo "intProgram.mpy SUCCESS"
+/Users/james/micropython/mpy-cross/mpy-cross -msmall-int-bits=31 -mno-unicode /Users/james/Developer/Python/CASIO/deriveProgram.py 2>&1 && echo "deriveProgram.mpy SUCCESS"
+/Users/james/micropython/mpy-cross/mpy-cross -msmall-int-bits=31 -mno-unicode /Users/james/Developer/Python/CASIO/trigProgram.py 2>&1 && echo "trigProgram.mpy SUCCESS"
+/Users/james/micropython/mpy-cross/mpy-cross -msmall-int-bits=31 -mno-unicode /Users/james/Developer/Python/CASIO/booleanProgram.py 2>&1 && echo "booleanProgram.mpy SUCCESS"
