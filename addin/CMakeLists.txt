@@ -18,6 +18,7 @@ add_executable(CasioCAS
   src/modules/trig/trig.cpp
   src/modules/derive/derive.cpp
   src/ui/text_input.cpp
+  src/ui/menu.cpp
   src/core/rational.cpp
   src/core/arena.cpp
   src/core/normalize.cpp

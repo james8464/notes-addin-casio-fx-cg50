@@ -14,6 +14,7 @@
 #include "modules/trig/trig.hpp"
 #include "modules/derive/derive.hpp"
 #include "ui/text_input.hpp"
+#include "ui/menu.hpp"
 
 static void draw_centered(const char *s)
 {
@@ -74,49 +75,26 @@ int main(void)
         if(ev.key == KEY_EXE)
         {
             try {
-                std::vector<std::string> home;
-                home.push_back("1 Boolean");
-                home.push_back("2 SUVAT");
-                home.push_back("3 Integrate");
-                home.push_back("4 Algebra");
-                home.push_back("5 Trig");
-                home.push_back("6 Derive");
-                view_lines("Home", home);
+                std::vector<std::string> home = {
+                    "Boolean",
+                    "SUVAT",
+                    "Derive",
+                    "Integrate",
+                    "Algebra",
+                    "Trig",
+                };
+                int app = casio::ui::menu_select("Home", home, 0);
+                if(app < 0) continue;
 
-                int app = 1;
-                while(true) {
-                    key_event_t km = getkey();
-                    if(km.type != KEYEV_DOWN) continue;
-                    if(km.key == KEY_EXIT) { app = 0; break; }
-                    if(km.key == KEY_1) { app = 1; break; }
-                    if(km.key == KEY_2) { app = 2; break; }
-                    if(km.key == KEY_3) { app = 3; break; }
-                    if(km.key == KEY_4) { app = 4; break; }
-                    if(km.key == KEY_5) { app = 5; break; }
-                    if(km.key == KEY_6) { app = 6; break; }
-                }
-
-                if(app == 0) continue;
-
-                if(app == 1) {
+                if(app == 0) {
                     std::vector<std::string> lines;
-                    lines.push_back("1 simplify");
-                    lines.push_back("2 nand form");
-                    lines.push_back("3 nor form");
-                    lines.push_back("4 prove");
-                    view_lines("Boolean menu", lines);
-
-                    int mode = 1;
-                    while(true) {
-                        key_event_t km = getkey();
-                        if(km.type != KEYEV_DOWN) continue;
-                        if(km.key == KEY_EXIT) { mode = 0; break; }
-                        if(km.key == KEY_1) { mode = 1; break; }
-                        if(km.key == KEY_2) { mode = 2; break; }
-                        if(km.key == KEY_3) { mode = 3; break; }
-                        if(km.key == KEY_4) { mode = 4; break; }
-                    }
-                    if(mode == 0) continue;
+                    lines.push_back("simplify");
+                    lines.push_back("nand form");
+                    lines.push_back("nor form");
+                    lines.push_back("prove");
+                    int mode = casio::ui::menu_select("Boolean", lines, 0);
+                    if(mode < 0) continue;
+                    mode += 1;
 
                     if(mode == 1) {
                     std::string expr = "A.(B+C)";
@@ -157,7 +135,7 @@ int main(void)
                     else view_lines("Prove", plines);
                     }
                 }
-                else if(app == 2) {
+                else if(app == 1) {
                     casio::suvat::Inputs in;
                     in.s = "10";
                     in.u = "0";
@@ -172,6 +150,14 @@ int main(void)
                     casio::ui::text_input(in.t, "t", "blank or ,target");
                     auto lines = casio::suvat::solve_all(arena, in);
                     view_lines("SUVAT", lines);
+                }
+                else if(app == 2) {
+                    casio::derive::Request req;
+                    req.mode = 1;
+                    req.expr = "x^2";
+                    casio::ui::text_input(req.expr, "Derive", "expr or expr,var");
+                    auto lines = casio::derive::run(arena, req);
+                    view_lines("Derive", lines);
                 }
                 else if(app == 3) {
                     casio::integrate::Request req;
@@ -193,14 +179,6 @@ int main(void)
                     casio::ui::text_input(req.expr, "Trig", "enter trig expression");
                     auto lines = casio::trig::run(arena, req);
                     view_lines("Trig", lines);
-                }
-                else if(app == 6) {
-                    casio::derive::Request req;
-                    req.mode = 1;
-                    req.expr = "x^2";
-                    casio::ui::text_input(req.expr, "Derive", "expr or expr,var");
-                    auto lines = casio::derive::run(arena, req);
-                    view_lines("Derive", lines);
                 }
             }
             catch(...) {
