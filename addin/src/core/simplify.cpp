@@ -16,6 +16,15 @@ static bool is_zero(Node const &n) { return is_num(n) && n.num.num == 0; }
 static bool is_one(Node const &n) { return is_num(n) && n.num.num == n.num.den; }
 static bool is_int_num(Node const &n) { return is_num(n) && n.num.den == 1; }
 
+static bool same_atom(Node const &a, Node const &b)
+{
+    if(a.kind != b.kind) return false;
+    if(a.kind == NodeKind::Num) return a.num.num == b.num.num && a.num.den == b.num.den;
+    if(a.kind == NodeKind::Sym) return a.text == b.text;
+    if(a.kind == NodeKind::Const) return a.ckind == b.ckind;
+    return false;
+}
+
 static Rational addq(Rational a, Rational b)
 {
     Rational r;
@@ -114,6 +123,81 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     if(is_num(tn) && is_num(bn)) {
         Rational q = divq(tn.num, bn.num);
         return num(a, q.num, q.den);
+    }
+    // Cancel simple common factors in (mul(...))/(mul(...)) or mul/atom.
+    if(tn.kind == NodeKind::Mul) {
+        // (a*b*...)/a -> b*...
+        if(bn.kind == NodeKind::Sym || bn.kind == NodeKind::Num || bn.kind == NodeKind::Const) {
+            std::vector<NodeId> kept;
+            bool cancelled = false;
+            for(auto k : tn.kids) {
+                if(!cancelled && same_atom(a.get(k), bn)) {
+                    cancelled = true;
+                    continue;
+                }
+                kept.push_back(k);
+            }
+            if(cancelled) {
+                NodeId newt = kept.empty() ? num(a, 1) : (kept.size() == 1 ? kept[0] : a.mul(std::move(kept)));
+                return simplify(a, a.div(newt, b));
+            }
+        }
+        if(bn.kind == NodeKind::Mul) {
+            std::vector<NodeId> num_k = tn.kids;
+            std::vector<NodeId> den_k = bn.kids;
+            // Reduce leading numeric factors: (c1*...)/(c2*...) -> (c1/c2)*(...)/(...) .
+            if(!num_k.empty() && !den_k.empty()) {
+                Node const &n0 = a.get(num_k[0]);
+                Node const &d0 = a.get(den_k[0]);
+                if(n0.kind == NodeKind::Num && d0.kind == NodeKind::Num) {
+                    Rational q = divq(n0.num, d0.num);
+                    num_k.erase(num_k.begin());
+                    den_k.erase(den_k.begin());
+                    // Keep non-integer ratios as separate integer factors to prefer "(k*x)/m".
+                    if(q.den == 1) {
+                        if(!(q.num == 1)) num_k.insert(num_k.begin(), num(a, q.num, 1));
+                    }
+                    else {
+                        num_k.insert(num_k.begin(), num(a, q.num, 1));
+                        den_k.insert(den_k.begin(), num(a, q.den, 1));
+                    }
+                    if(num_k.empty()) num_k.push_back(num(a, 1));
+                    if(den_k.empty()) den_k.push_back(num(a, 1));
+                }
+            }
+            for(std::size_t i = 0; i < den_k.size(); i++) {
+                for(std::size_t j = 0; j < num_k.size(); j++) {
+                    if(same_atom(a.get(den_k[i]), a.get(num_k[j]))) {
+                        den_k.erase(den_k.begin() + i);
+                        num_k.erase(num_k.begin() + j);
+                        i = (i == 0) ? 0 : i - 1;
+                        break;
+                    }
+                    // Cancel sym against pow(sym, n) for integer n>0: x^n / x -> x^(n-1)
+                    Node const &dk = a.get(den_k[i]);
+                    Node const &nk = a.get(num_k[j]);
+                    if(dk.kind == NodeKind::Sym && nk.kind == NodeKind::Pow) {
+                        Node const &base = a.get(nk.a);
+                        Node const &expn = a.get(nk.b);
+                        if(base.kind == NodeKind::Sym && base.text == dk.text && is_int_num(expn) && expn.num.num > 0) {
+                            // replace x^n with x^(n-1), remove x from denominator
+                            Rational e = expn.num;
+                            e.num -= e.den;
+                            NodeId newpow = a.pow(nk.a, num(a, e.num, e.den));
+                            num_k[j] = simplify(a, newpow);
+                            den_k.erase(den_k.begin() + i);
+                            i = (i == 0) ? 0 : i - 1;
+                            break;
+                        }
+                    }
+                }
+            }
+            if(num_k.size() != tn.kids.size() || den_k.size() != bn.kids.size()) {
+                NodeId newt = num_k.empty() ? num(a, 1) : (num_k.size() == 1 ? num_k[0] : a.mul(std::move(num_k)));
+                NodeId newb = den_k.empty() ? num(a, 1) : (den_k.size() == 1 ? den_k[0] : a.mul(std::move(den_k)));
+                return simplify(a, a.div(newt, newb));
+            }
+        }
     }
     // Divide by a non-integer rational -> multiply by reciprocal (avoids ambiguous "…/1/2").
     // Keep division by integer constants as Div so formatting stays "x^3/3" instead of "1/3*x^3".

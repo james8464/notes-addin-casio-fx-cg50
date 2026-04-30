@@ -11,7 +11,7 @@ CASES = Path(__file__).with_name("host_smoke_cases.txt")
 
 
 def run_host(mode: str, expr: str) -> list[str]:
-    flag = {"int": "--int", "alg": "--alg", "trig": "--trig"}[mode]
+    flag = {"int": "--int", "alg": "--alg", "trig": "--trig", "derive": "--derive"}[mode]
     p = subprocess.run([str(HOST), flag, expr], text=True, capture_output=True)
     if p.returncode != 0:
         raise RuntimeError(f"host failed ({mode} {expr!r}):\n{p.stderr}\n{p.stdout}")

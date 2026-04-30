@@ -12,6 +12,7 @@
 #include "modules/integrate/integrate.hpp"
 #include "modules/algebra/algebra.hpp"
 #include "modules/trig/trig.hpp"
+#include "modules/derive/derive.hpp"
 #include "ui/text_input.hpp"
 
 static void draw_centered(const char *s)
@@ -79,6 +80,7 @@ int main(void)
                 home.push_back("3 Integrate");
                 home.push_back("4 Algebra");
                 home.push_back("5 Trig");
+                home.push_back("6 Derive");
                 view_lines("Home", home);
 
                 int app = 1;
@@ -91,6 +93,7 @@ int main(void)
                     if(km.key == KEY_3) { app = 3; break; }
                     if(km.key == KEY_4) { app = 4; break; }
                     if(km.key == KEY_5) { app = 5; break; }
+                    if(km.key == KEY_6) { app = 6; break; }
                 }
 
                 if(app == 0) continue;
@@ -190,6 +193,14 @@ int main(void)
                     casio::ui::text_input(req.expr, "Trig", "enter trig expression");
                     auto lines = casio::trig::run(arena, req);
                     view_lines("Trig", lines);
+                }
+                else if(app == 6) {
+                    casio::derive::Request req;
+                    req.mode = 1;
+                    req.expr = "x^2";
+                    casio::ui::text_input(req.expr, "Derive", "expr or expr,var");
+                    auto lines = casio::derive::run(arena, req);
+                    view_lines("Derive", lines);
                 }
             }
             catch(...) {

@@ -16,6 +16,7 @@ add_executable(CasioCAS
   src/modules/integrate/integrate.cpp
   src/modules/algebra/algebra.cpp
   src/modules/trig/trig.cpp
+  src/modules/derive/derive.cpp
   src/ui/text_input.cpp
   src/core/rational.cpp
   src/core/arena.cpp

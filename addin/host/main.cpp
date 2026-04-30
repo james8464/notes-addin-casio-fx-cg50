@@ -9,6 +9,7 @@
 #include "modules/integrate/integrate.hpp"
 #include "modules/algebra/algebra.hpp"
 #include "modules/trig/trig.hpp"
+#include "modules/derive/derive.hpp"
 
 #include <iostream>
 #include <string>
@@ -31,8 +32,9 @@ int main(int argc, char **argv)
     bool is_int = (flag == "--int");
     bool is_alg = (flag == "--alg");
     bool is_trig = (flag == "--trig");
+    bool is_derive = (flag == "--derive");
 
-    std::string expr = (any_bool || is_suvat || is_int || is_alg || is_trig) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (any_bool || is_suvat || is_int || is_alg || is_trig || is_derive) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
 
     try {
@@ -82,6 +84,27 @@ int main(int argc, char **argv)
             casio::trig::Request req;
             req.expr = expr;
             auto lines = casio::trig::run(arena, req);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
+        if(is_derive) {
+            casio::derive::Request req;
+            // Accept optional prefix: "mode:<n>,<expr...>"
+            // Example: --derive "mode:4,x^2"
+            req.mode = 1;
+            req.expr = expr;
+            if(expr.rfind("mode:", 0) == 0) {
+                auto comma = expr.find(',');
+                if(comma != std::string::npos) {
+                    try {
+                        req.mode = std::stoi(expr.substr(5, comma - 5));
+                        req.expr = expr.substr(comma + 1);
+                    } catch(...) {
+                        // keep defaults
+                    }
+                }
+            }
+            auto lines = casio::derive::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;
         }
