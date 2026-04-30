@@ -606,6 +606,28 @@ static bool solve_suvat(const char *input, OutputLines &out)
     return false;
 }
 
+static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
+{
+    int prefix_len = cstr_len(prefix);
+    int len = cstr_len(input);
+    if(len <= prefix_len || input[len - 1] != ')') {
+        out.add("Unsupported: function call is missing ')'.");
+        return false;
+    }
+
+    char inner[128];
+    int n = 0;
+    for(int i = prefix_len; i + 1 < len && n + 1 < (int)sizeof(inner); i++) {
+        inner[n++] = input[i];
+    }
+    inner[n] = '\0';
+
+    if(target == Module::Derive) return solve_derive(inner, out);
+    if(target == Module::Integrate) return solve_integrate(inner, out);
+    out.add("Unsupported shell call.");
+    return false;
+}
+
 } // namespace
 
 bool solve(Module module, const char *input, OutputLines &out)
@@ -618,8 +640,8 @@ bool solve(Module module, const char *input, OutputLines &out)
 
     switch(module) {
         case Module::Shell:
-            if(starts_with(input, "diff(")) return solve_derive(input + 5, out);
-            if(starts_with(input, "int(")) return solve_integrate(input + 4, out);
+            if(starts_with(input, "diff(")) return solve_wrapped_call(input, "diff(", Module::Derive, out);
+            if(starts_with(input, "int(")) return solve_wrapped_call(input, "int(", Module::Integrate, out);
             if(find_char(input, '=') >= 0) return solve_algebra(input, out);
             return solve_simplify(input, out);
         case Module::Simplify: return solve_simplify(input, out);
