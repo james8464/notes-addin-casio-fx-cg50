@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(CasioCAS
   src/main.cpp
+  src/modules/boolean/boolean.cpp
+  src/ui/text_input.cpp
   src/core/rational.cpp
   src/core/arena.cpp
   src/core/normalize.cpp
