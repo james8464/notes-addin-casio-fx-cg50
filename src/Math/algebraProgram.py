@@ -1075,6 +1075,12 @@ def series_factor_coeffs(factor, var_name, limit):
     factor = sim(factor)
     if factor[0] == 'pow' and can_use_generalized_binomial(factor):
         return binomial_series_coeffs(factor, var_name, limit)
+    if factor[0] == 'fn' and factor[1] in ('sin', 'cos', 'tan'):
+        return truncated_series_coeffs(factor, var_name, limit)
+    if factor[0] == 'pow' and is_int_num(factor[2]) and factor[2][2] == 1 and factor[2][1] >= 0:
+        return truncated_series_coeffs(factor, var_name, limit)
+    if factor[0] == 'add':
+        return truncated_series_coeffs(factor, var_name, limit)
     coeffs, _degree = polynomial_coeff_list(factor, var_name, limit - 1)
     if coeffs is None:
         return None
@@ -1083,6 +1089,86 @@ def series_factor_coeffs(factor, var_name, limit):
 
 def truncated_series_coeffs(expr, var_name, limit):
     expr = sim(expr)
+    if expr[0] == 'add':
+        total = [num(0)] * limit
+        i = 0
+        while i < len(expr[1]):
+            coeffs_i = truncated_series_coeffs(expr[1][i], var_name, limit)
+            if coeffs_i is None:
+                return None
+            j = 0
+            while j < limit:
+                total[j] = sim(add([total[j], coeffs_i[j]]))
+                j += 1
+            i += 1
+        return total
+    if expr[0] == 'fn' and expr[1] in ('sin', 'cos', 'tan'):
+        linear = match_linear_in_var(expr[2], var_name)
+        if linear is None or not is_zero(linear[1]):
+            return None
+        k = linear[0]
+        coeffs = [num(0)] * limit
+        if expr[1] == 'sin':
+            if limit > 1:
+                coeffs[1] = k
+            if limit > 3:
+                coeffs[3] = sim(neg(div(power(k, num(3)), num(6))))
+            if limit > 5:
+                coeffs[5] = sim(div(power(k, num(5)), num(120)))
+        elif expr[1] == 'cos':
+            coeffs[0] = num(1)
+            if limit > 2:
+                coeffs[2] = sim(neg(div(power(k, num(2)), num(2))))
+            if limit > 4:
+                coeffs[4] = sim(div(power(k, num(4)), num(24)))
+            if limit > 6:
+                coeffs[6] = sim(neg(div(power(k, num(6)), num(720))))
+        else:
+            if limit > 1:
+                coeffs[1] = k
+            if limit > 3:
+                coeffs[3] = sim(div(power(k, num(3)), num(3)))
+            if limit > 5:
+                coeffs[5] = sim(mul([num(2, 15), power(k, num(5))]))
+        return coeffs
+    if expr[0] == 'pow' and is_int_num(expr[2]) and expr[2][2] == 1 and expr[2][1] >= 0:
+        count = expr[2][1]
+        coeffs = [num(0)] * limit
+        coeffs[0] = num(1)
+        base_coeffs = truncated_series_coeffs(expr[1], var_name, limit)
+        if base_coeffs is None:
+            return None
+        n = 0
+        while n < count:
+            new_coeffs = [num(0)] * limit
+            a = 0
+            while a < limit:
+                b = 0
+                while b < limit - a:
+                    new_coeffs[a + b] = sim(add([new_coeffs[a + b], mul([coeffs[a], base_coeffs[b]])]))
+                    b += 1
+                a += 1
+            coeffs = new_coeffs
+            n += 1
+        return coeffs
+    if expr[0] == 'div':
+        top_coeffs = truncated_series_coeffs(expr[1], var_name, limit)
+        bot_coeffs = truncated_series_coeffs(expr[2], var_name, limit)
+        if top_coeffs is not None and bot_coeffs is not None and not is_zero(bot_coeffs[0]):
+            only_const = True
+            i = 1
+            while i < limit:
+                if not is_zero(bot_coeffs[i]):
+                    only_const = False
+                    break
+                i += 1
+            if only_const:
+                out = [num(0)] * limit
+                i = 0
+                while i < limit:
+                    out[i] = sim(div(top_coeffs[i], bot_coeffs[0]))
+                    i += 1
+                return out
     if expr[0] == 'div' and expr[2][0] == 'pow' and is_num(expr[2][2]):
         expr = mul([expr[1], ('pow', expr[2][1], num(-expr[2][2][1], expr[2][2][2]))])
     factors = list(flat(expr, 'mul')) if expr[0] == 'mul' else [expr]
@@ -1127,6 +1213,63 @@ def truncated_series_expand_text(expr, max_terms=None):
     if len(terms) == 0:
         terms = [num(0)]
     return ['Series expansion', 'Out = ' + ordered_sum_text(terms) + ' + ...']
+
+
+def leading_series_term(coeffs):
+    i = 0
+    while i < len(coeffs):
+        c = sim(coeffs[i])
+        if not is_zero(c):
+            return i, c
+        i += 1
+    return None
+
+
+def small_angle_term_text(coeff, degree, var_name):
+    coeff = sim(coeff)
+    if degree == 0:
+        return show(coeff)
+    if degree == 1:
+        var_term = sym(var_name)
+    elif degree > 1:
+        var_term = power(sym(var_name), num(degree))
+    elif degree == -1:
+        var_term = div(num(1), sym(var_name))
+    else:
+        var_term = div(num(1), power(sym(var_name), num(-degree)))
+    if is_one(coeff):
+        return show(var_term)
+    if same(coeff, num(-1)):
+        return "-" + show(var_term)
+    return show(sim(mul([coeff, var_term])))
+
+
+def small_angle_quotient_text(expr, var_name):
+    if expr[0] != 'div':
+        return None
+    limit = 8
+    top_coeffs = truncated_series_coeffs(expr[1], var_name, limit)
+    bot_coeffs = truncated_series_coeffs(expr[2], var_name, limit)
+    if top_coeffs is None or bot_coeffs is None:
+        return None
+    top_lead = leading_series_term(top_coeffs)
+    bot_lead = leading_series_term(bot_coeffs)
+    if top_lead is None or bot_lead is None:
+        return None
+    top_deg, top_coeff = top_lead
+    bot_deg, bot_coeff = bot_lead
+    if is_zero(bot_coeff):
+        return None
+    coeff = sim(div(top_coeff, bot_coeff))
+    degree = top_deg - bot_deg
+    answer = small_angle_term_text(coeff, degree, var_name)
+    lines = [
+        'Small angle expansion about ' + var_name + ' = 0',
+        'Numerator leading term: ' + small_angle_term_text(top_coeff, top_deg, var_name),
+        'Denominator leading term: ' + small_angle_term_text(bot_coeff, bot_deg, var_name),
+        'Answer: ' + answer,
+    ]
+    return lines
 
 
 
@@ -1746,11 +1889,36 @@ def normalize_solution_roots(roots):
     return out
 
 
+def show_solution_expr(node):
+    node = sim(node)
+    coeff, rest = split_coeff(node)
+    if is_minus_one(coeff) and not is_one(rest):
+        text = show(rest)
+        if rest[0] == 'add':
+            text = '(' + text + ')'
+        return '-' + text
+    return show(node)
+
+
 def format_solution_line(var_name, roots):
+    display_roots = list(roots)
+    numeric_keys = []
+    i = 0
+    can_numeric_sort = True
+    while i < len(display_roots):
+        value = real_numeric_value(display_roots[i])
+        if value is None:
+            can_numeric_sort = False
+            break
+        numeric_keys.append((value, show_solution_expr(display_roots[i]), display_roots[i]))
+        i += 1
+    if can_numeric_sort:
+        numeric_keys.sort(key=lambda item: (item[0], item[1]))
+        display_roots = [item[2] for item in numeric_keys]
     bits = []
     i = 0
-    while i < len(roots):
-        bits.append(show(roots[i]))
+    while i < len(display_roots):
+        bits.append(show_solution_expr(display_roots[i]))
         i += 1
     return var_name + ' = ' + (bits[0] if len(bits) == 1 else '[' + ', '.join(bits) + ']')
 
@@ -1769,6 +1937,8 @@ def polynomial_coeff_map(node, var_name, max_degree=2):
     if not depends_on(node, var_name):
         return {0: node}, 0
     if node == sym(var_name):
+        if max_degree < 1:
+            return None, None
         return {0: num(0), 1: num(1)}, 1
     if node[0] == 'pow' and node[1] == sym(var_name) and is_int_num(node[2]):
         deg = node[2][1]
@@ -6832,12 +7002,16 @@ def match_shifted_reciprocal(node, var_name):
 
 def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
     """Main solve mode: parse, choose a variable, solve, then format the result."""
+    system = solve_linear_system_text(text)
+    if system is not None:
+        return system
     cartesian = cartesian_equation_lines(text)
     if cartesian is not None:
         return cartesian
-    # Normalization pass (bounded): canonicalize the work expression for routing.
-    expr = canonical_compare_form(parse_expr_or_equation(text))
-    var_name, roots, label = solve_equation(expr)
+    # Keep the raw tree for substitution spotting, but display a canonical line.
+    raw_expr = parse_expr_or_equation(text)
+    expr = canonical_compare_form(raw_expr)
+    var_name, roots, label = solve_equation(raw_expr)
     if var_override is not None and str(var_override).strip() != "":
         var_name = str(var_override).strip()
     shown_expr = expr
@@ -6901,6 +7075,174 @@ def solve_equation_text(text, var_override=None, low_node=None, high_node=None):
     return compact_duplicate_answer_lines(lines)
 
 
+def _linear_coeffs_for_vars(node, vars_list):
+    node = sim(node)
+    zero_coeffs = [num(0)] * len(vars_list)
+    if is_num(node) or node[0] == 'const':
+        return zero_coeffs, node
+    if node[0] == 'sym':
+        i = 0
+        while i < len(vars_list):
+            if node[1] == vars_list[i]:
+                coeffs = [num(0)] * len(vars_list)
+                coeffs[i] = num(1)
+                return coeffs, num(0)
+            i += 1
+        return zero_coeffs, node
+    if node[0] == 'add':
+        coeffs = [num(0)] * len(vars_list)
+        const = num(0)
+        i = 0
+        while i < len(node[1]):
+            got = _linear_coeffs_for_vars(node[1][i], vars_list)
+            if got is None:
+                return None
+            cc, c0 = got
+            j = 0
+            while j < len(vars_list):
+                coeffs[j] = sim(add([coeffs[j], cc[j]]))
+                j += 1
+            const = sim(add([const, c0]))
+            i += 1
+        return coeffs, const
+    if node[0] == 'mul':
+        factors = list(flat(node, 'mul'))
+        coeff = num(1)
+        linear = None
+        i = 0
+        while i < len(factors):
+            got = _linear_coeffs_for_vars(factors[i], vars_list)
+            if got is None:
+                return None
+            cc, c0 = got
+            dep = False
+            j = 0
+            while j < len(vars_list):
+                if not is_zero(cc[j]):
+                    dep = True
+                    break
+                j += 1
+            if dep:
+                if linear is not None:
+                    return None
+                linear = got
+            else:
+                if any_depends_on_vars(c0, vars_list):
+                    return None
+                coeff = sim(mul([coeff, c0]))
+            i += 1
+        if linear is None:
+            return zero_coeffs, coeff
+        cc, c0 = linear
+        out = []
+        j = 0
+        while j < len(vars_list):
+            out.append(sim(mul([coeff, cc[j]])))
+            j += 1
+        return out, sim(mul([coeff, c0]))
+    if node[0] == 'div':
+        got = _linear_coeffs_for_vars(node[1], vars_list)
+        if got is None:
+            return None
+        den = sim(node[2])
+        if any_depends_on_vars(den, vars_list):
+            return None
+        cc, c0 = got
+        out = []
+        i = 0
+        while i < len(vars_list):
+            out.append(sim(div(cc[i], den)))
+            i += 1
+        return out, sim(div(c0, den))
+    if any_depends_on_vars(node, vars_list):
+        return None
+    return zero_coeffs, node
+
+
+def any_depends_on_vars(node, vars_list):
+    i = 0
+    while i < len(vars_list):
+        if depends_on(node, vars_list[i]):
+            return True
+        i += 1
+    return False
+
+
+def solve_linear_system_text(text):
+    if ';' not in text:
+        return None
+    parts = split_top_level_all(text.strip(), ',')
+    eq_part = parts[0].strip()
+    equations = []
+    raw_eqs = split_top_level_all(eq_part, ';')
+    i = 0
+    while i < len(raw_eqs):
+        if raw_eqs[i].strip() != '':
+            equations.append(raw_eqs[i].strip())
+        i += 1
+    if len(equations) < 2:
+        return None
+    vars_list = []
+    if len(parts) > 1:
+        i = 1
+        while i < len(parts):
+            bit = parts[i].strip()
+            if bit != '':
+                vars_list.append(bit)
+            i += 1
+    if len(vars_list) == 0:
+        names = []
+        i = 0
+        while i < len(equations):
+            lhs, rhs = parse_equation_or_zero(equations[i])
+            collect_symbol_names(lhs, names)
+            collect_symbol_names(rhs, names)
+            i += 1
+        vars_list = names
+    if len(vars_list) != len(equations):
+        return ['Method: Solve simultaneous linear equations', 'Need the same number of variables and equations.', 'Answer: unsupported system']
+    mat = []
+    rhs_vec = []
+    i = 0
+    while i < len(equations):
+        expr = canonical_compare_form(parse_expr_or_equation(equations[i]))
+        got = _linear_coeffs_for_vars(expr, vars_list)
+        if got is None:
+            return ['Method: Solve simultaneous linear equations', 'Equation ' + str(i + 1) + ' is not linear in the chosen variables.', 'Answer: unsupported system']
+        coeffs, const = got
+        row = []
+        j = 0
+        while j < len(vars_list):
+            if not is_num(coeffs[j]):
+                return ['Method: Solve simultaneous linear equations', 'Non-numeric coefficient in equation ' + str(i + 1) + '.', 'Answer: unsupported system']
+            row.append(coeffs[j])
+            j += 1
+        if not is_num(const):
+            return ['Method: Solve simultaneous linear equations', 'Non-numeric constant in equation ' + str(i + 1) + '.', 'Answer: unsupported system']
+        mat.append(row)
+        rhs_vec.append(negq(const))
+        i += 1
+    solution = solve_linear_system(mat, rhs_vec)
+    lines = ['Method: Solve simultaneous linear equations']
+    i = 0
+    while i < len(equations):
+        lines.append('Eq' + str(i + 1) + ': ' + equations[i])
+        i += 1
+    if solution is None:
+        lines.append('No unique solution.')
+        lines.append('Answer: no unique solution')
+        return lines
+    bits = []
+    i = 0
+    while i < len(vars_list):
+        line = vars_list[i] + ' = ' + show(solution[i])
+        lines.append(line)
+        bits.append(line)
+        i += 1
+    lines.append('Answer: ' + ', '.join(bits))
+    return lines
+
+
 def _value_inside_interval(value, low_node, high_node):
     a = real_numeric_value(sim(low_node))
     b = real_numeric_value(sim(high_node))
@@ -6953,6 +7295,8 @@ def parse_user_solve_input(user_text):
     t = (user_text or "").strip()
     if t == "":
         raise ValueError("Enter an equation, or: eq, var, lower, upper (comma separated).")
+    if ';' in t:
+        return t, None, None, None
     parts = split_top_level_all(t, ",")
     parts = [p.strip() for p in parts]
     n = len(parts)
@@ -7076,6 +7420,12 @@ def expand_mode_text(text, max_terms=None):
         expr = ('pow', expr[2], num(1, 2))
     lines = ['Method: Expand expression', 'Input = ' + show(expr)]
 
+    if expr[0] == 'div' and (contains_function(expr, 'sin') or contains_function(expr, 'cos') or contains_function(expr, 'tan')):
+        var_name = choose_primary_var(expr) or 'x'
+        small_angle_lines = small_angle_quotient_text(expr, var_name)
+        if small_angle_lines is not None:
+            return ensure_reasoning_marker(lines + small_angle_lines)
+
     if expr[0] == 'pow' and is_int_num(expr[2]) and expr[2][2] == 1 and expr[2][1] >= 0:
         base = sim(expr[1])
         n = expr[2][1]
@@ -7120,6 +7470,10 @@ def expand_mode_text(text, max_terms=None):
     series_lines = truncated_series_expand_text(expr, max_terms=max_terms)
     series_exact_den = expr[0] == 'div' and not depends_on(expr[1], 'x')
     if series_lines is not None and depends_on(expr, 'x') and (expr[0] == 'div' or expr[0] == 'mul') and not series_exact_den:
+        return ensure_reasoning_marker(lines + series_lines)
+    if series_lines is not None and (
+        contains_function(expr, 'sin') or contains_function(expr, 'cos') or contains_function(expr, 'tan')
+    ):
         return ensure_reasoning_marker(lines + series_lines)
 
     expanded = maybe_expand_for_compare(expr)
@@ -7702,6 +8056,219 @@ def solve_abs_abs_linear_equation(expr, var_name):
     return var_name, normalize_solution_roots(roots), 'Square both sides: |u|=|v| gives u=v or u=-v'
 
 
+def exp_linear_arg(node, var_name):
+    node = sim(node)
+    if node[0] == 'pow' and same(node[1], E):
+        return match_linear_in_var(node[2], var_name)
+    if node[0] == 'fn' and node[1] == 'exp':
+        return match_linear_in_var(node[2], var_name)
+    return None
+
+
+def exp_power_index(node, var_name):
+    linear = exp_linear_arg(node, var_name)
+    if linear is None:
+        if same(sim(node), num(1)):
+            return 0
+        return None
+    coeff, shift = linear
+    if not is_zero(shift) or not is_int_num(coeff) or coeff[2] != 1:
+        return None
+    return coeff[1]
+
+
+def common_exp_substitution(linears):
+    if len(linears) == 0:
+        return None
+    first_coeff, first_shift = linears[0]
+    if not is_int_num(first_coeff) or first_coeff[1] == 0:
+        return None
+    ratio = sim(div(first_shift, first_coeff))
+    coeff_gcd = abs(first_coeff[1])
+    i = 1
+    while i < len(linears):
+        coeff, shift = linears[i]
+        if not is_int_num(coeff) or coeff[1] == 0:
+            return None
+        if not equivalent(sim(div(shift, coeff)), ratio):
+            return None
+        coeff_gcd = gcd(coeff_gcd, abs(coeff[1]))
+        i += 1
+    if coeff_gcd == 0:
+        return None
+    unit_coeff = num(coeff_gcd)
+    unit_shift = sim(mul([unit_coeff, ratio]))
+    return unit_coeff, unit_shift
+
+
+def exp_substitution_power(linear, unit_coeff, unit_shift):
+    coeff, shift = linear
+    if not is_int_num(coeff) or not is_int_num(unit_coeff) or unit_coeff[1] == 0:
+        return None
+    if coeff[1] % unit_coeff[1] != 0:
+        return None
+    pwr = coeff[1] // unit_coeff[1]
+    if not equivalent(shift, sim(mul([num(pwr), unit_shift]))):
+        return None
+    return pwr
+
+
+def positive_log_node(root):
+    root = sim(root)
+    if is_num(root) and root[1] == 1 and root[2] != 1:
+        return sim(neg(fn('log', num(root[2]))))
+    if is_num(root) and root[1] == root[2]:
+        return num(0)
+    return sim(fn('log', root))
+
+
+def exp_substitution_label(var_name, unit_coeff, unit_shift):
+    base_arg = sim(add([mul([unit_coeff, sym(var_name)]), unit_shift]))
+    if same(base_arg, sym(var_name)):
+        return 'Let u = e^' + var_name + ' and solve the polynomial in u'
+    return 'Let u = e^(' + show(base_arg) + ') and solve the polynomial in u'
+    return None
+
+
+def solve_exp_polynomial_equation(expr, var_name):
+    terms = list(flat(sim(expr), 'add')) if sim(expr)[0] == 'add' else [sim(expr)]
+    linears = []
+    exp_terms = []
+    saw_exp = False
+    i = 0
+    while i < len(terms):
+        coeff, core = split_coeff(terms[i])
+        linear = exp_linear_arg(core, var_name)
+        if linear is None:
+            if depends_on(terms[i], var_name):
+                return None
+            exp_terms.append((coeff, None))
+        else:
+            if not is_num(coeff):
+                return None
+            linears.append(linear)
+            exp_terms.append((coeff, linear))
+            saw_exp = True
+        i += 1
+    if not saw_exp:
+        return None
+    subst = common_exp_substitution(linears)
+    if subst is None:
+        return None
+    unit_coeff, unit_shift = subst
+    powers = []
+    coeffs_by_power = {}
+    i = 0
+    while i < len(exp_terms):
+        coeff, linear = exp_terms[i]
+        if linear is None:
+            pwr = 0
+        else:
+            pwr = exp_substitution_power(linear, unit_coeff, unit_shift)
+            if pwr is None:
+                return None
+        if not is_num(coeff):
+            return None
+        powers.append(pwr)
+        if pwr in coeffs_by_power:
+            coeffs_by_power[pwr] = sim(add([coeffs_by_power[pwr], coeff]))
+        else:
+            coeffs_by_power[pwr] = coeff
+        i += 1
+    if len(powers) == 0:
+        return None
+    min_power = min(powers)
+    max_power = max(powers)
+    if max_power - min_power < 1 or max_power - min_power > 6:
+        return None
+    coeffs = []
+    p = min_power
+    while p <= max_power:
+        coeffs.append(coeffs_by_power.get(p, num(0)))
+        p += 1
+    poly = make_poly_from_coeffs(coeffs, 'u')
+    label, u_roots = solve_polynomial_expr(poly, 'u')
+    if u_roots is None or len(u_roots) == 0:
+        return None
+    roots = []
+    i = 0
+    while i < len(u_roots):
+        rv = real_numeric_value(u_roots[i])
+        if rv is not None and rv > 1e-10:
+            root_log = positive_log_node(u_roots[i])
+            roots.append(sim(div(sub(root_log, unit_shift), unit_coeff)))
+        i += 1
+    if len(roots) == 0:
+        return var_name, [], 'No solution'
+    return var_name, normalize_solution_roots(roots), exp_substitution_label(var_name, unit_coeff, unit_shift)
+
+
+def _collect_composite_candidates(node, var_name, whole, counts, nodes):
+    if depends_on(node, var_name) and not same(node, whole) and node[0] != 'sym':
+        key = sig(node)
+        counts[key] = counts.get(key, 0) + 1
+        if key not in nodes:
+            nodes[key] = node
+    if node[0] == 'fn':
+        _collect_composite_candidates(node[2], var_name, whole, counts, nodes)
+    elif node[0] in ('pow', 'div'):
+        _collect_composite_candidates(node[1], var_name, whole, counts, nodes)
+        _collect_composite_candidates(node[2], var_name, whole, counts, nodes)
+    elif node[0] in ('add', 'mul'):
+        i = 0
+        while i < len(node[1]):
+            _collect_composite_candidates(node[1][i], var_name, whole, counts, nodes)
+            i += 1
+
+
+def solve_composite_substitution_equation(expr, var_name):
+    expr = sim(expr)
+    counts = {}
+    nodes = {}
+    _collect_composite_candidates(expr, var_name, expr, counts, nodes)
+    candidates = []
+    for key in nodes:
+        candidate = nodes[key]
+        if counts.get(key, 0) < 2:
+            continue
+        cand_coeffs, cand_degree = polynomial_coeff_list(candidate, var_name, 6)
+        if cand_coeffs is None or cand_degree < 1:
+            continue
+        candidates.append((tree_size(candidate), counts.get(key, 0), candidate))
+    candidates.sort(key=lambda item: (-item[1], -item[0], show(item[2])))
+    i = 0
+    while i < len(candidates):
+        candidate = candidates[i][2]
+        transformed = sim(substitute_keep_form(expr, candidate, sym('u')))
+        if depends_on(transformed, var_name):
+            i += 1
+            continue
+        coeffs, degree = polynomial_coeff_list(transformed, 'u', 8)
+        if coeffs is None or degree <= 1:
+            i += 1
+            continue
+        label, u_roots = solve_polynomial_expr(transformed, 'u')
+        if u_roots is None or len(u_roots) == 0:
+            i += 1
+            continue
+        roots = []
+        j = 0
+        while j < len(u_roots):
+            sub_eq = sim(sub(candidate, u_roots[j]))
+            sub_label, sub_roots = solve_polynomial_expr(sub_eq, var_name)
+            if sub_roots is None:
+                rational = solve_rational_equation(sub_eq, var_name)
+                if rational is not None:
+                    sub_roots = rational[1]
+            if sub_roots is not None:
+                roots.extend(sub_roots)
+            j += 1
+        if len(roots) != 0:
+            return var_name, normalize_solution_roots(roots), 'Let u = ' + show(candidate) + '; solve the equation in u'
+        i += 1
+    return None
+
+
 def solve_equation(node):
     expr = sim(node)
     direct_var = choose_primary_var(expr)
@@ -7711,6 +8278,9 @@ def solve_equation(node):
             if shifted_power[0] == 'No solution':
                 return direct_var, [], 'No solution'
             return direct_var, shifted_power[1], shifted_power[0]
+        composite = solve_composite_substitution_equation(expr, direct_var)
+        if composite is not None:
+            return composite
     expanded = maybe_expand_for_compare(expr)
     reduced = canonical_compare_form(expanded)
     working = reduced if not same(reduced, expanded) else expanded
@@ -7728,6 +8298,12 @@ def solve_equation(node):
     abs_result = solve_abs_linear_equation(working, var_name)
     if abs_result is not None:
         return abs_result
+    exp_result = solve_exp_polynomial_equation(working, var_name)
+    if exp_result is not None:
+        return exp_result
+    composite = solve_composite_substitution_equation(working, var_name)
+    if composite is not None:
+        return composite
     label, roots = solve_polynomial_expr(working, var_name)
     if label == 'identity':
         return None, [], 'Identity'

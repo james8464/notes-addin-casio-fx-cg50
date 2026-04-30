@@ -148,6 +148,121 @@ TIDY_EXPAND_LIMIT = 5
 TIDY_SKIP_SIZE = 260
 COMPACT_DERIVATIVE_TREE_SIZE = 150
 COMPACT_DERIVATIVE_TEXT_LENGTH = 360
+
+# "Exam guard" thresholds: prevent hangs and screen-width explosions by
+# rejecting expressions that are technically differentiable but far beyond
+# what the calculator-style output can present reliably.
+#
+# These are deliberately conservative: the goal is to fail fast with a clear
+# exam-style message rather than timing out in batch runs.
+EXAM_GUARD_MAX_TREE_SIZE = 420
+EXAM_GUARD_MAX_MUL_FACTORS = 9
+EXAM_GUARD_MAX_POWER_EXP = 18
+EXAM_GUARD_MAX_SHOW_CHARS = 750
+EXAM_GUARD_MAX_FACTOR_SHOW_SUM = 900
+
+
+def _exam_guard_reason(expr):
+    """Return a short reason string when expr is too complex for exam output."""
+    def has_fn(node):
+        if node is None:
+            return False
+        k = node[0]
+        if k == "fn":
+            return True or has_fn(node[2])
+        if k in ("add", "mul"):
+            for child in node[1]:
+                if has_fn(child):
+                    return True
+            return False
+        if k == "div":
+            return has_fn(node[1]) or has_fn(node[2])
+        if k == "pow":
+            return has_fn(node[1]) or has_fn(node[2])
+        return False
+
+    def has_dangerous_power(node):
+        # Catch polynomial-expansion blowups before diff()+tidy().
+        # Only block very high powers. Ordinary exam chain-rule forms such as
+        # (2*x+ln(x))^3 should still be differentiated and kept factored.
+        if node is None:
+            return False
+        k = node[0]
+        if k == "pow" and node[2][0] == "num":
+            try:
+                expv = int(node[2][1])
+            except Exception:
+                expv = 0
+            if expv >= 10:
+                base = node[1]
+                if base[0] in ("add", "mul", "div"):
+                    # If base is not atomic, tidy expansion can balloon rapidly.
+                    try:
+                        if tree_size(base) >= 12:
+                            return True
+                    except Exception:
+                        return True
+        if k == "fn":
+            return has_dangerous_power(node[2])
+        if k in ("add", "mul"):
+            for child in node[1]:
+                if has_dangerous_power(child):
+                    return True
+            return False
+        if k == "div":
+            return has_dangerous_power(node[1]) or has_dangerous_power(node[2])
+        if k == "pow":
+            return has_dangerous_power(node[1]) or has_dangerous_power(node[2])
+        return False
+
+    if has_fn(expr) and has_dangerous_power(expr):
+        return "contains high-degree expandable powers (simplify first)"
+    try:
+        size = tree_size(expr)
+    except Exception:
+        return "expression structure too complex"
+    if size > EXAM_GUARD_MAX_TREE_SIZE:
+        return "expression too large (tree size {})".format(size)
+    # show() is much cheaper than diff()+tidy(), but still correlates with
+    # screen-width and later simplification explosion.
+    try:
+        shown = show(expr)
+        if len(shown) > EXAM_GUARD_MAX_SHOW_CHARS:
+            return "expression too long to display ({} chars)".format(len(shown))
+    except Exception:
+        return "expression too complex to display"
+    if expr[0] == "mul":
+        try:
+            factors = flat(expr, "mul")
+        except Exception:
+            factors = expr[1] if isinstance(expr[1], (tuple, list)) else []
+        if factors and len(factors) > EXAM_GUARD_MAX_MUL_FACTORS:
+            return "product has too many factors ({})".format(len(factors))
+        # Sum of factor display lengths approximates differentiation cost for products.
+        if factors:
+            total = 0
+            i = 0
+            while i < len(factors):
+                try:
+                    total += len(show(factors[i]))
+                except Exception:
+                    return "product factor too complex to display"
+                if total > EXAM_GUARD_MAX_FACTOR_SHOW_SUM:
+                    return "product too complex for exam working"
+                i += 1
+    # High powers tend to explode during tidy()/expand-like simplifications.
+    if expr[0] == "pow" and expr[2][0] == "num":
+        try:
+            expv = abs(int(expr[2][1]))
+        except Exception:
+            expv = None
+        if expv is not None and expv > EXAM_GUARD_MAX_POWER_EXP:
+            return "power too high ({})".format(expv)
+    return None
+
+
+def _raise_exam_unsupported(reason):
+    raise ValueError("EXAM_UNSUPPORTED: {}".format(reason))
 _CACHE_MISS = object()
 _ENGINE_CACHES = {}
 
@@ -2679,6 +2794,65 @@ def trig_normal(node):
     return sim((kind, tuple(out)))
 
 
+def implicit_trig_mark_scheme_alt(node):
+    """Collapse common implicit trig fractions into compact mark-scheme form."""
+    node = sim(node)
+    if node[0] != "div":
+        return None
+    tops = list(flat(node[1], "mul")) if node[1][0] == "mul" else [node[1]]
+    bots = list(flat(node[2], "mul")) if node[2][0] == "mul" else [node[2]]
+    coeff = num(1)
+    top_cos_arg = None
+    top_cot_arg = None
+    used_top = [False] * len(tops)
+    i = 0
+    while i < len(tops):
+        item = tops[i]
+        if is_num(item):
+            coeff = sim(mul([coeff, item]))
+            used_top[i] = True
+        elif item[0] == "fn" and item[1] == "cos" and top_cos_arg is None:
+            top_cos_arg = item[2]
+            used_top[i] = True
+        elif item[0] == "fn" and item[1] == "cot" and top_cot_arg is None:
+            top_cot_arg = item[2]
+            used_top[i] = True
+        i += 1
+    bot_sin_arg = None
+    bot_cosec_arg = None
+    used_bot = [False] * len(bots)
+    i = 0
+    while i < len(bots):
+        item = bots[i]
+        if item[0] == "fn" and item[1] == "sin" and bot_sin_arg is None:
+            bot_sin_arg = item[2]
+            used_bot[i] = True
+        elif (
+            item[0] == "pow"
+            and item[1][0] == "fn"
+            and item[1][1] == "cosec"
+            and same(item[2], num(2))
+            and bot_cosec_arg is None
+        ):
+            bot_cosec_arg = item[1][2]
+            used_bot[i] = True
+        i += 1
+    if top_cos_arg is None or top_cot_arg is None or bot_sin_arg is None or bot_cosec_arg is None:
+        return None
+    if not same(top_cos_arg, bot_sin_arg) or not same(top_cot_arg, bot_cosec_arg):
+        return None
+    if False in used_top or False in used_bot:
+        return None
+    scale = sim(div(coeff, num(2)))
+    double_dep = sim(mul([num(2), top_cot_arg]))
+    parts = []
+    if not is_one(scale):
+        parts.append(scale)
+    parts.append(fn("cot", top_cos_arg))
+    parts.append(fn("sin", double_dep))
+    return tidy(make_mul(parts))
+
+
 def pick_implicit_vars(left, right):
     if depends(left, ["x"]) or depends(right, ["x"]):
         main = "x"
@@ -3124,6 +3298,9 @@ def solve_normal_mode(text):
     if second is not None:
         expr, var = second
         expr = trig_normal(expr)
+        reason = _exam_guard_reason(expr)
+        if reason is not None:
+            _raise_exam_unsupported("Second derivative: " + reason + " (simplify first)")
         first = tidy(diff(expr, var, []))
         second_ans = core_prefer_simpler(tidy(diff(first, var, [])))
         final = prefer_trig_recip(second_ans)
@@ -3140,6 +3317,9 @@ def solve_normal_mode(text):
     # Normalization pass: keep expression in a stable (non-expanded) form.
     # Avoid aggressive tidy() here; it can expand large nested arguments.
     expr = trig_normal(raw_expr)
+    reason = _exam_guard_reason(expr)
+    if reason is not None:
+        _raise_exam_unsupported(reason + " (simplify before differentiating)")
     step_expr = expr
     if raw_expr[0] in ("pow", "mul") and raw_expr[0] != expr[0]:
         step_expr = raw_expr
@@ -3627,15 +3807,21 @@ def main():
                 if t not in printed:
                     printed.add(t)
                     print(dname + " = " + t)
+            mark_scheme_ans = implicit_trig_mark_scheme_alt(ans)
+            if mark_scheme_ans is not None and sig(mark_scheme_ans) != sig(ans) and sig(mark_scheme_ans) != sig(pretty_ans):
+                t = readable_show(mark_scheme_ans)
+                if t not in printed:
+                    printed.add(t)
+                    print(dname + " = " + t)
             # formatted_ans may have been selected as ans above; only print if still distinct.
             formatted_ans = format_final_answer(ans)
-            if sig(formatted_ans) != sig(ans) and sig(formatted_ans) != sig(pretty_ans):
+            if sig(formatted_ans) != sig(ans) and sig(formatted_ans) != sig(pretty_ans) and (mark_scheme_ans is None or sig(formatted_ans) != sig(mark_scheme_ans)):
                 t = readable_show(formatted_ans)
                 if t not in printed:
                     printed.add(t)
                     print(dname + " = " + t)
             normalized_ans = tidy(ans)
-            if sig(normalized_ans) != sig(ans) and sig(normalized_ans) != sig(pretty_ans) and sig(normalized_ans) != sig(formatted_ans):
+            if sig(normalized_ans) != sig(ans) and sig(normalized_ans) != sig(pretty_ans) and sig(normalized_ans) != sig(formatted_ans) and (mark_scheme_ans is None or sig(normalized_ans) != sig(mark_scheme_ans)):
                 t = readable_show(normalized_ans)
                 if t not in printed:
                     printed.add(t)
@@ -3962,7 +4148,14 @@ def main():
     except EOFError:
         return
     except ValueError as err:
-        print("Err: " + str(err))
+        msg = str(err)
+        if msg.startswith("EXAM_UNSUPPORTED:"):
+            reason = msg.split(":", 1)[1].strip()
+            print("1. Too complex for exam-style working.")
+            print("2. " + reason)
+            print("Answer: simplify the expression, then differentiate")
+        else:
+            print("Err: " + msg)
     except Exception:
         print("Err: internal error.")
 

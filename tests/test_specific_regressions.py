@@ -368,6 +368,139 @@ class TransformRegressionTests(unittest.TestCase):
         self.assertNotIn("Err:", rng)
         self.assertIn("Range: y != 1", rng)
 
+    def test_algebra_small_angle_leading_terms(self):
+        out = run_cli("algebraProgram.py", "3\n(cos(7*x)-1)/(x*sin(x))\n4\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Small angle expansion about x = 0", out)
+        self.assertIn("Numerator leading term: (-49/2)*x^2", out)
+        self.assertIn("Answer: -49/2", out)
+
+        out = run_cli("algebraProgram.py", "3\n(cos(3*x)^2-1)/(3*x^2*sin(4*x))\n4\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Denominator leading term: 12*x^3", out)
+        self.assertIn("Answer: (-3/4)/x", out)
+
+        out = run_cli("algebraProgram.py", "3\n(x*tan(2*x))/(1-cos(3*x))\n4\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Numerator leading term: 2*x^2", out)
+        self.assertIn("Denominator leading term: (9/2)*x^2", out)
+        self.assertIn("Answer: 4/9", out)
+
+        out = run_cli("algebraProgram.py", "3\n4*sin(x/2)+3*cos(x)^2\n3\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Out = 3 + 2*x - 3*x^2 + ...", out)
+
+        out = run_cli("algebraProgram.py", "3\n7*(1 - x/2)\n1\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Out = -(7/2)*x + 7", out)
+
+    def test_algebra_simultaneous_linear_coefficient_comparison(self):
+        out = run_cli("algebraProgram.py", "6\n192*a+48*b=42;640*a+192*b=136,a,b\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Eq1: 192*a+48*b=42", out)
+        self.assertIn("Eq2: 640*a+192*b=136", out)
+        self.assertIn("a = 1/4", out)
+        self.assertIn("b = -1/8", out)
+        self.assertIn("Answer: a = 1/4, b = -1/8", out)
+
+    def test_exam_newton_and_power_reduction_fixtures(self):
+        newton = run_cli("algebraProgram.py", "12\n2^x+2*x-3=0,0.5,3\n")
+        self.assertNotIn("Err:", newton)
+        self.assertIn("x1 = 0.696555603383", newton)
+        self.assertIn("x3 = 0.692153354876", newton)
+
+        ident = run_cli("trigProgram.py", "1\ncos(x)^2*sin(x)^2\n1/8-1/8*cos(4*x)\n1\n")
+        self.assertNotIn("Err:", ident)
+        self.assertIn("LHS = RHS", ident)
+
+        area = run_cli("intProgram.py", "1\n144*sin(x)^2*cos(x)^2,x,0,pi/2\n1\n\n")
+        self.assertNotIn("Err:", area)
+        self.assertIn("Use power-reduction identities.", area)
+        self.assertIn("F(pi/2) = 9*pi.", area)
+        self.assertIn("Answer: 9*pi", area)
+
+    def test_integral_one_plus_sin_squared_over_cos_squared(self):
+        out = run_cli("intProgram.py", "1\n((1+sin(x))^2)/(cos(x)^2),x,pi/6,pi/3\n1\n\n")
+        self.assertNotIn("no elementary", out.lower())
+        self.assertIn("Use sin^2 A/cos^2 A = tan^2 A", out)
+        self.assertIn("So the integrand is 2sec^2 A + 2tan A sec A - 1.", out)
+        self.assertIn("Answer: 4 - 1/6*pi", out)
+
+    def test_definite_integral_fractional_power_bounds_simplify(self):
+        out = run_cli("intProgram.py", "1\n2/(x^(1/3)+x),x,0,27\n1\n\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("F(27) = 3*ln(10).", out)
+        self.assertIn("F(0) = 0.", out)
+        self.assertIn("Answer: 3*ln(10)", out)
+
+    def test_definite_integral_combines_surd_terms(self):
+        out = run_cli("intProgram.py", "1\n(1+cot(x)^2)*sec(x)^2,x,pi/6,pi/3\n1\n\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Answer: 4/3*sqrt(3)", out)
+
+    def test_symbolic_parameter_trig_integral_fixture(self):
+        out = run_cli("intProgram.py", "1\n(k*cos(x)^2 - sec(x)^2)*sin(x),x,0,pi/3\n1\n\n")
+        self.assertNotIn("no elementary", out.lower())
+        self.assertIn("Let u = cos(x).", out)
+        self.assertIn("Answer: 7/24*k - 1", out)
+
+        solve = run_cli("algebraProgram.py", "6\n7/24*k - 1=3/4,k\n")
+        self.assertNotIn("Err:", solve)
+        self.assertIn("Answer: k = 6", solve)
+
+    def test_binomial_and_exact_integral_log_combination_fixture(self):
+        series = run_cli("algebraProgram.py", "3\n(3+x)^(-2)\n3\n")
+        self.assertNotIn("Err:", series)
+        self.assertIn("Out = 1/9 - (2/27)*x + (1/27)*x^2 + ...", series)
+
+        approx = run_cli("intProgram.py", "1\n(2*x/3 - 4*x^2/9 + 2*x^3/9),x,0.2,0.4\n1\n\n")
+        self.assertNotIn("Err:", approx)
+        self.assertIn("Answer: 223/6750", approx)
+
+        exact = run_cli("intProgram.py", "1\n(6*x)/(x+3)^2,x,0.2,0.4\n1\n\n")
+        self.assertNotIn("Err:", exact)
+        self.assertIn("Use partial fractions.", exact)
+        self.assertIn("Answer: 6*ln(17/16) - 45/136", exact)
+
+    def test_implicit_trig_answer_prefers_mark_scheme_identity(self):
+        out = run_cli("deriveProgram.py", "2\nsin(2*x)*cot(y)=1\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("dy/dx = cot(2*x)*sin(2*y)", out)
+
+    def test_exam_trig_polynomial_and_reciprocal_solve_fixtures(self):
+        out = run_cli("trigProgram.py", "3\n4/tan(3*x)^2+2=7/sin(3*x),x,0,180\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Let u = cosec(3*x)", out)
+        self.assertIn("Answer: x = [10, 50, 130, 170]", out)
+
+        out = run_cli("trigProgram.py", "3\ntan(x)^4=6+tan(x)^2,x,0,360\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("u^4-u^2-6 = 0", out)
+        self.assertIn("Answer: x = [60, 120, 240, 300]", out)
+
+    def test_algebra_exponential_substitution_equations(self):
+        out = run_cli("algebraProgram.py", "6\ne^x+10*e^(-x)-7=0,x\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Let u = e^x", out)
+        self.assertIn("Answer: x = [ln(2), ln(5)]", out)
+
+        out = run_cli("algebraProgram.py", "6\ne^(2*x-2)-7*e^(x-1)+10=0,x\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Let u = e^(x - 1)", out)
+        self.assertIn("ln(2) + 1", out)
+        self.assertIn("ln(5) + 1", out)
+
+        out = run_cli("algebraProgram.py", "6\n2*exp(3*x)-5*exp(2*x)-4*exp(x)+3=0,x\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Let u = e^x", out)
+        self.assertIn("Answer: x = [-ln(2), ln(3)]", out)
+
+    def test_algebra_composite_quadratic_substitution_equation(self):
+        out = run_cli("algebraProgram.py", "6\n(x^2-x-3)^2-12*(x^2-x-3)+27=0,x\n")
+        self.assertNotIn("Err:", out)
+        self.assertIn("Let u = x^2 - x - 3", out)
+        self.assertIn("Answer: x = [-3, -2, 3, 4]", out)
+
     def test_trig_prove_scaled_sec_tan_reduces_directly(self):
         output = run_cli("trigProgram.py", "1\n9*sec(2*x)^2-9*tan(2*x)^2\n9\n1\n")
         self.assertIn("Use Pythagorean", output)
@@ -425,10 +558,10 @@ class TransformRegressionTests(unittest.TestCase):
     def test_integrate_trig_odd_power_5_simplifies_correctly(self):
         out1 = run_cli("intProgram.py", "1\ncos(x)^5\n1\n")
         self.assertNotIn("no elementary antideriv", out1.lower())
-        self.assertIn("Answer: 1/5*sin(x)^5 - 2/3*sin(x)^3 + sin(x) + C", out1)
+        self.assertIn("Answer: sin(x)^5/5 - 2/3*sin(x)^3 + sin(x) + C", out1)
         out2 = run_cli("intProgram.py", "1\nsin(x)^5\n1\n")
         self.assertNotIn("no elementary antideriv", out2.lower())
-        self.assertIn("Answer: -1/5*cos(x)^5 + 2/3*cos(x)^3 - cos(x) + C", out2)
+        self.assertIn("Answer: -cos(x)^5/5 + 2/3*cos(x)^3 - cos(x) + C", out2)
 
     def test_trig_factor_branch_none_in_interval_not_global_no_solution(self):
         out = run_cli("trigProgram.py", "3\nsin(2*x)+cos(x)=0,x,0,180\n\n")

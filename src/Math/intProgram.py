@@ -390,6 +390,48 @@ def int_pow(a, n):
     return num(a[2]**n, a[1]**n)
 
 
+def int_nth_root_exact(n, k):
+    if k <= 0:
+        return None
+    if n < 0:
+        if k % 2 == 0:
+            return None
+        r = int_nth_root_exact(-n, k)
+        return None if r is None else -r
+    lo = 0
+    hi = 1
+    while hi ** k < n:
+        hi *= 2
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        value = mid ** k
+        if value == n:
+            return mid
+        if value < n:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return None
+
+
+def rational_power_num(base, exponent):
+    if not is_num(base) or not is_num(exponent):
+        return None
+    if exponent[2] == 1:
+        return int_pow(base, exponent[1])
+    p = exponent[1]
+    q = exponent[2]
+    top = int_nth_root_exact(base[1], q)
+    bot = int_nth_root_exact(base[2], q)
+    if top is None or bot is None:
+        return None
+    rooted = num(top, bot)
+    if p < 0:
+        powered = int_pow(rooted, -p)
+        return divq(num(1), powered)
+    return int_pow(rooted, p)
+
+
 def flat(node, kind):
     if node[0] != kind:
         return [node]
@@ -1258,6 +1300,21 @@ def special_trig_value(name, arg):
             return num(0)
         if name in ('cos', 'sec'):
             return num(1)
+    pi_coeff = None
+    if same(A, PI):
+        pi_coeff = num(1)
+    elif A[0] == 'mul' and len(A[1]) == 2:
+        if is_num(A[1][0]) and same(A[1][1], PI):
+            pi_coeff = A[1][0]
+        elif is_num(A[1][1]) and same(A[1][0], PI):
+            pi_coeff = A[1][1]
+    if pi_coeff is not None and is_num(pi_coeff) and pi_coeff[2] == 1:
+        if name in ('sin', 'tan'):
+            return num(0)
+        if name in ('cos', 'sec'):
+            if pi_coeff[1] % 2 == 0:
+                return num(1)
+            return num(-1)
     if same(A, div(PI, num(6))):
         if name == 'sin':
             return num(1, 2)
@@ -1359,11 +1416,13 @@ def sim(node):
                 return num(1)
             if is_one(B):
                 return D
+            if is_num(D):
+                exact_power = rational_power_num(D, B)
+                if exact_power is not None:
+                    return exact_power
             if D[0] == 'fn' and D[1] == 'sqrt' and is_int_num(
                     B) and B[1] % 2 == 0:
                 return power(D[2], num(B[1] // 2))
-            if is_num(D) and is_int_num(B):
-                return int_pow(D, B[1])
             if D[0] == 'pow' and is_num(D[2]) and is_num(B):
                 return power(D[1], mulq(D[2], B))
             if D[0] == 'div' and is_int_num(B):
@@ -1573,6 +1632,8 @@ def sim(node):
             if not is_zero(B):
                 Y.append(D if is_one(B)else ('pow', D, B))
             A += 1
+        if len(Y) > 1 and is_one(Y[0]):
+            Y = Y[1:]
         A = 0
         while A < len(c):
             D, B = X[c[A]]
@@ -1690,7 +1751,8 @@ def display_abs(node):
         return div(num(-A[1][1], A[1][2]), A[2])
     if A[0] == 'div' and A[1][0] == 'mul' and len(
             A[1][1]) > 0 and is_num(A[1][1][0]) and A[1][1][0][1] < 0:
-        D = [num(-A[1][1][0][1], A[1][1][0][2])]
+        abs_coeff = num(-A[1][1][0][1], A[1][1][0][2])
+        D = [] if is_one(abs_coeff) else [abs_coeff]
         C = 1
         while C < len(A[1][1]):
             D.append(A[1][1][C])
@@ -5051,6 +5113,63 @@ def trig_power_factor_info(node):
     return None
 
 
+def integrate_single_odd_trig_chain(node, var):
+    coeff, rest = split_const_mul(node, var)
+    factors = list(flat(rest, 'mul')) if rest[0] == 'mul' else [rest]
+    sin_power = 0
+    cos_power = 0
+    arg = None
+    i = 0
+    while i < len(factors):
+        info = trig_power_factor_info(factors[i])
+        if info is None:
+            if not is_one(factors[i]):
+                return None, None
+            i += 1
+            continue
+        name, this_arg, power_value = info
+        if arg is None:
+            arg = this_arg
+        elif not same(arg, this_arg):
+            return None, None
+        if name == 'sin':
+            sin_power += power_value
+        else:
+            cos_power += power_value
+        i += 1
+    if arg is None:
+        return None, None
+    info = linear_info(arg, var)
+    if info is None:
+        return None, None
+    k, _shift = info
+    if is_zero(k):
+        return None, None
+    if sin_power == 1 and cos_power >= 1:
+        next_power = cos_power + 1
+        scale = sim(neg(div(coeff, mul([k, num(next_power)]))))
+        ans = sim(mul([scale, power(fn('cos', arg), num(next_power))]))
+        lines = [
+            'Let u = cos(' + pretty(arg) + ').',
+            'du/d' + var + ' = ' + pretty(neg(mul([k, fn('sin', arg)]))) + '.',
+            'So I = ' + pretty(neg(div(coeff, k))) + ' Int[u^' + str(cos_power) + '] du.',
+            '= ' + pretty(ans) + ' + C',
+        ]
+        return ans, lines
+    if cos_power == 1 and sin_power >= 1:
+        next_power = sin_power + 1
+        scale = sim(div(coeff, mul([k, num(next_power)])))
+        ans = sim(mul([scale, power(fn('sin', arg), num(next_power))]))
+        lines = [
+            'Let u = sin(' + pretty(arg) + ').',
+            'du/d' + var + ' = ' + pretty(mul([k, fn('cos', arg)])) + '.',
+            'So I = ' + pretty(div(coeff, k)) + ' Int[u^' + str(sin_power) + '] du.',
+            '= ' + pretty(ans) + ' + C',
+        ]
+        return ans, lines
+    return None, None
+
+
 def integrate_known_even_trig_power(node, var):
     coeff, rest = split_const_mul(node, var)
     factors = list(flat(rest, 'mul')) if rest[0] == 'mul' else [rest]
@@ -5230,16 +5349,84 @@ def integrate_cos_cubed_over_sin_quadratic(node, var):
     return ans, lines
 
 
+def integrate_one_pm_sin_square_over_cos_square(node, var):
+    coeff, rest = split_const_mul(node, var)
+    expr = sim(rest)
+    if expr[0] != 'div':
+        return None, None
+    top = expr[1]
+    bot = expr[2]
+    if top[0] != 'pow' or not same(top[2], num(2)):
+        return None, None
+    if bot[0] != 'pow' or not same(bot[2], num(2)):
+        return None, None
+    if bot[1][0] != 'fn' or bot[1][1] != 'cos':
+        return None, None
+    arg = bot[1][2]
+    base = top[1]
+    if base[0] != 'add':
+        return None, None
+    terms = list(flat(base, 'add'))
+    if len(terms) != 2:
+        return None, None
+    sign = None
+    saw_one = False
+    i = 0
+    while i < len(terms):
+        term = terms[i]
+        if same(term, num(1)):
+            saw_one = True
+        elif term[0] == 'fn' and term[1] == 'sin' and same(term[2], arg):
+            sign = 1
+        elif term[0] == 'mul':
+            c, r = split_coeff(term)
+            if is_minus_one(c) and r[0] == 'fn' and r[1] == 'sin' and same(r[2], arg):
+                sign = -1
+            else:
+                return None, None
+        else:
+            return None, None
+        i += 1
+    if not saw_one or sign is None:
+        return None, None
+    info = linear_info(arg, var)
+    if info is None:
+        return None, None
+    k, _shift = info
+    if is_zero(k):
+        return None, None
+    scale = sim(div(coeff, k))
+    signed_sec = mul([num(2 * sign), fn('sec', arg)])
+    primitive_inner = add([mul([num(2), fn('tan', arg)]), signed_sec, neg(arg)])
+    ans = sim(mul([scale, primitive_inner]))
+    sign_text = '+' if sign > 0 else '-'
+    mid = ' + 2tan A sec A ' if sign > 0 else ' - 2tan A sec A '
+    lines = [
+        'Let A = ' + pretty(arg) + '.',
+        'Expand (1' + sign_text + 'sin A)^2/cos^2 A.',
+        'Use sin^2 A/cos^2 A = tan^2 A and tan^2 A = sec^2 A - 1.',
+        'So the integrand is 2sec^2 A' + mid + '- 1.',
+        '= ' + pretty(ans) + ' + C',
+    ]
+    return ans, lines
+
+
 def integrate_trig(node, var, allow_steps=True):
     E = allow_steps
     C = var
     B = node
+    one_pm_ans, one_pm_lines = integrate_one_pm_sin_square_over_cos_square(B, C)
+    if one_pm_ans is not None:
+        return one_pm_ans, one_pm_lines if E else []
     cubic_ans, cubic_lines = integrate_sec_cosec_cubic(B, C)
     if cubic_ans is not None:
         return cubic_ans, cubic_lines if E else []
     special_ans, special_lines = integrate_cos_cubed_over_sin_quadratic(B, C)
     if special_ans is not None:
         return special_ans, special_lines if E else []
+    odd_chain_ans, odd_chain_lines = integrate_single_odd_trig_chain(B, C)
+    if odd_chain_ans is not None:
+        return odd_chain_ans, odd_chain_lines if E else []
     known_ans, known_lines = integrate_known_even_trig_power(B, C)
     if known_ans is not None:
         return known_ans, known_lines if E else []
@@ -5293,12 +5480,21 @@ def integrate_termwise_with(node, var, solver, depth):
     if node[0] != 'add':
         return None, None
     A = []
+    lines = []
     for C in node[1]:
         B, D = solver(C, var, depth + 1)
         if B is None:
             return None, None
         A.append(B)
-    return add(A), []
+        if D:
+            lines.append('For ' + int_text(C, var) + ':')
+            i = 0
+            while i < len(D):
+                line = D[i]
+                if not line.startswith('Answer:'):
+                    lines.append(line)
+                i += 1
+    return add(A), lines
 
 
 def integrate_dv_subproblem(node, var, depth=0):
@@ -5795,11 +5991,10 @@ def auto_route_termwise(node, var, depth):
         E = ['Split the integral into simpler terms.',
              'So I = ' + int_text(C, var)]
     A, B = integrate_termwise_with(
-        C, var, lambda n, v, d: integrate_auto(n, v, d, False), depth)
+        C, var, lambda n, v, d: integrate_auto(n, v, d, True), depth)
     if A is not None:
         return 'direct', A, E + [
-            'Integrate each term separately.',
-            integral_answer_line(A)]
+            'Integrate each term separately.'] + B + [integral_answer_line(A)]
     return None, None, None
 
 
@@ -7670,6 +7865,168 @@ def definite_answer_override(node, var, low_node, high_node, primitive):
     return None, None
 
 
+def _surd_coeff(term, radicand):
+    root = power(num(radicand), num(1, 2))
+    term = sim(term)
+    def is_root(node):
+        return same(node, root) or (node[0] == 'fn' and node[1] == 'sqrt' and same(node[2], num(radicand)))
+    if is_root(term):
+        return num(1)
+    if term[0] == 'mul':
+        coeff = num(1)
+        roots = 0
+        others = []
+        items = flat(term, 'mul')
+        i = 0
+        while i < len(items):
+            if is_num(items[i]):
+                coeff = mulq(coeff, items[i])
+            elif is_root(items[i]):
+                roots += 1
+            else:
+                others.append(items[i])
+            i += 1
+        if roots == 1 and len(others) == 0:
+            return coeff
+    if term[0] == 'div' and is_root(term[2]) and is_num(term[1]):
+        return divq(term[1], num(radicand))
+    return None
+
+
+def _const_factor_coeff(term, const_node):
+    term = sim(term)
+    if same(term, const_node):
+        return num(1)
+    if term[0] == 'mul':
+        coeff = num(1)
+        found = False
+        others = []
+        items = flat(term, 'mul')
+        i = 0
+        while i < len(items):
+            if is_num(items[i]):
+                coeff = mulq(coeff, items[i])
+            elif same(items[i], const_node) and not found:
+                found = True
+            else:
+                others.append(items[i])
+            i += 1
+        if found and len(others) == 0:
+            return coeff
+    if term[0] == 'div' and is_num(term[2]):
+        top_coeff = _const_factor_coeff(term[1], const_node)
+        if top_coeff is not None:
+            return divq(top_coeff, term[2])
+    return None
+
+
+def _log_term_info(term):
+    term = sim(term)
+    if term[0] == 'fn' and term[1] == 'log':
+        return num(1), term[2]
+    if term[0] == 'mul':
+        coeff = num(1)
+        log_arg = None
+        others = []
+        items = flat(term, 'mul')
+        i = 0
+        while i < len(items):
+            if is_num(items[i]):
+                coeff = mulq(coeff, items[i])
+            elif items[i][0] == 'fn' and items[i][1] == 'log' and log_arg is None:
+                log_arg = items[i][2]
+            else:
+                others.append(items[i])
+            i += 1
+        if log_arg is not None and len(others) == 0:
+            return coeff, log_arg
+    return None
+
+
+def combine_opposite_log_terms(expr):
+    expr = sim(expr)
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    log_items = []
+    rest = []
+    i = 0
+    while i < len(terms):
+        info = _log_term_info(terms[i])
+        if info is None:
+            rest.append(terms[i])
+        else:
+            log_items.append(info)
+        i += 1
+    if len(log_items) != 2:
+        return expr
+    c1, a1 = log_items[0]
+    c2, a2 = log_items[1]
+    if not same(c1, negq(c2)):
+        return expr
+    combined = fn('log', div(a1, a2))
+    if not is_one(c1):
+        combined = mul([c1, combined])
+    return sim(add(rest + [combined]))
+
+
+def combine_linear_symbol_terms(expr):
+    expr = sim(expr)
+    symbols = set()
+    collect_symbols(expr, symbols)
+    terms = list(flat(expr, 'add')) if expr[0] == 'add' else [expr]
+    names = sorted(list(symbols))
+    s = 0
+    while s < len(names):
+        name = names[s]
+        coeff = num(0)
+        rest = []
+        i = 0
+        while i < len(terms):
+            c = _const_factor_coeff(terms[i], sym(name))
+            if c is None:
+                rest.append(terms[i])
+            else:
+                coeff = addq(coeff, c)
+            i += 1
+        if not is_zero(coeff):
+            rest.append(mul([coeff, sym(name)]))
+        terms = rest
+        s += 1
+    return sim(add(terms))
+
+
+def simplify_unit_surd_reciprocals(expr):
+    expr = combine_opposite_log_terms(expr)
+    terms = list(flat(sim(expr), 'add')) if sim(expr)[0] == 'add' else [sim(expr)]
+    pi_coeff = num(0)
+    pi_rest = []
+    i = 0
+    while i < len(terms):
+        c = _const_factor_coeff(terms[i], PI)
+        if c is None:
+            pi_rest.append(terms[i])
+        else:
+            pi_coeff = addq(pi_coeff, c)
+        i += 1
+    if not is_zero(pi_coeff):
+        pi_rest.append(mul([pi_coeff, PI]))
+    terms = pi_rest
+    for radicand in (2, 3, 5, 6, 7):
+        coeff = num(0)
+        rest = []
+        i = 0
+        while i < len(terms):
+            c = _surd_coeff(terms[i], radicand)
+            if c is None:
+                rest.append(terms[i])
+            else:
+                coeff = addq(coeff, c)
+            i += 1
+        if not is_zero(coeff):
+            rest.append(mul([coeff, power(num(radicand), num(1, 2))]))
+        terms = rest
+    return combine_linear_symbol_terms(sim(add(terms)))
+
+
 def compact_definite_integral_output_lines(lines, answer_text, node, var, low_node, high_node, primitive):
     out = compact_integral_output_lines(lines, answer_text)
     if len(out) != 0 and out[-1].startswith('Answer: '):
@@ -7684,7 +8041,7 @@ def compact_definite_integral_output_lines(lines, answer_text, node, var, low_no
         return out
     upper_val = sim(subst(primitive, var, high_node))
     lower_val = sim(subst(primitive, var, low_node))
-    total = sim(add([upper_val, neg(lower_val)]))
+    total = simplify_unit_surd_reciprocals(sim(add([upper_val, neg(lower_val)])))
     out.append('Use F(' + var + ') = ' + answer_text + '.')
     out.append('F(' + pretty(high_node) + ') = ' + pretty(upper_val) + '.')
     out.append('F(' + pretty(low_node) + ') = ' + pretty(lower_val) + '.')
