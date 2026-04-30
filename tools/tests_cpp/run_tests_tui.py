@@ -107,14 +107,19 @@ def main() -> int:
 
     import run_tests as rt  # type: ignore
 
-    # Patch the App.run_cli method to call C++ host.
-    orig = rt.CasioTestApp.run_cli
-    orig_compile = rt.CasioTestApp.action_compile
+    # Patch the Textual App's run_cli + /compile to use C++ host + .g3a build.
+    # This repo's python/tests/run_tests.py defines CASIOApp (older variants used CasioTestApp).
+    AppCls = getattr(rt, "CASIOApp", None) or getattr(rt, "CasioTestApp", None)
+    if AppCls is None:
+        raise SystemExit("run_tests.py: couldn't find CASIOApp/CasioTestApp")
+
+    orig = AppCls.run_cli
+    orig_compile = AppCls.action_compile
 
     def patched_run_cli(self, script, inp):  # type: ignore[no-redef]
         return run_cpp_cli(script, inp)
 
-    rt.CasioTestApp.run_cli = patched_run_cli  # type: ignore[attr-defined]
+    AppCls.run_cli = patched_run_cli  # type: ignore[attr-defined]
 
     def patched_compile(self):  # type: ignore[no-redef]
         # Mirror the Python TUI "/compile", but for C++:
@@ -134,13 +139,13 @@ def main() -> int:
         else:
             self.update_summary("Compile failed")
 
-    rt.CasioTestApp.action_compile = patched_compile  # type: ignore[attr-defined]
+    AppCls.action_compile = patched_compile  # type: ignore[attr-defined]
 
     # Launch the TUI app (same as python version).
-    app = rt.CasioTestApp()
+    app = AppCls()
     app.run()
-    rt.CasioTestApp.run_cli = orig  # restore
-    rt.CasioTestApp.action_compile = orig_compile
+    AppCls.run_cli = orig  # restore
+    AppCls.action_compile = orig_compile
     return 0
 
 
