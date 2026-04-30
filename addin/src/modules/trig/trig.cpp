@@ -21,6 +21,25 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     return x.num;
 }
 
+static bool is_const(Arena &a, NodeId n)
+{
+    auto const &x = a.get(n);
+    return x.kind == NodeKind::Num || x.kind == NodeKind::Const;
+}
+
+static bool contains_var(Arena &a, NodeId n, std::string const &var)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return x.text == var;
+    if(x.kind == NodeKind::Fn) return contains_var(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_var(a, x.a, var) || contains_var(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_var(a, k, var)) return true;
+    }
+    return false;
+}
+
 static bool contains_pi(Arena &a, NodeId n)
 {
     auto const &x = a.get(n);
@@ -274,15 +293,90 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     NodeId lhs = casio::simplify(a, eq->lhs);
     NodeId rhs = casio::simplify(a, eq->rhs);
 
-    // Expect lhs = fn(var) and rhs constant from table.
-    auto const &L = a.get(lhs);
-    if(L.kind != NodeKind::Fn) return {"Failed: only sin/cos/tan equations supported."};
-    FnKind fk = L.fkind;
-    if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan)) return {"Failed: only sin/cos/tan supported."};
-    auto const &Arg = a.get(L.a);
-    if(!(Arg.kind == NodeKind::Sym && Arg.text == var)) return {"Failed: only direct f(x) supported."};
+    // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
+    auto isolate = [&](NodeId left, NodeId right) -> std::optional<std::pair<NodeId, NodeId>> {
+        Node const &L = a.get(left);
+        if(L.kind == NodeKind::Fn) return std::make_pair(left, right);
+        if(L.kind == NodeKind::Add && L.kids.size() == 2) {
+            NodeId t0 = L.kids[0], t1 = L.kids[1];
+            Node const &n0 = a.get(t0);
+            Node const &n1 = a.get(t1);
+            if(n0.kind == NodeKind::Fn && is_const(a, t1)) {
+                NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t1)}));
+                return std::make_pair(t0, new_rhs);
+            }
+            if(n1.kind == NodeKind::Fn && is_const(a, t0)) {
+                NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t0)}));
+                return std::make_pair(t1, new_rhs);
+            }
+        }
+        return std::nullopt;
+    };
 
-    std::string target = format_expr(a, rhs);
+    auto iso = isolate(lhs, rhs);
+    if(!iso) iso = isolate(rhs, lhs); // swap sides if needed
+    if(!iso) return {"Failed: could not isolate a trig function."};
+
+    NodeId fn_node = iso->first;
+    NodeId target_node = iso->second;
+
+    auto const &L = a.get(fn_node);
+    if(L.kind != NodeKind::Fn) return {"Failed: expected trig function."};
+    FnKind fk = L.fkind;
+    if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan || fk == FnKind::Sec || fk == FnKind::Cosec ||
+         fk == FnKind::Cot)) {
+        return {"Failed: only trig functions supported."};
+    }
+
+    // Allow arg = var, or var +/- const shift.
+    NodeId arg = L.a;
+    int shift_deg = 0;
+    {
+        Node const &A = a.get(arg);
+        if(A.kind == NodeKind::Sym && A.text == var) {
+            // ok
+        }
+        else if(A.kind == NodeKind::Add && A.kids.size() == 2) {
+            NodeId k0 = A.kids[0];
+            NodeId k1 = A.kids[1];
+            Node const &n0 = a.get(k0);
+            Node const &n1 = a.get(k1);
+            if(n0.kind == NodeKind::Sym && n0.text == var && !contains_var(a, k1, var)) {
+                auto d = angle_to_degree_int(a, k1);
+                if(!d) return {"Failed: shift must be constant angle."};
+                shift_deg = *d;
+                arg = k0;
+            }
+            else if(n1.kind == NodeKind::Sym && n1.text == var && !contains_var(a, k0, var)) {
+                auto d = angle_to_degree_int(a, k0);
+                if(!d) return {"Failed: shift must be constant angle."};
+                shift_deg = *d;
+                arg = k1;
+            }
+            else {
+                return {"Failed: only x±const shifts supported."};
+            }
+        }
+        else {
+            return {"Failed: only direct x or x±const supported."};
+        }
+    }
+
+    // Convert sec/cosec/cot to cos/sin/tan by reciprocals.
+    if(fk == FnKind::Sec) {
+        fk = FnKind::Cos;
+        target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+    }
+    else if(fk == FnKind::Cosec) {
+        fk = FnKind::Sin;
+        target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+    }
+    else if(fk == FnKind::Cot) {
+        fk = FnKind::Tan;
+        target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+    }
+
+    std::string target = format_expr(a, target_node);
 
     // Precompute value tables for degrees.
     struct Entry
@@ -314,12 +408,13 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     oss << "Answer: " << var << " = [";
     for(std::size_t i = 0; i < sols_deg.size(); i++) {
         if(i) oss << ", ";
+        int xdeg = mod360(sols_deg[i] - shift_deg);
         if(rad) {
-            NodeId ang = angle_from_degree(a, sols_deg[i]);
+            NodeId ang = angle_from_degree(a, xdeg);
             oss << format_expr(a, ang);
         }
         else {
-            oss << sols_deg[i];
+            oss << xdeg;
         }
     }
     oss << "]";

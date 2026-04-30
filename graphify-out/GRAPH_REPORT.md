@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 71 files · ~406,689 words
+- 71 files · ~407,371 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2587 nodes · 11260 edges · 25 communities detected
+- 2591 nodes · 11271 edges · 25 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -57,7 +57,7 @@ Nodes (164): abs_term(), add(), addq(), all_neg_add(), _answer_text(), apply_run
 
 ### Community 5 - "Community 5"
 Cohesion: 0.03
-Nodes (106): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+98 more)
+Nodes (108): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+100 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
@@ -68,7 +68,7 @@ Cohesion: 0.08
 Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbols(), _convert_abs_pipes(), div(), divq() (+77 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.06
+Cohesion: 0.05
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
@@ -92,8 +92,8 @@ Cohesion: 0.25
 Nodes (14): convert_rtf_to_txt(), _eval_newton_consistency(), _extract_answer_roots(), extract_expected_answer(), main(), map_to_program_input(), normalize(), normalize_compact() (+6 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.36
-Nodes (9): extract_alg_roots_numeric(), extract_alg_solutions(), extract_answer_lines(), main(), map_fixture_to_host(), Convert the python program stdin payload to our host CLI input.     Only handles, run_cpp(), run_python() (+1 more)
+Cohesion: 0.32
+Nodes (11): extract_alg_roots_numeric(), extract_alg_solutions(), extract_answer_lines(), extract_answer_list_numeric(), main(), map_fixture_to_host(), normalize_compact(), Convert the python program stdin payload to our host CLI input.     Only handles (+3 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.28
@@ -129,11 +129,11 @@ Nodes (2): main(), run_host()
 
 ### Community 23 - "Community 23"
 Cohesion: 0.67
-Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
+Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
 ### Community 24 - "Community 24"
 Cohesion: 0.67
-Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
 ## Knowledge Gaps
 - **189 isolated node(s):** `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.` (+184 more)

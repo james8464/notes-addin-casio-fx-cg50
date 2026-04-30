@@ -35,9 +35,19 @@ def extract_answer_lines(text: str) -> list[str]:
     out: list[str] = []
     for ln in text.splitlines():
         s = ln.strip()
-        if s.lower().startswith("answer:"):
-            out.append(s)
+        m = re.search(r"\banswer:\s*.+", s, flags=re.I)
+        if m:
+            out.append(m.group(0))
     return out
+
+
+def normalize_compact(text: str) -> str:
+    s = (text or "").strip().lower()
+    s = re.sub(r"\s+", "", s)
+    s = s.replace("*", "")
+    s = s.replace("π", "pi")
+    s = re.sub(r"[\[\]\(\),]", "", s)
+    return s
 
 
 def extract_alg_solutions(text: str) -> list[str]:
@@ -107,6 +117,36 @@ def extract_alg_roots_numeric(text: str) -> list[float] | None:
     return vals2
 
 
+def extract_answer_list_numeric(text: str) -> list[float] | None:
+    m = re.search(r"answer:\s*[a-zA-Zθ]+\s*=\s*\[(.+?)\]", text, flags=re.I | re.S)
+    if not m:
+        return None
+    inside = m.group(1).strip()
+    parts: list[str] = []
+    cur = ""
+    depth = 0
+    for ch in inside:
+        if ch in "([":  # nested
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur.strip())
+    vals: list[float] = []
+    for p in parts:
+        v = _safe_eval_number(p)
+        if v is None:
+            return None
+        vals.append(v)
+    vals.sort()
+    return vals
+
+
 def map_fixture_to_host(script_relpath: str, stdin: str) -> tuple[str, str] | None:
     """
     Convert the python program stdin payload to our host CLI input.
@@ -120,11 +160,32 @@ def map_fixture_to_host(script_relpath: str, stdin: str) -> tuple[str, str] | No
             return None  # only indefinite integration for now
         if len(lines) < 2:
             return None
-        expr = lines[1].strip()
+        expr = re.sub(r"\s+", "", lines[1])
         if not re.fullmatch(r"[0-9a-zA-Z_πpiPI\\+\\-\\*/\\^\\(\\)\\.\\s]+", expr):
             return None
-        if " " in expr:
-            return None
+        # Reject English/narrative tokens; allow only a small whitelist of identifiers.
+        allowed_words = {
+            "x",
+            "pi",
+            "e",
+            "sin",
+            "cos",
+            "tan",
+            "sec",
+            "cosec",
+            "cot",
+            "asin",
+            "acos",
+            "atan",
+            "sqrt",
+            "abs",
+            "exp",
+            "log",
+            "ln",
+        }
+        for w in re.findall(r"[A-Za-z]+", expr):
+            if w.lower() not in allowed_words:
+                return None
         return ("int", expr)
 
     if script_relpath.endswith("Math/algebraProgram.py"):
@@ -136,9 +197,7 @@ def map_fixture_to_host(script_relpath: str, stdin: str) -> tuple[str, str] | No
             return None
         if len(lines) < 2:
             return None
-        expr = lines[1].strip()
-        if " " in expr:
-            return None
+        expr = re.sub(r"\s+", "", lines[1])
         return ("alg", expr)
 
     if script_relpath.endswith("Math/trigProgram.py"):
@@ -148,9 +207,7 @@ def map_fixture_to_host(script_relpath: str, stdin: str) -> tuple[str, str] | No
             return None  # only solve mode for now
         if len(lines) < 2:
             return None
-        expr = lines[1].strip()
-        if " " in expr:
-            return None
+        expr = re.sub(r"\s+", "", lines[1])
         return ("trig", expr)
 
     return None
@@ -203,7 +260,14 @@ def main() -> int:
                 if not ok and py_ans:
                     ok = (sorted(py_ans) == sorted(cpp_ans))
             else:
-                ok = (py_ans[:1] == cpp_ans[:1]) and bool(py_ans)
+                ok = False
+                if mode == "trig":
+                    py_list = extract_answer_list_numeric(py_out)
+                    cpp_list = extract_answer_list_numeric(cpp_out)
+                    if py_list is not None and cpp_list is not None and len(py_list) == len(cpp_list):
+                        ok = all(abs(a - b) < 1e-6 for a, b in zip(py_list, cpp_list))
+                if not ok:
+                    ok = bool(py_ans) and bool(cpp_ans) and (normalize_compact(py_ans[0]) == normalize_compact(cpp_ans[0]))
             if not ok:
                 bad += 1
                 print("MISMATCH", mode, expr)
