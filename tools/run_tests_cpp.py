@@ -33,6 +33,7 @@ def main() -> int:
         ("expr_format", [sys.executable, "tools/golden/compare_expr_format.py"]),
         ("suvat", [sys.executable, "tools/golden/compare_suvat.py"]),
         ("integrate_basic", [sys.executable, "tools/golden/compare_int_basic.py"]),
+        ("integrate_more", [sys.executable, "tools/golden/compare_int_more.py"]),
         ("derive_basic", [sys.executable, "tools/golden/compare_derive_basic.py"]),
     ]
 

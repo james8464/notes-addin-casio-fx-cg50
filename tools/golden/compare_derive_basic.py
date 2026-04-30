@@ -67,6 +67,8 @@ def _safe_eval(expr: str, x: float) -> float | None:
     expr = expr.replace("^", "**").replace("π", "pi")
     # basic canonicalization
     expr = expr.replace("ln(", "log(")
+    expr = re.sub(r"ln\|([^|]+)\|", r"log(abs(\1))", expr)
+    expr = re.sub(r"\|([^|]+)\|", r"abs(\1)", expr)
     # Allowed math names
     env = {
         "__builtins__": {},
@@ -98,14 +100,16 @@ def numeric_equiv(lhs: str, rhs: str) -> bool:
     # Compare RHS expressions at a few safe positive points.
     # This is only a fallback for formatting differences.
     samples = [0.2, 0.7, 1.3]
+    hits = 0
     for x in samples:
         a = _safe_eval(lhs, x)
         b = _safe_eval(rhs, x)
         if a is None or b is None:
             continue
+        hits += 1
         if abs(a - b) > 1e-6:
             return False
-    return True
+    return hits >= 1
 
 
 def main() -> int:

@@ -103,6 +103,114 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
 {
     auto const &x = a.get(expr);
 
+    // Rational split: (a+b+...)/x -> a/x + b/x + ...
+    if(x.kind == NodeKind::Div) {
+        Node const &bot = a.get(x.b);
+        Node const &top = a.get(x.a);
+        if(bot.kind == NodeKind::Sym && bot.text == var && top.kind == NodeKind::Add) {
+            std::vector<NodeId> parts;
+            parts.reserve(top.kids.size());
+            for(auto kid : top.kids) {
+                // local cancel for common cases: (c*x^n)/x -> c*x^(n-1)
+                NodeId num = kid;
+                Node const &kn = a.get(kid);
+                bool cancelled = false;
+                if(kn.kind == NodeKind::Mul) {
+                    std::vector<NodeId> newf;
+                    newf.reserve(kn.kids.size());
+                    for(auto f : kn.kids) {
+                        Node const &fn = a.get(f);
+                        if(!cancelled && fn.kind == NodeKind::Sym && fn.text == var) {
+                            cancelled = true;
+                            continue;
+                        }
+                        if(!cancelled && fn.kind == NodeKind::Pow && is_sym(a, fn.a, var)) {
+                            if(auto er = as_num(a, fn.b); er && er->den == 1 && er->num >= 1) {
+                                Rational nm1 = *er;
+                                nm1.num -= nm1.den;
+                                nm1.normalize();
+                                cancelled = true;
+                                if(nm1.num == 0) continue; // x^0 -> 1
+                                newf.push_back(casio::power(a, fn.a, a.num(nm1)));
+                                continue;
+                            }
+                        }
+                        newf.push_back(f);
+                    }
+                    if(cancelled) num = (newf.size() == 1) ? newf[0] : casio::mul(a, newf);
+                }
+                else if(kn.kind == NodeKind::Pow && is_sym(a, kn.a, var)) {
+                    if(auto er = as_num(a, kn.b); er && er->den == 1 && er->num >= 1) {
+                        Rational nm1 = *er;
+                        nm1.num -= nm1.den;
+                        nm1.normalize();
+                        cancelled = true;
+                        if(nm1.num == 0) num = casio::num(a, 1);
+                        else num = casio::power(a, kn.a, a.num(nm1));
+                    }
+                }
+                NodeId term = cancelled ? casio::simplify(a, num) : casio::simplify(a, casio::div(a, num, x.b));
+                auto prim = integrate_simple(a, term, var);
+                if(!prim) return std::nullopt;
+                parts.push_back(*prim);
+            }
+            return casio::simplify(a, casio::add(a, parts));
+        }
+    }
+    // Also handle (a+b+...)*x^-1 form.
+    if(x.kind == NodeKind::Mul) {
+        NodeId inv = 0xFFFFFFFFu;
+        std::vector<NodeId> rest;
+        rest.reserve(x.kids.size());
+        for(auto kid : x.kids) {
+            Node const &k = a.get(kid);
+            bool is_inv = false;
+            if(k.kind == NodeKind::Pow && is_sym(a, k.a, var)) {
+                if(auto er = as_num(a, k.b); er && er->den == 1 && er->num == -1) is_inv = true;
+            }
+            if(is_inv && inv == 0xFFFFFFFFu) inv = kid;
+            else rest.push_back(kid);
+        }
+        if(inv != 0xFFFFFFFFu && rest.size() == 1) {
+            Node const &r0 = a.get(rest[0]);
+            if(r0.kind == NodeKind::Add) {
+                std::vector<NodeId> parts;
+                parts.reserve(r0.kids.size());
+                for(auto term : r0.kids) {
+                    NodeId t = casio::simplify(a, casio::mul(a, {term, inv}));
+                    auto prim = integrate_simple(a, t, var);
+                    if(!prim) return std::nullopt;
+                    parts.push_back(*prim);
+                }
+                return casio::simplify(a, casio::add(a, parts));
+            }
+        }
+    }
+
+    // Tiny trig power rewrite: sin(x)^2 / cos(x)^2 (only direct x) to unlock table rules.
+    if(x.kind == NodeKind::Pow) {
+        auto nrat = as_num(a, x.b);
+        if(nrat && nrat->num == 2 && nrat->den == 1) {
+            Node const &base = a.get(x.a);
+            if(base.kind == NodeKind::Fn && is_sym(a, base.a, var)) {
+                NodeId one = casio::num(a, 1);
+                NodeId two = casio::num(a, 2);
+                NodeId half = casio::div(a, one, two);
+                NodeId arg2 = casio::mul(a, {two, base.a});
+                if(base.fkind == FnKind::Sin) {
+                    // sin^2 x = (1 - cos(2x))/2
+                    NodeId rhs = casio::mul(a, {half, casio::add(a, {one, casio::neg(a, a.fn(FnKind::Cos, arg2))})});
+                    return integrate_simple(a, casio::simplify(a, rhs), var);
+                }
+                if(base.fkind == FnKind::Cos) {
+                    // cos^2 x = (1 + cos(2x))/2
+                    NodeId rhs = casio::mul(a, {half, casio::add(a, {one, a.fn(FnKind::Cos, arg2)})});
+                    return integrate_simple(a, casio::simplify(a, rhs), var);
+                }
+            }
+        }
+    }
+
     // ∫ c dx = c*x
     if(is_const(a, expr) && !(x.kind == NodeKind::Const && x.ckind == ConstKind::Pi)) {
         NodeId v = casio::sym(a, var);
@@ -134,11 +242,15 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
 
     // Reciprocal affine: ∫ 1/(k*x+b) dx = ln|k*x+b| / k
     if(x.kind == NodeKind::Div) {
-        auto top = as_num(a, x.a);
-        if(top && top->num == 1 && top->den == 1) {
+        if(auto top = as_num(a, x.a)) {
             if(auto aff = match_affine(a, x.b, var)) {
+                // ∫ c/(k*x+b) dx = c*ln|k*x+b| / k
                 NodeId ln = casio::fn(a, "log", casio::fn(a, "abs", x.b));
-                return casio::simplify(a, casio::div(a, ln, aff->k));
+                NodeId frac = casio::div(a, ln, aff->k);
+                if(!(top->num == 1 && top->den == 1)) {
+                    frac = casio::mul(a, {a.num(*top), frac});
+                }
+                return casio::simplify(a, frac);
             }
         }
     }

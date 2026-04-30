@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 87 files · ~416,665 words
+- 88 files · ~417,569 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2668 nodes · 11434 edges · 32 communities detected
+- 2676 nodes · 11447 edges · 33 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -68,7 +68,7 @@ Cohesion: 0.08
 Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbols(), _convert_abs_pipes(), div(), divq() (+77 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.06
+Cohesion: 0.05
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
@@ -104,71 +104,75 @@ Cohesion: 0.46
 Nodes (7): extract_answer(), main(), norm(), numeric_equiv(), run_cpp(), run_python(), _safe_eval()
 
 ### Community 17 - "Community 17"
+Cohesion: 0.46
+Nodes (7): extract_answer(), main(), norm(), numeric_equiv(), run_cpp(), run_python(), _safe_eval()
+
+### Community 18 - "Community 18"
 Cohesion: 0.6
 Nodes (5): extract_answer(), main(), norm(), run_cpp(), run_python()
 
-### Community 18 - "Community 18"
+### Community 19 - "Community 19"
 Cohesion: 0.7
 Nodes (4): extract_exact_answer(), main(), run_cpp(), run_python()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.7
 Nodes (4): _import_rtf_runner(), main(), _read_txt_lines(), _write_jsonl()
 
-### Community 20 - "Community 20"
+### Community 21 - "Community 21"
 Cohesion: 0.6
 Nodes (4): check_one(), main(), Verify compiled .mpy files match the Casio fx-CG50 / MicroPython v1.9.4 toolchai, _read_header()
 
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.7
 Nodes (4): _bootstrap_mpy_mode(), main(), _run_cpython(), _run_mpy()
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
 Cohesion: 0.83
 Nodes (3): main(), py_oracle(), run_host()
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 0.83
 Nodes (3): run(), _try_import(), _try_mpl()
 
-### Community 24 - "Community 24"
+### Community 25 - "Community 25"
 Cohesion: 1.0
 Nodes (2): main(), run()
 
-### Community 25 - "Community 25"
+### Community 26 - "Community 26"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 26 - "Community 26"
+### Community 27 - "Community 27"
 Cohesion: 1.0
 Nodes (2): main(), run_host()
 
-### Community 27 - "Community 27"
-Cohesion: 0.67
-Nodes (1): BoundedCache
-
 ### Community 28 - "Community 28"
 Cohesion: 0.67
-Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+Nodes (1): BoundedCache
 
 ### Community 29 - "Community 29"
 Cohesion: 0.67
 Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
 ### Community 30 - "Community 30"
+Cohesion: 0.67
+Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+
+### Community 31 - "Community 31"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 31 - "Community 31"
+### Community 32 - "Community 32"
 Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
 - **189 isolated node(s):** `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.` (+184 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 30`** (2 nodes): `check_g3a_size.py`, `main()`
+- **Thin community `Community 31`** (2 nodes): `check_g3a_size.py`, `main()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 31`** (2 nodes): `summarize_failures.py`, `main()`
+- **Thin community `Community 32`** (2 nodes): `summarize_failures.py`, `main()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
