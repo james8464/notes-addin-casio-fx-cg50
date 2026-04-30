@@ -2781,6 +2781,26 @@ class CASIOApp(App):
         def summary(message):
             emit(self.update_summary, message)
 
+        def clean_addin_outputs():
+            output_dir = REPO_ROOT / "c++" / "addin" / "build-cg"
+            patterns = ("*.g3a", "CasioCAS", "CasioCAS.bin")
+            removed = []
+            for pattern in patterns:
+                for path in output_dir.glob(pattern):
+                    if path.is_file():
+                        try:
+                            path.unlink()
+                        except OSError as err:
+                            log(f"[bold #f87171]✗ could not remove stale output:[/bold #f87171] {path} ({err})")
+                            return False
+                        removed.append(path)
+            if removed:
+                for path in removed:
+                    log(f"[dim]removed stale output:[/dim] {path}")
+            else:
+                log("[dim]no existing .g3a output to remove; creating a fresh one[/dim]")
+            return True
+
         def run_stream(label, cmd, cwd=None, show_output=True):
             log(f"[dim]▶ start: {label}[/dim]")
             start = time.monotonic()
@@ -2835,6 +2855,9 @@ class CASIOApp(App):
 
                 log("")
                 log("[dim]--- Building add-in (.g3a) ---[/dim]")
+                if not clean_addin_outputs():
+                    summary("Compile failed")
+                    return
                 build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
 
                 if build_mode == "docker":

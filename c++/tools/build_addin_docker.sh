@@ -24,6 +24,28 @@ docker build \
 
 echo ""
 echo "=== Building add-in in container ==="
+echo "=== Removing stale add-in outputs ==="
+if [[ -d "${ROOT_DIR}/c++/addin/build-cg" ]]; then
+  stale_outputs=()
+  while IFS= read -r f; do
+    stale_outputs+=("${f}")
+  done < <(
+    find "${ROOT_DIR}/c++/addin/build-cg" -maxdepth 1 -type f \
+      \( -name '*.g3a' -o -name 'CasioCAS' -o -name 'CasioCAS.bin' \) \
+      | sort
+  )
+  if [[ ${#stale_outputs[@]} -gt 0 ]]; then
+    for f in "${stale_outputs[@]}"; do
+      echo "Removing stale output: ${f}"
+      rm -f "${f}"
+    done
+  else
+    echo "No existing .g3a output found; creating a fresh one."
+  fi
+else
+  echo "No build-cg directory yet; fxsdk will create it."
+fi
+
 docker run --rm \
   -v "${ROOT_DIR}:/work" \
   -w /work/c++/addin \
