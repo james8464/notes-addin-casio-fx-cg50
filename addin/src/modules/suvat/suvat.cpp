@@ -32,6 +32,63 @@ static bool is_blank(std::string const &s)
 
 static NodeId half(Arena &a) { return num(a, 1, 2); }
 
+static double *node_to_double(Arena &arena, NodeId node, double &out)
+{
+    NodeId s = simplify(arena, node);
+    Node const &n = arena.get(s);
+    if(n.kind == NodeKind::Num) {
+        out = double(n.num.num) / double(n.num.den);
+        return &out;
+    }
+    if(n.kind == NodeKind::Const) {
+        if(n.ckind == ConstKind::Pi) { out = 3.14159265358979323846; return &out; }
+        if(n.ckind == ConstKind::E) { out = 2.71828182845904523536; return &out; }
+    }
+    if(n.kind == NodeKind::Add) {
+        double sum = 0;
+        for(NodeId kid : n.kids) {
+            double v = 0;
+            if(!node_to_double(arena, kid, v)) return nullptr;
+            sum += v;
+        }
+        out = sum;
+        return &out;
+    }
+    if(n.kind == NodeKind::Mul) {
+        double prod = 1;
+        for(NodeId kid : n.kids) {
+            double v = 0;
+            if(!node_to_double(arena, kid, v)) return nullptr;
+            prod *= v;
+        }
+        out = prod;
+        return &out;
+    }
+    if(n.kind == NodeKind::Div) {
+        double a = 0, b = 0;
+        if(!node_to_double(arena, n.a, a)) return nullptr;
+        if(!node_to_double(arena, n.b, b)) return nullptr;
+        out = a / b;
+        return &out;
+    }
+    if(n.kind == NodeKind::Pow) {
+        double a = 0, b = 0;
+        if(!node_to_double(arena, n.a, a)) return nullptr;
+        if(!node_to_double(arena, n.b, b)) return nullptr;
+        // only need sqrt-ish now
+        out = std::pow(a, b);
+        return &out;
+    }
+    return nullptr;
+}
+
+static bool is_nonnegative(Arena &arena, NodeId node)
+{
+    double v = 0;
+    if(!node_to_double(arena, node, v)) return true; // unknown => keep
+    return v >= -1e-9;
+}
+
 } // namespace
 
 Inputs normalize_inputs(Inputs in)
@@ -147,9 +204,9 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         // v = ±sqrt(u^2 + 2as)
         NodeId inside = add(arena, {power(arena, u, num(arena, 2)), mul(arena, {num(arena, 2), a, s})});
         NodeId root = power(arena, inside, num(arena, 1, 2));
-        out.push_back("Use v^2 = u^2 + 2as");
+        out.push_back("v^2 = u^2 + 2as");
         out.push_back("v = ±sqrt(u^2 + 2as)");
-        out.push_back("Answer: v = " + show(root) + " or " + show(neg(arena, root)));
+        out.push_back("v = " + show(root) + " or " + show(neg(arena, root)));
         return out;
     }
     if(in.target == "a" && has_v && has_u && has_s) {
@@ -174,9 +231,14 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId num2 = add(arena, {neg(arena, u), neg(arena, root)});
         NodeId t1 = div(arena, num1, a);
         NodeId t2 = div(arena, num2, a);
-        out.push_back("Use s = ut + 1/2at^2");
+        out.push_back("s = ut + 1/2at^2");
         out.push_back("t = (-u ± sqrt(u^2 + 2as))/a");
-        out.push_back("Answer: t = " + show(t1) + " or " + show(t2));
+        bool keep1 = is_nonnegative(arena, t1);
+        bool keep2 = is_nonnegative(arena, t2);
+        if(keep1 && keep2) out.push_back("t = " + show(t1) + " or " + show(t2));
+        else if(keep1) out.push_back("t = " + show(t1));
+        else if(keep2) out.push_back("t = " + show(t2));
+        else out.push_back("t = (no positive root)");
         return out;
     }
 

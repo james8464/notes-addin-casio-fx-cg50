@@ -63,7 +63,12 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
     if(n.kind == NodeKind::Pow) {
         Node const &base = arena.get(n.a);
         std::string text;
-        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+        // Special-case sqrt: x^(1/2) -> sqrt(x) (matches SUVAT python output)
+        Node const &expn = arena.get(n.b);
+        if(expn.kind == NodeKind::Num && expn.num.num == 1 && expn.num.den == 2) {
+            text = "sqrt(" + format_expr(arena, n.a, 0) + ")";
+        }
+        else if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
             text = "e^(" + format_expr(arena, n.b, 0) + ")";
         }
         else {
@@ -79,6 +84,22 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
     }
     if(n.kind == NodeKind::Mul) {
         std::ostringstream oss;
+        // Special-case leading -1: -1*x -> -x
+        if(!n.kids.empty()) {
+            Node const &k0 = arena.get(n.kids.front());
+            if(k0.kind == NodeKind::Num && k0.num.num == -1 && k0.num.den == 1 && n.kids.size() > 1) {
+                oss << "-";
+                // render rest with multiplication
+                for(std::size_t i = 1; i < n.kids.size(); i++) {
+                    if(i > 1) oss << "*";
+                    oss << format_expr(arena, n.kids[i], 2);
+                }
+                std::string text = oss.str();
+                if(prec(n) < parent_prec) return "(" + text + ")";
+                return text;
+            }
+        }
+
         bool first = true;
         for(NodeId kid : n.kids) {
             if(!first) oss << "*";
