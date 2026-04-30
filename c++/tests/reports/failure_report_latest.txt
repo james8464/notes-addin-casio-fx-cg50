@@ -1,8 +1,0 @@
-CASIO live session report (appends for each failure / LLM follow-up while tests run)
-Started: 2026-04-30T19:38:51
-Command: /random
-Program: all
-Scope: 'all' | 'chaos'
-See /Users/james/Developer/Python/CASIO/c++/tests/reports - tail this file in another terminal for a live view.
-========================================================================
-

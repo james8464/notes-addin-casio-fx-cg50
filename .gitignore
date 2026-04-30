@@ -15,6 +15,12 @@ c++/addin/host/build/
 
 # Graphify outputs
 graphify-out/cache/
+c++/graphify-out/cache/
+python/graphify-out/
+
+# Live test reports
+python/tests/reports/
+c++/tests/reports/
 
 # Python bytecode
 **/__pycache__/

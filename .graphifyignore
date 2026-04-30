@@ -1,0 +1,10 @@
+c++/addin/build-cg/**
+c++/addin/build/**
+c++/addin/host/build/**
+c++/graphify-out/**
+python/graphify-out/**
+python/tests/reports/**
+c++/tests/reports/**
+python/Tests.txt
+**/__pycache__/**
+**/.DS_Store

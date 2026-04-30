@@ -1,1 +1,0 @@
-{"nodes": [{"id": "rational", "label": "rational.hpp", "file_type": "code", "source_file": "addin/src/core/rational.hpp", "source_location": "L1"}], "edges": [{"source": "rational", "target": "cstdint", "relation": "imports", "confidence": "EXTRACTED", "source_file": "addin/src/core/rational.hpp", "source_location": "L3", "weight": 1.0}]}

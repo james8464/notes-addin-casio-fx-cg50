@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 
@@ -16,8 +17,11 @@ def run(cmd: list[str]) -> int:
 
 def main() -> int:
     if "--tui" in sys.argv:
-        # Launch Textual TUI runner (drives C++ host via --stdin-program).
-        return run([sys.executable, "c++/tools/tests_cpp/run_tests_tui.py"])
+        # Launch the single shared Textual TUI directly in C++ backend mode.
+        env = os.environ.copy()
+        env["CASIO_BACKEND"] = "c"
+        p = subprocess.run([sys.executable, "run_tests.py"], cwd=str(REPO), env=env)
+        return p.returncode
     if "--fuzz" in sys.argv:
         # Randomized oracle-vs-host miner (writes JSONL on failures).
         return run([sys.executable, "c++/tools/fuzz/fuzz_triage.py"])
@@ -58,4 +62,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
