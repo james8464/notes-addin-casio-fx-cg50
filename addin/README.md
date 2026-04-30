@@ -10,6 +10,8 @@ Authoritative docs:
 - fxSDK: `https://git.planet-casio.com/Lephenixnoir/fxsdk/src/branch/master/README.md`
 - gint: `https://git.planet-casio.com/Lephenixnoir/gint/src/branch/master/README.md`
 
+This repo also includes a concrete install/verify guide: `addin/FXSDK_INSTALL.md`.
+
 Typical workflow (Linux/WSL is the smoothest; macOS may need tweaks):
 - Install via GiteaPC (recommended by fxSDK): `giteapc install Lephenixnoir/fxsdk`
 - Ensure `fxsdk` is on PATH.
