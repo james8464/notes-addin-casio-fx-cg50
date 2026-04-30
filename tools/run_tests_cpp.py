@@ -35,6 +35,7 @@ def main() -> int:
         ("integrate_basic", [sys.executable, "tools/golden/compare_int_basic.py"]),
         ("integrate_more", [sys.executable, "tools/golden/compare_int_more.py"]),
         ("derive_basic", [sys.executable, "tools/golden/compare_derive_basic.py"]),
+        ("trig_basic", [sys.executable, "tools/golden/compare_trig_basic.py"]),
     ]
 
     bad = 0

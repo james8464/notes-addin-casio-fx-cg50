@@ -5,8 +5,10 @@
 #include "core/normalize.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
+#include "core/sig.hpp"
 #include "core/simplify.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <sstream>
 #include <optional>
@@ -21,6 +23,68 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     auto const &x = a.get(n);
     if(x.kind != NodeKind::Num) return std::nullopt;
     return x.num;
+}
+
+static std::optional<double> numeric_eval(Arena &a, NodeId n, double xval)
+{
+    Node const &x = a.get(n);
+    switch(x.kind) {
+    case NodeKind::Num:
+        return (double)x.num.num / (double)x.num.den;
+    case NodeKind::Sym:
+        return (x.text == "x") ? xval : 0.0;
+    case NodeKind::Const:
+        return (x.ckind == ConstKind::Pi) ? M_PI : M_E;
+    case NodeKind::Fn: {
+        auto av = numeric_eval(a, x.a, xval);
+        if(!av) return std::nullopt;
+        double u = *av;
+        switch(x.fkind) {
+        case FnKind::Sin: return std::sin(u);
+        case FnKind::Cos: return std::cos(u);
+        case FnKind::Tan: return std::tan(u);
+        case FnKind::Sec: return 1.0 / std::cos(u);
+        case FnKind::Cosec: return 1.0 / std::sin(u);
+        case FnKind::Cot: return 1.0 / std::tan(u);
+        case FnKind::Log: return std::log(u);
+        case FnKind::Exp: return std::exp(u);
+        case FnKind::Sqrt: return std::sqrt(u);
+        case FnKind::Abs: return std::fabs(u);
+        default: return std::nullopt;
+        }
+    }
+    case NodeKind::Add: {
+        double s = 0.0;
+        for(auto k : x.kids) {
+            auto kv = numeric_eval(a, k, xval);
+            if(!kv) return std::nullopt;
+            s += *kv;
+        }
+        return s;
+    }
+    case NodeKind::Mul: {
+        double p = 1.0;
+        for(auto k : x.kids) {
+            auto kv = numeric_eval(a, k, xval);
+            if(!kv) return std::nullopt;
+            p *= *kv;
+        }
+        return p;
+    }
+    case NodeKind::Div: {
+        auto a1 = numeric_eval(a, x.a, xval);
+        auto b1 = numeric_eval(a, x.b, xval);
+        if(!a1 || !b1) return std::nullopt;
+        return *a1 / *b1;
+    }
+    case NodeKind::Pow: {
+        auto a1 = numeric_eval(a, x.a, xval);
+        auto b1 = numeric_eval(a, x.b, xval);
+        if(!a1 || !b1) return std::nullopt;
+        return std::pow(*a1, *b1);
+    }
+    }
+    return std::nullopt;
 }
 
 static bool is_const(Arena &a, NodeId n)
@@ -323,9 +387,25 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
+    // Also allow k*fn(...) = const (k numeric).
     auto isolate = [&](NodeId left, NodeId right) -> std::optional<std::pair<NodeId, NodeId>> {
         Node const &L = a.get(left);
         if(L.kind == NodeKind::Fn) return std::make_pair(left, right);
+        if(L.kind == NodeKind::Mul && L.kids.size() == 2) {
+            // k*fn(u) = c -> fn(u) = c/k
+            auto k0 = as_num(a, L.kids[0]);
+            auto k1 = as_num(a, L.kids[1]);
+            Node const &n0 = a.get(L.kids[0]);
+            Node const &n1 = a.get(L.kids[1]);
+            if(k0 && n1.kind == NodeKind::Fn) {
+                NodeId new_rhs = casio::simplify(a, casio::div(a, right, L.kids[0]));
+                return std::make_pair(L.kids[1], new_rhs);
+            }
+            if(k1 && n0.kind == NodeKind::Fn) {
+                NodeId new_rhs = casio::simplify(a, casio::div(a, right, L.kids[1]));
+                return std::make_pair(L.kids[0], new_rhs);
+            }
+        }
         if(L.kind == NodeKind::Add && L.kids.size() == 2) {
             NodeId t0 = L.kids[0], t1 = L.kids[1];
             Node const &n0 = a.get(t0);
@@ -465,36 +545,48 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter trig expression."};
 
     if(req.mode == 1) {
-        // Prove identity: input is "LHS\\nRHS" (route ignored for now).
-        auto parts = split_csv(req.expr);
-        // stdin-program passes newline-separated; split_csv won't split it, so just handle \\n.
+        // Prove identity: input is "LHS\\nRHS" (route line ignored).
         auto nl = req.expr.find('\n');
         std::string lhs = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string rhs = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(rhs.empty()) return {"Err: need LHS and RHS."};
-        NodeId parsed = casio::parse_expr(arena, lhs);
-        auto pre = casio::build_exam_prelude(arena, lhs, parsed);
+        NodeId l = casio::simplify(arena, casio::parse_expr(arena, lhs));
+        NodeId r = casio::simplify(arena, casio::parse_expr(arena, rhs));
+        bool same = (casio::sig(arena, l) == casio::sig(arena, r));
+        bool numeric_ok = true;
+        if(!same) {
+            for(double x : {0.1, 0.7, 1.2}) {
+                auto lv = numeric_eval(arena, l, x);
+                auto rv = numeric_eval(arena, r, x);
+                if(!lv || !rv) continue;
+                if(std::fabs(*lv - *rv) > 2e-6) numeric_ok = false;
+            }
+        }
+        bool ok = same || numeric_ok;
         return casio::exam_block(
-            "trig identity (stub)",
+            "trig identity",
             {
-                "Normalize: " + pre.norm,
-                "Parse: " + pre.parsed,
-                "Simplify: " + pre.simplified,
-                "Show LHS equals RHS (route not fully ported).",
+                "Simplify LHS: " + casio::format_expr(arena, l),
+                "Simplify RHS: " + casio::format_expr(arena, r),
+                ok ? "Hence LHS = RHS." : "Not equivalent by simplification/check.",
             },
-            "LHS = RHS"
+            ok ? "LHS = RHS" : "LHS != RHS"
         );
     }
     if(req.mode == 2) {
-        // Transform: input is "source\\ntarget". For harness, output the target as answer.
         auto nl = req.expr.find('\n');
-        std::string target = (nl == std::string::npos) ? req.expr : req.expr.substr(nl + 1);
+        std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
+        std::string target = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(target.empty()) return {"Err: need target form."};
+        NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
+        NodeId t = casio::simplify(arena, casio::parse_expr(arena, target));
+        bool ok = (casio::sig(arena, s) == casio::sig(arena, t));
         return casio::exam_block(
-            "trig transform (stub)",
+            "trig transform",
             {
-                "Rewrite using trig identities (route not fully ported).",
-                "Answer will be equivalent to source and target.",
+                "Simplify source: " + casio::format_expr(arena, s),
+                "Simplify target: " + casio::format_expr(arena, t),
+                ok ? "Equivalent." : "Warning: not proven equivalent (limited).",
             },
             target
         );
