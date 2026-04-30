@@ -2742,6 +2742,7 @@ class CASIOApp(App):
     def action_compile_cpp(self):
         import subprocess
         import time
+        import site
 
         if getattr(self, "_compile_running", False):
             self.append_result("[bold #f59e0b]Compile already running.[/bold #f59e0b]")
@@ -2749,6 +2750,24 @@ class CASIOApp(App):
 
         self._compile_running = True
         plain = getattr(self, "plain_mode", False)
+        subprocess_env = os.environ.copy()
+        existing_path = subprocess_env.get("PATH", "")
+        path_parts = [
+            str(Path(sys.executable).resolve().parent),
+            str(Path(site.USER_BASE) / "bin"),
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "/Applications/Docker.app/Contents/Resources/bin",
+        ]
+        path_parts.extend(p for p in existing_path.split(os.pathsep) if p)
+        deduped_path = []
+        for p in path_parts:
+            if p and p not in deduped_path:
+                deduped_path.append(p)
+        subprocess_env["PATH"] = os.pathsep.join(deduped_path)
+        subprocess_env["CASIO_PYTHON"] = sys.executable
 
         def emit(fn, *args):
             if plain:
@@ -2773,6 +2792,7 @@ class CASIOApp(App):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     bufsize=1,
+                    env=subprocess_env,
                 )
             except OSError as err:
                 log(f"[bold #f87171]✗ failed to start {label}:[/bold #f87171] {err}")
@@ -2806,13 +2826,8 @@ class CASIOApp(App):
                 summary("Compiling (C++ host + .g3a)...")
 
                 log("[dim]--- Building host (casio_host) ---[/dim]")
-                if run_stream("cmake configure", ["cmake", "-S", "c++/addin/host", "-B", "c++/addin/host/build"]) != 0:
-                    summary("Compile failed")
-                    return
-                if run_stream("cmake build host", ["cmake", "--build", "c++/addin/host/build", "-j"]) != 0:
-                    summary("Compile failed")
-                    return
-                if run_stream("device solver smoke test", ["c++/addin/host/build/device_solver_smoke"]) != 0:
+                log("[dim]Using c++/tools/build_host.sh so CMake can be found or bootstrapped.[/dim]")
+                if run_stream("host build bootstrap", ["bash", "c++/tools/build_host.sh"]) != 0:
                     summary("Compile failed")
                     return
                 log("[bold #22c55e]✓ host ready[/bold #22c55e]")
