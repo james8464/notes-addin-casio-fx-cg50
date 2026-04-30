@@ -3,6 +3,8 @@
 #include "device/fixed_string.hpp"
 #include "ui/theme.hpp"
 
+#include <gint/drivers/keydev.h>
+#include <gint/gint.h>
 #include <gint/keyboard.h>
 #include <gint/timer.h>
 
@@ -16,15 +18,48 @@ static int text_len(const char *s)
     return casio::device::cstr_len(s);
 }
 
+enum class EditorMode
+{
+    Normal,
+    Shift,
+    Alpha,
+    AlphaLock,
+};
+
+static const char *mode_label(EditorMode mode)
+{
+    if(mode == EditorMode::Shift) return "SHIFT";
+    if(mode == EditorMode::Alpha) return "ALPHA";
+    if(mode == EditorMode::AlphaLock) return "A-LOCK";
+    return "INPUT";
+}
+
+static const char *mode_help(EditorMode mode)
+{
+    if(mode == EditorMode::Shift) return "SHIFT: next key uses yellow label";
+    if(mode == EditorMode::Alpha) return "ALPHA: next key types a letter";
+    if(mode == EditorMode::AlphaLock) return "ALPHA LOCK: ALPHA exits";
+    return "SHIFT/ALPHA work like RUN-MAT";
+}
+
+static void draw_mode_softkeys(EditorMode mode)
+{
+    if(mode == EditorMode::Shift) {
+        draw_softkeys("sqrt", "10^", "asin", "acos", "atan", "exp");
+        return;
+    }
+    draw_softkeys("sqrt", "log", "sin", "cos", "pi", "=");
+}
+
 static void draw_input(
     const char *title,
     const char *help,
     const char *text,
     int cursor,
     bool caret_on,
-    bool alpha_lock)
+    EditorMode mode)
 {
-    draw_frame(title, alpha_lock ? "ALPHA" : "INPUT");
+    draw_frame(title, mode_label(mode));
     draw_section_label(4, kContentTop, "Expression");
 
     int len = text_len(text);
@@ -61,9 +96,9 @@ static void draw_input(
 
     dtext(4, box_y1 + 12, kBlue, "Hint");
     draw_limited_text(42, box_y1 + 12, kInk, help ? help : "", 36);
-    dtext(4, box_y1 + 30, kInk, alpha_lock ? "ALPHA LOCK: press ALPHA to exit" : "SHIFT/ALPHA work like RUN-MAT");
+    dtext(4, box_y1 + 30, kInk, mode_help(mode));
     dtext(4, box_y1 + 46, kInk, "EXE ok  DEL back  AC clear");
-    draw_softkeys("sqrt", "log", "sin", "cos", "pi", "=");
+    draw_mode_softkeys(mode);
     dupdate();
 }
 
@@ -101,13 +136,19 @@ static const char *shift_key_to_text(int key)
     if(key == KEY_SQUARE) return "sqrt(";
     if(key == KEY_POWER) return "^(1/";
     if(key == KEY_LOG) return "10^(";
-    if(key == KEY_LN) return "e^(";
+    if(key == KEY_LN) return "exp(";
     if(key == KEY_SIN) return "asin(";
     if(key == KEY_COS) return "acos(";
     if(key == KEY_TAN) return "atan(";
     if(key == KEY_EXP) return "pi";
     if(key == KEY_FRAC) return "abs(";
     if(key == KEY_FD) return "pi";
+    if(key == KEY_F1) return "sqrt(";
+    if(key == KEY_F2) return "10^(";
+    if(key == KEY_F3) return "asin(";
+    if(key == KEY_F4) return "acos(";
+    if(key == KEY_F5) return "atan(";
+    if(key == KEY_F6) return "exp(";
     return nullptr;
 }
 
@@ -153,17 +194,17 @@ static const char *plain_key_to_text(int key)
     return nullptr;
 }
 
-static const char *event_to_text(key_event_t ev, bool alpha_lock)
+static const char *event_to_text(int key, EditorMode mode)
 {
-    if((ev.mod && ev.alpha) || alpha_lock) {
-        const char *text = alpha_key_to_text(ev.key);
+    if(mode == EditorMode::Alpha || mode == EditorMode::AlphaLock) {
+        const char *text = alpha_key_to_text(key);
         if(text != nullptr) return text;
     }
-    if(ev.mod && ev.shift) {
-        const char *text = shift_key_to_text(ev.key);
+    if(mode == EditorMode::Shift) {
+        const char *text = shift_key_to_text(key);
         if(text != nullptr) return text;
     }
-    return plain_key_to_text(ev.key);
+    return plain_key_to_text(key);
 }
 
 static void insert_text(char *buffer, int capacity, int &len, int &cursor, const char *text)
@@ -190,41 +231,77 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
     }
     int cursor = len;
     bool caret_on = true;
-    bool alpha_lock = false;
+    EditorMode mode = EditorMode::Normal;
 
-    draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+    keydev_t *keyboard = keydev_std();
+    keydev_transform_t previous_transform = keydev_transform(keyboard);
+    keydev_transform_t editor_transform = previous_transform;
+    editor_transform.enabled = KEYDEV_TR_REPEATS | KEYDEV_TR_DELETE_RELEASES;
+    keydev_set_transform(keyboard, editor_transform);
+
+    draw_input(title, help, buffer, cursor, caret_on, mode);
     while(true) {
         volatile int timeout = 0;
         int timer = timer_configure(TIMER_ANY, 450000, GINT_CALL_SET_STOP(&timeout));
         if(timer >= 0) timer_start(timer);
-        key_event_t ev = getkey_opt(GETKEY_DEFAULT, &timeout);
+        key_event_t ev = keydev_read(keyboard, true, &timeout);
         if(timer >= 0) timer_stop(timer);
 
         if(timeout && ev.type == KEYEV_NONE) {
             caret_on = !caret_on;
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            draw_input(title, help, buffer, cursor, caret_on, mode);
             continue;
         }
-        if(ev.type != KEYEV_DOWN) continue;
+        if(ev.type == KEYEV_HOLD && ev.key != KEY_LEFT && ev.key != KEY_RIGHT) continue;
+        if(ev.type != KEYEV_DOWN && ev.type != KEYEV_HOLD) continue;
         caret_on = true;
 
-        if(ev.key == KEY_EXIT) return false;
-        if(ev.key == KEY_EXE) return true;
+        if(ev.key == KEY_EXIT) {
+            keydev_set_transform(keyboard, previous_transform);
+            return false;
+        }
+        if(ev.key == KEY_EXE) {
+            keydev_set_transform(keyboard, previous_transform);
+            return true;
+        }
+        if(ev.key == KEY_MENU && mode == EditorMode::Normal) {
+            gint_osmenu();
+            draw_input(title, help, buffer, cursor, caret_on, mode);
+            continue;
+        }
+        if(ev.key == KEY_SHIFT) {
+            if(mode == EditorMode::Alpha || mode == EditorMode::AlphaLock) {
+                mode = EditorMode::AlphaLock;
+            }
+            else {
+                mode = EditorMode::Shift;
+            }
+            draw_input(title, help, buffer, cursor, caret_on, mode);
+            continue;
+        }
         if(ev.key == KEY_ALPHA) {
-            alpha_lock = !alpha_lock;
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            if(mode == EditorMode::Shift) {
+                mode = EditorMode::AlphaLock;
+            }
+            else if(mode == EditorMode::AlphaLock) {
+                mode = EditorMode::Normal;
+            }
+            else {
+                mode = EditorMode::Alpha;
+            }
+            draw_input(title, help, buffer, cursor, caret_on, mode);
             continue;
         }
 
         if(ev.key == KEY_LEFT) {
             if(cursor > 0) cursor--;
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            draw_input(title, help, buffer, cursor, caret_on, mode);
             continue;
         }
 
         if(ev.key == KEY_RIGHT) {
             if(cursor < len) cursor++;
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            draw_input(title, help, buffer, cursor, caret_on, mode);
             continue;
         }
 
@@ -233,23 +310,34 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
                 for(int i = cursor - 1; i < len; i++) buffer[i] = buffer[i + 1];
                 len--;
                 cursor--;
-                draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+                draw_input(title, help, buffer, cursor, caret_on, mode);
             }
             continue;
         }
 
         if(ev.key == KEY_ACON) {
+            if(mode == EditorMode::Shift) {
+                mode = EditorMode::Normal;
+                gint_poweroff(true);
+                draw_input(title, help, buffer, cursor, caret_on, mode);
+                continue;
+            }
             len = 0;
             cursor = 0;
             buffer[0] = '\0';
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            draw_input(title, help, buffer, cursor, caret_on, mode);
             continue;
         }
 
-        const char *text = event_to_text(ev, alpha_lock);
+        const char *text = event_to_text(ev.key, mode);
+        bool one_shot_mode = (mode == EditorMode::Shift || mode == EditorMode::Alpha);
+        if(one_shot_mode) mode = EditorMode::Normal;
         if(text != nullptr) {
             insert_text(buffer, capacity, len, cursor, text);
-            draw_input(title, help, buffer, cursor, caret_on, alpha_lock);
+            draw_input(title, help, buffer, cursor, caret_on, mode);
+        }
+        else if(one_shot_mode) {
+            draw_input(title, help, buffer, cursor, caret_on, mode);
         }
     }
 }
