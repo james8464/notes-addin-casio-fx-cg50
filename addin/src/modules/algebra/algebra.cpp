@@ -1,5 +1,6 @@
 #include "algebra.hpp"
 
+#include "core/exam_work.hpp"
 #include "core/format_expr.hpp"
 #include "core/same.hpp"
 #include "core/parse.hpp"
@@ -304,6 +305,33 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
     return {"x = " + format_expr(a, x_plus), "x = " + format_expr(a, x_minus)};
 }
 
+static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        out.push_back("Domain: " + format_expr(a, x.b) + " != 0");
+        collect_domain(a, x.a, out);
+        collect_domain(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Sqrt) out.push_back("Domain: " + format_expr(a, x.a) + " >= 0");
+        if(x.fkind == FnKind::Log) out.push_back("Domain: " + format_expr(a, x.a) + " > 0");
+        collect_domain(a, x.a, out);
+        return;
+    }
+    if(x.kind == NodeKind::Pow) {
+        collect_domain(a, x.a, out);
+        collect_domain(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) collect_domain(a, k, out);
+        return;
+    }
+    if(x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const) return;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -521,8 +549,36 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         auto eq = casio::parse_equation(arena, req.expr);
         if(!eq) {
-            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
-            return {"Simplify: " + format_expr(arena, n)};
+            NodeId parsed = casio::parse_expr(arena, req.expr);
+            auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
+            NodeId n = casio::simplify(arena, parsed);
+
+            std::vector<std::string> steps;
+            steps.push_back("Normalize: " + pre.norm);
+            steps.push_back("Parse: " + pre.parsed);
+            steps.push_back("Simplify: " + pre.simplified);
+
+            // Domain hints (best-effort).
+            std::vector<std::string> dom;
+            collect_domain(arena, n, dom);
+            for(auto const &d : dom) steps.push_back(d);
+
+            // Range hint for quadratics ax^2+bx+c.
+            if(auto p = poly_of(arena, n, "x"); p && p->ok && !is_zero(p->a2)) {
+                Rational a = p->a2;
+                Rational b = p->a1;
+                Rational c = p->a0;
+                // vertex x0 = -b/(2a), y0 = f(x0) = c - b^2/(4a)
+                Rational b2 = r_mul(b, b);
+                Rational foura = r_mul(Rational{4, 1}, a);
+                Rational frac = r_div(b2, foura);
+                Rational y0 = r_add(c, r_neg(frac));
+                NodeId y0n = casio::num(arena, y0.num, y0.den);
+                if(a.num > 0) steps.push_back("Range: y >= " + format_expr(arena, y0n));
+                else if(a.num < 0) steps.push_back("Range: y <= " + format_expr(arena, y0n));
+            }
+
+            return casio::exam_block("algebra simplify", steps, format_expr(arena, n));
         }
 
         NodeId lhs = casio::simplify(arena, eq->lhs);

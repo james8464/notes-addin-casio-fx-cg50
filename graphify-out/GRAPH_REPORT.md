@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 89 files · ~418,156 words
+- 90 files · ~418,561 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2682 nodes · 11458 edges · 34 communities detected
+- 2686 nodes · 11464 edges · 35 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -28,9 +28,9 @@
   python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
 - `run()` --calls--> `split_csv()`  [EXTRACTED]
   python/src/calc_files/derive.py → addin/src/modules/derive/derive.cpp
+- `run()` --calls--> `collect_domain()`  [EXTRACTED]
+  python/src/calc_files/algebra.py → addin/src/modules/algebra/algebra.cpp
 - `run()` --calls--> `exact_trig()`  [EXTRACTED]
-  python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
-- `run()` --calls--> `solve_simple_trig_eq()`  [EXTRACTED]
   python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
 
 ## Communities
@@ -45,7 +45,7 @@ Nodes (441): add(), add_term_texts(), addq(), algebra_factor_text(), algebra_mod
 
 ### Community 2 - "Community 2"
 Cohesion: 0.01
-Nodes (142): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+134 more)
+Nodes (146): App, Enum, algebra_comp_checker(), algebra_compare_checker(), algebra_compare_output_checker(), algebra_complete_square_checker(), algebra_expand_checker(), algebra_inverse_checker() (+138 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.04
@@ -53,7 +53,7 @@ Nodes (310): add(), addq(), all_neg_add(), apply_runtime_profile(), auto_integra
 
 ### Community 4 - "Community 4"
 Cohesion: 0.02
-Nodes (167): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+159 more)
+Nodes (168): add_poly(), as_int64(), collect_domain(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add() (+160 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.05
@@ -68,12 +68,12 @@ Cohesion: 0.08
 Nodes (85): add(), addq(), canonical_form(), _clean_work_expr(), _collect_symbols(), _convert_abs_pipes(), div(), divq() (+77 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.06
+Cohesion: 0.05
 Nodes (2): run_cli(), TransformRegressionTests
 
 ### Community 9 - "Community 9"
 Cohesion: 0.05
-Nodes (63): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char() (+55 more)
+Nodes (59): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_lines(), compact_working_lines(), _convert_abs_pipes(), ensure_reasoning_marker(), fn(), is_alpha_char() (+51 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.11
@@ -152,31 +152,35 @@ Cohesion: 1.0
 Nodes (2): main(), run_host()
 
 ### Community 29 - "Community 29"
-Cohesion: 0.67
-Nodes (1): BoundedCache
+Cohesion: 1.0
+Nodes (2): main(), run_cpp()
 
 ### Community 30 - "Community 30"
 Cohesion: 0.67
-Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+Nodes (1): BoundedCache
 
 ### Community 31 - "Community 31"
 Cohesion: 0.67
-Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
+Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
 ### Community 32 - "Community 32"
+Cohesion: 0.67
+Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
+
+### Community 33 - "Community 33"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 33 - "Community 33"
+### Community 34 - "Community 34"
 Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
 - **189 isolated node(s):** `Convert the python program stdin payload to our host CLI input.     Only handles`, `Arena`, `Quick numeric check: evaluate eq_expr at expected_x.     eq_expr should be an ex`, `Returns (script_relpath, stdin_payload) for program invocation.`, `Store one cache value and trim gently when the small-device limit is hit.` (+184 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 32`** (2 nodes): `check_g3a_size.py`, `main()`
+- **Thin community `Community 33`** (2 nodes): `check_g3a_size.py`, `main()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 33`** (2 nodes): `summarize_failures.py`, `main()`
+- **Thin community `Community 34`** (2 nodes): `summarize_failures.py`, `main()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
