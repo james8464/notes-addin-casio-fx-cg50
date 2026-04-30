@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 69 files · ~403,888 words
+- 69 files · ~404,955 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2562 nodes · 11201 edges · 23 communities detected
+- 2571 nodes · 11223 edges · 23 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -22,6 +22,8 @@
 10. `num()` - 113 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `run()` --calls--> `exact_trig()`  [EXTRACTED]
+  python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
 - `Move between random-run lifecycle states in one controlled place.` --uses--> `LLMManager`  [INFERRED]
   python/tests/run_tests.py → python/src/shared_llm.py
 - `Reset the on-disk log at the start of a run; failures append while tests execute` --uses--> `LLMManager`  [INFERRED]
@@ -29,8 +31,6 @@
 - `Append a compact block for high-signal failures only.` --uses--> `LLMManager`  [INFERRED]
   python/tests/run_tests.py → python/src/shared_llm.py
 - `Keep the /random and /infinite status bar in sync (TUI only, not plain/CLI).` --uses--> `LLMManager`  [INFERRED]
-  python/tests/run_tests.py → python/src/shared_llm.py
-- `Execute cases, record harness results, and optionally verify via LLM.` --uses--> `LLMManager`  [INFERRED]
   python/tests/run_tests.py → python/src/shared_llm.py
 
 ## Communities
@@ -60,12 +60,12 @@ Cohesion: 0.02
 Nodes (44): Enum, RandomTestBatch, Records to include: harness failure, or LLM disagreement worth review., Keep the harness as the authoritative pass/fail signal.          LLM disagreemen, Return the random-case builders included in the requested scope., Yield random-test batches, cycling forever when infinite_mode is true., Explain whether every random output will receive LLM verification., RunState (+36 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.04
-Nodes (135): cache_store(), clear_all_caches(), enforce_total_cache_limit(), Store one cache value and trim gently when the small-device limit is hit., Keep a group of independent caches under one shared memory budget., Clear regular caches and nested per-name cache dictionaries., add(), addq() (+127 more)
+Cohesion: 0.03
+Nodes (99): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+91 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.03
-Nodes (89): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+81 more)
+Cohesion: 0.04
+Nodes (135): cache_store(), clear_all_caches(), enforce_total_cache_limit(), Store one cache value and trim gently when the small-device limit is hit., Keep a group of independent caches under one shared memory budget., Clear regular caches and nested per-name cache dictionaries., add(), addq() (+127 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.08
@@ -135,7 +135,7 @@ Nodes (3): format_equation_human_readable(), Format an equation node into a huma
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 3` to `Community 5`?**
-  _High betweenness centrality (0.119) - this node is a cross-community bridge._
+  _High betweenness centrality (0.118) - this node is a cross-community bridge._
 - **Why does `TransformRegressionTests` connect `Community 5` to `Community 3`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 5` to `Community 3`?**
