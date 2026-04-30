@@ -18,6 +18,9 @@ def main() -> int:
     if "--tui" in sys.argv:
         # Launch Textual TUI runner (drives C++ host via --stdin-program).
         return run([sys.executable, "tools/tests_cpp/run_tests_tui.py"])
+    if "--fuzz" in sys.argv:
+        # Randomized oracle-vs-host miner (writes JSONL on failures).
+        return run([sys.executable, "tools/fuzz/fuzz_triage.py"])
 
     # Build host first (uses pip --user cmake when needed).
     rc = run(["./tools/build_host.sh"])
