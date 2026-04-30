@@ -53,8 +53,7 @@ inline void draw_limited_text(int x, int y, color_t color, const char *text, int
 inline void draw_status(const char *title, const char *mode)
 {
     drect(0, 0, DWIDTH - 1, kStatusH - 1, kPaper);
-    dtext(2, 2, kInk, "04:48 *");
-    dtext(54, 2, kBlue, title ? title : "");
+    dtext(3, 2, kBlue, title ? title : "");
     if(mode != nullptr && mode[0] != '\0') {
         int x = DWIDTH - 2 - text_width_approx(mode);
         if(x < 190) x = 190;
