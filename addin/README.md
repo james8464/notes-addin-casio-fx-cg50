@@ -39,6 +39,14 @@ Or from repo root:
 
 This should produce a `.g3a` under `addin/build/` (the script prints the exact path).
 
+### Build on macOS with Docker (recommended)
+
+If you don’t want a full Linux VM, you can build the `.g3a` from macOS using Docker Desktop:
+
+```bash
+./tools/build_addin_docker.sh
+```
+
 ### Install onto calculator
 
 - **Manual (recommended)**:
