@@ -5,6 +5,7 @@
 #include "core/parse.hpp"
 
 #include "modules/boolean/boolean.hpp"
+#include "modules/suvat/suvat.hpp"
 
 #include <iostream>
 #include <string>
@@ -23,11 +24,40 @@ int main(int argc, char **argv)
     bool is_bool_nor = (flag == "--nor");
     bool is_bool_prove = (flag == "--prove");
     bool any_bool = is_bool || is_bool_nand || is_bool_nor || is_bool_prove;
+    bool is_suvat = (flag == "--suvat");
 
-    std::string expr = any_bool ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (any_bool || is_suvat) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
 
     try {
+        if(is_suvat) {
+            // Usage: --suvat "s=...,u=...,v=...,a=...,t=...,target=v"
+            casio::suvat::Inputs in;
+            in.target = "v";
+            auto parse_kv = [&](std::string const &kv) {
+                auto eq = kv.find('=');
+                if(eq == std::string::npos) return;
+                std::string k = kv.substr(0, eq);
+                std::string v = kv.substr(eq + 1);
+                if(k == "s") in.s = v;
+                else if(k == "u") in.u = v;
+                else if(k == "v") in.v = v;
+                else if(k == "a") in.a = v;
+                else if(k == "t") in.t = v;
+                else if(k == "target") in.target = v;
+            };
+            std::string text = expr;
+            std::size_t i = 0;
+            while(i < text.size()) {
+                std::size_t j = text.find(',', i);
+                if(j == std::string::npos) j = text.size();
+                parse_kv(text.substr(i, j - i));
+                i = j + 1;
+            }
+            auto lines = casio::suvat::solve(arena, in);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
         if(is_bool || is_bool_nand || is_bool_nor || is_bool_prove) {
             if(is_bool_prove) {
                 if(argc < 4) {
