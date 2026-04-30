@@ -30,6 +30,11 @@ Run this after building `CasioCAS.g3a` with `fxsdk build-cg`.
   - collect x terms
   - divide both sides
   - answer `x = 2`
+- Input: `x^2-5x+6=0`
+- Expected working:
+  - rearranged quadratic
+  - discriminant line
+  - answer `x = 2 or x = 3`
 
 ## SUVAT
 

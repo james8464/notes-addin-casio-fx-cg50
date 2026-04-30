@@ -70,7 +70,7 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 - The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
 - We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
 - The current device build uses a bounded freestanding solver slice for:
-  - linear simplify/algebra
+  - linear simplify/algebra and simple quadratic equations
   - polynomial derivative/integral rules up to `x^5`
   - exact common-angle trig
   - selected SUVAT rearrangements

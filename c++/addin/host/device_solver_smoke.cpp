@@ -36,6 +36,7 @@ int main()
     ok = check(casio::device::Module::Shell, "diff(x^2)", "Answer: dy/dx = 2x") && ok;
     ok = check(casio::device::Module::Shell, "int(x^2)", "Answer: x^3/3 + C") && ok;
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
+    ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;
     ok = check(casio::device::Module::Derive, "3x^2+2x+1", "Answer: dy/dx = 6x + 2") && ok;
     ok = check(casio::device::Module::Integrate, "3x^2+2x+1", "Answer: x^3 + x^2 + x + C") && ok;
     ok = check(casio::device::Module::Trig, "sin(30)", "Answer: 1/2") && ok;

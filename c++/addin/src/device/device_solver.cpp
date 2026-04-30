@@ -22,6 +22,11 @@ struct FractionTerm {
     int power = 0;
 };
 
+struct Fraction {
+    int num = 0;
+    int den = 1;
+};
+
 static int abs_int(int v)
 {
     return v < 0 ? -v : v;
@@ -211,6 +216,79 @@ static Poly parse_poly(const char *text)
     return poly;
 }
 
+static Poly parse_poly_range(const char *s, int begin, int end)
+{
+    Poly poly;
+    if(begin >= end) {
+        poly.ok = false;
+        return poly;
+    }
+
+    int start = begin;
+    int sign = 1;
+    if(s[start] == '+') start++;
+    else if(s[start] == '-') {
+        sign = -1;
+        start++;
+    }
+
+    for(int i = start; i <= end; i++) {
+        if(i == end || s[i] == '+' || s[i] == '-') {
+            if(i == start || !parse_poly_term(s, start, i, sign, poly)) {
+                poly.ok = false;
+                return poly;
+            }
+            if(i < end) {
+                sign = s[i] == '-' ? -1 : 1;
+                start = i + 1;
+            }
+        }
+    }
+    return poly;
+}
+
+static int poly_degree(Poly const &poly)
+{
+    for(int p = 5; p >= 0; p--) {
+        if(poly.coeff[p] != 0) return p;
+    }
+    return 0;
+}
+
+static Poly subtract_poly(Poly const &left, Poly const &right)
+{
+    Poly out;
+    out.ok = left.ok && right.ok;
+    for(int i = 0; i < 6; i++) out.coeff[i] = left.coeff[i] - right.coeff[i];
+    return out;
+}
+
+static bool is_square_int(int value, int &root)
+{
+    if(value < 0) return false;
+    root = 0;
+    while(root * root < value) root++;
+    return root * root == value;
+}
+
+static Fraction make_fraction(int num, int den)
+{
+    Fraction f;
+    if(den < 0) {
+        num = -num;
+        den = -den;
+    }
+    int g = gcd_int(num, den);
+    f.num = num / g;
+    f.den = den / g;
+    return f;
+}
+
+static bool less_fraction(Fraction const &a, Fraction const &b)
+{
+    return a.num * b.den < b.num * a.den;
+}
+
 static void append_power(FixedString<96> &line, int power)
 {
     if(power == 0) return;
@@ -278,6 +356,27 @@ static void add_input_line(OutputLines &out, const char *prefix, const char *inp
     line.append(input);
 }
 
+static void append_fraction_value(FixedString<96> &line, int num, int den)
+{
+    Fraction f = make_fraction(num, den);
+    if(f.den == 1) line.append_int(f.num);
+    else {
+        line.append_int(f.num);
+        line.append("/");
+        line.append_int(f.den);
+    }
+}
+
+static void append_fraction(FixedString<96> &line, Fraction const &f)
+{
+    if(f.den == 1) line.append_int(f.num);
+    else {
+        line.append_int(f.num);
+        line.append("/");
+        line.append_int(f.den);
+    }
+}
+
 static bool solve_simplify(const char *input, OutputLines &out)
 {
     char s[128];
@@ -309,8 +408,57 @@ static bool solve_algebra(const char *input, OutputLines &out)
     Linear left = parse_linear_range(s, 0, eq);
     Linear right = parse_linear_range(s, eq + 1, n);
     if(!left.ok || !right.ok) {
-        out.add("Unsupported: only integer linear terms are supported.");
-        return false;
+        Poly lp = parse_poly_range(s, 0, eq);
+        Poly rp = parse_poly_range(s, eq + 1, n);
+        Poly q = subtract_poly(lp, rp);
+        if(!q.ok || poly_degree(q) > 2 || q.coeff[2] == 0) {
+            out.add("Unsupported: use linear or simple quadratic equations.");
+            return false;
+        }
+
+        int a2 = q.coeff[2];
+        int b2 = q.coeff[1];
+        int c2 = q.coeff[0];
+        int disc = b2 * b2 - 4 * a2 * c2;
+        int root = 0;
+
+        add_input_line(out, "1. Start: ", input);
+        FixedString<96> &stdform = out.next();
+        stdform.append("2. Rearrange to ");
+        append_poly(stdform, q);
+        stdform.append(" = 0.");
+
+        FixedString<96> &disc_line = out.next();
+        disc_line.append("3. Discriminant b^2-4ac = ");
+        disc_line.append_int(disc);
+        disc_line.append(".");
+
+        if(disc < 0) {
+            out.add("Answer: no real roots.");
+            return true;
+        }
+        if(!is_square_int(disc, root)) {
+            out.add("Answer: exact surd roots not displayed yet.");
+            return false;
+        }
+
+        out.add("4. Use x = (-b +/- sqrt(D))/(2a).");
+        Fraction r1 = make_fraction(-b2 - root, 2 * a2);
+        Fraction r2 = make_fraction(-b2 + root, 2 * a2);
+        if(less_fraction(r2, r1)) {
+            Fraction tmp = r1;
+            r1 = r2;
+            r2 = tmp;
+        }
+
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: x = ");
+        append_fraction(ans, r1);
+        if(r1.num != r2.num || r1.den != r2.den) {
+            ans.append(" or x = ");
+            append_fraction(ans, r2);
+        }
+        return true;
     }
 
     int a = left.x - right.x;
@@ -549,23 +697,6 @@ static bool parse_suvat(const char *input, SuvatInputs &out)
         start = end + 1;
     }
     return out.target != '\0';
-}
-
-static void append_fraction_value(FixedString<96> &line, int num, int den)
-{
-    int g = gcd_int(num, den);
-    num /= g;
-    den /= g;
-    if(den < 0) {
-        den = -den;
-        num = -num;
-    }
-    if(den == 1) line.append_int(num);
-    else {
-        line.append_int(num);
-        line.append("/");
-        line.append_int(den);
-    }
 }
 
 static bool solve_suvat(const char *input, OutputLines &out)
