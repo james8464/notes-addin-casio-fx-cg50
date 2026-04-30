@@ -13,3 +13,7 @@ addin/host/build/
 # Graphify outputs
 graphify-out/cache/
 
+# Python bytecode
+**/__pycache__/
+*.pyc
+

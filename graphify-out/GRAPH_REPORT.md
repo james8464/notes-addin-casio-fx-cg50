@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 75 files · ~410,898 words
+- 74 files · ~410,080 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2620 nodes · 11329 edges · 28 communities detected
+- 2615 nodes · 11317 edges · 28 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -22,16 +22,16 @@
 10. `num()` - 113 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `diff()` --calls--> `depends_on()`  [EXTRACTED]
-  addon/src/modules/derive/derive.cpp → addin/src/modules/derive/derive.cpp
-- `diff()` --calls--> `as_num()`  [EXTRACTED]
-  addon/src/modules/derive/derive.cpp → addin/src/modules/derive/derive.cpp
-- `run()` --calls--> `split_csv()`  [EXTRACTED]
-  addon/src/modules/derive/derive.cpp → addin/src/modules/derive/derive.cpp
 - `run()` --calls--> `exact_trig()`  [EXTRACTED]
   python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
 - `run()` --calls--> `split_csv()`  [EXTRACTED]
   python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
+- `run()` --calls--> `solve_simple_trig_eq()`  [EXTRACTED]
+  python/src/calc_files/trig.py → addin/src/modules/trig/trig.cpp
+- `run()` --calls--> `diff()`  [EXTRACTED]
+  python/src/calc_files/derive.py → addin/src/modules/derive/derive.cpp
+- `run()` --calls--> `split_csv()`  [EXTRACTED]
+  python/src/calc_files/derive.py → addin/src/modules/derive/derive.cpp
 
 ## Communities
 
@@ -57,7 +57,7 @@ Nodes (164): abs_term(), add(), addq(), all_neg_add(), _answer_text(), apply_run
 
 ### Community 5 - "Community 5"
 Cohesion: 0.03
-Nodes (123): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+115 more)
+Nodes (118): add_poly(), as_int64(), is_square_i64(), is_zero(), mul_poly(), poly_of(), r_add(), r_div() (+110 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
