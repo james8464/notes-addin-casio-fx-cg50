@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(CasioCAS
   src/main.cpp
+  src/device/device_solver.cpp
+  src/ui/text_input_device.cpp
   src/ui/menu.cpp
 )
 

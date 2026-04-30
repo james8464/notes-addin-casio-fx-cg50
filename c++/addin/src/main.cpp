@@ -1,16 +1,13 @@
 #include <gint/display.h>
 #include <gint/keyboard.h>
 
+#include "device/device_solver.hpp"
+#include "device/fixed_string.hpp"
 #include "ui/menu.hpp"
+#include "ui/text_input_device.hpp"
 
 namespace
 {
-
-template <int N>
-constexpr int array_count(const char *const (&)[N])
-{
-    return N;
-}
 
 template <int N>
 constexpr int array_count(const casio::ui::MenuItem (&)[N])
@@ -18,30 +15,17 @@ constexpr int array_count(const casio::ui::MenuItem (&)[N])
     return N;
 }
 
-static void draw_centered(const char *title, const char *line1, const char *line2, const char *footer)
+static void draw_home()
 {
     dclear(C_WHITE);
-
-    if(title != nullptr) {
-        dtext(18, 18, C_BLACK, title);
-    }
-
-    if(line1 != nullptr) {
-        dtext(18, 54, C_BLACK, line1);
-    }
-
-    if(line2 != nullptr) {
-        dtext(18, 72, C_BLACK, line2);
-    }
-
-    if(footer != nullptr) {
-        dtext(6, DHEIGHT - 18, C_BLACK, footer);
-    }
-
+    dtext(18, 18, C_BLACK, "CasioCAS");
+    dtext(18, 48, C_BLACK, "Exam working on CG50");
+    dtext(18, 66, C_BLACK, "bounded device mode");
+    dtext(6, DHEIGHT - 18, C_BLACK, "EXE menu   EXIT quit");
     dupdate();
 }
 
-static void view_lines(const char *title, const char *const *lines, int count)
+static void view_lines(const char *title, casio::device::OutputLines const &lines)
 {
     int top = 0;
     while(true) {
@@ -51,11 +35,11 @@ static void view_lines(const char *title, const char *const *lines, int count)
 
         for(int row = 0; row < 9; row++) {
             int index = top + row;
-            if(index >= count) break;
-            dtext(2, 22 + row * 16, C_BLACK, lines[index] ? lines[index] : "");
+            if(index >= lines.count()) break;
+            dtext(2, 22 + row * 16, C_BLACK, lines.line(index));
         }
 
-        dtext(2, DHEIGHT - 18, C_BLACK, "UP/DOWN scroll  EXIT back");
+        dtext(2, DHEIGHT - 18, C_BLACK, "UP/DOWN scroll  EXE/EXIT back");
         dupdate();
 
         key_event_t event = getkey();
@@ -66,29 +50,25 @@ static void view_lines(const char *title, const char *const *lines, int count)
             continue;
         }
         if(event.key == KEY_DOWN) {
-            if(top + 9 < count) top++;
+            if(top + 9 < lines.count()) top++;
             continue;
         }
     }
 }
 
-static void show_module_status(const char *module_name)
+static void run_module(
+    const char *title,
+    casio::device::Module module,
+    const char *initial,
+    const char *help)
 {
-    const char *lines[] = {
-        "Freestanding device build",
-        "keeps STL and exceptions",
-        "out of the CG50 target.",
-        "",
-        "This menu entry is host-only",
-        "for now.",
-        "",
-        "Use the Python TUI or",
-        "casio_host for full solver",
-        "behaviour while the device",
-        "port is rewritten.",
-    };
+    char input[128];
+    casio::device::copy_cstr(input, (int)sizeof(input), initial);
+    if(!casio::ui::text_input(input, (int)sizeof(input), title, help)) return;
 
-    view_lines(module_name, lines, array_count(lines));
+    casio::device::OutputLines lines;
+    casio::device::solve(module, input, lines);
+    view_lines(title, lines);
 }
 
 } // namespace
@@ -97,51 +77,54 @@ int main(void)
 {
     const casio::ui::MenuItem home_items[] = {
         {"CAS Shell"},
-        {"SUVAT"},
+        {"Simplify"},
+        {"Algebra"},
         {"Derive"},
         {"Integrate"},
-        {"Algebra"},
         {"Trig"},
+        {"SUVAT"},
     };
 
-    draw_centered(
-        "CasioCAS",
-        "CG50 freestanding build",
-        "EXE opens the menu",
-        "EXE continue   EXIT quit");
-
+    draw_home();
     while(true) {
         key_event_t event = getkey();
         if(event.type != KEYEV_DOWN) continue;
-
         if(event.key == KEY_EXIT) break;
         if(event.key != KEY_EXE) continue;
 
         int app = casio::ui::menu_select("Home", home_items, array_count(home_items), 0);
         if(app < 0) {
-            draw_centered(
-                "CasioCAS",
-                "CG50 freestanding build",
-                "EXE opens the menu",
-                "EXE continue   EXIT quit");
+            draw_home();
             continue;
         }
 
         switch(app) {
-            case 0: show_module_status("CAS Shell"); break;
-            case 1: show_module_status("SUVAT"); break;
-            case 2: show_module_status("Derive"); break;
-            case 3: show_module_status("Integrate"); break;
-            case 4: show_module_status("Algebra"); break;
-            case 5: show_module_status("Trig"); break;
-            default: break;
+            case 0:
+                run_module("CAS Shell", casio::device::Module::Shell, "2x+3=7", "expr, eqn, diff(...), int(...)");
+                break;
+            case 1:
+                run_module("Simplify", casio::device::Module::Simplify, "2x+3-x+4", "linear expression");
+                break;
+            case 2:
+                run_module("Algebra", casio::device::Module::Algebra, "2x+3=7", "linear equation");
+                break;
+            case 3:
+                run_module("Derive", casio::device::Module::Derive, "3x^2+2x+1", "polynomial up to x^5");
+                break;
+            case 4:
+                run_module("Integrate", casio::device::Module::Integrate, "3x^2+2x+1", "polynomial up to x^5");
+                break;
+            case 5:
+                run_module("Trig", casio::device::Module::Trig, "sin(30)", "exact common angles");
+                break;
+            case 6:
+                run_module("SUVAT", casio::device::Module::Suvat, "s=10,u=0,v=?,a=2,t=5", "use ? for target");
+                break;
+            default:
+                break;
         }
 
-        draw_centered(
-            "CasioCAS",
-            "CG50 freestanding build",
-            "EXE opens the menu",
-            "EXE continue   EXIT quit");
+        draw_home();
     }
 
     return 1;

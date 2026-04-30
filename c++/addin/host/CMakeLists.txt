@@ -32,3 +32,13 @@ target_include_directories(casio_host PRIVATE
 
 target_compile_options(casio_host PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
+add_executable(device_solver_smoke
+  device_solver_smoke.cpp
+  ../src/device/device_solver.cpp
+)
+
+target_include_directories(device_solver_smoke PRIVATE
+  ../src
+)
+
+target_compile_options(device_solver_smoke PRIVATE -Wall -Wextra -Wno-unused-parameter)

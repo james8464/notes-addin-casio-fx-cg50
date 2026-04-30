@@ -20,5 +20,5 @@ fi
 mkdir -p "${BUILD_DIR}"
 "${cmake_bin}" -S "${ROOT_DIR}/addin/host" -B "${BUILD_DIR}"
 "${cmake_bin}" --build "${BUILD_DIR}" -j
+"${BUILD_DIR}/device_solver_smoke"
 echo "Built: ${BUILD_DIR}/casio_host"
-
