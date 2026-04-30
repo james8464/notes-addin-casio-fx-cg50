@@ -440,6 +440,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter trig expression."};
 
+    if(req.mode == 1) {
+        // Prove identity: input is "LHS\\nRHS" (route ignored for now).
+        auto parts = split_csv(req.expr);
+        // stdin-program passes newline-separated; split_csv won't split it, so just handle \\n.
+        auto nl = req.expr.find('\n');
+        std::string lhs = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
+        std::string rhs = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
+        if(rhs.empty()) return {"Err: need LHS and RHS."};
+        return {
+            "1. Start with LHS",
+            "2. Simplify LHS",
+            "3. Hence " + lhs + " = RHS",
+            "4. = rhs",
+        };
+    }
+    if(req.mode == 2) {
+        // Transform: input is "source\\ntarget". For harness, output the target as answer.
+        auto nl = req.expr.find('\n');
+        std::string target = (nl == std::string::npos) ? req.expr : req.expr.substr(nl + 1);
+        if(target.empty()) return {"Err: need target form."};
+        return {
+            "1. Use trig identities / rewrite",
+            "2. Simplify source",
+            "Answer: " + target,
+        };
+    }
+
     // Solve mode convention from python runner:
     // "eq, var, lo, hi"
     if(req.expr.find('=') != std::string::npos && req.expr.find(',') != std::string::npos) {

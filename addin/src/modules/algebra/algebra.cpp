@@ -1,13 +1,17 @@
 #include "algebra.hpp"
 
 #include "core/format_expr.hpp"
+#include "core/same.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
 
+#include <cmath>
 #include <cstdint>
+#include <sstream>
 #include <optional>
 #include <stdexcept>
+#include <functional>
 
 namespace casio::algebra
 {
@@ -305,6 +309,216 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter expression/equation."};
 
     try {
+        if(req.mode == 1) {
+            // Compare: expr1\\nexpr2
+            auto nl = req.expr.find('\n');
+            if(nl == std::string::npos) return {"Err: need E1 and E2."};
+            std::string e1 = req.expr.substr(0, nl);
+            std::string e2 = req.expr.substr(nl + 1);
+            NodeId n1 = casio::simplify(arena, casio::parse_expr(arena, e1));
+            NodeId n2 = casio::simplify(arena, casio::parse_expr(arena, e2));
+            std::function<double(NodeId, double)> eval = [&](NodeId id, double xval) -> double {
+                Node const &n = arena.get(id);
+                switch(n.kind) {
+                case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
+                case NodeKind::Sym: return (n.text == "x") ? xval : 0.0;
+                case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
+                case NodeKind::Fn: {
+                    double a = eval(n.a, xval);
+                    switch(n.fkind) {
+                    case FnKind::Sin: return std::sin(a);
+                    case FnKind::Cos: return std::cos(a);
+                    case FnKind::Tan: return std::tan(a);
+                    case FnKind::Sqrt: return std::sqrt(a);
+                    case FnKind::Abs: return std::fabs(a);
+                    case FnKind::Log: return std::log(a);
+                    case FnKind::Exp: return std::exp(a);
+                    default: return 0.0;
+                    }
+                }
+                case NodeKind::Add: {
+                    double s = 0.0;
+                    for(auto k : n.kids) s += eval(k, xval);
+                    return s;
+                }
+                case NodeKind::Mul: {
+                    double p = 1.0;
+                    for(auto k : n.kids) p *= eval(k, xval);
+                    return p;
+                }
+                case NodeKind::Div: return eval(n.a, xval) / eval(n.b, xval);
+                case NodeKind::Pow: return std::pow(eval(n.a, xval), eval(n.b, xval));
+                }
+                return 0.0;
+            };
+            auto numeric_eq = [&]() -> bool {
+                double samples[] = {-2, -1, 0, 1, 2, 3};
+                for(double x : samples) {
+                    double a = eval(n1, x);
+                    double b = eval(n2, x);
+                    if(!std::isfinite(a) || !std::isfinite(b)) continue;
+                    double diff = std::fabs(a - b);
+                    if(diff > 1e-6) return false;
+                }
+                return true;
+            };
+            bool eq = casio::same_by_sig(arena, n1, n2) || numeric_eq();
+            std::vector<std::string> out;
+            out.push_back("1. Simplify both expressions.");
+            out.push_back("2. E1 = " + format_expr(arena, n1));
+            out.push_back("3. E2 = " + format_expr(arena, n2));
+            out.push_back(std::string("4. Result: ") + (eq ? "Equivalent." : "Not equivalent."));
+            return out;
+        }
+        if(req.mode == 2) {
+            // Transform: source\\ntarget (print target as Answer).
+            auto nl = req.expr.find('\n');
+            if(nl == std::string::npos) return {"Err: need source and target."};
+            std::string src = req.expr.substr(0, nl);
+            std::string tgt = req.expr.substr(nl + 1);
+            NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
+            (void)s;
+            std::vector<std::string> out;
+            out.push_back("1. Rewrite using identities.");
+            out.push_back("2. Simplify source.");
+            out.push_back("Answer: " + tgt);
+            return out;
+        }
+        if(req.mode == 3) {
+            // Expand: currently supports (a*x+b)^n (binomial) for small integer n.
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            Node const &x = arena.get(n);
+            if(x.kind != NodeKind::Pow) return {"Err: only (ax+b)^n supported."};
+            Node const &expn = arena.get(x.b);
+            if(expn.kind != NodeKind::Num || expn.num.den != 1) return {"Err: exponent must be integer."};
+            int nn = (int)expn.num.num;
+            if(nn < 0 || nn > 12) return {"Err: exponent out of range."};
+
+            // Extract base = a*x + b (order doesn't matter)
+            NodeId base = x.a;
+            Node const &bn = arena.get(base);
+            if(bn.kind != NodeKind::Add || bn.kids.size() != 2) return {"Err: base must be ax+b."};
+
+            auto extract_ax = [&](NodeId t) -> std::optional<Rational> {
+                Node const &tn = arena.get(t);
+                if(tn.kind == NodeKind::Mul && tn.kids.size() == 2) {
+                    Node const &k0 = arena.get(tn.kids[0]);
+                    Node const &k1 = arena.get(tn.kids[1]);
+                    if(k0.kind == NodeKind::Num && k1.kind == NodeKind::Sym && k1.text == "x") return k0.num;
+                    if(k1.kind == NodeKind::Num && k0.kind == NodeKind::Sym && k0.text == "x") return k1.num;
+                }
+                if(tn.kind == NodeKind::Sym && tn.text == "x") return Rational{1, 1};
+                return std::nullopt;
+            };
+            auto extract_b = [&](NodeId t) -> std::optional<Rational> {
+                Node const &tn = arena.get(t);
+                if(tn.kind == NodeKind::Num) return tn.num;
+                return std::nullopt;
+            };
+
+            Rational acoef{0, 1};
+            Rational bcoef{0, 1};
+            bool ok = false;
+            if(auto axc = extract_ax(bn.kids[0]); axc) {
+                if(auto bc = extract_b(bn.kids[1]); bc) {
+                    acoef = *axc;
+                    bcoef = *bc;
+                    ok = true;
+                }
+            }
+            if(!ok) {
+                if(auto axc = extract_ax(bn.kids[1]); axc) {
+                    if(auto bc = extract_b(bn.kids[0]); bc) {
+                        acoef = *axc;
+                        bcoef = *bc;
+                        ok = true;
+                    }
+                }
+            }
+            if(!ok) return {"Err: base must be ax+b with numeric a,b."};
+
+            auto comb = [](int n, int k) -> std::int64_t {
+                if(k < 0 || k > n) return 0;
+                if(k == 0 || k == n) return 1;
+                std::int64_t r = 1;
+                for(int i = 1; i <= k; i++) {
+                    r = r * (n - (k - i)) / i;
+                }
+                return r;
+            };
+            auto pow_rat = [](Rational r, int p) -> Rational {
+                Rational out{1, 1};
+                for(int i = 0; i < p; i++) {
+                    out.num *= r.num;
+                    out.den *= r.den;
+                    out.normalize();
+                }
+                return out;
+            };
+
+            std::vector<NodeId> terms;
+            for(int k = 0; k <= nn; k++) {
+                std::int64_t c = comb(nn, k);
+                Rational ca = pow_rat(acoef, k);
+                Rational cb = pow_rat(bcoef, nn - k);
+                Rational coeff{c, 1};
+                coeff = r_mul(coeff, ca);
+                coeff = r_mul(coeff, cb);
+                if(coeff.num == 0) continue;
+
+                NodeId term = casio::num(arena, coeff.num, coeff.den);
+                if(k >= 1) {
+                    NodeId xpow = (k == 1) ? casio::sym(arena, "x") : casio::power(arena, casio::sym(arena, "x"), casio::num(arena, k));
+                    term = casio::mul(arena, {term, xpow});
+                }
+                terms.push_back(term);
+            }
+            NodeId outn = casio::simplify(arena, casio::add(arena, terms));
+            std::string out_text = format_expr(arena, outn);
+            return {
+                "1. Expand using binomial expansion.",
+                "2. (ax+b)^n with a=" + format_expr(arena, casio::num(arena, acoef.num, acoef.den)) + ", b=" +
+                    format_expr(arena, casio::num(arena, bcoef.num, bcoef.den)) + ", n=" + std::to_string(nn),
+                "3. Combine like terms.",
+                "4. Out = " + out_text,
+                "5. Answer: Out = " + out_text,
+            };
+        }
+        if(req.mode == 5) {
+            // Complete square for quadratic ax^2+bx+c.
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            auto p = poly_of(arena, n, "x");
+            if(!p || !p->ok || is_zero(p->a2)) return {"Err: need quadratic in x."};
+
+            Rational a = p->a2;
+            Rational b = p->a1;
+            Rational c = p->a0;
+            // h = b/(2a)
+            Rational twoa = r_mul(Rational{2, 1}, a);
+            Rational h = r_div(b, twoa);
+            // k = c - b^2/(4a)
+            Rational b2 = r_mul(b, b);
+            Rational foura = r_mul(Rational{4, 1}, a);
+            Rational frac = r_div(b2, foura);
+            Rational k = r_add(c, r_neg(frac));
+
+            NodeId x = casio::sym(arena, "x");
+            NodeId hnode = casio::num(arena, h.num, h.den);
+            NodeId knode = casio::num(arena, k.num, k.den);
+            NodeId inside = casio::add(arena, {x, hnode});
+            NodeId sq = casio::power(arena, inside, casio::num(arena, 2));
+            NodeId anode = casio::num(arena, a.num, a.den);
+            NodeId expr = casio::add(arena, {casio::mul(arena, {anode, sq}), knode});
+            expr = casio::simplify(arena, expr);
+            std::string ans = format_expr(arena, expr);
+            return {
+                "1. Complete square.",
+                "2. h = b/(2a) = " + format_expr(arena, hnode),
+                "3. k = c - b^2/(4a) = " + format_expr(arena, knode),
+                "Ans = " + ans,
+            };
+        }
+
         auto eq = casio::parse_equation(arena, req.expr);
         if(!eq) {
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));

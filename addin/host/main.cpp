@@ -74,29 +74,30 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         return 0;
     }
     if(program == "algebraProgram.py") {
-        // Only mode 6 (solve) supported in C++ now.
         std::string mode = get(0);
-        if(mode != "6") {
-            std::cout << "Err: algebra mode not supported yet.\n";
-            return 0;
-        }
         casio::algebra::Request req;
-        req.mode = 6;
-        req.expr = get(1);
+        try { req.mode = std::stoi(mode); } catch(...) { req.mode = 1; }
+        if(req.mode == 1 || req.mode == 2) {
+            req.expr = get(1) + "\n" + get(2);
+        }
+        else {
+            req.expr = get(1);
+        }
         auto out = casio::algebra::run(arena, req);
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
     }
     if(program == "trigProgram.py") {
-        // Only mode 3 (solve) supported in C++ now.
         std::string mode = get(0);
-        if(mode != "3") {
-            std::cout << "Err: trig mode not supported yet.\n";
-            return 0;
-        }
         casio::trig::Request req;
-        req.mode = 3;
-        req.expr = get(1);
+        try { req.mode = std::stoi(mode); } catch(...) { req.mode = 3; }
+        if(req.mode == 1 || req.mode == 2) {
+            // mode1: prove, mode2: transform
+            req.expr = get(1) + "\n" + get(2);
+        }
+        else {
+            req.expr = get(1);
+        }
         auto out = casio::trig::run(arena, req);
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
@@ -184,6 +185,7 @@ int main(int argc, char **argv)
         }
         if(is_alg) {
             casio::algebra::Request req;
+            req.mode = 6;
             req.expr = expr;
             auto lines = casio::algebra::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
@@ -191,6 +193,7 @@ int main(int argc, char **argv)
         }
         if(is_trig) {
             casio::trig::Request req;
+            req.mode = 0;
             req.expr = expr;
             auto lines = casio::trig::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
