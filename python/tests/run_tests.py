@@ -52,6 +52,7 @@ except ImportError:
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / 'src'
 _TESTS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT = SRC_ROOT / 'Math'
 PY = sys.executable
 sys.path.insert(0, str(SRC_ROOT))
@@ -2138,6 +2139,11 @@ class CASIOApp(App):
 
     def __init__(self):
         super().__init__()
+        self.backend = (os.environ.get("CASIO_BACKEND", "python") or "python").strip().lower()
+        if self.backend in ("cpp", "c++"):
+            self.backend = "c"
+        if self.backend not in ("python", "c"):
+            self.backend = "python"
         self.records = []
         self.run_state = RunState.IDLE
         self.current_program = "all"
@@ -2186,10 +2192,27 @@ class CASIOApp(App):
             "/programs": "List available test programs",
             "/help": "Show useful commands",
             "/compile": "Recompile .mpy in calc_files; copy support modules, *Program.mpy, launchers, main.py",
+            "/switch python": "Switch backend to Python (legacy/oracle)",
+            "/switch c": "Switch backend to C++ (host + add-in)",
             "/llm": "Configure LLM verification (select model, enable/disable)",
             "/llm status": "Show current LLM configuration",
             "/llm disable": "Disable LLM verification",
         }
+
+    def switch_backend(self, backend: str) -> None:
+        b = (backend or "").strip().lower()
+        if b in ("cpp", "c++"):
+            b = "c"
+        if b not in ("python", "c"):
+            return
+        if getattr(self, "backend", "python") == b:
+            if not getattr(self, "plain_mode", False):
+                self.append_result(f"[dim]Backend already:[/dim] {b}")
+            return
+        self.backend = b
+        if not getattr(self, "plain_mode", False):
+            self.append_result(f"[bold #e07a53]▶ Backend:[/bold #e07a53] {b}")
+        self.update_summary(f"Backend: {b}")
 
     @property
     def running(self):
@@ -2417,6 +2440,10 @@ class CASIOApp(App):
             self.show_help()
         elif value_lower == "/compile":
             self.action_compile()
+        elif value_lower == "/switch python":
+            self.switch_backend("python")
+        elif value_lower == "/switch c":
+            self.switch_backend("c")
         elif value_lower == "/llm" or value_lower == "/llm status":
             self.handle_llm_status()
         elif value_lower == "/llm disable":
@@ -2433,7 +2460,9 @@ class CASIOApp(App):
         return ids
 
     def _session_report_path(self):
-        return Path(__file__).resolve().parent / "reports" / "failure_report_latest.txt"
+        if getattr(self, "backend", "python") == "c":
+            return REPO_ROOT / "c++" / "tests" / "reports" / "failure_report_latest.txt"
+        return _TESTS_DIR / "reports" / "failure_report_latest.txt"
 
     def _init_session_report_file(self):
         """Reset the on-disk log at the start of a run; failures append while tests execute."""
@@ -2450,7 +2479,7 @@ class CASIOApp(App):
             f"Command: {self.last_command}",
             f"Program: {self.current_program}",
             f"Scope: {scope_s}",
-            "See tests/reports/ - tail this file in another terminal for a live view.",
+            f"See {p.parent} - tail this file in another terminal for a live view.",
             "=" * 72,
             "",
         ]
@@ -2559,6 +2588,9 @@ class CASIOApp(App):
             self.update_summary("Stopped")
 
     def action_compile(self):
+        if getattr(self, "backend", "python") == "c":
+            self.action_compile_cpp()
+            return
         from pathlib import Path
         import subprocess
 
@@ -2683,6 +2715,36 @@ class CASIOApp(App):
             self.append_result("[bold #22c55e]✓ All files copied[/bold #22c55e]")
 
         self.update_summary(f"Compiled {compiled} programs")
+
+    def action_compile_cpp(self):
+        import subprocess
+
+        self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
+        self.update_summary("Compiling (C++ host + .g3a)...")
+
+        def run(cmd, cwd=None):
+            p = subprocess.run(cmd, cwd=str(cwd or REPO_ROOT), text=True, capture_output=True)
+            out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
+            return p.returncode, out.strip()
+
+        self.append_result("[dim]Building host (casio_host)...[/dim]")
+        rc, out = run(["./tools/build_host.sh"])
+        if rc != 0:
+            self.append_result(f"[bold #f87171]✗ build_host failed[/bold #f87171]\n{out}")
+            self.update_summary("Compile failed")
+            return
+        self.append_result("[bold #22c55e]✓[/#22c55e] host built")
+
+        build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
+        script = "./tools/build_addin_docker.sh" if build_mode == "docker" else "./tools/build_addin.sh"
+        self.append_result(f"[dim]Building add-in via {build_mode}...[/dim]")
+        rc, out = run([script])
+        if rc != 0:
+            self.append_result(f"[bold #f87171]✗ add-in build failed[/bold #f87171]\n{out}")
+            self.update_summary("Compile failed")
+            return
+        self.append_result("[bold #22c55e]✓[/#22c55e] add-in built")
+        self.update_summary("Compile OK")
 
     def action_quit(self):
         self.exit()
@@ -3275,6 +3337,24 @@ class CASIOApp(App):
         suggestions_widget.update(suggestions)
 
     def run_cli(self, script, inp):
+        if getattr(self, "backend", "python") == "c":
+            host = REPO_ROOT / "addin" / "host" / "build" / "casio_host"
+            if not host.exists():
+                return ("", f"Missing host binary: {host}\nBuild with ./tools/build_host.sh")
+            try:
+                proc = subprocess.run(
+                    [str(host), "--stdin-program", script],
+                    input=inp,
+                    text=True,
+                    capture_output=True,
+                    cwd=str(REPO_ROOT),
+                    timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
+                )
+            except subprocess.TimeoutExpired as err:
+                stdout = err.stdout if isinstance(err.stdout, str) else ""
+                stderr = err.stderr if isinstance(err.stderr, str) else ""
+                return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
+            return proc.stdout, proc.stderr
         try:
             cmd = [
                 sys.executable,
