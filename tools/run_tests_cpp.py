@@ -37,6 +37,7 @@ def main() -> int:
         ("derive_basic", [sys.executable, "tools/golden/compare_derive_basic.py"]),
         ("trig_basic", [sys.executable, "tools/golden/compare_trig_basic.py"]),
         ("algebra_basic", [sys.executable, "tools/golden/compare_algebra_basic.py"]),
+        ("fuzz_regressions", [sys.executable, "tools/fuzz/check_regressions.py"]),
     ]
 
     bad = 0
