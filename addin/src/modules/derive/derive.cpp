@@ -226,6 +226,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto [coef, rest] = coeff_of(arena, d, dname);
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, rest), coef));
             return {
+                "Implicit differentiation (limited port).",
+                "d/dx(lhs)=d/dx(rhs)",
+                "Make dy/dx the subject.",
                 "Answer: " + dname + " = " + format_expr_human(arena, ans),
             };
         }
@@ -241,6 +244,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
             return {
+                "Parametric differentiation (limited port).",
+                "dx/dt = " + format_expr_human(arena, dxdt),
+                "dy/dt = " + format_expr_human(arena, dydt),
                 "Answer: dy/dx = " + format_expr_human(arena, dydx),
             };
         }

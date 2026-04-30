@@ -283,6 +283,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     NodeId simp = casio::simplify(arena, *prim);
     std::string ans = format_expr_human(arena, simp);
     return {
+        "Method: direct table / linearity (limited port)",
+        "Integrate each term where possible.",
+        "Simplify the result.",
         "Answer: " + ans + " + C",
     };
 }

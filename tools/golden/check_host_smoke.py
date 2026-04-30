@@ -37,7 +37,11 @@ def main() -> int:
         if mode == "alg":
             ok = any(ln.strip() == expected.strip() for ln in out)
         else:
-            ok = (out[:1] == [expected])
+            # Allow richer multi-line working while keeping a stable "Answer:" line.
+            if expected.strip().lower().startswith("answer:"):
+                ok = any(ln.strip() == expected.strip() for ln in out)
+            else:
+                ok = (out[:1] == [expected])
 
         if not ok:
             failures.append(
