@@ -281,7 +281,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
 
     NodeId simp = casio::simplify(arena, *prim);
-    std::string ans = format_expr(arena, simp);
+    std::string ans = format_expr_human(arena, simp);
     return {
         "Answer: " + ans + " + C",
     };

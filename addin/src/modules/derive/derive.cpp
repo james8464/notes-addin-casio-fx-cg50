@@ -210,7 +210,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 label = "d2y/d" + var + "2";
             }
             return {
-                "Answer: " + label + " = " + format_expr(arena, out),
+                "Answer: " + label + " = " + format_expr_human(arena, out),
             };
         }
         if(req.mode == 2) {
@@ -226,7 +226,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto [coef, rest] = coeff_of(arena, d, dname);
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, rest), coef));
             return {
-                "Answer: " + dname + " = " + format_expr(arena, ans),
+                "Answer: " + dname + " = " + format_expr_human(arena, ans),
             };
         }
         if(req.mode == 3) {
@@ -241,7 +241,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
             return {
-                "Answer: dy/dx = " + format_expr(arena, dydx),
+                "Answer: dy/dx = " + format_expr_human(arena, dydx),
             };
         }
         return {"Error: unknown mode."};

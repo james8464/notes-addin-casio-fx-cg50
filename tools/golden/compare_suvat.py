@@ -34,6 +34,7 @@ def run_python(s: str, u: str, v: str, a: str, t: str) -> str:
 
 
 def run_cpp(host_bin: Path, s: str, u: str, v: str, a: str, t: str, target: str) -> str:
+    # Host CLI uses comma-separated k=v pairs, so don't use "," markers inside values.
     kv = f"s={s},u={u},v={v},a={a},t={t},target={target}"
     p = subprocess.run([str(host_bin), "--suvat", kv], capture_output=True, text=True, cwd=str(REPO))
     return p.stdout
@@ -64,10 +65,10 @@ def main() -> int:
 
     cases = [
         # (s,u,v,a,t,target)
-        ("10", "0", ",", "2", "5", "v"),
-        (",", "0", "10", "2", "5", "s"),
-        ("10", "0", ",", "2", "", "v"),  # energy form (needs s,u,a)
-        ("10", "0", "", "2", ",", "t"),  # quadratic time
+        ("10", "0", "", "2", "5", "v"),
+        ("", "0", "10", "2", "5", "s"),
+        ("10", "0", "", "2", "", "v"),  # energy form (needs s,u,a)
+        ("10", "0", "", "2", "", "t"),  # quadratic time (needs solve selection)
     ]
 
     bad = 0

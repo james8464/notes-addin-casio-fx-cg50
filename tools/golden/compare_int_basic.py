@@ -44,6 +44,8 @@ def norm(s: str) -> str:
     s = s.replace("π", "pi")
     s = re.sub(r"\s+", "", s)
     s = s.replace("*", "")
+    s = s.replace("ln", "log")
+    s = s.replace("|", "abs")
     return s
 
 

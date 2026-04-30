@@ -23,7 +23,7 @@ static std::string num_text(Rational const &q)
     return std::to_string(q.num) + "/" + std::to_string(q.den);
 }
 
-static std::string fn_name(FnKind k)
+static std::string fn_name(FnKind k, bool human)
 {
     switch(k) {
     case FnKind::Sin: return "sin";
@@ -39,7 +39,7 @@ static std::string fn_name(FnKind k)
     case FnKind::Cosh: return "cosh";
     case FnKind::Tanh: return "tanh";
     case FnKind::Exp: return "exp";
-    case FnKind::Log: return "ln";
+    case FnKind::Log: return human ? "ln" : "log";
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
@@ -49,7 +49,7 @@ static std::string fn_name(FnKind k)
 
 } // namespace
 
-std::string format_expr(Arena &arena, NodeId node, int parent_prec)
+static std::string format_expr_impl(Arena &arena, NodeId node, int parent_prec, bool human)
 {
     node = simplify(arena, node);
     Node const &n = arena.get(node);
@@ -58,16 +58,16 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
     if(n.kind == NodeKind::Sym) return n.text;
     if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
     if(n.kind == NodeKind::Fn) {
-        if(n.fkind == FnKind::Abs) {
-            return "|" + format_expr(arena, n.a, 0) + "|";
+        if(human && n.fkind == FnKind::Abs) {
+            return "|" + format_expr_impl(arena, n.a, 0, human) + "|";
         }
-        if(n.fkind == FnKind::Log) {
+        if(human && n.fkind == FnKind::Log) {
             Node const &argn = arena.get(n.a);
             if(argn.kind == NodeKind::Fn && argn.fkind == FnKind::Abs) {
-                return "ln|" + format_expr(arena, argn.a, 0) + "|";
+                return "ln|" + format_expr_impl(arena, argn.a, 0, human) + "|";
             }
         }
-        return fn_name(n.fkind) + "(" + format_expr(arena, n.a, 0) + ")";
+        return fn_name(n.fkind, human) + "(" + format_expr_impl(arena, n.a, 0, human) + ")";
     }
     if(n.kind == NodeKind::Pow) {
         Node const &base = arena.get(n.a);
@@ -75,19 +75,19 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
         // Special-case sqrt: x^(1/2) -> sqrt(x) (matches SUVAT python output)
         Node const &expn = arena.get(n.b);
         if(expn.kind == NodeKind::Num && expn.num.num == 1 && expn.num.den == 2) {
-            text = "sqrt(" + format_expr(arena, n.a, 0) + ")";
+            text = "sqrt(" + format_expr_impl(arena, n.a, 0, human) + ")";
         }
         else if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
-            text = "e^(" + format_expr(arena, n.b, 0) + ")";
+            text = "e^(" + format_expr_impl(arena, n.b, 0, human) + ")";
         }
         else {
-            text = format_expr(arena, n.a, 3) + "^" + format_expr(arena, n.b, 3);
+            text = format_expr_impl(arena, n.a, 3, human) + "^" + format_expr_impl(arena, n.b, 3, human);
         }
         if(prec(n) < parent_prec) return "(" + text + ")";
         return text;
     }
     if(n.kind == NodeKind::Div) {
-        std::string text = format_expr(arena, n.a, 2) + "/" + format_expr(arena, n.b, 3);
+        std::string text = format_expr_impl(arena, n.a, 2, human) + "/" + format_expr_impl(arena, n.b, 3, human);
         if(prec(n) < parent_prec) return "(" + text + ")";
         return text;
     }
@@ -101,7 +101,7 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
                 // render rest with multiplication
                 for(std::size_t i = 1; i < n.kids.size(); i++) {
                     if(i > 1) oss << "*";
-                    oss << format_expr(arena, n.kids[i], 2);
+                    oss << format_expr_impl(arena, n.kids[i], 2, human);
                 }
                 std::string text = oss.str();
                 if(prec(n) < parent_prec) return "(" + text + ")";
@@ -113,7 +113,7 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
         for(NodeId kid : n.kids) {
             if(!first) oss << "*";
             first = false;
-            oss << format_expr(arena, kid, 2);
+            oss << format_expr_impl(arena, kid, 2, human);
         }
         std::string text = oss.str();
         if(prec(n) < parent_prec) return "(" + text + ")";
@@ -164,8 +164,8 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
             }
 
             // Ordinary term: first as-is, later prefixed with "+ ".
-            if(parts.empty()) parts.push_back(format_expr(arena, kid, 1));
-            else parts.push_back(std::string("+ ") + format_expr(arena, kid, 1));
+            if(parts.empty()) parts.push_back(format_expr_impl(arena, kid, 1, human));
+            else parts.push_back(std::string("+ ") + format_expr_impl(arena, kid, 1, human));
         }
 
         std::ostringstream oss;
@@ -179,6 +179,16 @@ std::string format_expr(Arena &arena, NodeId node, int parent_prec)
         return text;
     }
     return "<node>";
+}
+
+std::string format_expr(Arena &arena, NodeId node, int parent_prec)
+{
+    return format_expr_impl(arena, node, parent_prec, false);
+}
+
+std::string format_expr_human(Arena &arena, NodeId node, int parent_prec)
+{
+    return format_expr_impl(arena, node, parent_prec, true);
 }
 
 } // namespace casio

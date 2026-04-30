@@ -1,5 +1,5 @@
 # format: <mode>\t<expr>\t<expected_line>
-# modes: int, alg, trig
+# modes: int, alg, trig, derive
 
 trig	sin(30)	Answer: 1/2
 trig	cos(5*pi/3)	Answer: 1/2
