@@ -150,7 +150,7 @@ int main(void)
                     casio::ui::text_input(in.v, "v", "blank or ,target");
                     casio::ui::text_input(in.a, "a", "blank or ,target");
                     casio::ui::text_input(in.t, "t", "blank or ,target");
-                    auto lines = casio::suvat::solve(arena, in);
+                    auto lines = casio::suvat::solve_all(arena, in);
                     view_lines("SUVAT", lines);
                 }
             }

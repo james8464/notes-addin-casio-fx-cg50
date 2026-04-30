@@ -325,5 +325,55 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
     return out;
 }
 
+std::vector<std::string> solve_all(Arena &arena, Inputs const &raw)
+{
+    Inputs in = normalize_inputs(raw);
+    // Determine if exactly one unknown (target) and others non-blank.
+    int blanks = 0;
+    if(is_blank(in.s)) blanks++;
+    if(is_blank(in.u)) blanks++;
+    if(is_blank(in.v)) blanks++;
+    if(is_blank(in.a)) blanks++;
+    if(is_blank(in.t)) blanks++;
+
+    auto main = solve(arena, in);
+    // Append all-vars block when no extra unknowns besides target.
+    if(blanks == 1) {
+        main.push_back("");
+        main.push_back("--- All variables ---");
+        // Print known values directly, compute only target using first solve block.
+        auto show_node = [&](std::string const &var, std::string const &txt) -> std::string {
+            if(is_blank(txt) || txt == ",") return "";
+            NodeId n = parse_expr(arena, txt);
+            return var + " = " + format_expr(arena, n);
+        };
+        // Extract target line from main solve output (last "<target> = ...")
+        std::string target_line;
+        for(auto const &ln : main) {
+            if(ln.rfind(in.target + std::string(" = "), 0) == 0) target_line = ln;
+        }
+
+        // s,u,v,a,t order
+        for(auto var : {"s","u","v","a","t"}) {
+            if(var == in.target) {
+                if(!target_line.empty()) main.push_back(target_line);
+                continue;
+            }
+            if(var == std::string("s")) { auto ln = show_node("s", in.s); if(!ln.empty()) main.push_back(ln); }
+            if(var == std::string("u")) { auto ln = show_node("u", in.u); if(!ln.empty()) main.push_back(ln); }
+            if(var == std::string("v")) { auto ln = show_node("v", in.v); if(!ln.empty()) main.push_back(ln); }
+            if(var == std::string("a")) { auto ln = show_node("a", in.a); if(!ln.empty()) main.push_back(ln); }
+            if(var == std::string("t")) { auto ln = show_node("t", in.t); if(!ln.empty()) main.push_back(ln); }
+        }
+    }
+    else {
+        main.push_back("");
+        main.push_back("--- All variables ---");
+        main.push_back("Not shown because more than one variable is unknown.");
+        main.push_back("Use , to mark exactly one target and fill the others to see a full consistent set.");
+    }
+    return main;
+}
+
 } // namespace casio::suvat
 

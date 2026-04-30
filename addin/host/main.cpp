@@ -54,7 +54,7 @@ int main(int argc, char **argv)
                 parse_kv(text.substr(i, j - i));
                 i = j + 1;
             }
-            auto lines = casio::suvat::solve(arena, in);
+            auto lines = casio::suvat::solve_all(arena, in);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;
         }
