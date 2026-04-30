@@ -21,6 +21,27 @@ The key idea is that detailed working does **not** require STL, exceptions, or h
 - deterministic rewrite rules
 - fixed-capacity storage for expressions, steps, and rendered lines
 
+## Current Implementation Status
+
+The device build now includes the first bounded solver slice:
+
+- `c++/addin/src/device/fixed_string.hpp`
+- `c++/addin/src/device/line_buffer.hpp`
+- `c++/addin/src/device/device_solver.hpp`
+- `c++/addin/src/device/device_solver.cpp`
+- `c++/addin/src/ui/text_input_device.cpp`
+
+Supported on-device workflows:
+
+- linear simplification such as `2x+3-x+4`
+- linear equation solving such as `2x+3=7`
+- polynomial derivatives up to `x^5`
+- polynomial integrals up to `x^5`
+- exact trig values for common degree angles
+- selected SUVAT rearrangements
+
+The host build also compiles and runs `device_solver_smoke` so this bounded device slice is tested without requiring the calculator toolchain for every iteration.
+
 ## Why This Change Helps
 
 The current host-oriented implementation assumes a richer C++ runtime than the fxSDK/gint target provides. That creates build and reliability problems on-device.

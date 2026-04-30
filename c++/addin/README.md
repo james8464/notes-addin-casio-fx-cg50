@@ -1,6 +1,6 @@
 ## fx-CG50 add-in (g3a) — native port target
 
-This folder is the start of a **native** fx-CG50 add-in built with **fxSDK + gint**.
+This folder contains the **native** fx-CG50 add-in built with **fxSDK + gint**.
 
 ### Build prerequisites (one-time)
 
@@ -10,7 +10,7 @@ Authoritative docs:
 - fxSDK: `https://git.planet-casio.com/Lephenixnoir/fxsdk/src/branch/master/README.md`
 - gint: `https://git.planet-casio.com/Lephenixnoir/gint/src/branch/master/README.md`
 
-This repo also includes a concrete install/verify guide: `addin/FXSDK_INSTALL.md`.
+This repo also includes a concrete install/verify guide: `c++/addin/FXSDK_INSTALL.md`.
 
 Typical workflow (Linux/WSL is the smoothest; macOS may need tweaks):
 - Install via GiteaPC (recommended by fxSDK): `giteapc install Lephenixnoir/fxsdk`
@@ -34,17 +34,17 @@ fxsdk build-cg
 Or from repo root:
 
 ```bash
-./tools/build_addin.sh
+./c++/tools/build_addin.sh
 ```
 
-This should produce a `.g3a` under `addin/build/` (the script prints the exact path).
+This should produce a `.g3a` under `c++/addin/build-cg/` (the script prints the exact path).
 
 ### Build on macOS with Docker (recommended)
 
 If you don’t want a full Linux VM, you can build the `.g3a` from macOS using Docker Desktop:
 
 ```bash
-./tools/build_addin_docker.sh
+./c++/tools/build_addin_docker.sh
 ```
 
 ### Install onto calculator
@@ -57,18 +57,24 @@ If you don’t want a full Linux VM, you can build the `.g3a` from macOS using D
 
 After installing, use the on-device checklist:
 
-- `addin/DEVICE_SMOKE_CHECKLIST.md`
+- `c++/addin/DEVICE_SMOKE_CHECKLIST.md`
 
 And enforce the size gate:
 
 ```bash
-python3 tools/check_g3a_size.py addin/build/*.g3a
+python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 ```
 
 ### Notes for this project
 
 - The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
 - We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
+- The current device build uses a bounded freestanding solver slice for:
+  - linear simplify/algebra
+  - polynomial derivative/integral rules up to `x^5`
+  - exact common-angle trig
+  - selected SUVAT rearrangements
+- Richer host functionality remains available through `casio_host` while device features are ported module by module.
 
 ### Host build (fast local testing)
 
@@ -77,9 +83,8 @@ This repo installs `cmake` via pip (`--user`) on macOS, so `cmake` may live at `
 Build the host runner from the repo root:
 
 ```bash
-./tools/build_host.sh
-./addin/host/build/casio_host --alg "2x+3=7"
-./addin/host/build/casio_host --int "sin(3x+2)"
-./addin/host/build/casio_host --trig "cos(5*pi/3)"
+./c++/tools/build_host.sh
+./c++/addin/host/build/casio_host --alg "2x+3=7"
+./c++/addin/host/build/casio_host --int "sin(3x+2)"
+./c++/addin/host/build/casio_host --trig "cos(5*pi/3)"
 ```
-

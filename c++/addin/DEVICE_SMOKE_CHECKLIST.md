@@ -12,48 +12,52 @@ Run this after building `CasioCAS.g3a` with `fxsdk build-cg`.
 - Launch add-in from the main menu.
 - Navigate menus with `UP/DOWN`, enter with `EXE`, back with `EXIT`.
 - Enter a long expression and verify the input widget:
-  - `LEFT/RIGHT` moves cursor
-  - `DEL` deletes at cursor
-  - insertion works mid-string
-  - long strings show ellipsis and cursor indicator
-- Run each module at least once; ensure no crash/hang.
+  - digits/operators append at the end
+  - `DEL` deletes the last character
+  - `AC/ON` clears the buffer
+  - long strings show a clipped prefix marker
+- Run each module at least once and ensure no crash/hang.
 
-## Boolean
+## Simplify
 
-- Simplify: `~(p&q)` (or your supported boolean syntax)
-- NAND/NOR modes: verify outputs are not empty and no crash
-
-## SUVAT
-
-- Solve for `v` with known `u,a,t`
-- Solve-all with one blank (unknown) and verify all variables print
-- Error handling: multiple blanks or no target should show a clear error
-
-## Derive
-
-- Mode 1: `x^3` (expect `3x^2`)
-- Mode 2: `x^2+y^2=1` (expect `-x/y`)
-- Mode 3: `x=t^2, y=t^3` (expect `3t/2`)
-- Mode 4: `x^4` (expect second derivative `12x^2`)
-
-## Integrate
-
-- `x^2` (expect `x^3/3 + C`)
-- `1/x` (expect `ln|x| + C`)
-- `sin(3x+2)` (expect `-1/3 cos(3x+2) + C`)
+- Input: `2x+3-x+4`
+- Expected: answer line equivalent to `x + 7`
 
 ## Algebra
 
-- Solve: `x^2-5x+6=0` (roots)
-- Expand: `(2x+1)^5` (binomial output)
-- Complete square: `x^2+6x+5`
+- Input: `2x+3=7`
+- Expected working:
+  - collect x terms
+  - divide both sides
+  - answer `x = 2`
+
+## SUVAT
+
+- Input: `s=10,u=0,v=?,a=2,t=5`
+- Expected: use `v = u + at`, answer `v = 10`
+
+## Derive
+
+- Input: `3x^2+2x+1`
+- Expected: power rule line, answer `6x + 2`
+
+## Integrate
+
+- Input: `3x^2+2x+1`
+- Expected: power-rule antiderivative line, answer `x^3 + x^2 + x + C`
 
 ## Trig
 
-- Exact values: `sin(30)`, `cos(5*pi/3)`
-- Solve: `sin(x)=1/2,x,0,360`
+- Input: `sin(30)`
+- Expected: unit-circle table line, answer `1/2`
+
+## Unsupported inputs
+
+- Try `x^6` in Derive.
+- Try `1/x` in Integrate.
+- Try `sin(17)` in Trig.
+- Expected: clear unsupported message, no crash/hang.
 
 ## Performance sanity
 
 - Re-run a few operations repeatedly; verify responsiveness doesn’t degrade.
-
