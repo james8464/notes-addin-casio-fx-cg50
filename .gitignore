@@ -10,3 +10,6 @@ python/.DS_Store
 addin/build/
 addin/host/build/
 
+# Graphify outputs
+graphify-out/cache/
+

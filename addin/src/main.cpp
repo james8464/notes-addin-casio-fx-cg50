@@ -9,6 +9,9 @@
 
 #include "modules/boolean/boolean.hpp"
 #include "modules/suvat/suvat.hpp"
+#include "modules/integrate/integrate.hpp"
+#include "modules/algebra/algebra.hpp"
+#include "modules/trig/trig.hpp"
 #include "ui/text_input.hpp"
 
 static void draw_centered(const char *s)
@@ -65,6 +68,9 @@ int main(void)
                 std::vector<std::string> home;
                 home.push_back("1 Boolean");
                 home.push_back("2 SUVAT");
+                home.push_back("3 Integrate");
+                home.push_back("4 Algebra");
+                home.push_back("5 Trig");
                 view_lines("Home", home);
 
                 int app = 1;
@@ -74,6 +80,9 @@ int main(void)
                     if(km.key == KEY_EXIT) { app = 0; break; }
                     if(km.key == KEY_1) { app = 1; break; }
                     if(km.key == KEY_2) { app = 2; break; }
+                    if(km.key == KEY_3) { app = 3; break; }
+                    if(km.key == KEY_4) { app = 4; break; }
+                    if(km.key == KEY_5) { app = 5; break; }
                 }
 
                 if(app == 0) continue;
@@ -152,6 +161,27 @@ int main(void)
                     casio::ui::text_input(in.t, "t", "blank or ,target");
                     auto lines = casio::suvat::solve_all(arena, in);
                     view_lines("SUVAT", lines);
+                }
+                else if(app == 3) {
+                    casio::integrate::Request req;
+                    req.expr = "sinx";
+                    casio::ui::text_input(req.expr, "Integrate", "enter integrand");
+                    auto lines = casio::integrate::run(arena, req);
+                    view_lines("Integrate", lines);
+                }
+                else if(app == 4) {
+                    casio::algebra::Request req;
+                    req.expr = "2x+3=7";
+                    casio::ui::text_input(req.expr, "Algebra", "enter expression/equation");
+                    auto lines = casio::algebra::run(arena, req);
+                    view_lines("Algebra", lines);
+                }
+                else if(app == 5) {
+                    casio::trig::Request req;
+                    req.expr = "sin(30)";
+                    casio::ui::text_input(req.expr, "Trig", "enter trig expression");
+                    auto lines = casio::trig::run(arena, req);
+                    view_lines("Trig", lines);
                 }
             }
             catch(...) {

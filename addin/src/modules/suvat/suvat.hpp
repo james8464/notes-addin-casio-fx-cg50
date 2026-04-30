@@ -18,6 +18,8 @@ struct Inputs
     std::string t;
     // Target variable: one of "s","u","v","a","t"
     std::string target;
+    // If input invalid (no target, multiple targets, etc).
+    std::string error;
 };
 
 // Parse user strings into nodes (None if blank/target).
@@ -26,6 +28,9 @@ Inputs normalize_inputs(Inputs in);
 
 // Solve target variable. Returns output lines (already exam-ish).
 std::vector<std::string> solve(Arena &arena, Inputs const &in);
+
+// Compute all vars when consistent and only one unknown (Python behavior).
+std::vector<std::string> solve_all(Arena &arena, Inputs const &in);
 
 } // namespace casio::suvat
 

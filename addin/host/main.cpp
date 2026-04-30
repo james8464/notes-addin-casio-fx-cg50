@@ -6,6 +6,9 @@
 
 #include "modules/boolean/boolean.hpp"
 #include "modules/suvat/suvat.hpp"
+#include "modules/integrate/integrate.hpp"
+#include "modules/algebra/algebra.hpp"
+#include "modules/trig/trig.hpp"
 
 #include <iostream>
 #include <string>
@@ -25,8 +28,11 @@ int main(int argc, char **argv)
     bool is_bool_prove = (flag == "--prove");
     bool any_bool = is_bool || is_bool_nand || is_bool_nor || is_bool_prove;
     bool is_suvat = (flag == "--suvat");
+    bool is_int = (flag == "--int");
+    bool is_alg = (flag == "--alg");
+    bool is_trig = (flag == "--trig");
 
-    std::string expr = (any_bool || is_suvat) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (any_bool || is_suvat || is_int || is_alg || is_trig) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
 
     try {
@@ -55,6 +61,27 @@ int main(int argc, char **argv)
                 i = j + 1;
             }
             auto lines = casio::suvat::solve_all(arena, in);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
+        if(is_int) {
+            casio::integrate::Request req;
+            req.expr = expr;
+            auto lines = casio::integrate::run(arena, req);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
+        if(is_alg) {
+            casio::algebra::Request req;
+            req.expr = expr;
+            auto lines = casio::algebra::run(arena, req);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
+        if(is_trig) {
+            casio::trig::Request req;
+            req.expr = expr;
+            auto lines = casio::trig::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;
         }

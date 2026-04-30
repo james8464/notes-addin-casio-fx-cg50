@@ -8,6 +8,9 @@ add_executable(casio_host
   main.cpp
   ../src/modules/boolean/boolean.cpp
   ../src/modules/suvat/suvat.cpp
+  ../src/modules/integrate/integrate.cpp
+  ../src/modules/algebra/algebra.cpp
+  ../src/modules/trig/trig.cpp
   ../src/core/rational.cpp
   ../src/core/arena.cpp
   ../src/core/normalize.cpp

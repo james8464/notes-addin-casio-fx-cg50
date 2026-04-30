@@ -13,6 +13,9 @@ add_executable(CasioCAS
   src/main.cpp
   src/modules/boolean/boolean.cpp
   src/modules/suvat/suvat.cpp
+  src/modules/integrate/integrate.cpp
+  src/modules/algebra/algebra.cpp
+  src/modules/trig/trig.cpp
   src/ui/text_input.cpp
   src/core/rational.cpp
   src/core/arena.cpp

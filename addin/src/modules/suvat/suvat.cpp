@@ -135,11 +135,17 @@ Inputs normalize_inputs(Inputs in)
     };
 
     std::string found;
+    int found_count = 0;
     for(auto &f : fields) {
         if(contains_target_marker(*f.first)) {
             found = f.second;
+            found_count++;
             *f.first = strip_commas(*f.first);
         }
+    }
+    if(found_count > 1) {
+        in.error = "Error: Mark only one target variable with ,.";
+        return in;
     }
     if(!found.empty()) {
         in.target = found;
@@ -149,13 +155,26 @@ Inputs normalize_inputs(Inputs in)
     for(auto &f : fields) {
         if(is_blank(*f.first)) blanks.push_back(f.second);
     }
-    if(blanks.size() == 1) in.target = blanks[0];
+    if(blanks.empty()) {
+        if(in.target.empty()) {
+            in.error = "Error: No target variable specified. Use , to mark the unknown.";
+        }
+        return in;
+    }
+    if(blanks.size() > 1) {
+        in.error = "Error: Multiple unknowns detected. Use , to mark exactly one target.";
+        return in;
+    }
+    in.target = blanks[0];
     return in;
 }
 
 std::vector<std::string> solve(Arena &arena, Inputs const &raw)
 {
     Inputs in = normalize_inputs(raw);
+    if(!in.error.empty()) {
+        return {in.error};
+    }
 
     // Presets (small subset of python PRESET_KEYWORDS):
     // If text contains keywords and variable blank, fill.
@@ -328,6 +347,9 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
 std::vector<std::string> solve_all(Arena &arena, Inputs const &raw)
 {
     Inputs in = normalize_inputs(raw);
+    if(!in.error.empty()) {
+        return {in.error};
+    }
     // Determine if exactly one unknown (target) and others non-blank.
     int blanks = 0;
     if(is_blank(in.s)) blanks++;
