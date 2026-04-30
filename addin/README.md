@@ -37,12 +37,25 @@ Or from repo root:
 ./tools/build_addin.sh
 ```
 
-This should produce a `.g3a` in the build output folder (exact path depends on fxSDK version/template).
+This should produce a `.g3a` under `addin/build/` (the script prints the exact path).
 
 ### Install onto calculator
 
-- **Manual**: copy the built `.g3a` onto the calculator’s USB storage.
+- **Manual (recommended)**:
+  - Plug calculator in via USB, choose “USB storage” mode on-device.
+  - Copy the built `.g3a` to the calculator storage (root is fine).
+  - Eject/unmount safely, then exit USB mode on the calculator.
 - **fxSDK send helper** (Linux + UDisks2): `fxsdk send-cg`
+
+After installing, use the on-device checklist:
+
+- `addin/DEVICE_SMOKE_CHECKLIST.md`
+
+And enforce the size gate:
+
+```bash
+python3 tools/check_g3a_size.py addin/build/*.g3a
+```
 
 ### Notes for this project
 
