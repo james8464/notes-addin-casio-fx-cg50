@@ -8,7 +8,7 @@ include $(FXCGSDK)/toolchain/prizm_rules
 
 TARGET := CasioCAS
 BUILD := build
-SOURCES := src ../addin/src/device
+SOURCES := src ../addin/src/device ../addin/src/core ../addin/src/core
 DATA :=
 INCLUDES := src ../addin/src
 
