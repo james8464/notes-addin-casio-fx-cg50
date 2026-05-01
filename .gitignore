@@ -6,12 +6,15 @@
 python/Tests.txt
 python/.DS_Store
 
-# Local build outputs (fxSDK + host cmake)
+# Local build outputs (fxSDK + host cmake + PrizmSDK)
 addin/build/
 addin/host/build/
 c++/addin/build/
 c++/addin/build-cg/
 c++/addin/host/build/
+c++/prizm/build/
+c++/prizm/CasioCAS.bin
+c++/prizm/CasioCAS.g3a
 
 # Graphify outputs
 graphify-out/cache/

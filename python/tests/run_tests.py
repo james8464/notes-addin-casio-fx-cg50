@@ -2860,7 +2860,13 @@ class CASIOApp(App):
                     return
                 build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
 
-                if build_mode == "docker":
+                if build_mode == "prizm":
+                    if run_stream("PrizmSDK native UI add-in build", ["./c++/tools/build_addin_prizm_docker.sh"]) != 0:
+                        summary("Compile failed")
+                        return
+                    log("[dim]--- Verifying outputs (PrizmSDK) ---[/dim]")
+                    g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.bin"))
+                elif build_mode == "docker":
                     docker_build = [
                         "docker", "build", "--progress=plain",
                         "-f", "c++/tools/docker/Dockerfile.fxsdk",
@@ -2882,13 +2888,14 @@ class CASIOApp(App):
                     if run_stream("fxsdk build-cg in Docker", docker_run) != 0:
                         summary("Compile failed")
                         return
+                    log("[dim]--- Verifying outputs (fxSDK Docker) ---[/dim]")
+                    g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
                 else:
                     if run_stream("native fxSDK add-in build", ["./c++/tools/build_addin.sh"]) != 0:
                         summary("Compile failed")
                         return
-
-                log("[dim]--- Verifying outputs ---[/dim]")
-                g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
+                    log("[dim]--- Verifying outputs (native fxSDK) ---[/dim]")
+                    g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
                 if not g3as:
                     log("[bold #f87171]✗ no .g3a found under c++/addin/build-cg/[/bold #f87171]")
                     summary("Compile failed")

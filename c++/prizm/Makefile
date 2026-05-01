@@ -8,11 +8,9 @@ include $(FXCGSDK)/toolchain/prizm_rules
 
 TARGET := CasioCAS
 BUILD := build
-SOURCES := src ../addin/src/device ../addin/src/core ../addin/src/modules/algebra ../addin/src/modules/derive ../addin/src/modules/integrate ../addin/src/modules/suvat ../addin/src/modules/trig
+SOURCES := src ../addin/src/device
 DATA :=
 INCLUDES := src ../addin/src
-
-MKG3AFLAGS := -n basic:CasioCAS -i uns:assets/unselected.bmp -i sel:assets/selected.bmp
 
 CFLAGS := -Os -Wall -Wextra -Wno-unused-parameter $(MACHDEP) $(INCLUDE) \
   -ffunction-sections -fdata-sections -DTARGET_PRIZM=1 -DCASIO_DEVICE=1
@@ -59,13 +57,11 @@ $(BUILD):
 clean:
 	rm -rf $(BUILD)
 	rm -f $(OUTPUT).bin
-	rm -f $(OUTPUT).g3a
 
 else
 
 DEPENDS := $(OFILES:.o=.d)
 
-$(OUTPUT).g3a: $(OUTPUT).bin
 $(OUTPUT).bin: $(OFILES)
 
 -include $(DEPENDS)
