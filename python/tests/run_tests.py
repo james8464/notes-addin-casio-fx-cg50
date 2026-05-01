@@ -2139,11 +2139,11 @@ class CASIOApp(App):
 
     def __init__(self):
         super().__init__()
-        self.backend = (os.environ.get("CASIO_BACKEND", "python") or "python").strip().lower()
+        self.backend = (os.environ.get("CASIO_BACKEND", "c") or "c").strip().lower()
         if self.backend in ("cpp", "c++"):
             self.backend = "c"
         if self.backend not in ("python", "c"):
-            self.backend = "python"
+            self.backend = "c"
         self.records = []
         self.run_state = RunState.IDLE
         self.current_program = "all"
@@ -2865,7 +2865,7 @@ class CASIOApp(App):
                 if not clean_addin_outputs():
                     summary("Compile failed")
                     return
-                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "prizm") or "prizm").strip().lower()
+                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
 
                 if build_mode == "prizm":
                     log("[dim]Target:[/dim] PrizmSDK/libfxcg native OS UI")
@@ -3737,7 +3737,10 @@ class CASIOApp(App):
             elif case_count > 200:
                 batch_size = max(100, case_count // 100)
             else:
-                batch_size = case_count
+                batch_size = max(1, case_count)
+
+            if case_count == 0:
+                return
 
             def evaluate_timed(case):
                 import time
@@ -5247,14 +5250,20 @@ class CASIOApp(App):
 
     def build_random_algebra_cases(self, difficulty, count, rng):
         if getattr(self, "backend", "python") == "c":
-            # C++ backend currently focuses on core algebra workflows (solve/compare/expand).
-            # Skip Python-only features like inverse/composition/domain/range/cartesian/simultaneous.
+            # C++ backend: expanded coverage with hard/random features.
+            # Mix of stable core + chaos-proof hard cases.
             features = [
                 self.random_algebra_compare_case,
                 self.random_algebra_transform_case,
                 self.random_algebra_expand_case,
+                self.random_algebra_expand_letter_case,
                 self.random_algebra_complete_square_case,
                 self.random_algebra_solve_case,
+                self.random_algebra_rearrange_case,
+                self.random_algebra_hidden_quadratic_case,
+                self.random_algebra_poly_case,
+                self.random_algebra_discriminant_case,
+                self.random_algebra_solve_letter_case,
             ]
         else:
             features = [
@@ -5674,11 +5683,13 @@ class CASIOApp(App):
 
     def build_random_trig_cases(self, difficulty, count, rng):
         if getattr(self, "backend", "python") == "c":
-            # C++ backend supports prove/transform + limited solve; skip hard multi-step modes.
+            # C++ backend: expanded trig coverage.
             features = [
                 self.random_trig_prove_case,
                 self.random_trig_transform_case,
                 self.random_trig_solve_case,
+                self.random_trig_rewrite_case,
+                self.random_trig_rearrange_case,
             ]
         else:
             features = [
@@ -5925,12 +5936,16 @@ class CASIOApp(App):
 
     def build_random_derive_cases(self, difficulty, count, rng):
         if getattr(self, "backend", "python") == "c":
-            # C++ backend: keep to modes we actually route in casio_host stdin-program.
+            # C++ backend: expanded derivation coverage.
             features = [
                 self.random_derive_normal_case,
                 self.random_derive_implicit_case,
                 self.random_derive_parametric_case,
                 self.random_derive_second_derivative_case,
+                self.random_derive_triple_product_case,
+                self.random_derive_chain_quotient_case,
+                self.random_derive_implicit_product_case,
+                self.random_derive_parametric_hard_case,
             ]
         else:
             features = [
@@ -6293,10 +6308,12 @@ class CASIOApp(App):
 
     def build_random_integrate_cases(self, difficulty, count, rng):
         if getattr(self, "backend", "python") == "c":
-            # C++ backend: limited table/linearity + a few rewrites.
+            # C++ backend: expanded integration coverage.
             features = [
                 self.random_integrate_trig_power_case,
                 self.random_integrate_substitution_case,
+                self.random_integrate_auto_case,
+                self.random_integrate_parts_twice_case,
             ]
         else:
             features = [
