@@ -1,4 +1,8 @@
 #include "device/device_solver.hpp"
+#include "device/cas_wrapper.hpp"
+#include "device/cas_lib/Expression.h"
+#include "device/cas_lib/Equation.h"
+#include "device/cas_lib/Term.h"
 
 namespace casio::device
 {
@@ -395,6 +399,23 @@ static void append_surd_root(FixedString<96> &line, int base, char op, int disc,
 
 static bool solve_simplify(const char *input, OutputLines &out)
 {
+    // Try CAS engine for simplification
+    cas::CASEngine engine;
+    if(cas::CASEngine::isValidExpression(input)) {
+        cas::ComputationResult casResult = engine.simplifyExpression(input);
+        if(casResult.success) {
+            // Use CAS result with enhanced working steps
+            for(const auto& step : casResult.workingSteps) {
+                out.add(step.c_str());
+            }
+            FixedString<96> &ans = out.next();
+            ans.append("Answer: ");
+            ans.append(casResult.answer.c_str());
+            return true;
+        }
+    }
+    
+    // Fallback to original device solver
     char s[128];
     int n = compact(input, s, (int)sizeof(s));
     Linear expr = parse_linear_range(s, 0, n);
@@ -423,6 +444,23 @@ static bool solve_simplify(const char *input, OutputLines &out)
 
 static bool solve_algebra(const char *input, OutputLines &out)
 {
+    // Try CAS engine first for better computation reliability
+    cas::CASEngine engine;
+    if(cas::CASEngine::isValidEquation(input)) {
+        cas::ComputationResult casResult = engine.solveEquation(input);
+        if(casResult.success) {
+            // Use CAS result with enhanced working steps
+            for(const auto& step : casResult.workingSteps) {
+                out.add(step.c_str());
+            }
+            FixedString<96> &ans = out.next();
+            ans.append("Answer: ");
+            ans.append(casResult.answer.c_str());
+            return true;
+        }
+    }
+    
+    // Fallback to original device solver
     char s[128];
     int n = compact(input, s, (int)sizeof(s));
     int eq = find_char(s, '=');
