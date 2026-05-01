@@ -24,6 +24,7 @@ add_executable(casio_host
   ../src/core/exam_work.cpp
   ../src/core/format_expr.cpp
   ../src/core/format_exam.cpp
+  ../src/device/feature_registry.cpp
 )
 
 target_include_directories(casio_host PRIVATE
