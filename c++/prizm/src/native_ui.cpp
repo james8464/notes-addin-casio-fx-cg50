@@ -78,11 +78,11 @@ void draw_softkeys(const char *k1, const char *k2, const char *k3,
 void draw_home(void)
 {
     init_native_screen("CasioCAS");
-    print_line(2, "F1 Shell  F2 Simpl");
-    print_line(3, "F3 Algebra F4 Deriv");
-    print_line(4, "F5 Integr  F6 Trig");
-    print_line(5, "EXE: menu");
-    draw_softkeys("SHL", "SMP", "ALG", "DRV", "INT", "TRG");
+    print_line(2, "F1 Derive  F2 Algebra");
+    print_line(3, "F3 Trig   F4 Integr");
+    print_line(5, "F5 SUVAT   F6 SHELL");
+    print_line(6, "EXE:menu");
+    draw_softkeys("DRV", "ALG", "TRG", "INT", "SUV", "SHL");
     Bdisp_PutDisp_DD();
 }
 
