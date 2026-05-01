@@ -1,0 +1,4 @@
+/Users/james/Developer/Python/CASIO/c++/addin/host/CMakeFiles/casio_host.dir
+/Users/james/Developer/Python/CASIO/c++/addin/host/CMakeFiles/device_solver_smoke.dir
+/Users/james/Developer/Python/CASIO/c++/addin/host/CMakeFiles/edit_cache.dir
+/Users/james/Developer/Python/CASIO/c++/addin/host/CMakeFiles/rebuild_cache.dir
