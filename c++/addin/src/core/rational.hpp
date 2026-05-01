@@ -1,6 +1,11 @@
 #pragma once
 
+// PrizmSDK compatibility: use <stdint.h> (no C++ stdlib)
+#if defined(TARGET_PRIZM)
+#include <stdint.h>
+#else
 #include <cstdint>
+#endif
 
 namespace casio
 {

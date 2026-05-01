@@ -2,8 +2,13 @@
 
 #include "node.hpp"
 
+#if defined(TARGET_PRIZM)
+// PrizmSDK: use compat header
+#include "device/casio_compat.hpp"
+#else
 #include <string_view>
 #include <vector>
+#endif
 
 namespace casio
 {
