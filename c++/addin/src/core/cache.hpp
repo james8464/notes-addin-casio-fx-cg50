@@ -1,5 +1,24 @@
 #pragma once
 
+#if defined(TARGET_PRIZM)
+// PrizmSDK: use minimal compat (no STL containers)
+#include "casio_compat.hpp"
+namespace casio {
+template <typename V>
+class BoundedCache
+{
+public:
+    explicit BoundedCache(std::size_t limit = 1024) : limit_(limit) {}
+    void set_limit(std::size_t n) { limit_ = n; }
+    std::size_t limit() const { return limit_; }
+    std::size_t size() const { return 0; }
+    void clear() {}
+    bool get(std::string const &key, V &out) const { return false; }
+    void put(std::string key, V value) {}
+    std::size_t limit_ = 1024;
+};
+}
+#else
 #include <cstddef>
 #include <deque>
 #include <string>
@@ -9,8 +28,6 @@ namespace casio
 {
 
 // Small-device-style bounded cache:
-// - inserts overwrite existing values
-// - when over limit, evict ~1/8 oldest keys (gentle trim like python shared_cache)
 template <typename V>
 class BoundedCache
 {
@@ -60,7 +77,6 @@ private:
             order_.pop_front();
             map_.erase(k);
         }
-        // If still above limit due to duplicates/overwrites, keep dropping.
         while(map_.size() > limit_ && !order_.empty()) {
             std::string k = order_.front();
             order_.pop_front();
@@ -74,4 +90,5 @@ private:
 };
 
 } // namespace casio
+#endif
 
