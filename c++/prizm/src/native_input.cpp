@@ -18,78 +18,98 @@ int len(const char *s)
     return n;
 }
 
-void insert_text(char *buffer, int capacity, int &length, int &cursor, const char *text)
+void print_row(int row, const char *text, int mode = TEXT_MODE_NORMAL, int color = TEXT_COLOR_BLACK)
+{
+    casio::device::FixedString<80> out;
+    out.append("  ");
+    out.append(text ? text : "");
+    PrintXY(1, row, out.c_str(), mode, color);
+}
+
+void append_text(char *buffer, int capacity, int &length, const char *text)
 {
     if(text == nullptr) return;
     for(int i = 0; text[i] != '\0'; i++) {
         if(length + 1 >= capacity) break;
-        for(int j = length; j >= cursor; j--) buffer[j + 1] = buffer[j];
-        buffer[cursor] = text[i];
-        length++;
-        cursor++;
+        buffer[length++] = text[i];
+        buffer[length] = '\0';
     }
 }
 
-const char *key_to_text(int key)
+void append_char(char *buffer, int capacity, int &length, char c)
 {
-    if(key >= KEY_CHAR_0 && key <= KEY_CHAR_9) {
-        static char digit[2];
-        digit[0] = (char)key;
-        digit[1] = '\0';
-        return digit;
-    }
-
-    if(key >= KEY_CHAR_A && key <= KEY_CHAR_Z) {
-        static char letter[2];
-        letter[0] = (char)('a' + (key - KEY_CHAR_A));
-        letter[1] = '\0';
-        return letter;
-    }
-
-    if(key == KEY_CHAR_DP) return ".";
-    if(key == KEY_CHAR_PLUS) return "+";
-    if(key == KEY_CHAR_MINUS) return "-";
-    if(key == KEY_CHAR_MULT) return "*";
-    if(key == KEY_CHAR_DIV) return "/";
-    if(key == KEY_CHAR_LPAR) return "(";
-    if(key == KEY_CHAR_RPAR) return ")";
-    if(key == KEY_CHAR_COMMA) return ",";
-    if(key == KEY_CHAR_EQUAL) return "=";
-    if(key == KEY_CHAR_LOG) return "log(";
-    if(key == KEY_CHAR_LN) return "ln(";
-    if(key == KEY_CHAR_SIN) return "sin(";
-    if(key == KEY_CHAR_COS) return "cos(";
-    if(key == KEY_CHAR_TAN) return "tan(";
-    if(key == KEY_CHAR_SQUARE) return "^2";
-    if(key == KEY_CHAR_POW) return "^";
-    if(key == KEY_CHAR_ROOT) return "sqrt(";
-    if(key == KEY_CHAR_EXPN) return "exp(";
-    if(key == KEY_CHAR_EXPN10) return "10^";
-    if(key == KEY_CHAR_ASIN) return "asin(";
-    if(key == KEY_CHAR_ACOS) return "acos(";
-    if(key == KEY_CHAR_ATAN) return "atan(";
-    if(key == KEY_CHAR_PI) return "pi";
-    return nullptr;
+    if(length + 1 >= capacity) return;
+    buffer[length++] = c;
+    buffer[length] = '\0';
 }
 
-void draw_input(const char *title, const char *help, const char *buffer, int cursor)
+bool translate_editor_buffer(const unsigned char *editor, char *out, int capacity)
+{
+    if(editor == nullptr || out == nullptr || capacity <= 0) return false;
+    int length = 0;
+    out[0] = '\0';
+    for(int i = 0; editor[i] != '\0'; i++) {
+        unsigned char c = editor[i];
+
+        if(c >= '0' && c <= '9') append_char(out, capacity, length, (char)c);
+        else if(c >= 'A' && c <= 'Z') append_char(out, capacity, length, (char)(c - 'A' + 'a'));
+        else if(c >= 'a' && c <= 'z') append_char(out, capacity, length, (char)c);
+        else if(c == (unsigned char)KEY_CHAR_SPACE) append_char(out, capacity, length, ' ');
+        else if(c == (unsigned char)KEY_CHAR_DP) append_char(out, capacity, length, '.');
+        else if(c == (unsigned char)KEY_CHAR_PLUS) append_char(out, capacity, length, '+');
+        else if(c == (unsigned char)KEY_CHAR_MINUS || c == (unsigned char)KEY_CHAR_PMINUS) append_char(out, capacity, length, '-');
+        else if(c == (unsigned char)KEY_CHAR_MULT) append_char(out, capacity, length, '*');
+        else if(c == (unsigned char)KEY_CHAR_DIV || c == (unsigned char)KEY_CHAR_FRAC) append_char(out, capacity, length, '/');
+        else if(c == (unsigned char)KEY_CHAR_LPAR) append_char(out, capacity, length, '(');
+        else if(c == (unsigned char)KEY_CHAR_RPAR) append_char(out, capacity, length, ')');
+        else if(c == (unsigned char)KEY_CHAR_COMMA) append_char(out, capacity, length, ',');
+        else if(c == (unsigned char)KEY_CHAR_EQUAL) append_char(out, capacity, length, '=');
+        else if(c == (unsigned char)KEY_CHAR_LBRCKT) append_char(out, capacity, length, '[');
+        else if(c == (unsigned char)KEY_CHAR_RBRCKT) append_char(out, capacity, length, ']');
+        else if(c == (unsigned char)KEY_CHAR_LBRACE) append_char(out, capacity, length, '{');
+        else if(c == (unsigned char)KEY_CHAR_RBRACE) append_char(out, capacity, length, '}');
+        else if(c == (unsigned char)KEY_CHAR_LOG) append_text(out, capacity, length, "log(");
+        else if(c == (unsigned char)KEY_CHAR_LN) append_text(out, capacity, length, "ln(");
+        else if(c == (unsigned char)KEY_CHAR_SIN) append_text(out, capacity, length, "sin(");
+        else if(c == (unsigned char)KEY_CHAR_COS) append_text(out, capacity, length, "cos(");
+        else if(c == (unsigned char)KEY_CHAR_TAN) append_text(out, capacity, length, "tan(");
+        else if(c == (unsigned char)KEY_CHAR_ASIN) append_text(out, capacity, length, "asin(");
+        else if(c == (unsigned char)KEY_CHAR_ACOS) append_text(out, capacity, length, "acos(");
+        else if(c == (unsigned char)KEY_CHAR_ATAN) append_text(out, capacity, length, "atan(");
+        else if(c == (unsigned char)KEY_CHAR_ROOT) append_text(out, capacity, length, "sqrt(");
+        else if(c == (unsigned char)KEY_CHAR_CUBEROOT) append_text(out, capacity, length, "cbrt(");
+        else if(c == (unsigned char)KEY_CHAR_SQUARE) append_text(out, capacity, length, "^2");
+        else if(c == (unsigned char)KEY_CHAR_POW) append_char(out, capacity, length, '^');
+        else if(c == (unsigned char)KEY_CHAR_EXPN) append_text(out, capacity, length, "exp(");
+        else if(c == (unsigned char)KEY_CHAR_EXPN10) append_text(out, capacity, length, "10^(");
+        else if(c == (unsigned char)KEY_CHAR_RECIP) append_text(out, capacity, length, "^-1");
+        else if(c == (unsigned char)KEY_CHAR_PI) append_text(out, capacity, length, "pi");
+        else if(c == (unsigned char)KEY_CHAR_ANS) append_text(out, capacity, length, "ans");
+        else if(c == (unsigned char)KEY_CHAR_VALR) append_text(out, capacity, length, "r");
+        else if(c == (unsigned char)KEY_CHAR_THETA) append_text(out, capacity, length, "theta");
+        else if(c == (unsigned char)KEY_CHAR_EXP) append_char(out, capacity, length, 'e');
+        else if(c == 0x7f && editor[i + 1] != '\0') {
+            unsigned char next = editor[++i];
+            if(next == 0x50) append_char(out, capacity, length, 'i');
+            else if(next == 0x54) append_text(out, capacity, length, "angle");
+        }
+    }
+    return true;
+}
+
+void insert_ascii(unsigned char *buffer, int capacity, int &cursor, const char *text)
+{
+    if(buffer == nullptr || text == nullptr) return;
+    for(int i = 0; text[i] != '\0'; i++) {
+        cursor = EditMBStringChar(buffer, capacity, cursor, (unsigned char)text[i]);
+    }
+}
+
+void draw_input(const char *title, const char *help, unsigned char *buffer, int start, int cursor)
 {
     init_native_screen(title);
-    PrintXY(1, 30, help ? help : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
-    
-    casio::device::FixedString<96> display;
-    display.append(buffer ? buffer : "");
-    
-    PrintXY(1, 60, display.c_str(), TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
-    
-    // Simple cursor indicator
-    casio::device::FixedString<32> pos;
-    pos.append("Pos: ");
-    pos.append_int(cursor);
-    pos.append("/");
-    pos.append_int(len(buffer));
-    PrintXY(1, 90, pos.c_str(), TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
-    
+    print_row(2, help ? help : "");
+    DisplayMBString(buffer, start, cursor, 1, 4);
     draw_softkeys("SQRT", "LOG", "SIN", "COS", "PI", "?");
     Bdisp_PutDisp_DD();
 }
@@ -99,7 +119,7 @@ void draw_input(const char *title, const char *help, const char *buffer, int cur
 void show_error(const char *message)
 {
     init_native_screen("Error");
-    PrintXY(1, 30, message ? message : "Unknown error", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    print_row(3, message ? message : "Unknown error");
     draw_softkeys("", "", "", "", "", "OK");
     Bdisp_PutDisp_DD();
     
@@ -113,7 +133,7 @@ void show_error(const char *message)
 void show_info(const char *message)
 {
     init_native_screen("Info");
-    PrintXY(1, 30, message ? message : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    print_row(3, message ? message : "");
     draw_softkeys("", "", "", "", "", "OK");
     Bdisp_PutDisp_DD();
     
@@ -128,56 +148,43 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
 {
     if(buffer == nullptr || capacity <= 0) return false;
 
-    int length = len(buffer);
-    if(length >= capacity) {
-        length = capacity - 1;
-        buffer[length] = '\0';
-    }
-    int cursor = length;
+    unsigned char editor[128];
+    int editor_capacity = (int)sizeof(editor);
+    if(capacity < editor_capacity) editor_capacity = capacity;
+    for(int i = 0; i < editor_capacity; i++) editor[i] = 0;
+    int initial = len(buffer);
+    if(initial >= editor_capacity) initial = editor_capacity - 1;
+    for(int i = 0; i < initial; i++) editor[i] = (unsigned char)buffer[i];
+    editor[initial] = '\0';
 
-    draw_input(title, help, buffer, cursor);
+    int start = 0;
+    int cursor = initial;
+    draw_input(title, help, editor, start, cursor);
 
     while(true) {
         int key = 0;
         GetKey(&key);
 
         if(key == KEY_CTRL_EXIT) return false;
-        if(key == KEY_CTRL_EXE) return true;
-
-        if(key == KEY_CTRL_LEFT) {
-            if(cursor > 0) cursor--;
-            continue;
-        }
-        if(key == KEY_CTRL_RIGHT) {
-            if(cursor < length) cursor++;
-            continue;
-        }
-        if(key == KEY_CTRL_DEL) {
-            if(cursor > 0) {
-                for(int i = cursor - 1; i < length; i++) buffer[i] = buffer[i + 1];
-                length--;
-                cursor--;
-                draw_input(title, help, buffer, cursor);
-            }
-            continue;
-        }
+        if(key == KEY_CTRL_EXE) return translate_editor_buffer(editor, buffer, capacity);
         if(key == KEY_CTRL_AC) {
-            length = 0;
+            start = 0;
             cursor = 0;
-            buffer[0] = '\0';
-            draw_input(title, help, buffer, cursor);
+            editor[0] = '\0';
+            draw_input(title, help, editor, start, cursor);
             continue;
         }
 
-        if(key == KEY_CTRL_F1) insert_text(buffer, capacity, length, cursor, "sqrt(");
-        else if(key == KEY_CTRL_F2) insert_text(buffer, capacity, length, cursor, "log(");
-        else if(key == KEY_CTRL_F3) insert_text(buffer, capacity, length, cursor, "sin(");
-        else if(key == KEY_CTRL_F4) insert_text(buffer, capacity, length, cursor, "cos(");
-        else if(key == KEY_CTRL_F5) insert_text(buffer, capacity, length, cursor, "pi");
-        else if(key == KEY_CTRL_F6) insert_text(buffer, capacity, length, cursor, "?");
-        else insert_text(buffer, capacity, length, cursor, key_to_text(key));
+        if(key == KEY_CTRL_F1) insert_ascii(editor, editor_capacity, cursor, "sqrt(");
+        else if(key == KEY_CTRL_F2) insert_ascii(editor, editor_capacity, cursor, "log(");
+        else if(key == KEY_CTRL_F3) insert_ascii(editor, editor_capacity, cursor, "sin(");
+        else if(key == KEY_CTRL_F4) insert_ascii(editor, editor_capacity, cursor, "cos(");
+        else if(key == KEY_CTRL_F5) insert_ascii(editor, editor_capacity, cursor, "pi");
+        else if(key == KEY_CTRL_F6) insert_ascii(editor, editor_capacity, cursor, "?");
+        else if(key && key < 30000) cursor = EditMBStringChar(editor, editor_capacity, cursor, key);
+        else EditMBStringCtrl(editor, editor_capacity, &start, &cursor, &key, 1, 4);
 
-        if(length > 0) draw_input(title, help, buffer, cursor);
+        draw_input(title, help, editor, start, cursor);
     }
 }
 

@@ -2205,7 +2205,7 @@ class CASIOApp(App):
     def backend_label(self, backend=None) -> str:
         b = (backend or getattr(self, "backend", "python") or "python").strip().lower()
         if b in ("c", "cpp", "c++"):
-            return "C++ host + CG50 .g3a"
+            return "C++ host + native Prizm .g3a"
         return "Python/CasioPython"
 
     def ready_summary(self) -> str:
@@ -2226,7 +2226,8 @@ class CASIOApp(App):
         self.backend = b
         self.append_result(f"[bold #e07a53]▶ Backend:[/bold #e07a53] {self.backend_label(b)}")
         if b == "c":
-            self.append_result("[dim]/compile will build casio_host, then the Docker fxSDK .g3a add-in.[/dim]")
+            self.append_result("[dim]/compile will build casio_host, then c++/prizm/build/CasioCAS.g3a.[/dim]")
+            self.append_result("[dim]Set CASIO_BUILD_ADDIN=docker only if you need the old fxSDK/gint build.[/dim]")
         else:
             self.append_result("[dim]/compile will build the CasioPython .mpy files.[/dim]")
         self.update_summary(self.ready_summary())
@@ -2321,7 +2322,7 @@ class CASIOApp(App):
             self._frame_timer = None
         self.action_clear()
         self.append_result(f"[dim]Backend:[/dim] {self.backend_label()}")
-        self.append_result("[dim]Use /switch c, then /compile to build c++/addin/build-cg/CasioCAS.g3a.[/dim]")
+        self.append_result("[dim]Use /switch c, then /compile to build c++/prizm/build/CasioCAS.g3a.[/dim]")
 
     def on_resize(self, event) -> None:
         self.refresh_rule_lines()
@@ -2782,18 +2783,24 @@ class CASIOApp(App):
             emit(self.update_summary, message)
 
         def clean_addin_outputs():
-            output_dir = REPO_ROOT / "c++" / "addin" / "build-cg"
+            output_dirs = [
+                REPO_ROOT / "c++" / "prizm" / "build",
+                REPO_ROOT / "c++" / "addin" / "build-cg",
+            ]
             patterns = ("*.g3a", "CasioCAS", "CasioCAS.bin")
             removed = []
-            for pattern in patterns:
-                for path in output_dir.glob(pattern):
-                    if path.is_file():
-                        try:
-                            path.unlink()
-                        except OSError as err:
-                            log(f"[bold #f87171]✗ could not remove stale output:[/bold #f87171] {path} ({err})")
-                            return False
-                        removed.append(path)
+            for output_dir in output_dirs:
+                if not output_dir.exists():
+                    continue
+                for pattern in patterns:
+                    for path in output_dir.glob(pattern):
+                        if path.is_file():
+                            try:
+                                path.unlink()
+                            except OSError as err:
+                                log(f"[bold #f87171]✗ could not remove stale output:[/bold #f87171] {path} ({err})")
+                                return False
+                            removed.append(path)
             if removed:
                 for path in removed:
                     log(f"[dim]removed stale output:[/dim] {path}")
@@ -2858,15 +2865,17 @@ class CASIOApp(App):
                 if not clean_addin_outputs():
                     summary("Compile failed")
                     return
-                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
+                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "prizm") or "prizm").strip().lower()
 
                 if build_mode == "prizm":
+                    log("[dim]Target:[/dim] PrizmSDK/libfxcg native OS UI")
                     if run_stream("PrizmSDK native UI add-in build", ["./c++/tools/build_addin_prizm_docker.sh"]) != 0:
                         summary("Compile failed")
                         return
                     log("[dim]--- Verifying outputs (PrizmSDK) ---[/dim]")
                     g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.g3a"))
                 elif build_mode == "docker":
+                    log("[dim]Target:[/dim] legacy fxSDK/gint add-in")
                     docker_build = [
                         "docker", "build", "--progress=plain",
                         "-f", "c++/tools/docker/Dockerfile.fxsdk",
@@ -2891,13 +2900,14 @@ class CASIOApp(App):
                     log("[dim]--- Verifying outputs (fxSDK Docker) ---[/dim]")
                     g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
                 else:
+                    log("[dim]Target:[/dim] local legacy fxSDK/gint add-in")
                     if run_stream("native fxSDK add-in build", ["./c++/tools/build_addin.sh"]) != 0:
                         summary("Compile failed")
                         return
                     log("[dim]--- Verifying outputs (native fxSDK) ---[/dim]")
                     g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
                 if not g3as:
-                    log("[bold #f87171]✗ no .g3a found under c++/addin/build-cg/[/bold #f87171]")
+                    log("[bold #f87171]✗ no .g3a found for selected add-in target[/bold #f87171]")
                     summary("Compile failed")
                     return
 

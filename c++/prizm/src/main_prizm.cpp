@@ -10,6 +10,8 @@
 namespace
 {
 
+constexpr int kVisibleRows = 5;
+
 template <int N>
 constexpr int count_of(const char *const (&)[N])
 {
@@ -30,7 +32,7 @@ int select_menu(const char *title, const char *const *items, int count)
         if(key == KEY_CTRL_UP && selected > 0) selected--;
         if(key == KEY_CTRL_DOWN && selected + 1 < count) selected++;
         if(selected < top) top = selected;
-        if(selected >= top + 7) top = selected - 6;
+        if(selected >= top + kVisibleRows) top = selected - (kVisibleRows - 1);
         casio::prizm::draw_menu(title, items, count, selected, top);
     }
 }
@@ -38,18 +40,17 @@ int select_menu(const char *title, const char *const *items, int count)
 void view_lines(const char *title, casio::device::OutputLines const &lines)
 {
     int top = 0;
-    constexpr int kViewRows = 7;
     
     while(true) {
         bool more_above = (top > 0);
-        bool more_below = (top + kViewRows) < lines.count();
+        bool more_below = (top + kVisibleRows) < lines.count();
         casio::prizm::draw_lines(title, lines, top, more_above, more_below);
         
         int key = 0;
         GetKey(&key);
         if(key == KEY_CTRL_EXIT || key == KEY_CTRL_EXE) return;
         if(key == KEY_CTRL_UP && top > 0) top--;
-        if(key == KEY_CTRL_DOWN && (top + kViewRows) < lines.count()) top++;
+        if(key == KEY_CTRL_DOWN && (top + kVisibleRows) < lines.count()) top++;
     }
 }
 
@@ -85,16 +86,6 @@ void run_module(const char *title, casio::device::Module module,
 
 extern "C" int main(void)
 {
-    const char *items[] = {
-        "CAS Shell",
-        "Simplify",
-        "Algebra",
-        "Derive",
-        "Integrate",
-        "Trig",
-        "SUVAT",
-    };
-
     while(true) {
         casio::prizm::draw_home();
 

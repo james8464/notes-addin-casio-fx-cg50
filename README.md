@@ -3,7 +3,7 @@
 This repository is a **Casio fx-CG50** calculator project that:
 
 - Preserves the original **Python/MicroPython-style** “exam working + Answer:” programs (as an oracle / legacy reference).
-- Implements a new **native C++ symbolic engine** intended to ship as a **single `.g3a` add-in** (fxSDK + gint).
+- Implements a new **native C++ symbolic engine** intended to ship as a **single `.g3a` add-in**. The default calculator build now targets PrizmSDK/libfxcg for native Casio OS UI/input; the older fxSDK + gint target remains as a fallback.
 - Provides **one test harness UI** (a Textual TUI) that can test **either backend** (Python or C++) and switch at runtime.
 
 The overarching goal is **near 1:1 functional parity** (where practical) between the legacy Python programs and the new native implementation, with robust fallbacks and strict memory/size constraints appropriate for the fx-CG50.
@@ -16,7 +16,8 @@ The overarching goal is **near 1:1 functional parity** (where practical) between
   - Legacy/oracle programs (the original engines).
   - The shared Textual test harness: `python/tests/run_tests.py` (drives both backends).
 - `c++/`
-  - `c++/addin/` — the native fx-CG50 add-in source (fxSDK + gint target).
+  - `c++/prizm/` — the default native fx-CG50 add-in source (PrizmSDK/libfxcg target).
+  - `c++/addin/` — the legacy fallback fx-CG50 add-in source (fxSDK + gint target).
   - `c++/addin/host/` — a desktop “host” binary (`casio_host`) for fast testing.
   - `c++/tools/` — golden tests, fuzz/regressions, build scripts (host + add-in).
   - `c++/tests/reports/` — session logs for C++ backend random runs.
@@ -56,7 +57,7 @@ Behavior depends on backend:
 - **Python backend**: rebuilds `.mpy` files into the legacy `calc_files` workflow (legacy support).
 - **C++ backend**: builds:
   - the desktop host (`c++/addin/host/build/casio_host`)
-  - the fx-CG50 add-in (`.g3a`) using Docker by default on macOS
+  - the native PrizmSDK/libfxcg fx-CG50 add-in (`c++/prizm/build/CasioCAS.g3a`) using Docker by default on macOS
 
 > You *can* use standalone scripts (see below), but the intent is: most day-to-day work happens through the TUI.
 
@@ -77,15 +78,24 @@ The TUI’s C++ backend uses this host binary under the hood via `--stdin-progra
 
 ### `.g3a` add-in build on macOS (Docker)
 
-Recommended workflow on macOS is a Docker container that installs fxSDK + toolchain and runs `fxsdk build-cg`.
+Recommended workflow on macOS is `/switch c` then `/compile` in the TUI. This builds the PrizmSDK/libfxcg add-in that uses Casio OS UI/input syscalls.
 
-From repo root:
+Standalone PrizmSDK build:
+
+```bash
+./c++/tools/build_addin_prizm_docker.sh
+```
+
+Expected output: a `.g3a` under `c++/prizm/build/` (the script prints the exact path).
+
+Legacy fxSDK + gint fallback:
+
 
 ```bash
 ./c++/tools/build_addin_docker.sh
 ```
 
-Expected output: a `.g3a` under `c++/addin/build-cg/` (the script prints the exact path).
+Expected fallback output: a `.g3a` under `c++/addin/build-cg/`.
 
 #### Docker troubleshooting checklist
 
