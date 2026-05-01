@@ -10,12 +10,170 @@
 namespace
 {
 
-constexpr int kVisibleRows = 5;
+constexpr int kMaxShellLines = 48;
+constexpr int kEditorCapacity = 128;
 
 template <int N>
 constexpr int count_of(const char *const (&)[N])
 {
     return N;
+}
+
+struct ShellLine {
+    casio::device::FixedString<96> text;
+};
+
+struct CommandItem {
+    const char *label;
+    const char *insert;
+};
+
+struct FileItem {
+    const char *label;
+    int action;
+};
+
+enum FileAction
+{
+    FileToggleAngle = 1,
+    FileClearInput,
+    FileClearShell,
+    FileInsertAns,
+};
+
+const CommandItem kAlgebraCommands[] = {
+    {"cmp", "compare("},
+    {"xform", "transform("},
+    {"exp", "expand("},
+    {"poly", "polynomial("},
+    {"comp sq", "complete_square("},
+    {"solve", "solve("},
+    {"comp", "compose("},
+    {"inv", "inverse("},
+    {"rw", "rewrite("},
+};
+
+const CommandItem kAlgebraAllCommands[] = {
+    {"cmp", "compare("},
+    {"xform", "transform("},
+    {"exp", "expand("},
+    {"poly", "polynomial("},
+    {"comp sq", "complete_square("},
+    {"solve", "solve("},
+    {"comp", "compose("},
+    {"inv", "inverse("},
+    {"rw", "rewrite("},
+    {"dom/rng", "domain("},
+    {"cart", "cartesian("},
+    {"newton", "newton("},
+};
+
+const CommandItem kDeriveCommands[] = {
+    {"n", "diff("},
+    {"imp", "implicit_diff("},
+    {"par", "param_diff("},
+    {"2nd", "diff2("},
+};
+
+const CommandItem kIntegrateCommands[] = {
+    {"int", "int("},
+    {"de", "de_solve("},
+    {"param area", "param_int("},
+    {"defint", "defint("},
+    {"sub", "subst_int("},
+    {"parts", "parts_int("},
+};
+
+const CommandItem kTrigCommands[] = {
+    {"prove", "prove_trig("},
+    {"xform", "transform_trig("},
+    {"solve", "solve_trig("},
+    {"rw", "rewrite_trig("},
+    {"sin", "sin("},
+    {"cos", "cos("},
+    {"tan", "tan("},
+    {"asin", "asin("},
+    {"acos", "acos("},
+};
+
+const CommandItem kShellCommands[] = {
+    {"sqrt", "sqrt("},
+    {"abs", "abs("},
+    {"log", "log("},
+    {"ln", "ln("},
+    {"exp", "exp("},
+    {"pi", "pi"},
+    {"suvat", "suvat("},
+    {"ans", "ans"},
+};
+
+const FileItem kFileCommands[] = {
+    {"toggle DEG/RAD", FileToggleAngle},
+    {"clear input", FileClearInput},
+    {"clear shell", FileClearShell},
+    {"insert ans", FileInsertAns},
+};
+
+void add_shell_line(ShellLine *lines, int &count, const char *text)
+{
+    if(count >= kMaxShellLines) {
+        for(int i = 1; i < kMaxShellLines; i++) {
+            lines[i - 1].text.assign(lines[i].text.c_str());
+        }
+        count = kMaxShellLines - 1;
+    }
+    lines[count++].text.assign(text ? text : "");
+}
+
+void add_prompt_line(ShellLine *lines, int &count, const char *input)
+{
+    casio::device::FixedString<96> prompt;
+    prompt.append(input ? input : "");
+    prompt.append("=>");
+    add_shell_line(lines, count, prompt.c_str());
+}
+
+void clamp_top(int count, int selected, int &top)
+{
+    if(count <= casio::prizm::kShellVisibleRows) {
+        top = 0;
+        return;
+    }
+    if(selected >= 0) {
+        if(selected < top) top = selected;
+        if(selected >= top + casio::prizm::kShellVisibleRows) {
+            top = selected - (casio::prizm::kShellVisibleRows - 1);
+        }
+    }
+    else {
+        top = count - casio::prizm::kShellVisibleRows;
+    }
+    if(top < 0) top = 0;
+    if(top > count - casio::prizm::kShellVisibleRows) top = count - casio::prizm::kShellVisibleRows;
+}
+
+void shell_status(char *out, int capacity, bool degrees, bool uppercase)
+{
+    if(out == nullptr || capacity <= 0) return;
+    casio::device::FixedString<48> status;
+    status.append("CasioCAS ");
+    status.append(degrees ? "DEG" : "RAD");
+    status.append(uppercase ? " A-Z" : " a-z");
+    status.append(" session");
+    casio::device::copy_cstr(out, capacity, status.c_str());
+}
+
+void render_shell(ShellLine *lines, int count, int top, int selected,
+                  unsigned char *editor, int start, int cursor,
+                  bool degrees, bool uppercase)
+{
+    const char *ptrs[kMaxShellLines];
+    for(int i = 0; i < count; i++) ptrs[i] = lines[i].text.c_str();
+
+    char status[48];
+    shell_status(status, (int)sizeof(status), degrees, uppercase);
+    casio::prizm::draw_shell(status, ptrs, count, top, selected, editor, start, cursor,
+                             "algb", "diff", "int", "trig", "cmds", uppercase ? "A>a" : "a>A");
 }
 
 int select_menu(const char *title, const char *const *items, int count)
@@ -29,123 +187,221 @@ int select_menu(const char *title, const char *const *items, int count)
         GetKey(&key);
         if(key == KEY_CTRL_EXIT) return -1;
         if(key == KEY_CTRL_EXE) return selected;
+        if(key >= KEY_CHAR_1 && key <= KEY_CHAR_9) {
+            int index = key - KEY_CHAR_1;
+            if(index < count) return index;
+        }
         if(key == KEY_CTRL_UP && selected > 0) selected--;
         if(key == KEY_CTRL_DOWN && selected + 1 < count) selected++;
         if(selected < top) top = selected;
-        if(selected >= top + kVisibleRows) top = selected - (kVisibleRows - 1);
+        if(selected >= top + 5) top = selected - 4;
         casio::prizm::draw_menu(title, items, count, selected, top);
     }
 }
 
-void view_lines(const char *title, casio::device::OutputLines const &lines)
+template <int N>
+int select_command(const char *title, const CommandItem (&commands)[N])
 {
-    int top = 0;
-    
-    while(true) {
-        bool more_above = (top > 0);
-        bool more_below = (top + kVisibleRows) < lines.count();
-        casio::prizm::draw_lines(title, lines, top, more_above, more_below);
-        
-        int key = 0;
-        GetKey(&key);
-        if(key == KEY_CTRL_EXIT || key == KEY_CTRL_EXE) return;
-        if(key == KEY_CTRL_UP && top > 0) top--;
-        if(key == KEY_CTRL_DOWN && (top + kVisibleRows) < lines.count()) top++;
-    }
+    const char *labels[N];
+    for(int i = 0; i < N; i++) labels[i] = commands[i].label;
+    return select_menu(title, labels, N);
 }
 
-void run_module(const char *title, casio::device::Module module,
-                const char *initial, const char *help)
+template <int N>
+int select_file_command(const FileItem (&commands)[N])
 {
-    char input[128];
-    casio::device::copy_cstr(input, (int)sizeof(input), initial);
-    if(!casio::prizm::text_input(input, (int)sizeof(input), title, help)) return;
+    const char *labels[N];
+    for(int i = 0; i < N; i++) labels[i] = commands[i].label;
+    return select_menu("File", labels, N);
+}
 
-    // Validate input before solving
-    if(input[0] == '\0') {
-        casio::prizm::show_error("Please enter an expression.");
-        return;
-    }
+void insert_selected_line(ShellLine const *lines, int selected, unsigned char *editor, int &cursor)
+{
+    if(selected < 0) return;
+    const char *line = lines[selected].text.c_str();
+    const char *insert = line;
+    if(casio::device::starts_with(line, "Answer: ")) insert = line + 8;
 
-    casio::device::OutputLines lines;
-    bool success = casio::device::solve(module, input, lines);
-    
-    if(!success && lines.count() > 0) {
-        // Show error message
-        casio::device::FixedString<96> error_msg;
-        error_msg.append("Error: ");
-        error_msg.append(lines.line(0));
-        casio::prizm::show_error(error_msg.c_str());
-        return;
+    casio::device::FixedString<96> clean;
+    int n = casio::device::cstr_len(insert);
+    int end = n;
+    if(n >= 2 && insert[n - 2] == '=' && insert[n - 1] == '>') end = n - 2;
+    for(int i = 0; i < end; i++) clean.append_char(insert[i]);
+    casio::prizm::editor_insert_ascii(editor, kEditorCapacity, cursor, clean.c_str());
+}
+
+void run_shell_input(ShellLine *lines, int &count, const char *input)
+{
+    add_prompt_line(lines, count, input);
+
+    casio::device::OutputLines out;
+    bool ok = casio::device::solve(casio::device::Module::Shell, input, out);
+    for(int i = 0; i < out.count(); i++) add_shell_line(lines, count, out.line(i));
+    if(!ok && out.count() == 0) add_shell_line(lines, count, "Unsupported input.");
+}
+
+void insert_command(const CommandItem *items, int index, unsigned char *editor, int &cursor)
+{
+    if(items == nullptr || index < 0) return;
+    casio::prizm::editor_insert_ascii(editor, kEditorCapacity, cursor, items[index].insert);
+}
+
+void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees,
+                   ShellLine *lines, int &count)
+{
+    const char *groups[] = {
+        "Algebra",
+        "Differentiate",
+        "Integrate",
+        "Trig",
+        "Shell",
+        "File",
+    };
+    int group = select_menu("Commands", groups, count_of(groups));
+    if(group < 0) return;
+
+    if(group == 0) {
+        int c = select_command("Algebra", kAlgebraAllCommands);
+        insert_command(kAlgebraAllCommands, c, editor, cursor);
     }
-    
-    view_lines(title, lines);
+    else if(group == 1) {
+        int c = select_command("Differentiate", kDeriveCommands);
+        insert_command(kDeriveCommands, c, editor, cursor);
+    }
+    else if(group == 2) {
+        int c = select_command("Integrate", kIntegrateCommands);
+        insert_command(kIntegrateCommands, c, editor, cursor);
+    }
+    else if(group == 3) {
+        int c = select_command("Trig", kTrigCommands);
+        insert_command(kTrigCommands, c, editor, cursor);
+    }
+    else if(group == 4) {
+        int c = select_command("Shell", kShellCommands);
+        insert_command(kShellCommands, c, editor, cursor);
+    }
+    else if(group == 5) {
+        int c = select_file_command(kFileCommands);
+        if(c < 0) return;
+        int action = kFileCommands[c].action;
+        if(action == FileToggleAngle) {
+            degrees = !degrees;
+            add_shell_line(lines, count, degrees ? "Angle mode: DEG." : "Angle mode: RAD.");
+        }
+        else if(action == FileClearInput) {
+            casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
+            start = 0;
+            cursor = 0;
+        }
+        else if(action == FileClearShell) count = 0;
+        else if(action == FileInsertAns) casio::prizm::editor_insert_ascii(editor, kEditorCapacity, cursor, "ans");
+    }
 }
 
 }
 
 extern "C" int main(void)
 {
+    ShellLine lines[kMaxShellLines];
+    int line_count = 0;
+    int top = 0;
+    int selected = -1;
+    bool degrees = true;
+    bool uppercase = false;
+
+    unsigned char editor[kEditorCapacity];
+    casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
+    int input_start = 0;
+    int input_cursor = 0;
+
+    add_shell_line(lines, line_count, "CasioCAS shell ready.");
+    add_shell_line(lines, line_count, "Type solve(...), diff(...), int(...).");
+
     while(true) {
-        casio::prizm::draw_home();
+        clamp_top(line_count, selected, top);
+        render_shell(lines, line_count, top, selected, editor, input_start, input_cursor, degrees, uppercase);
 
         int key = 0;
         GetKey(&key);
+
         if(key == KEY_CTRL_EXIT) break;
-
-        int app = -1;
-        if(key == KEY_CTRL_F1) app = 0;  // SHELL
-        if(key == KEY_CTRL_F2) app = 1;  // SIMPLIFY
-        if(key == KEY_CTRL_F3) app = 2;  // ALGEBRA
-        if(key == KEY_CTRL_F4) app = 3;  // DERIVE
-        if(key == KEY_CTRL_F5) app = 4;  // INTEGRATE
-        if(key == KEY_CTRL_F6) app = 5;  // TRIG
-        if(key == KEY_CTRL_EXE) {
-            // Show menu with SUVAT option
-            const char *menu_items[] = {
-                "CAS Shell",
-                "Simplify",
-                "Algebra",
-                "Derive",
-                "Integrate",
-                "Trig",
-                "SUVAT",
-            };
-            app = select_menu("Tools", menu_items, count_of(menu_items));
+        if(key == KEY_CTRL_F1) {
+            int c = select_command("Algebra", kAlgebraCommands);
+            insert_command(kAlgebraCommands, c, editor, input_cursor);
+            selected = -1;
+            continue;
         }
-        if(app < 0) continue;
+        if(key == KEY_CTRL_F2) {
+            int c = select_command("Differentiate", kDeriveCommands);
+            insert_command(kDeriveCommands, c, editor, input_cursor);
+            selected = -1;
+            continue;
+        }
+        if(key == KEY_CTRL_F3) {
+            int c = select_command("Integrate", kIntegrateCommands);
+            insert_command(kIntegrateCommands, c, editor, input_cursor);
+            selected = -1;
+            continue;
+        }
+        if(key == KEY_CTRL_F4) {
+            int c = select_command("Trig", kTrigCommands);
+            insert_command(kTrigCommands, c, editor, input_cursor);
+            selected = -1;
+            continue;
+        }
+        if(key == KEY_CTRL_F5) {
+            open_commands(editor, input_cursor, input_start, degrees, lines, line_count);
+            selected = -1;
+            continue;
+        }
+        if(key == KEY_CTRL_F6) {
+            uppercase = !uppercase;
+            selected = -1;
+            continue;
+        }
 
-        switch(app) {
-            case 0:
-                run_module("CAS Shell", casio::device::Module::Shell, "2x+3=7", 
-                          "Enter: expr, eqn, diff(...), int(...)");
-                break;
-            case 1:
-                run_module("Simplify", casio::device::Module::Simplify, "2x+3-x+4", 
-                          "Linear/polynomial expression");
-                break;
-            case 2:
-                run_module("Algebra", casio::device::Module::Algebra, "2x+3=7", 
-                          "Linear or quadratic equation");
-                break;
-            case 3:
-                run_module("Derive", casio::device::Module::Derive, "3x^2+2x+1", 
-                          "Polynomial up to x^5");
-                break;
-            case 4:
-                run_module("Integrate", casio::device::Module::Integrate, "3x^2+2x+1", 
-                          "Polynomial up to x^5");
-                break;
-            case 5:
-                run_module("Trig", casio::device::Module::Trig, "sin(30)", 
-                          "Special angles or pi fractions");
-                break;
-            case 6:
-                run_module("SUVAT", casio::device::Module::Suvat, "s=10,u=0,v=?,a=2,t=5", 
-                          "Format: s=val, u=val, etc. Use ? for target");
-                break;
-            default:
-                break;
+        if(key == KEY_CTRL_UP) {
+            if(line_count > 0) {
+                if(selected < 0) selected = line_count - 1;
+                else if(selected > 0) selected--;
+            }
+            continue;
+        }
+        if(key == KEY_CTRL_DOWN) {
+            if(selected >= 0 && selected + 1 < line_count) selected++;
+            else selected = -1;
+            continue;
+        }
+
+        if(key == KEY_CTRL_EXE) {
+            if(selected >= 0) {
+                insert_selected_line(lines, selected, editor, input_cursor);
+                selected = -1;
+                continue;
+            }
+
+            char input[128];
+            casio::prizm::editor_to_ascii(editor, input, (int)sizeof(input), uppercase);
+            if(input[0] != '\0') {
+                run_shell_input(lines, line_count, input);
+                casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
+                input_start = 0;
+                input_cursor = 0;
+            }
+            continue;
+        }
+
+        selected = -1;
+        if(key == KEY_CTRL_AC) {
+            casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
+            input_start = 0;
+            input_cursor = 0;
+        }
+        else if(key && key < 30000) {
+            input_cursor = EditMBStringChar(editor, kEditorCapacity, input_cursor, key);
+        }
+        else {
+            EditMBStringCtrl(editor, kEditorCapacity, &input_start, &input_cursor, &key, 2, 6);
         }
     }
 

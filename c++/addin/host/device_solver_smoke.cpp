@@ -36,6 +36,10 @@ int main()
     ok = check(casio::device::Module::Simplify, "x^2+2x+x^2", "Answer: 2x^2 + 2x") && ok;
     ok = check(casio::device::Module::Shell, "diff(x^2)", "Answer: dy/dx = 2x") && ok;
     ok = check(casio::device::Module::Shell, "int(x^2)", "Answer: x^3/3 + C") && ok;
+    ok = check(casio::device::Module::Shell, "solve(2x+3=7)", "Answer: x = 2") && ok;
+    ok = check(casio::device::Module::Shell, "simplify(2x+3-x+4)", "Answer: x + 7") && ok;
+    ok = check(casio::device::Module::Shell, "trig(sin(30))", "Answer: 1/2") && ok;
+    ok = check(casio::device::Module::Shell, "suvat(s=10,u=0,v=?,a=2,t=5)", "Answer: v = 10") && ok;
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-2=0", "sqrt(8)") && ok;

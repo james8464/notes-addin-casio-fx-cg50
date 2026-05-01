@@ -878,8 +878,12 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
     }
     inner[n] = '\0';
 
+    if(target == Module::Simplify) return solve_simplify(inner, out);
+    if(target == Module::Algebra) return solve_algebra(inner, out);
     if(target == Module::Derive) return solve_derive(inner, out);
     if(target == Module::Integrate) return solve_integrate(inner, out);
+    if(target == Module::Trig) return solve_trig(inner, out);
+    if(target == Module::Suvat) return solve_suvat(inner, out);
     out.add("Unsupported shell call.");
     return false;
 }
@@ -896,8 +900,19 @@ bool solve(Module module, const char *input, OutputLines &out)
 
     switch(module) {
         case Module::Shell:
+            if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
+            if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
+            if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);
+            if(starts_with(input, "linear(")) return solve_wrapped_call(input, "linear(", Module::Algebra, out);
+            if(starts_with(input, "quad(")) return solve_wrapped_call(input, "quad(", Module::Algebra, out);
             if(starts_with(input, "diff(")) return solve_wrapped_call(input, "diff(", Module::Derive, out);
+            if(starts_with(input, "derive(")) return solve_wrapped_call(input, "derive(", Module::Derive, out);
             if(starts_with(input, "int(")) return solve_wrapped_call(input, "int(", Module::Integrate, out);
+            if(starts_with(input, "integrate(")) return solve_wrapped_call(input, "integrate(", Module::Integrate, out);
+            if(starts_with(input, "trig(")) return solve_wrapped_call(input, "trig(", Module::Trig, out);
+            if(starts_with(input, "solve_trig(")) return solve_wrapped_call(input, "solve_trig(", Module::Trig, out);
+            if(starts_with(input, "suvat(")) return solve_wrapped_call(input, "suvat(", Module::Suvat, out);
+            if(starts_with(input, "sin(") || starts_with(input, "cos(") || starts_with(input, "tan(")) return solve_trig(input, out);
             if(find_char(input, '=') >= 0) return solve_algebra(input, out);
             return solve_simplify(input, out);
         case Module::Simplify: return solve_simplify(input, out);

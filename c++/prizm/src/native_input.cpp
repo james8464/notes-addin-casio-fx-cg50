@@ -43,7 +43,7 @@ void append_char(char *buffer, int capacity, int &length, char c)
     buffer[length] = '\0';
 }
 
-bool translate_editor_buffer(const unsigned char *editor, char *out, int capacity)
+bool translate_editor_buffer(const unsigned char *editor, char *out, int capacity, bool uppercase)
 {
     if(editor == nullptr || out == nullptr || capacity <= 0) return false;
     int length = 0;
@@ -52,8 +52,8 @@ bool translate_editor_buffer(const unsigned char *editor, char *out, int capacit
         unsigned char c = editor[i];
 
         if(c >= '0' && c <= '9') append_char(out, capacity, length, (char)c);
-        else if(c >= 'A' && c <= 'Z') append_char(out, capacity, length, (char)(c - 'A' + 'a'));
-        else if(c >= 'a' && c <= 'z') append_char(out, capacity, length, (char)c);
+        else if(c >= 'A' && c <= 'Z') append_char(out, capacity, length, uppercase ? (char)c : (char)(c - 'A' + 'a'));
+        else if(c >= 'a' && c <= 'z') append_char(out, capacity, length, uppercase ? (char)(c - 'a' + 'A') : (char)c);
         else if(c == (unsigned char)KEY_CHAR_SPACE) append_char(out, capacity, length, ' ');
         else if(c == (unsigned char)KEY_CHAR_DP) append_char(out, capacity, length, '.');
         else if(c == (unsigned char)KEY_CHAR_PLUS) append_char(out, capacity, length, '+');
@@ -116,6 +116,24 @@ void draw_input(const char *title, const char *help, unsigned char *buffer, int 
 
 }
 
+void editor_from_ascii(unsigned char *editor, int capacity, const char *text)
+{
+    if(editor == nullptr || capacity <= 0) return;
+    for(int i = 0; i < capacity; i++) editor[i] = 0;
+    int cursor = 0;
+    insert_ascii(editor, capacity, cursor, text);
+}
+
+void editor_insert_ascii(unsigned char *editor, int capacity, int &cursor, const char *text)
+{
+    insert_ascii(editor, capacity, cursor, text);
+}
+
+bool editor_to_ascii(const unsigned char *editor, char *out, int capacity, bool uppercase)
+{
+    return translate_editor_buffer(editor, out, capacity, uppercase);
+}
+
 void show_error(const char *message)
 {
     init_native_screen("Error");
@@ -166,7 +184,7 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
         GetKey(&key);
 
         if(key == KEY_CTRL_EXIT) return false;
-        if(key == KEY_CTRL_EXE) return translate_editor_buffer(editor, buffer, capacity);
+        if(key == KEY_CTRL_EXE) return translate_editor_buffer(editor, buffer, capacity, false);
         if(key == KEY_CTRL_AC) {
             start = 0;
             cursor = 0;

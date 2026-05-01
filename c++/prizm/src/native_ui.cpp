@@ -3,6 +3,7 @@
 #include "device/fixed_string.hpp"
 
 #include <fxcg/display.h>
+#include <fxcg/keyboard.h>
 
 namespace casio::prizm
 {
@@ -10,6 +11,9 @@ namespace
 {
 
 constexpr int kContentRows = 5;
+constexpr int kFKeyTop = 168;
+constexpr int kFKeyBottom = 191;
+constexpr int kFKeyWidth = 64;
 
 void print_at(int col, int row, const char *text, int mode = TEXT_MODE_NORMAL, int color = TEXT_COLOR_BLACK)
 {
@@ -22,6 +26,14 @@ void print_at(int col, int row, const char *text, int mode = TEXT_MODE_NORMAL, i
 void print_line(int row, const char *text, int mode = TEXT_MODE_NORMAL, int color = TEXT_COLOR_BLACK)
 {
     print_at(1, row, text, mode, color);
+}
+
+void print_mini_at(int x, int y, const char *text, int color, int back_color)
+{
+    int px = x;
+    int py = y;
+    PrintMini(&px, &py, text ? text : "", TEXT_MODE_TRANSPARENT_BACKGROUND, 0xffffffff,
+              0, 0, color, back_color, 1, 0);
 }
 
 }
@@ -50,12 +62,17 @@ void draw_status_line(const char *text)
 void draw_softkeys(const char *k1, const char *k2, const char *k3,
                    const char *k4, const char *k5, const char *k6)
 {
-    print_at(1, 7, k1 ? k1 : "", TEXT_MODE_INVERT);
-    print_at(4, 7, k2 ? k2 : "", TEXT_MODE_INVERT);
-    print_at(7, 7, k3 ? k3 : "", TEXT_MODE_INVERT);
-    print_at(10, 7, k4 ? k4 : "", TEXT_MODE_INVERT);
-    print_at(13, 7, k5 ? k5 : "", TEXT_MODE_INVERT);
-    print_at(16, 7, k6 ? k6 : "", TEXT_MODE_INVERT);
+    const char *labels[6] = {k1, k2, k3, k4, k5, k6};
+    Bdisp_FilledRectangle(0, kFKeyTop, LCD_WIDTH_PX - 1, kFKeyBottom, TEXT_COLOR_BLACK);
+    for(int i = 1; i < 6; i++) {
+        Bdisp_FilledRectangle(i * kFKeyWidth - 1, kFKeyTop + 2, i * kFKeyWidth, kFKeyBottom - 2, TEXT_COLOR_WHITE);
+    }
+    for(int i = 0; i < 6; i++) {
+        const char *text = labels[i] ? labels[i] : "";
+        int x = i * kFKeyWidth + 14;
+        if(text[0] != '\0' && text[1] != '\0' && text[2] != '\0' && text[3] != '\0') x = i * kFKeyWidth + 10;
+        print_mini_at(x, 196, text, 0xffff, 0x0000);
+    }
 }
 
 void draw_home(void)
@@ -89,6 +106,23 @@ void draw_menu(const char *title, const char *const *items, int count, int selec
     if(top > 0 || has_more) draw_status_line(nav.c_str());
     
     draw_softkeys("SEL", "UP", "DOWN", "", "", "EXIT");
+    Bdisp_PutDisp_DD();
+}
+
+void draw_shell(const char *status, const char *const *lines, int count, int top, int selected,
+                unsigned char *input, int input_start, int input_cursor,
+                const char *k1, const char *k2, const char *k3,
+                const char *k4, const char *k5, const char *k6)
+{
+    init_native_screen(status);
+    for(int row = 0; row < kShellVisibleRows; row++) {
+        int index = top + row;
+        if(index >= count) break;
+        print_line(row + 2, lines[index], index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
+    }
+    print_line(6, ">");
+    DisplayMBString(input, input_start, input_cursor, 2, 6);
+    draw_softkeys(k1, k2, k3, k4, k5, k6);
     Bdisp_PutDisp_DD();
 }
 
