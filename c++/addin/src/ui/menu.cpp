@@ -57,7 +57,7 @@ int menu_select(const char *title, MenuItem const *items, int count, int start_i
     draw_menu(title, items, count, sel, top);
 
     while(true) {
-        key_event_t ev = getkey();
+        key_event_t ev = wait_key_with_live_status(title, "RAD");
         if(ev.type != KEYEV_DOWN) continue;
         if(ev.key == KEY_EXIT) return -1;
         if(ev.key == KEY_EXE) return sel;

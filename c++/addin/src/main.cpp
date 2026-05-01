@@ -96,7 +96,7 @@ static void view_lines(const char *title, casio::device::OutputLines const &line
         casio::ui::draw_softkeys("BACK", "PGUP", "PGDN", "", "", "EXIT");
         dupdate();
 
-        key_event_t event = getkey();
+        key_event_t event = casio::ui::wait_key_with_live_status(title, "WORK");
         if(event.type != KEYEV_DOWN) continue;
         if(event.key == KEY_EXIT || event.key == KEY_EXE) return;
         if(event.key == KEY_UP) {
@@ -151,7 +151,7 @@ int main(void)
 
     draw_home();
     while(true) {
-        key_event_t event = getkey();
+        key_event_t event = casio::ui::wait_key_with_live_status("CasioCAS", "RAD");
         if(event.type != KEYEV_DOWN) continue;
         if(event.key == KEY_EXIT) break;
 

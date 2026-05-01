@@ -1,11 +1,11 @@
 # Graph Report - .  (2026-05-01)
 
 ## Corpus Check
-- 100 files · ~406,351 words
+- 100 files · ~406,463 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2772 nodes · 11664 edges · 40 communities detected
+- 2775 nodes · 11670 edges · 40 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 37 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -77,7 +77,7 @@ Nodes (63): casio_hw_sim_from_env(), cheap_same(), compact_duplicate_answer_line
 
 ### Community 10 - "Community 10"
 Cohesion: 0.08
-Nodes (30): FixedString, is_alpha(), lower_ascii(), LineBuffer, draw_menu(), menu_select(), alpha_key_to_text(), draw_input() (+22 more)
+Nodes (33): FixedString, is_alpha(), lower_ascii(), LineBuffer, draw_menu(), menu_select(), alpha_key_to_text(), draw_input() (+25 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.13
@@ -173,11 +173,11 @@ Nodes (1): BoundedCache
 
 ### Community 34 - "Community 34"
 Cohesion: 0.67
-Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
+Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
 
 ### Community 35 - "Community 35"
 Cohesion: 0.67
-Nodes (3): numeric_eval(), Numeric evaluation for prove/show mode with degree support., Numeric evaluation for prove/show mode with degree support.
+Nodes (3): format_equation_human_readable(), Format an equation node into a human-readable string with clear operator precede, Format an equation node into a human-readable string with clear operator precede
 
 ### Community 36 - "Community 36"
 Cohesion: 1.0
@@ -211,7 +211,7 @@ Nodes (0):
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `CASIOApp` connect `Community 2` to `Community 8`?**
-  _High betweenness centrality (0.109) - this node is a cross-community bridge._
+  _High betweenness centrality (0.108) - this node is a cross-community bridge._
 - **Why does `TransformRegressionTests` connect `Community 8` to `Community 2`?**
   _High betweenness centrality (0.031) - this node is a cross-community bridge._
 - **Why does `LLMManager` connect `Community 2` to `Community 8`?**
