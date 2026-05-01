@@ -176,6 +176,27 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             NodeId den = casio::add(a, {one, u2});
             return casio::simplify(a, casio::div(a, up, den));
         }
+        case FnKind::Asinh: {
+            // d/dx asinh(u) = u'/sqrt(u^2+1)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = a.fn(FnKind::Sqrt, casio::add(a, {u2, one}));
+            return casio::simplify(a, casio::div(a, up, den));
+        }
+        case FnKind::Acosh: {
+            // d/dx acosh(u) = u'/sqrt(u^2-1)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = a.fn(FnKind::Sqrt, casio::add(a, {u2, casio::neg(a, one)}));
+            return casio::simplify(a, casio::div(a, up, den));
+        }
+        case FnKind::Atanh: {
+            // d/dx atanh(u) = u'/(1-u^2)
+            NodeId one = casio::num(a, 1);
+            NodeId u2 = casio::power(a, u, casio::num(a, 2));
+            NodeId den = casio::add(a, {one, casio::neg(a, u2)});
+            return casio::simplify(a, casio::div(a, up, den));
+        }
         default:
             return casio::num(a, 0);
         }

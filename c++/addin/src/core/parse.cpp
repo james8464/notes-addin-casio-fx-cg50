@@ -119,10 +119,13 @@ struct Parser
         if(name == "arcsin") name = "asin";
         if(name == "arccos") name = "acos";
         if(name == "arctan") name = "atan";
-
+        if(name == "arcsinh") name = "asinh";
+        if(name == "arccosh") name = "acosh";
+        if(name == "arctanh") name = "atanh";
+        
         if(name == "pi") return constant_pi(a);
         if(name == "e") return constant_e(a);
-
+        
         auto is_func = [&](std::string const &n) {
             static const char *funcs[] = {
                 "sin","cos","tan","sec","cosec","cot",

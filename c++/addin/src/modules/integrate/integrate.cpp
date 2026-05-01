@@ -325,10 +325,43 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
             }
         }
         if(x.fkind == FnKind::Tan) {
-            // ∫ tan(x) dx = -ln|cos(x)|  (affine not yet)
+            // ∫ tan(kx+b) dx = -ln|cos(kx+b)|/k
+            if(auto aff = match_affine(a, arg, var)) {
+                NodeId coeff = casio::div(a, casio::num(a, -1), aff->k);
+                NodeId ln = casio::fn(a, "log", casio::fn(a, "abs", a.fn(FnKind::Cos, arg)));
+                return casio::simplify(a, casio::mul(a, {coeff, ln}));
+            }
+            // ∫ tan(x) dx = -ln|cos(x)|
             if(is_sym(a, arg, var)) {
                 NodeId c = a.fn(FnKind::Cos, arg);
                 return casio::neg(a, casio::fn(a, "log", casio::fn(a, "abs", c)));
+            }
+        }
+        if(x.fkind == FnKind::Cot) {
+            // ∫ cot(kx+b) dx = ln|sin(kx+b)|/k
+            if(auto aff = match_affine(a, arg, var)) {
+                NodeId coeff = casio::div(a, casio::num(a, 1), aff->k);
+                NodeId ln = casio::fn(a, "log", casio::fn(a, "abs", a.fn(FnKind::Sin, arg)));
+                return casio::simplify(a, casio::mul(a, {coeff, ln}));
+            }
+            // ∫ cot(x) dx = ln|sin(x)|
+            if(is_sym(a, arg, var)) {
+                NodeId s = a.fn(FnKind::Sin, arg);
+                return casio::fn(a, "log", casio::fn(a, "abs", s));
+            }
+        }
+        if(x.fkind == FnKind::Sec) {
+            // ∫ sec(x) dx = ln|sec(x) + tan(x)|
+            if(is_sym(a, arg, var)) {
+                NodeId sec_plustan = casio::add(a, {a.fn(FnKind::Sec, arg), a.fn(FnKind::Tan, arg)});
+                return casio::fn(a, "log", casio::fn(a, "abs", sec_plustan));
+            }
+        }
+        if(x.fkind == FnKind::Cosec) {
+            // ∫ cosec(x) dx = ln|csc(x) - cot(x)|
+            if(is_sym(a, arg, var)) {
+                NodeId csc_minus_cot = casio::add(a, {a.fn(FnKind::Cosec, arg), casio::neg(a, a.fn(FnKind::Cot, arg))});
+                return casio::fn(a, "log", casio::fn(a, "abs", csc_minus_cot));
             }
         }
         if(x.fkind == FnKind::Log && is_sym(a, arg, var)) {
@@ -338,7 +371,33 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
             return casio::simplify(a, casio::add(a, {xlnx, casio::neg(a, v)}));
         }
     }
-
+    
+    // ∫ 1/(x^2 + a^2) dx = (1/a) * atan(x/a)
+    if(x.kind == NodeKind::Pow && as_num(a, x.b) && as_num(a, x.b)->num == -1) {
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Add && base.kids.size() == 2) {
+            // Check for form: a^2 + x^2 or x^2 + a^2
+            for(int swap = 0; swap < 2; swap++) {
+                NodeId t0 = base.kids[swap];
+                NodeId t1 = base.kids[1-swap];
+                Node const &t0_node = a.get(t0);
+                Node const &t1_node = a.get(t1);
+                // t0 should be x^2, t1 should be a^2
+                if(t0_node.kind == NodeKind::Pow && is_sym(a, t0_node.a, var) && 
+                   as_num(a, t0_node.b) && as_num(a, t0_node.b)->num == 2) {
+                    auto a2 = as_num(a, t1);
+                    if(a2 && a2->num > 0) {
+                        NodeId a_val = casio::num(a, a2->num);
+                        NodeId a_sqrt = a.fn(FnKind::Sqrt, a_val);
+                        NodeId coeff = casio::div(a, casio::num(a, 1), a_sqrt);
+                        NodeId atan = a.fn(FnKind::Atan, casio::div(a, casio::sym(a, var), a_sqrt));
+                        return casio::simplify(a, casio::mul(a, {coeff, atan}));
+                    }
+                }
+            }
+        }
+    }
+    
     // Special trig products/powers
     if(x.kind == NodeKind::Pow && a.get(x.a).kind == NodeKind::Fn) {
         auto const &f = a.get(x.a);
@@ -354,6 +413,27 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
                 // ∫ tan^2 x dx = tan x - x
                 NodeId v = casio::sym(a, var);
                 return casio::simplify(a, casio::add(a, {a.fn(FnKind::Tan, arg), casio::neg(a, v)}));
+            }
+            if(f.fkind == FnKind::Cot && is_sym(a, arg, var)) {
+                // ∫ cot^2 x dx = -cot x - x
+                NodeId v = casio::sym(a, var);
+                return casio::simplify(a, casio::add(a, {casio::neg(a, a.fn(FnKind::Cot, arg)), casio::neg(a, v)}));
+            }
+        }
+        // sec^2(x), cosec^2(x)
+        if(x.kind == NodeKind::Pow && a.get(x.a).kind == NodeKind::Fn) {
+            auto const &f = a.get(x.a);
+            auto nrat = as_num(a, x.b);
+            if(nrat && nrat->num == 2 && nrat->den == 1) {
+                NodeId arg = f.a;
+                if(f.fkind == FnKind::Sec && is_sym(a, arg, var)) {
+                    // ∫ sec^2(x) dx = tan(x)
+                    return a.fn(FnKind::Tan, arg);
+                }
+                if(f.fkind == FnKind::Cosec && is_sym(a, arg, var)) {
+                    // ∫ cosec^2(x) dx = -cot(x)
+                    return casio::neg(a, a.fn(FnKind::Cot, arg));
+                }
             }
         }
     }
@@ -437,78 +517,109 @@ static std::optional<NodeId> integrate_simple(Arena &a, NodeId expr, std::string
             }
         }
         
-        // x * exp(x) - one integration by parts
+        // x * exp(x) - integration by parts
         if((n0.kind == NodeKind::Sym && n0.text == var && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Exp) ||
            (n1.kind == NodeKind::Sym && n1.text == var && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Exp)) {
-            if(is_sym(a, n0.text == var ? n1.a : n0.a, var)) {
+            NodeId the_exp = (n0.kind == NodeKind::Fn) ? n0 : n1;
+            if(is_sym(a, the_exp.a, var)) {
                 NodeId sym_x = casio::sym(a, var);
                 NodeId term1 = casio::mul(a, {sym_x, a.fn(FnKind::Exp, sym_x)});
-                NodeId term2 = casio::neg(a, a.fn(FnKind::Exp, sym_x));
-                return casio::simplify(a, casio::add(a, {term1, term2}));
+                NodeId term2 = a.fn(FnKind::Exp, sym_x);
+                return casio::simplify(a, casio::add(a, {term1, casio::neg(a, term2)}));
             }
         }
         
-        // exp(x) * sin(x)
-        if((n0.kind == NodeKind::Fn && n0.fkind == FnKind::Exp && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Sin) ||
-           (n1.kind == NodeKind::Fn && n1.fkind == FnKind::Exp && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Sin)) {
-            if(is_sym(a, n0.fkind == FnKind::Exp ? n0.a : n1.a, var)) {
-                NodeId sym_x = casio::sym(a, var);
-                NodeId term = casio::add(a, {a.fn(FnKind::Sin, sym_x), casio::neg(a, a.fn(FnKind::Cos, sym_x))});
-                NodeId result = casio::mul(a, {a.fn(FnKind::Exp, sym_x), term});
-                NodeId half = casio::num(a, 1, 2);
-                return casio::simplify(a, casio::div(a, result, half));
+        // x * exp(a*x) pattern (a > 1)
+        if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+            Node const &n0 = a.get(x.kids[0]);
+            Node const &n1 = a.get(x.kids[1]);
+            // x^n * sin(x)
+            if((n0.kind == NodeKind::Pow && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Sin) ||
+               (n1.kind == NodeKind::Pow && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Sin)) {
+                Node const &pow = n0.kind == NodeKind::Pow ? n0 : n1;
+                Node const &fn = n0.kind == NodeKind::Fn ? n0 : n1;
+                if(is_sym(a, pow.a, var) && is_sym(a, fn.a, var)) {
+                    auto n = as_num(a, pow.b);
+                    if(n && n->den == 1 && n->num >= 1) {
+                        // ∫ x^n sin(x) dx = -x^n cos(x) + n ∫ x^(n-1) cos(x) dx
+                        NodeId sym_x = casio::sym(a, var);
+                        NodeId neg_cos = casio::neg(a, a.fn(FnKind::Cos, sym_x));
+                        NodeId xn_fact = casio::power(a, sym_x, a.num(*n));
+                        NodeId term1 = casio::mul(a, {xn_fact, neg_cos});
+                        // Recursively integrate x^(n-1) * cos(x)
+                        NodeId xn1 = casio::power(a, sym_x, casio::num(a, n->num - 1));
+                        NodeId xn1_cos = casio::mul(a, {xn1, a.fn(FnKind::Cos, sym_x)});
+                        auto prim = integrate_simple(a, xn1_cos, var);
+                        if(prim) {
+                            NodeId n_node = a.num(*n);
+                            NodeId term2 = casio::mul(a, {n_node, *prim});
+                            return casio::simplify(a, casio::add(a, {term1, term2}));
+                        }
+                    }
+                }
             }
-        }
-        
-        // exp(x) * cos(x)
-        if((n0.kind == NodeKind::Fn && n0.fkind == FnKind::Exp && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Cos) ||
-           (n1.kind == NodeKind::Fn && n1.fkind == FnKind::Exp && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Cos)) {
-            if(is_sym(a, n0.fkind == FnKind::Exp ? n0.a : n1.a, var)) {
-                NodeId sym_x = casio::sym(a, var);
-                NodeId term = casio::add(a, {a.fn(FnKind::Sin, sym_x), a.fn(FnKind::Cos, sym_x)});
-                NodeId result = casio::mul(a, {a.fn(FnKind::Exp, sym_x), term});
-                NodeId half = casio::num(a, 1, 2);
-                return casio::simplify(a, casio::div(a, result, half));
-            }
-        }
-        
-        // x * log(x)
-        if((n0.kind == NodeKind::Sym && n0.text == var && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Log) ||
-           (n1.kind == NodeKind::Sym && n1.text == var && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Log)) {
-            if(is_sym(a, n0.text == var ? n1.a : n0.a, var)) {
-                NodeId sym_x = casio::sym(a, var);
-                NodeId x2 = casio::power(a, sym_x, casio::num(a, 2));
-                NodeId half = casio::num(a, 1, 2);
-                NodeId x2_half = casio::mul(a, {half, x2});
-                NodeId one_half = casio::num(a, -1, 2);
-                NodeId lnm = casio::add(a, {a.fn(FnKind::Log, sym_x), one_half});
-                return casio::simplify(a, casio::mul(a, {x2_half, lnm}));
-            }
-        }
-        
-        // x^2 * log(x)
-        if((n0.kind == NodeKind::Pow && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Log) ||
-           (n1.kind == NodeKind::Pow && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Log)) {
-            Node const &pow = n0.kind == NodeKind::Pow ? n0 : n1;
-            Node const &fn = n0.kind == NodeKind::Fn ? n0 : n1;
-            if(is_sym(a, pow.a, var) && is_sym(a, fn.a, var)) {
-                auto n = as_num(a, pow.b);
-                if(n && n->den == 1 && n->num >= 1) {
-                    NodeId sym_x = casio::sym(a, var);
-                    Rational np1;
-                    np1.num = n->num + 1;
-                    np1.den = 1;
-                    np1.normalize();
-                    NodeId xnp1 = casio::power(a, sym_x, a.num(np1));
-                    NodeId coeff = a.num(np1);
-                    NodeId term = casio::add(a, {a.fn(FnKind::Log, sym_x), casio::neg(a, coeff)});
-                    NodeId result = casio::mul(a, {xnp1, term});
-                    NodeId add_term = casio::num(a, 1, np1.num * np1.num);
-                    return casio::simplify(a, casio::add(a, {result, add_term}));
+            // x^n * cos(x)
+            if((n0.kind == NodeKind::Pow && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Cos) ||
+               (n1.kind == NodeKind::Pow && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Cos)) {
+                Node const &pow = n0.kind == NodeKind::Pow ? n0 : n1;
+                Node const &fn = n0.kind == NodeKind::Fn ? n0 : n1;
+                if(is_sym(a, pow.a, var) && is_sym(a, fn.a, var)) {
+                    auto n = as_num(a, pow.b);
+                    if(n && n->den == 1 && n->num >= 1) {
+                        // ∫ x^n cos(x) dx = x^n sin(x) - n ∫ x^(n-1) sin(x) dx
+                        NodeId sym_x = casio::sym(a, var);
+                        NodeId xn_fact = casio::power(a, sym_x, a.num(*n));
+                        NodeId term1 = casio::mul(a, {xn_fact, a.fn(FnKind::Sin, sym_x)});
+                        NodeId xn1 = casio::power(a, sym_x, casio::num(a, n->num - 1));
+                        NodeId xn1_sin = casio::mul(a, {xn1, a.fn(FnKind::Sin, sym_x)});
+                        auto prim = integrate_simple(a, xn1_sin, var);
+                        if(prim) {
+                            NodeId n_node = a.num(*n);
+                            NodeId term2 = casio::mul(a, {n_node, *prim});
+                            return casio::simplify(a, casio::add(a, {term1, casio::neg(a, term2)}));
+                        }
+                    }
                 }
             }
         }
-    }
+        
+        // x * exp(a*x) pattern
+        if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+            Node const &n0 = a.get(x.kids[0]);
+            Node const &n1 = a.get(x.kids[1]);
+            if((n0.kind == NodeKind::Sym && n0.text == var && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Exp) ||
+               (n1.kind == NodeKind::Sym && n1.text == var && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Exp)) {
+                NodeId arg = (n0.kind == NodeKind::Sym) ? n1.a : n0.a;
+                if(is_sym(a, arg, var)) {
+                    NodeId sym_x = casio::sym(a, var);
+                    NodeId term1 = casio::mul(a, {sym_x, a.fn(FnKind::Exp, sym_x)});
+                    NodeId term2 = a.fn(FnKind::Exp, sym_x);
+                    return casio::simplify(a, casio::add(a, {term1, casio::neg(a, term2)}));
+                }
+            }
+        }
+        // x * exp(a*x) pattern (a > 1)
+        if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+            Node const &n0 = a.get(x.kids[0]);
+            Node const &n1 = a.get(x.kids[1]);
+            if((n0.kind == NodeKind::Sym && n0.text == var && n1.kind == NodeKind::Pow) ||
+               (n1.kind == NodeKind::Sym && n1.text == var && n0.kind == NodeKind::Pow)) {
+                Node const &pow = n0.kind == NodeKind::Pow ? n0 : n1;
+                Node const &base = a.get(pow.a);
+                if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+                    auto n = as_num(a, pow.b);
+                    if(n && n->den == 1 && n->num > 1) {
+                        // e^(ax) = exp(a*x), integrate by parts once
+                        NodeId sym_x = casio::sym(a, var);
+                        NodeId a_val = a.num(*n);
+                        NodeId exp_ax = a.fn(FnKind::Exp, casio::mul(a, {a_val, sym_x}));
+                        NodeId x_exp = casio::mul(a, {sym_x, exp_ax});
+                        NodeId div_a = casio::div(a, exp_ax, a_val);
+                        return casio::simplify(a, casio::add(a, {x_exp, casio::neg(a, div_a)}));
+                    }
+                }
+            }
+        }
 
     return std::nullopt;
 }
