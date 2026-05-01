@@ -13,6 +13,7 @@ docker build \
 echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
+rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
 rm -rf "${ROOT_DIR}/c++/prizm/build"
 mkdir -p "${ROOT_DIR}/c++/prizm/build"
 
@@ -25,23 +26,32 @@ docker run --rm \
   bash -lc '
     echo "FXCGSDK=$FXCGSDK"
     sh3eb-elf-g++ --version | head -1
+    mkg3a -h | head -1
     make clean
     make -j"$(nproc)"
   '
 
 echo ""
-echo "=== Moving .bin to build directory ==="
+echo "=== Moving outputs to build directory ==="
+if [ -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a" ]; then
+  mv "${ROOT_DIR}/c++/prizm/CasioCAS.g3a" "${ROOT_DIR}/c++/prizm/build/CasioCAS.g3a"
+fi
 if [ -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin" ]; then
   mv "${ROOT_DIR}/c++/prizm/CasioCAS.bin" "${ROOT_DIR}/c++/prizm/build/CasioCAS.bin"
 fi
 
 echo ""
 echo "=== Build Results ==="
-if [ -f "${ROOT_DIR}/c++/prizm/build/CasioCAS.bin" ]; then
-  ls -lh "${ROOT_DIR}/c++/prizm/build/CasioCAS.bin"
-  echo "Output (binary): ${ROOT_DIR}/c++/prizm/build/CasioCAS.bin"
-  echo "[Note: .g3a packaging requires mkg3a, to be integrated in Phase 10]"
+if [ -f "${ROOT_DIR}/c++/prizm/build/CasioCAS.g3a" ]; then
+  ls -lh "${ROOT_DIR}/c++/prizm/build/CasioCAS.g3a"
+  echo "Output (packaged): ${ROOT_DIR}/c++/prizm/build/CasioCAS.g3a"
 else
-  echo "No Prizm .bin produced"
-  exit 1
+  echo "Checking for .bin..."
+  if [ -f "${ROOT_DIR}/c++/prizm/build/CasioCAS.bin" ]; then
+    ls -lh "${ROOT_DIR}/c++/prizm/build/CasioCAS.bin"
+    echo "Output (binary): ${ROOT_DIR}/c++/prizm/build/CasioCAS.bin"
+  else
+    echo "No Prizm output produced"
+    exit 1
+  fi
 fi

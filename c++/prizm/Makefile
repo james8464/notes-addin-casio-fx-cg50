@@ -12,6 +12,9 @@ SOURCES := src ../addin/src/device
 DATA :=
 INCLUDES := src ../addin/src
 
+# Icon paths relative to build directory ($(OUTPUT) is absolute)
+MKG3AFLAGS := -n basic:CasioCAS -i uns:../assets/unselected.bmp -i sel:../assets/selected.bmp
+
 CFLAGS := -Os -Wall -Wextra -Wno-unused-parameter $(MACHDEP) $(INCLUDE) \
   -ffunction-sections -fdata-sections -DTARGET_PRIZM=1 -DCASIO_DEVICE=1
 
@@ -57,11 +60,13 @@ $(BUILD):
 clean:
 	rm -rf $(BUILD)
 	rm -f $(OUTPUT).bin
+	rm -f $(OUTPUT).g3a
 
 else
 
 DEPENDS := $(OFILES:.o=.d)
 
+$(OUTPUT).g3a: $(OUTPUT).bin
 $(OUTPUT).bin: $(OFILES)
 
 -include $(DEPENDS)

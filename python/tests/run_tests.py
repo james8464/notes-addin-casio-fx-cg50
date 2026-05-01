@@ -2865,7 +2865,7 @@ class CASIOApp(App):
                         summary("Compile failed")
                         return
                     log("[dim]--- Verifying outputs (PrizmSDK) ---[/dim]")
-                    g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.bin"))
+                    g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.g3a"))
                 elif build_mode == "docker":
                     docker_build = [
                         "docker", "build", "--progress=plain",

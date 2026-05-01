@@ -1,18 +1,21 @@
-FROM ubuntu:24.04 AS prereqs
+FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
+    cmake \
     curl \
     git \
     libgmp-dev \
     libmpc-dev \
     libmpfr-dev \
+    libpng-dev \
     make \
     patch \
     pkg-config \
+    python3 \
     texinfo \
     xz-utils \
     bzip2 \
@@ -22,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY c++/third_party/_archives/binutils-2.34.tar.bz2 /tmp/binutils-2.34.tar.bz2
 COPY c++/third_party/_archives/gcc-10.1.0.tar.xz /tmp/gcc-10.1.0.tar.xz
 COPY c++/third_party/_archives/libfxcg-master.tar.gz /tmp/libfxcg-master.tar.gz
+COPY c++/third_party/_archives/mkg3a-master.tar.gz /tmp/mkg3a-master.tar.gz
 
 RUN mkdir -p /opt/src /opt/prizm
 
@@ -44,6 +48,17 @@ RUN tar -C /opt/src -xJf /tmp/gcc-10.1.0.tar.xz && \
     make install-gcc && \
     make -j"$(nproc)" inhibit_libc=true all-target-libgcc && \
     make install-target-libgcc
+
+RUN tar -C /opt/src -xzf /tmp/mkg3a-master.tar.gz && \
+    sed -i 's/cmake_minimum_required (VERSION 3.31)/cmake_minimum_required (VERSION 3.28)/' /opt/src/mkg3a/CMakeLists.txt && \
+    sed -i 's/cmake_minimum_required (VERSION 3.31)/cmake_minimum_required (VERSION 3.28)/' /opt/src/mkg3a/src/CMakeLists.txt && \
+    mkdir -p /opt/src/mkg3a/build && \
+    cd /opt/src/mkg3a/build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build . -j"$(nproc)" && \
+    mkdir -p /opt/prizm/bin && \
+    cp src/mkg3a /opt/prizm/bin/mkg3a && \
+    cp src/g3a-updateicon /opt/prizm/bin/g3a-updateicon
 
 RUN tar -C /opt/src -xzf /tmp/libfxcg-master.tar.gz && \
     cd /opt/src/libfxcg && \
