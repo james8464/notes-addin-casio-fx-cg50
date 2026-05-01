@@ -7,8 +7,8 @@
 namespace casio::ui
 {
 
-constexpr int kStatusH = 18;
-constexpr int kSoftKeyH = 20;
+constexpr int kStatusH = 24;
+constexpr int kSoftKeyH = 24;
 constexpr int kContentTop = kStatusH + 4;
 constexpr int kContentBottom = DHEIGHT - kSoftKeyH - 3;
 constexpr int kRowH = 16;
@@ -29,11 +29,30 @@ inline int clamp_int(int value, int lo, int hi)
 
 inline int text_width_approx(const char *text)
 {
-    return casio::device::cstr_len(text) * 6;
+    int w = 0;
+    int h = 0;
+    dsize(text ? text : "", dfont_default(), &w, &h);
+    return w;
+}
+
+inline void use_native_font()
+{
+    dfont(dfont_default());
+}
+
+inline struct dwindow full_window()
+{
+    return {0, 0, DWIDTH, DHEIGHT};
+}
+
+inline struct dwindow app_window()
+{
+    return {0, kStatusH, DWIDTH, DHEIGHT};
 }
 
 inline void draw_limited_text(int x, int y, color_t color, const char *text, int max_chars)
 {
+    use_native_font();
     casio::device::FixedString<96> out;
     if(text != nullptr) {
         int i = 0;
@@ -52,25 +71,33 @@ inline void draw_limited_text(int x, int y, color_t color, const char *text, int
 
 inline void draw_status(const char *title, const char *mode)
 {
+    struct dwindow previous_window = dwindow_set(full_window());
+    use_native_font();
     drect(0, 0, DWIDTH - 1, kStatusH - 1, kPaper);
-    dtext(3, 2, kBlue, title ? title : "");
+    dtext(3, 5, kInk, title ? title : "");
+    dtext(155, 5, kInk, "RAD");
     if(mode != nullptr && mode[0] != '\0') {
         int x = DWIDTH - 2 - text_width_approx(mode);
-        if(x < 190) x = 190;
-        dtext(x, 2, kInk, mode);
+        if(x < 210) x = 210;
+        dtext(x, 5, kInk, mode);
     }
     dline(0, kStatusH - 1, DWIDTH - 1, kStatusH - 1, kInk);
+    dwindow_set(previous_window);
 }
 
 inline void draw_frame(const char *title, const char *mode)
 {
-    dclear(kPaper);
+    dwindow_set(full_window());
+    use_native_font();
+    drect(0, kStatusH, DWIDTH - 1, DHEIGHT - 1, kPaper);
     draw_status(title, mode);
     dline(0, kContentBottom, DWIDTH - 1, kContentBottom, kLine);
+    dwindow_set(app_window());
 }
 
 inline void draw_section_label(int x, int y, const char *label)
 {
+    use_native_font();
     dtext(x, y, kBlue, label ? label : "");
     dline(x, y + 13, DWIDTH - 10, y + 13, kSoftBlue);
 }
@@ -83,6 +110,7 @@ inline void draw_softkeys(
     const char *k5,
     const char *k6)
 {
+    use_native_font();
     const char *labels[6] = {k1, k2, k3, k4, k5, k6};
     int y0 = DHEIGHT - kSoftKeyH;
     int w = DWIDTH / 6;
@@ -90,12 +118,11 @@ inline void draw_softkeys(
     for(int i = 0; i < 6; i++) {
         int x0 = i * w;
         int x1 = (i == 5) ? DWIDTH - 1 : ((i + 1) * w - 1);
-        drect(x0 + 1, y0 + 2, x1 - 1, DHEIGHT - 2, kPaper);
         dline(x0, y0, x0, DHEIGHT - 1, kPaper);
         const char *label = labels[i] ? labels[i] : "";
         int tx = x0 + ((x1 - x0 + 1) - text_width_approx(label)) / 2;
         tx = clamp_int(tx, x0 + 3, x1 - 8);
-        dtext(tx, y0 + 5, kInk, label);
+        dtext(tx, y0 + 7, kPaper, label);
     }
 }
 
