@@ -64,7 +64,7 @@ const char *key_to_text(int key)
     if(key == KEY_CHAR_POW) return "^";
     if(key == KEY_CHAR_ROOT) return "sqrt(";
     if(key == KEY_CHAR_EXPN) return "exp(";
-    if(key == KEY_CHAR_EXPN10) return "10^(";
+    if(key == KEY_CHAR_EXPN10) return "10^";
     if(key == KEY_CHAR_ASIN) return "asin(";
     if(key == KEY_CHAR_ACOS) return "acos(";
     if(key == KEY_CHAR_ATAN) return "atan(";
@@ -72,15 +72,56 @@ const char *key_to_text(int key)
     return nullptr;
 }
 
-void draw_input(const char *title, const char *help, const char *buffer)
+void draw_input(const char *title, const char *help, const char *buffer, int cursor)
 {
     init_native_screen(title);
-    PrintXY(1, 2, help ? help : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
-    PrintXY(1, 4, buffer ? buffer : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
-    draw_softkeys("sqrt", "log", "sin", "cos", "pi", "=");
+    PrintXY(1, 30, help ? help : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    
+    casio::device::FixedString<96> display;
+    display.append(buffer ? buffer : "");
+    
+    PrintXY(1, 60, display.c_str(), TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    
+    // Simple cursor indicator
+    casio::device::FixedString<32> pos;
+    pos.append("Pos: ");
+    pos.append_int(cursor);
+    pos.append("/");
+    pos.append_int(len(buffer));
+    PrintXY(1, 90, pos.c_str(), TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    
+    draw_softkeys("SQRT", "LOG", "SIN", "COS", "PI", "?");
     Bdisp_PutDisp_DD();
 }
 
+}
+
+void show_error(const char *message)
+{
+    init_native_screen("Error");
+    PrintXY(1, 30, message ? message : "Unknown error", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    draw_softkeys("", "", "", "", "", "OK");
+    Bdisp_PutDisp_DD();
+    
+    while(true) {
+        int key = 0;
+        GetKey(&key);
+        if(key == KEY_CTRL_EXE || key == KEY_CTRL_EXIT) break;
+    }
+}
+
+void show_info(const char *message)
+{
+    init_native_screen("Info");
+    PrintXY(1, 30, message ? message : "", TEXT_MODE_NORMAL, TEXT_COLOR_BLACK);
+    draw_softkeys("", "", "", "", "", "OK");
+    Bdisp_PutDisp_DD();
+    
+    while(true) {
+        int key = 0;
+        GetKey(&key);
+        if(key == KEY_CTRL_EXE || key == KEY_CTRL_EXIT) break;
+    }
 }
 
 bool text_input(char *buffer, int capacity, const char *title, const char *help)
@@ -94,7 +135,7 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
     }
     int cursor = length;
 
-    draw_input(title, help, buffer);
+    draw_input(title, help, buffer, cursor);
 
     while(true) {
         int key = 0;
@@ -116,7 +157,7 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
                 for(int i = cursor - 1; i < length; i++) buffer[i] = buffer[i + 1];
                 length--;
                 cursor--;
-                draw_input(title, help, buffer);
+                draw_input(title, help, buffer, cursor);
             }
             continue;
         }
@@ -124,7 +165,7 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
             length = 0;
             cursor = 0;
             buffer[0] = '\0';
-            draw_input(title, help, buffer);
+            draw_input(title, help, buffer, cursor);
             continue;
         }
 
@@ -133,10 +174,10 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
         else if(key == KEY_CTRL_F3) insert_text(buffer, capacity, length, cursor, "sin(");
         else if(key == KEY_CTRL_F4) insert_text(buffer, capacity, length, cursor, "cos(");
         else if(key == KEY_CTRL_F5) insert_text(buffer, capacity, length, cursor, "pi");
-        else if(key == KEY_CTRL_F6) insert_text(buffer, capacity, length, cursor, "=");
+        else if(key == KEY_CTRL_F6) insert_text(buffer, capacity, length, cursor, "?");
         else insert_text(buffer, capacity, length, cursor, key_to_text(key));
 
-        draw_input(title, help, buffer);
+        if(length > 0) draw_input(title, help, buffer, cursor);
     }
 }
 
