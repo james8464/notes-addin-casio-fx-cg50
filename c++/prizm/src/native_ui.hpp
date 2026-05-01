@@ -1,0 +1,15 @@
+#pragma once
+
+#include "device/line_buffer.hpp"
+
+namespace casio::prizm
+{
+
+void init_native_screen(const char *title);
+void draw_home(void);
+void draw_menu(const char *title, const char *const *items, int count, int selected, int top);
+void draw_lines(const char *title, casio::device::OutputLines const &lines, int top);
+void draw_softkeys(const char *k1, const char *k2, const char *k3,
+                   const char *k4, const char *k5, const char *k6);
+
+}
