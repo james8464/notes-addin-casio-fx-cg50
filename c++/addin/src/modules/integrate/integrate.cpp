@@ -261,14 +261,44 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
     
-    // ∫ cot(x) dx = ln|sin(x)|
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cot && is_sym(a, x.a, var)) {
+    // ∫ arctan(x) dx = x*arctan(x) - 1/2*ln(1+x^2)
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Atan && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
-        NodeId sin_v = casio::fn(a, "sin", v);
-        NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", sin_v));
-        out.result = ln_abs;
-        out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = ln|sin(x)|");
-        out.steps.push_back("Step 3: Simplify. Result = ln|sin(" + var + ")| + C");
+        NodeId atan_v = casio::fn(a, "atan", v);
+        NodeId one = casio::num(a, 1);
+        NodeId v2 = casio::power(a, v, casio::num(a, 2));
+        NodeId ln_term = casio::fn(a, "log", casio::add(a, {one, v2}));
+        NodeId half_ln = casio::div(a, ln_term, casio::num(a, 2));
+        NodeId result = casio::add(a, {casio::mul(a, {v, atan_v}), casio::neg(a, half_ln)});
+        out.result = result;
+        out.steps.push_back("Step 2: Apply inverse trig rule: ∫ arctan(x) dx = x*arctan(x) - 1/2*ln(1+x^2)");
+        out.steps.push_back("Step 3: Simplify.");
+        return out;
+    }
+    
+    // ∫ sinh(x) dx = cosh(x)
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sinh && is_sym(a, x.a, var)) {
+        out.result = casio::fn(a, "cosh", casio::sym(a, var));
+        out.steps.push_back("Step 2: Apply hyperbolic rule: ∫ sinh(x) dx = cosh(x)");
+        out.steps.push_back("Step 3: Simplify.");
+        return out;
+    }
+    
+    // ∫ cosh(x) dx = sinh(x)
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosh && is_sym(a, x.a, var)) {
+        out.result = casio::fn(a, "sinh", casio::sym(a, var));
+        out.steps.push_back("Step 2: Apply hyperbolic rule: ∫ cosh(x) dx = sinh(x)");
+        out.steps.push_back("Step 3: Simplify.");
+        return out;
+    }
+    
+    // ∫ tanh(x) dx = ln(cosh(x))
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Tanh && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        NodeId ln_term = casio::fn(a, "log", casio::fn(a, "cosh", v));
+        out.result = ln_term;
+        out.steps.push_back("Step 2: Apply hyperbolic rule: ∫ tanh(x) dx = ln(cosh(x))");
+        out.steps.push_back("Step 3: Simplify.");
         return out;
     }
     
