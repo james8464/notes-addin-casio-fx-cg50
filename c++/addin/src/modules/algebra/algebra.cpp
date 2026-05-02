@@ -275,6 +275,11 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
     Rational disc = r_add(b2, r_neg(ac4));
     disc.normalize();
 
+// Giac-style complex handling: if discriminant < 0, warn
+    if(disc.num < 0) {
+        return {"No real solutions (complex roots not displayed)."};
+    }
+
     NodeId disc_node = a.num(disc);
     NodeId sqrt_disc = a.fn(FnKind::Sqrt, disc_node);
 
@@ -692,12 +697,18 @@ NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, 
         if(is_zero(rp.num.a2) && !is_zero(rp.num.a1)) {
             Rational a = rp.num.a1;
             Rational b = rp.num.a0;
+            // Giac-style: check for zero coefficient (division by zero)
+            if(is_zero(a)) {
+                out.push_back("Error: Division by zero - coefficient of x is 0");
+                out.push_back("Answer: no solution");
+                return out;
+            }
             out.push_back("Expr: " + format_expr(arena, rearr) + " = 0");
             if(!is_zero(b)) {
                 NodeId b_node = casio::num(arena, -b.num, b.den);
                 out.push_back("Subtract " + format_expr(arena, b_node));
             }
-            if(!is_zero(a) && (a.num != 1 || a.den != 1)) {
+            if(a.num != 1 || a.den != 1) {
                 NodeId a_node = casio::num(arena, a.num, a.den);
                 out.push_back("Divide by " + format_expr(arena, a_node));
             }
@@ -705,6 +716,16 @@ NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, 
             out.push_back("Answer:");
             for(auto const &s : sols) out.push_back(s);
             return out;
+        }
+
+        // Quadratic case: check for a=0 (not quadratic)
+        if(!is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
+            Rational a = rp.num.a2;
+            if(is_zero(a)) {
+                out.push_back("Error: Not a valid equation - all terms have degree 0");
+                out.push_back("Answer: no solution");
+                return out;
+            }
         }
 
         // Higher degree
