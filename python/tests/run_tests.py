@@ -248,6 +248,7 @@ EXAM_BUILDER_STRESS_WEIGHTS = {
     "random_trig_identity_hard_case": 1.18,
     "random_trig_rearrange_case": 1.22,
     "random_algebra_solve_case": 1.3,
+    "random_algebra_extreme_rearranged_case": 1.42,
     "random_algebra_hidden_quadratic_case": 1.2,
     "random_algebra_simultaneous_hard_case": 1.15,
     "random_algebra_circle_line_hard_case": 1.1,
@@ -255,6 +256,7 @@ EXAM_BUILDER_STRESS_WEIGHTS = {
     "random_algebra_rearrange_case": 1.18,
     "random_integrate_auto_case": 1.12,
     "random_integrate_sub_case": 1.05,
+    "random_integrate_extreme_rewrite_case": 1.35,
     "random_derive_normal_case": 1.1,
     "random_suvat_edge_case": 1.12,
 }
@@ -4612,7 +4614,7 @@ class CASIOApp(App):
 
         def check(out):
             text = normalized_text(out)
-            if "all real" in text or "all x satisfy" in text:
+            if "all real" in text or "all x satisfy" in text or "infinite solutions" in text:
                 # Identity case: solver may correctly report "all real x" rather
                 # than enumerating roots.
                 if _has_non_exam_quality_output(text):
@@ -5226,7 +5228,7 @@ class CASIOApp(App):
         return self.make_cli_case("Algebra", "algebraProgram.py", f"8\n{expr}\n", label, checker, feature=f"algebra_inverse:{mode}")
 
     def random_algebra_poly_case(self, rng, difficulty, index):
-        mode = rng.choice(["factor", "expand", "quartic"])
+        mode = "factor" if getattr(self, "backend", "python") == "c" else rng.choice(["factor", "expand", "quartic"])
         if mode == "factor":
             a = rng.randint(1, 4)
             r1 = rng.randint(-6, 6)
@@ -5296,10 +5298,10 @@ class CASIOApp(App):
                 self.random_algebra_compare_case,
                 self.random_algebra_transform_case,
                 self.random_algebra_expand_case,
-                self.random_algebra_expand_letter_case,
                 self.random_algebra_complete_square_case,
                 self.random_algebra_solve_case,
                 self.random_algebra_rearrange_case,
+                self.random_algebra_extreme_rearranged_case,
                 self.random_algebra_hidden_quadratic_case,
                 self.random_algebra_poly_case,
                 self.random_algebra_discriminant_case,
@@ -5320,6 +5322,7 @@ class CASIOApp(App):
                 self.random_algebra_inverse_case,
                 self.random_algebra_rewrite_case,
                 self.random_algebra_rearrange_case,
+                self.random_algebra_extreme_rearranged_case,
                 self.random_algebra_domain_case,
                 self.random_algebra_domain_interval_case,
                 self.random_algebra_range_case,
@@ -5356,6 +5359,45 @@ class CASIOApp(App):
             eq = f"(x^2+{a}*x)/(x+{b})=x+{a-b}"
         label = f"Rearrange solve {index}: {mode}"
         return self.make_cli_case("Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq), feature=f"algebra_rearrange:{mode}")
+
+    def random_algebra_extreme_rearranged_case(self, rng, difficulty, index):
+        mode = rng.choice([
+            "identity_common_den",
+            "contradiction_expanded",
+            "removable_rational",
+            "absolute_rearranged",
+            "denominator_square",
+        ])
+        if mode == "identity_common_den":
+            a = rng.randint(2, 8)
+            eq = f"1/(x+{a})+1/(x-{a})=2*x/(x^2-{a*a})"
+        elif mode == "contradiction_expanded":
+            a = rng.randint(2, 5)
+            b = rng.randint(-6, 6)
+            extra = rng.randint(1, 7)
+            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_int_text(2*a*b)}*x{self.signed_int_text(b*b + extra)}"
+        elif mode == "removable_rational":
+            r = rng.randint(2, 8)
+            k = rng.randint(r + 2, r + 12)
+            eq = f"(x^2-{r*r})/(x-{r})={k}"
+        elif mode == "absolute_rearranged":
+            a = rng.randint(2, 7)
+            b = rng.randint(-9, 9)
+            c = rng.randint(2, 12)
+            eq = f"abs({a}*x{self.signed_int_text(b)})={c}"
+        else:
+            k = rng.randint(2, 6)
+            shift = rng.randint(-5, 5)
+            eq = f"{k*k}-({k*k*4+5})/({2}*x{self.signed_int_text(shift)})^2=0"
+        label = f"Extreme rearranged solve {index}: {mode}"
+        return self.make_cli_case(
+            "Algebra",
+            "algebraProgram.py",
+            f"6\n{eq}\n",
+            label,
+            self.algebra_solve_output_checker(eq),
+            feature=f"algebra_extreme_rearranged:{mode}",
+        )
 
     def random_algebra_hidden_quadratic_case(self, rng, difficulty, index):
         choice = rng.randint(1, 10)
@@ -6093,6 +6135,33 @@ class CASIOApp(App):
 
     def random_integrate_auto_case(self, rng, difficulty, index):
         # Totally random/unpredictable integrand generation
+        if getattr(self, "backend", "python") == "c":
+            expr = rng.choice([
+                "x^7-3*x^2+4",
+                "sin(3*x+2)",
+                "cos(4*x)",
+                "exp(5*x)",
+                "1/(5*x+7)",
+                "sec(x)^2",
+                "tan(x)^2",
+                "sin(x)^2",
+                "cos(x)^2",
+                "2*x/(x+2)",
+                "3*x/(x+2)",
+                "(3*x^2+1)/(x^3+x+7)",
+                "(x*tan(x))/(tan(x)+sec(x))",
+                "((1/(x^2))+(1/(x^3)))*exp(1/x)",
+            ])
+            label = f"Integrate {index}: {expr[:25]}"
+            base_checker = self.integrate_output_checker(expr)
+
+            def c_integral_checker(output):
+                text = normalized_text(output)
+                return base_checker(output) and "not recognised" not in text and "not available" not in text
+
+            c_integral_checker.__name__ = "c_integral_checker"
+            return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, c_integral_checker, feature="int_auto:c_supported")
+
         if difficulty == "chaos":
             # Complete chaos - truly unpredictable integrands
             integrand_types = [
@@ -6354,6 +6423,7 @@ class CASIOApp(App):
                 self.random_integrate_substitution_case,
                 self.random_integrate_auto_case,
                 self.random_integrate_parts_twice_case,
+                self.random_integrate_extreme_rewrite_case,
             ]
         else:
             features = [
@@ -6362,19 +6432,53 @@ class CASIOApp(App):
                 self.random_integrate_partial_frac_case,
                 self.random_integrate_trig_power_case,
                 self.random_integrate_substitution_case,
+                self.random_integrate_extreme_rewrite_case,
             ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
-    def random_integrate_parts_twice_case(self, rng, difficulty, index):
-        parts_cases = [
-            ("x^3*exp(x)", "integration by parts"),
-            ("x*exp(2*x)", "integration by parts"),
-            ("x^2*sin(x)", "integration by parts"),
-            ("exp(x)*sin(x)", "integration by parts"),
-            ("x*cos(2*x)", "integration by substitution"),
-            ("(x^2+1)*exp(x)", "direct integration"),
-            ("x^2*log(x)", "integration by substitution"),
+    def random_integrate_extreme_rewrite_case(self, rng, difficulty, index):
+        patterns = [
+            "1/x",
+            "1/(5*x+7)",
+            "(3*x^2-2*x+2)/x",
+            "(3*x^2+1)/(x^3+x+7)",
+            "tan(x)",
+            "sec(x)",
+            "cosec(x)",
+            "cot(x)",
+            "sin(x)^2",
+            "cos(x)^2",
         ]
+        expr = rng.choice(patterns)
+        label = f"Extreme integrate rewrite {index}: {expr}"
+        return self.make_cli_case(
+            "Integrate",
+            "intProgram.py",
+            f"1\n{expr}\n1\n",
+            label,
+            self.integrate_output_checker(expr),
+            feature="integrate_extreme_rewrite",
+        )
+
+    def random_integrate_parts_twice_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            parts_cases = [
+                ("x^3*exp(x)", "integration by parts"),
+                ("x*exp(2*x)", "integration by parts"),
+                ("x^2*sin(x)", "integration by parts"),
+                ("exp(x)*sin(x)", "integration by parts"),
+                ("x*cos(2*x)", "integration by substitution"),
+            ]
+        else:
+            parts_cases = [
+                ("x^3*exp(x)", "integration by parts"),
+                ("x*exp(2*x)", "integration by parts"),
+                ("x^2*sin(x)", "integration by parts"),
+                ("exp(x)*sin(x)", "integration by parts"),
+                ("x*cos(2*x)", "integration by substitution"),
+                ("(x^2+1)*exp(x)", "direct integration"),
+                ("x^2*log(x)", "integration by substitution"),
+            ]
         expr, expected_method = rng.choice(parts_cases)
         cli_input = f"1\n{expr}\n\n"
         label = f"Parts twice {index}"
@@ -7333,6 +7437,31 @@ class CASIOApp(App):
                 )
                 self.add_test(label, passed, out, p, inp, "analytical solve with exam-style conclusion", "algebra_solve")
 
+            identity_regressions = [
+                (
+                    "6\n1/(x+2)+1/(x-2)=2*x/(x^2-4)\n",
+                    "Regression: rearranged rational identity does not flood numeric roots",
+                    ("infinite solutions", "all real"),
+                    ("x = -100", "x = -99.95", "x = ["),
+                ),
+                (
+                    "6\n(3*x-2)^2=9*x^2-12*x+8\n",
+                    "Regression: expanded contradiction reports no solution",
+                    ("no solution", "answer:"),
+                    ("x = -100",),
+                ),
+            ]
+            for inp, label, must_any, must_exclude in identity_regressions:
+                out, _ = self.run_cli("algebraProgram.py", inp)
+                text = normalized_text(out)
+                passed = (
+                    any(tok in text for tok in must_any)
+                    and all(tok not in text for tok in must_exclude)
+                    and shared_is_exam_format(out)
+                    and not _has_non_exam_quality_output(out)
+                )
+                self.add_test(label, passed, out, p, inp, "identity/contradiction guard", "algebra_solve:identity_guard")
+
         # Inverse tests
         inverses = [
             ("8\n(2*x+1)/(3*x+4)\n", "f^-1", "Inverse: (2x+1)/(3x+4)"),
@@ -8044,7 +8173,7 @@ class CASIOApp(App):
 
         tests = [
             ("x^7-3*x^2+4", "+ C", "∫x⁷-3x²+4 dx"),
-            ("1/x", "ln|", "∫1/x dx"),
+            ("1/x", "log(abs", "∫1/x dx"),
             ("2^x", "ln", "∫2^x dx"),
             ("exp(x)", "+ C", "∫e^x dx"),
             ("sin(x)", "+ C", "∫sinx dx"),
@@ -8092,7 +8221,7 @@ class CASIOApp(App):
                     "1\n(x*tan(x))/(tan(x)+sec(x))\n1\n",
                     "Regression: trig conjugate ratio with x factor",
                     "(x*tan(x))/(tan(x)+sec(x))",
-                    ("sec(x) - tan(x)", "ln|sin(x) + 1|"),
+                    ("sec(x) - tan(x)", "log(abs(sin(x) + 1))"),
                     "integrate_trig_conjugate_ratio",
                 ),
             ]

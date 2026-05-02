@@ -5,15 +5,19 @@ graph TD
   UI["CG50/Prizm UI"] --> DS["device_solver"]
   Shell["Shell commands"] --> DS
   DS --> Norm["compact normalize"]
+  Norm --> Abs["abs()/log(abs()) output"]
   Norm --> Cls["input classifier"]
   Cls --> Poly["bounded rational polynomial parser"]
   Cls --> Num["numeric fallback scanner"]
+  Cls --> Rat["denominator/domain filter"]
   Cls --> Trig["trig table/equation parser"]
   Cls --> Suvat["SUVAT solver"]
   Cls --> Stats["stats/probability helpers"]
   Cls --> Util["matrix/vector/binomial utilities"]
+  Abs --> Work["exam working lines"]
   Poly --> Work["exam working lines"]
   Num --> Work
+  Rat --> Work
   Trig --> Work
   Suvat --> Work
   Stats --> Work
@@ -41,8 +45,10 @@ graph TD
   L --> M["move all to LHS"]
   R --> M
   M --> C["expand + collect"]
-  C --> S["linear/quadratic/factor theorem"]
-  C --> F["fallback scan/rearrange"]
+  C --> ID["identity/contradiction check"]
+  ID --> Den["domain denominator reject"]
+  Den --> S["linear/quadratic/factor theorem"]
+  Den --> F["fallback scan/rearrange"]
   F --> W
   S --> W["numbered mark-scheme steps"]
 ```
@@ -50,14 +56,16 @@ graph TD
 ```mermaid
 graph TD
   Calc["calculus input"] --> D["derive: chain/product/quotient/log diff"]
-  Calc --> I["integrate: table/reverse-chain/parts"]
+  Calc --> I["integrate: normalize many equivalent forms"]
   I --> P["polynomial + shifted power"]
   I --> T["linear trig/exp/log"]
   I --> B["x*f(ax+b) parts"]
+  I --> DE["separable DE route"]
   D --> W["mark-scheme lines"]
   P --> W
   T --> W
   B --> W
+  DE --> W
 ```
 
 ```mermaid
@@ -74,4 +82,18 @@ graph TD
   N --> W
   Z --> W
   P --> W
+```
+
+```mermaid
+graph TD
+  RT["Tests.txt/RTF"] --> Map["mapper + bank sanity"]
+  Rand["random pressure"] --> Alg["extreme algebra rearrange"]
+  Rand --> Int["extreme integration rewrites"]
+  Rand --> Stats["stats/plot extremes"]
+  Alg --> Host["casio_host"]
+  Int --> Host
+  Stats --> Host
+  Host --> Gate["exam-format + symbolic/numeric checks"]
+  Gate --> Fix["fix weak spot"]
+  Fix --> Rand
 ```

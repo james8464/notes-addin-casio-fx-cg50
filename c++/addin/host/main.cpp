@@ -62,15 +62,18 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         return 0;
     }
     if(program == "intProgram.py") {
-        // mode 1: integrate, input lines: 1, <f>, <method>
-        std::string mode = get(0);
-        if(mode != "1") {
+        casio::integrate::Request req;
+        try { req.mode = std::stoi(get(0)); } catch(...) { req.mode = 1; }
+        if(req.mode == 1) {
+            req.expr = get(1);
+        }
+        else if(req.mode == 2) {
+            req.expr = get(1) + "\n" + get(2);
+        }
+        else {
             std::cout << "Err: int mode not supported yet.\n";
             return 0;
         }
-        casio::integrate::Request req;
-        req.mode = 1;
-        req.expr = get(1);
         auto out = casio::integrate::run(arena, req);
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;

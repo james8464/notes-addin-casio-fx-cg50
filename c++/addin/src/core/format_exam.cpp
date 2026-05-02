@@ -115,11 +115,7 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
 
     if(n.kind == NodeKind::Fn) {
         if(n.fkind == FnKind::Log) {
-            Node const &arg = arena.get(n.a);
-            if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Abs) {
-                return "ln|" + format_equation_human_readable(arena, arg.a, 0) + "|";
-            }
-            return "ln(" + format_equation_human_readable(arena, n.a, 0) + ")";
+            return "log(" + format_equation_human_readable(arena, n.a, 0) + ")";
         }
         if(n.fkind == FnKind::Exp) {
             return "e^(" + format_equation_human_readable(arena, n.a, 0) + ")";
@@ -193,4 +189,3 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
 }
 
 } // namespace casio
-

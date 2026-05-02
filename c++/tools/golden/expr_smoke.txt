@@ -1,7 +1,7 @@
-sin^-1x + √x + |x| + 2x
+sin^-1x + √x + abs(x) + 2x
 sin^2(x)+cos^2(x)
 log(2,8)
-ln|x|
+log(abs(x))
 exp(2x)
 3*x-3*y
 sqrt(1-x^4)

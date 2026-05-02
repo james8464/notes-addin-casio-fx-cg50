@@ -11,10 +11,7 @@ namespace casio
 std::string format_expr(Arena &arena, NodeId node, int parent_prec = 0);
 
 // Exam/human rendering used by program outputs:
-// - log -> ln
-// - abs(x) -> |x|
-// - log(abs(x)) -> ln|x|
+// - log(abs(x)) stays log(abs(x)); avoid pipe absolute-value notation.
 std::string format_expr_human(Arena &arena, NodeId node, int parent_prec = 0);
 
 } // namespace casio
-

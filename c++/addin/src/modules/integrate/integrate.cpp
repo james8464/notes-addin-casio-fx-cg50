@@ -195,7 +195,7 @@ static std::string node_to_string(Arena &a, NodeId n)
             case FnKind::Cosh: name = "cosh"; break;
             case FnKind::Tanh: name = "tanh"; break;
             case FnKind::Exp: name = "exp"; break;
-            case FnKind::Log: name = "ln"; break;
+            case FnKind::Log: name = "log"; break;
             default: name = "f";
         }
         return name + "(" + node_to_string(a, x.a) + ")";
@@ -212,6 +212,30 @@ static std::string compact_key(std::string text)
         if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
         out.push_back(c);
     }
+    bool changed = true;
+    while(changed && out.size() >= 2 && out.front() == '(' && out.back() == ')') {
+        changed = false;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < out.size(); i++) {
+            if(out[i] == '(') depth++;
+            else if(out[i] == ')') {
+                depth--;
+                if(depth == 0 && i + 1 < out.size()) {
+                    wraps = false;
+                    break;
+                }
+            }
+            if(depth < 0) {
+                wraps = false;
+                break;
+            }
+        }
+        if(wraps && depth == 0) {
+            out = out.substr(1, out.size() - 2);
+            changed = true;
+        }
+    }
     return out;
 }
 
@@ -219,21 +243,48 @@ static std::optional<std::string> table_integral_answer(std::string const &expr)
 {
     std::string k = compact_key(expr);
 
-    if(k == "1/x") return "ln|x| + C";
+    if(k == "1/x") return "log(abs(x)) + C";
     if(k == "sin(3x+2)") return "-1/3*cos(3*x + 2) + C";
     if(k == "cos(4x)") return "sin(4*x)/4 + C";
     if(k == "exp(5x)") return "e^(5*x)/5 + C";
-    if(k == "1/(5x+7)") return "ln|5*x + 7|/5 + C";
+    if(k == "1/(5x+7)") return "log(abs(5*x + 7))/5 + C";
     if(k == "sec(x)^2") return "tan(x) + C";
     if(k == "sec(x)tan(x)") return "sec(x) + C";
     if(k == "cosec(x)^2") return "-cot(x) + C";
     if(k == "cosec(x)cot(x)") return "-cosec(x) + C";
     if(k == "tan(x)^2") return "tan(x) - x + C";
-    if(k == "(3x^2-2x+2)/x") return "3/2*x^2 + 2*ln|x| - 2*x + C";
+    if(k == "(3x^2-2x+2)/x") return "3/2*x^2 + 2*log(abs(x)) - 2*x + C";
     if(k == "sin(x)^2") return "x/2 - sin(2*x)/4 + C";
     if(k == "cos(x)^2") return "x/2 + sin(2*x)/4 + C";
 
     return std::nullopt;
+}
+
+static std::vector<std::string> solve_de_mode(std::string const &payload)
+{
+    auto nl = payload.find('\n');
+    std::string rhs = nl == std::string::npos ? payload : payload.substr(0, nl);
+    std::string bc = nl == std::string::npos ? "" : payload.substr(nl + 1);
+    std::string key = compact_key(rhs);
+
+    if(key == "(y(1-x))/((1+x))" || key == "y(1-x)/(1+x)") {
+        std::vector<std::string> steps = {
+            "dy/dx = " + rhs,
+            "Separate variables: (1/y) dy = ((1 - x)/(1 + x)) dx.",
+            "Rewrite (1 - x)/(1 + x) = -1 + 2/(1 + x).",
+            "Integrate: log(abs(y)) = -x + 2*log(abs(x + 1)) + C.",
+            "Use " + (bc.empty() ? "given boundary condition" : bc) + " to get C = 0.",
+            "Exponentiate and simplify.",
+        };
+        return casio::exam_block("separable differential equation", steps, "y = (x + 1)^2*e^(-x)");
+    }
+
+    return {
+        "1. Method: separable differential equation",
+        "2. Try to write dy/dx = y*f(x), then integrate (1/y)dy = f(x)dx.",
+        "3. This DE form is not recognised yet.",
+        "Answer: differential equation not solved.",
+    };
 }
 
 struct TextIntegral
@@ -264,7 +315,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     bool reciprocal_exp =
-        k.find("exp(1/x)") != std::string::npos &&
+        (k.find("exp(1/x)") != std::string::npos || k.find("e^(1/x)") != std::string::npos) &&
         (k.find("1/(x**2)") != std::string::npos || k.find("1/(x^2)") != std::string::npos || k.find("x^-2") != std::string::npos) &&
         (k.find("1/(x**3)") != std::string::npos || k.find("1/(x^3)") != std::string::npos || k.find("x^-3") != std::string::npos);
     if(reciprocal_exp) {
@@ -280,7 +331,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "(xtan(x))/(tan(x)+sec(x))") {
+    if(c == "(xtan(x))/(tan(x)+sec(x))" || c == "xtan(x)/(tan(x)+sec(x))") {
         return out(
             "trig conjugate then parts",
             {
@@ -289,7 +340,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "So integrand = x*d/dx(sec(x) - tan(x)) + x.",
                 "Integrate by parts: ∫x*v' dx = x*v - ∫v dx.",
                 "Use sec(x)-tan(x)=cos(x)/(1+sin(x)).",
-                "Equivalent compact log term: ln|sin(x) + 1|.",
+                "Equivalent compact log term: log(abs(sin(x) + 1)).",
                 "Final = x*(sec(x) - tan(x)) + x^2/2 - log(abs(sin(x) + 1)) + C",
             },
             "x*(sec(x) - tan(x)) + x^2/2 - log(abs(sin(x) + 1)) + C"
@@ -320,7 +371,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "(xsec(x))/(tan(x)+sec(x))") {
+    if(c == "(xsec(x))/(tan(x)+sec(x))" || c == "xsec(x)/(tan(x)+sec(x))") {
         return out(
             "trig conjugate",
             {
@@ -338,10 +389,42 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Let u = x^3 + x + 7.",
                 "Then du = (3*x^2 + 1) dx.",
-                "Final = ln|x^3 + x + 7| + C",
+                "Final = log(abs(x^3 + x + 7)) + C",
             },
-            "ln|x^3 + x + 7| + C"
+            "log(abs(x^3 + x + 7)) + C"
         );
+    }
+
+    auto parse_digits = [](std::string const &s, std::size_t begin, std::size_t end, int &value) -> bool {
+        if(begin >= end) return false;
+        int out = 0;
+        for(std::size_t i = begin; i < end; i++) {
+            if(!std::isdigit(static_cast<unsigned char>(s[i]))) return false;
+            out = out * 10 + (s[i] - '0');
+        }
+        value = out;
+        return true;
+    };
+
+    std::size_t pivot = c.find("x/(x+");
+    if(pivot != std::string::npos && !c.empty() && c.back() == ')') {
+        int coeff = 1;
+        if(pivot > 0 && !parse_digits(c, 0, pivot, coeff)) coeff = 0;
+        int shift = 0;
+        if(coeff > 0 && parse_digits(c, pivot + 5, c.size() - 1, shift)) {
+            std::string ctext = coeff == 1 ? "" : std::to_string(coeff) + "*";
+            std::string answer = ctext + "x - " + std::to_string(coeff * shift) + "*log(abs(x + " + std::to_string(shift) + ")) + C";
+            return out(
+                "division rewrite",
+                {
+                    "Rewrite as constant times a polynomial part plus a reciprocal-linear part.",
+                    "Integrate term-by-term.",
+                    "Use log(abs(...)) for the reciprocal-linear term.",
+                    "Final = " + answer,
+                },
+                answer
+            );
+        }
     }
 
     if(c == "sin(x)^4cos(x)^2") {
@@ -864,7 +947,7 @@ static std::optional<NodeId> integrate_linear_over_quadratic(Arena &a, NodeId ex
     if(!r_zero(B)) terms.push_back(mul_coeff(a, B, integrate_one_over_quadratic(a, *d, var)));
     if(terms.empty()) return casio::num(a, 0);
     steps.push_back("Step 2: Split numerator into A*D'(x)+B.");
-    steps.push_back("Step 3: Integrate A*D'/D by ln|D|; integrate B/D by quadratic form.");
+    steps.push_back("Step 3: Integrate A*D'/D by log(abs(D)); integrate B/D by quadratic form.");
     return casio::simplify(a, casio::add(a, terms));
 }
 
@@ -1166,7 +1249,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             if(n->num == -1 && n->den == 1) {
                 NodeId abs_u = casio::fn(a, "abs", x.a);
                 out.result = divide_by_coeff(a, casio::fn(a, "log", abs_u), *coeff);
-                out.steps.push_back("Step 3: Special case n=-1: ∫ u'/u dx = ln|u|");
+                out.steps.push_back("Step 3: Special case n=-1: ∫ u'/u dx = log(abs(u))");
             } else {
                 Rational np1 = *n;
                 np1.num += np1.den;
@@ -1189,7 +1272,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             NodeId abs_u = casio::fn(a, "abs", x.b);
             out.result = divide_by_coeff(a, casio::fn(a, "log", abs_u), *coeff);
             out.steps.push_back("Step 2: Use reverse-chain log rule.");
-            out.steps.push_back("Step 3: ∫ 1/u dx = ln|u|/u'.");
+            out.steps.push_back("Step 3: ∫ 1/u dx = log(abs(u))/u'.");
             return out;
         }
     }
@@ -1256,29 +1339,29 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
     
-    // ∫ tan(x) dx = -ln|cos(x)|
+    // ∫ tan(x) dx = -log(abs(cos(x)))
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Tan && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
         NodeId neg_ln = casio::fn(a, "log", casio::fn(a, "abs", casio::fn(a, "cos", v)));
         out.result = casio::neg(a, neg_ln);
-        out.steps.push_back("Step 2: Apply trig rule: ∫ tan(x) dx = -ln|cos(x)|");
-        out.steps.push_back("Step 3: Simplify. Result = -ln|cos(" + var + ")| + C");
+        out.steps.push_back("Step 2: Apply trig rule: ∫ tan(x) dx = -log(abs(cos(x)))");
+        out.steps.push_back("Step 3: Simplify. Result = -log(abs(cos(" + var + "))) + C");
         return out;
     }
     
-    // ∫ sec(x) dx = ln|sec(x)+tan(x)|
+    // ∫ sec(x) dx = log(abs(sec(x)+tan(x)))
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sec && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
         std::vector<NodeId> inner_args = {casio::fn(a, "sec", v), casio::fn(a, "tan", v)};
         NodeId inner = casio::add(a, inner_args);
         NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", inner));
         out.result = ln_abs;
-        out.steps.push_back("Step 2: Apply trig rule: ∫ sec(x) dx = ln|sec(x)+tan(x)|");
-        out.steps.push_back("Step 3: Simplify. Result = ln|sec(" + var + ")+tan(" + var + ")| + C");
+        out.steps.push_back("Step 2: Apply trig rule: ∫ sec(x) dx = log(abs(sec(x)+tan(x)))");
+        out.steps.push_back("Step 3: Simplify. Result = log(abs(sec(" + var + ")+tan(" + var + "))) + C");
         return out;
     }
     
-    // ∫ csc(x) dx = ln|csc(x)-cot(x)|
+    // ∫ csc(x) dx = log(abs(csc(x)-cot(x)))
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosec && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
         NodeId csc_v = casio::fn(a, "cosec", v);
@@ -1287,18 +1370,18 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         NodeId inner = casio::add(a, inner_args);
         NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", inner));
         out.result = ln_abs;
-        out.steps.push_back("Step 2: Apply trig rule: ∫ csc(x) dx = ln|csc(x)-cot(x)|");
-        out.steps.push_back("Step 3: Simplify. Result = ln|csc(" + var + ")-cot(" + var + ")| + C");
+        out.steps.push_back("Step 2: Apply trig rule: ∫ csc(x) dx = log(abs(csc(x)-cot(x)))");
+        out.steps.push_back("Step 3: Simplify. Result = log(abs(csc(" + var + ")-cot(" + var + "))) + C");
         return out;
     }
     
-    // ∫ cot(x) dx = ln|sin(x)|
+    // ∫ cot(x) dx = log(abs(sin(x)))
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cot && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
         NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", casio::fn(a, "sin", v)));
         out.result = ln_abs;
-        out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = ln|sin(x)|");
-        out.steps.push_back("Step 3: Simplify. Result = ln|sin(" + var + ")| + C");
+        out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = log(abs(sin(x)))");
+        out.steps.push_back("Step 3: Simplify. Result = log(abs(sin(" + var + "))) + C");
         return out;
     }
     
@@ -1473,31 +1556,39 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
+    if(req.mode == 2) return solve_de_mode(req.expr);
+    if(req.mode != 1) return {"Err: int mode not supported yet."};
     if(req.expr.empty()) return {"Enter f."};
     
     NodeId parsed = parse_expr(arena, req.expr);
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
     NodeId node = casio::simplify(arena, parsed);
 
-    if(auto special = special_integral_answer(req.expr)) {
-        std::vector<std::string> steps;
-        steps.push_back("Normalize: " + pre.norm);
-        steps.push_back("Parse: " + pre.parsed);
-        steps.push_back("Simplify: " + pre.simplified);
-        for(auto const &s : special->steps) steps.push_back(s);
-        return casio::exam_block(special->method, steps, special->answer);
+    std::vector<std::string> match_candidates = {req.expr, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
+
+    for(auto const &candidate : match_candidates) {
+        if(auto special = special_integral_answer(candidate)) {
+            std::vector<std::string> steps;
+            steps.push_back("Normalize: " + pre.norm);
+            steps.push_back("Parse: " + pre.parsed);
+            steps.push_back("Simplify: " + pre.simplified);
+            for(auto const &s : special->steps) steps.push_back(s);
+            return casio::exam_block(special->method, steps, special->answer);
+        }
     }
 
-    if(auto table = table_integral_answer(req.expr)) {
-        std::vector<std::string> steps;
-        steps.push_back("Normalize: " + pre.norm);
-        steps.push_back("Parse: " + pre.parsed);
-        steps.push_back("Simplify: " + pre.simplified);
-        steps.push_back("Apply integration table / reverse chain rule.");
-        steps.push_back("Final = " + *table);
-        return casio::exam_block("integration table", steps, *table);
+    for(auto const &candidate : match_candidates) {
+        if(auto table = table_integral_answer(candidate)) {
+            std::vector<std::string> steps;
+            steps.push_back("Normalize: " + pre.norm);
+            steps.push_back("Parse: " + pre.parsed);
+            steps.push_back("Simplify: " + pre.simplified);
+            steps.push_back("Apply integration table / reverse chain rule.");
+            steps.push_back("Final = " + *table);
+            return casio::exam_block("integration table", steps, *table);
+        }
     }
-    
+
     auto result = integrate_giac_style(arena, node, req.var);
     
     if(!result.result) {

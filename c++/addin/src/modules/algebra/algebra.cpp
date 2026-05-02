@@ -18,6 +18,7 @@
 #include <optional>
 #include <stdexcept>
 #include <functional>
+#include <algorithm>
 
 namespace casio::algebra
 {
@@ -534,6 +535,9 @@ static std::string sol_rhs(std::string const &line)
 
 static std::string solution_list_line(std::string const &var, std::vector<std::string> const &sols)
 {
+    for(auto const &line : sols) {
+        if(line.find("Infinite") != std::string::npos) return var + " = all real values in domain";
+    }
     std::ostringstream oss;
     oss << var << " = [";
     bool first = true;
@@ -558,13 +562,41 @@ static void append_answer(std::vector<std::string> &out, std::string const &var,
 static std::optional<double> solution_line_value(Arena &a, std::string const &line)
 {
     try {
-        NodeId n = casio::parse_expr(a, sol_rhs(line));
+        std::string rhs = sol_rhs(line);
+        if(rhs.find('i') != std::string::npos) return std::nullopt;
+        NodeId n = casio::parse_expr(a, rhs);
         auto v = eval_node(a, n, "x", 0.0);
         if(v && std::isfinite(*v)) return *v;
     }
     catch(...) {
     }
     return std::nullopt;
+}
+
+static std::vector<std::string> filter_real_solutions(Arena &a,
+                                                      NodeId residual_expr,
+                                                      std::string const &var,
+                                                      std::vector<std::string> const &sols,
+                                                      std::optional<double> lo,
+                                                      std::optional<double> hi)
+{
+    std::vector<std::string> kept;
+    for(auto const &s : sols) {
+        if(s.find("No solution") != std::string::npos || s.find("Infinite") != std::string::npos) {
+            kept.push_back(s);
+            continue;
+        }
+        auto value = solution_line_value(a, s);
+        if(!value) {
+            if(!lo && !hi) kept.push_back(s);
+            continue;
+        }
+        if(lo && hi && (*value < *lo - 1e-9 || *value > *hi + 1e-9)) continue;
+        auto residual = eval_node(a, residual_expr, var, *value);
+        if(!residual || !std::isfinite(*residual)) continue;
+        if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) kept.push_back(s);
+    }
+    return kept;
 }
 
 static std::string format_double_compact(double x)
@@ -611,6 +643,8 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
     int steps = 4000;
     double step = (hi - lo) / steps;
     std::vector<double> roots;
+    int finite_samples = 0;
+    int near_zero_samples = 0;
     auto add_root = [&](double r) {
         if(r < lo - 1e-7 || r > hi + 1e-7) return;
         for(double seen : roots) {
@@ -626,11 +660,26 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
 
     double prev_x = lo;
     auto prev = f(prev_x);
-    if(prev && std::fabs(*prev) < 1e-7) add_root(prev_x);
+    if(prev) {
+        finite_samples++;
+        if(std::fabs(*prev) < 1e-7) {
+            near_zero_samples++;
+            add_root(prev_x);
+        }
+    }
     for(int i = 1; i <= steps; i++) {
         double x = (i == steps) ? hi : lo + step * i;
         auto cur = f(x);
-        if(cur && std::fabs(*cur) < 1e-7) add_root(x);
+        if(cur) {
+            finite_samples++;
+            if(std::fabs(*cur) < 1e-7) {
+                near_zero_samples++;
+                add_root(x);
+                if(roots.size() > 80 && near_zero_samples > 80) {
+                    return {"Infinite solutions."};
+                }
+            }
+        }
         if(prev && cur && ((*prev < 0 && *cur > 0) || (*prev > 0 && *cur < 0))) {
             double a0 = prev_x;
             double b0 = x;
@@ -655,6 +704,9 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
         }
         prev_x = x;
         prev = cur;
+    }
+    if(finite_samples >= 20 && near_zero_samples * 10 > finite_samples * 8) {
+        return {"Infinite solutions."};
     }
     std::vector<std::string> out;
     for(double r : roots) out.push_back(var + " = " + format_double_compact(r));
@@ -1286,18 +1338,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("4. Divide by " + format_expr(arena, a_node));
             }
             auto sols = solve_poly2(arena, rp.num, solve_var);
-            if(interval_lo && interval_hi) {
-                std::vector<std::string> kept;
-                for(auto const &s : sols) {
-                    auto v = solution_line_value(arena, s);
-                    if(v && *v >= *interval_lo - 1e-9 && *v <= *interval_hi + 1e-9) kept.push_back(s);
-                }
-                sols = kept;
-                if(sols.empty()) {
-                    out.push_back("No solution in the interval.");
-                    out.push_back("Answer: " + solve_var + " = []");
-                    return out;
-                }
+            sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+            if(sols.empty()) {
+                out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
+                out.push_back("Answer: " + solve_var + " = []");
+                return out;
             }
             append_answer(out, solve_var, sols);
             return out;
@@ -1320,18 +1365,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.push_back("3. Clearing denominators.");
         }
         auto sols = solve_poly2(arena, rp.num, solve_var);
-        if(interval_lo && interval_hi) {
-            std::vector<std::string> kept;
-            for(auto const &s : sols) {
-                auto v = solution_line_value(arena, s);
-                if(v && *v >= *interval_lo - 1e-9 && *v <= *interval_hi + 1e-9) kept.push_back(s);
-            }
-            sols = kept;
-            if(sols.empty()) {
-                out.push_back("No solution in the interval.");
-                out.push_back("Answer: " + solve_var + " = []");
-                return out;
-            }
+        sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+        if(sols.empty()) {
+            out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
+            out.push_back("Answer: " + solve_var + " = []");
+            return out;
         }
         append_answer(out, solve_var, sols);
         return out;

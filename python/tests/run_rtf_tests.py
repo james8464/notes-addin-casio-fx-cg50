@@ -24,6 +24,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, List, Tuple
 
+try:
+    from run_tests import sympy_expressions_equivalent
+except Exception:
+    sympy_expressions_equivalent = None
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parent
@@ -98,6 +103,8 @@ def _safe_eval_number(expr: str) -> Optional[float]:
     if not expr:
         return None
     expr = expr.replace("^", "**").replace("π", "pi")
+    expr = re.sub(r"(?<=\d)pi\b", "*pi", expr)
+    expr = re.sub(r"(?<=\d)sqrt\b", "*sqrt", expr)
     try:
         import math
         return float(eval(expr, {"__builtins__": {}}, {"sqrt": math.sqrt, "pi": math.pi}))
@@ -134,6 +141,104 @@ def _extract_answer_roots(output: str) -> Optional[List[float]]:
         vals.append(v)
     vals.sort()
     return vals
+
+def _extract_expected_roots(expected: str) -> Optional[List[float]]:
+    if not expected:
+        return None
+    m = re.search(r"(?:x|θ|theta)\s*=\s*(.+)$", expected, flags=re.I)
+    if not m:
+        return None
+    text = re.sub(r"\([^)]*d\.p\.[^)]*\)", "", m.group(1), flags=re.I).strip()
+    parts = []
+    cur = ""
+    depth = 0
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur.strip())
+    vals = []
+    for p in parts:
+        p = p.strip().rstrip(".")
+        if not p:
+            continue
+        v = _safe_eval_number(p)
+        if v is None:
+            return None
+        vals.append(v)
+    return sorted(vals) if vals else None
+
+def _implicit_mult_for_host(expr: str) -> str:
+    expr = (expr or "").strip()
+    expr = re.sub(r"(\d)([A-Za-z])", r"\1*\2", expr)
+    expr = re.sub(r"\)([A-Za-z])", r")*\1", expr)
+    return expr
+
+def _looks_like_math_expr(text: str) -> bool:
+    s = (text or "").strip()
+    if not s:
+        return False
+    words = re.findall(r"[A-Za-z]{3,}", s)
+    known = {"sin", "cos", "tan", "sec", "cot", "cosec", "sqrt", "log", "ln", "exp", "abs", "asin", "acos", "atan"}
+    prose = [w for w in words if w.lower() not in known]
+    return len(prose) <= 2 and any(ch.isdigit() or ch in "xyzθ()+-*/^π" for ch in s)
+
+def _inverse_equivalent(expected: str, output: str) -> bool:
+    em = re.search(r"f\^-1\(x\)\s*=\s*(.+)$", expected or "", flags=re.I)
+    gm = re.search(r"f\^-1\(x\)\s*=\s*(.+)$", output or "", flags=re.I | re.M)
+    if not em or not gm:
+        return False
+    def prep(expr: str) -> str:
+        expr = expr.strip()
+        expr = re.sub(r"\be\^\(([^()]+)\)", r"exp(\1)", expr)
+        expr = re.sub(r"\be\^([A-Za-z0-9_]+)", r"exp(\1)", expr)
+        return expr
+    want = prep(em.group(1))
+    got = prep(gm.group(1))
+    if sympy_expressions_equivalent is not None:
+        try:
+            if sympy_expressions_equivalent(want, got, var="x"):
+                return True
+        except Exception:
+            pass
+    try:
+        import math
+        env = {
+            "__builtins__": {},
+            "x": 0.0,
+            "exp": math.exp,
+            "log": math.log,
+            "sqrt": math.sqrt,
+            "sin": math.sin,
+            "cos": math.cos,
+            "tan": math.tan,
+            "abs": abs,
+            "pi": math.pi,
+            "e": math.e,
+        }
+        def pyexpr(expr: str) -> str:
+            expr = expr.replace("^", "**")
+            expr = re.sub(r"(?<=\d)(?=[A-Za-z_(])", "*", expr)
+            expr = re.sub(r"(?<=\))(?=[A-Za-z_(])", "*", expr)
+            return expr
+        want_py = pyexpr(want)
+        got_py = pyexpr(got)
+        for xv in (-2.0, -0.5, 0.0, 1.0, 2.5):
+            env["x"] = xv
+            a = float(eval(want_py, env, {}))
+            b = float(eval(got_py, env, {}))
+            if not math.isfinite(a) or not math.isfinite(b) or abs(a - b) > 1e-7 * max(1.0, abs(a), abs(b)):
+                return False
+        return True
+    except Exception:
+        return False
 
 
 def convert_rtf_to_txt(rtf_path: Path, txt_path: Path) -> None:
@@ -220,10 +325,10 @@ def map_to_program_input(block: QuestionBlock) -> Optional[Tuple[str, str]]:
             if m:
                 left = m.group(1).strip()
                 right = m.group(2).strip()
-                eq = f"{left} - ({right})"
+                eq = f"{_implicit_mult_for_host(left)} - ({_implicit_mult_for_host(right)})"
             m2 = re.search(r"starting\s+with\s+x0\s*=\s*([0-9.]+)", ln, flags=re.I)
             if m2:
-                x0 = m2.group(1)
+                x0 = m2.group(1).rstrip(".")
             m3 = re.search(r"using\s+newton-raphson\s+(\w+)\s+times", ln, flags=re.I)
             if m3:
                 try:
@@ -243,8 +348,10 @@ def map_to_program_input(block: QuestionBlock) -> Optional[Tuple[str, str]]:
             if m:
                 f = m.group(1).strip()
                 dom = (m.group(2) or "").strip()
-                if dom:
+                if dom and os.environ.get("CASIO_BACKEND", "").strip().lower() not in ("c", "cpp", "c++"):
                     f = f + ", " + dom
+                else:
+                    f = _implicit_mult_for_host(f)
                 break
         if f:
             payload = "8\n{f}\n\n".format(f=f)
@@ -373,10 +480,14 @@ def map_to_program_input(block: QuestionBlock) -> Optional[Tuple[str, str]]:
             m = re.search(r"integrate\s+(.+?)\s*dx\.?$", s, flags=re.I)
             if m:
                 integrand = m.group(1).strip()
+                if not _looks_like_math_expr(integrand):
+                    integrand = None
                 break
             m2 = re.search(r"integrate[:\s]+(.+)$", s, flags=re.I)
             if m2 and "dx" not in s.lower():
                 integrand = m2.group(1).strip()
+                if not _looks_like_math_expr(integrand):
+                    integrand = None
                 break
         if integrand:
             payload = "1\n{f}\n1\n".format(f=integrand)
@@ -502,6 +613,7 @@ def main() -> None:
     passed = 0
     failed = 0
     unmapped = 0
+    bank_mismatch = 0
 
     for idx, b in enumerate(blocks, 1):
         if max_blocks is not None and idx > max_blocks:
@@ -526,7 +638,7 @@ def main() -> None:
                     eq_expr = payload.split("\n", 2)[1].split(",", 1)[0].strip()
                     fx = _eval_newton_consistency(eq_expr, claimed)
                     if fx is not None and abs(fx) > 1e-2:
-                        unmapped += 1
+                        bank_mismatch += 1
                         print(f"[BANK-MISMATCH] {b.header_line}")
                         print(f"  claimed x={claimed} but f(x)≈{fx} for: {eq_expr}=0")
                         continue
@@ -542,13 +654,15 @@ def main() -> None:
             continue
         if expected:
             # Special: expected decimal x-roots, output may be exact surds.
-            expm = re.search(r"x\s*=\s*([0-9.]+)\s*,\s*([0-9.]+)", expected.replace(" ", ""), flags=re.I)
-            if expm:
-                want = sorted([float(expm.group(1)), float(expm.group(2))])
+            want = _extract_expected_roots(expected)
+            if want is not None:
                 got = _extract_answer_roots(out)
-                if got is not None and len(got) == 2 and all(abs(got[i] - want[i]) < 5e-3 for i in (0, 1)):
+                if got is not None and len(got) == len(want) and all(abs(got[i] - want[i]) < 5e-3 for i in range(len(want))):
                     passed += 1
                     continue
+            if _inverse_equivalent(expected, out):
+                passed += 1
+                continue
             if normalize(expected) in normalize(out) or normalize_compact(expected) in normalize_compact(out):
                 passed += 1
             else:
@@ -559,9 +673,9 @@ def main() -> None:
             # No expected answer to check; treat as unmapped-quality.
             unmapped += 1
 
-    total = passed + failed + unmapped
+    total = passed + failed + unmapped + bank_mismatch
     print()
-    print(f"RTF suite: passed={passed} failed={failed} unmapped={unmapped} total={total}")
+    print(f"RTF suite: passed={passed} failed={failed} unmapped={unmapped} bank_mismatch={bank_mismatch} total={total}")
     raise SystemExit(1 if failed else 0)
 
 

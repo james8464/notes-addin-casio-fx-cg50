@@ -8,7 +8,7 @@ derive	sin(x)	Answer: dy/dx = cos(x)
 
 int	x^2	Answer: x^3/3 + C
 int	sin(3x+2)	Answer: -1/3*cos(3*x + 2) + C
-int	1/(5x+7)	Answer: ln|5*x + 7|/5 + C
+int	1/(5x+7)	Answer: log(abs(5*x + 7))/5 + C
 int	sec(x)^2	Answer: tan(x) + C
 int	sec(x)*tan(x)	Answer: sec(x) + C
 

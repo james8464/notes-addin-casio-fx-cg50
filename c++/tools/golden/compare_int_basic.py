@@ -42,10 +42,12 @@ def extract_answer(text: str) -> str | None:
 def norm(s: str) -> str:
     s = (s or "").strip().lower()
     s = s.replace("π", "pi")
+    s = re.sub(r"ln\|([^|]+)\|", r"log(abs(\1))", s)
     s = re.sub(r"\s+", "", s)
     s = s.replace("*", "")
     s = s.replace("ln", "log")
-    s = s.replace("|", "abs")
+    s = re.sub(r"logabs([^+/-]+)", r"log(abs(\1))", s)
+    s = s.replace("|", "")
     return s
 
 
@@ -94,4 +96,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

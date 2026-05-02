@@ -42,7 +42,7 @@ static std::string fn_name(FnKind k, bool human)
     case FnKind::Cosh: return "cosh";
     case FnKind::Tanh: return "tanh";
     case FnKind::Exp: return "exp";
-    case FnKind::Log: return human ? "ln" : "log";
+    case FnKind::Log: return "log";
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
@@ -61,15 +61,6 @@ static std::string format_expr_impl(Arena &arena, NodeId node, int parent_prec, 
     if(n.kind == NodeKind::Sym) return n.text;
     if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
     if(n.kind == NodeKind::Fn) {
-        if(human && n.fkind == FnKind::Abs) {
-            return "|" + format_expr_impl(arena, n.a, 0, human) + "|";
-        }
-        if(human && n.fkind == FnKind::Log) {
-            Node const &argn = arena.get(n.a);
-            if(argn.kind == NodeKind::Fn && argn.fkind == FnKind::Abs) {
-                return "ln|" + format_expr_impl(arena, argn.a, 0, human) + "|";
-            }
-        }
         return fn_name(n.fkind, human) + "(" + format_expr_impl(arena, n.a, 0, human) + ")";
     }
     if(n.kind == NodeKind::Pow) {
@@ -195,4 +186,3 @@ std::string format_expr_human(Arena &arena, NodeId node, int parent_prec)
 }
 
 } // namespace casio
-
