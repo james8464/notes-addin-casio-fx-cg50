@@ -11,9 +11,26 @@ namespace
 {
 
 constexpr int kContentRows = 5;
-constexpr int kFKeyTop = 168;
-constexpr int kFKeyBottom = 191;
+constexpr int kFKeyTop = 192;
+constexpr int kFKeyBottom = 215;
 constexpr int kFKeyWidth = 64;
+
+void fill_rect_vram(int x, int y, int w, int h, color_t color)
+{
+    if(w <= 0 || h <= 0) return;
+    if(x < 0) { w += x; x = 0; }
+    if(y < 0) { h += y; y = 0; }
+    if(x + w > LCD_WIDTH_PX) w = LCD_WIDTH_PX - x;
+    if(y + h > LCD_HEIGHT_PX) h = LCD_HEIGHT_PX - y;
+    if(w <= 0 || h <= 0) return;
+
+    volatile color_t *vram = reinterpret_cast<volatile color_t *>(GetVRAMAddress());
+    for(int yy = y; yy < y + h; yy++) {
+        for(int xx = x; xx < x + w; xx++) {
+            vram[yy * LCD_WIDTH_PX + xx] = color;
+        }
+    }
+}
 
 void print_at(int col, int row, const char *text, int mode = TEXT_MODE_NORMAL, int color = TEXT_COLOR_BLACK)
 {
@@ -63,15 +80,16 @@ void draw_softkeys(const char *k1, const char *k2, const char *k3,
                    const char *k4, const char *k5, const char *k6)
 {
     const char *labels[6] = {k1, k2, k3, k4, k5, k6};
-    Bdisp_FilledRectangle(0, kFKeyTop, LCD_WIDTH_PX - 1, kFKeyBottom, TEXT_COLOR_BLACK);
+    fill_rect_vram(0, kFKeyTop, LCD_WIDTH_PX, kFKeyBottom - kFKeyTop + 1, COLOR_BLACK);
+    fill_rect_vram(0, kFKeyTop, LCD_WIDTH_PX, 1, COLOR_WHITE);
     for(int i = 1; i < 6; i++) {
-        Bdisp_FilledRectangle(i * kFKeyWidth - 1, kFKeyTop + 2, i * kFKeyWidth, kFKeyBottom - 2, TEXT_COLOR_WHITE);
+        fill_rect_vram(i * kFKeyWidth - 1, kFKeyTop + 2, 2, kFKeyBottom - kFKeyTop - 3, COLOR_WHITE);
     }
     for(int i = 0; i < 6; i++) {
         const char *text = labels[i] ? labels[i] : "";
         int x = i * kFKeyWidth + 14;
         if(text[0] != '\0' && text[1] != '\0' && text[2] != '\0' && text[3] != '\0') x = i * kFKeyWidth + 10;
-        print_mini_at(x, 196, text, 0xffff, 0x0000);
+        print_mini_at(x, kFKeyTop + 6, text, TEXT_COLOR_WHITE, TEXT_COLOR_BLACK);
     }
 }
 

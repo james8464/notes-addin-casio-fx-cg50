@@ -2891,7 +2891,7 @@ class CASIOApp(App):
                 if not clean_addin_outputs():
                     summary("Compile failed")
                     return
-                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "docker") or "docker").strip().lower()
+                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "prizm") or "prizm").strip().lower()
 
                 if build_mode == "prizm":
                     log("[dim]Target:[/dim] PrizmSDK/libfxcg native OS UI")

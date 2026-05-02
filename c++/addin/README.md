@@ -39,15 +39,15 @@ Or from repo root:
 
 This should produce a `.g3a` under `c++/addin/build-cg/` (the script prints the exact path).
 
-### Build on macOS with Docker (recommended)
+### Build native Prizm UI on macOS with Docker (recommended)
 
-If you don’t want a full Linux VM, you can build the `.g3a` from macOS using Docker Desktop:
+Use the PrizmSDK/libfxcg target for the calculator-style UI:
 
 ```bash
-./c++/tools/build_addin_docker.sh
+./c++/tools/build_addin_prizm_docker.sh
 ```
 
-The test TUI also does this and syncs the result to the CASIO emulator SD card:
+The test TUI defaults to this target and syncs the result to the CASIO emulator SD card:
 
 ```bash
 CASIO_BACKEND=c python3 python/tests/run_tests.py c compile
@@ -60,6 +60,7 @@ Default emulator target:
 ```
 
 Set `CASIO_SYNC_EMULATOR=0` to skip this copy, or set `CASIO_EMULATOR_SDCARD_DIR` to override the target.
+Set `CASIO_BUILD_ADDIN=docker` only if you need the older fxSDK/gint target.
 
 ### Install onto calculator
 

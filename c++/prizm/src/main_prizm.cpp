@@ -185,7 +185,7 @@ int select_menu(const char *title, const char *const *items, int count)
     while(true) {
         int key = 0;
         GetKey(&key);
-        if(key == KEY_CTRL_EXIT) return -1;
+        if(key == KEY_CTRL_EXIT || key == KEY_CTRL_MENU) return -1;
         if(key == KEY_CTRL_EXE) return selected;
         if(key >= KEY_CHAR_1 && key <= KEY_CHAR_9) {
             int index = key - KEY_CHAR_1;
@@ -302,6 +302,8 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
 
 extern "C" int main(void)
 {
+    Bdisp_EnableColor(1);
+
     ShellLine lines[kMaxShellLines];
     int line_count = 0;
     int top = 0;
@@ -324,7 +326,7 @@ extern "C" int main(void)
         int key = 0;
         GetKey(&key);
 
-        if(key == KEY_CTRL_EXIT) break;
+        if(key == KEY_CTRL_EXIT || key == KEY_CTRL_MENU) break;
         if(key == KEY_CTRL_F1) {
             int c = select_command("Algebra", kAlgebraCommands);
             insert_command(kAlgebraCommands, c, editor, input_cursor);
