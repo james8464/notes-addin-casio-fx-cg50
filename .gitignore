@@ -12,6 +12,12 @@ addin/host/build/
 c++/addin/build/
 c++/addin/build-cg/
 c++/addin/host/build/
+c++/addin/CMakeCache.txt
+c++/addin/CMakeFiles/
+c++/addin/host/CMakeCache.txt
+c++/addin/host/CMakeFiles/
+c++/addin/build-cg/CMakeCache.txt
+c++/addin/build-cg/CMakeFiles/
 c++/prizm/build/
 c++/prizm/CasioCAS.bin
 c++/prizm/CasioCAS.g3a
