@@ -126,12 +126,9 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         NodeId kid0 = x.kids[0];
         NodeId kid1 = x.kids[1];
         
-        // Get constants from both kids
-        auto n0 = as_num(a, kid0);
-        auto n1 = as_num(a, kid1);
-        
         // Check if kid1 is x^power (Pow node)
         auto const &kid1_node = a.get(kid1);
+        auto n0 = as_num(a, kid0);
         if(n0 && kid1_node.kind == NodeKind::Pow) {
             auto exp = as_num(a, kid1_node.b);
             if(exp && is_sym(a, kid1_node.a, var)) {
@@ -169,6 +166,48 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         NodeId num = x.a;
         NodeId den = x.b;
         auto n_den = as_num(a, den);
+        // ∫ (k*x^n)/m dx
+        if(n_den && a.get(num).kind == NodeKind::Mul) {
+            Node const &num_node = a.get(num);
+            NodeId kid0 = num_node.kids[0];
+            NodeId kid1 = num_node.kids[1];
+            auto n0 = as_num(a, kid0);
+            // k*x
+            if(n0 && a.get(kid1).kind == NodeKind::Sym) {
+                Rational coeff = *n0;
+                Rational exp{1, 1};
+                exp.num += exp.den;
+                NodeId v = casio::sym(a, var);
+                NodeId pow = casio::power(a, v, a.num(exp));
+                // Final coefficient: k / (m * (n+1)) = k / (m * 2)
+                Rational result_coeff{Rational{coeff.num, coeff.den * n_den->num * exp.num}};
+                result_coeff.normalize();
+                NodeId result = casio::mul(a, {a.num(result_coeff), pow});
+                out.result = casio::simplify(a, result);
+                out.steps.push_back("Step 2: Constant times x, apply power rule.");
+                out.steps.push_back("Step 3: Simplify. Add constant C.");
+                return out;
+            }
+            // k*x^n
+            if(n0 && a.get(kid1).kind == NodeKind::Pow) {
+                auto n_exp = as_num(a, a.get(kid1).b);
+                if(n_exp && is_sym(a, a.get(kid1).a, var)) {
+                    Rational coeff = *n0;
+                    Rational exp = *n_exp;
+                    exp.num += exp.den;
+                    NodeId v = casio::sym(a, var);
+                    NodeId pow = casio::power(a, v, a.num(exp));
+                    // Final coefficient: k / (m * (n+1))
+                    Rational result_coeff{Rational{coeff.num, coeff.den * n_den->num * exp.num}};
+                    result_coeff.normalize();
+                    NodeId result = casio::mul(a, {a.num(result_coeff), pow});
+                    out.result = casio::simplify(a, result);
+                    out.steps.push_back("Step 2: Constant times power, apply power rule.");
+                    out.steps.push_back("Step 3: Simplify. Add constant C.");
+                    return out;
+                }
+            }
+        }
         if(n_den && is_sym(a, num, var)) {
             // x/2 = (1/2)*x
             // Just integrate x and divide by the constant

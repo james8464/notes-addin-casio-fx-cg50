@@ -121,6 +121,20 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     Node const &bn = a.get(b);
     if(is_zero(tn)) return num(a, 0);
     if(is_one(bn)) return t;
+    // Extract and divide leading integer from (k*...)/n where k,n are integers
+    if(tn.kind == NodeKind::Mul && bn.kind == NodeKind::Num && bn.num.den == 1) {
+        Node const &first = a.get(tn.kids[0]);
+        if(first.kind == NodeKind::Num && first.num.den == 1) {
+            Rational q = divq(first.num, bn.num);
+            if(q.den == 1) {
+                std::vector<NodeId> kept;
+                for(size_t i = 1; i < tn.kids.size(); i++) kept.push_back(tn.kids[i]);
+                if(q.num != 1) kept.insert(kept.begin(), num(a, q.num, 1));
+                NodeId newt = kept.empty() ? num(a, 1) : (kept.size() == 1 ? kept[0] : a.mul(std::move(kept)));
+                return simplify(a, newt);
+            }
+        }
+    }
     if(is_num(tn) && is_num(bn)) {
         Rational q = divq(tn.num, bn.num);
         return num(a, q.num, q.den);
