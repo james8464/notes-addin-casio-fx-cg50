@@ -12,6 +12,12 @@ build/
 # Local tooling / lockfiles
 skills-lock.json
 .agents/
+.claude/
+.codex/
+.cursor/
+.obsidian/
+.opencode/
+opencode.json
 
 # Test failure dumps
 tests/reports/

@@ -2282,7 +2282,7 @@ class CASIOApp(App):
                             "   \\   \\\n"
                             "    `~~~'\n\n"
                             "[dim]gpt-5.4 · API Usage Billing[/dim]\n"
-                            "[dim]~/Developer/Python/CASIO[/dim]",
+                            f"[dim]{REPO_ROOT}[/dim]",
                         )
                     with Container(id="hero-right"):
                         yield Static(
@@ -2617,16 +2617,29 @@ class CASIOApp(App):
             return
         from pathlib import Path
         import subprocess
+        import shutil
 
         self.append_result("[bold #e07a53]▶ /compile[/bold #e07a53]")
         self.update_summary("Compiling...")
         
         root = Path(__file__).resolve().parents[1]
         calc = root / "src" / "calc_files"
-        # Use mpy-cross v1.9.4 built from source (produces v3 bytecode)
-        mpy_cross = Path("/Users/james/micropython/mpy-cross/mpy-cross")
-        calculator = Path("/Volumes/NO NAME")
-        if not mpy_cross.exists():
+        # Prefer an explicit env override, then PATH, then the common local build path.
+        mpy_cross_candidates = [
+            os.environ.get("CASIO_MPY_CROSS"),
+            shutil.which("mpy-cross"),
+            str(Path.home() / "micropython" / "mpy-cross" / "mpy-cross"),
+        ]
+        mpy_cross = None
+        for candidate in mpy_cross_candidates:
+            if not candidate:
+                continue
+            path = Path(candidate).expanduser()
+            if path.exists():
+                mpy_cross = path
+                break
+        calculator = Path(os.environ.get("CASIO_CALCULATOR_PATH", "/Volumes/NO NAME")).expanduser()
+        if mpy_cross is None:
             self.append_result(f"[bold #f87171]mpy-cross missing:[/bold #f87171] {mpy_cross}")
             self.update_summary("Compile failed")
             return
@@ -2694,7 +2707,6 @@ class CASIOApp(App):
         # they live in git with run() -> Program.main()).
         if calculator.exists():
             self.append_result("[bold #22c55e]--- Copying to calculator ---[/bold #22c55e]")
-            import shutil
             for src_rel, prog_name in support_modules:
                 mpy_src = calc / f"{prog_name}.mpy"
                 mpy_dst = calculator / f"{prog_name}.mpy"
