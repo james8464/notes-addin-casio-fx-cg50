@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if command -v fxsdk >/dev/null 2>&1; then
+  exec "${ROOT_DIR}/c++/tools/build_addin.sh"
+fi
+
+if command -v docker >/dev/null 2>&1; then
+  exec "${ROOT_DIR}/c++/tools/build_addin_docker.sh"
+fi
+
+echo "No fxSDK or Docker found."
+echo "Install fxSDK, or install Docker and rerun ./compile."
+exit 1
+

@@ -31,6 +31,9 @@ c++/prizm/CasioCAS.g3a
 c++/graphify-out/
 graphify-out
 
+# Local third-party reference downloads
+examples/
+
 # Live test reports
 python/tests/reports/
 c++/tests/reports/

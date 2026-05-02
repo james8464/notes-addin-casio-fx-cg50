@@ -1,30 +1,9 @@
 #include "device/device_solver.hpp"
-#include "device/cas_wrapper.hpp"
-#include "device/cas_lib/Expression.h"
-#include "device/cas_lib/Equation.h"
-#include "device/cas_lib/Term.h"
 
 namespace casio::device
 {
 namespace
 {
-
-struct Linear {
-    int x = 0;
-    int c = 0;
-    bool ok = true;
-};
-
-struct Poly {
-    int coeff[6]{};
-    bool ok = true;
-};
-
-struct FractionTerm {
-    int coeff = 0;
-    int den = 1;
-    int power = 0;
-};
 
 struct Fraction {
     int num = 0;
@@ -81,192 +60,6 @@ static int find_char(const char *s, char needle)
     return -1;
 }
 
-static void append_term(FixedString<96> &line, int coeff, bool x_term)
-{
-    if(x_term) {
-        if(coeff == 1) line.append("x");
-        else if(coeff == -1) line.append("-x");
-        else {
-            line.append_int(coeff);
-            line.append("x");
-        }
-    }
-    else {
-        line.append_int(coeff);
-    }
-}
-
-static void append_linear(FixedString<96> &line, Linear const &v)
-{
-    bool wrote = false;
-    if(v.x != 0) {
-        append_term(line, v.x, true);
-        wrote = true;
-    }
-    if(v.c != 0 || !wrote) {
-        if(wrote && v.c > 0) line.append(" + ");
-        if(wrote && v.c < 0) {
-            line.append(" - ");
-            line.append_int(-v.c);
-        }
-        else line.append_int(v.c);
-    }
-}
-
-static Linear parse_linear_range(const char *s, int begin, int end)
-{
-    Linear out;
-    int i = begin;
-    int sign = 1;
-    bool consumed = false;
-
-    while(i < end) {
-        if(s[i] == '+') {
-            sign = 1;
-            i++;
-            continue;
-        }
-        if(s[i] == '-') {
-            sign = -1;
-            i++;
-            continue;
-        }
-
-        int coeff = 1;
-        int number = 0;
-        bool has_number = read_int(s, i, end, number);
-        if(has_number) coeff = number;
-        if(i < end && s[i] == '*') i++;
-
-        if(i < end && s[i] == 'x') {
-            out.x += sign * coeff;
-            i++;
-        }
-        else if(has_number) {
-            out.c += sign * coeff;
-        }
-        else {
-            out.ok = false;
-            return out;
-        }
-
-        consumed = true;
-        sign = 1;
-    }
-
-    out.ok = consumed;
-    return out;
-}
-
-static bool parse_poly_term(const char *s, int begin, int end, int sign, Poly &poly)
-{
-    int i = begin;
-    int coeff = 1;
-    int number = 0;
-    bool has_number = read_int(s, i, end, number);
-    if(has_number) coeff = number;
-    if(i < end && s[i] == '*') i++;
-
-    if(i < end && s[i] == 'x') {
-        int power = 1;
-        i++;
-        if(i < end && s[i] == '^') {
-            i++;
-            if(!read_int(s, i, end, power)) return false;
-        }
-        if(power < 0 || power > 5 || i != end) return false;
-        poly.coeff[power] += sign * coeff;
-        return true;
-    }
-
-    if(has_number && i == end) {
-        poly.coeff[0] += sign * coeff;
-        return true;
-    }
-
-    return false;
-}
-
-static Poly parse_poly(const char *text)
-{
-    char s[128];
-    int n = compact(text, s, (int)sizeof(s));
-    Poly poly;
-    if(n == 0) {
-        poly.ok = false;
-        return poly;
-    }
-
-    int start = 0;
-    int sign = 1;
-    if(s[0] == '+') start = 1;
-    else if(s[0] == '-') {
-        sign = -1;
-        start = 1;
-    }
-
-    for(int i = start; i <= n; i++) {
-        if(i == n || s[i] == '+' || s[i] == '-') {
-            if(i == start || !parse_poly_term(s, start, i, sign, poly)) {
-                poly.ok = false;
-                return poly;
-            }
-            if(i < n) {
-                sign = s[i] == '-' ? -1 : 1;
-                start = i + 1;
-            }
-        }
-    }
-    return poly;
-}
-
-static Poly parse_poly_range(const char *s, int begin, int end)
-{
-    Poly poly;
-    if(begin >= end) {
-        poly.ok = false;
-        return poly;
-    }
-
-    int start = begin;
-    int sign = 1;
-    if(s[start] == '+') start++;
-    else if(s[start] == '-') {
-        sign = -1;
-        start++;
-    }
-
-    for(int i = start; i <= end; i++) {
-        if(i == end || s[i] == '+' || s[i] == '-') {
-            if(i == start || !parse_poly_term(s, start, i, sign, poly)) {
-                poly.ok = false;
-                return poly;
-            }
-            if(i < end) {
-                sign = s[i] == '-' ? -1 : 1;
-                start = i + 1;
-            }
-        }
-    }
-    return poly;
-}
-
-static int poly_degree(Poly const &poly)
-{
-    for(int p = 5; p >= 0; p--) {
-        if(poly.coeff[p] != 0) return p;
-    }
-    return 0;
-}
-
-static Poly subtract_poly(Poly const &left, Poly const &right)
-{
-    Poly out;
-    out.ok = left.ok && right.ok;
-    for(int i = 0; i < 6; i++) out.coeff[i] = left.coeff[i] - right.coeff[i];
-    return out;
-}
-
 static bool is_square_int(int value, int &root)
 {
     if(value < 0) return false;
@@ -293,61 +86,359 @@ static bool less_fraction(Fraction const &a, Fraction const &b)
     return a.num * b.den < b.num * a.den;
 }
 
-static void append_power(FixedString<96> &line, int power)
+static bool same_fraction(Fraction const &a, Fraction const &b)
 {
-    if(power == 0) return;
-    line.append("x");
-    if(power != 1) {
-        line.append("^");
-        line.append_int(power);
-    }
+    return a.num == b.num && a.den == b.den;
 }
 
-static void append_poly(FixedString<96> &line, Poly const &poly)
+static bool is_zero(Fraction const &a)
 {
-    bool wrote = false;
-    for(int p = 5; p >= 0; p--) {
-        int c = poly.coeff[p];
-        if(c == 0) continue;
-        if(wrote) line.append(c < 0 ? " - " : " + ");
-        else if(c < 0) line.append("-");
-
-        int mag = abs_int(c);
-        if(p == 0 || mag != 1) line.append_int(mag);
-        if(p > 0) append_power(line, p);
-        wrote = true;
-    }
-    if(!wrote) line.append("0");
+    return a.num == 0;
 }
 
-static void append_fraction_poly(FixedString<96> &line, FractionTerm const *terms, int count)
+static Fraction frac_abs(Fraction a)
+{
+    if(a.num < 0) a.num = -a.num;
+    return a;
+}
+
+static Fraction frac_neg(Fraction a)
+{
+    a.num = -a.num;
+    return a;
+}
+
+static Fraction frac_add(Fraction a, Fraction b)
+{
+    return make_fraction(a.num * b.den + b.num * a.den, a.den * b.den);
+}
+
+static Fraction frac_mul(Fraction a, Fraction b)
+{
+    return make_fraction(a.num * b.num, a.den * b.den);
+}
+
+static bool frac_div(Fraction a, Fraction b, Fraction &out)
+{
+    if(b.num == 0) return false;
+    out = make_fraction(a.num * b.den, a.den * b.num);
+    return true;
+}
+
+static int lcm_int(int a, int b)
+{
+    a = abs_int(a);
+    b = abs_int(b);
+    if(a == 0 || b == 0) return 0;
+    return (a / gcd_int(a, b)) * b;
+}
+
+static const int RPOLY_MAX_DEG = 8;
+
+struct RPoly {
+    Fraction coeff[RPOLY_MAX_DEG + 1]{};
+    bool ok = true;
+};
+
+static RPoly poly_zero()
+{
+    RPoly out;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) out.coeff[i] = make_fraction(0, 1);
+    return out;
+}
+
+static RPoly poly_const(Fraction v)
+{
+    RPoly out = poly_zero();
+    out.coeff[0] = v;
+    return out;
+}
+
+static RPoly poly_var()
+{
+    RPoly out = poly_zero();
+    out.coeff[1] = make_fraction(1, 1);
+    return out;
+}
+
+static int rpoly_degree(RPoly const &p)
+{
+    for(int i = RPOLY_MAX_DEG; i >= 0; i--) {
+        if(!is_zero(p.coeff[i])) return i;
+    }
+    return 0;
+}
+
+static bool rpoly_is_const(RPoly const &p)
+{
+    if(!p.ok) return false;
+    for(int i = 1; i <= RPOLY_MAX_DEG; i++) {
+        if(!is_zero(p.coeff[i])) return false;
+    }
+    return true;
+}
+
+static RPoly rpoly_add(RPoly const &a, RPoly const &b)
+{
+    RPoly out = poly_zero();
+    out.ok = a.ok && b.ok;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) out.coeff[i] = frac_add(a.coeff[i], b.coeff[i]);
+    return out;
+}
+
+static RPoly rpoly_neg(RPoly const &a)
+{
+    RPoly out = poly_zero();
+    out.ok = a.ok;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) out.coeff[i] = frac_neg(a.coeff[i]);
+    return out;
+}
+
+static RPoly rpoly_sub(RPoly const &a, RPoly const &b)
+{
+    return rpoly_add(a, rpoly_neg(b));
+}
+
+static RPoly rpoly_mul(RPoly const &a, RPoly const &b)
+{
+    RPoly out = poly_zero();
+    out.ok = a.ok && b.ok;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) {
+        if(is_zero(a.coeff[i])) continue;
+        for(int j = 0; j <= RPOLY_MAX_DEG; j++) {
+            if(is_zero(b.coeff[j])) continue;
+            if(i + j > RPOLY_MAX_DEG) {
+                out.ok = false;
+                continue;
+            }
+            out.coeff[i + j] = frac_add(out.coeff[i + j], frac_mul(a.coeff[i], b.coeff[j]));
+        }
+    }
+    return out;
+}
+
+static RPoly rpoly_div_const(RPoly const &a, Fraction d)
+{
+    RPoly out = poly_zero();
+    out.ok = a.ok && d.num != 0;
+    if(d.num == 0) return out;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) {
+        if(!frac_div(a.coeff[i], d, out.coeff[i])) out.ok = false;
+    }
+    return out;
+}
+
+static RPoly rpoly_pow(RPoly base, int exp)
+{
+    if(exp < 0 || exp > RPOLY_MAX_DEG) {
+        RPoly bad = poly_zero();
+        bad.ok = false;
+        return bad;
+    }
+    RPoly out = poly_const(make_fraction(1, 1));
+    for(int i = 0; i < exp; i++) out = rpoly_mul(out, base);
+    return out;
+}
+
+static bool atom_starts_poly(char c, char var)
+{
+    return c == '(' || c == var || c == '.' || is_digit(c);
+}
+
+struct RPolyParser {
+    const char *s = nullptr;
+    int n = 0;
+    int pos = 0;
+    char var = 'x';
+    bool ok = true;
+
+    char peek() const { return pos < n ? s[pos] : '\0'; }
+    bool take(char c)
+    {
+        if(peek() != c) return false;
+        pos++;
+        return true;
+    }
+
+    bool read_number(Fraction &out)
+    {
+        int start = pos;
+        int whole = 0;
+        bool has_whole = false;
+        while(pos < n && is_digit(s[pos])) {
+            has_whole = true;
+            whole = whole * 10 + (s[pos] - '0');
+            pos++;
+        }
+        if(pos < n && s[pos] == '.') {
+            pos++;
+            int frac = 0;
+            int scale = 1;
+            bool has_frac = false;
+            while(pos < n && is_digit(s[pos])) {
+                has_frac = true;
+                frac = frac * 10 + (s[pos] - '0');
+                scale *= 10;
+                pos++;
+            }
+            if(!has_whole && !has_frac) {
+                pos = start;
+                return false;
+            }
+            out = make_fraction(whole * scale + frac, scale);
+            return true;
+        }
+        if(!has_whole) return false;
+        out = make_fraction(whole, 1);
+        return true;
+    }
+
+    bool read_small_int(int &out)
+    {
+        if(pos >= n || !is_digit(s[pos])) return false;
+        out = 0;
+        while(pos < n && is_digit(s[pos])) {
+            out = out * 10 + (s[pos] - '0');
+            pos++;
+            if(out > RPOLY_MAX_DEG) return false;
+        }
+        return true;
+    }
+
+    RPoly parse_atom()
+    {
+        if(take('(')) {
+            RPoly out = parse_add();
+            if(!take(')')) ok = false;
+            return out;
+        }
+        if(peek() == var) {
+            pos++;
+            return poly_var();
+        }
+        Fraction v;
+        if(read_number(v)) return poly_const(v);
+        ok = false;
+        return poly_zero();
+    }
+
+    RPoly parse_power()
+    {
+        RPoly out = parse_atom();
+        if(take('^')) {
+            int exp = 0;
+            if(!read_small_int(exp)) ok = false;
+            out = rpoly_pow(out, exp);
+        }
+        return out;
+    }
+
+    RPoly parse_unary()
+    {
+        if(take('+')) return parse_unary();
+        if(take('-')) return rpoly_neg(parse_unary());
+        return parse_power();
+    }
+
+    RPoly parse_mul()
+    {
+        RPoly out = parse_unary();
+        while(ok) {
+            if(take('*')) {
+                out = rpoly_mul(out, parse_unary());
+            }
+            else if(take('/')) {
+                RPoly d = parse_unary();
+                if(!rpoly_is_const(d)) {
+                    ok = false;
+                    return out;
+                }
+                out = rpoly_div_const(out, d.coeff[0]);
+            }
+            else if(atom_starts_poly(peek(), var)) {
+                out = rpoly_mul(out, parse_unary());
+            }
+            else break;
+        }
+        return out;
+    }
+
+    RPoly parse_add()
+    {
+        RPoly out = parse_mul();
+        while(ok) {
+            if(take('+')) out = rpoly_add(out, parse_mul());
+            else if(take('-')) out = rpoly_sub(out, parse_mul());
+            else break;
+        }
+        return out;
+    }
+};
+
+static char detect_poly_var(const char *s)
+{
+    for(int i = 0; s != nullptr && s[i] != '\0'; i++) {
+        char c = s[i];
+        if(c >= 'a' && c <= 'z') {
+            if(c == 'p' && s[i + 1] == 'i') {
+                i++;
+                continue;
+            }
+            if(c == 'e') continue;
+            return c;
+        }
+    }
+    return 'x';
+}
+
+static RPoly parse_rpoly_compact(const char *s, int begin, int end, char var)
+{
+    RPolyParser p{s + begin, end - begin, 0, var, true};
+    RPoly out = p.parse_add();
+    out.ok = out.ok && p.ok && p.pos == p.n;
+    return out;
+}
+
+static int find_top_level_equals(const char *s)
+{
+    int depth = 0;
+    for(int i = 0; s != nullptr && s[i] != '\0'; i++) {
+        if(s[i] == '(' || s[i] == '[' || s[i] == '{') depth++;
+        else if(s[i] == ')' || s[i] == ']' || s[i] == '}') depth--;
+        else if(s[i] == '=' && depth == 0) return i;
+    }
+    return -1;
+}
+
+static void append_fraction(FixedString<96> &line, Fraction const &f);
+
+static void append_rpoly(FixedString<96> &line, RPoly const &poly, char var)
 {
     bool wrote = false;
-    for(int i = count - 1; i >= 0; i--) {
-        int c = terms[i].coeff;
-        int d = terms[i].den;
-        int p = terms[i].power;
-        if(c == 0) continue;
+    for(int p = RPOLY_MAX_DEG; p >= 0; p--) {
+        Fraction c = poly.coeff[p];
+        if(is_zero(c)) continue;
+        if(wrote) line.append(c.num < 0 ? " - " : " + ");
+        else if(c.num < 0) line.append("-");
 
-        int g = gcd_int(c, d);
-        c /= g;
-        d /= g;
-
-        if(wrote) line.append(c < 0 ? " - " : " + ");
-        else if(c < 0) line.append("-");
-
-        int mag = abs_int(c);
-        if(d == 1) {
-            if(p == 0 || mag != 1) line.append_int(mag);
-            if(p > 0) append_power(line, p);
+        Fraction mag = frac_abs(c);
+        bool one = (mag.num == mag.den);
+        if(p > 0) {
+            if(mag.den != 1) {
+                if(mag.num != 1) line.append_int(mag.num);
+            }
+            else if(!one) line.append_int(mag.num);
+            line.append_char(var);
+            if(p != 1) {
+                line.append("^");
+                line.append_int(p);
+            }
+            if(mag.den != 1) {
+                line.append("/");
+                line.append_int(mag.den);
+            }
         }
-        else {
-            if(mag != 1) line.append_int(mag);
-            if(p > 0) append_power(line, p);
-            else line.append("1");
-            line.append("/");
-            line.append_int(d);
-        }
+        else append_fraction(line, mag);
         wrote = true;
     }
     if(!wrote) line.append("0");
@@ -381,6 +472,218 @@ static void append_fraction(FixedString<96> &line, Fraction const &f)
     }
 }
 
+static void append_surd_root(FixedString<96> &line, int base, char op, int disc, int den);
+
+static bool rpoly_to_int_coeffs(RPoly const &p, int *out, int max_deg)
+{
+    int lcm = 1;
+    for(int i = 0; i <= max_deg; i++) {
+        lcm = lcm_int(lcm, p.coeff[i].den);
+        if(lcm == 0 || lcm > 1000000) return false;
+    }
+    for(int i = 0; i <= max_deg; i++) {
+        int v = p.coeff[i].num * (lcm / p.coeff[i].den);
+        out[i] = v;
+    }
+    int g = 0;
+    for(int i = 0; i <= max_deg; i++) g = gcd_int(g, out[i]);
+    if(g > 1) {
+        for(int i = 0; i <= max_deg; i++) out[i] /= g;
+    }
+    return true;
+}
+
+static Fraction eval_int_poly(const int *coeff, int deg, Fraction x)
+{
+    Fraction acc = make_fraction(0, 1);
+    for(int p = deg; p >= 0; p--) {
+        acc = frac_mul(acc, x);
+        acc = frac_add(acc, make_fraction(coeff[p], 1));
+    }
+    return acc;
+}
+
+static void synthetic_divide_linear(int *coeff, int &deg, int root)
+{
+    int out[RPOLY_MAX_DEG + 1]{};
+    out[deg - 1] = coeff[deg];
+    for(int p = deg - 2; p >= 0; p--) out[p] = coeff[p + 1] + root * out[p + 1];
+    for(int p = 0; p <= deg - 1; p++) coeff[p] = out[p];
+    coeff[deg] = 0;
+    deg--;
+}
+
+static bool append_quadratic_roots(OutputLines &out, const int *coeff, char var)
+{
+    int a2 = coeff[2];
+    int b2 = coeff[1];
+    int c2 = coeff[0];
+    int disc = b2 * b2 - 4 * a2 * c2;
+    int root = 0;
+
+    FixedString<96> &disc_line = out.next();
+    disc_line.append("4. Discriminant D = ");
+    disc_line.append_int(disc);
+    disc_line.append(".");
+
+    if(disc < 0) {
+        out.add("Answer: no real roots.");
+        return true;
+    }
+    if(!is_square_int(disc, root)) {
+        out.add("5. Keep exact surd roots.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: ");
+        ans.append_char(var);
+        ans.append(" = ");
+        append_surd_root(ans, -b2, '-', disc, 2 * a2);
+        ans.append(" or ");
+        ans.append_char(var);
+        ans.append(" = ");
+        append_surd_root(ans, -b2, '+', disc, 2 * a2);
+        return true;
+    }
+
+    out.add("5. Use quadratic formula.");
+    Fraction r1 = make_fraction(-b2 - root, 2 * a2);
+    Fraction r2 = make_fraction(-b2 + root, 2 * a2);
+    if(less_fraction(r2, r1)) {
+        Fraction tmp = r1;
+        r1 = r2;
+        r2 = tmp;
+    }
+
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    ans.append_char(var);
+    ans.append(" = ");
+    append_fraction(ans, r1);
+    if(!same_fraction(r1, r2)) {
+        ans.append(" or ");
+        ans.append_char(var);
+        ans.append(" = ");
+        append_fraction(ans, r2);
+    }
+    return true;
+}
+
+static bool append_polynomial_roots(OutputLines &out, RPoly const &poly, char var)
+{
+    int deg = rpoly_degree(poly);
+    if(deg == 0) {
+        out.add(is_zero(poly.coeff[0]) ? "Answer: infinitely many solutions." : "Answer: no solution.");
+        return true;
+    }
+    if(deg == 1) {
+        Fraction rhs = frac_neg(poly.coeff[0]);
+        Fraction sol;
+        if(!frac_div(rhs, poly.coeff[1], sol)) {
+            out.add("Answer: no solution.");
+            return true;
+        }
+        out.add("4. Solve linear equation.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: ");
+        ans.append_char(var);
+        ans.append(" = ");
+        append_fraction(ans, sol);
+        return true;
+    }
+
+    int coeff[RPOLY_MAX_DEG + 1]{};
+    if(!rpoly_to_int_coeffs(poly, coeff, deg)) {
+        out.add("Unsupported: coefficients too large after clearing fractions.");
+        return false;
+    }
+
+    if(deg == 2) return append_quadratic_roots(out, coeff, var);
+
+    Fraction roots[RPOLY_MAX_DEG]{};
+    int root_count = 0;
+    int work_deg = deg;
+    bool changed = true;
+    while(work_deg > 2 && changed) {
+        changed = false;
+        for(int r = -20; r <= 20; r++) {
+            if(r == 0 && coeff[0] != 0) {
+                // still test zero below when valid
+            }
+            Fraction val = eval_int_poly(coeff, work_deg, make_fraction(r, 1));
+            if(is_zero(val)) {
+                roots[root_count++] = make_fraction(r, 1);
+                synthetic_divide_linear(coeff, work_deg, r);
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    if(root_count > 0) {
+        out.add("4. Use factor theorem to find rational roots.");
+        FixedString<96> &found = out.next();
+        found.append("5. Roots found: ");
+        for(int i = 0; i < root_count; i++) {
+            if(i) found.append(", ");
+            found.append_char(var);
+            found.append(" = ");
+            append_fraction(found, roots[i]);
+        }
+    }
+
+    if(work_deg == 1) {
+        Fraction sol;
+        if(frac_div(make_fraction(-coeff[0], 1), make_fraction(coeff[1], 1), sol)) roots[root_count++] = sol;
+    }
+    else if(work_deg == 2) {
+        int a2 = coeff[2];
+        int b2 = coeff[1];
+        int c2 = coeff[0];
+        int disc = b2 * b2 - 4 * a2 * c2;
+        int root = 0;
+        if(disc >= 0 && is_square_int(disc, root)) {
+            roots[root_count++] = make_fraction(-b2 - root, 2 * a2);
+            Fraction r2 = make_fraction(-b2 + root, 2 * a2);
+            bool dup = false;
+            for(int i = 0; i < root_count; i++) {
+                if(same_fraction(roots[i], r2)) dup = true;
+            }
+            if(!dup) roots[root_count++] = r2;
+        }
+        else {
+            append_quadratic_roots(out, coeff, var);
+            if(root_count > 0) {
+                FixedString<96> &extra = out.next();
+                extra.append("Also include listed rational roots.");
+            }
+            return true;
+        }
+    }
+    else {
+        out.add("Unsupported: higher degree needs numeric/factor mode.");
+        return false;
+    }
+
+    for(int i = 0; i < root_count; i++) {
+        for(int j = i + 1; j < root_count; j++) {
+            if(less_fraction(roots[j], roots[i])) {
+                Fraction tmp = roots[i];
+                roots[i] = roots[j];
+                roots[j] = tmp;
+            }
+        }
+    }
+
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    for(int i = 0; i < root_count; i++) {
+        if(i) ans.append(" or ");
+        ans.append_char(var);
+        ans.append(" = ");
+        append_fraction(ans, roots[i]);
+    }
+    return true;
+}
+
 static void append_surd_root(FixedString<96> &line, int base, char op, int disc, int den)
 {
     if(den < 0) {
@@ -399,225 +702,518 @@ static void append_surd_root(FixedString<96> &line, int base, char op, int disc,
 
 static bool solve_simplify(const char *input, OutputLines &out)
 {
-    // Try CAS engine for simplification
-    cas::CASEngine engine;
-    if(cas::CASEngine::isValidExpression(input)) {
-        cas::ComputationResult casResult = engine.simplifyExpression(input);
-        if(casResult.success) {
-            // Use CAS result with enhanced working steps
-            for(const auto& step : casResult.workingSteps) {
-                out.add(step.c_str());
-            }
-            FixedString<96> &ans = out.next();
-            ans.append("Answer: ");
-            ans.append(casResult.answer.c_str());
-            return true;
-        }
-    }
-    
-    // Fallback to original device solver
     char s[128];
-    int n = compact(input, s, (int)sizeof(s));
-    Linear expr = parse_linear_range(s, 0, n);
-    if(!expr.ok) {
-        Poly poly = parse_poly(input);
-        if(!poly.ok) {
-            out.add("Unsupported: use polynomial terms up to x^5.");
-            return false;
-        }
-
-        add_input_line(out, "1. Start: ", input);
-        out.add("2. Collect like powers of x.");
-        FixedString<96> &ans = out.next();
-        ans.append("Answer: ");
-        append_poly(ans, poly);
-        return true;
+    compact(input, s, (int)sizeof(s));
+    char var = detect_poly_var(s);
+    RPoly poly = parse_rpoly_compact(s, 0, cstr_len(s), var);
+    if(!poly.ok) {
+        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
+        return false;
     }
 
     add_input_line(out, "1. Start: ", input);
-    out.add("2. Collect constant and x terms.");
+    if(!cstr_eq(s, input)) {
+        FixedString<96> &norm = out.next();
+        norm.append("2. Normalize: ");
+        norm.append(s);
+        out.add("3. Expand brackets and collect powers.");
+    }
+    else {
+        out.add("2. Expand brackets and collect powers.");
+    }
     FixedString<96> &ans = out.next();
     ans.append("Answer: ");
-    append_linear(ans, expr);
+    append_rpoly(ans, poly, var);
     return true;
 }
 
 static bool solve_algebra(const char *input, OutputLines &out)
 {
-    // Try CAS engine first for better computation reliability
-    cas::CASEngine engine;
-    if(cas::CASEngine::isValidEquation(input)) {
-        cas::ComputationResult casResult = engine.solveEquation(input);
-        if(casResult.success) {
-            // Use CAS result with enhanced working steps
-            for(const auto& step : casResult.workingSteps) {
-                out.add(step.c_str());
-            }
-            FixedString<96> &ans = out.next();
-            ans.append("Answer: ");
-            ans.append(casResult.answer.c_str());
-            return true;
-        }
-    }
-    
-    // Fallback to original device solver
     char s[128];
     int n = compact(input, s, (int)sizeof(s));
-    int eq = find_char(s, '=');
+    int eq = find_top_level_equals(s);
     if(eq <= 0 || eq >= n - 1) {
-        out.add("Unsupported: enter a linear equation like 2x+3=7.");
+        out.add("Unsupported: enter an equation like 2(x+1)=5.");
         return false;
     }
 
-    Linear left = parse_linear_range(s, 0, eq);
-    Linear right = parse_linear_range(s, eq + 1, n);
+    char var = detect_poly_var(s);
+    RPoly left = parse_rpoly_compact(s, 0, eq, var);
+    RPoly right = parse_rpoly_compact(s, eq + 1, n, var);
     if(!left.ok || !right.ok) {
-        Poly lp = parse_poly_range(s, 0, eq);
-        Poly rp = parse_poly_range(s, eq + 1, n);
-        Poly q = subtract_poly(lp, rp);
-        if(!q.ok || poly_degree(q) > 2 || q.coeff[2] == 0) {
-            out.add("Unsupported: use linear or simple quadratic equations.");
-            return false;
-        }
-
-        int a2 = q.coeff[2];
-        int b2 = q.coeff[1];
-        int c2 = q.coeff[0];
-        int disc = b2 * b2 - 4 * a2 * c2;
-        int root = 0;
-
-        add_input_line(out, "1. Start: ", input);
-        FixedString<96> &stdform = out.next();
-        stdform.append("2. Rearrange to ");
-        append_poly(stdform, q);
-        stdform.append(" = 0.");
-
-        FixedString<96> &disc_line = out.next();
-        disc_line.append("3. Discriminant b^2-4ac = ");
-        disc_line.append_int(disc);
-        disc_line.append(".");
-
-        if(disc < 0) {
-            out.add("Answer: no real roots.");
-            return true;
-        }
-        if(!is_square_int(disc, root)) {
-            out.add("4. Discriminant is not a square, keep exact surds.");
-            FixedString<96> &ans = out.next();
-            ans.append("Answer: x = ");
-            append_surd_root(ans, -b2, '-', disc, 2 * a2);
-            ans.append(" or x = ");
-            append_surd_root(ans, -b2, '+', disc, 2 * a2);
-            return true;
-        }
-
-        out.add("4. Use x = (-b +/- sqrt(D))/(2a).");
-        Fraction r1 = make_fraction(-b2 - root, 2 * a2);
-        Fraction r2 = make_fraction(-b2 + root, 2 * a2);
-        if(less_fraction(r2, r1)) {
-            Fraction tmp = r1;
-            r1 = r2;
-            r2 = tmp;
-        }
-
-        FixedString<96> &ans = out.next();
-        ans.append("Answer: x = ");
-        append_fraction(ans, r1);
-        if(r1.num != r2.num || r1.den != r2.den) {
-            ans.append(" or x = ");
-            append_fraction(ans, r2);
-        }
-        return true;
+        out.add("Unsupported: polynomial equation parser could not normalise input.");
+        return false;
     }
-
-    int a = left.x - right.x;
-    int b = right.c - left.c;
+    RPoly q = rpoly_sub(left, right);
 
     add_input_line(out, "1. Start: ", input);
-
-    FixedString<96> &collect = out.next();
-    collect.append("2. Collect x terms: ");
-    append_term(collect, a, true);
-    collect.append(" = ");
-    collect.append_int(b);
-
-    if(a == 0) {
-        out.add(b == 0 ? "Answer: infinitely many solutions." : "Answer: no solution.");
-        return b == 0;
-    }
-
-    FixedString<96> &divide = out.next();
-    divide.append("3. Divide both sides by ");
-    divide.append_int(a);
-    divide.append(".");
-
-    int g = gcd_int(b, a);
-    int num = b / g;
-    int den = a / g;
-    if(den < 0) {
-        den = -den;
-        num = -num;
-    }
-
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: x = ");
-    if(den == 1) ans.append_int(num);
-    else {
-        ans.append_int(num);
-        ans.append("/");
-        ans.append_int(den);
-    }
-    return true;
+    out.add("2. Expand brackets on both sides.");
+    FixedString<96> &stdform = out.next();
+    stdform.append("3. Rearrange to ");
+    append_rpoly(stdform, q, var);
+    stdform.append(" = 0.");
+    return append_polynomial_roots(out, q, var);
 }
 
 static bool solve_derive(const char *input, OutputLines &out)
 {
-    Poly p = parse_poly(input);
+    char s[128];
+    compact(input, s, (int)sizeof(s));
+    char var = detect_poly_var(s);
+    RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
-        out.add("Unsupported: use polynomial terms up to x^5.");
+        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
         return false;
     }
 
-    Poly d;
-    for(int power = 1; power <= 5; power++) {
-        d.coeff[power - 1] += p.coeff[power] * power;
+    RPoly d = poly_zero();
+    for(int power = 1; power <= RPOLY_MAX_DEG; power++) {
+        d.coeff[power - 1] = frac_mul(p.coeff[power], make_fraction(power, 1));
     }
 
     add_input_line(out, "1. Start: y = ", input);
-    out.add("2. Use d/dx(ax^n) = anx^(n-1).");
-    out.add("3. Differentiate each term.");
+    out.add("2. Expand/collect first if needed.");
+    out.add("3. Use d/dx(ax^n) = anx^(n-1).");
     FixedString<96> &ans = out.next();
     ans.append("Answer: dy/dx = ");
-    append_poly(ans, d);
+    append_rpoly(ans, d, var);
     return true;
 }
 
 static bool solve_integrate(const char *input, OutputLines &out)
 {
-    Poly p = parse_poly(input);
+    char s[128];
+    compact(input, s, (int)sizeof(s));
+    char var = detect_poly_var(s);
+    RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
-        out.add("Unsupported: use polynomial terms up to x^5.");
+        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
         return false;
     }
 
-    FractionTerm terms[6];
-    int count = 0;
-    for(int power = 0; power <= 5; power++) {
-        if(p.coeff[power] == 0) continue;
-        terms[count].coeff = p.coeff[power];
-        terms[count].den = power + 1;
-        terms[count].power = power + 1;
-        count++;
+    RPoly integ = poly_zero();
+    for(int power = 0; power <= RPOLY_MAX_DEG - 1; power++) {
+        if(is_zero(p.coeff[power])) continue;
+        Fraction div;
+        if(!frac_div(p.coeff[power], make_fraction(power + 1, 1), div)) return false;
+        integ.coeff[power + 1] = div;
     }
 
     add_input_line(out, "1. Start: integrate ", input);
-    out.add("2. Use int(ax^n) = ax^(n+1)/(n+1).");
-    out.add("3. Add the constant of integration.");
+    out.add("2. Expand/collect first if needed.");
+    out.add("3. Use int(ax^n)=ax^(n+1)/(n+1).");
     FixedString<96> &ans = out.next();
     ans.append("Answer: ");
-    append_fraction_poly(ans, terms, count);
+    append_rpoly(ans, integ, var);
     ans.append(" + C");
     return true;
+}
+
+enum class TrigFn { None, Sin, Cos, Tan, Mixed };
+
+struct TrigPoly {
+    Fraction coeff[3]{};
+    TrigFn fn = TrigFn::None;
+    int k = 1;
+    bool ok = true;
+};
+
+static TrigPoly trig_zero()
+{
+    TrigPoly out;
+    for(int i = 0; i < 3; i++) out.coeff[i] = make_fraction(0, 1);
+    return out;
+}
+
+static TrigPoly trig_const(Fraction v)
+{
+    TrigPoly out = trig_zero();
+    out.coeff[0] = v;
+    return out;
+}
+
+static TrigPoly trig_var(TrigFn fn, int k)
+{
+    TrigPoly out = trig_zero();
+    out.coeff[1] = make_fraction(1, 1);
+    out.fn = fn;
+    out.k = k;
+    return out;
+}
+
+static bool trig_merge(TrigPoly &a, TrigPoly const &b)
+{
+    if(b.fn == TrigFn::None) return true;
+    if(a.fn == TrigFn::None) {
+        a.fn = b.fn;
+        a.k = b.k;
+        return true;
+    }
+    return a.fn == b.fn && a.k == b.k;
+}
+
+static TrigPoly trig_add(TrigPoly a, TrigPoly const &b)
+{
+    if(!a.ok || !b.ok || !trig_merge(a, b)) {
+        a.ok = false;
+        return a;
+    }
+    for(int i = 0; i < 3; i++) a.coeff[i] = frac_add(a.coeff[i], b.coeff[i]);
+    return a;
+}
+
+static TrigPoly trig_neg(TrigPoly a)
+{
+    for(int i = 0; i < 3; i++) a.coeff[i] = frac_neg(a.coeff[i]);
+    return a;
+}
+
+static TrigPoly trig_sub(TrigPoly a, TrigPoly const &b)
+{
+    return trig_add(a, trig_neg(b));
+}
+
+static int trig_degree(TrigPoly const &p)
+{
+    for(int i = 2; i >= 0; i--) if(!is_zero(p.coeff[i])) return i;
+    return 0;
+}
+
+static bool trig_is_const(TrigPoly const &p)
+{
+    return p.ok && is_zero(p.coeff[1]) && is_zero(p.coeff[2]);
+}
+
+static TrigPoly trig_mul(TrigPoly a, TrigPoly b)
+{
+    TrigPoly out = trig_zero();
+    out.ok = a.ok && b.ok;
+    if(!out.ok) return out;
+    if(!trig_merge(out, a) || !trig_merge(out, b)) {
+        out.ok = false;
+        return out;
+    }
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3; j++) {
+            if(i + j > 2 && !is_zero(a.coeff[i]) && !is_zero(b.coeff[j])) {
+                out.ok = false;
+                return out;
+            }
+            if(i + j <= 2) out.coeff[i + j] = frac_add(out.coeff[i + j], frac_mul(a.coeff[i], b.coeff[j]));
+        }
+    }
+    return out;
+}
+
+static TrigPoly trig_div_const(TrigPoly a, Fraction d)
+{
+    if(d.num == 0) {
+        a.ok = false;
+        return a;
+    }
+    for(int i = 0; i < 3; i++) {
+        if(!frac_div(a.coeff[i], d, a.coeff[i])) a.ok = false;
+    }
+    return a;
+}
+
+static const char *trig_fn_name(TrigFn fn)
+{
+    if(fn == TrigFn::Sin) return "sin";
+    if(fn == TrigFn::Cos) return "cos";
+    if(fn == TrigFn::Tan) return "tan";
+    return "?";
+}
+
+static bool parse_angle_var(const char *s, int begin, int end, int &k)
+{
+    k = 1;
+    if(begin >= end) return false;
+    int i = begin;
+    bool neg = false;
+    if(s[i] == '-') {
+        neg = true;
+        i++;
+    }
+    int coeff = 0;
+    bool has_coeff = read_int(s, i, end, coeff);
+    if(i < end && s[i] == '*') i++;
+    if(i >= end || (s[i] != 'x' && s[i] != 't')) return false;
+    i++;
+    if(i != end) return false;
+    k = has_coeff ? coeff : 1;
+    if(neg) k = -k;
+    return k != 0;
+}
+
+struct TrigParser {
+    const char *s = nullptr;
+    int n = 0;
+    int pos = 0;
+    bool ok = true;
+
+    char peek() const { return pos < n ? s[pos] : '\0'; }
+    bool take(char c)
+    {
+        if(peek() != c) return false;
+        pos++;
+        return true;
+    }
+    bool starts_atom() const
+    {
+        char c = peek();
+        return c == '(' || c == '.' || is_digit(c) || c == 's' || c == 'c' || c == 't';
+    }
+    bool starts_name(const char *name) const
+    {
+        for(int i = 0; name[i] != '\0'; i++) {
+            if(pos + i >= n || s[pos + i] != name[i]) return false;
+        }
+        return true;
+    }
+    bool read_number(Fraction &out)
+    {
+        RPolyParser tmp{s, n, pos, 'x', true};
+        bool ok_num = tmp.read_number(out);
+        if(ok_num) pos = tmp.pos;
+        return ok_num;
+    }
+    bool read_small_int(int &out)
+    {
+        RPolyParser tmp{s, n, pos, 'x', true};
+        bool ok_int = tmp.read_small_int(out);
+        if(ok_int) pos = tmp.pos;
+        return ok_int;
+    }
+    TrigPoly parse_trig_call(TrigFn fn, int name_len, int preset_power)
+    {
+        pos += name_len;
+        int power = preset_power;
+        if(power == 0 && take('^')) {
+            if(!read_small_int(power)) ok = false;
+        }
+        if(power == 0) power = 1;
+        if(power < 1 || power > 2) ok = false;
+        if(!take('(')) ok = false;
+        int arg_begin = pos;
+        int depth = 1;
+        while(pos < n && depth > 0) {
+            if(s[pos] == '(') depth++;
+            else if(s[pos] == ')') depth--;
+            if(depth > 0) pos++;
+        }
+        int arg_end = pos;
+        if(!take(')')) ok = false;
+        int k = 1;
+        if(!parse_angle_var(s, arg_begin, arg_end, k)) ok = false;
+        TrigPoly out = trig_var(fn, k);
+        if(power == 2) out = trig_mul(out, out);
+        return out;
+    }
+    TrigPoly parse_atom()
+    {
+        if(take('(')) {
+            TrigPoly out = parse_add();
+            if(!take(')')) ok = false;
+            return out;
+        }
+        Fraction v;
+        if(read_number(v)) return trig_const(v);
+        if(starts_name("sin")) return parse_trig_call(TrigFn::Sin, 3, 0);
+        if(starts_name("cos")) return parse_trig_call(TrigFn::Cos, 3, 0);
+        if(starts_name("tan")) return parse_trig_call(TrigFn::Tan, 3, 0);
+        ok = false;
+        return trig_zero();
+    }
+    TrigPoly parse_power()
+    {
+        TrigPoly out = parse_atom();
+        if(take('^')) {
+            int power = 0;
+            if(!read_small_int(power)) ok = false;
+            if(power == 0) out = trig_const(make_fraction(1, 1));
+            else if(power == 1) {}
+            else if(power == 2) out = trig_mul(out, out);
+            else ok = false;
+        }
+        return out;
+    }
+    TrigPoly parse_unary()
+    {
+        if(take('+')) return parse_unary();
+        if(take('-')) return trig_neg(parse_unary());
+        return parse_power();
+    }
+    TrigPoly parse_mul()
+    {
+        TrigPoly out = parse_unary();
+        while(ok) {
+            if(take('*')) out = trig_mul(out, parse_unary());
+            else if(take('/')) {
+                TrigPoly d = parse_unary();
+                if(!trig_is_const(d)) ok = false;
+                else out = trig_div_const(out, d.coeff[0]);
+            }
+            else if(starts_atom()) out = trig_mul(out, parse_unary());
+            else break;
+        }
+        return out;
+    }
+    TrigPoly parse_add()
+    {
+        TrigPoly out = parse_mul();
+        while(ok) {
+            if(take('+')) out = trig_add(out, parse_mul());
+            else if(take('-')) out = trig_sub(out, parse_mul());
+            else break;
+        }
+        return out;
+    }
+};
+
+static TrigPoly parse_trig_compact(const char *s, int begin, int end)
+{
+    TrigParser p{s + begin, end - begin, 0, true};
+    TrigPoly out = p.parse_add();
+    out.ok = out.ok && p.ok && p.pos == p.n;
+    return out;
+}
+
+static bool append_angle_solution(FixedString<96> &line, int k, int angle, int period)
+{
+    if(k == 1) {
+        line.append_int(angle);
+        line.append(" + ");
+        line.append_int(period);
+        line.append("n");
+        return true;
+    }
+    append_fraction_value(line, angle, k);
+    line.append(" + ");
+    append_fraction_value(line, period, k);
+    line.append("n");
+    return true;
+}
+
+static bool append_trig_value_solutions(OutputLines &out, TrigFn fn, int k, Fraction value)
+{
+    int angles[2]{};
+    int count = 0;
+    int period = 360;
+
+    if(fn == TrigFn::Sin) {
+        if(value.num == 0) { angles[count++] = 0; period = 180; }
+        else if(value.num == value.den) angles[count++] = 90;
+        else if(value.num == -value.den) angles[count++] = 270;
+        else if(value.num == 1 && value.den == 2) { angles[count++] = 30; angles[count++] = 150; }
+        else if(value.num == -1 && value.den == 2) { angles[count++] = 210; angles[count++] = 330; }
+    }
+    else if(fn == TrigFn::Cos) {
+        if(value.num == 0) { angles[count++] = 90; period = 180; }
+        else if(value.num == value.den) angles[count++] = 0;
+        else if(value.num == -value.den) angles[count++] = 180;
+        else if(value.num == 1 && value.den == 2) { angles[count++] = 60; angles[count++] = 300; }
+        else if(value.num == -1 && value.den == 2) { angles[count++] = 120; angles[count++] = 240; }
+    }
+    else if(fn == TrigFn::Tan) {
+        period = 180;
+        if(value.num == 0) angles[count++] = 0;
+        else if(value.num == value.den) angles[count++] = 45;
+        else if(value.num == -value.den) angles[count++] = 135;
+    }
+
+    if(count == 0) {
+        out.add("Unsupported: exact trig solver handles 0, +/-1/2, +/-1.");
+        return false;
+    }
+
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: x = ");
+    for(int i = 0; i < count; i++) {
+        if(i) ans.append(" or ");
+        append_angle_solution(ans, k, angles[i], period);
+    }
+    return true;
+}
+
+static bool simplify_trig_identity(const char *s, OutputLines &out, const char *input)
+{
+    if(cstr_eq(s, "sin(x)^2+cos(x)^2") || cstr_eq(s, "cos(x)^2+sin(x)^2") ||
+       cstr_eq(s, "sin^2(x)+cos^2(x)") || cstr_eq(s, "cos^2(x)+sin^2(x)")) {
+        add_input_line(out, "1. Start: ", input);
+        out.add("2. Use identity sin^2(x)+cos^2(x)=1.");
+        out.add("Answer: 1");
+        return true;
+    }
+    if(cstr_eq(s, "sin(x)^2+cos(x)^2=1") || cstr_eq(s, "cos(x)^2+sin(x)^2=1") ||
+       cstr_eq(s, "sin^2(x)+cos^2(x)=1") || cstr_eq(s, "cos^2(x)+sin^2(x)=1")) {
+        add_input_line(out, "1. Start: ", input);
+        out.add("2. Use identity sin^2(x)+cos^2(x)=1.");
+        out.add("Answer: true.");
+        return true;
+    }
+    return false;
+}
+
+static bool solve_trig_equation(const char *input, const char *s, int n, OutputLines &out)
+{
+    int eq = find_top_level_equals(s);
+    if(eq <= 0 || eq >= n - 1) return false;
+    TrigPoly left = parse_trig_compact(s, 0, eq);
+    TrigPoly right = parse_trig_compact(s, eq + 1, n);
+    if(!left.ok || !right.ok) return false;
+    TrigPoly q = trig_sub(left, right);
+    if(!q.ok || q.fn == TrigFn::None) return false;
+
+    add_input_line(out, "1. Start: ", input);
+    out.add("2. Rearrange into trig polynomial = 0.");
+    FixedString<96> &stdform = out.next();
+    stdform.append("3. Let y = ");
+    stdform.append(trig_fn_name(q.fn));
+    stdform.append("(x). Solve in y.");
+
+    int deg = trig_degree(q);
+    if(deg == 1) {
+        Fraction y;
+        if(!frac_div(frac_neg(q.coeff[0]), q.coeff[1], y)) return false;
+        FixedString<96> &val = out.next();
+        val.append("4. ");
+        val.append(trig_fn_name(q.fn));
+        val.append("(x) = ");
+        append_fraction(val, y);
+        return append_trig_value_solutions(out, q.fn, q.k, y);
+    }
+    if(deg == 2) {
+        int coeff[3]{};
+        if(!rpoly_to_int_coeffs(RPoly{{q.coeff[0], q.coeff[1], q.coeff[2]}, true}, coeff, 2)) {
+            out.add("Unsupported: trig quadratic coefficients too large.");
+            return false;
+        }
+        int a = coeff[2];
+        int b = coeff[1];
+        int c = coeff[0];
+        int disc = b * b - 4 * a * c;
+        int root = 0;
+        if(disc < 0 || !is_square_int(disc, root)) {
+            out.add("Unsupported: trig quadratic needs exact rational y roots.");
+            return false;
+        }
+        Fraction y1 = make_fraction(-b - root, 2 * a);
+        Fraction y2 = make_fraction(-b + root, 2 * a);
+        FixedString<96> &vals = out.next();
+        vals.append("4. y = ");
+        append_fraction(vals, y1);
+        if(!same_fraction(y1, y2)) {
+            vals.append(" or y = ");
+            append_fraction(vals, y2);
+        }
+        bool ok = append_trig_value_solutions(out, q.fn, q.k, y1);
+        if(!same_fraction(y1, y2)) ok = append_trig_value_solutions(out, q.fn, q.k, y2) && ok;
+        return ok;
+    }
+
+    out.add("Unsupported: trig polynomial degree too high.");
+    return false;
 }
 
 static const char *exact_trig(const char *fn, int deg)
@@ -699,12 +1295,19 @@ static bool parse_angle_degrees(const char *s, int begin, int end, int &deg)
 
 static bool solve_trig(const char *input, OutputLines &out)
 {
-    char s[64];
+    char s[128];
     int n = compact(input, s, (int)sizeof(s));
+    if(simplify_trig_identity(s, out, input)) return true;
+    if(find_top_level_equals(s) >= 0) {
+        if(solve_trig_equation(input, s, n, out)) return true;
+        out.add("Unsupported: try a single sin/cos/tan equation in x.");
+        return false;
+    }
+
     int lp = find_char(s, '(');
     int rp = find_char(s, ')');
     if(lp <= 0 || rp <= lp + 1 || rp != n - 1) {
-        out.add("Unsupported: use sin(30), cos(60), or tan(45).");
+        out.add("Unsupported: use sin(30) or solve forms like 2sin(x)+1=0.");
         return false;
     }
 
@@ -926,6 +1529,17 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
     return false;
 }
 
+static bool contains_trig_name(const char *input)
+{
+    for(int i = 0; input != nullptr && input[i] != '\0'; i++) {
+        char c = lower_ascii(input[i]);
+        if(c == 's' && lower_ascii(input[i + 1]) == 'i' && lower_ascii(input[i + 2]) == 'n') return true;
+        if(c == 'c' && lower_ascii(input[i + 1]) == 'o' && lower_ascii(input[i + 2]) == 's') return true;
+        if(c == 't' && lower_ascii(input[i + 1]) == 'a' && lower_ascii(input[i + 2]) == 'n') return true;
+    }
+    return false;
+}
+
 } // namespace
 
 bool solve(Module module, const char *input, OutputLines &out)
@@ -951,7 +1565,8 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "solve_trig(")) return solve_wrapped_call(input, "solve_trig(", Module::Trig, out);
             if(starts_with(input, "suvat(")) return solve_wrapped_call(input, "suvat(", Module::Suvat, out);
             if(starts_with(input, "sin(") || starts_with(input, "cos(") || starts_with(input, "tan(")) return solve_trig(input, out);
-            if(find_char(input, '=') >= 0) return solve_algebra(input, out);
+            if(find_char(input, '=') >= 0) return contains_trig_name(input) ? solve_trig(input, out) : solve_algebra(input, out);
+            if(contains_trig_name(input)) return solve_trig(input, out);
             return solve_simplify(input, out);
         case Module::Simplify: return solve_simplify(input, out);
         case Module::Algebra: return solve_algebra(input, out);

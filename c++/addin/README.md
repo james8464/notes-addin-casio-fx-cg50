@@ -70,14 +70,16 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 - The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
 - We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
 - The current device build uses a bounded freestanding solver slice for:
-  - linear simplify/algebra and simple quadratic equations
-  - polynomial derivative/integral rules up to `x^5`
-  - exact common-angle trig with degree inputs and simple `pi` multiples
-  - selected SUVAT rearrangements
+  - one-variable rational polynomial parsing with brackets, powers, implicit multiplication, expansion, and rearranged equations
+  - linear/quadratic solving plus small integer-root factor-theorem support for higher polynomials
+  - polynomial derivative/integral rules after expansion/collection
+  - exact common-angle trig, simple trig identities, and single-function trig equations such as `2sin(x)+1=0`
+  - selected SUVAT rearrangements with working lines
 - The add-in UI is intentionally dense and KhiCAS-inspired: top status strip,
   blue section labels, black active rows, right-hand scrollbars, and bottom
   soft-key labels. The home screen also supports `F1`-`F6` quick launches.
 - Richer host functionality remains available through `casio_host` while device features are ported module by module.
+- Architecture graph: `c++/GRAPH.md`.
 
 ### Host build (fast local testing)
 
