@@ -47,6 +47,20 @@ If you don’t want a full Linux VM, you can build the `.g3a` from macOS using D
 ./c++/tools/build_addin_docker.sh
 ```
 
+The test TUI also does this and syncs the result to the CASIO emulator SD card:
+
+```bash
+CASIO_BACKEND=c python3 python/tests/run_tests.py c compile
+```
+
+Default emulator target:
+
+```text
+~/Library/Application Support/CASIO/fx-CG Manager PLUS Subscription for fx-CG50series/fx-CG50/EmulatorData/SDCard
+```
+
+Set `CASIO_SYNC_EMULATOR=0` to skip this copy, or set `CASIO_EMULATOR_SDCARD_DIR` to override the target.
+
 ### Install onto calculator
 
 - **Manual (recommended)**:

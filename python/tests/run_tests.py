@@ -2946,6 +2946,14 @@ class CASIOApp(App):
                     summary("Compile failed")
                     return
 
+                sync_flag = os.environ.get("CASIO_SYNC_EMULATOR", "1").strip().lower()
+                if sync_flag not in ("0", "false", "no", "off"):
+                    sync_cmd = ["python3", "c++/tools/install_g3a_to_emulator.py"] + [str(p) for p in g3as]
+                    if run_stream("CASIO emulator SDCard sync", sync_cmd) != 0:
+                        log("[bold #f59e0b]⚠ .g3a built, but emulator sync failed. Set CASIO_SYNC_EMULATOR=0 to skip.[/bold #f59e0b]")
+                    else:
+                        log("[bold #22c55e]✓ emulator SDCard updated[/bold #22c55e]")
+
                 log("")
                 log("[bold #22c55e]✓ Compile complete: .g3a ready[/bold #22c55e]")
                 summary("Compile OK")
