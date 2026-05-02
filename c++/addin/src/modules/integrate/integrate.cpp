@@ -39,6 +39,12 @@ static bool is_pow_e(Arena &a, NodeId n)
     return base.kind == NodeKind::Const && base.ckind == ConstKind::E;
 }
 
+static bool is_fn(Arena &a, NodeId n, FnKind fk)
+{
+    auto const &x = a.get(n);
+    return x.kind == NodeKind::Fn && x.fkind == fk;
+}
+
 // Main integration result with steps
 struct IntegrateResult
 {
@@ -122,7 +128,8 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             out.steps.push_back("Step 2: Identify power rule: ∫ x^n dx = x^(n+1)/(n+1)");
             if(n->num == -1 && n->den == 1) {
                 NodeId v = casio::sym(a, var);
-                out.result = casio::fn(a, "log", casio::fn(a, "abs", v));
+                NodeId abs_v = casio::fn(a, "abs", v);
+                out.result = casio::fn(a, "log", abs_v);
                 out.steps.push_back("Step 3: Special case n=-1: ∫ 1/x dx = ln|x|");
             } else {
                 Rational np1 = *n;
@@ -185,6 +192,23 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
     
+    // ∫ sum of expressions: integrate each term
+    if(x.kind == NodeKind::Add && x.kids.size() == 2) {
+        NodeId a1 = x.kids[0];
+        NodeId a2 = x.kids[1];
+        auto r1 = integrate_giac_style(a, a1, var);
+        auto r2 = integrate_giac_style(a, a2, var);
+        if(r1.result && r2.result) {
+            std::vector<NodeId> sum_args = {*r1.result, *r2.result};
+            out.result = casio::add(a, sum_args);
+            out.steps.push_back("Step 2: Integrate sum term by term");
+            for(auto const &s : r1.steps) out.steps.push_back(s);
+            for(auto const &s : r2.steps) out.steps.push_back(s);
+            out.steps.push_back("Step 3: Combine results");
+            return out;
+        }
+    }
+    
     // ∫ csc(x) dx = ln|csc(x)-cot(x)|
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosec && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
@@ -208,6 +232,54 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = ln|sin(x)|");
         out.steps.push_back("Step 3: Simplify. Result = ln|sin(" + var + ")| + C");
         return out;
+    }
+    
+    // ∫ x*sin(x) dx = sin(x) - x*cos(x) (integration by parts)
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        bool found_x_sin = false, found_x_cos = false;
+        NodeId kid0 = x.kids[0];
+        NodeId kid1 = x.kids[1];
+        
+        // Check for x*sin(x)
+        if((is_sym(a, kid0, var) && is_fn(a, kid1, FnKind::Sin)) ||
+           (is_sym(a, kid1, var) && is_fn(a, kid0, FnKind::Sin))) {
+            found_x_sin = true;
+        }
+        // Check for x*cos(x)
+        if((is_sym(a, kid0, var) && is_fn(a, kid1, FnKind::Cos)) ||
+           (is_sym(a, kid1, var) && is_fn(a, kid0, FnKind::Cos))) {
+            found_x_cos = true;
+        }
+        
+        if(found_x_sin) {
+            NodeId v = casio::sym(a, var);
+            NodeId sin_v = casio::fn(a, "sin", v);
+            NodeId cos_v = casio::fn(a, "cos", v);
+            NodeId term1 = sin_v;
+            NodeId term2 = casio::mul(a, {v, cos_v});
+            out.result = casio::add(a, {term1, casio::neg(a, term2)});
+            out.steps.push_back("Step 2: Apply integration by parts: ∫ x*sin(x) dx");
+            out.steps.push_back("Let u=x, dv=sin(x)dx → du=dx, v=-cos(x)");
+            out.steps.push_back("∫ x*sin(x) dx = x*(-cos(x)) - ∫ 1*(-cos(x)) dx");
+            out.steps.push_back("= -x*cos(x) + sin(x)");
+            out.steps.push_back("Step 3: Simplify. Result = sin(x) - x*cos(x) + C");
+            return out;
+        }
+        
+        if(found_x_cos) {
+            NodeId v = casio::sym(a, var);
+            NodeId sin_v = casio::fn(a, "sin", v);
+            NodeId cos_v = casio::fn(a, "cos", v);
+            NodeId term1 = cos_v;
+            NodeId term2 = casio::mul(a, {v, sin_v});
+            out.result = casio::add(a, {term1, term2});
+            out.steps.push_back("Step 2: Apply integration by parts: ∫ x*cos(x) dx");
+            out.steps.push_back("Let u=x, dv=cos(x)dx → du=dx, v=sin(x)");
+            out.steps.push_back("∫ x*cos(x) dx = x*sin(x) - ∫ 1*sin(x) dx");
+            out.steps.push_back("= x*sin(x) + cos(x)");
+            out.steps.push_back("Step 3: Simplify. Result = cos(x) + x*sin(x) + C");
+            return out;
+        }
     }
     
     // If we get here, we don't know the integral
