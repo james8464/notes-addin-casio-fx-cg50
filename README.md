@@ -22,7 +22,6 @@ The overarching goal is **near 1:1 functional parity** (where practical) between
   - `c++/tools/` — golden tests, fuzz/regressions, build scripts (host + add-in).
   - `c++/tests/reports/` — session logs for C++ backend random runs.
   - `c++/docs/` — design/porting plans and supporting documentation.
-  - `c++/graphify-out/` — generated Graphify report and graph JSON. Cache files are local-only.
 
 ---
 

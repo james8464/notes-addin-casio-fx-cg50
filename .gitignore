@@ -16,11 +16,6 @@ c++/prizm/build/
 c++/prizm/CasioCAS.bin
 c++/prizm/CasioCAS.g3a
 
-# Graphify outputs
-graphify-out/cache/
-c++/graphify-out/cache/
-python/graphify-out/
-
 # Live test reports
 python/tests/reports/
 c++/tests/reports/

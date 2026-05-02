@@ -13,9 +13,6 @@ build/
 skills-lock.json
 .agents/
 
-# Graphify LLM cache (regenerates)
-graphify-out/cache/
-
 # Test failure dumps
 tests/reports/
 

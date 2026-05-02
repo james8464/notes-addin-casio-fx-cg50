@@ -52,11 +52,3 @@ python3 tests/run_tests.py llm 1 random 100 # 100 tests
 ### Key Files
 - `src/shared_llm.py` - Ollama interface with caching
 - `tests/run_tests.py` - Test runner with TUI
-
-## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture/codebase questions, read graphify-out/GRAPH_REPORT.md
-- After modifying code, run: `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"`
