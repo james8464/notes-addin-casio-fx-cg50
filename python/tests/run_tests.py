@@ -232,6 +232,82 @@ RANDOM_CHAOS_EXPECTED_ALGEBRA = (
     "algebra_circle_hard",
     "algebra_discriminant",
 )
+FEATURE_PARITY_EXPECTED = {
+    "Algebra": RANDOM_CHAOS_EXPECTED_ALGEBRA + (
+        "algebra_rearrange",
+        "algebra_hard_solve",
+        "algebra_solve_letter",
+        "algebra_compare_letter",
+        "algebra_expand_letter",
+    ),
+    "Trigonometry": (
+        "trig_prove",
+        "trig_transform",
+        "trig_solve",
+        "trig_rewrite",
+        "trig_rearrange",
+        "trig_madas",
+        "trig_identity_hard",
+        "trig_multi",
+        "trig_radian",
+    ),
+    "Derive": (
+        "derive_normal",
+        "derive_implicit",
+        "derive_parametric",
+        "derive_product",
+        "derive_2nd_derivative",
+        "derive_chain_quotient",
+        "derive_implicit_product",
+        "derive_log_diff",
+    ),
+    "Integrate": (
+        "integrate_auto",
+        "integrate_sub",
+        "integrate_parts",
+        "integrate_trig",
+        "integrate_pf",
+        "integrate_div",
+        "integrate_direct",
+        "integrate_extreme_rewrite",
+        "integrate_parts_twice",
+        "integrate_partial",
+        "integrate_trig_power",
+    ),
+    "Stats": (
+        "stats_one_var",
+        "stats_regression",
+        "stats_binomial",
+        "stats_normal",
+        "stats_ztest",
+        "stats_plot",
+    ),
+    "SUVAT": (
+        "suvat_find_s",
+        "suvat_find_u",
+        "suvat_find_v",
+        "suvat_find_a",
+        "suvat_find_t",
+        "suvat_edge",
+        "suvat_expected_error",
+        "suvat_uni",
+    ),
+    "Boolean": (
+        "boolean_simplify",
+        "boolean_nand",
+        "boolean_nor",
+        "boolean_prove",
+    ),
+}
+FEATURE_PARITY_NOTES = {
+    "Algebra": "Python modes 1-9: compare, transform, expand, polynomial, complete square, solve, compose, inverse, rewrite, domain/range/cartesian helpers.",
+    "Trigonometry": "Python modes 1-4: prove, transform, solve, rewrite; degree/radian and rearranged identity forms.",
+    "Derive": "Python modes 1-4: normal, implicit, parametric, second derivative; chain/product/quotient/log cases.",
+    "Integrate": "Python modes 1-2 plus methods: direct, substitution, parts, trig, partial fractions, division, DE.",
+    "Stats": "C++ extension: one-var, regression, binomial, normal, z-test, graph sparkline.",
+    "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
+    "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
+}
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
 SYMPY_MAX_OPS = int(os.environ.get("CASIO_SYMPY_MAX_OPS", "90"))
@@ -2200,6 +2276,7 @@ class CASIOApp(App):
             "/quit": "Exit the test harness",
             "/status": "Show the current scope and last run summary",
             "/report": "Show detailed failures from the last run",
+            "/coverage": "Show feature coverage gaps and report path",
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
@@ -2369,6 +2446,8 @@ class CASIOApp(App):
             "stats": "Stats",
             "statistics": "Stats",
             "stat": "Stats",
+            "boolean": "Boolean",
+            "bool": "Boolean",
         }
         return mapping.get(value.lower())
 
@@ -2469,6 +2548,8 @@ class CASIOApp(App):
             self.show_status()
         elif value_lower == "/report":
             self.show_report()
+        elif value_lower == "/coverage":
+            self.show_coverage()
         elif value_lower == "/fails":
             self.show_fails()
         elif value_lower == "/programs":
@@ -2530,11 +2611,10 @@ class CASIOApp(App):
         """Append a compact block for high-signal failures only."""
         llm = (getattr(record, "llm_verdict", "") or "").strip()
         review_needed = bool(getattr(record, "review_needed", False))
-        # Keep report actionable: always log harness failures; skip plain
-        # NEEDS_REVIEW noise from verifier disagreements.
-        if record.harness_status != TestStatus.FAIL:
+        # Keep report actionable: harness failures plus LLM disagreements.
+        if record.harness_status != TestStatus.FAIL and not review_needed:
             return
-        kind = "harness failure"
+        kind = "llm review" if review_needed and record.harness_status != TestStatus.FAIL else "harness failure"
         p = self._session_report_path()
         lines = [
             "-" * 72,
@@ -2573,6 +2653,7 @@ class CASIOApp(App):
         self.records.clear()
         self.current_run_question_keys.clear()
         self.session_random_question_keys.clear()
+        self._feature_stats = {}
         self.last_run_scope = (self.current_program, "all")
         self._init_session_report_file()
         if not getattr(self, 'plain_mode', False):
@@ -3074,6 +3155,7 @@ class CASIOApp(App):
         self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
         self.append_result("[dim]Stats[/dim] — one-var stats, regression/correlation, probability, plots")
         self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
+        self.append_result("[dim]Boolean[/dim] — simplify, NAND, NOR, proof checks")
         self.update_summary("Programs")
 
     def show_status(self):
@@ -3087,6 +3169,9 @@ class CASIOApp(App):
         self.append_result(f"[dim]Last command:[/dim] {self.last_command}")
         self.append_result(f"[dim]Last run scope:[/dim] {self.last_run_scope[0]} · chaos")
         self.append_result(f"[dim]Last run totals:[/dim] {passed} passed, {failed} failed, {total} total")
+        if self.last_report_path:
+            self.append_result(f"[dim]Failure txt:[/dim] {self.last_report_path}")
+        self.append_result(f"[dim]Coverage txt:[/dim] {self._feature_coverage_path()}")
         self.update_summary(f"Status · {passed}/{total} passed" if total else "Status")
 
     def show_fails(self):
@@ -3097,6 +3182,9 @@ class CASIOApp(App):
             return
         if not failed:
             self.append_result("[bold #22c55e]No failed tests in the last run.[/bold #22c55e]")
+            if self.last_report_path:
+                self.append_result(f"[dim]Failure txt:[/dim] {self.last_report_path}")
+            self.append_result(f"[dim]Coverage txt:[/dim] {self._feature_coverage_path()}")
             self.update_summary("No failures")
             return
 
@@ -3152,6 +3240,18 @@ class CASIOApp(App):
 
         self.update_summary(f"Report · {len(failed)} failures")
 
+    def show_coverage(self):
+        path = self._feature_coverage_path()
+        self.append_result("[bold #e07a53]Feature Coverage[/bold #e07a53]")
+        self.append_result(f"[dim]Report:[/dim] {path}")
+        missing = self._feature_coverage_missing()
+        if not missing:
+            self.append_result("[bold #22c55e]No expected feature gaps in current run.[/bold #22c55e]")
+        else:
+            for program, gaps in missing.items():
+                self.append_result(f"[bold #f59e0b]{program}:[/bold #f59e0b] {', '.join(gaps[:20])}")
+        self.update_summary("Coverage")
+
     def run_all_tests(self):
         def run():
             if getattr(self, 'plain_mode', False):
@@ -3173,6 +3273,7 @@ class CASIOApp(App):
                 ("Integrate", self.run_integrate),
                 ("Stats", self.run_stats),
                 ("SUVAT", self.run_suvat),
+                ("Boolean", self.run_boolean),
             ]
 
             if self.current_program != "all":
@@ -3379,6 +3480,94 @@ class CASIOApp(App):
         }
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
+    def _feature_coverage_path(self):
+        if getattr(self, "backend", "python") == "c":
+            return REPO_ROOT / "c++" / "tests" / "reports" / "feature_coverage_latest.txt"
+        return REPO_ROOT / "python" / "tests" / "reports" / "feature_coverage_latest.txt"
+
+    @staticmethod
+    def _covers_feature(expected_id, feature_keys):
+        for feat in feature_keys:
+            if feat == expected_id or feat.startswith(expected_id + ":"):
+                return True
+        return False
+
+    def _feature_coverage_missing(self):
+        st = getattr(self, "_feature_stats", None) or {}
+        fkeys = set(st.keys())
+        missing = {}
+        scope = None if self.current_program == "all" else self.current_program
+        for program, expected in FEATURE_PARITY_EXPECTED.items():
+            if scope is not None and program != scope:
+                continue
+            gaps = [item for item in expected if not self._covers_feature(item, fkeys)]
+            if gaps:
+                missing[program] = gaps
+        return missing
+
+    def _write_feature_coverage_report(self):
+        if not self.records:
+            return
+        path = self._feature_coverage_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        st = getattr(self, "_feature_stats", None) or {}
+        missing = self._feature_coverage_missing()
+        failed = [r for r in self.records if r.status == TestStatus.FAIL]
+        review = [r for r in self.records if getattr(r, "review_needed", False)]
+        lines = [
+            "CasioCAS feature coverage audit",
+            "Generated: {0}".format(datetime.now().isoformat(timespec="seconds")),
+            "Backend: {0}".format(self.backend_label()),
+            "Command: {0}".format(self.last_command),
+            "Scope: {0}".format(self.current_program),
+            "Records: {0}".format(len(self.records)),
+            "Failures: {0}".format(len(failed)),
+            "LLM review needed: {0}".format(len(review)),
+            "",
+            "Graphiffy:",
+            "graph TD",
+            "  Python[Python feature set] --> Harness[run_tests generators]",
+            "  Harness --> SymPy[SymPy/manual checks]",
+            "  Harness --> Host[C++ host/add-in]",
+            "  Host --> Reports[failure_report_latest.txt + feature_coverage_latest.txt]",
+            "  LLM[optional LLM verifier] --> Reports",
+            "",
+            "Strategy:",
+            "- /random and /infinite allocate tests across feature generators.",
+            "- Cases are de-duplicated per run unless infinite mode needs fresh pressure.",
+            "- SymPy/manual checkers verify algebraic/probability/kinematic answers where possible.",
+            "- LLM verification, if enabled with /llm, logs disagreements as review items.",
+            "- failure_report_latest.txt stores failing input, checker, output tail, and LLM notes.",
+            "",
+            "Expected parity:",
+        ]
+        fkeys = set(st.keys())
+        for program, expected in FEATURE_PARITY_EXPECTED.items():
+            if self.current_program != "all" and program != self.current_program:
+                continue
+            lines.append("")
+            lines.append("[{0}] {1}".format(program, FEATURE_PARITY_NOTES.get(program, "")))
+            for item in expected:
+                hit = self._covers_feature(item, fkeys)
+                ok = total = 0
+                for feat, counts in st.items():
+                    if feat == item or feat.startswith(item + ":"):
+                        ok += counts[0]
+                        total += counts[1]
+                marker = "OK" if hit else "GAP"
+                lines.append("- {0} {1} {2}/{3}".format(marker, item, ok, total))
+        if st:
+            lines.append("")
+            lines.append("Observed feature tags:")
+            for feat, counts in sorted(st.items()):
+                lines.append("- {0}: {1}/{2}".format(feat, counts[0], counts[1]))
+        if missing:
+            lines.append("")
+            lines.append("Missing coverage:")
+            for program, gaps in sorted(missing.items()):
+                lines.append("- {0}: {1}".format(program, ", ".join(gaps)))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
     def render_summary(self):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)
         total = len(self.records)
@@ -3416,6 +3605,11 @@ class CASIOApp(App):
 
         self.append_result(f"\n[bold]Results:[/bold] [bold {color}]{msg}[/bold {color}]\n")
         self._append_feature_weakness_and_gaps()
+        try:
+            self._write_feature_coverage_report()
+            self.append_result(f"[dim]Coverage txt:[/dim] {self._feature_coverage_path()}")
+        except Exception:
+            pass
         if self._wants_json_export() and self.records:
             try:
                 self._write_json_report(self._session_report_path().parent / "failure_report_latest.json")
@@ -3448,18 +3642,14 @@ class CASIOApp(App):
             if shown == 0:
                 self.append_result("  [dim](all multi-run tags at 100% or single-run only)[/dim]")
 
-        def _covers(expected_id, feature_keys):
-            for feat in feature_keys:
-                if feat == expected_id or feat.startswith(expected_id + ":"):
-                    return True
-            return False
-
         fkeys = st.keys()
         if getattr(self, "_show_chaos_feature_gaps", False) and fkeys and len(self.records) > 5:
-            missing = [p for p in RANDOM_CHAOS_EXPECTED_ALGEBRA if not _covers(p, fkeys)]
+            missing = []
+            for program, gaps in self._feature_coverage_missing().items():
+                missing.extend("{0}:{1}".format(program, gap) for gap in gaps)
             if missing:
                 self.append_result(
-                    f"[dim]Chaos run did not hit these algebra feature tags: {', '.join(missing[:12])}[/dim]"
+                    f"[dim]Chaos run did not hit these feature tags: {', '.join(missing[:12])}[/dim]"
                 )
 
     def update_summary(self, text):
@@ -3615,8 +3805,9 @@ class CASIOApp(App):
             return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
         return proc.stdout, proc.stderr
 
-    def make_cli_case(self, program, script, inp, label, checker, check_info="", feature=""):
-        use_calculated = not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or ""))
+    def make_cli_case(self, program, script, inp, label, checker, check_info="", feature="", use_calculated=None):
+        if use_calculated is None:
+            use_calculated = not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or ""))
 
         def combined_checker(output):
             if not bool(checker(output)):
@@ -3639,7 +3830,7 @@ class CASIOApp(App):
         return CaseSpec(label, program, runner, inp, '', info, feature, script, combined_checker)
 
     def make_direct_case(self, program, label, runner, input_text="", check_info="", feature=""):
-        return CaseSpec(label, program, runner, input_text, check_info, feature)
+        return CaseSpec(label, program, runner, input_text=input_text, check_info=check_info, feature=feature)
 
     def case_question_key(self, case):
         text = (case.input_text or "").strip()
@@ -3715,6 +3906,10 @@ class CASIOApp(App):
             "random_stats_normal_case": "Stats",
             "random_stats_ztest_case": "Stats",
             "random_stats_plot_case": "Stats",
+            "random_boolean_simplify_case": "Boolean",
+            "random_boolean_nand_case": "Boolean",
+            "random_boolean_nor_case": "Boolean",
+            "random_boolean_prove_case": "Boolean",
             "random_matrix_case": "Matrix",
             "random_complex_case": "Complex",
             "random_calculate_case": "Calculate",
@@ -3915,7 +4110,7 @@ class CASIOApp(App):
                             if len(self._test_times) > 500:
                                 self._test_times = self._test_times[-200:]
                         quality_issues = []
-                        if not skip_quality and getattr(case, "feature", ""):
+                        if not skip_quality and case.program != "Boolean" and getattr(case, "feature", ""):
                             quality_issues = exam_working_quality_issues(
                                 output, case.program, case.feature
                             )
@@ -4241,6 +4436,8 @@ class CASIOApp(App):
 
     def with_random_format_fuzz(self, case, rng, difficulty):
         if not case or not case.script or not callable(case.checker):
+            return case
+        if case.program == "Boolean" or "booleanProgram.py" in case.script:
             return case
         fuzzed_input = self.fuzz_cli_input_format(case.input_text, rng, difficulty)
         if fuzzed_input == case.input_text:
@@ -6168,7 +6365,7 @@ class CASIOApp(App):
                 return base_checker(output) and "not recognised" not in text and "not available" not in text
 
             c_integral_checker.__name__ = "c_integral_checker"
-            return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, c_integral_checker, feature="int_auto:c_supported")
+            return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, c_integral_checker, feature="integrate_auto:c_supported")
 
         if difficulty == "chaos":
             # Complete chaos - truly unpredictable integrands
@@ -6286,7 +6483,7 @@ class CASIOApp(App):
             return base_checker(output) and "no elementary" not in text and "no standard exam-method" not in text
 
         generated_integral_checker.__name__ = "generated_integral_checker"
-        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, generated_integral_checker, feature=f"int_auto:{mode}")
+        return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, generated_integral_checker, feature=f"integrate_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
         helper_difficulty = "hard" if difficulty == "chaos" else difficulty
@@ -6427,6 +6624,10 @@ class CASIOApp(App):
         if getattr(self, "backend", "python") == "c":
             # C++ backend: expanded integration coverage.
             features = [
+                self.random_integrate_direct_case,
+                self.random_integrate_trig_case,
+                self.random_integrate_pf_case,
+                self.random_integrate_div_case,
                 self.random_integrate_trig_power_case,
                 self.random_integrate_substitution_case,
                 self.random_integrate_auto_case,
@@ -6490,7 +6691,7 @@ class CASIOApp(App):
         expr, expected_method = rng.choice(parts_cases)
         cli_input = f"1\n{expr}\n\n"
         label = f"Parts twice {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_parts_twice")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="integrate_parts_twice")
 
     def random_integrate_partial_frac_case(self, rng, difficulty, index):
         patterns = [
@@ -6503,7 +6704,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Partial fractions {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("partial fractions"), feature="int_partial")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("partial fractions"), feature="integrate_partial")
 
     def random_integrate_trig_power_case(self, rng, difficulty, index):
         if getattr(self, "backend", "python") == "c":
@@ -6511,12 +6712,12 @@ class CASIOApp(App):
             expr = rng.choice(powers)
             cli_input = f"1\n{expr}\n\n"
             label = f"Trig power {index}"
-            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_trig_power")
+            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="integrate_trig_power")
         powers = ["sin(x)^4", "cos(x)^6", "sin(x)^2*cos(x)^2", "sin(2*x)^2", "cos(x)^4"]
         expr = rng.choice(powers)
         cli_input = f"1\n{expr}\n\n"
         label = f"Trig power {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("use"), feature="int_trig_power")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("use"), feature="integrate_trig_power")
 
     def random_integrate_substitution_case(self, rng, difficulty, index):
         if getattr(self, "backend", "python") == "c":
@@ -6530,7 +6731,7 @@ class CASIOApp(App):
             expr = rng.choice(patterns)
             cli_input = f"1\n{expr}\n\n"
             label = f"Substitution {index}"
-            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="int_sub")
+            return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker(), feature="integrate_sub")
         patterns = [
             "x/sqrt(x^2+1)",
             "(x^2)/(x^3+1)",
@@ -6542,7 +6743,7 @@ class CASIOApp(App):
         expr = rng.choice(patterns)
         cli_input = f"1\n{expr}\n\n"
         label = f"Substitution {index}"
-        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("u ="), feature="int_sub")
+        return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, integrate_checker("u ="), feature="integrate_sub")
 
     def random_suvat_case(self, rng, difficulty, index, target):
         def frac_num(value):
@@ -6694,10 +6895,6 @@ class CASIOApp(App):
         return make_case(label, cli_input, checker, f"suvat edge family = {mode}", f"{feature_prefix}:{mode}")
 
     def build_random_suvat_cases(self, difficulty, count, rng):
-        if getattr(self, "backend", "python") == "c":
-            # Native SUVAT solver is usable, but the Python harness includes many edge-case
-            # generators that are designed around the MicroPython behavior. Skip for C++ backend.
-            return []
         features = ["s", "u", "v", "a", "t"]
         generators = []
         for target in features:
@@ -6792,6 +6989,74 @@ class CASIOApp(App):
             self.random_stats_normal_case,
             self.random_stats_ztest_case,
             self.random_stats_plot_case,
+        ]
+        return self.build_unique_random_cases(features, count, rng, difficulty)
+
+    def random_boolean_expr(self, rng, depth=3):
+        atoms = ["A", "B", "C", "D", "E", "0", "1"]
+        if depth <= 0 or rng.random() < 0.28:
+            base = rng.choice(atoms)
+        else:
+            left = self.random_boolean_expr(rng, depth - 1)
+            right = self.random_boolean_expr(rng, depth - 1)
+            op = rng.choice([".", "+"])
+            if rng.random() < 0.35:
+                left = "({0})".format(left)
+            if rng.random() < 0.35:
+                right = "({0})".format(right)
+            base = "{0}{1}{2}".format(left, op, right)
+        if rng.random() < 0.28:
+            base = "{0},".format(base if base.startswith("(") else "({0})".format(base))
+        return base
+
+    def random_boolean_simplify_case(self, rng, difficulty, index):
+        templates = [
+            "A.A,",
+            "A+A.B",
+            "((B,.A),.B,),+A.B",
+            "A.(B+C)+A.B,",
+            "(A+B).(A+B,)",
+        ]
+        expr = rng.choice(templates) if rng.random() < 0.45 else self.random_boolean_expr(rng, 5 if difficulty == "chaos" else 3)
+        inp = "1\n{0}\n".format(expr)
+        label = "Boolean simplify {0}".format(index)
+        checker = build_checker(contains_all=("Result:",), forbid=("Error:", "ERR:"), min_lines=2)
+        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_simplify", use_calculated=False)
+
+    def random_boolean_nand_case(self, rng, difficulty, index):
+        expr = self.random_boolean_expr(rng, 4 if difficulty == "chaos" else 2)
+        inp = "2\n{0}\n".format(expr)
+        label = "Boolean NAND {0}".format(index)
+        checker = build_checker(contains_all=("NAND form:",), forbid=("Error:", "ERR:"), min_lines=2)
+        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_nand", use_calculated=False)
+
+    def random_boolean_nor_case(self, rng, difficulty, index):
+        expr = self.random_boolean_expr(rng, 4 if difficulty == "chaos" else 2)
+        inp = "3\n{0}\n".format(expr)
+        label = "Boolean NOR {0}".format(index)
+        checker = build_checker(contains_all=("NOR form:",), forbid=("Error:", "ERR:"), min_lines=2)
+        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_nor", use_calculated=False)
+
+    def random_boolean_prove_case(self, rng, difficulty, index):
+        pairs = [
+            ("A.(B+C)", "A.B+A.C"),
+            ("A+A.B", "A"),
+            ("(A+B).(A+C)", "A+B.C"),
+            ("A+A,", "1"),
+            ("A.A,", "0"),
+        ]
+        lhs, rhs = rng.choice(pairs)
+        inp = "4\n{0}\n{1}\n".format(lhs, rhs)
+        label = "Boolean prove {0}".format(index)
+        checker = build_checker(contains_any=("proved", "Both sides", "OK", "Result:"), forbid=("Could not prove", "Error:", "ERR:"), min_lines=3)
+        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_prove", use_calculated=False)
+
+    def build_random_boolean_cases(self, difficulty, count, rng):
+        features = [
+            self.random_boolean_simplify_case,
+            self.random_boolean_nand_case,
+            self.random_boolean_nor_case,
+            self.random_boolean_prove_case,
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
@@ -6969,6 +7234,10 @@ class CASIOApp(App):
             self.random_integrate_auto_case,
             self.random_suvat_case,
             self.random_suvat_edge_case,
+            self.random_boolean_simplify_case,
+            self.random_boolean_nand_case,
+            self.random_boolean_nor_case,
+            self.random_boolean_prove_case,
         ]
         super_hard_rng = random.Random(rng.randint(1, 99999))
         cases = self.build_unique_random_cases(features, count, super_hard_rng, "chaos")
@@ -6983,6 +7252,7 @@ class CASIOApp(App):
             ("Integrate", self.build_random_integrate_cases),
             ("Stats", self.build_random_stats_cases),
             ("SUVAT", self.build_random_suvat_cases),
+            ("Boolean", self.build_random_boolean_cases),
         ]
         if program is None:
             return builders
@@ -7279,6 +7549,19 @@ class CASIOApp(App):
         with ThreadPoolExecutor(max_workers=CASE_WORKERS) as executor:
             for label, passed, out, inp, check_info in executor.map(evaluate, cases):
                 self.add_test(label, passed, out, program, inp, check_info)
+
+    def run_boolean(self, difficulty="all"):
+        p = "Boolean"
+        tests = [
+            ("1\nA+A.B\n", "Boolean: simplify absorption", "boolean_simplify", build_checker(contains_all=("Result:",), forbid=("Error:", "ERR:"), min_lines=2)),
+            ("2\nA.B+C\n", "Boolean: NAND form", "boolean_nand", build_checker(contains_all=("NAND form:",), forbid=("Error:", "ERR:"), min_lines=2)),
+            ("3\nA+B.C\n", "Boolean: NOR form", "boolean_nor", build_checker(contains_all=("NOR form:",), forbid=("Error:", "ERR:"), min_lines=2)),
+            ("4\nA.(B+C)\nA.B+A.C\n", "Boolean: prove distributive", "boolean_prove", build_checker(contains_any=("proved", "Both sides", "OK", "Result:"), forbid=("Could not prove", "Error:", "ERR:"), min_lines=3)),
+        ]
+        for inp, label, feature, checker in tests:
+            out, err = self.run_cli("ComputerScience/booleanProgram.py", inp)
+            combined = out if not err else out + "\n" + err
+            self.add_test(label, checker(combined), combined, p, inp, getattr(checker, "__name__", "boolean checker"), feature)
 
     def run_algebra(self, difficulty="all"):
         p = "Algebra"

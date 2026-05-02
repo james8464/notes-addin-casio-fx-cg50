@@ -147,6 +147,55 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
     }
+    if(program == "ComputerScience/booleanProgram.py" || program == "booleanProgram.py") {
+        int mode = 1;
+        try { mode = std::stoi(get(0)); } catch(...) {}
+        if(mode == 4) {
+            std::string lhs = get(1).empty() ? "A.(B+C)" : get(1);
+            std::string rhs = get(2).empty() ? "A.B+A.C" : get(2);
+            std::cout << "1. LHS = " << lhs << "\n";
+            std::cout << "2. RHS = " << rhs << "\n";
+            auto [proof, err] = casio::boolean::prove(lhs, rhs);
+            if(!err.empty()) {
+                std::cout << "Error: " << err << "\n";
+                return 0;
+            }
+            int i = 3;
+            for(auto const &ln : proof) std::cout << i++ << ". " << ln << "\n";
+            std::cout << i << ". proved\n";
+            return 0;
+        }
+
+        std::string expr = get(1);
+        if(expr.empty()) {
+            if(mode == 2) expr = "A.B";
+            else if(mode == 3) expr = "A+B";
+            else expr = "((B,.A),.B,),+A.B";
+        }
+        auto cur = casio::boolean::parse(expr);
+        std::cout << "1. " << casio::boolean::show(cur) << "\n";
+        if(mode == 2) {
+            auto out = casio::boolean::normalise(casio::boolean::to_nand(cur));
+            std::cout << "2. NAND form: " << casio::boolean::show(out) << "\n";
+            return 0;
+        }
+        if(mode == 3) {
+            auto out = casio::boolean::normalise(casio::boolean::to_nor(cur));
+            std::cout << "2. NOR form: " << casio::boolean::show(out) << "\n";
+            return 0;
+        }
+
+        int n = 2;
+        while(n <= 50) {
+            auto hit = casio::boolean::step(cur);
+            if(!hit.first) break;
+            cur = hit.first;
+            std::cout << n << ". " << casio::boolean::show(cur) << "    (" << hit.second << ")\n";
+            ++n;
+        }
+        std::cout << "Result: " << casio::boolean::show(cur) << "\n";
+        return 0;
+    }
     if(program == "statsProgram.py") {
         casio::stats::Request req;
         try { req.mode = std::stoi(get(0)); } catch(...) { req.mode = 0; }

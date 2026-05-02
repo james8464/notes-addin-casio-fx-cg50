@@ -245,7 +245,10 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
 
     auto emit = [&](std::string const &eq, std::string const &sub, NodeId res) {
         out.push_back(eq);
-        if(!sub.empty()) out.push_back("= " + sub);
+        if(!sub.empty()) {
+            std::string prefix = in.target + " = ";
+            out.push_back(sub.rfind(prefix, 0) == 0 ? "= " + sub.substr(prefix.size()) : "= " + sub);
+        }
         out.push_back(in.target + " = " + show(res));
         double dv = 0;
         if(node_to_double(arena, res, dv)) {
@@ -277,6 +280,18 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         return out;
     }
     if(in.target == "a" && has_v && has_u && has_t) {
+        if(is_zero_value(arena, t)) {
+            double uu = 0, vv = 0;
+            if(node_to_double(arena, u, uu) && node_to_double(arena, v, vv) && std::fabs(uu - vv) < 1e-9) {
+                out.push_back("v = u + at");
+                out.push_back("0*a = 0");
+                out.push_back("Answer: infinite solutions for a");
+                return out;
+            }
+            out.push_back("a = (v-u)/t");
+            out.push_back("Error: division by zero; no finite acceleration");
+            return out;
+        }
         NodeId nume = add(arena, {v, neg(arena, u)});
         NodeId res = div(arena, nume, t);
         emit("a = (v-u)/t", "a = (" + show(v) + " - " + show(u) + ")/(" + show(t) + ")", res);
@@ -351,9 +366,10 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId root = power(arena, inside, num(arena, 1, 2));
         NodeId num1 = add(arena, {neg(arena, u), root});
         NodeId num2 = add(arena, {neg(arena, u), neg(arena, root)});
-        NodeId t1 = div(arena, num1, a);
-        NodeId t2 = div(arena, num2, a);
+        NodeId t1 = simplify(arena, div(arena, num1, a));
+        NodeId t2 = simplify(arena, div(arena, num2, a));
         out.push_back("s = ut + 1/2at^2");
+        out.push_back("Quadratic in t");
         out.push_back("t = (-u ± sqrt(u^2 + 2as))/a");
         bool keep1 = is_nonnegative(arena, t1);
         bool keep2 = is_nonnegative(arena, t2);

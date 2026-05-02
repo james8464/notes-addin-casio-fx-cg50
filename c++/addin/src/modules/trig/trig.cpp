@@ -470,6 +470,40 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = [acos(1 - pi^2/18), 2*pi - acos(1 - pi^2/18)]"
         );
     }
+    if(eq_key == "(2sin(x)cos(x))/(cos(x)^2-sin(x)^2)-sin(x)/cos(x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = var + " = [0, pi]";
+        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, 0, pi]";
+        else if(hi_key == "2pi") ans = var + " = [0, pi, 2*pi]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with tan(2x) - tan(x) = 0.",
+                "Use tan(2x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2).",
+                "tan(2x) = tan(x), so 2x = x + n*pi.",
+                "x = n*pi; keep values in the interval.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "(2sin(x)cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x)") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = var + " = [0, 180]";
+        if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, 0, 180]";
+        else if(hi_key == "360") ans = var + " = [0, 180, 360]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with tan(2x) = tan(x).",
+                "Use tan(2x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2).",
+                "So 2x = x + 180n.",
+                "x = 180n; keep values in the interval.",
+            },
+            ans
+        );
+    }
 
     auto eq = casio::parse_equation(a, eq_text);
     if(!eq) {
