@@ -226,6 +226,44 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     // ∫ cot(x) dx = ln|sin(x)|
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cot && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
+        NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", casio::fn(a, "sin", v)));
+        out.result = ln_abs;
+        out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = ln|sin(x)|");
+        out.steps.push_back("Step 3: Simplify. Result = ln|sin(" + var + ")| + C");
+        return out;
+    }
+    
+    // ∫ arcsin(x) dx = x*arcsin(x) + sqrt(1-x^2)
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Asin && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        NodeId arcsin_v = casio::fn(a, "asin", v);
+        NodeId one = casio::num(a, 1);
+        NodeId v2 = casio::power(a, v, casio::num(a, 2));
+        NodeId sqrt_term = casio::fn(a, "sqrt", casio::add(a, {one, casio::neg(a, v2)}));
+        NodeId result = casio::add(a, {casio::mul(a, {v, arcsin_v}), sqrt_term});
+        out.result = result;
+        out.steps.push_back("Step 2: Apply inverse trig rule: ∫ arcsin(x) dx = x*arcsin(x) + sqrt(1-x^2)");
+        out.steps.push_back("Step 3: Simplify.");
+        return out;
+    }
+    
+    // ∫ arccos(x) dx = x*arccos(x) - sqrt(1-x^2)
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Acos && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        NodeId arccos_v = casio::fn(a, "acos", v);
+        NodeId one = casio::num(a, 1);
+        NodeId v2 = casio::power(a, v, casio::num(a, 2));
+        NodeId sqrt_term = casio::fn(a, "sqrt", casio::add(a, {one, casio::neg(a, v2)}));
+        NodeId result = casio::add(a, {casio::mul(a, {v, arccos_v}), casio::neg(a, sqrt_term)});
+        out.result = result;
+        out.steps.push_back("Step 2: Apply inverse trig rule: ∫ arccos(x) dx = x*arccos(x) - sqrt(1-x^2)");
+        out.steps.push_back("Step 3: Simplify.");
+        return out;
+    }
+    
+    // ∫ cot(x) dx = ln|sin(x)|
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cot && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
         NodeId sin_v = casio::fn(a, "sin", v);
         NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", sin_v));
         out.result = ln_abs;
