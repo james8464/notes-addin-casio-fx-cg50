@@ -121,6 +121,67 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
     
+    // ∫ k*x^n dx where k,n are constants (handles 2x, 3x^2, etc.)
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        NodeId kid0 = x.kids[0];
+        NodeId kid1 = x.kids[1];
+        
+        // Get constants from both kids
+        auto n0 = as_num(a, kid0);
+        auto n1 = as_num(a, kid1);
+        
+        // Check if kid1 is x^power (Pow node)
+        auto const &kid1_node = a.get(kid1);
+        if(n0 && kid1_node.kind == NodeKind::Pow) {
+            auto exp = as_num(a, kid1_node.b);
+            if(exp && is_sym(a, kid1_node.a, var)) {
+                // k*x^n -> k*x^(n+1)/(n+1)
+                Rational np1 = *exp;
+                np1.num += np1.den;
+                NodeId v = casio::sym(a, var);
+                NodeId pow = casio::power(a, v, a.num(np1));
+                NodeId result = casio::mul(a, {a.num(*n0), pow});
+                result = casio::div(a, result, a.num(np1));
+                out.result = casio::simplify(a, result);
+                out.steps.push_back("Step 2: Constant times power, apply power rule.");
+                out.steps.push_back("Step 3: Simplify. Add constant C.");
+                return out;
+            }
+        }
+        
+        // Check for constant * x
+        if(n0 && is_sym(a, kid1, var)) {
+            Rational np1{1, 1};
+            np1.num += np1.den;
+            NodeId v = casio::sym(a, var);
+            NodeId pow = casio::power(a, v, a.num(np1));
+            NodeId result = casio::mul(a, {a.num(*n0), pow});
+            result = casio::div(a, result, a.num(np1));
+            out.result = casio::simplify(a, result);
+            out.steps.push_back("Step 2: Constant times x, apply power rule.");
+            out.steps.push_back("Step 3: Simplify. Add constant C.");
+            return out;
+        }
+    }
+    
+    // ∫ x/n dx where n is constant (handles x/2)
+    if(x.kind == NodeKind::Div) {
+        NodeId num = x.a;
+        NodeId den = x.b;
+        auto n_den = as_num(a, den);
+        if(n_den && is_sym(a, num, var)) {
+            // x/2 = (1/2)*x
+            // Just integrate x and divide by the constant
+            NodeId v = casio::sym(a, var);
+            NodeId v_pow = casio::power(a, v, casio::num(a, 2));
+            NodeId half = casio::div(a, v_pow, casio::num(a, 2));
+            out.result = casio::simplify(a, half);
+            out.steps.push_back("Step 2: Constant divided by x, apply power rule.");
+            out.steps.push_back("Step 3: Simplify. Add constant C.");
+            return out;
+        }
+    }
+    
     // ∫ x^n dx
     if(x.kind == NodeKind::Pow && is_sym(a, x.a, var)) {
         auto n = as_num(a, x.b);

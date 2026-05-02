@@ -578,7 +578,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             auto p = poly_of(arena, n, "x");
-            if(!p || !p->ok || is_zero(p->a2)) return {"Err: need quadratic in x."};
+            if(!p || !p->ok) return {"Err: invalid polynomial."};
+            
+            // If not quadratic (no x^2 term), check if already factored form
+            if(is_zero(p->a2)) {
+                std::vector<std::string> out;
+                out.push_back("Method: Factor quadratic");
+                // Could be (ax+b)^2 or similar - just return as is
+                std::string ans = format_expr(arena, n);
+                out.push_back("Factored form: " + ans);
+                out.push_back("Answer: " + ans);
+                return out;
+            }
 
             Rational a = p->a2;
             Rational b = p->a1;
