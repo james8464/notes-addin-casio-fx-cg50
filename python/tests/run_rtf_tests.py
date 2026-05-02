@@ -26,7 +26,9 @@ from typing import Optional, List, Tuple
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = ROOT.parent
 TESTS_RTF = ROOT / "Tests.rtf"
+TOP_TESTS_TXT = REPO / "Tests.txt"
 
 
 QUESTION_RE = re.compile(r"^Question\s+(.+?)\s+—\s+(.+?)(?:\s+\((.+)\))?\s*$")
@@ -54,6 +56,41 @@ def _run(cmd: List[str], *, cwd: Path, timeout_s: int = 15, input_text: str = ""
     )
     out = p.stdout.decode("utf-8", errors="replace")
     return p.returncode, out
+
+
+def _cpp_host() -> Path:
+    configured = os.environ.get("CASIO_CPP_HOST", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return REPO / "c++" / "addin" / "host" / "build" / "casio_host"
+
+
+def _ensure_cpp_host(timeout_s: int) -> Optional[str]:
+    host = _cpp_host()
+    if host.exists():
+        return None
+    build = REPO / "c++" / "tools" / "build_host.sh"
+    if not build.exists():
+        return f"C++ host missing and build script not found: {build}"
+    code, out = _run([str(build)], cwd=REPO, timeout_s=max(timeout_s, 60))
+    if code != 0 or not host.exists():
+        return "C++ host build failed:\n" + out
+    return None
+
+
+def _run_mapped_program(script: str, payload: str, timeout_s: int) -> Tuple[int, str]:
+    backend = os.environ.get("CASIO_BACKEND", "").strip().lower()
+    if backend in ("c", "cpp", "c++"):
+        err = _ensure_cpp_host(timeout_s)
+        if err:
+            return 2, err
+        return _run(
+            [str(_cpp_host()), "--stdin-program", Path(script).name],
+            cwd=REPO,
+            timeout_s=timeout_s,
+            input_text=payload,
+        )
+    return _run([sys.executable, str(ROOT / script)], cwd=ROOT, timeout_s=timeout_s, input_text=payload)
 
 
 def _safe_eval_number(expr: str) -> Optional[float]:
@@ -442,7 +479,8 @@ def normalize_compact(text: str) -> str:
 
 
 def main() -> None:
-    txt_path = Path(os.environ.get("CASIO_TESTS_TXT", "/tmp/Tests.txt"))
+    default_txt = TOP_TESTS_TXT if TOP_TESTS_TXT.exists() else Path("/tmp/Tests.txt")
+    txt_path = Path(os.environ.get("CASIO_TESTS_TXT", str(default_txt)))
     if not txt_path.exists():
         convert_rtf_to_txt(TESTS_RTF, txt_path)
 
@@ -492,9 +530,8 @@ def main() -> None:
                         print(f"[BANK-MISMATCH] {b.header_line}")
                         print(f"  claimed x={claimed} but f(x)≈{fx} for: {eq_expr}=0")
                         continue
-        cmd = [sys.executable, str(ROOT / script)]
         try:
-            code, out = _run(cmd, cwd=ROOT, timeout_s=timeout_s, input_text=payload)
+            code, out = _run_mapped_program(script, payload, timeout_s)
         except subprocess.TimeoutExpired:
             failed += 1
             print(f"[TIMEOUT] {b.header_line}")
@@ -530,4 +567,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

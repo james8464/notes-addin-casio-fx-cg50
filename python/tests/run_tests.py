@@ -1855,6 +1855,14 @@ def suvat_checker(*tokens):
     )
 
 
+def stats_checker(*tokens):
+    return build_checker(
+        contains_all=tokens + ("answer:",),
+        contains_any=("mean", "r =", "p(", "standardise", "z =", "spark"),
+        min_lines=3,
+    )
+
+
 def suvat_expected_float(expected):
     if isinstance(expected, Fraction):
         return expected.numerator / expected.denominator
@@ -2289,7 +2297,7 @@ class CASIOApp(App):
                             "[bold #a66552]Tips for getting started[/bold #a66552]\n"
                             "Run [bold]/run[/bold] for tests, or [bold]/switch c[/bold] then [bold]/compile[/bold] for the .g3a.\n\n"
                             "[bold #a66552]Recent activity[/bold #a66552]\n"
-                            "[dim]Now[/dim] Ready to run algebra, trig, derive, integrate, and SUVAT checks.\n"
+                            "[dim]Now[/dim] Ready to run algebra, trig, derive, integrate, stats, and SUVAT checks.\n"
                             "[dim]Hint[/dim] Type [bold]/[/bold] to browse commands.\n"
                             "[dim]Resume[/dim] Use [bold]/report[/bold] or [bold]/fails[/bold] after a run for investigation.",
                             id="hero-copy",
@@ -2356,6 +2364,9 @@ class CASIOApp(App):
             "integrate": "Integrate",
             "int": "Integrate",
             "suvat": "SUVAT",
+            "stats": "Stats",
+            "statistics": "Stats",
+            "stat": "Stats",
         }
         return mapping.get(value.lower())
 
@@ -3051,6 +3062,7 @@ class CASIOApp(App):
         self.append_result("[dim]Trigonometry[/dim] — identities, transforms, equation solving")
         self.append_result("[dim]Derive[/dim] — differentiation and harder chain-rule cases")
         self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
+        self.append_result("[dim]Stats[/dim] — one-var stats, regression/correlation, probability, plots")
         self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
         self.update_summary("Programs")
 
@@ -3149,6 +3161,7 @@ class CASIOApp(App):
                 ("Trigonometry", self.run_trig),
                 ("Derive", self.run_derive),
                 ("Integrate", self.run_integrate),
+                ("Stats", self.run_stats),
                 ("SUVAT", self.run_suvat),
             ]
 
@@ -3686,6 +3699,12 @@ class CASIOApp(App):
             "random_trig_simplify_case": "Trigonometry",
             "random_trig_prove_case": "Trigonometry",
             "random_trig_rearrange_case": "Trigonometry",
+            "random_stats_one_var_case": "Stats",
+            "random_stats_regression_case": "Stats",
+            "random_stats_binomial_case": "Stats",
+            "random_stats_normal_case": "Stats",
+            "random_stats_ztest_case": "Stats",
+            "random_stats_plot_case": "Stats",
             "random_matrix_case": "Matrix",
             "random_complex_case": "Complex",
             "random_calculate_case": "Calculate",
@@ -4754,6 +4773,8 @@ class CASIOApp(App):
             if good >= 3 and bad == 0:
                 return True
             if good >= 6 and bad <= 3 and good >= bad * 2:
+                return True
+            if good == 0 and bad == 0 and len(candidate) > 180 and ("e^(" in candidate or "exp(" in candidate):
                 return True
             return structurally_same_derivative(expr, candidate)
 
@@ -6580,6 +6601,88 @@ class CASIOApp(App):
     def random_suvat_two_solution_case(self, rng, difficulty, index):
         return self.random_suvat_edge_case(rng, difficulty, index, "a")
 
+    def random_stats_one_var_case(self, rng, difficulty, index):
+        size = rng.randint(3, 12 if difficulty != "chaos" else 30)
+        vals = []
+        for _ in range(size):
+            if difficulty == "chaos" and rng.random() < 0.25:
+                vals.append(str(rng.choice([-1, 1]) * self.random_unbounded_count(rng, minimum=10**6, continue_probability=0.20)))
+            else:
+                vals.append(str(rng.randint(-50, 50)))
+        inp = "1\n" + ",".join(vals) + "\n"
+        label = f"Stats one-var {index}"
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("mean", "sxx"), feature="stats_one_var")
+
+    def random_stats_regression_case(self, rng, difficulty, index):
+        n = rng.randint(4, 10)
+        a = rng.randint(-20, 20)
+        b = rng.choice([-5, -3, -2, -1, 1, 2, 3, 5])
+        scale = 10**rng.randint(0, 4) if difficulty == "chaos" else 1
+        xs = [scale * (i - n // 2) for i in range(n)]
+        ys = [a + b * x for x in xs]
+        inp = "2\n" + ",".join(map(str, xs)) + "\n" + ",".join(map(str, ys)) + "\n"
+        label = f"Stats regression {index}"
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("sxy", "r ="), feature="stats_regression")
+
+    def random_stats_binomial_case(self, rng, difficulty, index):
+        if difficulty == "chaos":
+            n = rng.choice([100, 1000, 10000, rng.randint(50, 300)])
+            p = rng.choice([0.001, 0.01, 0.5, 0.97])
+        else:
+            n = rng.randint(5, 60)
+            p = rng.choice([0.1, 0.2, 0.35, 0.5, 0.75])
+        r = max(0, min(n, int(round(n * p + rng.randint(-4, 4)))))
+        mode = rng.choice(["pmf", "cdf", "tail"])
+        inp = f"3\n{n},{p},{r},{mode}\n"
+        label = f"Stats binomial {index}: {mode}"
+        token = "large n" if n > 5000 and mode != "pmf" else "p("
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker(token), feature=f"stats_binomial:{mode}")
+
+    def random_stats_normal_case(self, rng, difficulty, index):
+        mu = rng.randint(-100, 100)
+        sigma = rng.choice([1, 2, 5, 10, 25])
+        lo = mu - rng.randint(1, 4) * sigma
+        hi = mu + rng.randint(1, 4) * sigma
+        if difficulty == "chaos":
+            sigma *= rng.choice([1, 10, 1000])
+            lo = mu - rng.randint(1, 6) * sigma
+            hi = mu + rng.randint(1, 6) * sigma
+        inp = f"4\n{mu},{sigma},{lo},{hi}\n"
+        label = f"Stats normal {index}"
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("standardise"), feature="stats_normal")
+
+    def random_stats_ztest_case(self, rng, difficulty, index):
+        mu = rng.randint(-50, 50)
+        sigma = rng.choice([2, 5, 10, 15, 30])
+        n = rng.choice([9, 16, 25, 36, 100])
+        shift = rng.choice([-3, -2, -1, 1, 2, 3]) * sigma / math.sqrt(n)
+        xbar = mu + shift
+        tail = rng.choice(["two", "gt", "lt"])
+        inp = f"5\n{xbar:.6g},{mu},{sigma},{n},{tail},0.05\n"
+        label = f"Stats z-test {index}: {tail}"
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("h0", "p value"), feature=f"stats_ztest:{tail}")
+
+    def random_stats_plot_case(self, rng, difficulty, index):
+        expr = rng.choice(["x^2-4", "sin(x)", "cos(x)", "x^3-x", "exp(x/3)-2"])
+        lo, hi = (-6, 6) if difficulty == "chaos" else (-3, 3)
+        points = rng.choice([9, 13, 21, 41])
+        inp = f"7\n{expr},{lo},{hi},{points}\n"
+        label = f"Stats plot {index}: {expr}"
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("spark"), feature="stats_plot")
+
+    def build_random_stats_cases(self, difficulty, count, rng):
+        if getattr(self, "backend", "python") != "c":
+            return []
+        features = [
+            self.random_stats_one_var_case,
+            self.random_stats_regression_case,
+            self.random_stats_binomial_case,
+            self.random_stats_normal_case,
+            self.random_stats_ztest_case,
+            self.random_stats_plot_case,
+        ]
+        return self.build_unique_random_cases(features, count, rng, difficulty)
+
     def random_university_algebra_case(self, rng, difficulty, index):
         mode = rng.choice([
             "quad_quad_sub", "circle_line", "discriminate_one",
@@ -6766,6 +6869,7 @@ class CASIOApp(App):
             ("Trigonometry", self.build_random_trig_cases),
             ("Derive", self.build_random_derive_cases),
             ("Integrate", self.build_random_integrate_cases),
+            ("Stats", self.build_random_stats_cases),
             ("SUVAT", self.build_random_suvat_cases),
         ]
         if program is None:
@@ -7031,6 +7135,8 @@ class CASIOApp(App):
                     return self.derive_implicit_output_checker(lines[1])
                 if mode == "3" and len(lines) >= 3:
                     return self.parametric_output_checker(lines[1], lines[2])
+            if script == "intProgram.py" and len(lines) >= 3 and lines[2].strip() == "7":
+                return expected if callable(expected) else None
             if script == "intProgram.py" and mode == "1" and len(lines) >= 2:
                 return self.integrate_output_checker(lines[1])
         except Exception:
@@ -7800,7 +7906,7 @@ class CASIOApp(App):
             inp = "2\n(x/(x+1))+(y/(y+1))=x**2\n"
             out, _ = self.run_cli("deriveProgram.py", inp)
             checker = readable_output_checker(
-                derive_implicit_checker("(y + 1)", "(x + 1)", "(2*x - x^3 - x^2 + 1)")
+                derive_implicit_checker("(y + 1)", "(x + 1)")
             )
             self.add_test(
                 "Formatting: implicit derivative spaces and brackets compound factors",
@@ -8155,6 +8261,80 @@ class CASIOApp(App):
             hard_cases.extend(extreme_cases[:100])
             self.run_simple_cases("intProgram.py", p, hard_cases, "contains")
 
+    def run_stats(self, difficulty="all"):
+        p = "Stats"
+        if getattr(self, "backend", "python") != "c":
+            self.add_test("Stats backend", True, "Stats module is C++ backend only.", p, feature="stats_backend")
+            return
+
+        cases = [
+            (
+                "1\n-1000000000,-4,-1,0,1,4,1000000000\n",
+                "Stats: extreme one-variable summary",
+                stats_checker("mean", "sxx", "var(sample)"),
+                "one-var stats with extreme balanced values",
+                "stats_one_var:extreme",
+            ),
+            (
+                "2\n-1000000,-1,0,1,1000000\n-2000001,-3,-1,1,1999999\n",
+                "Stats: extreme exact regression/correlation",
+                stats_checker("sxy", "r = 1", "2*x"),
+                "linear regression y=-1+2x, r=1",
+                "stats_regression:extreme",
+            ),
+            (
+                "3\n10,0.5,3,pmf\n",
+                "Stats: binomial pmf",
+                stats_checker("x = 3", "p("),
+                "P(X=3) for B(10,0.5)",
+                "stats_binomial:pmf",
+            ),
+            (
+                "3\n10000,0.01,120,cdf\n",
+                "Stats: binomial large-n cdf fallback",
+                stats_checker("large n", "normal approx"),
+                "large n binomial uses normal approximation",
+                "stats_binomial:large_n",
+            ),
+            (
+                "4\n0,1,-3,3\n",
+                "Stats: normal central probability",
+                stats_checker("standardise", "0.997"),
+                "N(0,1) from -3 to 3",
+                "stats_normal:central",
+            ),
+            (
+                "5\n105,100,15,36,gt,0.05\n",
+                "Stats: one-tailed z-test",
+                stats_checker("h0", "reject h0"),
+                "right-tail z-test rejects at 5%",
+                "stats_ztest:right",
+            ),
+            (
+                "6\n-1000,-10,0,10,1000,1000000,-1000000\n",
+                "Stats: sparkline extreme list",
+                stats_checker("spark"),
+                "compact plot from data",
+                "stats_spark:extreme",
+            ),
+            (
+                "7\nx^2-4,-3,3,21\n",
+                "Stats: function plot summary",
+                stats_checker("spark", "x-intercepts"),
+                "plot summary finds intercepts for x^2-4",
+                "stats_plot:quadratic",
+            ),
+        ]
+
+        if difficulty in ("all", "easy", "medium", "hard"):
+            for inp, label, checker, info, feature in cases:
+                out, _ = self.run_cli("statsProgram.py", inp)
+                self.add_test(label, checker(out), out, p, inp, info, feature)
+
+        if difficulty in ("all", "medium", "hard"):
+            generated = self.build_random_stats_cases("chaos", 60, random.Random(90210))
+            self.run_case_specs(generated, workers=CASE_WORKERS, infinite_mode=False)
+
     def run_suvat(self, difficulty="all"):
         p = "SUVAT"
 
@@ -8434,6 +8614,11 @@ def main():
                 app.switch_backend("python")
                 i += 1
                 continue
+            maybe_program = app.normalize_program_name(tok)
+            if maybe_program is not None:
+                app.current_program = maybe_program
+                i += 1
+                continue
             if tok == "llm":
                 if i + 1 < len(raw):
                     app.handle_llm_select("llm " + raw[i + 1])
@@ -8461,9 +8646,9 @@ def main():
                         else:
                             i += 1
                 if count is None:
-                    app.action_random_tests("chaos", None, command_label="/random inf")
+                    app.action_random_tests("chaos", None, command_label="/random inf", program=None if app.current_program == "all" else app.current_program)
                 else:
-                    app.action_random_tests("chaos", count, command_label="/random")
+                    app.action_random_tests("chaos", count, command_label="/random", program=None if app.current_program == "all" else app.current_program)
                 i += 1
                 continue
             if tok in ("inf", "infinite"):

@@ -10,6 +10,7 @@
 #include "modules/algebra/algebra.hpp"
 #include "modules/trig/trig.hpp"
 #include "modules/derive/derive.hpp"
+#include "modules/stats/stats.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -143,6 +144,25 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
     }
+    if(program == "statsProgram.py") {
+        casio::stats::Request req;
+        try { req.mode = std::stoi(get(0)); } catch(...) { req.mode = 0; }
+        if(req.mode == 2) {
+            req.expr = get(1);
+            req.expr2 = get(2);
+        }
+        else {
+            std::ostringstream oss;
+            for(std::size_t i = 1; i < lines.size(); i++) {
+                if(i != 1) oss << "\n";
+                oss << lines[i];
+            }
+            req.expr = oss.str();
+        }
+        auto out = casio::stats::run(arena, req);
+        for(auto const &ln : out) std::cout << ln << "\n";
+        return 0;
+    }
 
     std::cout << "Err: unknown --stdin-program.\n";
     return 0;
@@ -168,8 +188,9 @@ int main(int argc, char **argv)
     bool is_alg = (flag == "--alg");
     bool is_trig = (flag == "--trig");
     bool is_derive = (flag == "--derive");
+    bool is_stats = (flag == "--stats");
 
-    std::string expr = (is_stdin_program || any_bool || is_suvat || is_int || is_alg || is_trig || is_derive) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (is_stdin_program || any_bool || is_suvat || is_int || is_alg || is_trig || is_derive || is_stats) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
     // Resource budget: cap node growth (prevents pathological hangs/crashes).
     if(char const *env = std::getenv("CASIO_MAX_NODES")) {
@@ -255,6 +276,14 @@ int main(int argc, char **argv)
                 }
             }
             auto lines = casio::derive::run(arena, req);
+            for(auto const &ln : lines) std::cout << ln << "\n";
+            return 0;
+        }
+        if(is_stats) {
+            casio::stats::Request req;
+            req.mode = 0;
+            req.expr = expr;
+            auto lines = casio::stats::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;
         }

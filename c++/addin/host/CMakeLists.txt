@@ -12,6 +12,7 @@ add_executable(casio_host
   ../src/modules/algebra/algebra.cpp
   ../src/modules/trig/trig.cpp
   ../src/modules/derive/derive.cpp
+  ../src/modules/stats/stats.cpp
   ../src/core/rational.cpp
   ../src/core/arena.cpp
   ../src/core/normalize.cpp

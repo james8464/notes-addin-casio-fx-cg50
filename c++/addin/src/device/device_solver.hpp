@@ -14,6 +14,7 @@ enum class Module
     Integrate,
     Trig,
     Suvat,
+    Stats,
     Boolean,
     DeriveNormal,
     DeriveImplicit,

@@ -10,11 +10,13 @@ graph TD
   Cls --> Num["numeric fallback scanner"]
   Cls --> Trig["trig table/equation parser"]
   Cls --> Suvat["SUVAT solver"]
+  Cls --> Stats["stats/probability helpers"]
   Cls --> Util["matrix/vector/binomial utilities"]
   Poly --> Work["exam working lines"]
   Num --> Work
   Trig --> Work
   Suvat --> Work
+  Stats --> Work
   Util --> Work
   Work --> Screen["calculator output"]
 
@@ -23,6 +25,7 @@ graph TD
   Mods --> Der["derive"]
   Mods --> Int["integrate"]
   Mods --> TrigH["trig"]
+  Mods --> StatsH["stats"]
   Mods --> Bool["boolean"]
   Mods --> SuvatH["suvat"]
   Tests["run_tests_cpp.py"] --> Host
@@ -55,4 +58,20 @@ graph TD
   P --> W
   T --> W
   B --> W
+```
+
+```mermaid
+graph TD
+  S["stats input"] --> O["one-var summary"]
+  S --> R["regression/correlation"]
+  S --> Bn["binomial pmf/cdf/tail"]
+  S --> N["normalcdf"]
+  S --> Z["z-test"]
+  S --> P["plot/spark summary"]
+  O --> W["mark-scheme lines"]
+  R --> W
+  Bn --> W
+  N --> W
+  Z --> W
+  P --> W
 ```

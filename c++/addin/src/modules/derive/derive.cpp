@@ -233,39 +233,6 @@ static std::vector<std::string> split_csv(std::string const &s)
     return parts;
 }
 
-static std::pair<NodeId, NodeId> coeff_of(Arena &a, NodeId whole, std::string const &dname)
-{
-    whole = casio::simplify(a, whole);
-    Node const &w = a.get(whole);
-    if(w.kind == NodeKind::Add) {
-        NodeId coef = casio::num(a, 0);
-        std::vector<NodeId> rest_terms;
-        for(auto t : w.kids) {
-            auto [c, r] = coeff_of(a, t, dname);
-            coef = casio::simplify(a, casio::add(a, {coef, c}));
-            if(!(a.get(r).kind == NodeKind::Num && a.get(r).num.num == 0)) rest_terms.push_back(r);
-        }
-        NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::add(a, rest_terms);
-        return {coef, rest};
-    }
-    if(is_sym(a, whole, dname)) {
-        return {casio::num(a, 1), casio::num(a, 0)};
-    }
-    if(w.kind == NodeKind::Mul) {
-        std::vector<NodeId> others;
-        bool found = false;
-        for(auto f : w.kids) {
-            if(is_sym(a, f, dname)) found = true;
-            else others.push_back(f);
-        }
-        if(found) {
-            NodeId c = others.empty() ? casio::num(a, 1) : casio::mul(a, others);
-            return {c, casio::num(a, 0)};
-        }
-    }
-    return {casio::num(a, 0), whole};
-}
-
 } // namespace
 
 std::vector<std::string> run(Arena &arena, Request const &req)
@@ -277,6 +244,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto parts = split_csv(req.expr);
             std::string expr = parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
+
+            if(req.mode == 1 && expr.find('=') != std::string::npos) {
+                Request implicit_req;
+                implicit_req.mode = 2;
+                implicit_req.expr = expr;
+                return run(arena, implicit_req);
+            }
 
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
@@ -333,10 +307,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string var = "x";
             std::string dep = "y";
             NodeId work = casio::simplify(arena, casio::add(arena, {left, casio::neg(arena, right)}));
-            NodeId d = casio::simplify(arena, diff(arena, work, var, dep));
+            NodeId fx = casio::simplify(arena, diff(arena, work, var));
+            NodeId fy = casio::simplify(arena, diff(arena, work, dep));
             std::string dname = "d" + dep + "/d" + var;
-            auto [coef, rest] = coeff_of(arena, d, dname);
-            NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, rest), coef));
+            NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy));
             casio::ExamPrelude pre;
             pre.raw = req.expr;
             pre.norm = casio::normalize_text(req.expr);
@@ -348,7 +322,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "Normalize: " + pre.norm,
                     "Parse: " + pre.parsed,
                     "Simplify: " + pre.simplified,
-                    "d/dx(lhs)=d/dx(rhs)",
+                    "Let F(x,y)=lhs-rhs.",
+                    "Use dy/dx = -F_x/F_y.",
                     "Make dy/dx the subject.",
                 },
                 dname + " = " + format_expr_human(arena, ans)

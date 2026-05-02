@@ -1562,6 +1562,23 @@ static bool parse_fraction_args(const char *input, Fraction *args, int expected)
     return count == expected;
 }
 
+static bool parse_fraction_list(const char *input, Fraction *args, int cap, int &count)
+{
+    char s[160];
+    int n = compact(input, s, (int)sizeof(s));
+    count = 0;
+    int start = 0;
+    for(int i = 0; i <= n; i++) {
+        if(i == n || s[i] == ',') {
+            if(count >= cap || i == start) return false;
+            if(!read_fraction_token(s, start, i, args[count])) return false;
+            count++;
+            start = i + 1;
+        }
+    }
+    return count > 0;
+}
+
 static Fraction frac_pow(Fraction base, int exp)
 {
     Fraction out = make_fraction(1, 1);
@@ -1679,6 +1696,78 @@ static bool solve_binom(const char *input, OutputLines &out)
     return true;
 }
 
+static bool solve_binom_cdf(const char *input, OutputLines &out)
+{
+    Fraction a[3];
+    if(!parse_fraction_args(input, a, 3) || a[0].den != 1 || a[2].den != 1) {
+        out.add("Use binomcdf(n,p,r).");
+        return false;
+    }
+    int n = a[0].num;
+    int r = a[2].num;
+    if(n < 0 || r < 0) {
+        out.add("Answer: 0.");
+        return true;
+    }
+    if(r > n) r = n;
+    if(n > 20) {
+        out.add("Use host stats for n>20.");
+        return false;
+    }
+    Fraction q = frac_sub(make_fraction(1, 1), a[1]);
+    Fraction total = make_fraction(0, 1);
+    for(int k = 0; k <= r; k++) {
+        Fraction term = frac_mul(make_fraction(comb_int(n, k), 1), frac_mul(frac_pow(a[1], k), frac_pow(q, n - k)));
+        total = frac_add(total, term);
+    }
+    out.add("1. X ~ B(n,p).");
+    out.add("2. P(X<=r)=sum nCk p^k(1-p)^(n-k).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    append_fraction(ans, total);
+    return true;
+}
+
+static bool solve_stats_list(const char *input, OutputLines &out)
+{
+    Fraction a[32];
+    int count = 0;
+    if(!parse_fraction_list(input, a, 32, count)) {
+        out.add("Use stats(a,b,c,...).");
+        return false;
+    }
+    Fraction sum = make_fraction(0, 1);
+    Fraction minv = a[0];
+    Fraction maxv = a[0];
+    Fraction sumsq = make_fraction(0, 1);
+    for(int i = 0; i < count; i++) {
+        sum = frac_add(sum, a[i]);
+        sumsq = frac_add(sumsq, frac_mul(a[i], a[i]));
+        if(less_fraction(a[i], minv)) minv = a[i];
+        if(less_fraction(maxv, a[i])) maxv = a[i];
+    }
+    Fraction mean = make_fraction(sum.num, sum.den * count);
+    Fraction sxx = frac_sub(sumsq, make_fraction(sum.num * sum.num, sum.den * sum.den * count));
+    out.add("1. One-variable stats.");
+    FixedString<96> &nline = out.next();
+    nline.append("2. n = ");
+    nline.append_int(count);
+    nline.append(", sum x = ");
+    append_fraction(nline, sum);
+    FixedString<96> &mline = out.next();
+    mline.append("3. mean = sum x/n = ");
+    append_fraction(mline, mean);
+    FixedString<96> &rline = out.next();
+    rline.append("4. min = ");
+    append_fraction(rline, minv);
+    rline.append(", max = ");
+    append_fraction(rline, maxv);
+    FixedString<96> &sline = out.next();
+    sline.append("5. Sxx = ");
+    append_fraction(sline, sxx);
+    return true;
+}
+
 static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
 {
     int prefix_len = cstr_len(prefix);
@@ -1722,6 +1811,8 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 3) return solve_dot3(inner, out);
     if(kind == 4) return solve_cross3(inner, out);
     if(kind == 5) return solve_binom(inner, out);
+    if(kind == 6) return solve_stats_list(inner, out);
+    if(kind == 7) return solve_binom_cdf(inner, out);
     return false;
 }
 
@@ -1753,6 +1844,8 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "dot3(")) return solve_utility_call(input, "dot3(", 3, out);
             if(starts_with(input, "cross3(")) return solve_utility_call(input, "cross3(", 4, out);
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
+            if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
+            if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);
@@ -1775,6 +1868,11 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::Integrate: return solve_integrate(input, out);
         case Module::Trig: return solve_trig(input, out);
         case Module::Suvat: return solve_suvat(input, out);
+        case Module::Stats:
+            if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
+            if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
+            if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
+            return solve_stats_list(input, out);
 
         case Module::Boolean: return solve_simplify(input, out);
         case Module::DeriveNormal: return solve_derive(input, out);
