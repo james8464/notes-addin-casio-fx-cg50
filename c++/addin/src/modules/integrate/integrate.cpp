@@ -31,6 +31,14 @@ static bool is_const(Arena &a, NodeId n)
     return x.kind == NodeKind::Num || x.kind == NodeKind::Const;
 }
 
+static bool is_pow_e(Arena &a, NodeId n)
+{
+    auto const &node = a.get(n);
+    if(node.kind != NodeKind::Pow) return false;
+    auto const &base = a.get(node.a);
+    return base.kind == NodeKind::Const && base.ckind == ConstKind::E;
+}
+
 // Main integration result with steps
 struct IntegrateResult
 {
@@ -139,7 +147,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
     
-    // ∫ cos(x) dx = sin(x)
+// ∫ cos(x) dx = sin(x)
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cos && is_sym(a, x.a, var)) {
         out.result = casio::fn(a, "sin", casio::sym(a, var));
         out.steps.push_back("Step 2: Apply trig rule: ∫ cos(x) dx = sin(x)");
@@ -147,22 +155,56 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
     
-    // ∫ e^x dx = e^x
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp && is_sym(a, x.a, var)) {
-        out.result = casio::fn(a, "exp", casio::sym(a, var));
+    // ∫ e^x dx = e^x (parsed as Pow(e,x))
+    if(is_pow_e(a, expr) && is_sym(a, x.b, var)) {
+        out.result = expr;
         out.steps.push_back("Step 2: Apply exponential rule: ∫ e^x dx = e^x");
-        out.steps.push_back("Step 3: Simplify. Result = e^(" + var + ") + C");
+        out.steps.push_back("Step 3: Simplify. Result = e^" + var + " + C");
         return out;
     }
     
-    // ∫ 1/x dx = ln|x|
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log && is_sym(a, x.a, var)) {
+    // ∫ tan(x) dx = -ln|cos(x)|
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Tan && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
-        out.result = casio::mul(a, {casio::simplify(a, casio::mul(a, {v, casio::fn(a, "log", v)})), casio::neg(a, v)});
-        out.steps.push_back("Step 2: Apply integration by parts: ∫ ln(x) dx = x*ln(x) - x");
-        out.steps.push_back("Let u = ln(x), dv = dx. Then du = (1/x)dx, v = x");
-        out.steps.push_back("∫ ln(x) dx = x*ln(x) - ∫ x*(1/x) dx = x*ln(x) - ∫ 1 dx");
-        out.steps.push_back("Step 3: Simplify. Result = x*ln(x) - x + C");
+        NodeId neg_ln = casio::fn(a, "log", casio::fn(a, "abs", casio::fn(a, "cos", v)));
+        out.result = casio::neg(a, neg_ln);
+        out.steps.push_back("Step 2: Apply trig rule: ∫ tan(x) dx = -ln|cos(x)|");
+        out.steps.push_back("Step 3: Simplify. Result = -ln|cos(" + var + ")| + C");
+        return out;
+    }
+    
+    // ∫ sec(x) dx = ln|sec(x)+tan(x)|
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sec && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        std::vector<NodeId> inner_args = {casio::fn(a, "sec", v), casio::fn(a, "tan", v)};
+        NodeId inner = casio::add(a, inner_args);
+        NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", inner));
+        out.result = ln_abs;
+        out.steps.push_back("Step 2: Apply trig rule: ∫ sec(x) dx = ln|sec(x)+tan(x)|");
+        out.steps.push_back("Step 3: Simplify. Result = ln|sec(" + var + ")+tan(" + var + ")| + C");
+        return out;
+    }
+    
+    // ∫ csc(x) dx = ln|csc(x)-cot(x)|
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosec && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        std::vector<NodeId> inner_args = {casio::fn(a, "cosec", v), casio::fn(a, "cot", v)};
+        NodeId inner = casio::add(a, inner_args);
+        NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", inner));
+        out.result = ln_abs;
+        out.steps.push_back("Step 2: Apply trig rule: ∫ csc(x) dx = ln|csc(x)-cot(x)|");
+        out.steps.push_back("Step 3: Simplify. Result = ln|csc(" + var + ")-cot(" + var + ")| + C");
+        return out;
+    }
+    
+    // ∫ cot(x) dx = ln|sin(x)|
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cot && is_sym(a, x.a, var)) {
+        NodeId v = casio::sym(a, var);
+        NodeId sin_v = casio::fn(a, "sin", v);
+        NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", sin_v));
+        out.result = ln_abs;
+        out.steps.push_back("Step 2: Apply trig rule: ∫ cot(x) dx = ln|sin(x)|");
+        out.steps.push_back("Step 3: Simplify. Result = ln|sin(" + var + ")| + C");
         return out;
     }
     
