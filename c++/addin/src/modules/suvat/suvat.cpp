@@ -109,6 +109,16 @@ static double *node_to_double(Arena &arena, NodeId node, double &out)
         out = std::pow(a, b);
         return &out;
     }
+    if(n.kind == NodeKind::Fn) {
+        double u = 0;
+        if(!node_to_double(arena, n.a, u)) return nullptr;
+        if(n.fkind == FnKind::Sqrt) { out = std::sqrt(u); return &out; }
+        if(n.fkind == FnKind::Abs) { out = std::fabs(u); return &out; }
+        if(n.fkind == FnKind::Log) { out = std::log(u); return &out; }
+        if(n.fkind == FnKind::Sin) { out = std::sin(u); return &out; }
+        if(n.fkind == FnKind::Cos) { out = std::cos(u); return &out; }
+        if(n.fkind == FnKind::Tan) { out = std::tan(u); return &out; }
+    }
     return nullptr;
 }
 
@@ -117,6 +127,12 @@ static bool is_nonnegative(Arena &arena, NodeId node)
     double v = 0;
     if(!node_to_double(arena, node, v)) return true; // unknown => keep
     return v >= -1e-9;
+}
+
+static bool is_zero_value(Arena &arena, NodeId node)
+{
+    double v = 0;
+    return node_to_double(arena, node, v) && std::fabs(v) < 1e-9;
 }
 
 } // namespace
@@ -149,6 +165,9 @@ Inputs normalize_inputs(Inputs in)
     }
     if(!found.empty()) {
         in.target = found;
+        return in;
+    }
+    if(!in.target.empty()) {
         return in;
     }
     std::vector<std::string> blanks;
@@ -296,6 +315,11 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         emit("t = 2s/(u+v)", "s = 1/2(u+v)t", res);
         return out;
     }
+    if(in.target == "t" && has_s && has_u && has_a && is_zero_value(arena, a)) {
+        NodeId res = div(arena, s, u);
+        emit("t = s/u", "a = 0 so s = ut", res);
+        return out;
+    }
 
     // Energy form
     if(in.target == "v" && has_u && has_a && has_s) {
@@ -337,6 +361,67 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         else if(keep1) out.push_back("t = " + show(t1));
         else if(keep2) out.push_back("t = " + show(t2));
         else out.push_back("t = (no positive root)");
+        return out;
+    }
+
+    auto val_or_sym = [&](bool has, NodeId id, char const *name) -> NodeId {
+        return has ? id : sym(arena, name);
+    };
+    if(in.target == "s") {
+        NodeId U = val_or_sym(has_u, u, "u");
+        NodeId A = val_or_sym(has_a, a, "a");
+        NodeId T = val_or_sym(has_t, t, "t");
+        NodeId res = simplify(arena, add(arena, {mul(arena, {U, T}), mul(arena, {half(arena), A, power(arena, T, num(arena, 2))})}));
+        emit("s = ut + 1/2at^2", "symbolic fallback", res);
+        return out;
+    }
+    if(in.target == "v") {
+        NodeId U = val_or_sym(has_u, u, "u");
+        NodeId A = val_or_sym(has_a, a, "a");
+        NodeId T = val_or_sym(has_t, t, "t");
+        NodeId res = simplify(arena, add(arena, {U, mul(arena, {A, T})}));
+        emit("v = u + at", "symbolic fallback", res);
+        return out;
+    }
+    if(in.target == "u") {
+        NodeId V = val_or_sym(has_v, v, "v");
+        NodeId A = val_or_sym(has_a, a, "a");
+        NodeId T = val_or_sym(has_t, t, "t");
+        NodeId res = simplify(arena, add(arena, {V, neg(arena, mul(arena, {A, T}))}));
+        emit("u = v - at", "symbolic fallback", res);
+        return out;
+    }
+    if(in.target == "a") {
+        if(has_u && has_v && has_t && is_zero_value(arena, t)) {
+            double uu = 0, vv = 0;
+            if(node_to_double(arena, u, uu) && node_to_double(arena, v, vv) && std::fabs(uu - vv) < 1e-9) {
+                out.push_back("v = u + at");
+                out.push_back("0*a = 0");
+                out.push_back("Answer: infinite solutions for a");
+                return out;
+            }
+        }
+        NodeId V = val_or_sym(has_v, v, "v");
+        NodeId U = val_or_sym(has_u, u, "u");
+        NodeId T = val_or_sym(has_t, t, "t");
+        NodeId res = simplify(arena, div(arena, add(arena, {V, neg(arena, U)}), T));
+        emit("a = (v-u)/t", "symbolic fallback", res);
+        return out;
+    }
+    if(in.target == "t") {
+        if(has_a && is_zero_value(arena, a)) {
+            NodeId S = val_or_sym(has_s, s, "s");
+            NodeId U = val_or_sym(has_u, u, "u");
+            NodeId V = val_or_sym(has_v, v, "v");
+            NodeId res = has_s && has_u ? div(arena, S, U) : div(arena, mul(arena, {num(arena, 2), S}), add(arena, {U, V}));
+            emit(has_s && has_u ? "t = s/u" : "t = 2s/(u+v)", "symbolic fallback", simplify(arena, res));
+            return out;
+        }
+        NodeId V = val_or_sym(has_v, v, "v");
+        NodeId U = val_or_sym(has_u, u, "u");
+        NodeId A = val_or_sym(has_a, a, "a");
+        NodeId res = simplify(arena, div(arena, add(arena, {V, neg(arena, U)}), A));
+        emit("t = (v-u)/a", "symbolic fallback", res);
         return out;
     }
 
@@ -398,4 +483,3 @@ std::vector<std::string> solve_all(Arena &arena, Inputs const &raw)
 }
 
 } // namespace casio::suvat
-

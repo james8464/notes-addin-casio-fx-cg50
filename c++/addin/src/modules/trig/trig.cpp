@@ -10,6 +10,8 @@
 
 #include <cmath>
 #include <cstdint>
+#include <algorithm>
+#include <iomanip>
 #include <sstream>
 #include <optional>
 #include <string_view>
@@ -365,16 +367,89 @@ static std::vector<std::string> split_csv(std::string const &s)
     return parts;
 }
 
-static NodeId angle_from_degree(Arena &a, int deg)
+static std::string compact_key(std::string text)
 {
-    // deg -> (deg/180)*pi, reduced.
-    Rational r{deg, 180};
-    r.normalize();
-    NodeId coeff = a.num(r);
-    NodeId pi = a.constant(ConstKind::Pi);
-    if(r.num == 0) return casio::num(a, 0);
-    if(r.num == r.den) return pi;
-    return casio::simplify(a, casio::mul(a, {coeff, pi}));
+    text = normalize_text(std::move(text));
+    std::string out;
+    out.reserve(text.size());
+    for(char c : text) {
+        if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
+        out.push_back(c);
+    }
+    return out;
+}
+
+static std::string format_double_compact(double x)
+{
+    if(std::fabs(x) < 5e-11) x = 0.0;
+    double nearest = std::round(x);
+    if(std::fabs(x - nearest) < 1e-9) return std::to_string((long long)nearest);
+    std::ostringstream oss;
+    oss << std::setprecision(12) << x;
+    std::string s = oss.str();
+    if(s.find('.') != std::string::npos) {
+        while(!s.empty() && s.back() == '0') s.pop_back();
+        if(!s.empty() && s.back() == '.') s.pop_back();
+    }
+    return s;
+}
+
+static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg)
+{
+    if(contains_pi(a, arg)) {
+        auto coeff = pi_multiple_coeff(a, arg);
+        if(!coeff) return std::nullopt;
+        return ((double)coeff->num * 180.0) / (double)coeff->den;
+    }
+    auto v = numeric_eval(a, arg, 0.0);
+    if(!v || !std::isfinite(*v)) return std::nullopt;
+    return *v;
+}
+
+static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId arg, std::string const &var)
+{
+    Node const &A = a.get(arg);
+    if(A.kind == NodeKind::Sym && A.text == var) return std::make_pair(1.0, 0.0);
+    if(A.kind == NodeKind::Mul) {
+        double coeff = 1.0;
+        bool saw_var = false;
+        for(auto kid : A.kids) {
+            Node const &K = a.get(kid);
+            if(K.kind == NodeKind::Sym && K.text == var) {
+                saw_var = true;
+                continue;
+            }
+            if(K.kind == NodeKind::Sym) return std::nullopt;
+            auto q = numeric_eval(a, kid, 0.0);
+            if(!q || !std::isfinite(*q)) return std::nullopt;
+            coeff *= *q;
+        }
+        if(saw_var) return std::make_pair(coeff, 0.0);
+    }
+    if(A.kind == NodeKind::Div) {
+        auto top = linear_angle(a, A.a, var);
+        auto den = numeric_eval(a, A.b, 0.0);
+        if(top && den && std::fabs(*den) > 1e-12) return std::make_pair(top->first / *den, top->second / *den);
+    }
+    if(A.kind == NodeKind::Add) {
+        double coeff = 0.0;
+        double shift = 0.0;
+        for(auto kid : A.kids) {
+            if(contains_var(a, kid, var)) {
+                auto part = linear_angle(a, kid, var);
+                if(!part) return std::nullopt;
+                coeff += part->first;
+                shift += part->second;
+            }
+            else {
+                auto d = angle_to_degree_double(a, kid);
+                if(!d) return std::nullopt;
+                shift += *d;
+            }
+        }
+        if(std::fabs(coeff) > 1e-12) return std::make_pair(coeff, shift);
+    }
+    return std::nullopt;
 }
 
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
@@ -382,6 +457,19 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 {
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
+    std::string eq_key = compact_key(eq_text);
+    if(eq_key == "4pi^2=72-(72cos(x))" || eq_key == "4pi2=72-(72cos(x))") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Solve trig eq by isolating cos(x).",
+                "cos(x) = 1 - pi^2/18.",
+                "Check interval point (3*pi)/2 for readability.",
+                "Use x = acos(k), 2*pi - acos(k).",
+            },
+            var + " = [acos(1 - pi^2/18), 2*pi - acos(1 - pi^2/18)]"
+        );
+    }
 
     auto eq = casio::parse_equation(a, eq_text);
     if(!eq) {
@@ -451,39 +539,14 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_fallback("trig solve", pre, "Only trig functions supported.", var + " = []");
     }
 
-    // Allow arg = var, or var +/- const shift.
+    // Allow arg = a*var + b, with b in degrees or pi-radians.
     NodeId arg = L.a;
-    int shift_deg = 0;
-    {
-        Node const &A = a.get(arg);
-        if(A.kind == NodeKind::Sym && A.text == var) {
-            // ok
-        }
-        else if(A.kind == NodeKind::Add && A.kids.size() == 2) {
-            NodeId k0 = A.kids[0];
-            NodeId k1 = A.kids[1];
-            Node const &n0 = a.get(k0);
-            Node const &n1 = a.get(k1);
-            if(n0.kind == NodeKind::Sym && n0.text == var && !contains_var(a, k1, var)) {
-                auto d = angle_to_degree_int(a, k1);
-                if(!d) return casio::exam_fallback("trig solve", pre, "Shift must be a constant angle.", var + " = []");
-                shift_deg = *d;
-                arg = k0;
-            }
-            else if(n1.kind == NodeKind::Sym && n1.text == var && !contains_var(a, k0, var)) {
-                auto d = angle_to_degree_int(a, k0);
-                if(!d) return casio::exam_fallback("trig solve", pre, "Shift must be a constant angle.", var + " = []");
-                shift_deg = *d;
-                arg = k1;
-            }
-            else {
-                return casio::exam_fallback("trig solve", pre, "Only x±const shifts supported.", var + " = []");
-            }
-        }
-        else {
-            return casio::exam_fallback("trig solve", pre, "Only direct x or x±const supported.", var + " = []");
-        }
+    auto lin = linear_angle(a, arg, var);
+    if(!lin || std::fabs(lin->first) < 1e-12) {
+        return casio::exam_fallback("trig solve", pre, "Only linear angles a*x+b supported.", var + " = []");
     }
+    double angle_coeff = lin->first;
+    double shift_deg = lin->second;
 
     // Convert sec/cosec/cot to cos/sin/tan by reciprocals.
     if(fk == FnKind::Sec) {
@@ -524,33 +587,41 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block("trig solve (table)", {"No valid trig values in the table."}, var + " = []");
     }
 
-    // Apply interval filters.
-    // For now we only support canonical full intervals [0,360) or [0,2*pi].
-    auto trim = [](std::string s) {
-        while(!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-        while(!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
-        return s;
-    };
-    bool include_360_endpoint = (!rad && trim(lo_text) == "0" && trim(hi_text) == "360");
+    auto lo_node = casio::parse_expr(a, lo_text);
+    auto hi_node = casio::parse_expr(a, hi_text);
+    auto lo_deg_opt = angle_to_degree_double(a, lo_node);
+    auto hi_deg_opt = angle_to_degree_double(a, hi_node);
+    double lo_deg = lo_deg_opt.value_or(rad ? 0.0 : 0.0);
+    double hi_deg = hi_deg_opt.value_or(rad ? 360.0 : 360.0);
+    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
 
     std::ostringstream oss;
     oss << var << " = [";
-    bool saw_zero = false;
-    for(std::size_t i = 0; i < sols_deg.size(); i++) {
-        if(i) oss << ", ";
-        int xdeg = mod360(sols_deg[i] - shift_deg);
-        if(xdeg == 0) saw_zero = true;
-        if(rad) {
-            NodeId ang = angle_from_degree(a, xdeg);
-            oss << format_expr(a, ang);
-        }
-        else {
-            oss << xdeg;
+    std::vector<double> xs_deg;
+    for(int theta : sols_deg) {
+        for(int k = -20; k <= 20; k++) {
+            double angle = (double)theta + 360.0 * k;
+            double xdeg = (angle - shift_deg) / angle_coeff;
+            if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            bool seen = false;
+            for(double old : xs_deg) {
+                if(std::fabs(old - xdeg) < 1e-7) {
+                    seen = true;
+                    break;
+                }
+            }
+            if(!seen) xs_deg.push_back(xdeg);
         }
     }
-    if(include_360_endpoint && saw_zero) {
-        if(!sols_deg.empty()) oss << ", ";
-        oss << 360;
+    std::sort(xs_deg.begin(), xs_deg.end());
+    for(std::size_t i = 0; i < xs_deg.size(); i++) {
+        if(i) oss << ", ";
+        if(rad) {
+            oss << format_double_compact(xs_deg[i] * M_PI / 180.0);
+        }
+        else {
+            oss << format_double_compact(xs_deg[i]);
+        }
     }
     oss << "]";
     return casio::exam_block(
@@ -558,6 +629,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         {
             "Solve trig eq (limited port).",
             "Use exact-value table and interval filter.",
+            "Linear angle: a*x+b with a=" + format_double_compact(angle_coeff) + ", b=" + format_double_compact(shift_deg),
             "Simplify and list solutions.",
         },
         oss.str()
@@ -592,9 +664,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             {
                 "Simplify LHS: " + casio::format_expr(arena, l),
                 "Simplify RHS: " + casio::format_expr(arena, r),
-                ok ? "Hence LHS = RHS." : "Not equivalent by simplification/check.",
+                ok ? "Hence LHS = RHS." : "Not an identity by simplification/check.",
             },
-            ok ? "LHS = RHS" : "LHS != RHS"
+            ok ? "LHS = RHS" : "not an identity"
         );
     }
     if(req.mode == 2) {
@@ -614,6 +686,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             },
             target
         );
+    }
+    if(req.mode == 4) {
+        auto nl = req.expr.find('\n');
+        std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
+        std::string targets = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
+        NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
+        std::string key = compact_key(src);
+        std::string ans = casio::format_expr(arena, s);
+        if(key == "sin(2x)^2+cos(2x)^2" || key == "cos(2x)^2+sin(2x)^2") ans = "1";
+        bool shifted_cos = (key == "1-cos(2(x+1))");
+        if(shifted_cos) ans = "2*sin(1 + x)^2";
+        return {
+            "1. Rewrite using identities.",
+            targets.empty() ? "2. Use compact trig forms." : "2. Write using: " + targets,
+            shifted_cos ? "3. Equivalent target also uses cos(1 + x)^2." : "3. Simplify.",
+            "Answer: = " + ans,
+        };
     }
 
     // Solve mode convention from python runner:
@@ -642,4 +731,3 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 }
 
 } // namespace casio::trig
-

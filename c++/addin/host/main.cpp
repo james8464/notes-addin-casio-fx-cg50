@@ -102,6 +102,14 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
             // mode1: prove, mode2: transform
             req.expr = get(1) + "\n" + get(2);
         }
+        else if(req.mode == 4) {
+            std::ostringstream oss;
+            for(std::size_t i = 1; i < lines.size(); i++) {
+                if(i != 1) oss << "\n";
+                oss << lines[i];
+            }
+            req.expr = oss.str();
+        }
         else {
             req.expr = get(1);
         }
@@ -117,6 +125,20 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         in.v = get(2);
         in.a = get(3);
         in.t = get(4);
+        auto mark_target = [&](std::string &field, char const *name) {
+            if(field.find(',') == std::string::npos) return;
+            in.target = name;
+            std::string clean;
+            for(char c : field) {
+                if(c != ',') clean.push_back(c);
+            }
+            field = clean;
+        };
+        mark_target(in.s, "s");
+        mark_target(in.u, "u");
+        mark_target(in.v, "v");
+        mark_target(in.a, "a");
+        mark_target(in.t, "t");
         auto out = casio::suvat::solve_all(arena, in);
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
@@ -201,7 +223,7 @@ int main(int argc, char **argv)
         }
         if(is_alg) {
             casio::algebra::Request req;
-            req.mode = 6;
+            req.mode = (expr.find('=') != std::string::npos) ? 6 : 0;
             req.expr = expr;
             auto lines = casio::algebra::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
@@ -287,4 +309,3 @@ int main(int argc, char **argv)
         return 1;
     }
 }
-

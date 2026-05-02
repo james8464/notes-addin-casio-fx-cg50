@@ -113,6 +113,11 @@ static Fraction frac_add(Fraction a, Fraction b)
     return make_fraction(a.num * b.den + b.num * a.den, a.den * b.den);
 }
 
+static Fraction frac_sub(Fraction a, Fraction b)
+{
+    return frac_add(a, frac_neg(b));
+}
+
 static Fraction frac_mul(Fraction a, Fraction b)
 {
     return make_fraction(a.num * b.num, a.den * b.den);
@@ -527,7 +532,24 @@ static bool append_quadratic_roots(OutputLines &out, const int *coeff, char var)
     disc_line.append(".");
 
     if(disc < 0) {
-        out.add("Answer: no real roots.");
+        out.add("5. Discriminant is negative, use i^2 = -1.");
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: ");
+        ans.append_char(var);
+        ans.append(" = (");
+        ans.append_int(-b2);
+        ans.append(" + i*sqrt(");
+        ans.append_int(-disc);
+        ans.append("))/");
+        ans.append_int(2 * a2);
+        ans.append(" or ");
+        ans.append_char(var);
+        ans.append(" = (");
+        ans.append_int(-b2);
+        ans.append(" - i*sqrt(");
+        ans.append_int(-disc);
+        ans.append("))/");
+        ans.append_int(2 * a2);
         return true;
     }
     if(!is_square_int(disc, root)) {
@@ -1503,6 +1525,160 @@ static bool solve_suvat(const char *input, OutputLines &out)
     return false;
 }
 
+static bool read_fraction_token(const char *s, int begin, int end, Fraction &out)
+{
+    int i = begin;
+    bool neg = false;
+    if(i < end && s[i] == '-') {
+        neg = true;
+        i++;
+    }
+    int num = 0;
+    if(!read_int(s, i, end, num)) return false;
+    int den = 1;
+    if(i < end && s[i] == '/') {
+        i++;
+        if(!read_int(s, i, end, den) || den == 0) return false;
+    }
+    if(i != end) return false;
+    out = make_fraction(neg ? -num : num, den);
+    return true;
+}
+
+static bool parse_fraction_args(const char *input, Fraction *args, int expected)
+{
+    char s[160];
+    int n = compact(input, s, (int)sizeof(s));
+    int count = 0;
+    int start = 0;
+    for(int i = 0; i <= n; i++) {
+        if(i == n || s[i] == ',') {
+            if(count >= expected) return false;
+            if(!read_fraction_token(s, start, i, args[count])) return false;
+            count++;
+            start = i + 1;
+        }
+    }
+    return count == expected;
+}
+
+static Fraction frac_pow(Fraction base, int exp)
+{
+    Fraction out = make_fraction(1, 1);
+    for(int i = 0; i < exp; i++) out = frac_mul(out, base);
+    return out;
+}
+
+static int comb_int(int n, int r)
+{
+    if(r < 0 || r > n) return 0;
+    if(r > n - r) r = n - r;
+    int out = 1;
+    for(int i = 1; i <= r; i++) out = out * (n - r + i) / i;
+    return out;
+}
+
+static bool solve_det2(const char *input, OutputLines &out)
+{
+    Fraction a[4];
+    if(!parse_fraction_args(input, a, 4)) {
+        out.add("Use det2(a,b,c,d).");
+        return false;
+    }
+    Fraction det = frac_sub(frac_mul(a[0], a[3]), frac_mul(a[1], a[2]));
+    add_input_line(out, "1. Matrix: ", input);
+    out.add("2. For [[a,b],[c,d]], det = ad - bc.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: det = ");
+    append_fraction(ans, det);
+    return true;
+}
+
+static bool solve_inv2(const char *input, OutputLines &out)
+{
+    Fraction a[4];
+    if(!parse_fraction_args(input, a, 4)) {
+        out.add("Use inv2(a,b,c,d).");
+        return false;
+    }
+    Fraction det = frac_sub(frac_mul(a[0], a[3]), frac_mul(a[1], a[2]));
+    if(is_zero(det)) {
+        out.add("Answer: singular matrix, no inverse.");
+        return true;
+    }
+    Fraction e[4];
+    frac_div(a[3], det, e[0]);
+    frac_div(frac_neg(a[1]), det, e[1]);
+    frac_div(frac_neg(a[2]), det, e[2]);
+    frac_div(a[0], det, e[3]);
+    add_input_line(out, "1. Matrix: ", input);
+    out.add("2. Inverse = (1/det)[[d,-b],[-c,a]].");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: [[");
+    append_fraction(ans, e[0]); ans.append(",");
+    append_fraction(ans, e[1]); ans.append("],[");
+    append_fraction(ans, e[2]); ans.append(",");
+    append_fraction(ans, e[3]); ans.append("]]");
+    return true;
+}
+
+static bool solve_dot3(const char *input, OutputLines &out)
+{
+    Fraction a[6];
+    if(!parse_fraction_args(input, a, 6)) {
+        out.add("Use dot3(ax,ay,az,bx,by,bz).");
+        return false;
+    }
+    Fraction dot = frac_add(frac_add(frac_mul(a[0], a[3]), frac_mul(a[1], a[4])), frac_mul(a[2], a[5]));
+    out.add("1. Use a.b = axbx + ayby + azbz.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    append_fraction(ans, dot);
+    return true;
+}
+
+static bool solve_cross3(const char *input, OutputLines &out)
+{
+    Fraction a[6];
+    if(!parse_fraction_args(input, a, 6)) {
+        out.add("Use cross3(ax,ay,az,bx,by,bz).");
+        return false;
+    }
+    Fraction x = frac_sub(frac_mul(a[1], a[5]), frac_mul(a[2], a[4]));
+    Fraction y = frac_sub(frac_mul(a[2], a[3]), frac_mul(a[0], a[5]));
+    Fraction z = frac_sub(frac_mul(a[0], a[4]), frac_mul(a[1], a[3]));
+    out.add("1. Use determinant form for a x b.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: (");
+    append_fraction(ans, x); ans.append(",");
+    append_fraction(ans, y); ans.append(",");
+    append_fraction(ans, z); ans.append(")");
+    return true;
+}
+
+static bool solve_binom(const char *input, OutputLines &out)
+{
+    Fraction a[3];
+    if(!parse_fraction_args(input, a, 3) || a[0].den != 1 || a[2].den != 1) {
+        out.add("Use binom(n,p,r), e.g. binom(10,1/2,3).");
+        return false;
+    }
+    int n = a[0].num;
+    int r = a[2].num;
+    if(n < 0 || r < 0 || r > n) {
+        out.add("Answer: 0.");
+        return true;
+    }
+    Fraction q = frac_sub(make_fraction(1, 1), a[1]);
+    Fraction ansv = frac_mul(make_fraction(comb_int(n, r), 1), frac_mul(frac_pow(a[1], r), frac_pow(q, n - r)));
+    out.add("1. X ~ B(n,p).");
+    out.add("2. P(X=r)=nCr p^r (1-p)^(n-r).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    append_fraction(ans, ansv);
+    return true;
+}
+
 static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
 {
     int prefix_len = cstr_len(prefix);
@@ -1529,6 +1705,26 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
     return false;
 }
 
+static bool solve_utility_call(const char *input, const char *prefix, int kind, OutputLines &out)
+{
+    int prefix_len = cstr_len(prefix);
+    int len = cstr_len(input);
+    if(len <= prefix_len || input[len - 1] != ')') {
+        out.add("Unsupported: function call is missing ')'.");
+        return false;
+    }
+    char inner[160];
+    int n = 0;
+    for(int i = prefix_len; i + 1 < len && n + 1 < (int)sizeof(inner); i++) inner[n++] = input[i];
+    inner[n] = '\0';
+    if(kind == 1) return solve_det2(inner, out);
+    if(kind == 2) return solve_inv2(inner, out);
+    if(kind == 3) return solve_dot3(inner, out);
+    if(kind == 4) return solve_cross3(inner, out);
+    if(kind == 5) return solve_binom(inner, out);
+    return false;
+}
+
 static bool contains_trig_name(const char *input)
 {
     for(int i = 0; input != nullptr && input[i] != '\0'; i++) {
@@ -1552,6 +1748,11 @@ bool solve(Module module, const char *input, OutputLines &out)
 
     switch(module) {
         case Module::Shell:
+            if(starts_with(input, "det2(")) return solve_utility_call(input, "det2(", 1, out);
+            if(starts_with(input, "inv2(")) return solve_utility_call(input, "inv2(", 2, out);
+            if(starts_with(input, "dot3(")) return solve_utility_call(input, "dot3(", 3, out);
+            if(starts_with(input, "cross3(")) return solve_utility_call(input, "cross3(", 4, out);
+            if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);

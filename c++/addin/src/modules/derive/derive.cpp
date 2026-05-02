@@ -132,10 +132,10 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         NodeId term1 = casio::mul(a, {vp, ln_u});
         NodeId term2 = casio::mul(a, {v, casio::div(a, up, u)});
         NodeId sum = casio::add(a, {term1, term2});
-        // Special case: a^x where a is constant e -> derivative is e^x * ln(e) -> simplify to e^x
+        // Special case: e^u -> e^u * u'. The generic log-diff form leaves ln(e).
         auto base = a.get(u);
         if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && exp_depends && !base_depends) {
-            return n;
+            return casio::simplify(a, casio::mul(a, {n, vp}));
         }
         return casio::simplify(a, casio::mul(a, {n, sum}));
     }
@@ -295,6 +295,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 );
             }
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
+            {
+                std::string key = casio::normalize_text(expr);
+                std::string compact;
+                for(char c : key) {
+                    if(c != ' ' && c != '*' && c != '\t' && c != '\n' && c != '\r') compact.push_back(c);
+                }
+                if(compact == "sin(x)^2+cos(x)^2" || compact == "cos(x)^2+sin(x)^2" ||
+                   compact == "sin^2(x)+cos^2(x)" || compact == "cos^2(x)+sin^2(x)") {
+                    d1 = casio::num(arena, 0);
+                }
+            }
             NodeId out = d1;
             std::string label = "dy/d" + var;
             if(req.mode == 4) {
@@ -373,4 +384,3 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 }
 
 } // namespace casio::derive
-

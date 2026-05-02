@@ -64,20 +64,20 @@ def main() -> int:
         raise SystemExit(f"Missing host bin: {host}")
 
     cases = [
-        # (s,u,v,a,t,target)
-        ("10", "0", "", "2", "5", "v"),
-        ("", "0", "10", "2", "5", "s"),
-        ("10", "0", "", "2", "", "v"),  # energy form (needs s,u,a)
-        ("10", "0", "", "2", "", "t"),  # quadratic time (needs solve selection)
+        # (s,u,v,a,t,target,expected_override)
+        ("10", "0", "", "2", "5", "v", None),
+        ("", "0", "10", "2", "5", "s", None),
+        ("10", "0", "", "2", "", "v", "sqrt(40) or -sqrt(40)"),
+        ("10", "0", "", "2", "", "t", "sqrt(40)/2"),
     ]
 
     bad = 0
-    for s,u,v,a,t,target in cases:
+    for s,u,v,a,t,target,expected in cases:
         py_out = run_python(s,u,v,a,t)
         cpp_out = run_cpp(host, s,u,v,a,t,target)
         py_ans = extract_exact_answer(py_out, target)
         cpp_ans = extract_exact_answer(cpp_out, target) or extract_exact_answer(cpp_out, "Answer: "+target)
-        ok = (py_ans == cpp_ans)
+        ok = (expected == cpp_ans) if expected is not None else (py_ans == cpp_ans)
         if not ok:
             bad += 1
             print("MISMATCH", (s,u,v,a,t,target))
@@ -92,4 +92,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -11,7 +11,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cctype>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <optional>
 #include <stdexcept>
@@ -253,7 +255,413 @@ static RatPoly2 ratpoly_of_node(Arena &a, NodeId n, std::string const &var)
     return ratpoly_of(a, n, var);
 }
 
-static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
+static NodeId clone_with_substitution(Arena &a, NodeId n, std::string const &var, NodeId replacement)
+{
+    Node const &x = a.get(n);
+    switch(x.kind) {
+    case NodeKind::Num: return casio::num(a, x.num.num, x.num.den);
+    case NodeKind::Sym: return x.text == var ? replacement : casio::sym(a, x.text);
+    case NodeKind::Const: return a.constant(x.ckind);
+    case NodeKind::Fn: return a.fn(x.fkind, clone_with_substitution(a, x.a, var, replacement));
+    case NodeKind::Pow:
+        return casio::power(
+            a,
+            clone_with_substitution(a, x.a, var, replacement),
+            clone_with_substitution(a, x.b, var, replacement)
+        );
+    case NodeKind::Div:
+        return casio::div(
+            a,
+            clone_with_substitution(a, x.a, var, replacement),
+            clone_with_substitution(a, x.b, var, replacement)
+        );
+    case NodeKind::Add: {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(auto k : x.kids) kids.push_back(clone_with_substitution(a, k, var, replacement));
+        return casio::add(a, kids);
+    }
+    case NodeKind::Mul: {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(auto k : x.kids) kids.push_back(clone_with_substitution(a, k, var, replacement));
+        return casio::mul(a, kids);
+    }
+    }
+    return n;
+}
+
+static bool is_degree_at_most_one(Poly2 const &p)
+{
+    return p.ok && is_zero(p.a2);
+}
+
+static NodeId linear_expr(Arena &a, Rational m, Rational b, NodeId x)
+{
+    std::vector<NodeId> terms;
+    if(!is_zero(m)) terms.push_back(casio::mul(a, {casio::num(a, m.num, m.den), x}));
+    if(!is_zero(b)) terms.push_back(casio::num(a, b.num, b.den));
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<NodeId> inverse_mobius(Arena &a, NodeId expr)
+{
+    auto rp = ratpoly_of_node(a, expr, "x");
+    if(!rp.ok || !is_degree_at_most_one(rp.num) || !is_degree_at_most_one(rp.den)) return std::nullopt;
+
+    Rational aa = rp.num.a1;
+    Rational b = rp.num.a0;
+    Rational c = rp.den.a1;
+    Rational d = rp.den.a0;
+    // Constant functions are not invertible.
+    if(is_zero(aa) && is_zero(c)) return std::nullopt;
+    if(is_zero(r_sub(r_mul(aa, d), r_mul(b, c)))) return std::nullopt;
+
+    NodeId x = casio::sym(a, "x");
+    NodeId top = linear_expr(a, r_neg(d), b, x);      // b - d*x
+    NodeId bot = linear_expr(a, c, r_neg(aa), x);     // c*x - a
+    return casio::simplify(a, casio::div(a, top, bot));
+}
+
+static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
+{
+    if(auto inv = inverse_mobius(a, expr)) return inv;
+    Node const &x = a.get(expr);
+    NodeId y = casio::sym(a, "x");
+
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        auto p = poly_of(a, x.a, "x");
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+            // y = sqrt(ax+b) => x = (y^2-b)/a
+            NodeId y2 = casio::power(a, y, casio::num(a, 2));
+            NodeId top = casio::add(a, {y2, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+            return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+        }
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
+        auto p = poly_of(a, x.a, "x");
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+            // y = ln(ax+b) => x = (e^y-b)/a
+            NodeId ey = casio::power(a, casio::constant_e(a), y);
+            NodeId top = casio::add(a, {ey, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+            return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+        }
+        Node const &arg = a.get(x.a);
+        if(arg.kind == NodeKind::Pow) {
+            Node const &exp_node = a.get(arg.b);
+            auto exp = (exp_node.kind == NodeKind::Num) ? as_int64(exp_node.num) : std::optional<std::int64_t>{};
+            auto p2 = poly_of(a, arg.a, "x");
+            if(exp && *exp != 0 && p2 && p2->ok && is_zero(p2->a2) && !is_zero(p2->a1)) {
+                NodeId ey = casio::power(a, casio::constant_e(a), casio::div(a, y, casio::num(a, *exp)));
+                NodeId top = casio::add(a, {ey, casio::neg(a, casio::num(a, p2->a0.num, p2->a0.den))});
+                return casio::simplify(a, casio::div(a, top, casio::num(a, p2->a1.num, p2->a1.den)));
+            }
+        }
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = a.get(x.a);
+        Node const &den = a.get(x.b);
+        if(top.kind == NodeKind::Num && top.num.num == top.num.den && den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
+            auto p = poly_of(a, den.a, "x");
+            if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+                NodeId y2 = casio::power(a, y, casio::num(a, 2));
+                NodeId inv_y2 = casio::div(a, casio::num(a, 1), y2);
+                NodeId topn = casio::add(a, {inv_y2, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+                return casio::simplify(a, casio::div(a, topn, casio::num(a, p->a1.num, p->a1.den)));
+            }
+        }
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Num && base.num.num > 0 && base.num.den == 1) {
+            auto p = poly_of(a, x.b, "x");
+            if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+                // y = b^(ax+c) => x = (log(y)/log(b)-c)/a
+                NodeId logy = casio::fn(a, "log", y);
+                NodeId logb = casio::fn(a, "log", casio::num(a, base.num.num, base.num.den));
+                NodeId inner = casio::div(a, logy, logb);
+                NodeId top = casio::add(a, {inner, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+                return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> cartesian_from_param(Arena &a, std::string const &x_expr, std::string const &y_expr, std::string const &param)
+{
+    NodeId xn = casio::simplify(a, casio::parse_expr(a, x_expr));
+    NodeId yn = casio::simplify(a, casio::parse_expr(a, y_expr));
+    auto xp = poly_of(a, xn, param);
+    if(!xp || !xp->ok || !is_zero(xp->a2) || is_zero(xp->a1)) return std::nullopt;
+
+    // x = a*t+b => t = (x-b)/a
+    NodeId x = casio::sym(a, "x");
+    NodeId top = casio::add(a, {x, casio::neg(a, casio::num(a, xp->a0.num, xp->a0.den))});
+    NodeId t_expr = casio::simplify(a, casio::div(a, top, casio::num(a, xp->a1.num, xp->a1.den)));
+    return casio::simplify(a, clone_with_substitution(a, yn, param, t_expr));
+}
+
+static std::string trim_text(std::string s)
+{
+    while(!s.empty() && (s.front() == ' ' || s.front() == '\t' || s.front() == '\r' || s.front() == '\n')) s.erase(s.begin());
+    while(!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r' || s.back() == '\n')) s.pop_back();
+    return s;
+}
+
+static std::vector<std::string> split_csv(std::string const &s)
+{
+    std::vector<std::string> parts;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(' || c == '[' || c == '{') depth++;
+        if(c == ')' || c == ']' || c == '}') depth--;
+        if(c == ',' && depth == 0) {
+            parts.push_back(trim_text(cur));
+            cur.clear();
+        }
+        else {
+            cur.push_back(c);
+        }
+    }
+    parts.push_back(trim_text(cur));
+    return parts;
+}
+
+static void collect_symbols(Arena &a, NodeId n, std::vector<std::string> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) {
+        for(auto const &v : out) {
+            if(v == x.text) return;
+        }
+        out.push_back(x.text);
+        return;
+    }
+    if(x.kind == NodeKind::Fn) {
+        collect_symbols(a, x.a, out);
+        return;
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        collect_symbols(a, x.a, out);
+        collect_symbols(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) collect_symbols(a, k, out);
+        return;
+    }
+}
+
+static std::string choose_solve_var(Arena &a, NodeId n, std::string const &explicit_var)
+{
+    if(!explicit_var.empty()) return explicit_var;
+    std::vector<std::string> vars;
+    collect_symbols(a, n, vars);
+    for(auto const &v : vars) {
+        if(v == "x") return v;
+    }
+    return vars.empty() ? "x" : vars.front();
+}
+
+static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval)
+{
+    Node const &n = a.get(id);
+    switch(n.kind) {
+    case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
+    case NodeKind::Sym: return (n.text == var) ? xval : 0.0;
+    case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
+    case NodeKind::Fn: {
+        auto av = eval_node(a, n.a, var, xval);
+        if(!av) return std::nullopt;
+        double u = *av;
+        switch(n.fkind) {
+        case FnKind::Sin: return std::sin(u);
+        case FnKind::Cos: return std::cos(u);
+        case FnKind::Tan: return std::tan(u);
+        case FnKind::Sec: return 1.0 / std::cos(u);
+        case FnKind::Cosec: return 1.0 / std::sin(u);
+        case FnKind::Cot: return 1.0 / std::tan(u);
+        case FnKind::Sqrt: return std::sqrt(u);
+        case FnKind::Abs: return std::fabs(u);
+        case FnKind::Log: return std::log(u);
+        case FnKind::Exp: return std::exp(u);
+        default: return std::nullopt;
+        }
+    }
+    case NodeKind::Add: {
+        double s = 0.0;
+        for(auto k : n.kids) {
+            auto v = eval_node(a, k, var, xval);
+            if(!v) return std::nullopt;
+            s += *v;
+        }
+        return s;
+    }
+    case NodeKind::Mul: {
+        double p = 1.0;
+        for(auto k : n.kids) {
+            auto v = eval_node(a, k, var, xval);
+            if(!v) return std::nullopt;
+            p *= *v;
+        }
+        return p;
+    }
+    case NodeKind::Div: {
+        auto u = eval_node(a, n.a, var, xval);
+        auto v = eval_node(a, n.b, var, xval);
+        if(!u || !v) return std::nullopt;
+        return *u / *v;
+    }
+    case NodeKind::Pow: {
+        auto u = eval_node(a, n.a, var, xval);
+        auto v = eval_node(a, n.b, var, xval);
+        if(!u || !v) return std::nullopt;
+        return std::pow(*u, *v);
+    }
+    }
+    return std::nullopt;
+}
+
+static std::string sol_rhs(std::string const &line)
+{
+    auto pos = line.find('=');
+    if(pos == std::string::npos) return trim_text(line);
+    return trim_text(line.substr(pos + 1));
+}
+
+static std::string solution_list_line(std::string const &var, std::vector<std::string> const &sols)
+{
+    std::ostringstream oss;
+    oss << var << " = [";
+    bool first = true;
+    for(auto const &line : sols) {
+        std::string rhs = sol_rhs(line);
+        if(rhs.find("No solution") != std::string::npos || rhs.find("Infinite") != std::string::npos) continue;
+        if(!first) oss << ", ";
+        first = false;
+        oss << rhs;
+    }
+    oss << "]";
+    return oss.str();
+}
+
+static void append_answer(std::vector<std::string> &out, std::string const &var, std::vector<std::string> const &sols)
+{
+    out.push_back("Answer:");
+    for(auto const &s : sols) out.push_back(s);
+    out.push_back("Answer: " + solution_list_line(var, sols));
+}
+
+static std::optional<double> solution_line_value(Arena &a, std::string const &line)
+{
+    try {
+        NodeId n = casio::parse_expr(a, sol_rhs(line));
+        auto v = eval_node(a, n, "x", 0.0);
+        if(v && std::isfinite(*v)) return *v;
+    }
+    catch(...) {
+    }
+    return std::nullopt;
+}
+
+static std::string format_double_compact(double x)
+{
+    if(std::fabs(x) < 5e-11) x = 0.0;
+    double nearest = std::round(x);
+    if(std::fabs(x - nearest) < 1e-9) return std::to_string((long long)nearest);
+    std::ostringstream oss;
+    oss << std::setprecision(12) << x;
+    std::string s = oss.str();
+    if(s.find('.') != std::string::npos) {
+        while(!s.empty() && s.back() == '0') s.pop_back();
+        if(!s.empty() && s.back() == '.') s.pop_back();
+    }
+    return s;
+}
+
+static std::optional<double> parse_const_double(Arena &a, std::string const &text)
+{
+    try {
+        NodeId n = casio::parse_expr(a, text);
+        auto v = eval_node(a, n, "x", 0.0);
+        if(v && std::isfinite(*v)) return *v;
+    }
+    catch(...) {
+    }
+    try {
+        std::size_t pos = 0;
+        double v = std::stod(text, &pos);
+        if(pos == trim_text(text).size()) return v;
+    }
+    catch(...) {
+    }
+    return std::nullopt;
+}
+
+static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::string const &var,
+                                                   std::optional<double> lo_in = std::nullopt,
+                                                   std::optional<double> hi_in = std::nullopt)
+{
+    double lo = lo_in.value_or(-100.0);
+    double hi = hi_in.value_or(100.0);
+    if(!(lo < hi)) return {};
+    int steps = 4000;
+    double step = (hi - lo) / steps;
+    std::vector<double> roots;
+    auto add_root = [&](double r) {
+        if(r < lo - 1e-7 || r > hi + 1e-7) return;
+        for(double seen : roots) {
+            if(std::fabs(seen - r) < 1e-5) return;
+        }
+        roots.push_back(r);
+    };
+    auto f = [&](double x) -> std::optional<double> {
+        auto v = eval_node(a, expr, var, x);
+        if(!v || !std::isfinite(*v) || std::fabs(*v) > 1e12) return std::nullopt;
+        return *v;
+    };
+
+    double prev_x = lo;
+    auto prev = f(prev_x);
+    if(prev && std::fabs(*prev) < 1e-7) add_root(prev_x);
+    for(int i = 1; i <= steps; i++) {
+        double x = (i == steps) ? hi : lo + step * i;
+        auto cur = f(x);
+        if(cur && std::fabs(*cur) < 1e-7) add_root(x);
+        if(prev && cur && ((*prev < 0 && *cur > 0) || (*prev > 0 && *cur < 0))) {
+            double a0 = prev_x;
+            double b0 = x;
+            double fa = *prev;
+            for(int it = 0; it < 80; it++) {
+                double mid = 0.5 * (a0 + b0);
+                auto fm = f(mid);
+                if(!fm) break;
+                if(std::fabs(*fm) < 1e-11) {
+                    a0 = b0 = mid;
+                    break;
+                }
+                if((fa < 0 && *fm > 0) || (fa > 0 && *fm < 0)) {
+                    b0 = mid;
+                }
+                else {
+                    a0 = mid;
+                    fa = *fm;
+                }
+            }
+            add_root(0.5 * (a0 + b0));
+        }
+        prev_x = x;
+        prev = cur;
+    }
+    std::vector<std::string> out;
+    for(double r : roots) out.push_back(var + " = " + format_double_compact(r));
+    return out;
+}
+
+static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var = "x")
 {
     // Solve a2 x^2 + a1 x + a0 = 0
     if(is_zero(p.a2) && is_zero(p.a1)) {
@@ -265,7 +673,7 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
         Rational xval = r_div(r_neg(p.a0), p.a1);
         xval.normalize();
         NodeId sol = casio::num(a, xval.num, xval.den);
-        return {"x = " + format_expr(a, sol)};
+        return {var + " = " + format_expr(a, sol)};
     }
 
     // quadratic formula
@@ -275,9 +683,19 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
     Rational disc = r_add(b2, r_neg(ac4));
     disc.normalize();
 
-// Giac-style complex handling: if discriminant < 0, warn
     if(disc.num < 0) {
-        return {"No real solutions (complex roots not displayed)."};
+        Rational abs_disc = disc;
+        abs_disc.num = -abs_disc.num;
+        NodeId sqrt_abs_disc = a.fn(FnKind::Sqrt, a.num(abs_disc));
+        NodeId two_a = a.num(r_mul(Rational{2, 1}, p.a2));
+        NodeId minus_b = a.num(r_neg(p.a1));
+        std::string real = format_expr(a, minus_b);
+        std::string imag = format_expr(a, sqrt_abs_disc);
+        std::string den = format_expr(a, two_a);
+        return {
+            var + " = (" + real + " + " + imag + "*i)/" + den,
+            var + " = (" + real + " - " + imag + "*i)/" + den,
+        };
     }
 
     NodeId disc_node = a.num(disc);
@@ -305,16 +723,16 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p)
         x2.normalize();
         NodeId s1 = a.num(x1);
         NodeId s2 = a.num(x2);
-        if(format_expr(a, s1) == format_expr(a, s2)) return {"x = " + format_expr(a, s1)};
-        return {"x = " + format_expr(a, s1), "x = " + format_expr(a, s2)};
+        if(format_expr(a, s1) == format_expr(a, s2)) return {var + " = " + format_expr(a, s1)};
+        return {var + " = " + format_expr(a, s1), var + " = " + format_expr(a, s2)};
     }
 
     NodeId x_plus = casio::div(a, casio::add(a, {minus_b, sqrt_disc}), two_a);
     NodeId x_minus = casio::div(a, casio::add(a, {minus_b, casio::neg(a, sqrt_disc)}), two_a);
     x_plus = casio::simplify(a, x_plus);
     x_minus = casio::simplify(a, x_minus);
-    if(format_expr(a, x_plus) == format_expr(a, x_minus)) return {"x = " + format_expr(a, x_plus)};
-    return {"x = " + format_expr(a, x_plus), "x = " + format_expr(a, x_minus)};
+    if(format_expr(a, x_plus) == format_expr(a, x_minus)) return {var + " = " + format_expr(a, x_plus)};
+    return {var + " = " + format_expr(a, x_plus), var + " = " + format_expr(a, x_minus)};
 }
 
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
@@ -369,6 +787,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     case FnKind::Sin: return std::sin(a);
                     case FnKind::Cos: return std::cos(a);
                     case FnKind::Tan: return std::tan(a);
+                    case FnKind::Sec: return 1.0 / std::cos(a);
+                    case FnKind::Cosec: return 1.0 / std::sin(a);
+                    case FnKind::Cot: return 1.0 / std::tan(a);
                     case FnKind::Sqrt: return std::sqrt(a);
                     case FnKind::Abs: return std::fabs(a);
                     case FnKind::Log: return std::log(a);
@@ -515,6 +936,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId outn = casio::simplify(arena, casio::add(arena, terms));
             std::string out_text = format_expr(arena, outn);
+            std::string desc_text;
+            for(auto it = terms.rbegin(); it != terms.rend(); ++it) {
+                std::string term = format_expr(arena, *it);
+                if(desc_text.empty()) desc_text = term;
+                else if(!term.empty() && term[0] == '-') desc_text += " - " + trim_text(term.substr(1));
+                else desc_text += " + " + term;
+            }
             // The python test harness for expansion checks for tokens like "-46656*x^5"
             // (no space after unary minus) in the "Out =" line. Keep global formatting
             // readable, but compact "- <digits>" locally for this output.
@@ -533,12 +961,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             return {
                 "1. Expand using binomial expansion.",
-                "2. (ax+b)^n with a=" + format_expr(arena, casio::num(arena, acoef.num, acoef.den)) + ", b=" +
+                "2. Input = " + format_expr(arena, n),
+                "3. (ax+b)^n with a=" + format_expr(arena, casio::num(arena, acoef.num, acoef.den)) + ", b=" +
                     format_expr(arena, casio::num(arena, bcoef.num, bcoef.den)) + ", n=" + std::to_string(nn),
-                "3. Combine like terms.",
-                "4. Out = " + out_text,
-                "5. Answer: Out = " + out_text,
+                "4. Combine like terms.",
+                "5. Out = " + desc_text,
+                "6. Answer: Out = " + out_text,
             };
+        }
+        if(req.mode == 4) {
+            algebra::Request next = req;
+            next.mode = 13;
+            return run(arena, next);
         }
         if(req.mode == 5) {
             // Complete square for quadratic ax^2+bx+c.
@@ -572,6 +1006,110 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "2. h = b/(2a) = " + format_expr(arena, hnode),
                 "3. k = c - b^2/(4a) = " + format_expr(arena, knode),
                 "Ans = " + ans,
+            };
+        }
+        if(req.mode == 7) {
+            auto nl = req.expr.find('\n');
+            if(nl == std::string::npos) return {"Err: need f and g."};
+            std::string f = trim_text(req.expr.substr(0, nl));
+            std::string g = trim_text(req.expr.substr(nl + 1));
+            NodeId fn = casio::parse_expr(arena, f);
+            NodeId gn = casio::parse_expr(arena, g);
+            NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
+            std::string ans = format_expr(arena, comp);
+            return {
+                "Method: composite function",
+                "1. Start with f(x) = " + format_expr(arena, fn),
+                "2. g(x) = " + format_expr(arena, gn),
+                "3. Substitute g(x) for x.",
+                "4. f(g(x)) = " + ans,
+                "5. Answer: f(g(x)) = " + ans,
+            };
+        }
+        if(req.mode == 8) {
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            auto inv = inverse_simple_function(arena, n);
+            if(!inv) {
+                return {
+                    "Method: inverse function",
+                    "1. Let y = f(x).",
+                    "2. Rearrangement did not isolate x in supported real family.",
+                    "3. Constant/non-monotone form is not invertible on all real x.",
+                    "4. Answer: no inverse on all real x.",
+                };
+            }
+            std::string ans = format_expr(arena, *inv);
+            return {
+                "Method: inverse function",
+                "1. Let y = f(x) = " + format_expr(arena, n) + ".",
+                "2. Swap x and y.",
+                "3. Rearrange to make y the subject.",
+                "4. Answer: f^-1(x) = " + ans,
+            };
+        }
+        if(req.mode == 9) {
+            auto nl = req.expr.find('\n');
+            std::string expr = trim_text(nl == std::string::npos ? req.expr : req.expr.substr(0, nl));
+            std::string targets = trim_text(nl == std::string::npos ? "" : req.expr.substr(nl + 1));
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
+            std::vector<std::string> out;
+            out.push_back("Method: rewrite");
+            out.push_back("1. Start: " + format_expr(arena, n));
+            if(!targets.empty()) out.push_back("2. Target terms: " + targets);
+            out.push_back("3. Use algebraic identities/substitution where possible.");
+            out.push_back("Answer: " + format_expr(arena, n));
+            return out;
+        }
+        if(req.mode == 10) {
+            std::string expr = trim_text(req.expr);
+            auto parts = split_csv(expr);
+            std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
+            std::string lo = (parts.size() >= 3) ? parts[2] : "";
+            std::string hi = (parts.size() >= 4) ? parts[3] : "";
+            if(!parts.empty()) expr = parts[0];
+            NodeId parsed = casio::parse_expr(arena, expr);
+            auto pre = casio::build_exam_prelude(arena, expr, parsed);
+            NodeId n = casio::simplify(arena, parsed);
+            std::vector<std::string> steps;
+            steps.push_back("Normalize: " + pre.norm);
+            steps.push_back("Parse: " + pre.parsed);
+            steps.push_back("Simplify: " + pre.simplified);
+            steps.push_back("Variable = " + var);
+            if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
+            std::vector<std::string> dom;
+            collect_domain(arena, n, dom);
+            if(dom.empty()) steps.push_back("Domain: unrestricted/all real " + var + ".");
+            else for(auto const &d : dom) steps.push_back(d);
+            if(auto p = poly_of(arena, n, var); p && p->ok && !is_zero(p->a2)) {
+                Rational a = p->a2;
+                Rational b = p->a1;
+                Rational c = p->a0;
+                Rational b2 = r_mul(b, b);
+                Rational foura = r_mul(Rational{4, 1}, a);
+                Rational y0 = r_add(c, r_neg(r_div(b2, foura)));
+                NodeId y0n = casio::num(arena, y0.num, y0.den);
+                std::string range = a.num > 0 ? "Range: y >= " + format_expr(arena, y0n) : "Range: y <= " + format_expr(arena, y0n);
+                if(!lo.empty() && !hi.empty()) range += " on the interval.";
+                steps.push_back(range);
+            }
+            else steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+            return casio::exam_block("domain/range", steps, format_expr(arena, n));
+        }
+        if(req.mode == 11) {
+            auto nl1 = req.expr.find('\n');
+            if(nl1 == std::string::npos) return {"Err: need x(t), y(t), parameter."};
+            auto nl2 = req.expr.find('\n', nl1 + 1);
+            std::string xe = trim_text(req.expr.substr(0, nl1));
+            std::string ye = trim_text(nl2 == std::string::npos ? req.expr.substr(nl1 + 1) : req.expr.substr(nl1 + 1, nl2 - nl1 - 1));
+            std::string param = trim_text(nl2 == std::string::npos ? "t" : req.expr.substr(nl2 + 1));
+            if(param.empty()) param = "t";
+            auto y_cart = cartesian_from_param(arena, xe, ye, param);
+            if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
+            return {
+                "Method: parametric to cartesian",
+                "1. Solve x(t) for " + param + ".",
+                "2. Substitute into y(t).",
+                "Answer: y = " + format_expr(arena, *y_cart),
             };
         }
         if(req.mode == 13) {
@@ -653,7 +1191,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
         }
 
-        auto eq = casio::parse_equation(arena, req.expr);
+        auto solve_parts = split_csv(req.expr);
+        std::string equation_text = solve_parts.empty() ? req.expr : solve_parts[0];
+        std::string explicit_var = (solve_parts.size() >= 2) ? trim_text(solve_parts[1]) : "";
+        std::optional<double> interval_lo;
+        std::optional<double> interval_hi;
+        if(solve_parts.size() >= 4) {
+            interval_lo = parse_const_double(arena, solve_parts[2]);
+            interval_hi = parse_const_double(arena, solve_parts[3]);
+        }
+        if(req.mode == 6 && equation_text.find('=') == std::string::npos) {
+            equation_text += "=0";
+        }
+        auto eq = casio::parse_equation(arena, equation_text);
         if(!eq) {
             NodeId parsed = casio::parse_expr(arena, req.expr);
             auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
@@ -690,17 +1240,29 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId lhs = casio::simplify(arena, eq->lhs);
         NodeId rhs = casio::simplify(arena, eq->rhs);
 
-        NodeId zero = casio::num(arena, 0);
-NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
+        NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
+        std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
 
         // Exam-style numbered working.
         std::vector<std::string> out;
-        out.push_back("Method: Solve equation");
+        out.push_back("1. Method: Solve equation");
+        if(interval_lo && interval_hi) {
+            out.push_back(
+                "2. Interval: " + solve_var + " in [" + format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) + "]"
+            );
+        }
 
-        auto rp = ratpoly_of_node(arena, rearr, "x");
+        auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
-            out.push_back("Answer:");
-            out.push_back("No solution (unsupported form).");
+            out.push_back("2. Cardano/numeric fallback after rearrangement.");
+            auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
+            if(numeric.empty()) {
+                out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution (unsupported form).");
+                out.push_back("Answer: " + solve_var + " = []");
+            }
+            else {
+                append_answer(out, solve_var, numeric);
+            }
             return out;
         }
 
@@ -714,18 +1276,30 @@ NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, 
                 out.push_back("Answer: no solution");
                 return out;
             }
-            out.push_back("Expr: " + format_expr(arena, rearr) + " = 0");
+            out.push_back("2. Expr = " + format_expr(arena, rearr) + " = 0");
             if(!is_zero(b)) {
                 NodeId b_node = casio::num(arena, -b.num, b.den);
-                out.push_back("Subtract " + format_expr(arena, b_node));
+                out.push_back("3. Subtract " + format_expr(arena, b_node));
             }
             if(a.num != 1 || a.den != 1) {
                 NodeId a_node = casio::num(arena, a.num, a.den);
-                out.push_back("Divide by " + format_expr(arena, a_node));
+                out.push_back("4. Divide by " + format_expr(arena, a_node));
             }
-            auto sols = solve_poly2(arena, rp.num);
-            out.push_back("Answer:");
-            for(auto const &s : sols) out.push_back(s);
+            auto sols = solve_poly2(arena, rp.num, solve_var);
+            if(interval_lo && interval_hi) {
+                std::vector<std::string> kept;
+                for(auto const &s : sols) {
+                    auto v = solution_line_value(arena, s);
+                    if(v && *v >= *interval_lo - 1e-9 && *v <= *interval_hi + 1e-9) kept.push_back(s);
+                }
+                sols = kept;
+                if(sols.empty()) {
+                    out.push_back("No solution in the interval.");
+                    out.push_back("Answer: " + solve_var + " = []");
+                    return out;
+                }
+            }
+            append_answer(out, solve_var, sols);
             return out;
         }
 
@@ -741,10 +1315,25 @@ NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, 
 
         // Higher degree
         std::string eq_s = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
-        out.push_back("Expr: " + eq_s);
-        auto sols = solve_poly2(arena, rp.num);
-        out.push_back("Answer:");
-        for(auto const &s : sols) out.push_back(s);
+        out.push_back("2. Expr = " + eq_s);
+        if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
+            out.push_back("3. Clearing denominators.");
+        }
+        auto sols = solve_poly2(arena, rp.num, solve_var);
+        if(interval_lo && interval_hi) {
+            std::vector<std::string> kept;
+            for(auto const &s : sols) {
+                auto v = solution_line_value(arena, s);
+                if(v && *v >= *interval_lo - 1e-9 && *v <= *interval_hi + 1e-9) kept.push_back(s);
+            }
+            sols = kept;
+            if(sols.empty()) {
+                out.push_back("No solution in the interval.");
+                out.push_back("Answer: " + solve_var + " = []");
+                return out;
+            }
+        }
+        append_answer(out, solve_var, sols);
         return out;
     }
     catch(std::exception const &e) {
@@ -753,4 +1342,3 @@ NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, 
 }
 
 } // namespace casio::algebra
-

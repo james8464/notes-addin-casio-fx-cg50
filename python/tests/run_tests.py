@@ -2560,12 +2560,13 @@ class CASIOApp(App):
         self.records.clear()
         self.current_run_question_keys.clear()
         self.session_random_question_keys.clear()
-        self.last_run_scope = (self.current_program, "chaos")
+        self.last_run_scope = (self.current_program, "all")
         self._init_session_report_file()
-        self.query_one("#results", RichLog).clear()
+        if not getattr(self, 'plain_mode', False):
+            self.query_one("#results", RichLog).clear()
         self.append_result(f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
         self.append_result("[dim]Booting test harness...[/dim]")
-        self.update_summary(f"Running {self.current_program} · chaos...")
+        self.update_summary(f"Running {self.current_program} · all...")
         self.run_all_tests()
 
     def action_random_tests(self, difficulty, count, workers=None, command_label="/random", program=None):
@@ -3131,14 +3132,16 @@ class CASIOApp(App):
 
     def run_all_tests(self):
         def run():
+            if getattr(self, 'plain_mode', False):
+                emit = self.append_result
+            else:
+                emit = lambda *args, **kwargs: self.call_from_thread(self.append_result, *args, **kwargs)
             self._show_chaos_feature_gaps = False
-            self.call_from_thread(
-                self.append_result,
+            emit(
                 "[bold #e07a53]▶ Running tests...[/bold #e07a53]",
             )
-            self.call_from_thread(
-                self.append_result,
-                f"[dim]Streaming live results from {self.current_program} · chaos[/dim]",
+            emit(
+                f"[dim]Streaming live results from {self.current_program} · all[/dim]",
             )
 
             programs = [
@@ -3153,20 +3156,24 @@ class CASIOApp(App):
                 programs = [(name, func) for name, func in programs if name == self.current_program]
 
             for name, func in programs:
-                self.call_from_thread(self.append_result, "")
-                self.call_from_thread(
-                    self.append_result,
+                emit("")
+                emit(
                     f"[bold #e07a53]▶ {name}[/bold #e07a53]",
                 )
-                self.call_from_thread(
-                    self.append_result,
+                emit(
                     "[dim]────────────────────────────────────────[/dim]",
                 )
-                func("chaos")
+                func("all")
             self.transition_run_state(RunState.STOPPED)
-            self.call_from_thread(self.render_summary)
+            if getattr(self, 'plain_mode', False):
+                self.render_summary()
+            else:
+                self.call_from_thread(self.render_summary)
 
         import threading
+        if getattr(self, 'plain_mode', False):
+            run()
+            return
         threading.Thread(target=run, daemon=True).start()
 
     def append_result(self, text):
