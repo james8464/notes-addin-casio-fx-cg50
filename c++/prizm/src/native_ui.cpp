@@ -49,13 +49,13 @@ void print_mini_at(int x, int y, const char *text, int color, int back_color)
 {
     int px = x;
     int py = y;
-    PrintMini(&px, &py, text ? text : "", TEXT_MODE_TRANSPARENT_BACKGROUND, 0xffffffff,
+    PrintMini(&px, &py, text ? text : "", TEXT_MODE_NORMAL, LCD_WIDTH_PX - 1,
               0, 0, color, back_color, 1, 0);
 }
 
 }
 
-void init_native_screen(const char *title)
+void init_native_screen(const char *title, const char *mode)
 {
     Bdisp_AllClr_VRAM();
     EnableStatusArea(1);
@@ -63,12 +63,20 @@ void init_native_screen(const char *title)
     char c2 = 0;
     DefineStatusAreaFlags(
         DSA_SETDEFAULT,
-        SAF_BATTERY | SAF_ALPHA_SHIFT | SAF_SETUP_ANGLE,
+        SAF_BATTERY | SAF_ALPHA_SHIFT | SAF_TEXT,
         &c1,
         &c2);
+    static char status_msg[40];
+    casio::device::FixedString<40> status;
+    status.append(title ? title : "CasioCAS");
+    if(mode != nullptr && mode[0] != '\0') {
+        status.append(" ");
+        status.append(mode);
+    }
+    casio::device::copy_cstr(status_msg, (int)sizeof(status_msg), status.c_str());
+    DefineStatusMessage(status_msg, 0, 0, 0);
     DisplayStatusArea();
     DrawHeaderLine();
-    print_line(1, title ? title : "CasioCAS");
 }
 
 void draw_status_line(const char *text)
@@ -95,18 +103,18 @@ void draw_softkeys(const char *k1, const char *k2, const char *k3,
 
 void draw_home(void)
 {
-    init_native_screen("CasioCAS");
-    print_line(2, "F1 Derive  F2 Algebra");
-    print_line(3, "F3 Trig   F4 Integr");
-    print_line(5, "F5 SUVAT   F6 SHELL");
-    print_line(6, "EXE:menu");
+    init_native_screen("CasioCAS", "DEG");
+    print_line(1, "F1 Derive  F2 Algebra");
+    print_line(2, "F3 Trig    F4 Integr");
+    print_line(4, "F5 SUVAT   F6 Shell");
+    print_line(6, "EXE: menu");
     draw_softkeys("DRV", "ALG", "TRG", "INT", "SUV", "SHL");
     Bdisp_PutDisp_DD();
 }
 
 void draw_menu(const char *title, const char *const *items, int count, int selected, int top)
 {
-    init_native_screen(title);
+    init_native_screen(title, nullptr);
     for(int row = 0; row < kContentRows; row++) {
         int index = top + row;
         if(index >= count) break;
@@ -127,16 +135,16 @@ void draw_menu(const char *title, const char *const *items, int count, int selec
     Bdisp_PutDisp_DD();
 }
 
-void draw_shell(const char *status, const char *const *lines, int count, int top, int selected,
+void draw_shell(const char *title, const char *mode, const char *const *lines, int count, int top, int selected,
                 unsigned char *input, int input_start, int input_cursor,
                 const char *k1, const char *k2, const char *k3,
                 const char *k4, const char *k5, const char *k6)
 {
-    init_native_screen(status);
+    init_native_screen(title, mode);
     for(int row = 0; row < kShellVisibleRows; row++) {
         int index = top + row;
         if(index >= count) break;
-        print_line(row + 2, lines[index], index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
+        print_line(row + 1, lines[index], index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
     }
     print_line(6, ">");
     DisplayMBString(input, input_start, input_cursor, 2, 6);
@@ -146,7 +154,7 @@ void draw_shell(const char *status, const char *const *lines, int count, int top
 
 void draw_lines(const char *title, casio::device::OutputLines const &lines, int top, bool more_above, bool more_below)
 {
-    init_native_screen(title);
+    init_native_screen(title, nullptr);
     for(int row = 0; row < kContentRows; row++) {
         int index = top + row;
         if(index >= lines.count()) break;

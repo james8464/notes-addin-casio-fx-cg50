@@ -152,15 +152,13 @@ void clamp_top(int count, int selected, int &top)
     if(top > count - casio::prizm::kShellVisibleRows) top = count - casio::prizm::kShellVisibleRows;
 }
 
-void shell_status(char *out, int capacity, bool degrees, bool uppercase)
+void shell_mode(char *out, int capacity, bool degrees, bool uppercase)
 {
     if(out == nullptr || capacity <= 0) return;
-    casio::device::FixedString<48> status;
-    status.append("CasioCAS ");
-    status.append(degrees ? "DEG" : "RAD");
-    status.append(uppercase ? " A-Z" : " a-z");
-    status.append(" session");
-    casio::device::copy_cstr(out, capacity, status.c_str());
+    casio::device::FixedString<16> mode;
+    mode.append(degrees ? "DEG" : "RAD");
+    if(uppercase) mode.append(" A");
+    casio::device::copy_cstr(out, capacity, mode.c_str());
 }
 
 void render_shell(ShellLine *lines, int count, int top, int selected,
@@ -170,10 +168,10 @@ void render_shell(ShellLine *lines, int count, int top, int selected,
     const char *ptrs[kMaxShellLines];
     for(int i = 0; i < count; i++) ptrs[i] = lines[i].text.c_str();
 
-    char status[48];
-    shell_status(status, (int)sizeof(status), degrees, uppercase);
-    casio::prizm::draw_shell(status, ptrs, count, top, selected, editor, start, cursor,
-                             "algb", "diff", "int", "trig", "cmds", uppercase ? "A>a" : "a>A");
+    char mode[16];
+    shell_mode(mode, (int)sizeof(mode), degrees, uppercase);
+    casio::prizm::draw_shell("CasioCAS", mode, ptrs, count, top, selected, editor, start, cursor,
+                             "ALG", "DIFF", "INT", "TRIG", "CMD", uppercase ? "a" : "A");
 }
 
 int select_menu(const char *title, const char *const *items, int count)
@@ -315,9 +313,6 @@ extern "C" int main(void)
     casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
     int input_start = 0;
     int input_cursor = 0;
-
-    add_shell_line(lines, line_count, "CasioCAS shell ready.");
-    add_shell_line(lines, line_count, "Type solve(...), diff(...), int(...).");
 
     while(true) {
         clamp_top(line_count, selected, top);
