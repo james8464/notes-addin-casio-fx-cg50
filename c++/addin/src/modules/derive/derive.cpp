@@ -115,7 +115,8 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         NodeId v = x.b;
         auto vr = as_num(a, v);
         bool base_depends = depends_on(a, u, var) || (!dep.empty() && depends_on(a, u, dep));
-        if(vr && base_depends && !depends_on(a, v, var) && (dep.empty() || !depends_on(a, v, dep))) {
+        bool exp_depends = depends_on(a, v, var) || (!dep.empty() && depends_on(a, v, dep));
+        if(vr && base_depends && !exp_depends && (dep.empty() || !depends_on(a, v, dep))) {
             Rational nrat = *vr;
             NodeId n_node = a.num(nrat);
             Rational n_minus1 = nrat;
@@ -131,6 +132,11 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         NodeId term1 = casio::mul(a, {vp, ln_u});
         NodeId term2 = casio::mul(a, {v, casio::div(a, up, u)});
         NodeId sum = casio::add(a, {term1, term2});
+        // Special case: a^x where a is constant e -> derivative is e^x * ln(e) -> simplify to e^x
+        auto base = a.get(u);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && exp_depends && !base_depends) {
+            return n;
+        }
         return casio::simplify(a, casio::mul(a, {n, sum}));
     }
     if(x.kind == NodeKind::Fn) {

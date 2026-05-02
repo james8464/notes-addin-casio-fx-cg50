@@ -188,7 +188,9 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     // ∫ csc(x) dx = ln|csc(x)-cot(x)|
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosec && is_sym(a, x.a, var)) {
         NodeId v = casio::sym(a, var);
-        std::vector<NodeId> inner_args = {casio::fn(a, "cosec", v), casio::fn(a, "cot", v)};
+        NodeId csc_v = casio::fn(a, "cosec", v);
+        NodeId neg_cot = casio::neg(a, casio::fn(a, "cot", v));
+        std::vector<NodeId> inner_args = {csc_v, neg_cot};
         NodeId inner = casio::add(a, inner_args);
         NodeId ln_abs = casio::fn(a, "log", casio::fn(a, "abs", inner));
         out.result = ln_abs;
