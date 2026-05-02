@@ -10,6 +10,8 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <iostream>
 #include <sstream>
 #include <optional>
 #include <stdexcept>
@@ -56,6 +58,10 @@ static Rational r_neg(Rational a)
 {
     a.num = -a.num;
     return a;
+}
+static Rational r_sub(Rational a, Rational b)
+{
+    return r_add(a, r_neg(b));
 }
 
 static Poly2 add_poly(Poly2 p, Poly2 const &q)
@@ -563,6 +569,73 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "Ans = " + ans,
             };
         }
+        if(req.mode == 13) {
+            // Factor: simple factorization for ax^2+bx+c
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            auto p = poly_of(arena, n, "x");
+            if(!p || !p->ok || is_zero(p->a2)) return {"Err: need quadratic in x."};
+
+            Rational a = p->a2;
+            Rational b = p->a1;
+            Rational c = p->a0;
+            // Factorization via finding roots (quadratic formula)
+            Rational b2_4ac = r_sub(r_mul(b, b), r_mul(r_mul(Rational{4, 1}, a), c));
+            if(b2_4ac.num < 0) return {"Err: complex roots, not factored over reals."};
+
+            auto opt_disc = as_int64(b2_4ac);
+            if(!opt_disc || *opt_disc < 0) {
+                return {"Err: non-square discriminant."};
+            }
+            std::int64_t discriminant = *opt_disc;
+            std::int64_t sqrt_disc;
+            if(!is_square_i64(discriminant, sqrt_disc)) {
+                return {"Err: non-square discriminant."};
+            }
+            // roots: (-b +- sqrt(D)) / (2a)
+            Rational twoa = r_mul(Rational{2, 1}, a);
+            Rational r1 = r_div(r_add(r_neg(b), Rational{sqrt_disc, 1}), twoa);
+            Rational r2 = r_div(r_sub(r_neg(b), Rational{sqrt_disc, 1}), twoa);
+
+            bool r1_int = (r1.den == 1);
+            bool r2_int = (r2.den == 1);
+
+            std::vector<std::string> out;
+            out.push_back("Method: Factor quadratic");
+
+            if(r1_int && r2_int && r1.num != r2.num) {
+                NodeId x = casio::sym(arena, "x");
+                NodeId term1 = casio::add(arena, {x, casio::num(arena, -r1.num)});
+                NodeId term2 = casio::add(arena, {x, casio::num(arena, -r2.num)});
+                NodeId factored;
+                if(a.num != 1 && a.num != -1) {
+                    factored = casio::mul(arena, {casio::num(arena, a.num, a.den), term1, term2});
+                } else {
+                    factored = casio::mul(arena, {term1, term2});
+                }
+                factored = casio::simplify(arena, factored);
+                std::string ans = format_expr(arena, factored);
+                out.push_back("Factored form: " + ans);
+                out.push_back("Answer: " + ans);
+                return out;
+            } else if(r1_int && r1.num == r2.num) {
+                NodeId x = casio::sym(arena, "x");
+                NodeId term = casio::add(arena, {x, casio::num(arena, -r1.num)});
+                NodeId sq = casio::power(arena, term, casio::num(arena, 2));
+                NodeId factored;
+                if(a.num != 1 && a.num != -1) {
+                    factored = casio::mul(arena, {casio::num(arena, a.num, a.den), sq});
+                } else {
+                    factored = sq;
+                }
+                factored = casio::simplify(arena, factored);
+                std::string ans = format_expr(arena, factored);
+                out.push_back("Factored form: " + ans);
+                out.push_back("Answer: " + ans);
+                return out;
+            } else {
+                return {"Err: non-integer roots."};
+            }
+        }
 
         auto eq = casio::parse_equation(arena, req.expr);
         if(!eq) {
@@ -602,17 +675,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId rhs = casio::simplify(arena, eq->rhs);
 
         NodeId zero = casio::num(arena, 0);
-        NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
+NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
 
-        // Exam-style numbered working (required by python/tests harness quality gates).
+        // Exam-style numbered working.
         std::vector<std::string> out;
-        std::string norm = casio::normalize_text(req.expr);
-        std::string eq_s = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
-        std::string rearr_s = format_expr(arena, rearr) + " = " + format_expr(arena, zero);
-        out.push_back("1. Method: solve equation (limited)");
-        out.push_back("2. Normalize: " + norm);
-        out.push_back("3. Simplify: " + eq_s);
-        out.push_back("4. Rearrange: " + rearr_s);
+        out.push_back("Method: Solve equation");
 
         auto rp = ratpoly_of_node(arena, rearr, "x");
         if(!rp.ok) {
@@ -621,7 +688,28 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
 
-        // Solve numerator = 0 for rational expressions.
+        // Linear case: ax + b = 0 (a2=0, a1 != 0)
+        if(is_zero(rp.num.a2) && !is_zero(rp.num.a1)) {
+            Rational a = rp.num.a1;
+            Rational b = rp.num.a0;
+            out.push_back("Expr: " + format_expr(arena, rearr) + " = 0");
+            if(!is_zero(b)) {
+                NodeId b_node = casio::num(arena, -b.num, b.den);
+                out.push_back("Subtract " + format_expr(arena, b_node));
+            }
+            if(!is_zero(a) && (a.num != 1 || a.den != 1)) {
+                NodeId a_node = casio::num(arena, a.num, a.den);
+                out.push_back("Divide by " + format_expr(arena, a_node));
+            }
+            auto sols = solve_poly2(arena, rp.num);
+            out.push_back("Answer:");
+            for(auto const &s : sols) out.push_back(s);
+            return out;
+        }
+
+        // Higher degree
+        std::string eq_s = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
+        out.push_back("Expr: " + eq_s);
         auto sols = solve_poly2(arena, rp.num);
         out.push_back("Answer:");
         for(auto const &s : sols) out.push_back(s);

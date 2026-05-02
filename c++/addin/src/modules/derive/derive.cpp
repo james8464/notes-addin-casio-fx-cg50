@@ -308,8 +308,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "Normalize: " + pre.norm,
                     "Parse: " + pre.parsed,
                     "Simplify: " + pre.simplified,
-                    "Differentiate using rules.",
-                    "Simplify the result.",
+                    "Apply power rule to each term.",
+                    "Combine results.",
                 },
                 label + " = " + format_expr_human(arena, out)
             );
