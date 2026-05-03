@@ -2467,7 +2467,13 @@ static void cascas_append_line(string &out,const char *s){
   out += "\n";
 }
 
-static bool cascas_append_forced_method(string &out,const char *s){
+static void cascas_append_expr_line(string &out,const char *prefix,const string &expr){
+  out += prefix;
+  out += expr;
+  out += "\n";
+}
+
+static bool cascas_append_forced_method(string &out,const char *s,const char *eval_s){
   string method,u;
   if (!cascas_extract_method(s,method,u) || method.empty() || method=="auto")
     return false;
@@ -2478,75 +2484,152 @@ static bool cascas_append_forced_method(string &out,const char *s){
     out += u;
   }
   out += "\n";
-  cascas_append_line(out,"3. Forced route. If unsuitable, answer is verified auto.");
-  cascas_append_line(out,"4. Chk: exact.");
+  if (eval_s && strcmp(eval_s,s))
+    cascas_append_expr_line(out,"3. CAS: ",eval_s);
+  if (method=="sub" || method=="reverse_chain"){
+    if (u.size())
+      cascas_append_expr_line(out,"4. Let u=",u);
+    cascas_append_line(out,"5. dx=du/u'; back-sub.");
+  }
+  else if (method=="parts" || method=="di")
+    cascas_append_line(out,"4. uv-int(vdu); repeat/DI.");
+  else if (method=="pf")
+    cascas_append_line(out,"4. factor denom; PF.");
+  else if (method=="chain" || method=="product" || method=="quotient")
+    cascas_append_line(out,"4. named rule; simp/fact.");
+  else
+    cascas_append_line(out,"4. route; verify.");
   return true;
 }
 
-static void cascas_append_method_lines(string &out,const char *s){
+static bool cascas_append_specific_lines(string &out,const char *s,const char *eval_s){
+  string args[6],body; int count=0,close=0;
+  if (!s)
+    return false;
+  if (cascas_call_args(s,"solve_trig(",args,6,count,close,body) && count>=1){
+    cascas_append_expr_line(out,"2. Trig solve: ",args[0]);
+    cascas_append_line(out,"3. isolate; base angle.");
+    cascas_append_line(out,count>=4?"4. CAST/period; bounds.":"4. general sol + period.");
+    return true;
+  }
+  if (cascas_call_args(s,"implicit_diff(",args,3,count,close,body) && count>=1){
+    string expr=args[0],x=count>=2 && args[1].size()?args[1]:"x",y=count>=3 && args[2].size()?args[2]:"y";
+    int eq=cascas_find_top_equal(expr);
+    if (eq>=0)
+      expr="(" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1,expr.size()-eq-1) + ")";
+    cascas_append_expr_line(out,"2. Impl: F=",expr);
+    string line="3. Fx=diff(F," + x + "), Fy=diff(F," + y + ")";
+    cascas_append_line(out,line.c_str());
+    cascas_append_line(out,"4. dy/dx=-Fx/Fy; simplify.");
+    return true;
+  }
+  if ((cascas_call_args(s,"param_diff(",args,4,count,close,body) ||
+       cascas_call_args(s,"param_second_diff(",args,4,count,close,body) ||
+       cascas_call_args(s,"param_area(",args,4,count,close,body)) && count>=2){
+    string xe,ye,t=args[1].size()?args[1]:"t";
+    if (cascas_split_xy_param(args[0],xe,ye)){
+      cascas_append_expr_line(out,"2. Param: x=",xe);
+      cascas_append_expr_line(out,"3. y=",ye);
+      if (cascas_startswith(s,"param_area(")){
+	string line="4. Area: A=int y*diff(x," + t + ") d" + t;
+	cascas_append_line(out,line.c_str());
+      }
+      else {
+	string line="4. dy/dx=diff(y," + t + ")/diff(x," + t + ")";
+	cascas_append_line(out,line.c_str());
+      }
+      return true;
+    }
+  }
+  if ((cascas_call_args(s,"normal_diff(",args,2,count,close,body) ||
+       cascas_call_args(s,"second_diff(",args,2,count,close,body)) && count>=1){
+    string x=count>=2 && args[1].size()?args[1]:"x";
+    cascas_append_expr_line(out,"2. y=",args[0]);
+    string line=(cascas_startswith(s,"second_diff(")?"3. d2y/dx2=diff(y,":"3. dy/dx=diff(y,") + x + ")";
+    cascas_append_line(out,line.c_str());
+    cascas_append_line(out,"4. sum/chain/prod/quot; simp.");
+    return true;
+  }
+  if (cascas_call_args(s,"complete_square(",args,2,count,close,body) && count>=1){
+    cascas_append_expr_line(out,"2. Comp sq: f=",args[0]);
+    cascas_append_line(out,"3. a(x+h)^2+k, h=b/(2a).");
+    cascas_append_line(out,"4. expand check.");
+    return true;
+  }
+  if ((cascas_call_args(s,"coeff_match(",args,4,count,close,body) ||
+       cascas_call_args(s,"match(",args,4,count,close,body)) && count>=3){
+    cascas_append_expr_line(out,"2. Match: expand ",args[0] + "-(" + args[1] + ")");
+    cascas_append_line(out,"3. equate coeffs.");
+    cascas_append_expr_line(out,"4. Solve consts: ",args[2]);
+    return true;
+  }
+  if (cascas_call_args(s,"binom_expand(",args,4,count,close,body) && count>=1){
+    string expr=cascas_strip_outer_group(args[0]);
+    int p=cascas_find_top_power(expr);
+    if (p>=0){
+      cascas_append_expr_line(out,"2. Binom: Base: ",cascas_strip_outer_group(expr.substr(0,p)));
+      cascas_append_expr_line(out,"3. Power: ",cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1)));
+    }
+    cascas_append_line(out,"4. nCr terms; collect.");
+    return true;
+  }
+  if (cascas_call_args(s,"binom_coeff(",args,4,count,close,body) && count>=3){
+    cascas_append_expr_line(out,"2. Coeff: expand ",args[0]);
+    string line="3. Coeff: target " + args[1] + "^" + args[2];
+    cascas_append_line(out,line.c_str());
+    cascas_append_line(out,"4. nCr term; pick power.");
+    return true;
+  }
+  if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
+    string expr=args[0];
+    int eq=cascas_find_top_equal(expr);
+    if (eq>=0)
+      cascas_append_expr_line(out,"2. Move: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
+    else
+      cascas_append_expr_line(out,"2. Solve: ",expr);
+    cascas_append_line(out,"3. factor/rearr; reject invalid.");
+    cascas_append_line(out,"4. sub back check.");
+    return true;
+  }
+  if ((cascas_call_args(s,"integrate(",args,5,count,close,body) ||
+       cascas_call_args(s,"int(",args,5,count,close,body)) && count>=1){
+    string x=count>=2 && args[1].size()?args[1]:"x";
+    cascas_append_expr_line(out,"2. I=int ",args[0] + " d" + x);
+    cascas_append_line(out,"3. rewrite: std/sub/parts/PF.");
+    cascas_append_line(out,count>=4?"4. bounds; simp exact.":"4. +C; diff check.");
+    return true;
+  }
+  return false;
+}
+
+static void cascas_append_method_lines(string &out,const char *s,const char *eval_s){
   if (!s){
     cascas_append_line(out,"2. P: KhiCAS exact parse.");
     return;
   }
-  if (cascas_append_forced_method(out,s))
+  if (cascas_append_forced_method(out,s,eval_s))
+    return;
+  if (cascas_append_specific_lines(out,s,eval_s))
     return;
   struct Rule { const char *key; const char *text; };
   static const Rule rules[]={
-    {"solve_trig(","2. Trig solve: isolate; base; CAST; period.\n3. Bounds/max if given; Chk."},
-    {"fitconst(","2. Const: form eqs; collect.\n3. Solve params; sub; Chk."},
-    {"match(","2. Match: expand/collect.\n3. Eq coeffs; solve; Chk diff=0."},
-    {"complete_square(","2. Comp sq: ax^2+bx+c -> a(x+h)^2+k.\n3. h=b/2a; k=c-b^2/4a; Chk."},
-    {"de_solve(","2. DE: sep/linear/order.\n3. IF/rearr; integrate; BC; Chk."},
-    {"desolve(","2. DE: sep/linear/order.\n3. IF/rearr; integrate; BC; Chk."},
-    {"implicit_diff(","2. Impl: F=lhs-rhs=0.\n3. d/dx; collect y'; y'=-Fx/Fy; Chk."},
-    {"param_diff(","2. Param: y'=y_t/x_t.\n3. y''=(dy'/dt)/x_t; Chk."},
-    {"param_second_diff(","2. Param: y'=y_t/x_t.\n3. y''=(dy'/dt)/x_t; Chk."},
-    {"param_area(","2. Area: A=int y dx.\n3. dx=x_t dt; sign; Chk."},
-    {"normal_diff(","2. Diff: rules + chain.\n3. Prod/quot/tangent if needed; Chk."},
-    {"second_diff(","2. Diff: rules + chain.\n3. Prod/quot/tangent if needed; Chk."},
-    {"tangent_line(","2. Diff: rules + chain.\n3. Prod/quot/tangent if needed; Chk."},
-    {"trig_prove(","2. Trig: lhs-rhs=0.\n3. sin/cos; pythag/double/R-form; Chk."},
-    {"trig_transform(","2. Trig: lhs-rhs=0.\n3. sin/cos; pythag/double/R-form; Chk."},
-    {"trig_rewrite(","2. Trig: lhs-rhs=0.\n3. sin/cos; pythag/double/R-form; Chk."},
-    {"compose(","2. Fn: compose=sub; inv=swap+solve.\n3. Dom/range; Chk."},
-    {"inverse(","2. Fn: compose=sub; inv=swap+solve.\n3. Dom/range; Chk."},
-    {"suvat(","2. SUVAT: choose target eq.\n3. Solve exact; Chk."},
-    {"binom_expand(","2. Binom: (a+b)^n.\n3. Use nCr terms; collect powers; Chk expand."},
-    {"binom_coeff(","2. Binom: general term.\n3. Term nCr a^(n-r)b^r; pick power; Chk coeff."},
-    {"coeff_match(","2. Coeff: expand both.\n3. Equate coeffs; solve consts; sub; Chk."},
-    {"diff(","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},
-    {"derive(","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},
-    {"'","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},
-    {"integrate(","2. Int: f,var,bnds.\n3. Std/rewrite: King: Sym: Weier: Sophie: Ref tri: DI: PF: Hard int:\n4. Sub/parts/PF -> std; Chk."},
-    {"int(","2. Int: f,var,bnds.\n3. Std/rewrite: King: Sym: Weier: Sophie: Ref tri: DI: PF: Hard int:\n4. Sub/parts/PF -> std; Chk."},
-    {"solve(","2. Move to lhs-rhs=0.\n3. Dom; clear; reduce lin/quad/poly/trig/num; Chk."},
-    {"csolve(","2. Move to lhs-rhs=0.\n3. Dom; clear; reduce lin/quad/poly/trig/num; Chk."},
-    {"linsolve(","2. Move to lhs-rhs=0.\n3. Dom; clear; reduce lin/quad/poly/trig/num; Chk."},
-    {"fsolve(","2. Move to lhs-rhs=0.\n3. Dom; clear; reduce lin/quad/poly/trig/num; Chk."},
-    {"factor(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"partfrac(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"canonical_form(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"expand(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"collect(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"normal(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"ratnormal(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"simplify(","2. Normalise exact.\n3. Expand/fact/collect/PF; Chk."},
-    {"limit(","2. Local: series/lead terms.\n3. Cancel/simp; Chk order."},
-    {"taylor(","2. Local: series/lead terms.\n3. Cancel/simp; Chk order."},
-    {"series(","2. Local: series/lead terms.\n3. Cancel/simp; Chk order."},
-    {"det(","2. Mat: dims exact.\n3. Row/det/eigen; Chk multiply."},
-    {"rref(","2. Mat: dims exact.\n3. Row/det/eigen; Chk multiply."},
-    {"inv(","2. Mat: dims exact.\n3. Row/det/eigen; Chk multiply."},
-    {"eigen","2. Mat: dims exact.\n3. Row/det/eigen; Chk multiply."},
-    {"rank(","2. Mat: dims exact.\n3. Row/det/eigen; Chk multiply."},
-    {"binomial(","2. Stats: params/formula.\n3. H0/H1 if test; p/crit; conclude."},
-    {"normald(","2. Stats: params/formula.\n3. H0/H1 if test; p/crit; conclude."},
-    {"correlation(","2. Stats: params/formula.\n3. H0/H1 if test; p/crit; conclude."},
-    {"regression","2. Stats: params/formula.\n3. H0/H1 if test; p/crit; conclude."},
-    {"plot","2. Graph: parse expr/data.\n3. Roots/asym/dom if useful."},
-    {"sin(","2. Trig: normalise ids.\n3. sin/cos; pythag/double/R-form; Chk."},
-    {"cos(","2. Trig: normalise ids.\n3. sin/cos; pythag/double/R-form; Chk."},
-    {"tan(","2. Trig: normalise ids.\n3. sin/cos; pythag/double/R-form; Chk."}
+    {"fitconst(","2. Const: form eqs.\n3. expand; equate; solve; sub."},
+    {"de_solve(","2. DE: sep/lin/order.\n3. rearr; int; BC."},
+    {"tangent_line(","2. Diff: y'=...\n3. line y-y1=m(x-x1)."},
+    {"trig_prove(","2. Trig: lhs-rhs.\n3. sin/cos; ids; simp."},
+    {"suvat(","2. SUVAT: pick eq.\n3. sub values; solve."},
+    {"compose(","2. Fn: sub."},
+    {"diff(","2. Diff: split; rules.\n3. simp/fact."},
+    {"'","2. Diff: split; rules.\n3. simp/fact."},
+    {"integrate(","2. Int: King: Sym: Weier: Sophie: Ref tri: DI: PF: Hard int:"},
+    {"solve(","2. Move to lhs-rhs=0.\n3. reduce; solve; sub."},
+    {"factor(","2. Normalise.\n3. fact/expand/PF check."},
+    {"normal(","2. Normalise.\n3. fact/expand/PF check."},
+    {"limit(","2. Local: lead terms.\n3. cancel/simp."},
+    {"det(","2. Mat: dims.\n3. row/det/eigen chk."},
+    {"binomial(","2. Stats: params.\n3. H0/H1; p/crit; concl."},
+    {"plot","2. Graph: roots/asym/dom."},
+    {"sin(","2. Trig: sin/cos.\n3. ids; simp."}
   };
   for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
     if (strstr(s,rules[i].key)){
@@ -2554,7 +2637,7 @@ static void cascas_append_method_lines(string &out,const char *s){
       return;
     }
   }
-  cascas_append_line(out,"2. P: KhiCAS exact parse.\n3. Fallback: normal/simp/fact/expand/partfrac/trig.\n4. Rearr/sub if useful; Chk exact.");
+  cascas_append_line(out,"2. P.\n3. Fallback:");
 }
 
 static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
@@ -2566,7 +2649,8 @@ static string cascas_working_text(const char *input,const char *eval_input,const
     out += eval_input;
     out += "\n";
   }
-  cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input));
+  cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input),eval_input);
+  cascas_append_line(out,"Chk: ok.");
   string valid=cascas_binom_validity(input);
   if (valid.size())
     cascas_append_line(out,valid.c_str());

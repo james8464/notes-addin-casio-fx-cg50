@@ -1885,6 +1885,34 @@ int Console_Eval(const char * buf){
     return true;
   }
 
+static char *cascas_skip_space(char *s){
+  while (s && *s && isspace((unsigned char)*s))
+    ++s;
+  return s;
+}
+
+static bool cascas_extract_work_expr(char *buf){
+  if (!buf)
+    return false;
+  char *p=cascas_skip_space(buf);
+  if (isdigit((unsigned char)p[0]) && p[1]=='.'){
+    p=cascas_skip_space(p+2);
+    char *q=strchr(p,':');
+    if (q)
+      p=cascas_skip_space(q+1);
+  }
+  else {
+    char *q=strchr(p,':');
+    if (q)
+      p=cascas_skip_space(q+1);
+  }
+  if (p!=buf && *p){
+    memmove(buf,p,strlen(p)+1);
+    return true;
+  }
+  return false;
+}
+
 int Console_GetKey(){
   int key;
   unsigned int i, move_line, move_col;
@@ -1947,6 +1975,8 @@ int Console_GetKey(){
       if (graph && l>0) --l;
       char buf[max(512,strlen((const char *)Line[l].str+1))];
       strcpy(buf,(const char *)Line[l].str);
+      if (Line[l].type==LINE_TYPE_OUTPUT)
+	cascas_extract_work_expr(buf);
       if ( (alph || key==KEY_CTRL_RIGHT) ?textedit(buf):eqws(buf,graph)){
 	if (Current_Line==Last_Line){
 	  Console_Clear_EditLine();

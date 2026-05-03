@@ -6,11 +6,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
+CONSOLE = ROOT / "c++/khicas/upstream/giac90_1addin/console.cc"
 
 
 REQUIRED_MARKERS = [
     "cascas_show_working_screen",
     "cascas_working_text",
+    "cascas_append_specific_lines",
     "cascas_binom_validity",
     "doTextArea(&text)",
     "text.allowEXE=true",
@@ -24,7 +26,17 @@ REQUIRED_MARKERS = [
     "Valid:",
     "Valid: all x",
     "Valid: |x|<1",
+    "CAS:",
+    "Move:",
+    "Base:",
     "Ans: ",
+]
+
+CONSOLE_MARKERS = [
+    "cascas_extract_work_expr",
+    "Line[l].type==LINE_TYPE_OUTPUT",
+    "strchr(p,':')",
+    "memmove(buf,p,strlen(p)+1)",
 ]
 
 METHOD_MARKERS = [
@@ -99,9 +111,14 @@ def fail(msg: str) -> int:
 
 def main() -> int:
     main_cc = MAIN.read_text(errors="ignore")
+    console_cc = CONSOLE.read_text(errors="ignore")
     missing = [x for x in REQUIRED_MARKERS if x not in main_cc]
     if missing:
         return fail("working screen markers missing: " + ", ".join(missing))
+
+    missing = [x for x in CONSOLE_MARKERS if x not in console_cc]
+    if missing:
+        return fail("console working pretty-view markers missing: " + ", ".join(missing))
 
     missing = [x for x in METHOD_MARKERS if x not in main_cc]
     if missing:
