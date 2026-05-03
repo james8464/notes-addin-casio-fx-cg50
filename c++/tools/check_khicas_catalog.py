@@ -23,6 +23,9 @@ HIDDEN_MARKERS = [
     "rand",
     "cfactor",
     "cpartfrac",
+    "cond(",
+    "residue",
+    "resultant",
 ]
 
 OLD_FEATURE_ALIASES = [
@@ -72,9 +75,14 @@ def main() -> int:
     if missing_aliases:
         return fail("old feature aliases missing: " + ", ".join(missing_aliases))
 
-    if "cascas_output_working" not in main_cc or "cascas_method_for" not in main_cc:
+    if "KhiCAS built-in command." not in catalog or "Example (F2):" not in catalog:
+        return fail("generic F6 help fallback missing")
+    if "catalog_param_hint(completeCat[index].name)" not in catalog:
+        return fail("F6 help parameter hints not wired")
+
+    if "cascas_output_working" not in main_cc or "cascas_working_text" not in main_cc:
         return fail("working-line output hook missing")
-    if "KhiCAS result" not in main_cc or "Answer: " not in main_cc:
+    if "Fallback search" not in main_cc or "Answer: " not in main_cc:
         return fail("working-line output shape missing")
 
     print("OK khicas catalog policy")

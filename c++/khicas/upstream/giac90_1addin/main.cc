@@ -1936,35 +1936,205 @@ ustl::string last_ans(){
   return "";
 }
 
-static const char * cascas_method_for(const char *s){
-  if (!s)
-    return "Use KhiCAS exact engine, then simplify.";
-  if (strstr(s,"diff(") || strstr(s,"derive(") || strstr(s,"'"))
-    return "Differentiate with KhiCAS rules, collect, then simplify.";
-  if (strstr(s,"integrate(") || strstr(s,"int("))
-    return "Integrate with KhiCAS algorithms, then simplify and add constants when needed.";
-  if (strstr(s,"solve(") || strstr(s,"csolve(") || strstr(s,"linsolve("))
-    return "Rearrange to zero, solve with KhiCAS, then verify by substitution.";
-  if (strstr(s,"fsolve("))
-    return "Normalize equation, solve numerically on interval/seed, then verify residual.";
-  if (strstr(s,"factor(") || strstr(s,"partfrac(") || strstr(s,"canonical_form("))
-    return "Rewrite algebraically, choose compact exact form, then verify expansion.";
-  if (strstr(s,"simplify(") || strstr(s,"normal(") || strstr(s,"ratnormal("))
-    return "Normalize expression, combine terms, then reduce to simplest exact form.";
-  if (strstr(s,"limit(") || strstr(s,"taylor(") || strstr(s,"series("))
-    return "Use local expansion/limit rules, then simplify result.";
-  if (strstr(s,"det(") || strstr(s,"rref(") || strstr(s,"inv(") || strstr(s,"eigen"))
-    return "Use KhiCAS matrix algorithm, reduce rows/polynomial, then simplify entries.";
-  if (strstr(s,"binomial(") || strstr(s,"normald(") || strstr(s,"correlation(") || strstr(s,"regression"))
-    return "Use statistics formula, substitute values, then simplify/round only at the end.";
-  if (strstr(s,"plot") || strstr(s,"histogram") || strstr(s,"scatterplot"))
-    return "Build KhiCAS graphic object from parsed expression/data.";
-  return "Parse with KhiCAS, try exact simplification, then return simplest form.";
+static bool cascas_startswith(const char *s,const char *prefix){
+  return s && prefix && !strncmp(s,prefix,strlen(prefix));
+}
+
+static int cascas_find_matching_paren(const string &s,int open){
+  int depth=0;
+  bool instring=false;
+  for (int i=open;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    if (c==')' || c==']' || c=='}'){
+      --depth;
+      if (!depth)
+	return i;
+    }
+  }
+  return -1;
+}
+
+static int cascas_find_top_comma(const string &s,int first,int last){
+  int depth=0;
+  bool instring=false;
+  for (int i=first;i<last;++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    if (c==')' || c==']' || c=='}')
+      --depth;
+    if (!depth && c==',')
+      return i;
+  }
+  return -1;
+}
+
+static bool cascas_replace_call(const char *input,const char *alias,const char *target,string &out){
+  if (!cascas_startswith(input,alias))
+    return false;
+  out=target;
+  out += input+strlen(alias);
+  return true;
+}
+
+static bool cascas_rewrite_logic_call(const char *input,const char *alias,const char *op,string &out){
+  if (!cascas_startswith(input,alias))
+    return false;
+  string s(input);
+  int open=strlen(alias)-1;
+  int close=cascas_find_matching_paren(s,open);
+  if (close<0)
+    return false;
+  int comma=cascas_find_top_comma(s,open+1,close);
+  if (comma<0)
+    return false;
+  out="not((";
+  out += s.substr(open+1,comma-open-1);
+  out += ") ";
+  out += op;
+  out += " (";
+  out += s.substr(comma+1,close-comma-1);
+  out += "))";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_alias(const char *input,string &rewritten){
+  if (!input)
+    return false;
+  if (cascas_replace_call(input,"complete_square(","canonical_form(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"fitconst(","solve(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"match(","solve(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"bool_simplify(","simplify(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"prove_bool(","compare(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"rewrite(","canonical_form(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"suvat(","solve(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"transform(","normal(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"cartesian(","eliminate(",rewritten))
+    return true;
+  if (cascas_rewrite_logic_call(input,"nand(","and",rewritten))
+    return true;
+  if (cascas_rewrite_logic_call(input,"nor(","or",rewritten))
+    return true;
+  return false;
 }
 
 static void cascas_output_line(const string &s){
   Console_Output((const unsigned char*)s.c_str());
   Console_NewLine(LINE_TYPE_OUTPUT,1);
+}
+
+static void cascas_append_line(string &out,const char *s){
+  out += s;
+  out += "\n";
+}
+
+static void cascas_append_method_lines(string &out,const char *s){
+  if (!s){
+    cascas_append_line(out,"2. Parse: read expression with KhiCAS exact parser.");
+    return;
+  }
+  if (strstr(s,"diff(") || strstr(s,"derive(") || strstr(s,"'")){
+    cascas_append_line(out,"2. Parse derivative: identify function, variable, order.");
+    cascas_append_line(out,"3. Apply rules: chain/product/quotient/power/log/trig as needed.");
+    cascas_append_line(out,"4. Simplify: collect terms, factor compactly, keep exact form.");
+    cascas_append_line(out,"5. Verify: derivative object checked by KhiCAS simplification.");
+    return;
+  }
+  if (strstr(s,"integrate(") || strstr(s,"int(")){
+    cascas_append_line(out,"2. Parse integral: identify integrand, variable, bounds if any.");
+    cascas_append_line(out,"3. Try methods: direct rules, substitution, parts, partial fractions, trig rewrite.");
+    cascas_append_line(out,"4. Simplify: exact antiderivative/result, add C for indefinite context.");
+    cascas_append_line(out,"5. Verify: differentiate antiderivative or re-check definite value.");
+    return;
+  }
+  if (strstr(s,"solve(") || strstr(s,"csolve(") || strstr(s,"linsolve(") || strstr(s,"fsolve(")){
+    cascas_append_line(out,"2. Rearrange: move each equation to lhs-rhs=0.");
+    cascas_append_line(out,"3. Reduce: factor/normalise equations, detect linear/polynomial/numeric path.");
+    cascas_append_line(out,"4. Solve: exact first, numeric fallback only when exact form is unavailable.");
+    cascas_append_line(out,"5. Verify: substitute every solution back into original equations.");
+    return;
+  }
+  if (strstr(s,"factor(") || strstr(s,"partfrac(") || strstr(s,"canonical_form(") ||
+      strstr(s,"expand(") || strstr(s,"collect(") || strstr(s,"normal(") ||
+      strstr(s,"ratnormal(") || strstr(s,"simplify(")){
+    cascas_append_line(out,"2. Normalise: put expression into canonical exact form.");
+    cascas_append_line(out,"3. Transform: try expand/factor/collect/partfrac/canonical forms.");
+    cascas_append_line(out,"4. Choose form: prefer shortest exact mark-scheme form.");
+    cascas_append_line(out,"5. Verify: expand difference between input and result to 0.");
+    return;
+  }
+  if (strstr(s,"limit(") || strstr(s,"taylor(") || strstr(s,"series(")){
+    cascas_append_line(out,"2. Local form: expand around target point/side/order.");
+    cascas_append_line(out,"3. Cancel dominant terms and simplify exact leading form.");
+    cascas_append_line(out,"4. Verify: compare local expansion/residual order.");
+    return;
+  }
+  if (strstr(s,"det(") || strstr(s,"rref(") || strstr(s,"inv(") || strstr(s,"eigen") ||
+      strstr(s,"tran(") || strstr(s,"rank(")){
+    cascas_append_line(out,"2. Matrix setup: check dimensions and exact entries.");
+    cascas_append_line(out,"3. Row/polynomial ops: reduce exactly, simplifying each entry.");
+    cascas_append_line(out,"4. Verify: multiply/substitute back where applicable.");
+    return;
+  }
+  if (strstr(s,"binomial(") || strstr(s,"normald(") || strstr(s,"correlation(") ||
+      strstr(s,"regression") || strstr(s,"mean(") || strstr(s,"stddev(")){
+    cascas_append_line(out,"2. Stats setup: identify statistic/distribution and parameters.");
+    cascas_append_line(out,"3. Substitute values into the standard formula.");
+    cascas_append_line(out,"4. Simplify exactly; round only final decimal display.");
+    return;
+  }
+  if (strstr(s,"plot") || strstr(s,"histogram") || strstr(s,"scatterplot")){
+    cascas_append_line(out,"2. Graph setup: parse expression/data and graph options.");
+    cascas_append_line(out,"3. Build KhiCAS graphic object, preserving exact source data.");
+    return;
+  }
+  if (strstr(s,"sin(") || strstr(s,"cos(") || strstr(s,"tan(") ||
+      strstr(s,"trig") || strstr(s,"sincos(")){
+    cascas_append_line(out,"2. Trig setup: normalise angles and choose identity family.");
+    cascas_append_line(out,"3. Rewrite: use sin/cos/tan identities, collect terms.");
+    cascas_append_line(out,"4. Verify: simplify difference using trig identities.");
+    return;
+  }
+  cascas_append_line(out,"2. Parse: read expression with KhiCAS exact parser.");
+  cascas_append_line(out,"3. Fallback search: try normal/simplify/factor/expand/partfrac/trig rewrites.");
+  cascas_append_line(out,"4. Select result: shortest exact equivalent form.");
+  cascas_append_line(out,"5. Verify: compare original and result by exact simplification.");
+}
+
+static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
+  string out("1. Input: ");
+  out += input?input:"";
+  out += "\n";
+  if (eval_input && input && strcmp(eval_input,input)){
+    out += "Alias rewrite: ";
+    out += eval_input;
+    out += "\n";
+  }
+  cascas_append_method_lines(out,eval_input?eval_input:input);
+  out += "Result: ";
+  out += answer;
+  out += "\nAnswer: ";
+  out += answer;
+  return out;
 }
 
 static bool cascas_show_working_for(const char *s,const string &answer){
@@ -1975,19 +2145,30 @@ static bool cascas_show_working_for(const char *s,const string &answer){
   return true;
 }
 
-static void cascas_output_working(const char *input,const string &answer){
-  string line("1. Input: ");
-  line += input;
-  cascas_output_line(line);
-  line = "2. Method: ";
-  line += cascas_method_for(input);
-  cascas_output_line(line);
-  line = "3. KhiCAS result: ";
-  line += answer;
-  cascas_output_line(line);
-  line = "Answer: ";
-  line += answer;
-  Console_Output((const unsigned char*)line.c_str());
+static void cascas_output_working(const char *input,const char *eval_input,const string &answer){
+  string body=cascas_working_text(input,eval_input,answer);
+  size_t start=0;
+  for (size_t i=0;i<=body.size();++i){
+    if (i<body.size() && body[i]!='\n')
+      continue;
+    string line=body.substr(start,i-start);
+    if (i<body.size())
+      cascas_output_line(line);
+    else
+      Console_Output((const unsigned char*)line.c_str());
+    start=i+1;
+  }
+}
+
+static void cascas_show_working_screen(const char *input,const char *eval_input,const string &answer){
+  textArea text;
+  text.title=(char*)"Working";
+  text.editable=false;
+  text.allowEXE=true;
+  text.clipline=-1;
+  text.scrollbar=1;
+  add(&text,cascas_working_text(input,eval_input,answer));
+  doTextArea(&text);
 }
 
 void run(const char * s,int do_logo_graph_eqw){
@@ -1996,7 +2177,11 @@ void run(const char * s,int do_logo_graph_eqw){
 		       ))
     return;
   gen g,ge;
-  do_run(s,g,ge);
+  string rewritten;
+  const char *eval_s=s;
+  if (cascas_rewrite_alias(s,rewritten))
+    eval_s=rewritten.c_str();
+  do_run(eval_s,g,ge);
   if (giac::freeze){
     giac::freeze=false;
     DefineStatusMessage((char*)(lang?"Ecran fige. Taper EXIT":"Screen freezed. Press EXIT."), 1, 0, 0);
@@ -2021,7 +2206,7 @@ void run(const char * s,int do_logo_graph_eqw){
       vout.erase(vout.begin());
     vout.push_back(ge);
   }
-  check_do_graph(ge,do_logo_graph_eqw);
+  check_do_graph(ge,do_logo_graph_eqw & ~1);
   string s_;
   if (ge.type==giac::_STRNG)
     s_='"'+*ge._STRNGptr+'"';
@@ -2042,10 +2227,12 @@ void run(const char * s,int do_logo_graph_eqw){
   if (s_.size()>512)
     s_=s_.substr(0,509)+"...";
   char* edit_line = (char*)Console_GetEditLine();
-  if (cascas_show_working_for(s,s_))
-    cascas_output_working(s,s_);
+  if (cascas_show_working_for(s,s_)){
+    if (do_logo_graph_eqw % 2)
+      cascas_show_working_screen(s,eval_s,s_);
+    cascas_output_working(s,eval_s,s_);
+  }
   else
     Console_Output((const unsigned char*)s_.c_str());
   //return ge; 
 }
-
