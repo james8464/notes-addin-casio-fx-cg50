@@ -58,17 +58,26 @@ int dconsole_mode=1; // 0 disables dConsole commands
 
 char xcas_status[64];
 
+static void cascas_get_uk_status_time(int &heure,int &minute){
+  giac::get_time(heure,minute);
+  heure %= 24;
+  if (heure<0)
+    heure += 24;
+  // KhiCAS exposes calculator RTC ticks only here; keep the strip explicitly UK-labelled.
+}
+
 void set_xcas_status(){
   ustl::string status;
   int heure,minute; // minutes rounded
-  giac::get_time(heure,minute);
+  cascas_get_uk_status_time(heure,minute);
   status += char('0'+heure/10);
   status += char('0'+(heure%10));
   status += ':';
   status += char('0'+(minute/10));
   status += char('0'+(minute%10));
-  status += xthetat?" t ":" x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" Xcas ";
+  status += " UK ";
+  status += xthetat?"t ":"x ";
+  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" CAS ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
   if (strlen(session_filename)<=24)
     status += ustl::string(session_filename);

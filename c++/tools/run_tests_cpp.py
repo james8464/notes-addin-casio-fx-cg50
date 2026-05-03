@@ -46,6 +46,9 @@ def main() -> int:
         ("algebra_basic", [sys.executable, "c++/tools/golden/compare_algebra_basic.py"]),
         ("fuzz_regressions", [sys.executable, "c++/tools/fuzz/check_regressions.py"]),
     ]
+    prizm_g3a = REPO / "c++/prizm/build/CasioCAS.g3a"
+    if prizm_g3a.exists():
+        checks.insert(2, ("g3a_metadata", [sys.executable, "c++/tools/check_g3a_metadata.py", str(prizm_g3a)]))
 
     bad = 0
     for name, cmd in checks:

@@ -47,6 +47,11 @@ if [ "${MODE}" = "khicas-upstream" ]; then
     g3a-updateicon "c++/prizm/build/CasioCAS.g3a" \
       "c++/prizm/assets/selected.bmp" \
       "c++/prizm/assets/unselected.bmp"
+  python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
+    --name "CasioCAS" \
+    --internal "CASIOCAS" \
+    --filename "CasioCAS.g3a"
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   ls -lh "${OUT_G3A}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
