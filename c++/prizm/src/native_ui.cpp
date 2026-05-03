@@ -49,7 +49,8 @@ void print_mini_at(int x, int y, const char *text, int color, int back_color)
 {
     int px = x;
     int py = y;
-    PrintMini(&px, &py, text ? text : "", TEXT_MODE_NORMAL, LCD_WIDTH_PX - 1,
+    constexpr int kPrintMiniFullScreenY = 0x40;
+    PrintMini(&px, &py, text ? text : "", TEXT_MODE_NORMAL | kPrintMiniFullScreenY, LCD_WIDTH_PX - 1,
               0, 0, color, back_color, 1, 0);
 }
 
