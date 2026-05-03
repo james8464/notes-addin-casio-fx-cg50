@@ -33,7 +33,7 @@ def main() -> int:
         "sin^2=1-cos^2; tan^2=1/cos^2-1.",
         "cos^2=1-sin^2; tan^2=sin^2/(1-sin^2).",
         "sin^2=tan^2/(1+tan^2); cos^2=1/(1+tan^2).",
-        "5. sincos; exp; coll; fact.",
+        "5. sin/cos; expd; coll; fact.",
     ]
     missing = [x for x in required_main if x not in main]
     if missing:

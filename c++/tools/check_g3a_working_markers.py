@@ -27,14 +27,10 @@ MARKERS = [
     b"Match:",
     b"Comp sq:",
     b"DE:",
-    b"King:",
-    b"Weier:",
-    b"Sophie:",
-    b"Sym:",
-    b"Ref tri:",
-    b"DI:",
-    b"PF:",
-    b"Hard int:",
+    b"std/trig/sub/parts/PF",
+    b"FM t-sub/tri",
+    b"DI if apt",
+    b"PF.",
 ]
 
 

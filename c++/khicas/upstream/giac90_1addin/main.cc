@@ -2512,11 +2512,11 @@ static bool cascas_append_forced_method(string &out,const char *s,const char *ev
     cascas_append_line(out,"5. dx=du/u'; back-sub.");
   }
   else if (method=="parts" || method=="di")
-    cascas_append_line(out,"4. uv-int(vdu); repeat/DI.");
+    cascas_append_line(out,"4. uv-int(vdu); repeat/DI if apt.");
   else if (method=="pf")
     cascas_append_line(out,"4. factor denom; PF.");
   else if (method=="chain" || method=="product" || method=="quotient")
-    cascas_append_line(out,"4. named rule; simp/fact.");
+    cascas_append_line(out,"4. rule; simp/fact.");
   else
     cascas_append_line(out,"4. route; verify.");
   return true;
@@ -2529,7 +2529,7 @@ static bool cascas_append_specific_lines(string &out,const char *s,const char *e
   if (cascas_call_args(s,"solve_trig(",args,6,count,close,body) && count>=1){
     cascas_append_expr_line(out,"2. Trig solve: ",args[0]);
     cascas_append_line(out,"3. isolate; base angle.");
-    cascas_append_line(out,count>=4?"4. CAST/period; bounds.":"4. general sol + period.");
+    cascas_append_line(out,count>=4?"4. CAST/R-form; bounds.":"4. CAST/R-form; gen sol.");
     return true;
   }
   static const struct { const char *alias; const char *basis; const char *ids; } trig_basis[]={
@@ -2549,7 +2549,7 @@ static bool cascas_append_specific_lines(string &out,const char *s,const char *e
       cascas_append_line(out,line.c_str());
       string ids=string("4. Ids: ") + trig_basis[i].ids;
       cascas_append_line(out,ids.c_str());
-      cascas_append_line(out,"5. sincos; exp; coll; fact.");
+      cascas_append_line(out,"5. sin/cos; expd; coll; fact.");
       return true;
     }
   }
@@ -2588,7 +2588,7 @@ static bool cascas_append_specific_lines(string &out,const char *s,const char *e
     cascas_append_expr_line(out,"2. y=",args[0]);
     string line=(cascas_startswith(s,"second_diff(")?"3. d2y/dx2=diff(y,":"3. dy/dx=diff(y,") + x + ")";
     cascas_append_line(out,line.c_str());
-    cascas_append_line(out,"4. sum/chain/prod/quot; simp.");
+    cascas_append_line(out,"4. sum/chain/prod/quot/logdiff.");
     return true;
   }
   if (cascas_call_args(s,"complete_square(",args,2,count,close,body) && count>=1){
@@ -2636,8 +2636,9 @@ static bool cascas_append_specific_lines(string &out,const char *s,const char *e
        cascas_call_args(s,"int(",args,5,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
     cascas_append_expr_line(out,"2. I=int ",args[0] + " d" + x);
-    cascas_append_line(out,"3. rewrite: std/sub/parts/PF.");
-    cascas_append_line(out,count>=4?"4. bounds; simp exact.":"4. +C; diff check.");
+    cascas_append_line(out,"3. std/trig/sub/parts/PF.");
+    cascas_append_line(out,"4. then FM t-sub/tri.");
+    cascas_append_line(out,count>=4?"5. bounds; simp exact.":"5. +C; diff check.");
     return true;
   }
   return false;
@@ -2660,9 +2661,9 @@ static void cascas_append_method_lines(string &out,const char *s,const char *eva
     {"trig_prove(","2. Trig: lhs-rhs.\n3. sin/cos; ids; simp."},
     {"suvat(","2. SUVAT: pick eq.\n3. sub values; solve."},
     {"compose(","2. Fn: sub."},
-    {"diff(","2. Diff: split; rules.\n3. simp/fact."},
-    {"'","2. Diff: split; rules.\n3. simp/fact."},
-    {"integrate(","2. Int: King: Sym: Weier: Sophie: Ref tri: DI: PF: Hard int:"},
+    {"diff(","2. Diff: std rules.\n3. sum/chain/prod/quot; simp."},
+    {"'","2. Diff: std rules.\n3. sum/chain/prod/quot; simp."},
+    {"integrate(","2. Int: std/trig/sub/parts/PF.\n3. FM t-sub/tri; CAS."},
     {"solve(","2. Move to lhs-rhs=0.\n3. reduce; solve; sub."},
     {"factor(","2. Normalise.\n3. fact/expand/PF check."},
     {"normal(","2. Normalise.\n3. fact/expand/PF check."},
