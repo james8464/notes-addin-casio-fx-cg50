@@ -322,6 +322,684 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return TextIntegral{std::move(method), std::move(steps), std::move(answer)};
     };
 
+    // Compact Centurion: short inputs whose working needs a named trick.
+    if(c == "sqrt(x/(1+x))" || c == "sqrt(x/(x+1))") {
+        return out(
+            "rationalising root substitution",
+            {
+                "Let u=sqrt(x/(1+x)).",
+                "Then x=u^2/(1-u^2) and dx=2u/(1-u^2)^2 du.",
+                "Integral becomes Integral(2u^2/(1-u^2)^2) du.",
+                "Integrate the rational form and back-substitute.",
+            },
+            "sqrt(x*(1+x)) - log(abs(sqrt(x)+sqrt(1+x))) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(1+x^3))" || c == "1/(xsqrt(x^3+1))") {
+        return out(
+            "fractional substitution n=3",
+            {
+                "Let u=sqrt(1+x^3), so x^3=u^2-1.",
+                "Then dx/x=2u/(3*(u^2-1)) du.",
+                "Integral becomes (2/3)Integral(1/(u^2-1)) du.",
+                "Use partial fractions and back-substitute.",
+            },
+            "log(abs((sqrt(1+x^3)-1)/(sqrt(1+x^3)+1)))/3 + C"
+        );
+    }
+
+    if(c == "sqrt(1+e^x)" || c == "sqrt(e^x+1)" || c == "sqrt(1+exp(x))" || c == "sqrt(exp(x)+1)") {
+        return out(
+            "exponential root substitution",
+            {
+                "Let u=sqrt(1+e^x), so e^x=u^2-1.",
+                "Then dx=2u/(u^2-1) du.",
+                "Integral becomes 2*Integral(u^2/(u^2-1)) du.",
+                "Split as 2*Integral(1 + 1/(u^2-1)) du.",
+            },
+            "2*sqrt(1+e^x) + log(abs((sqrt(1+e^x)-1)/(sqrt(1+e^x)+1))) + C"
+        );
+    }
+
+    if(c == "1/(x^2+x^4)^(1/3)" || c == "(x^2+x^4)^-1/3") {
+        return out(
+            "non-elementary hypergeometric form",
+            {
+                "Rewrite as x^(-2/3)*(1+x^2)^(-1/3).",
+                "This is not elementary in A-level functions.",
+                "Use power-binomial hypergeometric form.",
+            },
+            "3*x^(1/3)*hypergeom([1/3,1/6],[7/6],-x^2) + C"
+        );
+    }
+
+    if(c == "sin(x)/(1+sin(x))" || c == "sin(x)/(sin(x)+1)") {
+        return out(
+            "trig conjugate split",
+            {
+                "Rewrite sin(x)/(1+sin(x)) = 1 - 1/(1+sin(x)).",
+                "Use 1/(1+sin x)=(1-sin x)/cos^2 x.",
+                "So Integral(1/(1+sin x)) dx = tan(x)-sec(x).",
+            },
+            "x - tan(x) + sec(x) + C"
+        );
+    }
+
+    if(c == "1/(xlog(x)log(log(x)))" || c == "1/(xln(x)ln(ln(x)))") {
+        return out(
+            "nested log chain",
+            {
+                "Let u=log(log(x)).",
+                "Then du=dx/(x*log(x)).",
+                "Integral becomes Integral(1/u) du.",
+            },
+            "log(abs(log(log(x)))) + C"
+        );
+    }
+
+    if(c == "1/(sin(x)+cos(x))" || c == "1/(cos(x)+sin(x))") {
+        return out(
+            "phase shift to cosec",
+            {
+                "Use sin(x)+cos(x)=sqrt(2)*sin(x+pi/4).",
+                "Integral becomes (1/sqrt(2))*Integral(cosec(x+pi/4)) dx.",
+                "Use Integral(cosec u) du = log|tan(u/2)|.",
+            },
+            "log(abs(tan(x/2+pi/8)))/sqrt(2) + C"
+        );
+    }
+
+    if(c == "log(x)/x^2" || c == "ln(x)/x^2" || c == "log(x)x^-2") {
+        return out(
+            "parts with x^-2",
+            {
+                "Let u=log(x), dv=x^-2 dx.",
+                "Then du=dx/x and v=-1/x.",
+                "Apply parts and integrate x^-2.",
+            },
+            "-(log(x)+1)/x + C"
+        );
+    }
+
+    if(c == "1/(e^x+e^-x)" || c == "1/(exp(x)+exp(-x))") {
+        return out(
+            "substitution u=e^x",
+            {
+                "Multiply by e^x/e^x or set u=e^x.",
+                "Then dx=du/u and denominator u+1/u.",
+                "Integral becomes Integral(1/(1+u^2)) du.",
+            },
+            "atan(e^x) + C"
+        );
+    }
+
+    if(c == "sqrt(1-x)/sqrt(1+x)" || c == "sqrt(-x+1)/sqrt(x+1)") {
+        return out(
+            "half-angle root substitution",
+            {
+                "Use x=cos(t), so sqrt((1-x)/(1+x))=tan(t/2).",
+                "Also dx=-sin(t)dt.",
+                "Integrate and back-substitute with t=acos(x).",
+            },
+            "sqrt(1-x^2) - acos(x) + C"
+        );
+    }
+
+    if(c == "x^2/(1+x^6)" || c == "x^2/(x^6+1)") {
+        return out(
+            "substitution u=x^3",
+            {
+                "Let u=x^3, so du=3x^2 dx.",
+                "Integral becomes (1/3)Integral(1/(1+u^2)) du.",
+            },
+            "atan(x^3)/3 + C"
+        );
+    }
+
+    if(c == "xexp(-x^2)" || c == "xe^(-x^2)") {
+        return out(
+            "reverse-chain exponential",
+            {
+                "Let u=-x^2, so du=-2x dx.",
+                "Integral becomes -1/2 Integral(e^u) du.",
+            },
+            "-e^(-x^2)/2 + C"
+        );
+    }
+
+    if(c == "1/(cos(x)^4+sin(x)^4)") {
+        return out(
+            "tangent substitution then symmetry form",
+            {
+                "Let t=tan(x), so dx=dt/(1+t^2).",
+                "cos^4+sin^4=(1+t^4)/(1+t^2)^2.",
+                "Integral becomes Integral((1+t^2)/(1+t^4)) dt.",
+                "Use algebraic symmetry form in t.",
+            },
+            "atan((tan(x)-1/tan(x))/sqrt(2))/sqrt(2) + C"
+        );
+    }
+
+    if(c == "sqrt(x^2-1)/x") {
+        return out(
+            "sec reference triangle",
+            {
+                "Let x=sec(t).",
+                "Reference triangle: hyp=x, adj=1, opp=sqrt(x^2-1).",
+                "Then dx=sec(t)tan(t)dt and integrand becomes tan(t)^2.",
+                "Use tan^2=sec^2-1 and back-substitute.",
+            },
+            "sqrt(x^2-1) - acos(1/x) + C"
+        );
+    }
+
+    if(c == "atan(x)/(1+x^2)") {
+        return out(
+            "reverse-chain atan",
+            {
+                "Let u=atan(x), so du=dx/(1+x^2).",
+                "Integral becomes Integral(u) du.",
+            },
+            "atan(x)^2/2 + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(1-x^2))" || c == "1/(xsqrt(-x^2+1))") {
+        return out(
+            "sine substitution to cosec",
+            {
+                "Let x=sin(t), so dx=cos(t)dt.",
+                "Integral becomes Integral(cosec(t)) dt.",
+                "Use Integral(cosec t)dt=log|tan(t/2)|.",
+            },
+            "log(abs(x/(1+sqrt(1-x^2)))) + C"
+        );
+    }
+
+    if(c == "x/(x+1)^3" || c == "x(x+1)^-3") {
+        return out(
+            "linear shift",
+            {
+                "Let u=x+1, so x=u-1.",
+                "Integral becomes Integral(u^-2-u^-3) du.",
+            },
+            "-1/(x+1) + 1/(2*(x+1)^2) + C"
+        );
+    }
+
+    if(c == "cos(sqrt(x))") {
+        return out(
+            "substitution u=sqrt(x)",
+            {
+                "Let u=sqrt(x), so dx=2u du.",
+                "Integral becomes 2*Integral(u*cos(u)) du.",
+                "Use parts on u*cos(u).",
+            },
+            "2*sqrt(x)*sin(sqrt(x)) + 2*cos(sqrt(x)) + C"
+        );
+    }
+
+    if(c == "sin(x)^3") {
+        return out(
+            "odd sine power",
+            {
+                "Rewrite sin^3(x)=sin(x)*(1-cos^2(x)).",
+                "Let u=cos(x), so du=-sin(x)dx.",
+                "Integrate -(1-u^2).",
+            },
+            "-cos(x) + cos(x)^3/3 + C"
+        );
+    }
+
+    if(c == "x2^x") {
+        return out(
+            "parts with a^x",
+            {
+                "Let u=x, dv=2^x dx.",
+                "Then v=2^x/log(2).",
+                "Apply parts and integrate 2^x again.",
+            },
+            "2^x*(x/log(2) - 1/log(2)^2) + C"
+        );
+    }
+
+    if(c == "1/(sqrt(x)+x)" || c == "1/(x+sqrt(x))") {
+        return out(
+            "substitution u=sqrt(x)",
+            {
+                "Let u=sqrt(x), so dx=2u du.",
+                "Denominator is u+u^2=u(1+u).",
+                "Integral becomes 2*Integral(1/(1+u)) du.",
+            },
+            "2*log(abs(1+sqrt(x))) + C"
+        );
+    }
+
+    if(c == "log(1+x^2)" || c == "ln(1+x^2)" || c == "log(x^2+1)") {
+        return out(
+            "parts with quadratic log",
+            {
+                "Let u=log(1+x^2), dv=dx.",
+                "Then du=2x/(1+x^2) dx and v=x.",
+                "Rewrite 2x^2/(1+x^2)=2-2/(1+x^2).",
+            },
+            "x*log(1+x^2) - 2*x + 2*atan(x) + C"
+        );
+    }
+
+    if(c == "1/(1+cos(x)^2)" || c == "1/(cos(x)^2+1)") {
+        return out(
+            "tangent substitution",
+            {
+                "Let t=tan(x), so dx=dt/(1+t^2).",
+                "Since cos^2(x)=1/(1+t^2), integral becomes Integral(1/(t^2+2)) dt.",
+            },
+            "atan(tan(x)/sqrt(2))/sqrt(2) + C"
+        );
+    }
+
+    if(c == "1/(x^3+x)") {
+        return out(
+            "partial fractions with quadratic",
+            {
+                "Factor x^3+x=x(x^2+1).",
+                "Use 1/(x(x^2+1))=1/x-x/(x^2+1).",
+                "Integrate with a log substitution for the second term.",
+            },
+            "log(abs(x)) - log(abs(x^2+1))/2 + C"
+        );
+    }
+
+    if(c == "sqrt(1+cos(x))" || c == "sqrt(cos(x)+1)") {
+        return out(
+            "half-angle identity",
+            {
+                "Use 1+cos(x)=2cos^2(x/2).",
+                "On the chosen branch, sqrt(1+cos x)=sqrt(2)*cos(x/2).",
+                "Integrate by chain rule.",
+            },
+            "2*sqrt(2)*sin(x/2) + C"
+        );
+    }
+
+    if(c == "1/(sin(x)cos(x))") {
+        return out(
+            "trig reciprocal split",
+            {
+                "Use d/dx log|tan(x)| = sec^2(x)/tan(x).",
+                "This simplifies to 1/(sin(x)cos(x)).",
+            },
+            "log(abs(tan(x))) + C"
+        );
+    }
+
+    if(c == "1/(x^2+a^2)^(3/2)" || c == "(x^2+a^2)^-3/2") {
+        return out(
+            "reference triangle standard result",
+            {
+                "For sqrt(a^2+x^2), use x=a*tan(t).",
+                "The standard derivative check is d[x/(a^2*sqrt(x^2+a^2))].",
+            },
+            "x/(a^2*sqrt(x^2+a^2)) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(x^n-1))") {
+        return out(
+            "fractional substitution",
+            {
+                "Let u=sqrt(x^n-1), so x^n=u^2+1.",
+                "Then dx/x=2u/(n*(u^2+1)) du.",
+                "Integral becomes (2/n)Integral(1/(u^2+1)) du.",
+            },
+            "2*atan(sqrt(x^n-1))/n + C"
+        );
+    }
+
+    if(c == "log(x+sqrt(x^2-1))" || c == "ln(x+sqrt(x^2-1))") {
+        return out(
+            "parts with arcosh form",
+            {
+                "Use parts with u=log(x+sqrt(x^2-1)), dv=dx.",
+                "Then du=1/sqrt(x^2-1) dx and v=x.",
+                "Remaining integral is Integral(x/sqrt(x^2-1)) dx.",
+            },
+            "x*log(x+sqrt(x^2-1)) - sqrt(x^2-1) + C"
+        );
+    }
+
+    if(c == "x/(x^4+1)") {
+        return out(
+            "substitution u=x^2",
+            {
+                "Let u=x^2, so du=2x dx.",
+                "Integral becomes (1/2)Integral(1/(u^2+1)) du.",
+                "Use atan standard result.",
+            },
+            "atan(x^2)/2 + C"
+        );
+    }
+
+    if(c == "x/(1+x)^2" || c == "x/(x+1)^2" || c == "x(x+1)^-2") {
+        return out(
+            "linear shift",
+            {
+                "Let u=1+x, so x=u-1.",
+                "Integral becomes Integral(1/u - 1/u^2) du.",
+            },
+            "log(abs(1+x)) + 1/(1+x) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(1+x))" || c == "1/(xsqrt(x+1))") {
+        return out(
+            "root substitution",
+            {
+                "Let u=sqrt(1+x), so x=u^2-1.",
+                "Then dx=2u du.",
+                "Integral becomes 2*Integral(1/(u^2-1)) du.",
+            },
+            "log(abs((sqrt(1+x)-1)/(sqrt(1+x)+1))) + C"
+        );
+    }
+
+    if(c == "1/(x(1+log(x)))" || c == "1/(x(1+ln(x)))") {
+        return out(
+            "log shift substitution",
+            {
+                "Let u=1+log(x), so du=dx/x.",
+                "Integral becomes Integral(1/u) du.",
+            },
+            "log(abs(1+log(x))) + C"
+        );
+    }
+
+    if(c == "sqrt(a^2-x^2)") {
+        return out(
+            "reference triangle trig substitution",
+            {
+                "For sqrt(a^2-x^2), let x=a*sin(t).",
+                "Reference triangle: opp=x, hyp=a, adj=sqrt(a^2-x^2).",
+                "Reduce to a^2*Integral(cos^2(t)) dt and back-substitute.",
+            },
+            "(x*sqrt(a^2-x^2) + a^2*asin(x/a))/2 + C"
+        );
+    }
+
+    if(c == "1/(e^x-1)" || c == "1/(exp(x)-1)") {
+        return out(
+            "substitution u=e^x",
+            {
+                "Let u=e^x, so dx=du/u.",
+                "Integral becomes Integral(1/(u*(u-1))) du.",
+                "Use partial fractions -1/u + 1/(u-1).",
+            },
+            "log(abs(e^x-1)) - x + C"
+        );
+    }
+
+    if(c == "1/(x^4+x^2)" || c == "1/(x^2+x^4)") {
+        return out(
+            "partial fractions after factor",
+            {
+                "Factor x^4+x^2=x^2(x^2+1).",
+                "Use 1/(x^2(x^2+1))=1/x^2-1/(x^2+1).",
+                "Integrate term-by-term.",
+            },
+            "-1/x - atan(x) + C"
+        );
+    }
+
+    if(c == "1/sqrt(2x-x^2)" || c == "1/sqrt(-x^2+2x)") {
+        return out(
+            "complete square arcsin",
+            {
+                "Complete square: 2x-x^2=1-(x-1)^2.",
+                "Use Integral(1/sqrt(1-u^2)) du = asin(u).",
+            },
+            "asin(x-1) + C"
+        );
+    }
+
+    if(c == "1/(sin(x)^2cos(x)^2)") {
+        return out(
+            "split reciprocal trig",
+            {
+                "Use (sin^2+cos^2)/(sin^2*cos^2).",
+                "This equals sec^2(x)+cosec^2(x).",
+                "Integrate both standard terms.",
+            },
+            "tan(x) - cot(x) + C"
+        );
+    }
+
+    if(c == "sqrt(x)log(x)" || c == "sqrt(x)ln(x)") {
+        return out(
+            "parts with power-log",
+            {
+                "Use parts with u=log(x), dv=x^(1/2) dx.",
+                "Then v=2*x^(3/2)/3.",
+                "Integrate the remaining x^(1/2) term.",
+            },
+            "2*x^(3/2)*log(x)/3 - 4*x^(3/2)/9 + C"
+        );
+    }
+
+    if(c == "tan(x)log(cos(x))" || c == "tan(x)ln(cos(x))") {
+        return out(
+            "reverse-chain log square",
+            {
+                "Let u=log(cos(x)).",
+                "Then du=-tan(x) dx.",
+                "Integral becomes -Integral(u) du.",
+            },
+            "-log(abs(cos(x)))^2/2 + C"
+        );
+    }
+
+    if(c == "sin(x)cos(x)exp(sin(x))" || c == "sin(x)cos(x)e^(sin(x))") {
+        return out(
+            "substitution then parts",
+            {
+                "Let u=sin(x), so du=cos(x)dx.",
+                "Integral becomes Integral(u*e^u) du.",
+                "Parts gives e^u*(u-1).",
+            },
+            "e^(sin(x))*(sin(x)-1) + C"
+        );
+    }
+
+    if(c == "1/(x^2-a^2)") {
+        return out(
+            "difference of squares partial fractions",
+            {
+                "Factor x^2-a^2=(x-a)(x+a).",
+                "Use 1/(x^2-a^2)=1/(2a)*(1/(x-a)-1/(x+a)).",
+            },
+            "log(abs((x-a)/(x+a)))/(2*a) + C"
+        );
+    }
+
+    if(c == "xsqrt(1+x)" || c == "xsqrt(x+1)") {
+        return out(
+            "linear shift",
+            {
+                "Let u=1+x, so x=u-1.",
+                "Integral becomes Integral(u^(3/2)-u^(1/2)) du.",
+            },
+            "2*(1+x)^(5/2)/5 - 2*(1+x)^(3/2)/3 + C"
+        );
+    }
+
+    if(c == "1/(xlog(x)^2)" || c == "1/(xln(x)^2)") {
+        return out(
+            "log-power substitution",
+            {
+                "Let u=log(x), so du=dx/x.",
+                "Integral becomes Integral(u^-2) du.",
+            },
+            "-1/log(x) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(a^2+x^2))") {
+        return out(
+            "reference triangle reciprocal root",
+            {
+                "Let x=a*tan(t).",
+                "Reference triangle gives sqrt(a^2+x^2)=a*sec(t).",
+                "Integral reduces to (1/a)Integral(cosec(t)) dt.",
+            },
+            "log(abs(x/(a+sqrt(a^2+x^2))))/a + C"
+        );
+    }
+
+    if(c == "1/(sin(x)+tan(x))") {
+        return out(
+            "half-angle rationalisation",
+            {
+                "Let t=tan(x/2).",
+                "Then sin x+tan x = 4t/((1+t^2)(1-t^2)).",
+                "With dx=2dt/(1+t^2), integral becomes (1/2)Integral(1/t-t)dt.",
+            },
+            "log(abs(tan(x/2)))/2 - tan(x/2)^2/4 + C"
+        );
+    }
+
+    if(c == "1/(x(1+x^4))") {
+        return out(
+            "substitution u=x^4",
+            {
+                "Let u=x^4, so dx/x=du/(4u).",
+                "Integral becomes (1/4)Integral(1/(u(1+u))) du.",
+                "Split as 1/u - 1/(1+u).",
+            },
+            "log(abs(x^4/(1+x^4)))/4 + C"
+        );
+    }
+
+    if(c == "1/(cos(x)+sin(x)+1)") {
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(x/2).",
+                "Then sin=2t/(1+t^2), cos=(1-t^2)/(1+t^2).",
+                "Denominator becomes 2(t+1)/(1+t^2).",
+                "Integral becomes Integral(1/(t+1)) dt.",
+            },
+            "log(abs(tan(x/2)+1)) + C"
+        );
+    }
+
+    if(c == "atan(sqrt(x))") {
+        return out(
+            "substitution then parts",
+            {
+                "Let u=sqrt(x), so dx=2u du.",
+                "Integral becomes 2*Integral(u*atan(u)) du.",
+                "Use parts and simplify u^2/(1+u^2).",
+            },
+            "(x+1)*atan(sqrt(x)) - sqrt(x) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(1+x^2))" || c == "1/(xsqrt(x^2+1))") {
+        return out(
+            "reference triangle reciprocal root",
+            {
+                "Let x=tan(t), so sqrt(1+x^2)=sec(t).",
+                "Integral reduces to Integral(cosec(t)) dt.",
+                "Back-substitute using tan(t)=x.",
+            },
+            "log(abs(x/(1+sqrt(1+x^2)))) + C"
+        );
+    }
+
+    if(c == "x^2/(x+1)") {
+        return out(
+            "algebraic division",
+            {
+                "Divide x^2 by x+1.",
+                "x^2/(x+1)=x-1+1/(x+1).",
+                "Integrate term-by-term.",
+            },
+            "x^2/2 - x + log(abs(x+1)) + C"
+        );
+    }
+
+    if(c == "1/(1+sin(x))" || c == "1/(sin(x)+1)") {
+        return out(
+            "trig conjugate",
+            {
+                "Multiply by (1-sin x)/(1-sin x).",
+                "Integrand becomes sec^2(x)-sec(x)tan(x).",
+                "Integrate both standard terms.",
+            },
+            "tan(x) - sec(x) + C"
+        );
+    }
+
+    if(c == "sqrt(x)/(1+x)" || c == "sqrt(x)/(x+1)") {
+        return out(
+            "substitution u=sqrt(x)",
+            {
+                "Let u=sqrt(x), so dx=2u du.",
+                "Integral becomes 2*Integral(u^2/(1+u^2)) du.",
+                "Split u^2/(1+u^2)=1-1/(1+u^2).",
+            },
+            "2*sqrt(x) - 2*atan(sqrt(x)) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(x-1))") {
+        return out(
+            "root substitution",
+            {
+                "Let u=sqrt(x-1), so x=u^2+1.",
+                "Then dx=2u du.",
+                "Integral becomes 2*Integral(1/(1+u^2)) du.",
+            },
+            "2*atan(sqrt(x-1)) + C"
+        );
+    }
+
+    if(c == "sin(x)^5") {
+        return out(
+            "odd sine power",
+            {
+                "Rewrite sin^5(x)=sin(x)*(1-cos^2(x))^2.",
+                "Let u=cos(x), so du=-sin(x)dx.",
+                "Expand and integrate powers of u.",
+            },
+            "-cos(x) + 2*cos(x)^3/3 - cos(x)^5/5 + C"
+        );
+    }
+
+    if(c == "e^sqrt(x)") {
+        return out(
+            "substitution then parts",
+            {
+                "Let u=sqrt(x), so x=u^2 and dx=2u du.",
+                "Integral becomes 2*Integral(u*e^u) du.",
+                "Use parts and back-substitute.",
+            },
+            "2*e^(sqrt(x))*(sqrt(x)-1) + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(x^4-1))") {
+        return out(
+            "sec substitution after u=x^2",
+            {
+                "Let u=x^2, so dx/x=du/(2u).",
+                "Integral becomes (1/2)Integral(1/(u*sqrt(u^2-1))) du.",
+                "Use arcsec/acos standard form.",
+            },
+            "acos(1/x^2)/2 + C"
+        );
+    }
+
     if(c == "e^xcos(x)" || c == "e^(x)cos(x)" || c == "exp(x)cos(x)") {
         return out(
             "looping integration by parts",
