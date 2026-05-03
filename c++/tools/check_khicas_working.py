@@ -13,6 +13,9 @@ REQUIRED_MARKERS = [
     "cascas_show_working_screen",
     "cascas_working_text",
     "cascas_append_specific_lines",
+    "cascas_clean_answer_text",
+    "cascas_strip_one_sign_factor",
+    "cascas_answer_cleanup_allowed",
     "cascas_binom_validity",
     "doTextArea(&text)",
     "text.allowEXE=true",
@@ -30,6 +33,7 @@ REQUIRED_MARKERS = [
     "Move:",
     "Base:",
     "Ans: ",
+    "Br: real branch.",
 ]
 
 CONSOLE_MARKERS = [

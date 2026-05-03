@@ -10,6 +10,7 @@ MARKERS = [
     b"Fallback:",
     b"Valid:",
     b"Ans: ",
+    b"Br: real branch.",
     b"Diff:",
     b"Impl:",
     b"Param:",

@@ -2681,7 +2681,78 @@ static void cascas_append_method_lines(string &out,const char *s,const char *eva
   cascas_append_line(out,"2. P.\n3. Fallback:");
 }
 
+static bool cascas_word_char(char c){
+  return (c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='_';
+}
+
+static size_t cascas_matching_paren(const string &s,size_t open){
+  int depth=0;
+  for (size_t i=open;i<s.size();++i){
+    if (s[i]=='(')
+      ++depth;
+    else if (s[i]==')'){
+      --depth;
+      if (!depth)
+	return i;
+    }
+  }
+  return string::npos;
+}
+
+static bool cascas_strip_one_sign_factor(string &s,const char *name){
+  string needle=string(name)+"(";
+  size_t p=0;
+  while ((p=s.find(needle,p))!=string::npos){
+    if (p>0 && cascas_word_char(s[p-1])){
+      ++p;
+      continue;
+    }
+    size_t close=cascas_matching_paren(s,p+strlen(name));
+    if (close==string::npos)
+      return false;
+    bool prev_star=p>0 && s[p-1]=='*';
+    bool next_star=close+1<s.size() && s[close+1]=='*';
+    if (prev_star){
+      s.erase(p-1,close-p+2);
+      return true;
+    }
+    if (next_star){
+      s.erase(p,close-p+2);
+      return true;
+    }
+    p=close+1;
+  }
+  return false;
+}
+
+static bool cascas_clean_answer_text(string &s){
+  bool changed=false;
+  for (int guard=0;guard<16;++guard){
+    if (cascas_strip_one_sign_factor(s,"sign")){
+      changed=true;
+      continue;
+    }
+    if (cascas_strip_one_sign_factor(s,"sgn")){
+      changed=true;
+      continue;
+    }
+    break;
+  }
+  return changed;
+}
+
+static bool cascas_answer_cleanup_allowed(const char *input,const char *eval_input){
+  return (input && (cascas_startswith(input,"integrate(") ||
+		    cascas_startswith(input,"int(") ||
+		    cascas_startswith(input,"integrate_by(") ||
+		    cascas_startswith(input,"int_by("))) ||
+    (eval_input && (cascas_startswith(eval_input,"integrate(") ||
+		    cascas_startswith(eval_input,"int(")));
+}
+
 static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
+  string shown_answer=answer;
+  bool cleaned=cascas_answer_cleanup_allowed(input,eval_input) && cascas_clean_answer_text(shown_answer);
   string out("1. In: ");
   out += input?input:"";
   out += "\n";
@@ -2695,8 +2766,10 @@ static string cascas_working_text(const char *input,const char *eval_input,const
   string valid=cascas_binom_validity(input);
   if (valid.size())
     cascas_append_line(out,valid.c_str());
+  if (cleaned)
+    cascas_append_line(out,"Br: real branch.");
   out += "Ans: ";
-  out += answer;
+  out += shown_answer;
   return out;
 }
 
