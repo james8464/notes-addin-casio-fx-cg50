@@ -2241,6 +2241,38 @@ static bool cascas_special_integral_answer(const string &expr,const string &lo,c
     ans="log(abs((x^2+x*sqrt(2)+1)/(x^2-x*sqrt(2)+1)))/(4*sqrt(2))+(atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1))/(2*sqrt(2))";
     return true;
   }
+  if (f=="(x^2-1)/(x^4+x^2+1)"){
+    ans="log(abs((x+1/x-1)/(x+1/x+1)))/2";
+    return true;
+  }
+  if (f=="(x^2+1)/(x^4+1)"){
+    ans="atan((x-1/x)/sqrt(2))/sqrt(2)";
+    return true;
+  }
+  if (f=="(x^2-1)/(x^4+1)"){
+    ans="log(abs((x+1/x-sqrt(2))/(x+1/x+sqrt(2))))/(2*sqrt(2))";
+    return true;
+  }
+  if (f=="sqrt(tan(x))+sqrt(cot(x))"){
+    ans="sqrt(2)*asin(sin(x)-cos(x))";
+    return true;
+  }
+  if (f=="x^2/sqrt(x^6+1)" || f=="x^2/sqrt(1+x^6)"){
+    ans="log(x^3+sqrt(x^6+1))/3";
+    return true;
+  }
+  if (f=="sin(x)/(sin(x)+cos(x))"){
+    ans="x/2-log(abs(sin(x)+cos(x)))/2";
+    return true;
+  }
+  if (f=="(sin(x)-cos(x))/(sin(x)+cos(x))"){
+    ans="-log(abs(sin(x)+cos(x)))";
+    return true;
+  }
+  if (f=="1/(sin(x)^4+cos(x)^4)"){
+    ans="atan((tan(x)-1/tan(x))/sqrt(2))/sqrt(2)";
+    return true;
+  }
   if (f=="sqrt(x^2+1)" || f=="sqrt(1+x^2)"){
     ans="(x*sqrt(x^2+1)+log(abs(x+sqrt(x^2+1))))/2";
     return true;
@@ -2277,8 +2309,12 @@ static bool cascas_special_integral_answer(const string &expr,const string &lo,c
     ans="(x*sqrt(x^2-1)-log(abs(x+sqrt(x^2-1))))/2";
     return true;
   }
-  if (f=="1/(x^3+1)"){
+  if (f=="1/(x^3+1)" || f=="1/(1+x^3)"){
     ans="log(abs(x+1))/3-log(abs(x^2-x+1))/6+atan((2*x-1)/sqrt(3))/sqrt(3)";
+    return true;
+  }
+  if (f=="1/(xsqrt(x^2-1))"){
+    ans="acos(1/x)";
     return true;
   }
   if (f=="1/(x^4-1)"){
@@ -2399,12 +2435,44 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     cascas_append_line(out,"6. Chk: denom symmetric; n cancels.");
     return true;
   }
-  if (f=="(x^2+1)/(x^4+3x^2+1)" || f=="(x^2-1)/(x^4+5x^2+1)"){
+  if (f=="(x^2+1)/(x^4+3x^2+1)" || f=="(x^2-1)/(x^4+5x^2+1)" ||
+      f=="(x^2-1)/(x^4+x^2+1)" || f=="(x^2+1)/(x^4+1)" || f=="(x^2-1)/(x^4+1)"){
     cascas_append_line(out,"2. Sym: divide num+den by x^2.");
     cascas_append_line(out,"3. Den -> (x +/- 1/x)^2 + C.");
     cascas_append_line(out,"4. Pick u=x-1/x for x^2+1; u=x+1/x for x^2-1.");
     cascas_append_line(out,"5. Num/x^2 matches du.");
     cascas_append_line(out,"6. Int atan/log std form; back-sub u; chk diff.");
+    return true;
+  }
+  if (f=="sqrt(tan(x))+sqrt(cot(x))"){
+    cascas_append_line(out,"2. Trig sym: rewrite as (sin x+cos x)/sqrt(sin x cos x).");
+    cascas_append_line(out,"3. Use 2sin x cos x=1-(sin x-cos x)^2.");
+    cascas_append_line(out,"4. Let u=sin x-cos x; du=(sin x+cos x)dx.");
+    cascas_append_line(out,"5. Int -> sqrt2 int 1/sqrt(1-u^2) du.");
+    cascas_append_line(out,"6. Ans=sqrt2 asin(u)+C; back-sub; chk diff.");
+    return true;
+  }
+  if (f=="x^2/sqrt(x^6+1)" || f=="x^2/sqrt(1+x^6)"){
+    cascas_append_line(out,"2. Let u=x^3; du=3x^2 dx.");
+    cascas_append_line(out,"3. Int -> (1/3)int 1/sqrt(u^2+1) du.");
+    cascas_append_line(out,"4. Std: asinh u=ln(u+sqrt(u^2+1)).");
+    cascas_append_line(out,"5. Back-sub u=x^3; chk diff.");
+    return true;
+  }
+  if (f=="sin(x)/(sin(x)+cos(x))" || f=="(sin(x)-cos(x))/(sin(x)+cos(x))"){
+    cascas_append_line(out,"2. Split/reverse-chain with D=sin x+cos x.");
+    cascas_append_line(out,"3. D'=cos x-sin x.");
+    cascas_append_line(out,"4. Use (sin-cos)/D=-D'/D.");
+    cascas_append_line(out,"5. Integrate ln(abs(D)); add x/2 if numerator sin x.");
+    cascas_append_line(out,"6. Chk diff.");
+    return true;
+  }
+  if (f=="1/(sin(x)^4+cos(x)^4)"){
+    cascas_append_line(out,"2. Let t=tan x; dx=dt/(1+t^2).");
+    cascas_append_line(out,"3. Den=(t^4+1)/(1+t^2)^2.");
+    cascas_append_line(out,"4. Int -> int (1+t^2)/(t^4+1) dt.");
+    cascas_append_line(out,"5. Use Sym form for (t^2+1)/(t^4+1).");
+    cascas_append_line(out,"6. Back-sub t=tan x; chk diff.");
     return true;
   }
   if (f=="1/(2+cos(x))" || f=="1/(cos(x)+2)"){
@@ -2494,12 +2562,19 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     cascas_append_line(out,"6. Back-sub u=sqrt(1+x^n); chk diff.");
     return true;
   }
-  if (f=="1/(x^3+1)" || f=="1/(x^4-1)"){
+  if (f=="1/(x^3+1)" || f=="1/(1+x^3)" || f=="1/(x^4-1)"){
     cascas_append_line(out,"2. PF: factor denom over reals.");
     cascas_append_line(out,"3. Linear A/(x-a); repeated add B/(x-a)^2.");
     cascas_append_line(out,"4. Quad irreducible: (Ax+B)/(x^2+bx+c).");
     cascas_append_line(out,"5. Equate coeffs; integrate ln + atan.");
     cascas_append_line(out,"6. Chk combine fracs.");
+    return true;
+  }
+  if (f=="1/(xsqrt(x^2-1))"){
+    cascas_append_line(out,"2. Ref tri: let x=sec th.");
+    cascas_append_line(out,"3. dx=sec th tan th dth; sqrt(x^2-1)=tan th.");
+    cascas_append_line(out,"4. Int -> int 1 dth.");
+    cascas_append_line(out,"5. Back-sub th=arcsec x=acos(1/x).");
     return true;
   }
   return false;

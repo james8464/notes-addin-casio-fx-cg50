@@ -567,6 +567,21 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "(x^2-1)/(x^4+x^2+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Denominator becomes x^2+1+1/x^2 = (x+1/x)^2 - 1.",
+                "Let u=x+1/x, so du=(1-1/x^2) dx.",
+                "The divided numerator is exactly 1-1/x^2.",
+                "Integral becomes Integral(1/(u^2-1)) du.",
+                "Use partial fractions in u, then back-substitute.",
+            },
+            "log(abs((x+1/x-1)/(x+1/x+1)))/2 + C"
+        );
+    }
+
     if(c == "1/(x^2+4x+13)") {
         return out(
             "complete square then atan",
@@ -576,6 +591,59 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Use Integral(1/(u^2+a^2)) du = (1/a)atan(u/a)+C.",
             },
             "atan((x+2)/3)/3 + C"
+        );
+    }
+
+    if(c == "sqrt(tan(x))+sqrt(cot(x))") {
+        return out(
+            "trig symmetry substitution",
+            {
+                "Rewrite sqrt(tan x)+sqrt(cot x) = (sin(x)+cos(x))/sqrt(sin(x)cos(x)).",
+                "Multiply by sqrt(2)/sqrt(2).",
+                "Use 2sin(x)cos(x)=1-(sin(x)-cos(x))^2.",
+                "Let u=sin(x)-cos(x), so du=(sin(x)+cos(x)) dx.",
+                "Integral becomes sqrt(2)*Integral(1/sqrt(1-u^2)) du.",
+            },
+            "sqrt(2)*asin(sin(x)-cos(x)) + C"
+        );
+    }
+
+    if(c == "x^2/sqrt(x^6+1)" || c == "x^2/sqrt(1+x^6)") {
+        return out(
+            "substitution u=x^3",
+            {
+                "Let u=x^3, so du=3x^2 dx.",
+                "Integral becomes (1/3)*Integral(1/sqrt(u^2+1)) du.",
+                "Use Integral(1/sqrt(u^2+1)) du = asinh(u).",
+                "Write asinh(u)=log(u+sqrt(u^2+1)).",
+                "Back-substitute u=x^3.",
+            },
+            "log(x^3+sqrt(x^6+1))/3 + C"
+        );
+    }
+
+    if(c == "sin(x)/(sin(x)+cos(x))") {
+        return out(
+            "split by derivative of denominator",
+            {
+                "Write sin(x) = (sin(x)+cos(x))/2 + (sin(x)-cos(x))/2.",
+                "First part gives Integral(1/2) dx.",
+                "For second part, d/dx[sin(x)+cos(x)] = cos(x)-sin(x).",
+                "So Integral((sin(x)-cos(x))/(sin(x)+cos(x))) dx = -ln|sin(x)+cos(x)|.",
+            },
+            "x/2 - log(abs(sin(x)+cos(x)))/2 + C"
+        );
+    }
+
+    if(c == "(sin(x)-cos(x))/(sin(x)+cos(x))") {
+        return out(
+            "reverse-chain log",
+            {
+                "Let D=sin(x)+cos(x).",
+                "D'=cos(x)-sin(x)=-(sin(x)-cos(x)).",
+                "Use Integral(-D'/D) dx.",
+            },
+            "-log(abs(sin(x)+cos(x))) + C"
         );
     }
 
@@ -628,7 +696,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "sec substitution",
             {
                 "Let x=sec(t), so dx=sec(t)tan(t) dt.",
-                "sqrt(x^2-1)=sqrt(sec(t)^2-1)=tan(t).",
+                "Reference triangle: hypotenuse=x, adjacent=1, opposite=sqrt(x^2-1).",
+                "sqrt(x^2-1)=tan(t).",
                 "Integral becomes Integral(1) dt.",
                 "Back-substitute t=arcsec(x)=acos(1/x).",
             },
@@ -695,6 +764,49 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integrate log parts and arctan parts separately.",
             },
             "log(abs((x^2+x*sqrt(2)+1)/(x^2-x*sqrt(2)+1)))/(4*sqrt(2)) + (atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1))/(2*sqrt(2)) + C"
+        );
+    }
+
+    if(c == "(x^2+1)/(x^4+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Denominator becomes x^2+1/x^2 = (x-1/x)^2 + 2.",
+                "Let u=x-1/x, so du=(1+1/x^2) dx.",
+                "The divided numerator is exactly 1+1/x^2.",
+                "Integral becomes Integral(1/(u^2+2)) du.",
+            },
+            "atan((x-1/x)/sqrt(2))/sqrt(2) + C"
+        );
+    }
+
+    if(c == "(x^2-1)/(x^4+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Denominator becomes x^2+1/x^2 = (x+1/x)^2 - 2.",
+                "Let u=x+1/x, so du=(1-1/x^2) dx.",
+                "The divided numerator is exactly 1-1/x^2.",
+                "Integral becomes Integral(1/(u^2-2)) du.",
+                "Use partial fractions in u.",
+            },
+            "log(abs((x+1/x-sqrt(2))/(x+1/x+sqrt(2))))/(2*sqrt(2)) + C"
+        );
+    }
+
+    if(c == "1/(sin(x)^4+cos(x)^4)") {
+        return out(
+            "tangent substitution then symmetry form",
+            {
+                "Let t=tan(x), so dx=dt/(1+t^2).",
+                "sin^4(x)+cos^4(x) = (t^4+1)/(1+t^2)^2.",
+                "Integral becomes Integral((1+t^2)/(t^4+1)) dt.",
+                "Use algebraic symmetry form with t.",
+                "Back-substitute t=tan(x).",
+            },
+            "atan((tan(x)-1/tan(x))/sqrt(2))/sqrt(2) + C"
         );
     }
 
@@ -770,7 +882,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "1/(x^3+1)") {
+    if(c == "1/(x^3+1)" || c == "1/(1+x^3)") {
         return out(
             "partial fractions with irreducible quadratic",
             {

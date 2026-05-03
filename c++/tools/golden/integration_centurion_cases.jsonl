@@ -1,0 +1,100 @@
+{"id":1,"expr":"(x^2-1)/(x^4+x^2+1)","needles":["algebraic symmetry substitution","u=x+1/x","log(abs((x+1/x-1)/(x+1/x+1)))/2 + C"]}
+{"id":2,"expr":"1/(x^6+1)"}
+{"id":3,"expr":"sqrt(tan(x))+sqrt(cot(x))","needles":["trig symmetry substitution","u=sin(x)-cos(x)","sqrt(2)*asin(sin(x)-cos(x)) + C"]}
+{"id":4,"expr":"x^2/sqrt(x^6+1)","needles":["substitution u=x^3","du=3x^2","log(x^3+sqrt(x^6+1))/3 + C"]}
+{"id":5,"expr":"sin(x)/(sin(x)+cos(x))","needles":["split by derivative of denominator","x/2 - log(abs(sin(x)+cos(x)))/2 + C"]}
+{"id":6,"expr":"1/(1+x^4)","needles":["Sophie Germain partial fractions","atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1)"]}
+{"id":7,"expr":"log(x+sqrt(x^2+1))"}
+{"id":8,"expr":"x*atan(x)"}
+{"id":9,"expr":"sin(x)^6+cos(x)^6"}
+{"id":10,"expr":"1/(x*sqrt(1+x^2+x^4))"}
+{"id":11,"expr":"(sin(x)-cos(x))/(sin(x)+cos(x))","needles":["reverse-chain log","-log(abs(sin(x)+cos(x))) + C"]}
+{"id":12,"expr":"x^3*e^(x^2)"}
+{"id":13,"expr":"1/(sin(x)^4+cos(x)^4)","needles":["tangent substitution then symmetry form","Integral((1+t^2)/(t^4+1))","atan((tan(x)-1/tan(x))/sqrt(2))/sqrt(2) + C"]}
+{"id":14,"expr":"sqrt(1+sec(x))"}
+{"id":15,"expr":"log(log(x))/x"}
+{"id":16,"expr":"(2*x+3)/(x^2+x+1)^2"}
+{"id":17,"expr":"x^5/(x^2+1)^3"}
+{"id":18,"expr":"atan(x)^2"}
+{"id":19,"expr":"1/(x^4-1)","needles":["partial fractions with irreducible quadratic","A/(x-1)+B/(x+1)+(Cx+D)/(x^2+1)","log(abs((x-1)/(x+1)))/4 - atan(x)/2 + C"]}
+{"id":20,"expr":"sin(2*x)*log(cos(x))"}
+{"id":21,"expr":"1/(x*log(x)^n)"}
+{"id":22,"expr":"(x^2+1)/(x^4+1)","needles":["algebraic symmetry substitution","u=x-1/x","atan((x-1/x)/sqrt(2))/sqrt(2) + C"]}
+{"id":23,"expr":"(x^2-1)/(x^4+1)","needles":["algebraic symmetry substitution","u=x+1/x","log(abs((x+1/x-sqrt(2))/(x+1/x+sqrt(2))))/(2*sqrt(2)) + C"]}
+{"id":24,"expr":"1/sqrt(e^x-1)"}
+{"id":25,"expr":"x/(1+sin(x))"}
+{"id":26,"expr":"cos(log(x))"}
+{"id":27,"expr":"e^(a*x)*sin(b*x)"}
+{"id":28,"expr":"1/(a^2*cos(x)^2+b^2*sin(x)^2)"}
+{"id":29,"expr":"sec(x)^5"}
+{"id":30,"expr":"x^2*asin(x)"}
+{"id":31,"expr":"1/(1+x^3)","needles":["partial fractions with irreducible quadratic","A/(x+1)+(Bx+C)/(x^2-x+1)","log(abs(x+1))/3 - log(abs(x^2-x+1))/6"]}
+{"id":32,"expr":"sqrt(a^2-x^2)/x"}
+{"id":33,"expr":"x^2/(x^2+a^2)^(3/2)"}
+{"id":34,"expr":"1/(x*sqrt(a^n+x^n))"}
+{"id":35,"expr":"log(x)^3"}
+{"id":36,"expr":"x/(x^4+x^2+1)"}
+{"id":37,"expr":"1/(cos(x)*(1+sin(x)))"}
+{"id":38,"expr":"tan(x)^5"}
+{"id":39,"expr":"1/(x^2*sqrt(x^2-a^2))"}
+{"id":40,"expr":"sin(sqrt(x))"}
+{"id":41,"expr":"(x+1)/(x^2+x+1)"}
+{"id":42,"expr":"1/(x^2-6*x+13)"}
+{"id":43,"expr":"x^3/(x-1)^10"}
+{"id":44,"expr":"e^x*(1+x)/cos(x*e^x)^2"}
+{"id":45,"expr":"1/(1+3*sin(x)^2)"}
+{"id":46,"expr":"sqrt(x)/(1+x^(3/4))"}
+{"id":47,"expr":"log(x^2+a^2)"}
+{"id":48,"expr":"x^2*cos(n*x)"}
+{"id":49,"expr":"(sin(x)^3+cos(x)^3)/(sin(x)^2*cos(x)^2)"}
+{"id":50,"expr":"1/(x^4+x^2+1)"}
+{"id":51,"expr":"((3*x+1)/(x-1)^2)*(x+3)"}
+{"id":52,"expr":"sqrt(tan(x))"}
+{"id":53,"expr":"1/(sin(x)*cos(x)^3)"}
+{"id":54,"expr":"x^n*log(x)"}
+{"id":55,"expr":"1/(x*sqrt(x^2-1))","needles":["sec substitution","hypotenuse=x, adjacent=1","acos(1/x) + C"]}
+{"id":56,"expr":"asin(sqrt(x/(a+x)))"}
+{"id":57,"expr":"(x^2+x)/((x^2+1)*(x-1))"}
+{"id":58,"expr":"e^x*sin(x)*sin(2*x)"}
+{"id":59,"expr":"1/(1+x+x^2+x^3)"}
+{"id":60,"expr":"sin(2*x)/(a^2*cos(x)^2+b^2*sin(x)^2)"}
+{"id":61,"expr":"x/(x^2+2*x+2)^2"}
+{"id":62,"expr":"1/(5+4*cos(x))"}
+{"id":63,"expr":"x^2*e^(-x)"}
+{"id":64,"expr":"sin(log(x))+cos(log(x))"}
+{"id":65,"expr":"log(x)/(1+log(x))^2"}
+{"id":66,"expr":"1/(x*(x^5+1))"}
+{"id":67,"expr":"sqrt(1+sin(x))"}
+{"id":68,"expr":"x/(x^4-1)"}
+{"id":69,"expr":"tan(x)^2*sec(x)^4"}
+{"id":70,"expr":"1/(x^2*sqrt(1+x^2))"}
+{"id":71,"expr":"x*5^x"}
+{"id":72,"expr":"(x^4+1)/(x^6+1)"}
+{"id":73,"expr":"1/(sin(x)+cos(x)+1)"}
+{"id":74,"expr":"e^(2*x)*cos(3*x)"}
+{"id":75,"expr":"x/(1+x^4)"}
+{"id":76,"expr":"log(x+1)/x^2"}
+{"id":77,"expr":"1/(x^2+2*x+5)"}
+{"id":78,"expr":"sin(x)^2*cos(x)^4"}
+{"id":79,"expr":"x*atan(sqrt(x^2-1))"}
+{"id":80,"expr":"1/(x*(1+x^n))"}
+{"id":81,"expr":"(x^2+1)*log(x)"}
+{"id":82,"expr":"cos(x)^5"}
+{"id":83,"expr":"1/(x^3+x^2+x+1)"}
+{"id":84,"expr":"x*sec(x)^2*tan(x)"}
+{"id":85,"expr":"sqrt(x^2+a^2)"}
+{"id":86,"expr":"1/(x^4-a^4)"}
+{"id":87,"expr":"sin(x)/sin(x-a)"}
+{"id":88,"expr":"x/(x^2+a^2)^2"}
+{"id":89,"expr":"(1+x^2)/(1-x^2)"}
+{"id":90,"expr":"1/(x*sqrt(1-x^3))"}
+{"id":91,"expr":"e^x/(2+e^x)"}
+{"id":92,"expr":"x/sqrt(1-x)"}
+{"id":93,"expr":"tan(x)^4"}
+{"id":94,"expr":"1/(x^2+a^2)^2"}
+{"id":95,"expr":"log(x+sqrt(x^2-a^2))"}
+{"id":96,"expr":"x^3/sqrt(x^2+1)"}
+{"id":97,"expr":"1/(1+e^x)"}
+{"id":98,"expr":"sin(x)*cos(x)/(a^2*cos(x)^2+b^2*sin(x)^2)"}
+{"id":99,"expr":"(x^2-a^2)/(x^2+a^2)"}
+{"id":100,"expr":"x^4/(x^2+1)"}
