@@ -34,6 +34,7 @@ def main() -> int:
 
     checks: list[tuple[str, list[str]]] = [
         ("khicas_reference", [sys.executable, "c++/tools/check_khicas_reference.py"]),
+        ("khicas_catalog", [sys.executable, "c++/tools/check_khicas_catalog.py"]),
         ("feature_parity", [sys.executable, "c++/tools/check_feature_parity.py"]),
         ("host_smoke", [sys.executable, "c++/tools/golden/check_host_smoke.py"]),
         ("expr_format", [sys.executable, "c++/tools/golden/compare_expr_format.py"]),

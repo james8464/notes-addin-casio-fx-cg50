@@ -5,7 +5,7 @@ graph TD
   Py["old Python programs"] --> Work["exam working layer"]
   OldCpp["old C++ native port"] --> Work
   Khi["upstream KhiCAS answer engine"] --> App["current .g3a"]
-  Work --> Hook["needed source hook"]
+  Work --> Hook["source catalogue + output hook"]
   Hook --> Future["KhiCAS UI + working lines"]
 ```
 
@@ -13,7 +13,9 @@ graph TD
 
 - Active `.g3a`: upstream KhiCAS UI/engine, patched with Eigenmath-style icons.
 - Old working layer: preserved in `c++/addin/src/device/device_solver.cpp` and `c++/legacy/addin/src/modules`.
-- Gap: active `.g3a` is a reference binary, so it cannot yet inject old working lines or old custom aliases at runtime.
+- Gap: active `.g3a` is a reference binary, so source hooks are verified but not active until `/compile` switches to a source build.
+- Source hook: `catalogen.cpp` prunes non-A-level catalogue entries, adds old-feature aliases, and adds per-command parameter help.
+- Source hook: `main.cc` wraps KhiCAS answers with compact exam-style working lines.
 
 ## Old Feature Coverage
 
@@ -54,7 +56,7 @@ Simplification examples:
 
 ## Remove Candidates
 
-Likely unnecessary for A-level/Further Maths:
+Removed/hidden from source catalogue:
 
 - Turtle/Logo commands: `avance`, `recule`, `tourne_*`, `crayon`, `efface`, `rectangle_plein`.
 - Programming language helpers: `for`, `while`, `if`, `local`, `return`, `debug`, `python`, `python_compat`.
@@ -62,6 +64,18 @@ Likely unnecessary for A-level/Further Maths:
 - Advanced university CAS: `laplace`, `ilaplace`, `fourier_an/bn/cn`, `jordan`, `svd`, `gramschmidt`, `cond`, `resultant`.
 - Random/data generators: `ranv`, `ranm`, `rand`, `randint` unless stats simulation is wanted.
 - Complex-only extras: `residue`, `cfactor`, `cpartfrac` unless complex roots are required.
+
+Old-feature aliases added to source catalogue:
+
+- `complete_square(expr,[x])` -> `canonical_form`
+- `compare(expr1,expr2)` -> KhiCAS `compare`
+- `cartesian([x(t),y(t)],t)` -> `eliminate`
+- `domain(expr,[x])`, `range(expr,[x])`
+- `fitconst(equations,vars)`, `match(expr,form)` -> `solve`
+- `inverse(f(x))`
+- `rewrite(expr,target)`, `transform(expr,[form])`
+- `suvat(equations,vars)` -> solve SUVAT equations
+- `bool_simplify(expr)`, `nand(a,b)`, `nor(a,b)`, `prove_bool(lhs,rhs)`
 
 Keep unless you say otherwise:
 

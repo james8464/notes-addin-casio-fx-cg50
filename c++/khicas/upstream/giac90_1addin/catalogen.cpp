@@ -102,21 +102,25 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"bitxor", "bitxor", "Exclusive or", "#bitxor(1,2)", 0, CAT_CATEGORY_PROGCMD},
   {"black", "black", "Display option", "#display=black", 0, CAT_CATEGORY_PROGCMD},
   {"blue", "blue", "Display option", "#display=blue", 0, CAT_CATEGORY_PROGCMD},
+  {"bool_simplify(expr)", "simplify(", "Simplify a Boolean/logical expression. Required: expr.", "not(A and B) or A", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PROGCMD << 8)},
   {"camembert(list)", 0, "Camembert pie-chart of a 1-d statistical serie.", "[[\"France\",6],[\"Germany\",12],[\"Switzerland\",5]]", 0, CAT_CATEGORY_STATS},
   {"cache_tortue ", "cache_tortue ", "Hide turtle (once the picture has been drawn).", 0, 0, CAT_CATEGORY_LOGO},
   {"ceiling(x)", 0, "Smallest integer not less than x", "1.2", 0, CAT_CATEGORY_REAL},
   {"cfactor(p)", 0, "Factorization over C.", "x^4-1", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_COMPLEXNUM << 8)},
   {"char(liste)", 0, "Converts a list of ASCII codes to a string.", "[97,98,99]", 0, CAT_CATEGORY_ARIT},
   {"charpoly(M,x)", 0, "Characteristic polynomial of matrix M in variable x.", "[[1,2],[3,4]],x", 0, CAT_CATEGORY_MATRIX},
+  {"complete_square(expr,[x])", "canonical_form(", "Complete square / canonical quadratic form. Required: expr. Optional: variable x.", "x^2+6*x+11", "2*x^2-8*x+3,x", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
   {"circle(center,radius)", 0, "Circle", "2+i,3", "1-i,1+i", CAT_CATEGORY_PROGCMD},
   {"clearscreen()", "clearscreen()", "Clear screen.", 0, 0, CAT_CATEGORY_PROGCMD},
   {"coeff(p,x,n)", 0, "Coefficient of x^n in polynomial p.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
+  {"compare(expr1,expr2)", 0, "Compare two expressions after exact simplification. Required: expr1, expr2.", "sin(x)^2+cos(x)^2,1", 0, CAT_CATEGORY_ALGEBRA},
   {"comb(n,k)", 0, "Returns nCk", "10,4", 0, CAT_CATEGORY_PROBA},
   {"cond(A,[1,2,inf])", 0, "Nombre de condition d'une matrice par rapport a la norme specifiee (par defaut 1)", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
   {"conj(z)", 0, "Complex conjugate of z.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
   {"correlation(l1,l2)", 0, "Correlation of lists l1 and l2", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
   {"covariance(l1,l2)", 0, "Covariance of lists l1 and l2", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
   {"cpartfrac(p,x)", 0, "Partial fraction decomposition over C.", "1/(x^4-1)", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_COMPLEXNUM << 8)},
+  {"cartesian([x(t),y(t)],t)", "eliminate(", "Convert parametric equations to Cartesian form by eliminating t. Required: equations/list and parameter.", "[x=t+1,y=t^2],t", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PLOT << 8)},
   {"crayon ", "crayon ", "Turtle drawing color", "#crayon red", 0, CAT_CATEGORY_LOGO},
   {"cross(u,v)", 0, "Cross product of vectors u and v.","[1,2,3],[0,1,3]", 0, CAT_CATEGORY_LINALG},
   {"csolve(equation,x)", 0, "Solve equation (or polynomial system) in exact mode over the complex numbers.","x^2+x+1=0", 0, CAT_CATEGORY_SOLVE| (CAT_CATEGORY_COMPLEXNUM << 8)},
@@ -128,6 +132,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"desolve(equation,t,y)", 0, "Exact differential equation solving.", "desolve([y'+y=exp(x),y(0)=1],x,y)", "[y'=[[1,2],[2,1]]*y+[x,x+1],y(0)=[1,2]]", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
   {"det(A)", 0, "Determinant of matrix A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
   {"diff(f,var,[n])", 0, "Derivative of expression f with respect to var (order n, n=1 by default), for example diff(sin(x),x) or diff(x^3,x,2). For derivation with respect to x, run f' (shortcut F3). For the gradient of f, var is the list of variables.", "sin(x),x", "sin(x^2),x,3", CAT_CATEGORY_CALCULUS},
+  {"domain(expr,[x])", 0, "Domain of an expression. Required: expr. Optional: variable x.", "sqrt(x-1),x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
   {"display", "display", "Display option", "#display=red", 0, CAT_CATEGORY_PROGCMD},
   // {"disque n", "disque ", "Filled circle tangent to the turtle, radius n. Run disque n,theta for a filled arc of circle, theta in degrees, or disque n,theta,segment for a segment of circle.", "#disque 30", "#disque(30,90)", CAT_CATEGORY_LOGO},
   {"dot(a,b)", 0, "Dot product of 2 vectors. Shortcut: *", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_LINALG},
@@ -158,6 +163,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"exponentiald(lambda,x)", 0, "Exponential distribution law of  parameter lambda. exponentiald_cdf(lambda,x) probability that \"exponential distribution <=x\" e.g. exponentiald_cdf(2,3). exponentiald_icdf(lambda,t) returns x such that \"exponential distribution <=x\" has probability t, e.g, exponentiald_icdf(2,0.95) ", "5.1,3.4", 0, CAT_CATEGORY_PROBA},
   {"extend", 0, "Merge 2 lists. Note that + does not merge lists, it adds vectors","#l1.extend(l2)", 0, CAT_CATEGORY_LIST},
   {"factor(p,[x])", 0, "Factors polynomial p (run ifactor for an integer). Shortcut: p=>*", "x^4-1", "x^6+1,sqrt(3)", CAT_CATEGORY_ALGEBRA| (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"fitconst(equations,vars)", "solve(", "Find unknown constants from conditions. Required: equations/list, vars/list.", "[a*1+b=3,a*2+b=5],[a,b]", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
   {"filled", "filled", "Display option", 0, 0, CAT_CATEGORY_PROGCMD},
   {"float(x)", 0, "Converts x to a floating point value.", "pi", 0, CAT_CATEGORY_REAL},
   {"floor(x)", 0, "Largest integer not greater than x", "pi", 0, CAT_CATEGORY_REAL},
@@ -190,6 +196,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"integrate(f,x,[a,b])", 0, "Antiderivative of f with respect to x, like integrate(x*sin(x),x). For definite integral enter optional arguments a and b, like integrate(x*sin(x),x,0,pi). Shortcut SHIFT F3.", "x*sin(x),x", "cos(x)/(1+x^4),x,0,inf", CAT_CATEGORY_CALCULUS},
   {"interp(X,Y)", 0, "Lagrange interpolation at points (xi,yi) where X is the list of xi and Y of yi. If interp is passed as 3rd argument, returns the divided differences list.", "[1,2,3,4,5],[0,1,3,4,4]", "[1,2,3,4,5],[0,1,3,4,4],interp", CAT_CATEGORY_POLYNOMIAL},
   {"inv(A)", 0, "Inverse of A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
+  {"inverse(f(x))", 0, "Inverse relation/function where possible. Required: expression or function.", "2*x+3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_SOLVE << 8)},
   {"iquo(a,b)", 0, "Integer quotient of a and b.", "23,13", 0, CAT_CATEGORY_ARIT},
   {"irem(a,b)", 0,"Integer remainder of a and b.", "23,13", 0, CAT_CATEGORY_ARIT},
   {"isprime(n)", 0, "Returns 1 if n is prime, 0 otherwise.", "11", "10", CAT_CATEGORY_ARIT},
@@ -216,12 +223,15 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"magenta", "magenta", "Display option", "#display=magenta", 0, CAT_CATEGORY_PROGCMD},
   {"map(l,f)", 0, "Maps f on element of list l.","[1,2,3],x->x^2", 0, CAT_CATEGORY_LIST},
   {"matpow(A,n)", 0, "Returns matrix A^n", "[[1,2],[3,4]],n","#assume(n>=1);matpow([[0,2],[0,4]],n)",  CAT_CATEGORY_MATRIX},
+  {"match(expr,form)", "solve(", "Match constants by equating coefficients/conditions. Required: expr, target form.", "coeff((a*x+b)-(2*x+3),x,1)=0,a", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
   {"matrix(r,c,func)", 0, "Matrix from a defining function.", "2,3,(j,k)->j^k", 0, CAT_CATEGORY_MATRIX},
   {"mean(l)", 0, "Arithmetic mean of list l", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
   {"median(l)", 0, "Median", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
   {"montre_tortue ", "montre_tortue ", "Displays the turtle", 0, 0, CAT_CATEGORY_LOGO},
   {"mult_c_conjugate", 0, "Multiplier par le conjugue complexe.", "1+2*i", 0,  (CAT_CATEGORY_COMPLEXNUM << 8)},
   {"mult_conjugate", 0, "Multiplier par le conjugue (sqrt).", "sqrt(2)-sqrt(3)", 0, CAT_CATEGORY_ALGEBRA},
+  {"nand(a,b)", "not(", "Boolean NAND: not(a and b). Required: a,b.", "A and B", 0, CAT_CATEGORY_PROGCMD},
+  {"nor(a,b)", "not(", "Boolean NOR: not(a or b). Required: a,b.", "A or B", 0, CAT_CATEGORY_PROGCMD},
   {"normald([mu,sigma],x)", 0, "Normal distribution probability density, by default mu=0 and sigma=1. normald_cdf([mu,sigma],x) probability that \"normal distribution <=x\" e.g. normald_cdf(1.96). normald_icdf([mu,sigma],t) returns x such that \"normal distribution <=x\" has probability t, e.g. normald_icdf(0.975) ", "1.2", 0, CAT_CATEGORY_PROBA},
   {"not(x)", 0, "Logical not.", 0, 0, CAT_CATEGORY_PROGCMD},
   {"numer(x)", 0, "Numerator of x.", "3/4", 0, CAT_CATEGORY_POLYNOMIAL},
@@ -249,6 +259,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"power_regression(Xlist,Ylist,n)", 0, "Power regression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
   {"power_regression_plot(Xlist,Ylist,n)", 0, "Power regression graph", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];power_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
   {"powmod(a,n,p)", 0, "Returns a^n mod p.","123,456,789", 0, CAT_CATEGORY_ARIT},
+  {"prove_bool(lhs,rhs)", "compare(", "Prove two Boolean/expression forms equivalent. Required: lhs,rhs.", "A and B,B and A", 0, CAT_CATEGORY_ALGEBRA},
   {"print(expr)", 0, "Print expr in console", 0, 0, CAT_CATEGORY_PROG},
   {"proot(p)", 0, "Returns real and complex roots, of polynomial p. Exemple proot([1,2.1,3,4.2]) or proot(x^3+2.1*x^2+3x+4.2)", "x^3+2.1*x^2+3x+4.2", 0, CAT_CATEGORY_POLYNOMIAL},
   {"purge(x)", 0, "Clear assigned variable x. Shortcut SHIFT-FORMAT", 0, 0, CAT_CATEGORY_PROGCMD|(CAT_CATEGORY_SOFUS<<8)},
@@ -267,6 +278,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"ratnormal(x)", 0, "Puts everything over a common denominator.", 0, 0, CAT_CATEGORY_ALGEBRA},
   {"re(z)", 0, "Real part.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
   {"read(\"filename\")", "read(\"", "Read a file.", 0, 0, CAT_CATEGORY_PROGCMD},
+  {"range(expr,[x])", 0, "Range/image of an expression where possible. Required: expr. Optional: variable x.", "x^2+2*x+3,x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
   {"rectangle_plein a,b", "rectangle_plein ", "Direct filled rectangle from turtle position, if b is omitted b==a", "#rectangle_plein 30","#rectangle_plein 20,40", CAT_CATEGORY_LOGO},
   {"recule n", "recule ", "Turtle backward n steps, n=10 by default", "#recule 30", 0, CAT_CATEGORY_LOGO},
   {"red", "red", "Display option", "#display=red", 0, CAT_CATEGORY_PROGCMD},
@@ -276,6 +288,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"resultant(p,q,x)", 0, "Resultant in x of polynomials p and q.", "#P:=x^3+p*x+q;resultant(P,P',x);", 0, CAT_CATEGORY_POLYNOMIAL},
   {"revert(p[,x])", 0, "Revert Taylor series","x+x^2+x^4", 0, CAT_CATEGORY_CALCULUS},
+  {"rewrite(expr,target)", "canonical_form(", "Rewrite expression around a target form/linear shift. Required: expr. Optional target/variable.", "x^2+6*x+11", "2*x^2-8*x+3,x", CAT_CATEGORY_ALGEBRA},
   {"rgb(r,g,b)", 0, "color defined from red, green, blue from 0 to 255", "255,0,255", 0, CAT_CATEGORY_PROGCMD},
   {"rhombus_point", "rhombus_point", "Display option", "#display=magenta+rhombus_point", 0, CAT_CATEGORY_PROGCMD},
   {"rond n", "rond ", "Circle tangent to the turtle, radius n. Run rond n,theta for an arc of circle of theta degrees", 0, 0, CAT_CATEGORY_LOGO},
@@ -294,6 +307,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"star_point", "star_point", "Display option", "#display=magenta+star_point", 0, CAT_CATEGORY_PROGCMD},
   {"stddev(l)", 0, "Standard deviation of list l", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
   {"subst(a,b=c)", 0, "Substitutes b for c in a. Shortcut a(b=c).", "x^2,x=3", 0, CAT_CATEGORY_ALGEBRA},
+  {"suvat(equations,vars)", "solve(", "SUVAT by simultaneous equations. Required: equations/list. Optional: variable(s) to solve.", "[v=u+a*t,s=u*t+1/2*a*t^2],[s,u,v,a,t]", 0, CAT_CATEGORY_SOLVE},
   {"sum(f,k,m,M)", 0, "Summation of expression f for k from m to M. Exemple sum(k^2,k,1,n)=>*. Shortcut ALPHA F3", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
   {"svd(A)", 0, "Singular Value Decomposition, returns U orthogonal, S vector of singular values, Q orthogonal such that A=U*diag(S)*tran(Q).", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
   {"tabvar(f,[x=a..b])", 0, "Table of variations of expression f, optional arguments variable x in interval a..b", "sqrt(x^2+x+1)",  "[cos(t),sin(3t)],t", CAT_CATEGORY_CALCULUS},
@@ -305,6 +319,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"texpand(expr)", 0, "Expand trigonometric, exp and ln functions.","sin(3x)", 0, CAT_CATEGORY_TRIG},
   {"time(cmd)", 0, "Time to run a command or set the clock","int(1/(x^4+1),x)","8,0", CAT_CATEGORY_PROG},
   {"tlin(expr)", 0, "Trigonometric linearization of expr.","sin(x)^3", 0, CAT_CATEGORY_TRIG},
+  {"transform(expr,[form])", "normal(", "Transform/rearrange expression with KhiCAS normal/simplify/factor forms. Required: expr. Optional: target form.", "(x+1)^2-(x^2+2*x+1)", 0, CAT_CATEGORY_ALGEBRA},
   {"tourne_droite n", "tourne_droite ", "Turtle turns right n degrees, n=90 by default", 0, 0, CAT_CATEGORY_LOGO},
   {"tourne_gauche n", "tourne_gauche ", "Turtle turns left n degrees, n=90 by default", 0, 0, CAT_CATEGORY_LOGO},
   {"tran(A)", 0, "Transposes matrix A. Transconjugate command is trn(A) or A^*.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
@@ -331,6 +346,86 @@ const char apropos_string[]="Khicas 1.5.0, (c) 2019 B. Parisse et al. www-fourie
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
+bool catalog_hidden_category(int category){
+  return category==CAT_CATEGORY_PROG || category==CAT_CATEGORY_LOGO;
+}
+
+bool startswith_catalog(const char *s,const char *prefix){
+  return s && prefix && !strncmp(s,prefix,strlen(prefix));
+}
+
+bool catalog_hidden_name(const char *name){
+  if (!name)
+    return true;
+  if (startswith_catalog(name," loop ") || startswith_catalog(name," test ") ||
+      startswith_catalog(name," function ") || startswith_catalog(name," local ") ||
+      startswith_catalog(name," return ") || startswith_catalog(name,"debug(") ||
+      startswith_catalog(name,"from math") || startswith_catalog(name,"input()") ||
+      startswith_catalog(name,"print(") || startswith_catalog(name,"python(") ||
+      startswith_catalog(name,"python_compat") || startswith_catalog(name,"time("))
+    return true;
+  if (startswith_catalog(name,"avance") || startswith_catalog(name,"baisse_crayon") ||
+      startswith_catalog(name,"cache_tortue") || startswith_catalog(name,"crayon") ||
+      startswith_catalog(name,"efface") || startswith_catalog(name,"ecris") ||
+      startswith_catalog(name,"leve_crayon") || startswith_catalog(name,"montre_tortue") ||
+      startswith_catalog(name,"pas_de_cote") || startswith_catalog(name,"rectangle_plein") ||
+      startswith_catalog(name,"recule") || startswith_catalog(name,"rond") ||
+      startswith_catalog(name,"saute") || startswith_catalog(name,"tourne_"))
+    return true;
+  if (startswith_catalog(name,"draw_") || startswith_catalog(name,"display") ||
+      startswith_catalog(name,"axes") || startswith_catalog(name,"gl_") ||
+      startswith_catalog(name,"line_width") || startswith_catalog(name,"rgb(") ||
+      startswith_catalog(name,"black") || startswith_catalog(name,"blue") ||
+      startswith_catalog(name,"cyan") || startswith_catalog(name,"filled") ||
+      startswith_catalog(name,"green") || startswith_catalog(name,"magenta") ||
+      startswith_catalog(name,"red") || startswith_catalog(name,"yellow") ||
+      strstr(name,"_point"))
+    return true;
+  if (startswith_catalog(name,"laplace") || startswith_catalog(name,"ilaplace") ||
+      startswith_catalog(name,"fourier_") || startswith_catalog(name,"jordan") ||
+      startswith_catalog(name,"svd") || startswith_catalog(name,"gramschmidt") ||
+      startswith_catalog(name,"cond(") || startswith_catalog(name,"resultant"))
+    return true;
+  if (startswith_catalog(name,"rand") || startswith_catalog(name,"ranv") ||
+      startswith_catalog(name,"ranm"))
+    return true;
+  if (startswith_catalog(name,"residue") || startswith_catalog(name,"cfactor") ||
+      startswith_catalog(name,"cpartfrac"))
+    return true;
+  return false;
+}
+
+ustl::string catalog_param_hint(const char *name){
+  const char *open=strchr(name,'(');
+  if (!open)
+    return "Args: see syntax in command name.";
+  const char *close=strchr(open,')');
+  if (!close || close==open+1)
+    return "Args: none.";
+  ustl::string req,opt;
+  bool optional=false;
+  for (const char *p=open+1;p<close;++p){
+    if (*p=='['){ optional=true; continue; }
+    if (*p==']'){ optional=false; continue; }
+    if (optional)
+      opt += *p;
+    else
+      req += *p;
+  }
+  ustl::string out("Args: required ");
+  if (req.size())
+    out += req;
+  else
+    out += "none";
+  out += "; optional ";
+  if (opt.size())
+    out += opt;
+  else
+    out += "none";
+  out += ".";
+  return out;
+}
+
 ustl::string insert_string(int index){
   ustl::string s;
   if (completeCat[index].insert)
@@ -348,36 +443,45 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   //int ret;
   // returns 0 on failure (user exit) and 1 on success (user chose a option)
   MenuItem menuitems[CAT_CATEGORY_LOGO+1];
-  menuitems[CAT_CATEGORY_ALL].text = (char*)"All";
-  menuitems[CAT_CATEGORY_ALGEBRA].text = (char*)"Algebra";
-  menuitems[CAT_CATEGORY_LINALG].text = (char*)"Linear algebra";
-  menuitems[CAT_CATEGORY_CALCULUS].text = (char*)"Calculus";
-  menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic, crypto";
-  menuitems[CAT_CATEGORY_COMPLEXNUM].text = (char*)"Complexes";
-  menuitems[CAT_CATEGORY_PLOT].text = (char*)"Graphs";
-  menuitems[CAT_CATEGORY_POLYNOMIAL].text = (char*)"Polynomials";
-  menuitems[CAT_CATEGORY_PROBA].text = (char*)"Probabilities";
-  menuitems[CAT_CATEGORY_PROG].text = (char*)"Programs";
-  menuitems[CAT_CATEGORY_PROGCMD].text = (char*)"Program_cmds";
-  menuitems[CAT_CATEGORY_REAL].text = (char*)"Reals";
-  menuitems[CAT_CATEGORY_SOLVE].text = (char*)"Solve";
-  menuitems[CAT_CATEGORY_STATS].text = (char*)"Statistics";
-  menuitems[CAT_CATEGORY_TRIG].text = (char*)"Trigonometry";
-  menuitems[CAT_CATEGORY_OPTIONS].text = (char*)"Options";
-  menuitems[CAT_CATEGORY_LIST].text = (char*)"Lists";
-  menuitems[CAT_CATEGORY_MATRIX].text = (char*)"Matrices";
-  menuitems[CAT_CATEGORY_SOFUS].text = (char*)"Variable handling";
-  menuitems[CAT_CATEGORY_LOGO].text = (char*)"Turtle shift QUIT";
+  int catids[CAT_CATEGORY_LOGO+1];
+  int catcount=0;
+#define ADD_CAT(ID,TEXT) if (!catalog_hidden_category(ID)) { menuitems[catcount].text = (char*)TEXT; catids[catcount] = ID; ++catcount; }
+  ADD_CAT(CAT_CATEGORY_ALL,"All");
+  ADD_CAT(CAT_CATEGORY_ALGEBRA,"Algebra");
+  ADD_CAT(CAT_CATEGORY_LINALG,"Linear algebra");
+  ADD_CAT(CAT_CATEGORY_CALCULUS,"Calculus");
+  ADD_CAT(CAT_CATEGORY_ARIT,"Arithmetic, crypto");
+  ADD_CAT(CAT_CATEGORY_COMPLEXNUM,"Complexes");
+  ADD_CAT(CAT_CATEGORY_PLOT,"Graphs");
+  ADD_CAT(CAT_CATEGORY_POLYNOMIAL,"Polynomials");
+  ADD_CAT(CAT_CATEGORY_PROBA,"Probabilities");
+  ADD_CAT(CAT_CATEGORY_PROG,"Programs");
+  ADD_CAT(CAT_CATEGORY_PROGCMD,"Program_cmds");
+  ADD_CAT(CAT_CATEGORY_REAL,"Reals");
+  ADD_CAT(CAT_CATEGORY_SOLVE,"Solve");
+  ADD_CAT(CAT_CATEGORY_STATS,"Statistics");
+  ADD_CAT(CAT_CATEGORY_TRIG,"Trigonometry");
+  ADD_CAT(CAT_CATEGORY_OPTIONS,"Options");
+  ADD_CAT(CAT_CATEGORY_LIST,"Lists");
+  ADD_CAT(CAT_CATEGORY_MATRIX,"Matrices");
+  ADD_CAT(CAT_CATEGORY_SOFUS,"Variable handling");
+  ADD_CAT(CAT_CATEGORY_LOGO,"Turtle shift QUIT");
+#undef ADD_CAT
   
   Menu menu;
   menu.items=menuitems;
-  menu.numitems=sizeof(menuitems)/sizeof(MenuItem);
+  menu.numitems=catcount;
   menu.scrollout=1;
   menu.title = (char*)"Function Catalog";
   
   while(1) {
-    if (preselect)
-      menu.selection=preselect;
+    if (preselect){
+      menu.selection=1;
+      for (int ci=0;ci<catcount;++ci){
+	if (catids[ci]==preselect)
+	  menu.selection=ci+1;
+      }
+    }
     else {
       if (menupos>0)
 	menu.selection=menupos;
@@ -386,7 +490,8 @@ int showCatalog(char* insertText,int preselect,int menupos) {
 	return 0;
     }
     // puts("catalog 3");
-    if(doCatalogMenu(insertText, menuitems[menu.selection-1].text, menu.selection-1)) {
+    int selected_category=catids[menu.selection-1];
+    if(doCatalogMenu(insertText, menuitems[menu.selection-1].text, selected_category)) {
       const char * ptr=0;
       if (strcmp("matrix ",insertText)==0 && (ptr=input_matrix(false)) )
 	return 0;
@@ -403,6 +508,8 @@ int showCatalog(char* insertText,int preselect,int menupos) {
 int find_category(const char *cmdname){
   int l=strlen(cmdname);
   for (int i=0;i<CAT_COMPLETE_COUNT;++i){
+    if (catalog_hidden_name(completeCat[i].name))
+      continue;
     if (!strncmp(cmdname,completeCat[i].name,l))
       return completeCat[i].category;
   }
@@ -420,17 +527,23 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   int cur = 0,curmi = 0,i=0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
   gen g;
   while(cur<nitems) {
-    menuitems[curmi].type = MENUITEM_NORMAL;
-    menuitems[curmi].color = TEXT_COLOR_BLACK;    
     if (isall || isopt) {
-      const char * text=isall?(builtin_lexer_functions_begin()+curmi)->first:(lexer_tab_int_values_begin+curmi)->keyword;
+      const char * text=isall?(builtin_lexer_functions_begin()+cur)->first:(lexer_tab_int_values_begin+cur)->keyword;
+      if (catalog_hidden_name(text)){
+	++cur;
+	continue;
+      }
+      menuitems[curmi].type = MENUITEM_NORMAL;
+      menuitems[curmi].color = TEXT_COLOR_BLACK;
       if (menusel<0 && cmdname && !strncmp(cmdname,text,cmdl))
 	menusel=curmi;
       menuitems[curmi].text = text;
       menuitems[curmi].isfolder = allcmds; // assumes allcmds>allopts
-      menuitems[curmi].token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+curmi)->subtype+(lexer_tab_int_values_begin+curmi)->return_value*256);
+      menuitems[curmi].token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+cur)->subtype+(lexer_tab_int_values_begin+cur)->return_value*256);
       for (;i<CAT_COMPLETE_COUNT;++i){
 	const char * catname=completeCat[i].name;
+	if (catalog_hidden_name(catname))
+	  continue;
 	int tmp=strcmp(catname,text);
 	if (tmp>=0){
 	  size_t st=strlen(text),j=tmp?0:st;
@@ -449,6 +562,12 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       ++curmi;
     }
     else {
+      if (catalog_hidden_name(completeCat[cur].name)){
+	++cur;
+	continue;
+      }
+      menuitems[curmi].type = MENUITEM_NORMAL;
+      menuitems[curmi].color = TEXT_COLOR_BLACK;
       int cat=completeCat[cur].category;
       if ( (cat & 0xff) == category ||
 	   (cat & 0xff00) == (category<<8) ||
@@ -488,9 +607,10 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       return 0;
     }
     int index=menuitems[menu.selection-1].isfolder;
+    bool hascat=index>=0 && index<CAT_COMPLETE_COUNT && !catalog_hidden_name(completeCat[index].name);
     if(sres == KEY_CTRL_F6) {
-      char * example=index<allcmds?completeCat[index].example:0;
-      char * example2=index<allcmds?completeCat[index].example2:0;
+      char * example=hascat?completeCat[index].example:0;
+      char * example2=hascat?completeCat[index].example2:0;
       textArea text;
       text.title = (char*)"Help on command";
       text.editable=false;
@@ -498,15 +618,22 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       text.allowF1=true;
       ustl::vector<textElement> & elem=text.elements;
       elem = ustl::vector<textElement> (example2?4:3);
-      elem[0].s = index<allcmds?completeCat[index].name:menuitems[menu.selection-1].text;
+      elem[0].s = hascat?completeCat[index].name:menuitems[menu.selection-1].text;
       elem[0].color = COLOR_BLUE;
       elem[1].newLine = 1;
       elem[1].lineSpacing = 3;
       ustl::string autoexample;
-      if (index<allcmds)
-	elem[1].s = completeCat[index].desc;
+      if (hascat){
+	if (completeCat[index].desc && completeCat[index].desc[0])
+	  elem[1].s = completeCat[index].desc;
+	else
+	  elem[1].s = "CAS command.";
+	elem[1].s += "\n";
+	elem[1].s += catalog_param_hint(completeCat[index].name);
+      }
       else {
-	elem[1].s="Sorry, no help available...";
+	elem[1].s="KhiCAS built-in command.\nArgs: see command syntax; required/optional args depend on command.";
+	autoexample=elem[0].s+"()";
 	int token=menuitems[menu.selection-1].token;
 	if (isopt){
 	  if (token==_INT_PLOT+T_NUMBER*256){
@@ -527,19 +654,22 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	  }
 	}
 	if (isall){
-	  if (token==T_UNARY_OP || token==T_UNARY_OP_38)
-	    elem[1].s=elem[0].s+"(args)";
+	  if (token==T_UNARY_OP || token==T_UNARY_OP_38){
+	    elem[1].s="KhiCAS built-in function.\nArgs: required argument(s), optional argument(s) depend on command.";
+	    autoexample=elem[0].s+"(x)";
+	  }
 	}
       }
       ustl::string ex("Example (F2): ");
-      if (example){
+      if (example || hascat){
 	elem[2].newLine = 1;
 	elem[2].lineSpacing = 3;
-	if (example[0]=='#')
+	if (example && example[0]=='#')
 	  ex += example+1;
 	else {
 	  ex += insert_string(index);
-	  ex += example;
+	  if (example)
+	    ex += example;
 	  ex += ")";
 	}
 	elem[2].s = ex;
@@ -567,7 +697,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }
     if (sres == KEY_CTRL_F2 || sres==KEY_CTRL_F3) {
       reset_alpha();
-      if (index<allcmds && completeCat[index].example){
+      if (hascat && completeCat[index].example){
 	ustl::string s(insert_string(index));
 	char * example=0;
 	if (sres==KEY_CTRL_F2)
@@ -598,7 +728,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {
       reset_alpha();
-      strcpy(insertText,index<allcmds?insert_string(index).c_str():menuitems[menu.selection-1].text);
+      strcpy(insertText,hascat?insert_string(index).c_str():menuitems[menu.selection-1].text);
       return 1;
     }
   }

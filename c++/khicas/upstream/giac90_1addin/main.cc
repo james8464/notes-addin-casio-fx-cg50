@@ -1936,6 +1936,60 @@ ustl::string last_ans(){
   return "";
 }
 
+static const char * cascas_method_for(const char *s){
+  if (!s)
+    return "Use KhiCAS exact engine, then simplify.";
+  if (strstr(s,"diff(") || strstr(s,"derive(") || strstr(s,"'"))
+    return "Differentiate with KhiCAS rules, collect, then simplify.";
+  if (strstr(s,"integrate(") || strstr(s,"int("))
+    return "Integrate with KhiCAS algorithms, then simplify and add constants when needed.";
+  if (strstr(s,"solve(") || strstr(s,"csolve(") || strstr(s,"linsolve("))
+    return "Rearrange to zero, solve with KhiCAS, then verify by substitution.";
+  if (strstr(s,"fsolve("))
+    return "Normalize equation, solve numerically on interval/seed, then verify residual.";
+  if (strstr(s,"factor(") || strstr(s,"partfrac(") || strstr(s,"canonical_form("))
+    return "Rewrite algebraically, choose compact exact form, then verify expansion.";
+  if (strstr(s,"simplify(") || strstr(s,"normal(") || strstr(s,"ratnormal("))
+    return "Normalize expression, combine terms, then reduce to simplest exact form.";
+  if (strstr(s,"limit(") || strstr(s,"taylor(") || strstr(s,"series("))
+    return "Use local expansion/limit rules, then simplify result.";
+  if (strstr(s,"det(") || strstr(s,"rref(") || strstr(s,"inv(") || strstr(s,"eigen"))
+    return "Use KhiCAS matrix algorithm, reduce rows/polynomial, then simplify entries.";
+  if (strstr(s,"binomial(") || strstr(s,"normald(") || strstr(s,"correlation(") || strstr(s,"regression"))
+    return "Use statistics formula, substitute values, then simplify/round only at the end.";
+  if (strstr(s,"plot") || strstr(s,"histogram") || strstr(s,"scatterplot"))
+    return "Build KhiCAS graphic object from parsed expression/data.";
+  return "Parse with KhiCAS, try exact simplification, then return simplest form.";
+}
+
+static void cascas_output_line(const string &s){
+  Console_Output((const unsigned char*)s.c_str());
+  Console_NewLine(LINE_TYPE_OUTPUT,1);
+}
+
+static bool cascas_show_working_for(const char *s,const string &answer){
+  if (!s || !*s)
+    return false;
+  if (answer=="Graphic object")
+    return false;
+  return true;
+}
+
+static void cascas_output_working(const char *input,const string &answer){
+  string line("1. Input: ");
+  line += input;
+  cascas_output_line(line);
+  line = "2. Method: ";
+  line += cascas_method_for(input);
+  cascas_output_line(line);
+  line = "3. KhiCAS result: ";
+  line += answer;
+  cascas_output_line(line);
+  line = "Answer: ";
+  line += answer;
+  Console_Output((const unsigned char*)line.c_str());
+}
+
 void run(const char * s,int do_logo_graph_eqw){
   if (strlen(s)>=2 && (s[0]=='#' ||
 		       (s[0]=='/' && (s[1]=='/' || s[1]=='*'))
@@ -1988,8 +2042,10 @@ void run(const char * s,int do_logo_graph_eqw){
   if (s_.size()>512)
     s_=s_.substr(0,509)+"...";
   char* edit_line = (char*)Console_GetEditLine();
-  Console_Output((const unsigned char*)s_.c_str());
+  if (cascas_show_working_for(s,s_))
+    cascas_output_working(s,s_);
+  else
+    Console_Output((const unsigned char*)s_.c_str());
   //return ge; 
 }
-
 
