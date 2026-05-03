@@ -1,0 +1,13 @@
+    buildscript {
+        repositories {
+            maven { url 'https://plugins.gradle.org/m2/' }
+            mavenCentral()
+            google()
+        }
+    }
+
+    repositories {
+        maven { url 'https://dev.geogebra.org/maven2' }
+        mavenCentral()
+        google()
+    }

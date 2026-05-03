@@ -1,0 +1,6 @@
+/local.properties
+.gradle
+.idea
+.gems
+build
+/cbuild64/

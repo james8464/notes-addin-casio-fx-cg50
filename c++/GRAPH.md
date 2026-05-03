@@ -2,6 +2,16 @@
 
 ```mermaid
 graph TD
+  KH["c++/khicas/giac KhiCAS/Giac GPL base"] --> Port["Port UI/parser/CAS modules"]
+  KU["c++/khicas/kupdate graph/UI helpers"] --> Port
+  Legacy["c++/legacy previous code"] --> WorkSteps["exam working-step layer"]
+  Port --> Active["c++/prizm active build"]
+  WorkSteps --> Active
+  Active --> G3A["CasioCAS.g3a"]
+```
+
+```mermaid
+graph TD
   UI["CG50/Prizm UI"] --> DS["device_solver"]
   Shell["Shell commands"] --> DS
   DS --> Norm["compact normalize"]
