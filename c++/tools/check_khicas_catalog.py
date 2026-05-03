@@ -90,6 +90,12 @@ def main() -> int:
         return fail("category command hide filter not applied")
     if "catalog_hidden_name(text)" not in catalog:
         return fail("all/options hide filter not applied")
+    if "hidden_exact" not in catalog:
+        return fail("exact hidden-name filter missing")
+    hidden_prefix_block = catalog.split("hidden_prefix", 1)[1].split("hidden_exact", 1)[0]
+    for protected_prefix in ['"line"', '"nor"']:
+        if protected_prefix in hidden_prefix_block:
+            return fail(f"over-broad hidden prefix: {protected_prefix}")
 
     missing_hidden = [x for x in HIDDEN_MARKERS if x not in catalog]
     if missing_hidden:

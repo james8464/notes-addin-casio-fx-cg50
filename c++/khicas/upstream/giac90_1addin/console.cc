@@ -77,7 +77,7 @@ void set_xcas_status(){
   status += char('0'+(minute%10));
   status += " UK ";
   status += xthetat?"t ":"x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" CAS ";
+  status += "CAS ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
   if (strlen(session_filename)<=24)
     status += ustl::string(session_filename);
@@ -98,7 +98,7 @@ void set_xcas_status(){
 
 void menu_setup(){
   Menu smallmenu;
-  smallmenu.numitems=7;
+  smallmenu.numitems=6;
   MenuItem smallmenuitems[smallmenu.numitems];
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
@@ -108,52 +108,44 @@ void menu_setup(){
   smallmenuitems[0].type = MENUITEM_CHECKBOX;
   smallmenuitems[0].text = (char*)"X,Theta,T=t";
   smallmenuitems[1].type = MENUITEM_CHECKBOX;
-  smallmenuitems[1].text = (char*)"Python";
+  smallmenuitems[1].text = (char*)"Radians";
   smallmenuitems[2].type = MENUITEM_CHECKBOX;
-  smallmenuitems[2].text = (char*)"Radians";
-  smallmenuitems[3].type = MENUITEM_CHECKBOX;
-  smallmenuitems[3].text = (char*)"Sqrt";
-  smallmenuitems[4].text = (char *) (lang?"Raccourcis":"Shortcuts");
-  smallmenuitems[5].text = (char*) (lang?"A propos":"About");
-  smallmenuitems[6].text = (char*) "Quit";
+  smallmenuitems[2].text = (char*)"Sqrt";
+  smallmenuitems[3].type = MENUITEM_NORMAL;
+  smallmenuitems[3].text = (char *) (lang?"Raccourcis":"Shortcuts");
+  smallmenuitems[4].type = MENUITEM_NORMAL;
+  smallmenuitems[4].text = (char*) (lang?"A propos":"About");
+  smallmenuitems[5].type = MENUITEM_NORMAL;
+  smallmenuitems[5].text = (char*) "Quit";
   // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
   while(1) {
     smallmenuitems[0].value = xthetat;
-    smallmenuitems[1].value = giac::python_compat(contextptr);
-    smallmenuitems[2].value = giac::angle_radian(contextptr);
-    smallmenuitems[3].value = giac::withsqrt(contextptr);
+    smallmenuitems[1].value = giac::angle_radian(contextptr);
+    smallmenuitems[2].value = giac::withsqrt(contextptr);
     int sres = doMenu(&smallmenu);
     if (sres==MENU_RETURN_EXIT)
       break;
     if (sres == MENU_RETURN_SELECTION) {
-      if (smallmenu.selection == 7)
+      if (smallmenu.selection == 6)
 	break;
       if (smallmenu.selection == 1){
 	xthetat=1-xthetat;
 	continue;
       }
       if (smallmenu.selection == 2){
-	bool b=!giac::python_compat(contextptr);
-	giac::python_compat(b,contextptr);
-	warn_python(b,false);
-	if (edptr)
-	  edptr->python=b;
-	continue;
-      }
-      if (smallmenu.selection == 3){
 	giac::angle_radian(!giac::angle_radian(contextptr),contextptr);
 	continue;
       }
-      if (smallmenu.selection == 4){
+      if (smallmenu.selection == 3){
 	giac::withsqrt(!giac::withsqrt(contextptr),contextptr);
 	continue;
       }
-      if(smallmenu.selection >= 5) {
+      if(smallmenu.selection >= 4) {
 	textArea text;
 	text.editable=false;
 	text.clipline=-1;
 	text.title = smallmenuitems[smallmenu.selection-1].text;
-	add(&text,smallmenu.selection==5?shortcuts_string:apropos_string);
+	add(&text,smallmenu.selection==4?shortcuts_string:apropos_string);
 	doTextArea(&text);
 	continue;
       } 
@@ -2013,7 +2005,7 @@ int Console_GetKey(){
     if (key==KEY_CTRL_F6){
 #if 1
       Menu smallmenu;
-      smallmenu.numitems=15;
+      smallmenu.numitems=11;
       MenuItem smallmenuitems[smallmenu.numitems];
       
       smallmenu.items=smallmenuitems;
@@ -2026,16 +2018,12 @@ int Console_GetKey(){
       smallmenuitems[2].text = (char*) (lang?"Charger session":"Load session");
       smallmenuitems[3].text = (char*)(lang?"Nouvelle session":"New session");
       smallmenuitems[4].text = (char*)(lang?"Executer session":"Run session");
-      smallmenuitems[5].text = (char*)(lang?"Editeur script":"Script editor");
-      smallmenuitems[6].text = (char*)(lang?"Ouvrir script":"Open script");
-      smallmenuitems[7].text = (char*)(lang?"Executer script":"Run script");
-      smallmenuitems[8].text = (char*)(lang?"Effacer historique":"Clear history");
-      smallmenuitems[9].text = (char*)(lang?"Effacer script":"Clear script");
-      smallmenuitems[10].text = (char*)(lang?"Editer matrice":"Matrix editor");
-      smallmenuitems[11].text = (char*)"Parameter";
-      smallmenuitems[12].text = (char*)"Config shift-SETUP";
-      smallmenuitems[13].text = (char *) (lang?"Raccourcis":"Shortcuts");
-      smallmenuitems[14].text = (char*) (lang?"A propos":"About");
+      smallmenuitems[5].text = (char*)(lang?"Effacer historique":"Clear history");
+      smallmenuitems[6].text = (char*)(lang?"Editer matrice":"Matrix editor");
+      smallmenuitems[7].text = (char*)"Parameter";
+      smallmenuitems[8].text = (char*)"Config shift-SETUP";
+      smallmenuitems[9].text = (char *) (lang?"Raccourcis":"Shortcuts");
+      smallmenuitems[10].text = (char*) (lang?"A propos":"About");
       // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
       while(1) {
         int sres = doMenu(&smallmenu);
@@ -2100,45 +2088,20 @@ int Console_GetKey(){
 	    run_session();
             break;
           }
-          if (smallmenu.selection==6) {
-	    if (!edptr || merge_area(edptr->elements).size()<2)
-	      edit_script((char *)("\\\\fls0\\"+giac::remove_extension(session_filename)+".py").c_str());
-	    else
-	      doTextArea(edptr);
-	    break;
-	  }
-	  if (smallmenu.selection==7) {
-	    char filename[MAX_FILENAME_SIZE+1];
-	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
-	    if (fileBrowser(filename, (char*)"*.py", (char *)"Scripts"))
-	      edit_script(filename);
-            break;
-          }
-	  if (smallmenu.selection==8) {
-	    char filename[MAX_FILENAME_SIZE+1];
-	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
-	    if (fileBrowser(filename, (char*)"*.py", (char *)"Scripts"))
-	      run_script(filename);
-	    break;
-	  }
-	  if(smallmenu.selection == 9) {
+	  if(smallmenu.selection == 6) {
 	    chk_restart();
 	    Console_Init();
 	    Console_Clear_EditLine();
 	    break;
           }
-	  if (smallmenu.selection==10){
-	    erase_script();
-	    break;
-	  }
-          if (smallmenu.selection==11){
+          if (smallmenu.selection==7){
 	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
 	    if (ptr=input_matrix(false)) {
 	      return Console_Input((const unsigned char *)ptr);
 	    }
 	    break;
 	  }
-	  if (smallmenu.selection == 12){
+	  if (smallmenu.selection == 8){
 	    Menu paramenu;
 	    paramenu.numitems=6;
 	    MenuItem paramenuitems[paramenu.numitems];
@@ -2217,16 +2180,16 @@ int Console_GetKey(){
 	    }
 	    continue;
 	  }
-	  if (smallmenu.selection == 13){
+	  if (smallmenu.selection == 9){
 	    menu_setup();
 	    continue;
 	  }
-	  if(smallmenu.selection >= 14) {
+	  if(smallmenu.selection >= 10) {
 	    textArea text;
 	    text.editable=false;
 	    text.clipline=-1;
 	    text.title = smallmenuitems[smallmenu.selection-1].text;
-	    add(&text,smallmenu.selection==14?shortcuts_string:apropos_string);
+	    add(&text,smallmenu.selection==10?shortcuts_string:apropos_string);
 	    doTextArea(&text);
 	    continue;
           } 
@@ -2270,12 +2233,6 @@ int Console_GetKey(){
 
     if (key == KEY_CTRL_EXIT){
       if (Last_Line==Current_Line){
-	if (!edptr)
-	  edit_script((char *)("\\\\fls0\\"+giac::remove_extension(session_filename)+".py").c_str());
-	else {
-	  edptr->y=0;
-	  doTextArea(edptr);
-	}
 	Console_Disp();
       }
       else {
@@ -2565,7 +2522,7 @@ int Console_Init()
   return CONSOLE_SUCCEEDED;
 }
 
-const char conf_standard[] = "F1 algb\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3  2d \nreserved\nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 lin\nmatrix(\ndet(\nmatpow(\nranm(\ntran(\nrref(\negvl(\negv(\nF9 list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< prog\n;\n:\n&\n#\n>\nf(x):=\ndebug(\npython(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF> misc\n<\n>\n_\n!\n % \nrand(\nbinomial(\nnormald(";
+const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2d\nreserved\nF4 cat\nreserved\nF5 A<>a\nreserved\nF6 poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 mat\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 stat\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: prob\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< trig\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0

@@ -191,7 +191,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"linear_regression_plot(Xlist,Ylist)", 0, "Linear regression plot.", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];linear_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
+#if 0
   {"linetan(expr,x,x0)", 0, "Tangent to the graph at x=x0.", "sin(x),x,pi/2", 0, CAT_CATEGORY_PLOT},
+#endif
   {"linsolve([eq1,eq2,..],[x,y,..])", 0, "Linear system solving. May use the output of lu for O(n^2) solving (see example 2).","[x+y=1,x-y=2],[x,y]", "#p,l,u:=lu([[1,2],[3,4]]); linsolve(p,l,u,[5,6])", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_LINALG <<8) | (CAT_CATEGORY_MATRIX << 16)},
   {"logarithmic_regression(Xlist,Ylist)", 0, "Logarithmic egression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
 #if 0
@@ -335,18 +337,23 @@ static bool startswith_catalog(const char *s,const char *prefix){
 
 static bool catalog_hidden_name(const char *name){
   if (!name) return true;
-  const char *hidden[]={
+  const char *hidden_prefix[]={
     "debug","python","read","write","purge","append","map","seq","sort","quote",
     "rand","ranm","ranv","draw_","plotfield","plotode","plotcontour","plotseq",
-    "circle","line","point","polygon","segment","avance","recule","saute",
+    "avance","recule","saute",
     "tourne","crayon","tortue","rgb","display","gl_","axes","time","input",
     "charpoly","hilbert","lu","qr","svd","jordan","curl","a2q","q2a","cond",
     "erf","erfc","hermite","laguerre","legendre","tchebyshev","powmod",
-    "nextprime","ichinrem","iabcuv","idivis","iegcd","residue","bool_","prove_bool",
-    "nand","nor",0
+    "nextprime","ichinrem","iabcuv","idivis","iegcd","residue","bool_","prove_bool",0
   };
-  for (int i=0;hidden[i];++i)
-    if (startswith_catalog(name,hidden[i]))
+  const char *hidden_exact[]={
+    "circle","line","point","polygon","segment","nand","nor","not",0
+  };
+  for (int i=0;hidden_prefix[i];++i)
+    if (startswith_catalog(name,hidden_prefix[i]))
+      return true;
+  for (int i=0;hidden_exact[i];++i)
+    if (!strcmp(name,hidden_exact[i]) || (startswith_catalog(name,hidden_exact[i]) && name[strlen(hidden_exact[i])]=='('))
       return true;
   return false;
 }

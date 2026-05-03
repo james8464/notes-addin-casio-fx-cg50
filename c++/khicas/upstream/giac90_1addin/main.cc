@@ -1738,8 +1738,7 @@ int restore_session(const char * fname){
     PrintMini(&x,&y,(unsigned char*)"  License GPL 2",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     x=0; y=156;
     PrintMini(&x,&y,(unsigned char*)"  Do not use if CAS is forbidden",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    if (confirm("Syntax?","F1: Xcas, F6: Python")==KEY_CTRL_F6)
-      python_compat(true,contextptr);
+    python_compat(false,contextptr);
     Bdisp_AllClr_VRAM();  
     //menu_about();
     return 0;
