@@ -1,0 +1,21 @@
+#include <fxcg/keyboard.h>
+#include <fxcg/display.h>
+#include <fxcg/file.h>
+#include <fxcg/keyboard.h>
+#include <fxcg/system.h>
+#include <fxcg/misc.h>
+#include <fxcg/app.h>
+#include <fxcg/serial.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define std ustl
+#include <vector>
+#include <string>
+using namespace ustl;
+
+void print_vector(const vector<int> & v){
+  for (int j=0;j<v.size();++j){
+    printf("%d\n",v[j]);
+  }
+}

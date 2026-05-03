@@ -47,6 +47,12 @@ Use the PrizmSDK/libfxcg target for the calculator-style UI:
 ./c++/tools/build_addin_prizm_docker.sh
 ```
 
+Default output is copied from the verified upstream KhiCAS reference for exact UI/menu parity. To build the previous small native port instead:
+
+```bash
+CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh
+```
+
 The test TUI defaults to this target and syncs the result to the CASIO emulator SD card:
 
 ```bash

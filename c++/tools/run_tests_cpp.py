@@ -33,6 +33,7 @@ def main() -> int:
         return rc
 
     checks: list[tuple[str, list[str]]] = [
+        ("khicas_reference", [sys.executable, "c++/tools/check_khicas_reference.py"]),
         ("host_smoke", [sys.executable, "c++/tools/golden/check_host_smoke.py"]),
         ("expr_format", [sys.executable, "c++/tools/golden/compare_expr_format.py"]),
         ("suvat", [sys.executable, "c++/tools/golden/compare_suvat.py"]),

@@ -2,14 +2,16 @@
 
 ```mermaid
 graph TD
-  KH["c++/khicas/giac KhiCAS/Giac GPL base"] --> Port["Port UI/parser/CAS modules"]
-  KU["c++/khicas/kupdate graph/UI helpers"] --> Port
-  KU --> FMenu["KhiCAS F-key labels + popup menus"]
+  Up["Fourier giac90_1addin source"] --> Exact["c++/khicas/upstream/giac90_1addin"]
+  Ref["Fourier khicasen.g3a"] --> Build["/compile default"]
+  Exact --> Port["working-step hook port"]
+  KH["c++/khicas/giac old Giac base"] --> OldRefs["legacy references"]
+  KU["c++/khicas/kupdate old KhiCAS helpers"] --> OldRefs
+  OldRefs --> Port
   Legacy["c++/legacy previous code"] --> WorkSteps["exam working-step layer"]
-  FMenu --> Active["c++/prizm active build"]
-  Port --> Active
-  WorkSteps --> Active
-  Active --> G3A["CasioCAS.g3a"]
+  Build --> G3A["c++/prizm/build/CasioCAS.g3a exact KhiCAS UI"]
+  Port --> Future["future source-built KhiCAS + working lines"]
+  WorkSteps --> Future
 ```
 
 ```mermaid

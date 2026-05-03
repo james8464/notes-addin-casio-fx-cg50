@@ -1,0 +1,99 @@
+// -*- mode:C++ -*-
+#ifndef _IOSTREAM
+#define _IOSTREAM
+#include "mistream.h"
+#include "mostream.h"
+#include "ustring.h"
+#include "uvector.h"
+#include "umap.h"
+#include  <complex>
+extern "C" {
+void dConsolePut(const char *);
+void dConsolePutChar (char c);
+  void dConsoleRedraw() ;
+}
+
+struct stdostream {
+  void flush(){ dConsoleRedraw();}
+};
+
+struct stdistream {
+};
+
+inline stdostream & operator << (stdostream & os,int i){
+  char buf[32];
+  sprint_int(buf,i);
+  dConsolePut(buf);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,unsigned i){
+  char buf[32];
+  sprintf(buf,"%u",i);
+  dConsolePut(buf);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,char ch){
+  dConsolePutChar(ch);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,double d){
+  char buf[32];
+  sprint_double(buf,d);
+  dConsolePut(buf);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,std::complex<double> & d){
+  char buf[64];
+  strcpy(buf,"(");
+  sprint_double(buf+1,d.real());
+  strcat(buf,",");
+  sprint_double(buf+strlen(buf),d.imag());
+  strcat(buf,")");
+  dConsolePut(buf);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,const char * s){
+  dConsolePut(s);
+  return os;
+}
+
+inline stdostream & operator << (stdostream & os,const ustl::string & s){
+  dConsolePut(s.c_str());
+  return os;  
+}
+
+template<class T>
+  stdostream & operator << (stdostream & os,const ustl::vector<T> & v){
+  size_t s=v.size();
+  os << "[";
+  for (size_t i=0;i<s;++i){
+    os << v[i] ;
+    if (i!=s-1)
+      os << ",";
+  }
+  os << "]";
+  return os;
+}
+
+template<class T,class U>
+  stdostream & operator << (stdostream & os,const ustl::map<T,U> & v){
+  os << "{";
+  typename ustl::map<T,U>::const_iterator it=v.begin(),itend=v.end();
+  for (;it!=itend;){
+    os << it->first << ":" << it->second ;
+    ++it;
+    if (it!=itend)
+      os << ",";
+  }
+  os << "}";
+  return os;
+}
+
+extern stdostream cout;
+
+#endif
