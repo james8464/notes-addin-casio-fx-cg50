@@ -165,6 +165,75 @@ void draw_input_box(int x, int y, int w, int h)
     stroke_rect_vram(x, y, w, h, COLOR_BLACK);
 }
 
+int bracket_color(int depth)
+{
+    const int colors[] = {
+        TEXT_COLOR_BLUE,
+        TEXT_COLOR_RED,
+        TEXT_COLOR_GREEN,
+        TEXT_COLOR_PURPLE,
+        TEXT_COLOR_CYAN,
+        TEXT_COLOR_YELLOW,
+    };
+    if(depth < 0) return TEXT_COLOR_RED;
+    return colors[depth % (int)(sizeof(colors) / sizeof(colors[0]))];
+}
+
+int bracket_delta(unsigned char c)
+{
+    if(c == '(' || c == '[' || c == '{' ||
+       c == (unsigned char)KEY_CHAR_LPAR ||
+       c == (unsigned char)KEY_CHAR_LBRCKT ||
+       c == (unsigned char)KEY_CHAR_LBRACE) return 1;
+    if(c == ')' || c == ']' || c == '}' ||
+       c == (unsigned char)KEY_CHAR_RPAR ||
+       c == (unsigned char)KEY_CHAR_RBRCKT ||
+       c == (unsigned char)KEY_CHAR_RBRACE) return -1;
+    return 0;
+}
+
+char bracket_char(unsigned char c)
+{
+    if(c == '(' || c == (unsigned char)KEY_CHAR_LPAR) return '(';
+    if(c == '[' || c == (unsigned char)KEY_CHAR_LBRCKT) return '[';
+    if(c == '{' || c == (unsigned char)KEY_CHAR_LBRACE) return '{';
+    if(c == ')' || c == (unsigned char)KEY_CHAR_RPAR) return ')';
+    if(c == ']' || c == (unsigned char)KEY_CHAR_RBRCKT) return ']';
+    if(c == '}' || c == (unsigned char)KEY_CHAR_RBRACE) return '}';
+    return '\0';
+}
+
+void draw_editor_brackets(const unsigned char *input, int input_start, int col, int row, int max_cols)
+{
+    if(input == nullptr || max_cols <= 0) return;
+
+    int depth = 0;
+    for(int i = 0; i < input_start && input[i] != '\0'; i++) {
+        int delta = bracket_delta(input[i]);
+        if(delta > 0) depth++;
+        else if(delta < 0 && depth > 0) depth--;
+    }
+
+    for(int i = input_start, visible = 0; input[i] != '\0' && visible < max_cols; i++, visible++) {
+        int delta = bracket_delta(input[i]);
+        if(delta == 0) continue;
+
+        int color = TEXT_COLOR_RED;
+        if(delta > 0) {
+            color = bracket_color(depth);
+            depth++;
+        }
+        else {
+            depth--;
+            color = bracket_color(depth);
+            if(depth < 0) depth = 0;
+        }
+
+        char text[2] = {bracket_char(input[i]), '\0'};
+        PrintXY(col + visible, row, text, TEXT_MODE_TRANSPARENT_BACKGROUND, color);
+    }
+}
+
 void draw_status_line(const char *text)
 {
     print_line(6, text);
@@ -230,6 +299,7 @@ void draw_shell(const char *title, const char *mode, const char *const *lines, i
     draw_input_box(6, 158, LCD_WIDTH_PX - 12, 30);
     print_line(6, ">");
     DisplayMBString(input, input_start, input_cursor, 2, 6);
+    draw_editor_brackets(input, input_start, 2, 6, 29);
     draw_softkeys(k1, k2, k3, k4, k5, k6);
     Bdisp_PutDisp_DD();
 }

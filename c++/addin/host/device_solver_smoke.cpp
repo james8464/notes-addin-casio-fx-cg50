@@ -40,6 +40,7 @@ int main()
     ok = check(casio::device::Module::Shell, "diff((x+1)^2)", "Answer: dy/dx = 2x + 2") && ok;
     ok = check(casio::device::Module::Shell, "diff(ln(x))", "Answer: dy/dx = 1/x") && ok;
     ok = check(casio::device::Module::Shell, "diff((2x+ln(x))^3)", "Answer: dy/dx = 3*(2x+ln(x))^2*(2 + 1/x)") && ok;
+    ok = check(casio::device::Module::Shell, "diff((2x+ln((x)))^3", "Answer: dy/dx = 3*(2x+ln((x)))^2*(2 + 1/x)") && ok;
     ok = check(casio::device::Module::Shell, "int(x^2)", "Answer: x^3/3 + C") && ok;
     ok = check(casio::device::Module::Shell, "int((x+1)^2)", "Answer: x^3/3 + x^2 + x + C") && ok;
     ok = check(casio::device::Module::Shell, "solve(2x+3=7)", "Answer: x = 2") && ok;

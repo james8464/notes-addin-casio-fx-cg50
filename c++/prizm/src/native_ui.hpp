@@ -9,6 +9,7 @@ constexpr int kShellVisibleRows = 4;
 
 void init_native_screen(const char *title, const char *mode = nullptr);
 void draw_input_box(int x, int y, int w, int h);
+void draw_editor_brackets(const unsigned char *input, int input_start, int col, int row, int max_cols);
 void draw_home(void);
 void draw_menu(const char *title, const char *const *items, int count, int selected, int top);
 void draw_shell(const char *title, const char *mode, const char *const *lines, int count, int top, int selected,

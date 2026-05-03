@@ -111,6 +111,7 @@ void draw_input(const char *title, const char *help, unsigned char *buffer, int 
     print_row(2, help ? help : "");
     draw_input_box(6, 92, LCD_WIDTH_PX - 12, 36);
     DisplayMBString(buffer, start, cursor, 2, 4);
+    draw_editor_brackets(buffer, start, 2, 4, 29);
     draw_softkeys("SQRT", "LOG", "SIN", "COS", "PI", "?");
     Bdisp_PutDisp_DD();
 }

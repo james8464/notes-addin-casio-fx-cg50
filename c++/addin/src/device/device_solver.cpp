@@ -2134,14 +2134,15 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
 {
     int prefix_len = cstr_len(prefix);
     int len = cstr_len(input);
-    if(len <= prefix_len || input[len - 1] != ')') {
+    if(len <= prefix_len) {
         out.add("Unsupported: function call is missing ')'.");
         return false;
     }
 
     char inner[128];
     int n = 0;
-    for(int i = prefix_len; i + 1 < len && n + 1 < (int)sizeof(inner); i++) {
+    int end = input[len - 1] == ')' ? len - 1 : len;
+    for(int i = prefix_len; i < end && n + 1 < (int)sizeof(inner); i++) {
         inner[n++] = input[i];
     }
     inner[n] = '\0';
