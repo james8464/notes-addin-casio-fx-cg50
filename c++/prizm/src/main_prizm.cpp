@@ -64,13 +64,16 @@ const CommandItem kAlgebraAllCommands[] = {
     {"poly", "polynomial("},
     {"comp sq", "complete_square("},
     {"cmp", "compare("},
+    {"match", "compare("},
     {"xform", "transform("},
     {"comp", "compose("},
     {"inv", "inverse("},
     {"rw", "rewrite("},
     {"dom/rng", "domain("},
+    {"range", "range("},
     {"cart", "cartesian("},
     {"newton", "newton("},
+    {"fit const", "fitconst("},
 };
 
 const CommandItem kDeriveCommands[] = {
@@ -95,7 +98,11 @@ const CommandItem kIntegrateCommands[] = {
 const CommandItem kCalculusCommands[] = {
     {"'", "'"},
     {"diff(", "diff("},
+    {"diff2(", "diff2("},
+    {"implicit", "implicit_diff("},
+    {"param d", "param_diff("},
     {"integrate(", "integrate("},
+    {"defint(", "defint("},
     {"limit(", "limit("},
     {"series(", "series("},
     {"solve(", "solve("},
@@ -129,6 +136,7 @@ const CommandItem kShellCommands[] = {
 const CommandItem kMatrixCommands[] = {
     {"matrix", "matrix("},
     {"det2", "det2("},
+    {"det", "det2("},
     {"inv2", "inv2("},
     {"rref", "rref("},
     {"tran", "tran("},
@@ -142,7 +150,10 @@ const CommandItem kStatsCommands[] = {
     {"binom", "binom("},
     {"binomcdf", "binomcdf("},
     {"normald", "normald("},
+    {"normalcdf", "normalcdf("},
+    {"hyp test", "hyp_test("},
     {"linreg", "linear_regression("},
+    {"corr", "correlation("},
     {"scatter", "scatterplot("},
     {"hist", "histogram("},
     {"bar", "barplot("},
@@ -168,6 +179,13 @@ const CommandItem kPlotCommands[] = {
     {"plotfield(", "plotfield("},
     {"histogram(", "histogram("},
     {"barplot(", "barplot("},
+};
+
+const CommandItem kBooleanCommands[] = {
+    {"bool simp", "bool_simplify("},
+    {"nand", "nand("},
+    {"nor", "nor("},
+    {"prove", "prove_bool("},
 };
 
 const FileItem kFileCommands[] = {
@@ -352,6 +370,7 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         "Trig",
         "Matrix",
         "Stats",
+        "Boolean",
         "Arith",
         "Plot",
         "Shell",
@@ -381,18 +400,22 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         insert_command(kStatsCommands, c, editor, cursor);
     }
     else if(group == 5) {
+        int c = select_command("Boolean", kBooleanCommands);
+        insert_command(kBooleanCommands, c, editor, cursor);
+    }
+    else if(group == 6) {
         int c = select_command("Arith", kArithCommands);
         insert_command(kArithCommands, c, editor, cursor);
     }
-    else if(group == 6) {
+    else if(group == 7) {
         int c = select_command("Plot", kPlotCommands);
         insert_command(kPlotCommands, c, editor, cursor);
     }
-    else if(group == 7) {
+    else if(group == 8) {
         int c = select_command("Shell", kShellCommands);
         insert_command(kShellCommands, c, editor, cursor);
     }
-    else if(group == 8) {
+    else if(group == 9) {
         int c = select_file_command(kFileCommands);
         if(c < 0) return;
         int action = kFileCommands[c].action;

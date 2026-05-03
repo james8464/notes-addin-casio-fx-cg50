@@ -67,6 +67,15 @@ int main()
     ok = check(casio::device::Module::Shell, "isprime(97)", "Answer: prime") && ok;
     ok = check(casio::device::Module::Shell, "factors(360)", "Answer: 2^3*3^2*5") && ok;
     ok = check(casio::device::Module::Shell, "divisors(28)", "Answer: 1,2,4,7,14,28") && ok;
+    ok = check(casio::device::Module::Shell, "factor(x^2-5x+6)", "Answer: (x - 2)(x - 3)") && ok;
+    ok = check(casio::device::Module::Shell, "complete_square(x^2-6x+5)", "Answer: (x - 3)^2 - 4") && ok;
+    ok = check(casio::device::Module::Shell, "compare(2(x+1),2x+2)", "Answer: equivalent.") && ok;
+    ok = check(casio::device::Module::Shell, "transform(x^2+2x+1,(x+1)^2)", "Rewrite to the requested target form.") && ok;
+    ok = check(casio::device::Module::Shell, "compose(2x+1,x^2)", "Answer: f(g(x)) = 2x^2 + 1") && ok;
+    ok = check(casio::device::Module::Shell, "inverse(2x+1)", "Answer: f^-1(x) = (x - 1)/2") && ok;
+    ok = check(casio::device::Module::Shell, "rewrite(x^2+2x+3,x+1)", "Answer: u^2 + 2") && ok;
+    ok = check(casio::device::Module::Shell, "domain(x^2-4x+1)", "Range: y >= -3.") && ok;
+    ok = check(casio::device::Module::Shell, "newton(x^2-2=0,1,2)", "Answer: x ~= 17/12") && ok;
     ok = check(casio::device::Module::Shell, "suvat(s=10,u=0,v=?,a=2,t=5)", "Answer: v = 10") && ok;
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;

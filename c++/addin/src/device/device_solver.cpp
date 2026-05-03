@@ -242,6 +242,14 @@ static RPoly rpoly_div_const(RPoly const &a, Fraction d)
     return out;
 }
 
+static RPoly rpoly_scale(RPoly const &a, Fraction k)
+{
+    RPoly out = poly_zero();
+    out.ok = a.ok;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) out.coeff[i] = frac_mul(a.coeff[i], k);
+    return out;
+}
+
 static RPoly rpoly_pow(RPoly base, int exp)
 {
     if(exp < 0 || exp > RPOLY_MAX_DEG) {
@@ -2130,6 +2138,442 @@ static bool solve_stats_list(const char *input, OutputLines &out)
     return true;
 }
 
+static bool parse_call_args_compact(const char *input, char args[][96], int cap, int &count)
+{
+    char s[192];
+    int n = compact(input, s, (int)sizeof(s));
+    count = 0;
+    int start = 0;
+    int depth = 0;
+    for(int i = 0; i <= n; i++) {
+        char c = i < n ? s[i] : ',';
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if((c == ')' || c == ']' || c == '}') && depth > 0) depth--;
+        if((i == n || (c == ',' && depth == 0))) {
+            if(count >= cap || i == start) return false;
+            copy_range(s, start, i, args[count], 96);
+            count++;
+            start = i + 1;
+        }
+    }
+    return count > 0;
+}
+
+static bool parse_poly_arg(const char *text, char var, RPoly &out)
+{
+    int n = cstr_len(text);
+    out = parse_rpoly_compact(text, 0, n, var);
+    return out.ok;
+}
+
+static bool parse_equation_poly_arg(const char *text, char var, RPoly &out)
+{
+    int n = cstr_len(text);
+    int eq = find_top_level_equals(text);
+    if(eq < 0) {
+        out = parse_rpoly_compact(text, 0, n, var);
+        return out.ok;
+    }
+    RPoly left = parse_rpoly_compact(text, 0, eq, var);
+    RPoly right = parse_rpoly_compact(text, eq + 1, n, var);
+    if(!left.ok || !right.ok) return false;
+    out = rpoly_sub(left, right);
+    return out.ok;
+}
+
+static RPoly rpoly_compose(RPoly const &outer, RPoly const &inner)
+{
+    RPoly out = poly_zero();
+    RPoly pow = poly_const(make_fraction(1, 1));
+    out.ok = outer.ok && inner.ok;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) {
+        if(!is_zero(outer.coeff[i])) out = rpoly_add(out, rpoly_scale(pow, outer.coeff[i]));
+        if(i != RPOLY_MAX_DEG) pow = rpoly_mul(pow, inner);
+    }
+    return out;
+}
+
+static Fraction rpoly_eval(RPoly const &poly, Fraction x)
+{
+    Fraction acc = make_fraction(0, 1);
+    for(int i = RPOLY_MAX_DEG; i >= 0; i--) {
+        acc = frac_mul(acc, x);
+        acc = frac_add(acc, poly.coeff[i]);
+    }
+    return acc;
+}
+
+static void append_signed_fraction(FixedString<96> &line, Fraction f)
+{
+    if(f.num < 0) {
+        line.append(" - ");
+        f.num = -f.num;
+    }
+    else {
+        line.append(" + ");
+    }
+    append_fraction(line, f);
+}
+
+static void append_linear_factor(FixedString<96> &line, char var, Fraction root)
+{
+    line.append("(");
+    line.append_char(var);
+    if(root.num == 0) {
+        line.append(")");
+        return;
+    }
+    if(root.num < 0) {
+        root.num = -root.num;
+        line.append(" + ");
+    }
+    else {
+        line.append(" - ");
+    }
+    append_fraction(line, root);
+    line.append(")");
+}
+
+static bool solve_factor_call(const char *input, OutputLines &out)
+{
+    char args[2][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 2, argc) || argc != 1) {
+        out.add("Use factor(expr).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly poly;
+    if(!parse_poly_arg(args[0], var, poly)) {
+        out.add("Unsupported: factor needs a one-variable polynomial.");
+        return false;
+    }
+
+    add_input_line(out, "1. Input: ", args[0]);
+    out.add("2. Expand and collect before factorising.");
+
+    int deg = rpoly_degree(poly);
+    if(deg <= 0) {
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: ");
+        append_rpoly(ans, poly, var);
+        return true;
+    }
+
+    int coeff[RPOLY_MAX_DEG + 1]{};
+    if(!rpoly_to_int_coeffs(poly, coeff, deg)) {
+        out.add("Unsupported: coefficients too large after clearing fractions.");
+        return false;
+    }
+
+    Fraction roots[RPOLY_MAX_DEG]{};
+    int root_count = 0;
+    int work_deg = deg;
+    while(work_deg > 0) {
+        bool changed = false;
+        for(int r = -20; r <= 20; r++) {
+            if(is_zero(eval_int_poly(coeff, work_deg, make_fraction(r, 1)))) {
+                roots[root_count++] = make_fraction(r, 1);
+                synthetic_divide_linear(coeff, work_deg, r);
+                changed = true;
+                break;
+            }
+        }
+        if(!changed) break;
+    }
+
+    if(root_count == 0 && deg == 2) {
+        int a = coeff[2];
+        int b = coeff[1];
+        int c = coeff[0];
+        int disc = b * b - 4 * a * c;
+        int root = 0;
+        if(disc >= 0 && is_square_int(disc, root)) {
+            roots[root_count++] = make_fraction(-b - root, 2 * a);
+            Fraction r2 = make_fraction(-b + root, 2 * a);
+            if(!same_fraction(roots[0], r2)) roots[root_count++] = r2;
+        }
+    }
+
+    if(root_count == 0) {
+        out.add("Answer: irreducible over small rational roots.");
+        return true;
+    }
+
+    out.add("3. Use factor theorem / quadratic roots.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    if(coeff[work_deg] != 1 || work_deg > 0) {
+        ans.append_int(coeff[work_deg]);
+        ans.append("*");
+    }
+    for(int i = 0; i < root_count; i++) append_linear_factor(ans, var, roots[i]);
+    if(work_deg > 0) {
+        ans.append("*(");
+        RPoly rem = poly_zero();
+        for(int i = 0; i <= work_deg; i++) rem.coeff[i] = make_fraction(coeff[i], 1);
+        append_rpoly(ans, rem, var);
+        ans.append(")");
+    }
+    return true;
+}
+
+static bool solve_complete_square_call(const char *input, OutputLines &out)
+{
+    char args[2][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 2, argc) || argc != 1) {
+        out.add("Use complete_square(ax^2+bx+c).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly poly;
+    if(!parse_poly_arg(args[0], var, poly) || rpoly_degree(poly) != 2 || is_zero(poly.coeff[2])) {
+        out.add("Unsupported: complete square needs a quadratic.");
+        return false;
+    }
+
+    Fraction a = poly.coeff[2];
+    Fraction b = poly.coeff[1];
+    Fraction c = poly.coeff[0];
+    Fraction two_a = frac_mul(make_fraction(2, 1), a);
+    Fraction h;
+    if(!frac_div(b, two_a, h)) return false;
+    Fraction b2_over_4a;
+    if(!frac_div(frac_mul(b, b), frac_mul(make_fraction(4, 1), a), b2_over_4a)) return false;
+    Fraction k = frac_sub(c, b2_over_4a);
+
+    add_input_line(out, "1. Input: ", args[0]);
+    out.add("2. Use a(x+b/2a)^2 + c - b^2/4a.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    if(!(a.num == a.den)) {
+        append_fraction(ans, a);
+        ans.append("*");
+    }
+    ans.append("(");
+    ans.append_char(var);
+    append_signed_fraction(ans, h);
+    ans.append(")^2");
+    if(!is_zero(k)) append_signed_fraction(ans, k);
+    return true;
+}
+
+static bool solve_compare_call(const char *input, OutputLines &out)
+{
+    char args[3][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 3, argc) || argc != 2) {
+        out.add("Use compare(expr1,expr2).");
+        return false;
+    }
+    char joined[192];
+    copy_cstr(joined, (int)sizeof(joined), args[0]);
+    int off = cstr_len(joined);
+    if(off + 2 < (int)sizeof(joined)) {
+        joined[off++] = '+';
+        joined[off] = '\0';
+    }
+    for(int i = 0; args[1][i] != '\0' && off + 1 < (int)sizeof(joined); i++) joined[off++] = args[1][i];
+    joined[off] = '\0';
+    char var = detect_poly_var(joined);
+    RPoly a;
+    RPoly b;
+    if(!parse_equation_poly_arg(args[0], var, a) || !parse_equation_poly_arg(args[1], var, b)) {
+        out.add("Unsupported: compare needs polynomial expressions/equations.");
+        return false;
+    }
+    RPoly diff = rpoly_sub(a, b);
+    out.add("1. Put both inputs in canonical expanded form.");
+    FixedString<96> &line = out.next();
+    line.append("2. Difference = ");
+    append_rpoly(line, diff, var);
+    out.add(rpoly_is_zero(diff) ? "Answer: equivalent." : "Answer: not equivalent.");
+    return true;
+}
+
+static bool solve_transform_call(const char *input, OutputLines &out)
+{
+    bool ok = solve_compare_call(input, out);
+    if(!ok) return false;
+    if(out.count() > 0 && cstr_eq(out.line(out.count() - 1), "Answer: equivalent.")) {
+        out.add("3. Rewrite to the requested target form.");
+    }
+    return true;
+}
+
+static bool solve_compose_call(const char *input, OutputLines &out)
+{
+    char args[3][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 3, argc) || argc != 2) {
+        out.add("Use compose(f(x),g(x)).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly f;
+    RPoly g;
+    if(!parse_poly_arg(args[0], var, f) || !parse_poly_arg(args[1], var, g)) {
+        out.add("Unsupported: compose needs polynomial f,g.");
+        return false;
+    }
+    RPoly fg = rpoly_compose(f, g);
+    out.add("1. Let y = g(x), then compute f(y).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: f(g(x)) = ");
+    append_rpoly(ans, fg, var);
+    return fg.ok;
+}
+
+static bool solve_inverse_call(const char *input, OutputLines &out)
+{
+    char args[3][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 3, argc) || argc < 1) {
+        out.add("Use inverse(f(x)).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly f;
+    if(!parse_poly_arg(args[0], var, f) || rpoly_degree(f) != 1 || is_zero(f.coeff[1])) {
+        out.add("Unsupported: device inverse handles affine f(x)=ax+b.");
+        return false;
+    }
+    Fraction a = f.coeff[1];
+    Fraction b = f.coeff[0];
+    add_input_line(out, "1. f(x) = ", args[0]);
+    out.add("2. Swap x and y, then solve for y.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: f^-1(x) = (x");
+    append_signed_fraction(ans, frac_neg(b));
+    ans.append(")/");
+    append_fraction(ans, a);
+    return true;
+}
+
+static bool solve_rewrite_call(const char *input, OutputLines &out)
+{
+    char args[3][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 3, argc) || argc != 2) {
+        out.add("Use rewrite(expr,term), e.g. rewrite(x^2+2x+3,x+1).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly expr;
+    RPoly term;
+    if(!parse_poly_arg(args[0], var, expr) || !parse_poly_arg(args[1], var, term) ||
+       rpoly_degree(term) != 1 || is_zero(term.coeff[1])) {
+        out.add("Unsupported: rewrite needs polynomial expr and linear term.");
+        return false;
+    }
+    Fraction a = term.coeff[1];
+    Fraction b = term.coeff[0];
+    RPoly u = poly_var();
+    u.coeff[0] = frac_neg(b);
+    u = rpoly_div_const(u, a);
+    RPoly rewritten = rpoly_compose(expr, u);
+    out.add("1. Let u be the requested term.");
+    FixedString<96> &let = out.next();
+    let.append("2. u = ");
+    let.append(args[1]);
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    append_rpoly(ans, rewritten, 'u');
+    return rewritten.ok;
+}
+
+static bool solve_domain_range_call(const char *input, OutputLines &out)
+{
+    char args[3][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 3, argc) || argc < 1) {
+        out.add("Use domain(expr) or range(expr).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly poly;
+    if(!parse_poly_arg(args[0], var, poly)) {
+        out.add("Unsupported: device domain/range handles polynomials.");
+        return false;
+    }
+    out.add("1. Polynomial is defined for all real x.");
+    out.add("Domain: x in R.");
+    if(rpoly_degree(poly) == 2 && !is_zero(poly.coeff[2])) {
+        Fraction a = poly.coeff[2];
+        Fraction b = poly.coeff[1];
+        Fraction vertex_x;
+        frac_div(frac_neg(b), frac_mul(make_fraction(2, 1), a), vertex_x);
+        Fraction vertex_y = rpoly_eval(poly, vertex_x);
+        FixedString<96> &rng = out.next();
+        rng.append("Range: y ");
+        rng.append(a.num > 0 ? ">= " : "<= ");
+        append_fraction(rng, vertex_y);
+        rng.append(".");
+    }
+    else out.add("Range: no finite restriction detected.");
+    return true;
+}
+
+static bool solve_newton_call(const char *input, OutputLines &out)
+{
+    char args[4][96];
+    int argc = 0;
+    if(!parse_call_args_compact(input, args, 4, argc) || argc < 3) {
+        out.add("Use newton(eq,x0,steps).");
+        return false;
+    }
+    char var = detect_poly_var(args[0]);
+    RPoly f;
+    if(!parse_equation_poly_arg(args[0], var, f)) {
+        out.add("Unsupported: newton needs polynomial equation.");
+        return false;
+    }
+    Fraction x;
+    if(!read_fraction_token(args[1], 0, cstr_len(args[1]), x)) {
+        out.add("Unsupported: x0 must be integer/fraction.");
+        return false;
+    }
+    int pos = 0;
+    int steps = 0;
+    if(!read_int(args[2], pos, cstr_len(args[2]), steps) || pos != cstr_len(args[2]) || steps < 1) {
+        out.add("Unsupported: steps must be positive integer.");
+        return false;
+    }
+    if(steps > 8) steps = 8;
+    RPoly fp = rpoly_derivative(f);
+    add_input_line(out, "1. f(x)=0 from ", args[0]);
+    for(int i = 0; i < steps; i++) {
+        Fraction y = rpoly_eval(f, x);
+        Fraction yp = rpoly_eval(fp, x);
+        Fraction delta;
+        if(!frac_div(y, yp, delta)) {
+            out.add("Stop: f'(x_n)=0.");
+            return false;
+        }
+        x = frac_sub(x, delta);
+        FixedString<96> &line = out.next();
+        line.append_int(i + 2);
+        line.append(". x");
+        line.append_int(i + 1);
+        line.append(" = ");
+        append_fraction(line, x);
+    }
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: x ~= ");
+    append_fraction(ans, x);
+    return true;
+}
+
+static bool solve_device_placeholder(const char *name, OutputLines &out)
+{
+    FixedString<96> &line = out.next();
+    line.append("Unsupported on compact device solver: ");
+    line.append(name);
+    out.add("Use host/LLM fallback or a simpler polynomial form.");
+    return false;
+}
+
 static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
 {
     int prefix_len = cstr_len(prefix);
@@ -2183,6 +2627,19 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 12) return solve_isprime_call(inner, out);
     if(kind == 13) return solve_factors_call(inner, out);
     if(kind == 14) return solve_divisors_call(inner, out);
+    if(kind == 15) return solve_factor_call(inner, out);
+    if(kind == 16) return solve_complete_square_call(inner, out);
+    if(kind == 17) return solve_compare_call(inner, out);
+    if(kind == 18) return solve_transform_call(inner, out);
+    if(kind == 19) return solve_compose_call(inner, out);
+    if(kind == 20) return solve_inverse_call(inner, out);
+    if(kind == 21) return solve_rewrite_call(inner, out);
+    if(kind == 22) return solve_domain_range_call(inner, out);
+    if(kind == 23) return solve_newton_call(inner, out);
+    if(kind == 24) return solve_device_placeholder("cartesian/parametric", out);
+    if(kind == 25) return solve_device_placeholder("fit constants", out);
+    if(kind == 26) return solve_device_placeholder("plot/draw", out);
+    if(kind == 27) return solve_device_placeholder("boolean proof", out);
     return false;
 }
 
@@ -2223,6 +2680,34 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "isprime(")) return solve_utility_call(input, "isprime(", 12, out);
             if(starts_with(input, "factors(")) return solve_utility_call(input, "factors(", 13, out);
             if(starts_with(input, "divisors(")) return solve_utility_call(input, "divisors(", 14, out);
+            if(starts_with(input, "factor(")) return solve_utility_call(input, "factor(", 15, out);
+            if(starts_with(input, "polynomial(")) return solve_utility_call(input, "polynomial(", 15, out);
+            if(starts_with(input, "poly(")) return solve_utility_call(input, "poly(", 15, out);
+            if(starts_with(input, "complete_square(")) return solve_utility_call(input, "complete_square(", 16, out);
+            if(starts_with(input, "comp_square(")) return solve_utility_call(input, "comp_square(", 16, out);
+            if(starts_with(input, "compsq(")) return solve_utility_call(input, "compsq(", 16, out);
+            if(starts_with(input, "compare(")) return solve_utility_call(input, "compare(", 17, out);
+            if(starts_with(input, "match(")) return solve_utility_call(input, "match(", 17, out);
+            if(starts_with(input, "transform(")) return solve_utility_call(input, "transform(", 18, out);
+            if(starts_with(input, "xform(")) return solve_utility_call(input, "xform(", 18, out);
+            if(starts_with(input, "compose(")) return solve_utility_call(input, "compose(", 19, out);
+            if(starts_with(input, "inverse(")) return solve_utility_call(input, "inverse(", 20, out);
+            if(starts_with(input, "inv(")) return solve_utility_call(input, "inv(", 20, out);
+            if(starts_with(input, "rewrite(")) return solve_utility_call(input, "rewrite(", 21, out);
+            if(starts_with(input, "rw(")) return solve_utility_call(input, "rw(", 21, out);
+            if(starts_with(input, "domain(")) return solve_utility_call(input, "domain(", 22, out);
+            if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
+            if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
+            if(starts_with(input, "newton(")) return solve_utility_call(input, "newton(", 23, out);
+            if(starts_with(input, "cartesian(")) return solve_utility_call(input, "cartesian(", 24, out);
+            if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
+            if(starts_with(input, "plot(")) return solve_utility_call(input, "plot(", 26, out);
+            if(starts_with(input, "scatterplot(")) return solve_utility_call(input, "scatterplot(", 26, out);
+            if(starts_with(input, "histogram(")) return solve_utility_call(input, "histogram(", 26, out);
+            if(starts_with(input, "bool_simplify(")) return solve_utility_call(input, "bool_simplify(", 27, out);
+            if(starts_with(input, "nand(")) return solve_utility_call(input, "nand(", 27, out);
+            if(starts_with(input, "nor(")) return solve_utility_call(input, "nor(", 27, out);
+            if(starts_with(input, "prove_bool(")) return solve_utility_call(input, "prove_bool(", 27, out);
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);

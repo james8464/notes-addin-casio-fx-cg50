@@ -45,6 +45,7 @@ void print_at(int col, int row, const char *text, int mode = TEXT_MODE_NORMAL, i
     casio::device::FixedString<80> out;
     out.append("  ");
     out.append(text ? text : "");
+    while(out.size() < 23) out.append_char(' ');
     PrintXY(col, row, out.c_str(), mode, color);
 }
 
@@ -151,6 +152,69 @@ void print_mini_px(int x, int y, const char *text, int mode = TEXT_MODE_NORMAL,
     int py = y;
     PrintMini(&px, &py, text ? text : "", mode, LCD_WIDTH_PX - 1,
               0, 0, color, back, 1, 0);
+}
+
+int bracket_color_for_depth(int depth)
+{
+    static const int colors[] = {
+        TEXT_COLOR_BLUE,
+        TEXT_COLOR_RED,
+        TEXT_COLOR_GREEN,
+        TEXT_COLOR_PURPLE,
+        TEXT_COLOR_CYAN,
+    };
+    if(depth < 0) depth = 0;
+    return colors[depth % (int)(sizeof(colors) / sizeof(colors[0]))];
+}
+
+bool is_open_bracket(unsigned char c)
+{
+    return c == '(' || c == '[' || c == '{' ||
+           c == (unsigned char)KEY_CHAR_LPAR ||
+           c == (unsigned char)KEY_CHAR_LBRCKT ||
+           c == (unsigned char)KEY_CHAR_LBRACE;
+}
+
+bool is_close_bracket(unsigned char c)
+{
+    return c == ')' || c == ']' || c == '}' ||
+           c == (unsigned char)KEY_CHAR_RPAR ||
+           c == (unsigned char)KEY_CHAR_RBRCKT ||
+           c == (unsigned char)KEY_CHAR_RBRACE;
+}
+
+char bracket_ascii(unsigned char c)
+{
+    if(c == '[' || c == (unsigned char)KEY_CHAR_LBRCKT) return '[';
+    if(c == ']' || c == (unsigned char)KEY_CHAR_RBRCKT) return ']';
+    if(c == '{' || c == (unsigned char)KEY_CHAR_LBRACE) return '{';
+    if(c == '}' || c == (unsigned char)KEY_CHAR_RBRACE) return '}';
+    if(is_open_bracket(c)) return '(';
+    return ')';
+}
+
+void draw_editor_brackets(unsigned char *input, int input_start)
+{
+    if(input == nullptr) return;
+    int depth = 0;
+    for(int i = 0; input[i] != '\0' && i < input_start; i++) {
+        if(is_open_bracket(input[i])) depth++;
+        else if(is_close_bracket(input[i]) && depth > 0) depth--;
+    }
+
+    for(int i = input_start, col = 2; input[i] != '\0' && col <= 21; i++, col++) {
+        unsigned char c = input[i];
+        if(is_open_bracket(c)) {
+            char text[2] = {bracket_ascii(c), 0};
+            PrintXY(col, 6, text, TEXT_MODE_TRANSPARENT_BACKGROUND, bracket_color_for_depth(depth));
+            depth++;
+        }
+        else if(is_close_bracket(c)) {
+            if(depth > 0) depth--;
+            char text[2] = {bracket_ascii(c), 0};
+            PrintXY(col, 6, text, TEXT_MODE_TRANSPARENT_BACKGROUND, bracket_color_for_depth(depth));
+        }
+    }
 }
 
 }
@@ -271,6 +335,7 @@ void draw_menu(const char *title, const char *const *items, int count, int selec
         line.append(items[index]);
         print_line(row + 2, line.c_str(), index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
     }
+    if(count == 0) print_line(3, "No entries");
     
     draw_softkeys("SEL", "UP", "DOWN", "", "", "EXIT");
     Bdisp_PutDisp_DD();
@@ -289,6 +354,7 @@ void draw_shell(const char *title, const char *mode, const char *const *lines, i
     }
     print_line(6, ">");
     DisplayMBString(input, input_start, input_cursor, 2, 6);
+    draw_editor_brackets(input, input_start);
     draw_softkeys(k1, k2, k3, k4, k5, k6);
     Bdisp_PutDisp_DD();
 }
