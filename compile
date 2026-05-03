@@ -4,11 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if command -v docker >/dev/null 2>&1; then
-  "${ROOT_DIR}/c++/tools/build_addin_prizm_docker.sh"
-  sync_flag="${CASIO_SYNC_EMULATOR:-1}"
-  if [ "${sync_flag}" != "0" ] && [ "${sync_flag}" != "false" ] && [ "${sync_flag}" != "no" ] && [ "${sync_flag}" != "off" ]; then
-    python3 "${ROOT_DIR}/c++/tools/install_g3a_to_emulator.py" "${ROOT_DIR}/CasioCAS.g3a" || true
-  fi
+  CASIO_PRIZM_MODE=khicas-source "${ROOT_DIR}/c++/tools/build_addin_prizm_docker.sh"
   exit 0
 fi
 

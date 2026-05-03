@@ -59,20 +59,13 @@ To build the previous small native port instead:
 CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh
 ```
 
-The C++ compile script builds this target, writes repo-root `CasioCAS.g3a`, and syncs the result to the CASIO emulator SD card:
+The C++ compile script builds the edited KhiCAS-source PrizmSDK/libfxcg target for Casio fx-CG50 and writes repo-root `CasioCAS.g3a`:
 
 ```bash
 ./compile
 ```
 
-Default emulator target:
-
-```text
-~/Library/Application Support/CASIO/fx-CG Manager PLUS Subscription for fx-CG50series/fx-CG50/EmulatorData/SDCard
-```
-
-Set `CASIO_SYNC_EMULATOR=0` to skip this copy, or set `CASIO_EMULATOR_SDCARD_DIR` to override the target.
-Set `CASIO_BUILD_ADDIN=docker` only if you need the older fxSDK/gint target.
+The TUI `/compile` command uses the same fx-CG50 target and does not modify emulator files.
 
 ### Install onto calculator
 

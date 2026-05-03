@@ -6,6 +6,8 @@ CXX	= sh3eb-elf-g++
 AR	= sh3eb-elf-gcc-ar
 RANLIB	= sh3eb-elf-gcc-ranlib
 OBJCOPY = sh3eb-elf-objcopy
+ICON_UNS ?= khicasio.png
+ICON_SEL ?= khicasio1.png
 
 RM	= /bin/rm
 
@@ -60,12 +62,10 @@ khicasen.bin: khicasen.elf
 	$(OBJCOPY) $(OBJFLAGS)  khicasen.elf khicasen.bin
 
 khicas.g3a: khicas.bin
-	mkg3a -n basic:Khicas -n internal:KHICAS -V 1.5.2 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
-	/bin/cp khicas.g3a ~/.wine/drive_c
+	mkg3a -n basic:Khicas -n internal:KHICAS -V 1.5.2 -i uns:$(ICON_UNS) -i sel:$(ICON_SEL) $^ $@
 
 khicasen.g3a: khicasen.bin
-	mkg3a -n basic:Khicasen -n internal:KHICASEN -V 1.5.2 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
-	/bin/cp khicasen.g3a ~/.wine/drive_c
+	mkg3a -n basic:Khicasen -n internal:KHICASEN -V 1.5.2 -i uns:$(ICON_UNS) -i sel:$(ICON_SEL) $^ $@
 
 clean:
 	$(RM) -f *.o libcas.a libgui.a 

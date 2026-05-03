@@ -2295,7 +2295,7 @@ class CASIOApp(App):
             "/fails": "List failed tests from the last run",
             "/programs": "List available test programs",
             "/help": "Show useful commands",
-            "/compile": "Compile C++ host and the .g3a with live progress",
+            "/compile": "Compile C++ host and fx-CG50 .g3a with live progress",
             "/switch c": "C++ backend is always active",
             "/swtich c": "Typo alias for /switch c",
             "/llm": "Configure LLM verification (select model, enable/disable)",
@@ -2409,7 +2409,7 @@ class CASIOApp(App):
             self._frame_timer = None
         self.action_clear()
         self.append_result(f"[dim]Backend:[/dim] {self.backend_label()}")
-        self.append_result("[dim]Use /switch c, then /compile to build c++/prizm/build/CasioCAS.g3a.[/dim]")
+        self.append_result("[dim]Use /switch c, then /compile to build fx-CG50 CasioCAS.g3a.[/dim]")
 
     def on_resize(self, event) -> None:
         self.refresh_rule_lines()
@@ -2832,47 +2832,13 @@ class CASIOApp(App):
                 if not clean_addin_outputs():
                     summary("Compile failed")
                     return
-                build_mode = (os.environ.get("CASIO_BUILD_ADDIN", "prizm") or "prizm").strip().lower()
-
-                if build_mode == "prizm":
-                    log("[dim]Target:[/dim] PrizmSDK/libfxcg native OS UI")
-                    if run_stream("PrizmSDK native UI add-in build", ["./c++/tools/build_addin_prizm_docker.sh"]) != 0:
-                        summary("Compile failed")
-                        return
-                    log("[dim]--- Verifying outputs (PrizmSDK) ---[/dim]")
-                    g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.g3a"))
-                elif build_mode == "docker":
-                    log("[dim]Target:[/dim] legacy fxSDK/gint add-in")
-                    docker_build = [
-                        "docker", "build", "--progress=plain",
-                        "-f", "c++/tools/docker/Dockerfile.fxsdk",
-                        "-t", "casio-fxsdk:latest",
-                        ".",
-                    ]
-                    if run_stream("fxSDK Docker image", docker_build) != 0:
-                        summary("Compile failed")
-                        return
-                    log("[bold #22c55e]✓ Docker image ready[/bold #22c55e]")
-
-                    docker_run = [
-                        "docker", "run", "--rm",
-                        "-v", f"{REPO_ROOT}:/work",
-                        "-w", "/work/c++/addin",
-                        "casio-fxsdk:latest",
-                        "bash", "-lc", "fxsdk build-cg",
-                    ]
-                    if run_stream("fxsdk build-cg in Docker", docker_run) != 0:
-                        summary("Compile failed")
-                        return
-                    log("[dim]--- Verifying outputs (fxSDK Docker) ---[/dim]")
-                    g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
-                else:
-                    log("[dim]Target:[/dim] local legacy fxSDK/gint add-in")
-                    if run_stream("native fxSDK add-in build", ["./c++/tools/build_addin.sh"]) != 0:
-                        summary("Compile failed")
-                        return
-                    log("[dim]--- Verifying outputs (native fxSDK) ---[/dim]")
-                    g3as = sorted((REPO_ROOT / "c++" / "addin" / "build-cg").glob("*.g3a"))
+                subprocess_env["CASIO_PRIZM_MODE"] = "khicas-source"
+                log("[dim]Target:[/dim] Casio fx-CG50 PrizmSDK/libfxcg .g3a")
+                if run_stream("fx-CG50 PrizmSDK add-in build", ["./c++/tools/build_addin_prizm_docker.sh"]) != 0:
+                    summary("Compile failed")
+                    return
+                log("[dim]--- Verifying outputs (fx-CG50 PrizmSDK) ---[/dim]")
+                g3as = sorted((REPO_ROOT / "c++" / "prizm" / "build").glob("*.g3a"))
                 if not g3as:
                     log("[bold #f87171]✗ no .g3a found for selected add-in target[/bold #f87171]")
                     summary("Compile failed")
@@ -2887,16 +2853,8 @@ class CASIOApp(App):
                     summary("Compile failed")
                     return
 
-                sync_flag = os.environ.get("CASIO_SYNC_EMULATOR", "1").strip().lower()
-                if sync_flag not in ("0", "false", "no", "off"):
-                    sync_cmd = ["python3", "c++/tools/install_g3a_to_emulator.py"] + [str(p) for p in g3as]
-                    if run_stream("CASIO emulator SDCard sync", sync_cmd) != 0:
-                        log("[bold #f59e0b]⚠ .g3a built, but emulator sync failed. Set CASIO_SYNC_EMULATOR=0 to skip.[/bold #f59e0b]")
-                    else:
-                        log("[bold #22c55e]✓ emulator SDCard updated[/bold #22c55e]")
-
                 log("")
-                log("[bold #22c55e]✓ Compile complete: .g3a ready[/bold #22c55e]")
+                log("[bold #22c55e]✓ Compile complete: fx-CG50 .g3a ready[/bold #22c55e]")
                 summary("Compile OK")
             finally:
                 self._compile_running = False

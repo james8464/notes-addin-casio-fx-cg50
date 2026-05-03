@@ -74,18 +74,8 @@ if [ "${MODE}" = "khicas-source" ]; then
     "${SOURCE_IMAGE_TAG}" \
     bash -lc '
       set -euo pipefail
-      mkdir -p "$HOME/.wine/drive_c"
-      cp khicasio.png /tmp/khicasio.png.orig
-      cp khicasio1.png /tmp/khicasio1.png.orig
-      restore_icons() {
-        cp /tmp/khicasio.png.orig khicasio.png
-        cp /tmp/khicasio1.png.orig khicasio1.png
-      }
-      trap restore_icons EXIT
-      cp /work/c++/prizm/assets/unselected.png khicasio.png
-      cp /work/c++/prizm/assets/selected.png khicasio1.png
       make clean
-      make -j"$(nproc)" khicasen.g3a
+      make -j"$(nproc)" khicasen.g3a ICON_UNS=/work/c++/prizm/assets/unselected.png ICON_SEL=/work/c++/prizm/assets/selected.png
     '
   cp "${KHICAS_SRC}/khicasen.g3a" "${OUT_G3A}"
   clean_khicas_source_outputs
@@ -99,7 +89,6 @@ if [ "${MODE}" = "khicas-source" ]; then
   ls -lh "${ROOT_G3A}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (source-built): ${OUT_G3A}"
-  echo "Set CASIO_PRIZM_MODE=khicas-reference to use the unmodified upstream binary."
   exit 0
 fi
 
@@ -133,8 +122,6 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   ls -lh "${ROOT_G3A}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
-  echo "Set CASIO_PRIZM_MODE=khicas-source to build edited source."
-  echo "Set CASIO_PRIZM_MODE=legacy to build the old small native port."
   exit 0
 fi
 
