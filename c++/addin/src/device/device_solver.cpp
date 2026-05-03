@@ -1595,6 +1595,173 @@ static int comb_int(int n, int r)
     return out;
 }
 
+static bool parse_int_args(const char *input, int *args, int expected)
+{
+    Fraction vals[16];
+    if(expected > 16 || !parse_fraction_args(input, vals, expected)) return false;
+    for(int i = 0; i < expected; i++) {
+        if(vals[i].den != 1) return false;
+        args[i] = vals[i].num;
+    }
+    return true;
+}
+
+static bool parse_int_list(const char *input, int *args, int cap, int &count)
+{
+    Fraction vals[32];
+    if(cap > 32 || !parse_fraction_list(input, vals, cap, count)) return false;
+    for(int i = 0; i < count; i++) {
+        if(vals[i].den != 1) return false;
+        args[i] = vals[i].num;
+    }
+    return true;
+}
+
+static bool is_prime_int(int n)
+{
+    if(n < 2) return false;
+    if(n == 2) return true;
+    if(n % 2 == 0) return false;
+    for(int d = 3; d * d <= n; d += 2) {
+        if(n % d == 0) return false;
+    }
+    return true;
+}
+
+static bool solve_gcd_call(const char *input, OutputLines &out)
+{
+    int a[32];
+    int count = 0;
+    if(!parse_int_list(input, a, 32, count)) {
+        out.add("Use gcd(a,b,...).");
+        return false;
+    }
+    int g = 0;
+    for(int i = 0; i < count; i++) g = (i == 0) ? abs_int(a[i]) : gcd_int(g, a[i]);
+    out.add("1. Apply Euclid's algorithm.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: gcd = ");
+    ans.append_int(g == 0 ? 0 : g);
+    return true;
+}
+
+static bool solve_lcm_call(const char *input, OutputLines &out)
+{
+    int a[32];
+    int count = 0;
+    if(!parse_int_list(input, a, 32, count)) {
+        out.add("Use lcm(a,b,...).");
+        return false;
+    }
+    int l = 1;
+    for(int i = 0; i < count; i++) l = lcm_int(l, a[i]);
+    out.add("1. Use lcm(a,b)=abs(ab)/gcd(a,b).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: lcm = ");
+    ans.append_int(l);
+    return true;
+}
+
+static bool solve_factorial_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] < 0 || a[0] > 12) {
+        out.add("Use factorial(n), 0<=n<=12.");
+        return false;
+    }
+    int v = 1;
+    for(int i = 2; i <= a[0]; i++) v *= i;
+    out.add("1. n! = 1*2*...*n.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    ans.append_int(v);
+    return true;
+}
+
+static bool solve_ncr_call(const char *input, OutputLines &out)
+{
+    int a[2];
+    if(!parse_int_args(input, a, 2) || a[0] < 0 || a[1] < 0 || a[1] > a[0]) {
+        out.add("Use ncr(n,r), 0<=r<=n.");
+        return false;
+    }
+    out.add("1. nCr = n!/(r!(n-r)!).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    ans.append_int(comb_int(a[0], a[1]));
+    return true;
+}
+
+static bool solve_isprime_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1)) {
+        out.add("Use isprime(n).");
+        return false;
+    }
+    out.add("1. Trial divide up to sqrt(n).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    ans.append(is_prime_int(a[0]) ? "prime" : "not prime");
+    return true;
+}
+
+static bool solve_factors_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] == 0) {
+        out.add("Use factors(n), n!=0.");
+        return false;
+    }
+    int n = abs_int(a[0]);
+    out.add("1. Prime factorisation by trial division.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    bool first = true;
+    for(int d = 2; d * d <= n; d += (d == 2 ? 1 : 2)) {
+        int power = 0;
+        while(n % d == 0) {
+            n /= d;
+            power++;
+        }
+        if(power > 0) {
+            if(!first) ans.append("*");
+            ans.append_int(d);
+            if(power > 1) {
+                ans.append("^");
+                ans.append_int(power);
+            }
+            first = false;
+        }
+    }
+    if(n > 1) {
+        if(!first) ans.append("*");
+        ans.append_int(n);
+    }
+    return true;
+}
+
+static bool solve_divisors_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] == 0 || abs_int(a[0]) > 10000) {
+        out.add("Use divisors(n), 0<abs(n)<=10000.");
+        return false;
+    }
+    int n = abs_int(a[0]);
+    out.add("1. Test divisors up to n.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    bool first = true;
+    for(int d = 1; d <= n; d++) {
+        if(n % d != 0) continue;
+        if(!first) ans.append(",");
+        ans.append_int(d);
+        first = false;
+    }
+    return true;
+}
+
 static bool solve_det2(const char *input, OutputLines &out)
 {
     Fraction a[4];
@@ -1813,6 +1980,13 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 5) return solve_binom(inner, out);
     if(kind == 6) return solve_stats_list(inner, out);
     if(kind == 7) return solve_binom_cdf(inner, out);
+    if(kind == 8) return solve_gcd_call(inner, out);
+    if(kind == 9) return solve_lcm_call(inner, out);
+    if(kind == 10) return solve_factorial_call(inner, out);
+    if(kind == 11) return solve_ncr_call(inner, out);
+    if(kind == 12) return solve_isprime_call(inner, out);
+    if(kind == 13) return solve_factors_call(inner, out);
+    if(kind == 14) return solve_divisors_call(inner, out);
     return false;
 }
 
@@ -1846,6 +2020,13 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
             if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
+            if(starts_with(input, "gcd(")) return solve_utility_call(input, "gcd(", 8, out);
+            if(starts_with(input, "lcm(")) return solve_utility_call(input, "lcm(", 9, out);
+            if(starts_with(input, "factorial(")) return solve_utility_call(input, "factorial(", 10, out);
+            if(starts_with(input, "ncr(")) return solve_utility_call(input, "ncr(", 11, out);
+            if(starts_with(input, "isprime(")) return solve_utility_call(input, "isprime(", 12, out);
+            if(starts_with(input, "factors(")) return solve_utility_call(input, "factors(", 13, out);
+            if(starts_with(input, "divisors(")) return solve_utility_call(input, "divisors(", 14, out);
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);
@@ -1872,6 +2053,7 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
+            if(starts_with(input, "ncr(")) return solve_utility_call(input, "ncr(", 11, out);
             return solve_stats_list(input, out);
 
         case Module::Boolean: return solve_simplify(input, out);

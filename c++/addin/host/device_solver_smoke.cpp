@@ -55,6 +55,15 @@ int main()
     ok = check(casio::device::Module::Shell, "dot3(1,2,3,4,5,6)", "Answer: 32") && ok;
     ok = check(casio::device::Module::Shell, "cross3(1,0,0,0,1,0)", "Answer: (0,0,1)") && ok;
     ok = check(casio::device::Module::Shell, "binom(4,1/2,2)", "Answer: 3/8") && ok;
+    ok = check(casio::device::Module::Shell, "binomcdf(4,1/2,2)", "Answer: 11/16") && ok;
+    ok = check(casio::device::Module::Shell, "stats(1,2,3,4)", "mean = sum x/n = 5/2") && ok;
+    ok = check(casio::device::Module::Shell, "gcd(84,126,210)", "Answer: gcd = 42") && ok;
+    ok = check(casio::device::Module::Shell, "lcm(6,10,15)", "Answer: lcm = 30") && ok;
+    ok = check(casio::device::Module::Shell, "factorial(6)", "Answer: 720") && ok;
+    ok = check(casio::device::Module::Shell, "ncr(10,3)", "Answer: 120") && ok;
+    ok = check(casio::device::Module::Shell, "isprime(97)", "Answer: prime") && ok;
+    ok = check(casio::device::Module::Shell, "factors(360)", "Answer: 2^3*3^2*5") && ok;
+    ok = check(casio::device::Module::Shell, "divisors(28)", "Answer: 1,2,4,7,14,28") && ok;
     ok = check(casio::device::Module::Shell, "suvat(s=10,u=0,v=?,a=2,t=5)", "Answer: v = 10") && ok;
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;
