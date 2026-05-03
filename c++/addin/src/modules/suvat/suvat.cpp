@@ -371,11 +371,31 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         out.push_back("s = ut + 1/2at^2");
         out.push_back("Quadratic in t");
         out.push_back("t = (-u ± sqrt(u^2 + 2as))/a");
+        auto root_text = [&](NodeId root) {
+            double dv = 0;
+            if(node_to_double(arena, root, dv)) {
+                int sf = 3;
+                for(auto const &txt : {in.s, in.u, in.v, in.a, in.t}) {
+                    if(is_blank(txt) || txt == ",") continue;
+                    bool numeric = true;
+                    for(char c : txt) {
+                        if(!(std::isdigit((unsigned char)c) || c == '.' || c == '-' || c == '+')) {
+                            numeric = false;
+                            break;
+                        }
+                    }
+                    if(numeric) sf = std::max(sf, count_sig_figs(txt));
+                }
+                std::string dec = format_decimal(dv, sf);
+                if(!dec.empty()) return dec + (unit.empty() ? "" : (" " + unit));
+            }
+            return show(root);
+        };
         bool keep1 = is_nonnegative(arena, t1);
         bool keep2 = is_nonnegative(arena, t2);
-        if(keep1 && keep2) out.push_back("t = " + show(t1) + " or " + show(t2));
-        else if(keep1) out.push_back("t = " + show(t1));
-        else if(keep2) out.push_back("t = " + show(t2));
+        if(keep1 && keep2) out.push_back("t = " + root_text(t1) + " or " + root_text(t2));
+        else if(keep1) out.push_back("t = " + root_text(t1));
+        else if(keep2) out.push_back("t = " + root_text(t2));
         else out.push_back("t = (no positive root)");
         return out;
     }

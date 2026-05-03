@@ -18,12 +18,6 @@ namespace casio::derive
 namespace
 {
 
-static bool is_sym(Arena &a, NodeId n, std::string const &name)
-{
-    auto const &x = a.get(n);
-    return x.kind == NodeKind::Sym && x.text == name;
-}
-
 static bool depends_on(Arena &a, NodeId n, std::string const &var)
 {
     auto const &x = a.get(n);
@@ -117,6 +111,14 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         bool base_depends = depends_on(a, u, var) || (!dep.empty() && depends_on(a, u, dep));
         bool exp_depends = depends_on(a, v, var) || (!dep.empty() && depends_on(a, v, dep));
         if(vr && base_depends && !exp_depends && (dep.empty() || !depends_on(a, v, dep))) {
+            Node const &base_node = a.get(u);
+            if(base_node.kind == NodeKind::Pow) {
+                Node const &base_inner = a.get(base_node.a);
+                if(base_inner.kind == NodeKind::Const && base_inner.ckind == ConstKind::E) {
+                    NodeId inner_prime = diff(a, base_node.b, var, dep);
+                    return casio::simplify(a, casio::mul(a, {a.num(*vr), n, inner_prime}));
+                }
+            }
             Rational nrat = *vr;
             NodeId n_node = a.num(nrat);
             Rational n_minus1 = nrat;

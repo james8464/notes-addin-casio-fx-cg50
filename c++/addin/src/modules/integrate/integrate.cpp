@@ -7,6 +7,7 @@
 #include "core/sig.hpp"
 #include "core/simplify.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <optional>
 #include <sstream>
@@ -71,6 +72,13 @@ static Rational r_div(Rational a, Rational b)
 
 static bool r_zero(Rational r) { return r.num == 0; }
 
+static bool r_eq(Rational a, Rational b)
+{
+    a.normalize();
+    b.normalize();
+    return a.num == b.num && a.den == b.den;
+}
+
 static Rational r_neg(Rational r)
 {
     r.num = -r.num;
@@ -118,6 +126,7 @@ static bool contains_var(Arena &a, NodeId n, std::string const &var)
 static std::optional<Rational> linear_coeff(Arena &a, NodeId n, std::string const &var)
 {
     auto const &x = a.get(n);
+    if(!contains_var(a, n, var)) return Rational{0, 1};
     if(x.kind == NodeKind::Num || x.kind == NodeKind::Const) return Rational{0, 1};
     if(x.kind == NodeKind::Sym) return x.text == var ? std::optional<Rational>(Rational{1, 1}) : std::nullopt;
     if(x.kind == NodeKind::Add) {
@@ -152,7 +161,6 @@ static std::optional<Rational> linear_coeff(Arena &a, NodeId n, std::string cons
         if(!den || !top) return std::nullopt;
         return r_div(*top, *den);
     }
-    if(!contains_var(a, n, var)) return Rational{0, 1};
     return std::nullopt;
 }
 
@@ -586,7 +594,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
 
 static bool same_expr(Arena &a, NodeId lhs, NodeId rhs)
 {
-    return casio::sig(a, lhs) == casio::sig(a, rhs);
+    return casio::sig(a, casio::simplify(a, lhs)) == casio::sig(a, casio::simplify(a, rhs));
 }
 
 static std::optional<int> positive_int_power(Arena &a, NodeId n)
@@ -819,6 +827,225 @@ static std::optional<NodeId> integrate_simple_substitution(Arena &a, NodeId expr
     return std::nullopt;
 }
 
+struct Poly
+{
+    std::vector<Rational> c{};
+    bool ok = true;
+};
+
+static void poly_trim(Poly &p)
+{
+    while(!p.c.empty() && r_zero(p.c.back())) p.c.pop_back();
+}
+
+static int poly_degree(Poly p)
+{
+    poly_trim(p);
+    return p.c.empty() ? -1 : static_cast<int>(p.c.size()) - 1;
+}
+
+static Rational poly_at(Poly const &p, int i)
+{
+    if(i < 0 || static_cast<std::size_t>(i) >= p.c.size()) return Rational{0, 1};
+    return p.c[static_cast<std::size_t>(i)];
+}
+
+static Poly poly_from_coeff(Rational r)
+{
+    Poly p;
+    if(!r_zero(r)) p.c.push_back(r);
+    return p;
+}
+
+static Poly poly_add_any(Poly a, Poly const &b)
+{
+    if(!a.ok || !b.ok) return Poly{{}, false};
+    if(a.c.size() < b.c.size()) a.c.resize(b.c.size(), Rational{0, 1});
+    for(std::size_t i = 0; i < b.c.size(); i++) a.c[i] = r_add(a.c[i], b.c[i]);
+    poly_trim(a);
+    return a;
+}
+
+static Poly poly_neg_any(Poly p)
+{
+    for(auto &r : p.c) r = r_neg(r);
+    return p;
+}
+
+static Poly poly_sub_any(Poly a, Poly const &b)
+{
+    return poly_add_any(std::move(a), poly_neg_any(b));
+}
+
+static Poly poly_mul_any(Poly const &a, Poly const &b)
+{
+    if(!a.ok || !b.ok) return Poly{{}, false};
+    if(a.c.empty() || b.c.empty()) return Poly{};
+    Poly out;
+    out.c.assign(a.c.size() + b.c.size() - 1, Rational{0, 1});
+    for(std::size_t i = 0; i < a.c.size(); i++) {
+        for(std::size_t j = 0; j < b.c.size(); j++) {
+            out.c[i + j] = r_add(out.c[i + j], r_mul(a.c[i], b.c[j]));
+        }
+    }
+    poly_trim(out);
+    return out;
+}
+
+static Poly poly_scale(Poly p, Rational s)
+{
+    if(!p.ok) return p;
+    for(auto &r : p.c) r = r_mul(r, s);
+    poly_trim(p);
+    return p;
+}
+
+static std::optional<int> fn_power(Arena &a, NodeId n, FnKind fk, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == fk) {
+        arg = x.a;
+        return 1;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto exp = positive_int_power(a, x.b);
+        Node const &base = a.get(x.a);
+        if(exp && base.kind == NodeKind::Fn && base.fkind == fk) {
+            arg = base.a;
+            return *exp;
+        }
+    }
+    return std::nullopt;
+}
+
+static NodeId integrate_poly_in_fn(Arena &a, Poly p, NodeId u, Rational du_coeff, bool negate)
+{
+    std::vector<NodeId> terms;
+    for(std::size_t i = 0; i < p.c.size(); i++) {
+        Rational coeff = p.c[i];
+        if(r_zero(coeff)) continue;
+        Rational scale = r_div(coeff, r_mul(du_coeff, Rational{static_cast<std::int64_t>(i + 1), 1}));
+        if(negate) scale = r_neg(scale);
+        terms.push_back(mul_coeff(a, scale, casio::power(a, u, casio::num(a, static_cast<std::int64_t>(i + 1)))));
+    }
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    int sin_p = 0, cos_p = 0, tan_p = 0, sec_p = 0, csc_p = 0, cot_p = 0;
+    NodeId arg = 0;
+    auto same_arg_or_set = [&](NodeId candidate) {
+        candidate = casio::simplify(a, candidate);
+        if(!arg) {
+            arg = candidate;
+            return true;
+        }
+        return same_expr(a, arg, candidate);
+    };
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        NodeId local_arg = 0;
+        if(auto p = fn_power(a, k, FnKind::Sin, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            sin_p += *p;
+            continue;
+        }
+        if(auto p = fn_power(a, k, FnKind::Cos, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            cos_p += *p;
+            continue;
+        }
+        if(auto p = fn_power(a, k, FnKind::Tan, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            tan_p += *p;
+            continue;
+        }
+        if(auto p = fn_power(a, k, FnKind::Sec, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            sec_p += *p;
+            continue;
+        }
+        if(auto p = fn_power(a, k, FnKind::Cosec, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            csc_p += *p;
+            continue;
+        }
+        if(auto p = fn_power(a, k, FnKind::Cot, local_arg)) {
+            if(!same_arg_or_set(local_arg)) return std::nullopt;
+            cot_p += *p;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    auto lc = linear_coeff(a, arg, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+
+    if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
+        NodeId tan_u = casio::fn(a, "tan", arg);
+        Rational denom = r_mul(*lc, Rational{tan_p + 1, 1});
+        steps.push_back("Step 2: Substitute y = tan(inner).");
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, denom), casio::power(a, tan_u, casio::num(a, tan_p + 1))));
+    }
+    if(csc_p == 2 && cot_p > 0 && sin_p == 0 && cos_p == 0 && tan_p == 0 && sec_p == 0) {
+        NodeId cot_u = casio::fn(a, "cot", arg);
+        Rational denom = r_mul(*lc, Rational{cot_p + 1, 1});
+        steps.push_back("Step 2: Substitute y = cot(inner).");
+        return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, denom)), casio::power(a, cot_u, casio::num(a, cot_p + 1))));
+    }
+
+    if(sin_p > 0 && cos_p > 0 && tan_p == 0 && sec_p == 0 && csc_p == 0 && cot_p == 0) {
+        if(sin_p % 2 == 1) {
+            // u = cos(arg), sin^(2r+1) = sin*(1-u^2)^r.
+            int r = (sin_p - 1) / 2;
+            Poly poly{{Rational{1, 1}}, true};
+            Poly one_minus_u2{{Rational{1, 1}, Rational{0, 1}, Rational{-1, 1}}, true};
+            for(int i = 0; i < r; i++) poly = poly_mul_any(poly, one_minus_u2);
+            Poly upow;
+            upow.c.assign(static_cast<std::size_t>(cos_p + 1), Rational{0, 1});
+            upow.c[static_cast<std::size_t>(cos_p)] = Rational{1, 1};
+            poly = poly_mul_any(poly, upow);
+            steps.push_back("Step 2: Odd sine power: save one sin(u), convert the rest with sin^2(u)=1-cos^2(u).");
+            return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "cos", arg), *lc, true)));
+        }
+        if(cos_p % 2 == 1) {
+            int r = (cos_p - 1) / 2;
+            Poly poly{{Rational{1, 1}}, true};
+            Poly one_minus_u2{{Rational{1, 1}, Rational{0, 1}, Rational{-1, 1}}, true};
+            for(int i = 0; i < r; i++) poly = poly_mul_any(poly, one_minus_u2);
+            Poly upow;
+            upow.c.assign(static_cast<std::size_t>(sin_p + 1), Rational{0, 1});
+            upow.c[static_cast<std::size_t>(sin_p)] = Rational{1, 1};
+            poly = poly_mul_any(poly, upow);
+            steps.push_back("Step 2: Odd cosine power: save one cos(u), convert the rest with cos^2(u)=1-sin^2(u).");
+            return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "sin", arg), *lc, false)));
+        }
+        if(sin_p == 2 && cos_p == 2) {
+            NodeId term1 = casio::div(a, casio::sym(a, var), casio::num(a, 8));
+            NodeId term2 = casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), arg})), a.num(r_mul(Rational{32, 1}, *lc)));
+            steps.push_back("Step 2: Use sin^2(u)cos^2(u)=(1-cos(4u))/8.");
+            return casio::simplify(a, mul_coeff(a, coeff, casio::add(a, {term1, casio::neg(a, term2)})));
+        }
+        if(sin_p == 4 && cos_p == 4) {
+            NodeId term1 = casio::mul(a, {casio::num(a, 3, 128), casio::sym(a, var)});
+            NodeId term2 = casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), arg})), a.num(r_mul(Rational{128, 1}, *lc)));
+            NodeId term3 = casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 8), arg})), a.num(r_mul(Rational{1024, 1}, *lc)));
+            steps.push_back("Step 2: Use power reduction for sin^4(u)cos^4(u).");
+            return casio::simplify(a, mul_coeff(a, coeff, casio::add(a, {term1, casio::neg(a, term2), term3})));
+        }
+    }
+
+    return std::nullopt;
+}
+
 struct Poly2I
 {
     Rational a2{0, 1};
@@ -826,6 +1053,100 @@ struct Poly2I
     Rational a0{0, 1};
     bool ok = true;
 };
+
+static std::optional<Poly> poly_of_any(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return poly_from_coeff(x.num);
+    if(x.kind == NodeKind::Sym && x.text == var) return Poly{{Rational{0, 1}, Rational{1, 1}}, true};
+    if(x.kind == NodeKind::Add) {
+        Poly out;
+        for(NodeId k : x.kids) {
+            auto p = poly_of_any(a, k, var);
+            if(!p || !p->ok) return std::nullopt;
+            out = poly_add_any(std::move(out), *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        Poly out{{Rational{1, 1}}, true};
+        for(NodeId k : x.kids) {
+            auto p = poly_of_any(a, k, var);
+            if(!p || !p->ok) return std::nullopt;
+            out = poly_mul_any(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto base = poly_of_any(a, x.a, var);
+        auto exp = as_num(a, x.b);
+        if(!base || !base->ok || !exp || exp->den != 1 || exp->num < 0 || exp->num > 12) return std::nullopt;
+        Poly out{{Rational{1, 1}}, true};
+        for(std::int64_t i = 0; i < exp->num; i++) out = poly_mul_any(out, *base);
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = poly_of_any(a, x.a, var);
+        auto den = as_num(a, x.b);
+        if(!top || !top->ok || !den || den->num == 0) return std::nullopt;
+        Rational inv{den->den, den->num};
+        inv.normalize();
+        return poly_scale(*top, inv);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::pair<Poly, Poly>> poly_divmod(Poly n, Poly d)
+{
+    if(!n.ok || !d.ok) return std::nullopt;
+    poly_trim(n);
+    poly_trim(d);
+    int nd = poly_degree(n);
+    int dd = poly_degree(d);
+    if(dd < 0) return std::nullopt;
+    Poly q;
+    if(nd >= dd) q.c.assign(static_cast<std::size_t>(nd - dd + 1), Rational{0, 1});
+    while(poly_degree(n) >= dd) {
+        int shift = poly_degree(n) - dd;
+        Rational factor = r_div(poly_at(n, poly_degree(n)), poly_at(d, dd));
+        q.c[static_cast<std::size_t>(shift)] = r_add(q.c[static_cast<std::size_t>(shift)], factor);
+        Poly sub;
+        sub.c.assign(static_cast<std::size_t>(shift + dd + 1), Rational{0, 1});
+        for(int i = 0; i <= dd; i++) sub.c[static_cast<std::size_t>(i + shift)] = r_mul(poly_at(d, i), factor);
+        n = poly_sub_any(std::move(n), sub);
+    }
+    poly_trim(q);
+    poly_trim(n);
+    return std::make_pair(q, n);
+}
+
+static NodeId poly_to_node(Arena &a, Poly p, std::string const &var)
+{
+    poly_trim(p);
+    if(p.c.empty()) return casio::num(a, 0);
+    std::vector<NodeId> terms;
+    for(std::size_t i = 0; i < p.c.size(); i++) {
+        Rational coeff = p.c[i];
+        if(r_zero(coeff)) continue;
+        NodeId xp = var_pow(a, var, static_cast<int>(i));
+        terms.push_back(mul_coeff(a, coeff, xp));
+    }
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId integrate_poly_node(Arena &a, Poly p, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    for(std::size_t i = 0; i < p.c.size(); i++) {
+        Rational coeff = p.c[i];
+        if(r_zero(coeff)) continue;
+        Rational scale = r_div(coeff, Rational{static_cast<std::int64_t>(i + 1), 1});
+        terms.push_back(mul_coeff(a, scale, var_pow(a, var, static_cast<int>(i + 1))));
+    }
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
 
 static Poly2I poly_add(Poly2I p, Poly2I const &q)
 {
@@ -949,6 +1270,251 @@ static std::optional<NodeId> integrate_linear_over_quadratic(Arena &a, NodeId ex
     steps.push_back("Step 2: Split numerator into A*D'(x)+B.");
     steps.push_back("Step 3: Integrate A*D'/D by log(abs(D)); integrate B/D by quadratic form.");
     return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<NodeId> integrate_poly_div_quadratic(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    auto d = poly_of_any(a, x.b, var);
+    if(!n || !d || !n->ok || !d->ok || poly_degree(*d) != 2 || poly_degree(*n) < 2) return std::nullopt;
+    auto qr = poly_divmod(*n, *d);
+    if(!qr) return std::nullopt;
+    Poly q = qr->first;
+    Poly r = qr->second;
+    std::vector<NodeId> terms;
+    if(poly_degree(q) >= 0) terms.push_back(integrate_poly_node(a, q, var));
+    if(poly_degree(r) >= 0) {
+        NodeId rem = poly_to_node(a, r, var);
+        NodeId frac = casio::div(a, rem, x.b);
+        std::vector<std::string> rem_steps;
+        auto rest = integrate_linear_over_quadratic(a, frac, var, rem_steps);
+        if(!rest) return std::nullopt;
+        terms.push_back(*rest);
+    }
+    if(terms.empty()) return std::nullopt;
+    steps.push_back("Step 2: Polynomial division: quotient + proper rational remainder.");
+    steps.push_back("Step 3: Integrate quotient by power rule; integrate linear/quadratic remainder by log/atan form.");
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static bool is_xn_plus_one(Poly const &p, int degree)
+{
+    if(poly_degree(p) != degree) return false;
+    for(int i = 0; i <= degree; i++) {
+        Rational want = (i == 0 || i == degree) ? Rational{1, 1} : Rational{0, 1};
+        if(!r_eq(poly_at(p, i), want)) return false;
+    }
+    return true;
+}
+
+static NodeId coeff_with_sqrt5(Arena &a, Rational base, Rational root)
+{
+    std::vector<NodeId> terms;
+    if(!r_zero(base)) terms.push_back(a.num(base));
+    if(!r_zero(root)) terms.push_back(mul_coeff(a, root, sqrt_rat(a, Rational{5, 1})));
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId integrate_linear_over_symbolic_quadratic(Arena &a, NodeId m, NodeId n, NodeId qa, NodeId qden, NodeId atan_den, std::string const &var)
+{
+    NodeId vx = casio::sym(a, var);
+    NodeId half = casio::num(a, 1, 2);
+    NodeId q = casio::add(a, {casio::power(a, vx, casio::num(a, 2)), casio::mul(a, {qa, vx}), casio::num(a, 1)});
+    NodeId log_part = casio::mul(a, {m, half, ln_abs(a, q)});
+    NodeId rest = casio::simplify(a, casio::add(a, {n, casio::neg(a, casio::mul(a, {m, qa, half}))}));
+    NodeId atan_arg = casio::div(a, casio::add(a, {casio::mul(a, {casio::num(a, 2), vx}), qa}), atan_den);
+    NodeId atan_part = casio::mul(a, {rest, casio::div(a, casio::num(a, 2), atan_den), casio::fn(a, "atan", atan_arg)});
+    (void)qden;
+    return casio::simplify(a, casio::add(a, {log_part, atan_part}));
+}
+
+static std::optional<NodeId> integrate_poly_div_special(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    auto d = poly_of_any(a, x.b, var);
+    if(!n || !d || !n->ok || !d->ok) return std::nullopt;
+
+    if(is_xn_plus_one(*d, 4) && poly_degree(*n) >= 4) {
+        auto qr = poly_divmod(*n, *d);
+        if(!qr) return std::nullopt;
+        Poly q = qr->first;
+        Poly r = qr->second;
+        std::vector<NodeId> terms;
+        if(poly_degree(q) >= 0) terms.push_back(integrate_poly_node(a, q, var));
+        Rational c0 = poly_at(r, 0);
+        Rational c2 = poly_at(r, 2);
+        bool rem_ok = poly_degree(r) < 0 || (r_zero(poly_at(r, 1)) && r_zero(poly_at(r, 3)));
+        if(!rem_ok) return std::nullopt;
+        if(!r_zero(c0) || !r_zero(c2)) {
+            NodeId vx = casio::sym(a, var);
+            NodeId sqrt2 = sqrt_rat(a, Rational{2, 1});
+            NodeId x2 = casio::power(a, vx, casio::num(a, 2));
+            NodeId qp = casio::add(a, {x2, casio::mul(a, {sqrt2, vx}), casio::num(a, 1)});
+            NodeId qm = casio::add(a, {x2, casio::neg(a, casio::mul(a, {sqrt2, vx})), casio::num(a, 1)});
+            NodeId log_ratio = ln_abs(a, casio::div(a, qp, qm));
+            NodeId atan_arg = casio::div(a, casio::mul(a, {sqrt2, vx}), casio::add(a, {casio::num(a, 1), casio::neg(a, x2)}));
+            NodeId atan_part = casio::fn(a, "atan", atan_arg);
+            Rational log_coeff = r_sub(c0, c2);
+            Rational atan_coeff = r_add(c0, c2);
+            if(!r_zero(log_coeff)) {
+                terms.push_back(casio::div(a, mul_coeff(a, log_coeff, log_ratio), casio::mul(a, {casio::num(a, 4), sqrt2})));
+            }
+            if(!r_zero(atan_coeff)) {
+                terms.push_back(casio::div(a, mul_coeff(a, atan_coeff, atan_part), casio::mul(a, {casio::num(a, 2), sqrt2})));
+            }
+        }
+        if(terms.empty()) return std::nullopt;
+        steps.push_back("Step 2: Polynomial division by x^4+1.");
+        steps.push_back("Step 3: Factor x^4+1 into two quadratics; integrate log/atan parts.");
+        return casio::simplify(a, casio::add(a, terms));
+    }
+
+    if(is_xn_plus_one(*d, 5) && poly_degree(*n) >= 5) {
+        auto qr = poly_divmod(*n, *d);
+        if(!qr) return std::nullopt;
+        Poly q = qr->first;
+        Poly r = qr->second;
+        if(!r_eq(poly_at(r, 2), Rational{-1, 1}) || !r_zero(poly_at(r, 1)) || !r_zero(poly_at(r, 3)) || !r_zero(poly_at(r, 4))) {
+            return std::nullopt;
+        }
+        Rational C = poly_at(r, 0);
+        std::vector<NodeId> terms;
+        if(poly_degree(q) >= 0) terms.push_back(integrate_poly_node(a, q, var));
+
+        NodeId vx = casio::sym(a, var);
+        NodeId sqrt5 = sqrt_rat(a, Rational{5, 1});
+        NodeId alpha = casio::div(a, casio::add(a, {casio::num(a, -1), sqrt5}), casio::num(a, 2));
+        NodeId beta = casio::div(a, casio::add(a, {casio::num(a, -1), casio::neg(a, sqrt5)}), casio::num(a, 2));
+        NodeId den_alpha = casio::fn(a, "sqrt", casio::div(a, casio::add(a, {casio::num(a, 5), sqrt5}), casio::num(a, 2)));
+        NodeId den_beta = casio::fn(a, "sqrt", casio::div(a, casio::add(a, {casio::num(a, 5), casio::neg(a, sqrt5)}), casio::num(a, 2)));
+
+        Rational A = r_div(r_sub(C, Rational{1, 1}), Rational{5, 1});
+        if(!r_zero(A)) terms.push_back(mul_coeff(a, A, ln_abs(a, casio::add(a, {vx, casio::num(a, 1)}))));
+
+        NodeId B = coeff_with_sqrt5(a, r_div(r_sub(Rational{1, 1}, C), Rational{10, 1}), r_div(r_add(C, Rational{1, 1}), Rational{10, 1}));
+        NodeId D = coeff_with_sqrt5(a, r_add(r_div(r_mul(Rational{2, 1}, C), Rational{5, 1}), Rational{1, 10}), Rational{1, 10});
+        NodeId E = coeff_with_sqrt5(a, r_div(r_sub(Rational{1, 1}, C), Rational{10, 1}), r_neg(r_div(r_add(C, Rational{1, 1}), Rational{10, 1})));
+        NodeId F = coeff_with_sqrt5(a, r_add(r_div(r_mul(Rational{2, 1}, C), Rational{5, 1}), Rational{1, 10}), Rational{-1, 10});
+
+        terms.push_back(integrate_linear_over_symbolic_quadratic(a, B, D, alpha, x.b, den_alpha, var));
+        terms.push_back(integrate_linear_over_symbolic_quadratic(a, E, F, beta, x.b, den_beta, var));
+        steps.push_back("Step 2: Polynomial division by x^5+1.");
+        steps.push_back("Step 3: Factor x^5+1 into (x+1) and two quadratics; integrate log/atan parts.");
+        return casio::simplify(a, casio::add(a, terms));
+    }
+
+    return std::nullopt;
+}
+
+static std::optional<Rational> linear_shift(Arena &a, NodeId n, std::string const &var)
+{
+    auto p = poly_of_any(a, n, var);
+    if(!p || !p->ok || poly_degree(*p) != 1) return std::nullopt;
+    Rational slope = poly_at(*p, 1);
+    if(slope.num != slope.den) return std::nullopt;
+    return poly_at(*p, 0); // x + shift
+}
+
+static bool solve3(Rational A[3][3], Rational b[3], Rational out[3])
+{
+    for(int col = 0; col < 3; col++) {
+        int pivot = col;
+        while(pivot < 3 && r_zero(A[pivot][col])) pivot++;
+        if(pivot == 3) return false;
+        if(pivot != col) {
+            for(int j = col; j < 3; j++) std::swap(A[col][j], A[pivot][j]);
+            std::swap(b[col], b[pivot]);
+        }
+        Rational inv = r_div(Rational{1, 1}, A[col][col]);
+        for(int j = col; j < 3; j++) A[col][j] = r_mul(A[col][j], inv);
+        b[col] = r_mul(b[col], inv);
+        for(int row = 0; row < 3; row++) {
+            if(row == col || r_zero(A[row][col])) continue;
+            Rational f = A[row][col];
+            for(int j = col; j < 3; j++) A[row][j] = r_sub(A[row][j], r_mul(f, A[col][j]));
+            b[row] = r_sub(b[row], r_mul(f, b[col]));
+        }
+    }
+    for(int i = 0; i < 3; i++) out[i] = b[i];
+    return true;
+}
+
+static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    if(!n || !n->ok || poly_degree(*n) > 1) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
+
+    NodeId f0 = den.kids[0], f1 = den.kids[1];
+    auto try_repeated = [&](NodeId pow_part, NodeId lin_part) -> std::optional<NodeId> {
+        Node const &pp = a.get(pow_part);
+        if(pp.kind != NodeKind::Pow) return std::nullopt;
+        auto exp = as_num(a, pp.b);
+        if(!exp || exp->num != 2 || exp->den != 1) return std::nullopt;
+        auto p = linear_shift(a, pp.a, var);
+        auto q = linear_shift(a, lin_part, var);
+        if(!p || !q) return std::nullopt;
+        // N = A(x+p)(x+q)+B(x+q)+C(x+p)^2
+        Rational M[3][3] = {
+            {Rational{1, 1}, Rational{0, 1}, Rational{1, 1}},
+            {r_add(*p, *q), Rational{1, 1}, r_mul(Rational{2, 1}, *p)},
+            {r_mul(*p, *q), *q, r_mul(*p, *p)},
+        };
+        Rational rhs[3] = {poly_at(*n, 2), poly_at(*n, 1), poly_at(*n, 0)};
+        Rational sol[3];
+        if(!solve3(M, rhs, sol)) return std::nullopt;
+        NodeId lp = pp.a;
+        NodeId lq = lin_part;
+        std::vector<NodeId> terms;
+        if(!r_zero(sol[0])) terms.push_back(mul_coeff(a, sol[0], ln_abs(a, lp)));
+        if(!r_zero(sol[1])) terms.push_back(mul_coeff(a, r_neg(sol[1]), casio::div(a, casio::num(a, 1), lp)));
+        if(!r_zero(sol[2])) terms.push_back(mul_coeff(a, sol[2], ln_abs(a, lq)));
+        if(terms.empty()) return casio::num(a, 0);
+        steps.push_back("Step 2: Partial fractions: A/(x+p)+B/(x+p)^2+C/(x+q).");
+        steps.push_back("Step 3: Integrate log terms and repeated-root term.");
+        return casio::simplify(a, casio::add(a, terms));
+    };
+    if(auto got = try_repeated(f0, f1)) return got;
+    if(auto got = try_repeated(f1, f0)) return got;
+
+    auto try_linear_quad = [&](NodeId lin_part, NodeId quad_part) -> std::optional<NodeId> {
+        auto p = linear_shift(a, lin_part, var);
+        auto qpoly = poly_of_any(a, quad_part, var);
+        if(!p || !qpoly || !qpoly->ok || poly_degree(*qpoly) != 2) return std::nullopt;
+        Rational q2 = poly_at(*qpoly, 2), q1 = poly_at(*qpoly, 1), q0 = poly_at(*qpoly, 0);
+        if(q2.num != q2.den) return std::nullopt;
+        // N = A*Q + (B*x+C)*(x+p)
+        Rational M[3][3] = {
+            {q2, Rational{1, 1}, Rational{0, 1}},
+            {q1, *p, Rational{1, 1}},
+            {q0, Rational{0, 1}, *p},
+        };
+        Rational rhs[3] = {poly_at(*n, 2), poly_at(*n, 1), poly_at(*n, 0)};
+        Rational sol[3];
+        if(!solve3(M, rhs, sol)) return std::nullopt;
+        std::vector<NodeId> terms;
+        if(!r_zero(sol[0])) terms.push_back(mul_coeff(a, sol[0], ln_abs(a, lin_part)));
+        Poly top{{sol[2], sol[1]}, true};
+        NodeId quad_frac = casio::div(a, poly_to_node(a, top, var), quad_part);
+        std::vector<std::string> quad_steps;
+        auto quad_int = integrate_linear_over_quadratic(a, quad_frac, var, quad_steps);
+        if(!quad_int) return std::nullopt;
+        terms.push_back(*quad_int);
+        steps.push_back("Step 2: Partial fractions: A/(x+p)+(Bx+C)/quadratic.");
+        steps.push_back("Step 3: Integrate linear factor by log and quadratic part by log/atan form.");
+        return casio::simplify(a, casio::add(a, terms));
+    };
+    if(auto got = try_linear_quad(f0, f1)) return got;
+    if(auto got = try_linear_quad(f1, f0)) return got;
+    return std::nullopt;
 }
 
 static NodeId integrate_one_over_sqrt_quadratic(Arena &a, NodeId denom, Poly2I const &d, std::string const &var)
@@ -1091,6 +1657,30 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             out.steps.push_back("Step 3: Combine results.");
             return out;
         }
+    }
+
+    if(auto trig_prod = integrate_trig_products(a, expr, var, out.steps)) {
+        out.result = *trig_prod;
+        out.steps.push_back("Step 3: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto rational_pf = integrate_partial_fraction_simple(a, expr, var, out.steps)) {
+        out.result = *rational_pf;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto rational_special = integrate_poly_div_special(a, expr, var, out.steps)) {
+        out.result = *rational_special;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto rational_div = integrate_poly_div_quadratic(a, expr, var, out.steps)) {
+        out.result = *rational_div;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
     }
 
     if(auto rat_sqrt = integrate_linear_over_sqrt_quadratic(a, expr, var, out.steps)) {

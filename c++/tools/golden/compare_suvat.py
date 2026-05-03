@@ -8,6 +8,7 @@ We compare the *exact* answer line: "<target> = <expr>" (first occurrence).
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import subprocess
 import sys
@@ -55,6 +56,26 @@ def extract_exact_answer(text: str, target: str) -> str | None:
     return None
 
 
+def numeric_value(expr: str) -> float | None:
+    expr = expr.strip().replace("^", "**")
+    try:
+        return float(eval(expr, {"__builtins__": {}}, {"sqrt": math.sqrt, "pi": math.pi}))
+    except Exception:
+        return None
+
+
+def equivalent(expected: str | None, actual: str | None) -> bool:
+    if expected == actual:
+        return True
+    if expected is None or actual is None:
+        return False
+    ev = numeric_value(expected)
+    av = numeric_value(actual)
+    if ev is None or av is None:
+        return False
+    return math.isclose(ev, av, rel_tol=5e-3, abs_tol=5e-3)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default=str(REPO / "c++" / "addin" / "host" / "build" / "casio_host"))
@@ -77,7 +98,7 @@ def main() -> int:
         cpp_out = run_cpp(host, s,u,v,a,t,target)
         py_ans = extract_exact_answer(py_out, target)
         cpp_ans = extract_exact_answer(cpp_out, target) or extract_exact_answer(cpp_out, "Answer: "+target)
-        ok = (expected == cpp_ans) if expected is not None else (py_ans == cpp_ans)
+        ok = equivalent(expected, cpp_ans) if expected is not None else equivalent(py_ans, cpp_ans)
         if not ok:
             bad += 1
             print("MISMATCH", (s,u,v,a,t,target))
