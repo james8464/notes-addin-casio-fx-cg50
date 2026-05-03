@@ -2009,9 +2009,200 @@ static bool cascas_rewrite_logic_call(const char *input,const char *alias,const 
   return true;
 }
 
+static string cascas_trim(const string &s){
+  int a=0,b=int(s.size())-1;
+  while (a<int(s.size()) && isspace((unsigned char)s[a])) ++a;
+  while (b>=a && isspace((unsigned char)s[b])) --b;
+  if (b<a)
+    return "";
+  return s.substr(a,b-a+1);
+}
+
+static int cascas_split_top_args(const string &s,int first,int last,string *args,int maxargs){
+  int depth=0,count=0,start=first;
+  bool instring=false;
+  for (int i=first;i<=last;++i){
+    char c=i<last?s[i]:',';
+    if (i<last && c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (i<last && (c=='(' || c=='[' || c=='{'))
+      ++depth;
+    if (i<last && (c==')' || c==']' || c=='}'))
+      --depth;
+    if ((!depth && c==',') || i==last){
+      if (count>=maxargs)
+	return -1;
+      args[count++]=cascas_trim(s.substr(start,i-start));
+      start=i+1;
+    }
+  }
+  return count;
+}
+
+static bool cascas_call_args(const char *input,const char *alias,string *args,int maxargs,int &count,int &close,string &s){
+  if (!cascas_startswith(input,alias))
+    return false;
+  s=input;
+  int open=strlen(alias)-1;
+  close=cascas_find_matching_paren(s,open);
+  if (close<0)
+    return false;
+  count=cascas_split_top_args(s,open+1,close,args,maxargs);
+  return count>0;
+}
+
+static int cascas_find_top_equal(const string &s){
+  int depth=0;
+  bool instring=false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    if (c==')' || c==']' || c=='}')
+      --depth;
+    if (!depth && c=='=')
+      return i;
+  }
+  return -1;
+}
+
+static bool cascas_rewrite_compose_call(const char *input,string &out){
+  string args[3],s; int count=0,close=0;
+  if (!cascas_call_args(input,"compose(",args,3,count,close,s) || count<2)
+    return false;
+  string var=count>=3 && args[2].size()?args[2]:"x";
+  out="subst((" + args[0] + ")," + var + "=(" + args[1] + "))";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_inverse_call(const char *input,string &out){
+  string args[2],s; int count=0,close=0;
+  if (!cascas_call_args(input,"inverse(",args,2,count,close,s) || count<1)
+    return false;
+  out="solve(y=(" + args[0] + "),x)";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_diff_alias_call(const char *input,const char *alias,int order,string &out){
+  string args[2],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,2,count,close,s))
+    return false;
+  string var=count>=2 && args[1].size()?args[1]:"x";
+  out="diff((" + args[0] + ")," + var;
+  if (order>1)
+    out += "," + print_INT_(order);
+  out += ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_implicit_diff_call(const char *input,string &out){
+  string args[3],s; int count=0,close=0;
+  if (!cascas_call_args(input,"implicit_diff(",args,3,count,close,s))
+    return false;
+  string expr=args[0];
+  int eq=cascas_find_top_equal(expr);
+  if (eq>=0)
+    expr="(" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1,expr.size()-eq-1) + ")";
+  string x=count>=2 && args[1].size()?args[1]:"x";
+  string y=count>=3 && args[2].size()?args[2]:"y";
+  out="normal(-diff((" + expr + ")," + x + ")/diff((" + expr + ")," + y + "))";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_split_xy_param(const string &xy,string &xexpr,string &yexpr){
+  string body=xy;
+  if (body.size()>=2 && body[0]=='[' && body[body.size()-1]==']')
+    body=body.substr(1,body.size()-2);
+  string parts[2];
+  int count=cascas_split_top_args(body,0,body.size(),parts,2);
+  if (count!=2)
+    return false;
+  xexpr=parts[0];
+  yexpr=parts[1];
+  return true;
+}
+
+static bool cascas_rewrite_param_call(const char *input,const char *alias,int mode,string &out){
+  string args[4],s,xexpr,yexpr; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,4,count,close,s) || count<2)
+    return false;
+  if (!cascas_split_xy_param(args[0],xexpr,yexpr))
+    return false;
+  string t=args[1].size()?args[1]:"t";
+  string dydx="normal(diff((" + yexpr + ")," + t + ")/diff((" + xexpr + ")," + t + "))";
+  if (mode==1)
+    out=dydx;
+  else if (mode==2)
+    out="normal(diff((" + dydx + ")," + t + ")/diff((" + xexpr + ")," + t + "))";
+  else {
+    out="integrate((" + yexpr + ")*diff((" + xexpr + ")," + t + ")," + t;
+    if (count>=4)
+      out += "," + args[2] + "," + args[3];
+    out += ")";
+  }
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_compare_zero_call(const char *input,const char *alias,string &out){
+  string args[2],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,2,count,close,s) || count<1)
+    return false;
+  if (count>=2)
+    out="normal((" + args[0] + ")-(" + args[1] + "))";
+  else
+    out="normal(" + args[0] + ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (!input)
     return false;
+  if (cascas_rewrite_compose_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_inverse_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_diff_alias_call(input,"normal_diff(",1,rewritten))
+    return true;
+  if (cascas_rewrite_diff_alias_call(input,"second_diff(",2,rewritten))
+    return true;
+  if (cascas_rewrite_implicit_diff_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_param_call(input,"param_diff(",1,rewritten))
+    return true;
+  if (cascas_rewrite_param_call(input,"param_second_diff(",2,rewritten))
+    return true;
+  if (cascas_rewrite_param_call(input,"param_area(",3,rewritten))
+    return true;
+  if (cascas_replace_call(input,"tangent_line(","linetan(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"de_solve(","desolve(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"poly(","factor(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"solve_trig(","solve(",rewritten))
+    return true;
+  if (cascas_rewrite_compare_zero_call(input,"trig_prove(",rewritten))
+    return true;
+  if (cascas_rewrite_compare_zero_call(input,"trig_transform(",rewritten))
+    return true;
+  if (cascas_rewrite_compare_zero_call(input,"trig_rewrite(",rewritten))
+    return true;
+  if (cascas_rewrite_compare_zero_call(input,"xform(",rewritten))
+    return true;
+  if (cascas_rewrite_compare_zero_call(input,"transform(",rewritten))
+    return true;
   if (cascas_replace_call(input,"complete_square(","canonical_form(",rewritten))
     return true;
   if (cascas_replace_call(input,"fitconst(","solve(",rewritten))
@@ -2026,9 +2217,9 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_replace_call(input,"suvat(","solve(",rewritten))
     return true;
-  if (cascas_replace_call(input,"transform(","normal(",rewritten))
-    return true;
   if (cascas_replace_call(input,"cartesian(","eliminate(",rewritten))
+    return true;
+  if (cascas_replace_call(input,"range(","tabvar(",rewritten))
     return true;
   if (cascas_rewrite_logic_call(input,"nand(","and",rewritten))
     return true;
@@ -2050,6 +2241,57 @@ static void cascas_append_line(string &out,const char *s){
 static void cascas_append_method_lines(string &out,const char *s){
   if (!s){
     cascas_append_line(out,"2. Parse: read expression with KhiCAS exact parser.");
+    return;
+  }
+  if (strstr(s,"implicit_diff(")){
+    cascas_append_line(out,"2. Implicit setup: move all terms to F(x,y)=0.");
+    cascas_append_line(out,"3. Differentiate: dF/dx + dF/dy * dy/dx = 0.");
+    cascas_append_line(out,"4. Rearrange: dy/dx = -(dF/dx)/(dF/dy).");
+    cascas_append_line(out,"5. Verify: substitute derivative into differentiated equation.");
+    return;
+  }
+  if (strstr(s,"param_diff(") || strstr(s,"param_second_diff(")){
+    cascas_append_line(out,"2. Parametric setup: identify x(t), y(t), parameter t.");
+    cascas_append_line(out,"3. Compute: dx/dt and dy/dt.");
+    cascas_append_line(out,"4. Use dy/dx = (dy/dt)/(dx/dt); repeat for d2y/dx2 if needed.");
+    cascas_append_line(out,"5. Simplify exact result and check dx/dt is non-zero.");
+    return;
+  }
+  if (strstr(s,"param_area(")){
+    cascas_append_line(out,"2. Parametric area setup: use Area = integral y dx.");
+    cascas_append_line(out,"3. Compute dx/dt, then integrate y*(dx/dt) with respect to t.");
+    cascas_append_line(out,"4. Apply bounds if supplied; simplify exact result.");
+    return;
+  }
+  if (strstr(s,"normal_diff(") || strstr(s,"second_diff(") || strstr(s,"tangent_line(")){
+    cascas_append_line(out,"2. Derivative setup: identify function, variable, and required order/point.");
+    cascas_append_line(out,"3. Apply chain/product/quotient/power/log/trig rules.");
+    cascas_append_line(out,"4. Simplify exact derivative; for tangent use y-y1=m(x-x1).");
+    cascas_append_line(out,"5. Verify by KhiCAS exact simplification.");
+    return;
+  }
+  if (strstr(s,"trig_prove(") || strstr(s,"trig_transform(") || strstr(s,"trig_rewrite(")){
+    cascas_append_line(out,"2. Trig setup: convert target check to lhs-rhs.");
+    cascas_append_line(out,"3. Rewrite: use sin/cos/tan identities and exact simplification.");
+    cascas_append_line(out,"4. Verify: result 0 means both forms are equivalent.");
+    return;
+  }
+  if (strstr(s,"compose(") || strstr(s,"inverse(")){
+    cascas_append_line(out,"2. Function setup: identify f, g, and variable.");
+    cascas_append_line(out,"3. Substitute for composition or solve y=f(x) for inverse.");
+    cascas_append_line(out,"4. Simplify exact expression and check by substitution.");
+    return;
+  }
+  if (strstr(s,"suvat(")){
+    cascas_append_line(out,"2. SUVAT setup: encode knowns into standard constant-acceleration equations.");
+    cascas_append_line(out,"3. Solve exact simultaneous equations for the requested variable.");
+    cascas_append_line(out,"4. Verify using v=u+at, s=ut+1/2at^2, v^2=u^2+2as.");
+    return;
+  }
+  if (strstr(s,"bool_simplify(") || strstr(s,"nand(") || strstr(s,"nor(") || strstr(s,"prove_bool(")){
+    cascas_append_line(out,"2. Boolean setup: parse NOT/AND/OR form.");
+    cascas_append_line(out,"3. Rewrite with De Morgan, absorption, NAND/NOR as needed.");
+    cascas_append_line(out,"4. Verify by simplifying both sides to the same form.");
     return;
   }
   if (strstr(s,"diff(") || strstr(s,"derive(") || strstr(s,"'")){
@@ -2129,7 +2371,7 @@ static string cascas_working_text(const char *input,const char *eval_input,const
     out += eval_input;
     out += "\n";
   }
-  cascas_append_method_lines(out,eval_input?eval_input:input);
+  cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input));
   out += "Result: ";
   out += answer;
   out += "\nAnswer: ";

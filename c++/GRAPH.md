@@ -6,12 +6,33 @@ graph TD
   Ref["Fourier khicasen.g3a"] --> RefMode["CASIO_PRIZM_MODE=khicas-reference"]
   Icons["Eigenmath-style c++/prizm/assets"] --> Build
   Exact --> Port["working-step hook port"]
+  Exact --> Alias["old Python feature aliases"]
+  Alias --> Port
   Active["c++/addin old working modules"] --> WorkSteps["exam working-step layer"]
   WorkSteps --> Port
   Port --> Build["/compile source build"]
   Build --> G3A["c++/prizm/build/CasioCAS.g3a"]
   G3A --> Root["./CasioCAS.g3a"]
   RefMode --> G3A
+```
+
+```mermaid
+graph TD
+  OldPy["old Python menus"] --> Alg["Algebra: cmp/xform/exp/poly/solve/comp/inv/rw/dom/cart"]
+  OldPy --> Der["Derive: normal/implicit/param/second/tangent"]
+  OldPy --> Int["Integrate: int/DE/param area"]
+  OldPy --> Tri["Trig: prove/xform/solve/rewrite"]
+  OldPy --> Suv["SUVAT"]
+  OldPy --> Bool["Boolean: simplify/NAND/NOR/prove"]
+  Alg --> Cat["KhiCAS catalogue aliases"]
+  Der --> Cat
+  Int --> Cat
+  Tri --> Cat
+  Suv --> Cat
+  Bool --> Cat
+  Cat --> Rew["main.cc alias rewrite"]
+  Rew --> Giac["KhiCAS exact engine"]
+  Giac --> Work["working-line screen + shell output"]
 ```
 
 ```mermaid

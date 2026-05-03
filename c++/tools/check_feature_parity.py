@@ -26,6 +26,27 @@ OLD_WORKING_LAYER = [
     "suvat(", "bool_simplify(", "nand(", "nor(", "prove_bool(",
 ]
 
+SOURCE_CATALOG_SURFACE = [
+    "complete_square(", "compare(", "transform(", "xform(", "expand(",
+    "poly(", "factor(", "solve(", "compose(", "inverse(", "rewrite(",
+    "domain(", "range(", "cartesian(", "fitconst(", "match(",
+    "normal_diff(", "implicit_diff(", "param_diff(",
+    "param_second_diff(", "second_diff(", "tangent_line(",
+    "integrate(", "desolve(", "de_solve(", "param_area(",
+    "solve_trig(", "trig_prove(", "trig_transform(", "trig_rewrite(",
+    "suvat(", "bool_simplify(", "nand(", "nor(", "prove_bool(",
+]
+
+SOURCE_ALIAS_REWRITES = [
+    "complete_square(", "fitconst(", "match(", "bool_simplify(",
+    "prove_bool(", "rewrite(", "suvat(", "cartesian(", "range(",
+    "nand(", "nor(", "compose(", "inverse(", "normal_diff(",
+    "implicit_diff(", "param_diff(", "param_second_diff(",
+    "second_diff(", "param_area(", "tangent_line(", "de_solve(",
+    "poly(", "solve_trig(", "trig_prove(", "trig_transform(",
+    "trig_rewrite(", "xform(", "transform(",
+]
+
 LEGACY_MODULE_MARKERS = [
     "cartesian_from_param",
     "namespace casio::derive",
@@ -49,10 +70,14 @@ def main() -> int:
     missing_upstream = [x for x in UPSTREAM_EQUIVALENTS if x.lower() not in catalog]
     missing_old = [x for x in OLD_WORKING_LAYER if x.lower() not in device]
     missing_legacy = [x for x in LEGACY_MODULE_MARKERS if x.lower() not in addin_text]
+    missing_surface = [x for x in SOURCE_CATALOG_SURFACE if x.lower() not in catalog]
+    missing_alias = [x for x in SOURCE_ALIAS_REWRITES if x.lower() not in read(ROOT / "c++/khicas/upstream/giac90_1addin/main.cc")]
 
     print(f"upstream equivalents: {len(UPSTREAM_EQUIVALENTS) - len(missing_upstream)}/{len(UPSTREAM_EQUIVALENTS)}")
     print(f"old working layer hooks: {len(OLD_WORKING_LAYER) - len(missing_old)}/{len(OLD_WORKING_LAYER)}")
     print(f"active rich modules: {len(LEGACY_MODULE_MARKERS) - len(missing_legacy)}/{len(LEGACY_MODULE_MARKERS)}")
+    print(f"source catalogue old surface: {len(SOURCE_CATALOG_SURFACE) - len(missing_surface)}/{len(SOURCE_CATALOG_SURFACE)}")
+    print(f"source alias rewrites: {len(SOURCE_ALIAS_REWRITES) - len(missing_alias)}/{len(SOURCE_ALIAS_REWRITES)}")
 
     bad = False
     if missing_upstream:
@@ -63,6 +88,12 @@ def main() -> int:
         bad = True
     if missing_legacy:
         print("FAIL missing active modules: " + ", ".join(missing_legacy))
+        bad = True
+    if missing_surface:
+        print("FAIL missing source catalogue old surface: " + ", ".join(missing_surface))
+        bad = True
+    if missing_alias:
+        print("FAIL missing source alias rewrites: " + ", ".join(missing_alias))
         bad = True
 
     if bad:

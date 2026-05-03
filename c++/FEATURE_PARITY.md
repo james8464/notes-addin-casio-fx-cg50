@@ -5,8 +5,8 @@ graph TD
   Py["old Python programs"] --> Work["exam working layer"]
   OldCpp["old C++ native port"] --> Work
   Khi["upstream KhiCAS answer engine"] --> App["current .g3a"]
-  Work --> Hook["source catalogue + output hook"]
-  Hook --> Future["KhiCAS UI + working lines"]
+  Work --> Hook["source catalogue + alias rewrites + output hook"]
+  Hook --> App
 ```
 
 ## Current State
@@ -21,21 +21,21 @@ graph TD
 
 | Old feature group | Current KhiCAS equivalent | Working lines status |
 |---|---|---|
-| simplify/factor/expand/partial fractions | `simplify`, `factor`, `texpand`, `partfrac` | old layer preserved |
-| solve equations | `solve`, `fsolve`, `csolve`, `linsolve` | old layer preserved |
-| compare/transform/match/rewrite | old custom layer | needs source hook |
-| complete square | old custom layer | needs source hook |
-| compose/inverse/domain/range | old custom layer + KhiCAS primitives | needs source hook |
-| cartesian/parametric conversion | old custom layer + plotparam | needs source hook |
-| fit constants | old custom layer | needs source hook |
-| normal/implicit/param/second derivative | `diff` + old layer | needs source hook |
-| integration/DE/param area | `integrate`, `desolve`, `rsolve` + old layer | needs source hook |
-| trig prove/transform/solve/rewrite | KhiCAS trig functions + old layer | needs source hook |
-| SUVAT | old custom layer only | needs source hook |
-| boolean simplify/NAND/NOR/prove | old custom layer only | needs source hook |
-| stats/probability/regression | KhiCAS stats/proba + old layer | old layer preserved |
-| matrices/vectors | KhiCAS matrix/linalg | old layer preserved |
-| integer arithmetic | KhiCAS arithmetic | old layer preserved |
+| simplify/factor/expand/partial fractions | `simplify`, `factor`, `expand`, `partfrac` | source catalogue + working hook |
+| solve equations | `solve`, `fsolve`, `csolve`, `linsolve` | source catalogue + working hook |
+| compare/transform/match/rewrite | `compare`, `normal`, `solve`, `canonical_form` | source aliases + working hook |
+| complete square | `complete_square` -> `canonical_form` | source alias + working hook |
+| compose/inverse/domain/range | `subst`, `solve`, `domain`, `tabvar` | source aliases + working hook |
+| cartesian/parametric conversion | `eliminate`, param aliases | source aliases + working hook |
+| fit constants | `fitconst`, `match` -> `solve` | source aliases + working hook |
+| normal/implicit/param/second derivative | `normal_diff`, `implicit_diff`, `param_diff`, `second_diff` | source aliases + working hook |
+| integration/DE/param area | `integrate`, `desolve`, `param_area` | source aliases + working hook |
+| trig prove/transform/solve/rewrite | `trig_prove`, `trig_transform`, `solve_trig`, `trig_rewrite` | source aliases + working hook |
+| SUVAT | `suvat` -> simultaneous equations | source alias + working hook |
+| boolean simplify/NAND/NOR/prove | `bool_simplify`, `nand`, `nor`, `prove_bool` | source aliases + working hook |
+| stats/probability/regression | KhiCAS stats/proba + old layer tests | source catalogue |
+| matrices/vectors | KhiCAS matrix/linalg + old layer tests | source catalogue |
+| integer arithmetic | KhiCAS arithmetic + old layer tests | source catalogue |
 
 ## Output Rule
 
@@ -68,12 +68,16 @@ Removed/hidden from source catalogue:
 Old-feature aliases added to source catalogue:
 
 - `complete_square(expr,[x])` -> `canonical_form`
+- `compose(f,g,[x])` -> `subst`
 - `compare(expr1,expr2)` -> KhiCAS `compare`
 - `cartesian([x(t),y(t)],t)` -> `eliminate`
-- `domain(expr,[x])`, `range(expr,[x])`
+- `domain(expr,[x])`, `range(expr,[x])` -> `domain`, `tabvar`
 - `fitconst(equations,vars)`, `match(expr,form)` -> `solve`
-- `inverse(f(x))`
-- `rewrite(expr,target)`, `transform(expr,[form])`
+- `normal_diff`, `implicit_diff`, `param_diff`, `param_second_diff`, `second_diff`, `tangent_line`
+- `integrate`, `de_solve`, `param_area`
+- `inverse(f(x))` -> solve inverse relation
+- `rewrite(expr,target)`, `transform(expr,[form])`, `xform(expr,target)`
+- `solve_trig`, `trig_prove`, `trig_transform`, `trig_rewrite`
 - `suvat(equations,vars)` -> solve SUVAT equations
 - `bool_simplify(expr)`, `nand(a,b)`, `nor(a,b)`, `prove_bool(lhs,rhs)`
 
