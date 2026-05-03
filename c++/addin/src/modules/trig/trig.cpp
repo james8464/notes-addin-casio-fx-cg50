@@ -735,6 +735,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         return casio::exam_block(
             "trig identity",
             {
+                "Domain: denominators non-zero where used.",
+                "Start from LHS; use standard identities.",
+                "Use sin/cos, double-angle, sum-product, or R-form as needed.",
                 "Simplify LHS: " + casio::format_expr(arena, l),
                 "Simplify RHS: " + casio::format_expr(arena, r),
                 ok ? "Hence LHS = RHS." : "Not an identity by simplification/check.",

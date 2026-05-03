@@ -1382,10 +1382,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "2. Interval: " + solve_var + " in [" + format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) + "]"
             );
         }
+        std::vector<std::string> domain_lines;
+        collect_domain(arena, lhs, domain_lines);
+        collect_domain(arena, rhs, domain_lines);
+        if(!domain_lines.empty()) {
+            for(auto const &d : domain_lines) out.push_back(d);
+        }
+        else if(equation_text.find("log") != std::string::npos || equation_text.find("ln") != std::string::npos ||
+                equation_text.find('/') != std::string::npos) {
+            out.push_back("Domain: log args >0; denoms !=0.");
+        }
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
-            out.push_back("2. Cardano/numeric fallback after rearrangement.");
+            out.push_back("2. Rearr: lhs-rhs=0.");
+            out.push_back("3. Use log/exp laws or substitution; verify roots.");
+            out.push_back("4. Numeric exact-form fallback after rearrangement.");
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution (unsupported form).");

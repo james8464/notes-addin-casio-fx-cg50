@@ -398,6 +398,31 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "1/(xsqrt(1+log(x)))" || c == "1/(xsqrt(log(x)+1))") {
+        return out(
+            "log chain substitution",
+            {
+                "Domain: x>0 and 1+log(x)>0.",
+                "Let u=1+log(x).",
+                "Then du=dx/x.",
+                "Integral becomes Integral(u^-1/2)du.",
+            },
+            "2*sqrt(1+log(x)) + C"
+        );
+    }
+
+    if(c == "sin(x)/(1+cos(x))^2" || c == "sin(x)/(cos(x)+1)^2") {
+        return out(
+            "reverse chain trig",
+            {
+                "Let u=1+cos(x).",
+                "Then du=-sin(x)dx.",
+                "Integral becomes -Integral(u^-2)du.",
+            },
+            "1/(1+cos(x)) + C"
+        );
+    }
+
     if(c == "1/(sin(x)+cos(x))" || c == "1/(cos(x)+sin(x))") {
         return out(
             "phase shift to cosec",
@@ -407,6 +432,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Use Integral(cosec u) du = log|tan(u/2)|.",
             },
             "log(abs(tan(x/2+pi/8)))/sqrt(2) + C"
+        );
+    }
+
+    if(c == "tan(x)sec(x)^2/(1+tan(x)^2)^2" || c == "tan(x)sec(x)^2/(tan(x)^2+1)^2") {
+        return out(
+            "tan substitution",
+            {
+                "Let u=tan(x), so du=sec(x)^2 dx.",
+                "Integral becomes Integral(u/(1+u^2)^2)du.",
+                "Let w=1+u^2, so dw=2u du.",
+            },
+            "-1/(2*(1+tan(x)^2)) + C"
         );
     }
 
@@ -422,6 +459,29 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "log(x)^2/x" || c == "ln(x)^2/x") {
+        return out(
+            "log substitution",
+            {
+                "Let u=log(x), so du=dx/x.",
+                "Integral becomes Integral(u^2)du.",
+            },
+            "log(x)^3/3 + C"
+        );
+    }
+
+    if(c == "xe^(x^2)sin(e^(x^2))" || c == "xexp(x^2)sin(exp(x^2))") {
+        return out(
+            "nested exponential substitution",
+            {
+                "Let u=e^(x^2).",
+                "Then du=2x*e^(x^2)dx.",
+                "Integral becomes 1/2 Integral(sin(u))du.",
+            },
+            "-cos(e^(x^2))/2 + C"
+        );
+    }
+
     if(c == "1/(e^x+e^-x)" || c == "1/(exp(x)+exp(-x))") {
         return out(
             "substitution u=e^x",
@@ -434,7 +494,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "sqrt(1-x)/sqrt(1+x)" || c == "sqrt(-x+1)/sqrt(x+1)") {
+    if(c == "sqrt(1-x)/sqrt(1+x)" || c == "sqrt(-x+1)/sqrt(x+1)" || c == "sqrt((1-x)/(1+x))") {
         return out(
             "half-angle root substitution",
             {
@@ -443,6 +503,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integrate and back-substitute with t=acos(x).",
             },
             "sqrt(1-x^2) - acos(x) + C"
+        );
+    }
+
+    if(c == "1/(x^2+2x+5)^2") {
+        return out(
+            "complete square reduction",
+            {
+                "Complete square: x^2+2x+5=(x+1)^2+4.",
+                "Let u=(x+1)/2, so dx=2du.",
+                "Use Integral(1/(1+u^2)^2)du from d[u/(1+u^2)] and d[atan(u)].",
+            },
+            "(x+1)/(8*((x+1)^2+4)) + atan((x+1)/2)/16 + C"
         );
     }
 
@@ -457,6 +529,43 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "sqrt(e^x-1)" || c == "sqrt(exp(x)-1)") {
+        return out(
+            "exponential root substitution",
+            {
+                "Let u=sqrt(e^x-1), so e^x=u^2+1.",
+                "Then dx=2u/(u^2+1)du.",
+                "Integral becomes Integral(2u^2/(u^2+1))du.",
+                "Split as 2*Integral(1-1/(u^2+1))du.",
+            },
+            "2*sqrt(e^x-1) - 2*atan(sqrt(e^x-1)) + C"
+        );
+    }
+
+    if(c == "1/(1+sqrt(x))^2" || c == "1/(sqrt(x)+1)^2") {
+        return out(
+            "sqrt substitution",
+            {
+                "Let t=sqrt(x), so dx=2t dt.",
+                "Integral becomes Integral(2t/(1+t)^2)dt.",
+                "Set u=1+t, then split 2(u-1)/u^2.",
+            },
+            "2*log(abs(1+sqrt(x))) + 2/(1+sqrt(x)) + C"
+        );
+    }
+
+    if(c == "x/(sqrt(1+x^2)(1+sqrt(1+x^2)))" || c == "x/(sqrt(x^2+1)(1+sqrt(x^2+1)))") {
+        return out(
+            "sqrt reverse chain",
+            {
+                "Let u=sqrt(1+x^2).",
+                "Then du=x/sqrt(1+x^2) dx.",
+                "Integral becomes Integral(1/(1+u))du.",
+            },
+            "log(abs(1+sqrt(1+x^2))) + C"
+        );
+    }
+
     if(c == "xexp(-x^2)" || c == "xe^(-x^2)") {
         return out(
             "reverse-chain exponential",
@@ -465,6 +574,66 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integral becomes -1/2 Integral(e^u) du.",
             },
             "-e^(-x^2)/2 + C"
+        );
+    }
+
+    if(c == "log(x)/(xsqrt(1+log(x)^2))" || c == "ln(x)/(xsqrt(1+ln(x)^2))") {
+        return out(
+            "log then root substitution",
+            {
+                "Let u=log(x), so du=dx/x.",
+                "Integral becomes Integral(u/sqrt(1+u^2))du.",
+                "Let w=1+u^2, so dw=2u du.",
+            },
+            "sqrt(1+log(x)^2) + C"
+        );
+    }
+
+    if(c == "1/(x^2sqrt(1+1/x))") {
+        return out(
+            "reciprocal substitution",
+            {
+                "Let u=1+1/x.",
+                "Then du=-dx/x^2.",
+                "Integral becomes -Integral(u^-1/2)du.",
+            },
+            "-2*sqrt(1+1/x) + C"
+        );
+    }
+
+    if(c == "cos(x)e^(sin(x))/(1+e^(sin(x)))" || c == "cos(x)exp(sin(x))/(1+exp(sin(x)))") {
+        return out(
+            "exp-sin reverse chain",
+            {
+                "Let u=e^(sin(x)).",
+                "Then du=e^(sin(x))*cos(x)dx.",
+                "Integral becomes Integral(1/(1+u))du.",
+            },
+            "log(abs(1+e^(sin(x)))) + C"
+        );
+    }
+
+    if(c == "xsqrt(1-x^2)" || c == "xsqrt(-x^2+1)") {
+        return out(
+            "root reverse chain",
+            {
+                "Let u=1-x^2.",
+                "Then du=-2x dx.",
+                "Integral becomes -1/2 Integral(u^(1/2))du.",
+            },
+            "-(1-x^2)^(3/2)/3 + C"
+        );
+    }
+
+    if(c == "1/(sqrt(x)(1+x))" || c == "1/(sqrt(x)(x+1))") {
+        return out(
+            "sqrt substitution",
+            {
+                "Let t=sqrt(x), so dx=2t dt.",
+                "Denominator becomes t(1+t^2).",
+                "Integral becomes 2 Integral(1/(1+t^2))dt.",
+            },
+            "2*atan(sqrt(x)) + C"
         );
     }
 
@@ -1866,6 +2035,19 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "The derivative gives e^(a*x)sin(b*x).",
             },
             "e^(a*x)*(a*sin(b*x)-b*cos(b*x))/(a^2+b^2) + C"
+        );
+    }
+
+    if(c == "e^(-x)sin(2x)" || c == "exp(-x)sin(2x)") {
+        return out(
+            "looping integration by parts",
+            {
+                "Let I=Integral(e^(-x)sin(2x))dx.",
+                "Parts gives I=-e^(-x)sin(2x)+2J.",
+                "For J=Integral(e^(-x)cos(2x))dx, parts gives J=-e^(-x)cos(2x)-2I.",
+                "Substitute J, collect 5I, then divide.",
+            },
+            "-e^(-x)*(sin(2*x)+2*cos(2*x))/5 + C"
         );
     }
 

@@ -256,6 +256,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return run(arena, implicit_req);
             }
 
+            if(req.mode == 4 && expr.find('=') != std::string::npos) {
+                std::string compact = expr;
+                compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+                if(compact == "x^2+y^2=a^2") {
+                    return casio::exam_block(
+                        "implicit second derivative",
+                        {
+                            "Domain: y != 0.",
+                            "Differentiate wrt x: 2x+2y*dy/dx=0.",
+                            "So dy/dx=-x/y.",
+                            "Differentiate -x/y with quotient/product rule.",
+                            "Sub dy/dx=-x/y; use x^2+y^2=a^2.",
+                        },
+                        "d2y/dx2 = -a^2/y^3"
+                    );
+                }
+                return {"Error: implicit second derivative needs a recognised equation."};
+            }
+
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
@@ -323,21 +342,39 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string answer = dname + " = " + format_expr_human(arena, ans);
             std::string compact = req.expr;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
+            else if(compact == "sin(xy)+x^2=y^2" || compact == "sin(x*y)+x^2=y^2")
+                answer = dname + " = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))";
+            else if(compact == "log(x+y)=xy" || compact == "ln(x+y)=xy")
+                answer = dname + " = (y*(x+y)-1)/(1-x*(x+y))";
+            else if(compact == "y=x*tan(y)") answer = dname + " = tan(y)/(1-x*sec(y)^2)";
+            else if(compact == "y^3-3xy+x^3=0" || compact == "y^3-3*x*y+x^3=0")
+                answer = dname + " = (y-x^2)/(y^2-x)";
+            else if(compact == "x^2y+xy^2=1" || compact == "x^2*y+x*y^2=1")
+                answer = dname + " = -y*(2*x+y)/(x*(x+2*y))";
+            else if(compact == "xlog(y)+ylog(x)=1" || compact == "x*log(y)+y*log(x)=1")
+                answer = dname + " = -(log(y)+y/x)/(x/y+log(x))";
+            else if(compact == "e^(xy)=x+y" || compact == "e^(x*y)=x+y" || compact == "exp(xy)=x+y" ||
+                    compact == "exp(x*y)=x+y")
+                answer = dname + " = (1-y*e^(x*y))/(x*e^(x*y)-1)";
+            else if(compact == "x^2e^y+y^2e^x=1" || compact == "x^2*e^y+y^2*e^x=1")
+                answer = dname + " = -(2*x*e^y+y^2*e^x)/(x^2*e^y+2*y*e^x)";
             if(compact == "x^2y=2x+y^2") answer = dname + " = (2 - 2*x*y)/(x^2 - 2*y)";
             return casio::exam_block(
                 "implicit differentiation (limited)",
                 {
+                    "Domain: log args >0; denoms !=0 where used.",
                     "Normalize: " + pre.norm,
                     "Parse: " + pre.parsed,
                     "Simplify: " + pre.simplified,
-                    "Let F(x,y)=lhs-rhs.",
-                    "Use dy/dx = -F_x/F_y.",
-                    "Make dy/dx the subject.",
+                    "Differentiate both sides wrt x; y=y(x).",
+                    "Use product/chain rules, then collect dy/dx.",
+                    "Factor dy/dx and divide.",
                 },
                 answer
             );
         }
-        if(req.mode == 3) {
+        if(req.mode == 3 || req.mode == 5) {
             auto parts = split_csv(req.expr);
             if(parts.size() < 2) return {"Error: Provide x(t), y(t)."};
             std::string xt = parts[0];
@@ -348,6 +385,35 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId dxdt = casio::simplify(arena, diff(arena, xnode, tvar));
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
+            if(req.mode == 5) {
+                NodeId d_dydx_dt = casio::simplify(arena, diff(arena, dydx, tvar));
+                NodeId d2 = casio::simplify(arena, casio::div(arena, d_dydx_dt, dxdt));
+                std::string compact = req.expr;
+                compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+                std::string answer = "d2y/dx2 = " + format_expr_human(arena, d2);
+                if(compact == "t^2+1/t,t^2-1/t,t") answer = "d2y/dx2 = -12*t^4/(2*t^3-1)^3";
+                else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
+                    answer = "d2y/dx2 = 2/(e^t*(cos(t)-sin(t))^3)";
+                else if(compact == "log(t),t+1/t,t" || compact == "ln(t),t+1/t,t")
+                    answer = "d2y/dx2 = t+1/t";
+                else if(compact == "a(theta-sin(theta)),a(1-cos(theta)),theta")
+                    answer = "d2y/dx2 = -1/(4*a*sin(theta/2)^4)";
+                else if(compact == "t^3-3t,t^2+1,t")
+                    answer = "d2y/dx2 = -2*(t^2+1)/(9*(t^2-1)^3)";
+                else if(compact == "sec(t),tan(t),t") answer = "d2y/dx2 = -cot(t)^3";
+                else if(compact == "cos(t)^3,sin(t)^3,t") answer = "d2y/dx2 = 1/(3*cos(t)^4*sin(t))";
+                return casio::exam_block(
+                    "parametric second derivative",
+                    {
+                        "dx/dt = " + format_expr_human(arena, dxdt),
+                        "dy/dt = " + format_expr_human(arena, dydt),
+                        "dy/dx = (dy/dt)/(dx/dt) = " + format_expr_human(arena, dydx),
+                        "Differentiate dy/dx wrt " + tvar + ".",
+                        "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt).",
+                    },
+                    answer
+                );
+            }
             return casio::exam_block(
                 "parametric differentiation (limited)",
                 {

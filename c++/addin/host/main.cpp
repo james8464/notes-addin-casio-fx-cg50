@@ -105,7 +105,7 @@ static std::string strip_method_args(std::string expr, std::string &method, std:
 static char const *valid_methods(std::string const &feature)
 {
     if(feature == "int") return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|weierstrass|symmetry|";
-    if(feature == "derive") return "|auto|chain|product|quotient|logdiff|implicit|param|second|";
+    if(feature == "derive") return "|auto|chain|product|quotient|logdiff|implicit|param|second|param_second|";
     if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|target|";
     if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|rationalise|canonical|target|equate_coeffs|simultaneous|";
     if(feature == "stats") return "|auto|summary|regression|hypothesis_test|binomial|normal|poisson|confidence_interval|";
@@ -437,7 +437,8 @@ int main(int argc, char **argv)
             req.expr = expr;
             if(method == "implicit") req.mode = 2;
             else if(method == "param") req.mode = 3;
-            else if(method == "second") req.mode = 4;
+            else if(method == "param_second") req.mode = 5;
+            else if(method == "second") req.mode = (expr.find(',') != std::string::npos) ? 5 : 4;
             if(expr.rfind("mode:", 0) == 0) {
                 auto comma = expr.find(',');
                 if(comma != std::string::npos) {
