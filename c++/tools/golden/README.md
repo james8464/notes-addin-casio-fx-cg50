@@ -1,21 +1,17 @@
-## Golden fixtures (Python oracle)
+## Golden Fixtures
 
-This folder contains tools to snapshot the current Python engines’ behavior into
-machine-readable fixtures. The C++ `.g3a` port will be validated by diffing its
-outputs against these fixtures.
+This folder contains frozen C++ host fixtures for parser, algebra, trig,
+calculus, SUVAT, and regression checks. The main runner no longer depends on the
+old Python programs.
 
-### Generate from `Tests.rtf`
+### Files
 
-On macOS (uses `textutil`), from repo root:
+- `expr_smoke.txt`: expression parser/formatter cases with expected output.
+- `rtf_cases*.jsonl`: frozen exam-bank snapshots kept for C++ host diffing.
+- `compare_*.py`: C++ host checks only.
+
+Run all checks:
 
 ```bash
-python3 tools/golden/generate_fixtures.py --out tools/golden/rtf_cases.jsonl
+python3 run_tests.py
 ```
-
-Options:
-- `--limit N`: only map N cases (useful while iterating)
-- `--timeout-s N`: per-case timeout
-
-Non-macOS:
-- Pre-generate `python/Tests.txt` next to `python/Tests.rtf` (same content as macOS `textutil` would produce), then run the generator.
-

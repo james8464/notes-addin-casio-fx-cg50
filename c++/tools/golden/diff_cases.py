@@ -215,7 +215,7 @@ def map_fixture_to_host(script_relpath: str, stdin: str) -> tuple[str, str] | No
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cases", required=True, help="JSONL cases from generate_fixtures.py")
+    ap.add_argument("--cases", required=True, help="Frozen JSONL exam-bank cases")
     ap.add_argument("--host", default=str(REPO / "c++" / "addin" / "host" / "build" / "casio_host"))
     ap.add_argument("--limit", type=int, default=200)
     args = ap.parse_args()
@@ -287,4 +287,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

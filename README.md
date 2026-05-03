@@ -1,30 +1,29 @@
 ## CASIO fx-CG50 CAS port
 
-Two codebases live here:
+Two main code areas live here:
 
-- `python/` - original MicroPython-oriented oracle implementation, deployment launchers, and the shared Textual test harness
-- `c++/` - native add-in implementation, host runner, build scripts, and native regression tooling
+- `c++/` - production add-in source, host runner, build scripts, and regression tooling
+- `python/` - archived original MicroPython implementation; safe to zip once you no longer need historical reference files
 
-The Python side is the reference behavior. The C++ side is the production `.g3a` direction.
+The C++ side is now the active production path.
 
 ## Structure
 
 ```text
-python/
-  src/        core Python programs and calculator launchers
-  docs/       MicroPython/device notes
-  tests/      shared TUI + Python-side regression helpers
-
 c++/
   addin/      fxSDK/gint fallback add-in and host CMake project
+  khicas/     edited KhiCAS source used for the production .g3a
   prizm/      PrizmSDK/libfxcg add-in target
   tools/      build, fuzz, golden, and native test scripts
   third_party/ archived SDK/vendor inputs used by Docker builds
+
+python/
+  original MicroPython implementation; not needed by C++ test/build commands
 ```
 
 ## Common commands
 
-Run the shared TUI:
+Run C++ checks:
 
 ```bash
 python3 run_tests.py
@@ -46,12 +45,13 @@ python3 c++/tools/run_tests_cpp.py
 Build calculator add-ins:
 
 ```bash
-./c++/tools/build_addin_prizm_docker.sh
-./c++/tools/build_addin_docker.sh
+./compile
 ```
+
+Output is published to `CasioCAS.g3a` at repo root and mirrored under `c++/prizm/build/`.
 
 ## Notes
 
 - Generated files, editor state, virtualenvs, reports, and local graph outputs are intentionally not kept in git.
-- `python/tests/run_tests.py` is still the single cross-backend test UI because it depends directly on the Python oracle modules.
+- `run_tests.py` is C++-only.
 - Host build outputs belong under `c++/addin/host/build/`.

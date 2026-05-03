@@ -11,9 +11,9 @@ graph TD
 
 ## Current State
 
-- Active `.g3a`: upstream KhiCAS UI/engine, patched with Eigenmath-style icons.
-- Old working layer: preserved in `c++/addin/src/device/device_solver.cpp` and `c++/legacy/addin/src/modules`.
-- Gap: active `.g3a` is a reference binary, so source hooks are verified but not active until `/compile` switches to a source build.
+- Active `.g3a`: source-built KhiCAS UI/engine, packaged with Eigenmath-style icons.
+- Old working layer: preserved in `c++/addin/src/device/device_solver.cpp` and `c++/addin/src/modules`.
+- `/compile`: builds edited source and publishes `CasioCAS.g3a` at repo root.
 - Source hook: `catalogen.cpp` prunes non-A-level catalogue entries, adds old-feature aliases, and adds per-command parameter help.
 - Source hook: `main.cc` wraps KhiCAS answers with compact exam-style working lines.
 

@@ -3,12 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE_TAG="casio-prizmsdk:latest"
-MODE="${CASIO_PRIZM_MODE:-khicas-upstream}"
+SOURCE_IMAGE_TAG="casio-khicas-source:latest"
+MODE="${CASIO_PRIZM_MODE:-khicas-source}"
 UPSTREAM_G3A="${ROOT_DIR}/c++/khicas/upstream/reference/khicasen.g3a"
+KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
 OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
+ROOT_G3A="${ROOT_DIR}/CasioCAS.g3a"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
+ICON_SEL_PNG="${ROOT_DIR}/c++/prizm/assets/selected.png"
+ICON_UNSEL_PNG="${ROOT_DIR}/c++/prizm/assets/unselected.png"
 
 ensure_prizm_image() {
   if ! docker image inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
@@ -20,14 +25,85 @@ ensure_prizm_image() {
   fi
 }
 
+ensure_source_image() {
+  if ! docker image inspect "${SOURCE_IMAGE_TAG}" >/dev/null 2>&1; then
+    echo "=== Building KhiCAS source Docker image (amd64) ==="
+    docker build \
+      --platform linux/amd64 \
+      -f "${ROOT_DIR}/c++/tools/docker/Dockerfile.khicas-source" \
+      -t "${SOURCE_IMAGE_TAG}" \
+      "${ROOT_DIR}"
+  fi
+}
+
+clean_khicas_source_outputs() {
+  find "${KHICAS_SRC}" -maxdepth 1 -type f \
+    \( -name '*.o' -o -name 'libcas.a' -o -name 'libgui.a' \
+       -o -name 'khicasen.elf' -o -name 'khicasen.bin' \
+       -o -name 'khicasen.g3a' -o -name 'khicasen.map' \
+       -o -name 'dumpen_t' \) \
+    -delete
+}
+
+publish_root_g3a() {
+  cp "${OUT_G3A}" "${ROOT_G3A}"
+  echo "Root output: ${ROOT_G3A}"
+}
+
 echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
+rm -f "${ROOT_G3A}"
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 
-if [ "${MODE}" = "khicas-upstream" ]; then
+if [ "${MODE}" = "khicas-source" ]; then
+  echo ""
+  echo "=== Building edited KhiCAS source ==="
+  if [ ! -f "${ICON_SEL_PNG}" ] || [ ! -f "${ICON_UNSEL_PNG}" ]; then
+    echo "Missing Eigenmath-style PNG icon assets in c++/prizm/assets" >&2
+    exit 1
+  fi
+  clean_khicas_source_outputs
+  ensure_source_image
+  docker run --rm \
+    --platform linux/amd64 \
+    -v "${ROOT_DIR}:/work" \
+    -w /work/c++/khicas/upstream/giac90_1addin \
+    "${SOURCE_IMAGE_TAG}" \
+    bash -lc '
+      set -euo pipefail
+      mkdir -p "$HOME/.wine/drive_c"
+      cp khicasio.png /tmp/khicasio.png.orig
+      cp khicasio1.png /tmp/khicasio1.png.orig
+      restore_icons() {
+        cp /tmp/khicasio.png.orig khicasio.png
+        cp /tmp/khicasio1.png.orig khicasio1.png
+      }
+      trap restore_icons EXIT
+      cp /work/c++/prizm/assets/unselected.png khicasio.png
+      cp /work/c++/prizm/assets/selected.png khicasio1.png
+      make clean
+      make -j"$(nproc)" khicasen.g3a
+    '
+  cp "${KHICAS_SRC}/khicasen.g3a" "${OUT_G3A}"
+  clean_khicas_source_outputs
+  python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
+    --name "CasioCAS" \
+    --internal "CASIOCAS" \
+    --filename "CasioCAS.g3a"
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
+  publish_root_g3a
+  ls -lh "${OUT_G3A}"
+  ls -lh "${ROOT_G3A}"
+  shasum -a 256 "${OUT_G3A}"
+  echo "Output (source-built): ${OUT_G3A}"
+  echo "Set CASIO_PRIZM_MODE=khicas-reference to use the unmodified upstream binary."
+  exit 0
+fi
+
+if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   echo ""
   echo "=== Using exact upstream KhiCAS reference ==="
   if [ ! -f "${UPSTREAM_G3A}" ]; then
@@ -52,9 +128,12 @@ if [ "${MODE}" = "khicas-upstream" ]; then
     --internal "CASIOCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
+  publish_root_g3a
   ls -lh "${OUT_G3A}"
+  ls -lh "${ROOT_G3A}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
+  echo "Set CASIO_PRIZM_MODE=khicas-source to build edited source."
   echo "Set CASIO_PRIZM_MODE=legacy to build the old small native port."
   exit 0
 fi
@@ -87,7 +166,9 @@ fi
 echo ""
 echo "=== Build Results ==="
 if [ -f "${OUT_G3A}" ]; then
+  publish_root_g3a
   ls -lh "${OUT_G3A}"
+  ls -lh "${ROOT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
 else
   echo "Checking for .bin..."

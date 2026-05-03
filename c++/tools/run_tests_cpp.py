@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 
@@ -16,15 +15,11 @@ def run(cmd: list[str]) -> int:
 
 
 def main() -> int:
-    if "--tui" in sys.argv:
-        # Launch the single shared Textual TUI directly in C++ backend mode.
-        env = os.environ.copy()
-        env["CASIO_BACKEND"] = "c"
-        p = subprocess.run([sys.executable, "run_tests.py"], cwd=str(REPO), env=env)
-        return p.returncode
+    lowered = [a.lower() for a in sys.argv[1:]]
+    if lowered and lowered[-1] == "compile":
+        return run(["./compile"])
     if "--fuzz" in sys.argv:
-        # Randomized oracle-vs-host miner (writes JSONL on failures).
-        return run([sys.executable, "c++/tools/fuzz/fuzz_triage.py"])
+        return run([sys.executable, "c++/tools/fuzz/check_regressions.py"])
 
     # Build host first (uses pip --user cmake when needed).
     rc = run(["./c++/tools/build_host.sh"])
@@ -50,6 +45,7 @@ def main() -> int:
     prizm_g3a = REPO / "c++/prizm/build/CasioCAS.g3a"
     if prizm_g3a.exists():
         checks.insert(2, ("g3a_metadata", [sys.executable, "c++/tools/check_g3a_metadata.py", str(prizm_g3a)]))
+        checks.insert(3, ("g3a_working_markers", [sys.executable, "c++/tools/check_g3a_working_markers.py", str(prizm_g3a)]))
 
     bad = 0
     for name, cmd in checks:

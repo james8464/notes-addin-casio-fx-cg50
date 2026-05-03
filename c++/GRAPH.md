@@ -3,16 +3,15 @@
 ```mermaid
 graph TD
   Up["Fourier giac90_1addin source"] --> Exact["c++/khicas/upstream/giac90_1addin"]
-  Ref["Fourier khicasen.g3a"] --> Build["/compile default"]
+  Ref["Fourier khicasen.g3a"] --> RefMode["CASIO_PRIZM_MODE=khicas-reference"]
   Icons["Eigenmath-style c++/prizm/assets"] --> Build
   Exact --> Port["working-step hook port"]
-  KH["c++/khicas/giac old Giac base"] --> OldRefs["legacy references"]
-  KU["c++/khicas/kupdate old KhiCAS helpers"] --> OldRefs
-  OldRefs --> Port
-  Legacy["c++/legacy previous code"] --> WorkSteps["exam working-step layer"]
-  Build --> G3A["c++/prizm/build/CasioCAS.g3a exact KhiCAS UI"]
-  Port --> Future["future source-built KhiCAS + working lines"]
-  WorkSteps --> Future
+  Active["c++/addin old working modules"] --> WorkSteps["exam working-step layer"]
+  WorkSteps --> Port
+  Port --> Build["/compile source build"]
+  Build --> G3A["c++/prizm/build/CasioCAS.g3a"]
+  G3A --> Root["./CasioCAS.g3a"]
+  RefMode --> G3A
 ```
 
 ```mermaid

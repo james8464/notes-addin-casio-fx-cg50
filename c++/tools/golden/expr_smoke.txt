@@ -1,8 +1,8 @@
-sin^-1x + √x + abs(x) + 2x
-sin^2(x)+cos^2(x)
-log(2,8)
-log(abs(x))
-exp(2x)
-3*x-3*y
-sqrt(1-x^4)
-(x+1)^2*exp(2*x)
+sin^-1x + √x + abs(x) + 2x	asin(x) + sqrt(x) + abs(x) + 2*x
+sin^2(x)+cos^2(x)	sin(x)^2 + cos(x)^2
+log(2,8)	log(8)/log(2)
+log(abs(x))	log(abs(x))
+exp(2x)	e^(2*x)
+3*x-3*y	3*x - 3*y
+sqrt(1-x^4)	sqrt(- x^4 + 1)
+(x+1)^2*exp(2*x)	(x + 1)^2*e^(2*x)

@@ -4,26 +4,11 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
-import sys
 import math
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[3]
-PY = sys.executable
-
-
-def run_python(expr: str) -> str:
-    stdin = f"1\n{expr}\n1\n"
-    p = subprocess.run(
-        [PY, "python/src/Math/intProgram.py"],
-        input=stdin,
-        text=True,
-        capture_output=True,
-        cwd=str(REPO),
-        timeout=20,
-    )
-    return p.stdout
 
 
 def run_cpp(host: Path, expr: str) -> str:
@@ -107,27 +92,25 @@ def main() -> int:
         raise SystemExit(f"Missing host bin: {host} (build with ./tools/build_host.sh)")
 
     cases = [
-        "(3*x^2-2*x+2)/x",
-        "sin(x)^2",
-        "cos(x)^2",
+        ("(3*x^2-2*x+2)/x", "3/2*x^2 + 2*log(abs(x)) - 2*x + C"),
+        ("sin(x)^2", "x/2 - sin(2*x)/4 + C"),
+        ("cos(x)^2", "x/2 + sin(2*x)/4 + C"),
     ]
 
     bad = 0
-    for expr in cases:
-        py_out = run_python(expr)
+    for expr, expected in cases:
         cpp_out = run_cpp(host, expr)
-        py_ans = extract_answer(py_out)
         cpp_ans = extract_answer(cpp_out)
-        ok = (py_ans is not None) and (cpp_ans is not None) and (norm(py_ans) == norm(cpp_ans))
-        if not ok and py_ans and cpp_ans:
+        ok = (cpp_ans is not None) and (norm(expected) == norm(cpp_ans))
+        if not ok and cpp_ans:
             # Compare expressions ignoring trailing +C by numeric check.
-            py_rhs = py_ans.replace("+ C", "").strip()
+            py_rhs = expected.replace("+ C", "").strip()
             cpp_rhs = cpp_ans.replace("+ C", "").strip()
             ok = numeric_equiv(py_rhs, cpp_rhs)
         if not ok:
             bad += 1
             print("MISMATCH", expr)
-            print("  PY :", py_ans)
+            print("  WANT:", expected)
             print("  C++:", cpp_ans)
             print("")
         else:
@@ -139,4 +122,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

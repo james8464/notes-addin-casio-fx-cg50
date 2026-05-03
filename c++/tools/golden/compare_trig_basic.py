@@ -4,24 +4,10 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[3]
-PY = sys.executable
-
-
-def run_python(stdin: str) -> str:
-    p = subprocess.run(
-        [PY, "python/src/Math/trigProgram.py"],
-        input=stdin,
-        text=True,
-        capture_output=True,
-        cwd=str(REPO),
-        timeout=20,
-    )
-    return p.stdout
 
 
 def run_cpp(host: Path, stdin: str) -> str:
@@ -60,16 +46,14 @@ def main() -> int:
 
     bad = 0
     for label, stdin in cases:
-        py = run_python(stdin)
         cpp = run_cpp(host, stdin)
         if label == "solve":
-            ok = has_answer(py) and has_answer(cpp)
+            ok = has_answer(cpp) and ("x = [30, 150]" in cpp)
         else:
             ok = has_answer(cpp) and ("err:" not in (cpp or "").lower())
         if not ok:
             bad += 1
             print("MISMATCH", label)
-            print("PY has Answer:", has_answer(py))
             print("C  has Answer:", has_answer(cpp))
             print("C out head:", "\n".join(cpp.splitlines()[:10]))
             print("")
@@ -82,4 +66,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

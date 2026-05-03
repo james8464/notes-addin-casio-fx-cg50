@@ -47,16 +47,22 @@ Use the PrizmSDK/libfxcg target for the calculator-style UI:
 ./c++/tools/build_addin_prizm_docker.sh
 ```
 
-Default output is copied from the verified upstream KhiCAS reference, then patched with the Eigenmath-style icons from `c++/prizm/assets`. To build the previous small native port instead:
+Default output is built from the edited KhiCAS source in `c++/khicas/upstream/giac90_1addin` and packaged with the Eigenmath-style icons from `c++/prizm/assets`. To package the unmodified upstream reference binary instead:
+
+```bash
+CASIO_PRIZM_MODE=khicas-reference ./c++/tools/build_addin_prizm_docker.sh
+```
+
+To build the previous small native port instead:
 
 ```bash
 CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh
 ```
 
-The test TUI defaults to this target and syncs the result to the CASIO emulator SD card:
+The C++ compile script builds this target, writes repo-root `CasioCAS.g3a`, and syncs the result to the CASIO emulator SD card:
 
 ```bash
-CASIO_BACKEND=c python3 python/tests/run_tests.py c compile
+./compile
 ```
 
 Default emulator target:
@@ -88,8 +94,8 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 
 ### Notes for this project
 
-- The long-term goal is a single `.g3a` exposing the same functionality as the Python engines in `python/src/`.
-- We will keep a **host build** of the core engine for fast correctness testing (golden fixtures generated from the current Python outputs).
+- The active goal is one `.g3a` exposing the old Python feature set through the source-built KhiCAS base.
+- We keep a **host build** of the core engine for fast correctness testing with frozen C++ fixtures.
 - The current device build uses a bounded freestanding solver slice for:
   - one-variable rational polynomial parsing with brackets, powers, implicit multiplication, expansion, and rearranged equations
   - linear/quadratic solving plus small integer-root factor-theorem support for higher polynomials

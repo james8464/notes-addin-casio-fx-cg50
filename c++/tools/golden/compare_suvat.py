@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-SUVAT compare: Python oracle vs C++ host.
-
-We compare the *exact* answer line: "<target> = <expr>" (first occurrence).
-"""
+"""SUVAT compare: C++ host vs frozen expected answers."""
 
 from __future__ import annotations
 
@@ -11,27 +7,10 @@ import argparse
 import math
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[3]
-PY = sys.executable
-
-
-def run_python(s: str, u: str, v: str, a: str, t: str) -> str:
-    stdin = "s: \n"
-    # actual program expects no labels, just values per prompt
-    stdin = f"{s}\n{u}\n{v}\n{a}\n{t}\n"
-    p = subprocess.run(
-        [PY, "python/src/Math/SUVATprogram.py"],
-        input=stdin,
-        text=True,
-        capture_output=True,
-        cwd=str(REPO),
-        timeout=20,
-    )
-    return p.stdout
 
 
 def run_cpp(host_bin: Path, s: str, u: str, v: str, a: str, t: str, target: str) -> str:
@@ -44,6 +23,7 @@ def run_cpp(host_bin: Path, s: str, u: str, v: str, a: str, t: str, target: str)
 def extract_exact_answer(text: str, target: str) -> str | None:
     # Match lines like: "v = 10" or "t = ( ... )"
     unit_re = re.compile(r"\s+(m/s\^2|m/s|m|s)\s*$")
+    found = None
     for ln in text.splitlines():
         m = re.match(rf"^\s*{re.escape(target)}\s*=\s*(.+?)\s*$", ln)
         if m:
@@ -52,8 +32,8 @@ def extract_exact_answer(text: str, target: str) -> str | None:
             if "±" in val:
                 continue
             val = unit_re.sub("", val).strip()
-            return val
-    return None
+            found = val
+    return found
 
 
 def numeric_value(expr: str) -> float | None:
@@ -85,27 +65,25 @@ def main() -> int:
         raise SystemExit(f"Missing host bin: {host}")
 
     cases = [
-        # (s,u,v,a,t,target,expected_override)
-        ("10", "0", "", "2", "5", "v", None),
-        ("", "0", "10", "2", "5", "s", None),
+        # (s,u,v,a,t,target,expected)
+        ("10", "0", "", "2", "5", "v", "10"),
+        ("", "0", "10", "2", "5", "s", "25"),
         ("10", "0", "", "2", "", "v", "sqrt(40) or -sqrt(40)"),
         ("10", "0", "", "2", "", "t", "sqrt(40)/2"),
     ]
 
     bad = 0
     for s,u,v,a,t,target,expected in cases:
-        py_out = run_python(s,u,v,a,t)
         cpp_out = run_cpp(host, s,u,v,a,t,target)
-        py_ans = extract_exact_answer(py_out, target)
         cpp_ans = extract_exact_answer(cpp_out, target) or extract_exact_answer(cpp_out, "Answer: "+target)
-        ok = equivalent(expected, cpp_ans) if expected is not None else equivalent(py_ans, cpp_ans)
+        ok = equivalent(expected, cpp_ans)
         if not ok:
             bad += 1
             print("MISMATCH", (s,u,v,a,t,target))
-            print("PY:", py_ans)
+            print("WANT:", expected)
             print("C :", cpp_ans)
         else:
-            print("OK", target, "=", py_ans)
+            print("OK", target, "=", cpp_ans)
 
     print("done mismatches", bad, "/", len(cases))
     return 1 if bad else 0

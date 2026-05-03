@@ -1,9 +1,0 @@
-#! /bin/bash
-sha256sum *.c *.cc *.h *.a > sha.txt
-tar cvfz kupdate.tgz helpen.cc helpfr.cc k*.cc y*.cc z*.cc first.cc index.cc input_lexer.ll input_lexer.cc lexer.h.bak input_parser.yy input_parser.cc Makefile* *.h *.ld *.bmp *.hpp *.cpp console.cc main.cc iostream.new iostream mkgiac mkxcas mkfr mken updatecasio *.png qrcodegen.c qrcodegen.h sha.txt
-scp kupdate.tgz malherbe.ujf-grenoble.fr:casio
-/bin/rm kupdate.tgz
-cd ..
-tar cvfz giacbf.tgz giacbf
-scp giacbf.tgz malherbe:casio
-

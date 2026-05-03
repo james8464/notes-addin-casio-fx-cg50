@@ -47,7 +47,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         return lines[i];
     };
 
-    // Program dispatch by file name (matches python/tests/run_tests.py usage).
+    // Program dispatch by legacy calculator program name.
     if(program == "deriveProgram.py") {
         int mode = 1;
         try { mode = std::stoi(get(0)); } catch(...) {}

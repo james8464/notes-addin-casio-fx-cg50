@@ -3,15 +3,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if command -v fxsdk >/dev/null 2>&1; then
-  exec "${ROOT_DIR}/c++/tools/build_addin.sh"
-fi
-
 if command -v docker >/dev/null 2>&1; then
-  exec "${ROOT_DIR}/c++/tools/build_addin_docker.sh"
+  "${ROOT_DIR}/c++/tools/build_addin_prizm_docker.sh"
+  sync_flag="${CASIO_SYNC_EMULATOR:-1}"
+  if [ "${sync_flag}" != "0" ] && [ "${sync_flag}" != "false" ] && [ "${sync_flag}" != "no" ] && [ "${sync_flag}" != "off" ]; then
+    python3 "${ROOT_DIR}/c++/tools/install_g3a_to_emulator.py" "${ROOT_DIR}/CasioCAS.g3a" || true
+  fi
+  exit 0
 fi
 
-echo "No fxSDK or Docker found."
-echo "Install fxSDK, or install Docker and rerun ./compile."
+echo "Docker not found."
+echo "Install Docker and rerun ./compile."
 exit 1
-
