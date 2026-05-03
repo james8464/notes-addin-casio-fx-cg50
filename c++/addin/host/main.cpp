@@ -54,7 +54,17 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         casio::derive::Request req;
         req.mode = mode;
         if(mode == 1) req.expr = get(1);
-        else if(mode == 2) req.expr = get(1);
+        else if(mode == 2) {
+            req.expr = get(1);
+            std::string marker = "Differentiate ";
+            auto start = req.expr.find(marker);
+            if(start != std::string::npos) {
+                start += marker.size();
+                auto end = req.expr.find(" with respect", start);
+                if(end == std::string::npos) end = req.expr.find(':', start);
+                if(end != std::string::npos && end > start) req.expr = req.expr.substr(start, end - start);
+            }
+        }
         else if(mode == 3) req.expr = get(1) + "," + get(2) + ",t";
         else if(mode == 4) req.expr = get(1);
         auto out = casio::derive::run(arena, req);

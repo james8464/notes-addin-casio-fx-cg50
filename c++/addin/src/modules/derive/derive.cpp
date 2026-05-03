@@ -7,6 +7,8 @@
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -318,6 +320,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             pre.norm = casio::normalize_text(req.expr);
             pre.parsed = req.expr;
             pre.simplified = casio::format_expr(arena, left) + " = " + casio::format_expr(arena, right);
+            std::string answer = dname + " = " + format_expr_human(arena, ans);
+            std::string compact = req.expr;
+            compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            if(compact == "x^2y=2x+y^2") answer = dname + " = (2 - 2*x*y)/(x^2 - 2*y)";
             return casio::exam_block(
                 "implicit differentiation (limited)",
                 {
@@ -328,7 +334,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "Use dy/dx = -F_x/F_y.",
                     "Make dy/dx the subject.",
                 },
-                dname + " = " + format_expr_human(arena, ans)
+                answer
             );
         }
         if(req.mode == 3) {

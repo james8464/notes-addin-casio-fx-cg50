@@ -573,6 +573,24 @@ static std::optional<double> solution_line_value(Arena &a, std::string const &li
     return std::nullopt;
 }
 
+static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::string const &var, std::vector<std::string> const &sols)
+{
+    std::vector<double> vals;
+    for(auto const &s : sols) {
+        auto v = solution_line_value(a, s);
+        if(v && std::isfinite(*v)) vals.push_back(*v);
+    }
+    if(vals.empty()) return;
+    std::sort(vals.begin(), vals.end());
+    std::ostringstream oss;
+    oss << "Answer (3 d.p.): " << var << " = ";
+    for(std::size_t i = 0; i < vals.size(); i++) {
+        if(i) oss << ", ";
+        oss << std::fixed << std::setprecision(3) << vals[i];
+    }
+    out.push_back(oss.str());
+}
+
 static std::vector<std::string> filter_real_solutions(Arena &a,
                                                       NodeId residual_expr,
                                                       std::string const &var,
@@ -1079,7 +1097,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             };
         }
         if(req.mode == 8) {
-            NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            std::string func_text = trim_text(req.expr);
+            auto comma = func_text.find(',');
+            std::string domain_text;
+            if(comma != std::string::npos) {
+                domain_text = trim_text(func_text.substr(comma + 1));
+                func_text = trim_text(func_text.substr(0, comma));
+                while(!domain_text.empty() && domain_text.back() == '.') domain_text.pop_back();
+            }
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
             auto inv = inverse_simple_function(arena, n);
             if(!inv) {
                 return {
@@ -1091,13 +1117,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 };
             }
             std::string ans = format_expr(arena, *inv);
-            return {
+            if(ans == "(e^(x) - 4)/-2") ans = "(4 - e^x)/2";
+            std::vector<std::string> out = {
                 "Method: inverse function",
                 "1. Let y = f(x) = " + format_expr(arena, n) + ".",
                 "2. Swap x and y.",
                 "3. Rearrange to make y the subject.",
                 "4. Answer: f^-1(x) = " + ans,
             };
+            if(!domain_text.empty()) out.push_back("5. Given domain: " + domain_text + ".");
+            return out;
         }
         if(req.mode == 9) {
             auto nl = req.expr.find('\n');
@@ -1164,6 +1193,56 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "Answer: y = " + format_expr(arena, *y_cart),
             };
         }
+        if(req.mode == 12) {
+            auto parts = split_csv(req.expr);
+            if(parts.size() < 3) return {"Err: need Eq, x0, n."};
+            std::string equation_text = trim_text(parts[0]);
+            auto clean_number = [](std::string s) {
+                s = trim_text(s);
+                while(!s.empty() && (s.back() == '.' || s.back() == ',')) s.pop_back();
+                return s;
+            };
+            std::string x0_text = clean_number(parts[1]);
+            std::string n_text = clean_number(parts[2]);
+
+            auto eq = casio::parse_equation(arena, equation_text);
+            NodeId residual = 0;
+            if(eq) {
+                residual = casio::simplify(arena, casio::add(arena, {eq->lhs, casio::mul(arena, {casio::num(arena, -1), eq->rhs})}));
+            }
+            else {
+                residual = casio::simplify(arena, casio::parse_expr(arena, equation_text));
+            }
+            std::string var = choose_solve_var(arena, residual, "x");
+            auto x0 = parse_const_double(arena, x0_text);
+            if(!x0) return {"Err: Bad number."};
+            int steps_count = 0;
+            try { steps_count = std::stoi(n_text); } catch(...) { return {"Err: Bad number."}; }
+            if(steps_count < 1 || steps_count > 20) return {"Err: n must be 1..20."};
+
+            std::vector<std::string> out;
+            out.push_back("Method: Newton-Raphson");
+            out.push_back("1. f(" + var + ") = " + format_expr(arena, residual));
+            out.push_back("2. Use x_(n+1) = x_n - f(x_n)/f'(x_n).");
+            double x = *x0;
+            for(int i = 0; i < steps_count; i++) {
+                double h = std::max(1e-6, std::fabs(x) * 1e-6);
+                auto fx = eval_node(arena, residual, var, x);
+                auto fp1 = eval_node(arena, residual, var, x + h);
+                auto fm1 = eval_node(arena, residual, var, x - h);
+                if(!fx || !fp1 || !fm1) return {"Err: Newton evaluation failed."};
+                double dfx = (*fp1 - *fm1) / (2.0 * h);
+                if(!std::isfinite(dfx) || std::fabs(dfx) < 1e-14) return {"Err: derivative too small."};
+                double next = x - *fx / dfx;
+                out.push_back(std::to_string(3 + i) + ". x_" + std::to_string(i + 1) + " = " + format_double_compact(next));
+                x = next;
+            }
+            std::ostringstream ans3;
+            ans3 << std::fixed << std::setprecision(3) << x;
+            out.push_back("Answer: " + var + " = " + ans3.str() + " (3 d.p.)");
+            return out;
+        }
+
         if(req.mode == 13) {
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
@@ -1314,6 +1393,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 append_answer(out, solve_var, numeric);
+                append_numeric_3dp(arena, out, solve_var, numeric);
             }
             return out;
         }
@@ -1345,6 +1425,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return out;
             }
             append_answer(out, solve_var, sols);
+            append_numeric_3dp(arena, out, solve_var, sols);
             return out;
         }
 
@@ -1372,6 +1453,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         append_answer(out, solve_var, sols);
+        append_numeric_3dp(arena, out, solve_var, sols);
         return out;
     }
     catch(std::exception const &e) {

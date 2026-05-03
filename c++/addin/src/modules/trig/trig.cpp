@@ -203,6 +203,45 @@ static int mod360(int d)
     return m;
 }
 
+static long long gcd_ll(long long a, long long b)
+{
+    if(a < 0) a = -a;
+    if(b < 0) b = -b;
+    while(b != 0) {
+        long long t = a % b;
+        a = b;
+        b = t;
+    }
+    return a == 0 ? 1 : a;
+}
+
+static std::string format_pi_degrees(double deg)
+{
+    double rounded = std::round(deg);
+    if(std::fabs(deg - rounded) > 1e-7) {
+        std::ostringstream fallback;
+        fallback << std::setprecision(12) << (deg * M_PI / 180.0);
+        return fallback.str();
+    }
+    long long num = static_cast<long long>(rounded);
+    long long den = 180;
+    if(num == 0) return "0";
+    long long g = gcd_ll(num, den);
+    num /= g;
+    den /= g;
+    std::ostringstream oss;
+    if(den == 1) {
+        if(num == 1) return "pi";
+        if(num == -1) return "-pi";
+        oss << num << "*pi";
+        return oss.str();
+    }
+    if(num == 1) oss << "pi/" << den;
+    else if(num == -1) oss << "-pi/" << den;
+    else oss << num << "*pi/" << den;
+    return oss.str();
+}
+
 static NodeId sqrt_int(Arena &a, int n)
 {
     return a.fn(FnKind::Sqrt, casio::num(a, n));
@@ -651,7 +690,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     for(std::size_t i = 0; i < xs_deg.size(); i++) {
         if(i) oss << ", ";
         if(rad) {
-            oss << format_double_compact(xs_deg[i] * M_PI / 180.0);
+            oss << format_pi_degrees(xs_deg[i]);
         }
         else {
             oss << format_double_compact(xs_deg[i]);

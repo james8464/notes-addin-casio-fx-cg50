@@ -18,7 +18,7 @@ def main() -> int:
     if args and args[-1] == "compile":
         return run(["./compile"])
     if args and args[0] in ("tui", "--tui"):
-        return run([sys.executable, "c++/tools/tests_cpp/run_tests_tui.py"])
+        return run([sys.executable, "c++/tools/tests_cpp/run_tests_tui.py"] + sys.argv[2:])
     if args and args[0] in ("fuzz", "--fuzz"):
         return run([sys.executable, "c++/tools/run_tests_cpp.py", "--fuzz"])
     if args and args[0] in ("--help", "-h", "help"):
