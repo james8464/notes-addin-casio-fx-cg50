@@ -183,6 +183,15 @@ static bool rpoly_is_const(RPoly const &p)
     return true;
 }
 
+static bool rpoly_is_zero(RPoly const &p)
+{
+    if(!p.ok) return false;
+    for(int i = 0; i <= RPOLY_MAX_DEG; i++) {
+        if(!is_zero(p.coeff[i])) return false;
+    }
+    return true;
+}
+
 static RPoly rpoly_add(RPoly const &a, RPoly const &b)
 {
     RPoly out = poly_zero();
@@ -380,11 +389,30 @@ struct RPolyParser {
     }
 };
 
+static int known_function_len(const char *s, int pos)
+{
+    const char *names[] = {
+        "asin", "acos", "atan", "sqrt", "cbrt", "log", "ln",
+        "sin", "cos", "tan", "abs", "exp", "sec", "cot",
+    };
+    for(unsigned int k = 0; k < sizeof(names) / sizeof(names[0]); k++) {
+        int i = 0;
+        while(names[k][i] != '\0' && s[pos + i] == names[k][i]) i++;
+        if(names[k][i] == '\0') return i;
+    }
+    return 0;
+}
+
 static char detect_poly_var(const char *s)
 {
     for(int i = 0; s != nullptr && s[i] != '\0'; i++) {
         char c = s[i];
         if(c >= 'a' && c <= 'z') {
+            int fn_len = known_function_len(s, i);
+            if(fn_len > 0) {
+                i += fn_len - 1;
+                continue;
+            }
             if(c == 'p' && s[i + 1] == 'i') {
                 i++;
                 continue;
@@ -413,6 +441,59 @@ static int find_top_level_equals(const char *s)
         else if(s[i] == '=' && depth == 0) return i;
     }
     return -1;
+}
+
+static int find_matching_paren(const char *s, int open, int end)
+{
+    if(open < 0 || open >= end || s[open] != '(') return -1;
+    int depth = 0;
+    for(int i = open; i < end; i++) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')') {
+            depth--;
+            if(depth == 0) return i;
+            if(depth < 0) return -1;
+        }
+    }
+    return -1;
+}
+
+static bool starts_at(const char *s, int pos, const char *pat)
+{
+    if(s == nullptr || pat == nullptr || pos < 0) return false;
+    for(int i = 0; pat[i] != '\0'; i++) {
+        if(s[pos + i] != pat[i]) return false;
+    }
+    return true;
+}
+
+static void copy_range(const char *s, int begin, int end, char *out, int cap)
+{
+    int j = 0;
+    if(out == nullptr || cap <= 0) return;
+    for(int i = begin; i < end && j + 1 < cap; i++) out[j++] = s[i];
+    out[j] = '\0';
+}
+
+static bool is_wrapped_var(const char *s, int begin, int end, char var)
+{
+    while(end - begin >= 2 && s[begin] == '(') {
+        int close = find_matching_paren(s, begin, end);
+        if(close != end - 1) break;
+        begin++;
+        end--;
+    }
+    return end == begin + 1 && s[begin] == var;
+}
+
+static RPoly rpoly_derivative(RPoly const &p)
+{
+    RPoly d = poly_zero();
+    d.ok = p.ok;
+    for(int power = 1; power <= RPOLY_MAX_DEG; power++) {
+        d.coeff[power - 1] = frac_mul(p.coeff[power], make_fraction(power, 1));
+    }
+    return d;
 }
 
 static void append_fraction(FixedString<96> &line, Fraction const &f);
@@ -475,6 +556,122 @@ static void append_fraction(FixedString<96> &line, Fraction const &f)
         line.append("/");
         line.append_int(f.den);
     }
+}
+
+static void append_poly_plus_recip(FixedString<96> &line, RPoly const &poly_d, char var, bool negative_log)
+{
+    bool has_poly = !rpoly_is_zero(poly_d);
+    if(has_poly) append_rpoly(line, poly_d, var);
+    if(has_poly) line.append(negative_log ? " - 1/" : " + 1/");
+    else {
+        if(negative_log) line.append("-");
+        line.append("1/");
+    }
+    line.append_char(var);
+}
+
+static bool remove_log_term(const char *body, int n, char var, char *rest, int cap, bool &negative_log)
+{
+    for(int i = 0; i < n; i++) {
+        int open = -1;
+        if(starts_at(body, i, "ln(")) open = i + 2;
+        else if(starts_at(body, i, "log(")) open = i + 3;
+        if(open < 0) continue;
+
+        int close = find_matching_paren(body, open, n);
+        if(close < 0 || !is_wrapped_var(body, open + 1, close, var)) continue;
+
+        int begin = i;
+        negative_log = false;
+        if(i > 0 && (body[i - 1] == '+' || body[i - 1] == '-')) {
+            begin = i - 1;
+            negative_log = body[i - 1] == '-';
+        }
+        int end = close + 1;
+
+        int j = 0;
+        for(int k = 0; k < n && j + 1 < cap; k++) {
+            if(k >= begin && k < end) continue;
+            rest[j++] = body[k];
+        }
+        rest[j] = '\0';
+
+        int src = 0;
+        while(rest[src] == '+') src++;
+        int dst = 0;
+        while(rest[src] != '\0' && dst + 1 < cap) rest[dst++] = rest[src++];
+        while(dst > 0 && (rest[dst - 1] == '+' || rest[dst - 1] == '-')) dst--;
+        rest[dst] = '\0';
+        return true;
+    }
+    return false;
+}
+
+static bool solve_log_chain_derivative(const char *input, const char *s, char var, OutputLines &out)
+{
+    int n = cstr_len(s);
+    int body_begin = 0;
+    int body_end = n;
+    int exp = 1;
+
+    if(n >= 4 && s[0] == '(') {
+        int close = find_matching_paren(s, 0, n);
+        if(close > 0 && close + 2 < n && s[close + 1] == '^') {
+            int pos = close + 2;
+            if(!read_int(s, pos, n, exp) || pos != n || exp < 0) return false;
+            body_begin = 1;
+            body_end = close;
+        }
+    }
+
+    char body[96];
+    copy_range(s, body_begin, body_end, body, (int)sizeof(body));
+    int body_n = cstr_len(body);
+
+    char rest[96];
+    bool negative_log = false;
+    if(!remove_log_term(body, body_n, var, rest, (int)sizeof(rest), negative_log)) return false;
+
+    RPoly base = poly_zero();
+    if(rest[0] != '\0') {
+        base = parse_rpoly_compact(rest, 0, cstr_len(rest), var);
+        if(!base.ok) return false;
+    }
+    RPoly inner_d = rpoly_derivative(base);
+
+    add_input_line(out, "1. Start: y = ", input);
+    if(exp == 0) {
+        out.add("2. Constant expression.");
+        out.add("Answer: dy/dx = 0");
+        return true;
+    }
+    if(exp != 1) {
+        FixedString<96> &u = out.next();
+        u.append("2. Let u = ");
+        u.append(body);
+        out.add("3. Chain rule: dy/dx = n*u^(n-1)*u'.");
+        FixedString<96> &du = out.next();
+        du.append("4. u' = ");
+        append_poly_plus_recip(du, inner_d, var, negative_log);
+
+        FixedString<96> &ans = out.next();
+        ans.append("Answer: dy/dx = ");
+        ans.append_int(exp);
+        ans.append("*(");
+        ans.append(body);
+        ans.append(")^");
+        ans.append_int(exp - 1);
+        ans.append("*(");
+        append_poly_plus_recip(ans, inner_d, var, negative_log);
+        ans.append(")");
+        return true;
+    }
+
+    out.add("2. Use d/dx ln(x) = 1/x.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: dy/dx = ");
+    append_poly_plus_recip(ans, inner_d, var, negative_log);
+    return true;
 }
 
 static void append_surd_root(FixedString<96> &line, int base, char op, int disc, int den);
@@ -784,14 +981,12 @@ static bool solve_derive(const char *input, OutputLines &out)
     char var = detect_poly_var(s);
     RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
+        if(solve_log_chain_derivative(input, s, var, out)) return true;
         out.add("Unsupported: use polynomial/bracket expressions in one variable.");
         return false;
     }
 
-    RPoly d = poly_zero();
-    for(int power = 1; power <= RPOLY_MAX_DEG; power++) {
-        d.coeff[power - 1] = frac_mul(p.coeff[power], make_fraction(power, 1));
-    }
+    RPoly d = rpoly_derivative(p);
 
     add_input_line(out, "1. Start: y = ", input);
     out.add("2. Expand/collect first if needed.");

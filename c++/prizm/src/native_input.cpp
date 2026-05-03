@@ -109,7 +109,8 @@ void draw_input(const char *title, const char *help, unsigned char *buffer, int 
 {
     init_native_screen(title);
     print_row(2, help ? help : "");
-    DisplayMBString(buffer, start, cursor, 1, 4);
+    draw_input_box(6, 92, LCD_WIDTH_PX - 12, 36);
+    DisplayMBString(buffer, start, cursor, 2, 4);
     draw_softkeys("SQRT", "LOG", "SIN", "COS", "PI", "?");
     Bdisp_PutDisp_DD();
 }
@@ -193,11 +194,11 @@ bool text_input(char *buffer, int capacity, const char *title, const char *help)
             continue;
         }
 
-        if(key == KEY_CTRL_F1) insert_ascii(editor, editor_capacity, cursor, "sqrt(");
-        else if(key == KEY_CTRL_F2) insert_ascii(editor, editor_capacity, cursor, "log(");
-        else if(key == KEY_CTRL_F3) insert_ascii(editor, editor_capacity, cursor, "sin(");
-        else if(key == KEY_CTRL_F4) insert_ascii(editor, editor_capacity, cursor, "cos(");
-        else if(key == KEY_CTRL_F5) insert_ascii(editor, editor_capacity, cursor, "pi");
+        if(key == KEY_CTRL_F1) cursor = EditMBStringChar(editor, editor_capacity, cursor, KEY_CHAR_ROOT);
+        else if(key == KEY_CTRL_F2) cursor = EditMBStringChar(editor, editor_capacity, cursor, KEY_CHAR_LOG);
+        else if(key == KEY_CTRL_F3) cursor = EditMBStringChar(editor, editor_capacity, cursor, KEY_CHAR_SIN);
+        else if(key == KEY_CTRL_F4) cursor = EditMBStringChar(editor, editor_capacity, cursor, KEY_CHAR_COS);
+        else if(key == KEY_CTRL_F5) cursor = EditMBStringChar(editor, editor_capacity, cursor, KEY_CHAR_PI);
         else if(key == KEY_CTRL_F6) insert_ascii(editor, editor_capacity, cursor, "?");
         else if(key && key < 30000) cursor = EditMBStringChar(editor, editor_capacity, cursor, key);
         else EditMBStringCtrl(editor, editor_capacity, &start, &cursor, &key, 1, 4);

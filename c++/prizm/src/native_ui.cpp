@@ -32,6 +32,14 @@ void fill_rect_vram(int x, int y, int w, int h, color_t color)
     }
 }
 
+void stroke_rect_vram(int x, int y, int w, int h, color_t color)
+{
+    fill_rect_vram(x, y, w, 1, color);
+    fill_rect_vram(x, y + h - 1, w, 1, color);
+    fill_rect_vram(x, y, 1, h, color);
+    fill_rect_vram(x + w - 1, y, 1, h, color);
+}
+
 void print_at(int col, int row, const char *text, int mode = TEXT_MODE_NORMAL, int color = TEXT_COLOR_BLACK)
 {
     casio::device::FixedString<80> out;
@@ -151,6 +159,12 @@ void init_native_screen(const char *title, const char *mode)
     DrawHeaderLine();
 }
 
+void draw_input_box(int x, int y, int w, int h)
+{
+    fill_rect_vram(x, y, w, h, COLOR_WHITE);
+    stroke_rect_vram(x, y, w, h, COLOR_BLACK);
+}
+
 void draw_status_line(const char *text)
 {
     print_line(6, text);
@@ -198,12 +212,6 @@ void draw_menu(const char *title, const char *const *items, int count, int selec
         print_line(row + 2, line.c_str(), index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
     }
     
-    bool has_more = (top + kContentRows) < count;
-    casio::device::FixedString<32> nav;
-    if(top > 0) nav.append("↑ ");
-    if(has_more) nav.append("↓");
-    if(top > 0 || has_more) draw_status_line(nav.c_str());
-    
     draw_softkeys("SEL", "UP", "DOWN", "", "", "EXIT");
     Bdisp_PutDisp_DD();
 }
@@ -219,6 +227,7 @@ void draw_shell(const char *title, const char *mode, const char *const *lines, i
         if(index >= count) break;
         print_line(row + 1, lines[index], index == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
     }
+    draw_input_box(6, 158, LCD_WIDTH_PX - 12, 30);
     print_line(6, ">");
     DisplayMBString(input, input_start, input_cursor, 2, 6);
     draw_softkeys(k1, k2, k3, k4, k5, k6);
@@ -233,12 +242,6 @@ void draw_lines(const char *title, casio::device::OutputLines const &lines, int 
         if(index >= lines.count()) break;
         print_line(row + 2, lines.line(index));
     }
-    
-    casio::device::FixedString<16> nav;
-    if(more_above) nav.append("↑");
-    if(more_above && more_below) nav.append(" ");
-    if(more_below) nav.append("↓");
-    if(more_above || more_below) draw_status_line(nav.c_str());
     
     draw_softkeys("BACK", "UP", "DOWN", "", "", "EXIT");
     Bdisp_PutDisp_DD();
