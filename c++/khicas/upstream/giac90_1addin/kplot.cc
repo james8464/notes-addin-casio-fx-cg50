@@ -3398,7 +3398,7 @@ namespace giac {
   
 #if 1 //TURTLE
 #ifdef TURTLETAB
-  const int MAX_LOGO=2048;//128; // 1024
+  const int MAX_LOGO=128; // Logo/turtle is outside Edexcel A-level maths.
   logo_turtle tablogo[MAX_LOGO];
   int turtle_stack_size=0;
   int turtle_stack_push_back(const logo_turtle & l){
