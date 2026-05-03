@@ -84,6 +84,7 @@ if [ "${MODE}" = "khicas-source" ]; then
     --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"
@@ -117,6 +118,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
     --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"
@@ -153,6 +155,8 @@ fi
 echo ""
 echo "=== Build Results ==="
 if [ -f "${OUT_G3A}" ]; then
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"

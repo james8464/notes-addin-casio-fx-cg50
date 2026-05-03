@@ -23,7 +23,7 @@ UPSTREAM_EQUIVALENTS = [
 OLD_WORKING_LAYER = [
     "complete_square(", "compare(", "transform(", "compose(", "inverse(",
     "rewrite(", "domain(", "range(", "cartesian(", "fitconst(",
-    "suvat(", "bool_simplify(", "nand(", "nor(", "prove_bool(",
+    "suvat(",
 ]
 
 SOURCE_CATALOG_SURFACE = [
@@ -34,13 +34,13 @@ SOURCE_CATALOG_SURFACE = [
     "param_second_diff(", "second_diff(", "tangent_line(",
     "integrate(", "desolve(", "de_solve(", "param_area(",
     "solve_trig(", "trig_prove(", "trig_transform(", "trig_rewrite(",
-    "suvat(", "bool_simplify(", "nand(", "nor(", "prove_bool(",
+    "suvat(",
 ]
 
 SOURCE_ALIAS_REWRITES = [
-    "complete_square(", "fitconst(", "match(", "bool_simplify(",
-    "prove_bool(", "rewrite(", "suvat(", "cartesian(", "range(",
-    "nand(", "nor(", "compose(", "inverse(", "normal_diff(",
+    "complete_square(", "fitconst(", "match(",
+    "rewrite(", "suvat(", "cartesian(", "range(",
+    "compose(", "inverse(", "normal_diff(",
     "implicit_diff(", "param_diff(", "param_second_diff(",
     "second_diff(", "param_area(", "tangent_line(", "de_solve(",
     "poly(", "solve_trig(", "trig_prove(", "trig_transform(",

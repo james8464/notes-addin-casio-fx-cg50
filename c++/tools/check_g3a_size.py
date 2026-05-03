@@ -4,8 +4,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-SOFT_GUIDANCE = 2 * 1024 * 1024
-HARD_PACKAGE_LIMIT = int(2.05 * 1024 * 1024)
+HARD_PACKAGE_LIMIT = 2 * 1024 * 1024
 
 
 def main() -> int:
@@ -20,10 +19,8 @@ def main() -> int:
     mib = size / (1024 * 1024)
     print(f"{p.name}: {size} bytes ({mib:.3f} MiB)")
     if size > HARD_PACKAGE_LIMIT:
-        print("FAIL: exceeds 2.05 MiB package safety limit", file=sys.stderr)
+        print("FAIL: exceeds 2 MiB fx-CG add-in package limit", file=sys.stderr)
         return 1
-    if size > SOFT_GUIDANCE:
-        print("WARN: package is above 2 MiB; linker ROM usage is the hard add-in guard")
     return 0
 
 
