@@ -33,6 +33,7 @@ graphify-out
 
 # Local third-party reference downloads
 examples/
+inspiration:base/
 
 # Live test reports
 python/tests/reports/
