@@ -33,6 +33,8 @@ HIDDEN_MARKERS = [
 
 OLD_FEATURE_ALIASES = [
     "complete_square(expr,[x])",
+    "binom_expand(expr)",
+    "binom_coeff(expr,x,k)",
     "compose(f,g,[x])",
     "compare(expr1,expr2)",
     "cartesian([x(t),y(t)],t)",
@@ -43,6 +45,7 @@ OLD_FEATURE_ALIASES = [
     "implicit_diff(eq,[x,y])",
     "inverse(f(x))",
     "match(expr,form)",
+    "coeff_match(expr,form,vars,[x])",
     "normal_diff(expr,[x])",
     "param_area([x(t),y(t)],t,[a,b])",
     "param_diff([x(t),y(t)],t)",

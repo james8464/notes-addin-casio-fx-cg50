@@ -4,6 +4,7 @@
 graph TD
   Src["Fourier giac90_1addin"] --> Calc["calculator path"]
   Calc --> Cat["catalogen.cpp: menus/help/hide"]
+  Cat --> Prune["ROM prune: hide non-Edexcel UI"]
   Cat --> Alias["main.cc: old aliases"]
   Alias --> Giac["KhiCAS exact engine"]
   Giac --> Work["main.cc: compact working"]
@@ -26,12 +27,14 @@ graph TD
   OldPy --> Tri["Trig: prove/xform/solve/rewrite"]
   OldPy --> Suv["SUVAT"]
   OldPy --> Bool["Boolean: simplify/NAND/NOR/prove"]
+  OldPy --> Bin["Binomial/coeff matching"]
   Alg --> Cat["KhiCAS catalogue aliases"]
   Der --> Cat
   Int --> Cat
   Tri --> Cat
   Suv --> Cat
   Bool --> Cat
+  Bin --> Cat
   Cat --> Rew["main.cc alias rewrite"]
   Rew --> Giac["KhiCAS exact engine"]
   Giac --> Work["working-line screen + shell output"]
@@ -44,6 +47,7 @@ graph TD
   DS --> Norm["compact normalize"]
   Norm --> Abs["abs()/log(abs()) output"]
   Norm --> Cls["input classifier"]
+  Cls --> Binom["binom_expand/binom_coeff/coeff_match"]
   Cls --> Poly["bounded rational polynomial parser"]
   Cls --> Num["numeric fallback scanner"]
   Cls --> Rat["denominator/domain filter"]
@@ -59,6 +63,7 @@ graph TD
   Suvat --> Work
   Stats --> Work
   Util --> Work
+  Binom --> Work
   Work --> Screen["calculator output"]
 
   Host["casio_host"] --> Mods["host modules"]

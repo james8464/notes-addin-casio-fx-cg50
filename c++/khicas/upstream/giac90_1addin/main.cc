@@ -1987,28 +1987,6 @@ static bool cascas_replace_call(const char *input,const char *alias,const char *
   return true;
 }
 
-static bool cascas_rewrite_logic_call(const char *input,const char *alias,const char *op,string &out){
-  if (!cascas_startswith(input,alias))
-    return false;
-  string s(input);
-  int open=strlen(alias)-1;
-  int close=cascas_find_matching_paren(s,open);
-  if (close<0)
-    return false;
-  int comma=cascas_find_top_comma(s,open+1,close);
-  if (comma<0)
-    return false;
-  out="not((";
-  out += s.substr(open+1,comma-open-1);
-  out += ") ";
-  out += op;
-  out += " (";
-  out += s.substr(comma+1,close-comma-1);
-  out += "))";
-  out += s.substr(close+1,s.size()-close-1);
-  return true;
-}
-
 static string cascas_trim(const string &s){
   int a=0,b=int(s.size())-1;
   while (a<int(s.size()) && isspace((unsigned char)s[a])) ++a;
@@ -2263,6 +2241,32 @@ static bool cascas_rewrite_compare_zero_call(const char *input,const char *alias
   return true;
 }
 
+static bool cascas_rewrite_binom_coeff_call(const char *input,string &out){
+  string args[4],s; int count=0,close=0;
+  if (!cascas_call_args(input,"binom_coeff(",args,4,count,close,s) || count<3)
+    return false;
+  out="coeff(expand((" + args[0] + "))," + args[1] + "," + args[2] + ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_coeff_match_call(const char *input,const char *alias,string &out){
+  string args[4],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,4,count,close,s) || count<3)
+    return false;
+  string x=(count>=4 && args[3].size())?args[3]:"x";
+  string diff="expand((" + args[0] + ")-(" + args[1] + "))";
+  out="solve([";
+  for (int i=0;i<=6;++i){
+    if (i)
+      out += ",";
+    out += "coeff(" + diff + "," + x + "," + print_INT_(i) + ")=0";
+  }
+  out += "]," + args[2] + ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_is_zero_bound(const string &s){
   string t=cascas_trim(s);
   return t=="0" || t=="0.0";
@@ -2346,20 +2350,22 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_rewrite_compare_zero_call(input,"transform(",rewritten))
     return true;
+  if (cascas_rewrite_binom_coeff_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_coeff_match_call(input,"coeff_match(",rewritten))
+    return true;
+  if (cascas_rewrite_coeff_match_call(input,"match(",rewritten))
+    return true;
   static const struct { const char *alias; const char *target; } simple_aliases[]={
     {"tangent_line(","linetan("},{"de_solve(","desolve("},{"poly(","factor("},
     {"complete_square(","canonical_form("},{"fitconst(","solve("},{"match(","solve("},
-    {"bool_simplify(","simplify("},{"prove_bool(","compare("},{"rewrite(","canonical_form("},
+    {"binom_expand(","expand("},{"rewrite(","canonical_form("},
     {"suvat(","solve("},{"cartesian(","eliminate("},{"range(","tabvar("}
   };
   for (int i=0;i<int(sizeof(simple_aliases)/sizeof(simple_aliases[0]));++i){
     if (cascas_replace_call(input,simple_aliases[i].alias,simple_aliases[i].target,rewritten))
       return true;
   }
-  if (cascas_rewrite_logic_call(input,"nand(","and",rewritten))
-    return true;
-  if (cascas_rewrite_logic_call(input,"nor(","or",rewritten))
-    return true;
   return false;
 }
 
@@ -2417,10 +2423,9 @@ static void cascas_append_method_lines(string &out,const char *s){
     {"compose(","2. Fn: compose=sub; inv=swap+solve.\n3. Dom/range; Chk."},
     {"inverse(","2. Fn: compose=sub; inv=swap+solve.\n3. Dom/range; Chk."},
     {"suvat(","2. SUVAT: choose target eq.\n3. Solve exact; Chk."},
-    {"bool_simplify(","2. Bool: NOT/AND/OR.\n3. DeMorgan/distrib; Chk table."},
-    {"nand(","2. Bool: NOT/AND/OR.\n3. DeMorgan/distrib; Chk table."},
-    {"nor(","2. Bool: NOT/AND/OR.\n3. DeMorgan/distrib; Chk table."},
-    {"prove_bool(","2. Bool: NOT/AND/OR.\n3. DeMorgan/distrib; Chk table."},
+    {"binom_expand(","2. Binom: (a+b)^n.\n3. Use nCr terms; collect powers; Chk expand."},
+    {"binom_coeff(","2. Binom: general term.\n3. Term nCr a^(n-r)b^r; pick power; Chk coeff."},
+    {"coeff_match(","2. Coeff: expand both.\n3. Equate coeffs; solve consts; sub; Chk."},
     {"diff(","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},
     {"derive(","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},
     {"'","2. Diff: split sums; chain/prod/quot.\n3. Simp/fact; Chk."},

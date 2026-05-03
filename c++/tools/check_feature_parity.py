@@ -15,8 +15,8 @@ UPSTREAM_EQUIVALENTS = [
     "diff(", "integrate(", "desolve(", "rsolve(", "limit(", "taylor(",
     "sum(", "tcollect(", "texpand(", "subst(", "det(", "inv(", "rref(",
     "tran(", "eigenvals(", "eigenvects(", "mean(", "median(", "stddev(",
-    "correlation(", "linear_regression(", "histogram(", "scatterplot(",
-    "barplot(", "binomial(", "normald(", "gcd(", "lcm(", "ifactor(",
+    "correlation(", "linear_regression(",
+    "binomial(", "normald(", "gcd(", "lcm(", "ifactor(",
     "isprime(", "powmod(",
 ]
 
@@ -28,6 +28,7 @@ OLD_WORKING_LAYER = [
 
 SOURCE_CATALOG_SURFACE = [
     "complete_square(", "compare(", "transform(", "xform(", "expand(",
+    "binom_expand(", "binom_coeff(", "coeff_match(",
     "poly(", "factor(", "solve(", "compose(", "inverse(", "rewrite(",
     "domain(", "range(", "cartesian(", "fitconst(", "match(",
     "normal_diff(", "implicit_diff(", "param_diff(",
@@ -38,7 +39,8 @@ SOURCE_CATALOG_SURFACE = [
 ]
 
 SOURCE_ALIAS_REWRITES = [
-    "complete_square(", "fitconst(", "match(",
+    "complete_square(", "fitconst(", "match(", "coeff_match(",
+    "binom_expand(", "binom_coeff(",
     "rewrite(", "suvat(", "cartesian(", "range(",
     "compose(", "inverse(", "normal_diff(",
     "implicit_diff(", "param_diff(", "param_second_diff(",
