@@ -316,6 +316,24 @@ FEATURE_PARITY_EXPECTED = {
         "boolean_nor",
         "boolean_prove",
     ),
+    "MethodSurface": (
+        "method_surface:int",
+        "method_surface:derive",
+        "method_surface:trig",
+        "method_surface:alg",
+        "method_surface:stats",
+        "method_surface:suvat",
+        "method_surface:invalid",
+    ),
+    "ExamMix": (
+        "algebra_",
+        "trig_",
+        "derive_",
+        "integrate_",
+        "stats_",
+        "suvat_",
+        "boolean_",
+    ),
 }
 FEATURE_PARITY_NOTES = {
     "Algebra": "Python modes 1-9: compare, transform, expand, polynomial, complete square, solve, compose, inverse, rewrite, domain/range/cartesian helpers.",
@@ -325,6 +343,8 @@ FEATURE_PARITY_NOTES = {
     "Stats": "C++ extension: one-var, regression, binomial, normal, z-test, graph sparkline.",
     "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
     "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
+    "MethodSurface": "Direct host method/options surface across every supported feature group, including invalid method fallback.",
+    "ExamMix": "Cross-feature Edexcel/Further stress loop; catches route gaps between program-specific builders.",
 }
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
@@ -350,7 +370,10 @@ EXAM_BUILDER_STRESS_WEIGHTS = {
     "random_algebra_rearrange_case": 1.18,
     "random_integrate_auto_case": 1.12,
     "random_integrate_sub_case": 1.05,
+    "random_integrate_parts_case": 1.08,
+    "random_integrate_partial_frac_case": 1.08,
     "random_integrate_extreme_rewrite_case": 1.35,
+    "random_method_surface_case": 1.5,
     "random_derive_normal_case": 1.1,
     "random_suvat_edge_case": 1.12,
 }
@@ -2410,6 +2433,43 @@ class CASIOApp(App):
         self.action_clear()
         self.append_result(f"[dim]Backend:[/dim] {self.backend_label()}")
         self.append_result("[dim]Use /switch c, then /compile to build fx-CG50 CasioCAS.g3a.[/dim]")
+        self.schedule_start_commands()
+
+    def schedule_start_commands(self):
+        raw = (os.environ.get("CASIO_TUI_START_COMMANDS", "") or "").strip()
+        if not raw:
+            return
+        commands = [cmd.strip() for cmd in re.split(r";;|\n", raw) if cmd.strip()]
+        delay = 0.4
+        for command in commands:
+            self.set_timer(delay, lambda command=command: self.run_start_command(command))
+            delay += 1.2 if command.lower().startswith("/llm") else 0.4
+
+    def run_start_command(self, value: str):
+        value = value.strip()
+        if not value:
+            return
+        value_lower = value.lower()
+        self.last_command = value
+        self.append_result(f"[dim]Auto:[/dim] {value}")
+        random_scope = self.parse_random_scope(value)
+        if random_scope is not None:
+            difficulty, count, workers, _infinite_mode = random_scope
+            self.current_random_workers = workers
+            self.action_random_tests(difficulty, count, workers, command_label=value)
+            return
+        if value_lower == "/infinite":
+            self.action_random_tests("chaos", None, command_label="/infinite")
+        elif value_lower == "/llm" or value_lower == "/llm status":
+            self.handle_llm_status()
+        elif value_lower == "/llm disable":
+            self.handle_llm_disable()
+        elif value_lower.startswith("/llm "):
+            self.handle_llm_select(value)
+        elif value_lower == "/compile":
+            self.action_compile()
+        else:
+            self.append_result(f"[red]Auto command not supported:[/red] {value}")
 
     def on_resize(self, event) -> None:
         self.refresh_rule_lines()
@@ -2448,6 +2508,11 @@ class CASIOApp(App):
             "stat": "Stats",
             "boolean": "Boolean",
             "bool": "Boolean",
+            "methods": "MethodSurface",
+            "method": "MethodSurface",
+            "methodsurface": "MethodSurface",
+            "exam": "ExamMix",
+            "exammix": "ExamMix",
         }
         return mapping.get(value.lower())
 
@@ -3602,6 +3667,24 @@ class CASIOApp(App):
             return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
         return proc.stdout, proc.stderr
 
+    def run_host_feature(self, flag, expr):
+        host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
+        if not host.exists():
+            return "", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh"
+        try:
+            proc = subprocess.run(
+                [str(host), f"--{flag}", expr],
+                text=True,
+                capture_output=True,
+                cwd=str(REPO_ROOT),
+                timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
+            )
+        except subprocess.TimeoutExpired as err:
+            stdout = err.stdout if isinstance(err.stdout, str) else ""
+            stderr = err.stderr if isinstance(err.stderr, str) else ""
+            return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
+        return proc.stdout, proc.stderr
+
     def make_cli_case(self, program, script, inp, label, checker, check_info="", feature="", use_calculated=None):
         if use_calculated is None:
             use_calculated = not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or ""))
@@ -3711,6 +3794,7 @@ class CASIOApp(App):
             "random_complex_case": "Complex",
             "random_calculate_case": "Calculate",
             "random_solve_rnd_case": "Solve",
+            "random_method_surface_case": "MethodSurface",
         }
         
         for feature, feature_count in zip(features, counts):
@@ -3907,7 +3991,7 @@ class CASIOApp(App):
                             if len(self._test_times) > 500:
                                 self._test_times = self._test_times[-200:]
                         quality_issues = []
-                        if not skip_quality and case.program != "Boolean" and getattr(case, "feature", ""):
+                        if not skip_quality and case.program not in ("Boolean", "MethodSurface") and getattr(case, "feature", ""):
                             quality_issues = exam_working_quality_issues(
                                 output, case.program, case.feature
                             )
@@ -5298,8 +5382,10 @@ class CASIOApp(App):
             # Mix of stable core + chaos-proof hard cases.
             features = [
                 self.random_algebra_compare_case,
+                self.random_algebra_compare_letter_case,
                 self.random_algebra_transform_case,
                 self.random_algebra_expand_case,
+                self.random_algebra_expand_letter_case,
                 self.random_algebra_complete_square_case,
                 self.random_algebra_solve_case,
                 self.random_algebra_rearrange_case,
@@ -5308,6 +5394,15 @@ class CASIOApp(App):
                 self.random_algebra_poly_case,
                 self.random_algebra_discriminant_case,
                 self.random_algebra_solve_letter_case,
+                self.random_algebra_comp_case,
+                self.random_algebra_inverse_case,
+                self.random_algebra_rewrite_case,
+                self.random_algebra_domain_case,
+                self.random_algebra_domain_interval_case,
+                self.random_algebra_range_case,
+                self.random_algebra_cartesian_case,
+                self.random_algebra_simultaneous_hard_case,
+                self.random_algebra_circle_line_hard_case,
             ]
         else:
             features = [
@@ -5774,6 +5869,10 @@ class CASIOApp(App):
                 self.random_trig_solve_case,
                 self.random_trig_rewrite_case,
                 self.random_trig_rearrange_case,
+                self.random_trig_mad_as_maths_case,
+                self.random_trig_identity_hard_case,
+                self.random_trig_equation_multi_case,
+                self.random_trig_radian_hard_case,
             ]
         else:
             features = [
@@ -6030,6 +6129,7 @@ class CASIOApp(App):
                 self.random_derive_chain_quotient_case,
                 self.random_derive_implicit_product_case,
                 self.random_derive_parametric_hard_case,
+                self.random_derive_log_diff_case,
             ]
         else:
             features = [
@@ -6421,13 +6521,16 @@ class CASIOApp(App):
         if getattr(self, "backend", "python") == "c":
             # C++ backend: expanded integration coverage.
             features = [
+                self.random_integrate_auto_case,
                 self.random_integrate_direct_case,
+                self.random_integrate_sub_case,
+                self.random_integrate_parts_case,
                 self.random_integrate_trig_case,
                 self.random_integrate_pf_case,
                 self.random_integrate_div_case,
+                self.random_integrate_partial_frac_case,
                 self.random_integrate_trig_power_case,
                 self.random_integrate_substitution_case,
-                self.random_integrate_auto_case,
                 self.random_integrate_parts_twice_case,
                 self.random_integrate_extreme_rewrite_case,
             ]
@@ -7010,6 +7113,106 @@ class CASIOApp(App):
 
         return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, feature=f"suvat_uni:{mode}")
 
+    def random_method_surface_case(self, rng, difficulty, index):
+        cases = [
+            ("int", "x^2,method=auto", "auto", True),
+            ("int", "x^2,method=direct", "direct", True),
+            ("int", "2*x*cos(x^2),method=reverse_chain", "reverse_chain", True),
+            ("int", "x*cos(x^2),method=sub,u=x^2", "sub", True),
+            ("int", "x*exp(x),method=parts", "parts", True),
+            ("int", "x^4*exp(x),method=di", "di", True),
+            ("int", "sin(x)^4,method=trig", "trig", True),
+            ("int", "1/((x-1)*(x+2)),method=pf", "pf", True),
+            ("int", "(x^3+1)/(x+1),method=div", "div", True),
+            ("int", "1/(2+cos(x)),method=weierstrass", "weierstrass", True),
+            ("int", "sin(x)/(sin(x)+cos(x)),method=symmetry", "symmetry", True),
+            ("derive", "x^3,method=auto", "auto", True),
+            ("derive", "sin(x^2),method=chain", "chain", True),
+            ("derive", "x^2*exp(x),method=product", "product", True),
+            ("derive", "sin(x)/(x^2+1),method=quotient", "quotient", True),
+            ("derive", "x^x,method=logdiff", "logdiff", True),
+            ("derive", "x^2+y^2=1,method=implicit", "implicit", True),
+            ("derive", "t^2,t^3,t,method=param", "param", True),
+            ("derive", "x^4,method=second", "second", True),
+            ("derive", "t^2+1/t,t^2-1/t,t,method=param_second", "param_second", True),
+            ("trig", "sin(x)=1/2,x,0,2*pi,6,method=auto", "auto", True),
+            ("trig", "sin(x)-1/2,method=general", "general", True),
+            ("trig", "sin(x)=1/2,x,0,2*pi,6,method=bounded", "bounded", True),
+            ("trig", "sin(x)=1/2,x,0,360,6,method=cast", "cast", True),
+            ("trig", "sin(x)^2+cos(x)^2,method=identity", "identity", True),
+            ("trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,method=rform", "rform", True),
+            ("trig", "sin(x)^2=1/4,x,0,2*pi,method=square_then_check", "square_then_check", True),
+            ("trig", "sin(x)^2+cos(x)^2,method=sin_cos", "sin_cos", True),
+            ("trig", "sec(x)^2-tan(x)^2,method=pythag", "pythag", True),
+            ("trig", "sin(2*x),method=double_angle", "double_angle", True),
+            ("trig", "sin(x+y),method=compound_angle", "compound_angle", True),
+            ("trig", "sin(x)^2+cos(x)^2,target=1,method=target", "target", True),
+            ("alg", "2*x+3=11,method=auto", "auto", True),
+            ("alg", "2*x+3=11,method=linear", "linear", True),
+            ("alg", "x^2-5*x+6=0,method=factor", "factor", True),
+            ("alg", "x^2-5*x+6=0,method=quad_formula", "quad_formula", True),
+            ("alg", "x^2+6*x+5=0,method=complete_square", "complete_square", True),
+            ("alg", "x^4-5*x^2+4=0,method=substitution", "substitution", True),
+            ("alg", "1/x+1/(x+1)=1/2,method=clear_denoms", "clear_denoms", True),
+            ("alg", "2^(2*x)-5*2^x+4=0,method=log_exp", "log_exp", True),
+            ("alg", "x^2-2=0,method=numeric", "numeric", True),
+            ("alg", "x^2-2=0,x,-2,2,method=interval", "interval", True),
+            ("alg", "(x+1)^3,method=expand", "expand", True),
+            ("alg", "x^2+2*x+1,method=collect", "collect", True),
+            ("alg", "1/(sqrt(x)+1),method=rationalise", "rationalise", True),
+            ("alg", "x^2+2*x+1,method=canonical", "canonical", True),
+            ("alg", "x^2+a*x+b,target=(x+1)^2,method=target", "target", True),
+            ("alg", "(a*x+b)(x-2)=4*x^2+6*x-1,method=equate_coeffs", "equate_coeffs", True),
+            ("alg", "2*x+y=5,x-y=1,method=simultaneous", "simultaneous", True),
+            ("stats", "1,2,3,4,method=auto", "auto", True),
+            ("stats", "1,2,3,4,method=summary", "summary", True),
+            ("stats", "1,2,3,4,method=regression", "regression", True),
+            ("stats", "1,2,3,4,method=hypothesis_test", "hypothesis_test", True),
+            ("stats", "binomial(10,.5,4),method=binomial", "binomial", True),
+            ("stats", "normal(0,1,1.96),method=normal", "normal", True),
+            ("stats", "poisson(3,2),method=poisson", "poisson", True),
+            ("stats", "1,2,3,4,method=confidence_interval", "confidence_interval", True),
+            ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=auto", "auto", True),
+            ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", "suvat", True),
+            ("suvat", "s=,u=20,v=,a=-10,t=2,target=v,method=projectile", "projectile", True),
+            ("suvat", "s=,u=0,v=,a=2,t=5,target=v,method=forces", "forces", True),
+            ("suvat", "s=10,u=,v=,a=2,t=3,target=u,method=variable_accel", "variable_accel", True),
+            ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=energy", "energy", True),
+            ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=moments", "moments", True),
+            ("int", "x^2,method=not_a_method", "invalid", False),
+        ]
+        flag, expr, method, valid = rng.choice(cases)
+        label = f"Method {index}: {flag}:{method}"
+        feature = "method_surface:invalid" if not valid else f"method_surface:{flag}:{method}"
+
+        def runner():
+            out, err = self.run_host_feature(flag, expr)
+            combined = out if not err else out + "\n" + err
+            text = normalized_text(combined)
+            if not valid:
+                ok = "invalid method" in text and "auto result:" in text and "answer:" in text
+            elif method == "auto":
+                ok = any(token in text for token in ("answer:", "dy/dx", " = "))
+            else:
+                ok = (
+                    f"method: forced {method}".lower() in text
+                    and f"route: {method}".lower() in text
+                    and any(token in text for token in ("answer:", "dy/dx", " = ", "final ="))
+                )
+            return ok, combined
+
+        return self.make_direct_case(
+            "MethodSurface",
+            label,
+            runner,
+            input_text=f"--{flag} {expr}",
+            check_info="method forced/auto/invalid surface; output not answer-only",
+            feature=feature,
+        )
+
+    def build_random_method_surface_cases(self, difficulty, count, rng):
+        return self.build_unique_random_cases([self.random_method_surface_case], count, rng, difficulty)
+
     def build_university_cases(self, difficulty, count, rng):
         features = [
             self.random_algebra_compare_case,
@@ -7030,7 +7233,9 @@ class CASIOApp(App):
             self.random_derive_parametric_case,
             self.random_integrate_auto_case,
             self.random_suvat_case,
-            self.random_suvat_edge_case,
+            lambda local_rng, local_difficulty, idx: self.random_suvat_edge_case(
+                local_rng, local_difficulty, idx, local_rng.choice(["s", "u", "v", "a", "t"])
+            ),
             self.random_boolean_simplify_case,
             self.random_boolean_nand_case,
             self.random_boolean_nor_case,
@@ -7050,6 +7255,8 @@ class CASIOApp(App):
             ("Stats", self.build_random_stats_cases),
             ("SUVAT", self.build_random_suvat_cases),
             ("Boolean", self.build_random_boolean_cases),
+            ("MethodSurface", self.build_random_method_surface_cases),
+            ("ExamMix", self.build_university_cases),
         ]
         if program is None:
             return builders
@@ -8786,6 +8993,7 @@ def _cli_help():
                                    jittered weights to stress high-yield / exam-relevant items.
       CASIO_EXAM_BOOST             Optional: builder_name:mult pairs, e.g. random_trig_equation_multi_case:1.5
       CASIO_INFINITE_GENERATION_CHUNK  Cases per program per /infinite cycle (default 12)
+      CASIO_TUI_START_COMMANDS      Auto-run TUI commands separated by ;;, e.g. "/llm 2;;/infinite"
       CASIO_LLM_BATCH_SIZE         LLM verify N subprocess results per Ollama call (default 10)
       CASIO_LLM_BATCH_DISABLE      1/true yes: one Ollama call per test (old behaviour)
       CASIO_LLM_BATCH_OUT_CHARS    Max chars of each OUT in batch prompts (shared_llm; default 1200)
