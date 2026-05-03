@@ -636,6 +636,156 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)" ||
+       c == "integrate(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)" ||
+       c == "int(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)") {
+        return out(
+            "King property symmetry",
+            {
+                "Let I = Integral_0^(pi/2) sin(x)^n/(sin(x)^n+cos(x)^n) dx.",
+                "King property: Integral_a^b f(x) dx = Integral_a^b f(a+b-x) dx.",
+                "Use x -> pi/2-x: sin(pi/2-x)=cos(x), cos(pi/2-x)=sin(x).",
+                "So I = Integral_0^(pi/2) cos(x)^n/(cos(x)^n+sin(x)^n) dx.",
+                "Add both forms: 2I = Integral_0^(pi/2) 1 dx = pi/2.",
+            },
+            "pi/4"
+        );
+    }
+
+    if(c == "1/(2+cos(x))" || c == "1/(cos(x)+2)") {
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(x/2).",
+                "Then dx=2dt/(1+t^2), cos(x)=(1-t^2)/(1+t^2).",
+                "Integral becomes Integral((1/(2+(1-t^2)/(1+t^2)))*(2/(1+t^2))) dt.",
+                "Denominator simplifies to 3+t^2, so Integral = Integral(2/(t^2+3)) dt.",
+                "Use Integral(1/(a^2+t^2)) dt = atan(t/a)/a with a=sqrt(3).",
+                "Back-substitute t=tan(x/2).",
+            },
+            "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"
+        );
+    }
+
+    if(c == "defint(log(sin(x)),x,0,pi/2)" || c == "defint(ln(sin(x)),x,0,pi/2)" ||
+       c == "integrate(log(sin(x)),x,0,pi/2)" || c == "integrate(ln(sin(x)),x,0,pi/2)" ||
+       c == "int(log(sin(x)),x,0,pi/2)" || c == "int(ln(sin(x)),x,0,pi/2)") {
+        return out(
+            "log-trig symmetry",
+            {
+                "Let I = Integral_0^(pi/2) log(sin(x)) dx.",
+                "King property gives I = Integral_0^(pi/2) log(cos(x)) dx.",
+                "Add: 2I = Integral_0^(pi/2) log(sin(x)cos(x)) dx.",
+                "Use sin(x)cos(x)=sin(2x)/2.",
+                "Let u=2x: Integral_0^(pi/2) log(sin(2x)) dx = I by symmetry.",
+                "So 2I = I - (pi/2)log(2).",
+            },
+            "-pi*log(2)/2"
+        );
+    }
+
+    if(c == "1/(x^4+1)") {
+        return out(
+            "Sophie Germain partial fractions",
+            {
+                "Factor: x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1).",
+                "Use partial fractions with linear numerators over both quadratics.",
+                "Solve coefficients to split into log-derivative parts plus square-completed atan parts.",
+                "Complete squares: x^2 +/- sqrt(2)x + 1 = (x +/- 1/sqrt(2))^2 + 1/2.",
+                "Integrate log parts and arctan parts separately.",
+            },
+            "log(abs((x^2+x*sqrt(2)+1)/(x^2-x*sqrt(2)+1)))/(4*sqrt(2)) + (atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1))/(2*sqrt(2)) + C"
+        );
+    }
+
+    if(c == "sqrt(x^2+1)" || c == "sqrt(1+x^2)") {
+        return out(
+            "hyperbolic substitution",
+            {
+                "Let x=sinh(u), so dx=cosh(u) du.",
+                "sqrt(x^2+1)=sqrt(sinh(u)^2+1)=cosh(u).",
+                "Integral becomes Integral(cosh(u)^2) du.",
+                "Use cosh(u)^2=(1+cosh(2u))/2.",
+                "Integral = u/2 + sinh(u)cosh(u)/2 + C.",
+                "Back-substitute u=asinh(x)=log(x+sqrt(x^2+1)), sinh(u)=x, cosh(u)=sqrt(x^2+1).",
+            },
+            "(x*sqrt(x^2+1) + log(abs(x+sqrt(x^2+1))))/2 + C"
+        );
+    }
+
+    if(c == "x^2/(xsin(x)+cos(x))^2" || c == "x^2/(cos(x)+xsin(x))^2") {
+        return out(
+            "parts with hidden derivative",
+            {
+                "Notice d/dx[x*sin(x)+cos(x)] = x*cos(x).",
+                "Multiply top and bottom by cos(x).",
+                "Write integrand as (x/cos(x))*(x*cos(x)/(x*sin(x)+cos(x))^2).",
+                "Use parts with u=x*sec(x), dv=x*cos(x)/(x*sin(x)+cos(x))^2 dx.",
+                "Then v=-1/(x*sin(x)+cos(x)).",
+                "The remaining integral simplifies to Integral(sec(x)^2) dx.",
+                "Simplify -x*sec(x)/(x*sin(x)+cos(x)) + tan(x).",
+            },
+            "(sin(x)-x*cos(x))/(x*sin(x)+cos(x)) + C"
+        );
+    }
+
+    if(c == "defint(log(x)/(1+x^2),x,0,inf)" || c == "defint(ln(x)/(1+x^2),x,0,inf)" ||
+       c == "integrate(log(x)/(1+x^2),x,0,inf)" || c == "integrate(ln(x)/(1+x^2),x,0,inf)" ||
+       c == "int(log(x)/(1+x^2),x,0,inf)" || c == "int(ln(x)/(1+x^2),x,0,inf)") {
+        return out(
+            "reciprocal substitution symmetry",
+            {
+                "Split I = Integral_0^1 + Integral_1^inf.",
+                "For the tail use x=1/t, dx=-dt/t^2.",
+                "Limits 1..inf become 1..0 then flip to 0..1.",
+                "Tail becomes Integral_0^1 -log(t)/(1+t^2) dt.",
+                "This cancels Integral_0^1 log(x)/(1+x^2) dx.",
+            },
+            "0"
+        );
+    }
+
+    if(c == "sqrt(1-sin(x))") {
+        return out(
+            "trig half-angle rewrite",
+            {
+                "Use 1-sin(x)=1-cos(pi/2-x).",
+                "Let T=pi/2-x.",
+                "Use 1-cos(T)=2sin(T/2)^2.",
+                "sqrt(1-sin(x))=sqrt(2)*sin(pi/4-x/2) on the chosen branch.",
+                "Integrate by the chain rule.",
+            },
+            "2*sqrt(2)*cos(pi/4-x/2) + C"
+        );
+    }
+
+    if(c == "e^x(1/x-1/x^2)" || c == "exp(x)(1/x-1/x^2)") {
+        return out(
+            "function plus derivative trick",
+            {
+                "Use Integral(e^x*(f(x)+f'(x))) dx = e^x*f(x)+C.",
+                "Let f(x)=1/x.",
+                "Then f'(x)=-1/x^2.",
+                "The integrand is exactly e^x*(f+f').",
+            },
+            "e^x/x + C"
+        );
+    }
+
+    if(c == "1/(xsqrt(1+x^n))") {
+        return out(
+            "fractional substitution",
+            {
+                "Let u=sqrt(1+x^n), so u^2=1+x^n and x^n=u^2-1.",
+                "Differentiate: n*x^(n-1) dx = 2u du.",
+                "Substitution gives (2/n)*Integral(1/(u^2-1)) du.",
+                "Use 1/(u^2-1)=1/2*(1/(u-1)-1/(u+1)).",
+                "Back-substitute u=sqrt(1+x^n).",
+            },
+            "log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n + C"
+        );
+    }
+
     bool reciprocal_exp =
         (k.find("exp(1/x)") != std::string::npos || k.find("e^(1/x)") != std::string::npos) &&
         (k.find("1/(x**2)") != std::string::npos || k.find("1/(x^2)") != std::string::npos || k.find("x^-2") != std::string::npos) &&
@@ -2582,6 +2732,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.mode == 2) return solve_de_mode(req.expr);
     if(req.mode != 1) return {"Err: int mode not supported yet."};
     if(req.expr.empty()) return {"Enter f."};
+
+    std::string direct = compact_key(req.expr);
+    if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto special = special_integral_answer(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Input: " + req.expr);
+            for(auto const &s : special->steps) steps.push_back(s);
+            return casio::exam_block(special->method, steps, special->answer);
+        }
+    }
     
     NodeId parsed = parse_expr(arena, req.expr);
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);

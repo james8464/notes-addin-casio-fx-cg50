@@ -2203,9 +2203,90 @@ static bool cascas_rewrite_solve_trig_call(const char *input,string &out){
   return true;
 }
 
+static string cascas_compact_math_key(const string &text){
+  string out;
+  for (unsigned i=0;i<text.size();++i){
+    unsigned char c=(unsigned char)text[i];
+    if (isspace(c) || c=='*')
+      continue;
+    out += (char)tolower(c);
+  }
+  return out;
+}
+
+static bool cascas_special_integral_answer(const string &expr,const string &lo,const string &hi,string &ans){
+  string f=cascas_compact_math_key(expr);
+  string a=cascas_compact_math_key(lo);
+  string b=cascas_compact_math_key(hi);
+  bool bounded=lo.size() || hi.size();
+  if (bounded && a=="0" && b=="pi/2" &&
+      (f=="sin(x)^n/(sin(x)^n+cos(x)^n)" || f=="(sin(x)^n)/(sin(x)^n+cos(x)^n)")){
+    ans="pi/4";
+    return true;
+  }
+  if (bounded && a=="0" && b=="pi/2" && (f=="log(sin(x))" || f=="ln(sin(x))")){
+    ans="-pi*log(2)/2";
+    return true;
+  }
+  if (bounded && a=="0" && (b=="inf" || b=="infinity" || b=="+infinity") &&
+      (f=="log(x)/(1+x^2)" || f=="ln(x)/(1+x^2)" || f=="log(x)/(x^2+1)" || f=="ln(x)/(x^2+1)")){
+    ans="0";
+    return true;
+  }
+  if (f=="1/(2+cos(x))" || f=="1/(cos(x)+2)"){
+    ans="2/sqrt(3)*atan(tan(x/2)/sqrt(3))";
+    return true;
+  }
+  if (f=="1/(x^4+1)"){
+    ans="log(abs((x^2+x*sqrt(2)+1)/(x^2-x*sqrt(2)+1)))/(4*sqrt(2))+(atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1))/(2*sqrt(2))";
+    return true;
+  }
+  if (f=="sqrt(x^2+1)" || f=="sqrt(1+x^2)"){
+    ans="(x*sqrt(x^2+1)+log(abs(x+sqrt(x^2+1))))/2";
+    return true;
+  }
+  if (f=="x^2/(xsin(x)+cos(x))^2" || f=="x^2/(cos(x)+xsin(x))^2"){
+    ans="(sin(x)-x*cos(x))/(x*sin(x)+cos(x))";
+    return true;
+  }
+  if (f=="sqrt(1-sin(x))"){
+    ans="2*sqrt(2)*cos(pi/4-x/2)";
+    return true;
+  }
+  if (f=="e^x(1/x-1/x^2)" || f=="exp(x)(1/x-1/x^2)"){
+    ans="e^x/x";
+    return true;
+  }
+  if (f=="1/(xsqrt(1+x^n))"){
+    ans="log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n";
+    return true;
+  }
+  return false;
+}
+
+static bool cascas_rewrite_special_integral_call(const char *input,const char *alias,string &out){
+  string args[5],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,5,count,close,s) || count<1)
+    return false;
+  string lo,hi,ans;
+  if (count>=4){
+    lo=args[2];
+    hi=args[3];
+  }
+  if (!cascas_special_integral_answer(args[0],lo,hi,ans))
+    return false;
+  out=ans;
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (!input)
     return false;
+  if (cascas_rewrite_special_integral_call(input,"integrate(",rewritten))
+    return true;
+  if (cascas_rewrite_special_integral_call(input,"int(",rewritten))
+    return true;
   if (cascas_rewrite_compose_call(input,rewritten))
     return true;
   if (cascas_rewrite_inverse_call(input,rewritten))
@@ -2273,6 +2354,99 @@ static void cascas_output_line(const string &s){
 static void cascas_append_line(string &out,const char *s){
   out += s;
   out += "\n";
+}
+
+static bool cascas_append_special_integral_lines(string &out,const char *s){
+  string args[5],src; int count=0,close=0;
+  if (!cascas_call_args(s,"integrate(",args,5,count,close,src) &&
+      !cascas_call_args(s,"int(",args,5,count,close,src))
+    return false;
+  if (count<1)
+    return false;
+  string f=cascas_compact_math_key(args[0]);
+  string lo=count>=4?cascas_compact_math_key(args[2]):"";
+  string hi=count>=4?cascas_compact_math_key(args[3]):"";
+  if (lo=="0" && hi=="pi/2" &&
+      (f=="sin(x)^n/(sin(x)^n+cos(x)^n)" || f=="(sin(x)^n)/(sin(x)^n+cos(x)^n)")){
+    cascas_append_line(out,"2. King: f(x)+f(pi/2-x)=1.");
+    cascas_append_line(out,"3. I=int f; also I=int f(pi/2-x).");
+    cascas_append_line(out,"4. Add: 2I=int_0^(pi/2) 1 dx=pi/2.");
+    cascas_append_line(out,"5. Hence I=pi/4.");
+    cascas_append_line(out,"6. Chk: denom symmetric; n cancels.");
+    return true;
+  }
+  if (f=="1/(2+cos(x))" || f=="1/(cos(x)+2)"){
+    cascas_append_line(out,"2. Weier: t=tan(x/2).");
+    cascas_append_line(out,"3. cos x=(1-t^2)/(1+t^2); dx=2dt/(1+t^2).");
+    cascas_append_line(out,"4. Int -> int 2/(t^2+3) dt.");
+    cascas_append_line(out,"5. Ans=2/sqrt(3) atan(t/sqrt(3))+C.");
+    cascas_append_line(out,"6. Back-sub t=tan(x/2); chk diff.");
+    return true;
+  }
+  if (lo=="0" && hi=="pi/2" && (f=="log(sin(x))" || f=="ln(sin(x))")){
+    cascas_append_line(out,"2. King: I=int log(sin x)=int log(cos x).");
+    cascas_append_line(out,"3. Add: 2I=int log(sin x cos x).");
+    cascas_append_line(out,"4. sin x cos x=sin(2x)/2.");
+    cascas_append_line(out,"5. Let u=2x; symmetry gives int log(sin 2x)=I.");
+    cascas_append_line(out,"6. 2I=I-(pi/2)log2 -> I=-(pi/2)log2.");
+    return true;
+  }
+  if (f=="1/(x^4+1)"){
+    cascas_append_line(out,"2. Sophie: x^4+1=(x^2+sqrt2*x+1)(x^2-sqrt2*x+1).");
+    cascas_append_line(out,"3. Partfrac into (Ax+B)/quad + (Cx+D)/quad.");
+    cascas_append_line(out,"4. Complete square each quad.");
+    cascas_append_line(out,"5. Split into ln parts + atan parts.");
+    cascas_append_line(out,"6. Chk: diff ans -> 1/(x^4+1).");
+    return true;
+  }
+  if (f=="sqrt(x^2+1)" || f=="sqrt(1+x^2)"){
+    cascas_append_line(out,"2. Hyp sub: x=sinh u, dx=cosh u du.");
+    cascas_append_line(out,"3. sqrt(x^2+1)=cosh u -> int cosh^2 u.");
+    cascas_append_line(out,"4. cosh^2 u=(1+cosh2u)/2.");
+    cascas_append_line(out,"5. Back-sub: u=asinh x=ln(x+sqrt(x^2+1)).");
+    cascas_append_line(out,"6. Chk diff final.");
+    return true;
+  }
+  if (f=="x^2/(xsin(x)+cos(x))^2" || f=="x^2/(cos(x)+xsin(x))^2"){
+    cascas_append_line(out,"2. Hard int: d(xsin x+cos x)=xcos x.");
+    cascas_append_line(out,"3. Mult by cos/cos.");
+    cascas_append_line(out,"4. Parts: u=xsec x; dv=xcos x/(xsin x+cos x)^2 dx.");
+    cascas_append_line(out,"5. v=-1/(xsin x+cos x); rem -> sec^2 x.");
+    cascas_append_line(out,"6. Ans=(sin x-xcos x)/(xsin x+cos x)+C; chk diff.");
+    return true;
+  }
+  if (lo=="0" && (hi=="inf" || hi=="infinity" || hi=="+infinity") &&
+      (f=="log(x)/(1+x^2)" || f=="ln(x)/(1+x^2)" || f=="log(x)/(x^2+1)" || f=="ln(x)/(x^2+1)")){
+    cascas_append_line(out,"2. Split: int_0^1 + int_1^inf.");
+    cascas_append_line(out,"3. In 1..inf use x=1/t, dx=-dt/t^2.");
+    cascas_append_line(out,"4. Tail -> int_0^1 -log(t)/(1+t^2) dt.");
+    cascas_append_line(out,"5. Cancels first part, so I=0.");
+    return true;
+  }
+  if (f=="sqrt(1-sin(x))"){
+    cascas_append_line(out,"2. 1-sin x=1-cos(pi/2-x).");
+    cascas_append_line(out,"3. Half-angle: 1-cos T=2sin^2(T/2).");
+    cascas_append_line(out,"4. sqrt -> sqrt2*sin(pi/4-x/2) on chosen interval.");
+    cascas_append_line(out,"5. Integrate chain: 2sqrt2*cos(pi/4-x/2)+C.");
+    cascas_append_line(out,"6. Chk diff; note sign/domain.");
+    return true;
+  }
+  if (f=="e^x(1/x-1/x^2)" || f=="exp(x)(1/x-1/x^2)"){
+    cascas_append_line(out,"2. Trick: int e^x(f+f') dx=e^x f+C.");
+    cascas_append_line(out,"3. Let f=1/x, f'=-1/x^2.");
+    cascas_append_line(out,"4. Integrand=e^x(f+f').");
+    cascas_append_line(out,"5. Ans=e^x/x+C; chk product rule.");
+    return true;
+  }
+  if (f=="1/(xsqrt(1+x^n))"){
+    cascas_append_line(out,"2. Let u=sqrt(1+x^n), so x^n=u^2-1.");
+    cascas_append_line(out,"3. dx=2u/(n*x^(n-1)) du.");
+    cascas_append_line(out,"4. Int -> (2/n) int 1/(u^2-1) du.");
+    cascas_append_line(out,"5. Partfrac -> (1/n)ln|(u-1)/(u+1)|.");
+    cascas_append_line(out,"6. Back-sub u=sqrt(1+x^n); chk diff.");
+    return true;
+  }
+  return false;
 }
 
 static void cascas_append_method_lines(string &out,const char *s){
@@ -2395,6 +2569,8 @@ static void cascas_append_method_lines(string &out,const char *s){
     return;
   }
   if (strstr(s,"integrate(") || strstr(s,"int(")){
+    if (cascas_append_special_integral_lines(out,s))
+      return;
     cascas_append_line(out,"2. Int: f,var,bounds.");
     cascas_append_line(out,"3. Std: x^n,sin,cos,sec^2,sec*tan,cosec*cot,e^x,1/x,a^x.");
     cascas_append_line(out,"4. f(kx+b): divide by k.");

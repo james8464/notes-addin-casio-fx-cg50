@@ -37,6 +37,16 @@ CASES: list[tuple[str, list[str]]] = [
     ("1/(1+cos(x))", ["trig conjugate", "1-cos(x)^2 = sin(x)^2", "-cot(x) + cosec(x) + C"]),
     ("sin(ln(x))", ["log substitution then looping parts", "2I=e^u*(sin(u)-cos(u))", "x*(sin(log(x))-cos(log(x)))/2 + C"]),
     ("1/(x*sqrt(x^2-1))", ["sec substitution", "x=sec(t)", "acos(1/x) + C"]),
+    ("defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
+    ("1/(2+cos(x))", ["Weierstrass substitution", "Integral(2/(t^2+3))", "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"]),
+    ("defint(log(sin(x)),x,0,pi/2)", ["log-trig symmetry", "2I = I - (pi/2)log(2)", "-pi*log(2)/2"]),
+    ("1/(x^4+1)", ["Sophie Germain partial fractions", "x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1)", "atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1)"]),
+    ("sqrt(x^2+1)", ["hyperbolic substitution", "x=sinh(u)", "(x*sqrt(x^2+1) + log(abs(x+sqrt(x^2+1))))/2 + C"]),
+    ("x^2/(x*sin(x)+cos(x))^2", ["parts with hidden derivative", "d/dx[x*sin(x)+cos(x)] = x*cos(x)", "(sin(x)-x*cos(x))/(x*sin(x)+cos(x)) + C"]),
+    ("defint(log(x)/(1+x^2),x,0,inf)", ["reciprocal substitution symmetry", "Tail becomes Integral_0^1 -log(t)/(1+t^2) dt", "0"]),
+    ("sqrt(1-sin(x))", ["trig half-angle rewrite", "sqrt(1-sin(x))=sqrt(2)*sin(pi/4-x/2)", "2*sqrt(2)*cos(pi/4-x/2) + C"]),
+    ("e^x*(1/x-1/x^2)", ["function plus derivative trick", "f'(x)=-1/x^2", "e^x/x + C"]),
+    ("1/(x*sqrt(1+x^n))", ["fractional substitution", "1/(u^2-1)=1/2*(1/(u-1)-1/(u+1))", "log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n + C"]),
 ]
 
 

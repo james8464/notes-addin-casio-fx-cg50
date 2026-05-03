@@ -24,6 +24,11 @@ MARKERS = [
     b"Match:",
     b"Comp sq:",
     b"DE:",
+    b"King:",
+    b"Weier:",
+    b"Sophie:",
+    b"Hyp sub:",
+    b"Hard int:",
 ]
 
 
