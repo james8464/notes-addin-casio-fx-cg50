@@ -4,6 +4,7 @@
 graph TD
   Up["Fourier giac90_1addin source"] --> Exact["c++/khicas/upstream/giac90_1addin"]
   Ref["Fourier khicasen.g3a"] --> Build["/compile default"]
+  Icons["Eigenmath-style c++/prizm/assets"] --> Build
   Exact --> Port["working-step hook port"]
   KH["c++/khicas/giac old Giac base"] --> OldRefs["legacy references"]
   KU["c++/khicas/kupdate old KhiCAS helpers"] --> OldRefs

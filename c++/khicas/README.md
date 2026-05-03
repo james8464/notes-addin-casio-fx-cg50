@@ -7,6 +7,6 @@ Exact upstream source/reference now lives in `upstream/`.
 - `upstream/compile.txt`: upstream compile instructions.
 - `upstream/INSTALL.txt`: upstream license/install notes.
 
-Active `/compile` now emits the verified upstream KhiCAS reference by default for exact UI/menu parity. Use `CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh` to build the previous small native port.
+Active `/compile` emits the verified upstream KhiCAS reference by default, then patches in the Eigenmath-style icons from `c++/prizm/assets`. Use `CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh` to build the previous small native port.
 
 License note: KhiCAS/Giac is upstream GPL-family code; preserve upstream notices when modifying or redistributing.

@@ -47,7 +47,7 @@ Use the PrizmSDK/libfxcg target for the calculator-style UI:
 ./c++/tools/build_addin_prizm_docker.sh
 ```
 
-Default output is copied from the verified upstream KhiCAS reference for exact UI/menu parity. To build the previous small native port instead:
+Default output is copied from the verified upstream KhiCAS reference, then patched with the Eigenmath-style icons from `c++/prizm/assets`. To build the previous small native port instead:
 
 ```bash
 CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh

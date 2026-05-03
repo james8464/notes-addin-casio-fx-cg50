@@ -7,6 +7,18 @@ MODE="${CASIO_PRIZM_MODE:-khicas-upstream}"
 UPSTREAM_G3A="${ROOT_DIR}/c++/khicas/upstream/reference/khicasen.g3a"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
 OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
+ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
+ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
+
+ensure_prizm_image() {
+  if ! docker image inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
+    echo "=== Building PrizmSDK Docker image ==="
+    docker build \
+      -f "${ROOT_DIR}/c++/tools/docker/Dockerfile.prizmsdk" \
+      -t "${IMAGE_TAG}" \
+      "${ROOT_DIR}"
+  fi
+}
 
 echo ""
 echo "=== Removing stale Prizm outputs ==="
@@ -22,7 +34,19 @@ if [ "${MODE}" = "khicas-upstream" ]; then
     echo "Missing upstream reference: ${UPSTREAM_G3A}" >&2
     exit 1
   fi
+  if [ ! -f "${ICON_SEL}" ] || [ ! -f "${ICON_UNSEL}" ]; then
+    echo "Missing Eigenmath-style icon assets in c++/prizm/assets" >&2
+    exit 1
+  fi
   cp "${UPSTREAM_G3A}" "${OUT_G3A}"
+  ensure_prizm_image
+  docker run --rm \
+    -v "${ROOT_DIR}:/work" \
+    -w /work \
+    "${IMAGE_TAG}" \
+    g3a-updateicon "c++/prizm/build/CasioCAS.g3a" \
+      "c++/prizm/assets/selected.bmp" \
+      "c++/prizm/assets/unselected.bmp"
   ls -lh "${OUT_G3A}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
@@ -30,11 +54,7 @@ if [ "${MODE}" = "khicas-upstream" ]; then
   exit 0
 fi
 
-echo "=== Building PrizmSDK Docker image ==="
-docker build \
-  -f "${ROOT_DIR}/c++/tools/docker/Dockerfile.prizmsdk" \
-  -t "${IMAGE_TAG}" \
-  "${ROOT_DIR}"
+ensure_prizm_image
 
 echo ""
 echo "=== Building native Prizm add-in ==="
