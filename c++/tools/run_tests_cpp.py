@@ -42,6 +42,7 @@ def main() -> int:
         ("integration_centurion", [sys.executable, "c++/tools/golden/check_integration_centurion.py"]),
         ("integration_compact_centurion", [sys.executable, "c++/tools/golden/check_integration_compact_centurion.py"]),
         ("integration_dynamic_patterns", [sys.executable, "c++/tools/golden/check_integration_dynamic_patterns.py"]),
+        ("method_forcing", [sys.executable, "c++/tools/golden/check_method_forcing.py"]),
         ("derive_basic", [sys.executable, "c++/tools/golden/compare_derive_basic.py"]),
         ("trig_basic", [sys.executable, "c++/tools/golden/compare_trig_basic.py"]),
         ("algebra_basic", [sys.executable, "c++/tools/golden/compare_algebra_basic.py"]),

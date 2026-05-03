@@ -2053,6 +2053,103 @@ static bool cascas_call_args(const char *input,const char *alias,string *args,in
   return count>0;
 }
 
+static bool cascas_arg_key(const string &arg,const char *key,string &value){
+  string t=cascas_trim(arg);
+  int n=strlen(key);
+  if (int(t.size())<=n+1 || strncmp(t.c_str(),key,n) || t[n]!='=')
+    return false;
+  value=cascas_trim(t.substr(n+1,t.size()-n-1));
+  return value.size()!=0;
+}
+
+static bool cascas_extract_method(const char *input,string &method,string &u){
+  method.clear();
+  u.clear();
+  if (!input)
+    return false;
+  string s(input);
+  const char *openp=strchr(input,'(');
+  if (!openp)
+    return false;
+  int open=openp-input;
+  int close=cascas_find_matching_paren(s,open);
+  if (close<0)
+    return false;
+  string args[10];
+  int count=cascas_split_top_args(s,open+1,close,args,10);
+  if (count<1)
+    return false;
+  for (int i=0;i<count;++i){
+    string v;
+    if (cascas_arg_key(args[i],"method",v) || cascas_arg_key(args[i],"met",v))
+      method=v;
+    if (cascas_arg_key(args[i],"u",v))
+      u=v;
+  }
+  string name=s.substr(0,open);
+  if (method.empty() && name.size()>3 && name.substr(name.size()-3,3)=="_by" && count>=3)
+    method=args[2];
+  return !method.empty() || !u.empty();
+}
+
+static bool cascas_strip_method_args(const char *input,string &out){
+  if (!input)
+    return false;
+  string s(input);
+  const char *openp=strchr(input,'(');
+  if (!openp)
+    return false;
+  int open=openp-input;
+  int close=cascas_find_matching_paren(s,open);
+  if (close<0)
+    return false;
+  string args[10],kept[10],tmp;
+  int count=cascas_split_top_args(s,open+1,close,args,10),n=0;
+  bool changed=false;
+  bool drop_u=cascas_startswith(input,"integrate(") || cascas_startswith(input,"int(") ||
+    cascas_startswith(input,"integrate_by(") || cascas_startswith(input,"int_by(");
+  if (count<1)
+    return false;
+  for (int i=0;i<count;++i){
+    if (cascas_arg_key(args[i],"method",tmp) || cascas_arg_key(args[i],"met",tmp) ||
+	(drop_u && cascas_arg_key(args[i],"u",tmp))){
+      changed=true;
+      continue;
+    }
+    kept[n++]=args[i];
+  }
+  if (!changed)
+    return false;
+  out=s.substr(0,open+1);
+  for (int i=0;i<n;++i){
+    if (i)
+      out += ",";
+    out += kept[i];
+  }
+  out += ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
+static bool cascas_rewrite_by_call(const char *input,const char *alias,const char *target,string &out){
+  string args[10],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,10,count,close,s) || count<1)
+    return false;
+  out=target;
+  out += "(";
+  int keep=count;
+  if (count>=3)
+    keep=2; // arg 3 is method; later args are method parameters for working only.
+  for (int i=0;i<keep;++i){
+    if (i)
+      out += ",";
+    out += args[i];
+  }
+  out += ")";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static int cascas_find_top_equal(const string &s){
   int depth=0;
   bool instring=false;
@@ -2343,6 +2440,25 @@ static bool cascas_rewrite_special_integral_call(const char *input,const char *a
 static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (!input)
     return false;
+  string stripped;
+  if (cascas_strip_method_args(input,stripped)){
+    if (cascas_rewrite_alias(stripped.c_str(),rewritten))
+      return true;
+    rewritten=stripped;
+    return true;
+  }
+  if (cascas_rewrite_by_call(input,"integrate_by(","integrate",rewritten))
+    return true;
+  if (cascas_rewrite_by_call(input,"int_by(","integrate",rewritten))
+    return true;
+  if (cascas_rewrite_by_call(input,"diff_by(","diff",rewritten))
+    return true;
+  if (cascas_rewrite_by_call(input,"solve_by(","solve",rewritten))
+    return true;
+  if (cascas_rewrite_by_call(input,"simplify_by(","simplify",rewritten))
+    return true;
+  if (cascas_rewrite_by_call(input,"solve_trig_by(","solve_trig",rewritten))
+    return true;
   if (cascas_rewrite_special_integral_call(input,"integrate(",rewritten))
     return true;
   if (cascas_rewrite_special_integral_call(input,"int(",rewritten))
@@ -2414,6 +2530,86 @@ static void cascas_output_line(const string &s){
 static void cascas_append_line(string &out,const char *s){
   out += s;
   out += "\n";
+}
+
+static bool cascas_method_has(const char *valid,const string &m){
+  if (!valid || m.empty())
+    return false;
+  string key("|");
+  key += m;
+  key += "|";
+  return strstr(valid,key.c_str())!=0;
+}
+
+static const char *cascas_method_valids(const char *s){
+  if (!s)
+    return "|auto|";
+  if (strstr(s,"integrate") || strstr(s,"int("))
+    return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|weierstrass|symmetry|";
+  if (strstr(s,"diff") || strstr(s,"tangent_line"))
+    return "|auto|chain|product|quotient|logdiff|implicit|param|second|";
+  if (strstr(s,"solve_trig"))
+    return "|auto|general|bounded|cast|identity|rform|square_then_check|";
+  if (strstr(s,"trig_"))
+    return "|auto|sin_cos|pythag|double_angle|compound_angle|rform|target|";
+  if (strstr(s,"solve(") || strstr(s,"fitconst") || strstr(s,"match"))
+    return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|equate_coeffs|simultaneous|";
+  if (strstr(s,"factor") || strstr(s,"expand") || strstr(s,"normal") || strstr(s,"simplify") || strstr(s,"rewrite") || strstr(s,"xform"))
+    return "|auto|expand|factor|collect|complete_square|rationalise|canonical|target|";
+  if (strstr(s,"desolve") || strstr(s,"de_solve"))
+    return "|auto|separable|linear_if|second_order|auxiliary|particular_integral|";
+  if (strstr(s,"det") || strstr(s,"rref") || strstr(s,"inv(") || strstr(s,"eigen") || strstr(s,"tran") || strstr(s,"rank"))
+    return "|auto|row_reduce|inverse|determinant|eigen|transform|";
+  if (strstr(s,"dot") || strstr(s,"cross"))
+    return "|auto|dot|cross|projection|line_plane|intersection|";
+  if (strstr(s,"arg(") || strstr(s,"abs(") || strstr(s,"conj") || strstr(s,"re(") || strstr(s,"im(") || strstr(s,"csolve"))
+    return "|auto|cartesian|mod_arg|de_moivre|roots|locus|";
+  if (strstr(s,"binomial") || strstr(s,"normald") || strstr(s,"poisson") || strstr(s,"correlation") || strstr(s,"regression") || strstr(s,"mean") || strstr(s,"stddev"))
+    return "|auto|summary|regression|hypothesis_test|binomial|normal|poisson|confidence_interval|";
+  if (strstr(s,"suvat"))
+    return "|auto|suvat|energy|moments|projectile|forces|variable_accel|";
+  return "|auto|";
+}
+
+static bool cascas_append_forced_method(string &out,const char *s){
+  string method,u;
+  if (!cascas_extract_method(s,method,u) || method.empty() || method=="auto")
+    return false;
+  const char *valid=cascas_method_valids(s);
+  out += "2. Met: ";
+  out += method;
+  if (u.size()){
+    out += "; u=";
+    out += u;
+  }
+  out += "\n";
+  if (!cascas_method_has(valid,method)){
+    out += "3. Bad met. Valid ";
+    out += valid;
+    out += "\n4. Auto result below; forced route not used.\n";
+    return true;
+  }
+  if (method=="sub" || method=="substitution"){
+    cascas_append_line(out,"3. Use chosen u; find du and rewrite all x terms.");
+    cascas_append_line(out,"4. Integrate in u, back-sub, chk diff.");
+  }
+  else if (method=="parts" || method=="di"){
+    cascas_append_line(out,"3. Pick u,dv; use uv-int(vdu) or DI table.");
+    cascas_append_line(out,"4. Simplify remainder; repeat if needed; chk diff.");
+  }
+  else if (method=="pf"){
+    cascas_append_line(out,"3. Factor denom; set A/(lin)+(Bx+C)/(quad).");
+    cascas_append_line(out,"4. Equate coeffs; integrate ln/atan terms.");
+  }
+  else if (method=="chain" || method=="product" || method=="quotient" || method=="logdiff"){
+    cascas_append_line(out,"3. Apply selected diff rule; keep brackets until final.");
+    cascas_append_line(out,"4. Simp/fact; chk by rediff.");
+  }
+  else {
+    cascas_append_line(out,"3. Apply selected mark-scheme route.");
+    cascas_append_line(out,"4. Verify final answer exactly.");
+  }
+  return true;
 }
 
 static bool cascas_append_special_integral_lines(string &out,const char *s){
@@ -2714,6 +2910,8 @@ static void cascas_append_method_lines(string &out,const char *s){
     cascas_append_line(out,"2. P: KhiCAS exact parse.");
     return;
   }
+  if (cascas_append_forced_method(out,s))
+    return;
   if (strstr(s,"solve_trig(")){
     cascas_append_line(out,"2. Trig solve: rearrange to one trig fn.");
     cascas_append_line(out,"3. Base angle a; choose quadrants.");

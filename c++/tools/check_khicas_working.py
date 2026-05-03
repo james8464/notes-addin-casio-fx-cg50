@@ -18,6 +18,7 @@ REQUIRED_MARKERS = [
     "cascas_output_working(s,eval_s,s_)",
     "Rw:",
     "Fallback:",
+    "Met:",
     "Chk:",
     "Ans: ",
 ]
@@ -80,6 +81,10 @@ ALIASES = [
     "cartesian(",
     "nand(",
     "nor(",
+    "integrate_by(",
+    "diff_by(",
+    "solve_by(",
+    "solve_trig_by(",
 ]
 
 

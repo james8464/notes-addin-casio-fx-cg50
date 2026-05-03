@@ -16,6 +16,8 @@
 #include <sstream>
 #include <string>
 #include <cstdlib>
+#include <vector>
+#include <cctype>
 
 static std::string read_all_stdin()
 {
@@ -37,6 +39,98 @@ static std::vector<std::string> split_lines(std::string const &s)
     }
     out.push_back(cur);
     return out;
+}
+
+static std::string trim(std::string s)
+{
+    while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+    while(!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+    return s;
+}
+
+static std::vector<std::string> split_top_csv(std::string const &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(' || c == '[' || c == '{') ++depth;
+        else if(c == ')' || c == ']' || c == '}') --depth;
+        if(c == ',' && depth == 0) {
+            out.push_back(trim(cur));
+            cur.clear();
+        }
+        else cur.push_back(c);
+    }
+    if(!cur.empty() || !out.empty()) out.push_back(trim(cur));
+    return out;
+}
+
+static bool key_arg(std::string const &arg, std::string const &key, std::string &value)
+{
+    std::string t = trim(arg);
+    if(t.rfind(key + "=", 0) != 0) return false;
+    value = trim(t.substr(key.size() + 1));
+    return !value.empty();
+}
+
+static std::string strip_method_args(std::string expr, std::string &method, std::string &u, bool strip_u_arg = false)
+{
+    method.clear();
+    u.clear();
+    auto parts = split_top_csv(expr);
+    if(parts.empty()) return expr;
+    std::vector<std::string> kept;
+    for(auto const &p : parts) {
+        std::string v;
+        if(key_arg(p, "method", v) || key_arg(p, "met", v)) {
+            method = v;
+            continue;
+        }
+        if(strip_u_arg && key_arg(p, "u", v)) {
+            u = v;
+            continue;
+        }
+        kept.push_back(p);
+    }
+    if(method.empty() && u.empty()) return expr;
+    std::ostringstream oss;
+    for(std::size_t i = 0; i < kept.size(); ++i) {
+        if(i) oss << ",";
+        oss << kept[i];
+    }
+    return oss.str();
+}
+
+static char const *valid_methods(std::string const &feature)
+{
+    if(feature == "int") return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|weierstrass|symmetry|";
+    if(feature == "derive") return "|auto|chain|product|quotient|logdiff|implicit|param|second|";
+    if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|target|";
+    if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|rationalise|canonical|target|equate_coeffs|simultaneous|";
+    if(feature == "stats") return "|auto|summary|regression|hypothesis_test|binomial|normal|poisson|confidence_interval|";
+    if(feature == "suvat") return "|auto|suvat|energy|moments|projectile|forces|variable_accel|";
+    return "|auto|";
+}
+
+static bool method_allowed(char const *valid, std::string const &method)
+{
+    if(method.empty() || method == "auto") return true;
+    return std::string(valid).find("|" + method + "|") != std::string::npos;
+}
+
+static void print_method_header(std::string const &feature, std::string const &method, std::string const &u)
+{
+    if(method.empty() || method == "auto") return;
+    char const *valid = valid_methods(feature);
+    std::cout << "Method: forced " << method;
+    if(!u.empty()) std::cout << ", u=" << u;
+    std::cout << "\n";
+    if(!method_allowed(valid, method)) {
+        std::cout << "Invalid method. Valid: " << valid << "\n";
+        std::cout << "Auto result:\n";
+    }
+    else std::cout << "Route: " << method << "\n";
 }
 
 static int run_stdin_program(casio::Arena &arena, std::string const &program, std::string const &stdin_text)
@@ -271,6 +365,9 @@ int main(int argc, char **argv)
         }
         if(is_suvat) {
             // Usage: --suvat "s=...,u=...,v=...,a=...,t=...,target=v"
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, false);
+            print_method_header("suvat", method, method_u);
             casio::suvat::Inputs in;
             in.target = "v";
             auto parse_kv = [&](std::string const &kv) {
@@ -298,6 +395,9 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_int) {
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, true);
+            print_method_header("int", method, method_u);
             casio::integrate::Request req;
             req.expr = expr;
             auto lines = casio::integrate::run(arena, req);
@@ -305,6 +405,9 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_alg) {
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, false);
+            print_method_header("alg", method, method_u);
             casio::algebra::Request req;
             req.mode = (expr.find('=') != std::string::npos) ? 6 : 0;
             req.expr = expr;
@@ -313,6 +416,9 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_trig) {
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, false);
+            print_method_header("trig", method, method_u);
             casio::trig::Request req;
             req.mode = 0;
             req.expr = expr;
@@ -321,11 +427,17 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_derive) {
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, false);
+            print_method_header("derive", method, method_u);
             casio::derive::Request req;
             // Accept optional prefix: "mode:<n>,<expr...>"
             // Example: --derive "mode:4,x^2"
             req.mode = 1;
             req.expr = expr;
+            if(method == "implicit") req.mode = 2;
+            else if(method == "param") req.mode = 3;
+            else if(method == "second") req.mode = 4;
             if(expr.rfind("mode:", 0) == 0) {
                 auto comma = expr.find(',');
                 if(comma != std::string::npos) {
@@ -342,6 +454,9 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_stats) {
+            std::string method, method_u;
+            expr = strip_method_args(expr, method, method_u, false);
+            print_method_header("stats", method, method_u);
             casio::stats::Request req;
             req.mode = 0;
             req.expr = expr;
