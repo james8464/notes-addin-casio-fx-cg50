@@ -8,6 +8,7 @@ from pathlib import Path
 MARKERS = [
     b"Rw:",
     b"Fallback:",
+    b"Valid:",
     b"Ans: ",
     b"Diff:",
     b"Impl:",

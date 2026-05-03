@@ -2369,6 +2369,94 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
   return false;
 }
 
+static bool cascas_nonneg_int_text(const string &s){
+  string t=cascas_trim(s);
+  if (t.empty())
+    return false;
+  for (int i=0;i<int(t.size());++i){
+    if (!isdigit((unsigned char)t[i]))
+      return false;
+  }
+  return true;
+}
+
+static string cascas_strip_outer_group(string s){
+  s=cascas_trim(s);
+  while (s.size()>=2 && s[0]=='(' && s[s.size()-1]==')'){
+    int close=cascas_find_matching_paren(s,0);
+    if (close!=int(s.size())-1)
+      break;
+    s=cascas_trim(s.substr(1,s.size()-2));
+  }
+  return s;
+}
+
+static int cascas_find_top_power(const string &s){
+  int depth=0;
+  bool instring=false;
+  for (int i=int(s.size())-1;i>=0;--i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c==')' || c==']' || c=='}')
+      ++depth;
+    if (c=='(' || c=='[' || c=='{')
+      --depth;
+    if (!depth && c=='^')
+      return i;
+  }
+  return -1;
+}
+
+static int cascas_find_base_split(const string &s){
+  int depth=0;
+  bool instring=false;
+  for (int i=1;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    if (c==')' || c==']' || c=='}')
+      --depth;
+    if (!depth && (c=='+' || c=='-'))
+      return i;
+  }
+  return -1;
+}
+
+static string cascas_binom_validity(const char *input){
+  string args[4],s; int count=0,close=0;
+  if (!cascas_call_args(input,"binom_expand(",args,4,count,close,s)){
+    if (!cascas_call_args(input,"binom_coeff(",args,4,count,close,s))
+      return "";
+  }
+  if (count<1)
+    return "";
+  string expr=cascas_strip_outer_group(args[0]);
+  int p=cascas_find_top_power(expr);
+  if (p<0)
+    return "";
+  string base=cascas_strip_outer_group(expr.substr(0,p));
+  string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
+  if (cascas_nonneg_int_text(exp))
+    return "Valid: all x";
+  int split=cascas_find_base_split(base);
+  if (split<0)
+    return "Valid: |b/a|<1";
+  string a=cascas_strip_outer_group(base.substr(0,split));
+  string b=cascas_strip_outer_group(base.substr(split+1,base.size()-split-1));
+  if (base[split]=='-')
+    b="-(" + b + ")";
+  if ((a=="1" || a=="+1") && (b=="x" || b=="-(x)"))
+    return "Valid: |x|<1";
+  return "Valid: |(" + b + ")/(" + a + ")|<1";
+}
+
 static void cascas_output_line(const string &s){
   Console_Output((const unsigned char*)s.c_str());
   Console_NewLine(LINE_TYPE_OUTPUT,1);
@@ -2479,6 +2567,9 @@ static string cascas_working_text(const char *input,const char *eval_input,const
     out += "\n";
   }
   cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input));
+  string valid=cascas_binom_validity(input);
+  if (valid.size())
+    cascas_append_line(out,valid.c_str());
   out += "Ans: ";
   out += answer;
   return out;

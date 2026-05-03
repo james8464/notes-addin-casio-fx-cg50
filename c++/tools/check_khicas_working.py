@@ -11,6 +11,7 @@ MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 REQUIRED_MARKERS = [
     "cascas_show_working_screen",
     "cascas_working_text",
+    "cascas_binom_validity",
     "doTextArea(&text)",
     "text.allowEXE=true",
     "check_do_graph(ge,do_logo_graph_eqw & ~1)",
@@ -20,6 +21,9 @@ REQUIRED_MARKERS = [
     "Fallback:",
     "Met:",
     "Chk:",
+    "Valid:",
+    "Valid: all x",
+    "Valid: |x|<1",
     "Ans: ",
 ]
 
