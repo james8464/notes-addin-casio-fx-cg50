@@ -312,7 +312,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"sign(x)", 0, "Returns -1 if x is negative, 0 if x is zero and 1 if x is positive.", 0, 0, CAT_CATEGORY_REAL},
   {"simplify(expr)", 0, "Returns x in a simpler form. Shortcut expr=>/", "sin(3x)/sin(x)", 0, CAT_CATEGORY_ALGEBRA},
   {"solve(equation,x)", 0, "Exact solving of equation w.r.t. x (or of a polynomial system). Run csolve for complex solutions, linsolve for a linear system. Shortcut SHIFT XthetaT", "x^2-x-1=0,x", "[x^2-y^2=0,x^2-z^2=0],[x,y,z]", CAT_CATEGORY_SOLVE},
-  {"solve_trig(equation,[x,a,b])", 0, "Trigonometric equation solve. Required: equation. Optional: variable and interval.", "2*sin(x)+1=0,x,0,360", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
+  {"solve_trig(eq,[var,lo,hi,max])", 0, "Trig eq solve. Req: eq. Opt: var, bounds, max terms. 0..360 => deg; 0..2*pi => rad.", "2*sin(x)+1=0", "2*sin(x)+1=0,x,0,2*pi,6", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
   {"sort(l)", 0, "Sorts a list.","[3/2,2,1,1/2,3,2,3/2]", "[[1,2],[2,3],[4,3]],(x,y)->when(x[1]==y[1],x[0]>y[0],x[1]>y[1]", CAT_CATEGORY_LIST},
   {"square_point", "square_point", "Display option", "#display=cyan+square_point", 0, CAT_CATEGORY_PROGCMD},
   {"star_point", "star_point", "Display option", "#display=magenta+star_point", 0, CAT_CATEGORY_PROGCMD},
@@ -378,7 +378,11 @@ bool catalog_hidden_name(const char *name){
       startswith_catalog(name," return ") || startswith_catalog(name,"debug(") ||
       startswith_catalog(name,"from math") || startswith_catalog(name,"input()") ||
       startswith_catalog(name,"print(") || startswith_catalog(name,"python(") ||
-      startswith_catalog(name,"python_compat") || startswith_catalog(name,"time("))
+      startswith_catalog(name,"python_compat") || startswith_catalog(name,"time(") ||
+      startswith_catalog(name,"append(") || startswith_catalog(name,"map(") ||
+      startswith_catalog(name,"seq(") || startswith_catalog(name,"sort(") ||
+      startswith_catalog(name,"quote(") || startswith_catalog(name,"read(") ||
+      startswith_catalog(name,"write(") || startswith_catalog(name,"purge("))
     return true;
   if (startswith_catalog(name,"avance") || startswith_catalog(name,"baisse_crayon") ||
       startswith_catalog(name,"cache_tortue") || startswith_catalog(name,"crayon") ||
@@ -391,6 +395,11 @@ bool catalog_hidden_name(const char *name){
   if (startswith_catalog(name,"draw_") || startswith_catalog(name,"display") ||
       startswith_catalog(name,"axes") || startswith_catalog(name,"gl_") ||
       startswith_catalog(name,"line_width") || startswith_catalog(name,"rgb(") ||
+      startswith_catalog(name,"circle(") || startswith_catalog(name,"line(") ||
+      startswith_catalog(name,"point(") || startswith_catalog(name,"polygon(") ||
+      startswith_catalog(name,"segment(") || startswith_catalog(name,"plotcontour(") ||
+      startswith_catalog(name,"plotfield(") || startswith_catalog(name,"plotode(") ||
+      startswith_catalog(name,"plotseq(") ||
       startswith_catalog(name,"black") || startswith_catalog(name,"blue") ||
       startswith_catalog(name,"cyan") || startswith_catalog(name,"filled") ||
       startswith_catalog(name,"green") || startswith_catalog(name,"magenta") ||
@@ -400,13 +409,23 @@ bool catalog_hidden_name(const char *name){
   if (startswith_catalog(name,"laplace") || startswith_catalog(name,"ilaplace") ||
       startswith_catalog(name,"fourier_") || startswith_catalog(name,"jordan") ||
       startswith_catalog(name,"svd") || startswith_catalog(name,"gramschmidt") ||
-      startswith_catalog(name,"cond(") || startswith_catalog(name,"resultant"))
+      startswith_catalog(name,"cond(") || startswith_catalog(name,"resultant") ||
+      startswith_catalog(name,"charpoly(") || startswith_catalog(name,"hilbert(") ||
+      startswith_catalog(name,"lu(") || startswith_catalog(name,"qr(") ||
+      startswith_catalog(name,"gauss(") || startswith_catalog(name,"curl(") ||
+      startswith_catalog(name,"a2q(") || startswith_catalog(name,"q2a("))
     return true;
   if (startswith_catalog(name,"rand") || startswith_catalog(name,"ranv") ||
       startswith_catalog(name,"ranm"))
     return true;
   if (startswith_catalog(name,"residue") || startswith_catalog(name,"cfactor") ||
-      startswith_catalog(name,"cpartfrac"))
+      startswith_catalog(name,"cpartfrac") || startswith_catalog(name,"erf(") ||
+      startswith_catalog(name,"erfc(") || startswith_catalog(name,"hermite(") ||
+      startswith_catalog(name,"laguerre(") || startswith_catalog(name,"legendre(") ||
+      startswith_catalog(name,"tchebyshev1(") || startswith_catalog(name,"tchebyshev2(") ||
+      startswith_catalog(name,"iabcuv(") || startswith_catalog(name,"ichinrem(") ||
+      startswith_catalog(name,"idivis(") || startswith_catalog(name,"iegcd(") ||
+      startswith_catalog(name,"powmod(") || startswith_catalog(name,"nextprime("))
     return true;
   return false;
 }
@@ -414,10 +433,10 @@ bool catalog_hidden_name(const char *name){
 ustl::string catalog_param_hint(const char *name){
   const char *open=strchr(name,'(');
   if (!open)
-    return "Args: see syntax in command name.";
+    return "Req/Opt: see cmd.";
   const char *close=strchr(open,')');
   if (!close || close==open+1)
-    return "Args: none.";
+    return "Req: none. Opt: none.";
   ustl::string req,opt;
   bool optional=false;
   for (const char *p=open+1;p<close;++p){
@@ -428,12 +447,12 @@ ustl::string catalog_param_hint(const char *name){
     else
       req += *p;
   }
-  ustl::string out("Args: required ");
+  ustl::string out("Req: ");
   if (req.size())
     out += req;
   else
     out += "none";
-  out += "; optional ";
+  out += "; Opt: ";
   if (opt.size())
     out += opt;
   else
@@ -628,7 +647,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       char * example=hascat?completeCat[index].example:0;
       char * example2=hascat?completeCat[index].example2:0;
       textArea text;
-      text.title = (char*)"Help on command";
+      text.title = (char*)"Help";
       text.editable=false;
       text.clipline=-1;
       text.allowF1=true;
@@ -648,7 +667,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	elem[1].s += catalog_param_hint(completeCat[index].name);
       }
       else {
-	elem[1].s="KhiCAS built-in command.\nArgs: see command syntax; required/optional args depend on command.";
+	elem[1].s="KhiCAS cmd.\nReq/Opt: see syntax.";
 	autoexample=elem[0].s+"()";
 	int token=menuitems[menu.selection-1].token;
 	if (isopt){
@@ -671,12 +690,12 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	}
 	if (isall){
 	  if (token==T_UNARY_OP || token==T_UNARY_OP_38){
-	    elem[1].s="KhiCAS built-in function.\nArgs: required argument(s), optional argument(s) depend on command.";
+	    elem[1].s="KhiCAS fn.\nReq/Opt: see cmd.";
 	    autoexample=elem[0].s+"(x)";
 	  }
 	}
       }
-      ustl::string ex("Example (F2): ");
+      ustl::string ex("Ex F2: ");
       if (example || hascat){
 	elem[2].newLine = 1;
 	elem[2].lineSpacing = 3;
@@ -690,7 +709,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	}
 	elem[2].s = ex;
 	if (example2){
-	  string ex2="Example 2 (F3): ";
+	  string ex2="Ex2 F3: ";
 	  if (example2[0]=='#')
 	    ex2 += example2+1;
 	  else {

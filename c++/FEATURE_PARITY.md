@@ -59,9 +59,10 @@ Simplification examples:
 Removed/hidden from source catalogue:
 
 - Turtle/Logo commands: `avance`, `recule`, `tourne_*`, `crayon`, `efface`, `rectangle_plein`.
-- Programming language helpers: `for`, `while`, `if`, `local`, `return`, `debug`, `python`, `python_compat`.
-- Low-level drawing commands: `draw_pixel`, `draw_string`, `draw_rectangle`, `draw_polygon`, `rgb`, display colour tokens.
-- Advanced university CAS: `laplace`, `ilaplace`, `fourier_an/bn/cn`, `jordan`, `svd`, `gramschmidt`, `cond`, `resultant`.
+- Programming/list helpers: `for`, `while`, `if`, `local`, `return`, `debug`, `python`, `append`, `map`, `seq`, `sort`, `read`, `write`, `purge`.
+- Low-level drawing commands: `draw_*`, `circle`, `line`, `point`, `polygon`, `segment`, `plotfield`, `plotode`, `plotseq`, `rgb`, display colour tokens.
+- Advanced university CAS: `laplace`, `fourier_*`, `jordan`, `svd`, `gramschmidt`, `charpoly`, `hilbert`, `lu`, `qr`, `gauss`, `curl`, `cond`, `resultant`.
+- Special/extra number theory: `erf`, `erfc`, `hermite`, `laguerre`, `legendre`, `tchebyshev*`, `iabcuv`, `ichinrem`, `idivis`, `iegcd`, `powmod`, `nextprime`.
 - Random/data generators: `ranv`, `ranm`, `rand`, `randint` unless stats simulation is wanted.
 - Complex-only extras: `residue`, `cfactor`, `cpartfrac` unless complex roots are required.
 

@@ -2166,6 +2166,43 @@ static bool cascas_rewrite_compare_zero_call(const char *input,const char *alias
   return true;
 }
 
+static bool cascas_is_zero_bound(const string &s){
+  string t=cascas_trim(s);
+  return t=="0" || t=="0.0";
+}
+
+static bool cascas_is_degree_full_turn(const string &s){
+  string t=cascas_trim(s);
+  return t=="360" || t=="360.0" || t=="-360";
+}
+
+static bool cascas_is_radian_full_turn(const string &s){
+  string t=cascas_trim(s);
+  return t=="2*pi" || t=="2pi" || t=="pi*2" || t=="2*Pi" || t=="2*PI";
+}
+
+static bool cascas_rewrite_solve_trig_call(const char *input,string &out){
+  string args[5],s; int count=0,close=0;
+  if (!cascas_call_args(input,"solve_trig(",args,5,count,close,s) || count<1)
+    return false;
+  string var=(count>=2 && args[1].size())?args[1]:"x";
+  string call;
+  if (count>=4 && args[2].size() && args[3].size()){
+    if (cascas_is_zero_bound(args[2]) && cascas_is_degree_full_turn(args[3]))
+      angle_radian(false,contextptr);
+    else if (cascas_is_zero_bound(args[2]) && cascas_is_radian_full_turn(args[3]))
+      angle_radian(true,contextptr);
+    call="solve((" + args[0] + ")," + var + "=" + args[2] + ".." + args[3] + ")";
+    if (count>=5 && args[4].size())
+      call="(" + call + ")[0.." + args[4] + "-1]";
+  }
+  else
+    call="solve((" + args[0] + ")," + var + ")";
+  out=call;
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (!input)
     return false;
@@ -2191,7 +2228,7 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_replace_call(input,"poly(","factor(",rewritten))
     return true;
-  if (cascas_replace_call(input,"solve_trig(","solve(",rewritten))
+  if (cascas_rewrite_solve_trig_call(input,rewritten))
     return true;
   if (cascas_rewrite_compare_zero_call(input,"trig_prove(",rewritten))
     return true;
@@ -2241,6 +2278,46 @@ static void cascas_append_line(string &out,const char *s){
 static void cascas_append_method_lines(string &out,const char *s){
   if (!s){
     cascas_append_line(out,"2. P: KhiCAS exact parse.");
+    return;
+  }
+  if (strstr(s,"solve_trig(")){
+    cascas_append_line(out,"2. Trig solve: rearrange to one trig fn.");
+    cascas_append_line(out,"3. Base angle a; choose quadrants.");
+    cascas_append_line(out,"4. Gen: add period, n in Z.");
+    cascas_append_line(out,"5. Bounds: filter lo<=x<=hi; deg/rad from bound.");
+    cascas_append_line(out,"6. Cap: show first max solns if given.");
+    cascas_append_line(out,"7. Chk: sub solns.");
+    return;
+  }
+  if (strstr(s,"fitconst(")){
+    cascas_append_line(out,"2. Const: form eqs from given conds.");
+    cascas_append_line(out,"3. Collect unknown consts.");
+    cascas_append_line(out,"4. Solve sim eqs exactly.");
+    cascas_append_line(out,"5. Sub consts back; simp/fact.");
+    cascas_append_line(out,"6. Chk: all conds true.");
+    return;
+  }
+  if (strstr(s,"match(")){
+    cascas_append_line(out,"2. Match: expand/collect both forms.");
+    cascas_append_line(out,"3. Equate coeffs/terms.");
+    cascas_append_line(out,"4. Solve params exactly.");
+    cascas_append_line(out,"5. Sub params; simp.");
+    cascas_append_line(out,"6. Chk: diff -> 0.");
+    return;
+  }
+  if (strstr(s,"complete_square(")){
+    cascas_append_line(out,"2. Comp sq: ax^2+bx+c -> a(x+h)^2+k.");
+    cascas_append_line(out,"3. h=b/(2a); k=c-b^2/(4a).");
+    cascas_append_line(out,"4. Simp exact; fact if useful.");
+    cascas_append_line(out,"5. Chk: expand back.");
+    return;
+  }
+  if (strstr(s,"de_solve(") || strstr(s,"desolve(")){
+    cascas_append_line(out,"2. DE: classify sep/linear/order.");
+    cascas_append_line(out,"3. Rearrange vars if sep; IF if linear.");
+    cascas_append_line(out,"4. Integrate both sides; +C.");
+    cascas_append_line(out,"5. Apply BC/IC if given.");
+    cascas_append_line(out,"6. Chk: sub y into DE.");
     return;
   }
   if (strstr(s,"implicit_diff(")){

@@ -2,18 +2,20 @@
 
 ```mermaid
 graph TD
-  Up["Fourier giac90_1addin source"] --> Exact["c++/khicas/upstream/giac90_1addin"]
-  Ref["Fourier khicasen.g3a"] --> RefMode["CASIO_PRIZM_MODE=khicas-reference"]
-  Icons["Eigenmath-style c++/prizm/assets"] --> Build
-  Exact --> Port["working-step hook port"]
-  Exact --> Alias["old Python feature aliases"]
-  Alias --> Port
-  Active["c++/addin old working modules"] --> WorkSteps["exam working-step layer"]
-  WorkSteps --> Port
-  Port --> Build["/compile source build"]
+  Src["Fourier giac90_1addin"] --> Calc["calculator path"]
+  Calc --> Cat["catalogen.cpp: menus/help/hide"]
+  Cat --> Alias["main.cc: old aliases"]
+  Alias --> Giac["KhiCAS exact engine"]
+  Giac --> Work["main.cc: compact working"]
+  Work --> Build["/compile"]
   Build --> G3A["c++/prizm/build/CasioCAS.g3a"]
   G3A --> Root["./CasioCAS.g3a"]
-  RefMode --> G3A
+  Icons["Eigenmath icons"] --> Build
+
+  Host["host-test path"] --> Mods["c++/addin/src/modules"]
+  Mods --> TUI["run_tests_cpp/TUI"]
+  TUI --> Gates["golden + fuzz + markers"]
+  Mods -. "mirror calc fixes in main.cc/catalogen.cpp" .-> Work
 ```
 
 ```mermaid

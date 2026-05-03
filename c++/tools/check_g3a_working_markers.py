@@ -19,6 +19,11 @@ MARKERS = [
     b"Int:",
     b"Mat:",
     b"Stats:",
+    b"Trig solve:",
+    b"Const:",
+    b"Match:",
+    b"Comp sq:",
+    b"DE:",
 ]
 
 

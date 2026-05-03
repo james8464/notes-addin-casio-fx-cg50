@@ -26,6 +26,17 @@ HIDDEN_MARKERS = [
     "cond(",
     "residue",
     "resultant",
+    "append(",
+    "seq(",
+    "sort(",
+    "plotfield(",
+    "plotode(",
+    "charpoly(",
+    "hilbert(",
+    "erf(",
+    "legendre(",
+    "powmod(",
+    "nextprime(",
 ]
 
 OLD_FEATURE_ALIASES = [
@@ -52,7 +63,7 @@ OLD_FEATURE_ALIASES = [
     "range(expr,[x])",
     "rewrite(expr,target)",
     "second_diff(expr,[x])",
-    "solve_trig(equation,[x,a,b])",
+    "solve_trig(eq,[var,lo,hi,max])",
     "suvat(equations,vars)",
     "tangent_line(expr,x,x0)",
     "transform(expr,[form])",
@@ -74,7 +85,7 @@ def main() -> int:
 
     if "catalog_hidden_category" not in catalog or "catalog_hidden_name" not in catalog:
         return fail("catalog hide filters missing")
-    if "catalog_param_hint" not in catalog or "Args: required" not in catalog:
+    if "catalog_param_hint" not in catalog or "Req:" not in catalog:
         return fail("catalog parameter help missing")
     if "selected_category=catids" not in catalog:
         return fail("category id mapping missing")
@@ -91,7 +102,7 @@ def main() -> int:
     if missing_aliases:
         return fail("old feature aliases missing: " + ", ".join(missing_aliases))
 
-    if "KhiCAS built-in command." not in catalog or "Example (F2):" not in catalog:
+    if "KhiCAS cmd." not in catalog or "Ex F2:" not in catalog:
         return fail("generic F6 help fallback missing")
     if "catalog_param_hint(completeCat[index].name)" not in catalog:
         return fail("F6 help parameter hints not wired")
