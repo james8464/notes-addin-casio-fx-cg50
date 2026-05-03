@@ -80,10 +80,13 @@ def main() -> int:
 
     if "catalog_hidden_category" not in catalog or "catalog_hidden_name" not in catalog:
         return fail("catalog hide filters missing")
-    if "catalog_param_hint" not in catalog or "Req:" not in catalog:
+    if "catalog_param_hint" not in catalog or "Args:" not in catalog:
         return fail("catalog parameter help missing")
-    if "method=auto" not in catalog and "Opt:method" not in catalog:
+    if "method=auto" not in catalog:
         return fail("method help missing")
+    for unclear in ["Req/Opt", "PReq", "KhiCAS cmd.\\nReq", "Req:f,x"]:
+        if unclear in catalog:
+            return fail("unclear help wording still present: " + unclear)
     if "selected_category=catids" not in catalog:
         return fail("category id mapping missing")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
@@ -105,7 +108,7 @@ def main() -> int:
     if missing_aliases:
         return fail("old feature aliases missing: " + ", ".join(missing_aliases))
 
-    if "KhiCAS cmd." not in catalog or "Ex F2:" not in catalog:
+    if "CAS command." not in catalog or "Ex F2:" not in catalog:
         return fail("generic F6 help fallback missing")
     if "catalog_param_hint(completeCat[index].name)" not in catalog:
         return fail("F6 help parameter hints not wired")

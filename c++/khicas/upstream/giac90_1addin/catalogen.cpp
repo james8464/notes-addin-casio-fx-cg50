@@ -360,12 +360,12 @@ static bool catalog_hidden_name(const char *name){
 
 static ustl::string catalog_param_hint(const char *name){
   if (startswith_catalog(name,"integrate"))
-    return "Req:f,x. Opt:a,b,method,u. method=auto default.";
+    return "Args: f,x. Optional: a,b,method,u. method=auto.";
   if (startswith_catalog(name,"diff"))
-    return "Req:f,x. Opt:n,method. method=auto default.";
+    return "Args: f,x. Optional: n,method. method=auto.";
   if (startswith_catalog(name,"solve"))
-    return "Req:eq,x. Opt:method/bounds. method=auto default.";
-  return "Req/Opt: see syntax. method=auto if shown.";
+    return "Args: eq,x. Optional: method,bounds. method=auto.";
+  return "Args: see syntax. Optional args are in [].";
 }
 
 ustl::string insert_string(int index){
@@ -550,25 +550,27 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       text.clipline=-1;
       text.allowF1=true;
       ustl::vector<textElement> & elem=text.elements;
-      elem = ustl::vector<textElement> (3);
+      elem = ustl::vector<textElement> (4);
       elem[0].s = hascat?completeCat[index].name:menuitems[menu.selection-1].text;
       elem[0].color = COLOR_BLUE;
       elem[1].newLine = 1;
       elem[1].lineSpacing = 3;
+      elem[2].newLine = 1;
+      elem[2].lineSpacing = 3;
       if (hascat){
 	if (completeCat[index].desc && completeCat[index].desc[0])
 	  elem[1].s = completeCat[index].desc;
 	else
 	  elem[1].s = "CAS command.";
-	elem[1].s += "\n";
-	elem[1].s += catalog_param_hint(completeCat[index].name);
+	elem[2].s = catalog_param_hint(completeCat[index].name);
       }
       else {
-	elem[1].s="KhiCAS cmd.\nReq/Opt: see syntax.";
+	elem[1].s="CAS command.";
+	elem[2].s="Args: see syntax.";
       }
       ustl::string ex("Ex F2: ");
-      elem[2].newLine = 1;
-      elem[2].lineSpacing = 3;
+      elem[3].newLine = 1;
+      elem[3].lineSpacing = 3;
       if (example && example[0]=='#')
 	ex += example+1;
       else if (hascat){
@@ -580,7 +582,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       else {
 	ex += menuitems[menu.selection-1].text;
       }
-      elem[2].s = ex;
+      elem[3].s = ex;
       sres=doTextArea(&text);
     }
     if (sres == KEY_CTRL_F2 || sres==KEY_CTRL_F3) {
