@@ -2831,15 +2831,14 @@ static void cascas_append_method_lines(string &out,const char *s){
   if (strstr(s,"integrate(") || strstr(s,"int(")){
     if (cascas_append_special_integral_lines(out,s))
       return;
-    cascas_append_line(out,"2. Int: f,var,bounds.");
-    cascas_append_line(out,"3. Std: x^n,sin,cos,sec^2,sec*tan,cosec*cot,e^x,1/x,a^x.");
-    cascas_append_line(out,"4. f(kx+b): divide by k.");
-    cascas_append_line(out,"5. Rev-chain: f(g)g' -> u=g.");
-    cascas_append_line(out,"6. Quot: f'/f -> ln(abs(f)); f'/f^n -> pow rule.");
-    cascas_append_line(out,"7. DI: table for x^n exp/trig; else parts uv.");
-    cascas_append_line(out,"8. PF: linear/repeated/quad (Ax+B); trig rewrite if useful.");
-    cascas_append_line(out,"9. Simp exact; +C if indef.");
-    cascas_append_line(out,"10. Chk: diff ans or re-eval def.");
+    cascas_append_line(out,"2. Int: f,var,bnds.");
+    cascas_append_line(out,"3. Std: pow,trig,exp,ln,1/x,a^x.");
+    cascas_append_line(out,"4. u=ax+b: /a; rev-chain f(g)g'.");
+    cascas_append_line(out,"5. D'/D->ln|D|; D'/D^n->pow.");
+    cascas_append_line(out,"6. Trig pow/conj: odd save, even reduce, half-ang.");
+    cascas_append_line(out,"7. Roots: ref tri; rationals: div/PF/comp sq.");
+    cascas_append_line(out,"8. DI for x^n exp/trig/log; else parts uv.");
+    cascas_append_line(out,"9. Simp +C; chk diff/def.");
     return;
   }
   if (strstr(s,"solve(") || strstr(s,"csolve(") || strstr(s,"linsolve(") || strstr(s,"fsolve(")){

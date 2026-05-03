@@ -3698,6 +3698,474 @@ static NodeId sqrt_rat(Arena &a, Rational r)
     return casio::fn(a, "sqrt", a.num(r));
 }
 
+static NodeId fn_pow(Arena &a, std::string_view name, NodeId arg, int p)
+{
+    NodeId f = casio::fn(a, name, arg);
+    return p == 1 ? f : casio::power(a, f, casio::num(a, p));
+}
+
+static NodeId scaled_by_inner(Arena &a, NodeId primitive, Rational inner_coeff)
+{
+    return divide_by_coeff(a, primitive, inner_coeff);
+}
+
+static bool is_one(Arena &a, NodeId n)
+{
+    auto v = as_num(a, n);
+    return v && v->num == v->den;
+}
+
+static bool is_neg_of(Arena &a, NodeId lhs, NodeId rhs)
+{
+    return same_expr(a, lhs, casio::neg(a, rhs));
+}
+
+static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto p = positive_int_power(a, x.b);
+    if(!p) return std::nullopt;
+    Node const &base = a.get(x.a);
+    if(base.kind != NodeKind::Fn) return std::nullopt;
+    NodeId u = base.a;
+    auto k = linear_coeff(a, u, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+
+    NodeId primitive = 0;
+    if(base.fkind == FnKind::Sin) {
+        if(*p == 3) {
+            primitive = casio::add(a, {
+                casio::neg(a, casio::fn(a, "cos", u)),
+                casio::div(a, fn_pow(a, "cos", u, 3), casio::num(a, 3)),
+            });
+            steps.push_back("Step 2: Odd sine power: save sin(u), use sin^2(u)=1-cos^2(u).");
+        } else if(*p == 4) {
+            primitive = casio::add(a, {
+                casio::mul(a, {casio::num(a, 3, 8), u}),
+                casio::neg(a, casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4))),
+                casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), u})), casio::num(a, 32)),
+            });
+            steps.push_back("Step 2: Even sine power: use power reduction.");
+        } else if(*p == 5) {
+            primitive = casio::add(a, {
+                casio::neg(a, casio::fn(a, "cos", u)),
+                casio::mul(a, {casio::num(a, 2, 3), fn_pow(a, "cos", u, 3)}),
+                casio::neg(a, casio::div(a, fn_pow(a, "cos", u, 5), casio::num(a, 5))),
+            });
+            steps.push_back("Step 2: Odd sine power: save sin(u), expand (1-cos^2(u))^2.");
+        }
+    } else if(base.fkind == FnKind::Cos) {
+        if(*p == 3) {
+            primitive = casio::add(a, {
+                casio::fn(a, "sin", u),
+                casio::neg(a, casio::div(a, fn_pow(a, "sin", u, 3), casio::num(a, 3))),
+            });
+            steps.push_back("Step 2: Odd cosine power: save cos(u), use cos^2(u)=1-sin^2(u).");
+        } else if(*p == 4) {
+            primitive = casio::add(a, {
+                casio::mul(a, {casio::num(a, 3, 8), u}),
+                casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4)),
+                casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), u})), casio::num(a, 32)),
+            });
+            steps.push_back("Step 2: Even cosine power: use power reduction.");
+        } else if(*p == 5) {
+            primitive = casio::add(a, {
+                casio::fn(a, "sin", u),
+                casio::neg(a, casio::mul(a, {casio::num(a, 2, 3), fn_pow(a, "sin", u, 3)})),
+                casio::div(a, fn_pow(a, "sin", u, 5), casio::num(a, 5)),
+            });
+            steps.push_back("Step 2: Odd cosine power: save cos(u), expand (1-sin^2(u))^2.");
+        }
+    } else if(base.fkind == FnKind::Tan) {
+        if(*p == 3) {
+            primitive = casio::add(a, {
+                casio::div(a, fn_pow(a, "tan", u, 2), casio::num(a, 2)),
+                ln_abs(a, casio::fn(a, "cos", u)),
+            });
+            steps.push_back("Step 2: Use tan^2(u)=sec^2(u)-1.");
+        } else if(*p == 4) {
+            primitive = casio::add(a, {
+                casio::div(a, fn_pow(a, "tan", u, 3), casio::num(a, 3)),
+                casio::neg(a, casio::fn(a, "tan", u)),
+                u,
+            });
+            steps.push_back("Step 2: Use tan^4(u)=tan^2(u)(sec^2(u)-1).");
+        }
+    } else if(base.fkind == FnKind::Sec) {
+        if(*p == 3) {
+            NodeId secu = casio::fn(a, "sec", u);
+            NodeId tanu = casio::fn(a, "tan", u);
+            primitive = casio::div(a, casio::add(a, {
+                casio::mul(a, {secu, tanu}),
+                ln_abs(a, casio::add(a, {secu, tanu})),
+            }), casio::num(a, 2));
+            steps.push_back("Step 2: Sec^3 reduction: parts with u=sec(u), dv=sec^2(u)du.");
+        } else if(*p == 5) {
+            NodeId secu = casio::fn(a, "sec", u);
+            NodeId tanu = casio::fn(a, "tan", u);
+            primitive = casio::add(a, {
+                casio::div(a, casio::mul(a, {fn_pow(a, "sec", u, 3), tanu}), casio::num(a, 4)),
+                casio::mul(a, {casio::num(a, 3, 8), secu, tanu}),
+                casio::mul(a, {casio::num(a, 3, 8), ln_abs(a, casio::add(a, {secu, tanu}))}),
+            });
+            steps.push_back("Step 2: Sec^5 reduction formula to sec^3.");
+        }
+    }
+    if(!primitive) return std::nullopt;
+    steps.push_back("Step 3: Divide by inner derivative of u.");
+    return casio::simplify(a, scaled_by_inner(a, primitive, *k));
+}
+
+static std::optional<NodeId> integrate_affine_trig_recip(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div || !is_one(a, x.a)) return std::nullopt;
+    Node const &d = a.get(x.b);
+    if(d.kind != NodeKind::Add) return std::nullopt;
+
+    NodeId one = 0, sin_u = 0, cos_u = 0;
+    for(NodeId k : d.kids) {
+        Node const &kid = a.get(k);
+        if(is_one(a, k)) {
+            one = k;
+        } else if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Sin) {
+            sin_u = k;
+        } else if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Cos) {
+            cos_u = k;
+        } else {
+            return std::nullopt;
+        }
+    }
+
+    NodeId u = 0;
+    NodeId primitive = 0;
+    if(one && sin_u && !cos_u) {
+        u = a.get(sin_u).a;
+        primitive = casio::add(a, {casio::fn(a, "tan", u), casio::neg(a, casio::fn(a, "sec", u))});
+        steps.push_back("Step 2: Trig conjugate: 1/(1+sin u)=(1-sin u)/cos^2 u.");
+    } else if(one && cos_u && !sin_u) {
+        u = a.get(cos_u).a;
+        primitive = casio::fn(a, "tan", casio::div(a, u, casio::num(a, 2)));
+        steps.push_back("Step 2: Half-angle: 1/(1+cos u)=1/2 sec^2(u/2).");
+    } else if(!one && sin_u && cos_u && same_expr(a, a.get(sin_u).a, a.get(cos_u).a)) {
+        u = a.get(sin_u).a;
+        NodeId pi8 = casio::div(a, casio::constant_pi(a), casio::num(a, 8));
+        NodeId angle = casio::add(a, {casio::div(a, u, casio::num(a, 2)), pi8});
+        primitive = casio::div(a, ln_abs(a, casio::fn(a, "tan", angle)), sqrt_rat(a, Rational{2, 1}));
+        steps.push_back("Step 2: Phase shift: sin u+cos u=sqrt(2)sin(u+pi/4).");
+    }
+    if(!primitive || !u) return std::nullopt;
+    auto k = linear_coeff(a, u, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+    steps.push_back("Step 3: Divide by inner derivative of u.");
+    return casio::simplify(a, scaled_by_inner(a, primitive, *k));
+}
+
+static std::optional<NodeId> integrate_exp_substitution_patterns(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &inner = a.get(x.a);
+        if(inner.kind == NodeKind::Add) {
+            NodeId exp_node = 0;
+            bool has_one = false;
+            for(NodeId k : inner.kids) {
+                if(is_one(a, k)) has_one = true;
+                else if(is_pow_e(a, k)) exp_node = k;
+                else return std::nullopt;
+            }
+            if(has_one && exp_node) {
+                NodeId arg = a.get(exp_node).b;
+                auto lc = linear_coeff(a, arg, var);
+                if(lc && !r_zero(*lc)) {
+                    NodeId u = expr;
+                    NodeId ratio = casio::div(a, casio::add(a, {u, casio::num(a, -1)}), casio::add(a, {u, casio::num(a, 1)}));
+                    NodeId primitive = casio::add(a, {casio::mul(a, {casio::num(a, 2), u}), ln_abs(a, ratio)});
+                    steps.push_back("Step 2: Let u=sqrt(1+exp(kx+b)).");
+                    steps.push_back("Step 3: Split rational form in u.");
+                    return casio::simplify(a, scaled_by_inner(a, primitive, *lc));
+                }
+            }
+        }
+    }
+
+    if(x.kind == NodeKind::Div) {
+        if(is_pow_e(a, x.a)) {
+            NodeId num_arg = a.get(x.a).b;
+            auto lc = linear_coeff(a, num_arg, var);
+            Node const &den = a.get(x.b);
+            if(lc && !r_zero(*lc) && den.kind == NodeKind::Add) {
+                bool has_one = false;
+                bool has_exp2 = false;
+                NodeId twice = casio::mul(a, {casio::num(a, 2), num_arg});
+                for(NodeId k : den.kids) {
+                    if(is_one(a, k)) has_one = true;
+                    else if(is_pow_e(a, k) && same_expr(a, a.get(k).b, twice)) has_exp2 = true;
+                    else return std::nullopt;
+                }
+                if(has_one && has_exp2) {
+                    steps.push_back("Step 2: Let u=exp(kx+b), so du=k*exp(kx+b)dx.");
+                    steps.push_back("Step 3: Integral becomes atan(u)/k.");
+                    return casio::simplify(a, scaled_by_inner(a, casio::fn(a, "atan", x.a), *lc));
+                }
+            }
+        }
+        if(is_one(a, x.a)) {
+            Node const &den = a.get(x.b);
+            if(den.kind == NodeKind::Add && den.kids.size() == 2 && is_pow_e(a, den.kids[0]) && is_pow_e(a, den.kids[1])) {
+                NodeId a0 = a.get(den.kids[0]).b;
+                NodeId a1 = a.get(den.kids[1]).b;
+                NodeId pos = 0;
+                if(is_neg_of(a, a0, a1)) pos = a0;
+                if(is_neg_of(a, a1, a0)) pos = a1;
+                if(pos) {
+                    auto lc = linear_coeff(a, pos, var);
+                    if(lc && !r_zero(*lc)) {
+                        NodeId exp_pos = casio::power(a, casio::constant_e(a), pos);
+                        steps.push_back("Step 2: Let u=exp(kx+b); denominator is u+1/u.");
+                        steps.push_back("Step 3: Integral becomes atan(u)/k.");
+                        return casio::simplify(a, scaled_by_inner(a, casio::fn(a, "atan", exp_pos), *lc));
+                    }
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+static std::optional<NodeId> integrate_quadratic_chain_special(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational coeff{1, 1};
+    int xpow = 0;
+    NodeId exp_node = 0;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        if(auto p = var_power(a, k, var)) {
+            xpow += *p;
+            continue;
+        }
+        if(is_pow_e(a, k)) {
+            exp_node = k;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!exp_node || (xpow != 1 && xpow != 3)) return std::nullopt;
+    auto p = poly_of_any(a, a.get(exp_node).b, var);
+    if(!p || !p->ok || poly_degree(*p) != 2 || !r_zero(poly_at(*p, 0)) || !r_zero(poly_at(*p, 1))) return std::nullopt;
+    Rational k = poly_at(*p, 2);
+    if(r_zero(k)) return std::nullopt;
+
+    if(xpow == 1) {
+        steps.push_back("Step 2: Let u=k*x^2, so du=2k*x dx.");
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, r_mul(Rational{2, 1}, k)), exp_node));
+    }
+
+    NodeId x2 = casio::power(a, casio::sym(a, var), casio::num(a, 2));
+    NodeId inner = casio::add(a, {mul_coeff(a, k, x2), casio::num(a, -1)});
+    steps.push_back("Step 2: Let u=x^2, so x^3 dx = u du/2.");
+    steps.push_back("Step 3: Integrate u*exp(k*u) by parts.");
+    return casio::simplify(a, mul_coeff(a, r_div(coeff, r_mul(Rational{2, 1}, r_mul(k, k))), casio::mul(a, {exp_node, inner})));
+}
+
+static std::optional<NodeId> integrate_a_pow_x_parts(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    bool saw_x = false;
+    NodeId pow_node = 0;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        if(is_sym(a, k, var)) {
+            saw_x = true;
+            continue;
+        }
+        Node const &kid = a.get(k);
+        if(kid.kind == NodeKind::Pow && is_sym(a, kid.b, var) && a.get(kid.a).kind == NodeKind::Num && a.get(kid.a).num.num > 0) {
+            pow_node = k;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!saw_x || !pow_node) return std::nullopt;
+    NodeId base = a.get(pow_node).a;
+    NodeId logb = casio::fn(a, "log", base);
+    NodeId term = casio::add(a, {
+        casio::div(a, casio::sym(a, var), logb),
+        casio::neg(a, casio::div(a, casio::num(a, 1), casio::power(a, logb, casio::num(a, 2)))),
+    });
+    steps.push_back("Step 2: Parts with u=x, dv=a^x dx.");
+    steps.push_back("Step 3: v=a^x/ln(a); integrate a^x again.");
+    return casio::simplify(a, mul_coeff(a, coeff, casio::mul(a, {pow_node, term})));
+}
+
+static std::optional<NodeId> integrate_log_power_chain(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div || !is_one(a, x.a)) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Mul) return std::nullopt;
+    bool saw_x = false;
+    NodeId log_pow = 0;
+    for(NodeId k : den.kids) {
+        if(is_sym(a, k, var)) saw_x = true;
+        else {
+            Node const &kid = a.get(k);
+            if(kid.kind == NodeKind::Pow) {
+                Node const &base = a.get(kid.a);
+                if(base.kind == NodeKind::Fn && base.fkind == FnKind::Log && is_sym(a, base.a, var)) log_pow = k;
+                else return std::nullopt;
+            } else {
+                return std::nullopt;
+            }
+        }
+    }
+    if(!saw_x || !log_pow) return std::nullopt;
+    auto n = as_num(a, a.get(log_pow).b);
+    if(!n || n->den != 1 || n->num == 1) return std::nullopt;
+    NodeId logx = a.get(log_pow).a;
+    Rational one_minus_n = r_sub(Rational{1, 1}, *n);
+    steps.push_back("Step 2: Let u=log(x), so du=dx/x.");
+    steps.push_back("Step 3: Integrate u^(-n) by power rule.");
+    return casio::simplify(a, casio::div(a, casio::power(a, logx, a.num(one_minus_n)), a.num(one_minus_n)));
+}
+
+static std::optional<NodeId> integrate_root_quadratic_special(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    auto result_for_pow = [&](NodeId base, Rational exp, Rational lead_coeff) -> std::optional<NodeId> {
+        auto p = poly2_of(a, base, var);
+        if(!p || !p->ok || !r_zero(p->a1) || r_zero(p->a2) || r_zero(p->a0)) return std::nullopt;
+        NodeId xvar = casio::sym(a, var);
+        NodeId sqrt_base = casio::fn(a, "sqrt", base);
+
+        if(exp.num == 1 && exp.den == 2) {
+            NodeId first = casio::div(a, casio::mul(a, {xvar, sqrt_base}), casio::num(a, 2));
+            if(r_sign(p->a2) < 0 && r_sign(p->a0) > 0) {
+                Rational B = r_neg(p->a2);
+                NodeId rootB = sqrt_rat(a, B);
+                NodeId rootA = sqrt_rat(a, p->a0);
+                NodeId asin_arg = casio::div(a, casio::mul(a, {rootB, xvar}), rootA);
+                NodeId second = casio::mul(a, {casio::div(a, a.num(p->a0), casio::mul(a, {casio::num(a, 2), rootB})), casio::fn(a, "asin", asin_arg)});
+                steps.push_back("Step 2: Ref tri sqrt(A-Bx^2): x=sqrt(A/B)sin(t).");
+                return casio::simplify(a, mul_coeff(a, lead_coeff, casio::add(a, {first, second})));
+            }
+            if(r_sign(p->a2) > 0 && r_sign(p->a0) > 0) {
+                NodeId rootB = sqrt_rat(a, p->a2);
+                NodeId log_arg = casio::add(a, {casio::mul(a, {rootB, xvar}), sqrt_base});
+                NodeId second = casio::mul(a, {casio::div(a, a.num(p->a0), casio::mul(a, {casio::num(a, 2), rootB})), ln_abs(a, log_arg)});
+                steps.push_back("Step 2: Ref tri sqrt(A+Bx^2): x=sqrt(A/B)tan(t).");
+                return casio::simplify(a, mul_coeff(a, lead_coeff, casio::add(a, {first, second})));
+            }
+        }
+
+        if(exp.num == -1 && exp.den == 2 && r_sign(p->a2) < 0 && r_sign(p->a0) > 0) {
+            Rational B = r_neg(p->a2);
+            NodeId rootB = sqrt_rat(a, B);
+            NodeId rootA = sqrt_rat(a, p->a0);
+            NodeId asin_arg = casio::div(a, casio::mul(a, {rootB, xvar}), rootA);
+            steps.push_back("Step 2: Complete square/root form -> arcsin.");
+            return casio::simplify(a, mul_coeff(a, lead_coeff, casio::div(a, casio::fn(a, "asin", asin_arg), rootB)));
+        }
+
+        if(exp.num == -3 && exp.den == 2 && r_sign(p->a0) > 0 && r_sign(p->a2) > 0) {
+            steps.push_back("Step 2: Use d[x/sqrt(A+Bx^2)] = A/(A+Bx^2)^(3/2).");
+            return casio::simplify(a, mul_coeff(a, lead_coeff, casio::div(a, xvar, casio::mul(a, {a.num(p->a0), sqrt_base}))));
+        }
+
+        return std::nullopt;
+    };
+
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        return result_for_pow(x.a, Rational{1, 2}, Rational{1, 1});
+    }
+    if(x.kind == NodeKind::Div && as_num(a, x.a)) {
+        Rational coeff = *as_num(a, x.a);
+        Node const &den = a.get(x.b);
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
+            return result_for_pow(den.a, Rational{-1, 2}, coeff);
+        }
+        if(den.kind == NodeKind::Mul) {
+            bool saw_x = false;
+            NodeId sqrt_part = 0;
+            for(NodeId k : den.kids) {
+                if(is_sym(a, k, var)) saw_x = true;
+                else if(a.get(k).kind == NodeKind::Fn && a.get(k).fkind == FnKind::Sqrt) sqrt_part = k;
+                else return std::nullopt;
+            }
+            if(saw_x && sqrt_part) {
+                NodeId base = a.get(sqrt_part).a;
+                auto p = poly2_of(a, base, var);
+                if(p && p->ok && !r_zero(p->a0) && r_sign(p->a0) > 0 && r_sign(p->a2) > 0 && r_zero(p->a1)) {
+                    NodeId rootA = sqrt_rat(a, p->a0);
+                    NodeId rootB = sqrt_rat(a, p->a2);
+                    NodeId xvar = casio::sym(a, var);
+                    NodeId ratio = casio::div(a, casio::mul(a, {rootB, xvar}), casio::add(a, {rootA, casio::fn(a, "sqrt", base)}));
+                    steps.push_back("Step 2: Ref tri reciprocal root: x=sqrt(A/B)tan(t).");
+                    return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, ln_abs(a, ratio), rootA)));
+                }
+            }
+        }
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e) return result_for_pow(x.a, *e, Rational{1, 1});
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        bool saw_x = false;
+        NodeId pow_node = 0;
+        for(NodeId k : x.kids) {
+            if(auto n = as_num(a, k)) coeff = r_mul(coeff, *n);
+            else if(is_sym(a, k, var)) saw_x = true;
+            else if(a.get(k).kind == NodeKind::Pow) pow_node = k;
+            else return std::nullopt;
+        }
+        if(saw_x && pow_node) {
+            Node const &p = a.get(pow_node);
+            auto e = as_num(a, p.b);
+            auto poly = poly2_of(a, p.a, var);
+            if(e && e->num == -3 && e->den == 2 && poly && poly->ok && r_sign(poly->a2) > 0) {
+                steps.push_back("Step 2: Reverse-chain root power: u=A+Bx^2.");
+                return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, poly->a2)), casio::div(a, casio::num(a, 1), casio::fn(a, "sqrt", p.a))));
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> integrate_x2_over_x6_plus_one(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    auto d = poly_of_any(a, x.b, var);
+    if(!n || !d || !n->ok || !d->ok || poly_degree(*d) != 6) return std::nullopt;
+    for(int i = 0; i <= 6; i++) {
+        Rational want = (i == 0 || i == 6) ? Rational{1, 1} : Rational{0, 1};
+        if(!r_eq(poly_at(*d, i), want)) return std::nullopt;
+    }
+    if(poly_degree(*n) != 2 || !r_zero(poly_at(*n, 0)) || !r_zero(poly_at(*n, 1))) return std::nullopt;
+    Rational coeff = poly_at(*n, 2);
+    NodeId x3 = casio::power(a, casio::sym(a, var), casio::num(a, 3));
+    steps.push_back("Step 2: Let u=x^3, so du=3x^2 dx.");
+    steps.push_back("Step 3: Integral becomes (k/3) atan(u).");
+    return casio::simplify(a, mul_coeff(a, r_div(coeff, Rational{3, 1}), casio::fn(a, "atan", x3)));
+}
+
 static NodeId integrate_one_over_quadratic(Arena &a, Poly2I const &d, std::string const &var)
 {
     Rational four_ac = r_mul(Rational{4, 1}, r_mul(d.a2, d.a0));
@@ -4127,6 +4595,54 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             out.steps.push_back("Step 3: Combine results.");
             return out;
         }
+    }
+
+    if(auto trig_pow = integrate_affine_trig_power(a, expr, var, out.steps)) {
+        out.result = *trig_pow;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto trig_recip = integrate_affine_trig_recip(a, expr, var, out.steps)) {
+        out.result = *trig_recip;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto exp_sub = integrate_exp_substitution_patterns(a, expr, var, out.steps)) {
+        out.result = *exp_sub;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto quad_chain = integrate_quadratic_chain_special(a, expr, var, out.steps)) {
+        out.result = *quad_chain;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto apow = integrate_a_pow_x_parts(a, expr, var, out.steps)) {
+        out.result = *apow;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto log_pow = integrate_log_power_chain(a, expr, var, out.steps)) {
+        out.result = *log_pow;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto root_q = integrate_root_quadratic_special(a, expr, var, out.steps)) {
+        out.result = *root_q;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto x6 = integrate_x2_over_x6_plus_one(a, expr, var, out.steps)) {
+        out.result = *x6;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
     }
 
     if(auto trig_prod = integrate_trig_products(a, expr, var, out.steps)) {

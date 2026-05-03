@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parents[3]
+HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
+CASES = REPO / "c++" / "tools" / "golden" / "integration_dynamic_patterns_cases.jsonl"
+REPORT = REPO / "c++" / "tests" / "reports" / "integration_dynamic_patterns_latest.txt"
+
+
+def first_line_with(text: str, token: str) -> str:
+    for line in text.splitlines():
+        if token.lower() in line.lower():
+            return line.strip()
+    return ""
+
+
+def main() -> int:
+    if not HOST.exists():
+        raise SystemExit(f"Missing host binary: {HOST}")
+
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    cases = [json.loads(line) for line in CASES.read_text().splitlines() if line.strip()]
+    weak = 0
+    lines = ["Integration dynamic-pattern latest report", ""]
+
+    for case in cases:
+        expr = case["expr"]
+        proc = subprocess.run([str(HOST), "--int", expr], cwd=str(REPO), text=True, capture_output=True, timeout=12)
+        out = proc.stdout + proc.stderr
+        answer = first_line_with(out, "Answer:")
+        method = first_line_with(out, "Method:")
+        hard = (
+            proc.returncode != 0
+            or "Integral not recognised" in out
+            or "ERR:" in out
+            or "Method: integration (limited)" in out
+            or not answer
+        )
+        status = "WEAK" if hard else "OK"
+        if hard:
+            weak += 1
+        print(status, case["id"], expr)
+        lines.append(f"{status} #{case['id']}: {expr}")
+        if method:
+            lines.append(f"  {method}")
+        if answer:
+            lines.append(f"  {answer}")
+        if hard:
+            lines.extend("    " + ln for ln in out.splitlines()[:12])
+        lines.append("")
+
+    lines.append(f"summary: weak={weak}, total={len(cases)}")
+    REPORT.write_text("\n".join(lines) + "\n")
+    print(f"report {REPORT}")
+    print(f"done weak {weak} / {len(cases)}")
+    return 1 if weak else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
