@@ -2240,174 +2240,172 @@ static void cascas_append_line(string &out,const char *s){
 
 static void cascas_append_method_lines(string &out,const char *s){
   if (!s){
-    cascas_append_line(out,"2. Parse: read expression with KhiCAS exact parser.");
+    cascas_append_line(out,"2. P: KhiCAS exact parse.");
     return;
   }
   if (strstr(s,"implicit_diff(")){
-    cascas_append_line(out,"2. Implicit setup: clear fractions if useful, then move all terms to F(x,y)=0.");
-    cascas_append_line(out,"3. Differentiate every term with respect to x, treating y as y(x).");
-    cascas_append_line(out,"4. Use chain rule on y terms: d/dx[f(y)] = f'(y)*dy/dx.");
-    cascas_append_line(out,"5. Collect dy/dx terms on one side and factor dy/dx.");
-    cascas_append_line(out,"6. Rearrange: dy/dx = -(dF/dx)/(dF/dy), then simplify/factor.");
-    cascas_append_line(out,"7. Verify: substitute derivative back into the differentiated equation.");
+    cascas_append_line(out,"2. Impl: set F=lhs-rhs=0.");
+    cascas_append_line(out,"3. d/dx all terms; y=y(x).");
+    cascas_append_line(out,"4. Chain: d[f(y)]/dx=f'(y)y'.");
+    cascas_append_line(out,"5. Collect y'; factor.");
+    cascas_append_line(out,"6. y'=-Fx/Fy; simp/fact.");
+    cascas_append_line(out,"7. Chk: sub y' in d-eq.");
     return;
   }
   if (strstr(s,"param_diff(") || strstr(s,"param_second_diff(")){
-    cascas_append_line(out,"2. Parametric setup: identify x(t), y(t), parameter t.");
-    cascas_append_line(out,"3. Compute: dx/dt and dy/dt.");
-    cascas_append_line(out,"4. Use dy/dx = (dy/dt)/(dx/dt); state where dx/dt is non-zero.");
-    cascas_append_line(out,"5. For d2y/dx2, differentiate dy/dx with respect to t, then divide by dx/dt.");
-    cascas_append_line(out,"6. Simplify exact result, usually factorised.");
-    cascas_append_line(out,"7. Verify: substitute parameter values or re-differentiate if a point is supplied.");
+    cascas_append_line(out,"2. Param: read x(t),y(t),t.");
+    cascas_append_line(out,"3. Find dx/dt, dy/dt.");
+    cascas_append_line(out,"4. y'=dy/dx=(dy/dt)/(dx/dt); dx/dt!=0.");
+    cascas_append_line(out,"5. y''=d(y')/dt /(dx/dt).");
+    cascas_append_line(out,"6. Simp/fact.");
+    cascas_append_line(out,"7. Chk: sub t/redo diff.");
     return;
   }
   if (strstr(s,"param_area(")){
-    cascas_append_line(out,"2. Parametric area setup: use Area = integral y dx.");
-    cascas_append_line(out,"3. Convert: dx = (dx/dt)dt, so Area = integral y(t)*(dx/dt) dt.");
-    cascas_append_line(out,"4. Check orientation/sign; use absolute value if the question asks for area.");
-    cascas_append_line(out,"5. Apply t-bounds or convert x-bounds to t-bounds.");
-    cascas_append_line(out,"6. Simplify exact result and verify by differentiating the area integrand.");
+    cascas_append_line(out,"2. Area: A=int y dx.");
+    cascas_append_line(out,"3. dx=(dx/dt)dt -> A=int y(t)x'(t)dt.");
+    cascas_append_line(out,"4. Check sign; abs if area.");
+    cascas_append_line(out,"5. Use t-bounds or convert x-bounds.");
+    cascas_append_line(out,"6. Simp; chk by diff.");
     return;
   }
   if (strstr(s,"normal_diff(") || strstr(s,"second_diff(") || strstr(s,"tangent_line(")){
-    cascas_append_line(out,"2. Derivative setup: identify function, variable, and required order/point.");
-    cascas_append_line(out,"3. Rule choice: power/log/exp/trig first; use chain rule for composite brackets.");
-    cascas_append_line(out,"4. If product: (uv)' = u'v+uv'. If quotient: (u/v)'=(u'v-uv')/v^2.");
-    cascas_append_line(out,"5. Trig table: tan(kx)->k*sec(kx)^2, sec(kx)->k*sec(kx)tan(kx), cot(kx)->-k*cosec(kx)^2.");
-    cascas_append_line(out,"6. Simplify/factor derivative; for tangent use y-y1=m(x-x1).");
-    cascas_append_line(out,"7. Verify: differentiate/simplify with KhiCAS and compare to final derivative.");
+    cascas_append_line(out,"2. Diff: f,var,order/pt.");
+    cascas_append_line(out,"3. Rules: pow/log/exp/trig; chain for brackets.");
+    cascas_append_line(out,"4. Prod: u'v+uv'. Quot: (u'v-uv')/v^2.");
+    cascas_append_line(out,"5. Trig: tan->sec^2, sec->sec*tan, cot->-cosec^2 (+chain k).");
+    cascas_append_line(out,"6. Simp/fact; tangent: y-y1=m(x-x1).");
+    cascas_append_line(out,"7. Chk: CAS diff-simp.");
     return;
   }
   if (strstr(s,"trig_prove(") || strstr(s,"trig_transform(") || strstr(s,"trig_rewrite(")){
-    cascas_append_line(out,"2. Trig setup: convert target check to lhs-rhs and simplify to 0.");
-    cascas_append_line(out,"3. Rewrite priority: tan=sin/cos, sec=1/cos, cosec=1/sin, cot=cos/sin.");
-    cascas_append_line(out,"4. Use identities: sin^2+cos^2=1, 1+tan^2=sec^2, 1+cot^2=cosec^2.");
-    cascas_append_line(out,"5. For double/compound angles, expand then collect/factor.");
-    cascas_append_line(out,"6. Verify: result 0 means both forms are equivalent; note domain exclusions.");
+    cascas_append_line(out,"2. Trig: check lhs-rhs -> 0.");
+    cascas_append_line(out,"3. Rewrite: tan=sin/cos; sec=1/cos; cosec=1/sin; cot=cos/sin.");
+    cascas_append_line(out,"4. Ids: sin^2+cos^2=1; 1+tan^2=sec^2; 1+cot^2=cosec^2.");
+    cascas_append_line(out,"5. Double/compound: expand, collect/fact.");
+    cascas_append_line(out,"6. Chk: 0; note domain excl.");
     return;
   }
   if (strstr(s,"compose(") || strstr(s,"inverse(")){
-    cascas_append_line(out,"2. Function setup: identify f, g, and variable.");
-    cascas_append_line(out,"3. Composition: substitute g(x) into every x in f(x), then simplify.");
-    cascas_append_line(out,"4. Inverse: write y=f(x), swap x and y, solve for y.");
-    cascas_append_line(out,"5. Track domain/range; inverse domain is original range.");
-    cascas_append_line(out,"6. Verify: f(f^-1(x))=x and f^-1(f(x))=x on valid domains.");
+    cascas_append_line(out,"2. Fn: read f,g,var.");
+    cascas_append_line(out,"3. Comp: sub g(x) into f; simp.");
+    cascas_append_line(out,"4. Inv: y=f(x); swap; solve y.");
+    cascas_append_line(out,"5. Track dom/range.");
+    cascas_append_line(out,"6. Chk: f(f^-1)=x on dom.");
     return;
   }
   if (strstr(s,"suvat(")){
-    cascas_append_line(out,"2. SUVAT setup: encode knowns into standard constant-acceleration equations.");
-    cascas_append_line(out,"3. Choose equation containing the target and no extra unknowns if possible.");
-    cascas_append_line(out,"4. Solve exact simultaneous equations for the requested variable.");
-    cascas_append_line(out,"5. Verify using v=u+at, s=ut+1/2at^2, v^2=u^2+2as.");
+    cascas_append_line(out,"2. SUVAT: put knowns in const-acc eqs.");
+    cascas_append_line(out,"3. Pick eq with target + fewest unknowns.");
+    cascas_append_line(out,"4. Solve exact sim eqs.");
+    cascas_append_line(out,"5. Chk: v=u+at; s=ut+1/2at^2; v^2=u^2+2as.");
     return;
   }
   if (strstr(s,"bool_simplify(") || strstr(s,"nand(") || strstr(s,"nor(") || strstr(s,"prove_bool(")){
-    cascas_append_line(out,"2. Boolean setup: parse NOT/AND/OR form.");
-    cascas_append_line(out,"3. Rewrite with De Morgan, absorption, distribution, NAND/NOR as needed.");
-    cascas_append_line(out,"4. Keep one rule per line where possible.");
-    cascas_append_line(out,"5. Verify by simplifying both sides or truth-table checking.");
+    cascas_append_line(out,"2. Bool: parse NOT/AND/OR.");
+    cascas_append_line(out,"3. Use De Morgan, absorb, distrib, NAND/NOR.");
+    cascas_append_line(out,"4. One rule/line if useful.");
+    cascas_append_line(out,"5. Chk: simp both sides/truth table.");
     return;
   }
   if (strstr(s,"diff(") || strstr(s,"derive(") || strstr(s,"'")){
-    cascas_append_line(out,"2. Parse derivative: identify function, variable, order.");
-    cascas_append_line(out,"3. Split sums term-by-term; constants differentiate to 0.");
-    cascas_append_line(out,"4. Choose rule: chain for f(g(x)), product for uv, quotient for u/v.");
-    cascas_append_line(out,"5. Trig table includes tan/sec/cot/cosec and their kx chain factors.");
-    cascas_append_line(out,"6. Simplify: collect terms, cancel common factors, factor compactly.");
-    cascas_append_line(out,"7. Verify: derivative object checked by KhiCAS simplification.");
+    cascas_append_line(out,"2. Diff: f,var,order.");
+    cascas_append_line(out,"3. Split sums; const -> 0.");
+    cascas_append_line(out,"4. Choose chain/prod/quot.");
+    cascas_append_line(out,"5. Trig kx chain factors.");
+    cascas_append_line(out,"6. Simp: collect/cancel/fact.");
+    cascas_append_line(out,"7. Chk: CAS diff-simp.");
     return;
   }
   if (strstr(s,"integrate(") || strstr(s,"int(")){
-    cascas_append_line(out,"2. Parse integral: identify integrand, variable, bounds if any.");
-    cascas_append_line(out,"3. Standard forms first: x^n, sin, cos, sec^2, sec*tan, cosec*cot, e^x, 1/x, a^x.");
-    cascas_append_line(out,"4. Simple extensions: for f(kx+b), divide by inner derivative k.");
-    cascas_append_line(out,"5. Reverse-chain: if integrand has f(g(x))*g'(x), set u=g(x).");
-    cascas_append_line(out,"6. Quotient checks: f'/f -> ln(abs(f)); f'/f^n -> power rule after u=f.");
-    cascas_append_line(out,"7. Product checks: if no reverse-chain, try parts: integral u*v' = uv-integral v*u'.");
-    cascas_append_line(out,"8. Rational/trig checks: split numerator, use partial fractions, or rewrite tan/cot/sec/cosec.");
-    cascas_append_line(out,"9. Simplify exact antiderivative/result; add C for indefinite integrals.");
-    cascas_append_line(out,"10. Verify: differentiate antiderivative or re-check definite value.");
+    cascas_append_line(out,"2. Int: f,var,bounds.");
+    cascas_append_line(out,"3. Std: x^n,sin,cos,sec^2,sec*tan,cosec*cot,e^x,1/x,a^x.");
+    cascas_append_line(out,"4. f(kx+b): divide by k.");
+    cascas_append_line(out,"5. Rev-chain: f(g)g' -> u=g.");
+    cascas_append_line(out,"6. Quot: f'/f -> ln(abs(f)); f'/f^n -> pow rule.");
+    cascas_append_line(out,"7. Prod: if no rev-chain, parts: int u v'=uv-int v u'.");
+    cascas_append_line(out,"8. Rat/trig: split num, partfrac, rewrite tan/cot/sec/cosec.");
+    cascas_append_line(out,"9. Simp exact; +C if indef.");
+    cascas_append_line(out,"10. Chk: diff ans or re-eval def.");
     return;
   }
   if (strstr(s,"solve(") || strstr(s,"csolve(") || strstr(s,"linsolve(") || strstr(s,"fsolve(")){
-    cascas_append_line(out,"2. Rearrange: move each equation to lhs-rhs=0.");
-    cascas_append_line(out,"3. Domain check: note denominators, logs, roots, trig ranges, and excluded values.");
-    cascas_append_line(out,"4. Clear fractions/brackets if this reduces complexity; preserve exclusions.");
-    cascas_append_line(out,"5. Reduce: factor/normalise, detect linear/quadratic/polynomial/trig/numeric path.");
-    cascas_append_line(out,"6. Solve exactly first; use numeric fallback only when exact form is unavailable.");
-    cascas_append_line(out,"7. Verify: substitute every solution into original equations and reject extraneous roots.");
+    cascas_append_line(out,"2. Move to lhs-rhs=0.");
+    cascas_append_line(out,"3. Dom: denom/log/root/trig excl.");
+    cascas_append_line(out,"4. Clear fracs/brackets if simpler.");
+    cascas_append_line(out,"5. Reduce: fact/normal; lin/quad/poly/trig/num.");
+    cascas_append_line(out,"6. Exact first; num fallback.");
+    cascas_append_line(out,"7. Chk: sub solns; reject extra.");
     return;
   }
   if (strstr(s,"factor(") || strstr(s,"partfrac(") || strstr(s,"canonical_form(") ||
       strstr(s,"expand(") || strstr(s,"collect(") || strstr(s,"normal(") ||
       strstr(s,"ratnormal(") || strstr(s,"simplify(")){
-    cascas_append_line(out,"2. Normalise: put expression into canonical exact form.");
-    cascas_append_line(out,"3. Transform order: expand if structure hidden, factor for roots, collect for parameters.");
-    cascas_append_line(out,"4. For fractions, use common denominator then partfrac if denominator factors.");
-    cascas_append_line(out,"5. Choose form: prefer exact factorised/collected mark-scheme form.");
-    cascas_append_line(out,"6. Verify: expand difference between input and result to 0.");
+    cascas_append_line(out,"2. Normalise exact form.");
+    cascas_append_line(out,"3. Expand hidden structure; fact roots; collect params.");
+    cascas_append_line(out,"4. Frac: common denom -> partfrac if factored.");
+    cascas_append_line(out,"5. Prefer exact fact/collected form.");
+    cascas_append_line(out,"6. Chk: expand(input-res)=0.");
     return;
   }
   if (strstr(s,"limit(") || strstr(s,"taylor(") || strstr(s,"series(")){
-    cascas_append_line(out,"2. Local form: expand around target point/side/order.");
-    cascas_append_line(out,"3. For 0/0 or inf/inf, simplify first; use series/L'Hopital only when valid.");
-    cascas_append_line(out,"4. Cancel dominant terms and simplify exact leading form.");
-    cascas_append_line(out,"5. Verify: compare local expansion/residual order.");
+    cascas_append_line(out,"2. Local: expand at pt/side/order.");
+    cascas_append_line(out,"3. 0/0 or inf/inf: simp first; series/L'Hop valid only.");
+    cascas_append_line(out,"4. Cancel dominant terms; simp lead form.");
+    cascas_append_line(out,"5. Chk: local expansion/order.");
     return;
   }
   if (strstr(s,"det(") || strstr(s,"rref(") || strstr(s,"inv(") || strstr(s,"eigen") ||
       strstr(s,"tran(") || strstr(s,"rank(")){
-    cascas_append_line(out,"2. Matrix setup: check dimensions and exact entries.");
-    cascas_append_line(out,"3. For inverse/rref: show row operations to echelon/reduced form.");
-    cascas_append_line(out,"4. For eigenvalues: form det(A-lambda I)=0, factor characteristic polynomial.");
-    cascas_append_line(out,"5. For eigenvectors: solve (A-lambda I)v=0 and scale vector neatly.");
-    cascas_append_line(out,"6. Verify: multiply/substitute back where applicable.");
+    cascas_append_line(out,"2. Mat: check dims/exact entries.");
+    cascas_append_line(out,"3. inv/rref: row ops -> echelon/reduced.");
+    cascas_append_line(out,"4. eigval: det(A-lambda I)=0; fact char poly.");
+    cascas_append_line(out,"5. eigvec: solve (A-lambda I)v=0; scale.");
+    cascas_append_line(out,"6. Chk: multiply/sub back.");
     return;
   }
   if (strstr(s,"binomial(") || strstr(s,"normald(") || strstr(s,"correlation(") ||
       strstr(s,"regression") || strstr(s,"mean(") || strstr(s,"stddev(")){
-    cascas_append_line(out,"2. Stats setup: identify statistic/distribution and parameters.");
-    cascas_append_line(out,"3. State H0/H1, tail, critical region, or test statistic where relevant.");
-    cascas_append_line(out,"4. Substitute values into the standard formula.");
-    cascas_append_line(out,"5. Compare p-value/critical value and write contextual conclusion.");
-    cascas_append_line(out,"6. Simplify exactly; round only final decimal display.");
+    cascas_append_line(out,"2. Stats: stat/dist + params.");
+    cascas_append_line(out,"3. If test: H0/H1, tail, CR/test stat.");
+    cascas_append_line(out,"4. Sub values in formula.");
+    cascas_append_line(out,"5. Compare p/crit; conclude.");
+    cascas_append_line(out,"6. Exact; round final only.");
     return;
   }
   if (strstr(s,"plot") || strstr(s,"histogram") || strstr(s,"scatterplot")){
-    cascas_append_line(out,"2. Graph setup: parse expression/data and graph options.");
-    cascas_append_line(out,"3. Identify intercepts/asymptotes/domain where algebraic output is needed.");
-    cascas_append_line(out,"4. Build KhiCAS graphic object, preserving exact source data.");
+    cascas_append_line(out,"2. Graph: parse expr/data/options.");
+    cascas_append_line(out,"3. Note intercepts/asymptotes/dom if needed.");
+    cascas_append_line(out,"4. Build graph obj.");
     return;
   }
   if (strstr(s,"sin(") || strstr(s,"cos(") || strstr(s,"tan(") ||
       strstr(s,"trig") || strstr(s,"sincos(")){
-    cascas_append_line(out,"2. Trig setup: normalise angles and choose identity family.");
-    cascas_append_line(out,"3. Rewrite tan/sec/cosec/cot into sin/cos if this reduces fractions.");
-    cascas_append_line(out,"4. Use Pythagorean, double-angle, compound-angle, or R-form identities as needed.");
-    cascas_append_line(out,"5. For solving: find base angle, quadrants, period, and restrict to interval.");
-    cascas_append_line(out,"6. Verify: simplify difference using trig identities and check domain exclusions.");
+    cascas_append_line(out,"2. Trig: normalise angles; choose id family.");
+    cascas_append_line(out,"3. Rewrite tan/sec/cosec/cot to sin/cos if shorter.");
+    cascas_append_line(out,"4. Use pythag/double/compound/R-form.");
+    cascas_append_line(out,"5. Solve: base angle, quadrants, period, interval.");
+    cascas_append_line(out,"6. Chk: simp diff; note excl.");
     return;
   }
-  cascas_append_line(out,"2. Parse: read expression with KhiCAS exact parser.");
-  cascas_append_line(out,"3. Fallback search: try normal/simplify/factor/expand/partfrac/trig rewrites.");
-  cascas_append_line(out,"4. If blocked, try rearranging equations, clearing denominators, and substituting simpler variables.");
-  cascas_append_line(out,"5. Select result: shortest exact equivalent mark-scheme form.");
-  cascas_append_line(out,"6. Verify: compare original and result by exact simplification.");
+  cascas_append_line(out,"2. P: KhiCAS exact parse.");
+  cascas_append_line(out,"3. Fallback: normal/simp/fact/expand/partfrac/trig.");
+  cascas_append_line(out,"4. If stuck: rearrange, clear denom, sub simpler var.");
+  cascas_append_line(out,"5. Pick shortest exact MS form.");
+  cascas_append_line(out,"6. Chk: exact simp(original-result).");
 }
 
 static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
-  string out("1. Input: ");
+  string out("1. In: ");
   out += input?input:"";
   out += "\n";
   if (eval_input && input && strcmp(eval_input,input)){
-    out += "Alias rewrite: ";
+    out += "Rw: ";
     out += eval_input;
     out += "\n";
   }
   cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input));
-  out += "Result: ";
-  out += answer;
-  out += "\nAnswer: ";
+  out += "Ans: ";
   out += answer;
   return out;
 }
@@ -2437,7 +2435,7 @@ static void cascas_output_working(const char *input,const char *eval_input,const
 
 static void cascas_show_working_screen(const char *input,const char *eval_input,const string &answer){
   textArea text;
-  text.title=(char*)"Working";
+  text.title=(char*)"Work";
   text.editable=false;
   text.allowEXE=true;
   text.clipline=-1;

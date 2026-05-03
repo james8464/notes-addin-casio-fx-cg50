@@ -6,19 +6,19 @@ from pathlib import Path
 
 
 MARKERS = [
-    b"Alias rewrite:",
-    b"Fallback search",
-    b"Answer: ",
-    b"Parse derivative",
-    b"Implicit setup",
-    b"Parametric setup",
-    b"Parametric area setup",
-    b"Function setup",
-    b"SUVAT setup",
-    b"Boolean setup",
-    b"Parse integral",
-    b"Matrix setup",
-    b"Stats setup",
+    b"Rw:",
+    b"Fallback:",
+    b"Ans: ",
+    b"Diff:",
+    b"Impl:",
+    b"Param:",
+    b"Area:",
+    b"Fn:",
+    b"SUVAT:",
+    b"Bool:",
+    b"Int:",
+    b"Mat:",
+    b"Stats:",
 ]
 
 

@@ -98,7 +98,7 @@ def main() -> int:
 
     if "cascas_output_working" not in main_cc or "cascas_working_text" not in main_cc:
         return fail("working-line output hook missing")
-    if "Fallback search" not in main_cc or "Answer: " not in main_cc:
+    if "Fallback:" not in main_cc or "Ans: " not in main_cc:
         return fail("working-line output shape missing")
 
     print("OK khicas catalog policy")
