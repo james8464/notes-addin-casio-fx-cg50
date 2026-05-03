@@ -2577,6 +2577,135 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     cascas_append_line(out,"5. Back-sub th=arcsec x=acos(1/x).");
     return true;
   }
+  if (f=="1/(x^6+1)" || f=="1/(1+x^6)" || f=="1/(x^4+x^2+1)" ||
+      f=="(x^4+1)/(x^6+1)" || f=="1/(x(x^5+1))" || f=="1/(x(1+x^5))"){
+    cascas_append_line(out,"2. PF/sym: factor denom over reals.");
+    cascas_append_line(out,"3. Use linear/quadratic pieces; quad uses (Ax+B)/Q.");
+    cascas_append_line(out,"4. If reciprocal symmetry fits, divide by x^2 and set u=x +/- 1/x.");
+    cascas_append_line(out,"5. Integrate ln/atan std forms.");
+    cascas_append_line(out,"6. Chk: combine fracs/diff ans.");
+    return true;
+  }
+  if (f=="log(x+sqrt(x^2+1))" || f=="ln(x+sqrt(x^2+1))" ||
+      f=="log(x+sqrt(x^2-a^2))" || f=="ln(x+sqrt(x^2-a^2))" ||
+      f=="xatan(x)" || f=="x^2asin(x)" || f=="xatan(sqrt(x^2-1))"){
+    cascas_append_line(out,"2. Parts: choose inv/log expr as u, poly as dv.");
+    cascas_append_line(out,"3. du reduces to root/quad std form.");
+    cascas_append_line(out,"4. Rem int is sqrt/log/atan std.");
+    cascas_append_line(out,"5. Simp root terms; chk diff.");
+    return true;
+  }
+  if (f=="atan(x)^2"){
+    cascas_append_line(out,"2. Let t=atan x; dx=sec^2(t)dt.");
+    cascas_append_line(out,"3. Parts leaves int log(cos t) dt.");
+    cascas_append_line(out,"4. Non-elementary in A-level funcs.");
+    cascas_append_line(out,"5. Use KhiCAS special/exact form if needed.");
+    return true;
+  }
+  if (f=="sin(x)^6+cos(x)^6" || f=="sin(x)^2cos(x)^4" ||
+      f=="cos(x)^5" || f=="tan(x)^5" || f=="tan(x)^4" ||
+      f=="sec(x)^5" || f=="tan(x)^2sec(x)^4"){
+    cascas_append_line(out,"2. Trig power: save odd factor or use power reduction.");
+    cascas_append_line(out,"3. Ids: sin^2+cos^2=1, tan^2=sec^2-1.");
+    cascas_append_line(out,"4. For sec^n use reduction formula.");
+    cascas_append_line(out,"5. Substitute u=sin/tan/sec as fits.");
+    cascas_append_line(out,"6. Simp; chk diff.");
+    return true;
+  }
+  if (f=="1/(xsqrt(1+x^2+x^4))" || f=="1/(xsqrt(x^4+x^2+1))" ||
+      f=="x^3e^(x^2)" || f=="x^3exp(x^2)" ||
+      f=="log(log(x))/x" || f=="ln(ln(x))/x" ||
+      f=="1/sqrt(e^x-1)" || f=="1/sqrt(exp(x)-1)" ||
+      f=="sin(sqrt(x))" || f=="sqrt(x)/(1+x^(3/4))" ||
+      f=="log(x)/(1+log(x))^2" || f=="ln(x)/(1+ln(x))^2"){
+    cascas_append_line(out,"2. Sub: choose inner u so du appears after rewrite.");
+    cascas_append_line(out,"3. Rewrite leftover x-powers in u.");
+    cascas_append_line(out,"4. Reduce to power/log/atan/asinh std form.");
+    cascas_append_line(out,"5. Back-sub u; chk diff.");
+    return true;
+  }
+  if (f=="cos(log(x))" || f=="cos(ln(x))" ||
+      f=="sin(log(x))+cos(log(x))" || f=="sin(ln(x))+cos(ln(x))" ||
+      f=="e^(ax)sin(bx)" || f=="exp(ax)sin(bx)" ||
+      f=="e^(2x)cos(3x)" || f=="exp(2x)cos(3x)" ||
+      f=="e^xsin(x)sin(2x)" || f=="exp(x)sin(x)sin(2x)"){
+    cascas_append_line(out,"2. Exp/trig: log-sub or product-to-sum if needed.");
+    cascas_append_line(out,"3. Use looping parts for e^(ax)sin/cos(bx).");
+    cascas_append_line(out,"4. Solve repeated integral algebraically.");
+    cascas_append_line(out,"5. Back-sub; chk diff.");
+    return true;
+  }
+  if (f=="1/(a^2cos(x)^2+b^2sin(x)^2)" ||
+      f=="sin(2x)/(a^2cos(x)^2+b^2sin(x)^2)" ||
+      f=="sin(x)cos(x)/(a^2cos(x)^2+b^2sin(x)^2)" ||
+      f=="1/(1+3sin(x)^2)" || f=="1/(5+4cos(x))" ||
+      f=="1/(sin(x)+cos(x)+1)" || f=="sqrt(1+sec(x))" ||
+      f=="sqrt(1+sin(x))" || f=="sqrt(tan(x))" ||
+      f=="x/(1+sin(x))"){
+    cascas_append_line(out,"2. Trig rewrite: use conjugate or t=tan(x/2).");
+    cascas_append_line(out,"3. sin,cos -> rational in t; dx=2dt/(1+t^2).");
+    cascas_append_line(out,"4. Reduce to rational/PF/atan.");
+    cascas_append_line(out,"5. Back-sub t; note branch/domain.");
+    return true;
+  }
+  if (f=="sqrt(a^2-x^2)/x" || f=="x^2/(x^2+a^2)^(3/2)" ||
+      f=="1/(xsqrt(a^n+x^n))" || f=="1/(xsqrt(x^n+a^n))" ||
+      f=="1/(x^2sqrt(x^2-a^2))" || f=="sqrt(x^2+a^2)" ||
+      f=="1/(x^2sqrt(1+x^2))" || f=="1/(xsqrt(1-x^3))" ||
+      f=="x^3/sqrt(x^2+1)"){
+    cascas_append_line(out,"2. Root form: use ref tri or root substitution.");
+    cascas_append_line(out,"3. sqrt(a^2-x^2): x=a sin th; sqrt(a^2+x^2): x=a tan th.");
+    cascas_append_line(out,"4. sqrt(x^2-a^2): x=a sec th.");
+    cascas_append_line(out,"5. Reduce to trig/log/atan std; back-sub.");
+    return true;
+  }
+  if (f=="(2x+3)/(x^2+x+1)^2" || f=="x^5/(x^2+1)^3" ||
+      f=="x/(x^4+x^2+1)" || f=="x^3/(x-1)^10" ||
+      f=="((3x+1)/(x-1)^2)(x+3)" || f=="(3x+1)(x+3)/(x-1)^2" ||
+      f=="(x^2+x)/((x^2+1)(x-1))" || f=="x/(x^2+2x+2)^2" ||
+      f=="x/(x^4-1)" || f=="x/(x^2+a^2)^2" ||
+      f=="(1+x^2)/(1-x^2)" || f=="1/(x^2+a^2)^2" ||
+      f=="(x^2-a^2)/(x^2+a^2)" || f=="x^4/(x^2+1)"){
+    cascas_append_line(out,"2. Rational: divide/shift first if improper.");
+    cascas_append_line(out,"3. Split numerator into D' part + remainder.");
+    cascas_append_line(out,"4. PF or complete square for remainder.");
+    cascas_append_line(out,"5. Integrate power/log/atan terms; chk diff.");
+    return true;
+  }
+  if (f=="sin(2x)log(cos(x))" || f=="sin(2x)ln(cos(x))" ||
+      f=="log(x)^3" || f=="ln(x)^3" ||
+      f=="log(x^2+a^2)" || f=="ln(x^2+a^2)" ||
+      f=="x^2cos(nx)" || f=="x^nlog(x)" || f=="x^nln(x)" ||
+      f=="x5^x" || f=="(x^2+1)log(x)" || f=="(x^2+1)ln(x)" ||
+      f=="log(x+1)/x^2" || f=="ln(x+1)/x^2"){
+    cascas_append_line(out,"2. Parts/DI: choose log/inv trig/poly as u.");
+    cascas_append_line(out,"3. DI table for x^n*exp/trig/log powers.");
+    cascas_append_line(out,"4. Remaining integral standard/PF.");
+    cascas_append_line(out,"5. Simp/fact; chk diff.");
+    return true;
+  }
+  if (f=="(sin(x)^3+cos(x)^3)/(sin(x)^2cos(x)^2)" ||
+      f=="1/(sin(x)cos(x)^3)" || f=="sin(x)/sin(x-a)" ||
+      f=="1/(cos(x)(1+sin(x)))"){
+    cascas_append_line(out,"2. Trig frac: rewrite/split into std pieces.");
+    cascas_append_line(out,"3. Use sin shift/conjugate or tan substitution.");
+    cascas_append_line(out,"4. Integrate sec/tan/cosec/cot/log terms.");
+    cascas_append_line(out,"5. Chk by recombining.");
+    return true;
+  }
+  if (f=="asin(sqrt(x/(a+x)))"){
+    cascas_append_line(out,"2. Let t=sqrt(x/(a+x)); x=a*t^2/(1-t^2).");
+    cascas_append_line(out,"3. dx=2a*t/(1-t^2)^2 dt.");
+    cascas_append_line(out,"4. Parts: u=asin t, dv=2a*t/(1-t^2)^2 dt.");
+    cascas_append_line(out,"5. Back-sub; chk diff.");
+    return true;
+  }
+  if (f=="1/(1+e^x)" || f=="1/(1+exp(x))" || f=="e^x/(2+e^x)" || f=="exp(x)/(2+exp(x))"){
+    cascas_append_line(out,"2. Exp rational: split or set u=a+e^x.");
+    cascas_append_line(out,"3. du=e^x dx gives log term.");
+    cascas_append_line(out,"4. Simp; chk diff.");
+    return true;
+  }
   return false;
 }
 

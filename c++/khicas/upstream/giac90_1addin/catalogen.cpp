@@ -357,7 +357,7 @@ const char chk_restart_string2[]="F1: keep,   F6: erase";
 const char aide_khicas_string[]="CasioCAS Help";
 const char main_string1[]="Clear variables?";
 const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="Keys:\nF1-F6: menus\nF4: catalog/help\nF3: expr/view\nOPTN: options\n=>+: partfrac\n=>*: factor\n=>sin/cos/tan\n=>=>: solve\nSHIFT-F3: integrate\nSHIFT-XthetaT: solve\nSHIFT-MIXEDFRAC: limit\nShell: cmd(args), EXE run, EXIT back.";
+const char shortcuts_string[]="F1-F6 menus; F4 cat; F3 expr.\n=>+ pf; =>* factor; =>=> solve.\nEXE run; EXIT back.";
 const char apropos_string[]="CasioCAS, powered by KhiCAS 1.5.0, (c) 2019 B. Parisse et al. www-fourier.univ-grenoble-alpes.fr/~parisse\nLicense GPL version 2.\nInterface adapted from Eigenmath for Casio, by G. Maia, http://gbl08ma.com, Mike Smith, Nemhardy, LePhenixNoir\nDo not use if CAS calculators are forbidden!";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
