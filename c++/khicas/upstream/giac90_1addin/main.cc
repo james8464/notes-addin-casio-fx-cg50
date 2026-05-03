@@ -2261,6 +2261,30 @@ static bool cascas_special_integral_answer(const string &expr,const string &lo,c
     ans="log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n";
     return true;
   }
+  if (f=="(x^2+1)/(x^4+3x^2+1)"){
+    ans="atan((x-1/x)/sqrt(5))/sqrt(5)";
+    return true;
+  }
+  if (f=="(x^2-1)/(x^4+5x^2+1)"){
+    ans="atan((x+1/x)/sqrt(3))/sqrt(3)";
+    return true;
+  }
+  if (f=="sqrt(1-x^2)" || f=="sqrt(-x^2+1)"){
+    ans="(x*sqrt(1-x^2)+asin(x))/2";
+    return true;
+  }
+  if (f=="sqrt(x^2-1)"){
+    ans="(x*sqrt(x^2-1)-log(abs(x+sqrt(x^2-1))))/2";
+    return true;
+  }
+  if (f=="1/(x^3+1)"){
+    ans="log(abs(x+1))/3-log(abs(x^2-x+1))/6+atan((2*x-1)/sqrt(3))/sqrt(3)";
+    return true;
+  }
+  if (f=="1/(x^4-1)"){
+    ans="log(abs((x-1)/(x+1)))/4-atan(x)/2";
+    return true;
+  }
   return false;
 }
 
@@ -2375,6 +2399,14 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     cascas_append_line(out,"6. Chk: denom symmetric; n cancels.");
     return true;
   }
+  if (f=="(x^2+1)/(x^4+3x^2+1)" || f=="(x^2-1)/(x^4+5x^2+1)"){
+    cascas_append_line(out,"2. Sym: divide num+den by x^2.");
+    cascas_append_line(out,"3. Den -> (x +/- 1/x)^2 + C.");
+    cascas_append_line(out,"4. Pick u=x-1/x for x^2+1; u=x+1/x for x^2-1.");
+    cascas_append_line(out,"5. Num/x^2 matches du.");
+    cascas_append_line(out,"6. Int atan/log std form; back-sub u; chk diff.");
+    return true;
+  }
   if (f=="1/(2+cos(x))" || f=="1/(cos(x)+2)"){
     cascas_append_line(out,"2. Weier: t=tan(x/2).");
     cascas_append_line(out,"3. cos x=(1-t^2)/(1+t^2); dx=2dt/(1+t^2).");
@@ -2400,11 +2432,27 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     return true;
   }
   if (f=="sqrt(x^2+1)" || f=="sqrt(1+x^2)"){
-    cascas_append_line(out,"2. Hyp sub: x=sinh u, dx=cosh u du.");
-    cascas_append_line(out,"3. sqrt(x^2+1)=cosh u -> int cosh^2 u.");
-    cascas_append_line(out,"4. cosh^2 u=(1+cosh2u)/2.");
-    cascas_append_line(out,"5. Back-sub: u=asinh x=ln(x+sqrt(x^2+1)).");
-    cascas_append_line(out,"6. Chk diff final.");
+    cascas_append_line(out,"2. Ref tri: sqrt(a^2+x^2); let x=a tan th.");
+    cascas_append_line(out,"3. Sides: opp=x, adj=a, hyp=sqrt(a^2+x^2).");
+    cascas_append_line(out,"4. Here a=1: x=tan th, dx=sec^2 th dth.");
+    cascas_append_line(out,"5. Reduce to sec^3 th; use std result.");
+    cascas_append_line(out,"6. Back-sub via tri; chk diff.");
+    return true;
+  }
+  if (f=="sqrt(1-x^2)" || f=="sqrt(-x^2+1)"){
+    cascas_append_line(out,"2. Ref tri: sqrt(a^2-x^2); let x=a sin th.");
+    cascas_append_line(out,"3. Sides: opp=x, hyp=a, adj=sqrt(a^2-x^2).");
+    cascas_append_line(out,"4. Here a=1: x=sin th, dx=cos th dth.");
+    cascas_append_line(out,"5. Int -> int cos^2 th dth.");
+    cascas_append_line(out,"6. Back-sub th=asin x; chk diff.");
+    return true;
+  }
+  if (f=="sqrt(x^2-1)"){
+    cascas_append_line(out,"2. Ref tri: sqrt(x^2-a^2); let x=a sec th.");
+    cascas_append_line(out,"3. Sides: hyp=x, adj=a, opp=sqrt(x^2-a^2).");
+    cascas_append_line(out,"4. Here a=1: x=sec th, dx=sec th tan th dth.");
+    cascas_append_line(out,"5. Int -> int tan^2 th sec th dth.");
+    cascas_append_line(out,"6. Back-sub via tri/log(sec+tan); chk diff.");
     return true;
   }
   if (f=="x^2/(xsin(x)+cos(x))^2" || f=="x^2/(cos(x)+xsin(x))^2"){
@@ -2444,6 +2492,14 @@ static bool cascas_append_special_integral_lines(string &out,const char *s){
     cascas_append_line(out,"4. Int -> (2/n) int 1/(u^2-1) du.");
     cascas_append_line(out,"5. Partfrac -> (1/n)ln|(u-1)/(u+1)|.");
     cascas_append_line(out,"6. Back-sub u=sqrt(1+x^n); chk diff.");
+    return true;
+  }
+  if (f=="1/(x^3+1)" || f=="1/(x^4-1)"){
+    cascas_append_line(out,"2. PF: factor denom over reals.");
+    cascas_append_line(out,"3. Linear A/(x-a); repeated add B/(x-a)^2.");
+    cascas_append_line(out,"4. Quad irreducible: (Ax+B)/(x^2+bx+c).");
+    cascas_append_line(out,"5. Equate coeffs; integrate ln + atan.");
+    cascas_append_line(out,"6. Chk combine fracs.");
     return true;
   }
   return false;
@@ -2576,8 +2632,8 @@ static void cascas_append_method_lines(string &out,const char *s){
     cascas_append_line(out,"4. f(kx+b): divide by k.");
     cascas_append_line(out,"5. Rev-chain: f(g)g' -> u=g.");
     cascas_append_line(out,"6. Quot: f'/f -> ln(abs(f)); f'/f^n -> pow rule.");
-    cascas_append_line(out,"7. Prod: if no rev-chain, parts: int u v'=uv-int v u'.");
-    cascas_append_line(out,"8. Rat/trig: split num, partfrac, rewrite tan/cot/sec/cosec.");
+    cascas_append_line(out,"7. DI: table for x^n exp/trig; else parts uv.");
+    cascas_append_line(out,"8. PF: linear/repeated/quad (Ax+B); trig rewrite if useful.");
     cascas_append_line(out,"9. Simp exact; +C if indef.");
     cascas_append_line(out,"10. Chk: diff ans or re-eval def.");
     return;

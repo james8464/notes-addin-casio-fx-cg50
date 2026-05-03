@@ -476,13 +476,13 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
 
     if(c == "x^2e^x" || c == "x^2e^(x)" || c == "x^2exp(x)") {
         return out(
-            "repeated integration by parts",
+            "DI table integration by parts",
             {
-                "Let u=x^2, dv=e^x dx.",
-                "I = x^2e^x - Integral(2x e^x) dx.",
-                "Parts again on Integral(2x e^x) dx: u=2x, dv=e^x dx.",
-                "Integral(2x e^x) dx = 2x e^x - Integral(2e^x) dx.",
-                "Substitute and simplify.",
+                "Use DI/table because x^n*e^x repeats parts.",
+                "D column: x^2, 2x, 2, 0.",
+                "I column: e^x, e^x, e^x.",
+                "Alternate signs: +, -, +.",
+                "Combine: e^x*(x^2 - 2*x + 2).",
             },
             "e^x*(x^2 - 2*x + 2) + C"
         );
@@ -698,18 +698,103 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "(x^2+1)/(x^4+3x^2+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Then denominator becomes x^2 + 3 + 1/x^2 = (x-1/x)^2 + 5.",
+                "Let u=x-1/x, so du=(1+1/x^2) dx.",
+                "The numerator divided by x^2 gives 1+1/x^2, exactly du/dx.",
+                "Integral becomes Integral(1/(u^2+5)) du.",
+                "Back-substitute u=x-1/x.",
+            },
+            "atan((x-1/x)/sqrt(5))/sqrt(5) + C"
+        );
+    }
+
+    if(c == "(x^2-1)/(x^4+5x^2+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Then denominator becomes x^2 + 5 + 1/x^2 = (x+1/x)^2 + 3.",
+                "Let u=x+1/x, so du=(1-1/x^2) dx.",
+                "The numerator divided by x^2 gives 1-1/x^2, exactly du/dx.",
+                "Integral becomes Integral(1/(u^2+3)) du.",
+                "Back-substitute u=x+1/x.",
+            },
+            "atan((x+1/x)/sqrt(3))/sqrt(3) + C"
+        );
+    }
+
+    if(c == "sqrt(1-x^2)" || c == "sqrt(-x^2+1)") {
+        return out(
+            "reference triangle trig substitution",
+            {
+                "For sqrt(a^2-x^2), let x=a*sin(t). Here a=1.",
+                "Reference triangle: opposite=x, hypotenuse=1, adjacent=sqrt(1-x^2).",
+                "Then dx=cos(t) dt and sqrt(1-x^2)=cos(t).",
+                "Integral becomes Integral(cos(t)^2) dt.",
+                "Use cos(t)^2=(1+cos(2t))/2, then back-substitute.",
+            },
+            "(x*sqrt(1-x^2)+asin(x))/2 + C"
+        );
+    }
+
     if(c == "sqrt(x^2+1)" || c == "sqrt(1+x^2)") {
         return out(
-            "hyperbolic substitution",
+            "reference triangle trig substitution",
             {
-                "Let x=sinh(u), so dx=cosh(u) du.",
-                "sqrt(x^2+1)=sqrt(sinh(u)^2+1)=cosh(u).",
-                "Integral becomes Integral(cosh(u)^2) du.",
-                "Use cosh(u)^2=(1+cosh(2u))/2.",
-                "Integral = u/2 + sinh(u)cosh(u)/2 + C.",
-                "Back-substitute u=asinh(x)=log(x+sqrt(x^2+1)), sinh(u)=x, cosh(u)=sqrt(x^2+1).",
+                "For sqrt(a^2+x^2), let x=a*tan(t). Here a=1.",
+                "Reference triangle: opposite=x, adjacent=1, hypotenuse=sqrt(x^2+1).",
+                "Then dx=sec(t)^2 dt and sqrt(x^2+1)=sec(t).",
+                "Integral becomes Integral(sec(t)^3) dt.",
+                "Use standard sec^3 result, then back-substitute tan(t)=x and sec(t)=sqrt(x^2+1).",
             },
             "(x*sqrt(x^2+1) + log(abs(x+sqrt(x^2+1))))/2 + C"
+        );
+    }
+
+    if(c == "sqrt(x^2-1)") {
+        return out(
+            "reference triangle trig substitution",
+            {
+                "For sqrt(x^2-a^2), let x=a*sec(t). Here a=1.",
+                "Reference triangle: hypotenuse=x, adjacent=1, opposite=sqrt(x^2-1).",
+                "Then dx=sec(t)tan(t) dt and sqrt(x^2-1)=tan(t).",
+                "Integral becomes Integral(tan(t)^2*sec(t)) dt.",
+                "Use tan(t)^2=sec(t)^2-1, then back-substitute.",
+            },
+            "(x*sqrt(x^2-1)-log(abs(x+sqrt(x^2-1))))/2 + C"
+        );
+    }
+
+    if(c == "1/(x^3+1)") {
+        return out(
+            "partial fractions with irreducible quadratic",
+            {
+                "Factor x^3+1 = (x+1)(x^2-x+1).",
+                "Set 1/(x^3+1)=A/(x+1)+(Bx+C)/(x^2-x+1).",
+                "Solve: A=1/3, B=-1/3, C=2/3.",
+                "Split the quadratic numerator into a derivative part plus constant.",
+                "Integrate to ln terms plus atan after completing the square.",
+            },
+            "log(abs(x+1))/3 - log(abs(x^2-x+1))/6 + atan((2*x-1)/sqrt(3))/sqrt(3) + C"
+        );
+    }
+
+    if(c == "1/(x^4-1)") {
+        return out(
+            "partial fractions with irreducible quadratic",
+            {
+                "Factor x^4-1=(x-1)(x+1)(x^2+1).",
+                "Set A/(x-1)+B/(x+1)+(Cx+D)/(x^2+1).",
+                "Solve: A=1/4, B=-1/4, C=0, D=-1/2.",
+                "Integrate the linear factors as ln terms.",
+                "Integrate -1/(2*(x^2+1)) as -atan(x)/2.",
+            },
+            "log(abs((x-1)/(x+1)))/4 - atan(x)/2 + C"
         );
     }
 

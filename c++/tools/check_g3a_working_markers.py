@@ -27,7 +27,10 @@ MARKERS = [
     b"King:",
     b"Weier:",
     b"Sophie:",
-    b"Hyp sub:",
+    b"Sym:",
+    b"Ref tri:",
+    b"DI:",
+    b"PF:",
     b"Hard int:",
 ]
 
