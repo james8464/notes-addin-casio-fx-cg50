@@ -81,7 +81,7 @@ if [ "${MODE}" = "khicas-source" ]; then
   clean_khicas_source_outputs
   python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
     --name "CasioCAS" \
-    --internal "CASIOCAS" \
+    --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   publish_root_g3a
@@ -114,7 +114,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
       "c++/prizm/assets/unselected.bmp"
   python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
     --name "CasioCAS" \
-    --internal "CASIOCAS" \
+    --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   publish_root_g3a

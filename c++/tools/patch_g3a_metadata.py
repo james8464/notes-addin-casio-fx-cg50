@@ -40,6 +40,15 @@ def put_fixed(buf: bytearray, old: bytes, new: str) -> int:
         start = idx + len(old)
 
 
+def canonical_internal_name(internal_name: str) -> str:
+    name = "@" + internal_name.upper().lstrip("@")
+    if len(name) > 8:
+        raise ValueError(f"{name!r} too long for Casio menu-safe internal name")
+    if any(ch != "@" and not ("A" <= ch <= "Z") for ch in name):
+        raise ValueError(f"{name!r} must use only @ and A-Z")
+    return name
+
+
 def checksum(buf: bytearray) -> int:
     tmp = bytearray(buf)
     tmp[CHECKSUM : CHECKSUM + 4] = b"\0\0\0\0"
@@ -51,9 +60,10 @@ def patch(path: Path, app_name: str, internal_name: str, filename: str) -> None:
     buf = bytearray(path.read_bytes())
     if len(buf) < 0x7004:
         raise ValueError(f"{path} is too small to be a valid .g3a")
+    internal = canonical_internal_name(internal_name)
 
     put_ascii(buf, NAME_BASIC, NAME_BASIC_LEN, app_name)
-    put_ascii(buf, NAME_INTERNAL, NAME_INTERNAL_LEN, "@" + internal_name.upper().lstrip("@"))
+    put_ascii(buf, NAME_INTERNAL, NAME_INTERNAL_LEN, internal)
     for i in range(LC_COUNT):
         put_ascii(buf, LC_NAMES + i * LC_NAME_LEN, LC_NAME_LEN, app_name)
     put_ascii(buf, FILENAME, FILENAME_LEN, filename)
@@ -61,7 +71,7 @@ def patch(path: Path, app_name: str, internal_name: str, filename: str) -> None:
     # Cosmetic visible strings in the copied upstream binary.
     put_fixed(buf, b"Khicas Help", app_name)
     put_fixed(buf, b"Khicasen", app_name)
-    put_fixed(buf, b"@KHICASEN", "@" + internal_name.upper().lstrip("@"))
+    put_fixed(buf, b"@KHICASEN", internal)
     put_fixed(buf, b"khicasen.g3a", filename)
     put_fixed(buf, b"\0 Xcas \0", "\0 UK   \0")
 
@@ -76,7 +86,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("g3a", type=Path)
     ap.add_argument("--name", default="CasioCAS")
-    ap.add_argument("--internal", default="CASIOCAS")
+    ap.add_argument("--internal", default="CASCAS")
     ap.add_argument("--filename", default="CasioCAS.g3a")
     args = ap.parse_args()
     patch(args.g3a, args.name, args.internal, args.filename)

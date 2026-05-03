@@ -24,11 +24,21 @@ def checksum(buf: bytes) -> int:
     return sum(tmp) & 0xFFFFFFFF
 
 
+def check_internal_name(name: str) -> str | None:
+    if len(name) > 8:
+        return "internal name must be <=8 chars including @"
+    if not name.startswith("@"):
+        return "internal name must start with @"
+    if any(ch != "@" and not ("A" <= ch <= "Z") for ch in name):
+        return "internal name must use only @ and A-Z"
+    return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("g3a", type=Path)
     ap.add_argument("--name", default="CasioCAS")
-    ap.add_argument("--internal", default="@CASIOCAS")
+    ap.add_argument("--internal", default="@CASCAS")
     ap.add_argument("--filename", default="CasioCAS.g3a")
     args = ap.parse_args()
 
@@ -44,6 +54,10 @@ def main() -> int:
         print(f"{key}: {got}")
         if got != want:
             bad.append(f"{key}={got!r}, want {want!r}")
+        if key == "internal":
+            reason = check_internal_name(got)
+            if reason:
+                bad.append(reason)
 
     stored = int.from_bytes(buf[0x20:0x24], "big")
     stored2 = int.from_bytes(buf[-4:], "big")
