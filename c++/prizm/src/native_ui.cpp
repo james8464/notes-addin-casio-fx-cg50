@@ -59,12 +59,14 @@ int glyph_index(char c)
     if(c >= 'A' && c <= 'Z') return c - 'A';
     if(c >= '0' && c <= '9') return 26 + (c - '0');
     if(c == '?') return 36;
-    return 37;
+    if(c == '<') return 37;
+    if(c == '>') return 38;
+    return 39;
 }
 
 const unsigned char *glyph_rows(char c)
 {
-    static const unsigned char kGlyphs[38][7] = {
+    static const unsigned char kGlyphs[40][7] = {
         {0x0E,0x11,0x11,0x1F,0x11,0x11,0x11}, // A
         {0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E}, // B
         {0x0E,0x11,0x10,0x10,0x10,0x11,0x0E}, // C
@@ -102,6 +104,8 @@ const unsigned char *glyph_rows(char c)
         {0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E}, // 8
         {0x0E,0x11,0x11,0x0F,0x01,0x01,0x0E}, // 9
         {0x0E,0x11,0x01,0x02,0x04,0x00,0x04}, // ?
+        {0x02,0x04,0x08,0x10,0x08,0x04,0x02}, // <
+        {0x08,0x04,0x02,0x01,0x02,0x04,0x08}, // >
         {0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // blank
     };
     return kGlyphs[glyph_index(c)];
@@ -131,6 +135,22 @@ void draw_softkey_text(int x, int y, const char *text)
         }
         cursor += 6 * scale;
     }
+}
+
+int cstr_len_local(const char *text)
+{
+    int n = 0;
+    while(text != nullptr && text[n] != '\0') n++;
+    return n;
+}
+
+void print_mini_px(int x, int y, const char *text, int mode = TEXT_MODE_NORMAL,
+                   int color = TEXT_COLOR_BLACK, int back = TEXT_COLOR_WHITE)
+{
+    int px = x;
+    int py = y;
+    PrintMini(&px, &py, text ? text : "", mode, LCD_WIDTH_PX - 1,
+              0, 0, color, back, 1, 0);
 }
 
 }
@@ -186,6 +206,46 @@ void draw_softkeys(const char *k1, const char *k2, const char *k3,
         if(x < i * kFKeyWidth + 2) x = i * kFKeyWidth + 2;
         draw_softkey_text(x, kFKeyTop + 5, text);
     }
+}
+
+void draw_fkey_popup(const char *const *items, int count, int selected, int fkey_index)
+{
+    if(items == nullptr || count <= 0) return;
+    if(selected < 0) selected = 0;
+    if(selected >= count) selected = count - 1;
+    if(fkey_index < 0) fkey_index = 0;
+    if(fkey_index > 5) fkey_index = 5;
+
+    int longest = 0;
+    for(int i = 0; i < count; i++) {
+        int len = cstr_len_local(items[i]) + 3;
+        if(len > longest) longest = len;
+    }
+    if(longest < 8) longest = 8;
+    if(longest > 18) longest = 18;
+
+    const int row_h = 18;
+    int width = longest * 8 + 10;
+    int height = count * row_h + 4;
+    int x = fkey_index * kFKeyWidth;
+    if(x + width >= LCD_WIDTH_PX) x = LCD_WIDTH_PX - width - 1;
+    if(x < 0) x = 0;
+    int y = kFKeyTop - height;
+    if(y < 25) y = 25;
+
+    fill_rect_vram(x, y, width, height, COLOR_WHITE);
+    stroke_rect_vram(x, y, width, height, COLOR_BLACK);
+
+    for(int i = 0; i < count; i++) {
+        int row = count - 1 - i;
+        int yy = y + 2 + row * row_h;
+        casio::device::FixedString<32> line;
+        line.append_int(i + 1);
+        line.append(": ");
+        line.append(items[i] ? items[i] : "");
+        print_mini_px(x + 4, yy + 2, line.c_str(), i == selected ? TEXT_MODE_INVERT : TEXT_MODE_NORMAL);
+    }
+    Bdisp_PutDisp_DD();
 }
 
 void draw_home(void)

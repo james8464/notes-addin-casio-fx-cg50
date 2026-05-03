@@ -42,15 +42,14 @@ enum FileAction
 };
 
 const CommandItem kAlgebraCommands[] = {
-    {"cmp", "compare("},
-    {"xform", "transform("},
-    {"exp", "expand("},
-    {"poly", "polynomial("},
-    {"comp sq", "complete_square("},
-    {"solve", "solve("},
-    {"comp", "compose("},
-    {"inv", "inverse("},
-    {"rw", "rewrite("},
+    {"simplify(", "simplify("},
+    {"factor(", "factor("},
+    {"partfrac(", "partfrac("},
+    {"tcollect(", "tcollect("},
+    {"texpand(", "texpand("},
+    {"sum(", "sum("},
+    {"oo", "oo"},
+    {"product(", "product("},
 };
 
 const CommandItem kAlgebraAllCommands[] = {
@@ -94,15 +93,14 @@ const CommandItem kIntegrateCommands[] = {
 };
 
 const CommandItem kCalculusCommands[] = {
-    {"diff", "diff("},
-    {"diff2", "diff2("},
-    {"int", "int("},
-    {"defint", "defint("},
-    {"limit", "limit("},
-    {"series", "series("},
-    {"solve", "solve("},
-    {"de", "de_solve("},
-    {"rsolve", "rsolve("},
+    {"'", "'"},
+    {"diff(", "diff("},
+    {"integrate(", "integrate("},
+    {"limit(", "limit("},
+    {"series(", "series("},
+    {"solve(", "solve("},
+    {"desolve(", "desolve("},
+    {"rsolve(", "rsolve("},
 };
 
 const CommandItem kTrigCommands[] = {
@@ -162,14 +160,14 @@ const CommandItem kArithCommands[] = {
 };
 
 const CommandItem kPlotCommands[] = {
-    {"plot", "plot("},
-    {"plotseq", "plotseq("},
-    {"plotlist", "plotlist("},
-    {"param", "plotparam("},
-    {"polar", "plotpolar("},
-    {"field", "plotfield("},
-    {"hist", "histogram("},
-    {"bar", "barplot("},
+    {"plot(", "plot("},
+    {"plotseq(", "plotseq("},
+    {"plotlist(", "plotlist("},
+    {"plotparam(", "plotparam("},
+    {"plotpolar(", "plotpolar("},
+    {"plotfield(", "plotfield("},
+    {"histogram(", "histogram("},
+    {"barplot(", "barplot("},
 };
 
 const FileItem kFileCommands[] = {
@@ -236,7 +234,7 @@ void render_shell(ShellLine *lines, int count, int top, int selected,
     char mode[16];
     shell_mode(mode, (int)sizeof(mode), degrees, uppercase);
     casio::prizm::draw_shell("CasioCAS", mode, ptrs, count, top, selected, editor, start, cursor,
-                             "ALG", "DIFF", "INT", "TRIG", "CMD", uppercase ? "a" : "A");
+                             "algb", "calc", "plot", "cmds", uppercase ? "a<>A" : "A<>a", "File");
 }
 
 int select_menu(const char *title, const char *const *items, int count)
@@ -270,12 +268,48 @@ int select_command(const char *title, const CommandItem (&commands)[N])
     return select_menu(title, labels, N);
 }
 
+int select_popup(const char *const *labels, int count, int fkey_index)
+{
+    if(labels == nullptr || count <= 0) return -1;
+    int selected = 0;
+    while(true) {
+        casio::prizm::draw_fkey_popup(labels, count, selected, fkey_index);
+
+        int key = 0;
+        GetKey(&key);
+        if(key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return -1;
+        if(key == KEY_CTRL_EXE) return selected;
+        if(key >= KEY_CHAR_1 && key <= KEY_CHAR_9) {
+            int index = key - KEY_CHAR_1;
+            if(index < count) return index;
+        }
+        if(key == KEY_CTRL_UP && selected + 1 < count) selected++;
+        if(key == KEY_CTRL_DOWN && selected > 0) selected--;
+    }
+}
+
+template <int N>
+int select_popup_command(const CommandItem (&commands)[N], int fkey_index)
+{
+    const char *labels[N];
+    for(int i = 0; i < N; i++) labels[i] = commands[i].label;
+    return select_popup(labels, N, fkey_index);
+}
+
 template <int N>
 int select_file_command(const FileItem (&commands)[N])
 {
     const char *labels[N];
     for(int i = 0; i < N; i++) labels[i] = commands[i].label;
     return select_menu("File", labels, N);
+}
+
+template <int N>
+int select_popup_file(const FileItem (&commands)[N], int fkey_index)
+{
+    const char *labels[N];
+    for(int i = 0; i < N; i++) labels[i] = commands[i].label;
+    return select_popup(labels, N, fkey_index);
 }
 
 void insert_selected_line(ShellLine const *lines, int selected, unsigned char *editor, int &cursor)
@@ -403,36 +437,49 @@ extern "C" int main(void)
 
         if(key == KEY_CTRL_EXIT || key == KEY_CTRL_MENU) break;
         if(key == KEY_CTRL_F1) {
-            int c = select_command("Algebra", kAlgebraCommands);
+            int c = select_popup_command(kAlgebraCommands, 0);
             insert_command(kAlgebraCommands, c, editor, input_cursor);
             selected = -1;
             continue;
         }
         if(key == KEY_CTRL_F2) {
-            int c = select_command("Differentiate", kDeriveCommands);
-            insert_command(kDeriveCommands, c, editor, input_cursor);
+            int c = select_popup_command(kCalculusCommands, 1);
+            insert_command(kCalculusCommands, c, editor, input_cursor);
             selected = -1;
             continue;
         }
         if(key == KEY_CTRL_F3) {
-            int c = select_command("Integrate", kIntegrateCommands);
-            insert_command(kIntegrateCommands, c, editor, input_cursor);
+            int c = select_popup_command(kPlotCommands, 2);
+            insert_command(kPlotCommands, c, editor, input_cursor);
             selected = -1;
             continue;
         }
         if(key == KEY_CTRL_F4) {
-            int c = select_command("Trig", kTrigCommands);
-            insert_command(kTrigCommands, c, editor, input_cursor);
-            selected = -1;
-            continue;
-        }
-        if(key == KEY_CTRL_F5) {
             open_commands(editor, input_cursor, input_start, degrees, lines, line_count);
             selected = -1;
             continue;
         }
-        if(key == KEY_CTRL_F6) {
+        if(key == KEY_CTRL_F5) {
             uppercase = !uppercase;
+            selected = -1;
+            continue;
+        }
+        if(key == KEY_CTRL_F6) {
+            int c = select_popup_file(kFileCommands, 5);
+            if(c >= 0) {
+                int action = kFileCommands[c].action;
+                if(action == FileToggleAngle) {
+                    degrees = !degrees;
+                    add_shell_line(lines, line_count, degrees ? "Angle mode: DEG." : "Angle mode: RAD.");
+                }
+                else if(action == FileClearInput) {
+                    casio::prizm::editor_from_ascii(editor, kEditorCapacity, "");
+                    input_start = 0;
+                    input_cursor = 0;
+                }
+                else if(action == FileClearShell) line_count = 0;
+                else if(action == FileInsertAns) casio::prizm::editor_insert_ascii(editor, kEditorCapacity, input_cursor, "ans");
+            }
             selected = -1;
             continue;
         }

@@ -4,8 +4,10 @@
 graph TD
   KH["c++/khicas/giac KhiCAS/Giac GPL base"] --> Port["Port UI/parser/CAS modules"]
   KU["c++/khicas/kupdate graph/UI helpers"] --> Port
+  KU --> FMenu["KhiCAS F-key labels + popup menus"]
   Legacy["c++/legacy previous code"] --> WorkSteps["exam working-step layer"]
-  Port --> Active["c++/prizm active build"]
+  FMenu --> Active["c++/prizm active build"]
+  Port --> Active
   WorkSteps --> Active
   Active --> G3A["CasioCAS.g3a"]
 ```
