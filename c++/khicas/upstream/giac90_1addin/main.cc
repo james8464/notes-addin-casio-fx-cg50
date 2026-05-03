@@ -2240,6 +2240,21 @@ static bool cascas_rewrite_compare_zero_call(const char *input,const char *alias
   return true;
 }
 
+static bool cascas_rewrite_trig_basis_call(const char *input,const char *alias,const char *target,string &out){
+  string args[2],s; int count=0,close=0;
+  if (!cascas_call_args(input,alias,args,2,count,close,s) || count<1)
+    return false;
+  string expr=args[0];
+  int eq=cascas_find_top_equal(expr);
+  string body=eq>=0?"((" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1,expr.size()-eq-1) + "))":"(" + expr + ")";
+  string core=string(target) + "(tcollect(texpand(sincos(" + body + "))))";
+  out="factor(normal(" + core + "))";
+  if (eq>=0)
+    out += "=0";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_rewrite_binom_coeff_call(const char *input,string &out){
   string args[4],s; int count=0,close=0;
   if (!cascas_call_args(input,"binom_coeff(",args,4,count,close,s) || count<3)
@@ -2338,6 +2353,12 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (cascas_rewrite_param_call(input,"param_area(",3,rewritten))
     return true;
   if (cascas_rewrite_solve_trig_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_trig_basis_call(input,"trigcos(","trigcos",rewritten))
+    return true;
+  if (cascas_rewrite_trig_basis_call(input,"trigsin(","trigsin",rewritten))
+    return true;
+  if (cascas_rewrite_trig_basis_call(input,"trigtan(","trigtan",rewritten))
     return true;
   if (cascas_rewrite_compare_zero_call(input,"trig_prove(",rewritten))
     return true;
@@ -2510,6 +2531,27 @@ static bool cascas_append_specific_lines(string &out,const char *s,const char *e
     cascas_append_line(out,"3. isolate; base angle.");
     cascas_append_line(out,count>=4?"4. CAST/period; bounds.":"4. general sol + period.");
     return true;
+  }
+  static const struct { const char *alias; const char *basis; const char *ids; } trig_basis[]={
+    {"trigcos(","cos","sin^2=1-cos^2; tan^2=1/cos^2-1."},
+    {"trigsin(","sin","cos^2=1-sin^2; tan^2=sin^2/(1-sin^2)."},
+    {"trigtan(","tan","sin^2=tan^2/(1+tan^2); cos^2=1/(1+tan^2)."}
+  };
+  for (int i=0;i<int(sizeof(trig_basis)/sizeof(trig_basis[0]));++i){
+    if (cascas_call_args(s,trig_basis[i].alias,args,2,count,close,body) && count>=1){
+      string expr=args[0];
+      int eq=cascas_find_top_equal(expr);
+      if (eq>=0)
+	cascas_append_expr_line(out,"2. Move: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
+      else
+	cascas_append_expr_line(out,"2. Expr: ",expr);
+      string line=string("3. Basis: ") + trig_basis[i].basis + " if poss.";
+      cascas_append_line(out,line.c_str());
+      string ids=string("4. Ids: ") + trig_basis[i].ids;
+      cascas_append_line(out,ids.c_str());
+      cascas_append_line(out,"5. sincos; exp; coll; fact.");
+      return true;
+    }
   }
   if (cascas_call_args(s,"implicit_diff(",args,3,count,close,body) && count>=1){
     string expr=args[0],x=count>=2 && args[1].size()?args[1]:"x",y=count>=3 && args[2].size()?args[2]:"y";

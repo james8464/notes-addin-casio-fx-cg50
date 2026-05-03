@@ -31,6 +31,7 @@ def main() -> int:
         ("khicas_reference", [sys.executable, "c++/tools/check_khicas_reference.py"]),
         ("khicas_catalog", [sys.executable, "c++/tools/check_khicas_catalog.py"]),
         ("khicas_working", [sys.executable, "c++/tools/check_khicas_working.py"]),
+        ("trig_basis", [sys.executable, "c++/tools/check_trig_basis.py"]),
         ("feature_parity", [sys.executable, "c++/tools/check_feature_parity.py"]),
         ("host_smoke", [sys.executable, "c++/tools/golden/check_host_smoke.py"]),
         ("tests_txt_cases", [sys.executable, "c++/tools/golden/check_tests_txt_cases.py"]),

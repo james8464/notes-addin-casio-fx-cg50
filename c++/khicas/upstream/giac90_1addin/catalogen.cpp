@@ -302,9 +302,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"trig_prove(lhs,rhs)", 0, "Prove trig identity by simplifying lhs-rhs. Required: lhs,rhs.", "sin(x)^2+cos(x)^2,1", 0, CAT_CATEGORY_TRIG},
   {"trig_rewrite(expr,target)", 0, "Rewrite trig expression using requested target terms. Required: expr. Optional: target.", "1/cos(x),sec(x)", 0, CAT_CATEGORY_TRIG},
   {"trig_transform(expr,target)", 0, "Transform trig expression/equation to target form. Required: expr,target.", "1/cos(x),sec(x)", 0, CAT_CATEGORY_TRIG},
-  {"trigcos(expr)", 0, "Convert sin^2 and tan^2 to cos^2.","sin(x)^4", 0, CAT_CATEGORY_TRIG},
-  {"trigsin(expr)", 0, "Convert cos^2 and tan^2 to sin^2.","cos(x)^4", 0, CAT_CATEGORY_TRIG},
-  {"trigtan(expr)", 0, "Convert cos^2 and sin^2 to tan^2.","cos(x)^4", 0, CAT_CATEGORY_TRIG},
+  {"trigcos(expr/eq)", 0, "Use cos if poss. Eq->0; exp/coll/fact.","sin(x)^4", "sin(x)^4+tan(x)^2=cos(x)^2", CAT_CATEGORY_TRIG},
+  {"trigsin(expr/eq)", 0, "Use sin if poss. Eq->0; exp/coll/fact.","cos(x)^4", "cos(x)^4+tan(x)^2=1", CAT_CATEGORY_TRIG},
+  {"trigtan(expr/eq)", 0, "Use tan if poss. Eq->0; exp/coll/fact.","cos(x)^4", "sin(x)^4+cos(x)^2=1", CAT_CATEGORY_TRIG},
   {"uniformd(a,b,x)", "uniformd", "uniform law on [a,b] of density 1/(b-a)", 0, 0, CAT_CATEGORY_PROBA},
 };
 
