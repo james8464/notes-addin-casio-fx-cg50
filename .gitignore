@@ -39,6 +39,7 @@ inspiration:base/
 # Live test reports
 python/tests/reports/
 c++/tests/reports/
+c++/tools/fuzz/tui_failures.jsonl
 
 # Python bytecode
 **/__pycache__/

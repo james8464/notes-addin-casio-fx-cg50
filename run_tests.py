@@ -17,10 +17,16 @@ def main() -> int:
     args = [a.lower() for a in sys.argv[1:]]
     if args and args[-1] == "compile":
         return run(["./compile"])
+    if args and args[0] in ("tui", "--tui"):
+        return run([sys.executable, "c++/tools/tests_cpp/run_tests_tui.py"])
+    if args and args[0] in ("fuzz", "--fuzz"):
+        return run([sys.executable, "c++/tools/run_tests_cpp.py", "--fuzz"])
     if args and args[0] in ("--help", "-h", "help"):
-        print("usage: python3 run_tests.py [compile]")
+        print("usage: python3 run_tests.py [compile|tui|fuzz]")
         print("default: run C++ host/.g3a parity checks")
         print("compile: build CasioCAS.g3a at repo root")
+        print("tui: launch C++ host testing TUI")
+        print("fuzz: replay C++ regression fuzz cases")
         return 0
     return run([sys.executable, "c++/tools/run_tests_cpp.py"])
 

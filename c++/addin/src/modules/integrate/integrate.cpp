@@ -715,13 +715,36 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
     return integrate_xn_cos(a, power, coeff, arg, *lc, var);
 }
 
+static bool is_scaled_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return x.text == var;
+    if(x.kind == NodeKind::Mul) {
+        bool saw_var = false;
+        for(NodeId k : x.kids) {
+            if(is_sym(a, k, var)) {
+                if(saw_var) return false;
+                saw_var = true;
+                continue;
+            }
+            if(!as_num(a, k)) return false;
+        }
+        return saw_var;
+    }
+    if(x.kind == NodeKind::Div) {
+        return as_num(a, x.b).has_value() && is_scaled_var(a, x.a, var);
+    }
+    return false;
+}
+
 static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
     NodeId v = casio::sym(a, var);
 
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log && is_sym(a, x.a, var)) {
-        steps.push_back("Step 2: Integration by parts: u=ln(x), dv=dx.");
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log && is_scaled_var(a, x.a, var)) {
+        steps.push_back("Step 2: Integration by parts: u=ln(k*x), dv=dx.");
+        steps.push_back("Step 3: Since d/dx ln(k*x)=1/x, integrate x^0*ln(k*x).");
         return casio::simplify(a, casio::add(a, {casio::mul(a, {v, expr}), casio::neg(a, v)}));
     }
 
@@ -739,7 +762,7 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
             continue;
         }
         Node const &kn = a.get(k);
-        if(!log_node && kn.kind == NodeKind::Fn && kn.fkind == FnKind::Log && is_sym(a, kn.a, var)) {
+        if(!log_node && kn.kind == NodeKind::Fn && kn.fkind == FnKind::Log && is_scaled_var(a, kn.a, var)) {
             log_node = k;
             continue;
         }
@@ -750,7 +773,8 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
     NodeId xp1 = var_pow(a, var, power + 1);
     NodeId term1 = mul_coeff(a, r_div(coeff, np1), casio::mul(a, {xp1, log_node}));
     NodeId term2 = mul_coeff(a, r_neg(r_div(coeff, r_mul(np1, np1))), xp1);
-    steps.push_back("Step 2: Integration by parts for x^n*ln(x).");
+    steps.push_back("Step 2: Integration by parts for x^n*ln(k*x).");
+    steps.push_back("Step 3: Since d/dx ln(k*x)=1/x, the remaining integral is a power integral.");
     return casio::simplify(a, casio::add(a, {term1, term2}));
 }
 
@@ -1221,6 +1245,95 @@ static NodeId quadratic_linear(Arena &a, Rational a2, Rational a1, std::string c
 static NodeId ln_abs(Arena &a, NodeId n)
 {
     return casio::fn(a, "log", casio::fn(a, "abs", n));
+}
+
+static Poly poly_derivative(Poly p)
+{
+    if(!p.ok) return p;
+    Poly out;
+    if(p.c.size() <= 1) return out;
+    out.c.assign(p.c.size() - 1, Rational{0, 1});
+    for(std::size_t i = 1; i < p.c.size(); i++) {
+        out.c[i - 1] = r_mul(p.c[i], Rational{static_cast<std::int64_t>(i), 1});
+    }
+    poly_trim(out);
+    return out;
+}
+
+static std::optional<Rational> proportional_poly(Poly a_poly, Poly b_poly)
+{
+    if(!a_poly.ok || !b_poly.ok) return std::nullopt;
+    poly_trim(a_poly);
+    poly_trim(b_poly);
+    if(b_poly.c.empty()) return std::nullopt;
+    if(a_poly.c.size() < b_poly.c.size()) a_poly.c.resize(b_poly.c.size(), Rational{0, 1});
+    if(b_poly.c.size() < a_poly.c.size()) b_poly.c.resize(a_poly.c.size(), Rational{0, 1});
+    std::optional<Rational> ratio;
+    for(std::size_t i = 0; i < b_poly.c.size(); i++) {
+        Rational acoef = a_poly.c[i];
+        Rational bcoef = b_poly.c[i];
+        if(r_zero(bcoef)) {
+            if(!r_zero(acoef)) return std::nullopt;
+            continue;
+        }
+        Rational cur = r_div(acoef, bcoef);
+        if(!ratio) ratio = cur;
+        else if(!r_eq(*ratio, cur)) return std::nullopt;
+    }
+    return ratio;
+}
+
+static std::optional<NodeId> integrate_polynomial_reverse_chain(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational coeff{1, 1};
+    NodeId pow_node = 0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        Node const &kid = a.get(k);
+        if(!pow_node && kid.kind == NodeKind::Pow && contains_var(a, kid.a, var)) {
+            auto exp = as_num(a, kid.b);
+            if(exp && exp->den == 1) {
+                pow_node = k;
+                continue;
+            }
+        }
+        rest.push_back(k);
+    }
+    if(!pow_node || rest.empty()) return std::nullopt;
+
+    Node const &p = a.get(pow_node);
+    auto exp = as_num(a, p.b);
+    if(!exp || exp->den != 1) return std::nullopt;
+    NodeId rest_node = rest.size() == 1 ? rest.front() : casio::mul(a, rest);
+    auto base_poly = poly_of_any(a, p.a, var);
+    auto rest_poly = poly_of_any(a, rest_node, var);
+    if(!base_poly || !rest_poly || !base_poly->ok || !rest_poly->ok) return std::nullopt;
+    Poly dbase = poly_derivative(*base_poly);
+    auto ratio = proportional_poly(*rest_poly, dbase);
+    if(!ratio) return std::nullopt;
+
+    Rational scale = r_mul(coeff, *ratio);
+    steps.push_back("Step 2: Reverse-chain power substitution.");
+    steps.push_back("Step 3: Let u = " + format_expr(a, p.a) + ", so du is proportional to the remaining factor.");
+    if(exp->num == -exp->den) {
+        steps.push_back("Step 4: Use integral u'/u dx = log(abs(u)).");
+        return casio::simplify(a, mul_coeff(a, scale, ln_abs(a, p.a)));
+    }
+
+    Rational np1 = *exp;
+    np1.num += np1.den;
+    np1.normalize();
+    if(np1.num == 0) return std::nullopt;
+    steps.push_back("Step 4: Use integral u^n du = u^(n+1)/(n+1).");
+    NodeId ans = casio::power(a, p.a, a.num(np1));
+    return casio::simplify(a, mul_coeff(a, r_div(scale, np1), ans));
 }
 
 static NodeId sqrt_rat(Arena &a, Rational r)
@@ -1701,6 +1814,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(auto poly_sub = integrate_polynomial_reverse_chain(a, expr, var, out.steps)) {
+        out.result = *poly_sub;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
+        return out;
+    }
+
     if(auto sub = integrate_simple_substitution(a, expr, var, out.steps)) {
         out.result = *sub;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
@@ -1709,7 +1828,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto by_parts = integrate_log_parts(a, expr, var, out.steps)) {
         out.result = *by_parts;
-        out.steps.push_back("Step 3: Simplify. Add constant C.");
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
         return out;
     }
 
