@@ -32,7 +32,6 @@ REQUIRED_MARKERS = [
     "CAS:",
     "Move:",
     "Base:",
-    "Ans: ",
     "Br: real branch.",
 ]
 
@@ -121,6 +120,8 @@ def main() -> int:
     missing = [x for x in REQUIRED_MARKERS if x not in main_cc]
     if missing:
         return fail("working screen markers missing: " + ", ".join(missing))
+    if 'out += "Ans: "' in main_cc:
+        return fail("final answer still has Ans prefix")
 
     missing = [x for x in CONSOLE_MARKERS if x not in console_cc]
     if missing:

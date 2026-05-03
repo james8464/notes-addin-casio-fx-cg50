@@ -9,7 +9,6 @@ MARKERS = [
     b"Rw:",
     b"Fallback:",
     b"Valid:",
-    b"Ans: ",
     b"Br: real branch.",
     b"Diff:",
     b"Impl:",
@@ -33,6 +32,10 @@ MARKERS = [
     b"PF.",
 ]
 
+FORBIDDEN = [
+    b"Ans: ",
+]
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Verify source-built CasioCAS .g3a includes working-line hooks.")
@@ -42,6 +45,10 @@ def main() -> int:
     missing = [m.decode("ascii") for m in MARKERS if m not in data]
     if missing:
         print("FAIL g3a working markers missing: " + ", ".join(missing))
+        return 1
+    forbidden = [m.decode("ascii") for m in FORBIDDEN if m in data]
+    if forbidden:
+        print("FAIL g3a forbidden answer prefixes present: " + ", ".join(forbidden))
         return 1
     print("OK g3a working markers")
     return 0

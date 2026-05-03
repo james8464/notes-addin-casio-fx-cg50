@@ -2769,7 +2769,6 @@ static string cascas_working_text(const char *input,const char *eval_input,const
     cascas_append_line(out,valid.c_str());
   if (cleaned)
     cascas_append_line(out,"Br: real branch.");
-  out += "Ans: ";
   out += shown_answer;
   return out;
 }

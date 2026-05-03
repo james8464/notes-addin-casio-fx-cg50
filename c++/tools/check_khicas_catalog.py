@@ -117,8 +117,10 @@ def main() -> int:
         return fail("working-line output hook missing")
     if "cascas_extract_method" not in main_cc or "cascas_strip_method_args" not in main_cc:
         return fail("method extraction hook missing")
-    if "Fallback:" not in main_cc or "Ans: " not in main_cc:
+    if "Fallback:" not in main_cc or 'out += shown_answer;' not in main_cc:
         return fail("working-line output shape missing")
+    if 'out += "Ans: "' in main_cc:
+        return fail("final answer still has Ans prefix")
 
     print("OK khicas catalog policy")
     return 0
