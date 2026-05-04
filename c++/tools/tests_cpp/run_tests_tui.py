@@ -384,6 +384,9 @@ class RandomTestBatch:
 _DEFAULT_FORBIDDEN_SNIPPETS = (
     "err:",
     "traceback",
+    "unexpected token",
+    "answer: int(",
+    "answer: d/dx(",
     "division by zero",
     "needs poly support",
     "unsupported inverse family",
@@ -4251,8 +4254,14 @@ class CASIOApp(App):
         if name == "!":
             return "", f"{rng.randint(3, 8)}!"
         if name == "diff":
+            if shape == "implicit":
+                return "derive", "mode:2,{0}".format(self.random_catalogue_expr(rng, "implicit"))
+            if shape == "param":
+                return "derive", "mode:3,{0}".format(self.random_catalogue_param_triplet(rng))
+            if shape == "second":
+                return "derive", "{0},method=second".format(self.random_catalogue_expr(rng, "second"))
             expr = self.random_catalogue_expr(rng, shape)
-            method = shape if shape in ("chain", "product", "quotient", "logdiff", "implicit", "param", "second") else "auto"
+            method = shape if shape in ("chain", "product", "quotient", "logdiff") else "auto"
             return "derive", "{0},x,method={1}".format(expr, method)
         if name in ("implicit_diff",):
             return "derive", "mode:2,{0}".format(self.random_catalogue_expr(rng, "implicit"))
@@ -4261,7 +4270,24 @@ class CASIOApp(App):
         if name in ("param_second_diff",):
             return "derive", "mode:5,{0}".format(self.random_catalogue_param_triplet(rng))
         if name in ("integrate", "int"):
-            expr = self.random_catalogue_expr(rng, shape)
+            if shape == "math_abs":
+                expr = rng.choice(["abs(2*x-3)", "sqrt((2*x-3)^2)"])
+            elif shape == "math_sqrt":
+                expr = rng.choice(["sqrt(1-x^2)", "sqrt((2*x-3)^2)", "sqrt(x^2+1)"])
+            elif shape in ("math_log", "math_ln"):
+                expr = rng.choice(["log(x)", "x*log(x)", "log(x)/x"])
+            elif shape == "math_log_base":
+                expr = rng.choice(["log(3,x)", "log(x)/log(3)"])
+            elif shape == "math_exp":
+                expr = rng.choice(["exp(2*x-3)", "x*exp(-x^2)", "x^3*exp(2*x^2)"])
+            elif shape in ("math_atan", "math_arctan"):
+                expr = rng.choice(["atan((x-1)/3)", "arctan(2*x-3)"])
+            elif shape in ("math_asin", "math_arcsin"):
+                expr = rng.choice(["asin((x-1)/3)", "arcsin((2*x+1)/5)"])
+            elif shape in ("math_acos", "math_arccos"):
+                expr = rng.choice(["acos((x-1)/3)", "arccos((2*x+1)/5)"])
+            else:
+                expr = self.random_catalogue_expr(rng, shape)
             method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") else "auto"
             return "int", "{0},method={1}".format(expr, method)
         if name in ("solve", "fsolve", "zeros"):

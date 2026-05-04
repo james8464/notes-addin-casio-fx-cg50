@@ -277,6 +277,20 @@ static std::vector<std::string> split_csv(std::string const &s)
     return parts;
 }
 
+static std::string strip_label_assignment(std::string s)
+{
+    auto parts = split_csv(s);
+    if(parts.size() == 1) {
+        auto eq = s.find('=');
+        if(eq != std::string::npos) {
+            std::string lhs = s.substr(0, eq);
+            lhs.erase(std::remove_if(lhs.begin(), lhs.end(), [](unsigned char ch) { return std::isspace(ch); }), lhs.end());
+            if(lhs == "x" || lhs == "y") return s.substr(eq + 1);
+        }
+    }
+    return s;
+}
+
 } // namespace
 
 std::vector<std::string> run(Arena &arena, Request const &req)
@@ -446,13 +460,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             );
         }
         if(req.mode == 2) {
-            auto eq = casio::parse_equation(arena, req.expr);
+            auto parts = split_csv(req.expr);
+            std::string eq_text = parts.empty() ? req.expr : parts[0];
+            auto eq = casio::parse_equation(arena, eq_text);
             if(!eq) {
                 casio::ExamPrelude pre;
-                pre.raw = req.expr;
-                pre.norm = casio::normalize_text(req.expr);
-                pre.parsed = req.expr;
-                pre.simplified = req.expr;
+                pre.raw = eq_text;
+                pre.norm = casio::normalize_text(eq_text);
+                pre.parsed = eq_text;
+                pre.simplified = eq_text;
                 return casio::exam_fallback("implicit differentiation", pre, "Expected an equation with '='.", "dy/dx");
             }
             NodeId left = casio::simplify(arena, eq->lhs);
@@ -465,12 +481,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string dname = "d" + dep + "/d" + var;
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy));
             casio::ExamPrelude pre;
-            pre.raw = req.expr;
-            pre.norm = casio::normalize_text(req.expr);
+            pre.raw = eq_text;
+            pre.norm = casio::normalize_text(eq_text);
             pre.parsed = req.expr;
             pre.simplified = casio::format_expr(arena, left) + " = " + casio::format_expr(arena, right);
             std::string answer = dname + " = " + format_expr_human(arena, ans);
-            std::string compact = req.expr;
+            std::string compact = eq_text;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
             if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
             else if(compact == "sin(xy)+x^2=y^2" || compact == "sin(x*y)+x^2=y^2")
@@ -519,8 +535,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     req.mode == 5 ? "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)" : "dy/dx = (dy/dt)/(dx/dt)"
                 );
             }
-            std::string xt = parts[0];
-            std::string yt = parts[1];
+            std::string xt = strip_label_assignment(parts[0]);
+            std::string yt = strip_label_assignment(parts[1]);
             std::string tvar = (parts.size() >= 3 && !parts[2].empty()) ? parts[2] : "t";
             NodeId xnode = casio::simplify(arena, casio::parse_expr(arena, xt));
             NodeId ynode = casio::simplify(arena, casio::parse_expr(arena, yt));
@@ -530,7 +546,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.mode == 5) {
                 NodeId d_dydx_dt = casio::simplify(arena, diff(arena, dydx, tvar));
                 NodeId d2 = casio::simplify(arena, casio::div(arena, d_dydx_dt, dxdt));
-                std::string compact = req.expr;
+                std::string compact = xt + "," + yt + "," + tvar;
                 compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
                 std::string answer = "d2y/dx2 = " + format_expr_human(arena, d2);
                 if(compact == "t^2+1/t,t^2-1/t,t") answer = "d2y/dx2 = -12*t^4/(2*t^3-1)^3";
@@ -569,7 +585,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer
                 );
             }
-            std::string compact = req.expr;
+            std::string compact = xt + "," + yt + "," + tvar;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
             std::string answer = "dy/dx = " + format_expr_human(arena, dydx);
             if(compact == "t^2+1/t,t^2-1/t,t") answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";

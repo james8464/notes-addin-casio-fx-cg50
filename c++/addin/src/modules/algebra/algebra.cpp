@@ -855,6 +855,61 @@ static bool is_sqrt_square(Arena &a, NodeId n)
     return x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt && is_square_power(a, x.a);
 }
 
+static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    bool saw_abs_linear = false;
+    Rational c{0, 1};
+    auto accept_abs = [&](NodeId id) -> bool {
+        Node const &an = a.get(id);
+        if(an.kind != NodeKind::Fn || an.fkind != FnKind::Abs) return false;
+        auto p = poly_of(a, an.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return false;
+        saw_abs_linear = true;
+        return true;
+    };
+    if(accept_abs(n)) return Rational{0, 1};
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    for(auto kid : x.kids) {
+        if(accept_abs(kid)) continue;
+        Node const &kn = a.get(kid);
+        if(kn.kind != NodeKind::Num) return std::nullopt;
+        c = r_add(c, kn.num);
+    }
+    if(!saw_abs_linear) return std::nullopt;
+    return c;
+}
+
+static std::string abs_linear_text(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Abs) {
+        auto p = poly_of(a, x.a, var);
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) return format_expr(a, n);
+    }
+    if(x.kind == NodeKind::Add) {
+        for(auto kid : x.kids) {
+            auto s = abs_linear_text(a, kid, var);
+            if(!s.empty()) return s;
+        }
+    }
+    return "abs(linear)";
+}
+
+static std::string sqrt_bound_text(Arena &a, Rational r)
+{
+    r.normalize();
+    std::int64_t rn = 0;
+    std::int64_t rd = 0;
+    if(r.num >= 0 && is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd != 0) {
+        Rational root{rn, rd};
+        root.normalize();
+        return format_expr(a, a.num(root));
+    }
+    NodeId bound = casio::simplify(a, casio::fn(a, "sqrt", a.num(r)));
+    return format_expr(a, bound);
+}
+
 static bool contains_fn_kind(Arena &a, NodeId n, FnKind fk)
 {
     Node const &x = a.get(n);
@@ -1302,7 +1357,27 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 Node const &rn = arena.get(n);
-                if(is_sqrt_square(arena, n)) {
+                if(auto abs_min = abs_linear_plus_const_min(arena, n, var)) {
+                    range_answer = "y >= " + format_expr(arena, arena.num(*abs_min));
+                    steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Sqrt) {
+                    if(auto inner_min = abs_linear_plus_const_min(arena, rn.a, var); inner_min && inner_min->num >= 0) {
+                        range_answer = "y >= " + sqrt_bound_text(arena, *inner_min);
+                        steps.push_back(abs_linear_text(arena, rn.a, var) + " >= 0.");
+                        steps.push_back("Range: " + range_answer + ".");
+                    }
+                    else if(is_sqrt_square(arena, n)) {
+                        range_answer = "y >= 0";
+                        steps.push_back("Range: " + range_answer + ".");
+                    }
+                    else {
+                        range_answer = !lo.empty() && !hi.empty() ? "unrestricted on interval" : "inspect graph/transform";
+                        steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+                    }
+                }
+                else if(is_sqrt_square(arena, n)) {
                     range_answer = "y >= 0";
                     steps.push_back("Range: " + range_answer + ".");
                 }

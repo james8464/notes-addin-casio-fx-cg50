@@ -4437,6 +4437,37 @@ static std::optional<NodeId> integrate_affine_trig_recip(Arena &a, NodeId expr, 
     return casio::simplify(a, scaled_by_inner(a, primitive, *k));
 }
 
+static std::optional<NodeId> integrate_affine_trig_basic(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    NodeId u = x.a;
+    auto k = linear_coeff(a, u, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+    NodeId primitive = 0;
+    if(x.fkind == FnKind::Tan) {
+        primitive = casio::neg(a, ln_abs(a, casio::fn(a, "cos", u)));
+        steps.push_back("Step 2: Use Integral(tan u)du = -ln(abs(cos u)).");
+    }
+    else if(x.fkind == FnKind::Cot) {
+        primitive = ln_abs(a, casio::fn(a, "sin", u));
+        steps.push_back("Step 2: Use Integral(cot u)du = ln(abs(sin u)).");
+    }
+    else if(x.fkind == FnKind::Sec) {
+        primitive = ln_abs(a, casio::add(a, {casio::fn(a, "sec", u), casio::fn(a, "tan", u)}));
+        steps.push_back("Step 2: Use Integral(sec u)du = ln(abs(sec u+tan u)).");
+    }
+    else if(x.fkind == FnKind::Cosec) {
+        primitive = ln_abs(a, casio::add(a, {casio::fn(a, "cosec", u), casio::neg(a, casio::fn(a, "cot", u))}));
+        steps.push_back("Step 2: Use Integral(cosec u)du = ln(abs(cosec u-cot u)).");
+    }
+    else {
+        return std::nullopt;
+    }
+    steps.push_back("Step 3: Divide by inner derivative of u.");
+    return casio::simplify(a, scaled_by_inner(a, primitive, *k));
+}
+
 static std::optional<NodeId> integrate_exp_substitution_patterns(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -5159,6 +5190,36 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
     return casio::simplify(a, mul_coeff(a, coeff, integrate_expx_trig_rec(a, power, exp_node, trig_arg, k, want_sin, var)));
 }
 
+static std::optional<NodeId> integrate_abs_linear(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    NodeId u = expr;
+    bool from_sqrt_square = false;
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Abs) {
+        u = x.a;
+    }
+    else if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &inner = a.get(x.a);
+        if(inner.kind != NodeKind::Pow) return std::nullopt;
+        Node const &e = a.get(inner.b);
+        if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1) return std::nullopt;
+        u = inner.a;
+        from_sqrt_square = true;
+    }
+    else {
+        return std::nullopt;
+    }
+    auto lc = linear_coeff(a, u, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    NodeId abs_u = casio::fn(a, "abs", u);
+    NodeId den = a.num(r_mul(Rational{2, 1}, *lc));
+    NodeId primitive = casio::simplify(a, casio::div(a, casio::mul(a, {u, abs_u}), den));
+    if(from_sqrt_square) steps.push_back("Step 2: sqrt(u^2)=abs(u), with u=" + format_expr(a, u) + ".");
+    else steps.push_back("Step 2: Let u=" + format_expr(a, u) + ", so du=" + format_expr(a, casio::num(a, lc->num, lc->den)) + " dx.");
+    steps.push_back("Step 3: Integral abs(u) dx = u*abs(u)/(2u').");
+    return primitive;
+}
+
 // Integration by table lookup (Giac-style)
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var)
 {
@@ -5182,6 +5243,17 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    // ∫ f(x)/k dx = (1/k)∫f(x)dx when k is independent of x.
+    if(x.kind == NodeKind::Div && !contains_var(a, x.b, var)) {
+        auto r = integrate_giac_style(a, x.a, var);
+        if(r.result) {
+            out.result = casio::simplify(a, casio::div(a, *r.result, x.b));
+            out.steps.push_back("Step 2: Factor out constant denominator " + format_expr(a, x.b) + ".");
+            out.steps.push_back("Step 3: Integrate numerator, then divide by the constant.");
+            return out;
+        }
+    }
+
     // ∫ sum of expressions: integrate each term.
     if(x.kind == NodeKind::Add) {
         std::vector<NodeId> parts;
@@ -5203,6 +5275,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto trig_pow = integrate_affine_trig_power(a, expr, var, out.steps)) {
         out.result = *trig_pow;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto trig_basic = integrate_affine_trig_basic(a, expr, var, out.steps)) {
+        out.result = *trig_basic;
         out.steps.push_back("Step 4: Simplify. Add constant C.");
         return out;
     }
@@ -5294,6 +5372,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto exp_trig = integrate_expx_trig_product(a, expr, var, out.steps)) {
         out.result = *exp_trig;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto abs_lin = integrate_abs_linear(a, expr, var, out.steps)) {
+        out.result = *abs_lin;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
         return out;
     }
 
@@ -5964,28 +6048,55 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
     NodeId node = casio::simplify(arena, parsed);
     Node const &node_ref = arena.get(node);
-    if(node_ref.kind == NodeKind::Fn && node_ref.fkind == FnKind::Atan) {
+    if(node_ref.kind == NodeKind::Fn &&
+       (node_ref.fkind == FnKind::Atan || node_ref.fkind == FnKind::Asin || node_ref.fkind == FnKind::Acos)) {
         auto lc = linear_coeff(arena, node_ref.a, req.var);
         if(lc && lc->num != 0) {
             NodeId arg = node_ref.a;
             NodeId lc_node = casio::num(arena, lc->num, lc->den);
-            NodeId atan_arg = casio::fn(arena, "atan", arg);
-            NodeId log_arg = casio::add(arena, {casio::num(arena, 1), casio::power(arena, arg, casio::num(arena, 2))});
-            NodeId log_part = casio::mul(arena, {casio::num(arena, 1, 2), casio::fn(arena, "log", log_arg)});
-            NodeId primitive = casio::simplify(
+            NodeId one_minus_w2 = casio::add(arena, {casio::num(arena, 1), casio::neg(arena, casio::power(arena, arg, casio::num(arena, 2)))});
+            NodeId scaled_w = casio::simplify(arena, casio::div(arena, arg, lc_node));
+            Node const &arg_node = arena.get(arg);
+            if(arg_node.kind == NodeKind::Div) {
+                auto den = as_num(arena, arg_node.b);
+                auto top_lc = linear_coeff(arena, arg_node.a, req.var);
+                if(den && top_lc && !r_zero(*top_lc) && r_eq(*lc, r_div(*top_lc, *den))) {
+                    scaled_w = casio::simplify(arena, casio::div(arena, arg_node.a, casio::num(arena, top_lc->num, top_lc->den)));
+                }
+            }
+            NodeId first_part = casio::mul(
                 arena,
-                casio::div(
-                    arena,
-                    casio::add(arena, {casio::mul(arena, {arg, atan_arg}), casio::neg(arena, log_part)}),
-                    lc_node
-                )
+                {scaled_w, casio::fn(arena, node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos"), arg)}
             );
+            NodeId second_part = casio::num(arena, 0);
+            std::string fname = node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos");
+            std::string rule;
+            if(node_ref.fkind == FnKind::Atan) {
+                NodeId log_arg = casio::add(arena, {casio::num(arena, 1), casio::power(arena, arg, casio::num(arena, 2))});
+                NodeId log_part = casio::mul(arena, {casio::num(arena, 1, 2), casio::fn(arena, "log", log_arg)});
+                second_part = casio::neg(arena, casio::div(arena, log_part, lc_node));
+                rule = "Integral atan(w) dw = w*atan(w) - 1/2*ln(1+w^2).";
+            }
+            else if(node_ref.fkind == FnKind::Asin) {
+                NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
+                second_part = casio::div(arena, sqrt_term, lc_node);
+                rule = "Integral asin(w) dw = w*asin(w) + sqrt(1-w^2).";
+            }
+            else {
+                NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
+                second_part = casio::neg(arena, casio::div(arena, sqrt_term, lc_node));
+                rule = "Integral acos(w) dw = w*acos(w) - sqrt(1-w^2).";
+            }
+            NodeId primitive = casio::simplify(arena, casio::add(arena, {first_part, second_part}));
+            Rational recip{lc->den, lc->num};
+            recip.normalize();
+            std::string scale_text = r_eq(recip, Rational{1, 1}) ? "" : format_expr(arena, arena.num(recip)) + "*";
             std::vector<std::string> steps;
             casio::append_exam_prelude_steps(steps, pre);
-            steps.push_back("Use parts with u=atan(" + format_expr(arena, arg) + "), dv=dx.");
-            steps.push_back("Then du=" + format_expr(arena, lc_node) + "/(1+(" + format_expr(arena, arg) + ")^2) dx and v=x.");
-            steps.push_back("Equivalently let w=" + format_expr(arena, arg) + ", so dx=dw/" + format_expr(arena, lc_node) + ".");
-            steps.push_back("Integral atan(w) dw = w*atan(w) - 1/2*ln(1+w^2).");
+            steps.push_back("Let w=" + format_expr(arena, arg) + ", so dw=" + format_expr(arena, lc_node) + " dx.");
+            steps.push_back("Integral becomes " + scale_text + "Integral(" + fname + "(w)) dw.");
+            steps.push_back("Use parts: U=" + fname + "(w), dV=dw.");
+            steps.push_back(rule);
             steps.push_back("Back-substitute w.");
             return casio::exam_block("integration by parts", steps, format_expr(arena, primitive) + " + C");
         }
