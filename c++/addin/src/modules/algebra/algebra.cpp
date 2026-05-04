@@ -1007,6 +1007,71 @@ static std::string sqrt_bound_text(Arena &a, Rational r)
     return format_expr(a, bound);
 }
 
+static std::optional<std::string> log_abs_linear_range(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    NodeId log_node = n;
+    std::string denom_text;
+    bool increasing = true;
+    if(x.kind == NodeKind::Div) {
+        log_node = x.a;
+        denom_text = format_expr(a, x.b);
+    }
+    Node const &ln = a.get(log_node);
+    if(ln.kind != NodeKind::Fn || ln.fkind != FnKind::Log) return std::nullopt;
+    if(!denom_text.empty()) {
+        Node const &den = a.get(x.b);
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Log) {
+            Node const &arg = a.get(den.a);
+            if(arg.kind == NodeKind::Num && arg.num.num > arg.num.den) increasing = true;
+            else if(arg.kind == NodeKind::Num && arg.num.num > 0 && arg.num.num < arg.num.den) increasing = false;
+        }
+    }
+    auto min_arg = abs_linear_plus_const_min(a, ln.a, var);
+    if(!min_arg || min_arg->num <= 0) return std::nullopt;
+    std::string bound = "log(" + format_expr(a, a.num(*min_arg)) + ")";
+    if(!denom_text.empty()) bound += "/" + denom_text;
+    return std::string("y ") + (increasing ? ">= " : "<= ") + bound;
+}
+
+static std::optional<std::vector<std::string>> solve_trig_factor_substitution(std::string const &equation_text)
+{
+    std::string s;
+    s.reserve(equation_text.size());
+    for(char c : equation_text)
+        if(!std::isspace((unsigned char)c) && c != '*') s.push_back(c);
+    for(char const *fn : {"sin", "cos", "tan"}) {
+        std::string prefix = std::string(fn) + "(";
+        if(s.rfind(prefix, 0) != 0) continue;
+        int depth = 0;
+        std::size_t close = std::string::npos;
+        for(std::size_t i = fn[0] ? std::char_traits<char>::length(fn) : 0; i < s.size(); ++i) {
+            if(s[i] == '(') depth++;
+            else if(s[i] == ')') {
+                depth--;
+                if(depth == 0) {
+                    close = i;
+                    break;
+                }
+            }
+        }
+        if(close == std::string::npos) continue;
+        std::string f = s.substr(0, close + 1);
+        if(s != f + "^2-" + f + "=0") continue;
+        std::string arg = s.substr(prefix.size(), close - prefix.size());
+        std::vector<std::string> out;
+        out.push_back("1. Use factor method.");
+        out.push_back("2. Let u = " + std::string(fn) + "(" + arg + ").");
+        out.push_back("3. Then u^2 - u = 0.");
+        out.push_back("4. Factor: u*(u - 1) = 0.");
+        out.push_back("5. So u = 0 or u = 1.");
+        out.push_back("6. Hence " + std::string(fn) + "(" + arg + ") = 0 or " + std::string(fn) + "(" + arg + ") = 1.");
+        out.push_back("Answer: " + std::string(fn) + "(" + arg + ") = 0 or " + std::string(fn) + "(" + arg + ") = 1");
+        return out;
+    }
+    return std::nullopt;
+}
+
 static bool contains_fn_kind(Arena &a, NodeId n, FnKind fk)
 {
     Node const &x = a.get(n);
@@ -1485,6 +1550,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("Squared tan/cot/sec/cosec term gives a lower bound.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto log_range = log_abs_linear_range(arena, n, var)) {
+                    range_answer = *log_range;
+                    steps.push_back("Use abs(linear) >= 0, then apply log monotonicity.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(rn.kind == NodeKind::Div) {
                     Node const &top = arena.get(rn.a);
                     Node const &bot = arena.get(rn.b);
@@ -1591,7 +1661,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
 
-        if(req.method == "factor" && req.mode != 13) {
+        if(req.method == "factor" && req.mode != 13 && req.expr.find('=') == std::string::npos) {
             algebra::Request next = req;
             next.mode = 13;
             auto parts = split_csv(req.expr);
@@ -1603,7 +1673,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             auto p = poly_of(arena, n, "x");
-            if(!p || !p->ok) return {"Err: invalid polynomial."};
+            if(!p || !p->ok) {
+                return {
+                    "1. Start with " + format_expr(arena, n) + ".",
+                    "2. This lightweight factor route needs numeric polynomial coefficients.",
+                    "3. Use solve/expand/collect first if symbolic parameters remain.",
+                    "Answer: not factorable with numeric roots in this lightweight route.",
+                };
+            }
             
             // If not quadratic (no x^2 term), check if already factored form
             if(is_zero(p->a2)) {
@@ -1688,6 +1765,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 6 && equation_text.find('=') == std::string::npos) {
             equation_text += "=0";
+        }
+        if(req.method == "factor") {
+            if(auto trig_factored = solve_trig_factor_substitution(equation_text)) return *trig_factored;
         }
         auto eq = casio::parse_equation(arena, equation_text);
         if(!eq) {

@@ -76,6 +76,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Use Integral(tan u)", "Answer: -log(abs(cos(3*x)))/3 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],
     ),
+    (
+        "alg",
+        "range(log(10,abs(3*x+1)+3))",
+        ["Answer: y >= log(3)/log(10)"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "sin(x)^2-sin(x)=0,method=factor",
+        ["Let u = sin(x)", "u*(u - 1) = 0", "sin(x) = 0 or sin(x) = 1"],
+        ["Unexpected token", "Answer: solve(", "ERR:"],
+    ),
+    (
+        "alg",
+        "x^2+a*x+b,method=factor",
+        ["not factorable with numeric roots in this lightweight route", "Answer:"],
+        ["Err:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "cot(x^2-pi/4),method=auto",
+        ["Domain: sin(x^2 - pi/4) != 0", "Answer: cot(x^2 - pi/4)"],
+        ["Err:", "Unexpected token"],
+    ),
 ]
 
 
