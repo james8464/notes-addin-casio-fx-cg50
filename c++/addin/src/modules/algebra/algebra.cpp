@@ -554,7 +554,6 @@ static std::string solution_list_line(std::string const &var, std::vector<std::s
 
 static void append_answer(std::vector<std::string> &out, std::string const &var, std::vector<std::string> const &sols)
 {
-    out.push_back("Answer:");
     for(auto const &s : sols) out.push_back(s);
     out.push_back("Answer: " + solution_list_line(var, sols));
 }
@@ -1104,7 +1103,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
             std::string ans = format_expr(arena, comp);
             return {
-                "Method: composite function",
                 "1. Start with f(x) = " + format_expr(arena, fn),
                 "2. g(x) = " + format_expr(arena, gn),
                 "3. Substitute g(x) for x.",
@@ -1125,23 +1123,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto inv = inverse_simple_function(arena, n);
             if(!inv) {
                 return {
-                    "Method: inverse function",
-                    "1. Let y = f(x).",
-                    "2. Rearrangement did not isolate x in supported real family.",
-                    "3. Constant/non-monotone form is not invertible on all real x.",
-                    "4. Answer: no inverse on all real x.",
+                    "1. Use inverse function.",
+                    "2. Let y = f(x).",
+                    "3. Rearrangement did not isolate x in supported real family.",
+                    "4. Constant/non-monotone form is not invertible on all real x.",
+                    "5. Answer: no inverse on all real x.",
                 };
             }
             std::string ans = format_expr(arena, *inv);
             if(ans == "(e^(x) - 4)/-2") ans = "(4 - e^x)/2";
             std::vector<std::string> out = {
-                "Method: inverse function",
-                "1. Let y = f(x) = " + format_expr(arena, n) + ".",
-                "2. Swap x and y.",
-                "3. Rearrange to make y the subject.",
-                "4. Answer: f^-1(x) = " + ans,
+                "1. Use inverse function.",
+                "2. Let y = f(x) = " + format_expr(arena, n) + ".",
+                "3. Swap x and y.",
+                "4. Rearrange to make y the subject.",
+                "5. Answer: f^-1(x) = " + ans,
             };
-            if(!domain_text.empty()) out.push_back("5. Given domain: " + domain_text + ".");
+            if(!domain_text.empty()) out.push_back("6. Given domain: " + domain_text + ".");
             return out;
         }
         if(req.mode == 9) {
@@ -1150,10 +1148,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string targets = trim_text(nl == std::string::npos ? "" : req.expr.substr(nl + 1));
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
             std::vector<std::string> out;
-            out.push_back("Method: rewrite");
-            out.push_back("1. Start: " + format_expr(arena, n));
+            out.push_back("1. Start with " + format_expr(arena, n) + ".");
             if(!targets.empty()) out.push_back("2. Target terms: " + targets);
-            out.push_back("3. Use algebraic identities/substitution where possible.");
+            out.push_back("3. Rearrange using identities/substitution where possible.");
             out.push_back("Answer: " + format_expr(arena, n));
             return out;
         }
@@ -1168,9 +1165,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
             std::vector<std::string> steps;
-            steps.push_back("Normalize: " + pre.norm);
-            steps.push_back("Parse: " + pre.parsed);
-            steps.push_back("Simplify: " + pre.simplified);
+            casio::append_exam_prelude_steps(steps, pre);
             steps.push_back("Variable = " + var);
             if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
             std::vector<std::string> dom;
@@ -1237,7 +1232,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
             return {
-                "Method: parametric to cartesian",
                 "1. Solve x(t) for " + param + ".",
                 "2. Substitute into y(t).",
                 "Answer: y = " + format_expr(arena, *y_cart),
@@ -1271,9 +1265,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(steps_count < 1 || steps_count > 20) return {"Err: n must be 1..20."};
 
             std::vector<std::string> out;
-            out.push_back("Method: Newton-Raphson");
-            out.push_back("1. f(" + var + ") = " + format_expr(arena, residual));
-            out.push_back("2. Use x_(n+1) = x_n - f(x_n)/f'(x_n).");
+            out.push_back("1. Use Newton-Raphson.");
+            out.push_back("2. f(" + var + ") = " + format_expr(arena, residual));
+            out.push_back("3. Use x_(n+1) = x_n - f(x_n)/f'(x_n).");
             double x = *x0;
             for(int i = 0; i < steps_count; i++) {
                 double h = std::max(1e-6, std::fabs(x) * 1e-6);
@@ -1284,7 +1278,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 double dfx = (*fp1 - *fm1) / (2.0 * h);
                 if(!std::isfinite(dfx) || std::fabs(dfx) < 1e-14) return {"Err: derivative too small."};
                 double next = x - *fx / dfx;
-                out.push_back(std::to_string(3 + i) + ". x_" + std::to_string(i + 1) + " = " + format_double_compact(next));
+                out.push_back(std::to_string(4 + i) + ". x_" + std::to_string(i + 1) + " = " + format_double_compact(next));
                 x = next;
             }
             std::ostringstream ans3;
@@ -1302,7 +1296,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             // If not quadratic (no x^2 term), check if already factored form
             if(is_zero(p->a2)) {
                 std::vector<std::string> out;
-                out.push_back("Method: Factor quadratic");
                 // Could be (ax+b)^2 or similar - just return as is
                 std::string ans = format_expr(arena, n);
                 out.push_back("Factored form: " + ans);
@@ -1335,7 +1328,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             bool r2_int = (r2.den == 1);
 
             std::vector<std::string> out;
-            out.push_back("Method: Factor quadratic");
+            out.push_back("Find the roots, then write the factor form.");
 
             if(r1_int && r2_int && r1.num != r2.num) {
                 NodeId x = casio::sym(arena, "x");
@@ -1391,9 +1384,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
-            steps.push_back("Normalize: " + pre.norm);
-            steps.push_back("Parse: " + pre.parsed);
-            steps.push_back("Simplify: " + pre.simplified);
+            casio::append_exam_prelude_steps(steps, pre);
 
             // Domain hints (best-effort).
             std::vector<std::string> dom;
@@ -1426,7 +1417,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         // Exam-style numbered working.
         std::vector<std::string> out;
-        out.push_back("1. Method: Solve equation");
+        out.push_back("1. Start with " + equation_text + ".");
         if(interval_lo && interval_hi) {
             out.push_back(
                 "2. Interval: " + solve_var + " in [" + format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) + "]"
@@ -1445,9 +1436,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
-            out.push_back("2. Rearr: lhs-rhs=0.");
+            out.push_back("2. Rearrange to lhs-rhs=0.");
             out.push_back("3. Use log/exp laws or substitution; verify roots.");
-            out.push_back("4. Numeric exact-form fallback after rearrangement.");
+            out.push_back("4. Solve the reduced equation.");
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution (unsupported form).");

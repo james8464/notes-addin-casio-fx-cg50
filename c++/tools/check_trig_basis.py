@@ -32,10 +32,10 @@ def main() -> int:
         "cascas_rewrite_trig_basis_call(input,\"trigcos(\"",
         "cascas_rewrite_trig_basis_call(input,\"trigsin(\"",
         "cascas_rewrite_trig_basis_call(input,\"trigtan(\"",
-        "sin^2=1-cos^2; tan^2=1/cos^2-1.",
-        "cos^2=1-sin^2; tan^2=sin^2/(1-sin^2).",
-        "sin^2=tan^2/(1+tan^2); cos^2=1/(1+tan^2).",
-        "5. sin/cos; expd; coll; fact.",
+        "s^2=1-c^2; t^2=1/c^2-1.",
+        "c^2=1-s^2; t^2=s^2/(1-s^2).",
+        "s^2=t^2/(1+t^2); c^2=1/(1+t^2).",
+        "5. Expand; collect; factor.",
     ]
     missing = [x for x in required_main if x not in main]
     if missing:

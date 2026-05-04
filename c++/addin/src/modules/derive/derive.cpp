@@ -320,12 +320,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(exam_guard_too_complex(arena, n, var)) {
                 return casio::exam_block(
                     "differentiate (guard)",
-                    {
-                        "Normalize: " + pre.norm,
-                        "Parse: " + pre.parsed,
-                        "Simplify: " + pre.simplified,
-                        "Too complex for exam-style working.",
-                    },
+                    [&]() {
+                        std::vector<std::string> steps;
+                        casio::append_exam_prelude_steps(steps, pre);
+                        steps.push_back("No compact A-level derivative route recognised.");
+                        return steps;
+                    }(),
                     "simplify(" + pre.simplified + ")"
                 );
             }
@@ -348,22 +348,51 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out = d2;
                 label = "d2y/d" + var + "2";
             }
-            std::vector<std::string> steps = {
-                "Normalize: " + pre.norm,
-                "Parse: " + pre.parsed,
-                "Simplify: " + pre.simplified,
-            };
+            std::vector<std::string> steps;
+            casio::append_exam_prelude_steps(steps, pre);
             if(req.mode == 4) {
                 steps.push_back("Differentiate once, then differentiate dy/dx again.");
             }
             else {
-                if(arena.get(n).kind == NodeKind::Add) steps.push_back("Differentiate term-by-term.");
-                if(has_variable_power(arena, n, var)) steps.push_back("Var power: use logdiff d(u^v)=u^v*(v'*log(u)+v*u'/u).");
-                if(has_node_kind(arena, n, NodeKind::Div)) steps.push_back("Quotient: (u'v-uv')/v^2.");
-                if(has_node_kind(arena, n, NodeKind::Mul)) steps.push_back("Product: sum of one differentiated factor each time.");
-                if(has_function_call(arena, n)) steps.push_back("Chain rule on nested functions.");
-                if(steps.size() == 3) steps.push_back("Apply direct derivative rules.");
-                steps.push_back("Simplify/factor result.");
+                bool used_rule = false;
+                bool has_final_simplify = false;
+                Node const &dn = arena.get(n);
+                if(dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) && !is_atomic(arena, dn.a)) {
+                    if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
+                        NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
+                        steps.push_back("Let u = " + format_expr_human(arena, dn.a) + ".");
+                        steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
+                        steps.push_back(
+                            "dy/d" + var + " = " + std::to_string(exp->num) + "*u^" + std::to_string(exp->num - 1) +
+                            "*du/d" + var + "."
+                        );
+                        steps.push_back("Substitute back and simplify/factor.");
+                        used_rule = true;
+                        has_final_simplify = true;
+                    }
+                }
+                if(!used_rule && arena.get(n).kind == NodeKind::Add) {
+                    steps.push_back("Differentiate term-by-term.");
+                    used_rule = true;
+                }
+                if(!used_rule && has_variable_power(arena, n, var)) {
+                    steps.push_back("Use logdiff: d(u^v)=u^v*(v'*log(u)+v*u'/u).");
+                    used_rule = true;
+                }
+                if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
+                    steps.push_back("Use quotient rule: (u'v-uv')/v^2.");
+                    used_rule = true;
+                }
+                if(!used_rule && has_node_kind(arena, n, NodeKind::Mul)) {
+                    steps.push_back("Use product rule: differentiate one factor at a time.");
+                    used_rule = true;
+                }
+                if(!used_rule && has_function_call(arena, n)) {
+                    steps.push_back("Use chain rule on nested functions.");
+                    used_rule = true;
+                }
+                if(!used_rule) steps.push_back("Apply direct derivative rules.");
+                if(!has_final_simplify) steps.push_back("Simplify/factor result.");
             }
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
@@ -413,9 +442,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "implicit differentiation (limited)",
                 {
                     "Domain: log args >0; denoms !=0 where used.",
-                    "Normalize: " + pre.norm,
-                    "Parse: " + pre.parsed,
-                    "Simplify: " + pre.simplified,
+                    "Start with " + pre.norm + ".",
+                    "Rewrite as " + pre.simplified + ".",
+                    "Use implicit differentiation.",
                     "Differentiate both sides wrt x; y=y(x).",
                     "Use product/chain rules, then collect dy/dx.",
                     "Factor dy/dx and divide.",

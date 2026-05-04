@@ -27,6 +27,19 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     return x.num;
 }
 
+static std::string trig_name(FnKind fk)
+{
+    switch(fk) {
+    case FnKind::Sin: return "sin";
+    case FnKind::Cos: return "cos";
+    case FnKind::Tan: return "tan";
+    case FnKind::Sec: return "sec";
+    case FnKind::Cosec: return "cosec";
+    case FnKind::Cot: return "cot";
+    default: return "trig";
+    }
+}
+
 static std::optional<double> numeric_eval(Arena &a, NodeId n, double xval)
 {
     Node const &x = a.get(n);
@@ -767,34 +780,36 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
     // Also allow k*fn(...) = const (k numeric).
     auto isolate = [&](NodeId left, NodeId right) -> std::optional<std::pair<NodeId, NodeId>> {
+        auto isolate_scaled_trig = [&](NodeId term, NodeId target) -> std::optional<std::pair<NodeId, NodeId>> {
+            Node const &T = a.get(term);
+            if(T.kind == NodeKind::Fn) return std::make_pair(term, target);
+            if(T.kind == NodeKind::Mul && T.kids.size() == 2) {
+                auto k0 = as_num(a, T.kids[0]);
+                auto k1 = as_num(a, T.kids[1]);
+                Node const &n0 = a.get(T.kids[0]);
+                Node const &n1 = a.get(T.kids[1]);
+                if(k0 && n1.kind == NodeKind::Fn) {
+                    NodeId new_rhs = casio::simplify(a, casio::div(a, target, T.kids[0]));
+                    return std::make_pair(T.kids[1], new_rhs);
+                }
+                if(k1 && n0.kind == NodeKind::Fn) {
+                    NodeId new_rhs = casio::simplify(a, casio::div(a, target, T.kids[1]));
+                    return std::make_pair(T.kids[0], new_rhs);
+                }
+            }
+            return std::nullopt;
+        };
         Node const &L = a.get(left);
-        if(L.kind == NodeKind::Fn) return std::make_pair(left, right);
-        if(L.kind == NodeKind::Mul && L.kids.size() == 2) {
-            // k*fn(u) = c -> fn(u) = c/k
-            auto k0 = as_num(a, L.kids[0]);
-            auto k1 = as_num(a, L.kids[1]);
-            Node const &n0 = a.get(L.kids[0]);
-            Node const &n1 = a.get(L.kids[1]);
-            if(k0 && n1.kind == NodeKind::Fn) {
-                NodeId new_rhs = casio::simplify(a, casio::div(a, right, L.kids[0]));
-                return std::make_pair(L.kids[1], new_rhs);
-            }
-            if(k1 && n0.kind == NodeKind::Fn) {
-                NodeId new_rhs = casio::simplify(a, casio::div(a, right, L.kids[1]));
-                return std::make_pair(L.kids[0], new_rhs);
-            }
-        }
+        if(auto direct = isolate_scaled_trig(left, right)) return direct;
         if(L.kind == NodeKind::Add && L.kids.size() == 2) {
             NodeId t0 = L.kids[0], t1 = L.kids[1];
-            Node const &n0 = a.get(t0);
-            Node const &n1 = a.get(t1);
-            if(n0.kind == NodeKind::Fn && is_const(a, t1)) {
+            if(is_const(a, t1)) {
                 NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t1)}));
-                return std::make_pair(t0, new_rhs);
+                if(auto out = isolate_scaled_trig(t0, new_rhs)) return out;
             }
-            if(n1.kind == NodeKind::Fn && is_const(a, t0)) {
+            if(is_const(a, t0)) {
                 NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t0)}));
-                return std::make_pair(t1, new_rhs);
+                if(auto out = isolate_scaled_trig(t1, new_rhs)) return out;
             }
         }
         return std::nullopt;
@@ -929,13 +944,15 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         }
     }
     oss << "]";
+    std::string fname = trig_name(fk);
     return casio::exam_block(
         "trig solve (table)",
         {
-            "Solve trig eq (limited port).",
-            "Use exact-value table and interval filter.",
-            "Linear angle: a*x+b with a=" + format_double_compact(angle_coeff) + ", b=" + format_double_compact(shift_deg),
-            "Simplify and list solutions.",
+            "Start with " + eq_text + ".",
+            "Rearrange to " + fname + "(A) = " + target + ".",
+            "Let A = " + format_expr(a, arg) + ".",
+            "Solve trig equation using exact angles for " + fname + "(A) = " + target + ".",
+            "Convert A values back to " + var + " and keep the interval.",
         },
         oss.str()
     );

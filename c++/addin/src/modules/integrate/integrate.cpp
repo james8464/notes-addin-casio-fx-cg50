@@ -289,8 +289,8 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
     }
 
     return {
-        "1. Method: separable differential equation",
-        "2. Try to write dy/dx = y*f(x), then integrate (1/y)dy = f(x)dx.",
+        "1. Try to write dy/dx = y*f(x).",
+        "2. Then integrate (1/y)dy = f(x)dx.",
         "3. This DE form is not recognised yet.",
         "Answer: differential equation not solved.",
     };
@@ -302,6 +302,40 @@ struct TextIntegral
     std::vector<std::string> steps;
     std::string answer;
 };
+
+static bool starts_with_text(std::string const &s, std::string const &prefix)
+{
+    return s.rfind(prefix, 0) == 0;
+}
+
+static std::string strip_step_label(std::string s)
+{
+    if(starts_with_text(s, "Step ")) {
+        auto colon = s.find(':');
+        if(colon != std::string::npos) {
+            s = s.substr(colon + 1);
+            while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+        }
+    }
+    return s;
+}
+
+static std::string clean_integral_step(std::string s, std::string const &expr, std::string const &var)
+{
+    s = strip_step_label(std::move(s));
+    if(s.find("Set up the integral") != std::string::npos) return "I = Integral(" + expr + ") d" + var + ".";
+    if(s.find("Simplify. Add constant C") != std::string::npos) return "";
+    if(s.find("Repeated integration by parts for x^n*exp") != std::string::npos)
+        return "Use DI/table integration by parts for x^n*e^(a*x+b).";
+    if(s.find("Repeated integration by parts for x^n trig") != std::string::npos)
+        return "Use DI/table integration by parts for x^n times trig.";
+    if(s.find("Integration by parts for x*exp") != std::string::npos) return "Use parts: u=x, dv=e^(a*x) dx.";
+    if(s.find("Integration by parts for x*sin") != std::string::npos) return "Use parts: u=x, dv=sin(a*x+b) dx.";
+    if(s.find("Integration by parts for x*cos") != std::string::npos) return "Use parts: u=x, dv=cos(a*x+b) dx.";
+    std::string result_prefix = "Simplify. Result = ";
+    if(starts_with_text(s, result_prefix)) return "Simplify to " + s.substr(result_prefix.size()) + ".";
+    return s;
+}
 
 static std::string loose_key(std::string text)
 {
@@ -322,6 +356,46 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     auto out = [](std::string method, std::vector<std::string> steps, std::string answer) {
         return TextIntegral{std::move(method), std::move(steps), std::move(answer)};
     };
+
+    if(c == "xexp(x)" || c == "xe^x") {
+        return out(
+            "integration by parts",
+            {
+                "Let u=x and dv=e^x dx.",
+                "Then du=dx and v=e^x.",
+                "I = x*e^x - Integral(e^x) dx.",
+                "So I = x*e^x - e^x + C.",
+                "Factorise.",
+            },
+            "e^x*(x - 1) + C"
+        );
+    }
+
+    if(c == "xcos(x)") {
+        return out(
+            "integration by parts",
+            {
+                "Let u=x and dv=cos(x) dx.",
+                "Then du=dx and v=sin(x).",
+                "I = x*sin(x) - Integral(sin(x)) dx.",
+                "Since Integral(sin(x)) dx = -cos(x), simplify.",
+            },
+            "x*sin(x) + cos(x) + C"
+        );
+    }
+
+    if(c == "xsin(x)") {
+        return out(
+            "integration by parts",
+            {
+                "Let u=x and dv=sin(x) dx.",
+                "Then du=dx and v=-cos(x).",
+                "I = -x*cos(x) + Integral(cos(x)) dx.",
+                "Since Integral(cos(x)) dx = sin(x), simplify.",
+            },
+            "sin(x) - x*cos(x) + C"
+        );
+    }
 
     // Compact Centurion: short inputs whose working needs a named trick.
     if(c == "sqrt(x/(1+x))" || c == "sqrt(x/(x+1))") {
@@ -1340,7 +1414,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "DI table integration by parts",
             {
-                "Use DI/table because x^n*e^x repeats parts.",
+                "Use DI table integration by parts because x^n*e^x repeats parts.",
                 "D column: x^2, 2x, 2, 0.",
                 "I column: e^x, e^x, e^x.",
                 "Alternate signs: +, -, +.",
@@ -2981,7 +3055,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Let u = 1/x, so du/dx = -1/x^2.",
                 "Rewrite integrand as (1/x^2)(1 + 1/x)e^(1/x).",
                 "Integral = -∫(1+u)e^u du.",
-                "Final = -e^(1/x)/x + C",
+                "Substitute back to get -e^(1/x)/x + C.",
             },
             "-e^(1/x)/x + C"
         );
@@ -2997,7 +3071,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integrate by parts: ∫x*v' dx = x*v - ∫v dx.",
                 "Use sec(x)-tan(x)=cos(x)/(1+sin(x)).",
                 "Equivalent compact log term: log(abs(sin(x) + 1)).",
-                "Final = x*(sec(x) - tan(x)) + x^2/2 - log(abs(sin(x) + 1)) + C",
+                "Substitute and simplify.",
             },
             "x*(sec(x) - tan(x)) + x^2/2 - log(abs(sin(x) + 1)) + C"
         );
@@ -3009,7 +3083,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Divide the numerator by x^4+1.",
                 "(x^6+2*x^4+6)/(x^4+1) = x^2 + 2 + (4 - x^2)/(x^4+1).",
-                "Final = x^3/3 + 2*x + Int[(4 - x^2)/(x^4+1)] dx + C",
+                "Integrate the polynomial part.",
             },
             "x^3/3 + 2*x + Int[(4 - x^2)/(x^4+1)] dx + C"
         );
@@ -3021,7 +3095,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Divide the numerator by x^5+1.",
                 "(x^7+3*x^5+3)/(x^5+1) = x^2 + 3 - x^2/(x^5+1).",
-                "Final = x^3/3 + 3*x - Int[x^2/(x^5+1)] dx + C",
+                "Integrate the polynomial part.",
             },
             "x^3/3 + 3*x - Int[x^2/(x^5+1)] dx + C"
         );
@@ -3033,7 +3107,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Use sec(x)/(tan(x)+sec(x)) = 1 - sin(x).",
                 "Integrate x(1 - sin(x)) term-by-term.",
-                "Final = x^2/2 + x*cos(x) - sin(x) + C",
+                "Use parts on Integral x*sin(x) dx.",
             },
             "x^2/2 + x*cos(x) - sin(x) + C"
         );
@@ -3045,7 +3119,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Let u = x^3 + x + 7.",
                 "Then du = (3*x^2 + 1) dx.",
-                "Final = log(abs(x^3 + x + 7)) + C",
+                "Use Integral du/u = log(abs(u)) + C.",
             },
             "log(abs(x^3 + x + 7)) + C"
         );
@@ -3076,7 +3150,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                     "Rewrite as constant times a polynomial part plus a reciprocal-linear part.",
                     "Integrate term-by-term.",
                     "Use log(abs(...)) for the reciprocal-linear term.",
-                    "Final = " + answer,
+                    "Substitute the split terms back.",
                 },
                 answer
             );
@@ -3089,7 +3163,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Use sin^2(x)=(1-cos(2x))/2 and cos^2(x)=(1+cos(2x))/2.",
                 "sin^4(x)cos^2(x)=1/16 - cos(2x)/32 - cos(4x)/16 + cos(6x)/32.",
-                "Final = x/16 - sin(2*x)/64 - sin(4*x)/64 + sin(6*x)/192 + C",
+                "Integrate each cosine term.",
             },
             "x/16 - sin(2*x)/64 - sin(4*x)/64 + sin(6*x)/192 + C"
         );
@@ -3101,7 +3175,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Divide first: numerator/denominator = 1 + remainder/denominator.",
                 "Decompose remainder = 5/(3*(x-1)) + 1/(x-1)^2 + 1/(3*(x+2)).",
-                "Final = x + 5/3*log(abs(x-1)) - 1/(x-1) + 1/3*log(abs(x+2)) + C",
+                "Integrate each partial fraction term.",
             },
             "x + 5/3*log(abs(x-1)) - 1/(x-1) + 1/3*log(abs(x+2)) + C"
         );
@@ -3113,7 +3187,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Use A/(x+1)+(Bx+C)/(x^2+7x+11).",
                 "A=1, B=-1, C=-4.",
-                "Final = log(abs(x+1)) - 1/2*log(abs(x^2+7*x+11)) - log(abs((2*x+7-sqrt(5))/(2*x+7+sqrt(5))))/(2*sqrt(5)) + C",
+                "Complete the square for the quadratic part, then integrate.",
             },
             "log(abs(x+1)) - 1/2*log(abs(x^2+7*x+11)) - log(abs((2*x+7-sqrt(5))/(2*x+7+sqrt(5))))/(2*sqrt(5)) + C"
         );
@@ -3154,8 +3228,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                                 {
                                     "Let u = exp(kx)+1.",
                                     "Then du = k*exp(kx) dx.",
-                                    "Final = u^(n+1)/(k*(n+1)) + C",
-                                    "Final = " + answer,
+                                    "Use Integral u^n du = u^(n+1)/(n+1) + C.",
+                                    "Substitute back.",
                                 },
                                 answer
                             );
@@ -3173,7 +3247,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "No elementary antiderivative.",
                 "Use standard special function erfi.",
-                "Final = sqrt(pi)/2*erfi(x) + C",
+                "Primitive is sqrt(pi)/2*erfi(x) + C.",
             },
             "sqrt(pi)/2*erfi(x) + C (non-elementary)"
         );
@@ -3184,7 +3258,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "No elementary antiderivative.",
                 "Use sine-integral series definition.",
-                "Final = Si(x) + C",
+                "Primitive is Si(x) + C.",
             },
             "Si(x) + C"
         );
@@ -3195,7 +3269,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "No elementary antiderivative.",
                 "Use logarithmic integral li(x).",
-                "Final = li(x) + C",
+                "Primitive is li(x) + C.",
             },
             "li(x) + C"
         );
@@ -3206,7 +3280,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "No elementary antiderivative.",
                 "Use Fresnel integral / series form.",
-                "Final = FresnelS(sqrt(2/pi)*x)*sqrt(pi/2)/2 + C",
+                "Primitive is FresnelS(sqrt(2/pi)*x)*sqrt(pi/2)/2 + C.",
             },
             "FresnelS(sqrt(2/pi)*x)*sqrt(pi/2)/2 + C"
         );
@@ -3217,7 +3291,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "No elementary antiderivative.",
                 "Use elliptic integral form; series works near x=0.",
-                "Final = ellipticF(asin(x), -1) + C",
+                "Primitive is ellipticF(asin(x), -1) + C.",
             },
             "ellipticF(asin(x), -1) + C"
         );
@@ -5582,7 +5656,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
         if(auto special = special_integral_answer(req.expr)) {
             std::vector<std::string> steps;
-            steps.push_back("Input: " + req.expr);
+            steps.push_back("Start with " + req.expr + ".");
             for(auto const &s : special->steps) steps.push_back(s);
             return casio::exam_block(special->method, steps, special->answer);
         }
@@ -5597,9 +5671,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     for(auto const &candidate : match_candidates) {
         if(auto special = special_integral_answer(candidate)) {
             std::vector<std::string> steps;
-            steps.push_back("Normalize: " + pre.norm);
-            steps.push_back("Parse: " + pre.parsed);
-            steps.push_back("Simplify: " + pre.simplified);
+            casio::append_exam_prelude_steps(steps, pre);
             for(auto const &s : special->steps) steps.push_back(s);
             return casio::exam_block(special->method, steps, special->answer);
         }
@@ -5608,11 +5680,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     for(auto const &candidate : match_candidates) {
         if(auto table = table_integral_answer(candidate)) {
             std::vector<std::string> steps;
-            steps.push_back("Normalize: " + pre.norm);
-            steps.push_back("Parse: " + pre.parsed);
-            steps.push_back("Simplify: " + pre.simplified);
-            steps.push_back("Apply integration table / reverse chain rule.");
-            steps.push_back("Final = " + *table);
+            casio::append_exam_prelude_steps(steps, pre);
+            steps.push_back("Use a standard integral or reverse chain rule.");
+            steps.push_back("Integrate and simplify.");
             return casio::exam_block("integration table", steps, *table);
         }
     }
@@ -5633,17 +5703,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     
     // Add the detailed steps
     std::vector<std::string> all_steps;
-    all_steps.push_back("Normalize: " + pre.norm);
-    all_steps.push_back("Parse: " + pre.parsed);
-    all_steps.push_back("Simplify: " + pre.simplified);
-    all_steps.push_back("");
+    casio::append_exam_prelude_steps(all_steps, pre);
     
     for(auto const &s : result.steps) {
-        all_steps.push_back(s);
+        std::string cleaned = clean_integral_step(s, pre.norm, req.var);
+        if(!cleaned.empty()) all_steps.push_back(cleaned);
     }
     
-    all_steps.push_back("");
-    all_steps.push_back("Final = " + ans + " + C");
+    all_steps.push_back("Add +C.");
     
     return casio::exam_block(
         "Giac-style integration with steps",

@@ -12,14 +12,14 @@ CATALOG = REPO / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cp
 
 
 CASES = [
-    ("int", "x*exp(x),method=parts", ["Method: forced parts", "Route: parts", "Answer:"]),
-    ("int", "x*cos(x^2),method=sub,u=x^2", ["Method: forced sub, u=x^2", "Route: sub", "Answer:"]),
+    ("int", "x*exp(x),method=parts", ["Let u=x", "Answer:"]),
+    ("int", "x*cos(x^2),method=sub,u=x^2", ["Let u = x^2", "Answer:"]),
     ("int", "x^2,method=badmethod", ["Invalid method", "Auto result:", "Answer:"]),
-    ("derive", "x^4,method=second", ["Method: forced second", "d2y/dx2"]),
-    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["Method: forced bounded", "Answer:"]),
-    ("alg", "x^2-5*x+6=0,method=factor", ["Method: forced factor", "Answer:"]),
-    ("stats", "1,2,3,4,method=summary", ["Method: forced summary", "Answer:"]),
-    ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["Method: forced suvat", "s = 25"]),
+    ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
+    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["Rearrange to", "Answer:"]),
+    ("alg", "x^2-5*x+6=0,method=factor", ["Start with x^2", "Answer:"]),
+    ("stats", "1,2,3,4,method=summary", ["Sort data", "Answer:"]),
+    ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["s = 25"]),
 ]
 
 

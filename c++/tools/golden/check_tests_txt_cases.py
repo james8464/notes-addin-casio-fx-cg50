@@ -18,7 +18,7 @@ NEEDLES: dict[str, list[str]] = {
     "9": ["Separate variables", "y = (x + 1)^2*e^(-x)"],
     "H7a": ["implicit differentiation", "dy/dx = (2 - 2*x*y)/(x^2 - 2*y)"],
     "M13": ["Clearing denominators", "1.475", "3.525"],
-    "U3": ["trig solve", "x = [pi, 5*pi/3]"],
+    "U3": ["Solve trig equation", "x = [pi, 5*pi/3]"],
 }
 
 

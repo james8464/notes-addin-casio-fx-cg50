@@ -16,8 +16,11 @@ struct ExamPrelude
     std::string simplified;
 };
 
-// Build common prelude lines: normalize/parse/simplify.
+// Build common prelude data for exam-style lines.
 ExamPrelude build_exam_prelude(Arena &arena, std::string const &raw, NodeId parsed_node);
+
+// Append student-facing prelude lines, never parser/debug diagnostics.
+void append_exam_prelude_steps(std::vector<std::string> &steps, ExamPrelude const &prelude);
 
 // Produce a consistent working block with an Answer line at end.
 std::vector<std::string> exam_block(
@@ -35,4 +38,3 @@ std::vector<std::string> exam_fallback(
 );
 
 } // namespace casio
-

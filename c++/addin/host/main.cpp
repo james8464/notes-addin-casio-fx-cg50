@@ -128,14 +128,11 @@ static void print_method_header(std::string const &feature, std::string const &m
 {
     if(method.empty() || method == "auto") return;
     char const *valid = valid_methods(feature);
-    std::cout << "Method: forced " << method;
-    if(!u.empty()) std::cout << ", u=" << u;
-    std::cout << "\n";
     if(!method_allowed(valid, method)) {
         std::cout << "Invalid method. Valid: " << valid << "\n";
         std::cout << "Auto result:\n";
     }
-    else std::cout << "Route: " << method << "\n";
+    (void)u;
 }
 
 static int run_stdin_program(casio::Arena &arena, std::string const &program, std::string const &stdin_text)
