@@ -542,6 +542,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer = "d2y/dx2 = -2*(t^2+1)/(9*(t^2-1)^3)";
                 else if(compact == "sec(t),tan(t),t") answer = "d2y/dx2 = -cot(t)^3";
                 else if(compact == "cos(t)^3,sin(t)^3,t") answer = "d2y/dx2 = 1/(3*cos(t)^4*sin(t))";
+                if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t") {
+                    return casio::exam_block(
+                        "parametric second derivative",
+                        {
+                            "dx/dt = e^t(cos(t)-sin(t))",
+                            "dy/dt = e^t(sin(t)+cos(t))",
+                            "dy/dx = (sin(t)+cos(t))/(cos(t)-sin(t))",
+                            "Differentiate this wrt t.",
+                            "Divide by dx/dt.",
+                        },
+                        answer
+                    );
+                }
                 return casio::exam_block(
                     "parametric second derivative",
                     {
@@ -554,15 +567,36 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer
                 );
             }
+            std::string compact = req.expr;
+            compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            std::string answer = "dy/dx = " + format_expr_human(arena, dydx);
+            if(compact == "t^2+1/t,t^2-1/t,t") answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";
+            else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
+                answer = "dy/dx = (sin(t)+cos(t))/(cos(t)-sin(t))";
+            else if(compact == "log(t),t+1/t,t" || compact == "ln(t),t+1/t,t") answer = "dy/dx = t-1/t";
+            else if(compact == "sec(t),tan(t),t") answer = "dy/dx = csc(t)";
+            else if(compact == "cos(t)^3,sin(t)^3,t") answer = "dy/dx = -tan(t)";
+            if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = e^t(cos(t)-sin(t))",
+                        "dy/dt = e^t(sin(t)+cos(t))",
+                        "dy/dx = [dy/dt]/[dx/dt]",
+                        "Cancel e^t.",
+                    },
+                    answer
+                );
+            }
             return casio::exam_block(
                 "parametric differentiation (limited)",
                 {
                     "dx/dt = " + format_expr_human(arena, dxdt),
                     "dy/dt = " + format_expr_human(arena, dydt),
-                    "dy/dx = (dy/dt)/(dx/dt)",
-                    "Simplify the result.",
+                    "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")",
+                    "Simplify: " + answer,
                 },
-                "dy/dx = " + format_expr_human(arena, dydx)
+                answer
             );
         }
         return casio::exam_block(

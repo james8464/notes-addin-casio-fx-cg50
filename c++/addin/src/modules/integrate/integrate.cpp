@@ -5671,6 +5671,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     NodeId parsed = parse_expr(arena, req.expr);
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
     NodeId node = casio::simplify(arena, parsed);
+    Node const &node_ref = arena.get(node);
+    if(node_ref.kind == NodeKind::Fn && node_ref.fkind == FnKind::Atan) {
+        auto lc = linear_coeff(arena, node_ref.a, req.var);
+        if(lc && lc->num != 0) {
+            NodeId arg = node_ref.a;
+            NodeId lc_node = casio::num(arena, lc->num, lc->den);
+            NodeId atan_arg = casio::fn(arena, "atan", arg);
+            NodeId log_arg = casio::add(arena, {casio::num(arena, 1), casio::power(arena, arg, casio::num(arena, 2))});
+            NodeId log_part = casio::mul(arena, {casio::num(arena, 1, 2), casio::fn(arena, "log", log_arg)});
+            NodeId primitive = casio::simplify(
+                arena,
+                casio::div(
+                    arena,
+                    casio::add(arena, {casio::mul(arena, {arg, atan_arg}), casio::neg(arena, log_part)}),
+                    lc_node
+                )
+            );
+            std::vector<std::string> steps;
+            casio::append_exam_prelude_steps(steps, pre);
+            steps.push_back("Use parts with u=atan(" + format_expr(arena, arg) + "), dv=dx.");
+            steps.push_back("Then du=" + format_expr(arena, lc_node) + "/(1+(" + format_expr(arena, arg) + ")^2) dx and v=x.");
+            steps.push_back("Equivalently let w=" + format_expr(arena, arg) + ", so dx=dw/" + format_expr(arena, lc_node) + ".");
+            steps.push_back("Integral atan(w) dw = w*atan(w) - 1/2*ln(1+w^2).");
+            steps.push_back("Back-substitute w.");
+            return casio::exam_block("integration by parts", steps, format_expr(arena, primitive) + " + C");
+        }
+    }
 
     std::vector<std::string> match_candidates = {req.expr, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
 

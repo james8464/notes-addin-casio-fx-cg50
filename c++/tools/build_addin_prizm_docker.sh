@@ -65,6 +65,21 @@ publish_help_pack() {
   fi
 }
 
+report_transfer_sizes() {
+  if [ -f "${TRANSFER_G3A}" ]; then
+    local g3a_size
+    g3a_size="$(wc -c < "${TRANSFER_G3A}" | tr -d ' ')"
+    echo "Calculator .g3a bytes: ${g3a_size}"
+    if [ "${g3a_size}" -gt 2000000 ]; then
+      echo "WARN: .g3a is close to the practical 2MB add-in limit; keep help/data external." >&2
+    fi
+  fi
+  if [ -d "${TRANSFER_DIR}" ]; then
+    echo "Calculator transfer folder:"
+    find "${TRANSFER_DIR}" -maxdepth 1 -type f -print0 | xargs -0 ls -lh
+  fi
+}
+
 echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
@@ -104,6 +119,7 @@ if [ "${MODE}" = "khicas-source" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
   publish_help_pack
+  report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
@@ -139,6 +155,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
   publish_help_pack
+  report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
@@ -178,6 +195,7 @@ if [ -f "${OUT_G3A}" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
   publish_help_pack
+  report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   echo "Output (packaged): ${OUT_G3A}"

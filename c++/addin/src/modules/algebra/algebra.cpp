@@ -831,6 +831,20 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
     if(x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const) return;
 }
 
+static bool is_square_power(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &e = a.get(x.b);
+    return e.kind == NodeKind::Num && e.num.num == 2 && e.num.den == 1;
+}
+
+static bool is_sqrt_square(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt && is_square_power(a, x.a);
+}
+
 static bool contains_fn_kind(Arena &a, NodeId n, FnKind fk)
 {
     Node const &x = a.get(n);
@@ -1128,7 +1142,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             // Complete square for quadratic ax^2+bx+c.
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             auto p = poly_of(arena, n, "x");
-            if(!p || !p->ok || is_zero(p->a2)) return {"Err: need quadratic in x."};
+            if(!p || !p->ok || is_zero(p->a2)) {
+                return {
+                    "1. Start with " + format_expr(arena, n) + ".",
+                    "2. Complete square applies to ax^2+bx+c.",
+                    "3. This is not a quadratic in x; use factor/substitution first if possible.",
+                    "Answer: " + format_expr(arena, n),
+                };
+            }
 
             Rational a = p->a2;
             Rational b = p->a1;
@@ -1155,7 +1176,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "1. Complete square.",
                 "2. h = b/(2a) = " + format_expr(arena, hnode),
                 "3. k = c - b^2/(4a) = " + format_expr(arena, knode),
-                "Ans = " + ans,
+                "Answer: " + ans,
             };
         }
         if(req.mode == 7) {
@@ -1235,8 +1256,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
             std::vector<std::string> dom;
             collect_domain(arena, n, dom);
-            if(dom.empty()) steps.push_back("Domain: unrestricted/all real " + var + ".");
-            else for(auto const &d : dom) steps.push_back(d);
+            std::string domain_answer;
+            if(dom.empty()) {
+                domain_answer = "all real " + var;
+                steps.push_back("Domain: " + domain_answer + ".");
+            }
+            else {
+                for(auto const &d : dom) steps.push_back(d);
+                domain_answer = dom.front();
+                auto pfx = domain_answer.find("Domain: ");
+                if(pfx != std::string::npos) domain_answer = domain_answer.substr(pfx + 8);
+            }
+            std::string range_answer;
             if(auto p = poly_of(arena, n, var); p && p->ok && !is_zero(p->a2)) {
                 Rational a = p->a2;
                 Rational b = p->a1;
@@ -1245,27 +1276,37 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 Rational foura = r_mul(Rational{4, 1}, a);
                 Rational y0 = r_add(c, r_neg(r_div(b2, foura)));
                 NodeId y0n = casio::num(arena, y0.num, y0.den);
-                std::string range = a.num > 0 ? "Range: y >= " + format_expr(arena, y0n) : "Range: y <= " + format_expr(arena, y0n);
+                range_answer = a.num > 0 ? "y >= " + format_expr(arena, y0n) : "y <= " + format_expr(arena, y0n);
+                std::string range = "Range: " + range_answer;
                 if(!lo.empty() && !hi.empty()) range += " on the interval.";
                 steps.push_back(range);
             }
             else {
                 Node const &rn = arena.get(n);
-                if(rn.kind == NodeKind::Div) {
+                if(is_sqrt_square(arena, n)) {
+                    range_answer = "y >= 0";
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(rn.kind == NodeKind::Div) {
                     Node const &top = arena.get(rn.a);
                     Node const &bot = arena.get(rn.b);
                     if(top.kind == NodeKind::Num && bot.kind == NodeKind::Sym && bot.text == var) {
-                        steps.push_back("Range: y != 0.");
+                        range_answer = "y != 0";
+                        steps.push_back("Range: " + range_answer + ".");
                     }
                     else {
+                        range_answer = !lo.empty() && !hi.empty() ? "unrestricted on interval" : "inspect graph/transform";
                         steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
                     }
                 }
                 else {
+                    range_answer = !lo.empty() && !hi.empty() ? "unrestricted on interval" : "inspect graph/transform";
                     steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
                 }
             }
-            return casio::exam_block("domain/range", steps, format_expr(arena, n));
+            std::string answer = req.method == "domain" ? domain_answer :
+                                 (req.method == "range" ? range_answer : (domain_answer + "; " + range_answer));
+            return casio::exam_block("domain/range", steps, answer);
         }
         if(req.mode == 11) {
             auto nl1 = req.expr.find('\n');
@@ -1512,6 +1553,41 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 append_answer(out, solve_var, numeric);
                 append_numeric_3dp(arena, out, solve_var, numeric);
             }
+            return out;
+        }
+
+        if(req.method == "complete_square" && is_zero(rp.den.a1) && is_zero(rp.den.a2) && !is_zero(rp.num.a2)) {
+            Rational a = rp.num.a2;
+            Rational b = rp.num.a1;
+            Rational c = rp.num.a0;
+            Rational h = r_div(b, r_mul(Rational{2, 1}, a));
+            Rational k = r_sub(c, r_div(r_mul(b, b), r_mul(Rational{4, 1}, a)));
+            NodeId x = casio::sym(arena, solve_var);
+            NodeId hnode = casio::num(arena, h.num, h.den);
+            NodeId knode = casio::num(arena, k.num, k.den);
+            NodeId anode = casio::num(arena, a.num, a.den);
+            NodeId square_form = casio::simplify(
+                arena,
+                casio::add(
+                    arena,
+                    {
+                        casio::mul(arena, {anode, casio::power(arena, casio::add(arena, {x, hnode}), casio::num(arena, 2))}),
+                        knode,
+                    }
+                )
+            );
+            out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
+            out.push_back("3. Complete square: " + format_expr(arena, square_form) + " = 0");
+            out.push_back("4. Solve the square equation; check original.");
+            auto sols = solve_poly2(arena, rp.num, solve_var);
+            sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+            if(sols.empty()) {
+                out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
+                out.push_back("Answer: " + solve_var + " = []");
+                return out;
+            }
+            append_answer(out, solve_var, sols);
+            append_numeric_3dp(arena, out, solve_var, sols);
             return out;
         }
 

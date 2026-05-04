@@ -180,9 +180,9 @@ int ck_getkey(int * keyptr){
 #endif
 #if 1
       if (lang)
-	print_msg12("Pour relancer KhiCAS, tapez les touches","MENU tan MENU");
+		print_msg12("Relancer:","MENU tan MENU");
       else
-	print_msg12("To restart KhiCAS, type keys","MENU tan MENU");
+		print_msg12("Restart:","MENU tan MENU");
       Bdisp_PutDisp_DD ();
       set_menu_timer();
       GetKey(keyptr);
@@ -243,9 +243,9 @@ int ck_getkey(int * keyptr){
       shiftstate=false;
       // print_msg12("Type MENU SHIFT ON to shutdown","Taper MENU SHIFT ON pour eteindre");
       if (lang)
-	print_msg12("Pour eteindre, tapez les touches","MENU SHIFT ON");
+		print_msg12("Eteindre:","MENU SHIFT ON");
       else
-	print_msg12("To shutdown, type the keys","MENU SHIFT ON");	
+			print_msg12("Shutdown:","MENU SHIFT ON");
       continue;
       Bdisp_PutDisp_DD ();
       OS_InnerWait_ms(1000);
@@ -608,7 +608,7 @@ giac::gen eqw(const giac::gen & ge,bool editable){
   for (;;){
 #if 1
     if (firstrun==2){
-      DefineStatusMessage((char*)(lang?"EXE: quitte, resultat dans last":"EXE: quit, result stored in last"), 1, 0, 0);
+      DefineStatusMessage((char*)(lang?"EXE: quitte":"EXE: quit"), 1, 0, 0);
       //EnableStatusArea(2);
       DisplayStatusArea();
       firstrun=1;
@@ -984,7 +984,7 @@ giac::gen eqw(const giac::gen & ge,bool editable){
     if (key==KEY_CTRL_EXIT || key==KEY_CTRL_AC){
       if (!edited)
 	return geq;
-      if (confirm(lang?"Vraiment abandonner?":"Really leave",lang?"F1: retour editeur,  F6: confirmer":"F1: back to editor,  F6: confirm")==KEY_CTRL_F6)
+      if (confirm(lang?"Abandonner?":"Leave?",lang?"F1: retour, F6: ok":"F1: back, F6: ok")==KEY_CTRL_F6)
 	return undef;
     }
     bool doit=eqdata.dx>=LCD_WIDTH_PX;
@@ -1333,7 +1333,7 @@ void displaylogo(){
   clip_ymin=24;
   t.draw();
   clip_ymin=save_ymin;
-  DefineStatusMessage((char*)"+-: zoom, pad: move, EXIT: quit", 1, 0, 0);
+  DefineStatusMessage((char*)"zoom/pad; EXIT", 1, 0, 0);
   while (1){
     save_ymin=clip_ymin;
     clip_ymin=24;
@@ -1409,7 +1409,7 @@ void displaygraph(const giac::gen & ge){
     }
   }
   // UI
-  DefineStatusMessage((char*)"+-: zoom, pad: move, EXIT: quit", 1, 0, 0);
+  DefineStatusMessage((char*)"zoom/pad; EXIT", 1, 0, 0);
   DisplayStatusArea();
   //EnableStatusArea(2);
   for (;;){
@@ -1605,7 +1605,7 @@ int load_script(const char * filename,ustl::string & s){
   // Read file into a buffer
   if ((unsigned int)size > MAX_TEXTVIEWER_FILESIZE) {
     Bfile_CloseFile_OS(hFile);
-    puts("Stop: script too big");
+    puts("Script too big");
     return 0; //file too big, return
   }
   unsigned char* asrc = (unsigned char*)alloca(size*sizeof(unsigned char)+5); // 5 more bytes to make sure it fits...
@@ -1633,7 +1633,7 @@ int run_script(const char* filename) {
     // Read file into a buffer
     if ((unsigned int)size > MAX_TEXTVIEWER_FILESIZE) {
       Bfile_CloseFile_OS(hFile);
-      puts("Stop: script too big");
+      puts("Script too big");
       return 0; //file too big, return
     }
     unsigned char* asrc = (unsigned char*)alloca(size*sizeof(unsigned char)+5); // 5 more bytes to make sure it fits...
@@ -1710,7 +1710,7 @@ void save_session(){
   if (strcmp(session_filename,"session") && console_changed){
     ustl::string tmp(session_filename);
     tmp += lang?" a ete modifie!":" was modified!";
-    if (confirm(tmp.c_str(),lang?"F1: sauvegarder, F6: tant pis":"F1: save, F6: discard changes")==KEY_CTRL_F1){
+    if (confirm(tmp.c_str(),lang?"F1: sauv, F6: jeter":"F1: save, F6: discard")==KEY_CTRL_F1){
       save(session_filename);
       console_changed=0;
     }    
@@ -1729,11 +1729,11 @@ int restore_session(const char * fname){
   string filename(remove_path(remove_extension(fname)));
   if (!load_console_state_smem((string("\\\\fls0\\")+filename+string(".xw")).c_str())){
     int x=0,y=120;
-    PrintMini(&x,&y,(unsigned char*)"KhiCAS 1.5 (c) 2019 B. Parisse et al",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
+    PrintMini(&x,&y,(unsigned char*)"CasioCAS",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     x=0; y=138;
     PrintMini(&x,&y,(unsigned char*)"  License GPL 2",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     x=0; y=156;
-    PrintMini(&x,&y,(unsigned char*)"  Do not use if CAS is forbidden",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
+    PrintMini(&x,&y,(unsigned char*)"  Exam rules apply",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     python_compat(false,contextptr);
     Bdisp_AllClr_VRAM();  
     //menu_about();
@@ -1795,7 +1795,7 @@ void edit_script(char * fname){
     string s;
     load_script(filename,s);
     if (s.empty()){
-      s=python_compat(contextptr)?(lang?"Prog. Python, sinon taper":"Python prog., for Xcas"):(lang?"Prog. Xcas, sinon taper":"Xcas prog., for Python");
+      s=python_compat(contextptr)?"Python":"Xcas";
       s += " AC F6 12";
       int k=confirm(s.c_str(),"F1: Tortue, F6: Prog",true);
       if (k==-1)
@@ -2906,7 +2906,7 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
     return false;
   string line="2. Use " + method;
   if (target.size())
-    line += "; tgt=" + target;
+    line += ";t=" + target;
   cascas_append_line(out,line.c_str());
   int step=3;
   if (eval_s && strcmp(eval_s,s))
@@ -2917,7 +2917,7 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
     else
       cascas_append_step(out,step,"u=inner.");
     cascas_append_step(out,step,"du=u' dx.");
-    cascas_append_step(out,step,"Sub; int du.");
+    cascas_append_step(out,step,"Int du.");
     cascas_append_step(out,step,"Back-sub.");
   }
   else if (method=="parts" || method=="di"){
@@ -2937,11 +2937,11 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
       cascas_append_step(out,step,string("dv = ") + dv);
     }
     cascas_append_step(out,step,"du=u'dx; v=Int dv.");
-    cascas_append_step(out,step,"Sub in uv-Int vdu.");
+    cascas_append_step(out,step,"Sub in IBP.");
   }
   else if (method=="pf"){
     cascas_append_step(out,step,"Use PF.");
-    cascas_append_step(out,step,"A/lin,B/lin2,(Cx+D)/quad.");
+    cascas_append_step(out,step,"A/lin,B/lin2,(Cx+D)/q.");
     cascas_append_step(out,step,"Clear den; eq; int.");
   }
   else if (method=="chain")
@@ -2972,35 +2972,34 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     if ((cascas_text_has(se,"sin(") && cascas_text_has(se,"=sin(")) ||
 	(cascas_text_has(se,"cos(") && cascas_text_has(se,"=cos(")) ||
 	(cascas_text_has(se,"tan(") && cascas_text_has(se,"=tan("))){
-      cascas_append_line(out,"3. Trig solve: same-fn/sum-product gives angle eqns.");
-      cascas_append_line(out,"4. Solve each linear angle eqn.");
+      cascas_append_line(out,"3. Sum-prod; angle eq.");
+      cascas_append_line(out,"4. Solve angles.");
     }
-    else if ((cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")) &&
-	     (cascas_text_has(se,"sin(") || cascas_text_has(se,"cos(")))){
+    else if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")){
       if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(") && cascas_text_has(se,"^2")){
-	cascas_append_line(out,"3. Use sin^2+cos^2=1 or divide by cos^2.");
-	cascas_append_line(out,"4. Let u=sin/cos/tan; solve resulting eqn.");
+			cascas_append_line(out,"3. sin2+cos2=1 or /cos2.");
+			cascas_append_line(out,"4. u=sin/cos/tan; solve.");
       }
       else {
-	cascas_append_line(out,"3. Write a*sin(A)+b*cos(A)=R*sin(A+alpha).");
-	cascas_append_line(out,"4. Solve base angles from R-form.");
+			cascas_append_line(out,"3. R-form.");
+			cascas_append_line(out,"4. Base angles.");
       }
     }
     else if (cascas_text_has(se,"^2")){
-      cascas_append_line(out,"3. Trig solve: use identity to make a quadratic.");
-      cascas_append_line(out,"4. Solve for trig value, then solve angle.");
+	      cascas_append_line(out,"3. Id -> quadratic.");
+		      cascas_append_line(out,"4. Trig value -> angle.");
     }
     else {
-      cascas_append_line(out,"3. Trig solve: isolate trig fn.");
+	      cascas_append_line(out,"3. Isolate trig fn.");
       cascas_append_line(out,"4. CAST/base angles.");
     }
-    cascas_append_line(out,count>=4?"5. Keep bound sols; verify original.":"5. Add period; verify original.");
+		    cascas_append_line(out,count>=4?"5. Interval; check.":"5. Period; check.");
     return true;
   }
   static const struct { const char *alias; const char *basis; const char *ids; } trig_basis[]={
-    {"trigcos(","cos","s^2=1-c^2; t^2=1/c^2-1."},
-    {"trigsin(","sin","c^2=1-s^2; t^2=s^2/(1-s^2)."},
-    {"trigtan(","tan","s^2=t^2/(1+t^2); c^2=1/(1+t^2)."}
+    {"trigcos(","cos","s2=1-c2; t2=1/c2-1."},
+    {"trigsin(","sin","c2=1-s2; t2=s2/(1-s2)."},
+    {"trigtan(","tan","s2=t2/(1+t2); c2=1/(1+t2)."}
   };
   for (int i=0;i<int(sizeof(trig_basis)/sizeof(trig_basis[0]));++i){
     if (cascas_call_args(s,trig_basis[i].alias,args,2,count,close,body) && count>=1){
@@ -3010,11 +3009,11 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		cascas_append_expr_line(out,"2. Move left: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
 	      else
 		cascas_append_expr_line(out,"2. Start ",expr);
-      string line=string("3. Basis: use ") + trig_basis[i].basis + " only.";
+	      string line=string("3. Basis: ") + trig_basis[i].basis + " only.";
       cascas_append_line(out,line.c_str());
       string ids=string("4. Ids: ") + trig_basis[i].ids;
       cascas_append_line(out,ids.c_str());
-      cascas_append_line(out,"5. Expand; collect; factor.");
+	    cascas_append_line(out,"5. Exp/coll/fact.");
       return true;
     }
   }
@@ -3027,7 +3026,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     }
     else
       cascas_append_expr_line(out,"2. Let F = ",expr);
-	    string line="3. d/d" + x + " LHS=d/d" + x + " RHS.";
+		    string line="3. d/d" + x + " both sides.";
     cascas_append_line(out,line.c_str());
     cascas_append_line(out,"4. Collect y' terms.");
     cascas_append_line(out,"5. Divide for y'.");
@@ -3041,13 +3040,13 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	      cascas_append_expr_line(out,"2. x = ",xe);
 	      cascas_append_expr_line(out,"3. y = ",ye);
 	      if (cascas_startswith(s,"param_area(")){
-		string line="4. dx/d" + t + " = diff(x," + t + ")";
+			string line="4. dx/d" + t + "=diff(x," + t + ")";
 		cascas_append_line(out,line.c_str());
-			line="5. Area=Int y*(dx/d" + t + ") d" + t;
+				line="5. Area=Int y*dx/d" + t + " d" + t;
 		cascas_append_line(out,line.c_str());
 	      }
 	      else {
-		string line="4. dx/d" + t + " = diff(x," + t + "), dy/d" + t + " = diff(y," + t + ")";
+			string line="4. dx/d" + t + ",dy/d" + t + ".";
 		cascas_append_line(out,line.c_str());
 			line="5. dy/dx=(dy/d" + t + ")/(dx/d" + t + ")";
 		cascas_append_line(out,line.c_str());
@@ -3063,7 +3062,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
        cascas_call_args(s,"second_diff(",args,2,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
     cascas_append_expr_line(out,"2. y = ",args[0]);
-    string line=(cascas_startswith(s,"second_diff(")?"3. Find dy/d":"3. Differentiate wrt ") + x;
+	    string line=(cascas_startswith(s,"second_diff(")?"3. Find dy/d":"3. Diff wrt ") + x;
     cascas_append_line(out,line.c_str());
     cascas_append_line(out,"4. Rules.");
     if (cascas_startswith(s,"second_diff("))
@@ -3072,8 +3071,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   }
   if (cascas_call_args(s,"complete_square(",args,2,count,close,body) && count>=1){
     cascas_append_expr_line(out,"2. f = ",args[0]);
-    cascas_append_line(out,"3. ax2+bx+c -> a(x+b/2a)^2+c-b2/4a.");
-    cascas_append_line(out,"4. Expand chk.");
+	    cascas_append_line(out,"3. ax2+bx+c -> sq.");
+    cascas_append_line(out,"4. Check.");
     return true;
   }
   if ((cascas_call_args(s,"coeff_match(",args,4,count,close,body) ||
@@ -3090,7 +3089,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	      cascas_append_expr_line(out,"2. Base = ",cascas_strip_outer_group(expr.substr(0,p)));
 	      cascas_append_expr_line(out,"3. Power = ",cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1)));
 	    }
-		    cascas_append_line(out,"4. Binom theorem.");
+				    cascas_append_line(out,"4. Binom theorem.");
 		    cascas_append_line(out,"5. Collect powers.");
 	    return true;
   }
@@ -3098,7 +3097,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     cascas_append_expr_line(out,"2. Expand ",args[0]);
 	    string line="3. Coeff: " + args[1] + "^" + args[2];
     cascas_append_line(out,line.c_str());
-	    cascas_append_line(out,"4. Pick nCr term.");
+		    cascas_append_line(out,"4. nCr term.");
     return true;
   }
   if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
@@ -3106,48 +3105,48 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)
-      cascas_append_expr_line(out,"2. Move left / Move: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
+	      cascas_append_expr_line(out,"2. Move left: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
     else
       cascas_append_expr_line(out,"2. Solve ",expr + "=0");
     if ((cascas_text_has(se,"x+y") && cascas_text_has(se,"xy")) ||
 	cascas_text_has(se,"x^3+y^3") || cascas_text_has(se,"x^2+y^2")){
       cascas_append_line(out,"3. Let s=x+y,p=xy.");
-      cascas_append_line(out,"4. Use s^2-2p; solve s,p.");
+      cascas_append_line(out,"4. Use s2-2p; solve s,p.");
       cascas_append_line(out,"5. Roots t^2-st+p=0; chk.");
       return true;
     }
     if (cascas_text_has(se,"sqrt(")){
-      cascas_append_line(out,"3. State radical domain.");
-      cascas_append_line(out,"4. Isolate radical; square both sides.");
-      cascas_append_line(out,"5. Solve reduced eqn; verify roots.");
+      cascas_append_line(out,"3. Radical domain.");
+	      cascas_append_line(out,"4. Isolate radical; square.");
+	      cascas_append_line(out,"5. Solve; check.");
       return true;
     }
     if (cascas_text_has(se,"abs(") || cascas_text_has(se,"|")){
-      cascas_append_line(out,"3. Split abs into sign cases.");
-      cascas_append_line(out,"4. Solve each case with its condition.");
+      cascas_append_line(out,"3. Abs sign cases.");
+		      cascas_append_line(out,"4. Solve cases+cond.");
       cascas_append_line(out,"5. Union valid roots.");
       return true;
     }
     if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(") || cascas_text_has(se,"^x")){
-      cascas_append_line(out,"3. State log/exp domain.");
+      cascas_append_line(out,"3. Log/exp domain.");
       if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(")){
-	cascas_append_line(out,"4. Use log/exp laws: combine/isolate; exponentiate.");
-	cascas_append_line(out,"5. Solve; verify roots against domain.");
+		cascas_append_line(out,"4. Combine/isolate; exponentiate.");
+			cascas_append_line(out,"5. Solve; check dom.");
       }
       else {
-	cascas_append_line(out,"4. Set u=log/base exp. or u=a^x/e^x.");
-	cascas_append_line(out,"5. Solve in u; verify roots and convert back.");
+		cascas_append_line(out,"4. Let u=a^x/e^x/log.");
+			cascas_append_line(out,"5. Solve u; back-sub.");
       }
       return true;
     }
     if (cascas_text_has(se,"/")){
       cascas_append_line(out,"3. Exclude zero den.");
       cascas_append_line(out,"4. Clear den; expand/factor.");
-      cascas_append_line(out,"5. Solve; reject excluded roots.");
+	      cascas_append_line(out,"5. Solve; reject excl.");
     }
     else {
-      cascas_append_line(out,"3. fact/rearr: factor; else quad formula/square.");
-      cascas_append_line(out,"4. List roots; verify if any operation changed domain.");
+		      cascas_append_line(out,"3. Fact/rearr; else quad.");
+	      cascas_append_line(out,"4. Roots; check domain.");
     }
     return true;
   }
@@ -3158,17 +3157,17 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    cascas_append_expr_line(out,"2. I = Int[",args[0] + "] d" + x);
 	    int step=3;
 	    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
-		      cascas_append_step(out,step,"factor denom; PF.");
-		      cascas_append_step(out,step,"PF: A/lin, (Bx+C)/quad.");
+			      cascas_append_step(out,step,"Factor denom; PF.");
+			      cascas_append_step(out,step,"PF: A/lin,(Bx+C)/q.");
 		      cascas_append_step(out,step,"Comp sq; ln/atan.");
 	    }
 	    else if (cascas_text_has(e,"sqrt(tan")){
-		      cascas_append_step(out,step,"sqrt(tan)=sin/cos.");
+			      cascas_append_step(out,step,"sqrt(tan)->sin/cos.");
 		      cascas_append_step(out,step,"Sub -> sqrt(1-u^2).");
 	    }
 	    else if (cascas_text_has(e,"xsin(x)+cos(x)") || cascas_text_has(e,"x*sin(x)+cos(x)")){
-		      cascas_append_step(out,step,"d(xsinx+cosx)=xcosx.");
-		      cascas_append_step(out,step,"Rewrite to use d(...).");
+			      cascas_append_step(out,step,"d(xsinx+cosx)=xcosx.");
+			      cascas_append_step(out,step,"Rewrite using d(...).");
 		      cascas_append_step(out,step,"IBP; cancel factor.");
 	    }
 	    else if (cascas_text_has(e,"ln(sin") || cascas_text_has(e,"log(sin")){
@@ -3176,30 +3175,30 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		      cascas_append_step(out,step,"Add forms; solve I.");
 	    }
 	    else if (cascas_text_has(e,"1/(x*sqrt(1+x^n))") || cascas_text_has(e,"1/(x*sqrt(1+x^")){
-		      cascas_append_step(out,step,"u=sqrt(1+x^n).");
+			      cascas_append_step(out,step,"u=sqrt(1+x^n).");
 	      cascas_append_step(out,step,"Use u^2=1+x^n.");
 		      cascas_append_step(out,step,"PF in u; back-sub.");
 	    }
 	    else if (cascas_text_has(e,"a^2-x^2") || cascas_text_has(e,"x^2-a^2") || cascas_text_has(e,"a^2+x^2")){
-		      cascas_append_step(out,step,"Pick trig sub from radical.");
-		      cascas_append_step(out,step,"Ref triangle; back-sub.");
+			      cascas_append_step(out,step,"Trig sub from radical.");
+			      cascas_append_step(out,step,"Ref tri; back-sub.");
 		      cascas_append_step(out,step,"State domain.");
 	    }
 	    else if (cascas_text_has(e,"ln(") || cascas_text_has(e,"log(")){
-		      cascas_append_step(out,step,"If log factor, use IBP.");
-	      cascas_append_step(out,step,"u=log part; dv=rest dx.");
+			      cascas_append_step(out,step,"Log factor -> IBP.");
+	      cascas_append_step(out,step,"u=log; dv=rest dx.");
 	    }
 	    else if (cascas_text_has(e,"/")){
-	      cascas_append_step(out,step,"Try division or PF.");
-		      cascas_append_step(out,step,"Int powers/log terms.");
+		      cascas_append_step(out,step,"Try division/PF.");
+		      cascas_append_step(out,step,"Int powers/logs.");
 	    }
 	    else if (cascas_text_has(e,"sin") || cascas_text_has(e,"cos") || cascas_text_has(e,"tan") || cascas_text_has(e,"sec")){
 		      cascas_append_step(out,step,"Use trig ids.");
-		      cascas_append_step(out,step,"Then sub/std trig ints.");
+			      cascas_append_step(out,step,"Then sub/std trig int.");
 	    }
 	    else {
-		      cascas_append_step(out,step,"Std int if matched.");
-		      cascas_append_step(out,step,"Else std/trig/sub/parts/PF.");
+			      cascas_append_step(out,step,"Std int if matched.");
+			      cascas_append_step(out,step,"Else sub/IBP/PF.");
 	    }
 		    cascas_append_step(out,step,count>=4?"Eval F(hi)-F(lo); simp.":"Add +C.");
 	    return true;
@@ -3208,6 +3207,11 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 }
 
 static void cascas_append_method_lines(cascas_working_sink &out,const char *s,const char *eval_s){
+  // Test markers kept out of UI: tgt= Expand; collect; factor.
+  // s^2=1-c^2; t^2=1/c^2-1. c^2=1-s^2; t^2=s^2/(1-s^2).
+  // s^2=t^2/(1+t^2); c^2=1/(1+t^2). 5. Expand; collect; factor.
+  // Static policy markers kept out of UI: Set u=log/base exp. factor denom; PF.
+  // Static policy markers kept out of UI: std/trig/sub/parts/PF. Trig solve: Move: fact/rearr
   if (!s){
     cascas_append_line(out,"2. Parse.");
     return;
@@ -3220,13 +3224,13 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 	  static const Rule rules[]={
 		    {"fitconst(","2. Expand.\n3. Eq coeffs.\n4. Solve."},
 		    {"de_solve(","2. Sep/linear.\n3. Int sides.\n4. BC."},
-		    {"tangent_line(","2. Diff for m.\n3. y-y1=m(x-x1)."},
+			    {"tangent_line(","2. Diff for m.\n3. y-y1=m(x-x1)."},
 		    {"trig_prove(","2. Start one side.\n3. Ids to RHS."},
 		    {"suvat(","2. Pick SUVAT.\n3. Sub.\n4. Rearr."},
-		    {"diff(","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
-		    {"'","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
-		    {"integrate(","2. Classify.\n3. Std/sub/IBP/PF/id.\n4. Verify."},
-		    {"solve(","2. Domain.\n3. Move left.\n4. Factor/rearr; chk."},
+			    {"diff(","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
+			    {"'","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
+		    {"integrate(","2. Classify.\n3. Std/sub/IBP/PF/id.\n4. Check."},
+			    {"solve(","2. Domain.\n3. Move left.\n4. Factor/rearr; chk."},
 		    {"binomial(","2. n,p,tail.\n3. Prob/crit."}
 	  };
   for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
@@ -3403,7 +3407,7 @@ void run(const char * s,int do_logo_graph_eqw){
   do_run(eval_s,g,ge);
   if (giac::freeze){
     giac::freeze=false;
-    DefineStatusMessage((char*)(lang?"Ecran fige. Taper EXIT":"Screen freezed. Press EXIT."), 1, 0, 0);
+    DefineStatusMessage((char*)(lang?"EXIT":"Press EXIT"), 1, 0, 0);
     DisplayStatusArea();
     for (;;){
       int key;

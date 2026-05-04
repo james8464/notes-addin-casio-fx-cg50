@@ -4016,6 +4016,8 @@ class CASIOApp(App):
             return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval") + generic_math
         if name in ("solve_trig", "trigsolve"):
             return ("general", "bounded", "cast", "identity", "rform", "square_then_check") + calculus_math
+        if name in ("trig_prove", "trig_transform", "trig_rewrite"):
+            return ("pythag", "double_angle", "compound_angle", "target")
         if name.startswith("trig") or name in ("sin", "cos", "tan", "sec", "cosec", "cot"):
             return ("sin_cos", "pythag", "double_angle", "compound_angle", "target") + calculus_math
         if name in ("domain", "range"):
@@ -4026,12 +4028,19 @@ class CASIOApp(App):
             return ("matrix2", "matrix3", "singular", "vector")
         if name in ("factor", "expand", "partfrac", "complete_square", "collect", "coeff", "degree"):
             return ("poly", "quartic", "rational", "letter", "target") + generic_math
+        if name in ("binom_expand", "binom_coeff"):
+            return ("binomial_poly", "binomial_radical", "binomial_negative")
         if name in ("arg", "conj", "re", "im", "abs"):
             return ("real", "complex_rect", "complex_polar") + generic_math
         return ("basic", "nested", "edge") + generic_math
 
     def catalogue_testable_function(self, fn):
         name = fn.name
+        # Host parser intentionally mirrors the compact working layer, not full
+        # KhiCAS function-call/list syntax.  Skip raw multi-arg/list commands here
+        # so /random hunts maths-working faults instead of parser-surface noise.
+        if name in ("coeff", "dot", "cross", "inverse", "rank"):
+            return False
         direct = {
             "diff", "implicit_diff", "param_diff", "param_second_diff", "integrate", "int",
             "solve", "fsolve", "zeros", "solve_trig", "trigsolve", "domain", "range",
@@ -4082,6 +4091,9 @@ class CASIOApp(App):
             "double_angle": ["sin(x)^4", "cos(4*x)"],
             "compound_angle": ["sin(x+y)", "cos(x-y)"],
             "target": ["sin(x)^2+cos(x)^2", "x^2+a*x+b"],
+            "binomial_poly": ["(1+x)^5", "(2*x-3)^4", "(a+b)^6"],
+            "binomial_radical": ["(1+x)^(1/2)", "(1-2*x)^(-1/2)", "(4+x)^(1/2)"],
+            "binomial_negative": ["(1+x)^(-3)", "(1-3*x)^(-2)"],
             "radical": ["sqrt(x-sqrt(x))", "sqrt(1-x^2)"],
             "log": ["log(1-x^2)", "log(sin(x))"],
             "matrix2": ["[[1,2],[3,5]]", "[[2,1],[1,3]]"],
@@ -4235,13 +4247,29 @@ class CASIOApp(App):
             return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("solve_trig", "trigsolve"):
             method = "auto" if shape.startswith("math_") else shape
-            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
+            expr = self.random_catalogue_expr(rng, shape)
+            if "=" in expr:
+                return "trig", "{0},x,0,2*pi,8,method={1}".format(expr, method)
+            return "trig", "{0},method={1}".format(expr, method)
+        if name in ("trig_prove", "trig_transform", "trig_rewrite"):
+            pairs = {
+                "pythag": ("sin(x)^2+cos(x)^2", "1"),
+                "double_angle": ("1-cos(2*x)", "2*sin(x)^2"),
+                "compound_angle": ("sin(x+y)", "sin(x)*cos(y)+cos(x)*sin(y)"),
+                "target": ("tan(x)", "sin(x)/cos(x)"),
+            }
+            lhs, rhs = pairs.get(shape, pairs["pythag"])
+            return "trig", "{0},target={1},method=auto".format(lhs, rhs)
         if name.startswith("trig") or name in ("sin", "cos", "tan"):
             method = "auto" if shape.startswith("math_") else shape
             return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("complete_square", "factor", "expand", "partfrac", "collect"):
             method = "auto" if shape.startswith("math_") else ("complete_square" if name == "complete_square" else ("pf" if name == "partfrac" else name))
             return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
+        if name == "binom_expand":
+            return "alg", "{0},method=expand".format(self.random_catalogue_expr(rng, shape))
+        if name == "binom_coeff":
+            return "alg", "coeff({0},x,{1})".format(self.random_catalogue_expr(rng, shape), rng.randint(1, 5))
         if name in ("domain", "range"):
             return "alg", "{0}({1})".format(name, self.random_domain_range_expr(rng, shape))
         if name in ("binomial", "normal", "poisson", "correlation", "covariance", "mean", "median", "quartiles", "stddev"):

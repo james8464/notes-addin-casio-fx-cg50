@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cctype>
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -19,6 +20,13 @@
 
 namespace casio::trig
 {
+
+static std::string trim(std::string s)
+{
+    while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+    while(!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+    return s;
+}
 
 static std::optional<Rational> as_num(Arena &a, NodeId n)
 {
@@ -876,8 +884,23 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg)
+{
+    std::sort(bases_deg.begin(), bases_deg.end());
+    std::ostringstream oss;
+    oss << var << " = ";
+    for(std::size_t i = 0; i < bases_deg.size(); ++i) {
+        if(i) oss << " or ";
+        oss << (rad ? format_pi_degrees(bases_deg[i]) : format_double_compact(bases_deg[i]));
+        oss << " + n*";
+        oss << (rad ? format_pi_degrees(period_deg) : format_double_compact(period_deg));
+    }
+    return oss.str();
+}
+
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
-                                                     std::string const &lo_text, std::string const &hi_text)
+                                                     std::string const &lo_text, std::string const &hi_text,
+                                                     bool general = false)
 {
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
@@ -1288,6 +1311,29 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         }
     }
 
+    if(general) {
+        double period_deg = (fk == FnKind::Tan ? 180.0 : 360.0) / std::fabs(angle_coeff);
+        std::vector<double> bases_deg;
+        for(double theta : sols_deg) {
+            double base = (theta - shift_deg) / angle_coeff;
+            while(base < 0.0) base += period_deg;
+            while(base >= period_deg) base -= period_deg;
+            add_unique(bases_deg, base);
+        }
+        std::string fname = trig_name(fk);
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with " + eq_text + ".",
+                "Rearrange to " + fname + "(A) = " + target + ".",
+                "Let A = " + format_expr(a, arg) + ".",
+                "Use the standard general solution with integer n.",
+                "Convert A values back to " + var + ".",
+            },
+            format_general_trig_family(var, rad, bases_deg, period_deg)
+        );
+    }
+
     auto lo_node = casio::parse_expr(a, lo_text);
     auto hi_node = casio::parse_expr(a, hi_text);
     auto lo_deg_opt = angle_to_degree_double(a, lo_node, rad);
@@ -1417,9 +1463,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     // "eq, var, lo, hi"
     if(req.expr.find('=') != std::string::npos && req.expr.find(',') != std::string::npos) {
         auto parts = split_csv(req.expr);
-        if(parts.size() >= 4) {
-            return solve_simple_trig_eq(arena, parts[0], parts[1], parts[2], parts[3]);
+        std::vector<std::string> args;
+        for(auto const &part : parts) {
+            std::string trimmed = trim(part);
+            if(trimmed.rfind("method=", 0) == 0 || trimmed.rfind("target=", 0) == 0) continue;
+            args.push_back(trimmed);
         }
+        if(args.size() >= 4) {
+            return solve_simple_trig_eq(arena, args[0], args[1], args[2], args[3]);
+        }
+        if(!args.empty()) {
+            std::string var = args.size() >= 2 ? args[1] : "x";
+            return solve_simple_trig_eq(arena, args[0], var, "0", "2*pi", true);
+        }
+    }
+    if(req.expr.find('=') != std::string::npos) {
+        return solve_simple_trig_eq(arena, req.expr, "x", "0", "2*pi", true);
     }
 
     NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
@@ -1436,6 +1495,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             "1. Use identity tan(x) = sin(x)/cos(x).",
             "2. tan(x)-sin(x)/cos(x) = 0.",
             "Answer: 0",
+        };
+    }
+    if(key.find("asin(sin(") != std::string::npos || key.find("arcsin(sin(") != std::string::npos) {
+        return {
+            "1. Let u be the inner angle.",
+            "2. asin(sin(u)) = u only for -pi/2 <= u <= pi/2.",
+            "3. Outside that interval, use the periodic branch of sin.",
+            "Answer: " + format_expr(arena, n),
+        };
+    }
+
+    bool looks_csc_cot = key.find("cosec(") != std::string::npos && key.find("cot(") != std::string::npos;
+    bool looks_sec_tan = key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos;
+    if((looks_csc_cot || looks_sec_tan) && numeric_equiv(arena, n, casio::num(arena, 1))) {
+        return {
+            looks_csc_cot ? "1. Use cosec(u)^2 - cot(u)^2 = 1." : "1. Use sec(u)^2 - tan(u)^2 = 1.",
+            "2. Identify the common angle u.",
+            "3. Substitute into the identity.",
+            "Answer: 1",
         };
     }
 

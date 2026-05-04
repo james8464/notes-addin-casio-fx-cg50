@@ -42,6 +42,11 @@ LLM_SYSTEM_PROMPT = """Judge CASIO maths output conservatively.
 Rules:
 - Equivalent algebraic or trig forms are CORRECT.
 - Exact radicals, exact pi answers, and unsimplified-but-equivalent forms are CORRECT.
+- For Edexcel-style working commands (solve, solve_trig, trig proof/rewrite, diff, integrate, domain/range, constants/matching, SUVAT), judge BOTH final answer and exam-quality working.
+- Non-trivial working must show the route a student would write: setup, substitution/differential, identity, factorisation, partial-fraction setup, coefficient values, quotient/product/chain rule, or interval/domain restriction as relevant.
+- Very simple one-step questions may be CORRECT with compact working; do not demand pointless micro-steps.
+- Generic calculator/status text such as "Chk: ok", "verified", "apply rule", "simplify", or "fallback" is not enough by itself for a non-trivial question.
+- If the final answer is right but the working has a big unexplained jump, say NEEDS_REVIEW.
 - If output says there is no real solution for impossible trig targets (for example sin(A)=2, cos(A)=2, sec(A)=0), that is CORRECT.
 - Interval questions only need roots inside the stated interval. Do not invent extra general-solution roots.
 - General-solution questions may use n*pi, 2*n*pi, degrees, or radians if mathematically equivalent.
@@ -340,7 +345,7 @@ class LLMManager:
             i += 1
 
         header = (
-            "BATCH_VERIFY: {0} items. For EACH item, the working/answer should match the check.\n"
+            "BATCH_VERIFY: {0} items. For EACH item, judge final answer plus exam-quality working where required.\n"
             "Reply with EXACTLY {0} lines and nothing else before them. Each line format:\n"
             "#N VERDICT\n"
             "N is 1..{0}. VERDICT is one of: CORRECT, INCORRECT, NEEDS_REVIEW\n"

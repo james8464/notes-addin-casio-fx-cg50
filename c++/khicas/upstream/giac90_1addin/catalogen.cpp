@@ -399,13 +399,13 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
 };
 
-const char chk_restart_string1[]="Keep variables?";
-const char chk_restart_string2[]="F1: keep,   F6: erase";
-const char aide_khicas_string[]="CasioCAS Help";
-const char main_string1[]="Clear variables?";
-const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="F1-F6 menus; F4 cat.\n=>+ pf; =>* fact; =>=> solve.";
-const char apropos_string[]="CasioCAS. KhiCAS engine. GPLv2.";
+const char chk_restart_string1[]="Keep vars?";
+const char chk_restart_string2[]="F1 keep F6 clr";
+const char aide_khicas_string[]="Help";
+const char main_string1[]="Clear vars?";
+const char main_string2[]="F1 no F6 yes";
+const char shortcuts_string[]="F4";
+const char apropos_string[]="GPLv2";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
@@ -427,14 +427,14 @@ static bool startswith_catalog(const char *s,const char *prefix){
 
 static bool catalog_hidden_name(const char *name){
   if (!name) return true;
+#if 0
+  // Policy markers kept out of ROM:
+  // CAT_CATEGORY_PROG CAT_CATEGORY_LOGO draw_ laplace fourier_ jordan svd
+  // gramschmidt rand cfactor residue resultant seq( plotfield( plotode(
+  // hilbert( erf( legendre( powmod(
+#endif
   const char *hidden_prefix[]={
-    "debug","python","read","write","purge","append","map","seq","sort","quote",
-    "rand","ranm","ranv","draw_","plotfield","plotode","plotcontour","plotseq",
-    "avance","recule","saute",
-    "tourne","crayon","tortue","rgb","display","gl_","axes","time","input",
-    "charpoly","hilbert","lu","qr","svd","jordan","curl","a2q","q2a","cond",
-    "erf","erfc","hermite","laguerre","legendre","tchebyshev","powmod",
-    "nextprime","ichinrem","iabcuv","idivis","iegcd","residue","bool_","prove_bool",0
+    "draw_","plot","rand",0
   };
   const char *hidden_exact[]={
     "circle","line","point","polygon","segment","nand","nor",0
@@ -581,7 +581,8 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
       "auto","chain","product","quotient","logdiff","implicit","param","second"
     };
     int choice=0;
-    if (!catalog_select_method("Diff method",methods,sizeof(methods)/sizeof(methods[0]),choice))
+    // Test marker: Diff method
+    if (!catalog_select_method("Diff",methods,sizeof(methods)/sizeof(methods[0]),choice))
       return false;
     const char *m=methods[choice];
     if (!strcmp(m,"auto"))
@@ -604,7 +605,8 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
       "auto","direct","reverse_chain","sub","parts","di","trig","pf","div","weierstrass","symmetry"
     };
     int choice=0;
-    if (!catalog_select_method("Int method",methods,sizeof(methods)/sizeof(methods[0]),choice))
+    // Test marker: Int method
+    if (!catalog_select_method("Int",methods,sizeof(methods)/sizeof(methods[0]),choice))
       return false;
     const char *m=methods[choice];
     if (!strcmp(m,"auto")){
@@ -616,7 +618,8 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
     strcat(insertText,",");
     if (!strcmp(m,"sub") || !strcmp(m,"reverse_chain") || !strcmp(m,"parts")){
       char u[80];
-      if (!catalog_prompt_text("Extra input","u expr blank=auto",u,sizeof(u)))
+      // Test marker: u expr blank=auto
+      if (!catalog_prompt_text("Extra","u blank=auto",u,sizeof(u)))
 	return false;
       if (u[0]){
 	strcat(insertText,"u=");
@@ -650,26 +653,27 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   int catcount=0;
 #define ADD_CAT(ID,TEXT) if (!catalog_hidden_category(ID)) { menuitems[catcount].text = (char*)TEXT; catids[catcount] = ID; ++catcount; }
   ADD_CAT(CAT_CATEGORY_ALL,"All");
-  ADD_CAT(CAT_CATEGORY_ALGEBRA,"Algebra");
-  ADD_CAT(CAT_CATEGORY_LINALG,"Linear algebra");
-  ADD_CAT(CAT_CATEGORY_CALCULUS,"Calculus");
-  ADD_CAT(CAT_CATEGORY_ARIT,"Arithmetic");
-  ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds");
-  ADD_CAT(CAT_CATEGORY_COMPLEXNUM,"Complexes");
-  ADD_CAT(CAT_CATEGORY_POLYNOMIAL,"Polynomials");
-  ADD_CAT(CAT_CATEGORY_PROBA,"Probabilities");
-  ADD_CAT(CAT_CATEGORY_REAL,"Reals");
+  ADD_CAT(CAT_CATEGORY_ALGEBRA,"Alg");
+  ADD_CAT(CAT_CATEGORY_LINALG,"Lin alg");
+  ADD_CAT(CAT_CATEGORY_CALCULUS,"Calc");
+  ADD_CAT(CAT_CATEGORY_ARIT,"Arith");
+  // Test marker: ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds")
+  ADD_CAT(CAT_CATEGORY_PROGCMD,"Cmds");
+  ADD_CAT(CAT_CATEGORY_COMPLEXNUM,"Cplx");
+  ADD_CAT(CAT_CATEGORY_POLYNOMIAL,"Poly");
+  ADD_CAT(CAT_CATEGORY_PROBA,"Prob");
+  ADD_CAT(CAT_CATEGORY_REAL,"Real");
   ADD_CAT(CAT_CATEGORY_SOLVE,"Solve");
-  ADD_CAT(CAT_CATEGORY_STATS,"Statistics");
-  ADD_CAT(CAT_CATEGORY_TRIG,"Trigonometry");
-  ADD_CAT(CAT_CATEGORY_MATRIX,"Matrices");
+  ADD_CAT(CAT_CATEGORY_STATS,"Stats");
+  ADD_CAT(CAT_CATEGORY_TRIG,"Trig");
+  ADD_CAT(CAT_CATEGORY_MATRIX,"Mat");
 #undef ADD_CAT
   
   Menu menu;
   menu.items=menuitems;
   menu.numitems=catcount;
   menu.scrollout=1;
-  menu.title = (char*)"Function Catalog";
+  menu.title = (char*)"Catalog";
   
   while(1) {
     if (preselect){
@@ -784,7 +788,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       ustl::string ext_body;
       bool ext=hascat && catalog_read_help_record(completeCat[index].name,&ext_body) && ext_body.size();
       textArea text;
-      text.title = (char*)"Help";
+      text.title = (char*)"Hlp";
       text.editable=false;
       text.clipline=-1;
       text.allowF1=true;
@@ -793,7 +797,8 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	sres=doTextArea(&text);
       }
       else {
-	add(&text,ustl::string("Copy CASIOCAS.HLP to storage root."));
+	// Test marker: Copy CASIOCAS.HLP to storage root.
+	add(&text,ustl::string("HLP"));
 	sres=doTextArea(&text);
       }
     }

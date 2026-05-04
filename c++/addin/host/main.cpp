@@ -412,8 +412,27 @@ int main(int argc, char **argv)
             if(!target.empty() && expr.find('=') == std::string::npos) expr += "=" + target;
             print_method_header("alg", method, method_u);
             casio::algebra::Request req;
-            req.mode = (expr.find('=') != std::string::npos) ? 6 : 0;
-            req.expr = expr;
+            req.method = method;
+            auto unwrap_call = [](std::string const &text, std::string const &name) -> std::string {
+                if(text.rfind(name, 0) != 0 || text.size() <= name.size() + 1 || text.back() != ')') return "";
+                return text.substr(name.size(), text.size() - name.size() - 1);
+            };
+            std::string inner;
+            if(!(inner = unwrap_call(expr, "range(")).empty()) {
+                req.mode = 10;
+                req.method = "range";
+                req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "domain(")).empty()) {
+                req.mode = 10;
+                req.method = "domain";
+                req.expr = inner;
+            }
+            else {
+                req.mode = (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
+                           ((expr.find('=') != std::string::npos) ? 6 : 0);
+                req.expr = expr;
+            }
             auto lines = casio::algebra::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;
