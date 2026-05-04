@@ -42,6 +42,8 @@ inspiration:base/
 python/tests/reports/
 c++/tests/reports/
 c++/tools/fuzz/tui_failures.jsonl
+c++/tools/fuzz/random_exploration_graph.json
+c++/tools/fuzz/catalogue_manifest_latest.txt
 
 # Python bytecode
 **/__pycache__/

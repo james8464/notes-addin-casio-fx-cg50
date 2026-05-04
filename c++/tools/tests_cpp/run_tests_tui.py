@@ -148,6 +148,8 @@ class TestRecord:
     harness_status: TestStatus = TestStatus.PASS
     # True when LLM disagrees or is unsure but the harness did not fail.
     review_needed: bool = False
+    graph_node: str = ""
+    graph_meta: object = None
 
 
 @dataclass
@@ -161,6 +163,195 @@ class CaseSpec:
     feature: str = ""
     script: str = ""
     checker: object = None
+    graph_node: str = ""
+    graph_meta: object = None
+
+
+@dataclass
+class CatalogueFunction:
+    signature: str
+    name: str
+    params: tuple
+
+
+CATALOGUE_GRAPH_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "random_exploration_graph.json"
+CATALOGUE_MANIFEST_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "catalogue_manifest_latest.txt"
+
+CATALOGUE_HIDDEN_PREFIXES = (
+    "debug", "python", "read", "write", "purge", "append", "map", "seq", "sort", "quote",
+    "rand", "ranm", "ranv", "draw_", "plotfield", "plotode", "plotcontour", "plotseq",
+    "avance", "recule", "saute", "tourne", "crayon", "tortue", "rgb", "display", "gl_",
+    "axes", "time", "input", "charpoly", "hilbert", "lu", "qr", "svd", "jordan", "curl",
+    "a2q", "q2a", "cond", "erf", "erfc", "hermite", "laguerre", "legendre", "tchebyshev",
+    "powmod", "nextprime", "ichinrem", "iabcuv", "idivis", "iegcd", "residue", "bool_",
+    "prove_bool",
+)
+CATALOGUE_HIDDEN_EXACT = {"circle", "line", "point", "polygon", "segment", "nand", "nor", "not"}
+
+
+def _catalogue_hidden(name):
+    base = (name or "").split("(", 1)[0].strip()
+    if not base:
+        return True
+    if base in CATALOGUE_HIDDEN_EXACT:
+        return True
+    return any(base.startswith(prefix) for prefix in CATALOGUE_HIDDEN_PREFIXES)
+
+
+def _strip_cpp_if0_blocks(text):
+    out = []
+    disabled = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#if 0"):
+            disabled += 1
+            continue
+        if disabled:
+            if stripped.startswith("#if"):
+                disabled += 1
+            elif stripped.startswith("#endif"):
+                disabled -= 1
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def _split_top_level_csv(text):
+    parts = []
+    cur = []
+    depth = 0
+    for ch in text:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            parts.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(ch)
+    tail = "".join(cur).strip()
+    if tail or parts:
+        parts.append(tail)
+    return parts
+
+
+def parse_catalogue_signature(signature):
+    sig = signature.strip()
+    if "(" not in sig or not sig.endswith(")"):
+        return sig, ()
+    name, rest = sig.split("(", 1)
+    raw_params = rest[:-1]
+    params = []
+    for raw in _split_top_level_csv(raw_params):
+        if not raw:
+            continue
+        optional = raw.startswith("[") and raw.endswith("]")
+        clean = raw[1:-1] if optional else raw
+        params.append({"name": clean.strip(), "optional": optional})
+    return name.strip(), tuple(params)
+
+
+def load_all_catalogue_functions():
+    path = REPO_ROOT / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cpp"
+    try:
+        text = _strip_cpp_if0_blocks(path.read_text(encoding="utf-8", errors="ignore"))
+    except OSError:
+        return []
+    m = re.search(r"completeCat\[\]\s*=\s*\{(.*?)\n\};", text, re.S)
+    if not m:
+        return []
+    seen = set()
+    funcs = []
+    for line in m.group(1).splitlines():
+        if line.strip().startswith("//"):
+            continue
+        hit = re.search(r'\{\s*"([^"]+)"\s*,', line)
+        if not hit:
+            continue
+        sig = hit.group(1)
+        name, params = parse_catalogue_signature(sig)
+        if _catalogue_hidden(name) or sig in seen:
+            continue
+        seen.add(sig)
+        funcs.append(CatalogueFunction(sig, name, params))
+    return funcs
+
+
+class RandomExplorationGraph:
+    def __init__(self, path):
+        self.path = Path(path)
+        self.nodes = {}
+        self._dirty = 0
+        self.load()
+
+    def load(self):
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            self.nodes = data.get("nodes", {}) if isinstance(data, dict) else {}
+        except Exception:
+            self.nodes = {}
+
+    def save(self):
+        if not self._dirty:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"version": 1, "nodes": self.nodes}
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.replace(self.path)
+        self._dirty = 0
+
+    def ensure_node(self, key, meta):
+        node = self.nodes.setdefault(
+            key,
+            {
+                "attempts": 0,
+                "pass": 0,
+                "fail": 0,
+                "weak": 0,
+                "last_status": "new",
+                "meta": dict(meta or {}),
+            },
+        )
+        if meta:
+            node["meta"] = dict(meta)
+        return node
+
+    def score(self, key):
+        node = self.nodes.get(key)
+        if not node:
+            return (0, 0)
+        if node.get("pass", 0) > 0:
+            return (3, node.get("attempts", 0))
+        if node.get("fail", 0) or node.get("weak", 0):
+            return (1, node.get("attempts", 0))
+        return (0, node.get("attempts", 0))
+
+    def record(self, key, meta, status, input_text="", output=""):
+        if not key:
+            return
+        node = self.ensure_node(key, meta)
+        node["attempts"] = int(node.get("attempts", 0)) + 1
+        if status == "pass":
+            node["pass"] = int(node.get("pass", 0)) + 1
+        elif status == "weak":
+            node["weak"] = int(node.get("weak", 0)) + 1
+        else:
+            node["fail"] = int(node.get("fail", 0)) + 1
+        node["last_status"] = status
+        node["last_input"] = (input_text or "")[:240]
+        node["last_output"] = (output or "").replace("\n", " ")[:320]
+        self._dirty += 1
+        if self._dirty >= 25:
+            self.save()
+
+    def summary(self):
+        total = len(self.nodes)
+        passed = sum(1 for n in self.nodes.values() if n.get("pass", 0) > 0)
+        failed = sum(1 for n in self.nodes.values() if n.get("fail", 0) > 0)
+        weak = sum(1 for n in self.nodes.values() if n.get("weak", 0) > 0)
+        return total, passed, failed, weak
 
 
 @dataclass
@@ -2277,6 +2468,7 @@ class CASIOApp(App):
         self.current_random_workers = None
         self.current_run_question_keys = set()
         self.session_random_question_keys = set()
+        self.random_graph = RandomExplorationGraph(CATALOGUE_GRAPH_PATH)
         self._random_infinite = False
         self._session_report_lock = threading.Lock()
         self.start_time = None
@@ -2581,20 +2773,20 @@ class CASIOApp(App):
         if not value:
             return
 
-        run_scope = self.parse_run_scope(value)
-        if run_scope is not None:
-            program, difficulty = run_scope
-            self.current_program = program
-            self.last_command = value
-            self.action_run_tests(command_label=value)
-            return
-
         random_scope = self.parse_random_scope(value)
         if random_scope is not None:
             difficulty, count, workers, infinite_mode = random_scope
             self.current_random_workers = workers
             self.last_command = value
             self.action_random_tests(difficulty, count, workers, command_label=value)
+            return
+
+        run_scope = self.parse_run_scope(value)
+        if run_scope is not None:
+            program, difficulty = run_scope
+            self.current_program = program
+            self.last_command = value
+            self.action_run_tests(command_label=value)
             return
 
         if value_lower == "/run":
@@ -3214,7 +3406,7 @@ class CASIOApp(App):
         except Exception:
             pass
 
-    def add_test(self, label, passed, output, program, input_text="", check_info="", feature=""):
+    def add_test(self, label, passed, output, program, input_text="", check_info="", feature="", graph_node="", graph_meta=None):
         icon = "●" if passed else "✕"
         color = "#22c55e" if passed else "#f87171"
 
@@ -3222,6 +3414,8 @@ class CASIOApp(App):
         record = TestRecord(
             len(self.records) + 1, label, status, output, program, input_text, check_info, feature, passed=passed, harness_status=status
         )
+        record.graph_node = graph_node or ""
+        record.graph_meta = graph_meta
         self.records.append(record)
         self._live_program = program or self._live_program
         self._last_event_label = label
@@ -3316,6 +3510,35 @@ class CASIOApp(App):
         if not self._in_run_case_specs:
             self._append_session_report_if_worthy(record)
         return record
+
+    def random_graph_status_for_record(self, record):
+        if record.status == TestStatus.PASS and not record.review_needed:
+            return "pass"
+        note = " ".join(
+            [
+                record.check_info or "",
+                record.llm_verdict or "",
+                record.llm_explanation or "",
+            ]
+        ).lower()
+        if "exam-quality" in note or "weak" in note or "needs_review" in note:
+            return "weak"
+        return "fail"
+
+    def record_random_graph_result(self, record):
+        key = getattr(record, "graph_node", "") or ""
+        if not key:
+            return
+        self.random_graph.record(
+            key,
+            getattr(record, "graph_meta", None) or {},
+            self.random_graph_status_for_record(record),
+            record.input_text,
+            record.output,
+        )
+
+    def flush_random_graph(self):
+        self.random_graph.save()
 
     def apply_llm_weighted_status(self, record, final_verdict):
         """
@@ -3685,6 +3908,24 @@ class CASIOApp(App):
             return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
         return proc.stdout, proc.stderr
 
+    def run_host_expr(self, expr):
+        host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
+        if not host.exists():
+            return "", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh"
+        try:
+            proc = subprocess.run(
+                [str(host), expr],
+                text=True,
+                capture_output=True,
+                cwd=str(REPO_ROOT),
+                timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
+            )
+        except subprocess.TimeoutExpired as err:
+            stdout = err.stdout if isinstance(err.stdout, str) else ""
+            stderr = err.stderr if isinstance(err.stderr, str) else ""
+            return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
+        return proc.stdout, proc.stderr
+
     def make_cli_case(self, program, script, inp, label, checker, check_info="", feature="", use_calculated=None):
         if use_calculated is None:
             use_calculated = not limited_by(CALCULATED_CHECK_MAX_INPUT_CHARS, len(inp or ""))
@@ -3713,10 +3954,288 @@ class CASIOApp(App):
         return CaseSpec(label, program, runner, input_text=input_text, check_info=check_info, feature=feature)
 
     def case_question_key(self, case):
+        if getattr(case, "graph_node", ""):
+            return "GRAPH::{0}::{1}".format(case.graph_node, (case.input_text or "").strip())
         text = (case.input_text or "").strip()
         if text:
             return f"{case.program}::{text}"
         return f"{case.program}::LABEL::{case.label}"
+
+    def write_catalogue_manifest(self, funcs):
+        CATALOGUE_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        lines = ["All catalogue functions: {0}".format(len(funcs)), ""]
+        for fn in funcs:
+            params = []
+            for p in fn.params:
+                tag = "opt" if p.get("optional") else "req"
+                params.append("{0}:{1}".format(p.get("name", "?"), tag))
+            lines.append("{0}  params=[{1}]".format(fn.signature, ", ".join(params) if params else "none"))
+        CATALOGUE_MANIFEST_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def catalogue_combo_indices(self, fn):
+        required = [i for i, p in enumerate(fn.params) if not p.get("optional")]
+        optional = [i for i, p in enumerate(fn.params) if p.get("optional")]
+        combos = [tuple(required)]
+        if optional:
+            combos.append(tuple(required + optional[:1]))
+            combos.append(tuple(required + optional))
+        seen = []
+        for combo in combos:
+            if combo not in seen:
+                seen.append(combo)
+        return seen or [tuple()]
+
+    def catalogue_shapes_for(self, name):
+        if name in ("diff", "implicit_diff", "param_diff"):
+            return ("poly", "chain", "product", "quotient", "implicit", "param", "second")
+        if name in ("integrate", "int"):
+            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry")
+        if name in ("solve", "fsolve", "zeros"):
+            return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval")
+        if name in ("solve_trig", "trigsolve"):
+            return ("general", "bounded", "cast", "identity", "rform", "square_then_check")
+        if name.startswith("trig") or name in ("sin", "cos", "tan", "sec", "cosec", "cot"):
+            return ("sin_cos", "pythag", "double_angle", "compound_angle", "target")
+        if name in ("domain", "range"):
+            return ("poly", "rational", "radical", "log", "trig", "interval")
+        if name in ("binomial", "normal", "poisson", "correlation", "covariance", "regression", "mean", "median", "quartiles", "stddev"):
+            return ("summary", "regression", "binomial", "normal", "poisson", "edge")
+        if name in ("det", "inverse", "rank", "rref", "eigenvals", "eigenvects", "dot", "cross"):
+            return ("matrix2", "matrix3", "singular", "vector")
+        if name in ("factor", "expand", "partfrac", "complete_square", "collect", "coeff", "degree"):
+            return ("poly", "quartic", "rational", "letter", "target")
+        if name in ("arg", "conj", "re", "im", "abs"):
+            return ("real", "complex_rect", "complex_polar")
+        return ("basic", "nested", "edge")
+
+    def catalogue_testable_function(self, fn):
+        name = fn.name
+        direct = {
+            "diff", "implicit_diff", "param_diff", "param_second_diff", "integrate", "int",
+            "solve", "fsolve", "zeros", "solve_trig", "trigsolve", "domain", "range",
+            "factor", "expand", "partfrac", "complete_square", "collect", "coeff",
+            "binomial", "normal", "poisson", "correlation", "covariance", "mean", "median",
+            "quartiles", "stddev", "det", "inverse", "rank", "rref", "dot", "cross",
+        }
+        if name in direct or name.startswith("trig"):
+            return True
+        return len(fn.params) <= 1
+
+    def random_catalogue_expr(self, rng, shape):
+        pool = {
+            "poly": ["x^2-5*x+6", "3*x^3-2*x+7", "(x-1)^2+4*x"],
+            "chain": ["sin(x^2+1)", "exp(3*x-2)", "log(x^2+1)"],
+            "product": ["x^2*exp(x)", "x*sin(x)", "(x^2+1)*log(x)"],
+            "quotient": ["(x^2+1)/(x-1)", "sin(x)/(1+cos(x))"],
+            "implicit": ["sin(x*y)+x^2=y^2", "x^y=y^x", "ln(x+y)=x*y"],
+            "param": ["x=t^2+1/t,y=t^2-1/t,t", "x=exp(t)*cos(t),y=exp(t)*sin(t),t"],
+            "second": ["x^3+2*x", "sin(x)^2", "x*exp(x)"],
+            "direct": ["x^3-4*x+1", "sin(3*x+2)", "1/(5*x+7)"],
+            "reverse_chain": ["2*x*cos(x^2)", "(2*x+5)/(x^2+5*x-7)", "1/(x*log(x))"],
+            "sub": ["1/(1+sqrt(x))", "exp(sqrt(x))", "sqrt(x)/(1+x)"],
+            "parts": ["x^2*log(x)", "x^2*exp(x)", "exp(2*x)*cos(3*x)"],
+            "di": ["x^4*exp(x)", "x^3*sin(2*x)", "x^3*cos(3*x)"],
+            "trig": ["sin(x)^4", "tan(x)^3", "sec(x)^3"],
+            "pf": ["1/(x^2*(x+1))", "(2*x+5)/(x^2+5*x-7)", "1/(x*(x^2+1))"],
+            "div": ["(x^2+1)/(x-1)", "x^4/(x^2+1)", "(x^3+1)/(x+1)"],
+            "weierstrass": ["1/(2+cos(x))", "1/(1+sin(x)+cos(x))"],
+            "symmetry": ["sin(x)/(sin(x)+cos(x))", "log(sin(x))"],
+            "linear": ["2*x+3=11", "5*x-7=3*x+9"],
+            "quad": ["x^2-5*x+6=0", "2*x^2+3*x-2=0"],
+            "factor": ["x^3-6*x^2+11*x-6=0", "sin(x)^2-sin(x)=0"],
+            "complete_square": ["x^2+4*x+1=0", "x^2-6*x+5=0"],
+            "log_exp": ["2^(2*x)-5*2^x+4=0", "log(x-1)+log(x+3)=log(8)"],
+            "rational": ["(x+1)/(x-2)+(x-2)/(x+1)=5", "1/(x-1)+1/(x+2)=1"],
+            "interval": ["sin(x)=1/2,x,0,2*pi", "cos(2*x)+sin(2*x)=1,x,0,2*pi"],
+            "general": ["2*sin(x)+1=0", "cos(2*x)=1/2"],
+            "bounded": ["2*sin(x)+1=0,x,0,2*pi,8", "3*cos(x)+4*sin(x)=2,x,0,2*pi,8"],
+            "cast": ["sin(x)=-1/2", "tan(2*x)=sqrt(3)"],
+            "identity": ["sin(x)^2+cos(x)^2", "(1-tan(x)^2)/(1+tan(x)^2)"],
+            "rform": ["3*cos(x)+4*sin(x)=2", "5*sin(x)-12*cos(x)=6"],
+            "square_then_check": ["sqrt(1-cos(x))=sin(x)", "sin(x)+cos(x)=sqrt(2)"],
+            "sin_cos": ["tan(x)+cot(x)", "sec(x)^2-tan(x)^2"],
+            "pythag": ["sin(x)^2+cos(x)^2", "1+tan(x)^2"],
+            "double_angle": ["sin(x)^4", "cos(4*x)"],
+            "compound_angle": ["sin(x+y)", "cos(x-y)"],
+            "target": ["sin(x)^2+cos(x)^2", "x^2+a*x+b"],
+            "radical": ["sqrt(x-sqrt(x))", "sqrt(1-x^2)"],
+            "log": ["log(1-x^2)", "log(sin(x))"],
+            "matrix2": ["[[1,2],[3,5]]", "[[2,1],[1,3]]"],
+            "matrix3": ["[[1,2,3],[0,1,4],[5,6,0]]"],
+            "singular": ["[[1,2],[2,4]]"],
+            "vector": ["[1,2,3]", "[3,-1,2]"],
+            "quartic": ["x^4+1", "x^4+x^2+1"],
+            "letter": ["a*x^2+b*x+c", "(m*x+n)^2"],
+            "real": ["-7", "sqrt(5)^2"],
+            "complex_rect": ["3+4*i", "1-2*i"],
+            "complex_polar": ["2*exp(i*pi/3)"],
+            "nested": ["sin(log(x^2+1))", "sqrt(1+exp(x))"],
+            "edge": ["1/(x-1)", "sqrt(x^2)", "log(x^2)"],
+            "basic": ["x^2+1", "sin(x)", "2/3"],
+        }
+        return rng.choice(pool.get(shape, pool["basic"]))
+
+    def random_catalogue_param_triplet(self, rng):
+        raw = self.random_catalogue_expr(rng, "param")
+        parts = _split_top_level_csv(raw)
+        cleaned = []
+        for part in parts:
+            if "=" in part:
+                cleaned.append(part.split("=", 1)[1])
+            else:
+                cleaned.append(part)
+        if len(cleaned) >= 3:
+            return ",".join(cleaned[:3])
+        return "t^2+1/t,t^2-1/t,t"
+
+    def catalogue_arg_value(self, param, fn_name, shape, rng):
+        p = (param or "").strip().lower()
+        if p in ("x", "var") or "var" in p:
+            return "x"
+        if p in ("y",):
+            return "y"
+        if p in ("t",):
+            return "t"
+        if "method" in p:
+            return shape if shape in ("direct", "sub", "parts", "trig", "pf", "div", "di", "weierstrass", "symmetry") else "auto"
+        if p in ("lo", "a"):
+            return "0" if shape in ("bounded", "interval", "trig") else "1"
+        if p in ("hi", "b"):
+            return "2*pi" if shape in ("bounded", "interval", "trig") else "5"
+        if p in ("max", "n", "k") or p.endswith("n") or p.endswith("k"):
+            return str(rng.randint(2, 8))
+        if p in ("p", "prob"):
+            return rng.choice(["0.2", "0.4", "0.5", "0.75"])
+        if "list" in p or p in ("l", "l1", "l2", "data"):
+            return rng.choice(["[1,2,3,4,8]", "[2,5,7,11]", "[1,1,2,3,5,8]"])
+        if p in ("a", "m") or "matrix" in p:
+            return self.random_catalogue_expr(rng, rng.choice(["matrix2", "matrix3", "singular"]))
+        if p in ("u", "v") or "vector" in p:
+            return rng.choice(["[1,2,3]", "[3,-1,2]"])
+        if "eq" in p:
+            return self.random_catalogue_expr(rng, rng.choice(["linear", "quad", "implicit", "rform"]))
+        if "expr" in p or p in ("f", "g", "z"):
+            return self.random_catalogue_expr(rng, shape)
+        return self.random_catalogue_expr(rng, shape)
+
+    def catalogue_call_for(self, fn, combo, shape, rng):
+        if not fn.params:
+            return fn.signature
+        args = []
+        for i in combo:
+            if i < len(fn.params):
+                args.append(self.catalogue_arg_value(fn.params[i].get("name", ""), fn.name, shape, rng))
+        return "{0}({1})".format(fn.name, ",".join(args))
+
+    def catalogue_direct_expr(self, fn, combo, shape, rng):
+        name = fn.name
+        if name == "diff":
+            expr = self.random_catalogue_expr(rng, shape)
+            method = shape if shape in ("chain", "product", "quotient", "logdiff", "implicit", "param", "second") else "auto"
+            return "derive", "{0},x,method={1}".format(expr, method)
+        if name in ("implicit_diff",):
+            return "derive", "mode:2,{0}".format(self.random_catalogue_expr(rng, "implicit"))
+        if name in ("param_diff",):
+            return "derive", "mode:3,{0}".format(self.random_catalogue_param_triplet(rng))
+        if name in ("param_second_diff",):
+            return "derive", "mode:5,{0}".format(self.random_catalogue_param_triplet(rng))
+        if name in ("integrate", "int"):
+            expr = self.random_catalogue_expr(rng, shape)
+            method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") else "auto"
+            return "int", "{0},method={1}".format(expr, method)
+        if name in ("solve", "fsolve", "zeros"):
+            return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape if shape != "quad" else "quad_formula")
+        if name in ("solve_trig", "trigsolve"):
+            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape)
+        if name.startswith("trig") or name in ("sin", "cos", "tan"):
+            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape)
+        if name in ("complete_square", "factor", "expand", "partfrac", "collect"):
+            method = "complete_square" if name == "complete_square" else ("pf" if name == "partfrac" else name)
+            return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
+        if name in ("domain", "range"):
+            return "alg", "{0}({1})".format(name, self.random_catalogue_expr(rng, shape))
+        if name in ("binomial", "normal", "poisson", "correlation", "covariance", "mean", "median", "quartiles", "stddev"):
+            return "stats", self.catalogue_call_for(fn, combo, shape, rng)
+        return "", self.catalogue_call_for(fn, combo, shape, rng)
+
+    def make_catalogue_graph_case(self, fn, combo, shape, index, rng):
+        flag, expr = self.catalogue_direct_expr(fn, combo, shape, rng)
+        combo_key = "arity{0}".format(len(combo))
+        graph_node = "{0}|{1}|{2}".format(fn.name, combo_key, shape)
+        meta = {
+            "function": fn.name,
+            "signature": fn.signature,
+            "params": [p.get("name", "") for p in fn.params],
+            "combo": list(combo),
+            "shape": shape,
+            "flag": flag or "parse",
+        }
+
+        def runner():
+            if flag:
+                out, err = self.run_host_feature(flag, expr)
+            else:
+                out, err = self.run_host_expr(expr)
+            combined = out if not err else out + "\n" + err
+            text = normalized_text(combined)
+            bad = any(s in text for s in ("err:", "missing host binary", "timeout after", "traceback", "dimension mismatch"))
+            if flag in ("derive", "int", "alg", "trig", "stats"):
+                ok = (not bad) and any(s in text for s in ("answer:", "dy/dx", " = ", "+ c", "result", "domain", "range", "method:"))
+            else:
+                ok = (not bad) and "fmt:" in text
+            return ok, combined
+
+        label = "Cat {0}: {1} · {2}".format(index, fn.name, shape)
+        return CaseSpec(
+            label=label,
+            program="CatalogueGraph",
+            runner=runner,
+            input_text=expr,
+            check_info="catalogue={0}; params={1}; shape={2}; graph={3}".format(fn.signature, len(combo), shape, graph_node),
+            feature="catalogue:{0}:{1}".format(fn.name, shape),
+            graph_node=graph_node,
+            graph_meta=meta,
+        )
+
+    def build_catalogue_explorer_cases(self, difficulty, count, rng):
+        funcs = load_all_catalogue_functions()
+        candidates = []
+        for fn in funcs:
+            if not self.catalogue_testable_function(fn):
+                continue
+            for combo in self.catalogue_combo_indices(fn):
+                for shape in self.catalogue_shapes_for(fn.name):
+                    key = "{0}|arity{1}|{2}".format(fn.name, len(combo), shape)
+                    candidates.append((key, fn, combo, shape))
+        rng.shuffle(candidates)
+        candidates.sort(key=lambda item: self.random_graph.score(item[0]))
+        chosen = []
+        for key, fn, combo, shape in candidates:
+            node = self.random_graph.nodes.get(key, {})
+            # Do not retry a passed function/shape/parameter layout in this run.
+            if node.get("pass", 0) > 0:
+                continue
+            chosen.append((fn, combo, shape))
+            if len(chosen) >= count:
+                break
+        if len(chosen) < count:
+            for key, fn, combo, shape in candidates:
+                if (fn, combo, shape) not in chosen:
+                    chosen.append((fn, combo, shape))
+                    if len(chosen) >= count:
+                        break
+        return [self.make_catalogue_graph_case(fn, combo, shape, i + 1, rng) for i, (fn, combo, shape) in enumerate(chosen)]
+
+    def announce_catalogue_graph(self, emit):
+        funcs = load_all_catalogue_functions()
+        self.write_catalogue_manifest(funcs)
+        total, passed, failed, weak = self.random_graph.summary()
+        emit(self.append_result, "[dim]All catalogue: {0} functions[/dim]".format(len(funcs)))
+        emit(self.append_result, "[dim]Params list: {0}[/dim]".format(CATALOGUE_MANIFEST_PATH))
+        emit(self.append_result, "[dim]Graph: {0} · nodes={1} pass={2} fail={3} weak={4}[/dim]".format(CATALOGUE_GRAPH_PATH, total, passed, failed, weak))
+        sample = ", ".join(fn.signature for fn in funcs[:12])
+        if sample:
+            emit(self.append_result, "[dim]Sample: {0}[/dim]".format(sample))
 
     def dedupe_cases_for_run(self, cases):
         # Infinite runs must not use a global key set: it exhausts the space and
@@ -3933,6 +4452,7 @@ class CASIOApp(App):
                 final_verdict = weighted_verdict(code_verdict, verdict)
                 self.apply_llm_weighted_status(record, final_verdict)
                 self._append_session_report_if_worthy(record)
+                self.record_random_graph_result(record)
                 if verdict in ("CORRECT", "INCORRECT", "NEEDS_REVIEW") and record.test_id is not None:
                     import time as time_module
                     tnow = time_module.time()
@@ -4013,6 +4533,8 @@ class CASIOApp(App):
                             case.input_text,
                             case.check_info,
                             getattr(case, "feature", ""),
+                            getattr(case, "graph_node", ""),
+                            getattr(case, "graph_meta", None),
                         )
                         if use_llm:
                             llm_pending.append(record)
@@ -4020,7 +4542,9 @@ class CASIOApp(App):
                                 flush_llm_pending()
                         else:
                             self._append_session_report_if_worthy(record)
+                            self.record_random_graph_result(record)
                 flush_llm_pending()
+                self.flush_random_graph()
         finally:
             self._in_run_case_specs = False
 
@@ -7272,7 +7796,10 @@ class CASIOApp(App):
 
     def random_builders_for_program(self, program):
         """Return the random-case builders included in the requested scope."""
+        if program is None:
+            return [("CatalogueGraph", self.build_catalogue_explorer_cases)]
         builders = [
+            ("CatalogueGraph", self.build_catalogue_explorer_cases),
             ("Algebra", self.build_random_algebra_cases),
             ("Trigonometry", self.build_random_trig_cases),
             ("Derive", self.build_random_derive_cases),
@@ -7359,6 +7886,10 @@ class CASIOApp(App):
         import time
         self.start_time = time.time()
         self.total_expected = expected_count
+        self.random_graph = RandomExplorationGraph(CATALOGUE_GRAPH_PATH)
+        self.random_graph.nodes = {}
+        self.random_graph._dirty = 1
+        self.random_graph.save()
         self._last_eta_update = 0
         self.records = []
         self.current_run_question_keys.clear()
@@ -7452,6 +7983,8 @@ class CASIOApp(App):
                 self.last_run_scope = (self.current_program, difficulty)
                 self._init_session_report_file()
                 scope = f"{program} · " if program else ""
+                if program is None or program == "CatalogueGraph":
+                    self.announce_catalogue_graph(emit)
 
                 emit(
                     self.append_result,
