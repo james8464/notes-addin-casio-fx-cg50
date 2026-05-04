@@ -5222,7 +5222,29 @@ static std::optional<NodeId> integrate_abs_linear(Arena &a, NodeId expr, std::st
     NodeId abs_u = casio::fn(a, "abs", u);
     NodeId den = a.num(r_mul(Rational{2, 1}, *lc));
     NodeId primitive = casio::simplify(a, casio::div(a, casio::mul(a, {u, abs_u}), den));
-    if(from_sqrt_square) steps.push_back("Step 2: sqrt(u^2)=abs(u), with u=" + format_expr(a, u) + ".");
+    if(from_sqrt_square) {
+        steps.push_back("Step 2: sqrt(u^2)=abs(u), with u=" + format_expr(a, u) + ".");
+        if(auto p = poly_of_any(a, u, var); p && p->ok && poly_degree(*p) == 1) {
+            Rational m = poly_at(*p, 1);
+            Rational b = poly_at(*p, 0);
+            if(!r_zero(m)) {
+                Rational root = r_div(r_neg(b), m);
+                NodeId root_node = a.num(root);
+                std::string root_text = format_expr(a, root_node);
+                steps.push_back("Step 3: Split at u=0, so " + var + "=" + root_text + ".");
+                if(m.num > 0) {
+                    steps.push_back("Step 4: For " + var + " >= " + root_text + ", abs(u)=u.");
+                    steps.push_back("Step 5: For " + var + " < " + root_text + ", abs(u)=-u.");
+                }
+                else {
+                    steps.push_back("Step 4: For " + var + " <= " + root_text + ", abs(u)=u.");
+                    steps.push_back("Step 5: For " + var + " > " + root_text + ", abs(u)=-u.");
+                }
+                steps.push_back("Step 6: Compact antiderivative: u*abs(u)/(2u').");
+                return primitive;
+            }
+        }
+    }
     else steps.push_back("Step 2: Let u=" + format_expr(a, u) + ", so du=" + format_expr(a, casio::num(a, lc->num, lc->den)) + " dx.");
     steps.push_back("Step 3: Integral abs(u) dx = u*abs(u)/(2u').");
     return primitive;

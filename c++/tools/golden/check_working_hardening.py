@@ -121,7 +121,19 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "mode:5,exp(t)*cos(t),exp(t)*sin(t),t",
-        ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)"],
+        ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "Divide by dx/dt = e^t(cos(t)-sin(t))", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "int",
+        "sqrt((2*x-3)^2)",
+        ["sqrt(u^2)=abs(u)", "Split at u=0, so x=3/2", "For x >= 3/2", "For x < 3/2", "Answer: (2*x - 3)*abs(2*x - 3)/4 + C"],
+        ["ERR:", "Unexpected token", "Answer: int("],
+    ),
+    (
+        "alg",
+        "arcsin(sin(2*x+pi/6)),method=complete_square",
+        ["Complete square is for quadratics", "inverse-trig expression", "not applicable"],
         ["ERR:", "Unexpected token"],
     ),
     (
@@ -182,6 +194,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "alg",
         "domain(sin(2*x+pi/6)^2+cos(2*x+pi/6)^2)",
         ["Use sin(u)^2 + cos(u)^2 = 1", "Domain: all real x", "Answer: all real x"],
+        ["Start with 1", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "domain(cosec((x)^2-pi/4)^2-cot((x)^2-pi/4)^2)",
+        ["Use identity cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x^2 - pi/4) != 0", "Range: y = 1", "Answer: sin(x^2 - pi/4) != 0"],
         ["Start with 1", "ERR:", "Unexpected token"],
     ),
     (

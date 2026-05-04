@@ -1570,6 +1570,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             auto p = poly_of(arena, n, "x");
             if(!p || !p->ok || is_zero(p->a2)) {
+                std::string key = compact_input_key(req.expr);
+                if(key.find("asin(") != std::string::npos || key.find("arcsin(") != std::string::npos ||
+                   key.find("acos(") != std::string::npos || key.find("arccos(") != std::string::npos ||
+                   key.find("atan(") != std::string::npos || key.find("arctan(") != std::string::npos) {
+                    return {
+                        "1. Start with " + format_expr(arena, n) + ".",
+                        "2. Complete square is for quadratics ax^2+bx+c.",
+                        "3. This is an inverse-trig expression, so square completion is not applicable.",
+                        "4. Use inverse-trig branch/domain rules if solving.",
+                        "Answer: " + format_expr(arena, n),
+                    };
+                }
                 return {
                     "1. Start with " + format_expr(arena, n) + ".",
                     "2. Complete square applies to ax^2+bx+c.",
@@ -1681,6 +1693,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(pythagorean_square_sum(expr) && format_expr(arena, n) == "1") {
                 steps.push_back("Start with " + expr + ".");
                 steps.push_back("Use sin(u)^2 + cos(u)^2 = 1.");
+            }
+            else if(auto trig_step = reciprocal_trig_identity_step(expr); trig_step && format_expr(arena, n) == "1") {
+                steps.push_back("Start with " + expr + ".");
+                steps.push_back(*trig_step);
             }
             else {
                 casio::append_exam_prelude_steps(steps, pre);

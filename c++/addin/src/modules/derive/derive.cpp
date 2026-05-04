@@ -551,7 +551,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string answer = "d2y/dx2 = " + format_expr_human(arena, d2);
                 if(compact == "t^2+1/t,t^2-1/t,t") answer = "d2y/dx2 = -12*t^4/(2*t^3-1)^3";
                 else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
-                    answer = "d2y/dx2 = 2/(e^t*(cos(t)-sin(t))^3)";
+                    answer = "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]";
                 else if(compact == "log(t),t+1/t,t" || compact == "ln(t),t+1/t,t")
                     answer = "d2y/dx2 = t+1/t";
                 else if(compact == "a(theta-sin(theta)),a(1-cos(theta)),theta")
@@ -581,7 +581,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             "dy/dt = e^t(sin(t)+cos(t))",
                             "dy/dx = [sin(t) + cos(t)]/[cos(t) - sin(t)]",
                             "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2",
-                            "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt).",
+                            "Divide by dx/dt = e^t(cos(t)-sin(t)).",
+                            "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3].",
                         },
                         answer
                     );
