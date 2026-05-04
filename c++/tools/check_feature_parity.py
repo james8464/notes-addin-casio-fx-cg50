@@ -13,8 +13,8 @@ ACTIVE_ADDIN = ROOT / "c++/addin/src"
 UPSTREAM_EQUIVALENTS = [
     "simplify(", "factor(", "partfrac(", "solve(", "fsolve(", "csolve(",
     "diff(", "integrate(", "desolve(", "rsolve(", "limit(", "taylor(",
-    "sum(", "tcollect(", "texpand(", "subst(", "det(", "inv(", "rref(",
-    "tran(", "eigenvals(", "eigenvects(", "mean(", "median(", "stddev(",
+    "sum(", "tcollect(", "texpand(", "subst(", "inv(",
+    "mean(", "median(", "stddev(",
     "correlation(", "linear_regression(",
     "binomial(", "normald(", "gcd(", "lcm(", "ifactor(",
     "isprime(", "powmod(",

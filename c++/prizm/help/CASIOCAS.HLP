@@ -72,6 +72,125 @@ Factorial n.
 Args: see syntax; [] optional.
 Ex F2: 7!
 @END
+@%
+F2:17%5
+%
+Remainder/mod.
+Args: a%b.
+Ex F2: 17%5
+@END
+@&
+F2:A&B
+&
+Bitwise/logical and.
+Args: a&b.
+Ex F2: A&B
+@END
+@:=
+F2:f(x):=x^2
+:=
+Define variable/function.
+Args: name:=expr.
+Ex F2: f(x):=x^2
+@END
+@<
+F2:x<2
+<
+Strict less-than.
+Args: a<b.
+Ex F2: x<2
+@END
+@<=
+F2:x<=2
+<=
+Less-or-equal.
+Args: a<=b.
+Ex F2: x<=2
+@END
+@==
+F2:x==2
+==
+Equality test.
+Args: a==b.
+Ex F2: x==2
+@END
+@!=
+F2:x!=2
+!=
+Not-equal test.
+Args: a!=b.
+Ex F2: x!=2
+@END
+@=>
+F2:x^2-1=>factor
+=>
+Apply/pipe to op.
+Args: expr=>op.
+Ex F2: x^2-1=>factor
+@END
+@>
+F2:x>2
+>
+Strict greater-than.
+Args: a>b.
+Ex F2: x>2
+@END
+@>=
+F2:x>=2
+>=
+Greater-or-equal.
+Args: a>=b.
+Ex F2: x>=2
+@END
+@\
+F2:17\5
+\
+Integer quotient.
+Args: a\b.
+Ex F2: 17\5
+@END
+@_
+F2:ans_1
+_
+Subscript/previous item marker.
+Args: see syntax.
+Ex F2: ans_1
+@END
+@|
+F2:assume(x>0)|simplify(sqrt(x^2))
+|
+Condition/where separator.
+Args: expr|condition.
+Ex F2: sqrt(x^2)|x>0
+@END
+@~
+F2:~A
+~
+Bitwise not.
+Args: ~a.
+Ex F2: ~A
+@END
+@a and b
+F2:x>0 and x<2
+a and b
+Logical and.
+Args: a and b.
+Ex F2: x>0 and x<2
+@END
+@a or b
+F2:x<0 or x>2
+a or b
+Logical or.
+Args: a or b.
+Ex F2: x<0 or x>2
+@END
+@not(x)
+F2:not(x>0)
+not(x)
+Logical not.
+Args: not(expr).
+Ex F2: not(x>0)
+@END
 @_cdf
 F2:_icdf
 _cdf
@@ -172,13 +291,6 @@ Returns nCk
 Args: see syntax; [] optional.
 Ex F2: comb(10,4)
 @END
-@conj(z)
-F2:conj(1+i)
-conj(z)
-Complex conjugate.
-Args: see syntax; [] optional.
-Ex F2: conj(1+i)
-@END
 @correlation(l1,l2)
 F2:correlation([1,2,3],[2,5,8])
 correlation(l1,l2)
@@ -241,13 +353,6 @@ de_solve(equation,[bc])
 DE solve.
 Args: see syntax; [] optional.
 Ex F2: de_solve(y'+y=exp(x),y(0)=1)
-@END
-@det(A)
-F2:det([[1,2],[3,4]])
-det(A)
-Determinant.
-Args: see syntax; [] optional.
-Ex F2: det([[1,2],[3,4]])
 @END
 @diff(f,var,[n,method])
 F2:diff(sin(x),x)
@@ -343,20 +448,6 @@ draw_string(s,x,y,c)
 Draw string s at pixel x,y
 Args: see syntax; [] optional.
 Ex F2: draw_string("Bonjour",80,60)
-@END
-@eigenvals(A)
-F2:eigenvals([[1,2],[3,4]])
-eigenvals(A)
-Eigenvalues.
-Args: see syntax; [] optional.
-Ex F2: eigenvals([[1,2],[3,4]])
-@END
-@eigenvects(A)
-F2:eigenvects([[1,2],[3,4]])
-eigenvects(A)
-Eigenvectors.
-Args: see syntax; [] optional.
-Ex F2: eigenvects([[1,2],[3,4]])
 @END
 @erf(x)
 F2:erf(1.2)
@@ -564,13 +655,6 @@ Integer divisors.
 Args: see syntax; [] optional.
 Ex F2: idivis(10)
 @END
-@idn(n)
-F2:idn(4)
-idn(n)
-Identity matrix.
-Args: see syntax; [] optional.
-Ex F2: idn(4)
-@END
 @iegcd(a,b)
 F2:iegcd(23,13)
 iegcd(a,b)
@@ -589,13 +673,6 @@ ilaplace(f,s,x)
 Inverse Laplace transform of f
 Args: see syntax; [] optional.
 Ex F2: ilaplace(s/(s^2+1),s,x)
-@END
-@im(z)
-F2:im(1+i)
-im(z)
-Imaginary part.
-Args: see syntax; [] optional.
-Ex F2: im(1+i)
 @END
 @inf
 F2:oo
@@ -795,13 +872,6 @@ median(l)
 Median.
 Args: see syntax; [] optional.
 Ex F2: median([1,2,3])
-@END
-@mult_c_conjugate
-F2:mult_c_conjugate(1+2*i)
-mult_c_conjugate
-Multiplier par le conjugue complexe.
-Args: see syntax; [] optional.
-Ex F2: mult_c_conjugate(1+2*i)
 @END
 @mult_conjugate
 F2:mult_conjugate(sqrt(2)-sqrt(3))
@@ -1045,13 +1115,6 @@ ratnormal(x)
 Common denom.
 Args: see syntax; [] optional.
 @END
-@re(z)
-F2:re(1+i)
-re(z)
-Real part.
-Args: see syntax; [] optional.
-Ex F2: re(1+i)
-@END
 @range(expr,[x,lo,hi])
 F2:range(x^2+2*x+3,x,-2,2)
 range(expr,[x,lo,hi])
@@ -1086,13 +1149,6 @@ Rewrite to target form.
 Args: see syntax; [] optional.
 Ex F2: rewrite(x^2+6*x+11)
 Ex F3: rewrite(2*x^2-8*x+3,x)
-@END
-@rref(A)
-F2:rref([[1,2,3],[4,5,6]])
-rref(A)
-Row reduce.
-Args: see syntax; [] optional.
-Ex F2: rref([[1,2,3],[4,5,6]])
 @END
 @rsolve(equation,u(n),[init])
 F2:rsolve(u(n+1)=2*u(n)+3,u(n),u(0)=1)
@@ -1270,13 +1326,6 @@ xform(expr,target)
 Transform to target form.
 Args: see syntax; [] optional.
 Ex F2: xform(x^2+2*x+1,(x+1)^2)
-@END
-@tran(A)
-F2:tran([[1,2],[3,4]])
-tran(A)
-Transpose matrix.
-Args: see syntax; [] optional.
-Ex F2: tran([[1,2],[3,4]])
 @END
 @trig2exp(expr)
 F2:trig2exp(cos(x)^3)

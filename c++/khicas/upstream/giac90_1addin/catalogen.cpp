@@ -76,7 +76,23 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {" edit list ", "list ", 0, 0, 0, CAT_CATEGORY_LIST},
   {" edit matrix ", "matrix ", 0, 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
 #endif
-  {"!", "!", 0, 0, 0, CAT_CATEGORY_ARIT},
+  {"!", "!", 0, 0, 0, CAT_CATEGORY_ARIT | (CAT_CATEGORY_PROGCMD << 8)},
+  {"%", "%", 0, 0, 0, CAT_CATEGORY_ARIT | (CAT_CATEGORY_PROGCMD << 8)},
+  {"&", "&", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {":=", ":=", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"<", "<", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"<=", "<=", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"==", "==", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"!=", "!=", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"=>", "=>", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {">", ">", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {">=", ">=", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"\\", "\\", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"_", "_", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"|", "|", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"~", "~", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"a and b", " and ", 0, 0, 0, CAT_CATEGORY_PROGCMD},
+  {"a or b", " or ", 0, 0, 0, CAT_CATEGORY_PROGCMD},
 #if 0
   {"_cdf", "_cdf", 0, 0, 0, CAT_CATEGORY_PROBA},
 #endif
@@ -99,7 +115,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"coeff(p,x,n)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
   {"compare(expr1,expr2)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
   {"comb(n,k)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
-  {"conj(z)", 0, 0, 0, 0, CAT_CATEGORY_COMPLEXNUM},
   {"correlation(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"covariance(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #if 0
@@ -117,7 +132,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"desolve(equation,t,y)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
 #endif
   {"de_solve(equation,[bc])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
-  {"det(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
   {"diff(f,var,[n,method])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #if 0
   {"diff_by(f,var,method)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
@@ -135,8 +149,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"draw_rectangle(x,y,w,h,c)", 0, 0, 0, 0, CAT_CATEGORY_PROGCMD},
   {"draw_string(s,x,y,c)", 0, 0, 0, 0, CAT_CATEGORY_PROGCMD},
 #endif
-  {"eigenvals(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
-  {"eigenvects(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
 #if 0
   {"erf(x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
   {"erfc(x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
@@ -189,7 +201,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"ichinrem([a,m],[b,n])", 0, 0, 0, 0, CAT_CATEGORY_ARIT},
   {"idivis(n)", 0, 0, 0, 0, CAT_CATEGORY_ARIT},
 #endif
-  {"idn(n)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
 #if 0
   {"iegcd(a,b)", 0, 0, 0, 0, CAT_CATEGORY_ARIT},
 #endif
@@ -199,7 +210,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"ilaplace(f,s,x)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #endif
-  {"im(z)", 0, 0, 0, 0, CAT_CATEGORY_COMPLEXNUM},
   {"inf", "inf", 0, 0, 0, CAT_CATEGORY_CALCULUS},
   {"integrate(f,x,[a,b,method,u])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #if 0
@@ -255,15 +265,12 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"mean(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"median(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
-  {"mult_c_conjugate", 0, 0, 0, 0, (CAT_CATEGORY_COMPLEXNUM << 8)},
   {"mult_conjugate", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
   {"normald([mu,sigma],x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
 #if 0
   {"normal_diff(expr,[x])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #endif
-#if 0
   {"not(x)", 0, 0, 0, 0, CAT_CATEGORY_PROGCMD},
-#endif
 #if 0
   {"numer(x)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
 #endif
@@ -326,7 +333,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"ratnormal(x)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
 #endif
-  {"re(z)", 0, 0, 0, 0, CAT_CATEGORY_COMPLEXNUM},
   {"range(expr,[x,lo,hi])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
 #if 0
   {"rem(p,q,x)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
@@ -336,7 +342,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"revert(p[,x])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #endif
   {"rewrite(expr,target)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
-  {"rref(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
 #if 0
   {"rsolve(equation,u(n),[init])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE},
 #endif
@@ -378,7 +383,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"transform(expr,[form])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
 #endif
   {"xform(expr,target)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
-  {"tran(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
 #if 0
   {"trig2exp(expr)", 0, 0, 0, 0, CAT_CATEGORY_TRIG},
 #endif
@@ -408,7 +412,6 @@ int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 static bool catalog_hidden_category(int category){
   switch (category) {
   case CAT_CATEGORY_PROG:
-  case CAT_CATEGORY_PROGCMD:
   case CAT_CATEGORY_LOGO:
   case CAT_CATEGORY_OPTIONS:
   case CAT_CATEGORY_LIST:
@@ -434,7 +437,7 @@ static bool catalog_hidden_name(const char *name){
     "nextprime","ichinrem","iabcuv","idivis","iegcd","residue","bool_","prove_bool",0
   };
   const char *hidden_exact[]={
-    "circle","line","point","polygon","segment","nand","nor","not",0
+    "circle","line","point","polygon","segment","nand","nor",0
   };
   for (int i=0;hidden_prefix[i];++i)
     if (startswith_catalog(name,hidden_prefix[i]))
@@ -651,6 +654,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   ADD_CAT(CAT_CATEGORY_LINALG,"Linear algebra");
   ADD_CAT(CAT_CATEGORY_CALCULUS,"Calculus");
   ADD_CAT(CAT_CATEGORY_ARIT,"Arithmetic");
+  ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds");
   ADD_CAT(CAT_CATEGORY_COMPLEXNUM,"Complexes");
   ADD_CAT(CAT_CATEGORY_POLYNOMIAL,"Polynomials");
   ADD_CAT(CAT_CATEGORY_PROBA,"Probabilities");
@@ -711,17 +715,15 @@ int find_category(const char *cmdname){
 
 // 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {
-  int allcmds=builtin_lexer_functions_end()-builtin_lexer_functions_begin();
   int allopts=lexer_tab_int_values_end-lexer_tab_int_values_begin;
   bool isall=category==CAT_CATEGORY_ALL;
   bool isopt=category==CAT_CATEGORY_OPTIONS;
-  int nitems = isall? allcmds:(isopt?allopts:CAT_COMPLETE_COUNT);
+  int nitems = isopt?allopts:CAT_COMPLETE_COUNT;
   MenuItem* menuitems = (MenuItem*)alloca(sizeof(MenuItem)*nitems);
-  int cur = 0,curmi = 0,i=0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
-  gen g;
+  int cur = 0,curmi = 0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
   while(cur<nitems) {
-    if (isall || isopt) {
-      const char * text=isall?(builtin_lexer_functions_begin()+cur)->first:(lexer_tab_int_values_begin+cur)->keyword;
+    if (isopt) {
+      const char * text=(lexer_tab_int_values_begin+cur)->keyword;
       if (catalog_hidden_name(text)){
 	++cur;
 	continue;
@@ -731,27 +733,8 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       if (menusel<0 && cmdname && !strncmp(cmdname,text,cmdl))
 	menusel=curmi;
       menuitems[curmi].text = text;
-      menuitems[curmi].isfolder = allcmds; // assumes allcmds>allopts
-      menuitems[curmi].token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+cur)->subtype+(lexer_tab_int_values_begin+cur)->return_value*256);
-      for (;i<CAT_COMPLETE_COUNT;++i){
-	const char * catname=completeCat[i].name;
-	if (catalog_hidden_name(catname))
-	  continue;
-	int tmp=strcmp(catname,text);
-	if (tmp>=0){
-	  size_t st=strlen(text),j=tmp?0:st;
-	  for (;j<st;++j){
-	    if (catname[j]!=text[j])
-	      break;
-	  }
-	  if (j==st && (!isalphanum(catname[j]))){
-	    menuitems[curmi].isfolder = i;
-	    ++i;
-	  }
-	  break;
-	}
-      }
-      // compare text with completeCat
+      menuitems[curmi].isfolder = CAT_COMPLETE_COUNT;
+      menuitems[curmi].token=(lexer_tab_int_values_begin+cur)->subtype+(lexer_tab_int_values_begin+cur)->return_value*256;
       ++curmi;
     }
     else {
@@ -762,7 +745,8 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       menuitems[curmi].type = MENUITEM_NORMAL;
       menuitems[curmi].color = TEXT_COLOR_BLACK;
       int cat=completeCat[cur].category;
-      if ( (cat & 0xff) == category ||
+      if ( isall ||
+	   (cat & 0xff) == category ||
 	   (cat & 0xff00) == (category<<8) ||
 	   (cat & 0xff0000) == (category <<16)
 	   ){

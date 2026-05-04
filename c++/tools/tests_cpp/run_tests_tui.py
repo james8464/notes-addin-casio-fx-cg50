@@ -186,7 +186,7 @@ CATALOGUE_HIDDEN_PREFIXES = (
     "powmod", "nextprime", "ichinrem", "iabcuv", "idivis", "iegcd", "residue", "bool_",
     "prove_bool",
 )
-CATALOGUE_HIDDEN_EXACT = {"circle", "line", "point", "polygon", "segment", "nand", "nor", "not"}
+CATALOGUE_HIDDEN_EXACT = {"circle", "line", "point", "polygon", "segment", "nand", "nor"}
 
 
 def _catalogue_hidden(name):

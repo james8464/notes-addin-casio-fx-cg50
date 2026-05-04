@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
+STATIC_LEXER = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer.h"
+STATIC_LEXER_FULL = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer_full.h"
 
 
 HIDDEN_MARKERS = [
@@ -69,6 +71,49 @@ OLD_FEATURE_ALIASES = [
     "xform(expr,target)",
 ]
 
+REMOVED_SURFACES = [
+    "conj(z)",
+    "det(A)",
+    "eigenvals(A)",
+    "eigenvects(A)",
+    "idn(n)",
+    "im(z)",
+    "mult_c_conjugate",
+    "re(z)",
+    "rref(A)",
+    "tran(A)",
+]
+
+REMOVED_LEXER_NAMES = [
+    "conj",
+    "det",
+    "det_minor",
+    "egv",
+    "egvl",
+    "eigenvals",
+    "eigenvalues",
+    "eigenvectors",
+    "eigenvects",
+    "idn",
+    "im",
+    "imag",
+    "mult_c_conjugate",
+    "re",
+    "real",
+    "rref",
+    "tran",
+]
+
+REQUIRED_PROGCMD_SURFACES = [
+    '{"<", "<"',
+    '{"<=", "<="',
+    '{">", ">"',
+    '{">=", ">="',
+    '{"a and b", " and "',
+    '{"a or b", " or "',
+    '{"not(x)"',
+]
+
 
 def fail(msg: str) -> int:
     print(f"FAIL {msg}")
@@ -79,6 +124,8 @@ def main() -> int:
     catalog = CATALOG.read_text(errors="ignore")
     main_cc = MAIN.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
+    lexer_text = STATIC_LEXER.read_text(errors="ignore")
+    lexer_full_text = STATIC_LEXER_FULL.read_text(errors="ignore")
 
     if "catalog_hidden_category" not in catalog or "catalog_hidden_name" not in catalog:
         return fail("catalog hide filters missing")
@@ -93,6 +140,8 @@ def main() -> int:
         return fail("category id mapping missing")
     if 'ADD_CAT(CAT_CATEGORY_ALL,"All")' not in catalog:
         return fail("All catalogue category missing")
+    if 'ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds")' not in catalog:
+        return fail("Program cmds category missing")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
         return fail("category command hide filter not applied")
     if "catalog_hidden_name(text)" not in catalog:
@@ -111,6 +160,23 @@ def main() -> int:
     missing_aliases = [x for x in OLD_FEATURE_ALIASES if x not in catalog]
     if missing_aliases:
         return fail("old feature aliases missing: " + ", ".join(missing_aliases))
+
+    missing_progcmd = [x for x in REQUIRED_PROGCMD_SURFACES if x not in catalog]
+    if missing_progcmd:
+        return fail("program command surfaces missing: " + ", ".join(missing_progcmd))
+
+    still_catalogued = [x for x in REMOVED_SURFACES if x in catalog]
+    if still_catalogued:
+        return fail("removed surfaces still in catalogue: " + ", ".join(still_catalogued))
+    still_helped = ["@" + x for x in REMOVED_SURFACES if "@" + x in help_text]
+    if still_helped:
+        return fail("removed surfaces still in help: " + ", ".join(still_helped))
+    still_lexed = [x for x in REMOVED_LEXER_NAMES if '{"' + x + '"' in lexer_text]
+    if still_lexed:
+        return fail("removed surfaces still in active lexer: " + ", ".join(still_lexed))
+    still_full_lexed = [x for x in REMOVED_LEXER_NAMES if '{"' + x + '"' in lexer_full_text]
+    if still_full_lexed:
+        return fail("removed surfaces still in full lexer: " + ", ".join(still_full_lexed))
 
     if "Copy CASIOCAS.HLP to storage root." not in catalog:
         return fail("compact F6 help fallback missing")
