@@ -12,10 +12,10 @@ ICON_SEL ?= khicasio1.png
 RM	= /bin/rm
 
 # if -DGINT_MALLOC, define GINT_MALLOC in stdlib.c (or Makefile there) and rm kgen.o main.o
-CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffunction-sections -fdata-sections -ffast-math
+CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -ffunction-sections -fdata-sections -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 
-LDFLAGS = -g -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--print-memory-usage
+LDFLAGS = -flto -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--print-memory-usage
 
 LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group -lgui -lcas -ltommath -lustl -lm -lc -lgcc -Wl,--end-group
 
@@ -54,7 +54,7 @@ khicasen.elf: libcas.a libgui.a catalogen.o
 	$(CXX) $(LDFLAGS) -Wl,-Map=khicasen.map catalogen.o  $(LIBS) -o $@
 	sh3eb-elf-objdump -C -t khicasen.elf | sort > dumpen_t
 
-OBJFLAGS= -O binary -R .bss -R .gint_bss -R .debug_info -R .debug_abbrev -R .debug_loc -R .debug_aranges -R .debug_ranges -R .debug_line -R .debug_str -R.comment -R  debug_frame
+OBJFLAGS= -O binary -R .bss -R .gint_bss -R .debug_info -R .debug_abbrev -R .debug_loc -R .debug_aranges -R .debug_ranges -R .debug_line -R .debug_str -R .symtab -R .strtab -R.comment -R  debug_frame
 khicas.bin: khicas.elf
 	$(OBJCOPY) $(OBJFLAGS) khicas.elf khicas.bin
 
