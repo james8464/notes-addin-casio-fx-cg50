@@ -203,6 +203,8 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             return casio::simplify(a, casio::div(a, up, casio::mul(a, {casio::num(a, 2), a.fn(FnKind::Sqrt, u)})));
         case FnKind::Abs:
             return casio::simplify(a, casio::mul(a, {casio::div(a, u, a.fn(FnKind::Abs, u)), up}));
+        case FnKind::Sign:
+            return casio::num(a, 0);
         case FnKind::Asin: {
             // d/dx asin(u) = u'/sqrt(1-u^2)
             NodeId one = casio::num(a, 1);
@@ -548,7 +550,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         {
                             "dx/dt = e^t(cos(t)-sin(t))",
                             "dy/dt = e^t(sin(t)+cos(t))",
-                            "dy/dx = (sin(t)+cos(t))/(cos(t)-sin(t))",
+                            "dy/dx = [sin(t) + cos(t)]/[cos(t) - sin(t)]",
                             "Differentiate this wrt t.",
                             "Divide by dx/dt.",
                         },

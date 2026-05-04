@@ -21,6 +21,27 @@ graph TD
 
 ```mermaid
 graph TD
+  Rand["TUI random graph"] --> Weak["weak working node"]
+  Weak --> Patch["source patch"]
+  Patch --> Host["casio_host gate"]
+  Host --> Full["run_tests_cpp.py"]
+  Full --> Build["/compile"]
+
+  Parse["parse.cpp"] --> Sign["FnKind::Sign"]
+  Sign --> Fmt["format_expr/format_exam"]
+  Sign --> Eval["algebra/stats/trig eval"]
+  Sign --> Der["derive: d sign(u)=0"]
+
+  Exam["exam_work.cpp"] --> Friendly["parsed display text"]
+  Friendly --> Int["integrate traces"]
+  Int --> PF["PF coefficient setup"]
+  Int --> Sub["substitution spacing"]
+  Int --> Div["division spacing"]
+  Int --> Wei["Weierstrass spacing"]
+```
+
+```mermaid
+graph TD
   OldPy["old Python menus"] --> Alg["Algebra: cmp/xform/exp/poly/solve/comp/inv/rw/dom/cart"]
   OldPy --> Der["Derive: normal/implicit/param/second/tangent"]
   OldPy --> Int["Integrate: int/DE/param area"]

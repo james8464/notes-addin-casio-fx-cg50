@@ -487,6 +487,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
         case FnKind::Cot: return 1.0 / std::tan(u);
         case FnKind::Sqrt: return std::sqrt(u);
         case FnKind::Abs: return std::fabs(u);
+        case FnKind::Sign: return (u > 0) - (u < 0);
         case FnKind::Log: return std::log(u);
         case FnKind::Exp: return std::exp(u);
         default: return std::nullopt;
@@ -940,6 +941,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     case FnKind::Cot: return 1.0 / std::tan(a);
                     case FnKind::Sqrt: return std::sqrt(a);
                     case FnKind::Abs: return std::fabs(a);
+                    case FnKind::Sign: return (a > 0) - (a < 0);
                     case FnKind::Log: return std::log(a);
                     case FnKind::Exp: return std::exp(a);
                     default: return 0.0;

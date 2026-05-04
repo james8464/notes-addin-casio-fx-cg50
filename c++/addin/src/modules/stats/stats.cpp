@@ -234,6 +234,7 @@ static std::optional<long double> eval_node(Arena &a, NodeId id, long double xva
         case FnKind::Log10: return std::log10((double)u);
         case FnKind::Sqrt: return std::sqrt((double)u);
         case FnKind::Abs: return std::fabs((double)u);
+        case FnKind::Sign: return (u > 0) - (u < 0);
         default: return std::nullopt;
         }
     }

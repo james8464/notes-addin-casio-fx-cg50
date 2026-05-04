@@ -80,6 +80,14 @@ static NodeId simplify_fn(Arena &a, FnKind fk, NodeId arg)
             return num(a, small_factorial(x.num.num));
         }
     }
+    if(fk == FnKind::Sign) {
+        Node const &x = a.get(sarg);
+        if(is_num(x)) {
+            if(x.num.num > 0) return num(a, 1);
+            if(x.num.num < 0) return num(a, -1);
+            return num(a, 0);
+        }
+    }
     NodeId out = a.fn(fk, sarg);
     return out;
 }
@@ -423,6 +431,7 @@ static FnKind fn_kind_from_name(std::string_view name)
     if(name == "log10") return FnKind::Log10;
     if(name == "sqrt") return FnKind::Sqrt;
     if(name == "abs") return FnKind::Abs;
+    if(name == "sign") return FnKind::Sign;
     if(name == "factorial") return FnKind::Factorial;
     throw std::runtime_error("Unknown function: " + std::string(name));
 }

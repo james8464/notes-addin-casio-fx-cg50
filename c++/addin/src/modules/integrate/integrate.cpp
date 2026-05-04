@@ -204,6 +204,7 @@ static std::string node_to_string(Arena &a, NodeId n)
             case FnKind::Tanh: name = "tanh"; break;
             case FnKind::Exp: name = "exp"; break;
             case FnKind::Log: name = "log"; break;
+            case FnKind::Sign: name = "sign"; break;
             case FnKind::Factorial: name = "factorial"; break;
             default: name = "f";
         }
@@ -325,7 +326,7 @@ static std::string strip_step_label(std::string s)
 static std::string clean_integral_step(std::string s, std::string const &expr, std::string const &var)
 {
     s = strip_step_label(std::move(s));
-    if(s.find("Set up the integral") != std::string::npos) return "I = Integral(" + expr + ") d" + var + ".";
+    if(s.find("Set up the integral") != std::string::npos) return "I = Integral [" + expr + "] d" + var + ".";
     if(s.find("Simplify. Add constant C") != std::string::npos) return "";
     if(s.find("Repeated integration by parts for x^n*exp") != std::string::npos)
         return "Use DI/table integration by parts for x^n*e^(a*x+b).";
@@ -1297,8 +1298,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "reverse substitution u=sqrt(x)",
             {
                 "Let u = sqrt(x), so x=u^2 and dx=2u du.",
-                "Integral becomes Integral(2u/(1+u)) du.",
-                "Rewrite 2u/(1+u) = 2 - 2/(1+u).",
+                "Integral becomes Integral [2u/(1+u)] du.",
+                "Rewrite 2u/(1+u) as 2 - 2/(1+u).",
                 "Integrate: 2u - 2ln|1+u| + C.",
                 "Back-substitute u=sqrt(x).",
             },
@@ -1457,8 +1458,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "algebraic division",
             {
-                "Divide x^2+1 by x-1.",
-                "(x^2+1)/(x-1) = x + 1 + 2/(x-1).",
+                "Divide x^2 + 1 by x - 1.",
+                "(x^2 + 1)/(x - 1) = x + 1 + 2/(x - 1).",
                 "Integrate term-by-term.",
             },
             "x^2/2 + x + 2*log(abs(x-1)) + C"
@@ -1495,11 +1496,11 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "partial fractions with irreducible quadratic",
             {
-                "Use 1/(x(x^2+1)) = A/x + (Bx+C)/(x^2+1).",
-                "1 = A(x^2+1) + (Bx+C)x.",
-                "x=0 gives A=1; compare x^2 gives B=-1; compare x gives C=0.",
-                "Integrate 1/x - x/(x^2+1).",
-                "For second term use u=x^2+1, du=2x dx.",
+                "Use 1/[x(x^2 + 1)] = A/x + (B*x + C)/(x^2 + 1).",
+                "Then 1 = A*(x^2 + 1) + (B*x + C)*x.",
+                "x=0 gives A=1; compare x^2: B=-1; compare x: C=0.",
+                "Integrate 1/x - x/(x^2 + 1).",
+                "For second term use u=x^2 + 1, du=2x dx.",
             },
             "log(abs(x)) - log(abs(x^2+1))/2 + C"
         );
@@ -1564,12 +1565,12 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "split by derivative of denominator",
             {
-                "Write sin(x) = (sin(x)+cos(x))/2 + (sin(x)-cos(x))/2.",
+                "Write sin(x) = [sin(x) + cos(x)]/2 + [sin(x) - cos(x)]/2.",
                 "First part gives Integral(1/2) dx.",
-                "For second part, d/dx[sin(x)+cos(x)] = cos(x)-sin(x).",
-                "So Integral((sin(x)-cos(x))/(sin(x)+cos(x))) dx = -ln|sin(x)+cos(x)|.",
+                "For second part, d/dx[sin(x) + cos(x)] = cos(x) - sin(x).",
+                "So Integral([sin(x) - cos(x)]/[sin(x) + cos(x)]) dx = -ln|sin(x) + cos(x)|.",
             },
-            "x/2 - log(abs(sin(x)+cos(x)))/2 + C"
+            "x/2 - log(abs(sin(x) + cos(x)))/2 + C"
         );
     }
 
@@ -1664,10 +1665,11 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "Weierstrass substitution",
             {
                 "Let t=tan(x/2).",
-                "Then dx=2dt/(1+t^2), cos(x)=(1-t^2)/(1+t^2).",
-                "Integral becomes Integral((1/(2+(1-t^2)/(1+t^2)))*(2/(1+t^2))) dt.",
-                "Denominator simplifies to 3+t^2, so Integral = Integral(2/(t^2+3)) dt.",
-                "Use Integral(1/(a^2+t^2)) dt = atan(t/a)/a with a=sqrt(3).",
+                "Then dx = [2/(1 + t^2)] dt.",
+                "Also cos(x) = (1 - t^2)/(1 + t^2).",
+                "Substitute every part, then cancel the common factor (1+t^2).",
+                "Denominator simplifies to t^2 + 3, so Integral = Integral [2/(t^2 + 3)] dt.",
+                "Use Integral [1/(a^2 + t^2)] dt = atan(t/a)/a with a=sqrt(3).",
                 "Back-substitute t=tan(x/2).",
             },
             "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"
@@ -5739,8 +5741,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::vector<std::string> all_steps;
     casio::append_exam_prelude_steps(all_steps, pre);
     
+    std::string display_expr = format_expr_human(arena, node);
     for(auto const &s : result.steps) {
-        std::string cleaned = clean_integral_step(s, pre.norm, req.var);
+        std::string cleaned = clean_integral_step(s, display_expr, req.var);
         if(!cleaned.empty()) all_steps.push_back(cleaned);
     }
     

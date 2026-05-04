@@ -125,7 +125,7 @@ static void append_generic_exam_route(std::vector<std::string> &steps, std::stri
 
 void append_exam_prelude_steps(std::vector<std::string> &steps, ExamPrelude const &prelude)
 {
-    std::string start = prelude.norm.empty() ? prelude.raw : prelude.norm;
+    std::string start = prelude.parsed.empty() ? (prelude.norm.empty() ? prelude.raw : prelude.norm) : prelude.parsed;
     if(!start.empty()) steps.push_back("Start with " + start + ".");
     if(!prelude.simplified.empty() && !same_text(prelude.simplified, start) && !same_text(prelude.simplified, prelude.parsed)) {
         steps.push_back("Rewrite as " + prelude.simplified + ".");

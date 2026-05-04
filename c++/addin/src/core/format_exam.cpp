@@ -39,6 +39,7 @@ static std::string fn_text(FnKind k)
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
+    case FnKind::Sign: return "sign";
     case FnKind::Factorial: return "factorial";
     }
     return "fn";

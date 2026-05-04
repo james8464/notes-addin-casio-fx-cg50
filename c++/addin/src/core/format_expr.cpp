@@ -46,6 +46,7 @@ static std::string fn_name(FnKind k, bool human)
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
+    case FnKind::Sign: return "sign";
     case FnKind::Factorial: return "factorial";
     }
     return "fn";

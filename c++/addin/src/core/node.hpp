@@ -57,6 +57,7 @@ enum class FnKind : std::uint8_t
     Log10,
     Sqrt,
     Abs,
+    Sign,
     Factorial,
 };
 

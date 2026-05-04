@@ -129,7 +129,7 @@ struct Parser
         auto is_func = [&](std::string const &n) {
             static const char *funcs[] = {
                 "sin","cos","tan","sec","cosec","cot",
-                "exp","log","log10","sqrt","abs","factorial","atan","asin","acos","sinh","cosh","tanh"
+                "exp","log","log10","sqrt","abs","sign","factorial","atan","asin","acos","sinh","cosh","tanh"
             };
             for(auto f : funcs) if(n == f) return true;
             return false;

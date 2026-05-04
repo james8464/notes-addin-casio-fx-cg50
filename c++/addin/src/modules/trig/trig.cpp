@@ -73,6 +73,7 @@ static std::optional<double> numeric_eval(Arena &a, NodeId n, double xval)
         case FnKind::Exp: return std::exp(u);
         case FnKind::Sqrt: return std::sqrt(u);
         case FnKind::Abs: return std::fabs(u);
+        case FnKind::Sign: return (u > 0) - (u < 0);
         default: return std::nullopt;
         }
     }
