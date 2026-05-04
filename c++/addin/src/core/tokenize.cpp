@@ -21,7 +21,7 @@ std::vector<std::string> tokenize_expr(std::string const &text)
             i += 2;
             continue;
         }
-        if(std::string_view("()+-*/^=,").find(ch) != std::string_view::npos) {
+        if(std::string_view("()+-*/^=,!").find(ch) != std::string_view::npos) {
             tokens.emplace_back(1, ch);
             i++;
             continue;
@@ -57,4 +57,3 @@ std::vector<std::string> tokenize_expr(std::string const &text)
 }
 
 } // namespace casio
-

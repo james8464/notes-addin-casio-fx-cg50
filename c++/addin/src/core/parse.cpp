@@ -18,7 +18,7 @@ static bool starts_atom(std::string const *tok)
     if(!tok) return false;
     if(*tok == "(") return true;
     if(*tok == "+" || *tok == "-" || *tok == "*" || *tok == "/" || *tok == "^" ||
-       *tok == "**" || *tok == ")" || *tok == "," || *tok == "=")
+       *tok == "**" || *tok == ")" || *tok == "," || *tok == "=" || *tok == "!")
         return false;
     return true;
 }
@@ -27,7 +27,7 @@ static bool atom_ok(std::string const *tok)
 {
     if(!tok) return false;
     if(*tok == "+" || *tok == "-" || *tok == "*" || *tok == "/" || *tok == "^" ||
-       *tok == "**" || *tok == ")" || *tok == "," || *tok == "=")
+       *tok == "**" || *tok == ")" || *tok == "," || *tok == "=" || *tok == "!")
         return false;
     return true;
 }
@@ -129,7 +129,7 @@ struct Parser
         auto is_func = [&](std::string const &n) {
             static const char *funcs[] = {
                 "sin","cos","tan","sec","cosec","cot",
-                "exp","log","log10","sqrt","abs","atan","asin","acos","sinh","cosh","tanh"
+                "exp","log","log10","sqrt","abs","factorial","atan","asin","acos","sinh","cosh","tanh"
             };
             for(auto f : funcs) if(n == f) return true;
             return false;
@@ -171,6 +171,10 @@ struct Parser
     NodeId parse_power()
     {
         NodeId out = parse_atom();
+        while(peek() && *peek() == "!") {
+            take("!");
+            out = fn(a, "factorial", out);
+        }
         if(peek() && (*peek() == "^" || *peek() == "**")) {
             take(*peek());
             out = power(a, out, parse_unary());
@@ -239,4 +243,3 @@ NodeId parse_expr(Arena &arena, std::string text)
 }
 
 } // namespace casio
-

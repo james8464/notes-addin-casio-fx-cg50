@@ -177,6 +177,15 @@ class CatalogueFunction:
 CATALOGUE_GRAPH_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "random_exploration_graph.json"
 CATALOGUE_MANIFEST_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "catalogue_manifest_latest.txt"
 
+RANDOM_SUPPORTED_MATH_THINGS = (
+    "sin", "cos", "tan", "sec", "cot", "cosec", "csc",
+    "abs", "sqrt", "ln", "log", "log_base", "exp",
+    "asin", "acos", "atan", "arcsin", "arccos", "arctan",
+    "factorial_bang", "factorial_fn",
+)
+RANDOM_SUPPORTED_MATH_SHAPES = tuple("math_" + name for name in RANDOM_SUPPORTED_MATH_THINGS)
+RANDOM_REQUIRED_MATH_SHAPE_SENTINELS = ("math_log_base", "math_factorial_bang")
+
 CATALOGUE_HIDDEN_PREFIXES = (
     "debug", "python", "read", "write", "purge", "append", "map", "seq", "sort", "quote",
     "rand", "ranm", "ranv", "draw_", "plotfield", "plotode", "plotcontour", "plotseq",
@@ -192,6 +201,8 @@ CATALOGUE_HIDDEN_EXACT = {"circle", "line", "point", "polygon", "segment", "nand
 def _catalogue_hidden(name):
     base = (name or "").split("(", 1)[0].strip()
     if not base:
+        return True
+    if base != "!" and not any(ch.isalnum() or ch == "_" for ch in base):
         return True
     if base in CATALOGUE_HIDDEN_EXACT:
         return True
@@ -3963,7 +3974,11 @@ class CASIOApp(App):
 
     def write_catalogue_manifest(self, funcs):
         CATALOGUE_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-        lines = ["All catalogue functions: {0}".format(len(funcs)), ""]
+        lines = [
+            "All catalogue functions: {0}".format(len(funcs)),
+            "Random math tokens: {0}".format(", ".join(RANDOM_SUPPORTED_MATH_THINGS)),
+            "",
+        ]
         for fn in funcs:
             params = []
             for p in fn.params:
@@ -3985,28 +4000,35 @@ class CASIOApp(App):
                 seen.append(combo)
         return seen or [tuple()]
 
+    def expression_math_shapes(self, include_factorial=True):
+        if include_factorial:
+            return RANDOM_SUPPORTED_MATH_SHAPES
+        return tuple(shape for shape in RANDOM_SUPPORTED_MATH_SHAPES if "factorial" not in shape)
+
     def catalogue_shapes_for(self, name):
+        generic_math = self.expression_math_shapes(include_factorial=True)
+        calculus_math = self.expression_math_shapes(include_factorial=False)
         if name in ("diff", "implicit_diff", "param_diff"):
-            return ("poly", "chain", "product", "quotient", "implicit", "param", "second")
+            return ("poly", "chain", "product", "quotient", "implicit", "param", "second") + calculus_math
         if name in ("integrate", "int"):
-            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry")
+            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") + calculus_math
         if name in ("solve", "fsolve", "zeros"):
-            return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval")
+            return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval") + generic_math
         if name in ("solve_trig", "trigsolve"):
-            return ("general", "bounded", "cast", "identity", "rform", "square_then_check")
+            return ("general", "bounded", "cast", "identity", "rform", "square_then_check") + calculus_math
         if name.startswith("trig") or name in ("sin", "cos", "tan", "sec", "cosec", "cot"):
-            return ("sin_cos", "pythag", "double_angle", "compound_angle", "target")
+            return ("sin_cos", "pythag", "double_angle", "compound_angle", "target") + calculus_math
         if name in ("domain", "range"):
-            return ("poly", "rational", "radical", "log", "trig", "interval")
+            return ("poly", "rational", "radical", "log", "trig", "interval") + calculus_math
         if name in ("binomial", "normal", "poisson", "correlation", "covariance", "regression", "mean", "median", "quartiles", "stddev"):
             return ("summary", "regression", "binomial", "normal", "poisson", "edge")
         if name in ("det", "inverse", "rank", "rref", "eigenvals", "eigenvects", "dot", "cross"):
             return ("matrix2", "matrix3", "singular", "vector")
         if name in ("factor", "expand", "partfrac", "complete_square", "collect", "coeff", "degree"):
-            return ("poly", "quartic", "rational", "letter", "target")
+            return ("poly", "quartic", "rational", "letter", "target") + generic_math
         if name in ("arg", "conj", "re", "im", "abs"):
-            return ("real", "complex_rect", "complex_polar")
-        return ("basic", "nested", "edge")
+            return ("real", "complex_rect", "complex_polar") + generic_math
+        return ("basic", "nested", "edge") + generic_math
 
     def catalogue_testable_function(self, fn):
         name = fn.name
@@ -4022,6 +4044,8 @@ class CASIOApp(App):
         return len(fn.params) <= 1
 
     def random_catalogue_expr(self, rng, shape):
+        if shape.startswith("math_"):
+            return self.random_supported_math_expr(rng, shape)
         pool = {
             "poly": ["x^2-5*x+6", "3*x^3-2*x+7", "(x-1)^2+4*x"],
             "chain": ["sin(x^2+1)", "exp(3*x-2)", "log(x^2+1)"],
@@ -4075,6 +4099,59 @@ class CASIOApp(App):
         }
         return rng.choice(pool.get(shape, pool["basic"]))
 
+    def random_supported_math_expr(self, rng, shape, var="x"):
+        token = shape[5:] if shape.startswith("math_") else shape
+        angle = rng.choice([
+            var,
+            f"2*{var}+pi/6",
+            f"({var})^2-pi/4",
+            f"({var}+1)/3",
+        ])
+        affine = rng.choice([f"2*{var}-3", f"{var}+5", f"3*{var}+1"])
+        positive = rng.choice([
+            f"abs({affine})+2",
+            f"({var})^2+1",
+            f"sqrt(({affine})^2+4)+1",
+        ])
+        unit = rng.choice([f"{var}/2", f"({var}-1)/3", f"sin({angle})"])
+        table = {
+            "sin": [f"sin({angle})", f"sin({angle})^2+cos({angle})^2"],
+            "cos": [f"cos({angle})", f"1-cos({angle})^2"],
+            "tan": [f"tan({angle})", f"tan({angle})^2+1"],
+            "sec": [f"sec({angle})", f"sec({angle})^2-tan({angle})^2"],
+            "cot": [f"cot({angle})", f"cot({angle})^2+1"],
+            "cosec": [f"cosec({angle})", f"cosec({angle})^2-cot({angle})^2"],
+            "csc": [f"csc({angle})", f"csc({angle})^2-cot({angle})^2"],
+            "abs": [f"abs({affine})", f"sqrt(abs({affine})+1)"],
+            "sqrt": [f"sqrt({positive})", f"sqrt(({affine})^2)"],
+            "ln": [f"ln({positive})", f"ln(abs({var})+2)"],
+            "log": [f"log({positive})", f"log(exp({affine})+3)"],
+            "log_base": [f"log(2,{positive})", f"log(10,abs({affine})+3)", f"log(3,({var})^2+2)"],
+            "exp": [f"exp({affine})", f"exp(log({positive}))"],
+            "asin": [f"asin({unit})", f"asin(sin({angle}))"],
+            "acos": [f"acos({unit})", f"acos(cos({angle}))"],
+            "atan": [f"atan({affine})", f"atan(tan({angle}))"],
+            "arcsin": [f"arcsin({unit})", f"arcsin(sin({angle}))"],
+            "arccos": [f"arccos({unit})", f"arccos(cos({angle}))"],
+            "arctan": [f"arctan({affine})", f"arctan(tan({angle}))"],
+            "factorial_bang": [f"{rng.randint(3, 8)}!", f"({rng.randint(2, 5)}+{rng.randint(1, 4)})!"],
+            "factorial_fn": [f"factorial({rng.randint(3, 8)})", f"factorial({rng.randint(2, 5)}+{rng.randint(1, 4)})"],
+        }
+        return rng.choice(table.get(token, [var]))
+
+    def random_domain_range_expr(self, rng, shape):
+        if shape.startswith("math_"):
+            return self.random_supported_math_expr(rng, shape)
+        pool = {
+            "poly": ["x^2-4*x+1", "(x-2)^2+3", "x^3-3*x"],
+            "rational": ["1/(x-1)+1/(x+2)", "(x+1)/(x^2+1)", "x/(1+x^2)"],
+            "radical": ["sqrt(x-sqrt(x))", "sqrt(1-x^2)", "sqrt(x^2+1)"],
+            "log": ["log(1-x^2)", "ln(abs(x)+2)", "log(2,x+3)"],
+            "trig": ["ln(sin(x))", "1/(2-cos(3*x))", "sqrt(cos(sin(x)))"],
+            "interval": ["sin(x)^2-4*sin(x)+3", "x/(1+x^2)", "(x^2-x+1)/(x^2+x+1)"],
+        }
+        return rng.choice(pool.get(shape, ["x^2+1"]))
+
     def random_catalogue_param_triplet(self, rng):
         raw = self.random_catalogue_expr(rng, "param")
         parts = _split_top_level_csv(raw)
@@ -4097,6 +4174,8 @@ class CASIOApp(App):
         if p in ("t",):
             return "t"
         if "method" in p:
+            if shape.startswith("math_"):
+                return "auto"
             return shape if shape in ("direct", "sub", "parts", "trig", "pf", "div", "di", "weierstrass", "symmetry") else "auto"
         if p in ("lo", "a"):
             return "0" if shape in ("bounded", "interval", "trig") else "1"
@@ -4129,6 +4208,8 @@ class CASIOApp(App):
 
     def catalogue_direct_expr(self, fn, combo, shape, rng):
         name = fn.name
+        if name == "!":
+            return "", f"{rng.randint(3, 8)}!"
         if name == "diff":
             expr = self.random_catalogue_expr(rng, shape)
             method = shape if shape in ("chain", "product", "quotient", "logdiff", "implicit", "param", "second") else "auto"
@@ -4144,16 +4225,19 @@ class CASIOApp(App):
             method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") else "auto"
             return "int", "{0},method={1}".format(expr, method)
         if name in ("solve", "fsolve", "zeros"):
-            return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape if shape != "quad" else "quad_formula")
+            method = "auto" if shape.startswith("math_") else (shape if shape != "quad" else "quad_formula")
+            return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("solve_trig", "trigsolve"):
-            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape)
+            method = "auto" if shape.startswith("math_") else shape
+            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name.startswith("trig") or name in ("sin", "cos", "tan"):
-            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), shape)
+            method = "auto" if shape.startswith("math_") else shape
+            return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("complete_square", "factor", "expand", "partfrac", "collect"):
-            method = "complete_square" if name == "complete_square" else ("pf" if name == "partfrac" else name)
+            method = "auto" if shape.startswith("math_") else ("complete_square" if name == "complete_square" else ("pf" if name == "partfrac" else name))
             return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("domain", "range"):
-            return "alg", "{0}({1})".format(name, self.random_catalogue_expr(rng, shape))
+            return "alg", "{0}({1})".format(name, self.random_domain_range_expr(rng, shape))
         if name in ("binomial", "normal", "poisson", "correlation", "covariance", "mean", "median", "quartiles", "stddev"):
             return "stats", self.catalogue_call_for(fn, combo, shape, rng)
         return "", self.catalogue_call_for(fn, combo, shape, rng)
@@ -4231,6 +4315,7 @@ class CASIOApp(App):
         self.write_catalogue_manifest(funcs)
         total, passed, failed, weak = self.random_graph.summary()
         emit(self.append_result, "[dim]All catalogue: {0} functions[/dim]".format(len(funcs)))
+        emit(self.append_result, "[dim]Math vocab: {0} tokens[/dim]".format(len(RANDOM_SUPPORTED_MATH_THINGS)))
         emit(self.append_result, "[dim]Params list: {0}[/dim]".format(CATALOGUE_MANIFEST_PATH))
         emit(self.append_result, "[dim]Graph: {0} · nodes={1} pass={2} fail={3} weak={4}[/dim]".format(CATALOGUE_GRAPH_PATH, total, passed, failed, weak))
         sample = ", ".join(fn.signature for fn in funcs[:12])
@@ -4909,8 +4994,15 @@ class CASIOApp(App):
             expr = rng.choice([
                 f"exp({expr})",
                 f"log({expr})",
+                f"ln(abs({expr})+2)",
+                f"log(2,abs({expr})+3)",
                 f"sin({expr})",
                 f"cos({expr})",
+                f"tan({expr})",
+                f"sec({expr})",
+                f"cot({expr})",
+                f"cosec({expr})",
+                f"abs({expr})",
                 f"({expr})^2",
                 f"sqrt({expr})",
             ])
@@ -5163,7 +5255,7 @@ class CASIOApp(App):
         if allow_trig:
             families.append("trig_combo")
         if difficulty in ("medium", "hard", "chaos"):
-            families.extend(["exp_safe", "log_safe", "sqrt_safe"])
+            families.extend(["exp_safe", "log_safe", "ln_safe", "log_base_safe", "sqrt_safe", "abs_safe", "factorial_const"])
         family = rng.choice(families)
         if family == "affine":
             return self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos"))
@@ -5183,6 +5275,14 @@ class CASIOApp(App):
             return f"exp({self.random_affine_expr(rng, var, difficulty, allow_negative=True)})"
         if family == "log_safe":
             return f"log({self.random_positive_expr(rng, var, difficulty)})"
+        if family == "ln_safe":
+            return f"ln({self.random_positive_expr(rng, var, difficulty)})"
+        if family == "log_base_safe":
+            return f"log({rng.choice([2, 3, 5, 10])},{self.random_positive_expr(rng, var, difficulty)})"
+        if family == "abs_safe":
+            return f"abs({self.random_affine_expr(rng, var, difficulty, allow_negative=True)})"
+        if family == "factorial_const":
+            return rng.choice([f"{rng.randint(3, 8)}!", f"factorial({rng.randint(3, 8)})"])
         return f"sqrt({self.random_positive_expr(rng, var, difficulty)})"
 
     def random_general_expr(self, rng, var="x", difficulty="hard", depth=None):
@@ -5203,9 +5303,14 @@ class CASIOApp(App):
             lambda: f"cot({angle()})",
             lambda: f"exp({inner()})",
             lambda: f"log({positive()})",
+            lambda: f"ln({positive()})",
+            lambda: f"log({rng.choice([2, 3, 5, 10])},{positive()})",
             lambda: f"log(exp({self.random_linear_expr(rng, var, allow_negative=True)})+{rng.randint(2, 9)})",
+            lambda: f"abs({inner()})",
             lambda: f"asin(({self.random_linear_expr(rng, var, allow_negative=True)})/10)",
+            lambda: f"acos(({self.random_linear_expr(rng, var, allow_negative=True)})/10)",
             lambda: f"atan({self.random_linear_expr(rng, var, allow_negative=True)})",
+            lambda: f"{rng.randint(3, 8)}!",
             lambda: f"sqrt({positive()})",
             lambda: self.random_fractional_expr(rng, var, difficulty),
             lambda: f"({inner()})*({inner()})",

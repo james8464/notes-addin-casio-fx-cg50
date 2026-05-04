@@ -57,6 +57,7 @@ enum class FnKind : std::uint8_t
     Log10,
     Sqrt,
     Abs,
+    Factorial,
 };
 
 struct Node
@@ -75,4 +76,3 @@ struct Node
 };
 
 } // namespace casio
-

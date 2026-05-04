@@ -46,6 +46,7 @@ static std::string fn_name(FnKind k, bool human)
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
+    case FnKind::Factorial: return "factorial";
     }
     return "fn";
 }
@@ -61,6 +62,9 @@ static std::string format_expr_impl(Arena &arena, NodeId node, int parent_prec, 
     if(n.kind == NodeKind::Sym) return n.text;
     if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
     if(n.kind == NodeKind::Fn) {
+        if(n.fkind == FnKind::Factorial) {
+            return format_expr_impl(arena, n.a, 4, human) + "!";
+        }
         return fn_name(n.fkind, human) + "(" + format_expr_impl(arena, n.a, 0, human) + ")";
     }
     if(n.kind == NodeKind::Pow) {

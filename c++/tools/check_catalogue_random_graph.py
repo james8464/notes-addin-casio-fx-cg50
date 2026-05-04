@@ -19,10 +19,19 @@ def main() -> int:
         "CATALOGUE_GRAPH_PATH",
         "CATALOGUE_MANIFEST_PATH",
         "record_random_graph_result",
+        "RANDOM_SUPPORTED_MATH_THINGS",
+        "RANDOM_SUPPORTED_MATH_SHAPES",
+        "random_supported_math_expr",
+        "math_log_base",
+        "math_factorial_bang",
         "if program is None:",
         "return [(\"CatalogueGraph\", self.build_catalogue_explorer_cases)]",
         "self.random_graph.nodes = {}",
     ]
+    required.extend([
+        '"sin"', '"cos"', '"tan"', '"sec"', '"cot"', '"cosec"',
+        '"abs"', '"ln"', '"log"', '"log_base"', '"factorial_bang"',
+    ])
     missing = [item for item in required if item not in text]
     if missing:
         print("Missing catalogue random graph hooks:", ", ".join(missing), file=sys.stderr)

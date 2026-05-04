@@ -17,6 +17,13 @@ static bool is_zero(Node const &n) { return is_num(n) && n.num.num == 0; }
 static bool is_one(Node const &n) { return is_num(n) && n.num.num == n.num.den; }
 static bool is_int_num(Node const &n) { return is_num(n) && n.num.den == 1; }
 
+static std::int64_t small_factorial(std::int64_t n)
+{
+    std::int64_t out = 1;
+    for(std::int64_t i = 2; i <= n; ++i) out *= i;
+    return out;
+}
+
 static bool same_atom(Node const &a, Node const &b)
 {
     if(a.kind != b.kind) return false;
@@ -66,6 +73,12 @@ static NodeId simplify_fn(Arena &a, FnKind fk, NodeId arg)
     if(fk == FnKind::Exp) {
         // Match python: exp(x) -> pow(E, x)
         return simplify(a, a.pow(constant_e(a), sarg));
+    }
+    if(fk == FnKind::Factorial) {
+        Node const &x = a.get(sarg);
+        if(is_int_num(x) && x.num.num >= 0 && x.num.num <= 12) {
+            return num(a, small_factorial(x.num.num));
+        }
     }
     NodeId out = a.fn(fk, sarg);
     return out;
@@ -410,6 +423,7 @@ static FnKind fn_kind_from_name(std::string_view name)
     if(name == "log10") return FnKind::Log10;
     if(name == "sqrt") return FnKind::Sqrt;
     if(name == "abs") return FnKind::Abs;
+    if(name == "factorial") return FnKind::Factorial;
     throw std::runtime_error("Unknown function: " + std::string(name));
 }
 
@@ -480,4 +494,3 @@ NodeId simplify(Arena &a, NodeId node)
 }
 
 } // namespace casio
-

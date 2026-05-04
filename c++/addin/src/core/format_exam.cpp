@@ -38,6 +38,7 @@ static std::string fn_text(FnKind k)
     case FnKind::Log10: return "log10";
     case FnKind::Sqrt: return "sqrt";
     case FnKind::Abs: return "abs";
+    case FnKind::Factorial: return "factorial";
     }
     return "fn";
 }
@@ -115,6 +116,9 @@ static std::string format_equation_human_readable_impl(Arena &arena, NodeId node
     if(n.kind == NodeKind::Const) return (n.ckind == ConstKind::Pi) ? "pi" : "e";
 
     if(n.kind == NodeKind::Fn) {
+        if(n.fkind == FnKind::Factorial) {
+            return format_equation_human_readable_impl(arena, n.a, 4, depth + 1) + "!";
+        }
         if(n.fkind == FnKind::Log) {
             return "log(" + format_equation_human_readable_impl(arena, n.a, 0, depth + 1) + ")";
         }

@@ -204,6 +204,7 @@ static std::string node_to_string(Arena &a, NodeId n)
             case FnKind::Tanh: name = "tanh"; break;
             case FnKind::Exp: name = "exp"; break;
             case FnKind::Log: name = "log"; break;
+            case FnKind::Factorial: name = "factorial"; break;
             default: name = "f";
         }
         return name + "(" + node_to_string(a, x.a) + ")";
