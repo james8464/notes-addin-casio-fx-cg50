@@ -184,6 +184,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Use sin(u)^2 + cos(u)^2 = 1", "Domain: all real x", "Answer: all real x"],
         ["Start with 1", "ERR:", "Unexpected token"],
     ),
+    (
+        "alg",
+        "arcsin(sin((x)^2-pi/4))=0,method=auto",
+        ["arcsin(A)=0 => A=0", "sin(u)=0 => u=n*pi", "x = +/-sqrt(pi/4 + n*pi)"],
+        ["x = []", "No real solution", "ERR:"],
+    ),
 ]
 
 

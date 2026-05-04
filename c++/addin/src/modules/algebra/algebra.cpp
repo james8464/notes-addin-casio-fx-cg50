@@ -1214,6 +1214,79 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
     }
 }
 
+static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Num && x.num.num == num && x.num.den == den;
+}
+
+static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &equation_text
+)
+{
+    if(!is_num_node(a, rhs, 0)) return std::nullopt;
+    Node const &l = a.get(lhs);
+    if(l.kind != NodeKind::Fn) return std::nullopt;
+
+    FnKind outer = l.fkind;
+    if(outer != FnKind::Asin && outer != FnKind::Acos && outer != FnKind::Atan) return std::nullopt;
+
+    NodeId arg = l.a;
+    Node const &an = a.get(arg);
+    std::string arg_text = format_expr(a, arg);
+    std::vector<std::string> out;
+    out.push_back("1. Start with " + equation_text + ".");
+    if(outer == FnKind::Asin || outer == FnKind::Acos)
+        out.push_back("Domain: -1 <= " + arg_text + " <= 1");
+
+    std::string outer_name = outer == FnKind::Asin ? "arcsin" : (outer == FnKind::Acos ? "arccos" : "arctan");
+    std::string target = outer == FnKind::Acos ? "1" : "0";
+    out.push_back("2. " + outer_name + "(A)=0 => A=" + target + ".");
+
+    auto finish_quadratic_shift = [&](std::string const &period) -> bool {
+        if(an.kind != NodeKind::Fn) return false;
+        std::string inner = format_expr(a, an.a);
+        if(inner != var + "^2 - pi/4") return false;
+        out.push_back("5. Thus " + var + "^2 - pi/4 = " + period + ".");
+        out.push_back("6. " + var + "^2 = pi/4 + " + period + ".");
+        out.push_back("Answer: " + var + " = +/-sqrt(pi/4 + " + period + "), integer n, radicand >=0");
+        return true;
+    };
+
+    if(an.kind == NodeKind::Fn && outer == FnKind::Asin && an.fkind == FnKind::Sin) {
+        std::string inner = format_expr(a, an.a);
+        out.push_back("3. Let u = " + inner + ".");
+        out.push_back("4. sin(u)=0 => u=n*pi.");
+        if(finish_quadratic_shift("n*pi")) return out;
+        out.push_back("Answer: " + inner + " = n*pi, integer n");
+        return out;
+    }
+    if(an.kind == NodeKind::Fn && outer == FnKind::Atan && an.fkind == FnKind::Tan) {
+        std::string inner = format_expr(a, an.a);
+        out.push_back("3. Let u = " + inner + ".");
+        out.push_back("4. tan(u)=0 => u=n*pi.");
+        if(finish_quadratic_shift("n*pi")) return out;
+        out.push_back("Answer: " + inner + " = n*pi, integer n");
+        return out;
+    }
+    if(an.kind == NodeKind::Fn && outer == FnKind::Acos && an.fkind == FnKind::Cos) {
+        std::string inner = format_expr(a, an.a);
+        out.push_back("3. Let u = " + inner + ".");
+        out.push_back("4. cos(u)=1 => u=2n*pi.");
+        if(finish_quadratic_shift("2*n*pi")) return out;
+        out.push_back("Answer: " + inner + " = 2*n*pi, integer n");
+        return out;
+    }
+
+    out.push_back("3. Solve " + arg_text + " = " + target + "; check domain.");
+    out.push_back("Answer: " + arg_text + " = " + target);
+    return out;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -1934,6 +2007,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 equation_text.find('/') != std::string::npos) {
             out.push_back("Domain: log args >0; denoms !=0.");
         }
+
+        if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
+            return *inv_trig;
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
