@@ -40,6 +40,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["dx/dt", "dy/dx"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
+    (
+        "alg",
+        "x^2-5*x+6,method=factor",
+        ["Answer:", "(x - 2)", "(x - 3)"],
+        ["Range:", "Answer: x^2 - 5*x + 6", "ERR:"],
+    ),
+    (
+        "alg",
+        "domain(csc(2*x+pi/6)^2-cot(2*x+pi/6)^2)",
+        ["sin(2*x + pi/6) != 0", "Answer:"],
+        ["Answer: all real x", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(cot(x^2-pi/4)^2+1)",
+        ["Answer: y >= 1"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "int",
+        "atan(tan(x^2-pi/4))",
+        ["branch"],
+        ["Answer: int(", "Classify the integrand", "ERR:"],
+    ),
+    (
+        "int",
+        "x*ln(5*x)",
+        ["Integration by parts", "Answer: 1/2*x^2*log(5*x) - 1/4*x^2 + C"],
+        ["Integral not recognised", "Answer: int(", "ERR:"],
+    ),
+    (
+        "int",
+        "tan(3*x)",
+        ["Use Integral(tan u)", "Answer: -log(abs(cos(3*x)))/3 + C"],
+        ["Integral not recognised", "Answer: int(", "ERR:"],
+    ),
 ]
 
 

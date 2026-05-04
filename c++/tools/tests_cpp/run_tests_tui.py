@@ -4661,11 +4661,19 @@ class CASIOApp(App):
                         v, e = llm_verify_one(rec)
                         apply_llm_to_record(rec, v, e, per)
                     return
+                def _batch_line_for_record(raw, idx):
+                    raw = raw or ""
+                    wanted = str(idx + 1)
+                    for line in raw.splitlines():
+                        s = line.strip()
+                        if re.match(r"^#?\s*" + re.escape(wanted) + r"\b", s):
+                            return s[:500]
+                    return raw[:180]
                 i = 0
                 while i < len(buf):
                     r = batch_out[i] or {}
                     v = r.get("verdict", "")
-                    e = r.get("explanation", "")
+                    e = _batch_line_for_record(r.get("explanation", ""), i)
                     if v not in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
                         v, e = llm_verify_one(buf[i])
                     apply_llm_to_record(buf[i], v, e, per)

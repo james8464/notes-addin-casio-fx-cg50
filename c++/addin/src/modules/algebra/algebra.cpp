@@ -456,6 +456,20 @@ static void collect_symbols(Arena &a, NodeId n, std::vector<std::string> &out)
     }
 }
 
+static bool has_symbols(Arena &a, NodeId n)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, n, vars);
+    return !vars.empty();
+}
+
+static void push_unique(std::vector<std::string> &out, std::string const &line)
+{
+    for(auto const &x : out)
+        if(x == line) return;
+    out.push_back(line);
+}
+
 static std::string choose_solve_var(Arena &a, NodeId n, std::string const &explicit_var)
 {
     if(!explicit_var.empty()) return explicit_var;
@@ -818,14 +832,20 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Div) {
-        out.push_back("Domain: " + format_expr(a, x.b) + " != 0");
+        if(has_symbols(a, x.b)) push_unique(out, "Domain: " + format_expr(a, x.b) + " != 0");
         collect_domain(a, x.a, out);
         collect_domain(a, x.b, out);
         return;
     }
     if(x.kind == NodeKind::Fn) {
-        if(x.fkind == FnKind::Sqrt) out.push_back("Domain: " + format_expr(a, x.a) + " >= 0");
-        if(x.fkind == FnKind::Log) out.push_back("Domain: " + format_expr(a, x.a) + " > 0");
+        if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
+        if(x.fkind == FnKind::Log && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
+        if(x.fkind == FnKind::Tan || x.fkind == FnKind::Sec) {
+            push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "cos", x.a)) + " != 0");
+        }
+        if(x.fkind == FnKind::Cot || x.fkind == FnKind::Cosec) {
+            push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "sin", x.a)) + " != 0");
+        }
         collect_domain(a, x.a, out);
         return;
     }
@@ -841,6 +861,50 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
     if(x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const) return;
 }
 
+static void collect_text_trig_domain(Arena &a, std::string const &raw, std::vector<std::string> &out)
+{
+    auto is_word = [](char c) { return std::isalnum((unsigned char)c) || c == '_'; };
+    auto fmt_arg = [&](std::string s) {
+        s = trim_text(s);
+        try {
+            return format_expr(a, casio::parse_expr(a, s));
+        }
+        catch(...) {
+            return s;
+        }
+    };
+    for(std::size_t i = 0; i < raw.size(); ++i) {
+        if(i > 0 && is_word(raw[i - 1])) continue;
+        std::string name;
+        for(char const *cand : {"cosec", "csc", "cot", "sec", "tan"}) {
+            std::size_t len = std::char_traits<char>::length(cand);
+            if(raw.compare(i, len, cand) == 0 && i + len < raw.size() && raw[i + len] == '(') {
+                if(i + len < raw.size() && i + len + 1 < raw.size()) name = cand;
+                break;
+            }
+        }
+        if(name.empty()) continue;
+        std::size_t open = i + name.size();
+        int depth = 0;
+        std::size_t close = std::string::npos;
+        for(std::size_t j = open; j < raw.size(); ++j) {
+            if(raw[j] == '(') depth++;
+            else if(raw[j] == ')') {
+                depth--;
+                if(depth == 0) {
+                    close = j;
+                    break;
+                }
+            }
+        }
+        if(close == std::string::npos || close <= open + 1) continue;
+        std::string arg = fmt_arg(raw.substr(open + 1, close - open - 1));
+        if(name == "tan" || name == "sec") push_unique(out, "Domain: cos(" + arg + ") != 0");
+        else push_unique(out, "Domain: sin(" + arg + ") != 0");
+        i = close;
+    }
+}
+
 static bool is_square_power(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -853,6 +917,39 @@ static bool is_sqrt_square(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     return x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt && is_square_power(a, x.a);
+}
+
+static std::optional<Rational> unbounded_trig_square_min(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    auto direct = [&]() -> std::optional<Rational> {
+        if(x.kind != NodeKind::Pow) return std::nullopt;
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1) return std::nullopt;
+        Node const &base = a.get(x.a);
+        if(base.kind != NodeKind::Fn) return std::nullopt;
+        if(base.fkind == FnKind::Sec || base.fkind == FnKind::Cosec) return Rational{1, 1};
+        if(base.fkind == FnKind::Tan || base.fkind == FnKind::Cot) return Rational{0, 1};
+        return std::nullopt;
+    };
+    if(auto r = direct()) return r;
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    Rational c{0, 1};
+    bool saw = false;
+    for(auto kid : x.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Num) {
+            c = r_add(c, kn.num);
+            continue;
+        }
+        if(saw) return std::nullopt;
+        auto m = unbounded_trig_square_min(a, kid);
+        if(!m) return std::nullopt;
+        c = r_add(c, *m);
+        saw = true;
+    }
+    if(!saw) return std::nullopt;
+    return c;
 }
 
 static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var)
@@ -1321,6 +1418,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             steps.push_back("Variable = " + var);
             if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
             std::vector<std::string> dom;
+            collect_text_trig_domain(arena, expr, dom);
+            collect_domain(arena, parsed, dom);
             collect_domain(arena, n, dom);
             std::string domain_answer;
             if(dom.empty()) {
@@ -1379,6 +1478,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(is_sqrt_square(arena, n)) {
                     range_answer = "y >= 0";
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto trig_min = unbounded_trig_square_min(arena, n)) {
+                    range_answer = "y >= " + format_expr(arena, arena.num(*trig_min));
+                    steps.push_back("Squared tan/cot/sec/cosec term gives a lower bound.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Div) {
@@ -1485,6 +1589,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             ans3 << std::fixed << std::setprecision(3) << x;
             out.push_back("Answer: " + var + " = " + ans3.str() + " (3 d.p.)");
             return out;
+        }
+
+        if(req.method == "factor" && req.mode != 13) {
+            algebra::Request next = req;
+            next.mode = 13;
+            auto parts = split_csv(req.expr);
+            if(!parts.empty()) next.expr = parts[0];
+            return run(arena, next);
         }
 
         if(req.mode == 13) {

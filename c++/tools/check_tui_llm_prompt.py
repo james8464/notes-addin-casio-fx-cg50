@@ -32,6 +32,8 @@ def main() -> int:
         return fail("exam LLM prompt markers missing: " + ", ".join(missing))
     if "check_working_quality=False" not in tui or "verify_batch(items)" not in tui:
         return fail("TUI LLM verification path changed")
+    if "_batch_line_for_record" not in tui:
+        return fail("TUI LLM batch explanations are not per-record")
     print("OK TUI LLM prompt")
     return 0
 

@@ -6027,6 +6027,26 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     return casio::exam_block("definite integration", steps, answer);
 }
 
+static bool contains_branch_inverse_trig(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        Node const &arg = a.get(x.a);
+        if((x.fkind == FnKind::Atan && arg.kind == NodeKind::Fn && arg.fkind == FnKind::Tan) ||
+           (x.fkind == FnKind::Asin && arg.kind == NodeKind::Fn && arg.fkind == FnKind::Sin) ||
+           (x.fkind == FnKind::Acos && arg.kind == NodeKind::Fn && arg.fkind == FnKind::Cos)) {
+            return true;
+        }
+        return contains_branch_inverse_trig(a, x.a);
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_branch_inverse_trig(a, x.a) || contains_branch_inverse_trig(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_branch_inverse_trig(a, k)) return true;
+    }
+    return false;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.mode == 2) return solve_de_mode(req.expr);
@@ -6126,7 +6146,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     auto result = integrate_giac_style(arena, node, req.var);
     
     if(!result.result) {
-        std::string formal = "int(" + (pre.norm.empty() ? req.expr : pre.norm) + ") d" + req.var;
+        if(contains_branch_inverse_trig(arena, node)) {
+            std::vector<std::string> steps;
+            casio::append_exam_prelude_steps(steps, pre);
+            steps.push_back("Inverse-trig composed with trig is branch-dependent.");
+            steps.push_back("Choose a principal branch interval before cancelling.");
+            steps.push_back("Then rewrite on that interval and integrate the resulting expression.");
+            return casio::exam_block("branch-aware integration", steps, "branch interval needed");
+        }
+        std::string formal = "No elementary A-level primitive found";
         return casio::exam_fallback(
             "integration",
             pre,
