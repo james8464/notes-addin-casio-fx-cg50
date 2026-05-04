@@ -567,8 +567,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             "dx/dt = e^t(cos(t)-sin(t))",
                             "dy/dt = e^t(sin(t)+cos(t))",
                             "dy/dx = [sin(t) + cos(t)]/[cos(t) - sin(t)]",
-                            "Differentiate this wrt t.",
-                            "Divide by dx/dt.",
+                            "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2",
+                            "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt).",
                         },
                         answer
                     );

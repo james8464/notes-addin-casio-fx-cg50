@@ -100,6 +100,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Domain: sin(x^2 - pi/4) != 0", "Answer: cot(x^2 - pi/4)"],
         ["Err:", "Unexpected token"],
     ),
+    (
+        "trig",
+        "tan(2*x)=sqrt(3),x,0,2*pi,8,method=cast",
+        ["A = pi/3 + n*pi", "x = pi/6 + n*pi/2", "Answer: x = [pi/6, 2*pi/3, 7*pi/6, 5*pi/3]"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "cot(x)^2+1,method=auto",
+        ["Use identity 1 + cot(u)^2 = cosec(u)^2", "Domain: sin(x) != 0", "Answer: cosec(x)^2"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "sqrt((3*x+1)^2),method=auto",
+        ["Let u = 3*x + 1", "sqrt(u^2)=abs(u)", "Answer: abs(3*x + 1)"],
+        ["ERR:", "Unexpected token", "Answer: sqrt((3*x + 1)^2)"],
+    ),
+    (
+        "derive",
+        "mode:5,exp(t)*cos(t),exp(t)*sin(t),t",
+        ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)"],
+        ["ERR:", "Unexpected token"],
+    ),
 ]
 
 

@@ -905,6 +905,32 @@ static void collect_text_trig_domain(Arena &a, std::string const &raw, std::vect
     }
 }
 
+static std::string compact_input_key(std::string text)
+{
+    text = casio::normalize_text(std::move(text));
+    std::string out;
+    out.reserve(text.size());
+    for(char c : text) {
+        if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
+        out.push_back(c);
+    }
+    return out;
+}
+
+static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
+{
+    std::string key = compact_input_key(raw);
+    bool has_sq = key.find("^2") != std::string::npos;
+    bool plus_one = key.find("+1") != std::string::npos || key.find("1+") != std::string::npos;
+    if(has_sq && plus_one && key.find("cot(") != std::string::npos) {
+        return "Use identity 1 + cot(u)^2 = cosec(u)^2.";
+    }
+    if(has_sq && plus_one && key.find("tan(") != std::string::npos) {
+        return "Use identity 1 + tan(u)^2 = sec(u)^2.";
+    }
+    return std::nullopt;
+}
+
 static bool is_square_power(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -1776,7 +1802,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
-            casio::append_exam_prelude_steps(steps, pre);
+            if(auto ident = reciprocal_trig_identity_step(req.expr)) {
+                steps.push_back("Start with " + trim_text(req.expr) + ".");
+                steps.push_back(*ident);
+            }
+            else {
+                casio::append_exam_prelude_steps(steps, pre);
+            }
 
             // Domain hints (best-effort).
             std::vector<std::string> dom;

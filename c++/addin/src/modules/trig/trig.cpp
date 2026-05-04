@@ -455,6 +455,27 @@ static std::string format_double_compact(double x)
     return s;
 }
 
+static std::string family_piece(double base_deg, double period_deg, bool rad)
+{
+    std::string period = rad ? format_pi_degrees(period_deg) : format_double_compact(period_deg);
+    std::string n_term = "n*" + period;
+    if(std::fabs(base_deg) < 1e-9) return n_term;
+    std::string base = rad ? format_pi_degrees(base_deg) : format_double_compact(base_deg);
+    return base + " + " + n_term;
+}
+
+static std::string format_family_line(std::string const &lhs, std::vector<double> bases_deg, double period_deg, bool rad)
+{
+    std::sort(bases_deg.begin(), bases_deg.end());
+    std::ostringstream oss;
+    oss << lhs << " = ";
+    for(std::size_t i = 0; i < bases_deg.size(); ++i) {
+        if(i) oss << " or " << lhs << " = ";
+        oss << family_piece(bases_deg[i], period_deg, rad);
+    }
+    return oss.str();
+}
+
 static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg, bool plain_number_is_radian = false)
 {
     if(contains_pi(a, arg)) {
@@ -511,6 +532,17 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
         if(std::fabs(coeff) > 1e-12) return std::make_pair(coeff, shift);
     }
     return std::nullopt;
+}
+
+static std::optional<NodeId> sqrt_square_base(Arena &a, NodeId n)
+{
+    auto const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return std::nullopt;
+    auto const &inner = a.get(x.a);
+    if(inner.kind != NodeKind::Pow) return std::nullopt;
+    auto const &exp = a.get(inner.b);
+    if(exp.kind != NodeKind::Num || exp.num.num != 2 || exp.num.den != 1) return std::nullopt;
+    return inner.a;
 }
 
 static bool numeric_equiv(Arena &a, NodeId lhs, NodeId rhs)
@@ -1417,12 +1449,24 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     }
     oss << "]";
     std::string fname = trig_name(fk);
+    double a_period_deg = (fk == FnKind::Tan) ? 180.0 : 360.0;
+    double x_period_deg = a_period_deg / std::fabs(angle_coeff);
+    std::vector<double> a_family_bases;
+    for(double theta : sols_deg) {
+        double base = std::fmod(theta, a_period_deg);
+        if(base < 0.0) base += a_period_deg;
+        add_unique(a_family_bases, base);
+    }
+    std::vector<double> x_family_bases;
+    for(double theta : a_family_bases) x_family_bases.push_back((theta - shift_deg) / angle_coeff);
     return casio::exam_block(
         "trig solve (table)",
         {
             "Start with " + eq_text + ".",
             "Rearrange to " + fname + "(A) = " + target + ".",
             "Let A = " + format_expr(a, arg) + ".",
+            format_family_line("A", a_family_bases, a_period_deg, rad) + ".",
+            format_family_line(var, x_family_bases, x_period_deg, rad) + ".",
             "Solve trig equation using exact angles for " + fname + "(A) = " + target + ".",
             "Convert A values back to " + var + " and keep the interval.",
         },
@@ -1526,7 +1570,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         return solve_simple_trig_eq(arena, req.expr, "x", "0", "2*pi", true);
     }
 
-    NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+    NodeId parsed = casio::parse_expr(arena, req.expr);
+    if(auto base = sqrt_square_base(arena, parsed)) {
+        NodeId abs_base = casio::fn(arena, "abs", *base);
+        return casio::exam_block(
+            "",
+            {
+                "Let u = " + format_expr(arena, *base) + ".",
+                "sqrt(u^2)=abs(u) for real u.",
+            },
+            format_expr(arena, abs_base)
+        );
+    }
+    NodeId n = casio::simplify(arena, parsed);
     std::string key = compact_key(req.expr);
     if(key == "sin(x)^2+cos(x)^2" || key == "cos(x)^2+sin(x)^2") {
         return {
