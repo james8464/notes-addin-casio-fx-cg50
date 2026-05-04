@@ -10,7 +10,7 @@ graph TD
   Giac --> Work["main.cc: compact working"]
   Work --> Build["/compile"]
   Build --> G3A["c++/prizm/build/CasioCAS.g3a"]
-  G3A --> Root["./CasioCAS.g3a"]
+  G3A --> Transfer["calculator_files/CasioCAS.g3a"]
   Icons["Eigenmath icons"] --> Build
 
   Host["host-test path"] --> Mods["c++/addin/src/modules"]

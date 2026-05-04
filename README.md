@@ -48,7 +48,7 @@ Build calculator add-ins:
 ./compile
 ```
 
-Output is published to `CasioCAS.g3a` at repo root and mirrored under `c++/prizm/build/`.
+Transfer files are published only under `calculator_files/`. Build artifacts stay under `c++/prizm/build/`.
 
 ## Notes
 

@@ -21,11 +21,22 @@ def main() -> int:
         'TRANSFER_HELP="${TRANSFER_DIR}/CASIOCAS.HLP"',
         'cp "${OUT_G3A}" "${TRANSFER_G3A}"',
         'cp "${HELP_SRC}" "${TRANSFER_HELP}"',
+        'rm -f "${ROOT_DIR}/CasioCAS.g3a"',
+        'rm -f "${ROOT_DIR}/CASIOCAS.HLP"',
         'rm -rf "${TRANSFER_DIR}"',
     ]
     missing = [m for m in markers if m not in src]
     if missing:
         return fail("calculator transfer packaging missing: " + ", ".join(missing))
+    forbidden = [
+        'cp "${OUT_G3A}" "${ROOT_DIR}/CasioCAS.g3a"',
+        'cp "${HELP_SRC}" "${ROOT_DIR}/CASIOCAS.HLP"',
+        'ROOT_G3A=',
+        'ROOT_HELP=',
+    ]
+    present = [m for m in forbidden if m in src]
+    if present:
+        return fail("root transfer output still present: " + ", ".join(present))
     print("OK build packaging")
     return 0
 

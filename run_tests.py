@@ -24,7 +24,7 @@ def main() -> int:
     if args and args[0] in ("--help", "-h", "help"):
         print("usage: python3 run_tests.py [compile|tui|fuzz]")
         print("default: run C++ host/.g3a parity checks")
-        print("compile: build CasioCAS.g3a at repo root")
+        print("compile: build calculator_files/CasioCAS.g3a")
         print("tui: launch C++ host testing TUI")
         print("fuzz: replay C++ regression fuzz cases")
         return 0

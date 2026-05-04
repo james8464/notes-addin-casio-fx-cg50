@@ -9,12 +9,10 @@ UPSTREAM_G3A="${ROOT_DIR}/c++/khicas/upstream/reference/khicasen.g3a"
 KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
 OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
-ROOT_G3A="${ROOT_DIR}/CasioCAS.g3a"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
 OUT_HELP="${OUT_DIR}/CASIOCAS.HLP"
-ROOT_HELP="${ROOT_DIR}/CASIOCAS.HLP"
 TRANSFER_HELP="${TRANSFER_DIR}/CASIOCAS.HLP"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
@@ -51,22 +49,18 @@ clean_khicas_source_outputs() {
     -delete
 }
 
-publish_root_g3a() {
-  cp "${OUT_G3A}" "${ROOT_G3A}"
+publish_transfer_g3a() {
   mkdir -p "${TRANSFER_DIR}"
   cp "${OUT_G3A}" "${TRANSFER_G3A}"
-  echo "Root output: ${ROOT_G3A}"
   echo "Calculator file: ${TRANSFER_G3A}"
 }
 
 publish_help_pack() {
   if [ -f "${HELP_SRC}" ]; then
     cp "${HELP_SRC}" "${OUT_HELP}"
-    cp "${HELP_SRC}" "${ROOT_HELP}"
     mkdir -p "${TRANSFER_DIR}"
     cp "${HELP_SRC}" "${TRANSFER_HELP}"
     echo "Help pack: ${OUT_HELP}"
-    echo "Root help: ${ROOT_HELP}"
     echo "Calculator help: ${TRANSFER_HELP}"
   fi
 }
@@ -75,8 +69,8 @@ echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
-rm -f "${ROOT_G3A}"
-rm -f "${ROOT_HELP}"
+rm -f "${ROOT_DIR}/CasioCAS.g3a"
+rm -f "${ROOT_DIR}/CASIOCAS.HLP"
 rm -rf "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
@@ -108,10 +102,9 @@ if [ "${MODE}" = "khicas-source" ]; then
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
-  publish_root_g3a
+  publish_transfer_g3a
   publish_help_pack
   ls -lh "${OUT_G3A}"
-  ls -lh "${ROOT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (source-built): ${OUT_G3A}"
@@ -144,10 +137,9 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
-  publish_root_g3a
+  publish_transfer_g3a
   publish_help_pack
   ls -lh "${OUT_G3A}"
-  ls -lh "${ROOT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
@@ -184,10 +176,9 @@ echo "=== Build Results ==="
 if [ -f "${OUT_G3A}" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
-  publish_root_g3a
+  publish_transfer_g3a
   publish_help_pack
   ls -lh "${OUT_G3A}"
-  ls -lh "${ROOT_G3A}"
   [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   echo "Output (packaged): ${OUT_G3A}"
 else
