@@ -1287,6 +1287,55 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     return out;
 }
 
+static std::optional<std::vector<std::string>> simple_trig_zero_solve(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &equation_text
+)
+{
+    if(!is_num_node(a, rhs, 0)) return std::nullopt;
+    Node const &l = a.get(lhs);
+    if(l.kind != NodeKind::Fn) return std::nullopt;
+    if(l.fkind != FnKind::Sin && l.fkind != FnKind::Cos && l.fkind != FnKind::Tan &&
+       l.fkind != FnKind::Cot && l.fkind != FnKind::Sec && l.fkind != FnKind::Cosec)
+        return std::nullopt;
+
+    std::string arg = format_expr(a, l.a);
+    std::string subject = arg == var ? var : arg;
+    std::string u = arg == var ? var : "u";
+    std::vector<std::string> out;
+    out.push_back("1. Start with " + equation_text + ".");
+    if(l.fkind == FnKind::Tan || l.fkind == FnKind::Sec)
+        out.push_back("Domain: " + arg + " != pi/2 + n*pi");
+    if(l.fkind == FnKind::Cot || l.fkind == FnKind::Cosec)
+        out.push_back("Domain: " + arg + " != n*pi");
+    if(arg != var) out.push_back("2. Let u = " + arg + ".");
+
+    auto answer = [&](std::string const &base, std::string const &name) {
+        out.push_back(std::string(arg == var ? "2. " : "3. ") + name + "(" + u + ")=0 => " + u + "=" + base + ".");
+        out.push_back("Answer: " + subject + " = " + base + ", integer n");
+        return out;
+    };
+
+    if(l.fkind == FnKind::Sin) return answer("n*pi", "sin");
+    if(l.fkind == FnKind::Cos) return answer("pi/2 + n*pi", "cos");
+    if(l.fkind == FnKind::Tan) return answer("n*pi", "tan");
+    if(l.fkind == FnKind::Cot) return answer("pi/2 + n*pi", "cot");
+    if(l.fkind == FnKind::Sec) {
+        out.push_back("2. sec(u)=1/cos(u), so it is never 0.");
+        out.push_back("Answer: " + var + " = []");
+        return out;
+    }
+    if(l.fkind == FnKind::Cosec) {
+        out.push_back("2. cosec(u)=1/sin(u), so it is never 0.");
+        out.push_back("Answer: " + var + " = []");
+        return out;
+    }
+    return std::nullopt;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -2009,6 +2058,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
+            return *trig;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
             return *inv_trig;
 

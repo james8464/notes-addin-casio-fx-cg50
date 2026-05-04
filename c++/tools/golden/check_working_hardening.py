@@ -196,6 +196,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Domain: sin(2*x + pi/6) != 0", "Use identity cosec(u)^2 - cot(u)^2 = 1", "Answer: x = []"],
         ["log args", "denoms !=0", "ERR:"],
     ),
+    (
+        "alg",
+        "cos(x)=0,method=auto",
+        ["cos(x)=0 => x=pi/2 + n*pi", "Answer: x = pi/2 + n*pi, integer n"],
+        ["Answer (3 d.p.)", "-98.", "ERR:"],
+    ),
 ]
 
 
