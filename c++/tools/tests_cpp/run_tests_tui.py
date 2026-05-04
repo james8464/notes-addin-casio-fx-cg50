@@ -196,12 +196,17 @@ CATALOGUE_HIDDEN_PREFIXES = (
     "powmod", "nextprime", "ichinrem", "iabcuv", "idivis", "iegcd", "residue", "bool_",
     "prove_bool",
 )
-CATALOGUE_HIDDEN_EXACT = {"circle", "line", "point", "polygon", "segment", "nand", "nor"}
+CATALOGUE_HIDDEN_EXACT = {
+    "!", "_", "a and b", "a or b", "circle", "inf", "line", "mult_conjugate",
+    "nand", "nor", "not", "point", "polygon", "segment",
+}
 
 
 def _catalogue_hidden(name):
     base = (name or "").split("(", 1)[0].strip()
     if not base:
+        return True
+    if " " in base:
         return True
     if base != "!" and not any(ch.isalnum() or ch == "_" for ch in base):
         return True
@@ -4016,7 +4021,7 @@ class CASIOApp(App):
         if name in ("solve", "fsolve", "zeros"):
             return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval") + generic_math
         if name in ("solve_trig", "trigsolve"):
-            return ("general", "bounded", "cast", "identity", "rform", "square_then_check") + calculus_math
+            return ("general", "bounded", "cast", "identity", "rform", "square_then_check")
         if name in ("trig_prove", "trig_transform", "trig_rewrite"):
             return ("pythag", "double_angle", "compound_angle", "target")
         if name.startswith("trig") or name in ("sin", "cos", "tan", "sec", "cosec", "cot"):
@@ -4048,10 +4053,11 @@ class CASIOApp(App):
             "factor", "expand", "partfrac", "complete_square", "collect", "coeff",
             "binomial", "normal", "poisson", "correlation", "covariance", "mean", "median",
             "quartiles", "stddev", "det", "inverse", "rank", "rref", "dot", "cross",
+            "trig_prove", "trig_transform", "trig_rewrite",
         }
         if name in direct or name.startswith("trig"):
             return True
-        return len(fn.params) <= 1
+        return False
 
     def random_catalogue_expr(self, rng, shape):
         if shape.startswith("math_"):
@@ -4245,7 +4251,10 @@ class CASIOApp(App):
             return "int", "{0},method={1}".format(expr, method)
         if name in ("solve", "fsolve", "zeros"):
             method = "auto" if shape.startswith("math_") else (shape if shape != "quad" else "quad_formula")
-            return "alg", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
+            expr = self.random_catalogue_expr(rng, shape)
+            if shape.startswith("math_") and "=" not in expr:
+                expr = "{0}=0".format(expr)
+            return "alg", "{0},method={1}".format(expr, method)
         if name in ("solve_trig", "trigsolve"):
             method = "auto" if shape.startswith("math_") else shape
             expr = self.random_catalogue_expr(rng, shape)

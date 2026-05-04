@@ -37,6 +37,8 @@ CASES: list[tuple[str, list[str]]] = [
     ("1/(1+cos(x))", ["trig conjugate", "1-cos(x)^2 = sin(x)^2", "-cot(x) + cosec(x) + C"]),
     ("sin(ln(x))", ["log substitution then looping parts", "2I=e^u*(sin(u)-cos(u))", "x*(sin(log(x))-cos(log(x)))/2 + C"]),
     ("1/(x*sqrt(x^2-1))", ["sec substitution", "x=sec(t)", "acos(1/x) + C"]),
+    ("defint(sin(2*x)/(1+cos(x)),x,0,pi/2)", ["sin(2u) = 2sin(u)cos(u)", "w = 1 + cos(u)", "2 - 2*log(2)"]),
+    ("e^(2*x)*cos(3*x)", ["looping integration by parts", "a=2, b=3", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
     ("defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
     ("1/(2+cos(x))", ["Weierstrass substitution", "Integral [2/(t^2 + 3)]", "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"]),
     ("defint(log(sin(x)),x,0,pi/2)", ["log-trig symmetry", "2I = I - (pi/2)log(2)", "-pi*log(2)/2"]),
