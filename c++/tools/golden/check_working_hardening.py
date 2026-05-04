@@ -190,6 +190,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["arcsin(A)=0 => A=0", "sin(u)=0 => u=n*pi", "x = +/-sqrt(pi/4 + n*pi)"],
         ["x = []", "No real solution", "ERR:"],
     ),
+    (
+        "alg",
+        "cosec(2*x+pi/6)^2-cot(2*x+pi/6)^2=0,method=auto",
+        ["Domain: sin(2*x + pi/6) != 0", "Use identity cosec(u)^2 - cot(u)^2 = 1", "Answer: x = []"],
+        ["log args", "denoms !=0", "ERR:"],
+    ),
 ]
 
 

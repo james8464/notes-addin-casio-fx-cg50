@@ -1998,15 +1998,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             );
         }
         std::vector<std::string> domain_lines;
+        collect_text_trig_domain(arena, equation_text, domain_lines);
         collect_domain(arena, lhs, domain_lines);
         collect_domain(arena, rhs, domain_lines);
         if(!domain_lines.empty()) {
             for(auto const &d : domain_lines) out.push_back(d);
         }
-        else if(equation_text.find("log") != std::string::npos || equation_text.find("ln") != std::string::npos ||
-                equation_text.find('/') != std::string::npos) {
-            out.push_back("Domain: log args >0; denoms !=0.");
+        else if(equation_text.find("log") != std::string::npos || equation_text.find("ln") != std::string::npos) {
+            out.push_back("Domain: log args >0.");
         }
+        if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
             return *inv_trig;
