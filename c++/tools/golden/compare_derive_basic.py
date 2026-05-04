@@ -137,6 +137,12 @@ def main() -> int:
             print("  WANT:", expected)
             print("  C++:", cpp_ans)
             print("")
+        elif "^x" in cpp_expr or "x^x" in cpp_expr or "sin(x)^x" in cpp_expr:
+            if "logdiff" not in cpp_out.lower() and "var power" not in cpp_out.lower():
+                bad += 1
+                print("WEAK WORKING", mode, cpp_expr)
+                print("  missing variable-power/logdiff route")
+                print(cpp_out)
         else:
             print("OK", mode, cpp_expr, "->", cpp_ans)
 

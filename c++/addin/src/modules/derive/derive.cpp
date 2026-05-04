@@ -68,6 +68,44 @@ static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static bool has_node_kind(Arena &a, NodeId n, NodeKind kind)
+{
+    Node const &x = a.get(n);
+    if(x.kind == kind) return true;
+    if(x.kind == NodeKind::Fn) return has_node_kind(a, x.a, kind);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return has_node_kind(a, x.a, kind) || has_node_kind(a, x.b, kind);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_node_kind(a, k, kind)) return true;
+    }
+    return false;
+}
+
+static bool has_function_call(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return true;
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return has_function_call(a, x.a) || has_function_call(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_function_call(a, k)) return true;
+    }
+    return false;
+}
+
+static bool has_variable_power(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow && depends_on(a, x.a, var) && depends_on(a, x.b, var)) return true;
+    if(x.kind == NodeKind::Fn) return has_variable_power(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return has_variable_power(a, x.a, var) || has_variable_power(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_variable_power(a, k, var)) return true;
+    }
+    return false;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -310,15 +348,26 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out = d2;
                 label = "d2y/d" + var + "2";
             }
+            std::vector<std::string> steps = {
+                "Normalize: " + pre.norm,
+                "Parse: " + pre.parsed,
+                "Simplify: " + pre.simplified,
+            };
+            if(req.mode == 4) {
+                steps.push_back("Differentiate once, then differentiate dy/dx again.");
+            }
+            else {
+                if(arena.get(n).kind == NodeKind::Add) steps.push_back("Differentiate term-by-term.");
+                if(has_variable_power(arena, n, var)) steps.push_back("Var power: use logdiff d(u^v)=u^v*(v'*log(u)+v*u'/u).");
+                if(has_node_kind(arena, n, NodeKind::Div)) steps.push_back("Quotient: (u'v-uv')/v^2.");
+                if(has_node_kind(arena, n, NodeKind::Mul)) steps.push_back("Product: sum of one differentiated factor each time.");
+                if(has_function_call(arena, n)) steps.push_back("Chain rule on nested functions.");
+                if(steps.size() == 3) steps.push_back("Apply direct derivative rules.");
+                steps.push_back("Simplify/factor result.");
+            }
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
-                {
-                    "Normalize: " + pre.norm,
-                    "Parse: " + pre.parsed,
-                    "Simplify: " + pre.simplified,
-                    "Apply power rule to each term.",
-                    "Combine results.",
-                },
+                steps,
                 label + " = " + format_expr_human(arena, out)
             );
         }

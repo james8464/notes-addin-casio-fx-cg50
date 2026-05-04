@@ -2955,7 +2955,7 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
     cascas_append_line(out,"4. PF setup: lin/repeat/quad.");
     cascas_append_line(out,"5. clear denom; coeffs; int.");
   }
-  else if (method=="chain" || method=="product" || method=="quotient")
+  else if (method=="chain" || method=="product" || method=="quotient" || method=="logdiff")
     cascas_append_line(out,"4. rule; simp/fact.");
   else
     cascas_append_line(out,"4. route; verify.");
@@ -3141,7 +3141,7 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
     {"trig_prove(","2. Trig: lhs-rhs.\n3. sin/cos; ids; simp."},
     {"suvat(","2. SUVAT: pick eq.\n3. sub; solve."},
     {"compose(","2. Fn: sub."},
-    {"diff(","2. Diff: rules.\n3. sum/chain/prod/quot; simp."},
+    {"diff(","2. Diff: rules.\n3. logdiff if u^v; simp."},
     {"'","2. Diff: rules.\n3. sum/chain/prod/quot; simp."},
     {"integrate(","2. Int: std/trig/sub/parts/PF.\n3. FM t-sub/tri; CAS."},
     {"solve(","2. Move to lhs-rhs=0.\n3. reduce; solve; sub."},
