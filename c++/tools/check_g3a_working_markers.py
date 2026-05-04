@@ -6,10 +6,10 @@ from pathlib import Path
 
 
 MARKERS = [
-    b"Rw:",
-    b"Fallback:",
+    b"Rewrite:",
+    b"Choose standard method.",
     b"Valid:",
-    b"Br: real branch.",
+    b"Use real branch.",
     b"Diff:",
     b"Impl:",
     b"Param:",
@@ -30,8 +30,8 @@ MARKERS = [
     b"FM t-sub/tri",
     b"IBP:",
     b"PF setup:",
-    b"Guard: branch/domain.",
-    b"Non-Edexcel elem.",
+    b"Check domain/branch.",
+    b"No A-level elementary form.",
     b"PF.",
 ]
 

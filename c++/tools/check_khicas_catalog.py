@@ -135,7 +135,7 @@ def main() -> int:
         return fail("method extraction hook missing")
     if "u=" not in main_cc or "v=int(dv)" not in main_cc:
         return fail("parts/sub method u hint missing")
-    if "Fallback:" not in main_cc or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
+    if "Choose standard method." not in main_cc or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
         return fail("working-line output shape missing")
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")

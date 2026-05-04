@@ -67,13 +67,7 @@ char xcas_status[256];
 
 void set_xcas_status(){
   ustl::string status;
-  int heure,minute; // minutes rounded
-  giac::get_time(heure,minute);
-  status += char('0'+heure/10);
-  status += char('0'+(heure%10));
-  status += ':';
-  status += char('0'+(minute/10));
-  status += char('0'+(minute%10));
+  status += "CAS";
   status += xthetat?" t ":" x ";
   status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" Xcas ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";

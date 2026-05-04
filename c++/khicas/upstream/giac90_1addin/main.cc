@@ -2892,11 +2892,11 @@ static void cascas_append_guard_lines(cascas_working_sink &out,const char *input
        cascas_text_has(joined,"exp(x^2)") || cascas_text_has(joined,"e^(x^2)") ||
        cascas_text_has(joined,"sin(x^2)") || cascas_text_has(joined,"1/log(x)") ||
        cascas_text_has(joined,"1/ln(x)")))
-    cascas_append_line(out,"Non-Edexcel elem.");
+    cascas_append_line(out,"No A-level elementary form.");
   if (cascas_text_has(joined,"sqrt(x^2)") || cascas_text_has(joined,"log(x^2)") ||
       cascas_text_has(joined,"ln(x^2)") || cascas_text_has(joined,"asin(sin(") ||
       cascas_text_has(joined,"atan(tan("))
-    cascas_append_line(out,"Guard: branch/domain.");
+    cascas_append_line(out,"Check domain/branch.");
   string args[6],body; int count=0,close=0;
   if ((cascas_call_args(raw.c_str(),"integrate(",args,6,count,close,body) ||
        cascas_call_args(raw.c_str(),"int(",args,6,count,close,body)) && count>=4){
@@ -2904,17 +2904,17 @@ static void cascas_append_guard_lines(cascas_working_sink &out,const char *input
     if ((e=="1/x" || cascas_text_has(e,"/x")) &&
 	(cascas_is_zero_bound(args[2]) || cascas_is_zero_bound(args[3]) ||
 	 (cascas_is_negative_bound_text(args[2]) && cascas_is_positive_bound_text(args[3]))))
-      cascas_append_line(out,"Guard: pole/domain.");
+      cascas_append_line(out,"Exclude poles.");
   }
   if (cascas_text_has(joined,"inv("))
-    cascas_append_line(out,"Guard: det!=0.");
+    cascas_append_line(out,"Need det!=0.");
 }
 
 static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,const char *eval_s){
   string method,u,target;
   if (!cascas_extract_method(s,method,u,&target) || method.empty() || method=="auto")
     return false;
-  string line="2. Met: " + method;
+  string line="2. Method: " + method;
   if (u.size()){
     line += "; u=";
     line += u;
@@ -2925,7 +2925,7 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
   }
   cascas_append_line(out,line.c_str());
   if (eval_s && strcmp(eval_s,s))
-      cascas_append_expr_line(out,"3. CAS: ",eval_s);
+      cascas_append_expr_line(out,"3. Use: ",eval_s);
   if (method=="sub" || method=="reverse_chain"){
     if (u.size())
       cascas_append_expr_line(out,"4. Let u=",u);
@@ -3159,7 +3159,7 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
       return;
     }
   }
-  cascas_append_line(out,"2. P.\n3. Fallback:");
+  cascas_append_line(out,"2. Choose standard method.\n3. Simplify.");
 }
 
 static bool cascas_word_char(char c){
@@ -3235,18 +3235,17 @@ static string cascas_working_text(const char *input,const char *eval_input,const
   string shown_answer=answer;
   bool cleaned=cascas_answer_cleanup_allowed(input,eval_input) && cascas_clean_answer_text(shown_answer);
   cascas_working_sink out;
-  cascas_append_expr_line(out,"1. In: ",input?string(input):string(""));
+  cascas_append_expr_line(out,"1. Start: ",input?string(input):string(""));
   if (eval_input && input && strcmp(eval_input,input)){
-    cascas_append_expr_line(out,"Rw: ",eval_input);
+    cascas_append_expr_line(out,"Rewrite: ",eval_input);
   }
   cascas_append_method_lines(out,(eval_input && input && strcmp(eval_input,input))?input:(eval_input?eval_input:input),eval_input);
   cascas_append_guard_lines(out,input,eval_input);
-  cascas_append_line(out,"Chk: ok.");
   string valid=cascas_binom_validity(input);
   if (valid.size())
     cascas_append_line(out,valid.c_str());
   if (cleaned)
-    cascas_append_line(out,"Br: real branch.");
+    cascas_append_line(out,"Use real branch.");
   cascas_append_final_answer(out,shown_answer);
   return out.out;
 }
