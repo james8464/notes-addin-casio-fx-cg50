@@ -97,7 +97,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "cot(x^2-pi/4),method=auto",
-        ["Domain: sin(x^2 - pi/4) != 0", "Answer: cot(x^2 - pi/4)"],
+        ["Use identity cot(u) = cos(u)/sin(u)", "Domain: sin(x^2 - pi/4) != 0", "Answer: cos(x^2 - pi/4)/sin(x^2 - pi/4)"],
         ["Err:", "Unexpected token"],
     ),
     (
@@ -139,8 +139,26 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "cosec((x+1)/3),method=auto",
-        ["Domain: sin((x + 1)/3) != 0", "Domain: (x + 1)/3 != n*pi", "Answer: cosec((x + 1)/3)"],
+        ["Use identity cosec(u) = 1/sin(u)", "Domain: (x + 1)/3 != n*pi", "Answer: 1/sin((x + 1)/3)"],
         ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "sec((x+1)/3),method=auto",
+        ["Use identity sec(u) = 1/cos(u)", "Domain: (x + 1)/3 != pi/2 + n*pi", "Answer: 1/cos((x + 1)/3)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "derive",
+        "mode:5,t^2+1/t,t^2-1/t,t",
+        ["dy/dx = (2*t^3 + 1)/(2*t^3 - 1)", "d/dt(dy/dx) = -12*t^2/(2*t^3-1)^2", "Answer: d2y/dx2 = -12*t^4/(2*t^3 - 1)^3"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "stats",
+        "covariance([1,1,2,3,5,8],[2,5,7,11])",
+        ["lengths must match", "Answer: no covariance"],
+        ["Err:", "Traceback"],
     ),
 ]
 

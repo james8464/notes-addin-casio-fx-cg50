@@ -560,6 +560,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer = "d2y/dx2 = -2*(t^2+1)/(9*(t^2-1)^3)";
                 else if(compact == "sec(t),tan(t),t") answer = "d2y/dx2 = -cot(t)^3";
                 else if(compact == "cos(t)^3,sin(t)^3,t") answer = "d2y/dx2 = 1/(3*cos(t)^4*sin(t))";
+                if(compact == "t^2+1/t,t^2-1/t,t") {
+                    return casio::exam_block(
+                        "parametric second derivative",
+                        {
+                            "dx/dt = 2*t - t^-2 = (2*t^3 - 1)/t^2",
+                            "dy/dt = 2*t + t^-2 = (2*t^3 + 1)/t^2",
+                            "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)",
+                            "d/dt(dy/dx) = -12*t^2/(2*t^3-1)^2",
+                            "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt).",
+                        },
+                        answer
+                    );
+                }
                 if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t") {
                     return casio::exam_block(
                         "parametric second derivative",

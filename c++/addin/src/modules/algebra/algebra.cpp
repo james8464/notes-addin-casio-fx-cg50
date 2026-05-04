@@ -952,6 +952,23 @@ static std::optional<std::string> reciprocal_trig_identity_step(std::string cons
     return std::nullopt;
 }
 
+static std::optional<std::pair<std::string, NodeId>> reciprocal_trig_rewrite(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    NodeId one = a.num(Rational{1, 1});
+    if(x.fkind == FnKind::Sec) {
+        return std::make_pair("Use identity sec(u) = 1/cos(u).", casio::div(a, one, casio::fn(a, "cos", x.a)));
+    }
+    if(x.fkind == FnKind::Cosec) {
+        return std::make_pair("Use identity cosec(u) = 1/sin(u).", casio::div(a, one, casio::fn(a, "sin", x.a)));
+    }
+    if(x.fkind == FnKind::Cot) {
+        return std::make_pair("Use identity cot(u) = cos(u)/sin(u).", casio::div(a, casio::fn(a, "cos", x.a), casio::fn(a, "sin", x.a)));
+    }
+    return std::nullopt;
+}
+
 static bool is_square_power(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -1835,6 +1852,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
+            if(auto rec = reciprocal_trig_rewrite(arena, parsed)) {
+                steps.push_back("Start with " + format_expr(arena, parsed) + ".");
+                steps.push_back(rec->first);
+                std::vector<std::string> dom;
+                collect_domain(arena, parsed, dom);
+                for(auto const &d : dom) steps.push_back(d);
+                return casio::exam_block("algebra simplify", steps, format_expr(arena, rec->second));
+            }
             if(auto ident = reciprocal_trig_identity_step(req.expr)) {
                 steps.push_back("Start with " + trim_text(req.expr) + ".");
                 steps.push_back(*ident);

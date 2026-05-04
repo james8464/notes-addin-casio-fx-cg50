@@ -308,6 +308,7 @@ static std::vector<std::string> two_var(std::string const &expr, std::string con
         auto parts = split_on(expr, ';');
         if(parts.size() < 2) parts = split_on(expr, '|');
         if(parts.size() < 2) parts = split_on(expr, '\n');
+        if(parts.size() < 2) parts = split_on(expr, ',');
         if(parts.size() >= 2) {
             xtext = parts[0];
             ytext = parts[1];
@@ -315,7 +316,14 @@ static std::vector<std::string> two_var(std::string const &expr, std::string con
     }
     auto x = parse_numbers(xtext);
     auto y = parse_numbers(ytext);
-    if(x.empty() || y.empty() || x.size() != y.size()) return {"Err: regression needs equal-length x and y lists."};
+    if(x.empty() || y.empty()) return {"1. Enter paired x and y data lists.", "Answer: no covariance: missing data."};
+    if(x.size() != y.size()) {
+        return {
+            "1. Pair each x value with the matching y value.",
+            "2. List lengths must match before covariance/regression is defined.",
+            "Answer: no covariance: list lengths differ.",
+        };
+    }
     long double n = (long double)x.size();
     long double xb = sum_of(x) / n;
     long double yb = sum_of(y) / n;
@@ -483,9 +491,13 @@ static Request autodetect(Request req)
         req.mode = 1;
         req.expr = inside_call(s, "stats");
     }
-    else if(starts_with(lo, "corr(") || starts_with(lo, "reg(")) {
+    else if(starts_with(lo, "corr(") || starts_with(lo, "correlation(") ||
+            starts_with(lo, "covariance(") || starts_with(lo, "cov(") || starts_with(lo, "reg(")) {
         req.mode = 2;
-        req.expr = inside_call(s, starts_with(lo, "corr(") ? "corr" : "reg");
+        if(starts_with(lo, "correlation(")) req.expr = inside_call(s, "correlation");
+        else if(starts_with(lo, "covariance(")) req.expr = inside_call(s, "covariance");
+        else if(starts_with(lo, "cov(")) req.expr = inside_call(s, "cov");
+        else req.expr = inside_call(s, starts_with(lo, "corr(") ? "corr" : "reg");
     }
     else if(starts_with(lo, "binomcdf(")) {
         req.mode = 3;
