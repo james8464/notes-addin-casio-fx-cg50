@@ -42,10 +42,11 @@ static std::string fn_text(FnKind k)
     return "fn";
 }
 
+static constexpr int FORMAT_EXAM_MAX_DEPTH = 48;
+
 static std::pair<bool, Rational> split_coeff(Arena &arena, NodeId node, NodeId &rest_out)
 {
-    NodeId s = simplify(arena, node);
-    Node const &n = arena.get(s);
+    Node const &n = arena.get(node);
     if(n.kind == NodeKind::Mul && !n.kids.empty()) {
         Node const &k0 = arena.get(n.kids.front());
         if(k0.kind == NodeKind::Num) {
@@ -63,7 +64,7 @@ static std::pair<bool, Rational> split_coeff(Arena &arena, NodeId node, NodeId &
             return {true, coeff};
         }
     }
-    rest_out = s;
+    rest_out = node;
     return {false, Rational::from_int(1)};
 }
 
@@ -104,10 +105,10 @@ std::vector<std::string> format_exam_working(
     return lines;
 }
 
-std::string format_equation_human_readable(Arena &arena, NodeId node, int parent)
+static std::string format_equation_human_readable_impl(Arena &arena, NodeId node, int parent, int depth)
 {
-    NodeId s = simplify(arena, node);
-    Node const &n = arena.get(s);
+    if(depth > FORMAT_EXAM_MAX_DEPTH) return "...";
+    Node const &n = arena.get(node);
 
     if(n.kind == NodeKind::Num) return num_text(n.num);
     if(n.kind == NodeKind::Sym) return n.text;
@@ -115,17 +116,17 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
 
     if(n.kind == NodeKind::Fn) {
         if(n.fkind == FnKind::Log) {
-            return "log(" + format_equation_human_readable(arena, n.a, 0) + ")";
+            return "log(" + format_equation_human_readable_impl(arena, n.a, 0, depth + 1) + ")";
         }
         if(n.fkind == FnKind::Exp) {
-            return "e^(" + format_equation_human_readable(arena, n.a, 0) + ")";
+            return "e^(" + format_equation_human_readable_impl(arena, n.a, 0, depth + 1) + ")";
         }
-        return fn_text(n.fkind) + "(" + format_equation_human_readable(arena, n.a, 0) + ")";
+        return fn_text(n.fkind) + "(" + format_equation_human_readable_impl(arena, n.a, 0, depth + 1) + ")";
     }
 
     if(n.kind == NodeKind::Pow) {
-        std::string base = format_equation_human_readable(arena, n.a, 3);
-        std::string exponent = format_equation_human_readable(arena, n.b, 3);
+        std::string base = format_equation_human_readable_impl(arena, n.a, 3, depth + 1);
+        std::string exponent = format_equation_human_readable_impl(arena, n.b, 3, depth + 1);
         Node const &bn = arena.get(n.a);
         Node const &en = arena.get(n.b);
         if(bn.kind == NodeKind::Add || bn.kind == NodeKind::Mul || bn.kind == NodeKind::Div ||
@@ -142,7 +143,7 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
         std::ostringstream oss;
         bool first = true;
         for(NodeId kid : n.kids) {
-            std::string part = format_equation_human_readable(arena, kid, 2);
+            std::string part = format_equation_human_readable_impl(arena, kid, 2, depth + 1);
             Node const &kn = arena.get(kid);
             if(kn.kind == NodeKind::Add) part = "(" + part + ")";
             if(!first) oss << "*";
@@ -153,8 +154,8 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
     }
 
     if(n.kind == NodeKind::Div) {
-        std::string top = format_equation_human_readable(arena, n.a, 2);
-        std::string bot = format_equation_human_readable(arena, n.b, 2);
+        std::string top = format_equation_human_readable_impl(arena, n.a, 2, depth + 1);
+        std::string bot = format_equation_human_readable_impl(arena, n.b, 2, depth + 1);
         Node const &tn = arena.get(n.a);
         Node const &bn = arena.get(n.b);
         if(tn.kind == NodeKind::Add || tn.kind == NodeKind::Mul) top = "(" + top + ")";
@@ -170,10 +171,10 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
             auto [has_coeff, coeff] = split_coeff(arena, kid, rest);
             std::string term;
             if(!has_coeff) {
-                term = format_equation_human_readable(arena, kid, 1);
+                term = format_equation_human_readable_impl(arena, kid, 1, depth + 1);
             }
             else {
-                term = format_equation_human_readable(arena, rest, 1);
+                term = format_equation_human_readable_impl(arena, rest, 1, depth + 1);
                 if(!(coeff.num == coeff.den && coeff.den == 1)) {
                     term = num_text(coeff) + "*" + term;
                 }
@@ -186,6 +187,12 @@ std::string format_equation_human_readable(Arena &arena, NodeId node, int parent
     }
 
     return "<expr>";
+}
+
+std::string format_equation_human_readable(Arena &arena, NodeId node, int parent)
+{
+    NodeId s = simplify(arena, node);
+    return format_equation_human_readable_impl(arena, s, parent, 0);
 }
 
 } // namespace casio

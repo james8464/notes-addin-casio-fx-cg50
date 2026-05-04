@@ -28,7 +28,10 @@ MARKERS = [
     b"DE:",
     b"std/trig/sub/parts/PF",
     b"FM t-sub/tri",
-    b"DI if apt",
+    b"IBP:",
+    b"PF setup:",
+    b"Guard: branch/domain.",
+    b"Non-Edexcel elem.",
     b"PF.",
 ]
 

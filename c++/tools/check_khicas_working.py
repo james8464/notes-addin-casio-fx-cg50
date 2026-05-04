@@ -33,6 +33,17 @@ REQUIRED_MARKERS = [
     "Move:",
     "Base:",
     "Br: real branch.",
+    "CASCAS_WORK_MAX_CHARS",
+    "cascas_working_sink",
+    "cascas_append_guard_lines",
+    "Non-Edexcel elem.",
+    "Guard: pole/domain.",
+    "Guard: branch/domain.",
+    "target=",
+    "PF setup:",
+    "IBP:",
+    "du=",
+    "v=int(dv)",
 ]
 
 CONSOLE_MARKERS = [
@@ -55,7 +66,7 @@ METHOD_MARKERS = [
     "DE:",
     "std/trig/sub/parts/PF",
     "FM t-sub/tri",
-    "DI if apt",
+    "IBP:",
     "PF.",
     "Move to lhs-rhs=0",
     "Mat:",

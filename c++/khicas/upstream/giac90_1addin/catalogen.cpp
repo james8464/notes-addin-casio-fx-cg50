@@ -74,40 +74,40 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {" range(a,b)", 0, "In range [a,b) (a included, b excluded)", "# in range(1,10)", 0, CAT_CATEGORY_PROG},
   {" return res", "return ", "Leaves current function and returns res.", 0, 0, CAT_CATEGORY_PROG},
   {" edit list ", "list ", "List creation wizzard.", 0, 0, CAT_CATEGORY_LIST},
-  {" edit matrix ", "matrix ", "Matrix creation wizzard.", 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
+  {" edit matrix ", "matrix ", "Matrix wizard.", 0, 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
 #endif
   {"!", "!", "Factorial n.", "#7!", 0, CAT_CATEGORY_ARIT},
   {"_cdf", "_cdf", "CDF suffix. F2: _icdf.", "#_icdf", 0, CAT_CATEGORY_PROBA},
-  {"abs(x)", 0, "Absolute value or norm of x x", "-3", "[1,2,3]", CAT_CATEGORY_COMPLEXNUM | (CAT_CATEGORY_REAL<<8)},
-  {"approx(x)", 0, "Approx. value x. Shortcut S-D", "pi", 0, CAT_CATEGORY_REAL},
+  {"abs(x)", 0, "Abs/norm.", "-3", "[1,2]", CAT_CATEGORY_COMPLEXNUM | (CAT_CATEGORY_REAL<<8)},
+  {"approx(x)", 0, "Approx.", "pi", 0, CAT_CATEGORY_REAL},
   {"arg(z)", 0, "Angle of complex z.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
-  {"binomial(n,p,k)", 0, "Binomial prob. Use _cdf/_icdf for cumulative/inverse.", "10,.5,4", 0, CAT_CATEGORY_PROBA},
+  {"binomial(n,p,k)", 0, "Binomial prob.; _cdf/_icdf.", "10,.5,4", 0, CAT_CATEGORY_PROBA},
   {"binom_expand(expr)", 0, "Binomial expansion.", "(2*x-1)^5", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"binom_coeff(expr,x,k)", 0, "Coeff of x^k after expansion.", "(2*x-1)^5,x,3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"ceiling(x)", 0, "Smallest integer not less than x", "1.2", 0, CAT_CATEGORY_REAL},
+  {"binom_coeff(expr,x,k)", 0, "Coeff of x^k.", "(2*x-1)^5,x,3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"ceiling(x)", 0, "Smallest int >= x.", "1.2", 0, CAT_CATEGORY_REAL},
   {"cfactor(p)", 0, "Factor over C.", "x^4-1", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_COMPLEXNUM << 8)},
-  {"complete_square(expr,[x])", 0, "Complete square. Args: expr,[x].", "x^2+6*x+11", "2*x^2-8*x+3,x", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"compose(f,g,[x])", 0, "Composite f(g(x)). Args: f,g,[x].", "x^2+1,2*x+3,x", 0, CAT_CATEGORY_ALGEBRA},
-  {"coeff(p,x,n)", 0, "Coefficient of x^n in polynomial p.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
-  {"compare(expr1,expr2)", 0, "Compare two expressions after exact simplification. Required: expr1, expr2.", "sin(x)^2+cos(x)^2,1", 0, CAT_CATEGORY_ALGEBRA},
+  {"complete_square(expr,[x])", 0, "Complete square.", "x^2+6*x+11", "2*x^2-8*x+3,x", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"compose(f,g,[x])", 0, "Composite f(g(x)).", "x^2+1,2*x+3,x", 0, CAT_CATEGORY_ALGEBRA},
+  {"coeff(p,x,n)", 0, "Coeff of x^n.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
+  {"compare(expr1,expr2)", 0, "Compare after simp.", "sin(x)^2+cos(x)^2,1", 0, CAT_CATEGORY_ALGEBRA},
   {"comb(n,k)", 0, "Returns nCk", "10,4", 0, CAT_CATEGORY_PROBA},
-  {"conj(z)", 0, "Complex conjugate of z.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
-  {"correlation(l1,l2)", 0, "Correlation of lists l1 and l2", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
-  {"covariance(l1,l2)", 0, "Covariance of lists l1 and l2", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
-  {"cartesian([x(t),y(t)],t)", 0, "Eliminate t from parametric form.", "[x=t+1,y=t^2],t", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PLOT << 8)},
-  {"cross(u,v)", 0, "Cross product of vectors u and v.","[1,2,3],[0,1,3]", 0, CAT_CATEGORY_LINALG},
-  {"csolve(equation,x)", 0, "Solve equation (or polynomial system) in exact mode over the complex numbers.","x^2+x+1=0", 0, CAT_CATEGORY_SOLVE| (CAT_CATEGORY_COMPLEXNUM << 8)},
-  {"degree(p,x)", 0, "Degre of polynomial p in x.", "x^4-1", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"denom(x)", 0, "Denominator of expression x.", "3/4", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"desolve(equation,t,y)", 0, "Exact differential equation solving.", "desolve([y'+y=exp(x),y(0)=1],x,y)", "[y'=[[1,2],[2,1]]*y+[x,x+1],y(0)=[1,2]]", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
-  {"de_solve(equation,[bc])", 0, "First-order differential equation solver. Required: equation. Optional: boundary condition.", "y'+y=exp(x),y(0)=1", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
-  {"det(A)", 0, "Determinant of matrix A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
-  {"diff(f,var,[n,method])", 0, "Derivative. Methods: auto,chain,product,quotient,logdiff.", "sin(x),x", "sin(x)^x,x,method=logdiff", CAT_CATEGORY_CALCULUS},
-  {"diff_by(f,var,method)", 0, "Derivative with forced mark-scheme method.", "sin(x)^x,x,logdiff", 0, CAT_CATEGORY_CALCULUS},
-  {"implicit_diff(eq,[x,y])", 0, "Implicit dy/dx. Args: eq,[x,y].", "x^2+y^2=1,x,y", "sin(2*x)*cot(y)=1,x,y", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_SOLVE << 8)},
-  {"domain(expr,[x])", 0, "Domain. Args: expr,[x].", "sqrt(x-1),x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
+  {"conj(z)", 0, "Complex conjugate.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
+  {"correlation(l1,l2)", 0, "Correlation.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
+  {"covariance(l1,l2)", 0, "Covariance.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
+  {"cartesian([x(t),y(t)],t)", 0, "Eliminate t.", "[x=t+1,y=t^2],t", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PLOT << 8)},
+  {"cross(u,v)", 0, "Cross product.","[1,2,3],[0,1,3]", 0, CAT_CATEGORY_LINALG},
+  {"csolve(equation,x)", 0, "Solve over C.","x^2+x+1=0", 0, CAT_CATEGORY_SOLVE| (CAT_CATEGORY_COMPLEXNUM << 8)},
+  {"degree(p,x)", 0, "Polynomial degree.", "x^4-1", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"denom(x)", 0, "Denominator.", "3/4", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"desolve(equation,t,y)", 0, "Exact DE solve.", "y'+y=exp(x),x,y", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
+  {"de_solve(equation,[bc])", 0, "DE solve.", "y'+y=exp(x),y(0)=1", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
+  {"det(A)", 0, "Determinant.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
+  {"diff(f,var,[n,method])", 0, "Derivative. Methods: chain,prod,quot,log.", "sin(x),x", "sin(x)^x,x,method=logdiff", CAT_CATEGORY_CALCULUS},
+  {"diff_by(f,var,method)", 0, "Forced derivative method.", "sin(x)^x,x,logdiff", 0, CAT_CATEGORY_CALCULUS},
+  {"implicit_diff(eq,[x,y])", 0, "Implicit dy/dx.", "x^2+y^2=1,x,y", "sin(2*x)*cot(y)=1,x,y", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_SOLVE << 8)},
+  {"domain(expr,[x])", 0, "Domain.", "sqrt(x-1),x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
   // {"disque n", "disque ", "Filled circle tangent to the turtle, radius n. Run disque n,theta for a filled arc of circle, theta in degrees, or disque n,theta,segment for a segment of circle.", "#disque 30", "#disque(30,90)", CAT_CATEGORY_LOGO},
-  {"dot(a,b)", 0, "Dot product of 2 vectors. Shortcut: *", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_LINALG},
+  {"dot(a,b)", 0, "Dot product.", "[1,2,3],[4,5,6]", 0, CAT_CATEGORY_LINALG},
 #if 0
   {"draw_arc(x1,y1,rx,ry,theta1,theta2,c)", 0, "Pixelised arc of ellipse.", "100,100,60,80,0,pi,magenta", 0, CAT_CATEGORY_PROGCMD},
   {"draw_circle(x1,y1,r,c)", 0, "Pixelised circle. Option: filled", "100,100,60,cyan+filled", 0, CAT_CATEGORY_PROGCMD},
@@ -117,108 +117,108 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"draw_rectangle(x,y,w,h,c)", 0, "Rectangle.", "100,50,30,20,red+filled", 0, CAT_CATEGORY_PROGCMD},
   {"draw_string(s,x,y,c)", 0, "Draw string s at pixel x,y", "\"Bonjour\",80,60", 0, CAT_CATEGORY_PROGCMD},
 #endif
-  {"eigenvals(A)", 0, "Eigenvalues of matrix  A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
-  {"eigenvects(A)", 0, "Eigenvectors of matrix A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
+  {"eigenvals(A)", 0, "Eigenvalues.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
+  {"eigenvects(A)", 0, "Eigenvectors.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX |  (CAT_CATEGORY_LINALG<<8)},
 #if 0
   {"erf(x)", 0, "Error function of x.", "1.2", 0, CAT_CATEGORY_PROBA},
   {"erfc(x)", 0, "Complementary error function of x.", "1.2", 0, CAT_CATEGORY_PROBA},
-  {"euler(n)",0,"Euler indicatrix: number of integers < n coprime with n","25",0,CAT_CATEGORY_ARIT},
+  {"euler(n)",0,"Euler phi.","25",0,CAT_CATEGORY_ARIT},
 #endif
   {"evalc(z)", 0, "Write z=x+i*y.", "1/(1+i*sqrt(3))", 0, CAT_CATEGORY_COMPLEXNUM},
-  {"exact(x)", 0, "Converts x to a rational. Shortcut shift S-D", "1.2", 0, CAT_CATEGORY_REAL},
-  {"expand(expr)", 0, "Expand expression. Required: expr.", "(x+1)^3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"exp2trig(expr)", 0, "Convert complex exponentials to sin/cos", "exp(i*x)", 0, CAT_CATEGORY_TRIG},
-  {"exponential_regression(Xlist,Ylist)", 0, "Exponential regression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
+  {"exact(x)", 0, "Exact rational.", "1.2", 0, CAT_CATEGORY_REAL},
+  {"expand(expr)", 0, "Expand.", "(x+1)^3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"exp2trig(expr)", 0, "Exp to trig.", "exp(i*x)", 0, CAT_CATEGORY_TRIG},
+  {"exponential_regression(Xlist,Ylist)", 0, "Exp regression.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
 #if 0
   {"exponential_regression_plot(Xlist,Ylist)", 0, "Exponential regression plot.", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];exponential_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
   {"exponentiald(lambda,x)", 0, "Exponential dist. Use _cdf/_icdf.", "5.1,3.4", 0, CAT_CATEGORY_PROBA},
-  {"factor(p,[x])", 0, "Factors polynomial p (run ifactor for an integer). Shortcut: p=>*", "x^4-1", "x^6+1,sqrt(3)", CAT_CATEGORY_ALGEBRA| (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"fitconst(equations,vars)", 0, "Find unknown constants from conditions. Required: equations/list, vars/list.", "[a*1+b=3,a*2+b=5],[a,b]", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
-  {"float(x)", 0, "Converts x to a floating point value.", "pi", 0, CAT_CATEGORY_REAL},
-  {"floor(x)", 0, "Largest integer not greater than x", "pi", 0, CAT_CATEGORY_REAL},
+  {"factor(p,[x])", 0, "Factor polynomial.", "x^4-1", "x^6+1,sqrt(3)", CAT_CATEGORY_ALGEBRA| (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"fitconst(equations,vars)", 0, "Find constants from eqs.", "[a*1+b=3,a*2+b=5],[a,b]", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
+  {"float(x)", 0, "Float value.", "pi", 0, CAT_CATEGORY_REAL},
+  {"floor(x)", 0, "Largest int <= x.", "pi", 0, CAT_CATEGORY_REAL},
 #if 0
   {"fourier_an(f,x,T,n,a)", 0, "Cosine Fourier coefficients of f", "x^2,n","x^2,x,2*pi,n,-pi", CAT_CATEGORY_CALCULUS},
   {"fourier_bn(f,x,T,n,a)", 0, "Sine Fourier coefficients of f", "x^2,n","x^2,x,2*pi,n,-pi", CAT_CATEGORY_CALCULUS},
   {"fourier_cn(f,x,T,n,a)", 0, "Exponential Fourier coefficients of f", "x^2,x,2*pi,n,-pi", 0, CAT_CATEGORY_CALCULUS},
 #endif
-  {"fsolve(equation,x=a..b)", 0, "Approx equation solving in interval a..b.","cos(x)=x,x=0..1", "cos(x)-x,x=0.0", CAT_CATEGORY_SOLVE},
+  {"fsolve(equation,x=a..b)", 0, "Numeric solve on a..b.","cos(x)=x,x=0..1", 0, CAT_CATEGORY_SOLVE},
   // {"function f(x):...", "function f(x) local y;   ffunction:;", "Function definition.", "#function f(x) local y; y:=x^2; return y; ffunction:;", 0, CAT_CATEGORY_PROG},
 #if 0
   {"gauss(q)", 0, "Quadratic form reduction", "x^2+x*y+x*z+y^2+z^2,[x,y,z]", 0, CAT_CATEGORY_LINALG},
 #endif
-  {"gcd(a,b,...)", 0, "Greatest common divisor. See also iegcd and egcd for extended GCD.", "23,13", "x^2-1,x^3-1", CAT_CATEGORY_ARIT | (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"gcd(a,b,...)", 0, "Greatest common divisor.", "23,13", "x^2-1,x^3-1", CAT_CATEGORY_ARIT | (CAT_CATEGORY_POLYNOMIAL << 8)},
 #if 0
-  {"gramschmidt(M)", 0, "Gram-Schmidt orthonormalization (line vectors or linearly independant set of vectors)", "[[1,2,3],[4,5,6]]", "[1,1+x],(p,q)->integrate(p*q,x,-1,1)", CAT_CATEGORY_LINALG},
+  {"gramschmidt(M)", 0, "Gram-Schmidt orthonormalize.", "[[1,2,3],[4,5,6]]", "[1,1+x],(p,q)->integrate(p*q,x,-1,1)", CAT_CATEGORY_LINALG},
 #endif
-  {"halftan(expr)", 0, "Convert cos, sin, tan with tan(angle/2).","cos(x)", 0, CAT_CATEGORY_TRIG},
+  {"halftan(expr)", 0, "Use tan(x/2).","cos(x)", 0, CAT_CATEGORY_TRIG},
 #if 0
   {"hermite(n)", 0, "n-th Hermite polynomial", "10", 0, CAT_CATEGORY_POLYNOMIAL},
   {"hilbert(n)", 0, "Hilbert matrix of order n.", "4", 0, CAT_CATEGORY_MATRIX},
 #endif
 #if 0
   {"iabcuv(a,b,c)", 0, "Find 2 integers u,v such that a*u+b*v=c","23,13,15", 0, CAT_CATEGORY_ARIT},
-  {"ichinrem([a,m],[b,n])", 0,"Integer chinese remainder of a mod m and b mod n.", "[3,13],[2,7]", 0, CAT_CATEGORY_ARIT},
-  {"idivis(n)", 0, "Returns the list of divisors of an integer n.", "10", 0, CAT_CATEGORY_ARIT},
+  {"ichinrem([a,m],[b,n])", 0,"Chinese remainder.", "[3,13],[2,7]", 0, CAT_CATEGORY_ARIT},
+  {"idivis(n)", 0, "Integer divisors.", "10", 0, CAT_CATEGORY_ARIT},
 #endif
-  {"idn(n)", 0, "Identity matrix of order n", "4", 0, CAT_CATEGORY_MATRIX},
+  {"idn(n)", 0, "Identity matrix.", "4", 0, CAT_CATEGORY_MATRIX},
 #if 0
   {"iegcd(a,b)", 0, "Find integers u,v,d such that a*u+b*v=d=gcd(a,b)","23,13", 0, CAT_CATEGORY_ARIT},
 #endif
-  {"ifactor(n)", 0, "Factorization of an integer (not too large!). Shortcut n=>*", 0, 0, CAT_CATEGORY_ARIT},
+  {"ifactor(n)", 0, "Integer factorisation.", 0, 0, CAT_CATEGORY_ARIT},
 #if 0
   {"ilaplace(f,s,x)", 0, "Inverse Laplace transform of f", "s/(s^2+1),s,x", 0, CAT_CATEGORY_CALCULUS},
 #endif
   {"im(z)", 0, "Imaginary part.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
-  {"inf", "inf", "Infinity. Use -inf for minus infinity.", "oo", 0, CAT_CATEGORY_CALCULUS},
-  {"integrate(f,x,[a,b,method,u])", 0, "Integral. Methods: auto,direct,sub,parts,di,trig,pf,div,t-sub,sym.", "x*sin(x),x,method=parts", "x*cos(x^2),x,method=sub,u=x^2", CAT_CATEGORY_CALCULUS},
-  {"integrate_by(f,x,method,[u])", 0, "Integral with forced mark-scheme method.", "x*exp(x),x,parts", "x*cos(x^2),x,sub,u=x^2", CAT_CATEGORY_CALCULUS},
-  {"interp(X,Y)", 0, "Lagrange interpolation.", "[1,2,3,4,5],[0,1,3,4,4]", "[1,2,3,4,5],[0,1,3,4,4],interp", CAT_CATEGORY_POLYNOMIAL},
+  {"inf", "inf", "Infinity; use -inf too.", "oo", 0, CAT_CATEGORY_CALCULUS},
+  {"integrate(f,x,[a,b,method,u])", 0, "Integral. Methods: direct,sub,parts,di,trig,pf.", "x*sin(x),x,method=parts", 0, CAT_CATEGORY_CALCULUS},
+  {"integrate_by(f,x,method,[u])", 0, "Forced integral method.", "x*exp(x),x,parts", 0, CAT_CATEGORY_CALCULUS},
+  {"interp(X,Y)", 0, "Lagrange interp.", "[1,2,3],[2,5,10]", 0, CAT_CATEGORY_POLYNOMIAL},
   {"inv(A)", 0, "Inverse of A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
-  {"inverse(f(x))", 0, "Inverse relation/function where possible. Required: expression or function.", "2*x+3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_SOLVE << 8)},
-  {"isprime(n)", 0, "Returns 1 if n is prime, 0 otherwise.", "11", "10", CAT_CATEGORY_ARIT},
+  {"inverse(f(x))", 0, "Inverse relation/function.", "2*x+3", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_SOLVE << 8)},
+  {"isprime(n)", 0, "Prime test.", "11", "10", CAT_CATEGORY_ARIT},
 #if 0
   {"jordan(A)", 0, "Jordan normal form of matrix A, returns P and D such that P^-1*A*P=D", "[[1,2],[3,4]]", "[[1,1,-1,2,-1],[2,0,1,-4,-1],[0,1,1,1,1],[0,1,2,0,1],[0,0,-3,3,-1]]", CAT_CATEGORY_MATRIX},
   {"laguerre(n,a,x)", 0, "n-ieme Laguerre polynomial (default a=0).", "10", 0, CAT_CATEGORY_POLYNOMIAL},
   {"laplace(f,x,s)", 0, "Laplace transform of f","sin(x),x,s", 0, CAT_CATEGORY_CALCULUS},
 #endif
   {"lcm(a,b,...)", 0, "Least common multiple.", "23,13", "x^2-1,x^3-1", CAT_CATEGORY_ARIT | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"lcoeff(p,x)", 0, "Leading coefficient of polynomial p in x.", "x^4-1", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"lcoeff(p,x)", 0, "Leading coeff.", "x^4-1", 0, CAT_CATEGORY_POLYNOMIAL},
 #if 0
   {"legendre(n)", 0, "n-the Legendre polynomial.", "10", "10,t", CAT_CATEGORY_POLYNOMIAL},
 #endif
   {"limit(f,x=a)", 0, "Limit. Add 1/-1 for one-sided.", "sin(x)/x,x=0", "exp(-1/x),x=0,1", CAT_CATEGORY_CALCULUS},
-  {"linear_regression(Xlist,Ylist)", 0, "Linear regression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
+  {"linear_regression(Xlist,Ylist)", 0, "Linear regression.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
 #if 0
   {"linear_regression_plot(Xlist,Ylist)", 0, "Linear regression plot.", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];linear_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"linetan(expr,x,x0)", 0, "Tangent to the graph at x=x0.", "sin(x),x,pi/2", 0, CAT_CATEGORY_PLOT},
 #endif
-  {"linsolve([eq1,eq2,..],[x,y,..])", 0, "Solve linear system.","[x+y=1,x-y=2],[x,y]", "#p,l,u:=lu([[1,2],[3,4]]); linsolve(p,l,u,[5,6])", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_LINALG <<8) | (CAT_CATEGORY_MATRIX << 16)},
-  {"logarithmic_regression(Xlist,Ylist)", 0, "Logarithmic egression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
+  {"linsolve([eq1,eq2,..],[x,y,..])", 0, "Solve linear system.","[x+y=1,x-y=2],[x,y]", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_LINALG <<8) | (CAT_CATEGORY_MATRIX << 16)},
+  {"logarithmic_regression(Xlist,Ylist)", 0, "Log regression.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
 #if 0
   {"logarithmic_regression_plot(Xlist,Ylist)", 0, "Logarithmic regression plot.", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];logarithmic_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"lu(A)", 0, "LU decomposition LU of matrix A, P*A=L*U", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
 #endif
-  {"matpow(A,n)", 0, "Returns matrix A^n", "[[1,2],[3,4]],n","#assume(n>=1);matpow([[0,2],[0,4]],n)",  CAT_CATEGORY_MATRIX},
-  {"match(expr,form)", 0, "Match constants. Better: coeff_match(expr,form,vars,[x]).", "a*x+b,2*x+3,[a,b],x", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
-  {"coeff_match(expr,form,vars,[x])", 0, "Equate coefficients to find constants.", "a*x^2+b*x+c,2*x^2-3*x+5,[a,b,c],x", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
-  {"matrix(r,c,func)", 0, "Matrix from a defining function.", "2,3,(j,k)->j^k", 0, CAT_CATEGORY_MATRIX},
-  {"mean(l)", 0, "Arithmetic mean of list l", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
-  {"median(l)", 0, "Median", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
+  {"matpow(A,n)", 0, "Matrix power.", "[[1,2],[3,4]],n",0,  CAT_CATEGORY_MATRIX},
+  {"match(expr,form)", 0, "Match constants.", "a*x+b,2*x+3,[a,b],x", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
+  {"coeff_match(expr,form,vars,[x])", 0, "Equate coeffs.", "a*x^2+b*x+c,2*x^2-3*x+5,[a,b,c],x", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
+  {"matrix(r,c,func)", 0, "Matrix by function.", "2,3,(j,k)->j^k", 0, CAT_CATEGORY_MATRIX},
+  {"mean(l)", 0, "Mean.", "[1,2,3]", 0, CAT_CATEGORY_STATS},
+  {"median(l)", 0, "Median.", "[1,2,3]", 0, CAT_CATEGORY_STATS},
   {"mult_c_conjugate", 0, "Multiplier par le conjugue complexe.", "1+2*i", 0,  (CAT_CATEGORY_COMPLEXNUM << 8)},
   {"mult_conjugate", 0, "Multiplier par le conjugue (sqrt).", "sqrt(2)-sqrt(3)", 0, CAT_CATEGORY_ALGEBRA},
   {"normald([mu,sigma],x)", 0, "Normal dist. Use _cdf/_icdf.", "1.2", 0, CAT_CATEGORY_PROBA},
-  {"normal_diff(expr,[x])", 0, "Normal dy/dx. Args: expr,[x].", "(2*x+ln(x))^3,x", 0, CAT_CATEGORY_CALCULUS},
+  {"normal_diff(expr,[x])", 0, "Normal dy/dx.", "(2*x+ln(x))^3,x", 0, CAT_CATEGORY_CALCULUS},
   {"not(x)", 0, "Logical not.", 0, 0, CAT_CATEGORY_PROGCMD},
   {"numer(x)", 0, "Numerator of x.", "3/4", 0, CAT_CATEGORY_POLYNOMIAL},
 #if 0
   {"odesolve(f(t,y),[t,y],[t0,y0],t1)", 0, "Approx. solution of differential equation y'=f(t,y) and y(t0)=y0, value for t=t1 (add curve to get intermediate values of y)", "sin(t*y),[t,y],[0,1],2", "0..pi,(t,v)->{[-v[1],v[0]]},[0,1]", CAT_CATEGORY_SOLVE},
 #endif
-  {"partfrac(p,x)", 0, "Partial fraction expansion. Shortcut p=>+", "1/(x^4-1)", 0, CAT_CATEGORY_ALGEBRA},
+  {"partfrac(p,x)", 0, "Partial fractions.", "1/(x^4-1)", 0, CAT_CATEGORY_ALGEBRA},
   {"param_area([x(t),y(t)],t,[a,b])", 0, "Param area: int y*dx/dt.", "[t^2,t^3],t,0,1", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
   {"param_diff([x(t),y(t)],t)", 0, "Param dy/dx=(dy/dt)/(dx/dt).", "[t^2,t^3],t", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
   {"param_second_diff([x(t),y(t)],t)", 0, "Param d2y/dx2.", "[t^2,t^3],t", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
@@ -233,18 +233,18 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"plotode(f(t,y),[t=tmin..tmax,y],[t0,y0])", 0, "Plot solution of differential equation y'=f(t,y), y(t0)=y0.", "sin(t*y),[t=-3..3,y],[0,1]", 0, CAT_CATEGORY_PLOT},
   {"plotparam([x,y],t)", 0, "Parametric plot. For example plotparam([sin(3t),cos(2t)],t,0,pi) or plotparam(exp(i*t),t,0,pi)", "[sin(3t),cos(2t)],t,0,pi", "[t^2,t^3],t=-1..1,tstep=0.1", CAT_CATEGORY_PLOT},
   {"plotpolar(r,theta)", 0, "Polar plot.","cos(3*x),x,0,pi", "1/(1+cos(x)),x=0..pi,xstep=0.05", CAT_CATEGORY_PLOT},
-  {"poly(expr,[x])", 0, "Polynomial factor/solve helper. Required: expression. Optional: variable x.", "x^2-5*x+6,x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
+  {"poly(expr,[x])", 0, "Polynomial factor/solve.", "x^2-5*x+6,x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
   {"plotseq(f(x),x=[u0,m,M],n)", 0, "Plot f(x) on [m,M] and n terms of the sequence defined by u_{n+1}=f(u_n) and u0.","sqrt(2+x),x=[6,0,7],5", 0, CAT_CATEGORY_PLOT},
 #endif
 #if 0
   {"polygonscatterplot(Xlist,Ylist)", 0, "Plot points and polygonal line.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
 #endif
-  {"polynomial_regression(Xlist,Ylist,n)", 0, "Polynomial regression, degree <= n.", "[1,2,3,4,5],[0,1,3,4,4],2", 0, CAT_CATEGORY_STATS},
+  {"polynomial_regression(Xlist,Ylist,n)", 0, "Poly regression.", "[1,2,3],[2,5,10],2", 0, CAT_CATEGORY_STATS},
 #if 0
   {"polynomial_regression_plot(Xlist,Ylist,n)", 0, "Polynomial regression plot, degree <= n.", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];polynomial_regression_plot(X,Y,2);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
   //{"pour", "pour j de 1 jusque  faire  fpour;", "For loop.","#pour j de 1 jusque 10 faire print(j,j^2); fpour;", 0, CAT_CATEGORY_PROG},
-  {"power_regression(Xlist,Ylist,n)", 0, "Power regression.", "[1,2,3,4,5],[0,1,3,4,4]", 0, CAT_CATEGORY_STATS},
+  {"power_regression(Xlist,Ylist,n)", 0, "Power regression.", "[1,2,3],[2,5,8]", 0, CAT_CATEGORY_STATS},
 #if 0
   {"power_regression_plot(Xlist,Ylist,n)", 0, "Power regression graph", "#X,Y:=[1,2,3,4,5],[0,1,3,4,4];power_regression_plot(X,Y);scatterplot(X,Y)", 0, CAT_CATEGORY_STATS},
 #endif
@@ -256,39 +256,39 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"q2a(expr,[vars])", 0, "Matrix of a quadratic form", "x^2+3*x*y","x^2+3*x*y,[x,y]", CAT_CATEGORY_LINALG},
   {"qr(A)", 0, "A=Q*R factorization with Q orthogonal and R upper triangular", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
 #endif
-  {"quartile1(l)", 0, "1st quartile", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
-  {"quartile3(l)", 0, "3rd quartile", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
-  {"quo(p,q,x)", 0, "Quotient of synthetic division of polynomials p and q (variable x).", 0, 0, CAT_CATEGORY_POLYNOMIAL},
-  {"ratnormal(x)", 0, "Puts everything over a common denominator.", 0, 0, CAT_CATEGORY_ALGEBRA},
+  {"quartile1(l)", 0, "Q1.", "[1,2,3]", 0, CAT_CATEGORY_STATS},
+  {"quartile3(l)", 0, "Q3.", "[1,2,3]", 0, CAT_CATEGORY_STATS},
+  {"quo(p,q,x)", 0, "Polynomial division quotient.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
+  {"ratnormal(x)", 0, "Common denom.", 0, 0, CAT_CATEGORY_ALGEBRA},
   {"re(z)", 0, "Real part.", "1+i", 0, CAT_CATEGORY_COMPLEXNUM},
-  {"range(expr,[x])", 0, "Range/image. Args: expr,[x].", "x^2+2*x+3,x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
-  {"rem(p,q,x)", 0, "Remainder of synthetic division of polynomials p and q (variable x)", 0, 0, CAT_CATEGORY_POLYNOMIAL},
+  {"range(expr,[x])", 0, "Range/image.", "x^2+2*x+3,x", 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
+  {"rem(p,q,x)", 0, "Polynomial division remainder.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
 #if 0
   {"resultant(p,q,x)", 0, "Resultant in x of polynomials p and q.", "#P:=x^3+p*x+q;resultant(P,P',x);", 0, CAT_CATEGORY_POLYNOMIAL},
   {"revert(p[,x])", 0, "Revert Taylor series","x+x^2+x^4", 0, CAT_CATEGORY_CALCULUS},
 #endif
   {"rewrite(expr,target)", 0, "Rewrite to target form.", "x^2+6*x+11", "2*x^2-8*x+3,x", CAT_CATEGORY_ALGEBRA},
-  {"rref(A)", 0, "Row reduction to echelon form", "[[1,2,3],[4,5,6]]", 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
-  {"rsolve(equation,u(n),[init])", 0, "Solve a recurrence relation.","u(n+1)=2*u(n)+3,u(n),u(0)=1", "([u(n+1)=3*v(n)+u(n),v(n+1)=v(n)+u(n)],[u(n),v(n)],[u(0)=1,v(0)=2]", CAT_CATEGORY_SOLVE},
-  {"second_diff(expr,[x])", 0, "Second derivative. Args: expr,[x].", "x^4,x", 0, CAT_CATEGORY_CALCULUS},
+  {"rref(A)", 0, "Row reduce.", "[[1,2,3],[4,5,6]]", 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
+  {"rsolve(equation,u(n),[init])", 0, "Solve recurrence.","u(n+1)=2*u(n)+3,u(n),u(0)=1", 0, CAT_CATEGORY_SOLVE},
+  {"second_diff(expr,[x])", 0, "Second derivative.", "x^4,x", 0, CAT_CATEGORY_CALCULUS},
   //{"si", "si  alors  sinon  fsi;", "Test.", "#f(x):=si x>0 alors x; sinon -x; fsi;// valeur absolue", 0, CAT_CATEGORY_PROG},
   {"sign(x)", 0, "Sign: -1,0,1.", 0, 0, CAT_CATEGORY_REAL},
   {"simplify(expr,[method])", 0, "Simplify. Methods: expand,factor,collect,target.", "sin(3x)/sin(x),method=canonical", 0, CAT_CATEGORY_ALGEBRA},
   {"solve(equation,x,[method])", 0, "Solve. Methods: factor,quad,sub,log_exp,numeric.", "x^2-x-1=0,x,method=factor", "[x^2-y^2=0,x^2-z^2=0],[x,y,z]", CAT_CATEGORY_SOLVE},
-  {"solve_by(equation,x,method)", 0, "Solve with forced mark-scheme method.", "x^2-5*x+6=0,x,factor", 0, CAT_CATEGORY_SOLVE},
-  {"solve_trig(eq,[var,lo,hi,max,method])", 0, "Trig solve. Methods: general,bounded,cast,rform.", "2*sin(x)+1=0", "2*sin(x)+1=0,x,0,2*pi,6,method=bounded", CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
-  {"solve_trig_by(eq,var,method)", 0, "Trig solve with forced mark-scheme method.", "2*sin(x)+1=0,x,bounded", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
-  {"stddev(l)", 0, "Standard deviation of list l", "[3/2,2,1,1/2,3,2,3/2]", 0, CAT_CATEGORY_STATS},
-  {"subst(a,b=c)", 0, "Substitutes b for c in a. Shortcut a(b=c).", "x^2,x=3", 0, CAT_CATEGORY_ALGEBRA},
+  {"solve_by(equation,x,method)", 0, "Forced solve method.", "x^2-5*x+6=0,x,factor", 0, CAT_CATEGORY_SOLVE},
+  {"solve_trig(eq,[var,lo,hi,max,method])", 0, "Trig solve. Methods: general,bounded,cast,rform.", "2*sin(x)+1=0", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
+  {"solve_trig_by(eq,var,method)", 0, "Forced trig solve.", "2*sin(x)+1=0,x,bounded", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
+  {"stddev(l)", 0, "Std dev.", "[1,2,3]", 0, CAT_CATEGORY_STATS},
+  {"subst(a,b=c)", 0, "Substitute b for c.", "x^2,x=3", 0, CAT_CATEGORY_ALGEBRA},
   {"suvat(equations,vars)", 0, "SUVAT simultaneous solve.", "[v=u+a*t,s=u*t+1/2*a*t^2],[s,u,v,a,t]", 0, CAT_CATEGORY_SOLVE},
   {"sum(f,k,m,M)", 0, "Sum f for k=m..M.", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
 #if 0
   {"svd(A)", 0, "Singular Value Decomposition, returns U orthogonal, S vector of singular values, Q orthogonal such that A=U*diag(S)*tran(Q).", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
 #endif
-  {"tabvar(f,[x=a..b])", 0, "Variation table.", "sqrt(x^2+x+1)",  "[cos(t),sin(3t)],t", CAT_CATEGORY_CALCULUS},
+  {"tabvar(f,[x=a..b])", 0, "Variation table.", "sqrt(x^2+x+1)", 0, CAT_CATEGORY_CALCULUS},
   //{"tantque", "tantque  faire   ftantque;", "While loop.", "#j:=13; tantque j!=1 faire j:=when(even(j),j/2,3j+1); print(j); ftantque;", 0, CAT_CATEGORY_PROG},
   {"taylor(f,x=a,n,[polynom])", 0, "Taylor expansion.","sin(x),x=0,5", "sin(x),x=0,5,polynom", CAT_CATEGORY_CALCULUS},
-  {"tangent_line(expr,x,x0)", 0, "Tangent line at x0.", "x^2,x,3", "sin(x),x,pi/2", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
+  {"tangent_line(expr,x,x0)", 0, "Tangent at x0.", "x^2,x,3", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #if 0
   {"tchebyshev1(n)", 0, "Tchebyshev polynomial 1st kind: cos(n*x)=T_n(cos(x))", "10", 0, CAT_CATEGORY_POLYNOMIAL},
   {"tchebyshev2(n)", 0, "Tchebyshev polynomial 2nd kind: sin((n+1)*x)=sin(x)*U_n(cos(x))", "10", 0, CAT_CATEGORY_POLYNOMIAL},
@@ -298,11 +298,11 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"tlin(expr)", 0, "Trigonometric linearization of expr.","sin(x)^3", 0, CAT_CATEGORY_TRIG},
   {"transform(expr,[form])", 0, "Transform/rearrange expr.", "(x+1)^2-(x^2+2*x+1)", 0, CAT_CATEGORY_ALGEBRA},
   {"xform(expr,target)", 0, "Transform to target form.", "x^2+2*x+1,(x+1)^2", 0, CAT_CATEGORY_ALGEBRA},
-  {"tran(A)", 0, "Transposes matrix A. Transconjugate command is trn(A) or A^*.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
+  {"tran(A)", 0, "Transpose matrix.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
   {"trig2exp(expr)", 0, "Trig to complex exp.","cos(x)^3", 0, CAT_CATEGORY_TRIG},
   {"trig_prove(lhs,rhs)", 0, "Prove trig identity via lhs-rhs.", "sin(x)^2+cos(x)^2,1", 0, CAT_CATEGORY_TRIG},
   {"trig_rewrite(expr,target)", 0, "Rewrite trig to target.", "1/cos(x),sec(x)", 0, CAT_CATEGORY_TRIG},
-  {"trig_transform(expr,target)", 0, "Transform trig expression/equation to target form. Required: expr,target.", "1/cos(x),sec(x)", 0, CAT_CATEGORY_TRIG},
+  {"trig_transform(expr,target)", 0, "Trig transform to target.", "1/cos(x),sec(x)", 0, CAT_CATEGORY_TRIG},
   {"trigcos(expr/eq)", 0, "Use cos if poss. Eq->0; exp/coll/fact.","sin(x)^4", "sin(x)^4+tan(x)^2=cos(x)^2", CAT_CATEGORY_TRIG},
   {"trigsin(expr/eq)", 0, "Use sin if poss. Eq->0; exp/coll/fact.","cos(x)^4", "cos(x)^4+tan(x)^2=1", CAT_CATEGORY_TRIG},
   {"trigtan(expr/eq)", 0, "Use tan if poss. Eq->0; exp/coll/fact.","cos(x)^4", "sin(x)^4+cos(x)^2=1", CAT_CATEGORY_TRIG},
@@ -314,7 +314,7 @@ const char chk_restart_string2[]="F1: keep,   F6: erase";
 const char aide_khicas_string[]="CasioCAS Help";
 const char main_string1[]="Clear variables?";
 const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="F1-F6 menus; F4 cat; F3 expr.\n=>+ pf; =>* factor; =>=> solve.\nEXE run; EXIT back.";
+const char shortcuts_string[]="F1-F6 menus; F4 cat.\n=>+ pf; =>* fact; =>=> solve.";
 const char apropos_string[]="CasioCAS. KhiCAS engine. GPLv2.";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
@@ -361,12 +361,12 @@ static bool catalog_hidden_name(const char *name){
 
 static ustl::string catalog_param_hint(const char *name){
   if (startswith_catalog(name,"integrate"))
-    return "Args: f,x. Optional: a,b,method,u. method=auto.";
+    return "Args: f,x,[a,b,method,u].";
   if (startswith_catalog(name,"diff"))
-    return "Args: f,x. Optional: n,method. method=auto.";
+    return "Args: f,x,[n,method=auto].";
   if (startswith_catalog(name,"solve"))
-    return "Args: eq,x. Optional: method,bounds. method=auto.";
-  return "Args: see syntax. Optional args are in [].";
+    return "Args: eq,x,[method,bounds].";
+  return "Args: see syntax; [] optional.";
 }
 
 static bool catalog_prompt_text(const char *title,const char *prompt,char *buf,int buflen){
