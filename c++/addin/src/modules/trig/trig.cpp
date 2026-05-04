@@ -760,21 +760,22 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         );
     }
 
-    auto eq = casio::parse_equation(a, eq_text);
+    std::string equation_for_parse = eq_text.find('=') == std::string::npos ? eq_text + "=0" : eq_text;
+    auto eq = casio::parse_equation(a, equation_for_parse);
     if(!eq) {
         casio::ExamPrelude pre;
-        pre.raw = eq_text;
-        pre.norm = casio::normalize_text(eq_text);
-        pre.parsed = eq_text;
-        pre.simplified = eq_text;
+        pre.raw = equation_for_parse;
+        pre.norm = casio::normalize_text(equation_for_parse);
+        pre.parsed = equation_for_parse;
+        pre.simplified = equation_for_parse;
         return casio::exam_fallback("trig solve", pre, "Expected an equation with '='.", var + " = []");
     }
     NodeId lhs = casio::simplify(a, eq->lhs);
     NodeId rhs = casio::simplify(a, eq->rhs);
     casio::ExamPrelude pre;
-    pre.raw = eq_text;
-    pre.norm = casio::normalize_text(eq_text);
-    pre.parsed = eq_text;
+    pre.raw = equation_for_parse;
+    pre.norm = casio::normalize_text(equation_for_parse);
+    pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const

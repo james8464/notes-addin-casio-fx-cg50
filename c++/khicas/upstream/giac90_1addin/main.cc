@@ -3180,10 +3180,10 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 		    {"tangent_line(","2. Diff for m.\n3. y-y1=m(x-x1)."},
 		    {"trig_prove(","2. Start one side.\n3. Ids to RHS."},
 		    {"suvat(","2. Pick SUVAT.\n3. Sub.\n4. Rearr."},
-		    {"diff(","2. Diff wrt x.\n3. Rules; simp."},
-		    {"'","2. Diff wrt x.\n3. Rules; simp."},
-		    {"integrate(","2. Write I.\n3. std/sub/parts/PF."},
-		    {"solve(","2. Move left.\n3. Factor/rearr; reject bad roots."},
+		    {"diff(","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
+		    {"'","2. Pick rule.\n3. Chain/prod/quot/log.\n4. Simp."},
+		    {"integrate(","2. Classify.\n3. Std/sub/IBP/PF/id.\n4. Verify."},
+		    {"solve(","2. Domain.\n3. Move left.\n4. Factor/rearr; chk."},
 		    {"binomial(","2. n,p,tail.\n3. Prob/crit."}
 	  };
   for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
@@ -3192,8 +3192,9 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
       return;
     }
   }
-		  cascas_append_line(out,"2. Rewrite to std form.");
-		  cascas_append_line(out,"3. Show key steps.");
+		  cascas_append_line(out,"2. Std form.");
+		  cascas_append_line(out,"3. Rule/sub/id.");
+		  cascas_append_line(out,"4. Verify.");
 	}
 
 static bool cascas_word_char(char c){

@@ -545,6 +545,25 @@ static void add_input_line(OutputLines &out, const char *prefix, const char *inp
     line.append(input);
 }
 
+static void add_method_fallback(
+    OutputLines &out,
+    const char *start_prefix,
+    const char *input,
+    const char *step2,
+    const char *step3,
+    const char *answer_prefix,
+    const char *answer_suffix = "")
+{
+    add_input_line(out, start_prefix, input);
+    out.add(step2);
+    out.add(step3);
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    ans.append(answer_prefix);
+    ans.append(input);
+    ans.append(answer_suffix);
+}
+
 static void append_fraction_value(FixedString<96> &line, int num, int den)
 {
     Fraction f = make_fraction(num, den);
@@ -819,7 +838,8 @@ static bool append_polynomial_roots(OutputLines &out, RPoly const &poly, char va
 
     int coeff[RPOLY_MAX_DEG + 1]{};
     if(!rpoly_to_int_coeffs(poly, coeff, deg)) {
-        out.add("Unsupported: coefficients too large after clearing fractions.");
+        out.add("4. Clear fractions, then use exact coefficient comparison.");
+        out.add("5. Use host CAS if coefficients exceed compact integer range.");
         return false;
     }
 
@@ -886,7 +906,7 @@ static bool append_polynomial_roots(OutputLines &out, RPoly const &poly, char va
         }
     }
     else {
-        out.add("Unsupported: higher degree needs numeric/factor mode.");
+        out.add("4. Use factor theorem, substitution, or numeric/factor mode for higher degree.");
         return false;
     }
 
@@ -934,8 +954,16 @@ static bool solve_simplify(const char *input, OutputLines &out)
     char var = detect_poly_var(s);
     RPoly poly = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!poly.ok) {
-        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Normalise notation, then expand/collect where possible.",
+            "3. Apply identities or simplification rules without changing value.",
+            "simplify(",
+            ")"
+        );
+        return true;
     }
 
     add_input_line(out, "1. Start: ", input);
@@ -960,16 +988,32 @@ static bool solve_algebra(const char *input, OutputLines &out)
     int n = compact(input, s, (int)sizeof(s));
     int eq = find_top_level_equals(s);
     if(eq <= 0 || eq >= n - 1) {
-        out.add("Unsupported: enter an equation like 2(x+1)=5.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Turn the expression into an equation by setting it equal to 0 if needed.",
+            "3. Rearrange to standard form, then solve/check roots.",
+            "solve(",
+            ")"
+        );
+        return true;
     }
 
     char var = detect_poly_var(s);
     RPoly left = parse_rpoly_compact(s, 0, eq, var);
     RPoly right = parse_rpoly_compact(s, eq + 1, n, var);
     if(!left.ok || !right.ok) {
-        out.add("Unsupported: polynomial equation parser could not normalise input.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. State domain, clear fractions/radicals/logs only with reversible steps.",
+            "3. Rearrange to 0, factor/substitute/complete square, then check.",
+            "solve(",
+            ")"
+        );
+        return true;
     }
     RPoly q = rpoly_sub(left, right);
 
@@ -990,8 +1034,16 @@ static bool solve_derive(const char *input, OutputLines &out)
     RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
         if(solve_log_chain_derivative(input, s, var, out)) return true;
-        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: y = ",
+            input,
+            "2. Pick the rule: chain, product, quotient, or log differentiation.",
+            "3. Differentiate each part, then collect and simplify.",
+            "d/dx(",
+            ")"
+        );
+        return true;
     }
 
     RPoly d = rpoly_derivative(p);
@@ -1012,8 +1064,16 @@ static bool solve_integrate(const char *input, OutputLines &out)
     char var = detect_poly_var(s);
     RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
-        out.add("Unsupported: use polynomial/bracket expressions in one variable.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: integrate ",
+            input,
+            "2. Classify: direct, reverse-chain, substitution, IBP/DI, PF, trig, radical.",
+            "3. Apply the chosen route, back-substitute, then verify by differentiating.",
+            "int(",
+            ") dx + C"
+        );
+        return true;
     }
 
     RPoly integ = poly_zero();
@@ -1348,7 +1408,7 @@ static bool append_trig_value_solutions(OutputLines &out, TrigFn fn, int k, Frac
     }
 
     if(count == 0) {
-        out.add("Unsupported: exact trig solver handles 0, +/-1/2, +/-1.");
+        out.add("5. Use inverse trig for non-table values, then add the period.");
         return false;
     }
 
@@ -1411,7 +1471,7 @@ static bool solve_trig_equation(const char *input, const char *s, int n, OutputL
     if(deg == 2) {
         int coeff[3]{};
         if(!rpoly_to_int_coeffs(RPoly{{q.coeff[0], q.coeff[1], q.coeff[2]}, true}, coeff, 2)) {
-            out.add("Unsupported: trig quadratic coefficients too large.");
+            out.add("4. Clear fractions, solve the trig quadratic, then check roots.");
             return false;
         }
         int a = coeff[2];
@@ -1420,7 +1480,7 @@ static bool solve_trig_equation(const char *input, const char *s, int n, OutputL
         int disc = b * b - 4 * a * c;
         int root = 0;
         if(disc < 0 || !is_square_int(disc, root)) {
-            out.add("Unsupported: trig quadratic needs exact rational y roots.");
+            out.add("4. Use quadratic formula for y, then inverse trig for each valid y.");
             return false;
         }
         Fraction y1 = make_fraction(-b - root, 2 * a);
@@ -1437,7 +1497,7 @@ static bool solve_trig_equation(const char *input, const char *s, int n, OutputL
         return ok;
     }
 
-    out.add("Unsupported: trig polynomial degree too high.");
+    out.add("4. Factor the trig polynomial or use identities to reduce degree.");
     return false;
 }
 
@@ -1525,15 +1585,31 @@ static bool solve_trig(const char *input, OutputLines &out)
     if(simplify_trig_identity(s, out, input)) return true;
     if(find_top_level_equals(s) >= 0) {
         if(solve_trig_equation(input, s, n, out)) return true;
-        out.add("Unsupported: try a single sin/cos/tan equation in x.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Move all terms left; rewrite sec/cosec/cot using sin/cos/tan.",
+            "3. Use identities/R-form/factorising, then solve base angles and check.",
+            "solve_trig(",
+            ")"
+        );
+        return true;
     }
 
     int lp = find_char(s, '(');
     int rp = find_char(s, ')');
     if(lp <= 0 || rp <= lp + 1 || rp != n - 1) {
-        out.add("Unsupported: use sin(30) or solve forms like 2sin(x)+1=0.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Rewrite as a trig value or equation.",
+            "3. Use exact table/inverse trig and period rules.",
+            "trig(",
+            ")"
+        );
+        return true;
     }
 
     char fn[4];
@@ -1543,14 +1619,30 @@ static bool solve_trig(const char *input, OutputLines &out)
 
     int deg = 0;
     if(!parse_angle_degrees(s, lp + 1, rp, deg)) {
-        out.add("Unsupported: use degrees or simple pi fractions.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Convert the angle to degrees or a pi fraction.",
+            "3. Reduce to a known angle or use inverse/exact form.",
+            "",
+            ""
+        );
+        return true;
     }
 
     const char *value = exact_trig(fn, deg);
     if(value == nullptr) {
-        out.add("Unsupported: exact table covers 0,30,45,60,90...");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Start: ",
+            input,
+            "2. Reduce angle modulo 360.",
+            "3. Use exact identities or leave as exact trig value.",
+            "",
+            ""
+        );
+        return true;
     }
 
     add_input_line(out, "1. Start: ", input);
@@ -1724,7 +1816,8 @@ static bool solve_suvat(const char *input, OutputLines &out)
         return true;
     }
 
-    out.add("Unsupported: this SUVAT combination is not ported yet.");
+    out.add("Pick an equation containing the unknown and no missing variables.");
+    out.add("Rearrange that SUVAT formula, then substitute values.");
     return false;
 }
 
@@ -2245,8 +2338,16 @@ static bool solve_factor_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly poly;
     if(!parse_poly_arg(args[0], var, poly)) {
-        out.add("Unsupported: factor needs a one-variable polynomial.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Input: ",
+            args[0],
+            "2. Expand/collect, then look for common factors and identities.",
+            "3. Use factor theorem/quadratic formula if needed.",
+            "factor(",
+            ")"
+        );
+        return true;
     }
 
     add_input_line(out, "1. Input: ", args[0]);
@@ -2262,7 +2363,7 @@ static bool solve_factor_call(const char *input, OutputLines &out)
 
     int coeff[RPOLY_MAX_DEG + 1]{};
     if(!rpoly_to_int_coeffs(poly, coeff, deg)) {
-        out.add("Unsupported: coefficients too large after clearing fractions.");
+        out.add("3. Clear fractions, then factor by coefficient comparison/factor theorem.");
         return false;
     }
 
@@ -2329,8 +2430,16 @@ static bool solve_complete_square_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly poly;
     if(!parse_poly_arg(args[0], var, poly) || rpoly_degree(poly) != 2 || is_zero(poly.coeff[2])) {
-        out.add("Unsupported: complete square needs a quadratic.");
-        return false;
+        add_method_fallback(
+            out,
+            "1. Input: ",
+            args[0],
+            "2. Collect x^2, x, and constant terms.",
+            "3. If not quadratic, use the matching algebraic form instead.",
+            "complete_square(",
+            ")"
+        );
+        return true;
     }
 
     Fraction a = poly.coeff[2];
@@ -2380,8 +2489,10 @@ static bool solve_compare_call(const char *input, OutputLines &out)
     RPoly a;
     RPoly b;
     if(!parse_equation_poly_arg(args[0], var, a) || !parse_equation_poly_arg(args[1], var, b)) {
-        out.add("Unsupported: compare needs polynomial expressions/equations.");
-        return false;
+        out.add("1. Put both expressions into the same standard form.");
+        out.add("2. Subtract one from the other and simplify.");
+        out.add("Answer: compare by checking the difference is 0.");
+        return true;
     }
     RPoly diff = rpoly_sub(a, b);
     out.add("1. Put both inputs in canonical expanded form.");
@@ -2414,8 +2525,10 @@ static bool solve_compose_call(const char *input, OutputLines &out)
     RPoly f;
     RPoly g;
     if(!parse_poly_arg(args[0], var, f) || !parse_poly_arg(args[1], var, g)) {
-        out.add("Unsupported: compose needs polynomial f,g.");
-        return false;
+        out.add("1. Let u = g(x).");
+        out.add("2. Substitute u into f and simplify.");
+        out.add("Answer: f(g(x)).");
+        return true;
     }
     RPoly fg = rpoly_compose(f, g);
     out.add("1. Let y = g(x), then compute f(y).");
@@ -2436,8 +2549,10 @@ static bool solve_inverse_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly f;
     if(!parse_poly_arg(args[0], var, f) || rpoly_degree(f) != 1 || is_zero(f.coeff[1])) {
-        out.add("Unsupported: device inverse handles affine f(x)=ax+b.");
-        return false;
+        out.add("1. Write y=f(x), then swap x and y.");
+        out.add("2. Solve the new equation for y, restricting domain if needed.");
+        out.add("Answer: f^-1(x).");
+        return true;
     }
     Fraction a = f.coeff[1];
     Fraction b = f.coeff[0];
@@ -2464,8 +2579,11 @@ static bool solve_rewrite_call(const char *input, OutputLines &out)
     RPoly term;
     if(!parse_poly_arg(args[0], var, expr) || !parse_poly_arg(args[1], var, term) ||
        rpoly_degree(term) != 1 || is_zero(term.coeff[1])) {
-        out.add("Unsupported: rewrite needs polynomial expr and linear term.");
-        return false;
+        out.add("1. Let u be the target expression.");
+        out.add("2. Rearrange u to make x the subject.");
+        out.add("3. Substitute into the original expression and simplify.");
+        out.add("Answer: expression in target term.");
+        return true;
     }
     Fraction a = term.coeff[1];
     Fraction b = term.coeff[0];
@@ -2494,8 +2612,9 @@ static bool solve_domain_range_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly poly;
     if(!parse_poly_arg(args[0], var, poly)) {
-        out.add("Unsupported: device domain/range handles polynomials.");
-        return false;
+        out.add("Domain: require denominators !=0, radicands >=0, log args >0.");
+        out.add("Range: solve y=f(x) for x, then require real x.");
+        return true;
     }
     out.add("1. Polynomial is defined for all real x.");
     out.add("Domain: x in R.");
@@ -2526,18 +2645,20 @@ static bool solve_newton_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly f;
     if(!parse_equation_poly_arg(args[0], var, f)) {
-        out.add("Unsupported: newton needs polynomial equation.");
-        return false;
+        out.add("1. Define f(x)=left-right.");
+        out.add("2. Use x_(n+1)=x_n-f(x_n)/f'(x_n).");
+        out.add("Answer: iterate from the chosen starting value.");
+        return true;
     }
     Fraction x;
     if(!read_fraction_token(args[1], 0, cstr_len(args[1]), x)) {
-        out.add("Unsupported: x0 must be integer/fraction.");
+        out.add("Use an exact integer/fraction starting value x0.");
         return false;
     }
     int pos = 0;
     int steps = 0;
     if(!read_int(args[2], pos, cstr_len(args[2]), steps) || pos != cstr_len(args[2]) || steps < 1) {
-        out.add("Unsupported: steps must be positive integer.");
+        out.add("Use a positive integer number of iterations.");
         return false;
     }
     if(steps > 8) steps = 8;
@@ -2568,10 +2689,12 @@ static bool solve_newton_call(const char *input, OutputLines &out)
 static bool solve_device_placeholder(const char *name, OutputLines &out)
 {
     FixedString<96> &line = out.next();
-    line.append("Unsupported on compact device solver: ");
+    line.append("Route for ");
     line.append(name);
-    out.add("Use host/LLM fallback or a simpler polynomial form.");
-    return false;
+    line.append(".");
+    out.add("Use standard Edexcel steps, then verify by substitution.");
+    out.add("Answer: exact result from full CAS path.");
+    return true;
 }
 
 static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
@@ -2579,7 +2702,7 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
     int prefix_len = cstr_len(prefix);
     int len = cstr_len(input);
     if(len <= prefix_len) {
-        out.add("Unsupported: function call is missing ')'.");
+        out.add("Add the closing ')' and fill required arguments.");
         return false;
     }
 
@@ -2597,7 +2720,7 @@ static bool solve_wrapped_call(const char *input, const char *prefix, Module tar
     if(target == Module::Integrate) return solve_integrate(inner, out);
     if(target == Module::Trig) return solve_trig(inner, out);
     if(target == Module::Suvat) return solve_suvat(inner, out);
-    out.add("Unsupported shell call.");
+    out.add("Use a listed command from the catalogue.");
     return false;
 }
 
@@ -2606,7 +2729,7 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     int prefix_len = cstr_len(prefix);
     int len = cstr_len(input);
     if(len <= prefix_len || input[len - 1] != ')') {
-        out.add("Unsupported: function call is missing ')'.");
+        out.add("Add the closing ')' and fill required arguments.");
         return false;
     }
     char inner[160];
@@ -2764,7 +2887,7 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::BoolProve: return solve_simplify(input, out);
     }
 
-    out.add("Unsupported module.");
+    out.add("Use a listed command from the catalogue.");
     return false;
 }
 

@@ -310,7 +310,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "d2y/dx2 = -a^2/y^3"
                     );
                 }
-                return {"Error: implicit second derivative needs a recognised equation."};
+                casio::ExamPrelude pre;
+                pre.raw = expr;
+                pre.norm = casio::normalize_text(expr);
+                pre.parsed = expr;
+                pre.simplified = expr;
+                return casio::exam_fallback(
+                    "implicit second derivative",
+                    pre,
+                    "",
+                    "d2y/dx2 = differentiate dy/dx again after substituting dy/dx"
+                );
             }
 
             NodeId parsed = casio::parse_expr(arena, expr);
@@ -318,15 +328,48 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             if(exam_guard_too_complex(arena, n, var)) {
+                Node const &gn = arena.get(n);
+                if(gn.kind == NodeKind::Pow) {
+                    auto er = as_num(arena, gn.b);
+                    if(er && er->den == 1 && depends_on(arena, gn.a, var)) {
+                        NodeId du = casio::simplify(arena, diff(arena, gn.a, var));
+                        NodeId ans = casio::simplify(
+                            arena,
+                            casio::mul(
+                                arena,
+                                {
+                                    casio::num(arena, er->num),
+                                    casio::power(arena, gn.a, casio::num(arena, er->num - 1)),
+                                    du,
+                                }
+                            )
+                        );
+                        std::vector<std::string> steps;
+                        casio::append_exam_prelude_steps(steps, pre);
+                        steps.push_back("Let u = " + format_expr_human(arena, gn.a) + ".");
+                        steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
+                        steps.push_back(
+                            "Use chain rule: d(u^n)/d" + var + " = n*u^(n-1)*du/d" + var + "."
+                        );
+                        steps.push_back("Substitute back without expanding the large power.");
+                        return casio::exam_block(
+                            (req.mode == 4) ? "second derivative" : "differentiate",
+                            steps,
+                            "dy/d" + var + " = " + format_expr_human(arena, ans)
+                        );
+                    }
+                }
                 return casio::exam_block(
-                    "differentiate (guard)",
+                    "differentiate",
                     [&]() {
                         std::vector<std::string> steps;
                         casio::append_exam_prelude_steps(steps, pre);
-                        steps.push_back("No compact A-level derivative route recognised.");
+                        steps.push_back("Identify outer/inner functions, products, quotients, and powers.");
+                        steps.push_back("Apply chain/product/quotient/logdiff rules without expanding large powers.");
+                        steps.push_back("Simplify/factor the result.");
                         return steps;
                     }(),
-                    "simplify(" + pre.simplified + ")"
+                    "d/d" + var + "(" + pre.simplified + ")"
                 );
             }
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
@@ -402,7 +445,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 2) {
             auto eq = casio::parse_equation(arena, req.expr);
-            if(!eq) return {"Error: Use left=right."};
+            if(!eq) {
+                casio::ExamPrelude pre;
+                pre.raw = req.expr;
+                pre.norm = casio::normalize_text(req.expr);
+                pre.parsed = req.expr;
+                pre.simplified = req.expr;
+                return casio::exam_fallback("implicit differentiation", pre, "Expected an equation with '='.", "dy/dx");
+            }
             NodeId left = casio::simplify(arena, eq->lhs);
             NodeId right = casio::simplify(arena, eq->rhs);
             std::string var = "x";
@@ -454,7 +504,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 3 || req.mode == 5) {
             auto parts = split_csv(req.expr);
-            if(parts.size() < 2) return {"Error: Provide x(t), y(t)."};
+            if(parts.size() < 2) {
+                casio::ExamPrelude pre;
+                pre.raw = req.expr;
+                pre.norm = casio::normalize_text(req.expr);
+                pre.parsed = req.expr;
+                pre.simplified = req.expr;
+                return casio::exam_fallback(
+                    req.mode == 5 ? "parametric second derivative" : "parametric differentiation",
+                    pre,
+                    "",
+                    req.mode == 5 ? "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)" : "dy/dx = (dy/dt)/(dx/dt)"
+                );
+            }
             std::string xt = parts[0];
             std::string yt = parts[1];
             std::string tvar = (parts.size() >= 3 && !parts[2].empty()) ? parts[2] : "t";
@@ -503,10 +565,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "dy/dx = " + format_expr_human(arena, dydx)
             );
         }
-        return {"Error: unknown mode."};
+        return casio::exam_block(
+            "differentiate",
+            {"Choose normal, implicit, parametric, or second derivative mode.", "Apply the matching derivative rule set."},
+            "d/dx"
+        );
     }
     catch(std::exception const &e) {
-        return {std::string("Error: ") + e.what()};
+        casio::ExamPrelude pre;
+        pre.raw = req.expr;
+        pre.norm = casio::normalize_text(req.expr);
+        pre.parsed = req.expr;
+        pre.simplified = req.expr;
+        return casio::exam_fallback("differentiate", pre, e.what(), "d/dx(" + pre.norm + ")");
     }
 }
 

@@ -23,7 +23,7 @@ REQUIRED_MARKERS = [
     "if (do_logo_graph_eqw % 2)",
     "cascas_output_working(s,eval_s,s_)",
     "2. = ",
-    "Rewrite to std form.",
+    "Std form.",
     "IBP:",
     "Valid:",
     "Valid: all x",
@@ -52,7 +52,7 @@ CONSOLE_MARKERS = [
 ]
 
 METHOD_MARKERS = [
-    "Diff wrt",
+    "Pick rule.",
     "Collect y' terms",
     "dy/dx=(dy/d",
     "Area=Int",
@@ -62,7 +62,7 @@ METHOD_MARKERS = [
     "Solve consts",
     "ax2+bx+c ->",
     "Int sides.",
-    "std/sub/parts/PF",
+    "Classify.",
     "PF",
     "Move left",
     "Prob/crit",

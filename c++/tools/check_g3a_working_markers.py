@@ -7,9 +7,9 @@ from pathlib import Path
 
 MARKERS = [
     b"2. = ",
-    b"Rewrite to std form.",
+    b"Std form.",
     b"Valid:",
-    b"Diff wrt",
+    b"Pick rule.",
     b"Collect y' terms",
     b"dy/dx=(dy/d",
     b"Area=Int",
@@ -23,7 +23,7 @@ MARKERS = [
     b"Solve consts",
     b"ax2+bx+c ->",
     b"Int sides.",
-    b"std/sub/parts/PF",
+    b"Classify.",
     b"IBP:",
     b"Use PF",
     b"Clear den; eq",

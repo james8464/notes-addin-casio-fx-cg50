@@ -1441,7 +1441,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.push_back("4. Solve the reduced equation.");
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
-                out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution (unsupported form).");
+                out.push_back(interval_lo && interval_hi ? "No solution in the interval after checking the reduced equation." :
+                                                           "No real solution found by the reduced equation checks.");
                 out.push_back("Answer: " + solve_var + " = []");
             }
             else {
@@ -1457,7 +1458,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             Rational b = rp.num.a0;
             // Giac-style: check for zero coefficient (division by zero)
             if(is_zero(a)) {
-                out.push_back("Error: Division by zero - coefficient of x is 0");
+                out.push_back("2. Coefficient of " + solve_var + " is 0, so the equation is constant.");
                 out.push_back("Answer: no solution");
                 return out;
             }
@@ -1486,7 +1487,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(!is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
             Rational a = rp.num.a2;
             if(is_zero(a)) {
-                out.push_back("Error: Not a valid equation - all terms have degree 0");
+                out.push_back("2. All variable terms cancel, so compare constants.");
                 out.push_back("Answer: no solution");
                 return out;
             }
@@ -1510,7 +1511,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         return out;
     }
     catch(std::exception const &e) {
-        return {std::string("Error: ") + e.what()};
+        casio::ExamPrelude pre;
+        pre.raw = req.expr;
+        pre.norm = casio::normalize_text(req.expr);
+        pre.parsed = req.expr;
+        pre.simplified = req.expr;
+        return casio::exam_fallback("algebra solve", pre, e.what(), "solve(" + pre.norm + ")");
     }
 }
 

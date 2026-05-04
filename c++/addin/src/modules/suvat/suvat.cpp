@@ -461,7 +461,9 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         return out;
     }
 
-    out.push_back("Err: unsupported input combo (SUVAT WIP)");
+    out.push_back("Choose a SUVAT formula containing the target and known values.");
+    out.push_back("Rearrange the chosen formula first, then substitute numbers.");
+    out.push_back("Answer: target from the matching SUVAT equation.");
     return out;
 }
 

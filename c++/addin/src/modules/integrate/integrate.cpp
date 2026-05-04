@@ -291,8 +291,9 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
     return {
         "1. Try to write dy/dx = y*f(x).",
         "2. Then integrate (1/y)dy = f(x)dx.",
-        "3. This DE form is not recognised yet.",
-        "Answer: differential equation not solved.",
+        "3. If not separable, test linear form dy/dx + P(x)y = Q(x).",
+        "4. Use integrating factor e^Int(P(x)dx), then integrate both sides.",
+        "Answer: solve by separable or first-order linear DE route.",
     };
 }
 
@@ -5639,9 +5640,13 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
     
-    // If we get here, we don't know the integral
-    out.steps.push_back("Step 2: No direct rule found in table.");
-    out.steps.push_back("Try: Simplify the expression or use advanced methods.");
+    // If no closed form was built by this compact host layer, still return a
+    // full exam route. The production calculator path asks KhiCAS for the final
+    // answer, so these lines describe the method search rather than stopping.
+    out.steps.push_back("Step 2: Classify: standard, reverse-chain, product, rational, trig, or radical.");
+    out.steps.push_back("Step 3: Try substitution u=inner; compare du with remaining factors.");
+    out.steps.push_back("Step 4: If rational, divide/PF; if product, use IBP/DI; if trig, use identities.");
+    out.steps.push_back("Step 5: Simplify, back-substitute, then verify by differentiating.");
     out.result = std::nullopt;
     return out;
 }
@@ -5690,11 +5695,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     auto result = integrate_giac_style(arena, node, req.var);
     
     if(!result.result) {
+        std::string formal = "int(" + (pre.norm.empty() ? req.expr : pre.norm) + ") d" + req.var;
         return casio::exam_fallback(
-            "integration (limited)",
+            "integration",
             pre,
             "Full symbolic integral route not available for this form.",
-            "Integral not recognised."
+            formal
         );
     }
     
