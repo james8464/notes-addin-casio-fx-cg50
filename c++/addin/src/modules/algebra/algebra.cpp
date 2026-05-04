@@ -831,6 +831,71 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
     if(x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const) return;
 }
 
+static bool contains_fn_kind(Arena &a, NodeId n, FnKind fk)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return x.fkind == fk || contains_fn_kind(a, x.a, fk);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_fn_kind(a, x.a, fk) || contains_fn_kind(a, x.b, fk);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_fn_kind(a, k, fk)) return true;
+    }
+    return false;
+}
+
+static bool has_variable_exponent(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        std::vector<std::string> vars;
+        collect_symbols(a, x.b, vars);
+        for(auto const &v : vars)
+            if(v == var) return true;
+        return has_variable_exponent(a, x.a, var) || has_variable_exponent(a, x.b, var);
+    }
+    if(x.kind == NodeKind::Fn) return has_variable_exponent(a, x.a, var);
+    if(x.kind == NodeKind::Div) return has_variable_exponent(a, x.a, var) || has_variable_exponent(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_variable_exponent(a, k, var)) return true;
+    }
+    return false;
+}
+
+static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out, NodeId rearr, std::string const &var)
+{
+    out.push_back("2. Rearrange to lhs-rhs=0.");
+    bool wrote = false;
+    if(contains_fn_kind(a, rearr, FnKind::Sqrt)) {
+        out.push_back("3. State radical domain, then isolate the radical term.");
+        out.push_back("4. Square both sides; repeat only if a radical remains.");
+        out.push_back("5. Solve the resulting equation, then check roots in the original.");
+        wrote = true;
+    }
+    if(contains_fn_kind(a, rearr, FnKind::Log)) {
+        out.push_back(wrote ? "6. Use log/exp laws: combine log terms before exponentiating." : "3. Use log/exp laws to combine log terms.");
+        out.push_back(wrote ? "7. Exponentiate only after the log side is isolated; verify roots." :
+                              "4. Exponentiate, solve, then verify roots against the log domain.");
+        wrote = true;
+    }
+    if(has_variable_exponent(a, rearr, var)) {
+        out.push_back(wrote ? "8. For powers, set u=a^" + var + " or u=e^" + var + " where powers repeat." :
+                              "3. Set u=a^" + var + " or u=e^" + var + " where powers repeat.");
+        out.push_back(wrote ? "9. Solve the polynomial in u, reject invalid u, then verify roots and convert back with logs." :
+                              "4. Solve the polynomial in u, reject invalid u, then verify roots and convert back with logs.");
+        wrote = true;
+    }
+    if(contains_fn_kind(a, rearr, FnKind::Abs)) {
+        out.push_back(wrote ? "10. For abs, split into positive/negative cases and check both." :
+                              "3. Split abs into positive/negative cases and check both.");
+        wrote = true;
+    }
+    if(!wrote) {
+        out.push_back("3. Use substitution/factorisation/rearrangement to reduce to a standard equation.");
+        out.push_back("4. Solve the reduced equation and check in the original.");
+    }
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -1436,9 +1501,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
-            out.push_back("2. Rearrange to lhs-rhs=0.");
-            out.push_back("3. Use log/exp laws or substitution; verify roots.");
-            out.push_back("4. Solve the reduced equation.");
+            append_nonrat_equation_route(arena, out, rearr, solve_var);
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval after checking the reduced equation." :

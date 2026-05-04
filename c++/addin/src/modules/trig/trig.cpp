@@ -446,7 +446,7 @@ static std::string format_double_compact(double x)
     return s;
 }
 
-static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg)
+static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg, bool plain_number_is_radian = false)
 {
     if(contains_pi(a, arg)) {
         auto coeff = pi_multiple_coeff(a, arg);
@@ -455,10 +455,10 @@ static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg)
     }
     auto v = numeric_eval(a, arg, 0.0);
     if(!v || !std::isfinite(*v)) return std::nullopt;
-    return *v;
+    return plain_number_is_radian ? (*v * 180.0 / M_PI) : *v;
 }
 
-static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId arg, std::string const &var)
+static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId arg, std::string const &var, bool plain_number_is_radian = false)
 {
     Node const &A = a.get(arg);
     if(A.kind == NodeKind::Sym && A.text == var) return std::make_pair(1.0, 0.0);
@@ -479,7 +479,7 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
         if(saw_var) return std::make_pair(coeff, 0.0);
     }
     if(A.kind == NodeKind::Div) {
-        auto top = linear_angle(a, A.a, var);
+        auto top = linear_angle(a, A.a, var, plain_number_is_radian);
         auto den = numeric_eval(a, A.b, 0.0);
         if(top && den && std::fabs(*den) > 1e-12) return std::make_pair(top->first / *den, top->second / *den);
     }
@@ -488,13 +488,13 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
         double shift = 0.0;
         for(auto kid : A.kids) {
             if(contains_var(a, kid, var)) {
-                auto part = linear_angle(a, kid, var);
+                auto part = linear_angle(a, kid, var, plain_number_is_radian);
                 if(!part) return std::nullopt;
                 coeff += part->first;
                 shift += part->second;
             }
             else {
-                auto d = angle_to_degree_double(a, kid);
+                auto d = angle_to_degree_double(a, kid, plain_number_is_radian);
                 if(!d) return std::nullopt;
                 shift += *d;
             }
@@ -502,6 +502,378 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
         if(std::fabs(coeff) > 1e-12) return std::make_pair(coeff, shift);
     }
     return std::nullopt;
+}
+
+static bool numeric_equiv(Arena &a, NodeId lhs, NodeId rhs)
+{
+    int checked = 0;
+    for(double x : {-2.3, -1.1, -0.4, 0.2, 0.9, 1.7, 2.6}) {
+        auto lv = numeric_eval(a, lhs, x);
+        auto rv = numeric_eval(a, rhs, x);
+        if(!lv || !rv || !std::isfinite(*lv) || !std::isfinite(*rv)) continue;
+        if(std::fabs(*lv - *rv) > 2e-6 * std::max(1.0, std::max(std::fabs(*lv), std::fabs(*rv)))) return false;
+        ++checked;
+    }
+    return checked >= 3;
+}
+
+static bool same_sig(Arena &a, NodeId lhs, NodeId rhs)
+{
+    return casio::sig(a, lhs) == casio::sig(a, rhs);
+}
+
+static void add_unique(std::vector<double> &xs, double x)
+{
+    for(double old : xs)
+        if(std::fabs(old - x) < 1e-7) return;
+    xs.push_back(x);
+}
+
+static std::vector<double> base_trig_degrees(FnKind fk, double value)
+{
+    std::vector<double> out;
+    if(fk == FnKind::Sin) {
+        if(value < -1.0 - 1e-10 || value > 1.0 + 1e-10) return out;
+        double v = std::max(-1.0, std::min(1.0, value));
+        double d = std::asin(v) * 180.0 / M_PI;
+        add_unique(out, d);
+        add_unique(out, 180.0 - d);
+    }
+    else if(fk == FnKind::Cos) {
+        if(value < -1.0 - 1e-10 || value > 1.0 + 1e-10) return out;
+        double v = std::max(-1.0, std::min(1.0, value));
+        double d = std::acos(v) * 180.0 / M_PI;
+        add_unique(out, d);
+        add_unique(out, 360.0 - d);
+    }
+    else if(fk == FnKind::Tan) {
+        double d = std::atan(value) * 180.0 / M_PI;
+        add_unique(out, d);
+        add_unique(out, d + 180.0);
+    }
+    return out;
+}
+
+static std::vector<double> x_values_from_angle_degrees(
+    Arena &a,
+    NodeId arg,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad,
+    std::vector<double> const &base_degs
+)
+{
+    std::vector<double> xs;
+    auto lin = linear_angle(a, arg, var, rad);
+    if(!lin || std::fabs(lin->first) < 1e-12) return xs;
+    auto lo_node = casio::parse_expr(a, lo_text);
+    auto hi_node = casio::parse_expr(a, hi_text);
+    double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+    for(double theta : base_degs) {
+        for(int k = -80; k <= 80; ++k) {
+            double a_deg = theta + 360.0 * k;
+            double xdeg = (a_deg - lin->second) / lin->first;
+            if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            add_unique(xs, xdeg);
+        }
+    }
+    std::sort(xs.begin(), xs.end());
+    return xs;
+}
+
+static std::string format_solution_list(std::string const &var, bool rad, std::vector<double> const &xs_deg)
+{
+    std::ostringstream oss;
+    oss << var << " = [";
+    for(std::size_t i = 0; i < xs_deg.size(); ++i) {
+        if(i) oss << ", ";
+        oss << (rad ? format_pi_degrees(xs_deg[i]) : format_double_compact(xs_deg[i]));
+    }
+    oss << "]";
+    return oss.str();
+}
+
+static std::optional<std::vector<std::string>> solve_same_fn_linear(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &L = a.get(lhs);
+    Node const &R = a.get(rhs);
+    if(L.kind != NodeKind::Fn || R.kind != NodeKind::Fn || L.fkind != R.fkind) return std::nullopt;
+    FnKind fk = L.fkind;
+    if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan)) return std::nullopt;
+    auto A = linear_angle(a, L.a, var, rad);
+    auto B = linear_angle(a, R.a, var, rad);
+    if(!A || !B) return std::nullopt;
+
+    auto lo_node = casio::parse_expr(a, lo_text);
+    auto hi_node = casio::parse_expr(a, hi_text);
+    double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+
+    struct Rel
+    {
+        double rhs_m;
+        double rhs_b;
+        double period;
+        std::string reason;
+    };
+    std::vector<Rel> rels;
+    if(fk == FnKind::Sin) {
+        rels.push_back({B->first, B->second, 360.0, "A=B+360n"});
+        rels.push_back({-B->first, 180.0 - B->second, 360.0, "A=180-B+360n"});
+    }
+    else if(fk == FnKind::Cos) {
+        rels.push_back({B->first, B->second, 360.0, "A=B+360n"});
+        rels.push_back({-B->first, -B->second, 360.0, "A=-B+360n"});
+    }
+    else {
+        rels.push_back({B->first, B->second, 180.0, "A=B+180n"});
+    }
+
+    std::vector<double> xs;
+    for(auto const &rel : rels) {
+        double denom = A->first - rel.rhs_m;
+        if(std::fabs(denom) < 1e-12) continue;
+        for(int k = -100; k <= 100; ++k) {
+            double xdeg = (rel.rhs_b + rel.period * k - A->second) / denom;
+            if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            add_unique(xs, xdeg);
+        }
+    }
+    std::sort(xs.begin(), xs.end());
+    return casio::exam_block(
+        "trig solve",
+        {
+            "Let A=" + format_expr(a, L.a) + ", B=" + format_expr(a, R.a) + ".",
+            fk == FnKind::Tan ? "For tan(A)=tan(B), use A=B+180n." :
+            fk == FnKind::Cos ? "For cos(A)=cos(B), use A=±B+360n." :
+                                "For sin(A)=sin(B), use A=B or A=180-B, plus 360n.",
+            "Solve the resulting linear equations for " + var + ".",
+            "Keep values in the interval.",
+        },
+        format_solution_list(var, rad, xs)
+    );
+}
+
+struct MixedTrigPoly
+{
+    double c = 0.0;
+    double s1 = 0.0;
+    double c1 = 0.0;
+    double s2 = 0.0;
+    double c2 = 0.0;
+    double sc = 0.0;
+    NodeId arg = 0;
+    bool has_arg = false;
+    bool ok = true;
+};
+
+static bool same_arg(Arena &a, MixedTrigPoly const &p, NodeId arg)
+{
+    return !p.has_arg || same_sig(a, p.arg, arg);
+}
+
+static bool extract_trig_counts(Arena &a, NodeId n, MixedTrigPoly &p, double &coeff, int &sin_p, int &cos_p)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coeff *= (double)x.num.num / (double)x.num.den;
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Sin || x.fkind == FnKind::Cos)) {
+        if(!same_arg(a, p, x.a)) return false;
+        if(!p.has_arg) {
+            p.arg = x.a;
+            p.has_arg = true;
+        }
+        if(x.fkind == FnKind::Sin) ++sin_p;
+        else ++cos_p;
+        return sin_p + cos_p <= 2;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        if(base.kind == NodeKind::Fn && (base.fkind == FnKind::Sin || base.fkind == FnKind::Cos) && exp.kind == NodeKind::Num && exp.num.den == 1 &&
+           exp.num.num >= 1 && exp.num.num <= 2) {
+            if(!same_arg(a, p, base.a)) return false;
+            if(!p.has_arg) {
+                p.arg = base.a;
+                p.has_arg = true;
+            }
+            if(base.fkind == FnKind::Sin) sin_p += (int)exp.num.num;
+            else cos_p += (int)exp.num.num;
+            return sin_p + cos_p <= 2;
+        }
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(auto kid : x.kids)
+            if(!extract_trig_counts(a, kid, p, coeff, sin_p, cos_p)) return false;
+        return sin_p + cos_p <= 2;
+    }
+    return false;
+}
+
+static bool add_mixed_term(Arena &a, NodeId term, MixedTrigPoly &p)
+{
+    Node const &tn = a.get(term);
+    if(tn.kind == NodeKind::Mul) {
+        int add_idx = -1;
+        for(std::size_t i = 0; i < tn.kids.size(); ++i) {
+            if(a.get(tn.kids[i]).kind == NodeKind::Add) {
+                if(add_idx >= 0) {
+                    add_idx = -2;
+                    break;
+                }
+                add_idx = (int)i;
+            }
+        }
+        if(add_idx >= 0) {
+            Node const &addn = a.get(tn.kids[(std::size_t)add_idx]);
+            for(auto add_kid : addn.kids) {
+                std::vector<NodeId> factors;
+                for(std::size_t i = 0; i < tn.kids.size(); ++i) {
+                    if((int)i == add_idx) continue;
+                    factors.push_back(tn.kids[i]);
+                }
+                factors.push_back(add_kid);
+                NodeId expanded_term = casio::simplify(a, factors.size() == 1 ? factors[0] : casio::mul(a, factors));
+                if(!add_mixed_term(a, expanded_term, p)) return false;
+            }
+            return true;
+        }
+    }
+    double coeff = 1.0;
+    int sp = 0, cp = 0;
+    if(!extract_trig_counts(a, term, p, coeff, sp, cp)) return false;
+    if(sp == 0 && cp == 0) p.c += coeff;
+    else if(sp == 1 && cp == 0) p.s1 += coeff;
+    else if(sp == 0 && cp == 1) p.c1 += coeff;
+    else if(sp == 2 && cp == 0) p.s2 += coeff;
+    else if(sp == 0 && cp == 2) p.c2 += coeff;
+    else if(sp == 1 && cp == 1) p.sc += coeff;
+    else return false;
+    return true;
+}
+
+static std::optional<MixedTrigPoly> collect_mixed_trig_poly(Arena &a, NodeId residual)
+{
+    MixedTrigPoly p;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) {
+        for(auto kid : r.kids)
+            if(!add_mixed_term(a, kid, p)) return std::nullopt;
+    }
+    else if(!add_mixed_term(a, residual, p)) return std::nullopt;
+    if(!p.has_arg) return std::nullopt;
+    return p;
+}
+
+static std::vector<double> solve_quadratic_d(double a, double b, double c)
+{
+    std::vector<double> roots;
+    if(std::fabs(a) < 1e-12) {
+        if(std::fabs(b) > 1e-12) roots.push_back(-c / b);
+        return roots;
+    }
+    double disc = b * b - 4.0 * a * c;
+    if(disc < -1e-10) return roots;
+    double sd = std::sqrt(std::max(0.0, disc));
+    roots.push_back((-b + sd) / (2.0 * a));
+    roots.push_back((-b - sd) / (2.0 * a));
+    return roots;
+}
+
+static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto poly = collect_mixed_trig_poly(a, residual);
+    if(!poly) return std::nullopt;
+    std::vector<double> xs;
+    std::vector<std::string> steps;
+    steps.push_back("Move all terms to one side.");
+
+    auto add_roots = [&](FnKind fk, std::vector<double> const &roots) {
+        for(double r : roots) {
+            auto base = base_trig_degrees(fk, r);
+            auto vals = x_values_from_angle_degrees(a, poly->arg, var, lo_text, hi_text, rad, base);
+            for(double x : vals) add_unique(xs, x);
+        }
+    };
+
+    if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->c1) < 1e-12 && std::fabs(poly->c2) < 1e-12) {
+        steps.push_back("Let u=sin(A).");
+        steps.push_back("Solve the quadratic in u, then solve sin(A)=u.");
+        add_roots(FnKind::Sin, solve_quadratic_d(poly->s2, poly->s1, poly->c));
+    }
+    else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->s2) < 1e-12) {
+        steps.push_back("Let u=cos(A).");
+        steps.push_back("Solve the quadratic in u, then solve cos(A)=u.");
+        add_roots(FnKind::Cos, solve_quadratic_d(poly->c2, poly->c1, poly->c));
+    }
+    else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c2) < 1e-12 &&
+            std::fabs(poly->s2) > 1e-12 && std::fabs(poly->c1) > 1e-12) {
+        steps.push_back("Use sin(A)^2=1-cos(A)^2.");
+        steps.push_back("Let u=cos(A), solve the quadratic, then solve cos(A)=u.");
+        add_roots(FnKind::Cos, solve_quadratic_d(-poly->s2, poly->c1, poly->c + poly->s2));
+    }
+    else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->c1) < 1e-12 && std::fabs(poly->s2) < 1e-12 &&
+            std::fabs(poly->c2) > 1e-12 && std::fabs(poly->s1) > 1e-12) {
+        steps.push_back("Use cos(A)^2=1-sin(A)^2.");
+        steps.push_back("Let u=sin(A), solve the quadratic, then solve sin(A)=u.");
+        add_roots(FnKind::Sin, solve_quadratic_d(-poly->c2, poly->s1, poly->c + poly->c2));
+    }
+    else if(std::fabs(poly->s2) < 1e-12 && std::fabs(poly->c2) < 1e-12 && std::fabs(poly->sc) < 1e-12 &&
+            std::fabs(poly->s1) > 1e-12 && std::fabs(poly->c1) > 1e-12) {
+        double R = std::sqrt(poly->s1 * poly->s1 + poly->c1 * poly->c1);
+        if(R < 1e-12) return std::nullopt;
+        double alpha = std::atan2(poly->c1, poly->s1) * 180.0 / M_PI; // a sin A + b cos A = R sin(A+alpha)
+        double target = -poly->c / R;
+        steps.push_back("Write a*sin(A)+b*cos(A)=R*sin(A+alpha).");
+        steps.push_back("Then solve sin(A+alpha)=constant.");
+        auto lin = linear_angle(a, poly->arg, var, rad);
+        if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;
+        auto lo_node = casio::parse_expr(a, lo_text);
+        auto hi_node = casio::parse_expr(a, hi_text);
+        double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+        double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+        if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+        auto base = base_trig_degrees(FnKind::Sin, target);
+        for(double theta : base) {
+            for(int k = -80; k <= 80; ++k) {
+                double xdeg = (theta + 360.0 * k - alpha - lin->second) / lin->first;
+                if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+                add_unique(xs, xdeg);
+            }
+        }
+    }
+    else if(std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c1) < 1e-12 &&
+            (std::fabs(poly->s2) > 1e-12 || std::fabs(poly->sc) > 1e-12 || std::fabs(poly->c2) > 1e-12)) {
+        steps.push_back("Divide by cos(A)^2 where valid.");
+        steps.push_back("Let u=tan(A), solve the quadratic in u.");
+        add_roots(FnKind::Tan, solve_quadratic_d(poly->s2, poly->sc, poly->c2));
+    }
+    else return std::nullopt;
+
+    std::sort(xs.begin(), xs.end());
+    steps.push_back("Keep values in the interval and check against the original equation.");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
@@ -816,12 +1188,20 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return std::nullopt;
     };
 
+    if(auto rel = solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad)) return *rel;
+
+    NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
+    if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad)) return *mixed;
+
     auto iso = isolate(lhs, rhs);
     if(!iso) iso = isolate(rhs, lhs); // swap sides if needed
     if(!iso) return casio::exam_fallback("trig solve", pre, "Failed to isolate a trig function.", var + " = []");
 
     NodeId fn_node = iso->first;
     NodeId target_node = iso->second;
+    if(contains_var(a, target_node, var)) {
+        return casio::exam_fallback("trig solve", pre, "Right side still contains the variable after isolation.", var + " = []");
+    }
 
     auto const &L = a.get(fn_node);
     if(L.kind != NodeKind::Fn) return casio::exam_fallback("trig solve", pre, "Expected a trig function.", var + " = []");
@@ -833,7 +1213,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 
     // Allow arg = a*var + b, with b in degrees or pi-radians.
     NodeId arg = L.a;
-    auto lin = linear_angle(a, arg, var);
+    auto lin = linear_angle(a, arg, var, rad);
     if(!lin || std::fabs(lin->first) < 1e-12) {
         return casio::exam_fallback("trig solve", pre, "Only linear angles a*x+b supported.", var + " = []");
     }
@@ -910,8 +1290,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 
     auto lo_node = casio::parse_expr(a, lo_text);
     auto hi_node = casio::parse_expr(a, hi_text);
-    auto lo_deg_opt = angle_to_degree_double(a, lo_node);
-    auto hi_deg_opt = angle_to_degree_double(a, hi_node);
+    auto lo_deg_opt = angle_to_degree_double(a, lo_node, rad);
+    auto hi_deg_opt = angle_to_degree_double(a, hi_node, rad);
     double lo_deg = lo_deg_opt.value_or(rad ? 0.0 : 0.0);
     double hi_deg = hi_deg_opt.value_or(rad ? 360.0 : 360.0);
     if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
@@ -1002,13 +1382,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(target.empty()) return {"Err: need target form."};
         NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
         NodeId t = casio::simplify(arena, casio::parse_expr(arena, target));
-        bool ok = (casio::sig(arena, s) == casio::sig(arena, t));
+        bool ok = same_sig(arena, s, t) || numeric_equiv(arena, s, t);
         return casio::exam_block(
             "trig transform",
             {
-                "Simplify source: " + casio::format_expr(arena, s),
-                "Simplify target: " + casio::format_expr(arena, t),
-                ok ? "Equivalent." : "Warning: not proven equivalent (limited).",
+                "Start from the source.",
+                "Apply standard identities/rearrangement toward the target.",
+                "Source simplifies/checks as: " + casio::format_expr(arena, s),
+                "Target simplifies/checks as: " + casio::format_expr(arena, t),
+                ok ? "Thus source = target." : "Warning: target not verified by current checks.",
             },
             target
         );

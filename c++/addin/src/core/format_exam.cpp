@@ -2,6 +2,7 @@
 
 #include "simplify.hpp"
 
+#include <cctype>
 #include <sstream>
 
 namespace casio
@@ -97,6 +98,26 @@ std::vector<std::string> format_exam_working(
     auto lines = numbered_steps(steps);
     if(!answer.empty()) {
         std::string text = answer;
+        std::string spaced;
+        spaced.reserve(text.size() + 8);
+        for(std::size_t i = 0; i < text.size(); ++i) {
+            char c = text[i];
+            if((c == '+' || c == '-') && i > 0 && i + 1 < text.size()) {
+                char prev = text[i - 1];
+                char next = text[i + 1];
+                bool unary = prev == '(' || prev == '[' || prev == '{' || prev == '=' || prev == '/' || prev == '*' || prev == '^' ||
+                             prev == '+' || prev == '-';
+                bool exp_sign = (prev == 'e' || prev == 'E') && i >= 2 && std::isdigit(static_cast<unsigned char>(text[i - 2]));
+                if(!unary && !exp_sign && prev != ' ' && next != ' ') {
+                    spaced.push_back(' ');
+                    spaced.push_back(c);
+                    spaced.push_back(' ');
+                    continue;
+                }
+            }
+            spaced.push_back(c);
+        }
+        text.swap(spaced);
         std::string low;
         low.reserve(text.size());
         for(char c : text) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));

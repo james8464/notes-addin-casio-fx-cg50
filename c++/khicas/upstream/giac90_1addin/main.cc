@@ -2963,14 +2963,38 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     return false;
   if (cascas_call_args(s,"solve_trig(",args,6,count,close,body) && count>=1){
     string expr=args[0];
+    string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)
       cascas_append_expr_line(out,"2. Start ",expr);
     else
       cascas_append_expr_line(out,"2. Start ",expr + "=0");
-    cascas_append_line(out,"3. Isolate trig.");
-    cascas_append_line(out,"4. CAST/R base angles.");
-    cascas_append_line(out,count>=4?"5. Keep bound sols.":"5. Add period.");
+    if ((cascas_text_has(se,"sin(") && cascas_text_has(se,"=sin(")) ||
+	(cascas_text_has(se,"cos(") && cascas_text_has(se,"=cos(")) ||
+	(cascas_text_has(se,"tan(") && cascas_text_has(se,"=tan("))){
+      cascas_append_line(out,"3. Trig solve: same-fn/sum-product gives angle eqns.");
+      cascas_append_line(out,"4. Solve each linear angle eqn.");
+    }
+    else if ((cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")) &&
+	     (cascas_text_has(se,"sin(") || cascas_text_has(se,"cos(")))){
+      if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(") && cascas_text_has(se,"^2")){
+	cascas_append_line(out,"3. Use sin^2+cos^2=1 or divide by cos^2.");
+	cascas_append_line(out,"4. Let u=sin/cos/tan; solve resulting eqn.");
+      }
+      else {
+	cascas_append_line(out,"3. Write a*sin(A)+b*cos(A)=R*sin(A+alpha).");
+	cascas_append_line(out,"4. Solve base angles from R-form.");
+      }
+    }
+    else if (cascas_text_has(se,"^2")){
+      cascas_append_line(out,"3. Trig solve: use identity to make a quadratic.");
+      cascas_append_line(out,"4. Solve for trig value, then solve angle.");
+    }
+    else {
+      cascas_append_line(out,"3. Trig solve: isolate trig fn.");
+      cascas_append_line(out,"4. CAST/base angles.");
+    }
+    cascas_append_line(out,count>=4?"5. Keep bound sols; verify original.":"5. Add period; verify original.");
     return true;
   }
   static const struct { const char *alias; const char *basis; const char *ids; } trig_basis[]={
@@ -2986,7 +3010,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		cascas_append_expr_line(out,"2. Move left: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
 	      else
 		cascas_append_expr_line(out,"2. Start ",expr);
-      string line=string("3. Use ") + trig_basis[i].basis + " only.";
+      string line=string("3. Basis: use ") + trig_basis[i].basis + " only.";
       cascas_append_line(out,line.c_str());
       string ids=string("4. Ids: ") + trig_basis[i].ids;
       cascas_append_line(out,ids.c_str());
@@ -3082,29 +3106,48 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)
-      cascas_append_expr_line(out,"2. Move left: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
+      cascas_append_expr_line(out,"2. Move left / Move: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
     else
       cascas_append_expr_line(out,"2. Solve ",expr + "=0");
     if ((cascas_text_has(se,"x+y") && cascas_text_has(se,"xy")) ||
 	cascas_text_has(se,"x^3+y^3") || cascas_text_has(se,"x^2+y^2")){
-      cascas_append_line(out,"3. Let s=x+y, p=xy.");
+      cascas_append_line(out,"3. Let s=x+y,p=xy.");
       cascas_append_line(out,"4. Use s^2-2p; solve s,p.");
       cascas_append_line(out,"5. Roots t^2-st+p=0; chk.");
       return true;
     }
+    if (cascas_text_has(se,"sqrt(")){
+      cascas_append_line(out,"3. State radical domain.");
+      cascas_append_line(out,"4. Isolate radical; square both sides.");
+      cascas_append_line(out,"5. Solve reduced eqn; verify roots.");
+      return true;
+    }
+    if (cascas_text_has(se,"abs(") || cascas_text_has(se,"|")){
+      cascas_append_line(out,"3. Split abs into sign cases.");
+      cascas_append_line(out,"4. Solve each case with its condition.");
+      cascas_append_line(out,"5. Union valid roots.");
+      return true;
+    }
     if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(") || cascas_text_has(se,"^x")){
       cascas_append_line(out,"3. State log/exp domain.");
-      cascas_append_line(out,"4. u=repeated term.");
-      cascas_append_line(out,"5. Solve; reject bad.");
+      if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(")){
+	cascas_append_line(out,"4. Use log/exp laws: combine/isolate; exponentiate.");
+	cascas_append_line(out,"5. Solve; verify roots against domain.");
+      }
+      else {
+	cascas_append_line(out,"4. Set u=log/base exp. or u=a^x/e^x.");
+	cascas_append_line(out,"5. Solve in u; verify roots and convert back.");
+      }
       return true;
     }
     if (cascas_text_has(se,"/")){
       cascas_append_line(out,"3. Exclude zero den.");
-      cascas_append_line(out,"4. Clear den; solve.");
+      cascas_append_line(out,"4. Clear den; expand/factor.");
+      cascas_append_line(out,"5. Solve; reject excluded roots.");
     }
     else {
-      cascas_append_line(out,"3. Factor/quad/sq.");
-      cascas_append_line(out,"4. Chk roots if squared/divided.");
+      cascas_append_line(out,"3. fact/rearr: factor; else quad formula/square.");
+      cascas_append_line(out,"4. List roots; verify if any operation changed domain.");
     }
     return true;
   }
@@ -3115,7 +3158,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    cascas_append_expr_line(out,"2. I = Int[",args[0] + "] d" + x);
 	    int step=3;
 	    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
-		      cascas_append_step(out,step,"Factor den.");
+		      cascas_append_step(out,step,"factor denom; PF.");
 		      cascas_append_step(out,step,"PF: A/lin, (Bx+C)/quad.");
 		      cascas_append_step(out,step,"Comp sq; ln/atan.");
 	    }
@@ -3156,7 +3199,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    }
 	    else {
 		      cascas_append_step(out,step,"Std int if matched.");
-		      cascas_append_step(out,step,"Else sub/parts/PF.");
+		      cascas_append_step(out,step,"Else std/trig/sub/parts/PF.");
 	    }
 		    cascas_append_step(out,step,count>=4?"Eval F(hi)-F(lo); simp.":"Add +C.");
 	    return true;
@@ -3192,6 +3235,7 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
       return;
     }
   }
+		  // Rewrite to std form.
 		  cascas_append_line(out,"2. Std form.");
 		  cascas_append_line(out,"3. Rule/sub/id.");
 		  cascas_append_line(out,"4. Verify.");

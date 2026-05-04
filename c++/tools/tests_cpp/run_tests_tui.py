@@ -4173,6 +4173,12 @@ class CASIOApp(App):
             return "y"
         if p in ("t",):
             return "t"
+        if fn_name in ("coeff", "degree") and p in ("p", "expr", "f"):
+            return self.random_catalogue_expr(rng, rng.choice(["poly", "quartic", "letter"]))
+        if fn_name in ("dot", "cross") and p in ("a", "b", "u", "v"):
+            return rng.choice(["[1,2,3]", "[3,-1,2]", "[0,4,-2]"])
+        if (fn_name in ("inverse", "rank") and p in ("a", "m")) or "matrix" in p:
+            return self.random_catalogue_expr(rng, rng.choice(["matrix2", "matrix3", "singular"]))
         if "method" in p:
             if shape.startswith("math_"):
                 return "auto"
