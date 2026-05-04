@@ -613,7 +613,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     {
                         "dx/dt = e^t(cos(t)-sin(t))",
                         "dy/dt = e^t(sin(t)+cos(t))",
-                        "dy/dx = [dy/dt]/[dx/dt]",
+                        "dy/dx = e^t(sin(t) + cos(t))/[e^t(cos(t) - sin(t))]",
                         "Cancel e^t.",
                     },
                     answer

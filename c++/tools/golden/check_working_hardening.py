@@ -160,6 +160,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["lengths must match", "Answer: no covariance"],
         ["Err:", "Traceback"],
     ),
+    (
+        "int",
+        "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
+        ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "x^2-6*x+5=0,method=complete_square",
+        ["Complete square: (x - 3)^2 - 4 = 0", "Take square roots: x - 3 = +/-2", "Answer: x = [5, 1]"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "derive",
+        "mode:3,exp(t)*cos(t),exp(t)*sin(t),t",
+        ["dy/dx = e^t(sin(t)+cos(t))/[e^t(cos(t)-sin(t))]", "Cancel e^t"],
+        ["ERR:", "Unexpected token"],
+    ),
 ]
 
 

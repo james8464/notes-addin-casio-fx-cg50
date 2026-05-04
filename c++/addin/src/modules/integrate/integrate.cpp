@@ -249,6 +249,14 @@ static std::string compact_key(std::string text)
     return out;
 }
 
+static bool pythagorean_square_sum(std::string const &key)
+{
+    return key.find("sin(") != std::string::npos &&
+           key.find("cos(") != std::string::npos &&
+           key.find("^2") != std::string::npos &&
+           key.find('+') != std::string::npos;
+}
+
 static std::string trim_copy(std::string s)
 {
     while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
@@ -6168,7 +6176,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     
     // Add the detailed steps
     std::vector<std::string> all_steps;
-    casio::append_exam_prelude_steps(all_steps, pre);
+    if(pythagorean_square_sum(direct) && format_expr(arena, node) == "1") {
+        all_steps.push_back("Start with " + req.expr + ".");
+        all_steps.push_back("Use identity sin(u)^2 + cos(u)^2 = 1.");
+    }
+    else {
+        casio::append_exam_prelude_steps(all_steps, pre);
+    }
     
     std::string display_expr = format_expr_human(arena, node);
     for(auto const &s : result.steps) {

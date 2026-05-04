@@ -1954,7 +1954,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             );
             out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
             out.push_back("3. Complete square: " + format_expr(arena, square_form) + " = 0");
-            out.push_back("4. Solve the square equation; check original.");
+            Rational rhs = r_div(r_neg(k), a);
+            NodeId rhs_node = casio::num(arena, rhs.num, rhs.den);
+            NodeId root_rhs = casio::fn(arena, "sqrt", rhs_node);
+            NodeId shifted_x = casio::simplify(arena, casio::add(arena, {x, hnode}));
+            std::string root_text = format_expr(arena, root_rhs);
+            std::int64_t rn = 0;
+            if(auto rv = as_int64(rhs); rv && is_square_i64(*rv, rn)) root_text = std::to_string(rn);
+            out.push_back("4. Isolate square: (" + format_expr(arena, shifted_x) + ")^2 = " + format_expr(arena, rhs_node));
+            out.push_back("5. Take square roots: " + format_expr(arena, shifted_x) + " = +/-" + root_text);
+            out.push_back("6. Check roots in the original equation.");
             auto sols = solve_poly2(arena, rp.num, solve_var);
             sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
             if(sols.empty()) {
