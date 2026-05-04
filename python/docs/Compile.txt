@@ -1,0 +1,17 @@
+Use `CASIO_MPY_CROSS` if `mpy-cross` is not on `PATH`.
+
+Examples:
+
+```bash
+export CASIO_MPY_CROSS="$HOME/micropython/mpy-cross/mpy-cross"
+python3 python/src/calc_files/check_mpy_build.py
+```
+
+Manual compile pattern:
+
+```bash
+"${CASIO_MPY_CROSS:-mpy-cross}" -msmall-int-bits=31 -mno-unicode -o python/src/calc_files/trigProgram.mpy python/src/Math/trigProgram.py
+"${CASIO_MPY_CROSS:-mpy-cross}" -msmall-int-bits=31 -mno-unicode -o python/src/calc_files/deriveProgram.mpy python/src/Math/deriveProgram.py
+"${CASIO_MPY_CROSS:-mpy-cross}" -msmall-int-bits=31 -mno-unicode -o python/src/calc_files/intProgram.mpy python/src/Math/intProgram.py
+"${CASIO_MPY_CROSS:-mpy-cross}" -msmall-int-bits=31 -mno-unicode -o python/src/calc_files/booleanProgram.mpy python/src/ComputerScience/booleanProgram.py
+```

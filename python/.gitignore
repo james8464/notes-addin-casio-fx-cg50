@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+src/calc_files/*.mpy
+.venv/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Local tooling / lockfiles
+skills-lock.json
+.agents/
+.claude/
+.codex/
+.cursor/
+.obsidian/
+.opencode/
+opencode.json
+
+# Test failure dumps
+tests/reports/
+
+# IDE
+.idea/
+*.iml
