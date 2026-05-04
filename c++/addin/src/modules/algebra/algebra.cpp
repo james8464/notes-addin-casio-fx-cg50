@@ -411,6 +411,19 @@ static std::string trim_text(std::string s)
     return s;
 }
 
+static bool pythagorean_square_sum(std::string text)
+{
+    std::string key;
+    key.reserve(text.size());
+    for(char c : text) {
+        if(!std::isspace(static_cast<unsigned char>(c))) key.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+    return key.find("sin(") != std::string::npos &&
+           key.find("cos(") != std::string::npos &&
+           key.find("^2") != std::string::npos &&
+           key.find('+') != std::string::npos;
+}
+
 static std::vector<std::string> split_csv(std::string const &s)
 {
     std::vector<std::string> parts;
@@ -1543,7 +1556,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
             std::vector<std::string> steps;
-            casio::append_exam_prelude_steps(steps, pre);
+            if(pythagorean_square_sum(expr) && format_expr(arena, n) == "1") {
+                steps.push_back("Start with " + expr + ".");
+                steps.push_back("Use sin(u)^2 + cos(u)^2 = 1.");
+            }
+            else {
+                casio::append_exam_prelude_steps(steps, pre);
+            }
             steps.push_back("Variable = " + var);
             if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
             std::vector<std::string> dom;

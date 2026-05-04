@@ -178,6 +178,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["dy/dx = e^t(sin(t)+cos(t))/[e^t(cos(t)-sin(t))]", "Cancel e^t"],
         ["ERR:", "Unexpected token"],
     ),
+    (
+        "alg",
+        "domain(sin(2*x+pi/6)^2+cos(2*x+pi/6)^2)",
+        ["Use sin(u)^2 + cos(u)^2 = 1", "Domain: all real x", "Answer: all real x"],
+        ["Start with 1", "ERR:", "Unexpected token"],
+    ),
 ]
 
 
