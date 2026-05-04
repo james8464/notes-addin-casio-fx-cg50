@@ -4017,17 +4017,17 @@ class CASIOApp(App):
         if name in ("diff", "implicit_diff", "param_diff"):
             return ("poly", "chain", "product", "quotient", "implicit", "param", "second") + calculus_math
         if name in ("integrate", "int"):
-            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") + calculus_math
+            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry", "manip_trig", "manip_rational") + calculus_math
         if name in ("solve", "fsolve", "zeros"):
-            return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval") + generic_math
+            return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval", "hidden_form") + generic_math
         if name in ("solve_trig", "trigsolve"):
-            return ("general", "bounded", "cast", "identity", "rform", "square_then_check")
+            return ("general", "bounded", "cast", "identity", "rform", "square_then_check", "sum_to_product", "hidden_factor")
         if name in ("trig_prove", "trig_transform", "trig_rewrite"):
-            return ("pythag", "double_angle", "compound_angle", "target")
+            return ("pythag", "double_angle", "compound_angle", "target", "hidden_identity")
         if name.startswith("trig") or name in ("sin", "cos", "tan", "sec", "cosec", "cot"):
             return ("sin_cos", "pythag", "double_angle", "compound_angle", "target") + calculus_math
         if name in ("domain", "range"):
-            return ("poly", "rational", "radical", "log", "trig", "interval") + calculus_math
+            return ("poly", "rational", "radical", "log", "trig", "interval", "hidden_identity") + calculus_math
         if name in ("binomial", "normal", "poisson", "correlation", "covariance", "regression", "mean", "median", "quartiles", "stddev"):
             return ("summary", "regression", "binomial", "normal", "poisson", "edge")
         if name in ("det", "inverse", "rank", "rref", "eigenvals", "eigenvects", "dot", "cross"):
@@ -4080,6 +4080,17 @@ class CASIOApp(App):
             "div": ["(x^2+1)/(x-1)", "x^4/(x^2+1)", "(x^3+1)/(x+1)"],
             "weierstrass": ["1/(2+cos(x))", "1/(1+sin(x)+cos(x))"],
             "symmetry": ["sin(x)/(sin(x)+cos(x))", "log(sin(x))"],
+            "manip_trig": [
+                "(tan(x)^2+1)/(sec(x)^2)",
+                "(1-cos(2*x))/(sin(x))",
+                "((sin(x)+cos(x))^2-2*sin(x)*cos(x))/(x+1)",
+                "(cosec(x)^2-cot(x)^2)*exp(x)",
+            ],
+            "manip_rational": [
+                "((x^2-1)/(x-1))/(x+1)",
+                "(x^4-1)/(x^2-1)",
+                "(x^2+2*x+1)/(x+1)",
+            ],
             "linear": ["2*x+3=11", "5*x-7=3*x+9"],
             "quad": ["x^2-5*x+6=0", "2*x^2+3*x-2=0"],
             "factor": ["x^3-6*x^2+11*x-6=0", "sin(x)^2-sin(x)=0"],
@@ -4093,6 +4104,9 @@ class CASIOApp(App):
             "identity": ["sin(x)^2+cos(x)^2", "(1-tan(x)^2)/(1+tan(x)^2)"],
             "rform": ["3*cos(x)+4*sin(x)=2", "5*sin(x)-12*cos(x)=6"],
             "square_then_check": ["sqrt(1-cos(x))=sin(x)", "sin(x)+cos(x)=sqrt(2)"],
+            "sum_to_product": ["sin(3*x)-sin(x)=0", "cos(3*x)-cos(x)=0", "sin(5*x)-sin(x)=0"],
+            "hidden_factor": ["2*sin(x)^2=1+cos(x)", "cos(2*x)+sin(2*x)=1"],
+            "hidden_form": ["(x+1)^2-(x-1)^2=8", "(x^2-1)/(x-1)=4", "2^(2*x)-5*2^x+4=0"],
             "sin_cos": ["tan(x)+cot(x)", "sec(x)^2-tan(x)^2"],
             "pythag": ["sin(x)^2+cos(x)^2", "1+tan(x)^2"],
             "double_angle": ["sin(x)^4", "cos(4*x)"],
@@ -4168,6 +4182,7 @@ class CASIOApp(App):
             "log": ["log(1-x^2)", "ln(abs(x)+2)", "log(2,x+3)"],
             "trig": ["ln(sin(x))", "1/(2-cos(3*x))", "sqrt(cos(sin(x)))"],
             "interval": ["sin(x)^2-4*sin(x)+3", "x/(1+x^2)", "(x^2-x+1)/(x^2+x+1)"],
+            "hidden_identity": ["sec(2*x)^2-tan(2*x)^2", "cosec(2*x+pi/6)^2-cot(2*x+pi/6)^2", "(sin(x)+cos(x))^2-2*sin(x)*cos(x)"],
         }
         return rng.choice(pool.get(shape, ["x^2+1"]))
 
@@ -4201,7 +4216,7 @@ class CASIOApp(App):
         if "method" in p:
             if shape.startswith("math_"):
                 return "auto"
-            return shape if shape in ("direct", "sub", "parts", "trig", "pf", "div", "di", "weierstrass", "symmetry") else "auto"
+            return shape if shape in ("direct", "reverse_chain", "sub", "parts", "trig", "pf", "div", "di", "weierstrass", "symmetry") else "auto"
         if p in ("lo", "a"):
             return "0" if shape in ("bounded", "interval", "trig") else "1"
         if p in ("hi", "b"):
@@ -4250,13 +4265,15 @@ class CASIOApp(App):
             method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") else "auto"
             return "int", "{0},method={1}".format(expr, method)
         if name in ("solve", "fsolve", "zeros"):
-            method = "auto" if shape.startswith("math_") else (shape if shape != "quad" else "quad_formula")
+            solve_methods = {"linear", "factor", "quad_formula", "complete_square", "substitution", "clear_denoms", "log_exp", "numeric", "interval"}
+            method = "auto" if shape.startswith("math_") else ("quad_formula" if shape == "quad" else (shape if shape in solve_methods else "auto"))
             expr = self.random_catalogue_expr(rng, shape)
             if shape.startswith("math_") and "=" not in expr:
                 expr = "{0}=0".format(expr)
             return "alg", "{0},method={1}".format(expr, method)
         if name in ("solve_trig", "trigsolve"):
-            method = "auto" if shape.startswith("math_") else shape
+            trig_methods = {"general", "bounded", "cast", "identity", "rform", "square_then_check"}
+            method = "auto" if shape.startswith("math_") or shape not in trig_methods else shape
             expr = self.random_catalogue_expr(rng, shape)
             if "=" in expr:
                 return "trig", "{0},x,0,2*pi,8,method={1}".format(expr, method)
@@ -4271,7 +4288,7 @@ class CASIOApp(App):
             lhs, rhs = pairs.get(shape, pairs["pythag"])
             return "trig", "{0},target={1},method=auto".format(lhs, rhs)
         if name.startswith("trig") or name in ("sin", "cos", "tan"):
-            method = "auto" if shape.startswith("math_") else shape
+            method = "auto" if shape.startswith("math_") or shape in ("hidden_identity",) else shape
             return "trig", "{0},method={1}".format(self.random_catalogue_expr(rng, shape), method)
         if name in ("complete_square", "factor", "expand", "partfrac", "collect"):
             method = "auto" if shape.startswith("math_") else ("complete_square" if name == "complete_square" else ("pf" if name == "partfrac" else name))
@@ -6564,7 +6581,16 @@ class CASIOApp(App):
     def random_trig_rearrange_case(self, rng, difficulty, index):
         # Solve cases that require identities / heavy rearrangement to land in a
         # standard solve route (cross-multiply, convert tan(2x), etc).
-        mode = rng.choice(["tan2_as_sin_cos", "tan_diff_as_fraction", "pythagorean_rewrite", "sum_to_product"])
+        mode = rng.choice([
+            "tan2_as_sin_cos",
+            "tan_diff_as_fraction",
+            "pythagorean_rewrite",
+            "sum_to_product",
+            "sin_same_fn_diff",
+            "cos_same_fn_diff",
+            "sin_cos_square_reduce",
+            "sec_tan_cancel",
+        ])
         if mode == "tan2_as_sin_cos":
             # tan(2x)=tan(x) but written with sin/cos forms.
             eq = "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x)"
@@ -6578,6 +6604,14 @@ class CASIOApp(App):
         elif mode == "pythagorean_rewrite":
             # Force using sin^2+cos^2=1 somewhere.
             cli_input = trig_prove_cli("1-cos(2*x)", "2*sin(x)^2", "1")
+        elif mode == "sin_same_fn_diff":
+            cli_input = "3\nsin(3*x)-sin(x)=0,x,0,2*pi\n"
+        elif mode == "cos_same_fn_diff":
+            cli_input = "3\ncos(3*x)-cos(x)=0,x,0,2*pi\n"
+        elif mode == "sin_cos_square_reduce":
+            cli_input = trig_prove_cli("(sin(x)+cos(x))^2-2*sin(x)*cos(x)", "1")
+        elif mode == "sec_tan_cancel":
+            cli_input = trig_prove_cli("sec(2*x+1)^2-tan(2*x+1)^2", "1")
         else:
             cli_input = trig_prove_cli("cos(x)+cos(3*x)", "2*cos(2*x)*cos(x)", "1")
         label = f"Trig rearrange {index}: {mode}"
@@ -7247,6 +7281,13 @@ class CASIOApp(App):
             "1/(5*x+7)",
             "(3*x^2-2*x+2)/x",
             "(3*x^2+1)/(x^3+x+7)",
+            "(tan(x)^2+1)/(sec(x)^2)",
+            "(sec(x)^2-tan(x)^2)/(x+1)",
+            "(cosec(x)^2-cot(x)^2)*exp(x)",
+            "(1-cos(2*x))/(sin(x))",
+            "(1+cos(2*x))/(cos(x))",
+            "((sin(x)+cos(x))^2-2*sin(x)*cos(x))/(x+1)",
+            "(sin(x)^2+cos(x)^2)/(x^2+1)",
             "tan(x)",
             "sec(x)",
             "cosec(x)",
@@ -8395,6 +8436,16 @@ class CASIOApp(App):
                 "algebra_domain_range_interval",
             )
 
+            range_identity_cases = [
+                ("10\nsec(2*x)^2-tan(2*x)^2\n", "Range: sec²-tan² identity", "answer: y = 1"),
+                ("10\ncosec(2*x+pi/6)^2-cot(2*x+pi/6)^2\n", "Range: cosec²-cot² identity", "answer: y = 1"),
+                ("10\n(sin(x)+cos(x))^2-2*sin(x)*cos(x)\n", "Range: hidden sin/cos square identity", "answer: y = 1"),
+            ]
+            for inp, label, must in range_identity_cases:
+                out, _ = self.run_cli("algebraProgram.py", inp)
+                text = normalized_text(out)
+                self.add_test(label, must in text and "inspect graph" not in text, out, p, inp, "domain/range identity reduction", "algebra_domain_range_identity")
+
             solve_interval_cases = [
                 (
                     "6\nx^2-4=0, x, 0, 3\n",
@@ -8763,6 +8814,8 @@ class CASIOApp(App):
                 ("3\nsin(x+30)=1/2,x,0,2*pi\n", "Regression: mixed degree angle with radian interval"),
                 ("3\ntan(x)^2=1,x,0,360\n", "Regression: squared tangent solve"),
                 ("3\nsin(2*x)=cos(x),x,0,360\n", "Regression: double-angle solve"),
+                ("3\nsin(3*x)-sin(x)=0,x,0,2*pi\n", "Regression: same-function sine difference solve"),
+                ("3\ncos(3*x)-cos(x)=0,x,0,2*pi\n", "Regression: same-function cosine difference solve"),
             ]
             for inp, label in mixed_angle_cases:
                 out, _ = self.run_cli("trigProgram.py", inp)
@@ -9225,6 +9278,27 @@ class CASIOApp(App):
                     "(x*tan(x))/(tan(x)+sec(x))",
                     ("sec(x) - tan(x)", "log(abs(sin(x) + 1))"),
                     "integrate_trig_conjugate_ratio",
+                ),
+                (
+                    "1\n(tan(x)^2+1)/(sec(x)^2)\n1\n",
+                    "Regression: Pythagorean trig quotient reduces to constant",
+                    "(tan(x)^2+1)/(sec(x)^2)",
+                    ("x + c",),
+                    "integrate_trig_identity_quotient",
+                ),
+                (
+                    "1\n(1-cos(2*x))/(sin(x))\n1\n",
+                    "Regression: double-angle reduction before integration",
+                    "(1-cos(2*x))/(sin(x))",
+                    ("-2*cos(x)",),
+                    "integrate_double_angle_reduction",
+                ),
+                (
+                    "1\n((sin(x)+cos(x))^2-2*sin(x)*cos(x))/(x+1)\n1\n",
+                    "Regression: expanded trig square reduces before log rule",
+                    "((sin(x)+cos(x))^2-2*sin(x)*cos(x))/(x+1)",
+                    ("log(abs(x + 1))",),
+                    "integrate_trig_square_reduction",
                 ),
             ]
             for inp2, label2, expr2, required2, feature2 in disguised_solvable_cases:

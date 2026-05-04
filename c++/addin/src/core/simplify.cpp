@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -31,6 +32,38 @@ static bool same_atom(Node const &a, Node const &b)
     if(a.kind == NodeKind::Sym) return a.text == b.text;
     if(a.kind == NodeKind::Const) return a.ckind == b.ckind;
     return false;
+}
+
+static bool same_tree(Arena &a, NodeId lhs, NodeId rhs)
+{
+    Node const &L = a.get(lhs);
+    Node const &R = a.get(rhs);
+    if(L.kind != R.kind) return false;
+    switch(L.kind) {
+    case NodeKind::Num:
+    case NodeKind::Sym:
+    case NodeKind::Const:
+        return same_atom(L, R);
+    case NodeKind::Fn:
+        return L.fkind == R.fkind && same_tree(a, L.a, R.a);
+    case NodeKind::Pow:
+    case NodeKind::Div:
+        return same_tree(a, L.a, R.a) && same_tree(a, L.b, R.b);
+    case NodeKind::Add:
+    case NodeKind::Mul:
+        if(L.kids.size() != R.kids.size()) return false;
+        for(std::size_t i = 0; i < L.kids.size(); ++i)
+            if(!same_tree(a, L.kids[i], R.kids[i])) return false;
+        return true;
+    }
+    return false;
+}
+
+static bool rational_eq(Rational const &a, std::int64_t n, std::int64_t d = 1)
+{
+    Rational b{n, d};
+    b.normalize();
+    return a.num == b.num && a.den == b.den;
 }
 
 static Rational addq(Rational a, Rational b)
@@ -66,6 +99,153 @@ static Rational negq(Rational a)
 
 static NodeId make_add(Arena &a, std::vector<NodeId> parts);
 static NodeId make_mul(Arena &a, std::vector<NodeId> parts);
+
+static std::optional<NodeId> as_half_angle(Arena &a, NodeId arg)
+{
+    Node const &x = a.get(arg);
+    if(x.kind != NodeKind::Mul || x.kids.empty()) return std::nullopt;
+    Node const &first = a.get(x.kids[0]);
+    if(first.kind != NodeKind::Num || !rational_eq(first.num, 2)) return std::nullopt;
+    std::vector<NodeId> rest;
+    for(std::size_t i = 1; i < x.kids.size(); ++i) rest.push_back(x.kids[i]);
+    if(rest.empty()) return std::nullopt;
+    if(rest.size() == 1) return rest[0];
+    return a.mul(std::move(rest));
+}
+
+static bool is_fn_power(Arena &a, NodeId id, FnKind fk, std::int64_t pow, NodeId *arg_out = nullptr)
+{
+    Node const &n = a.get(id);
+    if(n.kind != NodeKind::Pow) return false;
+    Node const &base = a.get(n.a);
+    Node const &expn = a.get(n.b);
+    if(base.kind != NodeKind::Fn || base.fkind != fk) return false;
+    if(expn.kind != NodeKind::Num || expn.num.den != 1 || expn.num.num != pow) return false;
+    if(arg_out) *arg_out = base.a;
+    return true;
+}
+
+static bool is_fn_node(Arena &a, NodeId id, FnKind fk, NodeId *arg_out = nullptr)
+{
+    Node const &n = a.get(id);
+    if(n.kind != NodeKind::Fn || n.fkind != fk) return false;
+    if(arg_out) *arg_out = n.a;
+    return true;
+}
+
+struct ScaledTerm
+{
+    Rational coeff{1, 1};
+    NodeId body = 0;
+    bool constant = false;
+};
+
+static ScaledTerm split_scaled(Arena &a, NodeId id)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Num) return ScaledTerm{n.num, 0, true};
+    if(n.kind == NodeKind::Mul && !n.kids.empty()) {
+        Node const &first = a.get(n.kids[0]);
+        if(first.kind == NodeKind::Num) {
+            std::vector<NodeId> rest;
+            for(std::size_t i = 1; i < n.kids.size(); ++i) rest.push_back(n.kids[i]);
+            if(rest.empty()) return ScaledTerm{first.num, 0, true};
+            NodeId body = rest.size() == 1 ? rest[0] : a.mul(std::move(rest));
+            return ScaledTerm{first.num, body, false};
+        }
+    }
+    return ScaledTerm{Rational{1, 1}, id, false};
+}
+
+static std::optional<NodeId> try_trig_sum_identity(Arena &a, std::vector<NodeId> const &parts)
+{
+    if(parts.size() != 2) return std::nullopt;
+    ScaledTerm t0 = split_scaled(a, parts[0]);
+    ScaledTerm t1 = split_scaled(a, parts[1]);
+
+    auto fn_pow = [&](ScaledTerm const &t, FnKind fk, NodeId &arg) {
+        return !t.constant && rational_eq(t.coeff, 1) && is_fn_power(a, t.body, fk, 2, &arg);
+    };
+    auto neg_fn_pow = [&](ScaledTerm const &t, FnKind fk, NodeId &arg) {
+        return !t.constant && rational_eq(t.coeff, -1) && is_fn_power(a, t.body, fk, 2, &arg);
+    };
+    auto same_arg = [&](NodeId lhs, NodeId rhs) { return same_tree(a, lhs, rhs); };
+
+    NodeId a0 = 0, a1 = 0;
+    if(fn_pow(t0, FnKind::Sin, a0) && fn_pow(t1, FnKind::Cos, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(fn_pow(t0, FnKind::Cos, a0) && fn_pow(t1, FnKind::Sin, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(fn_pow(t0, FnKind::Sec, a0) && neg_fn_pow(t1, FnKind::Tan, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(fn_pow(t1, FnKind::Sec, a0) && neg_fn_pow(t0, FnKind::Tan, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(fn_pow(t0, FnKind::Cosec, a0) && neg_fn_pow(t1, FnKind::Cot, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(fn_pow(t1, FnKind::Cosec, a0) && neg_fn_pow(t0, FnKind::Cot, a1) && same_arg(a0, a1)) return num(a, 1);
+
+    auto one_plus_pow = [&](ScaledTerm const &one, ScaledTerm const &term, FnKind fk, FnKind out_fk) -> std::optional<NodeId> {
+        NodeId arg = 0;
+        if(!one.constant || !rational_eq(one.coeff, 1) || !fn_pow(term, fk, arg)) return std::nullopt;
+        return a.pow(a.fn(out_fk, arg), num(a, 2));
+    };
+    if(auto r = one_plus_pow(t0, t1, FnKind::Tan, FnKind::Sec)) return r;
+    if(auto r = one_plus_pow(t1, t0, FnKind::Tan, FnKind::Sec)) return r;
+    if(auto r = one_plus_pow(t0, t1, FnKind::Cot, FnKind::Cosec)) return r;
+    if(auto r = one_plus_pow(t1, t0, FnKind::Cot, FnKind::Cosec)) return r;
+
+    auto one_plus_minus_cos = [&](ScaledTerm const &one, ScaledTerm const &term) -> std::optional<NodeId> {
+        if(!one.constant || !rational_eq(one.coeff, 1) || term.constant) return std::nullopt;
+        Node const &body = a.get(term.body);
+        if(body.kind != NodeKind::Fn || body.fkind != FnKind::Cos) return std::nullopt;
+        auto half = as_half_angle(a, body.a);
+        if(!half) return std::nullopt;
+        if(rational_eq(term.coeff, -1)) {
+            return a.mul({num(a, 2), a.pow(a.fn(FnKind::Sin, *half), num(a, 2))});
+        }
+        if(rational_eq(term.coeff, 1)) {
+            return a.mul({num(a, 2), a.pow(a.fn(FnKind::Cos, *half), num(a, 2))});
+        }
+        return std::nullopt;
+    };
+    if(auto r = one_plus_minus_cos(t0, t1)) return r;
+    if(auto r = one_plus_minus_cos(t1, t0)) return r;
+
+    auto sin_cos_sum_square = [&](ScaledTerm const &t, NodeId &arg) {
+        if(t.constant || !rational_eq(t.coeff, 1)) return false;
+        Node const &p = a.get(t.body);
+        if(p.kind != NodeKind::Pow) return false;
+        Node const &e = a.get(p.b);
+        if(e.kind != NodeKind::Num || !rational_eq(e.num, 2)) return false;
+        Node const &base = a.get(p.a);
+        if(base.kind != NodeKind::Add || base.kids.size() != 2) return false;
+        NodeId sarg = 0, carg = 0;
+        if(is_fn_node(a, base.kids[0], FnKind::Sin, &sarg) && is_fn_node(a, base.kids[1], FnKind::Cos, &carg) &&
+           same_arg(sarg, carg)) {
+            arg = sarg;
+            return true;
+        }
+        if(is_fn_node(a, base.kids[1], FnKind::Sin, &sarg) && is_fn_node(a, base.kids[0], FnKind::Cos, &carg) &&
+           same_arg(sarg, carg)) {
+            arg = sarg;
+            return true;
+        }
+        return false;
+    };
+    auto neg_two_sin_cos = [&](ScaledTerm const &t, NodeId &arg) {
+        if(t.constant || !rational_eq(t.coeff, -2)) return false;
+        Node const &m = a.get(t.body);
+        if(m.kind != NodeKind::Mul || m.kids.size() != 2) return false;
+        NodeId sarg = 0, carg = 0;
+        if(is_fn_node(a, m.kids[0], FnKind::Sin, &sarg) && is_fn_node(a, m.kids[1], FnKind::Cos, &carg) && same_arg(sarg, carg)) {
+            arg = sarg;
+            return true;
+        }
+        if(is_fn_node(a, m.kids[1], FnKind::Sin, &sarg) && is_fn_node(a, m.kids[0], FnKind::Cos, &carg) && same_arg(sarg, carg)) {
+            arg = sarg;
+            return true;
+        }
+        return false;
+    };
+    if(sin_cos_sum_square(t0, a0) && neg_two_sin_cos(t1, a1) && same_arg(a0, a1)) return num(a, 1);
+    if(sin_cos_sum_square(t1, a0) && neg_two_sin_cos(t0, a1) && same_arg(a0, a1)) return num(a, 1);
+    return std::nullopt;
+}
 
 static NodeId simplify_fn(Arena &a, FnKind fk, NodeId arg)
 {
@@ -162,6 +342,36 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     }
     // Cancel simple common factors in (mul(...))/(mul(...)) or mul/atom.
     if(tn.kind == NodeKind::Mul) {
+        // Generic cancellation for structured factors: sin(x)^2/sin(x), f/f, etc.
+        if(!(bn.kind == NodeKind::Mul)) {
+            std::vector<NodeId> kept;
+            bool cancelled = false;
+            for(auto k : tn.kids) {
+                if(!cancelled && same_tree(a, k, b)) {
+                    cancelled = true;
+                    continue;
+                }
+                if(!cancelled) {
+                    Node const &nk = a.get(k);
+                    if(nk.kind == NodeKind::Pow && same_tree(a, nk.a, b)) {
+                        Node const &expn = a.get(nk.b);
+                        if(is_int_num(expn) && expn.num.num > 0) {
+                            Rational e = expn.num;
+                            e.num -= e.den;
+                            NodeId replacement = e.num == 0 ? num(a, 1) : a.pow(nk.a, num(a, e.num, e.den));
+                            kept.push_back(simplify(a, replacement));
+                            cancelled = true;
+                            continue;
+                        }
+                    }
+                }
+                kept.push_back(k);
+            }
+            if(cancelled) {
+                NodeId newt = kept.empty() ? num(a, 1) : (kept.size() == 1 ? kept[0] : a.mul(std::move(kept)));
+                return simplify(a, newt);
+            }
+        }
         // (a*b*...)/a -> b*...
         if(bn.kind == NodeKind::Sym || bn.kind == NodeKind::Num || bn.kind == NodeKind::Const) {
             std::vector<NodeId> kept;
@@ -235,6 +445,15 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
             }
         }
     }
+    if(tn.kind == NodeKind::Pow && same_tree(a, tn.a, b)) {
+        Node const &expn = a.get(tn.b);
+        if(is_int_num(expn) && expn.num.num > 0) {
+            Rational e = expn.num;
+            e.num -= e.den;
+            if(e.num == 0) return num(a, 1);
+            return simplify(a, a.pow(tn.a, num(a, e.num, e.den)));
+        }
+    }
     // Divide by a non-integer rational -> multiply by reciprocal (avoids ambiguous "…/1/2").
     // Keep division by integer constants as Div so formatting stays "x^3/3" instead of "1/3*x^3".
     if(is_num(bn) && bn.num.den != 1) {
@@ -273,6 +492,7 @@ static NodeId make_add(Arena &a, std::vector<NodeId> parts)
     }
     if(c.num != 0) out.push_back(num(a, c.num, c.den));
     if(out.empty()) return num(a, 0);
+    if(auto rewritten = try_trig_sum_identity(a, out)) return simplify(a, *rewritten);
     if(out.size() == 1) return out[0];
     return a.add(std::move(out));
 }
@@ -380,6 +600,50 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
                 filtered.push_back(id);
             }
             out.swap(filtered);
+        }
+    }
+
+    // Combine/cancel identical symbolic powers, e.g. sec(x)^2*sec(x)^-2 -> 1.
+    {
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            for(std::size_t i = 0; i < out.size() && !changed; ++i) {
+                Node const &ni = a.get(out[i]);
+                for(std::size_t j = i + 1; j < out.size(); ++j) {
+                    Node const &nj = a.get(out[j]);
+                    NodeId base_i = out[i];
+                    NodeId base_j = out[j];
+                    Rational exp_i{1, 1};
+                    Rational exp_j{1, 1};
+                    if(ni.kind == NodeKind::Pow) {
+                        Node const &ei = a.get(ni.b);
+                        if(ei.kind != NodeKind::Num) continue;
+                        base_i = ni.a;
+                        exp_i = ei.num;
+                    }
+                    if(nj.kind == NodeKind::Pow) {
+                        Node const &ej = a.get(nj.b);
+                        if(ej.kind != NodeKind::Num) continue;
+                        base_j = nj.a;
+                        exp_j = ej.num;
+                    }
+                    if(!same_tree(a, base_i, base_j)) continue;
+                    Rational sum = addq(exp_i, exp_j);
+                    out.erase(out.begin() + j);
+                    if(sum.num == 0) {
+                        out.erase(out.begin() + i);
+                    }
+                    else if(sum.num == sum.den) {
+                        out[i] = base_i;
+                    }
+                    else {
+                        out[i] = a.pow(base_i, num(a, sum.num, sum.den));
+                    }
+                    changed = true;
+                    break;
+                }
+            }
         }
     }
 

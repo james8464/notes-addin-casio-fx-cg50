@@ -21,11 +21,27 @@ graph TD
 
 ```mermaid
 graph TD
+  Raw["weird A-level form"] --> Simp["core/simplify.cpp"]
+  Simp --> Pyth["sin²+cos², sec²-tan², csc²-cot²"]
+  Simp --> Pow["same-base power cancel"]
+  Simp --> DA["1±cos(2u)"]
+  Simp --> Sq["(sin+cos)²-2sin cos"]
+  Pyth --> AlgR["range/domain"]
+  Pow --> IntR["integrate"]
+  DA --> IntR
+  Sq --> AlgR
+  Sq --> IntR
+  Same["sin(A)-sin(B)=0 / cos(A)-cos(B)=0"] --> TrigSolve["solve_same_fn_linear"]
+```
+
+```mermaid
+graph TD
   Rand["TUI random graph"] --> Weak["weak working node"]
   Weak --> Patch["source patch"]
   Patch --> Host["casio_host gate"]
   Host --> Full["run_tests_cpp.py"]
   Full --> Build["/compile"]
+  Rand --> Shapes["manip_trig/manip_rational/sum_to_product/hidden_identity"]
 
   Parse["parse.cpp"] --> Sign["FnKind::Sign"]
   Sign --> Fmt["format_expr/format_exam"]

@@ -467,6 +467,15 @@ static std::string choose_solve_var(Arena &a, NodeId n, std::string const &expli
     return vars.empty() ? "x" : vars.front();
 }
 
+static bool contains_symbol(Arena &a, NodeId n, std::string const &name)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, n, vars);
+    for(auto const &v : vars)
+        if(v == name) return true;
+    return false;
+}
+
 static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval)
 {
     Node const &n = a.get(id);
@@ -1270,7 +1279,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(pfx != std::string::npos) domain_answer = domain_answer.substr(pfx + 8);
             }
             std::string range_answer;
-            if(auto p = poly_of(arena, n, var); p && p->ok && !is_zero(p->a2)) {
+            if(!contains_symbol(arena, n, var)) {
+                range_answer = "y = " + format_expr(arena, n);
+                steps.push_back("Range: " + range_answer + ".");
+            }
+            else if(auto p = poly_of(arena, n, var); p && p->ok && !is_zero(p->a2)) {
                 Rational a = p->a2;
                 Rational b = p->a1;
                 Rational c = p->a0;
@@ -1282,6 +1295,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string range = "Range: " + range_answer;
                 if(!lo.empty() && !hi.empty()) range += " on the interval.";
                 steps.push_back(range);
+            }
+            else if(auto p = poly_of(arena, n, var); p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+                range_answer = "all real y";
+                steps.push_back("Range: " + range_answer + ".");
             }
             else {
                 Node const &rn = arena.get(n);

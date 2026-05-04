@@ -675,6 +675,49 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     );
 }
 
+static std::optional<std::vector<std::string>> solve_same_fn_residual(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add || r.kids.size() != 2) return std::nullopt;
+
+    struct SignedFn
+    {
+        int sign = 0;
+        NodeId fn = 0;
+    };
+    auto term = [&](NodeId id) -> std::optional<SignedFn> {
+        Node const &n = a.get(id);
+        if(n.kind == NodeKind::Fn) return SignedFn{1, id};
+        if(n.kind == NodeKind::Mul && n.kids.size() == 2) {
+            auto c0 = as_num(a, n.kids[0]);
+            Node const &f1 = a.get(n.kids[1]);
+            if(c0 && c0->num == -1 && c0->den == 1 && f1.kind == NodeKind::Fn) return SignedFn{-1, n.kids[1]};
+            auto c1 = as_num(a, n.kids[1]);
+            Node const &f0 = a.get(n.kids[0]);
+            if(c1 && c1->num == -1 && c1->den == 1 && f0.kind == NodeKind::Fn) return SignedFn{-1, n.kids[0]};
+        }
+        return std::nullopt;
+    };
+
+    auto a0 = term(r.kids[0]);
+    auto a1 = term(r.kids[1]);
+    if(!a0 || !a1 || a0->sign + a1->sign != 0) return std::nullopt;
+    Node const &f0 = a.get(a0->fn);
+    Node const &f1 = a.get(a1->fn);
+    if(f0.kind != NodeKind::Fn || f1.kind != NodeKind::Fn || f0.fkind != f1.fkind) return std::nullopt;
+    if(!(f0.fkind == FnKind::Sin || f0.fkind == FnKind::Cos || f0.fkind == FnKind::Tan)) return std::nullopt;
+    NodeId lhs = a0->sign > 0 ? a0->fn : a1->fn;
+    NodeId rhs = a0->sign > 0 ? a1->fn : a0->fn;
+    return solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad);
+}
+
 struct MixedTrigPoly
 {
     double c = 0.0;
@@ -1215,6 +1258,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto rel = solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad)) return *rel;
 
     NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
+    if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
     if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad)) return *mixed;
 
     auto iso = isolate(lhs, rhs);
