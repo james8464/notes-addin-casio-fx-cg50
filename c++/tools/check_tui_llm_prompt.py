@@ -19,10 +19,13 @@ def main() -> int:
     tui = TUI.read_text(errors="ignore")
     markers = [
         "Edexcel A-level/Further Maths examiner",
-        "what a student should write in an exam",
-        "NEEDS_REVIEW if the answer is correct but working is generic",
-        "Generic/meta lines are not valid working",
-        "big jumps are NEEDS_REVIEW",
+        "would get full method/accuracy marks",
+        "When working is NOT required",
+        "genuinely trivial tasks",
+        "When working IS required",
+        "No big jumps",
+        "Generic calculator/meta text is not valid working",
+        "Prefer Edexcel A-level/Further Maths methods",
     ]
     missing = [m for m in markers if m not in llm]
     if missing:
