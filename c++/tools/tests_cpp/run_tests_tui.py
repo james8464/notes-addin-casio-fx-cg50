@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# Run with: python3 run_tests.py tui
-# Then type /run to execute tests
+# Copy/paste in terminal to launch TUI:
+# cd /Users/james/Developer/Python/CASIO && python3 run_tests.py tui
+# Then type /run, /random, /llm 2, or /infinite.
 
 """
 CASIO Test Suite - Interactive TUI

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copy/paste in terminal to launch TUI:
+# cd /Users/james/Developer/Python/CASIO && python3 run_tests.py tui
+
 from __future__ import annotations
 
 import subprocess
