@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 CAT_EN = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 CAT_FR = ROOT / "c++/khicas/upstream/giac90_1addin/catalogfr.cpp"
+HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
 
 
 def fail(msg: str) -> int:
@@ -19,6 +20,7 @@ def main() -> int:
     main = MAIN.read_text(errors="ignore")
     cat_en = CAT_EN.read_text(errors="ignore")
     cat_fr = CAT_FR.read_text(errors="ignore")
+    help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
 
     required_main = [
         "cascas_rewrite_trig_basis_call",
@@ -43,8 +45,8 @@ def main() -> int:
         for fn in ("trigcos(expr/eq)", "trigsin(expr/eq)", "trigtan(expr/eq)"):
             if fn not in text:
                 return fail(f"{name} missing {fn}")
-        if "sin(x)^4+tan(x)^2=cos(x)^2" not in text:
-            return fail(f"{name} missing extreme trigcos example")
+    if "sin(x)^4+tan(x)^2=cos(x)^2" not in help_text:
+        return fail("external help missing extreme trigcos example")
 
     print("OK trig-basis policy")
     return 0

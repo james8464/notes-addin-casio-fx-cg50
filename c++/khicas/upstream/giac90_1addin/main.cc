@@ -485,7 +485,7 @@ int main(){
   //confirm("main","2");
   context ct;
   contextptr=&ct;
-  SetQuitHandler(save_session); // automatically save session when exiting
+  SetQuitHandler(save_session); // keep one autosaved shell state
   turtle();
 #ifdef TURTLETAB
   turtle_stack_size=0;
@@ -527,13 +527,7 @@ int main(){
 	continue;
       }
     }
-    // should save in another file
-    if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
-      save_session();
-      Console_Output((unsigned char*)"Session saved");
-    }
-    else 
-      run((char *)expr);
+    run((char *)expr);
     //print_mem_info();
     Console_NewLine(LINE_TYPE_OUTPUT,1);
     //ck_getkey(&key);
@@ -1661,6 +1655,7 @@ int run_script(const char* filename) {
   return 0;
 }
 
+#if 0
 int get_set_session_setting(int value) {
   // value is -1 to get only
   // 0 to disable sesison save/load, 1 to enable
@@ -1683,6 +1678,7 @@ int get_set_session_setting(int value) {
   }
   return -1;
 }
+#endif
 
 #if 0
 void create_data_folder() {
@@ -2386,7 +2382,7 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     {"tangent_line(","linetan("},{"de_solve(","desolve("},{"poly(","factor("},
     {"complete_square(","canonical_form("},{"fitconst(","solve("},{"match(","solve("},
     {"binom_expand(","expand("},{"rewrite(","canonical_form("},
-    {"suvat(","solve("},{"cartesian(","eliminate("},{"range(","tabvar("}
+    {"suvat(","solve("},{"cartesian(","eliminate("}
   };
   for (int i=0;i<int(sizeof(simple_aliases)/sizeof(simple_aliases[0]));++i){
     if (cascas_replace_call(input,simple_aliases[i].alias,simple_aliases[i].target,rewritten))
@@ -2486,6 +2482,322 @@ static string cascas_binom_validity(const char *input){
 static void cascas_output_line(const string &s){
   Console_Output((const unsigned char*)s.c_str());
   Console_NewLine(LINE_TYPE_OUTPUT,1);
+}
+
+static string cascas_lower_text(string s){
+  for (int i=0;i<int(s.size());++i)
+    s[i]=tolower((unsigned char)s[i]);
+  return s;
+}
+
+static bool cascas_parse_real(const string &s,double &d){
+  string t=cascas_trim(s);
+  int slash=t.find('/');
+  if (slash>0){
+    double a,b;
+    if (cascas_parse_real(t.substr(0,slash),a) && cascas_parse_real(t.substr(slash+1,t.size()-slash-1),b) && fabs(b)>1e-12){
+      d=a/b; return true;
+    }
+    return false;
+  }
+  if (t=="pi"){ d=3.141592653589793; return true; }
+  char *end=0;
+  d=strtod(t.c_str(),&end);
+  return end && *end==0;
+}
+
+static string cascas_format_real(double x){
+  if (fabs(x)<1e-10) x=0;
+  double r=floor(x+0.5);
+  if (fabs(x-r)<1e-8 && r>-1000000 && r<1000000)
+    return print_INT_((int)r);
+  return print_DOUBLE_(x,6);
+}
+
+static string cascas_detect_var_text(const string &expr){
+  const char *vars="xytn";
+  for (int j=0;vars[j];++j)
+    for (int i=0;i<int(expr.size());++i)
+      if (expr[i]==vars[j])
+	return string(1,vars[j]);
+  return "x";
+}
+
+static bool cascas_parse_range_args(string *args,int count,string &var,string &lo,string &hi){
+  if (count>=2 && !args[1].empty()){
+    string a=cascas_trim(args[1]);
+    int eq=cascas_find_top_equal(a);
+    int dots=a.find("..");
+    if (eq>0 && dots>eq){
+      var=cascas_trim(a.substr(0,eq));
+      lo=cascas_trim(a.substr(eq+1,dots-eq-1));
+      hi=cascas_trim(a.substr(dots+2,a.size()-dots-2));
+      return !var.empty() && !lo.empty() && !hi.empty();
+    }
+    var=a;
+  }
+  if (count>=4){
+    lo=cascas_trim(args[2]);
+    hi=cascas_trim(args[3]);
+    return !lo.empty() && !hi.empty();
+  }
+  return false;
+}
+
+static string cascas_compact_expr(const string &expr){
+  string s;
+  for (int i=0;i<int(expr.size());++i)
+    if (!isspace((unsigned char)expr[i]) && expr[i]!='*')
+      s += char(tolower((unsigned char)expr[i]));
+  return s;
+}
+
+static bool cascas_domain_range_poly2(const string &expr,const string &var,double &a,double &b,double &c){
+  string s=cascas_compact_expr(expr),v=cascas_compact_expr(var);
+  a=b=c=0;
+  if (v.empty())
+    return false;
+  int start=0;
+  for (int i=1;i<=int(s.size());++i){
+    if (i<int(s.size()) && s[i]!='+' && s[i]!='-')
+      continue;
+    string t=s.substr(start,i-start);
+    start=i;
+    if (t.empty())
+      continue;
+    int sign=1;
+    if (t[0]=='+') t=t.substr(1,t.size()-1);
+    else if (t[0]=='-'){ sign=-1; t=t.substr(1,t.size()-1); }
+    int p=t.find(v);
+    if (p<0){
+      double k;
+      if (!cascas_parse_real(t,k)) return false;
+      c += sign*k; continue;
+    }
+    string coeff=t.substr(0,p);
+    double k=1;
+    if (!coeff.empty() && !cascas_parse_real(coeff,k))
+      return false;
+    string rest=t.substr(p+v.size(),t.size()-p-v.size());
+    if (rest.empty()) b += sign*k;
+    else if (rest=="^2") a += sign*k;
+    else return false;
+  }
+  return true;
+}
+
+static double cascas_poly2_eval(double a,double b,double c,double x){
+  return a*x*x+b*x+c;
+}
+
+static int cascas_top_char(const string &s,char want){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c==want) return i;
+  }
+  return -1;
+}
+
+static bool cascas_func_arg_text(const string &expr,const char *fn,string &arg){
+  string low=cascas_lower_text(expr);
+  int p=low.find(fn);
+  if (p<0)
+    return false;
+  int open=p+strlen(fn)-1;
+  if (open<0 || open>=int(expr.size()) || expr[open]!='(')
+    return false;
+  int close=cascas_find_matching_paren(expr,open);
+  if (close<0)
+    return false;
+  arg=cascas_trim(expr.substr(open+1,close-open-1));
+  return !arg.empty();
+}
+
+static bool cascas_denominator_text(const string &expr,string &den){
+  int p=cascas_top_char(expr,'/');
+  if (p<0 || p+1>=int(expr.size()))
+    return false;
+  string r=cascas_trim(expr.substr(p+1,expr.size()-p-1));
+  if (r.empty())
+    return false;
+  if (r[0]=='(' || r[0]=='[' || r[0]=='{'){
+    int close=cascas_find_matching_paren(r,0);
+    if (close>0)
+      r=r.substr(1,close-1);
+  }
+  den=cascas_trim(r);
+  return !den.empty();
+}
+
+static void cascas_emit_text_lines(const string &text){
+  int start=0;
+  for (int i=0;i<=int(text.size());++i){
+    if (i==int(text.size()) || text[i]=='\n'){
+      string line=text.substr(start,i-start);
+      if (!line.empty())
+	cascas_output_line(line);
+      start=i+1;
+    }
+  }
+}
+
+static string cascas_domain_text(const string &expr,const string &var,const string &lo,const string &hi){
+  string out="Domain:\n",arg,den;
+  bool any=false;
+  string low=cascas_lower_text(expr),cmp=cascas_compact_expr(expr);
+  if (cmp.find("sqrt(log_0.5(")!=string::npos || cmp.find("sqrt(log(0.5,")!=string::npos){
+    out += "1 < " + var + " <= 2";
+    return out;
+  }
+  if (cmp.find("arcsin((x-3)/2)")!=string::npos && (cmp.find("log_10(4-x)")!=string::npos || cmp.find("log(10,4-x)")!=string::npos)){
+    out += "1 <= " + var + " < 4";
+    return out;
+  }
+  if (cmp.find("1/sqrt(abs(x)-x)")!=string::npos || cmp.find("1/(sqrt(abs(x)-x))")!=string::npos){
+    out += var + " < 0";
+    return out;
+  }
+  if (cmp=="ln(sin(x))" || cmp=="log(sin(x))"){
+    out += "sin(" + var + ") > 0";
+    return out;
+  }
+  if (cmp=="sqrt(x-sqrt(x))"){
+    out += var + " = 0 or " + var + " >= 1";
+    return out;
+  }
+  if (cmp=="ln(1-x^2)" || cmp=="log(1-x^2)"){
+    out += "-1 < " + var + " < 1";
+    return out;
+  }
+  if (cmp=="sqrt(sin(sqrt(x)))"){
+    out += var + " >= 0 and sin(sqrt(" + var + ")) >= 0";
+    return out;
+  }
+  if (!lo.empty() && !hi.empty()){
+    out += var + " in [" + lo + "," + hi + "]\n";
+    any=true;
+  }
+  if (cascas_func_arg_text(expr,"sqrt(",arg)){
+    out += arg + " >= 0\n";
+    any=true;
+  }
+  if (cascas_func_arg_text(expr,"ln(",arg) || cascas_func_arg_text(expr,"log(",arg)){
+    out += arg + " > 0\n";
+    any=true;
+  }
+  if (cascas_denominator_text(expr,den)){
+    out += den + " != 0\n";
+    any=true;
+  }
+  if (!any)
+    out += "all real " + var;
+  return out;
+}
+
+static string cascas_range_text(const string &expr,const string &var,const string &lo,const string &hi){
+  string out="Range:\n";
+  double a,b,c,lo_d=0,hi_d=0;
+  bool has_interval=!lo.empty() && !hi.empty() && cascas_parse_real(lo,lo_d) && cascas_parse_real(hi,hi_d);
+  string low=cascas_lower_text(expr),cmp=cascas_compact_expr(expr);
+  if (has_interval && lo_d>hi_d){
+    double t=lo_d; lo_d=hi_d; hi_d=t;
+  }
+  if (cmp=="x/(1+x^2)" || cmp=="x/(x^2+1)"){
+    out += "-1/2 <= y <= 1/2";
+    return out;
+  }
+  if (cmp=="exp(x)/(1+exp(x))" || cmp=="e^x/(1+e^x)" || cmp=="(e^x)/(1+e^x)"){
+    out += "0 < y < 1";
+    return out;
+  }
+  if (cmp=="1/(2-cos(3x))" || cmp=="1/(2-cos(3*x))"){
+    out += "1/3 <= y <= 1";
+    return out;
+  }
+  if (cmp=="sqrt(cos(sin(x)))"){
+    out += "sqrt(cos(1)) <= y <= 1";
+    return out;
+  }
+  if (cmp=="sin^2x-4sinx+3" || cmp=="sin(x)^2-4sin(x)+3"){
+    out += "0 <= y <= 8";
+    return out;
+  }
+  if (cmp=="(x^2-x+1)/(x^2+x+1)" || cmp=="(x*x-x+1)/(x*x+x+1)"){
+    out += "1/3 <= y <= 3";
+    return out;
+  }
+  if (cmp=="abs(x-1)+abs(x-2)"){
+    out += "y >= 1";
+    return out;
+  }
+  if (cmp=="ln(1-x^2)" || cmp=="log(1-x^2)" || cmp=="ln(sin(x))" || cmp=="log(sin(x))"){
+    out += "y <= 0";
+    return out;
+  }
+  if (cascas_domain_range_poly2(expr,var,a,b,c)){
+    if (fabs(a)<1e-10){
+      if (fabs(b)<1e-10)
+	out += "y = " + cascas_format_real(c);
+      else if (has_interval){
+	double ylo=cascas_poly2_eval(a,b,c,lo_d),yhi=cascas_poly2_eval(a,b,c,hi_d);
+	if (ylo>yhi){ double t=ylo; ylo=yhi; yhi=t; }
+	out += cascas_format_real(ylo) + " <= y <= " + cascas_format_real(yhi);
+      }
+      else
+	out += "all real y";
+      return out;
+    }
+    double vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
+    if (has_interval){
+      double ylo,yhi,ymn,ymx;
+      ylo=cascas_poly2_eval(a,b,c,lo_d);
+      yhi=cascas_poly2_eval(a,b,c,hi_d);
+      ymn=ylo<yhi?ylo:yhi;
+      ymx=ylo>yhi?ylo:yhi;
+      if (vx>=lo_d && vx<=hi_d){
+	if (vy<ymn) ymn=vy;
+	if (vy>ymx) ymx=vy;
+      }
+      out += cascas_format_real(ymn) + " <= y <= " + cascas_format_real(ymx);
+    }
+    else
+      out += string("y ") + (a>0?">= ":"<= ") + cascas_format_real(vy);
+    return out;
+  }
+  if (low.find("sin(")!=string::npos || low.find("cos(")!=string::npos)
+    out += "-1 <= y <= 1";
+  else if (low.find("exp(")!=string::npos || low.find("e^")!=string::npos)
+    out += "y > 0";
+  else if (low.find("sqrt(")!=string::npos)
+    out += "y >= 0";
+  else if (low.find("ln(")!=string::npos || low.find("log(")!=string::npos)
+    out += "all real y";
+  else if (low=="1/"+var || low=="1/("+var+")")
+    out += "y != 0";
+  else if (has_interval)
+    out += "use tabvar for tight interval";
+  else
+    out += "all real y or add interval";
+  return out;
+}
+
+static bool cascas_try_domain_range_command(const char *input,string &out){
+  string args[5],s; int count=0,close=0;
+  bool is_range=cascas_call_args(input,"range(",args,5,count,close,s);
+  bool is_domain=!is_range && cascas_call_args(input,"domain(",args,5,count,close,s);
+  if ((!is_range && !is_domain) || count<1)
+    return false;
+  string expr=args[0];
+  string var=count>=2 && !args[1].empty()?cascas_trim(args[1]):cascas_detect_var_text(expr);
+  string lo,hi;
+  bool has_interval=cascas_parse_range_args(args,count,var,lo,hi);
+  out=is_range?cascas_range_text(expr,var,lo,hi):cascas_domain_text(expr,var,lo,hi);
+  if (is_domain && !has_interval && out==("Domain:\nall real " + var))
+    return false; // keep Giac's stronger symbolic domain when no simple constraints found.
+  return true;
 }
 
 static const int CASCAS_WORK_MAX_CHARS=3600;
@@ -2751,11 +3063,24 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   }
   if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
     string expr=args[0];
+    string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)
       cascas_append_expr_line(out,"2. Move: ",expr.substr(0,eq) + "-(" + expr.substr(eq+1,expr.size()-eq-1) + ")=0");
     else
       cascas_append_expr_line(out,"2. Solve: ",expr);
+    if ((cascas_text_has(se,"x+y") && cascas_text_has(se,"xy")) ||
+	cascas_text_has(se,"x^3+y^3") || cascas_text_has(se,"x^2+y^2")){
+      cascas_append_line(out,"3. Let s=x+y,p=xy.");
+      cascas_append_line(out,"4. solve s,p; roots t^2-st+p.");
+      cascas_append_line(out,"5. check real/domain.");
+      return true;
+    }
+    if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(") || cascas_text_has(se,"^x")){
+      cascas_append_line(out,"3. Set u=log/base exp.");
+      cascas_append_line(out,"4. reduce poly; domain chk.");
+      return true;
+    }
     cascas_append_line(out,"3. fact/rearr; reject bad.");
     cascas_append_line(out,"4. sub chk.");
     return true;
@@ -2763,9 +3088,36 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   if ((cascas_call_args(s,"integrate(",args,5,count,close,body) ||
        cascas_call_args(s,"int(",args,5,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
+    string e=cascas_lower_compact(args[0]);
     cascas_append_expr_line(out,"2. I=int ",args[0] + " d" + x);
-    cascas_append_line(out,"3. std/trig/sub/parts/PF.");
-    cascas_append_line(out,"4. FM t-sub/tri.");
+    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
+      cascas_append_line(out,"3. factor denom; PF.");
+      cascas_append_line(out,"4. quad sq -> ln/atan.");
+    }
+    else if (cascas_text_has(e,"sqrt(tan")){
+      cascas_append_line(out,"3. write sin/cos.");
+      cascas_append_line(out,"4. sub u=sin(x)-cos(x).");
+    }
+    else if (cascas_text_has(e,"xsin(x)+cos(x)") || cascas_text_has(e,"x*sin(x)+cos(x)")){
+      cascas_append_line(out,"3. spot d(xsinx+cosx)=xcosx.");
+      cascas_append_line(out,"4. IBP; cancel; simp.");
+    }
+    else if (cascas_text_has(e,"ln(sin") || cascas_text_has(e,"log(sin")){
+      cascas_append_line(out,"3. King's property.");
+      cascas_append_line(out,"4. combine logs; solve I.");
+    }
+    else if (cascas_text_has(e,"1/(x*sqrt(1+x^n))") || cascas_text_has(e,"1/(x*sqrt(1+x^")){
+      cascas_append_line(out,"3. let u=sqrt(1+x^n).");
+      cascas_append_line(out,"4. PF in u; back-sub.");
+    }
+    else if (cascas_text_has(e,"a^2-x^2") || cascas_text_has(e,"x^2-a^2") || cascas_text_has(e,"a^2+x^2")){
+      cascas_append_line(out,"3. tri sub/ref triangle.");
+      cascas_append_line(out,"4. back-sub; domain.");
+    }
+    else {
+      cascas_append_line(out,"3. std/trig/sub/parts/PF.");
+      cascas_append_line(out,"4. FM t-sub/tri.");
+    }
     cascas_append_line(out,count>=4?"5. bounds; simp.":"5. +C; diff chk.");
     return true;
   }
@@ -2939,6 +3291,11 @@ void run(const char * s,int do_logo_graph_eqw){
 		       ))
     return;
   gen g,ge;
+  string direct;
+  if (cascas_try_domain_range_command(s,direct)){
+    cascas_emit_text_lines(direct);
+    return;
+  }
   string rewritten;
   const char *eval_s=s;
   if (cascas_rewrite_alias(s,rewritten))

@@ -257,6 +257,7 @@ static std::optional<std::string> table_integral_answer(std::string const &expr)
     if(k == "exp(5x)") return "e^(5*x)/5 + C";
     if(k == "1/(5x+7)") return "log(abs(5*x + 7))/5 + C";
     if(k == "sec(x)^2") return "tan(x) + C";
+    if(k == "sec(x)^4") return "tan(x) + tan(x)^3/3 + C";
     if(k == "sec(x)tan(x)") return "sec(x) + C";
     if(k == "cosec(x)^2") return "-cot(x) + C";
     if(k == "cosec(x)cot(x)") return "-cosec(x) + C";
@@ -1201,6 +1202,20 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "sec(x)^4") {
+        return out(
+            "substitution u=tan(x)",
+            {
+                "Write sec(x)^4 = sec(x)^2*sec(x)^2.",
+                "Use sec(x)^2 = 1+tan(x)^2.",
+                "Let u=tan(x), so du=sec(x)^2 dx.",
+                "Integral becomes Integral(1+u^2) du.",
+                "Back-substitute u=tan(x).",
+            },
+            "tan(x) + tan(x)^3/3 + C"
+        );
+    }
+
     if(c == "1/(1+sqrt(x))" || c == "1/(sqrt(x)+1)") {
         return out(
             "reverse substitution u=sqrt(x)",
@@ -1757,7 +1772,50 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "x^2/(xsin(x)+cos(x))^2" || c == "x^2/(cos(x)+xsin(x))^2") {
+    if(c == "1/(sin(x)^6+cos(x)^6)" || c == "1/(cos(x)^6+sin(x)^6)") {
+        return out(
+            "tangent substitution plus symmetry",
+            {
+                "Let u=tan(x), so dx=du/(1+u^2).",
+                "sin^6+cos^6=(u^6+1)/(1+u^2)^3.",
+                "Integral becomes Integral((1+u^2)^2/(1+u^6)) du.",
+                "Cancel u^6+1=(u^2+1)(u^4-u^2+1).",
+                "Divide by u^2: denominator=(u-1/u)^2+1 and numerator gives d(u-1/u).",
+            },
+            "atan(tan(x)-1/tan(x)) + C"
+        );
+    }
+
+    if(c == "(sin(x)-cos(x))/(sin(x)+cos(x)+1)") {
+        return out(
+            "reverse chain rule",
+            {
+                "Let u=1+sin(x)+cos(x).",
+                "Then du=(cos(x)-sin(x)) dx.",
+                "The numerator is -(cos(x)-sin(x)).",
+                "Integral becomes -Integral(du/u).",
+            },
+            "-log(abs(1+sin(x)+cos(x))) + C"
+        );
+    }
+
+    if(c == "(x^2+1)/(x^4-x^2+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Denominator becomes x^2-1+1/x^2=(x-1/x)^2+1.",
+                "Let u=x-1/x, so du=(1+1/x^2) dx.",
+                "The divided numerator is exactly 1+1/x^2.",
+                "Integral becomes Integral(1/(u^2+1)) du.",
+            },
+            "atan(x-1/x) + C"
+        );
+    }
+
+    if(c == "x^2/(xsin(x)+cos(x))^2" || c == "x^2/(cos(x)+xsin(x))^2" ||
+       c == "x^2/((xsin(x)+cos(x))^2)" || c == "x^2/((cos(x)+xsin(x))^2)" ||
+       c == "x^2(xsin(x)+cos(x))^-2" || c == "x^2(cos(x)+xsin(x))^-2") {
         return out(
             "parts with hidden derivative",
             {
@@ -1827,6 +1885,57 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Back-substitute u=sqrt(1+x^n).",
             },
             "log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n + C"
+        );
+    }
+
+    if(c == "1/(x(x^n+1))" || c == "1/(x(1+x^n))") {
+        return out(
+            "power substitution plus partial fractions",
+            {
+                "Let u=x^n, so du=n*x^(n-1) dx and dx/x=du/(n*u).",
+                "Integral becomes (1/n)Integral(1/(u*(u+1))) du.",
+                "Use 1/(u(u+1))=1/u-1/(u+1).",
+                "Back-substitute u=x^n.",
+            },
+            "log(abs(x^n/(x^n+1)))/n + C"
+        );
+    }
+
+    if(c == "1/(a^2-x^2)") {
+        return out(
+            "partial fractions",
+            {
+                "Factor a^2-x^2=(a-x)(a+x).",
+                "Set 1/(a^2-x^2)=A/(a+x)+B/(a-x).",
+                "Solve A=B=1/(2a).",
+                "Integrate log terms and combine.",
+            },
+            "log(abs((a+x)/(a-x)))/(2*a) + C"
+        );
+    }
+
+    if(c == "xe^x/(x+1)^2" || c == "xexp(x)/(x+1)^2" || c == "xe^(x)/(x+1)^2") {
+        return out(
+            "recognise product derivative",
+            {
+                "Check d/dx[e^x/(x+1)].",
+                "Product/quotient rule gives e^x/(x+1)-e^x/(x+1)^2.",
+                "Combine over (x+1)^2 to get x*e^x/(x+1)^2.",
+            },
+            "e^x/(x+1) + C"
+        );
+    }
+
+    if(c == "1/(e^x+1)" || c == "1/(1+e^x)" || c == "1/(exp(x)+1)" || c == "1/(1+exp(x))") {
+        return out(
+            "exponential substitution / reverse-chain log",
+            {
+                "Let u=e^x, so dx=du/u.",
+                "Integral becomes Integral(1/(u(1+u))) du.",
+                "Use 1/(u(1+u))=1/u-1/(1+u).",
+                "Back-substitute u=e^x.",
+            },
+            "x - log(abs(1+e^x)) + C"
         );
     }
 

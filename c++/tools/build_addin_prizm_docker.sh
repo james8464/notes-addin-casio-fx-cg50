@@ -10,6 +10,9 @@ KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
 OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
 ROOT_G3A="${ROOT_DIR}/CasioCAS.g3a"
+HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
+OUT_HELP="${OUT_DIR}/CASIOCAS.HLP"
+ROOT_HELP="${ROOT_DIR}/CASIOCAS.HLP"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
 ICON_SEL_PNG="${ROOT_DIR}/c++/prizm/assets/selected.png"
@@ -50,11 +53,21 @@ publish_root_g3a() {
   echo "Root output: ${ROOT_G3A}"
 }
 
+publish_help_pack() {
+  if [ -f "${HELP_SRC}" ]; then
+    cp "${HELP_SRC}" "${OUT_HELP}"
+    cp "${HELP_SRC}" "${ROOT_HELP}"
+    echo "Help pack: ${OUT_HELP}"
+    echo "Root help: ${ROOT_HELP}"
+  fi
+}
+
 echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
 rm -f "${ROOT_G3A}"
+rm -f "${ROOT_HELP}"
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 
@@ -86,8 +99,10 @@ if [ "${MODE}" = "khicas-source" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
+  publish_help_pack
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"
+  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (source-built): ${OUT_G3A}"
   exit 0
@@ -120,8 +135,10 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
+  publish_help_pack
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"
+  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
   exit 0
@@ -158,8 +175,10 @@ if [ -f "${OUT_G3A}" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_root_g3a
+  publish_help_pack
   ls -lh "${OUT_G3A}"
   ls -lh "${ROOT_G3A}"
+  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
   echo "Output (packaged): ${OUT_G3A}"
 else
   echo "Checking for .bin..."

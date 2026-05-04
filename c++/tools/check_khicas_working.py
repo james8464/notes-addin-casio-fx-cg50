@@ -44,6 +44,10 @@ REQUIRED_MARKERS = [
     "IBP:",
     "du=",
     "v=int(dv)",
+    "cascas_try_domain_range_command",
+    "cascas_domain_range_poly2",
+    "Range:",
+    "Domain:",
 ]
 
 CONSOLE_MARKERS = [
@@ -133,6 +137,8 @@ def main() -> int:
         return fail("working screen markers missing: " + ", ".join(missing))
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")
+    if '{"range(","tabvar("}' in main_cc:
+        return fail("range() still aliases to tabvar()")
 
     missing = [x for x in CONSOLE_MARKERS if x not in console_cc]
     if missing:

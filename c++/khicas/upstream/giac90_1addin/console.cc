@@ -2005,7 +2005,7 @@ int Console_GetKey(){
     if (key==KEY_CTRL_F6){
 #if 1
       Menu smallmenu;
-      smallmenu.numitems=11;
+      smallmenu.numitems=6;
       MenuItem smallmenuitems[smallmenu.numitems];
       
       smallmenu.items=smallmenuitems;
@@ -2013,95 +2013,31 @@ int Console_GetKey(){
       smallmenu.scrollbar=1;
       smallmenu.scrollout=1;
       //smallmenu.title = "KhiCAS";
-      smallmenuitems[0].text = (char *) (lang?"Enregistrer session":"Save session ");
-      smallmenuitems[1].text = (char *) (lang?"Enregistrer sous":"Save session as");
-      smallmenuitems[2].text = (char*) (lang?"Charger session":"Load session");
-      smallmenuitems[3].text = (char*)(lang?"Nouvelle session":"New session");
-      smallmenuitems[4].text = (char*)(lang?"Executer session":"Run session");
-      smallmenuitems[5].text = (char*)(lang?"Effacer historique":"Clear history");
-      smallmenuitems[6].text = (char*)(lang?"Editer matrice":"Matrix editor");
-      smallmenuitems[7].text = (char*)"Parameter";
-      smallmenuitems[8].text = (char*)"Config shift-SETUP";
-      smallmenuitems[9].text = (char *) (lang?"Raccourcis":"Shortcuts");
-      smallmenuitems[10].text = (char*) (lang?"A propos":"About");
+      smallmenuitems[0].text = (char*)(lang?"Effacer historique":"Clear history");
+      smallmenuitems[1].text = (char*)(lang?"Editer matrice":"Matrix editor");
+      smallmenuitems[2].text = (char*)"Parameter";
+      smallmenuitems[3].text = (char*)"Config shift-SETUP";
+      smallmenuitems[4].text = (char *) (lang?"Raccourcis":"Shortcuts");
+      smallmenuitems[5].text = (char*) (lang?"A propos":"About");
       // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
       while(1) {
         int sres = doMenu(&smallmenu);
         if(sres == MENU_RETURN_SELECTION) {
 	  const char * ptr=0;
-	  if (smallmenu.selection==1){
-	    if (strcmp(session_filename,"session")==0)
-	      smallmenu.selection=2;
-	    else {
-	      save(session_filename);
-	      break;
-	    }
-	  }
-	  if (smallmenu.selection==2){
-	    char buf[270];
-	    if (get_filename(buf,".xw")){
-	      save(buf);
-	      string fname(remove_path(giac::remove_extension(buf)));
-	      strcpy(session_filename,fname.c_str());
-	      if (edptr)
-		edptr->filename="\\\\fls0\\"+fname+".py";
-	    }
-	    break;
-	  }
-	  if (smallmenu.selection==3){
-	    char filename[MAX_FILENAME_SIZE+1];
-	    if (fileBrowser(filename, (char*)"*.xw", (char *)"Sessions")){
-	      if (console_changed==0 || strcmp(session_filename,"session")==0 || confirm(lang?"Session courante perdue?":"Current session will be lost",lang?"F1: annul, F6: ok":"F1: cancel, F6: ok")==KEY_CTRL_F6){
-		giac::_restart(giac::gen(giac::vecteur(0),giac::_SEQ__VECT),contextptr);
-		restore_session(filename);
-		clip_pasted=true;
-		strcpy(session_filename,remove_path(giac::remove_extension(filename)).c_str());
-		// reload_edptr(session_filename,edptr);
-	      }     
-	    }
-	    break;
-	  }
-	  if (0 && smallmenu.selection==3) {
-	    // FIXME: make a menu catalog?
-	    char buf[512];
-	    if (doCatalogMenu(buf,(char*)"CATALOG",0))
-	      return Console_Input((const unsigned char *)buf);
-	    break;
-          }
-          if (smallmenu.selection==4) {
-	    char filename[MAX_FILENAME_SIZE+1];
-	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, COLOR_WHITE);
-	    if (get_filename(filename,".xw")){
-	      if (console_changed==0 || strcmp(session_filename,"session")==0 || confirm(lang?"Session courante perdue?":"Current session will be lost",lang?"F1: annul, F6: ok":"F1: cancel, F6: ok")==KEY_CTRL_F6){
-		clip_pasted=true;
-		Console_Init();
-		Console_Clear_EditLine();
-		giac::_restart(giac::gen(giac::vecteur(0),giac::_SEQ__VECT),contextptr);
-		ustl::string s(remove_path(giac::remove_extension(filename)));
-		strcpy(session_filename,s.c_str());
-		reload_edptr(session_filename,edptr);
-	      }
-	    }  
-            break;
-          }
-	  if (smallmenu.selection==5) {
-	    run_session();
-            break;
-          }
-	  if(smallmenu.selection == 6) {
+	  if(smallmenu.selection == 1) {
 	    chk_restart();
 	    Console_Init();
 	    Console_Clear_EditLine();
 	    break;
           }
-          if (smallmenu.selection==7){
+          if (smallmenu.selection==2){
 	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
 	    if (ptr=input_matrix(false)) {
 	      return Console_Input((const unsigned char *)ptr);
 	    }
 	    break;
 	  }
-	  if (smallmenu.selection == 8){
+	  if (smallmenu.selection == 3){
 	    Menu paramenu;
 	    paramenu.numitems=6;
 	    MenuItem paramenuitems[paramenu.numitems];
@@ -2180,16 +2116,16 @@ int Console_GetKey(){
 	    }
 	    continue;
 	  }
-	  if (smallmenu.selection == 9){
+	  if (smallmenu.selection == 4){
 	    menu_setup();
 	    continue;
 	  }
-	  if(smallmenu.selection >= 10) {
+	  if(smallmenu.selection >= 5) {
 	    textArea text;
 	    text.editable=false;
 	    text.clipline=-1;
 	    text.title = smallmenuitems[smallmenu.selection-1].text;
-	    add(&text,smallmenu.selection==10?shortcuts_string:apropos_string);
+	    add(&text,smallmenu.selection==5?shortcuts_string:apropos_string);
 	    doTextArea(&text);
 	    continue;
           } 
@@ -2287,10 +2223,8 @@ int Console_GetKey(){
     if (key == KEY_CTRL_DEL)
       return Console_Backspace();
 
-    if (key == KEY_CHAR_CR && (Current_Line!=Last_Line || Cursor.x==0)){
-      run_session(0);
-      return 0;
-    }
+    if (key == KEY_CHAR_CR && (Current_Line!=Last_Line || Cursor.x==0))
+      return Console_NewLine(LINE_TYPE_INPUT, 1);
     if (key == KEY_CTRL_CLIP){
       copy_clipboard((const char *)Line[Current_Line].str);
     }

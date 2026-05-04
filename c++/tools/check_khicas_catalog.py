@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
+HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
 
 
 HIDDEN_MARKERS = [
@@ -39,7 +40,7 @@ OLD_FEATURE_ALIASES = [
     "compare(expr1,expr2)",
     "cartesian([x(t),y(t)],t)",
     "de_solve(equation,[bc])",
-    "domain(expr,[x])",
+    "domain(expr,[x,lo,hi])",
     "expand(expr)",
     "fitconst(equations,vars)",
     "implicit_diff(eq,[x,y])",
@@ -51,7 +52,7 @@ OLD_FEATURE_ALIASES = [
     "param_diff([x(t),y(t)],t)",
     "param_second_diff([x(t),y(t)],t)",
     "poly(expr,[x])",
-    "range(expr,[x])",
+    "range(expr,[x,lo,hi])",
     "rewrite(expr,target)",
     "second_diff(expr,[x])",
     "solve_trig(eq,[var,lo,hi,max,method])",
@@ -77,12 +78,13 @@ def fail(msg: str) -> int:
 def main() -> int:
     catalog = CATALOG.read_text(errors="ignore")
     main_cc = MAIN.read_text(errors="ignore")
+    help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
 
     if "catalog_hidden_category" not in catalog or "catalog_hidden_name" not in catalog:
         return fail("catalog hide filters missing")
-    if "catalog_param_hint" not in catalog or "Args:" not in catalog:
-        return fail("catalog parameter help missing")
-    if "method=auto" not in catalog:
+    if "Args:" not in help_text:
+        return fail("external catalog parameter help missing")
+    if "method=auto" not in catalog and "method=auto" not in help_text:
         return fail("method help missing")
     for unclear in ["Req/Opt", "PReq", "KhiCAS cmd.\\nReq", "Req:f,x"]:
         if unclear in catalog:
@@ -108,10 +110,14 @@ def main() -> int:
     if missing_aliases:
         return fail("old feature aliases missing: " + ", ".join(missing_aliases))
 
-    if "CAS command." not in catalog or "Ex F2:" not in catalog:
-        return fail("generic F6 help fallback missing")
-    if "catalog_param_hint(completeCat[index].name)" not in catalog:
-        return fail("F6 help parameter hints not wired")
+    if "Copy CASIOCAS.HLP to storage root." not in catalog:
+        return fail("compact F6 help fallback missing")
+    if "CASCAS_HELP_FILE" not in catalog or "catalog_read_help_record" not in catalog:
+        return fail("external F6 help loader missing")
+    if "@integrate(f,x,[a,b,method,u])" not in help_text or "F2:" not in help_text:
+        return fail("external help pack missing integrate examples")
+    if "Bfile_OpenFile_OS" not in catalog or "@END" not in catalog:
+        return fail("external help scanner not wired")
     for marker in [
         "catalog_make_calculus_insert",
         "Diff method",
