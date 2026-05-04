@@ -2511,8 +2511,11 @@ static bool cascas_append_forced_method(string &out,const char *s,const char *ev
       cascas_append_expr_line(out,"4. Let u=",u);
     cascas_append_line(out,"5. dx=du/u'; back-sub.");
   }
-  else if (method=="parts" || method=="di")
-    cascas_append_line(out,"4. uv-int(vdu); repeat/DI if apt.");
+  else if (method=="parts" || method=="di"){
+    if (u.size())
+      cascas_append_expr_line(out,"4. Choose u=",u);
+    cascas_append_line(out,"5. uv-int(vdu); repeat/DI if apt.");
+  }
   else if (method=="pf")
     cascas_append_line(out,"4. factor denom; PF.");
   else if (method=="chain" || method=="product" || method=="quotient")

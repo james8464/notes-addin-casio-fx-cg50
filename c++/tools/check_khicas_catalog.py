@@ -112,11 +112,23 @@ def main() -> int:
         return fail("generic F6 help fallback missing")
     if "catalog_param_hint(completeCat[index].name)" not in catalog:
         return fail("F6 help parameter hints not wired")
+    for marker in [
+        "catalog_make_calculus_insert",
+        "Diff method",
+        "Int method",
+        "u expr blank=auto",
+        "integrate(method=",
+        "diff(method=",
+    ]:
+        if marker not in catalog:
+            return fail("calculus method picker missing: " + marker)
 
     if "cascas_output_working" not in main_cc or "cascas_working_text" not in main_cc:
         return fail("working-line output hook missing")
     if "cascas_extract_method" not in main_cc or "cascas_strip_method_args" not in main_cc:
         return fail("method extraction hook missing")
+    if "Choose u=" not in main_cc:
+        return fail("parts/sub method u hint missing")
     if "Fallback:" not in main_cc or 'out += shown_answer;' not in main_cc:
         return fail("working-line output shape missing")
     if 'out += "Ans: "' in main_cc:
