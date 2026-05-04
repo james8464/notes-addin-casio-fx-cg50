@@ -840,11 +840,17 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
     if(x.kind == NodeKind::Fn) {
         if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
         if(x.fkind == FnKind::Log && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
+        if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a))
+            push_unique(out, "Domain: -1 <= " + format_expr(a, x.a) + " <= 1");
         if(x.fkind == FnKind::Tan || x.fkind == FnKind::Sec) {
+            std::string arg = format_expr(a, x.a);
             push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "cos", x.a)) + " != 0");
+            push_unique(out, "Domain: " + arg + " != pi/2 + n*pi");
         }
         if(x.fkind == FnKind::Cot || x.fkind == FnKind::Cosec) {
+            std::string arg = format_expr(a, x.a);
             push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "sin", x.a)) + " != 0");
+            push_unique(out, "Domain: " + arg + " != n*pi");
         }
         collect_domain(a, x.a, out);
         return;
@@ -899,8 +905,14 @@ static void collect_text_trig_domain(Arena &a, std::string const &raw, std::vect
         }
         if(close == std::string::npos || close <= open + 1) continue;
         std::string arg = fmt_arg(raw.substr(open + 1, close - open - 1));
-        if(name == "tan" || name == "sec") push_unique(out, "Domain: cos(" + arg + ") != 0");
-        else push_unique(out, "Domain: sin(" + arg + ") != 0");
+        if(name == "tan" || name == "sec") {
+            push_unique(out, "Domain: cos(" + arg + ") != 0");
+            push_unique(out, "Domain: " + arg + " != pi/2 + n*pi");
+        }
+        else {
+            push_unique(out, "Domain: sin(" + arg + ") != 0");
+            push_unique(out, "Domain: " + arg + " != n*pi");
+        }
         i = close;
     }
 }
@@ -927,6 +939,15 @@ static std::optional<std::string> reciprocal_trig_identity_step(std::string cons
     }
     if(has_sq && plus_one && key.find("tan(") != std::string::npos) {
         return "Use identity 1 + tan(u)^2 = sec(u)^2.";
+    }
+    if(has_sq && key.find('-') != std::string::npos &&
+       (key.find("cosec(") != std::string::npos || key.find("csc(") != std::string::npos) &&
+       key.find("cot(") != std::string::npos) {
+        return "Use identity cosec(u)^2 - cot(u)^2 = 1.";
+    }
+    if(has_sq && key.find('-') != std::string::npos &&
+       key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos) {
+        return "Use identity sec(u)^2 - tan(u)^2 = 1.";
     }
     return std::nullopt;
 }
@@ -1550,6 +1571,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(auto abs_min = abs_linear_plus_const_min(arena, n, var)) {
                     range_answer = "y >= " + format_expr(arena, arena.num(*abs_min));
                     steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Acos) {
+                    range_answer = "0 <= y <= pi";
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Asin) {
+                    range_answer = "-pi/2 <= y <= pi/2";
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Atan) {
+                    range_answer = "-pi/2 < y < pi/2";
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Sqrt) {

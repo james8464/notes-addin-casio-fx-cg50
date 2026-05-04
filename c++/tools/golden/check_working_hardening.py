@@ -124,6 +124,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)"],
         ["ERR:", "Unexpected token"],
     ),
+    (
+        "alg",
+        "cosec((x)^2-pi/4)^2-cot((x)^2-pi/4)^2,method=auto",
+        ["Use identity cosec(u)^2 - cot(u)^2 = 1", "Answer: 1"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "range(arccos((x-1)/3))",
+        ["Domain: -1 <= (x - 1)/3 <= 1", "Range: 0 <= y <= pi", "Answer: 0 <= y <= pi"],
+        ["inspect graph/transform", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "cosec((x+1)/3),method=auto",
+        ["Domain: sin((x + 1)/3) != 0", "Domain: (x + 1)/3 != n*pi", "Answer: cosec((x + 1)/3)"],
+        ["ERR:", "Unexpected token"],
+    ),
 ]
 
 
