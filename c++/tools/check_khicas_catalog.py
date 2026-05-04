@@ -91,6 +91,8 @@ def main() -> int:
             return fail("unclear help wording still present: " + unclear)
     if "selected_category=catids" not in catalog:
         return fail("category id mapping missing")
+    if 'ADD_CAT(CAT_CATEGORY_ALL,"All")' not in catalog:
+        return fail("All catalogue category missing")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
         return fail("category command hide filter not applied")
     if "catalog_hidden_name(text)" not in catalog:

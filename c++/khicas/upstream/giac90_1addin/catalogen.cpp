@@ -646,6 +646,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   int catids[CAT_CATEGORY_LOGO+1];
   int catcount=0;
 #define ADD_CAT(ID,TEXT) if (!catalog_hidden_category(ID)) { menuitems[catcount].text = (char*)TEXT; catids[catcount] = ID; ++catcount; }
+  ADD_CAT(CAT_CATEGORY_ALL,"All");
   ADD_CAT(CAT_CATEGORY_ALGEBRA,"Algebra");
   ADD_CAT(CAT_CATEGORY_LINALG,"Linear algebra");
   ADD_CAT(CAT_CATEGORY_CALCULUS,"Calculus");

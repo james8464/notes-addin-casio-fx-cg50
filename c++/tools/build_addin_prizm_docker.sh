@@ -10,9 +10,12 @@ KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
 OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
 ROOT_G3A="${ROOT_DIR}/CasioCAS.g3a"
+TRANSFER_DIR="${ROOT_DIR}/calculator_files"
+TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
 OUT_HELP="${OUT_DIR}/CASIOCAS.HLP"
 ROOT_HELP="${ROOT_DIR}/CASIOCAS.HLP"
+TRANSFER_HELP="${TRANSFER_DIR}/CASIOCAS.HLP"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
 ICON_SEL_PNG="${ROOT_DIR}/c++/prizm/assets/selected.png"
@@ -50,15 +53,21 @@ clean_khicas_source_outputs() {
 
 publish_root_g3a() {
   cp "${OUT_G3A}" "${ROOT_G3A}"
+  mkdir -p "${TRANSFER_DIR}"
+  cp "${OUT_G3A}" "${TRANSFER_G3A}"
   echo "Root output: ${ROOT_G3A}"
+  echo "Calculator file: ${TRANSFER_G3A}"
 }
 
 publish_help_pack() {
   if [ -f "${HELP_SRC}" ]; then
     cp "${HELP_SRC}" "${OUT_HELP}"
     cp "${HELP_SRC}" "${ROOT_HELP}"
+    mkdir -p "${TRANSFER_DIR}"
+    cp "${HELP_SRC}" "${TRANSFER_HELP}"
     echo "Help pack: ${OUT_HELP}"
     echo "Root help: ${ROOT_HELP}"
+    echo "Calculator help: ${TRANSFER_HELP}"
   fi
 }
 
@@ -68,6 +77,7 @@ rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
 rm -f "${ROOT_G3A}"
 rm -f "${ROOT_HELP}"
+rm -rf "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 
