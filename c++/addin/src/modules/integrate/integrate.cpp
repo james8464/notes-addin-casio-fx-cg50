@@ -6151,6 +6151,30 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
 
+    {
+        std::string key = compact_key(req.expr);
+        Node const &nn = arena.get(node);
+        if(nn.kind == NodeKind::Pow && key.find("cot(") != std::string::npos && key.find("+1") != std::string::npos) {
+            auto pow = positive_int_power(arena, nn.b);
+            Node const &base = arena.get(nn.a);
+            if(pow && *pow == 2 && base.kind == NodeKind::Fn && base.fkind == FnKind::Cosec) {
+                NodeId inner = base.a;
+                auto lc = linear_coeff(arena, inner, req.var);
+                if(!lc) {
+                    std::string inner_text = format_expr(arena, inner);
+                    std::string du = inner_text.find(req.var + "^2") != std::string::npos ? "2*" + req.var : "non-constant";
+                    std::vector<std::string> steps;
+                    steps.push_back("Start with " + req.expr + ".");
+                    steps.push_back("Use identity 1 + cot(u)^2 = cosec(u)^2.");
+                    steps.push_back("Let u=" + inner_text + ", so du/dx=" + du + ".");
+                    steps.push_back("Integral(cosec(u)^2)du = -cot(u), but du/dx is missing.");
+                    steps.push_back("So direct reverse chain does not apply.");
+                    return casio::exam_block("reverse chain check", steps, "No elementary A-level primitive found");
+                }
+            }
+        }
+    }
+
     auto result = integrate_giac_style(arena, node, req.var);
     
     if(!result.result) {

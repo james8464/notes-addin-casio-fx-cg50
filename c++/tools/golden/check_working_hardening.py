@@ -202,6 +202,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["cos(x)=0 => x=pi/2 + n*pi", "Answer: x = pi/2 + n*pi, integer n"],
         ["Answer (3 d.p.)", "-98.", "ERR:"],
     ),
+    (
+        "int",
+        "cot((x)^2-pi/4)^2+1,method=auto",
+        ["Use identity 1 + cot(u)^2 = cosec(u)^2", "du/dx=2*x", "direct reverse chain does not apply"],
+        ["Use the general integration route", "Answer: int", "ERR:"],
+    ),
 ]
 
 
