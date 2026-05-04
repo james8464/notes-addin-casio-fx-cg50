@@ -3250,12 +3250,35 @@ static string cascas_working_text(const char *input,const char *eval_input,const
   return out.out;
 }
 
+static bool cascas_old_python_scope_working_call(const char *s){
+  if (!s || !*s)
+    return false;
+  // Only student-solution features get exam working. Core KhiCAS tools stay answer-only.
+  static const char *calls[]={
+    "diff(","derive(","diff_by(","normal_diff(","second_diff(",
+    "implicit_diff(","param_diff(","param_second_diff(","param_area(",
+    "integrate(","int(","integrate_by(","int_by(",
+    "solve(","solve_by(","solve_trig(","solve_trig_by(",
+    "trig_prove(","trig_rewrite(","trig_transform(",
+    "trigcos(","trigsin(","trigtan(",
+    "domain(","range(","compare(","xform(","transform(","rewrite(",
+    "match(","coeff_match(","fitconst(","complete_square(",
+    "partfrac(","propfrac(","binom_expand(","binom_coeff(",
+    "de_solve(","suvat(","tangent_line(",0
+  };
+  for (int i=0;calls[i];++i){
+    if (cascas_startswith(s,calls[i]))
+      return true;
+  }
+  return false;
+}
+
 static bool cascas_show_working_for(const char *s,const string &answer){
   if (!s || !*s)
     return false;
   if (answer=="Graphic object")
     return false;
-  return true;
+  return cascas_old_python_scope_working_call(s);
 }
 
 static void cascas_output_working(const char *input,const char *eval_input,const string &answer){

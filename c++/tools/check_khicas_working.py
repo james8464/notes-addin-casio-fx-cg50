@@ -34,6 +34,7 @@ REQUIRED_MARKERS = [
     "Use real branch.",
     "CASCAS_WORK_MAX_CHARS",
     "cascas_working_sink",
+    "cascas_old_python_scope_working_call",
     "cascas_append_guard_lines",
     "No A-level elementary form.",
     "Exclude poles.",
@@ -138,6 +139,15 @@ def main() -> int:
         return fail("final answer still has Ans prefix")
     if '{"range(","tabvar("}' in main_cc:
         return fail("range() still aliases to tabvar()")
+    try:
+        policy = main_cc.split("static bool cascas_old_python_scope_working_call", 1)[1]
+        policy = policy.split("static bool cascas_show_working_for", 1)[0]
+    except IndexError:
+        return fail("working allowlist policy missing")
+    forbidden_policy = ['"texpand("', '"tcollect("', '"tlin("']
+    leaked = [x.strip('"') for x in forbidden_policy if x in policy]
+    if leaked:
+        return fail("KhiCAS-native trig transforms in working allowlist: " + ", ".join(leaked))
 
     missing = [x for x in CONSOLE_MARKERS if x not in console_cc]
     if missing:
