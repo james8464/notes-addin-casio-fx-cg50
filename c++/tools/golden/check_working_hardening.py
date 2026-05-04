@@ -138,6 +138,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "asin(sin(2*x+pi/6)),method=auto",
+        ["asin(sin(u))=u only for -pi/2 <= u <= pi/2", "branch", "Answer: asin(sin(2*x + pi/6))"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "atan(2*x-3),method=pf",
+        ["Partial fractions need rational P(x)/Q(x)", "not applicable"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "sin(x+y),method=compound_angle",
+        ["sin(A+B)=sin(A)cos(B)+cos(A)sin(B)", "Answer: sin(x)*cos(y)+cos(x)*sin(y)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "arctan(2*x-3)=0,method=auto",
+        ["arctan has domain all real", "arctan(A)=0 => A=0", "2*x - 3 = 0", "Answer: x = 3/2"],
+        ["Answer: 2*x - 3 = 0", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "cosec((x)^2-pi/4)^2-cot((x)^2-pi/4)^2,method=auto",
         ["Use identity cosec(u)^2 - cot(u)^2 = 1", "Answer: 1"],
         ["ERR:", "Unexpected token"],

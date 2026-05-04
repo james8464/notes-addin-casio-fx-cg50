@@ -143,6 +143,40 @@ static bool contains_pi(Arena &a, NodeId n)
     return false;
 }
 
+static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    if(x.fkind != FnKind::Sin && x.fkind != FnKind::Cos && x.fkind != FnKind::Tan) return std::nullopt;
+    Node const &arg = a.get(x.a);
+    if(arg.kind != NodeKind::Add || arg.kids.size() != 2) return std::nullopt;
+    std::string A = casio::format_expr(a, arg.kids[0]);
+    std::string B = casio::format_expr(a, arg.kids[1]);
+    std::string start = casio::format_expr(a, n);
+    if(x.fkind == FnKind::Sin) {
+        std::string ans = "sin(" + A + ")*cos(" + B + ")+cos(" + A + ")*sin(" + B + ")";
+        return std::vector<std::string>{
+            "1. Start with " + start + ".",
+            "2. Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B).",
+            "Answer: " + ans,
+        };
+    }
+    if(x.fkind == FnKind::Cos) {
+        std::string ans = "cos(" + A + ")*cos(" + B + ")-sin(" + A + ")*sin(" + B + ")";
+        return std::vector<std::string>{
+            "1. Start with " + start + ".",
+            "2. Use cos(A+B)=cos(A)cos(B)-sin(A)sin(B).",
+            "Answer: " + ans,
+        };
+    }
+    std::string ans = "(tan(" + A + ")+tan(" + B + "))/(1-tan(" + A + ")*tan(" + B + "))";
+    return std::vector<std::string>{
+        "1. Start with " + start + ".",
+        "2. Use tan(A+B)=(tan(A)+tan(B))/(1-tan(A)tan(B)).",
+        "Answer: " + ans,
+    };
+}
+
 static std::optional<Rational> pi_multiple_coeff(Arena &a, NodeId n)
 {
     // Match pi * q, q * pi, (q*pi)/r, pi*(q/r), etc where q,r are numeric rationals.
@@ -1571,6 +1605,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
 
     NodeId parsed = casio::parse_expr(arena, req.expr);
+    if(auto compound = compound_angle_rewrite(arena, parsed)) return *compound;
     if(auto base = sqrt_square_base(arena, parsed)) {
         NodeId abs_base = casio::fn(arena, "abs", *base);
         return casio::exam_block(

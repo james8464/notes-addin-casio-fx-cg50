@@ -112,7 +112,7 @@ static char const *valid_methods(std::string const &feature)
     if(feature == "int") return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|weierstrass|symmetry|";
     if(feature == "derive") return "|auto|chain|product|quotient|logdiff|implicit|param|second|param_second|";
     if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|target|";
-    if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|rationalise|canonical|target|equate_coeffs|simultaneous|";
+    if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|partfrac|pf|rationalise|canonical|target|equate_coeffs|simultaneous|";
     if(feature == "stats") return "|auto|summary|regression|hypothesis_test|binomial|normal|poisson|confidence_interval|";
     if(feature == "suvat") return "|auto|suvat|energy|moments|projectile|forces|variable_accel|";
     return "|auto|";

@@ -1242,6 +1242,8 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     out.push_back("1. Start with " + equation_text + ".");
     if(outer == FnKind::Asin || outer == FnKind::Acos)
         out.push_back("Domain: -1 <= " + arg_text + " <= 1");
+    else
+        out.push_back("Domain: arctan has domain all real A.");
 
     std::string outer_name = outer == FnKind::Asin ? "arcsin" : (outer == FnKind::Acos ? "arccos" : "arctan");
     std::string target = outer == FnKind::Acos ? "1" : "0";
@@ -1283,6 +1285,15 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     }
 
     out.push_back("3. Solve " + arg_text + " = " + target + "; check domain.");
+    NodeId target_node = a.num(outer == FnKind::Acos ? Rational{1, 1} : Rational{0, 1});
+    NodeId residual = casio::simplify(a, casio::add(a, {arg, casio::neg(a, target_node)}));
+    if(auto p = poly_of(a, residual, var); p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+        Rational root = r_div(r_neg(p->a0), p->a1);
+        NodeId root_node = a.num(root);
+        out.push_back("4. " + arg_text + " = " + target + " gives " + var + " = " + format_expr(a, root_node) + ".");
+        out.push_back("Answer: " + var + " = " + format_expr(a, root_node));
+        return out;
+    }
     out.push_back("Answer: " + arg_text + " = " + target);
     return out;
 }
@@ -2009,6 +2020,35 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
+            if(req.method == "pf" || req.method == "partfrac") {
+                Node const &pn = arena.get(parsed);
+                if(pn.kind != NodeKind::Div) {
+                    return casio::exam_block(
+                        "partial fractions",
+                        {
+                            "Start with " + format_expr(arena, parsed) + ".",
+                            "Partial fractions need rational P(x)/Q(x).",
+                            "This expression is not rational, so PF is not applicable.",
+                        },
+                        format_expr(arena, n)
+                    );
+                }
+            }
+            Node const &pn = arena.get(parsed);
+            if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {
+                Node const &inner = arena.get(pn.a);
+                if((pn.fkind == FnKind::Asin && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Sin) ||
+                   (pn.fkind == FnKind::Acos && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Cos) ||
+                   (pn.fkind == FnKind::Atan && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Tan)) {
+                    std::string outer = pn.fkind == FnKind::Asin ? "asin" : (pn.fkind == FnKind::Acos ? "acos" : "atan");
+                    std::string trig = pn.fkind == FnKind::Asin ? "sin" : (pn.fkind == FnKind::Acos ? "cos" : "tan");
+                    steps.push_back("Start with " + format_expr(arena, parsed) + ".");
+                    steps.push_back("Let u = " + format_expr(arena, inner.a) + ".");
+                    steps.push_back(outer + "(" + trig + "(u))=u only for -pi/2 <= u <= pi/2.");
+                    steps.push_back("Branch: outside that interval, fold by periodic symmetry.");
+                    return casio::exam_block("inverse trig branch", steps, format_expr(arena, n));
+                }
+            }
             if(auto rec = reciprocal_trig_rewrite(arena, parsed)) {
                 steps.push_back("Start with " + format_expr(arena, parsed) + ".");
                 steps.push_back(rec->first);
