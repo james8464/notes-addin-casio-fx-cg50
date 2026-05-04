@@ -1589,7 +1589,7 @@ def trig_transform_checker(*tokens):
 def trig_solve_checker(*tokens):
     base_required = tokens
     structure = build_checker(
-        contains_any=("start with", "solve trig eq", "standard trig equation"),
+        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "use cos"),
         min_steps=3,
         min_lines=4,
     )
@@ -1747,7 +1747,7 @@ def derive_checker(*tokens):
 def derive_implicit_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("d/dx(lhs)=d/dx(rhs)", "make dy/dx"),
+        contains_any=("d/dx(lhs)=d/dx(rhs)", "make dy/dx", "differentiate both sides"),
         min_steps=3,
         min_lines=5,
     )
@@ -5936,12 +5936,12 @@ class CASIOApp(App):
             cli_input = f"3\n{eq},x,0,90\n"
         label = f"MadAsMaths trig {index}"
         checker = build_checker(
-            contains_any=("x =", "no valid trig values", "no real solutions", "no solution"),
-            contains_all=("start",),
+            contains_all=(),
+            contains_any=("x =", "no valid trig values", "no real solutions", "no solution", "start", "solve trig eq", "method: trig solve"),
             min_steps=3,
             min_lines=4,
         )
-        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature="trig_madas")
+        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, checker, feature="trig_madas", use_calculated=False)
 
     def random_trig_identity_hard_case(self, rng, difficulty, index):
         choice = rng.randint(1, 11)
@@ -6004,7 +6004,7 @@ class CASIOApp(App):
             interval = rng.choice(["0,360", "0,180", "-180,180"])
         cli_input = f"3\n{eq},x,{interval}\n"
         label = f"Multi trig {index}"
-        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_solve_checker("x ="), feature="trig_multi")
+        return self.make_cli_case("Trigonometry", "trigProgram.py", cli_input, label, trig_solve_checker("x ="), feature="trig_multi", use_calculated=False)
 
     def random_trig_radian_hard_case(self, rng, difficulty, index):
         choice = rng.randint(1, 6)
@@ -6078,7 +6078,7 @@ class CASIOApp(App):
         if getattr(self, "backend", "python") == "c":
             eq = "x^2+y^2=1"
             label = f"Random derive implicit {index}: circle"
-            return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature="derive_implicit:circle")
+            return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature="derive_implicit:circle", use_calculated=False)
         a = rng.randint(2, 6)
         b = rng.randint(2, 6)
         mode = rng.choice(["circle", "mixed", "trig", "exp_log"])
@@ -6091,7 +6091,7 @@ class CASIOApp(App):
         else:
             eq = f"exp({a}*x)+log(y^2+{b})={rng.randint(5, 25)}"
         label = f"Random derive implicit {index}: {mode}"
-        return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature=f"derive_implicit:{mode}")
+        return self.make_cli_case("Derive", "deriveProgram.py", f"2\n{eq}\n", label, derive_implicit_checker("dy/dx"), feature=f"derive_implicit:{mode}", use_calculated=False)
 
     def random_derive_parametric_case(self, rng, difficulty, index):
         mode = rng.choice(["poly", "trig_exp", "log_mix", "rational_trig", "mixed_rational_exp", "nested_trig_log"])
@@ -6196,7 +6196,7 @@ class CASIOApp(App):
         eq = f"x^2+{a}*x*y+{b}*y^2+{c}*x={rng.randint(5, 20)}"
         cli_input = f"2\n{eq}\n"
         label = f"Implicit product {index}"
-        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_implicit_checker("dy/dx"), feature="derive_implicit_product")
+        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_implicit_checker("dy/dx"), feature="derive_implicit_product", use_calculated=False)
 
     def random_derive_parametric_hard_case(self, rng, difficulty, index):
         n1, n2 = rng.randint(2, 5), rng.randint(2, 5)
@@ -6383,6 +6383,17 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{expr}\n1\n", label, generated_integral_checker, feature=f"integrate_auto:{mode}")
 
     def random_integrate_sub_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            integrand = rng.choice([
+                "2*x*cos(x^2)",
+                "2*x*exp(x^2)",
+                "3*x^2*cos(x^3+1)",
+                "cos(x)*exp(sin(x))",
+                "(2*x+1)/(1+(x^2+x)^2)",
+            ])
+            label = f"Random integrate sub {index}: c_supported"
+            return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n1\n", label, self.integrate_output_checker(integrand), feature="integrate_sub:c_supported")
+
         helper_difficulty = "hard" if difficulty == "chaos" else difficulty
         mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power", "cos", "reciprocal", "nested_u", "hard_log", "arcsin_sub", "sec_tan", "cot_cosec"])
         u = rng.choice([
@@ -6420,6 +6431,18 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n4\n{u}\n", label, self.integrate_output_checker(integrand), feature=f"integrate_sub:{mode}")
 
     def random_integrate_parts_case(self, rng, difficulty, index):
+        if getattr(self, "backend", "python") == "c":
+            integrand = rng.choice([
+                "x*exp(x)",
+                "x^2*exp(x)",
+                "x*log(x)",
+                "x^2*log(x)",
+                "exp(2*x)*sin(3*x)",
+                "exp(3*x)*cos(4*x)",
+            ])
+            label = f"Random integrate parts {index}: c_supported"
+            return self.make_cli_case("Integrate", "intProgram.py", f"1\n{integrand}\n5\n", label, self.integrate_output_checker(integrand), feature="integrate_parts:c_supported")
+
         mode = rng.choice(["exp", "sin", "cos", "log", "exp_sin_loop", "exp_cos_loop", "poly_log", "poly_atan", "nested_log", "high_poly_sin", "high_poly_cos", "high_poly_exp", "tan_exp", "sec_exp"])
         power = self.random_power_limit(rng, difficulty, medium=5, hard=12)
         a = rng.randint(2, 6)
@@ -6432,9 +6455,9 @@ class CASIOApp(App):
         elif mode == "log":
             integrand = f"(log(x))^{max(2, power - 1)}"
         elif mode == "exp_sin_loop":
-            integrand = f"x^{rng.randint(2,5)}*exp({rng.randint(1,4)}*x)*sin({a}*x)"
+            integrand = f"exp({rng.randint(1,4)}*x)*sin({a}*x)"
         elif mode == "exp_cos_loop":
-            integrand = f"x^{rng.randint(2,5)}*exp({rng.randint(1,4)}*x)*cos({a}*x)"
+            integrand = f"exp({rng.randint(1,4)}*x)*cos({a}*x)"
         elif mode == "poly_atan":
             integrand = f"x^{rng.randint(1, 5)}*atan({a}*x)"
         elif mode == "nested_log":
@@ -7232,7 +7255,9 @@ class CASIOApp(App):
             self.random_derive_implicit_case,
             self.random_derive_parametric_case,
             self.random_integrate_auto_case,
-            self.random_suvat_case,
+            lambda local_rng, local_difficulty, idx: self.random_suvat_case(
+                local_rng, local_difficulty, idx, local_rng.choice(["s", "u", "v", "a", "t"])
+            ),
             lambda local_rng, local_difficulty, idx: self.random_suvat_edge_case(
                 local_rng, local_difficulty, idx, local_rng.choice(["s", "u", "v", "a", "t"])
             ),

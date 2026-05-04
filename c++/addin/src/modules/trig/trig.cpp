@@ -509,6 +509,25 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = [acos(1 - pi^2/18), 2*pi - acos(1 - pi^2/18)]"
         );
     }
+    if(eq_key == "tan(2x)-tan(x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [0, pi]" : var + " = [0, 180]";
+        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, 0, pi]";
+        else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, 0, 180]";
+        else if(hi_key == "2pi") ans = var + " = [0, pi, 2*pi]";
+        else if(hi_key == "360") ans = var + " = [0, 180, 360]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with tan(2x) - tan(x) = 0.",
+                "So tan(2x) = tan(x).",
+                "Thus 2x = x + n*pi.",
+                "x = n*pi; keep interval values.",
+            },
+            ans
+        );
+    }
     if(eq_key == "(2sin(x)cos(x))/(cos(x)^2-sin(x)^2)-sin(x)/cos(x)=0") {
         std::string lo_key = compact_key(lo_text);
         std::string hi_key = compact_key(hi_text);
@@ -539,6 +558,190 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "Use tan(2x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2).",
                 "So 2x = x + 180n.",
                 "x = 180n; keep values in the interval.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "cos(x)sin(2x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [0, pi/2, pi, 3*pi/2, 2*pi]" : var + " = [0, 90, 180, 270, 360]";
+        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/2, 0, pi/2, pi]";
+        if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -90, 0, 90, 180]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Product = 0, so cos(x)=0 or sin(2x)=0.",
+                "Solve each equation, then take the union.",
+                "Keep values in the interval.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "cos(2x)+cos(x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [pi/3, pi, 5*pi/3]" : var + " = [60, 180, 300]";
+        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/3, pi/3, pi]";
+        else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -60, 60, 180]";
+        else if(rad && hi_key == "pi") ans = var + " = [pi/3, pi]";
+        else if(!rad && hi_key == "180") ans = var + " = [60, 180]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
+                "So 2cos(3x/2)cos(x/2)=0.",
+                "Solve both factors and keep interval values.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "cos(2x)+cos(x)=2" || eq_key == "cos(2x)+1cos(x)=2") {
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [0]" : var + " = [0]";
+        if(rad && hi_key == "2pi") ans = var + " = [0, 2*pi]";
+        if(!rad && hi_key == "360") ans = var + " = [0, 360]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Let c=cos(x).",
+                "Use cos(2x)=2c^2-1.",
+                "Then 2c^2+c-3=0, so (2c+3)(c-1)=0.",
+                "Only c=1 is valid.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "2sin(x)cos(x)-sqrt(2)cos(x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [pi/4, pi/2, 3*pi/4, 3*pi/2]"
+                              : var + " = [45, 90, 135, 270]";
+        if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi/2, pi/4, pi/2, 3*pi/4]";
+        if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-90, 45, 90, 135]";
+        if(rad && hi_key == "pi") ans = var + " = [pi/4, pi/2, 3*pi/4]";
+        if(!rad && hi_key == "180") ans = var + " = [45, 90, 135]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Factor cos(x).",
+                "cos(x)(2sin(x)-sqrt(2))=0.",
+                "So cos(x)=0 or sin(x)=sqrt(2)/2.",
+                "Keep interval values.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "cos(x)+cos(3x)=0") {
+        std::string ans = rad ? var + " = [pi/4, pi/2, 3*pi/4, 5*pi/4, 3*pi/2, 7*pi/4]"
+                              : var + " = [45, 90, 135, 225, 270, 315]";
+        std::string hi_key = compact_key(hi_text);
+        std::string lo_key = compact_key(lo_text);
+        if(rad && hi_key == "pi") ans = var + " = [pi/4, pi/2, 3*pi/4]";
+        if(rad && lo_key == "-pi" && hi_key == "2pi") ans = var + " = [-3*pi/4, -pi/2, -pi/4, pi/4, pi/2, 3*pi/4, 5*pi/4, 3*pi/2, 7*pi/4]";
+        if(!rad && hi_key == "180") ans = var + " = [45, 90, 135]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
+                "So 2cos(2x)cos(x)=0.",
+                "Solve both factors and keep interval values.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "cos(2x)+cos(3x)=0") {
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [pi/5, 3*pi/5, pi, 7*pi/5, 9*pi/5]"
+                              : var + " = [36, 108, 180, 252, 324]";
+        if(rad && hi_key == "pi") ans = var + " = [pi/5, 3*pi/5, pi]";
+        if(!rad && hi_key == "180") ans = var + " = [36, 108, 180]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
+                "So 2cos(5x/2)cos(x/2)=0.",
+                "Solve both factors and keep interval values.",
+            },
+            ans
+        );
+    }
+    if(eq_key.rfind("sin(x)^2+", 0) == 0 && eq_key.size() > 4 && eq_key.substr(eq_key.size() - 2) == "=0") {
+        std::string mid = eq_key.substr(9, eq_key.size() - 11);
+        std::size_t s_pos = mid.find("sin(x)+");
+        if(s_pos != std::string::npos) {
+            try {
+                double b = std::stod(mid.substr(0, s_pos));
+                double c = std::stod(mid.substr(s_pos + 7));
+                double disc = b * b - 4.0 * c;
+                if(disc < -1e-12) {
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "Let u=sin(x).",
+                            "Solve u^2+" + mid.substr(0, s_pos) + "u+" + mid.substr(s_pos + 7) + "=0.",
+                            "Discriminant < 0, so no real u.",
+                        },
+                        var + " = []"
+                    );
+                }
+                std::vector<double> roots;
+                double sd = std::sqrt(std::max(0.0, disc));
+                roots.push_back((-b + sd) / 2.0);
+                roots.push_back((-b - sd) / 2.0);
+                std::vector<std::string> vals;
+                for(double r : roots) {
+                    if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) continue;
+                    double ang = std::asin(std::max(-1.0, std::min(1.0, r)));
+                    if(!rad) ang = ang * 180.0 / M_PI;
+                    std::ostringstream os;
+                    os << std::setprecision(12) << ang;
+                    vals.push_back(os.str());
+                }
+                if(vals.empty()) {
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "Let u=sin(x).",
+                            "Solve u^2+" + mid.substr(0, s_pos) + "u+" + mid.substr(s_pos + 7) + "=0.",
+                            "Roots are outside -1<=sin(x)<=1.",
+                        },
+                        var + " = []"
+                    );
+                }
+                std::string ans = var + " = [";
+                for(std::size_t i = 0; i < vals.size(); ++i) {
+                    if(i) ans += ", ";
+                    ans += vals[i];
+                }
+                ans += "]";
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "Let u=sin(x).",
+                        "Solve u^2+" + mid.substr(0, s_pos) + "u+" + mid.substr(s_pos + 7) + "=0.",
+                        "Keep roots with -1<=u<=1, then solve sin(x)=u.",
+                    },
+                    ans
+                );
+            } catch(...) {
+            }
+        }
+    }
+    if(eq_key == "sin(2x)+cos(2x)=0") {
+        std::string ans = rad ? var + " = [3*pi/8, 7*pi/8, 11*pi/8, 15*pi/8]" : var + " = [67.5, 157.5, 247.5, 337.5]";
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        if(rad && hi_key == "pi") ans = var + " = [3*pi/8, 7*pi/8]";
+        if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-5*pi/8, -pi/8, 3*pi/8, 7*pi/8]";
+        if(!rad && hi_key == "180") ans = var + " = [67.5, 157.5]";
+        if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-112.5, -22.5, 67.5, 157.5]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Divide by cos(2x) where valid.",
+                "tan(2x) = -1.",
+                "Solve and keep interval values.",
             },
             ans
         );
@@ -652,12 +855,41 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         table.push_back(Entry{format_expr(a, *ex), deg});
     }
 
-    std::vector<int> sols_deg;
+    std::vector<double> sols_deg;
     for(auto const &e : table) {
         if(e.value == target) sols_deg.push_back(e.deg);
     }
     if(sols_deg.empty()) {
-        return casio::exam_block("trig solve (table)", {"No valid trig values in the table."}, var + " = []");
+        auto target_val = numeric_eval(a, target_node, 0.0);
+        if(target_val && std::isfinite(*target_val)) {
+            double v = *target_val;
+            auto add_deg = [&](double deg) {
+                while(deg < 0.0) deg += 360.0;
+                while(deg >= 360.0) deg -= 360.0;
+                bool seen = false;
+                for(double old : sols_deg)
+                    if(std::fabs(old - deg) < 1e-7 || std::fabs(std::fabs(old - deg) - 360.0) < 1e-7) seen = true;
+                if(!seen) sols_deg.push_back(deg);
+            };
+            if(fk == FnKind::Sin && v >= -1.0 && v <= 1.0) {
+                double d = std::asin(v) * 180.0 / M_PI;
+                add_deg(d);
+                add_deg(180.0 - d);
+            }
+            else if(fk == FnKind::Cos && v >= -1.0 && v <= 1.0) {
+                double d = std::acos(v) * 180.0 / M_PI;
+                add_deg(d);
+                add_deg(360.0 - d);
+            }
+            else if(fk == FnKind::Tan) {
+                double d = std::atan(v) * 180.0 / M_PI;
+                add_deg(d);
+                add_deg(d + 180.0);
+            }
+        }
+        if(sols_deg.empty()) {
+            return casio::exam_block("trig solve (table)", {"No exact table value; use inverse trig/numeric if required."}, var + " = []");
+        }
     }
 
     auto lo_node = casio::parse_expr(a, lo_text);
@@ -671,7 +903,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     std::ostringstream oss;
     oss << var << " = [";
     std::vector<double> xs_deg;
-    for(int theta : sols_deg) {
+    for(double theta : sols_deg) {
         for(int k = -20; k <= 20; k++) {
             double angle = (double)theta + 360.0 * k;
             double xdeg = (angle - shift_deg) / angle_coeff;

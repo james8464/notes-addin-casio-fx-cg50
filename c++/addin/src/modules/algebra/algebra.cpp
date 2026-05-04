@@ -930,15 +930,31 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             Node const &bn = arena.get(base);
             if(bn.kind != NodeKind::Add || bn.kids.size() != 2) return {"Err: base must be ax+b."};
 
+            std::function<std::optional<std::string>(NodeId)> find_symbol = [&](NodeId t) -> std::optional<std::string> {
+                Node const &tn = arena.get(t);
+                if(tn.kind == NodeKind::Sym) return tn.text;
+                if(tn.kind == NodeKind::Fn) return find_symbol(tn.a);
+                if(tn.kind == NodeKind::Pow || tn.kind == NodeKind::Div) {
+                    if(auto s = find_symbol(tn.a)) return s;
+                    return find_symbol(tn.b);
+                }
+                if(tn.kind == NodeKind::Add || tn.kind == NodeKind::Mul) {
+                    for(NodeId kid : tn.kids)
+                        if(auto s = find_symbol(kid)) return s;
+                }
+                return std::nullopt;
+            };
+            std::string expand_var = find_symbol(base).value_or("x");
+
             auto extract_ax = [&](NodeId t) -> std::optional<Rational> {
                 Node const &tn = arena.get(t);
                 if(tn.kind == NodeKind::Mul && tn.kids.size() == 2) {
                     Node const &k0 = arena.get(tn.kids[0]);
                     Node const &k1 = arena.get(tn.kids[1]);
-                    if(k0.kind == NodeKind::Num && k1.kind == NodeKind::Sym && k1.text == "x") return k0.num;
-                    if(k1.kind == NodeKind::Num && k0.kind == NodeKind::Sym && k0.text == "x") return k1.num;
+                    if(k0.kind == NodeKind::Num && k1.kind == NodeKind::Sym && k1.text == expand_var) return k0.num;
+                    if(k1.kind == NodeKind::Num && k0.kind == NodeKind::Sym && k0.text == expand_var) return k1.num;
                 }
-                if(tn.kind == NodeKind::Sym && tn.text == "x") return Rational{1, 1};
+                if(tn.kind == NodeKind::Sym && tn.text == expand_var) return Rational{1, 1};
                 return std::nullopt;
             };
             auto extract_b = [&](NodeId t) -> std::optional<Rational> {
@@ -999,7 +1015,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
                 NodeId term = casio::num(arena, coeff.num, coeff.den);
                 if(k >= 1) {
-                    NodeId xpow = (k == 1) ? casio::sym(arena, "x") : casio::power(arena, casio::sym(arena, "x"), casio::num(arena, k));
+                    NodeId xpow = (k == 1) ? casio::sym(arena, expand_var) : casio::power(arena, casio::sym(arena, expand_var), casio::num(arena, k));
                     term = casio::mul(arena, {term, xpow});
                 }
                 terms.push_back(term);
@@ -1032,7 +1048,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return {
                 "1. Expand using binomial expansion.",
                 "2. Input = " + format_expr(arena, n),
-                "3. (ax+b)^n with a=" + format_expr(arena, casio::num(arena, acoef.num, acoef.den)) + ", b=" +
+                "3. (a" + expand_var + "+b)^n with a=" + format_expr(arena, casio::num(arena, acoef.num, acoef.den)) + ", b=" +
                     format_expr(arena, casio::num(arena, bcoef.num, bcoef.den)) + ", n=" + std::to_string(nn),
                 "4. Combine like terms.",
                 "5. Out = " + desc_text,
@@ -1173,7 +1189,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!lo.empty() && !hi.empty()) range += " on the interval.";
                 steps.push_back(range);
             }
-            else steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+            else {
+                Node const &rn = arena.get(n);
+                if(rn.kind == NodeKind::Div) {
+                    Node const &top = arena.get(rn.a);
+                    Node const &bot = arena.get(rn.b);
+                    if(top.kind == NodeKind::Num && bot.kind == NodeKind::Sym && bot.text == var) {
+                        steps.push_back("Range: y != 0.");
+                    }
+                    else {
+                        steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+                    }
+                }
+                else {
+                    steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+                }
+            }
             return casio::exam_block("domain/range", steps, format_expr(arena, n));
         }
         if(req.mode == 11) {
@@ -1183,6 +1214,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string xe = trim_text(req.expr.substr(0, nl1));
             std::string ye = trim_text(nl2 == std::string::npos ? req.expr.substr(nl1 + 1) : req.expr.substr(nl1 + 1, nl2 - nl1 - 1));
             std::string param = trim_text(nl2 == std::string::npos ? "t" : req.expr.substr(nl2 + 1));
+            auto strip_outer_parens = [](std::string s) {
+                s = trim_text(s);
+                while(s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+                    int depth = 0;
+                    bool wraps = true;
+                    for(std::size_t i = 0; i < s.size(); ++i) {
+                        if(s[i] == '(') depth++;
+                        else if(s[i] == ')') depth--;
+                        if(depth == 0 && i + 1 < s.size()) {
+                            wraps = false;
+                            break;
+                        }
+                    }
+                    if(!wraps) break;
+                    s = trim_text(s.substr(1, s.size() - 2));
+                }
+                return s;
+            };
+            param = strip_outer_parens(param);
             if(param.empty()) param = "t";
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};

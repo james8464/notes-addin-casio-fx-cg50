@@ -3875,6 +3875,120 @@ static std::optional<NodeId> integrate_polynomial_reverse_chain(Arena &a, NodeId
     return casio::simplify(a, mul_coeff(a, r_div(scale, np1), ans));
 }
 
+static std::optional<NodeId> integrate_trig_poly_reverse_chain(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational coeff{1, 1};
+    NodeId trig_node = 0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        Node const &kid = a.get(k);
+        if(!trig_node && kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos)) {
+            trig_node = k;
+            continue;
+        }
+        rest.push_back(k);
+    }
+    if(!trig_node || rest.empty()) return std::nullopt;
+
+    Node const &trig = a.get(trig_node);
+    NodeId rest_node = rest.size() == 1 ? rest.front() : casio::mul(a, rest);
+    auto base_poly = poly_of_any(a, trig.a, var);
+    auto rest_poly = poly_of_any(a, rest_node, var);
+    if(!base_poly || !rest_poly || !base_poly->ok || !rest_poly->ok) return std::nullopt;
+    Poly dbase = poly_derivative(*base_poly);
+    auto ratio = proportional_poly(*rest_poly, dbase);
+    if(!ratio) return std::nullopt;
+
+    Rational scale = r_mul(coeff, *ratio);
+    NodeId primitive = 0;
+    if(trig.fkind == FnKind::Sin) primitive = casio::neg(a, casio::fn(a, "cos", trig.a));
+    else primitive = casio::fn(a, "sin", trig.a);
+    steps.push_back("Step 2: Reverse-chain trig substitution.");
+    steps.push_back("Step 3: Let u = " + format_expr(a, trig.a) + ", so du matches the remaining factor.");
+    return casio::simplify(a, mul_coeff(a, scale, primitive));
+}
+
+static std::optional<NodeId> integrate_atan_reverse_chain(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Add || den.kids.size() != 2) return std::nullopt;
+
+    NodeId base = 0;
+    for(NodeId kid : den.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Pow) {
+            auto exp = as_num(a, kn.b);
+            if(exp && exp->num == 2 && exp->den == 1) base = kn.a;
+        }
+    }
+    if(!base) return std::nullopt;
+
+    auto top_poly = poly_of_any(a, x.a, var);
+    auto base_poly = poly_of_any(a, base, var);
+    if(!top_poly || !base_poly || !top_poly->ok || !base_poly->ok) return std::nullopt;
+    Poly dbase = poly_derivative(*base_poly);
+    auto ratio = proportional_poly(*top_poly, dbase);
+    if(!ratio) return std::nullopt;
+
+    steps.push_back("Step 2: Reverse-chain atan substitution.");
+    steps.push_back("Step 3: Let u = " + format_expr(a, base) + ", so du matches the numerator.");
+    return casio::simplify(a, mul_coeff(a, *ratio, casio::fn(a, "atan", base)));
+}
+
+static std::optional<NodeId> integrate_exp_trig_reverse_chain(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational coeff{1, 1};
+    NodeId exp_node = 0;
+    NodeId trig_node = 0;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        Node const &kid = a.get(k);
+        if(!exp_node && is_pow_e(a, k)) {
+            exp_node = k;
+            continue;
+        }
+        if(!trig_node && kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos)) {
+            trig_node = k;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!exp_node || !trig_node) return std::nullopt;
+
+    Node const &expn = a.get(exp_node);
+    Node const &trig = a.get(trig_node);
+    bool trig_arg_uses_exp = same_expr(a, trig.a, exp_node);
+    Node const &argn = a.get(trig.a);
+    if(!trig_arg_uses_exp && argn.kind == NodeKind::Add) {
+        for(NodeId kid : argn.kids)
+            if(same_expr(a, kid, exp_node)) trig_arg_uses_exp = true;
+    }
+    if(!trig_arg_uses_exp) return std::nullopt;
+
+    auto lc = linear_coeff(a, expn.b, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    Rational scale = r_div(coeff, *lc);
+    NodeId primitive = trig.fkind == FnKind::Sin ? casio::neg(a, casio::fn(a, "cos", trig.a)) : casio::fn(a, "sin", trig.a);
+    steps.push_back("Step 2: Exponential substitution.");
+    steps.push_back("Step 3: Let u = " + format_expr(a, trig.a) + "; du matches the exponential factor.");
+    return casio::simplify(a, mul_coeff(a, scale, primitive));
+}
+
 static NodeId sqrt_rat(Arena &a, Rational r)
 {
     return casio::fn(a, "sqrt", a.num(r));
@@ -4569,7 +4683,7 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Div) return std::nullopt;
     auto n = poly_of_any(a, x.a, var);
-    if(!n || !n->ok || poly_degree(*n) > 1) return std::nullopt;
+    if(!n || !n->ok || poly_degree(*n) > 2) return std::nullopt;
     Node const &den = a.get(x.b);
     if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
 
@@ -4699,6 +4813,7 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Mul) return std::nullopt;
     Rational coeff{1, 1};
+    Rational exp_coeff{1, 1};
     int power = 0;
     NodeId exp_node = 0;
     NodeId trig_node = 0;
@@ -4717,7 +4832,8 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
         Node const &kn = a.get(k);
         if(!exp_node && is_pow_e(a, k)) {
             auto ec = linear_coeff(a, kn.b, var);
-            if(!ec || ec->num != ec->den) return std::nullopt;
+            if(!ec || r_zero(*ec)) return std::nullopt;
+            exp_coeff = *ec;
             exp_node = k;
             continue;
         }
@@ -4733,6 +4849,17 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
     }
     if(!exp_node || !trig_node || power > 4) return std::nullopt;
     Rational k = *linear_coeff(a, trig_arg, var);
+    if(power == 0 && exp_coeff.num != exp_coeff.den) {
+        Rational den = r_add(r_mul(exp_coeff, exp_coeff), r_mul(k, k));
+        NodeId sin_arg = casio::fn(a, "sin", trig_arg);
+        NodeId cos_arg = casio::fn(a, "cos", trig_arg);
+        NodeId inside = want_sin
+            ? casio::add(a, {mul_coeff(a, exp_coeff, sin_arg), casio::neg(a, mul_coeff(a, k, cos_arg))})
+            : casio::add(a, {mul_coeff(a, exp_coeff, cos_arg), mul_coeff(a, k, sin_arg)});
+        steps.push_back("Step 2: Use looping parts for e^(ax)*sin/cos(bx).");
+        return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
+    }
+    if(exp_coeff.num != exp_coeff.den) return std::nullopt;
     steps.push_back("Step 2: Use repeated parts for x^n*e^x*sin/cos(kx).");
     return casio::simplify(a, mul_coeff(a, coeff, integrate_expx_trig_rec(a, power, exp_node, trig_arg, k, want_sin, var)));
 }
@@ -4869,9 +4996,27 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(auto atan_sub = integrate_atan_reverse_chain(a, expr, var, out.steps)) {
+        out.result = *atan_sub;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
     if(auto poly_sub = integrate_polynomial_reverse_chain(a, expr, var, out.steps)) {
         out.result = *poly_sub;
         out.steps.push_back("Step 5: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto trig_sub = integrate_trig_poly_reverse_chain(a, expr, var, out.steps)) {
+        out.result = *trig_sub;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto exp_trig_sub = integrate_exp_trig_reverse_chain(a, expr, var, out.steps)) {
+        out.result = *exp_trig_sub;
+        out.steps.push_back("Step 4: Simplify. Add constant C.");
         return out;
     }
 

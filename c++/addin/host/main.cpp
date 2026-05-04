@@ -74,10 +74,11 @@ static bool key_arg(std::string const &arg, std::string const &key, std::string 
     return !value.empty();
 }
 
-static std::string strip_method_args(std::string expr, std::string &method, std::string &u, bool strip_u_arg = false)
+static std::string strip_method_args(std::string expr, std::string &method, std::string &u, bool strip_u_arg = false, std::string *target = nullptr)
 {
     method.clear();
     u.clear();
+    if(target) target->clear();
     auto parts = split_top_csv(expr);
     if(parts.empty()) return expr;
     std::vector<std::string> kept;
@@ -91,9 +92,13 @@ static std::string strip_method_args(std::string expr, std::string &method, std:
             u = v;
             continue;
         }
+        if(target && key_arg(p, "target", v)) {
+            *target = v;
+            continue;
+        }
         kept.push_back(p);
     }
-    if(method.empty() && u.empty()) return expr;
+    if(method.empty() && u.empty() && (!target || target->empty())) return expr;
     std::ostringstream oss;
     for(std::size_t i = 0; i < kept.size(); ++i) {
         if(i) oss << ",";
@@ -405,8 +410,9 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_alg) {
-            std::string method, method_u;
-            expr = strip_method_args(expr, method, method_u, false);
+            std::string method, method_u, target;
+            expr = strip_method_args(expr, method, method_u, false, &target);
+            if(!target.empty() && expr.find('=') == std::string::npos) expr += "=" + target;
             print_method_header("alg", method, method_u);
             casio::algebra::Request req;
             req.mode = (expr.find('=') != std::string::npos) ? 6 : 0;
@@ -416,11 +422,15 @@ int main(int argc, char **argv)
             return 0;
         }
         if(is_trig) {
-            std::string method, method_u;
-            expr = strip_method_args(expr, method, method_u, false);
+            std::string method, method_u, target;
+            expr = strip_method_args(expr, method, method_u, false, &target);
             print_method_header("trig", method, method_u);
             casio::trig::Request req;
             req.mode = 0;
+            if(!target.empty()) {
+                req.mode = 2;
+                expr += "\n" + target;
+            }
             req.expr = expr;
             auto lines = casio::trig::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
