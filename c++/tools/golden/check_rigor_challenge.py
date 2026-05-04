@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import subprocess
+import re
+import sys
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 REPORT = REPO / "c++" / "tests" / "reports" / "rigor_challenge_latest.txt"
+DEFAULT_DOC = Path.home() / "Downloads" / "The_Rigor_Challenge_100_Structural_Problems.txt"
 
 
 def compact(text: str) -> str:
@@ -17,6 +20,14 @@ def compact(text: str) -> str:
 def run(args: list[str], stdin: str | None = None) -> str:
     proc = subprocess.run(args, input=stdin, cwd=str(REPO), text=True, capture_output=True, timeout=15)
     return proc.stdout + proc.stderr
+
+
+def load_doc(path: Path) -> tuple[int, int, str]:
+    if not path.exists():
+        return 0, 0, f"missing: {path}"
+    text = path.read_text(errors="ignore")
+    problem_ids = sorted({int(m.group(1)) for m in re.finditer(r"(?m)^(\d+)\.\s+\[", text)})
+    return len(problem_ids), text.count("\nSolution."), str(path)
 
 
 DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
@@ -71,6 +82,8 @@ STATIC_FAMILIES: dict[str, tuple[range | list[int], list[str]]] = {
 def main() -> int:
     if not HOST.exists():
         raise SystemExit(f"Missing host binary: {HOST}")
+    doc_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DOC
+    problem_count, solution_count, doc_label = load_doc(doc_path)
 
     src = "\n".join(
         p.read_text(errors="ignore")
@@ -83,8 +96,16 @@ def main() -> int:
         ]
     )
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    report: list[str] = ["Rigor challenge latest report", ""]
+    report: list[str] = [
+        "Rigor challenge latest report",
+        f"document: {doc_label}",
+        f"parsed problem headings: {problem_count}",
+        f"parsed solution blocks: {solution_count}",
+        "",
+    ]
     covered: set[int] = set()
+    direct = 0
+    policy = 0
     bad = 0
 
     for qid in sorted(DIRECT):
@@ -93,6 +114,7 @@ def main() -> int:
         ok = "ERR:" not in out and "Error:" not in out and "Integral not recognised" not in out
         ok = ok and all(compact(n) in compact(out) for n in needles)
         covered.add(qid)
+        direct += 1
         status = "OK" if ok else "FAIL"
         print(status, qid)
         report.append(f"{status} #{qid}: direct")
@@ -105,6 +127,7 @@ def main() -> int:
         ok = all(m in src for m in markers)
         for qid in ids:
             covered.add(qid)
+            policy += 1
             status = "OK" if ok else "FAIL"
             print(status, qid, family)
             report.append(f"{status} #{qid}: {family} source-policy")
@@ -118,7 +141,7 @@ def main() -> int:
     if missing_ids:
         bad += len(missing_ids)
         report.append("MISSING: " + ", ".join(map(str, missing_ids)))
-    report.append(f"summary: bad={bad}, covered={len(covered)}/150")
+    report.append(f"summary: bad={bad}, covered={len(covered)}/150, direct={direct}, policy={policy}")
     REPORT.write_text("\n".join(report) + "\n")
     print(f"report {REPORT}")
     print(f"done bad {bad} / 150")
