@@ -110,7 +110,7 @@ static std::string strip_method_args(std::string expr, std::string &method, std:
 static char const *valid_methods(std::string const &feature)
 {
     if(feature == "int") return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|weierstrass|symmetry|";
-    if(feature == "derive") return "|auto|chain|product|quotient|logdiff|implicit|param|second|param_second|";
+    if(feature == "derive") return "|auto|chain|product|quotient|logdiff|first_principles|implicit|param|second|param_second|";
     if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|target|";
     if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|partfrac|pf|rationalise|canonical|target|equate_coeffs|simultaneous|";
     if(feature == "stats") return "|auto|summary|regression|hypothesis_test|binomial|normal|poisson|confidence_interval|";
@@ -453,6 +453,18 @@ int main(int argc, char **argv)
                 req.method = "complete_square";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "partfrac(")).empty() ||
+                    !(inner = unwrap_call(expr, "pf(")).empty()) {
+                req.mode = 0;
+                req.method = "partfrac";
+                req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "binomial(")).empty() ||
+                    !(inner = unwrap_call(expr, "binomial_series(")).empty()) {
+                req.mode = 14;
+                req.method = "binomial";
+                req.expr = inner;
+            }
             else {
                 req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
                            (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
@@ -469,6 +481,7 @@ int main(int argc, char **argv)
             print_method_header("trig", method, method_u);
             casio::trig::Request req;
             req.mode = 0;
+            if(expr.find('\n') != std::string::npos) req.mode = 1;
             if(!target.empty()) {
                 req.mode = 2;
                 expr += "\n" + target;
@@ -490,6 +503,7 @@ int main(int argc, char **argv)
             if(method == "implicit") req.mode = 2;
             else if(method == "param") req.mode = 3;
             else if(method == "param_second") req.mode = 5;
+            else if(method == "first_principles") req.mode = 6;
             else if(method == "second") req.mode = (expr.find(',') != std::string::npos) ? 5 : 4;
             if(expr.rfind("mode:", 0) == 0) {
                 auto comma = expr.find(',');

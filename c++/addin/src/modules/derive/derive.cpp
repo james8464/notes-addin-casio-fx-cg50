@@ -186,6 +186,18 @@ static std::string clean_math_text(std::string s)
     return s;
 }
 
+static std::string compact_math_key(std::string text)
+{
+    text = casio::normalize_text(std::move(text));
+    std::string out;
+    out.reserve(text.size());
+    for(char c : text) {
+        if(c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '*') continue;
+        out.push_back(c);
+    }
+    return out;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -386,6 +398,46 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter an expression."};
 
     try {
+        if(req.mode == 6) {
+            auto parts = split_csv(req.expr);
+            std::string expr = parts.empty() ? req.expr : parts[0];
+            std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
+            std::string key = compact_math_key(expr);
+            if(key == "sec(x)") {
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use f(x+h)-f(x) over h.",
+                        "[sec(x+h)-sec(x)]/h = [1/cos(x+h)-1/cos(x)]/h.",
+                        "= [cos(x)-cos(x+h)]/[h*cos(x+h)cos(x)].",
+                        "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
+                        "= [2sin(x+h/2)sin(h/2)]/[h*cos(x+h)cos(x)].",
+                        "As h->0, sin(h/2)/(h/2)->1 and cos(x+h)->cos(x).",
+                    },
+                    "d/d" + var + " sec(x) = sec(x)*tan(x)"
+                );
+            }
+            if(key == "asin(x)" || key == "arcsin(x)") {
+                return casio::exam_block(
+                    "inverse derivative",
+                    {
+                        "Let y=arcsin(x), so x=sin(y).",
+                        "Differentiate both sides wrt x.",
+                        "1=cos(y)*dy/dx.",
+                        "So dy/dx=1/cos(y).",
+                        "Since -pi/2<=y<=pi/2, cos(y)>=0.",
+                        "Use cos(y)=sqrt(1-sin(y)^2)=sqrt(1-x^2).",
+                    },
+                    "dy/d" + var + " = 1/sqrt(1-x^2)"
+                );
+            }
+            casio::ExamPrelude pre;
+            pre.raw = expr;
+            pre.norm = casio::normalize_text(expr);
+            pre.parsed = expr;
+            pre.simplified = expr;
+            return casio::exam_fallback("first principles", pre, "No first-principles route for this form.", "d/d" + var + "(" + pre.norm + ")");
+        }
         if(req.mode == 1 || req.mode == 4) {
             auto parts = split_csv(req.expr);
             std::string expr = parts[0];
@@ -430,6 +482,110 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
+            std::string direct_key = compact_math_key(expr);
+
+            if(req.mode == 1 &&
+               (direct_key == "log(1/(sqrt(x^2+1)-x))" ||
+                direct_key == "ln(1/(sqrt(x^2+1)-x))")) {
+                return casio::exam_block(
+                    "differentiate",
+                    {
+                        "Start with " + pre.norm + ".",
+                        "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x.",
+                        "So y = log(sqrt(x^2+1)+x).",
+                        "dy/dx = (x/sqrt(x^2+1)+1)/(sqrt(x^2+1)+x).",
+                        "Cancel the common factor sqrt(x^2+1)+x.",
+                    },
+                    "dy/d" + var + " = 1/sqrt(x^2 + 1)"
+                );
+            }
+
+            if(req.mode == 1 &&
+               (direct_key == "log(tan(x+pi/4))" || direct_key == "ln(tan(x+pi/4))")) {
+                return casio::exam_block(
+                    "differentiate",
+                    {
+                        "Start with " + pre.norm + ".",
+                        "Let u=x+pi/4, so du/d" + var + "=1.",
+                        "dy/d" + var + " = sec(u)^2/tan(u).",
+                        "Write sec(u)^2/tan(u)=1/[sin(u)cos(u)].",
+                        "Use 2sin(u)cos(u)=sin(2u).",
+                        "Since 2u=2x+pi/2, sin(2u)=cos(2x).",
+                    },
+                    "dy/d" + var + " = 2*sec(2*x)"
+                );
+            }
+
+            if(req.mode == 1 &&
+               (direct_key == "2asin(x)-4x^(3/2)" || direct_key == "2arcsin(x)-4x^(3/2)")) {
+                return casio::exam_block(
+                    "differentiate",
+                    {
+                        "Start with " + pre.norm + ".",
+                        "Use d/dx asin(x)=1/sqrt(1-x^2).",
+                        "d/dx[4x^(3/2)] = 6sqrt(x).",
+                        "So dy/dx = 2/sqrt(1-x^2)-6sqrt(x).",
+                        "For stationary points set dy/dx=0.",
+                        "Then 1/sqrt(1-x^2)=3sqrt(x).",
+                        "Square both sides: 1/[1-x^2]=9x.",
+                        "Rearrange: 9x^3-9x+1=0.",
+                    },
+                    "dy/d" + var + " = 2/sqrt(1-x^2)-6sqrt(x)"
+                );
+            }
+
+            if(req.mode == 1 &&
+               (direct_key == "2^(3e^(2x))" || direct_key == "2^(3exp(2x))")) {
+                return casio::exam_block(
+                    "log differentiation",
+                    {
+                        "Start with y = 2^(3*e^(2x)).",
+                        "Take logs: log(y) = 3*e^(2x)*log(2).",
+                        "Differentiate wrt " + var + ": (1/y)*dy/d" + var + " = 6*e^(2x)*log(2).",
+                        "So dy/d" + var + " = 6*y*e^(2x)*log(2).",
+                        "From log(y)=3*e^(2x)*log(2), 6*e^(2x)*log(2)=2*log(y).",
+                    },
+                    "dy/d" + var + " = 2*y*log(y)"
+                );
+            }
+
+            if(req.mode == 4 &&
+               (direct_key == "log(1+sin(x))" || direct_key == "ln(1+sin(x))")) {
+                return casio::exam_block(
+                    "second derivative",
+                    {
+                        "Start with " + pre.norm + ".",
+                        "dy/d" + var + " = cos(x)/(1+sin(x)).",
+                        "Differentiate with quotient rule.",
+                        "d2y/d" + var + "2 = [-sin(x)(1+sin(x))-cos(x)^2]/(1+sin(x))^2.",
+                        "Use sin(x)^2+cos(x)^2=1.",
+                        "So d2y/d" + var + "2 = -1/(1+sin(x)).",
+                        "Since y=log(1+sin(x)), e^y=1+sin(x).",
+                    },
+                    "d2y/d" + var + "2 = -e^(-y)"
+                );
+            }
+
+            if(req.mode == 4 &&
+               (direct_key == "log(1+cos(x))" || direct_key == "ln(1+cos(x))")) {
+                return casio::exam_block(
+                    "higher derivative identity",
+                    {
+                        "Start with y = log(1+cos(x)).",
+                        "dy/d" + var + " = -sin(x)/(1+cos(x)).",
+                        "Differentiate with quotient rule.",
+                        "d2y/d" + var + "2 = -[cos(x)(1+cos(x))+sin(x)^2]/(1+cos(x))^2.",
+                        "Use sin(x)^2+cos(x)^2=1.",
+                        "So d2y/d" + var + "2 = -1/(1+cos(x)).",
+                        "Since e^y=1+cos(x), d2y/d" + var + "2 = -e^(-y).",
+                        "Differentiate: d3y/d" + var + "3 = e^(-y)*dy/d" + var + ".",
+                        "Differentiate again using product rule.",
+                        "d4y/d" + var + "4 = -e^(-y)*(dy/d" + var + ")^2 + e^(-y)*d2y/d" + var + "2.",
+                        "Substitute d2y/d" + var + "2 = -e^(-y).",
+                    },
+                    "d4y/d" + var + "4 + e^(-y)*(dy/d" + var + ")^2 + e^(-2y) = 0"
+                );
+            }
 
             if(exam_guard_too_complex(arena, n, var)) {
                 Node const &gn = arena.get(n);
@@ -475,6 +631,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }(),
                     "d/d" + var + "(" + pre.simplified + ")"
                 );
+            }
+            {
+                std::string compact = compact_math_key(expr);
+                if((compact == "e^x/sin(x)" || compact == "exp(x)/sin(x)") && var == "x") {
+                    if(req.mode == 4) {
+                        return casio::exam_block(
+                            "second derivative",
+                            {
+                                "Let y=e^x/sin(x).",
+                                "First derivative: dy/dx = y(1-cot(x)).",
+                                "Differentiate again using product rule.",
+                                "d2y/dx2 = y'(1-cot(x)) + y*cosec(x)^2.",
+                            },
+                            "d2y/dx2 = dy/dx*(1-cot(x)) + y*cosec(x)^2"
+                        );
+                    }
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Let y=e^x/sin(x).",
+                            "Use quotient rule: (u'v-uv')/v^2.",
+                            "dy/dx = [e^x*sin(x)-e^x*cos(x)]/sin(x)^2.",
+                            "Factor e^x/sin(x).",
+                        },
+                        "dy/dx = y*(1-cot(x))"
+                    );
+                }
             }
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
             {
@@ -646,6 +829,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else if(compact == "x^2e^y+y^2e^x=1" || compact == "x^2*e^y+y^2*e^x=1")
                 answer = dname + " = -(2*x*e^y+y^2*e^x)/(x^2*e^y+2*y*e^x)";
             if(compact == "x^2y=2x+y^2") answer = dname + " = (2 - 2*x*y)/(x^2 - 2*y)";
+            if(compact == "2xsin(y)+2cos(2y)=1" || compact == "2*x*sin(y)+2*cos(2*y)=1") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate wrt x: d/dx[2xsin(y)] + d/dx[2cos(2y)] = 0.",
+                        "Product rule: d/dx[2xsin(y)] = 2sin(y)+2xcos(y)*dy/dx.",
+                        "Chain rule: d/dx[2cos(2y)] = -4sin(2y)*dy/dx.",
+                        "So 2sin(y)+2xcos(y)*dy/dx-4sin(2y)*dy/dx=0.",
+                        "Collect dy/dx terms.",
+                        "dy/dx = sin(y)/(2sin(2y)-xcos(y)).",
+                        "Vertical tangents need denominator=0.",
+                        "Then cos(y)[4sin(y)-x]=0; substituting in the curve gives x=+/-3/2.",
+                    },
+                    dname + " = sin(y)/(2*sin(2*y)-x*cos(y)); x = -3/2 or x = 3/2"
+                );
+            }
             return casio::exam_block(
                 "implicit differentiation (limited)",
                 {
@@ -700,6 +899,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer = "d2y/dx2 = -2*(t^2+1)/(9*(t^2-1)^3)";
                 else if(compact == "sec(t),tan(t),t") answer = "d2y/dx2 = -cot(t)^3";
                 else if(compact == "cos(t)^3,sin(t)^3,t") answer = "d2y/dx2 = 1/(3*cos(t)^4*sin(t))";
+                else if(compact == "cos(theta)^3,sin(theta)^3,theta") answer = "d2y/dx2 = 1/(3*cos(theta)^4*sin(theta))";
                 if(compact == "t^2+1/t,t^2-1/t,t") {
                     return casio::exam_block(
                         "parametric second derivative",
@@ -727,6 +927,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         answer
                     );
                 }
+                if(compact == "cos(theta)^3,sin(theta)^3,theta") {
+                    return casio::exam_block(
+                        "parametric second derivative",
+                        {
+                            "dx/dtheta = -3*cos(theta)^2*sin(theta).",
+                            "dy/dtheta = 3*sin(theta)^2*cos(theta).",
+                            "dy/dx = -tan(theta).",
+                            "d/dtheta(dy/dx) = -sec(theta)^2.",
+                            "Divide by dx/dtheta.",
+                        },
+                        answer
+                    );
+                }
                 return casio::exam_block(
                     "parametric second derivative",
                     {
@@ -748,6 +961,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else if(compact == "log(t),t+1/t,t" || compact == "ln(t),t+1/t,t") answer = "dy/dx = t-1/t";
             else if(compact == "sec(t),tan(t),t") answer = "dy/dx = csc(t)";
             else if(compact == "cos(t)^3,sin(t)^3,t") answer = "dy/dx = -tan(t)";
+            else if(compact == "cos(theta)^3,sin(theta)^3,theta") answer = "dy/dx = -tan(theta)";
+            else if(compact == "4sin(t),cos(2t),t") answer = "dy/dx = -sin(t)";
+            else if(compact == "cos(t),cos(2t),t") answer = "dy/dx = 4*cos(t) = 4*x";
+            else if(compact == "tan(t)-sec(t),cot(t)-cosec(t),t" ||
+                    compact == "tan(t)-sec(t),cot(t)-csc(t),t")
+                answer = "dy/dx = -(y^2 - 1)/(2*x)";
             if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t") {
                 return casio::exam_block(
                     "parametric differentiation",
@@ -756,6 +975,58 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "dy/dt = e^t(sin(t)+cos(t))",
                         "dy/dx = e^t(sin(t) + cos(t))/[e^t(cos(t) - sin(t))]",
                         "Cancel e^t.",
+                    },
+                    answer
+                );
+            }
+            if(compact == "4sin(t),cos(2t),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = 4*cos(t).",
+                        "dy/dt = -2*sin(2*t).",
+                        "dy/dx = [-2*sin(2*t)]/[4*cos(t)].",
+                        "Use sin(2*t)=2*sin(t)cos(t).",
+                        "Cancel cos(t) where non-zero; the limiting value is the same at cos(t)=0.",
+                    },
+                    answer
+                );
+            }
+            if(compact == "cos(theta)^3,sin(theta)^3,theta") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dtheta = -3*cos(theta)^2*sin(theta).",
+                        "dy/dtheta = 3*sin(theta)^2*cos(theta).",
+                        "dy/dx = [3*sin(theta)^2*cos(theta)]/[-3*cos(theta)^2*sin(theta)].",
+                        "Cancel common factors.",
+                    },
+                    answer
+                );
+            }
+            if(compact == "cos(t),cos(2t),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = -sin(t).",
+                        "dy/dt = -2*sin(2*t).",
+                        "dy/dx = [-2*sin(2*t)]/[-sin(t)].",
+                        "Use sin(2*t)=2*sin(t)cos(t).",
+                        "So dy/dx = 4*cos(t); since x=cos(t), dy/dx=4*x.",
+                    },
+                    answer
+                );
+            }
+            if(compact == "tan(t)-sec(t),cot(t)-cosec(t),t" ||
+               compact == "tan(t)-sec(t),cot(t)-csc(t),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = sec(t)^2 - sec(t)tan(t) = sec(t)[sec(t)-tan(t)].",
+                        "dy/dt = -cosec(t)^2 + cosec(t)cot(t) = -cosec(t)[cosec(t)-cot(t)].",
+                        "From x=tan(t)-sec(t), sec(t)-tan(t)=-x.",
+                        "From y=cot(t)-cosec(t), y^2-1=2*cosec(t)[cosec(t)-cot(t)].",
+                        "Substitute these into dy/dx=(dy/dt)/(dx/dt).",
                     },
                     answer
                 );

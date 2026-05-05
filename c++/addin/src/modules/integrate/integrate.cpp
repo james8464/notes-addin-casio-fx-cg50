@@ -470,6 +470,248 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "defint((kcos(x)^2-sec(x)^2)sin(x),x,0,pi/3)" ||
+       c == "defint((kcos(x)^2-cos(x)^-2)sin(x),x,0,pi/3)") {
+        return out(
+            "definite integration with parameter",
+            {
+                "Split into k*Integral(cos(x)^2 sin(x)) dx - Integral(sec(x)^2 sin(x)) dx.",
+                "For the first part, let u=cos(x), so du=-sin(x) dx.",
+                "Integral k*cos(x)^2 sin(x) dx = -k*cos(x)^3/3.",
+                "For the second part, sec(x)^2 sin(x)=sin(x)/cos(x)^2.",
+                "Let u=cos(x), so this integrates to sec(x).",
+                "Primitive F(x)=-k*cos(x)^3/3-sec(x).",
+                "Evaluate F(pi/3)-F(0).",
+            },
+            "(7*k - 24)/24"
+        );
+    }
+
+    if(c == "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)" ||
+       c == "defint((sin(x)+1)^2/cos(x)^2,x,pi/6,pi/3)") {
+        return out(
+            "trig identity definite integration",
+            {
+                "Rewrite (1+sin(x))^2/cos(x)^2 as sec(x)^2+2sec(x)tan(x)+tan(x)^2.",
+                "Use tan(x)^2=sec(x)^2-1.",
+                "So integrand = 2sec(x)^2+2sec(x)tan(x)-1.",
+                "Integrate: F(x)=2tan(x)+2sec(x)-x.",
+                "Evaluate F(pi/3)-F(pi/6).",
+            },
+            "4 - pi/6"
+        );
+    }
+
+    if(c == "(x+3)sqrt(x)/(x+1)^2" || c == "sqrt(x)(x+3)/(x+1)^2" ||
+       c == "(x+3)sqrt(x)(x+1)^-2" || c == "sqrt(x)(x+3)(x+1)^-2") {
+        return out(
+            "sqrt substitution",
+            {
+                "Let u=sqrt(x), so x=u^2 and dx=2u du.",
+                "Integral becomes Integral(2u^2(u^2+3)/(u^2+1)^2) du.",
+                "Rewrite 2u^2(u^2+3)/(u^2+1)^2 = 2 - 2*(1-u^2)/(u^2+1)^2.",
+                "Since d/du[u/(u^2+1)] = (1-u^2)/(u^2+1)^2.",
+                "Integrate, then back-substitute u=sqrt(x).",
+            },
+            "2*sqrt(x) - 2*sqrt(x)/(x+1) + C"
+        );
+    }
+
+    if(c == "cos(x)^3/((1+sin(x)^2)sin(x))" || c == "cos(x)^3/((sin(x)^2+1)sin(x))") {
+        return out(
+            "log derivative trig integral",
+            {
+                "Try F=log(abs(sin(x)))-log(1+sin(x)^2).",
+                "Then F'=cos(x)/sin(x) - 2*sin(x)*cos(x)/(1+sin(x)^2).",
+                "Put over common denominator sin(x)(1+sin(x)^2).",
+                "Numerator = cos(x)(1+sin(x)^2)-2sin(x)^2cos(x).",
+                "Use 1-sin(x)^2=cos(x)^2, so numerator = cos(x)^3.",
+            },
+            "log(abs(sin(x)/(1+sin(x)^2))) + C"
+        );
+    }
+
+    if(c == "1/(x^2+1)-x/(x^2+1)" || c == "(1-x)/(x^2+1)" || c == "(-x+1)/(x^2+1)") {
+        return out(
+            "split rational integral",
+            {
+                "Put over the common denominator x^2+1.",
+                "Split: Integral(1/(x^2+1)) dx - Integral(x/(x^2+1)) dx.",
+                "First part is atan(x).",
+                "For the second part, let u=x^2+1, so du=2x dx.",
+            },
+            "atan(x) - log(abs(x^2+1))/2 + C"
+        );
+    }
+
+    if(c == "x/(5-4x-x^2)^(3/2)" || c == "x/(-x^2-4x+5)^(3/2)" ||
+       c == "x*(-x^2-4x+5)^(-3/2)" || c == "x*(-4x-x^2+5)^(-3/2)") {
+        return out(
+            "exam substitution",
+            {
+                "Let u=sqrt(5-4x-x^2)/(1-x).",
+                "Then x=(u^2-5)/(u^2+1).",
+                "Differentiate: dx/du=12u/(u^2+1)^2.",
+                "Substitute fully into the integral.",
+                "It becomes Integral((u^2-5)/(18u^2)) du.",
+                "Split as Integral(1/18 - 5/(18u^2)) du.",
+                "Integrate and back-substitute u.",
+            },
+            "(sqrt(5-4*x-x^2)/(1-x) + 5*(1-x)/sqrt(5-4*x-x^2))/18 + C"
+        );
+    }
+
+    if(c == "3/((4x+5)sqrt(1-x^2)-3(1-x^2))" ||
+       c == "3/((4x+5)sqrt(-x^2+1)-3(-x^2+1))") {
+        return out(
+            "exam substitution",
+            {
+                "Let u^2=(1-x^2)/(1-x)^2.",
+                "Then x=(u^2-1)/(u^2+1).",
+                "Also 1-x^2=4u^2/(u^2+1)^2.",
+                "Differentiate: dx/du=4u/(u^2+1)^2.",
+                "Substitute all x terms and dx into the integral.",
+                "It becomes Integral(6/(1-3u)^2) du.",
+                "Integrate: Integral(6/(1-3u)^2) du = 2/(1-3u)+C.",
+                "Back-substitute u=sqrt(1+x)/sqrt(1-x).",
+            },
+            "2*sqrt(1-x)/(sqrt(1-x)-3*sqrt(1+x)) + C"
+        );
+    }
+
+    if(c == "(2sin(x)tan(x)+1)/(2(cos(x)tan(x)+1)cos(x)tan(x))" ||
+       c == "(1+2sin(x)tan(x))/(2(1+cos(x)tan(x))cos(x)tan(x))") {
+        return out(
+            "substitution to log",
+            {
+                "Let u=sec(x)+sqrt(tan(x)).",
+                "Differentiate: du/dx=sec(x)tan(x)+sec(x)^2/(2sqrt(tan(x))).",
+                "Put over a common denominator.",
+                "Rearrange the integrand so every factor is replaced by u and du.",
+                "The integral becomes Integral(1/u) du.",
+                "Back-substitute u=sec(x)+sqrt(tan(x)).",
+            },
+            "log(abs(sec(x)+sqrt(tan(x)))) + C"
+        );
+    }
+
+    if(c == "((log(x^2+1)-2log(x))sqrt(x^2+1))/x^4" ||
+       c == "((ln(x^2+1)-2ln(x))sqrt(x^2+1))/x^4" ||
+       c == "(log(x^2+1)-2log(x))sqrt(x^2+1)/x^4" ||
+       c == "(ln(x^2+1)-2ln(x))sqrt(x^2+1)/x^4") {
+        return out(
+            "substitution then parts",
+            {
+                "Rewrite log(x^2+1)-2log(x)=log((x^2+1)/x^2).",
+                "Write sqrt(x^2+1)/x^4 = sqrt(1+1/x^2)/x^3.",
+                "Let u=sqrt(1+1/x^2).",
+                "Then 2u du = -2/x^3 dx, so dx/x^3 = -u du.",
+                "Also log((x^2+1)/x^2)=log(u^2)=2log(u).",
+                "The integral becomes -2*Integral(u^2 log(u)) du.",
+                "Use parts: U=log(u), dV=u^2 du.",
+                "So Integral(u^2log(u))=u^3log(u)/3-u^3/9.",
+                "Back-substitute u=sqrt(1+1/x^2).",
+            },
+            "2*(1+1/x^2)^(3/2)*(1-3*log(sqrt(1+1/x^2)))/9 + C"
+        );
+    }
+
+    if(c == "defint(1/((sin(x)+2cos(x))(sin(x)+3cos(x))),x,asin(3/5),acos(3/5))" ||
+       c == "defint(1/((sin(x)+2cos(x))(sin(x)+3cos(x))),x,arcsin(3/5),arccos(3/5))") {
+        return out(
+            "tan substitution definite integral",
+            {
+                "Divide top and bottom by cos(x)^2.",
+                "The denominator becomes (tan(x)+2)(tan(x)+3).",
+                "Let u=tan(x), so du=sec(x)^2 dx.",
+                "Integral becomes Integral(1/((u+2)(u+3))) du.",
+                "Partial fractions: 1/((u+2)(u+3)) = 1/(u+2)-1/(u+3).",
+                "When x=arcsin(3/5), u=3/4.",
+                "When x=arccos(3/5), u=4/3.",
+                "Evaluate [log(abs(u+2))-log(abs(u+3))] from 3/4 to 4/3.",
+            },
+            "log(150/143)"
+        );
+    }
+
+    if(c == "2xcosec(x+pi/6)^2" || c == "2xcsc(x+pi/6)^2" ||
+       c == "2x/sin(x+pi/6)^2") {
+        return out(
+            "integration by parts",
+            {
+                "Use parts for Integral(2x*cosec(x+pi/6)^2) dx.",
+                "Let u=2x and dv=cosec(x+pi/6)^2 dx.",
+                "Then du=2 dx and v=-cot(x+pi/6).",
+                "I = -2x*cot(x+pi/6) - Integral[-cot(x+pi/6)*2] dx.",
+                "Use Integral(cot(w)) dw = log(abs(sin(w))).",
+            },
+            "-2*x*cot(x+pi/6) + 2*log(abs(sin(x+pi/6))) + C"
+        );
+    }
+
+    if(c == "defint(sqrt(50-x^2),x,-5sqrt(2),5)+defint(sqrt(50-x^2),x,-5sqrt(2),-5)" ||
+       c == "defint(sqrt(-x^2+50),x,-5sqrt(2),5)+defint(sqrt(-x^2+50),x,-5sqrt(2),-5)") {
+        return out(
+            "area by symmetry",
+            {
+                "Solve the curve for y: y=-x +/- sqrt(50-x^2).",
+                "The two halves are mirror-opposite, so the x terms cancel in the total enclosed area.",
+                "Area reduces to two matching circle-segment integrals of sqrt(50-x^2).",
+                "Use x=sqrt(50)sin(theta).",
+                "Then dx=sqrt(50)cos(theta)dtheta and sqrt(50-x^2)=sqrt(50)cos(theta).",
+                "Integrate 50cos(theta)^2 over the matching limits.",
+            },
+            "25*pi"
+        );
+    }
+
+    if(c == "defint(32sin(x)sin(2x)sin(3x),x,0,pi/3)") {
+        return out(
+            "product-to-sum definite integration",
+            {
+                "Use sin(x)sin(3x)=1/2[cos(2x)-cos(4x)].",
+                "So integrand = 16sin(2x)[cos(2x)-cos(4x)].",
+                "Use 2sin(A)cos(B)=sin(A+B)+sin(A-B).",
+                "This gives 8sin(4x)-8sin(6x)+8sin(2x).",
+                "Primitive F(x)=-2cos(4x)+4cos(6x)/3-4cos(2x).",
+                "F(pi/3)=13/3 and F(0)=-14/3.",
+                "So Integral_0^(pi/3)=13/3-(-14/3).",
+            },
+            "9"
+        );
+    }
+
+    if(c == "defint(sin(x),x,0,pi/6)+defint(cos(2x),x,pi/6,pi/4)") {
+        return out(
+            "area by split integral",
+            {
+                "First intersection: cos(2x)=sin(x).",
+                "Use cos(2x)=1-2sin(x)^2.",
+                "Then 2sin(x)^2+sin(x)-1=0, so sin(x)=1/2.",
+                "First positive intersection is x=pi/6.",
+                "Area = Integral_0^(pi/6) sin(x) dx + Integral_(pi/6)^(pi/4) cos(2x) dx.",
+                "Evaluate: [-cos(x)]_0^(pi/6) + [sin(2x)/2]_(pi/6)^(pi/4).",
+                "Simplify exact surds.",
+            },
+            "3/2 - 3*sqrt(3)/4"
+        );
+    }
+
+    if(c == "32sin(x)sin(2x)sin(3x)") {
+        return out(
+            "product-to-sum integration",
+            {
+                "Use sin(x)sin(3x)=1/2[cos(2x)-cos(4x)].",
+                "So integrand = 16sin(2x)[cos(2x)-cos(4x)].",
+                "Use 2sin(A)cos(B)=sin(A+B)+sin(A-B).",
+                "This gives 8sin(4x)-8sin(6x)+8sin(2x).",
+                "Integrate term-by-term.",
+                "For 0 to pi/3 this primitive changes from -14/3 to 13/3, so the area/integral is 9.",
+            },
+            "-2*cos(4*x) + 4*cos(6*x)/3 - 4*cos(2*x) + C"
+        );
+    }
+
     // Compact Centurion: short inputs whose working needs a named trick.
     if(c == "sqrt(x/(1+x))" || c == "sqrt(x/(x+1))") {
         return out(

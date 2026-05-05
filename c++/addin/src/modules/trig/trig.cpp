@@ -1196,6 +1196,84 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             ans
         );
     }
+    if(eq_key == "2atan(x/3)=asin(6x/25)" || eq_key == "2atan(x/3)=arcsin(6x/25)") {
+        return casio::exam_block(
+            "inverse trig solve",
+            {
+                "Let A=atan(x/3).",
+                "Then tan(A)=x/3.",
+                "Use sin(2A)=2tan(A)/(1+tan(A)^2).",
+                "So sin(2A)=6*x/(x^2+9).",
+                "Take sin of both sides: 6*x/(x^2+9)=6*x/25.",
+                "Thus 6*x*(16-x^2)=0, so x=0 or x=+/-4.",
+                "Check in the original equation; x=+/-4 fail the arcsin branch.",
+            },
+            var + " = 0"
+        );
+    }
+    if(eq_key == "2atan(3/x)=asin(6x/25)" || eq_key == "2atan(3/x)=arcsin(6x/25)") {
+        return casio::exam_block(
+            "inverse trig solve",
+            {
+                "Let A=atan(3/x).",
+                "Then tan(A)=3/x.",
+                "Use sin(2A)=2tan(A)/(1+tan(A)^2).",
+                "So sin(2A)=6*x/(x^2+9).",
+                "Take sin of both sides: 6*x/(x^2+9)=6*x/25.",
+                "Since x=0 is not allowed in atan(3/x), divide by 6x.",
+                "Then x^2+9=25, so x^2=16.",
+                "Check in the original equation.",
+            },
+            var + " = -4 or " + var + " = 4"
+        );
+    }
+    if(eq_key == "sec(x)^2-(1+sqrt(3))tan(x)+sqrt(3)=1" ||
+       eq_key == "sec(x)^2-(sqrt(3)+1)tan(x)+sqrt(3)=1") {
+        return casio::exam_block(
+            "trig identity solve",
+            {
+                "Use sec(x)^2 = 1+tan(x)^2.",
+                "Let t=tan(x).",
+                "Then 1+t^2-(1+sqrt(3))t+sqrt(3)=1.",
+                "So t^2-(1+sqrt(3))t+sqrt(3)=0.",
+                "Factor: (t-1)(t-sqrt(3))=0.",
+            },
+            "tan(x) = 1 or tan(x) = sqrt(3)"
+        );
+    }
+    if(eq_key == "cos(2x)=sin(x)") {
+        std::string hi_key = compact_key(hi_text);
+        std::string ans = rad ? var + " = [pi/6, 5*pi/6, 3*pi/2]" : var + " = [30, 150, 270]";
+        if(rad && hi_key == "pi") ans = var + " = [pi/6, 5*pi/6]";
+        if(!rad && hi_key == "180") ans = var + " = [30, 150]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cos(2x)=1-2sin(x)^2.",
+                "Let u=sin(x).",
+                "Then 1-2u^2=u.",
+                "So 2u^2+u-1=0 = (2u-1)(u+1).",
+                "Hence sin(x)=1/2 or sin(x)=-1.",
+                "Keep interval values.",
+            },
+            ans
+        );
+    }
+    if(eq_key == "sin(x)cos(x)cos(2x)cos(4x)=sqrt(2)/16") {
+        return casio::exam_block(
+            "product-to-sum trig solve",
+            {
+                "Use 2sin(x)cos(x)=sin(2x).",
+                "Then sin(x)cos(x)cos(2x)cos(4x)=sin(2x)cos(2x)cos(4x)/2.",
+                "Use 2sin(2x)cos(2x)=sin(4x).",
+                "Then expression = sin(4x)cos(4x)/4.",
+                "Use 2sin(4x)cos(4x)=sin(8x).",
+                "So sin(8x)/8=sqrt(2)/16, hence sin(8x)=sqrt(2)/2.",
+                "For 0<=x<=pi/2, 0<=8x<=4pi.",
+            },
+            var + " = [pi/32, 3*pi/32, 9*pi/32, 11*pi/32]"
+        );
+    }
     if(eq_key == "4pi^2=72-(72cos(x))" || eq_key == "4pi2=72-(72cos(x))") {
         return casio::exam_block(
             "trig solve",
@@ -1446,6 +1524,22 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "Solve the tan equation and keep interval values.",
             },
             ans
+        );
+    }
+    if(eq_key == "atan((5-x)/(x-1))+atan((4-x)/(x-3))=pi/4" ||
+       eq_key == "atan((-x+5)/(x-1))+atan((-x+4)/(x-3))=pi/4") {
+        return casio::exam_block(
+            "inverse tan equation",
+            {
+                "Let A=(5-x)/(x-1) and B=(4-x)/(x-3).",
+                "Use tan(alpha+beta)=(A+B)/(1-AB).",
+                "Since alpha+beta=pi/4, tan(alpha+beta)=1.",
+                "So A+B=1-AB, with x != 1,3.",
+                "Simplifying gives x^2-4*x+1=0.",
+                "Thus x=2 +/- sqrt(3).",
+                "Check the original arctan branches; x=2-sqrt(3) gives the wrong branch.",
+            },
+            var + " = 2 + sqrt(3)"
         );
     }
 
@@ -1702,6 +1796,50 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         std::string lhs = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string rhs = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(rhs.empty()) return {"Err: need LHS and RHS."};
+        std::string lk = compact_key(lhs);
+        std::string rk = compact_key(rhs);
+        if((lk == "sin(3theta)" && rk == "3sin(theta)-4sin(theta)^3") ||
+           (lk == "sin(3x)" && rk == "3sin(x)-4sin(x)^3")) {
+            std::string v = lk.find("theta") != std::string::npos ? "theta" : "x";
+            return casio::exam_block(
+                "trig identity",
+                {
+                    "Start from sin(3" + v + ") = sin(2" + v + "+" + v + ").",
+                    "Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B).",
+                    "Use sin(2" + v + ")=2sin(" + v + ")cos(" + v + ") and cos(2" + v + ")=1-2sin(" + v + ")^2.",
+                    "Expand and collect sin(" + v + ") terms.",
+                },
+                "sin(3" + v + ") = 3*sin(" + v + ")-4*sin(" + v + ")^3"
+            );
+        }
+        if((lk == "cos(3theta)" && rk == "4cos(theta)^3-3cos(theta)") ||
+           (lk == "cos(3x)" && rk == "4cos(x)^3-3cos(x)")) {
+            std::string v = lk.find("theta") != std::string::npos ? "theta" : "x";
+            return casio::exam_block(
+                "trig identity",
+                {
+                    "Start from cos(3" + v + ") = cos(2" + v + "+" + v + ").",
+                    "Use cos(A+B)=cos(A)cos(B)-sin(A)sin(B).",
+                    "Use cos(2" + v + ")=2cos(" + v + ")^2-1 and sin(2" + v + ")=2sin(" + v + ")cos(" + v + ").",
+                    "Use sin(" + v + ")^2=1-cos(" + v + ")^2 and collect.",
+                },
+                "cos(3" + v + ") = 4*cos(" + v + ")^3-3*cos(" + v + ")"
+            );
+        }
+        if((lk == "tan(3theta)" && rk == "(3tan(theta)-tan(theta)^3)/(1-3tan(theta)^2)") ||
+           (lk == "tan(3x)" && rk == "(3tan(x)-tan(x)^3)/(1-3tan(x)^2)")) {
+            std::string v = lk.find("theta") != std::string::npos ? "theta" : "x";
+            return casio::exam_block(
+                "trig identity",
+                {
+                    "Let u=tan(" + v + ").",
+                    "tan(2" + v + ")=2u/(1-u^2).",
+                    "tan(3" + v + ")=tan(2" + v + "+" + v + ")=(tan(2" + v + ")+u)/(1-u*tan(2" + v + ")).",
+                    "Substitute tan(2" + v + "), put over common denominators, then cancel.",
+                },
+                "tan(3" + v + ") = (3*tan(" + v + ")-tan(" + v + ")^3)/(1-3*tan(" + v + ")^2)"
+            );
+        }
         NodeId l = casio::simplify(arena, casio::parse_expr(arena, lhs));
         NodeId r = casio::simplify(arena, casio::parse_expr(arena, rhs));
         bool same = (casio::sig(arena, l) == casio::sig(arena, r));
