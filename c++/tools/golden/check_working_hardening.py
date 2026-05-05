@@ -36,6 +36,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "derive",
+        "arccos(cos(2*x+pi/6)),x,method=auto",
+        ["Use chain rule", "d/dx arccos(u)", "dy/dx"],
+        ["Use quotient rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
+        "log(abs(3*x+1)+2),x,method=auto",
+        ["Use chain rule", "d(abs(u))/dx", "dy/dx"],
+        ["Use product rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
         "x=t^2+1/t,y=t^2-1/t,t,x,method=param",
         ["dx/dt", "dy/dx"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
@@ -155,6 +167,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "tan(2*x+pi/6),method=auto",
+        ["tan(A+B)", "Let N = tan(2*x)+1/sqrt(3)", "Let D = 1-tan(2*x)*1/sqrt(3)", "Answer: N/D"],
+        ["Answer: (tan(", "ERR:", "Unexpected token"],
+    ),
+    (
         "alg",
         "arctan(2*x-3)=0,method=auto",
         ["arctan has domain all real", "arctan(A)=0 => A=0", "2*x - 3 = 0", "Answer: x = 3/2"],
@@ -175,7 +193,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "cosec((x+1)/3),method=auto",
-        ["Use identity cosec(u) = 1/sin(u)", "Domain: (x + 1)/3 != n*pi", "Answer: 1/sin((x + 1)/3)"],
+        ["Use identity cosec(u) = 1/sin(u)", "Domain: (x + 1)/3 != n*pi", "Domain: x != 3*n*pi - 1", "Answer: 1/sin((x + 1)/3)"],
         ["ERR:", "Unexpected token"],
     ),
     (

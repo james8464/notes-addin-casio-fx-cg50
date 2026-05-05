@@ -143,6 +143,19 @@ static bool contains_pi(Arena &a, NodeId n)
     return false;
 }
 
+static std::optional<std::string> exact_tan_text(Arena &a, NodeId n)
+{
+    std::string s = casio::format_expr(a, n);
+    if(s == "0") return "0";
+    if(s == "pi/6") return "1/sqrt(3)";
+    if(s == "-pi/6") return "-1/sqrt(3)";
+    if(s == "pi/4") return "1";
+    if(s == "-pi/4") return "-1";
+    if(s == "pi/3") return "sqrt(3)";
+    if(s == "-pi/3") return "-sqrt(3)";
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -169,12 +182,22 @@ static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, 
             "Answer: " + ans,
         };
     }
-    std::string ans = "(tan(" + A + ")+tan(" + B + "))/(1-tan(" + A + ")*tan(" + B + "))";
-    return std::vector<std::string>{
+    auto exact_b = exact_tan_text(a, arg.kids[1]);
+    std::string tan_b = exact_b.value_or("tan(" + B + ")");
+    std::string numerator = "tan(" + A + ")+" + tan_b;
+    std::string denominator = (tan_b == "1")
+        ? "1-tan(" + A + ")"
+        : "1-tan(" + A + ")*" + tan_b;
+    std::vector<std::string> lines{
         "1. Start with " + start + ".",
         "2. Use tan(A+B)=(tan(A)+tan(B))/(1-tan(A)tan(B)).",
-        "Answer: " + ans,
     };
+    int step = 3;
+    if(exact_b) lines.push_back(std::to_string(step++) + ". tan(" + B + ") = " + tan_b + ".");
+    lines.push_back(std::to_string(step++) + ". Let N = " + numerator + ".");
+    lines.push_back(std::to_string(step++) + ". Let D = " + denominator + ".");
+    lines.push_back("Answer: N/D");
+    return lines;
 }
 
 static std::optional<Rational> pi_multiple_coeff(Arena &a, NodeId n)

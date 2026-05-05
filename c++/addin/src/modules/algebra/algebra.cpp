@@ -841,6 +841,41 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     return {var + " = " + format_expr(a, x_plus), var + " = " + format_expr(a, x_minus)};
 }
 
+static std::string format_rat(Arena &a, Rational r)
+{
+    r.normalize();
+    return format_expr(a, a.num(r));
+}
+
+static std::string scaled_npi(Arena &a, Rational scale)
+{
+    scale.normalize();
+    if(scale.num == 1 && scale.den == 1) return "n*pi";
+    if(scale.num == -1 && scale.den == 1) return "-n*pi";
+    return format_rat(a, scale) + "*n*pi";
+}
+
+static std::string append_rat_offset(Arena &a, std::string base, Rational offset)
+{
+    offset.normalize();
+    if(offset.num == 0) return base;
+    Rational abs_off = offset;
+    if(abs_off.num < 0) abs_off.num = -abs_off.num;
+    if(offset.num > 0) return base + " + " + format_rat(a, abs_off);
+    return base + " - " + format_rat(a, abs_off);
+}
+
+static void push_linear_trig_domain(Arena &a, NodeId arg, bool half_shift, std::vector<std::string> &out)
+{
+    auto p = poly_of(a, arg, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return;
+
+    Rational inv_m = r_div(Rational{1, 1}, p->a1);
+    Rational offset = r_div(r_neg(p->a0), p->a1);
+    std::string rhs = half_shift ? (format_rat(a, inv_m) + "*(pi/2 + n*pi)") : scaled_npi(a, inv_m);
+    push_unique(out, "Domain: x != " + append_rat_offset(a, rhs, offset));
+}
+
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
@@ -859,11 +894,13 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
             std::string arg = format_expr(a, x.a);
             push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "cos", x.a)) + " != 0");
             push_unique(out, "Domain: " + arg + " != pi/2 + n*pi");
+            push_linear_trig_domain(a, x.a, true, out);
         }
         if(x.fkind == FnKind::Cot || x.fkind == FnKind::Cosec) {
             std::string arg = format_expr(a, x.a);
             push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "sin", x.a)) + " != 0");
             push_unique(out, "Domain: " + arg + " != n*pi");
+            push_linear_trig_domain(a, x.a, false, out);
         }
         collect_domain(a, x.a, out);
         return;

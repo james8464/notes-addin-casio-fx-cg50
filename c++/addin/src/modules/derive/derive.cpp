@@ -106,6 +106,33 @@ static bool has_variable_power(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static bool contains_fn_kind(Arena &a, NodeId n, FnKind kind)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return x.fkind == kind || contains_fn_kind(a, x.a, kind);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_fn_kind(a, x.a, kind) || contains_fn_kind(a, x.b, kind);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_fn_kind(a, k, kind)) return true;
+    }
+    return false;
+}
+
+static std::string clean_math_text(std::string s)
+{
+    auto replace_all = [&](std::string const &from, std::string const &to) {
+        std::size_t pos = 0;
+        while((pos = s.find(from, pos)) != std::string::npos) {
+            s.replace(pos, from.size(), to);
+            pos += to.size();
+        }
+    };
+    replace_all("--", "");
+    replace_all("+ -", "- ");
+    replace_all("- -", "+ ");
+    return s;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -438,6 +465,38 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("Use logdiff: d(u^v)=u^v*(v'*log(u)+v*u'/u).");
                     used_rule = true;
                 }
+                if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {
+                    NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
+                    steps.push_back("Let u = " + format_expr_human(arena, dn.a) + ".");
+                    steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
+                    switch(dn.fkind) {
+                    case FnKind::Asin:
+                        steps.push_back("Use chain rule: d/d" + var + " arcsin(u)=u'/sqrt(1-u^2).");
+                        break;
+                    case FnKind::Acos:
+                        steps.push_back("Use chain rule: d/d" + var + " arccos(u)=-u'/sqrt(1-u^2).");
+                        break;
+                    case FnKind::Atan:
+                        steps.push_back("Use chain rule: d/d" + var + " arctan(u)=u'/(1+u^2).");
+                        break;
+                    case FnKind::Log:
+                        steps.push_back("Use chain rule: d/d" + var + " log(u)=u'/u.");
+                        break;
+                    case FnKind::Exp:
+                        steps.push_back("Use chain rule: d/d" + var + " exp(u)=exp(u)*u'.");
+                        break;
+                    case FnKind::Sqrt:
+                        steps.push_back("Use chain rule: d/d" + var + " sqrt(u)=u'/(2sqrt(u)).");
+                        break;
+                    default:
+                        steps.push_back("Use chain rule on the outer function.");
+                        break;
+                    }
+                    if(contains_fn_kind(arena, dn.a, FnKind::Abs)) {
+                        steps.push_back("For abs: d(abs(u))/d" + var + " = u/abs(u)*du/d" + var + ".");
+                    }
+                    used_rule = true;
+                }
                 if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
                     steps.push_back("Use quotient rule: (u'v-uv')/v^2.");
                     used_rule = true;
@@ -456,7 +515,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
                 steps,
-                label + " = " + format_expr_human(arena, out)
+                label + " = " + clean_math_text(format_expr_human(arena, out))
             );
         }
         if(req.mode == 2) {
