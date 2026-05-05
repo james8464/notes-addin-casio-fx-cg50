@@ -622,6 +622,96 @@ static std::optional<NodeId> sqrt_square_base(Arena &a, NodeId n)
     return inner.a;
 }
 
+static bool is_one_node(Arena &a, NodeId n)
+{
+    auto r = as_num(a, n);
+    return r && r->num == r->den;
+}
+
+static std::optional<NodeId> negated_term_inner(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    std::vector<NodeId> rest;
+    for(auto kid : x.kids) {
+        if(auto r = as_num(a, kid)) {
+            coeff.num *= r->num;
+            coeff.den *= r->den;
+            coeff.normalize();
+        }
+        else rest.push_back(kid);
+    }
+    if(coeff.num != -coeff.den || rest.empty()) return std::nullopt;
+    if(rest.size() == 1) return rest[0];
+    return casio::simplify(a, casio::mul(a, rest));
+}
+
+static std::optional<std::pair<FnKind, NodeId>> trig_square(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, x.b);
+    if(!e || e->num != 2 || e->den != 1) return std::nullopt;
+    Node const &base = a.get(x.a);
+    if(base.kind != NodeKind::Fn || (base.fkind != FnKind::Sin && base.fkind != FnKind::Cos)) return std::nullopt;
+    return std::make_pair(base.fkind, base.a);
+}
+
+static std::optional<std::vector<std::string>> one_minus_trig_square_rewrite(Arena &a, NodeId n)
+{
+    NodeId s = casio::simplify(a, n);
+    Node const &x = a.get(s);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+
+    bool saw_one = false;
+    std::optional<std::pair<FnKind, NodeId>> square;
+    for(auto kid : x.kids) {
+        if(is_one_node(a, kid)) {
+            saw_one = true;
+            continue;
+        }
+        auto inner = negated_term_inner(a, kid);
+        if(!inner) return std::nullopt;
+        auto sq = trig_square(a, *inner);
+        if(!sq || square) return std::nullopt;
+        square = *sq;
+    }
+    if(!saw_one || !square) return std::nullopt;
+
+    bool cos_square = square->first == FnKind::Cos;
+    NodeId out = cos_square
+        ? casio::power(a, casio::fn(a, "sin", square->second), casio::num(a, 2))
+        : casio::power(a, casio::fn(a, "cos", square->second), casio::num(a, 2));
+    out = casio::simplify(a, out);
+    std::string u = casio::format_expr(a, square->second);
+    return std::vector<std::string>{
+        "1. Let u = " + u + ".",
+        cos_square ? "2. Use identity 1 - cos(u)^2 = sin(u)^2." : "2. Use identity 1 - sin(u)^2 = cos(u)^2.",
+        "3. Substitute u back.",
+        "Answer: " + casio::format_expr(a, out),
+    };
+}
+
+static std::optional<std::vector<std::string>> tan_target_sincos(Arena &a, NodeId src, NodeId target)
+{
+    Node const &s = a.get(src);
+    Node const &t = a.get(target);
+    if(s.kind != NodeKind::Fn || s.fkind != FnKind::Tan || t.kind != NodeKind::Div) return std::nullopt;
+    Node const &num = a.get(t.a);
+    Node const &den = a.get(t.b);
+    if(num.kind != NodeKind::Fn || den.kind != NodeKind::Fn) return std::nullopt;
+    if(num.fkind != FnKind::Sin || den.fkind != FnKind::Cos) return std::nullopt;
+    if(casio::sig(a, s.a) != casio::sig(a, num.a) || casio::sig(a, s.a) != casio::sig(a, den.a)) return std::nullopt;
+    std::string u = casio::format_expr(a, s.a);
+    return std::vector<std::string>{
+        "1. Let u = " + u + ".",
+        "2. Use identity tan(u)=sin(u)/cos(u).",
+        "3. Substitute u back.",
+        "Answer: " + casio::format_expr(a, target),
+    };
+}
+
 static bool numeric_equiv(Arena &a, NodeId lhs, NodeId rhs)
 {
     int checked = 0;
@@ -1638,8 +1728,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string target = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(target.empty()) return {"Err: need target form."};
-        NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
-        NodeId t = casio::simplify(arena, casio::parse_expr(arena, target));
+        NodeId src_parsed = casio::parse_expr(arena, src);
+        NodeId target_parsed = casio::parse_expr(arena, target);
+        if(auto exact_route = tan_target_sincos(arena, src_parsed, target_parsed)) return *exact_route;
+        NodeId s = casio::simplify(arena, src_parsed);
+        NodeId t = casio::simplify(arena, target_parsed);
         bool ok = same_sig(arena, s, t) || numeric_equiv(arena, s, t);
         return casio::exam_block(
             "trig transform",
@@ -1694,6 +1787,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
 
     NodeId parsed = casio::parse_expr(arena, req.expr);
+    if(auto one_minus_square = one_minus_trig_square_rewrite(arena, parsed)) return *one_minus_square;
     if(auto compound = compound_angle_rewrite(arena, parsed)) return *compound;
     if(auto base = sqrt_square_base(arena, parsed)) {
         NodeId abs_base = casio::fn(arena, "abs", *base);

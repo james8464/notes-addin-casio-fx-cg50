@@ -334,6 +334,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Domain: all real x", "Range: y >= 0", "Answer: y >= 0"],
         ["Domain: (x + 5)^2 >= 0", "ERR:"],
     ),
+    (
+        "trig",
+        "1-cos(2*x+pi/6)^2,method=auto",
+        ["Use identity 1 - cos(u)^2 = sin(u)^2", "u = 2*x + pi/6", "Answer: sin(2*x + pi/6)^2"],
+        ["Simplify using exact trig/algebra rules", "Answer: - cos(2*x + pi/6)^2 + 1", "ERR:"],
+    ),
+    (
+        "trig",
+        "tan(x),target=sin(x)/cos(x),method=auto",
+        ["Use identity tan(u)=sin(u)/cos(u)", "u = x", "Answer: sin(x)/cos(x)"],
+        ["Apply standard identities/rearrangement toward the target", "ERR:"],
+    ),
+    (
+        "int",
+        "(x^2+2*x+1)/(x+1),method=auto",
+        ["Cancel common factor x + 1", "Integrate x + 1", "Answer: x + 1/2*x^2 + C"],
+        ["No elementary A - level primitive", "No elementary A-level primitive", "Answer: int(", "ERR:"],
+    ),
 ]
 
 

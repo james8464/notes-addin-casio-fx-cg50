@@ -4851,6 +4851,26 @@ static std::optional<NodeId> integrate_poly_div_quadratic(Arena &a, NodeId expr,
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::optional<NodeId> integrate_exact_polynomial_quotient(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    auto d = poly_of_any(a, x.b, var);
+    if(!n || !d || !n->ok || !d->ok) return std::nullopt;
+    auto qr = poly_divmod(*n, *d);
+    if(!qr) return std::nullopt;
+    Poly q = qr->first;
+    Poly r = qr->second;
+    if(poly_degree(q) < 0 || poly_degree(r) >= 0) return std::nullopt;
+
+    NodeId qnode = poly_to_node(a, q, var);
+    steps.push_back("Step 2: Cancel common factor " + format_expr_human(a, x.b) + ".");
+    steps.push_back("Step 3: Integrand simplifies to " + format_expr_human(a, qnode) + ".");
+    steps.push_back("Step 4: Integrate " + format_expr_human(a, qnode) + " by the power rule.");
+    return integrate_poly_node(a, q, var);
+}
+
 static bool is_xn_plus_one(Poly const &p, int degree)
 {
     if(poly_degree(p) != degree) return false;
@@ -5372,6 +5392,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto rational_pf = integrate_partial_fraction_simple(a, expr, var, out.steps)) {
         out.result = *rational_pf;
         out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto exact_q = integrate_exact_polynomial_quotient(a, expr, var, out.steps)) {
+        out.result = *exact_q;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
         return out;
     }
 
