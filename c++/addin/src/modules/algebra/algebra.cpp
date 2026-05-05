@@ -2069,18 +2069,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x > 5/2"
                 );
             }
-            if(key == "fg_eq_ginv_square_shift") {
-                return casio::exam_block(
-                    "domain comparison",
-                    {
-                        "Domain of fg: 7 <= x <= 10.",
-                        "Domain of g^-1: x <= 4.",
-                        "For g^-1, input x must be in range of g, so x <= 4.",
-                        "The intervals do not overlap.",
-                    },
-                    "No solution"
-                );
-            }
         }
         if(req.mode == 1) {
             // Compare: expr1\\nexpr2

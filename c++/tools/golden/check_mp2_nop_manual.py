@@ -33,7 +33,6 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     ("P8 binomial square-root from reciprocal", ["--alg", "binomial(sqrt(1/4-x),x,0,3,method=from_reciprocal)"], ["Use previous expansion", "1/2 - x - x^2 - 2*x^3"]),
     ("P10 trig implicit derivative", ["--derive", "tan(3*y)=3*tan(x),x,method=implicit"], ["sec(3y)^2", "dy/dx = 1/(1+8*sin(x)^2)"]),
     ("P12 composite domain range", ["--alg", "range((x-6)^2,x,7,10)"], ["1 <= y <= 16"]),
-    ("P12 inverse-domain conflict", ["--alg", "fg_eq_ginv_square_shift"], ["Domain of fg: 7 <= x <= 10", "Domain of g^-1: x <= 4", "No solution"]),
     ("P13 param tangent", ["--derive", "cos(t),sin(2*t)-cos(t),t,method=param"], ["theta=pi/4", "dy/dx = -1", "x + y = 1"]),
     ("P13 param cartesian", ["--alg", "param_cartesian(cos(t),sin(2*t)-cos(t),t)"], ["4*x^2*(1-x^2) = (x+y)^2"]),
 ]
