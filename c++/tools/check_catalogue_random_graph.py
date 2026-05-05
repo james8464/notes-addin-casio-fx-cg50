@@ -24,8 +24,9 @@ def main() -> int:
         "random_supported_math_expr",
         "math_log_base",
         "math_factorial_bang",
-        "if program is None:",
-        "return [(\"CatalogueGraph\", self.build_catalogue_explorer_cases)]",
+        "if program is None or program == \"all\":",
+        "(\"Adversarial\", self.build_adversarial_random_cases)",
+        "(\"CatalogueGraph\", self.build_catalogue_explorer_cases)",
         "self.random_graph.nodes = {}",
     ]
     required.extend([

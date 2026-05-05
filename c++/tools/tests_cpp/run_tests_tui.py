@@ -90,6 +90,15 @@ except ImportError:
     check_ollama_available = None
     get_ollama_models = None
 
+try:
+    from random_engine import AdversarialGenerator, RunReportStore, classify_output_quality
+    ADVERSARIAL_ENGINE_AVAILABLE = True
+except Exception:
+    AdversarialGenerator = None
+    RunReportStore = None
+    classify_output_quality = None
+    ADVERSARIAL_ENGINE_AVAILABLE = False
+
 if "SHARED_REASONING_MARKERS" not in globals():
     SHARED_REASONING_MARKERS = ("method:", "use ", "let ", "solve ", "answer:")
 
@@ -1248,6 +1257,11 @@ def extract_last_derivative_expr(output):
 def extract_last_antiderivative_expr(output):
     for line in reversed((output or "").splitlines()):
         stripped = re.sub(r"^\s*\d+\.\s*", "", line.strip())
+        if stripped.lower().startswith("answer:"):
+            rhs = stripped.split(":", 1)[1].strip()
+            if rhs.endswith("+ C"):
+                return rhs[:-4].strip()
+            continue
         if stripped.startswith("="):
             rhs = stripped[1:].strip()
         elif "=" in stripped:
@@ -1729,7 +1743,7 @@ def algebra_transform_checker(*tokens):
 def algebra_solve_checker(*tokens):
     return build_checker(
         contains_all=tokens + ("answer:",),
-        contains_any=("solve", "method"),
+        contains_any=("solve", "method", "expr =", "factor"),
         min_steps=2,
         min_lines=2,
     )
@@ -1800,7 +1814,7 @@ def trig_transform_checker(*tokens):
 def trig_solve_checker(*tokens):
     base_required = tokens
     structure = build_checker(
-        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "use cos"),
+        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "use cos", "let a=", "move all terms"),
         min_steps=3,
         min_lines=4,
     )
@@ -2504,6 +2518,7 @@ class CASIOApp(App):
         self._weighted_rate = 0.0
         self._weighted_llm_rate = 0.0
         self._feature_stats = {}
+        self._new_adversarial_report_store()
         self._show_chaos_feature_gaps = False
         self._in_run_case_specs = False
         self._spinner_frames = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
@@ -2514,6 +2529,7 @@ class CASIOApp(App):
         self._last_event_label = ""
         self._frame_timer = None
         self._compile_running = False
+        self.adversarial_report_store = None
 
         self.command_items = {
             "/run": "Run the current program scope once",
@@ -2521,6 +2537,9 @@ class CASIOApp(App):
             "/random 1000": "Run 1000 chaos random tests split across all programs and features",
             "/random 1000 8": "Run 1000 chaos random tests with 8 parallel workers",
             "/infinite": "Run tests infinitely until stopped",
+            "/stress integrate 100": "Run focused adversarial tests for one feature",
+            "/replay adv-00001": "Replay an adversarial failure from the latest run folder",
+            "/shrink adv-00001": "Show the stored minimal repro attempt",
             "/clear": "Reset the output view",
             "/stop": "Stop running tests (in infinite mode)",
             "/quit": "Exit the test harness",
@@ -2670,6 +2689,11 @@ class CASIOApp(App):
             self.current_random_workers = workers
             self.action_random_tests(difficulty, count, workers, command_label=value)
             return
+        stress_scope = self.parse_stress_scope(value)
+        if stress_scope is not None:
+            feature, count, workers = stress_scope
+            self.action_stress_tests(feature, count, workers, command_label=value)
+            return
         if value_lower == "/infinite":
             self.action_random_tests("chaos", None, command_label="/infinite")
         elif value_lower == "/llm" or value_lower == "/llm status":
@@ -2707,6 +2731,7 @@ class CASIOApp(App):
     def normalize_program_name(self, value: str):
         mapping = {
             "all": "all",
+            "adversarial": "Adversarial",
             "algebra": "Algebra",
             "trigonometry": "Trigonometry",
             "trig": "Trigonometry",
@@ -2775,6 +2800,27 @@ class CASIOApp(App):
             return None
         return "chaos", count, workers, infinite_mode
 
+    def parse_stress_scope(self, value: str):
+        parts = value.split()
+        if not parts or parts[0].lower() != "/stress":
+            return None
+        feature = (parts[1].lower() if len(parts) > 1 else "all")
+        count = 100
+        workers = None
+        if len(parts) > 2:
+            try:
+                count = int(parts[2])
+            except ValueError:
+                return None
+        if len(parts) > 3:
+            try:
+                workers = int(parts[3])
+            except ValueError:
+                return None
+        if count <= 0 or (workers is not None and workers <= 0):
+            return None
+        return feature, count, workers
+
     def on_key(self, event) -> None:
         if event.key == "ctrl+p":
             event.prevent_default()
@@ -2799,6 +2845,13 @@ class CASIOApp(App):
             self.current_random_workers = workers
             self.last_command = value
             self.action_random_tests(difficulty, count, workers, command_label=value)
+            return
+
+        stress_scope = self.parse_stress_scope(value)
+        if stress_scope is not None:
+            feature, count, workers = stress_scope
+            self.last_command = value
+            self.action_stress_tests(feature, count, workers, command_label=value)
             return
 
         run_scope = self.parse_run_scope(value)
@@ -2827,6 +2880,10 @@ class CASIOApp(App):
             self.show_report()
         elif value_lower == "/coverage":
             self.show_coverage()
+        elif value_lower.startswith("/replay "):
+            self.action_replay_case(value.split(None, 1)[1].strip())
+        elif value_lower.startswith("/shrink "):
+            self.action_shrink_case(value.split(None, 1)[1].strip())
         elif value_lower == "/fails":
             self.show_fails()
         elif value_lower == "/programs":
@@ -2960,6 +3017,156 @@ class CASIOApp(App):
             self.append_result(f"[dim]LLM: {self.llm_manager.selected_model}[/dim]")
         
         self.run_random_tests(difficulty, count, workers, program=program)
+
+    def _adversarial_reports_root(self):
+        return self._session_report_path().parent / "adversarial_runs"
+
+    def _new_adversarial_report_store(self):
+        if not ADVERSARIAL_ENGINE_AVAILABLE:
+            return None
+        self.adversarial_report_store = RunReportStore.fresh_under(self._session_report_path().parent)
+        return self.adversarial_report_store
+
+    def _latest_adversarial_report_store(self):
+        if self.adversarial_report_store:
+            return self.adversarial_report_store
+        root = self._adversarial_reports_root()
+        try:
+            candidates = [p for p in root.iterdir() if (p / "replay_index.json").exists()]
+        except OSError:
+            candidates = []
+        if not candidates or not ADVERSARIAL_ENGINE_AVAILABLE:
+            return None
+        latest = sorted(candidates)[-1]
+        self.adversarial_report_store = RunReportStore(latest)
+        return self.adversarial_report_store
+
+    def make_adversarial_case(self, adv_case, index):
+        def runner():
+            out, err = self.run_host_feature(adv_case.command_flag, adv_case.command_expr)
+            combined = out if not err else out + "\n" + err
+            verdict = classify_output_quality(combined, expects_working=adv_case.expects_working)
+            ok = verdict.status != "fail"
+            if verdict.status != "pass":
+                combined = combined.rstrip() + "\n[quality] {0}: {1}".format(verdict.status, verdict.reason)
+            return ok, combined
+
+        case = self.make_direct_case(
+            "Adversarial",
+            adv_case.label,
+            runner,
+            input_text=adv_case.input_text,
+            check_info="{0}; {1}".format(adv_case.expected_note, adv_case.concept.key),
+            feature="adversarial:{0}:{1}".format(adv_case.concept.function, adv_case.concept.method),
+        )
+        case.graph_node = adv_case.concept.key
+        case.graph_meta = adv_case.concept.meta()
+        case.adversarial_case = adv_case
+        return case
+
+    def build_adversarial_random_cases(self, difficulty, count, rng):
+        if not ADVERSARIAL_ENGINE_AVAILABLE:
+            return []
+        gen = AdversarialGenerator(seed=rng.randint(1, 2_000_000_000))
+        return [self.make_adversarial_case(c, i + 1) for i, c in enumerate(gen.generate("all", count))]
+
+    def record_adversarial_case_result(self, case, record):
+        adv = getattr(case, "adversarial_case", None)
+        if not adv or not self.adversarial_report_store:
+            return
+        quality_review = "[quality] review:" in (record.output or "").lower()
+        if quality_review and record.harness_status == TestStatus.PASS:
+            record.review_needed = True
+        if record.harness_status == TestStatus.PASS and not getattr(record, "review_needed", False):
+            return
+        reason = record.check_info or ("failed" if record.harness_status == TestStatus.FAIL else "review")
+        try:
+            stored = self.adversarial_report_store.record_case(
+                adv,
+                "fail" if record.harness_status == TestStatus.FAIL else "review",
+                record.output,
+                reason,
+            )
+            record.check_info = (record.check_info or "") + "; replay={0}".format(stored.case_id)
+        except Exception:
+            pass
+
+    def action_stress_tests(self, feature, count=100, workers=None, command_label="/stress"):
+        if self.running:
+            return
+        if not ADVERSARIAL_ENGINE_AVAILABLE:
+            self.append_result("[bold #f59e0b]Adversarial engine unavailable.[/bold #f59e0b]")
+            return
+        self.transition_run_state(RunState.RUNNING)
+        self._live_program = "Adversarial"
+        self._live_phase = "preparing"
+        self._last_event_label = command_label
+        self.records.clear()
+        self.current_run_question_keys.clear()
+        self.session_random_question_keys.clear()
+        self._feature_stats = {}
+        self.last_run_scope = ("stress:" + feature, "chaos")
+        self._init_session_report_file()
+        self._new_adversarial_report_store()
+
+        if not getattr(self, 'plain_mode', False):
+            self.query_one("#results", RichLog).clear()
+
+        def run():
+            try:
+                emit = (lambda fn, *args: fn(*args)) if getattr(self, 'plain_mode', False) else self.call_from_thread
+                self.announce_random_llm_status(emit)
+                emit(self.append_result, f"[bold #e07a53]▶ {command_label}[/bold #e07a53]")
+                emit(self.append_result, f"[dim]{count} adversarial {feature} tests[/dim]")
+                self.start_time = datetime.now().timestamp()
+                self.total_expected = count
+                rng = random.Random()
+                gen = AdversarialGenerator(seed=rng.randint(1, 2_000_000_000))
+                cases = [self.make_adversarial_case(c, i + 1) for i, c in enumerate(gen.generate(feature, count))]
+                self.run_case_specs(cases, workers=workers or CASE_WORKERS, infinite_mode=False)
+                self.transition_run_state(RunState.STOPPED)
+                if getattr(self, 'plain_mode', False):
+                    self.render_summary()
+                else:
+                    self.call_from_thread(self.render_summary)
+            finally:
+                self._live_phase = "ready"
+
+        if getattr(self, 'plain_mode', False):
+            run()
+        else:
+            threading.Thread(target=run, daemon=True).start()
+
+    def action_replay_case(self, case_id):
+        store = self._latest_adversarial_report_store()
+        if not store:
+            self.append_result("[bold #f59e0b]No adversarial replay store found.[/bold #f59e0b]")
+            return
+        try:
+            payload = store.load_case(case_id)
+        except Exception as err:
+            self.append_result(f"[bold #f87171]Replay not found:[/bold #f87171] {err}")
+            return
+        out, err = self.run_host_feature(payload["command_flag"], payload["command_expr"])
+        combined = out if not err else out + "\n" + err
+        verdict = classify_output_quality(combined, expects_working=True)
+        self.append_result(f"[bold #e07a53]Replay {case_id}[/bold #e07a53] {verdict.status}: {verdict.reason}")
+        self.append_result("[dim]Input:[/dim] {0}".format(payload["input_text"]))
+        self.append_result(combined.rstrip() or "[dim](no output)[/dim]")
+
+    def action_shrink_case(self, case_id):
+        store = self._latest_adversarial_report_store()
+        if not store:
+            self.append_result("[bold #f59e0b]No adversarial replay store found.[/bold #f59e0b]")
+            return
+        try:
+            payload = store.load_case(case_id)
+        except Exception as err:
+            self.append_result(f"[bold #f87171]Shrink not found:[/bold #f87171] {err}")
+            return
+        self.append_result(f"[bold #e07a53]Shrink {case_id}[/bold #e07a53]")
+        self.append_result("[dim]Original:[/dim] {0}".format(payload.get("command_expr", "")))
+        self.append_result("[dim]Shrunk:[/dim] {0}".format(payload.get("shrunk_expr", "")))
 
     def action_clear(self):
         self.records.clear()
@@ -3345,6 +3552,9 @@ class CASIOApp(App):
         else:
             for program, gaps in missing.items():
                 self.append_result(f"[bold #f59e0b]{program}:[/bold #f59e0b] {', '.join(gaps[:20])}")
+        if self.adversarial_report_store:
+            self.append_result(f"[dim]Adversarial run:[/dim] {self.adversarial_report_store.root}")
+            self.append_result(f"[dim]Replay index:[/dim] {self.adversarial_report_store.index_path}")
         self.update_summary("Coverage")
 
     def run_all_tests(self):
@@ -4691,7 +4901,7 @@ class CASIOApp(App):
                             if len(self._test_times) > 500:
                                 self._test_times = self._test_times[-200:]
                         quality_issues = []
-                        if not skip_quality and case.program not in ("Boolean", "MethodSurface") and getattr(case, "feature", ""):
+                        if not skip_quality and case.program not in ("Boolean", "MethodSurface", "Adversarial") and getattr(case, "feature", ""):
                             quality_issues = exam_working_quality_issues(
                                 output, case.program, case.feature
                             )
@@ -4716,6 +4926,7 @@ class CASIOApp(App):
                             getattr(case, "graph_node", ""),
                             getattr(case, "graph_meta", None),
                         )
+                        self.record_adversarial_case_result(case, record)
                         if use_llm:
                             llm_pending.append(record)
                             if len(llm_pending) >= llm_bs:
@@ -5460,7 +5671,7 @@ class CASIOApp(App):
     def trig_solve_output_checker(self, eq_text, var="x", degrees=False, lower=None, upper=None):
         quality = build_checker(
             contains_all=("x =",),
-            contains_any=("solve trig eq", "for sin(a) = sin(b)", "for cos(a) = cos(b)", "start with"),
+            contains_any=("solve trig eq", "for sin(a) = sin(b)", "for cos(a) = cos(b)", "start with", "move all terms", "let u="),
             min_steps=3,
             min_lines=4,
         )
@@ -8020,9 +8231,10 @@ class CASIOApp(App):
 
     def random_builders_for_program(self, program):
         """Return the random-case builders included in the requested scope."""
-        if program is None:
+        if program == "CatalogueGraph":
             return [("CatalogueGraph", self.build_catalogue_explorer_cases)]
         builders = [
+            ("Adversarial", self.build_adversarial_random_cases),
             ("CatalogueGraph", self.build_catalogue_explorer_cases),
             ("Algebra", self.build_random_algebra_cases),
             ("Trigonometry", self.build_random_trig_cases),
@@ -8034,7 +8246,7 @@ class CASIOApp(App):
             ("MethodSurface", self.build_random_method_surface_cases),
             ("ExamMix", self.build_university_cases),
         ]
-        if program is None:
+        if program is None or program == "all":
             return builders
         return [(name, builder) for name, builder in builders if name == program]
 
@@ -9793,6 +10005,12 @@ def _cli_help():
   python3 c++/tools/tests_cpp/run_tests_tui.py random [N]
       Run N chaos random tests (default 100) and print a summary.
 
+  python3 c++/tools/tests_cpp/run_tests_tui.py stress integrate 100
+      Run focused adversarial tests for a feature.
+
+  python3 c++/tools/tests_cpp/run_tests_tui.py replay adv-00001
+      Replay a stored adversarial failure from the latest run folder.
+
   python3 c++/tools/tests_cpp/run_tests_tui.py llm <model> ...
       Configure LLM selection (see /llm in TUI). Everything after 'llm' is one string.
 
@@ -9890,6 +10108,44 @@ def main():
                     app.action_random_tests("chaos", None, command_label="/random inf", program=None if app.current_program == "all" else app.current_program)
                 else:
                     app.action_random_tests("chaos", count, command_label="/random", program=None if app.current_program == "all" else app.current_program)
+                i += 1
+                continue
+            if tok == "stress":
+                feature = "all"
+                count = 100
+                workers = None
+                if i + 1 < len(raw) and not (raw[i + 1] or "").isdigit():
+                    feature = raw[i + 1]
+                    i += 1
+                if i + 1 < len(raw):
+                    try:
+                        count = int(raw[i + 1])
+                    except (ValueError, TypeError):
+                        pass
+                    else:
+                        i += 1
+                if i + 1 < len(raw):
+                    try:
+                        workers = int(raw[i + 1])
+                    except (ValueError, TypeError):
+                        pass
+                    else:
+                        i += 1
+                app.action_stress_tests(feature, count, workers, command_label="/stress {0}".format(feature))
+                i += 1
+                continue
+            if tok == "replay":
+                if i + 1 < len(raw):
+                    app.action_replay_case(raw[i + 1])
+                    i += 2
+                    continue
+                i += 1
+                continue
+            if tok == "shrink":
+                if i + 1 < len(raw):
+                    app.action_shrink_case(raw[i + 1])
+                    i += 2
+                    continue
                 i += 1
                 continue
             if tok in ("inf", "infinite"):
