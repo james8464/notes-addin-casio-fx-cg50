@@ -12,6 +12,7 @@ OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
+TEMPLATE_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.TPL"
 OUT_PAK="${OUT_DIR}/CASIOCAS.PAK"
 TRANSFER_PAK="${TRANSFER_DIR}/CASIOCAS.PAK"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
@@ -57,7 +58,11 @@ publish_transfer_g3a() {
 
 publish_external_pack() {
   if [ -f "${HELP_SRC}" ]; then
-    python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${OUT_PAK}"
+    if [ -f "${TEMPLATE_SRC}" ]; then
+      python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${TEMPLATE_SRC}" "${OUT_PAK}"
+    else
+      python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${OUT_PAK}"
+    fi
     mkdir -p "${TRANSFER_DIR}"
     cp "${OUT_PAK}" "${TRANSFER_PAK}"
     echo "External pack: ${OUT_PAK}"

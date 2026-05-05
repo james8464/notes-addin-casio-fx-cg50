@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
+TPL = ROOT / "c++/prizm/help/CASIOCAS.TPL"
 STATIC_LEXER = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer.h"
 STATIC_LEXER_FULL = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer_full.h"
 
@@ -124,6 +125,7 @@ def main() -> int:
     catalog = CATALOG.read_text(errors="ignore")
     main_cc = MAIN.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
+    template_text = TPL.read_text(errors="ignore") if TPL.exists() else ""
     lexer_text = STATIC_LEXER.read_text(errors="ignore")
     lexer_full_text = STATIC_LEXER_FULL.read_text(errors="ignore")
 
@@ -201,9 +203,9 @@ def main() -> int:
         return fail("working-line output hook missing")
     if "cascas_extract_method" not in main_cc or "cascas_strip_method_args" not in main_cc:
         return fail("method extraction hook missing")
-    if "u=" not in main_cc or "v=Int dv" not in main_cc:
+    if "u=" not in template_text or "v=Int dv" not in template_text:
         return fail("parts/sub method u hint missing")
-    if "Rewrite to std form." not in main_cc or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
+    if "Std form." not in template_text or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
         return fail("working-line output shape missing")
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")

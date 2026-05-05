@@ -52,6 +52,10 @@ def main() -> int:
         "integrate(f,x,[a,b,method,u])",
         "diff(f,var,[n,method])",
         "solve_trig(eq,[var,lo,hi,max,method])",
+        "t141",
+        "t140",
+        "t107",
+        "t079",
     ]
     missing = [name for name in required if name not in records]
     if missing:

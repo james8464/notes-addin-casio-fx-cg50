@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 CONSOLE = ROOT / "c++/khicas/upstream/giac90_1addin/console.cc"
+TPL = ROOT / "c++/prizm/help/CASIOCAS.TPL"
 
 
 REQUIRED_MARKERS = [
@@ -120,7 +121,9 @@ def fail(msg: str) -> int:
 def main() -> int:
     main_cc = MAIN.read_text(errors="ignore")
     console_cc = CONSOLE.read_text(errors="ignore")
-    missing = [x for x in REQUIRED_MARKERS if x not in main_cc]
+    template_text = TPL.read_text(errors="ignore")
+    working_surface = main_cc + "\n" + template_text
+    missing = [x for x in REQUIRED_MARKERS if x not in working_surface]
     if missing:
         return fail("working screen markers missing: " + ", ".join(missing))
     if 'out += "Ans: "' in main_cc:
@@ -141,7 +144,7 @@ def main() -> int:
     if missing:
         return fail("console working pretty-view markers missing: " + ", ".join(missing))
 
-    missing = [x for x in METHOD_MARKERS if x not in main_cc]
+    missing = [x for x in METHOD_MARKERS if x not in working_surface]
     if missing:
         return fail("method working markers missing: " + ", ".join(missing))
 

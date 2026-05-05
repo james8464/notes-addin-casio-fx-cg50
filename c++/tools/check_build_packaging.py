@@ -24,6 +24,7 @@ def main() -> int:
         'TRANSFER_DIR="${ROOT_DIR}/calculator_files"',
         'TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"',
         'TRANSFER_PAK="${TRANSFER_DIR}/CASIOCAS.PAK"',
+        'TEMPLATE_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.TPL"',
         'cp "${OUT_G3A}" "${TRANSFER_G3A}"',
         'python3 "${ROOT_DIR}/c++/tools/build_external_pack.py"',
         'cp "${OUT_PAK}" "${TRANSFER_PAK}"',

@@ -9,13 +9,17 @@ MAGIC = b"CCP1"
 
 
 def parse_help(src: Path) -> list[tuple[bytes, bytes]]:
+    preserve = src.suffix.upper() == ".TPL"
     records: list[tuple[bytes, bytes]] = []
     name: str | None = None
     body: list[str] = []
     for raw in src.read_text(encoding="utf-8", errors="ignore").splitlines():
         if raw.startswith("@END"):
             if name:
-                text = "\n".join(body).strip() + "\n"
+                text = "\n".join(body)
+                if not preserve:
+                    text = text.strip()
+                text += "\n"
                 records.append((name.encode("utf-8"), text.encode("utf-8")))
             name = None
             body = []
@@ -27,10 +31,10 @@ def parse_help(src: Path) -> list[tuple[bytes, bytes]]:
         if not name:
             continue
         # F2/F3 examples are insertion hints, not F6 help text.
-        if raw.startswith("F2:") or raw.startswith("F3:"):
+        if not preserve and (raw.startswith("F2:") or raw.startswith("F3:")):
             continue
-        line = " ".join(raw.rstrip().split())
-        if line:
+        line = raw if preserve else " ".join(raw.rstrip().split())
+        if line or preserve:
             body.append(line)
     return records
 
@@ -48,12 +52,13 @@ def build_pack(records: list[tuple[bytes, bytes]]) -> bytes:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("usage: build_external_pack.py CASIOCAS.HLP CASIOCAS.PAK", file=sys.stderr)
+    if len(sys.argv) < 3:
+        print("usage: build_external_pack.py CASIOCAS.HLP [CASIOCAS.TPL ...] CASIOCAS.PAK", file=sys.stderr)
         return 2
-    src = Path(sys.argv[1])
-    dst = Path(sys.argv[2])
-    records = parse_help(src)
+    dst = Path(sys.argv[-1])
+    records: list[tuple[bytes, bytes]] = []
+    for arg in sys.argv[1:-1]:
+        records.extend(parse_help(Path(arg)))
     if not records:
         print("FAIL no help records", file=sys.stderr)
         return 1
