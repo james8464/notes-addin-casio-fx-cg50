@@ -64,6 +64,11 @@ Quality filters:
 - Factorised/simplified exact answers are preferred, but unsimplified equivalent answers are not INCORRECT unless the question asks for a specific form.
 - If unsure, use NEEDS_REVIEW, not INCORRECT.
 
+Batch mode:
+- Grade each numbered item independently.
+- Never answer "same as item N", "as above", or rely on another item.
+- If two items are similar, repeat the actual reason for this item.
+
 Reply with the verdict first, then at most one short reason:
 CORRECT
 INCORRECT
