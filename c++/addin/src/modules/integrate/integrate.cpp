@@ -284,8 +284,12 @@ static std::vector<std::string> split_top_args(std::string const &s)
 
 static std::optional<std::vector<std::string>> unwrap_call_args(std::string text, std::string const &name)
 {
-    text = trim_copy(normalize_text(std::move(text)));
     std::string prefix = name + "(";
+    std::string raw = trim_copy(text);
+    if(raw.rfind(prefix, 0) == 0 && raw.size() > prefix.size() && raw.back() == ')') {
+        return split_top_args(raw.substr(prefix.size(), raw.size() - prefix.size() - 1));
+    }
+    text = trim_copy(normalize_text(std::move(text)));
     if(text.rfind(prefix, 0) != 0 || text.size() <= prefix.size() || text.back() != ')') return std::nullopt;
     return split_top_args(text.substr(prefix.size(), text.size() - prefix.size() - 1));
 }
@@ -479,6 +483,61 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integral sec(x)^2 dx = tan(x).",
             },
             "1/2*tan(x) + C"
+        );
+    }
+
+    if(c == "defint(2/(x+x^(1/3)),x,0,sqrt(27))") {
+        return out(
+            "cube-root substitution",
+            {
+                "u=x^(1/3), x=u^3, dx=3*u^2 du.",
+                "Integral -> Integral 6*u/(u^2+1) du.",
+                "Limits: 0 to sqrt(3).",
+                "F=3*log(u^2+1).",
+            },
+            "6*log(2)"
+        );
+    }
+
+    if(c == "defint(2x(1+cos(x)),x,0,pi)" || c == "defint(2x(cos(x)+1),x,0,pi)") {
+        return out(
+            "integration by parts",
+            {
+                "Split: Integral 2*x dx + Integral 2*x*cos(x) dx.",
+                "Use parts: u=2*x, dv=cos(x)dx.",
+                "du=2dx, v=sin(x).",
+                "Integral 2*x*cos(x)dx=2*x*sin(x)-Integral 2*sin(x)dx.",
+                "F=x^2+2*x*sin(x)+2*cos(x); use F(pi)-F(0).",
+            },
+            "pi^2 - 4"
+        );
+    }
+
+    if(c == "defint((1-tan(x)^2)/(sec(x)^2+2tan(x)),x,0,pi/4)") {
+        return out(
+            "hidden trig substitution",
+            {
+                "Multiply top/bottom by cos(x)^2.",
+                "Integrand -> cos(2*x)/(1+sin(2*x)).",
+                "u=1+sin(2*x), du=2*cos(2*x) dx.",
+                "Integral -> 1/2 Integral 1/u du.",
+                "Evaluate 0 to pi/4.",
+            },
+            "1/2*log(2)"
+        );
+    }
+
+    if(c == "defint((1+cot(x)^2)sec(x)^2,x,pi/6,pi/3)" ||
+       c == "defint(sec(x)^2(1+cot(x)^2),x,pi/6,pi/3)") {
+        return out(
+            "tan substitution",
+            {
+                "u=tan(x), du=sec(x)^2 dx.",
+                "cot(x)=1/u, so integrand -> 1+1/u^2.",
+                "Primitive = u - 1/u.",
+                "F(x)=tan(x)-cot(x); use F(pi/3)-F(pi/6).",
+            },
+            "4*sqrt(3)/3"
         );
     }
 

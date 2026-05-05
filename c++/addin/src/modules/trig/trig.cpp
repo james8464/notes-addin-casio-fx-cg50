@@ -571,19 +571,22 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
     if(A.kind == NodeKind::Sym && A.text == var) return std::make_pair(1.0, 0.0);
     if(A.kind == NodeKind::Mul) {
         double coeff = 1.0;
-        bool saw_var = false;
+        std::optional<std::pair<double, double>> linear_part;
         for(auto kid : A.kids) {
             Node const &K = a.get(kid);
-            if(K.kind == NodeKind::Sym && K.text == var) {
-                saw_var = true;
-                continue;
+            if(contains_var(a, kid, var)) {
+                if(linear_part) return std::nullopt;
+                linear_part = linear_angle(a, kid, var, plain_number_is_radian);
+                if(!linear_part) return std::nullopt;
             }
-            if(K.kind == NodeKind::Sym) return std::nullopt;
-            auto q = numeric_eval(a, kid, 0.0);
-            if(!q || !std::isfinite(*q)) return std::nullopt;
-            coeff *= *q;
+            else {
+                if(K.kind == NodeKind::Sym) return std::nullopt;
+                auto q = numeric_eval(a, kid, 0.0);
+                if(!q || !std::isfinite(*q)) return std::nullopt;
+                coeff *= *q;
+            }
         }
-        if(saw_var) return std::make_pair(coeff, 0.0);
+        if(linear_part) return std::make_pair(coeff * linear_part->first, coeff * linear_part->second);
     }
     if(A.kind == NodeKind::Div) {
         auto top = linear_angle(a, A.a, var, plain_number_is_radian);

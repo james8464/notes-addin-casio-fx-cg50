@@ -2641,8 +2641,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         auto bp = poly_of(arena, rn.b, var);
                         if(bp && bp->ok && is_zero(bp->a2) && !is_zero(bp->a1) &&
                            lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v)) {
-                            auto ylo = eval_node(arena, n, var, *lo_v);
-                            if(ylo && top.num.num > 0 && bp->a1.num > 0 && *ylo > 0) {
+                            auto den_lo = eval_node(arena, rn.b, var, *lo_v);
+                            if(den_lo && std::fabs(*den_lo) < 1e-9 && bp->a1.num > 0) {
+                                range_answer = top.num.num > 0 ? "y > 0" : "y < 0";
+                                steps.push_back("As " + var + " increases, denominator increases and y tends to 0.");
+                                steps.push_back("Range: " + range_answer + ".");
+                            }
+                            else if(auto ylo = eval_node(arena, n, var, *lo_v);
+                                    ylo && top.num.num > 0 && bp->a1.num > 0 && *ylo > 0) {
                                 range_answer = "0 < y <= " + format_double_compact(*ylo);
                                 steps.push_back("As " + var + " increases, denominator increases and y tends to 0.");
                                 steps.push_back("Range: " + range_answer + ".");

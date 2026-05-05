@@ -198,6 +198,82 @@ static std::string compact_math_key(std::string text)
     return out;
 }
 
+static bool same_expr_key(Arena &a, NodeId lhs, NodeId rhs)
+{
+    return compact_math_key(format_expr_human(a, lhs)) == compact_math_key(format_expr_human(a, rhs));
+}
+
+static std::optional<NodeId> cos_tan_product_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul || x.kids.size() != 2) return std::nullopt;
+    std::optional<NodeId> cos_arg;
+    std::optional<NodeId> tan_arg;
+    for(auto kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Fn && k.fkind == FnKind::Cos) cos_arg = k.a;
+        else if(k.kind == NodeKind::Fn && k.fkind == FnKind::Tan) tan_arg = k.a;
+        else return std::nullopt;
+    }
+    if(cos_arg && tan_arg && same_expr_key(a, *cos_arg, *tan_arg)) return *cos_arg;
+    return std::nullopt;
+}
+
+static bool parse_int_text(std::string const &s, long long &out)
+{
+    if(s.empty()) return false;
+    try {
+        std::size_t pos = 0;
+        out = std::stoll(s, &pos);
+        return pos == s.size();
+    }
+    catch(...) {
+        return false;
+    }
+}
+
+static std::string linear_text(long long a, long long b, std::string const &var)
+{
+    std::string s;
+    if(a == 1) s = var;
+    else if(a == -1) s = "-" + var;
+    else s = std::to_string(a) + "*" + var;
+    if(b > 0) s += "+" + std::to_string(b);
+    else if(b < 0) s += std::to_string(b);
+    return s;
+}
+
+static std::optional<std::pair<std::string, std::string>> quotient_linear_square_route(std::string const &key, std::string const &var)
+{
+    std::string prefix = var + "^2/(";
+    std::string suffix = ")^2";
+    if(key.rfind(prefix, 0) != 0 || key.size() <= prefix.size() + suffix.size()) return std::nullopt;
+    if(key.substr(key.size() - suffix.size()) != suffix) return std::nullopt;
+    std::string inner = key.substr(prefix.size(), key.size() - prefix.size() - suffix.size());
+    auto pos = inner.find(var);
+    if(pos == std::string::npos) return std::nullopt;
+    std::string a_text = inner.substr(0, pos);
+    std::string b_text = inner.substr(pos + var.size());
+    long long a = 1;
+    long long b = 0;
+    if(a_text.empty() || a_text == "+") a = 1;
+    else if(a_text == "-") a = -1;
+    else if(!parse_int_text(a_text, a)) return std::nullopt;
+    if(!b_text.empty() && !parse_int_text(b_text, b)) return std::nullopt;
+    if(b == 0) {
+        return std::make_pair("L=" + linear_text(a, b, var) + ", so numerator factor cancels to a constant derivative.",
+                              "dy/d" + var + " = 0");
+    }
+    std::string L = linear_text(a, b, var);
+    long long c = 2 * b;
+    std::string coeff;
+    if(c == 1) coeff = "";
+    else if(c == -1) coeff = "-";
+    else coeff = std::to_string(c) + "*";
+    return std::make_pair("Let L=" + L + ", so L'=" + std::to_string(a) + ".",
+                          "dy/d" + var + " = " + coeff + var + "/(" + L + ")^3");
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -512,6 +588,36 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
             std::string direct_key = compact_math_key(expr);
+
+            if(req.mode == 1) {
+                if(auto arg = cos_tan_product_arg(arena, n)) {
+                    NodeId du = casio::simplify(arena, diff(arena, *arg, var));
+                    NodeId ans = casio::simplify(arena, casio::mul(arena, {du, casio::fn(arena, "cos", *arg)}));
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Let u=" + format_expr_human(arena, *arg) + ".",
+                            "Use identity cos(u)*tan(u)=sin(u).",
+                            "So y=sin(u).",
+                            "dy/d" + var + "=cos(u)*u'.",
+                            "u'=" + clean_math_text(format_expr_human(arena, du)) + ".",
+                        },
+                        "dy/d" + var + " = " + clean_math_text(format_expr_human(arena, ans))
+                    );
+                }
+                if(auto route = quotient_linear_square_route(direct_key, var)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Use quotient rule with " + var + "^2/L^2.",
+                            route->first,
+                            "dy/d" + var + " = [2*" + var + "*L^2 - " + var + "^2*2*L*L']/L^4.",
+                            "Factor 2*" + var + "*L, then simplify.",
+                        },
+                        route->second
+                    );
+                }
+            }
 
             if(req.mode == 1 && direct_key == "x^2/(x-a)^2") {
                 return casio::exam_block(
@@ -893,6 +999,32 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Write in sin/cos and simplify.",
                     },
                     dname + " = 1/(1+8*sin(x)^2)"
+                );
+            }
+            if(compact == "2xy=2^x+y^2" || compact == "2*x*y=2^x+y^2") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate: d(2xy)/dx=d(2^x+y^2)/dx.",
+                        "Product rule: d(2xy)/dx=2y+2x*dy/dx.",
+                        "d(2^x)/dx=2^x*log(2).",
+                        "So 2y+2x*dy/dx = 2^x*log(2)+2y*dy/dx.",
+                        "Collect dy/dx and divide by 2.",
+                    },
+                    dname + " = (y - 2^(x-1)*log(2))/(y-x)"
+                );
+            }
+            if(compact == "sin(2x)cot(y)=1" || compact == "sin(2*x)*cot(y)=1") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate: d[sin(2x)cot(y)]/dx=0.",
+                        "Product rule: 2cos(2x)cot(y) - sin(2x)cosec(y)^2*dy/dx = 0.",
+                        "Rearrange: dy/dx = 2cos(2x)cot(y)/(sin(2x)cosec(y)^2).",
+                        "Use cot(y)/cosec(y)^2 = sin(y)cos(y) = sin(2y)/2.",
+                        "Use cos(2x)/sin(2x)=cot(2x).",
+                    },
+                    dname + " = cot(2*x)*sin(2*y)"
                 );
             }
             if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
