@@ -876,6 +876,8 @@ static void push_linear_trig_domain(Arena &a, NodeId arg, bool half_shift, std::
     push_unique(out, "Domain: x != " + append_rat_offset(a, rhs, offset));
 }
 
+static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var);
+
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
@@ -886,7 +888,11 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
         return;
     }
     if(x.kind == NodeKind::Fn) {
-        if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
+        if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) {
+            auto amin = abs_linear_plus_const_min(a, x.a, "x");
+            if(amin && amin->num >= 0) push_unique(out, "Domain: all real x");
+            else push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
+        }
         if(x.fkind == FnKind::Log && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
         if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a))
             push_unique(out, "Domain: -1 <= " + format_expr(a, x.a) + " <= 1");

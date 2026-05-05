@@ -8,6 +8,8 @@ with a stricter exam-working verifier.
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import re
 import types
 import zipfile
 
@@ -65,9 +67,15 @@ Quality filters:
 - If unsure, use NEEDS_REVIEW, not INCORRECT.
 
 Batch mode:
+- Only applies when the prompt starts with BATCH_VERIFY.
 - Grade each numbered item independently.
 - Never answer "same as item N", "as above", or rely on another item.
 - If two items are similar, repeat the actual reason for this item.
+
+Single item mode:
+- If the prompt starts with CTX, grade only that one OUT/EXP pair.
+- Do not mention, compare, or number other items.
+- Reply as one verdict plus one short reason.
 
 Reply with the verdict first, then at most one short reason:
 CORRECT
@@ -81,3 +89,73 @@ for _name, _value in _mod.__dict__.items():
         globals()[_name] = _value
 
 globals()["LLM_SYSTEM_PROMPT"] = LLM_SYSTEM_PROMPT
+
+
+def _strict_batch_parse(response_text, n):
+    verdicts = [None] * n
+    notes = [""] * n
+    if not response_text:
+        return verdicts, notes
+    pattern = re.compile(
+        r"^\s*#?\s*(\d+)\s*[:|.)-]?\s*(CORRECT|INCORRECT|NEEDS_REVIEW)\b\s*[-:|]?\s*(.*)$",
+        re.IGNORECASE,
+    )
+    for line in str(response_text).splitlines():
+        m = pattern.match(line.strip())
+        if not m:
+            continue
+        idx = int(m.group(1)) - 1
+        if 0 <= idx < n:
+            verdicts[idx] = m.group(2).upper()
+            notes[idx] = line.strip()[:500]
+    return verdicts, notes
+
+
+def _strict_verify_batch(self, items, check_working_quality=False, stream_callback=None):
+    n = len(items)
+    if n == 0:
+        return []
+    if check_working_quality or n == 1 or os.environ.get("CASIO_LLM_BATCH_DISABLE", "").lower() in ("1", "true", "yes"):
+        return [self.verify(a, b, c, check_working_quality, stream_callback) for a, b, c in items]
+    if not self.enabled or not self.selected_model:
+        return [
+            {"verdict": "DISABLED", "explanation": "LLM not enabled", "confidence": 0, "cached": False}
+            for _ in range(n)
+        ]
+
+    out_chars = int(os.environ.get("CASIO_LLM_BATCH_OUT_CHARS", "1200"))
+    body = []
+    for i, (program_output, expected, context) in enumerate(items, 1):
+        po = self._truncate_out(program_output, out_chars)
+        ex = self._truncate_out(expected, min(2000, out_chars * 2))
+        body.append(f"ITEM {i}\nCTX: {context}\nOUT:\n{po}\nEXP:\n{ex}\n")
+
+    header = (
+        f"BATCH_VERIFY: {n} independent items.\n"
+        f"Reply with EXACTLY {n} lines, one per item, no intro/outro.\n"
+        "Line format: #N VERDICT - one short item-specific reason\n"
+        "VERDICT is CORRECT, INCORRECT, or NEEDS_REVIEW.\n"
+        "Do not merge items. Do not write 'same as above'. Do not include extra numbered lists.\n\n"
+    )
+    prompt = header + "\n".join(body) + "\n" + LLM_SYSTEM_PROMPT
+
+    try:
+        timeout = min(600, int(os.environ.get("CASIO_LLM_TIMEOUT", "60")) + 20 * n)
+        result = self._query_ollama(prompt, stream_callback, timeout=timeout)
+    except Exception as err:
+        self.last_error = str(err)
+        return [self.verify(a, b, c, False, None) for a, b, c in items]
+
+    verdicts, notes = _strict_batch_parse(result, n)
+    out = []
+    for i, (a, b, c) in enumerate(items):
+        v = verdicts[i]
+        if v in ("CORRECT", "INCORRECT", "NEEDS_REVIEW"):
+            out.append({"verdict": v, "explanation": notes[i], "confidence": 0.9, "cached": False})
+        else:
+            out.append(self.verify(a, b, c, False, None))
+    return out
+
+
+if "LLMManager" in globals():
+    LLMManager.verify_batch = _strict_verify_batch
