@@ -375,27 +375,41 @@ int main(int argc, char **argv)
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, false);
             print_method_header("suvat", method, method_u);
+            if(expr.rfind("suvat(", 0) == 0 && expr.size() > 7 && expr.back() == ')') {
+                expr = expr.substr(6, expr.size() - 7);
+            }
             casio::suvat::Inputs in;
             in.target = "v";
+            std::vector<std::string> targets;
             auto parse_kv = [&](std::string const &kv) {
                 auto eq = kv.find('=');
                 if(eq == std::string::npos) return;
-                std::string k = kv.substr(0, eq);
-                std::string v = kv.substr(eq + 1);
+                std::string k = trim(kv.substr(0, eq));
+                std::string v = trim(kv.substr(eq + 1));
                 if(k == "s") in.s = v;
                 else if(k == "u") in.u = v;
                 else if(k == "v") in.v = v;
                 else if(k == "a") in.a = v;
                 else if(k == "t") in.t = v;
                 else if(k == "target") in.target = v;
+                else if(k == "find") {
+                    if(v.size() >= 2 && v.front() == '[' && v.back() == ']') v = v.substr(1, v.size() - 2);
+                    for(auto part : split_top_csv(v)) {
+                        part = trim(part);
+                        if(!part.empty()) targets.push_back(part);
+                    }
+                }
             };
-            std::string text = expr;
-            std::size_t i = 0;
-            while(i < text.size()) {
-                std::size_t j = text.find(',', i);
-                if(j == std::string::npos) j = text.size();
-                parse_kv(text.substr(i, j - i));
-                i = j + 1;
+            for(auto const &part : split_top_csv(expr)) parse_kv(part);
+            if(!targets.empty()) {
+                for(std::size_t i = 0; i < targets.size(); ++i) {
+                    casio::suvat::Inputs one = in;
+                    one.target = targets[i];
+                    auto lines = casio::suvat::solve(arena, one);
+                    if(i) std::cout << "\n";
+                    for(auto const &ln : lines) std::cout << ln << "\n";
+                }
+                return 0;
             }
             auto lines = casio::suvat::solve_all(arena, in);
             for(auto const &ln : lines) std::cout << ln << "\n";

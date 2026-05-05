@@ -3782,13 +3782,17 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
         NodeId tan_u = casio::fn(a, "tan", arg);
         Rational denom = r_mul(*lc, Rational{tan_p + 1, 1});
-        steps.push_back("Step 2: Substitute y = tan(inner).");
+        steps.push_back("Step 2: Let u=tan(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*sec(" + format_expr_human(a, arg) + ")^2 dx.");
+        steps.push_back("Step 3: Integral becomes a constant times Integral u^" + std::to_string(tan_p) + " du.");
+        steps.push_back("Step 4: Apply the power rule for u.");
         return casio::simplify(a, mul_coeff(a, r_div(coeff, denom), casio::power(a, tan_u, casio::num(a, tan_p + 1))));
     }
     if(csc_p == 2 && cot_p > 0 && sin_p == 0 && cos_p == 0 && tan_p == 0 && sec_p == 0) {
         NodeId cot_u = casio::fn(a, "cot", arg);
         Rational denom = r_mul(*lc, Rational{cot_p + 1, 1});
-        steps.push_back("Step 2: Substitute y = cot(inner).");
+        steps.push_back("Step 2: Let u=cot(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*cosec(" + format_expr_human(a, arg) + ")^2 dx.");
+        steps.push_back("Step 3: Integral becomes a constant times Integral u^" + std::to_string(cot_p) + " du.");
+        steps.push_back("Step 4: Apply the power rule for u.");
         return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, denom)), casio::power(a, cot_u, casio::num(a, cot_p + 1))));
     }
 
@@ -3803,7 +3807,9 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c.assign(static_cast<std::size_t>(cos_p + 1), Rational{0, 1});
             upow.c[static_cast<std::size_t>(cos_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
-            steps.push_back("Step 2: Odd sine power: save one sin(u), convert the rest with sin^2(u)=1-cos^2(u).");
+            steps.push_back("Step 2: Odd sine power: save one sin(" + format_expr_human(a, arg) + "), convert the rest with sin^2=1-cos^2.");
+            steps.push_back("Step 3: Let u=cos(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*sin(" + format_expr_human(a, arg) + ") dx.");
+            steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "cos", arg), *lc, true)));
         }
         if(cos_p % 2 == 1) {
@@ -3815,7 +3821,9 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c.assign(static_cast<std::size_t>(sin_p + 1), Rational{0, 1});
             upow.c[static_cast<std::size_t>(sin_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
-            steps.push_back("Step 2: Odd cosine power: save one cos(u), convert the rest with cos^2(u)=1-sin^2(u).");
+            steps.push_back("Step 2: Odd cosine power: save one cos(" + format_expr_human(a, arg) + "), convert the rest with cos^2=1-sin^2.");
+            steps.push_back("Step 3: Let u=sin(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*cos(" + format_expr_human(a, arg) + ") dx.");
+            steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "sin", arg), *lc, false)));
         }
         if(sin_p == 2 && cos_p == 2) {
@@ -4257,6 +4265,79 @@ static bool is_one(Arena &a, NodeId n)
 static bool is_neg_of(Arena &a, NodeId lhs, NodeId rhs)
 {
     return same_expr(a, lhs, casio::neg(a, rhs));
+}
+
+static bool is_sqrt_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) return is_sym(a, x.a, var);
+    if(x.kind == NodeKind::Pow && is_sym(a, x.a, var)) {
+        auto e = as_num(a, x.b);
+        return e && e->num == 1 && e->den == 2;
+    }
+    return false;
+}
+
+static std::optional<NodeId> integrate_sqrt_var_times_linear(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Rational coeff{1, 1};
+    NodeId work = expr;
+    Node const &top = a.get(work);
+    if(top.kind == NodeKind::Div && !contains_var(a, top.b, var)) {
+        auto den = as_num(a, top.b);
+        if(!den || den->num == 0) return std::nullopt;
+        coeff = r_div(coeff, *den);
+        work = top.a;
+    }
+
+    std::vector<NodeId> factors;
+    Node const &w = a.get(work);
+    if(w.kind == NodeKind::Mul) factors = w.kids;
+    else factors.push_back(work);
+
+    bool saw_sqrt = false;
+    std::vector<NodeId> rest;
+    for(NodeId k : factors) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        if(is_sqrt_var(a, k, var)) {
+            if(saw_sqrt) return std::nullopt;
+            saw_sqrt = true;
+            continue;
+        }
+        rest.push_back(k);
+    }
+    if(!saw_sqrt) return std::nullopt;
+
+    NodeId rest_node = rest.empty() ? casio::num(a, 1) : (rest.size() == 1 ? rest.front() : casio::mul(a, rest));
+    auto p = poly_of_any(a, rest_node, var);
+    if(!p || !p->ok || poly_degree(*p) > 1) return std::nullopt;
+
+    Rational b = poly_at(*p, 0);
+    Rational m = poly_at(*p, 1);
+    if(r_zero(m) && r_zero(b)) return std::nullopt;
+
+    NodeId x = casio::sym(a, var);
+    NodeId x12 = casio::power(a, x, a.num(Rational{1, 2}));
+    NodeId x32 = casio::power(a, x, a.num(Rational{3, 2}));
+    NodeId x52 = casio::power(a, x, a.num(Rational{5, 2}));
+
+    std::vector<NodeId> expanded_terms;
+    if(!r_zero(m)) expanded_terms.push_back(mul_coeff(a, r_mul(coeff, m), x32));
+    if(!r_zero(b)) expanded_terms.push_back(mul_coeff(a, r_mul(coeff, b), x12));
+    NodeId expanded = expanded_terms.size() == 1 ? expanded_terms.front() : casio::add(a, expanded_terms);
+
+    std::vector<NodeId> result_terms;
+    if(!r_zero(m)) result_terms.push_back(mul_coeff(a, r_mul(r_mul(coeff, m), Rational{2, 5}), x52));
+    if(!r_zero(b)) result_terms.push_back(mul_coeff(a, r_mul(r_mul(coeff, b), Rational{2, 3}), x32));
+    NodeId primitive = result_terms.size() == 1 ? result_terms.front() : casio::add(a, result_terms);
+
+    steps.push_back("Step 2: Rewrite sqrt(" + var + ") as " + var + "^(1/2), then expand.");
+    steps.push_back("Step 3: " + format_expr_human(a, expr) + " = " + format_expr_human(a, expanded) + ".");
+    steps.push_back("Step 4: Integrate each power: Integral x^n dx = x^(n+1)/(n+1).");
+    return casio::simplify(a, primitive);
 }
 
 static std::optional<NodeId> strip_factor_two(Arena &a, NodeId n)
@@ -5146,8 +5227,17 @@ static std::optional<NodeId> integrate_linear_over_sqrt_quadratic(Arena &a, Node
     if(!r_zero(A)) terms.push_back(mul_coeff(a, r_mul(Rational{2, 1}, A), casio::fn(a, "sqrt", den.a)));
     if(!r_zero(B)) terms.push_back(mul_coeff(a, B, integrate_one_over_sqrt_quadratic(a, den.a, *d, var)));
     if(terms.empty()) return casio::num(a, 0);
-    steps.push_back("Step 2: Split numerator into A*D'(x)+B over sqrt(D).");
-    steps.push_back("Step 3: Use 2A*sqrt(D) plus log form for ∫1/sqrt(D).");
+    if(!r_zero(d->a1)) {
+        Rational shift = r_div(d->a1, r_mul(Rational{2, 1}, d->a2));
+        Rational rem = r_sub(d->a0, r_div(r_mul(d->a1, d->a1), r_mul(Rational{4, 1}, d->a2)));
+        NodeId shifted = casio::add(a, {casio::sym(a, var), a.num(shift)});
+        NodeId square = casio::power(a, shifted, casio::num(a, 2));
+        NodeId completed = r_eq(d->a2, Rational{1, 1}) ? square : mul_coeff(a, d->a2, square);
+        NodeId rhs = r_zero(rem) ? completed : casio::add(a, {completed, a.num(rem)});
+        steps.push_back("Step 2: Complete square: D=" + format_expr_human(a, den.a) + " = " + format_expr_human(a, rhs) + ".");
+    }
+    steps.push_back("Step 3: Split numerator into A*D'(x)+B over sqrt(D).");
+    steps.push_back("Step 4: Use 2A*sqrt(D) plus log form for Integral 1/sqrt(D).");
     return casio::simplify(a, casio::add(a, terms));
 }
 
@@ -5321,6 +5411,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         std::ostringstream step3;
         step3 << "Step 3: Simplify. Result = " << node_to_string(a, *out.result) << " + C";
         out.steps.push_back(step3.str());
+        return out;
+    }
+
+    if(auto sqrt_lin = integrate_sqrt_var_times_linear(a, expr, var, out.steps)) {
+        out.result = *sqrt_lin;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
         return out;
     }
 
@@ -6016,6 +6112,33 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Fn) {
         NodeId arg = simplify_known_endpoint_values(a, x.a);
+        if(x.fkind == FnKind::Sqrt) {
+            if(auto r = as_num(a, arg); r && r->num >= 0) {
+                auto largest_square_factor = [](std::int64_t n) {
+                    if(n <= 1) return n;
+                    std::int64_t root = 1;
+                    while(root + 1 <= n / (root + 1)) ++root;
+                    for(std::int64_t i = root; i >= 2; --i) {
+                        std::int64_t sq = i * i;
+                        if(n % sq == 0) return sq;
+                    }
+                    return static_cast<std::int64_t>(1);
+                };
+                std::int64_t n_sq = largest_square_factor(r->num);
+                std::int64_t d_sq = largest_square_factor(r->den);
+                std::int64_t n_out = 1;
+                while(n_out + 1 <= n_sq / (n_out + 1)) ++n_out;
+                std::int64_t d_out = 1;
+                while(d_out + 1 <= d_sq / (d_out + 1)) ++d_out;
+                Rational outside{n_out, d_out};
+                outside.normalize();
+                Rational inside{r->num / n_sq, r->den / d_sq};
+                inside.normalize();
+                if(r_eq(inside, Rational{1, 1})) return a.num(outside);
+                NodeId inside_node = casio::fn(a, "sqrt", a.num(inside));
+                return r_eq(outside, Rational{1, 1}) ? inside_node : casio::simplify(a, mul_coeff(a, outside, inside_node));
+            }
+        }
         if(x.fkind == FnKind::Abs) {
             if(auto r = as_num(a, arg)) {
                 Rational q = *r;
@@ -6112,6 +6235,43 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
         }
     }
     return casio::exam_block("definite integration", steps, answer);
+}
+
+static std::optional<std::vector<std::string>> run_mean_value(Arena &arena, Request const &req)
+{
+    auto args = unwrap_call_args(req.expr, "mean_value");
+    if(!args || args->size() != 4) return std::nullopt;
+
+    std::string integrand = (*args)[0];
+    std::string var = (*args)[1].empty() ? req.var : (*args)[1];
+    std::string lo_text = (*args)[2];
+    std::string hi_text = (*args)[3];
+
+    NodeId parsed = parse_expr(arena, integrand);
+    auto pre = casio::build_exam_prelude(arena, integrand, parsed);
+    NodeId node = casio::simplify(arena, parsed);
+    auto result = integrate_giac_style(arena, node, var);
+    if(!result.result) return std::nullopt;
+
+    NodeId primitive = casio::simplify(arena, *result.result);
+    NodeId lo = parse_expr(arena, lo_text);
+    NodeId hi = parse_expr(arena, hi_text);
+    NodeId width = simplify_known_endpoint_values(arena, casio::add(arena, {hi, casio::neg(arena, lo)}));
+    NodeId f_hi = simplify_known_endpoint_values(arena, substitute_var(arena, primitive, var, hi));
+    NodeId f_lo = simplify_known_endpoint_values(arena, substitute_var(arena, primitive, var, lo));
+    NodeId area = simplify_known_endpoint_values(arena, casio::add(arena, {f_hi, casio::neg(arena, f_lo)}));
+    NodeId ans = simplify_known_endpoint_values(arena, casio::div(arena, area, width));
+
+    std::vector<std::string> steps;
+    casio::append_exam_prelude_steps(steps, pre);
+    std::string display_expr = format_expr_human(arena, node);
+    for(auto const &s : result.steps) {
+        std::string cleaned = clean_integral_step(s, display_expr, var);
+        if(!cleaned.empty()) steps.push_back(cleaned);
+    }
+    steps.push_back("Mean value = Integral_" + lo_text + "^" + hi_text + " f(" + var + ") d" + var + " / (" + hi_text + "-" + lo_text + ").");
+    steps.push_back("Use F(" + hi_text + ") - F(" + lo_text + "), then divide by interval width.");
+    return casio::exam_block("mean value of a function", steps, format_expr_human(arena, ans));
 }
 
 static bool contains_branch_inverse_trig(Arena &a, NodeId n)
@@ -6237,6 +6397,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.mode != 1) return {"Err: int mode not supported yet."};
     if(req.expr.empty()) return {"Enter f."};
 
+    if(auto mean = run_mean_value(arena, req)) return *mean;
+
     std::string direct = compact_key(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
         if(auto special = special_integral_answer(req.expr)) {
@@ -6246,6 +6408,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block(special->method, steps, special->answer);
         }
         if(auto definite = run_definite_integral(arena, req)) return *definite;
+        for(char const *name : {"integrate", "int"}) {
+            auto args = unwrap_call_args(req.expr, name);
+            if(args && (args->size() == 2 || args->size() == 3)) {
+                Request inner = req;
+                inner.expr = (*args)[0];
+                if(args->size() >= 2 && !(*args)[1].empty()) inner.var = (*args)[1];
+                return run(arena, inner);
+            }
+        }
     }
     
     NodeId parsed = parse_expr(arena, req.expr);

@@ -80,7 +80,9 @@ static std::string format_expr_impl(Arena &arena, NodeId node, int parent_prec, 
             text = "e^(" + format_expr_impl(arena, n.b, 0, human) + ")";
         }
         else {
-            text = format_expr_impl(arena, n.a, 3, human) + "^" + format_expr_impl(arena, n.b, 3, human);
+            std::string exp_text = format_expr_impl(arena, n.b, 3, human);
+            if(expn.kind == NodeKind::Num && expn.num.den != 1) exp_text = "(" + exp_text + ")";
+            text = format_expr_impl(arena, n.a, 3, human) + "^" + exp_text;
         }
         if(prec(n) < parent_prec) return "(" + text + ")";
         return text;

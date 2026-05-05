@@ -1440,6 +1440,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
+                "Start with " + eq_text + ".",
                 "Divide by cos(2x) where valid.",
                 "tan(2x) = -1.",
                 "Solve the tan equation and keep interval values.",
