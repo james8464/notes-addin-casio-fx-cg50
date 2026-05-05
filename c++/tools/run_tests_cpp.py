@@ -51,6 +51,7 @@ def main() -> int:
         ("general_scope", [sys.executable, "c++/tools/golden/check_general_scope.py"]),
         ("rigor_challenge", [sys.executable, "c++/tools/golden/check_rigor_challenge.py"]),
         ("mathematical_singularity", [sys.executable, "c++/tools/golden/check_mathematical_singularity.py"]),
+        ("casio_fx_cg50_stress_file", [sys.executable, "c++/tools/golden/check_casio_fx_cg50_stress_file.py"]),
         ("method_forcing", [sys.executable, "c++/tools/golden/check_method_forcing.py"]),
         ("derive_basic", [sys.executable, "c++/tools/golden/compare_derive_basic.py"]),
         ("trig_basic", [sys.executable, "c++/tools/golden/compare_trig_basic.py"]),

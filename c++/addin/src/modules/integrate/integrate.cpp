@@ -290,6 +290,35 @@ static std::optional<std::vector<std::string>> unwrap_call_args(std::string text
     return split_top_args(text.substr(prefix.size(), text.size() - prefix.size() - 1));
 }
 
+static std::optional<std::pair<std::string, std::string>> raw_log_derivative(std::string const &text)
+{
+    std::string k = compact_key(text);
+    if(k.rfind("diff(", 0) != 0) return std::nullopt;
+
+    int depth = 0;
+    std::size_t close = std::string::npos;
+    for(std::size_t i = 0; i < k.size(); ++i) {
+        if(k[i] == '(') ++depth;
+        else if(k[i] == ')') {
+            --depth;
+            if(depth == 0) {
+                close = i;
+                break;
+            }
+        }
+    }
+    if(close == std::string::npos || close + 2 >= k.size() || k[close + 1] != '/') return std::nullopt;
+
+    auto diff_args = unwrap_call_args(k.substr(0, close + 1), "diff");
+    if(!diff_args || diff_args->size() < 2) return std::nullopt;
+
+    std::string inner = trim_copy((*diff_args)[0]);
+    std::string var = trim_copy((*diff_args)[1]);
+    std::string denom = trim_copy(k.substr(close + 2));
+    if(compact_key(denom) != compact_key(inner)) return std::nullopt;
+    return std::make_pair(inner, var.empty() ? std::string("x") : var);
+}
+
 static std::optional<std::string> table_integral_answer(std::string const &expr)
 {
     std::string k = compact_key(expr);
@@ -6417,6 +6446,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return run(arena, inner);
             }
         }
+    }
+
+    if(auto log_diff = raw_log_derivative(req.expr)) {
+        std::string const &inner = log_diff->first;
+        std::string const &var = log_diff->second;
+        std::vector<std::string> steps;
+        steps.push_back("Start with " + req.expr + ".");
+        steps.push_back("Let u=" + inner + ".");
+        steps.push_back("du/d" + var + " = diff(" + inner + "," + var + ").");
+        steps.push_back("So diff(" + inner + "," + var + ") d" + var + " = du.");
+        steps.push_back("Integral becomes Integral(1/u) du.");
+        steps.push_back("Integral(1/u) du = log(abs(u)) + C.");
+        steps.push_back("Back-substitute u=" + inner + ".");
+        steps.push_back("Require " + inner + " != 0 for log(abs(" + inner + ")).");
+        return casio::exam_block("logarithmic reverse chain", steps, "log(abs(" + inner + ")) + C");
     }
     
     NodeId parsed = parse_expr(arena, req.expr);

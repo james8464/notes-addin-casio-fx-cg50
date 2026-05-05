@@ -447,6 +447,12 @@ int main(int argc, char **argv)
                 req.method = "domain";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "complete_square(")).empty() ||
+                    !(inner = unwrap_call(expr, "comp_square(")).empty()) {
+                req.mode = 5;
+                req.method = "complete_square";
+                req.expr = inner;
+            }
             else {
                 req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
                            (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
