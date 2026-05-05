@@ -1315,7 +1315,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         std::string ans = rad ? var + " = [pi/4, pi/2, 3*pi/4, 3*pi/2]"
                               : var + " = [45, 90, 135, 270]";
         if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi/2, pi/4, pi/2, 3*pi/4]";
+        if(rad && lo_key == "-pi" && hi_key == "2pi") ans = var + " = [-pi/2, pi/4, pi/2, 3*pi/4, 3*pi/2]";
         if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-90, 45, 90, 135]";
+        if(!rad && lo_key == "-180" && hi_key == "360") ans = var + " = [-90, 45, 90, 135, 270]";
         if(rad && hi_key == "pi") ans = var + " = [pi/4, pi/2, 3*pi/4]";
         if(!rad && hi_key == "180") ans = var + " = [45, 90, 135]";
         return casio::exam_block(

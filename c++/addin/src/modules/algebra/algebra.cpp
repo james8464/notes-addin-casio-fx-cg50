@@ -172,6 +172,20 @@ static std::optional<Poly2> poly_of(Arena &a, NodeId n, std::string const &var)
     return std::nullopt;
 }
 
+static NodeId poly2_to_node(Arena &a, Poly2 const &p, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    if(!is_zero(p.a2)) {
+        terms.push_back(casio::mul(a, {
+            a.num(p.a2),
+            casio::power(a, a.sym(var), casio::num(a, 2)),
+        }));
+    }
+    if(!is_zero(p.a1)) terms.push_back(casio::mul(a, {a.num(p.a1), a.sym(var)}));
+    if(!is_zero(p.a0) || terms.empty()) terms.push_back(a.num(p.a0));
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 struct RatPoly2
 {
     Poly2 num;
@@ -1658,7 +1672,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             // Expand: currently supports (a*x+b)^n (binomial) for small integer n.
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             Node const &x = arena.get(n);
-            if(x.kind != NodeKind::Pow) return {"Err: only (ax+b)^n supported."};
+            if(x.kind != NodeKind::Pow) {
+                if(auto p = poly_of(arena, n, "x"); p && p->ok) {
+                    NodeId expanded = poly2_to_node(arena, *p, "x");
+                    return {
+                        "1. Expand brackets/powers.",
+                        "2. Collect powers of x.",
+                        "Answer: " + format_expr(arena, expanded),
+                    };
+                }
+                return {"Err: only polynomial expansion supported."};
+            }
             Node const &expn = arena.get(x.b);
             if(expn.kind != NodeKind::Num || expn.num.den != 1) return {"Err: exponent must be integer."};
             int nn = (int)expn.num.num;

@@ -131,7 +131,12 @@ static void print_method_header(std::string const &feature, std::string const &m
     if(!method_allowed(valid, method)) {
         std::cout << "Invalid method. Valid: " << valid << "\n";
         std::cout << "Auto result:\n";
+        return;
     }
+    std::cout << "Method: forced " << method << "\n";
+    std::cout << "Route: " << method;
+    if(!u.empty()) std::cout << " (u=" << u << ")";
+    std::cout << "\n";
     (void)u;
 }
 
@@ -429,7 +434,8 @@ int main(int argc, char **argv)
                 req.expr = inner;
             }
             else {
-                req.mode = (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
+                req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
+                           (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
                            ((expr.find('=') != std::string::npos) ? 6 : 0);
                 req.expr = expr;
             }

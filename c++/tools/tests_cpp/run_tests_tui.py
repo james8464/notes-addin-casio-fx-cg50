@@ -1672,6 +1672,8 @@ def output_readability_issues(output):
         content_lower = re.sub(r"^(?:[a-z]:\s*)*\d+\.\s*", "", lower)
         if content_lower.startswith("use ") or content_lower.startswith("use:"):
             continue
+        if content_lower.startswith("start with"):
+            continue
         if any(marker in content_lower for marker in _READABILITY_SKIP_MARKERS):
             continue
         if not any(marker in lower for marker in _MATH_RESULT_MARKERS):

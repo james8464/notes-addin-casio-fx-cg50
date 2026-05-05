@@ -497,12 +497,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                     used_rule = true;
                 }
-                if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
+                NodeKind top_kind = arena.get(n).kind;
+                if(!used_rule && top_kind == NodeKind::Div) {
                     steps.push_back("Use quotient rule: (u'v-uv')/v^2.");
                     used_rule = true;
                 }
-                if(!used_rule && has_node_kind(arena, n, NodeKind::Mul)) {
+                if(!used_rule && top_kind == NodeKind::Mul) {
                     steps.push_back("Use product rule: differentiate one factor at a time.");
+                    used_rule = true;
+                }
+                if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
+                    steps.push_back("Use quotient rule on the fractional part.");
+                    used_rule = true;
+                }
+                if(!used_rule && has_node_kind(arena, n, NodeKind::Mul)) {
+                    steps.push_back("Use product rule on the product part.");
                     used_rule = true;
                 }
                 if(!used_rule && has_function_call(arena, n)) {

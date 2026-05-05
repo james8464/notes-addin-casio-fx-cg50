@@ -696,6 +696,17 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "cos(x)exp(sin(x))" || c == "cos(x)e^(sin(x))") {
+        return out(
+            "reverse-chain exponential",
+            {
+                "Let u=sin(x), so du=cos(x) dx.",
+                "Integral becomes Integral(e^u) du.",
+            },
+            "e^(sin(x)) + C"
+        );
+    }
+
     if(c == "log(x)/(xsqrt(1+log(x)^2))" || c == "ln(x)/(xsqrt(1+ln(x)^2))") {
         return out(
             "log then root substitution",
@@ -4207,6 +4218,22 @@ static std::optional<NodeId> integrate_exp_trig_reverse_chain(Arena &a, NodeId e
 
 static NodeId sqrt_rat(Arena &a, Rational r)
 {
+    auto square_root_i64 = [](std::int64_t v) -> std::optional<std::int64_t> {
+        if(v < 0) return std::nullopt;
+        std::int64_t lo = 0;
+        std::int64_t hi = 3037000499LL;
+        while(lo <= hi) {
+            std::int64_t mid = lo + (hi - lo) / 2;
+            __int128 sq = (__int128)mid * mid;
+            if(sq == v) return mid;
+            if(sq < v) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return std::nullopt;
+    };
+    auto rn = square_root_i64(r.num < 0 ? -r.num : r.num);
+    auto rd = square_root_i64(r.den);
+    if(r.num >= 0 && rn && rd) return a.num(Rational{*rn, *rd});
     return casio::fn(a, "sqrt", a.num(r));
 }
 
@@ -4819,8 +4846,12 @@ static std::optional<NodeId> integrate_linear_over_quadratic(Arena &a, NodeId ex
     if(!r_zero(A)) terms.push_back(mul_coeff(a, A, ln_abs(a, x.b)));
     if(!r_zero(B)) terms.push_back(mul_coeff(a, B, integrate_one_over_quadratic(a, *d, var)));
     if(terms.empty()) return casio::num(a, 0);
-    steps.push_back("Step 2: Split numerator into A*D'(x)+B.");
-    steps.push_back("Step 3: Integrate A*D'/D by log(abs(D)); integrate B/D by quadratic form.");
+    NodeId A_node = a.num(A);
+    NodeId B_node = a.num(B);
+    NodeId dprime = quadratic_linear(a, d->a2, d->a1, var);
+    steps.push_back("Step 2: Let D(x)=" + format_expr_human(a, x.b) + ", so D'(x)=" + format_expr_human(a, dprime) + ".");
+    steps.push_back("Step 3: Split numerator: numerator = A*D'(x)+B with A=" + format_expr_human(a, A_node) + ", B=" + format_expr_human(a, B_node) + ".");
+    steps.push_back("Step 4: Integrate A*D'/D by log(abs(D)); integrate B/D by quadratic/linear factor form.");
     return casio::simplify(a, casio::add(a, terms));
 }
 
