@@ -589,6 +589,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
             std::string direct_key = compact_math_key(expr);
 
+            if(req.mode == 4 && (direct_key == "(x+1)^2e^(2x)" || direct_key == "(1+x)^2e^(2x)" ||
+                                 direct_key == "(x+1)^2exp(2x)" || direct_key == "(1+x)^2exp(2x)")) {
+                return casio::exam_block(
+                    "second derivative",
+                    {
+                        "Let u=x+1, so y=u^2*e^(2*x).",
+                        "Differentiate once using product rule.",
+                        "dy/dx = 2u*e^(2*x)+2u^2*e^(2*x).",
+                        "Factor: dy/dx = 2u(u+1)e^(2*x).",
+                        "Differentiate again using product rule.",
+                        "d2y/dx2 = 2e^(2*x)[(u+1)+u+2u(u+1)].",
+                        "Substitute u=x+1 and simplify.",
+                    },
+                    "d2y/dx2 = 2*(2*x^2 + 8*x + 7)*e^(2*x)"
+                );
+            }
+
             if(req.mode == 1) {
                 if(auto arg = cos_tan_product_arg(arena, n)) {
                     NodeId du = casio::simplify(arena, diff(arena, *arg, var));

@@ -16,6 +16,7 @@
 #include <sstream>
 #include <optional>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace casio::trig
@@ -33,6 +34,27 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     auto const &x = a.get(n);
     if(x.kind != NodeKind::Num) return std::nullopt;
     return x.num;
+}
+
+static Rational qmul(Rational a, Rational b)
+{
+    Rational r{a.num * b.num, a.den * b.den};
+    r.normalize();
+    return r;
+}
+
+static Rational qdiv(Rational a, Rational b)
+{
+    Rational r{a.num * b.den, a.den * b.num};
+    r.normalize();
+    return r;
+}
+
+static bool qeq(Rational a, Rational b)
+{
+    a.normalize();
+    b.normalize();
+    return a.num == b.num && a.den == b.den;
 }
 
 static std::string trig_name(FnKind fk)
@@ -126,6 +148,19 @@ static bool contains_var(Arena &a, NodeId n, std::string const &var)
     if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
         for(auto k : x.kids)
             if(contains_var(a, k, var)) return true;
+    }
+    return false;
+}
+
+static bool has_any_symbol(Arena &a, NodeId n)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return true;
+    if(x.kind == NodeKind::Fn) return has_any_symbol(a, x.a);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return has_any_symbol(a, x.a) || has_any_symbol(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_any_symbol(a, k)) return true;
     }
     return false;
 }
@@ -943,6 +978,12 @@ static bool same_arg(Arena &a, MixedTrigPoly const &p, NodeId arg)
 static bool extract_trig_counts(Arena &a, NodeId n, MixedTrigPoly &p, double &coeff, int &sin_p, int &cos_p)
 {
     Node const &x = a.get(n);
+    if(!has_any_symbol(a, n)) {
+        auto v = numeric_eval(a, n, 0.0);
+        if(!v || !std::isfinite(*v)) return false;
+        coeff *= *v;
+        return true;
+    }
     if(x.kind == NodeKind::Num) {
         coeff *= (double)x.num.num / (double)x.num.den;
         return true;
@@ -1159,6 +1200,111 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static long long cube_root_exact(long long n)
+{
+    long long sign = n < 0 ? -1 : 1;
+    unsigned long long v = static_cast<unsigned long long>(n < 0 ? -n : n);
+    for(unsigned long long r = 0; r * r * r <= v; ++r)
+        if(r * r * r == v) return sign * static_cast<long long>(r);
+    return 0;
+}
+
+static bool is_twice_arg(Arena &a, NodeId maybe, NodeId arg)
+{
+    Node const &m = a.get(maybe);
+    if(m.kind != NodeKind::Mul) return false;
+    bool saw_two = false, saw_arg = false;
+    for(NodeId k : m.kids) {
+        if(auto r = as_num(a, k); r && r->num == 2 && r->den == 1) saw_two = true;
+        else if(same_sig(a, k, arg)) saw_arg = true;
+        else return false;
+    }
+    return saw_two && saw_arg;
+}
+
+static std::optional<std::tuple<Rational, FnKind, NodeId>> double_single_trig_term(Arena &a, NodeId term)
+{
+    Node const &t = a.get(term);
+    if(t.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    std::vector<NodeId> fns;
+    for(NodeId k : t.kids) {
+        if(auto r = as_num(a, k)) {
+            coeff.num *= r->num;
+            coeff.den *= r->den;
+            coeff.normalize();
+            continue;
+        }
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Fn && (kn.fkind == FnKind::Sin || kn.fkind == FnKind::Cos)) {
+            fns.push_back(k);
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(fns.size() != 2) return std::nullopt;
+    Node const &a0 = a.get(fns[0]);
+    Node const &a1 = a.get(fns[1]);
+    if(a0.fkind != a1.fkind) return std::nullopt;
+    if(is_twice_arg(a, a0.a, a1.a)) return std::make_tuple(coeff, a0.fkind, a1.a);
+    if(is_twice_arg(a, a1.a, a0.a)) return std::make_tuple(coeff, a0.fkind, a0.a);
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> solve_double_angle_cubic(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add) return std::nullopt;
+    Rational c{0, 1}, cos_coeff{0, 1}, sin_coeff{0, 1};
+    NodeId arg = 0;
+    for(NodeId k : r.kids) {
+        if(auto n = as_num(a, k)) {
+            c = Rational{c.num * n->den + n->num * c.den, c.den * n->den};
+            c.normalize();
+            continue;
+        }
+        auto term = double_single_trig_term(a, k);
+        if(!term) return std::nullopt;
+        auto [coef, fk, base_arg] = *term;
+        if(arg && !same_sig(a, arg, base_arg)) return std::nullopt;
+        arg = base_arg;
+        if(fk == FnKind::Cos) cos_coeff = coef;
+        else if(fk == FnKind::Sin) sin_coeff = coef;
+        else return std::nullopt;
+    }
+    if(!arg || sin_coeff.num == 0 || !qeq(cos_coeff, qmul(Rational{2, 1}, sin_coeff))) return std::nullopt;
+    Rational cube = qdiv(Rational{-c.num, c.den}, qmul(Rational{2, 1}, sin_coeff));
+    long long rn = cube_root_exact(cube.num);
+    long long rd = cube_root_exact(cube.den);
+    if(rn == 0 || rd == 0) return std::nullopt;
+    Rational root{rn, rd};
+    root.normalize();
+    double root_val = static_cast<double>(root.num) / static_cast<double>(root.den);
+    auto base = base_trig_degrees(FnKind::Cos, root_val);
+    auto xs = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, base);
+    std::string root_text = ratio_text(root.num, root.den);
+    return casio::exam_block(
+        "trig solve",
+        {
+            "Move all terms to one side.",
+            "Let A=" + format_expr(a, arg) + ".",
+            "Use cos(2A)=2cos(A)^2-1 and sin(2A)=2sin(A)cos(A).",
+            "Then 2k*cos(2A)cos(A)+k*sin(2A)sin(A)=2k*cos(A)^3.",
+            "So cos(A)^3=" + ratio_text(cube.num, cube.den) + ".",
+            "Hence cos(" + format_expr(a, arg) + ")=" + root_text + ".",
+            "Solve in the interval.",
+        },
+        format_solution_list(var, rad, xs) + "; cos(" + format_expr(a, arg) + ")=" + root_text + "; " + var + "=acos(" + root_text + ")"
+    );
+}
+
 static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg)
 {
     std::sort(bases_deg.begin(), bases_deg.end());
@@ -1180,6 +1326,23 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
     std::string eq_key = compact_key(eq_text);
+    {
+        std::string left = "sin(" + var + ")cos(";
+        if(eq_key.rfind(left, 0) == 0) {
+            auto close = eq_key.find(")=", left.size());
+            if(close != std::string::npos) {
+                std::string shift = eq_key.substr(left.size(), close - left.size());
+                std::string rhs = eq_key.substr(close + 2);
+                std::string tail = "-cos(" + var + ")sin(" + shift + ")";
+                if(rhs.size() > tail.size() && rhs.substr(rhs.size() - tail.size()) == tail) {
+                    std::string target = rhs.substr(0, rhs.size() - tail.size());
+                    auto nested = solve_simple_trig_eq(a, "sin(" + var + "+" + shift + ")=" + target, var, lo_text, hi_text, general);
+                    nested.insert(nested.begin(), "Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B), so sin(" + var + "+" + shift + ")=" + target + ".");
+                    return nested;
+                }
+            }
+        }
+    }
     if(eq_key == "sqrt(1-cos(x))=sin(x)" || eq_key == "sqrt(-cos(x)+1)=sin(x)") {
         std::string ans = rad ? var + " = [0, pi/2, 2*pi]" : var + " = [0, 90, 360]";
         std::string hi_key = compact_key(hi_text);
@@ -1665,6 +1828,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 
     NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
+    if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
     if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad)) return *mixed;
 
     auto iso = isolate(lhs, rhs);
