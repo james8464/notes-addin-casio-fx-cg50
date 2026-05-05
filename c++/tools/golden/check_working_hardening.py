@@ -310,6 +310,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["sin(x)^2=(1-cos(2*x))/2", "cos(2*x)^2=(1+cos(4*x))/2", "Answer: (3 - 4*cos(2*x) + cos(4*x))/8"],
         ["Answer: sin(x)^4", "ERR:"],
     ),
+    (
+        "alg",
+        "domain(arcsin((x-1)/3))",
+        ["Domain: -2 <= x <= 4", "Domain: -1 <= (x - 1)/3 <= 1", "Answer: -2 <= x <= 4"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "int",
+        "1-cos(2*x+pi/6)^2,method=auto",
+        ["Use sin(u)^2=1-cos(u)^2", "u=2*x + pi/6", "Answer: x/2 - sin(4*x + pi/3)/8 + C"],
+        ["No elementary A-level primitive", "Classify the integrand", "ERR:"],
+    ),
+    (
+        "alg",
+        "1/(x-1)+1/(x+2)=1,method=auto",
+        ["Answer: x = [(1 - sqrt(13))/2, (1 + sqrt(13))/2]"],
+        [")/-2", "ERR:"],
+    ),
 ]
 
 

@@ -6077,6 +6077,103 @@ static bool contains_branch_inverse_trig(Arena &a, NodeId n)
     return false;
 }
 
+static bool is_one_node(Arena &a, NodeId n)
+{
+    auto r = as_num(a, n);
+    return r && r->num == r->den;
+}
+
+static std::optional<NodeId> negated_term_inner(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    std::vector<NodeId> rest;
+    for(auto kid : x.kids) {
+        if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+        else rest.push_back(kid);
+    }
+    if(coeff.num != -coeff.den || rest.empty()) return std::nullopt;
+    if(rest.size() == 1) return rest[0];
+    return casio::simplify(a, casio::mul(a, rest));
+}
+
+static std::optional<std::pair<FnKind, NodeId>> trig_square(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto p = positive_int_power(a, x.b);
+    if(!p || *p != 2) return std::nullopt;
+    Node const &base = a.get(x.a);
+    if(base.kind != NodeKind::Fn || (base.fkind != FnKind::Sin && base.fkind != FnKind::Cos)) return std::nullopt;
+    return std::make_pair(base.fkind, base.a);
+}
+
+static NodeId double_linear_display_arg(Arena &a, NodeId u)
+{
+    auto double_term = [&](NodeId term) {
+        Node const &t = a.get(term);
+        if(t.kind == NodeKind::Div) {
+            auto den = as_num(a, t.b);
+            if(den && den->den == 1 && den->num % 2 == 0) {
+                return casio::simplify(a, casio::div(a, t.a, casio::num(a, den->num / 2)));
+            }
+        }
+        return casio::simplify(a, casio::mul(a, {casio::num(a, 2), term}));
+    };
+    Node const &x = a.get(u);
+    if(x.kind != NodeKind::Add) return double_term(u);
+    std::vector<NodeId> terms;
+    for(auto kid : x.kids) terms.push_back(double_term(kid));
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<std::vector<std::string>> integrate_one_minus_trig_square(Arena &a, NodeId expr, std::string const &var, std::string const &raw)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    bool saw_one = false;
+    std::optional<std::pair<FnKind, NodeId>> neg_square;
+    for(auto kid : x.kids) {
+        if(is_one_node(a, kid)) {
+            saw_one = true;
+            continue;
+        }
+        auto inner = negated_term_inner(a, kid);
+        if(!inner) return std::nullopt;
+        auto sq = trig_square(a, *inner);
+        if(!sq || neg_square) return std::nullopt;
+        neg_square = *sq;
+    }
+    if(!saw_one || !neg_square) return std::nullopt;
+    auto k = linear_coeff(a, neg_square->second, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+
+    NodeId v = casio::sym(a, var);
+    NodeId half_x = casio::div(a, v, casio::num(a, 2));
+    NodeId two_u = double_linear_display_arg(a, neg_square->second);
+    NodeId sin_2u = casio::fn(a, "sin", two_u);
+    Rational denom = r_mul(Rational{4, 1}, *k);
+    NodeId term = casio::div(a, sin_2u, a.num(denom));
+    bool one_minus_cos2 = neg_square->first == FnKind::Cos;
+    NodeId primitive = one_minus_cos2 ? casio::add(a, {half_x, casio::neg(a, term)}) : casio::add(a, {half_x, term});
+    primitive = casio::simplify(a, primitive);
+
+    std::vector<std::string> steps;
+    steps.push_back("Start with " + raw + ".");
+    steps.push_back("Let u=" + format_expr_human(a, neg_square->second) + ", so du/dx=" + format_expr_human(a, a.num(*k)) + ".");
+    if(one_minus_cos2) {
+        steps.push_back("Use sin(u)^2=1-cos(u)^2.");
+        steps.push_back("Integral sin(u)^2 dx = x/2 - sin(2u)/(4*du/dx).");
+    }
+    else {
+        steps.push_back("Use cos(u)^2=1-sin(u)^2.");
+        steps.push_back("Integral cos(u)^2 dx = x/2 + sin(2u)/(4*du/dx).");
+    }
+    steps.push_back("Back-substitute u.");
+    return casio::exam_block("double-angle integration", steps, format_expr_human(a, primitive) + " + C");
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.mode == 2) return solve_de_mode(req.expr);
@@ -6097,6 +6194,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     NodeId parsed = parse_expr(arena, req.expr);
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
     NodeId node = casio::simplify(arena, parsed);
+    if(auto trig_square_route = integrate_one_minus_trig_square(arena, node, req.var, req.expr)) return *trig_square_route;
     Node const &node_ref = arena.get(node);
     if(node_ref.kind == NodeKind::Fn &&
        (node_ref.fkind == FnKind::Atan || node_ref.fkind == FnKind::Asin || node_ref.fkind == FnKind::Acos)) {

@@ -832,7 +832,8 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
         }
     }
 
-    NodeId two_a = a.num(r_mul(Rational{2, 1}, p.a2));
+    Rational denom_rat = r_mul(Rational{2, 1}, p.a2);
+    NodeId two_a = a.num(denom_rat);
     NodeId minus_b = a.num(r_neg(p.a1));
 
     if(sq) {
@@ -848,8 +849,23 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
         return {var + " = " + format_expr(a, s1), var + " = " + format_expr(a, s2)};
     }
 
-    NodeId x_plus = casio::div(a, casio::add(a, {minus_b, sqrt_disc}), two_a);
-    NodeId x_minus = casio::div(a, casio::add(a, {minus_b, casio::neg(a, sqrt_disc)}), two_a);
+    if(denom_rat.num < 0) {
+        Rational pos_den = denom_rat;
+        pos_den.num = -pos_den.num;
+        std::string b_txt = format_expr(a, a.num(p.a1));
+        std::string disc_txt = format_expr(a, sqrt_disc);
+        std::string den_txt = format_expr(a, a.num(pos_den));
+        return {
+            var + " = (" + b_txt + " - " + disc_txt + ")/" + den_txt,
+            var + " = (" + b_txt + " + " + disc_txt + ")/" + den_txt,
+        };
+    }
+
+    auto root_over_denom = [&](NodeId top) {
+        return casio::div(a, top, two_a);
+    };
+    NodeId x_plus = root_over_denom(casio::add(a, {minus_b, sqrt_disc}));
+    NodeId x_minus = root_over_denom(casio::add(a, {minus_b, casio::neg(a, sqrt_disc)}));
     x_plus = casio::simplify(a, x_plus);
     x_minus = casio::simplify(a, x_minus);
     if(format_expr(a, x_plus) == format_expr(a, x_minus)) return {var + " = " + format_expr(a, x_plus)};
@@ -891,6 +907,16 @@ static void push_linear_trig_domain(Arena &a, NodeId arg, bool half_shift, std::
     push_unique(out, "Domain: x != " + append_rat_offset(a, rhs, offset));
 }
 
+static std::optional<std::string> inverse_trig_linear_domain(Arena &a, NodeId arg, std::string const &var)
+{
+    auto p = poly_of(a, arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    Rational lo = r_div(r_add(Rational{-1, 1}, r_neg(p->a0)), p->a1);
+    Rational hi = r_div(r_add(Rational{1, 1}, r_neg(p->a0)), p->a1);
+    if(p->a1.num < 0) std::swap(lo, hi);
+    return "Domain: " + format_rat(a, lo) + " <= " + var + " <= " + format_rat(a, hi);
+}
+
 static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var);
 
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
@@ -919,6 +945,7 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
                     for(auto const &d : inner_dom) push_unique(out, d);
             }
             else {
+                if(auto solved = inverse_trig_linear_domain(a, x.a, "x")) push_unique(out, *solved);
                 push_unique(out, "Domain: -1 <= " + format_expr(a, x.a) + " <= 1");
             }
         }
