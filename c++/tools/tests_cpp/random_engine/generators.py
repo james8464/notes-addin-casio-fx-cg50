@@ -34,7 +34,7 @@ class AdversarialGenerator:
     def generate(self, feature: str, count: int) -> List[AdversarialCase]:
         feature = (feature or "all").lower()
         if feature in ("all", "exammix", "exam"):
-            features = ["integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite", "general"]
+            features = ["exam_gap", "integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite", "general"]
         elif feature == "general":
             features = ["general"]
         else:
@@ -71,6 +71,8 @@ class AdversarialGenerator:
             "constants": self._constants,
             "rewrite": self._rewrite,
             "general": self._general,
+            "exam_gap": self._exam_gap,
+            "full_marks": self._exam_gap,
         }
         return dispatch.get(feature, self._rewrite)(index)
 
@@ -173,3 +175,146 @@ class AdversarialGenerator:
         concept = self._concept("general", "expr,[method/options]", "auto", topic, transforms, difficulty, "sympy+llm")
         note = "advanced unrestricted combination; answer must be correct and working must justify special/domain/branch route"
         return AdversarialCase("Adv general {0}: {1}".format(index, topic), flag, expr, concept, expects_working, note, expr)
+
+    def _exam_gap(self, index: int) -> AdversarialCase:
+        """Worksheet-style traps where a right answer can still lose method marks."""
+        n = self.rng.choice([2, 3, 4, 5, 6])
+        a = self.rng.choice([2, 3, 4])
+        b = self.rng.choice([1, 2, 3, 5])
+        cases = [
+            (
+                "looping_parts",
+                "int",
+                f"exp({a}*x)*cos({b}*x),method=parts",
+                "integrate",
+                "expr,method=parts",
+                "parts",
+                ("ibp_loop", "solve_repeated_integral"),
+                "exam: show I/J, u/dv/du/v twice, collect repeated integral, final simplified form",
+            ),
+            (
+                "inverse_trig_parts",
+                "int",
+                f"asin((x-{b})/{a + b + 2}),method=parts",
+                "integrate",
+                "expr,method=parts",
+                "parts",
+                ("ibp", "substitution", "back_sub"),
+                "exam: show substitution, differential, IBP u/dv/du/v, back-substitution",
+            ),
+            (
+                "hidden_substitution",
+                "int",
+                self.rng.choice(
+                    [
+                        "1/(1+sqrt(x)),method=sub",
+                        f"1/(x*sqrt(1+x^{n})),method=sub",
+                        "exp(sqrt(x)),method=sub",
+                        "x/(sqrt(1+x^2)*(1+sqrt(1+x^2))),method=sub",
+                    ]
+                ),
+                "integrate",
+                "expr,method=sub",
+                "sub",
+                ("reverse_chain", "rationalise", "back_sub"),
+                "exam: show substitution, dx/du or du/dx, transformed integral, algebra step, back-substitution",
+            ),
+            (
+                "partial_fraction_setup",
+                "int",
+                self.rng.choice(
+                    [
+                        "(5*x+7)/((x-1)*(x^2+4)),method=pf",
+                        "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
+                        "1/(x^2*(x+1)),method=pf",
+                        "(x^2+1)/(x^4+1),method=pf",
+                    ]
+                ),
+                "integrate",
+                "expr,method=pf",
+                "pf",
+                ("pf_setup", "equate_coefficients", "integrate_terms"),
+                "exam: show PF form, multiply through, coefficient equations, A/B/C values, integrate terms",
+            ),
+            (
+                "algebraic_symmetry",
+                "int",
+                self.rng.choice(
+                    [
+                        "(x^2+1)/(x^4+x^2+1),method=sub",
+                        "(x^2-1)/(x^4+1),method=sub",
+                        "(x^2+1)/(x^4+1),method=sub",
+                    ]
+                ),
+                "integrate",
+                "expr,method=sub",
+                "sub",
+                ("divide_by_x2", "x_plus_minus_reciprocal", "substitution"),
+                "exam: divide by x^2, spot x±1/x derivative, show u-sub and standard result",
+            ),
+            (
+                "trig_power_reduction",
+                "int",
+                self.rng.choice(["sin(x)^4,method=trig", "cos(x)^6,method=trig", "sin(x)^2*cos(x)^4,method=trig"]),
+                "integrate",
+                "expr,method=trig",
+                "trig",
+                ("power_reduction", "double_angle", "integrate_terms"),
+                "exam: show trig identities used, expand/collect, integrate each term",
+            ),
+            (
+                "definite_symmetry",
+                "int",
+                self.rng.choice(
+                    [
+                        f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)",
+                        "defint(ln(sin(x)),x,0,pi/2)",
+                        "defint(ln(x)/(1+x^2),x,0,inf)",
+                    ]
+                ),
+                "integrate",
+                "defint(expr,var,lo,hi)",
+                "symmetry",
+                ("kings_property", "limit_transform", "combine"),
+                "exam: show symmetry/substitution limits, combine integrals, conclude value",
+            ),
+            (
+                "implicit_collect",
+                "derive",
+                self.rng.choice(["x^y=y^x,x,method=implicit", "sin(x*y)+x^2=y^2,x,method=implicit", "ln(x+y)=x*y,x,method=implicit"]),
+                "diff",
+                "eq,var,method=implicit",
+                "implicit",
+                ("differentiate_both_sides", "collect_dy_dx", "isolate"),
+                "exam: show differentiate both sides, collect dy/dx terms, factor/isolate",
+            ),
+            (
+                "parametric_second",
+                "derive",
+                self.rng.choice(["x=t^2+1/t,y=t^2-1/t,t,x,method=param", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,x,method=param"]),
+                "diff",
+                "x(t),y(t),t,x,method=param",
+                "param",
+                ("dxdt_dydt", "dy_dx", "second_derivative"),
+                "exam: show dx/dt, dy/dt, dy/dx, then divide d/dt(dy/dx) by dx/dt",
+            ),
+            (
+                "interval_trig",
+                "trig",
+                self.rng.choice(
+                    [
+                        "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform",
+                        "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
+                        "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
+                    ]
+                ),
+                "solve_trig",
+                "eq,var,lo,hi,max,method",
+                "rform",
+                ("identity", "general_or_cast", "interval_filter"),
+                "exam: show identity/R-form, general roots, interval filtering, reject invalid roots",
+            ),
+        ]
+        topic, flag, expr, function, sig, method, transforms, note = self.rng.choice(cases)
+        concept = self._concept(function, sig, method, topic, transforms, 5, "sympy+llm+exam")
+        return AdversarialCase("Adv exam-gap {0}: {1}".format(index, topic), flag, expr, concept, True, note, expr)

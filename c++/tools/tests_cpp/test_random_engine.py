@@ -46,6 +46,28 @@ class RandomEngineTests(unittest.TestCase):
         self.assertTrue({"non_elementary", "branch", "special_function"} & topics)
         self.assertIn("advanced", notes)
 
+    def test_exam_gap_scope_targets_full_mark_working_patterns(self):
+        gen = AdversarialGenerator(seed=777)
+
+        cases = gen.generate("exam_gap", 40)
+
+        topics = {case.concept.topic for case in cases}
+        notes = " ".join(case.expected_note.lower() for case in cases)
+        self.assertTrue(
+            {
+                "looping_parts",
+                "hidden_substitution",
+                "partial_fraction_setup",
+                "trig_power_reduction",
+                "implicit_collect",
+                "parametric_second",
+                "interval_trig",
+            }
+            & topics
+        )
+        self.assertIn("exam", notes)
+        self.assertIn("show", notes)
+
     def test_general_scope_only_emits_general_cases(self):
         gen = AdversarialGenerator(seed=222)
 
@@ -69,6 +91,47 @@ class RandomEngineTests(unittest.TestCase):
         )
 
         self.assertNotEqual(verdict.status, "fail")
+
+    def test_quality_classifier_flags_ibp_without_choices(self):
+        verdict = classify_output_quality(
+            "Use integration by parts.\n"
+            "e^(2*x)*cos(3*x) -> e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13",
+            expects_working=True,
+        )
+
+        self.assertIn(verdict.status, {"review", "fail"})
+        self.assertIn("ibp", verdict.reason.lower())
+
+    def test_quality_classifier_accepts_full_ibp_choices(self):
+        verdict = classify_output_quality(
+            "Let I=int(e^(2*x)*cos(3*x),x)\n"
+            "u=cos(3*x), dv=e^(2*x) dx\n"
+            "du=-3*sin(3*x) dx, v=1/2*e^(2*x)\n"
+            "I=1/2*e^(2*x)*cos(3*x)+3/2*int(e^(2*x)*sin(3*x),x)\n"
+            "Then solve the repeated I equation.\n"
+            "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "pass")
+
+    def test_quality_classifier_flags_pf_without_coefficients(self):
+        verdict = classify_output_quality(
+            "Use partial fractions.\n-ln(abs(x))-1/x+ln(abs(x+1))",
+            expects_working=True,
+        )
+
+        self.assertIn(verdict.status, {"review", "fail"})
+        self.assertIn("partial fraction", verdict.reason.lower())
+
+    def test_quality_classifier_flags_substitution_without_differential(self):
+        verdict = classify_output_quality(
+            "Let u=x^2+1.\n1/2*ln(abs(x^2+1))",
+            expects_working=True,
+        )
+
+        self.assertIn(verdict.status, {"review", "fail"})
+        self.assertIn("differential", verdict.reason.lower())
 
     def test_report_store_records_replayable_failure(self):
         with tempfile.TemporaryDirectory() as tmp:

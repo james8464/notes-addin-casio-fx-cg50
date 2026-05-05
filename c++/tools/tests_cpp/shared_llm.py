@@ -58,6 +58,7 @@ When working IS required:
 - Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.
+- Worksheet traps to police especially hard: looping IBP must show the repeated integral being collected; substitutions must show du/dx or dx/du and back-substitution; partial fractions must show the assumed form and coefficient values; trig equations must show identity/R-form plus interval filtering; implicit/parametric differentiation must show collection/isolation of derivatives; binomial expansions must show validity conditions when needed.
 - If the problem is beyond A-level/Further Maths, still grade it: accept correct special-function, branch-aware, implicit, numeric, or non-elementary conclusions only when the output explains why that route is needed.
 
 Quality filters:

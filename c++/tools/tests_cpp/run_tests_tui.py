@@ -569,6 +569,7 @@ FEATURE_PARITY_NOTES = {
     "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
     "MethodSurface": "Direct host method/options surface across every supported feature group, including invalid method fallback.",
     "ExamMix": "Cross-feature stress loop; catches route gaps between program-specific builders.",
+    "ExamGap": "Worksheet-style traps: right answer but missing full-mark method lines.",
 }
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
@@ -2005,6 +2006,10 @@ def integrate_checker(*tokens):
             "dy/dx",
             "integration by parts",
             "integrate by parts",
+            "let u=",
+            "du=",
+            "resulting polynomial",
+            "odd sine power",
             "use ",
             "use parts",
             "by parts",
@@ -3074,7 +3079,17 @@ class CASIOApp(App):
         if not ADVERSARIAL_ENGINE_AVAILABLE:
             return []
         gen = AdversarialGenerator(seed=rng.randint(1, 2_000_000_000))
-        return [self.make_adversarial_case(c, i + 1) for i, c in enumerate(gen.generate("all", count))]
+        count = max(0, int(count))
+        exam_count = max(1, count // 2) if count else 0
+        raw_cases = gen.generate("exam_gap", exam_count) + gen.generate("all", max(0, count - exam_count))
+        seen = set()
+        cases = []
+        for raw in raw_cases:
+            if raw.input_text in seen:
+                continue
+            seen.add(raw.input_text)
+            cases.append(raw)
+        return [self.make_adversarial_case(c, i + 1) for i, c in enumerate(cases[:count])]
 
     def record_adversarial_case_result(self, case, record):
         adv = getattr(case, "adversarial_case", None)
@@ -5860,7 +5875,7 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "polynomial division"),
+            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "let u=", "du=", "resulting polynomial", "odd sine power", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "polynomial division"),
             min_steps=0,
             min_lines=2,
         )
@@ -10021,6 +10036,9 @@ def _cli_help():
 
   python3 c++/tools/tests_cpp/run_tests_tui.py stress integrate 100
       Run focused adversarial tests for a feature.
+
+  python3 c++/tools/tests_cpp/run_tests_tui.py stress exam_gap 100
+      Run worksheet-style full-mark traps: hidden substitutions, PF setup, IBP loops, trig intervals.
 
   python3 c++/tools/tests_cpp/run_tests_tui.py replay adv-00001
       Replay a stored adversarial failure from the latest run folder.
