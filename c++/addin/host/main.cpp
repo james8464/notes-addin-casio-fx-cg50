@@ -504,7 +504,7 @@ int main(int argc, char **argv)
             else if(method == "param") req.mode = 3;
             else if(method == "param_second") req.mode = 5;
             else if(method == "first_principles") req.mode = 6;
-            else if(method == "second") req.mode = (expr.find(',') != std::string::npos) ? 5 : 4;
+            else if(method == "second") req.mode = (expr.find('=') != std::string::npos) ? 4 : ((expr.find(',') != std::string::npos) ? 5 : 4);
             if(expr.rfind("mode:", 0) == 0) {
                 auto comma = expr.find(',');
                 if(comma != std::string::npos) {

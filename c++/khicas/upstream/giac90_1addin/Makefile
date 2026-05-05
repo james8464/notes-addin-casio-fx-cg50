@@ -12,7 +12,7 @@ ICON_SEL ?= khicasio1.png
 RM	= /bin/rm
 
 # if -DGINT_MALLOC, define GINT_MALLOC in stdlib.c (or Makefile there) and rm kgen.o main.o
-CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -ffunction-sections -fdata-sections -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
+CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -ffunction-sections -fdata-sections -fmerge-all-constants -fno-threadsafe-statics -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DNDEBUG  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 
 LDFLAGS = -flto -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--print-memory-usage

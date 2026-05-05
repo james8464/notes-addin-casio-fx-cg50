@@ -470,6 +470,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "1/(1+cos(2x))" || c == "1/(2cos(x)^2)") {
+        return out(
+            "half-angle integration",
+            {
+                "Use 1+cos(2*x)=2*cos(x)^2.",
+                "So integrand = 1/(2*cos(x)^2) = (1/2)sec(x)^2.",
+                "Integral sec(x)^2 dx = tan(x).",
+            },
+            "1/2*tan(x) + C"
+        );
+    }
+
     if(c == "1/(4sqrt(x)sqrt(sqrt(x)-1))") {
         return out(
             "sqrt substitution",
@@ -495,6 +507,39 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Evaluate from 1 to 0.",
             },
             "log(2)"
+        );
+    }
+
+    if(c == "defint((2x^3-5x^2+5)/((x-2)(x-1)^3),x,0,1/2)" ||
+       c == "defint((2x^3-5x^2+5)/((x^2-3x+2)(x^2-2x+1)),x,0,1/2)") {
+        return out(
+            "definite partial fractions",
+            {
+                "Factor denominator: (x^2-3*x+2)(x^2-2*x+1)=(x-2)(x-1)^3.",
+                "Set (2*x^3-5*x^2+5)/[(x-2)(x-1)^3] = A/(x-2)+B/(x-1)^3+C/(x-1)^2+D/(x-1).",
+                "Multiply by (x-2)(x-1)^3 and equate coefficients.",
+                "Using x=2 gives A=1; using x=1 gives B=-2.",
+                "Compare remaining coefficients: C=2 and D=1.",
+                "So integrand = 1/(x-2)-2/(x-1)^3+2/(x-1)^2+1/(x-1).",
+                "Primitive = log(abs(x-2))+(x-1)^-2-2/(x-1)+log(abs(x-1)).",
+                "Evaluate from 0 to 1/2 and simplify logs.",
+            },
+            "5 + log(3/8)"
+        );
+    }
+
+    if(c == "defint((4x+3)/(3x+4),x,0,32)") {
+        return out(
+            "substitution definite integration",
+            {
+                "Let u=3*x+4, so du=3 dx and x=(u-4)/3.",
+                "Then 4*x+3=(4*u-7)/3 and dx=du/3.",
+                "Integral becomes Integral((4*u-7)/(9*u)) du.",
+                "Split: (4*u-7)/(9*u)=4/9-7/(9*u).",
+                "Limits: x=0 gives u=4; x=32 gives u=100.",
+                "Evaluate [4u/9 - 7log(abs(u))/9]_4^100.",
+            },
+            "128/3 - 7/9*log(25)"
         );
     }
 

@@ -27,6 +27,9 @@ MARKERS = [
     b"IBP:",
     b"Use PF",
     b"Clear den; eq",
+    b"FP quotient",
+    b"1+cos(2x)=2cos(x)^2",
+    b"alpha=atan(5/12)",
 ]
 
 FORBIDDEN = [

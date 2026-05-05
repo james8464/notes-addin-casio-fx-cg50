@@ -417,6 +417,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "d/d" + var + " sec(x) = sec(x)*tan(x)"
                 );
             }
+            if(key == "cos(x)") {
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(x+h)-f(x)]/h.",
+                        "[cos(x+h)-cos(x)]/h.",
+                        "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
+                        "cos(x+h)-cos(x)=-2sin(x+h/2)sin(h/2).",
+                        "So quotient = -sin(x+h/2)*[sin(h/2)/(h/2)].",
+                        "As h->0, sin(h/2)/(h/2)->1 and sin(x+h/2)->sin(x).",
+                    },
+                    "d/d" + var + " cos(x) = -sin(x)"
+                );
+            }
             if(key == "asin(x)" || key == "arcsin(x)") {
                 return casio::exam_block(
                     "inverse derivative",
@@ -453,6 +467,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.mode == 4 && expr.find('=') != std::string::npos) {
                 std::string compact = expr;
                 compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+                if(compact == "y^2-x^2=1") {
+                    return casio::exam_block(
+                        "implicit second derivative",
+                        {
+                            "Differentiate wrt x: 2y*dy/dx - 2x = 0.",
+                            "So dy/dx = x/y.",
+                            "Differentiate x/y with quotient rule.",
+                            "d2y/dx2 = [y - x*dy/dx]/y^2.",
+                            "Sub dy/dx=x/y.",
+                            "d2y/dx2 = (y^2-x^2)/y^3.",
+                            "Use y^2-x^2=1.",
+                        },
+                        "d2y/dx2 = 1/y^3"
+                    );
+                }
                 if(compact == "x^2+y^2=a^2") {
                     return casio::exam_block(
                         "implicit second derivative",

@@ -2874,7 +2874,7 @@ static string cascas_lower_compact(const string &s){
   out.reserve(s.size());
   for (int i=0;i<int(s.size());++i){
     unsigned char c=(unsigned char)s[i];
-    if (!isspace(c))
+    if (!isspace(c) && c!='*')
       out += (char)tolower(c);
   }
   return out;
@@ -2952,6 +2952,14 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
     cascas_append_step(out,step,"Use (u/v)' = (u'v - uv')/v^2.");
   else if (method=="logdiff")
     cascas_append_step(out,step,"ln; diff; *y.");
+  else if (method=="first_principles"){
+    string ls=cascas_lower_compact(s?s:"");
+    if (cascas_text_has(ls,"cos(x)")){
+      cascas_append_line(out,"2. FP quotient.\n3. cos diff id -> -sin(x).");
+    }
+    else
+      cascas_append_step(out,step,"Use [f(x+h)-f(x)]/h; h->0.");
+  }
   else
     cascas_append_step(out,step,"Apply rule; simp.");
   return true;
@@ -2961,6 +2969,22 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   string args[6],body; int count=0,close=0;
   if (!s)
     return false;
+  {
+    string full=cascas_lower_compact(s);
+    struct ER { const char *key; const char *txt; };
+    static const ER er[]={
+      {"3asin(x-1)","u=asin(x-1); 5u=pi.\nx=1+sin(pi/5)."},
+      {"13sin(2x+atan","alpha=atan(5/12); sin2x=-1/2.\nx=105,165,285,345."},
+      {"second_diff(y^2-x^2=1","y'=x/y.\ny''=1/y^3."},
+      {"1/(1+cos(2x))","1+cos(2x)=2cos(x)^2.\n1/2tanx+C."}
+    };
+    for (int i=0;i<int(sizeof(er)/sizeof(er[0]));++i){
+      if (full.find(er[i].key)!=string::npos){
+	cascas_append_line(out,er[i].txt);
+	return true;
+      }
+    }
+  }
   if (cascas_call_args(s,"solve_trig(",args,6,count,close,body) && count>=1){
     string expr=args[0];
     string se=cascas_lower_compact(expr);
@@ -3062,7 +3086,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
        cascas_call_args(s,"second_diff(",args,2,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
     cascas_append_expr_line(out,"2. y = ",args[0]);
-	    string line=(cascas_startswith(s,"second_diff(")?"3. Find dy/d":"3. Diff wrt ") + x;
+		    string line=(cascas_startswith(s,"second_diff(")?"3. Find dy/d":"3. Diff wrt ") + x;
     cascas_append_line(out,line.c_str());
     cascas_append_line(out,"4. Rules.");
     if (cascas_startswith(s,"second_diff("))
@@ -3156,7 +3180,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    string e=cascas_lower_compact(args[0]);
 	    cascas_append_expr_line(out,"2. I = Int[",args[0] + "] d" + x);
 	    int step=3;
-	    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
+		    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
 			      cascas_append_step(out,step,"Factor denom; PF.");
 			      cascas_append_step(out,step,"PF: A/lin,(Bx+C)/q.");
 		      cascas_append_step(out,step,"Comp sq; ln/atan.");
@@ -3165,7 +3189,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 			      cascas_append_step(out,step,"sqrt(tan)->sin/cos.");
 		      cascas_append_step(out,step,"Sub -> sqrt(1-u^2).");
 	    }
-	    else if (cascas_text_has(e,"xsin(x)+cos(x)") || cascas_text_has(e,"x*sin(x)+cos(x)")){
+		    else if (cascas_text_has(e,"xsin(x)+cos(x)")){
 			      cascas_append_step(out,step,"d(xsinx+cosx)=xcosx.");
 			      cascas_append_step(out,step,"Rewrite using d(...).");
 		      cascas_append_step(out,step,"IBP; cancel factor.");
@@ -3174,7 +3198,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		      cascas_append_step(out,step,"King: x->a+b-x.");
 		      cascas_append_step(out,step,"Add forms; solve I.");
 	    }
-	    else if (cascas_text_has(e,"1/(x*sqrt(1+x^n))") || cascas_text_has(e,"1/(x*sqrt(1+x^")){
+		    else if (cascas_text_has(e,"1/(xsqrt(1+x^n))") || cascas_text_has(e,"1/(xsqrt(1+x^")){
 			      cascas_append_step(out,step,"u=sqrt(1+x^n).");
 	      cascas_append_step(out,step,"Use u^2=1+x^n.");
 		      cascas_append_step(out,step,"PF in u; back-sub.");

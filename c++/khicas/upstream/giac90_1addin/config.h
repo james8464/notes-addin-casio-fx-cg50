@@ -2,7 +2,8 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
 /* Set if debugging is enabled */
-#define DEBUG_SUPPORT 
+/* Debug-only branches are not needed in the fx-CG50 release build. */
+/* #undef DEBUG_SUPPORT */
 
 /* Name of package */
 #define PACKAGE "giac"

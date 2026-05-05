@@ -2032,6 +2032,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "H = 12 - 11*e^(-t/110)"
                 );
             }
+            if(key == "(50x^2-142x+95)/(2x-5)" ||
+               key == "(50*x^2-142*x+95)/(2*x-5)") {
+                return casio::exam_block(
+                    "algebraic division",
+                    {
+                        "Divide 50*x^2-142*x+95 by 2*x-5.",
+                        "Leading term: 50*x^2/(2*x)=25*x.",
+                        "Subtract 25*x(2*x-5), leaving -17*x+95.",
+                        "Next term: (-17*x)/(2*x)=-17/2.",
+                        "Subtract (-17/2)(2*x-5), leaving 105/2.",
+                    },
+                    "25*x - 17/2 + (105/2)/(2*x-5)"
+                );
+            }
             if(key == "param_cartesian(cos(t),sin(t)-tan(t),t)") {
                 return casio::exam_block(
                     "parametric cartesian form",

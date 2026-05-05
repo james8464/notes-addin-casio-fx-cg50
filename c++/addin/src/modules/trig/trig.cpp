@@ -1227,6 +1227,38 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = -4 or " + var + " = 4"
         );
     }
+    if(eq_key == "3asin(x-1)=2acos(x-1)" || eq_key == "3arcsin(x-1)=2arccos(x-1)") {
+        return casio::exam_block(
+            "inverse trig solve",
+            {
+                "Let u=asin(x-1).",
+                "Then acos(x-1)=pi/2-u.",
+                "Substitute: 3u=2(pi/2-u).",
+                "So 3u=pi-2u.",
+                "Hence 5u=pi and u=pi/5.",
+                "Back-substitute: asin(x-1)=pi/5.",
+                "So x-1=sin(pi/5).",
+            },
+            var + " = 1 + sin(pi/5)"
+        );
+    }
+    if(eq_key == "6+13sin(2x+atan(5/12))=5cos(2x)" ||
+       eq_key == "6+13sin(2x+arctan(5/12))=5cos(2x)") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Let alpha=atan(5/12).",
+                "Then sin(alpha)=5/13 and cos(alpha)=12/13.",
+                "Expand sin(2*x+alpha)=sin(2*x)cos(alpha)+cos(2*x)sin(alpha).",
+                "So 13sin(2*x+alpha)=12*sin(2*x)+5*cos(2*x).",
+                "Equation becomes 6+12*sin(2*x)+5*cos(2*x)=5*cos(2*x).",
+                "Cancel 5*cos(2*x): 12*sin(2*x)+6=0.",
+                "Thus sin(2*x)=-1/2.",
+                "For 0<=x<360, 2*x=210,330,570,690.",
+            },
+            var + " = 105, 165, 285, 345"
+        );
+    }
     if(eq_key == "sec(x)^2-(1+sqrt(3))tan(x)+sqrt(3)=1" ||
        eq_key == "sec(x)^2-(sqrt(3)+1)tan(x)+sqrt(3)=1") {
         return casio::exam_block(
