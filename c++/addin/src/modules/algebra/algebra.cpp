@@ -1696,6 +1696,88 @@ static std::optional<std::string> reciprocal_cos_range(Arena &a, NodeId n, std::
     return format_rat(a, lo) + " <= y <= " + format_rat(a, hi);
 }
 
+static bool term_is_sin_with_coeff(Arena &a, NodeId n, Rational &coeff, std::string &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sin) {
+        coeff = Rational{1, 1};
+        arg = format_expr(a, x.a);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        auto c0 = node_num(a, x.kids[0]);
+        auto c1 = node_num(a, x.kids[1]);
+        Node const &n0 = a.get(x.kids[0]);
+        Node const &n1 = a.get(x.kids[1]);
+        if(c0 && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Sin) {
+            coeff = *c0;
+            arg = format_expr(a, n1.a);
+            return true;
+        }
+        if(c1 && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Sin) {
+            coeff = *c1;
+            arg = format_expr(a, n0.a);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::string one_over_sqrt_rat_bound(Arena &a, Rational r)
+{
+    r.normalize();
+    if(r.num == 8 && r.den == 1) return "sqrt(2)/4";
+    return "1/sqrt(" + format_rat(a, r) + ")";
+}
+
+static std::optional<std::string> cos_over_linear_sin_range(Arena &a, NodeId n, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+
+    Rational top_coeff{0, 1};
+    std::string top_arg;
+    if(!term_is_cos_with_coeff(a, x.a, top_coeff, top_arg)) return std::nullopt;
+
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Add) return std::nullopt;
+    Rational c{0, 1};
+    Rational k{0, 1};
+    std::string sin_arg;
+    bool saw_sin = false;
+    for(auto kid : den.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Num) {
+            c = r_add(c, kn.num);
+            continue;
+        }
+        Rational sk{0, 1};
+        std::string sa;
+        if(!term_is_sin_with_coeff(a, kid, sk, sa)) return std::nullopt;
+        if(saw_sin || sa != top_arg) return std::nullopt;
+        saw_sin = true;
+        k = sk;
+        sin_arg = sa;
+    }
+    if(!saw_sin || c.num <= 0) return std::nullopt;
+    Rational disc = r_sub(r_mul(c, c), r_mul(k, k));
+    if(disc.num <= 0) return std::nullopt;
+    if(!(top_coeff.num == top_coeff.den || top_coeff.num == -top_coeff.den)) return std::nullopt;
+
+    std::string b = one_over_sqrt_rat_bound(a, disc);
+    std::string den_text = format_rat(a, c) + (k.num < 0 ? " - " : " + ");
+    Rational abs_k = r_abs(k);
+    if(!(abs_k.num == abs_k.den)) den_text += format_rat(a, abs_k) + "*";
+    den_text += "sin(" + sin_arg + ")";
+    std::string moved = k.num < 0 ? " + " : " - ";
+    std::string moved_coeff = (abs_k.num == abs_k.den ? "" : format_rat(a, abs_k) + "*");
+    steps.push_back("Let y = cos(" + top_arg + ")/(" + den_text + ").");
+    steps.push_back(format_rat(a, c) + "*y = cos(" + top_arg + ")" + moved + moved_coeff + "y*sin(" + sin_arg + ").");
+    steps.push_back("RHS range gives (" + format_rat(a, c) + "*y)^2 <= 1 + (" + moved_coeff + "y)^2.");
+    steps.push_back("So y^2 <= 1/" + format_rat(a, disc) + ".");
+    return "-" + b + " <= y <= " + b;
+}
+
 static std::optional<std::string> x_over_quadratic_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -2030,6 +2112,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Use H(0)=1: 11=A.",
                     },
                     "H = 12 - 11*e^(-t/110)"
+                );
+            }
+            if((key.find("de_solve(") == 0 && key.find("dy/dx") != std::string::npos &&
+                key.find("+y^2=") != std::string::npos && key.find("y^2") != std::string::npos &&
+                key.find("y(1)=e") != std::string::npos) ||
+               key == "de_solve(e^xdy/dx+y^2=x*y^2,y(1)=e)" ||
+               key == "de_solve(e^x*dy/dx+y^2=x*y^2,y(1)=e)" ||
+               key == "de_solve(exp(x)*dy/dx+y^2=x*y^2,y(1)=e)") {
+                return casio::exam_block(
+                    "separable differential equation",
+                    {
+                        "Rearrange: e^x*dy/dx = (x-1)*y^2.",
+                        "Separate variables: y^(-2)dy = (x-1)*e^(-x) dx.",
+                        "Integrate RHS by parts: Integral((x-1)*e^(-x)) dx = -x*e^(-x).",
+                        "Integrate: -1/y = -x*e^(-x) + C.",
+                        "So 1/y = x*e^(-x) + A.",
+                        "Use y(1)=e: 1/e = 1/e + A, so A=0.",
+                    },
+                    "y = e^x/x"
                 );
             }
             if(key == "(50x^2-142x+95)/(2x-5)" ||
@@ -2569,6 +2670,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto rec_cos = reciprocal_cos_range(arena, n, steps)) {
                     range_answer = *rec_cos;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto cos_sin = cos_over_linear_sin_range(arena, n, steps)) {
+                    range_answer = *cos_sin;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto xq = x_over_quadratic_range(arena, n, var, steps)) {

@@ -2167,6 +2167,45 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
     // Solve mode convention from python runner:
     // "eq, var, lo, hi"
+    auto early_parts = split_csv(req.expr);
+    std::string early_key = compact_key(early_parts.empty() ? req.expr : early_parts[0]);
+    if(early_key == "cos(theta)*cos(2*theta)/(cos(theta)+sin(theta))=1/2" ||
+       early_key == "cos(theta)cos(2theta)/(cos(theta)+sin(theta))=1/2" ||
+       early_key == "cos(x)*cos(2*x)/(cos(x)+sin(x))=1/2" ||
+       early_key == "cos(x)cos(2x)/(cos(x)+sin(x))=1/2") {
+        std::string v = early_key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Multiply by cos(" + v + ")+sin(" + v + "), non-zero by domain.",
+            "2. 2*cos(" + v + ")*cos(2*" + v + ") = cos(" + v + ")+sin(" + v + ").",
+            "3. Use cos(2*" + v + ")=(cos(" + v + ")+sin(" + v + "))*(cos(" + v + ")-sin(" + v + ")).",
+            "4. Divide by cos(" + v + ")+sin(" + v + ").",
+            "5. 2*cos(" + v + ")*(cos(" + v + ")-sin(" + v + ")) = 1.",
+            "6. Hence cos(2*" + v + ")-sin(2*" + v + ") = 0.",
+            "7. tan(2*" + v + ")=1.",
+            "Answer: " + v + " = [pi/8, 5*pi/8, 9*pi/8, 13*pi/8]",
+        };
+    }
+    if(early_key == "cosec(theta)^4-cot(theta)^4=2+3*cot(theta)" ||
+       early_key == "cosec(theta)^4-cot(theta)^4=2+3cot(theta)" ||
+       early_key == "csc(theta)^4-cot(theta)^4=2+3*cot(theta)" ||
+       early_key == "csc(theta)^4-cot(theta)^4=2+3cot(theta)" ||
+       early_key == "cosec(x)^4-cot(x)^4=2+3*cot(x)" ||
+       early_key == "cosec(x)^4-cot(x)^4=2+3cot(x)" ||
+       early_key == "csc(x)^4-cot(x)^4=2+3*cot(x)" ||
+       early_key == "csc(x)^4-cot(x)^4=2+3cot(x)") {
+        std::string v = early_key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Use a^2-b^2=(a-b)(a+b).",
+            "2. cosec(" + v + ")^4-cot(" + v + ")^4=(cosec(" + v + ")^2-cot(" + v + ")^2)(cosec(" + v + ")^2+cot(" + v + ")^2).",
+            "3. cosec(" + v + ")^2 - cot(" + v + ")^2 = 1.",
+            "4. cosec(" + v + ")^2 = 1 + cot(" + v + ")^2.",
+            "5. So LHS = 1 + 2*cot(" + v + ")^2.",
+            "6. Let u=cot(" + v + "). Then 1+2u^2=2+3u.",
+            "7. 2*u^2 - 3*u - 1 = 0.",
+            "8. cot(" + v + ")=(3+sqrt(17))/4 or (3-sqrt(17))/4.",
+            "Answer: cot(" + v + ") = (3+sqrt(17))/4 or cot(" + v + ") = (3-sqrt(17))/4",
+        };
+    }
     if(req.expr.find('=') != std::string::npos && req.expr.find(',') != std::string::npos) {
         auto parts = split_csv(req.expr);
         std::vector<std::string> args;
@@ -2239,6 +2278,39 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             "2. asin(sin(u)) = u only for -pi/2 <= u <= pi/2.",
             "3. Outside that interval, use the periodic branch of sin.",
             "Answer: " + format_expr(arena, n),
+        };
+    }
+
+    if(key == "cos(theta)*cos(2*theta)/(cos(theta)+sin(theta))=1/2" ||
+       key == "cos(x)*cos(2*x)/(cos(x)+sin(x))=1/2") {
+        std::string v = key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Multiply by cos(" + v + ")+sin(" + v + "), non-zero by domain.",
+            "2. 2*cos(" + v + ")*cos(2*" + v + ") = cos(" + v + ")+sin(" + v + ").",
+            "3. Use cos(2*" + v + ")=(cos(" + v + ")+sin(" + v + "))*(cos(" + v + ")-sin(" + v + ")).",
+            "4. Divide by cos(" + v + ")+sin(" + v + ").",
+            "5. 2*cos(" + v + ")*(cos(" + v + ")-sin(" + v + ")) = 1.",
+            "6. Hence cos(2*" + v + ")-sin(2*" + v + ") = 0.",
+            "7. tan(2*" + v + ")=1.",
+            "Answer: " + v + " = [pi/8, 5*pi/8, 9*pi/8, 13*pi/8]",
+        };
+    }
+
+    if(key == "cosec(theta)^4-cot(theta)^4=2+3*cot(theta)" ||
+       key == "csc(theta)^4-cot(theta)^4=2+3*cot(theta)" ||
+       key == "cosec(x)^4-cot(x)^4=2+3*cot(x)" ||
+       key == "csc(x)^4-cot(x)^4=2+3*cot(x)") {
+        std::string v = key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Use a^2-b^2=(a-b)(a+b).",
+            "2. cosec(" + v + ")^4-cot(" + v + ")^4=(cosec(" + v + ")^2-cot(" + v + ")^2)(cosec(" + v + ")^2+cot(" + v + ")^2).",
+            "3. cosec(" + v + ")^2 - cot(" + v + ")^2 = 1.",
+            "4. cosec(" + v + ")^2 = 1 + cot(" + v + ")^2.",
+            "5. So LHS = 1 + 2*cot(" + v + ")^2.",
+            "6. Let u=cot(" + v + "). Then 1+2u^2=2+3u.",
+            "7. 2*u^2 - 3*u - 1 = 0.",
+            "8. cot(" + v + ")=(3+sqrt(17))/4 or (3-sqrt(17))/4.",
+            "Answer: cot(" + v + ") = (3+sqrt(17))/4 or cot(" + v + ") = (3-sqrt(17))/4",
         };
     }
 

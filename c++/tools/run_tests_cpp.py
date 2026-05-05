@@ -56,6 +56,7 @@ def main() -> int:
         ("mp2_hij_manual", [sys.executable, "c++/tools/golden/check_mp2_hij_manual.py"]),
         ("mp2_efg_manual", [sys.executable, "c++/tools/golden/check_mp2_efg_manual.py"]),
         ("mp2_cd_manual", [sys.executable, "c++/tools/golden/check_mp2_cd_manual.py"]),
+        ("mp2_ab_manual", [sys.executable, "c++/tools/golden/check_mp2_ab_manual.py"]),
         ("general_scope", [sys.executable, "c++/tools/golden/check_general_scope.py"]),
         ("rigor_challenge", [sys.executable, "c++/tools/golden/check_rigor_challenge.py"]),
         ("mathematical_singularity", [sys.executable, "c++/tools/golden/check_mathematical_singularity.py"]),

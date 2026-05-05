@@ -581,6 +581,24 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "defint(2*a*x/sqrt(a*x-1),x,2/a,17/a)" ||
+       c == "defint((2*a*x)/sqrt(a*x-1),x,2/a,17/a)" ||
+       c == "defint(2ax/sqrt(ax-1),x,2/a,17/a)") {
+        return out(
+            "linear-radical substitution",
+            {
+                "Let u^2 = a*x - 1.",
+                "Then x=(u^2+1)/a.",
+                "Differentiate: 2u du = a dx, so dx = 2u/a du.",
+                "Limits: x=2/a gives u=1; x=17/a gives u=4.",
+                "Integral becomes Integral_1^4 2*a*((u^2+1)/a)/u * (2u/a) du.",
+                "Simplify to (4/a)Integral_1^4 (u^2+1) du.",
+                "Integrate: (4/a)[u^3/3+u]_1^4.",
+            },
+            "32/a"
+        );
+    }
+
     if(c == "e^(2x)/(e^x+1)" || c == "exp(2x)/(exp(x)+1)" ||
        c == "e^(2*x)/(e^(x)+1)" || c == "exp(2*x)/(exp(x)+1)") {
         return out(

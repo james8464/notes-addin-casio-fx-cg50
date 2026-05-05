@@ -493,6 +493,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "d/d" + var + " sec(x) = sec(x)*tan(x)"
                 );
             }
+            if(key == "sin(x)") {
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(x+h)-f(x)]/h.",
+                        "[sin(x+h)-sin(x)]/h.",
+                        "Use sin(x+h)=sin(x)cos(h)+cos(x)sin(h).",
+                        "sin(x+h)-sin(x)=sin(x)cos(h)+cos(x)sin(h)-sin(x).",
+                        "= sin(x)(cos(h)-1)+cos(x)sin(h).",
+                        "Divide by h: sin(x)*(cos(h)-1)/h + cos(x)*sin(h)/h.",
+                        "As h->0, (cos(h)-1)/h->0 and sin(h)/h->1.",
+                    },
+                    "d/d" + var + " sin(x) = cos(x)"
+                );
+            }
             if(key == "cos(x)") {
                 return casio::exam_block(
                     "first principles",
