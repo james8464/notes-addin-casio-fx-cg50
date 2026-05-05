@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <numeric>
 #include <optional>
 #include <sstream>
 
@@ -507,6 +508,95 @@ static std::string loose_key(std::string text)
     return out;
 }
 
+static bool parse_integer_over_param(std::string const &text, std::string const &param, long long &n)
+{
+    std::string key = compact_key(text);
+    std::string suffix = "/" + param;
+    if(key.size() <= suffix.size() || key.substr(key.size() - suffix.size()) != suffix) return false;
+    std::string num = key.substr(0, key.size() - suffix.size());
+    if(num.empty()) return false;
+    try {
+        std::size_t pos = 0;
+        n = std::stoll(num, &pos);
+        return pos == num.size();
+    }
+    catch(...) {
+        return false;
+    }
+}
+
+static std::optional<long long> integer_sqrt_exact(long long n)
+{
+    if(n < 0) return std::nullopt;
+    long long r = 0;
+    while(r * r < n) ++r;
+    if(r * r == n) return r;
+    return std::nullopt;
+}
+
+static std::string coeff_over_param(long long num, long long den, std::string const &param)
+{
+    if(den < 0) {
+        den = -den;
+        num = -num;
+    }
+    long long g = std::gcd(num < 0 ? -num : num, den);
+    if(g > 1) {
+        num /= g;
+        den /= g;
+    }
+    if(den == 1) {
+        if(num == 1) return "1/" + param;
+        if(num == -1) return "-1/" + param;
+        return std::to_string(num) + "/" + param;
+    }
+    return std::to_string(num) + "/(" + std::to_string(den) + "*" + param + ")";
+}
+
+static std::optional<TextIntegral> linear_radical_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+
+    std::string var = compact_key((*args)[1]);
+    if(var.empty()) return std::nullopt;
+
+    std::string integrand = compact_key((*args)[0]);
+    std::string marker = var + "/sqrt(";
+    auto marker_pos = integrand.find(marker);
+    if(marker_pos == std::string::npos || integrand.rfind("2", 0) != 0) return std::nullopt;
+    std::string param = integrand.substr(1, marker_pos - 1);
+    if(param.empty()) return std::nullopt;
+    std::string tail = integrand.substr(marker_pos + marker.size());
+    if(tail != param + var + "-1)") return std::nullopt;
+
+    long long lo_n = 0;
+    long long hi_n = 0;
+    if(!parse_integer_over_param((*args)[2], param, lo_n) ||
+       !parse_integer_over_param((*args)[3], param, hi_n)) return std::nullopt;
+    auto lo_u = integer_sqrt_exact(lo_n - 1);
+    auto hi_u = integer_sqrt_exact(hi_n - 1);
+    if(!lo_u || !hi_u) return std::nullopt;
+
+    long long lo = *lo_u;
+    long long hi = *hi_u;
+    long long num = 4 * ((hi * hi * hi - lo * lo * lo) + 3 * (hi - lo));
+    std::string answer = coeff_over_param(num, 3, param);
+
+    std::vector<std::string> steps = {
+        "Let u^2 = " + param + "*" + var + " - 1.",
+        "Then " + var + "=(u^2+1)/" + param + ".",
+        "Differentiate: 2u du = " + param + " d" + var + ", so d" + var + " = 2u/" + param + " du.",
+        "Limits: " + var + "=" + std::to_string(lo_n) + "/" + param + " gives u=" + std::to_string(lo) +
+            "; " + var + "=" + std::to_string(hi_n) + "/" + param + " gives u=" + std::to_string(hi) + ".",
+        "Integral becomes Integral_" + std::to_string(lo) + "^" + std::to_string(hi) + " 2*" + param +
+            "*((u^2+1)/" + param + ")/u * (2u/" + param + ") du.",
+        "Simplify to (4/" + param + ")Integral_" + std::to_string(lo) + "^" + std::to_string(hi) + " (u^2+1) du.",
+        "Integrate: (4/" + param + ")[u^3/3+u]_" + std::to_string(lo) + "^" + std::to_string(hi) + ".",
+    };
+    return TextIntegral{"linear-radical substitution", std::move(steps), answer};
+}
+
 static std::optional<TextIntegral> special_integral_answer(std::string const &expr)
 {
     std::string k = loose_key(expr);
@@ -515,6 +605,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     auto out = [](std::string method, std::vector<std::string> steps, std::string answer) {
         return TextIntegral{std::move(method), std::move(steps), std::move(answer)};
     };
+
+    if(auto radical = linear_radical_defint_pattern(expr)) return radical;
 
     if(c == "xexp(x)" || c == "xe^x") {
         return out(
@@ -595,7 +687,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Simplify to (4/a)Integral_1^4 (u^2+1) du.",
                 "Integrate: (4/a)[u^3/3+u]_1^4.",
             },
-            "32/a"
+            "96/a"
         );
     }
 

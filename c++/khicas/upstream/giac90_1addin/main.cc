@@ -3363,7 +3363,7 @@ static bool cascas_old_python_scope_working_call(const char *s){
   static const char *calls[]={
     "diff(","derive(","diff_by(","normal_diff(","second_diff(",
     "implicit_diff(","param_diff(","param_second_diff(","param_area(",
-    "integrate(","int(","integrate_by(","int_by(",
+    "integrate(","int(","defint(","integrate_by(","int_by(",
     "solve(","solve_by(","solve_trig(","solve_trig_by(",
     "trig_prove(","trig_rewrite(","trig_transform(",
     "trigcos(","trigsin(","trigtan(",

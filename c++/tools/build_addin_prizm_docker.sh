@@ -13,7 +13,9 @@ TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
 OUT_HELP="${OUT_DIR}/CASIOCAS.HLP"
+OUT_HELP_GZ="${OUT_DIR}/CASIOCAS.HLP.gz"
 TRANSFER_HELP="${TRANSFER_DIR}/CASIOCAS.HLP"
+TRANSFER_HELP_GZ="${TRANSFER_DIR}/CASIOCAS.HLP.gz"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
 ICON_SEL_PNG="${ROOT_DIR}/c++/prizm/assets/selected.png"
@@ -58,10 +60,14 @@ publish_transfer_g3a() {
 publish_help_pack() {
   if [ -f "${HELP_SRC}" ]; then
     cp "${HELP_SRC}" "${OUT_HELP}"
+    gzip -9 -c "${HELP_SRC}" > "${OUT_HELP_GZ}"
     mkdir -p "${TRANSFER_DIR}"
     cp "${HELP_SRC}" "${TRANSFER_HELP}"
+    cp "${OUT_HELP_GZ}" "${TRANSFER_HELP_GZ}"
     echo "Help pack: ${OUT_HELP}"
+    echo "Compressed help: ${OUT_HELP_GZ}"
     echo "Calculator help: ${TRANSFER_HELP}"
+    echo "Calculator compressed help: ${TRANSFER_HELP_GZ}"
   fi
 }
 

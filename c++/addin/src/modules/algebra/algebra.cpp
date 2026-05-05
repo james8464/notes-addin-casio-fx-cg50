@@ -1726,8 +1726,32 @@ static bool term_is_sin_with_coeff(Arena &a, NodeId n, Rational &coeff, std::str
 static std::string one_over_sqrt_rat_bound(Arena &a, Rational r)
 {
     r.normalize();
+    std::int64_t rn = 0;
+    std::int64_t rd = 0;
+    if(r.num >= 0 && is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd != 0) {
+        Rational inv{rd, rn};
+        inv.normalize();
+        return format_rat(a, inv);
+    }
     if(r.num == 8 && r.den == 1) return "sqrt(2)/4";
     return "1/sqrt(" + format_rat(a, r) + ")";
+}
+
+static std::string coeff_over_sqrt_rat_bound(Arena &a, Rational coeff, Rational r)
+{
+    coeff = r_abs(coeff);
+    coeff.normalize();
+    r.normalize();
+    if(coeff.num == coeff.den) return one_over_sqrt_rat_bound(a, r);
+    std::int64_t rn = 0;
+    std::int64_t rd = 0;
+    if(r.num >= 0 && is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd != 0) {
+        Rational b = r_mul(coeff, Rational{rd, rn});
+        b.normalize();
+        return format_rat(a, b);
+    }
+    if(r.num == 8 && r.den == 1 && coeff.num == 2 && coeff.den == 1) return "sqrt(2)/2";
+    return format_rat(a, coeff) + "/sqrt(" + format_rat(a, r) + ")";
 }
 
 static std::optional<std::string> cos_over_linear_sin_range(Arena &a, NodeId n, std::vector<std::string> &steps)
@@ -1762,19 +1786,22 @@ static std::optional<std::string> cos_over_linear_sin_range(Arena &a, NodeId n, 
     if(!saw_sin || c.num <= 0) return std::nullopt;
     Rational disc = r_sub(r_mul(c, c), r_mul(k, k));
     if(disc.num <= 0) return std::nullopt;
-    if(!(top_coeff.num == top_coeff.den || top_coeff.num == -top_coeff.den)) return std::nullopt;
 
-    std::string b = one_over_sqrt_rat_bound(a, disc);
+    Rational coeff_sq = r_mul(top_coeff, top_coeff);
+    Rational rhs_bound = r_div(coeff_sq, disc);
+    std::string b = coeff_over_sqrt_rat_bound(a, top_coeff, disc);
+    std::string top_coeff_text = r_abs(top_coeff).num == r_abs(top_coeff).den ? "" : format_rat(a, r_abs(top_coeff)) + "*";
     std::string den_text = format_rat(a, c) + (k.num < 0 ? " - " : " + ");
     Rational abs_k = r_abs(k);
     if(!(abs_k.num == abs_k.den)) den_text += format_rat(a, abs_k) + "*";
     den_text += "sin(" + sin_arg + ")";
     std::string moved = k.num < 0 ? " + " : " - ";
     std::string moved_coeff = (abs_k.num == abs_k.den ? "" : format_rat(a, abs_k) + "*");
-    steps.push_back("Let y = cos(" + top_arg + ")/(" + den_text + ").");
-    steps.push_back(format_rat(a, c) + "*y = cos(" + top_arg + ")" + moved + moved_coeff + "y*sin(" + sin_arg + ").");
-    steps.push_back("RHS range gives (" + format_rat(a, c) + "*y)^2 <= 1 + (" + moved_coeff + "y)^2.");
-    steps.push_back("So y^2 <= 1/" + format_rat(a, disc) + ".");
+    std::string signed_top = top_coeff.num < 0 ? "-" + top_coeff_text : top_coeff_text;
+    steps.push_back("Let y = " + signed_top + "cos(" + top_arg + ")/(" + den_text + ").");
+    steps.push_back(format_rat(a, c) + "*y = " + signed_top + "cos(" + top_arg + ")" + moved + moved_coeff + "y*sin(" + sin_arg + ").");
+    steps.push_back("RHS range gives (" + format_rat(a, c) + "*y)^2 <= (" + format_rat(a, r_abs(top_coeff)) + ")^2 + (" + moved_coeff + "y)^2.");
+    steps.push_back("So y^2 <= " + format_rat(a, rhs_bound) + ".");
     return "-" + b + " <= y <= " + b;
 }
 
@@ -2545,13 +2572,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(req.mode == 10) {
             std::string expr = trim_text(req.expr);
             auto parts = split_csv(expr);
-            std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
+            bool explicit_var = parts.size() >= 2 && !parts[1].empty();
+            std::string var = explicit_var ? parts[1] : "x";
             std::string lo = (parts.size() >= 3) ? parts[2] : "";
             std::string hi = (parts.size() >= 4) ? parts[3] : "";
             if(!parts.empty()) expr = parts[0];
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
+            if(!explicit_var) var = choose_solve_var(arena, n, "");
             auto parse_bound = [&](std::string const &s) -> std::optional<double> {
                 std::string t = trim_text(s);
                 std::string tl;

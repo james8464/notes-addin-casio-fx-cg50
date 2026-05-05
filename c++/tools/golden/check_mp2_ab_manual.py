@@ -44,7 +44,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "B13 linear radical definite",
         ["--int", "defint(2*a*x/sqrt(a*x-1),x,2/a,17/a)"],
-        ["u^2 = a*x - 1", "x=(u^2+1)/a", "Answer: 32/a"],
+        ["u^2 = a*x - 1", "x=(u^2+1)/a", "Answer: 96/a"],
         ["No elementary primitive", "ERR:"],
     ),
 ]

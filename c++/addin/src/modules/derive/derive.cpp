@@ -232,6 +232,42 @@ static bool parse_int_text(std::string const &s, long long &out)
     }
 }
 
+static std::optional<long long> scaled_var_arg_from_key(std::string const &key, char const *fn, std::string const &var)
+{
+    std::string prefix = std::string(fn) + "(";
+    if(key.rfind(prefix, 0) != 0 || key.size() <= prefix.size() + 1 || key.back() != ')') return std::nullopt;
+    std::string inner = key.substr(prefix.size(), key.size() - prefix.size() - 1);
+    if(inner == var) return 1LL;
+    if(inner.size() <= var.size() || inner.substr(inner.size() - var.size()) != var) return std::nullopt;
+    std::string coeff_text = inner.substr(0, inner.size() - var.size());
+    if(coeff_text == "-") return -1LL;
+    long long coeff = 0;
+    if(!parse_int_text(coeff_text, coeff) || coeff == 0) return std::nullopt;
+    return coeff;
+}
+
+static std::string scaled_arg_text(long long k, std::string const &var)
+{
+    if(k == 1) return var;
+    if(k == -1) return "-" + var;
+    return std::to_string(k) + "*" + var;
+}
+
+static std::string coeff_times_text(long long k, std::string const &term)
+{
+    if(k == 1) return term;
+    if(k == -1) return "-" + term;
+    return std::to_string(k) + "*" + term;
+}
+
+static std::string plus_scaled_h_text(std::string const &base, long long k, std::string const &suffix)
+{
+    if(k == 1) return base + "+h" + suffix;
+    if(k == -1) return base + "-h" + suffix;
+    if(k > 0) return base + "+" + std::to_string(k) + "*h" + suffix;
+    return base + "-" + std::to_string(-k) + "*h" + suffix;
+}
+
 static std::string linear_text(long long a, long long b, std::string const &var)
 {
     std::string s;
@@ -520,6 +556,36 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "As h->0, sin(h/2)/(h/2)->1 and sin(x+h/2)->sin(x).",
                     },
                     "d/d" + var + " cos(x) = -sin(x)"
+                );
+            }
+            if(auto k = scaled_var_arg_from_key(key, "sin", var); k && *k != 1) {
+                std::string u = scaled_arg_text(*k, var);
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "[sin(" + std::to_string(*k) + "*(" + var + "+h))-sin(" + u + ")]/h.",
+                        "This is [sin(" + plus_scaled_h_text(u, *k, "") + ")-sin(" + u + ")]/h.",
+                        "Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B).",
+                        "= sin(" + u + ")*(cos(" + std::to_string(*k) + "*h)-1)/h + cos(" + u + ")*sin(" + std::to_string(*k) + "*h)/(h).",
+                        "As h->0, (cos(" + std::to_string(*k) + "*h)-1)/h->0 and sin(" + std::to_string(*k) + "*h)/h->" + std::to_string(*k) + ".",
+                    },
+                    "d/d" + var + " sin(" + u + ") = " + coeff_times_text(*k, "cos(" + u + ")")
+                );
+            }
+            if(auto k = scaled_var_arg_from_key(key, "cos", var); k && *k != 1) {
+                std::string u = scaled_arg_text(*k, var);
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "[cos(" + std::to_string(*k) + "*(" + var + "+h))-cos(" + u + ")]/h.",
+                        "This is [cos(" + plus_scaled_h_text(u, *k, "") + ")-cos(" + u + ")]/h.",
+                        "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
+                        "Quotient = -sin(" + plus_scaled_h_text(u, *k, "/2") + ")*[sin(" + std::to_string(*k) + "*h/2)/(h/2)].",
+                        "As h->0, sin(" + std::to_string(*k) + "*h/2)/(h/2)->" + std::to_string(*k) + ".",
+                    },
+                    "d/d" + var + " cos(" + u + ") = " + coeff_times_text(-(*k), "sin(" + u + ")")
                 );
             }
             if(key == "asin(x)" || key == "arcsin(x)") {
