@@ -328,6 +328,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: x = [(1 - sqrt(13))/2, (1 + sqrt(13))/2]"],
         [")/-2", "ERR:"],
     ),
+    (
+        "alg",
+        "range(sqrt((x+5)^2))",
+        ["Domain: all real x", "Range: y >= 0", "Answer: y >= 0"],
+        ["Domain: (x + 5)^2 >= 0", "ERR:"],
+    ),
 ]
 
 

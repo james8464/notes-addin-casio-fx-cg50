@@ -930,6 +930,15 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
     }
     if(x.kind == NodeKind::Fn) {
         if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) {
+            Node const &inner = a.get(x.a);
+            if(inner.kind == NodeKind::Pow) {
+                Node const &exp = a.get(inner.b);
+                if(exp.kind == NodeKind::Num && exp.num.num == 2 && exp.num.den == 1) {
+                    push_unique(out, "Domain: all real x");
+                    collect_domain(a, inner.a, out);
+                    return;
+                }
+            }
             auto amin = abs_linear_plus_const_min(a, x.a, "x");
             if(amin && amin->num >= 0) push_unique(out, "Domain: all real x");
             else push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
