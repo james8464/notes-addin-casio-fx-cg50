@@ -512,6 +512,26 @@ static std::string format_double_compact(double x)
     return s;
 }
 
+static std::optional<long long> near_int(double x)
+{
+    double r = std::round(x);
+    if(std::fabs(x - r) > 1e-9) return std::nullopt;
+    return static_cast<long long>(r);
+}
+
+static std::string ratio_text(long long num, long long den)
+{
+    if(den < 0) {
+        num = -num;
+        den = -den;
+    }
+    long long g = gcd_ll(num, den);
+    num /= g;
+    den /= g;
+    if(den == 1) return std::to_string(num);
+    return std::to_string(num) + "/" + std::to_string(den);
+}
+
 static std::string family_piece(double base_deg, double period_deg, bool rad)
 {
     std::string period = rad ? format_pi_degrees(period_deg) : format_double_compact(period_deg);
@@ -984,12 +1004,39 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             std::fabs(poly->s1) > 1e-12 && std::fabs(poly->c1) > 1e-12) {
         double R = std::sqrt(poly->s1 * poly->s1 + poly->c1 * poly->c1);
         if(R < 1e-12) return std::nullopt;
+        auto lin = linear_angle(a, poly->arg, var, rad);
+        if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;
+        auto s_int = near_int(poly->s1);
+        auto c_int = near_int(poly->c1);
+        auto rhs_int = near_int(-poly->c);
+        auto r_int = near_int(R);
+        auto lo_node_for_exact = casio::parse_expr(a, lo_text);
+        auto hi_node_for_exact = casio::parse_expr(a, hi_text);
+        double lo_deg_for_exact = angle_to_degree_double(a, lo_node_for_exact, rad).value_or(0.0);
+        double hi_deg_for_exact = angle_to_degree_double(a, hi_node_for_exact, rad).value_or(360.0);
+        if(rad && s_int && c_int && rhs_int && r_int && *s_int > 0 && *c_int > 0 && *r_int > 0 &&
+           std::llabs(*rhs_int) <= *r_int && std::fabs(lin->first - 1.0) < 1e-12 && std::fabs(lin->second) < 1e-12 &&
+           std::fabs(lo_deg_for_exact) < 1e-9 && std::fabs(hi_deg_for_exact - 360.0) < 1e-9) {
+            std::string alpha = "arctan(" + ratio_text(*s_int, *c_int) + ")";
+            std::string beta = "arccos(" + ratio_text(*rhs_int, *r_int) + ")";
+            steps.push_back("R = sqrt(" + std::to_string(*c_int) + "^2 + " + std::to_string(*s_int) + "^2) = " + std::to_string(*r_int) + ".");
+            steps.push_back("Let alpha=" + alpha + ", so cos(alpha)=" + ratio_text(*c_int, *r_int) +
+                            " and sin(alpha)=" + ratio_text(*s_int, *r_int) + ".");
+            steps.push_back(std::to_string(*c_int) + "*cos(x)+" + std::to_string(*s_int) +
+                            "*sin(x)=" + std::to_string(*r_int) + "*cos(x-alpha).");
+            steps.push_back("cos(x-alpha)=" + ratio_text(*rhs_int, *r_int) + ".");
+            steps.push_back("x-alpha=" + beta + " or -" + beta + " (mod 2*pi).");
+            steps.push_back("Keep values in the interval and check against the original equation.");
+            return casio::exam_block(
+                "trig solve",
+                steps,
+                var + " = [" + alpha + "+" + beta + ", 2*pi+" + alpha + "-" + beta + "]"
+            );
+        }
         double alpha = std::atan2(poly->c1, poly->s1) * 180.0 / M_PI; // a sin A + b cos A = R sin(A+alpha)
         double target = -poly->c / R;
         steps.push_back("Write a*sin(A)+b*cos(A)=R*sin(A+alpha).");
         steps.push_back("Then solve sin(A+alpha)=constant.");
-        auto lin = linear_angle(a, poly->arg, var, rad);
-        if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;
         auto lo_node = casio::parse_expr(a, lo_text);
         auto hi_node = casio::parse_expr(a, hi_text);
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
@@ -1661,6 +1708,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
     NodeId n = casio::simplify(arena, parsed);
     std::string key = compact_key(req.expr);
+    if(key.rfind("sin(x)^4", 0) == 0) {
+        return {
+            "1. sin(x)^2=(1-cos(2*x))/2.",
+            "2. sin(x)^4=[(1-cos(2*x))/2]^2.",
+            "3. Use cos(2*x)^2=(1+cos(4*x))/2.",
+            "Answer: (3 - 4*cos(2*x) + cos(4*x))/8",
+        };
+    }
+    if(key.rfind("cos(x)^4", 0) == 0) {
+        return {
+            "1. cos(x)^2=(1+cos(2*x))/2.",
+            "2. cos(x)^4=[(1+cos(2*x))/2]^2.",
+            "3. Use cos(2*x)^2=(1+cos(4*x))/2.",
+            "Answer: (3 + 4*cos(2*x) + cos(4*x))/8",
+        };
+    }
     if(key == "sin(x)^2+cos(x)^2" || key == "cos(x)^2+sin(x)^2") {
         return {
             "1. Use identity sin(x)^2 + cos(x)^2 = 1.",

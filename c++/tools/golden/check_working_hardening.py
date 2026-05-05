@@ -298,6 +298,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Square both sides", "cos(x)*(cos(x) - 1) = 0", "Check in original", "Answer: x = [0, pi/2"],
         ["Answer: x = []", "ERR:"],
     ),
+    (
+        "trig",
+        "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform",
+        ["R = sqrt(3^2 + 4^2) = 5", "cos(alpha)=3/5", "cos(x-alpha)=2/5", "Answer: x = [arctan(4/3)+arccos(2/5), 2*pi+arctan(4/3)-arccos(2/5)]"],
+        ["Answer: x = [2.", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(x)^4,method=double_angle",
+        ["sin(x)^2=(1-cos(2*x))/2", "cos(2*x)^2=(1+cos(4*x))/2", "Answer: (3 - 4*cos(2*x) + cos(4*x))/8"],
+        ["Answer: sin(x)^4", "ERR:"],
+    ),
 ]
 
 
