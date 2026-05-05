@@ -448,8 +448,12 @@ static bool catalog_hidden_name(const char *name){
   return false;
 }
 
-static const char *CASCAS_HELP_FILE="\\\\fls0\\CASIOCAS.HLP";
+static const char *CASCAS_HELP_FILE="\\\\fls0\\CASIOCAS.PAK";
 static const int CASCAS_HELP_MAX=36*1024;
+
+static int catalog_u16_be(const unsigned char *p){
+  return ((int)p[0]<<8) | (int)p[1];
+}
 
 static bool catalog_read_help_record(const char *name,ustl::string *body){
   if (!name || !name[0])
@@ -476,47 +480,34 @@ static bool catalog_read_help_record(const char *name,ustl::string *body){
     return false;
   }
   buf[size]=0;
-  int namelen=strlen(name),start=-1,end=-1;
-  for (int pos=0;pos+namelen+1<size;++pos){
-    if (buf[pos]=='@' && !strncmp(buf+pos+1,name,namelen) && buf[pos+namelen+1]=='\n'){
-      start=pos+namelen+2;
-      break;
-    }
-  }
-  if (start<0){
+  const unsigned char *ubuf=(const unsigned char*)buf;
+  // CCP1: compact indexed CASIOCAS.PAK built from CASIOCAS.HLP.
+  if (size<6 || ubuf[0]!='C' || ubuf[1]!='C' || ubuf[2]!='P' || ubuf[3]!='1'){
     free(buf);
     return false;
   }
-  for (int pos=start;pos+5<size;++pos){
-    if (buf[pos]=='\n' && !strncmp(buf+pos+1,"@END",4)){
-      end=pos;
+  int count=catalog_u16_be(ubuf+4),pos=6,namelen=strlen(name);
+  for (int i=0;i<count && pos+4<=size;++i){
+    int nl=catalog_u16_be(ubuf+pos);
+    int bl=catalog_u16_be(ubuf+pos+2);
+    pos += 4;
+    if (nl<0 || bl<0 || pos+nl+bl>size)
       break;
+    const char *rname=buf+pos;
+    const char *rbody=buf+pos+nl;
+    if (nl==namelen && !strncmp(rname,name,namelen)){
+      ustl::string out;
+      for (int j=0;j<bl;++j)
+	out += rbody[j];
+      free(buf);
+      if (body)
+	*body=out;
+      return true;
     }
-  }
-  if (end<0){
-    free(buf);
-    return false;
-  }
-  ustl::string out;
-  int line_start=start;
-  while (line_start<end){
-    int line_end=line_start;
-    while (line_end<end && buf[line_end]!='\n')
-      ++line_end;
-    bool skip=(line_end-line_start>=3 && buf[line_start]=='F' &&
-	       (buf[line_start+1]=='2' || buf[line_start+1]=='3') &&
-	       buf[line_start+2]==':');
-    if (!skip){
-      for (int j=line_start;j<line_end;++j)
-	out += buf[j];
-      out += "\n";
-    }
-    line_start=line_end+1;
+    pos += nl+bl;
   }
   free(buf);
-  if (body)
-    *body=out;
-  return true;
+  return false;
 }
 
 static bool catalog_prompt_text(const char *title,const char *prompt,char *buf,int buflen){
@@ -797,8 +788,8 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	sres=doTextArea(&text);
       }
       else {
-	// Test marker: Copy CASIOCAS.HLP to storage root.
-	add(&text,ustl::string("HLP"));
+	// Test marker: Copy CASIOCAS.PAK to storage root.
+	add(&text,ustl::string("Copy CASIOCAS.PAK"));
 	sres=doTextArea(&text);
       }
     }

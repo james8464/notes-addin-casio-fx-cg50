@@ -12,10 +12,8 @@ OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
-OUT_HELP="${OUT_DIR}/CASIOCAS.HLP"
-OUT_HELP_GZ="${OUT_DIR}/CASIOCAS.HLP.gz"
-TRANSFER_HELP="${TRANSFER_DIR}/CASIOCAS.HLP"
-TRANSFER_HELP_GZ="${TRANSFER_DIR}/CASIOCAS.HLP.gz"
+OUT_PAK="${OUT_DIR}/CASIOCAS.PAK"
+TRANSFER_PAK="${TRANSFER_DIR}/CASIOCAS.PAK"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
 ICON_UNSEL="${ROOT_DIR}/c++/prizm/assets/unselected.bmp"
 ICON_SEL_PNG="${ROOT_DIR}/c++/prizm/assets/selected.png"
@@ -57,17 +55,13 @@ publish_transfer_g3a() {
   echo "Calculator file: ${TRANSFER_G3A}"
 }
 
-publish_help_pack() {
+publish_external_pack() {
   if [ -f "${HELP_SRC}" ]; then
-    cp "${HELP_SRC}" "${OUT_HELP}"
-    gzip -9 -c "${HELP_SRC}" > "${OUT_HELP_GZ}"
+    python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${OUT_PAK}"
     mkdir -p "${TRANSFER_DIR}"
-    cp "${HELP_SRC}" "${TRANSFER_HELP}"
-    cp "${OUT_HELP_GZ}" "${TRANSFER_HELP_GZ}"
-    echo "Help pack: ${OUT_HELP}"
-    echo "Compressed help: ${OUT_HELP_GZ}"
-    echo "Calculator help: ${TRANSFER_HELP}"
-    echo "Calculator compressed help: ${TRANSFER_HELP_GZ}"
+    cp "${OUT_PAK}" "${TRANSFER_PAK}"
+    echo "External pack: ${OUT_PAK}"
+    echo "Calculator external pack: ${TRANSFER_PAK}"
   fi
 }
 
@@ -92,6 +86,7 @@ rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.g3a"
 rm -f "${ROOT_DIR}/CasioCAS.g3a"
 rm -f "${ROOT_DIR}/CASIOCAS.HLP"
+rm -f "${ROOT_DIR}/CASIOCAS.PAK"
 rm -rf "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
@@ -116,6 +111,10 @@ if [ "${MODE}" = "khicas-source" ]; then
       make -j"$(nproc)" khicasen.g3a ICON_UNS=/work/c++/prizm/assets/unselected.png ICON_SEL=/work/c++/prizm/assets/selected.png
     '
   cp "${KHICAS_SRC}/khicasen.g3a" "${OUT_G3A}"
+  cp "${KHICAS_SRC}/khicasen.bin" "${OUT_DIR}/CasioCAS.bin"
+  cp "${KHICAS_SRC}/khicasen.elf" "${OUT_DIR}/CasioCAS.elf"
+  cp "${KHICAS_SRC}/khicasen.map" "${OUT_DIR}/CasioCAS.map"
+  cp "${KHICAS_SRC}/dumpen_t" "${OUT_DIR}/dumpen_t"
   clean_khicas_source_outputs
   python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
     --name "CasioCAS" \
@@ -124,10 +123,10 @@ if [ "${MODE}" = "khicas-source" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
-  publish_help_pack
+  publish_external_pack
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
-  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
+  [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (source-built): ${OUT_G3A}"
   exit 0
@@ -160,10 +159,10 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
-  publish_help_pack
+  publish_external_pack
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
-  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
+  [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
   exit 0
@@ -200,10 +199,10 @@ if [ -f "${OUT_G3A}" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   publish_transfer_g3a
-  publish_help_pack
+  publish_external_pack
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
-  [ ! -f "${OUT_HELP}" ] || ls -lh "${OUT_HELP}"
+  [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
   echo "Output (packaged): ${OUT_G3A}"
 else
   echo "Checking for .bin..."

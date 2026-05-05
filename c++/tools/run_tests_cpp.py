@@ -72,6 +72,10 @@ def main() -> int:
     if prizm_g3a.exists():
         checks.insert(2, ("g3a_metadata", [sys.executable, "c++/tools/check_g3a_metadata.py", str(prizm_g3a)]))
         checks.insert(3, ("g3a_working_markers", [sys.executable, "c++/tools/check_g3a_working_markers.py", str(prizm_g3a)]))
+        checks.insert(4, ("g3a_size_report", [sys.executable, "c++/tools/size_report.py", "--baseline", "current"]))
+    transfer_pak = REPO / "calculator_files/CASIOCAS.PAK"
+    if transfer_pak.exists():
+        checks.insert(5, ("external_pack", [sys.executable, "c++/tools/check_external_pack.py", str(transfer_pak)]))
 
     bad = 0
     for name, cmd in checks:

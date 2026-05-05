@@ -178,13 +178,13 @@ def main() -> int:
     if still_full_lexed:
         return fail("removed surfaces still in full lexer: " + ", ".join(still_full_lexed))
 
-    if "Copy CASIOCAS.HLP to storage root." not in catalog:
+    if "Copy CASIOCAS.PAK to storage root." not in catalog:
         return fail("compact F6 help fallback missing")
     if "CASCAS_HELP_FILE" not in catalog or "catalog_read_help_record" not in catalog:
         return fail("external F6 help loader missing")
     if "@integrate(f,x,[a,b,method,u])" not in help_text or "F2:" not in help_text:
         return fail("external help pack missing integrate examples")
-    if "Bfile_OpenFile_OS" not in catalog or "@END" not in catalog:
+    if "Bfile_OpenFile_OS" not in catalog or "CCP1" not in catalog:
         return fail("external help scanner not wired")
     for marker in [
         "catalog_make_calculus_insert",
