@@ -482,6 +482,11 @@ int main(int argc, char **argv)
             casio::trig::Request req;
             req.mode = 0;
             if(expr.find('\n') != std::string::npos) req.mode = 1;
+            bool trig_equation = expr.find('=') != std::string::npos;
+            if(!trig_equation && (method == "rform" || method == "sin_cos" || method == "pythag" ||
+               method == "double_angle" || method == "compound_angle")) {
+                req.mode = 4;
+            }
             if(!target.empty()) {
                 req.mode = 2;
                 expr += "\n" + target;

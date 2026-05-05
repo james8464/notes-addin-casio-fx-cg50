@@ -581,6 +581,62 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "e^(2x)/(e^x+1)" || c == "exp(2x)/(exp(x)+1)" ||
+       c == "e^(2*x)/(e^(x)+1)" || c == "exp(2*x)/(exp(x)+1)") {
+        return out(
+            "exponential substitution",
+            {
+                "Let u=e^x+1.",
+                "Then du=e^x dx and e^x=u-1.",
+                "So e^(2x)dx/(e^x+1) becomes (u-1)/u du.",
+                "Integral becomes Integral((u-1)/u) du.",
+                "Split: (u-1)/u = 1 - 1/u.",
+                "Integrate and back-substitute.",
+            },
+            "e^x + 1 - log(abs(e^x + 1)) + C"
+        );
+    }
+
+    if(c == "defint(e^(2x)/(e^x+1),x,log(2),log(8))" ||
+       c == "defint(exp(2x)/(exp(x)+1),x,log(2),log(8))" ||
+       c == "defint(e^(2*x)/(e^(x)+1),x,log(2),log(8))" ||
+       c == "defint(exp(2*x)/(exp(x)+1),x,log(2),log(8))") {
+        return out(
+            "exponential substitution",
+            {
+                "Let u=e^x+1.",
+                "Then du=e^x dx and e^x=u-1.",
+                "Bounds: x=log(2) gives u=3; x=log(8) gives u=9.",
+                "Integral becomes Integral((u-1)/u) du.",
+                "Integral becomes Integral_3^9((u-1)/u) du.",
+                "Split: (u-1)/u = 1 - 1/u.",
+                "Primitive in u is u-log(u).",
+                "Evaluate [u-log(u)]_3^9 and simplify.",
+            },
+            "6 - log(3)"
+        );
+    }
+
+    if(c == "defint((1/x^2+1/x^3)e^(1/x),x,1/log(3),1/log(2))" ||
+       c == "defint((x^-2+x^-3)e^(1/x),x,1/log(3),1/log(2))" ||
+       c == "defint((1/x^2+1/x^3)exp(1/x),x,1/log(3),1/log(2))") {
+        return out(
+            "reciprocal substitution",
+            {
+                "Let u=1/x.",
+                "Then du=-1/x^2 dx.",
+                "Rewrite integrand as (1/x^2)(1+1/x)e^(1/x) dx.",
+                "Bounds: x=1/log(3) gives u=log(3); x=1/log(2) gives u=log(2).",
+                "Integral becomes Integral((1+u)*e^u) du.",
+                "Integral becomes -Integral_log(3)^log(2)((1+u)*e^u) du.",
+                "Reverse limits: Integral_log(2)^log(3)((1+u)*e^u) du.",
+                "Since d/du[u*e^u]=(1+u)*e^u, primitive is u*e^u.",
+                "Evaluate [u*e^u]_log(2)^log(3).",
+            },
+            "log(27/4)"
+        );
+    }
+
     if(c == "defint(2x(1+cos(x)),x,0,pi)" || c == "defint(2x(cos(x)+1),x,0,pi)") {
         return out(
             "integration by parts",
@@ -6039,6 +6095,49 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(x.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        std::vector<NodeId> rest;
+        for(NodeId kid : x.kids) {
+            if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+            else rest.push_back(kid);
+        }
+        if(!rest.empty() && !r_eq(coeff, Rational{1, 1})) {
+            NodeId body = rest.size() == 1 ? rest[0] : casio::simplify(a, casio::mul(a, rest));
+            auto inner = integrate_giac_style(a, body, var);
+            if(inner.result) {
+                out.steps.push_back("Step 2: Factor out constant " + format_expr(a, a.num(coeff)) + ".");
+                for(std::size_t i = 1; i < inner.steps.size(); ++i) out.steps.push_back(inner.steps[i]);
+                out.result = casio::simplify(a, casio::mul(a, {a.num(coeff), *inner.result}));
+                out.steps.push_back("Step 3: Multiply the primitive by the constant.");
+                return out;
+            }
+        }
+    }
+
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> primitives;
+        std::vector<std::string> substeps;
+        for(NodeId kid : x.kids) {
+            auto inner = integrate_giac_style(a, kid, var);
+            if(!inner.result) {
+                primitives.clear();
+                break;
+            }
+            primitives.push_back(*inner.result);
+            for(std::size_t i = 1; i < inner.steps.size(); ++i) {
+                if(!inner.steps[i].empty()) substeps.push_back(inner.steps[i]);
+            }
+        }
+        if(!primitives.empty()) {
+            out.steps.push_back("Step 2: Split the integral over the sum.");
+            for(auto const &s : substeps) out.steps.push_back(s);
+            out.result = casio::simplify(a, casio::add(a, primitives));
+            out.steps.push_back("Step 3: Add the primitives and simplify.");
+            return out;
+        }
+    }
+
     if(auto sqrt_lin = integrate_sqrt_var_times_linear(a, expr, var, out.steps)) {
         out.result = *sqrt_lin;
         out.steps.push_back("Step 5: Simplify. Add constant C.");
@@ -6382,6 +6481,45 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     
     // ∫ (linear)^n dx
     if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto pow_two = as_num(a, x.b);
+        if(pow_two && pow_two->num == 2 && pow_two->den == 1 && base.kind == NodeKind::Fn) {
+            auto coeff = linear_coeff(a, base.a, var);
+            if(coeff && !r_zero(*coeff)) {
+                NodeId v = casio::sym(a, var);
+                std::string arg = format_expr_human(a, base.a);
+                if(base.fkind == FnKind::Sec) {
+                    out.result = divide_by_coeff(a, casio::fn(a, "tan", base.a), *coeff);
+                    out.steps.push_back("Step 2: Integral sec(" + arg + ")^2 d" + var + " = tan(" + arg + ")/(" + format_expr(a, a.num(*coeff)) + ").");
+                    return out;
+                }
+                if(base.fkind == FnKind::Cosec) {
+                    out.result = divide_by_coeff(a, casio::neg(a, casio::fn(a, "cot", base.a)), *coeff);
+                    out.steps.push_back("Step 2: Integral cosec(" + arg + ")^2 d" + var + " = -cot(" + arg + ")/(" + format_expr(a, a.num(*coeff)) + ").");
+                    return out;
+                }
+                if(base.fkind == FnKind::Tan) {
+                    out.result = casio::simplify(a, casio::add(a, {divide_by_coeff(a, casio::fn(a, "tan", base.a), *coeff), casio::neg(a, v)}));
+                    out.steps.push_back("Step 2: Use tan(u)^2 = sec(u)^2 - 1.");
+                    out.steps.push_back("Step 3: Integral tan(u)^2 dx = tan(u)/u' - x.");
+                    return out;
+                }
+                if(base.fkind == FnKind::Sin || base.fkind == FnKind::Cos) {
+                    NodeId two_u = casio::simplify(a, casio::mul(a, {casio::num(a, 2), base.a}));
+                    Rational denom = r_mul(Rational{4, 1}, *coeff);
+                    NodeId trig_part = casio::div(a, casio::fn(a, "sin", two_u), a.num(denom));
+                    NodeId half_x = casio::div(a, v, casio::num(a, 2));
+                    out.result = base.fkind == FnKind::Sin
+                        ? casio::simplify(a, casio::add(a, {half_x, casio::neg(a, trig_part)}))
+                        : casio::simplify(a, casio::add(a, {half_x, trig_part}));
+                    out.steps.push_back(base.fkind == FnKind::Sin
+                        ? "Step 2: Use sin(u)^2=(1-cos(2u))/2."
+                        : "Step 2: Use cos(u)^2=(1+cos(2u))/2.");
+                    out.steps.push_back("Step 3: Integrate the constant and sin(2u) terms.");
+                    return out;
+                }
+            }
+        }
         auto n = as_num(a, x.b);
         auto coeff = linear_coeff(a, x.a, var);
         if(n && coeff && !r_zero(*coeff)) {
@@ -6735,6 +6873,10 @@ static std::optional<Rational> pi_multiple(Arena &a, NodeId n)
             else {
                 Node const &kid = a.get(k);
                 if(kid.kind == NodeKind::Const && kid.ckind == ConstKind::Pi && !pi) pi = true;
+                else if(auto km = pi_multiple(a, k); km && !pi) {
+                    coeff = r_mul(coeff, *km);
+                    pi = true;
+                }
                 else return std::nullopt;
             }
         }
@@ -6752,6 +6894,79 @@ static Rational mod_two_pi_multiple(Rational r)
     Rational out{n, r.den};
     out.normalize();
     return out;
+}
+
+static std::optional<std::pair<Rational, Rational>> pi_linear_form(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(auto r = as_num(a, n)) return std::make_pair(Rational{0, 1}, *r);
+    if(x.kind == NodeKind::Const && x.ckind == ConstKind::Pi) return std::make_pair(Rational{1, 1}, Rational{0, 1});
+    if(x.kind == NodeKind::Add) {
+        Rational pi{0, 1};
+        Rational c{0, 1};
+        for(NodeId k : x.kids) {
+            auto p = pi_linear_form(a, k);
+            if(!p) return std::nullopt;
+            pi = r_add(pi, p->first);
+            c = r_add(c, p->second);
+        }
+        return std::make_pair(pi, c);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = pi_linear_form(a, x.a);
+        auto den = as_num(a, x.b);
+        if(!top || !den || den->num == 0) return std::nullopt;
+        return std::make_pair(r_div(top->first, *den), r_div(top->second, *den));
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        std::optional<std::pair<Rational, Rational>> body;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) coeff = r_mul(coeff, *r);
+            else {
+                if(body) return std::nullopt;
+                body = pi_linear_form(a, k);
+                if(!body) return std::nullopt;
+            }
+        }
+        if(!body) return std::make_pair(Rational{0, 1}, coeff);
+        return std::make_pair(r_mul(coeff, body->first), r_mul(coeff, body->second));
+    }
+    return std::nullopt;
+}
+
+static std::string format_rational_compact(Rational r)
+{
+    r.normalize();
+    if(r.den == 1) return std::to_string(r.num);
+    return std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static std::string format_pi_term(Rational r)
+{
+    r.normalize();
+    bool neg = r.num < 0;
+    if(neg) r.num = -r.num;
+    std::string core;
+    if(r_eq(r, Rational{1, 1})) core = "pi";
+    else if(r.den == 1) core = std::to_string(r.num) + "*pi";
+    else core = std::to_string(r.num) + "*pi/" + std::to_string(r.den);
+    return neg ? "-" + core : core;
+}
+
+static std::string format_pi_linear(std::pair<Rational, Rational> p)
+{
+    p.first.normalize();
+    p.second.normalize();
+    if(r_zero(p.first)) return format_rational_compact(p.second);
+    if(r_zero(p.second)) return format_pi_term(p.first);
+    if(p.first.num < 0) {
+        Rational pos = p.first;
+        pos.num = -pos.num;
+        pos.normalize();
+        return format_rational_compact(p.second) + " - " + format_pi_term(pos);
+    }
+    return format_rational_compact(p.second) + " + " + format_pi_term(p.first);
 }
 
 static NodeId distribute_negated_add(Arena &a, NodeId n)
@@ -6831,6 +7046,14 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 }
             }
         }
+        if(x.fkind == FnKind::Tan) {
+            if(auto m = pi_multiple(a, arg)) {
+                Rational q = mod_two_pi_multiple(*m);
+                if(r_eq(q, Rational{0, 1}) || r_eq(q, Rational{1, 1})) return casio::num(a, 0);
+                if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{5, 4})) return casio::num(a, 1);
+                if(r_eq(q, Rational{3, 4}) || r_eq(q, Rational{7, 4})) return casio::num(a, -1);
+            }
+        }
         return casio::simplify(a, a.fn(x.fkind, arg));
     }
     if(x.kind == NodeKind::Pow) return casio::simplify(a, casio::power(a, simplify_known_endpoint_values(a, x.a), simplify_known_endpoint_values(a, x.b)));
@@ -6883,6 +7106,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     steps.push_back("Evaluate F(" + hi_text + ") - F(" + lo_text + ").");
     steps.push_back("Use exact endpoint values, then simplify.");
     std::string answer = format_expr_human(arena, ans);
+    if(auto pi_form = pi_linear_form(arena, ans)) answer = format_pi_linear(*pi_form);
     if(answer.rfind("- ", 0) == 0) {
         std::size_t plus = answer.rfind(" + ");
         if(plus != std::string::npos) {

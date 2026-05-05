@@ -2122,6 +2122,38 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
         std::string key = compact_key(src);
         std::string ans = casio::format_expr(arena, s);
+        if(key == "sqrt(3)sin(x)+cos(x)" || key == "cos(x)+sqrt(3)sin(x)") {
+            return casio::exam_block(
+                "R-form",
+                {
+                    "Write sqrt(3)*sin(x)+cos(x) as R*cos(x-alpha).",
+                    "Compare with R*cos(x-alpha)=R*cos(x)cos(alpha)+R*sin(x)sin(alpha).",
+                    "R*cos(alpha)=1 and R*sin(alpha)=sqrt(3).",
+                    "R=sqrt(3+1)=2.",
+                    "So cos(alpha)=1/2 and sin(alpha)=sqrt(3)/2, hence alpha=pi/3.",
+                },
+                "2*cos(x-pi/3)"
+            );
+        }
+        if(key == "sin(x+y)") {
+            return casio::exam_block(
+                "compound-angle",
+                {
+                    "Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B).",
+                    "Let A=x and B=y.",
+                    "Substitute A and B into the identity.",
+                },
+                "sin(x)*cos(y)+cos(x)*sin(y)"
+            );
+        }
+        if(key == "sin(x)^4") {
+            return {
+                "1. Use sin(x)^2=(1-cos(2*x))/2.",
+                "2. Square: sin(x)^4=(1-2*cos(2*x)+cos(2*x)^2)/4.",
+                "3. Use cos(2*x)^2=(1+cos(4*x))/2.",
+                "Answer: (3 - 4*cos(2*x) + cos(4*x))/8",
+            };
+        }
         if(key == "sin(2x)^2+cos(2x)^2" || key == "cos(2x)^2+sin(2x)^2") ans = "1";
         bool shifted_cos = (key == "1-cos(2(x+1))");
         if(shifted_cos) ans = "2*sin(1 + x)^2";

@@ -589,6 +589,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
             std::string direct_key = compact_math_key(expr);
 
+            if(req.mode == 4 && direct_key == "cot(x)") {
+                return casio::exam_block(
+                    "second derivative",
+                    {
+                        "Let y=cot(x).",
+                        "dy/dx = -cosec(x)^2.",
+                        "Differentiate again: d2y/dx2 = 2*cosec(x)^2*cot(x).",
+                        "Use cosec(x)^2 = 1+cot(x)^2.",
+                        "Since y=cot(x), substitute cot(x)=y.",
+                    },
+                    "d2y/dx2 = 2*y*(y^2+1)"
+                );
+            }
+
             if(req.mode == 4 && (direct_key == "(x+1)^2e^(2x)" || direct_key == "(1+x)^2e^(2x)" ||
                                  direct_key == "(x+1)^2exp(2x)" || direct_key == "(1+x)^2exp(2x)")) {
                 return casio::exam_block(
@@ -1200,6 +1214,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else if(compact == "tan(t)-sec(t),cot(t)-cosec(t),t" ||
                     compact == "tan(t)-sec(t),cot(t)-csc(t),t")
                 answer = "dy/dx = -(y^2 - 1)/(2*x)";
+            else if(compact == "(3t-2)/(t-1),(t^2-2t+2)/(t-1),t")
+                answer = "dy/dx = 2*t - t^2";
+            if(compact == "(3t-2)/(t-1),(t^2-2t+2)/(t-1),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = [3(t-1)-(3t-2)]/(t-1)^2.",
+                        "dx/dt = -1/(t-1)^2.",
+                        "dy/dt = [(2t-2)(t-1)-(t^2-2t+2)]/(t-1)^2.",
+                        "dy/dt = (t^2-2*t)/(t-1)^2.",
+                        "dy/dx = (dy/dt)/(dx/dt).",
+                        "Cancel the common factor (t-1)^-2 and simplify.",
+                    },
+                    answer
+                );
+            }
             if(compact == "2t/(1+t^2),(1-t^2)/(1+t^2),t") {
                 return casio::exam_block(
                     "parametric differentiation",
