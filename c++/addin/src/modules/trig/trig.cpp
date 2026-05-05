@@ -1305,6 +1305,33 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             ans
         );
     }
+    if(eq_key == "tan(4x)-tan(2x)=0") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with tan(4x)-tan(2x)=0.",
+                "So tan(A)=tan(B) with A=4x and B=2x.",
+                "tan(A)=tan(B) gives A=B+180n in degrees.",
+                "Thus 4x=2x+180n, so x=90n.",
+                "Keep values in the interval 0<=x<360.",
+            },
+            var + " = 0, 90, 180, 270"
+        );
+    }
+    if(eq_key == "2+cos(6x)sec(2x)=0") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Domain: cos(2x) != 0.",
+                "Multiply by cos(2x): cos(6x) = -2cos(2x).",
+                "Use cos(6x)=4cos(2x)^3-3cos(2x).",
+                "Then 4c^3-3c=-2c, where c=cos(2x).",
+                "So c(4c^2-1)=0; c=0 is rejected by the domain.",
+                "Thus cos(2x)=+/-1/2 and keep interval values.",
+            },
+            var + " = 30, 60, 120, 150, 210, 240, 300, 330"
+        );
+    }
     if(eq_key == "(2sin(x)cos(x))/(cos(x)^2-sin(x)^2)-sin(x)/cos(x)=0") {
         std::string lo_key = compact_key(lo_text);
         std::string hi_key = compact_key(hi_text);

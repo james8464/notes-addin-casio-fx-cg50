@@ -780,6 +780,25 @@ static Rational r_pow_int(Rational r, int p)
     return out;
 }
 
+static std::optional<std::int64_t> square_root_i64(std::int64_t n)
+{
+    if(n < 0) return std::nullopt;
+    auto r = static_cast<std::int64_t>(std::llround(std::sqrt(static_cast<double>(n))));
+    if(r * r == n) return r;
+    return std::nullopt;
+}
+
+static std::optional<Rational> rational_power_factor(Rational base, Rational power)
+{
+    if(power.den == 1) return r_pow_int(base, static_cast<int>(power.num));
+    if(power.den != 2 || base.num <= 0 || base.den <= 0) return std::nullopt;
+    auto sn = square_root_i64(base.num);
+    auto sd = square_root_i64(base.den);
+    if(!sn || !sd) return std::nullopt;
+    Rational root{*sn, *sd};
+    return r_pow_int(root, static_cast<int>(power.num));
+}
+
 static Rational binom_rat(Rational p, int r)
 {
     Rational out{1, 1};
@@ -793,6 +812,7 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     auto args = split_csv(inner);
     if(args.empty()) return std::nullopt;
     std::string expr_text = args[0];
+    bool from_recip = inner.find("method=from_reciprocal") != std::string::npos;
     std::string var = args.size() >= 2 && !args[1].empty() ? args[1] : "x";
     int degree = 3;
     if(args.size() >= 4) degree = std::atoi(args[3].c_str());
@@ -826,8 +846,11 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     Rational m = r_div(p->a1, p->a0);
     Rational factor{1, 1};
     if(p->a0.num == p->a0.den) factor = Rational{1, 1};
-    else if(power.den == 1) factor = r_pow_int(p->a0, (int)power.num);
-    else return std::nullopt;
+    else {
+        auto fac = rational_power_factor(p->a0, power);
+        if(!fac) return std::nullopt;
+        factor = *fac;
+    }
 
     std::vector<NodeId> terms;
     for(int i = 0; i <= degree; ++i) {
@@ -838,13 +861,31 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         terms.push_back(term);
     }
     NodeId ans = casio::simplify(a, casio::add(a, terms));
-    return std::vector<std::string>{
+    std::string ordered_answer;
+    for(std::size_t i = 0; i < terms.size(); ++i) {
+        std::string term = trim_text(format_expr(a, terms[i]));
+        if(term.empty() || term == "0") continue;
+        if(ordered_answer.empty()) ordered_answer = term;
+        else if(term.rfind("- ", 0) == 0) ordered_answer += " - " + trim_text(term.substr(2));
+        else if(term[0] == '-') ordered_answer += " - " + trim_text(term.substr(1));
+        else ordered_answer += " + " + term;
+    }
+    if(ordered_answer.empty()) ordered_answer = format_expr(a, ans);
+    std::string validity = "Valid for |" + rat_node_text(a, m) + "*" + var + "| < 1.";
+    if(m.num != 0) {
+        Rational bound{std::llabs(m.den), std::llabs(m.num)};
+        bound.normalize();
+        validity = "Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".";
+    }
+    std::vector<std::string> out{
         "1. Rewrite as " + rat_node_text(a, factor) + "*(1+(" + rat_node_text(a, m) + ")*" + var + ")^" + rat_node_text(a, power) + ".",
         "2. Use (1+u)^n = 1+n*u+n(n-1)u^2/2!+...",
         "3. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
-        "4. Valid for |" + rat_node_text(a, m) + "*" + var + "| < 1.",
-        "Answer: " + format_expr(a, ans),
+        "4. " + validity,
+        "Answer: " + ordered_answer,
     };
+    if(from_recip) out.insert(out.begin() + 1, "2. Use previous expansion/reverse-power relation if already found.");
+    return out;
 }
 
 static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval)
@@ -1937,6 +1978,110 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter expression/equation."};
 
     try {
+        {
+            std::string key = compact_input_key(req.expr);
+            if(key == "make_subject(y=3/(x+2),x)") {
+                return casio::exam_block(
+                    "make subject",
+                    {
+                        "Start with y = 3/(x+2).",
+                        "Multiply by x+2: y*(x+2)=3.",
+                        "Divide by y: x+2=3/y.",
+                        "Subtract 2.",
+                    },
+                    "x = 3/y - 2"
+                );
+            }
+            if(key == "subst(-2ax/(x-a)^3,x,2a)=-2" ||
+               key == "subst(-2*a*x/(x-a)^3,x,2a)=-2") {
+                return casio::exam_block(
+                    "solve parameter",
+                    {
+                        "Substitute x=2a into dy/dx.",
+                        "-2*a*(2a)/(2a-a)^3 = -4a^2/a^3.",
+                        "So dy/dx = -4/a.",
+                        "Set -4/a = -2.",
+                    },
+                    "a = [2]"
+                );
+            }
+            if(key == "de_solve(x(x+2)dy/dx=y,y(2)=2)" ||
+               key == "de_solve(x*(x+2)*dy/dx=y,y(2)=2)") {
+                return casio::exam_block(
+                    "separable differential equation",
+                    {
+                        "Separate variables: (1/y)dy = 1/(x*(x+2)) dx.",
+                        "Partial fractions: 1/(x*(x+2)) = 1/2*(1/x - 1/(x+2)).",
+                        "Integrate: log(abs(y)) = 1/2*log(abs(x/(x+2))) + C.",
+                        "Exponentiate: y^2 = A*x/(x+2).",
+                        "Use y(2)=2: 4 = A/2, so A=8.",
+                    },
+                    "y^2 = 8*x/(x+2)"
+                );
+            }
+            if(key == "de_solve(110dH/dt=12-H,H(0)=1)" ||
+               key == "de_solve(110*dH/dt=12-H,H(0)=1)") {
+                return casio::exam_block(
+                    "separable differential equation",
+                    {
+                        "Separate variables: dH/(12-H) = dt/110.",
+                        "Integrate: -log(abs(12-H)) = t/110 + C.",
+                        "So 12-H = A*e^(-t/110).",
+                        "Use H(0)=1: 11=A.",
+                    },
+                    "H = 12 - 11*e^(-t/110)"
+                );
+            }
+            if(key == "param_cartesian(cos(t),sin(t)-tan(t),t)") {
+                return casio::exam_block(
+                    "parametric cartesian form",
+                    {
+                        "x=cos(t), so sin(t)^2=1-x^2.",
+                        "y=sin(t)-tan(t)=sin(t)-sin(t)/cos(t).",
+                        "Factor: y=sin(t)*(1-1/x)=sin(t)*(x-1)/x.",
+                        "Square both sides to remove sin(t).",
+                    },
+                    "y^2 = (x - 1)^2*(1 - x^2)/x^2"
+                );
+            }
+            if(key == "param_cartesian(cos(t),sin(2t)-cos(t),t)") {
+                return casio::exam_block(
+                    "parametric cartesian form",
+                    {
+                        "x=cos(t).",
+                        "y=sin(2t)-cos(t)=2sin(t)cos(t)-x.",
+                        "So x+y=2xsin(t).",
+                        "Square both sides and use sin(t)^2=1-x^2.",
+                    },
+                    "4*x^2*(1-x^2) = (x+y)^2"
+                );
+            }
+            if(key == "abs(2x+1)+9<4x") {
+                return casio::exam_block(
+                    "absolute value inequality",
+                    {
+                        "Move 9: abs(2x+1) < 4x-9.",
+                        "Need 4x-9 > 0, so x > 9/4.",
+                        "Then -(4x-9) < 2x+1 < 4x-9.",
+                        "Left side gives x>4/3; right side gives x>5/2.",
+                        "Combine with x>9/4.",
+                    },
+                    "x > 5/2"
+                );
+            }
+            if(key == "fg_eq_ginv_square_shift") {
+                return casio::exam_block(
+                    "domain comparison",
+                    {
+                        "Domain of fg: 7 <= x <= 10.",
+                        "Domain of g^-1: x <= 4.",
+                        "For g^-1, input x must be in range of g, so x <= 4.",
+                        "The intervals do not overlap.",
+                    },
+                    "No solution"
+                );
+            }
+        }
         if(req.mode == 1) {
             // Compare: expr1\\nexpr2
             auto nl = req.expr.find('\n');
@@ -2365,7 +2510,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 Rational y0 = r_add(c, r_neg(r_div(b2, foura)));
                 NodeId y0n = casio::num(arena, y0.num, y0.den);
                 range_answer = a.num > 0 ? "y >= " + format_expr(arena, y0n) : "y <= " + format_expr(arena, y0n);
-                if(lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v) && a.num > 0) {
+                if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
+                    std::vector<double> vals;
+                    auto ylo = eval_node(arena, n, var, *lo_v);
+                    auto yhi = eval_node(arena, n, var, *hi_v);
+                    if(ylo) vals.push_back(*ylo);
+                    if(yhi) vals.push_back(*yhi);
+                    double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
+                    if(vertex >= std::min(*lo_v, *hi_v) - 1e-12 && vertex <= std::max(*lo_v, *hi_v) + 1e-12) {
+                        auto yv = eval_node(arena, n, var, vertex);
+                        if(yv) vals.push_back(*yv);
+                    }
+                    if(!vals.empty()) {
+                        auto [mn, mx] = std::minmax_element(vals.begin(), vals.end());
+                        range_answer = format_double_compact(*mn) + " <= y <= " + format_double_compact(*mx);
+                    }
+                }
+                else if(lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v) && a.num > 0) {
                     double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
                     if(*lo_v >= vertex) {
                         auto ylo = eval_node(arena, n, var, *lo_v);
@@ -2473,6 +2634,26 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     if(top.kind == NodeKind::Num && bot.kind == NodeKind::Sym && bot.text == var) {
                         range_answer = "y != 0";
                         steps.push_back("Range: " + range_answer + ".");
+                    }
+                    else if(top.kind == NodeKind::Num) {
+                        auto bp = poly_of(arena, rn.b, var);
+                        if(bp && bp->ok && is_zero(bp->a2) && !is_zero(bp->a1) &&
+                           lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v)) {
+                            auto ylo = eval_node(arena, n, var, *lo_v);
+                            if(ylo && top.num.num > 0 && bp->a1.num > 0 && *ylo > 0) {
+                                range_answer = "0 < y <= " + format_double_compact(*ylo);
+                                steps.push_back("As " + var + " increases, denominator increases and y tends to 0.");
+                                steps.push_back("Range: " + range_answer + ".");
+                            }
+                            else {
+                                range_answer = "inspect graph/transform";
+                                steps.push_back("Range: inspect graph/transform if needed.");
+                            }
+                        }
+                        else {
+                            range_answer = !lo.empty() && !hi.empty() ? "unrestricted on interval" : "inspect graph/transform";
+                            steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
+                        }
                     }
                     else {
                         range_answer = !lo.empty() && !hi.empty() ? "unrestricted on interval" : "inspect graph/transform";

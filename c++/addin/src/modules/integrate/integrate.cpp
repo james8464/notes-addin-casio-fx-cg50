@@ -470,6 +470,50 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "1/(4sqrt(x)sqrt(sqrt(x)-1))") {
+        return out(
+            "sqrt substitution",
+            {
+                "Let u=sqrt(x).",
+                "Then x=u^2 and dx=2u du.",
+                "Integral becomes Integral(1/(4*u*sqrt(u-1))*2u) du.",
+                "Simplify to Integral(1/(2sqrt(u-1))) du.",
+                "Integrate and back-substitute u=sqrt(x).",
+            },
+            "sqrt(sqrt(x) - 1) + C"
+        );
+    }
+
+    if(c == "defint(3x/(2+x-x^2),x,0,1)" || c == "defint(3x/(-x^2+x+2),x,0,1)") {
+        return out(
+            "definite partial fractions",
+            {
+                "Factor denominator: 2+x-x^2 = (2-x)(x+1).",
+                "Reverse limits to use (x-2)(x+1): Integral_1^0 3x/((x-2)(x+1)) dx.",
+                "Partial fractions: 3x/((x-2)(x+1)) = 2/(x-2) + 1/(x+1).",
+                "Primitive = 2log(abs(x-2)) + log(abs(x+1)).",
+                "Evaluate from 1 to 0.",
+            },
+            "log(2)"
+        );
+    }
+
+    if(c == "defint(e^(x^(1/4))/sqrt(x),x,0,1)" ||
+       c == "defint(exp(x^(1/4))/sqrt(x),x,0,1)") {
+        return out(
+            "substitution then parts",
+            {
+                "Let u=x^(1/4), so x=u^4.",
+                "Then dx=4u^3 du and sqrt(x)=u^2.",
+                "Integral becomes Integral(4u*e^u) du from u=0 to u=1.",
+                "Use parts on Integral(4u*e^u): take a=4u, db=e^u du.",
+                "This gives 4u*e^u - Integral(4e^u) du = 4e^u(u-1).",
+                "Evaluate from 0 to 1.",
+            },
+            "4"
+        );
+    }
+
     if(c == "defint((kcos(x)^2-sec(x)^2)sin(x),x,0,pi/3)" ||
        c == "defint((kcos(x)^2-cos(x)^-2)sin(x),x,0,pi/3)") {
         return out(

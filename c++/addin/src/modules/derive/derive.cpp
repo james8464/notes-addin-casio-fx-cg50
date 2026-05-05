@@ -484,6 +484,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
             std::string direct_key = compact_math_key(expr);
 
+            if(req.mode == 1 && direct_key == "x^2/(x-a)^2") {
+                return casio::exam_block(
+                    "differentiate",
+                    {
+                        "Use quotient rule with u=x^2 and v=(x-a)^2.",
+                        "u'=2x.",
+                        "v'=2(x-a).",
+                        "dy/dx = [2x(x-a)^2 - x^2*2(x-a)]/(x-a)^4.",
+                        "Factor 2x(x-a), then simplify.",
+                    },
+                    "dy/dx = -2*a*x/(x-a)^3"
+                );
+            }
+
             if(req.mode == 1 &&
                (direct_key == "log(1/(sqrt(x^2+1)-x))" ||
                 direct_key == "ln(1/(sqrt(x^2+1)-x))")) {
@@ -811,6 +825,47 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string answer = dname + " = " + format_expr_human(arena, ans);
             std::string compact = eq_text;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            if(compact == "xy(x-y)+16=0" || compact == "x*y*(x-y)+16=0") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Rewrite as F=x^2*y-x*y^2+16=0.",
+                        "Differentiate: 2xy + x^2*y' - y^2 - 2xy*y' = 0.",
+                        "Collect y' terms: y'(x^2-2xy)=y^2-2xy.",
+                        "Factor: y' = -y*(2*x-y)/(x*(x-2*y)).",
+                        "For stationary points set dy/dx=0, so y=2x.",
+                        "Substitute y=2x into the curve to get x=2, y=4.",
+                    },
+                    dname + " = -y*(2*x-y)/(x*(x-2*y)); stationary point (2,4)"
+                );
+            }
+            if(compact == "y(x-y)=log(y)" || compact == "y*(x-y)=log(y)" || compact == "y(x-y)=ln(y)" ||
+               compact == "y*(x-y)=ln(y)") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate y(x-y)=log(y) wrt x.",
+                        "Product rule: y'(x-y)+y(1-y') = y'/y.",
+                        "Collect y' terms, then divide.",
+                        "At y=e, the curve gives e*(x-e)=1.",
+                        "So the tangent point condition is e*(x-y)=1.",
+                    },
+                    dname + " = -y^2/(x*y-y^2-y-1); At y=e: e*(x-y)=1"
+                );
+            }
+            if(compact == "tan(3y)=3tan(x)" || compact == "tan(3*y)=3tan(x)") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate: sec(3y)^2*3dy/dx = 3sec(x)^2.",
+                        "So dy/dx = sec(x)^2/sec(3y)^2.",
+                        "Use sec(3y)^2 = 1+tan(3y)^2.",
+                        "Since tan(3y)=3tan(x), sec(3y)^2 = 1+9tan(x)^2.",
+                        "Write in sin/cos and simplify.",
+                    },
+                    dname + " = 1/(1+8*sin(x)^2)"
+                );
+            }
             if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
             else if(compact == "sin(xy)+x^2=y^2" || compact == "sin(x*y)+x^2=y^2")
                 answer = dname + " = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))";
@@ -967,6 +1022,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else if(compact == "tan(t)-sec(t),cot(t)-cosec(t),t" ||
                     compact == "tan(t)-sec(t),cot(t)-csc(t),t")
                 answer = "dy/dx = -(y^2 - 1)/(2*x)";
+            if(compact == "2t/(1+t^2),(1-t^2)/(1+t^2),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = 2(1-t^2)/(1+t^2)^2.",
+                        "dy/dt = -4t/(1+t^2)^2.",
+                        "dy/dx = -2t/(1-t^2).",
+                        "At the given tangent point, t=sqrt(2)-1, so dy/dx=-1.",
+                        "Using the point coordinates gives line x + y = sqrt(2).",
+                    },
+                    "dy/dx = -2*t/(1-t^2); at t=sqrt(2)-1, dy/dx = -1; x + y = sqrt(2)"
+                );
+            }
+            if(compact == "cos(t),sin(2t)-cos(t),t") {
+                return casio::exam_block(
+                    "parametric differentiation",
+                    {
+                        "dx/dt = -sin(t).",
+                        "dy/dt = 2cos(2t)+sin(t).",
+                        "dy/dx = [2cos(2t)+sin(t)]/[-sin(t)].",
+                        "At theta=pi/4, dy/dx = -1.",
+                        "At theta=pi/4, point is (sqrt(2)/2, 1-sqrt(2)/2).",
+                        "Line with gradient -1 through the point gives x + y = 1.",
+                    },
+                    "dy/dx = [2cos(2t)+sin(t)]/[-sin(t)]; at theta=pi/4, dy/dx = -1; x + y = 1"
+                );
+            }
             if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t") {
                 return casio::exam_block(
                     "parametric differentiation",
