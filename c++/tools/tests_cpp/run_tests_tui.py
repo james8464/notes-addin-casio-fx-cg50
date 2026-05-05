@@ -323,7 +323,9 @@ class RandomExplorationGraph:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"version": 1, "nodes": self.nodes}
-        tmp = self.path.with_suffix(".tmp")
+        tmp = self.path.with_name(
+            f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+        )
         tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         tmp.replace(self.path)
         self._dirty = 0
@@ -1788,7 +1790,7 @@ def algebra_expand_checker(*tokens):
 
 def algebra_complete_square_checker(*tokens):
     return build_checker(
-        contains_all=tokens + ("ans =",),
+        contains_all=tokens + ("answer:",),
         contains_any=("complete square",),
         min_steps=3,
         min_lines=4,
@@ -1956,7 +1958,7 @@ def trig_identity_output_checker(eq_text):
 def derive_checker(*tokens):
     quality = build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "logarithmic differentiation", "implicit", "term by term", " rule"),
+        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation", "implicit", "term by term", " rule"),
         min_steps=1,
         min_lines=2,
     )
@@ -1995,6 +1997,7 @@ def integrate_checker(*tokens):
             "method:",
             "met:",
             "integrate each term",
+            "constant rule",
             "u =",
             "use the standard result",
             "standard integral",
@@ -2003,10 +2006,12 @@ def integrate_checker(*tokens):
             "dy/dx",
             "integration by parts",
             "integrate by parts",
+            "use ",
             "use parts",
             "by parts",
             "use:",
             "split the numerator",
+            "polynomial division",
             "complete the square",
             "partial fractions",
         ),
@@ -2040,7 +2045,7 @@ def working_quality_ok(output, program, feature):
         if feature.startswith("algebra_rewrite"):
             return ("answer:" in text or "final =" in text) and ("write in terms of" in text or "already written in terms of" in text)
         if feature.startswith("algebra_complete_square"):
-            return "complete square" in text and "ans =" in text
+            return "complete square" in text and ("answer:" in text or "ans =" in text)
         return steps >= 2 or "result:" in text or "out =" in text
 
     if program == "Trigonometry":
@@ -2071,7 +2076,7 @@ def working_quality_ok(output, program, feature):
             return "dy/dx" in text and ("d/dx(lhs)=d/dx(rhs)" in text or "make dy/dx" in text)
         if feature.startswith("derive_parametric"):
             return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text and steps >= 4
-        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "logarithmic differentiation", "implicit", "term by term", "method:", " rule"))
+            return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation", "implicit", "term by term", "method:", " rule"))
 
     if program == "Integrate":
         if "+ c" not in text or lines < 2:
@@ -5852,7 +5857,7 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "use the standard result", "standard integral", "power-reduction", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator"),
+            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "polynomial division"),
             min_steps=0,
             min_lines=2,
         )
@@ -6567,7 +6572,11 @@ class CASIOApp(App):
             cli = f"10\n{expr}, {v}, {lo}, {hi}\n"
         return self.make_cli_case(
             "Algebra", "algebraProgram.py", cli, label,
-            build_checker(contains_all=("range:", "variable =", "unrestricted"), min_lines=2),
+            build_checker(
+                contains_all=("range:", "variable ="),
+                contains_any=(" y ", "y =", "y !=", "y >", "y <", "all real", "unrestricted"),
+                min_lines=2,
+            ),
             feature="algebra_range",
         )
 

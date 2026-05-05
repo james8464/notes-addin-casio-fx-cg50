@@ -447,6 +447,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
                         NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
                         steps.push_back("Let u = " + format_expr_human(arena, dn.a) + ".");
+                        if(has_node_kind(arena, dn.a, NodeKind::Div)) {
+                            steps.push_back("For u, use quotient rule: (a'b-ab')/b^2.");
+                        }
+                        else if(has_node_kind(arena, dn.a, NodeKind::Mul)) {
+                            steps.push_back("For u, use product rule on the product part.");
+                        }
+                        if(has_function_call(arena, dn.a)) {
+                            steps.push_back("Inside u, use chain rule on nested functions.");
+                        }
                         steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
                         steps.push_back(
                             "dy/d" + var + " = " + std::to_string(exp->num) + "*u^" + std::to_string(exp->num - 1) +
@@ -462,7 +471,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(!used_rule && has_variable_power(arena, n, var)) {
-                    steps.push_back("Use logdiff: d(u^v)=u^v*(v'*log(u)+v*u'/u).");
+                    steps.push_back("Use log diff: d(u^v)=u^v*(v'*log(u)+v*u'/u).");
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {

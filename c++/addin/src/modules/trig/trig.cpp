@@ -860,13 +860,15 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         }
     }
     std::sort(xs.begin(), xs.end());
+    std::string rule_line =
+        fk == FnKind::Tan ? (rad ? "For tan(A) = tan(B), use A=B+pi*n." : "For tan(A) = tan(B), use A=B+180n.") :
+        fk == FnKind::Cos ? (rad ? "For cos(A) = cos(B), use A=±B+2*pi*n." : "For cos(A) = cos(B), use A=±B+360n.") :
+                            (rad ? "For sin(A) = sin(B), use A=B or A=pi-B, plus 2*pi*n." : "For sin(A) = sin(B), use A=B or A=180-B, plus 360n.");
     return casio::exam_block(
         "trig solve",
         {
             "Let A=" + format_expr(a, L.a) + ", B=" + format_expr(a, R.a) + ".",
-            fk == FnKind::Tan ? "For tan(A)=tan(B), use A=B+180n." :
-            fk == FnKind::Cos ? "For cos(A)=cos(B), use A=±B+360n." :
-                                "For sin(A)=sin(B), use A=B or A=180-B, plus 360n.",
+            rule_line,
             "Solve the resulting linear equations for " + var + ".",
             "Keep values in the interval.",
         },
@@ -1440,7 +1442,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "Divide by cos(2x) where valid.",
                 "tan(2x) = -1.",
-                "Solve and keep interval values.",
+                "Solve the tan equation and keep interval values.",
             },
             ans
         );

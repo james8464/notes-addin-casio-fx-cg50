@@ -1441,8 +1441,8 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
         wrote = true;
     }
     if(contains_fn_kind(a, rearr, FnKind::Abs)) {
-        out.push_back(wrote ? "10. For abs, split into positive/negative cases and check both." :
-                              "3. Split abs into positive/negative cases and check both.");
+        out.push_back(wrote ? "10. For abs, split into positive/negative cases, solve each, and check both." :
+                              "3. Split abs into positive/negative cases, solve each, and check both.");
         wrote = true;
     }
     if(!wrote) {

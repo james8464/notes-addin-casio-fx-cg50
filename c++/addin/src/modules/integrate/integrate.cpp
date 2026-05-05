@@ -5652,7 +5652,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         if(top && top->num == top->den && coeff && !r_zero(*coeff)) {
             NodeId abs_u = casio::fn(a, "abs", x.b);
             out.result = divide_by_coeff(a, casio::fn(a, "log", abs_u), *coeff);
-            out.steps.push_back("Step 2: Use reverse-chain log rule.");
+            out.steps.push_back("Step 2: Use reverse chain log rule.");
             out.steps.push_back("Step 3: ∫ 1/u dx = log(abs(u))/u'.");
             return out;
         }
@@ -5664,17 +5664,17 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         if(coeff && !r_zero(*coeff)) {
             if(x.fkind == FnKind::Sin) {
                 out.result = divide_by_coeff(a, casio::neg(a, casio::fn(a, "cos", x.a)), *coeff);
-                out.steps.push_back("Step 2: Use reverse-chain sine rule.");
+                out.steps.push_back("Step 2: Use reverse chain sine rule.");
                 return out;
             }
             if(x.fkind == FnKind::Cos) {
                 out.result = divide_by_coeff(a, casio::fn(a, "sin", x.a), *coeff);
-                out.steps.push_back("Step 2: Use reverse-chain cosine rule.");
+                out.steps.push_back("Step 2: Use reverse chain cosine rule.");
                 return out;
             }
             if(x.fkind == FnKind::Exp) {
                 out.result = divide_by_coeff(a, expr, *coeff);
-                out.steps.push_back("Step 2: Use reverse-chain exponential rule.");
+                out.steps.push_back("Step 2: Use reverse chain exponential rule.");
                 return out;
             }
         }
@@ -5683,7 +5683,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         auto coeff = linear_coeff(a, x.b, var);
         if(coeff && !r_zero(*coeff)) {
             out.result = divide_by_coeff(a, expr, *coeff);
-            out.steps.push_back("Step 2: Use reverse-chain exponential rule.");
+            out.steps.push_back("Step 2: Use reverse chain exponential rule.");
             return out;
         }
     }
