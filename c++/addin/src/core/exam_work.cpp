@@ -116,7 +116,7 @@ static void append_generic_exam_route(std::vector<std::string> &steps, std::stri
         return;
     }
 
-    steps.push_back("Rewrite into a standard Edexcel form.");
+    steps.push_back("Rewrite into a standard useful form.");
     steps.push_back("Apply the matching rule, identity, substitution, or rearrangement.");
     steps.push_back("Simplify and verify in the original expression.");
 }

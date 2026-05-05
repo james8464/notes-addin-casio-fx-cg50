@@ -690,6 +690,9 @@ static FnKind fn_kind_from_name(std::string_view name)
     if(name == "sinh") return FnKind::Sinh;
     if(name == "cosh") return FnKind::Cosh;
     if(name == "tanh") return FnKind::Tanh;
+    if(name == "asinh") return FnKind::Asinh;
+    if(name == "acosh") return FnKind::Acosh;
+    if(name == "atanh") return FnKind::Atanh;
     if(name == "exp") return FnKind::Exp;
     if(name == "log") return FnKind::Log;
     if(name == "log10") return FnKind::Log10;
@@ -705,6 +708,9 @@ NodeId fn(Arena &a, std::string_view name, NodeId arg)
     // Alias rules: ln->log, csc->cosec
     if(name == "ln") name = "log";
     if(name == "csc") name = "cosec";
+    if(name == "arcsinh") name = "asinh";
+    if(name == "arccosh") name = "acosh";
+    if(name == "arctanh") name = "atanh";
     FnKind fk = fn_kind_from_name(name);
     if(fk == FnKind::Exp) {
         return simplify(a, a.pow(constant_e(a), simplify(a, arg)));

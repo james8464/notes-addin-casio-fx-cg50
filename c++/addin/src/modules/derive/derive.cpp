@@ -48,7 +48,7 @@ static bool is_atomic(Arena &a, NodeId n)
 
 static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
 {
-    // Conservative guard: reject cases known to explode in exam-style working.
+    // Conservative guard: avoid expanding cases that explode step-by-step working.
     // Match: (non-atomic base)^(large int) where base depends on var.
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Pow) {
@@ -91,6 +91,59 @@ static bool has_function_call(Arena &a, NodeId n)
             if(has_function_call(a, k)) return true;
     }
     return false;
+}
+
+static void push_unique_step(std::vector<std::string> &steps, std::string const &line)
+{
+    if(std::find(steps.begin(), steps.end(), line) == steps.end()) steps.push_back(line);
+}
+
+static void append_function_rule_steps(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        char const *rule = nullptr;
+        switch(x.fkind) {
+        case FnKind::Sin: rule = "Use chain rule: d/dx sin(u)=cos(u)u'."; break;
+        case FnKind::Cos: rule = "Use chain rule: d/dx cos(u)=-sin(u)u'."; break;
+        case FnKind::Tan: rule = "Use chain rule: d/dx tan(u)=sec(u)^2*u'."; break;
+        case FnKind::Sec: rule = "Use chain rule: d/dx sec(u)=sec(u)tan(u)u'."; break;
+        case FnKind::Cosec: rule = "Use chain rule: d/dx cosec(u)=-cosec(u)cot(u)u'."; break;
+        case FnKind::Cot: rule = "Use chain rule: d/dx cot(u)=-cosec(u)^2*u'."; break;
+        case FnKind::Sinh: rule = "Use chain rule: d/dx sinh(u)=cosh(u)u'."; break;
+        case FnKind::Cosh: rule = "Use chain rule: d/dx cosh(u)=sinh(u)u'."; break;
+        case FnKind::Tanh: rule = "Use chain rule: d/dx tanh(u)=u'/cosh(u)^2."; break;
+        case FnKind::Asin: rule = "Use chain rule: d/dx arcsin(u)=u'/sqrt(1-u^2)."; break;
+        case FnKind::Acos: rule = "Use chain rule: d/dx arccos(u)=-u'/sqrt(1-u^2)."; break;
+        case FnKind::Atan: rule = "Use chain rule: d/dx arctan(u)=u'/(1+u^2)."; break;
+        case FnKind::Asinh: rule = "Use chain rule: d/dx asinh(u)=u'/sqrt(u^2+1)."; break;
+        case FnKind::Acosh: rule = "Use chain rule: d/dx acosh(u)=u'/sqrt(u^2-1)."; break;
+        case FnKind::Atanh: rule = "Use chain rule: d/dx atanh(u)=u'/(1-u^2)."; break;
+        case FnKind::Log: rule = "Use chain rule: d/dx log(u)=u'/u."; break;
+        case FnKind::Exp: rule = "Use chain rule: d/dx exp(u)=exp(u)u'."; break;
+        case FnKind::Sqrt: rule = "Use chain rule: d/dx sqrt(u)=u'/(2sqrt(u))."; break;
+        case FnKind::Abs: rule = "Use d(abs(u))/dx = u/abs(u)*u' away from u=0."; break;
+        case FnKind::Sign: rule = "sign(u) is constant away from u=0, so derivative is 0 on each smooth interval."; break;
+        default: break;
+        }
+        if(rule) {
+            std::string s(rule);
+            std::string from = "d/dx ";
+            std::size_t pos = s.find(from);
+            if(pos != std::string::npos) s.replace(pos, from.size(), "d/d" + var + " ");
+            push_unique_step(steps, s);
+        }
+        append_function_rule_steps(a, x.a, var, steps);
+        return;
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        append_function_rule_steps(a, x.a, var, steps);
+        append_function_rule_steps(a, x.b, var, steps);
+        return;
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) append_function_rule_steps(a, k, var, steps);
+    }
 }
 
 static bool has_variable_power(Arena &a, NodeId n, std::string const &var)
@@ -222,6 +275,14 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             return casio::simplify(a, casio::mul(a, {casio::neg(a, casio::mul(a, {a.fn(FnKind::Cosec, u), a.fn(FnKind::Cot, u)})), up}));
         case FnKind::Cot:
             return casio::simplify(a, casio::mul(a, {casio::neg(a, casio::power(a, a.fn(FnKind::Cosec, u), casio::num(a, 2))), up}));
+        case FnKind::Sinh:
+            return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Cosh, u), up}));
+        case FnKind::Cosh:
+            return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Sinh, u), up}));
+        case FnKind::Tanh: {
+            NodeId den = casio::power(a, a.fn(FnKind::Cosh, u), casio::num(a, 2));
+            return casio::simplify(a, casio::div(a, up, den));
+        }
         case FnKind::Exp:
             return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Exp, u), up}));
         case FnKind::Log:
@@ -468,6 +529,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 if(!used_rule && arena.get(n).kind == NodeKind::Add) {
                     steps.push_back("Differentiate term-by-term.");
+                    append_function_rule_steps(arena, n, var, steps);
                     used_rule = true;
                 }
                 if(!used_rule && has_variable_power(arena, n, var)) {
@@ -525,6 +587,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 if(!used_rule && has_function_call(arena, n)) {
                     steps.push_back("Use chain rule on nested functions.");
+                    append_function_rule_steps(arena, n, var, steps);
                     used_rule = true;
                 }
                 if(!used_rule) steps.push_back("Apply direct derivative rules.");

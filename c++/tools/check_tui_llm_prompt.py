@@ -18,14 +18,15 @@ def main() -> int:
     llm = LLM.read_text(errors="ignore")
     tui = TUI.read_text(errors="ignore")
     markers = [
-        "Edexcel A-level/Further Maths examiner",
+        "strict symbolic-maths examiner",
         "would get full method/accuracy marks",
         "When working is NOT required",
         "genuinely trivial tasks",
         "When working IS required",
         "No big jumps",
         "Generic calculator/meta text is not valid working",
-        "Prefer Edexcel A-level/Further Maths methods",
+        "Prefer A-level/Further Maths methods",
+        "do not reject advanced methods for genuinely advanced inputs",
     ]
     missing = [m for m in markers if m not in llm]
     if missing:

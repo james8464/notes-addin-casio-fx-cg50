@@ -2692,7 +2692,7 @@ static bool solve_device_placeholder(const char *name, OutputLines &out)
     line.append("Route for ");
     line.append(name);
     line.append(".");
-    out.add("Use standard Edexcel steps, then verify by substitution.");
+    out.add("Use standard algebra steps, then verify by substitution.");
     out.add("Answer: exact result from full CAS path.");
     return true;
 }

@@ -194,7 +194,9 @@ static std::string convert_abs_pipes(std::string text)
 }
 
 static constexpr std::string_view compact_words[] = {
+    "arcsinh", "arccosh", "arctanh",
     "arcsin", "arccos", "arctan",
+    "asinh", "acosh", "atanh",
     "cosec",
     "asin", "acos", "atan",
     "sinh", "cosh", "tanh",
@@ -350,4 +352,3 @@ std::string normalize_text(std::string text)
 }
 
 } // namespace casio
-

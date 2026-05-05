@@ -18,6 +18,13 @@ SUPPORTED_TOKENS = (
     "asin",
     "acos",
     "atan",
+    "sinh",
+    "cosh",
+    "tanh",
+    "asinh",
+    "acosh",
+    "atanh",
+    "sign",
     "!",
 )
 
@@ -107,5 +114,37 @@ class ExpressionGrammar:
                 "1/sqrt(abs(x)-x)",
                 "sqrt(x-sqrt(x))",
                 "ln(1-x^2)",
+            ]
+        )
+
+    def general_expr(self) -> tuple[str, str, str, bool]:
+        """Return command flag, command expression, topic, expects_working."""
+        a = self.rng.choice([2, 3, 4, 5])
+        b = self.rng.choice([-3, -1, 1, 2])
+        n = self.rng.choice([2, 3, 4])
+        return self.rng.choice(
+            [
+                ("int", "exp(-x^2),method=auto", "non_elementary", True),
+                ("int", "exp(-x^4),method=auto", "non_elementary", True),
+                ("int", "sin(x^2),method=auto", "non_elementary", True),
+                ("int", "cos(x^2),method=auto", "non_elementary", True),
+                ("int", "1/log(x),method=auto", "non_elementary", True),
+                ("int", "atan(x)^2,method=parts", "special_function", True),
+                ("int", f"atan({a}*x+{b})^2,method=parts", "special_function", True),
+                ("derive", "exp(sin(x^2))*log(1+x^2),x,method=chain", "nested_combo", True),
+                ("derive", "sinh(x^2)+atanh(x/3),x,method=chain", "special_function", True),
+                ("derive", f"cosh(log(x^2+1))+asinh({a}*x{b:+d}),x,method=chain", "special_function", True),
+                ("derive", f"tanh(exp(x))+sign(x^{n}-1),x,method=chain", "branch", True),
+                ("alg", "domain(sqrt(log(2,x^2+1)))", "branch", False),
+                ("alg", "domain(atanh((x-1)/3))", "branch", False),
+                ("alg", "domain(log(abs(sin(x))+1))", "branch", False),
+                ("alg", "domain(sqrt(abs(x^2-4)))", "branch", False),
+                ("alg", "range(tanh(x))", "special_function", False),
+                ("alg", "range(abs(tanh(x)))", "special_function", False),
+                ("alg", "range(sinh(asinh(x)))", "special_function", False),
+                ("alg", "domain(asin(sin(3*x)))", "branch", False),
+                ("alg", "exp(log(abs(x)+2))+sinh(asinh(x))", "nested_combo", False),
+                ("alg", f"sqrt((sinh(asinh(x)))^2+{a})", "nested_combo", False),
+                ("alg", f"cosh(acosh(abs(x)+{a}))+tanh(atanh(x/{a + 3}))", "nested_combo", False),
             ]
         )

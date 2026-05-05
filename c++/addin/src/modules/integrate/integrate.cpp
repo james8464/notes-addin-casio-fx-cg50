@@ -486,7 +486,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "non-elementary hypergeometric form",
             {
                 "Rewrite as x^(-2/3)*(1+x^2)^(-1/3).",
-                "This is not elementary in A-level functions.",
+                "This is not elementary in standard elementary functions.",
                 "Use power-binomial hypergeometric form.",
             },
             "3*x^(1/3)*hypergeom([1/3,1/6],[7/6],-x^2) + C"
@@ -2335,9 +2335,9 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Let t=atan(x); dx=sec(t)^2 dt.",
                 "Integral becomes Integral(t^2*sec(t)^2) dt.",
                 "Parts leaves Integral(log(cos(t))) dt.",
-                "That term is not elementary, so no A-level closed form.",
+                "That term is not elementary, so no elementary closed form.",
             },
-            "non-elementary in A-level functions"
+            "non-elementary in elementary functions"
         );
     }
 
@@ -6517,7 +6517,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("Let u=" + inner_text + ", so du/dx=" + du + ".");
                     steps.push_back("Integral(cosec(u)^2)du = -cot(u), but du/dx is missing.");
                     steps.push_back("So direct reverse chain does not apply.");
-                    return casio::exam_block("reverse chain check", steps, "No elementary A-level primitive found");
+                    return casio::exam_block("reverse chain check", steps, "No elementary primitive found");
                 }
             }
         }
@@ -6534,11 +6534,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             steps.push_back("Then rewrite on that interval and integrate the resulting expression.");
             return casio::exam_block("branch-aware integration", steps, "branch interval needed");
         }
-        std::string formal = "No elementary A-level primitive found";
+        std::string formal = "No elementary primitive found";
         return casio::exam_fallback(
             "integration",
             pre,
-            "Full symbolic integral route not available for this form.",
+            "Full elementary symbolic integral route not available for this form.",
             formal
         );
     }

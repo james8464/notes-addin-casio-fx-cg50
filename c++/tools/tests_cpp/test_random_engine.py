@@ -34,11 +34,41 @@ class RandomEngineTests(unittest.TestCase):
         self.assertTrue(any(case.concept.transforms for case in cases))
         self.assertTrue(all(case.command_flag for case in cases))
 
+    def test_all_scope_includes_general_non_exam_cases(self):
+        gen = AdversarialGenerator(seed=321)
+
+        cases = gen.generate("all", 48)
+
+        functions = {case.concept.function for case in cases}
+        topics = {case.concept.topic for case in cases}
+        notes = " ".join(case.expected_note.lower() for case in cases)
+        self.assertIn("general", functions)
+        self.assertTrue({"non_elementary", "branch", "special_function"} & topics)
+        self.assertIn("advanced", notes)
+
+    def test_general_scope_only_emits_general_cases(self):
+        gen = AdversarialGenerator(seed=222)
+
+        cases = gen.generate("general", 12)
+
+        self.assertTrue(cases)
+        self.assertEqual({case.concept.function for case in cases}, {"general"})
+
     def test_quality_classifier_flags_unsupported_supported_case(self):
         verdict = classify_output_quality("Answer: int(exp(-x^2),x)", expects_working=True)
 
         self.assertEqual(verdict.status, "fail")
         self.assertIn("unevaluated", verdict.reason)
+
+    def test_quality_classifier_allows_honest_non_elementary_working(self):
+        verdict = classify_output_quality(
+            "Start with exp(-x^2).\n"
+            "No elementary primitive found; use special-function form.\n"
+            "Answer: sqrt(pi)/2*erf(x)+C",
+            expects_working=True,
+        )
+
+        self.assertNotEqual(verdict.status, "fail")
 
     def test_report_store_records_replayable_failure(self):
         with tempfile.TemporaryDirectory() as tmp:

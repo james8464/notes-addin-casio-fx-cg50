@@ -191,6 +191,8 @@ RANDOM_SUPPORTED_MATH_THINGS = (
     "sin", "cos", "tan", "sec", "cot", "cosec", "csc",
     "abs", "sqrt", "ln", "log", "log_base", "exp",
     "asin", "acos", "atan", "arcsin", "arccos", "arctan",
+    "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+    "sign",
     "factorial_bang", "factorial_fn",
 )
 RANDOM_SUPPORTED_MATH_SHAPES = tuple("math_" + name for name in RANDOM_SUPPORTED_MATH_THINGS)
@@ -566,7 +568,7 @@ FEATURE_PARITY_NOTES = {
     "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
     "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
     "MethodSurface": "Direct host method/options surface across every supported feature group, including invalid method fallback.",
-    "ExamMix": "Cross-feature Edexcel/Further stress loop; catches route gaps between program-specific builders.",
+    "ExamMix": "Cross-feature stress loop; catches route gaps between program-specific builders.",
 }
 SYMPY_MAX_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CHARS", "260"))
 SYMPY_MAX_CALC_CHARS = int(os.environ.get("CASIO_SYMPY_MAX_CALC_CHARS", "1400"))
@@ -1965,9 +1967,6 @@ def derive_checker(*tokens):
 
     def check(output):
         text = normalized_text(output)
-        # Explicit exam-style rejection is an expected "supported limitation".
-        if "too complex for exam-style working." in text and "answer: simplify" in text:
-            return True
         return quality(output)
 
     return check
@@ -4387,6 +4386,13 @@ class CASIOApp(App):
             "arcsin": [f"arcsin({unit})", f"arcsin(sin({angle}))"],
             "arccos": [f"arccos({unit})", f"arccos(cos({angle}))"],
             "arctan": [f"arctan({affine})", f"arctan(tan({angle}))"],
+            "sinh": [f"sinh({angle})", f"sinh(asinh({affine}))"],
+            "cosh": [f"cosh({angle})", f"cosh(asinh({affine}))"],
+            "tanh": [f"tanh({angle})", f"tanh(ln({positive}))"],
+            "asinh": [f"asinh({affine})", f"asinh(sinh({angle}))"],
+            "acosh": [f"acosh({positive})", f"acosh(cosh({angle})+2)"],
+            "atanh": [f"atanh({unit}/2)", f"atanh(tanh({angle}/3))"],
+            "sign": [f"sign({affine})", f"sign(sin({angle}))"],
             "factorial_bang": [f"{rng.randint(3, 8)}!", f"({rng.randint(2, 5)}+{rng.randint(1, 4)})!"],
             "factorial_fn": [f"factorial({rng.randint(3, 8)})", f"factorial({rng.randint(2, 5)}+{rng.randint(1, 4)})"],
         }
@@ -5761,9 +5767,6 @@ class CASIOApp(App):
 
         def check(out):
             text = normalized_text(out)
-            # Treat explicit "too complex" exam guard as pass (known limit).
-            if "too complex for exam-style working." in text and "answer: simplify" in text:
-                return True
             if not quality(out):
                 return False
             candidate = extract_last_derivative_expr(out)

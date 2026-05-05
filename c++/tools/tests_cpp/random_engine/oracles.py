@@ -9,7 +9,6 @@ BAD_SNIPPETS = (
     "traceback",
     "timeout after",
     "dimension mismatch",
-    "unsupported",
     "could not",
     "unable",
     "no working",
@@ -42,6 +41,8 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         return OutputQuality("fail", "empty output")
     if any(item in text for item in BAD_SNIPPETS):
         return OutputQuality("fail", "error/debug/fallback text")
+    if "unsupported" in text and "not supported by this route" not in text:
+        return OutputQuality("fail", "unsupported without useful route explanation")
     if re.search(r"\b(answer|ans)\s*:\s*(int|integrate|d/dx|diff)\s*\(", text):
         return OutputQuality("fail", "unevaluated supported form")
     if re.search(r"\b(int|integrate|d/dx|diff)\s*\(", text) and "no elementary" not in text:
@@ -54,20 +55,23 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         "du =",
         "method:",
         "use ",
+        "no elementary",
+        "special-function",
+        "branch",
+        "domain",
         "parts",
         "factor",
         "identity",
         "differentiate",
         "substitute",
         "partial fraction",
-        "domain",
         "range",
     )
     if not any(marker in text for marker in markers):
-        return OutputQuality("review", "missing exam-method markers")
+        return OutputQuality("review", "missing method markers")
     if any(item in text for item in GENERIC_WORKING):
         return OutputQuality("review", "generic calculator-style working")
     lines = [ln for ln in text.splitlines() if ln.strip()]
     if len(lines) < 2:
         return OutputQuality("review", "too few lines for supported working")
-    return OutputQuality("pass", "exam-style markers present")
+    return OutputQuality("pass", "step markers present")

@@ -36,18 +36,18 @@ else:
 exec(compile(_code, str(LEGACY_ZIP / LEGACY_MEMBER), "exec"), _mod.__dict__)
 
 
-LLM_SYSTEM_PROMPT = """Judge CasioCAS maths output like an Edexcel A-level/Further Maths examiner.
+LLM_SYSTEM_PROMPT = """Judge CasioCAS maths output like a strict symbolic-maths examiner.
 
 Input fields:
 - CTX: feature/test name and sometimes the user question.
 - OUT: calculator output to grade.
 - EXP: deterministic checker notes, expected answer, or required behaviour.
 
-Grade BOTH answer and exam-working quality.
+Grade BOTH answer and step-by-step working quality.
 
 Verdicts:
-- CORRECT: final answer is mathematically correct/equivalent AND the shown route would get full method/accuracy marks for this question.
-- NEEDS_REVIEW: final answer appears correct/equivalent but working would not reliably get full marks, is too generic, misses a key transformation, or you are unsure.
+- CORRECT: final answer is mathematically correct/equivalent AND the shown route would get full method/accuracy marks for this question, at the question's natural level.
+- NEEDS_REVIEW: final answer appears correct/equivalent but working would not reliably get full marks, is too generic, misses a key transformation, hides a branch/domain issue, or you are unsure.
 - INCORRECT: final answer is wrong/missing, a shown step is mathematically false, valid solutions are lost, extra invalid solutions are kept, or domain/interval restrictions are violated.
 
 When working is NOT required:
@@ -55,13 +55,14 @@ When working is NOT required:
 - Do not demand artificial micro-steps when there are no meaningful method marks.
 
 When working IS required:
-- Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key exam route.
+- Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.
+- If the problem is beyond A-level/Further Maths, still grade it: accept correct special-function, branch-aware, implicit, numeric, or non-elementary conclusions only when the output explains why that route is needed.
 
 Quality filters:
 - Generic calculator/meta text is not valid working: Chk, ok, CAS verified, parse, fallback, route, tried methods, internal simplify, black-box solve, calculator checked.
-- Prefer Edexcel A-level/Further Maths methods over special functions or university methods when an A-level route exists.
+- Prefer A-level/Further Maths methods over special functions or university methods when such a route exists, but do not reject advanced methods for genuinely advanced inputs.
 - Equivalent algebraic/trig forms are fine if domains, branches, constants, and intervals are respected.
 - Factorised/simplified exact answers are preferred, but unsimplified equivalent answers are not INCORRECT unless the question asks for a specific form.
 - If unsure, use NEEDS_REVIEW, not INCORRECT.

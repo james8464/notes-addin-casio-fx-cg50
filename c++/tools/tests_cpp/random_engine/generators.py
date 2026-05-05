@@ -34,7 +34,9 @@ class AdversarialGenerator:
     def generate(self, feature: str, count: int) -> List[AdversarialCase]:
         feature = (feature or "all").lower()
         if feature in ("all", "exammix", "exam"):
-            features = ["integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite"]
+            features = ["integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite", "general"]
+        elif feature == "general":
+            features = ["general"]
         else:
             features = [feature]
         out = []
@@ -68,6 +70,7 @@ class AdversarialGenerator:
             "range": self._range,
             "constants": self._constants,
             "rewrite": self._rewrite,
+            "general": self._general,
         }
         return dispatch.get(feature, self._rewrite)(index)
 
@@ -162,3 +165,11 @@ class AdversarialGenerator:
         expr = self.rng.choice([self.grammar.hard_trig_identity(), "(x^4-1)/(x^2-1)", "sqrt(12+sqrt(140))"])
         concept = self._concept("rewrite", "expr,[target]", "auto", "rewrite", ("hidden_identity",), 3, "sympy+llm")
         return AdversarialCase("Adv rewrite {0}".format(index), "alg", "rewrite({0})".format(expr), concept, True, "rewritten form equivalent with justified steps", expr)
+
+    def _general(self, index: int) -> AdversarialCase:
+        flag, expr, topic, expects_working = self.grammar.general_expr()
+        difficulty = 5 if topic in ("non_elementary", "branch", "special_function") else 4
+        transforms = ("nested", "branch_guard") if topic != "non_elementary" else ("special_function",)
+        concept = self._concept("general", "expr,[method/options]", "auto", topic, transforms, difficulty, "sympy+llm")
+        note = "advanced unrestricted combination; answer must be correct and working must justify special/domain/branch route"
+        return AdversarialCase("Adv general {0}: {1}".format(index, topic), flag, expr, concept, expects_working, note, expr)
