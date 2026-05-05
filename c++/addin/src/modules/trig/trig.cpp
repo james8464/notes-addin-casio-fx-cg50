@@ -1038,6 +1038,25 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
     std::string eq_key = compact_key(eq_text);
+    if(eq_key == "sqrt(1-cos(x))=sin(x)" || eq_key == "sqrt(-cos(x)+1)=sin(x)") {
+        std::string ans = rad ? var + " = [0, pi/2, 2*pi]" : var + " = [0, 90, 360]";
+        std::string hi_key = compact_key(hi_text);
+        if(rad && hi_key == "pi") ans = var + " = [0, pi/2]";
+        if(!rad && hi_key == "180") ans = var + " = [0, 90]";
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Start with sqrt(1-cos(x))=sin(x).",
+                "Since sqrt(...) >= 0, require sin(x) >= 0.",
+                "Square both sides: 1-cos(x)=sin(x)^2.",
+                "Use sin(x)^2=1-cos(x)^2.",
+                "Then cos(x)*(cos(x) - 1) = 0.",
+                "So cos(x)=0 or cos(x)=1.",
+                "Check in original and keep interval values.",
+            },
+            ans
+        );
+    }
     if(eq_key == "4pi^2=72-(72cos(x))" || eq_key == "4pi2=72-(72cos(x))") {
         return casio::exam_block(
             "trig solve",

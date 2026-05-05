@@ -67,6 +67,21 @@ static Rational r_sub(Rational a, Rational b)
     return r_add(a, r_neg(b));
 }
 
+static Rational r_abs(Rational a)
+{
+    if(a.num < 0) a.num = -a.num;
+    return a;
+}
+
+static int r_cmp(Rational a, Rational b)
+{
+    a.normalize();
+    b.normalize();
+    long long lhs = a.num * b.den;
+    long long rhs = b.num * a.den;
+    return (lhs > rhs) - (lhs < rhs);
+}
+
 static Poly2 add_poly(Poly2 p, Poly2 const &q)
 {
     if(!p.ok || !q.ok) return Poly2{{}, {}, {}, false};
@@ -894,8 +909,19 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
             else push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
         }
         if(x.fkind == FnKind::Log && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
-        if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a))
-            push_unique(out, "Domain: -1 <= " + format_expr(a, x.a) + " <= 1");
+        if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a)) {
+            Node const &arg = a.get(x.a);
+            if(arg.kind == NodeKind::Fn && (arg.fkind == FnKind::Sin || arg.fkind == FnKind::Cos)) {
+                std::vector<std::string> inner_dom;
+                collect_domain(a, arg.a, inner_dom);
+                if(inner_dom.empty()) push_unique(out, "Domain: all real x");
+                else
+                    for(auto const &d : inner_dom) push_unique(out, d);
+            }
+            else {
+                push_unique(out, "Domain: -1 <= " + format_expr(a, x.a) + " <= 1");
+            }
+        }
         if(x.fkind == FnKind::Tan || x.fkind == FnKind::Sec) {
             std::string arg = format_expr(a, x.a);
             push_unique(out, "Domain: " + format_expr(a, casio::fn(a, "cos", x.a)) + " != 0");
@@ -1152,6 +1178,124 @@ static std::optional<std::string> log_abs_linear_range(Arena &a, NodeId n, std::
     std::string bound = "log(" + format_expr(a, a.num(*min_arg)) + ")";
     if(!denom_text.empty()) bound += "/" + denom_text;
     return std::string("y ") + (increasing ? ">= " : "<= ") + bound;
+}
+
+static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
+        steps.push_back((x.fkind == FnKind::Sin ? "sin" : "cos") + std::string("(u) is between -1 and 1."));
+        return std::string("-1 <= y <= 1");
+    }
+    if(x.fkind == FnKind::Tan || x.fkind == FnKind::Cot) {
+        steps.push_back((x.fkind == FnKind::Tan ? "tan" : "cot") + std::string("(u) takes all real values on each branch."));
+        return std::string("all real y");
+    }
+    if(x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec) {
+        steps.push_back((x.fkind == FnKind::Sec ? "sec" : "cosec") + std::string("(u) has magnitude at least 1."));
+        return std::string("y <= -1 or y >= 1");
+    }
+    return std::nullopt;
+}
+
+static std::optional<Rational> node_num(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return x.num;
+    return std::nullopt;
+}
+
+static bool term_is_cos_with_coeff(Arena &a, NodeId n, Rational &coeff, std::string &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cos) {
+        coeff = Rational{1, 1};
+        arg = format_expr(a, x.a);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        auto c0 = node_num(a, x.kids[0]);
+        auto c1 = node_num(a, x.kids[1]);
+        Node const &n0 = a.get(x.kids[0]);
+        Node const &n1 = a.get(x.kids[1]);
+        if(c0 && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Cos) {
+            coeff = *c0;
+            arg = format_expr(a, n1.a);
+            return true;
+        }
+        if(c1 && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Cos) {
+            coeff = *c1;
+            arg = format_expr(a, n0.a);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::optional<std::string> reciprocal_cos_range(Arena &a, NodeId n, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(x.a);
+    if(top.kind != NodeKind::Num || top.num.num != 1 || top.num.den != 1) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Add) return std::nullopt;
+
+    Rational c{0, 1};
+    Rational k{0, 1};
+    std::string arg;
+    bool saw_cos = false;
+    for(auto kid : den.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Num) {
+            c = r_add(c, kn.num);
+            continue;
+        }
+        Rational tk{0, 1};
+        std::string ta;
+        if(!term_is_cos_with_coeff(a, kid, tk, ta)) return std::nullopt;
+        if(saw_cos) return std::nullopt;
+        saw_cos = true;
+        k = tk;
+        arg = ta;
+    }
+    if(!saw_cos || c.num <= 0) return std::nullopt;
+    Rational ak = r_abs(k);
+    if(r_cmp(c, ak) <= 0) return std::nullopt;
+    Rational lo_den = r_sub(c, ak);
+    Rational hi_den = r_add(c, ak);
+    Rational lo = r_div(Rational{1, 1}, hi_den);
+    Rational hi = r_div(Rational{1, 1}, lo_den);
+    steps.push_back("cos(" + arg + ") in [-1,1].");
+    steps.push_back("So denominator is between " + format_rat(a, lo_den) + " and " + format_rat(a, hi_den) + ".");
+    return format_rat(a, lo) + " <= y <= " + format_rat(a, hi);
+}
+
+static std::optional<std::string> x_over_quadratic_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(x.a);
+    if(top.kind != NodeKind::Sym || top.text != var) return std::nullopt;
+    auto den = poly_of(a, x.b, var);
+    if(!den || !den->ok || is_zero(den->a2) || !is_zero(den->a1) || den->a0.num <= 0) return std::nullopt;
+    if(den->a2.num != 1 || den->a2.den != 1) return std::nullopt;
+
+    std::string root = sqrt_bound_text(a, den->a0);
+    std::string b = root == "1" ? "1/2" : "1/(2*" + root + ")";
+    steps.push_back("For y=x/(x^2+" + format_rat(a, den->a0) + "), max/min occur when x^2=" + format_rat(a, den->a0) + ".");
+    return "-" + b + " <= y <= " + b;
+}
+
+static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || !(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos)) return std::nullopt;
+    Node const &arg = a.get(x.a);
+    if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Sin) return std::string("sin input is always in [-1,1].");
+    if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Cos) return std::string("cos input is always in [-1,1].");
+    return std::nullopt;
 }
 
 static std::optional<std::vector<std::string>> solve_trig_factor_substitution(std::string const &equation_text)
@@ -1767,6 +1911,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("Domain: " + domain_answer + ".");
             }
             else {
+                if(auto inv_note = inverse_trig_plain_trig_note(arena, n)) steps.push_back(*inv_note);
                 for(auto const &d : dom) steps.push_back(d);
                 domain_answer = dom.front();
                 auto pfx = domain_answer.find("Domain: ");
@@ -1796,7 +1941,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 Node const &rn = arena.get(n);
-                if(auto abs_min = abs_linear_plus_const_min(arena, n, var)) {
+                if(auto trig_range = direct_trig_range(arena, n, steps)) {
+                    range_answer = *trig_range;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto rec_cos = reciprocal_cos_range(arena, n, steps)) {
+                    range_answer = *rec_cos;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto xq = x_over_quadratic_range(arena, n, var, steps)) {
+                    range_answer = *xq;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto abs_min = abs_linear_plus_const_min(arena, n, var)) {
                     range_answer = "y >= " + format_expr(arena, arena.num(*abs_min));
                     steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
                     steps.push_back("Range: " + range_answer + ".");

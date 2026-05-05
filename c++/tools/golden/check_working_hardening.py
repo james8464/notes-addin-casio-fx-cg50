@@ -268,6 +268,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Use identity 1 + cot(u)^2 = cosec(u)^2", "du/dx=2*x", "direct reverse chain does not apply"],
         ["Use the general integration route", "Answer: int", "ERR:"],
     ),
+    (
+        "alg",
+        "range(x/(1+x^2))",
+        ["Range: -1/2 <= y <= 1/2", "Answer: -1/2 <= y <= 1/2"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(1/(2-cos(3*x)))",
+        ["cos(3*x) in [-1,1]", "Answer: 1/3 <= y <= 1"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(cot((x+1)/3))",
+        ["Range: all real y", "Answer: all real y"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "domain(arccos(sin((x+1)/3)))",
+        ["sin input is always in [-1,1]", "Answer: all real x"],
+        ["Answer: -1 <= sin", "inspect graph/transform", "ERR:"],
+    ),
+    (
+        "trig",
+        "sqrt(1-cos(x))=sin(x),x,0,2*pi,8,method=square_then_check",
+        ["Square both sides", "cos(x)*(cos(x) - 1) = 0", "Check in original", "Answer: x = [0, pi/2"],
+        ["Answer: x = []", "ERR:"],
+    ),
 ]
 
 
