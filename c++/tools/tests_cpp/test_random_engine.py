@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from random_engine.concepts import ConceptGraph, ConceptNode
-from random_engine.generators import AdversarialGenerator
+from random_engine.generators import AdversarialGenerator, EXAM_GAP_TOPICS
 from random_engine.oracles import classify_output_quality
 from random_engine.reports import RunReportStore
 from random_engine.shrinker import shrink_expression_text
@@ -53,18 +53,7 @@ class RandomEngineTests(unittest.TestCase):
 
         topics = {case.concept.topic for case in cases}
         notes = " ".join(case.expected_note.lower() for case in cases)
-        self.assertTrue(
-            {
-                "looping_parts",
-                "hidden_substitution",
-                "partial_fraction_setup",
-                "trig_power_reduction",
-                "implicit_collect",
-                "parametric_second",
-                "interval_trig",
-            }
-            & topics
-        )
+        self.assertTrue(set(EXAM_GAP_TOPICS).issubset(topics))
         self.assertIn("exam", notes)
         self.assertIn("show", notes)
 

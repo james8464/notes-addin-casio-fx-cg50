@@ -90,6 +90,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "asin((x-3)/8),method=parts",
+        ["Use parts", "u=asin(w)", "dv=dw", "du=1/sqrt(1-w^2) dw", "v=w", "Answer:"],
+        ["Classify the integrand", "ERR:"],
+    ),
+    (
+        "int",
+        "e^(2*x)*cos(5*x),method=parts",
+        ["u = cos(5*x)", "dv = e^(2*x) dx", "du = -5*sin(5*x) dx", "v = e^(2*x)/2", "Collect I terms"],
+        ["IBP missing", "ERR:"],
+    ),
+    (
+        "int",
+        "(5*x+7)/((x-1)*(x^2+4)),method=pf",
+        ["A/(x-1)+(Bx+C)/(x^2+4)", "A=12/5", "B=-12/5", "C=13/5", "Answer:"],
+        ["Partial fractions: A/(x+p)", "ERR:"],
+    ),
+    (
+        "int",
+        "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
+        ["A/(x-1)+B/(x-1)^2+(Cx+D)/(x^2+1)", "Equate coefficients", "Answer:"],
+        ["No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
+        "(x^2+1)/(x^4+x^2+1),method=sub",
+        ["Divide numerator and denominator by x^2", "Let u=x-1/x", "du=(1+1/x^2) dx", "Answer:"],
+        ["No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
         "x*ln(5*x)",
         ["Integration by parts", "Answer: 1/2*x^2*log(5*x) - 1/4*x^2 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],
@@ -117,6 +147,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "x^2+a*x+b,method=factor",
         ["not factorable with numeric roots in this lightweight route", "Answer:"],
         ["Err:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "rewrite(sqrt(12+sqrt(140)))",
+        ["Let sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "4*m*n=140", "Answer: sqrt(7)+sqrt(5)"],
+        ["rewrite*sqrt", "ERR:"],
     ),
     (
         "alg",

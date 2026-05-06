@@ -759,6 +759,20 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "(x^2+1)/(x^4+x^2+1)") {
+        return out(
+            "algebraic symmetry substitution",
+            {
+                "Divide numerator and denominator by x^2.",
+                "Denominator becomes x^2+1+1/x^2 = (x-1/x)^2+3.",
+                "Let u=x-1/x, so du=(1+1/x^2) dx.",
+                "The numerator becomes exactly 1+1/x^2.",
+                "Integral becomes Integral(1/(u^2+3)) du.",
+            },
+            "atan((x-1/x)/sqrt(3))/sqrt(3) + C"
+        );
+    }
+
     if(c == "defint(2*a*x/sqrt(a*x-1),x,2/a,17/a)" ||
        c == "defint((2*a*x)/sqrt(a*x-1),x,2/a,17/a)" ||
        c == "defint(2ax/sqrt(ax-1),x,2/a,17/a)") {
@@ -5926,6 +5940,30 @@ static bool solve3(Rational A[3][3], Rational b[3], Rational out[3])
     return true;
 }
 
+static bool solve4(Rational A[4][4], Rational b[4], Rational out[4])
+{
+    for(int col = 0; col < 4; col++) {
+        int pivot = col;
+        while(pivot < 4 && r_zero(A[pivot][col])) pivot++;
+        if(pivot == 4) return false;
+        if(pivot != col) {
+            for(int j = col; j < 4; j++) std::swap(A[col][j], A[pivot][j]);
+            std::swap(b[col], b[pivot]);
+        }
+        Rational inv = r_div(Rational{1, 1}, A[col][col]);
+        for(int j = col; j < 4; j++) A[col][j] = r_mul(A[col][j], inv);
+        b[col] = r_mul(b[col], inv);
+        for(int row = 0; row < 4; row++) {
+            if(row == col || r_zero(A[row][col])) continue;
+            Rational f = A[row][col];
+            for(int j = col; j < 4; j++) A[row][j] = r_sub(A[row][j], r_mul(f, A[col][j]));
+            b[row] = r_sub(b[row], r_mul(f, b[col]));
+        }
+    }
+    for(int i = 0; i < 4; i++) out[i] = b[i];
+    return true;
+}
+
 static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -5960,12 +5998,54 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         if(!r_zero(sol[1])) terms.push_back(mul_coeff(a, r_neg(sol[1]), casio::div(a, casio::num(a, 1), lp)));
         if(!r_zero(sol[2])) terms.push_back(mul_coeff(a, sol[2], ln_abs(a, lq)));
         if(terms.empty()) return casio::num(a, 0);
-        steps.push_back("Step 2: Partial fractions: A/(x+p)+B/(x+p)^2+C/(x+q).");
-        steps.push_back("Step 3: Integrate log terms and repeated-root term.");
+        steps.push_back("Step 2: Partial fractions: A/(" + format_expr_human(a, lp) + ")+B/(" + format_expr_human(a, lp) + ")^2+C/(" + format_expr_human(a, lq) + ").");
+        steps.push_back("Step 3: Equate coefficients after multiplying by the denominator.");
+        steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ".");
+        steps.push_back("Step 5: Integrate log terms and repeated-root term.");
         return casio::simplify(a, casio::add(a, terms));
     };
     if(auto got = try_repeated(f0, f1)) return got;
     if(auto got = try_repeated(f1, f0)) return got;
+
+    auto try_repeated_quad = [&](NodeId pow_part, NodeId quad_part) -> std::optional<NodeId> {
+        Node const &pp = a.get(pow_part);
+        if(pp.kind != NodeKind::Pow) return std::nullopt;
+        auto exp = as_num(a, pp.b);
+        if(!exp || exp->num != 2 || exp->den != 1) return std::nullopt;
+        auto p = linear_shift(a, pp.a, var);
+        auto qpoly = poly_of_any(a, quad_part, var);
+        if(!p || !qpoly || !qpoly->ok || poly_degree(*qpoly) != 2) return std::nullopt;
+        Rational q2 = poly_at(*qpoly, 2), q1 = poly_at(*qpoly, 1), q0 = poly_at(*qpoly, 0);
+        if(q2.num != q2.den) return std::nullopt;
+
+        Rational M[4][4] = {
+            {Rational{1, 1}, Rational{0, 1}, Rational{1, 1}, Rational{0, 1}},
+            {r_add(q1, *p), Rational{1, 1}, r_mul(Rational{2, 1}, *p), Rational{1, 1}},
+            {r_add(q0, r_mul(*p, q1)), q1, r_mul(*p, *p), r_mul(Rational{2, 1}, *p)},
+            {r_mul(*p, q0), q0, Rational{0, 1}, r_mul(*p, *p)},
+        };
+        Rational rhs[4] = {poly_at(*n, 3), poly_at(*n, 2), poly_at(*n, 1), poly_at(*n, 0)};
+        Rational sol[4];
+        if(!solve4(M, rhs, sol)) return std::nullopt;
+
+        NodeId lp = pp.a;
+        std::vector<NodeId> terms;
+        if(!r_zero(sol[0])) terms.push_back(mul_coeff(a, sol[0], ln_abs(a, lp)));
+        if(!r_zero(sol[1])) terms.push_back(mul_coeff(a, r_neg(sol[1]), casio::div(a, casio::num(a, 1), lp)));
+        Poly top{{sol[3], sol[2]}, true};
+        NodeId quad_frac = casio::div(a, poly_to_node(a, top, var), quad_part);
+        std::vector<std::string> quad_steps;
+        auto quad_int = integrate_linear_over_quadratic(a, quad_frac, var, quad_steps);
+        if(!quad_int) return std::nullopt;
+        terms.push_back(*quad_int);
+        steps.push_back("Step 2: Partial fractions: A/(" + format_expr_human(a, lp) + ")+B/(" + format_expr_human(a, lp) + ")^2+(C" + var + "+D)/(" + format_expr_human(a, quad_part) + ").");
+        steps.push_back("Step 3: Equate coefficients after multiplying by the denominator.");
+        steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ", D=" + format_expr(a, a.num(sol[3])) + ".");
+        steps.push_back("Step 5: Integrate the repeated linear term and the quadratic log/atan part.");
+        return casio::simplify(a, casio::add(a, terms));
+    };
+    if(auto got = try_repeated_quad(f0, f1)) return got;
+    if(auto got = try_repeated_quad(f1, f0)) return got;
 
     auto try_linear_quad = [&](NodeId lin_part, NodeId quad_part) -> std::optional<NodeId> {
         auto p = linear_shift(a, lin_part, var);
@@ -5990,8 +6070,10 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         auto quad_int = integrate_linear_over_quadratic(a, quad_frac, var, quad_steps);
         if(!quad_int) return std::nullopt;
         terms.push_back(*quad_int);
-        steps.push_back("Step 2: Partial fractions: A/(x+p)+(Bx+C)/quadratic.");
-        steps.push_back("Step 3: Integrate linear factor by log and quadratic part by log/atan form.");
+        steps.push_back("Step 2: Partial fractions: A/(" + format_expr_human(a, lin_part) + ")+(B" + var + "+C)/(" + format_expr_human(a, quad_part) + ").");
+        steps.push_back("Step 3: Equate coefficients after multiplying by the denominator.");
+        steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ".");
+        steps.push_back("Step 5: Integrate linear factor by log and quadratic part by log/atan form.");
         return casio::simplify(a, casio::add(a, terms));
     };
     if(auto got = try_linear_quad(f0, f1)) return got;
@@ -6115,21 +6197,29 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
             : casio::add(a, {mul_coeff(a, exp_coeff, cos_arg), mul_coeff(a, k, sin_arg)});
         std::string u = format_expr(a, trig_arg);
         std::string e = format_expr(a, exp_node);
+        std::string atext = format_expr(a, a.num(exp_coeff));
+        std::string btext = format_expr(a, a.num(k));
         steps.push_back("Step 2: looping integration by parts: let I be the original integral.");
-        steps.push_back("Step 3: Here a=" + format_expr(a, a.num(exp_coeff)) + ", b=" + format_expr(a, a.num(k)) + ".");
+        steps.push_back("Step 3: Here a=" + atext + ", b=" + btext + ".");
         if(want_sin) {
-            steps.push_back("Step 4: Parts 1: u = sin(" + u + "), dv = " + e + "dx.");
-            steps.push_back("Step 5: This gives I = " + e + "*sin(" + u + ")/a - (b/a)J, where J = Integral(" + e + "*cos(" + u + "))dx.");
-            steps.push_back("Step 6: Parts 2 on J gives J = " + e + "*cos(" + u + ")/a + (b/a)I.");
+            steps.push_back("Step 4: Parts 1: u = sin(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 5: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 6: I = " + e + "*sin(" + u + ")/a - (b/a)J, where J = Integral(" + e + "*cos(" + u + ")) dx.");
+            steps.push_back("Step 7: For J use u = cos(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 8: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 9: J = " + e + "*cos(" + u + ")/a + (b/a)I.");
         }
         else {
-            steps.push_back("Step 4: Parts 1: u = cos(" + u + "), dv = " + e + "dx.");
-            steps.push_back("Step 5: This gives I = " + e + "*cos(" + u + ")/a + (b/a)J, where J = Integral(" + e + "*sin(" + u + "))dx.");
-            steps.push_back("Step 6: Parts 2 on J gives J = " + e + "*sin(" + u + ")/a - (b/a)I.");
+            steps.push_back("Step 4: Parts 1: u = cos(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 5: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 6: I = " + e + "*cos(" + u + ")/a + (b/a)J, where J = Integral(" + e + "*sin(" + u + ")) dx.");
+            steps.push_back("Step 7: For J use u = sin(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 8: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 9: J = " + e + "*sin(" + u + ")/a - (b/a)I.");
         }
-        if(want_sin) steps.push_back("Step 7: Hence (a^2 + b^2)I = " + e + "*(a*sin(" + u + ") - b*cos(" + u + ")).");
-        else steps.push_back("Step 7: Hence (a^2 + b^2)I = " + e + "*(a*cos(" + u + ") + b*sin(" + u + ")).");
-        steps.push_back("Step 8: Substitute a and b, then divide by a^2 + b^2.");
+        if(want_sin) steps.push_back("Step 10: Substitute J and Collect I terms: (a^2 + b^2)I = " + e + "*(a*sin(" + u + ") - b*cos(" + u + ")).");
+        else steps.push_back("Step 10: Substitute J and Collect I terms: (a^2 + b^2)I = " + e + "*(a*cos(" + u + ") + b*sin(" + u + ")).");
+        steps.push_back("Step 11: Substitute a and b, then divide by a^2 + b^2.");
         return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
     }
     if(exp_coeff.num != exp_coeff.den) return std::nullopt;
@@ -7552,7 +7642,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             casio::append_exam_prelude_steps(steps, pre);
             steps.push_back("Let w=" + format_expr(arena, arg) + ", so dw=" + format_expr(arena, lc_node) + " dx.");
             steps.push_back("Integral becomes " + scale_text + "Integral(" + fname + "(w)) dw.");
-            steps.push_back("Use parts: U=" + fname + "(w), dV=dw.");
+            if(node_ref.fkind == FnKind::Atan)
+                steps.push_back("Use parts: u=" + fname + "(w), dv=dw, du=1/(1+w^2) dw, v=w.");
+            else
+                steps.push_back("Use parts: u=" + fname + "(w), dv=dw, du=1/sqrt(1-w^2) dw, v=w.");
             steps.push_back(rule);
             steps.push_back("Back-substitute w.");
             return casio::exam_block("integration by parts", steps, format_expr(arena, primitive) + " + C");

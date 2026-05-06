@@ -1533,6 +1533,38 @@ static std::optional<std::vector<std::string>> symmetric_sum_product_system(std:
     };
 }
 
+static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std::string const &key)
+{
+    std::string const prefix = "rewrite(sqrt(";
+    std::string const mid = "+sqrt(";
+    std::string const suffix = ")))";
+    if(key.rfind(prefix, 0) != 0) return std::nullopt;
+    std::size_t midpos = key.find(mid, prefix.size());
+    if(midpos == std::string::npos) return std::nullopt;
+    if(key.size() <= suffix.size() || key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
+    auto A = parse_i64_text(key.substr(prefix.size(), midpos - prefix.size()));
+    auto B = parse_i64_text(key.substr(midpos + mid.size(), key.size() - (midpos + mid.size()) - suffix.size()));
+    if(!A || !B || *A <= 0 || *B <= 0) return std::nullopt;
+
+    std::int64_t rd = 0;
+    long long disc = (*A) * (*A) - *B;
+    if(!is_square_i64(disc, rd)) return std::nullopt;
+    if(((*A + rd) % 2) || ((*A - rd) % 2)) return std::nullopt;
+    long long m = (*A + rd) / 2;
+    long long n = (*A - rd) / 2;
+    if(m <= 0 || n <= 0) return std::nullopt;
+    if(4 * m * n != *B) return std::nullopt;
+    if(m < n) std::swap(m, n);
+
+    return std::vector<std::string>{
+        "1. Let sqrt(" + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ")) = sqrt(m)+sqrt(n).",
+        "2. Square: " + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ") = m+n+2*sqrt(m*n).",
+        "3. Hence m+n=" + std::to_string(*A) + " and 4*m*n=" + std::to_string(*B) + ".",
+        "4. Solve t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + "=0, so t=" + std::to_string(m) + " or " + std::to_string(n) + ".",
+        "Answer: sqrt(" + std::to_string(m) + ")+sqrt(" + std::to_string(n) + ")",
+    };
+}
+
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
 {
     std::string key = compact_input_key(raw);
@@ -2206,6 +2238,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         {
             std::string key = compact_input_key(req.expr);
             if(auto system = symmetric_sum_product_system(key)) return *system;
+            if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
                 return casio::exam_block(
                     "make subject",
@@ -2955,6 +2988,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             };
             param = strip_outer_parens(param);
             if(param.empty()) param = "t";
+            std::string xk = compact_input_key(xe);
+            std::string yk = compact_input_key(ye);
+            if((xk == "sin(" + param + ")" && yk == "cos(" + param + ")") ||
+               (xk == "cos(" + param + ")" && yk == "sin(" + param + ")")) {
+                return {
+                    "1. Square both equations.",
+                    "2. Use sin(" + param + ")^2+cos(" + param + ")^2=1.",
+                    "Answer: x^2 + y^2 = 1",
+                };
+            }
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
             return {

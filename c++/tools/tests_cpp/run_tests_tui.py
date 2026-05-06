@@ -91,12 +91,13 @@ except ImportError:
     get_ollama_models = None
 
 try:
-    from random_engine import AdversarialGenerator, RunReportStore, classify_output_quality
+    from random_engine import AdversarialGenerator, EXAM_GAP_TOPICS, RunReportStore, classify_output_quality
     ADVERSARIAL_ENGINE_AVAILABLE = True
 except Exception:
     AdversarialGenerator = None
     RunReportStore = None
     classify_output_quality = None
+    EXAM_GAP_TOPICS = ()
     ADVERSARIAL_ENGINE_AVAILABLE = False
 
 if "SHARED_REASONING_MARKERS" not in globals():
@@ -738,6 +739,8 @@ def to_python_expr(expr):
     out = out.replace("arcsin(", "asin(")
     out = out.replace("arccos(", "acos(")
     out = out.replace("arctan(", "atan(")
+    out = re.sub(r"\((\d+\s*[+\-]\s*\d+)\)!", r"factorial(\1)", out)
+    out = re.sub(r"(?<![A-Za-z0-9_])(\d+)!", r"factorial(\1)", out)
     out = re.sub(r"(?<![A-Za-z_])e(?![A-Za-z_])", "E_CONST", out)
     out = re.sub(r"(?<=\d)(?=[A-Za-z_(])", "*", out)
     out = re.sub(r"(?<=\))(?=[A-Za-z_(])", "*", out)
@@ -745,7 +748,7 @@ def to_python_expr(expr):
     return out
 
 
-_PY_FUNC_NAMES = {"sin","cos","tan","sec","cosec","csc","cot","sqrt","log","ln","asin","acos","atan","exp","abs","arcsin","arccos","arctan"}
+_PY_FUNC_NAMES = {"sin","cos","tan","sec","cosec","csc","cot","sqrt","log","ln","asin","acos","atan","exp","abs","arcsin","arccos","arctan","factorial"}
 
 
 def len_of_trailing_ident(s, end):
@@ -949,6 +952,7 @@ def safe_eval_expr(expr, values=None):
         "acos": math.acos,
         "atan": math.atan,
         "abs": abs,
+        "factorial": math.factorial,
         "pi": math.pi,
         "E_CONST": math.e,
     }
@@ -978,6 +982,7 @@ def safe_eval_expr_angle(expr, values=None, degrees=False):
         "acos": math.acos,
         "atan": math.atan,
         "abs": abs,
+        "factorial": math.factorial,
         "pi": math.pi,
         "E_CONST": math.e,
     }
@@ -1821,7 +1826,7 @@ def trig_transform_checker(*tokens):
 def trig_solve_checker(*tokens):
     base_required = tokens
     structure = build_checker(
-        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "use cos", "let a=", "move all terms"),
+        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "factor ", "use cos", "let a=", "move all terms"),
         min_steps=3,
         min_lines=4,
     )
@@ -2039,7 +2044,7 @@ def working_quality_ok(output, program, feature):
         if lines < 3:
             return False
         if feature.startswith("algebra_solve") or feature.startswith("algebra_hard_solve"):
-            if "no sol" in text or "no solution" in text:
+            if "no sol" in text or "no solution" in text or "no real solution" in text:
                 return "expr =" in text and ("solve" in text or steps >= 2)
             return "expr =" in text and "x =" in text and ("solve" in text or steps >= 2)
         if feature.startswith("algebra_inverse"):
@@ -3068,7 +3073,11 @@ class CASIOApp(App):
             runner,
             input_text=adv_case.input_text,
             check_info="{0}; {1}".format(adv_case.expected_note, adv_case.concept.key),
-            feature="adversarial:{0}:{1}".format(adv_case.concept.function, adv_case.concept.method),
+            feature="adversarial:{0}:{1}:{2}".format(
+                adv_case.concept.function,
+                adv_case.concept.method,
+                adv_case.concept.topic,
+            ),
         )
         case.graph_node = adv_case.concept.key
         case.graph_meta = adv_case.concept.meta()
@@ -3080,7 +3089,7 @@ class CASIOApp(App):
             return []
         gen = AdversarialGenerator(seed=rng.randint(1, 2_000_000_000))
         count = max(0, int(count))
-        exam_count = max(1, count // 2) if count else 0
+        exam_count = min(count, max(len(EXAM_GAP_TOPICS), count // 2)) if count else 0
         raw_cases = gen.generate("exam_gap", exam_count) + gen.generate("all", max(0, count - exam_count))
         seen = set()
         cases = []
@@ -3845,6 +3854,8 @@ class CASIOApp(App):
     @staticmethod
     def _covers_feature(expected_id, feature_keys):
         for feat in feature_keys:
+            if expected_id.endswith("_") and feat.startswith(expected_id):
+                return True
             if feat == expected_id or feat.startswith(expected_id + ":"):
                 return True
         return False
@@ -4724,6 +4735,7 @@ class CASIOApp(App):
             "random_calculate_case": "Calculate",
             "random_solve_rnd_case": "Solve",
             "random_method_surface_case": "MethodSurface",
+            "random_university_suvat_case": "SUVAT",
         }
         
         for feature, feature_count in zip(features, counts):
@@ -5002,7 +5014,17 @@ class CASIOApp(App):
             base = float(EXAM_BUILDER_STRESS_WEIGHTS.get(name, 1.0))
             base *= float(boost_map.get(name, 1.0))
             w.append(base * rng.uniform(0.9, 1.1))
-        return self._weighted_count_alloc(n_total, w, rng)
+        out = self._weighted_count_alloc(n_total, w, rng)
+        if n_total >= len(features):
+            for i, value in enumerate(out):
+                if value:
+                    continue
+                donor = max(range(len(out)), key=lambda j: out[j])
+                if out[donor] <= 1:
+                    break
+                out[donor] -= 1
+                out[i] = 1
+        return out
 
     def signed_int_text(self, value):
         if value > 0:
@@ -5875,14 +5897,14 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "let u=", "du=", "resulting polynomial", "odd sine power", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "polynomial division"),
+            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "let u=", "du=", "resulting polynomial", "odd sine power", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "divide polynomial numerator", "polynomial division"),
             min_steps=0,
             min_lines=2,
         )
         # Non-elementary / cannot-integrate answers do not end with " + c"; use relaxed gates.
         quality_no_elementary = build_checker(
             contains_all=("answer:",),
-            contains_any=("method:", "met:", "tried", "use the standard result", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "exam:"),
+            contains_any=("method:", "met:", "tried", "use the standard result", "int[", "consider y", "dy/dx", "u =", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "divide the numerator", "divide polynomial numerator", "exam:"),
             min_steps=0,
             min_lines=2,
         )
@@ -6453,16 +6475,17 @@ class CASIOApp(App):
             f"6\n{eq}\n",
             label,
             self.algebra_solve_output_checker(eq),
-            feature=f"algebra_extreme_rearranged:{mode}",
+            feature=f"algebra_hard_solve:{mode}",
         )
 
     def random_algebra_hidden_quadratic_case(self, rng, difficulty, index):
         choice = rng.randint(1, 10)
         if choice == 1:
-            c = rng.randint(-15, 15)
-            expr = f"x^4-{13+c}*x^2+{36-c}=0"
+            r1, r2 = rng.sample([1, 4, 9, 16, 25], 2)
+            expr = f"x^4-{r1+r2}*x^2+{r1*r2}=0"
         elif choice == 2:
-            expr = f"x^6-{rng.randint(8,27)}*x^3+{rng.randint(10,50)}=0"
+            r1, r2 = rng.sample([1, 8, 27, 64], 2)
+            expr = f"x^6-{r1+r2}*x^3+{r1*r2}=0"
         elif choice == 3:
             k = rng.randint(2, 8)
             expr = f"x^4+{k*2}*x^2-{k}=0"
@@ -6474,14 +6497,16 @@ class CASIOApp(App):
         elif choice == 6:
             expr = f"x+{rng.randint(3,9)}={rng.randint(2,6)}*sqrt(x)"
         elif choice == 7:
-            expr = f"{rng.randint(3,9)}*x-{2*rng.randint(3,9)}*sqrt(x)+{rng.randint(2,10)}=0"
+            a = rng.randint(2, 6)
+            r1, r2 = rng.sample([1, 2, 3, 4], 2)
+            expr = f"{a}*x-{a*(r1+r2)}*sqrt(x)+{a*r1*r2}=0"
         elif choice == 8:
             expr = f"x^2+{72//rng.randint(2,6)}/x^2={rng.randint(10,20)}"
         else:
             expr = f"x^4+{rng.randint(2,6)}*x^2-{rng.randint(10,30)}=0"
         label = f"Hidden quadratic {index}"
         cli_input = f"6\n{expr}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(expr), feature="algebra_hard_solve")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, self.algebra_solve_output_checker(expr), feature="algebra_hidden_quadratic")
 
     def random_algebra_simultaneous_hard_case(self, rng, difficulty, index):
         a = rng.randint(1, 4)
@@ -6555,7 +6580,7 @@ class CASIOApp(App):
         label = f"Solve letter {index}: {c}*{v}={rhs}"
         eq = f"{c}*{v}={rhs}"
         return self.make_cli_case(
-            "Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq, var=v), feature="algebra_solve:letter",
+            "Algebra", "algebraProgram.py", f"6\n{eq}\n", label, self.algebra_solve_output_checker(eq, var=v), feature="algebra_solve_letter",
         )
 
     def random_algebra_compare_letter_case(self, rng, difficulty, index):
@@ -6566,7 +6591,7 @@ class CASIOApp(App):
             cli = f"1\n({v}+1)^2\n{v}^2+2*{v}+1\n"
         else:
             cli = f"1\n({v}-2)*({v}+2)\n{v}^2-4\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, algebra_compare_checker(), feature="algebra_compare:letter")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, algebra_compare_checker(), feature="algebra_compare_letter")
 
     def random_algebra_expand_letter_case(self, rng, difficulty, index):
         v = rng.choice(["t", "u", "k"])
@@ -6574,7 +6599,7 @@ class CASIOApp(App):
         p = 4 if rng.random() < 0.5 else 3
         label = f"Expand letter {v} {index}"
         cli = f"3\n({a}*{v}+1)^{p}\n\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, build_checker(contains_all=("out =",), min_lines=2), feature="algebra_expand:letter")
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli, label, build_checker(contains_all=("out =",), min_lines=2), feature="algebra_expand_letter")
 
     def random_algebra_range_case(self, rng, difficulty, index):
         v = rng.choice(["x", "t", "m"])
@@ -7138,7 +7163,7 @@ class CASIOApp(App):
             expr = f"({rng.choice(choices)})*({rng.choice(choices)})*({rng.choice(choices)})"
             cli_input = f"1\n{expr}\n"
             label = f"Triple product {index}"
-            return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
+            return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_product:triple")
         # Triple-product derivatives expand quickly on the calculator. Keep
         # this generator at exam-scale even in chaos mode; deeper compositions
         # are covered by chain/quotient cases without multiplying three huge
@@ -7148,7 +7173,7 @@ class CASIOApp(App):
         expr = f"({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})*({self.random_general_expr(rng, 'x', helper_difficulty, depth)})"
         cli_input = f"1\n{expr}\n"
         label = f"Triple product {index}"
-        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_triple_product")
+        return self.make_cli_case("Derive", "deriveProgram.py", cli_input, label, derive_checker("dy/dx"), feature="derive_product:triple")
 
     def random_derive_chain_quotient_case(self, rng, difficulty, index):
         if difficulty == "random":
@@ -7813,6 +7838,7 @@ class CASIOApp(App):
             generators.append(lambda local_rng, local_difficulty, idx, target=target: self.random_suvat_edge_case(local_rng, local_difficulty, idx, target))
         generators.append(lambda local_rng, local_difficulty, idx: self.random_suvat_projectile_case(local_rng, local_difficulty, idx))
         generators.append(lambda local_rng, local_difficulty, idx: self.random_suvat_two_solution_case(local_rng, local_difficulty, idx))
+        generators.append(lambda local_rng, local_difficulty, idx: self.random_university_suvat_case(local_rng, local_difficulty, idx))
         return self.build_unique_random_cases(generators, count, rng, difficulty)
 
     def random_suvat_projectile_case(self, rng, difficulty, index):
@@ -8083,46 +8109,11 @@ class CASIOApp(App):
         return self.make_cli_case("Integrate", "intProgram.py", cli_input, label, checker, feature=f"integrate_uni:{mode}")
 
     def random_university_suvat_case(self, rng, difficulty, index):
-        mode = rng.choice([
-            "projectile_height", "projectile_wall", "two_solution",
-            "max_height", "range_angle", "different_height",
-        ])
-        if mode == "projectile_height":
-            h0 = rng.randint(5, 20)
-            v0 = rng.randint(10, 30)
-            angle = rng.randint(30, 60)
-            cli_input = f"\n{h0}\n{v0}\n{angle}\n,\n"
-            checker = suvat_cli_checker("s", str(h0))
-        elif mode == "projectile_wall":
-            v0, angle = rng.randint(15, 25), rng.randint(35, 55)
-            wall_h, wall_d = rng.randint(3, 8), rng.randint(6, 12)
-            cli_input = f"\n0\n{v0}\n{angle}\n,\n{wall_h}\n{wall_d}\n"
-            checker = build_checker(contains_all=("equation:", "answer:"), min_lines=3)
-        elif mode == "two_solution":
-            u_val = rng.randint(5, 15)
-            s_val = rng.randint(3, 20)
-            cli_input = f"\n,\n{chr(ord('a')+rng.randint(0,3))}\n{s_val}\n,\n"
-            checker = suvat_expected_float(s_val)
-        elif mode == "max_height":
-            v0, angle = rng.randint(10, 25), rng.randint(30, 60)
-            cli_input = f"\n0\n{v0}\n{angle}\n,\nm\n"
-            checker = suvat_cli_checker("s", str(v0))
-        elif mode == "range_angle":
-            v0, s = rng.randint(15, 30), rng.randint(50, 150)
-            cli_input = f"\n0\n{v0}\n,\na\n{s}\n"
-            checker = suvat_cli_checker("a", str(v0))
-        else:
-            h0, h1 = rng.randint(5, 15), rng.randint(15, 30)
-            v0, angle = rng.randint(10, 25), rng.randint(30, 60)
-            cli_input = f"\n{h0}\n{v0}\n{angle}\n,\n{h1}\n"
-            checker = build_checker(contains_all=("answer:", "equation:"), forbid=("error",), min_lines=3)
-        label = f"University SUVAT {index}: {mode}"
-
-        def runner():
-            out, _ = self.run_cli("SUVATprogram.py", cli_input)
-            return checker(out), out
-
-        return self.make_direct_case("SUVAT", label, runner, input_text=cli_input, feature=f"suvat_uni:{mode}")
+        target = rng.choice(["s", "u", "v", "a", "t"])
+        case = self.random_suvat_case(rng, difficulty, index, target)
+        case.label = f"University SUVAT {index}: exact kinematics"
+        case.feature = f"suvat_uni:{target}"
+        return case
 
     def random_method_surface_case(self, rng, difficulty, index):
         cases = [
@@ -8192,7 +8183,16 @@ class CASIOApp(App):
             ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=moments", "moments", True),
             ("int", "x^2,method=not_a_method", "invalid", False),
         ]
-        flag, expr, method, valid = rng.choice(cases)
+        core = [
+            ("int", "x^2,method=auto", "auto", True),
+            ("derive", "x^3,method=auto", "auto", True),
+            ("trig", "sin(x)=1/2,x,0,2*pi,6,method=auto", "auto", True),
+            ("alg", "2*x+3=11,method=auto", "auto", True),
+            ("stats", "1,2,3,4,method=auto", "auto", True),
+            ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=auto", "auto", True),
+            ("int", "x^2,method=not_a_method", "invalid", False),
+        ]
+        flag, expr, method, valid = core[index - 1] if 1 <= index <= len(core) else rng.choice(cases)
         label = f"Method {index}: {flag}:{method}"
         feature = "method_surface:invalid" if not valid else f"method_surface:{flag}:{method}"
 
@@ -8279,11 +8279,42 @@ class CASIOApp(App):
             return builders
         return [(name, builder) for name, builder in builders if name == program]
 
-    def random_program_counts(self, total_count, builder_count, infinite_mode):
-        """Split finite runs evenly; infinite runs ask each builder for chunks."""
+    def random_program_counts(self, total_count, builders, infinite_mode):
+        """Quota finite runs toward known feature gaps; infinite keeps chunks."""
+        builder_count = len(builders)
         if infinite_mode:
             return [None] * builder_count
-        return self.balanced_counts(total_count, builder_count)
+        quotas = {
+            "Adversarial": 12,
+            "CatalogueGraph": 2,
+            "Algebra": 22,
+            "Trigonometry": 9,
+            "Derive": 9,
+            "Integrate": 12,
+            "Stats": 6,
+            "SUVAT": 13,
+            "Boolean": 4,
+            "MethodSurface": 7,
+            "ExamMix": 4,
+        }
+        weights = [max(1, quotas.get(name, 1)) for name, _ in builders]
+        total_weight = sum(weights)
+        if total_count <= 0 or total_weight <= 0:
+            return self.balanced_counts(total_count, builder_count)
+        exact = [total_count * (w / total_weight) for w in weights]
+        out = [int(x) for x in exact]
+        if total_count >= builder_count:
+            for i, value in enumerate(out):
+                if value == 0:
+                    out[i] = 1
+        while sum(out) > total_count:
+            i = max(range(len(out)), key=lambda j: out[j])
+            out[i] -= 1
+        rem = total_count - sum(out)
+        frac = sorted(((i, exact[i] - int(exact[i])) for i in range(len(out))), key=lambda z: -z[1])
+        for j in range(rem):
+            out[frac[j % len(out)][0]] += 1
+        return out
 
     def iter_random_test_batches(self, builders, program_counts, generation_chunk, infinite_mode):
         """Yield random-test batches, cycling forever when infinite_mode is true."""
@@ -8440,7 +8471,7 @@ class CASIOApp(App):
                 if infinite_mode:
                     generation_chunk = _CASIO_INFINITE_GENERATION_CHUNK
 
-                program_counts = self.random_program_counts(actual_count, len(builders), infinite_mode)
+                program_counts = self.random_program_counts(actual_count, builders, infinite_mode)
                 expected_count = len(builders) * generation_chunk if infinite_mode else sum(program_counts)
                 self.reset_random_run_metrics(expected_count)
 

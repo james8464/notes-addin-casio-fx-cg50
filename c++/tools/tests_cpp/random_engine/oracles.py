@@ -74,12 +74,19 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
             return OutputQuality("review", "partial fraction setup/coefficients missing")
     if re.search(r"\blet\s+u\s*=|\bu\s*=", text) and "du" not in text and "dx=" not in text:
         return OutputQuality("review", "substitution differential missing")
+    if ("integral becomes" in text or "substitution" in text) and not any(item in text for item in ("du", "dx=", "dw", "dt")):
+        return OutputQuality("review", "substitution differential missing")
     if "implicit" in text or "differentiate both sides" in text:
         if not any(word in text for word in ("collect", "isolate", "factor", "solve for")):
             return OutputQuality("review", "implicit isolation step missing")
     if "dx/dt" in text or "dy/dt" in text:
         if "dy/dx" not in text:
             return OutputQuality("review", "parametric dy/dx step missing")
+    if ("mod 2*pi" in text or "modulo 2*pi" in text or "interval" in text) and "x =" in text:
+        if not any(word in text for word in ("base", "arcsin", "arccos", "arctan", "atan", "asin", "acos")):
+            return OutputQuality("review", "trig solve base angle missing")
+        if not any(word in text for word in ("keep", "interval", "check", "reject")):
+            return OutputQuality("review", "trig interval/check step missing")
     if "binomial" in text and not any(word in text for word in ("valid", "|x|", "range")):
         return OutputQuality("review", "binomial validity range missing")
     markers = (

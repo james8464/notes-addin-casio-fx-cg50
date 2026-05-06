@@ -10,6 +10,22 @@ from .grammar import ExpressionGrammar
 from .transforms import apply_transforms, random_transform_chain
 
 
+EXAM_GAP_TOPICS = (
+    "looping_parts",
+    "inverse_trig_parts",
+    "hidden_substitution",
+    "partial_fraction_setup",
+    "algebraic_symmetry",
+    "trig_power_reduction",
+    "definite_symmetry",
+    "implicit_collect",
+    "parametric_second",
+    "interval_trig",
+    "radical_rewrite",
+    "domain_range_edge",
+)
+
+
 @dataclass
 class AdversarialCase:
     label: str
@@ -47,7 +63,7 @@ class AdversarialGenerator:
             if len(out) >= max(0, int(count)) or attempts >= limit:
                 break
             attempts += 1
-            case = self._one(name, len(out) + 1)
+            case = self._one(name, attempts)
             key = case.input_text
             if key in seen:
                 continue
@@ -178,14 +194,19 @@ class AdversarialGenerator:
 
     def _exam_gap(self, index: int) -> AdversarialCase:
         """Worksheet-style traps where a right answer can still lose method marks."""
-        n = self.rng.choice([2, 3, 4, 5, 6])
-        a = self.rng.choice([2, 3, 4])
-        b = self.rng.choice([1, 2, 3, 5])
+        cycle = max(0, (index - 1) // len(EXAM_GAP_TOPICS))
+        n = 2 + (cycle % 5)
+        a = 2 + (cycle % 6)
+        b = 1 + ((2 * cycle + 1) % 7)
+        inv = ("asin", "acos", "atan")[cycle % 3]
+        trig = ("sin", "cos")[cycle % 2]
+        m_sur = 2 + cycle
+        n_sur = 1 + (cycle % 8)
         cases = [
             (
                 "looping_parts",
                 "int",
-                f"exp({a}*x)*cos({b}*x),method=parts",
+                f"exp({a}*x)*{trig}({b}*x),method=parts",
                 "integrate",
                 "expr,method=parts",
                 "parts",
@@ -195,7 +216,7 @@ class AdversarialGenerator:
             (
                 "inverse_trig_parts",
                 "int",
-                f"asin((x-{b})/{a + b + 2}),method=parts",
+                f"{inv}((x-{b})/{a + b + 2}),method=parts",
                 "integrate",
                 "expr,method=parts",
                 "parts",
@@ -205,14 +226,12 @@ class AdversarialGenerator:
             (
                 "hidden_substitution",
                 "int",
-                self.rng.choice(
-                    [
-                        "1/(1+sqrt(x)),method=sub",
-                        f"1/(x*sqrt(1+x^{n})),method=sub",
-                        "exp(sqrt(x)),method=sub",
-                        "x/(sqrt(1+x^2)*(1+sqrt(1+x^2))),method=sub",
-                    ]
-                ),
+                [
+                    "1/(1+sqrt(x)),method=sub",
+                    f"1/(x*sqrt(1+x^{n})),method=sub",
+                    "exp(sqrt(x)),method=sub",
+                    "x/(sqrt(1+x^2)*(1+sqrt(1+x^2))),method=sub",
+                ][cycle % 4],
                 "integrate",
                 "expr,method=sub",
                 "sub",
@@ -222,14 +241,12 @@ class AdversarialGenerator:
             (
                 "partial_fraction_setup",
                 "int",
-                self.rng.choice(
-                    [
-                        "(5*x+7)/((x-1)*(x^2+4)),method=pf",
-                        "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
-                        "1/(x^2*(x+1)),method=pf",
-                        "(x^2+1)/(x^4+1),method=pf",
-                    ]
-                ),
+                [
+                    f"({a + 3}*x+{b + 5})/((x-{(cycle % 4) + 1})*(x^2+{(cycle % 6) + 2})),method=pf",
+                    f"({a}*x^2+{b}*x+{a + b})/((x-{(cycle % 3) + 1})^2*(x^2+{(cycle % 5) + 1})),method=pf",
+                    "1/(x^2*(x+1)),method=pf",
+                    "(x^2+1)/(x^4+1),method=pf",
+                ][cycle % 4],
                 "integrate",
                 "expr,method=pf",
                 "pf",
@@ -239,13 +256,11 @@ class AdversarialGenerator:
             (
                 "algebraic_symmetry",
                 "int",
-                self.rng.choice(
-                    [
-                        "(x^2+1)/(x^4+x^2+1),method=sub",
-                        "(x^2-1)/(x^4+1),method=sub",
-                        "(x^2+1)/(x^4+1),method=sub",
-                    ]
-                ),
+                [
+                    "(x^2+1)/(x^4+x^2+1),method=sub",
+                    "(x^2-1)/(x^4+1),method=sub",
+                    "(x^2+1)/(x^4+1),method=sub",
+                ][cycle % 3],
                 "integrate",
                 "expr,method=sub",
                 "sub",
@@ -255,7 +270,7 @@ class AdversarialGenerator:
             (
                 "trig_power_reduction",
                 "int",
-                self.rng.choice(["sin(x)^4,method=trig", "cos(x)^6,method=trig", "sin(x)^2*cos(x)^4,method=trig"]),
+                ["sin(x)^4,method=trig", "cos(x)^6,method=trig", "sin(x)^2*cos(x)^4,method=trig"][cycle % 3],
                 "integrate",
                 "expr,method=trig",
                 "trig",
@@ -265,13 +280,11 @@ class AdversarialGenerator:
             (
                 "definite_symmetry",
                 "int",
-                self.rng.choice(
-                    [
-                        f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)",
-                        "defint(ln(sin(x)),x,0,pi/2)",
-                        "defint(ln(x)/(1+x^2),x,0,inf)",
-                    ]
-                ),
+                [
+                    f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)",
+                    "defint(ln(sin(x)),x,0,pi/2)",
+                    "defint(ln(x)/(1+x^2),x,0,inf)",
+                ][cycle % 3],
                 "integrate",
                 "defint(expr,var,lo,hi)",
                 "symmetry",
@@ -281,7 +294,7 @@ class AdversarialGenerator:
             (
                 "implicit_collect",
                 "derive",
-                self.rng.choice(["x^y=y^x,x,method=implicit", "sin(x*y)+x^2=y^2,x,method=implicit", "ln(x+y)=x*y,x,method=implicit"]),
+                ["x^y=y^x,x,method=implicit", "sin(x*y)+x^2=y^2,x,method=implicit", "ln(x+y)=x*y,x,method=implicit"][cycle % 3],
                 "diff",
                 "eq,var,method=implicit",
                 "implicit",
@@ -291,7 +304,7 @@ class AdversarialGenerator:
             (
                 "parametric_second",
                 "derive",
-                self.rng.choice(["x=t^2+1/t,y=t^2-1/t,t,x,method=param", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,x,method=param"]),
+                ["x=t^2+1/t,y=t^2-1/t,t,x,method=param", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,x,method=param"][cycle % 2],
                 "diff",
                 "x(t),y(t),t,x,method=param",
                 "param",
@@ -301,20 +314,42 @@ class AdversarialGenerator:
             (
                 "interval_trig",
                 "trig",
-                self.rng.choice(
-                    [
-                        "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform",
-                        "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
-                        "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
-                    ]
-                ),
+                [
+                    "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform",
+                    "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
+                    "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
+                ][cycle % 3],
                 "solve_trig",
                 "eq,var,lo,hi,max,method",
                 "rform",
                 ("identity", "general_or_cast", "interval_filter"),
                 "exam: show identity/R-form, general roots, interval filtering, reject invalid roots",
             ),
+            (
+                "radical_rewrite",
+                "alg",
+                f"rewrite(sqrt({m_sur + n_sur}+sqrt({4 * m_sur * n_sur})))",
+                "rewrite",
+                "expr",
+                "radical_decomposition",
+                ("square_both_sides", "match_surds", "solve_mn"),
+                "exam: show sqrt(m)+sqrt(n), m+n=a, 4mn=b, solve m,n",
+            ),
+            (
+                "domain_range_edge",
+                "alg",
+                [
+                    f"range(sqrt(abs({a}*x+{b})+1))",
+                    f"range(log(10,abs({a}*x+{b})+3))",
+                    f"domain(arcsin((x-{b})/{a + b + 2}))",
+                ][cycle % 3],
+                "range_domain",
+                "expr,[var,lo,hi]",
+                "auto",
+                ("abs_edge", "inverse_domain", "log_guard"),
+                "exam: concise domain/range constraints with no graph-scan fallback",
+            ),
         ]
-        topic, flag, expr, function, sig, method, transforms, note = self.rng.choice(cases)
+        topic, flag, expr, function, sig, method, transforms, note = cases[(index - 1) % len(cases)]
         concept = self._concept(function, sig, method, topic, transforms, 5, "sympy+llm+exam")
         return AdversarialCase("Adv exam-gap {0}: {1}".format(index, topic), flag, expr, concept, True, note, expr)
