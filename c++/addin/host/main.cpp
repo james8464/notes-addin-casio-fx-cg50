@@ -473,6 +473,16 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "solve(")).empty()) {
+                req.mode = 6;
+                req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "inverse(")).empty()) {
+                req.mode = 8;
+                auto parts = split_top_csv(inner);
+                if(parts.size() >= 2 && parts[1].find_first_of("<>=") == std::string::npos) req.expr = parts[0];
+                else req.expr = inner;
+            }
             else if(!(inner = unwrap_call(expr, "compare(")).empty() ||
                     !(inner = unwrap_call(expr, "match(")).empty()) {
                 auto parts = split_top_csv(inner);

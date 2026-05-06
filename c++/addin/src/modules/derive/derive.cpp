@@ -1259,7 +1259,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             bool has_den = compact.find('/') != std::string::npos || compact.find("^-1") != std::string::npos ||
                            has_node_kind(arena, left, NodeKind::Div) || has_node_kind(arena, right, NodeKind::Div);
             if(has_log) steps.push_back("Domain: log args >0.");
-            else if(has_power) steps.push_back("Domain: positive bases where log diff is used.");
+            else if(has_power && (compact.find("^x") != std::string::npos || compact.find("^y") != std::string::npos))
+                steps.push_back("Domain: variable bases >0 where log diff is used.");
             if(has_den) {
                 steps.push_back("Domain: denoms !=0.");
                 steps.push_back("Clear denominators where useful.");

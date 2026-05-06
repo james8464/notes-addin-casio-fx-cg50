@@ -4725,7 +4725,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
         NodeId tan_u = casio::fn(a, "tan", arg);
         Rational denom = r_mul(*lc, Rational{tan_p + 1, 1});
-        steps.push_back("Step 2: Let u=tan(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*sec(" + format_expr_human(a, arg) + ")^2 dx.");
+        steps.push_back("Step 2: Let u=tan(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*sec(" + format_expr_human(a, arg) + ")^2 d" + var + ".");
         steps.push_back("Step 3: Integral becomes a constant times Integral u^" + std::to_string(tan_p) + " du.");
         steps.push_back("Step 4: Apply the power rule for u.");
         return casio::simplify(a, mul_coeff(a, r_div(coeff, denom), casio::power(a, tan_u, casio::num(a, tan_p + 1))));
@@ -4733,7 +4733,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     if(csc_p == 2 && cot_p > 0 && sin_p == 0 && cos_p == 0 && tan_p == 0 && sec_p == 0) {
         NodeId cot_u = casio::fn(a, "cot", arg);
         Rational denom = r_mul(*lc, Rational{cot_p + 1, 1});
-        steps.push_back("Step 2: Let u=cot(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*cosec(" + format_expr_human(a, arg) + ")^2 dx.");
+        steps.push_back("Step 2: Let u=cot(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*cosec(" + format_expr_human(a, arg) + ")^2 d" + var + ".");
         steps.push_back("Step 3: Integral becomes a constant times Integral u^" + std::to_string(cot_p) + " du.");
         steps.push_back("Step 4: Apply the power rule for u.");
         return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, denom)), casio::power(a, cot_u, casio::num(a, cot_p + 1))));
@@ -4751,7 +4751,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c[static_cast<std::size_t>(cos_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
             steps.push_back("Step 2: Odd sine power: save one sin(" + format_expr_human(a, arg) + "), convert the rest with sin^2=1-cos^2.");
-            steps.push_back("Step 3: Let u=cos(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*sin(" + format_expr_human(a, arg) + ") dx.");
+            steps.push_back("Step 3: Let u=cos(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*sin(" + format_expr_human(a, arg) + ") d" + var + ".");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "cos", arg), *lc, true)));
         }
@@ -4765,7 +4765,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c[static_cast<std::size_t>(sin_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
             steps.push_back("Step 2: Odd cosine power: save one cos(" + format_expr_human(a, arg) + "), convert the rest with cos^2=1-sin^2.");
-            steps.push_back("Step 3: Let u=sin(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*cos(" + format_expr_human(a, arg) + ") dx.");
+            steps.push_back("Step 3: Let u=sin(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*cos(" + format_expr_human(a, arg) + ") d" + var + ".");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "sin", arg), *lc, false)));
         }

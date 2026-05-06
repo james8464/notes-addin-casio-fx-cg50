@@ -754,6 +754,64 @@ static std::string rat_node_text(Arena &a, Rational r)
     return format_expr(a, casio::num(a, r.num, r.den));
 }
 
+static std::optional<Rational> parse_rational_text(std::string s)
+{
+    s = trim_text(s);
+    if(s.empty()) return std::nullopt;
+    auto slash = s.find('/');
+    try {
+        if(slash == std::string::npos) {
+            std::size_t pos = 0;
+            long long n = std::stoll(s, &pos);
+            if(pos != s.size()) return std::nullopt;
+            return Rational{n, 1};
+        }
+        std::size_t p1 = 0, p2 = 0;
+        long long n = std::stoll(s.substr(0, slash), &p1);
+        long long d = std::stoll(s.substr(slash + 1), &p2);
+        if(p1 != slash || p2 != s.size() - slash - 1 || d == 0) return std::nullopt;
+        Rational r{n, d};
+        r.normalize();
+        return r;
+    } catch(...) {
+        return std::nullopt;
+    }
+}
+
+static std::optional<std::string> linear_fractional_interval_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::string const &lo,
+    std::string const &hi,
+    std::vector<std::string> &steps
+)
+{
+    if(lo.empty() || hi.empty()) return std::nullopt;
+    std::string hi_key;
+    for(char ch : hi) {
+        if(!std::isspace(static_cast<unsigned char>(ch))) hi_key.push_back((char)std::tolower((unsigned char)ch));
+    }
+    if(hi_key != "inf" && hi_key != "+inf" && hi_key != "infinity") return std::nullopt;
+    auto x0 = parse_rational_text(lo);
+    if(!x0) return std::nullopt;
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || !is_zero(rp.num.a2) || !is_zero(rp.den.a2) || is_zero(rp.den.a1)) return std::nullopt;
+    Rational A = rp.num.a1, B = rp.num.a0, C = rp.den.a1, D = rp.den.a0;
+    Rational det = r_sub(r_mul(A, D), r_mul(B, C));
+    if(is_zero(det)) return std::nullopt;
+    Rational pole = r_div(r_neg(D), C);
+    if(r_cmp(pole, *x0) >= 0) return std::nullopt;
+    Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
+    Rational asym = r_div(A, C);
+    int cmp = r_cmp(y0, asym);
+    if(cmp == 0) return std::nullopt;
+    steps.push_back("Write as y = " + rat_node_text(a, asym) + " + k/(" + format_expr(a, poly2_to_node(a, Poly2{Rational{0,1}, C, D, true}, var)) + ").");
+    steps.push_back("Endpoint gives y = " + rat_node_text(a, y0) + "; horizontal asymptote y = " + rat_node_text(a, asym) + ".");
+    return cmp > 0 ? rat_node_text(a, asym) + " < y <= " + rat_node_text(a, y0)
+                   : rat_node_text(a, y0) + " <= y < " + rat_node_text(a, asym);
+}
+
 static bool is_x_square_factor(Arena &a, NodeId n, std::string const &var)
 {
     return is_pow_var(a, n, var, 2);
@@ -1695,15 +1753,18 @@ static std::string system_pair_text(long long x, long long y)
 // Set u=log/base exp. for exponential systems of the same substitution type.
 static std::optional<std::vector<std::string>> symmetric_sum_product_system(std::string const &key)
 {
-    std::string const prefix = "solve([x^2+xy+y^2=";
+    std::string body = key;
+    if(body.rfind("solve(", 0) == 0 && body.size() > 7 && body.back() == ')')
+        body = body.substr(6, body.size() - 7);
+    std::string const prefix = "[x^2+xy+y^2=";
     std::string const mid = ",x+y+xy=";
-    std::string const suffix = "],[x,y])";
-    if(key.rfind(prefix, 0) != 0) return std::nullopt;
-    std::size_t midpos = key.find(mid, prefix.size());
+    std::string const suffix = "],[x,y]";
+    if(body.rfind(prefix, 0) != 0) return std::nullopt;
+    std::size_t midpos = body.find(mid, prefix.size());
     if(midpos == std::string::npos) return std::nullopt;
-    if(key.size() <= suffix.size() || key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
-    auto A = parse_i64_text(key.substr(prefix.size(), midpos - prefix.size()));
-    auto B = parse_i64_text(key.substr(midpos + mid.size(), key.size() - (midpos + mid.size()) - suffix.size()));
+    if(body.size() <= suffix.size() || body.compare(body.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
+    auto A = parse_i64_text(body.substr(prefix.size(), midpos - prefix.size()));
+    auto B = parse_i64_text(body.substr(midpos + mid.size(), body.size() - (midpos + mid.size()) - suffix.size()));
     if(!A || !B) return std::nullopt;
 
     // Let s=x+y,p=xy. Then x^2+xy+y^2=s^2-p and x+y+xy=s+p.
@@ -2002,6 +2063,64 @@ static std::optional<std::string> log_linear_range(Arena &a, NodeId n, std::stri
     auto p = poly_of(a, x.a, var);
     if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
     return std::string("all real y");
+}
+
+static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, NodeId n, NodeId u)
+{
+    if(casio::same_by_sig(a, n, u)) return std::make_pair(Rational{1, 1}, Rational{0, 1});
+    if(auto q = as_num(a, n)) return std::make_pair(Rational{0, 1}, *q);
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        Rational c{1, 1};
+        bool saw_u = false;
+        for(NodeId k : x.kids) {
+            if(casio::same_by_sig(a, k, u)) saw_u = true;
+            else if(auto q = as_num(a, k)) c = r_mul(c, *q);
+            else return std::nullopt;
+        }
+        if(!saw_u) return std::nullopt;
+        return std::make_pair(c, Rational{0, 1});
+    }
+    if(x.kind == NodeKind::Add) {
+        Rational m{0, 1}, b{0, 1};
+        for(NodeId k : x.kids) {
+            auto p = linear_in_expr(a, k, u);
+            if(!p) return std::nullopt;
+            m = r_add(m, p->first);
+            b = r_add(b, p->second);
+        }
+        return std::make_pair(m, b);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> log_mobius_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    std::vector<NodeId> logs;
+    std::function<void(NodeId)> walk = [&](NodeId id) {
+        Node const &z = a.get(id);
+        if(z.kind == NodeKind::Fn && z.fkind == FnKind::Log) {
+            logs.push_back(id);
+            return;
+        }
+        if(z.kind == NodeKind::Add || z.kind == NodeKind::Mul) for(NodeId k : z.kids) walk(k);
+        else if(z.kind == NodeKind::Div || z.kind == NodeKind::Pow) { walk(z.a); walk(z.b); }
+    };
+    walk(n);
+    if(logs.empty()) return std::nullopt;
+    NodeId u = logs.front();
+    for(NodeId l : logs) if(!casio::same_by_sig(a, l, u)) return std::nullopt;
+    auto top = linear_in_expr(a, x.a, u);
+    auto bot = linear_in_expr(a, x.b, u);
+    if(!top || !bot || is_zero(bot->first)) return std::nullopt;
+    Rational A = top->first, B = top->second, C = bot->first, D = bot->second;
+    if(is_zero(r_sub(r_mul(A, D), r_mul(B, C)))) return std::nullopt;
+    Rational asym = r_div(A, C);
+    steps.push_back("Let u=" + format_expr(a, u) + "; as x varies on its domain, u covers all real values.");
+    steps.push_back("Then y is a fractional-linear function of u.");
+    return "y != " + rat_node_text(a, asym);
 }
 
 static std::optional<std::string> positive_linear_domain(Arena &a, NodeId n, std::string const &var)
@@ -3409,6 +3528,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *rq;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, steps)) {
+                    range_answer = *lf;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto sqrt_min = sqrt_abs_linear_min_info(arena, n, var)) {
                     range_answer = "y >= " + sqrt_bound_text(arena, sqrt_min->min);
                     if(sqrt_min->piecewise_sum) steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, sqrt_min->min) + ".");
@@ -3473,6 +3596,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 else if(auto plain_log_range = log_linear_range(arena, n, var)) {
                     range_answer = *plain_log_range;
                     steps.push_back("A non-constant linear input covers all positive log arguments.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto lm = log_mobius_range(arena, n, var, steps)) {
+                    range_answer = *lm;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Div) {

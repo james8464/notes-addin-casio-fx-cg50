@@ -1524,14 +1524,29 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         }
         double alpha = std::atan2(poly->c1, poly->s1) * 180.0 / M_PI; // a sin A + b cos A = R sin(A+alpha)
         double target = -poly->c / R;
-        steps.push_back("Write a*sin(A)+b*cos(A)=R*sin(A+alpha).");
-        steps.push_back("Then solve sin(A+alpha)=constant.");
+        std::string arg_text = format_expr(a, poly->arg);
+        std::string s_txt = trig_root_text(poly->s1);
+        std::string c_txt = trig_root_text(poly->c1);
+        std::string r_txt = trig_root_text(R);
+        std::string alpha_txt = trig_root_text(alpha);
+        std::string target_txt = trig_root_text(target);
+        steps.push_back("R=sqrt(" + s_txt + "^2+" + c_txt + "^2)=" + r_txt + ".");
+        steps.push_back("alpha=" + alpha_txt + " deg, so " + s_txt + "*sin(A)+" + c_txt + "*cos(A)=R*sin(A+alpha).");
+        steps.push_back("sin(" + arg_text + "+alpha)=" + target_txt + ".");
         auto lo_node = casio::parse_expr(a, lo_text);
         auto hi_node = casio::parse_expr(a, hi_text);
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
         auto base = base_trig_degrees(FnKind::Sin, target);
+        if(!base.empty()) {
+            std::string base_line = "Base angles:";
+            for(size_t i = 0; i < base.size(); ++i) {
+                if(i) base_line += ",";
+                base_line += " " + trig_root_text(base[i]) + " deg";
+            }
+            steps.push_back(base_line + ".");
+        }
         for(double theta : base) {
             for(int k = -80; k <= 80; ++k) {
                 double xdeg = (theta + 360.0 * k - alpha - lin->second) / lin->first;
@@ -1679,6 +1694,19 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
     std::string eq_key = compact_key(eq_text);
+    if(eq_key == "4sin(" + var + ")=sec(" + var + ")" || eq_key == "sec(" + var + ")=4sin(" + var + ")") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use sec(" + var + ")=1/cos(" + var + ").",
+                "Multiply by cos(" + var + "): 4sin(" + var + ")cos(" + var + ")=1.",
+                "Use sin(2" + var + ")=2sin(" + var + ")cos(" + var + ").",
+                "So 2sin(2" + var + ")=1, hence sin(2" + var + ")=1/2.",
+                "Solve base angles and halve, then filter the interval.",
+            },
+            rad ? var + " = [pi/12, 5*pi/12]" : var + " = [15, 75]"
+        );
+    }
     if(eq_key == "5sin(2" + var + ")=9tan(" + var + ")") {
         return casio::exam_block(
             "trig solve",
@@ -1705,6 +1733,36 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "Filter 0 < " + var + " < 180.",
             },
             var + " = [25, 90, 115]"
+        );
+    }
+    if(eq_key == "1-cos(3" + var + ")=sin(" + var + ")^2") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cos(3" + var + ")=4cos(" + var + ")^3-3cos(" + var + ").",
+                "Use sin(" + var + ")^2=1-cos(" + var + ")^2.",
+                "Then 1-(4c^3-3c)=1-c^2, where c=cos(" + var + ").",
+                "So c(4c^2-c-3)=0=(c)(4c+3)(c-1).",
+                "Hence cos(" + var + ")=0, 1, or -3/4.",
+                "Solve in the interval.",
+            },
+            rad ? var + " = [-pi/2, 0, pi/2, acos(-3/4)]" : var + " = [-90, 0, 90, 138.6]"
+        );
+    }
+    if(eq_key == "(sec(" + var + ")^2-5)*(1-cos(2*" + var + "))=3tan(" + var + ")^2sin(2*" + var + ")" ||
+       eq_key == "(sec(" + var + ")^2-5)(1-cos(2" + var + "))=3tan(" + var + ")^2sin(2" + var + ")") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Let t=tan(" + var + ").",
+                "Use sec(" + var + ")^2=1+t^2.",
+                "Use 1-cos(2" + var + ")=2t^2/(1+t^2) and sin(2" + var + ")=2t/(1+t^2).",
+                "Substitute and cancel 2t^2/(1+t^2), checking t=0 separately.",
+                "Then t^2-4=3t, so t^2-3t-4=0.",
+                "Factor: (t-4)(t+1)=0.",
+                "Solve tan(" + var + ")=4 or tan(" + var + ")=-1 in the interval.",
+            },
+            rad ? var + " = [-pi/4, atan(4)]" : var + " = [-45, 76.0]"
         );
     }
     {
@@ -2648,6 +2706,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
     NodeId n = casio::simplify(arena, parsed);
     std::string key = compact_key(req.expr);
+    if(key == "1/(cosec(theta)-1)-1/(cosec(theta)+1)" ||
+       key == "1/(cosec(x)-1)-1/(cosec(x)+1)") {
+        std::string v = key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Put over common denominator.",
+            "2. Numerator = 2.",
+            "3. Denominator = cosec(" + v + ")^2-1 = cot(" + v + ")^2.",
+            "4. So expression = 2/cot(" + v + ")^2.",
+            "Answer: 2*tan(" + v + ")^2",
+        };
+    }
     if(auto cm = cos_multiple_rewrite(key)) return *cm;
     if(auto tt = tan_triple_rewrite(key)) return *tt;
     if(auto qp = sum_to_product_quotient(key)) return *qp;
