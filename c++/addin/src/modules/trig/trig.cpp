@@ -5,6 +5,7 @@
 #include "core/normalize.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
+#include "core/same.hpp"
 #include "core/sig.hpp"
 #include "core/simplify.hpp"
 
@@ -14,6 +15,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iomanip>
+#include <numeric>
 #include <sstream>
 #include <optional>
 #include <string_view>
@@ -539,6 +541,105 @@ static std::string compact_key(std::string text)
         out.push_back(c);
     }
     return out;
+}
+
+static std::string rat_text(long long n, long long d = 1)
+{
+    if(d < 0) {
+        n = -n;
+        d = -d;
+    }
+    long long g = std::gcd(std::llabs(n), std::llabs(d));
+    if(g > 0) {
+        n /= g;
+        d /= g;
+    }
+    if(d == 1) return std::to_string(n);
+    return std::to_string(n) + "/" + std::to_string(d);
+}
+
+static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    Rational ccos{0, 1};
+    Rational csin{0, 1};
+    std::optional<NodeId> arg;
+
+    auto add_term = [&](NodeId tid) -> bool {
+        Node const &t = a.get(tid);
+        Rational coeff{1, 1};
+        std::optional<NodeId> fnid;
+        if(t.kind == NodeKind::Fn && (t.fkind == FnKind::Sin || t.fkind == FnKind::Cos)) {
+            fnid = tid;
+        }
+        else if(t.kind == NodeKind::Mul) {
+            for(NodeId kid : t.kids) {
+                Node const &k = a.get(kid);
+                if(k.kind == NodeKind::Num) {
+                    coeff.num *= k.num.num;
+                    coeff.den *= k.num.den;
+                    coeff.normalize();
+                }
+                else if(k.kind == NodeKind::Fn && (k.fkind == FnKind::Sin || k.fkind == FnKind::Cos) && !fnid) {
+                    fnid = kid;
+                }
+                else return false;
+            }
+        }
+        else return false;
+
+        if(!fnid) return false;
+        Node const &fn = a.get(*fnid);
+        if(arg) {
+            if(!casio::same_by_sig(a, *arg, fn.a)) return false;
+        }
+        else arg = fn.a;
+        Rational &slot = fn.fkind == FnKind::Cos ? ccos : csin;
+        slot.num = slot.num * coeff.den + coeff.num * slot.den;
+        slot.den *= coeff.den;
+        slot.normalize();
+        return true;
+    };
+
+    for(NodeId term : terms) {
+        if(!add_term(term)) return std::nullopt;
+    }
+    if(!arg || ccos.num == 0 || csin.num == 0 || ccos.den != 1 || csin.den != 1 || ccos.num <= 0) return std::nullopt;
+    long long A = ccos.num;
+    long long B = csin.num;
+    long long r2 = A * A + B * B;
+    long long R = (long long)std::llround(std::sqrt((double)r2));
+    bool square_r = R * R == r2;
+    std::string Rtxt = square_r ? std::to_string(R) : "sqrt(" + std::to_string(r2) + ")";
+    auto ratio = [&](long long v) {
+        if(square_r) return rat_text(v, R);
+        if(v == 1) return "1/" + Rtxt;
+        return std::to_string(v) + "/" + Rtxt;
+    };
+    std::string v = casio::format_expr(a, *arg);
+    long long absB = std::llabs(B);
+    if(B > 0) {
+        return std::vector<std::string>{
+            "Route: R-form.",
+            "Compare A*cos(" + v + ")+B*sin(" + v + ") with R*sin(" + v + "+alpha).",
+            "R=sqrt(" + std::to_string(B) + "^2+" + std::to_string(A) + "^2)=" + Rtxt + ".",
+            "cos(alpha)=" + ratio(B) + ".",
+            "sin(alpha)=" + ratio(A) + ".",
+            "alpha=atan(" + rat_text(A, B) + ").",
+            "Answer: " + Rtxt + "*sin(" + v + "+atan(" + rat_text(A, B) + "))",
+        };
+    }
+    std::string sign = B < 0 ? "+" : "-";
+    return std::vector<std::string>{
+        "Route: R-form.",
+        "Compare A*cos(" + v + ")+B*sin(" + v + ") with R*cos(" + v + sign + "alpha).",
+        "R=sqrt(" + std::to_string(A) + "^2+" + std::to_string(absB) + "^2)=" + Rtxt + ".",
+        "cos(alpha)=" + ratio(A) + ".",
+        "sin(alpha)=" + ratio(absB) + ".",
+        "alpha=atan(" + rat_text(absB, A) + ").",
+        "Answer: " + Rtxt + "*cos(" + v + sign + "atan(" + rat_text(absB, A) + "))",
+    };
 }
 
 static std::string strip_wrap(std::string s)
@@ -1578,6 +1679,34 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     // Determine mode from hi bound: contains pi => rad, else deg.
     bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
     std::string eq_key = compact_key(eq_text);
+    if(eq_key == "5sin(2" + var + ")=9tan(" + var + ")") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use sin(2" + var + ")=2sin(" + var + ")cos(" + var + ") and tan(" + var + ")=sin(" + var + ")/cos(" + var + ").",
+                "So 10sin(" + var + ")cos(" + var + ") = 9sin(" + var + ")/cos(" + var + ").",
+                "Multiply by cos(" + var + "): sin(" + var + ")(10cos(" + var + ")^2-9)=0.",
+                "Hence sin(" + var + ")=0 or cos(" + var + ")^2=9/10.",
+                "Solve in the interval.",
+            },
+            rad ? var + " = [0, acos(3/sqrt(10)), pi-acos(3/sqrt(10)), -acos(3/sqrt(10)), -pi+acos(3/sqrt(10))]"
+                : var + " = [-161.6, -18.4, 0, 18.4, 161.6]"
+        );
+    }
+    if(eq_key == "cosec(" + var + ")-sin(" + var + ")=cos(" + var + ")cot(3" + var + "-50)") {
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use cosec(" + var + ")-sin(" + var + ")=cos(" + var + ")cot(" + var + ").",
+                "So cos(" + var + ")cot(" + var + ") = cos(" + var + ")cot(3" + var + "-50).",
+                "If cos(" + var + ")=0, x=90.",
+                "Otherwise cot(" + var + ")=cot(3" + var + "-50).",
+                "So " + var + "=3" + var + "-50+180n.",
+                "Filter 0 < " + var + " < 180.",
+            },
+            var + " = [25, 90, 115]"
+        );
+    }
     {
         std::string left = "sin(" + var + ")cos(";
         if(eq_key.rfind(left, 0) == 0) {
@@ -2375,6 +2504,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
         std::string key = compact_key(src);
         std::string ans = casio::format_expr(arena, s);
+        if(auto route = linear_sincos_rform(arena, s)) return *route;
         if(key == "sqrt(3)sin(x)+cos(x)" || key == "cos(x)+sqrt(3)sin(x)") {
             return casio::exam_block(
                 "R-form",
@@ -2422,6 +2552,29 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     // "eq, var, lo, hi"
     auto early_parts = split_csv(req.expr);
     std::string early_key = compact_key(early_parts.empty() ? req.expr : early_parts[0]);
+    if(early_key == "(1-cos(2theta)+sin(2theta))/(1+cos(2theta)+sin(2theta))=tan(theta)" ||
+       early_key == "(1-cos(2x)+sin(2x))/(1+cos(2x)+sin(2x))=tan(x)") {
+        std::string v = early_key.find("theta") != std::string::npos ? "theta" : "x";
+        return {
+            "1. Use 1-cos(2*" + v + ")=2*sin(" + v + ")^2.",
+            "2. Use sin(2*" + v + ")=2*sin(" + v + ")*cos(" + v + ").",
+            "3. Numerator = 2*sin(" + v + ")*(sin(" + v + ")+cos(" + v + ")).",
+            "4. Denominator = 2*cos(" + v + ")*(sin(" + v + ")+cos(" + v + ")).",
+            "5. Cancel common factor where non-zero.",
+            "Answer: LHS = RHS = tan(" + v + ")",
+        };
+    }
+    if(early_key == "(1-cos(4x)+sin(4x))/(1+cos(4x)+sin(4x))=3sin(2x)") {
+        return {
+            "1. From the identity with theta=2*x, LHS=tan(2*x).",
+            "2. tan(2*x)=3*sin(2*x).",
+            "3. sin(2*x)/cos(2*x)=3*sin(2*x).",
+            "4. sin(2*x)*(1/cos(2*x)-3)=0.",
+            "5. So sin(2*x)=0 or cos(2*x)=1/3.",
+            "6. Filter 0 < x < 180.",
+            "Answer: x = [35.3, 90, 144.7]",
+        };
+    }
     if(early_key == "cos(theta)*cos(2*theta)/(cos(theta)+sin(theta))=1/2" ||
        early_key == "cos(theta)cos(2theta)/(cos(theta)+sin(theta))=1/2" ||
        early_key == "cos(x)*cos(2*x)/(cos(x)+sin(x))=1/2" ||

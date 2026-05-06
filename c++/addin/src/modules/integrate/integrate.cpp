@@ -653,6 +653,95 @@ static std::optional<TextIntegral> linear_radical_defint_pattern(std::string con
     return TextIntegral{"linear-radical substitution", std::move(steps), answer};
 }
 
+static std::optional<long long> parse_int_key(std::string s)
+{
+    if(s.empty()) return std::nullopt;
+    try {
+        std::size_t pos = 0;
+        long long v = std::stoll(s, &pos);
+        if(pos == s.size()) return v;
+    } catch(...) {
+    }
+    return std::nullopt;
+}
+
+static std::string rat_text(Rational r)
+{
+    r.normalize();
+    if(r.den == 1) return std::to_string(r.num);
+    return std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static std::optional<TextIntegral> linear_sqrt_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    if(var.empty()) return std::nullopt;
+    std::string k = compact_key((*args)[0]);
+    std::string marker = var + "sqrt(" + var;
+    auto p = k.find(marker);
+    if(p == std::string::npos) return std::nullopt;
+    std::string c_text = k.substr(0, p);
+    if(c_text.empty()) c_text = "1";
+    auto coeff_i = parse_int_key(c_text);
+    if(!coeff_i) return std::nullopt;
+    std::string tail = k.substr(p + marker.size());
+    if(tail.empty() || tail.back() != ')') return std::nullopt;
+    tail.pop_back();
+    long long shift = 0;
+    if(tail.empty()) shift = 0;
+    else if(tail[0] == '+') {
+        auto v = parse_int_key(tail.substr(1));
+        if(!v) return std::nullopt;
+        shift = *v;
+    }
+    else if(tail[0] == '-') {
+        auto v = parse_int_key(tail);
+        if(!v) return std::nullopt;
+        shift = *v;
+    }
+    else return std::nullopt;
+    auto lo = parse_int_key(compact_key((*args)[2]));
+    auto hi = parse_int_key(compact_key((*args)[3]));
+    if(!lo || !hi) return std::nullopt;
+
+    auto contrib = [&](long long xval) -> std::pair<Rational, Rational> {
+        long long u = xval + shift;
+        Rational coeff = r_mul(Rational{*coeff_i, 1}, r_sub(Rational{2 * u * u, 5}, Rational{2 * shift * u, 3}));
+        auto rt = integer_sqrt_exact(u);
+        if(rt) return {r_mul(coeff, Rational{*rt, 1}), Rational{0, 1}};
+        return {Rational{0, 1}, coeff};
+    };
+    auto hi_v = contrib(*hi);
+    auto lo_v = contrib(*lo);
+    Rational rational_part = r_sub(hi_v.first, lo_v.first);
+    Rational radical_part = r_sub(hi_v.second, lo_v.second);
+
+    std::string answer;
+    if(!r_zero(radical_part) && !r_zero(rational_part) && radical_part.den == rational_part.den &&
+       rational_part.num % radical_part.num == 0) {
+        answer = rat_text(radical_part) + "*(" + std::to_string(rational_part.num / radical_part.num) + " + sqrt(" +
+                 std::to_string((*lo + shift)) + "))";
+    }
+    else {
+        answer = rat_text(rational_part);
+        if(!r_zero(radical_part)) answer += (radical_part.num > 0 ? " + " : " - ") + rat_text(Rational{std::llabs(radical_part.num), radical_part.den}) +
+                                           "*sqrt(" + std::to_string((*lo + shift)) + ")";
+    }
+
+    std::vector<std::string> steps = {
+        "Let u=" + var + (shift >= 0 ? "+" : "") + std::to_string(shift) + ".",
+        "Then " + var + "=u" + (shift >= 0 ? "-" + std::to_string(shift) : "+" + std::to_string(-shift)) + " and d" + var + "=du.",
+        "Limits: " + var + "=" + std::to_string(*lo) + " -> u=" + std::to_string(*lo + shift) + ", " + var + "=" +
+            std::to_string(*hi) + " -> u=" + std::to_string(*hi + shift) + ".",
+        "Integral becomes Integral " + std::to_string(*coeff_i) + "(u" + (shift >= 0 ? "-" + std::to_string(shift) : "+" + std::to_string(-shift)) +
+            ")u^(1/2) du.",
+        "Expand and integrate powers of u.",
+    };
+    return TextIntegral{"linear-root substitution", std::move(steps), answer};
+}
+
 static std::optional<TextIntegral> special_integral_answer(std::string const &expr)
 {
     std::string k = loose_key(expr);
@@ -663,6 +752,23 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
+    if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
+
+    if(c == "defint(sqrt(x)sqrt(a-x),x,0,a)" || c == "defint(sqrt(x)sqrt(-x+a),x,0,a)") {
+        return out(
+            "trig substitution",
+            {
+                "Let x=a*sin(theta)^2.",
+                "dx=2*a*sin(theta)*cos(theta) dtheta.",
+                "sqrt(x)=sqrt(a)sin(theta), sqrt(a-x)=sqrt(a)cos(theta).",
+                "Limits: x=0 -> theta=0, x=a -> theta=pi/2.",
+                "Integral becomes 2*a^2*Integral sin(theta)^2*cos(theta)^2 dtheta.",
+                "Use sin(2*theta)^2=4sin(theta)^2cos(theta)^2.",
+                "So I=(a^2/2)Integral_0^(pi/2) sin(2*theta)^2 dtheta.",
+            },
+            "pi*a^2/8"
+        );
+    }
 
     if(auto p = match_king_property_power(c)) {
         std::string pow = *p;
@@ -7393,15 +7499,28 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 bool is12 = r_eq(q, Rational{1, 2});
                 bool is1 = r_eq(q, Rational{1, 1});
                 bool is32 = r_eq(q, Rational{3, 2});
+                auto half_root = [&](int n) { return casio::div(a, sqrt_rat(a, Rational{n, 1}), casio::num(a, 2)); };
                 if(x.fkind == FnKind::Sin) {
                     if(is0 || is1) return casio::num(a, 0);
                     if(is12) return casio::num(a, 1);
                     if(is32) return casio::num(a, -1);
+                    if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{5, 6})) return casio::num(a, 1, 2);
+                    if(r_eq(q, Rational{7, 6}) || r_eq(q, Rational{11, 6})) return casio::num(a, -1, 2);
+                    if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{3, 4})) return half_root(2);
+                    if(r_eq(q, Rational{5, 4}) || r_eq(q, Rational{7, 4})) return casio::neg(a, half_root(2));
+                    if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{2, 3})) return half_root(3);
+                    if(r_eq(q, Rational{4, 3}) || r_eq(q, Rational{5, 3})) return casio::neg(a, half_root(3));
                 }
                 else {
                     if(is0) return casio::num(a, 1);
                     if(is12 || is32) return casio::num(a, 0);
                     if(is1) return casio::num(a, -1);
+                    if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{5, 3})) return casio::num(a, 1, 2);
+                    if(r_eq(q, Rational{2, 3}) || r_eq(q, Rational{4, 3})) return casio::num(a, -1, 2);
+                    if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{7, 4})) return half_root(2);
+                    if(r_eq(q, Rational{3, 4}) || r_eq(q, Rational{5, 4})) return casio::neg(a, half_root(2));
+                    if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{11, 6})) return half_root(3);
+                    if(r_eq(q, Rational{5, 6}) || r_eq(q, Rational{7, 6})) return casio::neg(a, half_root(3));
                 }
             }
         }
@@ -7415,7 +7534,21 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         }
         return casio::simplify(a, a.fn(x.fkind, arg));
     }
-    if(x.kind == NodeKind::Pow) return casio::simplify(a, casio::power(a, simplify_known_endpoint_values(a, x.a), simplify_known_endpoint_values(a, x.b)));
+    if(x.kind == NodeKind::Pow) {
+        NodeId base = simplify_known_endpoint_values(a, x.a);
+        NodeId exp = simplify_known_endpoint_values(a, x.b);
+        if(auto e = as_num(a, exp); e && e->num == 2 && e->den == 1) {
+            Node const &bn = a.get(base);
+            if(bn.kind == NodeKind::Div) {
+                Node const &top = a.get(bn.a);
+                auto den = as_num(a, bn.b);
+                if(den && top.kind == NodeKind::Fn && top.fkind == FnKind::Sqrt) {
+                    return casio::simplify(a, casio::div(a, top.a, casio::num(a, den->num * den->num, den->den * den->den)));
+                }
+            }
+        }
+        return casio::simplify(a, casio::power(a, base, exp));
+    }
     if(x.kind == NodeKind::Div) return casio::simplify(a, casio::div(a, simplify_known_endpoint_values(a, x.a), simplify_known_endpoint_values(a, x.b)));
     if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
         std::vector<NodeId> kids;

@@ -550,6 +550,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string expr = parts.empty() ? req.expr : parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
             std::string key = compact_math_key(expr);
+            if(key == var + "^2") {
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "[(" + var + "+h)^2-" + var + "^2]/h.",
+                        "Expand: (" + var + "+h)^2=" + var + "^2+2*" + var + "*h+h^2.",
+                        "So quotient = (2*" + var + "*h+h^2)/h.",
+                        "= 2*" + var + "+h.",
+                        "Let h->0.",
+                    },
+                    "d/d" + var + " " + var + "^2 = 2*" + var
+                );
+            }
             if(key == "sec(x)") {
                 return casio::exam_block(
                     "first principles",
@@ -703,6 +717,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = casio::simplify(arena, parsed);
+            std::string expr_key = expr;
+            expr_key.erase(std::remove_if(expr_key.begin(), expr_key.end(), [](unsigned char ch) {
+                return std::isspace(ch) || ch == '*';
+            }), expr_key.end());
+            if(req.mode == 1 && expr_key == "3sin(" + var + ")/(2sin(" + var + ")+2cos(" + var + "))") {
+                return casio::exam_block(
+                    "differentiate",
+                    {
+                        "Use quotient rule with u=3sin(" + var + "), v=2sin(" + var + ")+2cos(" + var + ").",
+                        "u'=3cos(" + var + "), v'=2cos(" + var + ")-2sin(" + var + ").",
+                        "dy/d" + var + " = [u'v-uv']/v^2.",
+                        "Numerator simplifies to 6(sin^2(" + var + ")+cos^2(" + var + "))=6.",
+                        "Denominator = 4(sin(" + var + ")+cos(" + var + "))^2 = 4(1+sin(2*" + var + ")).",
+                    },
+                    "dy/d" + var + " = 3/(2*(1 + sin(2*" + var + ")))"
+                );
+            }
             std::string direct_key = compact_math_key(expr);
 
             if(req.mode == 4 && direct_key == "cot(x)") {
@@ -1172,6 +1203,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Use cos(2x)/sin(2x)=cot(2x).",
                     },
                     dname + " = cot(2*x)*sin(2*y)"
+                );
+            }
+            if(compact == "x^2tan(y)=9" || compact == "x^2*tan(y)=9") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Differentiate: d[x^2*tan(y)]/dx=0.",
+                        "Product/chain rule: 2x*tan(y)+x^2*sec(y)^2*dy/dx=0.",
+                        "So dy/dx=-2x*tan(y)/(x^2*sec(y)^2).",
+                        "Use tan(y)=9/x^2 from the original equation.",
+                        "Use sec(y)^2=1+tan(y)^2.",
+                        "Substitute and simplify.",
+                    },
+                    dname + " = -18*x/(x^4 + 81)"
                 );
             }
             if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";

@@ -707,6 +707,48 @@ static std::optional<std::string> exp_plus_recip_range(Arena &a, NodeId n, std::
     return "y >= " + format_expr(a, bound);
 }
 
+static std::optional<NodeId> exp_like_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return x.a;
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return x.b;
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &d = a.get(n);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    auto top_arg = exp_like_arg(a, d.a);
+    if(!top_arg || !contains_symbol(a, *top_arg, var)) return std::nullopt;
+    Node const &bot = a.get(d.b);
+    if(bot.kind != NodeKind::Add || bot.kids.size() != 2) return std::nullopt;
+    bool saw_one = false;
+    bool saw_same_exp = false;
+    for(NodeId kid : bot.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Num && k.num.num == k.num.den) {
+            saw_one = true;
+            continue;
+        }
+        auto arg = exp_like_arg(a, kid);
+        if(arg && casio::same_by_sig(a, *arg, *top_arg)) {
+            saw_same_exp = true;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!saw_one || !saw_same_exp) return std::nullopt;
+    std::string arg = format_expr(a, *top_arg);
+    steps.push_back("Let u=e^" + arg + ", so u>0.");
+    steps.push_back("Then y=u/(1+u).");
+    steps.push_back("As u->0+, y->0; as u->infinity, y->1.");
+    return "0 < y < 1";
+}
+
 static std::string rat_node_text(Arena &a, Rational r)
 {
     return format_expr(a, casio::num(a, r.num, r.den));
@@ -722,6 +764,88 @@ static std::optional<std::pair<Rational, Rational>> linear_poly_coeffs(Arena &a,
     auto p = poly_of(a, n, var);
     if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
     return std::make_pair(p->a1, p->a0);
+}
+
+struct RepLinPF
+{
+    Rational A{0, 1}, B{0, 1}, C{0, 1};
+    Rational a{0, 1}, b{0, 1}, c{0, 1}, d{0, 1};
+    std::string l1, l2, ans;
+};
+
+static Rational poly_eval(Poly2 const &p, Rational x)
+{
+    return r_add(r_add(r_mul(p.a2, r_mul(x, x)), r_mul(p.a1, x)), p.a0);
+}
+
+static std::optional<RepLinPF> repeated_linear_pf_data(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &d = a.get(parsed);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_of(a, d.a, var);
+    if(!num || !num->ok) return std::nullopt;
+    Node const &den = a.get(d.b);
+    if(den.kind != NodeKind::Mul) return std::nullopt;
+    std::optional<std::pair<Rational, Rational>> rep, lin;
+    NodeId rep_node = 0, lin_node = 0;
+    for(NodeId kid : den.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Pow) {
+            Node const &e = a.get(k.b);
+            if(e.kind == NodeKind::Num && e.num.num == 2 && e.num.den == 1) {
+                auto lp = linear_poly_coeffs(a, k.a, var);
+                if(!lp || rep) return std::nullopt;
+                rep = *lp;
+                rep_node = k.a;
+                continue;
+            }
+        }
+        auto lp = linear_poly_coeffs(a, kid, var);
+        if(!lp || lin) return std::nullopt;
+        lin = *lp;
+        lin_node = kid;
+    }
+    if(!rep || !lin) return std::nullopt;
+    Rational aa = rep->first, bb = rep->second, cc = lin->first, dd = lin->second;
+    if(is_zero(aa) || is_zero(cc)) return std::nullopt;
+    Rational r1 = r_div(r_neg(bb), aa);
+    Rational r2 = r_div(r_neg(dd), cc);
+    Rational l2r1 = r_add(r_mul(cc, r1), dd);
+    Rational l1r2 = r_add(r_mul(aa, r2), bb);
+    if(is_zero(l2r1) || is_zero(l1r2)) return std::nullopt;
+    Rational B = r_div(poly_eval(*num, r1), l2r1);
+    Rational C = r_div(poly_eval(*num, r2), r_mul(l1r2, l1r2));
+    Rational A = r_div(r_sub(num->a2, r_mul(C, r_mul(aa, aa))), r_mul(aa, cc));
+    auto term = [&](Rational coef, std::string const &denom, int pow) {
+        if(is_zero(coef)) return std::string();
+        std::string s = rat_node_text(a, coef) + "/(" + denom + ")";
+        if(pow == 2) s += "^2";
+        return s;
+    };
+    std::vector<std::string> ts;
+    std::string l1 = format_expr(a, rep_node), l2 = format_expr(a, lin_node);
+    for(auto const &s : {term(A, l1, 1), term(B, l1, 2), term(C, l2, 1)}) {
+        if(!s.empty()) ts.push_back(s);
+    }
+    std::string ans;
+    for(std::size_t i = 0; i < ts.size(); ++i) {
+        if(i) ans += " + ";
+        ans += ts[i];
+    }
+    return RepLinPF{A, B, C, aa, bb, cc, dd, l1, l2, ans};
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_repeated_linear(Arena &a, NodeId parsed, std::string const &var)
+{
+    auto pf = repeated_linear_pf_data(a, parsed, var);
+    if(!pf) return std::nullopt;
+    return std::vector<std::string>{
+        "1. Use A/(" + pf->l1 + ")+B/(" + pf->l1 + ")^2+C/(" + pf->l2 + ").",
+        "2. Multiply through and use repeated-factor roots.",
+        "3. B=" + rat_node_text(a, pf->B) + ", C=" + rat_node_text(a, pf->C) + ".",
+        "4. Compare x^2 coefficients: A=" + rat_node_text(a, pf->A) + ".",
+        "Answer: " + pf->ans,
+    };
 }
 
 static std::optional<std::vector<std::string>> partial_fraction_x2_linear(Arena &a, NodeId parsed, std::string const &raw, std::string const &var)
@@ -821,6 +945,44 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
 
     NodeId parsed = casio::parse_expr(a, expr_text);
     Node const &x = a.get(parsed);
+    if(auto pf = repeated_linear_pf_data(a, parsed, var)) {
+        std::vector<Rational> coeffs(degree + 1, Rational{0, 1});
+        auto add_series = [&](Rational coef, Rational aa, Rational bb, int pow) {
+            if(is_zero(coef) || is_zero(bb)) return;
+            Rational scale = r_mul(coef, r_pow_int(bb, -pow));
+            Rational m = r_div(aa, bb);
+            for(int i = 0; i <= degree; ++i) {
+                coeffs[i] = r_add(coeffs[i], r_mul(scale, r_mul(binom_rat(Rational{-pow, 1}, i), r_pow_int(m, i))));
+            }
+        };
+        add_series(pf->A, pf->a, pf->b, 1);
+        add_series(pf->B, pf->a, pf->b, 2);
+        add_series(pf->C, pf->c, pf->d, 1);
+        std::string ans;
+        for(int i = 0; i <= degree; ++i) {
+            NodeId term = casio::num(a, coeffs[i].num, coeffs[i].den);
+            if(i == 1) term = casio::mul(a, {term, casio::sym(a, var)});
+            else if(i > 1) term = casio::mul(a, {term, casio::power(a, casio::sym(a, var), casio::num(a, i))});
+            std::string s = trim_text(format_expr(a, term));
+            if(s.empty() || s == "0") continue;
+            if(ans.empty()) ans = s;
+            else if(s.rfind("- ", 0) == 0) ans += " - " + trim_text(s.substr(2));
+            else if(s[0] == '-') ans += " - " + trim_text(s.substr(1));
+            else ans += " + " + s;
+        }
+        Rational b1{std::llabs(pf->b.num * pf->a.den), std::llabs(pf->b.den * pf->a.num)};
+        Rational b2{std::llabs(pf->d.num * pf->c.den), std::llabs(pf->d.den * pf->c.num)};
+        b1.normalize();
+        b2.normalize();
+        Rational bound = (b1.num * b2.den <= b2.num * b1.den) ? b1 : b2;
+        return std::vector<std::string>{
+            "1. Use partial fractions first.",
+            "2. " + pf->ans + ".",
+            "3. Expand each linear factor as a binomial series.",
+            "4. Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".",
+            "Answer: " + ans,
+        };
+    }
     NodeId base = 0;
     Rational power{1, 1};
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
@@ -840,6 +1002,61 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         power = Rational{-1, 1};
     }
     else return std::nullopt;
+
+    Node const &base_node = a.get(base);
+    if(base_node.kind == NodeKind::Div) {
+        auto pn = poly_of(a, base_node.a, var);
+        auto pd = poly_of(a, base_node.b, var);
+        if(pn && pd && pn->ok && pd->ok && is_zero(pn->a2) && is_zero(pd->a2) && !is_zero(pn->a0) && !is_zero(pd->a0)) {
+            Rational mp = r_div(pn->a1, pn->a0);
+            Rational md = r_div(pd->a1, pd->a0);
+            auto fp = rational_power_factor(pn->a0, power);
+            auto fd = rational_power_factor(pd->a0, r_neg(power));
+            if(!fp || !fd) return std::nullopt;
+            Rational factor = r_mul(*fp, *fd);
+            std::vector<Rational> s1(degree + 1), s2(degree + 1), coeffs(degree + 1, Rational{0, 1});
+            for(int i = 0; i <= degree; ++i) {
+                s1[i] = r_mul(binom_rat(power, i), r_pow_int(mp, i));
+                s2[i] = r_mul(binom_rat(r_neg(power), i), r_pow_int(md, i));
+            }
+            for(int i = 0; i <= degree; ++i)
+                for(int j = 0; j + i <= degree; ++j)
+                    coeffs[i + j] = r_add(coeffs[i + j], r_mul(s1[i], s2[j]));
+            std::vector<NodeId> terms;
+            for(int i = 0; i <= degree; ++i) {
+                Rational coeff = r_mul(factor, coeffs[i]);
+                NodeId term = casio::num(a, coeff.num, coeff.den);
+                if(i == 1) term = casio::mul(a, {term, casio::sym(a, var)});
+                else if(i > 1) term = casio::mul(a, {term, casio::power(a, casio::sym(a, var), casio::num(a, i))});
+                terms.push_back(term);
+            }
+            std::string ans;
+            for(NodeId term_id : terms) {
+                std::string term = trim_text(format_expr(a, term_id));
+                if(term.empty() || term == "0") continue;
+                if(ans.empty()) ans = term;
+                else if(term.rfind("- ", 0) == 0) ans += " - " + trim_text(term.substr(2));
+                else if(term[0] == '-') ans += " - " + trim_text(term.substr(1));
+                else ans += " + " + term;
+            }
+            Rational bp{std::llabs(mp.den), std::llabs(mp.num ? mp.num : 1)};
+            Rational bd{std::llabs(md.den), std::llabs(md.num ? md.num : 1)};
+            bp.normalize();
+            bd.normalize();
+            Rational bound = (bp.num * bd.den <= bd.num * bp.den) ? bp : bd;
+            std::string rewrite = (power.num == 1 && power.den == 2)
+                                      ? "sqrt(" + format_expr(a, base_node.a) + ")*(" + format_expr(a, base_node.b) + ")^(-1/2)"
+                                      : "(" + format_expr(a, base_node.a) + ")^" + rat_node_text(a, power) + "*(" +
+                                            format_expr(a, base_node.b) + ")^" + rat_node_text(a, r_neg(power));
+            return std::vector<std::string>{
+                "1. Rewrite as " + rewrite + ".",
+                "2. Expand each binomial factor.",
+                "3. Multiply series and keep terms up to " + var + "^" + std::to_string(degree) + ".",
+                "4. Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".",
+                "Answer: " + ans,
+            };
+        }
+    }
 
     auto p = poly_of(a, base, var);
     if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a0)) return std::nullopt;
@@ -2668,6 +2885,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 );
             }
         }
+        if(req.mode == 0 && (req.method == "partfrac" || req.method == "pf")) {
+            NodeId parsed = casio::parse_expr(arena, req.expr);
+            if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, "x")) return *pf;
+            if(auto pf = partial_fraction_repeated_linear(arena, parsed, "x")) return *pf;
+        }
         if(req.mode == 1) {
             // Compare: expr1\\nexpr2
             auto nl = req.expr.find('\n');
@@ -3149,7 +3371,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 Node const &rn = arena.get(n);
-                if(auto exp_range = exp_plus_recip_range(arena, n, var, steps)) {
+                if(auto logistic = logistic_exp_range(arena, n, var, steps)) {
+                    range_answer = *logistic;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto exp_range = exp_plus_recip_range(arena, n, var, steps)) {
                     range_answer = *exp_range;
                     steps.push_back("Range: " + range_answer + ".");
                 }
