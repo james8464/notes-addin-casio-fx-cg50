@@ -509,6 +509,20 @@ int main(int argc, char **argv)
                 req.method = "fitconst";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "factor(")).empty()) {
+                std::string inner_method, inner_u, inner_target;
+                inner = strip_method_args(inner, inner_method, inner_u, false, &inner_target);
+                req.mode = 13;
+                req.method = inner_method.empty() ? "factor" : inner_method;
+                req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "expand(")).empty()) {
+                std::string inner_method, inner_u, inner_target;
+                inner = strip_method_args(inner, inner_method, inner_u, false, &inner_target);
+                req.mode = 3;
+                req.method = inner_method.empty() ? "expand" : inner_method;
+                req.expr = inner;
+            }
             else {
                 req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
                            (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :

@@ -6631,28 +6631,30 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
-    // cosh(asinh(linear)) = sqrt(1+linear^2), then use the standard sqrt(u^2+1) primitive.
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosh) {
+    // Inverse-hyperbolic composites that reduce to standard radical primitives.
+    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Cosh || x.fkind == FnKind::Sinh)) {
         Node const &inner = a.get(x.a);
-        if(inner.kind == NodeKind::Fn && inner.fkind == FnKind::Asinh) {
+        bool plus_case = x.fkind == FnKind::Cosh && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Asinh;
+        bool minus_case = x.fkind == FnKind::Sinh && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Acosh;
+        if(plus_case || minus_case) {
             auto coeff = linear_coeff(a, inner.a, var);
             if(coeff && !r_zero(*coeff)) {
                 NodeId u = inner.a;
                 NodeId sqrt_u = casio::fn(a, "sqrt", casio::add(a, {
                     casio::power(a, u, casio::num(a, 2)),
-                    casio::num(a, 1)
+                    casio::num(a, plus_case ? 1 : -1)
                 }));
                 NodeId primitive_u = casio::add(a, {
                     casio::mul(a, {u, sqrt_u}),
-                    casio::fn(a, "asinh", u)
+                    plus_case ? casio::fn(a, "asinh", u) : casio::mul(a, {casio::num(a, -1), casio::fn(a, "acosh", u)})
                 });
                 Rational denom = r_mul(Rational{2, 1}, *coeff);
                 out.result = casio::simplify(a, casio::div(a, primitive_u, a.num(denom)));
                 out.steps.push_back("Step 2: Let u=" + format_expr_human(a, u) + ", so du=" + format_expr_human(a, a.num(*coeff)) + " d" + var + ".");
-                out.steps.push_back("Step 3: Use cosh(asinh(u))=sqrt(u^2+1).");
-                out.steps.push_back("Step 4: Integral = (1/" + format_expr_human(a, a.num(*coeff)) + ") Integral sqrt(u^2+1) du.");
-                out.steps.push_back("Step 5: Integral sqrt(u^2+1) du = (u*sqrt(u^2+1)+asinh(u))/2.");
-                out.steps.push_back("Step 6: Back-substitute u.");
+                out.steps.push_back(plus_case ? "Step 3: Use cosh(asinh(u))=sqrt(u^2+1)." : "Step 3: Use sinh(acosh(u))=sqrt(u^2-1).");
+                out.steps.push_back(plus_case ? "Step 4: Integral sqrt(u^2+1) du=(u*sqrt(u^2+1)+asinh(u))/2."
+                                              : "Step 4: Integral sqrt(u^2-1) du=(u*sqrt(u^2-1)-acosh(u))/2.");
+                out.steps.push_back("Step 5: Back-substitute u.");
                 return out;
             }
         }

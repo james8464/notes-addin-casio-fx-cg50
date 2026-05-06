@@ -43,10 +43,22 @@ def main() -> int:
         ("No elementary primitive found", "ERR:"),
     )
     bad += require(
+        "sinh_acosh_integral",
+        run(["--int", "sinh(acosh(x+5)),method=auto"]),
+        ("sinh(acosh(u))", "sqrt", "acosh(x + 5)", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
         "symbolic_expand_noop",
         run(["--alg", "x^2+a*x+b,method=expand"]),
         ("Route: expand", "Answer:", "x^2"),
         ("only polynomial expansion supported", "ERR:", "Unexpected token"),
+    )
+    bad += require(
+        "alg_function_method_strip",
+        run(["--alg", "factor((x+1)^2,method=factor)"]),
+        ("Factored form:", "Answer:", "(x + 1)^2"),
+        ("Expected )", "ERR:", "method=factor"),
     )
     bad += require(
         "cartesian_wrapped_trig",
