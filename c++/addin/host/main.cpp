@@ -19,6 +19,7 @@
 #include <vector>
 #include <cctype>
 #include <algorithm>
+#include <set>
 
 static std::string read_all_stdin()
 {
@@ -212,6 +213,10 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
             }
             req.expr = oss.str();
         }
+        std::string method, method_u, target;
+        req.expr = strip_method_args(req.expr, method, method_u, false, &target);
+        if(!method.empty()) req.method = method;
+        if(!target.empty() && req.expr.find('=') == std::string::npos) req.expr += "=" + target;
         auto out = casio::algebra::run(arena, req);
         for(auto const &ln : out) std::cout << ln << "\n";
         return 0;
@@ -304,11 +309,16 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         }
 
         int n = 2;
+        std::set<std::string> seen;
+        seen.insert(casio::boolean::show(cur));
         while(n <= 50) {
             auto hit = casio::boolean::step(cur);
             if(!hit.first) break;
+            std::string next = casio::boolean::show(hit.first);
+            if(seen.count(next)) break;
             cur = hit.first;
-            std::cout << n << ". " << casio::boolean::show(cur) << "    (" << hit.second << ")\n";
+            seen.insert(next);
+            std::cout << n << ". " << next << "    (" << hit.second << ")\n";
             ++n;
         }
         std::cout << "Result: " << casio::boolean::show(cur) << "\n";
@@ -517,6 +527,11 @@ int main(int argc, char **argv)
             req.mode = 0;
             if(expr.find('\n') != std::string::npos) req.mode = 1;
             bool trig_equation = expr.find('=') != std::string::npos;
+            if(!trig_equation && (method == "general" || method == "bounded" || method == "cast" ||
+               method == "square_then_check")) {
+                expr += "=0";
+                trig_equation = true;
+            }
             if(!trig_equation && (method == "rform" || method == "sin_cos" || method == "pythag" ||
                method == "double_angle" || method == "compound_angle")) {
                 req.mode = 4;

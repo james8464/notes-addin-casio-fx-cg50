@@ -49,6 +49,7 @@ def main() -> int:
         ("integration_compact_centurion", [sys.executable, "c++/tools/golden/check_integration_compact_centurion.py"]),
         ("integration_dynamic_patterns", [sys.executable, "c++/tools/golden/check_integration_dynamic_patterns.py"]),
         ("working_hardening", [sys.executable, "c++/tools/golden/check_working_hardening.py"]),
+        ("infinite_report_regressions", [sys.executable, "c++/tools/golden/check_infinite_report_regressions.py"]),
         ("syllabus_matrix", [sys.executable, "c++/tools/golden/check_syllabus_matrix.py", "--fail-on-gap"]),
         ("extreme_working_sources", [sys.executable, "c++/tools/golden/check_extreme_working_sources.py"]),
         ("madasmaths_paper_scan", [sys.executable, "c++/tools/golden/check_madasmaths_paper_scan.py"]),

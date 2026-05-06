@@ -3140,7 +3140,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Answer: " + format_expr(arena, expanded),
                     };
                 }
-                return {"Err: only polynomial expansion supported."};
+                return {
+                    "1. No brackets/powers need expanding in the supported polynomial form.",
+                    "2. Expression is already expanded.",
+                    "Answer: " + format_expr(arena, n),
+                };
             }
             Node const &expn = arena.get(x.b);
             if(expn.kind != NodeKind::Num || expn.num.den != 1) return {"Err: exponent must be integer."};
@@ -3717,7 +3721,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(param.empty()) param = "t";
             std::string xk = compact_input_key(xe);
             std::string yk = compact_input_key(ye);
-            if((xk == "sin(" + param + ")" && yk == "cos(" + param + ")") ||
+            auto trig_param = [&](std::string const &text, FnKind fk) {
+                try {
+                    NodeId parsed = casio::simplify(arena, casio::parse_expr(arena, text));
+                    Node const &node = arena.get(parsed);
+                    return node.kind == NodeKind::Fn && node.fkind == fk && is_sym_var(arena, node.a, param);
+                } catch(...) {
+                    return false;
+                }
+            };
+            if((trig_param(xe, FnKind::Sin) && trig_param(ye, FnKind::Cos)) ||
+               (trig_param(xe, FnKind::Cos) && trig_param(ye, FnKind::Sin)) ||
+               (xk == "sin(" + param + ")" && yk == "cos(" + param + ")") ||
                (xk == "cos(" + param + ")" && yk == "sin(" + param + ")")) {
                 return {
                     "1. Square both equations.",

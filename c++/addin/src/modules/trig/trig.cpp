@@ -1404,18 +1404,22 @@ static std::string trig_quad_text(double a, double b, double c)
     return out + "=0.";
 }
 
+static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
+
 static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     Arena &a,
     NodeId residual,
     std::string const &var,
     std::string const &lo_text,
     std::string const &hi_text,
-    bool rad
+    bool rad,
+    bool general = false
 )
 {
     auto poly = collect_mixed_trig_poly(a, residual);
     if(!poly) return std::nullopt;
     std::vector<double> xs;
+    std::vector<std::pair<FnKind, double>> root_targets;
     std::vector<std::string> steps;
     steps.push_back("Move all terms to one side.");
 
@@ -1430,6 +1434,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
 
     auto add_roots = [&](FnKind fk, std::vector<double> const &roots) {
         for(double r : roots) {
+            if((fk == FnKind::Sin || fk == FnKind::Cos) && (r < -1.0 - 1e-10 || r > 1.0 + 1e-10)) continue;
+            root_targets.push_back({fk, r});
             auto base = base_trig_degrees(fk, r);
             auto vals = x_values_from_angle_degrees(a, poly->arg, var, lo_text, hi_text, rad, base);
             for(double x : vals) add_unique(xs, x);
@@ -1564,6 +1570,33 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     else return std::nullopt;
 
     std::sort(xs.begin(), xs.end());
+    if(general && !root_targets.empty()) {
+        auto lin = linear_angle(a, poly->arg, var, rad);
+        if(lin && std::fabs(lin->first) > 1e-12) {
+            std::vector<std::string> families;
+            for(auto const &[fk, r] : root_targets) {
+                auto bases = base_trig_degrees(fk, r);
+                double period = (fk == FnKind::Tan ? 180.0 : 360.0) / std::fabs(lin->first);
+                std::vector<double> xbases;
+                for(double theta : bases) {
+                    double base = (theta - lin->second) / lin->first;
+                    while(base < 0.0) base += period;
+                    while(base >= period) base -= period;
+                    add_unique(xbases, base);
+                }
+                if(!xbases.empty()) families.push_back(format_general_trig_family(var, rad, xbases, period));
+            }
+            if(!families.empty()) {
+                steps.push_back("Use general solution families with integer n.");
+                std::string answer;
+                for(std::size_t i = 0; i < families.size(); ++i) {
+                    if(i) answer += " or ";
+                    answer += families[i];
+                }
+                return casio::exam_block("trig solve", steps, answer);
+            }
+        }
+    }
     steps.push_back("Keep values in the interval and check against the original equation.");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -2285,7 +2318,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
-    if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad)) return *mixed;
+    if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad, general)) return *mixed;
 
     auto iso = isolate(lhs, rhs);
     if(!iso) iso = isolate(rhs, lhs); // swap sides if needed

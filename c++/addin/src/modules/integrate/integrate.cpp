@@ -6631,6 +6631,33 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    // cosh(asinh(linear)) = sqrt(1+linear^2), then use the standard sqrt(u^2+1) primitive.
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosh) {
+        Node const &inner = a.get(x.a);
+        if(inner.kind == NodeKind::Fn && inner.fkind == FnKind::Asinh) {
+            auto coeff = linear_coeff(a, inner.a, var);
+            if(coeff && !r_zero(*coeff)) {
+                NodeId u = inner.a;
+                NodeId sqrt_u = casio::fn(a, "sqrt", casio::add(a, {
+                    casio::power(a, u, casio::num(a, 2)),
+                    casio::num(a, 1)
+                }));
+                NodeId primitive_u = casio::add(a, {
+                    casio::mul(a, {u, sqrt_u}),
+                    casio::fn(a, "asinh", u)
+                });
+                Rational denom = r_mul(Rational{2, 1}, *coeff);
+                out.result = casio::simplify(a, casio::div(a, primitive_u, a.num(denom)));
+                out.steps.push_back("Step 2: Let u=" + format_expr_human(a, u) + ", so du=" + format_expr_human(a, a.num(*coeff)) + " d" + var + ".");
+                out.steps.push_back("Step 3: Use cosh(asinh(u))=sqrt(u^2+1).");
+                out.steps.push_back("Step 4: Integral = (1/" + format_expr_human(a, a.num(*coeff)) + ") Integral sqrt(u^2+1) du.");
+                out.steps.push_back("Step 5: Integral sqrt(u^2+1) du = (u*sqrt(u^2+1)+asinh(u))/2.");
+                out.steps.push_back("Step 6: Back-substitute u.");
+                return out;
+            }
+        }
+    }
+
     if(x.kind == NodeKind::Div) {
         std::string den_key = compact_key(format_expr(a, x.b));
         bool has_neg_power = contains_var_neg_one_power(a, x.b, var) || den_key.find(var + "^-1") != std::string::npos ||

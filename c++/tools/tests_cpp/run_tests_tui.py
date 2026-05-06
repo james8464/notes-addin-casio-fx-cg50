@@ -2160,6 +2160,8 @@ _EXAM_REASONING_MARKERS = tuple(
             "multiply both",
             "divide both",
             "common denominator",
+            "power rule",
+            "cancel common factor",
         )
     )
 )
@@ -8218,9 +8220,12 @@ class CASIOApp(App):
             elif method == "auto":
                 ok = any(token in text for token in ("answer:", "dy/dx", " = "))
             else:
+                route_tokens = {method}
+                if method in ("pf", "partfrac"):
+                    route_tokens.add("partial fractions")
                 ok = (
                     f"method: forced {method}".lower() in text
-                    and f"route: {method}".lower() in text
+                    and any(f"route: {token}".lower() in text for token in route_tokens)
                     and any(token in text for token in ("answer:", "dy/dx", " = ", "final ="))
                 )
             return ok, combined
