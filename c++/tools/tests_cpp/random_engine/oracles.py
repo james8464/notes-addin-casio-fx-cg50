@@ -70,12 +70,22 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
     if "method: forced di" in text or "di table" in text:
         if not all(item in text for item in ("di table", "d:", "i:", "signs:")):
             return OutputQuality("review", "DI table/alternating signs missing")
-    if "parts" in text:
+    ibp_context = (
+        "integration by parts" in text
+        or "use parts" in text
+        or "method: forced parts" in text
+        or re.search(r"\bibp\b", text) is not None
+    )
+    if ibp_context:
         required = ("u", "dv", "du", "v")
         if not all(_has_assignment(text, name) for name in required):
             return OutputQuality("review", "IBP missing u/dv/du/v choices")
     if "partial fraction" in text or re.search(r"\bpf\b", text):
-        has_setup = bool(re.search(r"[a-z]\s*/\s*\(", text) or "a/(x" in text)
+        has_setup = bool(
+            re.search(r"\([a-z][a-z0-9+\-\s]*\)\s*/\s*\(", text)
+            or re.search(r"[a-z]\s*/\s*\(", text)
+            or "a/(x" in text
+        )
         has_coeffs = bool(re.search(r"(^|[^a-z])[abcde]\s*=", text))
         if not (has_setup and has_coeffs):
             return OutputQuality("review", "partial fraction setup/coefficients missing")

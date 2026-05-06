@@ -113,6 +113,19 @@ class RandomEngineTests(unittest.TestCase):
         self.assertIn(verdict.status, {"review", "fail"})
         self.assertIn("partial fraction", verdict.reason.lower())
 
+    def test_quality_classifier_does_not_treat_partial_fractions_as_ibp(self):
+        verdict = classify_output_quality(
+            "Route: partial fractions\n"
+            "Set (x^2+1)/(x^4+1)=(Ax+B)/(x^2+sqrt(2)*x+1)+(Cx+D)/(x^2-sqrt(2)*x+1).\n"
+            "Multiply through and equate coefficients.\n"
+            "A=1/2, B=1/2, C=-1/2, D=1/2.\n"
+            "Answer: atan((x - 1/x)/sqrt(2))/sqrt(2) + C",
+            expects_working=True,
+        )
+
+        self.assertNotEqual(verdict.reason, "IBP missing u/dv/du/v choices")
+        self.assertEqual(verdict.status, "pass")
+
     def test_quality_classifier_flags_substitution_without_differential(self):
         verdict = classify_output_quality(
             "Let u=x^2+1.\n1/2*ln(abs(x^2+1))",

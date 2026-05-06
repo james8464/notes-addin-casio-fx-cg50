@@ -485,6 +485,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: sin(x)^4", "ERR:"],
     ),
     (
+        "int",
+        "sin(x)^6,method=trig",
+        ["sin(x)^6", "cos(2u)", "cos(4u)", "cos(6u)", "5/16*x", "- 15/64*sin(2*x)", "Answer:"],
+        ["No elementary primitive", "Answer: int(", "ERR:"],
+    ),
+    (
+        "int",
+        "cos(x)^6,method=trig",
+        ["cos(x)^6", "cos(2u)", "cos(4u)", "cos(6u)", "5/16*x", "+ 15/64*sin(2*x)", "Answer:"],
+        ["No elementary primitive", "Answer: int(", "ERR:"],
+    ),
+    (
         "alg",
         "domain(arcsin((x-1)/3))",
         ["Domain: -2 <= x <= 4", "Domain: -1 <= (x - 1)/3 <= 1", "Answer: -2 <= x <= 4"],

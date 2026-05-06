@@ -5435,6 +5435,14 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
                 casio::neg(a, casio::div(a, fn_pow(a, "cos", u, 5), casio::num(a, 5))),
             });
             steps.push_back("Step 2: Odd sine power: save sin(u), expand (1-cos^2(u))^2.");
+        } else if(*p == 6) {
+            primitive = casio::add(a, {
+                casio::mul(a, {casio::num(a, 5, 16), u}),
+                casio::neg(a, casio::mul(a, {casio::num(a, 15, 64), casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u}))})),
+                casio::mul(a, {casio::num(a, 3, 64), casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), u}))}),
+                casio::neg(a, casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 6), u})), casio::num(a, 192))),
+            });
+            steps.push_back("Step 2: sin(u)^6=(10-15cos(2u)+6cos(4u)-cos(6u))/32.");
         }
     } else if(base.fkind == FnKind::Cos) {
         if(*p == 3) {
@@ -5457,6 +5465,14 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
                 casio::div(a, fn_pow(a, "sin", u, 5), casio::num(a, 5)),
             });
             steps.push_back("Step 2: Odd cosine power: save cos(u), expand (1-sin^2(u))^2.");
+        } else if(*p == 6) {
+            primitive = casio::add(a, {
+                casio::mul(a, {casio::num(a, 5, 16), u}),
+                casio::mul(a, {casio::num(a, 15, 64), casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u}))}),
+                casio::mul(a, {casio::num(a, 3, 64), casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), u}))}),
+                casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 6), u})), casio::num(a, 192)),
+            });
+            steps.push_back("Step 2: cos(u)^6=(10+15cos(2u)+6cos(4u)+cos(6u))/32.");
         }
     } else if(base.fkind == FnKind::Tan) {
         if(*p == 3) {
