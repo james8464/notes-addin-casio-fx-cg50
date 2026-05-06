@@ -513,6 +513,28 @@ static void push_unique(std::vector<std::string> &out, std::string const &line)
     out.push_back(line);
 }
 
+static std::string strip_domain_prefix(std::string s)
+{
+    s = trim_text(s);
+    std::string const p = "Domain: ";
+    if(s.rfind(p, 0) == 0) s = trim_text(s.substr(p.size()));
+    if(!s.empty() && s.back() == '.') s.pop_back();
+    return trim_text(s);
+}
+
+static std::string combined_domain_answer(std::vector<std::string> const &dom)
+{
+    std::string out;
+    for(auto const &d : dom) {
+        std::string s = strip_domain_prefix(d);
+        if(s.empty()) continue;
+        if(s.rfind("all real", 0) == 0 && dom.size() > 1) continue;
+        if(!out.empty()) out += " and ";
+        out += s;
+    }
+    return out;
+}
+
 static std::string choose_solve_var(Arena &a, NodeId n, std::string const &explicit_var)
 {
     if(!explicit_var.empty()) return explicit_var;
@@ -3424,9 +3446,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 if(auto inv_note = inverse_trig_plain_trig_note(arena, n)) steps.push_back(*inv_note);
                 for(auto const &d : dom) steps.push_back(d);
-                domain_answer = dom.front();
-                auto pfx = domain_answer.find("Domain: ");
-                if(pfx != std::string::npos) domain_answer = domain_answer.substr(pfx + 8);
+                domain_answer = combined_domain_answer(dom);
                 Node const &dn = arena.get(n);
                 if(auto solved = sqrt_log_base_domain(arena, n, var, steps)) {
                     domain_answer = *solved;

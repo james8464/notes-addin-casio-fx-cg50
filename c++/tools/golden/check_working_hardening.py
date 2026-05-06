@@ -467,6 +467,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: -1 <= sin", "inspect graph/transform", "ERR:"],
     ),
     (
+        "alg",
+        "domain((3*ln(x)-7)/(ln(x)-2))",
+        ["Domain: log(x) - 2 != 0", "Domain: x > 0", "Answer: log(x) - 2 != 0 and x > 0"],
+        ["Answer: log(x) - 2 != 0\n", "ERR:"],
+    ),
+    (
         "trig",
         "sqrt(1-cos(x))=sin(x),x,0,2*pi,8,method=square_then_check",
         ["Square both sides", "cos(x)*(cos(x) - 1) = 0", "Check in original", "Answer: x = [0, pi/2"],
