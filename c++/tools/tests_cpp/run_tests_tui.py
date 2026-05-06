@@ -3131,6 +3131,7 @@ class CASIOApp(App):
         self._live_program = "Adversarial"
         self._live_phase = "preparing"
         self._last_event_label = command_label
+        self.last_command = command_label
         self.records.clear()
         self.current_run_question_keys.clear()
         self.session_random_question_keys.clear()
@@ -3848,7 +3849,12 @@ class CASIOApp(App):
 
     def _feature_coverage_path(self):
         if getattr(self, "backend", "python") == "c":
-            return REPO_ROOT / "c++" / "tests" / "reports" / "feature_coverage_latest.txt"
+            base = REPO_ROOT / "c++" / "tests" / "reports"
+            scope = (self.last_run_scope[0] if self.last_run_scope else "") or ""
+            if scope.startswith("stress:"):
+                name = re.sub(r"[^a-z0-9_]+", "_", scope[len("stress:"):].lower()).strip("_") or "all"
+                return base / f"feature_coverage_stress_{name}_latest.txt"
+            return base / "feature_coverage_random_latest.txt"
         return REPO_ROOT / "python" / "tests" / "reports" / "feature_coverage_latest.txt"
 
     @staticmethod
@@ -3934,7 +3940,11 @@ class CASIOApp(App):
             lines.append("Missing coverage:")
             for program, gaps in sorted(missing.items()):
                 lines.append("- {0}: {1}".format(program, ", ".join(gaps)))
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        body = "\n".join(lines) + "\n"
+        path.write_text(body, encoding="utf-8")
+        if getattr(self, "backend", "python") == "c":
+            latest = REPO_ROOT / "c++" / "tests" / "reports" / "feature_coverage_latest.txt"
+            latest.write_text(body, encoding="utf-8")
 
     def render_summary(self):
         passed = sum(1 for r in self.records if r.status == TestStatus.PASS)

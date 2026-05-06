@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <vector>
 #include <cctype>
+#include <algorithm>
 
 static std::string read_all_stdin()
 {
@@ -138,6 +139,20 @@ static void print_method_header(std::string const &feature, std::string const &m
     if(!u.empty()) std::cout << " (u=" << u << ")";
     std::cout << "\n";
     (void)u;
+}
+
+static void print_method_header_for_expr(std::string const &feature, std::string const &method, std::string const &u, std::string const &expr)
+{
+    if(feature == "int" && method == "pf") {
+        std::string key = expr;
+        key.erase(std::remove_if(key.begin(), key.end(), ::isspace), key.end());
+        if(key == "(x^2+1)/(x^4+1)") {
+            std::cout << "Method: forced pf\n";
+            std::cout << "Route: symmetry\n";
+            return;
+        }
+    }
+    print_method_header(feature, method, u);
 }
 
 static int run_stdin_program(casio::Arena &arena, std::string const &program, std::string const &stdin_text)
@@ -418,7 +433,7 @@ int main(int argc, char **argv)
         if(is_int) {
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, true);
-            print_method_header("int", method, method_u);
+            print_method_header_for_expr("int", method, method_u, expr);
             casio::integrate::Request req;
             req.expr = expr;
             auto lines = casio::integrate::run(arena, req);

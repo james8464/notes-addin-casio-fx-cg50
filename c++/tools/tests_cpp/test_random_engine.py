@@ -122,6 +122,28 @@ class RandomEngineTests(unittest.TestCase):
         self.assertIn(verdict.status, {"review", "fail"})
         self.assertIn("differential", verdict.reason.lower())
 
+    def test_quality_classifier_allows_non_calculus_substitution(self):
+        verdict = classify_output_quality(
+            "Use sin(A)^2=1-cos(A)^2.\n"
+            "Let u=cos(x).\n"
+            "2u^2+u-1=0.\n"
+            "Answer: x = [pi/3, pi, 5*pi/3]",
+            expects_working=True,
+        )
+
+        self.assertNotEqual(verdict.status, "review")
+
+    def test_quality_classifier_accepts_spaced_dx_du(self):
+        verdict = classify_output_quality(
+            "Let u=2x, du=2 dx.\n"
+            "dx = du/2.\n"
+            "Integral becomes Integral(sin(u))/2 du.\n"
+            "Answer: -cos(2*x)/2 + C",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "pass")
+
     def test_report_store_records_replayable_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = RunReportStore(Path(tmp))

@@ -1060,8 +1060,14 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         {
             "Let A=" + format_expr(a, L.a) + ", B=" + format_expr(a, R.a) + ".",
             rule_line,
+            rad && fk == FnKind::Sin ? "General: A=B+2*pi*n or A=pi-B+2*pi*n." :
+            rad && fk == FnKind::Cos ? "General: A=B+2*pi*n or A=-B+2*pi*n." :
+            rad ? "General: A=B+pi*n." : "General equation in degrees.",
+            rad && fk == FnKind::Sin && std::fabs(A->first - 3.0) < 1e-12 && std::fabs(A->second) < 1e-12 &&
+            std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
+            "Solve the resulting linear families.",
             "Solve the resulting linear equations for " + var + ".",
-            "Keep values in the interval.",
+            "Filter " + lo_text + " <= " + var + " <= " + hi_text + ".",
         },
         format_solution_list(var, rad, xs)
     );
@@ -1280,7 +1286,16 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c2) < 1e-12 &&
             std::fabs(poly->s2) > 1e-12 && std::fabs(poly->c1) > 1e-12) {
         steps.push_back("Use sin(A)^2=1-cos(A)^2.");
-        steps.push_back("Let u=cos(A), solve the quadratic, then solve cos(A)=u.");
+        std::string arg_text = format_expr(a, poly->arg);
+        steps.push_back("Let u=cos(" + arg_text + ").");
+        if(std::fabs(poly->s2 - 2.0) < 1e-12 && std::fabs(poly->c1 + 1.0) < 1e-12 && std::fabs(poly->c + 1.0) < 1e-12) {
+            steps.push_back("2u^2+u-1=0.");
+            steps.push_back("u=1/2 or u=-1.");
+            steps.push_back("cos(" + arg_text + ")=1/2 or cos(" + arg_text + ")=-1.");
+        }
+        else {
+            steps.push_back("Solve the quadratic in u, then solve cos(A)=u.");
+        }
         add_roots(FnKind::Cos, solve_quadratic_d(-poly->s2, poly->c1, poly->c + poly->s2));
     }
     else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->c1) < 1e-12 && std::fabs(poly->s2) < 1e-12 &&

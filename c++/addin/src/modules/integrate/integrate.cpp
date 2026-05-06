@@ -2398,7 +2398,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Let u=sqrt(x), so x=u^2 and dx=2u du.",
                 "Integral becomes 2*Integral(u e^u) du.",
-                "Parts: w=u, dz=e^u du, so dw=du and z=e^u.",
+                "Parts: u=u, dv=e^u du, du=du, v=e^u.",
                 "2*(u e^u - Integral(e^u) du).",
                 "Back-substitute u=sqrt(x).",
             },
@@ -2476,7 +2476,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "King property gives I = Integral_0^(pi/2) log(cos(x)) dx.",
                 "Add: 2I = Integral_0^(pi/2) log(sin(x)cos(x)) dx.",
                 "Use sin(x)cos(x)=sin(2x)/2.",
-                "Let u=2x: Integral_0^(pi/2) log(sin(2x)) dx = I by symmetry.",
+                "Let u=2x, du=2 dx; limits: x=0 -> u=0, x=pi/2 -> u=pi.",
+                "So Integral_0^(pi/2) log(sin(2x)) dx = I by symmetry.",
                 "So 2I = I - (pi/2)log(2).",
             },
             "-pi*log(2)/2"
@@ -2506,6 +2507,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Let u=x-1/x, so du=(1+1/x^2) dx.",
                 "The divided numerator is exactly 1+1/x^2.",
                 "Integral becomes Integral(1/(u^2+2)) du.",
+                "Use standard form Integral(1/(u^2+a^2)) du with a=sqrt(2).",
             },
             "atan((x-1/x)/sqrt(2))/sqrt(2) + C"
         );
@@ -2520,7 +2522,9 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Let u=x+1/x, so du=(1-1/x^2) dx.",
                 "The divided numerator is exactly 1-1/x^2.",
                 "Integral becomes Integral(1/(u^2-2)) du.",
-                "Use partial fractions in u.",
+                "Factor u^2-2=(u-sqrt(2))(u+sqrt(2)).",
+                "Use A/(u-sqrt(2))+B/(u+sqrt(2)).",
+                "Equate: A=1/(2*sqrt(2)), B=-1/(2*sqrt(2)).",
             },
             "log(abs((x+1/x-sqrt(2))/(x+1/x+sqrt(2))))/(2*sqrt(2)) + C"
         );

@@ -120,6 +120,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "(x^2-1)/(x^4+1),method=sub",
+        ["u^2-2=(u-sqrt(2))(u+sqrt(2))", "A=1/(2*sqrt(2))", "B=-1/(2*sqrt(2))", "log(abs((x + 1/x - sqrt(2))/(x + 1/x + sqrt(2))))"],
+        ["No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
+        "(x^2+1)/(x^4+1),method=pf",
+        ["Route: symmetry", "Use standard form Integral(1/(u^2+a^2)) du", "a=sqrt(2)", "Answer:"],
+        ["Route: pf", "No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(ln(sin(x)),x,0,pi/2)",
+        ["u=2x", "du=2 dx", "limits: x=0 -> u=0, x=pi/2 -> u=pi", "Answer:"],
+        ["ERR:"],
+    ),
+    (
+        "int",
+        "exp(sqrt(x)),method=sub",
+        ["u=u", "dv=e^u du", "du=du", "v=e^u", "Answer:"],
+        ["Parts: w=", "dz=", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
+        ["General: A=B+2*pi*n or A=pi-B+2*pi*n", "x=n*pi", "x=pi/4+n*pi/2", "Filter 0 <= x <= 2*pi"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
+        "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
+        ["Let u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "cos(x)=1/2 or cos(x)=-1"],
+        ["substitution differential", "ERR:"],
+    ),
+    (
+        "int",
         "x*ln(5*x)",
         ["Integration by parts", "Answer: 1/2*x^2*log(5*x) - 1/4*x^2 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],

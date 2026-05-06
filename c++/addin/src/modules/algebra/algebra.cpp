@@ -2986,6 +2986,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 return s;
             };
+            xe = strip_outer_parens(xe);
+            ye = strip_outer_parens(ye);
             param = strip_outer_parens(param);
             if(param.empty()) param = "t";
             std::string xk = compact_input_key(xe);

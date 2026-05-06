@@ -48,6 +48,10 @@ def _has_assignment(text: str, name: str) -> bool:
     return re.search(r"(^|[^a-z]){0}\s*=".format(re.escape(name)), text) is not None
 
 
+def _has_differential(text: str) -> bool:
+    return bool(re.search(r"\bd[uwt]\b|\bdx\s*=", text))
+
+
 def classify_output_quality(output: str, expects_working: bool = True) -> OutputQuality:
     text = _norm(output)
     if not text.strip():
@@ -72,9 +76,10 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         has_coeffs = bool(re.search(r"(^|[^a-z])[abcde]\s*=", text))
         if not (has_setup and has_coeffs):
             return OutputQuality("review", "partial fraction setup/coefficients missing")
-    if re.search(r"\blet\s+u\s*=|\bu\s*=", text) and "du" not in text and "dx=" not in text:
+    calculus_context = any(item in text for item in ("integral", "differentiate", "dx", "dw", "dt", "ln(", "log("))
+    if calculus_context and re.search(r"\blet\s+u\s*=|\bu\s*=", text) and not _has_differential(text):
         return OutputQuality("review", "substitution differential missing")
-    if ("integral becomes" in text or "substitution" in text) and not any(item in text for item in ("du", "dx=", "dw", "dt")):
+    if "integral becomes" in text and not _has_differential(text):
         return OutputQuality("review", "substitution differential missing")
     if "implicit" in text or "differentiate both sides" in text:
         if not any(word in text for word in ("collect", "isolate", "factor", "solve for")):
