@@ -9,6 +9,8 @@ Edited upstream source/reference lives in `upstream/`.
 
 Active `/compile` builds the edited KhiCAS source by default with a Linux amd64 Docker image and packages the Eigenmath-style icons from `c++/prizm/assets`. Use `CASIO_PRIZM_MODE=khicas-reference ./c++/tools/build_addin_prizm_docker.sh` to package the verified upstream reference binary, or `CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh` to build the previous small native port.
 
-Transfer files are copied to the top-level `calculator_files/` folder.
+Transfer files are copied to the top-level `calculator_files/` folder:
+- `CasioCAS.g3a` - visible add-in executable.
+- `CASIOCAS.PAK` - external F6 help and working-template pack generated from `c++/prizm/help/CASIOCAS.HLP` and `c++/prizm/help/CASIOCAS.TPL`.
 
 License note: KhiCAS/Giac is upstream GPL-family code; preserve upstream notices when modifying or redistributing.

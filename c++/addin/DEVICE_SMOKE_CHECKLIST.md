@@ -1,10 +1,11 @@
 # On-device smoke checklist (fx-CG50)
 
-Run this after building `CasioCAS.g3a` with `fxsdk build-cg`.
+Run this after building calculator files with `./compile`.
 
 ## Preconditions
 
-- Copy the `.g3a` to calculator storage and safely eject.
+- Copy `calculator_files/CasioCAS.g3a` and `calculator_files/CASIOCAS.PAK` to calculator storage root and safely eject.
+- If F6 help says `Copy CASIOCAS.PAK`, the support file is missing or not in root.
 - Reboot calculator (recommended) before the first run after installing.
 
 ## Global checks
@@ -73,10 +74,11 @@ Run this after building `CasioCAS.g3a` with `fxsdk build-cg`.
 
 ## Unsupported inputs
 
-- Try `x^6` in Derive.
-- Try `1/x` in Integrate.
+- Try malformed input such as `solve(`.
+- Try non-elementary syllabus-stress input such as `integrate(exp(-x^2),x)`.
+- Try non-elementary syllabus-stress input such as `integrate(sin(x^2),x)`.
 - Try `sin(17)` in Trig.
-- Expected: clear unsupported message, no crash/hang.
+- Expected: clear unsupported or verified special-function message, no crash/hang.
 
 ## Performance sanity
 

@@ -13,5 +13,14 @@ old Python programs.
 Run all checks:
 
 ```bash
+python3 c++/tools/run_tests_cpp.py
 python3 run_tests.py
+```
+
+Useful focused gates:
+
+```bash
+python3 run_tests.py tui
+python3 c++/tools/golden/check_edexcel_paper1_downloads.py
+python3 c++/tools/golden/check_edexcel_paper2_downloads.py
 ```

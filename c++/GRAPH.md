@@ -12,8 +12,10 @@ graph TD
   Docker --> Src["c++/khicas/upstream/giac90_1addin"]
   Src --> G3A["c++/prizm/build/CasioCAS.g3a"]
   Assets["c++/prizm/assets/*.png"] --> Src
-  HLP["c++/prizm/help/CASIOCAS.HLP"] --> Transfer
+  HelpSrc["c++/prizm/help/CASIOCAS.HLP + CASIOCAS.TPL"] --> Pack["build_external_pack.py"]
+  Pack --> PAK["CASIOCAS.PAK"]
   G3A --> Patch["patch_g3a_metadata.py"]
+  PAK --> Transfer
   Patch --> Transfer["calculator_files/"]
 
   Legacy["CASIO_PRIZM_MODE=legacy"] --> Prizm["c++/prizm/src + c++/addin/src/device"]
@@ -23,7 +25,8 @@ graph TD
 Patch production calculator behavior in:
 - `c++/khicas/upstream/giac90_1addin/main.cc`
 - `c++/khicas/upstream/giac90_1addin/catalogen.cpp`
-- `c++/prizm/help/CASIOCAS.HLP` for offloaded F6 help text
+- `c++/prizm/help/CASIOCAS.HLP` for F6 help source
+- `c++/prizm/help/CASIOCAS.TPL` for offloaded working templates
 
 Patch host/golden behavior in:
 - `c++/addin/src/core/*`
@@ -39,7 +42,7 @@ mirrored into the KhiCAS source path.
 graph TD
   UI["KhiCAS shell/UI"] --> Cat["catalogen.cpp"]
   Cat --> All["All catalogue filtered by hidden rules"]
-  Cat --> Help["F6 help: static + CASIOCAS.HLP"]
+  Cat --> Help["F6 help: static fallback + CASIOCAS.PAK"]
   Cat --> Method["diff/int method popup"]
   Method --> Insert["insert command shell text"]
 
@@ -164,15 +167,15 @@ Random graph resets each `/random` or `/infinite` session.
 ```mermaid
 graph TD
   ROM["2MB practical g3a pressure"] --> Keep["core CAS + exam routes"]
-  ROM --> Offload["external CASIOCAS.HLP"]
+  ROM --> Offload["external CASIOCAS.PAK"]
   ROM --> Hide["catalogue hide rules"]
   ROM --> Prune["link/object pruning only after compile gate"]
   Keep --> Calc["CasioCAS.g3a"]
-  Offload --> Files["calculator_files/CASIOCAS.HLP"]
+  Offload --> Files["calculator_files/CASIOCAS.PAK"]
 ```
 
 Safe-ish size levers:
-- keep verbose help/examples in `CASIOCAS.HLP`
+- keep verbose help/examples/templates in `CASIOCAS.PAK` via `CASIOCAS.HLP`/`CASIOCAS.TPL` sources
 - hide/remove non-scope UI surfaces first
 - remove linked legacy objects only one at a time with full gates
 - preserve core Giac paths used by solve/diff/int/trig/matrices/stats

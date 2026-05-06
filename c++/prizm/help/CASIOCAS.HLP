@@ -395,7 +395,7 @@ Ex F2: de_solve(y'+y=exp(x),y(0)=1)
 F2:diff(sin(x),x)
 F3:diff(sin(x)^x,x,method=logdiff)
 diff(f,var,[n,method])
-Derivative. Methods auto,chain,prod,quot,logdiff,implicit,param,second.
+Derivative. Methods auto,chain,product,quotient,logdiff,implicit,param,second,first_principles.
 Req: f,x.
 Opt: n,method=auto.
 Ex F2: diff(sin(x),x)
@@ -770,7 +770,7 @@ Ex F2: oo
 @integrate(f,x,[a,b,method,u])
 F2:integrate(x*sin(x),x,method=parts)
 integrate(f,x,[a,b,method,u])
-Integral. Methods auto,direct,sub,parts,di,trig,pf,div,weier,symm.
+Integral. Methods auto,direct,reverse_chain,sub,parts,di,trig,pf,div,weierstrass,symmetry.
 Req: f,x.
 Opt: a,b,method=auto,u.
 Ex F2: integrate(x*sin(x),x,method=parts)

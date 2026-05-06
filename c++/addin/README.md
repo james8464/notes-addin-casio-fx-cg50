@@ -1,6 +1,8 @@
-## fx-CG50 add-in (g3a) — native port target
+## fx-CG50 add-in notes
 
-This folder contains the **native** fx-CG50 add-in built with **fxSDK + gint**.
+The production calculator build is the repo-root `./compile` flow, which builds the edited KhiCAS/libfxcg source and publishes transfer files under `calculator_files/`.
+
+This folder keeps the fxSDK/gint fallback add-in plus the host/device solver code used by tests.
 
 ### Build prerequisites (one-time)
 
@@ -59,7 +61,7 @@ To build the previous small native port instead:
 CASIO_PRIZM_MODE=legacy ./c++/tools/build_addin_prizm_docker.sh
 ```
 
-The C++ compile script builds the edited KhiCAS-source PrizmSDK/libfxcg target for Casio fx-CG50 and writes repo-root `CasioCAS.g3a`:
+The C++ compile script builds the edited KhiCAS-source PrizmSDK/libfxcg target for Casio fx-CG50 and writes `calculator_files/CasioCAS.g3a` plus `calculator_files/CASIOCAS.PAK`:
 
 ```bash
 ./compile
@@ -71,7 +73,7 @@ The TUI `/compile` command uses the same fx-CG50 target and does not modify emul
 
 - **Manual (recommended)**:
   - Plug calculator in via USB, choose “USB storage” mode on-device.
-  - Copy the built `.g3a` to the calculator storage (root is fine).
+  - Copy `calculator_files/CasioCAS.g3a` and `calculator_files/CASIOCAS.PAK` to calculator storage root.
   - Eject/unmount safely, then exit USB mode on the calculator.
 - **fxSDK send helper** (Linux + UDisks2): `fxsdk send-cg`
 
@@ -82,14 +84,14 @@ After installing, use the on-device checklist:
 And enforce the size gate:
 
 ```bash
-python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
+python3 c++/tools/check_g3a_size.py c++/prizm/build/CasioCAS.g3a
 ```
 
 ### Notes for this project
 
-- The active goal is one `.g3a` exposing the old Python feature set through the source-built KhiCAS base.
+- The active production path is one visible `.g3a` plus the external `CASIOCAS.PAK` help/template pack.
 - We keep a **host build** of the core engine for fast correctness testing with frozen C++ fixtures.
-- The current device build uses a bounded freestanding solver slice for:
+- The legacy/fallback device build uses a bounded freestanding solver slice for:
   - one-variable rational polynomial parsing with brackets, powers, implicit multiplication, expansion, and rearranged equations
   - linear/quadratic solving plus small integer-root factor-theorem support for higher polynomials
   - polynomial derivative/integral rules after expansion/collection
@@ -98,7 +100,7 @@ python3 c++/tools/check_g3a_size.py c++/addin/build-cg/*.g3a
 - The add-in UI is intentionally dense and KhiCAS-inspired: top status strip,
   blue section labels, black active rows, right-hand scrollbars, and bottom
   soft-key labels. The home screen also supports `F1`-`F6` quick launches.
-- Richer host functionality remains available through `casio_host` while device features are ported module by module.
+- Calculator fixes must be mirrored into the edited KhiCAS source path; host-only fixes do not prove `.g3a` behavior.
 - Architecture graph: `c++/GRAPH.md`.
 
 ### Host build (fast local testing)
