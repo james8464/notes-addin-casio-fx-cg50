@@ -3216,6 +3216,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         steps.push_back(abs_linear_text(arena, rn.a, var) + " >= 0.");
                         steps.push_back("Range: " + range_answer + ".");
                     }
+                    else if(auto lp = poly_of(arena, rn.a, var); lp && lp->ok && is_zero(lp->a2) && !is_zero(lp->a1)) {
+                        range_answer = "y >= 0";
+                        steps.push_back("sqrt(linear) is non-negative and covers all y >= 0 on its domain.");
+                        steps.push_back("Range: " + range_answer + ".");
+                    }
                     else if(is_sqrt_square(arena, n)) {
                         range_answer = "y >= 0";
                         steps.push_back("Range: " + range_answer + ".");

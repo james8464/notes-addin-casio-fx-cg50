@@ -135,7 +135,7 @@ static void print_method_header(std::string const &feature, std::string const &m
         return;
     }
     std::cout << "Method: forced " << method << "\n";
-    std::cout << "Route: " << method;
+    std::cout << "Route: " << (method == "pf" ? "partial fractions" : method);
     if(!u.empty()) std::cout << " (u=" << u << ")";
     std::cout << "\n";
     (void)u;
@@ -143,15 +143,7 @@ static void print_method_header(std::string const &feature, std::string const &m
 
 static void print_method_header_for_expr(std::string const &feature, std::string const &method, std::string const &u, std::string const &expr)
 {
-    if(feature == "int" && method == "pf") {
-        std::string key = expr;
-        key.erase(std::remove_if(key.begin(), key.end(), ::isspace), key.end());
-        if(key == "(x^2+1)/(x^4+1)") {
-            std::cout << "Method: forced pf\n";
-            std::cout << "Route: symmetry\n";
-            return;
-        }
-    }
+    (void)expr;
     print_method_header(feature, method, u);
 }
 
@@ -436,6 +428,7 @@ int main(int argc, char **argv)
             print_method_header_for_expr("int", method, method_u, expr);
             casio::integrate::Request req;
             req.expr = expr;
+            req.method = method;
             auto lines = casio::integrate::run(arena, req);
             for(auto const &ln : lines) std::cout << ln << "\n";
             return 0;

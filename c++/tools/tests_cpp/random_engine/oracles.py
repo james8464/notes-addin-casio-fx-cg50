@@ -79,7 +79,8 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         has_coeffs = bool(re.search(r"(^|[^a-z])[abcde]\s*=", text))
         if not (has_setup and has_coeffs):
             return OutputQuality("review", "partial fraction setup/coefficients missing")
-    calculus_context = any(item in text for item in ("integral", "differentiate", "dx", "dw", "dt", "ln(", "log("))
+    domain_range_context = "domain:" in text or "range:" in text
+    calculus_context = (not domain_range_context) and any(item in text for item in ("integral", "differentiate", "dx", "dw", "dt", "ln(", "log("))
     if calculus_context and re.search(r"\blet\s+u\s*=|\bu\s*=", text) and not _has_differential(text):
         return OutputQuality("review", "substitution differential missing")
     if "integral becomes" in text and not _has_differential(text):

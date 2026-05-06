@@ -5703,7 +5703,7 @@ class CASIOApp(App):
                 if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
                     return False
                 return "answer:" in text
-            if "no sol" in text or "no solution" in text:
+            if "no sol" in text or "no solution" in text or "no real solution" in text:
                 if _has_non_exam_quality_output(text):
                     return False
                 if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):

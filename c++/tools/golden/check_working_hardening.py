@@ -127,8 +127,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "(x^2+1)/(x^4+1),method=pf",
-        ["Route: symmetry", "Use standard form Integral(1/(u^2+a^2)) du", "a=sqrt(2)", "Answer:"],
-        ["Route: pf", "No elementary primitive found", "ERR:"],
+        ["Route: partial fractions", "x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1)", "Ax+B", "Cx+D", "Equate coefficients", "Answer:"],
+        ["Route: symmetry", "No elementary primitive found", "ERR:"],
     ),
     (
         "int",
@@ -163,13 +163,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
-        ["Let u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "cos(x)=1/2 or cos(x)=-1"],
+        ["Let u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "Base angle", "cos(x)=1/2 or cos(x)=-1"],
         ["substitution differential", "ERR:"],
     ),
     (
         "trig",
         "2*cos(x)^2+3*cos(x)-2=0,x,0,2*pi,10,method=identity",
-        ["Let u=cos(x)", "2u^2+3u-2=0", "u=1/2 or u=-2", "Reject u=-2", "cos(x)=1/2"],
+        ["Let u=cos(x)", "2u^2+3u-2=0", "u=1/2 or u=-2", "Reject u=-2", "Base angle", "cos(x)=1/2"],
         ["Solve the quadratic in u, then solve cos(A)=u.", "ERR:"],
     ),
     (

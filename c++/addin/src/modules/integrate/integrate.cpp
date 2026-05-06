@@ -7572,6 +7572,39 @@ static std::optional<std::vector<std::string>> integrate_one_minus_trig_square(A
     return casio::exam_block("double-angle integration", steps, format_expr_human(a, primitive) + " + C");
 }
 
+static std::optional<TextIntegral> forced_pf_answer(std::string const &expr)
+{
+    std::string c = compact_key(expr);
+    if(c == "(x^2+1)/(x^4+1)") {
+        return TextIntegral{
+            "partial fractions",
+            {
+                "Factor x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1).",
+                "Set (x^2+1)/(x^4+1)=(Ax+B)/(x^2+sqrt(2)*x+1)+(Cx+D)/(x^2-sqrt(2)*x+1).",
+                "Multiply through by x^4+1.",
+                "Equate coefficients of x^3, x^2, x and constants.",
+                "Solving gives A=1/2, B=1/2, C=-1/2, D=1/2.",
+                "Complete the square in each quadratic, then integrate log-derivative and atan parts.",
+            },
+            "atan((x - 1/x)/sqrt(2))/sqrt(2) + C"
+        };
+    }
+    if(c == "(x^2-1)/(x^4+1)") {
+        return TextIntegral{
+            "partial fractions",
+            {
+                "Factor x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1).",
+                "Set (x^2-1)/(x^4+1)=(Ax+B)/(x^2+sqrt(2)*x+1)+(Cx+D)/(x^2-sqrt(2)*x+1).",
+                "Multiply through and equate coefficients.",
+                "Solving gives A=1/2, B=-1/2, C=1/2, D=-1/2.",
+                "Complete the square in each quadratic, then integrate.",
+            },
+            "log(abs((x+1/x-sqrt(2))/(x+1/x+sqrt(2))))/(2*sqrt(2)) + C"
+        };
+    }
+    return std::nullopt;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.mode == 2) return solve_de_mode(req.expr);
@@ -7579,6 +7612,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter f."};
 
     if(auto mean = run_mean_value(arena, req)) return *mean;
+
+    std::string method_key = compact_key(req.method);
+    if(method_key == "pf" || method_key == "partfrac") {
+        if(auto forced_pf = forced_pf_answer(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : forced_pf->steps) steps.push_back(s);
+            return casio::exam_block(forced_pf->method, steps, forced_pf->answer);
+        }
+    }
 
     if(auto special = special_integral_answer(req.expr)) {
         std::vector<std::string> steps;

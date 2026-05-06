@@ -13,9 +13,9 @@ struct Request
     int mode = 1;          // mirror python menu later
     std::string expr;      // integrand
     std::string var = "x"; // default
+    std::string method;    // optional route hint from host tests/TUI
 };
 
 std::vector<std::string> run(Arena &arena, Request const &req);
 
 } // namespace casio::integrate
-

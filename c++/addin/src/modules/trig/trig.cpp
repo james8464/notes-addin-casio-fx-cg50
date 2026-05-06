@@ -1259,6 +1259,28 @@ static std::string trig_root_text(double r)
     return format_double_compact(r);
 }
 
+static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r)
+{
+    std::string f = fk == FnKind::Sin ? "arcsin" : fk == FnKind::Cos ? "arccos" : "arctan";
+    std::string val = trig_root_text(r);
+    std::string exact;
+    if(fk == FnKind::Sin) {
+        if(std::fabs(r) < 1e-9) exact = "0";
+        else if(std::fabs(r - 0.5) < 1e-9) exact = "pi/6";
+        else if(std::fabs(r + 0.5) < 1e-9) exact = "-pi/6";
+        else if(std::fabs(r - 1.0) < 1e-9) exact = "pi/2";
+        else if(std::fabs(r + 1.0) < 1e-9) exact = "-pi/2";
+    }
+    if(fk == FnKind::Cos) {
+        if(std::fabs(r - 1.0) < 1e-9) exact = "0";
+        else if(std::fabs(r - 0.5) < 1e-9) exact = "pi/3";
+        else if(std::fabs(r + 0.5) < 1e-9) exact = "2*pi/3";
+        else if(std::fabs(r + 1.0) < 1e-9) exact = "pi";
+    }
+    if(exact.empty()) exact = f + "(" + val + ")";
+    return "Base angle: " + f + "(" + val + ")=" + exact + " for " + arg + ".";
+}
+
 static std::string trig_quad_text(double a, double b, double c)
 {
     auto term = [](double v, std::string const &name, bool first) {
@@ -1321,7 +1343,10 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         steps.push_back("u=" + join_roots(roots) + ".");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
-            else steps.push_back("sin(" + arg_text + ")=" + trig_root_text(r) + ".");
+            else {
+                steps.push_back("sin(" + arg_text + ")=" + trig_root_text(r) + ".");
+                steps.push_back(trig_base_angle_line(FnKind::Sin, arg_text, r));
+            }
         }
         add_roots(FnKind::Sin, roots);
     }
@@ -1333,7 +1358,10 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         steps.push_back("u=" + join_roots(roots) + ".");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
-            else steps.push_back("cos(" + arg_text + ")=" + trig_root_text(r) + ".");
+            else {
+                steps.push_back("cos(" + arg_text + ")=" + trig_root_text(r) + ".");
+                steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, r));
+            }
         }
         add_roots(FnKind::Cos, roots);
     }
@@ -1346,6 +1374,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             steps.push_back("2u^2+u-1=0.");
             steps.push_back("u=1/2 or u=-1.");
             steps.push_back("cos(" + arg_text + ")=1/2 or cos(" + arg_text + ")=-1.");
+            steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, 0.5));
+            steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, -1.0));
         }
         else {
             steps.push_back("Solve the quadratic in u, then solve cos(A)=u.");
