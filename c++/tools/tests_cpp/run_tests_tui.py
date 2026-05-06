@@ -6641,16 +6641,19 @@ class CASIOApp(App):
     def random_algebra_cartesian_case(self, rng, difficulty, index):
         # Parametric to Cartesian
         forms = [
-            ("t", "t+1", "t"),
-            ("t", "t^2", "t"),
-            ("t+1", "t-1", "t"),
-            ("2*t", "t^2", "t"),
-            ("sin(t)", "cos(t)", "t"),
+            ("t", "t+1", "t", ("y=x+1",)),
+            ("t", "t^2", "t", ("y=x^2",)),
+            ("t+1", "t-1", "t", ("y=x-2",)),
+            ("2*t", "t^2", "t", ("y=x^2/4", "4*y=x^2", "y=1/4*x^2")),
+            ("sin(t)", "cos(t)", "t", ("x^2+y^2=1",)),
         ]
-        x_expr, y_expr, param = rng.choice(forms)
+        x_expr, y_expr, param, markers = rng.choice(forms)
         label = f"Cartesian {index}: x={x_expr}, y={y_expr}"
         cli_input = f"11\n{x_expr}\n{y_expr}\n{param}\n"
-        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, build_checker(contains_all=(), contains_any=("cartesian", "x =", "y ="), min_lines=1), feature="algebra_cartesian")
+        def cartesian_check(output, markers=markers):
+            norm = normalized_text(output).replace(" ", "").replace("*", "")
+            return "err:" not in norm and any(m.replace("*", "") in norm for m in markers)
+        return self.make_cli_case("Algebra", "algebraProgram.py", cli_input, label, cartesian_check, feature="algebra_cartesian")
 
     def random_trig_prove_case(self, rng, difficulty, index):
         angle = rng.choice(["x", "2*x", "x/2", "3*x"])

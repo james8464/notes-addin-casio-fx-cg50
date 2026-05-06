@@ -83,6 +83,60 @@ def main() -> int:
         ("Cancel common factor", "power rule", "Answer: 4*x + 1/3*x^3 + C"),
         ("ERR:",),
     )
+    bad += require(
+        "online_poly_exp_parts",
+        run(["--int", "(2*x+5)*e^(x/3),method=parts"]),
+        ("DI table", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_poly_trig_di",
+        run(["--int", "(2*x^2+5*x+1)*cos(3*x),method=di"]),
+        ("DI table", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_atan_recip_parts",
+        run(["--int", "atan(5/x),method=parts"]),
+        ("u=atan", "dv=dx", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_quad_quad_pf",
+        run(["--int", "(2*x^3+x^2+5*x+1)/((x^2+1)*(x^2+4)),method=pf"]),
+        ("quadratics", "A=", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_repeated_quad_pf",
+        run(["--int", "(x^3+1)/((x-1)*(x^2+1)^2),method=pf"]),
+        ("quadratic^2", "A=", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_hidden_power_sub",
+        run(["--int", "x^5*e^(x^3),method=sub"]),
+        ("Let u=x^3", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_hidden_power_high_sub",
+        run(["--int", "x^15*sin(2*x^8),method=sub"]),
+        ("Let u=x^8", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_sqrt_shift_sub",
+        run(["--int", "1/(2+sqrt(x-3)),method=sub"]),
+        ("Let u=sqrt", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
+    bad += require(
+        "online_alg_sym_wide",
+        run(["--int", "(x^2+1)/(x^4+8*x^2+1),method=sub"]),
+        ("Divide numerator", "Let u=x-1/x", "Answer:"),
+        ("No elementary primitive found", "ERR:"),
+    )
     return 1 if bad else 0
 
 

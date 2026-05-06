@@ -89,6 +89,10 @@ def cases() -> list[Case]:
         add(out, "openstax_pf", "linear_quad_pf", "--int", f"(5*x+7)/((x-{a})*(x^2+{a*a})),method=pf", "A/", "Bx+C", "Answer:")
     for a, b in ((1, 4), (1, 7), (4, 9), (2, 5)):
         add(out, "openstax_pf", "quad_quad_pf", "--int", f"(2*x^3+x^2+5*x+1)/((x^2+{a})*(x^2+{b})),method=pf", "Answer:")
+    for r, q in ((1, 1), (-1, 4), (2, 4), (3, 5)):
+        qexpr = f"x^2+{q}" if q != 5 else "x^2+2*x+5"
+        num = "x^3+1" if r == 1 else "3*x^2+5*x+7"
+        add(out, "paul_pf", "repeated_quad_pf", "--int", f"({num})/((x-{r})*({qexpr})^2),method=pf", "quadratic^2", "A=", "Answer:")
 
     # Paul trig substitution and hidden substitutions.
     for a in (1, 2, 3, 5):
