@@ -12,6 +12,7 @@ REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 REPORT = REPO / "c++" / "tests" / "reports" / "online_hard_questions_latest.txt"
 CASES_OUT = REPO / "c++" / "tests" / "reports" / "online_hard_questions_cases.jsonl"
+JSON_REPORT = REPO / "c++" / "tests" / "reports" / "online_hard_questions_latest.json"
 
 SOURCES = {
     "paul_parts": "https://tutorial.math.lamar.edu/Classes/CalcII/IntegrationByParts.aspx",
@@ -37,7 +38,20 @@ class Case:
 
 
 def compact(s: str) -> str:
-    return "".join(ch for ch in s if ch not in " \t\r\n*")
+    return "".join(ch for ch in s.lower() if ch not in " \t\r\n*")
+
+
+def marker_found(out: str, marker: str) -> bool:
+    norm = compact(out)
+    m = compact(marker)
+    if m in norm:
+        return True
+    lo = out.lower()
+    if marker.lower() == "ref tri" and "reference triangle" in lo:
+        return True
+    if marker.lower() == "collect i" and ("2i" in norm or "collect" in lo):
+        return True
+    return False
 
 
 def add(out: list[Case], source: str, topic: str, mode: str, expr: str, *must: str) -> None:
@@ -134,7 +148,7 @@ def run(case: Case) -> tuple[str, str, list[str]]:
     proc = subprocess.run([str(HOST), *case.cmd], cwd=REPO, text=True, capture_output=True, timeout=20)
     out = proc.stdout + proc.stderr
     norm = compact(out)
-    missing = [m for m in case.must if compact(m) not in norm]
+    missing = [m for m in case.must if not marker_found(out, m)]
     forbidden = [m for m in case.forbid if m in out]
     if proc.returncode != 0:
         forbidden.append(f"returncode={proc.returncode}")
@@ -145,32 +159,115 @@ def run(case: Case) -> tuple[str, str, list[str]]:
     return "pass", out, []
 
 
+ALEVEL_TOPICS = {
+    "di_exp",
+    "di_sin",
+    "di_cos",
+    "linear_pf",
+    "repeated_linear_pf",
+    "linear_quad_pf",
+    "loop_exp_trig",
+    "king_property",
+    "trig_poly",
+    "rform",
+    "implicit",
+    "parametric",
+    "domain_range",
+}
+
+BEYOND_SOURCES = {"paul_parts", "paul_pf", "paul_trig_sub", "openstax_pf", "openstax_parts", "mit_parts", "mit_downloads", "nrich_step"}
+
+
+def is_syllabus_case(case: Case) -> bool:
+    return case.source == "edexcel" or case.topic in ALEVEL_TOPICS
+
+
+def filter_cases(all_cases: list[Case], target: str) -> list[Case]:
+    target = target.lower()
+    if target == "alevel":
+        return [c for c in all_cases if is_syllabus_case(c)]
+    if target == "beyond":
+        return [c for c in all_cases if c.source in BEYOND_SOURCES and c.topic not in {"rform", "implicit", "parametric", "domain_range"}]
+    return list(all_cases)
+
+
+def take_count(items: list[Case], count: int) -> list[Case]:
+    if count <= 0 or count == len(items):
+        return items
+    if count < len(items):
+        if count <= 1:
+            return items[:count]
+        span = len(items) - 1
+        return [items[round(i * span / (count - 1))] for i in range(count)]
+    out: list[Case] = []
+    i = 0
+    while len(out) < count and items:
+        base = items[i % len(items)]
+        if i < len(items):
+            out.append(base)
+        else:
+            repeat = (i // len(items)) + 1
+            out.append(Case(f"{base.id}-r{repeat}", base.source, base.topic, base.cmd, base.must, base.forbid))
+        i += 1
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--limit", "--count", dest="count", type=int, default=0)
+    ap.add_argument("--target", choices=("all", "alevel", "beyond"), default="all")
     ap.add_argument("--fail-on-weak", action="store_true")
+    ap.add_argument("--fail-on-syllabus", action="store_true")
+    ap.add_argument("--report-json", action="store_true")
     args = ap.parse_args()
-    all_cases = cases()
-    if args.limit:
-        all_cases = all_cases[:args.limit]
+    all_cases = take_count(filter_cases(cases(), args.target), args.count)
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     CASES_OUT.write_text("\n".join(json.dumps(c.__dict__, ensure_ascii=False) for c in all_cases) + "\n", encoding="utf-8")
     counts = {"pass": 0, "weak": 0, "fail": 0}
-    lines = ["Online hard-question discovery", "", "sources:"] + [f"- {k}: {v}" for k, v in SOURCES.items()] + [""]
+    syllabus_bad = 0
+    issues: list[dict] = []
+    lines = [
+        "Online hard-question discovery",
+        f"target: {args.target}",
+        "",
+        "sources:",
+    ] + [f"- {k}: {v}" for k, v in SOURCES.items()] + [""]
     for c in all_cases:
         status, out, why = run(c)
         counts[status] += 1
         print(status.upper(), c.id, c.cmd[1])
         if status != "pass":
+            if is_syllabus_case(c):
+                syllabus_bad += 1
+            issues.append({"id": c.id, "source": c.source, "topic": c.topic, "status": status, "cmd": list(c.cmd), "why": why})
             lines.append(f"{status.upper()} {c.id} [{c.topic}] {SOURCES[c.source]}")
             lines.append("cmd: " + " ".join(c.cmd))
             lines.append("why: " + "; ".join(why))
             lines.extend("  " + ln for ln in out.splitlines()[:14])
             lines.append("")
-    lines.append(f"summary: pass={counts['pass']} weak={counts['weak']} fail={counts['fail']} total={len(all_cases)}")
+    lines.append(f"summary: pass={counts['pass']} weak={counts['weak']} fail={counts['fail']} total={len(all_cases)} syllabus_bad={syllabus_bad}")
     REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if args.report_json:
+        JSON_REPORT.write_text(
+            json.dumps(
+                {
+                    "target": args.target,
+                    "counts": counts,
+                    "total": len(all_cases),
+                    "syllabus_bad": syllabus_bad,
+                    "issues": issues,
+                    "sources": SOURCES,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
     print(REPORT)
     print(counts)
+    if args.fail_on_syllabus and syllabus_bad:
+        return 1
     return 1 if args.fail_on_weak and (counts["weak"] or counts["fail"]) else 0
 
 

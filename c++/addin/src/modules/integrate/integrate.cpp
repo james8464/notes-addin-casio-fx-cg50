@@ -6420,7 +6420,7 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
     }
     if(!exp_node || !trig_node || power > 4) return std::nullopt;
     Rational k = *linear_coeff(a, trig_arg, var);
-    if(power == 0 && exp_coeff.num != exp_coeff.den) {
+    if(power == 0) {
         Rational den = r_add(r_mul(exp_coeff, exp_coeff), r_mul(k, k));
         NodeId sin_arg = casio::fn(a, "sin", trig_arg);
         NodeId cos_arg = casio::fn(a, "cos", trig_arg);

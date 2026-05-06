@@ -4669,6 +4669,9 @@ class CASIOApp(App):
             emit(self.append_result, "[dim]Sample: {0}[/dim]".format(sample))
 
     def dedupe_cases_for_run(self, cases):
+        scope = (self.last_run_scope[0] if self.last_run_scope else "").lower()
+        if scope in ("stress:syllabus", "stress:online"):
+            return list(cases)
         # Infinite runs must not use a global key set: it exhausts the space and
         # later batches become empty (harness looks "stuck" with no new tests).
         if getattr(self, "_random_infinite", False):

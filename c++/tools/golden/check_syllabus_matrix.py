@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parents[3]
+HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
+REPORT = REPO / "c++" / "tests" / "reports" / "syllabus_coverage_latest.txt"
+JSON_REPORT = REPO / "c++" / "tests" / "reports" / "syllabus_coverage_latest.json"
+
+
+@dataclass(frozen=True)
+class MatrixCase:
+    topic: str
+    capability: str
+    cmd: tuple[str, str]
+    must: tuple[str, ...]
+    working_expected: bool = True
+
+
+FORBID = ("ERR:", "Traceback", "Answer: int(", "Answer: d/dx(", "No elementary primitive", "not recognised")
+
+
+CASES: tuple[MatrixCase, ...] = (
+    MatrixCase("pure_proof", "identity proof / equivalence", ("--alg", "compare((a+b)^2,a^2+2*a*b+b^2)"), ("Equivalent",)),
+    MatrixCase("pure_algebra", "quadratic solve by factorisation", ("--alg", "solve(x^2-5*x+6=0,x,method=factor)"), ("x = 3", "x = 2")),
+    MatrixCase("pure_functions_graphs", "domain/range from function", ("--alg", "range(x/(1+x^2))"), ("-1/2 <= y <= 1/2",), False),
+    MatrixCase("pure_coordinate_geometry", "complete square subpart", ("--alg", "complete_square(x^2+y^2-6*x+10*y+34)"), ("(x - 3)^2",)),
+    MatrixCase("pure_sequences", "binomial expansion with validity", ("--alg", "binomial((1+x)^5,x,0,5)"), ("Valid for", "x^5")),
+    MatrixCase("pure_trigonometry", "R-form trig solve", ("--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform"), ("R =", "arccos(2/5)")),
+    MatrixCase("pure_explogs", "log laws and domain", ("--alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)"), ("Domain:", "Exponentiate")),
+    MatrixCase("pure_differentiation", "chain rule", ("--derive", "sin((x+1)^2),x,method=chain"), ("du/dx", "chain rule")),
+    MatrixCase("pure_integration", "DI/table integration", ("--int", "x^2*e^(2*x),method=di"), ("DI table", "Answer:")),
+    MatrixCase("pure_numerical_methods", "numeric-root subpart", ("--alg", "solve(x^2-2=0,x,method=numeric)"), ("sqrt(8)/2",)),
+    MatrixCase("pure_vectors", "vector magnitude subpart", ("--alg", "sqrt(1^2+2^2+3^2)"), ("sqrt(14)",), False),
+    MatrixCase("stats_sampling_data", "summary statistics", ("--stats", "stats(1,2,2,3,5,8)"), ("mean", "Sxx"), False),
+    MatrixCase("stats_probability", "binomial probability", ("--stats", "binom(10,.5,4)"), ("X ~ B", "P(X = 4)")),
+    MatrixCase("stats_distributions", "normal distribution probability", ("--stats", "normalcdf(0,1,-1,1)"), ("Standardise", "Phi")),
+    MatrixCase("stats_hypothesis", "z-test hypothesis subpart", ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"), ("H0:", "p value")),
+    MatrixCase("mechanics_kinematics", "SUVAT calculation", ("--suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat"), ("s = 25",)),
+    MatrixCase("mechanics_forces", "Newton second law algebra subpart", ("--alg", "solve(3*a=12-6,a,method=linear)"), ("a = 2",)),
+    MatrixCase("mechanics_moments", "moment equilibrium algebra subpart", ("--alg", "solve(2*R=3*5,R,method=linear)"), ("R = 15/2",)),
+)
+
+
+def has(text: str, marker: str) -> bool:
+    return marker.lower().replace(" ", "") in text.lower().replace(" ", "")
+
+
+def run(case: MatrixCase) -> tuple[str, str, list[str]]:
+    proc = subprocess.run([str(HOST), *case.cmd], cwd=REPO, text=True, capture_output=True, timeout=20)
+    out = proc.stdout + proc.stderr
+    why: list[str] = []
+    if proc.returncode:
+        why.append(f"returncode={proc.returncode}")
+    why.extend(f"missing:{m}" for m in case.must if not has(out, m))
+    why.extend(f"forbidden:{m}" for m in FORBID if m.lower() in out.lower())
+    if case.working_expected and "Answer:" in out and len([ln for ln in out.splitlines() if ln.strip()]) < 2:
+        why.append("answer-only")
+    return ("pass" if not why else "fail"), out, why
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fail-on-gap", action="store_true")
+    ap.add_argument("--report-json", action="store_true")
+    args = ap.parse_args()
+
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    counts = {"pass": 0, "fail": 0}
+    rows: list[dict] = []
+    lines = ["A-level syllabus capability matrix", ""]
+    for case in CASES:
+        status, out, why = run(case)
+        counts[status] += 1
+        rows.append({"topic": case.topic, "capability": case.capability, "status": status, "cmd": list(case.cmd), "why": why})
+        print(status.upper(), case.topic, case.cmd[1])
+        if status != "pass":
+            lines.append(f"FAIL {case.topic}: {case.capability}")
+            lines.append("cmd: " + " ".join(case.cmd))
+            lines.append("why: " + "; ".join(why))
+            lines.extend("  " + ln for ln in out.splitlines()[:12])
+            lines.append("")
+    topics = {c.topic for c in CASES}
+    lines.append(f"topics={len(topics)} cases={len(CASES)} pass={counts['pass']} fail={counts['fail']}")
+    REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if args.report_json:
+        JSON_REPORT.write_text(json.dumps({"counts": counts, "cases": rows}, indent=2) + "\n", encoding="utf-8")
+    print(REPORT)
+    print(counts)
+    return 1 if args.fail_on_gap and counts["fail"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

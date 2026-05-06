@@ -31,6 +31,36 @@ EXAM_GAP_TOPICS = (
     "domain_range_edge",
 )
 
+SYLLABUS_TOPICS = (
+    "pure_proof",
+    "pure_algebra",
+    "pure_functions_graphs",
+    "pure_coordinate_geometry",
+    "pure_sequences",
+    "pure_trigonometry",
+    "pure_explogs",
+    "pure_differentiation",
+    "pure_integration",
+    "pure_numerical_methods",
+    "pure_vectors",
+    "stats_sampling_data",
+    "stats_probability",
+    "stats_distributions",
+    "stats_hypothesis",
+    "mechanics_kinematics",
+    "mechanics_forces",
+    "mechanics_moments",
+)
+
+ONLINE_TOPICS = (
+    "source_step_symmetry",
+    "source_mit_looping_ibp",
+    "source_openstax_pf",
+    "source_pauls_trig_sub",
+    "source_edexcel_rform",
+    "source_edexcel_parametric",
+)
+
 
 @dataclass
 class AdversarialCase:
@@ -61,6 +91,7 @@ class AdversarialGenerator:
             features = ["general"]
         else:
             features = [feature]
+        allow_repeats = feature in ("syllabus", "alevel", "online", "sources")
         out = []
         seen = set()
         attempts = 0
@@ -71,7 +102,7 @@ class AdversarialGenerator:
             attempts += 1
             case = self._one(name, attempts)
             key = case.input_text
-            if key in seen:
+            if key in seen and not allow_repeats:
                 continue
             seen.add(key)
             out.append(case)
@@ -95,6 +126,10 @@ class AdversarialGenerator:
             "general": self._general,
             "exam_gap": self._exam_gap,
             "full_marks": self._exam_gap,
+            "syllabus": self._syllabus,
+            "alevel": self._syllabus,
+            "online": self._online,
+            "sources": self._online,
         }
         return dispatch.get(feature, self._rewrite)(index)
 
@@ -432,3 +467,66 @@ class AdversarialGenerator:
         topic, flag, expr, function, sig, method, transforms, note = cases[(index - 1) % len(cases)]
         concept = self._concept(function, sig, method, topic, transforms, 5, "sympy+llm+exam")
         return AdversarialCase("Adv exam-gap {0}: {1}".format(index, topic), flag, expr, concept, True, note, expr)
+
+    def _syllabus(self, index: int) -> AdversarialCase:
+        """Edexcel 9MA0 capability matrix pressure cases.
+
+        These are not past-paper clones. They are compact kernels chosen so the
+        fuzzer can mutate every normal A-level Maths command surface.
+        """
+        i = max(0, index - 1)
+        cases = [
+            ("pure_proof", "alg", "compare((a+b)^2,a^2+2*a*b+b^2)", "compare", "lhs,rhs", "equivalence", ("expand", "equate_terms"), True),
+            ("pure_algebra", "alg", "solve(x^2-5*x+6=0,x,method=factor)", "solve", "eq,var,method", "factor", ("factor", "check_roots"), True),
+            ("pure_functions_graphs", "alg", "range(x/(1+x^2))", "range", "expr", "auto", ("stationary_points", "bounds"), False),
+            ("pure_coordinate_geometry", "alg", "complete_square(x^2+y^2-6*x+10*y+34)", "geometry", "equation", "complete_square", ("complete_square", "centre_radius"), True),
+            ("pure_sequences", "alg", "binomial((1+x)^5,x,0,5)", "binomial", "expr,var,point,order", "expand", ("pascal", "validity"), True),
+            ("pure_trigonometry", "trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform", "solve_trig", "eq,var,lo,hi,max,method", "rform", ("rform", "interval_filter"), True),
+            ("pure_explogs", "alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)", "solve", "eq,var,method", "log_exp", ("domain", "log_laws"), True),
+            ("pure_differentiation", "derive", "sin((x+1)^2),x,method=chain", "diff", "expr,var,method", "chain", ("chain_rule",), True),
+            ("pure_integration", "int", "x^2*e^(2*x),method=di", "integrate", "expr,method", "di", ("di_table", "collect_terms"), True),
+            ("pure_numerical_methods", "alg", "solve(x^2-2=0,x,method=numeric)", "numeric", "eq,var,method", "numeric", ("iteration", "convergence"), True),
+            ("pure_vectors", "alg", "sqrt(1^2+2^2+3^2)", "vectors", "components", "magnitude", ("component_square_sum",), False),
+            ("stats_sampling_data", "stats", "stats(1,2,2,3,5,8)", "stats", "data", "summary", ("mean", "spread"), False),
+            ("stats_probability", "stats", "binom(10,.5,4)", "probability", "n,p,k", "binomial", ("formula", "cdf_or_pmf"), False),
+            ("stats_distributions", "stats", "normalcdf(0,1,-1,1)", "distributions", "mu,sigma,lo,hi", "normal", ("standardise",), False),
+            ("stats_hypothesis", "stats", "ztest(5.4,5,1.2,36,0.05,gt)", "hypothesis", "xbar,mu,sigma,n,alpha,tail", "ztest", ("tail_prob", "compare_alpha"), True),
+            ("mechanics_kinematics", "suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", "mechanics", "knowns,target", "suvat", ("choose_formula", "substitute"), True),
+            ("mechanics_forces", "alg", "solve(3*a=12-6,a,method=linear)", "mechanics", "F=ma", "forces", ("resolve", "newton2"), True),
+            ("mechanics_moments", "alg", "solve(2*R=3*5,R,method=linear)", "mechanics", "moments", "moments", ("pivot", "equilibrium"), True),
+        ]
+        topic, flag, expr, function, sig, method, transforms, expects = cases[i % len(cases)]
+        difficulty = 5 if topic in ("pure_integration", "pure_trigonometry", "stats_hypothesis", "mechanics_kinematics") else 4
+        concept = self._concept(function, sig, method, topic, transforms, difficulty, "syllabus+oracle+llm")
+        return AdversarialCase(
+            "Syllabus {0}: {1}".format(index, topic),
+            flag,
+            expr,
+            concept,
+            expects,
+            "syllabus: Edexcel 9MA0 capability node; require full-mark route where working is expected",
+            "syllabus:edexcel-9ma0:{0}".format(topic),
+        )
+
+    def _online(self, index: int) -> AdversarialCase:
+        """Source-anchored hard cases for adversarial stress."""
+        i = max(0, index - 1)
+        cases = [
+            ("source_step_symmetry", "int", "defint(sin(x)^5/(sin(x)^5+cos(x)^5),x,0,pi/2)", "integrate", "defint(expr,var,lo,hi)", "symmetry", "NRICH STEP", "https://nrich.maths.org/step-integration-questions", ("kings_property", "combine")),
+            ("source_mit_looping_ibp", "int", "e^(2*x)*cos(5*x),method=parts", "integrate", "expr,method", "parts", "MIT OCW 18.01SC", "https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/download/", ("looping_ibp", "collect_I")),
+            ("source_openstax_pf", "int", "(5*x+7)/((x-1)*(x^2+4)),method=pf", "integrate", "expr,method", "pf", "OpenStax Calculus 2", "https://openstax.org/books/calculus-volume-2/pages/3-4-partial-fractions", ("pf_setup", "equate_coeffs")),
+            ("source_pauls_trig_sub", "int", "sqrt(9-x^2),method=trig", "integrate", "expr,method", "trig", "Paul's Online Notes", "https://tutorial.math.lamar.edu/Classes/CalcII/TrigSubstitutions.aspx", ("reference_triangle", "back_sub")),
+            ("source_edexcel_rform", "trig", "5*sin(x)-12*cos(x)=6,x,0,2*pi,12,method=rform", "solve_trig", "eq,var,lo,hi,max,method", "rform", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("rform", "base_angle", "interval_filter")),
+            ("source_edexcel_parametric", "derive", "x=t^2+1/t,y=t^2-1/t,t,x,method=param", "diff", "x(t),y(t),t,x,method", "param", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("dxdt_dydt", "second_derivative")),
+        ]
+        topic, flag, expr, function, sig, method, source, url, transforms = cases[i % len(cases)]
+        concept = self._concept(function, sig, method, topic, transforms, 5 + (i % 2), "source+sympy+llm")
+        return AdversarialCase(
+            "Online {0}: {1}".format(index, topic),
+            flag,
+            expr,
+            concept,
+            True,
+            "source: hard public question family; mark full method steps, not only answer",
+            "source:{0} {1}".format(source, url),
+        )

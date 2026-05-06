@@ -57,6 +57,27 @@ class RandomEngineTests(unittest.TestCase):
         self.assertIn("exam", notes)
         self.assertIn("show", notes)
 
+    def test_syllabus_scope_targets_edexcel_capability_matrix(self):
+        gen = AdversarialGenerator(seed=901)
+
+        cases = gen.generate("syllabus", 60)
+
+        topics = {case.concept.topic for case in cases}
+        self.assertIn("pure_algebra", topics)
+        self.assertIn("pure_integration", topics)
+        self.assertIn("stats_probability", topics)
+        self.assertIn("mechanics_kinematics", topics)
+        self.assertTrue(all("syllabus" in case.expected_note.lower() for case in cases))
+
+    def test_online_scope_targets_source_anchored_hard_cases(self):
+        gen = AdversarialGenerator(seed=902)
+
+        cases = gen.generate("online", 30)
+
+        sources = " ".join(case.source_kernel.lower() for case in cases)
+        self.assertIn("source:", sources)
+        self.assertTrue(any(case.concept.difficulty >= 5 for case in cases))
+
     def test_general_scope_only_emits_general_cases(self):
         gen = AdversarialGenerator(seed=222)
 
