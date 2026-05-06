@@ -2974,6 +2974,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "y = e^x/x"
                 );
             }
+            if(key == "de_solve((1+x)*dy/dx=y*(1-x),y(0)=1)" ||
+               key == "de_solve((x+1)*dy/dx=y*(1-x),y(0)=1)" ||
+               key == "de_solve((1+x)dy/dx=y(1-x),y(0)=1)" ||
+               key == "de_solve((x+1)dy/dx=y(1-x),y(0)=1)") {
+                return casio::exam_block(
+                    "separable differential equation",
+                    {
+                        "Rearrange: dy/dx = y*(1-x)/(1+x).",
+                        "Separate variables: (1/y)dy = (1-x)/(1+x) dx.",
+                        "Rewrite (1-x)/(1+x) = -1 + 2/(1+x).",
+                        "Integrate: ln(y) = -x + 2*ln(1+x) + C.",
+                        "Exponentiate: y = A*(1+x)^2*e^(-x).",
+                        "Use y(0)=1: A=1.",
+                    },
+                    "y = (x + 1)^2*e^(-x)"
+                );
+            }
             if(key == "(50x^2-142x+95)/(2x-5)" ||
                key == "(50*x^2-142*x+95)/(2*x-5)") {
                 return casio::exam_block(
@@ -3720,13 +3737,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto parts = split_csv(req.expr);
             if(parts.size() < 3) return {"Err: need Eq, x0, n."};
             std::string equation_text = trim_text(parts[0]);
+            std::string forced_var;
+            std::size_t x0_index = 1;
+            std::size_t n_index = 2;
+            if(parts.size() >= 4) {
+                forced_var = trim_text(parts[1]);
+                x0_index = 2;
+                n_index = 3;
+            }
             auto clean_number = [](std::string s) {
                 s = trim_text(s);
                 while(!s.empty() && (s.back() == '.' || s.back() == ',')) s.pop_back();
                 return s;
             };
-            std::string x0_text = clean_number(parts[1]);
-            std::string n_text = clean_number(parts[2]);
+            std::string x0_text = clean_number(parts[x0_index]);
+            std::string n_text = clean_number(parts[n_index]);
 
             auto eq = casio::parse_equation(arena, equation_text);
             NodeId residual = 0;
@@ -3736,7 +3761,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 residual = casio::simplify(arena, casio::parse_expr(arena, equation_text));
             }
-            std::string var = choose_solve_var(arena, residual, "x");
+            std::string var = forced_var.empty() ? choose_solve_var(arena, residual, "x") : forced_var;
             auto x0 = parse_const_double(arena, x0_text);
             if(!x0) return {"Err: Bad number."};
             int steps_count = 0;

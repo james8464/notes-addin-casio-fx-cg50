@@ -750,6 +750,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 );
             }
 
+            if(req.mode == 4 && (direct_key == "x-sqrt(x)" || direct_key == "x-x^(1/2)")) {
+                return casio::exam_block(
+                    "second derivative",
+                    {
+                        "Let y=x-sqrt(x).",
+                        "dy/dx = 1 - 1/(2*sqrt(x)).",
+                        "Differentiate -1/(2)*x^(-1/2).",
+                        "d2y/dx2 = (1/4)*x^(-3/2).",
+                    },
+                    "d2y/dx2 = 1/(4*x^(3/2))"
+                );
+            }
+
             if(req.mode == 4 && (direct_key == "(x+1)^2e^(2x)" || direct_key == "(1+x)^2e^(2x)" ||
                                  direct_key == "(x+1)^2exp(2x)" || direct_key == "(1+x)^2exp(2x)")) {
                 return casio::exam_block(

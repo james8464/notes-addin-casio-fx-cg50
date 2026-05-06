@@ -53,6 +53,7 @@ def main() -> int:
         ("extreme_working_sources", [sys.executable, "c++/tools/golden/check_extreme_working_sources.py"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),
         ("mp2_vwx_manual", [sys.executable, "c++/tools/golden/check_mp2_vwx_manual.py"]),
+        ("mp2_yz_manual", [sys.executable, "c++/tools/golden/check_mp2_yz_manual.py"]),
         ("mp2_stu_manual", [sys.executable, "c++/tools/golden/check_mp2_stu_manual.py"]),
         ("mp2_qr_manual", [sys.executable, "c++/tools/golden/check_mp2_qr_manual.py"]),
         ("mp2_nop_manual", [sys.executable, "c++/tools/golden/check_mp2_nop_manual.py"]),

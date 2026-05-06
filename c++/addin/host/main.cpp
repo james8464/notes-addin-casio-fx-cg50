@@ -473,6 +473,11 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "newton(")).empty()) {
+                req.mode = 12;
+                req.method = "newton";
+                req.expr = inner;
+            }
             else if(!(inner = unwrap_call(expr, "solve(")).empty()) {
                 req.mode = 6;
                 req.expr = inner;

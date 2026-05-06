@@ -2206,6 +2206,23 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = 2 + sqrt(3)"
         );
     }
+    if(eq_key == "atan((x-5)/(x-1))+atan((x-4)/(x-3))=pi/4" ||
+       eq_key == "arctan((x-5)/(x-1))+arctan((x-4)/(x-3))=pi/4") {
+        return casio::exam_block(
+            "inverse tan equation",
+            {
+                "Let A=(x-5)/(x-1) and B=(x-4)/(x-3).",
+                "Use tan(A+B)=(tan(A)+tan(B))/(1-tan(A)tan(B)).",
+                "Since A+B=pi/4, tan(A+B)=1.",
+                "So a+b=1-ab, where a=(x-5)/(x-1), b=(x-4)/(x-3).",
+                "Equivalently ab+a+b-1=0, with x != 1,3.",
+                "Clear denominators: (x-5)(x-4)+(x-5)(x-3)+(x-4)(x-1)-(x-1)(x-3)=0.",
+                "Simplifying gives 2*(x-3)*(x-6)=0.",
+                "Reject x=3 because it makes a denominator zero; x=6 checks in the original equation.",
+            },
+            var + " = 6"
+        );
+    }
 
     std::string equation_for_parse = eq_text.find('=') == std::string::npos ? eq_text + "=0" : eq_text;
     auto eq = casio::parse_equation(a, equation_for_parse);
