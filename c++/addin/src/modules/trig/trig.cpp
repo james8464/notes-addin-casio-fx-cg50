@@ -1250,6 +1250,37 @@ static std::vector<double> solve_quadratic_d(double a, double b, double c)
     return roots;
 }
 
+static std::string trig_root_text(double r)
+{
+    for(int den = 1; den <= 24; ++den) {
+        long long num = llround(r * den);
+        if(std::fabs(r - (double)num / den) < 1e-9) return ratio_text(num, den);
+    }
+    return format_double_compact(r);
+}
+
+static std::string trig_quad_text(double a, double b, double c)
+{
+    auto term = [](double v, std::string const &name, bool first) {
+        if(std::fabs(v) < 1e-12) return std::string();
+        std::string s;
+        if(v < 0) s += first ? "-" : "-";
+        else if(!first) s += "+";
+        double av = std::fabs(v);
+        if(std::fabs(av - 1.0) > 1e-12 || name.empty()) s += trig_root_text(av);
+        s += name;
+        return s;
+    };
+    std::string out;
+    std::string t = term(a, "u^2", true);
+    if(!t.empty()) out += t;
+    t = term(b, "u", out.empty());
+    if(!t.empty()) out += t;
+    t = term(c, "", out.empty());
+    if(!t.empty()) out += t;
+    return out + "=0.";
+}
+
 static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     Arena &a,
     NodeId residual,
@@ -1265,6 +1296,15 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     std::vector<std::string> steps;
     steps.push_back("Move all terms to one side.");
 
+    auto join_roots = [](std::vector<double> const &roots) {
+        std::string s;
+        for(size_t i = 0; i < roots.size(); ++i) {
+            if(i) s += " or u=";
+            s += trig_root_text(roots[i]);
+        }
+        return s;
+    };
+
     auto add_roots = [&](FnKind fk, std::vector<double> const &roots) {
         for(double r : roots) {
             auto base = base_trig_degrees(fk, r);
@@ -1274,14 +1314,28 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     };
 
     if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->c1) < 1e-12 && std::fabs(poly->c2) < 1e-12) {
-        steps.push_back("Let u=sin(A).");
-        steps.push_back("Solve the quadratic in u, then solve sin(A)=u.");
-        add_roots(FnKind::Sin, solve_quadratic_d(poly->s2, poly->s1, poly->c));
+        std::string arg_text = format_expr(a, poly->arg);
+        auto roots = solve_quadratic_d(poly->s2, poly->s1, poly->c);
+        steps.push_back("Let u=sin(" + arg_text + ").");
+        steps.push_back(trig_quad_text(poly->s2, poly->s1, poly->c));
+        steps.push_back("u=" + join_roots(roots) + ".");
+        for(double r : roots) {
+            if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
+            else steps.push_back("sin(" + arg_text + ")=" + trig_root_text(r) + ".");
+        }
+        add_roots(FnKind::Sin, roots);
     }
     else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->s2) < 1e-12) {
-        steps.push_back("Let u=cos(A).");
-        steps.push_back("Solve the quadratic in u, then solve cos(A)=u.");
-        add_roots(FnKind::Cos, solve_quadratic_d(poly->c2, poly->c1, poly->c));
+        std::string arg_text = format_expr(a, poly->arg);
+        auto roots = solve_quadratic_d(poly->c2, poly->c1, poly->c);
+        steps.push_back("Let u=cos(" + arg_text + ").");
+        steps.push_back(trig_quad_text(poly->c2, poly->c1, poly->c));
+        steps.push_back("u=" + join_roots(roots) + ".");
+        for(double r : roots) {
+            if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
+            else steps.push_back("cos(" + arg_text + ")=" + trig_root_text(r) + ".");
+        }
+        add_roots(FnKind::Cos, roots);
     }
     else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c2) < 1e-12 &&
             std::fabs(poly->s2) > 1e-12 && std::fabs(poly->c1) > 1e-12) {

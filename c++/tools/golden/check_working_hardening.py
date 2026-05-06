@@ -143,6 +143,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Parts: w=", "dz=", "ERR:"],
     ),
     (
+        "int",
+        "x^3*e^(2*x),method=di",
+        ["DI table", "D:", "I:", "Signs:", "e^(2*x)*(1/2*x^3 - 3/4*x^2 + 3/4*x - 3/8)"],
+        ["Use DI/table integration by parts for x^n*e^(a*x+b).", "ERR:"],
+    ),
+    (
+        "int",
+        "x^2*cos(3*x),method=di",
+        ["DI table", "D:", "I:", "Signs:", "1/3*x^2*sin(3*x)"],
+        ["Use DI/table integration by parts for x^n times trig.", "ERR:"],
+    ),
+    (
         "trig",
         "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
         ["General: A=B+2*pi*n or A=pi-B+2*pi*n", "x=n*pi", "x=pi/4+n*pi/2", "Filter 0 <= x <= 2*pi"],
@@ -153,6 +165,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
         ["Let u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "cos(x)=1/2 or cos(x)=-1"],
         ["substitution differential", "ERR:"],
+    ),
+    (
+        "trig",
+        "2*cos(x)^2+3*cos(x)-2=0,x,0,2*pi,10,method=identity",
+        ["Let u=cos(x)", "2u^2+3u-2=0", "u=1/2 or u=-2", "Reject u=-2", "cos(x)=1/2"],
+        ["Solve the quadratic in u, then solve cos(A)=u.", "ERR:"],
+    ),
+    (
+        "alg",
+        "domain(sqrt(log(1/2,x-1)))",
+        ["x - 1 > 0", "log base 1/2 decreases", "x - 1 <= 1", "Answer: 1 < x <= 2"],
+        ["Answer: log(x - 1)/log(1/2) >= 0", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(abs(x-1)+abs(x-2))",
+        ["Piecewise abs sum", "minimum distance = 1", "Answer: y >= 1"],
+        ["Answer: y >= 0", "ERR:"],
+    ),
+    (
+        "derive",
+        "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
+        ["Clear denominators", "Differentiate both sides", "collect dy/dx", "dy/dx"],
+        ["Domain: log args >0", "ERR:"],
     ),
     (
         "int",

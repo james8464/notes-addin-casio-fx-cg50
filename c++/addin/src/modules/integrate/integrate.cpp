@@ -542,9 +542,9 @@ static std::string clean_integral_step(std::string s, std::string const &expr, s
     if(s.find("Set up the integral") != std::string::npos) return "I = Integral [" + expr + "] d" + var + ".";
     if(s.find("Simplify. Add constant C") != std::string::npos) return "";
     if(s.find("Repeated integration by parts for x^n*exp") != std::string::npos)
-        return "Use DI/table integration by parts for x^n*e^(a*x+b).";
+        return "Use DI table.";
     if(s.find("Repeated integration by parts for x^n trig") != std::string::npos)
-        return "Use DI/table integration by parts for x^n times trig.";
+        return "Use DI table.";
     if(s.find("Integration by parts for x*exp") != std::string::npos) return "Use parts: u=x, dv=e^(a*x) dx.";
     if(s.find("Integration by parts for x*sin") != std::string::npos) return "Use parts: u=x, dv=sin(a*x+b) dx.";
     if(s.find("Integration by parts for x*cos") != std::string::npos) return "Use parts: u=x, dv=cos(a*x+b) dx.";
@@ -4262,11 +4262,58 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
     auto lc = linear_coeff(a, arg, var);
     if(!lc || r_zero(*lc)) return std::nullopt;
 
+    auto join = [](std::vector<std::string> const &v) {
+        std::string s;
+        for(size_t i = 0; i < v.size(); ++i) {
+            if(i) s += ", ";
+            s += v[i];
+        }
+        return s;
+    };
+    auto add_di_table = [&](bool exp_case) {
+        if(power <= 0) return;
+        std::vector<std::string> dcol;
+        std::vector<std::string> icol;
+        std::vector<std::string> signs;
+        Rational falling = coeff;
+        for(int j = 0; j <= power; ++j) {
+            dcol.push_back(format_expr(a, mul_coeff(a, falling, var_pow(a, var, power - j))));
+            if(j < power) falling = r_mul(falling, r_from_int(power - j));
+        }
+        dcol.push_back("0");
+        for(int j = 1; j <= power + 1; ++j) {
+            if(exp_case) {
+                Rational c = r_pow(r_div(Rational{1, 1}, *lc), j);
+                icol.push_back(format_expr(a, mul_coeff(a, c, special)));
+            }
+            else {
+                bool use_sin = (trig == FnKind::Cos) ? (j % 2 == 1) : (j % 2 == 0);
+                int mod = j % 4;
+                int sign = 1;
+                if(trig == FnKind::Sin) sign = (mod == 1 || mod == 2) ? -1 : 1;
+                else sign = (mod == 1 || mod == 0) ? 1 : -1;
+                Rational c = r_pow(r_div(Rational{1, 1}, *lc), j);
+                if(sign < 0) c = r_neg(c);
+                icol.push_back(format_expr(a, mul_coeff(a, c, casio::fn(a, use_sin ? "sin" : "cos", arg))));
+            }
+            signs.push_back((j % 2) ? "+" : "-");
+        }
+        steps.push_back("Step 3: DI table.");
+        steps.push_back("Step 4: D: " + join(dcol) + ".");
+        steps.push_back("Step 5: I: " + join(icol) + ".");
+        steps.push_back("Step 6: Signs: " + join(signs) + ".");
+        if(!exp_case && trig == FnKind::Cos) {
+            steps.push_back("Step 7: First term: " + format_expr(a, casio::mul(a, {var_pow(a, var, power), mul_coeff(a, r_div(Rational{1, 1}, *lc), casio::fn(a, "sin", arg))})) + ".");
+        }
+    };
+
     if(is_exp) {
         steps.push_back("Step 2: Repeated integration by parts for x^n*exp(a*x+b).");
+        add_di_table(true);
         return integrate_xn_exp(a, power, coeff, special, *lc, var);
     }
     steps.push_back("Step 2: Repeated integration by parts for x^n trig(a*x+b).");
+    add_di_table(false);
     if(trig == FnKind::Sin) return integrate_xn_sin(a, power, coeff, arg, *lc, var);
     return integrate_xn_cos(a, power, coeff, arg, *lc, var);
 }

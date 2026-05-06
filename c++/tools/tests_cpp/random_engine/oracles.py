@@ -67,6 +67,9 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         return OutputQuality("fail", "unevaluated supported form")
     if not expects_working:
         return OutputQuality("pass", "answer-only allowed")
+    if "method: forced di" in text or "di table" in text:
+        if not all(item in text for item in ("di table", "d:", "i:", "signs:")):
+            return OutputQuality("review", "DI table/alternating signs missing")
     if "parts" in text:
         required = ("u", "dv", "du", "v")
         if not all(_has_assignment(text, name) for name in required):
@@ -84,6 +87,9 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
     if "implicit" in text or "differentiate both sides" in text:
         if not any(word in text for word in ("collect", "isolate", "factor", "solve for")):
             return OutputQuality("review", "implicit isolation step missing")
+    if ("let u=cos" in text or "let u=sin" in text) and "u^2" in text:
+        if "u=" not in text or not any(word in text for word in ("reject", "sin(", "cos(")):
+            return OutputQuality("review", "trig polynomial roots/rejections missing")
     if "dx/dt" in text or "dy/dt" in text:
         if "dy/dx" not in text:
             return OutputQuality("review", "parametric dy/dx step missing")

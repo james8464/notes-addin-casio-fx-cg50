@@ -1208,19 +1208,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     dname + " = sin(y)/(2*sin(2*y)-x*cos(y)); x = -3/2 or x = 3/2"
                 );
             }
-            return casio::exam_block(
-                "implicit differentiation (limited)",
-                {
-                    "Domain: log args >0; denoms !=0 where used.",
-                    "Start with " + pre.norm + ".",
-                    "Rewrite as " + pre.simplified + ".",
-                    "Use implicit differentiation.",
-                    "Differentiate both sides wrt x; y=y(x).",
-                    "Use product/chain rules, then collect dy/dx.",
-                    "Factor dy/dx and divide.",
-                },
-                answer
-            );
+            std::vector<std::string> steps;
+            bool has_log = compact.find("log(") != std::string::npos || compact.find("ln(") != std::string::npos;
+            bool has_power = compact.find('^') != std::string::npos;
+            bool has_den = compact.find('/') != std::string::npos || compact.find("^-1") != std::string::npos ||
+                           has_node_kind(arena, left, NodeKind::Div) || has_node_kind(arena, right, NodeKind::Div);
+            if(has_log) steps.push_back("Domain: log args >0.");
+            else if(has_power) steps.push_back("Domain: positive bases where log diff is used.");
+            if(has_den) {
+                steps.push_back("Domain: denoms !=0.");
+                steps.push_back("Clear denominators where useful.");
+            }
+            steps.push_back("Start with " + pre.norm + ".");
+            steps.push_back("Rewrite as " + pre.simplified + ".");
+            steps.push_back("Use implicit differentiation.");
+            steps.push_back("Differentiate both sides wrt x; y=y(x).");
+            steps.push_back("Use product/chain rules, then collect dy/dx.");
+            steps.push_back("Factor dy/dx and divide.");
+            return casio::exam_block("implicit differentiation (limited)", steps, answer);
         }
         if(req.mode == 3 || req.mode == 5) {
             auto parts = split_csv(req.expr);

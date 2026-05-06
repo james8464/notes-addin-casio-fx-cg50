@@ -1652,20 +1652,39 @@ static std::optional<Rational> unbounded_trig_square_min(Arena &a, NodeId n)
     return c;
 }
 
-static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var)
+struct AbsLinearMinInfo
+{
+    Rational min{0, 1};
+    bool piecewise_sum = false;
+};
+
+static std::optional<std::pair<Rational, Rational>> abs_linear_canon(Arena &a, NodeId id, std::string const &var)
+{
+    Node const &an = a.get(id);
+    if(an.kind != NodeKind::Fn || an.fkind != FnKind::Abs) return std::nullopt;
+    auto p = poly_of(a, an.a, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    Rational m = p->a1;
+    Rational b = p->a0;
+    if(m.num < 0) {
+        m = r_neg(m);
+        b = r_neg(b);
+    }
+    return std::make_pair(m, b);
+}
+
+static std::optional<AbsLinearMinInfo> abs_linear_min_info(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
-    bool saw_abs_linear = false;
+    std::vector<std::pair<Rational, Rational>> abs_terms;
     Rational c{0, 1};
     auto accept_abs = [&](NodeId id) -> bool {
-        Node const &an = a.get(id);
-        if(an.kind != NodeKind::Fn || an.fkind != FnKind::Abs) return false;
-        auto p = poly_of(a, an.a, var);
-        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return false;
-        saw_abs_linear = true;
+        auto p = abs_linear_canon(a, id, var);
+        if(!p) return false;
+        abs_terms.push_back(*p);
         return true;
     };
-    if(accept_abs(n)) return Rational{0, 1};
+    if(accept_abs(n)) return AbsLinearMinInfo{Rational{0, 1}, false};
     if(x.kind != NodeKind::Add) return std::nullopt;
     for(auto kid : x.kids) {
         if(accept_abs(kid)) continue;
@@ -1673,8 +1692,33 @@ static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std
         if(kn.kind != NodeKind::Num) return std::nullopt;
         c = r_add(c, kn.num);
     }
-    if(!saw_abs_linear) return std::nullopt;
-    return c;
+    if(abs_terms.empty()) return std::nullopt;
+    if(abs_terms.size() == 1) return AbsLinearMinInfo{c, false};
+    Rational slope = abs_terms.front().first;
+    Rational lo = abs_terms.front().second;
+    Rational hi = abs_terms.front().second;
+    for(auto const &p : abs_terms) {
+        if(r_cmp(p.first, slope) != 0) return std::nullopt;
+        if(r_cmp(p.second, lo) < 0) lo = p.second;
+        if(r_cmp(p.second, hi) > 0) hi = p.second;
+    }
+    return AbsLinearMinInfo{r_add(c, r_sub(hi, lo)), true};
+}
+
+static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var)
+{
+    auto info = abs_linear_min_info(a, n, var);
+    if(!info) return std::nullopt;
+    return info->min;
+}
+
+static std::optional<AbsLinearMinInfo> sqrt_abs_linear_min_info(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return std::nullopt;
+    auto info = abs_linear_min_info(a, x.a, var);
+    if(!info || r_cmp(info->min, Rational{0, 1}) < 0) return std::nullopt;
+    return info;
 }
 
 static std::string abs_linear_text(Arena &a, NodeId n, std::string const &var)
@@ -1750,6 +1794,35 @@ static std::optional<std::string> positive_linear_domain(Arena &a, NodeId n, std
     Rational bound = r_div(r_neg(p->a0), p->a1);
     std::string bound_text = format_expr(a, a.num(bound));
     return var + std::string(p->a1.num > 0 ? " > " : " < ") + bound_text;
+}
+
+static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return std::nullopt;
+    Node const &inner = a.get(x.a);
+    if(inner.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(inner.a);
+    Node const &bot = a.get(inner.b);
+    if(top.kind != NodeKind::Fn || top.fkind != FnKind::Log || bot.kind != NodeKind::Fn || bot.fkind != FnKind::Log) return std::nullopt;
+    auto base = eval_node(a, bot.a, var, 0.0);
+    if(!base || *base <= 0.0 || std::fabs(*base - 1.0) < 1e-12) return std::nullopt;
+    auto p = poly_of(a, top.a, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    Rational zero_bound = r_div(r_neg(p->a0), p->a1);
+    Rational one_bound = r_div(r_sub(Rational{1, 1}, p->a0), p->a1);
+    std::string u = format_expr(a, top.a);
+    if(*base < 1.0) {
+        steps.push_back("log base " + format_expr(a, bot.a) + " decreases.");
+        steps.push_back("0<base<1, so log_base(u)>=0 gives 0<u<=1.");
+        steps.push_back("Here u=" + u + ", so solve 0<" + u + "<=1.");
+        steps.push_back(u + " <= 1.");
+        if(p->a1.num > 0) return format_rat(a, zero_bound) + " < " + var + " <= " + format_rat(a, one_bound);
+        return format_rat(a, one_bound) + " <= " + var + " < " + format_rat(a, zero_bound);
+    }
+    steps.push_back("base>1, so log_base(u)>=0 gives u>=1.");
+    if(p->a1.num > 0) return var + " >= " + format_rat(a, one_bound);
+    return var + " <= " + format_rat(a, one_bound);
 }
 
 static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vector<std::string> &steps)
@@ -2771,7 +2844,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 auto pfx = domain_answer.find("Domain: ");
                 if(pfx != std::string::npos) domain_answer = domain_answer.substr(pfx + 8);
                 Node const &dn = arena.get(n);
-                if(dn.kind == NodeKind::Fn && dn.fkind == FnKind::Log) {
+                if(auto solved = sqrt_log_base_domain(arena, n, var, steps)) {
+                    domain_answer = *solved;
+                    steps.push_back("Domain: " + domain_answer + ".");
+                }
+                else if(dn.kind == NodeKind::Fn && dn.fkind == FnKind::Log) {
                     if(auto solved = positive_linear_domain(arena, dn.a, var)) {
                         domain_answer = *solved;
                         steps.push_back("Solve the log condition: " + domain_answer + ".");
@@ -2863,9 +2940,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *rq;
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto abs_min = abs_linear_plus_const_min(arena, n, var)) {
-                    range_answer = "y >= " + format_expr(arena, arena.num(*abs_min));
-                    steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
+                else if(auto sqrt_min = sqrt_abs_linear_min_info(arena, n, var)) {
+                    range_answer = "y >= " + sqrt_bound_text(arena, sqrt_min->min);
+                    if(sqrt_min->piecewise_sum) steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, sqrt_min->min) + ".");
+                    else {
+                        steps.push_back(abs_linear_text(arena, rn.a, var) + " >= 0.");
+                        steps.push_back("inside sqrt >= " + format_rat(arena, sqrt_min->min) + ".");
+                    }
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto abs_info = abs_linear_min_info(arena, n, var)) {
+                    range_answer = "y >= " + format_expr(arena, arena.num(abs_info->min));
+                    if(abs_info->piecewise_sum) steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, abs_info->min) + ".");
+                    else steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Acos) {
