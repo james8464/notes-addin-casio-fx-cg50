@@ -2828,33 +2828,37 @@ static int cascas_u16_be(const unsigned char *p){
 static bool cascas_read_pack_record(const char *name,string &body){
   if (!name || !name[0])
     return false;
-  unsigned short pFile[128];
-  Bfile_StrToName_ncpy(pFile,(const unsigned char *)CASCAS_PACK_FILE,strlen(CASCAS_PACK_FILE)+1);
-  int hFile=Bfile_OpenFile_OS(pFile,READ);
-  if (hFile<0)
-    return false;
-  int size=Bfile_GetFileSize_OS(hFile);
-  if (size<=0 || size>CASCAS_PACK_MAX){
-    Bfile_CloseFile_OS(hFile);
-    return false;
+  static char *cascas_pack_buf=0;
+  static int cascas_pack_size=-2;
+  if (cascas_pack_size==-2){
+    cascas_pack_size=-1;
+    unsigned short pFile[128];
+    Bfile_StrToName_ncpy(pFile,(const unsigned char *)CASCAS_PACK_FILE,strlen(CASCAS_PACK_FILE)+1);
+    int hFile=Bfile_OpenFile_OS(pFile,READ);
+    if (hFile>=0){
+      int size=Bfile_GetFileSize_OS(hFile);
+      if (size>0 && size<=CASCAS_PACK_MAX){
+	cascas_pack_buf=(char*)malloc(size);
+	if (cascas_pack_buf){
+	  int got=Bfile_ReadFile_OS(hFile,cascas_pack_buf,size,0);
+	  if (got==size)
+	    cascas_pack_size=size;
+	  else {
+	    free(cascas_pack_buf);
+	    cascas_pack_buf=0;
+	  }
+	}
+      }
+      Bfile_CloseFile_OS(hFile);
+    }
   }
-  char *buf=(char*)malloc(size+1);
-  if (!buf){
-    Bfile_CloseFile_OS(hFile);
+  if (cascas_pack_size<=0)
     return false;
-  }
-  int got=Bfile_ReadFile_OS(hFile,buf,size,0);
-  Bfile_CloseFile_OS(hFile);
-  if (got!=size){
-    free(buf);
-    return false;
-  }
-  buf[size]=0;
+  char *buf=cascas_pack_buf;
+  int size=cascas_pack_size;
   const unsigned char *ubuf=(const unsigned char*)buf;
-  if (size<6 || ubuf[0]!='C' || ubuf[1]!='C' || ubuf[2]!='P' || ubuf[3]!='1'){
-    free(buf);
+  if (size<6 || ubuf[0]!='C' || ubuf[1]!='C' || ubuf[2]!='P' || ubuf[3]!='1')
     return false;
-  }
   int count=cascas_u16_be(ubuf+4),pos=6,namelen=strlen(name);
   for (int i=0;i<count && pos+4<=size;++i){
     int nl=cascas_u16_be(ubuf+pos);
@@ -2868,13 +2872,11 @@ static bool cascas_read_pack_record(const char *name,string &body){
       string out;
       for (int j=0;j<bl;++j)
 	out += rbody[j];
-      free(buf);
       body=out;
       return true;
     }
     pos += nl+bl;
   }
-  free(buf);
   return false;
 }
 

@@ -130,6 +130,11 @@ def main() -> int:
         return fail("working screen markers missing: " + ", ".join(missing))
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")
+    pack_reader = main_cc.split("static bool cascas_read_pack_record", 1)[1].split("static string cascas_tpl", 1)[0]
+    if "static char *cascas_pack_buf" not in pack_reader or "static int cascas_pack_size" not in pack_reader:
+        return fail("CASIOCAS.PAK reader cache markers missing")
+    if pack_reader.count("malloc(") > 1:
+        return fail("CASIOCAS.PAK reader may allocate repeatedly")
     if '{"range(","tabvar("}' in main_cc:
         return fail("range() still aliases to tabvar()")
     try:
