@@ -66,6 +66,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([x^2+x*y+y^2=37,x+y+x*y=19],[x,y])",
+        ["Let s=x+y,p=xy.", "x^2+xy+y^2 = s^2-p", "(x,y) = (3,4) or (4,3)"],
+        ["Only one '=' supported", "ERR:"],
+    ),
+    (
+        "alg",
         "domain(csc(2*x+pi/6)^2-cot(2*x+pi/6)^2)",
         ["sin(2*x + pi/6) != 0", "Answer:"],
         ["Answer: all real x", "ERR:"],
@@ -171,6 +177,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sin(x+y),method=compound_angle",
         ["sin(A+B)=sin(A)cos(B)+cos(A)sin(B)", "Answer: sin(x)*cos(y)+cos(x)*sin(y)"],
         ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "cos(7*theta),method=auto",
+        ["Basis: let c=cos(theta)", "Answer: 64*c^7 - 112*c^5 + 56*c^3 - 7*c"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "tan(3*x),method=auto",
+        ["Let u=tan(x)", "Answer: (3*tan(x)-tan(x)^3)/(1-3*tan(x)^2)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "(sin(5*x)-sin(x))/(cos(5*x)+cos(x)),method=auto",
+        ["sum-to-product", "Answer: tan(2*x)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "cos(7*theta),target=cos(theta),method=auto",
+        ["Warning: target not verified", "Answer: cos(7*theta)"],
+        ["Thus source = target.", "Answer: cos(theta)", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(x+y),target=sin(2*x),method=auto",
+        ["Warning: target not verified", "Answer: sin(x + y)"],
+        ["Thus source = target.", "Answer: sin(2*x)", "ERR:"],
     ),
     (
         "trig",

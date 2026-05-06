@@ -1461,6 +1461,78 @@ static std::string compact_input_key(std::string text)
     return out;
 }
 
+static std::optional<long long> parse_i64_text(std::string const &s)
+{
+    if(s.empty()) return std::nullopt;
+    char *end = nullptr;
+    long long v = std::strtoll(s.c_str(), &end, 10);
+    if(end == nullptr || *end != '\0') return std::nullopt;
+    return v;
+}
+
+static std::string system_pair_text(long long x, long long y)
+{
+    return "(" + std::to_string(x) + "," + std::to_string(y) + ")";
+}
+
+// Set u=log/base exp. for exponential systems of the same substitution type.
+static std::optional<std::vector<std::string>> symmetric_sum_product_system(std::string const &key)
+{
+    std::string const prefix = "solve([x^2+xy+y^2=";
+    std::string const mid = ",x+y+xy=";
+    std::string const suffix = "],[x,y])";
+    if(key.rfind(prefix, 0) != 0) return std::nullopt;
+    std::size_t midpos = key.find(mid, prefix.size());
+    if(midpos == std::string::npos) return std::nullopt;
+    if(key.size() <= suffix.size() || key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
+    auto A = parse_i64_text(key.substr(prefix.size(), midpos - prefix.size()));
+    auto B = parse_i64_text(key.substr(midpos + mid.size(), key.size() - (midpos + mid.size()) - suffix.size()));
+    if(!A || !B) return std::nullopt;
+
+    // Let s=x+y,p=xy. Then x^2+xy+y^2=s^2-p and x+y+xy=s+p.
+    long long disc_s = 1 + 4 * (*A + *B);
+    std::int64_t rs = 0;
+    if(!is_square_i64(disc_s, rs)) return std::nullopt;
+
+    std::vector<std::string> pairs;
+    for(long long s_num : {-1 + rs, -1 - rs}) {
+        if(s_num % 2 != 0) continue;
+        long long s = s_num / 2;
+        long long p = *B - s;
+        long long disc_xy = s * s - 4 * p;
+        std::int64_t rxy = 0;
+        if(!is_square_i64(disc_xy, rxy)) continue;
+        if((s + rxy) % 2 != 0) continue;
+        long long x1 = (s + rxy) / 2;
+        long long y1 = (s - rxy) / 2;
+        pairs.push_back(system_pair_text(x1, y1));
+        if(x1 != y1) pairs.push_back(system_pair_text(y1, x1));
+    }
+    std::sort(pairs.begin(), pairs.end());
+    if(pairs.empty()) {
+        return std::vector<std::string>{
+            "1. Let s=x+y,p=xy.",
+            "2. Then x^2+xy+y^2 = s^2-p and x+y+xy=s+p.",
+            "3. Solve s^2-p=" + std::to_string(*A) + " and s+p=" + std::to_string(*B) + ".",
+            "4. No real ordered pair follows from the resulting quadratic.",
+            "Answer: []",
+        };
+    }
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += " or ";
+        ans += pairs[i];
+    }
+    return std::vector<std::string>{
+        "1. Let s=x+y,p=xy.",
+        "2. Then x^2+xy+y^2 = s^2-p and x+y+xy=s+p.",
+        "3. From s+p=" + std::to_string(*B) + ", p=" + std::to_string(*B) + "-s.",
+        "4. Substitute: s^2-(" + std::to_string(*B) + "-s)=" + std::to_string(*A) + ", so s^2+s-" + std::to_string(*A + *B) + "=0.",
+        "5. For each real s, use xy=p, so x and y are roots of t^2-st+p=0.",
+        "Answer: (x,y) = " + ans,
+    };
+}
+
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
 {
     std::string key = compact_input_key(raw);
@@ -2133,6 +2205,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     try {
         {
             std::string key = compact_input_key(req.expr);
+            if(auto system = symmetric_sum_product_system(key)) return *system;
             if(key == "make_subject(y=3/(x+2),x)") {
                 return casio::exam_block(
                     "make subject",

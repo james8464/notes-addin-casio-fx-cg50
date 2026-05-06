@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cctype>
+#include <cstdlib>
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -70,6 +71,14 @@ static std::string trig_name(FnKind fk)
     }
 }
 
+static double sample_symbol_value(std::string const &name, double xval)
+{
+    if(name == "x" || name == "theta" || name == "t") return xval;
+    unsigned h = 0;
+    for(char ch : name) h = h * 131u + static_cast<unsigned char>(ch);
+    return xval * (0.37 + static_cast<double>(h % 17) / 10.0) + static_cast<double>((h % 11) + 1) / 13.0;
+}
+
 static std::optional<double> numeric_eval(Arena &a, NodeId n, double xval)
 {
     Node const &x = a.get(n);
@@ -77,7 +86,7 @@ static std::optional<double> numeric_eval(Arena &a, NodeId n, double xval)
     case NodeKind::Num:
         return (double)x.num.num / (double)x.num.den;
     case NodeKind::Sym:
-        return (x.text == "x") ? xval : 0.0;
+        return sample_symbol_value(x.text, xval);
     case NodeKind::Const:
         return (x.ckind == ConstKind::Pi) ? M_PI : M_E;
     case NodeKind::Fn: {
@@ -530,6 +539,150 @@ static std::string compact_key(std::string text)
         out.push_back(c);
     }
     return out;
+}
+
+static std::string strip_wrap(std::string s)
+{
+    while(s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < s.size(); ++i) {
+            if(s[i] == '(') ++depth;
+            else if(s[i] == ')') {
+                --depth;
+                if(depth == 0 && i + 1 < s.size()) {
+                    wraps = false;
+                    break;
+                }
+            }
+        }
+        if(!wraps || depth != 0) break;
+        s = s.substr(1, s.size() - 2);
+    }
+    return s;
+}
+
+static std::optional<std::pair<std::string, std::string>> top_division(std::string const &s)
+{
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        if(s[i] == '(') ++depth;
+        else if(s[i] == ')') --depth;
+        else if(s[i] == '/' && depth == 0) return std::make_pair(s.substr(0, i), s.substr(i + 1));
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::pair<int, std::string>> linear_angle_key(std::string s)
+{
+    s = strip_wrap(std::move(s));
+    std::size_t i = 0;
+    while(i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+    int coeff = 1;
+    if(i > 0) coeff = std::atoi(s.substr(0, i).c_str());
+    std::string var = s.substr(i);
+    if(var == "x" || var == "theta") return std::make_pair(coeff, var);
+    return std::nullopt;
+}
+
+static std::string half_angle_text(int num, std::string const &var)
+{
+    if(num == 0) return "0";
+    if(num == 2) return var;
+    if(num == -2) return "-" + var;
+    if(num % 2 == 0) return std::to_string(num / 2) + "*" + var;
+    return std::to_string(num) + "*" + var + "/2";
+}
+
+static std::string chebyshev_text(int n)
+{
+    if(n == 0) return "1";
+    std::vector<long long> t0(1, 1), t1(2, 0);
+    t1[1] = 1;
+    for(int k = 2; k <= n; ++k) {
+        std::vector<long long> t(std::max(t1.size() + 1, t0.size()), 0);
+        for(std::size_t i = 0; i < t1.size(); ++i) t[i + 1] += 2 * t1[i];
+        for(std::size_t i = 0; i < t0.size(); ++i) t[i] -= t0[i];
+        t0 = t1;
+        t1 = t;
+    }
+    std::string out;
+    for(int p = static_cast<int>(t1.size()) - 1; p >= 0; --p) {
+        long long c = t1[p];
+        if(c == 0) continue;
+        bool neg = c < 0;
+        if(neg) c = -c;
+        if(out.empty()) {
+            if(neg) out += "-";
+        }
+        else out += neg ? " - " : " + ";
+        if(p == 0 || c != 1) out += std::to_string(c);
+        if(p > 0) {
+            if(c != 1) out += "*";
+            out += "c";
+            if(p > 1) out += "^" + std::to_string(p);
+        }
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> cos_multiple_rewrite(std::string const &key)
+{
+    if(key.rfind("cos(", 0) != 0 || key.back() != ')') return std::nullopt;
+    auto angle = linear_angle_key(key.substr(4, key.size() - 5));
+    if(!angle || angle->first < 2 || angle->first > 12) return std::nullopt;
+    std::string ans = chebyshev_text(angle->first);
+    return std::vector<std::string>{
+        "1. Basis: let c=cos(" + angle->second + ").",
+        "2. Use cos(nu)=T_n(c), the Chebyshev recurrence T_n=2cT_(n-1)-T_(n-2).",
+        "3. Compute T_" + std::to_string(angle->first) + "(c).",
+        "Answer: " + ans,
+    };
+}
+
+static std::optional<std::vector<std::string>> tan_triple_rewrite(std::string const &key)
+{
+    if(key.rfind("tan(", 0) != 0 || key.back() != ')') return std::nullopt;
+    auto angle = linear_angle_key(key.substr(4, key.size() - 5));
+    if(!angle || angle->first != 3) return std::nullopt;
+    std::string v = angle->second;
+    return std::vector<std::string>{
+        "1. Let u=tan(" + v + ").",
+        "2. tan(2" + v + ")=2u/(1-u^2).",
+        "3. tan(3" + v + ")=tan(2" + v + "+" + v + ").",
+        "4. Substitute into tan(A+B) and simplify.",
+        "Answer: (3*tan(" + v + ")-tan(" + v + ")^3)/(1-3*tan(" + v + ")^2)",
+    };
+}
+
+static std::optional<std::vector<std::string>> sum_to_product_quotient(std::string const &key)
+{
+    auto div = top_division(key);
+    if(!div) return std::nullopt;
+    std::string num = strip_wrap(div->first);
+    std::string den = strip_wrap(div->second);
+    if(num.rfind("sin(", 0) != 0 || den.rfind("cos(", 0) != 0) return std::nullopt;
+    std::size_t nm = num.find(")-sin(");
+    std::size_t dm = den.find(")+cos(");
+    if(nm == std::string::npos || dm == std::string::npos || num.back() != ')' || den.back() != ')') return std::nullopt;
+    std::string A = num.substr(4, nm - 4);
+    std::string B = num.substr(nm + 6, num.size() - (nm + 6) - 1);
+    std::string C = den.substr(4, dm - 4);
+    std::string D = den.substr(dm + 6, den.size() - (dm + 6) - 1);
+    if(A != C || B != D) return std::nullopt;
+    auto a = linear_angle_key(A);
+    auto b = linear_angle_key(B);
+    if(!a || !b || a->second != b->second) return std::nullopt;
+    std::string half_diff = half_angle_text(a->first - b->first, a->second);
+    std::string half_sum = half_angle_text(a->first + b->first, a->second);
+    return std::vector<std::string>{
+        "1. Use sum-to-product identities.",
+        "2. sin(A)-sin(B)=2cos((A+B)/2)sin((A-B)/2).",
+        "3. cos(A)+cos(B)=2cos((A+B)/2)cos((A-B)/2).",
+        "4. Here (A+B)/2=" + half_sum + " and (A-B)/2=" + half_diff + ".",
+        "5. Cancel the common non-zero factor 2cos((A+B)/2).",
+        "Answer: tan(" + half_diff + ")",
+    };
 }
 
 static std::string format_double_compact(double x)
@@ -2103,6 +2256,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId s = casio::simplify(arena, src_parsed);
         NodeId t = casio::simplify(arena, target_parsed);
         bool ok = same_sig(arena, s, t) || numeric_equiv(arena, s, t);
+        std::string answer = ok ? target : casio::format_expr(arena, s);
         return casio::exam_block(
             "trig transform",
             {
@@ -2112,7 +2266,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "Target simplifies/checks as: " + casio::format_expr(arena, t),
                 ok ? "Thus source = target." : "Warning: target not verified by current checks.",
             },
-            target
+            answer
         );
     }
     if(req.mode == 4) {
@@ -2242,6 +2396,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
     NodeId n = casio::simplify(arena, parsed);
     std::string key = compact_key(req.expr);
+    if(auto cm = cos_multiple_rewrite(key)) return *cm;
+    if(auto tt = tan_triple_rewrite(key)) return *tt;
+    if(auto qp = sum_to_product_quotient(key)) return *qp;
     if(key.rfind("sin(x)^4", 0) == 0) {
         return {
             "1. sin(x)^2=(1-cos(2*x))/2.",
