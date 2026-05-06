@@ -48,14 +48,20 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "derive",
+        "log((3*x+1)^2+2)*log(3,x^2+12)*7!,x",
+        ["Use product rule", "f1 =", "f1' =", "f2 =", "f2' ="],
+        ["Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
         "x=t^2+1/t,y=t^2-1/t,t,x,method=param",
-        ["dx/dt", "dy/dx"],
+        ["dx/dt", "Use dy/dx=(dy/dt)/(dx/dt)", "dy/dx"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "alg",
-        "x^2-5*x+6,method=factor",
-        ["Answer:", "(x - 2)", "(x - 3)"],
+        "x^2-5*x+6=0,method=factor",
+        ["Factor:", "(x - 2)", "(x - 3)", "x = 3", "x = 2"],
         ["Range:", "Answer: x^2 - 5*x + 6", "ERR:"],
     ),
     (

@@ -467,6 +467,41 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
     return casio::num(a, 0);
 }
 
+static bool append_product_rule_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return false;
+
+    std::vector<NodeId> factors;
+    for(auto k : x.kids) {
+        if(depends_on(a, k, var)) factors.push_back(k);
+    }
+    if(factors.size() < 2 || factors.size() > 4) {
+        steps.push_back("Use product rule: differentiate one factor at a time.");
+        return true;
+    }
+
+    steps.push_back("Use product rule.");
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        NodeId fp = casio::simplify(a, diff(a, factors[i], var));
+        std::string label = "f" + std::to_string(i + 1);
+        steps.push_back(label + " = " + clean_math_text(format_expr_human(a, factors[i])) + ".");
+        steps.push_back(label + "' = " + clean_math_text(format_expr_human(a, fp)) + ".");
+    }
+
+    std::string rule = "y' = ";
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        if(i) rule += " + ";
+        for(std::size_t j = 0; j < factors.size(); ++j) {
+            if(j) rule += "*";
+            rule += "f" + std::to_string(j + 1);
+            if(i == j) rule += "'";
+        }
+    }
+    steps.push_back(rule + ".");
+    return true;
+}
+
 static std::vector<std::string> split_csv(std::string const &s)
 {
     std::vector<std::string> parts;
@@ -1018,7 +1053,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(!used_rule && top_kind == NodeKind::Mul) {
-                    steps.push_back("Use product rule: differentiate one factor at a time.");
+                    append_product_rule_detail(arena, n, var, steps);
                     used_rule = true;
                 }
                 if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
@@ -1407,6 +1442,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 {
                     "dx/dt = " + format_expr_human(arena, dxdt),
                     "dy/dt = " + format_expr_human(arena, dydt),
+                    "Use dy/dx=(dy/dt)/(dx/dt), with dx/dt != 0.",
                     "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")",
                     "Simplify: " + answer,
                 },

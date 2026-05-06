@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <numeric>
 #include <optional>
 #include <sstream>
@@ -320,6 +321,61 @@ static std::string compact_key(std::string text)
     return out;
 }
 
+static bool valid_power_param(std::string const &p)
+{
+    if(p == "n") return true;
+    if(p.empty()) return false;
+    for(char ch : p) {
+        if(!std::isdigit(static_cast<unsigned char>(ch))) return false;
+    }
+    return p != "0";
+}
+
+static std::optional<std::string> match_fractional_root_power(std::string const &c)
+{
+    for(std::string const prefix : {"1/(xsqrt(1+x^", "1/(xsqrt(x^"}) {
+        std::string const suffix = prefix == "1/(xsqrt(1+x^" ? "))" : "+1))";
+        if(c.rfind(prefix, 0) != 0 || c.size() <= prefix.size() + suffix.size()) continue;
+        if(c.compare(c.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
+        std::string p = c.substr(prefix.size(), c.size() - prefix.size() - suffix.size());
+        if(valid_power_param(p)) return p;
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> match_king_property_power(std::string const &c)
+{
+    for(std::string const name : {"defint", "integrate", "int"}) {
+        std::string const prefix = name + "(sin(x)^";
+        std::string const mid1 = "/(sin(x)^";
+        std::string const mid2 = "+cos(x)^";
+        std::string const suffix = "),x,0,pi/2)";
+        if(c.rfind(prefix, 0) != 0) continue;
+        std::size_t p1_start = prefix.size();
+        std::size_t mid1_pos = c.find(mid1, p1_start);
+        if(mid1_pos == std::string::npos) continue;
+        std::string p1 = c.substr(p1_start, mid1_pos - p1_start);
+        std::size_t p2_start = mid1_pos + mid1.size();
+        std::size_t mid2_pos = c.find(mid2, p2_start);
+        if(mid2_pos == std::string::npos) continue;
+        std::string p2 = c.substr(p2_start, mid2_pos - p2_start);
+        std::size_t p3_start = mid2_pos + mid2.size();
+        if(c.size() <= p3_start + suffix.size()) continue;
+        if(c.compare(c.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
+        std::string p3 = c.substr(p3_start, c.size() - p3_start - suffix.size());
+        if(p1 == p2 && p2 == p3 && valid_power_param(p1)) return p1;
+    }
+    return std::nullopt;
+}
+
+static std::string power_derivative_factor(std::string const &p)
+{
+    if(p == "n") return "n*x^(n-1)";
+    long v = std::strtol(p.c_str(), nullptr, 10);
+    if(v <= 1) return p;
+    return p + "*x^" + std::to_string(v - 1);
+}
+
 static std::optional<std::pair<std::string, std::string>> top_level_division(std::string const &s)
 {
     int depth = 0;
@@ -607,6 +663,36 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
+
+    if(auto p = match_king_property_power(c)) {
+        std::string pow = *p;
+        return out(
+            "King property symmetry",
+            {
+                "Let I = Integral_0^(pi/2) sin(x)^" + pow + "/(sin(x)^" + pow + "+cos(x)^" + pow + ") dx.",
+                "King property: Integral_a^b f(x) dx = Integral_a^b f(a+b-x) dx.",
+                "Use x -> pi/2-x: sin(pi/2-x)=cos(x), cos(pi/2-x)=sin(x).",
+                "So I = Integral_0^(pi/2) cos(x)^" + pow + "/(cos(x)^" + pow + "+sin(x)^" + pow + ") dx.",
+                "Add both forms: 2I = Integral_0^(pi/2) 1 dx = pi/2.",
+            },
+            "pi/4"
+        );
+    }
+
+    if(auto p = match_fractional_root_power(c)) {
+        std::string pow = *p;
+        return out(
+            "fractional substitution",
+            {
+                "Let u=sqrt(1+x^" + pow + "), so u^2=1+x^" + pow + " and x^" + pow + "=u^2-1.",
+                "Differentiate: " + power_derivative_factor(pow) + " dx = 2u du.",
+                "Substitution gives (2/" + pow + ")*Integral(1/(u^2-1)) du.",
+                "Use 1/(u^2-1)=1/2*(1/(u-1)-1/(u+1)).",
+                "Back-substitute u=sqrt(1+x^" + pow + ").",
+            },
+            "log(abs((sqrt(1+x^" + pow + ")-1)/(sqrt(1+x^" + pow + ")+1)))/" + pow + " + C"
+        );
+    }
 
     if(c == "xexp(x)" || c == "xe^x") {
         return out(
@@ -1119,19 +1205,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integrate the rational form and back-substitute.",
             },
             "sqrt(x*(1+x)) - log(abs(sqrt(x)+sqrt(1+x))) + C"
-        );
-    }
-
-    if(c == "1/(xsqrt(1+x^3))" || c == "1/(xsqrt(x^3+1))") {
-        return out(
-            "fractional substitution n=3",
-            {
-                "Let u=sqrt(1+x^3), so x^3=u^2-1.",
-                "Then dx/x=2u/(3*(u^2-1)) du.",
-                "Integral becomes (2/3)Integral(1/(u^2-1)) du.",
-                "Use partial fractions and back-substitute.",
-            },
-            "log(abs((sqrt(1+x^3)-1)/(sqrt(1+x^3)+1)))/3 + C"
         );
     }
 
@@ -2363,22 +2436,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)" ||
-       c == "integrate(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)" ||
-       c == "int(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)") {
-        return out(
-            "King property symmetry",
-            {
-                "Let I = Integral_0^(pi/2) sin(x)^n/(sin(x)^n+cos(x)^n) dx.",
-                "King property: Integral_a^b f(x) dx = Integral_a^b f(a+b-x) dx.",
-                "Use x -> pi/2-x: sin(pi/2-x)=cos(x), cos(pi/2-x)=sin(x).",
-                "So I = Integral_0^(pi/2) cos(x)^n/(cos(x)^n+sin(x)^n) dx.",
-                "Add both forms: 2I = Integral_0^(pi/2) 1 dx = pi/2.",
-            },
-            "pi/4"
-        );
-    }
-
     if(c == "1/(2+cos(x))" || c == "1/(cos(x)+2)") {
         return out(
             "Weierstrass substitution",
@@ -2668,20 +2725,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "The integrand is exactly e^x*(f+f').",
             },
             "e^x/x + C"
-        );
-    }
-
-    if(c == "1/(xsqrt(1+x^n))") {
-        return out(
-            "fractional substitution",
-            {
-                "Let u=sqrt(1+x^n), so u^2=1+x^n and x^n=u^2-1.",
-                "Differentiate: n*x^(n-1) dx = 2u du.",
-                "Substitution gives (2/n)*Integral(1/(u^2-1)) du.",
-                "Use 1/(u^2-1)=1/2*(1/(u-1)-1/(u+1)).",
-                "Back-substitute u=sqrt(1+x^n).",
-            },
-            "log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n + C"
         );
     }
 

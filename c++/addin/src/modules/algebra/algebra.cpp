@@ -1248,6 +1248,50 @@ static std::string format_rat(Arena &a, Rational r)
     return format_expr(a, a.num(r));
 }
 
+static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p)
+{
+    if(is_zero(p.a2)) return std::nullopt;
+    Rational disc = r_sub(r_mul(p.a1, p.a1), r_mul(r_mul(Rational{4, 1}, p.a2), p.a0));
+    disc.normalize();
+    if(disc.num < 0) return std::nullopt;
+    std::int64_t sn = 0;
+    std::int64_t sd = 0;
+    if(!is_square_i64(disc.num, sn) || !is_square_i64(disc.den, sd) || sd == 0) return std::nullopt;
+    Rational sqrt_disc{sn, sd};
+    Rational denom = r_mul(Rational{2, 1}, p.a2);
+    Rational r1 = r_div(r_add(r_neg(p.a1), sqrt_disc), denom);
+    Rational r2 = r_div(r_add(r_neg(p.a1), r_neg(sqrt_disc)), denom);
+    r1.normalize();
+    r2.normalize();
+    return std::make_pair(r1, r2);
+}
+
+static std::string linear_factor_from_root(Arena &a, std::string const &var, Rational root)
+{
+    root.normalize();
+    if(root.num == 0) return var;
+    if(root.num > 0) return "(" + var + " - " + format_rat(a, root) + ")";
+    Rational pos = r_neg(root);
+    pos.normalize();
+    return "(" + var + " + " + format_rat(a, pos) + ")";
+}
+
+static std::string quadratic_factor_text(Arena &a, Poly2 const &p, std::string const &var)
+{
+    auto roots = rational_quadratic_roots(p);
+    if(!roots) return "";
+    std::string f1 = linear_factor_from_root(a, var, roots->first);
+    std::string f2 = linear_factor_from_root(a, var, roots->second);
+    std::string lead;
+    Rational one{1, 1};
+    Rational neg_one{-1, 1};
+    if(p.a2.num != one.num || p.a2.den != one.den) {
+        lead = (p.a2.num == neg_one.num && p.a2.den == neg_one.den) ? "-" : format_rat(a, p.a2) + "*";
+    }
+    if(roots->first.num == roots->second.num && roots->first.den == roots->second.den) return lead + f1 + "^2";
+    return lead + f1 + "*" + f2;
+}
+
 static std::string scaled_npi(Arena &a, Rational scale)
 {
     scale.normalize();
@@ -3125,6 +3169,32 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 append_numeric_3dp(arena, out, solve_var, numeric);
             }
             return out;
+        }
+
+        if(req.method == "factor" && is_zero(rp.den.a1) && is_zero(rp.den.a2) && !is_zero(rp.num.a2)) {
+            if(auto roots = rational_quadratic_roots(rp.num)) {
+                std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
+                out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
+                out.push_back("3. Factor: " + factored + " = 0");
+                out.push_back(
+                    "4. So " + linear_factor_from_root(arena, solve_var, roots->first) + " = 0 or " +
+                    linear_factor_from_root(arena, solve_var, roots->second) + " = 0."
+                );
+                out.push_back("5. Check roots in the original equation.");
+                auto sols = solve_poly2(arena, rp.num, solve_var);
+                sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+                if(sols.empty()) {
+                    out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
+                    out.push_back("Answer: " + solve_var + " = []");
+                    return out;
+                }
+                append_answer(out, solve_var, sols);
+                append_numeric_3dp(arena, out, solve_var, sols);
+                return out;
+            }
+            out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
+            out.push_back("3. It does not factor into rational linear factors.");
+            out.push_back("4. Use the quadratic formula instead.");
         }
 
         if(req.method == "complete_square" && is_zero(rp.den.a1) && is_zero(rp.den.a2) && !is_zero(rp.num.a2)) {

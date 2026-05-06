@@ -40,6 +40,7 @@ CASES: list[tuple[str, list[str]]] = [
     ("defint(sin(2*x)/(1+cos(x)),x,0,pi/2)", ["sin(2u) = 2sin(u)cos(u)", "w = 1 + cos(u)", "2 - 2*log(2)"]),
     ("e^(2*x)*cos(3*x)", ["looping integration by parts", "a=2, b=3", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
     ("defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
+    ("defint(sin(x)^5/(sin(x)^5+cos(x)^5),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
     ("1/(2+cos(x))", ["Weierstrass substitution", "Integral [2/(t^2 + 3)]", "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"]),
     ("defint(log(sin(x)),x,0,pi/2)", ["log-trig symmetry", "2I = I - (pi/2)log(2)", "-pi*log(2)/2"]),
     ("1/(x^4+1)", ["Sophie Germain partial fractions", "x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1)", "atan(x*sqrt(2)+1)+atan(x*sqrt(2)-1)"]),
@@ -55,6 +56,7 @@ CASES: list[tuple[str, list[str]]] = [
     ("sqrt(1-sin(x))", ["trig half-angle rewrite", "sqrt(1-sin(x))=sqrt(2)*sin(pi/4-x/2)", "2*sqrt(2)*cos(pi/4-x/2) + C"]),
     ("e^x*(1/x-1/x^2)", ["function plus derivative trick", "f'(x)=-1/x^2", "e^x/x + C"]),
     ("1/(x*sqrt(1+x^n))", ["fractional substitution", "1/(u^2-1)=1/2*(1/(u-1)-1/(u+1))", "log(abs((sqrt(1+x^n)-1)/(sqrt(1+x^n)+1)))/n + C"]),
+    ("1/(x*sqrt(1+x^5))", ["fractional substitution", "5*x^4 dx = 2u du", "log(abs((sqrt(1+x^5)-1)/(sqrt(1+x^5)+1)))/5 + C"]),
 ]
 
 
