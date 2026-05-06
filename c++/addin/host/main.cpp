@@ -480,6 +480,17 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "compare(")).empty() ||
+                    !(inner = unwrap_call(expr, "match(")).empty()) {
+                auto parts = split_top_csv(inner);
+                req.mode = 1;
+                req.expr = parts.size() >= 2 ? parts[0] + "\n" + parts[1] : inner;
+            }
+            else if(!(inner = unwrap_call(expr, "fitconst(")).empty()) {
+                req.mode = 15;
+                req.method = "fitconst";
+                req.expr = inner;
+            }
             else {
                 req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
                            (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :

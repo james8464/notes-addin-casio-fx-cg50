@@ -2283,6 +2283,17 @@ static bool cascas_rewrite_coeff_match_call(const char *input,const char *alias,
   return true;
 }
 
+static bool cascas_rewrite_fitconst_call(const char *input,string &out){
+  string args[3],s; int count=0,close=0;
+  if (!cascas_call_args(input,"fitconst(",args,3,count,close,s) || count<2)
+    return false;
+  int eq=cascas_find_top_equal(args[0]);
+  if (eq<0)
+    return false;
+  string call="coeff_match(" + args[0].substr(0,eq) + "," + args[0].substr(eq+1,args[0].size()-eq-1) + "," + args[1] + ")";
+  return cascas_rewrite_coeff_match_call(call.c_str(),"coeff_match(",out);
+}
+
 static bool cascas_is_zero_bound(const string &s){
   string t=cascas_trim(s);
   return t=="0" || t=="0.0";
@@ -2373,6 +2384,8 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (cascas_rewrite_compare_zero_call(input,"transform(",rewritten))
     return true;
   if (cascas_rewrite_binom_coeff_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_fitconst_call(input,rewritten))
     return true;
   if (cascas_rewrite_coeff_match_call(input,"coeff_match(",rewritten))
     return true;

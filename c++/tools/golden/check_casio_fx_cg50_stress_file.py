@@ -56,11 +56,14 @@ def question_count(text: str) -> int:
 def main() -> int:
     if not HOST.exists():
         raise SystemExit(f"Missing host binary: {HOST}")
-    if not SOURCE.exists():
-        raise SystemExit(f"Missing stress file: {SOURCE}")
 
-    text = SOURCE.read_text(errors="replace")
-    total = question_count(text)
+    source_note = ""
+    if SOURCE.exists():
+        text = SOURCE.read_text(errors="replace")
+        total = question_count(text)
+    else:
+        total = len(DIRECT)
+        source_note = f"source missing; ran concrete regression cases only: {SOURCE}"
     source_required = max(0, total - len(DIRECT))
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +75,9 @@ def main() -> int:
         f"source_locator_cases_needing_official_pdf/data: {source_required}",
         "",
     ]
+    if source_note:
+        report.append(f"NOTE: {source_note}")
+        report.append("")
 
     bad = 0
     for qid, (cmd, needles) in sorted(DIRECT.items()):

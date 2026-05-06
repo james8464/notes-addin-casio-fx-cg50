@@ -25,6 +25,7 @@ EXAM_GAP_TOPICS = (
     "trig_poly_reject",
     "log_base_domain",
     "abs_sum_range",
+    "hidden_constants",
     "implicit_rational_clear",
     "radical_rewrite",
     "domain_range_edge",
@@ -179,6 +180,7 @@ class AdversarialGenerator:
                 "(a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1",
                 "x^2+a*x+b=(x-2)^2+5",
                 "(x+a)^3-(x-a)^3=12*x^2+16",
+                "(x+a)^2+(y+b)^2=x^2+y^2-6*x+10*y+34,[a,b]",
             ]
         )
         concept = self._concept("fitconst", "identity", "equate_coeffs", "constants", ("expand", "collect"), 4, "substitution+llm")
@@ -377,6 +379,20 @@ class AdversarialGenerator:
                 "radical_decomposition",
                 ("square_both_sides", "match_surds", "solve_mn"),
                 "exam: show sqrt(m)+sqrt(n), m+n=a, 4mn=b, solve m,n",
+            ),
+            (
+                "hidden_constants",
+                "alg",
+                [
+                    "fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])",
+                    "fitconst(a*(x+1)^2+b*(x-1)^2+c*(x^2-1)=6*x^2+4*x+2,[a,b,c])",
+                    "fitconst((x+a)^2+(y+b)^2=x^2+y^2-6*x+10*y+34,[a,b])",
+                ][cycle % 3],
+                "fitconst",
+                "identity,vars",
+                "equate_coeffs",
+                ("expand", "collect", "solve_constants"),
+                "exam: expand, collect, equate coefficients, solve constants, verify identity",
             ),
             (
                 "log_base_domain",

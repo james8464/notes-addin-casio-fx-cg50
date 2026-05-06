@@ -2303,6 +2303,239 @@ static std::optional<std::vector<std::string>> simple_trig_zero_solve(
     return std::nullopt;
 }
 
+static std::string fitconst_value_text(double x)
+{
+    if(std::fabs(x) < 1e-9) x = 0.0;
+    double nearest = std::round(x);
+    if(std::fabs(x - nearest) < 1e-8) return std::to_string((long long)nearest);
+    for(int den = 2; den <= 24; ++den) {
+        double num = std::round(x * den);
+        if(std::fabs(x - num / den) < 1e-8) {
+            long long n = (long long)num;
+            long long d = den;
+            long long a = std::llabs(n), b = d;
+            while(b) {
+                long long t = a % b;
+                a = b;
+                b = t;
+            }
+            if(a > 1) {
+                n /= a;
+                d /= a;
+            }
+            return std::to_string(n) + "/" + std::to_string(d);
+        }
+    }
+    return format_double_compact(x);
+}
+
+static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env)
+{
+    Node const &n = a.get(id);
+    switch(n.kind) {
+    case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
+    case NodeKind::Sym:
+        for(auto const &kv : env)
+            if(kv.first == n.text) return kv.second;
+        return 0.0;
+    case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
+    case NodeKind::Fn: {
+        auto av = eval_node_env(a, n.a, env);
+        if(!av) return std::nullopt;
+        double u = *av;
+        switch(n.fkind) {
+        case FnKind::Sin: return std::sin(u);
+        case FnKind::Cos: return std::cos(u);
+        case FnKind::Tan: return std::tan(u);
+        case FnKind::Sec: return 1.0 / std::cos(u);
+        case FnKind::Cosec: return 1.0 / std::sin(u);
+        case FnKind::Cot: return 1.0 / std::tan(u);
+        case FnKind::Sqrt: return u < -1e-12 ? std::optional<double>{} : std::sqrt(std::max(0.0, u));
+        case FnKind::Abs: return std::fabs(u);
+        case FnKind::Sign: return (u > 0) - (u < 0);
+        case FnKind::Log: return u <= 0 ? std::optional<double>{} : std::log(u);
+        case FnKind::Exp: return std::exp(u);
+        default: return std::nullopt;
+        }
+    }
+    case NodeKind::Add: {
+        double s = 0.0;
+        for(auto k : n.kids) {
+            auto v = eval_node_env(a, k, env);
+            if(!v) return std::nullopt;
+            s += *v;
+        }
+        return s;
+    }
+    case NodeKind::Mul: {
+        double p = 1.0;
+        for(auto k : n.kids) {
+            auto v = eval_node_env(a, k, env);
+            if(!v) return std::nullopt;
+            p *= *v;
+        }
+        return p;
+    }
+    case NodeKind::Div: {
+        auto u = eval_node_env(a, n.a, env);
+        auto v = eval_node_env(a, n.b, env);
+        if(!u || !v || std::fabs(*v) < 1e-12) return std::nullopt;
+        return *u / *v;
+    }
+    case NodeKind::Pow: {
+        auto u = eval_node_env(a, n.a, env);
+        auto v = eval_node_env(a, n.b, env);
+        if(!u || !v) return std::nullopt;
+        return std::pow(*u, *v);
+    }
+    }
+    return std::nullopt;
+}
+
+static bool solve_linear_double(std::vector<std::vector<double>> m, int vars, std::vector<double> &sol)
+{
+    sol.assign(vars, 0.0);
+    int row = 0;
+    std::vector<int> piv(vars, -1);
+    for(int col = 0; col < vars && row < (int)m.size(); ++col) {
+        int best = row;
+        for(int r = row + 1; r < (int)m.size(); ++r)
+            if(std::fabs(m[r][col]) > std::fabs(m[best][col])) best = r;
+        if(std::fabs(m[best][col]) < 1e-10) continue;
+        std::swap(m[row], m[best]);
+        double div = m[row][col];
+        for(int c = col; c <= vars; ++c) m[row][c] /= div;
+        for(int r = 0; r < (int)m.size(); ++r) {
+            if(r == row) continue;
+            double f = m[r][col];
+            if(std::fabs(f) < 1e-12) continue;
+            for(int c = col; c <= vars; ++c) m[r][c] -= f * m[row][c];
+        }
+        piv[col] = row++;
+    }
+    for(int c = 0; c < vars; ++c) {
+        if(piv[c] < 0) return false;
+        sol[c] = m[piv[c]][vars];
+    }
+    return true;
+}
+
+static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std::string const &payload)
+{
+    auto args = split_csv(payload);
+    if(args.empty()) return std::nullopt;
+    std::string equation = args[0];
+    std::vector<std::string> unknowns;
+    if(args.size() >= 2) {
+        std::string vars = trim_text(args[1]);
+        if(vars.size() >= 2 && vars.front() == '[' && vars.back() == ']') vars = vars.substr(1, vars.size() - 2);
+        for(auto v : split_csv(vars)) {
+            v = trim_text(v);
+            if(!v.empty()) unknowns.push_back(v);
+        }
+    }
+    auto eq = casio::parse_equation(a, equation);
+    if(!eq) return std::nullopt;
+    NodeId residual = casio::simplify(a, casio::add(a, {eq->lhs, casio::neg(a, eq->rhs)}));
+    std::vector<std::string> symbols;
+    collect_symbols(a, residual, symbols);
+    auto is_unknown = [&](std::string const &s) {
+        return std::find(unknowns.begin(), unknowns.end(), s) != unknowns.end();
+    };
+    if(unknowns.empty()) {
+        for(auto const &s : symbols)
+            if(s != "x" && s != "y" && s != "t" && s != "theta") unknowns.push_back(s);
+    }
+    if(unknowns.empty() || unknowns.size() > 6) return std::nullopt;
+    std::vector<std::string> indep;
+    for(auto const &s : symbols) {
+        if(!is_unknown(s)) indep.push_back(s);
+    }
+    if(indep.empty()) indep.push_back("x");
+
+    double pts[] = {-2, -1, 0, 1, 2, 3, 4};
+    std::vector<std::vector<double>> rows;
+    auto add_sample = [&](double x, double y) {
+        std::vector<std::pair<std::string, double>> env;
+        for(auto const &v : indep) env.push_back({v, v == "y" ? y : x});
+        for(auto const &u : unknowns) env.push_back({u, 0.0});
+        auto base = eval_node_env(a, residual, env);
+        if(!base || !std::isfinite(*base)) return;
+        std::vector<double> row(unknowns.size() + 1, 0.0);
+        for(std::size_t i = 0; i < unknowns.size(); ++i) {
+            env.resize(indep.size());
+            for(std::size_t j = 0; j < unknowns.size(); ++j) env.push_back({unknowns[j], i == j ? 1.0 : 0.0});
+            auto v = eval_node_env(a, residual, env);
+            if(!v || !std::isfinite(*v)) return;
+            row[i] = *v - *base;
+        }
+        row[unknowns.size()] = -*base;
+        double norm = 0.0;
+        for(double v : row) norm += std::fabs(v);
+        if(norm > 1e-10) rows.push_back(row);
+    };
+    if(indep.size() >= 2) {
+        for(double x : pts)
+            for(double y : pts) add_sample(x, y);
+    }
+    else {
+        for(double x : pts) add_sample(x, 0);
+    }
+    auto verify_direct = [&](std::vector<double> const &candidate) -> bool {
+        auto check_sample = [&](double x, double y) -> bool {
+            std::vector<std::pair<std::string, double>> env;
+            for(auto const &v : indep) env.push_back({v, v == "y" ? y : x});
+            for(std::size_t i = 0; i < unknowns.size(); ++i) env.push_back({unknowns[i], candidate[i]});
+            auto v = eval_node_env(a, residual, env);
+            return v && std::isfinite(*v) && std::fabs(*v) <= 1e-7;
+        };
+        if(indep.size() >= 2) {
+            for(double x : pts)
+                for(double y : pts)
+                    if(!check_sample(x, y)) return false;
+        }
+        else {
+            for(double x : pts)
+                if(!check_sample(x, 0)) return false;
+        }
+        return true;
+    };
+
+    std::vector<double> sol;
+    bool have = rows.size() >= unknowns.size() &&
+                solve_linear_double(rows, (int)unknowns.size(), sol) &&
+                verify_direct(sol);
+    if(!have && unknowns.size() <= 3) {
+        std::vector<double> cand(unknowns.size(), 0.0);
+        std::function<bool(std::size_t)> dfs = [&](std::size_t i) -> bool {
+            if(i == unknowns.size()) return verify_direct(cand);
+            for(int v = -12; v <= 12; ++v) {
+                cand[i] = (double)v;
+                if(dfs(i + 1)) return true;
+            }
+            return false;
+        };
+        if(dfs(0)) {
+            sol = cand;
+            have = true;
+        }
+    }
+    if(!have) return std::nullopt;
+
+    std::string ans;
+    for(std::size_t i = 0; i < unknowns.size(); ++i) {
+        if(i) ans += ", ";
+        ans += unknowns[i] + "=" + fitconst_value_text(sol[i]);
+    }
+    return std::vector<std::string>{
+        "1. Start with identity " + equation + ".",
+        "2. Expand both sides and collect like powers.",
+        "3. Equate coefficients.",
+        "4. Solve the simultaneous coefficient equations.",
+        "Answer: " + ans,
+    };
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -2675,6 +2908,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "1. Start with binomial(" + req.expr + ").",
                 "2. Supported forms: (1+a*x)^n, sqrt(1+a*x), 1/(a*x+b).",
                 "Answer: unsupported binomial series form.",
+            };
+        }
+        if(req.mode == 15) {
+            if(auto fit = fit_constants_route(arena, req.expr)) return *fit;
+            return {
+                "1. Start with fitconst(" + req.expr + ").",
+                "2. Expand both sides and collect like powers.",
+                "3. Equate coefficients for the requested constants.",
+                "4. Solve the simultaneous equations.",
+                "Answer: constants not isolated by this lightweight route.",
             };
         }
         if(req.mode == 5) {

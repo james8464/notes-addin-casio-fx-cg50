@@ -185,6 +185,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: y >= 0", "ERR:"],
     ),
     (
+        "alg",
+        "fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])",
+        ["Equate coefficients", "a=1", "b=2", "c=3", "Answer: a=1, b=2, c=3"],
+        ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
+    ),
+    (
+        "alg",
+        "fitconst(a*(x+1)^2+b*(x-1)^2+c*(x^2-1)=6*x^2+4*x+2,[a,b,c])",
+        ["Equate coefficients", "a=3", "b=1", "c=2", "Answer: a=3, b=1, c=2"],
+        ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
+    ),
+    (
+        "alg",
+        "fitconst((x+a)^2+(y+b)^2=x^2+y^2-6*x+10*y+34,[a,b])",
+        ["Equate coefficients", "a=-3", "b=5", "Answer: a=-3, b=5"],
+        ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
+    ),
+    (
+        "alg",
+        "compare((x^2-1)/(x-1),x+1)",
+        ["Simplify both expressions", "Result: Equivalent"],
+        ["Unexpected end of input", "Answer: solve(compare", "ERR:"],
+    ),
+    (
         "derive",
         "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
         ["Clear denominators", "Differentiate both sides", "collect dy/dx", "dy/dx"],

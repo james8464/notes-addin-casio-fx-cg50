@@ -41,6 +41,8 @@ REQUIRED_MARKERS = [
     "du=u'dx; v=Int dv.",
     "cascas_try_domain_range_command",
     "cascas_domain_range_poly2",
+    "cascas_rewrite_fitconst_call",
+    "coeff(expand((",
     "Range:",
     "Domain:",
 ]
