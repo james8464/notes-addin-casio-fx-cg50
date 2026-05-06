@@ -4897,6 +4897,27 @@ static Poly poly_derivative(Poly p)
     return out;
 }
 
+static Rational poly_eval(Poly const &p, Rational x)
+{
+    Rational out{0, 1};
+    Rational pow{1, 1};
+    for(Rational coeff : p.c) {
+        out = r_add(out, r_mul(coeff, pow));
+        pow = r_mul(pow, x);
+    }
+    return out;
+}
+
+static std::string join_strings(std::vector<std::string> const &v, char const *sep)
+{
+    std::string s;
+    for(std::size_t i = 0; i < v.size(); ++i) {
+        if(i) s += sep;
+        s += v[i];
+    }
+    return s;
+}
+
 static std::optional<Rational> proportional_poly(Poly a_poly, Poly b_poly)
 {
     if(!a_poly.ok || !b_poly.ok) return std::nullopt;
@@ -6132,6 +6153,44 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
     return std::nullopt;
 }
 
+static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto n = poly_of_any(a, x.a, var);
+    auto d = poly_of_any(a, x.b, var);
+    if(!n || !d || !n->ok || !d->ok) return std::nullopt;
+    int deg = poly_degree(*d);
+    if(deg < 2 || deg > 4 || poly_degree(*n) >= deg) return std::nullopt;
+
+    std::vector<Rational> roots;
+    for(int r = -12; r <= 12 && static_cast<int>(roots.size()) < deg; ++r) {
+        Rational rr = r_from_int(r);
+        if(r_zero(poly_eval(*d, rr))) roots.push_back(rr);
+    }
+    if(static_cast<int>(roots.size()) != deg) return std::nullopt;
+
+    Poly dp = poly_derivative(*d);
+    std::vector<NodeId> terms;
+    std::vector<std::string> factors;
+    std::vector<std::string> coeffs;
+    NodeId vx = casio::sym(a, var);
+    for(Rational r : roots) {
+        Rational dpr = poly_eval(dp, r);
+        if(r_zero(dpr)) return std::nullopt;
+        Rational A = r_div(poly_eval(*n, r), dpr);
+        NodeId lin = casio::simplify(a, casio::add(a, {vx, a.num(r_neg(r))}));
+        factors.push_back(format_expr_human(a, lin));
+        coeffs.push_back("r=" + format_expr(a, a.num(r)) + " -> " + format_expr(a, a.num(A)));
+        if(!r_zero(A)) terms.push_back(mul_coeff(a, A, ln_abs(a, lin)));
+    }
+    if(terms.empty()) return casio::num(a, 0);
+    steps.push_back("Step 2: Factor D(x) into distinct linear factors: " + join_strings(factors, ", ") + ".");
+    steps.push_back("Step 3: Use A_i=N(r_i)/D'(r): " + join_strings(coeffs, ", ") + ".");
+    steps.push_back("Step 4: Integrate the linear-factor fractions A_i/(x-r_i).");
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 static NodeId integrate_one_over_sqrt_quadratic(Arena &a, NodeId denom, Poly2I const &d, std::string const &var)
 {
     NodeId lin = quadratic_linear(a, d.a2, d.a1, var);
@@ -6569,6 +6628,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto rational_pf = integrate_partial_fraction_simple(a, expr, var, out.steps)) {
         out.result = *rational_pf;
         out.steps.push_back("Step 4: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto linear_pf = integrate_distinct_linear_poly_pf(a, expr, var, out.steps)) {
+        out.result = *linear_pf;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
         return out;
     }
 

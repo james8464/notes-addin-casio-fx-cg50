@@ -30,6 +30,7 @@ def main() -> int:
     checks: list[tuple[str, list[str]]] = [
         ("khicas_reference", [sys.executable, "c++/tools/check_khicas_reference.py"]),
         ("khicas_catalog", [sys.executable, "c++/tools/check_khicas_catalog.py"]),
+        ("help_quality", [sys.executable, "c++/tools/check_help_quality.py"]),
         ("build_packaging", [sys.executable, "c++/tools/check_build_packaging.py"]),
         ("tui_llm_prompt", [sys.executable, "c++/tools/check_tui_llm_prompt.py"]),
         ("catalogue_random_graph", [sys.executable, "c++/tools/check_catalogue_random_graph.py"]),

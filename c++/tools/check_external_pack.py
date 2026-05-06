@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 MAGIC = b"CCP1"
+BAD_HELP = ("PReq", "Req/Opt", "Req before []. Opt inside []", "Req before []", "Opt inside []")
 
 
 def fail(msg: str) -> int:
@@ -62,6 +63,13 @@ def main() -> int:
         return fail("missing records: " + ", ".join(missing))
     if any(line.startswith(("F2:", "F3:")) for body in records.values() for line in body.splitlines()):
         return fail("insert-only examples leaked into F6 help pack")
+    unclear = [name for name, body in records.items() if any(phrase in body for phrase in BAD_HELP)]
+    if unclear:
+        return fail("unclear help wording: " + ", ".join(unclear[:12]))
+    for name in required[:3]:
+        body = records[name]
+        if "Req:" not in body or "Opt:" not in body or "Ex F" not in body:
+            return fail(f"incomplete command help: {name}")
     size = path.stat().st_size
     print(f"OK external pack records={len(records)} bytes={size}")
     return 0

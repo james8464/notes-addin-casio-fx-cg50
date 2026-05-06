@@ -73,6 +73,9 @@ def generated_cases() -> list[dict[str, Any]]:
         ("(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf", "Equate coefficients"),
         ("1/(x^2*(x+1)),method=pf", "Compare x^2"),
         ("(x^2+1)/(x^4+1),method=pf", "Route: partial fractions"),
+        ("1/(x^3-4*x),method=pf", "D'(r)"),
+        ("1/(x^3-3*x^2+2*x),method=pf", "Factor D(x)"),
+        ("(x+1)/(x^3-x),method=pf", "r=1 -> 1"),
     ):
         out.append({
             "id": "gen-pf-" + compact(expr),
@@ -80,7 +83,10 @@ def generated_cases() -> list[dict[str, Any]]:
             "topic": "partial_fractions",
             "cmd": ["--int", expr],
             "expected_answer_markers": ["Answer:", "+ C"],
-            "expected_working_markers": [("Equate coefficients" if "x^4" not in expr and "x^2*" not in expr else ("Ax+B" if "x^4" in expr else "A/x + B/x^2 + C/(x+1)")), route_marker],
+            "expected_working_markers": [
+                ("Factor D(x)" if "x^3" in expr else ("Equate coefficients" if "x^4" not in expr and "x^2*" not in expr else ("Ax+B" if "x^4" in expr else "A/x + B/x^2 + C/(x+1)"))),
+                route_marker,
+            ],
             "forbidden_markers": ["No elementary primitive found", "Answer: int(", "ERR:"],
         })
     for expr in (
