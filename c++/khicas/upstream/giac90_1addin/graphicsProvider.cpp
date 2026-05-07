@@ -390,6 +390,14 @@ void drawRectangle(int x, int y, int width, int height, unsigned short color){
     VRAM+=384-width;
   }
 }
+
+void drawCasioCasBorder(){
+  const unsigned short kCasioCasPink = 0xF81F;
+  drawRectangle(0, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);
+  drawRectangle(LCD_WIDTH_PX-6, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);
+  drawRectangle(0, LCD_HEIGHT_PX-7, LCD_WIDTH_PX, 7, kCasioCasPink);
+}
+
 //Uses the Bresenham line algorithm 
 void drawLine(int x1, int y1, int x2, int y2, int color) { 
   signed char ix; 
