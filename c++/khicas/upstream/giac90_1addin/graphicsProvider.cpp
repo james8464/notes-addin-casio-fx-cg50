@@ -399,6 +399,26 @@ void drawCasioCasBorder(){
   DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
 }
 
+static volatile unsigned char status_r_phase=0;
+
+static void drawCasioCasStatusR(){
+  const int x=370,y=4;
+  DirectDrawRectangle(x-1,y-1,x+13,y+15,COLOR_WHITE);
+  if (!(status_r_phase<8)) return;
+  int tx=x,ty=y;
+  PrintMiniMini(&tx,&ty,(unsigned char*)"R",0,TEXT_COLOR_BLUE,0);
+}
+
+static volatile int status_r_timer=0;
+static void status_r_tick(){ status_r_phase=(status_r_phase+1)%12; drawCasioCasStatusR(); }
+
+void startCasioCasStatusR(){
+  if (status_r_timer) return;
+  status_r_timer=Timer_Install(0,status_r_tick,250);
+  if (status_r_timer>0) Timer_Start(status_r_timer);
+  drawCasioCasStatusR();
+}
+
 //Uses the Bresenham line algorithm 
 void drawLine(int x1, int y1, int x2, int y2, int color) { 
   signed char ix; 
