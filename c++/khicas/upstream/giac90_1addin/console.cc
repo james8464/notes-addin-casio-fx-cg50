@@ -223,7 +223,7 @@ int inputline(const char * msg1,const char * msg2,ustl::string & s,bool numeric,
     int cursorpos=textX;
     PrintMini(&textX,&textY,(unsigned char*)s.substr(pos,s.size()-pos).c_str(),0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     drawRectangle(cursorpos,textY+24,3,18,COLOR_BLACK); // cursor
-    PrintMini(0,58,"         |        |        |        |  A<>a  |       ",4);
+    PrintMini(0,58,"         |        |        |        |  A<>A  |       ",4);
     int keyflag = GetSetupSetting( (unsigned int)0x14);
     int key;
     ck_getkey(&key);
@@ -1536,18 +1536,18 @@ void draw_menu(int editor){
     drawRectangle(5*fkeyw,LCD_HEIGHT_PX-18, fkeyw, 16, TEXT_COLOR_WHITE);
     x=5*fkeyw-2;
     y -= 2;
-    PrintMini( &x, &y, (unsigned char *)"eval", 0,0xffffffff,0,0,COLOR_BLACK,COLOR_WHITE,1,0);
+    PrintMini( &x, &y, (unsigned char *)"EVAL", 0,0xffffffff,0,0,COLOR_BLACK,COLOR_WHITE,1,0);
     Bdisp_MMPrint(x,y+1,"~",0,0xffffffff,0,0,jaune,COLOR_WHITE,1,0);
     x += 10; 
     Bdisp_MMPrint(x,y+1,"><",0,0xffffffff,0,0,COLOR_RED,COLOR_WHITE,1,0);
   }
   else {
     drawRectangle(5*fkeyw,LCD_HEIGHT_PX-18, fkeyw, 16, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(5*fkeyw+2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,editor==2?" eval":(lang?"Fich,Cfg":"File,Cfg"),0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+    Bdisp_MMPrint(5*fkeyw+2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,editor==2?" EVAL":(lang?"FICH,CFG":"FILE,CFG"),0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
   }
 #else
-  mPrintXY(12,8,"cat",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
-  mPrintXY(19,8,"men",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
+  mPrintXY(12,8,"CAT",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
+  mPrintXY(19,8,"MEN",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
 #endif
 }
 */
@@ -2438,7 +2438,7 @@ int Console_Init()
   return CONSOLE_SUCCEEDED;
 }
 
-const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2d\nreserved\nF4 cat\nreserved\nF5 A<>a\nreserved\nF6 poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 mat\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 stat\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: prob\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< trig\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
+const char conf_standard[] = "F1 ALG\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 CALC\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2D\nreserved\nF4 CAT\nreserved\nF5 A<>A\nreserved\nF6 POLY\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 ARIT\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 MAT\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 STAT\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: PROB\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; REAL\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< TRIG\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= CPLX\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0
@@ -2497,22 +2497,10 @@ char* fmenu_cfg=0;
 #else
 void Console_FMenu_Init()
 {
-  int i, number=0, key, handle;
-  unsigned char* tmp_realloc = NULL;
+  int i, number=0;
   unsigned char temp[20] = {'\0'};
-  if (!original_cfg){
-    ustl::string cfg_s;
-    // Does the file exists ?
-    if (load_script((char*)"\\\\fls0\\FMENU.cfg",cfg_s)){
-      char * ptr=new char[cfg_s.size()+1];
-      strcpy(ptr,cfg_s.c_str());
-      original_cfg=(unsigned char *)ptr;
-    }
-    if(!original_cfg) {
-      save_script((const char *)"\\\\fls0\\FMENU.cfg",conf_standard);
-      original_cfg = (unsigned char *)conf_standard;
-    }
-  }
+  if (!original_cfg)
+    original_cfg=(unsigned char *)conf_standard;
 
   unsigned char* cfg=original_cfg;
 
@@ -2878,7 +2866,7 @@ int Console_Disp()
   menu += string(menu_f2);
   while (menu.size()<13)
     menu += " ";
-  menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
+  menu += lang?"| VOIR | CMDS | A<>A | FICH.":"| VIEW | CMDS | A<>A | FILE ";
   //drawRectangle(0,174,LCD_WIDTH_PX,24,COLOR_BLACK);
   PrintMini(0,58,menu.c_str(),4);
 
