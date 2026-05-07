@@ -173,6 +173,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Solve the quadratic in u, then solve cos(A)=u.", "ERR:"],
     ),
     (
+        "trig",
+        "4*cos(x)^2-4*cos(x)+1=0,x,0,2*pi,10,method=identity",
+        ["Let u=cos(x)", "4u^2-4u+1=0", "u=1/2", "Base angle", "Answer: x = [pi/3, 5*pi/3]"],
+        ["u=1/2 or u=1/2", "ERR:"],
+    ),
+    (
         "alg",
         "domain(sqrt(log(1/2,x-1)))",
         ["x - 1 > 0", "log base 1/2 decreases", "x - 1 <= 1", "Answer: 1 < x <= 2"],
@@ -183,6 +189,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "range(abs(x-1)+abs(x-2))",
         ["Piecewise abs sum", "minimum distance = 1", "Answer: y >= 1"],
         ["Answer: y >= 0", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(abs(2*x-3)+abs(5*x+1))",
+        ["Piecewise weighted abs sum", "x=3/2", "x=-1/5", "Answer: y >= 17/5"],
+        ["inspect graph/transform", "Answer: y >= 0", "ERR:"],
     ),
     (
         "alg",
@@ -200,6 +212,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "alg",
         "fitconst((x+a)^2+(y+b)^2=x^2+y^2-6*x+10*y+34,[a,b])",
         ["Equate coefficients", "a=-3", "b=5", "Answer: a=-3, b=5"],
+        ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
+    ),
+    (
+        "alg",
+        "fitconst((a*x+b)/(x+1)=2+3/(x+1),[a,b])",
+        ["Clear denominators", "a=2", "b=5", "Answer: a=2, b=5"],
         ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
     ),
     (

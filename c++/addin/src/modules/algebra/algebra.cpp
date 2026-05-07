@@ -1956,6 +1956,7 @@ struct AbsLinearMinInfo
 {
     Rational min{0, 1};
     bool piecewise_sum = false;
+    std::vector<Rational> roots;
 };
 
 static std::optional<std::pair<Rational, Rational>> abs_linear_canon(Arena &a, NodeId id, std::string const &var)
@@ -1984,7 +1985,7 @@ static std::optional<AbsLinearMinInfo> abs_linear_min_info(Arena &a, NodeId n, s
         abs_terms.push_back(*p);
         return true;
     };
-    if(accept_abs(n)) return AbsLinearMinInfo{Rational{0, 1}, false};
+    if(accept_abs(n)) return AbsLinearMinInfo{Rational{0, 1}, false, {}};
     if(x.kind != NodeKind::Add) return std::nullopt;
     for(auto kid : x.kids) {
         if(accept_abs(kid)) continue;
@@ -1993,16 +1994,46 @@ static std::optional<AbsLinearMinInfo> abs_linear_min_info(Arena &a, NodeId n, s
         c = r_add(c, kn.num);
     }
     if(abs_terms.empty()) return std::nullopt;
-    if(abs_terms.size() == 1) return AbsLinearMinInfo{c, false};
-    Rational slope = abs_terms.front().first;
-    Rational lo = abs_terms.front().second;
-    Rational hi = abs_terms.front().second;
+    if(abs_terms.size() == 1) return AbsLinearMinInfo{c, false, {}};
+    struct Term { Rational w; Rational root; };
+    std::vector<Term> terms;
+    std::vector<Rational> roots;
+    Rational total_w{0, 1};
     for(auto const &p : abs_terms) {
-        if(r_cmp(p.first, slope) != 0) return std::nullopt;
-        if(r_cmp(p.second, lo) < 0) lo = p.second;
-        if(r_cmp(p.second, hi) > 0) hi = p.second;
+        Rational root = r_div(r_neg(p.second), p.first);
+        terms.push_back({p.first, root});
+        roots.push_back(root);
+        total_w = r_add(total_w, p.first);
     }
-    return AbsLinearMinInfo{r_add(c, r_sub(hi, lo)), true};
+    std::sort(terms.begin(), terms.end(), [](Term const &u, Term const &v) {
+        return r_cmp(u.root, v.root) < 0;
+    });
+    Rational half_w = r_div(total_w, Rational{2, 1});
+    Rational acc{0, 1};
+    Rational median = terms.front().root;
+    for(auto const &t : terms) {
+        acc = r_add(acc, t.w);
+        if(r_cmp(acc, half_w) >= 0) {
+            median = t.root;
+            break;
+        }
+    }
+    Rational minv = c;
+    for(auto const &t : terms) {
+        minv = r_add(minv, r_mul(t.w, r_abs(r_sub(median, t.root))));
+    }
+    return AbsLinearMinInfo{minv, true, roots};
+}
+
+static std::string abs_roots_text(Arena &a, std::vector<Rational> const &roots)
+{
+    if(roots.empty()) return "roots: none";
+    std::string out = "roots: ";
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) out += " and ";
+        out += "x=" + format_rat(a, roots[i]);
+    }
+    return out;
 }
 
 static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var)
@@ -2840,12 +2871,15 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
         for(double x : pts) add_sample(x, 0);
     }
     auto verify_direct = [&](std::vector<double> const &candidate) -> bool {
+        int checked = 0;
         auto check_sample = [&](double x, double y) -> bool {
             std::vector<std::pair<std::string, double>> env;
             for(auto const &v : indep) env.push_back({v, v == "y" ? y : x});
             for(std::size_t i = 0; i < unknowns.size(); ++i) env.push_back({unknowns[i], candidate[i]});
             auto v = eval_node_env(a, residual, env);
-            return v && std::isfinite(*v) && std::fabs(*v) <= 1e-7;
+            if(!v || !std::isfinite(*v)) return true; // outside identity domain, e.g. cleared denominator zero
+            ++checked;
+            return std::fabs(*v) <= 1e-7;
         };
         if(indep.size() >= 2) {
             for(double x : pts)
@@ -2856,7 +2890,7 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
             for(double x : pts)
                 if(!check_sample(x, 0)) return false;
         }
-        return true;
+        return checked > 0;
     };
 
     std::vector<double> sol;
@@ -2885,13 +2919,14 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
         if(i) ans += ", ";
         ans += unknowns[i] + "=" + fitconst_value_text(sol[i]);
     }
-    return std::vector<std::string>{
+    std::vector<std::string> out{
         "1. Start with identity " + equation + ".",
-        "2. Expand both sides and collect like powers.",
+        equation.find('/') != std::string::npos ? "2. Clear denominators, then expand both sides." : "2. Expand both sides and collect like powers.",
         "3. Equate coefficients.",
         "4. Solve the simultaneous coefficient equations.",
         "Answer: " + ans,
     };
+    return out;
 }
 
 std::vector<std::string> run(Arena &arena, Request const &req)
@@ -3575,7 +3610,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto sqrt_min = sqrt_abs_linear_min_info(arena, n, var)) {
                     range_answer = "y >= " + sqrt_bound_text(arena, sqrt_min->min);
-                    if(sqrt_min->piecewise_sum) steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, sqrt_min->min) + ".");
+                    if(sqrt_min->piecewise_sum) {
+                        steps.push_back("Piecewise weighted abs sum; " + abs_roots_text(arena, sqrt_min->roots) + ".");
+                        steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, sqrt_min->min) + ".");
+                    }
                     else {
                         steps.push_back(abs_linear_text(arena, rn.a, var) + " >= 0.");
                         steps.push_back("inside sqrt >= " + format_rat(arena, sqrt_min->min) + ".");
@@ -3584,7 +3622,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto abs_info = abs_linear_min_info(arena, n, var)) {
                     range_answer = "y >= " + format_expr(arena, arena.num(abs_info->min));
-                    if(abs_info->piecewise_sum) steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, abs_info->min) + ".");
+                    if(abs_info->piecewise_sum) {
+                        steps.push_back("Piecewise weighted abs sum; " + abs_roots_text(arena, abs_info->roots) + ".");
+                        steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, abs_info->min) + ".");
+                    }
                     else steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
                     steps.push_back("Range: " + range_answer + ".");
                 }

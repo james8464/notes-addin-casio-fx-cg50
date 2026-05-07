@@ -41,7 +41,7 @@ DIRECT: dict[int, tuple[list[str], list[str]]] = {
 
 STATIC: dict[str, tuple[list[int], list[str], str]] = {
     "systems": (list(range(1, 11)), ["Let s=x+y,p=xy.", "Set u=log/base exp."], "all"),
-    "diff": (list(range(11, 21)) + [61, 66, 74, 81, 87, 93, 96, 100], ["implicit differentiation", "param_second", "logdiff"], "all"),
+    "diff": (list(range(11, 21)) + [61, 66, 74, 81, 87, 93, 96, 100], ["implicit differentiation", "logdiff", "dy/dx"], "all"),
     "integrals_rest": ([24, 27, 28, 29], ["King", "factor denom; PF.", "std/trig/sub/parts/PF."], "all"),
     "trig": (list(range(31, 41)) + [64, 68, 70, 72, 77, 83, 88, 92, 97], ["Trig solve:", "Basis:", "sum-product", "R-form"], "all"),
     "algebra": (list(range(41, 51)) + [62, 65, 71, 73, 76, 80, 86, 89, 95, 99], ["Move:", "fact/rearr", "log/exp laws"], "all"),

@@ -1347,7 +1347,8 @@ static std::vector<double> solve_quadratic_d(double a, double b, double c)
     if(disc < -1e-10) return roots;
     double sd = std::sqrt(std::max(0.0, disc));
     roots.push_back((-b + sd) / (2.0 * a));
-    roots.push_back((-b - sd) / (2.0 * a));
+    double r2 = (-b - sd) / (2.0 * a);
+    if(std::fabs(r2 - roots.front()) > 1e-9) roots.push_back(r2);
     return roots;
 }
 

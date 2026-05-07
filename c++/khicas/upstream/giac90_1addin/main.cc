@@ -2271,7 +2271,7 @@ static bool cascas_rewrite_coeff_match_call(const char *input,const char *alias,
   if (!cascas_call_args(input,alias,args,4,count,close,s) || count<3)
     return false;
   string x=(count>=4 && args[3].size())?args[3]:"x";
-  string diff="expand((" + args[0] + ")-(" + args[1] + "))";
+  string diff="expand(numer(normal((" + args[0] + ")-(" + args[1] + "))))";
   out="solve([";
   for (int i=0;i<=6;++i){
     if (i)
@@ -2290,7 +2290,8 @@ static bool cascas_rewrite_fitconst_call(const char *input,string &out){
   int eq=cascas_find_top_equal(args[0]);
   if (eq<0)
     return false;
-  string call="coeff_match(" + args[0].substr(0,eq) + "," + args[0].substr(eq+1,args[0].size()-eq-1) + "," + args[1] + ")";
+  string lhs=args[0].substr(0,eq),rhs=args[0].substr(eq+1,args[0].size()-eq-1);
+  string call="coeff_match(" + lhs + "," + rhs + "," + args[1] + ")";
   return cascas_rewrite_coeff_match_call(call.c_str(),"coeff_match(",out);
 }
 
@@ -2355,13 +2356,9 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_rewrite_diff_alias_call(input,"normal_diff(",1,rewritten))
     return true;
-  if (cascas_rewrite_diff_alias_call(input,"second_diff(",2,rewritten))
-    return true;
   if (cascas_rewrite_implicit_diff_call(input,rewritten))
     return true;
   if (cascas_rewrite_param_call(input,"param_diff(",1,rewritten))
-    return true;
-  if (cascas_rewrite_param_call(input,"param_second_diff(",2,rewritten))
     return true;
   if (cascas_rewrite_param_call(input,"param_area(",3,rewritten))
     return true;
@@ -2647,6 +2644,31 @@ static bool cascas_denominator_text(const string &expr,string &den){
   return !den.empty();
 }
 
+static bool cascas_abs_term_root_weight(const string &term,const string &var,double &root,double &weight){
+  if (term.size()<6 || term.substr(0,4)!="abs(" || term[term.size()-1]!=')')
+    return false;
+  string inner=term.substr(4,term.size()-5);
+  double a,b,c;
+  if (!cascas_domain_range_poly2(inner,var,a,b,c) || fabs(a)>1e-10 || fabs(b)<1e-10)
+    return false;
+  root=-c/b;
+  weight=fabs(b);
+  return true;
+}
+
+static bool cascas_abs_sum_range(const string &cmp,const string &var,string &ans){
+  int p=cascas_top_char(cmp,'+');
+  if (p<0)
+    return false;
+  double r1,w1,r2,w2;
+  if (!cascas_abs_term_root_weight(cmp.substr(0,p),var,r1,w1) ||
+      !cascas_abs_term_root_weight(cmp.substr(p+1,cmp.size()-p-1),var,r2,w2))
+    return false;
+  double mn=(w1<w2?w1:w2)*fabs(r1-r2);
+  ans="y >= " + cascas_format_real(mn);
+  return true;
+}
+
 static void cascas_emit_text_lines(const string &text){
   int start=0;
   for (int i=0;i<=int(text.size());++i){
@@ -2744,8 +2766,9 @@ static string cascas_range_text(const string &expr,const string &var,const strin
     out += "1/3 <= y <= 3";
     return out;
   }
-  if (cmp=="abs(x-1)+abs(x-2)"){
-    out += "y >= 1";
+  string abs_range;
+  if (cascas_abs_sum_range(cmp,cascas_compact_expr(var),abs_range)){
+    out += abs_range;
     return out;
   }
   if (cmp=="ln(1-x^2)" || cmp=="log(1-x^2)" || cmp=="ln(sin(x))" || cmp=="log(sin(x))"){
@@ -3070,7 +3093,6 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     static const ER er[]={
       {"3asin(x-1)","t027"},
       {"13sin(2x+atan","t028"},
-      {"second_diff(y^2-x^2=1","t029"},
       {"1/(1+cos(2x))","t030"}
     };
     for (int i=0;i<int(sizeof(er)/sizeof(er[0]));++i){
@@ -3153,7 +3175,6 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     return true;
   }
   if ((cascas_call_args(s,"param_diff(",args,4,count,close,body) ||
-       cascas_call_args(s,"param_second_diff(",args,4,count,close,body) ||
        cascas_call_args(s,"param_area(",args,4,count,close,body)) && count>=2){
     string xe,ye,t=args[1].size()?args[1]:"t";
     if (cascas_split_xy_param(args[0],xe,ye)){
@@ -3170,23 +3191,16 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		cascas_append_line(out,line.c_str());
 			line=cascas_tpl("t066") + t + cascas_tpl("t067") + t + ")";
 		cascas_append_line(out,line.c_str());
-		if (cascas_startswith(s,"param_second_diff(")){
-			  line=cascas_tpl("t068") + t + cascas_tpl("t069") + t + ")";
-		  cascas_append_line(out,line.c_str());
-		}
 	      }
 	      return true;
     }
   }
-  if ((cascas_call_args(s,"normal_diff(",args,2,count,close,body) ||
-       cascas_call_args(s,"second_diff(",args,2,count,close,body)) && count>=1){
+  if (cascas_call_args(s,"normal_diff(",args,2,count,close,body) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
     cascas_append_expr_line(out,cascas_tpl("t070").c_str(),args[0]);
-		    string line=(cascas_startswith(s,"second_diff(")?cascas_tpl("t071"):cascas_tpl("t072")) + x;
+    string line=cascas_tpl("t072") + x;
     cascas_append_line(out,line.c_str());
     cascas_append_tpl_line(out,"t073");
-    if (cascas_startswith(s,"second_diff("))
-      cascas_append_tpl_line(out,"t074");
     return true;
   }
   if (cascas_call_args(s,"complete_square(",args,2,count,close,body) && count>=1){
@@ -3461,8 +3475,8 @@ static bool cascas_old_python_scope_working_call(const char *s){
     return false;
   // Only student-solution features get exam working. Core KhiCAS tools stay answer-only.
   static const char *calls[]={
-    "diff(","derive(","diff_by(","normal_diff(","second_diff(",
-    "implicit_diff(","param_diff(","param_second_diff(","param_area(",
+    "diff(","derive(","diff_by(","normal_diff(",
+    "implicit_diff(","param_diff(","param_area(",
     "integrate(","int(","defint(","integrate_by(","int_by(",
     "solve(","solve_by(","solve_trig(","solve_trig_by(",
     "trig_prove(","trig_rewrite(","trig_transform(",
