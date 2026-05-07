@@ -2,7 +2,7 @@
 ...
 @END
 @t005
-2. Use 
+2. 
 @END
 @t006
 ;t=
@@ -26,25 +26,25 @@ IBP: I=uv-Int vdu.
 du=u'dx; v=Int dv.
 @END
 @t016
-Sub in IBP.
+I=uv-Int(vdu)
 @END
 @t017
-Use PF.
+PF: A/(x-a)+(Bx+C)/q
 @END
 @t018
 A/lin,B/lin2,(Cx+D)/q.
 @END
 @t019
-Clear den; eq; int.
+num = A*q+(Bx+C)(x-a)
 @END
 @t020
 u=inner; chain rule.
 @END
 @t021
-Use (uv)' = u'v + uv'.
+(uv)' = u'v+uv'
 @END
 @t022
-Use (u/v)' = (u'v - uv')/v^2.
+(u/v)' = (u'v-uv')/v^2
 @END
 @t023
 ln; diff; *y.
@@ -54,10 +54,10 @@ ln; diff; *y.
 3. cos diff id -> -sin(x).
 @END
 @t025
-Use [f(x+h)-f(x)]/h; h->0.
+[f(x+h)-f(x)]/h -> f'(x)
 @END
 @t026
-Apply rule; simp.
+d/dx rule -> simplify
 @END
 @t027
 u=asin(x-1); 5u=pi.
@@ -76,7 +76,7 @@ y''=1/y^3.
 1/2tanx+C.
 @END
 @t033
-4. Solve angles.
+4. x = base + k*period.
 @END
 @t032
 3. Sum-prod; angle eq.
@@ -121,16 +121,16 @@ c2=1-s2; t2=s2/(1-s2).
 s2=t2/(1+t2); c2=1/(1+t2).
 @END
 @t052
-5. Exp/coll/fact.
+
 @END
 @t057
- both sides.
+ both sides
 @END
 @t058
-4. Collect y' terms.
+4. y'(...) = ...
 @END
 @t059
-5. Divide for y'.
+5. y' = (...)/(...) .
 @END
 @t065
 ,dy/d
@@ -142,82 +142,82 @@ s2=t2/(1+t2); c2=1/(1+t2).
 5. Diff dy/dx again.
 @END
 @t076
-3. ax2+bx+c -> sq.
+3. ax^2+bx+c=a(x+b/2a)^2+c-b^2/4a
 @END
 @t077
-4. Check.
+4. expand RHS = f
 @END
 @t079
-3. Eq coeffs.
+3. coeff(LHS)=coeff(RHS).
 @END
 @t083
-4. Binom theorem.
+4. (a+b)^n=sum(nCr*a^(n-r)*b^r)
 @END
 @t084
-5. Collect powers.
+5. collect x^r
 @END
 @t086
-4. nCr term.
+4. T_r=nCr*a^(n-r)*b^r
 @END
 @t088
-3. Let s=x+y,p=xy.
+3. s=x+y, p=xy.
 @END
 @t089
-4. Use s2-2p; solve s,p.
+4. x^2+y^2=s^2-2p.
 @END
 @t090
-5. Roots t^2-st+p=0; chk.
+5. t^2-st+p=0.
 @END
 @t091
-3. Radical domain.
+3. radicand >= 0.
 @END
 @t092
-4. Isolate radical; square.
+4. sqrt(A)=B -> A=B^2.
 @END
 @t093
-5. Solve; check.
+5. root in domain.
 @END
 @t094
-3. Abs sign cases.
+3. |A|=A or |A|=-A.
 @END
 @t095
-4. Solve cases+cond.
+4. solve each case with condition.
 @END
 @t096
-5. Union valid roots.
+5. roots = union(valid cases).
 @END
 @t097
-3. Log/exp domain.
+3. log args > 0; base>0, base!=1.
 @END
 @t098
-4. Combine/isolate; exponentiate.
+4. log_a(A)=b -> A=a^b.
 @END
 @t099
-5. Solve; check dom.
+5. root in domain.
 @END
 @t100
-4. Let u=a^x/e^x/log.
+4. u=a^x or e^x or log(x).
 @END
 @t101
-5. Solve u; back-sub.
+5. solve u, then x.
 @END
 @t102
-3. Exclude zero den.
+3. denominator != 0.
 @END
 @t103
-4. Clear den; expand/factor.
+4. multiply by common denominator.
 @END
 @t104
-5. Solve; reject excl.
+5. reject denominator=0.
 @END
 @t105
-3. Fact/rearr; else quad.
+3. factor/rearrange or quadratic formula.
 @END
 @t106
-4. Roots; check domain.
+4. root in domain.
 @END
 @t108
-Factor denom; PF.
+den=(...)(...); PF
 @END
 @t109
 PF: A/lin,(Bx+C)/q.
@@ -229,43 +229,43 @@ Comp sq; ln/atan.
 sqrt(tan)->sin/cos.
 @END
 @t112
-Sub -> sqrt(1-u^2).
+u=sin(x)-cos(x)
 @END
 @t113
 d(xsinx+cosx)=xcosx.
 @END
 @t114
-Rewrite using d(...).
+multiply by cos(x)/cos(x)
 @END
 @t115
 IBP; cancel factor.
 @END
 @t116
-King: x->a+b-x.
+x -> a+b-x
 @END
 @t117
-Add forms; solve I.
+2I = Int(f(x)+f(a+b-x))dx
 @END
 @t118
 u=sqrt(1+x^n).
 @END
 @t119
-Use u^2=1+x^n.
+u^2=1+x^n
 @END
 @t120
 PF in u; back-sub.
 @END
 @t121
-Trig sub from radical.
+x=a*sin(t) or a*tan(t) or a*sec(t)
 @END
 @t122
-Ref tri; back-sub.
+triangle -> back-sub
 @END
 @t123
-State domain.
+domain: radical real; denom !=0
 @END
 @t124
-Log factor -> IBP.
+u=log(...), dv=rest dx
 @END
 @t125
 u=log; dv=rest dx.
@@ -277,73 +277,73 @@ Try division/PF.
 Int powers/logs.
 @END
 @t128
-Use trig ids.
+sin^2+cos^2=1; sin(2x)=2sinxcosx
 @END
 @t129
-Then sub/std trig int.
+u=sinx/cosx/tanx if matched
 @END
 @t130
-Std int if matched.
+standard integral
 @END
 @t131
-Else sub/IBP/PF.
+else u-sub / IBP / PF
 @END
 @t132
-Eval F(hi)-F(lo); simp.
+F(hi)-F(lo)
 @END
 @t133
-Add +C.
++C
 @END
 @t134
-2. Parse.
+2. valid syntax
 @END
 @t135
-2. Expand.
-3. Eq coeffs.
-4. Solve.
+2. expand LHS.
+3. coeff(LHS)=coeff(RHS).
+4. constants = ...
 @END
 @t136
-2. Sep/linear.
-3. Int sides.
-4. BC.
+2. dy/dx + P(x)y = Q(x).
+3. IF=e^Int(Pdx).
+4. y*IF=Int(Q*IF dx)+C.
 @END
 @t137
-2. Diff for m.
+2. m = dy/dx at x1.
 3. y-y1=m(x-x1).
 @END
 @t138
-2. Start one side.
-3. Ids to RHS.
+2. LHS = ...
+3. ... = RHS.
 @END
 @t139
-2. Pick SUVAT.
-3. Sub.
-4. Rearr.
+2. v=u+at; s=ut+1/2*a*t^2; v^2=u^2+2as.
+3. substitute values.
+4. unknown = ...
 @END
 @t140
 @END
 @t141
-2. Classify.
-3. Std/sub/IBP/PF/id.
-4. Check.
+2. I = Int[f(x)]dx.
+3. u-sub / IBP / PF / identity.
+4. d(answer)/dx=f(x).
 @END
 @t142
-2. Domain.
-3. Move left.
-4. Factor/rearr; chk.
+2. domain restrictions.
+3. LHS-RHS=0.
+4. roots satisfying domain.
 @END
 @t143
-2. n,p,tail.
-3. Prob/crit.
+2. X~B(n,p).
+3. P(X<=r) or P(X>=r).
 @END
 @t144
-2. Std form.
+2. LHS-RHS=0.
 @END
 @t145
-3. Rule/sub/id.
+3. factor/rearrange.
 @END
 @t146
-4. Verify.
+4. substitute root.
 @END
 @t147
 1. 
@@ -364,7 +364,7 @@ Valid: |x|<1
 Valid: |(
 @END
 @t080
-4. Solve consts 
+4. 
 @END
 @t085
 3. Coeff: 
@@ -388,31 +388,31 @@ u =
 dv = 
 @END
 @t031
-2. Start 
+2. 
 @END
 @t047
-2. Move left: 
+2. 
 @END
 @t048
 )=0
 @END
 @t049
-3. Basis: 
+3. 
 @END
 @t050
- only.
+ only
 @END
 @t051
 4. Ids: 
 @END
 @t053
-2. Diff 
+2. d/dx: 
 @END
 @t054
  = 
 @END
 @t055
-2. Let F = 
+2. F = 
 @END
 @t060
 2. x = 
@@ -451,7 +451,7 @@ dv =
 2. f = 
 @END
 @t078
-2. Expand 
+2. expand 
 @END
 @t081
 2. Base = 
@@ -460,5 +460,5 @@ dv =
 3. Power = 
 @END
 @t087
-2. Solve 
+2. 
 @END

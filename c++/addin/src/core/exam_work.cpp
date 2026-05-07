@@ -39,28 +39,16 @@ static std::string full_stop(std::string s)
 static std::string exam_reason_text(std::string const &reason)
 {
     if(reason.find("Full symbolic integral route not available") != std::string::npos)
-        return "Use the general integration route.";
-    if(reason.find("Expected an equation") != std::string::npos) return "Use an equation with '='.";
+        return "no elementary route";
+    if(reason.find("Expected an equation") != std::string::npos) return "need equation with '='";
     if(reason.find("Failed to isolate a trig function") != std::string::npos)
-        return "Rearrange using identities until one trig factor is isolated.";
-    if(reason.find("Expected a trig function") != std::string::npos) return "Rearrange to a trig equation.";
+        return "rearrange: isolate one trig factor";
+    if(reason.find("Expected a trig function") != std::string::npos) return "need trig equation";
     if(reason.find("Only trig functions supported") != std::string::npos)
-        return "Use sin/cos/tan/sec/cosec/cot form.";
+        return "need sin/cos/tan/sec/cosec/cot";
     if(reason.find("Only linear angles") != std::string::npos)
-        return "Angle must be linear in the chosen variable.";
+        return "angle linear in variable";
     return full_stop(reason);
-}
-
-static bool student_facing_method(std::string const &method)
-{
-    if(method.empty()) return false;
-    if(method.find("limited") != std::string::npos) return false;
-    if(method.find("Giac") != std::string::npos) return false;
-    if(method.find("table") != std::string::npos) return false;
-    if(method == "differentiate" || method == "second derivative") return false;
-    if(method == "algebra simplify" || method == "domain/range") return false;
-    if(method.find("trig solve") != std::string::npos) return false;
-    return true;
 }
 
 static std::string lower_text(std::string s)
@@ -80,45 +68,43 @@ static void append_generic_exam_route(std::vector<std::string> &steps, std::stri
     std::string expr = lower_text(prelude.norm.empty() ? prelude.raw : prelude.norm);
 
     if(has_word(m, "integr")) {
-        steps.push_back("Classify the integrand: standard form, composite, product, rational, trig, or radical.");
-        if(has_word(expr, "/")) steps.push_back("For a rational part, divide if improper, then set up partial fractions.");
+        if(has_word(expr, "/")) steps.push_back("P/Q: divide if improper; PF.");
         if(has_word(expr, "sin") || has_word(expr, "cos") || has_word(expr, "tan") || has_word(expr, "sec"))
-            steps.push_back("For trig terms, rewrite with identities, conjugates, R-form, or t=tan(x/2) if needed.");
-        if(has_word(expr, "sqrt")) steps.push_back("For radicals, choose substitution/ref triangle and replace dx fully.");
-        if(has_word(expr, "ln") || has_word(expr, "log")) steps.push_back("For log products, use integration by parts with u=log part.");
-        steps.push_back("Test reverse chain: let u=inner expression and compare du with the remaining factor.");
-        steps.push_back("If a product remains, use IBP/DI: I=uv-Int(v du), then simplify.");
-        steps.push_back("Back-substitute and differentiate the result as a check.");
+            steps.push_back("trig: identities/R-form/t=tan(x/2).");
+        if(has_word(expr, "sqrt")) steps.push_back("radical: substitute/ref triangle; replace dx.");
+        if(has_word(expr, "ln") || has_word(expr, "log")) steps.push_back("IBP: u=log part.");
+        steps.push_back("u=inner; compare du.");
+        steps.push_back("I=uv-Int(vdu) or DI table.");
         return;
     }
 
     if(has_word(m, "trig")) {
-        steps.push_back("Move all terms to one side.");
-        steps.push_back("Rewrite sec/cosec/cot using sin, cos, tan if useful.");
-        steps.push_back("Use identities: Pythagorean, double-angle, compound-angle, R-form, or product-to-sum.");
-        steps.push_back("Factor or isolate a single trig term.");
-        steps.push_back("Find base angles, add periods, then check in the original equation.");
+        steps.push_back("LHS-RHS=0.");
+        steps.push_back("sec=1/cos; cosec=1/sin; cot=cos/sin.");
+        steps.push_back("sin^2+cos^2=1; double/compound/R-form.");
+        steps.push_back("factor/isolate trig term.");
+        steps.push_back("alpha=base angle; + period; check.");
         return;
     }
 
     if(has_word(m, "diff") || has_word(m, "derivative")) {
-        steps.push_back("Identify outer/inner functions and each product or quotient.");
-        steps.push_back("Apply chain, product, quotient, or log differentiation as required.");
-        steps.push_back("Collect terms and simplify/factor the derivative.");
+        steps.push_back("u=inner.");
+        steps.push_back("y'=outer'(u)*u' plus product/quotient terms.");
+        steps.push_back("collect/factor.");
         return;
     }
 
     if(has_word(m, "solve") || has_word(m, "algebra")) {
-        steps.push_back("State domain restrictions before changing the equation.");
-        steps.push_back("Clear fractions/radicals/logs only with reversible steps where possible.");
-        steps.push_back("Use substitution, factorisation, completing square, or equating coefficients.");
-        steps.push_back("Reject roots that break the original domain or came from squaring.");
+        steps.push_back("domain: denoms!=0; logs>0; radicals>=0.");
+        steps.push_back("clear denoms / isolate radical / combine logs.");
+        steps.push_back("substitute / factor / complete square / coeffs.");
+        steps.push_back("reject invalid roots.");
         return;
     }
 
-    steps.push_back("Rewrite into a standard useful form.");
-    steps.push_back("Apply the matching rule, identity, substitution, or rearrangement.");
-    steps.push_back("Simplify and verify in the original expression.");
+    steps.push_back("rewrite to standard form.");
+    steps.push_back("identity/substitution/rearrangement.");
+    steps.push_back("verify in original.");
 }
 
 } // namespace
@@ -136,8 +122,7 @@ std::vector<std::string> exam_block(std::string const &method, std::vector<std::
 {
     std::vector<std::string> out;
     out.reserve(steps.size() + 2);
-    if(student_facing_method(method)) out.push_back("Use " + method + ".");
-    else if(!method.empty() && steps.empty()) out.push_back("Use " + method + ".");
+    (void)method;
     for(auto const &s : steps) out.push_back(s);
     // Keep final line as maths only; labels waste calculator width.
     auto numbered = format_exam_working(method, out, answer);

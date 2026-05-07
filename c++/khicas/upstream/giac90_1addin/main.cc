@@ -3374,10 +3374,6 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
       return;
     }
   }
-		  // Rewrite to std form.
-		  cascas_append_tpl_line(out,"t144");
-		  cascas_append_tpl_line(out,"t145");
-		  cascas_append_tpl_line(out,"t146");
 	}
 
 static bool cascas_word_char(char c){

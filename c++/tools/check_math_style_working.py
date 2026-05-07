@@ -40,7 +40,7 @@ CASES = [
     (
         "looping parts final",
         ["--int", "e^(2*x)*cos(3*x),method=parts"],
-        ("I = Integral [e^(2*x)*cos(3*x)] dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Integral(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
+        ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
     ),
     (
         "rform final",

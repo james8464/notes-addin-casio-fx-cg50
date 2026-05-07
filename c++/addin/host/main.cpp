@@ -126,6 +126,14 @@ static bool method_allowed(char const *valid, std::string const &method)
     return std::string(valid).find("|" + method + "|") != std::string::npos;
 }
 
+static void print_lines(std::vector<std::string> const &lines)
+{
+    for(auto const &ln : lines) {
+        std::string s = casio::math_style_line(ln);
+        if(!s.empty()) std::cout << s << "\n";
+    }
+}
+
 static void print_method_header(std::string const &feature, std::string const &method, std::string const &u)
 {
     if(method.empty() || method == "auto") return;
@@ -173,7 +181,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         else if(mode == 3) req.expr = get(1) + "," + get(2) + ",t";
         else if(mode == 4) req.expr = get(1);
         auto out = casio::derive::run(arena, req);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
     if(program == "intProgram.py") {
@@ -190,7 +198,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
             return 0;
         }
         auto out = casio::integrate::run(arena, req);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
     if(program == "algebraProgram.py") {
@@ -214,7 +222,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         if(!method.empty()) req.method = method;
         if(!target.empty() && req.expr.find('=') == std::string::npos) req.expr += "=" + target;
         auto out = casio::algebra::run(arena, req);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
     if(program == "trigProgram.py") {
@@ -237,7 +245,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
             req.expr = get(1);
         }
         auto out = casio::trig::run(arena, req);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
     if(program == "SUVATprogram.py") {
@@ -263,7 +271,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         mark_target(in.a, "a");
         mark_target(in.t, "t");
         auto out = casio::suvat::solve_all(arena, in);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
     if(program == "ComputerScience/booleanProgram.py" || program == "booleanProgram.py") {
@@ -336,7 +344,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
             req.expr = oss.str();
         }
         auto out = casio::stats::run(arena, req);
-        for(auto const &ln : out) std::cout << ln << "\n";
+        print_lines(out);
         return 0;
     }
 
@@ -420,12 +428,12 @@ int main(int argc, char **argv)
                     one.target = targets[i];
                     auto lines = casio::suvat::solve(arena, one);
                     if(i) std::cout << "\n";
-                    for(auto const &ln : lines) std::cout << ln << "\n";
+                    print_lines(lines);
                 }
                 return 0;
             }
             auto lines = casio::suvat::solve_all(arena, in);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_int) {
@@ -436,7 +444,7 @@ int main(int argc, char **argv)
             req.expr = expr;
             req.method = method;
             auto lines = casio::integrate::run(arena, req);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_alg) {
@@ -508,7 +516,7 @@ int main(int argc, char **argv)
                                  method == "double_angle" || method == "compound_angle") ? 4 : 0;
                     treq.expr = trig_expr;
                     auto lines = casio::trig::run(arena, treq);
-                    for(auto const &ln : lines) std::cout << ln << "\n";
+                    print_lines(lines);
                     return 0;
                 }
                 req.mode = 6;
@@ -552,7 +560,7 @@ int main(int argc, char **argv)
                 req.expr = expr;
             }
             auto lines = casio::algebra::run(arena, req);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_trig) {
@@ -578,7 +586,7 @@ int main(int argc, char **argv)
             }
             req.expr = expr;
             auto lines = casio::trig::run(arena, req);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_derive) {
@@ -632,7 +640,7 @@ int main(int argc, char **argv)
                 }
             }
             auto lines = casio::derive::run(arena, req);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_stats) {
@@ -643,7 +651,7 @@ int main(int argc, char **argv)
             req.mode = 0;
             req.expr = expr;
             auto lines = casio::stats::run(arena, req);
-            for(auto const &ln : lines) std::cout << ln << "\n";
+            print_lines(lines);
             return 0;
         }
         if(is_bool || is_bool_nand || is_bool_nor || is_bool_prove) {
@@ -657,7 +665,7 @@ int main(int argc, char **argv)
                     std::cout << "ERR: " << err << "\n";
                     return 1;
                 }
-                for(auto const &ln : lines) std::cout << ln << "\n";
+                print_lines(lines);
                 return 0;
             }
             auto n = casio::boolean::parse(expr);

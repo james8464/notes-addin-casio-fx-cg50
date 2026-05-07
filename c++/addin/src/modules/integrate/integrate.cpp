@@ -8347,7 +8347,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 NodeId log_arg = casio::add(arena, {casio::num(arena, 1), casio::power(arena, arg, casio::num(arena, 2))});
                 NodeId log_part = casio::mul(arena, {casio::num(arena, 1, 2), casio::fn(arena, "log", log_arg)});
                 second_part = casio::neg(arena, casio::div(arena, log_part, lc_node));
-                rule = "Integral atan(w) dw = w*atan(w) - 1/2*ln(1+w^2).";
+                rule = "Int(atan(w)) dw = w*atan(w) - 1/2*ln(1+w^2).";
             }
             else if(node_ref.fkind == FnKind::Asin) {
                 NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
@@ -8365,7 +8365,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         sqrt_backsub = format_expr(arena, second_part);
                     }
                 }
-                rule = "Integral asin(w) dw = w*asin(w) + sqrt(1-w^2).";
+                rule = "Int(asin(w)) dw = w*asin(w) + sqrt(1-w^2).";
             }
             else {
                 NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
@@ -8383,7 +8383,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         sqrt_backsub = format_expr(arena, second_part);
                     }
                 }
-                rule = "Integral acos(w) dw = w*acos(w) - sqrt(1-w^2).";
+                rule = "Int(acos(w)) dw = w*acos(w) - sqrt(1-w^2).";
             }
             NodeId primitive = casio::simplify(arena, casio::add(arena, {first_part, second_part}));
             Rational recip{lc->den, lc->num};

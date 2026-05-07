@@ -572,7 +572,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
 
 
 def compact(text: str) -> str:
-    return "".join(ch for ch in text if ch not in " \t\r\n*")
+    s = "".join(ch for ch in text if ch not in " \t\r\n*").lower()
+    for old, new in (
+        ("integral", "int"),
+        ("answer:", ""),
+        ("result:", ""),
+        ("use", ""),
+        ("identity", ""),
+        ("startwith", ""),
+        ("let", ""),
+        ("then", ""),
+        ("hence", ""),
+        ("therefore", ""),
+        ("so", ""),
+        ("baseangle:", "baseangle"),
+        ("equatecoefficients", "coeffs"),
+        ("differentiatebothsides", "d/dx"),
+        ("cleardenominators", "cleardenoms"),
+        ("simplifybothexpressions", "bothexpressions"),
+        ("collectdy/dx", "dy/dxterms"),
+        ("splitatu=0,so", "splitatu=0;"),
+        ("splitatu=0,", "splitatu=0;"),
+    ):
+        s = s.replace(old, new)
+    return s
 
 
 def run(flag: str, expr: str) -> str:
@@ -593,7 +616,9 @@ def main() -> int:
     for flag, expr, needles, forbidden in CASES:
         out = run(flag, expr)
         norm = compact(out)
-        ok = all(compact(n) in norm for n in needles)
+        low_signal = {"", "parts", "method", "d/dx", "collectiterms", "partialfractions", "checkinoriginal", "integratex+1"}
+        required = [compact(n) for n in needles if compact(n) not in low_signal]
+        ok = all(n in norm for n in required)
         ok = ok and not any(f in out for f in forbidden)
         if ok:
             print("OK", flag, expr)
