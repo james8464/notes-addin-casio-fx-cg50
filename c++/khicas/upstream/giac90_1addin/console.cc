@@ -634,7 +634,6 @@ int run_session(int start=0){
     //int j=Last_Line;
     Console_NewLine(LINE_TYPE_INPUT, 1);
     Console_Disp();
-    Bdisp_PutDisp_DD();
     // Line[j].type=LINE_TYPE_INPUT;
     run(v[i].c_str(),6); /* show logo and graph but not eqw */
     // j=Last_Line;
@@ -656,7 +655,6 @@ int run_session(int start=0){
       }
     }
     Console_Disp();
-    Bdisp_PutDisp_DD();
   return 0;
 }
 
@@ -2886,8 +2884,8 @@ int Console_Disp()
 
   // status, clock, 
   set_xcas_status();
-  drawCasioCasBorder();
   Bdisp_PutDisp_DD();
+  drawCasioCasBorder();
   return CONSOLE_SUCCEEDED;
 }
 

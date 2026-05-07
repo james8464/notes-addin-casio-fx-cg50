@@ -15,6 +15,7 @@
 #include "graphicsProvider.hpp"
 
 color_t* VRAM_base;
+extern "C" void DirectDrawRectangle(int x1, int y1, int x2, int y2, unsigned short color);
 
 #if 0
 const short empty[18] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -393,9 +394,9 @@ void drawRectangle(int x, int y, int width, int height, unsigned short color){
 
 void drawCasioCasBorder(){
   const unsigned short kCasioCasPink = 0xF81F;
-  drawRectangle(0, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);
-  drawRectangle(LCD_WIDTH_PX-6, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);
-  drawRectangle(0, LCD_HEIGHT_PX-7, LCD_WIDTH_PX, 7, kCasioCasPink);
+  DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
+  DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
+  DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
 }
 
 //Uses the Bresenham line algorithm 
