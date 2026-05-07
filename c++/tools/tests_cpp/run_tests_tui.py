@@ -2224,6 +2224,22 @@ def stats_checker(*tokens):
     )
 
 
+def stats_normal_output_checker(input_line):
+    def check(output):
+        try:
+            parts = split_top_level_text(input_line, ",")
+            mu, sigma, lo, hi = [safe_eval_expr(p) for p in parts[:4]]
+            if sigma <= 0:
+                return False
+            expected = 0.5 * (1.0 + math.erf((hi - mu) / (sigma * math.sqrt(2.0)))) - 0.5 * (1.0 + math.erf((lo - mu) / (sigma * math.sqrt(2.0))))
+            m = re.search(r"answer:\s*([-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?)", normalized_text(output))
+            return bool(m) and abs(float(m.group(1)) - expected) < 5e-5 and "standardise" in normalized_text(output)
+        except Exception:
+            return False
+    check.__name__ = "normal probability oracle"
+    return check
+
+
 def suvat_expected_float(expected):
     if isinstance(expected, Fraction):
         return expected.numerator / expected.denominator
@@ -8609,6 +8625,8 @@ class CASIOApp(App):
                 return expected if callable(expected) else None
             if script == "intProgram.py" and mode == "1" and len(lines) >= 2:
                 return self.integrate_output_checker(lines[1])
+            if script == "statsProgram.py" and mode == "4" and len(lines) >= 2:
+                return stats_normal_output_checker(lines[1])
         except Exception:
             return expected if callable(expected) else None
         return expected if callable(expected) else None
@@ -9843,6 +9861,13 @@ class CASIOApp(App):
                 stats_checker("standardise", "0.997"),
                 "N(0,1) from -3 to 3",
                 "stats_normal:central",
+            ),
+            (
+                "4\n7,2000,-(7993),2007\n",
+                "Stats: normal parenthesised negative bound",
+                stats_checker("standardise", "0.841"),
+                "N(7,2000) from -7993 to 2007",
+                "stats_normal:negative_parentheses",
             ),
             (
                 "5\n105,100,15,36,gt,0.05\n",

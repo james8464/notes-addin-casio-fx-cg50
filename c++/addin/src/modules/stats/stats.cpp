@@ -114,6 +114,22 @@ static std::vector<long double> parse_numbers(std::string const &text)
     char const *s = compact.c_str();
     char *end = nullptr;
     for(std::size_t i = 0; i < compact.size();) {
+        if((s[i] == '-' || s[i] == '+') && i + 1 < compact.size()) {
+            std::size_t j = i + 1;
+            while(j < compact.size() && (s[j] == ' ' || s[j] == '\t')) j++;
+            if(j < compact.size() && s[j] == '(') {
+                j++;
+                while(j < compact.size() && (s[j] == ' ' || s[j] == '\t')) j++;
+                if(j < compact.size() && ((s[j] >= '0' && s[j] <= '9') || s[j] == '.')) {
+                    long double v = std::strtold(s + j, &end);
+                    if(end != s + j) {
+                        out.push_back(s[i] == '-' ? -v : v);
+                        i = static_cast<std::size_t>(end - s);
+                        continue;
+                    }
+                }
+            }
+        }
         if((s[i] >= '0' && s[i] <= '9') || s[i] == '.' || s[i] == '-' || s[i] == '+') {
             long double v = std::strtold(s + i, &end);
             if(end != s + i) {
