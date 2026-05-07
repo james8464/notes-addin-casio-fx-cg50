@@ -31,8 +31,10 @@ def main() -> int:
         raise SystemExit("FAIL calculator border: unsafe scroll indicator outside LCD_WIDTH_PX")
     require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24, 5, LCD_HEIGHT_PX-30, COLOR_WHITE);", "safe scroll clear")
     require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24+starty, 5, 8, COLOR_BLACK);", "safe scroll thumb")
-    require(console, "drawCasioCasBorder();\n  startCasioCasStatusR();\n  Bdisp_PutDisp_DD();", "console border before flush")
-    require(catalog, "drawCasioCasBorder();\n    startCasioCasStatusR();\n    Bdisp_PutDisp_DD();", "catalog border before flush")
+    if "drawCasioCasBorder();\n  Bdisp_PutDisp_DD();" in console:
+        raise SystemExit("FAIL calculator border: no custom border draw during console launch/redraw")
+    if "drawCasioCasBorder();\n    Bdisp_PutDisp_DD();" in catalog:
+        raise SystemExit("FAIL calculator border: no custom border draw during catalog redraw")
     print("OK calculator border")
     return 0
 

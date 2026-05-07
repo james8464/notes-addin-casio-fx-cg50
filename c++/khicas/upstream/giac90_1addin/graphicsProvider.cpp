@@ -400,18 +400,7 @@ void drawCasioCasBorder(){
   drawRectangle(0, LCD_HEIGHT_PX-7, LCD_WIDTH_PX, 7, kCasioCasPink);
 }
 
-static void drawCasioCasStatusR(){
-  const int x=370,y=4;
-  drawRectangle(x-1,y-1,14,16,COLOR_WHITE);
-  // Draw only from the normal UI path. LCD drawing from Timer callbacks can
-  // crash real fx-CG50 hardware.
-  if (((RTC_GetTicks()/128)%3)==2) return;
-  int tx=x,ty=y;
-  PrintMiniMini(&tx,&ty,(unsigned char*)"R",0,TEXT_COLOR_BLUE,0);
-}
-
 void startCasioCasStatusR(){
-  drawCasioCasStatusR();
 }
 
 //Uses the Bresenham line algorithm 

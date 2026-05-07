@@ -13,26 +13,23 @@ def require(text: str, marker: str, label: str) -> None:
 
 
 def main() -> int:
-    gfx_h = (SRC / "graphicsProvider.hpp").read_text()
     gfx = (SRC / "graphicsProvider.cpp").read_text()
     console = (SRC / "console.cc").read_text()
     main_cc = (SRC / "main.cc").read_text()
     catalog = (SRC / "catalogen.cpp").read_text()
 
-    require(gfx_h, "void startCasioCasStatusR();", "status R timer declaration")
-    require(gfx, "static void drawCasioCasStatusR()", "private status R drawer")
-    require(gfx, "RTC_GetTicks()/128", "status R tick source")
-    require(gfx, "%3)==2", "2s visible / 1s hidden phase")
-    if "Timer_Install(0,status_r_tick" in gfx or "drawCasioCasStatusR();" in gfx.partition("static void status_r_tick")[2]:
-        raise SystemExit("FAIL status R: LCD drawing must not happen from timer callbacks")
+    if "static void drawCasioCasStatusR()" in gfx or 'PrintMiniMini(&tx,&ty,(unsigned char*)"R"' in gfx:
+        raise SystemExit("FAIL status R: launch path must not draw custom status glyphs")
+    if "Timer_Install(0,status_r_tick" in gfx:
+        raise SystemExit("FAIL status R: do not install status timers")
     if "DirectDrawRectangle(" in gfx:
         raise SystemExit("FAIL status R: use safe VRAM drawing, not DirectDrawRectangle")
-    require(gfx, "drawRectangle(x-1,y-1,14,16,COLOR_WHITE);", "status R clear")
-    require(gfx, 'PrintMiniMini(&tx,&ty,(unsigned char*)"R",0,TEXT_COLOR_BLUE,0);', "status R glyph draw")
-    require(console, "startCasioCasStatusR();\n  Bdisp_PutDisp_DD();", "console status R draw before DD")
+    if "startCasioCasStatusR();\n  Bdisp_PutDisp_DD();" in console:
+        raise SystemExit("FAIL status R: no custom status draw during console flush")
     if "Bdisp_PutDisp_DD ();\n    startCasioCasStatusR();" in main_cc:
-        raise SystemExit("FAIL status R: do not draw from ck_getkey before key wait")
-    require(catalog, "startCasioCasStatusR();\n    Bdisp_PutDisp_DD();", "catalog status R draw before DD")
+        raise SystemExit("FAIL status R: no custom status draw from key wait")
+    if "startCasioCasStatusR();\n    Bdisp_PutDisp_DD();" in catalog:
+        raise SystemExit("FAIL status R: no custom status draw during catalog flush")
     print("OK status R")
     return 0
 

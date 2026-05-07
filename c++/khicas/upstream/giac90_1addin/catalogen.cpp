@@ -529,8 +529,6 @@ static bool catalog_prompt_text(const char *title,const char *prompt,char *buf,i
     DisplayMBString2(0,(unsigned char*)buf,start,cursor,0,1,4*24-24,21,0);
     drawLine(0,4*24-1,LCD_WIDTH_PX-1,4*24-1,COLOR_GRAY);
     drawLine(0,4*24+23,LCD_WIDTH_PX-1,4*24+23,COLOR_GRAY);
-    drawCasioCasBorder();
-    startCasioCasStatusR();
     Bdisp_PutDisp_DD();
     ck_getkey(&key);
     if (key==KEY_CTRL_EXE)
