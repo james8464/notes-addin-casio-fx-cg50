@@ -3019,6 +3019,7 @@ class CASIOApp(App):
         self._live_program = program or "all"
         self._live_phase = "preparing"
         self._last_event_label = command_label
+        self.last_command = command_label
         self.records.clear()
         self.current_run_question_keys.clear()
         self.session_random_question_keys.clear()
