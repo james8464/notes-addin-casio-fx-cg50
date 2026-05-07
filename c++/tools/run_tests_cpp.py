@@ -39,6 +39,7 @@ def main() -> int:
         ("calculator_sync", [sys.executable, "c++/tools/check_calculator_sync.py"]),
         ("calculator_border", [sys.executable, "c++/tools/check_calculator_border.py"]),
         ("status_r", [sys.executable, "c++/tools/check_status_r.py"]),
+        ("ui_labels_status", [sys.executable, "c++/tools/check_ui_labels_status.py"]),
         ("tui_llm_prompt", [sys.executable, "c++/tools/check_tui_llm_prompt.py"]),
         ("catalogue_random_graph", [sys.executable, "c++/tools/check_catalogue_random_graph.py"]),
         ("khicas_working", [sys.executable, "c++/tools/check_khicas_working.py"]),

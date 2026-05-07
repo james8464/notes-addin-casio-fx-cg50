@@ -650,7 +650,7 @@ giac::gen eqw(const giac::gen & ge,bool editable){
     menu += string(menu_f2);
     while (menu.size()<13)
       menu += " ";
-    menu += " | edit+-| cmds | A<>a | eval";
+    menu += " | EDIT+-| CMDS | A<>A | EVAL";
     PrintMini(0,58,menu.c_str(),4);
     //draw_menu(2);
     clip_ymin=save_clip_ymin;
