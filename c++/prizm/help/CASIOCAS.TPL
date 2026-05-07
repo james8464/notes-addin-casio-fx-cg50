@@ -136,6 +136,7 @@ s2=t2/(1+t2); c2=1/(1+t2).
 ,dy/d
 @END
 @t073
+4. dy/d
 @END
 @t074
 5. Diff dy/dx again.
@@ -438,13 +439,13 @@ dv =
 (dy/dx))/(dx/d
 @END
 @t070
-2. y = 
+1. y = 
 @END
 @t071
-3. Find dy/d
+2. u = 
 @END
 @t072
-3. dy/d
+3. du/d
 @END
 @t075
 2. f = 

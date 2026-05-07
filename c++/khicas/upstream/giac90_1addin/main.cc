@@ -3179,10 +3179,23 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   if ((cascas_call_args(s,"normal_diff(",args,2,count,close,body) ||
        cascas_call_args(s,"diff(",args,2,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
-    cascas_append_expr_line(out,cascas_tpl("t070").c_str(),args[0]);
-    string line=cascas_tpl("t072") + x;
+    string expr=cascas_strip_outer_group(args[0]);
+    cascas_append_expr_line(out,cascas_tpl("t070").c_str(),expr);
+    int p=cascas_find_top_power(expr);
+    if (p>0){
+      string base=cascas_strip_outer_group(expr.substr(0,p));
+      string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
+      if (base.size() && exp.size() && cascas_nonneg_int_text(exp)){
+	cascas_append_expr_line(out,cascas_tpl("t071").c_str(),base);
+	string line=cascas_tpl("t072") + x + " = d/d" + x + "(" + base + ")";
+	cascas_append_line(out,line.c_str());
+	line=cascas_tpl("t073") + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x;
+	cascas_append_line(out,line.c_str());
+	return true;
+      }
+    }
+    string line=cascas_tpl("t072") + x + " = d/d" + x + "(" + expr + ")";
     cascas_append_line(out,line.c_str());
-    cascas_append_tpl_line(out,"t073");
     return true;
   }
   if (cascas_call_args(s,"complete_square(",args,2,count,close,body) && count>=1){
@@ -3342,8 +3355,6 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
     cascas_append_tpl_line(out,"t134");
     return;
   }
-  if (cascas_append_forced_method(out,s,eval_s))
-    return;
   if (cascas_append_specific_lines(out,s,eval_s))
     return;
 	  struct Rule { const char *key; const char *text; };
@@ -3442,9 +3453,12 @@ static string cascas_working_text(const char *input,const char *eval_input,const
   string shown_answer=answer;
   bool cleaned=cascas_answer_cleanup_allowed(input,eval_input) && cascas_clean_answer_text(shown_answer);
   cascas_working_sink out;
-  string p1=cascas_tpl("t147");
-  cascas_append_expr_line(out,p1.c_str(),input?string(input):string(""));
-  if (eval_input && input && strcmp(eval_input,input)){
+  bool no_echo=input && (cascas_startswith(input,"diff(") || cascas_startswith(input,"normal_diff("));
+  if (!no_echo){
+    string p1=cascas_tpl("t147");
+    cascas_append_expr_line(out,p1.c_str(),input?string(input):string(""));
+  }
+  if (!no_echo && eval_input && input && strcmp(eval_input,input)){
     string p2=cascas_tpl("t148");
     cascas_append_expr_line(out,p2.c_str(),eval_input);
   }
