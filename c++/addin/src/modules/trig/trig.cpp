@@ -1447,7 +1447,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         auto roots = solve_quadratic_d(poly->s2, poly->s1, poly->c);
         steps.push_back("Let u=sin(" + arg_text + ").");
         steps.push_back(trig_quad_text(poly->s2, poly->s1, poly->c));
-        steps.push_back("u=" + join_roots(roots) + ".");
+        steps.push_back("u=" + join_roots(roots) + ", so solve sin(" + arg_text + ") for each valid u.");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
             else {
@@ -1462,7 +1462,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         auto roots = solve_quadratic_d(poly->c2, poly->c1, poly->c);
         steps.push_back("Let u=cos(" + arg_text + ").");
         steps.push_back(trig_quad_text(poly->c2, poly->c1, poly->c));
-        steps.push_back("u=" + join_roots(roots) + ".");
+        steps.push_back("u=" + join_roots(roots) + ", so solve cos(" + arg_text + ") for each valid u.");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
             else {
@@ -1597,7 +1597,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             }
         }
     }
-    steps.push_back("Keep values in the interval and check against the original equation.");
+    steps.push_back("Use general families; filter interval; check original.");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 

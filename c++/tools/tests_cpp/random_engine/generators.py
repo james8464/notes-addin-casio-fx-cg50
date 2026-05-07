@@ -371,10 +371,10 @@ class AdversarialGenerator:
             (
                 "parametric_second",
                 "derive",
-                ["x=t^2+1/t,y=t^2-1/t,t,x,method=param", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,x,method=param"][cycle % 2],
+                ["x=t^2+1/t,y=t^2-1/t,t,x,method=param_second", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,x,method=param_second"][cycle % 2],
                 "diff",
-                "x(t),y(t),t,x,method=param",
-                "param",
+                "x(t),y(t),t,x,method=param_second",
+                "param_second",
                 ("dxdt_dydt", "dy_dx", "second_derivative"),
                 "exam: show dx/dt, dy/dt, dy/dx, then divide d/dt(dy/dx) by dx/dt",
             ),
@@ -517,7 +517,7 @@ class AdversarialGenerator:
             ("source_openstax_pf", "int", "(5*x+7)/((x-1)*(x^2+4)),method=pf", "integrate", "expr,method", "pf", "OpenStax Calculus 2", "https://openstax.org/books/calculus-volume-2/pages/3-4-partial-fractions", ("pf_setup", "equate_coeffs")),
             ("source_pauls_trig_sub", "int", "sqrt(9-x^2),method=trig", "integrate", "expr,method", "trig", "Paul's Online Notes", "https://tutorial.math.lamar.edu/Classes/CalcII/TrigSubstitutions.aspx", ("reference_triangle", "back_sub")),
             ("source_edexcel_rform", "trig", "5*sin(x)-12*cos(x)=6,x,0,2*pi,12,method=rform", "solve_trig", "eq,var,lo,hi,max,method", "rform", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("rform", "base_angle", "interval_filter")),
-            ("source_edexcel_parametric", "derive", "x=t^2+1/t,y=t^2-1/t,t,x,method=param", "diff", "x(t),y(t),t,x,method", "param", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("dxdt_dydt", "second_derivative")),
+            ("source_edexcel_parametric", "derive", "x=t^2+1/t,y=t^2-1/t,t,x,method=param_second", "diff", "x(t),y(t),t,x,method", "param_second", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("dxdt_dydt", "second_derivative")),
         ]
         topic, flag, expr, function, sig, method, source, url, transforms = cases[i % len(cases)]
         concept = self._concept(function, sig, method, topic, transforms, 5 + (i % 2), "source+sympy+llm")

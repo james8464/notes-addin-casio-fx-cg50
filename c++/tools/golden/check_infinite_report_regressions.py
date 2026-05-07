@@ -84,6 +84,18 @@ def main() -> int:
         ("ERR:",),
     )
     bad += require(
+        "inverse_trig_parts_simplified",
+        run(["--int", "asin((x-2)/6),method=parts"]),
+        ("Use parts", "sqrt(- (x - 2)^2 + 36)", "Answer:"),
+        ("ERR:", "Answer: int("),
+    )
+    bad += require(
+        "trig_square_interval_working",
+        run(["--trig", "sin(x)^2=1/4,x,0,2*pi,method=square_then_check"]),
+        ("Let u=sin(x)", "for each valid u", "Use general families", "Answer: x = [pi/6, 5*pi/6, 7*pi/6, 11*pi/6]"),
+        ("ERR:",),
+    )
+    bad += require(
         "online_poly_exp_parts",
         run(["--int", "(2*x+5)*e^(x/3),method=parts"]),
         ("DI table", "Answer:"),

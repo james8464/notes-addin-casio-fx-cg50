@@ -6223,6 +6223,7 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         terms.push_back(*int2);
         steps.push_back("Step 2: Partial fractions over quadratics:");
         steps.push_back("Step 3: Set (A" + var + "+B)/(" + format_expr_human(a, qleft) + ")+(C" + var + "+D)/(" + format_expr_human(a, qright) + ").");
+        steps.push_back("Multiply through: N=(A" + var + "+B)Q2+(C" + var + "+D)Q1; Equate coeffs.");
         steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ", D=" + format_expr(a, a.num(sol[3])) + ".");
         steps.push_back("Step 5: Integrate each linear/quadratic part by log/atan.");
         return casio::simplify(a, casio::add(a, terms));
@@ -6382,7 +6383,7 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         if(!quad_int) return std::nullopt;
         terms.push_back(*quad_int);
         steps.push_back("Step 2: Partial fractions: A/(" + format_expr_human(a, lin_part) + ")+(B" + var + "+C)/(" + format_expr_human(a, quad_part) + ").");
-        steps.push_back("Step 3: Equate coefficients after multiplying by the denominator.");
+        steps.push_back("Step 3: Multiply through: N=AQ+(B" + var + "+C)L; Equate coeffs.");
         steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ".");
         steps.push_back("Step 5: Integrate linear factor by log and quadratic part by log/atan form.");
         return casio::simplify(a, casio::add(a, terms));
@@ -8329,6 +8330,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 {scaled_w, casio::fn(arena, node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos"), arg)}
             );
             NodeId second_part = casio::num(arena, 0);
+            std::optional<std::string> sqrt_backsub;
             std::string fname = node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos");
             std::string rule;
             if(node_ref.fkind == FnKind::Atan) {
@@ -8340,11 +8342,37 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else if(node_ref.fkind == FnKind::Asin) {
                 NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
                 second_part = casio::div(arena, sqrt_term, lc_node);
+                if(arg_node.kind == NodeKind::Div) {
+                    auto den = as_num(arena, arg_node.b);
+                    auto top_lc = linear_coeff(arena, arg_node.a, req.var);
+                    if(den && den->num > 0 && den->den == 1 && top_lc && !r_zero(*top_lc)) {
+                        NodeId rad = casio::add(arena, {
+                            casio::num(arena, den->num * den->num),
+                            casio::neg(arena, casio::power(arena, arg_node.a, casio::num(arena, 2)))
+                        });
+                        NodeId top_lc_node = casio::num(arena, top_lc->num, top_lc->den);
+                        second_part = casio::div(arena, casio::fn(arena, "sqrt", rad), top_lc_node);
+                        sqrt_backsub = format_expr(arena, second_part);
+                    }
+                }
                 rule = "Integral asin(w) dw = w*asin(w) + sqrt(1-w^2).";
             }
             else {
                 NodeId sqrt_term = casio::fn(arena, "sqrt", one_minus_w2);
                 second_part = casio::neg(arena, casio::div(arena, sqrt_term, lc_node));
+                if(arg_node.kind == NodeKind::Div) {
+                    auto den = as_num(arena, arg_node.b);
+                    auto top_lc = linear_coeff(arena, arg_node.a, req.var);
+                    if(den && den->num > 0 && den->den == 1 && top_lc && !r_zero(*top_lc)) {
+                        NodeId rad = casio::add(arena, {
+                            casio::num(arena, den->num * den->num),
+                            casio::neg(arena, casio::power(arena, arg_node.a, casio::num(arena, 2)))
+                        });
+                        NodeId top_lc_node = casio::num(arena, top_lc->num, top_lc->den);
+                        second_part = casio::neg(arena, casio::div(arena, casio::fn(arena, "sqrt", rad), top_lc_node));
+                        sqrt_backsub = format_expr(arena, second_part);
+                    }
+                }
                 rule = "Integral acos(w) dw = w*acos(w) - sqrt(1-w^2).";
             }
             NodeId primitive = casio::simplify(arena, casio::add(arena, {first_part, second_part}));
@@ -8360,7 +8388,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else
                 steps.push_back("Use parts: u=" + fname + "(w), dv=dw, du=1/sqrt(1-w^2) dw, v=w.");
             steps.push_back(rule);
-            steps.push_back("Back-substitute w.");
+            steps.push_back(sqrt_backsub ? "Back-substitute; sqrt term = " + *sqrt_backsub + "." : "Back-substitute w.");
             return casio::exam_block("integration by parts", steps, format_expr(arena, primitive) + " + C");
         }
     }
