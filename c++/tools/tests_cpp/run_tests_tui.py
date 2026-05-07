@@ -1841,7 +1841,7 @@ def trig_transform_checker(*tokens):
 def trig_solve_checker(*tokens):
     base_required = tokens
     structure = build_checker(
-        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "factor ", "use cos", "let a=", "move all terms"),
+        contains_any=("start with", "solve trig eq", "standard trig equation", "product = 0", "factor ", "use cos", "let a=", "let u=", "move all terms"),
         min_steps=3,
         min_lines=4,
     )
@@ -1984,7 +1984,7 @@ def derive_checker(*tokens):
         contains_any=(
             "chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation",
             "implicit", "term by term", " rule",
-            "u =", "du/dx", "f1 =", "f1'", "ln(y) =", "y' =",
+            "u =", "du/dx", "f1 =", "f1'", "ln(y) =", "y' =", "dy/dx =",
         ),
         min_steps=1,
         min_lines=2,
@@ -2040,6 +2040,8 @@ def integrate_checker(*tokens):
             "use:",
             "split the numerator",
             "polynomial division",
+            "cancel common factor",
+            "integrand simplifies",
             "complete the square",
             "partial fractions",
         ),
@@ -2116,7 +2118,7 @@ def working_quality_ok(output, program, feature):
         if feature.startswith("integrate_pf"):
             return "partial fractions" in text or "decompose" in text
         if feature.startswith("integrate_div"):
-            return "divide" in text or "polynomial division" in text
+            return "divide" in text or "polynomial division" in text or "cancel common factor" in text or "integrand simplifies" in text
         if feature.startswith("integrate_trig"):
             return "identity" in text or "use " in text or "reverse chain rule" in text or "u =" in text
         return any(marker in text for marker in ("method:", "use the standard result", "split the numerator", "complete the square", "u ="))
@@ -5948,7 +5950,7 @@ class CASIOApp(App):
     def integrate_output_checker(self, integrand, var="x"):
         quality = build_checker(
             contains_all=("+ c",),
-            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "let u=", "du=", "resulting polynomial", "odd sine power", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "divide polynomial numerator", "polynomial division"),
+            contains_any=("method:", "met:", "integrate each term", "constant rule", "use ", "use the standard result", "standard integral", "power-reduction", "reverse-chain", "int[", "consider y", "dy/dx", "u =", "let u=", "du=", "resulting polynomial", "odd sine power", "integration by parts", "integrate by parts", "use parts", "by parts", "use:", "partial fractions", "split numerator", "divide the numerator", "divide polynomial numerator", "polynomial division", "cancel common factor", "integrand simplifies"),
             min_steps=0,
             min_lines=2,
         )

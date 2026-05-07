@@ -50,7 +50,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "E10 split trig fraction",
         ["--int", "6*sin(x)/(cos(x)+sin(x))"],
-        ["Split numerator", "A=3", "B=-3", "3*x - 3*log(abs(cos(x) + sin(x)))"],
+        ["6*sin(x)=3*(sin(x)+cos(x))-3*(cos(x)-sin(x))", "A=3", "B=-3", "3*x - 3*log(abs(cos(x) + sin(x)))"],
         ["No elementary primitive"],
     ),
     (
@@ -68,7 +68,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "F11 hidden exponential substitution",
         ["--int", "x*(2-3*x)/(exp(3*x)+x^2)"],
-        ["Multiply top and bottom by e^(-3*x)", "u=x^2*e^(-3*x)+1", "log(x^2*e^(-3*x) + 1)"],
+        ["integrand = x*(2-3*x)*e^(-3*x)/(1+x^2*e^(-3*x))", "u=x^2*e^(-3*x)+1", "log(x^2*e^(-3*x) + 1)"],
         ["No elementary primitive"],
     ),
     (

@@ -92,7 +92,7 @@ def main() -> int:
     bad += require(
         "trig_square_interval_working",
         run(["--trig", "sin(x)^2=1/4,x,0,2*pi,method=square_then_check"]),
-        ("Let u=sin(x)", "for each valid u", "Use general families", "Answer: x = [pi/6, 5*pi/6, 7*pi/6, 11*pi/6]"),
+        ("Let u=sin(x)", "for each valid u", "0 <= x <= 2*pi", "Answer: x = [pi/6, 5*pi/6, 7*pi/6, 11*pi/6]"),
         ("ERR:",),
     )
     bad += require(

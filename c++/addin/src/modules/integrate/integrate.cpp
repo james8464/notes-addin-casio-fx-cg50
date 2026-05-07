@@ -4283,9 +4283,17 @@ static std::optional<NodeId> integrate_sin_over_sin_plus_cos(Arena &a, NodeId ex
         mul_coeff(a, half, casio::sym(a, var)),
         mul_coeff(a, log_scale, casio::fn(a, "log", casio::fn(a, "abs", x.b))),
     }));
-    steps.push_back("Step 2: Split numerator: sin(u)=1/2[(sin(u)+cos(u))-(cos(u)-sin(u))].");
+    Rational log_abs = log_scale.num < 0 ? r_neg(log_scale) : log_scale;
+    std::string log_join = log_scale.num < 0 ? "-" : "+";
+    std::string arg_text = format_expr_human(a, top->second);
+    std::string sum_text = "sin(" + arg_text + ")+cos(" + arg_text + ")";
+    std::string diff_text = "cos(" + arg_text + ")-sin(" + arg_text + ")";
+    steps.push_back("Step 2: " + format_expr_human(a, x.a) + "=" +
+                    format_expr_human(a, a.num(half)) + "*(" + sum_text + ")" +
+                    log_join + format_expr_human(a, a.num(log_abs)) + "*(" + diff_text + ").");
     steps.push_back("Step 3: A=" + format_expr_human(a, a.num(half)) + ", B=" + format_expr_human(a, a.num(log_scale)) + ".");
-    steps.push_back("Step 4: d/dx(sin(u)+cos(u))=" + format_expr_human(a, a.num(*lc)) + "*(cos(u)-sin(u)).");
+    steps.push_back("Step 4: d/dx(" + sum_text + ")=" + format_expr_human(a, a.num(*lc)) + "*(" + diff_text + ").");
+    steps.push_back("Step 5: Integral = A*x + B*log(abs(" + sum_text + ")) + C.");
     return primitive;
 }
 
@@ -6658,8 +6666,10 @@ static std::optional<NodeId> integrate_exp_den_hidden_sub(Arena &a, NodeId expr,
 
     NodeId neg_exp = casio::fn(a, "exp", casio::neg(a, expn.b));
     NodeId u = casio::simplify(a, casio::add(a, {casio::num(a, 1), casio::mul(a, {square_term, neg_exp})}));
-    steps.push_back("Step 2: Multiply top and bottom by e^(-" + format_expr_human(a, expn.b) + ").");
-    steps.push_back("Step 3: Let u=" + format_expr_human(a, u) + ".");
+    steps.push_back("Step 2: integrand = x*(2-" + format_expr_human(a, a.num(*k)) +
+                    "*x)*e^(-" + format_expr_human(a, expn.b) + ")/(1+x^2*e^(-" +
+                    format_expr_human(a, expn.b) + ")).");
+    steps.push_back("Step 3: u=" + format_expr_human(a, u) + ".");
     steps.push_back("Step 4: du = x*(2-" + format_expr_human(a, a.num(*k)) + "*x)*e^(-" + format_expr_human(a, expn.b) + ") dx.");
     steps.push_back("Step 5: Integral becomes Integral(1/u) du.");
     return casio::fn(a, "log", u);
@@ -6968,13 +6978,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto trig_split = integrate_sin_over_sin_plus_cos(a, expr, var, out.steps)) {
         out.result = *trig_split;
-        out.steps.push_back("Step 5: Integrate the constant and log-derivative parts.");
         return out;
     }
 
     if(auto exp_hidden = integrate_exp_den_hidden_sub(a, expr, var, out.steps)) {
         out.result = *exp_hidden;
-        out.steps.push_back("Step 6: Integrate to log(abs(u)); here u>0.");
+        out.steps.push_back("Step 6: Integral(1/u) du = log(u)+C, u>0.");
         return out;
     }
 
@@ -8477,8 +8486,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         std::string cleaned = clean_integral_step(s, display_expr, req.var);
         if(!cleaned.empty()) all_steps.push_back(cleaned);
     }
-    
-    all_steps.push_back("Add +C.");
     
     return casio::exam_block(
         "Giac-style integration with steps",

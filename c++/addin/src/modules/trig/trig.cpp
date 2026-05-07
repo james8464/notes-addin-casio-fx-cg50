@@ -1420,7 +1420,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     std::vector<double> xs;
     std::vector<std::pair<FnKind, double>> root_targets;
     std::vector<std::string> steps;
-    steps.push_back("Move all terms to one side.");
+    steps.push_back(format_expr(a, residual) + " = 0.");
 
     auto join_roots = [](std::vector<double> const &roots) {
         std::string s;
@@ -1520,7 +1520,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
                             "*sin(x)=" + std::to_string(*r_int) + "*cos(x-alpha).");
             steps.push_back("cos(x-alpha)=" + ratio_text(*rhs_int, *r_int) + ".");
             steps.push_back("x-alpha=" + beta + " or -" + beta + " (mod 2*pi).");
-            steps.push_back("Keep values in the interval and check against the original equation.");
+            steps.push_back(lo_text + " <= " + var + " <= " + hi_text + "; check original equation.");
             return casio::exam_block(
                 "trig solve",
                 steps,
@@ -1596,7 +1596,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             }
         }
     }
-    steps.push_back("Use general families; filter interval; check original.");
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + "; check original equation.");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 

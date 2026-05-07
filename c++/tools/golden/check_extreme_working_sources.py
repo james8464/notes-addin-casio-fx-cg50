@@ -135,7 +135,7 @@ def generated_cases() -> list[dict[str, Any]]:
             "cmd": ["--trig", expr],
             "expected_answer_markers": ["Answer:"],
             "expected_working_markers": [
-                "Keep values in the interval" if "rform" in expr else (
+                "0 <= x <= 2*pi" if "rform" in expr else (
                     "General: A=B+2*pi*n or A=pi-B+2*pi*n" if "sin(3*x)=sin(x)" in expr else "Base angle"
                 )
             ],
