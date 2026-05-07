@@ -351,8 +351,8 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"solve_by(equation,x,method)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE},
 #endif
-  {"solve_trig(eq,[var,lo,hi,max,method])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
 #if 0
+  {"solve_trig(eq,[var,lo,hi,max,method])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
   {"solve_trig_by(eq,var,method)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
 #endif
   {"stddev(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},

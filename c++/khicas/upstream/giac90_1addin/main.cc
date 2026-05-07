@@ -1955,6 +1955,24 @@ static int cascas_find_matching_paren(const string &s,int open){
   return -1;
 }
 
+static bool cascas_syntax_complete(const char *s){
+  int depth=0; bool instring=false;
+  for (int i=0;s && s[i];++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    if (c==')' || c==']' || c=='}')
+      --depth;
+    if (depth<0)
+      return false;
+  }
+  return depth==0 && !instring;
+}
+
 static int cascas_find_top_comma(const string &s,int first,int last){
   int depth=0;
   bool instring=false;
@@ -3099,42 +3117,6 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
       }
     }
   }
-  if (cascas_call_args(s,"solve_trig(",args,6,count,close,body) && count>=1){
-    string expr=args[0];
-    string se=cascas_lower_compact(expr);
-    int eq=cascas_find_top_equal(expr);
-    string start_prefix=cascas_tpl("t031");
-    if (eq>=0)
-      cascas_append_expr_line(out,start_prefix.c_str(),expr);
-    else
-      cascas_append_expr_line(out,start_prefix.c_str(),expr + cascas_tpl("t007") + "0");
-    if ((cascas_text_has(se,"sin(") && cascas_text_has(se,"=sin(")) ||
-	(cascas_text_has(se,"cos(") && cascas_text_has(se,"=cos(")) ||
-	(cascas_text_has(se,"tan(") && cascas_text_has(se,"=tan("))){
-      cascas_append_tpl_line(out,"t032");
-      cascas_append_tpl_line(out,"t033");
-    }
-    else if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")){
-      if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(") && cascas_text_has(se,"^2")){
-			cascas_append_tpl_line(out,"t034");
-			cascas_append_tpl_line(out,"t035");
-      }
-      else {
-			cascas_append_tpl_line(out,"t036");
-			cascas_append_tpl_line(out,"t037");
-      }
-    }
-    else if (cascas_text_has(se,"^2")){
-	      cascas_append_tpl_line(out,"t038");
-		      cascas_append_tpl_line(out,"t039");
-    }
-    else {
-	      cascas_append_tpl_line(out,"t040");
-      cascas_append_tpl_line(out,"t041");
-    }
-		    cascas_append_tpl_line(out,count>=4?"t042":"t043");
-    return true;
-  }
   static const struct { const char *alias; const char *basis; const char *ids; } trig_basis[]={
     {"trigcos(","cos","t044"},
     {"trigsin(","sin","t045"},
@@ -3269,6 +3251,14 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		cascas_append_tpl_line(out,"t100");
 			cascas_append_tpl_line(out,"t101");
       }
+      return true;
+    }
+    if (cascas_text_has(se,"sin(")||cascas_text_has(se,"cos(")||cascas_text_has(se,"tan(")||
+	cascas_text_has(se,"sec(")||cascas_text_has(se,"cot(")||cascas_text_has(se,"csc(")){
+      cascas_append_tpl_line(out,cascas_text_has(se,"^2")?"t038":"t040");
+      cascas_append_tpl_line(out,cascas_text_has(se,"^2")?"t039":"t041");
+      string b=count>=2?cascas_lower_compact(args[1]):"";
+      cascas_append_tpl_line(out,cascas_text_has(b,"..")?"t042":"t043");
       return true;
     }
     if (cascas_text_has(se,"/")){
@@ -3494,6 +3484,8 @@ static bool cascas_show_working_for(const char *s,const string &answer){
   if (!s || !*s)
     return false;
   if (answer=="Graphic object")
+    return false;
+  if (!cascas_syntax_complete(s))
     return false;
   return cascas_old_python_scope_working_call(s);
 }

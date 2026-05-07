@@ -4207,6 +4207,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         return out;
     }
     catch(std::exception const &e) {
+        std::string err = e.what();
+        if(err.find("token") != std::string::npos ||
+           err.find("Unexpected") != std::string::npos ||
+           err.find("Expected") != std::string::npos ||
+           err.find("Invalid equation") != std::string::npos ||
+           err.find("Bad ") != std::string::npos) {
+            return {"Err: " + err};
+        }
         casio::ExamPrelude pre;
         pre.raw = req.expr;
         pre.norm = casio::normalize_text(req.expr);

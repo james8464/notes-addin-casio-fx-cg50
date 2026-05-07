@@ -121,8 +121,25 @@ def fail(msg: str) -> int:
     return 1
 
 
+def without_if0(text: str) -> str:
+    out = []
+    skip = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "#if 0":
+            skip += 1
+            continue
+        if stripped == "#endif" and skip:
+            skip -= 1
+            continue
+        if not skip:
+            out.append(line)
+    return "\n".join(out)
+
+
 def main() -> int:
     catalog = CATALOG.read_text(errors="ignore")
+    active_catalog = without_if0(catalog)
     main_cc = MAIN.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
     template_text = TPL.read_text(errors="ignore") if TPL.exists() else ""
@@ -144,6 +161,8 @@ def main() -> int:
         return fail("All catalogue category missing")
     if 'ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds")' not in catalog:
         return fail("Program cmds category missing")
+    if "solve_trig(eq,[var,lo,hi,max,method])" in active_catalog:
+        return fail("solve_trig still active in catalogue; use solve() surface")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
         return fail("category command hide filter not applied")
     if "catalog_hidden_name(text)" not in catalog:

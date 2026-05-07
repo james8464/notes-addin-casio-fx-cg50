@@ -65,7 +65,7 @@ def main() -> int:
     required = [
         "integrate(f,x,[a,b,method,u])",
         "diff(f,var,[n,method])",
-        "solve_trig(eq,[var,lo,hi,max,method])",
+        "solve(equation,x,[method])",
         "t141",
         "t140",
         "t107",

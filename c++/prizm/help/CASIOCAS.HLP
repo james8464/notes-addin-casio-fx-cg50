@@ -1339,11 +1339,11 @@ Ex F2: simplify(sin(3x)/sin(x),method=canonical)
 F2:solve(x^2-x-1=0,x,method=factor)
 F3:solve([x^2-y^2=0,x^2-z^2=0],[x,y,z])
 solve(equation,x,[method])
-Solve. Methods auto,linear,factor,quad,complete_square,sub,clear_denoms,log_exp,numeric.
+Solve algebra/trig equations. Methods auto,linear,factor,quad,complete_square,sub,clear_denoms,log_exp,numeric,identity,rform,cast.
 Req: eq,x.
-Opt: method=auto,lo,hi.
+Opt: method=auto. Use x=lo..hi for bounded trig.
 Ex F2: solve(x^2-x-1=0,x,method=factor)
-Ex F3: solve([x^2-y^2=0,x^2-z^2=0],[x,y,z])
+Ex F3: solve(2*sin(x)+1=0,x=0..2*pi,method=cast)
 @END
 @solve_by(equation,x,method)
 F2:solve_by(x^2-5*x+6=0,x,factor)
@@ -1353,20 +1353,10 @@ Req: eq,x,method.
 Opt: lo,hi.
 Ex F2: solve_by(x^2-5*x+6=0,x,factor)
 @END
-@solve_trig(eq,[var,lo,hi,max,method])
-F2:solve_trig(2*sin(x)+1=0)
-solve_trig(eq,[var,lo,hi,max,method])
-Trig solve with base/general/interval steps.
-Methods: auto,general,bounded,cast,identity,rform,square_then_check.
-Req: eq.
-Opt: var,lo,hi,max,method=auto.
-Ex F2: solve_trig(2*sin(x)+1=0)
-Ex F3: solve_trig(2*sin(x)+1=0,x,0,2*pi,6,method=cast)
-@END
 @solve_trig_by(eq,var,method)
 F2:solve_trig_by(2*sin(x)+1=0,x,bounded)
 solve_trig_by(eq,var,method)
-Forced trig solve.
+Compat alias; prefer solve(...).
 Req: eq,var,method.
 Opt: lo,hi,max.
 Ex F2: solve_trig_by(2*sin(x)+1=0,x,bounded)

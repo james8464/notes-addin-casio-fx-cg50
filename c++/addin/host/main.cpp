@@ -489,6 +489,32 @@ int main(int argc, char **argv)
                 req.expr = inner;
             }
             else if(!(inner = unwrap_call(expr, "solve(")).empty()) {
+                auto has_trig = [](std::string const &s) {
+                    for(char const *k : {"sin(", "cos(", "tan(", "sec(", "cosec(", "csc(", "cot("}) {
+                        if(s.find(k) != std::string::npos) return true;
+                    }
+                    return false;
+                };
+                if(has_trig(inner)) {
+                    auto parts = split_top_csv(inner);
+                    std::string trig_expr = inner;
+                    if(parts.size() >= 2) {
+                        auto eq = parts[1].find('=');
+                        auto dots = parts[1].find("..");
+                        if(eq != std::string::npos && dots != std::string::npos && eq < dots) {
+                            trig_expr = parts[0] + "," + trim(parts[1].substr(0, eq)) + "," +
+                                        trim(parts[1].substr(eq + 1, dots - eq - 1)) + "," +
+                                        trim(parts[1].substr(dots + 2));
+                        }
+                    }
+                    casio::trig::Request treq;
+                    treq.mode = (method == "rform" || method == "sin_cos" || method == "pythag" ||
+                                 method == "double_angle" || method == "compound_angle") ? 4 : 0;
+                    treq.expr = trig_expr;
+                    auto lines = casio::trig::run(arena, treq);
+                    for(auto const &ln : lines) std::cout << ln << "\n";
+                    return 0;
+                }
                 req.mode = 6;
                 req.expr = inner;
             }
