@@ -304,15 +304,8 @@ void show_status(textArea * text,const ustl::string & search,const ustl::string 
     DefineStatusMessage((char *)"PAD: select, CLIP: copy, AC: cancel",1,0,0);
   else {
     ustl::string status;
-    int heure,minute;
-    giac::get_time(heure,minute);
-    status += char('0'+heure/10);
-    status += char('0'+(heure%10));
-    status += ':';
-    status += char('0'+(minute/10));
-    status += char('0'+(minute%10));
     if (text->editable){
-      status += (xthetat?" t":" x");
+      status += (xthetat?"t":"x");
       status += text->python?(text->python==2?" Py ^xor ":" Py ^=** "):" Xcas ";
       status += giac::remove_extension(text->filename.c_str()+7);
       status += text->changed?" * ":" - ";

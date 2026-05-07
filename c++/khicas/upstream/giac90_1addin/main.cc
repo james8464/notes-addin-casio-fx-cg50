@@ -3186,8 +3186,7 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
       string base=cascas_strip_outer_group(expr.substr(0,p));
       string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
       if (base.size() && exp.size() && cascas_nonneg_int_text(exp)){
-	cascas_append_expr_line(out,cascas_tpl("t071").c_str(),base);
-	string line=cascas_tpl("t072") + x + " = d/d" + x + "(" + base + ")";
+	string line=cascas_tpl("t071") + base + "; du/d" + x + " = d/d" + x + "(" + base + ")";
 	cascas_append_line(out,line.c_str());
 	line=cascas_tpl("t073") + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x;
 	cascas_append_line(out,line.c_str());
@@ -3436,6 +3435,23 @@ static bool cascas_clean_answer_text(string &s){
   return changed;
 }
 
+static void cascas_replace_all_text(string &s,const char *from,const char *to){
+  size_t flen=strlen(from),tlen=strlen(to),p=0;
+  if (!flen)
+    return;
+  while ((p=s.find(from,p))!=string::npos){
+    s.replace(p,flen,to);
+    p += tlen;
+  }
+}
+
+static bool cascas_log_alias_cleanup_allowed(const char *input,const char *eval_input){
+  const char *src=input?input:eval_input;
+  if (!src)
+    return false;
+  return strstr(src,"ln(") && !strstr(src,"limit(") && !strstr(src,"limite(");
+}
+
 static bool cascas_answer_cleanup_allowed(const char *input,const char *eval_input){
   return (input && (cascas_startswith(input,"integrate(") ||
 		    cascas_startswith(input,"int(") ||
@@ -3585,6 +3601,8 @@ void run(const char * s,int do_logo_graph_eqw){
       }
     }
   }
+  if (cascas_log_alias_cleanup_allowed(s,eval_s))
+    cascas_replace_all_text(s_,"limite(","ln(");
   if (s_.size()>512)
     s_=s_.substr(0,509)+"...";
   char* edit_line = (char*)Console_GetEditLine();

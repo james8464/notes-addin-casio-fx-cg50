@@ -136,7 +136,7 @@ s2=t2/(1+t2); c2=1/(1+t2).
 ,dy/d
 @END
 @t073
-4. dy/d
+3. dy/d
 @END
 @t074
 5. Diff dy/dx again.
