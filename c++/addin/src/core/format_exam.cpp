@@ -128,11 +128,9 @@ std::string math_style_line(std::string line)
     line = trim_copy(line);
     if(line.empty()) return line;
 
-    std::string prefix;
     std::size_t i = 0;
     while(i < line.size() && std::isdigit(static_cast<unsigned char>(line[i]))) ++i;
     if(i > 0 && i + 1 < line.size() && line[i] == '.' && line[i + 1] == ' ') {
-        prefix = line.substr(0, i + 2);
         line = trim_copy(line.substr(i + 2));
     }
 
@@ -140,11 +138,11 @@ std::string math_style_line(std::string line)
 
     if(starts_with(line, "Answer:")) {
         line = trim_copy(line.substr(7));
-        return prefix + line;
+        return line;
     }
     if(starts_with(line, "Result:")) {
         line = trim_copy(line.substr(7));
-        return prefix + line;
+        return line;
     }
 
     replace_all(line, " → ", " => ");
@@ -207,8 +205,13 @@ std::string math_style_line(std::string line)
 
     if(line == "Add constant C." || line == "Add constant C") line = "+ C.";
     line = trim_copy(line);
+    replace_all(line, " = ", "=");
+    replace_all(line, "= ", "=");
+    replace_all(line, " =", "=");
+    replace_all(line, " -> ", "=>");
+    if(!line.empty() && line.back() == '.') line.pop_back();
     if(line.empty()) return "";
-    return prefix + line;
+    return line;
 }
 
 std::vector<std::string> numbered_steps(std::vector<std::string> const &lines)
@@ -218,18 +221,18 @@ std::vector<std::string> numbered_steps(std::vector<std::string> const &lines)
     int chars = 0;
     for(auto const &ln : lines) {
         if(static_cast<int>(out.size()) >= FORMAT_EXAM_MAX_LINES) {
-            out.push_back(std::to_string(out.size() + 1) + ". ...");
+            out.push_back("...");
             break;
         }
         std::string s = math_style_line(ln);
         if(s.empty()) continue;
         s = truncate_exam_line(s);
         if(chars + static_cast<int>(s.size()) > FORMAT_EXAM_MAX_CHARS) {
-            out.push_back(std::to_string(out.size() + 1) + ". ...");
+            out.push_back("...");
             break;
         }
         chars += static_cast<int>(s.size());
-        out.push_back(std::to_string(out.size() + 1) + ". " + s);
+        out.push_back(s);
     }
     return out;
 }

@@ -36,7 +36,7 @@ def main() -> int:
     require(
         "non_elementary_integral",
         run_host("--int", "exp(-x^2),method=auto"),
-        ("No elementary primitive found", "Full elementary symbolic integral route"),
+        ("No elementary primitive found", "Full elementary symbolic Int route"),
         ("A-level primitive",),
     )
     require(

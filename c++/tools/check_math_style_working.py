@@ -89,6 +89,10 @@ def numbered_lines(out: str):
     return [line for line in out.splitlines() if line[:1].isdigit() and ". " in line]
 
 
+def compact_equals(s: str) -> str:
+    return s.replace(" = ", "=").replace("= ", "=").replace(" =", "=")
+
+
 def run_case(name, args, required):
     proc = subprocess.run([str(HOST), *args], cwd=ROOT, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -104,8 +108,9 @@ def run_case(name, args, required):
             if word in line:
                 bad.append(f"text in working: {line}")
                 break
+    compact_out = compact_equals(out)
     for marker in required:
-        if marker not in out:
+        if compact_equals(marker) not in compact_out:
             bad.append(f"missing: {marker}")
     if bad:
         print(f"FAIL {name}: " + "; ".join(bad))

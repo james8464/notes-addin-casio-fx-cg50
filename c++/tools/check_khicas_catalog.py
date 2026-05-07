@@ -224,7 +224,7 @@ def main() -> int:
         return fail("method extraction hook missing")
     if "u=" not in template_text or "v=Int dv" not in template_text:
         return fail("parts/sub method u hint missing")
-    if "LHS-RHS=0." not in template_text or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
+    if "LHS-RHS=0" not in template_text or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
         return fail("working-line output shape missing")
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")

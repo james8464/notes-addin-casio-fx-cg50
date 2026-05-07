@@ -67,7 +67,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve([x^2+x*y+y^2=37,x+y+x*y=19],[x,y])",
-        ["Let s=x+y,p=xy.", "x^2+xy+y^2 = s^2-p", "(x,y) = (3,4) or (4,3)"],
+        ["s=x+y,p=xy", "x^2+xy+y^2=s^2-p", "(x,y) = (3,4) or (4,3)"],
         ["Only one '=' supported", "ERR:"],
     ),
     (
@@ -133,7 +133,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(ln(sin(x)),x,0,pi/2)",
-        ["u=2x", "du=2 dx", "limits: x=0 -> u=0, x=pi/2 -> u=pi", "Answer:"],
+        ["u=2x", "du=2 dx", "limits: x=0=>u=0, x=pi/2=>u=pi", "-pi*log(2)/2"],
         ["ERR:"],
     ),
     (

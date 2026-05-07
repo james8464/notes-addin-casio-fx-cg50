@@ -2940,6 +2940,26 @@ static string cascas_clip_text(const string &s,int limit){
   return s.substr(0,limit) + cascas_tpl("t004");
 }
 
+static string cascas_exam_line_text(const string &in){
+  string s=cascas_trim(in);
+  int n=0;
+  while (n<int(s.size()) && s[n]>='0' && s[n]<='9')
+    ++n;
+  if (n>0 && n+1<int(s.size()) && s[n]=='.' && s[n+1]==' ')
+    s=cascas_trim(s.substr(n+2));
+  for (size_t p=0;(p=s.find(" = ",p))!=string::npos;)
+    s.replace(p,3,"=");
+  for (size_t p=0;(p=s.find("= ",p))!=string::npos;)
+    s.replace(p,2,"=");
+  for (size_t p=0;(p=s.find(" =",p))!=string::npos;)
+    s.replace(p,2,"=");
+  for (size_t p=0;(p=s.find(" -> ",p))!=string::npos;)
+    s.replace(p,4,"=>");
+  if (!s.empty() && s[s.size()-1]=='.')
+    s.erase(s.size()-1);
+  return cascas_trim(s);
+}
+
 static void cascas_sink_raw(cascas_working_sink &sink,const string &s){
   if (sink.truncated || s.empty())
     return;
@@ -2965,7 +2985,10 @@ static void cascas_append_line(cascas_working_sink &sink,const char *s){
     }
     return;
   }
-  cascas_sink_raw(sink,cascas_clip_text(s?s:"",CASCAS_WORK_MAX_EXPR));
+  string line=cascas_exam_line_text(s?s:"");
+  if (line.empty())
+    return;
+  cascas_sink_raw(sink,cascas_clip_text(line,CASCAS_WORK_MAX_EXPR));
   cascas_sink_raw(sink,"\n");
   ++sink.lines;
 }
@@ -3461,11 +3484,14 @@ static bool cascas_answer_cleanup_allowed(const char *input,const char *eval_inp
 		    cascas_startswith(eval_input,"int(")));
 }
 
+static bool cascas_old_python_scope_working_call(const char *s);
+
 static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
   string shown_answer=answer;
   bool cleaned=cascas_answer_cleanup_allowed(input,eval_input) && cascas_clean_answer_text(shown_answer);
   cascas_working_sink out;
-  bool no_echo=input && (cascas_startswith(input,"diff(") || cascas_startswith(input,"normal_diff("));
+  bool no_echo=(input && cascas_old_python_scope_working_call(input)) ||
+    (eval_input && cascas_old_python_scope_working_call(eval_input));
   if (!no_echo){
     string p1=cascas_tpl("t147");
     cascas_append_expr_line(out,p1.c_str(),input?string(input):string(""));
