@@ -162,7 +162,6 @@ int ck_getkey(int * keyptr){
     casiostatus();
     DisplayStatusArea();
     Bdisp_PutDisp_DD ();
-    startCasioCasStatusR();
     SetSetupSetting(0x14,0); // disable OFF
     int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
     if (!shiftstate && (col==4 && row==9)){

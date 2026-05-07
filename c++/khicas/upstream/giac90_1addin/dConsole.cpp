@@ -1528,6 +1528,8 @@ void save_console_state_smem(const char * filename){
 }
 
 bool load_console_state_smem(const char * filename){
+  static const int SESSION_RESTORE_MAX_BLOCK=32768;
+  static const int SESSION_RESTORE_MAX_LINE=INPUTBUFLEN-1;
   unsigned short pFile[MAX_FILENAME_SIZE+1];
   Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
   int hf = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
@@ -1535,12 +1537,17 @@ bool load_console_state_smem(const char * filename){
   // int Bfile_ReadFile(int HANDLE,void *buf,int size,int readpos);
   // read variables and modes
   int L=0;
-  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L==0){
+  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L<=0 || L>SESSION_RESTORE_MAX_BLOCK){
     Bfile_CloseFile_OS(hf);
     return false;
   }  
-  char BUF[L+1];
+  char *BUF=(char*)malloc(L+1);
+  if (!BUF){
+    Bfile_CloseFile_OS(hf);
+    return false;
+  }
   if (Bfile_ReadFile_OS(hf,BUF,L,-1)!=L){
+    free(BUF);
     Bfile_CloseFile_OS(hf);
     return false;
   }
@@ -1548,6 +1555,7 @@ bool load_console_state_smem(const char * filename){
   giac::gen g,ge;
   dconsole_mode=0;
   do_run((char*)BUF,g,ge);
+  free(BUF);
   dconsole_mode=1;
   // read script
   if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L)){
@@ -1555,8 +1563,17 @@ bool load_console_state_smem(const char * filename){
     return false;
   }
   if (L>0){
-    char bufscript[L+1];
+    if (L>SESSION_RESTORE_MAX_BLOCK){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
+    char *bufscript=(char*)malloc(L+1);
+    if (!bufscript){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     if (Bfile_ReadFile_OS(hf,bufscript,L,-1)!=L){
+      free(bufscript);
       Bfile_CloseFile_OS(hf);
       return false;
     }
@@ -1577,7 +1594,8 @@ bool load_console_state_smem(const char * filename){
       edptr->line=0;
       //edptr->line=edptr->elements.size()-1;
       edptr->pos=0;
-    }    
+    }
+    free(bufscript);
   }
   // clear console and restore
   dConsoleCls();
@@ -1586,15 +1604,27 @@ bool load_console_state_smem(const char * filename){
     unsigned short int l,curs;
     unsigned char type,readonly;
     if (Bfile_ReadFile_OS(hf,&l,sizeof(l),-1)!=sizeof(l) || l==0) break;
+    if (l>SESSION_RESTORE_MAX_LINE){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     if (Bfile_ReadFile_OS(hf,&curs,sizeof(curs),-1)!=sizeof(curs)) break;
     if (Bfile_ReadFile_OS(hf,&type,sizeof(type),-1)!=sizeof(type)) break;
     if (Bfile_ReadFile_OS(hf,&readonly,sizeof(readonly),-1)!=sizeof(readonly)) break;
-    char buf[l+1];
+    char *buf=(char*)malloc(l+1);
+    if (!buf){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     buf[l]=0;
-    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l) break;
+    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l){
+      free(buf);
+      break;
+    }
     // ok line ready in buf
     update_cmd_history(buf);
     puts(buf);
+    free(buf);
   }
   Bfile_CloseFile_OS(hf);
   dConsoleRedraw();
@@ -1648,6 +1678,7 @@ void save_console_state_smem(const char * filename) {
 }
 
 bool load_console_state_smem(const char * filename) {
+  static const int SESSION_RESTORE_MAX_BLOCK=32768;
   // ensure console memory has been initialized before calling this function!
   unsigned short pFile[MAX_FILENAME_SIZE+1];
   Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
@@ -1657,19 +1688,25 @@ bool load_console_state_smem(const char * filename) {
   }
   int statesize;
   // readfile last arg: 0=start of file, -1 current pos
-  if (Bfile_ReadFile_OS(hFile, &statesize, sizeof(statesize), 0)!=sizeof(statesize)){
-    Bfile_CloseFile_OS(hf);
+  if (Bfile_ReadFile_OS(hFile, &statesize, sizeof(statesize), 0)!=sizeof(statesize) || statesize<=0 || statesize>SESSION_RESTORE_MAX_BLOCK){
+    Bfile_CloseFile_OS(hFile);
     return false;    
   }
-  char state[statesize+1];
+  char *state=(char*)malloc(statesize+1);
+  if (!state){
+    Bfile_CloseFile_OS(hFile);
+    return false;
+  }
   state[statesize]=0;
   if (Bfile_ReadFile_OS(hFile, state, statesize, -1)!=statesize){
-    Bfile_CloseFile_OS(hf);
+    free(state);
+    Bfile_CloseFile_OS(hFile);
     return false;
   }
   giac::gen g,ge;
   dconsole_mode=0;
   do_run((char*)state,g,ge);
+  free(state);
   dconsole_mode=1;
 
   char buffer[sizeof(int)*4];

@@ -552,7 +552,11 @@ void save_console_state_smem(const char * filename){
   Bfile_WriteFile_OS(hFile, script.c_str(), scriptsize);
   // save console state
 #if 1
-  char consolebuf[consolesize+4];
+  char *consolebuf=(char*)malloc(consolesize+4);
+  if (!consolebuf){
+    Bfile_CloseFile_OS(hFile);
+    return;
+  }
   char * consoleptr=consolebuf;
   for (int i=start_row;i<=Last_Line;++i){
     console_line & cur=Line[i];
@@ -564,19 +568,18 @@ void save_console_state_smem(const char * filename){
     memcpy(consoleptr, &c, sizeof(c)); consoleptr += sizeof(c);
     c=true; // cur.readonly;
     memcpy(consoleptr, &c, sizeof(c)); consoleptr += sizeof(c);
-    unsigned char buf[l+1];
-    buf[l]=0;
-    strcpy((char *)buf,(const char*)cur.str); 
-    unsigned char *ptr=buf,*strend=ptr+l;
+    unsigned char *ptr=(unsigned char*)consoleptr,*strend=ptr+l;
+    memcpy(consoleptr, cur.str, l);
     for (;ptr<strend;++ptr){
       if (*ptr==0x9c)
 	*ptr='\n';
     }
-    memcpy(consoleptr, buf, l); consoleptr+=l;
+    consoleptr+=l;
   }
   char BUF[2]={0,0};
   memcpy(consoleptr, BUF, sizeof(BUF)); consoleptr +=sizeof(BUF);
   Bfile_WriteFile_OS(hFile, consolebuf, consolesize+sizeof(BUF));
+  free(consolebuf);
 #else
   for (int i=start_row;i<=Last_Line;++i){
     console_line & cur=Line[i];
@@ -588,15 +591,17 @@ void save_console_state_smem(const char * filename){
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
     c=true; // cur.readonly;
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
-    unsigned char buf[l+1];
+    unsigned char *buf=(unsigned char*)malloc(l+1);
+    if (!buf) break;
     buf[l]=0;
-    strcpy((char *)buf,(const char*)cur.str); 
+    strcpy((char *)buf,(const char*)cur.str);
     unsigned char *ptr=buf,*strend=ptr+l;
     for (;ptr<strend;++ptr){
       if (*ptr==0x9c)
 	*ptr='\n';
     }
     Bfile_WriteFile_OS(hFile, buf, l);
+    free(buf);
   }
   char BUF[2]={0,0};
   Bfile_WriteFile_OS(hFile, BUF, sizeof(BUF));
@@ -660,6 +665,8 @@ int run_session(int start=0){
 
 
 bool load_console_state_smem(const char * filename){
+  static const int SESSION_RESTORE_MAX_BLOCK=32768;
+  static const int SESSION_RESTORE_MAX_LINE=INPUTBUFLEN-1;
   unsigned short pFile[MAX_FILENAME_SIZE+1];
   Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
   int hf = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
@@ -668,14 +675,19 @@ bool load_console_state_smem(const char * filename){
   // int Bfile_ReadFile(int HANDLE,void *buf,int size,int readpos);
   // read variables and modes
   int L=0;
-  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L==0){
+  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L<=0 || L>SESSION_RESTORE_MAX_BLOCK){
     Bfile_CloseFile_OS(hf);
     return false;
   }  
-  char BUF[L+4];
+  char *BUF=(char*)malloc(L+4);
+  if (!BUF){
+    Bfile_CloseFile_OS(hf);
+    return false;
+  }
   BUF[1]=BUF[0]='/'; // avoid trying python compat.
   BUF[2]='\n';
   if (Bfile_ReadFile_OS(hf,BUF+3,L,-1)!=L){
+    free(BUF);
     Bfile_CloseFile_OS(hf);
     return false;
   }
@@ -687,6 +699,7 @@ bool load_console_state_smem(const char * filename){
   try_parse_i(false,contextptr);
   try_parse_i(bi,contextptr);
   do_run((char*)BUF,g,ge);
+  free(BUF);
   dconsole_mode=1;
   // read script
   if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L)){
@@ -694,8 +707,17 @@ bool load_console_state_smem(const char * filename){
     return false;
   }
   if (L>0){
-    char bufscript[L+1];
+    if (L>SESSION_RESTORE_MAX_BLOCK){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
+    char *bufscript=(char*)malloc(L+1);
+    if (!bufscript){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     if (Bfile_ReadFile_OS(hf,bufscript,L,-1)!=L){
+      free(bufscript);
       Bfile_CloseFile_OS(hf);
       return false;
     }
@@ -716,7 +738,8 @@ bool load_console_state_smem(const char * filename){
       edptr->line=0;
       //edptr->line=edptr->elements.size()-1;
       edptr->pos=0;
-    }    
+    }
+    free(bufscript);
   }
   // read console state
   // insure parse messages are cleared
@@ -726,16 +749,28 @@ bool load_console_state_smem(const char * filename){
     unsigned short int l,curs;
     unsigned char type,readonly;
     if (Bfile_ReadFile_OS(hf,&l,sizeof(l),-1)!=sizeof(l) || l==0) break;
+    if (l>SESSION_RESTORE_MAX_LINE){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     if (Bfile_ReadFile_OS(hf,&curs,sizeof(curs),-1)!=sizeof(curs)) break;
     if (Bfile_ReadFile_OS(hf,&type,sizeof(type),-1)!=sizeof(type)) break;
     if (Bfile_ReadFile_OS(hf,&readonly,sizeof(readonly),-1)!=sizeof(readonly)) break;
-    char buf[l+1];
+    char *buf=(char*)malloc(l+1);
+    if (!buf){
+      Bfile_CloseFile_OS(hf);
+      return false;
+    }
     buf[l]=0;
-    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l) break;
+    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l){
+      free(buf);
+      break;
+    }
     // ok line ready in buf
     while (Line[Current_Line].readonly)
       Console_MoveCursor(CURSOR_DOWN);
     Console_Input((const unsigned char *)buf);
+    free(buf);
     Console_NewLine(LINE_TYPE_INPUT, 1);
 #if 1
     if (Current_Line>0){
@@ -2873,8 +2908,8 @@ int Console_Disp()
   // status, clock, 
   set_xcas_status();
   drawCasioCasBorder();
-  Bdisp_PutDisp_DD();
   startCasioCasStatusR();
+  Bdisp_PutDisp_DD();
   return CONSOLE_SUCCEEDED;
 }
 

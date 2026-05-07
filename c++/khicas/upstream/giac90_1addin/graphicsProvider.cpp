@@ -17,7 +17,6 @@ extern "C" {
 #include "graphicsProvider.hpp"
 
 color_t* VRAM_base;
-extern "C" void DirectDrawRectangle(int x1, int y1, int x2, int y2, unsigned short color);
 
 #if 0
 const short empty[18] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -403,7 +402,7 @@ void drawCasioCasBorder(){
 
 static void drawCasioCasStatusR(){
   const int x=370,y=4;
-  DirectDrawRectangle(x-1,y-1,x+13,y+15,COLOR_WHITE);
+  drawRectangle(x-1,y-1,14,16,COLOR_WHITE);
   // Draw only from the normal UI path. LCD drawing from Timer callbacks can
   // crash real fx-CG50 hardware.
   if (((RTC_GetTicks()/128)%3)==2) return;

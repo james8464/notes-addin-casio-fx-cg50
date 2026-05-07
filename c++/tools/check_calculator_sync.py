@@ -38,6 +38,7 @@ def main() -> int:
         write(transfer / "CASIOCAS.PAK", "new-pak")
         write(volume / "CasioCAS.g3a", "old-g3a")
         write(volume / "CASIOCAS.PAK", "old-pak")
+        write(volume / "session.xw", "old-session")
         write(volume / "OTHER.TXT", "keep")
 
         res = run(["python3", str(SYNC), str(transfer), "--volume", str(volume)])
@@ -49,6 +50,15 @@ def main() -> int:
             return fail("pak not replaced")
         if (volume / "OTHER.TXT").read_text() != "keep":
             return fail("unrelated file changed")
+        if not (volume / "session.xw").exists():
+            return fail("session removed without diagnostic opt-in")
+
+        write(volume / "session.xw", "old-session")
+        res = run(["python3", str(SYNC), str(transfer), "--volume", str(volume)], {"CASIO_CLEAR_SESSION": "1"})
+        if res.returncode != 0:
+            return fail(res.stdout)
+        if (volume / "session.xw").exists():
+            return fail("diagnostic session clear did not remove session.xw")
 
         write(volume / "CasioCAS.g3a", "old-again")
         res = run(["python3", str(SYNC), str(transfer), "--volume", str(volume)], {"CASIO_AUTO_SYNC": "0"})
