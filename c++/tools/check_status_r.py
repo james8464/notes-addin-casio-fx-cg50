@@ -27,9 +27,9 @@ def main() -> int:
         raise SystemExit("FAIL status R: LCD drawing must not happen from timer callbacks")
     require(gfx, "DirectDrawRectangle(x-1,y-1,x+13,y+15,COLOR_WHITE);", "status R clear")
     require(gfx, 'PrintMiniMini(&tx,&ty,(unsigned char*)"R",0,TEXT_COLOR_BLUE,0);', "status R glyph draw")
-    require(console, "drawCasioCasBorder();\n  startCasioCasStatusR();", "console status R draw")
+    require(console, "Bdisp_PutDisp_DD();\n  startCasioCasStatusR();", "console status R draw")
     require(main_cc, "Bdisp_PutDisp_DD ();\n    startCasioCasStatusR();", "key loop status R draw")
-    require(catalog, "drawCasioCasBorder();\n    startCasioCasStatusR();", "catalog status R draw")
+    require(catalog, "Bdisp_PutDisp_DD();\n    startCasioCasStatusR();", "catalog status R draw")
     print("OK status R")
     return 0
 

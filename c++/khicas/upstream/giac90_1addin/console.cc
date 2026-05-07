@@ -2872,8 +2872,8 @@ int Console_Disp()
 
   // status, clock, 
   set_xcas_status();
-  Bdisp_PutDisp_DD();
   drawCasioCasBorder();
+  Bdisp_PutDisp_DD();
   startCasioCasStatusR();
   return CONSOLE_SUCCEEDED;
 }

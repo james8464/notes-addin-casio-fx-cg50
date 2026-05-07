@@ -20,11 +20,14 @@ def main() -> int:
 
     require(gfx_h, "void drawCasioCasBorder();", "border declaration")
     require(gfx, "const unsigned short kCasioCasPink = 0xF81F;", "pink color")
-    require(gfx, "DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);", "left DD frame border")
-    require(gfx, "DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);", "right DD frame border")
-    require(gfx, "DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);", "bottom DD frame border")
-    require(console, "Bdisp_PutDisp_DD();\n  drawCasioCasBorder();", "console present after flush")
-    require(catalog, "Bdisp_PutDisp_DD();\n    drawCasioCasBorder();", "catalog present after flush")
+    require(gfx, "drawRectangle(0, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);", "left safe border")
+    require(gfx, "drawRectangle(LCD_WIDTH_PX-6, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);", "right safe border")
+    require(gfx, "drawRectangle(0, LCD_HEIGHT_PX-7, LCD_WIDTH_PX, 7, kCasioCasPink);", "bottom safe border")
+    for unsafe in ("390, 0, 395, 223", "0, 217, 395, 223", "0, 0, 5, 223"):
+        if unsafe in gfx:
+            raise SystemExit(f"FAIL calculator border: unsafe physical-frame draw {unsafe}")
+    require(console, "drawCasioCasBorder();\n  Bdisp_PutDisp_DD();", "console border before flush")
+    require(catalog, "drawCasioCasBorder();\n    Bdisp_PutDisp_DD();", "catalog border before flush")
     print("OK calculator border")
     return 0
 
