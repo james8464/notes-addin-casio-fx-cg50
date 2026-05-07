@@ -68,12 +68,14 @@ The C++ compile script builds the edited KhiCAS-source PrizmSDK/libfxcg target f
 ```
 
 The TUI `/compile` command uses the same fx-CG50 target and does not modify emulator files.
+If a calculator is mounted as USB storage, the compile flow also replaces root-level `CasioCAS.g3a` and `CASIOCAS.PAK` on that volume. Use `CASIO_AUTO_SYNC=0 ./compile` to disable this, or `CASIO_CALCULATOR_VOLUME=/Volumes/<name> ./compile` to force a path.
 
 ### Install onto calculator
 
-- **Manual (recommended)**:
+- **Manual / auto-sync**:
   - Plug calculator in via USB, choose “USB storage” mode on-device.
-  - Copy `calculator_files/CasioCAS.g3a` and `calculator_files/CASIOCAS.PAK` to calculator storage root.
+  - Run `./compile`; if the mounted calculator already has the files, or the volume name looks like Casio/fx-CG/Prizm, they are replaced automatically.
+  - If auto-sync does not detect it, copy `calculator_files/CasioCAS.g3a` and `calculator_files/CASIOCAS.PAK` to calculator storage root, or rerun with `CASIO_CALCULATOR_VOLUME=/Volumes/<name>`.
   - Eject/unmount safely, then exit USB mode on the calculator.
 - **fxSDK send helper** (Linux + UDisks2): `fxsdk send-cg`
 

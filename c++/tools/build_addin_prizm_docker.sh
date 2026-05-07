@@ -85,6 +85,10 @@ report_transfer_sizes() {
   fi
 }
 
+sync_calculator_volume() {
+  python3 "${ROOT_DIR}/c++/tools/sync_calculator_volume.py" "${TRANSFER_DIR}"
+}
+
 report_addin_size() {
   python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
   python3 "${ROOT_DIR}/c++/tools/size_report.py" --baseline current
@@ -134,6 +138,7 @@ if [ "${MODE}" = "khicas-source" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
+  sync_calculator_volume
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
@@ -170,6 +175,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
+  sync_calculator_volume
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
@@ -210,6 +216,7 @@ if [ -f "${OUT_G3A}" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
+  sync_calculator_volume
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
