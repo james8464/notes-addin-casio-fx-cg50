@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 HARD_PACKAGE_LIMIT = 2 * 1024 * 1024
+WARN_HEADROOM = 8 * 1024
 
 
 def main() -> int:
@@ -21,6 +22,9 @@ def main() -> int:
     if size > HARD_PACKAGE_LIMIT:
         print("FAIL: exceeds 2 MiB fx-CG add-in package limit", file=sys.stderr)
         return 1
+    headroom = HARD_PACKAGE_LIMIT - size
+    if headroom < WARN_HEADROOM:
+        print(f"WARN: only {headroom} bytes below 2 MiB; keep code changes size-neutral", file=sys.stderr)
     return 0
 
 

@@ -27,6 +27,7 @@ def main() -> int:
         'TEMPLATE_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.TPL"',
         'cp "${OUT_G3A}" "${TRANSFER_G3A}"',
         'python3 "${ROOT_DIR}/c++/tools/build_external_pack.py"',
+        'python3 "${ROOT_DIR}/c++/tools/size_report.py" --baseline current',
         'cp "${OUT_PAK}" "${TRANSFER_PAK}"',
         'rm -f "${ROOT_DIR}/CasioCAS.g3a"',
         'rm -f "${ROOT_DIR}/CASIOCAS.HLP"',

@@ -54,7 +54,7 @@ def main() -> int:
         ("extreme_working_sources", [sys.executable, "c++/tools/golden/check_extreme_working_sources.py"]),
         ("madasmaths_paper_scan", [sys.executable, "c++/tools/golden/check_madasmaths_paper_scan.py"]),
         ("madasmaths_full_audit_unit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit_unit.py"]),
-        ("madasmaths_full_audit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit.py", "--no-render"]),
+        ("madasmaths_full_audit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit.py", "--no-render", "--strict-skips"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),
         ("mp2_vwx_manual", [sys.executable, "c++/tools/golden/check_mp2_vwx_manual.py"]),
         ("mp2_yz_manual", [sys.executable, "c++/tools/golden/check_mp2_yz_manual.py"]),
@@ -75,6 +75,7 @@ def main() -> int:
         ("trig_basic", [sys.executable, "c++/tools/golden/compare_trig_basic.py"]),
         ("algebra_basic", [sys.executable, "c++/tools/golden/compare_algebra_basic.py"]),
         ("fuzz_regressions", [sys.executable, "c++/tools/fuzz/check_regressions.py"]),
+        ("stress_crash", [sys.executable, "c++/tools/tests_cpp/run_tests_tui.py", "stress", "crash", "60"]),
     ]
     prizm_g3a = REPO / "c++/prizm/build/CasioCAS.g3a"
     if prizm_g3a.exists():

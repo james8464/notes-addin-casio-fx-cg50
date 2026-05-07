@@ -17,6 +17,10 @@ def main() -> int:
     src = FORMAT_EXAM.read_text(errors="ignore")
     required = [
         "FORMAT_EXAM_MAX_DEPTH",
+        "FORMAT_EXAM_MAX_LINES",
+        "FORMAT_EXAM_MAX_CHARS",
+        "FORMAT_EXAM_MAX_LINE_CHARS",
+        "truncate_exam_line",
         "format_equation_human_readable_impl",
         "if(depth > FORMAT_EXAM_MAX_DEPTH)",
         "NodeId s = simplify(arena, node);",

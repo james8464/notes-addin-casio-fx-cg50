@@ -395,8 +395,9 @@ Ex F2: de_solve(y'+y=exp(x),y(0)=1)
 F2:diff(sin(x),x)
 F3:diff(sin(x)^x,x,method=logdiff)
 diff(f,var,[n,method])
-Derivative. Methods auto,chain,product,quotient,logdiff,implicit,param,second,first_principles.
-Req: f,x.
+Derivative with exam steps.
+Methods: auto,chain,product,quotient,logdiff,implicit,param,second.
+Req: f,var.
 Opt: n,method=auto.
 Ex F2: diff(sin(x),x)
 Ex F3: diff(sin(x)^x,x,method=logdiff)
@@ -422,7 +423,7 @@ Ex F3: implicit_diff(sin(2*x)*cot(y)=1,x,y)
 @domain(expr,[x,lo,hi])
 F2:domain(sqrt(x-1),x,0,9)
 domain(expr,[x,lo,hi])
-Domain; optional interval.
+Domain where expr is defined.
 Req: expr.
 Opt: var,lo,hi.
 Ex F2: domain(sqrt(x-1),x,0,9)
@@ -594,7 +595,7 @@ Ex F3: factor(x^6+1,sqrt(3))
 @fitconst(equations,vars)
 F2:fitconst([a*1+b=3,a*2+b=5],[a,b])
 fitconst(equations,vars)
-Find constants from eqs.
+Find constants by expand/collect/equate coeffs.
 Req: equations, vars.
 Opt: none.
 Ex F2: fitconst([a*1+b=3,a*2+b=5],[a,b])
@@ -770,7 +771,8 @@ Ex F2: oo
 @integrate(f,x,[a,b,method,u])
 F2:integrate(x*sin(x),x,method=parts)
 integrate(f,x,[a,b,method,u])
-Integral. Methods auto,direct,reverse_chain,sub,parts,di,trig,pf,div,weierstrass,symmetry.
+Integral with exam steps.
+Methods: auto,direct,reverse_chain,sub,parts,di,trig,pf,div,weierstrass,symmetry.
 Req: f,x.
 Opt: a,b,method=auto,u.
 Ex F2: integrate(x*sin(x),x,method=parts)
@@ -1262,7 +1264,7 @@ Ex F2: ratnormal((x^2-1)/(x-1))
 @range(expr,[x,lo,hi])
 F2:range(x^2+2*x+3,x,-2,2)
 range(expr,[x,lo,hi])
-Range/image; optional interval.
+Range/image of expr.
 Req: expr.
 Opt: var,lo,hi.
 Ex F2: range(x^2+2*x+3,x,-2,2)
@@ -1295,9 +1297,9 @@ Ex F2: revert(x+x^2+x^4)
 F2:rewrite(x^2+6*x+11)
 F3:rewrite(2*x^2-8*x+3,x)
 rewrite(expr,target)
-Rewrite to target form.
-Req: expr, target.
-Opt: none.
+Rewrite/simplify to useful or target form.
+Req: expr.
+Opt: target.
 Ex F2: rewrite(x^2+6*x+11)
 Ex F3: rewrite(2*x^2-8*x+3,x)
 @END
@@ -1354,7 +1356,8 @@ Ex F2: solve_by(x^2-5*x+6=0,x,factor)
 @solve_trig(eq,[var,lo,hi,max,method])
 F2:solve_trig(2*sin(x)+1=0)
 solve_trig(eq,[var,lo,hi,max,method])
-Trig solve. No bounds -> general; bounds -> list.
+Trig solve with base/general/interval steps.
+Methods: auto,general,bounded,cast,identity,rform,square_then_check.
 Req: eq.
 Opt: var,lo,hi,max,method=auto.
 Ex F2: solve_trig(2*sin(x)+1=0)

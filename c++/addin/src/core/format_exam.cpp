@@ -46,6 +46,18 @@ static std::string fn_text(FnKind k)
 }
 
 static constexpr int FORMAT_EXAM_MAX_DEPTH = 48;
+static constexpr int FORMAT_EXAM_MAX_LINES = 44;
+static constexpr int FORMAT_EXAM_MAX_CHARS = 3600;
+static constexpr int FORMAT_EXAM_MAX_LINE_CHARS = 420;
+
+static std::string truncate_exam_line(std::string s)
+{
+    if(static_cast<int>(s.size()) <= FORMAT_EXAM_MAX_LINE_CHARS) return s;
+    if(FORMAT_EXAM_MAX_LINE_CHARS <= 3) return "...";
+    s.resize(FORMAT_EXAM_MAX_LINE_CHARS - 3);
+    s += "...";
+    return s;
+}
 
 static std::pair<bool, Rational> split_coeff(Arena &arena, NodeId node, NodeId &rest_out)
 {
@@ -77,7 +89,12 @@ std::vector<std::string> numbered_steps(std::vector<std::string> const &lines)
 {
     std::vector<std::string> out;
     out.reserve(lines.size());
+    int chars = 0;
     for(auto const &ln : lines) {
+        if(static_cast<int>(out.size()) >= FORMAT_EXAM_MAX_LINES) {
+            out.push_back(std::to_string(out.size() + 1) + ". ...");
+            break;
+        }
         std::string s = ln;
         // mimic Python .strip()
         while(!s.empty() && (s.front() == ' ' || s.front() == '\t' || s.front() == '\r' || s.front() == '\n'))
@@ -85,6 +102,12 @@ std::vector<std::string> numbered_steps(std::vector<std::string> const &lines)
         while(!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r' || s.back() == '\n'))
             s.pop_back();
         if(s.empty()) continue;
+        s = truncate_exam_line(s);
+        if(chars + static_cast<int>(s.size()) > FORMAT_EXAM_MAX_CHARS) {
+            out.push_back(std::to_string(out.size() + 1) + ". ...");
+            break;
+        }
+        chars += static_cast<int>(s.size());
         out.push_back(std::to_string(out.size() + 1) + ". " + s);
     }
     return out;
@@ -119,6 +142,7 @@ std::vector<std::string> format_exam_working(
             spaced.push_back(c);
         }
         text.swap(spaced);
+        text = truncate_exam_line(text);
         std::string low;
         low.reserve(text.size());
         for(char c : text) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));

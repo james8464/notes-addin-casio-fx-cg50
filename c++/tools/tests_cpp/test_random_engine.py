@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from random_engine.concepts import ConceptGraph, ConceptNode
-from random_engine.generators import AdversarialGenerator, EXAM_GAP_TOPICS
+from random_engine.generators import AdversarialGenerator, CRASH_TOPICS, EXAM_GAP_TOPICS
 from random_engine.oracles import classify_output_quality
 from random_engine.reports import RunReportStore
 from random_engine.shrinker import shrink_expression_text
@@ -78,6 +78,15 @@ class RandomEngineTests(unittest.TestCase):
         self.assertIn("source:", sources)
         self.assertTrue(any(case.concept.difficulty >= 5 for case in cases))
 
+    def test_crash_scope_targets_calculator_safety_edges(self):
+        gen = AdversarialGenerator(seed=903)
+
+        cases = gen.generate("crash", 24)
+
+        topics = {case.concept.topic for case in cases}
+        self.assertTrue(set(CRASH_TOPICS).issubset(topics))
+        self.assertTrue(all("crash-safety" in case.expected_note.lower() for case in cases))
+
     def test_general_scope_only_emits_general_cases(self):
         gen = AdversarialGenerator(seed=222)
 
@@ -133,6 +142,17 @@ class RandomEngineTests(unittest.TestCase):
 
         self.assertIn(verdict.status, {"review", "fail"})
         self.assertIn("partial fraction", verdict.reason.lower())
+
+    def test_quality_classifier_flags_generic_fallback_wording(self):
+        verdict = classify_output_quality(
+            "Classify the integrand: standard form, composite, product, rational, trig, or radical.\n"
+            "Back-substitute and differentiate the result as a check.\n"
+            "Answer: x^2/2 + C",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "review")
+        self.assertIn("generic", verdict.reason.lower())
 
     def test_quality_classifier_does_not_treat_partial_fractions_as_ibp(self):
         verdict = classify_output_quality(

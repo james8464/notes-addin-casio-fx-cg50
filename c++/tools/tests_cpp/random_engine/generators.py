@@ -61,6 +61,15 @@ ONLINE_TOPICS = (
     "source_edexcel_parametric",
 )
 
+CRASH_TOPICS = (
+    "long_parse_guard",
+    "nested_rewrite_guard",
+    "trig_many_roots",
+    "chain_depth_guard",
+    "domain_singularity_guard",
+    "working_truncation_guard",
+)
+
 
 @dataclass
 class AdversarialCase:
@@ -91,7 +100,7 @@ class AdversarialGenerator:
             features = ["general"]
         else:
             features = [feature]
-        allow_repeats = feature in ("syllabus", "alevel", "online", "sources")
+        allow_repeats = feature in ("syllabus", "alevel", "online", "sources", "crash", "safety")
         out = []
         seen = set()
         attempts = 0
@@ -130,6 +139,8 @@ class AdversarialGenerator:
             "alevel": self._syllabus,
             "online": self._online,
             "sources": self._online,
+            "crash": self._crash,
+            "safety": self._crash,
         }
         return dispatch.get(feature, self._rewrite)(index)
 
@@ -529,4 +540,31 @@ class AdversarialGenerator:
             True,
             "source: hard public question family; mark full method steps, not only answer",
             "source:{0} {1}".format(source, url),
+        )
+
+    def _crash(self, index: int) -> AdversarialCase:
+        """Calculator safety edges: should finish compactly, not hang/crash."""
+        i = max(0, index - 1)
+        deep = "x"
+        for _ in range(10 + (i % 8)):
+            deep = f"sin({deep})"
+        repeated = "+".join(["x^2-1"] * (18 + (i % 10)))
+        cases = [
+            ("long_parse_guard", "alg", f"factor(({repeated})/(x-1))", "algebra", "expr", "factor", ("long_parse", "division"), False),
+            ("nested_rewrite_guard", "alg", f"rewrite({deep})", "rewrite", "expr", "auto", ("nested_fn", "depth_cap"), True),
+            ("trig_many_roots", "trig", "sin(18*x)=sin(x),x,0,2*pi,40,method=identity", "solve_trig", "eq,var,lo,hi,max,method", "identity", ("many_roots", "interval_filter"), True),
+            ("chain_depth_guard", "derive", f"{deep},x,method=chain", "diff", "expr,var,method", "chain", ("nested_chain", "depth_cap"), True),
+            ("domain_singularity_guard", "alg", "domain(1/((x-1)*(x+1)*(x-2)))", "domain", "expr", "auto", ("singularities", "denominator_guard"), False),
+            ("working_truncation_guard", "int", "x^5*e^(2*x),method=di", "integrate", "expr,method", "di", ("long_working", "line_cap"), True),
+        ]
+        topic, flag, expr, function, sig, method, transforms, expects = cases[i % len(cases)]
+        concept = self._concept(function, sig, method, topic, transforms, 6, "timeout+oracle")
+        return AdversarialCase(
+            "Crash {0}: {1}".format(index, topic),
+            flag,
+            expr,
+            concept,
+            expects,
+            "crash-safety: complete within timeout, bounded output, no parser/memory/debug failure",
+            expr,
         )

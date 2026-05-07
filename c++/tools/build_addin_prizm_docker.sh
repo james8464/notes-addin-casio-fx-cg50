@@ -85,6 +85,11 @@ report_transfer_sizes() {
   fi
 }
 
+report_addin_size() {
+  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
+  python3 "${ROOT_DIR}/c++/tools/size_report.py" --baseline current
+}
+
 echo ""
 echo "=== Removing stale Prizm outputs ==="
 rm -f "${ROOT_DIR}/c++/prizm/CasioCAS.bin"
@@ -126,7 +131,7 @@ if [ "${MODE}" = "khicas-source" ]; then
     --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
-  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
+  report_addin_size
   publish_transfer_g3a
   publish_external_pack
   report_transfer_sizes
@@ -162,7 +167,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
     --internal "CASCAS" \
     --filename "CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
-  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
+  report_addin_size
   publish_transfer_g3a
   publish_external_pack
   report_transfer_sizes
@@ -202,7 +207,7 @@ echo ""
 echo "=== Build Results ==="
 if [ -f "${OUT_G3A}" ]; then
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
-  python3 "${ROOT_DIR}/c++/tools/check_g3a_size.py" "${OUT_G3A}"
+  report_addin_size
   publish_transfer_g3a
   publish_external_pack
   report_transfer_sizes

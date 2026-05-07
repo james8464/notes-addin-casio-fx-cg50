@@ -22,6 +22,10 @@ GENERIC_WORKING = (
     "use cas",
     "calculator",
     "verified ok",
+    "classify the integrand",
+    "rewrite into a standard useful form",
+    "apply the matching rule",
+    "differentiate the result as a check",
 )
 
 

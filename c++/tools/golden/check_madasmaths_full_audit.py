@@ -87,6 +87,26 @@ def classify(block: str) -> list[str]:
     topics = [name for name, pats in TOPICS if any(p in low for p in pats)]
     return topics or ["unclassified"]
 
+def skip_reason(block: str, topics: list[str]) -> str:
+    low = " ".join(block.lower().split())
+    if "diagram" in low or "sketch" in low or "graph" in low:
+        return "skip:diagram_or_sketch_context"
+    if "prove" in topics or "show that" in low or "hence show" in low:
+        return "skip:proof_or_explanation_not_unique_command"
+    if "vectors" in topics:
+        return "skip:vector_geometry_context_needs_manual_diagram"
+    if "numerical" in topics:
+        return "skip:numerical_iteration_context_needs_question_data"
+    if "sequences" in topics:
+        return "skip:sequence_context_not_safely_transcribed"
+    if "differential_equation" in topics:
+        return "skip:de_context_needs_model_conditions"
+    if "functions" in topics:
+        return "skip:function_mapping_context_needs_full_question"
+    if "integration" in topics or "differentiation" in topics or "trig" in topics or "algebra" in topics:
+        return "skip:math_present_but_no_unique_command_extracted"
+    return "skip:unclassified_context_needs_manual_review"
+
 
 def case_paper_code(name: str) -> str:
     m = re.search(r"\bmp2[_ -]?([a-z])\b", name, re.I)
@@ -183,6 +203,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true", help="skip image rendering; still writes ledger from text/manual cases")
     ap.add_argument("--force-render", action="store_true", help="rerender existing PNG pages")
+    ap.add_argument("--strict-skips", action="store_true", help="fail if skipped scan rows use generic or missing skip categories")
     ap.add_argument("--dpi", type=int, default=180)
     args = ap.parse_args()
 
@@ -221,7 +242,7 @@ def main() -> int:
             counts.update(f"topic:{t}" for t in topics)
             covered = (code, qid) in manual_by_paper_q
             decision = "PASS" if covered else "SKIP_WITH_REASON"
-            reason = "covered by manual host rows" if covered else "not safely transcribed into a unique calculator command; leave to manual host rows/generators"
+            reason = "covered by manual host rows" if covered else skip_reason(block, topics)
             add_row(
                 rows,
                 paper=f"mp2_{code}",
@@ -280,6 +301,16 @@ def main() -> int:
         for row in bad_rows[:8]:
             print(f"{row['verdict']} {row['paper']} {row['part']}: {row['logic_gap']}", file=sys.stderr)
         return fail(f"MadAs full audit has {len(bad_rows)} weak/fail rows")
+    if args.strict_skips:
+        generic = [
+            row for row in rows
+            if row["verdict"] == "SKIP_WITH_REASON"
+            and (not row["logic_gap"].startswith("skip:") or "not safely transcribed" in row["logic_gap"])
+        ]
+        if generic:
+            for row in generic[:8]:
+                print(f"GENERIC_SKIP {row['paper']} Q{row['question']}: {row['logic_gap']}", file=sys.stderr)
+            return fail(f"strict skips found {len(generic)} generic skip rows")
 
     print(f"OK madasmaths full audit rows={len(rows)} manual_cases={len(manual_cases)} ledger={LEDGER}")
     return 0
