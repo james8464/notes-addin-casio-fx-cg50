@@ -10,7 +10,6 @@ MARKERS = [
     b"2. = ",
     b"Std form.",
     b"Valid:",
-    b"Pick rule.",
     b"Collect y' terms",
     b"dy/dx=(dy/d",
     b"Area=Int",

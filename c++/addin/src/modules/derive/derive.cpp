@@ -98,42 +98,16 @@ static void push_unique_step(std::vector<std::string> &steps, std::string const 
     if(std::find(steps.begin(), steps.end(), line) == steps.end()) steps.push_back(line);
 }
 
+static std::string clean_math_text(std::string s);
+static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep);
+
 static void append_function_rule_steps(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Fn) {
-        char const *rule = nullptr;
-        switch(x.fkind) {
-        case FnKind::Sin: rule = "Use chain rule: d/dx sin(u)=cos(u)u'."; break;
-        case FnKind::Cos: rule = "Use chain rule: d/dx cos(u)=-sin(u)u'."; break;
-        case FnKind::Tan: rule = "Use chain rule: d/dx tan(u)=sec(u)^2*u'."; break;
-        case FnKind::Sec: rule = "Use chain rule: d/dx sec(u)=sec(u)tan(u)u'."; break;
-        case FnKind::Cosec: rule = "Use chain rule: d/dx cosec(u)=-cosec(u)cot(u)u'."; break;
-        case FnKind::Cot: rule = "Use chain rule: d/dx cot(u)=-cosec(u)^2*u'."; break;
-        case FnKind::Sinh: rule = "Use chain rule: d/dx sinh(u)=cosh(u)u'."; break;
-        case FnKind::Cosh: rule = "Use chain rule: d/dx cosh(u)=sinh(u)u'."; break;
-        case FnKind::Tanh: rule = "Use chain rule: d/dx tanh(u)=u'/cosh(u)^2."; break;
-        case FnKind::Asin: rule = "Use chain rule: d/dx arcsin(u)=u'/sqrt(1-u^2)."; break;
-        case FnKind::Acos: rule = "Use chain rule: d/dx arccos(u)=-u'/sqrt(1-u^2)."; break;
-        case FnKind::Atan: rule = "Use chain rule: d/dx arctan(u)=u'/(1+u^2)."; break;
-        case FnKind::Asinh: rule = "Use chain rule: d/dx asinh(u)=u'/sqrt(u^2+1)."; break;
-        case FnKind::Acosh: rule = "Use chain rule: d/dx acosh(u)=u'/sqrt(u^2-1)."; break;
-        case FnKind::Atanh: rule = "Use chain rule: d/dx atanh(u)=u'/(1-u^2)."; break;
-        case FnKind::Log: rule = "Use chain rule: d/dx log(u)=u'/u."; break;
-        case FnKind::Exp: rule = "Use chain rule: d/dx exp(u)=exp(u)u'."; break;
-        case FnKind::Sqrt: rule = "Use chain rule: d/dx sqrt(u)=u'/(2sqrt(u))."; break;
-        case FnKind::Abs: rule = "Use d(abs(u))/dx = u/abs(u)*u' away from u=0."; break;
-        case FnKind::Sign: rule = "sign(u) is constant away from u=0, so derivative is 0 on each smooth interval."; break;
-        default: break;
-        }
-        if(rule) {
-            std::string s(rule);
-            std::string from = "d/dx ";
-            std::size_t pos = s.find(from);
-            if(pos != std::string::npos) s.replace(pos, from.size(), "d/d" + var + " ");
-            push_unique_step(steps, s);
-        }
-        append_function_rule_steps(a, x.a, var, steps);
+        NodeId d = casio::simplify(a, diff(a, n, var, ""));
+        push_unique_step(steps, "d/d" + var + "(" + clean_math_text(format_expr_human(a, n)) + ") = " +
+                         clean_math_text(format_expr_human(a, d)) + ".");
         return;
     }
     if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
@@ -144,6 +118,48 @@ static void append_function_rule_steps(Arena &a, NodeId n, std::string const &va
     if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
         for(auto k : x.kids) append_function_rule_steps(a, k, var, steps);
     }
+}
+
+static std::string chain_formula(FnKind f, std::string const &var)
+{
+    std::string du = "*du/d" + var;
+    switch(f) {
+    case FnKind::Sin: return "cos(u)" + du;
+    case FnKind::Cos: return "-sin(u)" + du;
+    case FnKind::Tan: return "sec(u)^2" + du;
+    case FnKind::Sec: return "sec(u)*tan(u)" + du;
+    case FnKind::Cosec: return "-cosec(u)*cot(u)" + du;
+    case FnKind::Cot: return "-cosec(u)^2" + du;
+    case FnKind::Sinh: return "cosh(u)" + du;
+    case FnKind::Cosh: return "sinh(u)" + du;
+    case FnKind::Tanh: return "du/d" + var + "/cosh(u)^2";
+    case FnKind::Asin: return "du/d" + var + "/sqrt(1-u^2)";
+    case FnKind::Acos: return "-du/d" + var + "/sqrt(1-u^2)";
+    case FnKind::Atan: return "du/d" + var + "/(1+u^2)";
+    case FnKind::Asinh: return "du/d" + var + "/sqrt(u^2+1)";
+    case FnKind::Acosh: return "du/d" + var + "/sqrt(u^2-1)";
+    case FnKind::Atanh: return "du/d" + var + "/(1-u^2)";
+    case FnKind::Log: return "du/d" + var + "/u";
+    case FnKind::Exp: return "exp(u)" + du;
+    case FnKind::Sqrt: return "du/d" + var + "/(2sqrt(u))";
+    case FnKind::Abs: return "u/abs(u)*du/d" + var;
+    default: return "";
+    }
+}
+
+static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return false;
+    for(auto k : x.kids) {
+        NodeId dk = casio::simplify(a, diff(a, k, var, ""));
+        auto zr = as_num(a, dk);
+        if(!(zr && zr->num == 0)) {
+            steps.push_back("d/d" + var + "(" + clean_math_text(format_expr_human(a, k)) + ") = " +
+                            clean_math_text(format_expr_human(a, dk)) + ".");
+        }
+    }
+    return true;
 }
 
 static bool has_variable_power(Arena &a, NodeId n, std::string const &var)
@@ -477,11 +493,10 @@ static bool append_product_rule_detail(Arena &a, NodeId n, std::string const &va
         if(depends_on(a, k, var)) factors.push_back(k);
     }
     if(factors.size() < 2 || factors.size() > 4) {
-        steps.push_back("Use product rule: differentiate one factor at a time.");
+        steps.push_back("y' = sum(f_i'*product(other f_j)).");
         return true;
     }
 
-    steps.push_back("Use product rule.");
     for(std::size_t i = 0; i < factors.size(); ++i) {
         NodeId fp = casio::simplify(a, diff(a, factors[i], var));
         std::string label = "f" + std::to_string(i + 1);
@@ -499,6 +514,21 @@ static bool append_product_rule_detail(Arena &a, NodeId n, std::string const &va
         }
     }
     steps.push_back(rule + ".");
+    return true;
+}
+
+static bool append_quotient_rule_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &q = a.get(n);
+    if(q.kind != NodeKind::Div) return false;
+
+    NodeId du = casio::simplify(a, diff(a, q.a, var));
+    NodeId dv = casio::simplify(a, diff(a, q.b, var));
+    steps.push_back("u = " + clean_math_text(format_expr_human(a, q.a)) + ".");
+    steps.push_back("u' = " + clean_math_text(format_expr_human(a, du)) + ".");
+    steps.push_back("v = " + clean_math_text(format_expr_human(a, q.b)) + ".");
+    steps.push_back("v' = " + clean_math_text(format_expr_human(a, dv)) + ".");
+    steps.push_back("y' = (u'v-u*v')/v^2.");
     return true;
 }
 
@@ -1019,81 +1049,51 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 label = "d2y/d" + var + "2";
             }
             std::vector<std::string> steps;
-            casio::append_exam_prelude_steps(steps, pre);
+            {
+                std::string shown_y = clean_math_text(format_expr_human(arena, n));
+                if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
+            }
             if(req.mode == 4) {
                 steps.push_back("Differentiate once, then differentiate dy/dx again.");
             }
             else {
                 bool used_rule = false;
-                bool has_final_simplify = false;
                 Node const &dn = arena.get(n);
                 if(dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) && !is_atomic(arena, dn.a)) {
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
                         NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
-                        steps.push_back("Let u = " + format_expr_human(arena, dn.a) + ".");
-                        if(has_node_kind(arena, dn.a, NodeKind::Div)) {
-                            steps.push_back("For u, use quotient rule: (a'b-ab')/b^2.");
-                        }
-                        else if(has_node_kind(arena, dn.a, NodeKind::Mul)) {
-                            steps.push_back("For u, use product rule on the product part.");
-                        }
-                        if(has_function_call(arena, dn.a)) {
-                            steps.push_back("Inside u, use chain rule on nested functions.");
-                        }
-                        steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
+                        steps.push_back("u = " + format_expr_human(arena, dn.a) + ".");
+                        steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
                         steps.push_back(
                             "dy/d" + var + " = " + std::to_string(exp->num) + "*u^" + std::to_string(exp->num - 1) +
                             "*du/d" + var + "."
                         );
-                        steps.push_back("Substitute back and simplify/factor.");
                         used_rule = true;
-                        has_final_simplify = true;
                     }
                 }
                 if(!used_rule && arena.get(n).kind == NodeKind::Add) {
-                    steps.push_back("Differentiate term-by-term.");
-                    append_function_rule_steps(arena, n, var, steps);
+                    append_sum_derivative_detail(arena, n, var, steps);
                     used_rule = true;
                 }
                 if(!used_rule && has_variable_power(arena, n, var)) {
-                    steps.push_back("Use log diff: d(u^v)=u^v*(v'*log(u)+v*u'/u).");
+                    steps.push_back("ln(y) = v*log(u).");
+                    steps.push_back("y' = y*(v'*log(u)+v*u'/u).");
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {
                     NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
-                    steps.push_back("Let u = " + format_expr_human(arena, dn.a) + ".");
+                    steps.push_back("u = " + format_expr_human(arena, dn.a) + ".");
                     steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
-                    switch(dn.fkind) {
-                    case FnKind::Asin:
-                        steps.push_back("Use chain rule: d/d" + var + " arcsin(u)=u'/sqrt(1-u^2).");
-                        break;
-                    case FnKind::Acos:
-                        steps.push_back("Use chain rule: d/d" + var + " arccos(u)=-u'/sqrt(1-u^2).");
-                        break;
-                    case FnKind::Atan:
-                        steps.push_back("Use chain rule: d/d" + var + " arctan(u)=u'/(1+u^2).");
-                        break;
-                    case FnKind::Log:
-                        steps.push_back("Use chain rule: d/d" + var + " log(u)=u'/u.");
-                        break;
-                    case FnKind::Exp:
-                        steps.push_back("Use chain rule: d/d" + var + " exp(u)=exp(u)*u'.");
-                        break;
-                    case FnKind::Sqrt:
-                        steps.push_back("Use chain rule: d/d" + var + " sqrt(u)=u'/(2sqrt(u)).");
-                        break;
-                    default:
-                        steps.push_back("Use chain rule on the outer function.");
-                        break;
-                    }
+                    std::string cf = chain_formula(dn.fkind, var);
+                    if(!cf.empty()) steps.push_back("dy/d" + var + " = " + cf + ".");
                     if(contains_fn_kind(arena, dn.a, FnKind::Abs)) {
-                        steps.push_back("For abs: d(abs(u))/d" + var + " = u/abs(u)*du/d" + var + ".");
+                        steps.push_back("d(abs(u))/d" + var + " = u/abs(u)*du/d" + var + ".");
                     }
                     used_rule = true;
                 }
                 NodeKind top_kind = arena.get(n).kind;
                 if(!used_rule && top_kind == NodeKind::Div) {
-                    steps.push_back("Use quotient rule: (u'v-uv')/v^2.");
+                    append_quotient_rule_detail(arena, n, var, steps);
                     used_rule = true;
                 }
                 if(!used_rule && top_kind == NodeKind::Mul) {
@@ -1101,20 +1101,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
-                    steps.push_back("Use quotient rule on the fractional part.");
+                    steps.push_back("y' = (u'v-u*v')/v^2.");
                     used_rule = true;
                 }
                 if(!used_rule && has_node_kind(arena, n, NodeKind::Mul)) {
-                    steps.push_back("Use product rule on the product part.");
+                    steps.push_back("y' = sum(f_i'*product(other f_j)).");
                     used_rule = true;
                 }
                 if(!used_rule && has_function_call(arena, n)) {
-                    steps.push_back("Use chain rule on nested functions.");
                     append_function_rule_steps(arena, n, var, steps);
                     used_rule = true;
                 }
-                if(!used_rule) steps.push_back("Apply direct derivative rules.");
-                if(!has_final_simplify) steps.push_back("Simplify/factor result.");
+                if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
             }
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
@@ -1506,9 +1504,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 {
                     "dx/dt = " + format_expr_human(arena, dxdt),
                     "dy/dt = " + format_expr_human(arena, dydt),
-                    "Use dy/dx=(dy/dt)/(dx/dt), with dx/dt != 0.",
+                    "dy/dx=(dy/dt)/(dx/dt), dx/dt != 0.",
                     "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")",
-                    "Simplify: " + answer,
+                    answer,
                 },
                 answer
             );

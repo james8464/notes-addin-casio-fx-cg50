@@ -72,7 +72,7 @@ def generated_cases() -> list[dict[str, Any]]:
         ("(7*x+6)/((x-1)*(x^2+4)),method=pf", "A=13/5"),
         ("(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf", "Equate coefficients"),
         ("1/(x^2*(x+1)),method=pf", "Compare x^2"),
-        ("(x^2+1)/(x^4+1),method=pf", "Route: partial fractions"),
+        ("(x^2+1)/(x^4+1),method=pf", "Use partial fractions"),
         ("1/(x^3-4*x),method=pf", "D'(r)"),
         ("1/(x^3-3*x^2+2*x),method=pf", "Factor D(x)"),
         ("(x+1)/(x^3-x),method=pf", "r=1 -> 1"),
@@ -162,7 +162,7 @@ def generated_cases() -> list[dict[str, Any]]:
         ("ln(x+y)=x*y,x,method=implicit", "Differentiate both sides"),
         ("sin(x*y)+x^2=y^2,x,method=implicit", "Differentiate both sides"),
         ("1/(2*x+1)+1/(y+1)=x^2,x,method=implicit", "Clear denominators"),
-        ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", "Use dy/dx=(dy/dt)/(dx/dt)"),
+        ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", "dy/dx=(dy/dt)/(dx/dt)"),
         ("mode:5,t^2+1/t,t^2-1/t,t", "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)"),
     ):
         out.append({

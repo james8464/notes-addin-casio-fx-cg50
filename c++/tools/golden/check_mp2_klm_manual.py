@@ -19,7 +19,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     ("L9 composite range", ["--alg", "range(2*x^2+1,x,0,3)"], ["1 <= y <= 19"]),
     ("L10 rational definite", ["--int", "defint((4*x+3)/(3*x+4),x,0,32)"], ["u=3*x+4", "128/3 - 7/9*log(25)"]),
     ("L11 implicit second derivative", ["--derive", "y^2-x^2=1,x,method=second"], ["dy/dx = x/y", "d2y/dx2 = 1/y^3"]),
-    ("M5 xlnx derivative", ["--derive", "x*ln(x),x"], ["product rule", "dy/dx = log(x) + 1"]),
+    ("M5 xlnx derivative", ["--derive", "x*ln(x),x"], ["f1 = x", "f1' = 1", "f2 = log(x)", "f2' = 1/x", "y' = f1'*f2 + f1*f2'", "dy/dx = log(x) + 1"]),
     ("M12 half-angle integral", ["--int", "1/(1+cos(2*x))"], ["1+cos(2*x)=2*cos(x)^2", "1/2*tan(x) + C"]),
     ("M13 rational division", ["--alg", "partfrac((50*x^2-142*x+95)/(2*x-5))"], ["25*x - 17/2 + (105/2)/(2*x-5)"]),
 ]

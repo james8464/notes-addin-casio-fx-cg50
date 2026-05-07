@@ -135,10 +135,6 @@ static void print_method_header(std::string const &feature, std::string const &m
         std::cout << "Auto result:\n";
         return;
     }
-    std::cout << "Method: forced " << method << "\n";
-    std::cout << "Route: " << (method == "pf" ? "partial fractions" : method);
-    if(!u.empty()) std::cout << " (u=" << u << ")";
-    std::cout << "\n";
     (void)u;
 }
 
@@ -588,6 +584,31 @@ int main(int argc, char **argv)
         if(is_derive) {
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, false);
+            auto unwrap_call = [](std::string const &text, std::string const &name) -> std::string {
+                if(text.rfind(name, 0) != 0 || text.size() <= name.size() + 1 || text.back() != ')') return "";
+                return text.substr(name.size(), text.size() - name.size() - 1);
+            };
+            std::string inner;
+            if(!(inner = unwrap_call(expr, "diff(")).empty() ||
+               !(inner = unwrap_call(expr, "derive(")).empty()) {
+                auto parts = split_top_csv(inner);
+                if(!parts.empty()) {
+                    std::vector<std::string> kept;
+                    std::string inner_method;
+                    for(auto const &p : parts) {
+                        std::string v;
+                        if(key_arg(p, "method", v) || key_arg(p, "met", v)) {
+                            inner_method = v;
+                            continue;
+                        }
+                        kept.push_back(p);
+                    }
+                    if(method.empty() && !inner_method.empty()) method = inner_method;
+                    expr = kept[0];
+                    expr += ",";
+                    expr += kept.size() >= 2 && !kept[1].empty() ? kept[1] : "x";
+                }
+            }
             print_method_header("derive", method, method_u);
             casio::derive::Request req;
             // Accept optional prefix: "mode:<n>,<expr...>"

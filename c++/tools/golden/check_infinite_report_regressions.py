@@ -51,7 +51,7 @@ def main() -> int:
     bad += require(
         "symbolic_expand_noop",
         run(["--alg", "x^2+a*x+b,method=expand"]),
-        ("Route: expand", "Answer:", "x^2"),
+        ("Answer:", "x^2"),
         ("only polynomial expansion supported", "ERR:", "Unexpected token"),
     )
     bad += require(

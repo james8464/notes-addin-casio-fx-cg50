@@ -136,7 +136,6 @@ s2=t2/(1+t2); c2=1/(1+t2).
 ,dy/d
 @END
 @t073
-4. Rules.
 @END
 @t074
 5. Diff dy/dx again.
@@ -321,9 +320,6 @@ Add +C.
 4. Rearr.
 @END
 @t140
-2. Pick rule.
-3. Chain/prod/quot/log.
-4. Simp.
 @END
 @t141
 2. Classify.
@@ -448,7 +444,7 @@ dv =
 3. Find dy/d
 @END
 @t072
-3. Diff wrt 
+3. dy/d
 @END
 @t075
 2. f = 

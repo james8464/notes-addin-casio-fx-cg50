@@ -621,23 +621,21 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
     long long absB = std::llabs(B);
     if(B > 0) {
         return std::vector<std::string>{
-            "Route: R-form.",
-            "Compare A*cos(" + v + ")+B*sin(" + v + ") with R*sin(" + v + "+alpha).",
             "R=sqrt(" + std::to_string(B) + "^2+" + std::to_string(A) + "^2)=" + Rtxt + ".",
             "cos(alpha)=" + ratio(B) + ".",
             "sin(alpha)=" + ratio(A) + ".",
             "alpha=atan(" + rat_text(A, B) + ").",
+            "R*sin(" + v + "+alpha)=R*sin(" + v + ")*cos(alpha)+R*cos(" + v + ")*sin(alpha).",
             "Answer: " + Rtxt + "*sin(" + v + "+atan(" + rat_text(A, B) + "))",
         };
     }
     std::string sign = B < 0 ? "+" : "-";
     return std::vector<std::string>{
-        "Route: R-form.",
-        "Compare A*cos(" + v + ")+B*sin(" + v + ") with R*cos(" + v + sign + "alpha).",
         "R=sqrt(" + std::to_string(A) + "^2+" + std::to_string(absB) + "^2)=" + Rtxt + ".",
         "cos(alpha)=" + ratio(A) + ".",
         "sin(alpha)=" + ratio(absB) + ".",
         "alpha=atan(" + rat_text(absB, A) + ").",
+        "R*cos(" + v + sign + "alpha)=R*cos(" + v + ")*cos(alpha)" + (B < 0 ? "-R*sin(" : "+R*sin(") + v + ")*sin(alpha).",
         "Answer: " + Rtxt + "*cos(" + v + sign + "atan(" + rat_text(absB, A) + "))",
     };
 }

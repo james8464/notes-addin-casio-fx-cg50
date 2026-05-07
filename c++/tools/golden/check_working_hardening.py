@@ -37,25 +37,25 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "arccos(cos(2*x+pi/6)),x,method=auto",
-        ["Use chain rule", "d/dx arccos(u)", "dy/dx"],
+        ["u = cos(2*x + pi/6)", "du/dx = -2*sin(2*x + pi/6)", "dy/dx = -du/dx/sqrt(1-u^2)"],
         ["Use quotient rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",
         "log(abs(3*x+1)+2),x,method=auto",
-        ["Use chain rule", "d(abs(u))/dx", "dy/dx"],
+        ["u = abs(3*x + 1) + 2", "du/dx = 3*(3*x + 1)/abs(3*x + 1)", "dy/dx = du/dx/u", "d(abs(u))/dx = u/abs(u)*du/dx"],
         ["Use product rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",
         "log((3*x+1)^2+2)*log(3,x^2+12)*7!,x",
-        ["Use product rule", "f1 =", "f1' =", "f2 =", "f2' ="],
+        ["f1 =", "f1' =", "f2 =", "f2' =", "y' = f1'*f2 + f1*f2'"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",
         "x=t^2+1/t,y=t^2-1/t,t,x,method=param",
-        ["dx/dt", "Use dy/dx=(dy/dt)/(dx/dt)", "dy/dx"],
+        ["dx/dt", "dy/dt", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
@@ -127,8 +127,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "(x^2+1)/(x^4+1),method=pf",
-        ["Route: partial fractions", "x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1)", "Ax+B", "Cx+D", "Equate coefficients", "Answer:"],
-        ["Route: symmetry", "No elementary primitive found", "ERR:"],
+        ["Use partial fractions", "x^4+1=(x^2+sqrt(2)*x+1)(x^2-sqrt(2)*x+1)", "Ax+B", "Cx+D", "Equate coefficients", "Answer:"],
+        ["No elementary primitive found", "ERR:"],
     ),
     (
         "int",

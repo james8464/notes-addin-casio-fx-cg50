@@ -2374,6 +2374,8 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_rewrite_diff_alias_call(input,"normal_diff(",1,rewritten))
     return true;
+  if (cascas_rewrite_diff_alias_call(input,"diff(",1,rewritten))
+    return true;
   if (cascas_rewrite_implicit_diff_call(input,rewritten))
     return true;
   if (cascas_rewrite_param_call(input,"param_diff(",1,rewritten))
@@ -3174,7 +3176,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	      return true;
     }
   }
-  if (cascas_call_args(s,"normal_diff(",args,2,count,close,body) && count>=1){
+  if ((cascas_call_args(s,"normal_diff(",args,2,count,close,body) ||
+       cascas_call_args(s,"diff(",args,2,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
     cascas_append_expr_line(out,cascas_tpl("t070").c_str(),args[0]);
     string line=cascas_tpl("t072") + x;
@@ -3350,8 +3353,6 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 			    {"tangent_line(","t137"},
 		    {"trig_prove(","t138"},
 		    {"suvat(","t139"},
-			    {"diff(","t140"},
-			    {"'","t140"},
 		    {"integrate(","t141"},
 			    {"solve(","t142"},
 		    {"binomial(","t143"}

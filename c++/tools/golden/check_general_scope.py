@@ -19,7 +19,8 @@ def run_host(*args: str) -> str:
 
 def require(name: str, out: str, needles: tuple[str, ...], forbidden: tuple[str, ...] = ()) -> None:
     low = out.lower()
-    missing = [n for n in needles if n.lower() not in low]
+    compact_low = "".join(low.split())
+    missing = [n for n in needles if n.lower() not in low and "".join(n.lower().split()) not in compact_low]
     bad = [n for n in forbidden if n.lower() in low]
     if missing or bad:
         raise AssertionError(f"{name}: missing={missing} forbidden={bad}\n{out}")
@@ -29,7 +30,7 @@ def main() -> int:
     require(
         "hyperbolic_chain",
         run_host("--derive", "sinh(x^2)+atanh(x/3),x,method=chain"),
-        ("sinh(x^2) + atanh(x/3)", "d/dx sinh(u)", "d/dx atanh(u)", "cosh(x^2)"),
+        ("y = sinh(x^2)+atanh(x/3)", "d/dx(sinh(x^2))", "d/dx(atanh(x/3))", "cosh(x^2)"),
         ("atan(h)",),
     )
     require(

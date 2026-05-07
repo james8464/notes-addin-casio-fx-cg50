@@ -12,6 +12,42 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
+        "E1a chain derivative",
+        ["--derive", "(2*x+ln(x))^3,x"],
+        ["u = 2*x + log(x)", "du/dx = 1/x + 2", "dy/dx = 3*u^2*du/dx", "3*(2*x + log(x))^2*(1/x + 2)"],
+        ["Use chain rule", "limite(", "Answer: d/dx("],
+    ),
+    (
+        "E1b quotient derivative",
+        ["--derive", "x^2/(3*x-1),x"],
+        ["u = x^2", "u' = 2*x", "v = 3*x - 1", "v' = 3", "y' = (u'v-u*v')/v^2"],
+        ["Use quotient rule", "Answer: d/dx("],
+    ),
+    (
+        "E1c chain trig derivative",
+        ["--derive", "sin(3*x)^4,x"],
+        ["u = sin(3*x)", "du/dx = 3*cos(3*x)", "dy/dx = 4*u^3*du/dx", "12*sin(3*x)^3*cos(3*x)"],
+        ["Use chain rule", "Answer: d/dx("],
+    ),
+    (
+        "E6 related-rate derivative core",
+        ["--derive", "x^3*e^(-x^2),x"],
+        ["f1 = x^3", "f1' = 3*x^2", "f2 = e^(-x^2)", "f2' = -2*e^(-x^2)*x", "y' = f1'*f2 + f1*f2'"],
+        ["Use product rule", "Answer: d/dx("],
+    ),
+    (
+        "E9 R-form perimeter",
+        ["--trig", "5*cos(theta)+12*sin(theta),method=rform"],
+        ["R=sqrt(12^2+5^2)=13", "cos(alpha)=12/13", "sin(alpha)=5/13", "13*sin(theta+atan(5/12))"],
+        ["Answer: = 5*cos", "ERR:"],
+    ),
+    (
+        "E9 R-form solve",
+        ["--trig", "5*cos(theta)+12*sin(theta)=10,theta,0,90,10,method=rform"],
+        ["sin(theta+alpha)=10/13", "Base angles", "theta = [27.6649978201]"],
+        ["theta = []", "ERR:"],
+    ),
+    (
         "E10 split trig fraction",
         ["--int", "6*sin(x)/(cos(x)+sin(x))"],
         ["Split numerator", "A=3", "B=-3", "3*x - 3*log(abs(cos(x) + sin(x)))"],
@@ -22,6 +58,12 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["--trig", "sin(x)*cos(pi/5)=1/2-cos(x)*sin(pi/5),x,2*pi,4*pi,6"],
         ["sin(x+pi/5)=1/2", "79*pi/30", "119*pi/30"],
         ["x = []"],
+    ),
+    (
+        "F8 parametric derivative",
+        ["--derive", "x=3+2*cos(theta),y=-3+2*sin(theta),theta,x,method=param"],
+        ["dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = -cos(theta)/sin(theta)"],
+        ["Use dy/dx", "Simplify:", "Answer: d/dx("],
     ),
     (
         "F11 hidden exponential substitution",

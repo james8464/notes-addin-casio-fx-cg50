@@ -55,7 +55,7 @@ CONSOLE_MARKERS = [
 ]
 
 METHOD_MARKERS = [
-    "Pick rule.",
+    "dy/d",
     "Collect y' terms",
     "dy/dx=(dy/d",
     "Area=Int",

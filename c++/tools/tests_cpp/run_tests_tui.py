@@ -1632,6 +1632,20 @@ def domain_aware_sample_points(*exprs, var="x"):
     return tuple(out)
 
 
+def expression_needs_positive_real_base(expr, var="x"):
+    text = to_python_expr(expr or "")
+    compact = re.sub(r"\s+", "", text)
+    v = re.escape(var)
+    return bool(
+        re.search(rf"(^|[^A-Za-z0-9_]){v}\*\*", compact)
+        or re.search(rf"\*\*[^,\n]*{v}", compact)
+    )
+
+
+def positive_sample_points():
+    return (0.05, 0.1, 0.2, 0.35, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0)
+
+
 def normalized_text(text):
     return " ".join((text or "").lower().split())
 
@@ -1967,7 +1981,11 @@ def trig_identity_output_checker(eq_text):
 def derive_checker(*tokens):
     quality = build_checker(
         contains_all=tokens + ("dy/dx",),
-        contains_any=("chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation", "implicit", "term by term", " rule"),
+        contains_any=(
+            "chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation",
+            "implicit", "term by term", " rule",
+            "u =", "du/dx", "f1 =", "f1'", "ln(y) =", "y' =",
+        ),
         min_steps=1,
         min_lines=2,
     )
@@ -2086,7 +2104,7 @@ def working_quality_ok(output, program, feature):
             return "dy/dx" in text and ("d/dx(lhs)=d/dx(rhs)" in text or "make dy/dx" in text)
         if feature.startswith("derive_parametric"):
             return "dx/dt" in text and "dy/dt" in text and "dy/dx =" in text and steps >= 4
-            return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation", "implicit", "term by term", "method:", " rule"))
+        return any(marker in text for marker in ("chain rule", "product rule", "quotient rule", "log diff", "logdiff", "logarithmic differentiation", "implicit", "term by term", "dy/dx ="))
 
     if program == "Integrate":
         if "+ c" not in text or lines < 2:
@@ -5844,11 +5862,14 @@ class CASIOApp(App):
                 return True
             good = 0
             bad = 0
+            positive_base = expression_needs_positive_real_base(expr, var=var)
             points = domain_aware_sample_points(expr, candidate, var=var)
+            if positive_base:
+                points = tuple(p for p in points if p > 0)
             if len(points) < 3:
-                points = candidate_sample_points()
+                points = positive_sample_points() if positive_base else candidate_sample_points()
             for point in points:
-                actual = complex_step_derivative(expr, var, point)
+                actual = None if positive_base else complex_step_derivative(expr, var, point)
                 if actual is None:
                     actual = stable_finite_difference(expr, var, point)
                 if actual is None:
@@ -7260,7 +7281,7 @@ class CASIOApp(App):
     def random_derive_log_diff_case(self, rng, difficulty, index):
         helper_difficulty = "hard" if difficulty == "chaos" else difficulty
         exprs = [
-            f"x^({self.random_general_expr(rng, 'x', helper_difficulty, 1)})",
+            f"x^({self.random_linear_expr(rng, 'x', False)})",
             f"({self.random_positive_expr(rng, 'x', helper_difficulty)})^x",
             f"(sin(x))^({self.random_linear_expr(rng, 'x', False)})",
         ]

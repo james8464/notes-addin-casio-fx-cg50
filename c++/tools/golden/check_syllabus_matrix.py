@@ -34,7 +34,7 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("pure_sequences", "binomial expansion with validity", ("--alg", "binomial((1+x)^5,x,0,5)"), ("Valid for", "x^5")),
     MatrixCase("pure_trigonometry", "R-form trig solve", ("--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform"), ("R =", "arccos(2/5)")),
     MatrixCase("pure_explogs", "log laws and domain", ("--alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)"), ("Domain:", "Exponentiate")),
-    MatrixCase("pure_differentiation", "chain rule", ("--derive", "sin((x+1)^2),x,method=chain"), ("du/dx", "chain rule")),
+    MatrixCase("pure_differentiation", "chain rule", ("--derive", "sin((x+1)^2),x,method=chain"), ("u = (x + 1)^2", "du/dx = 2*(x + 1)", "dy/dx = cos(u)*du/dx")),
     MatrixCase("pure_integration", "DI/table integration", ("--int", "x^2*e^(2*x),method=di"), ("DI table", "Answer:")),
     MatrixCase("pure_numerical_methods", "numeric-root subpart", ("--alg", "solve(x^2-2=0,x,method=numeric)"), ("sqrt(8)/2",)),
     MatrixCase("pure_vectors", "vector magnitude subpart", ("--alg", "sqrt(1^2+2^2+3^2)"), ("sqrt(14)",), False),
