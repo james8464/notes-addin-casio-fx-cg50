@@ -1059,14 +1059,6 @@ Req: [x(t),y(t)].
 Opt: t.
 Ex F2: param_diff([t^2,t^3],t)
 @END
-@param_second_diff([x(t),y(t)],t)
-F2:param_second_diff([t^2,t^3],t)
-param_second_diff([x(t),y(t)],t)
-Param d2y/dx2.
-Req: [x(t),y(t)].
-Opt: t.
-Ex F2: param_second_diff([t^2,t^3],t)
-@END
 @plot(expr,x)
 F2:plot(ln(x),x,0,5)
 F3:plot(1/x,x=1..5,xstep=1)
@@ -1316,14 +1308,6 @@ Solve recurrence.
 Req: equation, u(n).
 Opt: init.
 Ex F2: rsolve(u(n+1)=2*u(n)+3,u(n),u(0)=1)
-@END
-@second_diff(expr,[x])
-F2:second_diff(x^4,x)
-second_diff(expr,[x])
-Second derivative.
-Req: expr.
-Opt: x.
-Ex F2: second_diff(x^4,x)
 @END
 @si
 F2:f(x):=si x>0 alors x; sinon -x; fsi;// valeur absolue

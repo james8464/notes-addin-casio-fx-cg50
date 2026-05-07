@@ -499,7 +499,6 @@ FEATURE_PARITY_EXPECTED = {
         "derive_implicit",
         "derive_parametric",
         "derive_product",
-        "derive_2nd_derivative",
         "derive_chain_quotient",
         "derive_implicit_product",
         "derive_log_diff",
@@ -563,7 +562,7 @@ FEATURE_PARITY_EXPECTED = {
 FEATURE_PARITY_NOTES = {
     "Algebra": "Python modes 1-9: compare, transform, expand, polynomial, complete square, solve, compose, inverse, rewrite, domain/range/cartesian helpers.",
     "Trigonometry": "Python modes 1-4: prove, transform, solve, rewrite; degree/radian and rearranged identity forms.",
-    "Derive": "Python modes 1-4: normal, implicit, parametric, second derivative; chain/product/quotient/log cases.",
+    "Derive": "Normal, implicit, parametric; chain/product/quotient/log cases.",
     "Integrate": "Python modes 1-2 plus methods: direct, substitution, parts, trig, partial fractions, division, DE.",
     "Stats": "C++ extension: one-var, regression, binomial, normal, z-test, graph sparkline.",
     "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
@@ -4272,7 +4271,7 @@ class CASIOApp(App):
         generic_math = self.expression_math_shapes(include_factorial=True)
         calculus_math = self.expression_math_shapes(include_factorial=False)
         if name in ("diff", "implicit_diff", "param_diff"):
-            return ("poly", "chain", "product", "quotient", "implicit", "param", "second") + calculus_math
+            return ("poly", "chain", "product", "quotient", "implicit", "param") + calculus_math
         if name in ("integrate", "int"):
             return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry", "manip_trig", "manip_rational") + calculus_math
         if name in ("solve", "fsolve", "zeros"):
@@ -4305,7 +4304,7 @@ class CASIOApp(App):
         if name in ("coeff", "dot", "cross", "inverse", "rank"):
             return False
         direct = {
-            "diff", "implicit_diff", "param_diff", "param_second_diff", "integrate", "int",
+            "diff", "implicit_diff", "param_diff", "integrate", "int",
             "solve", "fsolve", "zeros", "solve_trig", "trigsolve", "domain", "range",
             "factor", "expand", "partfrac", "complete_square", "collect", "coeff",
             "binomial", "normal", "poisson", "correlation", "covariance", "mean", "median",
@@ -4528,8 +4527,6 @@ class CASIOApp(App):
             return "derive", "mode:2,{0}".format(self.random_catalogue_expr(rng, "implicit"))
         if name in ("param_diff",):
             return "derive", "mode:3,{0}".format(self.random_catalogue_param_triplet(rng))
-        if name in ("param_second_diff",):
-            return "derive", "mode:5,{0}".format(self.random_catalogue_param_triplet(rng))
         if name in ("integrate", "int"):
             if shape == "math_abs":
                 expr = rng.choice(["abs(2*x-3)", "sqrt((2*x-3)^2)"])
@@ -4728,7 +4725,6 @@ class CASIOApp(App):
             "random_algebra_rearrange_case": "Algebra",
             "random_derive_normal_case": "Derive",
             "random_derive_product_case": "Derive",
-            "random_derive_2nd_case": "Derive",
             "random_integrate_auto_case": "Integrate",
             "random_integrate_def_case": "Integrate",
             "random_trig_solve_case": "Trigonometry",
@@ -7148,7 +7144,6 @@ class CASIOApp(App):
                 self.random_derive_normal_case,
                 self.random_derive_implicit_case,
                 self.random_derive_parametric_case,
-                self.random_derive_second_derivative_case,
                 self.random_derive_triple_product_case,
                 self.random_derive_chain_quotient_case,
                 self.random_derive_implicit_product_case,
@@ -7165,7 +7160,6 @@ class CASIOApp(App):
                 self.random_derive_implicit_product_case,
                 self.random_derive_parametric_hard_case,
                 self.random_derive_log_diff_case,
-                self.random_derive_second_derivative_case,
             ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 

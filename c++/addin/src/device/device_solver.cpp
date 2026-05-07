@@ -2864,7 +2864,6 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::DeriveNormal: return solve_derive(input, out);
         case Module::DeriveImplicit: return solve_derive(input, out);
         case Module::DeriveParam: return solve_derive(input, out);
-        case Module::Derive2nd: return solve_derive(input, out);
         case Module::IntDE: return solve_integrate(input, out);
         case Module::IntParamArea: return solve_integrate(input, out);
         case Module::AlgCompare: return solve_algebra(input, out);

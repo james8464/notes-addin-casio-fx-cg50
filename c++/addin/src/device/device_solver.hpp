@@ -19,7 +19,6 @@ enum class Module
     DeriveNormal,
     DeriveImplicit,
     DeriveParam,
-    Derive2nd,
     IntDE,
     IntParamArea,
     AlgCompare,

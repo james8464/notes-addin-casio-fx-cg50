@@ -282,7 +282,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"param_area([x(t),y(t)],t,[a,b])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #endif
   {"param_diff([x(t),y(t)],t)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
-  {"param_second_diff([x(t),y(t)],t)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #if 0
   {"plot(expr,x)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
 #ifdef RELEASE
@@ -345,7 +344,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"rsolve(equation,u(n),[init])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE},
 #endif
-  {"second_diff(expr,[x])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
   //{"si", "si  alors  sinon  fsi;", 0, 0, 0, CAT_CATEGORY_PROG},
   {"sign(x)", 0, 0, 0, 0, CAT_CATEGORY_REAL},
   {"simplify(expr,[method])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
@@ -569,7 +567,7 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
     return false;
   if (!strcmp(base,"diff(")){
     static const char *methods[]={
-      "auto","chain","product","quotient","logdiff","implicit","param","second"
+      "auto","chain","product","quotient","logdiff","implicit","param"
     };
     int choice=0;
     // Test marker: Diff method
@@ -582,8 +580,6 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
       strcpy(insertText,"implicit_diff(");
     else if (!strcmp(m,"param"))
       strcpy(insertText,"param_diff(");
-    else if (!strcmp(m,"second"))
-      strcpy(insertText,"second_diff(");
     else {
       strcpy(insertText,"diff(method=");
       strcat(insertText,m);

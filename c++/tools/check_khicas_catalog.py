@@ -53,11 +53,9 @@ OLD_FEATURE_ALIASES = [
     "normal_diff(expr,[x])",
     "param_area([x(t),y(t)],t,[a,b])",
     "param_diff([x(t),y(t)],t)",
-    "param_second_diff([x(t),y(t)],t)",
     "poly(expr,[x])",
     "range(expr,[x,lo,hi])",
     "rewrite(expr,target)",
-    "second_diff(expr,[x])",
     "solve_trig(eq,[var,lo,hi,max,method])",
     "integrate_by(f,x,method,[u])",
     "diff_by(f,var,method)",
@@ -83,6 +81,8 @@ REMOVED_SURFACES = [
     "re(z)",
     "rref(A)",
     "tran(A)",
+    "param_second_diff([x(t),y(t)],t)",
+    "second_diff(expr,[x])",
 ]
 
 REMOVED_LEXER_NAMES = [

@@ -19,7 +19,6 @@ enum : FeatureId
     F_DERIVE_N = 200,
     F_DERIVE_IMP = 201,
     F_DERIVE_PAR = 202,
-    F_DERIVE_2ND = 203,
 
     F_INT = 300,
     F_INT_DE = 301,
@@ -77,7 +76,6 @@ const char* ALIAS_SIMPLIFY[] = {"smp", "simplify"};
 const char* ALIAS_DERIVE_N[] = {"drv", "derive", "d/dx", "norm"};
 const char* ALIAS_DERIVE_IMP[] = {"imp", "impDiff", "implicit"};
 const char* ALIAS_DERIVE_PAR[] = {"par", "paramD", "param"};
-const char* ALIAS_DERIVE_2ND[] = {"2nd", "d2y/dx2"};
 const char* ALIAS_INT[] = {"int", "integrate"};
 const char* ALIAS_INT_DE[] = {"de", "diffEq"};
 const char* ALIAS_INT_PAR[] = {"parA", "paramArea"};
@@ -139,7 +137,6 @@ const FeatureSpec FEATURES[] = {
     {F_DERIVE_N, "Derive", "DRV", "Normal Deriv", ALIAS_DERIVE_N, 4, &PROMPT_Y, 1},
     {F_DERIVE_IMP, "Derive", "IMP", "Imp Diff", ALIAS_DERIVE_IMP, 3, &PROMPT_EQ, 1},
     {F_DERIVE_PAR, "Derive", "PRD", "Param D", ALIAS_DERIVE_PAR, 3, PROMPTS_NONE, 0},
-    {F_DERIVE_2ND, "Derive", "2ND", "Second Deriv", ALIAS_DERIVE_2ND, 2, &PROMPT_Y, 1},
 
     {F_INT, "Integrate", "INT", "Integrate", ALIAS_INT, 2, &PROMPT_F, 1},
     {F_INT_DE, "Integrate", "DE", "Diff Eq", ALIAS_INT_DE, 2, PROMPTS_NONE, 0},

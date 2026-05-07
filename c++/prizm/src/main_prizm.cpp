@@ -80,7 +80,6 @@ const CommandItem kDeriveCommands[] = {
     {"n", "diff("},
     {"imp", "implicit_diff("},
     {"par", "param_diff("},
-    {"2nd", "diff2("},
 };
 
 const CommandItem kIntegrateCommands[] = {
