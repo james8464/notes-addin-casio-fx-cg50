@@ -1444,9 +1444,9 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->c1) < 1e-12 && std::fabs(poly->c2) < 1e-12) {
         std::string arg_text = format_expr(a, poly->arg);
         auto roots = solve_quadratic_d(poly->s2, poly->s1, poly->c);
-        steps.push_back("Let u=sin(" + arg_text + ").");
+        steps.push_back("u=sin(" + arg_text + ").");
         steps.push_back(trig_quad_text(poly->s2, poly->s1, poly->c));
-        steps.push_back("u=" + join_roots(roots) + ", so solve sin(" + arg_text + ") for each valid u.");
+        steps.push_back("u=" + join_roots(roots) + ".");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
             else {
@@ -1459,9 +1459,9 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     else if(std::fabs(poly->sc) < 1e-12 && std::fabs(poly->s1) < 1e-12 && std::fabs(poly->s2) < 1e-12) {
         std::string arg_text = format_expr(a, poly->arg);
         auto roots = solve_quadratic_d(poly->c2, poly->c1, poly->c);
-        steps.push_back("Let u=cos(" + arg_text + ").");
+        steps.push_back("u=cos(" + arg_text + ").");
         steps.push_back(trig_quad_text(poly->c2, poly->c1, poly->c));
-        steps.push_back("u=" + join_roots(roots) + ", so solve cos(" + arg_text + ") for each valid u.");
+        steps.push_back("u=" + join_roots(roots) + ".");
         for(double r : roots) {
             if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
             else {
@@ -1475,7 +1475,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             std::fabs(poly->s2) > 1e-12 && std::fabs(poly->c1) > 1e-12) {
         steps.push_back("Use sin(A)^2=1-cos(A)^2.");
         std::string arg_text = format_expr(a, poly->arg);
-        steps.push_back("Let u=cos(" + arg_text + ").");
+        steps.push_back("u=cos(" + arg_text + ").");
         if(std::fabs(poly->s2 - 2.0) < 1e-12 && std::fabs(poly->c1 + 1.0) < 1e-12 && std::fabs(poly->c + 1.0) < 1e-12) {
             steps.push_back("2u^2+u-1=0.");
             steps.push_back("u=1/2 or u=-1.");
@@ -1514,13 +1514,13 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             std::string alpha = "arctan(" + ratio_text(*s_int, *c_int) + ")";
             std::string beta = "arccos(" + ratio_text(*rhs_int, *r_int) + ")";
             steps.push_back("R = sqrt(" + std::to_string(*c_int) + "^2 + " + std::to_string(*s_int) + "^2) = " + std::to_string(*r_int) + ".");
-            steps.push_back("Let alpha=" + alpha + ", so cos(alpha)=" + ratio_text(*c_int, *r_int) +
-                            " and sin(alpha)=" + ratio_text(*s_int, *r_int) + ".");
+            steps.push_back("alpha=" + alpha + ", cos(alpha)=" + ratio_text(*c_int, *r_int) +
+                            ", sin(alpha)=" + ratio_text(*s_int, *r_int) + ".");
             steps.push_back(std::to_string(*c_int) + "*cos(x)+" + std::to_string(*s_int) +
                             "*sin(x)=" + std::to_string(*r_int) + "*cos(x-alpha).");
             steps.push_back("cos(x-alpha)=" + ratio_text(*rhs_int, *r_int) + ".");
             steps.push_back("x-alpha=" + beta + " or -" + beta + " (mod 2*pi).");
-            steps.push_back(lo_text + " <= " + var + " <= " + hi_text + "; check original equation.");
+            steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
             return casio::exam_block(
                 "trig solve",
                 steps,
@@ -1596,7 +1596,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             }
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + "; check original equation.");
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2431,11 +2431,11 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
-                "Start with " + eq_text + ".",
-                "Rearrange to " + fname + "(A) = " + target + ".",
-                "Let A = " + format_expr(a, arg) + ".",
-                "Use the standard general solution with integer n.",
-                "Convert A values back to " + var + ".",
+                eq_text + ".",
+                fname + "(A) = " + target + ".",
+                "A = " + format_expr(a, arg) + ".",
+                format_general_trig_family("A", rad, bases_deg, period_deg) + ".",
+                format_general_trig_family(var, rad, bases_deg, period_deg) + ".",
             },
             format_general_trig_family(var, rad, bases_deg, period_deg)
         );
@@ -2492,13 +2492,12 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     return casio::exam_block(
         "trig solve (table)",
         {
-            "Start with " + eq_text + ".",
-            "Rearrange to " + fname + "(A) = " + target + ".",
-            "Let A = " + format_expr(a, arg) + ".",
+            eq_text + ".",
+            fname + "(A) = " + target + ".",
+            "A = " + format_expr(a, arg) + ".",
             "Base angles: " + format_family_line("A", a_family_bases, a_period_deg, rad) + ".",
             format_family_line(var, x_family_bases, x_period_deg, rad) + ".",
-            "Solve trig equation using exact angles for " + fname + "(A) = " + target + ".",
-            "Convert A values back to " + var + " and keep the interval.",
+            lo_text + " <= " + var + " <= " + hi_text + ".",
         },
         oss.str()
     );

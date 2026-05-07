@@ -126,9 +126,9 @@ static void append_generic_exam_route(std::vector<std::string> &steps, std::stri
 void append_exam_prelude_steps(std::vector<std::string> &steps, ExamPrelude const &prelude)
 {
     std::string start = prelude.parsed.empty() ? (prelude.norm.empty() ? prelude.raw : prelude.norm) : prelude.parsed;
-    if(!start.empty()) steps.push_back("Start with " + start + ".");
+    if(!start.empty()) steps.push_back(start + ".");
     if(!prelude.simplified.empty() && !same_text(prelude.simplified, start) && !same_text(prelude.simplified, prelude.parsed)) {
-        steps.push_back("Rewrite as " + prelude.simplified + ".");
+        steps.push_back("= " + prelude.simplified + ".");
     }
 }
 
@@ -139,7 +139,7 @@ std::vector<std::string> exam_block(std::string const &method, std::vector<std::
     if(student_facing_method(method)) out.push_back("Use " + method + ".");
     else if(!method.empty() && steps.empty()) out.push_back("Use " + method + ".");
     for(auto const &s : steps) out.push_back(s);
-    // Use existing formatter so last line is Answer:
+    // Keep final line as maths only; labels waste calculator width.
     auto numbered = format_exam_working(method, out, answer);
     return numbered;
 }

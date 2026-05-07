@@ -6557,27 +6557,28 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
         std::string e = format_expr(a, exp_node);
         std::string atext = format_expr(a, a.num(exp_coeff));
         std::string btext = format_expr(a, a.num(k));
-        steps.push_back("Step 2: looping integration by parts: let I be the original integral.");
-        steps.push_back("Step 3: Here a=" + atext + ", b=" + btext + ".");
+        steps.push_back("Step 2: a=" + atext + ", b=" + btext + ".");
         if(want_sin) {
-            steps.push_back("Step 4: Parts 1: u = sin(" + u + "), dv = " + e + " dx.");
-            steps.push_back("Step 5: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
-            steps.push_back("Step 6: I = " + e + "*sin(" + u + ")/a - (b/a)J, where J = Integral(" + e + "*cos(" + u + ")) dx.");
-            steps.push_back("Step 7: For J use u = cos(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 3: u = sin(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 4: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 5: J = Integral(" + e + "*cos(" + u + ")) dx.");
+            steps.push_back("Step 6: I = " + e + "*sin(" + u + ")/a - (b/a)J.");
+            steps.push_back("Step 7: u = cos(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 8: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + e + "*cos(" + u + ")/a + (b/a)I.");
         }
         else {
-            steps.push_back("Step 4: Parts 1: u = cos(" + u + "), dv = " + e + " dx.");
-            steps.push_back("Step 5: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
-            steps.push_back("Step 6: I = " + e + "*cos(" + u + ")/a + (b/a)J, where J = Integral(" + e + "*sin(" + u + ")) dx.");
-            steps.push_back("Step 7: For J use u = sin(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 3: u = cos(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 4: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
+            steps.push_back("Step 5: J = Integral(" + e + "*sin(" + u + ")) dx.");
+            steps.push_back("Step 6: I = " + e + "*cos(" + u + ")/a + (b/a)J.");
+            steps.push_back("Step 7: u = sin(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 8: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + e + "*sin(" + u + ")/a - (b/a)I.");
         }
-        if(want_sin) steps.push_back("Step 10: Substitute J and Collect I terms: (a^2 + b^2)I = " + e + "*(a*sin(" + u + ") - b*cos(" + u + ")).");
-        else steps.push_back("Step 10: Substitute J and Collect I terms: (a^2 + b^2)I = " + e + "*(a*cos(" + u + ") + b*sin(" + u + ")).");
-        steps.push_back("Step 11: Substitute a and b, then divide by a^2 + b^2.");
+        if(want_sin) steps.push_back("Step 10: (a^2 + b^2)I = " + e + "*(a*sin(" + u + ") - b*cos(" + u + ")).");
+        else steps.push_back("Step 10: (a^2 + b^2)I = " + e + "*(a*cos(" + u + ") + b*sin(" + u + ")).");
+        steps.push_back("Step 11: I = RHS/(a^2 + b^2).");
         return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
     }
     if(exp_coeff.num != exp_coeff.den) return std::nullopt;

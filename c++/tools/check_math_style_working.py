@@ -32,14 +32,42 @@ CASES = [
         ["--derive", "x=3+2*cos(theta),y=-3+2*sin(theta),theta,x,method=param"],
         ("dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = (2*cos(theta))/(-2*sin(theta))"),
     ),
+    (
+        "exam chain final",
+        ["--derive", "(2*x+ln(x))^3,x"],
+        ("y = (2*x + log(x))^3", "u = 2*x + log(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + log(x))^2*(1/x + 2)"),
+    ),
+    (
+        "looping parts final",
+        ["--int", "e^(2*x)*cos(3*x),method=parts"],
+        ("I = Integral [e^(2*x)*cos(3*x)] dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Integral(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
+    ),
+    (
+        "rform final",
+        ["--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform"],
+        ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "x = [arctan(4/3) + arccos(2/5), 2*pi + arctan(4/3) - arccos(2/5)]"),
+    ),
+    (
+        "nested surd rewrite",
+        ["--alg", "rewrite(sqrt(12+sqrt(140)))"],
+        ("sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "sqrt(7)+sqrt(5)"),
+    ),
 ]
 
 TEXT_WORDS = (
     "Use ",
+    "Start with",
     "Differentiate",
     "Simplify",
     "Apply",
     "Let ",
+    "Here ",
+    "Then ",
+    "Hence ",
+    "Therefore",
+    "looping integration",
+    "Substitute ",
+    "Collect ",
     "Inside ",
     "For ",
 )
@@ -47,6 +75,13 @@ TEXT_WORDS = (
 GLOBAL_TEXT_BANS = (
     "Method:",
     "Route:",
+    "Answer:",
+    "Chk:",
+    "pick rule",
+    "chain/prod",
+    "Std form",
+    "Rule/sub/id",
+    "Verify",
 )
 
 

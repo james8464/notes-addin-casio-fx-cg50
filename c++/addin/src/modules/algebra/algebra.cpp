@@ -1857,11 +1857,11 @@ static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std
     if(m < n) std::swap(m, n);
 
     return std::vector<std::string>{
-        "1. Let sqrt(" + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ")) = sqrt(m)+sqrt(n).",
-        "2. Square: " + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ") = m+n+2*sqrt(m*n).",
-        "3. Hence m+n=" + std::to_string(*A) + " and 4*m*n=" + std::to_string(*B) + ".",
-        "4. Solve t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + "=0, so t=" + std::to_string(m) + " or " + std::to_string(n) + ".",
-        "Answer: sqrt(" + std::to_string(m) + ")+sqrt(" + std::to_string(n) + ")",
+        "1. sqrt(" + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ")) = sqrt(m)+sqrt(n).",
+        "2. " + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ") = m+n+2*sqrt(m*n).",
+        "3. m+n=" + std::to_string(*A) + ", 4*m*n=" + std::to_string(*B) + ".",
+        "4. t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + "=0 -> t=" + std::to_string(m) + " or " + std::to_string(n) + ".",
+        "sqrt(" + std::to_string(m) + ")+sqrt(" + std::to_string(n) + ")",
     };
 }
 

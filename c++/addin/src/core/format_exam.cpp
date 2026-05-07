@@ -146,8 +146,9 @@ std::vector<std::string> format_exam_working(
         std::string low;
         low.reserve(text.size());
         for(char c : text) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
-        if(low.rfind("answer:", 0) == 0) lines.push_back(text);
-        else lines.push_back("Answer: " + text);
+        if(low.rfind("answer:", 0) == 0) text = text.substr(7);
+        while(!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) text.erase(text.begin());
+        lines.push_back(text);
     }
     return lines;
 }

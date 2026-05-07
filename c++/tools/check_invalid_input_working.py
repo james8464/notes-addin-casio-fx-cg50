@@ -42,7 +42,7 @@ def main() -> int:
         capture_output=True,
     )
     trig_out = proc.stdout + proc.stderr
-    for marker in ["Base angle", "Answer: x = [7*pi/6, 11*pi/6]"]:
+    for marker in ["Base angle", "x = [7*pi/6, 11*pi/6]"]:
         if marker not in trig_out:
             return fail("solve() did not route trig solve working:\n" + trig_out)
     print("OK invalid input suppresses working")
