@@ -4357,7 +4357,7 @@ class CASIOApp(App):
             "general": ["2*sin(x)+1=0", "cos(2*x)=1/2"],
             "bounded": ["2*sin(x)+1=0,x,0,2*pi,8", "3*cos(x)+4*sin(x)=2,x,0,2*pi,8"],
             "cast": ["sin(x)=-1/2", "tan(2*x)=sqrt(3)"],
-            "identity": ["sin(x)^2+cos(x)^2", "(1-tan(x)^2)/(1+tan(x)^2)"],
+            "identity": ["sin(x)^2+cos(x)^2", "(1-tan(x)^2)/(1+tan(x)^2)", "1/cos(x)=5,x,0,2*pi,8"],
             "rform": ["3*cos(x)+4*sin(x)=2", "5*sin(x)-12*cos(x)=6"],
             "square_then_check": ["sqrt(1-cos(x))=sin(x)", "sin(x)+cos(x)=sqrt(2)"],
             "sum_to_product": ["sin(3*x)-sin(x)=0", "cos(3*x)-cos(x)=0", "sin(5*x)-sin(x)=0"],
@@ -6770,6 +6770,20 @@ class CASIOApp(App):
     def random_trig_solve_case(self, rng, difficulty, index):
         if getattr(self, "backend", "python") == "c":
             # Native trig solver is limited; keep cases to classic table values with simple x±const shifts.
+            if rng.random() < 0.25:
+                func = rng.choice(["sin", "cos", "tan"])
+                eq = f"1/{func}(x)={rng.choice(['2', '3', '5'])}"
+                interval = "0,2*pi"
+                mode = "chaos_trig_recip"
+                label = f"Trig solve {index}: {eq}"
+                return self.make_cli_case(
+                    "Trigonometry",
+                    "trigProgram.py",
+                    f"3\n{eq},x,{interval},8,method=identity\n",
+                    label,
+                    trig_solve_checker("x ="),
+                    feature=f"trig_solve:{mode}",
+                )
             func = rng.choice(["sin", "cos"])
             angle = "x"
             target = rng.choice(["0", "1", "-1", "1/2"])

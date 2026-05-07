@@ -40,6 +40,7 @@ def parse_help(src: Path) -> list[tuple[bytes, bytes]]:
 
 
 def build_pack(records: list[tuple[bytes, bytes]]) -> bytes:
+    records = sorted(records, key=lambda r: 0 if r[0].startswith(b"t") and r[0][1:].isdigit() else 1)
     out = bytearray(MAGIC)
     out += struct.pack(">H", len(records))
     for name, body in records:

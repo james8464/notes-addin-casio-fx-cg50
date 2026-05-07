@@ -2282,6 +2282,10 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         auto isolate_scaled_trig = [&](NodeId term, NodeId target) -> std::optional<std::pair<NodeId, NodeId>> {
             Node const &T = a.get(term);
             if(T.kind == NodeKind::Fn) return std::make_pair(term, target);
+            if(T.kind == NodeKind::Div && a.get(T.b).kind == NodeKind::Fn && is_const(a, T.a)) {
+                NodeId new_rhs = casio::simplify(a, casio::div(a, T.a, target));
+                return std::make_pair(T.b, new_rhs);
+            }
             if(T.kind == NodeKind::Mul && T.kids.size() == 2) {
                 auto k0 = as_num(a, T.kids[0]);
                 auto k1 = as_num(a, T.kids[1]);
@@ -2493,7 +2497,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             "Start with " + eq_text + ".",
             "Rearrange to " + fname + "(A) = " + target + ".",
             "Let A = " + format_expr(a, arg) + ".",
-            format_family_line("A", a_family_bases, a_period_deg, rad) + ".",
+            "Base angles: " + format_family_line("A", a_family_bases, a_period_deg, rad) + ".",
             format_family_line(var, x_family_bases, x_period_deg, rad) + ".",
             "Solve trig equation using exact angles for " + fname + "(A) = " + target + ".",
             "Convert A values back to " + var + " and keep the interval.",

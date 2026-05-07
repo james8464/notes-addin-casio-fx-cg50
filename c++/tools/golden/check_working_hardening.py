@@ -156,6 +156,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "1/cos(x)=5,x,0,2*pi,8,method=identity",
+        ["cos(A) = 1/5", "Base angle", "Answer:"],
+        ["Answer: x = []", "ERR:"],
+    ),
+    (
+        "trig",
         "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
         ["General: A=B+2*pi*n or A=pi-B+2*pi*n", "x=n*pi", "x=pi/4+n*pi/2", "Filter 0 <= x <= 2*pi"],
         ["ERR:"],

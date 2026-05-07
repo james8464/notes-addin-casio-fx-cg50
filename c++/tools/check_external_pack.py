@@ -38,6 +38,19 @@ def read_pack(path: Path) -> dict[str, str]:
     return records
 
 
+def pack_names(path: Path) -> list[str]:
+    data = path.read_bytes()
+    count = struct.unpack_from(">H", data, 4)[0]
+    pos = 6
+    names: list[str] = []
+    for _ in range(count):
+        nlen, blen = struct.unpack_from(">HH", data, pos)
+        pos += 4
+        names.append(data[pos : pos + nlen].decode("utf-8"))
+        pos += nlen + blen
+    return names
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("usage: check_external_pack.py calculator_files/CASIOCAS.PAK", file=sys.stderr)
@@ -70,6 +83,10 @@ def main() -> int:
         body = records[name]
         if "Req:" not in body or "Opt:" not in body or "Ex F" not in body:
             return fail(f"incomplete command help: {name}")
+    names = pack_names(path)
+    first_tpl = next((i for i, name in enumerate(names) if name.startswith("t") and name[1:].isdigit()), 9999)
+    if first_tpl > 8:
+        return fail("working templates are too late in PAK; runtime lookup is slow")
     size = path.stat().st_size
     print(f"OK external pack records={len(records)} bytes={size}")
     return 0
