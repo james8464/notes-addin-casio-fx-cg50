@@ -53,6 +53,8 @@ def main() -> int:
         ("syllabus_matrix", [sys.executable, "c++/tools/golden/check_syllabus_matrix.py", "--fail-on-gap"]),
         ("extreme_working_sources", [sys.executable, "c++/tools/golden/check_extreme_working_sources.py"]),
         ("madasmaths_paper_scan", [sys.executable, "c++/tools/golden/check_madasmaths_paper_scan.py"]),
+        ("madasmaths_full_audit_unit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit_unit.py"]),
+        ("madasmaths_full_audit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit.py", "--no-render"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),
         ("mp2_vwx_manual", [sys.executable, "c++/tools/golden/check_mp2_vwx_manual.py"]),
         ("mp2_yz_manual", [sys.executable, "c++/tools/golden/check_mp2_yz_manual.py"]),

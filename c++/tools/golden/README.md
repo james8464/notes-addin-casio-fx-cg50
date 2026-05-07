@@ -23,4 +23,10 @@ Useful focused gates:
 python3 run_tests.py tui
 python3 c++/tools/golden/check_edexcel_paper1_downloads.py
 python3 c++/tools/golden/check_edexcel_paper2_downloads.py
+python3 c++/tools/golden/check_madasmaths_full_audit.py
 ```
+
+`check_madasmaths_full_audit.py` renders local MP2 A-Z papers/solutions from
+`~/Downloads/MadAsMaths papers` into ignored report images, writes the JSONL
+ledger, and runs all curated MP2 host markscheme cases. Use `--no-render` for
+the lightweight CI gate.
