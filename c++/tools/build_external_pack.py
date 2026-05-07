@@ -33,6 +33,8 @@ def parse_help(src: Path) -> list[tuple[bytes, bytes]]:
         # F2/F3 examples are insertion hints, not F6 help text.
         if not preserve and (raw.startswith("F2:") or raw.startswith("F3:")):
             continue
+        if not preserve and raw.startswith("Ex F3:"):
+            continue
         line = raw if preserve else " ".join(raw.rstrip().split())
         if line or preserve:
             body.append(line)

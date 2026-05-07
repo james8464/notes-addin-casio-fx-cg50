@@ -419,10 +419,6 @@ static bool catalog_hidden_category(int category){
   }
 }
 
-static bool startswith_catalog(const char *s,const char *prefix){
-  return s && prefix && !strncmp(s,prefix,strlen(prefix));
-}
-
 static bool catalog_hidden_name(const char *name){
   if (!name) return true;
 #if 0
@@ -430,19 +426,11 @@ static bool catalog_hidden_name(const char *name){
   // CAT_CATEGORY_PROG CAT_CATEGORY_LOGO draw_ laplace fourier_ jordan svd
   // gramschmidt rand cfactor residue resultant seq( plotfield( plotode(
   // hilbert( erf( legendre( powmod(
+  // hidden_prefix:
+  // hidden_exact:
 #endif
-  const char *hidden_prefix[]={
-    "draw_","plot","rand",0
-  };
-  const char *hidden_exact[]={
-    "circle","line","point","polygon","segment","nand","nor",0
-  };
-  for (int i=0;hidden_prefix[i];++i)
-    if (startswith_catalog(name,hidden_prefix[i]))
-      return true;
-  for (int i=0;hidden_exact[i];++i)
-    if (!strcmp(name,hidden_exact[i]) || (startswith_catalog(name,hidden_exact[i]) && name[strlen(hidden_exact[i])]=='('))
-      return true;
+  if (!strncmp(name,"draw_",5) || !strncmp(name,"plot",4))
+    return true;
   return false;
 }
 
@@ -506,6 +494,25 @@ static bool catalog_read_help_record(const char *name,ustl::string *body){
   }
   free(buf);
   return false;
+}
+
+static bool catalog_insert_help_example(char *insertText,const ustl::string &body){
+  const char *p=strstr(body.c_str(),"Ex F2:");
+  if (!p)
+    return false;
+  p += 6;
+  while (*p==' ')
+    ++p;
+  int n=0;
+  while (p[n] && p[n]!='\n' && n<255)
+    ++n;
+  while (n>0 && (p[n-1]==' ' || p[n-1]=='\r'))
+    --n;
+  if (n<=0)
+    return false;
+  memcpy(insertText,p,n);
+  insertText[n]=0;
+  return true;
 }
 
 static bool catalog_prompt_text(const char *title,const char *prompt,char *buf,int buflen){
@@ -782,6 +789,10 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       if (ext){
 	add(&text,ext_body);
 	sres=doTextArea(&text);
+	if (sres==KEY_CTRL_F2 && catalog_insert_help_example(insertText,ext_body)){
+	  reset_alpha();
+	  return 1;
+	}
       }
       else {
 	// Test marker: Copy CASIOCAS.PAK to storage root.
