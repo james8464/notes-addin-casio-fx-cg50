@@ -223,7 +223,7 @@ int inputline(const char * msg1,const char * msg2,ustl::string & s,bool numeric,
     int cursorpos=textX;
     PrintMini(&textX,&textY,(unsigned char*)s.substr(pos,s.size()-pos).c_str(),0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     drawRectangle(cursorpos,textY+24,3,18,COLOR_BLACK); // cursor
-    PrintMini(0,58,"         |        |        |        |  A<>A  |       ",4);
+    PrintMini(0,58,"         |        |        |        |  A<>a  |       ",4);
     int keyflag = GetSetupSetting( (unsigned int)0x14);
     int key;
     ck_getkey(&key);
@@ -552,11 +552,7 @@ void save_console_state_smem(const char * filename){
   Bfile_WriteFile_OS(hFile, script.c_str(), scriptsize);
   // save console state
 #if 1
-  char *consolebuf=(char*)malloc(consolesize+4);
-  if (!consolebuf){
-    Bfile_CloseFile_OS(hFile);
-    return;
-  }
+  char consolebuf[consolesize+4];
   char * consoleptr=consolebuf;
   for (int i=start_row;i<=Last_Line;++i){
     console_line & cur=Line[i];
@@ -568,18 +564,19 @@ void save_console_state_smem(const char * filename){
     memcpy(consoleptr, &c, sizeof(c)); consoleptr += sizeof(c);
     c=true; // cur.readonly;
     memcpy(consoleptr, &c, sizeof(c)); consoleptr += sizeof(c);
-    unsigned char *ptr=(unsigned char*)consoleptr,*strend=ptr+l;
-    memcpy(consoleptr, cur.str, l);
+    unsigned char buf[l+1];
+    buf[l]=0;
+    strcpy((char *)buf,(const char*)cur.str); 
+    unsigned char *ptr=buf,*strend=ptr+l;
     for (;ptr<strend;++ptr){
       if (*ptr==0x9c)
 	*ptr='\n';
     }
-    consoleptr+=l;
+    memcpy(consoleptr, buf, l); consoleptr+=l;
   }
   char BUF[2]={0,0};
   memcpy(consoleptr, BUF, sizeof(BUF)); consoleptr +=sizeof(BUF);
   Bfile_WriteFile_OS(hFile, consolebuf, consolesize+sizeof(BUF));
-  free(consolebuf);
 #else
   for (int i=start_row;i<=Last_Line;++i){
     console_line & cur=Line[i];
@@ -591,17 +588,15 @@ void save_console_state_smem(const char * filename){
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
     c=true; // cur.readonly;
     Bfile_WriteFile_OS(hFile, &c, sizeof(c));
-    unsigned char *buf=(unsigned char*)malloc(l+1);
-    if (!buf) break;
+    unsigned char buf[l+1];
     buf[l]=0;
-    strcpy((char *)buf,(const char*)cur.str);
+    strcpy((char *)buf,(const char*)cur.str); 
     unsigned char *ptr=buf,*strend=ptr+l;
     for (;ptr<strend;++ptr){
       if (*ptr==0x9c)
 	*ptr='\n';
     }
     Bfile_WriteFile_OS(hFile, buf, l);
-    free(buf);
   }
   char BUF[2]={0,0};
   Bfile_WriteFile_OS(hFile, BUF, sizeof(BUF));
@@ -665,8 +660,6 @@ int run_session(int start=0){
 
 
 bool load_console_state_smem(const char * filename){
-  static const int SESSION_RESTORE_MAX_BLOCK=32768;
-  static const int SESSION_RESTORE_MAX_LINE=INPUTBUFLEN-1;
   unsigned short pFile[MAX_FILENAME_SIZE+1];
   Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
   int hf = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
@@ -675,19 +668,14 @@ bool load_console_state_smem(const char * filename){
   // int Bfile_ReadFile(int HANDLE,void *buf,int size,int readpos);
   // read variables and modes
   int L=0;
-  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L<=0 || L>SESSION_RESTORE_MAX_BLOCK){
+  if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L==0){
     Bfile_CloseFile_OS(hf);
     return false;
   }  
-  char *BUF=(char*)malloc(L+4);
-  if (!BUF){
-    Bfile_CloseFile_OS(hf);
-    return false;
-  }
+  char BUF[L+4];
   BUF[1]=BUF[0]='/'; // avoid trying python compat.
   BUF[2]='\n';
   if (Bfile_ReadFile_OS(hf,BUF+3,L,-1)!=L){
-    free(BUF);
     Bfile_CloseFile_OS(hf);
     return false;
   }
@@ -699,7 +687,6 @@ bool load_console_state_smem(const char * filename){
   try_parse_i(false,contextptr);
   try_parse_i(bi,contextptr);
   do_run((char*)BUF,g,ge);
-  free(BUF);
   dconsole_mode=1;
   // read script
   if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L)){
@@ -707,17 +694,8 @@ bool load_console_state_smem(const char * filename){
     return false;
   }
   if (L>0){
-    if (L>SESSION_RESTORE_MAX_BLOCK){
-      Bfile_CloseFile_OS(hf);
-      return false;
-    }
-    char *bufscript=(char*)malloc(L+1);
-    if (!bufscript){
-      Bfile_CloseFile_OS(hf);
-      return false;
-    }
+    char bufscript[L+1];
     if (Bfile_ReadFile_OS(hf,bufscript,L,-1)!=L){
-      free(bufscript);
       Bfile_CloseFile_OS(hf);
       return false;
     }
@@ -738,8 +716,7 @@ bool load_console_state_smem(const char * filename){
       edptr->line=0;
       //edptr->line=edptr->elements.size()-1;
       edptr->pos=0;
-    }
-    free(bufscript);
+    }    
   }
   // read console state
   // insure parse messages are cleared
@@ -749,28 +726,16 @@ bool load_console_state_smem(const char * filename){
     unsigned short int l,curs;
     unsigned char type,readonly;
     if (Bfile_ReadFile_OS(hf,&l,sizeof(l),-1)!=sizeof(l) || l==0) break;
-    if (l>SESSION_RESTORE_MAX_LINE){
-      Bfile_CloseFile_OS(hf);
-      return false;
-    }
     if (Bfile_ReadFile_OS(hf,&curs,sizeof(curs),-1)!=sizeof(curs)) break;
     if (Bfile_ReadFile_OS(hf,&type,sizeof(type),-1)!=sizeof(type)) break;
     if (Bfile_ReadFile_OS(hf,&readonly,sizeof(readonly),-1)!=sizeof(readonly)) break;
-    char *buf=(char*)malloc(l+1);
-    if (!buf){
-      Bfile_CloseFile_OS(hf);
-      return false;
-    }
+    char buf[l+1];
     buf[l]=0;
-    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l){
-      free(buf);
-      break;
-    }
+    if (Bfile_ReadFile_OS(hf,buf,l,-1)!=l) break;
     // ok line ready in buf
     while (Line[Current_Line].readonly)
       Console_MoveCursor(CURSOR_DOWN);
     Console_Input((const unsigned char *)buf);
-    free(buf);
     Console_NewLine(LINE_TYPE_INPUT, 1);
 #if 1
     if (Current_Line>0){
@@ -1571,18 +1536,18 @@ void draw_menu(int editor){
     drawRectangle(5*fkeyw,LCD_HEIGHT_PX-18, fkeyw, 16, TEXT_COLOR_WHITE);
     x=5*fkeyw-2;
     y -= 2;
-    PrintMini( &x, &y, (unsigned char *)"EVAL", 0,0xffffffff,0,0,COLOR_BLACK,COLOR_WHITE,1,0);
+    PrintMini( &x, &y, (unsigned char *)"eval", 0,0xffffffff,0,0,COLOR_BLACK,COLOR_WHITE,1,0);
     Bdisp_MMPrint(x,y+1,"~",0,0xffffffff,0,0,jaune,COLOR_WHITE,1,0);
     x += 10; 
     Bdisp_MMPrint(x,y+1,"><",0,0xffffffff,0,0,COLOR_RED,COLOR_WHITE,1,0);
   }
   else {
     drawRectangle(5*fkeyw,LCD_HEIGHT_PX-18, fkeyw, 16, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(5*fkeyw+2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,editor==2?" EVAL":(lang?"FICH,CFG":"FILE,CFG"),0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+    Bdisp_MMPrint(5*fkeyw+2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,editor==2?" eval":(lang?"Fich,Cfg":"File,Cfg"),0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
   }
 #else
-  mPrintXY(12,8,"CAT",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
-  mPrintXY(19,8,"MEN",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
+  mPrintXY(12,8,"cat",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
+  mPrintXY(19,8,"men",TEXT_MODE_INVERT,TEXT_COLOR_BLACK);
 #endif
 }
 */
@@ -2473,7 +2438,7 @@ int Console_Init()
   return CONSOLE_SUCCEEDED;
 }
 
-const char conf_standard[] = "F1 ALG\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 CALC\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2D\nreserved\nF4 CAT\nreserved\nF5 A<>A\nreserved\nF6 POLY\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 ARIT\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 MAT\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 STAT\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: PROB\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; REAL\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< TRIG\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= CPLX\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
+const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2d\nreserved\nF4 cat\nreserved\nF5 A<>a\nreserved\nF6 poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 mat\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 stat\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: prob\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< trig\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0
@@ -2532,10 +2497,22 @@ char* fmenu_cfg=0;
 #else
 void Console_FMenu_Init()
 {
-  int i, number=0;
+  int i, number=0, key, handle;
+  unsigned char* tmp_realloc = NULL;
   unsigned char temp[20] = {'\0'};
-  if (!original_cfg)
-    original_cfg=(unsigned char *)conf_standard;
+  if (!original_cfg){
+    ustl::string cfg_s;
+    // Does the file exists ?
+    if (load_script((char*)"\\\\fls0\\FMENU.cfg",cfg_s)){
+      char * ptr=new char[cfg_s.size()+1];
+      strcpy(ptr,cfg_s.c_str());
+      original_cfg=(unsigned char *)ptr;
+    }
+    if(!original_cfg) {
+      save_script((const char *)"\\\\fls0\\FMENU.cfg",conf_standard);
+      original_cfg = (unsigned char *)conf_standard;
+    }
+  }
 
   unsigned char* cfg=original_cfg;
 
@@ -2901,13 +2878,14 @@ int Console_Disp()
   menu += string(menu_f2);
   while (menu.size()<13)
     menu += " ";
-  menu += lang?"| VOIR | CMDS | A<>A | FICH.":"| VIEW | CMDS | A<>A | FILE ";
+  menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
   //drawRectangle(0,174,LCD_WIDTH_PX,24,COLOR_BLACK);
   PrintMini(0,58,menu.c_str(),4);
 
   // status, clock, 
   set_xcas_status();
   Bdisp_PutDisp_DD();
+  drawCasioCasBorder();
   return CONSOLE_SUCCEEDED;
 }
 

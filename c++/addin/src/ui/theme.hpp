@@ -4,6 +4,7 @@
 
 #include <gint/display.h>
 #include <gint/keyboard.h>
+#include <gint/rtc.h>
 #include <gint/timer.h>
 
 namespace casio::ui
@@ -52,6 +53,25 @@ inline struct dwindow app_window()
     return {0, kStatusH, DWIDTH, DHEIGHT};
 }
 
+inline void append_two_digits(casio::device::FixedString<16> &out, int value)
+{
+    if(value < 0) value = 0;
+    if(value > 99) value %= 100;
+    out.append_char((char)('0' + (value / 10)));
+    out.append_char((char)('0' + (value % 10)));
+}
+
+inline void current_time_text(casio::device::FixedString<16> &out)
+{
+    rtc_time_t time;
+    rtc_get_time(&time);
+    append_two_digits(out, time.hours);
+    out.append_char(':');
+    append_two_digits(out, time.minutes);
+    out.append_char(':');
+    append_two_digits(out, time.seconds);
+}
+
 inline void draw_limited_text(int x, int y, color_t color, const char *text, int max_chars)
 {
     use_native_font();
@@ -77,6 +97,9 @@ inline void draw_status(const char *title, const char *mode)
     use_native_font();
     drect(0, 0, DWIDTH - 1, kStatusH - 1, kPaper);
     dtext(3, 5, kInk, title ? title : "");
+    casio::device::FixedString<16> time;
+    current_time_text(time);
+    dtext(128, 5, kInk, time.c_str());
     dtext(185, 5, kInk, "RAD");
     if(mode != nullptr && mode[0] != '\0') {
         int x = DWIDTH - 2 - text_width_approx(mode);

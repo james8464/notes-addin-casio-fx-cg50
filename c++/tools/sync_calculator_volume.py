@@ -10,7 +10,6 @@ from pathlib import Path
 
 
 FILES = ("CasioCAS.g3a", "CASIOCAS.PAK")
-SESSION_FILES = ("session.xw", "SESSION.XW")
 NAME_RE = re.compile(r"(casio|fx.?cg|cg50|prizm)", re.I)
 
 
@@ -58,7 +57,6 @@ def is_calculator_volume(path: Path, explicit: bool) -> tuple[bool, str]:
 
 
 def sync_volume(transfer: Path, volume: Path, dry_run: bool) -> None:
-    clear_session = os.environ.get("CASIO_CLEAR_SESSION", "0").lower() in ("1", "true", "yes", "on")
     for name in FILES:
         src = transfer / name
         dst = volume / name
@@ -72,14 +70,6 @@ def sync_volume(transfer: Path, volume: Path, dry_run: bool) -> None:
         shutil.copy2(src, dst)
         if dst.stat().st_size != src.stat().st_size:
             raise OSError(f"size mismatch after copy: {dst}")
-    if clear_session:
-        for name in SESSION_FILES:
-            stale = volume / name
-            if stale.exists() or stale.is_symlink():
-                if dry_run:
-                    print(f"Would remove {stale}")
-                else:
-                    stale.unlink()
 
 
 def main() -> int:

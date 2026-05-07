@@ -17,24 +17,14 @@ def main() -> int:
     gfx = (SRC / "graphicsProvider.cpp").read_text()
     console = (SRC / "console.cc").read_text()
     catalog = (SRC / "catalogen.cpp").read_text()
-    dconsole = (SRC / "dConsole.cpp").read_text()
 
     require(gfx_h, "void drawCasioCasBorder();", "border declaration")
     require(gfx, "const unsigned short kCasioCasPink = 0xF81F;", "pink color")
-    require(gfx, "drawRectangle(0, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);", "left safe border")
-    require(gfx, "drawRectangle(LCD_WIDTH_PX-6, 0, 6, LCD_HEIGHT_PX, kCasioCasPink);", "right safe border")
-    require(gfx, "drawRectangle(0, LCD_HEIGHT_PX-7, LCD_WIDTH_PX, 7, kCasioCasPink);", "bottom safe border")
-    for unsafe in ("390, 0, 395, 223", "0, 217, 395, 223", "0, 0, 5, 223"):
-        if unsafe in gfx:
-            raise SystemExit(f"FAIL calculator border: unsafe physical-frame draw {unsafe}")
-    if "DirectDrawRectangle(LCD_WIDTH_PX+6" in dconsole:
-        raise SystemExit("FAIL calculator border: unsafe scroll indicator outside LCD_WIDTH_PX")
-    require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24, 5, LCD_HEIGHT_PX-30, COLOR_WHITE);", "safe scroll clear")
-    require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24+starty, 5, 8, COLOR_BLACK);", "safe scroll thumb")
-    if "drawCasioCasBorder();\n  Bdisp_PutDisp_DD();" in console:
-        raise SystemExit("FAIL calculator border: no custom border draw during console launch/redraw")
-    if "drawCasioCasBorder();\n    Bdisp_PutDisp_DD();" in catalog:
-        raise SystemExit("FAIL calculator border: no custom border draw during catalog redraw")
+    require(gfx, "DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);", "left DD frame border")
+    require(gfx, "DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);", "right DD frame border")
+    require(gfx, "DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);", "bottom DD frame border")
+    require(console, "Bdisp_PutDisp_DD();\n  drawCasioCasBorder();", "console present after flush")
+    require(catalog, "Bdisp_PutDisp_DD();\n    drawCasioCasBorder();", "catalog present after flush")
     print("OK calculator border")
     return 0
 

@@ -894,7 +894,7 @@ void display(textArea * text,int & isFirstDraw,int & totalTextY,int & scroll,int
   }
   //if (editable)
   if (editable){
-    PrintMini(0,58," TESTS | LOOPS | MISC | CMDS | A<>A |FILE ",4);
+    PrintMini(0,58," tests | loops | misc | cmds | A<>a |File ",4);
     //draw_menu(1);
   }
   int scrollableHeight = LCD_HEIGHT_PX-24*(showtitle ? 2 : 1)-text->y;
@@ -1383,7 +1383,7 @@ int doTextArea(textArea* text) {
 	    show_status(text,search,replace);
 	    python_compat(text->python,contextptr);
 	    warn_python(text->python);
-	    PrintMini(0,58," TESTS | LOOPS | MISC | CMDS | A<>A |FILE ",4);
+	    PrintMini(0,58," tests | loops | misc | cmds | A<>a |File ",4);
 	  }
 	  if (sres==9){
 	    int res=check_leave(text);

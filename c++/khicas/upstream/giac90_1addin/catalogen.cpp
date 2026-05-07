@@ -530,6 +530,7 @@ static bool catalog_prompt_text(const char *title,const char *prompt,char *buf,i
     drawLine(0,4*24-1,LCD_WIDTH_PX-1,4*24-1,COLOR_GRAY);
     drawLine(0,4*24+23,LCD_WIDTH_PX-1,4*24+23,COLOR_GRAY);
     Bdisp_PutDisp_DD();
+    drawCasioCasBorder();
     ck_getkey(&key);
     if (key==KEY_CTRL_EXE)
       return true;
