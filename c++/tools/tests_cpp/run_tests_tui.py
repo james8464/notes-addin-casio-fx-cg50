@@ -6640,7 +6640,7 @@ class CASIOApp(App):
             ("t", "t+1", "t", ("y=x+1",)),
             ("t", "t^2", "t", ("y=x^2",)),
             ("t+1", "t-1", "t", ("y=x-2",)),
-            ("2*t", "t^2", "t", ("y=x^2/4", "4*y=x^2", "y=1/4*x^2")),
+            ("2*t", "t^2", "t", ("y=x^2/4", "4*y=x^2", "y=1/4*x^2", "y=(x/2)^2")),
             ("sin(t)", "cos(t)", "t", ("x^2+y^2=1",)),
         ]
         x_expr, y_expr, param, markers = rng.choice(forms)

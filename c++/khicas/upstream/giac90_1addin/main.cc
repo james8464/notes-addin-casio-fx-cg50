@@ -2892,10 +2892,7 @@ static bool cascas_read_pack_record(const char *name,string &body){
     const char *rname=buf+pos;
     const char *rbody=buf+pos+nl;
     if (nl==namelen && !strncmp(rname,name,namelen)){
-      string out;
-      for (int j=0;j<bl;++j)
-	out += rbody[j];
-      body=out;
+      body.assign(rbody,bl);
       return true;
     }
     pos += nl+bl;
