@@ -38,6 +38,7 @@ def main() -> int:
         ("build_packaging", [sys.executable, "c++/tools/check_build_packaging.py"]),
         ("calculator_sync", [sys.executable, "c++/tools/check_calculator_sync.py"]),
         ("calculator_border", [sys.executable, "c++/tools/check_calculator_border.py"]),
+        ("calculator_runtime_safety", [sys.executable, "c++/tools/check_calculator_runtime_safety.py"]),
         ("status_r", [sys.executable, "c++/tools/check_status_r.py"]),
         ("ui_labels_status", [sys.executable, "c++/tools/check_ui_labels_status.py"]),
         ("tui_llm_prompt", [sys.executable, "c++/tools/check_tui_llm_prompt.py"]),

@@ -93,13 +93,16 @@ int doTextInput(textInput* input) {
     } else if(input->key == KEY_CTRL_F1 || input->key == KEY_CTRL_F2) {  
       Cursor_SetFlashOff(); return INPUT_RETURN_KEYCODE;
     } else if(input->key == KEY_CTRL_F4 && input->type == INPUTTYPE_NORMAL) {
-      unsigned short VRAMbuffer[LCD_WIDTH_PX*(LCD_HEIGHT_PX-24)];
-      MsgBoxMoveWB(VRAMbuffer, 0, 0, LCD_WIDTH_PX-1, LCD_HEIGHT_PX-24-1, 1);
+      unsigned short *VRAMbuffer=(unsigned short*)malloc(LCD_WIDTH_PX*(LCD_HEIGHT_PX-24)*sizeof(unsigned short));
+      if (VRAMbuffer) MsgBoxMoveWB(VRAMbuffer, 0, 0, LCD_WIDTH_PX-1, LCD_HEIGHT_PX-24-1, 1);
       Bkey_ClrAllFlags();
       short character;
       character = CharacterSelectDialog();
       if (character) input->cursor = EditMBStringChar((unsigned char*)input->buffer, input->charlimit, input->cursor, character);
-      MsgBoxMoveWB(VRAMbuffer, 0, 0, LCD_WIDTH_PX-1, LCD_HEIGHT_PX-24-1, 0);
+      if (VRAMbuffer) {
+        MsgBoxMoveWB(VRAMbuffer, 0, 0, LCD_WIDTH_PX-1, LCD_HEIGHT_PX-24-1, 0);
+        free(VRAMbuffer);
+      }
     } else if(input->key == KEY_CTRL_F5 && input->type == INPUTTYPE_NORMAL) {
       // switch between lower and upper-case alpha
       switch(keyflag) {

@@ -17,6 +17,7 @@ def main() -> int:
     gfx = (SRC / "graphicsProvider.cpp").read_text()
     console = (SRC / "console.cc").read_text()
     catalog = (SRC / "catalogen.cpp").read_text()
+    dconsole = (SRC / "dConsole.cpp").read_text()
 
     require(gfx_h, "void drawCasioCasBorder();", "border declaration")
     require(gfx, "const unsigned short kCasioCasPink = 0xF81F;", "pink color")
@@ -26,6 +27,10 @@ def main() -> int:
     for unsafe in ("390, 0, 395, 223", "0, 217, 395, 223", "0, 0, 5, 223"):
         if unsafe in gfx:
             raise SystemExit(f"FAIL calculator border: unsafe physical-frame draw {unsafe}")
+    if "DirectDrawRectangle(LCD_WIDTH_PX+6" in dconsole:
+        raise SystemExit("FAIL calculator border: unsafe scroll indicator outside LCD_WIDTH_PX")
+    require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24, 5, LCD_HEIGHT_PX-30, COLOR_WHITE);", "safe scroll clear")
+    require(dconsole, "drawRectangle(LCD_WIDTH_PX-6, 24+starty, 5, 8, COLOR_BLACK);", "safe scroll thumb")
     require(console, "drawCasioCasBorder();\n  Bdisp_PutDisp_DD();", "console border before flush")
     require(catalog, "drawCasioCasBorder();\n    Bdisp_PutDisp_DD();", "catalog border before flush")
     print("OK calculator border")

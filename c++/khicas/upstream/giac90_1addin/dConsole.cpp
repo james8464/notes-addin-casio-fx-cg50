@@ -940,10 +940,10 @@ int dGetLine (char * s,int max, int isRecording, int ml) {
       refresh = 0;
     }
     int keyflag = GetSetupSetting( (unsigned int)0x14);
-    DirectDrawRectangle(LCD_WIDTH_PX+6, 24, LCD_WIDTH_PX+6+5, 210, COLOR_WHITE); // clear scroll indicator
+    drawRectangle(LCD_WIDTH_PX-6, 24, 5, LCD_HEIGHT_PX-30, COLOR_WHITE);
     if(isscrolling) {
       int starty = (line_count == 0 ? 0 : ((line_count+myconsolescroll-(line_count < visible_lines ? line_count : visible_lines))*162)/(line_count < visible_lines ? line_count : line_count-visible_lines));
-      DirectDrawRectangle(LCD_WIDTH_PX+6, 24+starty, LCD_WIDTH_PX+6+5, 24+starty+8, COLOR_BLACK);
+      drawRectangle(LCD_WIDTH_PX-6, 24+starty, 5, 8, COLOR_BLACK);
     }
     GetKey(&key);
     set_xcas_status();
