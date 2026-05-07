@@ -21,9 +21,10 @@ def main() -> int:
 
     require(gfx_h, "void startCasioCasStatusR();", "status R timer declaration")
     require(gfx, "static void drawCasioCasStatusR()", "private status R drawer")
-    require(gfx, "status_r_phase=(status_r_phase+1)%12", "3s blink cycle")
-    require(gfx, "status_r_phase<8", "2s visible phase")
-    require(gfx, "Timer_Install(0,status_r_tick,250)", "status R refresh timer")
+    require(gfx, "RTC_GetTicks()/128", "status R tick source")
+    require(gfx, "%3)==2", "2s visible / 1s hidden phase")
+    if "Timer_Install(0,status_r_tick" in gfx or "drawCasioCasStatusR();" in gfx.partition("static void status_r_tick")[2]:
+        raise SystemExit("FAIL status R: LCD drawing must not happen from timer callbacks")
     require(gfx, "DirectDrawRectangle(x-1,y-1,x+13,y+15,COLOR_WHITE);", "status R clear")
     require(gfx, 'PrintMiniMini(&tx,&ty,(unsigned char*)"R",0,TEXT_COLOR_BLUE,0);', "status R glyph draw")
     require(console, "drawCasioCasBorder();\n  startCasioCasStatusR();", "console status R draw")
