@@ -194,6 +194,23 @@ std::string math_style_line(std::string line)
     else if(starts_with(line, "Try substitution")) line = "u=inner; compare du.";
     else if(starts_with(line, "Test reverse chain")) line = "u=inner; compare du.";
     else if(starts_with(line, "If a product remains")) line = "I=uv-Int(vdu) or DI table.";
+    else if(starts_with(line, "Identify reverse-chain power rule")) line.clear();
+    else if(starts_with(line, "Divide by inner derivative")) line.clear();
+    else if(starts_with(line, "Factor out constant")) line.clear();
+    else if(starts_with(line, "Multiply the primitive by the constant")) line.clear();
+    else if(starts_with(line, "Split the Int over the sum")) line.clear();
+    else if(starts_with(line, "Integrate the remaining power")) line.clear();
+    else if(starts_with(line, "Use atan standard result")) line.clear();
+    else if(starts_with(line, "Integrate by the chain rule")) line.clear();
+    else if(starts_with(line, "exact endpoint values")) line.clear();
+    else if(starts_with(line, "the constant and")) line.clear();
+    else if(starts_with(line, "Apply constant rule")) line.clear();
+    else if(starts_with(line, "Add the primitives")) line.clear();
+    else if(starts_with(line, "term-by-term")) line.clear();
+    else if(line == "to expr + C" || line == "to expr + C.") line.clear();
+    else if(starts_with(line, "Apply power rule:")) line = trim_copy(line.substr(17));
+    else if(starts_with(line, "Use standard result ")) line = trim_copy(line.substr(20));
+    else if(starts_with(line, "standard result ")) line = trim_copy(line.substr(16));
 
     if(starts_with(line, "Integral becomes ")) line = "I=" + trim_copy(line.substr(17));
     if(starts_with(line, "Variable = ")) line = "var=" + trim_copy(line.substr(11));
@@ -205,9 +222,6 @@ std::string math_style_line(std::string line)
 
     if(line == "Add constant C." || line == "Add constant C") line = "+ C.";
     line = trim_copy(line);
-    replace_all(line, " = ", "=");
-    replace_all(line, "= ", "=");
-    replace_all(line, " =", "=");
     replace_all(line, " -> ", "=>");
     if(!line.empty() && line.back() == '.') line.pop_back();
     if(line.empty()) return "";

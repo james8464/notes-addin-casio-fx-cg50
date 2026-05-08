@@ -370,7 +370,7 @@ Valid: |(
 Coeff: 
 @END
 @t107
-I=Int[
+I = Int[
 @END
 @t064
 Area=Int y*dx/d
@@ -412,13 +412,13 @@ d/dx:
  = 
 @END
 @t055
-F= 
+F = 
 @END
 @t060
-x= 
+x = 
 @END
 @t061
-y= 
+y = 
 @END
 @t062
 dx/d
@@ -439,25 +439,25 @@ d2y/dx2=(d/d
 (dy/dx))/(dx/d
 @END
 @t070
-y= 
+y = 
 @END
 @t071
-u= 
+u = 
 @END
 @t072
 du/d
 @END
 @t075
-f= 
+f = 
 @END
 @t078
 expand 
 @END
 @t081
-Base= 
+Base = 
 @END
 @t082
-Power= 
+Power = 
 @END
 @t087
 

@@ -24,11 +24,15 @@ FORBIDDEN = [
 ]
 
 REQUIRED = [
-    "u=2*x + log(x)",
-    "du/dx=",
-    "dy/dx=3*u^2*du/dx",
+    "u = 2*x + log(x)",
+    "du/dx =",
+    "dy/dx = 3*u^2*du/dx",
     "3*(2*x + log(x))^2",
 ]
+
+
+def compact_eq(s):
+    return s.replace(" = ", "=").replace("= ", "=").replace(" =", "=")
 
 
 def run_case(name, args):
@@ -42,8 +46,9 @@ def run_case(name, args):
     for marker in FORBIDDEN:
         if marker.lower() in low:
             bad.append(f"forbidden: {marker}")
+    compact_out = compact_eq(out)
     for marker in REQUIRED:
-        if marker not in out:
+        if compact_eq(marker) not in compact_out:
             bad.append(f"missing: {marker}")
     if bad:
         print(f"FAIL {name}: {', '.join(bad)}")

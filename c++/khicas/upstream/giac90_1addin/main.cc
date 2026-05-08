@@ -2947,12 +2947,6 @@ static string cascas_exam_line_text(const string &in){
     ++n;
   if (n>0 && n+1<int(s.size()) && s[n]=='.' && s[n+1]==' ')
     s=cascas_trim(s.substr(n+2));
-  for (size_t p=0;(p=s.find(" = ",p))!=string::npos;)
-    s.replace(p,3,"=");
-  for (size_t p=0;(p=s.find("= ",p))!=string::npos;)
-    s.replace(p,2,"=");
-  for (size_t p=0;(p=s.find(" =",p))!=string::npos;)
-    s.replace(p,2,"=");
   for (size_t p=0;(p=s.find(" -> ",p))!=string::npos;)
     s.replace(p,4,"=>");
   if (!s.empty() && s[s.size()-1]=='.')

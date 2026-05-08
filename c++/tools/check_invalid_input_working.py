@@ -16,6 +16,10 @@ def fail(msg: str) -> int:
     return 1
 
 
+def compact_eq(s: str) -> str:
+    return s.replace(" = ", "=").replace("= ", "=").replace(" =", "=")
+
+
 def main() -> int:
     if not HOST.exists():
         return fail("missing host build; run c++/tools/build_host.sh")
@@ -42,8 +46,9 @@ def main() -> int:
         capture_output=True,
     )
     trig_out = proc.stdout + proc.stderr
+    compact_trig_out = compact_eq(trig_out)
     for marker in ["Base angle", "x=[7*pi/6, 11*pi/6]"]:
-        if marker not in trig_out:
+        if compact_eq(marker) not in compact_trig_out:
             return fail("solve() did not route trig solve working:\n" + trig_out)
     print("OK invalid input suppresses working")
     return 0
