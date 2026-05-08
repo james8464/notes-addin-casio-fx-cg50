@@ -5,8 +5,6 @@ Source: `https://www-fourier.univ-grenoble-alpes.fr/~parisse/casio/`
 Imported:
 - `giac90_1addin.tgz` -> `giac90_1addin/`
 - `khicasen.g3a` -> `reference/khicasen.g3a`
-- `khicas50.g3a` -> `reference/khicas50.g3a`
-- `emucas50.g3a` -> `reference/emucas50.g3a`
 
 Verified reference:
 

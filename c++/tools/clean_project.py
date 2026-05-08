@@ -21,6 +21,8 @@ GENERATED_PATHS = [
     "paper2_audit",
     "graphify-out",
     "c++/graphify-out",
+    "c++/tools/tests_cpp/reports",
+    "c++/addin/src/device/cas_lib",
 ]
 
 
