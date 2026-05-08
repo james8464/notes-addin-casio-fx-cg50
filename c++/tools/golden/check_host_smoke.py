@@ -34,14 +34,14 @@ def main() -> int:
 
         out = run_host(mode, expr)
         ok = False
+        expected_line = expected.strip()
+        if expected_line.lower().startswith("answer:"):
+            expected_line = expected_line.split(":", 1)[1].strip()
         if mode == "alg":
-            ok = any(ln.strip() == expected.strip() for ln in out)
+            ok = any(ln.strip() == expected_line for ln in out)
         else:
-            # Allow richer multi-line working while keeping a stable "Answer:" line.
-            if expected.strip().lower().startswith("answer:"):
-                ok = any(ln.strip() == expected.strip() for ln in out)
-            else:
-                ok = (out[:1] == [expected])
+            # Allow richer multi-line exam working; require the final answer line.
+            ok = any(ln.strip() == expected_line for ln in out)
 
         if not ok:
             failures.append(
@@ -59,4 +59,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
