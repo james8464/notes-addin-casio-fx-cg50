@@ -6102,9 +6102,15 @@ class CASIOApp(App):
                 ("exp(x)=exp(y)", "x=y"),
                 ("log(2,x)+log(2,y)=3", "x*y=8"),
                 ("log(3,x^2*y)-2*log(3,x)=5", "y=243"),
+                ("sqrt(x)=sqrt(y)", "x=y"),
+                ("asin(x)=asin(y)", "x=y"),
+                ("atan(x)=atan(y)", "x=y"),
+                ("abs(x)=abs(y)", "x^2=y^2"),
+                ("1/x=1/y", "x=y"),
+                ("x^3=y^3", "x=y"),
             ])
             label = f"Random compare {index}: simple"
-            return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature="algebra_compare:simple")
+            return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature="algebra_compare:simple", use_calculated=False)
         mode = rng.choice([
             "exp_log",
             "identity_poly",
@@ -6176,6 +6182,12 @@ class CASIOApp(App):
                 ("exp(x)=exp(y)", "x=y", algebra_transform_checker("source-target = 0"), "exp_one_to_one"),
                 ("log(2,x)+log(2,y)=3", "x*y=8", algebra_transform_checker("source-target = 0"), "log_product"),
                 ("log(3,x^2*y)-2*log(3,x)=5", "y=243", algebra_transform_checker("source-target = 0"), "log_cancel"),
+                ("sqrt(x)=sqrt(y)", "x=y", algebra_transform_checker("source-target = 0"), "sqrt_one_to_one"),
+                ("asin(x)=asin(y)", "x=y", algebra_transform_checker("source-target = 0"), "asin_one_to_one"),
+                ("atan(x)=atan(y)", "x=y", algebra_transform_checker("source-target = 0"), "atan_one_to_one"),
+                ("abs(x)=abs(y)", "x^2=y^2", algebra_transform_checker("source-target = 0"), "abs_square"),
+                ("1/x=1/y", "x=y", algebra_transform_checker("source-target = 0"), "reciprocal_clear"),
+                ("x^3=y^3", "x=y", algebra_transform_checker("source-target = 0"), "odd_power"),
             ])
             label = f"Random transform {index}: {mode}"
             cxx_checker = lambda out: "source-target = 0" in normalized_text(out)

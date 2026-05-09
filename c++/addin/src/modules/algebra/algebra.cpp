@@ -945,6 +945,29 @@ static std::optional<std::string> linear_fractional_interval_range(
                    : rat_node_text(a, y0) + " <= y < " + rat_node_text(a, asym);
 }
 
+static std::optional<std::string> linear_fractional_full_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps
+)
+{
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || !is_zero(rp.num.a2) || !is_zero(rp.den.a2) || is_zero(rp.den.a1)) return std::nullopt;
+    Rational A = rp.num.a1, B = rp.num.a0, C = rp.den.a1, D = rp.den.a0;
+    if(is_zero(r_sub(r_mul(A, D), r_mul(B, C)))) return std::nullopt;
+    Rational asym = r_div(A, C);
+    NodeId num = poly2_to_node(a, rp.num, var);
+    NodeId den = poly2_to_node(a, rp.den, var);
+    NodeId cy_minus_a = poly2_to_node(a, Poly2{Rational{0, 1}, C, r_neg(A), true}, "y");
+    NodeId b_minus_dy = poly2_to_node(a, Poly2{Rational{0, 1}, r_neg(D), B, true}, "y");
+    steps.push_back("y = " + format_expr(a, n));
+    steps.push_back("y(" + format_expr(a, den) + ") = " + format_expr(a, num));
+    steps.push_back(var + "(" + format_expr(a, cy_minus_a) + ") = " + format_expr(a, b_minus_dy));
+    steps.push_back(format_expr(a, cy_minus_a) + " != 0");
+    return "y != " + rat_node_text(a, asym);
+}
+
 static bool is_x_square_factor(Arena &a, NodeId n, std::string const &var)
 {
     return is_pow_var(a, n, var, 2);
@@ -1799,6 +1822,67 @@ static std::optional<NodeId> exp_residual_alt(Arena &a, NodeId residual)
     return sub_node(a, pa, pb);
 }
 
+static bool one_to_one_arg(Arena &a, NodeId body, FnKind &kind, NodeId &arg)
+{
+    Node const &n = a.get(body);
+    if(n.kind != NodeKind::Fn) return false;
+    if(n.fkind == FnKind::Sqrt || n.fkind == FnKind::Asin || n.fkind == FnKind::Acos ||
+       n.fkind == FnKind::Atan || n.fkind == FnKind::Log10) {
+        kind = n.fkind;
+        arg = n.a;
+        return true;
+    }
+    return false;
+}
+
+static bool reciprocal_den(Arena &a, NodeId body, NodeId &den)
+{
+    Node const &n = a.get(body);
+    if(n.kind != NodeKind::Div) return false;
+    Node const &top = a.get(n.a);
+    if(top.kind != NodeKind::Num || top.num.num != top.num.den) return false;
+    den = n.b;
+    return true;
+}
+
+static bool odd_power_base(Arena &a, NodeId body, NodeId &base)
+{
+    Node const &n = a.get(body);
+    if(n.kind != NodeKind::Pow) return false;
+    Node const &e = a.get(n.b);
+    if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num <= 0 || (e.num.num % 2) == 0) return false;
+    base = n.a;
+    return true;
+}
+
+static std::optional<NodeId> inverse_residual_alt(Arena &a, NodeId residual)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, residual, terms);
+    if(terms.size() != 2) return std::nullopt;
+    Rational c[2];
+    NodeId body[2] = {0, 0};
+    bool has_body[2] = {false, false};
+    for(int i = 0; i < 2; ++i) split_coeff_body(a, terms[i], c[i], body[i], has_body[i]);
+    if(!has_body[0] || !has_body[1] || c[0].den != 1 || c[1].den != 1) return std::nullopt;
+    int pos = c[0].num == 1 && c[1].num == -1 ? 0 : (c[1].num == 1 && c[0].num == -1 ? 1 : -1);
+    if(pos < 0) return std::nullopt;
+    int neg = 1 - pos;
+    FnKind kp, kn;
+    NodeId ap = 0, an = 0;
+    if(one_to_one_arg(a, body[pos], kp, ap) && one_to_one_arg(a, body[neg], kn, an) && kp == kn)
+        return sub_node(a, ap, an);
+    Node const &bp = a.get(body[pos]);
+    Node const &bn = a.get(body[neg]);
+    if(bp.kind == NodeKind::Fn && bp.fkind == FnKind::Abs && bn.kind == NodeKind::Fn && bn.fkind == FnKind::Abs)
+        return sub_node(a, casio::power(a, bp.a, casio::num(a, 2)), casio::power(a, bn.a, casio::num(a, 2)));
+    if(reciprocal_den(a, body[pos], ap) && reciprocal_den(a, body[neg], an))
+        return sub_node(a, ap, an);
+    if(odd_power_base(a, body[pos], ap) && odd_power_base(a, body[neg], an))
+        return sub_node(a, ap, an);
+    return std::nullopt;
+}
+
 static std::vector<NodeId> residual_alternatives(Arena &a, NodeId residual)
 {
     std::vector<NodeId> out{residual};
@@ -1807,6 +1891,7 @@ static std::vector<NodeId> residual_alternatives(Arena &a, NodeId residual)
         out.push_back(n->quotient);
     }
     if(auto n = exp_residual_alt(a, residual)) out.push_back(*n);
+    if(auto n = inverse_residual_alt(a, residual)) out.push_back(*n);
     return out;
 }
 
@@ -4237,6 +4322,35 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
     (void)wrote;
 }
 
+static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    auto alts = log_residual_alts(a, rearr);
+    if(!alts) return std::nullopt;
+    for(NodeId cand : {alts->quotient, alts->cleared}) {
+        auto rp = ratpoly_of_node(a, cand, var);
+        if(!rp.ok) continue;
+        auto sols = solve_poly2(a, primitive_poly2(rp.num), var);
+        if(sols.empty()) continue;
+        std::vector<std::string> vars;
+        collect_symbols(a, rearr, vars);
+        bool single_var = true;
+        for(auto const &v : vars) {
+            if(v != var) {
+                single_var = false;
+                break;
+            }
+        }
+        auto valid = single_var ? filter_real_solutions(a, rearr, var, sols, std::nullopt, std::nullopt) : sols;
+        if(valid.empty()) continue;
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, cand) + " = 0");
+        if(valid.size() != sols.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+        append_answer(out, var, valid);
+        return out;
+    }
+    return std::nullopt;
+}
+
 static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
 {
     Node const &x = a.get(n);
@@ -5332,6 +5446,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *rq;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto lf_full = linear_fractional_full_range(arena, n, var, steps);
+                        lo.empty() && hi.empty() && lf_full) {
+                    range_answer = *lf_full;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, steps)) {
                     range_answer = *lf;
                     steps.push_back("Range: " + range_answer + ".");
@@ -5811,6 +5930,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return *inv_trig;
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_route->begin(), log_route->end());
+            return out;
+        }
+        if(auto log_alt = log_alt_solve_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), log_alt->begin(), log_alt->end());
             return out;
         }
         if(auto bq = biquadratic_route(arena, rearr, solve_var)) {
