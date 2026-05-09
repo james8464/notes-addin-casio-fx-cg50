@@ -1737,7 +1737,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             steps.push_back("cos(x-alpha)=" + ratio_text(*rhs_int, *r_int) + ".");
             steps.push_back("x-alpha=" + beta + " or -" + beta + " (mod 2*pi).");
             steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
-            steps.push_back("Keep values in the interval.");
+            steps.push_back(var + "=" + alpha + "+" + beta + " or " + var + "=2*pi+" + alpha + "-" + beta + ".");
             return casio::exam_block(
                 "trig solve",
                 steps,
@@ -2405,8 +2405,11 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "Let c=cos(x).",
                 "Use cos(2x)=2c^2-1.",
-                "Then 2c^2+c-3=0, so (2c+3)(c-1)=0.",
-                "Only c=1 is valid.",
+                "2*c^2 + c - 3 = 0.",
+                "(2*c + 3)(c - 1) = 0.",
+                "c = -3/2 or c = 1.",
+                "Reject c = -3/2 because -1 <= c <= 1.",
+                "c = 1.",
             },
             ans
         );

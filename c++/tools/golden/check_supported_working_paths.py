@@ -108,7 +108,9 @@ def base_cases() -> list[Case]:
     for expr, must in [
         ("factor(x^2-5*x+6)", ("(x - 3)*(x - 2)",)),
         ("expand((2*x-3)^4)", ("(2*x - 3)^4", "16*x^4")),
+        ("(m*x+n)^2,method=expand", ("(m*x + n)^2", "2*m", "n", "x")),
         ("x^2+2*x+1,method=collect", ("x^2 + 2*x + 1",)),
+        ("x^2+2*x+1,method=canonical", ("x^2 + 2*x + 1", "= x^2 + 2*x + 1")),
         ("complete_square(2*x^2+8*x+3)", ("h =", "k =", "Answer:")),
         ("1/(sqrt(x)+1),method=rationalise", ("*(sqrt(x) - 1)/(sqrt(x) - 1)", "(sqrt(x) - 1)/(x - 1)")),
         ("pf((x^2+5*x+6)/(x^2*(x+1)))", ("A/x^2", "A=", "B=", "C=")),
@@ -164,7 +166,7 @@ def base_cases() -> list[Case]:
         ("fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])", ("x = 0:", "a = 1", "b = 2", "c = 3")),
         ("rewrite(sqrt(12+sqrt(140)))", ("m+n=12", "Answer: sqrt(7) + sqrt(5)")),
         ("rewrite(sin(x)^4+cos(x)^4,sin(x)^2*cos(x)^2)", ("(sin(x)^2 + cos(x)^2)^2", "1 - 2*sin(x)^2*cos(x)^2")),
-        ("binomial(sqrt(1+2*x),x,3)", ("(1+u)^n", "Valid", "x^3")),
+        ("binomial(sqrt(1+2*x),x,3)", ("T_r = C(n,r)*u^r", "(1+u)^n", "Valid", "x^3")),
         ("newton(x^3-2*x-5,x,2,3)", ("Newton", "x_", "Answer:")),
         ("inverse((x+3)/2)", ("x = f(y)", "f^-1")),
         ("inverse(5*x-1)", ("f^-1(x) = x/5 + 1/5",)),
@@ -213,6 +215,7 @@ def base_cases() -> list[Case]:
         ("asin((x-3)/8),method=parts", ("u=asin(w)", "dv=dw", "sqrt(1-w^2)")),
         ("acos((x-1)/3),method=parts", ("u=acos(w)", "w=(x - 1)/3", "+ C")),
         ("atan(2*x-3),method=parts", ("u=atan(w)", "dv=dw", "+ C")),
+        ("((x^2-1)/(x-1))/(x+1),method=auto", ("N = x^2 - 1", "D = x^2 - 1", "x + C")),
         ("(5*x+7)/((x-1)*(x^2+4)),method=pf", ("A/(x-1)", "A=12/5", "+ C")),
         ("(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf", ("(x - 1)^2", "coefficient equations", "+ C")),
         ("(x^2+1)/(x^4+1),method=pf", ("Factor x^4+1", "coeffs", "+ C")),
@@ -243,11 +246,12 @@ def base_cases() -> list[Case]:
 
     # Trig solving/rewrite/proof.
     for item in [
-        ("3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform", ("R =", "arccos", "x = [")),
+        ("3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform", ("R =", "arccos", "x=arctan(4/3)+arccos(2/5)", "x = [")),
         ("sin(3*x)=sin(x),x,0,2*pi,10,method=identity", ("sin(A) = sin(B):", "x=n*pi", "x = [0, pi/4")),
         ("cos(x)+cos(3*x)=0,x,-180,180", ("-135", "-90", "-45", "45", "90", "135")),
         ("2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity", ("u=cos(x)", "alpha = arccos", "x = [")),
         ("2*cos(x)^2+3*cos(x)-2=0,x,0,2*pi,10,method=identity", ("Reject u=-2", "alpha = arccos", "x = [")),
+        ("cos(2*x)+cos(x)=2,x,0,180,method=identity", ("c = -3/2 or c = 1", "Reject c = -3/2", "x = [0]"), ("2c^2+c-3",)),
         ("sqrt(1-cos(x))=sin(x),x,0,2*pi,8,method=square_then_check", ("Square", "Check", "Answer:")),
         ("tan(2*x)=sqrt(3),x,0,2*pi,8,method=cast", ("tan(A)", "Base angles", "Answer:")),
         ("1/cos(x)=3,x,0,2*pi,8,method=identity", ("arccos(1/3)", "2*pi - arccos(1/3)")),

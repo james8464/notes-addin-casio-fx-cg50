@@ -8337,7 +8337,7 @@ class CASIOApp(App):
             ("alg", "2*x+y=5,x-y=1,method=simultaneous", "simultaneous", True),
             ("stats", "1,2,3,4,method=auto", "auto", True),
             ("stats", "1,2,3,4,method=summary", "summary", True),
-            ("stats", "1,2,3,4,method=regression", "regression", True),
+            ("stats", "1,2,3;2,4,6,method=regression", "regression", True),
             ("stats", "1,2,3,4,method=hypothesis_test", "hypothesis_test", True),
             ("stats", "binomial(10,.5,4),method=binomial", "binomial", True),
             ("stats", "normal(0,1,1.96),method=normal", "normal", True),

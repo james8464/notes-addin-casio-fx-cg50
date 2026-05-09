@@ -5050,6 +5050,77 @@ static NodeId integrate_poly_node(Arena &a, Poly p, std::string const &var)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+struct RatPoly
+{
+    Poly num{};
+    Poly den{{Rational{1, 1}}, true};
+};
+
+static std::optional<RatPoly> rational_poly_of(Arena &a, NodeId n, std::string const &var, int depth = 0)
+{
+    if(depth > 24) return std::nullopt;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto top = rational_poly_of(a, x.a, var, depth + 1);
+        auto bot = rational_poly_of(a, x.b, var, depth + 1);
+        if(!top || !bot) return std::nullopt;
+        RatPoly out;
+        out.num = poly_mul_any(top->num, bot->den);
+        out.den = poly_mul_any(top->den, bot->num);
+        return out;
+    }
+    if(x.kind == NodeKind::Add) {
+        RatPoly out{Poly{}, Poly{{Rational{1, 1}}, true}};
+        for(NodeId kid : x.kids) {
+            auto k = rational_poly_of(a, kid, var, depth + 1);
+            if(!k) return std::nullopt;
+            out.num = poly_add_any(poly_mul_any(out.num, k->den), poly_mul_any(k->num, out.den));
+            out.den = poly_mul_any(out.den, k->den);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        RatPoly out{Poly{{Rational{1, 1}}, true}, Poly{{Rational{1, 1}}, true}};
+        for(NodeId kid : x.kids) {
+            auto k = rational_poly_of(a, kid, var, depth + 1);
+            if(!k) return std::nullopt;
+            out.num = poly_mul_any(out.num, k->num);
+            out.den = poly_mul_any(out.den, k->den);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto exp = as_num(a, x.b);
+        if(!exp || exp->den != 1 || std::llabs(exp->num) > 8) return std::nullopt;
+        auto base = rational_poly_of(a, x.a, var, depth + 1);
+        if(!base) return std::nullopt;
+        RatPoly out{Poly{{Rational{1, 1}}, true}, Poly{{Rational{1, 1}}, true}};
+        for(std::int64_t i = 0; i < std::llabs(exp->num); ++i) {
+            out.num = poly_mul_any(out.num, exp->num >= 0 ? base->num : base->den);
+            out.den = poly_mul_any(out.den, exp->num >= 0 ? base->den : base->num);
+        }
+        return out;
+    }
+    auto p = poly_of_any(a, n, var);
+    if(!p || !p->ok) return std::nullopt;
+    return RatPoly{*p, Poly{{Rational{1, 1}}, true}};
+}
+
+static std::optional<NodeId> integrate_cancelled_rational(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    auto r = rational_poly_of(a, expr, var);
+    if(!r || !r->num.ok || !r->den.ok || poly_degree(r->den) < 1) return std::nullopt;
+    auto qr = poly_divmod(r->num, r->den);
+    if(!qr || poly_degree(qr->second) >= 0) return std::nullopt;
+    NodeId nnode = poly_to_node(a, r->num, var);
+    NodeId dnode = poly_to_node(a, r->den, var);
+    NodeId qnode = poly_to_node(a, qr->first, var);
+    steps.push_back("N = " + format_expr_human(a, nnode) + ", D = " + format_expr_human(a, dnode) + ".");
+    steps.push_back("N/D = " + format_expr_human(a, qnode) + ".");
+    steps.push_back("I = Integral(" + format_expr_human(a, qnode) + ") d" + var + ".");
+    return integrate_poly_node(a, qr->first, var);
+}
+
 static std::optional<NodeId> integrate_poly_div_linear(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -8562,6 +8633,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
     NodeId node = casio::simplify(arena, parsed);
     if(auto trig_square_route = integrate_one_minus_trig_square(arena, node, req.var, req.expr)) return *trig_square_route;
+    {
+        std::vector<std::string> steps;
+        if(auto cancelled = integrate_cancelled_rational(arena, parsed, req.var, steps)) {
+            return casio::exam_block("cancelling rational factors", steps, format_expr_human(arena, casio::simplify(arena, *cancelled)) + " + C");
+        }
+    }
     Node const &node_ref = arena.get(node);
     if(node_ref.kind == NodeKind::Fn &&
        (node_ref.fkind == FnKind::Atan || node_ref.fkind == FnKind::Asin || node_ref.fkind == FnKind::Acos)) {

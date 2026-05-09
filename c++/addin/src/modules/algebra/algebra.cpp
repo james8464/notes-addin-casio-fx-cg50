@@ -1310,9 +1310,11 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     }
     std::vector<std::string> out{
         "1. Rewrite as " + rat_node_text(a, factor) + "*(1+(" + rat_node_text(a, m) + ")*" + var + ")^" + rat_node_text(a, power) + ".",
-        "2. Use (1+u)^n = 1+n*u+n(n-1)u^2/2!+...",
-        "3. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
-        "4. " + validity,
+        "2. u = " + rat_node_text(a, m) + "*" + var + ".",
+        "3. T_r = C(n,r)*u^r.",
+        "4. Use (1+u)^n = 1+n*u+n(n-1)u^2/2!+...",
+        "5. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
+        "6. " + validity,
         "Answer: " + ordered_answer,
     };
     if(from_recip) out.insert(out.begin() + 1, "2. Use previous expansion/reverse-power relation if already found.");
@@ -5071,7 +5073,55 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 }
             }
-            if(!ok) return {"Err: base must be ax+b with numeric a,b."};
+            if(!ok) {
+                if(nn > 6) return {"Err: symbolic expansion too large."};
+                auto comb_sym = [](int n, int k) -> std::int64_t {
+                    if(k < 0 || k > n) return 0;
+                    if(k == 0 || k == n) return 1;
+                    std::int64_t r = 1;
+                    for(int i = 1; i <= k; i++) r = r * (n - (k - i)) / i;
+                    return r;
+                };
+                auto pow_node = [&](NodeId v, int p) -> NodeId {
+                    if(p == 0) return casio::num(arena, 1);
+                    if(p == 1) return v;
+                    Node const &vn = arena.get(v);
+                    if(vn.kind == NodeKind::Mul) {
+                        std::vector<NodeId> factors;
+                        for(NodeId kid : vn.kids) factors.push_back(casio::power(arena, kid, casio::num(arena, p)));
+                        return casio::mul(arena, factors);
+                    }
+                    return casio::power(arena, v, casio::num(arena, p));
+                };
+                NodeId A = bn.kids[0];
+                NodeId B = bn.kids[1];
+                std::vector<NodeId> terms_sym;
+                for(int k = 0; k <= nn; ++k) {
+                    std::vector<NodeId> factors;
+                    std::int64_t c = comb_sym(nn, k);
+                    if(c != 1) factors.push_back(casio::num(arena, c));
+                    NodeId ap = pow_node(A, nn - k);
+                    NodeId bp = pow_node(B, k);
+                    if(nn - k != 0) factors.push_back(ap);
+                    if(k != 0) factors.push_back(bp);
+                    terms_sym.push_back(casio::simplify(arena, factors.empty() ? casio::num(arena, 1) : casio::mul(arena, factors)));
+                }
+                NodeId outn = casio::simplify(arena, casio::add(arena, terms_sym));
+                std::string rule = "(" + format_expr(arena, A) + " + " + format_expr(arena, B) + ")^" + std::to_string(nn);
+                std::string line;
+                for(std::size_t i = 0; i < terms_sym.size(); ++i) {
+                    std::string term = format_expr(arena, terms_sym[i]);
+                    if(line.empty()) line = term;
+                    else if(!term.empty() && term[0] == '-') line += " - " + trim_text(term.substr(1));
+                    else line += " + " + term;
+                }
+                return {
+                    format_expr(arena, n),
+                    "= " + rule,
+                    "= " + line,
+                    format_expr(arena, outn),
+                };
+            }
 
             auto comb = [](int n, int k) -> std::int64_t {
                 if(k < 0 || k > n) return 0;
@@ -5867,8 +5917,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
             std::vector<std::string> steps;
             if(req.method == "collect" || req.method == "canonical") {
-                steps.push_back("Start with " + format_expr(arena, parsed) + ".");
-                steps.push_back("Collect like terms.");
+                steps.push_back(format_expr(arena, parsed));
+                steps.push_back("= " + format_expr(arena, n));
                 return casio::exam_block("collect", steps, format_expr(arena, n));
             }
             if(req.method == "pf" || req.method == "partfrac") {

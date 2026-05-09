@@ -637,7 +637,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "(x^2+2*x+1)/(x+1),method=auto",
-        ["Cancel common factor x + 1", "Integrate x + 1", "Answer: x + 1/2*x^2 + C"],
+        ["N =", "x^2", "D = x + 1", "N/D = x + 1", "x + 1/2*x^2 + C"],
         ["No elementary A - level primitive", "No elementary A-level primitive", "Answer: int(", "ERR:"],
     ),
     (

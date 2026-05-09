@@ -86,7 +86,7 @@ def main() -> int:
     bad += require(
         "poly_division_integral",
         run(["--int", "(x^4+5*x^2+4)/(x^2+1)"]),
-        ("Cancel common factor", "power rule", "Answer: 4*x + 1/3*x^3 + C"),
+        ("N/D = x^2 + 4", "I = Int(x^2 + 4)", "4*x + 1/3*x^3 + C"),
         ("ERR:",),
     )
     bad += require(
