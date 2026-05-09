@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE_TAG="casio-prizmsdk:latest"
 SOURCE_IMAGE_TAG="casio-khicas-source:latest"
 MODE="${CASIO_PRIZM_MODE:-khicas-source}"
+MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 UPSTREAM_G3A="${ROOT_DIR}/c++/khicas/upstream/reference/khicasen.g3a"
 KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/c++/prizm/build"
@@ -128,13 +129,14 @@ if [ "${MODE}" = "khicas-source" ]; then
   ensure_source_image
   docker run --rm \
     --platform linux/amd64 \
+    -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
     -v "${ROOT_DIR}:/work" \
     -w /work/c++/khicas/upstream/giac90_1addin \
     "${SOURCE_IMAGE_TAG}" \
     bash -lc '
       set -euo pipefail
       make clean
-      make -j"$(nproc)" khicasen.g3a ICON_UNS=/work/c++/prizm/assets/unselected.png ICON_SEL=/work/c++/prizm/assets/selected.png
+      make -j"${CASIO_MAKE_JOBS}" khicasen.g3a ICON_UNS=/work/c++/prizm/assets/unselected.png ICON_SEL=/work/c++/prizm/assets/selected.png
     '
   cp "${KHICAS_SRC}/khicasen.g3a" "${OUT_G3A}"
   cp "${KHICAS_SRC}/khicasen.bin" "${OUT_DIR}/CasioCAS.bin"
@@ -201,6 +203,7 @@ ensure_prizm_image
 echo ""
 echo "=== Building native Prizm add-in ==="
 docker run --rm \
+  -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
   -v "${ROOT_DIR}:/work" \
   -w /work/c++/prizm \
   "${IMAGE_TAG}" \
@@ -209,7 +212,7 @@ docker run --rm \
     sh3eb-elf-g++ --version | head -1
     mkg3a -h | head -1
     make clean
-    make -j"$(nproc)"
+    make -j"${CASIO_MAKE_JOBS}"
   '
 
 echo ""
