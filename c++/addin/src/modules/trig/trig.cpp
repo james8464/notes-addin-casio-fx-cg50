@@ -3262,10 +3262,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
 
-    return {
-        "1. Simplify using exact trig/algebra rules.",
-        "Answer: " + format_expr(arena, n),
-    };
+    return {"Answer: " + format_expr(arena, n)};
 }
 
 } // namespace casio::trig

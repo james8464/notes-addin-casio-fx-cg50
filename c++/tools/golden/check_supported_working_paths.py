@@ -91,6 +91,7 @@ def base_cases() -> list[Case]:
         ("(x+1)/(x-2)+(x-2)/(x+1)=5,method=clear_denoms", ("Domain:", "x =")),
         ("sqrt(x+5)-sqrt(x-3)=2,method=auto", ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4", "x = [4]")),
         ("x+2*sqrt(x)-8=0", ("u = sqrt(x)", "u^2 + 2*u - 8 = 0", "x = 4")),
+        ("x+7=5*sqrt(x)", ("u = sqrt(x)", "b^2 - 4ac = -3 < 0", "x = []"), ("*i",)),
         ("(x^2-5*x+7)^(x^2-9*x+20)=1", ("base = 1", "exponent = 0", "x = [2, 3, 4, 5]")),
         ("abs(2*x+1)+9<4*x", ("abs", "x > 5/2")),
         ("2^(2*x)-5*2^x+4=0,method=log_exp", ("u=a^x", "x =")),
@@ -173,6 +174,7 @@ def base_cases() -> list[Case]:
     ]:
         min_lines = 1 if expr.startswith("factor(") or "method=collect" in expr else 3
         c.append(Case("alg_manip", "alg", expr, must, min_lines=min_lines))
+    c.append(Case("alg_manip", "trig", "(cosec(x)^2-cot(x)^2)*exp(x),method=manip_trig", ("e^(x)",), min_lines=1))
 
     # Domain/range.
     for expr, must in [
@@ -216,6 +218,7 @@ def base_cases() -> list[Case]:
         ("acos((x-1)/3),method=parts", ("u=acos(w)", "w=(x - 1)/3", "+ C")),
         ("atan(2*x-3),method=parts", ("u=atan(w)", "dv=dw", "+ C")),
         ("((x^2-1)/(x-1))/(x+1),method=auto", ("N = x^2 - 1", "D = x^2 - 1", "x + C")),
+        ("((x)^4+2*x^2+1)/(x^2+1),method=div", ("Divide: N/D = x^2 + 1", "+ C")),
         ("(5*x+7)/((x-1)*(x^2+4)),method=pf", ("A/(x-1)", "A=12/5", "+ C")),
         ("(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf", ("(x - 1)^2", "coefficient equations", "+ C")),
         ("(x^2+1)/(x^4+1),method=pf", ("Factor x^4+1", "coeffs", "+ C")),

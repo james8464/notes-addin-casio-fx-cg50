@@ -4179,6 +4179,14 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     out.push_back("u = sqrt(" + var + "), u >= 0");
     out.push_back(var + " = u^2");
     out.push_back(format_expr(a, poly2_to_node(a, *ueq, "u")) + " = 0");
+    Rational disc = r_add(r_mul(ueq->a1, ueq->a1), r_neg(r_mul(Rational{4, 1}, r_mul(ueq->a2, ueq->a0))));
+    disc.normalize();
+    if(disc.num < 0) {
+        out.push_back("b^2 - 4ac = " + format_expr(a, a.num(disc)) + " < 0");
+        out.push_back(var + " = [] (no real solution)");
+        out.push_back("Answer: " + var + " = []");
+        return out;
+    }
     if(auto rr = rational_quadratic_roots(*ueq)) {
         out.push_back("Factor: " + quadratic_factor_text(a, *ueq, "u") + " = 0");
         out.push_back("u = " + format_rat(a, rr->first) + " or " + format_rat(a, rr->second));
@@ -6001,7 +6009,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         // Exam-style numbered working.
         std::vector<std::string> out;
-        out.push_back("1. Start with " + equation_text + ".");
+        std::string shown_eq = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
+        out.push_back("1. Start with " + shown_eq + ".");
         if(interval_lo && interval_hi) {
             out.push_back(
                 "2. Interval: " + solve_var + " in [" + format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) + "]"

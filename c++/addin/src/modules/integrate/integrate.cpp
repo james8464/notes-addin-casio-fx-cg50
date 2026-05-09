@@ -5116,7 +5116,7 @@ static std::optional<NodeId> integrate_cancelled_rational(Arena &a, NodeId expr,
     NodeId dnode = poly_to_node(a, r->den, var);
     NodeId qnode = poly_to_node(a, qr->first, var);
     steps.push_back("N = " + format_expr_human(a, nnode) + ", D = " + format_expr_human(a, dnode) + ".");
-    steps.push_back("N/D = " + format_expr_human(a, qnode) + ".");
+    steps.push_back("Divide: N/D = " + format_expr_human(a, qnode) + ".");
     steps.push_back("I = Integral(" + format_expr_human(a, qnode) + ") d" + var + ".");
     return integrate_poly_node(a, qr->first, var);
 }

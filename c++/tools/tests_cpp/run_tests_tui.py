@@ -2059,6 +2059,8 @@ def integrate_checker(*tokens):
             "power-reduction",
             "consider y",
             "dy/dx",
+            "divide:",
+            "n/d =",
             "integration by parts",
             "integrate by parts",
             "let u=",
