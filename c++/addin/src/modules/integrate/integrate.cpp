@@ -321,6 +321,16 @@ static std::string compact_key(std::string text)
     return out;
 }
 
+static std::string log_equiv_key(std::string s)
+{
+    std::size_t pos = 0;
+    while((pos = s.find("ln(", pos)) != std::string::npos) {
+        s.replace(pos, 3, "log(");
+        pos += 4;
+    }
+    return s;
+}
+
 static bool valid_power_param(std::string const &p)
 {
     if(p == "n") return true;
@@ -718,11 +728,81 @@ static std::optional<long long> parse_int_key(std::string s)
     return std::nullopt;
 }
 
+static std::optional<long long> parse_int_x_key(std::string s, std::string const &var)
+{
+    if(s == var) return 1;
+    if(s == "-" + var) return -1;
+    if(s.size() <= var.size() || s.substr(s.size() - var.size()) != var) return std::nullopt;
+    std::string p = s.substr(0, s.size() - var.size());
+    if(p == "+") return 1;
+    if(p == "-") return -1;
+    return parse_int_key(p);
+}
+
+static bool parse_linear_key(std::string s, std::string const &var, long long &m, long long &b)
+{
+    std::size_t vp = s.find(var);
+    if(vp == std::string::npos) return false;
+    auto coeff = parse_int_x_key(s.substr(0, vp + var.size()), var);
+    if(!coeff) return false;
+    m = *coeff;
+    std::string rest = s.substr(vp + var.size());
+    if(rest.empty()) {
+        b = 0;
+        return true;
+    }
+    if(rest[0] != '+' && rest[0] != '-') return false;
+    auto c = parse_int_key(rest);
+    if(!c) return false;
+    b = *c;
+    return true;
+}
+
 static std::string rat_text(Rational r)
 {
     r.normalize();
     if(r.den == 1) return std::to_string(r.num);
     return std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static std::optional<TextIntegral> linear_over_sqrt_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    std::string k = compact_key((*args)[0]);
+    std::string mid = "/sqrt(";
+    auto p = k.find(mid);
+    if(p == std::string::npos || k.empty() || k.back() != ')') return std::nullopt;
+    auto a = parse_int_x_key(k.substr(0, p), var);
+    if(!a) return std::nullopt;
+    long long b = 0, c = 0;
+    if(!parse_linear_key(k.substr(p + mid.size(), k.size() - p - mid.size() - 1), var, b, c) || b == 0) return std::nullopt;
+    auto lo = parse_int_key(compact_key((*args)[2]));
+    auto hi = parse_int_key(compact_key((*args)[3]));
+    if(!lo || !hi) return std::nullopt;
+    long long ulo = b * (*lo) + c;
+    long long uhi = b * (*hi) + c;
+    if(ulo <= 0 || uhi <= 0) return std::nullopt;
+
+    auto sqrt_text = [](long long n) {
+        auto r = integer_sqrt_exact(n);
+        return r ? std::to_string(*r) : "sqrt(" + std::to_string(n) + ")";
+    };
+    std::string U0 = sqrt_text(ulo);
+    std::string U1 = sqrt_text(uhi);
+    std::string coeff = "2*" + std::to_string(*a) + "/" + std::to_string(b * b);
+    std::string answer = coeff + "*((" + U1 + "^3/3 - " + std::to_string(c) + "*" + U1 + ") - (" +
+                         U0 + "^3/3 - " + std::to_string(c) + "*" + U0 + "))";
+    std::vector<std::string> steps = {
+        "u^2 = " + std::to_string(b) + "*" + var + (c >= 0 ? " + " : " - ") + std::to_string(std::llabs(c)),
+        var + " = (u^2" + (c >= 0 ? " - " : " + ") + std::to_string(std::llabs(c)) + ")/" + std::to_string(b),
+        "2u du = " + std::to_string(b) + " d" + var + ", so d" + var + " = 2u/" + std::to_string(b) + " du",
+        var + "=" + std::to_string(*lo) + " => u=" + U0 + ", " + var + "=" + std::to_string(*hi) + " => u=" + U1,
+        "I = " + coeff + " Int_" + U0 + "^" + U1 + " (u^2 - " + std::to_string(c) + ") du",
+        "I = " + coeff + " [u^3/3 - " + std::to_string(c) + "*u]_" + U0 + "^" + U1,
+    };
+    return TextIntegral{"linear radical substitution", std::move(steps), answer};
 }
 
 static std::optional<TextIntegral> linear_sqrt_defint_pattern(std::string const &expr)
@@ -912,6 +992,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return TextIntegral{std::move(method), std::move(steps), std::move(answer)};
     };
 
+    c = log_equiv_key(c);
+    if(auto radical = linear_over_sqrt_defint_pattern(expr)) return radical;
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
