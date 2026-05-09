@@ -4,6 +4,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
@@ -14,11 +16,11 @@ CATALOG = REPO / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cp
 CASES = [
     ("int", "x*exp(x),method=parts", ["u=x", "dv=e^x dx"]),
     ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du=2*x dx"]),
-    ("int", "x^2,method=badmethod", ["Invalid method", "Auto result:"]),
+    ("int", "x^2,method=badmethod", ["Invalid method"]),
     ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
     ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["cos(A) = -1/2", "x = [pi, 5*pi/3]"]),
     ("alg", "x^2-5*x+6=0,method=factor", ["x^2 - 5*x + 6 = 0"]),
-    ("stats", "1,2,3,4,method=summary", ["Sort data"]),
+    ("stats", "1,2,3,4,method=summary", ["mean =", "Sxx ="]),
     ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["s = 25"]),
 ]
 
@@ -52,7 +54,8 @@ def main() -> int:
             timeout=12,
         )
         out = proc.stdout + proc.stderr
-        ok = proc.returncode == 0 and all(n in out for n in needles)
+        expected_error = "Invalid method" in needles
+        ok = (proc.returncode == 0 or expected_error) and all(markers_present(out, [n]) for n in needles)
         if ok:
             print("OK", flag, expr)
             continue

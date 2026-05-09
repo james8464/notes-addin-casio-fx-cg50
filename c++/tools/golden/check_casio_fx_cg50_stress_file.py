@@ -5,15 +5,13 @@ import re
 import subprocess
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 SOURCE = Path("/Users/james/Desktop/casio_fx_cg50_cas_stress_test_100_questions.txt")
 REPORT = REPO / "c++" / "tests" / "reports" / "casio_fx_cg50_stress_latest.txt"
-
-
-def compact(text: str) -> str:
-    return "".join(ch for ch in text if ch not in " \t\r\n*")
 
 
 def run(cmd: list[str]) -> str:
@@ -24,11 +22,11 @@ def run(cmd: list[str]) -> str:
 DIRECT: dict[int, tuple[list[str], list[str]]] = {
     1: (
         [str(HOST), "--int", "integrate((sqrt(x)*(2*x-5))/3,x)"],
-        ["Rewrite sqrt(x) as x^(1/2)", "Integrate each power", "4/15*x^(5/2)", "-10/9*x^(3/2)", "+ C"],
+        ["sqrt(x) = x^(1/2)", "each power", "4/15*x^(5/2)", "-10/9*x^(3/2)", "+ C"],
     ),
     2: (
         [str(HOST), "--int", "integrate(1/sqrt(x^2+4*x-5),x)"],
-        ["Complete square", "(x + 2)^2 - 9", "log(abs(", "+ C"],
+        ["D = x^2 + 4*x - 5 = (x + 2)^2 - 9", "log(abs(", "+ C"],
     ),
     3: (
         [str(HOST), "--int", "mean_value(1/sqrt(x^2+4*x-5),x,3,13)"],
@@ -40,7 +38,7 @@ DIRECT: dict[int, tuple[list[str], list[str]]] = {
     ),
     18: (
         [str(HOST), "--alg", "complete_square(x^2+4*x-5)"],
-        ["Complete square", "h = b/(2a) = 2", "k = c - b^2/(4a) = -9", "(x + 2)^2 - 9"],
+        ["b = 4", "h = b/(2a) = 2", "k = c - b^2/(4a) = -9", "(x + 2)^2 - 9"],
     ),
     96: (
         [str(HOST), "--suvat", "suvat(u=0,a=3.2,t=5,find=[v,s])"],
@@ -83,13 +81,13 @@ def main() -> int:
     for qid, (cmd, needles) in sorted(DIRECT.items()):
         out = run(cmd)
         ok = "ERR:" not in out and "not recognised" not in out
-        ok = ok and all(compact(n) in compact(out) for n in needles)
+        ok = ok and all(markers_present(out, [n]) for n in needles)
         status = "OK" if ok else "FAIL"
         print(status, qid)
         report.append(f"{status} Q{qid}: {' '.join(cmd[2:])}")
         if not ok:
             bad += 1
-            report.append("  missing: " + ", ".join(n for n in needles if compact(n) not in compact(out)))
+            report.append("  missing: " + ", ".join(n for n in needles if not markers_present(out, [n])))
             report.extend("  " + line for line in out.splitlines()[:16])
         report.append("")
 

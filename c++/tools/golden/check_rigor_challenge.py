@@ -6,15 +6,13 @@ import re
 import sys
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 REPORT = REPO / "c++" / "tests" / "reports" / "rigor_challenge_latest.txt"
 DEFAULT_DOC = Path.home() / "Downloads" / "The_Rigor_Challenge_100_Structural_Problems.txt"
-
-
-def compact(text: str) -> str:
-    return "".join(ch for ch in (text or "") if ch not in " \t\r\n*")
 
 
 def run(args: list[str], stdin: str | None = None) -> str:
@@ -31,22 +29,22 @@ def load_doc(path: Path) -> tuple[int, int, str]:
 
 
 DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
-    1: ([str(HOST), "--derive", "x^y=y^x,method=implicit"], None, ["Domain:", "Differentiate both sides", "collect dy/dx", "dy/dx = y*(x*log(y) - y)/(x*(y*log(x) - x))"]),
-    2: ([str(HOST), "--derive", "sin(x*y)+x^2=y^2,method=implicit"], None, ["Differentiate both sides", "dy/dx = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))"]),
+    1: ([str(HOST), "--derive", "x^y=y^x,method=implicit"], None, ["Domain:", "F_x + F_y*dy/dx = 0", "dy/dx = y*(x*log(y) - y)/(x*(y*log(x) - x))"]),
+    2: ([str(HOST), "--derive", "sin(x*y)+x^2=y^2,method=implicit"], None, ["F_x + F_y*dy/dx = 0", "dy/dx = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))"]),
     3: ([str(HOST), "--derive", "log(x+y)=x*y,method=implicit"], None, ["Domain:", "dy/dx = (y*(x+y)-1)/(1-x*(x+y))"]),
-    4: ([str(HOST), "--derive", "y=x*tan(y),method=implicit"], None, ["product/chain", "dy/dx = tan(y)/(- x*sec(y)^2 + 1)"]),
+    4: ([str(HOST), "--derive", "y=x*tan(y),method=implicit"], None, ["F_y = - x*sec(y)^2 + 1", "dy/dx = tan(y)/(- x*sec(y)^2 + 1)"]),
     5: ([str(HOST), "--derive", "mode:4,x^2+y^2=a^2"], None, ["Domain: y != 0", "dy/dx=-x/y", "d2y/dx2 = -a^2/y^3"]),
     6: ([str(HOST), "--derive", "t^2+1/t,t^2-1/t,t,method=param_second"], None, ["dx/dt", "dy/dx", "d2y/dx2 = -12*t^4/(2*t^3-1)^3"]),
     7: ([str(HOST), "--derive", "e^t*cos(t),e^t*sin(t),t,method=param_second"], None, ["dx/dt", "Divide by dx/dt", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"]),
     8: ([str(HOST), "--derive", "log(t),t+1/t,t,method=param_second"], None, ["d2y/dx2 = t+1/t"]),
-    9: ([str(HOST), "--int", "e^(2*x)*cos(3*x),method=parts"], None, ["looping integration by parts", "a=2, b=3", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
-    10: ([str(HOST), "--int", "e^(-x)*sin(2*x),method=parts"], None, ["looping integration by parts", "e^(-x)", "sin(2*x)"]),
+    9: ([str(HOST), "--int", "e^(2*x)*cos(3*x),method=parts"], None, ["a=2, b=3", "J = Int(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
+    10: ([str(HOST), "--int", "e^(-x)*sin(2*x),method=parts"], None, ["Parts gives I", "J = Int(e^(-x)cos(2x))dx", "-e^(-x)*(sin(2*x) + 2*cos(2*x))/5 + C"]),
     11: ([str(HOST), "--int", "1/(x*sqrt(1+log(x)))"], None, ["Domain:", "Let u=1+log(x)", "2*sqrt(1+log(x)) + C"]),
     12: ([str(HOST), "--int", "sin(x)/(1+cos(x))^2"], None, ["Let u=1+cos(x)", "1/(1+cos(x)) + C"]),
-    13: ([str(HOST), "--int", "1/(e^x+e^-x)"], None, ["substitution u=e^x", "atan(e^x) + C"]),
+    13: ([str(HOST), "--int", "1/(e^x+e^-x)"], None, ["u = e^x", "I = Int(1/(1+u^2)) du", "atan(e^x) + C"]),
     14: ([str(HOST), "--int", "tan(x)*sec(x)^2/(1+tan(x)^2)^2"], None, ["Let u=tan(x)", "-1/(2*(1+tan(x)^2)) + C"]),
     15: ([str(HOST), "--int", "sqrt((1-x)/(1+x))"], None, ["x=cos(t)", "sqrt(1-x^2) - acos(x) + C"]),
-    16: ([str(HOST), "--int", "1/(x^2+2*x+5)^2"], None, ["Complete square", "atan((x+1)/2)/16"]),
+    16: ([str(HOST), "--int", "1/(x^2+2*x+5)^2"], None, ["x^2+2x+5 = (x+1)^2+4", "atan((x+1)/2)/16"]),
     17: ([str(HOST), "--int", "log(x)^2/x"], None, ["Let u=log(x)", "log(x)^3/3 + C"]),
     18: ([str(HOST), "--int", "x*e^(x^2)*sin(e^(x^2))"], None, ["Let u=e^(x^2)", "-cos(e^(x^2))/2 + C"]),
     19: ([str(HOST), "--derive", "y^3-3*x*y+x^3=0,method=implicit"], None, ["dy/dx = (y-x^2)/(y^2-x)"]),
@@ -66,16 +64,16 @@ DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
     108: ([str(HOST), "--int", "cos(x)*e^(sin(x))/(1+e^(sin(x)))"], None, ["Let u=e^(sin(x))", "log(abs(1+e^(sin(x)))) + C"]),
     109: ([str(HOST), "--int", "x*sqrt(1-x^2)"], None, ["Let u=1-x^2", "-(1-x^2)^(3/2)/3 + C"]),
     110: ([str(HOST), "--int", "1/(sqrt(x)*(1+x))"], None, ["Let t=sqrt(x)", "2*atan(sqrt(x)) + C"]),
-    111: ([str(HOST), "--int", "1/(1+e^x)"], None, ["reverse-chain log", "x - log(abs(1+e^x)) + C"]),
+    111: ([str(HOST), "--int", "1/(1+e^x)"], None, ["u = e^x", "1/(u(1+u)) = 1/u-1/(1+u)", "x - log(abs(1+e^x)) + C"]),
     112: ([str(HOST), "--derive", "x^2*e^y+y^2*e^x=1,method=implicit"], None, ["dy/dx = -(2*x*e^y+y^2*e^x)/(x^2*e^y+2*y*e^x)"]),
     113: ([str(HOST), "--derive", "cos(t)^3,sin(t)^3,t,method=param_second"], None, ["dy/dx", "d2y/dx2 = 1/(3*cos(t)^4*sin(t))"]),
 }
 
 
 STATIC_FAMILIES: dict[str, tuple[range | list[int], list[str]]] = {
-    "trig_struct": (list(range(26, 51)) + list(range(114, 126)), ["trig identity", "standard identities", "sum-product", "double-angle"]),
-    "algebra_pf": (list(range(51, 76)) + list(range(126, 139)), ["Domain:", "Clearing denominators", "partial fractions"]),
-    "log_exp": (list(range(76, 101)) + list(range(139, 151)), ["log/exp laws", "Domain:", "verify roots"]),
+    "trig_struct": (list(range(26, 51)) + list(range(114, 126)), ["s^2=1-c^2", "Trig solve:"]),
+    "algebra_pf": (list(range(51, 76)) + list(range(126, 139)), ["factor denom; PF", "Expand; collect; factor"]),
+    "log_exp": (list(range(76, 101)) + list(range(139, 151)), ["Set u=log/base exp", "Domain:"]),
 }
 
 
@@ -112,7 +110,7 @@ def main() -> int:
         args, stdin, needles = DIRECT[qid]
         out = run(args, stdin)
         ok = "ERR:" not in out and "Error:" not in out and "Integral not recognised" not in out
-        ok = ok and all(compact(n) in compact(out) for n in needles)
+        ok = ok and all(markers_present(out, [n]) for n in needles)
         covered.add(qid)
         direct += 1
         status = "OK" if ok else "FAIL"
@@ -124,7 +122,7 @@ def main() -> int:
         report.append("")
 
     for family, (ids, markers) in STATIC_FAMILIES.items():
-        ok = all(m in src for m in markers)
+        ok = all(markers_present(src, [m]) for m in markers)
         for qid in ids:
             covered.add(qid)
             policy += 1

@@ -26,7 +26,6 @@ def main() -> int:
     assert mod.case_paper_code("mp2_z Q9 separable DE") == "z"
     assert mod.case_qid("A10 trig-rational range") == "10"
     assert mod.case_qid("S Q14 substitution integral") == "14"
-    assert mod.compact("a + b\n") == "a+b"
     print("OK madasmaths full-audit unit")
     return 0
 

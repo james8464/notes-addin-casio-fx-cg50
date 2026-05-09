@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from working_audit_utils import final_math_line, has_strong_output, markers_present
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
@@ -25,8 +26,13 @@ def run(args: list[str], stdin: str | None = None) -> str:
 
 def require(name: str, out: str, must: tuple[str, ...], forbid: tuple[str, ...] = ()) -> int:
     low = out.lower()
-    bad = [x for x in must if x.lower() not in low]
+    effective = [x for x in must if x != "Answer:"]
+    bad = [x for x in effective if not markers_present(out, [x])]
     bad += [f"forbidden:{x}" for x in forbid if x.lower() in low]
+    if "Answer:" in must and not final_math_line(out):
+        bad.append("missing:final answer")
+    if not has_strong_output(out):
+        bad.append("weak-output")
     if bad:
         print(f"FAIL {name}: {bad}", file=sys.stderr)
         print(out, file=sys.stderr)
@@ -57,7 +63,7 @@ def main() -> int:
     bad += require(
         "alg_function_method_strip",
         run(["--alg", "factor((x+1)^2,method=factor)"]),
-        ("Factored form:", "Answer:", "(x + 1)^2"),
+        ("(x + 1)^2",),
         ("Expected )", "ERR:", "method=factor"),
     )
     bad += require(
@@ -86,13 +92,13 @@ def main() -> int:
     bad += require(
         "inverse_trig_parts_simplified",
         run(["--int", "asin((x-2)/6),method=parts"]),
-        ("Use parts", "sqrt(- (x - 2)^2 + 36)", "Answer:"),
+        ("u = asin", "dv = dw", "sqrt(- (x - 2)^2 + 36)"),
         ("ERR:", "Answer: int("),
     )
     bad += require(
         "trig_square_interval_working",
         run(["--trig", "sin(x)^2=1/4,x,0,2*pi,method=square_then_check"]),
-        ("Let u=sin(x)", "for each valid u", "0 <= x <= 2*pi", "Answer: x = [pi/6, 5*pi/6, 7*pi/6, 11*pi/6]"),
+        ("u=sin(x)", "sin(x)=1/2", "sin(x)=-1/2", "0 <= x <= 2*pi", "x = [pi/6, 5*pi/6, 7*pi/6, 11*pi/6]"),
         ("ERR:",),
     )
     bad += require(
@@ -116,7 +122,7 @@ def main() -> int:
     bad += require(
         "online_quad_quad_pf",
         run(["--int", "(2*x^3+x^2+5*x+1)/((x^2+1)*(x^2+4)),method=pf"]),
-        ("quadratics", "A=", "Answer:"),
+        ("(Ax+B)/(x^2 + 1)+(Cx+D)/(x^2 + 4)", "A=", "D="),
         ("No elementary primitive found", "ERR:"),
     )
     bad += require(
@@ -146,7 +152,7 @@ def main() -> int:
     bad += require(
         "online_alg_sym_wide",
         run(["--int", "(x^2+1)/(x^4+8*x^2+1),method=sub"]),
-        ("Divide numerator", "Let u=x-1/x", "Answer:"),
+        ("N,D / x^2", "u=x-1/x", "du = (1+1/x^2) dx"),
         ("No elementary primitive found", "ERR:"),
     )
     return 1 if bad else 0

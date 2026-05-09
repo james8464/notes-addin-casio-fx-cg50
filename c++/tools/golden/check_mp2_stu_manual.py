@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++/addin/host/build/casio_host"
 
@@ -18,17 +20,17 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "S Q14 substitution integral",
         ["--int", "(1+2*sin(x)*tan(x))/(2*(1+cos(x)*tan(x))*cos(x)*tan(x))"],
-        ["Let u=sec(x)+sqrt(tan(x))", "The integral becomes Integral(1/u) du", "log(abs(sec(x) + sqrt(tan(x)))) + C"],
+        ["u=sec(x)+sqrt(tan(x))", "I = Int(1/u) du", "log(abs(sec(x) + sqrt(tan(x)))) + C"],
     ),
     (
         "S Q9 DE RHS integral",
         ["--int", "2*x*cosec(x+pi/6)^2"],
-        ["Let u=2x and dv=cosec(x+pi/6)^2 dx", "v=-cot(x+pi/6)", "-2*x*cot(x + pi/6) + 2*log(abs(sin(x + pi/6))) + C"],
+        ["u = 2x; dv = cosec(x+pi/6)^2 dx", "v=-cot(x+pi/6)", "-2*x*cot(x + pi/6) + 2*log(abs(sin(x + pi/6))) + C"],
     ),
     (
         "T Q8 substitution then parts",
         ["--int", "((ln(x^2+1)-2*ln(x))*sqrt(x^2+1))/x^4"],
-        ["Let u=sqrt(1+1/x^2)", "The integral becomes -2*Integral(u^2 log(u)) du", "2*(1 + 1/x^2)^(3/2)*(1 - 3*log(sqrt(1 + 1/x^2)))/9 + C"],
+        ["u=sqrt(1+1/x^2)", "I = -2*Int(u^2 ln(u)) du", "2*(1 + 1/x^2)^(3/2)*(1 - 3*log(sqrt(1 + 1/x^2)))/9 + C"],
     ),
     (
         "T Q15 area",
@@ -53,7 +55,7 @@ def main() -> int:
     for name, args, needles in CASES:
         p = subprocess.run([str(HOST), *args], cwd=str(REPO), text=True, capture_output=True, timeout=12)
         out = p.stdout + p.stderr
-        missing = [n for n in needles if n not in out]
+        missing = [n for n in needles if not markers_present(out, [n])]
         if p.returncode or missing:
             bad += 1
             print(f"FAIL {name}: rc={p.returncode} missing={missing}", file=sys.stderr)

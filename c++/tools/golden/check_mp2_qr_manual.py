@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -40,7 +42,7 @@ CASES = [
 def run_case(name: str, args: list[str], needles: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    misses = [needle for needle in needles if needle not in out]
+    misses = [needle for needle in needles if not markers_present(out, [needle])]
     if proc.returncode != 0:
         misses.append(f"returncode={proc.returncode}")
     if misses:

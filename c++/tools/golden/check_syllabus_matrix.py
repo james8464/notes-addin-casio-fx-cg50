@@ -7,6 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from working_audit_utils import has_strong_output, markers_present
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
@@ -33,15 +34,15 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("pure_coordinate_geometry", "complete square subpart", ("--alg", "complete_square(x^2+y^2-6*x+10*y+34)"), ("(x - 3)^2",)),
     MatrixCase("pure_sequences", "binomial expansion with validity", ("--alg", "binomial((1+x)^5,x,0,5)"), ("Valid for", "x^5")),
     MatrixCase("pure_trigonometry", "R-form trig solve", ("--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform"), ("R =", "arccos(2/5)")),
-    MatrixCase("pure_explogs", "log laws and domain", ("--alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)"), ("Domain:", "Exponentiate")),
+    MatrixCase("pure_explogs", "log laws and domain", ("--alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)"), ("Domain:", "log_b(A) = c => A = b^c")),
     MatrixCase("pure_differentiation", "chain rule", ("--derive", "sin((x+1)^2),x,method=chain"), ("u = (x + 1)^2", "du/dx = 2*(x + 1)", "dy/dx = cos(u)*du/dx")),
-    MatrixCase("pure_integration", "DI/table integration", ("--int", "x^2*e^(2*x),method=di"), ("DI table", "Answer:")),
-    MatrixCase("pure_numerical_methods", "numeric-root subpart", ("--alg", "solve(x^2-2=0,x,method=numeric)"), ("sqrt(8)/2",)),
+    MatrixCase("pure_integration", "DI/table integration", ("--int", "x^2*e^(2*x),method=di"), ("D:", "I:", "Signs:")),
+    MatrixCase("pure_numerical_methods", "numeric-root subpart", ("--alg", "solve(x^2-2=0,x,method=numeric)"), ("sqrt(2)", "x ~=")),
     MatrixCase("pure_vectors", "vector magnitude subpart", ("--alg", "sqrt(1^2+2^2+3^2)"), ("sqrt(14)",), False),
     MatrixCase("stats_sampling_data", "summary statistics", ("--stats", "stats(1,2,2,3,5,8)"), ("mean", "Sxx"), False),
     MatrixCase("stats_probability", "binomial probability", ("--stats", "binom(10,.5,4)"), ("X ~ B", "P(X = 4)")),
-    MatrixCase("stats_distributions", "normal distribution probability", ("--stats", "normalcdf(0,1,-1,1)"), ("Standardise", "Phi")),
-    MatrixCase("stats_hypothesis", "z-test hypothesis subpart", ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"), ("H0:", "p value")),
+    MatrixCase("stats_distributions", "normal distribution probability", ("--stats", "normalcdf(0,1,-1,1)"), ("z1 =", "Phi")),
+    MatrixCase("stats_hypothesis", "z-test hypothesis subpart", ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"), ("H0:", "tail p")),
     MatrixCase("mechanics_kinematics", "SUVAT calculation", ("--suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat"), ("s = 25",)),
     MatrixCase("mechanics_forces", "Newton second law algebra subpart", ("--alg", "solve(3*a=12-6,a,method=linear)"), ("a = 2",)),
     MatrixCase("mechanics_moments", "moment equilibrium algebra subpart", ("--alg", "solve(2*R=3*5,R,method=linear)"), ("R = 15/2",)),
@@ -49,7 +50,7 @@ CASES: tuple[MatrixCase, ...] = (
 
 
 def has(text: str, marker: str) -> bool:
-    return marker.lower().replace(" ", "") in text.lower().replace(" ", "")
+    return markers_present(text, [marker])
 
 
 def run(case: MatrixCase) -> tuple[str, str, list[str]]:
@@ -58,9 +59,11 @@ def run(case: MatrixCase) -> tuple[str, str, list[str]]:
     why: list[str] = []
     if proc.returncode:
         why.append(f"returncode={proc.returncode}")
-    why.extend(f"missing:{m}" for m in case.must if not has(out, m))
+    why.extend(f"missing:{m}" for m in case.must if m != "Answer:" and not has(out, m))
     why.extend(f"forbidden:{m}" for m in FORBID if m.lower() in out.lower())
-    if case.working_expected and "Answer:" in out and len([ln for ln in out.splitlines() if ln.strip()]) < 2:
+    if case.working_expected and not has_strong_output(out):
+        why.append("weak-output")
+    if case.working_expected and len([ln for ln in out.splitlines() if ln.strip()]) < 2:
         why.append("answer-only")
     return ("pass" if not why else "fail"), out, why
 

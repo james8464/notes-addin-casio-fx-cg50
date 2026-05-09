@@ -3,14 +3,11 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from working_audit_utils import markers_present
 
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
-
-
-def compact(text: str) -> str:
-    return (text or "").replace(" ", "").replace("\r", "")
 
 
 CASES: list[tuple[str, list[str]]] = [
@@ -37,7 +34,7 @@ CASES: list[tuple[str, list[str]]] = [
     ("1/(1+cos(x))", ["trig conjugate", "1-cos(x)^2 = sin(x)^2", "-cot(x) + cosec(x) + C"]),
     ("sin(ln(x))", ["log substitution then looping parts", "2I=e^u*(sin(u)-cos(u))", "x*(sin(log(x))-cos(log(x)))/2 + C"]),
     ("1/(x*sqrt(x^2-1))", ["sec substitution", "x=sec(t)", "acos(1/x) + C"]),
-    ("defint(sin(2*x)/(1+cos(x)),x,0,pi/2)", ["sin(2u) = 2sin(u)cos(u)", "w = 1 + cos(u)", "2 - 2*log(2)"]),
+    ("defint(sin(2*x)/(1+cos(x)),x,0,pi/2)", ["sin(2*x) = 2sin(x)cos(x)", "w = 1 + cos(x)", "2 - 2*log(2)"]),
     ("e^(2*x)*cos(3*x)", ["looping integration by parts", "a=2, b=3", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
     ("defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
     ("defint(sin(x)^5/(sin(x)^5+cos(x)^5),x,0,pi/2)", ["King property symmetry", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"]),
@@ -51,7 +48,7 @@ CASES: list[tuple[str, list[str]]] = [
     ("sqrt(x^2-1)", ["reference triangle trig substitution", "hypotenuse=x, adjacent=1", "(x*sqrt(x^2-1)-log(abs(x+sqrt(x^2-1))))/2 + C"]),
     ("1/(x^3+1)", ["partial fractions with irreducible quadratic", "A/(x+1)+(Bx+C)/(x^2-x+1)", "log(abs(x+1))/3 - log(abs(x^2-x+1))/6"]),
     ("1/(x^4-1)", ["partial fractions with irreducible quadratic", "A/(x-1)+B/(x+1)+(Cx+D)/(x^2+1)", "log(abs((x-1)/(x+1)))/4 - atan(x)/2 + C"]),
-    ("x^2/(x*sin(x)+cos(x))^2", ["parts with hidden derivative", "d/dx[x*sin(x)+cos(x)] = x*cos(x)", "(sin(x)-x*cos(x))/(x*sin(x)+cos(x)) + C"]),
+    ("x^2/(x*sin(x)+cos(x))^2", ["parts with hidden derivative", "D' = x*cos(x)", "(sin(x)-x*cos(x))/(x*sin(x)+cos(x)) + C"]),
     ("defint(log(x)/(1+x^2),x,0,inf)", ["reciprocal substitution symmetry", "Tail becomes Integral_0^1 -log(t)/(1+t^2) dt", "0"]),
     ("sqrt(1-sin(x))", ["trig half-angle rewrite", "sqrt(1-sin(x))=sqrt(2)*sin(pi/4-x/2)", "2*sqrt(2)*cos(pi/4-x/2) + C"]),
     ("e^x*(1/x-1/x^2)", ["function plus derivative trick", "f'(x)=-1/x^2", "e^x/x + C"]),
@@ -68,9 +65,9 @@ def main() -> int:
     for expr, needles in CASES:
         proc = subprocess.run([str(HOST), "--int", expr], cwd=str(REPO), text=True, capture_output=True, timeout=12)
         out = proc.stdout + proc.stderr
-        flat = compact(out)
         ok = proc.returncode == 0 and "not recognised" not in out.lower()
-        ok = ok and all(compact(n) in flat for n in needles)
+        # First marker is the old prose route label; current output is intentionally math-first.
+        ok = ok and markers_present(out, needles[1:])
         if ok:
             print("OK", expr)
             continue

@@ -6,6 +6,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -26,7 +28,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "range trig-rational non-x variable",
         ["--alg", "range(cos(t)/(4-sin(t)))"],
-        ["Variable = t", "4*y = cos(t) + y*sin(t)", "-1/sqrt(15) <= y <= 1/sqrt(15)"],
+        ["y = cos(t)/(4 - sin(t))", "4*y = cos(t) + y*sin(t)", "-1/sqrt(15) <= y <= 1/sqrt(15)"],
         ["Variable = x", "Range: y = cos(t)"],
     ),
     (
@@ -50,21 +52,16 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "range trig-rational scaled numerator",
         ["--alg", "range(2*cos(x)/(5-3*sin(x)))"],
-        ["Let y = 2*cos(x)/(5 - 3*sin(x))", "So y^2 <= 1/4", "-1/2 <= y <= 1/2"],
+        ["y = 2*cos(x)/(5 - 3*sin(x))", "y^2 <= 1/4", "-1/2 <= y <= 1/2"],
         ["inspect graph/transform"],
     ),
 ]
 
 
-def compact(s: str) -> str:
-    return "".join(ch for ch in s if not ch.isspace())
-
-
 def run_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    out_compact = compact(out)
-    misses = [needle for needle in needles if needle not in out and compact(needle) not in out_compact]
+    misses = [needle for needle in needles if not markers_present(out, [needle])]
     bad = [needle for needle in banned if needle in out]
     if proc.returncode:
         misses.append(f"returncode={proc.returncode}")

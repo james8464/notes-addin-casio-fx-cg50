@@ -6,6 +6,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -50,21 +52,16 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "D12 parametric area integral",
         ["--int", "defint(8*(sec(t)^2-2+cos(t)^2),t,0,pi/4)"],
-        ["Split the integral over the sum", "Integral sec(t)^2 dt = tan(t)", "10 - 3*pi"],
+        ["I = Int(8*(sec(t)^2 + cos(t)^2 - 2)", "Int sec(t)^2 dt = tan(t)", "10 - 3*pi"],
         ["No elementary primitive", "ERR:"],
     ),
 ]
 
 
-def compact(s: str) -> str:
-    return "".join(ch for ch in s if not ch.isspace())
-
-
 def run_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    out_compact = compact(out)
-    misses = [needle for needle in needles if needle not in out and compact(needle) not in out_compact]
+    misses = [needle for needle in needles if not markers_present(out, [needle])]
     bad = [needle for needle in banned if needle in out]
     if proc.returncode:
         misses.append(f"returncode={proc.returncode}")

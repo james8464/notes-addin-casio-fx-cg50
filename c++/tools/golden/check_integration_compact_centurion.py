@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from working_audit_utils import final_math_line, has_strong_output
 
 
 REPO = Path(__file__).resolve().parents[3]
@@ -42,15 +43,9 @@ def main() -> int:
         cid = case["id"]
         expr = case["expr"]
         rc, out = run_case(expr)
-        answer = first_line_with(out, "Answer:")
+        answer = first_line_with(out, "Answer:") or final_math_line(out)
         method = first_line_with(out, "Method:")
-        hard = (
-            rc != 0
-            or "Integral not recognised" in out
-            or "ERR:" in out
-            or not answer
-            or "Method: integration (limited)" in out
-        )
+        hard = rc != 0 or not has_strong_output(out)
 
         status = "WEAK" if hard else "OK"
         if hard:

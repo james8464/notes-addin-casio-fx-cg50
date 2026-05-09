@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -24,7 +26,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q1 inverse fractional linear",
         ["--alg", "inverse((2*x+5)/(x-3),x)"],
-        ["Swap x and y", "(3*x + 5)/(x - 2)"],
+        ["x = f(y)", "(3*x + 5)/(x - 2)"],
         ["Given domain: x.", "ERR:"],
     ),
     (
@@ -36,7 +38,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q7ii R-form solve",
         ["--trig", "5*sin(theta)-5*cos(theta)=2,theta,0,360,10,method=rform"],
-        ["R=", "alpha=", "Base angles", "theta = [61.4299401894, 208.570059811]"],
+        ["R=", "alpha=", "sin(theta+alpha)", "theta = [61.4299401894, 208.570059811]"],
         ["Write a*sin(A)+b*cos(A)=R*sin(A+alpha).\n3. Then solve", "ERR:"],
     ),
     (
@@ -48,13 +50,13 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2020 Q3 log equation",
         ["--alg", "solve(2*log(10,4-x)=log(10,x+8),x)"],
-        ["Domain", "x = [1]", "verify roots"],
+        ["Domain", "domain => x = 1", "x = [1]"],
         ["Parser error", "ERR:"],
     ),
     (
         "October 2020 Q6 algebraic division integral",
         ["--int", "defint((x^2+8*x-3)/(x+2),x,0,6),method=div"],
-        ["Quotient = x + 6", "remainder = -15", "54", "log(8)"],
+        ["Q = x + 6, R = -15", "54", "ln(8)"],
         ["No elementary primitive", "ERR:"],
     ),
     (
@@ -66,19 +68,19 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2020 Q12 trig power definite integral",
         ["--int", "defint(60*sin(t)*cos(t)^2,t,0,pi/2)"],
-        ["Let u=cos(t)", "du=-1*sin(t) dt", "Primitive F(t) = -20*cos(t)^3", "Answer: 20"],
+        ["u=cos(t)", "du=-1*sin(t) dt", "Primitive F(t) = -20*cos(t)^3", "20"],
         ["du=-1*sin(t) dx", "ERR:"],
     ),
     (
         "October 2020 Q13 log-fraction range",
         ["--alg", "range((3*log(x)-7)/(log(x)-2))"],
-        ["Let u=log(x)", "y != 3"],
+        ["u = ln(x)", "y != 3"],
         ["inspect graph/transform", "ERR:"],
     ),
     (
         "October 2021 implicit polynomial powers",
         ["--derive", "p*x^3+q*x*y+3*y^2=26,x,method=implicit"],
-        ["Differentiate both sides", "dy/dx"],
+        ["F_x + F_y*dy/dx = 0", "dy/dx"],
         ["positive bases", "ERR:"],
     ),
     (
@@ -90,7 +92,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2023 log equation",
         ["--alg", "solve(log(2,x+3)+log(2,x+10)=2+2*log(2,x),x)"],
-        ["Domain", "x = [6]", "verify roots"],
+        ["Domain", "domain => x = 6", "x = [6]"],
         ["Parser error", "ERR:"],
     ),
     (
@@ -115,8 +117,7 @@ def flat(s: str) -> str:
 def run_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    f = flat(out)
-    misses = [n for n in needles if n not in out and flat(n) not in f]
+    misses = [n for n in needles if not markers_present(out, [n])]
     bad = [b for b in banned if b in out]
     if proc.returncode:
         misses.append(f"returncode={proc.returncode}")

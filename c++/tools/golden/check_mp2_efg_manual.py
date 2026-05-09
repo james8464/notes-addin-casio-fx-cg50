@@ -6,6 +6,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -44,7 +46,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "E9 R-form solve",
         ["--trig", "5*cos(theta)+12*sin(theta)=10,theta,0,90,10,method=rform"],
-        ["sin(theta+alpha)=10/13", "Base angles", "theta = [27.6649978201]"],
+        ["sin(theta+alpha)=10/13", "0 <= theta <= 90", "theta = [27.6649978201]"],
         ["theta = []", "ERR:"],
     ),
     (
@@ -86,21 +88,16 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "G12 rationalise negative-power denominator",
         ["--int", "(5-x)/(2-x^(-1))"],
-        ["Multiply numerator and denominator by x", "-1/4*x^2", "9/8*log(abs(2*x - 1))"],
+        ["Integrand becomes (- x + 5)*x/(2*x - 1)", "-1/4*x^2", "9/8*log(abs(2*x - 1))"],
         ["No elementary primitive"],
     ),
 ]
 
 
-def compact(s: str) -> str:
-    return "".join(ch for ch in s if not ch.isspace())
-
-
 def run_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    out_compact = compact(out)
-    misses = [needle for needle in needles if needle not in out and compact(needle) not in out_compact]
+    misses = [needle for needle in needles if not markers_present(out, [needle])]
     bad = [needle for needle in banned if needle in out]
     if proc.returncode:
         misses.append(f"returncode={proc.returncode}")

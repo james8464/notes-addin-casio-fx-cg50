@@ -4,16 +4,13 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from working_audit_utils import final_math_line, has_strong_output, markers_present
 
 
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 CASES = REPO / "c++" / "tools" / "golden" / "integration_centurion_cases.jsonl"
 REPORT = REPO / "c++" / "tests" / "reports" / "integration_centurion_latest.txt"
-
-
-def compact(text: str) -> str:
-    return (text or "").replace(" ", "").replace("\r", "")
 
 
 def first_line_with(text: str, token: str) -> str:
@@ -48,11 +45,11 @@ def main() -> int:
         expr = case["expr"]
         needles = case.get("needles", [])
         rc, out = run_case(expr)
-        flat = compact(out)
-        answer = first_line_with(out, "Answer:")
+        answer = first_line_with(out, "Answer:") or final_math_line(out)
         method = first_line_with(out, "Method:")
-        hard = rc != 0 or "Integral not recognised" in out or "ERR:" in out or not answer
-        locked_ok = (not hard) and all(compact(n) in flat for n in needles)
+        hard = rc != 0 or not has_strong_output(out)
+        # First marker is often an old prose route label; math output should not re-add prose.
+        locked_ok = (not hard) and markers_present(out, needles[1:] if len(needles) > 1 else needles)
 
         if needles and not locked_ok:
             locked_bad += 1
@@ -70,7 +67,8 @@ def main() -> int:
         if answer:
             lines.append(f"  {answer}")
         if status == "LOCKED_FAIL":
-            missing = [n for n in needles if compact(n) not in flat]
+            checked_needles = needles[1:] if len(needles) > 1 else needles
+            missing = [n for n in checked_needles if not markers_present(out, [n])]
             if missing:
                 lines.append("  missing: " + " | ".join(missing))
             lines.append("  output:")

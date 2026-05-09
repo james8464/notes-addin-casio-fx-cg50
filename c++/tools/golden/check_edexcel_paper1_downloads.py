@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from working_audit_utils import markers_present
+
 REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
@@ -61,7 +63,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2022 Q15 exact trig endpoints",
         ["--int", "defint(8-8*cos(4*t)+48*sin(t)*cos(t),t,0,pi/4)"],
-        ["Evaluate F(pi/4) - F(0)", "Answer: 12 + 2*pi"],
+        ["Evaluate F(pi/4) - F(0)", "12 + 2*pi"],
         ["cos(pi/4)^2", "ERR:"],
     ),
     (
@@ -91,7 +93,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q9 repeated-linear binomial expansion",
         ["--alg", "binomial((50*x^2+38*x+9)/((5*x+2)^2*(1-2*x)),x,0,2)"],
-        ["Use partial fractions", "9/4", "11/4*x", "203/16*x^2", "Valid for abs(x) < 2/5"],
+        ["Expand each linear factor", "9/4", "11/4*x", "203/16*x^2", "Valid for abs(x) < 2/5"],
         ["unsupported binomial", "ERR:"],
     ),
     (
@@ -122,8 +124,7 @@ def flat(s: str) -> str:
 def run_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
-    f = flat(out)
-    misses = [n for n in needles if n not in out and flat(n) not in f]
+    misses = [n for n in needles if not markers_present(out, [n])]
     bad = [b for b in banned if b in out]
     if proc.returncode:
         misses.append(f"returncode={proc.returncode}")

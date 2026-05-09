@@ -2713,11 +2713,10 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "Weierstrass substitution",
             {
                 "Let t=tan(x/2).",
-                "Then dx = [2/(1 + t^2)] dt.",
-                "Also cos(x) = (1 - t^2)/(1 + t^2).",
-                "Substitute every part, then cancel the common factor (1+t^2).",
-                "Denominator simplifies to t^2 + 3, so Integral = Integral [2/(t^2 + 3)] dt.",
-                "Use Integral [1/(a^2 + t^2)] dt = atan(t/a)/a with a=sqrt(3).",
+                "dx = 2/(1+t^2) dt.",
+                "cos(x) = (1-t^2)/(1+t^2).",
+                "I = Int(2/(t^2+3)) dt.",
+                "Int(1/(a^2+t^2)) dt = atan(t/a)/a; a=sqrt(3).",
                 "Back-substitute t=tan(x/2).",
             },
             "2/sqrt(3)*atan(tan(x/2)/sqrt(3)) + C"

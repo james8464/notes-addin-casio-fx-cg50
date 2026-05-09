@@ -19,6 +19,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from working_audit_utils import markers_present
+
 
 REPO = Path(__file__).resolve().parents[3]
 PAPER_DIR = Path.home() / "Downloads" / "MadAsMaths papers"
@@ -55,10 +57,6 @@ TOPICS: list[tuple[str, tuple[str, ...]]] = [
     ("differential_equation", ("differential equation", "dy/dx =", "rate of change")),
     ("proof", ("prove", "show that", "hence show")),
 ]
-
-
-def compact(s: str) -> str:
-    return "".join(str(s).split())
 
 
 def fail(msg: str) -> int:
@@ -157,8 +155,7 @@ def render_pdf(path: Path, out_dir: Path, prefix: str, dpi: int, force: bool) ->
 def run_host_case(name: str, args: list[str], needles: list[str], banned: list[str]) -> tuple[str, list[str], str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=15)
     output = proc.stdout + proc.stderr
-    out_compact = compact(output)
-    missing = [needle for needle in needles if needle not in output and compact(needle) not in out_compact]
+    missing = [needle for needle in needles if not markers_present(output, [needle])]
     bad = [needle for needle in banned if needle in output]
     if proc.returncode:
         return "FAIL", [f"returncode={proc.returncode}", *missing, *bad], output
@@ -223,6 +220,21 @@ def main() -> int:
         manual_by_paper_q[(case_paper_code(name), case_qid(name))].append(name)
 
     paper_images: dict[str, dict[str, list[str]]] = {}
+    found_papers = [
+        code for code in PAPER_CODES
+        if (PAPER_DIR / f"mp2_{code}.pdf").exists()
+        and (PAPER_DIR / f"mp2_{code}_solutions.pdf").exists()
+    ]
+    if not found_papers:
+        REPORT_DIR.mkdir(parents=True, exist_ok=True)
+        SUMMARY.write_text(
+            "MadAsMaths MP2 A-Z full audit\n"
+            f"skipped: no local PDFs found in {PAPER_DIR}\n",
+            encoding="utf-8",
+        )
+        LEDGER.write_text("", encoding="utf-8")
+        print(f"SKIP madasmaths full audit: no local PDFs in {PAPER_DIR}")
+        return 0
     for code in PAPER_CODES:
         paper = PAPER_DIR / f"mp2_{code}.pdf"
         sol = PAPER_DIR / f"mp2_{code}_solutions.pdf"

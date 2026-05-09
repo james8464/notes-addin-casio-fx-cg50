@@ -79,6 +79,16 @@ def main() -> int:
     totals: Counter[str] = Counter()
     missing: list[str] = []
     weak: list[str] = []
+    found_pairs = [
+        code for code in "abcdefghijklmnopqrstuvwxyz"
+        if (PAPER_DIR / f"mp2_{code}.pdf").exists()
+        and (PAPER_DIR / f"mp2_{code}_solutions.pdf").exists()
+    ]
+    if not found_pairs:
+        lines.append(f"skipped: no local PDFs found in {PAPER_DIR}")
+        REPORT.write_text("\n".join(lines) + "\n")
+        print(f"SKIP madasmaths paper scan: no local PDFs in {PAPER_DIR}")
+        return 0
     for code in "abcdefghijklmnopqrstuvwxyz":
         paper = PAPER_DIR / f"mp2_{code}.pdf"
         sol = PAPER_DIR / f"mp2_{code}_solutions.pdf"
