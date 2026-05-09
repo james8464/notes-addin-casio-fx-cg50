@@ -76,6 +76,9 @@ def main() -> int:
     for marker in ['CASCAS_HELP_FILE="\\\\\\\\fls0\\\\CASIOCAS.PAK"', "CCP1", "Copy CASIOCAS.PAK"]:
         if marker not in catalog:
             return fail("catalog PAK marker missing: " + marker)
+    console = (ROOT / "c++/khicas/upstream/giac90_1addin/console.cc").read_text(errors="ignore")
+    if 'const char conf_standard[] = "F1 alg' in console:
+        return fail("F-menu config still embedded in .g3a instead of CASIOCAS.PAK")
     print("OK build packaging")
     return 0
 

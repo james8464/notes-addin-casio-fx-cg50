@@ -40,6 +40,7 @@ extern "C" {
 
 giac::context * contextptr=0;
 int xthetat=0,xcas_python_eval=0;
+bool cascas_read_pack_record_public(const char *name,string &body);
 
 //const console_line data_line={0,0,0,-1,0};
 console_line * Line=0;//[LINE_MAX];//={data_line};
@@ -2438,7 +2439,7 @@ int Console_Init()
   return CONSOLE_SUCCEEDED;
 }
 
-const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 2d\nreserved\nF4 cat\nreserved\nF5 A<>a\nreserved\nF6 poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nlcm(\nF8 mat\nmatrix(\ndet(\nmatpow(\ntran(\nrref(\ninv(\nF9 stat\nmean(\nmedian(\nstddev(\nquartile1(\nquartile3(\ncorrelation(\nlinear_regression(\nF: prob\nbinomial(\nnormald(\npoisson(\nstudent(\nchisquare(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< trig\nsin(\ncos(\ntan(\ntcollect(\ntexpand(\ntlin(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(";
+const char conf_standard[] = "F4 cat\n";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0
@@ -2509,8 +2510,17 @@ void Console_FMenu_Init()
       original_cfg=(unsigned char *)ptr;
     }
     if(!original_cfg) {
-      save_script((const char *)"\\\\fls0\\FMENU.cfg",conf_standard);
-      original_cfg = (unsigned char *)conf_standard;
+      string cfg_pack;
+      if (cascas_read_pack_record_public("fmenu.standard",cfg_pack)){
+	char * ptr=new char[cfg_pack.size()+1];
+	strcpy(ptr,cfg_pack.c_str());
+	original_cfg=(unsigned char *)ptr;
+	save_script((const char *)"\\\\fls0\\FMENU.cfg",(const char *)original_cfg);
+      }
+      else {
+	save_script((const char *)"\\\\fls0\\FMENU.cfg",conf_standard);
+	original_cfg = (unsigned char *)conf_standard;
+      }
     }
   }
 

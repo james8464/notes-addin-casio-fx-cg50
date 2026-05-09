@@ -2926,6 +2926,10 @@ static bool cascas_read_pack_record(const char *name,string &body){
   return false;
 }
 
+bool cascas_read_pack_record_public(const char *name,string &body){
+  return cascas_read_pack_record(name,body);
+}
+
 static string cascas_tpl(const char *key){
   string body;
   if (cascas_read_pack_record(key,body))

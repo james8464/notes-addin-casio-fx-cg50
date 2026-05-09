@@ -70,6 +70,7 @@ def main() -> int:
         "t140",
         "t107",
         "t079",
+        "fmenu.standard",
     ]
     missing = [name for name in required if name not in records]
     if missing:
