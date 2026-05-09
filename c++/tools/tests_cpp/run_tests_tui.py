@@ -6098,6 +6098,10 @@ class CASIOApp(App):
                 ("(x-2)*(x+2)", "x^2-4"),
                 ("(x^2-1)/(x-1)", "x+1"),
                 ("sin(x)^2+cos(x)^2", "1"),
+                ("log(x)=log(y)", "x=y"),
+                ("exp(x)=exp(y)", "x=y"),
+                ("log(2,x)+log(2,y)=3", "x*y=8"),
+                ("log(3,x^2*y)-2*log(3,x)=5", "y=243"),
             ])
             label = f"Random compare {index}: simple"
             return self.make_cli_case("Algebra", "algebraProgram.py", f"1\n{left}\n{right}\n", label, algebra_compare_checker(), feature="algebra_compare:simple")
@@ -6168,6 +6172,10 @@ class CASIOApp(App):
                 ("1+cos(2*x)", "2*cos(x)^2", algebra_transform_checker("cos"), "cos2b"),
                 ("sin(x)/cos(x)", "tan(x)", algebra_transform_checker("tan"), "tan"),
                 ("1/cos(x)", "sec(x)", algebra_transform_checker("sec"), "reciprocal_sec"),
+                ("log(x)=log(y)", "x=y", algebra_transform_checker("source-target = 0"), "log_one_to_one"),
+                ("exp(x)=exp(y)", "x=y", algebra_transform_checker("source-target = 0"), "exp_one_to_one"),
+                ("log(2,x)+log(2,y)=3", "x*y=8", algebra_transform_checker("source-target = 0"), "log_product"),
+                ("log(3,x^2*y)-2*log(3,x)=5", "y=243", algebra_transform_checker("source-target = 0"), "log_cancel"),
             ])
             label = f"Random transform {index}: {mode}"
             cxx_checker = lambda out: "source-target = 0" in normalized_text(out)

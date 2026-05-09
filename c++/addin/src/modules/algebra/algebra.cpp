@@ -1623,6 +1623,201 @@ static bool numeric_equation_solution_sets_same(Arena &a, NodeId lhs, NodeId rhs
     return true;
 }
 
+static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Add) {
+        for(auto k : n.kids) add_terms_flat(a, k, out);
+        return;
+    }
+    out.push_back(id);
+}
+
+static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body)
+{
+    Node const &n = a.get(term);
+    coef = Rational{1, 1};
+    body = term;
+    has_body = true;
+    if(n.kind == NodeKind::Num) {
+        coef = n.num;
+        has_body = false;
+        return true;
+    }
+    if(n.kind != NodeKind::Mul) return true;
+    std::vector<NodeId> rest;
+    for(auto k : n.kids) {
+        Node const &f = a.get(k);
+        if(f.kind == NodeKind::Num) coef = r_mul(coef, f.num);
+        else rest.push_back(k);
+    }
+    if(rest.empty()) {
+        has_body = false;
+        return true;
+    }
+    body = rest.size() == 1 ? rest[0] : casio::simplify(a, a.mul(rest));
+    return true;
+}
+
+static bool log_piece(Arena &a, NodeId body, NodeId &arg, NodeId &base, bool &has_base)
+{
+    Node const &n = a.get(body);
+    has_base = false;
+    if(n.kind == NodeKind::Fn && n.fkind == FnKind::Log) {
+        arg = n.a;
+        base = 0;
+        return true;
+    }
+    if(n.kind == NodeKind::Div) {
+        Node const &top = a.get(n.a);
+        Node const &bot = a.get(n.b);
+        if(top.kind == NodeKind::Fn && top.fkind == FnKind::Log &&
+           bot.kind == NodeKind::Fn && bot.fkind == FnKind::Log) {
+            arg = top.a;
+            base = bot.a;
+            has_base = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+static NodeId log_power_factor(Arena &a, NodeId arg, Rational coef)
+{
+    if(coef.num < 0) coef.num = -coef.num;
+    coef.normalize();
+    if(coef.num == coef.den) return arg;
+    return casio::simplify(a, a.pow(arg, a.num(coef)));
+}
+
+static NodeId product_or_one(Arena &a, std::vector<NodeId> const &factors)
+{
+    if(factors.empty()) return casio::num(a, 1);
+    if(factors.size() == 1) return factors[0];
+    return casio::simplify(a, a.mul(factors));
+}
+
+static bool read_epow_arg_text(std::string const &s, std::size_t pos, std::string &arg, std::size_t &next)
+{
+    if(pos + 3 > s.size() || s.compare(pos, 3, "e^(") != 0) return false;
+    int depth = 1;
+    std::size_t start = pos + 3;
+    for(std::size_t i = start; i < s.size(); ++i) {
+        if(s[i] == '(') ++depth;
+        else if(s[i] == ')') {
+            --depth;
+            if(depth == 0) {
+                arg = s.substr(start, i - start);
+                next = i + 1;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static std::optional<NodeId> exp_residual_alt_text(Arena &a, NodeId residual)
+{
+    std::string s = compact_input_key(format_expr(a, residual));
+    std::string u, v;
+    std::size_t p = 0, q = 0;
+    if(!read_epow_arg_text(s, 0, u, p)) return std::nullopt;
+    if(p >= s.size() || s[p] != '-') return std::nullopt;
+    if(!read_epow_arg_text(s, p + 1, v, q) || q != s.size()) return std::nullopt;
+    return sub_node(a, casio::parse_expr(a, u), casio::parse_expr(a, v));
+}
+
+struct LogResidualAlts
+{
+    NodeId cleared = 0;
+    NodeId quotient = 0;
+};
+
+static std::optional<LogResidualAlts> log_residual_alts(Arena &a, NodeId residual)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, residual, terms);
+    std::vector<NodeId> top, bot;
+    Rational constant{0, 1};
+    bool saw_log = false;
+    bool natural = false;
+    NodeId common_base = 0;
+    for(NodeId term : terms) {
+        Rational coef;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, term, coef, body, has_body);
+        if(!has_body) {
+            constant = r_add(constant, coef);
+            continue;
+        }
+        NodeId arg = 0, base = 0;
+        bool has_base = false;
+        if(!log_piece(a, body, arg, base, has_base)) return std::nullopt;
+        if(!saw_log) {
+            natural = !has_base;
+            common_base = base;
+        }
+        else {
+            if(natural != !has_base) return std::nullopt;
+            if(has_base && !casio::same_by_sig(a, common_base, base)) return std::nullopt;
+        }
+        saw_log = true;
+        if(coef.num == 0) continue;
+        NodeId factor = log_power_factor(a, arg, coef);
+        if(coef.num > 0) top.push_back(factor);
+        else bot.push_back(factor);
+    }
+    if(!saw_log) return std::nullopt;
+    Rational exponent = r_neg(constant);
+    NodeId rhs = exponent.num == 0 ? casio::num(a, 1) :
+        casio::simplify(a, a.pow(natural ? a.constant(ConstKind::E) : common_base, a.num(exponent)));
+    NodeId lhs_prod = product_or_one(a, top);
+    NodeId bot_prod = product_or_one(a, bot);
+    NodeId rhs_prod = casio::simplify(a, a.mul({rhs, bot_prod}));
+    NodeId quotient = sub_node(a, casio::simplify(a, a.div(lhs_prod, bot_prod)), rhs);
+    return LogResidualAlts{sub_node(a, lhs_prod, rhs_prod), quotient};
+}
+
+static std::optional<NodeId> exp_residual_alt(Arena &a, NodeId residual)
+{
+    Node const &n = a.get(residual);
+    if(n.kind != NodeKind::Add || n.kids.size() != 2) return exp_residual_alt_text(a, residual);
+    NodeId pa = 0, pb = 0;
+    for(auto k : n.kids) {
+        Rational coef;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, k, coef, body, has_body);
+        if(!has_body || coef.den != 1 || (coef.num != 1 && coef.num != -1)) return exp_residual_alt_text(a, residual);
+        auto arg = exp_like_arg(a, body);
+        if(!arg) return exp_residual_alt_text(a, residual);
+        if(coef.num > 0) pa = *arg;
+        else pb = *arg;
+    }
+    if(!pa || !pb) return exp_residual_alt_text(a, residual);
+    return sub_node(a, pa, pb);
+}
+
+static std::vector<NodeId> residual_alternatives(Arena &a, NodeId residual)
+{
+    std::vector<NodeId> out{residual};
+    if(auto n = log_residual_alts(a, residual)) {
+        out.push_back(n->cleared);
+        out.push_back(n->quotient);
+    }
+    if(auto n = exp_residual_alt(a, residual)) out.push_back(*n);
+    return out;
+}
+
+static bool residual_pair_same(Arena &a, NodeId lhs, NodeId rhs)
+{
+    NodeId diff = sub_node(a, lhs, rhs);
+    if(casio::same_by_sig(a, diff, zero_node(a)) || numeric_same(a, lhs, rhs)) return true;
+    NodeId sum = casio::simplify(a, a.add({lhs, rhs}));
+    return casio::same_by_sig(a, sum, zero_node(a)) || numeric_same(a, lhs, neg_node(a, rhs));
+}
+
 static bool relation_equivalent(Arena &a, CompareTerm const &u, CompareTerm const &v)
 {
     if(!u.equation && !v.equation) {
@@ -1642,6 +1837,15 @@ static bool relation_equivalent(Arena &a, CompareTerm const &u, CompareTerm cons
     NodeId sum = casio::simplify(a, a.add({u.residual, v.residual}));
     if(casio::same_by_sig(a, sum, zero_node(a)) && !strict) return true;
     if(numeric_same(a, u.residual, neg_node(a, v.residual))) return true;
+
+    auto ua = residual_alternatives(a, u.residual);
+    auto va = residual_alternatives(a, v.residual);
+    for(auto lu : ua) {
+        for(auto rv : va) {
+            if(lu == u.residual && rv == v.residual) continue;
+            if(residual_pair_same(a, lu, rv)) return true;
+        }
+    }
 
     std::vector<std::string> vars;
     collect_symbols(a, u.residual, vars);
