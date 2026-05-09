@@ -3,6 +3,7 @@
 #include "core/format_expr.hpp"
 #include "core/normalize.hpp"
 #include "core/parse.hpp"
+#include "core/parse_equation.hpp"
 
 #include "modules/boolean/boolean.hpp"
 #include "modules/suvat/suvat.hpp"
@@ -134,22 +135,22 @@ static void print_lines(std::vector<std::string> const &lines)
     }
 }
 
-static void print_method_header(std::string const &feature, std::string const &method, std::string const &u)
+static bool print_method_header(std::string const &feature, std::string const &method, std::string const &u)
 {
-    if(method.empty() || method == "auto") return;
+    if(method.empty() || method == "auto") return true;
     char const *valid = valid_methods(feature);
     if(!method_allowed(valid, method)) {
-        std::cout << "Invalid method. Valid: " << valid << "\n";
-        std::cout << "Auto result:\n";
-        return;
+        std::cout << "Err: invalid method. Valid: " << valid << "\n";
+        return false;
     }
     (void)u;
+    return true;
 }
 
-static void print_method_header_for_expr(std::string const &feature, std::string const &method, std::string const &u, std::string const &expr)
+static bool print_method_header_for_expr(std::string const &feature, std::string const &method, std::string const &u, std::string const &expr)
 {
     (void)expr;
-    print_method_header(feature, method, u);
+    return print_method_header(feature, method, u);
 }
 
 static int run_stdin_program(casio::Arena &arena, std::string const &program, std::string const &stdin_text)
@@ -395,7 +396,7 @@ int main(int argc, char **argv)
             // Usage: --suvat "s=...,u=...,v=...,a=...,t=...,target=v"
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, false);
-            print_method_header("suvat", method, method_u);
+            if(!print_method_header("suvat", method, method_u)) return 1;
             if(expr.rfind("suvat(", 0) == 0 && expr.size() > 7 && expr.back() == ')') {
                 expr = expr.substr(6, expr.size() - 7);
             }
@@ -439,7 +440,7 @@ int main(int argc, char **argv)
         if(is_int) {
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, true);
-            print_method_header_for_expr("int", method, method_u, expr);
+            if(!print_method_header_for_expr("int", method, method_u, expr)) return 1;
             casio::integrate::Request req;
             req.expr = expr;
             req.method = method;
@@ -451,7 +452,7 @@ int main(int argc, char **argv)
             std::string method, method_u, target;
             expr = strip_method_args(expr, method, method_u, false, &target);
             if(!target.empty() && expr.find('=') == std::string::npos) expr += "=" + target;
-            print_method_header("alg", method, method_u);
+            if(!print_method_header("alg", method, method_u)) return 1;
             casio::algebra::Request req;
             req.method = method;
             auto unwrap_call = [](std::string const &text, std::string const &name) -> std::string {
@@ -532,6 +533,25 @@ int main(int argc, char **argv)
                     !(inner = unwrap_call(expr, "match(")).empty()) {
                 auto parts = split_top_csv(inner);
                 req.mode = 1;
+                if(parts.size() >= 2) req.expr = parts[0] + "\n" + parts[1];
+                else if(auto eq = casio::parse_equation(arena, inner)) {
+                    req.expr = casio::format_expr(arena, eq->lhs) + "\n" + casio::format_expr(arena, eq->rhs);
+                }
+                else req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "transform(")).empty() ||
+                    !(inner = unwrap_call(expr, "xform(")).empty()) {
+                auto parts = split_top_csv(inner);
+                req.mode = 2;
+                if(parts.size() >= 2) req.expr = parts[0] + "\n" + parts[1];
+                else if(auto eq = casio::parse_equation(arena, inner)) {
+                    req.expr = casio::format_expr(arena, eq->lhs) + "\n" + casio::format_expr(arena, eq->rhs);
+                }
+                else req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "rewrite(")).empty()) {
+                auto parts = split_top_csv(inner);
+                req.mode = 9;
                 req.expr = parts.size() >= 2 ? parts[0] + "\n" + parts[1] : inner;
             }
             else if(!(inner = unwrap_call(expr, "fitconst(")).empty()) {
@@ -566,7 +586,7 @@ int main(int argc, char **argv)
         if(is_trig) {
             std::string method, method_u, target;
             expr = strip_method_args(expr, method, method_u, false, &target);
-            print_method_header("trig", method, method_u);
+            if(!print_method_header("trig", method, method_u)) return 1;
             casio::trig::Request req;
             req.mode = 0;
             if(expr.find('\n') != std::string::npos) req.mode = 1;
@@ -617,7 +637,7 @@ int main(int argc, char **argv)
                     expr += kept.size() >= 2 && !kept[1].empty() ? kept[1] : "x";
                 }
             }
-            print_method_header("derive", method, method_u);
+            if(!print_method_header("derive", method, method_u)) return 1;
             casio::derive::Request req;
             // Accept optional prefix: "mode:<n>,<expr...>"
             // Example: --derive "mode:4,x^2"
@@ -646,10 +666,14 @@ int main(int argc, char **argv)
         if(is_stats) {
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, false);
-            print_method_header("stats", method, method_u);
+            if(!print_method_header("stats", method, method_u)) return 1;
             casio::stats::Request req;
             req.mode = 0;
             req.expr = expr;
+            if(method == "regression" || method == "corr" || method == "correlation" ||
+               method == "cov" || method == "covariance") {
+                req.mode = 2;
+            }
             auto lines = casio::stats::run(arena, req);
             print_lines(lines);
             return 0;

@@ -12,13 +12,13 @@ CATALOG = REPO / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cp
 
 
 CASES = [
-    ("int", "x*exp(x),method=parts", ["Let u=x", "Answer:"]),
-    ("int", "x*cos(x^2),method=sub,u=x^2", ["Let u = x^2", "Answer:"]),
-    ("int", "x^2,method=badmethod", ["Invalid method", "Auto result:", "Answer:"]),
+    ("int", "x*exp(x),method=parts", ["u=x", "dv=e^x dx"]),
+    ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du=2*x dx"]),
+    ("int", "x^2,method=badmethod", ["Invalid method", "Auto result:"]),
     ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
-    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["Rearrange to", "Answer:"]),
-    ("alg", "x^2-5*x+6=0,method=factor", ["Start with x^2", "Answer:"]),
-    ("stats", "1,2,3,4,method=summary", ["Sort data", "Answer:"]),
+    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["cos(A) = -1/2", "x = [pi, 5*pi/3]"]),
+    ("alg", "x^2-5*x+6=0,method=factor", ["x^2 - 5*x + 6 = 0"]),
+    ("stats", "1,2,3,4,method=summary", ["Sort data"]),
     ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["s = 25"]),
 ]
 

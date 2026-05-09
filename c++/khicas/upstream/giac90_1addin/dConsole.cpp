@@ -67,11 +67,8 @@ char xcas_status[256];
 
 void set_xcas_status(){
   ustl::string status;
-  status += "CAS";
-  status += xthetat?" t ":" x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" Xcas ";
+  status += "CAS ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
-  status += ustl::string(session_filename);
   strcpy(xcas_status,status.c_str());
   DefineStatusMessage(xcas_status, 1, 0, 0);
   DisplayStatusArea();
@@ -656,6 +653,31 @@ void addStringToInput(char* dest, const char* src, int* pos, int max, int* refre
   *pos+=srclen; *refresh = 1;
 }
 
+static bool dconsole_cmd_char(char c) {
+  return (c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='_';
+}
+
+static bool dconsole_catalog_prefix(char *s,int &pos,int max,int &refresh) {
+  int start=pos;
+  while (start>0 && dconsole_cmd_char(s[start-1]))
+    --start;
+  int len=pos-start;
+  if (len<1 || len>4)
+    return false;
+  char prefix[5];
+  for (int i=0;i<len;++i)
+    prefix[i]=s[start+i];
+  prefix[len]=0;
+  char buf[256];
+  strcpy(buf,prefix);
+  if (!doCatalogMenu(buf,(char *)"Index",0,prefix))
+    return false;
+  if (strncmp(buf,prefix,len))
+    return false;
+  addStringToInput(s,buf+len,&pos,max,&refresh);
+  return true;
+}
+
 void do_refresh(char * s,int start,int pos,int x,int y,int width,int isscrolling){
   for (int i=x;i<=LINE_COL_MAX;++i) {
     locate(i,y); print((uchar*)" ");
@@ -1231,9 +1253,11 @@ int dGetLine (char * s,int max, int isRecording, int ml) {
         if(myconsolescroll>0) myconsolescroll = 0;
         dConsoleRedraw();
       } else {
-        do_down_arrow();
-        pos=strlen(s);
-        start = 0; // force recalculation
+        if (!dconsole_catalog_prefix(s,pos,max,refresh)) {
+          do_down_arrow();
+          pos=strlen(s);
+          start = 0; // force recalculation
+        }
       }
       refresh = 1;
     } else if (key==KEY_CTRL_PAGEUP || key==KEY_CTRL_PAGEDOWN) {

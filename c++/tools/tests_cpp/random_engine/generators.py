@@ -7,6 +7,7 @@ from typing import Iterable, List
 
 from .concepts import ConceptNode
 from .grammar import ExpressionGrammar
+from .source_bank import SOURCE_FAMILIES, source_case_data
 from .transforms import apply_transforms, random_transform_chain
 
 
@@ -29,6 +30,7 @@ EXAM_GAP_TOPICS = (
     "implicit_rational_clear",
     "radical_rewrite",
     "domain_range_edge",
+    "formatting_traps",
 )
 
 SYLLABUS_TOPICS = (
@@ -52,14 +54,7 @@ SYLLABUS_TOPICS = (
     "mechanics_moments",
 )
 
-ONLINE_TOPICS = (
-    "source_step_symmetry",
-    "source_mit_looping_ibp",
-    "source_openstax_pf",
-    "source_pauls_trig_sub",
-    "source_edexcel_rform",
-    "source_edexcel_parametric",
-)
+ONLINE_TOPICS = tuple(f.topic for f in SOURCE_FAMILIES)
 
 CRASH_TOPICS = (
     "long_parse_guard",
@@ -95,7 +90,7 @@ class AdversarialGenerator:
     def generate(self, feature: str, count: int) -> List[AdversarialCase]:
         feature = (feature or "all").lower()
         if feature in ("all", "exammix", "exam"):
-            features = ["exam_gap", "integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite", "general"]
+            features = ["exam_gap", "integrate", "diff", "solve_trig", "domain", "range", "constants", "rewrite", "general", "online", "syllabus"]
         elif feature == "general":
             features = ["general"]
         else:
@@ -474,6 +469,21 @@ class AdversarialGenerator:
                 ("abs_edge", "inverse_domain", "log_guard"),
                 "exam: concise domain/range constraints with no graph-scan fallback",
             ),
+            (
+                "formatting_traps",
+                ["derive", "alg", "int", "derive"][cycle % 4],
+                [
+                    "(2*x+ln(x))^3,x",
+                    "solve(log(2,x^2+4*x+3)=4+log(2,x^2+x),x)",
+                    "x^2*cos(3*x),method=di",
+                    "(x^2+1)*sin(x),x",
+                ][cycle % 4],
+                ["diff", "solve", "integrate", "diff"][cycle % 4],
+                ["expr,var", "eq,var", "expr,method", "expr,var"][cycle % 4],
+                ["chain", "log_exp", "di", "product"][cycle % 4],
+                ("math_only_lines", "no_standalone_assignments", "no_generic_scaffold"),
+                "exam: output must be copyable maths lines; no Done/pick-rule prose or lone y=/u=/dy/d fragments",
+            ),
         ]
         topic, flag, expr, function, sig, method, transforms, note = cases[(index - 1) % len(cases)]
         concept = self._concept(function, sig, method, topic, transforms, 5, "sympy+llm+exam")
@@ -520,26 +530,21 @@ class AdversarialGenerator:
         )
 
     def _online(self, index: int) -> AdversarialCase:
-        """Source-anchored hard cases for adversarial stress."""
-        i = max(0, index - 1)
-        cases = [
-            ("source_step_symmetry", "int", "defint(sin(x)^5/(sin(x)^5+cos(x)^5),x,0,pi/2)", "integrate", "defint(expr,var,lo,hi)", "symmetry", "NRICH STEP", "https://nrich.maths.org/step-integration-questions", ("kings_property", "combine")),
-            ("source_mit_looping_ibp", "int", "e^(2*x)*cos(5*x),method=parts", "integrate", "expr,method", "parts", "MIT OCW 18.01SC", "https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/download/", ("looping_ibp", "collect_I")),
-            ("source_openstax_pf", "int", "(5*x+7)/((x-1)*(x^2+4)),method=pf", "integrate", "expr,method", "pf", "OpenStax Calculus 2", "https://openstax.org/books/calculus-volume-2/pages/3-4-partial-fractions", ("pf_setup", "equate_coeffs")),
-            ("source_pauls_trig_sub", "int", "sqrt(9-x^2),method=trig", "integrate", "expr,method", "trig", "Paul's Online Notes", "https://tutorial.math.lamar.edu/Classes/CalcII/TrigSubstitutions.aspx", ("reference_triangle", "back_sub")),
-            ("source_edexcel_rform", "trig", "5*sin(x)-12*cos(x)=6,x,0,2*pi,12,method=rform", "solve_trig", "eq,var,lo,hi,max,method", "rform", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("rform", "base_angle", "interval_filter")),
-            ("source_edexcel_parametric", "derive", "x=t^2+1/t,y=t^2-1/t,t,x,method=param_second", "diff", "x(t),y(t),t,x,method", "param_second", "Pearson Edexcel", "https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017/useful-links.html", ("dxdt_dydt", "second_derivative")),
-        ]
-        topic, flag, expr, function, sig, method, source, url, transforms = cases[i % len(cases)]
-        concept = self._concept(function, sig, method, topic, transforms, 5 + (i % 2), "source+sympy+llm")
+        """Source-anchored hard cases for adversarial stress.
+
+        Uses public source families as shape seeds only.  We store source URLs
+        and method-mark markers, not copied mark schemes.
+        """
+        fam, expr = source_case_data(self.rng, index)
+        concept = self._concept(fam.function, fam.signature, fam.method, fam.topic, fam.transforms, 5 + (index % 2), "source+sympy+llm")
         return AdversarialCase(
-            "Online {0}: {1}".format(index, topic),
-            flag,
+            "Online {0}: {1}".format(index, fam.topic),
+            fam.flag,
             expr,
             concept,
             True,
-            "source: hard public question family; mark full method steps, not only answer",
-            "source:{0} {1}".format(source, url),
+            "source/markscheme: {0}; {1}; require full method steps, not only answer".format(fam.source, fam.marker_note),
+            "source:{0} {1}".format(fam.source, fam.url),
         )
 
     def _crash(self, index: int) -> AdversarialCase:

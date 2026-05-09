@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 CONSOLE = ROOT / "c++/khicas/upstream/giac90_1addin/console.cc"
-TPL = ROOT / "c++/prizm/help/CASIOCAS.TPL"
+TPL_DIR = ROOT / "c++/prizm/help"
 
 
 REQUIRED_MARKERS = [
@@ -23,8 +23,8 @@ REQUIRED_MARKERS = [
     "check_do_graph(ge,do_logo_graph_eqw & ~1)",
     "if (do_logo_graph_eqw % 2)",
     "cascas_output_working(s,eval_s,s_)",
-    "LHS-RHS=0",
-    "I=uv-Int(vdu)",
+    "LHS - RHS = 0",
+    "I = u*v - Int(v du)",
     "Valid:",
     "Valid: all x",
     "Valid: |x|<1",
@@ -36,7 +36,7 @@ REQUIRED_MARKERS = [
     "cascas_append_guard_lines",
     "tgt=",
     "num = A*q",
-    "du=u'dx; v=Int dv",
+    "du = u' dx; v = Int dv",
     "cascas_try_domain_range_command",
     "cascas_domain_range_poly2",
     "cascas_rewrite_fitconst_call",
@@ -54,21 +54,21 @@ CONSOLE_MARKERS = [
 
 METHOD_MARKERS = [
     "dy/d",
-    "y'(...)=...",
-    "dy/dx=(dy/d",
-    "Area=Int",
+    "y'(...) = ...",
+    "dy/dx = (dy/d",
+    "Area = Int",
     "I = Int[",
     "y =",
-    "coeff(LHS)=coeff(RHS)",
-    "constants=",
-    "ax^2+bx+c=a(",
+    "coeff(LHS) = coeff(RHS)",
+    "constants =",
+    "ax^2+bx+c = a(",
     "IF=e^Int(Pdx)",
-    "I=Int[f(x)]dx",
+    "I = Int[f(x)] dx",
     "PF",
     "P(X<=r)",
     "Ids:",
-    "v=u+at",
-    "(a+b)^n=sum",
+    "v = u+at",
+    "(a+b)^n = sum",
     "Coeff:",
 ]
 
@@ -112,10 +112,14 @@ def fail(msg: str) -> int:
     return 1
 
 
+def read_templates() -> str:
+    return "\n".join(p.read_text(errors="ignore") for p in sorted(TPL_DIR.glob("CASIOCAS*.TPL")))
+
+
 def main() -> int:
     main_cc = MAIN.read_text(errors="ignore")
     console_cc = CONSOLE.read_text(errors="ignore")
-    template_text = TPL.read_text(errors="ignore")
+    template_text = read_templates()
     working_surface = main_cc + "\n" + template_text
     missing = [x for x in REQUIRED_MARKERS if x not in working_surface]
     if missing:
@@ -127,6 +131,34 @@ def main() -> int:
         return fail("CASIOCAS.PAK reader cache markers missing")
     if pack_reader.count("malloc(") > 1:
         return fail("CASIOCAS.PAK reader may allocate repeatedly")
+    inline_tpl_keys = {
+        "t047", "t053", "t055", "t060", "t061", "t070", "t071",
+        "t072", "t073", "t075", "t078", "t081", "t082", "t085", "t107",
+    }
+    current = None
+    bodies: dict[str, list[str]] = {}
+    for raw in template_text.splitlines():
+        if raw.startswith("@END"):
+            current = None
+        elif raw.startswith("@"):
+            current = raw[1:].strip()
+            bodies[current] = []
+        elif current:
+            bodies[current].append(raw)
+    bad_inline = [k for k in sorted(inline_tpl_keys) if len([x for x in bodies.get(k, []) if x]) > 1]
+    if bad_inline:
+        return fail("inline templates must stay single-line: " + ", ".join(bad_inline))
+    bad_template_text = [
+        ",dy/d",
+        "dy/dx=(dy/d",
+        "Area=Int",
+        "du=u'dx; v=Int dv",
+        "dy/dx=d/dx(y)",
+        "I=uv-Int(vdu)",
+    ]
+    leaked_templates = [x for x in bad_template_text if x in template_text]
+    if leaked_templates:
+        return fail("old compact/prose template fragments remain: " + ", ".join(leaked_templates))
     if '{"range(","tabvar("}' in main_cc:
         return fail("range() still aliases to tabvar()")
     try:

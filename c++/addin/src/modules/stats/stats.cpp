@@ -80,6 +80,23 @@ static std::string fmt(long double v)
     return s.empty() ? "0" : s;
 }
 
+static std::string regression_line_text(long double a0, long double b)
+{
+    auto near = [](long double v, long double t) { return std::fabsl(v - t) < 5e-13L; };
+    std::string rhs;
+    if(near(b, 0.0L)) rhs = fmt(a0);
+    else {
+        if(near(b, 1.0L)) rhs = "x";
+        else if(near(b, -1.0L)) rhs = "-x";
+        else rhs = fmt(b) + "*x";
+        if(!near(a0, 0.0L)) {
+            if(a0 > 0) rhs += " + " + fmt(a0);
+            else rhs += " - " + fmt(-a0);
+        }
+    }
+    return "y = " + rhs;
+}
+
 static std::vector<std::string> split_on(std::string const &s, char sep)
 {
     std::vector<std::string> out;
@@ -361,7 +378,7 @@ static std::vector<std::string> two_var(std::string const &expr, std::string con
         "3. b = Sxy/Sxx = " + fmt(b),
         "4. a = ybar - b*xbar = " + fmt(a0),
         "5. r = Sxy/sqrt(Sxx*Syy) = " + fmt(r),
-        "Answer: y = " + fmt(a0) + " + " + fmt(b) + "*x, r = " + fmt(r) + ", r^2 = " + fmt(r * r),
+        "Answer: " + regression_line_text(a0, b) + ", r = " + fmt(r) + ", r^2 = " + fmt(r * r),
     };
 }
 
@@ -393,11 +410,12 @@ static std::vector<std::string> binomial(std::string const &expr)
         event = "X <= " + std::to_string(r);
     }
     std::vector<std::string> out;
-    out.push_back("1. Let X ~ B(" + std::to_string(n) + ", " + fmt(p) + ").");
-    out.push_back("2. Use P(X=r)=nCr p^r (1-p)^(n-r).");
-    out.push_back("3. Required event: " + event + ".");
-    if(n > 5000 && cdf) out.push_back("4. Large n: use normal approx with continuity correction.");
-    out.push_back("Answer: P(" + event + ") = " + fmt(ans));
+    out.push_back("X ~ B(" + std::to_string(n) + ", " + fmt(p) + ")");
+    if(!cdf) out.push_back("P(X = r) = nCr*p^r*(1-p)^(n-r)");
+    else if(ge || gt) out.push_back("P(" + event + ") = 1 - P(X < " + std::to_string(ge ? r : r + 1) + ")");
+    else out.push_back("P(X <= r) = sum_{x=0}^r nCx*p^x*(1-p)^(n-x)");
+    if(n > 5000 && cdf) out.push_back("normal approx with continuity correction");
+    out.push_back("P(" + event + ") = " + fmt(ans));
     return out;
 }
 
@@ -411,10 +429,10 @@ static std::vector<std::string> normal(std::string const &expr)
     long double z2 = (hi - mu) / sigma;
     long double ans = normal_cdf(z2) - normal_cdf(z1);
     return {
-        "1. X ~ N(" + fmt(mu) + ", " + fmt(sigma) + "^2).",
-        "2. Standardise: z1 = " + fmt(z1) + ", z2 = " + fmt(z2) + ".",
-        "3. P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(z2) - Phi(z1).",
-        "Answer: " + fmt(ans),
+        "X ~ N(" + fmt(mu) + ", " + fmt(sigma) + "^2)",
+        "z1 = " + fmt(z1) + ", z2 = " + fmt(z2),
+        "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(z2) - Phi(z1)",
+        "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = " + fmt(ans),
     };
 }
 
@@ -441,10 +459,10 @@ static std::vector<std::string> ztest(std::string const &expr)
         pval = 2.0L * std::min(normal_cdf(z), 1.0L - normal_cdf(z));
     }
     return {
-        "1. H0: mu = " + fmt(mu) + ".",
-        "2. z = (xbar-mu)/(sigma/sqrt(n)) = " + fmt(z) + ".",
-        "3. " + tail + " p value = " + fmt(pval) + ".",
-        std::string("Answer: ") + (pval < alpha ? "reject H0" : "do not reject H0") + " at alpha=" + fmt(alpha) + ".",
+        "H0: mu = " + fmt(mu),
+        "z = (xbar-mu)/(sigma/sqrt(n)) = " + fmt(z),
+        tail + " p = " + fmt(pval),
+        std::string(pval < alpha ? "reject H0" : "do not reject H0") + " at alpha = " + fmt(alpha),
     };
 }
 
@@ -465,6 +483,16 @@ static std::vector<std::string> plot(Arena &arena, std::string const &expr)
     NodeId root = parse_expr(arena, f);
     std::vector<long double> xs, ys;
     std::vector<std::string> roots;
+    std::vector<long double> root_vals;
+    long double root_tol = std::max((xmax - xmin) / std::max(1, n - 1) * 0.25L, 1e-7L);
+    auto add_root = [&](long double xr) {
+        for(long double old : root_vals)
+            if(std::fabsl(old - xr) <= root_tol) return;
+        if(roots.size() < 6) {
+            root_vals.push_back(xr);
+            roots.push_back(fmt(xr));
+        }
+    };
     std::optional<long double> prev_y;
     long double prev_x = xmin;
     for(int i = 0; i < n; i++) {
@@ -476,7 +504,7 @@ static std::vector<std::string> plot(Arena &arena, std::string const &expr)
         }
         if(prev_y && ((*prev_y <= 0 && *y >= 0) || (*prev_y >= 0 && *y <= 0))) {
             long double xr = (*prev_y == *y) ? x : prev_x + (0.0L - *prev_y) * (x - prev_x) / (*y - *prev_y);
-            if(roots.size() < 6) roots.push_back(fmt(xr));
+            add_root(xr);
         }
         xs.push_back(x);
         ys.push_back(*y);
@@ -491,11 +519,10 @@ static std::vector<std::string> plot(Arena &arena, std::string const &expr)
         for(std::size_t i = 1; i < roots.size(); i++) root_text += ", " + roots[i];
     }
     return {
-        "1. Sample y = f(x) on [" + fmt(xmin) + ", " + fmt(xmax) + "] with n=" + std::to_string(n) + ".",
-        "2. y-range = [" + fmt(*mn_it) + ", " + fmt(*mx_it) + "].",
-        "3. spark: " + sparkline(ys),
-        "4. x-intercepts near: " + root_text + ".",
-        "Answer: plot summary ready.",
+        "x in [" + fmt(xmin) + ", " + fmt(xmax) + "], n = " + std::to_string(n),
+        "y-range = [" + fmt(*mn_it) + ", " + fmt(*mx_it) + "]",
+        "spark = " + sparkline(ys),
+        "x-intercepts near " + root_text,
     };
 }
 
@@ -515,13 +542,16 @@ static Request autodetect(Request req)
         else if(starts_with(lo, "cov(")) req.expr = inside_call(s, "cov");
         else req.expr = inside_call(s, starts_with(lo, "corr(") ? "corr" : "reg");
     }
-    else if(starts_with(lo, "binomcdf(")) {
+    else if(starts_with(lo, "binomcdf(") || starts_with(lo, "binomialcdf(") ||
+            starts_with(lo, "binomial_cdf(")) {
         req.mode = 3;
-        req.expr = inside_call(s, "binomcdf") + ",cdf";
+        if(starts_with(lo, "binomcdf(")) req.expr = inside_call(s, "binomcdf") + ",cdf";
+        else if(starts_with(lo, "binomialcdf(")) req.expr = inside_call(s, "binomialcdf") + ",cdf";
+        else req.expr = inside_call(s, "binomial_cdf") + ",cdf";
     }
-    else if(starts_with(lo, "binom(")) {
+    else if(starts_with(lo, "binom(") || starts_with(lo, "binomial(")) {
         req.mode = 3;
-        req.expr = inside_call(s, "binom");
+        req.expr = inside_call(s, starts_with(lo, "binom(") ? "binom" : "binomial");
     }
     else if(starts_with(lo, "normalcdf(")) {
         req.mode = 4;
@@ -560,7 +590,7 @@ std::vector<std::string> run(Arena &arena, Request const &request)
         case 6: {
             auto v = parse_numbers(req.expr);
             if(v.empty()) return {"Err: spark needs a numeric list."};
-            return {"1. y-range sampled from data.", "2. spark: " + sparkline(v), "Answer: " + sparkline(v)};
+            return {"y-range sampled from data", "spark = " + sparkline(v), sparkline(v)};
         }
         case 7: return plot(arena, req.expr);
         default: return {"Err: unknown stats mode."};

@@ -17,6 +17,7 @@ graph TD
   G3A --> Patch["patch_g3a_metadata.py"]
   PAK --> Transfer
   Patch --> Transfer["calculator_files/"]
+  Transfer --> DL["~/Downloads/calculator_files/"]
 
   Legacy["CASIO_PRIZM_MODE=legacy"] --> Prizm["c++/prizm/src + c++/addin/src/device"]
   Ref["CASIO_PRIZM_MODE=khicas-reference"] --> UpG3A["khicas/reference/khicasen.g3a"]
@@ -172,6 +173,7 @@ graph TD
   ROM --> Prune["link/object pruning only after compile gate"]
   Keep --> Calc["CasioCAS.g3a"]
   Offload --> Files["calculator_files/CASIOCAS.PAK"]
+  Files --> DL["~/Downloads/calculator_files/"]
 ```
 
 Safe-ish size levers:

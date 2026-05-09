@@ -547,21 +547,10 @@ static void add_input_line(OutputLines &out, const char *prefix, const char *inp
 
 static void add_method_fallback(
     OutputLines &out,
-    const char *start_prefix,
-    const char *input,
-    const char *step2,
-    const char *step3,
-    const char *answer_prefix,
-    const char *answer_suffix = "")
+    const char *input)
 {
-    add_input_line(out, start_prefix, input);
-    out.add(step2);
-    out.add(step3);
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: ");
-    ans.append(answer_prefix);
-    ans.append(input);
-    ans.append(answer_suffix);
+    add_input_line(out, "", input);
+    out.add("Err: unsupported form.");
 }
 
 static void append_fraction_value(FixedString<96> &line, int num, int den)
@@ -954,15 +943,7 @@ static bool solve_simplify(const char *input, OutputLines &out)
     char var = detect_poly_var(s);
     RPoly poly = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!poly.ok) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Normalise notation, then expand/collect where possible.",
-            "3. Apply identities or simplification rules without changing value.",
-            "simplify(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -988,15 +969,7 @@ static bool solve_algebra(const char *input, OutputLines &out)
     int n = compact(input, s, (int)sizeof(s));
     int eq = find_top_level_equals(s);
     if(eq <= 0 || eq >= n - 1) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Turn the expression into an equation by setting it equal to 0 if needed.",
-            "3. Rearrange to standard form, then solve/check roots.",
-            "solve(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -1004,15 +977,7 @@ static bool solve_algebra(const char *input, OutputLines &out)
     RPoly left = parse_rpoly_compact(s, 0, eq, var);
     RPoly right = parse_rpoly_compact(s, eq + 1, n, var);
     if(!left.ok || !right.ok) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. State domain, clear fractions/radicals/logs only with reversible steps.",
-            "3. Rearrange to 0, factor/substitute/complete square, then check.",
-            "solve(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
     RPoly q = rpoly_sub(left, right);
@@ -1034,15 +999,7 @@ static bool solve_derive(const char *input, OutputLines &out)
     RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
         if(solve_log_chain_derivative(input, s, var, out)) return true;
-        add_method_fallback(
-            out,
-            "1. Start: y = ",
-            input,
-            "2. Pick the rule: chain, product, quotient, or log differentiation.",
-            "3. Differentiate each part, then collect and simplify.",
-            "d/dx(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -1064,15 +1021,7 @@ static bool solve_integrate(const char *input, OutputLines &out)
     char var = detect_poly_var(s);
     RPoly p = parse_rpoly_compact(s, 0, cstr_len(s), var);
     if(!p.ok) {
-        add_method_fallback(
-            out,
-            "1. Start: integrate ",
-            input,
-            "2. Classify: direct, reverse-chain, substitution, IBP/DI, PF, trig, radical.",
-            "3. Apply the chosen route, back-substitute, then verify by differentiating.",
-            "int(",
-            ") dx + C"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -1585,30 +1534,14 @@ static bool solve_trig(const char *input, OutputLines &out)
     if(simplify_trig_identity(s, out, input)) return true;
     if(find_top_level_equals(s) >= 0) {
         if(solve_trig_equation(input, s, n, out)) return true;
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Move all terms left; rewrite sec/cosec/cot using sin/cos/tan.",
-            "3. Use identities/R-form/factorising, then solve base angles and check.",
-            "solve_trig(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
     int lp = find_char(s, '(');
     int rp = find_char(s, ')');
     if(lp <= 0 || rp <= lp + 1 || rp != n - 1) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Rewrite as a trig value or equation.",
-            "3. Use exact table/inverse trig and period rules.",
-            "trig(",
-            ")"
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -1619,29 +1552,13 @@ static bool solve_trig(const char *input, OutputLines &out)
 
     int deg = 0;
     if(!parse_angle_degrees(s, lp + 1, rp, deg)) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Convert the angle to degrees or a pi fraction.",
-            "3. Reduce to a known angle or use inverse/exact form.",
-            "",
-            ""
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
     const char *value = exact_trig(fn, deg);
     if(value == nullptr) {
-        add_method_fallback(
-            out,
-            "1. Start: ",
-            input,
-            "2. Reduce angle modulo 360.",
-            "3. Use exact identities or leave as exact trig value.",
-            "",
-            ""
-        );
+        add_method_fallback(out, input);
         return true;
     }
 
@@ -2338,15 +2255,7 @@ static bool solve_factor_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly poly;
     if(!parse_poly_arg(args[0], var, poly)) {
-        add_method_fallback(
-            out,
-            "1. Input: ",
-            args[0],
-            "2. Expand/collect, then look for common factors and identities.",
-            "3. Use factor theorem/quadratic formula if needed.",
-            "factor(",
-            ")"
-        );
+        add_method_fallback(out, args[0]);
         return true;
     }
 
@@ -2430,15 +2339,7 @@ static bool solve_complete_square_call(const char *input, OutputLines &out)
     char var = detect_poly_var(args[0]);
     RPoly poly;
     if(!parse_poly_arg(args[0], var, poly) || rpoly_degree(poly) != 2 || is_zero(poly.coeff[2])) {
-        add_method_fallback(
-            out,
-            "1. Input: ",
-            args[0],
-            "2. Collect x^2, x, and constant terms.",
-            "3. If not quadratic, use the matching algebraic form instead.",
-            "complete_square(",
-            ")"
-        );
+        add_method_fallback(out, args[0]);
         return true;
     }
 

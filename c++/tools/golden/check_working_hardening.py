@@ -11,6 +11,36 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
+        "trig",
+        "sec(x)^2-tan(x)^2=1,x,0,2*pi,10,method=identity",
+        ["LHS-RHS=0", "all valid x in domain"],
+        ["x = []", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "solve(log(2,x)+log(4,x)=6,x)",
+        ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "solve(log(2,x^2+4*x+3)=4+log(2,x^2+x),x)",
+        [
+            "log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4",
+            "(x^2 + 4*x + 3)/(x^2 + x) = 16",
+            "5*x^2 + 4*x - 1 = 0",
+            "domain => x = 1/5",
+            "x = [1/5]",
+        ],
+        ["Rearrange to lhs-rhs=0", "combine log terms", "Exponentiate, solve", "x = 0.2", "ERR:"],
+    ),
+    (
+        "derive",
+        "sec(x)+cot(x)+csc(x),x",
+        ["d/dx(sec(x)) = sec(x)*tan(x)", "d/dx(cot(x)) = -cosec(x)^2", "d/dx(cosec(x)) = -cosec(x)*cot(x)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
         "int",
         "acos((x-1)/3)",
         ["Use parts", "w=(x - 1)/3", "Answer:"],
@@ -31,7 +61,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
-        ["Differentiate both sides", "dy/dx"],
+        ["F_x", "F_y", "dy/dx"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
@@ -48,6 +78,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "derive",
+        "ln(x),x",
+        ["y = ln(x)", "dy/dx = 1/x"],
+        ["y = log(x)", "ERR:"],
+    ),
+    (
+        "derive",
         "log((3*x+1)^2+2)*log(3,x^2+12)*7!,x",
         ["f1 =", "f1' =", "f2 =", "f2' =", "y' = f1'*f2 + f1*f2'"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
@@ -61,7 +97,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "x^2-5*x+6=0,method=factor",
-        ["Factor:", "(x - 2)", "(x - 3)", "x = 3", "x = 2"],
+        ["(x - 2)", "(x - 3)", "x = 3", "x = 2"],
         ["Range:", "Answer: x^2 - 5*x + 6", "ERR:"],
     ),
     (
@@ -109,19 +145,19 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
-        ["A/(x-1)+B/(x-1)^2+(Cx+D)/(x^2+1)", "Equate coefficients", "Answer:"],
+        ["A/(x-1)+B/(x-1)^2+(Cx+D)/(x^2+1)", "coefficient equations", "Answer:"],
         ["No elementary primitive found", "ERR:"],
     ),
     (
         "int",
         "(x^2+1)/(x^4+x^2+1),method=sub",
-        ["Divide numerator and denominator by x^2", "Let u=x-1/x", "du=(1+1/x^2) dx", "Answer:"],
+        ["N,D / x^2", "u=x-1/x", "du=(1+1/x^2) dx"],
         ["No elementary primitive found", "ERR:"],
     ),
     (
         "int",
         "(x^2-1)/(x^4+1),method=sub",
-        ["u^2-2=(u-sqrt(2))(u+sqrt(2))", "A=1/(2*sqrt(2))", "B=-1/(2*sqrt(2))", "log(abs((x + 1/x - sqrt(2))/(x + 1/x + sqrt(2))))"],
+        ["u^2-2=(u-sqrt(2))(u+sqrt(2))", "A=1/(2*sqrt(2))", "B=-1/(2*sqrt(2))", "ln(abs((x + 1/x - sqrt(2))/(x + 1/x + sqrt(2))))"],
         ["No elementary primitive found", "ERR:"],
     ),
     (
@@ -133,8 +169,26 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(ln(sin(x)),x,0,pi/2)",
-        ["u=2x", "du=2 dx", "limits: x=0=>u=0, x=pi/2=>u=pi", "-pi*log(2)/2"],
+        ["u=2x", "du=2 dx", "0=>0", "pi/2=>pi", "-pi*ln(2)/2"],
         ["ERR:"],
+    ),
+    (
+        "int",
+        "defint(e^(2*x)/(1+e^(2*x)),x,0,ln(7))",
+        ["u=1+e^(2*x)", "du=2*e^(2*x) dx", "I=(1/2)Int(1/u) du", "Evaluate F(ln(7)) - F(0)"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "x^3*e^(x^4),method=sub",
+        ["u=x^4", "du=4*x^3 dx", "Int(e^u) du = e^u", "+ C"],
+        ["No elementary primitive", "ERR:"],
+    ),
+    (
+        "int",
+        "1/(x*sqrt(x^2-36)),method=trig",
+        ["x=6*sec(t)", "Reference triangle", "I=(1/6)Int(1) dt", "acos(6/x)/6"],
+        ["No elementary primitive", "ERR:"],
     ),
     (
         "int",
@@ -145,13 +199,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "x^3*e^(2*x),method=di",
-        ["DI table", "D:", "I:", "Signs:", "e^(2*x)*(1/2*x^3 - 3/4*x^2 + 3/4*x - 3/8)"],
+        ["D:", "I:", "Signs:", "e^(2*x)*(1/2*x^3 - 3/4*x^2 + 3/4*x - 3/8)"],
         ["Use DI/table integration by parts for x^n*e^(a*x+b).", "ERR:"],
     ),
     (
         "int",
         "x^2*cos(3*x),method=di",
-        ["DI table", "D:", "I:", "Signs:", "1/3*x^2*sin(3*x)"],
+        ["D:", "I:", "Signs:", "1/3*x^2*sin(3*x)"],
         ["Use DI/table integration by parts for x^n times trig.", "ERR:"],
     ),
     (
@@ -163,97 +217,97 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "sin(3*x)=sin(x),x,0,2*pi,10,method=identity",
-        ["General: A=B+2*pi*n or A=pi-B+2*pi*n", "x=n*pi", "x=pi/4+n*pi/2", "Filter 0 <= x <= 2*pi"],
+        ["sin(A) = sin(B): A = B+2*pi*n or A = pi-B+2*pi*n", "x=n*pi", "x=pi/4+n*pi/2", "x = [0, pi/4"],
         ["ERR:"],
     ),
     (
         "trig",
         "2*sin(x)^2=1+cos(x),x,0,2*pi,10,method=identity",
-        ["Let u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "Base angle", "cos(x)=1/2 or cos(x)=-1"],
+        ["u=cos(x)", "2u^2+u-1=0", "u=1/2 or u=-1", "alpha = arccos", "cos(x)=1/2 or cos(x)=-1"],
         ["substitution differential", "ERR:"],
     ),
     (
         "trig",
         "2*cos(x)^2+3*cos(x)-2=0,x,0,2*pi,10,method=identity",
-        ["Let u=cos(x)", "2u^2+3u-2=0", "u=1/2 or u=-2", "Reject u=-2", "Base angle", "cos(x)=1/2"],
+        ["u=cos(x)", "2u^2+3u-2=0", "u=1/2 or u=-2", "Reject u=-2", "alpha = arccos", "cos(x)=1/2"],
         ["Solve the quadratic in u, then solve cos(A)=u.", "ERR:"],
     ),
     (
         "trig",
         "4*cos(x)^2-4*cos(x)+1=0,x,0,2*pi,10,method=identity",
-        ["Let u=cos(x)", "4u^2-4u+1=0", "u=1/2", "Base angle", "Answer: x = [pi/3, 5*pi/3]"],
+        ["u=cos(x)", "4u^2-4u+1=0", "u=1/2", "alpha = arccos", "x = [pi/3, 5*pi/3]"],
         ["u=1/2 or u=1/2", "ERR:"],
     ),
     (
         "alg",
         "domain(sqrt(log(1/2,x-1)))",
-        ["x - 1 > 0", "log base 1/2 decreases", "x - 1 <= 1", "Answer: 1 < x <= 2"],
+        ["x - 1 > 0", "base = 1/2", "0 < x - 1 <= 1", "Answer: 1 < x <= 2"],
         ["Answer: log(x - 1)/log(1/2) >= 0", "ERR:"],
     ),
     (
         "alg",
         "range(abs(x-1)+abs(x-2))",
-        ["Piecewise abs sum", "minimum distance = 1", "Answer: y >= 1"],
+        ["roots: x = 1; x = 2", "min y = 1", "Answer: y >= 1"],
         ["Answer: y >= 0", "ERR:"],
     ),
     (
         "alg",
         "range(abs(2*x-3)+abs(5*x+1))",
-        ["Piecewise weighted abs sum", "x=3/2", "x=-1/5", "Answer: y >= 17/5"],
+        ["roots: x = 3/2; x = -1/5", "min y = 17/5", "Answer: y >= 17/5"],
         ["inspect graph/transform", "Answer: y >= 0", "ERR:"],
     ),
     (
         "alg",
         "fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])",
-        ["Equate coefficients", "a=1", "b=2", "c=3", "Answer: a=1, b=2, c=3"],
+        ["x = 0:", "x = 1:", "x = 2:", "a = 1", "b = 2", "c = 3"],
         ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
     ),
     (
         "alg",
         "fitconst(a*(x+1)^2+b*(x-1)^2+c*(x^2-1)=6*x^2+4*x+2,[a,b,c])",
-        ["Equate coefficients", "a=3", "b=1", "c=2", "Answer: a=3, b=1, c=2"],
+        ["x = 0:", "x = 1:", "x = 2:", "a = 3", "b = 1", "c = 2"],
         ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
     ),
     (
         "alg",
         "fitconst((x+a)^2+(y+b)^2=x^2+y^2-6*x+10*y+34,[a,b])",
-        ["Equate coefficients", "a=-3", "b=5", "Answer: a=-3, b=5"],
+        ["(x = 0, y = 0):", "(x = 1, y = 0):", "a = -3", "b = 5"],
         ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
     ),
     (
         "alg",
         "fitconst((a*x+b)/(x+1)=2+3/(x+1),[a,b])",
-        ["Clear denominators", "a=2", "b=5", "Answer: a=2, b=5"],
+        ["identity", "a=2", "b=5"],
         ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
     ),
     (
         "alg",
         "compare((x^2-1)/(x-1),x+1)",
-        ["Simplify both expressions", "Result: Equivalent"],
+        ["E1 =", "E2 =", "E1-E2 = 0", "equivalent"],
         ["Unexpected end of input", "Answer: solve(compare", "ERR:"],
     ),
     (
         "derive",
         "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
-        ["Clear denominators", "Differentiate both sides", "collect dy/dx", "dy/dx"],
+        ["* (2*x + 1)*(y + 1)", "F_x", "F_y", "dy/dx"],
         ["Domain: log args >0", "ERR:"],
     ),
     (
         "int",
         "x*ln(5*x)",
-        ["Integration by parts", "Answer: 1/2*x^2*log(5*x) - 1/4*x^2 + C"],
+        ["u=ln(5*x)", "dv=x dx", "du=1/x dx", "v=x^2/2", "I=uv-Int(vdu)", "1/2*x^2*ln(5*x) - 1/4*x^2 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],
     ),
     (
         "int",
         "tan(3*x)",
-        ["Use Integral(tan u)", "Answer: -log(abs(cos(3*x)))/3 + C"],
+        ["Use Integral(tan u)", "Answer: -ln(abs(cos(3*x)))/3 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],
     ),
     (
         "alg",
         "range(log(10,abs(3*x+1)+3))",
-        ["Answer: y >= log(3)/log(10)"],
+        ["Answer: y >= ln(3)/ln(10)"],
         ["inspect graph/transform", "ERR:"],
     ),
     (
@@ -265,8 +319,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "x^2+a*x+b,method=factor",
-        ["not factorable with numeric roots in this lightweight route", "Answer:"],
-        ["Err:", "Unexpected token"],
+        ["Err: numeric coeffs needed"],
+        ["Unexpected token"],
     ),
     (
         "alg",
@@ -319,13 +373,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "asin(sin(2*x+pi/6)),method=auto",
-        ["asin(sin(u))=u only for -pi/2 <= u <= pi/2", "branch", "Answer: asin(sin(2*x + pi/6))"],
+        ["-pi/2 <= u <= pi/2 => asin(sin(u)) = u", "asin(sin(2*x + pi/6))"],
         ["ERR:", "Unexpected token"],
     ),
     (
         "alg",
         "atan(2*x-3),method=pf",
-        ["Partial fractions need rational P(x)/Q(x)", "not applicable"],
+        ["Err: PF needs rational P(x)/Q(x)"],
         ["ERR:", "Unexpected token"],
     ),
     (
@@ -355,14 +409,14 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "cos(7*theta),target=cos(theta),method=auto",
-        ["Warning: target not verified", "Answer: cos(7*theta)"],
-        ["Thus source = target.", "Answer: cos(theta)", "ERR:"],
+        ["Source != target", "cos(7*theta)"],
+        ["Source = target", "Answer: cos(theta)", "ERR:"],
     ),
     (
         "trig",
         "sin(x+y),target=sin(2*x),method=auto",
-        ["Warning: target not verified", "Answer: sin(x + y)"],
-        ["Thus source = target.", "Answer: sin(2*x)", "ERR:"],
+        ["Source != target", "sin(x + y)"],
+        ["Source = target", "Answer: sin(2*x)", "ERR:"],
     ),
     (
         "trig",
@@ -409,8 +463,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "stats",
         "covariance([1,1,2,3,5,8],[2,5,7,11])",
-        ["lengths must match", "Answer: no covariance"],
-        ["Err:", "Traceback"],
+        ["Err: list lengths differ"],
+        ["Traceback"],
     ),
     (
         "int",
@@ -421,7 +475,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "x^2-6*x+5=0,method=complete_square",
-        ["Complete square: (x - 3)^2 - 4 = 0", "Take square roots: x - 3 = +/-2", "Answer: x = [5, 1]"],
+        ["(x - 3)^2 - 4 = 0", "x - 3 = +/-2", "Answer: x = [5, 1]"],
         ["ERR:", "Unexpected token"],
     ),
     (
@@ -439,7 +493,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "domain(cosec((x)^2-pi/4)^2-cot((x)^2-pi/4)^2)",
-        ["Use identity cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x^2 - pi/4) != 0", "Range: y = 1", "Answer: sin(x^2 - pi/4) != 0"],
+        ["cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x^2 - pi/4) != 0", "sin(x^2 - pi/4) != 0"],
         ["Start with 1", "ERR:", "Unexpected token"],
     ),
     (
@@ -463,13 +517,25 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "cot((x)^2-pi/4)^2+1,method=auto",
-        ["Use identity 1 + cot(u)^2 = cosec(u)^2", "du/dx=2*x", "direct reverse chain does not apply"],
+        ["1 + cot(u)^2 = cosec(u)^2", "du/dx = 2*x", "du/dx not constant", "No elementary primitive"],
         ["Use the general integration route", "Answer: int", "ERR:"],
     ),
     (
         "alg",
         "range(x/(1+x^2))",
         ["Range: -1/2 <= y <= 1/2", "Answer: -1/2 <= y <= 1/2"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(x^3,x,-1,3)",
+        ["x^3 is increasing", "Range: -1 <= y <= 27", "Answer: -1 <= y <= 27"],
+        ["unrestricted on interval", "inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(exp(x))",
+        ["e^u > 0", "Range: y > 0", "Answer: y > 0"],
         ["inspect graph/transform", "ERR:"],
     ),
     (
@@ -493,8 +559,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "domain((3*ln(x)-7)/(ln(x)-2))",
-        ["Domain: log(x) - 2 != 0", "Domain: x > 0", "Answer: log(x) - 2 != 0 and x > 0"],
-        ["Answer: log(x) - 2 != 0\n", "ERR:"],
+        ["Domain: ln(x) - 2 != 0", "Domain: x != e^2", "Domain: x > 0"],
+        ["ERR:"],
     ),
     (
         "trig",
@@ -507,6 +573,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform",
         ["R = sqrt(3^2 + 4^2) = 5", "cos(alpha)=3/5", "cos(x-alpha)=2/5", "Answer: x = [arctan(4/3)+arccos(2/5), 2*pi+arctan(4/3)-arccos(2/5)]"],
         ["Answer: x = [2.", "ERR:"],
+    ),
+    (
+        "trig",
+        "cos(2*x)+2*cos(x)=1,x,0,360",
+        ["u=cos(x)", "cos(2*x)=2u^2-1", "2u^2 + 2u - 2 = 0", "Reject u"],
+        ["x = []", "ERR:"],
     ),
     (
         "trig",
@@ -541,7 +613,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "1/(x-1)+1/(x+2)=1,method=auto",
-        ["Answer: x = [(1 - sqrt(13))/2, (1 + sqrt(13))/2]"],
+        ["x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"],
         [")/-2", "ERR:"],
     ),
     (
@@ -567,6 +639,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "(x^2+2*x+1)/(x+1),method=auto",
         ["Cancel common factor x + 1", "Integrate x + 1", "Answer: x + 1/2*x^2 + C"],
         ["No elementary A - level primitive", "No elementary A-level primitive", "Answer: int(", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(log(2,x)+log(4,x)=6,x,method=log_exp)",
+        ["u = log(2,x)", "log(4,x) = u/2", "3u/2 = 6", "x = 16"],
+        ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
+    ),
+    (
+        "alg",
+        "log(2,8)",
+        ["log(a,b)=c means a^c=b", "3"],
+        ["log(8)/log(2)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(log(2,x)+log(x,2)=5/2,x,method=log_exp)",
+        ["u = log(2,x)", "log(x,2) = 1/u", "2u^2 - 5u + 2 = 0", "x = sqrt(2) or 4"],
+        ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(log(3,x)+log(x,27)=4,x,method=log_exp)",
+        ["u = log(3,x)", "log(x,27) = 3/u", "u^2 - 4u + 3 = 0", "x = 3 or 27"],
+        ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(2*log(10,4-x)=log(10,x+8),x,method=log_exp)",
+        ["log(10,(4-x)^2)", "x = 8 or 1", "domain => x = 1", "x = [1]"],
+        ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(log(2,x+3)+log(2,x+10)=2+2*log(2,x),x,method=log_exp)",
+        ["log(2,(x+3)*(x+10))", "(x + 3)*(x + 10) = 4*x^2", "domain => x = 6", "x = [6]"],
+        ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
     ),
 ]
 

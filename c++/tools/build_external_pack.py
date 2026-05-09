@@ -19,7 +19,7 @@ def parse_help(src: Path) -> list[tuple[bytes, bytes]]:
                 text = "\n".join(body)
                 if not preserve:
                     text = text.strip()
-                text += "\n"
+                    text += "\n"
                 records.append((name.encode("utf-8"), text.encode("utf-8")))
             name = None
             body = []

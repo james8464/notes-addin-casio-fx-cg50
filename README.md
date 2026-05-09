@@ -57,9 +57,7 @@ Build calculator add-ins:
 ./compile
 ```
 
-Transfer files are published only under `calculator_files/`. Copy both `calculator_files/CasioCAS.g3a` and `calculator_files/CASIOCAS.PAK` to the calculator root. Build artifacts stay under `c++/prizm/build/`.
-
-If a calculator storage volume is mounted, `./compile` also replaces root-level `CasioCAS.g3a` and `CASIOCAS.PAK` there. Set `CASIO_AUTO_SYNC=0` to disable, or `CASIO_CALCULATOR_VOLUME=/Volumes/<name>` to force a volume path.
+Transfer files are published under `calculator_files/`, then `./compile` copies that folder to `~/Downloads/calculator_files/`. Copy both `CasioCAS.g3a` and `CASIOCAS.PAK` from that folder to the calculator root. Build artifacts stay under `c++/prizm/build/`.
 
 ## Notes
 

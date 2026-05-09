@@ -24,10 +24,10 @@ FORBIDDEN = [
 ]
 
 REQUIRED = [
-    "u = 2*x + log(x)",
+    "u = 2*x + ln(x)",
     "du/dx =",
     "dy/dx = 3*u^2*du/dx",
-    "3*(2*x + log(x))^2",
+    "3*(2*x + ln(x))^2",
 ]
 
 

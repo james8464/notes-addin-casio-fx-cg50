@@ -17,10 +17,13 @@ def run_cpp(host: Path, expr: str) -> str:
 
 
 def extract_answer(text: str) -> str | None:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     for ln in text.splitlines():
         m = re.search(r"\banswer:\s*(.+)", ln, flags=re.I)
         if m:
             return m.group(1).strip()
+    if lines:
+        return lines[-1]
     return None
 
 

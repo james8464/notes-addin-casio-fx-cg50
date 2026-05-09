@@ -7,31 +7,34 @@ from pathlib import Path
 
 
 MARKERS = [
-    b"LHS-RHS=0",
+    b"LHS - RHS = 0",
     b"Valid:",
-    b"y'(...)=...",
-    b"dy/dx=(dy/d",
-    b"Area=Int",
-    b"v=u+at",
-    b"(a+b)^n=sum",
+    b"y'(...) = ...",
+    b"dy/dx = (dy/d",
+    b"Area = Int",
+    b"v = u+at",
+    b"(a+b)^n = sum",
     b"Coeff:",
-    b"I=Int[",
+    b"I = Int[",
     b"P(X<=r)",
-    b"coeff(LHS)=coeff(RHS)",
-    b"constants=",
-    b"ax^2+bx+c=a(",
+    b"coeff(LHS) = coeff(RHS)",
+    b"constants =",
+    b"ax^2+bx+c = a(",
     b"IF=e^Int(Pdx)",
-    b"I=Int[f(x)]dx",
-    b"I=uv-Int(vdu)",
+    b"I = Int[f(x)] dx",
+    b"I = u*v - Int(v du)",
     b"PF: A/(x-a)",
     b"num = A*q",
-    b"FP quotient",
-    b"1+cos(2x)=2cos(x)^2",
-    b"alpha=atan(5/12)",
+    b"[cos(x+h)-cos(x)]/h",
+    b"1 + cos(2x) = 2cos(x)^2",
+    b"alpha = atan(5/12)",
 ]
 
 FORBIDDEN = [
     b"Ans: ",
+    b"I=uv-Int(vdu)",
+    b"dy/dx=(dy/d",
+    b"Area=Int",
 ]
 
 MAGIC = b"CCP1"

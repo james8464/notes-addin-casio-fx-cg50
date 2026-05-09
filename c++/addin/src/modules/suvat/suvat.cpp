@@ -285,7 +285,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
             if(node_to_double(arena, u, uu) && node_to_double(arena, v, vv) && std::fabs(uu - vv) < 1e-9) {
                 out.push_back("v = u + at");
                 out.push_back("0*a = 0");
-                out.push_back("Answer: infinite solutions for a");
+                out.push_back("a = any real");
                 return out;
             }
             out.push_back("a = (v-u)/t");
@@ -327,12 +327,29 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
     if(in.target == "t" && has_s && has_u && has_v) {
         NodeId denom = add(arena, {u, v});
         NodeId res = div(arena, mul(arena, {num(arena, 2), s}), denom);
-        emit("t = 2s/(u+v)", "s = 1/2(u+v)t", res);
+        out.push_back("s = 1/2(u+v)t");
+        out.push_back("2s = (u+v)t");
+        out.push_back("t = 2s/(u+v)");
+        out.push_back("t = 2*" + show(s) + "/(" + show(u) + " + " + show(v) + ")");
+        out.push_back("t = " + show(res));
+        double dv = 0;
+        if(node_to_double(arena, res, dv)) {
+            std::string dec = format_decimal(dv, 3);
+            if(!dec.empty() && dec != show(res)) out.push_back("t = " + dec + (unit.empty() ? "" : (" " + unit)));
+        }
         return out;
     }
     if(in.target == "t" && has_s && has_u && has_a && is_zero_value(arena, a)) {
         NodeId res = div(arena, s, u);
-        emit("t = s/u", "a = 0 so s = ut", res);
+        out.push_back("a = 0, so s = ut");
+        out.push_back("t = s/u");
+        out.push_back("= " + show(s) + "/(" + show(u) + ")");
+        out.push_back("t = " + show(res));
+        double dv = 0;
+        if(node_to_double(arena, res, dv)) {
+            std::string dec = format_decimal(dv, 3);
+            if(!dec.empty() && dec != show(res)) out.push_back("t = " + dec + (unit.empty() ? "" : (" " + unit)));
+        }
         return out;
     }
 
@@ -408,7 +425,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId A = val_or_sym(has_a, a, "a");
         NodeId T = val_or_sym(has_t, t, "t");
         NodeId res = simplify(arena, add(arena, {mul(arena, {U, T}), mul(arena, {half(arena), A, power(arena, T, num(arena, 2))})}));
-        emit("s = ut + 1/2at^2", "symbolic fallback", res);
+        emit("s = ut + 1/2at^2", "", res);
         return out;
     }
     if(in.target == "v") {
@@ -416,7 +433,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId A = val_or_sym(has_a, a, "a");
         NodeId T = val_or_sym(has_t, t, "t");
         NodeId res = simplify(arena, add(arena, {U, mul(arena, {A, T})}));
-        emit("v = u + at", "symbolic fallback", res);
+        emit("v = u + at", "", res);
         return out;
     }
     if(in.target == "u") {
@@ -424,7 +441,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId A = val_or_sym(has_a, a, "a");
         NodeId T = val_or_sym(has_t, t, "t");
         NodeId res = simplify(arena, add(arena, {V, neg(arena, mul(arena, {A, T}))}));
-        emit("u = v - at", "symbolic fallback", res);
+        emit("u = v - at", "", res);
         return out;
     }
     if(in.target == "a") {
@@ -433,7 +450,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
             if(node_to_double(arena, u, uu) && node_to_double(arena, v, vv) && std::fabs(uu - vv) < 1e-9) {
                 out.push_back("v = u + at");
                 out.push_back("0*a = 0");
-                out.push_back("Answer: infinite solutions for a");
+                out.push_back("a = any real");
                 return out;
             }
         }
@@ -441,7 +458,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         NodeId U = val_or_sym(has_u, u, "u");
         NodeId T = val_or_sym(has_t, t, "t");
         NodeId res = simplify(arena, div(arena, add(arena, {V, neg(arena, U)}), T));
-        emit("a = (v-u)/t", "symbolic fallback", res);
+        emit("a = (v-u)/t", "", res);
         return out;
     }
     if(in.target == "t") {
@@ -450,14 +467,14 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
             NodeId U = val_or_sym(has_u, u, "u");
             NodeId V = val_or_sym(has_v, v, "v");
             NodeId res = has_s && has_u ? div(arena, S, U) : div(arena, mul(arena, {num(arena, 2), S}), add(arena, {U, V}));
-            emit(has_s && has_u ? "t = s/u" : "t = 2s/(u+v)", "symbolic fallback", simplify(arena, res));
+            emit(has_s && has_u ? "t = s/u" : "t = 2s/(u+v)", "", simplify(arena, res));
             return out;
         }
         NodeId V = val_or_sym(has_v, v, "v");
         NodeId U = val_or_sym(has_u, u, "u");
         NodeId A = val_or_sym(has_a, a, "a");
         NodeId res = simplify(arena, div(arena, add(arena, {V, neg(arena, U)}), A));
-        emit("t = (v-u)/a", "symbolic fallback", res);
+        emit("t = (v-u)/a", "", res);
         return out;
     }
 
@@ -510,12 +527,6 @@ std::vector<std::string> solve_all(Arena &arena, Inputs const &raw)
             if(var == std::string("a")) { auto ln = show_node("a", in.a); if(!ln.empty()) main.push_back(ln); }
             if(var == std::string("t")) { auto ln = show_node("t", in.t); if(!ln.empty()) main.push_back(ln); }
         }
-    }
-    else {
-        main.push_back("");
-        main.push_back("--- All variables ---");
-        main.push_back("Not shown because more than one variable is unknown.");
-        main.push_back("Use , to mark exactly one target and fill the others to see a full consistent set.");
     }
     return main;
 }

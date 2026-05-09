@@ -256,7 +256,23 @@ NodeRef parse(std::string const &text)
                 if((cj >= 'A' && cj <= 'Z') || (cj >= '0' && cj <= '9') || cj == '_') j++;
                 else break;
             }
-            auto expanded = expand_vars(up.substr(i, j - i));
+            std::string word = up.substr(i, j - i);
+            if(word == "AND") {
+                toks.emplace_back(".");
+                i = j;
+                continue;
+            }
+            if(word == "OR") {
+                toks.emplace_back("+");
+                i = j;
+                continue;
+            }
+            if(word == "NOT") {
+                toks.emplace_back("NOT");
+                i = j;
+                continue;
+            }
+            auto expanded = expand_vars(word);
             for(std::size_t k = 0; k + 1 < expanded.size(); k++) {
                 toks.push_back(expanded[k]);
                 toks.emplace_back(".");
@@ -284,7 +300,11 @@ NodeRef parse(std::string const &text)
     atom = [&]() -> NodeRef {
         std::string t = cur();
         NodeRef node;
-        if(t == "(") {
+        if(t == "NOT") {
+            eat("NOT");
+            node = make1(Kind::Not, atom());
+        }
+        else if(t == "(") {
             eat("(");
             node = expr();
             eat(")");
@@ -660,9 +680,14 @@ std::pair<NodeRef, std::vector<std::pair<std::string, std::string>>> prove_both(
 {
     std::vector<std::pair<std::string, std::string>> steps;
     NodeRef cur = node;
+    std::vector<std::string> seen;
+    seen.push_back(show(cur));
     for(int n = 1; n <= max_steps; n++) {
         auto hit = step(cur);
         if(!hit.first) break;
+        std::string txt = show(hit.first);
+        if(std::find(seen.begin(), seen.end(), txt) != seen.end()) break;
+        seen.push_back(txt);
         cur = hit.first;
         steps.push_back({show(cur), hit.second});
     }
@@ -726,4 +751,3 @@ std::pair<std::vector<std::string>, std::string> prove(
 }
 
 } // namespace casio::boolean
-

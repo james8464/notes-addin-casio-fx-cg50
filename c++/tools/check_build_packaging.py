@@ -11,7 +11,6 @@ PACK = ROOT / "c++/tools/build_external_pack.py"
 CHECK_PACK = ROOT / "c++/tools/check_external_pack.py"
 SIZE_REPORT = ROOT / "c++/tools/size_report.py"
 FLAGS = ROOT / "c++/tools/prove_size_flags.py"
-SYNC = ROOT / "c++/tools/sync_calculator_volume.py"
 
 
 def fail(msg: str) -> int:
@@ -25,11 +24,15 @@ def main() -> int:
         'TRANSFER_DIR="${ROOT_DIR}/calculator_files"',
         'TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"',
         'TRANSFER_PAK="${TRANSFER_DIR}/CASIOCAS.PAK"',
-        'TEMPLATE_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.TPL"',
+        'TEMPLATE_DIR="${ROOT_DIR}/c++/prizm/help"',
+        "template_sources",
+        "-name 'CASIOCAS*.TPL'",
         'cp "${OUT_G3A}" "${TRANSFER_G3A}"',
         'python3 "${ROOT_DIR}/c++/tools/build_external_pack.py"',
         'python3 "${ROOT_DIR}/c++/tools/size_report.py" --baseline current',
-        'python3 "${ROOT_DIR}/c++/tools/sync_calculator_volume.py" "${TRANSFER_DIR}"',
+        'publish_downloads_transfer',
+        'CASIO_DOWNLOADS_DIR',
+        'cp -R "${TRANSFER_DIR}" "${downloads_transfer}"',
         'cp "${OUT_PAK}" "${TRANSFER_PAK}"',
         'rm -f "${ROOT_DIR}/CasioCAS.g3a"',
         'rm -f "${ROOT_DIR}/CASIOCAS.HLP"',
@@ -47,6 +50,11 @@ def main() -> int:
         'TRANSFER_HELP_GZ="${TRANSFER_DIR}/CASIOCAS.HLP.gz"',
         'ROOT_G3A=',
         'ROOT_HELP=',
+        'sync_calculator_volume',
+        'sync_calculator_volume.py',
+        '/Volumes',
+        'CASIO_CALCULATOR_VOLUME',
+        'CASIO_AUTO_SYNC',
     ]
     present = [m for m in forbidden if m in src]
     if present:
@@ -57,13 +65,9 @@ def main() -> int:
     for marker in ["discover_makefile_objects", "--candidate", "run_tests_cpp.py", "restore_makefile"]:
         if marker not in prune:
             return fail("prune proof script marker missing: " + marker)
-    for tool in [PACK, CHECK_PACK, SIZE_REPORT, FLAGS, SYNC]:
+    for tool in [PACK, CHECK_PACK, SIZE_REPORT, FLAGS]:
         if not tool.exists():
             return fail("missing size/external-data tool: " + tool.name)
-    sync = SYNC.read_text(errors="ignore")
-    for marker in ["CASIO_CALCULATOR_VOLUME", "CASIO_AUTO_SYNC", "CasioCAS.g3a", "CASIOCAS.PAK", "/Volumes"]:
-        if marker not in sync:
-            return fail("calculator sync marker missing: " + marker)
     flags = FLAGS.read_text(errors="ignore")
     for marker in ["-fwhole-program", "-Wl,-s", "restore_makefile", "run_tests_cpp.py"]:
         if marker not in flags:

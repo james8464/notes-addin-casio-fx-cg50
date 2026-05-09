@@ -12,7 +12,7 @@ OUT_G3A="${OUT_DIR}/CasioCAS.g3a"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TRANSFER_G3A="${TRANSFER_DIR}/CasioCAS.g3a"
 HELP_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.HLP"
-TEMPLATE_SRC="${ROOT_DIR}/c++/prizm/help/CASIOCAS.TPL"
+TEMPLATE_DIR="${ROOT_DIR}/c++/prizm/help"
 OUT_PAK="${OUT_DIR}/CASIOCAS.PAK"
 TRANSFER_PAK="${TRANSFER_DIR}/CASIOCAS.PAK"
 ICON_SEL="${ROOT_DIR}/c++/prizm/assets/selected.bmp"
@@ -58,8 +58,12 @@ publish_transfer_g3a() {
 
 publish_external_pack() {
   if [ -f "${HELP_SRC}" ]; then
-    if [ -f "${TEMPLATE_SRC}" ]; then
-      python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${TEMPLATE_SRC}" "${OUT_PAK}"
+    template_sources=()
+    while IFS= read -r template_source; do
+      template_sources+=("${template_source}")
+    done < <(find "${TEMPLATE_DIR}" -maxdepth 1 -type f -name 'CASIOCAS*.TPL' | sort)
+    if [ "${#template_sources[@]}" -gt 0 ]; then
+      python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${template_sources[@]}" "${OUT_PAK}"
     else
       python3 "${ROOT_DIR}/c++/tools/build_external_pack.py" "${HELP_SRC}" "${OUT_PAK}"
     fi
@@ -85,8 +89,16 @@ report_transfer_sizes() {
   fi
 }
 
-sync_calculator_volume() {
-  python3 "${ROOT_DIR}/c++/tools/sync_calculator_volume.py" "${TRANSFER_DIR}"
+publish_downloads_transfer() {
+  local downloads_root="${CASIO_DOWNLOADS_DIR:-${HOME}/Downloads}"
+  local downloads_transfer="${downloads_root}/calculator_files"
+  if [ ! -d "${downloads_root}" ]; then
+    echo "Downloads folder not found; transfer files ready in ${TRANSFER_DIR}."
+    return 0
+  fi
+  rm -rf "${downloads_transfer}"
+  cp -R "${TRANSFER_DIR}" "${downloads_transfer}"
+  echo "Downloads transfer folder: ${downloads_transfer}"
 }
 
 report_addin_size() {
@@ -138,7 +150,7 @@ if [ "${MODE}" = "khicas-source" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
-  sync_calculator_volume
+  publish_downloads_transfer
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
@@ -175,7 +187,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
-  sync_calculator_volume
+  publish_downloads_transfer
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"
@@ -216,7 +228,7 @@ if [ -f "${OUT_G3A}" ]; then
   report_addin_size
   publish_transfer_g3a
   publish_external_pack
-  sync_calculator_volume
+  publish_downloads_transfer
   report_transfer_sizes
   ls -lh "${OUT_G3A}"
   [ ! -f "${OUT_PAK}" ] || ls -lh "${OUT_PAK}"

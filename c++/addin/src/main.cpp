@@ -60,13 +60,7 @@ static void view_lines(const char *title, casio::device::OutputLines const &line
                 continue;
             }
 
-            if(row == 0) {
-                out.append_int(i + 1);
-                out.append("  ");
-            }
-            else {
-                out.append("   ");
-            }
+            if(row != 0) out.append("   ");
 
             int start = row * kMaxTextCols;
             for(int j = 0; j < kMaxTextCols && line[start + j] != '\0'; j++) {

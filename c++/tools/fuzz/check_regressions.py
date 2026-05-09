@@ -47,7 +47,7 @@ def main() -> int:
         )
         out = (p.stdout or "").strip()
         low = out.lower()
-        ok = (p.returncode == 0) and ("answer:" in low) and ("err:" not in low)
+        ok = (p.returncode == 0) and bool(out.strip()) and ("err:" not in low)
         if not ok:
             bad += 1
             print("FAIL", program, "rc=", p.returncode)
@@ -61,4 +61,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -13,12 +13,12 @@ CASES = REPO / "c++" / "tools" / "golden" / "rtf_cases.jsonl"
 
 NEEDLES: dict[str, list[str]] = {
     # Tests.txt says 1.889, but Newton's method for x^10+5x=449 from x0=1.8 gives 1.838 after two iterations.
-    "2c": ["Newton-Raphson", "x = 1.838"],
-    "8c": ["inverse function", "f^-1(x) = (4 - e^x)/2", "Given domain: x<2"],
+    "2c": ["x_(n+1) = x_n - f(x_n)/f'(x_n)", "x = 1.838"],
+    "8c": ["x = f(y)", "f^-1(x) = (4 - e^x)/2", "Given domain: x<2"],
     "9": ["Separate variables", "y = (x + 1)^2*e^(-x)"],
-    "H7a": ["implicit differentiation", "dy/dx = (2 - 2*x*y)/(x^2 - 2*y)"],
-    "M13": ["Clearing denominators", "1.475", "3.525"],
-    "U3": ["Solve trig equation", "x = [pi, 5*pi/3]"],
+    "H7a": ["F_x", "F_y", "dy/dx = (2 - 2*x*y)/(x^2 - 2*y)"],
+    "M13": ["Multiply by", "1.475", "3.525"],
+    "U3": ["cos(A) = -1/2", "x = [pi, 5*pi/3]"],
 }
 
 

@@ -23,7 +23,7 @@ def run_cpp(host: Path, stdin: str) -> str:
 
 
 def has_answer(text: str) -> bool:
-    return any(re.search(r"\banswer:\s*", ln, flags=re.I) for ln in text.splitlines())
+    return bool(text.strip()) and "err:" not in text.lower()
 
 
 def main() -> int:

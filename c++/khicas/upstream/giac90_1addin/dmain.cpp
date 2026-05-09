@@ -92,6 +92,10 @@ int find_color(const char * s){
   buf[ptr-s]=0;
   if (strcmp(buf,"def")==0)
     return 1;
+  // Keep common aliases coloured even when Giac's lexer treats them as symbols.
+  if (!strcmp(buf,"log") || !strcmp(buf,"sec") || !strcmp(buf,"csc") ||
+      !strcmp(buf,"cosec") || !strcmp(buf,"cot"))
+    return 3;
   //int pos=dichotomic_search(keywords,sizeof(keywords),buf);
   //if (pos>=0) return 1;
   gen g;
@@ -902,7 +906,6 @@ void do_run(const char * s,gen & g,gen & ge){
       ; // insure ON has been removed from keyboard buffer
     ge=string2gen("Interrupted",false);
   }
-  //Console_Output("Done"); return ;
   esc_flag=0;
   giac::ctrl_c=false;
   giac::interrupted=false;

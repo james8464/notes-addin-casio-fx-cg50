@@ -139,7 +139,7 @@ def main() -> int:
             print("")
         elif "^x" in cpp_expr or "x^x" in cpp_expr or "sin(x)^x" in cpp_expr:
             low = cpp_out.lower()
-            if "logdiff" not in low and "log diff" not in low and "var power" not in low and "logy=vlogu" not in norm(low):
+            if not any(m in low for m in ("ln(y)", "log(y)", "logdiff", "log diff", "var power")):
                 bad += 1
                 print("WEAK WORKING", mode, cpp_expr)
                 print("  missing variable-power/logdiff route")

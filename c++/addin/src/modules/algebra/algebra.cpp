@@ -420,7 +420,13 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
     return std::nullopt;
 }
 
-static std::optional<NodeId> cartesian_from_param(Arena &a, std::string const &x_expr, std::string const &y_expr, std::string const &param)
+struct CartesianResult
+{
+    NodeId t_expr = 0;
+    NodeId y_expr = 0;
+};
+
+static std::optional<CartesianResult> cartesian_from_param(Arena &a, std::string const &x_expr, std::string const &y_expr, std::string const &param)
 {
     NodeId xn = casio::simplify(a, casio::parse_expr(a, x_expr));
     NodeId yn = casio::simplify(a, casio::parse_expr(a, y_expr));
@@ -431,7 +437,7 @@ static std::optional<NodeId> cartesian_from_param(Arena &a, std::string const &x
     NodeId x = casio::sym(a, "x");
     NodeId top = casio::add(a, {x, casio::neg(a, casio::num(a, xp->a0.num, xp->a0.den))});
     NodeId t_expr = casio::simplify(a, casio::div(a, top, casio::num(a, xp->a1.num, xp->a1.den)));
-    return casio::simplify(a, clone_with_substitution(a, yn, param, t_expr));
+    return CartesianResult{t_expr, casio::simplify(a, clone_with_substitution(a, yn, param, t_expr))};
 }
 
 static std::string trim_text(std::string s)
@@ -452,6 +458,70 @@ static bool pythagorean_square_sum(std::string text)
            key.find("cos(") != std::string::npos &&
            key.find("^2") != std::string::npos &&
            key.find('+') != std::string::npos;
+}
+
+static bool trig_fourth_term(Arena &a, NodeId n, FnKind fk, NodeId &arg)
+{
+    Node const &p = a.get(n);
+    if(p.kind != NodeKind::Pow) return false;
+    Node const &e = a.get(p.b);
+    if(e.kind != NodeKind::Num || e.num.num != 4 || e.num.den != 1) return false;
+    Node const &base = a.get(p.a);
+    if(base.kind != NodeKind::Fn || base.fkind != fk) return false;
+    arg = base.a;
+    return true;
+}
+
+static bool sin_cos_fourth_sum(Arena &a, NodeId n, std::string &arg_text)
+{
+    Node const &add = a.get(n);
+    if(add.kind != NodeKind::Add || add.kids.size() != 2) return false;
+    NodeId sin_arg = 0, cos_arg = 0, tmp = 0;
+    for(NodeId k : add.kids) {
+        if(trig_fourth_term(a, k, FnKind::Sin, tmp)) sin_arg = tmp;
+        else if(trig_fourth_term(a, k, FnKind::Cos, tmp)) cos_arg = tmp;
+        else return false;
+    }
+    if(!sin_arg || !cos_arg || !casio::same_by_sig(a, sin_arg, cos_arg)) return false;
+    arg_text = format_expr(a, sin_arg);
+    return true;
+}
+
+static std::vector<std::string> split_top_key(std::string const &s, char sep);
+static std::string compact_input_key(std::string text);
+
+static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
+{
+    std::string prefix = std::string(fn) + "(";
+    if(term.rfind(prefix, 0) != 0) return false;
+    int depth = 0;
+    for(std::size_t i = prefix.size() - 1; i < term.size(); ++i) {
+        if(term[i] == '(') depth++;
+        else if(term[i] == ')') {
+            depth--;
+            if(depth == 0) {
+                if(term.substr(i + 1) != "^4") return false;
+                arg = term.substr(prefix.size(), i - prefix.size());
+                return !arg.empty();
+            }
+        }
+    }
+    return false;
+}
+
+static bool sin_cos_fourth_sum_text(std::string const &expr, std::string &arg_text)
+{
+    auto parts = split_top_key(compact_input_key(expr), '+');
+    if(parts.size() != 2) return false;
+    std::string sarg, carg, tmp;
+    for(auto const &p : parts) {
+        if(trig_fourth_term_text(p, "sin", tmp)) sarg = tmp;
+        else if(trig_fourth_term_text(p, "cos", tmp)) carg = tmp;
+        else return false;
+    }
+    if(sarg.empty() || carg.empty() || sarg != carg) return false;
+    arg_text = sarg;
+    return true;
 }
 
 static std::vector<std::string> split_csv(std::string const &s)
@@ -675,11 +745,10 @@ static std::optional<std::vector<std::string>> symbolic_complete_square(Arena &a
     NodeId ans = casio::add(a, {square, tail});
     std::string btxt = format_expr(a, q->b);
     return std::vector<std::string>{
-        "1. Complete square for " + raw + ".",
-        "2. Coefficient of " + var + " is " + btxt + ".",
-        "3. h = b/(2a) = " + format_expr(a, half_b) + ".",
-        "4. k = c - b^2/(4a) = " + format_expr(a, tail) + ".",
-        "5. Add and subtract (" + format_expr(a, half_b) + ")^2.",
+        format_expr(a, n),
+        "b = " + btxt,
+        "h = b/(2a) = " + format_expr(a, half_b),
+        "k = c - b^2/(4a) = " + format_expr(a, tail),
         "Answer: " + format_expr(a, ans),
     };
 }
@@ -779,6 +848,7 @@ static std::string rat_node_text(Arena &a, Rational r)
 static std::optional<Rational> parse_rational_text(std::string s)
 {
     s = trim_text(s);
+    while(s.size() >= 2 && s.front() == '(' && s.back() == ')') s = trim_text(s.substr(1, s.size() - 2));
     if(s.empty()) return std::nullopt;
     auto slash = s.find('/');
     try {
@@ -800,6 +870,33 @@ static std::optional<Rational> parse_rational_text(std::string s)
     }
 }
 
+static std::optional<std::string> normalized_linear_text(Arena &a, NodeId n, std::string const &var)
+{
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || !is_zero(rp.num.a2) || !is_zero(rp.den.a2) || !is_zero(rp.den.a1) || is_zero(rp.den.a0))
+        return std::nullopt;
+    Rational m = r_div(rp.num.a1, rp.den.a0);
+    Rational b = r_div(rp.num.a0, rp.den.a0);
+    auto xterm = [&](Rational r) {
+        r.normalize();
+        bool neg = r.num < 0;
+        long long num = std::llabs(r.num);
+        std::string body;
+        if(r.den == 1) body = (num == 1 ? var : std::to_string(num) + "*" + var);
+        else body = (num == 1 ? var + "/" + std::to_string(r.den) : std::to_string(num) + "*" + var + "/" + std::to_string(r.den));
+        return neg ? "-" + body : body;
+    };
+    std::string out;
+    if(!is_zero(m)) out = xterm(m);
+    if(!is_zero(b)) {
+        std::string bt = format_expr(a, a.num(r_abs(b)));
+        if(out.empty()) out = (b.num < 0 ? "-" : "") + bt;
+        else out += b.num < 0 ? " - " + bt : " + " + bt;
+    }
+    if(out.empty()) out = "0";
+    return out;
+}
+
 static std::optional<std::string> linear_fractional_interval_range(
     Arena &a,
     NodeId n,
@@ -810,19 +907,33 @@ static std::optional<std::string> linear_fractional_interval_range(
 )
 {
     if(lo.empty() || hi.empty()) return std::nullopt;
+    auto x0 = parse_rational_text(lo);
+    if(!x0) return std::nullopt;
     std::string hi_key;
     for(char ch : hi) {
         if(!std::isspace(static_cast<unsigned char>(ch))) hi_key.push_back((char)std::tolower((unsigned char)ch));
     }
-    if(hi_key != "inf" && hi_key != "+inf" && hi_key != "infinity") return std::nullopt;
-    auto x0 = parse_rational_text(lo);
-    if(!x0) return std::nullopt;
+    bool hi_inf = hi_key == "inf" || hi_key == "+inf" || hi_key == "infinity";
+    auto x1 = hi_inf ? std::optional<Rational>{} : parse_rational_text(hi);
+    if(!hi_inf && !x1) return std::nullopt;
     auto rp = ratpoly_of_node(a, n, var);
     if(!rp.ok || !is_zero(rp.num.a2) || !is_zero(rp.den.a2) || is_zero(rp.den.a1)) return std::nullopt;
     Rational A = rp.num.a1, B = rp.num.a0, C = rp.den.a1, D = rp.den.a0;
     Rational det = r_sub(r_mul(A, D), r_mul(B, C));
     if(is_zero(det)) return std::nullopt;
     Rational pole = r_div(r_neg(D), C);
+    if(x1) {
+        Rational lo_r = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
+        Rational hi_r = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;
+        if(r_cmp(pole, lo_r) >= 0 && r_cmp(pole, hi_r) <= 0) return std::nullopt;
+        Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
+        Rational y1 = r_div(r_add(r_mul(A, *x1), B), r_add(r_mul(C, *x1), D));
+        Rational ymin = r_cmp(y0, y1) <= 0 ? y0 : y1;
+        Rational ymax = r_cmp(y0, y1) <= 0 ? y1 : y0;
+        steps.push_back("Fractional linear function is monotone on this interval.");
+        steps.push_back("Evaluate endpoints: y(" + rat_node_text(a, *x0) + ")=" + rat_node_text(a, y0) + ", y(" + rat_node_text(a, *x1) + ")=" + rat_node_text(a, y1) + ".");
+        return rat_node_text(a, ymin) + " <= y <= " + rat_node_text(a, ymax);
+    }
     if(r_cmp(pole, *x0) >= 0) return std::nullopt;
     Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
     Rational asym = r_div(A, C);
@@ -1245,6 +1356,317 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
     return std::nullopt;
 }
 
+static NodeId zero_node(Arena &a) { return a.num(Rational{0, 1}); }
+static NodeId neg_node(Arena &a, NodeId n) { return a.mul({a.num(Rational{-1, 1}), n}); }
+static NodeId sub_node(Arena &a, NodeId lhs, NodeId rhs)
+{
+    return casio::simplify(a, a.add({lhs, neg_node(a, rhs)}));
+}
+
+struct CompareTerm
+{
+    NodeId lhs = 0;
+    NodeId rhs = 0;
+    NodeId residual = 0;
+    NodeId domain = 0;
+    bool equation = false;
+};
+
+static CompareTerm parse_compare_term(Arena &a, std::string const &text)
+{
+    if(auto eq = casio::parse_equation(a, text)) {
+        NodeId raw_residual = a.add({eq->lhs, neg_node(a, eq->rhs)});
+        CompareTerm t;
+        t.lhs = casio::simplify(a, eq->lhs);
+        t.rhs = casio::simplify(a, eq->rhs);
+        t.residual = sub_node(a, t.lhs, t.rhs);
+        t.domain = raw_residual;
+        t.equation = true;
+        return t;
+    }
+    NodeId raw = casio::parse_expr(a, text);
+    NodeId n = casio::simplify(a, raw);
+    return CompareTerm{n, zero_node(a), n, raw, false};
+}
+
+static std::string relation_text(Arena &a, CompareTerm const &t)
+{
+    if(!t.equation) return format_expr(a, t.lhs);
+    return format_expr(a, t.lhs) + " = " + format_expr(a, t.rhs);
+}
+
+static std::optional<double> eval_node_multi(Arena &a, NodeId id, std::vector<std::string> const &vars, std::vector<double> const &vals)
+{
+    Node const &n = a.get(id);
+    switch(n.kind) {
+    case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
+    case NodeKind::Sym:
+        for(std::size_t i = 0; i < vars.size() && i < vals.size(); ++i)
+            if(n.text == vars[i]) return vals[i];
+        return std::nullopt;
+    case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
+    case NodeKind::Fn: {
+        auto av = eval_node_multi(a, n.a, vars, vals);
+        if(!av) return std::nullopt;
+        double u = *av;
+        switch(n.fkind) {
+        case FnKind::Sin: return std::sin(u);
+        case FnKind::Cos: return std::cos(u);
+        case FnKind::Tan: return std::tan(u);
+        case FnKind::Sec: return 1.0 / std::cos(u);
+        case FnKind::Cosec: return 1.0 / std::sin(u);
+        case FnKind::Cot: return 1.0 / std::tan(u);
+        case FnKind::Asin: return std::asin(u);
+        case FnKind::Acos: return std::acos(u);
+        case FnKind::Atan: return std::atan(u);
+        case FnKind::Sinh: return std::sinh(u);
+        case FnKind::Cosh: return std::cosh(u);
+        case FnKind::Tanh: return std::tanh(u);
+        case FnKind::Exp: return std::exp(u);
+        case FnKind::Log: return std::log(u);
+        case FnKind::Log10: return std::log10(u);
+        case FnKind::Sqrt: return std::sqrt(u);
+        case FnKind::Abs: return std::fabs(u);
+        case FnKind::Sign: return (u > 0) - (u < 0);
+        case FnKind::Factorial: return std::nullopt;
+        default: return std::nullopt;
+        }
+    }
+    case NodeKind::Add: {
+        double s = 0.0;
+        for(auto k : n.kids) {
+            auto v = eval_node_multi(a, k, vars, vals);
+            if(!v) return std::nullopt;
+            s += *v;
+        }
+        return s;
+    }
+    case NodeKind::Mul: {
+        double p = 1.0;
+        for(auto k : n.kids) {
+            auto v = eval_node_multi(a, k, vars, vals);
+            if(!v) return std::nullopt;
+            p *= *v;
+        }
+        return p;
+    }
+    case NodeKind::Div: {
+        auto u = eval_node_multi(a, n.a, vars, vals);
+        auto v = eval_node_multi(a, n.b, vars, vals);
+        if(!u || !v || std::fabs(*v) < 1e-12) return std::nullopt;
+        return *u / *v;
+    }
+    case NodeKind::Pow: {
+        auto u = eval_node_multi(a, n.a, vars, vals);
+        auto v = eval_node_multi(a, n.b, vars, vals);
+        if(!u || !v) return std::nullopt;
+        double r = std::pow(*u, *v);
+        if(!std::isfinite(r)) return std::nullopt;
+        return r;
+    }
+    }
+    return std::nullopt;
+}
+
+static bool domain_sensitive_node(Arena &a, NodeId id)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Fn) {
+        if(n.fkind == FnKind::Log || n.fkind == FnKind::Log10 || n.fkind == FnKind::Sqrt ||
+           n.fkind == FnKind::Asin || n.fkind == FnKind::Acos || n.fkind == FnKind::Acosh || n.fkind == FnKind::Atanh)
+            return true;
+        return domain_sensitive_node(a, n.a);
+    }
+    if(n.kind == NodeKind::Div)
+        return domain_sensitive_node(a, n.a) || domain_sensitive_node(a, n.b);
+    if(n.kind == NodeKind::Pow)
+        return domain_sensitive_node(a, n.a) || domain_sensitive_node(a, n.b);
+    if(n.kind == NodeKind::Add || n.kind == NodeKind::Mul) {
+        for(auto k : n.kids)
+            if(domain_sensitive_node(a, k)) return true;
+    }
+    return false;
+}
+
+static std::vector<std::vector<double>> compare_samples(std::size_t n)
+{
+    static double const base[] = {-3, -2, -1, -0.5, 0.5, 1, 2, 3, 5};
+    std::vector<std::vector<double>> out;
+    std::size_t count = sizeof(base) / sizeof(base[0]);
+    for(std::size_t i = 0; i < count; ++i) {
+        std::vector<double> row;
+        for(std::size_t j = 0; j < n; ++j) row.push_back(base[(i + 2*j) % count]);
+        out.push_back(row);
+    }
+    return out;
+}
+
+static bool numeric_same(Arena &a, NodeId lhs, NodeId rhs)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, lhs, vars);
+    collect_symbols(a, rhs, vars);
+    if(vars.empty()) vars.push_back("x");
+    bool strict_domain = domain_sensitive_node(a, lhs) || domain_sensitive_node(a, rhs);
+    int valid = 0;
+    for(auto const &row : compare_samples(vars.size())) {
+        auto u = eval_node_multi(a, lhs, vars, row);
+        auto v = eval_node_multi(a, rhs, vars, row);
+        bool uok = u && std::isfinite(*u);
+        bool vok = v && std::isfinite(*v);
+        if(strict_domain && uok != vok) return false;
+        if(!uok || !vok) continue;
+        ++valid;
+        if(std::fabs(*u - *v) > 1e-6 * (1.0 + std::fabs(*u) + std::fabs(*v))) return false;
+    }
+    return valid >= 3;
+}
+
+static bool expression_domain_same(Arena &a, NodeId lhs_domain, NodeId rhs_domain)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, lhs_domain, vars);
+    collect_symbols(a, rhs_domain, vars);
+    if(vars.empty()) vars.push_back("x");
+    for(auto const &row : compare_samples(vars.size())) {
+        auto u = eval_node_multi(a, lhs_domain, vars, row);
+        auto v = eval_node_multi(a, rhs_domain, vars, row);
+        bool uok = u && std::isfinite(*u);
+        bool vok = v && std::isfinite(*v);
+        if(uok != vok) return false;
+    }
+    return true;
+}
+
+static bool equation_domain_compatible(Arena &a, NodeId lhs, NodeId rhs)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, lhs, vars);
+    collect_symbols(a, rhs, vars);
+    if(vars.empty()) vars.push_back("x");
+    for(auto const &row : compare_samples(vars.size())) {
+        auto u = eval_node_multi(a, lhs, vars, row);
+        auto v = eval_node_multi(a, rhs, vars, row);
+        bool uok = u && std::isfinite(*u);
+        bool vok = v && std::isfinite(*v);
+        if(uok == vok) continue;
+        double defined = uok ? *u : *v;
+        if(std::fabs(defined) < 1e-7) return false;
+    }
+    return true;
+}
+
+static bool numeric_equation_solution_sets_same(Arena &a, NodeId lhs, NodeId rhs)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, lhs, vars);
+    collect_symbols(a, rhs, vars);
+    if(vars.size() != 1) return false;
+    std::string const var = vars[0];
+    auto scan = [&](NodeId expr) {
+        std::vector<double> roots;
+        auto f = [&](double x) -> std::optional<double> {
+            std::vector<double> vals{x};
+            auto v = eval_node_multi(a, expr, vars, vals);
+            if(!v || !std::isfinite(*v) || std::fabs(*v) > 1e10) return std::nullopt;
+            return *v;
+        };
+        auto add_root = [&](double r) {
+            auto fr = f(r);
+            if(!fr || std::fabs(*fr) > 2e-5) return;
+            for(double seen : roots)
+                if(std::fabs(seen - r) < 2e-4) return;
+            roots.push_back(r);
+        };
+        double lo = -50.0, hi = 50.0;
+        int steps = 5000;
+        double step = (hi - lo) / steps;
+        double px = lo;
+        auto pv = f(px);
+        if(pv && std::fabs(*pv) < 2e-5) add_root(px);
+        for(int i = 1; i <= steps; ++i) {
+            double x = (i == steps) ? hi : lo + step * i;
+            auto cv = f(x);
+            if(cv && std::fabs(*cv) < 2e-5) add_root(x);
+            if(pv && cv && ((*pv < 0 && *cv > 0) || (*pv > 0 && *cv < 0))) {
+                double a0 = px, b0 = x, fa = *pv;
+                for(int it = 0; it < 64; ++it) {
+                    double mid = 0.5 * (a0 + b0);
+                    auto fm = f(mid);
+                    if(!fm) break;
+                    if(std::fabs(*fm) < 1e-10) {
+                        a0 = b0 = mid;
+                        break;
+                    }
+                    if((fa < 0 && *fm > 0) || (fa > 0 && *fm < 0)) b0 = mid;
+                    else {
+                        a0 = mid;
+                        fa = *fm;
+                    }
+                }
+                add_root(0.5 * (a0 + b0));
+            }
+            px = x;
+            pv = cv;
+        }
+        std::sort(roots.begin(), roots.end());
+        return roots;
+    };
+    auto lr = scan(lhs);
+    auto rr = scan(rhs);
+    if(lr.empty() && rr.empty()) return false;
+    if(lr.size() != rr.size()) return false;
+    for(std::size_t i = 0; i < lr.size(); ++i) {
+        if(std::fabs(lr[i] - rr[i]) > 1e-4) return false;
+    }
+    (void)var;
+    return true;
+}
+
+static bool relation_equivalent(Arena &a, CompareTerm const &u, CompareTerm const &v)
+{
+    if(!u.equation && !v.equation) {
+        NodeId diff = sub_node(a, u.lhs, v.lhs);
+        bool same = casio::same_by_sig(a, diff, zero_node(a));
+        bool strict = domain_sensitive_node(a, u.domain) || domain_sensitive_node(a, v.domain);
+        if(strict && !expression_domain_same(a, u.domain, v.domain)) return false;
+        if(same && !strict) return true;
+        return numeric_same(a, u.lhs, v.lhs);
+    }
+    if(u.equation != v.equation) return false;
+    NodeId diff = sub_node(a, u.residual, v.residual);
+    bool strict = domain_sensitive_node(a, u.domain) || domain_sensitive_node(a, v.domain);
+    if(strict && !equation_domain_compatible(a, u.domain, v.domain)) return false;
+    if(casio::same_by_sig(a, diff, zero_node(a)) && !strict) return true;
+    if(numeric_same(a, u.residual, v.residual)) return true;
+    NodeId sum = casio::simplify(a, a.add({u.residual, v.residual}));
+    if(casio::same_by_sig(a, sum, zero_node(a)) && !strict) return true;
+    if(numeric_same(a, u.residual, neg_node(a, v.residual))) return true;
+
+    std::vector<std::string> vars;
+    collect_symbols(a, u.residual, vars);
+    collect_symbols(a, v.residual, vars);
+    if(vars.empty()) vars.push_back("x");
+    std::optional<double> ratio;
+    int valid = 0;
+    bool ratio_bad = false;
+    for(auto const &row : compare_samples(vars.size())) {
+        auto a1 = eval_node_multi(a, u.residual, vars, row);
+        auto b1 = eval_node_multi(a, v.residual, vars, row);
+        if(!a1 || !b1 || !std::isfinite(*a1) || !std::isfinite(*b1) || std::fabs(*b1) < 1e-9) continue;
+        double r = *a1 / *b1;
+        if(!std::isfinite(r) || std::fabs(r) < 1e-9) continue;
+        if(!ratio) ratio = r;
+        else if(std::fabs(r - *ratio) > 1e-6 * (1.0 + std::fabs(*ratio))) {
+            ratio_bad = true;
+            break;
+        }
+        ++valid;
+    }
+    if(!ratio_bad && valid >= 3) return true;
+    return numeric_equation_solution_sets_same(a, u.residual, v.residual);
+}
+
 static std::string sol_rhs(std::string const &line)
 {
     auto pos = line.find('=');
@@ -1301,7 +1723,7 @@ static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::str
     if(vals.empty()) return;
     std::sort(vals.begin(), vals.end());
     std::ostringstream oss;
-    oss << "Answer (3 d.p.): " << var << " = ";
+    oss << var << " ~= ";
     for(std::size_t i = 0; i < vals.size(); i++) {
         if(i) oss << ", ";
         oss << std::fixed << std::setprecision(3) << vals[i];
@@ -1516,6 +1938,51 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
         return {var + " = " + format_expr(a, s1), var + " = " + format_expr(a, s2)};
     }
 
+    auto square_factor = [](std::int64_t n) {
+        std::int64_t best = 1;
+        auto lim = static_cast<std::int64_t>(std::sqrt(static_cast<double>(n)));
+        for(std::int64_t k = lim; k >= 2; --k) {
+            if(n % (k * k) == 0) {
+                best = k;
+                break;
+            }
+        }
+        return best;
+    };
+
+    if(disc.num > 0) {
+        std::int64_t sd = 0;
+        if(is_square_i64(disc.den, sd) && sd != 0) {
+            std::int64_t sf = square_factor(disc.num);
+            std::int64_t rem = disc.num / (sf * sf);
+            if(rem > 1) {
+                Rational constant = r_div(r_neg(p.a1), denom_rat);
+                Rational coeff = r_div(Rational{sf, sd}, denom_rat);
+                constant.normalize();
+                coeff.normalize();
+                auto surd = [&](Rational c) {
+                    std::string core = "sqrt(" + std::to_string(rem) + ")";
+                    bool neg = c.num < 0;
+                    std::int64_t num = std::llabs(c.num);
+                    std::int64_t den = c.den;
+                    std::string body;
+                    if(num == den) body = core;
+                    else if(den == 1) body = std::to_string(num) + "*" + core;
+                    else if(num == 1) body = core + "/" + std::to_string(den);
+                    else body = std::to_string(num) + "*" + core + "/" + std::to_string(den);
+                    return neg ? "-" + body : body;
+                };
+                std::string cst = format_expr(a, a.num(constant));
+                std::string plus = surd(coeff);
+                std::string minus = surd(r_neg(coeff));
+                return {
+                    var + " = " + cst + (plus.rfind("-", 0) == 0 ? " - " + plus.substr(1) : " + " + plus),
+                    var + " = " + cst + (minus.rfind("-", 0) == 0 ? " - " + minus.substr(1) : " + " + minus),
+                };
+            }
+        }
+    }
+
     if(denom_rat.num < 0) {
         Rational pos_den = denom_rat;
         pos_den.num = -pos_den.num;
@@ -1537,6 +2004,114 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     x_minus = casio::simplify(a, x_minus);
     if(format_expr(a, x_plus) == format_expr(a, x_minus)) return {var + " = " + format_expr(a, x_plus)};
     return {var + " = " + format_expr(a, x_plus), var + " = " + format_expr(a, x_minus)};
+}
+
+struct EvenQuartic
+{
+    Rational a4{0, 1};
+    Rational a2{0, 1};
+    Rational a0{0, 1};
+    bool ok = true;
+};
+
+static bool even_quartic_term(Arena &a, NodeId id, std::string const &var, int &deg, Rational &coef)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Num) {
+        coef = r_mul(coef, n.num);
+        return true;
+    }
+    if(n.kind == NodeKind::Sym && n.text == var) {
+        deg += 1;
+        return true;
+    }
+    if(n.kind == NodeKind::Pow) {
+        Node const &b = a.get(n.a);
+        Node const &e = a.get(n.b);
+        if(b.kind == NodeKind::Sym && b.text == var && e.kind == NodeKind::Num && e.num.den == 1 && e.num.num >= 0 && e.num.num <= 4) {
+            deg += (int)e.num.num;
+            return true;
+        }
+        return false;
+    }
+    if(n.kind == NodeKind::Mul) {
+        for(NodeId k : n.kids)
+            if(!even_quartic_term(a, k, var, deg, coef)) return false;
+        return true;
+    }
+    return false;
+}
+
+static std::optional<EvenQuartic> even_quartic_of(Arena &a, NodeId n, std::string const &var)
+{
+    EvenQuartic q;
+    std::vector<NodeId> terms;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else terms.push_back(n);
+    for(NodeId t : terms) {
+        int deg = 0;
+        Rational coef{1, 1};
+        if(!even_quartic_term(a, t, var, deg, coef) || (deg != 0 && deg != 2 && deg != 4)) return std::nullopt;
+        if(deg == 4) q.a4 = r_add(q.a4, coef);
+        else if(deg == 2) q.a2 = r_add(q.a2, coef);
+        else q.a0 = r_add(q.a0, coef);
+    }
+    if(is_zero(q.a4)) return std::nullopt;
+    return q;
+}
+
+static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeId residual, std::string const &var)
+{
+    auto q = even_quartic_of(a, residual, var);
+    if(!q) return std::nullopt;
+    Poly2 ueq{q->a4, q->a2, q->a0, true};
+    auto us = solve_poly2(a, ueq, "u");
+    std::vector<std::string> out;
+    out.push_back("u = " + var + "^2");
+    out.push_back(format_expr(a, poly2_to_node(a, ueq, "u")) + " = 0");
+    for(auto const &s : us) out.push_back(s);
+    std::vector<std::string> xs;
+    auto sqrt_rat = [&](Rational r) {
+        r.normalize();
+        std::int64_t rn = 0, rd = 0;
+        if(r.num >= 0 && is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd != 0) {
+            Rational root{rn, rd};
+            root.normalize();
+            return rat_node_text(a, root);
+        }
+        return "sqrt(" + rat_node_text(a, r) + ")";
+    };
+    auto neg_text = [](std::string s) {
+        if(s == "0") return s;
+        if(!s.empty() && s[0] == '-') return s.substr(1);
+        return "-" + s;
+    };
+    for(auto const &s : us) {
+        std::string rhs = sol_rhs(s);
+        auto uv = solution_line_value(a, s);
+        if(!uv || *uv < -1e-10) {
+            out.push_back(rhs + " < 0, reject for real " + var + ".");
+            continue;
+        }
+        std::string root_text;
+        if(auto rr = parse_rational_text(rhs)) root_text = sqrt_rat(*rr);
+        else {
+            NodeId u_node = casio::parse_expr(a, rhs);
+            root_text = format_expr(a, casio::simplify(a, casio::fn(a, "sqrt", u_node)));
+        }
+        xs.push_back(var + " = " + root_text);
+        if(root_text != "0") xs.push_back(var + " = " + neg_text(root_text));
+    }
+    if(xs.empty()) {
+        out.push_back("No real " + var + ".");
+        out.push_back("Answer: " + var + " = []");
+        return out;
+    }
+    for(auto const &x : xs) out.push_back(x);
+    out.push_back("Answer: " + solution_list_line(var, xs));
+    append_numeric_3dp(a, out, var, xs);
+    return out;
 }
 
 static std::string format_rat(Arena &a, Rational r)
@@ -1630,11 +2205,31 @@ static std::optional<std::string> inverse_trig_linear_domain(Arena &a, NodeId ar
 
 static std::optional<Rational> abs_linear_plus_const_min(Arena &a, NodeId n, std::string const &var);
 
+static std::optional<std::string> log_denominator_exclusion(std::string d)
+{
+    d = trim_text(d);
+    auto suffix_after = [&](std::string const &prefix) -> std::optional<std::string> {
+        if(d.rfind(prefix, 0) != 0) return std::nullopt;
+        std::string k = trim_text(d.substr(prefix.size()));
+        if(k.empty()) return std::nullopt;
+        return k;
+    };
+    if(auto k = suffix_after("ln(x) - ")) return "Domain: x != e^" + *k;
+    if(auto k = suffix_after("log(x) - ")) return "Domain: x != e^" + *k;
+    if(auto k = suffix_after("ln(x) + ")) return "Domain: x != e^(-" + *k + ")";
+    if(auto k = suffix_after("log(x) + ")) return "Domain: x != e^(-" + *k + ")";
+    return std::nullopt;
+}
+
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Div) {
-        if(has_symbols(a, x.b)) push_unique(out, "Domain: " + format_expr(a, x.b) + " != 0");
+        if(has_symbols(a, x.b)) {
+            std::string den = format_expr(a, x.b);
+            push_unique(out, "Domain: " + den + " != 0");
+            if(auto solved = log_denominator_exclusion(den)) push_unique(out, *solved);
+        }
         collect_domain(a, x.a, out);
         collect_domain(a, x.b, out);
         return;
@@ -1756,6 +2351,497 @@ static std::string compact_input_key(std::string text)
         out.push_back(c);
     }
     return out;
+}
+
+static std::optional<long long> parse_i64_text(std::string const &s);
+
+static std::vector<std::string> split_top_key(std::string const &s, char sep)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if(c == sep && depth == 0) {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else cur.push_back(c);
+    }
+    out.push_back(cur);
+    return out;
+}
+
+static std::optional<Rational> parse_rational_key(std::string const &s)
+{
+    auto parts = split_top_key(s, '/');
+    if(parts.size() == 1) {
+        if(auto n = parse_i64_text(parts[0])) return Rational{*n, 1};
+        return std::nullopt;
+    }
+    if(parts.size() == 2) {
+        auto n = parse_i64_text(parts[0]);
+        auto d = parse_i64_text(parts[1]);
+        if(n && d && *d != 0) {
+            Rational r{*n, *d};
+            r.normalize();
+            return r;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::string format_rat_plain(Rational r)
+{
+    r.normalize();
+    if(r.den == 1) return std::to_string(r.num);
+    return std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static bool parse_log_call_key(std::string const &s, std::size_t pos, std::string &base, std::string &arg, std::size_t &next)
+{
+    if(s.compare(pos, 4, "log(") != 0) return false;
+    std::size_t begin = pos + 4;
+    int depth = 1;
+    for(std::size_t i = begin; i < s.size(); ++i) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')') {
+            depth--;
+            if(depth == 0) {
+                auto inner = s.substr(begin, i - begin);
+                auto args = split_top_key(inner, ',');
+                if(args.size() != 2) return false;
+                base = args[0];
+                arg = args[1];
+                next = i + 1;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+struct LogTermKey
+{
+    Rational coeff{1, 1};
+    std::string base;
+    std::string arg;
+};
+
+static std::optional<LogTermKey> parse_log_term_key(std::string const &term)
+{
+    std::size_t pos = term.find("log(");
+    if(pos == std::string::npos) return std::nullopt;
+    Rational coeff{1, 1};
+    if(pos > 0) {
+        auto c = parse_rational_key(term.substr(0, pos));
+        if(!c) return std::nullopt;
+        coeff = *c;
+    }
+    std::string base, arg;
+    std::size_t next = 0;
+    if(!parse_log_call_key(term, pos, base, arg, next) || next != term.size()) return std::nullopt;
+    return LogTermKey{coeff, base, arg};
+}
+
+static std::optional<int> integer_power_of_base(std::string const &base_text, std::string const &value_text)
+{
+    auto b = parse_i64_text(base_text);
+    auto v = parse_i64_text(value_text);
+    if(!b || !v || *b <= 1 || *v <= 0) return std::nullopt;
+    long long p = 1;
+    for(int n = 0; n <= 12; ++n) {
+        if(p == *v) return n;
+        if(p > std::numeric_limits<long long>::max() / *b) break;
+        p *= *b;
+    }
+    return std::nullopt;
+}
+
+static std::string format_power_answer(std::string const &base, Rational expo)
+{
+    expo.normalize();
+    auto b = parse_i64_text(base);
+    if(b && expo.den == 1 && expo.num >= 0 && expo.num <= 12) {
+        long long val = 1;
+        for(long long i = 0; i < expo.num; ++i) val *= *b;
+        return std::to_string(val);
+    }
+    if(expo.num == 1 && expo.den == 2) return "sqrt(" + base + ")";
+    if(expo.den == 1) return base + "^" + std::to_string(expo.num);
+    return base + "^(" + format_rat_plain(expo) + ")";
+}
+
+static std::optional<Rational> integer_base_power_rational(std::string const &base_text, Rational expo)
+{
+    expo.normalize();
+    auto b = parse_i64_text(base_text);
+    if(!b || *b <= 0 || expo.den != 1 || std::llabs(expo.num) > 12) return std::nullopt;
+    Rational out{1, 1};
+    for(long long i = 0; i < std::llabs(expo.num); ++i) out = r_mul(out, Rational{*b, 1});
+    if(expo.num < 0) out = r_div(Rational{1, 1}, out);
+    out.normalize();
+    return out;
+}
+
+static std::optional<std::string> exact_log_base_value_key(std::string const &key)
+{
+    std::string base, arg;
+    std::size_t next = 0;
+    if(!parse_log_call_key(key, 0, base, arg, next) || next != key.size()) return std::nullopt;
+    if(arg == "1") return std::string("0");
+    if(auto n = integer_power_of_base(base, arg)) return std::to_string(*n);
+    if(auto n = integer_power_of_base(arg, base); n && *n != 0) return std::string("1/") + std::to_string(*n);
+    return std::nullopt;
+}
+
+static std::string format_key_expr(Arena &a, std::string const &text)
+{
+    try {
+        auto parsed = casio::parse_expr(a, text);
+        return format_expr(a, parsed);
+    }
+    catch(...) {
+        return text;
+    }
+}
+
+static std::vector<std::string> solve_poly_from_key(
+    Arena &a,
+    std::string const &poly_key,
+    std::string const &var
+)
+{
+    try {
+        NodeId n = casio::simplify(a, casio::parse_expr(a, poly_key));
+        auto rp = ratpoly_of_node(a, n, var);
+        if(rp.ok) {
+            return solve_poly2(a, rp.num, var);
+        }
+    }
+    catch(...) {}
+    return {};
+}
+
+static std::string join_solutions(std::vector<std::string> const &sols)
+{
+    std::string out;
+    for(std::size_t i = 0; i < sols.size(); ++i) {
+        if(i) out += " or ";
+        out += sol_rhs(sols[i]);
+    }
+    return out;
+}
+
+static std::vector<std::string> filter_solutions_by_original_key(
+    Arena &a,
+    std::vector<std::string> sols,
+    std::string const &rearr_key,
+    std::string const &var
+)
+{
+    try {
+        NodeId orig = casio::simplify(a, casio::parse_expr(a, rearr_key));
+        return filter_real_solutions(a, orig, var, sols, std::nullopt, std::nullopt);
+    }
+    catch(...) { return sols; }
+}
+
+static long long gcd_abs_ll(long long a, long long b)
+{
+    a = std::llabs(a);
+    b = std::llabs(b);
+    while(b != 0) {
+        long long t = a % b;
+        a = b;
+        b = t;
+    }
+    return a == 0 ? 1 : a;
+}
+
+static long long lcm_abs_ll(long long a, long long b)
+{
+    a = std::llabs(a);
+    b = std::llabs(b);
+    if(a == 0 || b == 0) return 1;
+    return (a / gcd_abs_ll(a, b)) * b;
+}
+
+static Poly2 primitive_poly2(Poly2 p)
+{
+    p.a2.normalize();
+    p.a1.normalize();
+    p.a0.normalize();
+    long long l = lcm_abs_ll(lcm_abs_ll(p.a2.den, p.a1.den), p.a0.den);
+    long long A = p.a2.num * (l / p.a2.den);
+    long long B = p.a1.num * (l / p.a1.den);
+    long long C = p.a0.num * (l / p.a0.den);
+    long long g = gcd_abs_ll(gcd_abs_ll(A, B), C);
+    if(g == 0) g = 1;
+    A /= g;
+    B /= g;
+    C /= g;
+    if(A < 0 || (A == 0 && B < 0)) {
+        A = -A;
+        B = -B;
+        C = -C;
+    }
+    return Poly2{Rational{A, 1}, Rational{B, 1}, Rational{C, 1}, true};
+}
+
+struct LogPlusConstKey
+{
+    LogTermKey log;
+    Rational constant{0, 1};
+};
+
+static std::optional<LogPlusConstKey> parse_log_plus_const_key(std::vector<std::string> const &terms)
+{
+    if(terms.size() == 1) {
+        auto log = parse_log_term_key(terms[0]);
+        if(log && log->coeff.num == 1 && log->coeff.den == 1) return LogPlusConstKey{*log, Rational{0, 1}};
+        return std::nullopt;
+    }
+    if(terms.size() == 2) {
+        auto l0 = parse_log_term_key(terms[0]);
+        auto l1 = parse_log_term_key(terms[1]);
+        auto c0 = parse_rational_key(terms[0]);
+        auto c1 = parse_rational_key(terms[1]);
+        if(l0 && c1 && l0->coeff.num == 1 && l0->coeff.den == 1) return LogPlusConstKey{*l0, *c1};
+        if(l1 && c0 && l1->coeff.num == 1 && l1->coeff.den == 1) return LogPlusConstKey{*l1, *c0};
+    }
+    return std::nullopt;
+}
+
+static std::string format_u_quadratic(long long A, long long B, long long C)
+{
+    std::string out;
+    if(A == 1) out = "u^2";
+    else out = std::to_string(A) + "u^2";
+    out += B < 0 ? " - " : " + ";
+    long long b = std::llabs(B);
+    out += (b == 1 ? "u" : std::to_string(b) + "u");
+    out += C < 0 ? " - " : " + ";
+    out += std::to_string(std::llabs(C));
+    return out + " = 0";
+}
+
+static std::optional<long long> nth_root_exact_i64(long long value, long long n)
+{
+    if(n <= 0 || value <= 0) return std::nullopt;
+    long long r = static_cast<long long>(std::pow((double)value, 1.0 / (double)n) + 0.5);
+    for(long long cand = std::max(1LL, r - 2); cand <= r + 2; ++cand) {
+        long long p = 1;
+        bool overflow = false;
+        for(long long i = 0; i < n; ++i) {
+            if(cand != 0 && p > std::numeric_limits<long long>::max() / cand) {
+                overflow = true;
+                break;
+            }
+            p *= cand;
+        }
+        if(!overflow && p == value) return cand;
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> custom_log_base_route(
+    Arena &a,
+    std::string const &equation_text,
+    std::string const &var
+)
+{
+    std::string key = compact_input_key(equation_text);
+    auto sides = split_top_key(key, '=');
+    if(sides.size() != 2) return std::nullopt;
+    auto lhs_terms = split_top_key(sides[0], '+');
+    auto rhs_terms = split_top_key(sides[1], '+');
+
+    std::vector<std::string> out;
+
+    // log_x(A)=c  =>  x^c=A, with x>0 and x!=1.
+    if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
+        auto l = parse_log_term_key(lhs_terms[0]);
+        auto rhs = parse_rational_key(sides[1]);
+        if(l && rhs && l->base == var && l->coeff.num == 1 && l->coeff.den == 1 && rhs->den == 1 && rhs->num > 0) {
+            std::string A = format_key_expr(a, l->arg);
+            out.push_back("Domain: " + var + " > 0, " + var + " != 1.");
+            out.push_back("log(" + var + "," + A + ") = " + format_rat_plain(*rhs));
+            out.push_back(var + "^" + std::to_string(rhs->num) + " = " + A);
+            if(auto aval = parse_i64_text(l->arg)) {
+                if(auto root = nth_root_exact_i64(*aval, rhs->num)) {
+                    append_answer(out, var, {var + " = " + std::to_string(*root)});
+                    return out;
+                }
+            }
+            append_answer(out, var, {var + " = (" + A + ")^(1/" + std::to_string(rhs->num) + ")"});
+            return out;
+        }
+    }
+
+    // log_a(x)+log_{a^m}(x)=c.
+    if(lhs_terms.size() == 2) {
+        auto a1 = parse_log_term_key(lhs_terms[0]);
+        auto a2 = parse_log_term_key(lhs_terms[1]);
+        auto rhs = parse_rational_key(sides[1]);
+        if(a1 && a2 && rhs && a1->arg == var && a2->arg == var &&
+           a1->coeff.num == 1 && a1->coeff.den == 1 && a2->coeff.num == 1 && a2->coeff.den == 1) {
+            std::string base = a1->base;
+            auto m = integer_power_of_base(a1->base, a2->base);
+            if(!m || *m <= 1) {
+                m = integer_power_of_base(a2->base, a1->base);
+                if(m && *m > 1) base = a2->base;
+            }
+            if(m && *m > 1) {
+                Rational u = r_div(r_mul(*rhs, Rational{*m, 1}), Rational{*m + 1, 1});
+                out.push_back("Let u = log(" + base + "," + var + ")");
+                out.push_back("log(" + (base == a1->base ? a2->base : a1->base) + "," + var + ") = u/" + std::to_string(*m));
+                out.push_back("u + u/" + std::to_string(*m) + " = " + format_rat_plain(*rhs));
+                out.push_back(std::to_string(*m + 1) + "u/" + std::to_string(*m) + " = " + format_rat_plain(*rhs));
+                out.push_back("u = " + format_rat_plain(u));
+                out.push_back(var + " = " + base + "^" + format_rat_plain(u));
+                out.push_back(var + " = " + format_power_answer(base, u));
+                return out;
+            }
+        }
+    }
+
+    // log_b(A)+c1 = log_b(B)+c2  =>  log_b(A/B)=c2-c1.
+    if(auto left = parse_log_plus_const_key(lhs_terms)) {
+        if(auto right = parse_log_plus_const_key(rhs_terms)) {
+            Rational exponent = r_sub(right->constant, left->constant);
+            auto factor = integer_base_power_rational(left->log.base, exponent);
+            if(factor && left->log.base == right->log.base) {
+                std::string A = format_key_expr(a, left->log.arg);
+                std::string B = format_key_expr(a, right->log.arg);
+                std::string ratio = "(" + left->log.arg + ")/(" + right->log.arg + ")";
+                std::string factor_text = format_rat_plain(*factor);
+                out.push_back("log(" + left->log.base + "," + format_key_expr(a, ratio) + ") = " + format_rat_plain(exponent));
+                out.push_back(format_key_expr(a, ratio) + " = " + factor_text);
+                out.push_back(A + " = " + factor_text + "*(" + B + ")");
+                std::string poly_key = "(" + left->log.arg + ")-(" + factor_text + ")*(" + right->log.arg + ")";
+                try {
+                    NodeId poly_node = casio::simplify(a, casio::parse_expr(a, poly_key));
+                    auto rp = ratpoly_of_node(a, poly_node, var);
+                    if(rp.ok) {
+                        Poly2 prim = primitive_poly2(rp.num);
+                        out.push_back(format_expr(a, poly2_to_node(a, prim, var)) + " = 0");
+                        if(auto roots = rational_quadratic_roots(prim)) {
+                            std::string factored = quadratic_factor_text(a, prim, var);
+                            if(!factored.empty()) out.push_back(factored + " = 0");
+                        }
+                        auto raw = solve_poly2(a, prim, var);
+                        if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
+                        auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+                        if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+                        append_answer(out, var, valid);
+                        return out;
+                    }
+                }
+                catch(...) {}
+            }
+        }
+    }
+
+    // log_a(x)+log_x(a^m)=c.
+    if(lhs_terms.size() == 2) {
+        auto a1 = parse_log_term_key(lhs_terms[0]);
+        auto a2 = parse_log_term_key(lhs_terms[1]);
+        auto rhs = parse_rational_key(sides[1]);
+        if(a1 && a2 && rhs) {
+            LogTermKey direct, recip;
+            bool ok = false;
+            if(a1->arg == var && a2->base == var) {
+                direct = *a1; recip = *a2; ok = true;
+            }
+            else if(a2->arg == var && a1->base == var) {
+                direct = *a2; recip = *a1; ok = true;
+            }
+            if(ok) {
+                auto m = integer_power_of_base(direct.base, recip.arg);
+                if(m && *m > 0) {
+                    Rational A{rhs->den, 1};
+                    Rational B{-rhs->num, 1};
+                    Rational C{rhs->den * (*m), 1};
+                    long long disc = B.num * B.num - 4 * A.num * C.num;
+                    out.push_back("Let u = log(" + direct.base + "," + var + ")");
+                    out.push_back("log(" + var + "," + recip.arg + ") = " + (*m == 1 ? "1/u" : std::to_string(*m) + "/u"));
+                    out.push_back("u + " + (*m == 1 ? "1/u" : std::to_string(*m) + "/u") + " = " + format_rat_plain(*rhs));
+                    out.push_back(format_u_quadratic(A.num, B.num, C.num));
+                    long long sd = disc >= 0 ? static_cast<long long>(std::sqrt(static_cast<double>(disc)) + 0.5) : -1;
+                    if(sd >= 0 && sd * sd == disc) {
+                        Rational r1{-B.num - sd, 2 * A.num};
+                        Rational r2{-B.num + sd, 2 * A.num};
+                        r1.normalize(); r2.normalize();
+                        out.push_back("u = " + format_rat_plain(r1) + " or " + format_rat_plain(r2));
+                        out.push_back(var + " = " + format_power_answer(direct.base, r1) + " or " + format_power_answer(direct.base, r2));
+                    }
+                    else {
+                        out.push_back("u = (" + format_rat_plain(*rhs) + " +/- sqrt((" + format_rat_plain(*rhs) + ")^2 - " + std::to_string(4 * (*m)) + "))/2");
+                        out.push_back(var + " = " + direct.base + "^u");
+                    }
+                    return out;
+                }
+            }
+        }
+    }
+
+    // log_b(A)+log_b(B)=c+k*log_b(C).
+    if(lhs_terms.size() == 2 && rhs_terms.size() == 2) {
+        auto l1 = parse_log_term_key(lhs_terms[0]);
+        auto l2 = parse_log_term_key(lhs_terms[1]);
+        auto rlog = parse_log_term_key(rhs_terms[0]);
+        auto cst = parse_rational_key(rhs_terms[1]);
+        if(!rlog || !cst) {
+            rlog = parse_log_term_key(rhs_terms[1]);
+            cst = parse_rational_key(rhs_terms[0]);
+        }
+        if(l1 && l2 && rlog && cst && l1->base == l2->base && l1->base == rlog->base &&
+           l1->coeff.num == 1 && l1->coeff.den == 1 && l2->coeff.num == 1 && l2->coeff.den == 1 &&
+           cst->den == 1 && rlog->coeff.den == 1) {
+            auto b = parse_i64_text(l1->base);
+            if(b && *b > 1) {
+                long long factor = 1;
+                for(long long i = 0; i < cst->num; ++i) factor *= *b;
+                std::string left = "(" + l1->arg + ")*(" + l2->arg + ")";
+                std::string right = std::to_string(factor) + "*(" + rlog->arg + ")^" + std::to_string(rlog->coeff.num);
+                out.push_back("log(" + l1->base + "," + left + ") = log(" + l1->base + "," + right + ")");
+                out.push_back(format_key_expr(a, left) + " = " + format_key_expr(a, right));
+                std::string poly = "(" + left + ")-(" + right + ")";
+                out.push_back(format_key_expr(a, poly) + " = 0");
+                auto raw = solve_poly_from_key(a, poly, var);
+                if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
+                auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+                if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+                append_answer(out, var, valid);
+                return out;
+            }
+        }
+    }
+
+    // n*log_b(A)=log_b(B).
+    if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
+        auto l = parse_log_term_key(lhs_terms[0]);
+        auto r = parse_log_term_key(rhs_terms[0]);
+        if(l && r && l->base == r->base && l->coeff.den == 1 && l->coeff.num > 1 &&
+           r->coeff.num == 1 && r->coeff.den == 1) {
+            std::string left = "(" + l->arg + ")^" + std::to_string(l->coeff.num);
+            out.push_back(std::to_string(l->coeff.num) + "log(" + l->base + "," + l->arg + ") = log(" + l->base + "," + r->arg + ")");
+            out.push_back("log(" + l->base + "," + left + ") = log(" + l->base + "," + r->arg + ")");
+            out.push_back(format_key_expr(a, left) + " = " + format_key_expr(a, r->arg));
+            std::string poly = "(" + left + ")-(" + r->arg + ")";
+            out.push_back(format_key_expr(a, poly) + " = 0");
+            auto raw = solve_poly_from_key(a, poly, var);
+            if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
+            auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+            if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+            append_answer(out, var, valid);
+            return out;
+        }
+    }
+
+    return std::nullopt;
 }
 
 static std::optional<long long> parse_i64_text(std::string const &s)
@@ -1917,6 +3003,26 @@ static bool is_sqrt_square(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     return x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt && is_square_power(a, x.a);
+}
+
+static bool is_var_plus_sqrt_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    bool has_var = false;
+    bool has_sqrt_var = false;
+    for(NodeId kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Sym && k.text == var) {
+            has_var = true;
+            continue;
+        }
+        if(k.kind == NodeKind::Fn && k.fkind == FnKind::Sqrt) {
+            Node const &inner = a.get(k.a);
+            if(inner.kind == NodeKind::Sym && inner.text == var) has_sqrt_var = true;
+        }
+    }
+    return has_var && has_sqrt_var;
 }
 
 static std::optional<Rational> unbounded_trig_square_min(Arena &a, NodeId n)
@@ -2118,6 +3224,40 @@ static std::optional<std::string> log_linear_range(Arena &a, NodeId n, std::stri
     return std::string("all real y");
 }
 
+static std::optional<std::string> exp_linear_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::optional<double> lo_v,
+    std::optional<double> hi_v,
+    std::vector<std::string> &steps
+)
+{
+    Node const &x = a.get(n);
+    NodeId arg = n;
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) arg = x.a;
+    else if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        if(base.kind != NodeKind::Const || base.ckind != ConstKind::E) return std::nullopt;
+        arg = x.b;
+    }
+    else return std::nullopt;
+    auto p = poly_of(a, arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    steps.push_back("e^u > 0 for all real u.");
+    if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
+        auto ylo = eval_node(a, n, var, *lo_v);
+        auto yhi = eval_node(a, n, var, *hi_v);
+        if(ylo && yhi) {
+            double mn = std::min(*ylo, *yhi);
+            double mx = std::max(*ylo, *yhi);
+            steps.push_back("Evaluate endpoints since exp(linear) is monotone.");
+            return format_double_compact(mn) + " <= y <= " + format_double_compact(mx);
+        }
+    }
+    return "y > 0";
+}
+
 static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, NodeId n, NodeId u)
 {
     if(casio::same_by_sig(a, n, u)) return std::make_pair(Rational{1, 1}, Rational{0, 1});
@@ -2202,14 +3342,14 @@ static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::
     Rational one_bound = r_div(r_sub(Rational{1, 1}, p->a0), p->a1);
     std::string u = format_expr(a, top.a);
     if(*base < 1.0) {
-        steps.push_back("log base " + format_expr(a, bot.a) + " decreases.");
-        steps.push_back("0<base<1, so log_base(u)>=0 gives 0<u<=1.");
-        steps.push_back("Here u=" + u + ", so solve 0<" + u + "<=1.");
-        steps.push_back(u + " <= 1.");
+        steps.push_back("base = " + format_expr(a, bot.a) + ", 0 < base < 1");
+        steps.push_back("log_base(u) >= 0 => 0 < u <= 1");
+        steps.push_back("u = " + u);
+        steps.push_back("0 < " + u + " <= 1");
         if(p->a1.num > 0) return format_rat(a, zero_bound) + " < " + var + " <= " + format_rat(a, one_bound);
         return format_rat(a, one_bound) + " <= " + var + " < " + format_rat(a, zero_bound);
     }
-    steps.push_back("base>1, so log_base(u)>=0 gives u>=1.");
+    steps.push_back("base > 1, log_base(u) >= 0 => u >= 1");
     if(p->a1.num > 0) return var + " >= " + format_rat(a, one_bound);
     return var + " <= " + format_rat(a, one_bound);
 }
@@ -2446,6 +3586,124 @@ static std::optional<std::string> one_over_positive_quadratic_range(Arena &a, No
     return "0 < y <= " + format_rat(a, upper);
 }
 
+struct MonotonePowerInfo {
+    std::int64_t exp = 0;
+    Rational coeff{1, 1};
+};
+
+static bool extract_power_term(Arena &a, NodeId n, std::string const &var, MonotonePowerInfo &info)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == var) {
+        info.exp = 1;
+        info.coeff = Rational{1, 1};
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num > 0) {
+            info.exp = e->num;
+            info.coeff = Rational{1, 1};
+            return true;
+        }
+        return false;
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        std::optional<MonotonePowerInfo> pow;
+        for(NodeId kid : x.kids) {
+            if(auto q = as_num(a, kid)) coeff = r_mul(coeff, *q);
+            else {
+                MonotonePowerInfo p;
+                if(!extract_power_term(a, kid, var, p) || pow) return false;
+                pow = p;
+            }
+        }
+        if(!pow) return false;
+        info = *pow;
+        info.coeff = r_mul(info.coeff, coeff);
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::string> monotone_power_interval_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::optional<double> lo_v,
+    std::optional<double> hi_v,
+    std::vector<std::string> &steps
+)
+{
+    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v)) return std::nullopt;
+    MonotonePowerInfo info;
+    if(!extract_power_term(a, n, var, info)) return std::nullopt;
+    if(info.exp % 2 == 0) return std::nullopt;
+    auto ylo = eval_node(a, n, var, *lo_v);
+    auto yhi = eval_node(a, n, var, *hi_v);
+    if(!ylo || !yhi) return std::nullopt;
+    double mn = std::min(*ylo, *yhi);
+    double mx = std::max(*ylo, *yhi);
+    std::string expr = format_expr(a, n);
+    steps.push_back(expr + (info.coeff.num >= 0 ? " is increasing." : " is decreasing."));
+    steps.push_back("Evaluate endpoints: y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
+                    ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi) + ".");
+    return format_double_compact(mn) + " <= y <= " + format_double_compact(mx);
+}
+
+static std::optional<std::string> odd_power_full_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps
+)
+{
+    MonotonePowerInfo info;
+    if(!extract_power_term(a, n, var, info)) return std::nullopt;
+    if(info.exp % 2 == 0 || is_zero(info.coeff)) return std::nullopt;
+    steps.push_back(format_expr(a, n) + " is an odd power, so it is unbounded both ways.");
+    return "all real y";
+}
+
+static std::optional<std::string> sqrt_linear_interval_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::string const &lo,
+    std::string const &hi,
+    std::vector<std::string> &steps
+)
+{
+    if(lo.empty() || hi.empty()) return std::nullopt;
+    Node const &rn = a.get(n);
+    if(rn.kind != NodeKind::Fn || rn.fkind != FnKind::Sqrt) return std::nullopt;
+    auto x0 = parse_rational_text(lo);
+    auto x1 = parse_rational_text(hi);
+    if(!x0 || !x1) return std::nullopt;
+    auto lp = poly_of(a, rn.a, var);
+    if(!lp || !lp->ok || !is_zero(lp->a2) || is_zero(lp->a1)) return std::nullopt;
+
+    Rational left = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
+    Rational right = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;
+    Rational y_left = r_add(r_mul(lp->a1, left), lp->a0);
+    Rational y_right = r_add(r_mul(lp->a1, right), lp->a0);
+    Rational lo_inner = r_cmp(y_left, y_right) <= 0 ? y_left : y_right;
+    Rational hi_inner = r_cmp(y_left, y_right) <= 0 ? y_right : y_left;
+
+    if(lo_inner.num < 0) {
+        Rational root = r_div(r_neg(lp->a0), lp->a1);
+        if(r_cmp(root, left) >= 0 && r_cmp(root, right) <= 0) lo_inner = Rational{0, 1};
+        else return std::nullopt;
+    }
+    if(hi_inner.num < 0) return std::nullopt;
+
+    steps.push_back("Evaluate endpoints: y(" + format_rat(a, left) + ")=" + sqrt_bound_text(a, y_left) +
+                    ", y(" + format_rat(a, right) + ")=" + sqrt_bound_text(a, y_right) + ".");
+    return sqrt_bound_text(a, lo_inner) + " <= y <= " + sqrt_bound_text(a, hi_inner);
+}
+
 static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -2525,38 +3783,254 @@ static bool has_variable_exponent(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static NodeId sqrt_var_sub_node(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    NodeId u = casio::sym(a, "u");
+    if(x.kind == NodeKind::Sym && x.text == var) return casio::power(a, u, casio::num(a, 2));
+    if(x.kind == NodeKind::Fn) {
+        Node const &arg = a.get(x.a);
+        if(x.fkind == FnKind::Sqrt && arg.kind == NodeKind::Sym && arg.text == var) return u;
+        return casio::fn(a, x.text, sqrt_var_sub_node(a, x.a, var));
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(auto k : x.kids) kids.push_back(sqrt_var_sub_node(a, k, var));
+        return casio::add(a, std::move(kids));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(auto k : x.kids) kids.push_back(sqrt_var_sub_node(a, k, var));
+        return casio::mul(a, std::move(kids));
+    }
+    if(x.kind == NodeKind::Div) return casio::div(a, sqrt_var_sub_node(a, x.a, var), sqrt_var_sub_node(a, x.b, var));
+    if(x.kind == NodeKind::Pow) return casio::power(a, sqrt_var_sub_node(a, x.a, var), sqrt_var_sub_node(a, x.b, var));
+    return n;
+}
+
+static bool only_plain_sqrt_var_terms(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Sqrt) {
+            Node const &arg = a.get(x.a);
+            return arg.kind == NodeKind::Sym && arg.text == var;
+        }
+        return !contains_fn_kind(a, x.a, FnKind::Sqrt);
+    }
+    if(x.kind == NodeKind::Div) return only_plain_sqrt_var_terms(a, x.a, var) && only_plain_sqrt_var_terms(a, x.b, var);
+    if(x.kind == NodeKind::Pow) return only_plain_sqrt_var_terms(a, x.a, var) && only_plain_sqrt_var_terms(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(!only_plain_sqrt_var_terms(a, k, var)) return false;
+    }
+    return true;
+}
+
+static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
+    Arena &a,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    if(!contains_fn_kind(a, rearr, FnKind::Sqrt)) return std::nullopt;
+    if(!only_plain_sqrt_var_terms(a, rearr, var)) return std::nullopt;
+    NodeId ueq_node = casio::simplify(a, sqrt_var_sub_node(a, rearr, var));
+    auto ueq = poly_of(a, ueq_node, "u");
+    if(!ueq || !ueq->ok || is_zero(ueq->a2)) return std::nullopt;
+    auto roots = solve_poly2(a, *ueq, "u");
+    if(roots.empty()) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back("u = sqrt(" + var + "), u >= 0");
+    out.push_back(var + " = u^2");
+    out.push_back(format_expr(a, poly2_to_node(a, *ueq, "u")) + " = 0");
+    if(auto rr = rational_quadratic_roots(*ueq)) {
+        out.push_back("Factor: " + quadratic_factor_text(a, *ueq, "u") + " = 0");
+        out.push_back("u = " + format_rat(a, rr->first) + " or " + format_rat(a, rr->second));
+    }
+    std::vector<std::string> xs;
+    for(auto const &line : roots) {
+        std::string rhs = sol_rhs(line);
+        if(rhs.find('i') != std::string::npos) {
+            out.push_back("reject u = " + rhs + " since u is real");
+            continue;
+        }
+        auto v = parse_const_double(a, rhs);
+        if(v && *v < -1e-10) {
+            out.push_back("reject u = " + rhs + " since u >= 0");
+            continue;
+        }
+        NodeId ux = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, 2)));
+        xs.push_back(var + " = " + format_expr(a, ux));
+    }
+    if(xs.empty()) {
+        out.push_back("no real solution");
+        out.push_back("Answer: " + var + " = []");
+        return out;
+    }
+    for(auto const &xline : xs) out.push_back(xline);
+    out.push_back("Answer: " + solution_list_line(var, xs));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> power_equals_one_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    Node const &l = a.get(lhs);
+    Node const &r = a.get(rhs);
+    if(l.kind != NodeKind::Pow || r.kind != NodeKind::Num || r.num.num != 1 || r.num.den != 1) return std::nullopt;
+    NodeId base_minus_one = casio::simplify(a, casio::add(a, {l.a, casio::num(a, -1)}));
+    NodeId exponent = casio::simplify(a, l.b);
+    auto base_rp = ratpoly_of_node(a, base_minus_one, var);
+    auto exp_rp = ratpoly_of_node(a, exponent, var);
+    if(!base_rp.ok || !exp_rp.ok) return std::nullopt;
+    auto base_sols = solve_poly2(a, base_rp.num, var);
+    auto exp_sols = solve_poly2(a, exp_rp.num, var);
+    if(base_sols.empty() && exp_sols.empty()) return std::nullopt;
+    base_sols = filter_real_solutions(a, rearr, var, base_sols, std::nullopt, std::nullopt);
+    exp_sols = filter_real_solutions(a, rearr, var, exp_sols, std::nullopt, std::nullopt);
+    std::vector<std::string> all = base_sols;
+    for(auto const &s : exp_sols) {
+        std::string rhs_s = sol_rhs(s);
+        bool seen = false;
+        for(auto const &t : all)
+            if(sol_rhs(t) == rhs_s) seen = true;
+        if(!seen) all.push_back(s);
+    }
+    if(all.empty()) return std::nullopt;
+    std::sort(all.begin(), all.end(), [&](std::string const &lhs_s, std::string const &rhs_s) {
+        auto lv = parse_const_double(a, sol_rhs(lhs_s));
+        auto rv = parse_const_double(a, sol_rhs(rhs_s));
+        if(lv && rv) return *lv < *rv;
+        return sol_rhs(lhs_s) < sol_rhs(rhs_s);
+    });
+    std::vector<std::string> out;
+    out.push_back("For A^B = 1:");
+    out.push_back("base = 1 or exponent = 0");
+    out.push_back(format_expr(a, l.a) + " = 1 gives " + solution_list_line(var, base_sols));
+    out.push_back(format_expr(a, exponent) + " = 0 gives " + solution_list_line(var, exp_sols));
+    out.push_back("Answer: " + solution_list_line(var, all));
+    return out;
+}
+
+static bool signed_sqrt_linear(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    int &sign,
+    NodeId &inside
+)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        auto p = poly_of(a, x.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return false;
+        sign = 1;
+        inside = x.a;
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        int s = 1;
+        NodeId root = 0;
+        for(auto k : x.kids) {
+            Node const &kid = a.get(k);
+            if(kid.kind == NodeKind::Num && kid.num.num == -1 && kid.num.den == 1) s = -s;
+            else if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Sqrt) root = k;
+            else return false;
+        }
+        if(!root) return false;
+        Node const &r = a.get(root);
+        auto p = poly_of(a, r.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return false;
+        sign = s;
+        inside = r.a;
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> sqrt_difference_linear_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    Node const &r = a.get(rhs);
+    if(r.kind != NodeKind::Num || r.num.num <= 0) return std::nullopt;
+    Node const &l = a.get(lhs);
+    if(l.kind != NodeKind::Add || l.kids.size() != 2) return std::nullopt;
+    NodeId A = 0, B = 0;
+    for(auto k : l.kids) {
+        int sign = 0;
+        NodeId inside = 0;
+        if(!signed_sqrt_linear(a, k, var, sign, inside)) return std::nullopt;
+        if(sign > 0) A = inside;
+        else B = inside;
+    }
+    if(!A || !B) return std::nullopt;
+    NodeId c = rhs;
+    NodeId c2 = casio::simplify(a, casio::power(a, c, casio::num(a, 2)));
+    NodeId mid = casio::simplify(a, casio::add(a, {A, casio::neg(a, B), casio::neg(a, c2)}));
+    NodeId eq2 = casio::simplify(
+        a,
+        casio::add(a, {
+            casio::power(a, mid, casio::num(a, 2)),
+            casio::neg(a, casio::mul(a, {casio::num(a, 4), c2, B}))
+        })
+    );
+    auto rp = ratpoly_of_node(a, eq2, var);
+    if(!rp.ok) return std::nullopt;
+    auto sols = solve_poly2(a, rp.num, var);
+    sols = filter_real_solutions(a, rearr, var, sols, std::nullopt, std::nullopt);
+    if(sols.empty()) return std::nullopt;
+    std::vector<std::string> out;
+    std::vector<std::string> dom;
+    collect_domain(a, casio::fn(a, "sqrt", A), dom);
+    collect_domain(a, casio::fn(a, "sqrt", B), dom);
+    std::string domain = combined_domain_answer(dom);
+    if(!domain.empty()) out.push_back("Domain: " + domain + ".");
+    out.push_back("sqrt(" + format_expr(a, A) + ") = " + format_expr(a, c) + " + sqrt(" + format_expr(a, B) + ")");
+    out.push_back(format_expr(a, A) + " = " + format_expr(a, c2) + " + 2*" + format_expr(a, c) + "*sqrt(" + format_expr(a, B) + ") + " + format_expr(a, B));
+    out.push_back("(" + format_expr(a, A) + ") - (" + format_expr(a, B) + ") - " + format_expr(a, c2) + " = 2*" + format_expr(a, c) + "*sqrt(" + format_expr(a, B) + ")");
+    out.push_back("Square again and solve.");
+    for(auto const &s : sols) out.push_back(s);
+    out.push_back("Answer: " + solution_list_line(var, sols));
+    return out;
+}
+
 static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out, NodeId rearr, std::string const &var)
 {
-    out.push_back("2. Rearrange to lhs-rhs=0.");
+    out.push_back("LHS-RHS=0: " + format_expr(a, rearr) + " = 0.");
     bool wrote = false;
     if(contains_fn_kind(a, rearr, FnKind::Sqrt)) {
-        out.push_back("3. State radical domain, then isolate the radical term.");
-        out.push_back("4. Square both sides; repeat only if a radical remains.");
-        out.push_back("5. Solve the resulting equation, then check roots in the original.");
+        out.push_back("sqrt(A)=B => A=B^2, A>=0.");
+        out.push_back("sqrt(C)=D => C=D^2.");
         wrote = true;
     }
     if(contains_fn_kind(a, rearr, FnKind::Log)) {
-        out.push_back(wrote ? "6. Use log/exp laws: combine log terms before exponentiating." : "3. Use log/exp laws to combine log terms.");
-        out.push_back(wrote ? "7. Exponentiate only after the log side is isolated; verify roots." :
-                              "4. Exponentiate, solve, then verify roots against the log domain.");
+        out.push_back("log_b(A)-log_b(B)=log_b(A/B), A>0, B>0.");
+        out.push_back("log_b(A)=c => A=b^c.");
         wrote = true;
     }
     if(has_variable_exponent(a, rearr, var)) {
-        out.push_back(wrote ? "8. For powers, set u=a^" + var + " or u=e^" + var + " where powers repeat." :
-                              "3. Set u=a^" + var + " or u=e^" + var + " where powers repeat.");
-        out.push_back(wrote ? "9. Solve the polynomial in u, reject invalid u, then verify roots and convert back with logs." :
-                              "4. Solve the polynomial in u, reject invalid u, then verify roots and convert back with logs.");
+        out.push_back("u=a^" + var + " or u=e^" + var + ", with u>0.");
+        out.push_back(var + "=log_a(u).");
         wrote = true;
     }
     if(contains_fn_kind(a, rearr, FnKind::Abs)) {
-        out.push_back(wrote ? "10. For abs, split into positive/negative cases, solve each, and check both." :
-                              "3. Split abs into positive/negative cases, solve each, and check both.");
+        out.push_back("|A|=B => A=B or A=-B, with B>=0.");
         wrote = true;
     }
-    if(!wrote) {
-        out.push_back("3. Use substitution/factorisation/rearrangement to reduce to a standard equation.");
-        out.push_back("4. Solve the reduced equation and check in the original.");
-    }
+    (void)wrote;
 }
 
 static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
@@ -2809,6 +4283,13 @@ static bool solve_linear_double(std::vector<std::vector<double>> m, int vars, st
     return true;
 }
 
+static NodeId substitute_ints(Arena &a, NodeId n, std::vector<std::pair<std::string, int>> const &subs)
+{
+    NodeId out = n;
+    for(auto const &kv : subs) out = clone_with_substitution(a, out, kv.first, casio::num(a, kv.second));
+    return casio::simplify(a, out);
+}
+
 static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std::string const &payload)
 {
     auto args = split_csv(payload);
@@ -2919,13 +4400,31 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
         if(i) ans += ", ";
         ans += unknowns[i] + "=" + fitconst_value_text(sol[i]);
     }
-    std::vector<std::string> out{
-        "1. Start with identity " + equation + ".",
-        equation.find('/') != std::string::npos ? "2. Clear denominators, then expand both sides." : "2. Expand both sides and collect like powers.",
-        "3. Equate coefficients.",
-        "4. Solve the simultaneous coefficient equations.",
-        "Answer: " + ans,
+    std::vector<std::string> out{"identity " + equation};
+    auto add_eq = [&](std::vector<std::pair<std::string, int>> const &subs) {
+        std::string lhs = format_expr(a, substitute_ints(a, eq->lhs, subs));
+        std::string rhs = format_expr(a, substitute_ints(a, eq->rhs, subs));
+        std::string head;
+        if(subs.size() == 1) head = subs[0].first + " = " + std::to_string(subs[0].second);
+        else {
+            head = "(";
+            for(std::size_t i = 0; i < subs.size(); ++i) {
+                if(i) head += ", ";
+                head += subs[i].first + "=" + std::to_string(subs[i].second);
+            }
+            head += ")";
+        }
+        out.push_back(head + ": " + lhs + " = " + rhs);
     };
+    int needed = (int)std::min<std::size_t>(unknowns.size(), 4);
+    if(indep.size() >= 2) {
+        int pairs[][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+        for(int i = 0; i < needed; ++i) add_eq({{indep[0], pairs[i][0]}, {indep[1], pairs[i][1]}});
+    }
+    else {
+        for(int i = 0; i < needed; ++i) add_eq({{indep[0], i}});
+    }
+    out.push_back(ans);
     return out;
 }
 
@@ -2936,6 +4435,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     try {
         {
             std::string key = compact_input_key(req.expr);
+            if(auto logv = exact_log_base_value_key(key)) {
+                return casio::exam_block(
+                    "custom-base log",
+                    {"log(a,b)=c means a^c=b."},
+                    *logv
+                );
+            }
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
@@ -2969,7 +4475,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "separable differential equation",
                     {
                         "Separate variables: (1/y)dy = 1/(x*(x+2)) dx.",
-                        "Partial fractions: 1/(x*(x+2)) = 1/2*(1/x - 1/(x+2)).",
+                        "PF: 1/(x*(x+2)) = 1/2*(1/x - 1/(x+2)).",
                         "Integrate: log(abs(y)) = 1/2*log(abs(x/(x+2))) + C.",
                         "Exponentiate: y^2 = A*x/(x+2).",
                         "Use y(2)=2: 4 = A/2, so A=8.",
@@ -3089,77 +4595,39 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(nl == std::string::npos) return {"Err: need E1 and E2."};
             std::string e1 = req.expr.substr(0, nl);
             std::string e2 = req.expr.substr(nl + 1);
-            NodeId n1 = casio::simplify(arena, casio::parse_expr(arena, e1));
-            NodeId n2 = casio::simplify(arena, casio::parse_expr(arena, e2));
-            std::function<double(NodeId, double)> eval = [&](NodeId id, double xval) -> double {
-                Node const &n = arena.get(id);
-                switch(n.kind) {
-                case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
-                case NodeKind::Sym: return (n.text == "x") ? xval : 0.0;
-                case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
-                case NodeKind::Fn: {
-                    double a = eval(n.a, xval);
-                    switch(n.fkind) {
-                    case FnKind::Sin: return std::sin(a);
-                    case FnKind::Cos: return std::cos(a);
-                    case FnKind::Tan: return std::tan(a);
-                    case FnKind::Sec: return 1.0 / std::cos(a);
-                    case FnKind::Cosec: return 1.0 / std::sin(a);
-                    case FnKind::Cot: return 1.0 / std::tan(a);
-                    case FnKind::Sqrt: return std::sqrt(a);
-                    case FnKind::Abs: return std::fabs(a);
-                    case FnKind::Sign: return (a > 0) - (a < 0);
-                    case FnKind::Log: return std::log(a);
-                    case FnKind::Exp: return std::exp(a);
-                    default: return 0.0;
-                    }
-                }
-                case NodeKind::Add: {
-                    double s = 0.0;
-                    for(auto k : n.kids) s += eval(k, xval);
-                    return s;
-                }
-                case NodeKind::Mul: {
-                    double p = 1.0;
-                    for(auto k : n.kids) p *= eval(k, xval);
-                    return p;
-                }
-                case NodeKind::Div: return eval(n.a, xval) / eval(n.b, xval);
-                case NodeKind::Pow: return std::pow(eval(n.a, xval), eval(n.b, xval));
-                }
-                return 0.0;
-            };
-            auto numeric_eq = [&]() -> bool {
-                double samples[] = {-2, -1, 0, 1, 2, 3};
-                for(double x : samples) {
-                    double a = eval(n1, x);
-                    double b = eval(n2, x);
-                    if(!std::isfinite(a) || !std::isfinite(b)) continue;
-                    double diff = std::fabs(a - b);
-                    if(diff > 1e-6) return false;
-                }
-                return true;
-            };
-            bool eq = casio::same_by_sig(arena, n1, n2) || numeric_eq();
+            CompareTerm t1 = parse_compare_term(arena, e1);
+            CompareTerm t2 = parse_compare_term(arena, e2);
+            bool eq = relation_equivalent(arena, t1, t2);
             std::vector<std::string> out;
-            out.push_back("1. Simplify both expressions.");
-            out.push_back("2. E1 = " + format_expr(arena, n1));
-            out.push_back("3. E2 = " + format_expr(arena, n2));
-            out.push_back(std::string("4. Result: ") + (eq ? "Equivalent." : "Not equivalent."));
+            if(t1.equation || t2.equation) {
+                if(t1.equation) out.push_back("E1-R1 = " + format_expr(arena, t1.residual));
+                else out.push_back("E1 = " + format_expr(arena, t1.lhs));
+                if(t2.equation) out.push_back("E2-R2 = " + format_expr(arena, t2.residual));
+                else out.push_back("E2 = " + format_expr(arena, t2.lhs));
+                out.push_back("difference = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, t1.residual, t2.residual))));
+            }
+            else {
+                out.push_back("E1 = " + format_expr(arena, t1.lhs));
+                out.push_back("E2 = " + format_expr(arena, t2.lhs));
+                out.push_back("E1-E2 = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, t1.lhs, t2.lhs))));
+            }
+            out.push_back(eq ? "equivalent" : "not equivalent");
             return out;
         }
         if(req.mode == 2) {
-            // Transform: source\\ntarget (print target as Answer).
+            // Transform: source\\ntarget, accepting only equivalent target forms.
             auto nl = req.expr.find('\n');
             if(nl == std::string::npos) return {"Err: need source and target."};
             std::string src = req.expr.substr(0, nl);
             std::string tgt = req.expr.substr(nl + 1);
-            NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
-            (void)s;
+            CompareTerm s = parse_compare_term(arena, src);
+            CompareTerm t = parse_compare_term(arena, tgt);
+            bool eq = relation_equivalent(arena, s, t);
             std::vector<std::string> out;
-            out.push_back("1. Rewrite using identities.");
-            out.push_back("2. Simplify source.");
-            out.push_back("Answer: " + tgt);
+            out.push_back("source = " + relation_text(arena, s));
+            out.push_back("target = " + relation_text(arena, t));
+            out.push_back("source-target = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, s.residual, t.residual))));
+            out.push_back(eq ? relation_text(arena, t) : "not equivalent");
             return out;
         }
         if(req.mode == 3) {
@@ -3331,13 +4799,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 15) {
             if(auto fit = fit_constants_route(arena, req.expr)) return *fit;
-            return {
-                "1. Start with fitconst(" + req.expr + ").",
-                "2. Expand both sides and collect like powers.",
-                "3. Equate coefficients for the requested constants.",
-                "4. Solve the simultaneous equations.",
-                "Answer: constants not isolated by this lightweight route.",
-            };
+            return {"Err: constants not isolated by this route."};
         }
         if(req.mode == 5) {
             // Complete square for quadratic ax^2+bx+c.
@@ -3387,9 +4849,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             expr = casio::simplify(arena, expr);
             std::string ans = format_expr(arena, expr);
             return {
-                "1. Complete square.",
-                "2. h = b/(2a) = " + format_expr(arena, hnode),
-                "3. k = c - b^2/(4a) = " + format_expr(arena, knode),
+                format_expr(arena, n),
+                "h = b/(2a) = " + format_expr(arena, hnode),
+                "k = c - b^2/(4a) = " + format_expr(arena, knode),
                 "Answer: " + ans,
             };
         }
@@ -3431,12 +4893,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 };
             }
             std::string ans = format_expr(arena, *inv);
+            if(auto lin = normalized_linear_text(arena, *inv, "x")) ans = *lin;
             if(ans == "(e^(x) - 4)/-2") ans = "(4 - e^x)/2";
             std::vector<std::string> out = {
                 "1. Use inverse function.",
                 "2. Let y = f(x) = " + format_expr(arena, n) + ".",
-                "3. Swap x and y.",
-                "4. Rearrange to make y the subject.",
+                "3. x = f(y).",
+                "4. y = " + ans + ".",
                 "5. Answer: f^-1(x) = " + ans,
             };
             if(!domain_text.empty()) out.push_back("6. Given domain: " + domain_text + ".");
@@ -3446,12 +4909,62 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto nl = req.expr.find('\n');
             std::string expr = trim_text(nl == std::string::npos ? req.expr : req.expr.substr(0, nl));
             std::string targets = trim_text(nl == std::string::npos ? "" : req.expr.substr(nl + 1));
-            NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
+            if(targets.empty()) {
+                std::string rkey = "rewrite(" + compact_input_key(expr) + ")";
+                if(auto radical = radical_decomposition_rewrite(rkey)) return *radical;
+            }
+            NodeId raw_n = casio::parse_expr(arena, expr);
+            NodeId n = casio::simplify(arena, raw_n);
+            std::string sc_arg;
+            if(sin_cos_fourth_sum(arena, raw_n, sc_arg) || sin_cos_fourth_sum_text(expr, sc_arg)) {
+                std::string s = "sin(" + sc_arg + ")";
+                std::string c = "cos(" + sc_arg + ")";
+                return {
+                    s + "^4 + " + c + "^4",
+                    "= (" + s + "^2 + " + c + "^2)^2 - 2*" + s + "^2*" + c + "^2",
+                    "= 1 - 2*" + s + "^2*" + c + "^2",
+                    "Answer: 1 - 2*" + s + "^2*" + c + "^2",
+                };
+            }
             std::vector<std::string> out;
-            out.push_back("1. Start with " + format_expr(arena, n) + ".");
-            if(!targets.empty()) out.push_back("2. Target terms: " + targets);
-            out.push_back("3. Rearrange using identities/substitution where possible.");
-            out.push_back("Answer: " + format_expr(arena, n));
+            out.push_back(format_expr(arena, n));
+            if(!targets.empty()) out.push_back("target = " + targets);
+            if(!targets.empty()) {
+                NodeId target_node = casio::simplify(arena, casio::parse_expr(arena, targets));
+                for(int p = 1; p <= 6; ++p) {
+                    NodeId cand = casio::simplify(arena, casio::power(arena, target_node, casio::num(arena, p)));
+                    NodeId diff = sub_node(arena, n, cand);
+                    if(casio::same_by_sig(arena, diff, zero_node(arena)) || numeric_same(arena, n, cand)) {
+                        std::string target_text = format_expr(arena, target_node);
+                        std::string ans = p == 1 ? "u" : "u^" + std::to_string(p);
+                        std::string target_ans = p == 1 ? target_text : "(" + target_text + ")^" + std::to_string(p);
+                        out.push_back("u = " + target_text);
+                        out.push_back(ans);
+                        out.push_back(target_ans);
+                        return out;
+                    }
+                }
+                std::string var = choose_solve_var(arena, target_node, "x");
+                auto tp = poly_of(arena, target_node, var);
+                if(tp && tp->ok && is_zero(tp->a2) && !is_zero(tp->a1)) {
+                    NodeId u = casio::sym(arena, "u");
+                    NodeId x_expr = casio::simplify(arena, casio::div(arena, casio::add(arena, {u, casio::neg(arena, casio::num(arena, tp->a0.num, tp->a0.den))}), casio::num(arena, tp->a1.num, tp->a1.den)));
+                    NodeId in_u = casio::simplify(arena, clone_with_substitution(arena, n, var, x_expr));
+                    if(auto up = poly_of(arena, in_u, "u"); up && up->ok) in_u = casio::simplify(arena, poly2_to_node(arena, *up, "u"));
+                    std::string u_text = format_expr(arena, in_u);
+                    std::string target_text = format_expr(arena, target_node);
+                    std::string target_answer = u_text;
+                    for(std::size_t pos = 0; (pos = target_answer.find("u", pos)) != std::string::npos; pos += target_text.size() + 2) {
+                        target_answer.replace(pos, 1, "(" + target_text + ")");
+                    }
+                    out.push_back("u = " + format_expr(arena, target_node));
+                    out.push_back(var + " = " + format_expr(arena, x_expr));
+                    out.push_back(u_text);
+                    out.push_back(target_answer);
+                    return out;
+                }
+            }
+            out.push_back(format_expr(arena, n));
             return out;
         }
         if(req.mode == 10) {
@@ -3515,6 +5028,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 }
             }
+            if(req.method == "domain") {
+                return casio::exam_block("domain", steps, domain_answer);
+            }
             std::string range_answer;
             if(!contains_symbol(arena, n, var)) {
                 range_answer = "y = " + format_expr(arena, n);
@@ -3566,7 +5082,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 Node const &rn = arena.get(n);
-                if(auto logistic = logistic_exp_range(arena, n, var, steps)) {
+                if(auto mp = monotone_power_interval_range(arena, n, var, lo_v, hi_v, steps)) {
+                    range_answer = *mp;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, steps)) {
+                    range_answer = *er;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto logistic = logistic_exp_range(arena, n, var, steps)) {
                     range_answer = *logistic;
                     steps.push_back("Range: " + range_answer + ".");
                 }
@@ -3608,11 +5132,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *lf;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto sl = sqrt_linear_interval_range(arena, n, var, lo, hi, steps)) {
+                    range_answer = *sl;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(is_var_plus_sqrt_var(arena, n, var)) {
+                    range_answer = "y >= 0";
+                    steps.push_back(var + " >= 0.");
+                    steps.push_back("y = " + var + " + sqrt(" + var + ") >= 0.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto sqrt_min = sqrt_abs_linear_min_info(arena, n, var)) {
                     range_answer = "y >= " + sqrt_bound_text(arena, sqrt_min->min);
                     if(sqrt_min->piecewise_sum) {
-                        steps.push_back("Piecewise weighted abs sum; " + abs_roots_text(arena, sqrt_min->roots) + ".");
-                        steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, sqrt_min->min) + ".");
+                        steps.push_back(abs_roots_text(arena, sqrt_min->roots));
+                        steps.push_back("min y = " + format_rat(arena, sqrt_min->min));
                     }
                     else {
                         steps.push_back(abs_linear_text(arena, rn.a, var) + " >= 0.");
@@ -3623,8 +5157,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 else if(auto abs_info = abs_linear_min_info(arena, n, var)) {
                     range_answer = "y >= " + format_expr(arena, arena.num(abs_info->min));
                     if(abs_info->piecewise_sum) {
-                        steps.push_back("Piecewise weighted abs sum; " + abs_roots_text(arena, abs_info->roots) + ".");
-                        steps.push_back("Piecewise abs sum: minimum distance = " + format_rat(arena, abs_info->min) + ".");
+                        steps.push_back(abs_roots_text(arena, abs_info->roots));
+                        steps.push_back("min y = " + format_rat(arena, abs_info->min));
                     }
                     else steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
                     steps.push_back("Range: " + range_answer + ".");
@@ -3663,6 +5197,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(is_sqrt_square(arena, n)) {
                     range_answer = "y >= 0";
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto odd_range = odd_power_full_range(arena, n, var, steps)) {
+                    range_answer = *odd_range;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto trig_min = unbounded_trig_square_min(arena, n)) {
@@ -3784,9 +5322,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
             return {
-                "1. Solve x(t) for " + param + ".",
-                "2. Substitute into y(t).",
-                "Answer: y = " + format_expr(arena, *y_cart),
+                "x = " + xe,
+                param + " = " + format_expr(arena, y_cart->t_expr),
+                "y = " + ye,
+                "y = " + format_expr(arena, y_cart->y_expr),
             };
         }
         if(req.mode == 12) {
@@ -3962,6 +5501,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
+            if(req.method == "collect" || req.method == "canonical") {
+                steps.push_back("Start with " + format_expr(arena, parsed) + ".");
+                steps.push_back("Collect like terms.");
+                return casio::exam_block("collect", steps, format_expr(arena, n));
+            }
             if(req.method == "pf" || req.method == "partfrac") {
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, "x")) return *pf;
                 Node const &pn = arena.get(parsed);
@@ -4061,9 +5605,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return *trig;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
             return *inv_trig;
+        if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
+            out.insert(out.end(), log_route->begin(), log_route->end());
+            return out;
+        }
+        if(auto bq = biquadratic_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), bq->begin(), bq->end());
+            return out;
+        }
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
+            if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
+            if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
+            if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
@@ -4075,6 +5630,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 append_answer(out, solve_var, numeric);
                 append_numeric_3dp(arena, out, solve_var, numeric);
             }
+            return out;
+        }
+
+        if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
+            out.push_back("2. Simplify: " + format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+            out.push_back(is_zero(rp.num.a0) ? solve_var + " = all real" : "Answer: " + solve_var + " = []");
             return out;
         }
 
@@ -4124,8 +5685,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 )
             );
-            out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
-            out.push_back("3. Complete square: " + format_expr(arena, square_form) + " = 0");
+            out.push_back(format_expr(arena, rearr) + " = 0");
+            out.push_back(format_expr(arena, square_form) + " = 0");
             Rational rhs = r_div(r_neg(k), a);
             NodeId rhs_node = casio::num(arena, rhs.num, rhs.den);
             NodeId root_rhs = casio::fn(arena, "sqrt", rhs_node);
@@ -4133,9 +5694,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string root_text = format_expr(arena, root_rhs);
             std::int64_t rn = 0;
             if(auto rv = as_int64(rhs); rv && is_square_i64(*rv, rn)) root_text = std::to_string(rn);
-            out.push_back("4. Isolate square: (" + format_expr(arena, shifted_x) + ")^2 = " + format_expr(arena, rhs_node));
-            out.push_back("5. Take square roots: " + format_expr(arena, shifted_x) + " = +/-" + root_text);
-            out.push_back("6. Check roots in the original equation.");
+            out.push_back("(" + format_expr(arena, shifted_x) + ")^2 = " + format_expr(arena, rhs_node));
+            out.push_back(format_expr(arena, shifted_x) + " = +/-" + root_text);
+            out.push_back("check roots in original equation");
             auto sols = solve_poly2(arena, rp.num, solve_var);
             sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
             if(sols.empty()) {
@@ -4143,7 +5704,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
-            append_answer(out, solve_var, sols);
+            out.push_back("Answer: " + solution_list_line(solve_var, sols));
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
         }
@@ -4158,15 +5719,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: no solution");
                 return out;
             }
-            out.push_back("2. Expr = " + format_expr(arena, rearr) + " = 0");
-            if(!is_zero(b)) {
-                NodeId b_node = casio::num(arena, -b.num, b.den);
-                out.push_back("3. Subtract " + format_expr(arena, b_node));
-            }
-            if(a.num != 1 || a.den != 1) {
-                NodeId a_node = casio::num(arena, a.num, a.den);
-                out.push_back("4. Divide by " + format_expr(arena, a_node));
-            }
+            out.push_back("2. " + format_expr(arena, rearr) + " = 0");
+            NodeId lhs_linear = casio::simplify(arena, casio::mul(arena, {casio::num(arena, a.num, a.den), casio::sym(arena, solve_var)}));
+            NodeId rhs_const = casio::num(arena, -b.num, b.den);
+            out.push_back("3. " + format_expr(arena, lhs_linear) + " = " + format_expr(arena, rhs_const));
+            Rational sol = r_div(r_neg(b), a);
+            out.push_back("4. " + solve_var + " = " + format_expr(arena, casio::num(arena, sol.num, sol.den)));
             auto sols = solve_poly2(arena, rp.num, solve_var);
             sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
             if(sols.empty()) {
@@ -4174,7 +5732,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
-            append_answer(out, solve_var, sols);
+            out.push_back("Answer: " + solution_list_line(solve_var, sols));
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
         }
@@ -4189,11 +5747,37 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
         }
 
+        if(!is_zero(rp.num.a2) && is_zero(rp.den.a1) && is_zero(rp.den.a2)) {
+            out.push_back("2. Move all terms: " + format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+            if(auto roots = rational_quadratic_roots(rp.num)) {
+                std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
+                out.push_back("3. Factor: " + factored + " = 0");
+                out.push_back(
+                    "4. " + linear_factor_from_root(arena, solve_var, roots->first) + " = 0 or " +
+                    linear_factor_from_root(arena, solve_var, roots->second) + " = 0"
+                );
+            }
+            else {
+                out.push_back("3. Use quadratic formula: " + solve_var + " = (-b +/- sqrt(b^2-4ac))/(2a).");
+            }
+            auto sols = solve_poly2(arena, rp.num, solve_var);
+            sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+            if(sols.empty()) {
+                out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No real roots.");
+                out.push_back("Answer: " + solve_var + " = []");
+                return out;
+            }
+            append_answer(out, solve_var, sols);
+            append_numeric_3dp(arena, out, solve_var, sols);
+            return out;
+        }
+
         // Higher degree
         std::string eq_s = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
         out.push_back("2. Expr = " + eq_s);
         if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
-            out.push_back("3. Clearing denominators.");
+            out.push_back("3. Multiply by " + format_expr(arena, poly2_to_node(arena, rp.den, solve_var)) + ".");
+            out.push_back(format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
         }
         auto sols = solve_poly2(arena, rp.num, solve_var);
         sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);

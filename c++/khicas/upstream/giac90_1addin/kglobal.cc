@@ -2748,7 +2748,7 @@ extern "C" void Sleep(unsigned int miliSecond);
       cur += "mat:=matrix:;arange:=range:;resize:=redim:;shape:=dim:;conjugate:=conj:;full:=matrix:;eye:=identity:;ones(n,c):=matrix(n,c,1):; astype:=convert:;float64:=float:;asarray:=array:;astype:=convert:;reshape(m,n,c):=matrix(n,c,flatten(m));";
       if (alertnum){
 	alertnum=false;
-	alert("mat:=matrix;arange:=range;resize:=redim;shape:=dim;conjugate:=conj;full:=matrix;eye:=idn;ones(n,c):=matrix(n,c,1);reshape(m,n,c):=matrix(n,c,flatten(m));",contextptr);
+	alert("numpy shortcuts loaded",contextptr);
       }
       return;
     }
@@ -2762,7 +2762,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 #endif
       if (alertturtle){
 	alertturtle=false;
-	alert("pu:=penup;up:=penup; pd:=pendown;down:=pendown; fd:=forward;bk:=backward; rt:=right; lt:=left; pos:=position; seth:=heading;setheading:=heading; reset:=efface",contextptr);
+	alert("turtle shortcuts loaded",contextptr);
       }
       return;
     }

@@ -8,9 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
-TPL = ROOT / "c++/prizm/help/CASIOCAS.TPL"
+TPL_DIR = ROOT / "c++/prizm/help"
 STATIC_LEXER = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer.h"
 STATIC_LEXER_FULL = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer_full.h"
+DCONSOLE = ROOT / "c++/khicas/upstream/giac90_1addin/dConsole.cpp"
+DMAIN = ROOT / "c++/khicas/upstream/giac90_1addin/dmain.cpp"
 
 
 HIDDEN_MARKERS = [
@@ -142,9 +144,11 @@ def main() -> int:
     active_catalog = without_if0(catalog)
     main_cc = MAIN.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
-    template_text = TPL.read_text(errors="ignore") if TPL.exists() else ""
+    template_text = "\n".join(p.read_text(errors="ignore") for p in sorted(TPL_DIR.glob("CASIOCAS*.TPL")))
     lexer_text = STATIC_LEXER.read_text(errors="ignore")
     lexer_full_text = STATIC_LEXER_FULL.read_text(errors="ignore")
+    dconsole = DCONSOLE.read_text(errors="ignore")
+    dmain = DMAIN.read_text(errors="ignore")
 
     if "catalog_hidden_category" not in catalog or "catalog_hidden_name" not in catalog:
         return fail("catalog hide filters missing")
@@ -161,6 +165,12 @@ def main() -> int:
         return fail("All catalogue category missing")
     if 'ADD_CAT(CAT_CATEGORY_PROGCMD,"Program cmds")' not in catalog:
         return fail("Program cmds category missing")
+    for marker in ["dconsole_catalog_prefix", 'doCatalogMenu(buf,(char *)"Index",0,prefix)', "len>4"]:
+        if marker not in dconsole:
+            return fail("shell catalogue prefix search missing: " + marker)
+    for marker in ['!strcmp(buf,"log")', '!strcmp(buf,"sec")', '!strcmp(buf,"csc")', '!strcmp(buf,"cosec")', '!strcmp(buf,"cot")']:
+        if marker not in dmain:
+            return fail("syntax colour alias missing: " + marker)
     if "solve_trig(eq,[var,lo,hi,max,method])" in active_catalog:
         return fail("solve_trig still active in catalogue; use solve() surface")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
@@ -222,9 +232,9 @@ def main() -> int:
         return fail("working-line output hook missing")
     if "cascas_extract_method" not in main_cc or "cascas_strip_method_args" not in main_cc:
         return fail("method extraction hook missing")
-    if "u=" not in template_text or "v=Int dv" not in template_text:
+    if "u = " not in template_text or "v = Int dv" not in template_text:
         return fail("parts/sub method u hint missing")
-    if "LHS-RHS=0" not in template_text or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
+    if "LHS - RHS = 0" not in template_text or "cascas_append_final_answer(out,shown_answer)" not in main_cc:
         return fail("working-line output shape missing")
     if 'out += "Ans: "' in main_cc:
         return fail("final answer still has Ans prefix")

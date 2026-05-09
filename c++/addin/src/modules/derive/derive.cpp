@@ -81,6 +81,45 @@ static bool has_node_kind(Arena &a, NodeId n, NodeKind kind)
     return false;
 }
 
+static std::string clean_math_text(std::string s);
+
+static void collect_denominator_text(Arena &a, NodeId n, std::vector<std::string> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        std::string d = clean_math_text(format_expr_human(a, x.b));
+        if(!d.empty() && std::find(out.begin(), out.end(), d) == out.end()) out.push_back(d);
+        collect_denominator_text(a, x.a, out);
+        collect_denominator_text(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Fn) {
+        collect_denominator_text(a, x.a, out);
+        return;
+    }
+    if(x.kind == NodeKind::Pow) {
+        collect_denominator_text(a, x.a, out);
+        collect_denominator_text(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) collect_denominator_text(a, k, out);
+    }
+}
+
+static std::string denominator_product_text(std::vector<std::string> const &denoms)
+{
+    if(denoms.empty()) return "";
+    std::string out;
+    for(std::size_t i = 0; i < denoms.size(); ++i) {
+        if(i) out += "*";
+        bool wrap = denoms[i].find('+') != std::string::npos || denoms[i].find('-') != std::string::npos ||
+                    denoms[i].find('*') != std::string::npos || denoms[i].find('/') != std::string::npos;
+        out += wrap ? "(" + denoms[i] + ")" : denoms[i];
+    }
+    return out;
+}
+
 static bool has_function_call(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -994,9 +1033,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     [&]() {
                         std::vector<std::string> steps;
                         casio::append_exam_prelude_steps(steps, pre);
-                        steps.push_back("Identify outer/inner functions, products, quotients, and powers.");
-                        steps.push_back("Apply chain/product/quotient/logdiff rules without expanding large powers.");
-                        steps.push_back("Simplify/factor the result.");
+                        steps.push_back("u=f(" + var + "), v=g(" + var + ").");
+                        steps.push_back("(uv)'=u'v+uv'; (u/v)'=(u'v-uv')/v^2.");
+                        steps.push_back("d(f(g(" + var + ")))/d" + var + "=f'(g(" + var + "))*g'(" + var + ").");
                         return steps;
                     }(),
                     "d/d" + var + "(" + pre.simplified + ")"
@@ -1059,6 +1098,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 bool used_rule = false;
                 Node const &dn = arena.get(n);
+                if(dn.kind == NodeKind::Pow && arena.get(dn.a).kind == NodeKind::Sym && arena.get(dn.a).text == var) {
+                    if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
+                        steps.push_back("d/d" + var + "(" + var + "^" + std::to_string(exp->num) + ") = " +
+                                        std::to_string(exp->num) + "*" + var + "^" + std::to_string(exp->num - 1) + ".");
+                        used_rule = true;
+                    }
+                }
                 if(dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) && !is_atomic(arena, dn.a)) {
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
                         NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
@@ -1075,9 +1121,26 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     append_sum_derivative_detail(arena, n, var, steps);
                     used_rule = true;
                 }
+                if(!used_rule && dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) &&
+                   depends_on(arena, dn.b, var)) {
+                    NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
+                    NodeId dv = casio::simplify(arena, diff(arena, dn.b, var));
+                    std::string base = clean_math_text(format_expr_human(arena, dn.a));
+                    std::string expo = clean_math_text(format_expr_human(arena, dn.b));
+                    std::string dbase = clean_math_text(format_expr_human(arena, du));
+                    std::string dexpo = clean_math_text(format_expr_human(arena, dv));
+                    auto wrap = [](std::string const &s) {
+                        return (s.find('+') != std::string::npos || s.find('-') != std::string::npos) ? "(" + s + ")" : s;
+                    };
+                    std::string eb = wrap(expo);
+                    steps.push_back("ln(y) = " + eb + "*ln(" + base + ").");
+                    steps.push_back("(1/y)*dy/d" + var + " = " + dexpo + "*ln(" + base + ") + " + eb + "*(" + dbase + ")/(" + base + ").");
+                    steps.push_back("dy/d" + var + " = y*[" + dexpo + "*ln(" + base + ") + " + eb + "*(" + dbase + ")/(" + base + ")].");
+                    used_rule = true;
+                }
                 if(!used_rule && has_variable_power(arena, n, var)) {
-                    steps.push_back("ln(y) = v*log(u).");
-                    steps.push_back("y' = y*(v'*log(u)+v*u'/u).");
+                    steps.push_back("ln(y) = exponent*ln(base).");
+                    steps.push_back("dy/d" + var + " = y*(exponent'*ln(base)+exponent*base'/base).");
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {
@@ -1274,14 +1337,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("Domain: variable bases >0 where log diff is used.");
             if(has_den) {
                 steps.push_back("Domain: denoms !=0.");
-                steps.push_back("Clear denominators where useful.");
+                std::vector<std::string> denoms;
+                collect_denominator_text(arena, left, denoms);
+                collect_denominator_text(arena, right, denoms);
+                std::string den = denominator_product_text(denoms);
+                steps.push_back(den.empty() ? "* common den." : "* " + den + ".");
             }
-            steps.push_back("Start with " + pre.norm + ".");
-            steps.push_back("Rewrite as " + pre.simplified + ".");
-            steps.push_back("Use implicit differentiation.");
-            steps.push_back("Differentiate both sides wrt x; y=y(x).");
-            steps.push_back("Use product/chain rules, then collect dy/dx.");
-            steps.push_back("Factor dy/dx and divide.");
+            steps.push_back("F(x,y) = " + clean_math_text(format_expr_human(arena, work)) + " = 0.");
+            steps.push_back("F_x = " + clean_math_text(format_expr_human(arena, fx)) + ".");
+            steps.push_back("F_y = " + clean_math_text(format_expr_human(arena, fy)) + ".");
+            steps.push_back("F_x + F_y*" + dname + " = 0.");
+            steps.push_back(dname + " = -F_x/F_y.");
             return casio::exam_block("implicit differentiation (limited)", steps, answer);
         }
         if(req.mode == 3 || req.mode == 5) {
@@ -1494,7 +1560,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "dy/dt = -cosec(t)^2 + cosec(t)cot(t) = -cosec(t)[cosec(t)-cot(t)].",
                         "From x=tan(t)-sec(t), sec(t)-tan(t)=-x.",
                         "From y=cot(t)-cosec(t), y^2-1=2*cosec(t)[cosec(t)-cot(t)].",
-                        "Substitute these into dy/dx=(dy/dt)/(dx/dt).",
+                        "dy/dx = (dy/dt)/(dx/dt).",
                     },
                     answer
                 );
@@ -1504,7 +1570,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 {
                     "dx/dt = " + format_expr_human(arena, dxdt),
                     "dy/dt = " + format_expr_human(arena, dydt),
-                    "dy/dx=(dy/dt)/(dx/dt), dx/dt != 0.",
+                    "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.",
                     "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")",
                     answer,
                 },

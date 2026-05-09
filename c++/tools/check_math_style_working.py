@@ -35,7 +35,7 @@ CASES = [
     (
         "exam chain final",
         ["--derive", "(2*x+ln(x))^3,x"],
-        ("y = (2*x + log(x))^3", "u = 2*x + log(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + log(x))^2*(1/x + 2)"),
+        ("y = (2*x + ln(x))^3", "u = 2*x + ln(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + ln(x))^2*(1/x + 2)"),
     ),
     (
         "looping parts final",
@@ -52,6 +52,68 @@ CASES = [
         ["--alg", "rewrite(sqrt(12+sqrt(140)))"],
         ("sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "sqrt(7)+sqrt(5)"),
     ),
+    (
+        "log solve exact",
+        ["--alg", "solve(log(2,x^2+4*x+3)=4+log(2,x^2+x),x)"],
+        ("log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4", "5*x^2 + 4*x - 1 = 0", "x = [1/5]"),
+    ),
+    (
+        "radical solve no generic",
+        ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
+        ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
+    ),
+    (
+        "exp substitution no generic",
+        ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
+        ("u=a^x", "x = [0, 2]"),
+    ),
+    (
+        "sin reverse chain concise",
+        ["--int", "sin(x),method=reverse_chain"],
+        ("I = Int(sin(x)) dx", "-cos(x) + C"),
+    ),
+    (
+        "cos reverse chain concise",
+        ["--int", "cos(x),method=reverse_chain"],
+        ("I = Int(cos(x)) dx", "sin(x) + C"),
+    ),
+    (
+        "linear division concise",
+        ["--int", "x/(x+1),method=div"],
+        ("N/D = Q + R/D", "Q = 1", "R = -1", "x - ln(abs(x + 1)) + C"),
+    ),
+    (
+        "substitution spacing",
+        ["--int", "sin(3*x+2)"],
+        ("u = 3*x+2; du = 3 dx; dx = du/3", "I = 1/3*Int(sin(u)) du"),
+        ("u=3*x+2", "du=3 dx", "dx=du/3", "I=1/3"),
+    ),
+    (
+        "sec power no prose",
+        ["--int", "sec(x)^4"],
+        ("sec(x)^4 = sec(x)^2*sec(x)^2", "u = tan(x); du = sec(x)^2 dx", "I = Int(1+u^2) du"),
+        ("Write ", "u=tan", "du=sec", "I=Int"),
+    ),
+    (
+        "parts no prose",
+        ["--int", "x*sin(x),method=parts"],
+        ("u=x", "dv=sin(x) dx", "du=dx", "v=-cos(x)", "sin(x) - x*cos(x) + C"),
+    ),
+    (
+        "invalid derive no fake working",
+        ["--derive", "diff("],
+        ("Err:",),
+    ),
+    (
+        "invalid int method no auto working",
+        ["--int", "x^2,method=not_a_method"],
+        ("Err: invalid method",),
+    ),
+    (
+        "trig fallback no fake working",
+        ["--trig", "cos(x)+cos(2*x)+cos(3*x)=0,x,0,2*pi,10,method=identity"],
+        ("x = []",),
+    ),
 ]
 
 TEXT_WORDS = (
@@ -61,6 +123,7 @@ TEXT_WORDS = (
     "Simplify",
     "Apply",
     "Let ",
+    "Since ",
     "Here ",
     "Then ",
     "Hence ",
@@ -76,12 +139,56 @@ GLOBAL_TEXT_BANS = (
     "Method:",
     "Route:",
     "Answer:",
+    "Auto result:",
+    "Answer (3 d.p.):",
     "Chk:",
+    "Done",
     "pick rule",
     "chain/prod",
     "Std form",
     "Rule/sub/id",
     "Verify",
+    "Rearrange to lhs-rhs=0",
+    "Use log/exp laws",
+    "Exponentiate, solve",
+    "State radical domain",
+    "Solve the resulting equation",
+    "Solve the polynomial in u",
+    "substitution/factorisation/rearrangement",
+    "u=inner",
+    "alpha=base angle",
+    "Apply the matching derivative rule set",
+    "reverse chain sine rule",
+    "reverse chain cosine rule",
+    "constant times a polynomial part",
+    "ln(abs(...)) for the reciprocal-linear term",
+    "the split terms back",
+    "Divide polynomial numerator",
+)
+
+STANDALONE_LINE_BANS = {
+    "y =",
+    "u =",
+    "v =",
+    "w =",
+    "I =",
+    "dy/d",
+    "dx/d",
+    "du/dx =",
+    "dx/du =",
+}
+
+PACK_BANS = (
+    "combine logs",
+    "solve each case",
+    "factor/rearrange",
+    "std integral",
+    "u-sub/IBP/PF if needed",
+    "valid syntax",
+    "d/dx rule -> simplify",
+    "isolate trig fn",
+    "CAST/base angles",
+    "method route",
 )
 
 
@@ -93,16 +200,23 @@ def compact_equals(s: str) -> str:
     return s.replace(" = ", "=").replace("= ", "=").replace(" =", "=")
 
 
-def run_case(name, args, required):
+def run_case(name, args, required, forbidden=()):
     proc = subprocess.run([str(HOST), *args], cwd=ROOT, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out = proc.stdout
     bad = []
-    if proc.returncode:
+    expects_error = any(marker.startswith("Err") for marker in required)
+    if proc.returncode and not expects_error:
         bad.append(f"exit {proc.returncode}")
     for word in GLOBAL_TEXT_BANS:
         if word in out:
             bad.append(f"user-facing header: {word}")
+    for line in (ln.strip() for ln in out.splitlines()):
+        if line in STANDALONE_LINE_BANS:
+            bad.append(f"standalone fragment: {line}")
+    for word in forbidden:
+        if word in out:
+            bad.append(f"bad formatting: {word}")
     for line in numbered_lines(out):
         for word in TEXT_WORDS:
             if word in line:
@@ -121,7 +235,17 @@ def run_case(name, args, required):
 
 
 def main():
-    ok = all(run_case(*case) for case in CASES)
+    ok = True
+    for case in CASES:
+        ok = run_case(*case) and ok
+    pack = "\n".join(
+        p.read_text(errors="replace")
+        for p in sorted((ROOT / "c++" / "prizm" / "help").glob("CASIOCAS*.TPL"))
+    )
+    for marker in PACK_BANS:
+        if marker in pack:
+            print(f"FAIL pack generic: {marker}")
+            ok = False
     return 0 if ok else 1
 
 

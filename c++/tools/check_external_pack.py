@@ -83,6 +83,16 @@ def main() -> int:
         body = records[name]
         if "Req:" not in body or "Opt:" not in body or "Ex F" not in body:
             return fail(f"incomplete command help: {name}")
+    inline_tpl = {
+        "t047", "t053", "t055", "t060", "t061", "t070", "t071",
+        "t072", "t073", "t075", "t078", "t081", "t082", "t085", "t107",
+    }
+    bad_tpl = [
+        name for name in sorted(inline_tpl)
+        if records.get(name, "").endswith(("\n", "\r")) or "\n" in records.get(name, "")
+    ]
+    if bad_tpl:
+        return fail("inline working templates contain newlines: " + ", ".join(bad_tpl))
     names = pack_names(path)
     first_tpl = next((i for i, name in enumerate(names) if name.startswith("t") and name[1:].isdigit()), 9999)
     if first_tpl > 8:

@@ -1317,7 +1317,6 @@ void do_run(const char * s,gen & g,gen & ge){
 	_restart(0,contextptr);
     }
   }
-  //Console_Output("Done"); return ;
   esc_flag=0;
   ctrl_c=false;
   kbd_interrupted=interrupted=false;
@@ -2248,14 +2247,21 @@ static bool cascas_rewrite_param_call(const char *input,const char *alias,int mo
   return true;
 }
 
+static string cascas_residual_expr(const string &expr){
+  int eq=cascas_find_top_equal(expr);
+  if (eq>=0)
+    return "((" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1,expr.size()-eq-1) + "))";
+  return "(" + expr + ")";
+}
+
 static bool cascas_rewrite_compare_zero_call(const char *input,const char *alias,string &out){
   string args[2],s; int count=0,close=0;
   if (!cascas_call_args(input,alias,args,2,count,close,s) || count<1)
     return false;
   if (count>=2)
-    out="normal((" + args[0] + ")-(" + args[1] + "))";
+    out="normal(" + cascas_residual_expr(args[0]) + "-" + cascas_residual_expr(args[1]) + ")";
   else
-    out="normal(" + args[0] + ")";
+    out="normal" + cascas_residual_expr(args[0]);
   out += s.substr(close+1,s.size()-close-1);
   return true;
 }
@@ -2998,16 +3004,7 @@ static void cascas_append_tpl_line(cascas_working_sink &sink,const char *key){
 }
 
 static void cascas_append_step(cascas_working_sink &sink,int &step,const string &text){
-  string line;
-  if (step<10)
-    line += char('0' + step);
-  else {
-    line += char('0' + (step/10)%10);
-    line += char('0' + step%10);
-  }
-  line += ". ";
-  line += text;
-  cascas_append_line(sink,line.c_str());
+  cascas_append_line(sink,text.c_str());
   ++step;
 }
 
@@ -3050,6 +3047,29 @@ static bool cascas_is_positive_bound_text(const string &s){
 
 static void cascas_append_guard_lines(cascas_working_sink &out,const char *input,const char *eval_input){
   (void)out; (void)input; (void)eval_input;
+}
+
+static bool cascas_append_same_base_log_solve(cascas_working_sink &out,const string &expr){
+  string e=cascas_lower_compact(expr);
+  int eq=cascas_find_top_equal(e);
+  if (eq<0)
+    return false;
+  string l=e.substr(0,eq),r=e.substr(eq+1,e.size()-eq-1);
+  if (l.rfind("log(",0)!=0 || l.size()<7 || l[l.size()-1]!=')')
+    return false;
+  int comma=cascas_top_char(l,',');
+  if (comma<5)
+    return false;
+  string base=l.substr(4,comma-4),A=l.substr(comma+1,l.size()-comma-2);
+  string needle="+log(" + base + ",";
+  int p=r.find(needle);
+  if (p<=0 || r[r.size()-1]!=')')
+    return false;
+  string k=r.substr(0,p),B=r.substr(p+needle.size(),r.size()-p-needle.size()-1);
+  string f=base+"^"+k;
+  cascas_append_line(out,(string("log(")+base+",("+A+")/("+B+")) = "+k).c_str());
+  cascas_append_line(out,(string("(")+A+")/("+B+") = "+f).c_str());
+  return true;
 }
 
 static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,const char *eval_s){
@@ -3248,6 +3268,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   }
   if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
     string expr=args[0];
+    if (cascas_append_same_base_log_solve(out,expr))
+      return true;
     string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)

@@ -45,14 +45,23 @@ Input fields:
 
 Grade BOTH answer and step-by-step working quality.
 
+Target style:
+- The ideal output is what a student could copy into an exam: mostly maths lines, concise, readable, and in logical order.
+- Do NOT require numbered lines, paragraph explanations, headings, or full sentences.
+- Accept compact handwritten/markscheme style such as `u=...`, `du=...`, `I=...`, `=>`, coefficient equations, factorisation lines, and final exact answer.
+- Prefer fewer wider lines over unnecessary line breaks, provided no algebraic jump is hidden.
+- Reject awkward line breaks that split one mathematical statement, e.g. a standalone `y =`, `u =`, `I =`, `dy/d`, `dx/d`, or a value pushed to the next line.
+- Short labels such as `Domain:`, `Range:`, `PF:`, `D:`, `I:`, `Signs:` are fine. Generic teaching prose is not.
+
 Verdicts:
 - CORRECT: final answer is mathematically correct/equivalent AND the shown route would get full method/accuracy marks for this question, at the question's natural level.
 - NEEDS_REVIEW: final answer appears correct/equivalent but working would not reliably get full marks, is too generic, misses a key transformation, hides a branch/domain issue, or you are unsure.
 - INCORRECT: final answer is wrong/missing, a shown step is mathematically false, valid solutions are lost, extra invalid solutions are kept, or domain/interval restrictions are violated.
 
 When working is NOT required:
-- Accept answer-only/minimal output for genuinely trivial tasks: numeric evaluation, constant simplification, direct function rewrite, one-step linear solve, simple domain/range answer, direct matrix/statistic value, or exact value lookup.
+- Accept answer-only/minimal output for genuinely trivial tasks: numeric evaluation, constant simplification, direct function rewrite, one-step linear solve, simple domain/range answer, direct matrix/statistic value, stats summaries/plots, or exact value lookup.
 - Do not demand artificial micro-steps when there are no meaningful method marks.
+- For direct standard rules, one formula line plus answer is enough, e.g. `d/dx(tan x)=sec^2 x` or `cos^2 x=(1+cos2x)/2`.
 
 When working IS required:
 - Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
@@ -60,9 +69,19 @@ When working IS required:
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.
 - Worksheet traps to police especially hard: looping IBP must show the repeated integral being collected; substitutions must show du/dx or dx/du and back-substitution; partial fractions must show the assumed form and coefficient values; trig equations must show identity/R-form plus interval filtering; implicit/parametric differentiation must show collection/isolation of derivatives; binomial expansions must show validity conditions when needed.
 - If the problem is beyond A-level/Further Maths, still grade it: accept correct special-function, branch-aware, implicit, numeric, or non-elementary conclusions only when the output explains why that route is needed.
+- For very large generated expressions, accept structured placeholders like `f1`, `f2`, `u`, `v` if each is defined and the rule connecting them is correct. Do not demand the whole expanded derivative on every line.
+
+Source/markscheme-guided tests:
+- EXP may include public source family notes and required marker phrases from mark schemes.
+- Treat each required marker as evidence of a method mark, not as exact wording.
+- NEEDS_REVIEW if a source/markscheme case has the right answer but skips a required marker such as changed limits, coefficient equations, rejection of roots, validity range, reference triangle, or collection of a repeated integral.
 
 Quality filters:
 - Generic calculator/meta text is not valid working: Chk, ok, CAS verified, parse, fallback, route, tried methods, internal simplify, black-box solve, calculator checked.
+- Also reject generic scaffold phrases: Done, pick rule, Std form, Rule/sub/id, Verify, use log/exp laws, solve the resulting equation, apply matching rule.
+- If the output is mostly sentences rather than mathematical lines, mark NEEDS_REVIEW even if the final answer is correct.
+- Do not reject output merely because it has no line numbers or prose.
+- Do not reject terse mathematical notation if it is copyable and method-mark complete.
 - Prefer A-level/Further Maths methods over special functions or university methods when such a route exists, but do not reject advanced methods for genuinely advanced inputs.
 - Equivalent algebraic/trig forms are fine if domains, branches, constants, and intervals are respected.
 - Factorised/simplified exact answers are preferred, but unsimplified equivalent answers are not INCORRECT unless the question asks for a specific form.

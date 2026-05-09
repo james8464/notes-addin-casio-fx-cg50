@@ -47,7 +47,7 @@ def main() -> int:
     )
     trig_out = proc.stdout + proc.stderr
     compact_trig_out = compact_eq(trig_out)
-    for marker in ["Base angle", "x=[7*pi/6, 11*pi/6]"]:
+    for marker in ["alpha=arcsin(-1/2)", "x=[7*pi/6, 11*pi/6]"]:
         if compact_eq(marker) not in compact_trig_out:
             return fail("solve() did not route trig solve working:\n" + trig_out)
     print("OK invalid input suppresses working")

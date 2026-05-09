@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -16,6 +17,13 @@ def run_host(mode: str, expr: str) -> list[str]:
     if p.returncode != 0:
         raise RuntimeError(f"host failed ({mode} {expr!r}):\n{p.stderr}\n{p.stdout}")
     return [ln.rstrip("\n") for ln in p.stdout.splitlines()]
+
+
+def norm(s: str) -> str:
+    s = s.strip().lower().replace("π", "pi")
+    s = s.replace("ln", "log")
+    s = re.sub(r"\s+", "", s)
+    return s
 
 
 def main() -> int:
@@ -38,10 +46,10 @@ def main() -> int:
         if expected_line.lower().startswith("answer:"):
             expected_line = expected_line.split(":", 1)[1].strip()
         if mode == "alg":
-            ok = any(ln.strip() == expected_line for ln in out)
+            ok = any(norm(ln) == norm(expected_line) for ln in out)
         else:
             # Allow richer multi-line exam working; require the final answer line.
-            ok = any(ln.strip() == expected_line for ln in out)
+            ok = any(norm(ln) == norm(expected_line) for ln in out)
 
         if not ok:
             failures.append(
