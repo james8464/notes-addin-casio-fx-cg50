@@ -42,7 +42,7 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("stats_sampling_data", "summary statistics", ("--stats", "stats(1,2,2,3,5,8)"), ("mean", "Sxx"), False),
     MatrixCase("stats_probability", "binomial probability", ("--stats", "binom(10,.5,4)"), ("X ~ B", "P(X = 4)")),
     MatrixCase("stats_distributions", "normal distribution probability", ("--stats", "normalcdf(0,1,-1,1)"), ("z1 =", "Phi")),
-    MatrixCase("stats_hypothesis", "z-test hypothesis subpart", ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"), ("H0:", "tail p")),
+    MatrixCase("stats_hypothesis", "z-test hypothesis subpart", ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"), ("H0:", "p = P(Z >")),
     MatrixCase("mechanics_kinematics", "SUVAT calculation", ("--suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat"), ("s = 25",)),
     MatrixCase("mechanics_forces", "Newton second law algebra subpart", ("--alg", "solve(3*a=12-6,a,method=linear)"), ("a = 2",)),
     MatrixCase("mechanics_moments", "moment equilibrium algebra subpart", ("--alg", "solve(2*R=3*5,R,method=linear)"), ("R = 15/2",)),

@@ -58,6 +58,18 @@ CASES = [
         ("log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4", "5*x^2 + 4*x - 1 = 0", "x = [1/5]"),
     ),
     (
+        "square equation shows plus minus",
+        ["--alg", "solve((x+4)^2=16,x)"],
+        ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
+        ("Simplify:",),
+    ),
+    (
+        "contradiction maths only",
+        ["--alg", "solve((2*x+5)^2=4*x^2+20*x+30,x)"],
+        ("-5 != 0", "x = []"),
+        ("Simplify:", "No solution"),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
@@ -108,6 +120,11 @@ CASES = [
         "invalid int method no auto working",
         ["--int", "x^2,method=not_a_method"],
         ("Err: invalid method",),
+    ),
+    (
+        "sign derivative branch",
+        ["--derive", "sign(sin(x)),x"],
+        ("u = sin(x)", "u != 0 => dy/dx = 0", "u = 0 => dy/dx undefined"),
     ),
     (
         "trig fallback no fake working",

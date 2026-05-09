@@ -6137,7 +6137,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
 
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
-            out.push_back("2. Simplify: " + format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+            std::string c0 = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            out.push_back(c0 + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
             out.push_back(is_zero(rp.num.a0) ? solve_var + " = all real" : "Answer: " + solve_var + " = []");
             return out;
         }
@@ -6253,6 +6254,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(!is_zero(rp.num.a2) && is_zero(rp.den.a1) && is_zero(rp.den.a2)) {
             out.push_back("2. Move all terms: " + format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
             if(auto roots = rational_quadratic_roots(rp.num)) {
+                Rational h = r_div(rp.num.a1, r_mul(Rational{2, 1}, rp.num.a2));
+                Rational k = r_sub(rp.num.a0, r_div(r_mul(rp.num.a1, rp.num.a1), r_mul(Rational{4, 1}, rp.num.a2)));
+                Rational rhs_sq = r_div(r_neg(k), rp.num.a2);
+                std::int64_t rn = 0, rd = 0;
+                if(rhs_sq.num >= 0 && is_square_i64(rhs_sq.num, rn) && is_square_i64(rhs_sq.den, rd) && rd != 0) {
+                    NodeId shifted = casio::simplify(arena, casio::add(arena, {casio::sym(arena, solve_var), casio::num(arena, h.num, h.den)}));
+                    std::string root_text = format_expr(arena, casio::num(arena, rn, rd));
+                    out.push_back("(" + format_expr(arena, shifted) + ")^2 = " + format_expr(arena, casio::num(arena, rhs_sq.num, rhs_sq.den)));
+                    out.push_back(format_expr(arena, shifted) + " = +/-" + root_text);
+                }
                 std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
                 out.push_back("3. Factor: " + factored + " = 0");
                 out.push_back(

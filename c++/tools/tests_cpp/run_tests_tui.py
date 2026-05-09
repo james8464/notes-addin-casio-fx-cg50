@@ -5839,7 +5839,7 @@ class CASIOApp(App):
                 return expected_values is None or expected_values == []
             if not quality(out):
                 return False
-            if (expected_values is None or expected_values == []) and ("x=[]" in text or "x = []" in text) and ("simplify:" in text or "rejected by domain" in text or "domain:" in text):
+            if (expected_values is None or expected_values == []) and ("x=[]" in text or "x = []" in text) and ("!=" in text or "rejected by domain" in text or "domain:" in text):
                 return True
             values = extract_last_solution_values(out, var)
             if not values:
@@ -8085,7 +8085,7 @@ class CASIOApp(App):
         tail = rng.choice(["two", "gt", "lt"])
         inp = f"5\n{xbar:.6g},{mu},{sigma},{n},{tail},0.05\n"
         label = f"Stats z-test {index}: {tail}"
-        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("h0", "tail p"), feature=f"stats_ztest:{tail}")
+        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("h0", "p ="), feature=f"stats_ztest:{tail}")
 
     def random_stats_plot_case(self, rng, difficulty, index):
         expr = rng.choice(["x^2-4", "sin(x)", "cos(x)", "x^3-x", "exp(x/3)-2"])

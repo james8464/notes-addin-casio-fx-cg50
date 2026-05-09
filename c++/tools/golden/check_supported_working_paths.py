@@ -284,7 +284,7 @@ def base_cases() -> list[Case]:
         ("normalcdf(0,1,-1.96,1.96)", ("N(0", "Phi")),
         ("reg([1,2,3],[2,4,5])", ("Sxx", "r =")),
         ("1,2,3;-13,-14,-15,method=regression", ("y = -x - 12", "r = -1"), ("+ -",)),
-        ("ztest(15,10,5,20,gt)", ("H0", "right tail p")),
+        ("ztest(15,10,5,20,gt)", ("H0", "p = P(Z >")),
     ]:
         expr, must, *rest = item
         forbid = rest[0] if rest else ()

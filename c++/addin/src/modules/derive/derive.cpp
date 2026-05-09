@@ -46,6 +46,18 @@ static bool is_atomic(Arena &a, NodeId n)
     return x.kind == NodeKind::Num || x.kind == NodeKind::Sym || x.kind == NodeKind::Const;
 }
 
+static int node_weight(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    int w = 1;
+    if(x.kind == NodeKind::Fn) return w + node_weight(a, x.a);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return w + node_weight(a, x.a) + node_weight(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) w += node_weight(a, k);
+    }
+    return w;
+}
+
 static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
 {
     // Conservative guard: avoid expanding cases that explode step-by-step working.
@@ -57,6 +69,7 @@ static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
             std::int64_t e = er->num;
             if(e < 0) e = -e;
             if(e >= 10 && !is_atomic(a, x.a) && depends_on(a, x.a, var)) return true;
+            if(e >= 2 && node_weight(a, x.a) > 32 && !is_atomic(a, x.a) && depends_on(a, x.a, var)) return true;
         }
     }
     if(x.kind == NodeKind::Fn) return exam_guard_too_complex(a, x.a, var);
@@ -1002,29 +1015,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     auto er = as_num(arena, gn.b);
                     if(er && er->den == 1 && depends_on(arena, gn.a, var)) {
                         NodeId du = casio::simplify(arena, diff(arena, gn.a, var));
-                        NodeId ans = casio::simplify(
-                            arena,
-                            casio::mul(
-                                arena,
-                                {
-                                    casio::num(arena, er->num),
-                                    casio::power(arena, gn.a, casio::num(arena, er->num - 1)),
-                                    du,
-                                }
-                            )
-                        );
                         std::vector<std::string> steps;
                         casio::append_exam_prelude_steps(steps, pre);
-                        steps.push_back("Let u = " + format_expr_human(arena, gn.a) + ".");
+                        std::string rule = "dy/d" + var + " = " + std::to_string(er->num) +
+                                           "*u^" + std::to_string(er->num - 1) + "*du/d" + var;
+                        steps.push_back("u = " + format_expr_human(arena, gn.a) + ".");
                         steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
-                        steps.push_back(
-                            "Use chain rule: d(u^n)/d" + var + " = n*u^(n-1)*du/d" + var + "."
-                        );
-                        steps.push_back("Substitute back without expanding the large power.");
+                        steps.push_back(rule + ".");
                         return casio::exam_block(
                             (req.mode == 4) ? "second derivative" : "differentiate",
                             steps,
-                            "dy/d" + var + " = " + format_expr_human(arena, ans)
+                            rule
                         );
                     }
                 }
@@ -1078,6 +1079,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(compact == "sin(x)^2+cos(x)^2" || compact == "cos(x)^2+sin(x)^2" ||
                    compact == "sin^2(x)+cos^2(x)" || compact == "cos^2(x)+sin^2(x)") {
                     d1 = casio::num(arena, 0);
+                }
+            }
+            {
+                Node const &dn = arena.get(n);
+                if(req.mode != 4 && dn.kind == NodeKind::Fn && dn.fkind == FnKind::Sign) {
+                    std::string arg = clean_math_text(format_expr_human(arena, dn.a));
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "y = sign(" + arg + ").",
+                            "u = " + arg + ".",
+                            "u != 0 => dy/d" + var + " = 0.",
+                            "u = 0 => dy/d" + var + " undefined.",
+                        },
+                        "dy/d" + var + " = 0, u != 0"
+                    );
                 }
             }
             NodeId out = d1;

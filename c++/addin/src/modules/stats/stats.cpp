@@ -430,9 +430,9 @@ static std::vector<std::string> normal(std::string const &expr)
     long double ans = normal_cdf(z2) - normal_cdf(z1);
     return {
         "X ~ N(" + fmt(mu) + ", " + fmt(sigma) + "^2)",
-        "z1 = " + fmt(z1) + ", z2 = " + fmt(z2),
-        "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(z2) - Phi(z1)",
-        "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = " + fmt(ans),
+        "z1 = (" + fmt(lo) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z1),
+        "z2 = (" + fmt(hi) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z2),
+        "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(" + fmt(z2) + ") - Phi(" + fmt(z1) + ") = " + fmt(ans),
     };
 }
 
@@ -446,22 +446,24 @@ static std::vector<std::string> ztest(std::string const &expr)
     if(sigma <= 0.0L || n <= 0.0L) return {"Err: require sigma>0 and n>0."};
     long double z = (xbar - mu) / (sigma / std::sqrt((double)n));
     long double pval = 0.0L;
-    std::string tail = "two tail";
+    std::string p_line;
     if(lo.find("gt") != std::string::npos || lo.find('>') != std::string::npos) {
         pval = 1.0L - normal_cdf(z);
-        tail = "right tail";
+        p_line = "p = P(Z > " + fmt(z) + ") = " + fmt(pval);
     }
     else if(lo.find("lt") != std::string::npos || lo.find('<') != std::string::npos) {
         pval = normal_cdf(z);
-        tail = "left tail";
+        p_line = "p = P(Z < " + fmt(z) + ") = " + fmt(pval);
     }
     else {
         pval = 2.0L * std::min(normal_cdf(z), 1.0L - normal_cdf(z));
+        p_line = "p = 2*min(Phi(z),1-Phi(z)) = " + fmt(pval);
     }
     return {
         "H0: mu = " + fmt(mu),
         "z = (xbar-mu)/(sigma/sqrt(n)) = " + fmt(z),
-        tail + " p = " + fmt(pval),
+        p_line,
+        "p " + std::string(pval < alpha ? "<" : ">=") + " " + fmt(alpha),
         std::string(pval < alpha ? "reject H0" : "do not reject H0") + " at alpha = " + fmt(alpha),
     };
 }
