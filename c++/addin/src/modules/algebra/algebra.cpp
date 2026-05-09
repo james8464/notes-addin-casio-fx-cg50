@@ -2877,6 +2877,26 @@ static std::string join_solutions(std::vector<std::string> const &sols)
     return out;
 }
 
+static void append_rejected_by_domain(std::vector<std::string> &out,
+                                      std::string const &var,
+                                      std::vector<std::string> const &raw,
+                                      std::vector<std::string> const &valid)
+{
+    if(valid.size() == raw.size()) return;
+    std::vector<std::string> rejected;
+    for(auto const &r : raw) {
+        bool keep = false;
+        for(auto const &v : valid) {
+            if(sol_rhs(r) == sol_rhs(v)) {
+                keep = true;
+                break;
+            }
+        }
+        if(!keep) rejected.push_back(r);
+    }
+    if(!rejected.empty()) out.push_back(var + " = " + join_solutions(rejected) + " rejected by domain");
+}
+
 static std::vector<std::string> filter_solutions_by_original_key(
     Arena &a,
     std::vector<std::string> sols,
@@ -3077,7 +3097,7 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
                         auto raw = solve_poly2(a, prim, var);
                         if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
                         auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
-                        if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+                        append_rejected_by_domain(out, var, raw, valid);
                         append_answer(out, var, valid);
                         return out;
                     }
@@ -3156,7 +3176,7 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
                 auto raw = solve_poly_from_key(a, poly, var);
                 if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
                 auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
-                if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+                append_rejected_by_domain(out, var, raw, valid);
                 append_answer(out, var, valid);
                 return out;
             }
@@ -3178,7 +3198,7 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
             auto raw = solve_poly_from_key(a, poly, var);
             if(!raw.empty()) out.push_back(var + " = " + join_solutions(raw));
             auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
-            if(valid.size() != raw.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+            append_rejected_by_domain(out, var, raw, valid);
             append_answer(out, var, valid);
             return out;
         }
@@ -4448,7 +4468,7 @@ static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, Nod
         if(valid.empty()) continue;
         std::vector<std::string> out;
         out.push_back(format_expr(a, cand) + " = 0");
-        if(valid.size() != sols.size()) out.push_back("domain => " + var + " = " + join_solutions(valid));
+        append_rejected_by_domain(out, var, sols, valid);
         append_answer(out, var, valid);
         return out;
     }

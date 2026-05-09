@@ -29,7 +29,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
             "log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4",
             "(x^2 + 4*x + 3)/(x^2 + x) = 16",
             "5*x^2 + 4*x - 1 = 0",
-            "domain => x = 1/5",
+            "x = -1 rejected by domain",
             "x = [1/5]",
         ],
         ["Rearrange to lhs-rhs=0", "combine log terms", "Exponentiate, solve", "x = 0.2", "ERR:"],
@@ -133,7 +133,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "e^(2*x)*cos(5*x),method=parts",
-        ["u = cos(5*x)", "dv = e^(2*x) dx", "du = -5*sin(5*x) dx", "v = e^(2*x)/2", "Collect I terms"],
+        ["u = cos(5*x)", "dv = e^(2*x) dx", "du = -5*sin(5*x) dx", "v = e^(2*x)/2", "29/4*I"],
         ["IBP missing", "ERR:"],
     ),
     (
@@ -175,7 +175,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(e^(2*x)/(1+e^(2*x)),x,0,ln(7))",
-        ["u=1+e^(2*x)", "du=2*e^(2*x) dx", "I=(1/2)Int(1/u) du", "Evaluate F(ln(7)) - F(0)"],
+        ["u=1+e^(2*x)", "du=2*e^(2*x) dx", "I=(1/2)Int(1/u) du", "F(ln(7)) - F(0)"],
         ["ERR:", "No elementary primitive"],
     ),
     (
@@ -667,13 +667,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(2*log(10,4-x)=log(10,x+8),x,method=log_exp)",
-        ["log(10,(4-x)^2)", "x = 8 or 1", "domain => x = 1", "x = [1]"],
+        ["log(10,(4-x)^2)", "x = 8 or 1", "x = 8 rejected by domain", "x = [1]"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
     ),
     (
         "alg",
         "solve(log(2,x+3)+log(2,x+10)=2+2*log(2,x),x,method=log_exp)",
-        ["log(2,(x+3)*(x+10))", "(x + 3)*(x + 10) = 4*x^2", "domain => x = 6", "x = [6]"],
+        ["log(2,(x+3)*(x+10))", "(x + 3)*(x + 10) = 4*x^2", "x = -5/3 rejected by domain", "x = [6]"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
     ),
 ]

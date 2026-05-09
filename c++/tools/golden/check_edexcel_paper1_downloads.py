@@ -63,7 +63,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2022 Q15 exact trig endpoints",
         ["--int", "defint(8-8*cos(4*t)+48*sin(t)*cos(t),t,0,pi/4)"],
-        ["Evaluate F(pi/4) - F(0)", "12 + 2*pi"],
+        ["F(pi/4) - F(0)", "12 + 2*pi"],
         ["cos(pi/4)^2", "ERR:"],
     ),
     (

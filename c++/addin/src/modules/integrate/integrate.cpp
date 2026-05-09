@@ -5727,10 +5727,13 @@ static std::optional<NodeId> integrate_sin2_over_one_plus_cos(Arena &a, NodeId e
 
     std::string us = format_expr(a, u);
     steps.push_back("sin(2*" + us + ") = 2sin(" + us + ")cos(" + us + ")");
+    steps.push_back("I = 2*Int(sin(" + us + ")cos(" + us + ")/(1+cos(" + us + "))) d" + var);
     steps.push_back("w = 1 + cos(" + us + "), dw = -sin(" + us + ")d" + var);
     steps.push_back("cos(" + us + ") = w - 1");
     steps.push_back("I = -2*Int((w-1)/w) dw");
-    steps.push_back("F(" + us + ") = 2*ln(abs(1+cos(" + us + "))) - 2*cos(" + us + ")");
+    steps.push_back("I = -2*Int(1 - 1/w) dw");
+    steps.push_back("I = -2w + 2*ln(abs(w))");
+    steps.push_back("I = 2*ln(abs(1+cos(" + us + "))) - 2*cos(" + us + ")");
     return casio::simplify(a, mul_coeff(a, r_div(coeff, *k), primitive));
 }
 
@@ -6881,28 +6884,42 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
         std::string e = format_expr(a, exp_node);
         std::string atext = format_expr(a, a.num(exp_coeff));
         std::string btext = format_expr(a, a.num(k));
+        auto scale_text = [](Rational r, std::string const &s) {
+            r.normalize();
+            if(r.num == 1 && r.den == 1) return s;
+            if(r.num == -1 && r.den == 1) return "-" + s;
+            return rat_text(r) + "*" + s;
+        };
+        Rational inv_a = r_div(Rational{1, 1}, exp_coeff);
+        Rational b_over_a = r_div(k, exp_coeff);
+        Rational lhs_coeff = r_add(Rational{1, 1}, r_mul(b_over_a, b_over_a));
+        std::string sin_part = e + "*sin(" + u + ")";
+        std::string cos_part = e + "*cos(" + u + ")";
+        std::string ba = rat_text(b_over_a);
+        std::string lhs = rat_text(lhs_coeff) + "*I";
         steps.push_back("Step 2: a=" + atext + ", b=" + btext + ".");
         if(want_sin) {
             steps.push_back("Step 3: u = sin(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 4: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 5: J = Integral(" + e + "*cos(" + u + ")) dx.");
-            steps.push_back("Step 6: I = " + e + "*sin(" + u + ")/a - (b/a)J.");
+            steps.push_back("Step 6: I = " + scale_text(inv_a, sin_part) + " - " + ba + "*J.");
             steps.push_back("Step 7: u = cos(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 8: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
-            steps.push_back("Step 9: J = " + e + "*cos(" + u + ")/a + (b/a)I.");
+            steps.push_back("Step 9: J = " + scale_text(inv_a, cos_part) + " + " + ba + "*I.");
+            steps.push_back("Step 10: I = " + scale_text(inv_a, sin_part) + " - " + ba + "*(" + scale_text(inv_a, cos_part) + " + " + ba + "*I).");
+            steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
         }
         else {
             steps.push_back("Step 3: u = cos(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 4: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 5: J = Integral(" + e + "*sin(" + u + ")) dx.");
-            steps.push_back("Step 6: I = " + e + "*cos(" + u + ")/a + (b/a)J.");
+            steps.push_back("Step 6: I = " + scale_text(inv_a, cos_part) + " + " + ba + "*J.");
             steps.push_back("Step 7: u = sin(" + u + "), dv = " + e + " dx.");
             steps.push_back("Step 8: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
-            steps.push_back("Step 9: J = " + e + "*sin(" + u + ")/a - (b/a)I.");
+            steps.push_back("Step 9: J = " + scale_text(inv_a, sin_part) + " - " + ba + "*I.");
+            steps.push_back("Step 10: I = " + scale_text(inv_a, cos_part) + " + " + ba + "*(" + scale_text(inv_a, sin_part) + " - " + ba + "*I).");
+            steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
         }
-        if(want_sin) steps.push_back("Step 10: (a^2 + b^2)I = " + e + "*(a*sin(" + u + ") - b*cos(" + u + ")).");
-        else steps.push_back("Step 10: (a^2 + b^2)I = " + e + "*(a*cos(" + u + ") + b*sin(" + u + ")).");
-        steps.push_back("Step 11: I = RHS/(a^2 + b^2).");
         return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
     }
     if(exp_coeff.num != exp_coeff.den) return std::nullopt;
@@ -8429,8 +8446,8 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
         std::string cleaned = clean_integral_step(s, display_expr, var);
         if(!cleaned.empty()) steps.push_back(cleaned);
     }
-    steps.push_back("Primitive F(" + var + ") = " + format_expr_human(arena, primitive) + ".");
-    steps.push_back("Evaluate F(" + hi_text + ") - F(" + lo_text + ").");
+    steps.push_back("F(" + var + ") = " + format_expr_human(arena, primitive) + ".");
+    steps.push_back("F(" + hi_text + ") - F(" + lo_text + ")");
     steps.push_back("Use exact endpoint values, then simplify.");
     std::string answer = format_expr_human(arena, ans);
     if(auto pi_form = pi_linear_form(arena, ans)) answer = format_pi_linear(*pi_form);

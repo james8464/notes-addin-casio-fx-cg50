@@ -214,7 +214,7 @@ def base_cases() -> list[Case]:
     for expr, must in [
         ("x^3*e^(2*x),method=di", ("D:", "I:", "Signs:", "+ C")),
         ("x^2*cos(3*x),method=di", ("D:", "I:", "Signs:", "+ C")),
-        ("e^(2*x)*cos(3*x),method=parts", ("u = cos(3*x)", "J =", "(a^2 + b^2)I")),
+        ("e^(2*x)*cos(3*x),method=parts", ("u = cos(3*x)", "J =", "13/4*I")),
         ("asin((x-3)/8),method=parts", ("u=asin(w)", "dv=dw", "sqrt(1-w^2)")),
         ("acos((x-1)/3),method=parts", ("u=acos(w)", "w=(x - 1)/3", "+ C")),
         ("atan(2*x-3),method=parts", ("u=atan(w)", "dv=dw", "+ C")),

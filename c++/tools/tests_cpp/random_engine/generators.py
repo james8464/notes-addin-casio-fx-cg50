@@ -20,6 +20,7 @@ EXAM_GAP_TOPICS = (
     "algebraic_symmetry",
     "trig_power_reduction",
     "definite_symmetry",
+    "definite_show_that",
     "implicit_collect",
     "parametric_second",
     "interval_trig",
@@ -350,6 +351,20 @@ class AdversarialGenerator:
                 "exam: show symmetry/substitution limits, combine integrals, conclude value",
             ),
             (
+                "definite_show_that",
+                "int",
+                [
+                    "defint(sin(2*x)/(1+cos(x)),x,0,pi/2)",
+                    "defint(2*x/sqrt(2*x+5),x,0,8)",
+                    "defint(e^(2*x)/(1+e^(2*x)),x,0,ln(7))",
+                ][cycle % 3],
+                "integrate",
+                "defint(expr,var,lo,hi)",
+                "sub",
+                ("identity_rewrite", "substitution_limits", "evaluate_antiderivative"),
+                "exam: show identity/rearrangement, substitution with differential, changed/evaluated limits, final exact value",
+            ),
+            (
                 "implicit_collect",
                 "derive",
                 [
@@ -556,7 +571,7 @@ class AdversarialGenerator:
         repeated = "+".join(["x^2-1"] * (18 + (i % 10)))
         cases = [
             ("long_parse_guard", "alg", f"factor(({repeated})/(x-1))", "algebra", "expr", "factor", ("long_parse", "division"), False),
-            ("nested_rewrite_guard", "alg", f"rewrite({deep})", "rewrite", "expr", "auto", ("nested_fn", "depth_cap"), True),
+            ("nested_rewrite_guard", "alg", f"rewrite({deep})", "rewrite", "expr", "auto", ("nested_fn", "depth_cap"), False),
             ("trig_many_roots", "trig", "sin(18*x)=sin(x),x,0,2*pi,40,method=identity", "solve_trig", "eq,var,lo,hi,max,method", "identity", ("many_roots", "interval_filter"), True),
             ("chain_depth_guard", "derive", f"{deep},x,method=chain", "diff", "expr,var,method", "chain", ("nested_chain", "depth_cap"), True),
             ("domain_singularity_guard", "alg", "domain(1/((x-1)*(x+1)*(x-2)))", "domain", "expr", "auto", ("singularities", "denominator_guard"), False),

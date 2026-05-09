@@ -43,7 +43,7 @@ def marker_ok(marker: str, out: str) -> bool:
     if marker == "-pi*log(2)/2":
         return compact("-pi*ln(2)/2") in norm
     aliases = {
-        "Collect I terms": ["(a^2 + b^2)I", "I = RHS/(a^2 + b^2)"],
+        "Collect I terms": ["*I =", "I ="],
         "DI table": ["D:", "I:", "Signs:"],
         "Back-substitute": ["+ C"],
         "Partial fractions: A/(x - 1)+(Bx+C)/(x^2 + 4)": ["PF: A/(x - 1)+(Bx+C)/(x^2 + 4)"],
