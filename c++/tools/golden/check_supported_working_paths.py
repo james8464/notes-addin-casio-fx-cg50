@@ -113,6 +113,7 @@ def base_cases() -> list[Case]:
         ("x^2+2*x+1,method=collect", ("x^2 + 2*x + 1",)),
         ("x^2+2*x+1,method=canonical", ("x^2 + 2*x + 1", "= x^2 + 2*x + 1")),
         ("complete_square(2*x^2+8*x+3)", ("h =", "k =", "Answer:")),
+        ("complete_square((2*x+4)^2)", ("h = 2", "k = 0", "4*(x + 2)^2")),
         ("1/(sqrt(x)+1),method=rationalise", ("*(sqrt(x) - 1)/(sqrt(x) - 1)", "(sqrt(x) - 1)/(x - 1)")),
         ("pf((x^2+5*x+6)/(x^2*(x+1)))", ("A/x^2", "A=", "B=", "C=")),
         ("compare((x^2-1)/(x-1),x+1)", ("E1 =", "E2 =", "Equivalent")),
@@ -236,6 +237,8 @@ def base_cases() -> list[Case]:
     for expr, must in [
         ("x^2", ("x^3/3", "+ C")),
         ("1/x", ("log(abs(x))", "+ C")),
+        ("log(x)/x", ("u = log(x)", "log(x)^2/2", "+ C")),
+        ("sign(2*x-3)", ("u = 2*x - 3", "Int sign(u) du = abs(u)", "abs(2*x - 3)/2 + C")),
         ("sin(3*x+2)", ("cos(3*x + 2)", "+ C")),
         ("cos(x)^3", ("u=sin(x)", "+ C")),
         ("tan(x)^3", ("sec(x)^2 - 1", "+ C")),

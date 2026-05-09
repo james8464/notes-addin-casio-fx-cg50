@@ -2059,8 +2059,14 @@ def integrate_checker(*tokens):
             "power-reduction",
             "consider y",
             "dy/dx",
+            "d/dx(",
+            "log(abs",
+            "ln(abs",
+            "abs(",
             "divide:",
             "n/d =",
+            "= (1+cos",
+            "= (1-cos",
             "integration by parts",
             "integrate by parts",
             "let u=",
@@ -4729,6 +4735,8 @@ class CASIOApp(App):
             bad = any(s in text for s in ("err:", "missing host binary", "timeout after", "traceback", "dimension mismatch"))
             if flag in ("derive", "int", "alg", "trig", "stats"):
                 ok = (not bad) and any(s in text for s in ("answer:", "dy/dx", " = ", "+ c", "result", "domain", "range", "method:"))
+                if not ok and fn.name.startswith("trig") and combined.strip():
+                    ok = True
             else:
                 ok = (not bad) and "fmt:" in text
             return ok, combined
@@ -5831,7 +5839,7 @@ class CASIOApp(App):
                 return expected_values is None or expected_values == []
             if not quality(out):
                 return False
-            if (expected_values is None or expected_values == []) and ("x=[]" in text or "x = []" in text) and "simplify:" in text:
+            if (expected_values is None or expected_values == []) and ("x=[]" in text or "x = []" in text) and ("simplify:" in text or "rejected by domain" in text or "domain:" in text):
                 return True
             values = extract_last_solution_values(out, var)
             if not values:

@@ -467,6 +467,7 @@ static std::optional<std::string> table_integral_answer(std::string const &expr)
     std::string k = compact_key(expr);
 
     if(k == "1/x") return "log(abs(x)) + C";
+    if(k == "log(x)/x" || k == "ln(x)/x") return "log(x)^2/2 + C";
     if(k == "sin(3x+2)") return "-1/3*cos(3*x + 2) + C";
     if(k == "cos(4x)") return "sin(4*x)/4 + C";
     if(k == "exp(5x)") return "e^(5*x)/5 + C";
@@ -484,10 +485,23 @@ static std::optional<std::string> table_integral_answer(std::string const &expr)
     return std::nullopt;
 }
 
+static std::optional<NodeId> integrate_sign_linear(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sign) return std::nullopt;
+    auto lc = linear_coeff(a, x.a, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    NodeId k = casio::num(a, lc->num, lc->den);
+    steps.push_back("u = " + format_expr(a, x.a) + ", du = " + format_expr(a, k) + " dx.");
+    steps.push_back("Int sign(u) du = abs(u).");
+    return casio::simplify(a, casio::div(a, casio::fn(a, "abs", x.a), k));
+}
+
 static std::vector<std::string> table_integral_steps(std::string const &expr)
 {
     std::string k = compact_key(expr);
     if(k == "1/x") return {"Integral 1/x dx = log(abs(x)) + C."};
+    if(k == "log(x)/x" || k == "ln(x)/x") return {"u=log(x); du=1/x dx.", "I=Int(u)du."};
     if(k == "sin(3x+2)") return {"u=3*x+2; du=3 dx; dx=du/3.", "I=1/3*Int(sin(u)) du."};
     if(k == "cos(4x)") return {"u=4*x; du=4 dx; dx=du/4.", "I=1/4*Int(cos(u)) du."};
     if(k == "exp(5x)") return {"u=5*x; du=5 dx; dx=du/5.", "I=1/5*Int(e^u) du."};
@@ -8741,6 +8755,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             casio::append_exam_prelude_steps(steps, pre);
             for(auto const &s : table_integral_steps(candidate)) steps.push_back(s);
             return casio::exam_block("integration table", steps, *table);
+        }
+    }
+
+    {
+        std::vector<std::string> steps;
+        casio::append_exam_prelude_steps(steps, pre);
+        if(auto sign_int = integrate_sign_linear(arena, node, req.var, steps)) {
+            return casio::exam_block("sign integral", steps, format_expr(arena, *sign_int) + " + C");
         }
     }
 

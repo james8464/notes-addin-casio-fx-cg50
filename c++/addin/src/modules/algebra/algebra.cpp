@@ -705,6 +705,57 @@ struct SymbolicQuadratic
     NodeId c = 0;
 };
 
+struct SymbolicLinear
+{
+    NodeId m = 0;
+    NodeId c = 0;
+};
+
+static std::optional<SymbolicLinear> symbolic_linear_parts(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = (x.kind == NodeKind::Add) ? x.kids : std::vector<NodeId>{n};
+    std::vector<NodeId> m_terms;
+    std::vector<NodeId> c_terms;
+    for(NodeId term : terms) {
+        if(auto m = strip_one_linear_x(a, term, var)) {
+            m_terms.push_back(*m);
+            continue;
+        }
+        if(contains_symbol(a, term, var)) return std::nullopt;
+        c_terms.push_back(term);
+    }
+    if(m_terms.empty()) return std::nullopt;
+    return SymbolicLinear{
+        casio::simplify(a, casio::add(a, m_terms)),
+        c_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, c_terms))
+    };
+}
+
+static std::optional<std::vector<std::string>> complete_square_existing_square(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto exp = as_num(a, x.b);
+    if(!exp || exp->num != 2 || exp->den != 1) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, x.a, var);
+    if(!lin) return std::nullopt;
+    NodeId vx = casio::sym(a, var);
+    NodeId shift = casio::simplify(a, casio::div(a, lin->c, lin->m));
+    NodeId coeff = casio::simplify(a, casio::power(a, lin->m, casio::num(a, 2)));
+    NodeId ans = casio::simplify(a, casio::mul(a, {
+        coeff,
+        casio::power(a, casio::add(a, {vx, shift}), casio::num(a, 2))
+    }));
+    return std::vector<std::string>{
+        format_expr(a, n),
+        "= " + format_expr(a, ans),
+        "h = " + format_expr(a, shift),
+        "k = 0",
+        "Answer: " + format_expr(a, ans),
+    };
+}
+
 static std::optional<SymbolicQuadratic> monic_symbolic_quadratic(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -735,6 +786,7 @@ static std::optional<SymbolicQuadratic> monic_symbolic_quadratic(Arena &a, NodeI
 
 static std::optional<std::vector<std::string>> symbolic_complete_square(Arena &a, NodeId n, std::string const &raw, std::string const &var)
 {
+    if(auto sq = complete_square_existing_square(a, n, var)) return sq;
     auto q = monic_symbolic_quadratic(a, n, var);
     if(!q) return std::nullopt;
     NodeId x = casio::sym(a, var);
@@ -6204,15 +6256,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
 
         // Higher degree
-        std::string eq_s = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
-        out.push_back("2. Expr = " + eq_s);
         if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
             out.push_back("3. Multiply by " + format_expr(arena, poly2_to_node(arena, rp.den, solve_var)) + ".");
             out.push_back(format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
         }
-        auto sols = solve_poly2(arena, rp.num, solve_var);
-        sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+        auto candidates = solve_poly2(arena, rp.num, solve_var);
+        auto sols = filter_real_solutions(arena, rearr, solve_var, candidates, interval_lo, interval_hi);
         if(sols.empty()) {
+            for(auto const &s : candidates) {
+                std::string rhs = sol_rhs(s);
+                if(rhs.find("No solution") == std::string::npos && rhs.find("Infinite") == std::string::npos)
+                    out.push_back(solve_var + " = " + rhs + " rejected by domain.");
+            }
             out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
             out.push_back("Answer: " + solve_var + " = []");
             return out;
