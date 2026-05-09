@@ -304,6 +304,74 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         return out;
     }
 
+    if(in.target == "u" && has_s && has_a && has_t) {
+        if(is_zero_value(arena, t)) {
+            out.push_back("u = (s - 1/2at^2)/t");
+            out.push_back("Error: division by zero; no unique initial velocity");
+            return out;
+        }
+        NodeId half_at2 = mul(arena, {half(arena), a, power(arena, t, num(arena, 2))});
+        NodeId res = simplify(arena, div(arena, add(arena, {s, neg(arena, half_at2)}), t));
+        emit("u = (s - 1/2at^2)/t", "u = (" + show(s) + " - 1/2*" + show(a) + "*" + show(t) + "^2)/(" + show(t) + ")", res);
+        return out;
+    }
+    if(in.target == "v" && has_s && has_u && has_t) {
+        if(is_zero_value(arena, t)) {
+            out.push_back("v = 2s/t - u");
+            out.push_back("Error: division by zero; no unique final velocity");
+            return out;
+        }
+        NodeId res = simplify(arena, add(arena, {div(arena, mul(arena, {num(arena, 2), s}), t), neg(arena, u)}));
+        emit("v = 2s/t - u", "v = 2*" + show(s) + "/(" + show(t) + ") - " + show(u), res);
+        return out;
+    }
+    if(in.target == "u" && has_s && has_v && has_t) {
+        if(is_zero_value(arena, t)) {
+            out.push_back("u = 2s/t - v");
+            out.push_back("Error: division by zero; no unique initial velocity");
+            return out;
+        }
+        NodeId res = simplify(arena, add(arena, {div(arena, mul(arena, {num(arena, 2), s}), t), neg(arena, v)}));
+        emit("u = 2s/t - v", "u = 2*" + show(s) + "/(" + show(t) + ") - " + show(v), res);
+        return out;
+    }
+    if(in.target == "a" && has_s && has_u && has_t) {
+        if(is_zero_value(arena, t)) {
+            double ss = 0;
+            if(node_to_double(arena, s, ss) && std::fabs(ss) < 1e-9) {
+                out.push_back("s = ut + 1/2at^2");
+                out.push_back("0*a = 0");
+                out.push_back("a = any real");
+                return out;
+            }
+            out.push_back("a = 2(s-ut)/t^2");
+            out.push_back("Error: division by zero; no finite acceleration");
+            return out;
+        }
+        NodeId top = mul(arena, {num(arena, 2), add(arena, {s, neg(arena, mul(arena, {u, t}))})});
+        NodeId res = simplify(arena, div(arena, top, power(arena, t, num(arena, 2))));
+        emit("a = 2(s-ut)/t^2", "a = 2*(" + show(s) + " - " + show(u) + "*" + show(t) + ")/(" + show(t) + "^2)", res);
+        return out;
+    }
+    if(in.target == "a" && has_s && has_v && has_t) {
+        if(is_zero_value(arena, t)) {
+            double ss = 0;
+            if(node_to_double(arena, s, ss) && std::fabs(ss) < 1e-9) {
+                out.push_back("s = vt - 1/2at^2");
+                out.push_back("0*a = 0");
+                out.push_back("a = any real");
+                return out;
+            }
+            out.push_back("a = 2(vt-s)/t^2");
+            out.push_back("Error: division by zero; no finite acceleration");
+            return out;
+        }
+        NodeId top = mul(arena, {num(arena, 2), add(arena, {mul(arena, {v, t}), neg(arena, s)})});
+        NodeId res = simplify(arena, div(arena, top, power(arena, t, num(arena, 2))));
+        emit("a = 2(vt-s)/t^2", "a = 2*(" + show(v) + "*" + show(t) + " - " + show(s) + ")/(" + show(t) + "^2)", res);
+        return out;
+    }
+
     if(in.target == "s" && has_u && has_a && has_t) {
         NodeId term1 = mul(arena, {u, t});
         NodeId term2 = mul(arena, {half(arena), a, power(arena, t, num(arena, 2))});

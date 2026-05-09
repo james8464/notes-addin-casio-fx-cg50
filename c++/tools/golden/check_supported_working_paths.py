@@ -294,6 +294,8 @@ def base_cases() -> list[Case]:
         ("s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ("s = ut + 1/2at^2", "s = 25")),
         ("s=100,u=,v=20,a=2,t=,target=u,method=suvat", ("u = v - at", "u =")),
         ("s=50,u=5,v=,a=,t=5,find=[v,a],method=suvat", ("v =", "a =")),
+        ("s=20,u=3,v=,a=,t=4,target=a,method=suvat", ("a = 2(s-ut)/t^2", "a = 1")),
+        ("s=20,u=,v=,a=1,t=4,target=u,method=suvat", ("u = (s - 1/2at^2)/t", "u = 3")),
     ]:
         c.append(Case("suvat", "suvat", expr, must, min_lines=2))
 
