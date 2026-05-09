@@ -110,6 +110,7 @@ def base_cases() -> list[Case]:
         ("expand((2*x-3)^4)", ("(2*x - 3)^4", "16*x^4")),
         ("x^2+2*x+1,method=collect", ("x^2 + 2*x + 1",)),
         ("complete_square(2*x^2+8*x+3)", ("h =", "k =", "Answer:")),
+        ("1/(sqrt(x)+1),method=rationalise", ("*(sqrt(x) - 1)/(sqrt(x) - 1)", "(sqrt(x) - 1)/(x - 1)")),
         ("pf((x^2+5*x+6)/(x^2*(x+1)))", ("A/x^2", "A=", "B=", "C=")),
         ("compare((x^2-1)/(x-1),x+1)", ("E1 =", "E2 =", "Equivalent")),
         ("compare(x^2=1,(x-1)*(x+1)=0)", ("E1-R1", "E2-R2", "equivalent")),
@@ -256,6 +257,9 @@ def base_cases() -> list[Case]:
         ("sin(x+y),method=compound_angle", ("sin(A+B)", "sin(x)*cos(y)")),
         ("cos(7*theta),method=auto", ("Chebyshev", "64*c^7")),
         ("tan(3*x),method=auto", ("tan(3", "Answer:")),
+        ("sin(x)^2+cos(x)^2,method=sin_cos", ("sin(x)^2 + cos(x)^2", "= 1", "1")),
+        ("sin(2*x),method=double_angle", ("sin(2*x) = 2*sin(x)*cos(x)", "2*sin(x)*cos(x)")),
+        ("cos(2*x),method=double_angle", ("cos(2*x) = cos(x)^2 - sin(x)^2", "cos(x)^2 - sin(x)^2")),
         ("tan(x),target=sin(x)/cos(x),method=auto", ("tan(u)=sin(u)/cos(u)", "Answer:")),
         ("cos(3*x+2)/sin(3*x+2),target=cot(3*x+2),method=auto", ("cot", "cos(3*x + 2)/sin(3*x + 2)")),
     ]:

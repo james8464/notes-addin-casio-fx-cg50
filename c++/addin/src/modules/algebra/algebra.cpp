@@ -3240,6 +3240,48 @@ static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std
     };
 }
 
+static std::optional<std::vector<std::string>> rationalise_sqrt_denominator(Arena &a, NodeId parsed)
+{
+    Node const &d = a.get(parsed);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    Node const &den = a.get(d.b);
+    if(den.kind != NodeKind::Add || den.kids.size() != 2) return std::nullopt;
+
+    NodeId root = 0;
+    Rational c{0, 1};
+    bool have_c = false;
+    for(NodeId k : den.kids) {
+        Node const &kid = a.get(k);
+        if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Sqrt) {
+            if(root) return std::nullopt;
+            root = k;
+        }
+        else if(auto r = as_num(a, k)) {
+            if(have_c) return std::nullopt;
+            c = *r;
+            have_c = true;
+        }
+        else return std::nullopt;
+    }
+    if(!root || !have_c || is_zero(c)) return std::nullopt;
+
+    Node const &rn = a.get(root);
+    NodeId conjugate = casio::simplify(a, casio::add(a, {root, a.num(r_neg(c))}));
+    NodeId denom = casio::simplify(a, casio::add(a, {rn.a, casio::neg(a, a.num(r_mul(c, c)))}));
+    NodeId numerator = casio::simplify(a, casio::mul(a, {d.a, conjugate}));
+    NodeId answer = casio::simplify(a, casio::div(a, numerator, denom));
+
+    std::string start = format_expr(a, parsed);
+    std::string conj = format_expr(a, conjugate);
+    std::string ans = format_expr(a, answer);
+    return std::vector<std::string>{
+        start,
+        "= " + start + "*(" + conj + ")/(" + conj + ")",
+        "= " + ans,
+        ans,
+    };
+}
+
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
 {
     std::string key = compact_input_key(raw);
@@ -5843,6 +5885,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         format_expr(arena, n)
                     );
                 }
+            }
+            if(req.method == "rationalise" || req.method == "rationalize") {
+                if(auto route = rationalise_sqrt_denominator(arena, parsed)) return *route;
             }
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {

@@ -543,6 +543,48 @@ static std::string compact_key(std::string text)
     return out;
 }
 
+static std::vector<std::string> split_top_char(std::string const &s, char sep)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if(c == sep && depth == 0) {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else cur.push_back(c);
+    }
+    out.push_back(cur);
+    return out;
+}
+
+static std::optional<std::string> squared_fn_arg_key(std::string const &term, std::string const &fn)
+{
+    std::string prefix = fn + "(";
+    std::string suffix = ")^2";
+    if(term.rfind(prefix, 0) != 0 || term.size() <= prefix.size() + suffix.size()) return std::nullopt;
+    if(term.compare(term.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
+    return term.substr(prefix.size(), term.size() - prefix.size() - suffix.size());
+}
+
+static std::optional<std::vector<std::string>> direct_pythagorean_key(std::string const &key)
+{
+    auto parts = split_top_char(key, '+');
+    if(parts.size() != 2) return std::nullopt;
+    std::string sarg, carg;
+    for(auto const &p : parts) {
+        if(auto a = squared_fn_arg_key(p, "sin")) sarg = *a;
+        else if(auto a = squared_fn_arg_key(p, "cos")) carg = *a;
+        else return std::nullopt;
+    }
+    if(sarg.empty() || carg.empty() || sarg != carg) return std::nullopt;
+    std::string start = "sin(" + sarg + ")^2 + cos(" + sarg + ")^2";
+    return std::vector<std::string>{start, "= 1", "1"};
+}
+
 static std::string rat_text(long long n, long long d = 1)
 {
     if(d < 0) {
@@ -1826,6 +1868,62 @@ static std::optional<std::tuple<Rational, FnKind, NodeId>> double_single_trig_te
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> direct_double_angle_rewrite(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    Node const &arg = a.get(x.a);
+    if(arg.kind != NodeKind::Mul) return std::nullopt;
+    NodeId u = 0;
+    for(NodeId k : arg.kids) {
+        if(auto r = as_num(a, k); r && r->num == 2 && r->den == 1) continue;
+        if(u) return std::nullopt;
+        u = k;
+    }
+    if(!u || !is_twice_arg(a, x.a, u)) return std::nullopt;
+    std::string ut = format_expr(a, u);
+    if(x.fkind == FnKind::Sin) {
+        std::string ans = "2*sin(" + ut + ")*cos(" + ut + ")";
+        return std::vector<std::string>{"sin(2*" + ut + ")", "= " + ans, ans};
+    }
+    if(x.fkind == FnKind::Cos) {
+        std::string ans = "cos(" + ut + ")^2 - sin(" + ut + ")^2";
+        return std::vector<std::string>{"cos(2*" + ut + ")", "= " + ans, ans};
+    }
+    if(x.fkind == FnKind::Tan) {
+        std::string ans = "2*tan(" + ut + ")/(1 - tan(" + ut + ")^2)";
+        return std::vector<std::string>{"tan(2*" + ut + ")", "= " + ans, ans};
+    }
+    return std::nullopt;
+}
+
+static bool squared_trig_fn(Arena &a, NodeId n, FnKind fk, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &e = a.get(x.b);
+    if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1) return false;
+    Node const &b = a.get(x.a);
+    if(b.kind != NodeKind::Fn || b.fkind != fk) return false;
+    arg = b.a;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> direct_pythagorean_rewrite(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    NodeId sarg = 0, carg = 0;
+    for(NodeId k : x.kids) {
+        NodeId arg = 0;
+        if(squared_trig_fn(a, k, FnKind::Sin, arg)) sarg = arg;
+        else if(squared_trig_fn(a, k, FnKind::Cos, arg)) carg = arg;
+        else return std::nullopt;
+    }
+    if(!sarg || !carg || !same_sig(a, sarg, carg)) return std::nullopt;
+    return std::vector<std::string>{format_expr(a, n), "= 1", "1"};
+}
+
 static std::optional<std::vector<std::string>> solve_double_angle_cubic(
     Arena &a,
     NodeId residual,
@@ -2890,9 +2988,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto nl = req.expr.find('\n');
         std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string targets = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
-        NodeId s = casio::simplify(arena, casio::parse_expr(arena, src));
+        NodeId raw = casio::parse_expr(arena, src);
+        NodeId s = casio::simplify(arena, raw);
         std::string key = compact_key(src);
         std::string ans = casio::format_expr(arena, s);
+        if(auto py_key = direct_pythagorean_key(key)) return *py_key;
+        if(auto py = direct_pythagorean_rewrite(arena, raw)) return *py;
+        if(auto da = direct_double_angle_rewrite(arena, raw)) return *da;
         if(auto route = linear_sincos_rform(arena, s)) return *route;
         if(key == "sqrt(3)sin(x)+cos(x)" || key == "cos(x)+sqrt(3)sin(x)") {
             return casio::exam_block(
