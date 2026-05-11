@@ -521,7 +521,7 @@ static std::vector<std::string> table_integral_steps(std::string const &expr)
     if(k == "sec(x)tan(x)") return {"d/dx(sec(x)) = sec(x)tan(x)."};
     if(k == "cosec(x)^2") return {"d/dx(cot(x)) = -cosec(x)^2."};
     if(k == "cosec(x)cot(x)") return {"d/dx(cosec(x)) = -cosec(x)cot(x)."};
-    if(k == "tan(x)^2") return {"tan(x)^2 = sec(x)^2 - 1."};
+    if(k == "tan(x)^2") return {"tan(x)^2 = sec(x)^2 - 1.", "I = Int(sec(x)^2 - 1) dx."};
     if(k == "(3x^2-2x+2)/x") return {"Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x."};
     if(k == "sin(x)^2") return {"sin(x)^2 = (1-cos(2*x))/2."};
     if(k == "cos(x)^2") return {"cos(x)^2 = (1+cos(2*x))/2."};

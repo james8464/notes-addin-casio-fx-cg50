@@ -1582,17 +1582,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer
                 );
             }
-            return casio::exam_block(
-                "parametric differentiation (limited)",
-                {
-                    "dx/dt = " + format_expr_human(arena, dxdt),
-                    "dy/dt = " + format_expr_human(arena, dydt),
-                    "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.",
-                    "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")",
-                    answer,
-                },
-                answer
-            );
+            std::vector<std::string> steps = {
+                "dx/dt = " + format_expr_human(arena, dxdt),
+                "dy/dt = " + format_expr_human(arena, dydt),
+                "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.",
+            };
+            std::string ratio_line = "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")";
+            if(ratio_line != answer) steps.push_back(ratio_line);
+            return casio::exam_block("parametric differentiation (limited)", steps, answer);
         }
         return casio::exam_block(
             "differentiate",

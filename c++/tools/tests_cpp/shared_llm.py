@@ -43,7 +43,7 @@ Input fields:
 - OUT: calculator output to grade.
 - EXP: deterministic checker notes, expected answer, or required behaviour.
 
-Grade BOTH answer and step-by-step working quality.
+Grade BOTH answer and step-by-step working quality. Full marks means method marks as well as a correct final answer.
 
 Target style:
 - The ideal output is what a student could copy into an exam: mostly maths lines, concise, readable, and in logical order.
@@ -65,6 +65,7 @@ When working is NOT required:
 
 When working IS required:
 - Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
+- For supported non-trivial A-level/Further Maths routes, answer-only output is NEEDS_REVIEW even when the final line is correct.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
 - For DI/tabular integration by parts, `D:`, `I:`, `Signs:` plus the final collected answer is full method evidence; do not require separate u/dv/du/v lines.
 - For crash-safety/depth-guard/generated stress tests, answer-only or unchanged-expression output is fine if it is bounded, non-crashing, and mathematically sane.

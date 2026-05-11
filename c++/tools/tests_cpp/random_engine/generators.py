@@ -137,6 +137,8 @@ class AdversarialGenerator:
             "sources": self._online,
             "crash": self._crash,
             "safety": self._crash,
+            "beyond": self._beyond,
+            "advanced": self._beyond,
         }
         return dispatch.get(feature, self._rewrite)(index)
 
@@ -240,6 +242,17 @@ class AdversarialGenerator:
         concept = self._concept("general", "expr,[method/options]", "auto", topic, transforms, difficulty, "sympy+llm")
         note = "advanced unrestricted combination; answer must be correct and working must justify special/domain/branch route"
         return AdversarialCase("Adv general {0}: {1}".format(index, topic), flag, expr, concept, expects_working, note, expr)
+
+    def _beyond(self, index: int) -> AdversarialCase:
+        if index % 3 == 1:
+            case = self._general(index)
+        elif index % 3 == 2:
+            case = self._online(index)
+        else:
+            case = self._crash(index)
+        case.label = "Beyond {0}: {1}".format(index, case.concept.topic)
+        case.expected_note = "beyond: " + case.expected_note
+        return case
 
     def _exam_gap(self, index: int) -> AdversarialCase:
         """Worksheet-style traps where a right answer can still lose method marks."""

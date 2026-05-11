@@ -104,6 +104,18 @@ class RandomEngineTests(unittest.TestCase):
         self.assertTrue(cases)
         self.assertEqual({case.concept.function for case in cases}, {"general"})
 
+    def test_beyond_scope_emits_advanced_push_cases(self):
+        gen = AdversarialGenerator(seed=223)
+
+        cases = gen.generate("beyond", 36)
+
+        functions = {case.concept.function for case in cases}
+        topics = {case.concept.topic for case in cases}
+        notes = " ".join(case.expected_note.lower() for case in cases)
+        self.assertIn("general", functions)
+        self.assertTrue({"non_elementary", "branch", "special_function"} & topics)
+        self.assertIn("beyond", notes)
+
     def test_quality_classifier_flags_unsupported_supported_case(self):
         verdict = classify_output_quality("Answer: int(exp(-x^2),x)", expects_working=True)
 
@@ -188,6 +200,30 @@ class RandomEngineTests(unittest.TestCase):
 
         self.assertEqual(verdict.status, "review")
         self.assertIn("line break", verdict.reason.lower())
+
+    def test_quality_classifier_flags_duplicate_final_working_lines(self):
+        verdict = classify_output_quality(
+            "dx/dt = 5*t^4\n"
+            "dy/dt = 5*t^4 - 5\n"
+            "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0\n"
+            "dy/dx = (5*t^4 - 5)/(5*t^4)\n"
+            "dy/dx = (5*t^4 - 5)/(5*t^4)\n",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "review")
+        self.assertIn("duplicate", verdict.reason.lower())
+
+    def test_quality_classifier_flags_tan_square_without_integral_line(self):
+        verdict = classify_output_quality(
+            "tan(x)^2\n"
+            "tan(x)^2 = sec(x)^2 - 1\n"
+            "tan(x) - x + C",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "review")
+        self.assertIn("integral", verdict.reason.lower())
 
     def test_quality_classifier_flags_substitution_without_differential(self):
         verdict = classify_output_quality(

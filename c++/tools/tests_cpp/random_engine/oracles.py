@@ -109,6 +109,18 @@ def _has_bad_line_break(text: str) -> bool:
     return False
 
 
+def _has_near_duplicate_math_lines(text: str) -> bool:
+    seen: set[str] = set()
+    for line in _lines(text):
+        compact = re.sub(r"\s+", "", line.lower().rstrip("."))
+        if not compact or len(compact) < 8:
+            continue
+        if compact in seen:
+            return True
+        seen.add(compact)
+    return False
+
+
 def _is_prose_line(line: str) -> bool:
     low = line.strip().lower()
     if not low or low.startswith(ALLOWED_TEXT_PREFIXES):
@@ -152,8 +164,12 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         return OutputQuality("fail", "error/debug/fallback text")
     if _has_bad_line_break(output):
         return OutputQuality("review", "awkward exam line break")
+    if _has_near_duplicate_math_lines(output):
+        return OutputQuality("review", "duplicate working line")
     if "unsupported" in text and "not supported by this route" not in text:
         return OutputQuality("fail", "unsupported without useful route explanation")
+    if "not supported by this route" in text:
+        return OutputQuality("unsupported-ok", "honest unsupported advanced route")
     if re.search(r"\b(answer|ans)\s*:\s*(int|integrate|d/dx|diff)\s*\(", text):
         return OutputQuality("fail", "unevaluated supported form")
     final_line = _final_math_line(text)
@@ -161,6 +177,9 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         return OutputQuality("fail", "unevaluated supported form")
     if not expects_working:
         return OutputQuality("pass", "answer-only allowed")
+    if "tan(x)^2 = sec(x)^2 - 1" in text and "tan(x) - x + c" in text:
+        if "int(sec(x)^2 - 1)" not in text and "integral(sec(x)^2 - 1)" not in text:
+            return OutputQuality("review", "integral line missing")
     if "method: forced di" in text or "di table" in text or ("d:" in text and "i:" in text and "signs:" in text):
         if not all(item in text for item in ("d:", "i:", "signs:")):
             return OutputQuality("review", "DI table/alternating signs missing")

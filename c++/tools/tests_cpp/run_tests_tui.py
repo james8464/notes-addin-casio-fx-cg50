@@ -186,6 +186,13 @@ class CatalogueFunction:
     params: tuple
 
 
+def format_question_preview(input_text: str, limit: int = 180) -> str:
+    one_line = " \\n ".join(part.strip() for part in (input_text or "").splitlines() if part.strip())
+    if len(one_line) <= limit:
+        return one_line
+    return one_line[: max(0, limit - 3)].rstrip() + "..."
+
+
 CATALOGUE_GRAPH_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "random_exploration_graph.json"
 CATALOGUE_MANIFEST_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "catalogue_manifest_latest.txt"
 
@@ -2648,6 +2655,7 @@ class CASIOApp(App):
             "/random 1000 8": "Run 1000 chaos random tests with 8 parallel workers",
             "/infinite": "Run tests infinitely until stopped",
             "/stress integrate 100": "Run focused adversarial tests for one feature",
+            "/stress beyond 120": "Run beyond-A-level robustness and honest-unsupported tests",
             "/replay adv-00001": "Replay an adversarial failure from the latest run folder",
             "/shrink adv-00001": "Show the stored minimal repro attempt",
             "/clear": "Reset the output view",
@@ -3791,6 +3799,8 @@ class CASIOApp(App):
                 st[0] += 1
 
         self.append_result(f"[{color}]{icon}[/{color}] {label}")
+        if input_text:
+            self.append_result("[dim]Q:[/dim] {}".format(format_question_preview(input_text)))
         
         if getattr(self, 'plain_mode', False) and not passed:
             if input_text:
@@ -10252,6 +10262,9 @@ def _cli_help():
 
   python3 c++/tools/tests_cpp/run_tests_tui.py stress exam_gap 100
       Run worksheet-style full-mark traps: hidden substitutions, PF setup, IBP loops, trig intervals.
+
+  python3 c++/tools/tests_cpp/run_tests_tui.py stress beyond 120
+      Run beyond-A-level robustness tests; honest unsupported output is allowed.
 
   python3 c++/tools/tests_cpp/run_tests_tui.py stress crash 100
       Run calculator-safety probes: long input, nested rewrites, many roots, bounded working output.

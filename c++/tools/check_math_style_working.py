@@ -33,6 +33,12 @@ CASES = [
         ("dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = (2*cos(theta))/(-2*sin(theta))"),
     ),
     (
+        "param no duplicate final",
+        ["--derive", "t^5+4,t^5-5*t,t,method=param"],
+        ("dx/dt = 5*t^4", "dy/dt = 5*t^4 - 5", "dy/dx = (5*t^4 - 5)/(5*t^4)"),
+        ("dy/dx = (5*t^4 - 5)/(5*t^4)\ndy/dx = (5*t^4 - 5)/(5*t^4)",),
+    ),
+    (
         "exam chain final",
         ["--derive", "(2*x+ln(x))^3,x"],
         ("y = (2*x + ln(x))^3", "u = 2*x + ln(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + ln(x))^2*(1/x + 2)"),
@@ -83,6 +89,11 @@ CASES = [
         "sin reverse chain concise",
         ["--int", "sin(x),method=reverse_chain"],
         ("I = Int(sin(x)) dx", "-cos(x) + C"),
+    ),
+    (
+        "tan square integral line",
+        ["--int", "tan(x)^2"],
+        ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
     ),
     (
         "cos reverse chain concise",
