@@ -172,6 +172,29 @@ static void append_function_rule_steps(Arena &a, NodeId n, std::string const &va
     }
 }
 
+static void append_sign_branch_steps(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Sign && depends_on(a, x.a, var)) {
+            std::string arg = clean_math_text(format_expr_human(a, x.a));
+            push_unique_step(steps, "u = " + arg + ".");
+            push_unique_step(steps, "u != 0 => dy/d" + var + " = 0.");
+            push_unique_step(steps, "u = 0 => dy/d" + var + " undefined.");
+        }
+        append_sign_branch_steps(a, x.a, var, steps);
+        return;
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        append_sign_branch_steps(a, x.a, var, steps);
+        append_sign_branch_steps(a, x.b, var, steps);
+        return;
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) append_sign_branch_steps(a, k, var, steps);
+    }
+}
+
 static std::string chain_formula(FnKind f, std::string const &var)
 {
     std::string du = "*du/d" + var;
@@ -1115,6 +1138,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 bool used_rule = false;
                 Node const &dn = arena.get(n);
+                append_sign_branch_steps(arena, n, var, steps);
                 if(dn.kind == NodeKind::Pow && arena.get(dn.a).kind == NodeKind::Sym && arena.get(dn.a).text == var) {
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
                         steps.push_back("d/d" + var + "(" + var + "^" + std::to_string(exp->num) + ") = " +

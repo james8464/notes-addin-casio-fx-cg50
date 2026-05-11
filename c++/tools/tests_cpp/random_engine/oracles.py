@@ -121,6 +121,18 @@ def _has_near_duplicate_math_lines(text: str) -> bool:
     return False
 
 
+def _has_discrete_tautology_roots(text: str) -> bool:
+    for line in _lines(text):
+        m = re.match(r"a\s*=\s*(.+),\s*b\s*=\s*(.+)$", line.lower())
+        if not m:
+            continue
+        lhs = re.sub(r"\s+", "", m.group(1))
+        rhs = re.sub(r"\s+", "", m.group(2))
+        if lhs == rhs and re.search(r"\bx\s*=\s*\[", text):
+            return True
+    return False
+
+
 def _is_prose_line(line: str) -> bool:
     low = line.strip().lower()
     if not low or low.startswith(ALLOWED_TEXT_PREFIXES):
@@ -166,6 +178,8 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
         return OutputQuality("review", "awkward exam line break")
     if _has_near_duplicate_math_lines(output):
         return OutputQuality("review", "duplicate working line")
+    if _has_discrete_tautology_roots(output):
+        return OutputQuality("review", "trig tautology shown as discrete roots")
     if "unsupported" in text and "not supported by this route" not in text:
         return OutputQuality("fail", "unsupported without useful route explanation")
     if "not supported by this route" in text:
@@ -180,6 +194,9 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
     if "tan(x)^2 = sec(x)^2 - 1" in text and "tan(x) - x + c" in text:
         if "int(sec(x)^2 - 1)" not in text and "integral(sec(x)^2 - 1)" not in text:
             return OutputQuality("review", "integral line missing")
+    if "sign(" in text and ("dy/d" in text or "d/d" in text):
+        if "undefined" not in text or "!= 0" not in text:
+            return OutputQuality("review", "sign derivative branch missing")
     if "method: forced di" in text or "di table" in text or ("d:" in text and "i:" in text and "signs:" in text):
         if not all(item in text for item in ("d:", "i:", "signs:")):
             return OutputQuality("review", "DI table/alternating signs missing")

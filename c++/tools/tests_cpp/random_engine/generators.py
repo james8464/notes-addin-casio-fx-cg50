@@ -244,15 +244,52 @@ class AdversarialGenerator:
         return AdversarialCase("Adv general {0}: {1}".format(index, topic), flag, expr, concept, expects_working, note, expr)
 
     def _beyond(self, index: int) -> AdversarialCase:
-        if index % 3 == 1:
-            case = self._general(index)
-        elif index % 3 == 2:
-            case = self._online(index)
+        """Large unique push set: A-level routes plus honest advanced edges."""
+        i = max(0, index - 1)
+        fam = i % 14
+        q = i // 14
+        a = 2 + (q % 6)
+        b = 1 + ((2 * q + fam) % 9)
+        n = 2 + ((q + fam) % 6)
+        hi = 4 + ((q + fam) % 8)
+        if fam == 0:
+            flag, expr, topic, fn, meth, tx, work = "int", f"e^({a}*x)*sin({b}*x),method=parts", "beyond_looping_ibp", "integrate", "parts", ("ibp_loop", "collect_I"), True
+        elif fam == 1:
+            flag, expr, topic, fn, meth, tx, work = "int", f"x^{n}*e^({a}*x),method=di", "beyond_di_table", "integrate", "di", ("di_table", "line_cap"), True
+        elif fam == 2:
+            flag, expr, topic, fn, meth, tx, work = "int", f"defint(e^({a}*x)/(1+e^({a}*x)),x,0,ln({hi}))", "beyond_changed_limits", "integrate", "sub", ("changed_limits", "evaluate"), True
+        elif fam == 3:
+            flag, expr, topic, fn, meth, tx, work = "int", f"defint({a}*x/sqrt({a}*x+{b}),x,0,{hi})", "beyond_changed_limits", "integrate", "sub", ("substitution", "evaluate"), True
+        elif fam == 4:
+            flag, expr, topic, fn, meth, tx, work = "trig", f"sin({a+n}*x)=sin({b}*x),x,0,2*pi,{max(20, 2*(a+n+b))},method=identity", "beyond_many_roots", "solve_trig", "identity", ("general_roots", "interval_filter"), True
+        elif fam == 5:
+            flag, expr, topic, fn, meth, tx, work = "trig", f"{a}*cos(x)+{b}*sin(x)=2,x,-pi,2*pi,20,method=rform", "beyond_rform_interval", "solve_trig", "rform", ("rform", "interval_filter"), True
+        elif fam == 6:
+            flag, expr, topic, fn, meth, tx, work = "derive", f"acos(1/({a}+x^2))+sign(x^{n}-1),x,method=chain", "beyond_branch_derivative", "diff", "chain", ("inverse_chain", "sign_branch"), True
+        elif fam == 7:
+            flag, expr, topic, fn, meth, tx, work = "derive", f"exp(sin({a}*x^2))*log(1+{b}*x^2),x,method=chain", "beyond_nested_chain", "diff", "chain", ("nested_chain", "product"), True
+        elif fam == 8:
+            flag, expr, topic, fn, meth, tx, work = "alg", f"domain(sqrt(log(2,x-{b})))", "beyond_log_domain", "domain", "auto", ("log_domain", "sqrt_domain"), False
+        elif fam == 9:
+            flag, expr, topic, fn, meth, tx, work = "alg", f"range(abs(x-{a})+abs(x-{a+b}))", "beyond_abs_range", "range", "auto", ("piecewise_abs",), False
+        elif fam == 10:
+            flag, expr, topic, fn, meth, tx, work = "alg", f"binomial((1+{a}*x)^(-1/2),x,0,4)", "beyond_binomial_validity", "binomial", "expand", ("binomial_series", "validity"), True
+        elif fam == 11:
+            flag, expr, topic, fn, meth, tx, work = "int", f"atan({a}*x+{b})^2,method=parts", "beyond_special_function", "integrate", "parts", ("advanced_ibp",), True
+        elif fam == 12:
+            flag, expr, topic, fn, meth, tx, work = "int", f"({a}*x^2+{b}*x+{a+b})/((x-{(q % 5)+1})^2*(x^2+{a})),method=pf", "beyond_pf_repeated", "integrate", "pf", ("pf_setup", "coefficients"), True
         else:
-            case = self._crash(index)
-        case.label = "Beyond {0}: {1}".format(index, case.concept.topic)
-        case.expected_note = "beyond: " + case.expected_note
-        return case
+            flag, expr, topic, fn, meth, tx, work = "alg", f"domain(asin((x-{b})/{a+n}))", "beyond_inverse_domain", "domain", "auto", ("inverse_trig_domain",), False
+        concept = self._concept(fn, "expr,[method/options]", meth, topic, tx, 6, "beyond+oracle+llm")
+        return AdversarialCase(
+            "Beyond {0}: {1}".format(index, topic),
+            flag,
+            expr,
+            concept,
+            work,
+            "beyond: push robustness; full marks for supported routes, compact honest unsupported for advanced forms",
+            expr,
+        )
 
     def _exam_gap(self, index: int) -> AdversarialCase:
         """Worksheet-style traps where a right answer can still lose method marks."""

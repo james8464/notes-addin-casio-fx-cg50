@@ -1161,6 +1161,18 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
     if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
 
+    if(fk != FnKind::Tan && std::fabs(A->first - B->first) < 1e-12 && std::fabs(A->second - B->second) < 1e-12) {
+        std::string interval = lo_text + " <= " + var + " <= " + hi_text;
+        return casio::exam_block(
+            "trig solve",
+            {
+                "A = " + format_expr(a, L.a) + ", B = " + format_expr(a, R.a),
+                "A = B",
+            },
+            interval
+        );
+    }
+
     struct Rel
     {
         double rhs_m;

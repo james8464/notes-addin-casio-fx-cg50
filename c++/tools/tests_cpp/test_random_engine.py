@@ -112,9 +112,17 @@ class RandomEngineTests(unittest.TestCase):
         functions = {case.concept.function for case in cases}
         topics = {case.concept.topic for case in cases}
         notes = " ".join(case.expected_note.lower() for case in cases)
-        self.assertIn("general", functions)
-        self.assertTrue({"non_elementary", "branch", "special_function"} & topics)
+        self.assertTrue({"integrate", "diff", "solve_trig", "domain", "range", "binomial"} & functions)
+        self.assertTrue({"beyond_branch_derivative", "beyond_special_function", "beyond_many_roots"} & topics)
         self.assertIn("beyond", notes)
+
+    def test_beyond_scope_can_fill_large_runs_with_unique_cases(self):
+        gen = AdversarialGenerator(seed=223)
+
+        cases = gen.generate("beyond", 300)
+
+        self.assertEqual(len(cases), 300)
+        self.assertEqual(len({case.input_text for case in cases}), 300)
 
     def test_quality_classifier_flags_unsupported_supported_case(self):
         verdict = classify_output_quality("Answer: int(exp(-x^2),x)", expects_working=True)
@@ -224,6 +232,29 @@ class RandomEngineTests(unittest.TestCase):
 
         self.assertEqual(verdict.status, "review")
         self.assertIn("integral", verdict.reason.lower())
+
+    def test_quality_classifier_flags_sign_derivative_without_branch(self):
+        verdict = classify_output_quality(
+            "y = sin(x) + sign(x^2 - 1)\n"
+            "d/dx(sin(x)) = cos(x)\n"
+            "dy/dx = cos(x)",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "review")
+        self.assertIn("sign", verdict.reason.lower())
+
+    def test_quality_classifier_flags_trig_tautology_as_discrete_roots(self):
+        verdict = classify_output_quality(
+            "A = 8*x, B = 8*x\n"
+            "sin(A) = sin(B): A = B+2*pi*n or A = pi-B+2*pi*n\n"
+            "0 <= x <= 2*pi\n"
+            "x = [pi/16, 3*pi/16]",
+            expects_working=True,
+        )
+
+        self.assertEqual(verdict.status, "review")
+        self.assertIn("tautology", verdict.reason.lower())
 
     def test_quality_classifier_flags_substitution_without_differential(self):
         verdict = classify_output_quality(

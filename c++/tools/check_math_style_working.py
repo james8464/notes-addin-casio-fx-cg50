@@ -138,9 +138,20 @@ CASES = [
         ("u = sin(x)", "u != 0 => dy/dx = 0", "u = 0 => dy/dx undefined"),
     ),
     (
+        "sign branch in sum",
+        ["--derive", "sin(x)+sign(x^2-1),x"],
+        ("d/dx(sin(x)) = cos(x)", "u = x^2 - 1", "u != 0 => dy/dx = 0", "u = 0 => dy/dx undefined", "dy/dx = cos(x)"),
+    ),
+    (
         "trig fallback no fake working",
         ["--trig", "cos(x)+cos(2*x)+cos(3*x)=0,x,0,2*pi,10,method=identity"],
         ("x = []",),
+    ),
+    (
+        "trig tautology interval",
+        ["--trig", "sin(8*x)=sin(8*x),x,0,2*pi,32,method=identity"],
+        ("A = 8*x, B = 8*x", "A = B", "0 <= x <= 2*pi"),
+        ("x = [",),
     ),
 ]
 
