@@ -18,7 +18,7 @@ def _children_or_self(path: Path) -> list[Path]:
     if not path.exists():
         return []
     if path.is_dir() and path.name == "reports":
-        return sorted(path.iterdir())
+        return sorted(path.iterdir()) + [path]
     return [path]
 
 
@@ -31,9 +31,17 @@ def cleanup(root: Path, dry_run: bool = True) -> list[Path]:
     found = sorted({p for p in targets if p.exists()}, key=lambda p: p.as_posix())
     if dry_run:
         return found
-    for path in found:
+    for path in sorted(found, key=lambda p: (-len(p.parts), p.as_posix())):
+        if not path.exists():
+            continue
         if path.is_dir():
-            shutil.rmtree(path)
+            if path.name == "reports":
+                try:
+                    path.rmdir()
+                except OSError:
+                    continue
+            else:
+                shutil.rmtree(path)
         else:
             path.unlink()
     return found

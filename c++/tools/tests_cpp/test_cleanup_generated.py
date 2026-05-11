@@ -27,6 +27,7 @@ class CleanupGeneratedTests(unittest.TestCase):
             self.assertEqual({p.relative_to(root).as_posix() for p in removed}, {
                 ".DS_Store",
                 "c++/tests/reports/failure_report_latest.txt",
+                "c++/tests/reports",
                 "c++/tools/tests_cpp/__pycache__",
             })
             self.assertTrue(report.exists())
