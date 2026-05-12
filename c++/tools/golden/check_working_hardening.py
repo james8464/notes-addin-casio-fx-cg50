@@ -836,6 +836,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x),x,0,180",
+        ["tan(2*x) = 2*sin(x)*cos(x)/(cos(x)^2 - sin(x)^2)", "tan(2*x) = tan(x)", "cos(A)!=0, cos(B)!=0", "x = [0, 180]"],
+        ["2sin(x)cos(x)", "ERR:"],
+    ),
+    (
+        "trig",
         "cos(2*x)+2*cos(x)=1,x,0,360",
         ["u=cos(x)", "cos(2*x)=2u^2-1", "2u^2 + 2u - 2 = 0", "Reject u"],
         ["x = []", "ERR:"],

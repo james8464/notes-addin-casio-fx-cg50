@@ -344,6 +344,11 @@ CASES = [
         ["--trig", "tan(2*x)-tan(x)=0,x,-180,180,10,method=identity"],
         ("tan(theta+180n)=tan(theta) => A=B+180n", "cos(A)!=0, cos(B)!=0", "2*x = x+180n", "x = [-180, 0, 180]"),
     ),
+    (
+        "tan double-angle fraction route",
+        ["--trig", "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x),x,0,180"],
+        ("tan(2*x) = 2*sin(x)*cos(x)/(cos(x)^2 - sin(x)^2)", "tan(2*x) = tan(x)", "x = [0, 180]"),
+    ),
 ]
 
 TEXT_WORDS = (

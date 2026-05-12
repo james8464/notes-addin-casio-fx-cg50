@@ -2594,7 +2594,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
-                "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
+                "tan(2*x) = 2*sin(x)*cos(x)/(cos(x)^2 - sin(x)^2)",
                 "tan(2*x) = tan(x)",
                 "tan(theta+pi*n)=tan(theta) => A=B+pi*n",
                 "cos(A)!=0, cos(B)!=0",
@@ -2614,7 +2614,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
-                "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
+                "tan(2*x) = 2*sin(x)*cos(x)/(cos(x)^2 - sin(x)^2)",
                 "tan(2*x) = tan(x)",
                 "tan(theta+180n)=tan(theta) => A=B+180n",
                 "cos(A)!=0, cos(B)!=0",
