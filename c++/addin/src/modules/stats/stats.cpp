@@ -181,6 +181,29 @@ static std::string list_short(std::vector<long double> const &v, std::size_t max
     return oss.str();
 }
 
+static std::string sorted_line(std::vector<long double> const &v)
+{
+    return "x_(sorted) = " + list_short(v);
+}
+
+static std::string one_index(std::size_t i)
+{
+    return std::to_string(i + 1);
+}
+
+static std::string median_line(std::vector<long double> const &v, std::size_t lo, std::size_t hi, char const *label)
+{
+    std::size_t n = hi - lo;
+    if(n == 0) return std::string(label) + " = undefined";
+    if(n % 2) {
+        std::size_t mid = lo + n / 2;
+        return std::string(label) + " = x_" + one_index(mid) + " = " + fmt(v[mid]);
+    }
+    std::size_t a = lo + n / 2 - 1;
+    std::size_t b = lo + n / 2;
+    return std::string(label) + " = (x_" + one_index(a) + " + x_" + one_index(b) + ")/2 = " + fmt(median_sorted(v, lo, hi));
+}
+
 static long double sum_of(std::vector<long double> const &v)
 {
     long double s = 0;
@@ -330,6 +353,97 @@ static std::vector<std::string> one_var(std::string const &expr)
     out.push_back("5. Sxx = sum((x-mean)^2) = " + fmt(sxx));
     out.push_back("6. var(pop) = " + fmt(pop_var) + ", var(sample) = " + fmt(sample_var));
     out.push_back("Answer: mean=" + fmt(mean) + ", sd=" + fmt(std::sqrt((double)pop_var)) + ", s=" + fmt(std::sqrt((double)sample_var)));
+    return out;
+}
+
+static std::vector<std::string> mean_only(std::string const &expr)
+{
+    auto v = parse_numbers(expr);
+    if(v.empty()) return {"Err: mean needs a numeric list."};
+    std::sort(v.begin(), v.end());
+    long double n = (long double)v.size();
+    long double sx = sum_of(v);
+    long double mean = sx / n;
+    return {
+        sorted_line(v),
+        "n = " + std::to_string(v.size()) + ", sum x = " + fmt(sx),
+        "mean = sum x/n = " + fmt(sx) + "/" + fmt(n) + " = " + fmt(mean),
+        "Answer: " + fmt(mean),
+    };
+}
+
+static std::vector<std::string> median_only(std::string const &expr)
+{
+    auto v = parse_numbers(expr);
+    if(v.empty()) return {"Err: median needs a numeric list."};
+    std::sort(v.begin(), v.end());
+    long double med = median_sorted(v, 0, v.size());
+    return {
+        sorted_line(v),
+        "n = " + std::to_string(v.size()),
+        median_line(v, 0, v.size(), "median"),
+        "Answer: " + fmt(med),
+    };
+}
+
+static std::vector<std::string> quartiles_only(std::string const &expr)
+{
+    auto v = parse_numbers(expr);
+    if(v.empty()) return {"Err: quartiles need a numeric list."};
+    std::sort(v.begin(), v.end());
+    if(v.size() == 1) {
+        return {
+            sorted_line(v),
+            "n = 1",
+            "Q1 = median = Q3 = " + fmt(v[0]),
+            "Answer: [" + fmt(v[0]) + ", " + fmt(v[0]) + ", " + fmt(v[0]) + "]",
+        };
+    }
+    std::size_t mid = v.size() / 2;
+    std::size_t q3_lo = v.size() % 2 ? mid + 1 : mid;
+    long double q1 = median_sorted(v, 0, mid);
+    long double med = median_sorted(v, 0, v.size());
+    long double q3 = median_sorted(v, q3_lo, v.size());
+    return {
+        sorted_line(v),
+        "n = " + std::to_string(v.size()),
+        median_line(v, 0, mid, "Q1"),
+        median_line(v, 0, v.size(), "median"),
+        median_line(v, q3_lo, v.size(), "Q3"),
+        "[min,Q1,median,Q3,max] = [" + fmt(v.front()) + ", " + fmt(q1) + ", " + fmt(med) + ", " + fmt(q3) + ", " + fmt(v.back()) + "]",
+        "Answer: [" + fmt(q1) + ", " + fmt(med) + ", " + fmt(q3) + "]",
+    };
+}
+
+static std::vector<std::string> stddev_only(std::string const &expr, bool variance_only)
+{
+    auto v = parse_numbers(expr);
+    if(v.empty()) return {std::string("Err: ") + (variance_only ? "variance" : "stddev") + " needs a numeric list."};
+    std::sort(v.begin(), v.end());
+    long double n = (long double)v.size();
+    long double sx = sum_of(v);
+    long double mean = sx / n;
+    long double sxx = 0.0L;
+    for(long double x : v) sxx += (x - mean) * (x - mean);
+    bool sample = lower(expr).find("sample") != std::string::npos || lower(expr).find("samp") != std::string::npos;
+    if(sample && v.size() < 2) return {"Err: sample sd needs n>=2."};
+    long double den = sample ? n - 1.0L : n;
+    long double var = sxx / den;
+    std::string vname = sample ? "s^2" : "var";
+    std::string sdname = sample ? "s" : "sd";
+    std::vector<std::string> out{
+        sorted_line(v),
+        "n = " + std::to_string(v.size()) + ", sum x = " + fmt(sx),
+        "mean = " + fmt(sx) + "/" + fmt(n) + " = " + fmt(mean),
+        "Sxx = sum((x-mean)^2) = " + fmt(sxx),
+        vname + " = Sxx/" + fmt(den) + " = " + fmt(var),
+    };
+    if(variance_only) out.push_back("Answer: " + fmt(var));
+    else {
+        long double sd = std::sqrt((double)var);
+        out.push_back(sdname + " = sqrt(" + fmt(var) + ") = " + fmt(sd));
+        out.push_back("Answer: " + fmt(sd));
+    }
     return out;
 }
 
@@ -572,6 +686,28 @@ static Request autodetect(Request req)
         req.mode = 7;
         req.expr = inside_call(s, "plot");
     }
+    else if(starts_with(lo, "mean(") || starts_with(lo, "average(") || starts_with(lo, "avg(")) {
+        req.mode = 8;
+        if(starts_with(lo, "average(")) req.expr = inside_call(s, "average");
+        else req.expr = inside_call(s, starts_with(lo, "avg(") ? "avg" : "mean");
+    }
+    else if(starts_with(lo, "median(")) {
+        req.mode = 9;
+        req.expr = inside_call(s, "median");
+    }
+    else if(starts_with(lo, "quartiles(") || starts_with(lo, "five_number(")) {
+        req.mode = 10;
+        req.expr = inside_call(s, starts_with(lo, "quartiles(") ? "quartiles" : "five_number");
+    }
+    else if(starts_with(lo, "stddev(") || starts_with(lo, "sd(") || starts_with(lo, "stdev(")) {
+        req.mode = 11;
+        if(starts_with(lo, "sd(")) req.expr = inside_call(s, "sd");
+        else req.expr = inside_call(s, starts_with(lo, "stdev(") ? "stdev" : "stddev");
+    }
+    else if(starts_with(lo, "variance(") || starts_with(lo, "var(")) {
+        req.mode = 12;
+        req.expr = inside_call(s, starts_with(lo, "var(") ? "var" : "variance");
+    }
     else {
         req.mode = 1;
     }
@@ -596,6 +732,11 @@ std::vector<std::string> run(Arena &arena, Request const &request)
             return {"y-range sampled from data", "spark = " + sparkline(v), sparkline(v)};
         }
         case 7: return plot(arena, req.expr);
+        case 8: return mean_only(req.expr);
+        case 9: return median_only(req.expr);
+        case 10: return quartiles_only(req.expr);
+        case 11: return stddev_only(req.expr, false);
+        case 12: return stddev_only(req.expr, true);
         default: return {"Err: unknown stats mode."};
         }
     }

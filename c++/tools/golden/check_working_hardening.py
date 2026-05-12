@@ -553,6 +553,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Traceback"],
     ),
     (
+        "stats",
+        "median([1,2,3,4,8])",
+        ["x_(sorted) = [1, 2, 3, 4, 8]", "n = 5", "median = x_3 = 3", "3"],
+        ["mean =", "var(", "sd =", "Traceback"],
+    ),
+    (
+        "stats",
+        "mean([1,2,3,4,8])",
+        ["sum x = 18", "mean = sum x/n = 18/5 = 3.6", "3.6"],
+        ["median =", "var(", "sd =", "Traceback"],
+    ),
+    (
+        "stats",
+        "quartiles([1,2,3,4,8])",
+        ["Q1 = (x_1 + x_2)/2 = 1.5", "median = x_3 = 3", "Q3 = (x_4 + x_5)/2 = 6", "[1.5, 3, 6]"],
+        ["mean =", "var(", "sd =", "Traceback"],
+    ),
+    (
+        "stats",
+        "stddev([1,2,3,4,8])",
+        ["mean = 18/5 = 3.6", "Sxx = sum((x-mean)^2) = 29.2", "sd = sqrt(5.84) = 2.41660919", "2.41660919"],
+        ["median =", "Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],
