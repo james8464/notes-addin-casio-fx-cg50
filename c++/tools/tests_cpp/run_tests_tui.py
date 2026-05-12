@@ -5028,6 +5028,10 @@ class CASIOApp(App):
                     self.append_result(
                         "[dim]  └─ LLM: [{0}]{1}[/{0}][/dim]".format(llm_color, verdict)
                     )
+                    if verdict != "CORRECT" and explanation:
+                        self.append_result(
+                            "[dim]     note: {0}[/dim]".format(str(explanation).strip()[:500])
+                        )
                 code_verdict = "CORRECT" if record.passed else "INCORRECT"
                 final_verdict = weighted_verdict(code_verdict, verdict)
                 self.apply_llm_weighted_status(record, final_verdict)
