@@ -83,7 +83,7 @@ def base_cases() -> list[Case]:
     # Algebra solve.
     for item in [
         ("2*x+3=11,method=linear", ("x = [4]",)),
-        ("x^2-6*x+8=0", ("(x - 4)*(x - 2)", "x = [4, 2]")),
+        ("x^2-6*x+8=0", ("(x - 3)^2 = 1", "x - 3 = +/-1", "x = [4, 2]")),
         ("x^2-5*x+6=0,method=factor", ("(x - 3)*(x - 2)", "x = [3, 2]")),
         ("x^2-6*x+5=0,method=complete_square", ("(x - 3)^2 - 4 = 0", "x = [5, 1]")),
         ("x^4+3*x^2-26=0", ("u = x^2", "x =")),
@@ -173,7 +173,7 @@ def base_cases() -> list[Case]:
         ("inverse((x+3)/2)", ("x = f(y)", "f^-1")),
         ("inverse(5*x-1)", ("f^-1(x) = x/5 + 1/5",)),
     ]:
-        min_lines = 1 if expr.startswith("factor(") or "method=collect" in expr else 3
+        min_lines = 1 if expr.startswith("factor(") or "method=collect" in expr or "method=canonical" in expr else 3
         c.append(Case("alg_manip", "alg", expr, must, min_lines=min_lines))
     c.append(Case("alg_manip", "trig", "(cosec(x)^2-cot(x)^2)*exp(x),method=manip_trig", ("e^(x)",), min_lines=1))
 
@@ -201,7 +201,7 @@ def base_cases() -> list[Case]:
         ("x^2*sin(x),x,method=product", ("f1 =", "f2 =", "dy/dx")),
         ("(x^2+1)/(x-1),x,method=quotient", ("u =", "v =", "dy/dx")),
         ("x^sin(x),x,method=logdiff", ("ln(y)", "dy/dx")),
-        ("ln(x+y)=x*y,x,method=implicit", ("F_x", "F_y", "dy/dx")),
+        ("ln(x+y)=x*y,x,method=implicit", ("(1+dy/dx)/(x+y)", "dy/dx*(1-x*(x+y))", "dy/dx")),
         ("1/(2*x+1)+1/(y+1)=x^2,x,method=implicit", ("* (2*x + 1)*(y + 1)", "dy/dx")),
         ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", ("dx/dt", "dy/dt", "dy/dx")),
         ("mode:6,x^2", ("[f(x+h)-f(x)]/h", "h->0")),

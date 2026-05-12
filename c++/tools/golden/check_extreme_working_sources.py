@@ -70,6 +70,7 @@ def marker_ok(marker: str, out: str) -> bool:
         "minimum distance = 5": ["min y = 5"],
         "Clear denominators": ["* ("],
         "Differentiate both sides": ["F_x =", "F_y ="],
+        "Implicit log direct": ["(1+dy/dx)/(x+y)", "dy/dx*(1-x*(x+y))"],
         "collect dy/dx": ["dy/dx = -F_x/F_y"],
         "Take square roots": ["= +/-"],
         "Result: Equivalent": ["equivalent"],
@@ -218,7 +219,7 @@ def generated_cases() -> list[dict[str, Any]]:
             "forbidden_markers": ["Unexpected end of input", "ERR:"],
         })
     for expr, marker in (
-        ("ln(x+y)=x*y,x,method=implicit", "Differentiate both sides"),
+        ("ln(x+y)=x*y,x,method=implicit", "Implicit log direct"),
         ("sin(x*y)+x^2=y^2,x,method=implicit", "Differentiate both sides"),
         ("1/(2*x+1)+1/(y+1)=x^2,x,method=implicit", "Clear denominators"),
         ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", "dy/dx=(dy/dt)/(dx/dt)"),

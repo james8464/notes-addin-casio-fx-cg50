@@ -92,8 +92,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
-        ["F_x", "F_y", "dy/dx"],
-        ["Answer: d/dx(", "Unexpected token", "ERR:"],
+        ["(1+dy/dx)/(x+y)=y+x*dy/dx", "dy/dx*(1-x*(x+y))=y*(x+y)-1", "dy/dx = (y*(x+y)-1)/(1-x*(x+y))"],
+        ["F_x", "F_y", "Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",

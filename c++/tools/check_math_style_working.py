@@ -28,6 +28,12 @@ CASES = [
         ("u = x^2", "u' = 2*x", "v = 3*x - 1", "v' = 3", "y' = (u'v-u*v')/v^2"),
     ),
     (
+        "implicit log direct",
+        ["--derive", "ln(x+y)=x*y,x,method=implicit"],
+        ("(1+dy/dx)/(x+y)=y+x*dy/dx", "dy/dx*(1-x*(x+y))=y*(x+y)-1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"),
+        ("F_x", "F_y"),
+    ),
+    (
         "param generic",
         ["--derive", "x=3+2*cos(theta),y=-3+2*sin(theta),theta,x,method=param"],
         ("dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = (2*cos(theta))/(-2*sin(theta))"),

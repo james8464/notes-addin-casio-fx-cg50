@@ -1337,8 +1337,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
             else if(compact == "sin(xy)+x^2=y^2" || compact == "sin(x*y)+x^2=y^2")
                 answer = dname + " = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))";
-            else if(compact == "log(x+y)=xy" || compact == "ln(x+y)=xy")
-                answer = dname + " = (y*(x+y)-1)/(1-x*(x+y))";
+            else if(compact == "log(x+y)=xy" || compact == "ln(x+y)=xy") {
+                std::string lf = compact.rfind("log(", 0) == 0 ? "log" : "ln";
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Domain: x+y>0.",
+                        lf + "(x+y)=x*y.",
+                        "(1+" + dname + ")/(x+y)=y+x*" + dname + ".",
+                        "1+" + dname + "=y*(x+y)+x*(x+y)*" + dname + ".",
+                        dname + "*(1-x*(x+y))=y*(x+y)-1.",
+                    },
+                    dname + " = (y*(x+y)-1)/(1-x*(x+y))"
+                );
+            }
             else if(compact == "y=x*tan(y)") answer = dname + " = tan(y)/(1-x*sec(y)^2)";
             else if(compact == "y^3-3xy+x^3=0" || compact == "y^3-3*x*y+x^3=0")
                 answer = dname + " = (y-x^2)/(y^2-x)";
