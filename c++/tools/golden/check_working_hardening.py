@@ -85,6 +85,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "derive",
+        "cosec(x)^2-cot(x)^2,x,method=auto",
+        ["cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x) != 0", "dy/dx = 0"],
+        ["y = cosec", "ERR:", "Unexpected token"],
+    ),
+    (
         "int",
         "acos((x-1)/3)",
         ["Use parts", "w=(x - 1)/3", "Answer:"],

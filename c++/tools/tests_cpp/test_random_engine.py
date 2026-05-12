@@ -11,6 +11,7 @@ from random_engine.generators import AdversarialGenerator, CRASH_TOPICS, EXAM_GA
 from random_engine.oracles import classify_output_quality
 from random_engine.reports import RunReportStore
 from random_engine.shrinker import shrink_expression_text
+from run_tests_tui import integrate_checker
 
 
 class RandomEngineTests(unittest.TestCase):
@@ -232,6 +233,16 @@ class RandomEngineTests(unittest.TestCase):
 
         self.assertEqual(verdict.status, "review")
         self.assertIn("integral", verdict.reason.lower())
+
+    def test_integrate_checker_accepts_exam_integral_line(self):
+        out = (
+            "tan(x)^2\n"
+            "tan(x)^2 = sec(x)^2 - 1\n"
+            "I = Int(sec(x)^2 - 1) dx\n"
+            "tan(x) - x + C\n"
+        )
+
+        self.assertTrue(integrate_checker()(out))
 
     def test_quality_classifier_flags_sign_derivative_without_branch(self):
         verdict = classify_output_quality(

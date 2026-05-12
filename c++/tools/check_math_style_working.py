@@ -67,6 +67,12 @@ CASES = [
         ("y = (2*x + ln(x))^3", "u = 2*x + ln(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + ln(x))^2*(1/x + 2)"),
     ),
     (
+        "reciprocal trig derivative identity",
+        ["--derive", "cosec(x)^2-cot(x)^2,x,method=auto"],
+        ("cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x) != 0", "dy/dx = 0"),
+        ("y = cosec", "Unexpected token", "ERR:"),
+    ),
+    (
         "looping parts final",
         ["--int", "e^(2*x)*cos(3*x),method=parts"],
         ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "Sub J:", "Collect: I terms", "13/4*I =", "Solve: I =", "I = (1/2*e^(2*x)*cos(3*x) + 3/4*e^(2*x)*sin(3*x))/(13/4)", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),

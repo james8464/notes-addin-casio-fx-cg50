@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -414,6 +415,75 @@ static std::string compact_math_key(std::string text)
         out.push_back(c);
     }
     return out;
+}
+
+static int matching_paren_text(std::string const &s, std::size_t open)
+{
+    int depth = 0;
+    for(std::size_t i = open; i < s.size(); ++i) {
+        if(s[i] == '(') ++depth;
+        else if(s[i] == ')' && --depth == 0) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+static std::string strip_outer_parens_text(std::string s)
+{
+    bool changed = true;
+    while(changed && s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+        changed = matching_paren_text(s, 0) == static_cast<int>(s.size() - 1);
+        if(changed) s = s.substr(1, s.size() - 2);
+    }
+    return s;
+}
+
+struct TrigSquareText {
+    std::string fn;
+    std::string arg;
+};
+
+static std::optional<TrigSquareText> trig_square_text(std::string term)
+{
+    term = strip_outer_parens_text(compact_math_key(std::move(term)));
+    for(char const *raw : {"cosec", "csc", "sec", "cot", "tan", "sin", "cos"}) {
+        std::string name(raw);
+        std::string prefix = name + "(";
+        if(term.rfind(prefix, 0) != 0) continue;
+        int close = matching_paren_text(term, name.size());
+        if(close < 0) continue;
+        std::string rest = term.substr(static_cast<std::size_t>(close) + 1);
+        if(rest != "^2" && rest != "^(2)") continue;
+        if(name == "csc") name = "cosec";
+        return TrigSquareText{name, strip_outer_parens_text(term.substr(std::strlen(raw) + 1, static_cast<std::size_t>(close) - std::strlen(raw) - 1))};
+    }
+    return std::nullopt;
+}
+
+struct TrigIdentityText {
+    std::string identity;
+    std::string domain;
+};
+
+static std::optional<TrigIdentityText> derivative_trig_identity_text(std::string expr)
+{
+    expr = strip_outer_parens_text(compact_math_key(std::move(expr)));
+    int depth = 0;
+    for(std::size_t i = 0; i < expr.size(); ++i) {
+        if(expr[i] == '(') ++depth;
+        else if(expr[i] == ')') --depth;
+        else if(depth == 0 && (expr[i] == '-' || expr[i] == '+')) {
+            auto lhs = trig_square_text(expr.substr(0, i));
+            auto rhs = trig_square_text(expr.substr(i + 1));
+            if(!lhs || !rhs || lhs->arg != rhs->arg) continue;
+            if(expr[i] == '-' && lhs->fn == "sec" && rhs->fn == "tan")
+                return TrigIdentityText{"sec(u)^2 - tan(u)^2 = 1.", "Domain: cos(" + lhs->arg + ") != 0."};
+            if(expr[i] == '-' && lhs->fn == "cosec" && rhs->fn == "cot")
+                return TrigIdentityText{"cosec(u)^2 - cot(u)^2 = 1.", "Domain: sin(" + lhs->arg + ") != 0."};
+            if(expr[i] == '+' && ((lhs->fn == "sin" && rhs->fn == "cos") || (lhs->fn == "cos" && rhs->fn == "sin")))
+                return TrigIdentityText{"sin(u)^2 + cos(u)^2 = 1.", ""};
+        }
+    }
+    return std::nullopt;
 }
 
 static bool same_expr_key(Arena &a, NodeId lhs, NodeId rhs)
@@ -1255,6 +1325,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 label = "d2y/d" + var + "2";
             }
             std::vector<std::string> steps;
+            if(auto id = derivative_trig_identity_text(expr)) {
+                steps.push_back(id->identity);
+                if(!id->domain.empty()) steps.push_back(id->domain);
+            }
             {
                 std::string shown_y = clean_math_text(format_expr_human(arena, n));
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");

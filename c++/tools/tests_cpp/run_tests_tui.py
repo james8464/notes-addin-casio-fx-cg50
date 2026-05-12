@@ -2058,6 +2058,8 @@ def integrate_checker(*tokens):
         contains_any=(
             "method:",
             "met:",
+            "i = int(",
+            "i=int(",
             "integrate each term",
             "constant rule",
             "u =",
