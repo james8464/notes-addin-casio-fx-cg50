@@ -615,6 +615,36 @@ static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, Affin
     return affine_int_text(num, var) + "/(" + affine_int_text(den, var) + ")";
 }
 
+static std::optional<int> negative_power_clear_exp(std::string const &a, std::string const &b, std::string const &var)
+{
+    auto scan = [&](std::string text) {
+        text = compact_math_key(std::move(text));
+        int best = 0;
+        for(std::size_t pos = text.find(var + "^-"); pos != std::string::npos; pos = text.find(var + "^-", pos + 1)) {
+            std::size_t i = pos + var.size() + 2;
+            int v = 0;
+            while(i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) {
+                v = 10 * v + (text[i] - '0');
+                ++i;
+            }
+            best = std::max(best, v);
+        }
+        for(std::size_t pos = text.find(var + "^(-"); pos != std::string::npos; pos = text.find(var + "^(-", pos + 1)) {
+            std::size_t i = pos + var.size() + 3;
+            int v = 0;
+            while(i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) {
+                v = 10 * v + (text[i] - '0');
+                ++i;
+            }
+            if(i < text.size() && text[i] == ')') best = std::max(best, v);
+        }
+        return best;
+    };
+    int e = std::max(scan(a), scan(b));
+    if(e <= 0) return std::nullopt;
+    return e;
+}
+
 static std::optional<std::pair<std::string, std::string>> quotient_linear_square_route(std::string const &key, std::string const &var)
 {
     std::string prefix = var + "^2/(";
@@ -1952,6 +1982,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(ratio_line != answer) steps.push_back(ratio_line);
+            if(ratio_line != answer) {
+                if(auto e = negative_power_clear_exp(dy_text, dx_text, tvar)) {
+                    std::string factor = tvar + (*e == 1 ? "" : "^" + std::to_string(*e));
+                    steps.push_back("dy/dx = ((" + dy_text + ")*" + factor + ")/((" + dx_text + ")*" + factor + ")");
+                }
+            }
             return casio::exam_block("parametric differentiation (limited)", steps, answer);
         }
         return casio::exam_block(

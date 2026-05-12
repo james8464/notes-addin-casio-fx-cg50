@@ -199,6 +199,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
+        "derive",
+        "mode:3,t^2+1/t,t^2-1/t,t",
+        ["dy/dx = (2*t + t^-2)/(2*t - t^-2)", "dy/dx = ((2*t + t^-2)*t^2)/((2*t - t^-2)*t^2)", "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)"],
+        ["Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
         "alg",
         "x^2-5*x+6=0,method=factor",
         ["(x - 2)", "(x - 3)", "x = 3", "x = 2"],
