@@ -755,18 +755,51 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
     return casio::num(a, 0);
 }
 
-static bool append_product_rule_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+static std::string product_rule_line(std::string const &label, std::size_t n, bool has_const)
+{
+    std::string inner;
+    for(std::size_t i = 0; i < n; ++i) {
+        if(i) inner += " + ";
+        for(std::size_t j = 0; j < n; ++j) {
+            if(j) inner += "*";
+            inner += "f" + std::to_string(j + 1);
+            if(i == j) inner += "'";
+        }
+    }
+    return label + " = " + (has_const ? "c*(" + inner + ")" : inner);
+}
+
+static bool append_product_rule_detail(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string *answer_override = nullptr
+)
 {
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Mul) return false;
 
     std::vector<NodeId> factors;
+    std::vector<NodeId> constants;
     for(auto k : x.kids) {
         if(depends_on(a, k, var)) factors.push_back(k);
+        else constants.push_back(k);
     }
-    if(factors.size() < 2 || factors.size() > 4) {
+    if(factors.size() < 2) {
         steps.push_back("y' = sum(f_i'*product(other f_j)).");
         return true;
+    }
+    if(factors.size() > 8) {
+        steps.push_back("y = f1*f2*...*fn.");
+        steps.push_back("dy/d" + var + " = sum(f_i'*product(other f_j)).");
+        return true;
+    }
+
+    bool has_const = !constants.empty();
+    if(has_const) {
+        NodeId c = constants.size() == 1 ? constants.front() : casio::simplify(a, casio::mul(a, constants));
+        steps.push_back("c = " + clean_math_text(format_expr_human(a, c)) + ".");
     }
 
     for(std::size_t i = 0; i < factors.size(); ++i) {
@@ -776,16 +809,9 @@ static bool append_product_rule_detail(Arena &a, NodeId n, std::string const &va
         steps.push_back(label + "' = " + clean_math_text(format_expr_human(a, fp)) + ".");
     }
 
-    std::string rule = "y' = ";
-    for(std::size_t i = 0; i < factors.size(); ++i) {
-        if(i) rule += " + ";
-        for(std::size_t j = 0; j < factors.size(); ++j) {
-            if(j) rule += "*";
-            rule += "f" + std::to_string(j + 1);
-            if(i == j) rule += "'";
-        }
-    }
+    std::string rule = product_rule_line("dy/d" + var, factors.size(), has_const);
     steps.push_back(rule + ".");
+    if(answer_override && (factors.size() > 4 || node_weight(a, n) > 80)) *answer_override = rule;
     return true;
 }
 
@@ -1325,6 +1351,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 label = "d2y/d" + var + "2";
             }
             std::vector<std::string> steps;
+            std::string answer_override;
             if(auto id = derivative_trig_identity_text(expr)) {
                 steps.push_back(id->identity);
                 if(!id->domain.empty()) steps.push_back(id->domain);
@@ -1402,7 +1429,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(!used_rule && top_kind == NodeKind::Mul) {
-                    append_product_rule_detail(arena, n, var, steps);
+                    append_product_rule_detail(arena, n, var, steps, &answer_override);
                     used_rule = true;
                 }
                 if(!used_rule && has_node_kind(arena, n, NodeKind::Div)) {
@@ -1422,7 +1449,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
                 steps,
-                label + " = " + clean_math_text(format_expr_human(arena, out))
+                answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override
             );
         }
         if(req.mode == 2) {

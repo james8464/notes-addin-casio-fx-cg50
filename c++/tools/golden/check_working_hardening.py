@@ -165,8 +165,14 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "log((3*x+1)^2+2)*log(3,x^2+12)*7!,x",
-        ["f1 =", "f1' =", "f2 =", "f2' =", "y' = f1'*f2 + f1*f2'"],
+        ["c = 5040", "f1 =", "f1' =", "f2 =", "f2' =", "dy/dx = c*(f1'*f2 + f1*f2')"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
+        "(abs(2*x+1))*(cot(3*x^2+5)+1)*(sin((x+1)^2)+cos((x+1)^2))*(7*x-2)^3*ln(e^(x+3)+3),x",
+        ["f1 = abs(2*x + 1)", "f3' = 2*cos((x + 1)^2)*(x + 1) - 2*sin((x + 1)^2)*(x + 1)", "f5' = 1/(e^(x + 3) + 3)*e^(x + 3)", "dy/dx = f1'*f2*f3*f4*f5 +"],
+        ["sum(f_i'", "...", "Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",

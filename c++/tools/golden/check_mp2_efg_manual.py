@@ -34,7 +34,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "E6 related-rate derivative core",
         ["--derive", "x^3*e^(-x^2),x"],
-        ["f1 = x^3", "f1' = 3*x^2", "f2 = e^(-x^2)", "f2' = -2*e^(-x^2)*x", "y' = f1'*f2 + f1*f2'"],
+        ["f1 = x^3", "f1' = 3*x^2", "f2 = e^(-x^2)", "f2' = -2*e^(-x^2)*x", "dy/dx = f1'*f2 + f1*f2'"],
         ["Use product rule", "Answer: d/dx("],
     ),
     (

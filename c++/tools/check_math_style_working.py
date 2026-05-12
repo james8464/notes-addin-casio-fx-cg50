@@ -15,7 +15,7 @@ CASES = [
     (
         "product",
         ["--derive", "(x^2+1)*sin(x),x"],
-        ("f1 = x^2 + 1", "f1' = 2*x", "f2 = sin(x)", "f2' = cos(x)", "y' = f1'*f2 + f1*f2'"),
+        ("f1 = x^2 + 1", "f1' = 2*x", "f2 = sin(x)", "f2' = cos(x)", "dy/dx = f1'*f2 + f1*f2'"),
     ),
     (
         "single chain",
