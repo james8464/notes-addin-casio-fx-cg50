@@ -93,7 +93,7 @@ CASES = [
     (
         "removable rational cancellation",
         ["--alg", "solve((x^2-16)/(x-4)=13,x)"],
-        ("Domain: x - 4 != 0", "x^2 - 16 = (x - 4)*(x + 4)", "(x^2 - 16)/(x - 4) = x + 4, x - 4 != 0", "x + 4 = 13", "9 != 4", "x = [9]"),
+        ("Domain: x - 4 != 0", "x^2 - 16 = (x - 4)*(x + 4)", "(x^2 - 16)/(x - 4) = x + 4, x - 4 != 0", "x + 4 = 13", "x = 4 rejected by domain", "9 != 4", "x = [9]"),
         ("expand => x^2 - 13*x + 36 = 0", "x = (-b +/- sqrt"),
     ),
     (

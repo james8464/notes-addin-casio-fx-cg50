@@ -48,6 +48,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
             "x^2 - 16 = (x - 4)*(x + 4)",
             "(x^2 - 16)/(x - 4) = x + 4, x - 4 != 0",
             "x + 4 = 13",
+            "x = 4 rejected by domain",
             "9 != 4",
             "x = [9]",
         ],

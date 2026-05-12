@@ -3009,12 +3009,14 @@ static void append_rejected_by_domain(std::vector<std::string> &out,
 
 static void append_kept_denominator_check(Arena &a,
                                           std::vector<std::string> &out,
+                                          std::string const &var,
                                           Poly2 const &den,
                                           std::vector<std::string> const &sols)
 {
     if(!is_zero(den.a2) || is_zero(den.a1)) return;
     Rational bad = r_div(r_neg(den.a0), den.a1);
     std::string bad_text = format_expr(a, casio::num(a, bad.num, bad.den));
+    out.push_back(var + " = " + bad_text + " rejected by domain");
     for(auto const &s : sols) {
         if(s.find("No solution") != std::string::npos || s.find("Infinite") != std::string::npos) continue;
         out.push_back(sol_rhs(s) + " != " + bad_text);
@@ -3066,7 +3068,7 @@ static bool append_removable_rational_route(Arena &a,
             out.push_back("Answer: " + var + " = []");
             return true;
         }
-        append_kept_denominator_check(a, out, *den, sols);
+        append_kept_denominator_check(a, out, var, *den, sols);
         append_answer(out, var, sols);
         append_numeric_3dp(a, out, var, sols);
         return true;
@@ -6479,7 +6481,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
-            append_kept_denominator_check(arena, out, rp.den, sols);
+            append_kept_denominator_check(arena, out, solve_var, rp.den, sols);
             out.push_back("Answer: " + solution_list_line(solve_var, sols));
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
@@ -6561,7 +6563,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
-            append_kept_denominator_check(arena, out, rp.den, sols);
+            append_kept_denominator_check(arena, out, solve_var, rp.den, sols);
             append_answer(out, solve_var, sols);
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
@@ -6593,7 +6595,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.push_back("Answer: " + solve_var + " = []");
             return out;
         }
-        append_kept_denominator_check(arena, out, rp.den, sols);
+        append_kept_denominator_check(arena, out, solve_var, rp.den, sols);
         append_answer(out, solve_var, sols);
         append_numeric_3dp(arena, out, solve_var, sols);
         return out;
