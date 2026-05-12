@@ -60,6 +60,7 @@ Verdicts:
 
 When working is NOT required:
 - Accept answer-only/minimal output for genuinely trivial tasks: numeric evaluation, constant simplification, direct function rewrite, one-step linear solve, simple domain/range answer, direct matrix/statistic value, stats summaries/plots, or exact value lookup.
+- Accept compact contradiction output for invalid, no-variable, or nonsensical constant equations, e.g. `24 != 0` with `solution = []`; do not require an invented variable, interval, or fsolve working.
 - Do not demand artificial micro-steps when there are no meaningful method marks.
 - For direct standard rules, one formula line plus answer is enough, e.g. `d/dx(tan x)=sec^2 x` or `cos^2 x=(1+cos2x)/2`.
 

@@ -576,6 +576,41 @@ static bool has_symbols(Arena &a, NodeId n)
     return !vars.empty();
 }
 
+static bool is_known_name_token(std::string const &name)
+{
+    static const char *known[] = {
+        "sin", "cos", "tan", "sec", "csc", "cosec", "cot",
+        "asin", "acos", "atan", "arcsin", "arccos", "arctan",
+        "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+        "arcsinh", "arccosh", "arctanh",
+        "exp", "log", "ln", "log10", "sqrt", "abs", "sign", "factorial",
+        "pi", "e"
+    };
+    for(auto k : known)
+        if(name == k) return true;
+    return false;
+}
+
+static bool text_has_variable_token(std::string const &text)
+{
+    for(std::size_t i = 0; i < text.size();) {
+        unsigned char c = static_cast<unsigned char>(text[i]);
+        if(!std::isalpha(c) && text[i] != '_') {
+            i++;
+            continue;
+        }
+        std::string tok;
+        while(i < text.size()) {
+            unsigned char ch = static_cast<unsigned char>(text[i]);
+            if(!std::isalnum(ch) && text[i] != '_') break;
+            tok.push_back(static_cast<char>(std::tolower(ch)));
+            i++;
+        }
+        if(!is_known_name_token(tok)) return true;
+    }
+    return false;
+}
+
 static void push_unique(std::vector<std::string> &out, std::string const &line)
 {
     for(auto const &x : out)
@@ -6097,6 +6132,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
         std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
+        if(!text_has_variable_token(equation_text) && !has_symbols(arena, eq->lhs) && !has_symbols(arena, eq->rhs)) {
+            auto cp = poly_of(arena, rearr, solve_var);
+            bool ok = cp && cp->ok && is_zero(cp->a2) && is_zero(cp->a1) && is_zero(cp->a0);
+            std::string c0 = format_expr(arena, rearr);
+            if(ok) return {c0 + " = 0", explicit_var.empty() ? "all real" : solve_var + " = all real"};
+            return {c0 + " != 0", explicit_var.empty() ? "solution = []" : solve_var + " = []"};
+        }
 
         // Exam-style numbered working.
         std::vector<std::string> out;

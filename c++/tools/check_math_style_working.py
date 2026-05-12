@@ -96,6 +96,12 @@ CASES = [
         ("Simplify:", "No solution"),
     ),
     (
+        "constant false equation no fake variable",
+        ["--alg", "factorial(4)=0,method=auto"],
+        ("24 != 0", "solution = []"),
+        ("24 = 0", "x = []"),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
@@ -114,6 +120,12 @@ CASES = [
         "tan square integral line",
         ["--int", "tan(x)^2"],
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
+    ),
+    (
+        "high even trig power identity",
+        ["--int", "sin(4*x-pi/6)^4*cos(4*x-pi/6)^4,method=trig"],
+        ("Power-reduction", "sin^4(u)cos^4(u)=(3-4cos(4u)+cos(8u))/128", "+ C"),
+        ("Done", "Simplify:"),
     ),
     (
         "defint wrapped variable",

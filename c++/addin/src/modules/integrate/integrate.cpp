@@ -5037,7 +5037,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             NodeId term1 = casio::mul(a, {casio::num(a, 3, 128), casio::sym(a, var)});
             NodeId term2 = casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), arg})), a.num(r_mul(Rational{128, 1}, *lc)));
             NodeId term3 = casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 8), arg})), a.num(r_mul(Rational{1024, 1}, *lc)));
-            steps.push_back("Step 2: Use power reduction for sin^4(u)cos^4(u).");
+            steps.push_back("Step 2: Power-reduction: sin^4(u)cos^4(u)=(3-4cos(4u)+cos(8u))/128.");
             return casio::simplify(a, mul_coeff(a, coeff, casio::add(a, {term1, casio::neg(a, term2), term3})));
         }
     }
