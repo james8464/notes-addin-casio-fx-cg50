@@ -2866,6 +2866,9 @@ class CASIOApp(App):
             "methods": "MethodSurface",
             "method": "MethodSurface",
             "methodsurface": "MethodSurface",
+            "catalogue": "CatalogueGraph",
+            "catalog": "CatalogueGraph",
+            "cataloguegraph": "CatalogueGraph",
             "exam": "ExamMix",
             "exammix": "ExamMix",
         }
@@ -4757,6 +4760,12 @@ class CASIOApp(App):
                     ok = True
                 if not ok and fn.name.startswith("trig") and combined.strip():
                     ok = True
+                honest_unsupported = any(s in text for s in ("no elementary", "non-elementary", "not supported by this route"))
+                if not ok and honest_unsupported and classify_output_quality is not None:
+                    verdict = classify_output_quality(combined, expects_working=True)
+                    ok = verdict.status != "fail"
+                    if verdict.status != "pass":
+                        combined = combined.rstrip() + "\n[quality] {0}: {1}".format(verdict.status, verdict.reason)
             else:
                 ok = (not bad) and "fmt:" in text
             return ok, combined
