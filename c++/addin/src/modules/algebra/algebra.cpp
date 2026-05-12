@@ -3285,7 +3285,6 @@ static bool append_common_den_rational_route(Arena &a,
         std::string den_txt = format_expr(a, den_node);
         std::string f0_den = format_expr(a, f0.b);
         std::string f1_den = format_expr(a, f1.b);
-        append_denominator_domain_roots(a, out, var, *den_poly);
         push_unique(out, den_txt + " = (" + f0_den + ")*(" + f1_den + ")");
         out.push_back("Multiply by " + den_txt);
         push_unique(out, "(" + den_txt + ")/(" + f0_den + ") = " + f1_den);
