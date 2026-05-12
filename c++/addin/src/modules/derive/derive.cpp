@@ -1485,6 +1485,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     {
                         "Domain: x + y > 0.",
                         lf + "(x + y) = x*y.",
+                        "d/dx[" + lf + "(x + y)] = (1 + " + dname + ")/(x + y).",
+                        "d/dx[x*y] = y + x*" + dname + ".",
                         "(1 + " + dname + ")/(x + y) = y + x*" + dname + ".",
                         "1 + " + dname + " = y*(x + y) + x*(x + y)*" + dname + ".",
                         dname + "*(1 - x*(x + y)) = y*(x + y) - 1.",
