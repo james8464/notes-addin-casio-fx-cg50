@@ -435,6 +435,7 @@ static std::optional<std::vector<std::string>> unwrap_call_args(std::string text
 {
     std::string prefix = name + "(";
     std::string raw = trim_copy(text);
+    if(raw.size() > 2 && raw.front() == '(' && raw.back() == ')') raw = trim_copy(raw.substr(1, raw.size() - 2));
     if(raw.rfind(prefix, 0) == 0 && raw.size() > prefix.size() && raw.back() == ')') {
         return split_top_args(raw.substr(prefix.size(), raw.size() - prefix.size() - 1));
     }
@@ -8423,6 +8424,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
 
     std::string integrand = (*args)[0];
     std::string var = (*args)[1].empty() ? req.var : (*args)[1];
+    if(var.size() > 2 && var.front() == '(' && var.back() == ')') var = trim_copy(var.substr(1, var.size() - 2));
     std::string lo_text = (*args)[2];
     std::string hi_text = (*args)[3];
 

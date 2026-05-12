@@ -1208,6 +1208,16 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         fk == FnKind::Tan ? (rad ? "tan(A)=tan(B): A=B+pi*n" : "tan(A)=tan(B): A=B+180n") :
         fk == FnKind::Cos ? (rad ? "cos(A)=cos(B): A=B+2*pi*n or A=-B+2*pi*n" : "cos(A)=cos(B): A=B+360n or A=-B+360n") :
                             (rad ? "sin(A)=sin(B): A=B+2*pi*n or A=pi-B+2*pi*n" : "sin(A)=sin(B): A=B+360n or A=180-B+360n");
+    std::string family_line = "solve each family for " + var;
+    auto am = near_int(A->first), bm = near_int(B->first);
+    if(am && bm && std::fabs(A->second) < 1e-12 && std::fabs(B->second) < 1e-12) {
+        long long d1 = std::llabs(*am - *bm), d2 = std::llabs(*am + *bm);
+        std::string At = format_expr(a, L.a), Bt = format_expr(a, R.a);
+        if(rad && fk == FnKind::Sin && d1 && d2) {
+            family_line = At + " = " + Bt + "+2*pi*n => " + var + " = 2*pi*n/" + std::to_string(d1) +
+                "; " + At + " = pi-" + Bt + "+2*pi*n => " + var + " = pi*(2*n+1)/" + std::to_string(d2);
+        }
+    }
     return casio::exam_block(
         "trig solve",
         {
@@ -1215,7 +1225,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
             rule_line,
             rad && fk == FnKind::Sin && std::fabs(A->first - 3.0) < 1e-12 && std::fabs(A->second) < 1e-12 &&
             std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
-            "solve each family for " + var,
+            family_line,
             lo_text + " <= " + var + " <= " + hi_text,
         },
         format_solution_list(var, rad, xs)

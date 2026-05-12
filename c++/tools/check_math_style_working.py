@@ -54,6 +54,11 @@ CASES = [
         ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "x = [arctan(4/3) + arccos(2/5), 2*pi + arctan(4/3) - arccos(2/5)]"),
     ),
     (
+        "sin same fn family",
+        ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
+        ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = pi*(2*n+1)/13", "x = ["),
+    ),
+    (
         "nested surd rewrite",
         ["--alg", "rewrite(sqrt(12+sqrt(140)))"],
         ("sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "sqrt(7)+sqrt(5)"),
@@ -94,6 +99,18 @@ CASES = [
         "tan square integral line",
         ["--int", "tan(x)^2"],
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
+    ),
+    (
+        "defint wrapped variable",
+        ["--int", "defint(e^(2*x)/(1+e^(2*x)),(x),0,ln(6))"],
+        ("I = Int(e^(2*x)/(e^(2*x) + 1)) dx", "u = 1+e^(2*x)", "F(ln(6)) - F(0)", "ln(37)/2 - ln(2)/2"),
+        ("ERR:",),
+    ),
+    (
+        "defint outer wrapped",
+        ["--int", "(defint(2*x/sqrt(2*x+4),x,(0),(7)))"],
+        ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = sqrt(18)", "I = 2*2/4"),
+        ("ERR:",),
     ),
     (
         "cos reverse chain concise",
