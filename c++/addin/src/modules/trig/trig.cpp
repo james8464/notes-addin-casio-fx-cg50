@@ -1312,25 +1312,44 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     };
     std::vector<Rel> rels;
     if(fk == FnKind::Sin) {
-        rels.push_back({B->first, B->second, 360.0, "A=B+360n"});
-        rels.push_back({-B->first, 180.0 - B->second, 360.0, "A=180-B+360n"});
+        rels.push_back({B->first, B->second, 360.0, rad ? "A=B+2*pi*n" : "A=B+360n"});
+        rels.push_back({-B->first, 180.0 - B->second, 360.0, rad ? "A=pi-B+2*pi*n" : "A=180-B+360n"});
     }
     else if(fk == FnKind::Cos) {
-        rels.push_back({B->first, B->second, 360.0, "A=B+360n"});
-        rels.push_back({-B->first, -B->second, 360.0, "A=-B+360n"});
+        rels.push_back({B->first, B->second, 360.0, rad ? "A=B+2*pi*n" : "A=B+360n"});
+        rels.push_back({-B->first, -B->second, 360.0, rad ? "A=-B+2*pi*n" : "A=-B+360n"});
     }
     else {
-        rels.push_back({B->first, B->second, 180.0, "A=B+180n"});
+        rels.push_back({B->first, B->second, 180.0, rad ? "A=B+pi*n" : "A=B+180n"});
     }
 
     std::vector<double> xs;
+    std::vector<std::string> n_ranges;
+    std::vector<std::string> family_roots;
+    std::vector<std::string> rejected_n;
     for(auto const &rel : rels) {
         double denom = A->first - rel.rhs_m;
         if(std::fabs(denom) < 1e-12) continue;
+        bool seen_n = false;
+        int first_n = 0, last_n = 0;
+        std::vector<double> fam_xs;
         for(int k = -100; k <= 100; ++k) {
             double xdeg = (rel.rhs_b + rel.period * k - A->second) / denom;
             if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            if(!seen_n) {
+                first_n = k;
+                seen_n = true;
+            }
+            last_n = k;
             add_unique(xs, xdeg);
+            add_unique(fam_xs, xdeg);
+        }
+        if(seen_n && (last_n - first_n) >= 2)
+            n_ranges.push_back(rel.reason + ": n=" + std::to_string(first_n) + ".." + std::to_string(last_n));
+        if(seen_n) {
+            std::sort(fam_xs.begin(), fam_xs.end());
+            family_roots.push_back(rel.reason + " => " + format_solution_list(var, rad, fam_xs));
+            rejected_n.push_back(rel.reason + ": reject n<" + std::to_string(first_n) + " or n>" + std::to_string(last_n));
         }
     }
     std::sort(xs.begin(), xs.end());
@@ -1339,6 +1358,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         fk == FnKind::Cos ? (rad ? "cos(A)=cos(B): A=B+2*pi*n or A=-B+2*pi*n" : "cos(A)=cos(B): A=B+360n or A=-B+360n") :
                             (rad ? "sin(A)=sin(B): A=B+2*pi*n or A=pi-B+2*pi*n" : "sin(A)=sin(B): A=B+360n or A=180-B+360n");
     std::string family_line = "solve each family for " + var;
+    std::vector<std::string> family_filters;
     auto am = near_int(A->first), bm = near_int(B->first);
     if(am && bm && std::fabs(A->second) < 1e-12 && std::fabs(B->second) < 1e-12) {
         long long d1 = std::llabs(*am - *bm), d2 = std::llabs(*am + *bm);
@@ -1355,6 +1375,8 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
             std::string h = rad ? "pi" : "180";
             family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + div_text(p, d1) +
                 "\n" + At + " = " + h + "-" + Bt + "+" + p + " => " + var + " = " + div_text("(" + h + "+" + p + ")", d2);
+            family_filters.push_back(lo_text + " <= " + div_text(p, d1) + " <= " + hi_text);
+            family_filters.push_back(lo_text + " <= " + div_text("(" + h + "+" + p + ")", d2) + " <= " + hi_text);
         }
         else if(fk == FnKind::Cos && d1 && d2) {
             std::string p = rad ? "2*pi*n" : "360n";
@@ -1372,6 +1394,13 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
         family_line
     );
+    for(auto const &ff : family_filters) steps.push_back(ff);
+    for(auto const &nr : n_ranges) steps.push_back(nr);
+    for(auto const &fr : family_roots) steps.push_back(fr);
+    for(auto const &rej : rejected_n) steps.push_back(rej);
+    if(!family_roots.empty()) steps.push_back("Accepted roots = union of the listed family roots.");
+    if(!n_ranges.empty()) steps.push_back("n in listed ranges => keep roots with " + lo_text + " <= " + var + " <= " + hi_text + ".");
+    if(!n_ranges.empty()) steps.push_back("Each kept root satisfies the original equation; no denominator exclusions.");
     steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs));
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -1952,31 +1981,63 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         std::string c_txt = trig_root_text(poly->c1);
         std::string r_txt = trig_root_text(R);
         std::string alpha_txt = trig_root_text(alpha);
+        std::string beta_txt = trig_root_text(90.0 - alpha);
         std::string target_txt = trig_root_text(target);
-        steps.push_back("R=sqrt(" + s_txt + "^2+" + c_txt + "^2)=" + r_txt + ".");
+        steps.push_back("a=" + c_txt + ", b=" + s_txt + " for a*cos(A)+b*sin(A).");
+        steps.push_back("R=sqrt(" + c_txt + "^2+" + s_txt + "^2)=" + r_txt + ".");
+        steps.push_back("R*cos(A-beta)=R*cos(A)*cos(beta)+R*sin(A)*sin(beta).");
+        steps.push_back("R*cos(beta)=" + c_txt + ", R*sin(beta)=" + s_txt + ", tan(beta)=" + s_txt + "/" + c_txt + ".");
+        steps.push_back("beta=" + beta_txt + " deg, so " + c_txt + "*cos(A)+" + s_txt + "*sin(A)=R*cos(A-beta).");
+        steps.push_back("cos(" + arg_text + "-beta)=" + target_txt + ".");
+        steps.push_back("R*sin(A+alpha)=R*sin(A)*cos(alpha)+R*cos(A)*sin(alpha).");
+        steps.push_back("R*cos(alpha)=" + s_txt + ", R*sin(alpha)=" + c_txt + ".");
+        steps.push_back("tan(alpha)=" + c_txt + "/" + s_txt + ".");
         steps.push_back("alpha=" + alpha_txt + " deg, so " + s_txt + "*sin(A)+" + c_txt + "*cos(A)=R*sin(A+alpha).");
+        steps.push_back("R*sin(" + arg_text + "+alpha)=" + trig_root_text(-poly->c) + ".");
         steps.push_back("sin(" + arg_text + "+alpha)=" + target_txt + ".");
+        steps.push_back("-1 <= " + target_txt + " <= 1 => real sine roots.");
         auto lo_node = casio::parse_expr(a, lo_text);
         auto hi_node = casio::parse_expr(a, hi_text);
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+        steps.push_back(var + "(deg): " + trig_root_text(lo_deg) + " <= " + var + " <= " + trig_root_text(hi_deg) + ".");
         auto base = base_trig_degrees(FnKind::Sin, target);
         if(!base.empty()) {
+            steps.push_back("theta = " + arg_text + "+alpha.");
             std::string base_line = "Base angles:";
             for(size_t i = 0; i < base.size(); ++i) {
                 if(i) base_line += ",";
                 base_line += " " + trig_root_text(base[i]) + " deg";
             }
             steps.push_back(base_line + ".");
+            if(base.size() >= 2) {
+                steps.push_back("theta = asin(" + target_txt + ") => theta = " + trig_root_text(base[0]) + " or " + trig_root_text(base[1]) + ".");
+                steps.push_back(arg_text + "+alpha = " + trig_root_text(base[0]) + "+360n or " + trig_root_text(base[1]) + "+360n.");
+                steps.push_back(arg_text + " = " + trig_root_text(base[0]) + "-alpha+360n or " + trig_root_text(base[1]) + "-alpha+360n.");
+            }
         }
+        std::vector<std::string> kept_families;
         for(double theta : base) {
+            bool seen_n = false;
+            int first_n = 0, last_n = 0;
             for(int k = -80; k <= 80; ++k) {
                 double xdeg = (theta + 360.0 * k - alpha - lin->second) / lin->first;
                 if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+                if(!seen_n) {
+                    first_n = k;
+                    seen_n = true;
+                }
+                last_n = k;
                 add_unique(xs, xdeg);
             }
+            if(seen_n) {
+                kept_families.push_back(arg_text + "=" + trig_root_text(theta) + "-alpha+360n: n=" +
+                    std::to_string(first_n) + (first_n == last_n ? "" : ".." + std::to_string(last_n)));
+            }
         }
+        for(auto const &line : kept_families) steps.push_back(line + ".");
+        if(!kept_families.empty()) steps.push_back("n outside listed ranges => x outside interval.");
     }
     else if(std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c1) < 1e-12 &&
             (std::fabs(poly->s2) > 1e-12 || std::fabs(poly->sc) > 1e-12 || std::fabs(poly->c2) > 1e-12)) {
@@ -1987,6 +2048,10 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     else return std::nullopt;
 
     std::sort(xs.begin(), xs.end());
+    if(poly->s1 != 0.0 && poly->c1 != 0.0 && !xs.empty()) {
+        steps.push_back("Filtered roots: " + format_solution_list(var, rad, xs) + ".");
+        steps.push_back("LHS = RHS; " + lo_text + " <= " + var + " <= " + hi_text + ".");
+    }
     if(general && !root_targets.empty()) {
         auto lin = linear_angle(a, poly->arg, var, rad);
         if(lin && std::fabs(lin->first) > 1e-12) {

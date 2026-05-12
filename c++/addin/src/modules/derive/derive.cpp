@@ -300,6 +300,60 @@ static void append_function_rule_steps(Arena &a, NodeId n, std::string const &va
     }
 }
 
+static std::string sign_root_exclusion_from_key(std::string const &key, std::string const &var)
+{
+    auto int_root = [](long long c, long long p) -> long long {
+        if(c <= 0 || p <= 0) return 0;
+        long long r = 1;
+        auto pow_le = [](long long b, long long e, long long lim) {
+            long long v = 1;
+            for(long long i = 0; i < e; ++i) {
+                if(b && v > lim / b) return lim + 1;
+                v *= b;
+            }
+            return v;
+        };
+        while(pow_le(r, p, c) < c) ++r;
+        return pow_le(r, p, c) == c ? r : 0;
+    };
+    try {
+        if(key.rfind(var + "-", 0) == 0) {
+            long long c = std::stoll(key.substr(var.size() + 1));
+            return std::to_string(c);
+        }
+        std::string prefix = var + "^";
+        if(key.rfind(prefix, 0) != 0) return "";
+        std::size_t minus = key.find('-', prefix.size());
+        if(minus == std::string::npos) return "";
+        long long p = std::stoll(key.substr(prefix.size(), minus - prefix.size()));
+        long long c = std::stoll(key.substr(minus + 1));
+        long long r = int_root(c, p);
+        if(!r) return "";
+        if(p % 2 == 0) return r == 1 ? "+/-1" : "+/-" + std::to_string(r);
+        return std::to_string(r);
+    }
+    catch(...) {
+        return "";
+    }
+}
+
+static std::string first_sign_exclusion_from_key(std::string const &key, std::string const &var)
+{
+    for(std::size_t pos = key.find("sign("); pos != std::string::npos; pos = key.find("sign(", pos + 5)) {
+        std::size_t start = pos + 5;
+        int depth = 1;
+        for(std::size_t i = start; i < key.size(); ++i) {
+            if(key[i] == '(') ++depth;
+            else if(key[i] == ')' && --depth == 0) {
+                std::string roots = sign_root_exclusion_from_key(key.substr(start, i - start), var);
+                if(!roots.empty()) return roots;
+                break;
+            }
+        }
+    }
+    return "";
+}
+
 static void append_sign_branch_steps(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -307,8 +361,21 @@ static void append_sign_branch_steps(Arena &a, NodeId n, std::string const &var,
         if(x.fkind == FnKind::Sign && depends_on(a, x.a, var)) {
             std::string arg = clean_math_text(format_expr_human(a, x.a));
             push_unique_step(steps, "u = " + arg + ".");
-            push_unique_step(steps, "u != 0 => dy/d" + var + " = 0.");
-            push_unique_step(steps, "u = 0 => dy/d" + var + " undefined.");
+            std::string roots = sign_root_exclusion_from_key(compact_math_key(arg), var);
+            bool showed_roots = false;
+            if(!roots.empty()) {
+                push_unique_step(steps, "u = 0 => " + var + " = " + roots + ".");
+                push_unique_step(steps, "u != 0 => d/d" + var + "(sign(u)) = 0.");
+                push_unique_step(steps, var + " != " + roots + " => d/d" + var + "(sign(u)) = 0.");
+                push_unique_step(steps, var + " = " + roots + " => d/d" + var + "(sign(u)) undefined.");
+                push_unique_step(steps, var + " = " + roots + " => y not differentiable.");
+                push_unique_step(steps, "dy/d" + var + " below is for " + var + " != " + roots + ".");
+                showed_roots = true;
+            }
+            if(!showed_roots) {
+                push_unique_step(steps, "u != 0 => d/d" + var + "(sign(u)) = 0.");
+                push_unique_step(steps, "u = 0 => d/d" + var + "(sign(u)) undefined.");
+            }
         }
         append_sign_branch_steps(a, x.a, var, steps);
         return;
@@ -350,6 +417,25 @@ static std::string chain_formula(FnKind f, std::string const &var)
     }
 }
 
+static void append_inverse_domain_detail(Arena &a, NodeId inner, FnKind f, std::string const &var, std::vector<std::string> &steps)
+{
+    if(f != FnKind::Asin && f != FnKind::Acos && f != FnKind::Atanh && f != FnKind::Acosh) return;
+    std::string key = compact_math_key(format_expr_human(a, inner));
+    std::string recip = "1/(" + var + "^2+";
+    if((f == FnKind::Asin || f == FnKind::Acos) && key.rfind(recip, 0) == 0 && key.back() == ')') {
+        std::string c = key.substr(recip.size(), key.size() - recip.size() - 1);
+        steps.push_back(var + "^2+" + c + " >= " + c + " => 0 < u <= 1/" + c + ".");
+        steps.push_back("So -1 < u < 1 and sqrt(1-u^2) != 0.");
+        return;
+    }
+    if(f == FnKind::Asin || f == FnKind::Acos) {
+        steps.push_back("-1 <= u <= 1; derivative uses -1 < u < 1.");
+        return;
+    }
+    if(f == FnKind::Atanh) steps.push_back("-1 < u < 1.");
+    if(f == FnKind::Acosh) steps.push_back("u >= 1; derivative uses u > 1.");
+}
+
 static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -358,6 +444,15 @@ static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &
         NodeId dk = casio::simplify(a, diff(a, k, var, ""));
         auto zr = as_num(a, dk);
         if(!(zr && zr->num == 0)) {
+            Node const &kn = a.get(k);
+            if(kn.kind == NodeKind::Fn && depends_on(a, kn.a, var) &&
+               (kn.fkind == FnKind::Asin || kn.fkind == FnKind::Acos ||
+                kn.fkind == FnKind::Atanh || kn.fkind == FnKind::Acosh)) {
+                NodeId du = casio::simplify(a, diff(a, kn.a, var, ""));
+                steps.push_back("u = " + clean_math_text(format_expr_human(a, kn.a)) + ".");
+                steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(a, du)) + ".");
+                append_inverse_domain_detail(a, kn.a, kn.fkind, var, steps);
+            }
             steps.push_back("d/d" + var + "(" + clean_math_text(format_expr_human(a, k)) + ") = " +
                             clean_math_text(format_expr_human(a, dk)) + ".");
         }
@@ -880,15 +975,64 @@ static bool append_product_rule_detail(
         steps.push_back("c = " + clean_math_text(format_expr_human(a, c)) + ".");
     }
 
+    std::vector<std::string> factor_txts;
+    std::vector<std::string> deriv_txts;
+    std::vector<std::string> inner_deriv_txts(factors.size());
+    std::vector<bool> exp_factors(factors.size(), false);
     for(std::size_t i = 0; i < factors.size(); ++i) {
         NodeId fp = casio::simplify(a, diff(a, factors[i], var));
         std::string label = "f" + std::to_string(i + 1);
-        steps.push_back(label + " = " + clean_math_text(format_expr_human(a, factors[i])) + ".");
-        steps.push_back(label + "' = " + clean_math_text(format_expr_human(a, fp)) + ".");
+        std::string ftxt = clean_math_text(format_expr_human(a, factors[i]));
+        std::string dtxt = clean_math_text(format_expr_human(a, fp));
+        factor_txts.push_back(ftxt);
+        deriv_txts.push_back(dtxt);
+        steps.push_back(label + " = " + ftxt + ".");
+        Node const &fac = a.get(factors[i]);
+        NodeId inner = 0;
+        if(fac.kind == NodeKind::Fn) inner = fac.a;
+        else if(fac.kind == NodeKind::Pow) {
+            Node const &base = a.get(fac.a);
+            if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+                inner = fac.b;
+                exp_factors[i] = true;
+            }
+        }
+        if(fac.kind == NodeKind::Fn && fac.fkind == FnKind::Exp) exp_factors[i] = true;
+        if(inner && depends_on(a, inner, var) && !is_atomic(a, inner)) {
+            NodeId du = casio::simplify(a, diff(a, inner, var));
+            inner_deriv_txts[i] = clean_math_text(format_expr_human(a, du));
+            steps.push_back("u" + std::to_string(i + 1) + " = " + clean_math_text(format_expr_human(a, inner)) + ".");
+            steps.push_back("u" + std::to_string(i + 1) + "' = " + inner_deriv_txts[i] + ".");
+        }
+        steps.push_back(label + "' = " + dtxt + ".");
     }
 
     std::string rule = product_rule_line("dy/d" + var, factors.size(), has_const);
     steps.push_back(rule + ".");
+    if(factors.size() <= 3) {
+        std::string subst = "dy/d" + var + " = ";
+        for(std::size_t i = 0; i < factors.size(); ++i) {
+            if(i) subst += " + ";
+            subst += "(" + deriv_txts[i] + ")";
+            for(std::size_t j = 0; j < factors.size(); ++j) {
+                if(i == j) continue;
+                subst += "*(" + factor_txts[j] + ")";
+            }
+        }
+        steps.push_back(subst + ".");
+    }
+    if(factors.size() == 2) {
+        for(std::size_t i = 0; i < 2; ++i) {
+            std::size_t j = 1 - i;
+            if(exp_factors[i] && !inner_deriv_txts[i].empty()) {
+                steps.push_back(
+                    "dy/d" + var + " = (" + factor_txts[i] + ")*((" + inner_deriv_txts[i] + ")*(" +
+                    factor_txts[j] + ") + (" + deriv_txts[j] + "))."
+                );
+                break;
+            }
+        }
+    }
     if(answer_override && (factors.size() > 4 || node_weight(a, n) > 80)) *answer_override = rule;
     return true;
 }
@@ -1524,10 +1668,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
             }
+            std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
+            if(answer_override.empty() && contains_fn_kind(arena, n, FnKind::Sign)) {
+                std::string roots = first_sign_exclusion_from_key(compact_math_key(format_expr_human(arena, n)), var);
+                if(!roots.empty()) final_answer += ", " + var + " != " + roots;
+            }
             return casio::exam_block(
                 (req.mode == 4) ? "second derivative" : "differentiate",
                 steps,
-                answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override
+                final_answer
             );
         }
         if(req.mode == 2) {

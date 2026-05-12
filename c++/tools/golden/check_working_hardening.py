@@ -386,6 +386,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "(domain(sqrt(log(2,x-9))))",
+        ["base > 1", "Domain: x >= 10", "Answer: x >= 10"],
+        ["domain*sqrt", "ERR:"],
+    ),
+    (
+        "alg",
+        "(range(abs(x-2)+abs(x-3)))",
+        ["roots: x = 2; x = 3", "min y = 1", "Range: y >= 1"],
+        ["range*", "ERR:"],
+    ),
+    (
+        "alg",
+        "binomial((1+2*x)^(-1/2),x,0,4)",
+        ["n = -1/2: C(n,0) = 1", "C(n,4) = 35/128", "Terms: 1 - 1/2*(2*x)", "Valid for abs(x) < 1/2", "Answer: 1 - x + 3/2*x^2 - 5/2*x^3 + 35/8*x^4"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
         "fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])",
         ["x = 0:", "x = 1:", "x = 2:", "a = 1", "b = 2", "c = 3"],
         ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
@@ -429,8 +447,14 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "tan(3*x)",
-        ["Use Integral(tan u)", "Answer: -ln(abs(cos(3*x)))/3 + C"],
+        ["u = 3*x, du = 3 dx", "tan(u) = sin(u)/cos(u)", "v = cos(u), dv = -sin(u) du", "Answer: -ln(abs(cos(3*x)))/3 + C"],
         ["Integral not recognised", "Answer: int(", "ERR:"],
+    ),
+    (
+        "int",
+        "atan(2*x+3)^2,method=parts",
+        ["u = 2*x + 3, du = 2 dx", "I = 1/2*Int(atan(u)^2) du", "Int(t^2*sec(t)^2)dt = t^2*tan(t)-Int(2t*tan(t))dt", "Int(2t*tan(t))dt = -2t*ln(abs(cos(t)))+2*Int(ln(abs(cos(t))))dt", "Answer: No elementary primitive found"],
+        ["Answer: atan(2*x + 3)^2", "ERR:"],
     ),
     (
         "alg",
@@ -737,6 +761,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "(cosec(x)^2-cot(x)^2)*exp(x),method=auto",
         ["cosec(x)^2 - cot(x)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "Answer: e^(x) + C"],
         ["Answer: int", "ERR:"],
+    ),
+    (
+        "int",
+        "cot(x),method=auto",
+        ["cot(u) = cos(u)/sin(u)", "v = sin(u), dv = cos(u) du", "Int(cot(u))du = Int(1/v)dv", "Answer: ln(abs(sin(x))) + C"],
+        ["Integral(cot u)du", "Answer: int", "ERR:"],
+    ),
+    (
+        "int",
+        "sec(x),method=auto",
+        ["v = sec(u)+tan(u)", "dv = sec(u)(sec(u)+tan(u)) du", "Int(sec(u))du = Int(1/v)dv", "Answer: ln(abs(sec(x) + tan(x))) + C"],
+        ["Integral(sec u)du", "Answer: int", "ERR:"],
     ),
     (
         "int",

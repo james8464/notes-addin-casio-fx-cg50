@@ -3898,6 +3898,22 @@ class CASIOApp(App):
             self._append_session_report_if_worthy(record)
         return record
 
+    def note_running_case(self, case):
+        q = format_question_preview(getattr(case, "input_text", "") or "")
+        if not q:
+            q = getattr(case, "label", "") or "(no input)"
+        self._live_program = getattr(case, "program", "") or self._live_program
+        self._live_phase = "running"
+        self._last_event_label = "{0} · {1}".format(getattr(case, "label", ""), q[:96])
+        line = "[dim]Run Q:[/dim] {0}".format(q)
+        try:
+            if getattr(self, "plain_mode", False):
+                self.append_result(line)
+            else:
+                self.call_from_thread(self.append_result, line)
+        except Exception:
+            pass
+
     def random_graph_status_for_record(self, record):
         if record.status == TestStatus.PASS and not record.review_needed:
             return "pass"
@@ -4975,6 +4991,7 @@ class CASIOApp(App):
 
             def evaluate_timed(case):
                 import time
+                self.note_running_case(case)
                 start = time.time()
                 try:
                     passed, output = case.runner()

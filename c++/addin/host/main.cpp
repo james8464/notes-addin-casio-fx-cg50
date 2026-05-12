@@ -88,6 +88,24 @@ static bool key_arg(std::string const &arg, std::string const &key, std::string 
 static std::string unwrap_call(std::string const &text, std::string name)
 {
     std::string t = trim(text);
+    bool changed = true;
+    while(changed && t.size() > 1 && t.front() == '(' && t.back() == ')') {
+        changed = false;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < t.size(); ++i) {
+            if(t[i] == '(') ++depth;
+            else if(t[i] == ')') --depth;
+            if(depth == 0 && i + 1 < t.size()) {
+                wraps = false;
+                break;
+            }
+        }
+        if(wraps) {
+            t = trim(t.substr(1, t.size() - 2));
+            changed = true;
+        }
+    }
     if(!name.empty() && name.back() == '(') name.pop_back();
     if(t.size() <= name.size() + 1) return "";
     if(lower_ascii(t.substr(0, name.size())) != name) return "";

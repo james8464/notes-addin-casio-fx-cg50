@@ -916,16 +916,56 @@ static std::optional<TextIntegral> linear_over_sqrt_defint_pattern(std::string c
     };
     std::string U0 = sqrt_text(ulo);
     std::string U1 = sqrt_text(uhi);
-    std::string coeff = "2*" + std::to_string(*a) + "/" + std::to_string(b * b);
-    std::string answer = coeff + "*((" + U1 + "^3/3 - " + std::to_string(c) + "*" + U1 + ") - (" +
-                         U0 + "^3/3 - " + std::to_string(c) + "*" + U0 + "))";
+    Rational coeff_rat{2 * (*a), b * b};
+    coeff_rat.normalize();
+    std::string coeff = rat_text(coeff_rat);
+    std::string scale = coeff == "1" ? "" : coeff + "*";
+    auto sqrt_split = [](long long n) {
+        long long out = 1, in = n;
+        for(long long d = 2; d * d <= in; ++d) {
+            while(in % (d * d) == 0) {
+                in /= d * d;
+                out *= d;
+            }
+        }
+        return std::make_pair(out, in);
+    };
+    auto Fterm = [&](long long n) {
+        auto sp = sqrt_split(n);
+        Rational q = r_mul(r_sub(Rational{n, 3}, Rational{c, 1}), Rational{sp.first, 1});
+        q = r_mul(q, coeff_rat);
+        return std::make_pair(q, sp.second);
+    };
+    auto t_hi = Fterm(uhi);
+    auto t_lo = Fterm(ulo);
+    t_lo.first = r_neg(t_lo.first);
+    if(t_hi.second == t_lo.second) {
+        t_hi.first = r_add(t_hi.first, t_lo.first);
+        t_lo.first = Rational{0, 1};
+    }
+    auto fmt_term = [](Rational q, long long rad) {
+        q.normalize();
+        if(q.num == 0) return std::string();
+        std::string mag = rat_text(Rational{std::llabs(q.num), q.den});
+        std::string body = rad == 1 ? mag : (mag == "1" ? "sqrt(" + std::to_string(rad) + ")" : mag + "*sqrt(" + std::to_string(rad) + ")");
+        return std::string(q.num < 0 ? "-" : "") + body;
+    };
+    std::string answer = fmt_term(t_hi.first, t_hi.second);
+    std::string second = fmt_term(t_lo.first, t_lo.second);
+    if(!second.empty()) {
+        if(answer.empty()) answer = second;
+        else answer += (second[0] == '-' ? " - " + second.substr(1) : " + " + second);
+    }
+    if(answer.empty()) answer = "0";
     std::vector<std::string> steps = {
+        "Let u = sqrt(" + std::to_string(b) + "*" + var + (c >= 0 ? " + " : " - ") + std::to_string(std::llabs(c)) + ")",
         "u^2 = " + std::to_string(b) + "*" + var + (c >= 0 ? " + " : " - ") + std::to_string(std::llabs(c)),
         var + " = (u^2" + (c >= 0 ? " - " : " + ") + std::to_string(std::llabs(c)) + ")/" + std::to_string(b),
         "2u du = " + std::to_string(b) + " d" + var + ", so d" + var + " = 2u/" + std::to_string(b) + " du",
         var + "=" + std::to_string(*lo) + " => u=" + U0 + ", " + var + "=" + std::to_string(*hi) + " => u=" + U1,
-        "I = " + coeff + " Int_" + U0 + "^" + U1 + " (u^2 - " + std::to_string(c) + ") du",
-        "I = " + coeff + " [u^3/3 - " + std::to_string(c) + "*u]_" + U0 + "^" + U1,
+        "I = " + scale + "Int_" + U0 + "^" + U1 + " (u^2 - " + std::to_string(c) + ") du",
+        "I = " + scale + "[u^3/3 - " + std::to_string(c) + "*u]_" + U0 + "^" + U1,
+        "I = " + answer,
     };
     return TextIntegral{"linear radical substitution", std::move(steps), answer};
 }
@@ -4755,11 +4795,20 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
         }
         return s;
     };
+    auto join_terms = [](std::vector<std::string> const &v) {
+        std::string s;
+        for(size_t i = 0; i < v.size(); ++i) {
+            if(i) s += " ";
+            s += v[i];
+        }
+        return s;
+    };
     auto add_di_table = [&](bool exp_case) {
         if(power <= 0) return;
         std::vector<std::string> dcol;
         std::vector<std::string> icol;
         std::vector<std::string> signs;
+        std::vector<std::string> diagonals;
         Rational falling = coeff;
         for(int j = 0; j <= power; ++j) {
             dcol.push_back(format_expr(a, mul_coeff(a, falling, var_pow(a, var, power - j))));
@@ -4783,11 +4832,17 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
             }
             signs.push_back((j % 2) ? "+" : "-");
         }
+        for(int j = 0; j <= power && j < static_cast<int>(icol.size()); ++j) {
+            std::string term = dcol[j] + "*(" + icol[j] + ")";
+            if(j == 0) diagonals.push_back(term);
+            else diagonals.push_back(std::string((j % 2) ? "- " : "+ ") + term);
+        }
         steps.push_back("Step 4: D: " + join(dcol) + ".");
         steps.push_back("Step 5: I: " + join(icol) + ".");
         steps.push_back("Step 6: Signs: " + join(signs) + ".");
+        steps.push_back("Step 7: I=" + join_terms(diagonals) + " + C.");
         if(!exp_case && trig == FnKind::Cos) {
-            steps.push_back("Step 7: First term: " + format_expr(a, casio::mul(a, {var_pow(a, var, power), mul_coeff(a, r_div(Rational{1, 1}, *lc), casio::fn(a, "sin", arg))})) + ".");
+            steps.push_back("Step 8: First term: " + format_expr(a, casio::mul(a, {var_pow(a, var, power), mul_coeff(a, r_div(Rational{1, 1}, *lc), casio::fn(a, "sin", arg))})) + ".");
         }
     };
 
@@ -6027,27 +6082,39 @@ static std::optional<NodeId> integrate_affine_trig_basic(Arena &a, NodeId expr, 
     NodeId u = x.a;
     auto k = linear_coeff(a, u, var);
     if(!k || r_zero(*k)) return std::nullopt;
+    std::string u_txt = format_expr_human(a, u);
+    std::string k_txt = format_expr_human(a, a.num(*k));
+    steps.push_back(r_eq(*k, Rational{1, 1})
+        ? "Step 2: u=" + u_txt + ", du=d" + var + "."
+        : "Step 2: u=" + u_txt + ", du=" + k_txt + " d" + var + ".");
     NodeId primitive = 0;
     if(x.fkind == FnKind::Tan) {
         primitive = casio::neg(a, ln_abs(a, casio::fn(a, "cos", u)));
-        steps.push_back("Step 2: Use Integral(tan u)du = -ln(abs(cos u)).");
+        steps.push_back("Step 3: tan(u)=sin(u)/cos(u).");
+        steps.push_back("Step 4: v=cos(u), dv=-sin(u) du.");
+        steps.push_back("Step 5: Integral(tan(u))du=-Integral(1/v)dv.");
     }
     else if(x.fkind == FnKind::Cot) {
         primitive = ln_abs(a, casio::fn(a, "sin", u));
-        steps.push_back("Step 2: Use Integral(cot u)du = ln(abs(sin u)).");
+        steps.push_back("Step 3: cot(u)=cos(u)/sin(u).");
+        steps.push_back("Step 4: v=sin(u), dv=cos(u) du.");
+        steps.push_back("Step 5: Integral(cot(u))du=Integral(1/v)dv.");
     }
     else if(x.fkind == FnKind::Sec) {
         primitive = ln_abs(a, casio::add(a, {casio::fn(a, "sec", u), casio::fn(a, "tan", u)}));
-        steps.push_back("Step 2: Use Integral(sec u)du = ln(abs(sec u+tan u)).");
+        steps.push_back("Step 3: v=sec(u)+tan(u).");
+        steps.push_back("Step 4: dv=sec(u)(sec(u)+tan(u)) du.");
+        steps.push_back("Step 5: Integral(sec(u))du=Integral(1/v)dv.");
     }
     else if(x.fkind == FnKind::Cosec) {
         primitive = ln_abs(a, casio::add(a, {casio::fn(a, "cosec", u), casio::neg(a, casio::fn(a, "cot", u))}));
-        steps.push_back("Step 2: Use Integral(cosec u)du = ln(abs(cosec u-cot u)).");
+        steps.push_back("Step 3: v=cosec(u)-cot(u).");
+        steps.push_back("Step 4: dv=cosec(u)(cosec(u)-cot(u)) du.");
+        steps.push_back("Step 5: Integral(cosec(u))du=Integral(1/v)dv.");
     }
     else {
         return std::nullopt;
     }
-    steps.push_back("Step 3: Divide by inner derivative of u.");
     return casio::simplify(a, scaled_by_inner(a, primitive, *k));
 }
 
@@ -8922,6 +8989,34 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
     Node const &node_ref = arena.get(node);
+    if(node_ref.kind == NodeKind::Pow) {
+        auto pow = positive_int_power(arena, node_ref.b);
+        Node const &base = arena.get(node_ref.a);
+        if(pow && *pow == 2 && base.kind == NodeKind::Fn && base.fkind == FnKind::Atan) {
+            auto lc = linear_coeff(arena, base.a, req.var);
+            if(lc && !r_zero(*lc)) {
+                NodeId lc_node = casio::num(arena, lc->num, lc->den);
+                std::vector<std::string> steps;
+                casio::append_exam_prelude_steps(steps, pre);
+                steps.push_back("u = " + format_expr(arena, base.a) + ", du = " + format_expr(arena, lc_node) + " d" + req.var + ".");
+                steps.push_back("d" + req.var + " = " + format_expr(arena, arena.num(Rational{lc->den, lc->num})) + " du.");
+                steps.push_back("I = " + format_expr(arena, arena.num(Rational{lc->den, lc->num})) + "*Int(atan(u)^2) du.");
+                steps.push_back("t=atan(u), so dt=du/(1+u^2).");
+                steps.push_back("u=tan(t), 1+u^2=sec(t)^2, du=sec(t)^2 dt.");
+                steps.push_back("I reduces to Int(t^2*sec(t)^2) dt.");
+                steps.push_back("p=t^2, dq=sec(t)^2 dt, q=tan(t).");
+                steps.push_back("Int(t^2*sec(t)^2)dt=t^2*tan(t)-Int(2t*tan(t))dt.");
+                steps.push_back("K=Int(2t*tan(t))dt: p=2t, dq=tan(t)dt, q=-ln(abs(cos(t))).");
+                steps.push_back("Int(2t*tan(t))dt=-2t*ln(abs(cos(t)))+2*Int(ln(abs(cos(t))))dt.");
+                steps.push_back("Int(t^2*sec(t)^2)dt=t^2*tan(t)+2t*ln(abs(cos(t)))-2*Int(ln(abs(cos(t))))dt.");
+                steps.push_back("I=1/2*(t^2*tan(t)+2t*ln(abs(cos(t)))-2*Int(ln(abs(cos(t))))dt).");
+                steps.push_back("t=atan(" + format_expr(arena, base.a) + "), tan(t)=" + format_expr(arena, base.a) + ".");
+                steps.push_back("Int(ln(abs(cos(t))))dt is a non-elementary special-function term.");
+                steps.push_back("So the original integral has no elementary primitive.");
+                return casio::exam_block("non-elementary inverse-trig square", steps, "No elementary primitive found");
+            }
+        }
+    }
     if(node_ref.kind == NodeKind::Fn &&
        (node_ref.fkind == FnKind::Atan || node_ref.fkind == FnKind::Asin || node_ref.fkind == FnKind::Acos)) {
         auto lc = linear_coeff(arena, node_ref.a, req.var);

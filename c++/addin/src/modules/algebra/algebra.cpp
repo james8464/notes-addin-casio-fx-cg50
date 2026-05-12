@@ -1462,19 +1462,56 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         else ordered_answer += " + " + term;
     }
     if(ordered_answer.empty()) ordered_answer = format_expr(a, ans);
-    std::string validity = "Valid for |" + rat_node_text(a, m) + "*" + var + "| < 1.";
+    std::string validity_cond = "|" + rat_node_text(a, m) + "*" + var + "| < 1";
+    std::string validity = "Valid for " + validity_cond + ".";
     if(m.num != 0) {
         Rational bound{std::llabs(m.den), std::llabs(m.num)};
         bound.normalize();
-        validity = "Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".";
+        validity_cond = "abs(" + var + ") < " + rat_node_text(a, bound);
+        validity = "Valid for " + validity_cond + ".";
     }
+    std::string coeff_line = "n=" + rat_node_text(a, power) + ": ";
+    std::string coeff_work = "C work: ";
+    std::string term_line = "Terms: ";
+    std::string simplified_line = "Simplified terms: ";
+    auto coeff_factor = [&](Rational q) {
+        std::string s = rat_node_text(a, q);
+        return (s.find('/') != std::string::npos || (!s.empty() && s[0] == '-')) ? "(" + s + ")" : s;
+    };
+    for(int i = 0; i <= degree; ++i) {
+        if(i) coeff_line += ", ";
+        coeff_line += "C(n," + std::to_string(i) + ")=" + rat_node_text(a, binom_rat(power, i));
+        if(i >= 2) {
+            if(coeff_work != "C work: ") coeff_work += "; ";
+            coeff_work += "C(n," + std::to_string(i) + ")=";
+            for(int j = 0; j < i; ++j) {
+                if(j) coeff_work += "*";
+                coeff_work += coeff_factor(r_sub(power, Rational{j, 1}));
+            }
+            coeff_work += "/" + std::to_string(i) + "!=" + rat_node_text(a, binom_rat(power, i));
+        }
+        Rational c = binom_rat(power, i);
+        std::string t = rat_node_text(a, c);
+        if(i == 1) t += "*(" + rat_node_text(a, m) + "*" + var + ")";
+        else if(i > 1) t += "*(" + rat_node_text(a, m) + "*" + var + ")^" + std::to_string(i);
+        if(i) term_line += c.num < 0 ? " - " + t.substr(1) : " + " + t;
+        else term_line += t;
+        if(i) simplified_line += ", ";
+        simplified_line += "T" + std::to_string(i) + "=" + trim_text(format_expr(a, terms[i]));
+    }
+    if(coeff_work == "C work: ") coeff_work += "C(n,0)=1; C(n,1)=n";
     std::vector<std::string> out{
         "1. Rewrite as " + rat_node_text(a, factor) + "*(1+(" + rat_node_text(a, m) + ")*" + var + ")^" + rat_node_text(a, power) + ".",
         "2. u = " + rat_node_text(a, m) + "*" + var + ".",
         "3. T_r = C(n,r)*u^r.",
         "4. Use (1+u)^n = 1+n*u+n(n-1)u^2/2!+...",
-        "5. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
-        "6. " + validity,
+        "5. " + coeff_line + ".",
+        "6. " + coeff_work + ".",
+        "7. " + term_line + ".",
+        "8. " + simplified_line + ".",
+        "9. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
+        "10. |u| < 1 => abs(" + rat_node_text(a, m) + "*" + var + ") < 1 => " + validity_cond + ".",
+        "11. " + validity,
         "Answer: " + ordered_answer,
     };
     if(from_recip) out.insert(out.begin() + 1, "2. Use previous expansion/reverse-power relation if already found.");

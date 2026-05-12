@@ -194,6 +194,21 @@ CASES = [
         ("log_b(A)-log_b(B)", "|A| = B =>", "No real solution"),
     ),
     (
+        "wrapped domain call",
+        ["--alg", "(domain(sqrt(log(2,x-9))))"],
+        ("base > 1", "Domain: x >= 10", "x >= 10"),
+    ),
+    (
+        "wrapped range call",
+        ["--alg", "(range(abs(x-2)+abs(x-3)))"],
+        ("roots: x = 2; x = 3", "min y = 1", "Range: y >= 1"),
+    ),
+    (
+        "binomial coefficient line",
+        ["--alg", "binomial((1+2*x)^(-1/2),x,0,4)"],
+        ("n = -1/2: C(n,0) = 1", "C(n,4) = 35/128", "Terms: 1 - 1/2*(2*x)", "Valid for abs(x) < 1/2", "1 - x + 3/2*x^2 - 5/2*x^3 + 35/8*x^4"),
+    ),
+    (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
         ("u=a^x", "x = [0, 2]"),
@@ -212,6 +227,16 @@ CASES = [
         "affine trig reverse chain",
         ["--int", "sin(2*x-3),method=auto"],
         ("u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(sin(u)) du", "Int(sin(u)) du = -cos(u)", "-cos(2*x - 3)/2 + C"),
+    ),
+    (
+        "cot integral substitution",
+        ["--int", "cot(x)"],
+        ("cot(u) = cos(u)/sin(u)", "v = sin(u), dv = cos(u) du", "Int(cot(u))du = Int(1/v)dv", "ln(abs(sin(x))) + C"),
+    ),
+    (
+        "sec integral substitution",
+        ["--int", "sec(x)"],
+        ("v = sec(u)+tan(u)", "dv = sec(u)(sec(u)+tan(u)) du", "Int(sec(u))du = Int(1/v)dv", "ln(abs(sec(x) + tan(x))) + C"),
     ),
     (
         "tan square integral line",
@@ -253,7 +278,7 @@ CASES = [
     (
         "defint outer wrapped",
         ["--int", "(defint(2*x/sqrt(2*x+4),x,(0),(7)))"],
-        ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = sqrt(18)", "I = 2*2/4"),
+        ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = sqrt(18)", "I = Int_2^sqrt(18) (u^2 - 4) du"),
         ("ERR:",),
     ),
     (
@@ -306,7 +331,12 @@ CASES = [
     (
         "sign branch in sum",
         ["--derive", "sin(x)+sign(x^2-1),x"],
-        ("d/dx(sin(x)) = cos(x)", "u = x^2 - 1", "u != 0 => dy/dx = 0", "u = 0 => dy/dx undefined", "dy/dx = cos(x)"),
+        ("d/dx(sin(x)) = cos(x)", "u = x^2 - 1", "u = 0 => x = +/-1", "x != +/-1 => d/dx(sign(u)) = 0", "x = +/-1 => d/dx(sign(u)) undefined", "dy/dx = cos(x)"),
+    ),
+    (
+        "atan square non elementary",
+        ["--int", "atan(2*x+3)^2,method=parts"],
+        ("u = 2*x + 3, du = 2 dx", "I = 1/2*Int(atan(u)^2) du", "Int(t^2*sec(t)^2)dt = t^2*tan(t)-Int(2t*tan(t))dt", "Int(2t*tan(t))dt = -2t*ln(abs(cos(t)))+2*Int(ln(abs(cos(t))))dt", "No elementary primitive found"),
     ),
     (
         "trig fallback no fake working",
