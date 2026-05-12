@@ -5888,7 +5888,7 @@ class CASIOApp(App):
 
         def check(out):
             text = normalized_text(out)
-            if "all real" in text or "all x satisfy" in text or "infinite solutions" in text:
+            if "all real" in text or "all x satisfy" in text or "infinite solutions" in text or f"{var} in r" in text:
                 # Identity case: solver may correctly report "all real x" rather
                 # than enumerating roots.
                 if _has_non_exam_quality_output(text):
