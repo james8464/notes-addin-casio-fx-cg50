@@ -1093,6 +1093,65 @@ static Rational poly_eval(Poly2 const &p, Rational x)
     return r_add(r_add(r_mul(p.a2, r_mul(x, x)), r_mul(p.a1, x)), p.a0);
 }
 
+static std::string linear_y_coeff_text(Arena &a, Rational m, Rational b)
+{
+    std::string s;
+    if(!is_zero(m)) {
+        if(m.num == m.den) s = "y";
+        else if(m.num == -m.den) s = "-y";
+        else s = rat_node_text(a, m) + "*y";
+    }
+    if(!is_zero(b)) {
+        std::string bt = rat_node_text(a, r_abs(b));
+        if(s.empty()) s = b.num < 0 ? "-" + bt : bt;
+        else s += b.num < 0 ? " - " + bt : " + " + bt;
+    }
+    if(s.empty()) s = "0";
+    return s;
+}
+
+static std::optional<std::string> quadratic_rational_full_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || is_zero(rp.den.a2) || !is_zero(rp.num.a2)) return std::nullopt;
+    if(is_zero(rp.num.a1) && is_zero(rp.num.a0)) return std::nullopt;
+    if(!is_zero(rp.num.a1)) {
+        Rational root = r_div(r_neg(rp.num.a0), rp.num.a1);
+        if(is_zero(poly_eval(rp.den, root))) return std::nullopt;
+    }
+
+    Rational two{-2, 1};
+    Rational four{4, 1};
+    Rational d2 = r_sub(r_mul(rp.den.a1, rp.den.a1), r_mul(four, r_mul(rp.den.a2, rp.den.a0)));
+    Rational d1 = r_add(r_mul(two, r_mul(rp.den.a1, rp.num.a1)),
+                        r_mul(four, r_add(r_mul(rp.den.a2, rp.num.a0), r_mul(rp.num.a2, rp.den.a0))));
+    Rational d0 = r_sub(r_mul(rp.num.a1, rp.num.a1), r_mul(four, r_mul(rp.num.a2, rp.num.a0)));
+    bool strict = false;
+    bool nonneg = false;
+    if(!is_zero(d2) && d2.num > 0) {
+        Rational dy = r_sub(r_mul(d1, d1), r_mul(four, r_mul(d2, d0)));
+        strict = dy.num < 0;
+        nonneg = dy.num <= 0;
+    }
+    else if(is_zero(d2) && is_zero(d1)) {
+        strict = d0.num > 0;
+        nonneg = d0.num >= 0;
+    }
+    if(!nonneg) return std::nullopt;
+
+    std::string num = format_expr(a, poly2_to_node(a, rp.num, var));
+    std::string den = format_expr(a, poly2_to_node(a, rp.den, var));
+    std::string A = linear_y_coeff_text(a, rp.den.a2, r_neg(rp.num.a2));
+    std::string B = linear_y_coeff_text(a, rp.den.a1, r_neg(rp.num.a1));
+    std::string C = linear_y_coeff_text(a, rp.den.a0, r_neg(rp.num.a0));
+    std::string D = format_expr(a, poly2_to_node(a, Poly2{d2, d1, d0, true}, "y"));
+    steps.push_back("y = (" + num + ")/(" + den + ").");
+    steps.push_back("y*(" + den + ") = " + num + ".");
+    steps.push_back("(" + A + ")*" + var + "^2 + (" + B + ")*" + var + " + (" + C + ") = 0.");
+    steps.push_back("Discriminant = " + D + (strict ? " > 0." : " >= 0."));
+    return "all real y";
+}
+
 static std::optional<RepLinPF> repeated_linear_pf_data(Arena &a, NodeId parsed, std::string const &var)
 {
     Node const &d = a.get(parsed);
@@ -6500,6 +6559,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, steps)) {
                     range_answer = *lf;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto qr = quadratic_rational_full_range(arena, n, var, steps)) {
+                    range_answer = *qr;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto sl = sqrt_linear_interval_range(arena, n, var, lo, hi, steps)) {

@@ -746,6 +746,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "range(1/(x-1)+1/(x+2))",
+        ["y*(x^2 + x - 2) = 2*x + 1", "Discriminant = 9*y^2 + 4 > 0", "Range: all real y", "Answer: all real y"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
         "range(x^3,x,-1,3)",
         ["x^3 is increasing", "Range: -1 <= y <= 27", "Answer: -1 <= y <= 27"],
         ["unrestricted on interval", "inspect graph/transform", "ERR:"],
