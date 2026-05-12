@@ -336,6 +336,8 @@ static std::vector<std::string> one_var(std::string const &expr)
     std::sort(v.begin(), v.end());
     long double n = (long double)v.size();
     long double sx = sum_of(v);
+    long double sx2 = 0.0L;
+    for(long double x : v) sx2 += x * x;
     long double mean = sx / n;
     long double sxx = 0.0L;
     for(long double x : v) sxx += (x - mean) * (x - mean);
@@ -345,14 +347,21 @@ static std::vector<std::string> one_var(std::string const &expr)
     long double med = median_sorted(v, 0, v.size());
     long double q1 = median_sorted(v, 0, mid);
     long double q3 = median_sorted(v, v.size() % 2 ? mid + 1 : mid, v.size());
+    if(v.size() == 1) q1 = q3 = v[0];
 
-    out.push_back("1. Sort data: " + list_short(v));
-    out.push_back("2. n = " + std::to_string(v.size()) + ", sum x = " + fmt(sx));
-    out.push_back("3. mean = sum x/n = " + fmt(mean));
-    out.push_back("4. min = " + fmt(v.front()) + ", Q1 = " + fmt(q1) + ", median = " + fmt(med) + ", Q3 = " + fmt(q3) + ", max = " + fmt(v.back()));
-    out.push_back("5. Sxx = sum((x-mean)^2) = " + fmt(sxx));
-    out.push_back("6. var(pop) = " + fmt(pop_var) + ", var(sample) = " + fmt(sample_var));
-    out.push_back("Answer: mean=" + fmt(mean) + ", sd=" + fmt(std::sqrt((double)pop_var)) + ", s=" + fmt(std::sqrt((double)sample_var)));
+    out.push_back("x_(sorted) = " + list_short(v, 12));
+    out.push_back("n = " + std::to_string(v.size()) + ", sum x = " + fmt(sx) + ", sum x^2 = " + fmt(sx2));
+    out.push_back("mean = sum x/n = " + fmt(sx) + "/" + fmt(n) + " = " + fmt(mean));
+    out.push_back("min = " + fmt(v.front()) + ", Q1 = " + fmt(q1) + ", median = " + fmt(med) + ", Q3 = " + fmt(q3) + ", max = " + fmt(v.back()));
+    out.push_back("Sxx = sum x^2 - (sum x)^2/n = " + fmt(sx2) + " - (" + fmt(sx) + ")^2/" + fmt(n) + " = " + fmt(sxx));
+    out.push_back("var = Sxx/n = " + fmt(sxx) + "/" + fmt(n) + " = " + fmt(pop_var));
+    out.push_back("sd = sqrt(var) = sqrt(" + fmt(pop_var) + ") = " + fmt(std::sqrt((double)pop_var)));
+    if(v.size() > 1) {
+        out.push_back("s^2 = Sxx/(n-1) = " + fmt(sxx) + "/" + fmt(n - 1.0L) + " = " + fmt(sample_var));
+        out.push_back("s = sqrt(s^2) = sqrt(" + fmt(sample_var) + ") = " + fmt(std::sqrt((double)sample_var)));
+        out.push_back("mean = " + fmt(mean) + ", sd = " + fmt(std::sqrt((double)pop_var)) + ", s = " + fmt(std::sqrt((double)sample_var)));
+    }
+    else out.push_back("mean = " + fmt(mean) + ", sd = 0, s = undefined");
     return out;
 }
 

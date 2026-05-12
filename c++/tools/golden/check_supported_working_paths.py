@@ -281,7 +281,7 @@ def base_cases() -> list[Case]:
 
     # Stats/probability/mechanics.
     for item in [
-        ("1,2,3,4,method=summary", ("mean =", "median", "sd=")),
+        ("1,2,3,4,method=summary", ("mean =", "median", "sd =")),
         ("binom(10,.5,4)", ("P(X", "B(10")),
         ("normalcdf(0,1,-1.96,1.96)", ("N(0", "Phi")),
         ("reg([1,2,3],[2,4,5])", ("Sxx", "r =")),

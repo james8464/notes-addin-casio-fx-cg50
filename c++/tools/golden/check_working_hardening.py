@@ -589,6 +589,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["median =", "Traceback"],
     ),
     (
+        "stats",
+        "1,2,3,4,method=summary",
+        ["sum x^2 = 30", "Sxx = sum x^2 - (sum x)^2/n = 30 - (10)^2/4 = 5", "sd = sqrt(var) = sqrt(1.25)", "s = sqrt(s^2) = sqrt(1.66666667)"],
+        ["var(pop)", "sum((x-mean)^2)", "Traceback"],
+    ),
+    (
+        "stats",
+        "-36,14,47,-47,1000001,-1000000,-44,-29,34,method=summary",
+        ["sum x^2 = 2.000002e12", "Sxx = sum x^2 - (sum x)^2/n", "sd = sqrt(var)", "s = sqrt(s^2)"],
+        ["var(pop)", "Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],
