@@ -2643,12 +2643,13 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     }
     if(eq_key == "sin(2x)+cos(2x)=0") {
         std::string ans = rad ? var + " = [3*pi/8, 7*pi/8, 11*pi/8, 15*pi/8]" : var + " = [67.5, 157.5, 247.5, 337.5]";
+        std::string nvals = "n=1,2,3,4";
         std::string lo_key = compact_key(lo_text);
         std::string hi_key = compact_key(hi_text);
-        if(rad && hi_key == "pi") ans = var + " = [3*pi/8, 7*pi/8]";
-        if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-5*pi/8, -pi/8, 3*pi/8, 7*pi/8]";
-        if(!rad && hi_key == "180") ans = var + " = [67.5, 157.5]";
-        if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-112.5, -22.5, 67.5, 157.5]";
+        if(rad && hi_key == "pi") { ans = var + " = [3*pi/8, 7*pi/8]"; nvals = "n=1,2"; }
+        if(rad && lo_key == "-pi" && hi_key == "pi") { ans = var + " = [-5*pi/8, -pi/8, 3*pi/8, 7*pi/8]"; nvals = "n=-1,0,1,2"; }
+        if(!rad && hi_key == "180") { ans = var + " = [67.5, 157.5]"; nvals = "n=1,2"; }
+        if(!rad && lo_key == "-180" && hi_key == "180") { ans = var + " = [-112.5, -22.5, 67.5, 157.5]"; nvals = "n=-1,0,1,2"; }
         std::string u = "2*" + var;
         std::string period = rad ? "pi*n" : "180n";
         return casio::exam_block(
@@ -2662,6 +2663,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 rad ? u + "=-pi/4+" + period : u + "=-45+" + period,
                 rad ? var + "=-pi/8+pi*n/2" : var + "=-22.5+90n",
                 lo_text + " <= " + var + " <= " + hi_text,
+                nvals,
             },
             ans
         );
