@@ -502,6 +502,32 @@ static std::optional<std::string> reciprocal_identity_text(std::string expr)
     return std::nullopt;
 }
 
+static std::optional<std::string> trig_sum_identity_text(std::string expr)
+{
+    expr = strip_outer_parens_text(power_compact_key(std::move(expr)));
+    int depth = 0;
+    for(std::size_t i = 0; i < expr.size(); ++i) {
+        if(expr[i] == '(') ++depth;
+        else if(expr[i] == ')') --depth;
+        else if(expr[i] == '+' && depth == 0) {
+            std::string lhs_text = expr.substr(0, i);
+            std::string rhs_text = expr.substr(i + 1);
+            auto lhs = square_trig_text(lhs_text);
+            auto rhs = square_trig_text(rhs_text);
+            auto is_one = [](std::string const &s) { return strip_outer_parens_text(s) == "1"; };
+            if(!lhs && rhs && is_one(lhs_text)) lhs = rhs;
+            if(!rhs && lhs && is_one(rhs_text)) rhs = lhs;
+            if(!lhs || !rhs || lhs->second != rhs->second) return std::nullopt;
+            if((lhs->first == "tan" && is_one(rhs_text)) || (rhs->first == "tan" && is_one(lhs_text)))
+                return "tan(u)^2 + 1 = sec(u)^2.";
+            if((lhs->first == "cot" && is_one(rhs_text)) || (rhs->first == "cot" && is_one(lhs_text)))
+                return "1 + cot(u)^2 = cosec(u)^2.";
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
 static bool contains_reciprocal_identity_fn(std::string const &s)
 {
     return s.find("sec(") != std::string::npos || s.find("tan(") != std::string::npos ||
@@ -613,11 +639,11 @@ static std::vector<std::string> table_integral_steps(std::string const &expr)
     if(k == "cos(4x)") return {"u=4*x; du=4 dx; dx=du/4.", "I=1/4*Int(cos(u)) du."};
     if(k == "exp(5x)") return {"u=5*x; du=5 dx; dx=du/5.", "I=1/5*Int(e^u) du."};
     if(k == "1/(5x+7)") return {"u=5*x+7; du=5 dx; dx=du/5.", "I=1/5*Int(1/u) du."};
-    if(k == "sec(x)^2") return {"d/dx(tan(x)) = sec(x)^2."};
+    if(k == "sec(x)^2") return {"I = Int(sec(x)^2) dx.", "d/dx(tan(x)) = sec(x)^2."};
     if(k == "sec(x)^4") return {"sec(x)^4 = (1+tan(x)^2)sec(x)^2.", "u=tan(x), du=sec(x)^2 dx."};
-    if(k == "sec(x)tan(x)") return {"d/dx(sec(x)) = sec(x)tan(x)."};
-    if(k == "cosec(x)^2") return {"d/dx(cot(x)) = -cosec(x)^2."};
-    if(k == "cosec(x)cot(x)") return {"d/dx(cosec(x)) = -cosec(x)cot(x)."};
+    if(k == "sec(x)tan(x)") return {"I = Int(sec(x)tan(x)) dx.", "d/dx(sec(x)) = sec(x)tan(x)."};
+    if(k == "cosec(x)^2") return {"I = Int(cosec(x)^2) dx.", "d/dx(cot(x)) = -cosec(x)^2."};
+    if(k == "cosec(x)cot(x)") return {"I = Int(cosec(x)cot(x)) dx.", "d/dx(cosec(x)) = -cosec(x)cot(x)."};
     if(k == "tan(x)^2") return {"tan(x)^2 = sec(x)^2 - 1.", "I = Int(sec(x)^2 - 1) dx."};
     if(k == "(3x^2-2x+2)/x") return {"Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x."};
     if(k == "sin(x)^2") return {"sin(x)^2 = (1-cos(2*x))/2."};
@@ -8984,6 +9010,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             steps.push_back("Start with " + req.expr + ".");
             steps.push_back(*recip);
             if(display_expr != "1") steps.push_back("integrand = " + display_expr + ".");
+        }
+        else if(auto sum_id = trig_sum_identity_text(req.expr); sum_id && compact_key(req.expr) != compact_key(display_expr)) {
+            steps.push_back("Start with " + req.expr + ".");
+            steps.push_back(*sum_id);
+            steps.push_back("integrand = " + display_expr + ".");
         }
         else {
             casio::append_exam_prelude_steps(steps, pre);

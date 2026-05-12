@@ -650,6 +650,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "tan(x)^2+1,method=auto",
+        ["tan(u)^2 + 1 = sec(u)^2", "integrand = sec(x)^2", "I = Int(sec(x)^2) dx", "Answer: tan(x) + C"],
+        ["Answer: int", "ERR:"],
+    ),
+    (
+        "int",
         "cot((x)^2-pi/4)^2+1,method=auto",
         ["1 + cot(u)^2 = cosec(u)^2", "du/dx = 2*x", "du/dx not constant", "No elementary primitive"],
         ["Use the general integration route", "Answer: int", "ERR:"],

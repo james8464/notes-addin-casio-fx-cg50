@@ -213,6 +213,11 @@ CASES = [
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
     ),
     (
+        "tan square plus one integral line",
+        ["--int", "tan(x)^2+1"],
+        ("tan(u)^2 + 1 = sec(u)^2", "integrand = sec(x)^2", "I = Int(sec(x)^2) dx", "tan(x) + C"),
+    ),
+    (
         "reciprocal trig identity before integration",
         ["--int", "(cosec(x)^2-cot(x)^2)*exp(x)"],
         ("cosec(u)^2 - cot(u)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "e^(x) + C"),
