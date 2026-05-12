@@ -5101,7 +5101,7 @@ static std::optional<std::vector<std::string>> abs_linear_equation_route(Arena &
     return out;
 }
 
-static std::optional<std::vector<std::string>> log_abs_plus_const_zero_route(
+static std::optional<std::vector<std::string>> log_abs_plus_const_route(
     Arena &a,
     NodeId lhs,
     NodeId rhs,
@@ -5109,34 +5109,58 @@ static std::optional<std::vector<std::string>> log_abs_plus_const_zero_route(
 )
 {
     NodeId log_node = 0;
+    NodeId log_arg = 0;
     NodeId rhs_node = 0;
-    Node const &l = a.get(lhs);
-    Node const &r = a.get(rhs);
-    if(l.kind == NodeKind::Fn && (l.fkind == FnKind::Log || l.fkind == FnKind::Log10)) {
+    std::string base;
+    auto read_log = [&](NodeId id, NodeId &arg, std::string &b) -> bool {
+        Node const &n = a.get(id);
+        if(n.kind == NodeKind::Fn && (n.fkind == FnKind::Log || n.fkind == FnKind::Log10)) {
+            arg = n.a;
+            b = n.fkind == FnKind::Log10 ? "10" : "e";
+            return true;
+        }
+        if(n.kind == NodeKind::Div) {
+            Node const &top = a.get(n.a);
+            Node const &bot = a.get(n.b);
+            if(top.kind == NodeKind::Fn && top.fkind == FnKind::Log &&
+               bot.kind == NodeKind::Fn && bot.fkind == FnKind::Log && !has_symbols(a, bot.a)) {
+                arg = top.a;
+                b = format_expr(a, bot.a);
+                return true;
+            }
+        }
+        return false;
+    };
+    if(read_log(lhs, log_arg, base)) {
         log_node = lhs;
         rhs_node = rhs;
     }
-    else if(r.kind == NodeKind::Fn && (r.fkind == FnKind::Log || r.fkind == FnKind::Log10)) {
+    else if(read_log(rhs, log_arg, base)) {
         log_node = rhs;
         rhs_node = lhs;
     }
     else return std::nullopt;
 
     Node const &rv = a.get(rhs_node);
-    if(rv.kind != NodeKind::Num || !is_zero(rv.num)) return std::nullopt;
-    Node const &ln = a.get(log_node);
-    auto info = abs_plus_const_eq_info(a, ln.a, var);
+    if(rv.kind != NodeKind::Num) return std::nullopt;
+    Rational target{1, 1};
+    if(!is_zero(rv.num)) {
+        auto exact = integer_base_power_rational(base, rv.num);
+        if(!exact) return std::nullopt;
+        target = *exact;
+    }
+    auto info = abs_plus_const_eq_info(a, log_arg, var);
     if(!info) return std::nullopt;
 
     std::vector<std::string> out;
-    std::string inner = format_expr(a, ln.a);
+    std::string inner = format_expr(a, log_arg);
     std::string abs_text = format_expr(a, info->abs_node);
-    std::string base = ln.fkind == FnKind::Log10 ? "10" : "e";
-    out.push_back(format_expr(a, log_node) + " = 0");
+    std::string rhs_text = format_expr(a, rhs_node);
+    out.push_back(format_expr(a, log_node) + " = " + rhs_text);
     out.push_back("Domain: " + inner + " > 0");
-    out.push_back(inner + " = " + base + "^0");
-    out.push_back(inner + " = 1");
-    Rational abs_rhs = r_sub(Rational{1, 1}, info->c);
+    out.push_back(inner + " = " + base + "^" + rhs_text);
+    out.push_back(inner + " = " + format_expr(a, a.num(target)));
+    Rational abs_rhs = r_sub(target, info->c);
     std::string abs_rhs_text = format_expr(a, a.num(abs_rhs));
     out.push_back(abs_text + " = " + abs_rhs_text);
     if(abs_rhs.num < 0) {
@@ -6922,7 +6946,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.insert(out.end(), aa->begin(), aa->end());
                 return out;
             }
-            if(auto la = log_abs_plus_const_zero_route(arena, lhs, rhs, solve_var)) return *la;
+            if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
