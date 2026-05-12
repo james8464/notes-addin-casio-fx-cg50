@@ -19,7 +19,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "cos(2*x)+cos(x)=0,x,0,360",
-        ["2cos(3x/2)cos(x/2)=0", "cos(3x/2)=0 or cos(x/2)=0", "x=60+120n or x=180+360n", "x = [60, 180, 300]"],
+        ["2*cos(3*x/2)*cos(x/2) = 0", "cos(3*x/2) = 0 => x = 60 + n*120", "cos(x/2) = 0 => x = 180 + n*360", "x = [60, 180, 300]"],
         ["Solve both factors", "ERR:"],
     ),
     (

@@ -1144,6 +1144,128 @@ static std::string format_solution_list(std::string const &var, bool rad, std::v
     return oss.str();
 }
 
+static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
+
+static std::string ratio_double_text(double x)
+{
+    double s = x < 0 ? -1.0 : 1.0;
+    x = std::fabs(x);
+    for(long long d = 1; d <= 72; ++d) {
+        double n = x * static_cast<double>(d);
+        double r = std::round(n);
+        if(std::fabs(n - r) < 1e-8) return ratio_text(static_cast<long long>(s * r), d);
+    }
+    return (s < 0 ? "-" : "") + format_double_compact(x);
+}
+
+static std::string linear_angle_text(double m, double b_deg, std::string const &var, bool rad)
+{
+    std::string out;
+    auto coeff_var = [&](double c) {
+        std::string r = ratio_double_text(std::fabs(c));
+        if(r == "1") return var;
+        auto slash = r.find('/');
+        if(slash == std::string::npos) return r + "*" + var;
+        std::string top = r.substr(0, slash), bot = r.substr(slash + 1);
+        return (top == "1" ? var : top + "*" + var) + "/" + bot;
+    };
+    if(std::fabs(m) > 1e-12) out = (m < 0 ? "-" : "") + coeff_var(m);
+    if(std::fabs(b_deg) > 1e-9) {
+        std::string b = rad ? format_pi_degrees(std::fabs(b_deg)) : format_double_compact(std::fabs(b_deg));
+        if(out.empty()) out = b_deg < 0 ? "-" + b : b;
+        else out += b_deg < 0 ? "-" + b : "+" + b;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> solve_cos_sum_zero(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    NodeId r = residual;
+    Node const *rn = &a.get(r);
+    if(rn->kind == NodeKind::Mul) {
+        for(NodeId k : rn->kids) {
+            if(a.get(k).kind == NodeKind::Add) {
+                r = k;
+                rn = &a.get(r);
+                break;
+            }
+        }
+    }
+    if(rn->kind != NodeKind::Add || rn->kids.size() != 2) return std::nullopt;
+    struct CT { double c; NodeId arg; };
+    auto term = [&](NodeId id) -> std::optional<CT> {
+        Node const &n = a.get(id);
+        if(n.kind == NodeKind::Fn && n.fkind == FnKind::Cos) return CT{1.0, n.a};
+        if(n.kind != NodeKind::Mul) return std::nullopt;
+        double c = 1.0;
+        std::optional<NodeId> arg;
+        for(NodeId k : n.kids) {
+            Node const &x = a.get(k);
+            if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cos) {
+                if(arg) return std::nullopt;
+                arg = x.a;
+            }
+            else if(auto q = as_num(a, k)) c *= static_cast<double>(q->num) / static_cast<double>(q->den);
+            else return std::nullopt;
+        }
+        if(!arg) return std::nullopt;
+        return CT{c, *arg};
+    };
+    auto t0 = term(rn->kids[0]), t1 = term(rn->kids[1]);
+    if(!t0 || !t1 || std::fabs(std::fabs(t0->c) - std::fabs(t1->c)) > 1e-10 || t0->c * t1->c < 0) return std::nullopt;
+    auto A = linear_angle(a, t0->arg, var, rad);
+    auto B = linear_angle(a, t1->arg, var, rad);
+    if(!A || !B) return std::nullopt;
+    double ms = (A->first + B->first) / 2.0, bs = (A->second + B->second) / 2.0;
+    double md = (A->first - B->first) / 2.0, bd = (A->second - B->second) / 2.0;
+    if(md < 0) { md = -md; bd = -bd; }
+    auto lo_node = casio::parse_expr(a, lo_text);
+    auto hi_node = casio::parse_expr(a, hi_text);
+    double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+    double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+    if(lo > hi) std::swap(lo, hi);
+    std::vector<double> xs;
+    auto add_family = [&](double m, double b) {
+        if(std::fabs(m) < 1e-12) return;
+        for(int k = -100; k <= 100; ++k) {
+            double x = (90.0 + 180.0 * k - b) / m;
+            if(x >= lo - 1e-7 && x <= hi + 1e-7) add_unique(xs, x);
+        }
+    };
+    add_family(ms, bs);
+    add_family(md, bd);
+    std::sort(xs.begin(), xs.end());
+    auto fam = [&](double m, double b) {
+        double period = 180.0 / std::fabs(m);
+        double base = (90.0 - b) / m;
+        while(base < 0) base += period;
+        while(base >= period) base -= period;
+        return format_general_trig_family(var, rad, {base}, period);
+    };
+    std::string s = linear_angle_text(ms, bs, var, rad);
+    std::string d = linear_angle_text(md, bd, var, rad);
+    std::vector<std::string> steps = {
+        "cos(A)+cos(B)=2*cos((A+B)/2)*cos((A-B)/2)",
+        "A=" + format_expr(a, t0->arg) + ", B=" + format_expr(a, t1->arg),
+        "2*cos(" + s + ")*cos(" + d + ")=0",
+    };
+    if(std::fabs(ms) > 1e-12) steps.push_back("cos(" + s + ")=0 => " + fam(ms, bs));
+    if(std::fabs(md) > 1e-12) steps.push_back("cos(" + d + ")=0 => " + fam(md, bd));
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs));
+    return casio::exam_block(
+        "trig solve",
+        steps,
+        format_solution_list(var, rad, xs)
+    );
+}
+
 static std::optional<std::vector<std::string>> solve_same_fn_linear(
     Arena &a,
     NodeId lhs,
@@ -2531,44 +2653,6 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             format_solution_list(var, rad, xs)
         );
     }
-    if(eq_key == "cos(2x)+cos(x)=0" || eq_key == "cos(2x)+1cos(x)=0") {
-        std::string lo_key = compact_key(lo_text);
-        std::string hi_key = compact_key(hi_text);
-        std::string ans = rad ? var + " = [pi/3, pi, 5*pi/3]" : var + " = [60, 180, 300]";
-        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/3, pi/3, pi]";
-        else if(rad && lo_key == "-pi" && hi_key == "2pi") ans = var + " = [-pi, -pi/3, pi/3, pi, 5*pi/3]";
-        else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -60, 60, 180]";
-        else if(!rad && lo_key == "-180" && hi_key == "360") ans = var + " = [-180, -60, 60, 180, 300]";
-        else if(rad && hi_key == "pi") ans = var + " = [pi/3, pi]";
-        else if(!rad && hi_key == "180") ans = var + " = [60, 180]";
-        return casio::exam_block(
-            "trig solve",
-            {
-                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
-                "So 2cos(3x/2)cos(x/2)=0.",
-                "cos(3x/2)=0 or cos(x/2)=0.",
-                rad ? "x=pi/3+2*pi*n/3 or x=pi+2*pi*n." : "x=60+120n or x=180+360n.",
-                lo_text + " <= " + var + " <= " + hi_text,
-            },
-            ans
-        );
-    }
-    if(eq_key == "cos(4x)+cos(x)=0" || eq_key == "cos(x)+cos(4x)=0") {
-        std::string hi_key = compact_key(hi_text);
-        std::string ans = rad ? var + " = [pi/5, pi/3, 3*pi/5, pi]"
-                              : var + " = [36, 60, 108, 180]";
-        if(rad && hi_key == "2pi") ans = var + " = [pi/5, pi/3, 3*pi/5, pi, 7*pi/5, 5*pi/3, 9*pi/5]";
-        if(!rad && hi_key == "360") ans = var + " = [36, 60, 108, 180, 252, 300, 324]";
-        return casio::exam_block(
-            "trig solve",
-            {
-                "cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
-                "2cos(5x/2)cos(3x/2) = 0.",
-                "Solve both factors and keep interval values.",
-            },
-            ans
-        );
-    }
     if(eq_key == "cos(2x)+cos(x)=2" || eq_key == "cos(2x)+1cos(x)=2") {
         std::string hi_key = compact_key(hi_text);
         std::string ans = rad ? var + " = [0]" : var + " = [0]";
@@ -2606,42 +2690,6 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "cos(x)(2sin(x)-sqrt(2))=0.",
                 "So cos(x)=0 or sin(x)=sqrt(2)/2.",
                 "Keep interval values.",
-            },
-            ans
-        );
-    }
-    if(eq_key == "cos(x)+cos(3x)=0") {
-        std::string ans = rad ? var + " = [pi/4, pi/2, 3*pi/4, 5*pi/4, 3*pi/2, 7*pi/4]"
-                              : var + " = [45, 90, 135, 225, 270, 315]";
-        std::string hi_key = compact_key(hi_text);
-        std::string lo_key = compact_key(lo_text);
-        if(rad && hi_key == "pi") ans = var + " = [pi/4, pi/2, 3*pi/4]";
-        if(rad && lo_key == "-pi" && hi_key == "2pi") ans = var + " = [-3*pi/4, -pi/2, -pi/4, pi/4, pi/2, 3*pi/4, 5*pi/4, 3*pi/2, 7*pi/4]";
-        if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-3*pi/4, -pi/2, -pi/4, pi/4, pi/2, 3*pi/4]";
-        if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-135, -90, -45, 45, 90, 135]";
-        if(!rad && lo_key != "-180" && hi_key == "180") ans = var + " = [45, 90, 135]";
-        return casio::exam_block(
-            "trig solve",
-            {
-                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
-                "So 2cos(2x)cos(x)=0.",
-                "Solve both factors and keep interval values.",
-            },
-            ans
-        );
-    }
-    if(eq_key == "cos(2x)+cos(3x)=0") {
-        std::string hi_key = compact_key(hi_text);
-        std::string ans = rad ? var + " = [pi/5, 3*pi/5, pi, 7*pi/5, 9*pi/5]"
-                              : var + " = [36, 108, 180, 252, 324]";
-        if(rad && hi_key == "pi") ans = var + " = [pi/5, 3*pi/5, pi]";
-        if(!rad && hi_key == "180") ans = var + " = [36, 108, 180]";
-        return casio::exam_block(
-            "trig solve",
-            {
-                "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
-                "So 2cos(5x/2)cos(x/2)=0.",
-                "Solve both factors and keep interval values.",
             },
             ans
         );
@@ -2847,6 +2895,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = all valid " + var + " in domain"
         );
     }
+    if(auto cos_sum = solve_cos_sum_zero(a, residual, var, lo_text, hi_text, rad)) return *cos_sum;
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
