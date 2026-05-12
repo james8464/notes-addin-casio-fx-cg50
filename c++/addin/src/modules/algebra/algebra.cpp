@@ -5773,7 +5773,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("Domain: " + domain_answer + ".");
                 }
                 else if(dn.kind == NodeKind::Fn && dn.fkind == FnKind::Log) {
-                    if(auto solved = positive_linear_domain(arena, dn.a, var)) {
+                    if(auto inner_min = abs_linear_plus_const_min(arena, dn.a, var); inner_min && inner_min->num > 0) {
+                        std::string min_text = format_expr(arena, arena.num(*inner_min));
+                        steps.push_back(abs_linear_text(arena, dn.a, var) + " >= 0.");
+                        steps.push_back(format_expr(arena, dn.a) + " >= " + min_text + " > 0.");
+                        domain_answer = "all real " + var;
+                        steps.push_back("Domain: " + domain_answer + ".");
+                    }
+                    else if(auto solved = positive_linear_domain(arena, dn.a, var)) {
                         domain_answer = *solved;
                         steps.push_back("Solve the log condition: " + domain_answer + ".");
                     }

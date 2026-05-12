@@ -141,6 +141,11 @@ CASES = [
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
     ),
     (
+        "log abs domain proof",
+        ["--alg", "domain(log(abs(2*x-3)+2))"],
+        ("abs(2*x - 3) + 2 > 0", "abs(2*x - 3) >= 0", "abs(2*x - 3) + 2 >= 2 > 0", "all real x"),
+    ),
+    (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
         ("u=a^x", "x = [0, 2]"),

@@ -182,6 +182,7 @@ def base_cases() -> list[Case]:
         ("domain(sqrt(log(1/2,x-1)))", ("base = 1/2", "1 < x <= 2")),
         ("domain(arcsin((x-1)/3))", ("-1 <=", "Answer:")),
         ("domain(1/(x^2-4))", ("!= 0", "Answer:")),
+        ("domain(log(abs(2*x-3)+2))", ("abs(2*x - 3) >= 0", "all real x")),
         ("range(abs(x-1)+abs(x-2))", ("min y = 1", "y >= 1")),
         ("range(sqrt(abs(3*x+1)+1))", ("abs(3*x + 1) >= 0", "y >= 1")),
         ("range(x/(1+x^2))", ("Range:", "-1/2 <= y <= 1/2")),

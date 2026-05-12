@@ -97,6 +97,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["inspect graph/transform", "ERR:", "Unexpected token"],
     ),
     (
+        "alg",
+        "domain(log(abs(2*x-3)+2))",
+        ["abs(2*x - 3) + 2 > 0", "abs(2*x - 3) >= 0", "abs(2*x - 3) + 2 >= 2 > 0", "Answer: all real x"],
+        ["Answer: abs(2*x - 3) + 2 > 0", "ERR:"],
+    ),
+    (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
         ["(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"],
