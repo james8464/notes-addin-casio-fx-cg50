@@ -53,6 +53,37 @@ class TuiHelperTests(unittest.TestCase):
         self.assertIn("LLM Verification Status", out.stdout)
         self.assertNotIn("Model not found: status", out.stdout)
 
+    def test_llm_generation_ref_not_added_to_label(self):
+        app = TUI.CASIOApp()
+
+        class FakeLLM:
+            enabled = True
+
+        def feature(_rng, _difficulty, _idx):
+            return TUI.CaseSpec(
+                "Trig solve: cos(x)=-1",
+                "Trigonometry",
+                lambda: (True, "x = [180]"),
+                "3\ncos(x)=-1,x,0,360\n",
+                check_info="x = [180]",
+                feature="trig_solve",
+            )
+
+        old_chance = TUI.LLM_GENERATION_CHANCE
+        app.llm_enabled_for_tests = True
+        app.llm_manager = FakeLLM()
+        app.generate_llm_case = lambda _program, _difficulty: ("cos(x)=-1", "x = pi/4, 5*pi/4")
+        try:
+            TUI.LLM_GENERATION_CHANCE = 1.0
+            cases = list(app.iter_unique_random_cases([feature], 1, random.Random(7), "medium"))
+        finally:
+            TUI.LLM_GENERATION_CHANCE = old_chance
+
+        self.assertEqual(len(cases), 1)
+        self.assertIn("[LLM]", cases[0].label)
+        self.assertNotIn("llm ref", cases[0].label)
+        self.assertNotIn("pi/4", cases[0].label)
+
     @unittest.skipUnless(HOST.exists(), "host binary not built")
     def test_host_accepts_spaced_method_option(self):
         out = subprocess.run(

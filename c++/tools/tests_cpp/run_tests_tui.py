@@ -443,7 +443,7 @@ def _default_case_workers():
 
 CASE_WORKERS = _default_case_workers()
 
-LLM_GENERATION_CHANCE = float(os.environ.get("CASIO_LLM_GENERATION_CHANCE", "0.1"))
+LLM_GENERATION_CHANCE = float(os.environ.get("CASIO_LLM_GENERATION_CHANCE", "0"))
 # Infinite /random: cases per program per cycle (was forced to 1 with LLM; now configurable).
 _CASIO_INFINITE_GENERATION_CHUNK = max(1, int(os.environ.get("CASIO_INFINITE_GENERATION_CHUNK", "12")))
 # LLM: verify N subprocess results per Ollama call (set 1 to disable batching).
@@ -4918,12 +4918,9 @@ class CASIOApp(App):
                     prog_name = feature_prog_map.get(feature.__name__, "Algebra")
                     llm_result = self.generate_llm_case(prog_name, case_difficulty)
                     if llm_result:
-                        ref_note = ""
-                        if isinstance(llm_result, (tuple, list)) and len(llm_result) >= 2 and llm_result[1]:
-                            ref_note = " [llm ref: {0}]".format(str(llm_result[1])[:160].replace("\n", " "))
-                        # Keep check_info = harness-only; a generated ref here often disagrees in units
-                        # with the CLI case and causes false LLM "INCORRECT" on correct calculator output.
-                        case.label = "[LLM] {0}{1}".format(case.label, ref_note)
+                        # Never feed generated reference answers into verifier context:
+                        # they can disagree with the fuzzed CLI case units/interval.
+                        case.label = "[LLM] {0}".format(case.label)
                 
                 key = self.case_question_key(case)
                 attempts += 1
@@ -10329,7 +10326,7 @@ def _cli_help():
   Common environment variables
       CASIO_TEST_TIMEOUT           Per-case timeout (default 12 seconds)
       CASIO_TEST_WORKERS           Max parallel case workers
-      CASIO_LLM_GENERATION_CHANCE  Chance to tag LLM-generated ideas in random mode
+      CASIO_LLM_GENERATION_CHANCE  Optional chance to tag LLM-generated ideas in random mode
       CASIO_TEST_EXPORT_JSON       1/yes/true writes JSON snapshot on each run summary
       CASIO_EXAM_STRESS            1 (default): allocate chaos cases across builders with
                                    jittered weights to stress high-yield / exam-relevant items.
