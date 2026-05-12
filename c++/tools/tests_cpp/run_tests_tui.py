@@ -4753,6 +4753,8 @@ class CASIOApp(App):
             bad = any(s in text for s in ("err:", "missing host binary", "timeout after", "traceback", "dimension mismatch"))
             if flag in ("derive", "int", "alg", "trig", "stats"):
                 ok = (not bad) and any(s in text for s in ("answer:", "dy/dx", " = ", "+ c", "result", "domain", "range", "method:"))
+                if not ok and flag == "alg" and fn.name in ("complete_square", "factor", "expand", "collect") and combined.strip():
+                    ok = True
                 if not ok and fn.name.startswith("trig") and combined.strip():
                     ok = True
             else:

@@ -2897,6 +2897,17 @@ static void append_rejected_by_domain(std::vector<std::string> &out,
     if(!rejected.empty()) out.push_back(var + " = " + join_solutions(rejected) + " rejected by domain");
 }
 
+static void append_kept_denominator_check(Arena &a,
+                                          std::vector<std::string> &out,
+                                          Poly2 const &den,
+                                          std::vector<std::string> const &sols)
+{
+    if(!is_zero(den.a2) || is_zero(den.a1)) return;
+    Rational bad = r_div(r_neg(den.a0), den.a1);
+    std::string bad_text = format_expr(a, casio::num(a, bad.num, bad.den));
+    for(auto const &s : sols) out.push_back(sol_rhs(s) + " != " + bad_text);
+}
+
 static std::vector<std::string> filter_solutions_by_original_key(
     Arena &a,
     std::vector<std::string> sols,
@@ -6208,6 +6219,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
+            append_kept_denominator_check(arena, out, rp.den, sols);
             out.push_back("Answer: " + solution_list_line(solve_var, sols));
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
@@ -6281,6 +6293,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.push_back("Answer: " + solve_var + " = []");
                 return out;
             }
+            append_kept_denominator_check(arena, out, rp.den, sols);
             append_answer(out, solve_var, sols);
             append_numeric_3dp(arena, out, solve_var, sols);
             return out;
@@ -6303,6 +6316,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.push_back("Answer: " + solve_var + " = []");
             return out;
         }
+        append_kept_denominator_check(arena, out, rp.den, sols);
         append_answer(out, solve_var, sols);
         append_numeric_3dp(arena, out, solve_var, sols);
         return out;

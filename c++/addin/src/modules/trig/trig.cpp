@@ -1215,7 +1215,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         std::string At = format_expr(a, L.a), Bt = format_expr(a, R.a);
         if(rad && fk == FnKind::Sin && d1 && d2) {
             family_line = At + " = " + Bt + "+2*pi*n => " + var + " = 2*pi*n/" + std::to_string(d1) +
-                "; " + At + " = pi-" + Bt + "+2*pi*n => " + var + " = pi*(2*n+1)/" + std::to_string(d2);
+                "\n" + At + " = pi-" + Bt + "+2*pi*n => " + var + " = pi*(2*n+1)/" + std::to_string(d2);
         }
     }
     return casio::exam_block(

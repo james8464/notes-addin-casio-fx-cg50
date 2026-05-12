@@ -69,6 +69,11 @@ CASES = [
         ("log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4", "5*x^2 + 4*x - 1 = 0", "x = [1/5]"),
     ),
     (
+        "rational kept root domain",
+        ["--alg", "(x^2-16)/(x-4)=14"],
+        ("Domain: x - 4 != 0", "10 != 4", "x = [10]"),
+    ),
+    (
         "square equation shows plus minus",
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
