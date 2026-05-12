@@ -1861,6 +1861,12 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         auto lin = linear_angle(a, poly->arg, var, rad);
         if(lin && std::fabs(lin->first) > 1e-12) {
             std::string families;
+            std::vector<std::string> n_filters;
+            auto lo_node = casio::parse_expr(a, lo_text);
+            auto hi_node = casio::parse_expr(a, hi_text);
+            double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+            double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+            if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
             for(auto const &[fk, r] : root_targets) {
                 auto bases = base_trig_degrees(fk, r);
                 double period = (fk == FnKind::Tan ? 180.0 : 360.0) / std::fabs(lin->first);
@@ -1874,8 +1880,16 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
                 if(xbases.empty()) continue;
                 if(!families.empty()) families += " or ";
                 families += format_general_trig_family(var, rad, xbases, period);
+                for(double base : xbases) {
+                    long long nlo = static_cast<long long>(std::ceil((lo_deg - base) / period - 1e-10));
+                    long long nhi = static_cast<long long>(std::floor((hi_deg - base) / period + 1e-10));
+                    if(nlo > nhi || n_filters.size() >= 4) continue;
+                    std::string ns = (nlo == nhi) ? std::to_string(nlo) : std::to_string(nlo) + ".." + std::to_string(nhi);
+                    n_filters.push_back(lo_text + " <= " + family_piece(base, period, rad) + " <= " + hi_text + " => n=" + ns + ".");
+                }
             }
             if(!families.empty()) steps.push_back(families + ".");
+            for(auto const &line : n_filters) steps.push_back(line);
         }
     }
     steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
