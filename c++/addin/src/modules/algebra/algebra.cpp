@@ -3806,11 +3806,11 @@ static std::optional<std::string> reciprocal_trig_identity_step(std::string cons
     if(has_sq && key.find('-') != std::string::npos &&
        (key.find("cosec(") != std::string::npos || key.find("csc(") != std::string::npos) &&
        key.find("cot(") != std::string::npos) {
-        return "Use identity cosec(u)^2 - cot(u)^2 = 1.";
+        return "cosec(u)^2 = 1+cot(u)^2; cosec(u)^2 - cot(u)^2 = 1.";
     }
     if(has_sq && key.find('-') != std::string::npos &&
        key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos) {
-        return "Use identity sec(u)^2 - tan(u)^2 = 1.";
+        return "sec(u)^2 = 1+tan(u)^2; sec(u)^2 - tan(u)^2 = 1.";
     }
     return std::nullopt;
 }

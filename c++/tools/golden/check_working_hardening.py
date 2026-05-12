@@ -573,8 +573,14 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "domain(cosec((x)^2-pi/4)^2-cot((x)^2-pi/4)^2)",
-        ["cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x^2 - pi/4) != 0", "sin(x^2 - pi/4) != 0"],
+        ["cosec(u)^2 = 1+cot(u)^2", "cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x^2 - pi/4) != 0", "sin(x^2 - pi/4) != 0"],
         ["Start with 1", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "range(sec(x)^2-tan(x)^2)",
+        ["sec(u)^2 = 1+tan(u)^2", "sec(u)^2 - tan(u)^2 = 1", "Range: y = 1", "Answer: y = 1"],
+        ["inspect graph/transform", "ERR:", "Unexpected token"],
     ),
     (
         "alg",

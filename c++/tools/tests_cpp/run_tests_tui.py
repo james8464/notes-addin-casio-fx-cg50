@@ -8975,14 +8975,22 @@ class CASIOApp(App):
             )
 
             range_identity_cases = [
-                ("10\nsec(2*x)^2-tan(2*x)^2\n", "Range: sec²-tan² identity", "answer: y = 1"),
-                ("10\ncosec(2*x+pi/6)^2-cot(2*x+pi/6)^2\n", "Range: cosec²-cot² identity", "answer: y = 1"),
-                ("10\n(sin(x)+cos(x))^2-2*sin(x)*cos(x)\n", "Range: hidden sin/cos square identity", "answer: y = 1"),
+                ("10\nsec(2*x)^2-tan(2*x)^2\n", "Range: sec²-tan² identity", "answer: y = 1", "sec(u)^2 = 1+tan(u)^2"),
+                ("10\ncosec(2*x+pi/6)^2-cot(2*x+pi/6)^2\n", "Range: cosec²-cot² identity", "answer: y = 1", "cosec(u)^2 = 1+cot(u)^2"),
+                ("10\n(sin(x)+cos(x))^2-2*sin(x)*cos(x)\n", "Range: hidden sin/cos square identity", "answer: y = 1", "sin(u)^2 + cos(u)^2 = 1"),
             ]
-            for inp, label, must in range_identity_cases:
+            for inp, label, must, source_line in range_identity_cases:
                 out, _ = self.run_cli("algebraProgram.py", inp)
                 text = normalized_text(out)
-                self.add_test(label, must in text and "inspect graph" not in text, out, p, inp, "domain/range identity reduction", "algebra_domain_range_identity")
+                self.add_test(
+                    label,
+                    must in text and source_line in text and "inspect graph" not in text,
+                    out,
+                    p,
+                    inp,
+                    "domain/range identity reduction with source identity",
+                    "algebra_domain_range_identity",
+                )
 
             solve_interval_cases = [
                 (
