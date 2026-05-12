@@ -17,6 +17,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x = []", "ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "cos(2*x)+cos(x)=0,x,0,360",
+        ["2cos(3x/2)cos(x/2)=0", "cos(3x/2)=0 or cos(x/2)=0", "x=60+120n or x=180+360n", "x = [60, 180, 300]"],
+        ["Solve both factors", "ERR:"],
+    ),
+    (
         "alg",
         "solve(log(2,x)+log(4,x)=6,x)",
         ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],

@@ -2458,7 +2458,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "Use cos A + cos B = 2cos((A+B)/2)cos((A-B)/2).",
                 "So 2cos(3x/2)cos(x/2)=0.",
-                "Solve both factors and keep interval values.",
+                "cos(3x/2)=0 or cos(x/2)=0.",
+                rad ? "x=pi/3+2*pi*n/3 or x=pi+2*pi*n." : "x=60+120n or x=180+360n.",
+                lo_text + " <= " + var + " <= " + hi_text,
             },
             ans
         );
