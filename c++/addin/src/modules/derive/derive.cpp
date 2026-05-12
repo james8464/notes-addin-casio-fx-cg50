@@ -567,6 +567,54 @@ static std::string linear_text(long long a, long long b, std::string const &var)
     return s;
 }
 
+struct AffineInt
+{
+    long long m = 0;
+    long long b = 0;
+};
+
+static long long abs_ll(long long v) { return v < 0 ? -v : v; }
+
+static long long gcd_ll(long long a, long long b)
+{
+    a = abs_ll(a);
+    b = abs_ll(b);
+    while(b) {
+        long long t = a % b;
+        a = b;
+        b = t;
+    }
+    return a ? a : 1;
+}
+
+static std::optional<AffineInt> affine_int_in(Arena &a, NodeId n, std::string const &var)
+{
+    auto lp = linear_in_symbol(a, n, var);
+    if(!lp) return std::nullopt;
+    auto m = as_num(a, lp->coef);
+    auto b = as_num(a, lp->rest);
+    if(!m || !b || m->den != 1 || b->den != 1) return std::nullopt;
+    return AffineInt{m->num, b->num};
+}
+
+static std::string affine_int_text(AffineInt p, std::string const &var)
+{
+    if(p.m == 0) return std::to_string(p.b);
+    return linear_text(p.m, p.b, var);
+}
+
+static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, AffineInt den, std::string const &var)
+{
+    long long g = gcd_ll(gcd_ll(num.m, num.b), gcd_ll(den.m, den.b));
+    if(g <= 1) return std::nullopt;
+    num.m /= g; num.b /= g; den.m /= g; den.b /= g;
+    if(den.m < 0 || (den.m == 0 && den.b < 0)) {
+        num.m = -num.m; num.b = -num.b; den.m = -den.m; den.b = -den.b;
+    }
+    if(den.m == 0 && den.b == 1) return affine_int_text(num, var);
+    return affine_int_text(num, var) + "/(" + affine_int_text(den, var) + ")";
+}
+
 static std::optional<std::pair<std::string, std::string>> quotient_linear_square_route(std::string const &key, std::string const &var)
 {
     std::string prefix = var + "^2/(";
@@ -1888,7 +1936,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "dy/dt = " + format_expr_human(arena, dydt),
                 "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.",
             };
-            std::string ratio_line = "dy/dx = (" + format_expr_human(arena, dydt) + ")/(" + format_expr_human(arena, dxdt) + ")";
+            auto dx_aff = affine_int_in(arena, dxdt, tvar);
+            auto dy_aff = affine_int_in(arena, dydt, tvar);
+            std::string dx_text = dx_aff ? affine_int_text(*dx_aff, tvar) : format_expr_human(arena, dxdt);
+            std::string dy_text = dy_aff ? affine_int_text(*dy_aff, tvar) : format_expr_human(arena, dydt);
+            if(dy_aff && compact_math_key(format_expr_human(arena, dydt)) != compact_math_key(dy_text))
+                steps.push_back("dy/dt = " + dy_text);
+            if(dx_aff && compact_math_key(format_expr_human(arena, dxdt)) != compact_math_key(dx_text))
+                steps.push_back("dx/dt = " + dx_text);
+            std::string ratio_line = "dy/dx = (" + dy_text + ")/(" + dx_text + ")";
+            if(dx_aff && dy_aff) {
+                if(auto reduced = reduced_affine_ratio_text(*dy_aff, *dx_aff, tvar)) {
+                    ratio_line += " = " + *reduced;
+                    answer = "dy/dx = " + *reduced;
+                }
+            }
             if(ratio_line != answer) steps.push_back(ratio_line);
             return casio::exam_block("parametric differentiation (limited)", steps, answer);
         }
