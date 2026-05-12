@@ -150,9 +150,10 @@ static bool method_allowed(char const *valid, std::string const &method)
 
 static void print_lines(std::vector<std::string> const &lines)
 {
+    std::set<std::string> seen;
     for(auto const &ln : lines) {
         std::string s = casio::math_style_line(ln);
-        if(!s.empty()) std::cout << s << "\n";
+        if(!s.empty() && seen.insert(s).second) std::cout << s << "\n";
     }
 }
 

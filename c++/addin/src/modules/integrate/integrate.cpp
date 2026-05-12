@@ -6719,9 +6719,44 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         auto quad_int = integrate_linear_over_quadratic(a, quad_frac, var, quad_steps);
         if(!quad_int) return std::nullopt;
         terms.push_back(*quad_int);
-        steps.push_back("Step 2: PF: A/(" + format_expr_human(a, lin_part) + ")+(B" + var + "+C)/(" + format_expr_human(a, quad_part) + ").");
-        steps.push_back("Step 3: " + format_expr_human(a, x.a) + "=A*(" + format_expr_human(a, quad_part) + ")+(B*" + var + "+C)*(" + format_expr_human(a, lin_part) + ").");
+        auto ct = [&](Rational c, char const *s) {
+            if(r_zero(c)) return std::string();
+            if(c.num == c.den) return std::string(s);
+            if(c.num == -c.den) return std::string("-") + s;
+            return rat_text(c) + "*" + s;
+        };
+        auto plus = [](std::string a, std::string b) {
+            if(a.empty()) return b;
+            if(b.empty()) return a;
+            return a + (b[0] == '-' ? "" : "+") + b;
+        };
+        auto lin = [&](Rational c, Rational m, char const *s) {
+            return r_zero(c) ? ct(m, s) : plus(rat_text(c), ct(m, s));
+        };
+        auto linm = [&](Rational m, char const *s, Rational c) {
+            return r_zero(c) ? ct(m, s) : plus(ct(m, s), rat_text(c));
+        };
+        Rational n2 = poly_at(*n, 2), n1 = poly_at(*n, 1), n0 = poly_at(*n, 0);
+        Rational c0 = r_sub(n1, r_mul(*p, n2));
+        Rational cA = r_sub(r_mul(*p, q2), q1);
+        Rational e0 = r_mul(*p, c0);
+        Rational eA = r_add(q0, r_mul(*p, cA));
+        Rational erhs = r_sub(n0, e0);
+        std::string mid = plus(plus(ct(q1, "A"), ct(*p, "B")), "C");
+        std::string last = plus(ct(q0, "A"), ct(*p, "C"));
+        std::string lin_txt = format_expr_human(a, lin_part);
+        std::string quad_txt = format_expr_human(a, quad_part);
+        std::string top_txt = format_expr_human(a, poly_to_node(a, top, var));
+        steps.push_back("Step 2: PF: A/(" + lin_txt + ")+(B" + var + "+C)/(" + quad_txt + ").");
+        steps.push_back("Step 3: " + format_expr_human(a, x.a) + "=A*(" + quad_txt + ")+(B*" + var + "+C)*(" + lin_txt + ").");
+        steps.push_back("coeffs: " + plus(ct(q2, "A"), "B") + "=" + rat_text(n2) + ", " + mid + "=" + rat_text(n1) + ", " + last + "=" + rat_text(n0));
+        steps.push_back("B=" + lin(n2, r_neg(q2), "A"));
+        steps.push_back("C=" + lin(c0, cA, "A"));
+        steps.push_back(linm(eA, "A", e0) + "=" + rat_text(n0));
+        steps.push_back(ct(eA, "A") + "=" + rat_text(erhs));
         steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ".");
+        steps.push_back("PF = " + format_expr(a, a.num(sol[0])) + "/(" + lin_txt + ")+(" + top_txt + ")/(" + quad_txt + ")");
+        steps.push_back("I = " + format_expr(a, a.num(sol[0])) + "*Int(1/(" + lin_txt + ")) dx + Int((" + top_txt + ")/(" + quad_txt + ")) dx");
         return casio::simplify(a, casio::add(a, terms));
     };
     if(auto got = try_linear_quad(f0, f1)) return got;
@@ -6908,7 +6943,9 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
             steps.push_back("Step 8: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + scale_text(inv_a, cos_part) + " + " + ba + "*I.");
             steps.push_back("Step 10: I = " + scale_text(inv_a, sin_part) + " - " + ba + "*(" + scale_text(inv_a, cos_part) + " + " + ba + "*I).");
+            steps.push_back("Step 11: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
             steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
+            steps.push_back("Step 12: I = (" + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ")/(" + rat_text(lhs_coeff) + ").");
         }
         else {
             steps.push_back("Step 3: u = cos(" + u + "), dv = " + e + " dx.");
@@ -6919,7 +6956,9 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
             steps.push_back("Step 8: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + scale_text(inv_a, sin_part) + " - " + ba + "*I.");
             steps.push_back("Step 10: I = " + scale_text(inv_a, cos_part) + " + " + ba + "*(" + scale_text(inv_a, sin_part) + " - " + ba + "*I).");
+            steps.push_back("Step 11: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
             steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
+            steps.push_back("Step 12: I = (" + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ")/(" + rat_text(lhs_coeff) + ").");
         }
         return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
     }

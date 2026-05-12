@@ -5349,6 +5349,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId expr = casio::add(arena, {casio::mul(arena, {anode, sq}), knode});
             expr = casio::simplify(arena, expr);
             std::string ans = format_expr(arena, expr);
+            if(is_zero(h)) {
+                std::string tail;
+                if(!is_zero(k)) {
+                    NodeId abs_k = casio::num(arena, std::llabs(k.num), k.den);
+                    tail = (k.num < 0 ? " - " : " + ") + format_expr(arena, abs_k);
+                }
+                ans = (is_zero(r_sub(a, Rational{1, 1})) ? "" : format_expr(arena, anode) + "*") + "(x + 0)^2" + tail;
+            }
             return {
                 format_expr(arena, n),
                 "h = b/(2a) = " + format_expr(arena, hnode),
@@ -5366,11 +5374,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
             std::string ans = format_expr(arena, comp);
             return {
-                "1. Start with f(x) = " + format_expr(arena, fn),
-                "2. g(x) = " + format_expr(arena, gn),
-                "3. Substitute g(x) for x.",
-                "4. f(g(x)) = " + ans,
-                "5. Answer: f(g(x)) = " + ans,
+                "f(x) = " + format_expr(arena, fn),
+                "g(x) = " + format_expr(arena, gn),
+                "x = g(x) = " + format_expr(arena, gn),
+                "f(g(x)) = f(" + format_expr(arena, gn) + ")",
+                "Answer: f(g(x)) = " + ans,
             };
         }
         if(req.mode == 8) {

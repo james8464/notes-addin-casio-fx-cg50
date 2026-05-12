@@ -46,7 +46,7 @@ CASES = [
     (
         "looping parts final",
         ["--int", "e^(2*x)*cos(3*x),method=parts"],
-        ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
+        ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "13/4*I =", "I = (1/2*e^(2*x)*cos(3*x) + 3/4*e^(2*x)*sin(3*x))/(13/4)", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
     ),
     (
         "rform final",
@@ -145,6 +145,11 @@ CASES = [
         ("u=x", "dv=sin(x) dx", "du=dx", "v=-cos(x)", "sin(x) - x*cos(x) + C"),
     ),
     (
+        "pf coefficient equations",
+        ["--int", "(5*x+7)/((x-1)*(x^2+2)),method=pf"],
+        ("A/(x - 1)+(Bx+C)/(x^2 + 2)", "coeffs: A+B=0, -B+C=5, 2*A-C=7", "B=-A", "C=5-A", "3*A-5=7", "3*A=12", "A=4, B=-4, C=1", "PF = 4/(x - 1)+(- 4*x + 1)/(x^2 + 2)", "I = 4*Int(1/(x - 1)) dx + Int((- 4*x + 1)/(x^2 + 2)) dx"),
+    ),
+    (
         "invalid derive no fake working",
         ["--derive", "diff("],
         ("Err:",),
@@ -174,6 +179,11 @@ CASES = [
         ["--trig", "sin(8*x)=sin(8*x),x,0,2*pi,32,method=identity"],
         ("A = 8*x, B = 8*x", "A = B", "0 <= x <= 2*pi"),
         ("x = [",),
+    ),
+    (
+        "tan same function degree family",
+        ["--trig", "tan(2*x)-tan(x)=0,x,-180,180,10,method=identity"],
+        ("tan(A)=tan(B) => A=B+180n", "2*x = x+180n", "x = [-180, 0, 180]"),
     ),
 ]
 

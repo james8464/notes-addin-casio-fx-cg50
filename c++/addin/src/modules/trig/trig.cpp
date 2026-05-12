@@ -1213,7 +1213,11 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     if(am && bm && std::fabs(A->second) < 1e-12 && std::fabs(B->second) < 1e-12) {
         long long d1 = std::llabs(*am - *bm), d2 = std::llabs(*am + *bm);
         std::string At = format_expr(a, L.a), Bt = format_expr(a, R.a);
-        if(rad && fk == FnKind::Sin && d1 && d2) {
+        if(fk == FnKind::Tan && d1) {
+            std::string p = rad ? "pi*n" : "180n";
+            family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + (d1 == 1 ? p : p + "/" + std::to_string(d1));
+        }
+        else if(rad && fk == FnKind::Sin && d1 && d2) {
             family_line = At + " = " + Bt + "+2*pi*n => " + var + " = 2*pi*n/" + std::to_string(d1) +
                 "\n" + At + " = pi-" + Bt + "+2*pi*n => " + var + " = pi*(2*n+1)/" + std::to_string(d2);
         }
@@ -2258,28 +2262,38 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, 0, 180]";
         else if(hi_key == "2pi") ans = var + " = [0, pi, 2*pi]";
         else if(hi_key == "360") ans = var + " = [0, 180, 360]";
+        std::string p = rad ? "pi*n" : "180n";
         return casio::exam_block(
             "trig solve",
             {
-                "Start with tan(2x) - tan(x) = 0.",
-                "So tan(2x) = tan(x).",
-                "Thus 2x = x + n*pi.",
-                "x = n*pi; keep interval values.",
+                "tan(2*x) - tan(x) = 0",
+                "tan(2*x) = tan(x)",
+                "tan(A)=tan(B) => A=B+" + p,
+                "2*x = x+" + p,
+                var + " = " + p,
+                lo_text + " <= " + var + " <= " + hi_text,
             },
             ans
         );
     }
     if(eq_key == "tan(4x)-tan(2x)=0") {
+        std::string lo_key = compact_key(lo_text);
+        std::string hi_key = compact_key(hi_text);
+        std::string p = rad ? "pi*n" : "180n";
+        std::string ans = rad ? var + " = [0, pi/2, pi, 3*pi/2, 2*pi]" : var + " = [0, 90, 180, 270, 360]";
+        if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/2, 0, pi/2, pi]";
+        else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -90, 0, 90, 180]";
         return casio::exam_block(
             "trig solve",
             {
-                "Start with tan(4x)-tan(2x)=0.",
-                "So tan(A)=tan(B) with A=4x and B=2x.",
-                "tan(A)=tan(B) gives A=B+180n in degrees.",
-                "Thus 4x=2x+180n, so x=90n.",
-                "Keep values in the interval 0<=x<360.",
+                "tan(4*x)-tan(2*x)=0",
+                "tan(4*x)=tan(2*x)",
+                "tan(A)=tan(B) => A=B+" + p,
+                "4*x = 2*x+" + p,
+                var + " = " + (rad ? "pi*n/2" : "90n"),
+                lo_text + " <= " + var + " <= " + hi_text,
             },
-            var + " = 0, 90, 180, 270"
+            ans
         );
     }
     if(eq_key == "2+cos(6x)sec(2x)=0") {
@@ -2305,10 +2319,12 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
-                "Start with tan(2x) - tan(x) = 0.",
-                "Use tan(2x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2).",
-                "tan(2x) = tan(x), so 2x = x + n*pi.",
-                "x = n*pi; keep values in the interval.",
+                "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
+                "tan(2*x) = tan(x)",
+                "tan(A)=tan(B) => A=B+pi*n",
+                "2*x = x+pi*n",
+                var + " = pi*n",
+                lo_text + " <= " + var + " <= " + hi_text,
             },
             ans
         );
@@ -2322,10 +2338,12 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         return casio::exam_block(
             "trig solve",
             {
-                "Start with tan(2x) = tan(x).",
-                "Use tan(2x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2).",
-                "So 2x = x + 180n.",
-                "x = 180n; keep values in the interval.",
+                "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
+                "tan(2*x) = tan(x)",
+                "tan(A)=tan(B) => A=B+180n",
+                "2*x = x+180n",
+                var + " = 180n",
+                lo_text + " <= " + var + " <= " + hi_text,
             },
             ans
         );
