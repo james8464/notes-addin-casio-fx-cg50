@@ -590,6 +590,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "range(csc(x))",
+        ["Domain: sin(x) != 0", "cosec(u)=1/sin(u), 0<|sin(u)|<=1", "Range: y <= -1 or y >= 1"],
+        ["inspect graph/transform", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "domain(cot((x)^2-pi/4)^2+1)",
         ["1 + cot(u)^2 = cosec(u)^2", "= cosec(x^2 - pi/4)^2", "Domain: sin(x^2 - pi/4) != 0"],
         ["Start with cosec", "ERR:", "Unexpected token"],

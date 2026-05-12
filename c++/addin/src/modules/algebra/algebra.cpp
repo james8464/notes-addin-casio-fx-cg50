@@ -4246,7 +4246,8 @@ static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vec
         return std::string("all real y");
     }
     if(x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec) {
-        steps.push_back((x.fkind == FnKind::Sec ? "sec" : "cosec") + std::string("(u) has magnitude at least 1."));
+        if(x.fkind == FnKind::Sec) steps.push_back("sec(u)=1/cos(u), 0<|cos(u)|<=1.");
+        else steps.push_back("cosec(u)=1/sin(u), 0<|sin(u)|<=1.");
         return std::string("y <= -1 or y >= 1");
     }
     return std::nullopt;
