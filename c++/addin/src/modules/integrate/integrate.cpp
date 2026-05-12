@@ -646,8 +646,8 @@ static std::vector<std::string> table_integral_steps(std::string const &expr)
     if(k == "cosec(x)cot(x)") return {"I = Int(cosec(x)cot(x)) dx.", "d/dx(cosec(x)) = -cosec(x)cot(x)."};
     if(k == "tan(x)^2") return {"tan(x)^2 = sec(x)^2 - 1.", "I = Int(sec(x)^2 - 1) dx."};
     if(k == "(3x^2-2x+2)/x") return {"Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x."};
-    if(k == "sin(x)^2") return {"sin(x)^2 = (1-cos(2*x))/2."};
-    if(k == "cos(x)^2") return {"cos(x)^2 = (1+cos(2*x))/2."};
+    if(k == "sin(x)^2") return {"sin(x)^2 = (1-cos(2*x))/2.", "I = 1/2*Int(1-cos(2*x)) dx."};
+    if(k == "cos(x)^2") return {"cos(x)^2 = (1+cos(2*x))/2.", "I = 1/2*Int(1+cos(2*x)) dx."};
     return {"Integrate termwise."};
 }
 

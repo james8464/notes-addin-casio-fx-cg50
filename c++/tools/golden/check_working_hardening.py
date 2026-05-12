@@ -842,6 +842,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "sin(x)^2",
+        ["sin(x)^2 = (1-cos(2*x))/2", "I = 1/2*Int(1-cos(2*x)) dx", "Answer: x/2 - sin(2*x)/4 + C"],
+        ["Done", "ERR:"],
+    ),
+    (
+        "int",
+        "cos(x)^2",
+        ["cos(x)^2 = (1+cos(2*x))/2", "I = 1/2*Int(1+cos(2*x)) dx", "Answer: x/2 + sin(2*x)/4 + C"],
+        ["Done", "ERR:"],
+    ),
+    (
+        "int",
         "sin(x)^6,method=trig",
         ["sin(x)^6", "cos(2u)", "cos(4u)", "cos(6u)", "5/16*x", "- 15/64*sin(2*x)", "Answer:"],
         ["No elementary primitive", "Answer: int(", "ERR:"],

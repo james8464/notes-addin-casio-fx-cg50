@@ -219,6 +219,16 @@ CASES = [
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
     ),
     (
+        "sin square integral line",
+        ["--int", "sin(x)^2"],
+        ("sin(x)^2 = (1-cos(2*x))/2", "I = 1/2*Int(1-cos(2*x)) dx", "x/2 - sin(2*x)/4 + C"),
+    ),
+    (
+        "cos square integral line",
+        ["--int", "cos(x)^2"],
+        ("cos(x)^2 = (1+cos(2*x))/2", "I = 1/2*Int(1+cos(2*x)) dx", "x/2 + sin(2*x)/4 + C"),
+    ),
+    (
         "tan square plus one integral line",
         ["--int", "tan(x)^2+1"],
         ("tan(u)^2 + 1 = sec(u)^2", "integrand = sec(x)^2", "I = Int(sec(x)^2) dx", "tan(x) + C"),
