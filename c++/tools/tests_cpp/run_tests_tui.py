@@ -22,7 +22,7 @@ import threading
 import subprocess
 import sys
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 try:
@@ -3161,6 +3161,14 @@ class CASIOApp(App):
         return self.adversarial_report_store
 
     def make_adversarial_case(self, adv_case, index):
+        seed = sum((i + 1) * ord(ch) for i, ch in enumerate(adv_case.input_text)) + index * 9973
+        command_expr = self.fuzz_host_command_expr(adv_case.command_expr, random.Random(seed), "chaos")
+        if command_expr != adv_case.command_expr:
+            try:
+                adv_case = replace(adv_case, command_expr=command_expr)
+            except Exception:
+                adv_case.command_expr = command_expr
+
         def runner():
             out, err = self.run_host_feature(adv_case.command_flag, adv_case.command_expr)
             combined = out if not err else out + "\n" + err
@@ -5394,6 +5402,31 @@ class CASIOApp(App):
                     pieces.append(part)
                 return "".join(pieces)
         return self.fuzz_atom_format(line, rng, difficulty)
+
+    def fuzz_host_command_expr(self, expr, rng, difficulty):
+        parts = split_top_level_text(expr or "", ",")
+        if len(parts) <= 1:
+            return self.fuzz_atom_format(expr or "", rng, difficulty)
+        out = []
+        for part in parts:
+            s = part.strip()
+            kv = re.match(r"^([A-Za-z_]\w*)\s*=\s*(.+)$", s)
+            if kv and kv.group(1).lower() in ("method", "met", "target", "u"):
+                key = kv.group(1).lower()
+                value = kv.group(2).strip()
+                if key in ("method", "met"):
+                    value = value.lower()
+                out.append(key + rng.choice(["=", " = ", "= ", " ="]) + value)
+            elif re.fullmatch(r"[A-Za-z_]\w*", s):
+                out.append(s)
+            else:
+                out.append(self.fuzz_atom_format(s, rng, difficulty))
+        joined = []
+        for i, part in enumerate(out):
+            if i:
+                joined.append(rng.choice([",", ", ", " , ", " ,"]))
+            joined.append(part)
+        return "".join(joined)
 
     def fuzz_cli_input_format(self, input_text, rng, difficulty):
         lines = (input_text or "").splitlines()
@@ -10340,6 +10373,16 @@ def main():
                 i += 1
                 continue
             if tok == "llm":
+                if i + 1 < len(raw):
+                    llm_cmd = (raw[i + 1] or "").lower().lstrip("/")
+                    if llm_cmd == "status":
+                        app.handle_llm_status()
+                        i += 2
+                        continue
+                    if llm_cmd == "disable":
+                        app.handle_llm_disable()
+                        i += 2
+                        continue
                 if i + 1 < len(raw):
                     app.handle_llm_select("llm " + raw[i + 1])
                     i += 2

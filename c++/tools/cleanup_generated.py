@@ -7,10 +7,17 @@ from pathlib import Path
 
 
 REL_TARGETS = (
-    ".DS_Store",
-    "c++/.DS_Store",
     "c++/tests/reports",
-    "c++/tools/tests_cpp/__pycache__",
+    "c++/tools/fuzz/catalogue_manifest_latest.txt",
+    "c++/tools/fuzz/random_exploration_graph.json",
+    "c++/tools/fuzz/tui_failures.jsonl",
+)
+
+GLOB_TARGETS = (
+    "**/.DS_Store",
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/*.pyo",
 )
 
 
@@ -18,7 +25,7 @@ def _children_or_self(path: Path) -> list[Path]:
     if not path.exists():
         return []
     if path.is_dir() and path.name == "reports":
-        return sorted(path.iterdir()) + [path]
+        return sorted(path.rglob("*")) + [path]
     return [path]
 
 
@@ -27,6 +34,10 @@ def cleanup(root: Path, dry_run: bool = True) -> list[Path]:
     targets: list[Path] = []
     for rel in REL_TARGETS:
         targets.extend(_children_or_self(root / rel))
+    for pattern in GLOB_TARGETS:
+        for path in root.glob(pattern):
+            if ".git" not in path.parts:
+                targets.append(path)
 
     found = sorted({p for p in targets if p.exists()}, key=lambda p: p.as_posix())
     if dry_run:

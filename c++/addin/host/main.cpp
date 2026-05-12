@@ -51,6 +51,12 @@ static std::string trim(std::string s)
     return s;
 }
 
+static std::string lower_ascii(std::string s)
+{
+    for(char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
 static std::vector<std::string> split_top_csv(std::string const &s)
 {
     std::vector<std::string> out;
@@ -72,9 +78,23 @@ static std::vector<std::string> split_top_csv(std::string const &s)
 static bool key_arg(std::string const &arg, std::string const &key, std::string &value)
 {
     std::string t = trim(arg);
-    if(t.rfind(key + "=", 0) != 0) return false;
-    value = trim(t.substr(key.size() + 1));
+    auto eq = t.find('=');
+    if(eq == std::string::npos) return false;
+    if(lower_ascii(trim(t.substr(0, eq))) != key) return false;
+    value = trim(t.substr(eq + 1));
     return !value.empty();
+}
+
+static std::string unwrap_call(std::string const &text, std::string name)
+{
+    std::string t = trim(text);
+    if(!name.empty() && name.back() == '(') name.pop_back();
+    if(t.size() <= name.size() + 1) return "";
+    if(lower_ascii(t.substr(0, name.size())) != name) return "";
+    std::size_t i = name.size();
+    while(i < t.size() && std::isspace(static_cast<unsigned char>(t[i]))) i++;
+    if(i >= t.size() || t[i] != '(' || t.back() != ')') return "";
+    return t.substr(i + 1, t.size() - i - 2);
 }
 
 static std::string strip_method_args(std::string expr, std::string &method, std::string &u, bool strip_u_arg = false, std::string *target = nullptr)
@@ -82,13 +102,14 @@ static std::string strip_method_args(std::string expr, std::string &method, std:
     method.clear();
     u.clear();
     if(target) target->clear();
+    expr = trim(expr);
     auto parts = split_top_csv(expr);
     if(parts.empty()) return expr;
     std::vector<std::string> kept;
     for(auto const &p : parts) {
         std::string v;
         if(key_arg(p, "method", v) || key_arg(p, "met", v)) {
-            method = v;
+            method = lower_ascii(v);
             continue;
         }
         if(strip_u_arg && key_arg(p, "u", v)) {
@@ -455,10 +476,6 @@ int main(int argc, char **argv)
             if(!print_method_header("alg", method, method_u)) return 1;
             casio::algebra::Request req;
             req.method = method;
-            auto unwrap_call = [](std::string const &text, std::string const &name) -> std::string {
-                if(text.rfind(name, 0) != 0 || text.size() <= name.size() + 1 || text.back() != ')') return "";
-                return text.substr(name.size(), text.size() - name.size() - 1);
-            };
             std::string inner;
             if(!(inner = unwrap_call(expr, "range(")).empty()) {
                 req.mode = 10;
@@ -612,10 +629,6 @@ int main(int argc, char **argv)
         if(is_derive) {
             std::string method, method_u;
             expr = strip_method_args(expr, method, method_u, false);
-            auto unwrap_call = [](std::string const &text, std::string const &name) -> std::string {
-                if(text.rfind(name, 0) != 0 || text.size() <= name.size() + 1 || text.back() != ')') return "";
-                return text.substr(name.size(), text.size() - name.size() - 1);
-            };
             std::string inner;
             if(!(inner = unwrap_call(expr, "diff(")).empty() ||
                !(inner = unwrap_call(expr, "derive(")).empty()) {
@@ -626,7 +639,7 @@ int main(int argc, char **argv)
                     for(auto const &p : parts) {
                         std::string v;
                         if(key_arg(p, "method", v) || key_arg(p, "met", v)) {
-                            inner_method = v;
+                            inner_method = lower_ascii(v);
                             continue;
                         }
                         kept.push_back(p);
