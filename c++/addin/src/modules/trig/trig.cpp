@@ -2628,13 +2628,19 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         if(rad && lo_key == "-pi" && hi_key == "pi") ans = var + " = [-5*pi/8, -pi/8, 3*pi/8, 7*pi/8]";
         if(!rad && hi_key == "180") ans = var + " = [67.5, 157.5]";
         if(!rad && lo_key == "-180" && hi_key == "180") ans = var + " = [-112.5, -22.5, 67.5, 157.5]";
+        std::string u = "2*" + var;
+        std::string period = rad ? "pi*n" : "180n";
         return casio::exam_block(
             "trig solve",
             {
-                "Start with " + eq_text + ".",
-                "Divide by cos(2x) where valid.",
-                "tan(2x) = -1.",
-                "Solve the tan equation and keep interval values.",
+                eq_text,
+                "cos(" + u + ")=0 => sin(" + u + ")+cos(" + u + ")=+/-1 != 0",
+                "sin(" + u + ")/cos(" + u + ")+1=0",
+                "tan(" + u + ")+1=0",
+                "tan(" + u + ")=-1",
+                rad ? u + "=-pi/4+" + period : u + "=-45+" + period,
+                rad ? var + "=-pi/8+pi*n/2" : var + "=-22.5+90n",
+                lo_text + " <= " + var + " <= " + hi_text,
             },
             ans
         );

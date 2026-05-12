@@ -252,6 +252,11 @@ CASES = [
         ("2cos(3x/2)cos(x/2)=0", "cos(3x/2)=0 or cos(x/2)=0", "x=60+120n or x=180+360n", "0 <= x <= 360", "x = [60, 180, 300]"),
     ),
     (
+        "trig sin cos tan reduction",
+        ["--trig", "sin(2*x)+cos(2*x)=0,x,-180,180"],
+        ("cos(2*x)=0 => sin(2*x)+cos(2*x)=+/-1 != 0", "sin(2*x)/cos(2*x)+1=0", "tan(2*x)=-1", "x=-22.5+90n", "x = [-112.5, -22.5, 67.5, 157.5]"),
+    ),
+    (
         "tan same function degree family",
         ["--trig", "tan(2*x)-tan(x)=0,x,-180,180,10,method=identity"],
         ("tan(theta+180n)=tan(theta) => A=B+180n", "cos(A)!=0, cos(B)!=0", "2*x = x+180n", "x = [-180, 0, 180]"),

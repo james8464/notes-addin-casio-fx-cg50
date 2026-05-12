@@ -632,6 +632,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sin(2*x)+cos(2*x)=0,x,-180,180",
+        ["cos(2*x)=0 => sin(2*x)+cos(2*x)=+/-1 != 0", "sin(2*x)/cos(2*x)+1=0", "tan(2*x)=-1", "x=-22.5+90n", "Answer: x = [-112.5, -22.5, 67.5, 157.5]"],
+        ["Divide by cos(2x) where valid", "Solve the tan equation", "ERR:"],
+    ),
+    (
+        "trig",
         "cos(2*x)+2*cos(x)=1,x,0,360",
         ["u=cos(x)", "cos(2*x)=2u^2-1", "2u^2 + 2u - 2 = 0", "Reject u"],
         ["x = []", "ERR:"],
