@@ -6315,7 +6315,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
 
         if(!is_zero(rp.num.a2) && is_zero(rp.den.a1) && is_zero(rp.den.a2)) {
-            out.push_back("2. Move all terms: " + format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+            std::string poly_txt = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            out.push_back("2. LHS - RHS = " + poly_txt);
+            out.push_back("2. Move all terms: " + poly_txt + " = 0");
             if(auto roots = rational_quadratic_roots(rp.num)) {
                 Rational h = r_div(rp.num.a1, r_mul(Rational{2, 1}, rp.num.a2));
                 Rational k = r_sub(rp.num.a0, r_div(r_mul(rp.num.a1, rp.num.a1), r_mul(Rational{4, 1}, rp.num.a2)));
@@ -6326,6 +6328,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     std::string root_text = format_expr(arena, casio::num(arena, rn, rd));
                     out.push_back("(" + format_expr(arena, shifted) + ")^2 = " + format_expr(arena, casio::num(arena, rhs_sq.num, rhs_sq.den)));
                     out.push_back(format_expr(arena, shifted) + " = +/-" + root_text);
+                    out.push_back(format_expr(arena, shifted) + " = " + root_text + " or " + format_expr(arena, shifted) + " = -" + root_text);
+                    auto sols = solve_poly2(arena, rp.num, solve_var);
+                    sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+                    append_answer(out, solve_var, sols);
+                    append_numeric_3dp(arena, out, solve_var, sols);
+                    return out;
                 }
                 std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
                 out.push_back("3. Factor: " + factored + " = 0");
