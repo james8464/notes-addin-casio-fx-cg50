@@ -613,6 +613,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "alg",
+        "2*x^2+3*x-2=0,method=complete_square",
+        ["divide by a: x^2 + 3/2*x - 1 = 0", "h = b/(2a) = 3/4", "add h^2 = 9/16", "(x + 3/4)^2 = 25/16", "Answer: x = [1/2, -2]"],
+        ["quadratic formula", "ERR:", "Unexpected token"],
+    ),
+    (
         "derive",
         "mode:3,exp(t)*cos(t),exp(t)*sin(t),t",
         ["dy/dx = e^t(sin(t)+cos(t))/[e^t(cos(t)-sin(t))]", "Cancel e^t"],

@@ -6940,10 +6940,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             Rational a = rp.num.a2;
             Rational b = rp.num.a1;
             Rational c = rp.num.a0;
+            Rational ba = r_div(b, a);
+            Rational ca = r_div(c, a);
             Rational h = r_div(b, r_mul(Rational{2, 1}, a));
+            Rational h2 = r_mul(h, h);
             Rational k = r_sub(c, r_div(r_mul(b, b), r_mul(Rational{4, 1}, a)));
             NodeId x = casio::sym(arena, solve_var);
+            NodeId ca_node = casio::num(arena, ca.num, ca.den);
             NodeId hnode = casio::num(arena, h.num, h.den);
+            NodeId h2_node = casio::num(arena, h2.num, h2.den);
             NodeId knode = casio::num(arena, k.num, k.den);
             NodeId anode = casio::num(arena, a.num, a.den);
             NodeId square_form = casio::simplify(
@@ -6957,6 +6962,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 )
             );
             out.push_back(format_expr(arena, rearr) + " = 0");
+            out.push_back("a = " + format_expr(arena, anode) + ", b = " + format_expr(arena, casio::num(arena, b.num, b.den)) + ", c = " + format_expr(arena, casio::num(arena, c.num, c.den)));
+            out.push_back("divide by a: " + format_expr(arena, poly2_to_node(arena, Poly2{Rational{1, 1}, ba, ca, true}, solve_var)) + " = 0");
+            out.push_back(format_expr(arena, poly2_to_node(arena, Poly2{Rational{1, 1}, ba, Rational{0, 1}, true}, solve_var)) + " = " + format_expr(arena, casio::neg(arena, ca_node)));
+            out.push_back("h = b/(2a) = " + format_expr(arena, hnode));
+            out.push_back("add h^2 = " + format_expr(arena, h2_node));
+            out.push_back(format_expr(arena, poly2_to_node(arena, Poly2{Rational{1, 1}, ba, h2, true}, solve_var)) + " = " + format_expr(arena, casio::add(arena, {casio::neg(arena, ca_node), h2_node})));
             out.push_back(format_expr(arena, square_form) + " = 0");
             Rational rhs = r_div(r_neg(k), a);
             NodeId rhs_node = casio::num(arena, rhs.num, rhs.den);
