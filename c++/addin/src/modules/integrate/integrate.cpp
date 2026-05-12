@@ -6749,7 +6749,9 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         std::string top_txt = format_expr_human(a, poly_to_node(a, top, var));
         steps.push_back("Step 2: PF: A/(" + lin_txt + ")+(B" + var + "+C)/(" + quad_txt + ").");
         steps.push_back("Step 3: " + format_expr_human(a, x.a) + "=A*(" + quad_txt + ")+(B*" + var + "+C)*(" + lin_txt + ").");
-        steps.push_back("coeffs: " + plus(ct(q2, "A"), "B") + "=" + rat_text(n2) + ", " + mid + "=" + rat_text(n1) + ", " + last + "=" + rat_text(n0));
+        steps.push_back("coeff x^2: " + plus(ct(q2, "A"), "B") + "=" + rat_text(n2));
+        steps.push_back("coeff x: " + mid + "=" + rat_text(n1));
+        steps.push_back("coeff 1: " + last + "=" + rat_text(n0));
         steps.push_back("B=" + lin(n2, r_neg(q2), "A"));
         steps.push_back("C=" + lin(c0, cA, "A"));
         steps.push_back(linm(eA, "A", e0) + "=" + rat_text(n0));

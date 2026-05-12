@@ -56,7 +56,12 @@ CASES = [
     (
         "sin same fn family",
         ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
-        ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = pi*(2*n+1)/13", "x = ["),
+        ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = (pi+2*pi*n)/13", "x = ["),
+    ),
+    (
+        "sin same fn degree branches",
+        ["--trig", "sin(2*x)-sin(x)=0,x,0,360"],
+        ("A = 2*x, B = x", "2*x = x+360n => x = 360n", "2*x = 180-x+360n => x = (180+360n)/3", "x = [0, 60, 180, 300, 360]"),
     ),
     (
         "nested surd rewrite",
@@ -152,7 +157,7 @@ CASES = [
     (
         "pf coefficient equations",
         ["--int", "(5*x+7)/((x-1)*(x^2+2)),method=pf"],
-        ("A/(x - 1)+(Bx+C)/(x^2 + 2)", "coeffs: A+B=0, -B+C=5, 2*A-C=7", "B=-A", "C=5-A", "3*A-5=7", "3*A=12", "A=4, B=-4, C=1", "PF = 4/(x - 1)+(- 4*x + 1)/(x^2 + 2)", "I = 4*Int(1/(x - 1)) dx + Int((- 4*x + 1)/(x^2 + 2)) dx"),
+        ("A/(x - 1)+(Bx+C)/(x^2 + 2)", "coeff x^2: A+B=0", "coeff x: -B+C=5", "coeff 1: 2*A-C=7", "B=-A", "C=5-A", "3*A-5=7", "3*A=12", "A=4, B=-4, C=1", "PF = 4/(x - 1)+(- 4*x + 1)/(x^2 + 2)", "I = 4*Int(1/(x - 1)) dx + Int((- 4*x + 1)/(x^2 + 2)) dx"),
     ),
     (
         "invalid derive no fake working",

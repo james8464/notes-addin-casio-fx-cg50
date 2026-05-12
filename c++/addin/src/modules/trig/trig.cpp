@@ -1213,13 +1213,23 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     if(am && bm && std::fabs(A->second) < 1e-12 && std::fabs(B->second) < 1e-12) {
         long long d1 = std::llabs(*am - *bm), d2 = std::llabs(*am + *bm);
         std::string At = format_expr(a, L.a), Bt = format_expr(a, R.a);
+        auto div_text = [](std::string const &num, long long den) {
+            return den == 1 ? num : num + "/" + std::to_string(den);
+        };
         if(fk == FnKind::Tan && d1) {
             std::string p = rad ? "pi*n" : "180n";
-            family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + (d1 == 1 ? p : p + "/" + std::to_string(d1));
+            family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + div_text(p, d1);
         }
-        else if(rad && fk == FnKind::Sin && d1 && d2) {
-            family_line = At + " = " + Bt + "+2*pi*n => " + var + " = 2*pi*n/" + std::to_string(d1) +
-                "\n" + At + " = pi-" + Bt + "+2*pi*n => " + var + " = pi*(2*n+1)/" + std::to_string(d2);
+        else if(fk == FnKind::Sin && d1 && d2) {
+            std::string p = rad ? "2*pi*n" : "360n";
+            std::string h = rad ? "pi" : "180";
+            family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + div_text(p, d1) +
+                "\n" + At + " = " + h + "-" + Bt + "+" + p + " => " + var + " = " + div_text("(" + h + "+" + p + ")", d2);
+        }
+        else if(fk == FnKind::Cos && d1 && d2) {
+            std::string p = rad ? "2*pi*n" : "360n";
+            family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + div_text(p, d1) +
+                "\n" + At + " = -" + Bt + "+" + p + " => " + var + " = " + div_text(p, d2);
         }
     }
     return casio::exam_block(
