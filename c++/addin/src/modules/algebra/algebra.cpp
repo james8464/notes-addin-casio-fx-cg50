@@ -3130,6 +3130,26 @@ static void append_denominator_domain_roots(Arena &a,
     out.push_back(line);
 }
 
+static std::string all_real_except_roots_line(Arena &a, std::string const &var, Poly2 const &den)
+{
+    std::vector<std::string> bad;
+    for(auto const &s : solve_poly2(a, den, var)) {
+        std::string rhs = sol_rhs(s);
+        if(rhs.find("No solution") != std::string::npos || rhs.find("Infinite") != std::string::npos) continue;
+        if(rhs.find('i') != std::string::npos) continue;
+        bad.push_back(var + " = " + rhs);
+    }
+    std::sort(bad.begin(), bad.end(), [&](std::string const &u, std::string const &v) {
+        auto a0 = solution_line_value(a, u);
+        auto b0 = solution_line_value(a, v);
+        if(a0 && b0) return *a0 < *b0;
+        return sol_rhs(u) < sol_rhs(v);
+    });
+    std::string line = var + " in R";
+    for(auto const &s : bad) line += ", " + var + " != " + sol_rhs(s);
+    return line;
+}
+
 static bool zero_poly2(Poly2 const &p)
 {
     return p.ok && is_zero(p.a2) && is_zero(p.a1) && is_zero(p.a0);
@@ -3233,8 +3253,14 @@ static bool append_common_den_rational_route(Arena &a,
         if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return false;
 
         std::string den_txt = format_expr(a, den_node);
+        std::string f0_den = format_expr(a, f0.b);
+        std::string f1_den = format_expr(a, f1.b);
         append_denominator_domain_roots(a, out, var, *den_poly);
+        push_unique(out, den_txt + " = (" + f0_den + ")*(" + f1_den + ")");
         out.push_back("Multiply by " + den_txt);
+        push_unique(out, "(" + den_txt + ")/(" + f0_den + ") = " + f1_den);
+        push_unique(out, "(" + den_txt + ")/(" + f1_den + ") = " + f0_den);
+        if(!is_one_num(a, frac.b)) push_unique(out, "(" + den_txt + ")/(" + format_expr(a, frac.b) + ") = " + format_expr(a, scale_node));
         out.push_back("(" + den_txt + ")*(" + format_expr(a, lhs) + ") = (" + den_txt + ")*(" + format_expr(a, rhs) + ")");
         if(auto clear = reciprocal_pair_clear_line(a, sum_side, frac_side, den_node, den_txt, cleared_rhs)) out.push_back(*clear);
         std::string simplified = format_expr(a, cleared_lhs) + " = " + format_expr(a, cleared_rhs);
@@ -3243,7 +3269,7 @@ static bool append_common_den_rational_route(Arena &a,
         std::string num_txt = format_expr(a, poly2_to_node(a, rp.num, var));
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
             out.push_back("expand => " + num_txt + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
-            out.push_back(is_zero(rp.num.a0) ? var + " = all real values in domain" : var + " = []");
+            out.push_back(is_zero(rp.num.a0) ? all_real_except_roots_line(a, var, *den_poly) : var + " = []");
             return true;
         }
         out.push_back("expand => " + num_txt + " = 0");

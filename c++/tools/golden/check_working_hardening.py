@@ -741,8 +741,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "1/(x+8)+1/(x-8)=2*x/(x^2-64),method=auto",
-        ["Domain: x != -8", "x != 8", "Multiply by x^2 - 64", "(x - 8) + (x + 8) = 2*x", "expand => 0 = 0", "x = all real values in domain"],
-        ["LHS-RHS = 0", "x = all real\n"],
+        ["Domain: x != -8", "x != 8", "x^2 - 64 = (x + 8)*(x - 8)", "(x^2 - 64)/(x + 8) = x - 8", "(x^2 - 64)/(x^2 - 64) = 1", "(x - 8) + (x + 8) = 2*x", "expand => 0 = 0", "x in R, x != -8, x != 8"],
+        ["LHS-RHS = 0", "x = all real\n", "x = all real values in domain"],
     ),
     (
         "alg",

@@ -5895,7 +5895,12 @@ class CASIOApp(App):
                     return False
                 if any(item in text for item in _DEFAULT_FORBIDDEN_SNIPPETS):
                     return False
-                return "answer:" in text or "x = all real" in text or "all real values in domain" in text
+                return (
+                    "answer:" in text
+                    or f"{var} = all real" in text
+                    or "all real values in domain" in text
+                    or f"{var} in r" in text
+                )
             if "no sol" in text or "no solution" in text or "no real solution" in text:
                 if _has_non_exam_quality_output(text):
                     return False
