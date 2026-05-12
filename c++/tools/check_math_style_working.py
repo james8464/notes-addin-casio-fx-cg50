@@ -107,6 +107,11 @@ CASES = [
         ("Domain: x != -2", "x != 1", "(x + 2) + (x - 1) = x^2 + x - 2", "expand => - x^2 + x + 3 = 0", "x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"),
     ),
     (
+        "rational identity common denominator",
+        ["--alg", "1/(x+8)+1/(x-8)=2*x/(x^2-64),method=auto"],
+        ("Domain: x != -8", "x != 8", "Multiply by x^2 - 64", "(x - 8) + (x + 8) = 2*x", "expand => 0 = 0", "x = all real values in domain"),
+    ),
+    (
         "absolute linear branch equations",
         ["--alg", "abs(2*x+1)=2,method=auto"],
         ("abs(2*x + 1) = 2", "2*x + 1 = 2 => x = 1/2", "2*x + 1 = -2 => x = -3/2", "x = [-3/2, 1/2]"),

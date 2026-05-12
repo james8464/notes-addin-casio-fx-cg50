@@ -3051,6 +3051,28 @@ static void append_denominator_domain_roots(Arena &a,
     out.push_back(line);
 }
 
+static bool zero_poly2(Poly2 const &p)
+{
+    return p.ok && is_zero(p.a2) && is_zero(p.a1) && is_zero(p.a0);
+}
+
+static bool proportional_poly2(Poly2 const &p, Poly2 const &q)
+{
+    if(!p.ok || !q.ok || zero_poly2(p) || zero_poly2(q)) return false;
+    return is_zero(r_sub(r_mul(p.a2, q.a1), r_mul(q.a2, p.a1))) &&
+           is_zero(r_sub(r_mul(p.a2, q.a0), r_mul(q.a2, p.a0))) &&
+           is_zero(r_sub(r_mul(p.a1, q.a0), r_mul(q.a1, p.a0)));
+}
+
+static std::optional<Rational> proportional_scale_poly2(Poly2 const &p, Poly2 const &q)
+{
+    if(!proportional_poly2(p, q)) return std::nullopt;
+    if(!is_zero(q.a2)) return r_div(p.a2, q.a2);
+    if(!is_zero(q.a1)) return r_div(p.a1, q.a1);
+    if(!is_zero(q.a0)) return r_div(p.a0, q.a0);
+    return std::nullopt;
+}
+
 static bool is_one_num(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -3064,17 +3086,101 @@ static std::string reciprocal_clear_term(Arena &a, NodeId num, NodeId other_den)
     return format_expr(a, num) + "*(" + den + ")";
 }
 
-static std::optional<std::string> reciprocal_pair_clear_line(Arena &a, NodeId lhs, NodeId rhs, std::string const &den_txt)
+static std::optional<std::string> reciprocal_pair_clear_line(Arena &a,
+                                                             NodeId lhs,
+                                                             NodeId rhs,
+                                                             NodeId den_node,
+                                                             std::string const &den_txt,
+                                                             std::optional<NodeId> right_override = std::nullopt)
 {
     Node const &l = a.get(lhs);
     Node const &r = a.get(rhs);
-    if(l.kind != NodeKind::Add || l.kids.size() != 2 || r.kind != NodeKind::Num) return std::nullopt;
+    if(l.kind != NodeKind::Add || l.kids.size() != 2) return std::nullopt;
     Node const &f0 = a.get(l.kids[0]);
     Node const &f1 = a.get(l.kids[1]);
     if(f0.kind != NodeKind::Div || f1.kind != NodeKind::Div) return std::nullopt;
     std::string left = reciprocal_clear_term(a, f0.a, f1.b) + " + " + reciprocal_clear_term(a, f1.a, f0.b);
-    std::string right = is_one_num(a, rhs) ? den_txt : format_expr(a, rhs) + "*(" + den_txt + ")";
+    std::string right;
+    if(right_override) {
+        right = format_expr(a, *right_override);
+    }
+    else if(r.kind == NodeKind::Num) {
+        right = is_one_num(a, rhs) ? den_txt : format_expr(a, rhs) + "*(" + den_txt + ")";
+    }
+    else if(r.kind == NodeKind::Div) {
+        NodeId cleared = casio::simplify(a, casio::div(a, casio::mul(a, {r.a, den_node}), r.b));
+        right = format_expr(a, cleared);
+    }
+    else {
+        NodeId cleared = casio::simplify(a, casio::mul(a, {rhs, den_node}));
+        right = format_expr(a, cleared);
+    }
     return left + " = " + right;
+}
+
+static bool append_common_den_rational_route(Arena &a,
+                                             std::vector<std::string> &out,
+                                             NodeId lhs,
+                                             NodeId rhs,
+                                             NodeId rearr,
+                                             std::string const &var,
+                                             std::optional<double> lo,
+                                             std::optional<double> hi)
+{
+    auto try_route = [&](NodeId sum_side, NodeId frac_side) -> bool {
+        Node const &sum = a.get(sum_side);
+        Node const &frac = a.get(frac_side);
+        if(sum.kind != NodeKind::Add || sum.kids.size() != 2 || frac.kind != NodeKind::Div) return false;
+        Node const &f0 = a.get(sum.kids[0]);
+        Node const &f1 = a.get(sum.kids[1]);
+        if(f0.kind != NodeKind::Div || f1.kind != NodeKind::Div) return false;
+
+        NodeId raw_den_node = casio::simplify(a, casio::mul(a, {f0.b, f1.b}));
+        auto den_poly = poly_of(a, raw_den_node, var);
+        auto frac_den_poly = poly_of(a, frac.b, var);
+        if(!den_poly || !frac_den_poly) return false;
+        auto rhs_scale = proportional_scale_poly2(*den_poly, *frac_den_poly);
+        if(!rhs_scale) return false;
+        NodeId den_node = poly2_to_node(a, *den_poly, var);
+
+        NodeId cleared_lhs = casio::simplify(a, casio::add(a, {
+            casio::mul(a, {f0.a, f1.b}),
+            casio::mul(a, {f1.a, f0.b}),
+        }));
+        NodeId scale_node = casio::num(a, rhs_scale->num, rhs_scale->den);
+        NodeId cleared_rhs = casio::simplify(a, casio::mul(a, {scale_node, frac.a}));
+        NodeId residual = casio::simplify(a, casio::add(a, {cleared_lhs, casio::neg(a, cleared_rhs)}));
+        auto rp = ratpoly_of_node(a, residual, var);
+        if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return false;
+
+        std::string den_txt = format_expr(a, den_node);
+        append_denominator_domain_roots(a, out, var, *den_poly);
+        out.push_back("Multiply by " + den_txt);
+        out.push_back("(" + den_txt + ")*(" + format_expr(a, lhs) + ") = (" + den_txt + ")*(" + format_expr(a, rhs) + ")");
+        if(auto clear = reciprocal_pair_clear_line(a, sum_side, frac_side, den_node, den_txt, cleared_rhs)) out.push_back(*clear);
+        std::string simplified = format_expr(a, cleared_lhs) + " = " + format_expr(a, cleared_rhs);
+        if(out.empty() || out.back() != simplified) out.push_back(simplified);
+
+        std::string num_txt = format_expr(a, poly2_to_node(a, rp.num, var));
+        if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
+            out.push_back("expand => " + num_txt + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
+            out.push_back(is_zero(rp.num.a0) ? var + " = all real values in domain" : var + " = []");
+            return true;
+        }
+        out.push_back("expand => " + num_txt + " = 0");
+        auto raw = solve_poly2(a, rp.num, var);
+        auto sols = filter_real_solutions(a, rearr, var, raw, lo, hi);
+        if(sols.empty()) {
+            append_rejected_by_domain(out, var, raw, sols);
+            out.push_back(lo && hi ? "No solution in interval." : "No solution.");
+            out.push_back(var + " = []");
+            return true;
+        }
+        append_answer(out, var, sols);
+        append_numeric_3dp(a, out, var, sols);
+        return true;
+    };
+    return try_route(lhs, rhs) || try_route(rhs, lhs);
 }
 
 static std::optional<Poly2> linear_factor_quotient(Poly2 const &num, Poly2 const &den)
@@ -6580,6 +6686,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), bq->begin(), bq->end());
             return out;
         }
+        if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
@@ -6610,6 +6717,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
             if(append_expanded_constant_compare(arena, out, lhs, rhs, solve_var)) return out;
             std::string c0 = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
+                NodeId den_node = poly2_to_node(arena, rp.den, solve_var);
+                std::string den_txt = format_expr(arena, den_node);
+                append_denominator_domain_roots(arena, out, solve_var, rp.den);
+                out.push_back("Multiply by " + den_txt);
+                out.push_back("(" + den_txt + ")*(" + format_expr(arena, lhs) + ") = (" + den_txt + ")*(" + format_expr(arena, rhs) + ")");
+                if(auto clear = reciprocal_pair_clear_line(arena, lhs, rhs, den_node, den_txt)) out.push_back(*clear);
+                out.push_back("expand => " + c0 + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
+                out.push_back(is_zero(rp.num.a0) ? solve_var + " = all real values in domain" : solve_var + " = []");
+                return out;
+            }
             out.push_back("LHS - RHS = " + c0);
             out.push_back(c0 + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
             out.push_back(is_zero(rp.num.a0) ? solve_var + " = all real" : "Answer: " + solve_var + " = []");
@@ -6776,7 +6894,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             append_denominator_domain_roots(arena, out, solve_var, rp.den);
             out.push_back("3. Multiply by " + den_txt + ".");
             out.push_back("(" + den_txt + ")*(" + format_expr(arena, lhs) + ") = (" + den_txt + ")*(" + format_expr(arena, rhs) + ")");
-            if(auto clear = reciprocal_pair_clear_line(arena, lhs, rhs, den_txt)) out.push_back(*clear);
+            if(auto clear = reciprocal_pair_clear_line(arena, lhs, rhs, poly2_to_node(arena, rp.den, solve_var), den_txt)) out.push_back(*clear);
             out.push_back("expand => " + num_txt + " = 0");
             if(!is_zero(rp.num.a2)) {
                 out.push_back("a = " + format_expr(arena, casio::num(arena, rp.num.a2.num, rp.num.a2.den)) +
