@@ -40,6 +40,17 @@ CASES = [
         ("F_x", "F_y", "-F_x/F_y"),
     ),
     (
+        "implicit generic substitution",
+        ["--derive", "sin(x*y)+x^2=y^2,x,method=implicit"],
+        ("F_x + F_y*dy/dx = 0", "(cos(x*y)*y + 2*x) + (cos(x*y)*x - 2*y)*dy/dx = 0", "(cos(x*y)*x - 2*y)*dy/dx = -(cos(x*y)*y + 2*x)", "dy/dx = -(cos(x*y)*y + 2*x)/(cos(x*y)*x - 2*y)", "dy/dx = (y*cos(x*y) + 2*x)/(2*y - x*cos(x*y))"),
+    ),
+    (
+        "implicit rational clears denominators",
+        ["--derive", "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit"],
+        ("Domain: denoms !=0", "y + 2*x - x^2*(2*x + 1)*(y + 1) + 2 = 0", "d/dx(LHS) = d/dx(RHS)", "collect dy/dx", "dy/dx = (2*x*(2*x + 1)*(y + 1) + 2*x^2*(y + 1) - 2)/(- x^2*(2*x + 1) + 1)"),
+        ("F_x", "F_y", "-F_x/F_y"),
+    ),
+    (
         "param generic",
         ["--derive", "x=3+2*cos(theta),y=-3+2*sin(theta),theta,x,method=param"],
         ("dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = (2*cos(theta))/(-2*sin(theta))"),

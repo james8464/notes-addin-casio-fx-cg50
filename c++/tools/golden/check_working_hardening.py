@@ -128,6 +128,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "derive",
+        "sin(x*y)+x^2=y^2,x,method=implicit",
+        ["F_x + F_y*dy/dx = 0", "(cos(x*y)*y + 2*x) + (cos(x*y)*x - 2*y)*dy/dx = 0", "(cos(x*y)*x - 2*y)*dy/dx = -(cos(x*y)*y + 2*x)", "dy/dx = -(cos(x*y)*y + 2*x)/(cos(x*y)*x - 2*y)", "dy/dx = (y*cos(x*y) + 2*x)/(2*y - x*cos(x*y))"],
+        ["dy/dx = -F_x/F_y", "Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
         "arccos(cos(2*x+pi/6)),x,method=auto",
         ["u = cos(2*x + pi/6)", "du/dx = -2*sin(2*x + pi/6)", "dy/dx = -du/dx/sqrt(1-u^2)"],
         ["Use quotient rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
@@ -363,8 +369,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
-        ["* (2*x + 1)*(y + 1)", "F_x", "F_y", "dy/dx"],
-        ["Domain: log args >0", "ERR:"],
+        ["Domain: denoms !=0", "y + 2*x - x^2*(2*x + 1)*(y + 1) + 2 = 0", "d/dx(LHS) = d/dx(RHS)", "collect dy/dx", "dy/dx = (2*x*(2*x + 1)*(y + 1) + 2*x^2*(y + 1) - 2)/(- x^2*(2*x + 1) + 1)"],
+        ["Domain: log args >0", "F_x", "F_y", "ERR:"],
     ),
     (
         "int",
