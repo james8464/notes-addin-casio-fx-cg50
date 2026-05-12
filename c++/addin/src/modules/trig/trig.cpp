@@ -1250,7 +1250,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
         family_line
     );
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text);
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs));
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -1294,7 +1294,9 @@ static std::optional<std::vector<std::string>> solve_same_fn_residual(
     if(!(f0.fkind == FnKind::Sin || f0.fkind == FnKind::Cos || f0.fkind == FnKind::Tan)) return std::nullopt;
     NodeId lhs = a0->sign > 0 ? a0->fn : a1->fn;
     NodeId rhs = a0->sign > 0 ? a1->fn : a0->fn;
-    return solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad);
+    auto out = solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad);
+    if(out) out->insert(out->begin(), format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    return out;
 }
 
 struct CosQuadratic {
