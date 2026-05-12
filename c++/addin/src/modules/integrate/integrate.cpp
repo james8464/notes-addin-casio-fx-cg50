@@ -241,6 +241,18 @@ static NodeId divide_by_coeff(Arena &a, NodeId n, Rational coeff)
     return casio::simplify(a, casio::div(a, n, a.num(coeff)));
 }
 
+static void add_linear_sub_steps(Arena &a, std::vector<std::string> &steps, NodeId u, Rational coeff,
+                                 std::string const &var, char const *body, char const *primitive)
+{
+    std::string us = format_expr_human(a, u);
+    std::string cs = format_expr_human(a, a.num(coeff));
+    steps.push_back("u=" + us + ".");
+    steps.push_back("du/d" + var + "=" + cs + ".");
+    steps.push_back("dx=du/(" + cs + ").");
+    steps.push_back("I=1/(" + cs + ")*Int(" + std::string(body) + ") du.");
+    steps.push_back("Int(" + std::string(body) + ") du=" + std::string(primitive) + ".");
+}
+
 // Main integration result with steps
 struct IntegrateResult
 {
@@ -7895,17 +7907,17 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         if(coeff && !r_zero(*coeff)) {
             if(x.fkind == FnKind::Sin) {
                 out.result = divide_by_coeff(a, casio::neg(a, casio::fn(a, "cos", x.a)), *coeff);
-                out.steps.push_back("Step 2: Use reverse chain sine rule.");
+                add_linear_sub_steps(a, out.steps, x.a, *coeff, var, "sin(u)", "-cos(u)");
                 return out;
             }
             if(x.fkind == FnKind::Cos) {
                 out.result = divide_by_coeff(a, casio::fn(a, "sin", x.a), *coeff);
-                out.steps.push_back("Step 2: Use reverse chain cosine rule.");
+                add_linear_sub_steps(a, out.steps, x.a, *coeff, var, "cos(u)", "sin(u)");
                 return out;
             }
             if(x.fkind == FnKind::Exp) {
                 out.result = divide_by_coeff(a, expr, *coeff);
-                out.steps.push_back("Step 2: Use reverse chain exponential rule.");
+                add_linear_sub_steps(a, out.steps, x.a, *coeff, var, "e^u", "e^u");
                 return out;
             }
         }
@@ -7914,7 +7926,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         auto coeff = linear_coeff(a, x.b, var);
         if(coeff && !r_zero(*coeff)) {
             out.result = divide_by_coeff(a, expr, *coeff);
-            out.steps.push_back("Step 2: Use reverse chain exponential rule.");
+            add_linear_sub_steps(a, out.steps, x.b, *coeff, var, "e^u", "e^u");
             return out;
         }
     }

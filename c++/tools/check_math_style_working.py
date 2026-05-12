@@ -140,6 +140,16 @@ CASES = [
         ("I = Int(sin(x)) dx", "-cos(x) + C"),
     ),
     (
+        "affine exp reverse chain",
+        ["--int", "exp(2*x-3),method=auto"],
+        ("u = 2*x - 3", "du/dx = 2", "dx = du/(2)", "I = 1/(2)*Int(e^u) du", "Int(e^u) du = e^u", "e^(2*x - 3)/2 + C"),
+    ),
+    (
+        "affine trig reverse chain",
+        ["--int", "sin(2*x-3),method=auto"],
+        ("u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(sin(u)) du", "Int(sin(u)) du = -cos(u)", "-cos(2*x - 3)/2 + C"),
+    ),
+    (
         "tan square integral line",
         ["--int", "tan(x)^2"],
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),

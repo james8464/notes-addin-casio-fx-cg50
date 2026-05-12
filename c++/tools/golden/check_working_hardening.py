@@ -217,6 +217,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "exp(2*x-3),method=auto",
+        ["u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(e^u) du", "Int(e^u) du = e^u", "e^(2*x - 3)/2 + C"],
+        ["reverse chain exponential rule", "ERR:"],
+    ),
+    (
+        "int",
+        "sin(2*x-3),method=auto",
+        ["u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(sin(u)) du", "Int(sin(u)) du = -cos(u)", "-cos(2*x - 3)/2 + C"],
+        ["reverse chain sine rule", "ERR:"],
+    ),
+    (
+        "int",
         "1/(x*sqrt(x^2-36)),method=trig",
         ["x=6*sec(t)", "Reference triangle", "I=(1/6)Int(1) dt", "acos(6/x)/6"],
         ["No elementary primitive", "ERR:"],
