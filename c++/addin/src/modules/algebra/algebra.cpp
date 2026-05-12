@@ -4500,9 +4500,26 @@ static std::optional<std::string> x_over_quadratic_range(Arena &a, NodeId n, std
     if(!den || !den->ok || is_zero(den->a2) || !is_zero(den->a1) || den->a0.num <= 0) return std::nullopt;
     if(den->a2.num != 1 || den->a2.den != 1) return std::nullopt;
 
-    std::string root = sqrt_bound_text(a, den->a0);
-    std::string b = root == "1" ? "1/2" : "1/(2*" + root + ")";
-    steps.push_back("For y=x/(x^2+" + format_rat(a, den->a0) + "), max/min occur when x^2=" + format_rat(a, den->a0) + ".");
+    std::string a0 = format_rat(a, den->a0);
+    Rational d0 = den->a0;
+    d0.normalize();
+    std::int64_t rn = 0, rd = 0;
+    std::string b;
+    if(d0.num >= 0 && is_square_i64(d0.num, rn) && is_square_i64(d0.den, rd) && rn != 0) {
+        Rational bound{rd, 2 * rn};
+        bound.normalize();
+        b = format_rat(a, bound);
+    }
+    else {
+        std::string root = sqrt_bound_text(a, den->a0);
+        b = root == "1" ? "1/2" : "1/(2*" + root + ")";
+    }
+    steps.push_back("y = " + var + "/(" + var + "^2 + " + a0 + ").");
+    steps.push_back("y*(" + var + "^2 + " + a0 + ") = " + var + ".");
+    steps.push_back("y*" + var + "^2 - " + var + " + " + (a0 == "1" ? "y" : a0 + "*y") + " = 0.");
+    Rational four_a0 = r_mul(Rational{4, 1}, den->a0);
+    steps.push_back("1 - " + format_rat(a, four_a0) + "*y^2 >= 0.");
+    steps.push_back("y^2 <= " + format_rat(a, r_div(Rational{1, 1}, four_a0)) + ".");
     return "-" + b + " <= y <= " + b;
 }
 

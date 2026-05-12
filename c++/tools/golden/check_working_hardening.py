@@ -633,7 +633,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "range(x/(1+x^2))",
-        ["Range: -1/2 <= y <= 1/2", "Answer: -1/2 <= y <= 1/2"],
+        ["y*(x^2 + 1) = x", "y*x^2 - x + y = 0", "1 - 4*y^2 >= 0", "Range: -1/2 <= y <= 1/2", "Answer: -1/2 <= y <= 1/2"],
         ["inspect graph/transform", "ERR:"],
     ),
     (
