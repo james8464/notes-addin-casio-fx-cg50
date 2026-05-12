@@ -430,6 +430,7 @@ static std::vector<std::string> normal(std::string const &expr)
     long double ans = normal_cdf(z2) - normal_cdf(z1);
     return {
         "X ~ N(" + fmt(mu) + ", " + fmt(sigma) + "^2)",
+        "standardise: Z = (X-" + fmt(mu) + ")/" + fmt(sigma) + " ~ N(0,1)",
         "z1 = (" + fmt(lo) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z1),
         "z2 = (" + fmt(hi) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z2),
         "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(" + fmt(z2) + ") - Phi(" + fmt(z1) + ") = " + fmt(ans),
