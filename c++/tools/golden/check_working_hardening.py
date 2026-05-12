@@ -519,7 +519,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "range(arccos((x-1)/3))",
-        ["Domain: -1 <= (x - 1)/3 <= 1", "Range: 0 <= y <= pi", "Answer: 0 <= y <= pi"],
+        ["Domain: -1 <= (x - 1)/3 <= 1", "acos(A): -1<=A<=1 => 0<=y<=pi", "Range: 0 <= y <= pi", "Answer: 0 <= y <= pi"],
+        ["inspect graph/transform", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "range(atan(tan(2*x+pi/6)))",
+        ["Domain: cos(2*x + pi/6) != 0", "atan(A): A in R => -pi/2<y<pi/2", "Range: -pi/2 < y < pi/2"],
         ["inspect graph/transform", "ERR:", "Unexpected token"],
     ),
     (

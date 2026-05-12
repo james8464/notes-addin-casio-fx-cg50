@@ -6305,14 +6305,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Acos) {
                     range_answer = "0 <= y <= pi";
+                    steps.push_back("acos(A): -1<=A<=1 => 0<=y<=pi.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Asin) {
                     range_answer = "-pi/2 <= y <= pi/2";
+                    steps.push_back("asin(A): -1<=A<=1 => -pi/2<=y<=pi/2.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Atan) {
                     range_answer = "-pi/2 < y < pi/2";
+                    steps.push_back("atan(A): A in R => -pi/2<y<pi/2.");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Sqrt) {
