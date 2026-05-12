@@ -236,7 +236,7 @@ CASES = [
     (
         "reciprocal trig identity before integration",
         ["--int", "(cosec(x)^2-cot(x)^2)*exp(x)"],
-        ("cosec(u)^2 - cot(u)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "e^(x) + C"),
+        ("cosec(x)^2 - cot(x)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "e^(x) + C"),
     ),
     (
         "high even trig power identity",

@@ -729,7 +729,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "(cosec(x)^2-cot(x)^2)*exp(x),method=auto",
-        ["cosec(u)^2 - cot(u)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "Answer: e^(x) + C"],
+        ["cosec(x)^2 - cot(x)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "Answer: e^(x) + C"],
         ["Answer: int", "ERR:"],
     ),
     (

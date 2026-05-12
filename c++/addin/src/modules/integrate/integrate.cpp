@@ -487,8 +487,10 @@ static std::optional<std::string> reciprocal_identity_text(std::string expr)
             auto rhs = square_trig_text(expr.substr(i + 1));
             if(!lhs || !rhs) return std::nullopt;
             if(lhs->second != rhs->second) return std::nullopt;
-            if(lhs->first == "sec" && rhs->first == "tan") return "sec(u)^2 - tan(u)^2 = 1.";
-            if(lhs->first == "cosec" && rhs->first == "cot") return "cosec(u)^2 - cot(u)^2 = 1.";
+            if(lhs->first == "sec" && rhs->first == "tan")
+                return "sec(" + lhs->second + ")^2 - tan(" + lhs->second + ")^2 = 1.";
+            if(lhs->first == "cosec" && rhs->first == "cot")
+                return "cosec(" + lhs->second + ")^2 - cot(" + lhs->second + ")^2 = 1.";
             return std::nullopt;
         }
     }
