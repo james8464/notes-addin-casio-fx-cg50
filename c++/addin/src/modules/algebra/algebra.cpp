@@ -4655,6 +4655,104 @@ static std::optional<std::vector<std::string>> sqrt_difference_linear_route(
     return out;
 }
 
+struct AbsPlusConstEqInfo
+{
+    NodeId abs_node = 0;
+    NodeId abs_arg = 0;
+    Rational c{0, 1};
+};
+
+static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Abs) {
+        auto p = poly_of(a, x.a, var);
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) return AbsPlusConstEqInfo{n, x.a, Rational{0, 1}};
+        return std::nullopt;
+    }
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    AbsPlusConstEqInfo info;
+    bool seen_abs = false;
+    for(auto kid : x.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Abs && !seen_abs) {
+            auto p = poly_of(a, kn.a, var);
+            if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+            info.abs_node = kid;
+            info.abs_arg = kn.a;
+            seen_abs = true;
+        }
+        else if(kn.kind == NodeKind::Num) {
+            info.c = r_add(info.c, kn.num);
+        }
+        else return std::nullopt;
+    }
+    if(!seen_abs) return std::nullopt;
+    return info;
+}
+
+static std::optional<std::vector<std::string>> log_abs_plus_const_zero_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    NodeId log_node = 0;
+    NodeId rhs_node = 0;
+    Node const &l = a.get(lhs);
+    Node const &r = a.get(rhs);
+    if(l.kind == NodeKind::Fn && (l.fkind == FnKind::Log || l.fkind == FnKind::Log10)) {
+        log_node = lhs;
+        rhs_node = rhs;
+    }
+    else if(r.kind == NodeKind::Fn && (r.fkind == FnKind::Log || r.fkind == FnKind::Log10)) {
+        log_node = rhs;
+        rhs_node = lhs;
+    }
+    else return std::nullopt;
+
+    Node const &rv = a.get(rhs_node);
+    if(rv.kind != NodeKind::Num || !is_zero(rv.num)) return std::nullopt;
+    Node const &ln = a.get(log_node);
+    auto info = abs_plus_const_eq_info(a, ln.a, var);
+    if(!info) return std::nullopt;
+
+    std::vector<std::string> out;
+    std::string inner = format_expr(a, ln.a);
+    std::string abs_text = format_expr(a, info->abs_node);
+    std::string base = ln.fkind == FnKind::Log10 ? "10" : "e";
+    out.push_back(format_expr(a, log_node) + " = 0");
+    out.push_back("Domain: " + inner + " > 0");
+    out.push_back(inner + " = " + base + "^0");
+    out.push_back(inner + " = 1");
+    Rational abs_rhs = r_sub(Rational{1, 1}, info->c);
+    std::string abs_rhs_text = format_expr(a, a.num(abs_rhs));
+    out.push_back(abs_text + " = " + abs_rhs_text);
+    if(abs_rhs.num < 0) {
+        out.push_back(abs_text + " >= 0, so " + abs_text + " = " + abs_rhs_text + " is impossible");
+        out.push_back(var + " = []");
+        return out;
+    }
+
+    auto p = poly_of(a, info->abs_arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    std::string arg = format_expr(a, info->abs_arg);
+    if(is_zero(abs_rhs)) out.push_back(arg + " = 0");
+    else out.push_back(arg + " = " + abs_rhs_text + " or " + arg + " = -" + abs_rhs_text);
+    std::vector<Rational> vals{
+        r_div(r_sub(abs_rhs, p->a0), p->a1),
+        r_div(r_sub(r_neg(abs_rhs), p->a0), p->a1)
+    };
+    std::sort(vals.begin(), vals.end(), [](Rational a0, Rational b0) { return r_cmp(a0, b0) < 0; });
+    vals.erase(std::unique(vals.begin(), vals.end(), [](Rational a0, Rational b0) { return r_cmp(a0, b0) == 0; }), vals.end());
+    std::vector<std::string> sols;
+    for(Rational v : vals) sols.push_back(var + " = " + format_expr(a, a.num(v)));
+    for(auto const &s : sols) out.push_back(s);
+    out.push_back(solution_list_line(var, sols));
+    return out;
+}
+
 static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out, NodeId rearr, std::string const &var)
 {
     out.push_back("LHS-RHS=0: " + format_expr(a, rearr) + " = 0.");
@@ -6396,6 +6494,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
+            if(auto la = log_abs_plus_const_zero_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;

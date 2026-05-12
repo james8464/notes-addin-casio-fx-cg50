@@ -146,6 +146,12 @@ CASES = [
         ("abs(2*x - 3) + 2 > 0", "abs(2*x - 3) >= 0", "abs(2*x - 3) + 2 >= 2 > 0", "all real x"),
     ),
     (
+        "log abs impossible solve",
+        ["--alg", "ln(abs(x)+2)=0,method=auto"],
+        ("abs(x) + 2 = e^0", "abs(x) + 2 = 1", "abs(x) = -1", "abs(x) >= 0", "x = []"),
+        ("log_b(A)-log_b(B)", "|A| = B =>", "No real solution"),
+    ),
+    (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
         ("u=a^x", "x = [0, 2]"),

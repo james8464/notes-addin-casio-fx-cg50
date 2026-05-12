@@ -103,6 +103,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: abs(2*x - 3) + 2 > 0", "ERR:"],
     ),
     (
+        "alg",
+        "ln(abs(x)+2)=0,method=auto",
+        ["abs(x) + 2 = e^0", "abs(x) + 2 = 1", "abs(x) = -1", "abs(x) >= 0", "x = []"],
+        ["log_b(A)-log_b(B)", "|A| = B =>", "No real solution", "ERR:"],
+    ),
+    (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
         ["(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"],
