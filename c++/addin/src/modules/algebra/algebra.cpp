@@ -6309,8 +6309,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         // Higher degree
         if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
-            out.push_back("3. Multiply by " + format_expr(arena, poly2_to_node(arena, rp.den, solve_var)) + ".");
-            out.push_back(format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+            std::string den_txt = format_expr(arena, poly2_to_node(arena, rp.den, solve_var));
+            std::string num_txt = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            out.push_back("3. Multiply by " + den_txt + ".");
+            out.push_back("(" + den_txt + ")*(" + format_expr(arena, lhs) + ") = (" + den_txt + ")*(" + format_expr(arena, rhs) + ")");
+            out.push_back("expand => " + num_txt + " = 0");
+            if(!is_zero(rp.num.a2)) {
+                out.push_back("a = " + format_expr(arena, casio::num(arena, rp.num.a2.num, rp.num.a2.den)) +
+                    ", b = " + format_expr(arena, casio::num(arena, rp.num.a1.num, rp.num.a1.den)) +
+                    ", c = " + format_expr(arena, casio::num(arena, rp.num.a0.num, rp.num.a0.den)));
+                out.push_back(solve_var + " = (-b +/- sqrt(b^2-4ac))/(2a)");
+            }
         }
         auto candidates = solve_poly2(arena, rp.num, solve_var);
         auto sols = filter_real_solutions(arena, rearr, solve_var, candidates, interval_lo, interval_hi);

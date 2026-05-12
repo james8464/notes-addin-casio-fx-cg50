@@ -74,6 +74,11 @@ CASES = [
         ("Domain: x - 4 != 0", "10 != 4", "x = [10]"),
     ),
     (
+        "rational clear denominator steps",
+        ["--alg", "(x+1)/(x-2)+(x-2)/(x+1)=5,method=pf"],
+        ("Domain: x - 2 != 0", "Domain: x + 1 != 0", "Multiply by x^2 - x - 2", "expand => - 3*x^2 + 3*x + 15 = 0", "x = (-b +/- sqrt(b^2-4ac))/(2a)", "x = [1/2 - sqrt(21)/2, 1/2 + sqrt(21)/2]"),
+    ),
+    (
         "square equation shows plus minus",
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
