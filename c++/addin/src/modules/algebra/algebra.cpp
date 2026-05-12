@@ -3639,6 +3639,44 @@ static std::string sqrt_bound_text(Arena &a, Rational r)
     return format_expr(a, bound);
 }
 
+static bool node_is_zero(Arena &a, NodeId n)
+{
+    NodeId s = casio::simplify(a, n);
+    Node const &x = a.get(s);
+    return x.kind == NodeKind::Num && is_zero(x.num);
+}
+
+static bool append_sqrt_abs_zero_contradiction(
+    Arena &a,
+    std::vector<std::string> &out,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var)
+{
+    NodeId sq = 0;
+    if(node_is_zero(a, rhs)) sq = casio::simplify(a, lhs);
+    else if(node_is_zero(a, lhs)) sq = casio::simplify(a, rhs);
+    else return false;
+
+    Node const &sn = a.get(sq);
+    if(sn.kind != NodeKind::Fn || sn.fkind != FnKind::Sqrt) return false;
+    auto info = sqrt_abs_linear_min_info(a, sq, var);
+    if(!info || r_cmp(info->min, Rational{0, 1}) <= 0) return false;
+
+    if(info->piecewise_sum) {
+        out.push_back(abs_roots_text(a, info->roots));
+        out.push_back("inside sqrt >= " + format_rat(a, info->min));
+    }
+    else {
+        out.push_back(abs_linear_text(a, sn.a, var) + " >= 0");
+        out.push_back(format_expr(a, sn.a) + " >= " + format_rat(a, info->min));
+    }
+    out.push_back(format_expr(a, sq) + " >= " + sqrt_bound_text(a, info->min));
+    out.push_back(format_expr(a, sq) + " != 0");
+    out.push_back(var + " = []");
+    return true;
+}
+
 static std::optional<std::string> log_abs_linear_range(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -5428,6 +5466,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
             auto inv = inverse_simple_function(arena, n);
             if(!inv) {
+                auto rp = ratpoly_of_node(arena, n, "x");
+                if(rp.ok && is_degree_at_most_one(rp.num) && is_degree_at_most_one(rp.den)) {
+                    Rational det = r_sub(r_mul(rp.num.a1, rp.den.a0), r_mul(rp.num.a0, rp.den.a1));
+                    if(is_zero(det)) {
+                        std::optional<Rational> val;
+                        if(!is_zero(rp.den.a1)) val = r_div(rp.num.a1, rp.den.a1);
+                        else if(!is_zero(rp.den.a0)) val = r_div(rp.num.a0, rp.den.a0);
+                        if(val) {
+                            std::string den = format_expr(arena, poly2_to_node(arena, rp.den, "x"));
+                            return {
+                                "f(x) = " + format_expr(arena, n),
+                                den + " != 0",
+                                "f(x) = " + format_rat(arena, *val),
+                                "f^-1(x) = no inverse on all real x",
+                            };
+                        }
+                    }
+                }
                 return {
                     "1. Use inverse function.",
                     "2. Let y = f(x).",
@@ -6183,12 +6239,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
+            if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
             if(numeric.empty()) {
-                out.push_back(interval_lo && interval_hi ? "No solution in the interval after checking the reduced equation." :
-                                                           "No real solution found by the reduced equation checks.");
-                out.push_back("Answer: " + solve_var + " = []");
+                out.push_back(interval_lo && interval_hi ? "No solution in interval." : "No real solution.");
+                out.push_back(solve_var + " = []");
             }
             else {
                 append_answer(out, solve_var, numeric);
