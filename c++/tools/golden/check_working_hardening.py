@@ -758,6 +758,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "cos(x)=1/2,x,0,360",
+        ["alpha = arccos(1/2)", "x = alpha + 360n or x = 360-alpha + 360n", "0 <= 60 + n*360 <= 360 => n = 0", "Answer: x = [60, 300]"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
         "sin(2*x)+cos(2*x)=0,x,-180,180",
         ["A = 2*x", "cos(A)=0 => sin(A)+cos(A)=+/-1 != 0", "(sin(A)+cos(A))/cos(A)=0/cos(A)", "tan(2*x)=sin(2*x)/cos(2*x)", "tan(2*x)=-1", "x = -22.5 + n*90", "x = [-112.5, -22.5, 67.5, 157.5]"],
         ["Divide by cos(2x) where valid", "Solve the tan equation", "ERR:"],

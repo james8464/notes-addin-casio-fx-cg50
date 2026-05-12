@@ -1584,7 +1584,11 @@ static std::optional<std::vector<std::string>> solve_cos_quadratic(
             continue;
         }
         steps.push_back("cos(" + var + ")=" + fmt_trig_root(u));
-        steps.push_back("Base angle: arccos(" + fmt_trig_root(u) + ").");
+        steps.push_back("alpha = arccos(" + fmt_trig_root(u) + ") for " + var + ".");
+        steps.push_back("cos(" + var + ")=" + fmt_trig_root(u) + " => " + var + " = alpha + " +
+                        std::string(rad ? "2*pi*n" : "360n") + " or " + var + " = " +
+                        std::string(rad ? "2*pi-alpha" : "360-alpha") + " + " +
+                        std::string(rad ? "2*pi*n" : "360n") + ".");
         auto bases = base_trig_degrees(FnKind::Cos, u);
         auto part = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad, bases);
         for(double v : part) add_unique(xs, v);
@@ -1775,6 +1779,21 @@ static std::string trig_base_angle_line(FnKind fk, std::string const &arg, doubl
     return "Base angle: " + f + "(" + val + ")=" + exact + " for " + arg + ".";
 }
 
+static std::string trig_alpha_family_line(FnKind fk, std::string const &arg, double r, bool rad)
+{
+    std::string val = trig_root_text(r);
+    std::string period = rad ? "2*pi*n" : "360n";
+    if(fk == FnKind::Sin) {
+        return "sin(" + arg + ")=" + val + " => " + arg + " = alpha + " + period + " or " + arg + " = " +
+               std::string(rad ? "pi-alpha" : "180-alpha") + " + " + period + ".";
+    }
+    if(fk == FnKind::Cos) {
+        return "cos(" + arg + ")=" + val + " => " + arg + " = alpha + " + period + " or " + arg + " = " +
+               std::string(rad ? "2*pi-alpha" : "360-alpha") + " + " + period + ".";
+    }
+    return "tan(" + arg + ")=" + val + " => " + arg + " = alpha + " + std::string(rad ? "pi*n" : "180n") + ".";
+}
+
 static std::string trig_quad_text(double a, double b, double c)
 {
     auto term = [](double v, std::string const &name, bool first) {
@@ -1846,6 +1865,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             else {
                 steps.push_back("sin(" + arg_text + ")=" + trig_root_text(r) + ".");
                 steps.push_back(trig_base_angle_line(FnKind::Sin, arg_text, r));
+                steps.push_back(trig_alpha_family_line(FnKind::Sin, arg_text, r, rad));
             }
         }
         add_roots(FnKind::Sin, roots);
@@ -1861,6 +1881,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             else {
                 steps.push_back("cos(" + arg_text + ")=" + trig_root_text(r) + ".");
                 steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, r));
+                steps.push_back(trig_alpha_family_line(FnKind::Cos, arg_text, r, rad));
             }
         }
         add_roots(FnKind::Cos, roots);
@@ -1875,7 +1896,9 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             steps.push_back("u=1/2 or u=-1.");
             steps.push_back("cos(" + arg_text + ")=1/2 or cos(" + arg_text + ")=-1.");
             steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, 0.5));
+            steps.push_back(trig_alpha_family_line(FnKind::Cos, arg_text, 0.5, rad));
             steps.push_back(trig_base_angle_line(FnKind::Cos, arg_text, -1.0));
+            steps.push_back(trig_alpha_family_line(FnKind::Cos, arg_text, -1.0, rad));
         }
         else {
             steps.push_back("Solve the quadratic in u, then solve cos(A)=u.");
