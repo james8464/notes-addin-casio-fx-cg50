@@ -6199,6 +6199,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
             std::string c0 = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            out.push_back("LHS - RHS = " + c0);
             out.push_back(c0 + (is_zero(rp.num.a0) ? " = 0" : " != 0"));
             out.push_back(is_zero(rp.num.a0) ? solve_var + " = all real" : "Answer: " + solve_var + " = []");
             return out;

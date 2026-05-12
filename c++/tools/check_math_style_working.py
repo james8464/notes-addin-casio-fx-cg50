@@ -46,7 +46,7 @@ CASES = [
     (
         "looping parts final",
         ["--int", "e^(2*x)*cos(3*x),method=parts"],
-        ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "I terms", "13/4*I =", "Divide: I =", "I = (1/2*e^(2*x)*cos(3*x) + 3/4*e^(2*x)*sin(3*x))/(13/4)", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
+        ("I = Int(e^(2*x)*cos(3*x)) dx", "u = cos(3*x)", "dv = e^(2*x) dx", "J = Int(e^(2*x)*sin(3*x)) dx", "Collect: I", "13/4*I =", "Solve I: I =", "I = (1/2*e^(2*x)*cos(3*x) + 3/4*e^(2*x)*sin(3*x))/(13/4)", "e^(2*x)*(2*cos(3*x) + 3*sin(3*x))/13 + C"),
     ),
     (
         "rform final",
@@ -92,7 +92,7 @@ CASES = [
     (
         "contradiction maths only",
         ["--alg", "solve((2*x+5)^2=4*x^2+20*x+30,x)"],
-        ("-5 != 0", "x = []"),
+        ("LHS - RHS = -5", "-5 != 0", "x = []"),
         ("Simplify:", "No solution"),
     ),
     (

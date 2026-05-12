@@ -6938,6 +6938,7 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
         steps.push_back("Step 2: a=" + atext + ", b=" + btext + ".");
         if(want_sin) {
             steps.push_back("Step 3: u = sin(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 4: I = u*v - Int(v du).");
             steps.push_back("Step 4: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 5: J = Integral(" + e + "*cos(" + u + ")) dx.");
             steps.push_back("Step 6: I = " + scale_text(inv_a, sin_part) + " - " + ba + "*J.");
@@ -6945,12 +6946,13 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
             steps.push_back("Step 8: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + scale_text(inv_a, cos_part) + " + " + ba + "*I.");
             steps.push_back("Step 10: I = " + scale_text(inv_a, sin_part) + " - " + ba + "*(" + scale_text(inv_a, cos_part) + " + " + ba + "*I).");
-            steps.push_back("Step 11: I terms: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
+            steps.push_back("Step 11: Collect: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
             steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ".");
-            steps.push_back("Step 12: Divide: I = (" + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ")/(" + rat_text(lhs_coeff) + ").");
+            steps.push_back("Step 12: Solve I: I = (" + scale_text(inv_a, sin_part) + " - " + scale_text(r_mul(b_over_a, inv_a), cos_part) + ")/(" + rat_text(lhs_coeff) + ").");
         }
         else {
             steps.push_back("Step 3: u = cos(" + u + "), dv = " + e + " dx.");
+            steps.push_back("Step 4: I = u*v - Int(v du).");
             steps.push_back("Step 4: du = -" + btext + "*sin(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 5: J = Integral(" + e + "*sin(" + u + ")) dx.");
             steps.push_back("Step 6: I = " + scale_text(inv_a, cos_part) + " + " + ba + "*J.");
@@ -6958,9 +6960,9 @@ static std::optional<NodeId> integrate_expx_trig_product(Arena &a, NodeId expr, 
             steps.push_back("Step 8: du = " + btext + "*cos(" + u + ") dx, v = " + e + "/" + atext + ".");
             steps.push_back("Step 9: J = " + scale_text(inv_a, sin_part) + " - " + ba + "*I.");
             steps.push_back("Step 10: I = " + scale_text(inv_a, cos_part) + " + " + ba + "*(" + scale_text(inv_a, sin_part) + " - " + ba + "*I).");
-            steps.push_back("Step 11: I terms: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
+            steps.push_back("Step 11: Collect: I + " + scale_text(r_mul(b_over_a, b_over_a), "I") + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
             steps.push_back("Step 11: " + lhs + " = " + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ".");
-            steps.push_back("Step 12: Divide: I = (" + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ")/(" + rat_text(lhs_coeff) + ").");
+            steps.push_back("Step 12: Solve I: I = (" + scale_text(inv_a, cos_part) + " + " + scale_text(r_mul(b_over_a, inv_a), sin_part) + ")/(" + rat_text(lhs_coeff) + ").");
         }
         return casio::simplify(a, mul_coeff(a, coeff, casio::div(a, casio::mul(a, {exp_node, inside}), a.num(den))));
     }
