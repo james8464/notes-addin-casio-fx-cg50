@@ -2753,13 +2753,43 @@ static std::optional<std::string> log_denominator_exclusion(std::string d)
     return std::nullopt;
 }
 
+static std::string denominator_domain_line(Arena &a, NodeId den_node)
+{
+    std::string den = format_expr(a, den_node);
+    std::string var = choose_solve_var(a, den_node, "");
+    auto p = poly_of(a, den_node, var);
+    if(!p || !p->ok || (is_zero(p->a1) && is_zero(p->a2))) return "Domain: " + den + " != 0";
+
+    std::vector<std::string> bad;
+    for(auto const &s : solve_poly2(a, *p, var)) {
+        std::string rhs = sol_rhs(s);
+        if(rhs.find("No solution") != std::string::npos || rhs.find("Infinite") != std::string::npos) continue;
+        if(rhs.find('i') != std::string::npos) continue;
+        bad.push_back(var + " = " + rhs);
+    }
+    if(bad.empty()) return "Domain: " + den + " != 0";
+    std::sort(bad.begin(), bad.end(), [&](std::string const &u, std::string const &v) {
+        auto a0 = solution_line_value(a, u);
+        auto b0 = solution_line_value(a, v);
+        if(a0 && b0) return *a0 < *b0;
+        return sol_rhs(u) < sol_rhs(v);
+    });
+
+    std::string line = "Domain: " + den + " != 0 => ";
+    for(std::size_t i = 0; i < bad.size(); ++i) {
+        if(i) line += ", ";
+        line += var + " != " + sol_rhs(bad[i]);
+    }
+    return line;
+}
+
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Div) {
         if(has_symbols(a, x.b)) {
             std::string den = format_expr(a, x.b);
-            push_unique(out, "Domain: " + den + " != 0");
+            push_unique(out, denominator_domain_line(a, x.b));
             if(auto solved = log_denominator_exclusion(den)) push_unique(out, *solved);
         }
         collect_domain(a, x.a, out);
