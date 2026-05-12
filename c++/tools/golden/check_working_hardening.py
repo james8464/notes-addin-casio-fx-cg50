@@ -584,6 +584,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "domain(cot((x)^2-pi/4)^2+1)",
+        ["1 + cot(u)^2 = cosec(u)^2", "= cosec(x^2 - pi/4)^2", "Domain: sin(x^2 - pi/4) != 0"],
+        ["Start with cosec", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "arcsin(sin((x)^2-pi/4))=0,method=auto",
         ["arcsin(A)=0 => A=0", "sin(u)=0 => u=n*pi", "x = +/-sqrt(pi/4 + n*pi)"],
         ["x = []", "No real solution", "ERR:"],

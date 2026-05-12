@@ -6116,13 +6116,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto lo_v = lo.empty() ? std::optional<double>{} : parse_bound(lo);
             auto hi_v = hi.empty() ? std::optional<double>{} : parse_bound(hi);
             std::vector<std::string> steps;
-            if(pythagorean_square_sum(expr) && format_expr(arena, n) == "1") {
+            std::string simplified_text = format_expr(arena, n);
+            if(pythagorean_square_sum(expr) && simplified_text == "1") {
                 steps.push_back("Start with " + expr + ".");
                 steps.push_back("Use sin(u)^2 + cos(u)^2 = 1.");
             }
-            else if(auto trig_step = reciprocal_trig_identity_step(expr); trig_step && format_expr(arena, n) == "1") {
+            else if(auto trig_step = reciprocal_trig_identity_step(expr)) {
                 steps.push_back("Start with " + expr + ".");
                 steps.push_back(*trig_step);
+                if(simplified_text != "1") steps.push_back("= " + simplified_text + ".");
             }
             else {
                 casio::append_exam_prelude_steps(steps, pre);
