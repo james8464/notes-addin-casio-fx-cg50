@@ -3026,6 +3026,7 @@ static bool append_expanded_constant_compare(Arena &a,
     out.push_back(format_expr(a, poly2_to_node(a, *lp, var)) + " = " + format_expr(a, poly2_to_node(a, *rp, var)));
     Rational cdiff = r_sub(lp->a0, rp->a0);
     out.push_back(rat_node_text(a, lp->a0) + (is_zero(cdiff) ? " = " : " != ") + rat_node_text(a, rp->a0));
+    out.push_back(rat_node_text(a, cdiff) + (is_zero(cdiff) ? " = 0" : " != 0"));
     out.push_back(is_zero(cdiff) ? var + " = all real" : var + " = []");
     return true;
 }

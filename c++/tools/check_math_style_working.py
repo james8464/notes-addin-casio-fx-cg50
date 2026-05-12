@@ -104,14 +104,13 @@ CASES = [
     (
         "contradiction maths only",
         ["--alg", "solve((2*x+5)^2=4*x^2+20*x+30,x)"],
-        ("4*x^2 + 20*x + 25 = 4*x^2 + 20*x + 30", "25 != 30", "x = []"),
+        ("4*x^2 + 20*x + 25 = 4*x^2 + 20*x + 30", "25 != 30", "-5 != 0", "x = []"),
         ("Simplify:", "No solution"),
     ),
     (
         "expanded square contradiction",
         ["--alg", "solve((3*x+2)^2=9*x^2+12*x+11,x)"],
-        ("9*x^2 + 12*x + 4 = 9*x^2 + 12*x + 11", "4 != 11", "x = []"),
-        ("LHS - RHS = -7",),
+        ("9*x^2 + 12*x + 4 = 9*x^2 + 12*x + 11", "4 != 11", "-7 != 0", "x = []"),
     ),
     (
         "constant false equation no fake variable",
