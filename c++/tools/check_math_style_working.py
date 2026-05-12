@@ -36,7 +36,7 @@ CASES = [
     (
         "implicit variable powers",
         ["--derive", "x^y=y^x,x,method=implicit"],
-        ("ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*(ln(x)-x/y)=ln(y)-y/x", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"),
+        ("ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*ln(x)-x*dy/dx/y=ln(y)-y/x", "dy/dx=(ln(y)-y/x)/(ln(x)-x/y)", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"),
         ("F_x", "F_y", "-F_x/F_y"),
     ),
     (
@@ -126,6 +126,11 @@ CASES = [
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
         ("Simplify:", "LHS - RHS"),
+    ),
+    (
+        "reciprocal hidden biquadratic",
+        ["--alg", "x^2+36/x^2=12,method=auto"],
+        ("Domain: x != 0", "Multiply by x^2", "x^4 - 12*x^2 + 36 = 0", "u = x^2", "u = 6", "x = sqrt(6)", "x = -sqrt(6)"),
     ),
     (
         "affine square direct solve",

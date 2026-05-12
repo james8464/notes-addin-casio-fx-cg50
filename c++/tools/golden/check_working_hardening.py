@@ -68,6 +68,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "x^2+36/x^2=12,method=auto",
+        ["Domain: x != 0", "Multiply by x^2", "x^4 - 12*x^2 + 36 = 0", "u = x^2", "u = 6", "x = sqrt(6)", "x = -sqrt(6)"],
+        ["LHS-RHS = 0", "x = []", "ERR:"],
+    ),
+    (
+        "alg",
         "inverse((5*x+2)/(5*x+2))",
         ["y = f(x) = (5*x + 2)/(5*x + 2)", "5*x + 2 != 0", "y = 1", "f^-1(x) = no inverse on all real x"],
         ["ERR:"],
@@ -117,7 +123,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "x^y=y^x,x,method=implicit",
-        ["ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*(ln(x)-x/y)=ln(y)-y/x", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"],
+        ["ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*ln(x)-x*dy/dx/y=ln(y)-y/x", "dy/dx=(ln(y)-y/x)/(ln(x)-x/y)", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"],
         ["F_x", "F_y", "-F_x/F_y", "Unexpected token", "ERR:"],
     ),
     (

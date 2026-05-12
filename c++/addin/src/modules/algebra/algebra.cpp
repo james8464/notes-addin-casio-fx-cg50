@@ -2567,6 +2567,85 @@ static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeI
     return out;
 }
 
+static bool reciprocal_even_power_term(Arena &a, NodeId n, std::string const &var, int &power, Rational &coef)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        power = 0;
+        coef = x.num;
+        return true;
+    }
+    if(x.kind == NodeKind::Sym && x.text == var) {
+        power = 1;
+        coef = Rational{1, 1};
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        if(base.kind != NodeKind::Sym || base.text != var || exp.kind != NodeKind::Num || exp.num.den != 1) return false;
+        power = (int)exp.num.num;
+        coef = Rational{1, 1};
+        return power >= -2 && power <= 2;
+    }
+    if(x.kind == NodeKind::Mul) {
+        power = 0;
+        coef = Rational{1, 1};
+        for(NodeId k : x.kids) {
+            int kp = 0;
+            Rational kc{1, 1};
+            if(!reciprocal_even_power_term(a, k, var, kp, kc)) return false;
+            power += kp;
+            coef = r_mul(coef, kc);
+        }
+        return power == -2 || power == 0 || power == 2;
+    }
+    if(x.kind == NodeKind::Div) {
+        int np = 0, dp = 0;
+        Rational nc{1, 1}, dc{1, 1};
+        if(!reciprocal_even_power_term(a, x.a, var, np, nc) || !reciprocal_even_power_term(a, x.b, var, dp, dc)) return false;
+        power = np - dp;
+        coef = r_div(nc, dc);
+        return power == -2 || power == 0 || power == 2;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_biquadratic_route(Arena &a, NodeId residual, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) terms = r.kids;
+    else terms.push_back(residual);
+
+    Rational x2{0, 1}, x0{0, 1}, xm2{0, 1};
+    for(NodeId t : terms) {
+        int power = 0;
+        Rational coef{1, 1};
+        if(!reciprocal_even_power_term(a, t, var, power, coef)) return std::nullopt;
+        if(power == 2) x2 = r_add(x2, coef);
+        else if(power == 0) x0 = r_add(x0, coef);
+        else if(power == -2) xm2 = r_add(xm2, coef);
+        else return std::nullopt;
+    }
+    if(is_zero(x2) || is_zero(xm2)) return std::nullopt;
+
+    NodeId quartic = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {casio::num(a, x2.num, x2.den), casio::power(a, casio::sym(a, var), casio::num(a, 4))}),
+        casio::mul(a, {casio::num(a, x0.num, x0.den), casio::power(a, casio::sym(a, var), casio::num(a, 2))}),
+        casio::num(a, xm2.num, xm2.den),
+    }));
+    auto bq = biquadratic_route(a, quartic, var);
+    if(!bq) return std::nullopt;
+
+    std::vector<std::string> out;
+    out.push_back("Domain: " + var + " != 0");
+    out.push_back("Multiply by " + var + "^2");
+    out.push_back(format_expr(a, quartic) + " = 0");
+    out.insert(out.end(), bq->begin(), bq->end());
+    return out;
+}
+
 static std::string format_rat(Arena &a, Rational r)
 {
     r.normalize();
@@ -6682,6 +6761,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), rbq->begin(), rbq->end());
+            return out;
+        }
         if(auto bq = biquadratic_route(arena, rearr, solve_var)) {
             out.insert(out.end(), bq->begin(), bq->end());
             return out;

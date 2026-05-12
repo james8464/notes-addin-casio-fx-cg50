@@ -1342,7 +1342,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "ln(x^y)=ln(y^x).",
                         "y*ln(x)=x*ln(y).",
                         dname + "*ln(x)+y/x=ln(y)+x*" + dname + "/y.",
+                        dname + "*ln(x)-x*" + dname + "/y=ln(y)-y/x.",
                         dname + "*(ln(x)-x/y)=ln(y)-y/x.",
+                        dname + "=(ln(y)-y/x)/(ln(x)-x/y).",
                     },
                     dname + " = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"
                 );
