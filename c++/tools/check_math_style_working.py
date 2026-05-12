@@ -107,6 +107,16 @@ CASES = [
         ("Domain: x != -2", "x != 1", "(x + 2) + (x - 1) = x^2 + x - 2", "expand => - x^2 + x + 3 = 0", "x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"),
     ),
     (
+        "absolute linear branch equations",
+        ["--alg", "abs(2*x+1)=2,method=auto"],
+        ("abs(2*x + 1) = 2", "2*x + 1 = 2 => x = 1/2", "2*x + 1 = -2 => x = -3/2", "x = [-3/2, 1/2]"),
+    ),
+    (
+        "absolute impossible branch",
+        ["--alg", "abs(2*x+1)+3=1,method=auto"],
+        ("abs(2*x + 1) = -2", "abs(2*x + 1) >= 0", "x = []"),
+    ),
+    (
         "square equation shows plus minus",
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),

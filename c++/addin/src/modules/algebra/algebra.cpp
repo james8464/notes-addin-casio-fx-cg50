@@ -4745,6 +4745,42 @@ static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId
     return info;
 }
 
+static std::optional<std::vector<std::string>> abs_linear_equation_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    auto info = abs_plus_const_eq_info(a, rearr, var);
+    if(!info) return std::nullopt;
+    auto p = poly_of(a, info->abs_arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    Rational rhs = r_neg(info->c);
+    std::vector<std::string> out;
+    std::string abs_text = format_expr(a, info->abs_node);
+    std::string arg = format_expr(a, info->abs_arg);
+    std::string rhs_text = format_expr(a, a.num(rhs));
+    out.push_back(abs_text + " = " + rhs_text);
+    if(rhs.num < 0) {
+        out.push_back(abs_text + " >= 0");
+        out.push_back(var + " = []");
+        return out;
+    }
+
+    std::vector<Rational> vals;
+    Rational v_pos = r_div(r_sub(rhs, p->a0), p->a1);
+    vals.push_back(v_pos);
+    out.push_back(arg + " = " + rhs_text + " => " + var + " = " + format_expr(a, a.num(v_pos)));
+    if(!is_zero(rhs)) {
+        Rational v_neg = r_div(r_sub(r_neg(rhs), p->a0), p->a1);
+        vals.push_back(v_neg);
+        out.push_back(arg + " = -" + rhs_text + " => " + var + " = " + format_expr(a, a.num(v_neg)));
+    }
+    std::sort(vals.begin(), vals.end(), [](Rational a0, Rational b0) { return r_cmp(a0, b0) < 0; });
+    vals.erase(std::unique(vals.begin(), vals.end(), [](Rational a0, Rational b0) { return r_cmp(a0, b0) == 0; }), vals.end());
+    std::vector<std::string> sols;
+    for(Rational v : vals) sols.push_back(var + " = " + format_expr(a, a.num(v)));
+    out.push_back(solution_list_line(var, sols));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_abs_plus_const_zero_route(
     Arena &a,
     NodeId lhs,
@@ -6548,6 +6584,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
+            if(auto aa = abs_linear_equation_route(arena, rearr, solve_var)) {
+                out.insert(out.end(), aa->begin(), aa->end());
+                return out;
+            }
             if(auto la = log_abs_plus_const_zero_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;

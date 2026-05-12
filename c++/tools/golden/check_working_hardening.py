@@ -704,6 +704,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "abs(2*x+1)=2,method=auto",
+        ["abs(2*x + 1) = 2", "2*x + 1 = 2 => x = 1/2", "2*x + 1 = -2 => x = -3/2", "x = [-3/2, 1/2]"],
+        ["x = -1.5", "x = 0.5", "ERR:"],
+    ),
+    (
+        "alg",
         "range(sqrt((x+5)^2))",
         ["Domain: all real x", "Range: y >= 0", "Answer: y >= 0"],
         ["Domain: (x + 5)^2 >= 0", "ERR:"],
