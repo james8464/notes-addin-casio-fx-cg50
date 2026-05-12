@@ -578,6 +578,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "domain(atan(tan(x)))",
+        ["atan(A) is defined for all real A", "tan(u) needs cos(u) != 0", "Domain: cos(x) != 0", "Domain: x != pi/2 + n*pi"],
+        ["1*(pi/2 + n*pi)", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "cosec((x+1)/3),method=auto",
         ["Use identity cosec(u) = 1/sin(u)", "Domain: (x + 1)/3 != n*pi", "Domain: x != 3*n*pi - 1", "Answer: 1/sin((x + 1)/3)"],
         ["ERR:", "Unexpected token"],

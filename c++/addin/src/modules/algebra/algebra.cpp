@@ -2827,7 +2827,15 @@ static void push_linear_trig_domain(Arena &a, NodeId arg, bool half_shift, std::
 
     Rational inv_m = r_div(Rational{1, 1}, p->a1);
     Rational offset = r_div(r_neg(p->a0), p->a1);
-    std::string rhs = half_shift ? (format_rat(a, inv_m) + "*(pi/2 + n*pi)") : scaled_npi(a, inv_m);
+    std::string rhs;
+    if(half_shift) {
+        if(inv_m.num == inv_m.den) rhs = "pi/2 + n*pi";
+        else if(inv_m.num == -inv_m.den) rhs = "-(pi/2 + n*pi)";
+        else rhs = format_rat(a, inv_m) + "*(pi/2 + n*pi)";
+    }
+    else {
+        rhs = scaled_npi(a, inv_m);
+    }
     push_unique(out, "Domain: x != " + append_rat_offset(a, rhs, offset));
 }
 
@@ -4826,12 +4834,14 @@ static std::optional<std::string> sqrt_linear_interval_range(
 static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
-    if(x.kind != NodeKind::Fn || !(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos)) return std::nullopt;
+    if(x.kind != NodeKind::Fn || !(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos || x.fkind == FnKind::Atan)) return std::nullopt;
     Node const &arg = a.get(x.a);
     if(arg.kind == NodeKind::Fn && (arg.fkind == FnKind::Sin || arg.fkind == FnKind::Cos)) {
         std::string outer = x.fkind == FnKind::Asin ? "asin" : "acos";
         return outer + "(u): -1 <= u <= 1; -1 <= " + format_expr(a, x.a) + " <= 1.";
     }
+    if(x.fkind == FnKind::Atan && arg.kind == NodeKind::Fn && arg.fkind == FnKind::Tan)
+        return "atan(A) is defined for all real A; tan(u) needs cos(u) != 0.";
     return std::nullopt;
 }
 
