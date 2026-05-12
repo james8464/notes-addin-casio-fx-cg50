@@ -1785,6 +1785,53 @@ static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body
     return true;
 }
 
+static bool trig_square_body(Arena &a, NodeId body, FnKind &fk, NodeId &arg)
+{
+    Node const &p = a.get(body);
+    if(p.kind != NodeKind::Pow) return false;
+    Node const &e = a.get(p.b);
+    if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1) return false;
+    Node const &base = a.get(p.a);
+    if(base.kind != NodeKind::Fn || (base.fkind != FnKind::Sin && base.fkind != FnKind::Cos)) return false;
+    fk = base.fkind;
+    arg = base.a;
+    return true;
+}
+
+static std::optional<std::string> trig_square_complement_step(Arena &a, NodeId n)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    if(terms.size() != 2) return std::nullopt;
+    bool one = false;
+    FnKind fk = FnKind::Sin;
+    NodeId arg = 0;
+    for(auto t : terms) {
+        Rational c;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, t, c, body, has_body);
+        if(!has_body && c.num == c.den) {
+            one = true;
+            continue;
+        }
+        if(has_body && c.num == -c.den) {
+            NodeId u = 0;
+            FnKind k = FnKind::Sin;
+            if(!trig_square_body(a, body, k, u)) return std::nullopt;
+            fk = k;
+            arg = u;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!one || !arg) return std::nullopt;
+    std::string f = fk == FnKind::Cos ? "cos" : "sin";
+    std::string g = fk == FnKind::Cos ? "sin" : "cos";
+    std::string u = format_expr(a, arg);
+    return "1 - " + f + "(" + u + ")^2 = " + g + "(" + u + ")^2.";
+}
+
 static bool log_piece(Arena &a, NodeId body, NodeId &arg, NodeId &base, bool &has_base)
 {
     Node const &n = a.get(body);
@@ -6206,6 +6253,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(pythagorean_square_sum(expr) && simplified_text == "1") {
                 steps.push_back("Start with " + expr + ".");
                 steps.push_back("Use sin(u)^2 + cos(u)^2 = 1.");
+            }
+            else if(auto trig_comp = trig_square_complement_step(arena, n)) {
+                steps.push_back("Start with " + expr + ".");
+                steps.push_back(*trig_comp);
             }
             else if(auto trig_step = reciprocal_trig_identity_step(expr)) {
                 steps.push_back("Start with " + expr + ".");

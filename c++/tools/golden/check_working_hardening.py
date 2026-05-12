@@ -200,6 +200,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "domain(1-cos(2*x+pi/6)^2)",
+        ["1 - cos(2*x + pi/6)^2 = sin(2*x + pi/6)^2", "Domain: all real x", "Answer: all real x"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "range(cot(x^2-pi/4)^2+1)",
         ["Answer: y >= 1"],
         ["inspect graph/transform", "ERR:"],
