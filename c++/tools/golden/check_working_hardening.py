@@ -48,6 +48,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["expand => x^2 - 13*x + 36 = 0", "x = (-b +/- sqrt", "ERR:"],
     ),
     (
+        "alg",
+        "solve((3*x+2)^2=9*x^2+12*x+11,x)",
+        ["9*x^2 + 12*x + 4 = 9*x^2 + 12*x + 11", "4 != 11", "x = []"],
+        ["LHS - RHS = -7", "ERR:"],
+    ),
+    (
+        "alg",
+        "inverse((5*x+2)/(5*x+2))",
+        ["y = f(x) = (5*x + 2)/(5*x + 2)", "5*x + 2 != 0", "y = 1", "f^-1(x) = no inverse on all real x"],
+        ["ERR:"],
+    ),
+    (
         "derive",
         "sec(x)+cot(x)+csc(x),x",
         ["d/dx(sec(x)) = sec(x)*tan(x)", "d/dx(cot(x)) = -cosec(x)^2", "d/dx(cosec(x)) = -cosec(x)*cot(x)"],

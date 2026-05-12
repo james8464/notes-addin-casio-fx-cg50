@@ -3013,6 +3013,23 @@ static bool append_removable_rational_route(Arena &a,
     return try_side(lhs, rhs) || try_side(rhs, lhs);
 }
 
+static bool append_expanded_constant_compare(Arena &a,
+                                             std::vector<std::string> &out,
+                                             NodeId lhs,
+                                             NodeId rhs,
+                                             std::string const &var)
+{
+    auto lp = poly_of(a, lhs, var);
+    auto rp = poly_of(a, rhs, var);
+    if(!lp || !rp || !lp->ok || !rp->ok) return false;
+    if(!is_zero(r_sub(lp->a2, rp->a2)) || !is_zero(r_sub(lp->a1, rp->a1))) return false;
+    out.push_back(format_expr(a, poly2_to_node(a, *lp, var)) + " = " + format_expr(a, poly2_to_node(a, *rp, var)));
+    Rational cdiff = r_sub(lp->a0, rp->a0);
+    out.push_back(rat_node_text(a, lp->a0) + (is_zero(cdiff) ? " = " : " != ") + rat_node_text(a, rp->a0));
+    out.push_back(is_zero(cdiff) ? var + " = all real" : var + " = []");
+    return true;
+}
+
 static std::vector<std::string> filter_solutions_by_original_key(
     Arena &a,
     std::vector<std::string> sols,
@@ -5546,9 +5563,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         if(val) {
                             std::string den = format_expr(arena, poly2_to_node(arena, rp.den, "x"));
                             return {
-                                "f(x) = " + format_expr(arena, n),
+                                "y = f(x) = " + format_expr(arena, n),
                                 den + " != 0",
-                                "f(x) = " + format_rat(arena, *val),
+                                "y = " + format_rat(arena, *val),
                                 "f^-1(x) = no inverse on all real x",
                             };
                         }
@@ -6326,6 +6343,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(append_removable_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
 
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
+            if(append_expanded_constant_compare(arena, out, lhs, rhs, solve_var)) return out;
             std::string c0 = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
             out.push_back("LHS - RHS = " + c0);
             out.push_back(c0 + (is_zero(rp.num.a0) ? " = 0" : " != 0"));

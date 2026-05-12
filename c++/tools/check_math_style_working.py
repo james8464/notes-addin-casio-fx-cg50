@@ -98,14 +98,25 @@ CASES = [
     (
         "contradiction maths only",
         ["--alg", "solve((2*x+5)^2=4*x^2+20*x+30,x)"],
-        ("LHS - RHS = -5", "-5 != 0", "x = []"),
+        ("4*x^2 + 20*x + 25 = 4*x^2 + 20*x + 30", "25 != 30", "x = []"),
         ("Simplify:", "No solution"),
+    ),
+    (
+        "expanded square contradiction",
+        ["--alg", "solve((3*x+2)^2=9*x^2+12*x+11,x)"],
+        ("9*x^2 + 12*x + 4 = 9*x^2 + 12*x + 11", "4 != 11", "x = []"),
+        ("LHS - RHS = -7",),
     ),
     (
         "constant false equation no fake variable",
         ["--alg", "factorial(4)=0,method=auto"],
         ("24 != 0", "solution = []"),
         ("24 = 0", "x = []"),
+    ),
+    (
+        "constant fraction inverse",
+        ["--alg", "inverse((5*x+2)/(5*x+2))"],
+        ("y = f(x) = (5*x + 2)/(5*x + 2)", "5*x + 2 != 0", "y = 1", "f^-1(x) = no inverse on all real x"),
     ),
     (
         "radical solve no generic",
