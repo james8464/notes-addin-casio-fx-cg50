@@ -3023,6 +3023,60 @@ static void append_kept_denominator_check(Arena &a,
     }
 }
 
+static void append_denominator_domain_roots(Arena &a,
+                                            std::vector<std::string> &out,
+                                            std::string const &var,
+                                            Poly2 const &den)
+{
+    if(is_zero(den.a1) && is_zero(den.a2)) return;
+    std::vector<std::string> bad;
+    for(auto const &s : solve_poly2(a, den, var)) {
+        std::string rhs = sol_rhs(s);
+        if(rhs.find("No solution") != std::string::npos || rhs.find("Infinite") != std::string::npos) continue;
+        if(rhs.find('i') != std::string::npos) continue;
+        bad.push_back(var + " = " + rhs);
+    }
+    if(bad.empty()) return;
+    std::sort(bad.begin(), bad.end(), [&](std::string const &u, std::string const &v) {
+        auto a0 = solution_line_value(a, u);
+        auto b0 = solution_line_value(a, v);
+        if(a0 && b0) return *a0 < *b0;
+        return sol_rhs(u) < sol_rhs(v);
+    });
+    std::string line = "Domain: ";
+    for(std::size_t i = 0; i < bad.size(); ++i) {
+        if(i) line += " and ";
+        line += var + " != " + sol_rhs(bad[i]);
+    }
+    out.push_back(line);
+}
+
+static bool is_one_num(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Num && x.num.num == 1 && x.num.den == 1;
+}
+
+static std::string reciprocal_clear_term(Arena &a, NodeId num, NodeId other_den)
+{
+    std::string den = format_expr(a, other_den);
+    if(is_one_num(a, num)) return "(" + den + ")";
+    return format_expr(a, num) + "*(" + den + ")";
+}
+
+static std::optional<std::string> reciprocal_pair_clear_line(Arena &a, NodeId lhs, NodeId rhs, std::string const &den_txt)
+{
+    Node const &l = a.get(lhs);
+    Node const &r = a.get(rhs);
+    if(l.kind != NodeKind::Add || l.kids.size() != 2 || r.kind != NodeKind::Num) return std::nullopt;
+    Node const &f0 = a.get(l.kids[0]);
+    Node const &f1 = a.get(l.kids[1]);
+    if(f0.kind != NodeKind::Div || f1.kind != NodeKind::Div) return std::nullopt;
+    std::string left = reciprocal_clear_term(a, f0.a, f1.b) + " + " + reciprocal_clear_term(a, f1.a, f0.b);
+    std::string right = is_one_num(a, rhs) ? den_txt : format_expr(a, rhs) + "*(" + den_txt + ")";
+    return left + " = " + right;
+}
+
 static std::optional<Poly2> linear_factor_quotient(Poly2 const &num, Poly2 const &den)
 {
     if(!num.ok || !den.ok || !is_zero(den.a2) || is_zero(den.a1)) return std::nullopt;
@@ -6679,8 +6733,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(!is_zero(rp.den.a1) || !is_zero(rp.den.a2)) {
             std::string den_txt = format_expr(arena, poly2_to_node(arena, rp.den, solve_var));
             std::string num_txt = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
+            append_denominator_domain_roots(arena, out, solve_var, rp.den);
             out.push_back("3. Multiply by " + den_txt + ".");
             out.push_back("(" + den_txt + ")*(" + format_expr(arena, lhs) + ") = (" + den_txt + ")*(" + format_expr(arena, rhs) + ")");
+            if(auto clear = reciprocal_pair_clear_line(arena, lhs, rhs, den_txt)) out.push_back(*clear);
             out.push_back("expand => " + num_txt + " = 0");
             if(!is_zero(rp.num.a2)) {
                 out.push_back("a = " + format_expr(arena, casio::num(arena, rp.num.a2.num, rp.num.a2.den)) +

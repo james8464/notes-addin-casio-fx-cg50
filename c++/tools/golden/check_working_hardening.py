@@ -699,8 +699,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "1/(x-1)+1/(x+2)=1,method=auto",
-        ["x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"],
-        [")/-2", "ERR:"],
+        ["Domain: x != -2", "x != 1", "(x + 2) + (x - 1) = x^2 + x - 2", "expand => - x^2 + x + 3 = 0", "x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"],
+        [")/-2", "ERR:", "No real solution"],
     ),
     (
         "alg",

@@ -102,6 +102,11 @@ CASES = [
         ("Domain: x - 2 != 0", "Domain: x + 1 != 0", "Multiply by x^2 - x - 2", "expand => - 3*x^2 + 3*x + 15 = 0", "x = (-b +/- sqrt(b^2-4ac))/(2a)", "x = [1/2 - sqrt(21)/2, 1/2 + sqrt(21)/2]"),
     ),
     (
+        "rational reciprocal domain and clearing",
+        ["--alg", "1/(x-1)+1/(x+2)=1,method=auto"],
+        ("Domain: x != -2", "x != 1", "(x + 2) + (x - 1) = x^2 + x - 2", "expand => - x^2 + x + 3 = 0", "x = [1/2 - sqrt(13)/2, 1/2 + sqrt(13)/2]"),
+    ),
+    (
         "square equation shows plus minus",
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
