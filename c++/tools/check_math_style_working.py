@@ -90,7 +90,7 @@ CASES = [
     (
         "sin same fn degree branches",
         ["--trig", "sin(2*x)-sin(x)=0,x,0,360"],
-        ("A = 2*x, B = x", "2*x = x+360n => x = 360n", "2*x = 180-x+360n => x = (180+360n)/3", "x = [0, 60, 180, 300, 360]"),
+        ("sin(A)-sin(B) = 0", "sin(A)-sin(B) = 2*cos((A+B)/2)*sin((A-B)/2)", "A = 2*x, B = x", "2*x = x+360n => x = 360n", "2*x = 180-x+360n => x = (180+360n)/3", "x = [0, 60, 180, 300, 360]"),
     ),
     (
         "nested surd rewrite",

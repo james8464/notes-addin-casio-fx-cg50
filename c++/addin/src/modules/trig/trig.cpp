@@ -1295,7 +1295,17 @@ static std::optional<std::vector<std::string>> solve_same_fn_residual(
     NodeId lhs = a0->sign > 0 ? a0->fn : a1->fn;
     NodeId rhs = a0->sign > 0 ? a1->fn : a0->fn;
     auto out = solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad);
-    if(out) out->insert(out->begin(), format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    if(out) {
+        std::string f = f0.fkind == FnKind::Sin ? "sin" : f0.fkind == FnKind::Cos ? "cos" : "tan";
+        out->insert(out->begin(), format_expr(a, lhs) + " = " + format_expr(a, rhs));
+        if(f0.fkind == FnKind::Sin)
+            out->insert(out->begin(), "sin(A)-sin(B)=2*cos((A+B)/2)*sin((A-B)/2)");
+        else if(f0.fkind == FnKind::Cos)
+            out->insert(out->begin(), "cos(A)-cos(B)=-2*sin((A+B)/2)*sin((A-B)/2)");
+        else
+            out->insert(out->begin(), "tan(A)-tan(B)=sin(A-B)/(cos(A)*cos(B))");
+        out->insert(out->begin(), f + "(A)-" + f + "(B)=0");
+    }
     return out;
 }
 

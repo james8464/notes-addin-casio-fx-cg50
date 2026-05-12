@@ -23,6 +23,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Solve both factors", "ERR:"],
     ),
     (
+        "trig",
+        "sin(2*x)-sin(x)=0,x,0,360",
+        ["sin(A)-sin(B) = 0", "sin(A)-sin(B) = 2*cos((A+B)/2)*sin((A-B)/2)", "x = [0, 60, 180, 300, 360]"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
         "alg",
         "solve(log(2,x)+log(4,x)=6,x)",
         ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],
