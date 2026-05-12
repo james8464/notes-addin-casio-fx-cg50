@@ -2149,6 +2149,67 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
     return kept;
 }
 
+static bool square_rat_root(Rational r, Rational &root)
+{
+    r.normalize();
+    std::int64_t rn = 0, rd = 0;
+    if(r.num < 0 || !is_square_i64(r.num, rn) || !is_square_i64(r.den, rd) || rd == 0) return false;
+    root = Rational{rn, rd};
+    root.normalize();
+    return true;
+}
+
+static std::optional<std::pair<NodeId, Rational>> direct_square_side(Arena &a, NodeId sq, NodeId val, std::string const &var)
+{
+    Node const &n = a.get(sq);
+    if(n.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, n.b);
+    if(!e || e->num != 2 || e->den != 1) return std::nullopt;
+    auto p = poly_of(a, n.a, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    auto q = as_num(a, val);
+    Rational root;
+    if(!q || !square_rat_root(*q, root)) return std::nullopt;
+    return std::make_pair(n.a, root);
+}
+
+static bool append_direct_square_route(Arena &a,
+                                       std::vector<std::string> &out,
+                                       NodeId lhs,
+                                       NodeId rhs,
+                                       NodeId residual,
+                                       std::string const &var,
+                                       std::optional<double> lo,
+                                       std::optional<double> hi)
+{
+    auto ds = direct_square_side(a, lhs, rhs, var);
+    if(!ds) ds = direct_square_side(a, rhs, lhs, var);
+    if(!ds) return false;
+    auto p = poly_of(a, ds->first, var);
+    if(!p || !p->ok || is_zero(p->a1)) return false;
+    std::string base = format_expr(a, ds->first);
+    std::string root = format_expr(a, a.num(ds->second));
+    std::vector<std::string> raw;
+    auto push_sol = [&](Rational target) {
+        Rational x = r_div(r_sub(target, p->a0), p->a1);
+        raw.push_back(var + " = " + format_expr(a, a.num(x)));
+    };
+    if(is_zero(ds->second)) {
+        out.push_back(base + " = 0");
+        push_sol(ds->second);
+    }
+    else {
+        out.push_back(base + " = +/-" + root);
+        out.push_back(base + " = " + root + " or " + base + " = -" + root);
+        push_sol(ds->second);
+        push_sol(r_neg(ds->second));
+    }
+    auto sols = filter_real_solutions(a, residual, var, raw, lo, hi);
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return true;
+}
+
 static std::string format_double_compact(double x)
 {
     if(std::fabs(x) < 5e-11) x = 0.0;
@@ -6317,6 +6378,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), log_alt->begin(), log_alt->end());
             return out;
         }
+        if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto bq = biquadratic_route(arena, rearr, solve_var)) {
             out.insert(out.end(), bq->begin(), bq->end());
             return out;

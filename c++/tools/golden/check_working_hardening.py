@@ -61,6 +61,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve((2*x+1)^2=4,x)",
+        ["(2*x + 1)^2 = 4", "2*x + 1 = +/-2", "x = [1/2, -3/2]"],
+        ["LHS - RHS", "x + 1/2 = +/-1", "ERR:"],
+    ),
+    (
+        "alg",
         "inverse((5*x+2)/(5*x+2))",
         ["y = f(x) = (5*x + 2)/(5*x + 2)", "5*x + 2 != 0", "y = 1", "f^-1(x) = no inverse on all real x"],
         ["ERR:"],

@@ -105,7 +105,13 @@ CASES = [
         "square equation shows plus minus",
         ["--alg", "solve((x+4)^2=16,x)"],
         ("(x + 4)^2 = 16", "x + 4 = +/-4", "x = [0, -8]"),
-        ("Simplify:",),
+        ("Simplify:", "LHS - RHS"),
+    ),
+    (
+        "affine square direct solve",
+        ["--alg", "solve((2*x+1)^2=4,x)"],
+        ("(2*x + 1)^2 = 4", "2*x + 1 = +/-2", "x = [1/2, -3/2]"),
+        ("LHS - RHS", "x + 1/2 = +/-1"),
     ),
     (
         "contradiction maths only",
