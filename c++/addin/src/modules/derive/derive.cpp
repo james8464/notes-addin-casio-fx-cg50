@@ -1354,13 +1354,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "implicit differentiation",
                     {
-                        "Domain: x+y>0.",
-                        lf + "(x+y)=x*y.",
-                        "(1+" + dname + ")/(x+y)=y+x*" + dname + ".",
-                        "1+" + dname + "=y*(x+y)+x*(x+y)*" + dname + ".",
-                        dname + "*(1-x*(x+y))=y*(x+y)-1.",
+                        "Domain: x + y > 0.",
+                        lf + "(x + y) = x*y.",
+                        "(1 + " + dname + ")/(x + y) = y + x*" + dname + ".",
+                        "1 + " + dname + " = y*(x + y) + x*(x + y)*" + dname + ".",
+                        dname + "*(1 - x*(x + y)) = y*(x + y) - 1.",
                     },
-                    dname + " = (y*(x+y)-1)/(1-x*(x+y))"
+                    dname + " = (y*(x + y) - 1)/(1 - x*(x + y))"
                 );
             }
             else if(compact == "y=x*tan(y)") answer = dname + " = tan(y)/(1-x*sec(y)^2)";

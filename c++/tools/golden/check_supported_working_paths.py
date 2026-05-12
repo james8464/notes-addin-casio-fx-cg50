@@ -201,7 +201,7 @@ def base_cases() -> list[Case]:
         ("x^2*sin(x),x,method=product", ("f1 =", "f2 =", "dy/dx")),
         ("(x^2+1)/(x-1),x,method=quotient", ("u =", "v =", "dy/dx")),
         ("x^sin(x),x,method=logdiff", ("ln(y)", "dy/dx")),
-        ("ln(x+y)=x*y,x,method=implicit", ("(1+dy/dx)/(x+y)", "dy/dx*(1-x*(x+y))", "dy/dx")),
+        ("ln(x+y)=x*y,x,method=implicit", ("(1 + dy/dx)/(x + y)", "dy/dx*(1 - x*(x + y))", "dy/dx")),
         ("1/(2*x+1)+1/(y+1)=x^2,x,method=implicit", ("* (2*x + 1)*(y + 1)", "dy/dx")),
         ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", ("dx/dt", "dy/dt", "dy/dx")),
         ("mode:6,x^2", ("[f(x+h)-f(x)]/h", "h->0")),

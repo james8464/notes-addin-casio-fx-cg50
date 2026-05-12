@@ -5329,7 +5329,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             Node const &expn = arena.get(x.b);
             if(expn.kind != NodeKind::Num || expn.num.den != 1) return {"Err: exponent must be integer."};
             int nn = (int)expn.num.num;
-            if(nn < 0 || nn > 12) return {"Err: exponent out of range."};
+            if(nn < 0 || nn > 18) return {"Err: exponent out of range."};
 
             // Extract base = a*x + b (order doesn't matter)
             NodeId base = x.a;

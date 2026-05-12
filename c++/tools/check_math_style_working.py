@@ -30,7 +30,7 @@ CASES = [
     (
         "implicit log direct",
         ["--derive", "ln(x+y)=x*y,x,method=implicit"],
-        ("(1+dy/dx)/(x+y)=y+x*dy/dx", "dy/dx*(1-x*(x+y))=y*(x+y)-1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"),
+        ("(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"),
         ("F_x", "F_y"),
     ),
     (
@@ -245,6 +245,11 @@ CASES = [
         ["--trig", "sin(8*x)=sin(8*x),x,0,2*pi,32,method=identity"],
         ("A = 8*x, B = 8*x", "A = B", "0 <= x <= 2*pi"),
         ("x = [",),
+    ),
+    (
+        "trig simple general then filter",
+        ["--trig", "sin(x)=-1,x,0,360"],
+        ("sin(x) = -1", "x = 270 + n*360", "0 <= x <= 360", "x = [270]"),
     ),
     (
         "trig sum product branches",

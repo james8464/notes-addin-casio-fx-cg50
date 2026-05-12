@@ -1849,6 +1849,27 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             }
         }
     }
+    if(!root_targets.empty()) {
+        auto lin = linear_angle(a, poly->arg, var, rad);
+        if(lin && std::fabs(lin->first) > 1e-12) {
+            std::string families;
+            for(auto const &[fk, r] : root_targets) {
+                auto bases = base_trig_degrees(fk, r);
+                double period = (fk == FnKind::Tan ? 180.0 : 360.0) / std::fabs(lin->first);
+                std::vector<double> xbases;
+                for(double theta : bases) {
+                    double base = (theta - lin->second) / lin->first;
+                    while(base < 0.0) base += period;
+                    while(base >= period) base -= period;
+                    add_unique(xbases, base);
+                }
+                if(xbases.empty()) continue;
+                if(!families.empty()) families += " or ";
+                families += format_general_trig_family(var, rad, xbases, period);
+            }
+            if(!families.empty()) steps.push_back(families + ".");
+        }
+    }
     steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }

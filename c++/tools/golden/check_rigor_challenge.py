@@ -31,7 +31,7 @@ def load_doc(path: Path) -> tuple[int, int, str]:
 DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
     1: ([str(HOST), "--derive", "x^y=y^x,method=implicit"], None, ["Domain:", "y*ln(x)=x*ln(y)", "dy/dx*(ln(x)-x/y)=ln(y)-y/x", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"]),
     2: ([str(HOST), "--derive", "sin(x*y)+x^2=y^2,method=implicit"], None, ["F_x + F_y*dy/dx = 0", "dy/dx = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))"]),
-    3: ([str(HOST), "--derive", "log(x+y)=x*y,method=implicit"], None, ["Domain:", "dy/dx = (y*(x+y)-1)/(1-x*(x+y))"]),
+    3: ([str(HOST), "--derive", "log(x+y)=x*y,method=implicit"], None, ["Domain:", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"]),
     4: ([str(HOST), "--derive", "y=x*tan(y),method=implicit"], None, ["F_y = - x*sec(y)^2 + 1", "dy/dx = tan(y)/(- x*sec(y)^2 + 1)"]),
     5: ([str(HOST), "--derive", "mode:4,x^2+y^2=a^2"], None, ["Domain: y != 0", "dy/dx=-x/y", "d2y/dx2 = -a^2/y^3"]),
     6: ([str(HOST), "--derive", "t^2+1/t,t^2-1/t,t,method=param_second"], None, ["dx/dt", "dy/dx", "d2y/dx2 = -12*t^4/(2*t^3-1)^3"]),

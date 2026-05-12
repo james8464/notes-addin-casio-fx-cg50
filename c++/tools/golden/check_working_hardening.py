@@ -99,7 +99,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
-        ["(1+dy/dx)/(x+y)=y+x*dy/dx", "dy/dx*(1-x*(x+y))=y*(x+y)-1", "dy/dx = (y*(x+y)-1)/(1-x*(x+y))"],
+        ["(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"],
         ["F_x", "F_y", "Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
@@ -629,6 +629,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform",
         ["R = sqrt(3^2 + 4^2) = 5", "cos(alpha)=3/5", "cos(x-alpha)=2/5", "Answer: x = [arctan(4/3)+arccos(2/5), 2*pi+arctan(4/3)-arccos(2/5)]"],
         ["Answer: x = [2.", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(x)=-1,x,0,360",
+        ["sin(x) = -1", "x = 270 + n*360", "0 <= x <= 360", "Answer: x = [270]"],
+        ["alpha = arcsin(-1) = -pi/2 for x\n0 <= x <= 360", "ERR:"],
     ),
     (
         "trig",

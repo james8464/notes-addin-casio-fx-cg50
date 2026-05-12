@@ -70,7 +70,7 @@ def marker_ok(marker: str, out: str) -> bool:
         "minimum distance = 5": ["min y = 5"],
         "Clear denominators": ["* ("],
         "Differentiate both sides": ["F_x =", "F_y ="],
-        "Implicit log direct": ["(1+dy/dx)/(x+y)", "dy/dx*(1-x*(x+y))"],
+        "Implicit log direct": ["(1 + dy/dx)/(x + y)", "dy/dx*(1 - x*(x + y))"],
         "collect dy/dx": ["dy/dx = -F_x/F_y"],
         "Take square roots": ["= +/-"],
         "Result: Equivalent": ["equivalent"],
