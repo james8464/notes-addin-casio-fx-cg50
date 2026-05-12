@@ -1945,6 +1945,36 @@ static bool squared_trig_fn(Arena &a, NodeId n, FnKind fk, NodeId &arg)
     return true;
 }
 
+static std::optional<std::vector<std::string>> tan_plus_cot_sincos(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    NodeId arg = 0;
+    bool saw_tan = false;
+    bool saw_cot = false;
+    for(NodeId kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind != NodeKind::Fn || (k.fkind != FnKind::Tan && k.fkind != FnKind::Cot)) return std::nullopt;
+        if(arg && !same_sig(a, arg, k.a)) return std::nullopt;
+        arg = k.a;
+        saw_tan = saw_tan || k.fkind == FnKind::Tan;
+        saw_cot = saw_cot || k.fkind == FnKind::Cot;
+    }
+    if(!arg || !saw_tan || !saw_cot) return std::nullopt;
+    std::string u = format_expr(a, arg);
+    std::string s = "sin(" + u + ")";
+    std::string c = "cos(" + u + ")";
+    return std::vector<std::string>{
+        "u = " + u,
+        "tan(u) = sin(u)/cos(u)",
+        "cot(u) = cos(u)/sin(u)",
+        "tan(u)+cot(u) = " + s + "/" + c + "+" + c + "/" + s,
+        "= (" + s + "^2+" + c + "^2)/(" + s + "*" + c + ")",
+        "= 1/(" + s + "*" + c + ")",
+        "= sec(" + u + ")*cosec(" + u + ")",
+    };
+}
+
 static std::optional<std::vector<std::string>> direct_pythagorean_rewrite(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -3049,6 +3079,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId s = casio::simplify(arena, raw);
         std::string key = compact_key(src);
         std::string ans = casio::format_expr(arena, s);
+        if(auto tc = tan_plus_cot_sincos(arena, raw)) return *tc;
         if(auto py_key = direct_pythagorean_key(key)) return *py_key;
         if(auto py = direct_pythagorean_rewrite(arena, raw)) return *py;
         if(auto da = direct_double_angle_rewrite(arena, raw)) return *da;
