@@ -342,14 +342,22 @@ static long long gcd_ll(long long a, long long b)
 
 static std::string format_pi_degrees(double deg)
 {
-    double rounded = std::round(deg);
-    if(std::fabs(deg - rounded) > 1e-7) {
+    long long num = 0;
+    long long den = 0;
+    for(long long d = 1; d <= 72; ++d) {
+        double n = deg * static_cast<double>(d) / 180.0;
+        double r = std::round(n);
+        if(std::fabs(n - r) < 1e-7) {
+            num = static_cast<long long>(r);
+            den = d;
+            break;
+        }
+    }
+    if(den == 0) {
         std::ostringstream fallback;
         fallback << std::setprecision(12) << (deg * M_PI / 180.0);
         return fallback.str();
     }
-    long long num = static_cast<long long>(rounded);
-    long long den = 180;
     if(num == 0) return "0";
     long long g = gcd_ll(num, den);
     num /= g;
@@ -2079,6 +2087,39 @@ static std::string format_general_trig_family(std::string const &var, bool rad, 
     return oss.str();
 }
 
+static std::optional<std::string> same_arg_sin_cos_zero(std::string const &eq_key)
+{
+    if(eq_key.size() < 4 || eq_key.substr(eq_key.size() - 2) != "=0") return std::nullopt;
+    std::string lhs = eq_key.substr(0, eq_key.size() - 2);
+    auto read_call = [&](std::string const &fn, std::size_t pos, std::string &arg, std::size_t &end) -> bool {
+        std::string prefix = fn + "(";
+        if(lhs.compare(pos, prefix.size(), prefix) != 0) return false;
+        std::size_t start = pos + prefix.size();
+        int depth = 1;
+        for(std::size_t i = start; i < lhs.size(); ++i) {
+            if(lhs[i] == '(') ++depth;
+            else if(lhs[i] == ')') {
+                --depth;
+                if(depth == 0) {
+                    arg = lhs.substr(start, i - start);
+                    end = i + 1;
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    for(bool sin_first : {true, false}) {
+        std::string a1, a2;
+        std::size_t p = 0, q = 0;
+        if(!read_call(sin_first ? "sin" : "cos", 0, a1, p)) continue;
+        if(p >= lhs.size() || lhs[p] != '+') continue;
+        if(!read_call(sin_first ? "cos" : "sin", p + 1, a2, q)) continue;
+        if(q == lhs.size() && a1 == a2) return a1;
+    }
+    return std::nullopt;
+}
+
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
                                                      std::string const &lo_text, std::string const &hi_text,
                                                      bool general = false)
@@ -2641,32 +2682,36 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             }
         }
     }
-    if(eq_key == "sin(2x)+cos(2x)=0") {
-        std::string ans = rad ? var + " = [3*pi/8, 7*pi/8, 11*pi/8, 15*pi/8]" : var + " = [67.5, 157.5, 247.5, 337.5]";
-        std::string nvals = "n=1,2,3,4";
-        std::string lo_key = compact_key(lo_text);
-        std::string hi_key = compact_key(hi_text);
-        if(rad && hi_key == "pi") { ans = var + " = [3*pi/8, 7*pi/8]"; nvals = "n=1,2"; }
-        if(rad && lo_key == "-pi" && hi_key == "pi") { ans = var + " = [-5*pi/8, -pi/8, 3*pi/8, 7*pi/8]"; nvals = "n=-1,0,1,2"; }
-        if(!rad && hi_key == "180") { ans = var + " = [67.5, 157.5]"; nvals = "n=1,2"; }
-        if(!rad && lo_key == "-180" && hi_key == "180") { ans = var + " = [-112.5, -22.5, 67.5, 157.5]"; nvals = "n=-1,0,1,2"; }
-        std::string u = "2*" + var;
-        std::string period = rad ? "pi*n" : "180n";
-        return casio::exam_block(
-            "trig solve",
-            {
-                eq_text,
-                "cos(" + u + ")=0 => sin(" + u + ")+cos(" + u + ")=+/-1 != 0",
-                "sin(" + u + ")/cos(" + u + ")+1=0",
-                "tan(" + u + ")+1=0",
-                "tan(" + u + ")=-1",
-                rad ? u + "=-pi/4+" + period : u + "=-45+" + period,
-                rad ? var + "=-pi/8+pi*n/2" : var + "=-22.5+90n",
-                lo_text + " <= " + var + " <= " + hi_text,
-                nvals,
-            },
-            ans
-        );
+    if(auto same_arg = same_arg_sin_cos_zero(eq_key)) {
+        try {
+            NodeId arg = casio::parse_expr(a, *same_arg);
+            auto lin = linear_angle(a, arg, var, rad);
+            if(lin && std::fabs(lin->first) > 1e-12) {
+                std::string A = format_expr(a, arg);
+                auto xs = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, {-45.0, 135.0});
+                double period = 180.0 / std::fabs(lin->first);
+                double base = (-45.0 - lin->second) / lin->first;
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        eq_text,
+                        "Let A=" + A + ".",
+                        "cos(A)=0 => sin(A)+cos(A)=+/-1 != 0.",
+                        "cos(A)!=0.",
+                        "(sin(A)+cos(A))/cos(A)=0/cos(A).",
+                        "sin(" + A + ")/cos(" + A + ")+1=0.",
+                        "tan(" + A + ")=sin(" + A + ")/cos(" + A + ").",
+                        "tan(" + A + ")+1=0.",
+                        "tan(" + A + ")=-1.",
+                        rad ? A + "=-pi/4+n*pi." : A + "=-45+180n.",
+                        format_general_trig_family(var, rad, {base}, period) + ".",
+                        lo_text + " <= " + var + " <= " + hi_text + ".",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        } catch(...) {
+        }
     }
     if(eq_key == "atan((5-x)/(x-1))+atan((4-x)/(x-3))=pi/4" ||
        eq_key == "atan((-x+5)/(x-1))+atan((-x+4)/(x-3))=pi/4") {

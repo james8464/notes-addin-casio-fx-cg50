@@ -306,12 +306,12 @@ CASES = [
     (
         "trig sin cos tan reduction",
         ["--trig", "sin(2*x)+cos(2*x)=0,x,-180,180"],
-        ("cos(2*x)=0 => sin(2*x)+cos(2*x)=+/-1 != 0", "sin(2*x)/cos(2*x)+1=0", "tan(2*x)=-1", "x=-22.5+90n", "n = -1,0,1,2", "x = [-112.5, -22.5, 67.5, 157.5]"),
+        ("A = 2*x", "cos(A)=0 => sin(A)+cos(A)=+/-1 != 0", "(sin(A)+cos(A))/cos(A)=0/cos(A)", "tan(2*x)=sin(2*x)/cos(2*x)", "tan(2*x)=-1", "x = -22.5 + n*90", "x = [-112.5, -22.5, 67.5, 157.5]"),
     ),
     (
         "trig rad interval n filter",
         ["--trig", "sin(2*x)+cos(2*x)=0,x,0,pi"],
-        ("x=-pi/8+pi*n/2", "0 <= x <= pi", "n = 1,2", "x = [3*pi/8, 7*pi/8]"),
+        ("x = -pi/8 + n*pi/2", "0 <= x <= pi", "x = [3*pi/8, 7*pi/8]"),
     ),
     (
         "tan same function degree family",
