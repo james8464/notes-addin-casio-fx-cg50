@@ -3851,21 +3851,34 @@ static std::optional<std::string> reciprocal_trig_identity_step(std::string cons
 {
     std::string key = compact_input_key(raw);
     bool has_sq = key.find("^2") != std::string::npos;
-    bool plus_one = key.find("+1") != std::string::npos || key.find("1+") != std::string::npos;
+    bool plus_one = key.rfind("1+", 0) == 0 || (key.size() >= 2 && key.substr(key.size() - 2) == "+1");
+    auto arg_of = [&](std::string const &fn) {
+        std::size_t p = key.find(fn + "(");
+        if(p == std::string::npos) return std::string("u");
+        p += fn.size() + 1;
+        int depth = 1;
+        for(std::size_t i = p; i < key.size(); ++i) {
+            if(key[i] == '(') ++depth;
+            else if(key[i] == ')' && --depth == 0) return key.substr(p, i - p);
+        }
+        return std::string("u");
+    };
+    if(has_sq && key.find('-') != std::string::npos &&
+       (key.find("cosec(") != std::string::npos || key.find("csc(") != std::string::npos) &&
+       key.find("cot(") != std::string::npos) {
+        std::string u = key.find("cosec(") != std::string::npos ? arg_of("cosec") : arg_of("csc");
+        return "u = " + u + "; cosec(u)^2 = 1+cot(u)^2; cosec(u)^2 - cot(u)^2 = 1.";
+    }
+    if(has_sq && key.find('-') != std::string::npos &&
+       key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos) {
+        std::string u = arg_of("sec");
+        return "u = " + u + "; sec(u)^2 = 1+tan(u)^2; sec(u)^2 - tan(u)^2 = 1.";
+    }
     if(has_sq && plus_one && key.find("cot(") != std::string::npos) {
         return "Use identity 1 + cot(u)^2 = cosec(u)^2.";
     }
     if(has_sq && plus_one && key.find("tan(") != std::string::npos) {
         return "Use identity 1 + tan(u)^2 = sec(u)^2.";
-    }
-    if(has_sq && key.find('-') != std::string::npos &&
-       (key.find("cosec(") != std::string::npos || key.find("csc(") != std::string::npos) &&
-       key.find("cot(") != std::string::npos) {
-        return "cosec(u)^2 = 1+cot(u)^2; cosec(u)^2 - cot(u)^2 = 1.";
-    }
-    if(has_sq && key.find('-') != std::string::npos &&
-       key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos) {
-        return "sec(u)^2 = 1+tan(u)^2; sec(u)^2 - tan(u)^2 = 1.";
     }
     return std::nullopt;
 }

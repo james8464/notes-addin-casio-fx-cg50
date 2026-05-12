@@ -620,6 +620,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "range(cosec((x+1)/3)^2-cot((x+1)/3)^2)",
+        ["u = (x+1)/3", "cosec(u)^2 - cot(u)^2 = 1", "Range: y = 1", "Answer: y = 1"],
+        ["1 + cot(u)^2 = cosec(u)^2\nDomain", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
         "range(sec(x)^2-tan(x)^2)",
         ["sec(u)^2 = 1+tan(u)^2", "sec(u)^2 - tan(u)^2 = 1", "Range: y = 1", "Answer: y = 1"],
         ["inspect graph/transform", "ERR:", "Unexpected token"],
