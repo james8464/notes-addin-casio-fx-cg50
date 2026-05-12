@@ -170,7 +170,7 @@ def generated_cases() -> list[dict[str, Any]]:
         ("range(log(10,abs(3*x+1)+3))", "Answer: y >= log(3)/log(10)"),
         ("domain(sqrt(log(1/2,x-1)))", "log base 1/2 decreases"),
         ("domain(arcsin((x-1)/3))", "Domain: -1 <= (x - 1)/3 <= 1"),
-        ("domain(arccos(sin((x+1)/3)))", "sin input is always in [-1,1]"),
+        ("domain(arccos(sin((x+1)/3)))", "acos(u): -1 <= u <= 1"),
         ("range(1/(2-cos(3*x)))", "Answer: 1/3 <= y <= 1"),
     ):
         out.append({

@@ -633,7 +633,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "domain(arccos(sin((x+1)/3)))",
-        ["sin input is always in [-1,1]", "Answer: all real x"],
+        ["acos(u): -1 <= u <= 1", "-1 <= sin((x + 1)/3) <= 1", "Answer: all real x"],
         ["Answer: -1 <= sin", "inspect graph/transform", "ERR:"],
     ),
     (

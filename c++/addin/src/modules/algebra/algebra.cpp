@@ -4588,8 +4588,10 @@ static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId 
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Fn || !(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos)) return std::nullopt;
     Node const &arg = a.get(x.a);
-    if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Sin) return std::string("sin input is always in [-1,1].");
-    if(arg.kind == NodeKind::Fn && arg.fkind == FnKind::Cos) return std::string("cos input is always in [-1,1].");
+    if(arg.kind == NodeKind::Fn && (arg.fkind == FnKind::Sin || arg.fkind == FnKind::Cos)) {
+        std::string outer = x.fkind == FnKind::Asin ? "asin" : "acos";
+        return outer + "(u): -1 <= u <= 1; -1 <= " + format_expr(a, x.a) + " <= 1.";
+    }
     return std::nullopt;
 }
 
