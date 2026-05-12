@@ -35,6 +35,19 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Rearrange to lhs-rhs=0", "combine log terms", "Exponentiate, solve", "x = 0.2", "ERR:"],
     ),
     (
+        "alg",
+        "solve((x^2-16)/(x-4)=13,x)",
+        [
+            "Domain: x - 4 != 0",
+            "x^2 - 16 = (x - 4)*(x + 4)",
+            "(x^2 - 16)/(x - 4) = x + 4, x - 4 != 0",
+            "x + 4 = 13",
+            "9 != 4",
+            "x = [9]",
+        ],
+        ["expand => x^2 - 13*x + 36 = 0", "x = (-b +/- sqrt", "ERR:"],
+    ),
+    (
         "derive",
         "sec(x)+cot(x)+csc(x),x",
         ["d/dx(sec(x)) = sec(x)*tan(x)", "d/dx(cot(x)) = -cosec(x)^2", "d/dx(cosec(x)) = -cosec(x)*cot(x)"],

@@ -92,6 +92,20 @@ static Poly2 add_poly(Poly2 p, Poly2 const &q)
     return p;
 }
 
+static Poly2 neg_poly(Poly2 p)
+{
+    if(!p.ok) return p;
+    p.a2 = r_neg(p.a2);
+    p.a1 = r_neg(p.a1);
+    p.a0 = r_neg(p.a0);
+    return p;
+}
+
+static Poly2 sub_poly(Poly2 p, Poly2 const &q)
+{
+    return add_poly(p, neg_poly(q));
+}
+
 static Poly2 mul_poly(Poly2 const &p, Poly2 const &q)
 {
     if(!p.ok || !q.ok) return Poly2{{}, {}, {}, false};
@@ -2940,7 +2954,63 @@ static void append_kept_denominator_check(Arena &a,
     if(!is_zero(den.a2) || is_zero(den.a1)) return;
     Rational bad = r_div(r_neg(den.a0), den.a1);
     std::string bad_text = format_expr(a, casio::num(a, bad.num, bad.den));
-    for(auto const &s : sols) out.push_back(sol_rhs(s) + " != " + bad_text);
+    for(auto const &s : sols) {
+        if(s.find("No solution") != std::string::npos || s.find("Infinite") != std::string::npos) continue;
+        out.push_back(sol_rhs(s) + " != " + bad_text);
+    }
+}
+
+static std::optional<Poly2> linear_factor_quotient(Poly2 const &num, Poly2 const &den)
+{
+    if(!num.ok || !den.ok || !is_zero(den.a2) || is_zero(den.a1)) return std::nullopt;
+    Rational q1 = r_div(num.a2, den.a1);
+    Rational q0 = r_div(r_sub(num.a1, r_mul(q1, den.a0)), den.a1);
+    Rational rem = r_sub(num.a0, r_mul(q0, den.a0));
+    if(!is_zero(rem)) return std::nullopt;
+    return Poly2{Rational{0, 1}, q1, q0, true};
+}
+
+static bool append_removable_rational_route(Arena &a,
+                                            std::vector<std::string> &out,
+                                            NodeId lhs,
+                                            NodeId rhs,
+                                            NodeId rearr,
+                                            std::string const &var,
+                                            std::optional<double> lo,
+                                            std::optional<double> hi)
+{
+    auto try_side = [&](NodeId frac, NodeId other) -> bool {
+        Node const &f = a.get(frac);
+        if(f.kind != NodeKind::Div) return false;
+        auto num = poly_of(a, f.a, var);
+        auto den = poly_of(a, f.b, var);
+        auto other_poly = poly_of(a, other, var);
+        if(!num || !den || !other_poly || !num->ok || !den->ok || !other_poly->ok) return false;
+        auto q = linear_factor_quotient(*num, *den);
+        if(!q) return false;
+        Poly2 eq = sub_poly(*q, *other_poly);
+        std::string nt = format_expr(a, f.a);
+        std::string dt = format_expr(a, f.b);
+        std::string qt = format_expr(a, poly2_to_node(a, *q, var));
+        std::string ft = format_expr(a, frac);
+        std::string ot = format_expr(a, other);
+        out.push_back(nt + " = (" + dt + ")*(" + qt + ")");
+        out.push_back(ft + " = " + qt + ", " + dt + " != 0");
+        out.push_back(qt + " = " + ot);
+        auto raw = solve_poly2(a, eq, var);
+        auto sols = filter_real_solutions(a, rearr, var, raw, lo, hi);
+        if(sols.empty()) {
+            append_rejected_by_domain(out, var, raw, sols);
+            out.push_back(lo && hi ? "No solution in interval." : "No solution.");
+            out.push_back("Answer: " + var + " = []");
+            return true;
+        }
+        append_kept_denominator_check(a, out, *den, sols);
+        append_answer(out, var, sols);
+        append_numeric_3dp(a, out, var, sols);
+        return true;
+    };
+    return try_side(lhs, rhs) || try_side(rhs, lhs);
 }
 
 static std::vector<std::string> filter_solutions_by_original_key(
@@ -6252,6 +6322,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             return out;
         }
+
+        if(append_removable_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
 
         if(is_zero(rp.num.a2) && is_zero(rp.num.a1)) {
             std::string c0 = format_expr(arena, poly2_to_node(arena, rp.num, solve_var));
