@@ -34,6 +34,12 @@ CASES = [
         ("F_x", "F_y"),
     ),
     (
+        "implicit variable powers",
+        ["--derive", "x^y=y^x,x,method=implicit"],
+        ("ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*(ln(x)-x/y)=ln(y)-y/x", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"),
+        ("F_x", "F_y", "-F_x/F_y"),
+    ),
+    (
         "param generic",
         ["--derive", "x=3+2*cos(theta),y=-3+2*sin(theta),theta,x,method=param"],
         ("dx/dt = -2*sin(theta)", "dy/dt = 2*cos(theta)", "dy/dx=(dy/dt)/(dx/dt)", "dy/dx = (2*cos(theta))/(-2*sin(theta))"),

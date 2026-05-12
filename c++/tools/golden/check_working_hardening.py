@@ -97,6 +97,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "derive",
+        "x^y=y^x,x,method=implicit",
+        ["ln(x^y)=ln(y^x)", "y*ln(x)=x*ln(y)", "dy/dx*(ln(x)-x/y)=ln(y)-y/x", "dy/dx = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"],
+        ["F_x", "F_y", "-F_x/F_y", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
         "arccos(cos(2*x+pi/6)),x,method=auto",
         ["u = cos(2*x + pi/6)", "du/dx = -2*sin(2*x + pi/6)", "dy/dx = -du/dx/sqrt(1-u^2)"],
         ["Use quotient rule", "Answer: d/dx(", "Unexpected token", "ERR:"],

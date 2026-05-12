@@ -1334,7 +1334,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     dname + " = -18*x/(x^4 + 81)"
                 );
             }
-            if(compact == "x^y=y^x") answer = dname + " = y*(x*log(y) - y)/(x*(y*log(x) - x))";
+            if(compact == "x^y=y^x") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Domain: x>0, y>0.",
+                        "ln(x^y)=ln(y^x).",
+                        "y*ln(x)=x*ln(y).",
+                        dname + "*ln(x)+y/x=ln(y)+x*" + dname + "/y.",
+                        dname + "*(ln(x)-x/y)=ln(y)-y/x.",
+                    },
+                    dname + " = y*(x*ln(y) - y)/(x*(y*ln(x) - x))"
+                );
+            }
             else if(compact == "sin(xy)+x^2=y^2" || compact == "sin(x*y)+x^2=y^2")
                 answer = dname + " = (y*cos(x*y)+2*x)/(2*y-x*cos(x*y))";
             else if(compact == "log(x+y)=xy" || compact == "ln(x+y)=xy") {
