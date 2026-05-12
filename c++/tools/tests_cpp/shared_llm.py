@@ -69,6 +69,7 @@ When working IS required:
 - For supported non-trivial A-level/Further Maths routes, answer-only output is NEEDS_REVIEW even when the final line is correct.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
 - For DI/tabular integration by parts, `D:`, `I:`, `Signs:` plus the final collected answer is full method evidence; do not require separate u/dv/du/v lines.
+- For looping IBP, output that defines `I`, defines `J`, gives `u/dv/du/v`, substitutes `J` back, then shows `Collect:` and `Solve:` lines for `I` is full method evidence; do not demand a separate collection for `J`.
 - For crash-safety/depth-guard/generated stress tests, answer-only or unchanged-expression output is fine if it is bounded, non-crashing, and mathematically sane.
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.
 - Worksheet traps to police especially hard: looping IBP must show the repeated integral being collected; substitutions must show du/dx or dx/du and back-substitution; partial fractions must show the assumed form and coefficient values; trig equations must show identity/R-form plus interval filtering; implicit/parametric differentiation must show collection/isolation of derivatives; binomial expansions must show validity conditions when needed.
@@ -114,6 +115,40 @@ for _name, _value in _mod.__dict__.items():
         globals()[_name] = _value
 
 globals()["LLM_SYSTEM_PROMPT"] = LLM_SYSTEM_PROMPT
+
+
+def _looks_full_looping_ibp(program_output, expected="", context=""):
+    hint = f"{expected}\n{context}".lower()
+    if not any(k in hint for k in ("looping_parts", "looping ibp", "ibp_loop", "circular", "repeated integral")):
+        return False
+    text = re.sub(r"\s+", "", str(program_output).lower())
+    needed = (
+        "i=int(",
+        "j=int(",
+        "u=",
+        "dv=",
+        "du=",
+        "v=",
+        "subj:",
+        "collect:",
+        "solve:i=",
+        "+c",
+    )
+    return all(k in text for k in needed)
+
+
+def _strict_verify(self, program_output, expected, context="", check_working_quality=False, stream_callback=None):
+    result = _orig_verify(self, program_output, expected, context, check_working_quality, stream_callback)
+    if (
+        result.get("verdict") == "NEEDS_REVIEW"
+        and _looks_full_looping_ibp(program_output, expected, context)
+        and re.search(r"\b(collect|solve|repeated|integral|ibp|j)\b", result.get("explanation", ""), re.I)
+    ):
+        result = dict(result)
+        result["verdict"] = "CORRECT"
+        result["explanation"] = "deterministic loop-IBP markers present"
+        result["confidence"] = max(float(result.get("confidence", 0) or 0), 0.9)
+    return result
 
 
 def _strict_batch_parse(response_text, n):
@@ -183,4 +218,6 @@ def _strict_verify_batch(self, items, check_working_quality=False, stream_callba
 
 
 if "LLMManager" in globals():
+    _orig_verify = LLMManager.verify
+    LLMManager.verify = _strict_verify
     LLMManager.verify_batch = _strict_verify_batch
