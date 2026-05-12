@@ -533,11 +533,34 @@ static std::vector<std::string> binomial(std::string const &expr)
         event = "X <= " + std::to_string(r);
     }
     std::vector<std::string> out;
+    long double q = 1.0L - p;
+    auto pmf_formula = [&](std::string const &k) {
+        return std::to_string(n) + "C" + k + "*" + fmt(p) + "^" + k + "*" + fmt(q) + "^(" + std::to_string(n) + "-" + k + ")";
+    };
     out.push_back("X ~ B(" + std::to_string(n) + ", " + fmt(p) + ")");
-    if(!cdf) out.push_back("P(X = r) = nCr*p^r*(1-p)^(n-r)");
-    else if(ge || gt) out.push_back("P(" + event + ") = 1 - P(X < " + std::to_string(ge ? r : r + 1) + ")");
-    else out.push_back("P(X <= r) = sum_{x=0}^r nCx*p^x*(1-p)^(n-x)");
-    if(n > 5000 && cdf) out.push_back("normal approx with continuity correction");
+    if(!cdf) {
+        out.push_back("P(X = r) = nCr*p^r*(1-p)^(n-r)");
+        out.push_back("P(X = " + std::to_string(r) + ") = " + pmf_formula(std::to_string(r)));
+    }
+    else if(ge || gt) {
+        int k0 = gt ? r + 1 : r;
+        int below = k0 - 1;
+        out.push_back("P(" + event + ") = 1 - P(X <= " + std::to_string(below) + ")");
+        out.push_back("P(X <= " + std::to_string(below) + ") = sum_{x=0}^" + std::to_string(below) + " " + pmf_formula("x"));
+    }
+    else {
+        out.push_back("P(X <= " + std::to_string(r) + ") = sum_{x=0}^" + std::to_string(r) + " " + pmf_formula("x"));
+    }
+    if(n > 5000 && cdf) {
+        long double mu = n * p;
+        long double sd = std::sqrt((double)(n * p * q));
+        int k0 = (ge || gt) ? (gt ? r + 1 : r) : r;
+        long double cc = (ge || gt) ? (k0 - 0.5L) : (r + 0.5L);
+        long double z = sd == 0.0L ? 0.0L : (cc - mu) / sd;
+        out.push_back("mu = np = " + fmt(mu) + ", sigma = sqrt(np(1-p)) = " + fmt(sd));
+        if(ge || gt) out.push_back("P(" + event + ") ~= 1 - Phi((" + fmt(cc) + " - " + fmt(mu) + ")/" + fmt(sd) + ") = 1 - Phi(" + fmt(z) + ")");
+        else out.push_back("P(" + event + ") ~= Phi((" + fmt(cc) + " - " + fmt(mu) + ")/" + fmt(sd) + ") = Phi(" + fmt(z) + ")");
+    }
     out.push_back("P(" + event + ") = " + fmt(ans));
     return out;
 }

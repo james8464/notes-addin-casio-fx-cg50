@@ -10058,7 +10058,7 @@ class CASIOApp(App):
             (
                 "3\n10000,0.01,120,cdf\n",
                 "Stats: binomial large-n cdf fallback",
-                stats_checker("large n", "normal approx"),
+                stats_checker("mu = np", "Phi"),
                 "large n binomial uses normal approximation",
                 "stats_binomial:large_n",
             ),

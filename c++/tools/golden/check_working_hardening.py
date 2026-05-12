@@ -643,6 +643,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["var(pop)", "Traceback"],
     ),
     (
+        "stats",
+        "binomial(10000,0.01,102,tail)",
+        ["X ~ B(10000, 0.01)", "P(X >= 102) = 1 - P(X <= 101)", "sum_{x=0}^101", "mu = np = 100", "1 - Phi", "P(X >= 102) = 0.44008423"],
+        ["Traceback", "normal approx with continuity correction"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],
