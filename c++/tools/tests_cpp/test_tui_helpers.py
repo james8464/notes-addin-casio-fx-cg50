@@ -40,6 +40,13 @@ class TuiHelperTests(unittest.TestCase):
         self.assertIn("parts", expr)
         self.assertRegex(expr, r"method\s*=\s*parts")
 
+    def test_zero_signed_terms_do_not_leave_multiplication_tail(self):
+        app = TUI.CASIOApp()
+
+        self.assertEqual(app.signed_var_term(0), "")
+        self.assertEqual(app.signed_mul_term(0, "cos(x)"), "")
+        self.assertEqual(f"9*x^2{app.signed_var_term(0)}+4", "9*x^2+4")
+
     def test_cli_llm_status_keyword_is_not_model_name(self):
         out = subprocess.run(
             [sys.executable, str(REPO_ROOT / "c++" / "tools" / "tests_cpp" / "run_tests_tui.py"), "llm", "status"],

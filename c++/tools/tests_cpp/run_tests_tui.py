@@ -5201,6 +5201,16 @@ class CASIOApp(App):
             return str(value)
         return ""
 
+    def signed_mul_term(self, value, factor):
+        if value > 0:
+            return f"+{value}*{factor}"
+        if value < 0:
+            return f"{value}*{factor}"
+        return ""
+
+    def signed_var_term(self, value, var="x"):
+        return self.signed_mul_term(value, var)
+
     def random_nonzero_int(self, rng, low=1, high=9):
         value = 0
         while value == 0:
@@ -5667,7 +5677,7 @@ class CASIOApp(App):
         ]
         if difficulty in ("medium", "hard", "chaos"):
             choices.append(self.random_shifted_power_expr(rng, var, "medium"))
-            choices.append(f"{rng.randint(2, 7)}*{var}^2{self.signed_int_text(rng.randint(-7, 7))}*{var}+{rng.randint(1, 9)}")
+            choices.append(f"{rng.randint(2, 7)}*{var}^2{self.signed_var_term(rng.randint(-7, 7), var)}+{rng.randint(1, 9)}")
         if difficulty in ("hard", "chaos"):
             choices.extend([
                 self.random_shifted_power_expr(rng, var, difficulty),
@@ -5685,7 +5695,7 @@ class CASIOApp(App):
         expr = rng.choice([
             self.random_base_expr(rng, var, difficulty),
             self.random_affine_expr(rng, var, difficulty, allow_negative=True, fractions=difficulty in ("hard", "chaos")),
-            f"{rng.randint(2, 9)}*{var}^2{self.signed_int_text(rng.randint(-6, 6))}*{var}+{rng.randint(-7, 9)}",
+            f"{rng.randint(2, 9)}*{var}^2{self.signed_var_term(rng.randint(-6, 6), var)}+{rng.randint(-7, 9)}",
         ])
         wraps = self.random_unbounded_count(rng, minimum=4, continue_probability=0.2) if difficulty == "chaos" else {"easy": 1, "medium": 2, "hard": 4}.get(difficulty, 2)
         i = 0
@@ -5790,7 +5800,7 @@ class CASIOApp(App):
         angle = self.random_angle_expr(rng, var, difficulty)
         mode = rng.choice(["linear_combo", "pythag_mix", "ratio", "power_sum", "reciprocal_mix"])
         if mode == "linear_combo":
-            return f"{rng.randint(2, 7)}*sin({angle}){self.signed_int_text(rng.randint(-7, 7))}*cos({angle})"
+            return f"{rng.randint(2, 7)}*sin({angle}){self.signed_mul_term(rng.randint(-7, 7), f'cos({angle})')}"
         if mode == "pythag_mix":
             return f"sin({angle})^2+cos({angle})^2+{rng.randint(1, 5)}*tan({angle})"
         if mode == "ratio":
@@ -6650,7 +6660,7 @@ class CASIOApp(App):
             a = rng.randint(2, 5)
             b = rng.randint(-6, 6)
             c = rng.randint(-12, 12)
-            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_int_text(2*a*b)}*x{self.signed_int_text(b*b+c)}"
+            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_var_term(2*a*b)}{self.signed_int_text(b*b+c)}"
         else:
             a = rng.randint(1, 6)
             b = rng.randint(1, 6)
@@ -6673,7 +6683,7 @@ class CASIOApp(App):
             a = rng.randint(2, 5)
             b = rng.randint(-6, 6)
             extra = rng.randint(1, 7)
-            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_int_text(2*a*b)}*x{self.signed_int_text(b*b + extra)}"
+            eq = f"({a}*x{self.signed_int_text(b)})^2={a*a}*x^2{self.signed_var_term(2*a*b)}{self.signed_int_text(b*b + extra)}"
         elif mode == "removable_rational":
             r = rng.randint(2, 8)
             k = rng.randint(r + 2, r + 12)
@@ -7639,7 +7649,7 @@ class CASIOApp(App):
         mode = rng.choice(["poly", "sin", "exp", "atan", "sqrt", "log_power", "cos", "reciprocal", "nested_u", "hard_log", "arcsin_sub", "sec_tan", "cot_cosec"])
         u = rng.choice([
             self.random_linear_expr(rng, "x", allow_negative=True),
-            f"x^2{self.signed_int_text(rng.randint(-5,5))}*x+{rng.randint(2,9)}",
+            f"x^2{self.signed_var_term(rng.randint(-5,5))}+{rng.randint(2,9)}",
             f"exp({self.random_linear_expr(rng, 'x', allow_negative=True)})+{rng.randint(2,9)}",
             f"sqrt({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
             f"log({self.random_positive_expr(rng, 'x', helper_difficulty)})+{rng.randint(2,9)}",
