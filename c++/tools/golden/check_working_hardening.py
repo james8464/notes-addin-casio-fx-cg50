@@ -133,6 +133,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["log_b(A)-log_b(B)", "|A| = B =>", "ERR:"],
     ),
     (
+        "alg",
+        "log(3,x^2+2)=0,method=auto",
+        ["x^2 + 2 = 3^0", "x^2 + 2 = 1", "x^2 + 1 = 0", "b^2 - 4ac = -4 < 0", "x = []"],
+        ["(0 + sqrt(4)*i)/2", "Answer:", "ERR:"],
+    ),
+    (
         "derive",
         "ln(x+y)=x*y,x,method=implicit",
         ["d/dx[ln(x + y)] = (1 + dy/dx)/(x + y)", "d/dx[x*y] = y + x*dy/dx", "(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"],

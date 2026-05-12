@@ -3581,6 +3581,52 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
         }
     }
 
+    // log_b(A)=c  =>  A=b^c, for fixed positive b != 1.
+    if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
+        auto l = parse_log_term_key(lhs_terms[0]);
+        auto rhs = parse_rational_key(sides[1]);
+        auto b = l ? parse_i64_text(l->base) : std::optional<long long>{};
+        auto factor = (b && *b > 0 && *b != 1 && rhs) ? integer_base_power_rational(l->base, *rhs) : std::optional<Rational>{};
+        if(l && rhs && b && factor && l->coeff.num == 1 && l->coeff.den == 1) {
+            std::string A = format_key_expr(a, l->arg);
+            std::string pow = l->base + (rhs->den == 1 ? "^" + std::to_string(rhs->num) : "^(" + format_rat_plain(*rhs) + ")");
+            std::string factor_text = format_rat_plain(*factor);
+            out.push_back("log(" + l->base + "," + A + ") = " + format_rat_plain(*rhs));
+            out.push_back(A + " = " + pow);
+            if(pow != factor_text) out.push_back(A + " = " + factor_text);
+            std::string poly_key = "(" + l->arg + ")-(" + factor_text + ")";
+            try {
+                NodeId poly_node = casio::simplify(a, casio::parse_expr(a, poly_key));
+                auto rp = ratpoly_of_node(a, poly_node, var);
+                if(rp.ok) {
+                    Poly2 prim = primitive_poly2(rp.num);
+                    std::string eq = format_expr(a, poly2_to_node(a, prim, var)) + " = 0";
+                    out.push_back(eq);
+                    auto raw = solve_poly2(a, prim, var);
+                    std::vector<std::string> real_raw;
+                    for(auto const &r : raw)
+                        if(sol_rhs(r).find('i') == std::string::npos && r.find("No solution") == std::string::npos) real_raw.push_back(r);
+                    auto valid = filter_solutions_by_original_key(a, real_raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+                    append_rejected_by_domain(out, var, real_raw, valid);
+                    if(valid.empty()) {
+                        if(!is_zero(prim.a2)) {
+                            Rational disc = r_add(r_mul(prim.a1, prim.a1), r_neg(r_mul(Rational{4, 1}, r_mul(prim.a2, prim.a0))));
+                            disc.normalize();
+                            if(disc.num < 0) out.push_back("b^2 - 4ac = " + format_expr(a, a.num(disc)) + " < 0");
+                        }
+                        out.push_back(var + " = []");
+                    }
+                    else {
+                        for(auto const &v : valid) out.push_back(v);
+                        out.push_back(solution_list_line(var, valid));
+                    }
+                    return out;
+                }
+            }
+            catch(...) {}
+        }
+    }
+
     // log_a(x)+log_{a^m}(x)=c.
     if(lhs_terms.size() == 2) {
         auto a1 = parse_log_term_key(lhs_terms[0]);
