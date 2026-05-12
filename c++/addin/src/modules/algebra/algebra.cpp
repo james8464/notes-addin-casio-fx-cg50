@@ -3943,34 +3943,36 @@ static std::optional<std::vector<std::string>> rationalise_sqrt_denominator(Aren
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
 {
     std::string key = compact_input_key(raw);
-    bool has_sq = key.find("^2") != std::string::npos;
-    bool plus_one = key.rfind("1+", 0) == 0 || (key.size() >= 2 && key.substr(key.size() - 2) == "+1");
+    auto eq_sides = split_top_key(key, '=');
+    std::string test = eq_sides.empty() ? key : eq_sides[0];
+    bool has_sq = test.find("^2") != std::string::npos;
+    bool plus_one = test.rfind("1+", 0) == 0 || (test.size() >= 2 && test.substr(test.size() - 2) == "+1");
     auto arg_of = [&](std::string const &fn) {
-        std::size_t p = key.find(fn + "(");
+        std::size_t p = test.find(fn + "(");
         if(p == std::string::npos) return std::string("u");
         p += fn.size() + 1;
         int depth = 1;
-        for(std::size_t i = p; i < key.size(); ++i) {
-            if(key[i] == '(') ++depth;
-            else if(key[i] == ')' && --depth == 0) return key.substr(p, i - p);
+        for(std::size_t i = p; i < test.size(); ++i) {
+            if(test[i] == '(') ++depth;
+            else if(test[i] == ')' && --depth == 0) return test.substr(p, i - p);
         }
         return std::string("u");
     };
-    if(has_sq && key.find('-') != std::string::npos &&
-       (key.find("cosec(") != std::string::npos || key.find("csc(") != std::string::npos) &&
-       key.find("cot(") != std::string::npos) {
-        std::string u = key.find("cosec(") != std::string::npos ? arg_of("cosec") : arg_of("csc");
+    if(has_sq && test.find('-') != std::string::npos &&
+       (test.find("cosec(") != std::string::npos || test.find("csc(") != std::string::npos) &&
+       test.find("cot(") != std::string::npos) {
+        std::string u = test.find("cosec(") != std::string::npos ? arg_of("cosec") : arg_of("csc");
         return "u = " + u + "; cosec(u)^2 = 1+cot(u)^2; cosec(u)^2 - cot(u)^2 = 1.";
     }
-    if(has_sq && key.find('-') != std::string::npos &&
-       key.find("sec(") != std::string::npos && key.find("tan(") != std::string::npos) {
+    if(has_sq && test.find('-') != std::string::npos &&
+       test.find("sec(") != std::string::npos && test.find("tan(") != std::string::npos) {
         std::string u = arg_of("sec");
         return "u = " + u + "; sec(u)^2 = 1+tan(u)^2; sec(u)^2 - tan(u)^2 = 1.";
     }
-    if(has_sq && plus_one && key.find("cot(") != std::string::npos) {
+    if(has_sq && plus_one && test.find("cot(") != std::string::npos) {
         return "Use identity 1 + cot(u)^2 = cosec(u)^2.";
     }
-    if(has_sq && plus_one && key.find("tan(") != std::string::npos) {
+    if(has_sq && plus_one && test.find("tan(") != std::string::npos) {
         return "Use identity 1 + tan(u)^2 = sec(u)^2.";
     }
     return std::nullopt;
@@ -5382,21 +5384,42 @@ static std::optional<std::vector<std::string>> simple_trig_zero_solve(
 {
     if(!is_num_node(a, rhs, 0)) return std::nullopt;
     Node const &l = a.get(lhs);
-    if(l.kind != NodeKind::Fn) return std::nullopt;
-    if(l.fkind != FnKind::Sin && l.fkind != FnKind::Cos && l.fkind != FnKind::Tan &&
-       l.fkind != FnKind::Cot && l.fkind != FnKind::Sec && l.fkind != FnKind::Cosec)
+    Node const *fn = &l;
+    bool squared = false;
+    if(l.kind == NodeKind::Pow) {
+        Node const &e = a.get(l.b);
+        Node const &base = a.get(l.a);
+        if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1 || base.kind != NodeKind::Fn) return std::nullopt;
+        fn = &base;
+        squared = true;
+    }
+    if(fn->kind != NodeKind::Fn) return std::nullopt;
+    if(fn->fkind != FnKind::Sin && fn->fkind != FnKind::Cos && fn->fkind != FnKind::Tan &&
+       fn->fkind != FnKind::Cot && fn->fkind != FnKind::Sec && fn->fkind != FnKind::Cosec)
         return std::nullopt;
 
-    std::string arg = format_expr(a, l.a);
+    std::string arg = format_expr(a, fn->a);
     std::string subject = arg == var ? var : arg;
     std::string u = arg == var ? var : "u";
     std::vector<std::string> out;
     out.push_back("1. Start with " + equation_text + ".");
-    if(l.fkind == FnKind::Tan || l.fkind == FnKind::Sec)
+    if(fn->fkind == FnKind::Tan || fn->fkind == FnKind::Sec)
         out.push_back("Domain: " + arg + " != pi/2 + n*pi");
-    if(l.fkind == FnKind::Cot || l.fkind == FnKind::Cosec)
+    if(fn->fkind == FnKind::Cot || fn->fkind == FnKind::Cosec)
         out.push_back("Domain: " + arg + " != n*pi");
     if(arg != var) out.push_back("2. Let u = " + arg + ".");
+
+    if(squared && (fn->fkind == FnKind::Sec || fn->fkind == FnKind::Cosec)) {
+        if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
+        if(fn->fkind == FnKind::Sec) out.push_back("sec(u)=1/cos(u), so sec(u)^2 != 0.");
+        else out.push_back("cosec(u)=1/sin(u), so cosec(u)^2 != 0.");
+        out.push_back(var + " = []");
+        return out;
+    }
+    if(squared) {
+        std::string name = fn->fkind == FnKind::Sin ? "sin" : fn->fkind == FnKind::Cos ? "cos" : fn->fkind == FnKind::Tan ? "tan" : "cot";
+        out.push_back(name + "(u)^2=0 => " + name + "(u)=0.");
+    }
 
     auto answer = [&](std::string const &base, std::string const &name) {
         out.push_back(std::string(arg == var ? "2. " : "3. ") + name + "(" + u + ")=0 => " + u + "=" + base + ".");
@@ -5404,16 +5427,16 @@ static std::optional<std::vector<std::string>> simple_trig_zero_solve(
         return out;
     };
 
-    if(l.fkind == FnKind::Sin) return answer("n*pi", "sin");
-    if(l.fkind == FnKind::Cos) return answer("pi/2 + n*pi", "cos");
-    if(l.fkind == FnKind::Tan) return answer("n*pi", "tan");
-    if(l.fkind == FnKind::Cot) return answer("pi/2 + n*pi", "cot");
-    if(l.fkind == FnKind::Sec) {
+    if(fn->fkind == FnKind::Sin) return answer("n*pi", "sin");
+    if(fn->fkind == FnKind::Cos) return answer("pi/2 + n*pi", "cos");
+    if(fn->fkind == FnKind::Tan) return answer("n*pi", "tan");
+    if(fn->fkind == FnKind::Cot) return answer("pi/2 + n*pi", "cot");
+    if(fn->fkind == FnKind::Sec) {
         out.push_back("2. sec(u)=1/cos(u), so it is never 0.");
         out.push_back("Answer: " + var + " = []");
         return out;
     }
-    if(l.fkind == FnKind::Cosec) {
+    if(fn->fkind == FnKind::Cosec) {
         out.push_back("2. cosec(u)=1/sin(u), so it is never 0.");
         out.push_back("Answer: " + var + " = []");
         return out;

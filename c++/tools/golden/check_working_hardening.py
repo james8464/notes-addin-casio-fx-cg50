@@ -692,6 +692,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "cot((x+1)/3)^2+1=0,method=auto",
+        ["1 + cot(u)^2 = cosec(u)^2", "cosec(u) = 1/sin(u); cosec(u)^2 != 0", "x = []"],
+        ["LHS-RHS = 0:", "Answer:", "ERR:"],
+    ),
+    (
+        "alg",
         "arcsin(sin((x)^2-pi/4))=0,method=auto",
         ["arcsin(A)=0 => A=0", "sin(u)=0 => u=n*pi", "x = +/-sqrt(pi/4 + n*pi)"],
         ["x = []", "No real solution", "ERR:"],
