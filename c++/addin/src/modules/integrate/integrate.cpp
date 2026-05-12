@@ -418,11 +418,95 @@ static bool pythagorean_square_sum(std::string const &key)
            key.find('+') != std::string::npos;
 }
 
+static std::string power_compact_key(std::string text)
+{
+    text = normalize_text(std::move(text));
+    for(std::size_t p = 0; (p = text.find("**", p)) != std::string::npos;) text.replace(p, 2, "^");
+    std::string out;
+    out.reserve(text.size());
+    for(char c : text) {
+        if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
+        out.push_back(c);
+    }
+    return out;
+}
+
 static std::string trim_copy(std::string s)
 {
     while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
     while(!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
     return s;
+}
+
+static int matching_paren_text(std::string const &s, std::size_t open)
+{
+    int depth = 0;
+    for(std::size_t i = open; i < s.size(); ++i) {
+        if(s[i] == '(') ++depth;
+        else if(s[i] == ')' && --depth == 0) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+static std::string strip_outer_parens_text(std::string s)
+{
+    bool changed = true;
+    while(changed && s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+        changed = matching_paren_text(s, 0) == static_cast<int>(s.size() - 1);
+        if(changed) s = s.substr(1, s.size() - 2);
+    }
+    return s;
+}
+
+static std::optional<std::pair<std::string, std::string>> square_trig_text(std::string term)
+{
+    term = strip_outer_parens_text(std::move(term));
+    for(auto const &raw_name : {"cosec", "csc", "sec", "cot", "tan"}) {
+        std::string name = raw_name;
+        std::string prefix = name + "(";
+        if(term.rfind(prefix, 0) != 0) continue;
+        int close = matching_paren_text(term, name.size());
+        if(close < 0) continue;
+        std::string rest = term.substr(static_cast<std::size_t>(close) + 1);
+        if(rest != "^2" && rest != "^(2)") continue;
+        if(name == "csc") name = "cosec";
+        return std::make_pair(name, strip_outer_parens_text(term.substr(name == "cosec" && raw_name == std::string("csc") ? 4 : name.size() + 1, static_cast<std::size_t>(close) - (raw_name == std::string("csc") ? 4 : name.size() + 1))));
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> reciprocal_identity_text(std::string expr)
+{
+    expr = strip_outer_parens_text(power_compact_key(std::move(expr)));
+    int depth = 0;
+    for(std::size_t i = 0; i < expr.size(); ++i) {
+        if(expr[i] == '(') ++depth;
+        else if(expr[i] == ')') --depth;
+        else if(i > 0 && expr[i] == '-' && depth == 0) {
+            auto lhs = square_trig_text(expr.substr(0, i));
+            auto rhs = square_trig_text(expr.substr(i + 1));
+            if(!lhs || !rhs) return std::nullopt;
+            if(lhs->second != rhs->second) return std::nullopt;
+            if(lhs->first == "sec" && rhs->first == "tan") return "sec(u)^2 - tan(u)^2 = 1.";
+            if(lhs->first == "cosec" && rhs->first == "cot") return "cosec(u)^2 - cot(u)^2 = 1.";
+            return std::nullopt;
+        }
+    }
+    for(std::size_t i = 0; i < expr.size(); ++i) {
+        if(expr[i] != '(') continue;
+        int close = matching_paren_text(expr, i);
+        if(close <= static_cast<int>(i)) continue;
+        if(auto line = reciprocal_identity_text(expr.substr(i + 1, static_cast<std::size_t>(close) - i - 1))) return line;
+        i = static_cast<std::size_t>(close);
+    }
+    return std::nullopt;
+}
+
+static bool contains_reciprocal_identity_fn(std::string const &s)
+{
+    return s.find("sec(") != std::string::npos || s.find("tan(") != std::string::npos ||
+           s.find("cosec(") != std::string::npos || s.find("csc(") != std::string::npos ||
+           s.find("cot(") != std::string::npos;
 }
 
 static std::vector<std::string> split_top_args(std::string const &s)
@@ -8894,12 +8978,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
 
+    std::string display_expr = format_expr_human(arena, node);
+    auto append_integrand_prelude = [&](std::vector<std::string> &steps) {
+        if(auto recip = reciprocal_identity_text(req.expr); recip && !contains_reciprocal_identity_fn(display_expr)) {
+            steps.push_back("Start with " + req.expr + ".");
+            steps.push_back(*recip);
+            if(display_expr != "1") steps.push_back("integrand = " + display_expr + ".");
+        }
+        else {
+            casio::append_exam_prelude_steps(steps, pre);
+        }
+    };
+
     std::vector<std::string> match_candidates = {req.expr, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
 
     for(auto const &candidate : match_candidates) {
         if(auto special = special_integral_answer(candidate)) {
             std::vector<std::string> steps;
-            casio::append_exam_prelude_steps(steps, pre);
+            append_integrand_prelude(steps);
             for(auto const &s : special->steps) steps.push_back(s);
             return casio::exam_block(special->method, steps, special->answer);
         }
@@ -8908,7 +9004,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     for(auto const &candidate : match_candidates) {
         if(auto table = table_integral_answer(candidate)) {
             std::vector<std::string> steps;
-            casio::append_exam_prelude_steps(steps, pre);
+            append_integrand_prelude(steps);
             for(auto const &s : table_integral_steps(candidate)) steps.push_back(s);
             return casio::exam_block("integration table", steps, *table);
         }
@@ -8986,11 +9082,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         all_steps.push_back("Start with " + req.expr + ".");
         all_steps.push_back("Use identity sin(u)^2 + cos(u)^2 = 1.");
     }
+    else if(auto recip = reciprocal_identity_text(req.expr); recip && !contains_reciprocal_identity_fn(display_expr)) {
+        append_integrand_prelude(all_steps);
+    }
     else {
         casio::append_exam_prelude_steps(all_steps, pre);
     }
-    
-    std::string display_expr = format_expr_human(arena, node);
     for(auto const &s : result.steps) {
         std::string cleaned = clean_integral_step(s, display_expr, req.var);
         if(!cleaned.empty()) all_steps.push_back(cleaned);

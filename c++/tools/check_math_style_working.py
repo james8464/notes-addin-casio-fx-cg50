@@ -213,6 +213,11 @@ CASES = [
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
     ),
     (
+        "reciprocal trig identity before integration",
+        ["--int", "(cosec(x)^2-cot(x)^2)*exp(x)"],
+        ("cosec(u)^2 - cot(u)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "e^(x) + C"),
+    ),
+    (
         "high even trig power identity",
         ["--int", "sin(4*x-pi/6)^4*cos(4*x-pi/6)^4,method=trig"],
         ("Power-reduction", "sin^4(u)cos^4(u)=(3-4cos(4u)+cos(8u))/128", "+ C"),

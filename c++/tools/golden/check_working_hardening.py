@@ -620,6 +620,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "(cosec(x)^2-cot(x)^2)*exp(x),method=auto",
+        ["cosec(u)^2 - cot(u)^2 = 1", "integrand = e^(x)", "I = Int(e^(x)) dx", "Answer: e^(x) + C"],
+        ["Answer: int", "ERR:"],
+    ),
+    (
+        "int",
         "cot((x)^2-pi/4)^2+1,method=auto",
         ["1 + cot(u)^2 = cosec(u)^2", "du/dx = 2*x", "du/dx not constant", "No elementary primitive"],
         ["Use the general integration route", "Answer: int", "ERR:"],
