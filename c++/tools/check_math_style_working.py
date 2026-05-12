@@ -193,7 +193,7 @@ CASES = [
     (
         "tan same function degree family",
         ["--trig", "tan(2*x)-tan(x)=0,x,-180,180,10,method=identity"],
-        ("tan(A)=tan(B) => A=B+180n", "2*x = x+180n", "x = [-180, 0, 180]"),
+        ("tan(theta+180n)=tan(theta) => A=B+180n", "cos(A)!=0, cos(B)!=0", "2*x = x+180n", "x = [-180, 0, 180]"),
     ),
 ]
 

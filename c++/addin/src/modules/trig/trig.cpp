@@ -1205,7 +1205,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     }
     std::sort(xs.begin(), xs.end());
     std::string rule_line =
-        fk == FnKind::Tan ? (rad ? "tan(A)=tan(B): A=B+pi*n" : "tan(A)=tan(B): A=B+180n") :
+        fk == FnKind::Tan ? (rad ? "tan(theta+pi*n)=tan(theta) => A=B+pi*n" : "tan(theta+180n)=tan(theta) => A=B+180n") :
         fk == FnKind::Cos ? (rad ? "cos(A)=cos(B): A=B+2*pi*n or A=-B+2*pi*n" : "cos(A)=cos(B): A=B+360n or A=-B+360n") :
                             (rad ? "sin(A)=sin(B): A=B+2*pi*n or A=pi-B+2*pi*n" : "sin(A)=sin(B): A=B+360n or A=180-B+360n");
     std::string family_line = "solve each family for " + var;
@@ -1232,18 +1232,18 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
                 "\n" + At + " = -" + Bt + "+" + p + " => " + var + " = " + div_text(p, d2);
         }
     }
-    return casio::exam_block(
-        "trig solve",
-        {
-            "A = " + format_expr(a, L.a) + ", B = " + format_expr(a, R.a),
-            rule_line,
-            rad && fk == FnKind::Sin && std::fabs(A->first - 3.0) < 1e-12 && std::fabs(A->second) < 1e-12 &&
-            std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
-            family_line,
-            lo_text + " <= " + var + " <= " + hi_text,
-        },
-        format_solution_list(var, rad, xs)
+    std::vector<std::string> steps = {
+        "A = " + format_expr(a, L.a) + ", B = " + format_expr(a, R.a),
+        rule_line,
+    };
+    if(fk == FnKind::Tan) steps.push_back("cos(A)!=0, cos(B)!=0");
+    steps.push_back(
+        rad && fk == FnKind::Sin && std::fabs(A->first - 3.0) < 1e-12 && std::fabs(A->second) < 1e-12 &&
+        std::fabs(B->first - 1.0) < 1e-12 && std::fabs(B->second) < 1e-12 ? "x=n*pi or x=pi/4+n*pi/2." :
+        family_line
     );
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text);
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
 static std::optional<std::vector<std::string>> solve_same_fn_residual(
@@ -2278,7 +2278,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "tan(2*x) - tan(x) = 0",
                 "tan(2*x) = tan(x)",
-                "tan(A)=tan(B) => A=B+" + p,
+                (rad ? "tan(theta+pi*n)=tan(theta) => A=B+" : "tan(theta+180n)=tan(theta) => A=B+") + p,
+                "cos(A)!=0, cos(B)!=0",
                 "2*x = x+" + p,
                 var + " = " + p,
                 lo_text + " <= " + var + " <= " + hi_text,
@@ -2298,7 +2299,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "tan(4*x)-tan(2*x)=0",
                 "tan(4*x)=tan(2*x)",
-                "tan(A)=tan(B) => A=B+" + p,
+                (rad ? "tan(theta+pi*n)=tan(theta) => A=B+" : "tan(theta+180n)=tan(theta) => A=B+") + p,
+                "cos(A)!=0, cos(B)!=0",
                 "4*x = 2*x+" + p,
                 var + " = " + (rad ? "pi*n/2" : "90n"),
                 lo_text + " <= " + var + " <= " + hi_text,
@@ -2331,7 +2333,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
                 "tan(2*x) = tan(x)",
-                "tan(A)=tan(B) => A=B+pi*n",
+                "tan(theta+pi*n)=tan(theta) => A=B+pi*n",
+                "cos(A)!=0, cos(B)!=0",
                 "2*x = x+pi*n",
                 var + " = pi*n",
                 lo_text + " <= " + var + " <= " + hi_text,
@@ -2350,7 +2353,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             {
                 "tan(2*x) = 2sin(x)cos(x)/(cos(x)^2-sin(x)^2)",
                 "tan(2*x) = tan(x)",
-                "tan(A)=tan(B) => A=B+180n",
+                "tan(theta+180n)=tan(theta) => A=B+180n",
+                "cos(A)!=0, cos(B)!=0",
                 "2*x = x+180n",
                 var + " = 180n",
                 lo_text + " <= " + var + " <= " + hi_text,
