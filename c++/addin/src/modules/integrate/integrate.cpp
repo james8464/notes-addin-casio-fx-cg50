@@ -233,6 +233,50 @@ static std::optional<Rational> linear_coeff(Arena &a, NodeId n, std::string cons
     return std::nullopt;
 }
 
+static std::optional<std::pair<Rational, Rational>> affine_form(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(auto r = as_num(a, n)) return std::make_pair(Rational{0, 1}, *r);
+    if(x.kind == NodeKind::Sym) return x.text == var ? std::make_pair(Rational{1, 1}, Rational{0, 1}) : std::optional<std::pair<Rational, Rational>>{};
+    if(x.kind == NodeKind::Add) {
+        Rational m{0, 1}, c{0, 1};
+        for(NodeId k : x.kids) {
+            auto f = affine_form(a, k, var);
+            if(!f) return std::nullopt;
+            m = r_add(m, f->first);
+            c = r_add(c, f->second);
+        }
+        return std::make_pair(m, c);
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational scale{1, 1};
+        std::optional<std::pair<Rational, Rational>> body;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) scale = r_mul(scale, *r);
+            else if(!body) body = affine_form(a, k, var);
+            else return std::nullopt;
+        }
+        if(!body) return std::make_pair(Rational{0, 1}, scale);
+        return std::make_pair(r_mul(scale, body->first), r_mul(scale, body->second));
+    }
+    if(x.kind == NodeKind::Div) {
+        auto f = affine_form(a, x.a, var);
+        auto d = as_num(a, x.b);
+        if(!f || !d || d->num == 0) return std::nullopt;
+        return std::make_pair(r_div(f->first, *d), r_div(f->second, *d));
+    }
+    return std::nullopt;
+}
+
+static NodeId affine_node(Arena &a, std::pair<Rational, Rational> f, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    if(!r_zero(f.first)) terms.push_back(r_eq(f.first, Rational{1, 1}) ? casio::sym(a, var) : casio::mul(a, {a.num(f.first), casio::sym(a, var)}));
+    if(!r_zero(f.second)) terms.push_back(a.num(f.second));
+    if(terms.empty()) return casio::num(a, 0);
+    return terms.size() == 1 ? terms[0] : casio::simplify(a, casio::add(a, terms));
+}
+
 static NodeId divide_by_coeff(Arena &a, NodeId n, Rational coeff)
 {
     if(coeff.num < 0) return casio::simplify(a, casio::neg(a, casio::div(a, n, a.num(r_neg(coeff)))));
@@ -1695,14 +1739,27 @@ static std::string combine_same_formatted_terms(std::string const &text)
         Rational coeff{sign, 1};
         std::string body = t;
         int d = 0;
-        for(std::size_t i = 0; i < t.size(); ++i) {
-            if(t[i] == '(') ++d;
-            else if(t[i] == ')') --d;
-            else if(t[i] == '*' && d == 0) {
-                auto q = parse_rational_text(t.substr(0, i));
+        for(std::size_t i = 0; i < body.size(); ++i) {
+            if(body[i] == '(') ++d;
+            else if(body[i] == ')') --d;
+            else if(body[i] == '/' && d == 0) {
+                auto q = parse_rational_text(body.substr(i + 1));
+                if(q) {
+                    coeff = r_div(coeff, *q);
+                    body = trim_copy(body.substr(0, i));
+                }
+                break;
+            }
+        }
+        d = 0;
+        for(std::size_t i = 0; i < body.size(); ++i) {
+            if(body[i] == '(') ++d;
+            else if(body[i] == ')') --d;
+            else if(body[i] == '*' && d == 0) {
+                auto q = parse_rational_text(body.substr(0, i));
                 if(q) {
                     coeff = r_mul(coeff, *q);
-                    body = trim_copy(t.substr(i + 1));
+                    body = trim_copy(body.substr(i + 1));
                 }
                 break;
             }
@@ -1733,6 +1790,12 @@ static std::string combine_same_formatted_terms(std::string const &text)
     if(r_zero(coeff)) return "0";
     if(r_eq(coeff, Rational{1, 1})) return body;
     if(r_eq(coeff, Rational{-1, 1})) return "-" + body;
+    if(coeff.den != 1) {
+        bool neg = coeff.num < 0;
+        std::int64_t num = neg ? -coeff.num : coeff.num;
+        std::string left = num == 1 ? body : std::to_string(num) + "*" + body;
+        return (neg ? "-" : "") + left + "/" + std::to_string(coeff.den);
+    }
     return rat_text(coeff) + "*" + body;
 }
 
@@ -5672,6 +5735,43 @@ static bool same_text(Arena &a, NodeId lhs, NodeId rhs)
     return casio::format_expr(a, lhs) == casio::format_expr(a, rhs);
 }
 
+static std::optional<std::pair<Rational, NodeId>> exp_factor(Arena &a, NodeId n)
+{
+    if(is_pow_e(a, n)) return std::make_pair(Rational{1, 1}, a.get(n).b);
+    if(auto r = as_num(a, n)) return std::make_pair(*r, casio::num(a, 0));
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    std::optional<NodeId> arg;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(is_pow_e(a, k) && !arg) arg = a.get(k).b;
+        else return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    return std::make_pair(c, *arg);
+}
+
+static std::optional<NodeId> split_over_exp_den(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div || !is_pow_e(a, x.b)) return std::nullopt;
+    Node const &top = a.get(x.a);
+    if(top.kind != NodeKind::Add) return std::nullopt;
+    std::vector<NodeId> terms;
+    for(NodeId k : top.kids) {
+        auto f = exp_factor(a, k);
+        if(!f) return std::nullopt;
+        NodeId e = casio::simplify(a, casio::add(a, {f->second, casio::neg(a, a.get(x.b).b)}));
+        if(auto af = affine_form(a, e, var)) e = affine_node(a, *af, var);
+        NodeId body = same_expr(a, e, casio::num(a, 0))
+            ? casio::num(a, 1)
+            : casio::power(a, a.constant(ConstKind::E), e);
+        terms.push_back(mul_coeff(a, f->first, body));
+    }
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 static std::optional<std::pair<Rational, NodeId>> scaled_fn(Arena &a, NodeId n, FnKind fk)
 {
     Node const &x = a.get(n);
@@ -6180,6 +6280,18 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             cot_p += *p;
             continue;
         }
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Pow) {
+            auto e = as_num(a, kn.b);
+            Node const &base = a.get(kn.a);
+            if(e && e->num == -2 && e->den == 1 && base.kind == NodeKind::Fn &&
+               (base.fkind == FnKind::Sin || base.fkind == FnKind::Cos)) {
+                if(!same_arg_or_set(base.a)) return std::nullopt;
+                if(base.fkind == FnKind::Sin) csc_p += 2;
+                else sec_p += 2;
+                continue;
+            }
+        }
         return std::nullopt;
     }
     if(!arg) return std::nullopt;
@@ -6187,6 +6299,17 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     if(!lc || r_zero(*lc)) return std::nullopt;
     std::string arg_text = format_expr_human(a, arg);
     std::string lc_text = format_expr_human(a, a.num(*lc));
+
+    if(sec_p == 2 && csc_p == 2 && sin_p == 0 && cos_p == 0 && tan_p == 0 && cot_p == 0) {
+        steps.push_back("u=tan(" + arg_text + "), du=" + lc_text + "*sec(" + arg_text + ")^2 d" + var + ".");
+        steps.push_back("cosec(" + arg_text + ")^2=1+1/u^2.");
+        NodeId prim = casio::add(a, {casio::fn(a, "tan", arg), casio::neg(a, casio::fn(a, "cot", arg))});
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, *lc), prim));
+    }
+    if(sec_p == 2 && csc_p == 0 && sin_p == 0 && cos_p == 0 && tan_p == 0 && cot_p == 0)
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, *lc), casio::fn(a, "tan", arg)));
+    if(csc_p == 2 && sec_p == 0 && sin_p == 0 && cos_p == 0 && tan_p == 0 && cot_p == 0)
+        return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, *lc)), casio::fn(a, "cot", arg)));
 
     if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
         NodeId tan_u = casio::fn(a, "tan", arg);
@@ -8923,6 +9046,16 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(auto exp_split = split_over_exp_den(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *exp_split, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *exp_split));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
     if(x.kind == NodeKind::Add) {
         std::vector<NodeId> primitives;
         std::vector<std::string> substeps;
@@ -8980,6 +9113,32 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             out.steps.push_back("Step 2: Expand polynomial: " + format_expr_human(a, expanded) + ".");
             out.steps.push_back("Step 3: Integrate powers of " + var + ".");
             return out;
+        }
+    }
+
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        Node const &base = a.get(x.a);
+        if(e && e->num == 2 && e->den == 1 && base.kind == NodeKind::Add && base.kids.size() == 2 &&
+           contains_var_neg_one_power(a, x.a, var)) {
+            NodeId u = base.kids[0], v = base.kids[1];
+            auto sq = [&](NodeId t) {
+                return is_var_neg_one_power(a, t, var)
+                    ? casio::power(a, casio::sym(a, var), casio::num(a, -2))
+                    : casio::power(a, t, casio::num(a, 2));
+            };
+            NodeId expanded = casio::add(a, {
+                sq(u),
+                casio::mul(a, {casio::num(a, 2), u, v}),
+                sq(v)
+            });
+            auto inner = integrate_giac_style(a, expanded, var);
+            if(inner.result) {
+                out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, expanded));
+                for(auto const &s : inner.steps) out.steps.push_back(s);
+                out.result = *inner.result;
+                return out;
+            }
         }
     }
 
@@ -9408,6 +9567,17 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
         auto pow_two = as_num(a, x.b);
+        if(pow_two && pow_two->num == -2 && pow_two->den == 1 && base.kind == NodeKind::Fn &&
+           (base.fkind == FnKind::Sin || base.fkind == FnKind::Cos)) {
+            auto coeff = linear_coeff(a, base.a, var);
+            if(coeff && !r_zero(*coeff)) {
+                out.result = base.fkind == FnKind::Cos
+                    ? divide_by_coeff(a, casio::fn(a, "tan", base.a), *coeff)
+                    : divide_by_coeff(a, casio::neg(a, casio::fn(a, "cot", base.a)), *coeff);
+                out.steps.push_back(base.fkind == FnKind::Cos ? "cos(u)^-2=sec(u)^2." : "sin(u)^-2=cosec(u)^2.");
+                return out;
+            }
+        }
         if(pow_two && pow_two->num == 2 && pow_two->den == 1 && base.kind == NodeKind::Fn) {
             auto coeff = linear_coeff(a, base.a, var);
             if(coeff && !r_zero(*coeff)) {
@@ -10009,9 +10179,29 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         if(x.fkind == FnKind::Tan) {
             if(auto m = pi_multiple(a, arg)) {
                 Rational q = mod_two_pi_multiple(*m);
+                NodeId root3 = sqrt_rat(a, Rational{3, 1});
+                NodeId root3_over3 = casio::div(a, root3, casio::num(a, 3));
                 if(r_eq(q, Rational{0, 1}) || r_eq(q, Rational{1, 1})) return casio::num(a, 0);
                 if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{5, 4})) return casio::num(a, 1);
                 if(r_eq(q, Rational{3, 4}) || r_eq(q, Rational{7, 4})) return casio::num(a, -1);
+                if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{7, 6})) return root3_over3;
+                if(r_eq(q, Rational{5, 6}) || r_eq(q, Rational{11, 6})) return casio::neg(a, root3_over3);
+                if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{4, 3})) return root3;
+                if(r_eq(q, Rational{2, 3}) || r_eq(q, Rational{5, 3})) return casio::neg(a, root3);
+            }
+        }
+        if(x.fkind == FnKind::Cot) {
+            if(auto m = pi_multiple(a, arg)) {
+                Rational q = mod_two_pi_multiple(*m);
+                NodeId root3 = sqrt_rat(a, Rational{3, 1});
+                NodeId root3_over3 = casio::div(a, root3, casio::num(a, 3));
+                if(r_eq(q, Rational{1, 2}) || r_eq(q, Rational{3, 2})) return casio::num(a, 0);
+                if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{5, 4})) return casio::num(a, 1);
+                if(r_eq(q, Rational{3, 4}) || r_eq(q, Rational{7, 4})) return casio::num(a, -1);
+                if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{7, 6})) return root3;
+                if(r_eq(q, Rational{5, 6}) || r_eq(q, Rational{11, 6})) return casio::neg(a, root3);
+                if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{4, 3})) return root3_over3;
+                if(r_eq(q, Rational{2, 3}) || r_eq(q, Rational{5, 3})) return casio::neg(a, root3_over3);
             }
         }
         return casio::simplify(a, a.fn(x.fkind, arg));
