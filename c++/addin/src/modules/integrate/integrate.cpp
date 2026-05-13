@@ -1732,26 +1732,45 @@ static std::string combine_same_formatted_terms(std::string const &text)
     std::vector<Term> terms;
     std::string cur;
     int depth = 0, sign = 1;
+    auto render = [](Rational coeff, std::string const &body) {
+        if(r_zero(coeff)) return std::string("0");
+        if(r_eq(coeff, Rational{1, 1})) return body;
+        if(r_eq(coeff, Rational{-1, 1})) return "-" + body;
+        if(coeff.den != 1) {
+            bool neg = coeff.num < 0;
+            std::int64_t num = neg ? -coeff.num : coeff.num;
+            std::string left = num == 1 ? body : std::to_string(num) + "*" + body;
+            return (neg ? "-" : "") + left + "/" + std::to_string(coeff.den);
+        }
+        return rat_text(coeff) + "*" + body;
+    };
     auto flush = [&]() {
         std::string t = trim_copy(cur);
         cur.clear();
         if(t.empty()) return false;
         Rational coeff{sign, 1};
         std::string body = t;
-        int d = 0;
-        for(std::size_t i = 0; i < body.size(); ++i) {
-            if(body[i] == '(') ++d;
-            else if(body[i] == ')') --d;
-            else if(body[i] == '/' && d == 0) {
-                auto q = parse_rational_text(body.substr(i + 1));
-                if(q) {
-                    coeff = r_div(coeff, *q);
-                    body = trim_copy(body.substr(0, i));
-                }
-                break;
-            }
+        if(!body.empty() && body.front() == '-') {
+            coeff = r_neg(coeff);
+            body = trim_copy(body.substr(1));
         }
-        d = 0;
+        while(true) {
+            int d = 0;
+            std::size_t slash = std::string::npos;
+            for(std::size_t i = 0; i < body.size(); ++i) {
+                if(body[i] == '(') ++d;
+                else if(body[i] == ')') --d;
+                else if(body[i] == '/' && d == 0) slash = i;
+            }
+            if(slash == std::string::npos) break;
+            std::string den = trim_copy(body.substr(slash + 1));
+            if(den.find('/') != std::string::npos) break;
+            auto q = parse_rational_text(den);
+            if(!q) break;
+            coeff = r_div(coeff, *q);
+            body = trim_copy(body.substr(0, slash));
+        }
+        int d = 0;
         for(std::size_t i = 0; i < body.size(); ++i) {
             if(body[i] == '(') ++d;
             else if(body[i] == ')') --d;
@@ -1767,11 +1786,13 @@ static std::string combine_same_formatted_terms(std::string const &text)
         terms.push_back({coeff, body});
         return true;
     };
-    for(std::size_t i = 0; i < text.size(); ++i) {
-        char c = text[i];
+    std::string src = text;
+    for(std::size_t p = 0; (p = src.find(" - -", p)) != std::string::npos;) src.replace(p, 4, " + ");
+    for(std::size_t i = 0; i < src.size(); ++i) {
+        char c = src[i];
         if(c == '(') ++depth;
         else if(c == ')') --depth;
-        if(depth == 0 && (c == '+' || c == '-') && i > 0 && i + 1 < text.size() && text[i - 1] == ' ' && text[i + 1] == ' ') {
+        if(depth == 0 && (c == '+' || c == '-') && i > 0 && i + 1 < src.size() && src[i - 1] == ' ' && src[i + 1] == ' ') {
             flush();
             sign = c == '+' ? 1 : -1;
             ++i;
@@ -1780,23 +1801,15 @@ static std::string combine_same_formatted_terms(std::string const &text)
         cur.push_back(c);
     }
     flush();
-    if(terms.size() < 2) return text;
+    if(terms.size() == 1) return render(terms[0].coeff, terms[0].body);
+    if(terms.size() < 2) return src;
     std::string body = terms.front().body;
     Rational coeff{0, 1};
     for(auto const &t : terms) {
-        if(t.body != body) return text;
+        if(t.body != body) return src;
         coeff = r_add(coeff, t.coeff);
     }
-    if(r_zero(coeff)) return "0";
-    if(r_eq(coeff, Rational{1, 1})) return body;
-    if(r_eq(coeff, Rational{-1, 1})) return "-" + body;
-    if(coeff.den != 1) {
-        bool neg = coeff.num < 0;
-        std::int64_t num = neg ? -coeff.num : coeff.num;
-        std::string left = num == 1 ? body : std::to_string(num) + "*" + body;
-        return (neg ? "-" : "") + left + "/" + std::to_string(coeff.den);
-    }
-    return rat_text(coeff) + "*" + body;
+    return render(coeff, body);
 }
 
 static bool parse_integer_over_param(std::string const &text, std::string const &param, long long &n)
@@ -5696,7 +5709,18 @@ static std::optional<Rational> var_power_rat(Arena &a, NodeId n, std::string con
 {
     Node const &x = a.get(n);
     if(is_sym(a, n, var)) return Rational{1, 1};
-    if(x.kind == NodeKind::Pow && is_sym(a, x.a, var)) return as_num(a, x.b);
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e) return std::nullopt;
+        auto p = var_power_rat(a, x.a, var);
+        return p ? std::optional<Rational>(r_mul(*p, *e)) : std::nullopt;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = as_num(a, x.a);
+        if(!top || !r_eq(*top, Rational{1, 1})) return std::nullopt;
+        auto p = var_power_rat(a, x.b, var);
+        return p ? std::optional<Rational>(r_neg(*p)) : std::nullopt;
+    }
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
         auto p = var_power_rat(a, x.a, var);
         return p ? std::optional<Rational>(r_div(*p, Rational{2, 1})) : std::nullopt;
@@ -5765,13 +5789,18 @@ static std::optional<std::pair<Rational, NodeId>> exp_factor(Arena &a, NodeId n)
     if(is_pow_e(a, n)) return std::make_pair(Rational{1, 1}, a.get(n).b);
     if(auto r = as_num(a, n)) return std::make_pair(*r, casio::num(a, 0));
     Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return std::make_pair(Rational{1, 1}, x.a);
     if(x.kind != NodeKind::Mul) return std::nullopt;
     Rational c{1, 1};
     std::optional<NodeId> arg;
     for(NodeId k : x.kids) {
         if(auto r = as_num(a, k)) c = r_mul(c, *r);
         else if(is_pow_e(a, k) && !arg) arg = a.get(k).b;
-        else return std::nullopt;
+        else {
+            Node const &fn = a.get(k);
+            if(fn.kind == NodeKind::Fn && fn.fkind == FnKind::Exp && !arg) arg = fn.a;
+            else return std::nullopt;
+        }
     }
     if(!arg) return std::nullopt;
     return std::make_pair(c, *arg);
@@ -5818,6 +5847,58 @@ static bool trig_const_product(Arena &a, NodeId expr, std::string const &var)
     return false;
 }
 
+static bool var_power_const_product(Arena &a, NodeId expr, std::string const &var)
+{
+    if(!contains_var(a, expr, var) || var_power_rat(a, expr, var)) return true;
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Mul) {
+        bool has_power = false;
+        for(NodeId k : x.kids) {
+            if(!contains_var(a, k, var)) continue;
+            if(!var_power_rat(a, k, var)) return false;
+            has_power = true;
+        }
+        return has_power;
+    }
+    return false;
+}
+
+static std::optional<std::pair<Rational, Rational>> coeff_var_power_rat(Arena &a, NodeId expr, std::string const &var)
+{
+    if(!contains_var(a, expr, var)) {
+        if(auto r = as_num(a, expr)) return std::make_pair(*r, Rational{0, 1});
+        return std::nullopt;
+    }
+    if(auto p = var_power_rat(a, expr, var)) return std::make_pair(Rational{1, 1}, *p);
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1}, p{0, 1};
+    bool hit = false;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(auto q = var_power_rat(a, k, var)) {
+            p = r_add(p, *q);
+            hit = true;
+        } else return std::nullopt;
+    }
+    if(!hit) return std::nullopt;
+    return std::make_pair(c, p);
+}
+
+static bool log_var_power_product(Arena &a, NodeId expr, std::string const &var)
+{
+    if(var_power_const_product(a, expr, var)) return true;
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log && is_sym(a, x.a, var)) return true;
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            if(!log_var_power_product(a, k, var)) return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, std::string const &var)
 {
     Node const &x = a.get(expr);
@@ -5831,12 +5912,18 @@ static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, st
         } else rest.push_back(k);
     }
     if(!add || rest.empty()) return std::nullopt;
+    bool trig_ok = true, power_ok = true, log_ok = true;
     for(NodeId k : rest) {
-        if(!trig_const_product(a, k, var)) return std::nullopt;
+        trig_ok = trig_ok && trig_const_product(a, k, var);
+        power_ok = power_ok && var_power_const_product(a, k, var);
+        log_ok = log_ok && log_var_power_product(a, k, var);
     }
     for(NodeId k : a.get(add).kids) {
-        if(!trig_const_product(a, k, var)) return std::nullopt;
+        trig_ok = trig_ok && trig_const_product(a, k, var);
+        power_ok = power_ok && var_power_const_product(a, k, var);
+        log_ok = log_ok && var_power_const_product(a, k, var);
     }
+    if(!trig_ok && !power_ok && !log_ok) return std::nullopt;
     std::vector<NodeId> terms;
     for(NodeId k : a.get(add).kids) {
         std::vector<NodeId> factors = rest;
@@ -5868,6 +5955,115 @@ static std::optional<NodeId> combine_same_exp_numeric_powers(Arena &a, NodeId ex
     }
     if(count < 2 || !exp) return std::nullopt;
     return mul_coeff(a, coeff, casio::power(a, a.num(base_prod), exp));
+}
+
+static NodeId mul_simple_expand_terms(Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    auto l = exp_factor(a, lhs), r = exp_factor(a, rhs);
+    if(l && r) {
+        Rational c = r_mul(l->first, r->first);
+        NodeId e = casio::simplify(a, casio::add(a, {l->second, r->second}));
+        if(auto af = affine_form(a, e, var)) e = affine_node(a, *af, var);
+        if(same_expr(a, e, casio::num(a, 0))) return a.num(c);
+        return mul_coeff(a, c, casio::power(a, a.constant(ConstKind::E), e));
+    }
+    return casio::simplify(a, casio::mul(a, {lhs, rhs}));
+}
+
+static std::optional<NodeId> expand_simple_power(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, x.b);
+    if(!e || e->den != 1 || e->num < 2 || e->num > 3) return std::nullopt;
+    Node const &base = a.get(x.a);
+    if(base.kind != NodeKind::Add || base.kids.size() > 3) return std::nullopt;
+    if(linear_coeff(a, x.a, var)) return std::nullopt;
+    std::vector<NodeId> terms{casio::num(a, 1)};
+    for(std::int64_t i = 0; i < e->num; ++i) {
+        std::vector<NodeId> next;
+        for(NodeId t : terms) {
+            for(NodeId k : base.kids) next.push_back(mul_simple_expand_terms(a, t, k, var));
+        }
+        terms.swap(next);
+    }
+    struct PT { Rational p; Rational c; };
+    std::vector<PT> grouped;
+    bool all_var_powers = true;
+    for(NodeId t : terms) {
+        auto cp = coeff_var_power_rat(a, t, var);
+        if(!cp) { all_var_powers = false; break; }
+        bool found = false;
+        for(auto &g : grouped) {
+            if(r_eq(g.p, cp->second)) {
+                g.c = r_add(g.c, cp->first);
+                found = true;
+                break;
+            }
+        }
+        if(!found) grouped.push_back({cp->second, cp->first});
+    }
+    if(all_var_powers) {
+        std::vector<NodeId> compact;
+        NodeId v = casio::sym(a, var);
+        for(auto const &g : grouped) {
+            if(r_zero(g.c)) continue;
+            NodeId body = r_zero(g.p) ? casio::num(a, 1) : casio::power(a, v, a.num(g.p));
+            compact.push_back(mul_coeff(a, g.c, body));
+        }
+        if(!compact.empty()) return casio::simplify(a, casio::add(a, compact));
+    }
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<NodeId> reciprocal_product_power(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = as_num(a, x.a);
+    if(!top) return std::nullopt;
+    Rational coeff = *top;
+    NodeId body = 0;
+    Node const &den = a.get(x.b);
+    if(den.kind == NodeKind::Mul) {
+        for(NodeId k : den.kids) {
+            if(auto r = as_num(a, k)) coeff = r_div(coeff, *r);
+            else if(!body) body = k;
+            else return std::nullopt;
+        }
+    } else body = x.b;
+    if(!body) return std::nullopt;
+    Node const &b = a.get(body);
+    if(b.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, b.b);
+    if(!e || e->num <= 0) return std::nullopt;
+    return mul_coeff(a, coeff, casio::power(a, b.a, a.num(r_neg(*e))));
+}
+
+static std::optional<NodeId> sqrt_conjugate_denominator(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div || !as_num(a, x.a)) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
+    auto parse = [&](NodeId n) -> std::optional<std::pair<NodeId, Rational>> {
+        Node const &s = a.get(n);
+        if(s.kind != NodeKind::Add || s.kids.size() != 2) return std::nullopt;
+        NodeId rad = 0;
+        Rational c{0, 1};
+        for(NodeId k : s.kids) {
+            Node const &q = a.get(k);
+            if(q.kind == NodeKind::Fn && q.fkind == FnKind::Sqrt && is_sym(a, q.a, var)) rad = q.a;
+            else if(auto r = as_num(a, k)) c = r_add(c, *r);
+            else return std::nullopt;
+        }
+        if(!rad) return std::nullopt;
+        return std::make_pair(rad, c);
+    };
+    auto l = parse(den.kids[0]), r = parse(den.kids[1]);
+    if(!l || !r || !same_expr(a, l->first, r->first) || !r_zero(r_add(l->second, r->second))) return std::nullopt;
+    NodeId d = casio::add(a, {l->first, casio::neg(a, a.num(r_mul(l->second, l->second)))});
+    return casio::simplify(a, casio::div(a, x.a, d));
 }
 
 static std::optional<std::pair<Rational, NodeId>> scaled_fn(Arena &a, NodeId n, FnKind fk)
@@ -9160,6 +9356,42 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(x.kind == NodeKind::Div) {
+        Node const &den = a.get(x.b);
+        Node const &num = a.get(x.a);
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Cos && num.kind == NodeKind::Add) {
+            int one = 0, sin_sign = 0;
+            bool ok = true;
+            for(NodeId k : num.kids) {
+                if(auto r = as_num(a, k); r && r->den == 1 && (r->num == 1 || r->num == -1)) one += static_cast<int>(r->num);
+                else {
+                    Rational c{1, 1};
+                    NodeId body = k;
+                    Node const &m = a.get(k);
+                    if(m.kind == NodeKind::Mul && m.kids.size() == 2) {
+                        if(auto r = as_num(a, m.kids[0])) { c = *r; body = m.kids[1]; }
+                        else if(auto r = as_num(a, m.kids[1])) { c = *r; body = m.kids[0]; }
+                    }
+                    Node const &s = a.get(body);
+                    if(s.kind == NodeKind::Fn && s.fkind == FnKind::Sin && same_expr(a, s.a, den.a) &&
+                       c.den == 1 && (c.num == 1 || c.num == -1)) sin_sign += static_cast<int>(c.num);
+                    else { ok = false; break; }
+                }
+            }
+            if(ok && one == 1 && (sin_sign == 1 || sin_sign == -1)) {
+                NodeId rewrite = casio::add(a, {a.fn(FnKind::Sec, den.a),
+                    sin_sign == 1 ? a.fn(FnKind::Tan, den.a) : casio::neg(a, a.fn(FnKind::Tan, den.a))});
+                auto inner = integrate_giac_style(a, rewrite, var);
+                if(inner.result) {
+                    out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, rewrite));
+                    for(auto const &s : inner.steps) out.steps.push_back(s);
+                    out.result = *inner.result;
+                    return out;
+                }
+            }
+        }
+    }
+
     if(auto combined = combine_same_exp_numeric_powers(a, expr)) {
         auto inner = integrate_giac_style(a, *combined, var);
         if(inner.result) {
@@ -9170,10 +9402,40 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(auto conj = sqrt_conjugate_denominator(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *conj, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *conj));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(auto recip = reciprocal_product_power(a, expr)) {
+        auto inner = integrate_giac_style(a, *recip, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *recip));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
     if(auto expanded = expand_single_add_product(a, expr, var)) {
         auto inner = integrate_giac_style(a, *expanded, var);
         if(inner.result) {
             out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *expanded));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(auto expanded_pow = expand_simple_power(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *expanded_pow, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *expanded_pow));
             for(auto const &s : inner.steps) out.steps.push_back(s);
             out.result = *inner.result;
             return out;
@@ -9276,7 +9538,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
-    if((x.kind == NodeKind::Fn || x.kind == NodeKind::Mul) && var_power_rat(a, expr, var)) {
+    if(var_power_rat(a, expr, var)) {
         Rational p = *var_power_rat(a, expr, var);
         Rational q = r_add(p, Rational{1, 1});
         if(!r_zero(q)) {
@@ -10133,6 +10395,15 @@ static std::optional<Rational> pi_multiple(Arena &a, NodeId n)
         if(!top || !den || den->num == 0) return std::nullopt;
         return r_div(*top, *den);
     }
+    if(x.kind == NodeKind::Add) {
+        Rational total{0, 1};
+        for(NodeId k : x.kids) {
+            auto m = pi_multiple(a, k);
+            if(!m) return std::nullopt;
+            total = r_add(total, *m);
+        }
+        return total;
+    }
     if(x.kind == NodeKind::Mul) {
         Rational coeff{1, 1};
         bool pi = false;
@@ -10257,7 +10528,7 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Fn) {
-        NodeId arg = simplify_known_endpoint_values(a, x.a);
+        NodeId arg = casio::simplify(a, simplify_known_endpoint_values(a, x.a));
         if(x.fkind == FnKind::Sqrt) {
             if(auto r = as_num(a, arg); r && r->num >= 0) {
                 auto largest_square_factor = [](std::int64_t n) {
@@ -10321,6 +10592,8 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         }
         if(x.fkind == FnKind::Log) {
             if(auto r = as_num(a, arg); r && r->num == r->den) return casio::num(a, 0);
+            Node const &ln_arg = a.get(arg);
+            if(ln_arg.kind == NodeKind::Const && ln_arg.ckind == ConstKind::E) return casio::num(a, 1);
         }
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
             if(auto m = pi_multiple(a, arg)) {

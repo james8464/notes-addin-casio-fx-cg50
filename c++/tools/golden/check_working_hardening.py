@@ -273,7 +273,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve((1+t)*dP/dt+P=t^2*(1+t),P(0)=5)",
-        ["dP/dt + p*P = q", "p = 1/(t + 1)", "q = t^2", "d/dt[(t + 1)*P] = (t + 1)*t^2", "P = (1/3*t^3 + 1/4*t^4 + 5)/(t + 1)"],
+        ["dP/dt + p*P = q", "p = 1/(t + 1)", "q = t^2", "d/dt[(t + 1)*P] = (t + 1)*t^2", "P = (t^4/4 + t^3/3 + 5)/(t + 1)"],
         ["Err: RHS Int", "t + P", "d/dx["],
     ),
     (
@@ -543,13 +543,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint((4-x^2)^2,x,0,2)",
-        ["Expand polynomial:-8*x^2+x^4+16", "F(2)-F(0)", "256/15"],
+        ["(-x^2+4)^2=x^4-8*x^2+16", "F(2)-F(0)", "256/15"],
         ["Expected ) but found ,", "No elementary primitive"],
     ),
     (
         "int",
         "volume_x(4-x^2,x,-2,2)",
-        ["V=pi*Int(y^2)dx", "Expand polynomial:-8*x^2+x^4+16", "512*pi/15"],
+        ["V=pi*Int(y^2)dx", "(-x^2+4)^2=x^4-8*x^2+16", "512*pi/15"],
         ["Expected ) but found ,", "No elementary primitive"],
     ),
     (

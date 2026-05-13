@@ -506,12 +506,12 @@ CASES = [
     (
         "defint expands polynomial power",
         ["--int", "defint((4-x^2)^2,x,0,2)"],
-        ("Expand polynomial: - 8*x^2 + x^4 + 16", "F(2) - F(0)", "256/15"),
+        ("(- x^2 + 4)^2 = x^4 - 8*x^2 + 16", "F(2) - F(0)", "256/15"),
     ),
     (
         "volume wrapper x-axis",
         ["--int", "volume_x(4-x^2,x,-2,2)"],
-        ("V = pi*Int(y^2) dx", "Expand polynomial: - 8*x^2 + x^4 + 16", "512*pi/15"),
+        ("V = pi*Int(y^2) dx", "(- x^2 + 4)^2 = x^4 - 8*x^2 + 16", "512*pi/15"),
     ),
     (
         "area between wrapper exact logs",
