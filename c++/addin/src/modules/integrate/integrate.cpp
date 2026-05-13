@@ -3982,7 +3982,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Write Integral(ln(x)) dx as Integral(ln(x)*1) dx.",
                 "Let u=ln(x), dv=dx.",
                 "Then du=1/x dx and v=x.",
-                "Integral = xln(x) - Integral(1) dx.",
+                "Integral = x*ln(x) - Integral(1) dx.",
             },
             "x*log(x) - x + C"
         );
@@ -6357,9 +6357,6 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
         steps.push_back("Step 5: I: " + join(icol) + ".");
         steps.push_back("Step 6: Signs: " + join(signs) + ".");
         steps.push_back("Step 7: I=" + join_terms(diagonals) + " + C.");
-        if(!exp_case && trig == FnKind::Cos) {
-            steps.push_back("Step 8: First term: " + format_expr(a, casio::mul(a, {var_pow(a, var, power), mul_coeff(a, r_div(Rational{1, 1}, *lc), casio::fn(a, "sin", arg))})) + ".");
-        }
     };
 
     if(is_exp) {
@@ -9688,17 +9685,31 @@ static std::optional<NodeId> integrate_poly_times_special(Arena &a, NodeId expr,
     for(int i = 0; i <= deg; ++i) if(!r_zero(poly_at(poly, i))) nz_terms++;
     if(nz_terms <= 1) return std::nullopt; // monomials use the detailed DI-table route below.
     std::vector<NodeId> terms;
+    std::vector<std::string> labels;
     for(int i = 0; i <= deg; ++i) {
         Rational c = poly_at(poly, i);
         if(r_zero(c)) continue;
-        if(exp_case) terms.push_back(integrate_xn_exp(a, i, c, special, *lc, var));
-        else if(trig == FnKind::Sin) terms.push_back(integrate_xn_sin(a, i, c, arg, *lc, var));
-        else terms.push_back(integrate_xn_cos(a, i, c, arg, *lc, var));
+        NodeId primitive = 0;
+        if(exp_case) primitive = integrate_xn_exp(a, i, c, special, *lc, var);
+        else if(trig == FnKind::Sin) primitive = integrate_xn_sin(a, i, c, arg, *lc, var);
+        else primitive = integrate_xn_cos(a, i, c, arg, *lc, var);
+        NodeId mono = i == 0 ? a.num(c) : mul_coeff(a, c, var_pow(a, var, i));
+        NodeId term = casio::simplify(a, casio::mul(a, {mono, special}));
+        terms.push_back(primitive);
+        std::string label = "I" + std::to_string(labels.size() + 1);
+        labels.push_back(label);
+        steps.push_back(label + "=Int(" + format_expr_human(a, term) + ")d" + var);
+        steps.push_back(label + "=" + format_expr_human(a, primitive));
     }
     if(terms.empty()) return std::nullopt;
-    steps.push_back("Step 2: Use DI table term-by-term for polynomial times " + std::string(exp_case ? "exp" : "trig") + ".");
-    steps.push_back("Step 3: Split polynomial " + format_expr_human(a, poly_to_node(a, poly, var)) + " into powers of " + var + ".");
-    steps.push_back("Step 4: Apply the x^n rule to each term and collect.");
+    if(labels.size() > 1) {
+        std::string sum = "I=";
+        for(std::size_t i = 0; i < labels.size(); ++i) {
+            if(i) sum += "+";
+            sum += labels[i];
+        }
+        steps.push_back(sum);
+    }
     return casio::simplify(a, casio::add(a, terms));
 }
 
