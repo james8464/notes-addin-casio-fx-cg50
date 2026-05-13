@@ -267,7 +267,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(cos(x)*dy/dx+y*sin(x)=e^(2*x)*cos(x)^2)",
-        ["p = tan(x)", "q = e^(2*x)*cos(x)", "d/dx[cos(x)^-1*y] = e^(2*x)", "y = (e^(2*x)/2 + C)*cos(x)"],
+        ["p = tan(x)", "q = e^(2*x)*cos(x)", "d/dx[cos(x)^-1*y] = e^(2*x)", "y = (1/2*e^(2*x) + C)*cos(x)"],
         ["Try dy/dx", "unsupported DE route", "Err:"],
     ),
     (
@@ -603,7 +603,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "6/sqrt(3*x+1)",
-        ["1/sqrt(u)=u^(-1/2)", "u=3*x+1", "4*sqrt(3*x+1)+C"],
+        ["6/sqrt(3*x + 1) = 6*(3*x + 1)^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"],
         ["No elementary primitive"],
     ),
     (
@@ -615,19 +615,19 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "x^3*e^(x^4),method=sub",
-        ["u=x^4", "du=4*x^3 dx", "Int(e^u) du = e^u", "+ C"],
+        ["u = x^4", "du/dx = 4*x^3", "I = 1/4*Int(e^u) du", "1/4*e^(x^4) + C"],
         ["No elementary primitive", "ERR:"],
     ),
     (
         "int",
         "exp(2*x-3),method=auto",
-        ["u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(e^u) du", "Int(e^u) du = e^u", "e^(2*x - 3)/2 + C"],
+        ["u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(e^u) du", "I = 1/2*e^u + C", "1/2*e^(2*x - 3) + C"],
         ["reverse chain exponential rule", "ERR:"],
     ),
     (
         "int",
         "sin(2*x-3),method=auto",
-        ["u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(sin(u)) du", "Int(sin(u)) du = -cos(u)", "-cos(2*x - 3)/2 + C"],
+        ["u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(sin(u)) du = -cos(u)", "-1/2*cos(2*x - 3) + C"],
         ["reverse chain sine rule", "ERR:"],
     ),
     (

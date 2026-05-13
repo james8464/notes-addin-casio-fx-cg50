@@ -432,12 +432,12 @@ CASES = [
     (
         "affine exp reverse chain",
         ["--int", "exp(2*x-3),method=auto"],
-        ("u = 2*x - 3", "du/dx = 2", "dx = du/(2)", "I = 1/(2)*Int(e^u) du", "Int(e^u) du = e^u", "e^(2*x - 3)/2 + C"),
+        ("u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(e^u) du", "I = 1/2*e^u + C", "1/2*e^(2*x - 3) + C"),
     ),
     (
         "affine trig reverse chain",
         ["--int", "sin(2*x-3),method=auto"],
-        ("u = 2*x - 3", "du/dx = 2", "I = 1/(2)*Int(sin(u)) du", "Int(sin(u)) du = -cos(u)", "-cos(2*x - 3)/2 + C"),
+        ("u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(sin(u)) du = -cos(u)", "-1/2*cos(2*x - 3) + C"),
     ),
     (
         "cot integral substitution",
@@ -494,7 +494,7 @@ CASES = [
     (
         "defint wrapped variable",
         ["--int", "defint(e^(2*x)/(1+e^(2*x)),(x),0,ln(6))"],
-        ("I = Int(e^(2*x)/(e^(2*x) + 1)) dx", "u = e^(2*x) + 1", "F(ln(6)) - F(0)", "1/2*ln(37) - 1/2*ln(2)"),
+        ("I = Int(e^(2*x)/(e^(2*x) + 1)) dx", "u = e^(2*x) + 1", "F(ln(6)) - F(0)", "ln(37/2)"),
         ("ERR:",),
     ),
     (
@@ -556,7 +556,7 @@ CASES = [
     (
         "sqrt denominator reverse chain",
         ["--int", "6/sqrt(3*x+1)"],
-        ("1/sqrt(u) = u^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"),
+        ("6/sqrt(3*x + 1) = 6*(3*x + 1)^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"),
     ),
     (
         "power derivative reverse chain",

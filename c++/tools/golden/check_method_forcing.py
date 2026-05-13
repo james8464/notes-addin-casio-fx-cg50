@@ -15,7 +15,7 @@ CATALOG = REPO / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cp
 
 CASES = [
     ("int", "x*exp(x),method=parts", ["u=x", "dv=e^x dx"]),
-    ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du=2*x dx"]),
+    ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du/dx = 2*x"]),
     ("int", "x^2,method=badmethod", ["Invalid method"]),
     ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
     ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["u = cos(x - pi/3)", "u = -1/2", "x = [pi, 5*pi/3]"]),
