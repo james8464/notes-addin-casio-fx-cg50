@@ -67,6 +67,11 @@ CASES = [
         ("y = (2*x + ln(x))^3", "u = 2*x + ln(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + ln(x))^2*(1/x + 2)"),
     ),
     (
+        "log rational derivative quotient",
+        ["--derive", "ln((x-1)/(x+2)),x"],
+        ("u = (x - 1)/(x + 2)", "Domain: x < -2 or x > 1", "u' = ((1)*(x + 2)-(x - 1)*(1))/(x + 2)^2", "u' = 3/(x + 2)^2", "dy/dx = [3/(x + 2)^2]/[(x - 1)/(x + 2)]", "dy/dx = 3/((x + 2)*(x - 1))"),
+    ),
+    (
         "reciprocal trig derivative identity",
         ["--derive", "cosec(x)^2-cot(x)^2,x,method=auto"],
         ("cosec(u)^2 - cot(u)^2 = 1", "Domain: sin(x) != 0", "dy/dx = 0"),
@@ -183,9 +188,20 @@ CASES = [
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
     ),
     (
+        "single radical exact solve",
+        ["--alg", "solve(sqrt(2*x+3)=x-1,x)"],
+        ("2*x + 3 >= 0 => x >= -3/2", "x - 1 >= 0 => x >= 1", "2*x + 3 = (x - 1)^2", "expand => (x - 1)^2 - (2*x + 3) = 0", "x = 2 - sqrt(6) rejected by domain", "x = [2 + sqrt(6)]"),
+        ("4.449",),
+    ),
+    (
         "log abs domain proof",
         ["--alg", "domain(log(abs(2*x-3)+2))"],
         ("abs(2*x - 3) + 2 > 0", "abs(2*x - 3) >= 0", "abs(2*x - 3) + 2 >= 2 > 0", "all real x"),
+    ),
+    (
+        "log rational domain sign chart",
+        ["--alg", "domain(ln((x-1)/(x+2)))"],
+        ("(x - 1)/(x + 2) > 0, x + 2 != 0", "x - 1 = 0 => x = 1, x + 2 = 0 => x = -2", "-2, 1 => x < -2 or x > 1", "x < -2 or x > 1"),
     ),
     (
         "log abs impossible solve",
@@ -242,6 +258,17 @@ CASES = [
         "tan square integral line",
         ["--int", "tan(x)^2"],
         ("tan(x)^2 = sec(x)^2 - 1", "I = Int(sec(x)^2 - 1) dx", "tan(x) - x + C"),
+    ),
+    (
+        "affine tan square substitution",
+        ["--int", "tan(3*x+1)^2"],
+        ("u = 3*x + 1", "du/dx = 3", "I = 1/3*Int(sec(u)^2-1)du", "I = (tan(u)-u)/3+C", "tan(3*x + 1)/3 - x + C"),
+    ),
+    (
+        "product to sum sin cos integral",
+        ["--int", "sin(3*x)*cos(5*x),method=trig"],
+        ("A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "- 1/16*cos(8*x) + 1/4*cos(2*x) + C"),
+        ("No elementary primitive",),
     ),
     (
         "sin square integral line",

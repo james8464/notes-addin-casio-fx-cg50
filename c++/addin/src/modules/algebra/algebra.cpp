@@ -4471,6 +4471,54 @@ static std::optional<std::string> positive_linear_domain(Arena &a, NodeId n, std
     return var + std::string(p->a1.num > 0 ? " > " : " < ") + bound_text;
 }
 
+struct DomainSolve
+{
+    std::vector<std::string> lines;
+    std::string answer;
+};
+
+static std::optional<DomainSolve> positive_linear_fraction_domain(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = poly_of(a, x.a, var);
+    auto bot = poly_of(a, x.b, var);
+    if(!top || !bot || !top->ok || !bot->ok) return std::nullopt;
+    if(!is_zero(top->a2) || !is_zero(bot->a2) || is_zero(top->a1) || is_zero(bot->a1)) return std::nullopt;
+
+    Rational r_top = r_div(r_neg(top->a0), top->a1);
+    Rational r_bot = r_div(r_neg(bot->a0), bot->a1);
+    std::string top_txt = format_expr(a, x.a);
+    std::string bot_txt = format_expr(a, x.b);
+    std::string frac_txt = "(" + top_txt + ")/(" + bot_txt + ")";
+    std::string rt = format_expr(a, a.num(r_top));
+    std::string rb = format_expr(a, a.num(r_bot));
+    std::vector<std::string> lines{
+        frac_txt + " > 0, " + bot_txt + " != 0",
+        top_txt + " = 0 => " + var + " = " + rt + ", " + bot_txt + " = 0 => " + var + " = " + rb,
+    };
+
+    Rational sign = r_div(top->a1, bot->a1);
+    if(r_cmp(r_top, r_bot) == 0) {
+        if(sign.num > 0) {
+            lines.push_back(frac_txt + " > 0, " + var + " != " + rb);
+            return DomainSolve{lines, var + " != " + rb};
+        }
+        lines.push_back(frac_txt + " < 0, " + var + " != " + rb);
+        return DomainSolve{lines, "no real " + var};
+    }
+
+    Rational lo = r_cmp(r_top, r_bot) < 0 ? r_top : r_bot;
+    Rational hi = r_cmp(r_top, r_bot) < 0 ? r_bot : r_top;
+    std::string los = format_expr(a, a.num(lo));
+    std::string his = format_expr(a, a.num(hi));
+    std::string answer = sign.num > 0
+        ? var + " < " + los + " or " + var + " > " + his
+        : los + " < " + var + " < " + his;
+    lines.push_back(los + ", " + his + " => " + answer);
+    return DomainSolve{lines, answer};
+}
+
 static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -5180,6 +5228,57 @@ static std::optional<std::vector<std::string>> sqrt_difference_linear_route(
     out.push_back("Square again and solve.");
     for(auto const &s : sols) out.push_back(s);
     out.push_back("Answer: " + solution_list_line(var, sols));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    NodeId root = 0;
+    NodeId line = 0;
+    auto match = [&](NodeId l, NodeId r) {
+        Node const &ln = a.get(l);
+        if(ln.kind != NodeKind::Fn || ln.fkind != FnKind::Sqrt) return false;
+        auto inside_p = poly_of(a, ln.a, var);
+        auto line_p = poly_of(a, r, var);
+        if(!inside_p || !line_p || !inside_p->ok || !line_p->ok) return false;
+        if(!is_zero(inside_p->a2) || is_zero(inside_p->a1) || !is_zero(line_p->a2)) return false;
+        root = l;
+        line = r;
+        return true;
+    };
+    if(!match(lhs, rhs) && !match(rhs, lhs)) return std::nullopt;
+    Node const &rn = a.get(root);
+    NodeId inside = rn.a;
+    NodeId squared = casio::simplify(a, casio::add(a, {casio::power(a, line, casio::num(a, 2)), casio::neg(a, inside)}));
+    auto p = poly_of(a, squared, var);
+    if(!p || !p->ok) return std::nullopt;
+    auto raw = solve_poly2(a, *p, var);
+    if(raw.empty()) return std::nullopt;
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+
+    auto domain_line = [&](NodeId n) -> std::optional<std::string> {
+        auto lp = poly_of(a, n, var);
+        if(!lp || !lp->ok || !is_zero(lp->a2) || is_zero(lp->a1)) return std::nullopt;
+        Rational bound = r_div(r_neg(lp->a0), lp->a1);
+        std::string s = format_expr(a, a.num(bound));
+        return var + std::string(lp->a1.num > 0 ? " >= " : " <= ") + s;
+    };
+
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    if(auto dom = domain_line(inside)) out.push_back(format_expr(a, inside) + " >= 0 => " + *dom);
+    if(auto dom = domain_line(line)) out.push_back(format_expr(a, line) + " >= 0 => " + *dom);
+    out.push_back(format_expr(a, inside) + " = (" + format_expr(a, line) + ")^2");
+    out.push_back("expand => " + format_expr(a, squared) + " = 0");
+    for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+    append_rejected_by_domain(out, var, raw, valid);
+    out.push_back(solution_list_line(var, valid));
     return out;
 }
 
@@ -6497,6 +6596,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         domain_answer = *solved;
                         steps.push_back("Solve the log condition: " + domain_answer + ".");
                     }
+                    else if(auto solved = positive_linear_fraction_domain(arena, dn.a, var)) {
+                        for(auto const &line : solved->lines) steps.push_back(line);
+                        domain_answer = solved->answer;
+                        steps.push_back("Domain: " + domain_answer + ".");
+                    }
                 }
             }
             if(req.method == "domain") {
@@ -7126,6 +7230,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return out;
             }
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
+            if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;

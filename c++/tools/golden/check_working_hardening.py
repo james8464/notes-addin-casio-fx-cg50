@@ -68,6 +68,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(sqrt(2*x+3)=x-1,x)",
+        ["2*x + 3 >= 0 => x >= -3/2", "x - 1 >= 0 => x >= 1", "2*x + 3 = (x - 1)^2", "x = 2 - sqrt(6) rejected by domain", "Answer: x = [2 + sqrt(6)]"],
+        ["4.449", "ERR:"],
+    ),
+    (
+        "alg",
         "solve((2*x+1)^2=4,x)",
         ["(2*x + 1)^2 = 4", "2*x + 1 = +/-2", "x = [1/2, -3/2]"],
         ["LHS - RHS", "x + 1/2 = +/-1", "ERR:"],
@@ -122,6 +128,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "domain(ln((x-1)/(x+2)))",
+        ["(x - 1)/(x + 2) > 0, x + 2 != 0", "x - 1 = 0 => x = 1, x + 2 = 0 => x = -2", "-2, 1 => x < -2 or x > 1", "x < -2 or x > 1"],
+        ["Answer: (x - 1)/(x + 2) > 0", "ERR:"],
+    ),
+    (
+        "alg",
         "ln(abs(x)+2)=0,method=auto",
         ["abs(x) + 2 = e^0", "abs(x) + 2 = 1", "abs(x) = -1", "abs(x) >= 0", "x = []"],
         ["log_b(A)-log_b(B)", "|A| = B =>", "No real solution", "ERR:"],
@@ -167,6 +179,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "log(abs(3*x+1)+2),x,method=auto",
         ["u = abs(3*x + 1) + 2", "du/dx = 3*(3*x + 1)/abs(3*x + 1)", "dy/dx = du/dx/u", "d(abs(u))/dx = u/abs(u)*du/dx"],
         ["Use product rule", "Answer: d/dx(", "Unexpected token", "ERR:"],
+    ),
+    (
+        "derive",
+        "ln((x-1)/(x+2)),x",
+        ["u = (x - 1)/(x + 2)", "Domain: x < -2 or x > 1", "u' = ((1)*(x + 2)-(x - 1)*(1))/(x + 2)^2", "u' = 3/(x + 2)^2", "dy/dx = [3/(x + 2)^2]/[(x - 1)/(x + 2)]", "dy/dx = 3/((x + 2)*(x - 1))"],
+        ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (
         "derive",
@@ -779,6 +797,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "tan(x)^2+1,method=auto",
         ["tan(u)^2 + 1 = sec(u)^2", "integrand = sec(x)^2", "I = Int(sec(x)^2) dx", "Answer: tan(x) + C"],
         ["Answer: int", "ERR:"],
+    ),
+    (
+        "int",
+        "tan(3*x+1)^2,method=auto",
+        ["u = 3*x + 1", "du/dx = 3", "I = 1/3*Int(sec(u)^2-1)du", "I = (tan(u)-u)/3+C", "Answer: tan(3*x + 1)/3 - x + C"],
+        ["Integral tan(u)^2 dx", "Answer: int", "ERR:"],
+    ),
+    (
+        "int",
+        "sin(3*x)*cos(5*x),method=trig",
+        ["A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "Answer: - 1/16*cos(8*x) + 1/4*cos(2*x) + C"],
+        ["No elementary primitive", "ERR:"],
     ),
     (
         "int",

@@ -710,6 +710,75 @@ static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, Affin
     return affine_int_text(num, var) + "/(" + affine_int_text(den, var) + ")";
 }
 
+static std::string rat_text(Arena &a, long long num, long long den)
+{
+    Rational r{num, den};
+    r.normalize();
+    return clean_math_text(format_expr_human(a, a.num(r)));
+}
+
+static std::string affine_display(Arena &a, AffineInt p, std::string const &var)
+{
+    try {
+        return clean_math_text(format_expr_human(a, casio::parse_expr(a, affine_int_text(p, var))));
+    }
+    catch(...) {
+        return affine_int_text(p, var);
+    }
+}
+
+static std::string log_linear_fraction_domain(Arena &a, AffineInt num, AffineInt den, std::string const &var)
+{
+    if(num.m == 0 || den.m == 0) return "";
+    Rational rn{-num.b, num.m};
+    Rational rd{-den.b, den.m};
+    rn.normalize();
+    rd.normalize();
+    Rational sign{num.m, den.m};
+    sign.normalize();
+    if(rn.num == rd.num && rn.den == rd.den) return sign.num > 0 ? var + " != " + rat_text(a, rd.num, rd.den) : "no real " + var;
+    bool swap = rn.num * rd.den > rd.num * rn.den;
+    Rational lo = swap ? rd : rn;
+    Rational hi = swap ? rn : rd;
+    std::string l = rat_text(a, lo.num, lo.den);
+    std::string h = rat_text(a, hi.num, hi.den);
+    return sign.num > 0 ? var + " < " + l + " or " + var + " > " + h : l + " < " + var + " < " + h;
+}
+
+static bool append_log_linear_fraction_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps, std::string &answer_override)
+{
+    Node const &fn = a.get(n);
+    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Log) return false;
+    Node const &arg = a.get(fn.a);
+    if(arg.kind != NodeKind::Div) return false;
+    auto num = affine_int_in(a, arg.a, var);
+    auto den = affine_int_in(a, arg.b, var);
+    if(!num || !den || num->m == 0 || den->m == 0) return false;
+
+    std::string nt = affine_display(a, *num, var);
+    std::string dt = affine_display(a, *den, var);
+    long long c = num->m * den->b - num->b * den->m;
+    std::string c_txt = std::to_string(c);
+    if(c == 1) c_txt = "";
+    else if(c == -1) c_txt = "-";
+    std::string ans = "dy/d" + var + " = 0";
+    if(c != 0) {
+        ans = "dy/d" + var + " = " + (c_txt.empty() ? "" : c_txt + "/") + "((" + dt + ")*(" + nt + "))";
+        if(c == 1 || c == -1) ans = "dy/d" + var + " = " + c_txt + "1/((" + dt + ")*(" + nt + "))";
+    }
+
+    steps.push_back("u = (" + nt + ")/(" + dt + ").");
+    std::string domain = log_linear_fraction_domain(a, *num, *den, var);
+    if(!domain.empty()) steps.push_back("Domain: " + domain + ".");
+    steps.push_back("u' = ((" + std::to_string(num->m) + ")*(" + dt + ")-(" + nt + ")*(" + std::to_string(den->m) + "))/" + "(" + dt + ")^2.");
+    steps.push_back("u' = " + std::to_string(c) + "/(" + dt + ")^2.");
+    steps.push_back("dy/d" + var + " = u'/u.");
+    steps.push_back("dy/d" + var + " = [" + std::to_string(c) + "/(" + dt + ")^2]/[(" + nt + ")/(" + dt + ")].");
+    steps.push_back(ans + ".");
+    answer_override = ans;
+    return true;
+}
+
 static std::optional<int> negative_power_clear_exp(std::string const &a, std::string const &b, std::string const &var)
 {
     auto scan = [&](std::string text) {
@@ -1632,6 +1701,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!used_rule && has_variable_power(arena, n, var)) {
                     steps.push_back("ln(y) = exponent*ln(base).");
                     steps.push_back("dy/d" + var + " = y*(exponent'*ln(base)+exponent*base'/base).");
+                    used_rule = true;
+                }
+                if(!used_rule && append_log_linear_fraction_detail(arena, n, var, steps, answer_override)) {
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {

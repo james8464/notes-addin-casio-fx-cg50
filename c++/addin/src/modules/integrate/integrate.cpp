@@ -5224,6 +5224,75 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     return std::nullopt;
 }
 
+static std::optional<NodeId> integrate_sin_cos_product_to_sum(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    NodeId sin_arg = 0, cos_arg = 0;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) {
+            coeff = r_mul(coeff, *n);
+            continue;
+        }
+        Node const &kid = a.get(k);
+        if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Sin && !sin_arg) {
+            sin_arg = kid.a;
+            continue;
+        }
+        if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Cos && !cos_arg) {
+            cos_arg = kid.a;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!sin_arg || !cos_arg) return std::nullopt;
+    if(same_expr(a, sin_arg, cos_arg)) return std::nullopt;
+    if(!linear_coeff(a, sin_arg, var) || !linear_coeff(a, cos_arg, var)) return std::nullopt;
+
+    auto make_linear = [&](long long m, long long b) {
+        std::vector<NodeId> terms;
+        if(m != 0) terms.push_back(m == 1 ? casio::sym(a, var) : casio::mul(a, {casio::num(a, m), casio::sym(a, var)}));
+        if(b != 0) terms.push_back(casio::num(a, b));
+        if(terms.empty()) return casio::num(a, 0);
+        return terms.size() == 1 ? terms.front() : casio::simplify(a, casio::add(a, terms));
+    };
+    NodeId sum_arg = casio::simplify(a, casio::add(a, {sin_arg, cos_arg}));
+    NodeId diff_arg = casio::simplify(a, casio::add(a, {sin_arg, casio::neg(a, cos_arg)}));
+    Rational diff_sign{1, 1};
+    long long sm = 0, sb = 0, cm = 0, cb = 0;
+    if(parse_linear_key(compact_key(format_expr(a, sin_arg)), var, sm, sb) &&
+       parse_linear_key(compact_key(format_expr(a, cos_arg)), var, cm, cb)) {
+        sum_arg = make_linear(sm + cm, sb + cb);
+        long long dm = sm - cm;
+        long long db = sb - cb;
+        if(dm < 0 && db == 0) {
+            dm = -dm;
+            diff_sign = Rational{-1, 1};
+        }
+        diff_arg = make_linear(dm, db);
+    }
+    auto integrate_sin_linear = [&](NodeId arg) -> std::optional<NodeId> {
+        auto k = linear_coeff(a, arg, var);
+        if(!k) return std::nullopt;
+        if(r_zero(*k)) return casio::mul(a, {casio::fn(a, "sin", arg), casio::sym(a, var)});
+        return mul_coeff(a, r_neg(r_div(Rational{1, 1}, *k)), casio::fn(a, "cos", arg));
+    };
+    auto left = integrate_sin_linear(sum_arg);
+    auto right = integrate_sin_linear(diff_arg);
+    if(!left || !right) return std::nullopt;
+
+    Rational half_coeff = r_div(coeff, Rational{2, 1});
+    steps.push_back("A=" + format_expr_human(a, sin_arg) + ", B=" + format_expr_human(a, cos_arg) + ".");
+    steps.push_back("2sin(A)cos(B)=sin(A+B)+sin(A-B).");
+    std::string diff_piece = diff_sign.num < 0 ? "-sin(" + format_expr_human(a, diff_arg) + ")" : "+sin(" + format_expr_human(a, diff_arg) + ")";
+    steps.push_back("I=" + format_expr_human(a, a.num(half_coeff)) + "*Int(sin(" + format_expr_human(a, sum_arg) + ")" + diff_piece + ")d" + var + ".");
+    return casio::simplify(a, casio::add(a, {
+        mul_coeff(a, half_coeff, *left),
+        mul_coeff(a, r_mul(half_coeff, diff_sign), *right)
+    }));
+}
+
 struct Poly2I
 {
     Rational a2{0, 1};
@@ -7785,6 +7854,11 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(auto prod_sum = integrate_sin_cos_product_to_sum(a, expr, var, out.steps)) {
+        out.result = *prod_sum;
+        return out;
+    }
+
     if(auto trig_prod = integrate_trig_products(a, expr, var, out.steps)) {
         out.result = *trig_prod;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
@@ -8013,20 +8087,28 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             if(coeff && !r_zero(*coeff)) {
                 NodeId v = casio::sym(a, var);
                 std::string arg = format_expr_human(a, base.a);
+                std::string ktxt = format_expr(a, a.num(*coeff));
+                std::string uvar = (arg == var && r_eq(*coeff, Rational{1, 1})) ? var : "u";
                 if(base.fkind == FnKind::Sec) {
                     out.result = divide_by_coeff(a, casio::fn(a, "tan", base.a), *coeff);
-                    out.steps.push_back("Step 2: Integral sec(" + arg + ")^2 d" + var + " = tan(" + arg + ")/(" + format_expr(a, a.num(*coeff)) + ").");
+                    out.steps.push_back("u=" + arg + ", du/d" + var + "=" + ktxt + ".");
+                    out.steps.push_back("Int sec(" + uvar + ")^2 d" + uvar + " = tan(" + uvar + ").");
+                    out.steps.push_back("I=tan(u)/" + ktxt + "+C.");
                     return out;
                 }
                 if(base.fkind == FnKind::Cosec) {
                     out.result = divide_by_coeff(a, casio::neg(a, casio::fn(a, "cot", base.a)), *coeff);
-                    out.steps.push_back("Step 2: Integral cosec(" + arg + ")^2 d" + var + " = -cot(" + arg + ")/(" + format_expr(a, a.num(*coeff)) + ").");
+                    out.steps.push_back("u=" + arg + ", du/d" + var + "=" + ktxt + ".");
+                    out.steps.push_back("Int cosec(" + uvar + ")^2 d" + uvar + " = -cot(" + uvar + ").");
+                    out.steps.push_back("I=-cot(u)/" + ktxt + "+C.");
                     return out;
                 }
                 if(base.fkind == FnKind::Tan) {
                     out.result = casio::simplify(a, casio::add(a, {divide_by_coeff(a, casio::fn(a, "tan", base.a), *coeff), casio::neg(a, v)}));
-                    out.steps.push_back("Step 2: Use tan(u)^2 = sec(u)^2 - 1.");
-                    out.steps.push_back("Step 3: Integral tan(u)^2 dx = tan(u)/u' - x.");
+                    out.steps.push_back("u=" + arg + ", du/d" + var + "=" + ktxt + ".");
+                    out.steps.push_back("tan(u)^2=sec(u)^2-1.");
+                    out.steps.push_back("I=1/" + ktxt + "*Int(sec(u)^2-1)du.");
+                    out.steps.push_back("I=(tan(u)-u)/" + ktxt + "+C.");
                     return out;
                 }
                 if(base.fkind == FnKind::Sin || base.fkind == FnKind::Cos) {
