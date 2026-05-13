@@ -7781,19 +7781,63 @@ static std::optional<NodeId> integrate_basic_fn_reverse_chain(Arena &a, NodeId e
 
 static std::optional<NodeId> integrate_log_power_arg_over_var(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
+    auto log_power = [&](NodeId n) -> std::optional<std::pair<Rational, Rational>> {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
+            if(is_sym(a, x.a, var)) return std::make_pair(Rational{1, 1}, Rational{1, 1});
+            Node const &arg = a.get(x.a);
+            if(arg.kind == NodeKind::Pow && is_sym(a, arg.a, var)) {
+                auto p = as_num(a, arg.b);
+                if(p && !r_zero(*p)) return std::make_pair(Rational{1, 1}, *p);
+            }
+            return std::nullopt;
+        }
+        if(x.kind == NodeKind::Pow) {
+            Node const &base = a.get(x.a);
+            auto p = as_num(a, x.b);
+            if(p && base.kind == NodeKind::Fn && base.fkind == FnKind::Log && is_sym(a, base.a, var))
+                return std::make_pair(*p, Rational{1, 1});
+        }
+        return std::nullopt;
+    };
+
+    Rational coeff{1, 1};
+    Rational power{0, 1};
+    bool have_log = false;
+    bool have_dx_over_x = false;
     Node const &x = a.get(expr);
-    if(x.kind != NodeKind::Div || !is_sym(a, x.b, var)) return std::nullopt;
-    Node const &top = a.get(x.a);
-    if(top.kind != NodeKind::Fn || top.fkind != FnKind::Log) return std::nullopt;
-    Node const &arg = a.get(top.a);
-    if(arg.kind != NodeKind::Pow || !is_sym(a, arg.a, var)) return std::nullopt;
-    auto n = as_num(a, arg.b);
-    if(!n || r_zero(*n)) return std::nullopt;
+    if(x.kind == NodeKind::Div && is_sym(a, x.b, var)) {
+        auto lp = log_power(x.a);
+        if(!lp) return std::nullopt;
+        power = lp->first;
+        coeff = r_mul(coeff, lp->second);
+        have_log = true;
+        have_dx_over_x = true;
+    }
+    else if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) coeff = r_mul(coeff, *r);
+            else if(!have_dx_over_x && is_var_neg_one_power(a, k, var)) have_dx_over_x = true;
+            else if(!have_log) {
+                auto lp = log_power(k);
+                if(!lp) return std::nullopt;
+                power = lp->first;
+                coeff = r_mul(coeff, lp->second);
+                have_log = true;
+            }
+            else return std::nullopt;
+        }
+    }
+    else return std::nullopt;
+    if(!have_log || !have_dx_over_x) return std::nullopt;
+    Rational next = r_add(power, Rational{1, 1});
+    if(r_zero(next)) return std::nullopt;
     NodeId logx = casio::fn(a, "log", casio::sym(a, var));
-    NodeId ans = mul_coeff(a, r_div(*n, Rational{2, 1}), casio::power(a, logx, casio::num(a, 2)));
-    steps.push_back("ln(" + var + "^" + rat_text(*n) + ") = " + rat_text(*n) + "*ln(" + var + ")");
+    NodeId ans = mul_coeff(a, r_div(coeff, next), casio::power(a, logx, a.num(next)));
     steps.push_back("u = ln(" + var + ")");
     steps.push_back("du = 1/" + var + " d" + var);
+    std::string upow = r_eq(power, Rational{1, 1}) ? "u" : "u^" + rat_text(power);
+    steps.push_back("I = Int(" + upow + ") du");
     return casio::simplify(a, ans);
 }
 
@@ -11570,6 +11614,10 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(q.num < 0) q.num = -q.num;
                 return a.num(q);
             }
+            Node const &an = a.get(arg);
+            if(an.kind == NodeKind::Fn && an.fkind == FnKind::Sqrt) {
+                if(auto r = as_num(a, an.a); r && r->num >= 0) return arg;
+            }
         }
         if(x.fkind == FnKind::Exp) {
             auto exp_of_log_power = [&](NodeId v) -> std::optional<NodeId> {
@@ -11615,6 +11663,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(auto r = as_num(a, arg); r && r->num == r->den) return casio::num(a, 0);
             Node const &ln_arg = a.get(arg);
             if(ln_arg.kind == NodeKind::Const && ln_arg.ckind == ConstKind::E) return casio::num(a, 1);
+            if(ln_arg.kind == NodeKind::Fn && ln_arg.fkind == FnKind::Sqrt) {
+                if(auto r = as_num(a, ln_arg.a); r && r->num > 0) {
+                    return mul_coeff(a, Rational{1, 2}, casio::fn(a, "log", ln_arg.a));
+                }
+            }
             if(ln_arg.kind == NodeKind::Div) {
                 auto top = as_num(a, ln_arg.a);
                 Node const &bot = a.get(ln_arg.b);
