@@ -500,7 +500,7 @@ CASES = [
     (
         "defint outer wrapped",
         ["--int", "(defint(2*x/sqrt(2*x+4),x,(0),(7)))"],
-        ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = sqrt(18)", "I = Int_2^sqrt(18) (u^2 - 4) du"),
+        ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = 3*sqrt(2)", "I = Int_2^(3*sqrt(2)) (u^2 - 4) du"),
         ("ERR:",),
     ),
     (

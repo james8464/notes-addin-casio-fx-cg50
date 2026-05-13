@@ -33,7 +33,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q13 linear-root definite integral",
         ["--int", "defint(2*x*sqrt(x+2),x,0,2)"],
-        ["u=x+2", "x=u-2", "Limits", "32/15*(2 + sqrt(2))"],
+        ["u=x+2", "x=u-2", "Limits", "32/15*sqrt(2) + 64/15"],
         ["No elementary primitive", "ERR:"],
     ),
     (

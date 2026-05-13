@@ -88,7 +88,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "G12 rationalise negative-power denominator",
         ["--int", "(5-x)/(2-x^(-1))"],
-        ["Integrand becomes (- x + 5)*x/(2*x - 1)", "-1/4*x^2", "9/8*log(abs(2*x - 1))"],
+        ["Integrand becomes (- x + 5)*x/(2*x - 1)", "u = 2*x - 1", "-1/16*(2*x - 1)^2", "9/8*ln(abs(2*x - 1))"],
         ["No elementary primitive"],
     ),
 ]
