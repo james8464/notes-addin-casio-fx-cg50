@@ -68,7 +68,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2020 Q12 trig power definite integral",
         ["--int", "defint(60*sin(t)*cos(t)^2,t,0,pi/2)"],
-        ["u=cos(t)", "du=-1*sin(t) dt", "F(t) = -20*cos(t)^3", "20"],
+        ["u=cos(t)", "du=-sin(t) dt", "F(t) = -20*cos(t)^3", "20"],
         ["du=-1*sin(t) dx", "ERR:"],
     ),
     (

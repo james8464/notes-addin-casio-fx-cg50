@@ -213,13 +213,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dr/dt=-k/r^2,r(0)=40,r(5)=20)",
-        ["r^2 dr = -k dt", "1/3*r^3 = -k*t + C", "C = 64000/3", "8000/3 = -5*k + 64000/3", "k = 11200/3"],
+        ["r^2 dr = -k dt", "r^3/3 = -k*t + C", "C = 64000/3", "8000/3 = -5*k + 64000/3", "k = 11200/3"],
         ["Try dy/dx", "unsupported DE route", "Err:"],
     ),
     (
         "int",
         "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
-        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(1/3*x^3 + x)", "y = 4*e^(1/3*x^3 + x) - 3"],
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = 4*e^(x^3/3 + x) - 3"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -237,7 +237,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(x*dy/dx+2*y=x^3,x=1,y=4)",
-        ["p = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (1/5*x^5 + 19/5)/(x^2)"],
+        ["p = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (x^5/5 + 19/5)/(x^2)"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -275,6 +275,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(5/(10-8*e^(k*sin(t/10)))=5/(10-8*e^(sin(t/10)/5)),k)",
         ["e^(k*sin(t/10)) = e^(sin(t/10)/5)", "k*sin(t/10) = sin(t/10)/5", "k = 1/5"],
         ["k = []", "No real solution", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^(2*x+1)=e^(x-3),x)",
+        ["e^(2*x+1)=e^(x-3)", "2*x+1=x-3", "x+4=0", "x=-4"],
+        ["all real values in domain", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^(x^2)=e^(2*x),x)",
+        ["e^(x^2)=e^(2*x)", "x^2=2*x", "x^2-2*x=0", "x=[0,2]"],
+        ["all real values in domain", "ERR:"],
     ),
     (
         "alg",

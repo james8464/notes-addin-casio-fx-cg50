@@ -6510,6 +6510,48 @@ static std::optional<std::vector<std::string>> exp_coeff_solve_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> equal_exp_solve_route(
+    Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
+{
+    auto l_arg = exp_arg_node(a, lhs);
+    auto r_arg = exp_arg_node(a, rhs);
+    if(!l_arg || !r_arg) return std::nullopt;
+    if(!contains_symbol(a, *l_arg, var) && !contains_symbol(a, *r_arg, var)) return std::nullopt;
+
+    NodeId eq = casio::simplify(a, casio::add(a, {*l_arg, casio::neg(a, *r_arg)}));
+    auto rp = ratpoly_of_node(a, eq, var);
+    if(!rp.ok) return std::nullopt;
+
+    auto raw = solve_poly2(a, rp.num, var);
+    std::vector<std::string> real_raw;
+    real_raw.reserve(raw.size());
+    for(auto const &s : raw)
+        if(sol_rhs(s).find('i') == std::string::npos) real_raw.push_back(s);
+
+    std::vector<std::string> valid;
+    if(!real_raw.empty()) valid = filter_real_solutions(a, residual, var, real_raw, std::nullopt, std::nullopt);
+    std::sort(valid.begin(), valid.end(), [&](std::string const &l, std::string const &r) {
+        auto lv = solution_line_value(a, l);
+        auto rv = solution_line_value(a, r);
+        if(lv && rv) return *lv < *rv;
+        return sol_rhs(l) < sol_rhs(r);
+    });
+
+    out.push_back("e^(" + format_expr(a, *l_arg) + ") = e^(" + format_expr(a, *r_arg) + ")");
+    out.push_back(format_expr(a, *l_arg) + " = " + format_expr(a, *r_arg));
+    std::string eq_text = format_expr(a, eq);
+    if(is_zero(rp.den.a1) && is_zero(rp.den.a2)) eq_text = format_expr(a, poly2_to_node(a, rp.num, var));
+    if(eq_text != "0") out.push_back(eq_text + " = 0");
+    if(valid.empty()) {
+        out.push_back(var + " = []");
+        return out;
+    }
+    append_rejected_by_domain(out, var, real_raw, valid);
+    for(auto const &s : valid) out.push_back(s);
+    if(valid.size() != 1) out.push_back(solution_list_line(var, valid));
+    return out;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -7837,6 +7879,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);

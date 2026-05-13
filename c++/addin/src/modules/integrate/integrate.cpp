@@ -6658,6 +6658,9 @@ static std::optional<NodeId> integrate_log_derivative(Arena &a, NodeId expr, std
     if(!d) return std::nullopt;
     auto k = proportional_node(a, x.a, *d);
     if(!k) return std::nullopt;
+    steps.push_back("Step 2: D = " + format_expr_human(a, x.b) + ".");
+    steps.push_back("Step 3: D' = " + format_expr_human(a, *d) + ".");
+    steps.push_back("Step 4: N = A*D'+B.");
     steps.push_back("Step 2: Let u=" + format_expr_human(a, x.b) + ".");
     steps.push_back("Step 3: du/d" + var + "=" + format_expr_human(a, *d) + ".");
     steps.push_back("Step 4: Integral has form k*u'/u.");
@@ -6683,6 +6686,7 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
             p = Rational{1, 2};
         }
         else continue;
+        if(is_sym(a, base, var)) continue;
         Rational p1 = r_add(p, Rational{1, 1});
         if(r_zero(p1)) continue;
         auto d = rc_diff(a, base, var);
@@ -6695,6 +6699,7 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
         if(!k) continue;
         steps.push_back("Step 2: Let u=" + format_expr_human(a, base) + ".");
         steps.push_back("Step 3: du/d" + var + "=" + format_expr_human(a, *d) + ".");
+        steps.push_back("Step 4: du=" + format_expr_human(a, *d) + " d" + var + ".");
         steps.push_back("Step 4: Integral has form k*u^n*u'.");
         return casio::simplify(a, mul_coeff(a, r_div(*k, p1), casio::power(a, base, a.num(p1))));
     }

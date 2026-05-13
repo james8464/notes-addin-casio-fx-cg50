@@ -316,6 +316,18 @@ CASES = [
         ("u=a^x", "x = [0, 2]"),
     ),
     (
+        "equal exponentials",
+        ["--alg", "solve(e^(2*x+1)=e^(x-3),x)"],
+        ("e^(2*x + 1) = e^(x - 3)", "2*x + 1 = x - 3", "x + 4 = 0", "x = -4"),
+        ("all real values in domain", "ERR:"),
+    ),
+    (
+        "equal exponential quadratic exponents",
+        ["--alg", "solve(e^(x^2)=e^(2*x),x)"],
+        ("e^(x^2) = e^(2*x)", "x^2 = 2*x", "x^2 - 2*x = 0", "x = [0, 2]"),
+        ("all real values in domain", "ERR:"),
+    ),
+    (
         "sin reverse chain concise",
         ["--int", "sin(x),method=reverse_chain"],
         ("I = Int(sin(x)) dx", "-cos(x) + C"),
