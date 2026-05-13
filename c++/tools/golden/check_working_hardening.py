@@ -30,6 +30,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sin(4*x+10)=sin(50),x,0,360,method=general",
+        ["sin(A)=sin(B)", "A=B+360n=>x=10+n*90", "A=180-B+360n=>x=30+n*90", "x=10+n*90orx=30+n*90"],
+        ["46.302756", "83.697243", "x = []"],
+    ),
+    (
+        "trig",
+        "tan(30-x)^2=3,x,0,360,method=general",
+        ["tan(-x+30)^2=3", "tan(-x+30)=+/-sqrt(3)", "x=150+n*180", "x=90+n*180"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(2*x)=cos(x),x,0,2*pi,method=general",
+        ["sin(2A)=2sin(A)cos(A)", "cos(A)(2sin(A)-1)=0", "x=pi/2+n*pi", "x=pi/6+n*2*pi"],
+        ["x = []", "Failed to isolate"],
+    ),
+    (
+        "trig",
+        "sin(5*x)+sin(3*x)=0,x,0,2*pi,method=general",
+        ["sin(A)+sin(B)=2sin((A+B)/2)cos((A-B)/2)", "2sin(4*x)cos(x)=0", "x=0+n*pi/4", "x=pi/2+n*pi"],
+        ["x = []", "Failed to isolate"],
+    ),
+    (
+        "trig",
+        "2*cos(theta)*tan(theta)=sqrt(3),theta,0,360,method=general",
+        ["cos(A)tan(A)=sin(A),cos(A)!=0", "sin(A)=sqrt(3)/2", "theta=60+n*360or120+n*360"],
+        ["theta = []", "Failed to isolate"],
+    ),
+    (
+        "trig",
+        "sqrt(3)*sin(x-pi/6)=sin(x),x,0,2*pi,method=general",
+        ["sin(M+a)=sin(M)cos(a)+cos(M)sin(a)", "tan(x)=sqrt(3)", "x=pi/3+n*pi"],
+        ["x = []", "Failed to isolate"],
+    ),
+    (
+        "trig",
         "cos(5*x)+5*cos(3*x)+12*cos(x)=0,x,0,2*pi,10,method=identity",
         ["cos(5x)+5cos(3x)+10cos(x) = 16cos(x)^5", "16cos(x)^4+2>0", "x = [pi/2, 3*pi/2]"],
         ["x = []", "ERR:", "Unexpected token"],

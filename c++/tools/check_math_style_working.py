@@ -98,6 +98,42 @@ CASES = [
         ("sin(A)-sin(B) = 0", "sin(A)-sin(B) = 2*cos((A+B)/2)*sin((A-B)/2)", "A = 2*x, B = x", "2*x = x+360n => x = 360n", "2*x = 180-x+360n => x = (180+360n)/3", "x = [0, 60, 180, 300, 360]"),
     ),
     (
+        "madas general same fn degree",
+        ["--trig", "sin(4*x+10)=sin(50),x,0,360,method=general"],
+        ("sin(A) = sin(B)", "A = B+360n => x = 10 + n*90", "A = 180-B+360n => x = 30 + n*90", "x = 10 + n*90 or x = 30 + n*90"),
+        ("46.302756", "83.697243", "x = []"),
+    ),
+    (
+        "madas general tan square",
+        ["--trig", "tan(30-x)^2=3,x,0,360,method=general"],
+        ("tan(- x + 30)^2 = 3", "tan(- x + 30) = +/-sqrt(3)", "x = 150 + n*180", "x = 90 + n*180"),
+        ("x = []", "ERR:"),
+    ),
+    (
+        "madas general sin2 cos factor",
+        ["--trig", "sin(2*x)=cos(x),x,0,2*pi,method=general"],
+        ("sin(2A) = 2*sin(A)*cos(A)", "cos(A)*(2*sin(A)-1) = 0", "x = pi/2 + n*pi", "x = pi/6 + n*2*pi or 5*pi/6 + n*2*pi"),
+        ("x = []", "Failed to isolate"),
+    ),
+    (
+        "madas general sin sum",
+        ["--trig", "sin(5*x)+sin(3*x)=0,x,0,2*pi,method=general"],
+        ("sin(A)+sin(B) = 2*sin((A+B)/2)*cos((A-B)/2)", "2*sin(4*x)*cos(x) = 0", "x = 0 + n*pi/4", "x = pi/2 + n*pi"),
+        ("x = []", "Failed to isolate"),
+    ),
+    (
+        "madas general costan product",
+        ["--trig", "2*cos(theta)*tan(theta)=sqrt(3),theta,0,360,method=general"],
+        ("cos(A)*tan(A) = sin(A), cos(A)!=0", "sin(A) = sqrt(3)/2", "theta = 60 + n*360 or 120 + n*360"),
+        ("theta = []", "Failed to isolate"),
+    ),
+    (
+        "madas general shifted sine",
+        ["--trig", "sqrt(3)*sin(x-pi/6)=sin(x),x,0,2*pi,method=general"],
+        ("sin(M+a) = sin(M)cos(a)+cos(M)sin(a)", "tan(x) = sqrt(3)", "x = pi/3 + n*pi"),
+        ("x = []", "Failed to isolate"),
+    ),
+    (
         "madas reciprocal pythagorean sec tan",
         ["--trig", "2*tan(theta)^2=11*sec(theta)-7,theta,0,360"],
         ("tan(theta)^2 = sec(theta)^2-1", "u = sec(theta)", "2u^2-11u+5 = 0", "cos(theta) = 1/5", "theta = [78.4630409672, 281.536959033]"),

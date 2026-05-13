@@ -18,7 +18,8 @@ Status:
 - 62 MadAsMaths topic PDFs downloaded/extracted from the 3 requested pages.
 - `trigonometric_equations.pdf` Q1-Q30 manually checked against printed answers.
 - `trigonometric_equations_introduction.pdf` Q1-Q39 manually checked against printed answers.
-- Other 60 MadAsMaths topic PDFs are listed but pending manual question-by-question audit.
+- `trigonometric_general_solutions.pdf` Q1-Q33 manually checked against printed answers.
+- Other 59 MadAsMaths topic PDFs are listed but pending manual question-by-question audit.
 - This is not a complete 217-document or 62-topic-document manual audit yet.
 
 Current Findings:
@@ -44,6 +45,10 @@ Current Findings:
 | MADAS-ST-TRIGINTRO-Q18-Q32 | PASS | Quadratic trig equations using `sin^2+cos^2=1` and double-angle substitution now show clean algebra lines. |
 | MADAS-ST-TRIGINTRO-Q33-Q37 | PASS | Tan/sin/cos rational equations now reduce via `s=sin(A), c=cos(A), tan(A)=s/c`, denominator checks, and interval filtering. |
 | MADAS-ST-TRIGINTRO-Q38-Q39 | PASS-PARTIAL | Identities verify as true, but generic proof output is still too terse for full model-solution style. |
+| MADAS-ST-TRIGGEN-Q1-Q11 | PASS | General shifted/simple trig families now preserve degree RHS functions and tan-square routes. |
+| MADAS-ST-TRIGGEN-Q12-Q18 | PASS | Product, same-function, tan-difference, and tan-sum general routes now show identities and families. |
+| MADAS-ST-TRIGGEN-Q19-Q27 | PASS | Harder tan²/sin², sin(2A), R-form, and sum-to-product general routes now avoid interval-only output. |
+| MADAS-ST-TRIGGEN-Q28-Q33 | PASS | Non-calculator same-function/cofunction general equations now output exact families. |
 
 Next high-value implementation:
 1. Continue with the next MadAs topic PDF in `madasmaths_topic_audit_manifest.csv`.

@@ -647,6 +647,7 @@ int main(int argc, char **argv)
                 expr += "\n" + target;
             }
             req.expr = expr;
+            req.method = method;
             auto lines = casio::trig::run(arena, req);
             print_lines(lines);
             return 0;
