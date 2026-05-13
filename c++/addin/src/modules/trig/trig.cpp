@@ -2118,6 +2118,73 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static bool cos_multiple_term(Arena &a, NodeId n, std::string const &var, bool rad, long long &m, double &coef)
+{
+    coef = 1.0;
+    NodeId fn = n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        fn = 0;
+        for(NodeId k : x.kids) {
+            Node const &kid = a.get(k);
+            if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Cos) {
+                if(fn) return false;
+                fn = k;
+            }
+            else {
+                auto v = numeric_eval(a, k, 0.0);
+                if(!v) return false;
+                coef *= *v;
+            }
+        }
+        if(!fn) return false;
+    }
+    Node const &f = a.get(fn);
+    if(f.kind != NodeKind::Fn || f.fkind != FnKind::Cos) return false;
+    auto lin = linear_angle(a, f.a, var, rad);
+    if(!lin || std::fabs(lin->second) > 1e-12) return false;
+    auto mi = near_int(lin->first);
+    if(!mi) return false;
+    m = *mi;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> solve_cos5_cos3_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add) return std::nullopt;
+    double c1 = 0.0, c3 = 0.0, c5 = 0.0;
+    for(NodeId k : r.kids) {
+        long long m = 0;
+        double c = 0.0;
+        if(!cos_multiple_term(a, k, var, rad, m, c)) return std::nullopt;
+        if(m == 1) c1 += c;
+        else if(m == 3) c3 += c;
+        else if(m == 5) c5 += c;
+        else return std::nullopt;
+    }
+    if(std::fabs(c5) < 1e-12 || std::fabs(c3 - 5.0 * c5) > 1e-9) return std::nullopt;
+    if((10.0 * c5 - c1) / (16.0 * c5) >= -1e-12) return std::nullopt;
+    NodeId arg = casio::sym(a, var);
+    auto xs = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, {90.0, 270.0});
+    std::string tail = format_double_compact(c1 - 10.0 * c5);
+    std::vector<std::string> steps{
+        "cos(5" + var + ")+5cos(3" + var + ")+10cos(" + var + ")=16cos(" + var + ")^5.",
+        "cos(" + var + ")*(16cos(" + var + ")^4+" + tail + ")=0.",
+        "16cos(" + var + ")^4+" + tail + ">0.",
+        "cos(" + var + ")=0.",
+        lo_text + " <= " + var + " < " + hi_text + " => " + format_solution_list(var, rad, xs),
+    };
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
 static long long cube_root_exact(long long n)
 {
     long long sign = n < 0 ? -1 : 1;
@@ -2988,6 +3055,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
     if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad, general)) return *mixed;
+    if(auto demoivre = solve_cos5_cos3_route(a, residual, var, lo_text, hi_text, rad)) return *demoivre;
 
     auto iso = isolate(lhs, rhs);
     if(!iso) iso = isolate(rhs, lhs); // swap sides if needed

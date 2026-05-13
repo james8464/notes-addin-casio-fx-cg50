@@ -3651,6 +3651,109 @@ static std::optional<long long> nth_root_exact_i64(long long value, long long n)
     return std::nullopt;
 }
 
+static bool pow_of_symbol(Arena &a, NodeId n, std::string const &var, long long &power)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &base = a.get(x.a);
+    Node const &exp = a.get(x.b);
+    if(base.kind != NodeKind::Sym || base.text != var || exp.kind != NodeKind::Num ||
+       exp.num.den != 1 || exp.num.num < 2)
+        return false;
+    power = exp.num.num;
+    return true;
+}
+
+static bool pow_const_residual(Arena &a, NodeId n, std::string const &var, long long &power, Rational &rhs)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return false;
+    bool seen_pow = false;
+    Rational c{0, 1};
+    for(NodeId k : x.kids) {
+        long long p = 0;
+        if(pow_of_symbol(a, k, var, p)) {
+            if(seen_pow) return false;
+            seen_pow = true;
+            power = p;
+        }
+        else if(auto r = as_num(a, k)) c = r_add(c, *r);
+        else return false;
+    }
+    if(!seen_pow) return false;
+    rhs = r_neg(c);
+    rhs.normalize();
+    return true;
+}
+
+static std::string pi_part(long long num, long long den)
+{
+    Rational r{num, den};
+    r.normalize();
+    if(r.num == 0) return "0";
+    if(r.den == 1) {
+        if(r.num == 1) return "pi";
+        return std::to_string(r.num) + "*pi";
+    }
+    if(r.num == 1) return "pi/" + std::to_string(r.den);
+    return std::to_string(r.num) + "*pi/" + std::to_string(r.den);
+}
+
+static std::string exp_i(std::string const &theta)
+{
+    if(theta == "0") return "1";
+    if(theta == "pi") return "-1";
+    return "e^(" + theta + "*i)";
+}
+
+static std::optional<std::vector<std::string>> complex_nth_roots_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    if(var != "z") return std::nullopt;
+    long long n = 0;
+    Rational value{0, 1};
+    if(pow_of_symbol(a, lhs, var, n)) {
+        if(auto r = as_num(a, rhs)) value = *r;
+        else return std::nullopt;
+    }
+    else {
+        auto rz = as_num(a, rhs);
+        if(!rz || rz->num != 0 || rz->den != 1 || !pow_const_residual(a, rearr, var, n, value)) return std::nullopt;
+    }
+    if(value.num == 0 || value.den != 1) return std::nullopt;
+    long long abs_value = std::llabs(value.num);
+    auto rad = nth_root_exact_i64(abs_value, n);
+    if(!rad) return std::nullopt;
+    long long phi_num = value.num < 0 ? 1 : 0;
+    std::vector<std::string> roots;
+    for(long long k = 0; k < n; ++k) {
+        std::string e = exp_i(pi_part(phi_num + 2 * k, n));
+        if(e == "1") roots.push_back(std::to_string(*rad));
+        else if(e == "-1") roots.push_back(*rad == 1 ? e : "-" + std::to_string(*rad));
+        else roots.push_back(*rad == 1 ? e : std::to_string(*rad) + "*" + e);
+    }
+    std::string joined;
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) joined += ", ";
+        joined += roots[i];
+    }
+    std::string lhs_text = var + "^" + std::to_string(n);
+    std::string rhs_text = format_expr(a, a.num(value));
+    std::vector<std::string> out;
+    out.push_back(lhs_text + " = " + rhs_text);
+    out.push_back(rhs_text + " = " + std::to_string(abs_value) + "*e^(" + pi_part(phi_num, 1) + "*i)");
+    std::string mag = *rad == 1 ? "" : std::to_string(*rad) + "*";
+    out.push_back(var + " = " + mag + "e^(" + (phi_num ? "(pi+2*k*pi)" : "2*k*pi") + "*i/" + std::to_string(n) + ")");
+    out.push_back("k = 0, 1, ..., " + std::to_string(n - 1));
+    out.push_back(var + " = [" + joined + "]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> custom_log_base_route(
     Arena &a,
     std::string const &equation_text,
@@ -7199,6 +7302,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))

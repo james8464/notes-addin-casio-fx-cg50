@@ -29,6 +29,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "cos(5*x)+5*cos(3*x)+12*cos(x)=0,x,0,2*pi,10,method=identity",
+        ["cos(5x)+5cos(3x)+10cos(x) = 16cos(x)^5", "16cos(x)^4+2>0", "x = [pi/2, 3*pi/2]"],
+        ["x = []", "ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "solve(z^6=1,z)",
+        ["z^6 = 1", "k = 0, 1, ..., 5", "z = [1, e^(pi/3*i), e^(2*pi/3*i), -1"],
+        ["base = 1 or exponent = 0", "z = [1]", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(z^6+64=0,z)",
+        ["z^6 = -64", "z = 2*e^((pi+2*k*pi)*i/6)", "2*e^(11*pi/6*i)"],
+        ["z = []", "No real solution", "ERR:"],
+    ),
+    (
         "alg",
         "solve(log(2,x)+log(4,x)=6,x)",
         ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],
