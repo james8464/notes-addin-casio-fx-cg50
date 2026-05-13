@@ -1609,7 +1609,7 @@ static std::string strip_step_label(std::string s)
 static std::string clean_integral_step(std::string s, std::string const &expr, std::string const &var)
 {
     s = strip_step_label(std::move(s));
-    if(s.find("Set up the integral") != std::string::npos) return "I = Integral [" + expr + "] d" + var + ".";
+    if(s.find("Set up the integral") != std::string::npos) return "I = Int(" + expr + ") d" + var;
     if(s.find("Simplify. Add constant C") != std::string::npos) return "";
     if(s.find("Repeated integration by parts for x^n*exp") != std::string::npos)
         return "Use DI table.";
@@ -6719,10 +6719,16 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
         NodeId rem = rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest));
         auto k = proportional_node(a, rem, *d);
         if(!k) continue;
-        steps.push_back("Step 2: Let u=" + format_expr_human(a, base) + ".");
-        steps.push_back("Step 3: du/d" + var + "=" + format_expr_human(a, *d) + ".");
-        steps.push_back("Step 4: du=" + format_expr_human(a, *d) + " d" + var + ".");
-        steps.push_back("Step 4: Integral has form k*u^n*u'.");
+        Rational c = r_div(*k, p1);
+        std::string kt = rat_text(*k);
+        std::string ct = rat_text(c);
+        std::string ptxt = rat_text(p);
+        std::string p1txt = rat_text(p1);
+        steps.push_back("I = Int(" + format_expr_human(a, expr) + ") d" + var);
+        steps.push_back("u = " + format_expr_human(a, base));
+        steps.push_back("du/d" + var + " = " + format_expr_human(a, *d));
+        steps.push_back("I = " + (kt == "1" ? "" : kt + "*") + "Int(u^(" + ptxt + ")) du");
+        steps.push_back("I = " + (ct == "1" ? "" : ct + "*") + "u^(" + p1txt + ") + C");
         return casio::simplify(a, mul_coeff(a, r_div(*k, p1), casio::power(a, base, a.num(p1))));
     }
     return std::nullopt;
@@ -8914,7 +8920,6 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto pd = integrate_power_derivative(a, expr, var, out.steps)) {
         out.result = *pd;
-        out.steps.push_back("Step 5: Integral = k*u^(n+1)/(n+1) + C.");
         return out;
     }
 

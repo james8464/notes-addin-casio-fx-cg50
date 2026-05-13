@@ -25,6 +25,7 @@ python3 c++/tools/golden/check_edexcel_paper1_downloads.py
 python3 c++/tools/golden/check_edexcel_paper2_downloads.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
+python3 c++/tools/golden/check_madasmaths_standard_manual_cases.py
 ```
 
 `check_madasmaths_full_audit.py` renders local MP2 A-Z papers/solutions from
@@ -36,3 +37,6 @@ the lightweight CI gate.
 `~/Downloads/MadAsMaths standard topics`, writes an ignored JSONL question
 ledger, and runs curated source-derived host checks. Use `--strict-manual` when
 the ledger is expected to have no unaudited calculator-testable rows.
+
+`check_madasmaths_standard_manual_cases.py` runs hand-transcribed cases from
+rendered MadAsMaths standard-topic PDFs and records the latest local report.

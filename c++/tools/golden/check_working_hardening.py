@@ -609,7 +609,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "3*x*sqrt(x^2+1),method=sub",
-        ["u=x^2+1", "du/dx=2*x", "Int has form k*u^n*u'", "(x^2+1)^(3/2)+C"],
+        ["u=x^2+1", "du/dx=2*x", "J=1/2*Int(u^(1/2))du", "J=1/3*u^(3/2)+C", "(x^2+1)^(3/2)+C"],
         ["No elementary primitive"],
     ),
     (
