@@ -494,6 +494,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "trapezium(1/(1+x),x,0,1,4)",
+        ["h=(1-0)/4=0.25", "x_i=0,0.25,0.5,0.75,1", "T=h/2", "0.697024"],
+        ["Expected ) but found ,", "Answer:"],
+    ),
+    (
+        "int",
+        "simpson(e^(-x^2),x,0,1,4)",
+        ["h=(1-0)/4=0.25", "S=h/3", "0.746855"],
+        ["Expected ) but found ,", "Answer:"],
+    ),
+    (
+        "int",
+        "midordinate(sin(x),x,0,pi,6)",
+        ["h=(pi-0)/6=0.523599", "x_mid=", "M=h*sum(y_mid)", "2.02303"],
+        ["Expected ) but found ,", "Answer:"],
+    ),
+    (
+        "int",
+        "trapezium_table([1,2.25,3.5,4.75,6],[9,17,25,21,13])",
+        ["x_i=1,2.25,3.5,4.75,6", "h=1.25", "T=h/2", "92.5"],
+        ["Expected ) but found ,", "Answer:"],
+    ),
+    (
+        "int",
+        "simpson_table([0,1,2,3,4],[1,4,9,16,25])",
+        ["x_i=0,1,2,3,4", "S=h/3", "41.333333"],
+        ["Expected ) but found ,", "Answer:"],
+    ),
+    (
+        "int",
         "x^3*e^(x^4),method=sub",
         ["u=x^4", "du=4*x^3 dx", "Int(e^u) du = e^u", "+ C"],
         ["No elementary primitive", "ERR:"],
