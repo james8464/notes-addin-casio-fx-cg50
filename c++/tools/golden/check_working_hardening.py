@@ -249,7 +249,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dy/dx+2*x*y=x,y(0)=3)",
-        ["dy/dx + p*y = q", "p = 2*x", "mu = e^Int(p dx)", "d/dx[e^(2*x^2/2)*y] = e^(2*x^2/2)*x", "C = 5/2"],
+        ["dy/dx + p*y = q", "p = 2*x", "mu = e^Int(p dx)", "d/dx[e^(x^2)*y] = e^(x^2)*x", "C = 5/2"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -1197,7 +1197,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "sin(3*x)*cos(5*x),method=trig",
-        ["A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "Answer: - 1/16*cos(8*x) + 1/4*cos(2*x) + C"],
+        ["A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "Answer: -1/16*cos(8*x) + 1/4*cos(2*x) + C"],
         ["No elementary primitive", "ERR:"],
     ),
     (

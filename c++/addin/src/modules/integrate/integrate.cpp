@@ -1620,12 +1620,20 @@ static std::string clean_integral_step(std::string s, std::string const &expr, s
     if(s.find("Integration by parts for x*cos") != std::string::npos) return "Use parts: u=x, dv=cos(a*x+b) dx.";
     std::string factor_prefix = "Factor out constant ";
     if(starts_with_text(s, factor_prefix)) {
-        std::string c = s.substr(factor_prefix.size());
+        std::string c = s.substr(factor_prefix.size()), rest = expr;
+        auto colon = c.find(':');
+        if(colon != std::string::npos) {
+            rest = trim_copy(c.substr(colon + 1));
+            c = c.substr(0, colon);
+            if(!rest.empty() && rest.back() == '.') rest.pop_back();
+        }
         if(!c.empty() && c.back() == '.') c.pop_back();
-        std::string rest = expr;
-        std::string p = c + "*";
-        if(rest.rfind(p, 0) == 0) rest = rest.substr(p.size());
-        return "I = " + c + "*J, J = Int(" + rest + ") d" + var + ".";
+        if(colon == std::string::npos) {
+            std::string p = c + "*";
+            if(rest.rfind(p, 0) == 0) rest = rest.substr(p.size());
+        }
+        std::string left = c == "-1" ? "-J" : c + "*J";
+        return "I = " + left + ", J = Int(" + rest + ") d" + var + ".";
     }
     std::string result_prefix = "Simplify. Result = ";
     if(starts_with_text(s, result_prefix)) return "Simplify to " + s.substr(result_prefix.size()) + ".";
@@ -5632,6 +5640,22 @@ static NodeId mul_coeff(Arena &a, Rational coeff, NodeId expr)
 {
     if(coeff.num == 0) return casio::num(a, 0);
     if(coeff.num == coeff.den) return expr;
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Div) {
+        if(auto den = as_num(a, x.b)) return mul_coeff(a, r_div(coeff, *den), x.a);
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        Rational c = coeff;
+        for(NodeId kid : x.kids) {
+            if(auto r = as_num(a, kid)) c = r_mul(c, *r);
+            else kids.push_back(kid);
+        }
+        if(c.num == 0) return casio::num(a, 0);
+        if(c.num != c.den) kids.insert(kids.begin(), a.num(c));
+        if(kids.empty()) return casio::num(a, c.num, c.den);
+        return kids.size() == 1 ? kids[0] : casio::simplify(a, casio::mul(a, kids));
+    }
     return casio::mul(a, {a.num(coeff), expr});
 }
 
@@ -8873,16 +8897,18 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             NodeId body = rest.size() == 1 ? rest[0] : casio::simplify(a, casio::mul(a, rest));
             auto inner = integrate_giac_style(a, body, var);
             if(inner.result) {
+                bool numeric_only = coeffs.empty();
                 if(!r_eq(coeff, Rational{1, 1})) coeffs.insert(coeffs.begin(), a.num(coeff));
                 NodeId coeff_node = coeffs.size() == 1 ? coeffs[0] : casio::simplify(a, casio::mul(a, coeffs));
-                out.steps.push_back("Step 2: Factor out constant " + format_expr(a, coeff_node) + ".");
+                out.steps.push_back("Step 2: Factor out constant " + format_expr(a, coeff_node) + ": " + format_expr(a, body) + ".");
                 for(std::size_t i = 1; i < inner.steps.size(); ++i) {
                     std::string st = inner.steps[i];
                     for(std::size_t p = 0; (p = st.find("I=", p)) != std::string::npos;) st.replace(p, 2, "J=");
                     for(std::size_t p = 0; (p = st.find("I =", p)) != std::string::npos;) st.replace(p, 3, "J =");
                     out.steps.push_back(st);
                 }
-                out.result = casio::simplify(a, casio::mul(a, {coeff_node, *inner.result}));
+                out.result = numeric_only ? casio::simplify(a, mul_coeff(a, coeff, *inner.result))
+                                          : casio::simplify(a, casio::mul(a, {coeff_node, *inner.result}));
                 out.steps.push_back("Step 3: Multiply the primitive by the constant.");
                 return out;
             }

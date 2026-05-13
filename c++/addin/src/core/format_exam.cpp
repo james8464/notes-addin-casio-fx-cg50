@@ -498,6 +498,7 @@ std::vector<std::string> format_exam_working(
         text.swap(spaced);
         prefer_ln_for_natural_logs(text);
         while(!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) text.erase(text.begin());
+        if(text.rfind("- ", 0) == 0) text.erase(1, 1);
         text = truncate_exam_line(text);
         std::string low;
         low.reserve(text.size());

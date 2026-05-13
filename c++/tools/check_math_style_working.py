@@ -462,7 +462,7 @@ CASES = [
     (
         "product to sum sin cos integral",
         ["--int", "sin(3*x)*cos(5*x),method=trig"],
-        ("A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "- 1/16*cos(8*x) + 1/4*cos(2*x) + C"),
+        ("A = 3*x, B = 5*x", "2sin(A)cos(B) = sin(A+B)+sin(A-B)", "I = 1/2*Int(sin(8*x)-sin(2*x))dx", "-1/16*cos(8*x) + 1/4*cos(2*x) + C"),
         ("No elementary primitive",),
     ),
     (
