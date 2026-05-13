@@ -1386,6 +1386,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["log(2,(x+3)*(x+10))", "(x + 3)*(x + 10) = 4*x^2", "x = -5/3 rejected by domain", "x = [6]"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
     ),
+    (
+        "alg",
+        "range(3+2*sin(4*x-pi/3))",
+        ["-1<=sin(4*x-pi/3)<=1", "1<=2*sin(4*x-pi/3)+3<=5", "1<=y<=5"],
+        ["unsupported", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(3*cos(x)+4*sin(x))",
+        ["R=sqrt((4)^2+(3)^2)=5", "-5<=3*cos(x)+4*sin(x)<=5", "-5<=y<=5"],
+        ["unsupported", "ERR:"],
+    ),
+    (
+        "alg",
+        "period(tan(4*x-pi/3))",
+        ["u=4*x-pi/3", "du/dx=4", "period(tan)=pi", "pi/4"],
+        ["unsupported", "ERR:"],
+    ),
 ]
 
 

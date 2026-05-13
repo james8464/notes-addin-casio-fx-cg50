@@ -93,6 +93,21 @@ CASES = [
         ("R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"),
     ),
     (
+        "affine trig range",
+        ["--alg", "range(3+2*sin(4*x-pi/3))"],
+        ("-1 <= sin(4*x - pi/3) <= 1", "1 <= 2*sin(4*x - pi/3) + 3 <= 5", "1 <= y <= 5"),
+    ),
+    (
+        "sincos r range",
+        ["--alg", "range(3*cos(x)+4*sin(x))"],
+        ("R = sqrt((4)^2 + (3)^2) = 5", "-5 <= 3*cos(x) + 4*sin(x) <= 5", "-5 <= y <= 5"),
+    ),
+    (
+        "trig period",
+        ["--alg", "period(tan(4*x-pi/3))"],
+        ("u = 4*x - pi/3", "du/dx = 4", "period(tan) = pi", "pi/4"),
+    ),
+    (
         "sin same fn family",
         ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
         ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = (pi+2*pi*n)/13", "x = ["),

@@ -5031,6 +5031,70 @@ static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::
 
 static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vector<std::string> &steps)
 {
+    auto add_trig_term = [&](NodeId term, Rational &s, Rational &c, Rational &off, std::string &arg, bool &seen) -> bool {
+        Node const &t = a.get(term);
+        if(t.kind == NodeKind::Num) {
+            off = r_add(off, t.num);
+            return true;
+        }
+        Rational coeff{1, 1};
+        Node const *fn = &t;
+        if(t.kind == NodeKind::Mul) {
+            coeff = Rational{1, 1};
+            fn = nullptr;
+            for(NodeId k : t.kids) {
+                Node const &kid = a.get(k);
+                if(kid.kind == NodeKind::Num) coeff = r_mul(coeff, kid.num);
+                else if(kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos) && !fn) fn = &kid;
+                else return false;
+            }
+            if(!fn) return false;
+        }
+        if(fn->kind != NodeKind::Fn || (fn->fkind != FnKind::Sin && fn->fkind != FnKind::Cos)) return false;
+        std::string this_arg = format_expr(a, fn->a);
+        if(seen && this_arg != arg) return false;
+        arg = this_arg;
+        seen = true;
+        if(fn->fkind == FnKind::Sin) s = r_add(s, coeff);
+        else c = r_add(c, coeff);
+        return true;
+    };
+
+    auto affine_trig_range = [&]() -> std::optional<std::string> {
+        Rational s{0, 1}, c{0, 1}, off{0, 1};
+        std::string arg;
+        bool seen = false;
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Add) {
+            for(NodeId k : x.kids)
+                if(!add_trig_term(k, s, c, off, arg, seen)) return std::nullopt;
+        }
+        else if(!add_trig_term(n, s, c, off, arg, seen)) return std::nullopt;
+        if(!seen || (is_zero(s) && is_zero(c))) return std::nullopt;
+        Rational amp2 = r_add(r_mul(s, s), r_mul(c, c));
+        std::int64_t rn = 0;
+        std::int64_t rd = 0;
+        NodeId amp = (amp2.num >= 0 && is_square_i64(amp2.num, rn) && is_square_i64(amp2.den, rd) && rd != 0)
+                     ? a.num(Rational{rn, rd})
+                     : casio::simplify(a, casio::fn(a, "sqrt", a.num(amp2)));
+        NodeId lo = casio::simplify(a, casio::add(a, {a.num(off), casio::neg(a, amp)}));
+        NodeId hi = casio::simplify(a, casio::add(a, {a.num(off), amp}));
+        if(!is_zero(s) && !is_zero(c)) {
+            steps.push_back("R = sqrt((" + format_rat(a, s) + ")^2 + (" + format_rat(a, c) + ")^2) = " + format_expr(a, amp));
+            steps.push_back("-R <= " + format_rat(a, s) + "*sin(" + arg + ") + " + format_rat(a, c) + "*cos(" + arg + ") <= R");
+        }
+        else {
+            std::string fn = is_zero(c) ? "sin" : "cos";
+            Rational k = is_zero(c) ? s : c;
+            steps.push_back("-1 <= " + fn + "(" + arg + ") <= 1");
+            steps.push_back("-" + format_rat(a, r_abs(k)) + " <= " + format_rat(a, k) + "*" + fn + "(" + arg + ") <= " + format_rat(a, r_abs(k)));
+        }
+        steps.push_back(format_expr(a, lo) + " <= " + format_expr(a, n) + " <= " + format_expr(a, hi));
+        return format_expr(a, lo) + " <= y <= " + format_expr(a, hi);
+    };
+
+    if(auto ar = affine_trig_range()) return *ar;
+
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Fn) return std::nullopt;
     if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
@@ -5047,6 +5111,66 @@ static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vec
         return std::string("y <= -1 or y >= 1");
     }
     return std::nullopt;
+}
+
+static std::optional<Rational> node_num(Arena &a, NodeId n);
+
+static std::optional<Rational> linear_var_coeff_loose(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(!contains_symbol(a, n, var)) return Rational{0, 1};
+    if(x.kind == NodeKind::Sym) return x.text == var ? std::optional<Rational>(Rational{1, 1}) : std::nullopt;
+    if(x.kind == NodeKind::Add) {
+        Rational sum{0, 1};
+        for(NodeId k : x.kids) {
+            auto c = linear_var_coeff_loose(a, k, var);
+            if(!c) return std::nullopt;
+            sum = r_add(sum, *c);
+        }
+        return sum;
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational scale{1, 1};
+        std::optional<Rational> inner;
+        for(NodeId k : x.kids) {
+            if(!contains_symbol(a, k, var)) {
+                if(auto r = node_num(a, k)) scale = r_mul(scale, *r);
+                else return std::nullopt;
+            }
+            else {
+                if(inner) return std::nullopt;
+                inner = linear_var_coeff_loose(a, k, var);
+                if(!inner) return std::nullopt;
+            }
+        }
+        return inner ? std::optional<Rational>(r_mul(scale, *inner)) : std::nullopt;
+    }
+    if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+        auto top = linear_var_coeff_loose(a, x.a, var);
+        auto den = node_num(a, x.b);
+        if(top && den) return r_div(*top, *den);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> trig_period(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    bool pi_period = x.fkind == FnKind::Tan || x.fkind == FnKind::Cot;
+    if(!pi_period && x.fkind != FnKind::Sin && x.fkind != FnKind::Cos && x.fkind != FnKind::Sec && x.fkind != FnKind::Cosec) return std::nullopt;
+    auto k = linear_var_coeff_loose(a, x.a, var);
+    if(!k || is_zero(*k)) return std::nullopt;
+    Rational ak = r_abs(*k);
+    std::string fn = x.fkind == FnKind::Sin ? "sin" : x.fkind == FnKind::Cos ? "cos" : x.fkind == FnKind::Tan ? "tan" :
+                     x.fkind == FnKind::Cot ? "cot" : x.fkind == FnKind::Sec ? "sec" : "cosec";
+    steps.push_back("u = " + format_expr(a, x.a));
+    steps.push_back("du/d" + var + " = " + format_rat(a, *k));
+    NodeId pi = a.constant(ConstKind::Pi);
+    NodeId top = pi_period ? pi : casio::mul(a, {casio::num(a, 2), pi});
+    NodeId ans = casio::simplify(a, casio::div(a, top, a.num(ak)));
+    steps.push_back("period(" + fn + ") = " + (pi_period ? "pi" : "2*pi"));
+    return format_expr(a, ans);
 }
 
 static std::optional<Rational> node_num(Arena &a, NodeId n)
@@ -7213,6 +7337,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             steps.push_back("Variable = " + var);
             if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
+            if(req.method == "period") {
+                if(auto per = trig_period(arena, n, var, steps)) {
+                    steps.push_back("Period = " + *per);
+                    return casio::exam_block("period", steps, *per);
+                }
+                return casio::exam_block("period", steps, "period unsupported");
+            }
             std::vector<std::string> dom;
             collect_text_trig_domain(arena, expr, dom);
             collect_domain(arena, parsed, dom);

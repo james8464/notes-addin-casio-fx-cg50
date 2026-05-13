@@ -501,6 +501,11 @@ int main(int argc, char **argv)
                 req.method = "range";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "period(")).empty()) {
+                req.mode = 10;
+                req.method = "period";
+                req.expr = inner;
+            }
             else if(!(inner = unwrap_call(expr, "domain(")).empty()) {
                 req.mode = 10;
                 req.method = "domain";
