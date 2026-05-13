@@ -88,6 +88,11 @@ CASES = [
         ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "x = [arctan(4/3) + arccos(2/5), 2*pi + arctan(4/3) - arccos(2/5)]"),
     ),
     (
+        "signed rform rewrite",
+        ["--trig", "4*sin(x)-3*cos(x),method=rform"],
+        ("R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"),
+    ),
+    (
         "sin same fn family",
         ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
         ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = (pi+2*pi*n)/13", "x = ["),

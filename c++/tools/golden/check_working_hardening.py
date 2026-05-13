@@ -1190,6 +1190,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "4*sin(x)-3*cos(x),method=rform",
+        ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
         "sin(x)=-1,x,0,360",
         ["sin(x) = -1", "x = 270 + n*360", "0 <= x <= 360", "Answer: x = [270]"],
         ["alpha = arcsin(-1) = -pi/2 for x\n0 <= x <= 360", "ERR:"],

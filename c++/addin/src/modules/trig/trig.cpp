@@ -655,9 +655,12 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
     for(NodeId term : terms) {
         if(!add_term(term)) return std::nullopt;
     }
-    if(!arg || ccos.num == 0 || csin.num == 0 || ccos.den != 1 || csin.den != 1 || ccos.num <= 0) return std::nullopt;
+    if(!arg || ccos.num == 0 || csin.num == 0 || ccos.den != 1 || csin.den != 1) return std::nullopt;
     long long A = ccos.num;
     long long B = csin.num;
+    if(B < 0 && A <= 0) return std::nullopt;
+    long long absA = std::llabs(A);
+    long long absB = std::llabs(B);
     long long r2 = A * A + B * B;
     long long R = (long long)std::llround(std::sqrt((double)r2));
     bool square_r = R * R == r2;
@@ -668,15 +671,15 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
         return std::to_string(v) + "/" + Rtxt;
     };
     std::string v = casio::format_expr(a, *arg);
-    long long absB = std::llabs(B);
     if(B > 0) {
+        std::string sign = A < 0 ? "-" : "+";
         return std::vector<std::string>{
-            "R=sqrt(" + std::to_string(B) + "^2+" + std::to_string(A) + "^2)=" + Rtxt + ".",
+            "R=sqrt(" + std::to_string(B) + "^2+" + std::to_string(absA) + "^2)=" + Rtxt + ".",
             "cos(alpha)=" + ratio(B) + ".",
-            "sin(alpha)=" + ratio(A) + ".",
-            "alpha=atan(" + rat_text(A, B) + ").",
-            "R*sin(" + v + "+alpha)=R*sin(" + v + ")*cos(alpha)+R*cos(" + v + ")*sin(alpha).",
-            "Answer: " + Rtxt + "*sin(" + v + "+atan(" + rat_text(A, B) + "))",
+            "sin(alpha)=" + ratio(absA) + ".",
+            "alpha=atan(" + rat_text(absA, B) + ").",
+            "R*sin(" + v + sign + "alpha)=R*sin(" + v + ")*cos(alpha)" + (A < 0 ? "-R*cos(" : "+R*cos(") + v + ")*sin(alpha).",
+            "Answer: " + Rtxt + "*sin(" + v + sign + "atan(" + rat_text(absA, B) + "))",
         };
     }
     std::string sign = B < 0 ? "+" : "-";
