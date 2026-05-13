@@ -6664,6 +6664,43 @@ static std::optional<NodeId> integrate_log_derivative(Arena &a, NodeId expr, std
     return casio::simplify(a, mul_coeff(a, *k, ln_abs(a, x.b)));
 }
 
+static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{expr};
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        Node const &f = a.get(factors[i]);
+        NodeId base = 0;
+        Rational p{1, 1};
+        if(f.kind == NodeKind::Pow) {
+            auto e = as_num(a, f.b);
+            if(!e) continue;
+            base = f.a;
+            p = *e;
+        }
+        else if(f.kind == NodeKind::Fn && f.fkind == FnKind::Sqrt) {
+            base = f.a;
+            p = Rational{1, 2};
+        }
+        else continue;
+        Rational p1 = r_add(p, Rational{1, 1});
+        if(r_zero(p1)) continue;
+        auto d = rc_diff(a, base, var);
+        if(!d) continue;
+        std::vector<NodeId> rest;
+        for(std::size_t j = 0; j < factors.size(); ++j)
+            if(j != i) rest.push_back(factors[j]);
+        NodeId rem = rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest));
+        auto k = proportional_node(a, rem, *d);
+        if(!k) continue;
+        steps.push_back("Step 2: Let u=" + format_expr_human(a, base) + ".");
+        steps.push_back("Step 3: du/d" + var + "=" + format_expr_human(a, *d) + ".");
+        steps.push_back("Step 4: Integral has form k*u^n*u'.");
+        return casio::simplify(a, mul_coeff(a, r_div(*k, p1), casio::power(a, base, a.num(p1))));
+    }
+    return std::nullopt;
+}
+
 static Poly poly_derivative(Poly p)
 {
     if(!p.ok) return p;
@@ -8845,6 +8882,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto ld = integrate_log_derivative(a, expr, var, out.steps)) {
         out.result = *ld;
         out.steps.push_back("Step 5: Integral = k*log(abs(u)) + C.");
+        return out;
+    }
+
+    if(auto pd = integrate_power_derivative(a, expr, var, out.steps)) {
+        out.result = *pd;
+        out.steps.push_back("Step 5: Integral = k*u^(n+1)/(n+1) + C.");
         return out;
     }
 

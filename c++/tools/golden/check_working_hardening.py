@@ -213,13 +213,13 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dr/dt=-k/r^2,r(0)=40,r(5)=20)",
-        ["r^2 dr = -k dt", "r^3/3 = -k*t + C", "C = 64000/3", "8000/3 = -5*k + 64000/3", "k = 11200/3"],
+        ["r^2 dr = -k dt", "1/3*r^3 = -k*t + C", "C = 64000/3", "8000/3 = -5*k + 64000/3", "k = 11200/3"],
         ["Try dy/dx", "unsupported DE route", "Err:"],
     ),
     (
         "int",
         "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
-        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = 4*e^(x^3/3 + x) - 3"],
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(1/3*x^3 + x)", "y = 4*e^(1/3*x^3 + x) - 3"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -237,7 +237,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(x*dy/dx+2*y=x^3,x=1,y=4)",
-        ["p = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (x^5/5 + 19/5)/(x^2)"],
+        ["p = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (1/5*x^5 + 19/5)/(x^2)"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -538,6 +538,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "int",
         "6/sqrt(3*x+1)",
         ["1/sqrt(u)=u^(-1/2)", "u=3*x+1", "4*sqrt(3*x+1)+C"],
+        ["No elementary primitive"],
+    ),
+    (
+        "int",
+        "3*x*sqrt(x^2+1),method=sub",
+        ["u=x^2+1", "du/dx=2*x", "Int has form k*u^n*u'", "(x^2+1)^(3/2)+C"],
         ["No elementary primitive"],
     ),
     (

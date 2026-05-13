@@ -450,6 +450,11 @@ CASES = [
         ("1/sqrt(u) = u^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"),
     ),
     (
+        "power derivative reverse chain",
+        ["--int", "3*x*sqrt(x^2+1),method=sub"],
+        ("u = x^2 + 1", "du/dx = 2*x", "Int has form k*u^n*u'", "(x^2 + 1)^(3/2) + C"),
+    ),
+    (
         "cos reverse chain concise",
         ["--int", "cos(x),method=reverse_chain"],
         ("I = Int(cos(x)) dx", "sin(x) + C"),
