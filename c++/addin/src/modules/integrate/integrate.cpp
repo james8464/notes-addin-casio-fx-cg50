@@ -1663,6 +1663,11 @@ static std::string clean_integral_step(std::string s, std::string const &expr, s
     if(s.find("Integration by parts for x*exp") != std::string::npos) return "Use parts: u=x, dv=e^(a*x) dx.";
     if(s.find("Integration by parts for x*sin") != std::string::npos) return "Use parts: u=x, dv=sin(a*x+b) dx.";
     if(s.find("Integration by parts for x*cos") != std::string::npos) return "Use parts: u=x, dv=cos(a*x+b) dx.";
+    bool log_parts_expr = expr.find("log(") != std::string::npos || expr.find("ln(") != std::string::npos;
+    if(log_parts_expr && s.find("dv=") == std::string::npos &&
+       ((s.find("Let u=") != std::string::npos && s.find("so du=") != std::string::npos) ||
+        (s.rfind("u=", 0) == 0 && s.find("du=") != std::string::npos)))
+        return "";
     std::string factor_prefix = "Factor out constant ";
     if(starts_with_text(s, factor_prefix)) {
         std::string c = s.substr(factor_prefix.size()), rest = expr;
@@ -6398,8 +6403,9 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
     NodeId v = casio::sym(a, var);
 
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log && is_scaled_var(a, x.a, var)) {
-        steps.push_back("Step 2: Integration by parts: u=ln(k*x), dv=dx.");
-        steps.push_back("Step 3: Since d/dx ln(k*x)=1/x, integrate x^0*ln(k*x).");
+        steps.push_back("Step 2: u=" + format_expr_human(a, expr) + ", dv=d" + var + ".");
+        steps.push_back("Step 3: du=1/" + var + " d" + var + ", v=" + var + ".");
+        steps.push_back("Step 4: I=u*v-Int(v du).");
         return casio::simplify(a, casio::add(a, {casio::mul(a, {v, expr}), casio::neg(a, v)}));
     }
 
@@ -7198,6 +7204,41 @@ static NodeId quadratic_linear(Arena &a, Rational a2, Rational a1, std::string c
 static NodeId ln_abs(Arena &a, NodeId n)
 {
     return casio::fn(a, "log", casio::fn(a, "abs", n));
+}
+
+static std::optional<NodeId> integrate_x_sec2_parts(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    bool saw_x = false;
+    NodeId sec_arg = 0;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) { coeff = r_mul(coeff, *r); continue; }
+        if(is_sym(a, k, var) && !saw_x) { saw_x = true; continue; }
+        Node const &kn = a.get(k);
+        if(!sec_arg && kn.kind == NodeKind::Pow) {
+            auto e = as_num(a, kn.b);
+            Node const &base = a.get(kn.a);
+            if(e && e->num == 2 && e->den == 1 && base.kind == NodeKind::Fn && base.fkind == FnKind::Sec) {
+                sec_arg = base.a;
+                continue;
+            }
+        }
+        return std::nullopt;
+    }
+    if(!saw_x || !sec_arg) return std::nullopt;
+    auto k = linear_coeff(a, sec_arg, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+    NodeId tan_arg = casio::fn(a, "tan", sec_arg);
+    NodeId sec_node = casio::fn(a, "sec", sec_arg);
+    NodeId first = casio::div(a, casio::mul(a, {casio::sym(a, var), tan_arg}), a.num(*k));
+    NodeId second = casio::div(a, ln_abs(a, sec_node), a.num(r_mul(*k, *k)));
+    steps.push_back("Step 2: u=" + var + ", dv=sec(" + format_expr_human(a, sec_arg) + ")^2 d" + var + ".");
+    std::string tan_txt = "tan(" + format_expr_human(a, sec_arg) + ")";
+    steps.push_back("Step 3: du=d" + var + ", v=" + (r_eq(*k, Rational{1, 1}) ? tan_txt : tan_txt + "/" + format_expr_human(a, a.num(*k))) + ".");
+    steps.push_back("Step 4: I=u*v-Int(v du).");
+    return casio::simplify(a, mul_coeff(a, coeff, casio::add(a, {first, casio::neg(a, second)})));
 }
 
 static std::optional<NodeId> rc_diff(Arena &a, NodeId n, std::string const &var)
@@ -10489,6 +10530,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto sub = integrate_simple_substitution(a, expr, var, out.steps)) {
         out.result = *sub;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto sec_parts = integrate_x_sec2_parts(a, expr, var, out.steps)) {
+        out.result = *sec_parts;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
         return out;
     }
 

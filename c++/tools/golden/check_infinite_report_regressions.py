@@ -104,13 +104,13 @@ def main() -> int:
     bad += require(
         "online_poly_exp_parts",
         run(["--int", "(2*x+5)*e^(x/3),method=parts"]),
-        ("DI table", "Answer:"),
+        ("I1 = Int(5*e^(x/3))dx", "I2 = Int(2*x*e^(x/3))dx", "I = I1+I2", "Answer:"),
         ("No elementary primitive found", "ERR:"),
     )
     bad += require(
         "online_poly_trig_di",
         run(["--int", "(2*x^2+5*x+1)*cos(3*x),method=di"]),
-        ("DI table", "Answer:"),
+        ("I1 = Int(cos(3*x))dx", "I2 = Int(5*x*cos(3*x))dx", "I3 = Int(2*x^2*cos(3*x))dx", "I = I1+I2+I3", "Answer:"),
         ("No elementary primitive found", "ERR:"),
     )
     bad += require(
