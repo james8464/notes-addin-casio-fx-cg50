@@ -1739,8 +1739,8 @@ static std::string combine_same_formatted_terms(std::string const &text)
         if(coeff.den != 1) {
             bool neg = coeff.num < 0;
             std::int64_t num = neg ? -coeff.num : coeff.num;
-            std::string left = num == 1 ? body : std::to_string(num) + "*" + body;
-            return (neg ? "-" : "") + left + "/" + std::to_string(coeff.den);
+            std::string c = (num == 1 ? "1" : std::to_string(num)) + "/" + std::to_string(coeff.den);
+            return (neg ? "-" : "") + c + "*" + body;
         }
         return rat_text(coeff) + "*" + body;
     };
@@ -1801,15 +1801,25 @@ static std::string combine_same_formatted_terms(std::string const &text)
         cur.push_back(c);
     }
     flush();
-    if(terms.size() == 1) return render(terms[0].coeff, terms[0].body);
-    if(terms.size() < 2) return src;
-    std::string body = terms.front().body;
-    Rational coeff{0, 1};
+    if(terms.empty()) return src;
+    bool negative_denominator = src.find("/-") != std::string::npos;
+    std::vector<Term> grouped;
     for(auto const &t : terms) {
-        if(t.body != body) return src;
-        coeff = r_add(coeff, t.coeff);
+        auto it = std::find_if(grouped.begin(), grouped.end(), [&](Term const &g) { return g.body == t.body; });
+        if(it == grouped.end()) grouped.push_back(t);
+        else it->coeff = r_add(it->coeff, t.coeff);
     }
-    return render(coeff, body);
+    if(!negative_denominator && grouped.size() == terms.size()) return src;
+    if(!negative_denominator && grouped.size() != 1) return src;
+    std::string out;
+    for(auto const &t : grouped) {
+        if(r_zero(t.coeff)) continue;
+        std::string term = render(t.coeff, t.body);
+        if(out.empty()) out = term;
+        else if(!term.empty() && term.front() == '-') out += " - " + term.substr(1);
+        else out += " + " + term;
+    }
+    return out.empty() ? "0" : out;
 }
 
 static bool parse_integer_over_param(std::string const &text, std::string const &param, long long &n)
@@ -10524,6 +10534,74 @@ static NodeId distribute_negated_add(Arena &a, NodeId n)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::pair<Rational, std::optional<NodeId>> numeric_factor(Arena &a, NodeId n)
+{
+    if(auto r = as_num(a, n)) return {*r, std::nullopt};
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        if(auto d = as_num(a, x.b)) {
+            auto f = numeric_factor(a, x.a);
+            return {r_div(f.first, *d), f.second};
+        }
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational c{1, 1};
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) c = r_mul(c, *r);
+            else kids.push_back(k);
+        }
+        if(kids.empty()) return {c, std::nullopt};
+        return {c, kids.size() == 1 ? kids[0] : casio::simplify(a, casio::mul(a, kids))};
+    }
+    return {Rational{1, 1}, n};
+}
+
+static NodeId combine_like_add_terms(Arena &a, std::vector<NodeId> const &terms)
+{
+    Rational numeric{0, 1};
+    std::vector<std::pair<Rational, NodeId>> groups;
+    bool changed = false;
+    for(NodeId t : terms) {
+        auto f = numeric_factor(a, t);
+        if(!f.second) {
+            numeric = r_add(numeric, f.first);
+            continue;
+        }
+        bool merged = false;
+        for(auto &g : groups) {
+            if(same_expr(a, g.second, *f.second)) {
+                g.first = r_add(g.first, f.first);
+                changed = true;
+                merged = true;
+                break;
+            }
+        }
+        if(!merged) groups.push_back({f.first, *f.second});
+    }
+    std::vector<NodeId> out;
+    if(!r_zero(numeric)) out.push_back(a.num(numeric));
+    for(auto const &g : groups) {
+        if(r_zero(g.first)) {
+            changed = true;
+            continue;
+        }
+        Node const &body = a.get(g.second);
+        if(g.first.den != 1 && body.kind == NodeKind::Fn && body.fkind == FnKind::Sqrt) {
+            Rational c = g.first;
+            bool neg = c.num < 0;
+            if(neg) c.num = -c.num;
+            NodeId top = c.num == 1 ? g.second : casio::mul(a, {a.num(Rational{c.num, 1}), g.second});
+            NodeId term = casio::div(a, top, a.num(Rational{c.den, 1}));
+            out.push_back(neg ? casio::neg(a, term) : term);
+        }
+        else out.push_back(mul_coeff(a, g.first, g.second));
+    }
+    if(!changed) return casio::simplify(a, casio::add(a, terms));
+    if(out.empty()) return casio::num(a, 0);
+    return out.size() == 1 ? out.front() : casio::simplify(a, casio::add(a, out));
+}
+
 static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -10641,6 +10719,34 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(r_eq(q, Rational{2, 3}) || r_eq(q, Rational{5, 3})) return casio::neg(a, root3);
             }
         }
+        if(x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec) {
+            if(auto m = pi_multiple(a, arg)) {
+                Rational q = mod_two_pi_multiple(*m);
+                NodeId root2 = sqrt_rat(a, Rational{2, 1});
+                NodeId root3 = sqrt_rat(a, Rational{3, 1});
+                NodeId two_root3_over3 = casio::div(a, casio::mul(a, {casio::num(a, 2), root3}), casio::num(a, 3));
+                if(x.fkind == FnKind::Sec) {
+                    if(r_eq(q, Rational{0, 1})) return casio::num(a, 1);
+                    if(r_eq(q, Rational{1, 1})) return casio::num(a, -1);
+                    if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{5, 3})) return casio::num(a, 2);
+                    if(r_eq(q, Rational{2, 3}) || r_eq(q, Rational{4, 3})) return casio::num(a, -2);
+                    if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{7, 4})) return root2;
+                    if(r_eq(q, Rational{3, 4}) || r_eq(q, Rational{5, 4})) return casio::neg(a, root2);
+                    if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{11, 6})) return two_root3_over3;
+                    if(r_eq(q, Rational{5, 6}) || r_eq(q, Rational{7, 6})) return casio::neg(a, two_root3_over3);
+                }
+                else {
+                    if(r_eq(q, Rational{1, 2})) return casio::num(a, 1);
+                    if(r_eq(q, Rational{3, 2})) return casio::num(a, -1);
+                    if(r_eq(q, Rational{1, 6}) || r_eq(q, Rational{5, 6})) return casio::num(a, 2);
+                    if(r_eq(q, Rational{7, 6}) || r_eq(q, Rational{11, 6})) return casio::num(a, -2);
+                    if(r_eq(q, Rational{1, 4}) || r_eq(q, Rational{3, 4})) return root2;
+                    if(r_eq(q, Rational{5, 4}) || r_eq(q, Rational{7, 4})) return casio::neg(a, root2);
+                    if(r_eq(q, Rational{1, 3}) || r_eq(q, Rational{2, 3})) return two_root3_over3;
+                    if(r_eq(q, Rational{4, 3}) || r_eq(q, Rational{5, 3})) return casio::neg(a, two_root3_over3);
+                }
+            }
+        }
         if(x.fkind == FnKind::Cot) {
             if(auto m = pi_multiple(a, arg)) {
                 Rational q = mod_two_pi_multiple(*m);
@@ -10700,12 +10806,21 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         }
         return casio::simplify(a, casio::power(a, base, exp));
     }
-    if(x.kind == NodeKind::Div) return casio::simplify(a, casio::div(a, simplify_known_endpoint_values(a, x.a), simplify_known_endpoint_values(a, x.b)));
+    if(x.kind == NodeKind::Div) {
+        NodeId top = simplify_known_endpoint_values(a, x.a);
+        NodeId bot = simplify_known_endpoint_values(a, x.b);
+        Node const &tn = a.get(top);
+        auto bnum = as_num(a, bot);
+        if(bnum && tn.kind == NodeKind::Div) {
+            if(auto tden = as_num(a, tn.b)) return casio::simplify(a, casio::div(a, tn.a, a.num(r_mul(*tden, *bnum))));
+        }
+        return casio::simplify(a, casio::div(a, top, bot));
+    }
     if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
         std::vector<NodeId> kids;
         kids.reserve(x.kids.size());
         for(NodeId k : x.kids) kids.push_back(simplify_known_endpoint_values(a, k));
-        NodeId s = casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+        NodeId s = x.kind == NodeKind::Add ? combine_like_add_terms(a, kids) : casio::simplify(a, casio::mul(a, kids));
         return distribute_negated_add(a, s);
     }
     return casio::simplify(a, n);
@@ -11584,6 +11699,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     
     NodeId simp = casio::simplify(arena, *result.result);
     std::string ans = format_expr_human(arena, simp);
+    ans = combine_same_formatted_terms(ans);
     
     // Add the detailed steps
     std::vector<std::string> all_steps;

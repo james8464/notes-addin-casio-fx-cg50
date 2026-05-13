@@ -61,7 +61,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "J9 tan substitution definite integral",
         ["--int", "defint((1+cot(x)^2)*sec(x)^2,x,pi/6,pi/3)"],
-        ["u=tan(x)", "tan(x)-cot(x)", "4*sqrt(3)/3"],
+        ["u=tan(x)", "tan(x)-cot(x)", "4/3*sqrt(3)"],
     ),
     (
         "J10 implicit trig simplification",
