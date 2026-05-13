@@ -9447,7 +9447,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         if(top && den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
             auto coeff = linear_coeff(a, den.a, var);
             if(coeff && !r_zero(*coeff)) {
-                out.result = divide_by_coeff(a, mul_coeff(a, r_mul(Rational{2, 1}, *top), x.b), *coeff);
+                out.result = mul_coeff(a, r_div(r_mul(Rational{2, 1}, *top), *coeff), x.b);
                 out.steps.push_back("Step 2: Write 1/sqrt(u) as u^(-1/2).");
                 out.steps.push_back("Step 3: Let u=" + format_expr_human(a, den.a) + ", so du/d" + var + "=" + format_expr_human(a, a.num(*coeff)) + ".");
                 out.steps.push_back("Step 4: Integral u^(-1/2) du = 2*sqrt(u).");
