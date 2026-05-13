@@ -126,6 +126,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(ln(2*w+1)=1+ln(w-1),w)",
+        ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
+        ["w = 5.176", "log_b(A)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(2*ln(x)=6,x)",
+        ["ln(x)=3", "x=e^(3)", "x=[e^(3)]"],
+        ["20.085", "log_b(A)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(ln(x)+2*ln(x)=5,x)",
+        ["3ln(x)=5", "ln(x)=5/3", "x=e^(5/3)", "x=[e^(5/3)]"],
+        ["5.294", "log_b(A)", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(log(2,x^2+4*x+3)=4+log(2,x^2+x),x)",
         [
             "log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4",
@@ -287,6 +305,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(e^(x+1)=17,x)",
         ["e^(x+1)=17", "x+1=ln(17)", "x=ln(17)-1"],
         ["1.833", "x=[", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^x+8*e^(-x)=6,x)",
+        ["u=e^(x),u>0", "u+8/u-6=0", "u^2-6u+8=0", "x=[ln(2),ln(4)]"],
+        ["0.693", "1.386", "all real values in domain", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(4*e^(-2*x)-e^(-4*x)=0,x)",
+        ["u=e^(-2x),u>0", "-u^2+4u=0", "0rejected,u>0", "x=[-ln(4)/2]"],
+        ["all real values in domain", "No real solution", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(2*e^x=e^(x+1),x)",
+        ["e^(x)(-e+2)=0", "e^(x)>0", "-e+2!=0", "x=[]"],
+        ["all real values in domain", "log_a", "ERR:"],
     ),
     (
         "alg",

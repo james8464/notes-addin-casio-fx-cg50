@@ -371,6 +371,42 @@ CASES = [
         ("u=a^x", "x = [0, 2]"),
     ),
     (
+        "natural log quotient exact",
+        ["--alg", "solve(ln(2*w+1)=1+ln(w-1),w)"],
+        ("ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "2*w + 1 = e*(w - 1)", "w = [(e + 1)/(e - 2)]"),
+        ("w = 5.176", "log_b(A)", "No real solution", "ERR:"),
+    ),
+    (
+        "scaled natural log exact",
+        ["--alg", "solve(2*ln(x)=6,x)"],
+        ("ln(x) = 3", "x = e^(3)", "x = [e^(3)]"),
+        ("20.085", "log_b(A)", "ERR:"),
+    ),
+    (
+        "combined natural log coefficient exact",
+        ["--alg", "solve(ln(x)+2*ln(x)=5,x)"],
+        ("3*ln(x) = 5", "ln(x) = 5/3", "x = e^(5/3)", "x = [e^(5/3)]"),
+        ("5.294", "log_b(A)", "ERR:"),
+    ),
+    (
+        "reciprocal exponential substitution exact",
+        ["--alg", "solve(e^x+8*e^(-x)=6,x)"],
+        ("u = e^(x), u > 0", "u + 8/u - 6 = 0", "u^2 - 6*u + 8 = 0", "x = [ln(2), ln(4)]"),
+        ("0.693", "1.386", "x = all real", "ERR:"),
+    ),
+    (
+        "negative exponent substitution exact",
+        ["--alg", "solve(4*e^(-2*x)-e^(-4*x)=0,x)"],
+        ("u = e^(-2*x), u > 0", "- u^2 + 4*u = 0", "0 rejected, u > 0", "x = [-ln(4)/2]"),
+        ("x = all real", "No real solution", "ERR:"),
+    ),
+    (
+        "common exponential factor contradiction",
+        ["--alg", "solve(2*e^x=e^(x+1),x)"],
+        ("e^(x)*(- e + 2) = 0", "e^(x) > 0", "- e + 2 != 0", "x = []"),
+        ("x = all real", "log_a", "ERR:"),
+    ),
+    (
         "equal exponentials",
         ["--alg", "solve(e^(2*x+1)=e^(x-3),x)"],
         ("e^(2*x + 1) = e^(x - 3)", "2*x + 1 = x - 3", "x + 4 = 0", "x = -4"),
