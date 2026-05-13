@@ -1174,6 +1174,20 @@ static bool append_quotient_rule_detail(
     steps.push_back("v' = " + vp + ".");
     steps.push_back("y' = (u'v-u*v')/v^2.");
     std::string subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
+    auto ul = linear_in_symbol(a, q.a, var);
+    auto vl = linear_in_symbol(a, q.b, var);
+    if(ul && vl && !depends_on(a, ul->coef, var) && !depends_on(a, ul->rest, var) &&
+       !depends_on(a, vl->coef, var) && !depends_on(a, vl->rest, var)) {
+        NodeId top = casio::simplify(a, casio::add(a, {
+            casio::mul(a, {ul->coef, vl->rest}),
+            casio::neg(a, casio::mul(a, {ul->rest, vl->coef}))
+        }));
+        std::string nt = clean_math_text(format_expr_human(a, top));
+        steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
+        if(answer_override)
+            *answer_override = "dy/d" + var + " = " + nt + "/(" + v + ")^2";
+        return true;
+    }
     if(answer_override && subst.size() <= 220) *answer_override = subst;
     else steps.push_back(subst + ".");
     return true;

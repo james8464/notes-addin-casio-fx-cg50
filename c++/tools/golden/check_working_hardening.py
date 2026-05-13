@@ -727,6 +727,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Domain: log args >0", "F_x", "F_y", "ERR:"],
     ),
     (
+        "derive",
+        "(4*x+1)/(1-2*x),x,method=quotient",
+        ["u=4*x+1", "v=-2*x+1", "[(4)*(-2*x+1)-(4*x+1)*(-2)]=6", "dy/dx=6/(-2*x+1)^2"],
+        ["dy/dx=[(4)*(-2*x+1)-(4*x+1)*(-2)]/(-2*x+1)^2", "ERR:"],
+    ),
+    (
         "int",
         "x*ln(5*x)",
         ["u=ln(5*x)", "dv=x dx", "du=1/x dx", "v=x^2/2", "I=uv-Int(vdu)", "1/2*x^2*ln(5*x) - 1/4*x^2 + C"],

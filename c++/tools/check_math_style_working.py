@@ -28,6 +28,12 @@ CASES = [
         ("u = x^2", "u' = 2*x", "v = 3*x - 1", "v' = 3", "y' = (u'v-u*v')/v^2", "dy/dx = [(2*x)*(3*x - 1) - (x^2)*(3)]/(3*x - 1)^2"),
     ),
     (
+        "linear quotient simplifies numerator",
+        ["--derive", "(4*x+1)/(1-2*x),x,method=quotient"],
+        ("u = 4*x + 1", "v = - 2*x + 1", "[(4)*(- 2*x + 1)-(4*x + 1)*(-2)] = 6", "dy/dx = 6/(- 2*x + 1)^2"),
+        ("dy/dx = [(4)*(- 2*x + 1) - (4*x + 1)*(-2)]/(- 2*x + 1)^2",),
+    ),
+    (
         "implicit log direct",
         ["--derive", "ln(x+y)=x*y,x,method=implicit"],
         ("d/dx[ln(x + y)] = (1 + dy/dx)/(x + y)", "d/dx[x*y] = y + x*dy/dx", "(1 + dy/dx)/(x + y) = y + x*dy/dx", "dy/dx*(1 - x*(x + y)) = y*(x + y) - 1", "dy/dx = (y*(x + y) - 1)/(1 - x*(x + y))"),
