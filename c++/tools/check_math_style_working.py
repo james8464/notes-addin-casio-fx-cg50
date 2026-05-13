@@ -402,6 +402,12 @@ CASES = [
         ("tan(theta+180n)=tan(theta) => A=B+180n", "cos(A)!=0, cos(B)!=0", "2*x = x+180n", "x = [-180, 0, 180]"),
     ),
     (
+        "cot power via tan substitution",
+        ["--trig", "8*tan(phi)=cot(phi)^2,phi,0,2*pi,8"],
+        ("u = tan(phi)", "cot(phi) = 1/u", "8u^3 - 1 = 0", "u = 1/2", "phi = [0.463647609001, 3.60524026259]"),
+        ("Failed to isolate", "phi = []"),
+    ),
+    (
         "tan double-angle fraction route",
         ["--trig", "(2*sin(x)*cos(x))/(cos(x)^2-sin(x)^2)=sin(x)/cos(x),x,0,180"],
         ("tan(2*x) = 2*sin(x)*cos(x)/(cos(x)^2 - sin(x)^2)", "tan(2*x) = tan(x)", "x = [0, 180]"),

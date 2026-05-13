@@ -601,6 +601,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "8*tan(phi)=cot(phi)^2,phi,0,2*pi,8",
+        ["u = tan(phi)", "cot(phi) = 1/u", "8u^3 - 1 = 0", "u = 1/2", "Answer: phi = [0.463647609001, 3.60524026259]"],
+        ["Failed to isolate", "phi = []"],
+    ),
+    (
         "alg",
         "cot(x)^2+1,method=auto",
         ["Use identity 1 + cot(u)^2 = cosec(u)^2", "Domain: sin(x) != 0", "Answer: cosec(x)^2"],

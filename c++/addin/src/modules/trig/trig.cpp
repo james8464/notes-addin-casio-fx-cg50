@@ -1845,6 +1845,165 @@ static std::string trig_quad_text(double a, double b, double c)
     return out + "=0.";
 }
 
+struct TanCotPoly
+{
+    double coef[9]{};
+    int min_e = 0;
+    int max_e = 0;
+    NodeId arg = 0;
+    bool has_arg = false;
+    bool used_cot = false;
+};
+
+static bool tan_cot_factor(Arena &a, NodeId n, TanCotPoly &p, double &c, int &e)
+{
+    Node const &x = a.get(n);
+    if(!has_any_symbol(a, n)) {
+        auto v = numeric_eval(a, n, 0.0);
+        if(!v || !std::isfinite(*v)) return false;
+        c *= *v;
+        return true;
+    }
+    if(x.kind == NodeKind::Sym) return false;
+    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Tan || x.fkind == FnKind::Cot)) {
+        if(p.has_arg && !same_sig(a, p.arg, x.a)) return false;
+        p.arg = x.a;
+        p.has_arg = true;
+        e += x.fkind == FnKind::Tan ? 1 : -1;
+        p.used_cot = p.used_cot || x.fkind == FnKind::Cot;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        auto q = as_num(a, x.b);
+        if(!q || q->den != 1 || q->num < 1 || q->num > 4) return false;
+        if(b.kind == NodeKind::Fn && (b.fkind == FnKind::Tan || b.fkind == FnKind::Cot)) {
+            if(p.has_arg && !same_sig(a, p.arg, b.a)) return false;
+            p.arg = b.a;
+            p.has_arg = true;
+            e += (b.fkind == FnKind::Tan ? 1 : -1) * (int)q->num;
+            p.used_cot = p.used_cot || b.fkind == FnKind::Cot;
+            return true;
+        }
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!tan_cot_factor(a, k, p, c, e)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        double dc = 1.0;
+        int de = 0;
+        if(!tan_cot_factor(a, x.a, p, c, e) || !tan_cot_factor(a, x.b, p, dc, de) || std::fabs(dc) < 1e-12) return false;
+        c /= dc;
+        e -= de;
+        return true;
+    }
+    return false;
+}
+
+static bool add_tan_cot_term(Arena &a, NodeId term, TanCotPoly &p)
+{
+    double c = 1.0;
+    int e = 0;
+    if(!tan_cot_factor(a, term, p, c, e) || e < -4 || e > 4) return false;
+    p.coef[e + 4] += c;
+    p.min_e = std::min(p.min_e, e);
+    p.max_e = std::max(p.max_e, e);
+    return true;
+}
+
+static std::optional<TanCotPoly> collect_tan_cot_poly(Arena &a, NodeId residual)
+{
+    TanCotPoly p;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) {
+        for(NodeId k : r.kids)
+            if(!add_tan_cot_term(a, k, p)) return std::nullopt;
+    }
+    else if(!add_tan_cot_term(a, residual, p)) return std::nullopt;
+    if(!p.has_arg || p.min_e == p.max_e) return std::nullopt;
+    return p;
+}
+
+static std::string tan_poly_text(std::vector<double> const &c)
+{
+    std::string out;
+    for(int i = (int)c.size() - 1; i >= 0; --i) {
+        double v = c[(std::size_t)i];
+        if(std::fabs(v) < 1e-12) continue;
+        if(i == 0) {
+            if(out.empty()) out += trig_root_text(v);
+            else out += std::string(v < 0 ? " - " : " + ") + trig_root_text(std::fabs(v));
+        }
+        else {
+            out += fmt_poly_coeff(v, out.empty());
+            out += "u";
+            if(i > 1) out += "^" + std::to_string(i);
+        }
+    }
+    return out.empty() ? "0=0." : out + "=0.";
+}
+
+static std::optional<std::vector<std::string>> solve_tan_cot_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_tan_cot_poly(a, residual);
+    if(!p) return std::nullopt;
+    int shift = -p->min_e;
+    int deg = p->max_e - p->min_e;
+    if(deg < 1 || deg > 3) return std::nullopt;
+    if(!p->used_cot && deg <= 1) return std::nullopt;
+    std::vector<double> c((std::size_t)deg + 1, 0.0);
+    for(int e = p->min_e; e <= p->max_e; ++e) c[(std::size_t)(e + shift)] = p->coef[e + 4];
+    while(c.size() > 1 && std::fabs(c.back()) < 1e-12) c.pop_back();
+    deg = (int)c.size() - 1;
+    std::vector<double> roots;
+    if(deg <= 2) roots = solve_quadratic_d(deg == 2 ? c[2] : 0.0, c.size() > 1 ? c[1] : 0.0, c[0]);
+    else if(std::fabs(c[1]) < 1e-12 && std::fabs(c[2]) < 1e-12 && std::fabs(c[3]) > 1e-12) {
+        roots.push_back(std::cbrt(-c[0] / c[3]));
+    }
+    else if(std::fabs(c[0]) < 1e-12) {
+        roots.push_back(0.0);
+        auto q = solve_quadratic_d(c[3], c[2], c[1]);
+        for(double r : q) add_unique(roots, r);
+    }
+    else return std::nullopt;
+
+    std::vector<double> xs;
+    std::vector<std::string> steps;
+    std::string A = format_expr(a, p->arg);
+    steps.push_back(format_expr(a, residual) + " = 0.");
+    steps.push_back("u=tan(" + A + ").");
+    if(p->used_cot) steps.push_back("cot(" + A + ")=1/u, u!=0.");
+    if(shift > 0) steps.push_back("Multiply by u^" + std::to_string(shift) + ".");
+    steps.push_back(tan_poly_text(c));
+    std::string rline = "u=";
+    bool any = false;
+    for(double r : roots) {
+        if(p->min_e < 0 && std::fabs(r) < 1e-10) {
+            steps.push_back("Reject u=0: cot undefined.");
+            continue;
+        }
+        if(any) rline += " or u=";
+        rline += trig_root_text(r);
+        any = true;
+        auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, r));
+        for(double x : vals) add_unique(xs, x);
+    }
+    if(any) steps.push_back(rline + ".");
+    steps.push_back("tan(" + A + ")=u.");
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
 static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
 
 static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
@@ -3056,6 +3215,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
+    if(auto tc = solve_tan_cot_poly(a, residual, var, lo_text, hi_text, rad)) return *tc;
     if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad, general)) return *mixed;
     if(auto demoivre = solve_cos5_cos3_route(a, residual, var, lo_text, hi_text, rad)) return *demoivre;
 
