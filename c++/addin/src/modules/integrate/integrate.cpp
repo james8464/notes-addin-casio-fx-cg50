@@ -11718,6 +11718,10 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(auto v = eval_log_power(exp)) return *v;
         }
         if(auto e = as_num(a, exp); e && e->num == 2 && e->den == 1) {
+            if(auto p = pi_linear_form(a, base); p && r_zero(p->second)) {
+                NodeId pi_sq = casio::power(a, a.constant(ConstKind::Pi), a.num(Rational{2, 1}));
+                return casio::simplify(a, mul_coeff(a, r_mul(p->first, p->first), pi_sq));
+            }
             Node const &bn = a.get(base);
             if(bn.kind == NodeKind::Div) {
                 Node const &top = a.get(bn.a);
@@ -11739,12 +11743,30 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         }
         return casio::simplify(a, casio::div(a, top, bot));
     }
-    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+    if(x.kind == NodeKind::Add) {
         std::vector<NodeId> kids;
         kids.reserve(x.kids.size());
         for(NodeId k : x.kids) kids.push_back(simplify_known_endpoint_values(a, k));
-        NodeId s = x.kind == NodeKind::Add ? combine_like_add_terms(a, kids) : casio::simplify(a, casio::mul(a, kids));
-        return distribute_negated_add(a, s);
+        return distribute_negated_add(a, combine_like_add_terms(a, kids));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(simplify_known_endpoint_values(a, k));
+        Rational coeff{1, 1};
+        NodeId add_node = 0;
+        std::vector<NodeId> rest;
+        for(NodeId k : kids) {
+            if(auto r = as_num(a, k)) coeff = r_mul(coeff, *r);
+            else if(!add_node && a.get(k).kind == NodeKind::Add) add_node = k;
+            else rest.push_back(k);
+        }
+        if(add_node && rest.empty() && !r_eq(coeff, Rational{1, 1})) {
+            std::vector<NodeId> terms;
+            for(NodeId k : a.get(add_node).kids) terms.push_back(mul_coeff(a, coeff, k));
+            return simplify_known_endpoint_values(a, combine_like_add_terms(a, terms));
+        }
+        return distribute_negated_add(a, casio::simplify(a, casio::mul(a, kids)));
     }
     return casio::simplify(a, n);
 }
