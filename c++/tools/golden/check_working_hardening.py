@@ -35,6 +35,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x = []", "ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "2*tan(theta)^2=11*sec(theta)-7,theta,0,360",
+        ["tan(theta)^2=sec(theta)^2-1", "u=sec(theta)", "2u^2-11u+5=0", "cos(theta)=1/5", "theta=[78.4630409672,281.536959033]"],
+        ["theta = []", "ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "cot(beta)/(cosec(beta)-1)+(cosec(beta)-1)/cot(beta)=4,beta,0,360",
+        ["cot(beta)/(cosec(beta)-1)=(1+sin(beta))/cos(beta)", "(cosec(beta)-1)/cot(beta)=(1-sin(beta))/cos(beta)", "lhs=2/cos(beta)=2sec(beta)", "beta=[60,300]"],
+        ["beta = []", "ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "sin(x)^2*tan(x)+cos(x)^2*cot(x)+2*sin(x)*cos(x)=2,x,0,360",
+        ["multiplybysin(x)cos(x)", "(sin(x)^2+cos(x)^2)^2-2sin(x)cos(x)=0", "sin(2x)=1", "x=[45,225]"],
+        ["x = []", "ERR:", "Unexpected token"],
+    ),
+    (
         "alg",
         "solve(z^6=1,z)",
         ["z^6 = 1", "k = 0, 1, ..., 5", "z = [1, e^(pi/3*i), e^(2*pi/3*i), -1"],
@@ -447,7 +465,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "1/cos(x)=5,x,0,2*pi,8,method=identity",
-        ["cos(A) = 1/5", "Base angle", "Answer:"],
+        ["c!=0", "c = 1/5", "cos(x) = 1/5", "Answer:"],
         ["Answer: x = []", "ERR:"],
     ),
     (
@@ -597,7 +615,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "tan(2*x)=sqrt(3),x,0,2*pi,8,method=cast",
-        ["A = pi/3 + n*pi", "x = pi/6 + n*pi/2", "Answer: x = [pi/6, 2*pi/3, 7*pi/6, 5*pi/3]"],
+        ["u=tan(2*x)", "u=sqrt(3)", "tan(2*x)=sqrt(3)", "2*x=alpha+pi*n", "x=[pi/6,2*pi/3,7*pi/6,5*pi/3]"],
         ["ERR:", "Unexpected token"],
     ),
     (
@@ -1055,6 +1073,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sin(2*x)+cos(2*x)=0,x,0,pi",
         ["x = -pi/8 + n*pi/2", "0 <= x <= pi", "x = [3*pi/8, 7*pi/8]"],
         ["NEEDS_REVIEW", "ERR:"],
+    ),
+    (
+        "trig",
+        "cos(2*x)=1/2,x,0,360",
+        ["u = cos(x)", "cos(2*x) = 2u^2-1", "2u^2 - 1.5 = 0", "Answer: x = [30, 150, 210, 330]"],
+        ["2u^2u", "ERR:"],
+    ),
+    (
+        "trig",
+        "4*tan(theta)^2*cos(theta)=15,theta,0,360",
+        ["tan(theta) = s/c", "c!=0; 4s^2-15c = 0", "s^2 = 1-c^2", "-4c^2-15c+4 = 0", "Answer: theta = [75.5224878141, 284.477512186]"],
+        ["theta = []", "cos(theta) = 0", "ERR:"],
+    ),
+    (
+        "trig",
+        "(sin(x)-cos(x))/cos(x)=2,x,0,360",
+        ["s-3c = 0", "s/c=3", "tan(x) = 3", "Answer: x = [71.5650511771, 251.565051177]"],
+        ["x = []", "tan(A)", "ERR:"],
     ),
     (
         "trig",

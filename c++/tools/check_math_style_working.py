@@ -98,6 +98,21 @@ CASES = [
         ("sin(A)-sin(B) = 0", "sin(A)-sin(B) = 2*cos((A+B)/2)*sin((A-B)/2)", "A = 2*x, B = x", "2*x = x+360n => x = 360n", "2*x = 180-x+360n => x = (180+360n)/3", "x = [0, 60, 180, 300, 360]"),
     ),
     (
+        "madas reciprocal pythagorean sec tan",
+        ["--trig", "2*tan(theta)^2=11*sec(theta)-7,theta,0,360"],
+        ("tan(theta)^2 = sec(theta)^2-1", "u = sec(theta)", "2u^2-11u+5 = 0", "cos(theta) = 1/5", "theta = [78.4630409672, 281.536959033]"),
+    ),
+    (
+        "madas rational cosec cot",
+        ["--trig", "cot(beta)/(cosec(beta)-1)+(cosec(beta)-1)/cot(beta)=4,beta,0,360"],
+        ("cot(beta)/(cosec(beta)-1) = (1+sin(beta))/cos(beta)", "(cosec(beta)-1)/cot(beta) = (1-sin(beta))/cos(beta)", "LHS = 2/cos(beta) = 2*sec(beta)", "beta = [60, 300]"),
+    ),
+    (
+        "madas common denominator quartic identity",
+        ["--trig", "sin(x)^2*tan(x)+cos(x)^2*cot(x)+2*sin(x)*cos(x)=2,x,0,360"],
+        ("Multiply by sin(x)*cos(x)", "(sin(x)^2+cos(x)^2)^2 - 2*sin(x)*cos(x) = 0", "sin(2*x) = 1", "x = [45, 225]"),
+    ),
+    (
         "nested surd rewrite",
         ["--alg", "rewrite(sqrt(12+sqrt(140)))"],
         ("sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "sqrt(7)+sqrt(5)"),
@@ -395,6 +410,24 @@ CASES = [
         "trig rad interval n filter",
         ["--trig", "sin(2*x)+cos(2*x)=0,x,0,pi"],
         ("x = -pi/8 + n*pi/2", "0 <= x <= pi", "x = [3*pi/8, 7*pi/8]"),
+    ),
+    (
+        "trig cos double substitution clean",
+        ["--trig", "cos(2*x)=1/2,x,0,360"],
+        ("u = cos(x)", "cos(2*x) = 2u^2-1", "2u^2 - 1.5 = 0", "x = [30, 150, 210, 330]"),
+        ("2u^2u",),
+    ),
+    (
+        "trig tan rational cos quadratic",
+        ["--trig", "4*tan(theta)^2*cos(theta)=15,theta,0,360"],
+        ("tan(theta) = s/c", "c!=0; 4s^2-15c = 0", "s^2 = 1-c^2", "-4c^2-15c+4 = 0", "theta = [75.5224878141, 284.477512186]"),
+        ("theta = []", "cos(theta) = 0"),
+    ),
+    (
+        "trig quotient tan linear",
+        ["--trig", "(sin(x)-cos(x))/cos(x)=2,x,0,360"],
+        ("s-3c = 0", "s/c=3", "tan(x) = 3", "x = [71.5650511771, 251.565051177]"),
+        ("x = []", "tan(A)"),
     ),
     (
         "tan same function degree family",

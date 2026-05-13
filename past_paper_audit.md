@@ -11,12 +11,15 @@ Corpus:
 - PDFs/text are ignored under `c++/tests/reports/pmt_pdf_corpus/`.
 - MadAsMaths topic PDFs/text are ignored under `c++/tests/reports/madasmaths_topic_corpus/`.
 - Audit rows live in `past_paper_audit.csv`.
+- MadAsMaths topic manifest lives in `madasmaths_topic_audit_manifest.csv`.
 
 Status:
 - 217 PDFs downloaded/extracted.
 - 62 MadAsMaths topic PDFs downloaded/extracted from the 3 requested pages.
-- 18 question-parts manually checked against answer/model text.
-- This is not a complete 217-document audit yet.
+- `trigonometric_equations.pdf` Q1-Q30 manually checked against printed answers.
+- `trigonometric_equations_introduction.pdf` Q1-Q39 manually checked against printed answers.
+- Other 60 MadAsMaths topic PDFs are listed but pending manual question-by-question audit.
+- This is not a complete 217-document or 62-topic-document manual audit yet.
 
 Current Findings:
 
@@ -36,9 +39,14 @@ Current Findings:
 | MADAS-ST-TRIGEQ-Q5A | PASS | Sec with `sin^2` fixed using `u=cos(A)`, reciprocal, and Pythagorean identity. |
 | MADAS-ST-TRIGEQ-Q5B-D | PASS | Common-denominator reciprocal trig route now handles cot/cosec/sec mixes. |
 | MADAS-ST-TRIGEQ-Q6A-D | PASS/PARTIAL | Q6A-C match answers; Q6D works but inclusive interval syntax also returns `2*pi`. |
+| MADAS-ST-TRIGEQ-Q6E-Q30 | PASS/PARTIAL | Full remaining trigonometric-equations booklet checked; fixes added for rational reciprocal, shifted-angle, double-angle, and hard tan/cot/sec forms. Inclusive interval syntax can include endpoints when paper uses `<`. |
+| MADAS-ST-TRIGINTRO-Q1-Q17 | PASS | Linear shifted trig equations, same-function equations, and R-form-style reductions match printed answers. |
+| MADAS-ST-TRIGINTRO-Q18-Q32 | PASS | Quadratic trig equations using `sin^2+cos^2=1` and double-angle substitution now show clean algebra lines. |
+| MADAS-ST-TRIGINTRO-Q33-Q37 | PASS | Tan/sin/cos rational equations now reduce via `s=sin(A), c=cos(A), tan(A)=s/c`, denominator checks, and interval filtering. |
+| MADAS-ST-TRIGINTRO-Q38-Q39 | PASS-PARTIAL | Identities verify as true, but generic proof output is still too terse for full model-solution style. |
 
 Next high-value implementation:
-1. Continue MadAs trigonometric equations Q6E onward.
+1. Continue with the next MadAs topic PDF in `madasmaths_topic_audit_manifest.csv`.
 2. Add second-order linear constant-coefficient DE route.
 3. Add transformed second-order route only if compact and general.
 4. Continue paper audit in batches, prioritising DE, integration, implicit/parametric, trig solves, stats tests.
