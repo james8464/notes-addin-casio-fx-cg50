@@ -118,6 +118,18 @@ CASES = [
         ("asin(x) = pi/6", "x = sin(pi/6)", "x = 1/2", "x = [1/2]"),
     ),
     (
+        "noisy defint parse",
+        ["--int", "defint(3 *(x)/sqrt((3)(x)+ 6),x,0,8)"],
+        ("u = sqrt(3*x + 6)", "x = 0 => u = sqrt(6), x = 8 => u = sqrt(30)", "8/3*sqrt(30) + 8/3*sqrt(6)"),
+        ("ERR:", "Expected )"),
+    ),
+    (
+        "parenthesised binomial var",
+        ["--alg", "binomial((1+3 * x)^( -  1/(2)),(x),0,4)"],
+        ("n = -1/2", "Simplified terms: T0 = 1, T1 = -3/2*x", "Valid for abs(x) < 1/3"),
+        ("Supported forms", "ERR:"),
+    ),
+    (
         "sin same fn family",
         ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
         ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = (pi+2*pi*n)/13", "x = ["),

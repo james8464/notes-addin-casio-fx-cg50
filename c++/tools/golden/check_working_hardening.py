@@ -1422,6 +1422,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["atan(3*x)=pi/4", "3*x=tan(pi/4)", "3*x=1", "x=[1/3]"],
         ["need sin/cos/tan", "x=[]", "ERR:"],
     ),
+    (
+        "int",
+        "defint(3 *(x)/sqrt((3)(x)+ 6),x,0,8)",
+        ["u=sqrt(3*x+6)", "x=0=>u=sqrt(6),x=8=>u=sqrt(30)", "8/3*sqrt(30)+8/3*sqrt(6)"],
+        ["ERR:", "Expected )"],
+    ),
+    (
+        "alg",
+        "binomial((1+3 * x)^( -  1/(2)),(x),0,4)",
+        ["n=-1/2", "T1=-3/2*x", "Validforabs(x)<1/3"],
+        ["Supported forms", "ERR:"],
+    ),
 ]
 
 

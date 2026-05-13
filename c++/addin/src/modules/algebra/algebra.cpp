@@ -1573,7 +1573,7 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     if(args.empty()) return std::nullopt;
     std::string expr_text = args[0];
     bool from_recip = inner.find("method=from_reciprocal") != std::string::npos;
-    std::string var = args.size() >= 2 && !args[1].empty() ? args[1] : "x";
+    std::string var = args.size() >= 2 && !args[1].empty() ? compact_input_key(args[1]) : "x";
     int degree = 3;
     if(args.size() >= 4) degree = std::atoi(args[3].c_str());
     else if(args.size() >= 3) degree = std::atoi(args[2].c_str());
@@ -3394,13 +3394,14 @@ static std::string compact_input_key(std::string text)
     auto simple = [](char ch) {
         return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
     };
-    auto simple_token = [&](std::size_t first, std::size_t last) {
+    auto simple_token = [&](std::size_t first, std::size_t last, bool *is_digits = nullptr) {
         bool digits = first < last;
         bool name = first < last && (std::isalpha(static_cast<unsigned char>(out[first])) || out[first] == '_');
         for(std::size_t k = first; k < last; ++k) {
             digits = digits && std::isdigit(static_cast<unsigned char>(out[k]));
             name = name && simple(out[k]);
         }
+        if(is_digits) *is_digits = digits;
         return digits || name;
     };
     changed = true;
@@ -3415,7 +3416,10 @@ static std::string compact_input_key(std::string text)
                 if(j > i + 1 && j < out.size() && out[j] == ')') {
                     char prev = i ? out[i - 1] : 0;
                     char next = j + 1 < out.size() ? out[j + 1] : 0;
-                    if(simple_token(i + 1, j) && !simple(prev) && !simple(next)) {
+                    bool digits = false;
+                    bool prev_name = std::isalpha(static_cast<unsigned char>(prev)) || prev == '_';
+                    bool next_name = std::isalpha(static_cast<unsigned char>(next)) || next == '_';
+                    if(simple_token(i + 1, j, &digits) && !prev_name && (!next_name || digits)) {
                         collapsed.append(out, i + 1, j - i - 1);
                         i = j;
                         changed = true;
