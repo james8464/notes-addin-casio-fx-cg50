@@ -6416,6 +6416,10 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
             power += *p;
             continue;
         }
+        if(auto p = var_power_rat(a, k, var); p && p->den == 1 && p->num >= -20 && p->num <= 20) {
+            power += static_cast<int>(p->num);
+            continue;
+        }
         Node const &kn = a.get(k);
         if(!log_node && kn.kind == NodeKind::Fn && kn.fkind == FnKind::Log && is_scaled_var(a, kn.a, var)) {
             log_node = k;
@@ -6424,6 +6428,7 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
         return std::nullopt;
     }
     if(!log_node) return std::nullopt;
+    if(power == -1) return std::nullopt;
     Rational np1{power + 1, 1};
     NodeId xp1 = var_pow(a, var, power + 1);
     NodeId term1 = mul_coeff(a, r_div(coeff, np1), casio::mul(a, {xp1, log_node}));
