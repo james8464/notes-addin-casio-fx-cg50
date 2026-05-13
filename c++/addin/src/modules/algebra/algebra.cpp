@@ -6014,6 +6014,124 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
     return out;
 }
 
+static std::optional<NodeId> exp_arg_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return x.a;
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        if(b.kind == NodeKind::Const && b.ckind == ConstKind::E) return x.b;
+    }
+    return std::nullopt;
+}
+
+static void collect_exp_args_solve(Arena &a, NodeId n, std::vector<NodeId> &out)
+{
+    if(auto e = exp_arg_node(a, n)) {
+        out.push_back(*e);
+        return;
+    }
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) collect_exp_args_solve(a, x.a, out);
+    else if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        collect_exp_args_solve(a, x.a, out);
+        collect_exp_args_solve(a, x.b, out);
+    }
+    else if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) collect_exp_args_solve(a, k, out);
+    }
+}
+
+static std::optional<std::pair<Rational, NodeId>> unknown_exp_base(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_sym_var(a, n, var)) return std::make_pair(Rational{1, 1}, one_node(a));
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+        auto top = unknown_exp_base(a, x.a, var);
+        auto den = as_num(a, x.b);
+        if(top && den) return std::make_pair(r_div(top->first, *den), top->second);
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    bool saw = false;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(is_sym_var(a, k, var)) {
+            if(saw) return std::nullopt;
+            saw = true;
+        }
+        else {
+            if(contains_symbol(a, k, var)) return std::nullopt;
+            rest.push_back(k);
+        }
+    }
+    if(!saw) return std::nullopt;
+    return std::make_pair(c, mul_or_one(a, rest));
+}
+
+static std::optional<Rational> coeff_of_base(Arena &a, NodeId n, NodeId base)
+{
+    if(casio::same_by_sig(a, n, base)) return Rational{1, 1};
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto den = as_num(a, x.b);
+        if(!den) return std::nullopt;
+        if(casio::same_by_sig(a, x.a, base)) return r_div(Rational{1, 1}, *den);
+        auto top = coeff_of_base(a, x.a, base);
+        if(top) return r_div(*top, *den);
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational c{1, 1};
+        std::vector<NodeId> rest;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) c = r_mul(c, *r);
+            else rest.push_back(k);
+        }
+        if(casio::same_by_sig(a, mul_or_one(a, rest), base)) return c;
+    }
+    return std::nullopt;
+}
+
+static bool verify_candidate(Arena &a, NodeId residual, std::string const &var, Rational cand)
+{
+    std::vector<std::string> syms;
+    collect_symbols(a, residual, syms);
+    int ok = 0;
+    for(double s : {1.0, 2.0, 3.0, 4.0}) {
+        std::vector<std::pair<std::string, double>> env;
+        for(auto const &v : syms) env.push_back({v, v == var ? (double)cand.num / (double)cand.den : s});
+        auto val = eval_node_env(a, residual, env);
+        if(!val || !std::isfinite(*val)) continue;
+        if(std::fabs(*val) > 1e-7) return false;
+        ++ok;
+    }
+    return ok > 0;
+}
+
+static std::optional<std::vector<std::string>> exp_coeff_solve_route(
+    Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
+{
+    std::vector<NodeId> le, re;
+    collect_exp_args_solve(a, lhs, le);
+    collect_exp_args_solve(a, rhs, re);
+    if(le.size() != 1 || re.size() != 1) return std::nullopt;
+    bool lu = contains_symbol(a, le[0], var), ru = contains_symbol(a, re[0], var);
+    if(lu == ru) return std::nullopt;
+    NodeId uarg = lu ? le[0] : re[0];
+    NodeId karg = lu ? re[0] : le[0];
+    auto ub = unknown_exp_base(a, uarg, var);
+    if(!ub) return std::nullopt;
+    auto kc = coeff_of_base(a, karg, ub->second);
+    if(!kc || ub->first.num == 0) return std::nullopt;
+    Rational sol = r_div(*kc, ub->first);
+    if(!verify_candidate(a, residual, var, sol)) return std::nullopt;
+    out.push_back("e^(" + format_expr(a, uarg) + ") = e^(" + format_expr(a, karg) + ")");
+    out.push_back(format_expr(a, uarg) + " = " + format_expr(a, karg));
+    out.push_back(var + " = " + format_expr(a, casio::num(a, sol.num, sol.den)));
+    return out;
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
@@ -7325,6 +7443,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {

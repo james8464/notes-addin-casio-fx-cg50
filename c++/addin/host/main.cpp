@@ -536,8 +536,14 @@ int main(int argc, char **argv)
                     }
                     return false;
                 };
-                if(has_trig(inner)) {
-                    auto parts = split_top_csv(inner);
+                auto parts = split_top_csv(inner);
+                bool alg_var = false;
+                if(parts.size() >= 2) {
+                    std::string v = trim(parts[1]);
+                    bool interval_arg = v.find('=') != std::string::npos || v.find("..") != std::string::npos;
+                    alg_var = !interval_arg && !(v == "x" || v == "t" || v == "theta");
+                }
+                if(has_trig(inner) && !alg_var) {
                     std::string trig_expr = inner;
                     if(parts.size() >= 2) {
                         auto eq = parts[1].find('=');

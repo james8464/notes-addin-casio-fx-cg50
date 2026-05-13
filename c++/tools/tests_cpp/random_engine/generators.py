@@ -30,6 +30,7 @@ EXAM_GAP_TOPICS = (
     "hidden_constants",
     "implicit_rational_clear",
     "radical_rewrite",
+    "differential_equation",
     "domain_range_edge",
     "formatting_traps",
 )
@@ -519,6 +520,22 @@ class AdversarialGenerator:
                 "auto",
                 ("piecewise_abs", "minimum_distance"),
                 "exam: range is y>=distance between breakpoints",
+            ),
+            (
+                "differential_equation",
+                "int",
+                [
+                    "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)",
+                    "de_solve(dy/dx+2*x*y=x,y(0)=3)",
+                    "de_solve(x*dy/dx+2*y=x^3,x=1,y=4)",
+                    "de_solve(dy/dx+tan(x)*y=sin(x),y(0)=1)",
+                    "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
+                ][cycle % 5],
+                "integrate",
+                "de_solve(eq,bc)",
+                "de",
+                ("separate_or_if", "constant_from_bc", "explicit_solution"),
+                "exam: show separation or integrating factor, substitute boundary condition, give explicit final form where possible",
             ),
             (
                 "domain_range_edge",

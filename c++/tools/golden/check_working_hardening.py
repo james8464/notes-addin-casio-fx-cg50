@@ -133,6 +133,48 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Answer: int(", "Classify the integrand", "ERR:", "Unexpected token"],
     ),
     (
+        "int",
+        "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)",
+        ["1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(4/5)", "(4*h - 2)/(4*h) = 4/5*e^(sin(t/10)/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"],
+        ["Try dy/dx", "unsupported DE route", "dh = []", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = 4*e^(x^3/3 + x) - 3"],
+        ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(dz/dx=(exp(x)+1)/(z+2),z(0)=3)",
+        ["z + 2 dz = e^(x) + 1 dx", "C = 19/2", "z^2/2 + 2*z = e^(x) + x + 19/2"],
+        ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(dy/dx+2*x*y=x,y(0)=3)",
+        ["dy/dx + P*y = Q", "P = 2*x", "mu = e^Int(P dx)", "d/dx[e^(2*x^2/2)*y] = e^(2*x^2/2)*x", "C = 5/2"],
+        ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(x*dy/dx+2*y=x^3,x=1,y=4)",
+        ["P = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (x^5/5 + 19/5)/(x^2)"],
+        ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(dy/dx+tan(x)*y=sin(x),y(0)=1)",
+        ["P = tan(x)", "mu = cos(x)^-1", "d/dx[cos(x)^-1*y] = tan(x)", "C = 1"],
+        ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(5/(10-8*e^(k*sin(t/10)))=5/(10-8*e^(sin(t/10)/5)),k)",
+        ["e^(k*sin(t/10)) = e^(sin(t/10)/5)", "k*sin(t/10) = sin(t/10)/5", "k = 1/5"],
+        ["k = []", "No real solution", "ERR:"],
+    ),
+    (
         "alg",
         "range(sqrt(abs(3*x+1)+1))",
         ["abs(3*x + 1) >= 0", "Answer: y >= 1"],
