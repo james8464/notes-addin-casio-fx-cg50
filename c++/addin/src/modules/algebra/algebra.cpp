@@ -6730,6 +6730,30 @@ static std::optional<std::vector<std::string>> exp_coeff_solve_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> exp_const_solve_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var, std::vector<std::string> out)
+{
+    auto run = [&](NodeId e_side, NodeId c_side) -> std::optional<std::vector<std::string>> {
+        auto arg = exp_arg_node(a, e_side);
+        auto c = as_num(a, c_side);
+        if(!arg || !c || c->num <= 0) return std::nullopt;
+        auto p = poly_of(a, *arg, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        NodeId logc = casio::fn(a, "log", c_side);
+        NodeId exact = casio::simplify(
+            a,
+            casio::div(a, casio::add(a, {logc, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}),
+                       casio::num(a, p->a1.num, p->a1.den))
+        );
+        out.push_back("e^(" + format_expr(a, *arg) + ") = " + format_expr(a, c_side));
+        out.push_back(format_expr(a, *arg) + " = ln(" + format_expr(a, c_side) + ")");
+        out.push_back(var + " = " + format_expr(a, exact));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static std::optional<std::vector<std::string>> equal_exp_solve_route(
     Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
 {
@@ -8109,6 +8133,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
 

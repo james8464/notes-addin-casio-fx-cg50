@@ -359,6 +359,12 @@ CASES = [
         ("all real values in domain", "ERR:"),
     ),
     (
+        "exp equals constant exact",
+        ["--alg", "solve(e^(x+1)=17,x)"],
+        ("e^(x + 1) = 17", "x + 1 = ln(17)", "x = ln(17) - 1"),
+        ("1.833", "x = [", "ERR:"),
+    ),
+    (
         "equal exponential quadratic exponents",
         ["--alg", "solve(e^(x^2)=e^(2*x),x)"],
         ("e^(x^2) = e^(2*x)", "x^2 = 2*x", "x^2 - 2*x = 0", "x = [0, 2]"),
