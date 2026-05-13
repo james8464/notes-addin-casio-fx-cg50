@@ -1968,6 +1968,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             steps.push_back("x-alpha=" + beta + " or -" + beta + " (mod 2*pi).");
             steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
             steps.push_back(var + "=" + alpha + "+" + beta + " or " + var + "=2*pi+" + alpha + "-" + beta + ".");
+            steps.push_back(lo_text + " <= " + alpha + "+" + beta + " <= " + hi_text + "; " +
+                            lo_text + " <= 2*pi+" + alpha + "-" + beta + " <= " + hi_text + ".");
             return casio::exam_block(
                 "trig solve",
                 steps,

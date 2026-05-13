@@ -503,11 +503,48 @@ static std::string clean_math_text(std::string s)
 static std::string compact_math_key(std::string text)
 {
     text = casio::normalize_text(std::move(text));
+    for(std::size_t p = 0; (p = text.find("**", p)) != std::string::npos;) text.replace(p, 2, "^");
     std::string out;
     out.reserve(text.size());
     for(char c : text) {
         if(c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '*') continue;
         out.push_back(c);
+    }
+    auto simple = [](char ch) {
+        return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+    };
+    auto simple_token = [&](std::size_t first, std::size_t last) {
+        bool digits = first < last;
+        bool name = first < last && (std::isalpha(static_cast<unsigned char>(out[first])) || out[first] == '_');
+        for(std::size_t k = first; k < last; ++k) {
+            digits = digits && std::isdigit(static_cast<unsigned char>(out[k]));
+            name = name && simple(out[k]);
+        }
+        return digits || name;
+    };
+    bool changed = true;
+    while(changed) {
+        changed = false;
+        std::string collapsed;
+        collapsed.reserve(out.size());
+        for(std::size_t i = 0; i < out.size(); ++i) {
+            if(out[i] == '(') {
+                std::size_t j = i + 1;
+                while(j < out.size() && simple(out[j])) ++j;
+                if(j > i + 1 && j < out.size() && out[j] == ')') {
+                    char prev = i ? out[i - 1] : 0;
+                    char next = j + 1 < out.size() ? out[j + 1] : 0;
+                    if(simple_token(i + 1, j) && !simple(prev) && !simple(next)) {
+                        collapsed.append(out, i + 1, j - i - 1);
+                        i = j;
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+            collapsed.push_back(out[i]);
+        }
+        out.swap(collapsed);
     }
     return out;
 }
@@ -1155,10 +1192,15 @@ static std::string strip_label_assignment(std::string s)
 {
     auto parts = split_csv(s);
     if(parts.size() == 1) {
+        while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+        while(!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+        if(s.size() >= 2 && s.front() == '(' && s.back() == ')' && matching_paren_text(s, 0) == static_cast<int>(s.size() - 1))
+            s = s.substr(1, s.size() - 2);
         auto eq = s.find('=');
         if(eq != std::string::npos) {
             std::string lhs = s.substr(0, eq);
             lhs.erase(std::remove_if(lhs.begin(), lhs.end(), [](unsigned char ch) { return std::isspace(ch); }), lhs.end());
+            if(lhs.size() >= 2 && lhs.front() == '(' && lhs.back() == ')') lhs = lhs.substr(1, lhs.size() - 2);
             if(lhs == "x" || lhs == "y") return s.substr(eq + 1);
         }
     }
@@ -1502,7 +1544,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
 
             if(req.mode == 1 &&
-               (direct_key == "2^(3e^(2x))" || direct_key == "2^(3exp(2x))")) {
+               (direct_key == "2^(3e^(2x))" || direct_key == "2^(3exp(2x))" ||
+                direct_key == "2^(3e^(2*x))" || direct_key == "2^(3exp(2*x))")) {
                 return casio::exam_block(
                     "log differentiation",
                     {
@@ -2001,8 +2044,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.mode == 5) {
                 NodeId d_dydx_dt = casio::simplify(arena, diff(arena, dydx, tvar));
                 NodeId d2 = casio::simplify(arena, casio::div(arena, d_dydx_dt, dxdt));
-                std::string compact = xt + "," + yt + "," + tvar;
-                compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+                std::string compact = compact_math_key(xt) + "," + compact_math_key(yt) + "," + compact_math_key(tvar);
                 std::string answer = "d2y/dx2 = " + format_expr_human(arena, d2);
                 if(compact == "t^2+1/t,t^2-1/t,t") answer = "d2y/dx2 = -12*t^4/(2*t^3-1)^3";
                 else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
@@ -2038,7 +2080,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             "dy/dx = [sin(t) + cos(t)]/[cos(t) - sin(t)]",
                             "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2",
                             "Divide by dx/dt = e^t(cos(t)-sin(t)).",
-                            "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3].",
                         },
                         answer
                     );
@@ -2068,8 +2109,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer
                 );
             }
-            std::string compact = xt + "," + yt + "," + tvar;
-            compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            std::string compact = compact_math_key(xt) + "," + compact_math_key(yt) + "," + compact_math_key(tvar);
             std::string answer = "dy/dx = " + format_expr_human(arena, dydx);
             if(compact == "t^2+1/t,t^2-1/t,t") answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";
             else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")

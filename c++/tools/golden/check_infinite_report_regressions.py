@@ -162,6 +162,47 @@ def main() -> int:
         ("ERR:", "Expected )"),
     )
     bad += require(
+        "fuzz_wrapped_defint_variable",
+        run(["--int", "(defint(ln((x))/(1 +(x)**2),(x),0,inf))"]),
+        ("Split I = Integral_0^1", "Tail becomes", "0"),
+        ("ERR:", "Expected )"),
+    )
+    bad += require(
+        "labelled_parametric_second",
+        run(["--derive", "(x=t^2 + 1/t),(y=t**2-1/t),t,x,method=param_second"]),
+        ("dx/dt = 2*t - t^-2", "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)", "d2y/dx2 = -12*t^4/(2*t^3 - 1)^3"),
+        ("ERR:", "Expected )", "Unexpected token"),
+    )
+    param_e = run(["--derive", "(x)=exp((t))*cos((t)),y=exp(t)sin(t),t,x,method=param_second"])
+    bad += require(
+        "labelled_parametric_second_exp",
+        param_e,
+        ("dx/dt = e^t(cos(t)-sin(t))", "d2y/dx2 = 2/[e^t(cos(t) - sin(t))^3"),
+        ("ERR:", "Unexpected token"),
+    )
+    if param_e.count("d2y/dx2 =") != 1:
+        print("FAIL labelled_parametric_second_exp: duplicate final d2 line", file=sys.stderr)
+        print(param_e, file=sys.stderr)
+        bad += 1
+    bad += require(
+        "nested_surd_rewrite_wrapped",
+        run(["--alg", "(rewrite(sqrt((15)+sqrt((224)))))"]),
+        ("m+n = 15", "4*m*n = 224", "2*sqrt(2)+sqrt(7)"),
+        ("ERR:", "sqrt(sqrt(224) + 15)"),
+    )
+    bad += require(
+        "algebra_de_solve_routes_general_engine",
+        run(["--alg", "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)"]),
+        ("Separate variables", "C = ln(4/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"),
+        ("solve(de_solve", "ERR:"),
+    )
+    bad += require(
+        "rform_interval_filter_line",
+        run(["--trig", "(3*cos(x)+4*sin(x)=2),x,0,2*pi,10,method=rform"]),
+        ("x-alpha = arccos(2/5)", "0 <= arctan(4/3)+arccos(2/5) <= 2*pi", "x = [arctan(4/3) + arccos(2/5)"),
+        ("ERR:",),
+    )
+    bad += require(
         "interval_domain_final",
         run(["--stdin-program", "algebraProgram.py"], "10\n(t)^2+1,t,(0),(4)\n"),
         ("Domain used: (0) <= t <= (4)", "Range: 1 <= y <= 17", "(0) <= t <= (4); 1 <= y <= 17"),

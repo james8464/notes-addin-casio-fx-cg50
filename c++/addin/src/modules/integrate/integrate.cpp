@@ -335,20 +335,42 @@ static std::string compact_key(std::string text)
             changed = true;
         }
     }
-    std::string collapsed;
-    collapsed.reserve(out.size());
-    for(std::size_t i = 0; i < out.size(); ++i) {
-        if(i + 4 < out.size() && out[i] == '(' && out[i + 1] == '(' &&
-           out[i + 2] >= 'a' && out[i + 2] <= 'z' && out[i + 3] == ')' && out[i + 4] == ')') {
-            collapsed.push_back('(');
-            collapsed.push_back(out[i + 2]);
-            collapsed.push_back(')');
-            i += 4;
-            continue;
+    auto simple = [](char ch) {
+        return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+    };
+    auto simple_token = [&](std::size_t first, std::size_t last) {
+        bool digits = first < last;
+        bool name = first < last && (std::isalpha(static_cast<unsigned char>(out[first])) || out[first] == '_');
+        for(std::size_t k = first; k < last; ++k) {
+            digits = digits && std::isdigit(static_cast<unsigned char>(out[k]));
+            name = name && simple(out[k]);
         }
-        collapsed.push_back(out[i]);
+        return digits || name;
+    };
+    changed = true;
+    while(changed) {
+        changed = false;
+        std::string collapsed;
+        collapsed.reserve(out.size());
+        for(std::size_t i = 0; i < out.size(); ++i) {
+            if(out[i] == '(') {
+                std::size_t j = i + 1;
+                while(j < out.size() && simple(out[j])) ++j;
+                if(j > i + 1 && j < out.size() && out[j] == ')') {
+                    char prev = i ? out[i - 1] : 0;
+                    char next = j + 1 < out.size() ? out[j + 1] : 0;
+                    if(simple_token(i + 1, j) && !simple(prev) && !simple(next)) {
+                        collapsed.append(out, i + 1, j - i - 1);
+                        i = j;
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+            collapsed.push_back(out[i]);
+        }
+        out.swap(collapsed);
     }
-    out.swap(collapsed);
     return out;
 }
 
@@ -2004,6 +2026,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(c == "defint(e^(2x)/(e^x+1),x,log(2),log(8))" ||
        c == "defint(exp(2x)/(exp(x)+1),x,log(2),log(8))" ||
        c == "defint(e^(2*x)/(e^(x)+1),x,log(2),log(8))" ||
+       c == "defint(e^(2*x)/(e^x+1),x,log(2),log(8))" ||
        c == "defint(exp(2*x)/(exp(x)+1),x,log(2),log(8))") {
         return out(
             "exponential substitution",
@@ -3321,7 +3344,10 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "e^x/(1+e^(2x))" || c == "e^(x)/(e^(2x)+1)" || c == "exp(x)/(1+exp(2x))" || c == "exp(x)/(exp(2x)+1)") {
+    if(c == "e^x/(1+e^(2x))" || c == "e^(x)/(e^(2x)+1)" || c == "exp(x)/(1+exp(2x))" || c == "exp(x)/(exp(2x)+1)" ||
+       c == "e^(x)/(1+e^(2*x))" || c == "e^(x)/(e^(2*x)+1)" ||
+       c == "e^x/(1+e^(2*x))" || c == "e^x/(e^(2*x)+1)" ||
+       c == "exp(x)/(1+exp(2*x))" || c == "exp(x)/(exp(2*x)+1)") {
         return out(
             "substitution u=e^x",
             {

@@ -386,21 +386,21 @@ Ex F2: desolve(y'+y=exp(x),x,y)
 @de_solve(equation,[bc])
 F2:de_solve(y'+y=exp(x),y(0)=1)
 de_solve(equation,[bc])
-DE solve.
+First-order DE working.
 Req: equation.
-Opt: bc,method.
+Opt: bc. Supports separable and linear.
 Ex F2: de_solve(y'+y=exp(x),y(0)=1)
 @END
 @diff(f,var,[n,method])
 F2:diff(sin(x),x)
-F3:diff(sin(x)^x,x,method=logdiff)
+F3:diff(x=t^2,y=t^3,t,method=param)
 diff(f,var,[n,method])
 Derivative with exam steps.
-Methods: auto,chain,product,quotient,logdiff,implicit,param,second.
+Methods: auto,chain,product,quotient,logdiff,implicit,param,second,param_second,first_principles.
 Req: f,var.
-Opt: n,method=auto.
+Opt: n,method=auto. Param form: x=...,y=...,t.
 Ex F2: diff(sin(x),x)
-Ex F3: diff(sin(x)^x,x,method=logdiff)
+Ex F3: diff(x=t^2,y=t^3,t,method=param)
 @END
 @diff_by(f,var,method)
 F2:diff_by(sin(x)^x,x,logdiff)

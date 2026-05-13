@@ -7,6 +7,7 @@
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
+#include "modules/integrate/integrate.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -3057,11 +3058,69 @@ static void collect_text_trig_domain(Arena &a, std::string const &raw, std::vect
 static std::string compact_input_key(std::string text)
 {
     text = casio::normalize_text(std::move(text));
+    for(std::size_t p = 0; (p = text.find("**", p)) != std::string::npos;) text.replace(p, 2, "^");
     std::string out;
     out.reserve(text.size());
     for(char c : text) {
         if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
         out.push_back(c);
+    }
+    bool changed = true;
+    while(changed && out.size() >= 2 && out.front() == '(' && out.back() == ')') {
+        changed = false;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < out.size(); ++i) {
+            if(out[i] == '(') ++depth;
+            else if(out[i] == ')' && --depth == 0 && i + 1 < out.size()) {
+                wraps = false;
+                break;
+            }
+            if(depth < 0) {
+                wraps = false;
+                break;
+            }
+        }
+        if(wraps && depth == 0) {
+            out = out.substr(1, out.size() - 2);
+            changed = true;
+        }
+    }
+    auto simple = [](char ch) {
+        return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+    };
+    auto simple_token = [&](std::size_t first, std::size_t last) {
+        bool digits = first < last;
+        bool name = first < last && (std::isalpha(static_cast<unsigned char>(out[first])) || out[first] == '_');
+        for(std::size_t k = first; k < last; ++k) {
+            digits = digits && std::isdigit(static_cast<unsigned char>(out[k]));
+            name = name && simple(out[k]);
+        }
+        return digits || name;
+    };
+    changed = true;
+    while(changed) {
+        changed = false;
+        std::string collapsed;
+        collapsed.reserve(out.size());
+        for(std::size_t i = 0; i < out.size(); ++i) {
+            if(out[i] == '(') {
+                std::size_t j = i + 1;
+                while(j < out.size() && simple(out[j])) ++j;
+                if(j > i + 1 && j < out.size() && out[j] == ')') {
+                    char prev = i ? out[i - 1] : 0;
+                    char next = j + 1 < out.size() ? out[j + 1] : 0;
+                    if(simple_token(i + 1, j) && !simple(prev) && !simple(next)) {
+                        collapsed.append(out, i + 1, j - i - 1);
+                        i = j;
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+            collapsed.push_back(out[i]);
+        }
+        out.swap(collapsed);
     }
     return out;
 }
@@ -4095,13 +4154,27 @@ static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std
     if(m <= 0 || n <= 0) return std::nullopt;
     if(4 * m * n != *B) return std::nullopt;
     if(m < n) std::swap(m, n);
+    auto sqrt_i64_text = [](long long v) {
+        long long best = 1;
+        for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(v))); k >= 2; --k) {
+            if(v % (k * k) == 0) {
+                best = k;
+                break;
+            }
+        }
+        long long rem = v / (best * best);
+        if(rem == 1) return std::to_string(best);
+        std::string core = "sqrt(" + std::to_string(rem) + ")";
+        return best == 1 ? core : std::to_string(best) + "*" + core;
+    };
+    std::string ans = sqrt_i64_text(m) + "+" + sqrt_i64_text(n);
 
     return std::vector<std::string>{
         "1. sqrt(" + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ")) = sqrt(m)+sqrt(n).",
         "2. " + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ") = m+n+2*sqrt(m*n).",
         "3. m+n=" + std::to_string(*A) + ", 4*m*n=" + std::to_string(*B) + ".",
-        "4. t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + "=0 -> t=" + std::to_string(m) + " or " + std::to_string(n) + ".",
-        "sqrt(" + std::to_string(m) + ")+sqrt(" + std::to_string(n) + ")",
+        "4. t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + " = 0 => t = " + std::to_string(m) + " or " + std::to_string(n) + ".",
+        ans,
     };
 }
 
@@ -6235,6 +6308,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     },
                     "y = (x + 1)^2*e^(-x)"
                 );
+            }
+            if(key.rfind("de_solve(", 0) == 0) {
+                casio::integrate::Request de_req;
+                de_req.expr = req.expr;
+                return casio::integrate::run(arena, de_req);
             }
             if(key == "(50x^2-142x+95)/(2x-5)" ||
                key == "(50*x^2-142*x+95)/(2*x-5)") {
