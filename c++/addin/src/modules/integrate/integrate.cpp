@@ -6409,11 +6409,22 @@ static std::optional<NodeId> integrate_log_parts(Arena &a, NodeId expr, std::str
 
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
         auto lm = log_arg_var_power(a, x.a, var);
-        if(!lm || r_zero(*lm)) return std::nullopt;
-        steps.push_back("Step 2: u=" + format_expr_human(a, expr) + ", dv=d" + var + ".");
-        steps.push_back("Step 3: du=" + rat_text(*lm) + "/" + var + " d" + var + ", v=" + var + ".");
-        steps.push_back("Step 4: I=u*v-Int(v du).");
-        return casio::simplify(a, casio::add(a, {casio::mul(a, {v, expr}), mul_coeff(a, r_neg(*lm), v)}));
+        if(lm && !r_zero(*lm)) {
+            steps.push_back("Step 2: u=" + format_expr_human(a, expr) + ", dv=d" + var + ".");
+            steps.push_back("Step 3: du=" + rat_text(*lm) + "/" + var + " d" + var + ", v=" + var + ".");
+            steps.push_back("Step 4: I=u*v-Int(v du).");
+            return casio::simplify(a, casio::add(a, {casio::mul(a, {v, expr}), mul_coeff(a, r_neg(*lm), v)}));
+        }
+        if(auto af = affine_form(a, x.a, var); af && !r_zero(af->first)) {
+            NodeId u = x.a;
+            NodeId body = casio::add(a, {casio::mul(a, {u, expr}), casio::neg(a, u)});
+            steps.push_back("Step 2: u=" + format_expr_human(a, u) + ".");
+            steps.push_back("Step 3: du/d" + var + "=" + rat_text(af->first) + ", so d" + var + "=du/" + rat_text(af->first) + ".");
+            steps.push_back("Step 4: I=1/" + rat_text(af->first) + "*Int(ln(u)) du.");
+            steps.push_back("Step 5: Int(ln(u))du=u*ln(u)-u.");
+            return casio::simplify(a, casio::div(a, body, a.num(af->first)));
+        }
+        return std::nullopt;
     }
 
     if(x.kind != NodeKind::Mul) return std::nullopt;
@@ -11566,6 +11577,16 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(vn.kind == NodeKind::Fn && vn.fkind == FnKind::Log) {
                     if(auto base = as_num(a, simplify_known_endpoint_values(a, vn.a))) return a.num(*base);
                 }
+                if(vn.kind == NodeKind::Div) {
+                    Node const &top = a.get(vn.a);
+                    auto den = as_num(a, vn.b);
+                    if(den && top.kind == NodeKind::Fn && top.fkind == FnKind::Log) {
+                        if(auto base = as_num(a, simplify_known_endpoint_values(a, top.a))) {
+                            if(den->num == 2 && den->den == 1 && base->num >= 0) return sqrt_rat(a, *base);
+                            if(den->den == 1) return casio::simplify(a, casio::power(a, a.num(*base), a.num(r_div(Rational{1, 1}, *den))));
+                        }
+                    }
+                }
                 if(vn.kind == NodeKind::Mul) {
                     Rational coeff{1, 1};
                     NodeId log_arg = 0;
@@ -11582,6 +11603,9 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                             return casio::simplify(a, casio::power(a, a.num(*base), a.num(coeff)));
                         }
                     }
+                    if(log_arg && coeff.num == 1 && coeff.den == 2) {
+                        if(auto base = as_num(a, simplify_known_endpoint_values(a, log_arg)); base && base->num >= 0) return sqrt_rat(a, *base);
+                    }
                 }
                 return std::nullopt;
             };
@@ -11591,6 +11615,16 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(auto r = as_num(a, arg); r && r->num == r->den) return casio::num(a, 0);
             Node const &ln_arg = a.get(arg);
             if(ln_arg.kind == NodeKind::Const && ln_arg.ckind == ConstKind::E) return casio::num(a, 1);
+            if(ln_arg.kind == NodeKind::Div) {
+                auto top = as_num(a, ln_arg.a);
+                Node const &bot = a.get(ln_arg.b);
+                if(top && top->num == top->den && bot.kind == NodeKind::Const && bot.ckind == ConstKind::E) return casio::num(a, -1);
+            }
+            if(ln_arg.kind == NodeKind::Pow) {
+                Node const &base = a.get(ln_arg.a);
+                auto exp = as_num(a, ln_arg.b);
+                if(exp && base.kind == NodeKind::Const && base.ckind == ConstKind::E) return a.num(*exp);
+            }
         }
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
             if(auto m = pi_multiple(a, arg)) {
@@ -11712,6 +11746,9 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                             return casio::simplify(a, casio::power(a, a.num(*b), a.num(coeff)));
                         }
                     }
+                    if(log_arg && coeff.num == 1 && coeff.den == 2) {
+                        if(auto b = as_num(a, simplify_known_endpoint_values(a, log_arg)); b && b->num >= 0) return sqrt_rat(a, *b);
+                    }
                 }
                 return std::nullopt;
             };
@@ -11723,6 +11760,13 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 return casio::simplify(a, mul_coeff(a, r_mul(p->first, p->first), pi_sq));
             }
             Node const &bn = a.get(base);
+            if(bn.kind == NodeKind::Div) {
+                auto top = as_num(a, bn.a);
+                Node const &bot = a.get(bn.b);
+                if(top && top->num == top->den && bot.kind == NodeKind::Const && bot.ckind == ConstKind::E) {
+                    return casio::power(a, a.constant(ConstKind::E), a.num(Rational{-2, 1}));
+                }
+            }
             if(bn.kind == NodeKind::Div) {
                 Node const &top = a.get(bn.a);
                 auto den = as_num(a, bn.b);
@@ -11740,6 +11784,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         auto bnum = as_num(a, bot);
         if(bnum && tn.kind == NodeKind::Div) {
             if(auto tden = as_num(a, tn.b)) return casio::simplify(a, casio::div(a, tn.a, a.num(r_mul(*tden, *bnum))));
+        }
+        if(bnum) {
+            auto f = numeric_factor(a, top);
+            if(!f.second) return a.num(r_div(f.first, *bnum));
+            return casio::simplify(a, mul_coeff(a, r_div(f.first, *bnum), *f.second));
         }
         return casio::simplify(a, casio::div(a, top, bot));
     }
