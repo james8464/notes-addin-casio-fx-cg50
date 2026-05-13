@@ -140,6 +140,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "de_solve(dr/dt=-k/r^2,r(0)=40,r(5)=20)",
+        ["r^2 dr = -k dt", "r^3/3 = -k*t + C", "C = 64000/3", "8000/3 = -5*k + 64000/3", "k = 11200/3"],
+        ["Try dy/dx", "unsupported DE route", "Err:"],
+    ),
+    (
+        "int",
         "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
         ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = 4*e^(x^3/3 + x) - 3"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
@@ -167,6 +173,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "de_solve(dy/dx+tan(x)*y=sin(x),y(0)=1)",
         ["P = tan(x)", "mu = cos(x)^-1", "d/dx[cos(x)^-1*y] = tan(x)", "C = 1"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
+        "de_solve(cos(x)*dy/dx+y*sin(x)=e^(2*x)*cos(x)^2)",
+        ["P = tan(x)", "Q = e^(2*x)*cos(x)", "d/dx[cos(x)^-1*y] = e^(2*x)", "y = (e^(2*x)/2 + C)*cos(x)"],
+        ["Try dy/dx", "unsupported DE route", "Err:"],
     ),
     (
         "alg",
