@@ -24,9 +24,15 @@ python3 run_tests.py tui
 python3 c++/tools/golden/check_edexcel_paper1_downloads.py
 python3 c++/tools/golden/check_edexcel_paper2_downloads.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py
+python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 ```
 
 `check_madasmaths_full_audit.py` renders local MP2 A-Z papers/solutions from
 `~/Downloads/MadAsMaths papers` into ignored report images, writes the JSONL
 ledger, and runs all curated MP2 host markscheme cases. Use `--no-render` for
 the lightweight CI gate.
+
+`check_madasmaths_standard_topics_audit.py` scans local standard-topic PDFs from
+`~/Downloads/MadAsMaths standard topics`, writes an ignored JSONL question
+ledger, and runs curated source-derived host checks. Use `--strict-manual` when
+the ledger is expected to have no unaudited calculator-testable rows.

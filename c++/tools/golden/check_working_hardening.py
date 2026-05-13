@@ -284,6 +284,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "de_solve(dh/dt=3/2*h*sin(3*t/4),h(0)=1)",
+        ["1/h dh = 3/2*sin(3*t/4) dt", "C = 2", "h = e^(- 2*cos(3*t/4) + 2)"],
+        ["unsupported DE route", "ERR:"],
+    ),
+    (
+        "int",
         "de_solve(100*d2x/dt2+60*dx/dt+13*x=26)",
         ["Err: second-order DE unsupported"],
         ["d2x = ", "Int(1) d2x", "2x ="],
@@ -293,6 +299,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(5/(10-8*e^(k*sin(t/10)))=5/(10-8*e^(sin(t/10)/5)),k)",
         ["e^(k*sin(t/10)) = e^(sin(t/10)/5)", "k*sin(t/10) = sin(t/10)/5", "k = 1/5"],
         ["k = []", "No real solution", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(1/5*sin(t/10)=k*sin(t/10),k)",
+        ["sin(t/10) != 0", "k = 1/5"],
+        ["all real values in domain", "k = []", "ERR:"],
     ),
     (
         "alg",

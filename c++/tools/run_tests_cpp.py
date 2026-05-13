@@ -60,6 +60,7 @@ def main() -> int:
         ("madasmaths_paper_scan", [sys.executable, "c++/tools/golden/check_madasmaths_paper_scan.py"]),
         ("madasmaths_full_audit_unit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit_unit.py"]),
         ("madasmaths_full_audit", [sys.executable, "c++/tools/golden/check_madasmaths_full_audit.py", "--no-render", "--strict-skips"]),
+        ("madasmaths_standard_topics_audit", [sys.executable, "c++/tools/golden/check_madasmaths_standard_topics_audit.py"]),
         ("edexcel_paper1_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper1_downloads.py"]),
         ("edexcel_paper2_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper2_downloads.py"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),

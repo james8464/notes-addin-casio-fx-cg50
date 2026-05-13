@@ -1476,6 +1476,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
 
         BoundaryDE B = parse_de_bc(a, bc, tok->y, tok->x);
         bool used_bc = false;
+        bool explicit_answer = false;
         std::optional<Rational> Cval;
         std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, *Ri.result) + " + C";
         auto larg = log_abs_arg(a, *Li.result);
@@ -1501,7 +1502,10 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, *Ri.result) + " + log(" + rat_text_small(a, q) + ")");
                         steps.push_back(format_expr(a, *larg) + " = " + rat_text_small(a, q) + "*e^(" + exp_arg_text(a, *Ri.result) + ")");
                     }
-                    if(auto ex = explicit_logistic_answer(a, tok->y, *lf, q, *Ri.result)) answer = *ex;
+                    if(auto ex = explicit_logistic_answer(a, tok->y, *lf, q, *Ri.result)) {
+                        answer = *ex;
+                        explicit_answer = true;
+                    }
                 }
             }
         }
@@ -1549,6 +1553,20 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         }
                     }
                 }
+            }
+        }
+        if(larg && !explicit_answer) {
+            std::string left = format_expr(a, *larg);
+            if(Cval) {
+                NodeId rhs = casio::simplify(a, casio::add(a, {*Ri.result, casio::num(a, Cval->num, Cval->den)}));
+                std::string erhs = "e^(" + exp_arg_text(a, rhs) + ")";
+                steps.push_back(left + " = " + erhs);
+                answer = left + " = " + erhs;
+            }
+            else {
+                std::string erhs = exp_log_product_text(a, *Ri.result).value_or("e^(" + exp_arg_text(a, *Ri.result) + ")");
+                steps.push_back(left + " = A*" + erhs);
+                answer = left + " = A*" + erhs;
             }
         }
         return casio::exam_block("separable differential equation", steps, answer);

@@ -6075,6 +6075,37 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
     (void)wrote;
 }
 
+static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    auto lin = symbolic_linear_parts(a, rearr, var);
+    if(!lin) return std::nullopt;
+    std::vector<std::string> vars;
+    collect_symbols(a, rearr, vars);
+    bool has_parameter = false;
+    for(auto const &v : vars) {
+        if(v != var) {
+            has_parameter = true;
+            break;
+        }
+    }
+    if(!has_parameter) return std::nullopt;
+    NodeId ans = casio::simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
+    Rational cm, cc;
+    NodeId bm = 0, bc = 0;
+    bool hm = false, hc = false;
+    split_coeff_body(a, lin->m, cm, bm, hm);
+    split_coeff_body(a, lin->c, cc, bc, hc);
+    if(hm && hc && casio::same_by_sig(a, bm, bc)) {
+        Rational q = r_div(r_neg(cc), cm);
+        ans = casio::num(a, q.num, q.den);
+    }
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, rearr) + " = 0");
+    out.push_back(format_expr(a, lin->m) + " != 0");
+    out.push_back(var + " = " + format_expr(a, ans));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
     auto alts = log_residual_alts(a, rearr);
@@ -8699,6 +8730,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
+        if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), sl->begin(), sl->end());
+            return out;
+        }
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
