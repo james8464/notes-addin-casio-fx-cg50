@@ -235,6 +235,7 @@ static std::optional<Rational> linear_coeff(Arena &a, NodeId n, std::string cons
 
 static NodeId divide_by_coeff(Arena &a, NodeId n, Rational coeff)
 {
+    if(coeff.num < 0) return casio::simplify(a, casio::neg(a, casio::div(a, n, a.num(r_neg(coeff)))));
     return casio::simplify(a, casio::div(a, n, a.num(coeff)));
 }
 
@@ -5649,6 +5650,13 @@ static NodeId mul_coeff(Arena &a, Rational coeff, NodeId expr)
         Rational c = coeff;
         for(NodeId kid : x.kids) {
             if(auto r = as_num(a, kid)) c = r_mul(c, *r);
+            else if(a.get(kid).kind == NodeKind::Div) {
+                Node const &d = a.get(kid);
+                if(auto den = as_num(a, d.b)) {
+                    c = r_div(c, *den);
+                    kids.push_back(d.a);
+                } else kids.push_back(kid);
+            }
             else kids.push_back(kid);
         }
         if(c.num == 0) return casio::num(a, 0);
