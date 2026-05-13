@@ -276,6 +276,21 @@ CASES = [
         ("n = -1/2: C(n,0) = 1", "C(n,4) = 35/128", "Terms: 1 - 1/2*(2*x)", "Valid for abs(x) < 1/2", "1 - x + 3/2*x^2 - 5/2*x^3 + 35/8*x^4"),
     ),
     (
+        "binomial two-linear PF series",
+        ["--alg", "binomial((5*x+3)/((1-x)*(1+3*x)),x,0,3)"],
+        ("PF: 2/(- x + 1) + 1/(3*x + 1)", "Valid for abs(x) < 1/3", "3 - x + 11*x^2 - 25*x^3"),
+    ),
+    (
+        "binomial product with shifted power",
+        ["--alg", "binomial(2*x/(1+2*x)^3,x,0,4)"],
+        ("(2*x + 1)^-3", "Valid for abs(x) < 1/2", "2*x - 12*x^2 + 48*x^3 - 160*x^4"),
+    ),
+    (
+        "binomial combined cancellation",
+        ["--alg", "binomial(2*(1+4*x)^(1/2)+4/(1+x),x,0,3)"],
+        ("(4*x + 1)^1/2", "(x + 1)^-1", "Valid for abs(x) < 1/4", "6 + 4*x^3"),
+    ),
+    (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
         ("u=a^x", "x = [0, 2]"),

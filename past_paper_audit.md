@@ -16,10 +16,12 @@ Corpus:
 Status:
 - 217 PDFs downloaded/extracted.
 - 62 MadAsMaths topic PDFs downloaded/extracted from the 3 requested pages.
+- Live link inventory on 2026-05-13: 24 integration + 13 trigonometry + 25 various PDFs; manifest covers all 62.
 - `trigonometric_equations.pdf` Q1-Q30 manually checked against printed answers.
 - `trigonometric_equations_introduction.pdf` Q1-Q39 manually checked against printed answers.
 - `trigonometric_general_solutions.pdf` Q1-Q33 manually checked against printed answers.
-- Other 59 MadAsMaths topic PDFs are listed but pending manual question-by-question audit.
+- `binomial_series_expansions_exam_questions.pdf` is in progress; representative calculator-testable Q1-Q14, Q20-Q22, Q30-Q32, Q40-Q42, Q50-Q52 checked.
+- Other 58 MadAsMaths topic PDFs are listed but pending manual question-by-question audit.
 - This is not a complete 217-document or 62-topic-document manual audit yet.
 
 Current Findings:
@@ -49,6 +51,9 @@ Current Findings:
 | MADAS-ST-TRIGGEN-Q12-Q18 | PASS | Product, same-function, tan-difference, and tan-sum general routes now show identities and families. |
 | MADAS-ST-TRIGGEN-Q19-Q27 | PASS | Harder tan²/sin², sin(2A), R-form, and sum-to-product general routes now avoid interval-only output. |
 | MADAS-ST-TRIGGEN-Q28-Q33 | PASS | Non-calculator same-function/cofunction general equations now output exact families. |
+| MADAS-VAR-BINOM-Q1-Q8 | PASS | Basic, PF, product, and sum-cancellation binomial expansion families now show expansion and validity. |
+| MADAS-VAR-BINOM-Q14-Q32 | PASS-PARTIAL | PF and repeated-linear forms pass; symbolic coefficient-fit questions work partly via `fitconst`, but need richer coefficient-equating lines. |
+| MADAS-VAR-BINOM-Q40-Q52 | PASS | Powered-linear denominator products and quotient expansions now multiply truncated series correctly. |
 
 Next high-value implementation:
 1. Continue with the next MadAs topic PDF in `madasmaths_topic_audit_manifest.csv`.

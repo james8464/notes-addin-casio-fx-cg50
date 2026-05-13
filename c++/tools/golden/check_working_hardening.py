@@ -566,6 +566,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "binomial((5*x+3)/((1-x)*(1+3*x)),x,0,3)",
+        ["PF: 2/(- x + 1) + 1/(3*x + 1)", "Valid for abs(x) < 1/3", "Answer: 3 - x + 11*x^2 - 25*x^3"],
+        ["unsupported binomial", "ERR:"],
+    ),
+    (
+        "alg",
+        "binomial(2*x/(1+2*x)^3,x,0,4)",
+        ["(2*x + 1)^-3", "Valid for abs(x) < 1/2", "Answer: 2*x - 12*x^2 + 48*x^3 - 160*x^4"],
+        ["unsupported binomial", "ERR:"],
+    ),
+    (
+        "alg",
+        "binomial(2*(1+4*x)^(1/2)+4/(1+x),x,0,3)",
+        ["(4*x + 1)^1/2", "(x + 1)^-1", "Valid for abs(x) < 1/4", "Answer: 6 + 4*x^3"],
+        ["unsupported binomial", "ERR:"],
+    ),
+    (
+        "alg",
         "fitconst((a*x+b)*(x-2)+c*(x+1)^2=4*x^2+6*x-1,[a,b,c])",
         ["x = 0:", "x = 1:", "x = 2:", "a = 1", "b = 2", "c = 3"],
         ["Unexpected end of input", "Answer: solve(fitconst", "Route for fit constants", "ERR:"],
