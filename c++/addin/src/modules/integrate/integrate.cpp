@@ -1619,6 +1619,90 @@ static std::string loose_key(std::string text)
     return out;
 }
 
+static std::optional<Rational> parse_rational_text(std::string s)
+{
+    s = trim_copy(std::move(s));
+    if(s.empty()) return std::nullopt;
+    try {
+        auto slash = s.find('/');
+        std::size_t pos = 0;
+        long long n = std::stoll(s.substr(0, slash), &pos);
+        if(pos != (slash == std::string::npos ? s.size() : slash)) return std::nullopt;
+        long long d = 1;
+        if(slash != std::string::npos) {
+            std::size_t pos2 = 0;
+            d = std::stoll(s.substr(slash + 1), &pos2);
+            if(pos2 != s.size() - slash - 1 || d == 0) return std::nullopt;
+        }
+        Rational r{n, d};
+        r.normalize();
+        return r;
+    }
+    catch(...) {
+        return std::nullopt;
+    }
+}
+
+static std::string rat_text(Rational r);
+
+static std::string combine_same_formatted_terms(std::string const &text)
+{
+    struct Term
+    {
+        Rational coeff{1, 1};
+        std::string body;
+    };
+    std::vector<Term> terms;
+    std::string cur;
+    int depth = 0, sign = 1;
+    auto flush = [&]() {
+        std::string t = trim_copy(cur);
+        cur.clear();
+        if(t.empty()) return false;
+        Rational coeff{sign, 1};
+        std::string body = t;
+        int d = 0;
+        for(std::size_t i = 0; i < t.size(); ++i) {
+            if(t[i] == '(') ++d;
+            else if(t[i] == ')') --d;
+            else if(t[i] == '*' && d == 0) {
+                auto q = parse_rational_text(t.substr(0, i));
+                if(q) {
+                    coeff = r_mul(coeff, *q);
+                    body = trim_copy(t.substr(i + 1));
+                }
+                break;
+            }
+        }
+        terms.push_back({coeff, body});
+        return true;
+    };
+    for(std::size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if(c == '(') ++depth;
+        else if(c == ')') --depth;
+        if(depth == 0 && (c == '+' || c == '-') && i > 0 && i + 1 < text.size() && text[i - 1] == ' ' && text[i + 1] == ' ') {
+            flush();
+            sign = c == '+' ? 1 : -1;
+            ++i;
+            continue;
+        }
+        cur.push_back(c);
+    }
+    flush();
+    if(terms.size() < 2) return text;
+    std::string body = terms.front().body;
+    Rational coeff{0, 1};
+    for(auto const &t : terms) {
+        if(t.body != body) return text;
+        coeff = r_add(coeff, t.coeff);
+    }
+    if(r_zero(coeff)) return "0";
+    if(r_eq(coeff, Rational{1, 1})) return body;
+    if(r_eq(coeff, Rational{-1, 1})) return "-" + body;
+    return rat_text(coeff) + "*" + body;
+}
+
 static bool parse_integer_over_param(std::string const &text, std::string const &param, long long &n)
 {
     std::string key = compact_key(text);
@@ -8647,6 +8731,10 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     }
 
     bool expand_poly = false;
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Add) expand_poly = true;
+    }
     if(x.kind == NodeKind::Mul) {
         for(NodeId kid : x.kids) {
             Node const &kn = a.get(kid);
@@ -9794,6 +9882,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
             if(simple_const) answer = tail + " - " + answer.substr(2, plus - 2);
         }
     }
+    answer = combine_same_formatted_terms(answer);
     return casio::exam_block("definite integration", steps, answer);
 }
 
@@ -9832,6 +9921,30 @@ static std::optional<std::vector<std::string>> run_mean_value(Arena &arena, Requ
     steps.push_back("Mean value = Integral_" + lo_text + "^" + hi_text + " f(" + var + ") d" + var + " / (" + hi_text + "-" + lo_text + ").");
     steps.push_back("Use F(" + hi_text + ") - F(" + lo_text + "), then divide by interval width.");
     return casio::exam_block("mean value of a function", steps, format_expr_human(arena, ans));
+}
+
+static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena, Request const &req)
+{
+    auto run_inner = [&](std::string const &setup, std::string const &integrand, std::string const &var,
+                         std::string const &lo, std::string const &hi) -> std::vector<std::string> {
+        Request inner = req;
+        inner.expr = "defint(" + integrand + "," + var + "," + lo + "," + hi + ")";
+        auto lines = run_definite_integral(arena, inner);
+        if(!lines) return {setup, "No elementary primitive found"};
+        lines->insert(lines->begin(), setup);
+        return *lines;
+    };
+
+    if(auto args = unwrap_call_args(req.expr, "volume_x"); args && args->size() == 4) {
+        return run_inner("V = pi*Int(y^2) dx.", "pi*(" + (*args)[0] + ")^2", (*args)[1], (*args)[2], (*args)[3]);
+    }
+    if(auto args = unwrap_call_args(req.expr, "volume_y"); args && args->size() == 4) {
+        return run_inner("V = pi*Int(x^2) dy.", "pi*(" + (*args)[0] + ")^2", (*args)[1], (*args)[2], (*args)[3]);
+    }
+    if(auto args = unwrap_call_args(req.expr, "area_between"); args && args->size() == 5) {
+        return run_inner("A = Int(upper-lower) dx.", "(" + (*args)[0] + ")-(" + (*args)[1] + ")", (*args)[2], (*args)[3], (*args)[4]);
+    }
+    return std::nullopt;
 }
 
 static bool contains_branch_inverse_trig(Arena &a, NodeId n)
@@ -9991,6 +10104,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter f."};
 
     if(auto mean = run_mean_value(arena, req)) return *mean;
+    if(auto wrapped = run_integral_wrapper(arena, req)) return *wrapped;
 
     std::string method_key = compact_key(req.method);
     if(method_key == "pf" || method_key == "partfrac") {

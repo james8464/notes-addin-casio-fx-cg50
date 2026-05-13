@@ -89,6 +89,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x = []", "ERR:", "Unexpected token"],
     ),
     (
+        "trig",
+        "cosec(x)/sin(x)^3,method=auto",
+        ["cosec(x)*sin(x)^-3=cosec(x)^4", "cosec(x)^4"],
+        ["Answer:cosec(x)*sin(x)^-3", "ERR:"],
+    ),
+    (
+        "trig",
+        "(1-sin(x)^2)/sin(x)^2,method=auto",
+        ["1-sin(u)^2=cos(u)^2", "cot(x)^2"],
+        ["Answer:(-sin(x)^2+1)*sin(x)^-2", "ERR:"],
+    ),
+    (
+        "trig",
+        "cot(theta)*sec(theta),method=auto",
+        ["cot(theta)*sec(theta)=cosec(theta)", "cosec(theta)"],
+        ["Answer:cot(theta)*sec(theta)", "ERR:"],
+    ),
+    (
         "alg",
         "solve(z^6=1,z)",
         ["z^6 = 1", "k = 0, 1, ..., 5", "z = [1, e^(pi/3*i), e^(2*pi/3*i), -1"],
@@ -455,6 +473,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "defint(e^(2*x)/(1+e^(2*x)),x,0,ln(7))",
         ["u=1+e^(2*x)", "du=2*e^(2*x) dx", "I=(1/2)Int(1/u) du", "F(ln(7)) - F(0)"],
         ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint((4-x^2)^2,x,0,2)",
+        ["Expand polynomial:-8*x^2+x^4+16", "F(2)-F(0)", "256/15"],
+        ["Expected ) but found ,", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "volume_x(4-x^2,x,-2,2)",
+        ["V=pi*Int(y^2)dx", "Expand polynomial:-8*x^2+x^4+16", "512*pi/15"],
+        ["Expected ) but found ,", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "area_between(6+8*e^(-3*x),e^(3*x)-1,x,0,ln(2))",
+        ["A=Int(upper-lower)dx", "F(ln(2))-F(0)", "7*ln(2)"],
+        ["Expected ) but found ,", "No elementary primitive"],
     ),
     (
         "int",

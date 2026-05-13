@@ -149,6 +149,21 @@ CASES = [
         ("Multiply by sin(x)*cos(x)", "(sin(x)^2+cos(x)^2)^2 - 2*sin(x)*cos(x) = 0", "sin(2*x) = 1", "x = [45, 225]"),
     ),
     (
+        "madas minor trig ratio powers",
+        ["--trig", "cosec(x)/sin(x)^3,method=auto"],
+        ("cosec(x)*sin(x)^-3 = cosec(x)^4", "cosec(x)^4"),
+    ),
+    (
+        "madas pythagorean quotient simplification",
+        ["--trig", "(1-sin(x)^2)/sin(x)^2,method=auto"],
+        ("1-sin(u)^2 = cos(u)^2", "cot(x)^2"),
+    ),
+    (
+        "madas cot sec cancellation",
+        ["--trig", "cot(theta)*sec(theta),method=auto"],
+        ("cot(theta)*sec(theta) = cosec(theta)", "cosec(theta)"),
+    ),
+    (
         "nested surd rewrite",
         ["--alg", "rewrite(sqrt(12+sqrt(140)))"],
         ("sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "sqrt(7)+sqrt(5)"),
@@ -373,6 +388,21 @@ CASES = [
         ["--int", "(defint(2*x/sqrt(2*x+4),x,(0),(7)))"],
         ("u^2 = 2*x + 4", "x = 0 => u = 2, x = 7 => u = sqrt(18)", "I = Int_2^sqrt(18) (u^2 - 4) du"),
         ("ERR:",),
+    ),
+    (
+        "defint expands polynomial power",
+        ["--int", "defint((4-x^2)^2,x,0,2)"],
+        ("Expand polynomial: - 8*x^2 + x^4 + 16", "F(2) - F(0)", "256/15"),
+    ),
+    (
+        "volume wrapper x-axis",
+        ["--int", "volume_x(4-x^2,x,-2,2)"],
+        ("V = pi*Int(y^2) dx", "Expand polynomial: - 8*x^2 + x^4 + 16", "512*pi/15"),
+    ),
+    (
+        "area between wrapper exact logs",
+        ["--int", "area_between(6+8*e^(-3*x),e^(3*x)-1,x,0,ln(2))"],
+        ("A = Int(upper-lower) dx", "F(ln(2)) - F(0)", "7*ln(2)"),
     ),
     (
         "cos reverse chain concise",

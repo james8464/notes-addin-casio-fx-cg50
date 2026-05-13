@@ -5034,14 +5034,15 @@ static std::optional<SCRational> sc_rat_expr(Arena &a, NodeId n)
     }
     if(x.kind == NodeKind::Pow) {
         auto e = as_num(a, x.b);
-        if(!e || e->den != 1 || e->num < 0 || e->num > 4) return std::nullopt;
+        if(!e || e->den != 1 || std::llabs(e->num) > SC_MAX_DEG) return std::nullopt;
         auto p = sc_rat_expr(a, x.a);
         if(!p) return std::nullopt;
-        auto n1 = sc_pow_poly(p->n, static_cast<int>(e->num));
-        auto d1 = sc_pow_poly(p->d, static_cast<int>(e->num));
+        auto q = static_cast<int>(std::llabs(e->num));
+        auto n1 = sc_pow_poly(p->n, q);
+        auto d1 = sc_pow_poly(p->d, q);
         if(!n1 || !d1) return std::nullopt;
-        p->n = *n1;
-        p->d = *d1;
+        p->n = e->num >= 0 ? *n1 : *d1;
+        p->d = e->num >= 0 ? *d1 : *n1;
         return p;
     }
     return std::nullopt;
@@ -5065,6 +5066,127 @@ static std::string sc_poly_text(SCFullPoly const &p)
             else out += std::string(v < 0 ? "-" : "+") + body;
         }
     return out.empty() ? "0" : out;
+}
+
+static bool sc_one_term(SCFullPoly const &p, int &s, int &c, double &k)
+{
+    bool seen = false;
+    for(int si = 0; si <= SC_MAX_DEG; ++si)
+        for(int ci = 0; ci <= SC_MAX_DEG; ++ci) {
+            double v = p.k[si][ci];
+            if(std::fabs(v) < 1e-10) continue;
+            if(seen) return false;
+            seen = true;
+            s = si;
+            c = ci;
+            k = v;
+        }
+    return seen;
+}
+
+static bool sc_pythag_complement(SCFullPoly const &p, int &s, int &c, double &k)
+{
+    int count = 0;
+    for(int si = 0; si <= SC_MAX_DEG; ++si)
+        for(int ci = 0; ci <= SC_MAX_DEG; ++ci)
+            if(std::fabs(p.k[si][ci]) > 1e-10) ++count;
+    if(count != 2 || std::fabs(p.k[0][0] - 1.0) > 1e-10) return false;
+    if(std::fabs(p.k[2][0] + 1.0) < 1e-10) {
+        s = 0;
+        c = 2;
+        k = 1.0;
+        return true;
+    }
+    if(std::fabs(p.k[0][2] + 1.0) < 1e-10) {
+        s = 2;
+        c = 0;
+        k = 1.0;
+        return true;
+    }
+    return false;
+}
+
+static std::string trig_factor_text(std::string const &name, std::string const &arg, int p)
+{
+    return name + "(" + arg + ")" + (p == 1 ? "" : "^" + std::to_string(p));
+}
+
+static std::string sc_ratio_power_text(int s, int c, double k, std::string const &arg)
+{
+    std::vector<std::string> factors;
+    auto add = [&](std::string const &name, int p) {
+        if(p > 0) factors.push_back(trig_factor_text(name, arg, p));
+    };
+    if(s > 0 && c < 0) {
+        int m = std::min(s, -c);
+        add("tan", m);
+        s -= m;
+        c += m;
+    }
+    if(c > 0 && s < 0) {
+        int m = std::min(c, -s);
+        add("cot", m);
+        c -= m;
+        s += m;
+    }
+    add("sin", s);
+    add("cos", c);
+    add("cosec", -s);
+    add("sec", -c);
+
+    std::string body;
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        if(i) body += "*";
+        body += factors[i];
+    }
+    if(body.empty()) body = "1";
+    bool neg = k < -1e-10;
+    double av = std::fabs(k);
+    if(std::fabs(av - 1.0) > 1e-10 || body == "1") {
+        std::string coeff = trig_root_text(av);
+        if(body == "1") body = coeff;
+        else body = coeff + "*" + body;
+    }
+    if(neg) body = "-" + body;
+    return body;
+}
+
+static std::optional<std::vector<std::string>> minor_trig_ratio_rewrite(Arena &a, NodeId n)
+{
+    auto r = sc_rat_expr(a, n);
+    if(!r || !r->has_arg) return std::nullopt;
+    int ns = 0, nc = 0, ds = 0, dc = 0;
+    double nk = 1.0, dk = 1.0;
+    if(!sc_one_term(r->d, ds, dc, dk) || std::fabs(dk) < 1e-12) return std::nullopt;
+    if(!sc_one_term(r->n, ns, nc, nk) && !sc_pythag_complement(r->n, ns, nc, nk)) return std::nullopt;
+
+    int s = ns - ds, c = nc - dc;
+    double k = nk / dk;
+    std::string arg = format_expr(a, r->arg);
+    std::string ans = sc_ratio_power_text(s, c, k, arg);
+    std::string src = format_expr(a, n);
+    if(compact_key(src) == compact_key(ans)) return std::nullopt;
+
+    std::vector<std::string> steps;
+    steps.push_back("u = " + arg + ".");
+    if(ds > 0 || dc > 0) {
+        std::string dom;
+        if(ds > 0) dom += "sin(u) != 0";
+        if(dc > 0) {
+            if(!dom.empty()) dom += ", ";
+            dom += "cos(u) != 0";
+        }
+        steps.push_back(dom + ".");
+    }
+    steps.push_back("tan(u)=sin(u)/cos(u), cot(u)=cos(u)/sin(u).");
+    steps.push_back("sec(u)=1/cos(u), cosec(u)=1/sin(u).");
+    if(sc_pythag_complement(r->n, ns, nc, nk)) {
+        if(ns == 0 && nc == 2) steps.push_back("1-sin(u)^2 = cos(u)^2.");
+        else steps.push_back("1-cos(u)^2 = sin(u)^2.");
+    }
+    steps.push_back(src + " = " + ans + ".");
+    steps.push_back(ans);
+    return steps;
 }
 
 static double sc_poly_eval(SCFullPoly const &p, double s, double c)
@@ -6664,6 +6786,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto py_key = direct_pythagorean_key(key)) return *py_key;
         if(auto py = direct_pythagorean_rewrite(arena, raw)) return *py;
         if(auto da = direct_double_angle_rewrite(arena, raw)) return *da;
+        if(auto rr = minor_trig_ratio_rewrite(arena, raw)) return *rr;
         if(auto route = linear_sincos_rform(arena, s)) return *route;
         if(key == "sqrt(3)sin(x)+cos(x)" || key == "cos(x)+sqrt(3)sin(x)") {
             return casio::exam_block(
@@ -6810,6 +6933,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
 
     NodeId parsed = casio::parse_expr(arena, req.expr);
+    if(auto rr = minor_trig_ratio_rewrite(arena, parsed)) return *rr;
     if(auto one_minus_square = one_minus_trig_square_rewrite(arena, parsed)) return *one_minus_square;
     if(auto compound = compound_angle_rewrite(arena, parsed)) return *compound;
     if(auto base = sqrt_square_base(arena, parsed)) {
