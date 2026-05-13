@@ -6554,6 +6554,116 @@ static NodeId ln_abs(Arena &a, NodeId n)
     return casio::fn(a, "log", casio::fn(a, "abs", n));
 }
 
+static std::optional<NodeId> rc_diff(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num || x.kind == NodeKind::Const) return casio::num(a, 0);
+    if(x.kind == NodeKind::Sym) return casio::num(a, x.text == var ? 1 : 0);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> terms;
+        for(NodeId k : x.kids) {
+            auto d = rc_diff(a, k, var);
+            if(!d) return std::nullopt;
+            terms.push_back(*d);
+        }
+        return casio::simplify(a, casio::add(a, terms));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> sum;
+        for(std::size_t i = 0; i < x.kids.size(); ++i) {
+            auto dk = rc_diff(a, x.kids[i], var);
+            if(!dk) return std::nullopt;
+            std::vector<NodeId> prod;
+            for(std::size_t j = 0; j < x.kids.size(); ++j) prod.push_back(i == j ? *dk : x.kids[j]);
+            sum.push_back(casio::mul(a, prod));
+        }
+        return casio::simplify(a, casio::add(a, sum));
+    }
+    if(x.kind == NodeKind::Div) {
+        auto du = rc_diff(a, x.a, var);
+        auto dv = rc_diff(a, x.b, var);
+        if(!du || !dv) return std::nullopt;
+        NodeId top = casio::add(a, {casio::mul(a, {*du, x.b}), casio::neg(a, casio::mul(a, {x.a, *dv}))});
+        return casio::simplify(a, casio::div(a, top, casio::power(a, x.b, casio::num(a, 2))));
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && contains_var(a, x.a, var) && !contains_var(a, x.b, var)) {
+            Rational em1 = *e;
+            em1.num -= em1.den;
+            em1.normalize();
+            auto du = rc_diff(a, x.a, var);
+            if(!du) return std::nullopt;
+            return casio::simplify(a, casio::mul(a, {a.num(*e), casio::power(a, x.a, a.num(em1)), *du}));
+        }
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Num && base.num.num > 0 && !contains_var(a, x.a, var) && contains_var(a, x.b, var)) {
+            auto dv = rc_diff(a, x.b, var);
+            if(!dv) return std::nullopt;
+            return casio::simplify(a, casio::mul(a, {n, casio::fn(a, "log", x.a), *dv}));
+        }
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && contains_var(a, x.b, var)) {
+            auto dv = rc_diff(a, x.b, var);
+            if(!dv) return std::nullopt;
+            return casio::simplify(a, casio::mul(a, {n, *dv}));
+        }
+        return std::nullopt;
+    }
+    if(x.kind == NodeKind::Fn) {
+        auto du = rc_diff(a, x.a, var);
+        if(!du) return std::nullopt;
+        switch(x.fkind) {
+        case FnKind::Sin: return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Cos, x.a), *du}));
+        case FnKind::Cos: return casio::simplify(a, casio::mul(a, {casio::neg(a, a.fn(FnKind::Sin, x.a)), *du}));
+        case FnKind::Tan: return casio::simplify(a, casio::mul(a, {casio::power(a, a.fn(FnKind::Sec, x.a), casio::num(a, 2)), *du}));
+        case FnKind::Sec: return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Sec, x.a), a.fn(FnKind::Tan, x.a), *du}));
+        case FnKind::Cosec: return casio::simplify(a, casio::mul(a, {casio::neg(a, casio::mul(a, {a.fn(FnKind::Cosec, x.a), a.fn(FnKind::Cot, x.a)})), *du}));
+        case FnKind::Cot: return casio::simplify(a, casio::mul(a, {casio::neg(a, casio::power(a, a.fn(FnKind::Cosec, x.a), casio::num(a, 2))), *du}));
+        case FnKind::Exp: return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Exp, x.a), *du}));
+        case FnKind::Log: return casio::simplify(a, casio::div(a, *du, x.a));
+        case FnKind::Sqrt: return casio::simplify(a, casio::div(a, *du, casio::mul(a, {casio::num(a, 2), a.fn(FnKind::Sqrt, x.a)})));
+        default: return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::pair<Rational, NodeId> split_rat_factor(Arena &a, NodeId n)
+{
+    if(auto r = as_num(a, n)) return {*r, casio::num(a, 1)};
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return {Rational{1, 1}, n};
+    Rational c{1, 1};
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else rest.push_back(k);
+    }
+    return {c, rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest))};
+}
+
+static std::optional<Rational> proportional_node(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto L = split_rat_factor(a, casio::simplify(a, lhs));
+    auto R = split_rat_factor(a, casio::simplify(a, rhs));
+    if(r_zero(R.first) || !same_expr(a, L.second, R.second)) return std::nullopt;
+    return r_div(L.first, R.first);
+}
+
+static std::optional<NodeId> integrate_log_derivative(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto d = rc_diff(a, x.b, var);
+    if(!d) return std::nullopt;
+    auto k = proportional_node(a, x.a, *d);
+    if(!k) return std::nullopt;
+    steps.push_back("Step 2: Let u=" + format_expr_human(a, x.b) + ".");
+    steps.push_back("Step 3: du/d" + var + "=" + format_expr_human(a, *d) + ".");
+    steps.push_back("Step 4: Integral has form k*u'/u.");
+    return casio::simplify(a, mul_coeff(a, *k, ln_abs(a, x.b)));
+}
+
 static Poly poly_derivative(Poly p)
 {
     if(!p.ok) return p;
@@ -8732,6 +8842,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(auto ld = integrate_log_derivative(a, expr, var, out.steps)) {
+        out.result = *ld;
+        out.steps.push_back("Step 5: Integral = k*log(abs(u)) + C.");
+        return out;
+    }
+
     bool expand_poly = false;
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
@@ -9247,6 +9363,21 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             }
             out.steps.push_back("Step 4: Simplify. Add constant C.");
             return out;
+        }
+    }
+
+    if(x.kind == NodeKind::Div) {
+        auto top = as_num(a, x.a);
+        Node const &den = a.get(x.b);
+        if(top && den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
+            auto coeff = linear_coeff(a, den.a, var);
+            if(coeff && !r_zero(*coeff)) {
+                out.result = divide_by_coeff(a, mul_coeff(a, r_mul(Rational{2, 1}, *top), x.b), *coeff);
+                out.steps.push_back("Step 2: Write 1/sqrt(u) as u^(-1/2).");
+                out.steps.push_back("Step 3: Let u=" + format_expr_human(a, den.a) + ", so du/d" + var + "=" + format_expr_human(a, a.num(*coeff)) + ".");
+                out.steps.push_back("Step 4: Integral u^(-1/2) du = 2*sqrt(u).");
+                return out;
+            }
         }
     }
 

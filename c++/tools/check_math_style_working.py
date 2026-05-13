@@ -380,7 +380,7 @@ CASES = [
     (
         "defint wrapped variable",
         ["--int", "defint(e^(2*x)/(1+e^(2*x)),(x),0,ln(6))"],
-        ("I = Int(e^(2*x)/(e^(2*x) + 1)) dx", "u = 1+e^(2*x)", "F(ln(6)) - F(0)", "ln(37)/2 - ln(2)/2"),
+        ("I = Int(e^(2*x)/(e^(2*x) + 1)) dx", "u = e^(2*x) + 1", "F(ln(6)) - F(0)", "1/2*ln(37) - 1/2*ln(2)"),
         ("ERR:",),
     ),
     (
@@ -428,6 +428,21 @@ CASES = [
         "simpson table x-y lines",
         ["--int", "simpson_table([0,1,2,3,4],[1,4,9,16,25])"],
         ("x_i = 0, 1, 2, 3, 4", "S = h/3", "41.333333"),
+    ),
+    (
+        "generic denominator derivative log rule",
+        ["--int", "x^3/(x^4+2),method=reverse_chain"],
+        ("u = x^4 + 2", "du/dx = 4*x^3", "1/4*ln(abs(x^4 + 2)) + C"),
+    ),
+    (
+        "trig denominator derivative log rule",
+        ["--int", "4*sec(x)^2/tan(x),method=reverse_chain"],
+        ("u = tan(x)", "du/dx = sec(x)^2", "4*ln(abs(tan(x))) + C"),
+    ),
+    (
+        "sqrt denominator reverse chain",
+        ["--int", "6/sqrt(3*x+1)"],
+        ("1/sqrt(u) = u^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"),
     ),
     (
         "cos reverse chain concise",
