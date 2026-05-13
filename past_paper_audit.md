@@ -31,12 +31,14 @@ Current Findings:
 | PMT-FP1-2024-Q10 | GAP-HONEST | Transformed second-order DE unsupported. |
 | PMT-CP2-2024-Q6 | GAP-HONEST | Constant-coefficient second-order DE unsupported. |
 | MADAS-ST-TRIGEQ-Q1D | PASS | Generic tan/cot power substitution fixed `8*tan(phi)=cot(phi)^2`. |
-| MADAS-ST-TRIGEQ-Q2D | GAP | Need generic `sin/cosec` power substitution. |
-| MADAS-ST-TRIGEQ-Q3D | GAP | Need `sec(2x)` with `cos(2x)=2cos(x)^2-1`. |
-| MADAS-ST-TRIGEQ-Q5A-D | GAP | Need common-denominator reciprocal trig polynomial route. |
+| MADAS-ST-TRIGEQ-Q2D | PASS | Generic sin/cosec power substitution fixed `27*sin(phi)^2+8*cosec(phi)=0`. |
+| MADAS-ST-TRIGEQ-Q3D | PASS | Correct notation is `sec(phi)^2`; cos/sec power route gives `phi ≈ 1.23, 5.05`. |
+| MADAS-ST-TRIGEQ-Q5A | PASS | Sec with `sin^2` fixed using `u=cos(A)`, reciprocal, and Pythagorean identity. |
+| MADAS-ST-TRIGEQ-Q5B-D | PASS | Common-denominator reciprocal trig route now handles cot/cosec/sec mixes. |
+| MADAS-ST-TRIGEQ-Q6A-D | PASS/PARTIAL | Q6A-C match answers; Q6D works but inclusive interval syntax also returns `2*pi`. |
 
 Next high-value implementation:
-1. Add reciprocal trig polynomial route for `sin/cosec/sec/cot/tan` mixed equations.
+1. Continue MadAs trigonometric equations Q6E onward.
 2. Add second-order linear constant-coefficient DE route.
 3. Add transformed second-order route only if compact and general.
 4. Continue paper audit in batches, prioritising DE, integration, implicit/parametric, trig solves, stats tests.

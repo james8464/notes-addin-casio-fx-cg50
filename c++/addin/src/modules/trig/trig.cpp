@@ -1845,17 +1845,17 @@ static std::string trig_quad_text(double a, double b, double c)
     return out + "=0.";
 }
 
-struct TanCotPoly
+struct RecipTrigPoly
 {
     double coef[9]{};
     int min_e = 0;
     int max_e = 0;
     NodeId arg = 0;
     bool has_arg = false;
-    bool used_cot = false;
+    bool used_recip = false;
 };
 
-static bool tan_cot_factor(Arena &a, NodeId n, TanCotPoly &p, double &c, int &e)
+static bool recip_trig_factor(Arena &a, NodeId n, RecipTrigPoly &p, double &c, int &e, FnKind base, FnKind recip)
 {
     Node const &x = a.get(n);
     if(!has_any_symbol(a, n)) {
@@ -1865,36 +1865,38 @@ static bool tan_cot_factor(Arena &a, NodeId n, TanCotPoly &p, double &c, int &e)
         return true;
     }
     if(x.kind == NodeKind::Sym) return false;
-    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Tan || x.fkind == FnKind::Cot)) {
+    if(x.kind == NodeKind::Fn && (x.fkind == base || x.fkind == recip)) {
         if(p.has_arg && !same_sig(a, p.arg, x.a)) return false;
         p.arg = x.a;
         p.has_arg = true;
-        e += x.fkind == FnKind::Tan ? 1 : -1;
-        p.used_cot = p.used_cot || x.fkind == FnKind::Cot;
+        e += x.fkind == base ? 1 : -1;
+        p.used_recip = p.used_recip || x.fkind == recip;
         return true;
     }
     if(x.kind == NodeKind::Pow) {
         Node const &b = a.get(x.a);
         auto q = as_num(a, x.b);
         if(!q || q->den != 1 || q->num < 1 || q->num > 4) return false;
-        if(b.kind == NodeKind::Fn && (b.fkind == FnKind::Tan || b.fkind == FnKind::Cot)) {
+        if(b.kind == NodeKind::Fn && (b.fkind == base || b.fkind == recip)) {
             if(p.has_arg && !same_sig(a, p.arg, b.a)) return false;
             p.arg = b.a;
             p.has_arg = true;
-            e += (b.fkind == FnKind::Tan ? 1 : -1) * (int)q->num;
-            p.used_cot = p.used_cot || b.fkind == FnKind::Cot;
+            e += (b.fkind == base ? 1 : -1) * (int)q->num;
+            p.used_recip = p.used_recip || b.fkind == recip;
             return true;
         }
     }
     if(x.kind == NodeKind::Mul) {
         for(NodeId k : x.kids)
-            if(!tan_cot_factor(a, k, p, c, e)) return false;
+            if(!recip_trig_factor(a, k, p, c, e, base, recip)) return false;
         return true;
     }
     if(x.kind == NodeKind::Div) {
         double dc = 1.0;
         int de = 0;
-        if(!tan_cot_factor(a, x.a, p, c, e) || !tan_cot_factor(a, x.b, p, dc, de) || std::fabs(dc) < 1e-12) return false;
+        if(!recip_trig_factor(a, x.a, p, c, e, base, recip) ||
+           !recip_trig_factor(a, x.b, p, dc, de, base, recip) ||
+           std::fabs(dc) < 1e-12) return false;
         c /= dc;
         e -= de;
         return true;
@@ -1902,31 +1904,31 @@ static bool tan_cot_factor(Arena &a, NodeId n, TanCotPoly &p, double &c, int &e)
     return false;
 }
 
-static bool add_tan_cot_term(Arena &a, NodeId term, TanCotPoly &p)
+static bool add_recip_trig_term(Arena &a, NodeId term, RecipTrigPoly &p, FnKind base, FnKind recip)
 {
     double c = 1.0;
     int e = 0;
-    if(!tan_cot_factor(a, term, p, c, e) || e < -4 || e > 4) return false;
+    if(!recip_trig_factor(a, term, p, c, e, base, recip) || e < -4 || e > 4) return false;
     p.coef[e + 4] += c;
     p.min_e = std::min(p.min_e, e);
     p.max_e = std::max(p.max_e, e);
     return true;
 }
 
-static std::optional<TanCotPoly> collect_tan_cot_poly(Arena &a, NodeId residual)
+static std::optional<RecipTrigPoly> collect_recip_trig_poly(Arena &a, NodeId residual, FnKind base, FnKind recip)
 {
-    TanCotPoly p;
+    RecipTrigPoly p;
     Node const &r = a.get(residual);
     if(r.kind == NodeKind::Add) {
         for(NodeId k : r.kids)
-            if(!add_tan_cot_term(a, k, p)) return std::nullopt;
+            if(!add_recip_trig_term(a, k, p, base, recip)) return std::nullopt;
     }
-    else if(!add_tan_cot_term(a, residual, p)) return std::nullopt;
+    else if(!add_recip_trig_term(a, residual, p, base, recip)) return std::nullopt;
     if(!p.has_arg || p.min_e == p.max_e) return std::nullopt;
     return p;
 }
 
-static std::string tan_poly_text(std::vector<double> const &c)
+static std::string recip_poly_text(std::vector<double> const &c)
 {
     std::string out;
     for(int i = (int)c.size() - 1; i >= 0; --i) {
@@ -1945,21 +1947,24 @@ static std::string tan_poly_text(std::vector<double> const &c)
     return out.empty() ? "0=0." : out + "=0.";
 }
 
-static std::optional<std::vector<std::string>> solve_tan_cot_poly(
+static std::optional<std::vector<std::string>> solve_recip_trig_poly(
     Arena &a,
     NodeId residual,
     std::string const &var,
     std::string const &lo_text,
     std::string const &hi_text,
-    bool rad
+    bool rad,
+    FnKind base,
+    FnKind recip
 )
 {
-    auto p = collect_tan_cot_poly(a, residual);
+    auto p = collect_recip_trig_poly(a, residual, base, recip);
     if(!p) return std::nullopt;
     int shift = -p->min_e;
     int deg = p->max_e - p->min_e;
     if(deg < 1 || deg > 3) return std::nullopt;
-    if(!p->used_cot && deg <= 1) return std::nullopt;
+    if(!p->used_recip) return std::nullopt;
+    if(base == FnKind::Tan && deg <= 1) return std::nullopt;
     std::vector<double> c((std::size_t)deg + 1, 0.0);
     for(int e = p->min_e; e <= p->max_e; ++e) c[(std::size_t)(e + shift)] = p->coef[e + 4];
     while(c.size() > 1 && std::fabs(c.back()) < 1e-12) c.pop_back();
@@ -1980,27 +1985,477 @@ static std::optional<std::vector<std::string>> solve_tan_cot_poly(
     std::vector<std::string> steps;
     std::string A = format_expr(a, p->arg);
     steps.push_back(format_expr(a, residual) + " = 0.");
-    steps.push_back("u=tan(" + A + ").");
-    if(p->used_cot) steps.push_back("cot(" + A + ")=1/u, u!=0.");
-    if(shift > 0) steps.push_back("Multiply by u^" + std::to_string(shift) + ".");
-    steps.push_back(tan_poly_text(c));
+    std::string bf = trig_name(base);
+    std::string rf = trig_name(recip);
+    steps.push_back("u=" + bf + "(" + A + ").");
+    steps.push_back(rf + "(" + A + ")=1/u, u!=0.");
+    if(shift > 0) steps.push_back(std::string("Multiply by ") + (shift == 1 ? "u" : "u^" + std::to_string(shift)) + ".");
+    steps.push_back(recip_poly_text(c));
     std::string rline = "u=";
     bool any = false;
     for(double r : roots) {
         if(p->min_e < 0 && std::fabs(r) < 1e-10) {
-            steps.push_back("Reject u=0: cot undefined.");
+            steps.push_back("Reject u=0: " + rf + " undefined.");
+            continue;
+        }
+        if((base == FnKind::Sin || base == FnKind::Cos) && (r < -1.0 - 1e-10 || r > 1.0 + 1e-10)) {
+            steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
             continue;
         }
         if(any) rline += " or u=";
         rline += trig_root_text(r);
         any = true;
-        auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, r));
+        auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(base, r));
         for(double x : vals) add_unique(xs, x);
     }
     if(any) steps.push_back(rline + ".");
-    steps.push_back("tan(" + A + ")=u.");
+    steps.push_back(bf + "(" + A + ")=u.");
+    if(any && base != FnKind::Tan) {
+        for(double r : roots) {
+            if(r >= -1.0 - 1e-10 && r <= 1.0 + 1e-10 && !(p->min_e < 0 && std::fabs(r) < 1e-10)) {
+                steps.push_back(trig_base_angle_line(base, A, r));
+                steps.push_back(trig_alpha_family_line(base, A, r, rad));
+            }
+        }
+    }
     steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
     std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+struct SecSin2Poly
+{
+    double c0 = 0.0; // sec(A)
+    double c1 = 0.0; // constant
+    double c2 = 0.0; // sec(A)*sin(A)^2
+    NodeId arg = 0;
+    bool has_arg = false;
+};
+
+static bool same_sec_sin_arg(Arena &a, SecSin2Poly const &p, NodeId arg)
+{
+    return !p.has_arg || same_sig(a, p.arg, arg);
+}
+
+static bool add_sec_sin2_term(Arena &a, NodeId n, SecSin2Poly &p)
+{
+    if(!has_any_symbol(a, n)) {
+        auto v = numeric_eval(a, n, 0.0);
+        if(!v || !std::isfinite(*v)) return false;
+        p.c1 += *v;
+        return true;
+    }
+    std::vector<NodeId> factors;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) factors = x.kids;
+    else factors.push_back(n);
+    double coeff = 1.0;
+    bool has_sec = false;
+    bool has_sin2 = false;
+    for(NodeId f : factors) {
+        Node const &fn = a.get(f);
+        if(!has_any_symbol(a, f)) {
+            auto v = numeric_eval(a, f, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            coeff *= *v;
+            continue;
+        }
+        if(fn.kind == NodeKind::Fn && fn.fkind == FnKind::Sec) {
+            if(!same_sec_sin_arg(a, p, fn.a)) return false;
+            if(!p.has_arg) {
+                p.arg = fn.a;
+                p.has_arg = true;
+            }
+            has_sec = true;
+            continue;
+        }
+        if(fn.kind == NodeKind::Pow) {
+            Node const &b = a.get(fn.a);
+            auto q = as_num(a, fn.b);
+            if(b.kind == NodeKind::Fn && b.fkind == FnKind::Sin && q && q->den == 1 && q->num == 2) {
+                if(!same_sec_sin_arg(a, p, b.a)) return false;
+                if(!p.has_arg) {
+                    p.arg = b.a;
+                    p.has_arg = true;
+                }
+                has_sin2 = true;
+                continue;
+            }
+        }
+        return false;
+    }
+    if(has_sec && has_sin2) p.c2 += coeff;
+    else if(has_sec) p.c0 += coeff;
+    else return false;
+    return true;
+}
+
+static std::optional<SecSin2Poly> collect_sec_sin2_poly(Arena &a, NodeId residual)
+{
+    SecSin2Poly p;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) {
+        for(NodeId k : r.kids)
+            if(!add_sec_sin2_term(a, k, p)) return std::nullopt;
+    }
+    else if(!add_sec_sin2_term(a, residual, p)) return std::nullopt;
+    if(!p.has_arg || std::fabs(p.c2) < 1e-12) return std::nullopt;
+    return p;
+}
+
+static std::optional<std::vector<std::string>> solve_sec_sin2_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_sec_sin2_poly(a, residual);
+    if(!p) return std::nullopt;
+    double qa = -p->c2;
+    double qb = p->c1;
+    double qc = p->c0 + p->c2;
+    auto roots = solve_quadratic_d(qa, qb, qc);
+    if(roots.empty()) return std::nullopt;
+    std::string A = format_expr(a, p->arg);
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "u=cos(" + A + ").",
+        "sec(" + A + ")=1/u, sin(" + A + ")^2=1-u^2.",
+        "Multiply by u.",
+        trig_quad_text(qa, qb, qc),
+    };
+    std::vector<double> xs;
+    std::string rline = "u=";
+    bool any = false;
+    for(double r : roots) {
+        if(std::fabs(r) < 1e-10) {
+            steps.push_back("Reject u=0: sec undefined.");
+            continue;
+        }
+        if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) {
+            steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
+            continue;
+        }
+        if(any) rline += " or u=";
+        rline += trig_root_text(r);
+        any = true;
+        auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, r));
+        for(double x : vals) add_unique(xs, x);
+    }
+    if(any) steps.push_back(rline + ".");
+    for(double r : roots) {
+        if(std::fabs(r) >= 1e-10 && r >= -1.0 - 1e-10 && r <= 1.0 + 1e-10) {
+            steps.push_back("cos(" + A + ")=" + trig_root_text(r) + ".");
+            steps.push_back(trig_base_angle_line(FnKind::Cos, A, r));
+            steps.push_back(trig_alpha_family_line(FnKind::Cos, A, r, rad));
+        }
+    }
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+struct SCTerm
+{
+    double k = 0.0;
+    int s = 0;
+    int c = 0;
+};
+
+struct SCPoly
+{
+    std::vector<SCTerm> terms;
+    NodeId arg = 0;
+    bool has_arg = false;
+    int min_s = 0;
+    int min_c = 0;
+    bool den_c = false;
+};
+
+static bool sc_same_arg(Arena &a, SCPoly const &p, NodeId arg)
+{
+    return !p.has_arg || same_sig(a, p.arg, arg);
+}
+
+static bool sc_fn_power(FnKind f, int q, int &sp, int &cp)
+{
+    if(f == FnKind::Sin) sp += q;
+    else if(f == FnKind::Cos) cp += q;
+    else if(f == FnKind::Sec) cp -= q;
+    else if(f == FnKind::Cosec) sp -= q;
+    else if(f == FnKind::Tan) {
+        sp += q;
+        cp -= q;
+    }
+    else if(f == FnKind::Cot) {
+        sp -= q;
+        cp += q;
+    }
+    else return false;
+    return true;
+}
+
+static bool sc_factor(Arena &a, NodeId n, SCPoly &p, double &k, int &sp, int &cp)
+{
+    Node const &x = a.get(n);
+    if(!has_any_symbol(a, n)) {
+        auto v = numeric_eval(a, n, 0.0);
+        if(!v || !std::isfinite(*v)) return false;
+        k *= *v;
+        return true;
+    }
+    if(x.kind == NodeKind::Fn &&
+       (x.fkind == FnKind::Sin || x.fkind == FnKind::Cos || x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec ||
+        x.fkind == FnKind::Tan || x.fkind == FnKind::Cot)) {
+        if(!sc_same_arg(a, p, x.a)) return false;
+        if(!p.has_arg) {
+            p.arg = x.a;
+            p.has_arg = true;
+        }
+        return sc_fn_power(x.fkind, 1, sp, cp);
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        auto q = as_num(a, x.b);
+        if(!q || q->den != 1 || q->num < 1 || q->num > 4 || b.kind != NodeKind::Fn) return false;
+        if(!sc_same_arg(a, p, b.a)) return false;
+        if(!p.has_arg) {
+            p.arg = b.a;
+            p.has_arg = true;
+        }
+        return sc_fn_power(b.fkind, (int)q->num, sp, cp);
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId f : x.kids)
+            if(!sc_factor(a, f, p, k, sp, cp)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        double dk = 1.0;
+        int ds = 0, dc = 0;
+        if(!sc_factor(a, x.a, p, k, sp, cp) || !sc_factor(a, x.b, p, dk, ds, dc) || std::fabs(dk) < 1e-12) return false;
+        k /= dk;
+        sp -= ds;
+        cp -= dc;
+        return true;
+    }
+    return false;
+}
+
+static bool add_sc_term(Arena &a, NodeId n, SCPoly &p)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        int add_i = -1;
+        for(std::size_t i = 0; i < x.kids.size(); ++i) {
+            if(a.get(x.kids[i]).kind == NodeKind::Add) {
+                if(add_i < 0) add_i = (int)i;
+            }
+        }
+        if(add_i >= 0) {
+            Node const &addn = a.get(x.kids[(std::size_t)add_i]);
+            for(NodeId ak : addn.kids) {
+                std::vector<NodeId> fs;
+                for(std::size_t i = 0; i < x.kids.size(); ++i)
+                    if((int)i != add_i) fs.push_back(x.kids[i]);
+                fs.push_back(ak);
+                if(!add_sc_term(a, casio::simplify(a, casio::mul(a, fs)), p)) return false;
+            }
+            return true;
+        }
+    }
+    SCTerm t;
+    t.k = 1.0;
+    if(!sc_factor(a, n, p, t.k, t.s, t.c)) return false;
+    if(std::fabs(t.k) < 1e-12) return true;
+    p.min_s = std::min(p.min_s, t.s);
+    p.min_c = std::min(p.min_c, t.c);
+    p.den_c = p.den_c || t.c < 0;
+    p.terms.push_back(t);
+    return true;
+}
+
+static std::optional<SCPoly> collect_sc_poly(Arena &a, NodeId residual)
+{
+    SCPoly p;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) {
+        for(NodeId k : r.kids)
+            if(!add_sc_term(a, k, p)) return std::nullopt;
+    }
+    else if(!add_sc_term(a, residual, p)) return std::nullopt;
+    if(!p.has_arg || p.terms.empty() || (p.min_s == 0 && p.min_c == 0)) return std::nullopt;
+    return p;
+}
+
+static double sc_coef(SCPoly const &p, int sp, int cp)
+{
+    double out = 0.0;
+    for(auto const &t : p.terms)
+        if(t.s - p.min_s == sp && t.c - p.min_c == cp) out += t.k;
+    return out;
+}
+
+static bool sc_only(SCPoly const &p, std::initializer_list<std::pair<int, int>> keep)
+{
+    for(auto const &t : p.terms) {
+        bool ok = false;
+        int s = t.s - p.min_s;
+        int c = t.c - p.min_c;
+        for(auto const &k : keep)
+            if(k.first == s && k.second == c) ok = true;
+        if(!ok && std::fabs(sc_coef(p, s, c)) < 1e-12) ok = true;
+        if(!ok) return false;
+    }
+    return true;
+}
+
+static std::optional<std::vector<std::string>> solve_sc_common_denominator(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_sc_poly(a, residual);
+    if(!p) return std::nullopt;
+    std::string A = format_expr(a, p->arg);
+    std::string mult;
+    if(p->min_s < 0) mult += "sin(" + A + ")" + (p->min_s < -1 ? "^" + std::to_string(-p->min_s) : "");
+    if(p->min_c < 0) {
+        if(!mult.empty()) mult += "*";
+        mult += "cos(" + A + ")" + (p->min_c < -1 ? "^" + std::to_string(-p->min_c) : "");
+    }
+    std::vector<std::string> steps{format_expr(a, residual) + " = 0.", "Multiply by " + mult + "."};
+    std::vector<double> xs;
+    auto add_roots = [&](FnKind fk, std::vector<double> const &roots) {
+        for(double r : roots) {
+            if((fk == FnKind::Sin || fk == FnKind::Cos) && (r < -1.0 - 1e-10 || r > 1.0 + 1e-10)) {
+                steps.push_back("Reject " + trig_name(fk) + "(" + A + ")=" + trig_root_text(r) + ": outside [-1,1].");
+                continue;
+            }
+            if(fk == FnKind::Cos && p->den_c && std::fabs(r) < 1e-10) {
+                steps.push_back("Reject cos(" + A + ")=0: sec undefined.");
+                continue;
+            }
+            if(fk == FnKind::Sin && p->den_c && std::fabs(std::fabs(r) - 1.0) < 1e-10) {
+                steps.push_back("Reject sin(" + A + ")=" + trig_root_text(r) + ": sec undefined.");
+                continue;
+            }
+            steps.push_back(trig_name(fk) + "(" + A + ")=" + trig_root_text(r) + ".");
+            steps.push_back(trig_base_angle_line(fk, A, r));
+            steps.push_back(trig_alpha_family_line(fk, A, r, rad));
+            auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(fk, r));
+            for(double x : vals) add_unique(xs, x);
+        }
+    };
+    double s2 = sc_coef(*p, 2, 0), c2 = sc_coef(*p, 0, 2), c1 = sc_coef(*p, 0, 1);
+    double k0 = sc_coef(*p, 0, 0), sc2 = sc_coef(*p, 1, 2), c3 = sc_coef(*p, 0, 3);
+    double s1 = sc_coef(*p, 1, 0), s2c = sc_coef(*p, 2, 1);
+    if(sc_only(*p, {{2, 0}, {0, 2}, {0, 1}}) && std::fabs(s2 - c2) < 1e-12 && std::fabs(c1) > 1e-12) {
+        steps.push_back("sin(" + A + ")^2+cos(" + A + ")^2=1.");
+        steps.push_back(trig_root_text(s2) + fmt_poly_coeff(c1, false) + "*cos(" + A + ")=0.");
+        add_roots(FnKind::Cos, {-s2 / c1});
+    }
+    else if(sc_only(*p, {{0, 0}, {2, 0}, {1, 2}}) && std::fabs(k0 + s2) < 1e-12 && std::fabs(sc2) > 1e-12) {
+        steps.push_back("1-sin(" + A + ")^2=cos(" + A + ")^2.");
+        steps.push_back("cos(" + A + ")^2*(" + trig_root_text(k0) + fmt_poly_coeff(sc2, false) + "*sin(" + A + "))=0.");
+        steps.push_back("cos(" + A + ")!=0 from domain.");
+        add_roots(FnKind::Sin, {-k0 / sc2});
+    }
+    else if(sc_only(*p, {{0, 0}, {2, 0}, {0, 3}}) && std::fabs(k0 + s2) < 1e-12 && std::fabs(c3) > 1e-12) {
+        steps.push_back("1-sin(" + A + ")^2=cos(" + A + ")^2.");
+        steps.push_back("cos(" + A + ")^2*(" + trig_root_text(k0) + fmt_poly_coeff(c3, false) + "*cos(" + A + "))=0.");
+        add_roots(FnKind::Cos, {0.0, -k0 / c3});
+    }
+    else if(sc_only(*p, {{1, 0}, {1, 2}, {2, 1}, {0, 1}}) && std::fabs(s1 + sc2) < 1e-12 &&
+            std::fabs(s2c + c1) < 1e-12 && std::fabs(s1) > 1e-12) {
+        double r = std::cbrt(s2c / s1);
+        steps.push_back("sin(" + A + ")*(1-cos(" + A + ")^2)" + fmt_poly_coeff(-s2c, false) +
+                        "*cos(" + A + ")*(1-sin(" + A + ")^2)=0.");
+        steps.push_back("sin(" + A + ")^3=" + trig_root_text(s2c / s1) + "*cos(" + A + ")^3.");
+        steps.push_back("tan(" + A + ")=" + trig_root_text(r) + ".");
+        add_roots(FnKind::Tan, {r});
+    }
+    else if(sc_only(*p, {{0, 2}, {0, 1}, {0, 0}}) && std::fabs(c2) > 1e-12) {
+        auto roots = solve_quadratic_d(c2, c1, k0);
+        steps.push_back("u=cos(" + A + ").");
+        steps.push_back(trig_quad_text(c2, c1, k0));
+        add_roots(FnKind::Cos, roots);
+    }
+    else if(sc_only(*p, {{0, 0}, {0, 2}, {1, 0}}) && std::fabs(k0 + c2) < 1e-12 && std::fabs(k0) > 1e-12) {
+        steps.push_back("1-cos(" + A + ")^2=sin(" + A + ")^2.");
+        steps.push_back("sin(" + A + ")*(" + trig_root_text(k0) + "*sin(" + A + ")" + fmt_poly_coeff(s1, false) + ")=0.");
+        add_roots(FnKind::Sin, {0.0, -s1 / k0});
+    }
+    else return std::nullopt;
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static bool match_fn_coeff(Arena &a, NodeId n, FnKind fk, double want, NodeId &arg)
+{
+    double coeff = 1.0;
+    NodeId rest = n;
+    bool has_rest = true;
+    if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest || std::fabs(coeff - want) > 1e-12) return false;
+    Node const &r = a.get(rest);
+    if(r.kind != NodeKind::Fn || r.fkind != fk) return false;
+    arg = r.a;
+    return true;
+}
+
+static bool match_const_plus_fn(Arena &a, NodeId n, FnKind fk, double fn_coeff, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    for(int i = 0; i < 2; ++i) {
+        if(has_any_symbol(a, x.kids[(std::size_t)i])) continue;
+        auto c = numeric_eval(a, x.kids[(std::size_t)i], 0.0);
+        if(!c || std::fabs(*c - 1.0) > 1e-12) continue;
+        if(match_fn_coeff(a, x.kids[(std::size_t)(1 - i)], fk, fn_coeff, arg)) return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> solve_sec_cos_tan_product(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &R = a.get(rhs);
+    if(R.kind != NodeKind::Fn || R.fkind != FnKind::Tan) return std::nullopt;
+    Node const &L = a.get(lhs);
+    if(L.kind != NodeKind::Mul || L.kids.size() != 2) return std::nullopt;
+    NodeId a1 = 0, a2 = 0;
+    bool ok = (match_const_plus_fn(a, L.kids[0], FnKind::Sec, 1.0, a1) &&
+               match_const_plus_fn(a, L.kids[1], FnKind::Cos, -1.0, a2)) ||
+              (match_const_plus_fn(a, L.kids[1], FnKind::Sec, 1.0, a1) &&
+               match_const_plus_fn(a, L.kids[0], FnKind::Cos, -1.0, a2));
+    if(!ok || !same_sig(a, a1, a2) || !same_sig(a, a1, R.a)) return std::nullopt;
+    std::string A = format_expr(a, a1);
+    std::vector<std::string> steps{
+        "(1+sec(" + A + "))*(1-cos(" + A + "))=tan(" + A + ").",
+        "sec(" + A + ")=1/cos(" + A + "), tan(" + A + ")=sin(" + A + ")/cos(" + A + ").",
+        "Multiply by cos(" + A + "): (1+cos(" + A + "))*(1-cos(" + A + "))=sin(" + A + ").",
+        "1-cos(" + A + ")^2=sin(" + A + ").",
+        "sin(" + A + ")^2=sin(" + A + ").",
+        "sin(" + A + ")*(sin(" + A + ")-1)=0.",
+        "sin(" + A + ")=1 rejected: cos(" + A + ")=0.",
+    };
+    std::vector<double> xs = x_values_from_angle_degrees(a, a1, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, 0.0));
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -3155,6 +3610,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
+    if(auto prod = solve_sec_cos_tan_product(a, lhs, rhs, var, lo_text, hi_text, rad)) return *prod;
+    if(auto prod = solve_sec_cos_tan_product(a, rhs, lhs, var, lo_text, hi_text, rad)) return *prod;
+
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
     // Also allow k*fn(...) = const (k numeric).
     auto isolate = [&](NodeId left, NodeId right) -> std::optional<std::pair<NodeId, NodeId>> {
@@ -3215,7 +3673,11 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad)) return *same_res;
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
-    if(auto tc = solve_tan_cot_poly(a, residual, var, lo_text, hi_text, rad)) return *tc;
+    if(auto tc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Tan, FnKind::Cot)) return *tc;
+    if(auto sc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Sin, FnKind::Cosec)) return *sc;
+    if(auto cs = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Cos, FnKind::Sec)) return *cs;
+    if(auto ss = solve_sec_sin2_poly(a, residual, var, lo_text, hi_text, rad)) return *ss;
+    if(auto cd = solve_sc_common_denominator(a, residual, var, lo_text, hi_text, rad)) return *cd;
     if(auto mixed = solve_mixed_trig_poly(a, residual, var, lo_text, hi_text, rad, general)) return *mixed;
     if(auto demoivre = solve_cos5_cos3_route(a, residual, var, lo_text, hi_text, rad)) return *demoivre;
 

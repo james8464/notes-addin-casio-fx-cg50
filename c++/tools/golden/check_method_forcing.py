@@ -18,7 +18,7 @@ CASES = [
     ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du=2*x dx"]),
     ("int", "x^2,method=badmethod", ["Invalid method"]),
     ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
-    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["cos(A) = -1/2", "x = [pi, 5*pi/3]"]),
+    ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["u = cos(x - pi/3)", "u = -1/2", "x = [pi, 5*pi/3]"]),
     ("alg", "x^2-5*x+6=0,method=factor", ["x^2 - 5*x + 6 = 0"]),
     ("stats", "1,2,3,4,method=summary", ["mean =", "Sxx ="]),
     ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["s = 25"]),

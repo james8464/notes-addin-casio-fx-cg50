@@ -51,7 +51,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "J1 shifted sec solve",
         ["--trig", "4*sec(2*(x+3*pi/2))-3=5,x,0,2*pi,8"],
-        ["cos(A)=1/2", "x = [pi/3, 2*pi/3, 4*pi/3, 5*pi/3]"],
+        ["u = cos(2*(x + 3*pi/2))", "u = 1/2", "x = [pi/3, 2*pi/3, 4*pi/3, 5*pi/3]"],
     ),
     (
         "J4 reciprocal interval range",
