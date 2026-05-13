@@ -155,6 +155,36 @@ def main() -> int:
         ("N,D / x^2", "u=x-1/x", "du = (1+1/x^2) dx"),
         ("No elementary primitive found", "ERR:"),
     )
+    bad += require(
+        "fuzz_wrapped_defint_power_spaces",
+        run(["--int", "(defint(sin(x)^  4  / (sin((x))  **  4  +cos(x)^  4),x,0,pi /  2))"]),
+        ("King property", "2I = Integral_0^(pi/2) 1 dx = pi/2", "pi/4"),
+        ("ERR:", "Expected )"),
+    )
+    bad += require(
+        "interval_domain_final",
+        run(["--stdin-program", "algebraProgram.py"], "10\n(t)^2+1,t,(0),(4)\n"),
+        ("Domain used: (0) <= t <= (4)", "Range: 1 <= y <= 17", "(0) <= t <= (4); 1 <= y <= 17"),
+        ("all real t; 1 <= y <= 17", "ERR:"),
+    )
+    bad += require(
+        "binomial_outside_support",
+        run(["--stats", "binomial(2,0.4,6)"]),
+        ("6 is outside 0 <= r <= 2", "P(X = 6) = 0"),
+        ("2C6", "0.6^(2-6)", "ERR:"),
+    )
+    bad += require(
+        "plot_refined_intercepts",
+        run(["--stats", "plot(x^2-4,-6,6,9)"]),
+        ("x-intercepts near -2, 2",),
+        ("-1.88888889", "1.88888889", "ERR:"),
+    )
+    bad += require(
+        "substitution_integral_keeps_factor",
+        run(["--int", "3*x^2*cos(x^3+1),method=sub"]),
+        ("I = 3*J", "J = 1/3*Int(cos(u)) du", "sin(x^3 + 1) + C"),
+        ("No elementary primitive found", "ERR:"),
+    )
     return 1 if bad else 0
 
 

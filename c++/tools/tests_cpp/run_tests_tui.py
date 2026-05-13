@@ -2659,6 +2659,8 @@ class CASIOApp(App):
         self._frame_timer = None
         self._compile_running = False
         self.adversarial_report_store = None
+        self.host_path = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
+        self.host_cmd = str(self.host_path)
 
         self.command_items = {
             "/run": "Run the current program scope once",
@@ -4310,14 +4312,13 @@ class CASIOApp(App):
         suggestions = "\n".join(f"[dim]{cmd}[/dim]  {desc}" for cmd, desc in matches)
         suggestions_widget.update(suggestions)
 
-    def run_cli(self, script, inp):
-        host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
-        if not host.exists():
-            return ("", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh")
+    def _run_host(self, args, input_text=None):
+        if not self.host_path.exists():
+            return "", f"Missing host binary: {self.host_path}\nBuild with ./c++/tools/build_host.sh"
         try:
             proc = subprocess.run(
-                [str(host), "--stdin-program", script],
-                input=inp,
+                [self.host_cmd, *args],
+                input=input_text,
                 text=True,
                 capture_output=True,
                 cwd=str(REPO_ROOT),
@@ -4328,42 +4329,15 @@ class CASIOApp(App):
             stderr = err.stderr if isinstance(err.stderr, str) else ""
             return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
         return proc.stdout, proc.stderr
+
+    def run_cli(self, script, inp):
+        return self._run_host(["--stdin-program", script], inp)
 
     def run_host_feature(self, flag, expr):
-        host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
-        if not host.exists():
-            return "", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh"
-        try:
-            proc = subprocess.run(
-                [str(host), f"--{flag}", expr],
-                text=True,
-                capture_output=True,
-                cwd=str(REPO_ROOT),
-                timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
-            )
-        except subprocess.TimeoutExpired as err:
-            stdout = err.stdout if isinstance(err.stdout, str) else ""
-            stderr = err.stderr if isinstance(err.stderr, str) else ""
-            return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
-        return proc.stdout, proc.stderr
+        return self._run_host([f"--{flag}", expr])
 
     def run_host_expr(self, expr):
-        host = REPO_ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
-        if not host.exists():
-            return "", f"Missing host binary: {host}\nBuild with ./c++/tools/build_host.sh"
-        try:
-            proc = subprocess.run(
-                [str(host), expr],
-                text=True,
-                capture_output=True,
-                cwd=str(REPO_ROOT),
-                timeout=CASE_TIMEOUT_SECONDS if CASE_TIMEOUT_SECONDS > 0 else None,
-            )
-        except subprocess.TimeoutExpired as err:
-            stdout = err.stdout if isinstance(err.stdout, str) else ""
-            stderr = err.stderr if isinstance(err.stderr, str) else ""
-            return stdout, f"{stderr}\nTimeout after {CASE_TIMEOUT_SECONDS:g}s".strip()
-        return proc.stdout, proc.stderr
+        return self._run_host([expr])
 
     def make_cli_case(self, program, script, inp, label, checker, check_info="", feature="", use_calculated=None):
         if use_calculated is None:

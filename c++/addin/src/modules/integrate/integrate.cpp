@@ -304,6 +304,7 @@ static std::string node_to_string(Arena &a, NodeId n)
 static std::string compact_key(std::string text)
 {
     text = normalize_text(std::move(text));
+    for(std::size_t p = 0; (p = text.find("**", p)) != std::string::npos;) text.replace(p, 2, "^");
     std::string out;
     out.reserve(text.size());
     for(char c : text) {
@@ -334,6 +335,20 @@ static std::string compact_key(std::string text)
             changed = true;
         }
     }
+    std::string collapsed;
+    collapsed.reserve(out.size());
+    for(std::size_t i = 0; i < out.size(); ++i) {
+        if(i + 4 < out.size() && out[i] == '(' && out[i + 1] == '(' &&
+           out[i + 2] >= 'a' && out[i + 2] <= 'z' && out[i + 3] == ')' && out[i + 4] == ')') {
+            collapsed.push_back('(');
+            collapsed.push_back(out[i + 2]);
+            collapsed.push_back(')');
+            i += 4;
+            continue;
+        }
+        collapsed.push_back(out[i]);
+    }
+    out.swap(collapsed);
     return out;
 }
 
@@ -1373,6 +1388,15 @@ static std::string clean_integral_step(std::string s, std::string const &expr, s
     if(s.find("Integration by parts for x*exp") != std::string::npos) return "Use parts: u=x, dv=e^(a*x) dx.";
     if(s.find("Integration by parts for x*sin") != std::string::npos) return "Use parts: u=x, dv=sin(a*x+b) dx.";
     if(s.find("Integration by parts for x*cos") != std::string::npos) return "Use parts: u=x, dv=cos(a*x+b) dx.";
+    std::string factor_prefix = "Factor out constant ";
+    if(starts_with_text(s, factor_prefix)) {
+        std::string c = s.substr(factor_prefix.size());
+        if(!c.empty() && c.back() == '.') c.pop_back();
+        std::string rest = expr;
+        std::string p = c + "*";
+        if(rest.rfind(p, 0) == 0) rest = rest.substr(p.size());
+        return "I = " + c + "*J, J = Int(" + rest + ") d" + var + ".";
+    }
     std::string result_prefix = "Simplify. Result = ";
     if(starts_with_text(s, result_prefix)) return "Simplify to " + s.substr(result_prefix.size()) + ".";
     return s;
@@ -1814,6 +1838,20 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(auto p = match_king_property_power(c)) {
+        std::string pow = *p;
+        return out(
+            "King property symmetry",
+            {
+                "Let I = Integral_0^(pi/2) sin(x)^" + pow + "/(sin(x)^" + pow + "+cos(x)^" + pow + ") dx.",
+                "King property: Integral_a^b f(x) dx = Integral_a^b f(a+b-x) dx.",
+                "Use x -> pi/2-x: sin(pi/2-x)=cos(x), cos(pi/2-x)=sin(x).",
+                "So I = Integral_0^(pi/2) cos(x)^" + pow + "/(cos(x)^" + pow + "+sin(x)^" + pow + ") dx.",
+                "Add both forms: 2I = Integral_0^(pi/2) 1 dx = pi/2.",
+            },
+            "pi/4"
+        );
+    }
     if(auto radical = linear_over_sqrt_defint_pattern(expr)) return radical;
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
@@ -1832,21 +1870,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "So I=(a^2/2)Integral_0^(pi/2) sin(2*theta)^2 dtheta.",
             },
             "pi*a^2/8"
-        );
-    }
-
-    if(auto p = match_king_property_power(c)) {
-        std::string pow = *p;
-        return out(
-            "King property symmetry",
-            {
-                "Let I = Integral_0^(pi/2) sin(x)^" + pow + "/(sin(x)^" + pow + "+cos(x)^" + pow + ") dx.",
-                "King property: Integral_a^b f(x) dx = Integral_a^b f(a+b-x) dx.",
-                "Use x -> pi/2-x: sin(pi/2-x)=cos(x), cos(pi/2-x)=sin(x).",
-                "So I = Integral_0^(pi/2) cos(x)^" + pow + "/(cos(x)^" + pow + "+sin(x)^" + pow + ") dx.",
-                "Add both forms: 2I = Integral_0^(pi/2) 1 dx = pi/2.",
-            },
-            "pi/4"
         );
     }
 
@@ -5847,6 +5870,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             poly = poly_mul_any(poly, upow);
             steps.push_back("Step 2: Odd sine power: save one sin(" + arg_text + "), convert the rest with sin^2=1-cos^2.");
             steps.push_back("Step 3: Let u=cos(" + arg_text + "), so du=-" + lc_text + "*sin(" + arg_text + ") d" + var + ".");
+            steps.push_back("Step 4: I=" + format_expr_human(a, a.num(r_neg(r_div(coeff, *lc)))) + "*Int((1-u^2)^" + std::to_string(r) + "*u^" + std::to_string(cos_p) + ") du.");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "cos", arg), *lc, true)));
         }
@@ -5861,6 +5885,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             poly = poly_mul_any(poly, upow);
             steps.push_back("Step 2: Odd cosine power: save one cos(" + arg_text + "), convert the rest with cos^2=1-sin^2.");
             steps.push_back("Step 3: Let u=sin(" + arg_text + "), so du=" + lc_text + "*cos(" + arg_text + ") d" + var + ".");
+            steps.push_back("Step 4: I=" + format_expr_human(a, a.num(r_div(coeff, *lc))) + "*Int((1-u^2)^" + std::to_string(r) + "*u^" + std::to_string(sin_p) + ") du.");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "sin", arg), *lc, false)));
         }
@@ -6382,7 +6407,8 @@ static std::optional<NodeId> integrate_trig_poly_reverse_chain(Arena &a, NodeId 
     steps.push_back("Step 3: Let u = " + format_expr(a, trig.a) + ".");
     steps.push_back("Step 4: du=" + format_expr_human(a, poly_to_node(a, dbase, var)) + " d" + var + ".");
     steps.push_back("Step 5: " + format_expr_human(a, rest_node) + " d" + var + "=" + format_expr_human(a, a.num(*ratio)) + " du.");
-    steps.push_back("Step 6: Int(" + std::string(trig.fkind == FnKind::Sin ? "sin" : "cos") + "(u)) du=" + (trig.fkind == FnKind::Sin ? "-cos(u)" : "sin(u)") + ".");
+    steps.push_back("Step 6: I=" + format_expr_human(a, a.num(scale)) + "*Int(" + std::string(trig.fkind == FnKind::Sin ? "sin" : "cos") + "(u)) du.");
+    steps.push_back("Step 7: Int(" + std::string(trig.fkind == FnKind::Sin ? "sin" : "cos") + "(u)) du=" + (trig.fkind == FnKind::Sin ? "-cos(u)" : "sin(u)") + ".");
     return casio::simplify(a, mul_coeff(a, scale, primitive));
 }
 
@@ -8078,6 +8104,7 @@ static std::optional<NodeId> integrate_hidden_power_sub(Arena &a, NodeId expr, s
         steps.push_back("Step 2: Let u=" + format_expr_human(a, u) + ".");
         steps.push_back("Step 3: du=" + format_expr_human(a, casio::mul(a, {a.num(r_mul(r_from_int(n), acoeff)), var_pow(a, var, n-1)})) + " d" + var + ".");
         steps.push_back("Step 4: " + format_expr_human(a, casio::mul(a, {a.num(r_mul(r_from_int(n), acoeff)), var_pow(a, var, n-1)})) + " d" + var + "=du.");
+        steps.push_back("Step 5: I=" + format_expr_human(a, a.num(scale)) + "*Int(" + (exp_case ? "e^u" : (trig == FnKind::Sin ? "sin(u)" : "cos(u)")) + ") du.");
         steps.push_back(exp_case ? "Step 5: Int(e^u) du = e^u." :
                         (trig == FnKind::Sin ? "Step 5: Int(sin(u)) du = -cos(u)." : "Step 5: Int(cos(u)) du = sin(u)."));
         return casio::simplify(a, primitive);
@@ -8298,7 +8325,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             auto inner = integrate_giac_style(a, body, var);
             if(inner.result) {
                 out.steps.push_back("Step 2: Factor out constant " + format_expr(a, a.num(coeff)) + ".");
-                for(std::size_t i = 1; i < inner.steps.size(); ++i) out.steps.push_back(inner.steps[i]);
+                for(std::size_t i = 1; i < inner.steps.size(); ++i) {
+                    std::string st = inner.steps[i];
+                    for(std::size_t p = 0; (p = st.find("I=", p)) != std::string::npos;) st.replace(p, 2, "J=");
+                    for(std::size_t p = 0; (p = st.find("I =", p)) != std::string::npos;) st.replace(p, 3, "J =");
+                    out.steps.push_back(st);
+                }
                 out.result = casio::simplify(a, casio::mul(a, {a.num(coeff), *inner.result}));
                 out.steps.push_back("Step 3: Multiply the primitive by the constant.");
                 return out;

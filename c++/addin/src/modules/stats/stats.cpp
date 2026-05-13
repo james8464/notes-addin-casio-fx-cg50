@@ -538,6 +538,21 @@ static std::vector<std::string> binomial(std::string const &expr)
         return std::to_string(n) + "C" + k + "*" + fmt(p) + "^" + k + "*" + fmt(q) + "^(" + std::to_string(n) + "-" + k + ")";
     };
     out.push_back("X ~ B(" + std::to_string(n) + ", " + fmt(p) + ")");
+    if(!cdf && (r < 0 || r > n)) {
+        out.push_back(std::to_string(r) + " is outside 0 <= r <= " + std::to_string(n));
+        out.push_back("P(" + event + ") = 0");
+        return out;
+    }
+    if(cdf && !ge && !gt && (r < 0 || r >= n)) {
+        out.push_back(r < 0 ? "r < 0" : ("r >= " + std::to_string(n)));
+        out.push_back("P(" + event + ") = " + fmt(ans));
+        return out;
+    }
+    if((ge || gt) && ((gt && r >= n) || (!gt && r > n) || r < 0)) {
+        out.push_back((r < 0) ? "r < 0" : "event outside support");
+        out.push_back("P(" + event + ") = " + fmt(ans));
+        return out;
+    }
     if(!cdf) {
         out.push_back("P(X = r) = nCr*p^r*(1-p)^(n-r)");
         out.push_back("P(X = " + std::to_string(r) + ") = " + pmf_formula(std::to_string(r)));
@@ -642,6 +657,24 @@ static std::vector<std::string> plot(Arena &arena, std::string const &expr)
             roots.push_back(fmt(xr));
         }
     };
+    auto refine_root = [&](long double a0, long double b0, long double fa, long double fb) {
+        long double lo = a0, hi = b0, flo = fa;
+        (void)fb;
+        for(int it = 0; it < 48; ++it) {
+            long double mid = (lo + hi) / 2.0L;
+            auto fm = eval_node(arena, root, mid);
+            if(!fm || !std::isfinite((double)*fm)) break;
+            if(std::fabsl(*fm) < 1e-12L) return mid;
+            if((flo <= 0 && *fm >= 0) || (flo >= 0 && *fm <= 0)) {
+                hi = mid;
+            }
+            else {
+                lo = mid;
+                flo = *fm;
+            }
+        }
+        return (lo + hi) / 2.0L;
+    };
     std::optional<long double> prev_y;
     long double prev_x = xmin;
     for(int i = 0; i < n; i++) {
@@ -652,7 +685,8 @@ static std::vector<std::string> plot(Arena &arena, std::string const &expr)
             continue;
         }
         if(prev_y && ((*prev_y <= 0 && *y >= 0) || (*prev_y >= 0 && *y <= 0))) {
-            long double xr = (*prev_y == *y) ? x : prev_x + (0.0L - *prev_y) * (x - prev_x) / (*y - *prev_y);
+            long double xr = (std::fabsl(*prev_y) < 1e-12L) ? prev_x :
+                             (std::fabsl(*y) < 1e-12L ? x : refine_root(prev_x, x, *prev_y, *y));
             add_root(xr);
         }
         xs.push_back(x);

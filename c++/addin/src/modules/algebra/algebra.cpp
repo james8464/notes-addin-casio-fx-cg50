@@ -6825,6 +6825,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(req.method == "domain") {
+                if(!lo.empty() && !hi.empty()) {
+                    domain_answer = lo + " <= " + var + " <= " + hi;
+                    steps.push_back("Domain used: " + domain_answer + ".");
+                }
                 return casio::exam_block("domain", steps, domain_answer);
             }
             std::string range_answer;
@@ -7073,8 +7077,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back(!lo.empty() && !hi.empty() ? "Range: unrestricted on the interval (inspect graph/transform if needed)." : "Range: inspect graph/transform if needed.");
                 }
             }
-            std::string answer = req.method == "domain" ? domain_answer :
-                                 (req.method == "range" ? range_answer : (domain_answer + "; " + range_answer));
+            std::string final_domain = domain_answer;
+            if(!lo.empty() && !hi.empty()) {
+                final_domain = lo + " <= " + var + " <= " + hi;
+                if(req.method != "range") steps.push_back("Domain used: " + final_domain + ".");
+            }
+            std::string answer = req.method == "range" ? range_answer : final_domain + "; " + range_answer;
             return casio::exam_block("domain/range", steps, answer);
         }
         if(req.mode == 11) {
