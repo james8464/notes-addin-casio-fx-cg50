@@ -537,7 +537,12 @@ int main(int argc, char **argv)
             else if(!(inner = unwrap_call(expr, "solve(")).empty()) {
                 auto has_trig = [](std::string const &s) {
                     for(char const *k : {"sin(", "cos(", "tan(", "sec(", "cosec(", "csc(", "cot("}) {
-                        if(s.find(k) != std::string::npos) return true;
+                        std::string needle(k);
+                        for(std::size_t pos = s.find(needle); pos != std::string::npos; pos = s.find(needle, pos + 1)) {
+                            if(pos == 0) return true;
+                            unsigned char prev = static_cast<unsigned char>(s[pos - 1]);
+                            if(!std::isalpha(prev) && prev != '_') return true;
+                        }
                     }
                     return false;
                 };

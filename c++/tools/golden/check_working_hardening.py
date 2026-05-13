@@ -1404,6 +1404,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["u=4*x-pi/3", "du/dx=4", "period(tan)=pi", "pi/4"],
         ["unsupported", "ERR:"],
     ),
+    (
+        "alg",
+        "sin(asin(x))",
+        ["Domain:-1<=x<=1", "sin(asin(x))=x"],
+        ["need sin/cos/tan", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(asin(x)=pi/6,x)",
+        ["asin(x)=pi/6", "x=sin(pi/6)", "x=1/2", "x=[1/2]"],
+        ["need sin/cos/tan", "x=[]", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(atan(3*x)=pi/4,x)",
+        ["atan(3*x)=pi/4", "3*x=tan(pi/4)", "3*x=1", "x=[1/3]"],
+        ["need sin/cos/tan", "x=[]", "ERR:"],
+    ),
 ]
 
 

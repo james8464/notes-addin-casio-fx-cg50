@@ -108,6 +108,16 @@ CASES = [
         ("u = 4*x - pi/3", "du/dx = 4", "period(tan) = pi", "pi/4"),
     ),
     (
+        "direct inverse trig composition",
+        ["--alg", "sin(asin(x))"],
+        ("Domain: -1 <= x <= 1", "sin(asin(x)) = x"),
+    ),
+    (
+        "inverse trig exact solve",
+        ["--alg", "solve(asin(x)=pi/6,x)"],
+        ("asin(x) = pi/6", "x = sin(pi/6)", "x = 1/2", "x = [1/2]"),
+    ),
+    (
         "sin same fn family",
         ["--trig", "sin(8*x)=sin(5*x),x,0,2*pi,26,method=identity"],
         ("sin(A) = sin(B)", "8*x = 5*x+2*pi*n => x = 2*pi*n/3", "8*x = pi-5*x+2*pi*n => x = (pi+2*pi*n)/13", "x = ["),

@@ -6106,6 +6106,75 @@ static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den =
     return x.kind == NodeKind::Num && x.num.num == num && x.num.den == den;
 }
 
+static std::string compact_expr_key(std::string s)
+{
+    s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char ch) { return std::isspace(ch); }), s.end());
+    return s;
+}
+
+static std::optional<NodeId> exact_principal_trig_value(Arena &a, FnKind outer, NodeId rhs)
+{
+    std::string k = compact_expr_key(format_expr(a, rhs));
+    bool neg = !k.empty() && k[0] == '-';
+    if(neg) k.erase(k.begin());
+    if(outer == FnKind::Acos && neg) return std::nullopt;
+    if(outer == FnKind::Atan && k == "pi/2") return std::nullopt;
+
+    auto sq = [&](int n) { return casio::fn(a, "sqrt", a.num(Rational{n, 1})); };
+    auto half = [&](NodeId n) { return casio::div(a, n, a.num(Rational{2, 1})); };
+    auto third = [&](NodeId n) { return casio::div(a, n, a.num(Rational{3, 1})); };
+    auto maybe_neg = [&](NodeId n) { return neg ? casio::neg(a, n) : n; };
+
+    NodeId v = a.num(Rational{0, 1});
+    if(outer == FnKind::Asin) {
+        if(k == "0") v = a.num(Rational{0, 1});
+        else if(k == "pi/6") v = a.num(Rational{1, 2});
+        else if(k == "pi/4") v = half(sq(2));
+        else if(k == "pi/3") v = half(sq(3));
+        else if(k == "pi/2") v = a.num(Rational{1, 1});
+        else return std::nullopt;
+        return maybe_neg(v);
+    }
+    if(outer == FnKind::Acos) {
+        if(k == "0") v = a.num(Rational{1, 1});
+        else if(k == "pi/6") v = half(sq(3));
+        else if(k == "pi/4") v = half(sq(2));
+        else if(k == "pi/3") v = a.num(Rational{1, 2});
+        else if(k == "pi/2") v = a.num(Rational{0, 1});
+        else if(k == "pi") v = a.num(Rational{-1, 1});
+        else return std::nullopt;
+        return v;
+    }
+    if(outer == FnKind::Atan) {
+        if(k == "0") v = a.num(Rational{0, 1});
+        else if(k == "pi/6") v = third(sq(3));
+        else if(k == "pi/4") v = a.num(Rational{1, 1});
+        else if(k == "pi/3") v = sq(3);
+        else return std::nullopt;
+        return maybe_neg(v);
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> direct_trig_inverse_composition(Arena &a, NodeId n, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    Node const &inner = a.get(x.a);
+    if(inner.kind != NodeKind::Fn) return std::nullopt;
+    bool ok = (x.fkind == FnKind::Sin && inner.fkind == FnKind::Asin) ||
+              (x.fkind == FnKind::Cos && inner.fkind == FnKind::Acos) ||
+              (x.fkind == FnKind::Tan && inner.fkind == FnKind::Atan);
+    if(!ok) return std::nullopt;
+    std::string outer = x.fkind == FnKind::Sin ? "sin" : (x.fkind == FnKind::Cos ? "cos" : "tan");
+    std::string inv = inner.fkind == FnKind::Asin ? "asin" : (inner.fkind == FnKind::Acos ? "acos" : "atan");
+    std::string arg = format_expr(a, inner.a);
+    if(inner.fkind == FnKind::Asin || inner.fkind == FnKind::Acos)
+        steps.push_back("Domain: -1 <= " + arg + " <= 1");
+    steps.push_back(outer + "(" + inv + "(" + arg + ")) = " + arg);
+    return inner.a;
+}
+
 static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     Arena &a,
     NodeId lhs,
@@ -6114,7 +6183,6 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     std::string const &equation_text
 )
 {
-    if(!is_num_node(a, rhs, 0)) return std::nullopt;
     Node const &l = a.get(lhs);
     if(l.kind != NodeKind::Fn) return std::nullopt;
 
@@ -6133,6 +6201,30 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
 
     std::string outer_name = outer == FnKind::Asin ? "arcsin" : (outer == FnKind::Acos ? "arccos" : "arctan");
     std::string target = outer == FnKind::Acos ? "1" : "0";
+
+    if(!is_num_node(a, rhs, 0)) {
+        auto exact = exact_principal_trig_value(a, outer, rhs);
+        if(!exact) return std::nullopt;
+        std::string trig = outer == FnKind::Asin ? "sin" : (outer == FnKind::Acos ? "cos" : "tan");
+        out.push_back(arg_text + " = " + trig + "(" + format_expr(a, rhs) + ")");
+        out.push_back(arg_text + " = " + format_expr(a, *exact));
+        if(is_sym_var(a, arg, var)) {
+            out.push_back(var + " = " + format_expr(a, *exact));
+            out.push_back("Answer: " + var + " = [" + format_expr(a, *exact) + "]");
+            return out;
+        }
+        NodeId residual = casio::simplify(a, casio::add(a, {arg, casio::neg(a, *exact)}));
+        if(auto p = poly_of(a, residual, var); p && p->ok) {
+            auto roots = solve_poly2(a, *p, var);
+            if(!roots.empty()) {
+                append_answer(out, var, roots);
+                return out;
+            }
+        }
+        out.push_back("Answer: " + arg_text + " = " + format_expr(a, *exact));
+        return out;
+    }
+
     out.push_back("2. " + outer_name + "(A)=0 => A=" + target + ".");
 
     auto finish_quadratic_shift = [&](std::string const &period) -> bool {
@@ -7898,6 +7990,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(req.method == "rationalise" || req.method == "rationalize") {
                 if(auto route = rationalise_sqrt_denominator(arena, parsed)) return *route;
+            }
+            if(auto direct = direct_trig_inverse_composition(arena, parsed, steps)) {
+                return casio::exam_block("algebra simplify", steps, format_expr(arena, *direct));
             }
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {
