@@ -18,8 +18,10 @@ REPO = Path(__file__).resolve().parents[3]
 PDF_DIR = Path.home() / "Downloads" / "MadAsMaths standard topics"
 REPORT_DIR = REPO / "c++" / "tests" / "reports" / "madasmaths_standard_topics_audit"
 LEDGER = REPORT_DIR / "ledger_latest.jsonl"
+TRACKER = REPORT_DIR / "tracker_latest.jsonl"
 SUMMARY = REPORT_DIR / "summary_latest.txt"
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
+MANUAL_CASES = REPO / "c++" / "tools" / "golden" / "madasmaths_standard_manual_cases.jsonl"
 
 EXPECTED_COUNTS = {"integration": 24, "trigonometry": 13, "various": 25}
 
@@ -48,6 +50,8 @@ TESTABLE = {
     "binomial",
     "numerical",
 }
+
+VALID_STATUSES = {"unchecked", "host-pass", "needs-fix", "unsupported-ok", "done"}
 
 CURATED_CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
@@ -118,6 +122,31 @@ def classify(block: str) -> list[str]:
     return topics or ["unclassified"]
 
 
+def qid_parts(qid: str) -> tuple[str, str]:
+    if "." in qid:
+        question, part = qid.split(".", 1)
+        return question, part
+    return qid, ""
+
+
+def canonical_source(topic_page: str, pdf_name: str) -> str:
+    stem = pdf_name.removesuffix(".pdf")
+    stem = stem.removesuffix("_student_version_condense").removesuffix("_student_version")
+    return f"{topic_page}/{stem}.pdf"
+
+
+def load_manual_case_index() -> dict[tuple[str, str, str], dict[str, object]]:
+    if not MANUAL_CASES.exists():
+        return {}
+    index: dict[tuple[str, str, str], dict[str, object]] = {}
+    for line in MANUAL_CASES.read_text().splitlines():
+        if not line.strip():
+            continue
+        case = json.loads(line)
+        index[(case["source_pdf"], str(case["qid"]), str(case["item"]))] = case
+    return index
+
+
 def run_case(name: str, args: list[str], needles: list[str], forbidden: list[str]) -> list[str]:
     proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
     out = proc.stdout + proc.stderr
@@ -136,6 +165,7 @@ def main() -> int:
         print(f"SKIP madasmaths standard topics: no local PDFs in {PDF_DIR}")
         return 0
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    manual_index = load_manual_case_index()
 
     pdfs = sorted(PDF_DIR.glob("*/*.pdf"))
     counts = Counter(p.parent.name for p in pdfs)
@@ -157,21 +187,51 @@ def main() -> int:
             topic_counts.update(topics)
             is_testable = any(t in TESTABLE for t in topics)
             skip = (not is_testable) or ("graph" in topics and len(set(topics) & TESTABLE) <= 1)
-            status = "skip:non_calculator" if skip else "needs_manual_audit"
+            question, part = qid_parts(qid)
+            source_pdf = f"{pdf.parent.name}/{pdf.name}"
+            canonical_pdf = canonical_source(pdf.parent.name, pdf.name)
+            case = manual_index.get((source_pdf, question, part)) or manual_index.get((canonical_pdf, question, part))
+            if case:
+                status = "done"
+                command = case.get("args", [])
+                expected = case.get("needles", [])
+                notes = "manual host-verified"
+                if source_pdf != case.get("source_pdf"):
+                    notes = f"covered by {case.get('source_pdf')}"
+            elif skip:
+                status = "unsupported-ok"
+                command = []
+                expected = []
+                notes = "non-calculator or no unique CAS command"
+            else:
+                status = "unchecked"
+                command = []
+                expected = []
+                notes = "needs manual PDF + host review"
+            if status not in VALID_STATUSES:
+                return fail(f"bad status {status} for {source_pdf} Q{qid}")
             status_counts[status] += 1
             rows.append(
                 {
                     "source": "MadAsMaths standard topics",
                     "topic_page": pdf.parent.name,
                     "pdf": pdf.name,
+                    "page": "",
+                    "question": question,
+                    "part": part,
                     "qid": qid,
                     "ordinal": ordinal,
+                    "topic": topics,
                     "topics": topics,
+                    "command": command,
+                    "expected": expected,
                     "status": status,
+                    "notes": notes,
                 }
             )
 
     LEDGER.write_text("\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n")
+    TRACKER.write_text("\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n")
     case_failures: list[str] = []
     if HOST.exists():
         for case in CURATED_CASES:
@@ -184,9 +244,11 @@ def main() -> int:
         f"pdfs={len(pdfs)}",
         "pdf_counts=" + " ".join(f"{k}:{counts[k]}" for k in sorted(EXPECTED_COUNTS)),
         f"questions={len(rows)}",
+        f"manual_cases={len(manual_index)}",
         "status=" + " ".join(f"{k}:{status_counts[k]}" for k in sorted(status_counts)),
         "topics=" + " ".join(f"{k}:{topic_counts[k]}" for k in sorted(topic_counts)),
         f"ledger={LEDGER}",
+        f"tracker={TRACKER}",
     ]
     if weak:
         summary.append("weak=" + " | ".join(weak[:8]))
@@ -198,8 +260,8 @@ def main() -> int:
         return fail("weak PDF OCR split: " + " | ".join(weak[:4]))
     if case_failures:
         return fail("\n\n".join(case_failures))
-    if strict and status_counts["needs_manual_audit"]:
-        return fail(f"manual audit incomplete: {status_counts['needs_manual_audit']} rows")
+    if strict and status_counts["unchecked"]:
+        return fail(f"manual audit incomplete: {status_counts['unchecked']} rows")
     print(f"OK madasmaths standard topics audit pdfs={len(pdfs)} questions={len(rows)} ledger={LEDGER}")
     return 0
 
