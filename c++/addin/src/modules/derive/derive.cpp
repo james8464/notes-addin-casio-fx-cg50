@@ -698,6 +698,18 @@ static std::string affine_int_text(AffineInt p, std::string const &var)
     return linear_text(p.m, p.b, var);
 }
 
+static std::string affine_int_text_human(AffineInt p, std::string const &var)
+{
+    if(p.m == 0) return std::to_string(p.b);
+    std::string s;
+    if(p.m == 1) s = var;
+    else if(p.m == -1) s = "-" + var;
+    else s = std::to_string(p.m) + "*" + var;
+    if(p.b > 0) s += " + " + std::to_string(p.b);
+    else if(p.b < 0) s += " - " + std::to_string(-p.b);
+    return s;
+}
+
 static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, AffineInt den, std::string const &var)
 {
     long long g = gcd_ll(gcd_ll(num.m, num.b), gcd_ll(den.m, den.b));
@@ -719,12 +731,8 @@ static std::string rat_text(Arena &a, long long num, long long den)
 
 static std::string affine_display(Arena &a, AffineInt p, std::string const &var)
 {
-    try {
-        return clean_math_text(format_expr_human(a, casio::parse_expr(a, affine_int_text(p, var))));
-    }
-    catch(...) {
-        return affine_int_text(p, var);
-    }
+    (void)a;
+    return affine_int_text_human(p, var);
 }
 
 static std::string log_linear_fraction_domain(Arena &a, AffineInt num, AffineInt den, std::string const &var)

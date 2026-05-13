@@ -5156,12 +5156,14 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
     if(!arg) return std::nullopt;
     auto lc = linear_coeff(a, arg, var);
     if(!lc || r_zero(*lc)) return std::nullopt;
+    std::string arg_text = format_expr_human(a, arg);
+    std::string lc_text = format_expr_human(a, a.num(*lc));
 
     if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
         NodeId tan_u = casio::fn(a, "tan", arg);
         Rational denom = r_mul(*lc, Rational{tan_p + 1, 1});
         Rational pre = r_div(coeff, *lc);
-        steps.push_back("Step 2: Let u=tan(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*sec(" + format_expr_human(a, arg) + ")^2 d" + var + ".");
+        steps.push_back("Step 2: Let u=tan(" + arg_text + "), so du=" + lc_text + "*sec(" + arg_text + ")^2 d" + var + ".");
         steps.push_back("Step 3: I=" + format_expr_human(a, a.num(pre)) + "*Int(u^" + std::to_string(tan_p) + ") du.");
         steps.push_back("Step 4: Int(u^" + std::to_string(tan_p) + ") du = u^" + std::to_string(tan_p + 1) + "/" + std::to_string(tan_p + 1) + ".");
         return casio::simplify(a, mul_coeff(a, r_div(coeff, denom), casio::power(a, tan_u, casio::num(a, tan_p + 1))));
@@ -5170,7 +5172,7 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
         NodeId cot_u = casio::fn(a, "cot", arg);
         Rational denom = r_mul(*lc, Rational{cot_p + 1, 1});
         Rational pre = r_neg(r_div(coeff, *lc));
-        steps.push_back("Step 2: Let u=cot(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*cosec(" + format_expr_human(a, arg) + ")^2 d" + var + ".");
+        steps.push_back("Step 2: Let u=cot(" + arg_text + "), so du=-" + lc_text + "*cosec(" + arg_text + ")^2 d" + var + ".");
         steps.push_back("Step 3: I=" + format_expr_human(a, a.num(pre)) + "*Int(u^" + std::to_string(cot_p) + ") du.");
         steps.push_back("Step 4: Int(u^" + std::to_string(cot_p) + ") du = u^" + std::to_string(cot_p + 1) + "/" + std::to_string(cot_p + 1) + ".");
         return casio::simplify(a, mul_coeff(a, r_neg(r_div(coeff, denom)), casio::power(a, cot_u, casio::num(a, cot_p + 1))));
@@ -5187,8 +5189,8 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c.assign(static_cast<std::size_t>(cos_p + 1), Rational{0, 1});
             upow.c[static_cast<std::size_t>(cos_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
-            steps.push_back("Step 2: Odd sine power: save one sin(" + format_expr_human(a, arg) + "), convert the rest with sin^2=1-cos^2.");
-            steps.push_back("Step 3: Let u=cos(" + format_expr_human(a, arg) + "), so du=-" + format_expr_human(a, a.num(*lc)) + "*sin(" + format_expr_human(a, arg) + ") d" + var + ".");
+            steps.push_back("Step 2: Odd sine power: save one sin(" + arg_text + "), convert the rest with sin^2=1-cos^2.");
+            steps.push_back("Step 3: Let u=cos(" + arg_text + "), so du=-" + lc_text + "*sin(" + arg_text + ") d" + var + ".");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "cos", arg), *lc, true)));
         }
@@ -5201,8 +5203,8 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
             upow.c.assign(static_cast<std::size_t>(sin_p + 1), Rational{0, 1});
             upow.c[static_cast<std::size_t>(sin_p)] = Rational{1, 1};
             poly = poly_mul_any(poly, upow);
-            steps.push_back("Step 2: Odd cosine power: save one cos(" + format_expr_human(a, arg) + "), convert the rest with cos^2=1-sin^2.");
-            steps.push_back("Step 3: Let u=sin(" + format_expr_human(a, arg) + "), so du=" + format_expr_human(a, a.num(*lc)) + "*cos(" + format_expr_human(a, arg) + ") d" + var + ".");
+            steps.push_back("Step 2: Odd cosine power: save one cos(" + arg_text + "), convert the rest with cos^2=1-sin^2.");
+            steps.push_back("Step 3: Let u=sin(" + arg_text + "), so du=" + lc_text + "*cos(" + arg_text + ") d" + var + ".");
             steps.push_back("Step 4: Integrate the resulting polynomial in u.");
             return casio::simplify(a, mul_coeff(a, coeff, integrate_poly_in_fn(a, poly, casio::fn(a, "sin", arg), *lc, false)));
         }
@@ -5248,7 +5250,11 @@ static std::optional<NodeId> integrate_sin_cos_product_to_sum(Arena &a, NodeId e
     }
     if(!sin_arg || !cos_arg) return std::nullopt;
     if(same_expr(a, sin_arg, cos_arg)) return std::nullopt;
-    if(!linear_coeff(a, sin_arg, var) || !linear_coeff(a, cos_arg, var)) return std::nullopt;
+    auto sin_lc = linear_coeff(a, sin_arg, var);
+    auto cos_lc = linear_coeff(a, cos_arg, var);
+    if(!sin_lc || !cos_lc) return std::nullopt;
+    std::string sin_text = format_expr_human(a, sin_arg);
+    std::string cos_text = format_expr_human(a, cos_arg);
 
     auto make_linear = [&](long long m, long long b) {
         std::vector<NodeId> terms;
@@ -5261,8 +5267,10 @@ static std::optional<NodeId> integrate_sin_cos_product_to_sum(Arena &a, NodeId e
     NodeId diff_arg = casio::simplify(a, casio::add(a, {sin_arg, casio::neg(a, cos_arg)}));
     Rational diff_sign{1, 1};
     long long sm = 0, sb = 0, cm = 0, cb = 0;
-    if(parse_linear_key(compact_key(format_expr(a, sin_arg)), var, sm, sb) &&
-       parse_linear_key(compact_key(format_expr(a, cos_arg)), var, cm, cb)) {
+    std::string sin_key = compact_key(format_expr(a, sin_arg));
+    std::string cos_key = compact_key(format_expr(a, cos_arg));
+    if(parse_linear_key(sin_key, var, sm, sb) &&
+       parse_linear_key(cos_key, var, cm, cb)) {
         sum_arg = make_linear(sm + cm, sb + cb);
         long long dm = sm - cm;
         long long db = sb - cb;
@@ -5283,10 +5291,12 @@ static std::optional<NodeId> integrate_sin_cos_product_to_sum(Arena &a, NodeId e
     if(!left || !right) return std::nullopt;
 
     Rational half_coeff = r_div(coeff, Rational{2, 1});
-    steps.push_back("A=" + format_expr_human(a, sin_arg) + ", B=" + format_expr_human(a, cos_arg) + ".");
+    std::string sum_text = format_expr_human(a, sum_arg);
+    std::string diff_text = format_expr_human(a, diff_arg);
+    steps.push_back("A=" + sin_text + ", B=" + cos_text + ".");
     steps.push_back("2sin(A)cos(B)=sin(A+B)+sin(A-B).");
-    std::string diff_piece = diff_sign.num < 0 ? "-sin(" + format_expr_human(a, diff_arg) + ")" : "+sin(" + format_expr_human(a, diff_arg) + ")";
-    steps.push_back("I=" + format_expr_human(a, a.num(half_coeff)) + "*Int(sin(" + format_expr_human(a, sum_arg) + ")" + diff_piece + ")d" + var + ".");
+    std::string diff_piece = diff_sign.num < 0 ? "-sin(" + diff_text + ")" : "+sin(" + diff_text + ")";
+    steps.push_back("I=" + format_expr_human(a, a.num(half_coeff)) + "*Int(sin(" + sum_text + ")" + diff_piece + ")d" + var + ".");
     return casio::simplify(a, casio::add(a, {
         mul_coeff(a, half_coeff, *left),
         mul_coeff(a, r_mul(half_coeff, diff_sign), *right)

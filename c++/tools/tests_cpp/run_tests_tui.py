@@ -10,6 +10,7 @@ Expandable test results with rich interface.
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import lru_cache
 from fractions import Fraction
 import cmath
 import json
@@ -187,7 +188,11 @@ class CatalogueFunction:
 
 
 def format_question_preview(input_text: str, limit: int = 180) -> str:
-    one_line = " \\n ".join(part.strip() for part in (input_text or "").splitlines() if part.strip())
+    raw = input_text or ""
+    if "\n" in raw:
+        one_line = " \\n ".join(part.strip() for part in raw.splitlines() if part.strip())
+    else:
+        one_line = raw.strip()
     if len(one_line) <= limit:
         return one_line
     return one_line[: max(0, limit - 3)].rstrip() + "..."
@@ -195,6 +200,10 @@ def format_question_preview(input_text: str, limit: int = 180) -> str:
 
 CATALOGUE_GRAPH_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "random_exploration_graph.json"
 CATALOGUE_MANIFEST_PATH = REPO_ROOT / "c++" / "tools" / "fuzz" / "catalogue_manifest_latest.txt"
+try:
+    GRAPH_FLUSH_EVERY = max(1, int(os.environ.get("CASIO_GRAPH_FLUSH_EVERY", "100")))
+except ValueError:
+    GRAPH_FLUSH_EVERY = 100
 
 RANDOM_SUPPORTED_MATH_THINGS = (
     "sin", "cos", "tan", "sec", "cot", "cosec", "csc",
@@ -288,6 +297,7 @@ def parse_catalogue_signature(signature):
     return name.strip(), tuple(params)
 
 
+@lru_cache(maxsize=1)
 def load_all_catalogue_functions():
     path = REPO_ROOT / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cpp"
     try:
@@ -336,7 +346,7 @@ class RandomExplorationGraph:
         tmp = self.path.with_name(
             f"{self.path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
         )
-        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
         tmp.replace(self.path)
         self._dirty = 0
 
@@ -381,7 +391,7 @@ class RandomExplorationGraph:
         node["last_input"] = (input_text or "")[:240]
         node["last_output"] = (output or "").replace("\n", " ")[:320]
         self._dirty += 1
-        if self._dirty >= 25:
+        if self._dirty >= GRAPH_FLUSH_EVERY:
             self.save()
 
     def summary(self):

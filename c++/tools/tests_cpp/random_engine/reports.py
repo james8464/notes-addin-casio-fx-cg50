@@ -38,7 +38,7 @@ class RunReportStore:
 
     def _save(self) -> None:
         tmp = self.index_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.index, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.write_text(json.dumps(self.index, separators=(",", ":"), sort_keys=True), encoding="utf-8")
         tmp.replace(self.index_path)
 
     def record_case(self, case: AdversarialCase, status: str, output: str, reason: str) -> StoredCase:
@@ -59,7 +59,7 @@ class RunReportStore:
             "expected_note": case.expected_note,
             "output": output,
         }
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
         self.index[case_id] = {
             "status": status,
             "reason": reason,
