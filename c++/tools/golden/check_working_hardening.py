@@ -159,26 +159,44 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dy/dx+2*x*y=x,y(0)=3)",
-        ["dy/dx + P*y = Q", "P = 2*x", "mu = e^Int(P dx)", "d/dx[e^(2*x^2/2)*y] = e^(2*x^2/2)*x", "C = 5/2"],
+        ["dy/dx + p*y = q", "p = 2*x", "mu = e^Int(p dx)", "d/dx[e^(2*x^2/2)*y] = e^(2*x^2/2)*x", "C = 5/2"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
         "int",
         "de_solve(x*dy/dx+2*y=x^3,x=1,y=4)",
-        ["P = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (x^5/5 + 19/5)/(x^2)"],
+        ["p = 2/x", "mu = x^2", "d/dx[x^2*y] = x^4", "C = 19/5", "y = (x^5/5 + 19/5)/(x^2)"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
         "int",
         "de_solve(dy/dx+tan(x)*y=sin(x),y(0)=1)",
-        ["P = tan(x)", "mu = cos(x)^-1", "d/dx[cos(x)^-1*y] = tan(x)", "C = 1"],
+        ["p = tan(x)", "mu = cos(x)^-1", "d/dx[cos(x)^-1*y] = tan(x)", "C = 1"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
         "int",
         "de_solve(cos(x)*dy/dx+y*sin(x)=e^(2*x)*cos(x)^2)",
-        ["P = tan(x)", "Q = e^(2*x)*cos(x)", "d/dx[cos(x)^-1*y] = e^(2*x)", "y = (e^(2*x)/2 + C)*cos(x)"],
+        ["p = tan(x)", "q = e^(2*x)*cos(x)", "d/dx[cos(x)^-1*y] = e^(2*x)", "y = (e^(2*x)/2 + C)*cos(x)"],
         ["Try dy/dx", "unsupported DE route", "Err:"],
+    ),
+    (
+        "int",
+        "de_solve((1+t)*dP/dt+P=t^2*(1+t),P(0)=5)",
+        ["dP/dt + p*P = q", "p = 1/(t + 1)", "q = t^2", "d/dt[(t + 1)*P] = (t + 1)*t^2", "P = (1/3*t^3 + 1/4*t^4 + 5)/(t + 1)"],
+        ["Err: RHS Int", "t + P", "d/dx["],
+    ),
+    (
+        "int",
+        "de_solve((t+2)*dv/dt+3*v=k*(t+2)-3,v(0)=0)",
+        ["dv/dt + p*v = q", "p = 3/(t + 2)", "q = (k*(t + 2) - 3)/(t + 2)", "d/dt[((t + 2)^3)*v] = (t + 2)^2*(k*(t + 2) - 3)", "C = - 4*k + 8"],
+        ["Err: RHS Int", "32*t + 40*t^2", "d/dx["],
+    ),
+    (
+        "int",
+        "de_solve(100*d2x/dt2+60*dx/dt+13*x=26)",
+        ["Err: second-order DE unsupported"],
+        ["d2x = ", "Int(1) d2x", "2x ="],
     ),
     (
         "alg",

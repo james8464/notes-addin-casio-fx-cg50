@@ -1274,6 +1274,29 @@ static std::optional<NodeId> sin_over_cos_node(Arena &a, NodeId n)
     return mul_or_one_int(a, rest);
 }
 
+static NodeId cancel_matching_power_den(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return n;
+    for(std::size_t i = 0; i < x.kids.size(); ++i) {
+        Node const &p = a.get(x.kids[i]);
+        if(p.kind != NodeKind::Pow) continue;
+        auto e = as_num(a, p.b);
+        if(!e || e->den != 1 || e->num <= 0) continue;
+        for(std::size_t j = 0; j < x.kids.size(); ++j) {
+            if(i == j) continue;
+            Node const &d = a.get(x.kids[j]);
+            if(d.kind != NodeKind::Div || !same_expr(a, p.a, d.b)) continue;
+            std::vector<NodeId> kids;
+            for(std::size_t k = 0; k < x.kids.size(); ++k) if(k != i && k != j) kids.push_back(x.kids[k]);
+            if(e->num > 1) kids.push_back(casio::power(a, p.a, casio::num(a, e->num - 1)));
+            kids.push_back(d.a);
+            return casio::simplify(a, mul_or_one_int(a, kids));
+        }
+    }
+    return n;
+}
+
 static std::optional<std::string> explicit_logistic_text(Arena &a, LinFrac lf, Rational q, NodeId S)
 {
     if(q.num == 0) return std::nullopt;
@@ -1345,34 +1368,47 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     if(!Pi.result) throw std::runtime_error("IF Int " + format_expr(a, P));
     NodeId Pint = casio::simplify(a, *Pi.result);
     NodeId mu = exp_log_product_node(a, Pint);
-    NodeId muQ = casio::simplify(a, compact_zero_exp(a, compact_exp_product(a, a.mul({mu, Q}))));
+    NodeId muQ = cancel_matching_power_den(a, casio::simplify(a, compact_zero_exp(a, compact_exp_product(a, a.mul({mu, Q})))));
     if(auto t = sin_over_cos_node(a, muQ)) muQ = *t;
     auto Si = integrate_giac_style(a, muQ, tok.x);
     if(!Si.result) throw std::runtime_error("RHS Int " + format_expr(a, muQ));
 
     std::vector<std::string> steps;
-    steps.push_back("dy/dx + P*y = Q");
-    steps.push_back("P = " + de_fmt(a, P));
-    steps.push_back("Q = " + de_fmt(a, Q));
+    steps.push_back("d" + tok.y + "/d" + tok.x + " + p*" + tok.y + " = q");
+    steps.push_back("p = " + de_fmt(a, P));
+    steps.push_back("q = " + de_fmt(a, Q));
     std::string pi_s = de_fmt(a, Pint);
     std::string mu_s = de_fmt(a, mu);
-    steps.push_back("mu = e^Int(P dx) = e^(" + pi_s + ")");
+    std::string mu_disp = (mu_s.find('+') != std::string::npos || mu_s.find(" - ") != std::string::npos) ? "(" + mu_s + ")" : mu_s;
+    steps.push_back("mu = e^Int(p d" + tok.x + ") = e^(" + pi_s + ")");
     if(mu_s != "e^(" + pi_s + ")") steps.push_back("mu = " + mu_s);
-    steps.push_back("d/dx[" + mu_s + "*" + tok.y + "] = " + de_fmt(a, muQ));
-    steps.push_back(mu_s + "*" + tok.y + " = " + de_fmt(a, *Si.result) + " + C");
+    steps.push_back("d/d" + tok.x + "[" + mu_disp + "*" + tok.y + "] = " + de_fmt(a, muQ));
+    steps.push_back(mu_disp + "*" + tok.y + " = " + de_fmt(a, *Si.result) + " + C");
 
     std::string rhs = format_expr(a, *Si.result) + " + C";
     BoundaryDE B = parse_de_bc(a, bc, tok.y, tok.x);
     if(B.have_y0) {
         auto x0 = as_num(a, B.x0);
         auto m0 = x0 ? eval_rat_small(a, mu, tok.x, *x0) : std::optional<Rational>{};
-        auto s0 = x0 ? eval_rat_small(a, *Si.result, tok.x, *x0) : std::optional<Rational>{};
-        if(m0 && s0) {
-            Rational C = r_sub(r_mul(*m0, B.y0r), *s0);
+        if(m0) {
+            NodeId s0 = casio::simplify(a, substitute_de_var(a, *Si.result, tok.x, B.x0));
+            NodeId cnode = 0;
+            auto s0r = x0 ? eval_rat_small(a, *Si.result, tok.x, *x0) : std::optional<Rational>{};
+            if(s0r) cnode = a.num(r_sub(r_mul(*m0, B.y0r), *s0r));
+            else {
+                std::vector<NodeId> cterms{a.num(r_mul(*m0, B.y0r))};
+                Node const &s0n = a.get(s0);
+                if(s0n.kind == NodeKind::Add) {
+                    for(NodeId k : s0n.kids) cterms.push_back(casio::neg(a, k));
+                }
+                else cterms.push_back(casio::neg(a, s0));
+                cnode = casio::simplify(a, casio::add(a, cterms));
+            }
             steps.push_back(tok.y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
-            steps.push_back("C = " + rat_text_small(a, C));
-            rhs = add_const_text(a, *Si.result, C);
-            steps.push_back(mu_s + "*" + tok.y + " = " + rhs);
+            steps.push_back("C = " + format_expr(a, cnode));
+            NodeId rhs_node = casio::simplify(a, casio::add(a, {*Si.result, cnode}));
+            rhs = format_expr(a, rhs_node);
+            steps.push_back(mu_disp + "*" + tok.y + " = " + rhs);
         }
     }
     std::string final_rhs = "(" + rhs + ")/(" + mu_s + ")";
@@ -1401,6 +1437,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
     bc = no_ws(normalize_text(bc));
 
     try {
+        if(eqtxt.find("d2") != std::string::npos) throw std::runtime_error("second-order DE unsupported");
         if(!top_eq_pos(eqtxt)) eqtxt = "dy/dx=" + eqtxt;
         auto tok = find_deriv_token(eqtxt);
         if(!tok) throw std::runtime_error("need d?/d?");
@@ -8463,6 +8500,78 @@ static std::optional<NodeId> integrate_algebraic_symmetry_general(Arena &a, Node
     return casio::simplify(a, primitive);
 }
 
+static std::optional<NodeId> coeff_times_base(Arena &a, NodeId term, NodeId base, std::string const &var)
+{
+    if(same_expr(a, term, base)) return casio::num(a, 1);
+    Node const &x = a.get(term);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> coeffs;
+    bool hit = false;
+    for(NodeId k : x.kids) {
+        if(!hit && same_expr(a, k, base)) {
+            hit = true;
+            continue;
+        }
+        if(contains_var(a, k, var)) return std::nullopt;
+        coeffs.push_back(k);
+    }
+    if(!hit) return std::nullopt;
+    return mul_or_one_int(a, coeffs);
+}
+
+static std::optional<NodeId> integrate_power_linear_base(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    NodeId base = 0, add = 0;
+    int power = 0;
+    std::vector<NodeId> extra;
+    for(NodeId k : x.kids) {
+        Node const &u = a.get(k);
+        if(!base && u.kind == NodeKind::Pow) {
+            auto e = as_num(a, u.b);
+            if(e && e->den == 1 && e->num >= 0) {
+                base = u.a;
+                power = static_cast<int>(e->num);
+                continue;
+            }
+        }
+        if(!add && u.kind == NodeKind::Add) {
+            add = k;
+            continue;
+        }
+        extra.push_back(k);
+    }
+    if(!base || !add) return std::nullopt;
+    auto lc = linear_coeff(a, base, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    NodeId coef_base = 0, coef_const = 0;
+    for(NodeId t : a.get(add).kids) {
+        if(auto cb = coeff_times_base(a, t, base, var)) {
+            coef_base = coef_base ? casio::add(a, {coef_base, *cb}) : *cb;
+        }
+        else if(!contains_var(a, t, var)) {
+            coef_const = coef_const ? casio::add(a, {coef_const, t}) : t;
+        }
+        else return std::nullopt;
+    }
+    std::vector<NodeId> terms;
+    if(coef_base) {
+        NodeId den = a.num(r_mul(*lc, Rational{power + 2, 1}));
+        terms.push_back(casio::div(a, casio::mul(a, {coef_base, casio::power(a, base, casio::num(a, power + 2))}), den));
+    }
+    if(coef_const) {
+        NodeId den = a.num(r_mul(*lc, Rational{power + 1, 1}));
+        terms.push_back(casio::div(a, casio::mul(a, {coef_const, casio::power(a, base, casio::num(a, power + 1))}), den));
+    }
+    if(terms.empty()) return std::nullopt;
+    NodeId out = casio::simplify(a, add_or_zero_int(a, terms));
+    if(!extra.empty()) out = casio::simplify(a, casio::mul(a, {mul_or_one_int(a, extra), out}));
+    steps.push_back("Step 2: Let u=" + format_expr_human(a, base) + ".");
+    steps.push_back("Step 3: Integrate u^n*(a*u+b).");
+    return out;
+}
+
 // Integration by table lookup (Giac-style)
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var)
 {
@@ -8488,23 +8597,26 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(x.kind == NodeKind::Mul) {
         Rational coeff{1, 1};
-        std::vector<NodeId> rest;
+        std::vector<NodeId> coeffs, rest;
         for(NodeId kid : x.kids) {
             if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+            else if(!contains_var(a, kid, var)) coeffs.push_back(kid);
             else rest.push_back(kid);
         }
-        if(!rest.empty() && !r_eq(coeff, Rational{1, 1})) {
+        if(!rest.empty() && (!r_eq(coeff, Rational{1, 1}) || !coeffs.empty())) {
             NodeId body = rest.size() == 1 ? rest[0] : casio::simplify(a, casio::mul(a, rest));
             auto inner = integrate_giac_style(a, body, var);
             if(inner.result) {
-                out.steps.push_back("Step 2: Factor out constant " + format_expr(a, a.num(coeff)) + ".");
+                if(!r_eq(coeff, Rational{1, 1})) coeffs.insert(coeffs.begin(), a.num(coeff));
+                NodeId coeff_node = coeffs.size() == 1 ? coeffs[0] : casio::simplify(a, casio::mul(a, coeffs));
+                out.steps.push_back("Step 2: Factor out constant " + format_expr(a, coeff_node) + ".");
                 for(std::size_t i = 1; i < inner.steps.size(); ++i) {
                     std::string st = inner.steps[i];
                     for(std::size_t p = 0; (p = st.find("I=", p)) != std::string::npos;) st.replace(p, 2, "J=");
                     for(std::size_t p = 0; (p = st.find("I =", p)) != std::string::npos;) st.replace(p, 3, "J =");
                     out.steps.push_back(st);
                 }
-                out.result = casio::simplify(a, casio::mul(a, {a.num(coeff), *inner.result}));
+                out.result = casio::simplify(a, casio::mul(a, {coeff_node, *inner.result}));
                 out.steps.push_back("Step 3: Multiply the primitive by the constant.");
                 return out;
             }
@@ -8530,6 +8642,28 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             for(auto const &s : substeps) out.steps.push_back(s);
             out.result = casio::simplify(a, casio::add(a, primitives));
             out.steps.push_back("Step 3: Add the primitives and simplify.");
+            return out;
+        }
+    }
+
+    bool expand_poly = false;
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId kid : x.kids) {
+            Node const &kn = a.get(kid);
+            if(kn.kind == NodeKind::Add) expand_poly = true;
+            if(kn.kind == NodeKind::Pow) {
+                Node const &base = a.get(kn.a);
+                if(base.kind == NodeKind::Add) expand_poly = true;
+            }
+        }
+    }
+    if(expand_poly) {
+        auto p = poly_of_any(a, expr, var);
+        if(p && p->ok && poly_degree(*p) >= 0) {
+            NodeId expanded = poly_to_node(a, *p, var);
+            out.result = integrate_poly_node(a, *p, var);
+            out.steps.push_back("Step 2: Expand polynomial: " + format_expr_human(a, expanded) + ".");
+            out.steps.push_back("Step 3: Integrate powers of " + var + ".");
             return out;
         }
     }
@@ -8583,6 +8717,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto alg_sym = integrate_algebraic_symmetry_general(a, expr, var, out.steps)) {
         out.result = *alg_sym;
         out.steps.push_back("Step 6: Back-substitute u.");
+        return out;
+    }
+
+    if(auto plb = integrate_power_linear_base(a, expr, var, out.steps)) {
+        out.result = *plb;
+        out.steps.push_back("Step 4: Back-substitute u.");
         return out;
     }
 
