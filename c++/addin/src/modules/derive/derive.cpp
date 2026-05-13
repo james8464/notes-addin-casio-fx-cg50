@@ -1151,18 +1151,31 @@ static bool append_product_rule_detail(
     return true;
 }
 
-static bool append_quotient_rule_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+static bool append_quotient_rule_detail(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string *answer_override = nullptr
+)
 {
     Node const &q = a.get(n);
     if(q.kind != NodeKind::Div) return false;
 
     NodeId du = casio::simplify(a, diff(a, q.a, var));
     NodeId dv = casio::simplify(a, diff(a, q.b, var));
-    steps.push_back("u = " + clean_math_text(format_expr_human(a, q.a)) + ".");
-    steps.push_back("u' = " + clean_math_text(format_expr_human(a, du)) + ".");
-    steps.push_back("v = " + clean_math_text(format_expr_human(a, q.b)) + ".");
-    steps.push_back("v' = " + clean_math_text(format_expr_human(a, dv)) + ".");
+    std::string u = clean_math_text(format_expr_human(a, q.a));
+    std::string v = clean_math_text(format_expr_human(a, q.b));
+    std::string up = clean_math_text(format_expr_human(a, du));
+    std::string vp = clean_math_text(format_expr_human(a, dv));
+    steps.push_back("u = " + u + ".");
+    steps.push_back("u' = " + up + ".");
+    steps.push_back("v = " + v + ".");
+    steps.push_back("v' = " + vp + ".");
     steps.push_back("y' = (u'v-u*v')/v^2.");
+    std::string subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
+    if(answer_override && subst.size() <= 220) *answer_override = subst;
+    else steps.push_back(subst + ".");
     return true;
 }
 
@@ -1226,7 +1239,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Use [f(" + var + "+h)-f(" + var + ")]/h.",
                         "[(" + var + "+h)^2-" + var + "^2]/h.",
                         "Expand: (" + var + "+h)^2=" + var + "^2+2*" + var + "*h+h^2.",
-                        "So quotient = (2*" + var + "*h+h^2)/h.",
+                        "[(" + var + "+h)^2-" + var + "^2]/h = (2*" + var + "*h+h^2)/h.",
                         "= 2*" + var + "+h.",
                         "Let h->0.",
                     },
@@ -1242,7 +1255,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "= [cos(x)-cos(x+h)]/[h*cos(x+h)cos(x)].",
                         "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
                         "= [2sin(x+h/2)sin(h/2)]/[h*cos(x+h)cos(x)].",
-                        "As h->0, sin(h/2)/(h/2)->1 and cos(x+h)->cos(x).",
+                        "h->0: sin(h/2)/(h/2)->1 and cos(x+h)->cos(x).",
                     },
                     "d/d" + var + " sec(x) = sec(x)*tan(x)"
                 );
@@ -1256,8 +1269,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Use sin(x+h)=sin(x)cos(h)+cos(x)sin(h).",
                         "sin(x+h)-sin(x)=sin(x)cos(h)+cos(x)sin(h)-sin(x).",
                         "= sin(x)(cos(h)-1)+cos(x)sin(h).",
-                        "Divide by h: sin(x)*(cos(h)-1)/h + cos(x)*sin(h)/h.",
-                        "As h->0, (cos(h)-1)/h->0 and sin(h)/h->1.",
+                        "[sin(x+h)-sin(x)]/h = sin(x)*(cos(h)-1)/h + cos(x)*sin(h)/h.",
+                        "h->0: (cos(h)-1)/h->0 and sin(h)/h->1.",
                     },
                     "d/d" + var + " sin(x) = cos(x)"
                 );
@@ -1270,8 +1283,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "[cos(x+h)-cos(x)]/h.",
                         "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
                         "cos(x+h)-cos(x)=-2sin(x+h/2)sin(h/2).",
-                        "So quotient = -sin(x+h/2)*[sin(h/2)/(h/2)].",
-                        "As h->0, sin(h/2)/(h/2)->1 and sin(x+h/2)->sin(x).",
+                        "[cos(x+h)-cos(x)]/h = -sin(x+h/2)*[sin(h/2)/(h/2)].",
+                        "h->0: sin(h/2)/(h/2)->1 and sin(x+h/2)->sin(x).",
                     },
                     "d/d" + var + " cos(x) = -sin(x)"
                 );
@@ -1283,10 +1296,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     {
                         "Use [f(" + var + "+h)-f(" + var + ")]/h.",
                         "[sin(" + std::to_string(*k) + "*(" + var + "+h))-sin(" + u + ")]/h.",
-                        "This is [sin(" + plus_scaled_h_text(u, *k, "") + ")-sin(" + u + ")]/h.",
+                        "[sin(" + std::to_string(*k) + "*(" + var + "+h))-sin(" + u + ")]/h = [sin(" +
+                        plus_scaled_h_text(u, *k, "") + ")-sin(" + u + ")]/h.",
                         "Use sin(A+B)=sin(A)cos(B)+cos(A)sin(B).",
                         "= sin(" + u + ")*(cos(" + std::to_string(*k) + "*h)-1)/h + cos(" + u + ")*sin(" + std::to_string(*k) + "*h)/(h).",
-                        "As h->0, (cos(" + std::to_string(*k) + "*h)-1)/h->0 and sin(" + std::to_string(*k) + "*h)/h->" + std::to_string(*k) + ".",
+                        "h->0: (cos(" + std::to_string(*k) + "*h)-1)/h->0 and sin(" + std::to_string(*k) + "*h)/h->" + std::to_string(*k) + ".",
                     },
                     "d/d" + var + " sin(" + u + ") = " + coeff_times_text(*k, "cos(" + u + ")")
                 );
@@ -1298,10 +1312,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     {
                         "Use [f(" + var + "+h)-f(" + var + ")]/h.",
                         "[cos(" + std::to_string(*k) + "*(" + var + "+h))-cos(" + u + ")]/h.",
-                        "This is [cos(" + plus_scaled_h_text(u, *k, "") + ")-cos(" + u + ")]/h.",
+                        "[cos(" + std::to_string(*k) + "*(" + var + "+h))-cos(" + u + ")]/h = [cos(" +
+                        plus_scaled_h_text(u, *k, "") + ")-cos(" + u + ")]/h.",
                         "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
-                        "Quotient = -sin(" + plus_scaled_h_text(u, *k, "/2") + ")*[sin(" + std::to_string(*k) + "*h/2)/(h/2)].",
-                        "As h->0, sin(" + std::to_string(*k) + "*h/2)/(h/2)->" + std::to_string(*k) + ".",
+                        "[cos(" + plus_scaled_h_text(u, *k, "") + ")-cos(" + u + ")]/h = -sin(" +
+                        plus_scaled_h_text(u, *k, "/2") + ")*[sin(" + std::to_string(*k) + "*h/2)/(h/2)].",
+                        "h->0: sin(" + std::to_string(*k) + "*h/2)/(h/2)->" + std::to_string(*k) + ".",
                     },
                     "d/d" + var + " cos(" + u + ") = " + coeff_times_text(-(*k), "sin(" + u + ")")
                 );
@@ -1770,7 +1786,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 NodeKind top_kind = arena.get(n).kind;
                 if(!used_rule && top_kind == NodeKind::Div) {
-                    append_quotient_rule_detail(arena, n, var, steps);
+                    append_quotient_rule_detail(arena, n, var, steps, &answer_override);
                     used_rule = true;
                 }
                 if(!used_rule && top_kind == NodeKind::Mul) {
@@ -2079,7 +2095,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             "dy/dt = e^t(sin(t)+cos(t))",
                             "dy/dx = [sin(t) + cos(t)]/[cos(t) - sin(t)]",
                             "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2",
-                            "Divide by dx/dt = e^t(cos(t)-sin(t)).",
+                            "dx/dt = e^t(cos(t)-sin(t)).",
                         },
                         answer
                     );
@@ -2092,7 +2108,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             "dy/dtheta = 3*sin(theta)^2*cos(theta).",
                             "dy/dx = -tan(theta).",
                             "d/dtheta(dy/dx) = -sec(theta)^2.",
-                            "Divide by dx/dtheta.",
+                            "d2y/dx2 = [d/dtheta(dy/dx)]/(dx/dtheta).",
                         },
                         answer
                     );

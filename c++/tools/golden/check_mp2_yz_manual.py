@@ -64,7 +64,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "Z9 separable DE",
         ["--alg", "de_solve((1+x)*dy/dx=y*(1-x),y(0)=1)"],
-        ["Separate variables", "ln(y) = -x + 2*ln(1+x) + C", "y = (x + 1)^2*e^(-x)"],
+        ["(1/y)dy = (1-x)/(1+x) dx", "ln(y) = -x + 2*ln(1+x) + C", "y = (x + 1)^2*e^(-x)"],
         ["Only one '=' supported", "solve(de_solve"],
     ),
 ]

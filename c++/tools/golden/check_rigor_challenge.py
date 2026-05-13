@@ -35,7 +35,7 @@ DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
     4: ([str(HOST), "--derive", "y=x*tan(y),method=implicit"], None, ["F_y = - x*sec(y)^2 + 1", "dy/dx = tan(y)/(- x*sec(y)^2 + 1)"]),
     5: ([str(HOST), "--derive", "mode:4,x^2+y^2=a^2"], None, ["Domain: y != 0", "dy/dx=-x/y", "d2y/dx2 = -a^2/y^3"]),
     6: ([str(HOST), "--derive", "t^2+1/t,t^2-1/t,t,method=param_second"], None, ["dx/dt", "dy/dx", "d2y/dx2 = -12*t^4/(2*t^3-1)^3"]),
-    7: ([str(HOST), "--derive", "e^t*cos(t),e^t*sin(t),t,method=param_second"], None, ["dx/dt", "Divide by dx/dt", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"]),
+    7: ([str(HOST), "--derive", "e^t*cos(t),e^t*sin(t),t,method=param_second"], None, ["dx/dt", "d/dt(dy/dx)", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"]),
     8: ([str(HOST), "--derive", "log(t),t+1/t,t,method=param_second"], None, ["d2y/dx2 = t+1/t"]),
     9: ([str(HOST), "--int", "e^(2*x)*cos(3*x),method=parts"], None, ["a=2, b=3", "J = Int(e^(2*x)*sin(3*x)) dx", "e^(2*x)*(2*cos(3*x)+3*sin(3*x))/13 + C"]),
     10: ([str(HOST), "--int", "e^(-x)*sin(2*x),method=parts"], None, ["Parts gives I", "J = Int(e^(-x)cos(2x))dx", "-e^(-x)*(sin(2*x) + 2*cos(2*x))/5 + C"]),

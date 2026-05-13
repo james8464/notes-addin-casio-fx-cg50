@@ -1236,7 +1236,8 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     NodeId P = casio::simplify(a, casio::neg(a, A));
     auto Pi = integrate_giac_style(a, P, tok.x);
     if(!Pi.result) throw std::runtime_error("IF Int " + format_expr(a, P));
-    NodeId mu = exp_log_product_node(a, *Pi.result);
+    NodeId Pint = casio::simplify(a, *Pi.result);
+    NodeId mu = exp_log_product_node(a, Pint);
     NodeId muQ = casio::simplify(a, compact_zero_exp(a, compact_exp_product(a, a.mul({mu, Q}))));
     if(auto t = sin_over_cos_node(a, muQ)) muQ = *t;
     auto Si = integrate_giac_style(a, muQ, tok.x);
@@ -1246,10 +1247,12 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     steps.push_back("dy/dx + P*y = Q");
     steps.push_back("P = " + de_fmt(a, P));
     steps.push_back("Q = " + de_fmt(a, Q));
-    steps.push_back("mu = e^Int(P dx) = e^(" + de_fmt(a, *Pi.result) + ")");
-    steps.push_back("mu = " + de_fmt(a, mu));
-    steps.push_back("d/dx[" + de_fmt(a, mu) + "*" + tok.y + "] = " + de_fmt(a, muQ));
-    steps.push_back(de_fmt(a, mu) + "*" + tok.y + " = " + de_fmt(a, *Si.result) + " + C");
+    std::string pi_s = de_fmt(a, Pint);
+    std::string mu_s = de_fmt(a, mu);
+    steps.push_back("mu = e^Int(P dx) = e^(" + pi_s + ")");
+    if(mu_s != "e^(" + pi_s + ")") steps.push_back("mu = " + mu_s);
+    steps.push_back("d/dx[" + mu_s + "*" + tok.y + "] = " + de_fmt(a, muQ));
+    steps.push_back(mu_s + "*" + tok.y + " = " + de_fmt(a, *Si.result) + " + C");
 
     std::string rhs = format_expr(a, *Si.result) + " + C";
     BoundaryDE B = parse_de_bc(a, bc, tok.y, tok.x);
@@ -1262,10 +1265,10 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
             steps.push_back(tok.y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
             steps.push_back("C = " + rat_text_small(a, C));
             rhs = add_const_text(a, *Si.result, C);
-            steps.push_back(de_fmt(a, mu) + "*" + tok.y + " = " + rhs);
+            steps.push_back(mu_s + "*" + tok.y + " = " + rhs);
         }
     }
-    return casio::exam_block("linear differential equation", steps, tok.y + " = (" + rhs + ")/(" + de_fmt(a, mu) + ")");
+    return casio::exam_block("linear differential equation", steps, tok.y + " = (" + rhs + ")/(" + mu_s + ")");
 }
 
 static std::vector<std::string> solve_de_mode(std::string const &payload)
@@ -1313,7 +1316,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
 
         std::vector<std::string> steps;
         steps.push_back("d" + tok->y + "/d" + tok->x + " = " + format_expr(a, dydx));
-        steps.push_back("Separate variables: " + format_expr(a, invY) + " d" + tok->y + " = " + format_expr(a, X) + " d" + tok->x);
+        steps.push_back(format_expr(a, invY) + " d" + tok->y + " = " + format_expr(a, X) + " d" + tok->x);
         steps.push_back("Int(" + format_expr(a, invY) + ") d" + tok->y + " = Int(" + format_expr(a, X) + ") d" + tok->x);
         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, *Ri.result) + " + C");
 
@@ -9810,7 +9813,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("I = " + format_expr(arena, arena.num(Rational{lc->den, lc->num})) + "*Int(atan(u)^2) du.");
                 steps.push_back("t=atan(u), so dt=du/(1+u^2).");
                 steps.push_back("u=tan(t), 1+u^2=sec(t)^2, du=sec(t)^2 dt.");
-                steps.push_back("I reduces to Int(t^2*sec(t)^2) dt.");
+                steps.push_back("Int(atan(u)^2)du=Int(t^2*sec(t)^2)dt.");
                 steps.push_back("p=t^2, dq=sec(t)^2 dt, q=tan(t).");
                 steps.push_back("Int(t^2*sec(t)^2)dt=t^2*tan(t)-Int(2t*tan(t))dt.");
                 steps.push_back("K=Int(2t*tan(t))dt: p=2t, dq=tan(t)dt, q=-ln(abs(cos(t))).");
@@ -9818,8 +9821,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("Int(t^2*sec(t)^2)dt=t^2*tan(t)+2t*ln(abs(cos(t)))-2*Int(ln(abs(cos(t))))dt.");
                 steps.push_back("I=1/2*(t^2*tan(t)+2t*ln(abs(cos(t)))-2*Int(ln(abs(cos(t))))dt).");
                 steps.push_back("t=atan(" + format_expr(arena, base.a) + "), tan(t)=" + format_expr(arena, base.a) + ".");
-                steps.push_back("Int(ln(abs(cos(t))))dt is a non-elementary special-function term.");
-                steps.push_back("So the original integral has no elementary primitive.");
+                steps.push_back("Int(ln(abs(cos(t))))dt = special function.");
+                steps.push_back("Int(" + req.expr + ") dx: no elementary primitive.");
                 return casio::exam_block("non-elementary inverse-trig square", steps, "No elementary primitive found");
             }
         }

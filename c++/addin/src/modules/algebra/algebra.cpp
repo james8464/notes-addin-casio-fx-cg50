@@ -6251,11 +6251,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "separable differential equation",
                     {
-                        "Separate variables: (1/y)dy = 1/(x*(x+2)) dx.",
+                        "(1/y)dy = 1/(x*(x+2)) dx.",
                         "PF: 1/(x*(x+2)) = 1/2*(1/x - 1/(x+2)).",
-                        "Integrate: log(abs(y)) = 1/2*log(abs(x/(x+2))) + C.",
-                        "Exponentiate: y^2 = A*x/(x+2).",
-                        "Use y(2)=2: 4 = A/2, so A=8.",
+                        "log(abs(y)) = 1/2*log(abs(x/(x+2))) + C.",
+                        "y^2 = A*x/(x+2).",
+                        "y(2)=2 => 4 = A/2, A=8.",
                     },
                     "y^2 = 8*x/(x+2)"
                 );
@@ -6265,10 +6265,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "separable differential equation",
                     {
-                        "Separate variables: dH/(12-H) = dt/110.",
-                        "Integrate: -log(abs(12-H)) = t/110 + C.",
-                        "So 12-H = A*e^(-t/110).",
-                        "Use H(0)=1: 11=A.",
+                        "dH/(12-H) = dt/110.",
+                        "-log(abs(12-H)) = t/110 + C.",
+                        "12-H = A*e^(-t/110).",
+                        "H(0)=1 => 11=A.",
                     },
                     "H = 12 - 11*e^(-t/110)"
                 );
@@ -6282,12 +6282,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "separable differential equation",
                     {
-                        "Rearrange: e^x*dy/dx = (x-1)*y^2.",
-                        "Separate variables: y^(-2)dy = (x-1)*e^(-x) dx.",
-                        "Integrate RHS by parts: Integral((x-1)*e^(-x)) dx = -x*e^(-x).",
-                        "Integrate: -1/y = -x*e^(-x) + C.",
-                        "So 1/y = x*e^(-x) + A.",
-                        "Use y(1)=e: 1/e = 1/e + A, so A=0.",
+                        "e^x*dy/dx = (x-1)*y^2.",
+                        "y^(-2)dy = (x-1)*e^(-x) dx.",
+                        "Int((x-1)*e^(-x)) dx = -x*e^(-x).",
+                        "-1/y = -x*e^(-x) + C.",
+                        "1/y = x*e^(-x) + A.",
+                        "y(1)=e => 1/e = 1/e + A, A=0.",
                     },
                     "y = e^x/x"
                 );
@@ -6299,12 +6299,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "separable differential equation",
                     {
-                        "Rearrange: dy/dx = y*(1-x)/(1+x).",
-                        "Separate variables: (1/y)dy = (1-x)/(1+x) dx.",
+                        "dy/dx = y*(1-x)/(1+x).",
+                        "(1/y)dy = (1-x)/(1+x) dx.",
                         "Rewrite (1-x)/(1+x) = -1 + 2/(1+x).",
-                        "Integrate: ln(y) = -x + 2*ln(1+x) + C.",
-                        "Exponentiate: y = A*(1+x)^2*e^(-x).",
-                        "Use y(0)=1: A=1.",
+                        "ln(y) = -x + 2*ln(1+x) + C.",
+                        "y = A*(1+x)^2*e^(-x).",
+                        "y(0)=1 => A=1.",
                     },
                     "y = (x + 1)^2*e^(-x)"
                 );

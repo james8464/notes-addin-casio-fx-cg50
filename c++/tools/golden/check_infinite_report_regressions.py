@@ -177,8 +177,8 @@ def main() -> int:
     bad += require(
         "labelled_parametric_second_exp",
         param_e,
-        ("dx/dt = e^t(cos(t)-sin(t))", "d2y/dx2 = 2/[e^t(cos(t) - sin(t))^3"),
-        ("ERR:", "Unexpected token"),
+        ("dx/dt = e^t(cos(t)-sin(t))", "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = 2/[e^t(cos(t) - sin(t))^3"),
+        ("ERR:", "Unexpected token", "Divide by"),
     )
     if param_e.count("d2y/dx2 =") != 1:
         print("FAIL labelled_parametric_second_exp: duplicate final d2 line", file=sys.stderr)
@@ -193,7 +193,7 @@ def main() -> int:
     bad += require(
         "algebra_de_solve_routes_general_engine",
         run(["--alg", "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)"]),
-        ("Separate variables", "C = ln(4/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"),
+        ("1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(4/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"),
         ("solve(de_solve", "ERR:"),
     )
     bad += require(
@@ -201,6 +201,18 @@ def main() -> int:
         run(["--trig", "(3*cos(x)+4*sin(x)=2),x,0,2*pi,10,method=rform"]),
         ("x-alpha = arccos(2/5)", "0 <= arctan(4/3)+arccos(2/5) <= 2*pi", "x = [arctan(4/3) + arccos(2/5)"),
         ("ERR:",),
+    )
+    bad += require(
+        "quotient_derivative_substitution_final",
+        run(["--derive", "(x^2+1)/(x-1),x,method=quotient"]),
+        ("u = x^2 + 1", "y' = (u'v-u*v')/v^2", "dy/dx = [(2*x)*(x - 1) - (x^2 + 1)*(1)]/(x - 1)^2"),
+        ("(x - 1)^-2", "ERR:"),
+    )
+    bad += require(
+        "first_principles_scaled_trig_math_lines",
+        run(["--derive", "cos(3*x),x,method=first_principles"]),
+        ("[cos(3*(x+h))-cos(3*x)]/h = [cos(3*x+3*h)-cos(3*x)]/h", "h->0: sin(3*h/2)/(h/2)->3", "d/dx cos(3*x) = -3*sin(3*x)"),
+        ("This is", "Divide by", "ERR:"),
     )
     bad += require(
         "interval_domain_final",

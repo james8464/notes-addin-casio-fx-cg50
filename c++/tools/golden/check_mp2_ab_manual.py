@@ -40,7 +40,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "B10 separable DE exponential",
         ["--alg", "de_solve(e^x*dy/dx+y^2=x*y^2,y(1)=e)"],
-        ["Separate variables: y^(-2)dy = (x-1)*e^(-x) dx", "RHS by parts", "y = e^x/x"],
+        ["y^(-2)dy = (x-1)*e^(-x) dx", "Int((x-1)*e^(-x)) dx = -x*e^(-x)", "y = e^x/x"],
         ["Only one '=' supported", "solve(de_solve"],
     ),
     (

@@ -585,7 +585,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "mode:5,exp(t)*cos(t),exp(t)*sin(t),t",
-        ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "Divide by dx/dt = e^t(cos(t)-sin(t))", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"],
+        ["d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = 2/[e^t(cos(t)-sin(t))^3]"],
         ["ERR:", "Unexpected token"],
     ),
     (
