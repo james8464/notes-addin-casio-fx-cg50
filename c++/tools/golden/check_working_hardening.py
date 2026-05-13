@@ -933,7 +933,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "arctan(2*x-3)=0,method=auto",
-        ["arctan has domain all real", "arctan(A)=0 => A=0", "2*x - 3 = 0", "Answer: x = 3/2"],
+        ["atan(2*x-3)=0", "2*x-3=tan(0)", "2*x-3=0", "x=3/2"],
         ["Answer: 2*x - 3 = 0", "ERR:", "Unexpected token"],
     ),
     (
@@ -1419,13 +1419,25 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(asin(x)=pi/6,x)",
-        ["asin(x)=pi/6", "x=sin(pi/6)", "x=1/2", "x=[1/2]"],
+        ["asin(x)=pi/6", "x=sin(pi/6)", "x=1/2"],
         ["need sin/cos/tan", "x=[]", "ERR:"],
     ),
     (
         "alg",
+        "solve(pi-3*acos(x+1)=0,x)",
+        ["acos(x+1)=pi/3", "-1<=x+1<=1", "x+1=cos(pi/3)", "x=-1/2"],
+        ["x=[]", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(2*asin(x)-pi/3=0,x)",
+        ["asin(x)=pi/6", "-1<=x<=1", "x=sin(pi/6)", "x=1/2"],
+        ["x=[]", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(atan(3*x)=pi/4,x)",
-        ["atan(3*x)=pi/4", "3*x=tan(pi/4)", "3*x=1", "x=[1/3]"],
+        ["atan(3*x)=pi/4", "3*x=tan(pi/4)", "3*x=1", "x=1/3"],
         ["need sin/cos/tan", "x=[]", "ERR:"],
     ),
     (

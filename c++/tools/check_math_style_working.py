@@ -115,7 +115,19 @@ CASES = [
     (
         "inverse trig exact solve",
         ["--alg", "solve(asin(x)=pi/6,x)"],
-        ("asin(x) = pi/6", "x = sin(pi/6)", "x = 1/2", "x = [1/2]"),
+        ("asin(x) = pi/6", "x = sin(pi/6)", "x = 1/2"),
+    ),
+    (
+        "affine inverse trig solve",
+        ["--alg", "solve(pi-3*acos(x+1)=0,x)"],
+        ("acos(x + 1) = pi/3", "-1 <= x + 1 <= 1", "x + 1 = cos(pi/3)", "x = -1/2"),
+        ("x = []", "ERR:"),
+    ),
+    (
+        "scaled inverse trig solve",
+        ["--alg", "solve(2*asin(x)-pi/3=0,x)"],
+        ("asin(x) = pi/6", "-1 <= x <= 1", "x = sin(pi/6)", "x = 1/2"),
+        ("x = []", "ERR:"),
     ),
     (
         "noisy defint parse",

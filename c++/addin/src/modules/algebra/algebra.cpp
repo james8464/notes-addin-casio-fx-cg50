@@ -6116,11 +6116,65 @@ static std::string compact_expr_key(std::string s)
     return s;
 }
 
+static std::pair<bool, std::string> canonical_principal_angle(std::string k)
+{
+    bool neg = !k.empty() && k[0] == '-';
+    if(k.rfind("-pi/-", 0) == 0) {
+        neg = false;
+        k = "pi/" + k.substr(5);
+    }
+    else if(neg) {
+        k.erase(k.begin());
+        if(k.rfind("pi/-", 0) == 0) {
+            neg = false;
+            k = "pi/" + k.substr(4);
+        }
+    }
+    auto canon_pi_mul = [&]() {
+        std::size_t star = k.find("*pi");
+        if(star != std::string::npos) {
+            std::string q = k.substr(0, star);
+            std::size_t slash = q.find('/');
+            if(slash != std::string::npos) {
+                std::string n = q.substr(0, slash), d = q.substr(slash + 1);
+                k = (n == "1") ? ("pi/" + d) : (n + "*pi/" + d);
+            }
+        }
+        if(k.rfind("pi*", 0) == 0) {
+            std::string q = k.substr(3);
+            std::size_t slash = q.find('/');
+            if(slash != std::string::npos) {
+                std::string n = q.substr(0, slash), d = q.substr(slash + 1);
+                k = (n == "1") ? ("pi/" + d) : (n + "*pi/" + d);
+            }
+        }
+        if(k.rfind("pi/", 0) == 0) {
+            std::size_t slash2 = k.find('/', 3);
+            if(slash2 != std::string::npos) {
+                std::string d1 = k.substr(3, slash2 - 3), d2 = k.substr(slash2 + 1);
+                if(!d1.empty() && !d2.empty() &&
+                   std::all_of(d1.begin(), d1.end(), [](unsigned char c) { return std::isdigit(c); }) &&
+                   std::all_of(d2.begin(), d2.end(), [](unsigned char c) { return std::isdigit(c); })) {
+                    k = "pi/" + std::to_string(std::stoll(d1) * std::stoll(d2));
+                }
+            }
+        }
+    };
+    canon_pi_mul();
+    return {neg, k};
+}
+
+static std::string canonical_angle_text(Arena &a, NodeId rhs)
+{
+    auto nk = canonical_principal_angle(compact_expr_key(format_expr(a, rhs)));
+    return (nk.first ? "-" : "") + nk.second;
+}
+
 static std::optional<NodeId> exact_principal_trig_value(Arena &a, FnKind outer, NodeId rhs)
 {
-    std::string k = compact_expr_key(format_expr(a, rhs));
-    bool neg = !k.empty() && k[0] == '-';
-    if(neg) k.erase(k.begin());
+    auto nk = canonical_principal_angle(compact_expr_key(format_expr(a, rhs)));
+    bool neg = nk.first;
+    std::string k = nk.second;
     if(outer == FnKind::Acos && neg) return std::nullopt;
     if(outer == FnKind::Atan && k == "pi/2") return std::nullopt;
 
@@ -6145,6 +6199,9 @@ static std::optional<NodeId> exact_principal_trig_value(Arena &a, FnKind outer, 
         else if(k == "pi/4") v = half(sq(2));
         else if(k == "pi/3") v = a.num(Rational{1, 2});
         else if(k == "pi/2") v = a.num(Rational{0, 1});
+        else if(k == "2*pi/3") v = a.num(Rational{-1, 2});
+        else if(k == "3*pi/4") v = casio::neg(a, half(sq(2)));
+        else if(k == "5*pi/6") v = casio::neg(a, half(sq(3)));
         else if(k == "pi") v = a.num(Rational{-1, 1});
         else return std::nullopt;
         return v;
@@ -6277,6 +6334,110 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
         return out;
     }
     out.push_back("Answer: " + arg_text + " = " + target);
+    return out;
+}
+
+struct InvTrigAffine
+{
+    FnKind outer{};
+    NodeId arg = 0;
+    Rational coeff{0, 1};
+    std::vector<NodeId> constants;
+    bool saw = false;
+};
+
+static bool is_inverse_trig_fn(FnKind f)
+{
+    return f == FnKind::Asin || f == FnKind::Acos || f == FnKind::Atan;
+}
+
+static std::optional<std::pair<Rational, NodeId>> inv_trig_term(Arena &a, NodeId term)
+{
+    Node const &t = a.get(term);
+    if(t.kind == NodeKind::Fn && is_inverse_trig_fn(t.fkind))
+        return std::make_pair(Rational{1, 1}, term);
+    if(t.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational coeff{1, 1};
+    NodeId fn = 0;
+    for(NodeId kid : t.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Num) {
+            coeff = r_mul(coeff, k.num);
+            continue;
+        }
+        if(k.kind == NodeKind::Fn && is_inverse_trig_fn(k.fkind) && fn == 0) {
+            fn = kid;
+            continue;
+        }
+        if(auto sub = inv_trig_term(a, kid); sub && fn == 0) {
+            coeff = r_mul(coeff, sub->first);
+            fn = sub->second;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(fn == 0) return std::nullopt;
+    return std::make_pair(coeff, fn);
+}
+
+static std::optional<std::vector<std::string>> inverse_trig_affine_solve(
+    Arena &a,
+    NodeId rearr,
+    std::string const &var,
+    std::string const &shown_eq
+)
+{
+    Node const &r = a.get(rearr);
+    std::vector<NodeId> terms = (r.kind == NodeKind::Add) ? r.kids : std::vector<NodeId>{rearr};
+    InvTrigAffine info;
+    for(NodeId term : terms) {
+        if(auto it = inv_trig_term(a, term)) {
+            Node const &fn = a.get(it->second);
+            if(info.saw && (fn.fkind != info.outer || !casio::same_by_sig(a, fn.a, info.arg))) return std::nullopt;
+            info.saw = true;
+            info.outer = fn.fkind;
+            info.arg = fn.a;
+            info.coeff = r_add(info.coeff, it->first);
+            continue;
+        }
+        if(contains_symbol(a, term, var)) return std::nullopt;
+        info.constants.push_back(term);
+    }
+    if(!info.saw || is_zero(info.coeff)) return std::nullopt;
+
+    NodeId c = info.constants.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, info.constants));
+    NodeId target = casio::simplify(a, casio::div(a, casio::neg(a, c), a.num(info.coeff)));
+    Node const &argn = a.get(info.arg);
+    bool target_zero = is_num_node(a, target, 0) || numeric_same(a, target, zero_node(a));
+    if(target_zero && argn.kind == NodeKind::Fn &&
+       ((info.outer == FnKind::Asin && argn.fkind == FnKind::Sin) ||
+        (info.outer == FnKind::Acos && argn.fkind == FnKind::Cos) ||
+        (info.outer == FnKind::Atan && argn.fkind == FnKind::Tan)))
+        return std::nullopt;
+    std::string inv = info.outer == FnKind::Asin ? "asin" : (info.outer == FnKind::Acos ? "acos" : "atan");
+    std::string trig = info.outer == FnKind::Asin ? "sin" : (info.outer == FnKind::Acos ? "cos" : "tan");
+    std::string arg = format_expr(a, info.arg);
+    std::string tgt = canonical_angle_text(a, target);
+    auto exact = exact_principal_trig_value(a, info.outer, target);
+    if(!exact) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back(shown_eq);
+    out.push_back(inv + "(" + arg + ") = " + tgt);
+    if(info.outer == FnKind::Asin || info.outer == FnKind::Acos)
+        out.push_back("-1 <= " + arg + " <= 1");
+    out.push_back(arg + " = " + trig + "(" + tgt + ")");
+    out.push_back(arg + " = " + format_expr(a, *exact));
+
+    NodeId residual = casio::simplify(a, casio::add(a, {info.arg, casio::neg(a, *exact)}));
+    if(auto p = poly_of(a, residual, var); p && p->ok) {
+        auto roots = solve_poly2(a, *p, var);
+        if(!roots.empty()) {
+            out.insert(out.end(), roots.begin(), roots.end());
+            return out;
+        }
+    }
+    out.push_back(arg + " = " + format_expr(a, *exact));
     return out;
 }
 
@@ -8113,6 +8274,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;
+        if(auto inv_aff = inverse_trig_affine_solve(arena, rearr, solve_var, shown_eq))
+            return *inv_aff;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
             return *inv_trig;
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
