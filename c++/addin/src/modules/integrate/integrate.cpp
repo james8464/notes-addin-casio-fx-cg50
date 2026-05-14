@@ -2384,6 +2384,39 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
+    if(auto args = unwrap_call_args(expr, "defint"); args && args->size() == 4) {
+        std::string integrand = compact_key((*args)[0]);
+        std::string var = compact_key((*args)[1]);
+        std::string lo = compact_key((*args)[2]);
+        std::string hi = compact_key((*args)[3]);
+        auto is_name = [](std::string const &s) {
+            if(s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
+            for(char ch : s)
+                if(!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_')) return false;
+            return true;
+        };
+        std::size_t hp = 0;
+        while(hp < hi.size() && std::isdigit(static_cast<unsigned char>(hi[hp]))) ++hp;
+        if(lo == "0" && hp > 0 && hp < hi.size() && hp < 7 && is_name(var)) {
+            std::string m = hi.substr(0, hp);
+            std::string p = hi.substr(hp);
+            if(is_name(p) && p != var && integrand == p + var + "/(" + var + "+" + p + ")") {
+                int mi = 0;
+                for(char ch : m) mi = mi * 10 + (ch - '0');
+                std::string mp1 = std::to_string(mi + 1);
+                return out(
+                    "linear-over-linear split",
+                    {
+                        p + "*" + var + "/(" + var + "+" + p + ") = " + p + " - " + p + "^2/(" + var + "+" + p + ")",
+                        "F(" + var + ") = " + p + "*" + var + " - " + p + "^2*ln(abs(" + var + "+" + p + "))",
+                        "F(" + m + p + ") - F(0)",
+                        p + ">0 => ln(abs(" + mp1 + p + "))-ln(abs(" + p + ")) = ln(" + mp1 + ")",
+                    },
+                    p + "^2*(" + m + " - ln(" + mp1 + "))"
+                );
+            }
+        }
+    }
 
     if(c == "defint(sqrt(x)sqrt(a-x),x,0,a)" || c == "defint(sqrt(x)sqrt(-x+a),x,0,a)") {
         return out(
