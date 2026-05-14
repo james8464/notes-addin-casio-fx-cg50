@@ -122,6 +122,36 @@ static bool contains_var(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static bool contains_log10(Arena &a, NodeId n)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return x.fkind == FnKind::Log10 || contains_log10(a, x.a);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_log10(a, x.a) || contains_log10(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_log10(a, k)) return true;
+    }
+    return false;
+}
+
+static NodeId rewrite_log10(Arena &a, NodeId n)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        NodeId u = rewrite_log10(a, x.a);
+        if(x.fkind == FnKind::Log10) return casio::div(a, casio::fn(a, "log", u), casio::fn(a, "log", casio::num(a, 10)));
+        return casio::simplify(a, a.fn(x.fkind, u));
+    }
+    if(x.kind == NodeKind::Pow) return casio::power(a, rewrite_log10(a, x.a), rewrite_log10(a, x.b));
+    if(x.kind == NodeKind::Div) return casio::div(a, rewrite_log10(a, x.a), rewrite_log10(a, x.b));
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(auto k : x.kids) kids.push_back(rewrite_log10(a, k));
+        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+    }
+    return n;
+}
+
 static bool contains_var_neg_one_power(Arena &a, NodeId n, std::string const &var)
 {
     auto const &x = a.get(n);
@@ -333,6 +363,7 @@ static std::string node_to_string(Arena &a, NodeId n)
             case FnKind::Tanh: name = "tanh"; break;
             case FnKind::Exp: name = "exp"; break;
             case FnKind::Log: name = "log"; break;
+            case FnKind::Log10: name = "log10"; break;
             case FnKind::Sign: name = "sign"; break;
             case FnKind::Factorial: name = "factorial"; break;
             default: name = "f";
@@ -7579,6 +7610,7 @@ static std::optional<NodeId> rc_diff(Arena &a, NodeId n, std::string const &var)
         case FnKind::Cot: return casio::simplify(a, casio::mul(a, {casio::neg(a, casio::power(a, a.fn(FnKind::Cosec, x.a), casio::num(a, 2))), *du}));
         case FnKind::Exp: return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Exp, x.a), *du}));
         case FnKind::Log: return casio::simplify(a, casio::div(a, *du, x.a));
+        case FnKind::Log10: return casio::simplify(a, casio::div(a, *du, casio::mul(a, {x.a, casio::fn(a, "log", casio::num(a, 10))})));
         case FnKind::Sqrt: return casio::simplify(a, casio::div(a, *du, casio::mul(a, {casio::num(a, 2), a.fn(FnKind::Sqrt, x.a)})));
         default: return std::nullopt;
         }
@@ -10712,6 +10744,18 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         step3 << "Step 3: Simplify. Result = " << node_to_string(a, *out.result) << " + C";
         out.steps.push_back(step3.str());
         return out;
+    }
+
+    if(contains_log10(a, expr)) {
+        NodeId rew = rewrite_log10(a, expr);
+        auto inner = integrate_giac_style(a, rew, var);
+        if(inner.result) {
+            out.steps.push_back("log10(u)=ln(u)/ln(10).");
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, rew));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
     }
 
     if(x.kind == NodeKind::Pow) {

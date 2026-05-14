@@ -1442,6 +1442,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(log10(x)=1,x)",
+        ["Domain: x > 0", "x = 10", "x = [10]"],
+        ["rejected by domain", "x = []", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(log10(3*x-1)=log10(x+5),x)",
+        ["Domain: 3*x - 1 > 0", "ln((3*x - 1)/(x + 5)) = 0", "x = [3]"],
+        ["rejected by domain", "x = []", "ERR:"],
+    ),
+    (
+        "derive",
+        "log10(3*x-1),x",
+        ["u = 3*x - 1", "dy/dx = du/dx/(u*ln(10))", "dy/dx = 3/((3*x - 1)*ln(10))"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "int",
+        "defint(log10(3*x-1)-log10(x+5),x,3,8+sqrt(10))",
+        ["log10(u) = ln(u)/ln(10)", "F(8+sqrt(10)) - F(3)"],
+        ["ERR:", "No elementary primitive found"],
+    ),
+    (
+        "alg",
         "solve(log(2,x+3)+log(2,x+10)=2+2*log(2,x),x,method=log_exp)",
         ["log(2,(x+3)*(x+10))", "(x + 3)*(x + 10) = 4*x^2", "x = -5/3 rejected by domain", "x = [6]"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],

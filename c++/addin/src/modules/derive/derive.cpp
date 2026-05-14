@@ -410,6 +410,7 @@ static std::string chain_formula(FnKind f, std::string const &var)
     case FnKind::Acosh: return "du/d" + var + "/sqrt(u^2-1)";
     case FnKind::Atanh: return "du/d" + var + "/(1-u^2)";
     case FnKind::Log: return "du/d" + var + "/u";
+    case FnKind::Log10: return "du/d" + var + "/(u*ln(10))";
     case FnKind::Exp: return "exp(u)" + du;
     case FnKind::Sqrt: return "du/d" + var + "/(2sqrt(u))";
     case FnKind::Abs: return "u/abs(u)*du/d" + var;
@@ -1036,6 +1037,8 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             return casio::simplify(a, casio::mul(a, {a.fn(FnKind::Exp, u), up}));
         case FnKind::Log:
             return casio::simplify(a, casio::mul(a, {casio::div(a, casio::num(a, 1), u), up}));
+        case FnKind::Log10:
+            return casio::simplify(a, casio::div(a, up, casio::mul(a, {u, casio::fn(a, "log", casio::num(a, 10))})));
         case FnKind::Sqrt:
             return casio::simplify(a, casio::div(a, up, casio::mul(a, {casio::num(a, 2), a.fn(FnKind::Sqrt, u)})));
         case FnKind::Abs:

@@ -1911,6 +1911,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
         case FnKind::Abs: return std::fabs(u);
         case FnKind::Sign: return (u > 0) - (u < 0);
         case FnKind::Log: return std::log(u);
+        case FnKind::Log10: return std::log10(u);
         case FnKind::Exp: return std::exp(u);
         default: return std::nullopt;
         }
@@ -2328,6 +2329,12 @@ static bool log_piece(Arena &a, NodeId body, NodeId &arg, NodeId &base, bool &ha
     if(n.kind == NodeKind::Fn && n.fkind == FnKind::Log) {
         arg = n.a;
         base = 0;
+        return true;
+    }
+    if(n.kind == NodeKind::Fn && n.fkind == FnKind::Log10) {
+        arg = n.a;
+        base = casio::num(a, 10);
+        has_base = true;
         return true;
     }
     if(n.kind == NodeKind::Div) {
@@ -3355,7 +3362,8 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
             if(amin && amin->num >= 0) push_unique(out, "Domain: all real x");
             else push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
         }
-        if(x.fkind == FnKind::Log && has_symbols(a, x.a)) push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
+        if((x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && has_symbols(a, x.a))
+            push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
         if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a)) {
             Node const &arg = a.get(x.a);
             if(arg.kind == NodeKind::Fn && (arg.fkind == FnKind::Sin || arg.fkind == FnKind::Cos)) {
@@ -3569,8 +3577,9 @@ static std::string format_rat_plain(Rational r)
 
 static bool parse_log_call_key(std::string const &s, std::size_t pos, std::string &base, std::string &arg, std::size_t &next)
 {
-    if(s.compare(pos, 4, "log(") != 0) return false;
-    std::size_t begin = pos + 4;
+    bool is_log10 = s.compare(pos, 6, "log10(") == 0;
+    if(!is_log10 && s.compare(pos, 4, "log(") != 0) return false;
+    std::size_t begin = pos + (is_log10 ? 6 : 4);
     int depth = 1;
     for(std::size_t i = begin; i < s.size(); ++i) {
         if(s[i] == '(') depth++;
@@ -3578,10 +3587,16 @@ static bool parse_log_call_key(std::string const &s, std::size_t pos, std::strin
             depth--;
             if(depth == 0) {
                 auto inner = s.substr(begin, i - begin);
-                auto args = split_top_key(inner, ',');
-                if(args.size() != 2) return false;
-                base = args[0];
-                arg = args[1];
+                if(is_log10) {
+                    base = "10";
+                    arg = inner;
+                }
+                else {
+                    auto args = split_top_key(inner, ',');
+                    if(args.size() != 2) return false;
+                    base = args[0];
+                    arg = args[1];
+                }
                 next = i + 1;
                 return true;
             }
@@ -3600,6 +3615,8 @@ struct LogTermKey
 static std::optional<LogTermKey> parse_log_term_key(std::string const &term)
 {
     std::size_t pos = term.find("log(");
+    std::size_t pos10 = term.find("log10(");
+    if(pos == std::string::npos || (pos10 != std::string::npos && pos10 < pos)) pos = pos10;
     if(pos == std::string::npos) return std::nullopt;
     Rational coeff{1, 1};
     if(pos > 0) {

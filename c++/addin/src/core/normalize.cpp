@@ -201,7 +201,7 @@ static constexpr std::string_view compact_words[] = {
     "asin", "acos", "atan",
     "sinh", "cosh", "tanh",
     "sqrt", "sin", "cos", "tan", "sec", "cot",
-    "abs", "exp", "log", "ln", "csc",
+    "abs", "exp", "log10", "log", "ln", "csc",
 };
 
 static std::pair<std::string, std::string> split_compact_function_word(std::string const &word)
