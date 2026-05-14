@@ -46,7 +46,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "D11 reciprocal exponential substitution",
         ["--int", "defint((1/x^2+1/x^3)*e^(1/x),x,1/log(3),1/log(2))"],
-        ["u=1/x", "Integral becomes Integral((1+u)*e^u) du", "log(27/4)"],
+        ["u=1/x", "Int = -Int(1+u)e^u du", "ln(27/4)"],
         ["No elementary primitive", "ERR:"],
     ),
     (

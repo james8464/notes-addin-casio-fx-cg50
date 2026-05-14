@@ -28,7 +28,7 @@ CASES = [
     ("R2 symbolic complete square", ["--alg", "complete_square(x^2+2*k*x+4)"], ["(x + k)^2", "- k^2 + 4"]),
     ("R2 symbolic range", ["--alg", "range(x^2+2*k*x+4)"], ["y >= - k^2 + 4"]),
     ("R5 exp reciprocal range", ["--alg", "range(e^(n*x)+k*e^(-n*x))"], ["AM-GM", "y >= 2*sqrt(k)"]),
-    ("R7 exact integral", ["--int", "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)"], ["2sec(x)^2+2sec(x)tan(x)-1", "4 - pi/6"]),
+    ("R7 exact integral", ["--int", "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)"], ["sec(x)^2 + 2sec(x)tan(x) + tan(x)^2", "4 - pi/6"]),
     ("R9 partial fractions", ["--alg", "partfrac((16*x^2+3*x-2)/(x^2*(3*x-2)))"], ["A=1", "B=0", "C=16", "1/x^2 + 16/(3*x-2)"]),
     ("R9 binomial", ["--alg", "binomial(1/(3*x-2),x,0,3)"], ["-1/2", "- 3/4*x", "- 9/8*x^2", "- 27/16*x^3"]),
     ("R10 sin triple", ["--trig", "sin(3*theta)\n3*sin(theta)-4*sin(theta)^3"], ["sin(A+B)", "3*sin(theta) - 4*sin(theta)^3"]),

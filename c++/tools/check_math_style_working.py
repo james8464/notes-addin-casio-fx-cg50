@@ -464,6 +464,24 @@ CASES = [
         ("ln(abs(e + 1)) - ln(abs(e^(-1) + 1))", "No elementary"),
     ),
     (
+        "sqrt endpoint power collapse",
+        ["--int", "defint(sec(x)^4,x,0,pi/3),method=sub"],
+        ("F(pi/3) = 2*sqrt(3)", "2*sqrt(3)"),
+        ("sqrt(3) + 1/3*sqrt(3)^3", "No elementary"),
+    ),
+    (
+        "defint uses special substitution primitive",
+        ["--int", "defint(e^(2*x)/(e^(x)+1),x,0,1),method=sub"],
+        ("u = e^x + 1", "I = u - ln(abs(u)) + C", "F(1) - F(0)", "e - ln(abs(e + 1)) + ln(2) - 1"),
+        ("ERR:", "Expected )", "No elementary", "Integrate; back-substitute"),
+    ),
+    (
+        "sqrt substitution maths lines",
+        ["--int", "1/(4*sqrt(x)*sqrt(sqrt(x)-1)),method=sub"],
+        ("u = sqrt(x)", "I = Int(1/(2*sqrt(u-1))) du", "I = sqrt(sqrt(x) - 1) + C"),
+        ("Integrate", "Simplify to", "No elementary"),
+    ),
+    (
         "exp denominator linear definite",
         ["--int", "defint(6/e^(2-3*x),x,k,1/2)"],
         ("6/e^(- 3*x + 2) = 6*e^(3*x - 2)", "u = 3*x - 2", "F(1/2) - F(k)", "2*e^(-1/2) - 2*e^(3*k - 2)"),

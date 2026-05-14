@@ -2003,6 +2003,12 @@ static std::string simplify_endpoint_answer_text(std::string s)
             q.normalize();
             replace_all_text(s, from, rat_text(q));
         }
+        std::string v = std::to_string(n);
+        for(std::string const &fn : {"ln", "log"}) {
+            replace_all_text(s, " + " + fn + "(1/" + v + ")", " - " + fn + "(" + v + ")");
+            replace_all_text(s, " - " + fn + "(1/" + v + ")", " + " + fn + "(" + v + ")");
+            if(s == fn + "(1/" + v + ")") s = "-" + fn + "(" + v + ")";
+        }
     }
     auto parse_ln_term = [](std::string const &t, long long &c, long long &v) -> bool {
         std::size_t p = t.find("*ln(");
@@ -2227,6 +2233,11 @@ static std::string simplify_endpoint_answer_text(std::string s)
             };
             for(auto const &t : keep) append(t.sign, t.body);
             append(1, log_part);
+            for(int n = 2; n <= 200; ++n) {
+                std::string v = std::to_string(n);
+                replace_all_text(out, " + ln(1/" + v + ")", " - ln(" + v + ")");
+                replace_all_text(out, " + log(1/" + v + ")", " - log(" + v + ")");
+            }
             if(!out.empty()) return out;
         }
         std::int64_t L = 1;
@@ -2267,6 +2278,11 @@ static std::string simplify_endpoint_answer_text(std::string s)
                 };
                 for(auto const &t : keep) append(t.sign, t.body);
                 append(1, log_part);
+                for(int n = 2; n <= 200; ++n) {
+                    std::string v = std::to_string(n);
+                    replace_all_text(out, " + ln(1/" + v + ")", " - ln(" + v + ")");
+                    replace_all_text(out, " + log(1/" + v + ")", " - log(" + v + ")");
+                }
                 if(!out.empty()) return out;
             }
         }
@@ -3520,12 +3536,12 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "exponential substitution",
             {
-                "Let u=e^x+1.",
-                "Then du=e^x dx and e^x=u-1.",
-                "So e^(2x)dx/(e^x+1) becomes (u-1)/u du.",
-                "Integral becomes Integral((u-1)/u) du.",
-                "Split: (u-1)/u = 1 - 1/u.",
-                "Integrate and back-substitute.",
+                "u = e^x + 1.",
+                "du = e^x dx; e^x = u - 1.",
+                "I = Int((u - 1)/u) du.",
+                "(u - 1)/u = 1 - 1/u.",
+                "I = u - ln(abs(u)) + C.",
+                "I = e^x + 1 - ln(abs(e^x + 1)) + C.",
             },
             "e^x + 1 - log(abs(e^x + 1)) + C"
         );
@@ -3539,14 +3555,12 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "exponential substitution",
             {
-                "Let u=e^x+1.",
-                "Then du=e^x dx and e^x=u-1.",
-                "Bounds: x=log(2) gives u=3; x=log(8) gives u=9.",
-                "Integral becomes Integral((u-1)/u) du.",
-                "Integral becomes Integral_3^9((u-1)/u) du.",
-                "Split: (u-1)/u = 1 - 1/u.",
-                "Primitive in u is u-log(u).",
-                "Evaluate [u-log(u)]_3^9 and simplify.",
+                "u = e^x + 1.",
+                "du = e^x dx; e^x = u - 1.",
+                "x=log(2) => u=3; x=log(8) => u=9.",
+                "I = Int_3^9 ((u - 1)/u) du.",
+                "(u - 1)/u = 1 - 1/u.",
+                "F(u) = u - ln(abs(u)).",
             },
             "6 - log(3)"
         );
@@ -3618,11 +3632,12 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         return out(
             "sqrt substitution",
             {
-                "Let u=sqrt(x).",
-                "Then x=u^2 and dx=2u du.",
-                "Integral becomes Integral(1/(4*u*sqrt(u-1))*2u) du.",
-                "Simplify to Integral(1/(2sqrt(u-1))) du.",
-                "Integrate and back-substitute u=sqrt(x).",
+                "u = sqrt(x).",
+                "x = u^2; dx = 2u du.",
+                "I = Int(1/(4*u*sqrt(u-1))*2u) du.",
+                "I = Int(1/(2*sqrt(u-1))) du.",
+                "I = sqrt(u - 1) + C.",
+                "I = sqrt(sqrt(x) - 1) + C.",
             },
             "sqrt(sqrt(x) - 1) + C"
         );
@@ -15210,6 +15225,14 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         if(exp_num && exp_num->num > 0) {
             if(auto b = as_num(a, base); b && r_zero(*b)) return casio::num(a, 0);
         }
+        if(exp_num && exp_num->den == 1 && exp_num->num > 1 && base_node.kind == NodeKind::Fn && base_node.fkind == FnKind::Sqrt) {
+            if(auto b = as_num(a, simplify_known_endpoint_values(a, base_node.a)); b && b->num >= 0) {
+                Rational outside{1, 1};
+                for(std::int64_t i = 0; i < exp_num->num / 2; ++i) outside = r_mul(outside, *b);
+                if(exp_num->num % 2 == 0) return a.num(outside);
+                return simplify_known_endpoint_values(a, mul_coeff(a, outside, sqrt_rat(a, *b)));
+            }
+        }
         if(exp_num && exp_num->num == 2 && exp_num->den == 1 && base_node.kind == NodeKind::Fn && base_node.fkind == FnKind::Sqrt)
             return simplify_known_endpoint_values(a, base_node.a);
         if(exp_num && exp_num->num == 2 && exp_num->den > 1) {
@@ -15361,6 +15384,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                     return simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), ts));
             }
         }
+        Node const &bn = a.get(bot);
+        if(auto tnum = as_num(a, top); tnum && bn.kind == NodeKind::Div) {
+            if(auto btop = as_num(a, bn.a); btop && r_eq(*btop, Rational{1, 1}))
+                return simplify_known_endpoint_values(a, mul_coeff(a, *tnum, bn.b));
+        }
         auto bnum = as_num(a, bot);
         auto bf = numeric_factor(a, bot);
         if(bf.second && !r_eq(bf.first, Rational{1, 1})) {
@@ -15478,6 +15506,27 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     }
     else {
         result = integrate_giac_style(arena, node, var);
+    }
+    if(!result.result) {
+        std::vector<std::string> candidates = {integrand, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
+        for(std::string const &candidate : candidates) {
+            auto special = special_integral_answer(candidate);
+            if(!special) continue;
+            std::string prim = trim_copy(special->answer);
+            for(std::string const &tail : {" + C", "+ C", "+C"}) {
+                if(prim.size() >= tail.size() && prim.compare(prim.size() - tail.size(), tail.size(), tail) == 0) {
+                    prim = trim_copy(prim.substr(0, prim.size() - tail.size()));
+                    break;
+                }
+            }
+            if(prim.find('C') != std::string::npos || prim.find("+/-") != std::string::npos) continue;
+            try {
+                result.result = parse_expr(arena, prim);
+                result.steps = special->steps;
+                break;
+            }
+            catch(...) {}
+        }
     }
     if(!result.result) return std::nullopt;
 
