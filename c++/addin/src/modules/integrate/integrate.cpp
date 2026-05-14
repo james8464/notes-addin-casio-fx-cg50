@@ -1994,6 +1994,15 @@ static std::string simplify_endpoint_answer_text(std::string s)
         std::string v = std::to_string(n);
         replace_all_text(s, "abs(0 + " + v + ")", v);
         replace_all_text(s, "abs(" + v + ")", v);
+        replace_all_text(s, "(0 + " + v + ")", v);
+    }
+    for(int n = 1; n <= 200; ++n) {
+        for(int d = 1; d <= 200; ++d) {
+            std::string from = "abs(" + std::to_string(n) + "/" + std::to_string(d) + ")";
+            Rational q{n, d};
+            q.normalize();
+            replace_all_text(s, from, rat_text(q));
+        }
     }
     auto parse_ln_term = [](std::string const &t, long long &c, long long &v) -> bool {
         std::size_t p = t.find("*ln(");
@@ -9100,16 +9109,18 @@ static std::optional<NodeId> integrate_cancelled_rational(Arena &a, NodeId expr,
     return integrate_poly_node(a, qr->first, var);
 }
 
-static std::optional<NodeId> integrate_poly_div_linear(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+static std::optional<NodeId> integrate_poly_div_linear(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps, int min_quot_degree = 0)
 {
     if(a.get(expr).kind != NodeKind::Div) return std::nullopt;
     if(contains_var_neg_one_power(a, expr, var)) return std::nullopt;
     auto rpoly = rational_poly_of(a, expr, var);
     if(!rpoly || !rpoly->num.ok || !rpoly->den.ok || poly_degree(rpoly->den) != 1) return std::nullopt;
+    if(poly_degree(rpoly->num) < poly_degree(rpoly->den)) return std::nullopt;
     auto qr = poly_divmod(rpoly->num, rpoly->den);
     if(!qr) return std::nullopt;
     Poly q = qr->first;
     Poly r = qr->second;
+    if(poly_degree(q) < min_quot_degree) return std::nullopt;
     Rational rem = poly_at(r, 0);
     Rational den_slope = poly_at(rpoly->den, 1);
     if(r_zero(den_slope)) return std::nullopt;
@@ -9119,7 +9130,13 @@ static std::optional<NodeId> integrate_poly_div_linear(Arena &a, NodeId expr, st
     if(!r_zero(rem)) {
         terms.push_back(mul_coeff(a, r_div(rem, den_slope), casio::fn(a, "log", casio::fn(a, "abs", dnode))));
     }
-    steps.push_back("Step 2: N/D = Q + R/D.");
+    NodeId qnode = poly_to_node(a, q, var);
+    std::vector<NodeId> decomp_terms;
+    if(poly_degree(q) >= 0) decomp_terms.push_back(qnode);
+    if(!r_zero(rem)) decomp_terms.push_back(casio::div(a, a.num(rem), dnode));
+    NodeId decomp = decomp_terms.empty() ? a.num(Rational{0, 1}) :
+                    (decomp_terms.size() == 1 ? decomp_terms.front() : casio::simplify(a, casio::add(a, decomp_terms)));
+    steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, decomp));
     steps.push_back("Step 3: Q = " + format_expr_human(a, poly_to_node(a, q, var)) + ", R = " + format_expr_human(a, a.num(rem)) + ".");
     steps.push_back("Step 4: Int(Q) d" + var + " + R*Int(1/D) d" + var + ".");
     if(terms.empty()) return casio::num(a, 0);
@@ -13540,6 +13557,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(auto linear_div = integrate_poly_div_linear(a, expr, var, out.steps, 2)) {
+        out.result = *linear_div;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
+        return out;
+    }
+
     if(auto combined = combine_same_exp_numeric_powers(a, expr)) {
         auto inner = integrate_giac_style(a, *combined, var);
         if(inner.result) {
@@ -14984,6 +15007,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(an.kind == NodeKind::Fn && an.fkind == FnKind::Sqrt) {
                 if(auto r = as_num(a, an.a); r && r->num >= 0) return arg;
             }
+            if(an.kind == NodeKind::Const && an.ckind == ConstKind::E) return arg;
+            if(an.kind == NodeKind::Pow) {
+                Node const &base = a.get(an.a);
+                if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return arg;
+            }
         }
         if(x.fkind == FnKind::Exp) {
             auto exp_of_log_power = [&](NodeId v) -> std::optional<NodeId> {
@@ -15302,6 +15330,37 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         NodeId top = simplify_known_endpoint_values(a, x.a);
         NodeId bot = simplify_known_endpoint_values(a, x.b);
         Node const &tn = a.get(top);
+        auto one_plus_exp_power = [&](NodeId v) -> std::optional<NodeId> {
+            auto exp_power = [&](NodeId t) -> std::optional<NodeId> {
+                Node const &q = a.get(t);
+                if(q.kind == NodeKind::Const && q.ckind == ConstKind::E) return a.num(Rational{1, 1});
+                if(q.kind == NodeKind::Pow) {
+                    Node const &base = a.get(q.a);
+                    if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return q.b;
+                }
+                return std::nullopt;
+            };
+            if(auto e = exp_power(v)) return *e;
+            Node const &q = a.get(v);
+            if(q.kind != NodeKind::Add || q.kids.size() != 2) return std::nullopt;
+            bool has_one = false;
+            NodeId exp = 0;
+            for(NodeId k : q.kids) {
+                if(auto r = as_num(a, k); r && r_eq(*r, Rational{1, 1})) has_one = true;
+                else if(auto e = exp_power(k); e && !exp) exp = *e;
+                else return std::nullopt;
+            }
+            if(has_one && exp) return exp;
+            return std::nullopt;
+        };
+        if(auto te = one_plus_exp_power(top)) {
+            if(auto be = one_plus_exp_power(bot)) {
+                NodeId ts = simplify_known_endpoint_values(a, *te);
+                NodeId bs = simplify_known_endpoint_values(a, *be);
+                if(same_expr(a, ts, simplify_known_endpoint_values(a, casio::neg(a, bs))))
+                    return simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), ts));
+            }
+        }
         auto bnum = as_num(a, bot);
         auto bf = numeric_factor(a, bot);
         if(bf.second && !r_eq(bf.first, Rational{1, 1})) {
@@ -15322,6 +15381,46 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         std::vector<NodeId> kids;
         kids.reserve(x.kids.size());
         for(NodeId k : x.kids) kids.push_back(simplify_known_endpoint_values(a, k));
+        auto log_abs_term = [&](NodeId term) -> std::optional<std::pair<Rational, NodeId>> {
+            auto sf = split_rat_factor(a, term);
+            Node const &body = a.get(sf.second);
+            if(body.kind != NodeKind::Fn || body.fkind != FnKind::Log) return std::nullopt;
+            NodeId arg = body.a;
+            Node const &an = a.get(arg);
+            if(an.kind == NodeKind::Fn && an.fkind == FnKind::Abs) arg = an.a;
+            return std::make_pair(sf.first, arg);
+        };
+        if(kids.size() == 2) {
+            auto left = log_abs_term(kids[0]);
+            auto right = log_abs_term(kids[1]);
+            if(left && right && !r_zero(left->first) && r_eq(left->first, r_neg(right->first))) {
+                Rational coeff = left->first;
+                NodeId ratio = casio::div(a, left->second, right->second);
+                if(coeff.num < 0) {
+                    coeff = r_neg(coeff);
+                    ratio = casio::div(a, right->second, left->second);
+                }
+                NodeId merged = casio::fn(a, "log", casio::fn(a, "abs", simplify_known_endpoint_values(a, ratio)));
+                NodeId simplified = simplify_known_endpoint_values(a, merged);
+                return r_eq(coeff, Rational{1, 1}) ? simplified : simplify_known_endpoint_values(a, mul_coeff(a, coeff, simplified));
+            }
+        }
+        Rational numeric{0, 1};
+        bool saw_numeric = false;
+        std::vector<NodeId> rest;
+        for(NodeId k : kids) {
+            if(auto r = as_num(a, k)) {
+                numeric = r_add(numeric, *r);
+                saw_numeric = true;
+            }
+            else rest.push_back(k);
+        }
+        if(saw_numeric) {
+            if(!r_zero(numeric)) rest.insert(rest.begin(), a.num(numeric));
+            if(rest.empty()) return a.num(Rational{0, 1});
+            if(rest.size() == 1) return rest.front();
+            return distribute_negated_add(a, combine_like_add_terms(a, rest));
+        }
         return distribute_negated_add(a, combine_like_add_terms(a, kids));
     }
     if(x.kind == NodeKind::Mul) {

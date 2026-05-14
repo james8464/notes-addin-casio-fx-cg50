@@ -452,6 +452,18 @@ CASES = [
         ("ERR:", "Expected )", "No elementary"),
     ),
     (
+        "improper linear quotient before split",
+        ["--int", "(3*x^3+2*x^2-3*x+8)/(x+2)"],
+        ("Q = - 4*x + 3*x^2 + 5, R = -2", "Int(Q) dx + R*Int(1/D) dx", "5*x - 2*x^2 + x^3 - 2*ln(abs(x + 2)) + C"),
+        ("3*x^3*(x + 2)^-1", "x = u - 2", "No elementary"),
+    ),
+    (
+        "reciprocal exp endpoint log collapse",
+        ["--int", "defint(e^x/(e^x+1),x,-1,1),method=sub"],
+        ("F(1) = ln(abs(e + 1))", "F(-1) = ln(abs(e^(-1) + 1))", "1"),
+        ("ln(abs(e + 1)) - ln(abs(e^(-1) + 1))", "No elementary"),
+    ),
+    (
         "exp denominator linear definite",
         ["--int", "defint(6/e^(2-3*x),x,k,1/2)"],
         ("6/e^(- 3*x + 2) = 6*e^(3*x - 2)", "u = 3*x - 2", "F(1/2) - F(k)", "2*e^(-1/2) - 2*e^(3*k - 2)"),
