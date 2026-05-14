@@ -8307,7 +8307,8 @@ static NodeId normalize_recip_trig_power(Arena &a, NodeId n)
                 return casio::power(a, b.a, a.num(p));
             }
             Rational p = r_neg(*e);
-            if(b.fkind == FnKind::Cos) return casio::power(a, a.fn(FnKind::Sec, b.a), a.num(p));
+            if(p.den == 1 && b.fkind == FnKind::Cos) return casio::power(a, a.fn(FnKind::Sec, b.a), a.num(p));
+            if(p.den == 1 && b.fkind == FnKind::Sin) return casio::power(a, a.fn(FnKind::Cosec, b.a), a.num(p));
         }
     }
     return n;
@@ -9158,6 +9159,114 @@ static std::optional<NodeId> rewrite_recip_trig_powers(Arena &a, NodeId expr)
     return casio::simplify(a, casio::mul(a, kids));
 }
 
+static NodeId trig_pow_node(Arena &a, FnKind fk, NodeId arg, int p)
+{
+    NodeId f = a.fn(fk, arg);
+    return p == 1 ? f : casio::power(a, f, casio::num(a, p));
+}
+
+static std::optional<NodeId> rewrite_trig_factor_cancellations(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    int sp = 0, cp = 0, tp = 0, ep = 0, yp = 0, op = 0;
+    NodeId arg = 0;
+    bool seen = false, changed = false;
+    std::vector<NodeId> other;
+    auto same_arg_or_set = [&](NodeId cand) {
+        cand = casio::simplify(a, cand);
+        if(!arg) {
+            arg = cand;
+            return true;
+        }
+        return same_expr(a, arg, cand);
+    };
+    auto take = [&](NodeId k, FnKind fk, int &pow) {
+        NodeId local = 0;
+        auto p = fn_power(a, k, fk, local);
+        if(!p || !same_arg_or_set(local)) return false;
+        pow += *p;
+        seen = true;
+        return true;
+    };
+    for(NodeId k : x.kids) {
+        NodeId nk = normalize_recip_trig_power(a, k);
+        if(!same_expr(a, nk, k)) changed = true;
+        k = nk;
+        if(take(k, FnKind::Sin, sp) || take(k, FnKind::Cos, cp) ||
+           take(k, FnKind::Tan, tp) || take(k, FnKind::Sec, ep) ||
+           take(k, FnKind::Cosec, yp) || take(k, FnKind::Cot, op)) continue;
+        other.push_back(k);
+    }
+    if(!seen || !arg) return std::nullopt;
+    auto cancel = [&](int &a0, int &b0) {
+        int m = std::min(a0, b0);
+        if(m) { a0 -= m; b0 -= m; changed = true; }
+    };
+    cancel(sp, yp);
+    cancel(cp, ep);
+    cancel(tp, op);
+    auto convert = [&](int &a0, int &b0, int &to) {
+        int m = std::min(a0, b0);
+        if(m) { a0 -= m; b0 -= m; to += m; changed = true; }
+    };
+    convert(sp, ep, tp); // sin/cos -> tan
+    convert(cp, yp, op); // cos/sin -> cot
+    cancel(tp, op);
+    if(!changed) return std::nullopt;
+    std::vector<NodeId> kids = other;
+    auto addp = [&](FnKind fk, int p) { if(p) kids.push_back(trig_pow_node(a, fk, arg, p)); };
+    addp(FnKind::Sin, sp); addp(FnKind::Cos, cp); addp(FnKind::Tan, tp);
+    addp(FnKind::Sec, ep); addp(FnKind::Cosec, yp); addp(FnKind::Cot, op);
+    NodeId out = kids.empty() ? casio::num(a, 1) : casio::simplify(a, kids.size() == 1 ? kids.front() : casio::mul(a, kids));
+    return out;
+}
+
+static std::optional<NodeId> rewrite_sum_over_denominator(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &num = a.get(x.a);
+    if(num.kind != NodeKind::Add || num.kids.size() < 2) return std::nullopt;
+    std::vector<NodeId> terms;
+    for(NodeId k : num.kids) {
+        NodeId term = casio::simplify(a, casio::div(a, k, x.b));
+        if(auto p = rewrite_div_as_product(a, term)) term = *p;
+        if(auto p = rewrite_trig_factor_cancellations(a, term)) term = *p;
+        terms.push_back(term);
+    }
+    NodeId out = casio::simplify(a, casio::add(a, terms));
+    if(same_expr(a, out, expr)) return std::nullopt;
+    return out;
+}
+
+static std::optional<NodeId> expand_trig_sum_product(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    NodeId add = 0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(a.get(k).kind == NodeKind::Add) {
+            if(add || a.get(k).kids.size() > 4) return std::nullopt;
+            add = k;
+        } else rest.push_back(k);
+    }
+    if(!add || rest.empty()) return std::nullopt;
+    for(NodeId k : rest)
+        if(!trig_const_product(a, k, var)) return std::nullopt;
+    std::vector<NodeId> terms;
+    for(NodeId k : a.get(add).kids) {
+        if(!trig_const_product(a, k, var)) return std::nullopt;
+        std::vector<NodeId> factors = rest;
+        factors.push_back(k);
+        NodeId term = casio::mul(a, factors);
+        if(auto p = rewrite_trig_factor_cancellations(a, term)) term = *p;
+        terms.push_back(term);
+    }
+    return casio::add(a, terms);
+}
+
 static Poly poly_derivative(Poly p)
 {
     if(!p.ok) return p;
@@ -9591,8 +9700,15 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
     if(!k || r_zero(*k)) return std::nullopt;
 
     NodeId primitive = 0;
+    bool already_scaled = false;
     if(base.fkind == FnKind::Sin) {
-        if(*p == 3) {
+        if(*p == 2) {
+            primitive = casio::add(a, {
+                casio::div(a, u, casio::num(a, 2)),
+                casio::neg(a, casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4))),
+            });
+            steps.push_back("sin(u)^2 = (1-cos(2u))/2.");
+        } else if(*p == 3) {
             primitive = casio::add(a, {
                 casio::neg(a, casio::fn(a, "cos", u)),
                 casio::div(a, fn_pow(a, "cos", u, 3), casio::num(a, 3)),
@@ -9622,7 +9738,13 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
             steps.push_back("Step 2: sin(u)^6=(10-15cos(2u)+6cos(4u)-cos(6u))/32.");
         }
     } else if(base.fkind == FnKind::Cos) {
-        if(*p == 3) {
+        if(*p == 2) {
+            primitive = casio::add(a, {
+                casio::div(a, u, casio::num(a, 2)),
+                casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4)),
+            });
+            steps.push_back("cos(u)^2 = (1+cos(2u))/2.");
+        } else if(*p == 3) {
             primitive = casio::add(a, {
                 casio::fn(a, "sin", u),
                 casio::neg(a, casio::div(a, fn_pow(a, "sin", u, 3), casio::num(a, 3))),
@@ -9652,7 +9774,17 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
             steps.push_back("Step 2: cos(u)^6=(10+15cos(2u)+6cos(4u)+cos(6u))/32.");
         }
     } else if(base.fkind == FnKind::Tan) {
-        if(*p == 3) {
+        if(*p == 2) {
+            primitive = casio::simplify(a, casio::add(a, {
+                casio::div(a, casio::fn(a, "tan", u), a.num(*k)),
+                casio::neg(a, casio::sym(a, var))
+            }));
+            steps.push_back("u = " + format_expr_human(a, u));
+            steps.push_back("du/dx = " + format_expr_human(a, a.num(*k)));
+            steps.push_back("I = " + format_expr_human(a, a.num(r_div(Rational{1, 1}, *k))) + "*Int(sec(u)^2-1)du");
+            steps.push_back("I = (tan(u)-u)/" + format_expr_human(a, a.num(*k)) + "+C");
+            already_scaled = true;
+        } else if(*p == 3) {
             primitive = casio::add(a, {
                 casio::div(a, fn_pow(a, "tan", u, 2), casio::num(a, 2)),
                 ln_abs(a, casio::fn(a, "cos", u)),
@@ -9685,8 +9817,27 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
             });
             steps.push_back("Step 2: Sec^5 reduction formula to sec^3.");
         }
+        else if(*p == 2) {
+            primitive = casio::fn(a, "tan", u);
+            steps.push_back("d/du tan(u)=sec(u)^2.");
+        }
+    } else if(base.fkind == FnKind::Cosec) {
+        if(*p == 2) {
+            primitive = casio::neg(a, casio::fn(a, "cot", u));
+            steps.push_back("d/du cot(u)=-cosec(u)^2.");
+        }
+    } else if(base.fkind == FnKind::Cot) {
+        if(*p == 2) {
+            primitive = casio::simplify(a, casio::add(a, {
+                casio::neg(a, casio::div(a, casio::fn(a, "cot", u), a.num(*k))),
+                casio::neg(a, casio::sym(a, var))
+            }));
+            steps.push_back("cot(u)^2 = cosec(u)^2 - 1.");
+            already_scaled = true;
+        }
     }
     if(!primitive) return std::nullopt;
+    if(already_scaled) return casio::simplify(a, primitive);
     steps.push_back("Step 3: Divide by inner derivative of u.");
     return casio::simplify(a, scaled_by_inner(a, primitive, *k));
 }
@@ -11246,6 +11397,10 @@ static std::optional<NodeId> integrate_algebraic_symmetry_general(Arena &a, Node
 static std::optional<NodeId> integrate_linear_over_sqrt_affine(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Div) {
+        NodeId prod = casio::simplify(a, casio::mul(a, {x.a, reciprocal_factor(a, x.b)}));
+        if(!same_expr(a, prod, expr)) return integrate_linear_over_sqrt_affine(a, prod, var, steps);
+    }
     if(x.kind != NodeKind::Mul) return std::nullopt;
     Rational coeff{1, 1};
     NodeId base = 0;
@@ -11654,10 +11809,41 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
-    if(x.kind == NodeKind::Add) {
+    if(auto split = rewrite_sum_over_denominator(a, expr)) {
+        auto inner = integrate_giac_style(a, *split, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *split));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(auto split = expand_trig_sum_product(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *split, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *split));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(auto trig_cancel = rewrite_trig_factor_cancellations(a, expr)) {
+        auto inner = integrate_giac_style(a, *trig_cancel, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *trig_cancel));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(a.get(expr).kind == NodeKind::Add) {
         std::vector<NodeId> primitives;
         std::vector<std::string> substeps;
-        for(NodeId kid : x.kids) {
+        std::vector<NodeId> kids = a.get(expr).kids;
+        for(NodeId kid : kids) {
             auto inner = integrate_giac_style(a, kid, var);
             if(!inner.result) {
                 primitives.clear();
