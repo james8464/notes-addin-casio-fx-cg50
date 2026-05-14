@@ -3045,15 +3045,21 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"sin(x)=2sin(x/2)cos(x/2).", "u=cos(x/2), du=-1/2*sin(x/2)dx.", "I=-4*Int(u^3)du."}, "-cos(x/2)^4 + C");
     if(c == "sec(x)tan(x)^3" || c == "tan(x)^3sec(x)")
         return out({"u=sec(x), du=sec(x)tan(x) dx.", "tan(x)^2=sec(x)^2-1.", "I=Int((u^2-1))du."}, "1/3*sec(x)^3 - sec(x) + C");
+    if(c == "sec(x)^3tan(x)^5" || c == "tan(x)^5sec(x)^3")
+        return out({"u=sec(x), du=sec(x)tan(x) dx.", "sec(x)^3tan(x)^5 dx = sec(x)^2tan(x)^4 du.", "tan(x)^2=sec(x)^2-1."}, "1/7*sec(x)^7 - 2/5*sec(x)^5 + 1/3*sec(x)^3 + C");
     if(c == "(cos(x)+tan(x))/(1+tan(x)^2)" || c == "(tan(x)+cos(x))/(1+tan(x)^2)" ||
        c == "(cos(x)+tan(x))/(tan(x)^2+1)" || c == "(tan(x)+cos(x))/(tan(x)^2+1)")
         return out({"1+tan(x)^2=sec(x)^2.", "(cos(x)+tan(x))/(1+tan(x)^2)=cos(x)^3+sin(x)cos(x).", "cos(x)^3=cos(x)(1-sin(x)^2)."}, "sin(x) - 1/3*sin(x)^3 + 1/2*sin(x)^2 + C");
+    if(c == "cos(x)/(cos(x)+sin(x))^3")
+        return out({"cos(x)/(cos(x)+sin(x))^3 = sec(x)^2/(1+tan(x))^3.", "u=1+tan(x), du=sec(x)^2 dx.", "I=Int(u^-3)du."}, "-1/(2*(1 + tan(x))^2) + C");
     if(c == "(sin(x)+2cos(x))^2" || c == "(2cos(x)+sin(x))^2")
         return out({"(sin(x)+2cos(x))^2 = sin(x)^2 + 4sin(x)cos(x) + 4cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5/2*x + 2*sin(x)^2 + 3/4*sin(2*x) + C");
     if(c == "1/(sin(x)^2cos(x)^2)")
         return out({"sin(2*x)^2 = 4sin(x)^2cos(x)^2.", "1/(sin(x)^2cos(x)^2)=4cosec(2*x)^2."}, "-2*cot(2*x) + C");
     if(c == "sqrt(sin(x)^2+(cos(x)-1)^2)" || c == "sqrt((cos(x)-1)^2+sin(x)^2)")
         return out({"sin(x)^2+(cos(x)-1)^2 = 2-2cos(x).", "2-2cos(x)=4sin(x/2)^2.", "sqrt(4sin(x/2)^2)=2|sin(x/2)|."}, "4*cos(x/2)+C if sin(x/2)<0; -4*cos(x/2)+C if sin(x/2)>0");
+    if(c == "1/(cosec(2x)-cot(2x))")
+        return out({"1/(cosec(2*x)-cot(2*x)) = cosec(2*x)+cot(2*x).", "cosec(2*x)+cot(2*x)=cot(x).", "Int cot(x)dx=ln(abs(sin(x)))."}, "ln(abs(sin(x))) + C");
     if(c == "(1-cos(x))/(1+cos(x))" || c == "(-cos(x)+1)/(cos(x)+1)")
         return out({"(1-cos(x))/(1+cos(x)) = tan(x/2)^2.", "tan(u)^2 = sec(u)^2 - 1, u=x/2."}, "2*tan(x/2) - x + C");
     if(c == "(1+sin(x))/(1-sin(x))" || c == "(sin(x)+1)/(-sin(x)+1)")
@@ -4832,6 +4838,30 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "sqrt(x)/(1+sqrt(x))" || c == "sqrt(x)/(sqrt(x)+1)") {
+        return out(
+            "sqrt substitution",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=Int(2u^2/(1+u))du.",
+                "2u^2/(1+u)=2u-2+2/(1+u).",
+            },
+            "x - 2*sqrt(x) + 2*ln(abs(1 + sqrt(x))) + C"
+        );
+    }
+
+    if(c == "(1-x)/(1-sqrt(x))" || c == "(-x+1)/(-sqrt(x)+1)") {
+        return out(
+            "difference of squares",
+            {
+                "1-x=(1-sqrt(x))(1+sqrt(x)).",
+                "(1-x)/(1-sqrt(x)) = 1+sqrt(x).",
+                "I=Int(1+x^(1/2))dx.",
+            },
+            "x + 2/3*x^(3/2) + C"
+        );
+    }
+
     if(c == "sqrt(x)/(sqrt(x)-1)") {
         return out(
             "sqrt substitution",
@@ -6412,6 +6442,44 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "x(sec(x)^2-cosec(x)^2)" || c == "x(sec(x)^2-csc(x)^2)") {
+        return out(
+            "parts with reciprocal trig",
+            {
+                "sec(x)^2-cosec(x)^2 = d/dx(tan(x)+cot(x)).",
+                "u=x, dv=(sec(x)^2-cosec(x)^2)dx.",
+                "v=tan(x)+cot(x).",
+                "Int(tan(x)+cot(x))dx = ln(abs(tan(x))).",
+            },
+            "x*(tan(x) + cot(x)) - ln(abs(tan(x))) + C"
+        );
+    }
+
+    if(c == "xtan(x)^2" || c == "tan(x)^2x") {
+        return out(
+            "parts after identity",
+            {
+                "tan(x)^2=sec(x)^2-1.",
+                "I=Int(x*sec(x)^2)dx - x^2/2.",
+                "u=x, dv=sec(x)^2 dx; v=tan(x).",
+                "Int(tan(x))dx=-ln(abs(cos(x))).",
+            },
+            "-1/2*x^2 + x*tan(x) + ln(abs(cos(x))) + C"
+        );
+    }
+
+    if(c == "xcos(3x)^2" || c == "xcos(3*x)^2") {
+        return out(
+            "identity then parts",
+            {
+                "cos(3*x)^2=(1+cos(6*x))/2.",
+                "I=1/2*Int(x)dx + 1/2*Int(x*cos(6*x))dx.",
+                "Int(x*cos(6*x))dx = x*sin(6*x)/6 + cos(6*x)/36.",
+            },
+            "1/4*x^2 + 1/12*x*sin(6*x) + 1/72*cos(6*x) + C"
+        );
+    }
+
     if(c == "x(sin(x)+cos(x))" || c == "(sin(x)+cos(x))x") {
         return out(
             "split then parts",
@@ -6421,6 +6489,43 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Int(x*cos(x))dx=x*sin(x)+cos(x).",
             },
             "x*(sin(x)-cos(x)) + sin(x) + cos(x) + C"
+        );
+    }
+
+    if(c == "cos(x)(6sin(x)-2sin(3x))^(2/3)" || c == "cos(x)*(6*sin(x)-2*sin(3*x))^(2/3)") {
+        return out(
+            "triple-angle reduction",
+            {
+                "sin(3*x)=3sin(x)-4sin(x)^3.",
+                "6sin(x)-2sin(3*x)=8sin(x)^3.",
+                "(8sin(x)^3)^(2/3)=4sin(x)^2.",
+                "u=sin(x), du=cos(x)dx.",
+            },
+            "4/3*sin(x)^3 + C"
+        );
+    }
+
+    if(c == "sqrt(x^2-x^4)") {
+        return out(
+            "absolute-root branch",
+            {
+                "sqrt(x^2-x^4)=|x|sqrt(1-x^2).",
+                "u=1-x^2, du=-2x dx.",
+                "x>0: I=-1/2*Int(u^(1/2))du.",
+            },
+            "-1/3*(1 - x^2)^(3/2)+C if x>0; 1/3*(1 - x^2)^(3/2)+C if x<0"
+        );
+    }
+
+    if(c == "(4x^2+4x)/sqrt(2x+1)" || c == "(4*x^2+4*x)/sqrt(2*x+1)") {
+        return out(
+            "linear-root substitution",
+            {
+                "u=2*x+1.",
+                "x=(u-1)/2, dx=du/2.",
+                "I=1/2*Int((u^2-1)u^(-1/2))du.",
+            },
+            "1/5*(2*x + 1)^(5/2) - (2*x + 1)^(1/2) + C"
         );
     }
 
