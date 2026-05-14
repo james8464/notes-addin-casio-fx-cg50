@@ -167,6 +167,8 @@ static bool keep_short_exam_label(std::string const &s)
 
 static bool has_math_signal(std::string const &s)
 {
+    std::string t = trim_copy(s);
+    if(t == "pi" || t == "e" || t == "inf" || t == "infinity") return true;
     bool digit = false, alpha = false;
     for(char c : s) {
         if(std::isdigit(static_cast<unsigned char>(c))) digit = true;

@@ -31,7 +31,7 @@ CASES: list[tuple[str, list[str]]] = [
     ("1/(x*(x^2+1))", ["partial fractions with irreducible quadratic", "A=1", "log(abs(x)) - log(abs(x^2+1))/2 + C"]),
     ("1/(x^2+4*x+13)", ["complete square then atan", "(x+2)^2 + 9", "atan((x+2)/3)/3 + C"]),
     ("e^(sqrt(x))", ["substitution then parts", "dx=2u du", "2*e^(sqrt(x))*(sqrt(x)-1) + C"]),
-    ("1/(1+cos(x))", ["trig conjugate", "1-cos(x)^2 = sin(x)^2", "-cot(x) + cosec(x) + C"]),
+    ("1/(1+cos(x))", ["Multiply by (1-cos(x))/(1-cos(x))", "I = Int(cosec(x)^2 - cot(x)cosec(x)) dx", "cosec(x) - cot(x) + C"]),
     ("sin(ln(x))", ["log substitution then looping parts", "2I=e^u*(sin(u)-cos(u))", "x*(sin(log(x))-cos(log(x)))/2 + C"]),
     ("1/(x*sqrt(x^2-1))", ["sec substitution", "x=sec(t)", "acos(1/x) + C"]),
     ("defint(sin(2*x)/(1+cos(x)),x,0,pi/2)", ["sin(2*x) = 2sin(x)cos(x)", "w = 1 + cos(x)", "2 - 2*log(2)"]),

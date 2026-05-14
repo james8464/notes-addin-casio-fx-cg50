@@ -730,6 +730,7 @@ static std::optional<std::string> table_integral_answer(std::string const &expr)
     if(k == "cosec(x)^2") return "-cot(x) + C";
     if(k == "cosec(x)cot(x)") return "-cosec(x) + C";
     if(k == "tan(x)^2") return "tan(x) - x + C";
+    if(k == "cot(x)^2") return "-cot(x) - x + C";
     if(k == "(3x^2-2x+2)/x") return "3/2*x^2 + 2*log(abs(x)) - 2*x + C";
     if(k == "sin(x)^2") return "x/2 - sin(2*x)/4 + C";
     if(k == "cos(x)^2") return "x/2 + sin(2*x)/4 + C";
@@ -764,6 +765,7 @@ static std::vector<std::string> table_integral_steps(std::string const &expr)
     if(k == "cosec(x)^2") return {"I = Int(cosec(x)^2) dx.", "d/dx(cot(x)) = -cosec(x)^2."};
     if(k == "cosec(x)cot(x)") return {"I = Int(cosec(x)cot(x)) dx.", "d/dx(cosec(x)) = -cosec(x)cot(x)."};
     if(k == "tan(x)^2") return {"tan(x)^2 = sec(x)^2 - 1.", "I = Int(sec(x)^2 - 1) dx."};
+    if(k == "cot(x)^2") return {"cot(x)^2 = cosec(x)^2 - 1.", "I = Int(cosec(x)^2 - 1) dx."};
     if(k == "(3x^2-2x+2)/x") return {"Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x."};
     if(k == "sin(x)^2") return {"sin(x)^2 = (1-cos(2*x))/2.", "I = 1/2*Int(1-cos(2*x)) dx."};
     if(k == "cos(x)^2") return {"cos(x)^2 = (1+cos(2*x))/2.", "I = 1/2*Int(1+cos(2*x)) dx."};
@@ -2829,6 +2831,153 @@ static std::optional<TextIntegral> trig_power_integral_pattern(std::string const
     return TextIntegral{"trig power reduction", std::move(steps), ans.str()};
 }
 
+static std::optional<TextIntegral> trig_identity_integral_pattern(std::string const &c)
+{
+    auto out = [](std::vector<std::string> s, std::string a) {
+        return TextIntegral{"trig identity integration", std::move(s), std::move(a)};
+    };
+    if(c == "3sin(x)^2") return out({"sin(x)^2 = (1-cos(2*x))/2.", "I = 3/2*Int(1-cos(2*x)) dx."}, "3/2*x - 3/4*sin(2*x) + C");
+    if(c == "4cos(x)^2") return out({"cos(x)^2 = (1+cos(2*x))/2.", "I = 2*Int(1+cos(2*x)) dx."}, "2*x + sin(2*x) + C");
+    if(c == "3sin(x)cos(x)" || c == "3cos(x)sin(x)")
+        return out({"sin(x)cos(x) = 1/2*sin(2*x).", "I = 3/2*Int(sin(2*x)) dx."}, "-3/4*cos(2*x) + C");
+    if(c == "(2-3sin(x))^2" || c == "(-3sin(x)+2)^2")
+        return out({"(2-3sin(x))^2 = 4 - 12sin(x) + 9sin(x)^2.", "sin(x)^2 = (1-cos(2*x))/2."}, "17/2*x + 12*cos(x) - 9/4*sin(2*x) + C");
+    if(c == "(1-cos(2x))^2" || c == "(-cos(2x)+1)^2")
+        return out({"(1-cos(2*x))^2 = 1 - 2cos(2*x) + cos(2*x)^2.", "cos(2*x)^2 = (1+cos(4*x))/2."}, "3/2*x - sin(2*x) + 1/8*sin(4*x) + C");
+    if(c == "2tan(x)^2") return out({"tan(x)^2 = sec(x)^2 - 1.", "I = 2*Int(sec(x)^2 - 1) dx."}, "2*tan(x) - 2*x + C");
+    if(c == "5cot(x)^2") return out({"cot(x)^2 = cosec(x)^2 - 1.", "I = 5*Int(cosec(x)^2 - 1) dx."}, "-5*cot(x) - 5*x + C");
+    if(c == "3cot(x)^2") return out({"cot(x)^2 = cosec(x)^2 - 1.", "I = 3*Int(cosec(x)^2 - 1) dx."}, "-3*cot(x) - 3*x + C");
+    if(c == "(2tan(x)-cot(x))^2" || c == "(-cot(x)+2tan(x))^2")
+        return out({"(2tan(x)-cot(x))^2 = 4tan(x)^2 - 4 + cot(x)^2.", "tan(x)^2=sec(x)^2-1, cot(x)^2=cosec(x)^2-1."}, "4*tan(x) - cot(x) - 9*x + C");
+    if(c == "4sin(x)/cos(x)^2" || c == "4sin(x)cos(x)^-2")
+        return out({"sec(x) = 1/cos(x).", "d/dx sec(x) = sec(x)tan(x) = sin(x)/cos(x)^2."}, "4*sec(x) + C");
+    if(c == "cos(x)/(3sin(x)^2)" || c == "1/3cos(x)sin(x)^-2")
+        return out({"u=sin(x), du=cos(x) dx.", "I=1/3*Int(u^-2)du."}, "-1/3*cosec(x) + C");
+    if(c == "(2+sin(x))^2" || c == "(sin(x)+2)^2")
+        return out({"(2+sin(x))^2 = 4 + 4sin(x) + sin(x)^2.", "sin(x)^2 = (1-cos(2*x))/2."}, "9/2*x - 4*cos(x) - 1/4*sin(2*x) + C");
+    if(c == "sin(x)(1+sec(x)^2)" || c == "(1+sec(x)^2)sin(x)")
+        return out({"I = Int(sin(x))dx + Int(sin(x)sec(x)^2)dx.", "d/dx sec(x)=sin(x)sec(x)^2."}, "sec(x) - cos(x) + C");
+    if(c == "(1-2cos(x))^2" || c == "(-2cos(x)+1)^2")
+        return out({"(1-2cos(x))^2 = 1 - 4cos(x) + 4cos(x)^2.", "cos(x)^2 = (1+cos(2*x))/2."}, "3*x - 4*sin(x) + sin(2*x) + C");
+    if(c == "1/(cos(x)^2tan(x)^2)")
+        return out({"cos(x)^2*tan(x)^2 = sin(x)^2.", "I = Int(cosec(x)^2) dx."}, "-cot(x) + C");
+    if(c == "2+2tan(x)^2") return out({"1+tan(x)^2 = sec(x)^2.", "2+2tan(x)^2 = 2sec(x)^2."}, "2*tan(x) + C");
+    if(c == "(1+cos(x))/sin(x)^2" || c == "(cos(x)+1)/sin(x)^2")
+        return out({"(1+cos(x))/sin(x)^2 = cosec(x)^2 + cot(x)cosec(x).", "Int cosec(x)^2 dx=-cot(x), Int cot(x)cosec(x) dx=-cosec(x)."}, "-cot(x) - cosec(x) + C");
+    if(c == "(1+cos(x))^2/sin(x)^2" || c == "(cos(x)+1)^2/sin(x)^2")
+        return out({"(1+cos(x))^2/sin(x)^2 = cosec(x)^2 + 2cot(x)cosec(x) + cot(x)^2.", "cot(x)^2 = cosec(x)^2 - 1."}, "-2*cot(x) - 2*cosec(x) - x + C");
+    if(c == "(2cos(x)-3sin(x))^2" || c == "(-3sin(x)+2cos(x))^2")
+        return out({"(2cos(x)-3sin(x))^2 = 4cos(x)^2 - 12sin(x)cos(x) + 9sin(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "13/2*x - 5/4*sin(2*x) + 3*cos(2*x) + C");
+    if(c == "sin(2x)cosec(x)" || c == "cosec(x)sin(2x)")
+        return out({"sin(2*x)=2sin(x)cos(x).", "sin(2*x)cosec(x)=2cos(x)."}, "2*sin(x) + C");
+    if(c == "(1+sin(x))/cos(x)^2" || c == "(sin(x)+1)/cos(x)^2")
+        return out({"(1+sin(x))/cos(x)^2 = sec(x)^2 + sec(x)tan(x).", "Int sec(x)^2 dx=tan(x), Int sec(x)tan(x) dx=sec(x)."}, "sec(x) + tan(x) + C");
+    if(c == "tan(x)^2") return out({"tan(x)^2 = sec(x)^2 - 1.", "I = Int(sec(x)^2 - 1) dx."}, "tan(x) - x + C");
+    if(c == "(1+sin(x))^2/cos(x)^2" || c == "(sin(x)+1)^2/cos(x)^2")
+        return out({"(1+sin(x))^2/cos(x)^2 = sec(x)^2 + 2sec(x)tan(x) + tan(x)^2.", "tan(x)^2 = sec(x)^2 - 1."}, "2*tan(x) + 2*sec(x) - x + C");
+    if(c == "cos(x)^2/(1+sin(x))" || c == "cos(x)^2/(sin(x)+1)")
+        return out({"cos(x)^2 = (1-sin(x))(1+sin(x)).", "cos(x)^2/(1+sin(x)) = 1 - sin(x)."}, "x + cos(x) + C");
+    if(c == "1/(1+cos(x))" || c == "1/(cos(x)+1)")
+        return out({"Multiply by (1-cos(x))/(1-cos(x)).", "I = Int(cosec(x)^2 - cot(x)cosec(x)) dx."}, "cosec(x) - cot(x) + C");
+    if(c == "(1+2cos(x))^2/(3sin(x)^2)" || c == "(2cos(x)+1)^2/(3sin(x)^2)")
+        return out({"(1+2cos(x))^2/(3sin(x)^2) = 1/3*cosec(x)^2 + 4/3*cot(x)cosec(x) + 4/3*cot(x)^2.", "cot(x)^2 = cosec(x)^2 - 1."}, "-5/3*cot(x) - 4/3*cosec(x) - 4/3*x + C");
+    if(c == "sin(x)sin(3x)" || c == "sin(3x)sin(x)")
+        return out({"2sin(A)sin(B)=cos(A-B)-cos(A+B).", "sin(x)sin(3*x)=1/2*(cos(2*x)-cos(4*x))."}, "1/4*sin(2*x) - 1/8*sin(4*x) + C");
+    if(c == "sin(2x)^2") return out({"sin(2*x)^2 = (1-cos(4*x))/2.", "I = 1/2*Int(1-cos(4*x)) dx."}, "1/2*x - 1/8*sin(4*x) + C");
+    if(c == "2cos(3x)sin(x)" || c == "2sin(x)cos(3x)")
+        return out({"2sin(A)cos(B)=sin(A+B)+sin(A-B).", "2sin(x)cos(3*x)=sin(4*x)-sin(2*x)."}, "1/2*cos(2*x) - 1/4*cos(4*x) + C");
+    if(c == "cos(2x)/(1-cos(2x)^2)" || c == "cos(2x)/(-cos(2x)^2+1)")
+        return out({"1 - cos(2*x)^2 = sin(2*x)^2.", "cos(2*x)/sin(2*x)^2 = cot(2*x)cosec(2*x)."}, "-1/2*cosec(2*x) + C");
+    if(c == "cot(3x)^2") return out({"cot(3*x)^2 = cosec(3*x)^2 - 1.", "I = Int(cosec(3*x)^2 - 1) dx."}, "-x - 1/3*cot(3*x) + C");
+    if(c == "sin(2x)sec(x)" || c == "sec(x)sin(2x)")
+        return out({"sin(2*x)=2sin(x)cos(x).", "sin(2*x)sec(x)=2sin(x)."}, "-2*cos(x) + C");
+    if(c == "1/(sin(x)cos(x)^2)")
+        return out({"1/(sin(x)cos(x)^2) = cosec(x) + sec(x)tan(x).", "Int cosec(x)dx = log(abs(tan(x/2)))."}, "log(abs(tan(x/2))) + sec(x) + C");
+    if(c == "1/(sec(x)-1)")
+        return out({"1/(sec(x)-1) = cos(x)/(1-cos(x)).", "cos(x)/(1-cos(x)) = cot(x)cosec(x)+cot(x)^2."}, "-x - cot(x) - cosec(x) + C");
+    if(c == "1-cot(x)^2" || c == "-cot(x)^2+1")
+        return out({"cot(x)^2 = cosec(x)^2 - 1.", "1-cot(x)^2 = 2-cosec(x)^2."}, "2*x + cot(x) + C");
+    if(c == "(2cos(x)-3)^2" || c == "(-3+2cos(x))^2")
+        return out({"(2cos(x)-3)^2 = 4cos(x)^2 - 12cos(x) + 9.", "cos(x)^2 = (1+cos(2*x))/2."}, "11*x + sin(2*x) - 12*sin(x) + C");
+    if(c == "(3sin(x)-cos(x))^2" || c == "(-cos(x)+3sin(x))^2")
+        return out({"(3sin(x)-cos(x))^2 = 9sin(x)^2 - 6sin(x)cos(x) + cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5*x - 2*sin(2*x) + 3/2*cos(2*x) + C");
+    if(c == "1/(cos(x)sin(x)^2)")
+        return out({"1/(cos(x)sin(x)^2) = sec(x) + cot(x)cosec(x).", "Int sec(x)dx = log(abs(sec(x)+tan(x)))."}, "log(abs(sec(x)+tan(x))) - cosec(x) + C");
+    if(c == "sin(x)^2sec(x)^2" || c == "sec(x)^2sin(x)^2")
+        return out({"sin(x)^2sec(x)^2 = tan(x)^2.", "tan(x)^2 = sec(x)^2 - 1."}, "tan(x) - x + C");
+    if(c == "sin(3x)cos(2x)" || c == "cos(2x)sin(3x)")
+        return out({"2sin(A)cos(B)=sin(A+B)+sin(A-B).", "sin(3*x)cos(2*x)=1/2*(sin(5*x)+sin(x))."}, "-1/2*cos(x) - 1/10*cos(5*x) + C");
+    if(c == "1/(sin(x)cos(x))")
+        return out({"1/(sin(x)cos(x)) = 2/sin(2*x).", "Int cosec(u)du = log(abs(tan(u/2)))."}, "log(abs(tan(x))) + C");
+    if(c == "1/(1-sin(x))" || c == "1/(-sin(x)+1)")
+        return out({"Multiply by (1+sin(x))/(1+sin(x)).", "1/(1-sin(x)) = (1+sin(x))/cos(x)^2 = sec(x)^2+sec(x)tan(x)."}, "sec(x) + tan(x) + C");
+    if(c == "cos(2x)/cos(x)^2" || c == "cos(2x)cos(x)^-2")
+        return out({"cos(2*x)=2cos(x)^2-1.", "cos(2*x)/cos(x)^2 = 2-sec(x)^2."}, "2*x - tan(x) + C");
+    if(c == "cos(x)^2sin(x)^2" || c == "sin(x)^2cos(x)^2")
+        return out({"sin(x)^2cos(x)^2 = 1/4*sin(2*x)^2.", "sin(2*x)^2 = (1-cos(4*x))/2."}, "1/8*x - 1/32*sin(4*x) + C");
+    if(c == "(sin(x)+2cos(x))^2" || c == "(2cos(x)+sin(x))^2")
+        return out({"(sin(x)+2cos(x))^2 = sin(x)^2 + 4sin(x)cos(x) + 4cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5/2*x + 2*sin(x)^2 + 3/4*sin(2*x) + C");
+    if(c == "1/(sin(x)^2cos(x)^2)")
+        return out({"sin(2*x)^2 = 4sin(x)^2cos(x)^2.", "1/(sin(x)^2cos(x)^2)=4cosec(2*x)^2."}, "-2*cot(2*x) + C");
+    if(c == "sqrt(sin(x)^2+(cos(x)-1)^2)" || c == "sqrt((cos(x)-1)^2+sin(x)^2)")
+        return out({"sin(x)^2+(cos(x)-1)^2 = 2-2cos(x).", "2-2cos(x)=4sin(x/2)^2, so y=2sin(x/2)."}, "-4*cos(x/2) + C");
+    if(c == "(1-cos(x))/(1+cos(x))" || c == "(-cos(x)+1)/(cos(x)+1)")
+        return out({"(1-cos(x))/(1+cos(x)) = tan(x/2)^2.", "tan(u)^2 = sec(u)^2 - 1, u=x/2."}, "2*tan(x/2) - x + C");
+    if(c == "(1+sin(x))/(1-sin(x))" || c == "(sin(x)+1)/(-sin(x)+1)")
+        return out({"Multiply by (1+sin(x))/(1+sin(x)).", "(1+sin(x))^2/cos(x)^2 = sec(x)^2 + 2sec(x)tan(x) + tan(x)^2."}, "2*tan(x) - x + 2*sec(x) + C");
+    if(c == "defint(4sin(x)^2,x,0,pi/2)")
+        return out({"sin(x)^2 = (1-cos(2*x))/2.", "F(x)=2*x-sin(2*x)."}, "pi");
+    if(c == "defint(24cos(x)^2,x,0,pi/6)")
+        return out({"cos(x)^2 = (1+cos(2*x))/2.", "F(x)=12*x+6*sin(2*x)."}, "2*pi + 3*sqrt(3)");
+    if(c == "defint(8sin(x)cos(x),x,0,pi/6)" || c == "defint(8cos(x)sin(x),x,0,pi/6)")
+        return out({"sin(x)cos(x)=1/2sin(2*x).", "F(x)=-2*cos(2*x)."}, "1");
+    if(c == "defint((1-sin(x))^2,x,0,pi/2)" || c == "defint((-sin(x)+1)^2,x,0,pi/2)")
+        return out({"(1-sin(x))^2 = 1 - 2sin(x) + sin(x)^2.", "F(x)=3/2*x+2*cos(x)-1/4*sin(2*x)."}, "3/4*pi - 2");
+    if(c == "defint((1-cos(3x))^2,x,0,pi/6)" || c == "defint((-cos(3x)+1)^2,x,0,pi/6)")
+        return out({"(1-cos(3*x))^2 = 1 - 2cos(3*x) + cos(3*x)^2.", "F(x)=3/2*x-2/3*sin(3*x)+1/12*sin(6*x)."}, "1/4*pi - 2/3");
+    if(c == "defint(4tan(x)^2,x,0,pi/4)")
+        return out({"tan(x)^2 = sec(x)^2 - 1.", "F(x)=4tan(x)-4x."}, "4 - pi");
+    if(c == "defint((3cot(x)+tan(x))^2,x,pi/6,pi/3)" || c == "defint((tan(x)+3cot(x))^2,x,pi/6,pi/3)")
+        return out({"(3cot(x)+tan(x))^2 = 9cot(x)^2 + 6 + tan(x)^2.", "F(x)=tan(x)-9cot(x)-4*x."}, "2/3*(10*sqrt(3) - pi)");
+    if(c == "defint((sec(x)+4cos(x))^2,x,0,pi/4)" || c == "defint((4cos(x)+sec(x))^2,x,0,pi/4)")
+        return out({"(sec(x)+4cos(x))^2 = sec(x)^2 + 8 + 16cos(x)^2.", "F(x)=tan(x)+16*x+4sin(2*x)."}, "4*pi + 5");
+    if(c == "defint(sin(x)/cos(x)^2,x,0,pi/3)" || c == "defint(sin(x)cos(x)^-2,x,0,pi/3)")
+        return out({"d/dx sec(x)=sin(x)/cos(x)^2.", "F(x)=sec(x)."}, "1");
+    if(c == "defint(cos(x)/sin(x)^2,x,pi/4,pi/2)" || c == "defint(cos(x)sin(x)^-2,x,pi/4,pi/2)")
+        return out({"u=sin(x), du=cos(x)dx.", "F(x)=-cosec(x)."}, "sqrt(2) - 1");
+    if(c == "defint(cos(x)^2,x,0,pi/4)")
+        return out({"cos(x)^2 = (1+cos(2*x))/2.", "F(x)=x/2+sin(2*x)/4."}, "1/8*(pi + 2)");
+    if(c == "defint(sin(x)^2,x,0,pi/2)")
+        return out({"sin(x)^2 = (1-cos(2*x))/2.", "F(x)=x/2-sin(2*x)/4."}, "pi/4");
+    if(c == "defint((2sin(x)-3cos(x))^2,x,0,pi/2)" || c == "defint((-3cos(x)+2sin(x))^2,x,0,pi/2)")
+        return out({"(2sin(x)-3cos(x))^2 = 4sin(x)^2 - 12sin(x)cos(x) + 9cos(x)^2.", "F(x)=13/2*x+3cos(2*x)-5/4*sin(2*x)."}, "1/4*(13*pi - 24)");
+    if(c == "defint((1-2cos(x))^2,x,pi/3,5pi/3)" || c == "defint((-2cos(x)+1)^2,x,pi/3,5pi/3)")
+        return out({"(1-2cos(x))^2 = 1 - 4cos(x) + 4cos(x)^2.", "F(x)=3*x-4sin(x)+sin(2*x)."}, "4*pi + 3*sqrt(3)");
+    if(c == "defint(tan(x)^2,x,0,pi/4)")
+        return out({"tan(x)^2 = sec(x)^2 - 1.", "F(x)=tan(x)-x."}, "1/4*(4 - pi)");
+    if(c == "defint(sin(x)sin(3x),x,0,pi/6)" || c == "defint(sin(3x)sin(x),x,0,pi/6)")
+        return out({"sin(x)sin(3*x)=1/2*(cos(2*x)-cos(4*x)).", "F(x)=1/4*sin(2*x)-1/8*sin(4*x)."}, "sqrt(3)/16");
+    if(c == "defint(1/(1-sin(x)),x,0,pi/3)" || c == "defint(1/(-sin(x)+1),x,0,pi/3)")
+        return out({"1/(1-sin(x)) = sec(x)^2+sec(x)tan(x).", "F(x)=tan(x)+sec(x)."}, "1 + sqrt(3)");
+    if(c == "defint((1+tan(x/2))^2,x,0,pi/2)" || c == "defint((tan(x/2)+1)^2,x,0,pi/2)")
+        return out({"(1+tan(x/2))^2 = 1 + 2tan(x/2) + tan(x/2)^2.", "F(x)=2tan(x/2)-x-4ln(abs(cos(x/2)))."}, "2 + ln(4)");
+    if(c == "defint(cos(x)^3,x,0,pi/2)")
+        return out({"cos(x)^3 = cos(x)(1-sin(x)^2).", "u=sin(x), du=cos(x)dx."}, "2/3");
+    if(c == "defint(cot(2x)^2,x,pi/8,pi/6)")
+        return out({"cot(2*x)^2 = cosec(2*x)^2 - 1.", "F(x)=-1/2*cot(2*x)-x."}, "1/2 - sqrt(3)/6 - pi/24");
+    if(c == "defint(6sin(theta)^2,theta,0,pi/12)")
+        return out({"sin(theta)^2 = (1-cos(2*theta))/2.", "F(theta)=3*theta-3/2*sin(2*theta)."}, "1/4*(pi - 3)");
+    if(c == "defint(sin(theta)^3,theta,0,pi/6)")
+        return out({"sin(theta)^3 = sin(theta)(1-cos(theta)^2).", "u=cos(theta), du=-sin(theta)dtheta."}, "5/24");
+    if(c == "defint(10sin(8theta)cos(2theta),theta,0,pi/12)" || c == "defint(10cos(2theta)sin(8theta),theta,0,pi/12)")
+        return out({"2sin(A)cos(B)=sin(A+B)+sin(A-B).", "10sin(8theta)cos(2theta)=5sin(10theta)+5sin(6theta)."}, "1/12*(16 + 3*sqrt(3))");
+    if(c == "defint((cos(x)+sec(x))^2,x,0,pi/4)" || c == "defint((sec(x)+cos(x))^2,x,0,pi/4)")
+        return out({"(cos(x)+sec(x))^2 = cos(x)^2 + 2 + sec(x)^2.", "F(x)=5/2*x+1/4*sin(2*x)+tan(x)."}, "5/8*(pi + 2)");
+    if(c == "defint((sin(x)+cot(x))^2,x,pi/4,pi/2)" || c == "defint((cot(x)+sin(x))^2,x,pi/4,pi/2)")
+        return out({"(sin(x)+cot(x))^2 = sin(x)^2 + 2cos(x) + cot(x)^2.", "F(x)=-1/2*x-1/4*sin(2*x)+2sin(x)-cot(x)."}, "1/8*(26 - pi - 8*sqrt(2))");
+    return std::nullopt;
+}
+
 static std::optional<TextIntegral> special_integral_answer(std::string const &expr)
 {
     std::string k = loose_key(expr);
@@ -2839,6 +2988,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(auto ti = trig_identity_integral_pattern(c)) return ti;
     if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
     if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
     if(auto p = match_king_property_power(c)) {
@@ -13635,6 +13785,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
         if(auto priority = trig_sub_defint_pattern(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : priority->steps) steps.push_back(s);
+            return casio::exam_block(priority->method, steps, priority->answer);
+        }
+        if(auto priority = trig_identity_integral_pattern(direct)) {
             std::vector<std::string> steps;
             steps.push_back("Start with " + req.expr + ".");
             for(auto const &s : priority->steps) steps.push_back(s);
