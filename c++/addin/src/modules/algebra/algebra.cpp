@@ -6442,6 +6442,103 @@ static std::optional<std::vector<std::string>> log_single_arg_exact_route(Arena 
     return out;
 }
 
+static std::optional<std::vector<std::string>> log_square_exact_route(Arena &a,
+                                                                      NodeId rearr,
+                                                                      std::string const &var,
+                                                                      std::optional<double> lo,
+                                                                      std::optional<double> hi)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    NodeId log_body = 0, arg = 0, base = 0;
+    bool saw = false, natural = true;
+    Rational coeff{0, 1}, constant{0, 1};
+    for(NodeId term : terms) {
+        Rational c;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, term, c, body, has_body);
+        if(!has_body) {
+            constant = r_add(constant, c);
+            continue;
+        }
+        Node const &p = a.get(body);
+        if(p.kind != NodeKind::Pow) return std::nullopt;
+        auto exp = as_num(a, p.b);
+        if(!exp || exp->num != 2 || exp->den != 1) return std::nullopt;
+        NodeId a0 = 0, b0 = 0;
+        bool has_base = false;
+        if(!log_piece(a, p.a, a0, b0, has_base)) return std::nullopt;
+        if(!saw) {
+            saw = true;
+            log_body = p.a;
+            arg = a0;
+            natural = !has_base;
+            base = has_base ? b0 : a.constant(ConstKind::E);
+        }
+        else if(!casio::same_by_sig(a, arg, a0) || natural == has_base ||
+                (has_base && !casio::same_by_sig(a, base, b0))) return std::nullopt;
+        coeff = r_add(coeff, c);
+    }
+    if(!saw || is_zero(coeff) || contains_symbol(a, base, var)) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, arg, var);
+    if(!lin) return std::nullopt;
+    Rational target = r_div(r_neg(constant), coeff);
+    if(target.num < 0) return std::nullopt;
+
+    NodeId target_node = a.num(target);
+    Rational root_rat;
+    NodeId root_node = square_rat_root(target, root_rat)
+        ? a.num(root_rat)
+        : casio::simplify(a, casio::fn(a, "sqrt", target_node));
+    std::string log_txt = format_expr(a, log_body);
+    std::string arg_txt = format_expr(a, arg);
+    std::string root_txt = format_expr(a, root_node);
+    std::vector<std::string> out;
+    if(!(coeff.num == coeff.den))
+        out.push_back(format_expr(a, a.num(coeff)) + "*" + log_txt + "^2 = " + format_expr(a, a.num(r_neg(constant))));
+    out.push_back(log_txt + "^2 = " + format_expr(a, target_node));
+
+    std::vector<std::string> raw;
+    auto solve_for_arg_value = [&](NodeId value) {
+        NodeId xval = casio::simplify(a, casio::div(a, sub_node(a, value, lin->c), lin->m));
+        raw.push_back(var + " = " + format_expr(a, xval));
+    };
+    if(target.num == 0) {
+        out.push_back(log_txt + " = 0");
+        out.push_back(arg_txt + " = 1");
+        solve_for_arg_value(one_node(a));
+    }
+    else {
+        NodeId vpos = casio::simplify(a, casio::power(a, base, root_node));
+        NodeId vneg = casio::simplify(a, casio::power(a, base, casio::neg(a, root_node)));
+        out.push_back(log_txt + " = +/-" + root_txt);
+        out.push_back(arg_txt + " = " + format_expr(a, vpos) + " or " + arg_txt + " = " + format_expr(a, vneg));
+        solve_for_arg_value(vpos);
+        solve_for_arg_value(vneg);
+    }
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    if(lo || hi) {
+        std::vector<std::string> rejected;
+        for(auto const &r : raw) {
+            bool keep = false;
+            for(auto const &v : valid) if(sol_rhs(r) == sol_rhs(v)) keep = true;
+            if(!keep) rejected.push_back(r);
+        }
+        if(!rejected.empty()) out.push_back(var + " = " + join_solutions(rejected) + " rejected by interval");
+    }
+    else {
+        append_rejected_by_domain(out, var, raw, valid);
+    }
+    if(valid.empty()) out.push_back(var + " = []");
+    else {
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(solution_list_line(var, valid));
+        append_numeric_3dp(a, out, var, valid);
+    }
+    return out;
+}
+
 static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
 {
     Node const &x = a.get(n);
@@ -8859,6 +8956,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto log_single = log_single_arg_exact_route(arena, rearr, solve_var)) {
             out.insert(out.end(), log_single->begin(), log_single->end());
+            return out;
+        }
+        if(auto log_sq = log_square_exact_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
+            out.insert(out.end(), log_sq->begin(), log_sq->end());
             return out;
         }
         if(auto log_exact = log_linear_quotient_exact_route(arena, rearr, solve_var)) {

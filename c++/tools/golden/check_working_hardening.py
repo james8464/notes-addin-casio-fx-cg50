@@ -1530,6 +1530,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["n=-1/2", "T1=-3/2*x", "Validforabs(x)<1/3"],
         ["Supported forms", "ERR:"],
     ),
+    (
+        "alg",
+        "solve((ln(4*x+1))^2-2=0,x,0,1)",
+        ["ln(4*x+1)^2=2", "ln(4*x+1)=+/-sqrt(2)", "4*x+1=e^(sqrt(2))or4*x+1=e^(-sqrt(2))", "rejectedbyinterval", "x=[(e^(sqrt(2))-1)/4]"],
+        ["x=[]", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(2-(ln(4*x+1))^2,x,0,(e^(sqrt(2))-1)/4)",
+        ["u=4*x+1", "I=-1/4*Int(ln(u)^2)du", "Int(ln(u)^2)du=u*(ln(u)^2-2*ln(u)+2)", "1/2*e^(sqrt(2))*sqrt(2)-1/2*e^(sqrt(2))"],
+        ["No elementary primitive found", "ERR:"],
+    ),
 ]
 
 

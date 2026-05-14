@@ -6640,7 +6640,22 @@ static std::optional<NodeId> integrate_log_square_parts(Arena &a, NodeId expr, s
     if(!log_node) return std::nullopt;
     Node const &ln = a.get(log_node);
     auto lm = log_arg_var_power(a, ln.a, var);
-    if(!lm || r_zero(*lm)) return std::nullopt;
+    if(!lm || r_zero(*lm)) {
+        auto aff = affine_form(a, ln.a, var);
+        if(!aff || r_zero(aff->first)) return std::nullopt;
+        NodeId u = ln.a;
+        NodeId ln_u = casio::fn(a, "log", u);
+        NodeId bracket = casio::add(a, {
+            casio::power(a, ln_u, casio::num(a, 2)),
+            casio::mul(a, {casio::num(a, -2), ln_u}),
+            casio::num(a, 2)
+        });
+        steps.push_back("u = " + format_expr_human(a, u));
+        steps.push_back("du/d" + var + " = " + format_expr_human(a, a.num(aff->first)) + "; d" + var + " = du/" + format_expr_human(a, a.num(aff->first)));
+        steps.push_back("I = " + rat_text(r_div(coeff, aff->first)) + "*Int(ln(u)^2) du");
+        steps.push_back("Int(ln(u)^2)du = u*(ln(u)^2 - 2*ln(u) + 2)");
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, aff->first), casio::mul(a, {u, bracket})));
+    }
     NodeId v = casio::sym(a, var);
     NodeId log_sq = casio::power(a, log_node, casio::num(a, 2));
     std::vector<NodeId> terms;
@@ -12273,8 +12288,7 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             }
             if(ln_arg.kind == NodeKind::Pow) {
                 Node const &base = a.get(ln_arg.a);
-                auto exp = as_num(a, ln_arg.b);
-                if(exp && base.kind == NodeKind::Const && base.ckind == ConstKind::E) return a.num(*exp);
+                if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return simplify_known_endpoint_values(a, ln_arg.b);
             }
         }
         if(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos || x.fkind == FnKind::Atan) {
@@ -12399,6 +12413,8 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         NodeId exp = simplify_known_endpoint_values(a, x.b);
         Node const &base_node = a.get(base);
         auto exp_num = as_num(a, exp);
+        if(exp_num && exp_num->num == 2 && exp_num->den == 1 && base_node.kind == NodeKind::Fn && base_node.fkind == FnKind::Sqrt)
+            return simplify_known_endpoint_values(a, base_node.a);
         if(exp_num && exp_num->den == 2 && exp_num->num > 0 && exp_num->num % 2 == 1) {
             if(auto b = as_num(a, base); b && b->num >= 0) {
                 Rational outside{1, 1};
