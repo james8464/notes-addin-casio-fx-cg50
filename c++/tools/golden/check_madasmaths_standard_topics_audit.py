@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from working_audit_utils import markers_present
@@ -135,16 +135,21 @@ def canonical_source(topic_page: str, pdf_name: str) -> str:
     return f"{topic_page}/{stem}.pdf"
 
 
-def load_manual_case_index() -> dict[tuple[str, str, str], dict[str, object]]:
+def load_manual_case_indexes() -> tuple[
+    dict[tuple[str, str, str], dict[str, object]],
+    dict[tuple[str, str], list[dict[str, object]]],
+]:
     if not MANUAL_CASES.exists():
-        return {}
+        return {}, {}
     index: dict[tuple[str, str, str], dict[str, object]] = {}
+    by_question: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     for line in MANUAL_CASES.read_text().splitlines():
         if not line.strip():
             continue
         case = json.loads(line)
         index[(case["source_pdf"], str(case["qid"]), str(case["item"]))] = case
-    return index
+        by_question[(case["source_pdf"], str(case["qid"]))].append(case)
+    return index, by_question
 
 
 def run_case(name: str, args: list[str], needles: list[str], forbidden: list[str]) -> list[str]:
@@ -165,7 +170,7 @@ def main() -> int:
         print(f"SKIP madasmaths standard topics: no local PDFs in {PDF_DIR}")
         return 0
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    manual_index = load_manual_case_index()
+    manual_index, manual_by_question = load_manual_case_indexes()
 
     pdfs = sorted(PDF_DIR.glob("*/*.pdf"))
     counts = Counter(p.parent.name for p in pdfs)
@@ -191,13 +196,24 @@ def main() -> int:
             source_pdf = f"{pdf.parent.name}/{pdf.name}"
             canonical_pdf = canonical_source(pdf.parent.name, pdf.name)
             case = manual_index.get((source_pdf, question, part)) or manual_index.get((canonical_pdf, question, part))
+            question_cases = manual_by_question.get((source_pdf, question)) or manual_by_question.get((canonical_pdf, question)) or []
+            covered_items = [str(c.get("item", "")) for c in question_cases]
             if case:
                 status = "done"
                 command = case.get("args", [])
                 expected = case.get("needles", [])
                 notes = "manual host-verified"
+                covered_items = [str(case.get("item", ""))]
                 if source_pdf != case.get("source_pdf"):
                     notes = f"covered by {case.get('source_pdf')}"
+            elif question_cases:
+                status = "done"
+                command = question_cases[0].get("args", [])
+                expected = question_cases[0].get("needles", [])
+                labels = [item or "main" for item in covered_items]
+                notes = "manual host-verified items: " + ",".join(labels[:8])
+                if len(labels) > 8:
+                    notes += f",+{len(labels)-8}"
             elif skip:
                 status = "unsupported-ok"
                 command = []
@@ -227,6 +243,7 @@ def main() -> int:
                     "expected": expected,
                     "status": status,
                     "notes": notes,
+                    "covered_items": covered_items,
                 }
             )
 
