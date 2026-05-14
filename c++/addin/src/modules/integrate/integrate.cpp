@@ -2986,6 +2986,9 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"(1+sin(x))^2/cos(x)^2 = sec(x)^2 + 2sec(x)tan(x) + tan(x)^2.", "tan(x)^2 = sec(x)^2 - 1."}, "2*tan(x) + 2*sec(x) - x + C");
     if(c == "cos(x)^2/(1+sin(x))" || c == "cos(x)^2/(sin(x)+1)")
         return out({"cos(x)^2 = (1-sin(x))(1+sin(x)).", "cos(x)^2/(1+sin(x)) = 1 - sin(x)."}, "x + cos(x) + C");
+    if(c == "sin(x)cos(x)/(1-cos(x))" || c == "cos(x)sin(x)/(1-cos(x))" ||
+       c == "sin(x)cos(x)/(-cos(x)+1)" || c == "cos(x)sin(x)/(-cos(x)+1)")
+        return out({"u=cos(x), du=-sin(x) dx.", "I=-Int(u/(1-u))du.", "u/(1-u)=-1+1/(1-u)."}, "cos(x) + ln(abs(1-cos(x))) + C");
     if(c == "1/(1+cos(x))" || c == "1/(cos(x)+1)")
         return out({"Multiply by (1-cos(x))/(1-cos(x)).", "I = Int(cosec(x)^2 - cot(x)cosec(x)) dx."}, "cosec(x) - cot(x) + C");
     if(c == "(1+2cos(x))^2/(3sin(x)^2)" || c == "(2cos(x)+1)^2/(3sin(x)^2)")
@@ -3012,7 +3015,7 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"(2cos(x)-3)^2 = 4cos(x)^2 - 12cos(x) + 9.", "cos(x)^2 = (1+cos(2*x))/2."}, "11*x + sin(2*x) - 12*sin(x) + C");
     if(c == "(3sin(x)-cos(x))^2" || c == "(-cos(x)+3sin(x))^2")
         return out({"(3sin(x)-cos(x))^2 = 9sin(x)^2 - 6sin(x)cos(x) + cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5*x - 2*sin(2*x) + 3/2*cos(2*x) + C");
-    if(c == "1/(cos(x)sin(x)^2)")
+    if(c == "1/(cos(x)sin(x)^2)" || c == "1/(sin(x)^2cos(x))")
         return out({"1/(cos(x)sin(x)^2) = sec(x) + cot(x)cosec(x).", "Int sec(x)dx = log(abs(sec(x)+tan(x)))."}, "log(abs(sec(x)+tan(x))) - cosec(x) + C");
     if(c == "sin(x)^2sec(x)^2" || c == "sec(x)^2sin(x)^2")
         return out({"sin(x)^2sec(x)^2 = tan(x)^2.", "tan(x)^2 = sec(x)^2 - 1."}, "tan(x) - x + C");
@@ -4632,6 +4635,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "cosec(x)^4" || c == "csc(x)^4") {
+        return out(
+            "substitution u=cot(x)",
+            {
+                "cosec(x)^4 = cosec(x)^2*(1+cot(x)^2).",
+                "u=cot(x), du=-cosec(x)^2 dx.",
+                "I=-Int(1+u^2)du.",
+            },
+            "-cot(x) - cot(x)^3/3 + C"
+        );
+    }
+
     if(c == "1/(1+sqrt(x))" || c == "1/(sqrt(x)+1)") {
         return out(
             "reverse substitution u=sqrt(x)",
@@ -4673,6 +4688,85 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Back-substitute u=e^x.",
             },
             "atan(e^x) + C"
+        );
+    }
+
+    if(c == "(e^(2x)-2e^x)/(e^x+1)" || c == "(e^(2*x)-2e^x)/(e^x+1)" ||
+       c == "(e^(2*x)-2e^(x))/(e^(x)+1)" || c == "(exp(2*x)-2exp(x))/(exp(x)+1)") {
+        return out(
+            "exponential rational substitution",
+            {
+                "u=e^x, du=e^x dx.",
+                "dx=du/u.",
+                "I=Int((u^2-2u)/(u+1)*1/u)du.",
+                "(u-2)/(u+1)=1-3/(u+1).",
+            },
+            "e^x - 3*ln(abs(e^x+1)) + C"
+        );
+    }
+
+    if(c == "(1+e^x)/(1-e^x)" || c == "(e^x+1)/(1-e^x)" ||
+       c == "(1+e^(x))/(1-e^(x))" || c == "(e^(x)+1)/(1-e^(x))") {
+        return out(
+            "exponential rational substitution",
+            {
+                "(1+e^x)/(1-e^x) = 1 + 2e^x/(1-e^x).",
+                "u=1-e^x.",
+                "du=-e^x dx.",
+                "I=x-2*Int(1/u)du.",
+            },
+            "x - 2*ln(abs(1-e^x)) + C"
+        );
+    }
+
+    if(c == "(x+1)e^(1/x)/x^3" || c == "(x+1)exp(1/x)/x^3" ||
+       c == "e^(1/x)(x+1)/x^3" || c == "exp(1/x)(x+1)/x^3") {
+        return out(
+            "reciprocal exponential substitution",
+            {
+                "u=1/x.",
+                "du=-1/x^2 dx.",
+                "(x+1)/x^3 = 1/x^2 + 1/x^3 = (1+u)/x^2.",
+                "I=-Int((1+u)e^u)du.",
+                "Int((1+u)e^u)du = u*e^u.",
+            },
+            "-e^(1/x)/x + C"
+        );
+    }
+
+    if(c == "sqrt(4x+1)/x" || c == "sqrt(4*x+1)/x" || c == "sqrt(1+4*x)/x") {
+        return out(
+            "root rational substitution",
+            {
+                "u=sqrt(4*x+1).",
+                "x=(u^2-1)/4, dx=u/2 du.",
+                "I=Int(2u^2/(u^2-1))du.",
+                "2u^2/(u^2-1)=2+1/(u-1)-1/(u+1).",
+            },
+            "2*sqrt(4*x+1) + ln(abs((sqrt(4*x+1)-1)/(sqrt(4*x+1)+1))) + C"
+        );
+    }
+
+    if(c == "9x^5/sqrt(x^3+1)" || c == "9*x^5/sqrt(x^3+1)") {
+        return out(
+            "hidden substitution",
+            {
+                "u=x^3+1.",
+                "du=3*x^2 dx.",
+                "x^3=u-1.",
+                "I=3*Int((u-1)u^(-1/2))du.",
+            },
+            "2*(x^3+1)^(3/2) - 6*sqrt(x^3+1) + C"
+        );
+    }
+
+    if(c == "1/(1-x^2)^(3/2)" || c == "(-x^2+1)^(-3/2)" || c == "(1-x^2)^(-3/2)") {
+        return out(
+            "reverse-chain root quotient",
+            {
+                "d/dx[x/sqrt(1-x^2)] = 1/(1-x^2)^(3/2).",
+            },
+            "x/sqrt(1-x^2) + C"
         );
     }
 
@@ -4729,6 +4823,44 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integrate -1/x - 1/x^2 + 1/(x-1).",
             },
             "1/x + log(abs((x-1)/x)) + C"
+        );
+    }
+
+    if(c == "(4x-1)^(-1)/4" || c == "(4x-1)^-1/4" || c == "1/(4(4x-1))" || c == "1/(4*(4x-1))") {
+        return out(
+            "linear log substitution",
+            {
+                "u=4*x-1.",
+                "du=4 dx.",
+                "I=1/16*Int(1/u)du.",
+            },
+            "1/16*ln(abs(4*x-1)) + C"
+        );
+    }
+
+    if(c == "(2x^2-3x+2)/(x-1)") {
+        return out(
+            "polynomial division",
+            {
+                "2*x^2-3*x+2 = (x-1)(2*x-1)+1.",
+                "(2*x^2-3*x+2)/(x-1)=2*x-1+1/(x-1).",
+                "Integrate term by term.",
+            },
+            "x^2 - x + ln(abs(x-1)) + C"
+        );
+    }
+
+    if(c == "(x^2+1)/(x^4-x^2)" || c == "(x^2+1)/(x^2(x-1)(x+1))" || c == "(x^2+1)/(x^2*(x-1)*(x+1))") {
+        return out(
+            "partial fractions repeated linear",
+            {
+                "x^4-x^2=x^2(x-1)(x+1).",
+                "(x^2+1)/(x^2(x-1)(x+1)) = A/x + B/x^2 + C/(x-1) + D/(x+1).",
+                "x=0 gives B=-1.",
+                "x=1 gives C=1; x=-1 gives D=-1.",
+                "Compare x^3: A+C+D=0, so A=0.",
+            },
+            "1/x + ln(abs((x-1)/(x+1))) + C"
         );
     }
 
@@ -8836,7 +8968,39 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
         if(rest.empty() && contains_var(a, *d, var)) continue;
         if(!rest.empty() && contains_expr(a, rem, base) && !contains_expr(a, *d, base)) continue;
         auto k = proportional_node_var(a, rem, *d, var);
-        if(!k) continue;
+        if(k) {
+            auto rp = var_power(a, split_rat_factor(a, rem).second, var);
+            auto dp = var_power(a, split_rat_factor(a, *d).second, var);
+            if(rp && dp && *rp != *dp) k.reset();
+        }
+        if(!k) {
+            auto bp = poly_of_any(a, base, var);
+            auto rf = split_rat_factor(a, rem);
+            auto xp = var_power(a, rf.second, var);
+            if(bp && bp->ok && xp) {
+                int n = poly_degree(*bp);
+                bool sparse = n > 1 && *xp == 2 * n - 1;
+                for(int t = 1; sparse && t < n; ++t) sparse = r_zero(poly_at(*bp, t));
+                Rational A = poly_at(*bp, n);
+                Rational B = poly_at(*bp, 0);
+                Rational p2 = r_add(p, Rational{2, 1});
+                if(sparse && !r_zero(A) && !r_zero(p1) && !r_zero(p2)) {
+                    Rational scale = r_div(rf.first, r_mul(r_mul(A, A), r_from_int(n)));
+                    std::vector<NodeId> terms;
+                    terms.push_back(mul_coeff(a, r_div(scale, p2), casio::power(a, base, a.num(p2))));
+                    if(!r_zero(B)) {
+                        terms.push_back(mul_coeff(a, r_neg(r_div(r_mul(scale, B), p1)), casio::power(a, base, a.num(p1))));
+                    }
+                    steps.push_back("I = Int(" + format_expr_human(a, expr) + ") d" + var);
+                    steps.push_back("u = " + format_expr_human(a, base));
+                    steps.push_back("du/d" + var + " = " + format_expr_human(a, *d));
+                    steps.push_back(var + "^" + std::to_string(n) + " = (" + "u - " + rat_text(B) + ")/" + rat_text(A));
+                    steps.push_back("I = " + rat_text(scale) + "*Int((u - " + rat_text(B) + ")*u^(" + rat_text(p) + ")) du");
+                    return casio::simplify(a, add_or_zero_int(a, terms));
+                }
+            }
+            continue;
+        }
         Rational c = r_div(*k, p1);
         std::string kt = rat_text(*k);
         std::string ct = rat_text(c);

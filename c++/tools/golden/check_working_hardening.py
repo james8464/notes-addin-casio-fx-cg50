@@ -1581,7 +1581,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(6*x^3/sqrt(x^2+1),x,0,2)",
-        ["u=x^2+1", "x^2=u-1", "I=3*Int_1^5", "4*sqrt(5)+4"],
+        ["u=x^2+1", "x^2=(u-1)/1", "Limits:x=0=>u=1,x=2=>u=5", "4*sqrt(5)+4"],
         ["ERR:", "No elementary primitive"],
     ),
     (
