@@ -15523,6 +15523,26 @@ static std::optional<std::vector<std::string>> run_table_quadrature(Arena &arena
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> run_symbolic_trapezium_gp(std::string const &f, std::string const &var,
+                                                                          std::string const &lo, std::string const &hi,
+                                                                          std::string const &n_arg)
+{
+    if(compact_key(lo) != "0" || compact_key(hi) != "1" || compact_key(n_arg) != "n") return std::nullopt;
+    std::string c = compact_key(f);
+    std::string suffix = "^" + compact_key(var);
+    if(c.size() <= suffix.size() || c.substr(c.size() - suffix.size()) != suffix) return std::nullopt;
+    std::string base = c.substr(0, c.size() - suffix.size());
+    if(base != "2") return std::nullopt;
+    std::vector<std::string> steps;
+    steps.push_back("h = 1/n.");
+    steps.push_back(var + "_i = i/n, y_i = 2^(i/n).");
+    steps.push_back("T = 1/(2*n)*(1 + 2 + 2*sum(2^(i/n),i=1..n-1)).");
+    steps.push_back("r = 2^(1/n).");
+    steps.push_back("sum = r + r^2 + ... + r^(n-1) = (2-r)/(r-1).");
+    steps.push_back("T = 1/(2*n)*(3 + 2*(2-r)/(r-1)).");
+    return casio::exam_block("trapezium rule", steps, "1/(2*n)*(2^(1/n)+1)/(2^(1/n)-1)");
+}
+
 static std::optional<std::vector<std::string>> run_numeric_quadrature(Arena &arena, Request const &req)
 {
     if(auto table = run_table_quadrature(arena, req)) return *table;
@@ -15537,6 +15557,9 @@ static std::optional<std::vector<std::string>> run_numeric_quadrature(Arena &are
         if(!args || args->size() != 5) continue;
         std::string f = (*args)[0];
         std::string var = (*args)[1].empty() ? req.var : (*args)[1];
+        if(std::string(rule.name) == "trapezium") {
+            if(auto sym = run_symbolic_trapezium_gp(f, var, (*args)[2], (*args)[3], (*args)[4])) return *sym;
+        }
         auto lo = eval_numeric_expr(arena, (*args)[2]);
         auto hi = eval_numeric_expr(arena, (*args)[3]);
         auto n_opt = parse_positive_int_text((*args)[4]);

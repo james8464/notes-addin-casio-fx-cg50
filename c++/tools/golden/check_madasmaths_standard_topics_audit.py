@@ -136,20 +136,36 @@ def canonical_source(topic_page: str, pdf_name: str) -> str:
 
 
 def load_manual_case_indexes() -> tuple[
+    dict[tuple[str, str, str, int], dict[str, object]],
     dict[tuple[str, str, str], dict[str, object]],
+    dict[tuple[str, str, int], list[dict[str, object]]],
     dict[tuple[str, str], list[dict[str, object]]],
+    int,
 ]:
     if not MANUAL_CASES.exists():
-        return {}, {}
+        return {}, {}, {}, {}, 0
+    exact_index: dict[tuple[str, str, str, int], dict[str, object]] = {}
     index: dict[tuple[str, str, str], dict[str, object]] = {}
+    exact_by_question: dict[tuple[str, str, int], list[dict[str, object]]] = defaultdict(list)
     by_question: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
+    count = 0
     for line in MANUAL_CASES.read_text().splitlines():
         if not line.strip():
             continue
         case = json.loads(line)
-        index[(case["source_pdf"], str(case["qid"]), str(case["item"]))] = case
-        by_question[(case["source_pdf"], str(case["qid"]))].append(case)
-    return index, by_question
+        count += 1
+        source = case["source_pdf"]
+        qid = str(case["qid"])
+        item = str(case["item"])
+        ordinal = case.get("ordinal")
+        if ordinal not in (None, ""):
+            ord_i = int(ordinal)
+            exact_index[(source, qid, item, ord_i)] = case
+            exact_by_question[(source, qid, ord_i)].append(case)
+        else:
+            index[(source, qid, item)] = case
+            by_question[(source, qid)].append(case)
+    return exact_index, index, exact_by_question, by_question, count
 
 
 def run_case(name: str, args: list[str], needles: list[str], forbidden: list[str]) -> list[str]:
@@ -170,7 +186,7 @@ def main() -> int:
         print(f"SKIP madasmaths standard topics: no local PDFs in {PDF_DIR}")
         return 0
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    manual_index, manual_by_question = load_manual_case_indexes()
+    exact_manual_index, manual_index, exact_manual_by_question, manual_by_question, manual_count = load_manual_case_indexes()
 
     pdfs = sorted(PDF_DIR.glob("*/*.pdf"))
     counts = Counter(p.parent.name for p in pdfs)
@@ -187,6 +203,7 @@ def main() -> int:
         qs = split_questions(text)
         if len(qs) < 3:
             weak.append(f"{pdf.parent.name}/{pdf.name}: {len(qs)} questions parsed")
+        qid_counts = Counter(qid_parts(qid) for qid, _block in qs)
         for ordinal, (qid, block) in enumerate(qs, 1):
             topics = classify(block)
             topic_counts.update(topics)
@@ -195,8 +212,13 @@ def main() -> int:
             question, part = qid_parts(qid)
             source_pdf = f"{pdf.parent.name}/{pdf.name}"
             canonical_pdf = canonical_source(pdf.parent.name, pdf.name)
-            case = manual_index.get((source_pdf, question, part)) or manual_index.get((canonical_pdf, question, part))
-            question_cases = manual_by_question.get((source_pdf, question)) or manual_by_question.get((canonical_pdf, question)) or []
+            duplicate_qid = qid_counts[(question, part)] > 1
+            case = exact_manual_index.get((source_pdf, question, part, ordinal)) or exact_manual_index.get((canonical_pdf, question, part, ordinal))
+            question_cases = exact_manual_by_question.get((source_pdf, question, ordinal)) or exact_manual_by_question.get((canonical_pdf, question, ordinal)) or []
+            if not case and not duplicate_qid:
+                case = manual_index.get((source_pdf, question, part)) or manual_index.get((canonical_pdf, question, part))
+                if not question_cases:
+                    question_cases = manual_by_question.get((source_pdf, question)) or manual_by_question.get((canonical_pdf, question)) or []
             covered_items = [str(c.get("item", "")) for c in question_cases]
             if case:
                 status = "done"
@@ -261,7 +283,7 @@ def main() -> int:
         f"pdfs={len(pdfs)}",
         "pdf_counts=" + " ".join(f"{k}:{counts[k]}" for k in sorted(EXPECTED_COUNTS)),
         f"questions={len(rows)}",
-        f"manual_cases={len(manual_index)}",
+        f"manual_cases={manual_count}",
         "status=" + " ".join(f"{k}:{status_counts[k]}" for k in sorted(status_counts)),
         "topics=" + " ".join(f"{k}:{topic_counts[k]}" for k in sorted(topic_counts)),
         f"ledger={LEDGER}",
