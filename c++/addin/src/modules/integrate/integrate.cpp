@@ -2169,6 +2169,76 @@ static std::string rat_text(Rational r)
     return std::to_string(r.num) + "/" + std::to_string(r.den);
 }
 
+static std::string pi_times(Rational r)
+{
+    r.normalize();
+    if(r.den == 1) {
+        if(r.num == 1) return "pi";
+        if(r.num == -1) return "-pi";
+        return std::to_string(r.num) + "*pi";
+    }
+    return std::to_string(r.num) + "/" + std::to_string(r.den) + "*pi";
+}
+
+static std::optional<TextIntegral> reciprocal_root_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    std::string integrand = compact_key((*args)[0]);
+    std::size_t pos = integrand.find("sqrt(");
+    if(pos == std::string::npos) return std::nullopt;
+    long long c = 1;
+    if(pos) {
+        auto cp = parse_int_key(integrand.substr(0, pos));
+        if(!cp) return std::nullopt;
+        c = *cp;
+    }
+    int close = matching_paren_text(integrand, pos + 4);
+    if(close <= static_cast<int>(pos + 5)) return std::nullopt;
+    std::string inner = integrand.substr(pos + 5, static_cast<std::size_t>(close) - pos - 5);
+    std::string rest = integrand.substr(static_cast<std::size_t>(close) + 1);
+    std::string suffix = "/" + var + "-1";
+    if(inner.size() <= suffix.size() || inner.substr(inner.size() - suffix.size()) != suffix) return std::nullopt;
+    auto av = parse_int_key(inner.substr(0, inner.size() - suffix.size()));
+    if(!av || *av <= 0 || c == 0) return std::nullopt;
+    Rational A{*av, 1};
+    Rational halfA{*av, 2};
+    halfA.normalize();
+    auto lo = parse_rational_text(compact_key((*args)[2]));
+    auto hi = parse_rational_text(compact_key((*args)[3]));
+    if(!lo || !hi || !r_eq(*lo, halfA) || !r_eq(*hi, A)) return std::nullopt;
+    bool subtract_line = false;
+    if(!rest.empty()) {
+        std::string Atext = std::to_string(*av);
+        subtract_line = rest == "-(" + Atext + "-" + var + ")" ||
+                        rest == "-(-" + var + "+" + Atext + ")" ||
+                        rest == "+" + var + "-" + Atext;
+        if(!subtract_line) return std::nullopt;
+    }
+    Rational ca{c * (*av), 1};
+    Rational pi_part = r_div(ca, Rational{4, 1});
+    Rational const_part = r_div(ca, Rational{2, 1});
+    if(subtract_line) const_part = r_add(const_part, Rational{(*av) * (*av), 8});
+    const_part.normalize();
+    std::string answer = pi_times(pi_part) + " - " + rat_text(const_part);
+    std::vector<std::string> steps = {
+        "x = " + std::to_string(*av) + "*cos(theta)^2.",
+        "sqrt(" + std::to_string(*av) + "/" + var + "-1)=tan(theta).",
+        "d" + var + " = -" + std::to_string(2 * (*av)) + "*cos(theta)*sin(theta)dtheta.",
+        var + "=" + rat_text(halfA) + " => theta=pi/4; " + var + "=" + std::to_string(*av) + " => theta=0.",
+        "I = " + std::to_string(2 * c * (*av)) + "*Integral_0^(pi/4) sin(theta)^2 dtheta.",
+        "sin(theta)^2=(1-cos(2theta))/2.",
+    };
+    if(subtract_line) {
+        steps.push_back("Integral_" + rat_text(halfA) + "^" + std::to_string(*av) + " (" + std::to_string(*av) + "-" + var + ") d" + var +
+                        " = " + rat_text(Rational{(*av) * (*av), 8}) + ".");
+        steps.push_back("A = (" + pi_times(pi_part) + " - " + rat_text(r_div(ca, Rational{2, 1})) + ") - " +
+                        rat_text(Rational{(*av) * (*av), 8}) + ".");
+    }
+    return TextIntegral{"reciprocal-root trig substitution", std::move(steps), answer};
+}
+
 static std::optional<TextIntegral> linear_over_sqrt_defint_pattern(std::string const &expr)
 {
     auto args = unwrap_call_args(expr, "defint");
@@ -2493,6 +2563,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
     if(auto radical = linear_over_sqrt_defint_pattern(expr)) return radical;
+    if(auto radical = reciprocal_root_defint_pattern(expr)) return radical;
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
     if(auto parabola = symbolic_root_parabola_area_pattern(expr)) return parabola;
@@ -7749,8 +7820,10 @@ static std::optional<Rational> proportional_node_var(Arena &a, NodeId lhs, NodeI
 {
     NodeId Ls = casio::simplify(a, lhs);
     NodeId Rs = casio::simplify(a, rhs);
-    if(contains_var(a, Ls, var) && !contains_var(a, Rs, var)) return std::nullopt;
     if(auto k = proportional_node(a, Ls, Rs)) return k;
+    bool lv = contains_var(a, Ls, var);
+    bool rv = contains_var(a, Rs, var);
+    if(lv != rv) return std::nullopt;
     auto L = affine_form(a, Ls, var);
     auto R = affine_form(a, Rs, var);
     if(!L || !R) return std::nullopt;

@@ -1560,6 +1560,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["I=2*J,J=Int(sqrt(-x^2+50))dx", "F(-5)=-25-25*pi/2", "25/2*pi-25"],
         ["5*sqrt(2)*0", "ERR:"],
     ),
+    (
+        "int",
+        "defint(2*sqrt(4/x-1)-(4-x),x,2,4)",
+        ["x=4*cos(theta)^2", "sqrt(4/x-1)=tan(theta)", "A=(2*pi-4)-2", "2*pi-6"],
+        ["-5/3", "ERR:"],
+    ),
 ]
 
 
