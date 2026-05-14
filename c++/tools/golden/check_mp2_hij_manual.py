@@ -16,7 +16,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "H6 cube-root definite integral",
         ["--int", "defint(2/(x+x^(1/3)),x,0,sqrt(27))"],
-        ["u=x^(1/3)", "dx=3*u^2", "6*log(2)"],
+        ["u = x^(2/3) + 1", "I = 3*Int(1/u) du", "6*log(2)"],
     ),
     (
         "H7 implicit exponential derivative",
