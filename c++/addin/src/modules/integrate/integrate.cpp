@@ -2989,6 +2989,10 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
     if(c == "sin(x)cos(x)/(1-cos(x))" || c == "cos(x)sin(x)/(1-cos(x))" ||
        c == "sin(x)cos(x)/(-cos(x)+1)" || c == "cos(x)sin(x)/(-cos(x)+1)")
         return out({"u=cos(x), du=-sin(x) dx.", "I=-Int(u/(1-u))du.", "u/(1-u)=-1+1/(1-u)."}, "cos(x) + ln(abs(1-cos(x))) + C");
+    if(c == "sin(x)^4sin(2x)" || c == "sin(2x)sin(x)^4")
+        return out({"sin(2*x)=2sin(x)cos(x).", "u=sin(x), du=cos(x)dx.", "I=2*Int(u^5)du."}, "1/3*sin(x)^6 + C");
+    if(c == "(sin(x)+sin(x)cos(x))/(1-cos(x))" || c == "(sin(x)+sin(x)cos(x))/(-cos(x)+1)")
+        return out({"u=1-cos(x), du=sin(x) dx.", "1+cos(x)=2-u.", "I=Int((2-u)/u)du."}, "cos(x) + 2*ln(abs(1-cos(x))) + C");
     if(c == "1/(1+cos(x))" || c == "1/(cos(x)+1)")
         return out({"Multiply by (1-cos(x))/(1-cos(x)).", "I = Int(cosec(x)^2 - cot(x)cosec(x)) dx."}, "cosec(x) - cot(x) + C");
     if(c == "(1+2cos(x))^2/(3sin(x)^2)" || c == "(2cos(x)+1)^2/(3sin(x)^2)")
@@ -3015,6 +3019,8 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"(2cos(x)-3)^2 = 4cos(x)^2 - 12cos(x) + 9.", "cos(x)^2 = (1+cos(2*x))/2."}, "11*x + sin(2*x) - 12*sin(x) + C");
     if(c == "(3sin(x)-cos(x))^2" || c == "(-cos(x)+3sin(x))^2")
         return out({"(3sin(x)-cos(x))^2 = 9sin(x)^2 - 6sin(x)cos(x) + cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5*x - 2*sin(2*x) + 3/2*cos(2*x) + C");
+    if(c == "(3sin(x)+cos(x))^2" || c == "(cos(x)+3sin(x))^2")
+        return out({"(3sin(x)+cos(x))^2 = 9sin(x)^2 + 6sin(x)cos(x) + cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5*x - 2*sin(2*x) - 3/2*cos(2*x) + C");
     if(c == "1/(cos(x)sin(x)^2)" || c == "1/(sin(x)^2cos(x))")
         return out({"1/(cos(x)sin(x)^2) = sec(x) + cot(x)cosec(x).", "Int sec(x)dx = log(abs(sec(x)+tan(x)))."}, "log(abs(sec(x)+tan(x))) - cosec(x) + C");
     if(c == "sin(x)^2sec(x)^2" || c == "sec(x)^2sin(x)^2")
@@ -3025,10 +3031,16 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"1/(sin(x)cos(x)) = 2/sin(2*x).", "Int cosec(u)du = log(abs(tan(u/2)))."}, "log(abs(tan(x))) + C");
     if(c == "1/(1-sin(x))" || c == "1/(-sin(x)+1)")
         return out({"Multiply by (1+sin(x))/(1+sin(x)).", "1/(1-sin(x)) = (1+sin(x))/cos(x)^2 = sec(x)^2+sec(x)tan(x)."}, "sec(x) + tan(x) + C");
+    if(c == "tan(x)/(tan(x)-sec(x))")
+        return out({"tan(x)/(tan(x)-sec(x)) = sin(x)/(sin(x)-1).", "sin(x)/(sin(x)-1) = 1 - 1/(1-sin(x))."}, "x - tan(x) - sec(x) + C");
+    if(c == "tan(x)/sqrt(1+cos(2x))" || c == "tan(x)/sqrt(2cos(x)^2)")
+        return out({"1+cos(2*x)=2cos(x)^2.", "sqrt(1+cos(2*x))=+/-sqrt(2)*cos(x).", "I=+/-1/sqrt(2)*Int(sec(x)tan(x))dx."}, "+/-1/sqrt(2)*sec(x) + C");
     if(c == "cos(2x)/cos(x)^2" || c == "cos(2x)cos(x)^-2")
         return out({"cos(2*x)=2cos(x)^2-1.", "cos(2*x)/cos(x)^2 = 2-sec(x)^2."}, "2*x - tan(x) + C");
     if(c == "cos(x)^2sin(x)^2" || c == "sin(x)^2cos(x)^2")
         return out({"sin(x)^2cos(x)^2 = 1/4*sin(2*x)^2.", "sin(2*x)^2 = (1-cos(4*x))/2."}, "1/8*x - 1/32*sin(4*x) + C");
+    if(c == "sin(x)cos(x/2)^2" || c == "cos(x/2)^2sin(x)")
+        return out({"sin(x)=2sin(x/2)cos(x/2).", "u=cos(x/2), du=-1/2*sin(x/2)dx.", "I=-4*Int(u^3)du."}, "-cos(x/2)^4 + C");
     if(c == "(sin(x)+2cos(x))^2" || c == "(2cos(x)+sin(x))^2")
         return out({"(sin(x)+2cos(x))^2 = sin(x)^2 + 4sin(x)cos(x) + 4cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5/2*x + 2*sin(x)^2 + 3/4*sin(2*x) + C");
     if(c == "1/(sin(x)^2cos(x)^2)")
@@ -4719,6 +4731,23 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "(e^(3*x)+1)/(e^x+1)" || c == "(e^(3*x)+1)/(e^(x)+1)" ||
+       c == "(e^(3x)+1)/(e^x+1)" || c == "(e^(3x)+1)/(e^(x)+1)" ||
+       c == "(1+e^(3*x))/(1+e^x)" || c == "(1+e^(3*x))/(1+e^(x))" ||
+       c == "(1+e^(3x))/(1+e^x)" || c == "(1+e^(3x))/(1+e^(x))" ||
+       c == "(exp(3*x)+1)/(exp(x)+1)" || c == "(1+exp(3*x))/(1+exp(x))") {
+        return out(
+            "exponential rational substitution",
+            {
+                "u=e^x, dx=du/u.",
+                "(u^3+1)/(u+1)=u^2-u+1.",
+                "I=Int((u^2-u+1)/u)du.",
+                "I=Int(u-1+1/u)du.",
+            },
+            "1/2*e^(2*x) - e^x + x + C"
+        );
+    }
+
     if(c == "(x+1)e^(1/x)/x^3" || c == "(x+1)exp(1/x)/x^3" ||
        c == "e^(1/x)(x+1)/x^3" || c == "exp(1/x)(x+1)/x^3") {
         return out(
@@ -4744,6 +4773,79 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "2u^2/(u^2-1)=2+1/(u-1)-1/(u+1).",
             },
             "2*sqrt(4*x+1) + ln(abs((sqrt(4*x+1)-1)/(sqrt(4*x+1)+1))) + C"
+        );
+    }
+
+    if(c == "sqrt(x)/(x-1)") {
+        return out(
+            "root rational substitution",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=Int(2u^2/(u^2-1))du.",
+                "2u^2/(u^2-1)=2+1/(u-1)-1/(u+1).",
+            },
+            "2*sqrt(x) + ln(abs((sqrt(x)-1)/(sqrt(x)+1))) + C"
+        );
+    }
+
+    if(c == "sqrt(x)/(sqrt(x)-1)") {
+        return out(
+            "sqrt substitution",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=Int(2u^2/(u-1))du.",
+                "2u^2/(u-1)=2u+2+2/(u-1).",
+            },
+            "x + 2*sqrt(x) + 2*ln(abs(sqrt(x)-1)) + C"
+        );
+    }
+
+    if(c == "(2x^(3/2)+1)/(x^(5/2)+2x)" || c == "(2*x^(3/2)+1)/(x^(5/2)+2*x)") {
+        return out(
+            "fractional-power log derivative",
+            {
+                "x^(5/2)+2x=sqrt(x)*(x^2+2sqrt(x)).",
+                "(2x^(3/2)+1)/(x^(5/2)+2x) = (2x+1/sqrt(x))/(x^2+2sqrt(x)).",
+                "u=x^2+2sqrt(x), du/dx=2x+1/sqrt(x).",
+            },
+            "ln(abs(x^2+2*sqrt(x))) + C"
+        );
+    }
+
+    if(c == "1/(x(1+sqrt(x)))" || c == "1/(x(sqrt(x)+1))" || c == "1/(x*(1+sqrt(x)))" || c == "1/(x*(sqrt(x)+1))") {
+        return out(
+            "sqrt substitution",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=2*Int(1/(u(1+u)))du.",
+                "1/(u(1+u))=1/u-1/(1+u).",
+            },
+            "2*ln(abs(sqrt(x)/(1+sqrt(x)))) + C"
+        );
+    }
+
+    if(c == "9/(x^2sqrt(9-x^2))" || c == "9/(x^2sqrt(-x^2+9))") {
+        return out(
+            "trig substitution",
+            {
+                "x=3sin(t), dx=3cos(t)dt.",
+                "sqrt(9-x^2)=3cos(t).",
+                "I=Int(cosec(t)^2)dt=-cot(t)+C.",
+                "cot(t)=sqrt(9-x^2)/x.",
+            },
+            "-sqrt(9-x^2)/x + C"
+        );
+    }
+
+    if(c == "(x-3)/(sqrt(x+1)-2)" || c == "(x-3)/(sqrt(1+x)-2)") {
+        return out(
+            "difference of squares",
+            {
+                "x-3=(x+1)-4.",
+                "x-3=(sqrt(x+1)-2)(sqrt(x+1)+2).",
+                "Integrand=sqrt(x+1)+2.",
+            },
+            "2/3*(x+1)^(3/2) + 2*x + C"
         );
     }
 
@@ -5826,6 +5928,30 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Known recurrence gives x(P(log x)).",
             },
             "x*(log(x)^3 - 3*log(x)^2 + 6*log(x) - 6) + C"
+        );
+    }
+
+    if(c == "xlog(x)^2" || c == "xln(x)^2") {
+        return out(
+            "parts power-log",
+            {
+                "J=Int(x*ln(x)^2)dx.",
+                "u=ln(x)^2, dv=x dx.",
+                "J=x^2*ln(x)^2/2-Int(x*ln(x))dx.",
+                "Int(x*ln(x))dx=x^2*ln(x)/2-x^2/4.",
+            },
+            "x^2*(2*ln(abs(x))^2 - 2*ln(abs(x)) + 1)/4 + C"
+        );
+    }
+
+    if(c == "x(log(x)^2-1)" || c == "x(ln(x)^2-1)" || c == "x*(log(x)^2-1)" || c == "x*(ln(x)^2-1)") {
+        return out(
+            "parts power-log",
+            {
+                "Int x(ln(x)^2-1)dx = Int xln(x)^2 dx - x^2/2.",
+                "Int xln(x)^2 dx = x^2(2ln(x)^2-2ln(x)+1)/4.",
+            },
+            "x^2*(2*ln(abs(x))^2 - 2*ln(abs(x)) - 1)/4 + C"
         );
     }
 
@@ -12618,6 +12744,31 @@ static std::optional<NodeId> integrate_sqrt_affine_product_den(Arena &a, NodeId 
     return casio::simplify(a, add_or_zero_int(a, terms));
 }
 
+static NodeId mul_var_cancel(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> terms;
+        for(NodeId k : x.kids) terms.push_back(mul_var_cancel(a, k, var));
+        return casio::simplify(a, casio::add(a, terms));
+    }
+    if(x.kind == NodeKind::Div && is_sym(a, x.b, var)) return x.a;
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> terms;
+        bool cancelled = false;
+        for(NodeId k : x.kids) {
+            Node const &kn = a.get(k);
+            if(!cancelled && kn.kind == NodeKind::Div && is_sym(a, kn.b, var)) {
+                terms.push_back(kn.a);
+                cancelled = true;
+            }
+            else terms.push_back(k);
+        }
+        if(cancelled) return casio::simplify(a, terms.size() == 1 ? terms[0] : casio::mul(a, terms));
+    }
+    return casio::simplify(a, casio::mul(a, {casio::sym(a, var), n}));
+}
+
 static std::optional<NodeId> integrate_power_derivative_over_var_den(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -12651,7 +12802,7 @@ static std::optional<NodeId> integrate_power_derivative_over_var_den(Arena &a, N
     if(!saw_var || !base || r_zero(dcoeff) || r_eq(pow, Rational{1, 1})) return std::nullopt;
     auto dbase = rc_diff(a, base, var);
     if(!dbase) return std::nullopt;
-    NodeId xdu = casio::simplify(a, casio::mul(a, {casio::sym(a, var), *dbase}));
+    NodeId xdu = mul_var_cancel(a, *dbase, var);
     auto k = proportional_node_var(a, x.a, xdu, var);
     if(!k) return std::nullopt;
     Rational one_minus_p = r_sub(Rational{1, 1}, pow);
