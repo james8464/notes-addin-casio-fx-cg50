@@ -2064,6 +2064,15 @@ static std::string simplify_endpoint_answer_text(std::string s)
         if(r.den == 1) return std::to_string(r.num) + "*";
         return std::to_string(r.num) + "/" + std::to_string(r.den) + "*";
     };
+    Rational single_rc{0, 1};
+    long long single_rv = 0;
+    if(parse_rat_ln_term(s, single_rc, single_rv) && single_rc.num > 0 && single_rv > 1) {
+        for(long long k = 2; k <= 8; ++k) {
+            if(auto r = integer_nth_root_exact(single_rv, k); r && *r > 1) {
+                return rat_prefix(r_mul(single_rc, Rational{k, 1})) + "ln(" + std::to_string(*r) + ")";
+            }
+        }
+    }
     std::size_t minus = s.find(" - ");
     Rational rc1{0, 1}, rc2{0, 1};
     long long ra = 0, rb = 0;
@@ -2103,6 +2112,155 @@ static std::string simplify_endpoint_answer_text(std::string s)
         }
         if(c1 == 1) return "ln(" + std::to_string(a) + "/" + std::to_string(b) + ")";
         return std::to_string(c1) + "*ln(" + std::to_string(a) + "/" + std::to_string(b) + ")";
+    }
+    struct SignedTerm { int sign; std::string body; };
+    auto split_signed_terms = [](std::string const &src) {
+        std::vector<SignedTerm> out;
+        std::string cur;
+        int depth = 0, sign = 1;
+        auto flush = [&]() {
+            std::string t = trim_copy(cur);
+            cur.clear();
+            if(t.empty()) return;
+            int sg = sign;
+            if(!t.empty() && t.front() == '-') {
+                sg = -sg;
+                t = trim_copy(t.substr(1));
+            }
+            out.push_back({sg, t});
+        };
+        for(std::size_t i = 0; i < src.size(); ++i) {
+            char ch = src[i];
+            if(ch == '(') ++depth;
+            else if(ch == ')') --depth;
+            if(depth == 0 && i + 2 < src.size() && src[i] == ' ' && (src[i + 1] == '+' || src[i + 1] == '-') && src[i + 2] == ' ') {
+                flush();
+                sign = src[i + 1] == '+' ? 1 : -1;
+                i += 2;
+                continue;
+            }
+            cur.push_back(ch);
+        }
+        flush();
+        return out;
+    };
+    auto parse_any_rat_ln = [&](std::string const &t, Rational &c, Rational &v) -> bool {
+        std::size_t p = t.find("*ln(");
+        std::size_t name_len = 3;
+        if(p == std::string::npos) {
+            p = t.find("*log(");
+            name_len = 4;
+        }
+        std::size_t start = 0;
+        if(p == std::string::npos) {
+            if(t.rfind("ln(", 0) == 0) { c = Rational{1, 1}; start = 3; }
+            else if(t.rfind("log(", 0) == 0) { c = Rational{1, 1}; start = 4; }
+            else return false;
+        } else {
+            if(!parse_rat_coeff(t.substr(0, p), c)) return false;
+            start = p + 1 + name_len;
+        }
+        if(t.size() <= start || t.back() != ')') return false;
+        return parse_rat_coeff(t.substr(start, t.size() - start - 1), v);
+    };
+    auto rat_display = [](Rational r) {
+        r.normalize();
+        if(r.den == 1) return std::to_string(r.num);
+        return std::to_string(r.num) + "/" + std::to_string(r.den);
+    };
+    auto rat_pow_signed = [](Rational r, int e) {
+        if(e < 0) return r_div(Rational{1, 1}, r_pow(r, -e));
+        return r_pow(r, e);
+    };
+    auto rat_root_exact = [](Rational r, int k) -> std::optional<Rational> {
+        if(k <= 0 || r.num <= 0 || r.den <= 0) return std::nullopt;
+        auto rn = integer_nth_root_exact(r.num, k);
+        auto rd = integer_nth_root_exact(r.den, k);
+        if(!rn || !rd) return std::nullopt;
+        Rational q{*rn, *rd};
+        q.normalize();
+        return q;
+    };
+    auto terms = split_signed_terms(s);
+    std::vector<SignedTerm> keep;
+    std::vector<std::pair<Rational, Rational>> logs;
+    for(auto const &t : terms) {
+        Rational c{0, 1}, v{0, 1};
+        if(parse_any_rat_ln(t.body, c, v) && v.num > 0) {
+            if(t.sign < 0) c = r_neg(c);
+            logs.push_back({c, v});
+        } else {
+            keep.push_back(t);
+        }
+    }
+    if(logs.size() >= 2) {
+        Rational common_abs{logs[0].first.num < 0 ? -logs[0].first.num : logs[0].first.num, logs[0].first.den};
+        bool common_ok = common_abs.num > 0;
+        Rational common_product{1, 1};
+        for(auto const &kv : logs) {
+            Rational ac{kv.first.num < 0 ? -kv.first.num : kv.first.num, kv.first.den};
+            ac.normalize();
+            if(!r_eq(ac, common_abs)) { common_ok = false; break; }
+            common_product = r_mul(common_product, kv.first.num < 0 ? r_div(Rational{1, 1}, kv.second) : kv.second);
+        }
+        if(common_ok && common_product.num > 0) {
+            std::string log_part;
+            for(int k = 6; k >= 2 && log_part.empty(); --k) {
+                if(auto root = rat_root_exact(common_product, k))
+                    log_part = rat_prefix(r_mul(common_abs, Rational{k, 1})) + "ln(" + rat_display(*root) + ")";
+            }
+            if(log_part.empty()) log_part = rat_prefix(common_abs) + "ln(" + rat_display(common_product) + ")";
+            std::string out;
+            auto append = [&](int sg, std::string const &body) {
+                if(body.empty() || body == "0") return;
+                if(out.empty()) out = sg < 0 ? "-" + body : body;
+                else out += sg < 0 ? " - " + body : " + " + body;
+            };
+            for(auto const &t : keep) append(t.sign, t.body);
+            append(1, log_part);
+            if(!out.empty()) return out;
+        }
+        std::int64_t L = 1;
+        for(auto const &kv : logs) L = lcm_i64(L, kv.first.den);
+        if(L > 0 && L <= 12) {
+            Rational product{1, 1};
+            bool ok = true;
+            for(auto const &kv : logs) {
+                std::int64_t e = kv.first.num * (L / kv.first.den);
+                if(e < -12 || e > 12) { ok = false; break; }
+                product = r_mul(product, rat_pow_signed(kv.second, static_cast<int>(e)));
+            }
+            if(ok && product.num > 0) {
+                std::string log_part;
+                if(L == 1) {
+                    for(int k = 6; k >= 2 && log_part.empty(); --k) {
+                        if(auto root = rat_root_exact(product, k))
+                            log_part = std::to_string(k) + "*ln(" + rat_display(*root) + ")";
+                    }
+                    if(log_part.empty()) log_part = "ln(" + rat_display(product) + ")";
+                } else {
+                    for(int k = static_cast<int>(L); k >= 2 && log_part.empty(); --k) {
+                        if(L % k == 0) {
+                            if(auto root = rat_root_exact(product, k)) {
+                                int den = static_cast<int>(L / k);
+                                log_part = den == 1 ? "ln(" + rat_display(*root) + ")"
+                                                    : rat_text(Rational{1, den}) + "*ln(" + rat_display(*root) + ")";
+                            }
+                        }
+                    }
+                    if(log_part.empty()) log_part = rat_text(Rational{1, L}) + "*ln(" + rat_display(product) + ")";
+                }
+                std::string out;
+                auto append = [&](int sg, std::string const &body) {
+                    if(body.empty() || body == "0") return;
+                    if(out.empty()) out = sg < 0 ? "-" + body : body;
+                    else out += sg < 0 ? " - " + body : " + " + body;
+                };
+                for(auto const &t : keep) append(t.sign, t.body);
+                append(1, log_part);
+                if(!out.empty()) return out;
+            }
+        }
     }
     return s;
 }
@@ -11724,6 +11882,9 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         auto linm = [&](Rational m, char const *s, Rational c) {
             return r_zero(c) ? ct(m, s) : plus(ct(m, s), rat_text(c));
         };
+        auto nz = [](std::string s) {
+            return s.empty() ? std::string("0") : s;
+        };
         Rational n2 = poly_at(*n, 2), n1 = poly_at(*n, 1), n0 = poly_at(*n, 0);
         Rational c0 = r_sub(n1, r_mul(*p, n2));
         Rational cA = r_sub(r_mul(*p, q2), q1);
@@ -11740,10 +11901,10 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
         steps.push_back("coeff x^2: " + plus(ct(q2, "A"), "B") + "=" + rat_text(n2));
         steps.push_back("coeff x: " + mid + "=" + rat_text(n1));
         steps.push_back("coeff 1: " + last + "=" + rat_text(n0));
-        steps.push_back("B=" + lin(n2, r_neg(q2), "A"));
-        steps.push_back("C=" + lin(c0, cA, "A"));
-        steps.push_back(linm(eA, "A", e0) + "=" + rat_text(n0));
-        steps.push_back(ct(eA, "A") + "=" + rat_text(erhs));
+        steps.push_back("B=" + nz(lin(n2, r_neg(q2), "A")));
+        steps.push_back("C=" + nz(lin(c0, cA, "A")));
+        steps.push_back(nz(linm(eA, "A", e0)) + "=" + rat_text(n0));
+        steps.push_back(nz(ct(eA, "A")) + "=" + rat_text(erhs));
         steps.push_back("Step 4: A=" + format_expr(a, a.num(sol[0])) + ", B=" + format_expr(a, a.num(sol[1])) + ", C=" + format_expr(a, a.num(sol[2])) + ".");
         steps.push_back("PF = " + format_expr(a, a.num(sol[0])) + "/(" + lin_txt + ")+(" + top_txt + ")/(" + quad_txt + ")");
         steps.push_back("I = " + format_expr(a, a.num(sol[0])) + "*Int(1/(" + lin_txt + ")) dx + Int((" + top_txt + ")/(" + quad_txt + ")) dx");
@@ -13745,6 +13906,25 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
                 return out;
             }
         }
+        }
+    }
+
+    if(x.kind == NodeKind::Div && a.get(x.b).kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        std::vector<NodeId> rest;
+        for(NodeId k : a.get(x.b).kids) {
+            if(auto q = as_num(a, k)) coeff = r_mul(coeff, *q);
+            else rest.push_back(k);
+        }
+        if(!r_eq(coeff, Rational{1, 1}) && !rest.empty()) {
+            NodeId den = rest.size() == 1 ? rest[0] : casio::mul(a, rest);
+            auto r = integrate_giac_style(a, casio::div(a, x.a, den), var);
+            if(r.result) {
+                out.result = casio::simplify(a, casio::div(a, *r.result, a.num(coeff)));
+                out.steps.push_back("Step 2: Factor denominator coefficient " + rat_text(coeff) + ".");
+                for(auto const &s : r.steps) out.steps.push_back(s);
+                return out;
+            }
         }
     }
 

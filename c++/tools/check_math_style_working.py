@@ -601,6 +601,26 @@ CASES = [
         ("A/(x - 1)+(Bx+C)/(x^2 + 2)", "coeff x^2: A+B=0", "coeff x: -B+C=5", "coeff 1: 2*A-C=7", "B=-A", "C=5-A", "3*A-5=7", "3*A=12", "A=4, B=-4, C=1", "PF = 4/(x - 1)+(- 4*x + 1)/(x^2 + 2)", "I = 4*Int(1/(x - 1)) dx + Int((- 4*x + 1)/(x^2 + 2)) dx"),
     ),
     (
+        "pf zero coefficient line",
+        ["--int", "2/(x*(x^2-1)),method=pf"],
+        ("C=0", "-2*ln(abs(x)) + ln(abs(x^2 - 1)) + C"),
+    ),
+    (
+        "definite pf combines endpoint logs",
+        ["--int", "defint(4/((2*x+1)*(1-2*x)),x,0,1/4)"],
+        ("F(1/4) = ln(3)", "ln(3)"),
+    ),
+    (
+        "definite pf root log simplification",
+        ["--int", "defint((x^2+x+2)/(x^2+2*x-3),x,2,3)"],
+        ("F(3) - F(2)", "1 + ln(25/18)"),
+    ),
+    (
+        "pf denominator scalar in definite integral",
+        ["--int", "defint((5*x^2-8*x+1)/(2*x*(x-1)^2),x,4,9)"],
+        ("A = 4, B = -2, C = 1", "-5/24 + ln(32/3)"),
+    ),
+    (
         "invalid derive no fake working",
         ["--derive", "diff("],
         ("Err:",),
@@ -803,6 +823,9 @@ GLOBAL_TEXT_BANS = (
 )
 
 STANDALONE_LINE_BANS = {
+    "A =",
+    "B =",
+    "C =",
     "y =",
     "u =",
     "v =",
