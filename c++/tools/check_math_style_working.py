@@ -488,6 +488,18 @@ CASES = [
         ("No elementary", "ERR:"),
     ),
     (
+        "product to sum definite sin cos2x",
+        ["--int", "defint(sin(x)*cos(2*x),x,0,pi/6)"],
+        ("sin(x)cos(2*x) = 1/2*(sin(3*x)-sin(x))", "1/4*sqrt(3) - 1/3"),
+        ("3/16", "No elementary", "ERR:"),
+    ),
+    (
+        "sqrt e endpoint parts",
+        ["--int", "defint(16*x^3*ln(x),x,sqrt(e),e),method=parts"],
+        ("F(sqrt(e)) = 2*e^2 - e^2", "3*e^(4) - e^2"),
+        ("sqrt(e)^4*ln(sqrt(e))", "No elementary", "ERR:"),
+    ),
+    (
         "exp denominator linear definite",
         ["--int", "defint(6/e^(2-3*x),x,k,1/2)"],
         ("6/e^(- 3*x + 2) = 6*e^(3*x - 2)", "u = 3*x - 2", "F(1/2) - F(k)", "2*e^(-1/2) - 2*e^(3*k - 2)"),

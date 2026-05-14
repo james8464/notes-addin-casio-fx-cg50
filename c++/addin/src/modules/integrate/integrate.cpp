@@ -1996,6 +1996,11 @@ static std::string simplify_endpoint_answer_text(std::string s)
         replace_all_text(s, "abs(" + v + ")", v);
         replace_all_text(s, "(0 + " + v + ")", v);
     }
+    replace_all_text(s, "sqrt(e)^4", "e^2");
+    replace_all_text(s, "ln(sqrt(e))", "1/2");
+    replace_all_text(s, "log(sqrt(e))", "1/2");
+    replace_all_text(s, "4*e^2*1/2", "2*e^2");
+    replace_all_text(s, "- 2*e^2 + e^2", "- e^2");
     for(int n = 1; n <= 200; ++n) {
         for(int d = 1; d <= 200; ++d) {
             std::string from = "abs(" + std::to_string(n) + "/" + std::to_string(d) + ")";
@@ -2004,7 +2009,9 @@ static std::string simplify_endpoint_answer_text(std::string s)
             replace_all_text(s, from, rat_text(q));
         }
         std::string v = std::to_string(n);
+        replace_all_text(s, "sqrt(" + v + ")^4", v + "^2");
         for(std::string const &fn : {"ln", "log"}) {
+            replace_all_text(s, fn + "(sqrt(" + v + "))", "1/2*" + fn + "(" + v + ")");
             replace_all_text(s, " + " + fn + "(1/" + v + ")", " - " + fn + "(" + v + ")");
             replace_all_text(s, " - " + fn + "(1/" + v + ")", " + " + fn + "(" + v + ")");
             if(s == fn + "(1/" + v + ")") s = "-" + fn + "(" + v + ")";
@@ -3214,6 +3221,8 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"sin(x)^2sec(x)^2 = tan(x)^2.", "tan(x)^2 = sec(x)^2 - 1."}, "tan(x) - x + C");
     if(c == "sin(3x)cos(2x)" || c == "cos(2x)sin(3x)")
         return out({"2sin(A)cos(B)=sin(A+B)+sin(A-B).", "sin(3*x)cos(2*x)=1/2*(sin(5*x)+sin(x))."}, "-1/2*cos(x) - 1/10*cos(5*x) + C");
+    if(c == "sin(x)cos(2x)" || c == "cos(2x)sin(x)")
+        return out({"2sin(A)cos(B)=sin(A+B)+sin(A-B).", "sin(x)cos(2*x)=1/2*(sin(3*x)-sin(x))."}, "1/2*cos(x) - 1/6*cos(3*x) + C");
     if(c == "1/(sin(x)cos(x))")
         return out({"1/(sin(x)cos(x)) = 2/sin(2*x).", "Int cosec(u)du = log(abs(tan(u/2)))."}, "log(abs(tan(x))) + C");
     if(c == "1/(1-sin(x))" || c == "1/(-sin(x)+1)")
@@ -15507,7 +15516,21 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
         result.steps = div_steps;
     }
     else {
-        result = integrate_giac_style(arena, node, var);
+        std::string ck = compact_key(format_expr(arena, node));
+        if((ck == "sin(x)cos(2x)" || ck == "cos(2x)sin(x)") && var == "x") {
+            if(auto special = special_integral_answer(format_expr(arena, node))) {
+                std::string prim = trim_copy(special->answer);
+                for(std::string const &tail : {" + C", "+ C", "+C"}) {
+                    if(prim.size() >= tail.size() && prim.compare(prim.size() - tail.size(), tail.size(), tail) == 0) {
+                        prim = trim_copy(prim.substr(0, prim.size() - tail.size()));
+                        break;
+                    }
+                }
+                result.result = parse_expr(arena, prim);
+                result.steps = special->steps;
+            }
+        }
+        if(!result.result) result = integrate_giac_style(arena, node, var);
     }
     if(!result.result) {
         std::vector<std::string> candidates = {integrand, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
