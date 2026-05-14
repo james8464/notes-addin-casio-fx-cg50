@@ -4146,6 +4146,17 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "(cos(x)+1)/sin(x)") {
+        return out(
+            "trig substitution",
+            {
+                "(1+cos(u))/sin(u) = sin(u)/(1-cos(u)).",
+                "w = 1-cos(u), dw = sin(u)du.",
+            },
+            "ln(abs(- cos(x) + 1)) + C"
+        );
+    }
+
     if(c == "sin(log(x))" || c == "sin(ln(x))") {
         return out(
             "log substitution then looping parts",
@@ -8038,6 +8049,264 @@ static std::optional<NodeId> integrate_sqrt_var_linear_den(Arena &a, NodeId expr
     return casio::simplify(a, mul_coeff(a, r_mul(*top, Rational{2, 1}), ln_abs(a, linear)));
 }
 
+static std::optional<std::int64_t> sqrt_i64(std::int64_t n)
+{
+    if(n < 0) return std::nullopt;
+    auto r = static_cast<std::int64_t>(std::llround(std::sqrt(static_cast<double>(n))));
+    return r * r == n ? std::optional<std::int64_t>(r) : std::nullopt;
+}
+
+static std::optional<Rational> sqrt_rat_square(Rational q)
+{
+    q.normalize();
+    if(q.num < 0 || q.den <= 0) return std::nullopt;
+    auto n = sqrt_i64(q.num), d = sqrt_i64(q.den);
+    if(!n || !d || *d == 0) return std::nullopt;
+    return Rational{*n, *d};
+}
+
+static std::optional<NodeId> sqrt_base(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) return x.a;
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && e->num == 1 && e->den == 2) return x.a;
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> integrate_sqrt_var_affine_den(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = as_num(a, x.a);
+    if(!top) return std::nullopt;
+    Rational coeff = *top;
+    NodeId lin = 0;
+    bool got_root = false;
+    Node const &den = a.get(x.b);
+    std::vector<NodeId> fs = den.kind == NodeKind::Mul ? den.kids : std::vector<NodeId>{x.b};
+    for(NodeId f : fs) {
+        if(auto r = as_num(a, f)) coeff = r_div(coeff, *r);
+        else if(!got_root && is_sqrt_var_node(a, f, var)) got_root = true;
+        else if(!lin) lin = f;
+        else return std::nullopt;
+    }
+    if(!got_root || !lin) return std::nullopt;
+    auto af = affine_form(a, lin, var);
+    if(!af || r_zero(af->first) || r_zero(af->second)) return std::nullopt;
+    NodeId u = casio::fn(a, "sqrt", casio::sym(a, var));
+    steps.push_back("u=sqrt(" + var + "), d" + var + "=2u du.");
+    std::string quad = (r_eq(af->first, Rational{1, 1}) ? "u^2" : rat_text(af->first) + "*u^2") + " " + signed_rat_text(a, af->second);
+    steps.push_back("I=" + rat_text(r_mul(coeff, Rational{2, 1})) + "*Int(1/(" + quad + "))du.");
+    Rational ratio = r_div(af->second, af->first);
+    if(r_sign(ratio) < 0) {
+        auto r = sqrt_rat_square(r_neg(ratio));
+        if(!r || r_zero(*r)) return std::nullopt;
+        Rational scale = r_div(coeff, r_mul(af->first, *r));
+        NodeId frac = casio::div(a, casio::add(a, {u, casio::neg(a, a.num(*r))}), casio::add(a, {u, a.num(*r)}));
+        steps.push_back("Int(1/(u^2-a^2))du=ln(abs((u-a)/(u+a)))/(2a).");
+        return casio::simplify(a, mul_coeff(a, scale, ln_abs(a, frac)));
+    }
+    auto r = sqrt_rat_square(ratio);
+    if(!r || r_zero(*r)) return std::nullopt;
+    Rational scale = r_div(r_mul(coeff, Rational{2, 1}), r_mul(af->first, *r));
+    steps.push_back("Int(1/(u^2+a^2))du=atan(u/a)/a.");
+    return casio::simplify(a, mul_coeff(a, scale, casio::fn(a, "atan", casio::div(a, u, a.num(*r)))));
+}
+
+static std::optional<NodeId> integrate_recip_sqrt_affine_shift(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = as_num(a, x.a);
+    if(!top) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Add || den.kids.size() != 2) return std::nullopt;
+    NodeId root = 0;
+    std::optional<Rational> c;
+    for(NodeId k : den.kids) {
+        if(auto r = as_num(a, k)) c = *r;
+        else if(!root && sqrt_base(a, k)) root = k;
+        else return std::nullopt;
+    }
+    if(!root || !c) return std::nullopt;
+    auto base = sqrt_base(a, root);
+    auto af = base ? affine_form(a, *base, var) : std::optional<std::pair<Rational, Rational>>{};
+    if(!af || r_zero(af->first)) return std::nullopt;
+    Rational scale = r_div(r_mul(*top, Rational{2, 1}), af->first);
+    NodeId prim = casio::add(a, {root, mul_coeff(a, r_neg(*c), ln_abs(a, casio::add(a, {root, a.num(*c)})))});
+    std::string su = r_eq(scale, Rational{1, 1}) ? "u" : (r_eq(scale, Rational{-1, 1}) ? "-u" : rat_text(scale) + "u");
+    steps.push_back("u=" + format_expr_human(a, root) + "; 1 d" + var + " = " + su + " du.");
+    steps.push_back("u/(u+c) = 1-c/(u+c).");
+    return casio::simplify(a, mul_coeff(a, scale, prim));
+}
+
+static std::optional<NodeId> integrate_sqrt_quad_over_var(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto den = affine_form(a, x.b, var);
+    if(!den || r_zero(den->first) || !r_zero(den->second)) return std::nullopt;
+    Rational coeff{1, 1};
+    NodeId root = 0;
+    Node const &top = a.get(x.a);
+    std::vector<NodeId> fs = top.kind == NodeKind::Mul ? top.kids : std::vector<NodeId>{x.a};
+    for(NodeId f : fs) {
+        if(auto r = as_num(a, f)) coeff = r_mul(coeff, *r);
+        else if(!root) {
+            auto b = sqrt_base(a, f);
+            if(!b) return std::nullopt;
+            root = f;
+        }
+        else return std::nullopt;
+    }
+    if(!root) return std::nullopt;
+    coeff = r_div(coeff, den->first);
+    auto rad = sqrt_base(a, root);
+    auto p = rad ? poly_of_any(a, *rad, var) : std::optional<Poly>{};
+    if(!p || !p->ok || poly_degree(*p) != 2 || !r_zero(poly_at(*p, 1)) || r_zero(poly_at(*p, 2))) return std::nullopt;
+    auto s = sqrt_rat_square(poly_at(*p, 0));
+    if(!s || r_zero(*s)) return std::nullopt;
+    NodeId u = root;
+    NodeId frac = casio::div(a, casio::add(a, {u, casio::neg(a, a.num(*s))}), casio::add(a, {u, a.num(*s)}));
+    NodeId prim = casio::add(a, {u, mul_coeff(a, r_div(*s, Rational{2, 1}), ln_abs(a, frac))});
+    steps.push_back("u=" + format_expr_human(a, u) + ".");
+    steps.push_back("u^2=" + format_expr_human(a, *rad) + ".");
+    steps.push_back("I=Int(u^2/(u^2 " + signed_rat_text(a, r_neg(poly_at(*p, 0))) + "))du.");
+    steps.push_back("u^2/(u^2-a^2)=1+a^2/(u^2-a^2).");
+    return casio::simplify(a, mul_coeff(a, coeff, prim));
+}
+
+static std::optional<NodeId> integrate_one_plus_cos_over_sin(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    NodeId num_node = 0, sarg = 0;
+    if(x.kind == NodeKind::Div) {
+        Node const &den = a.get(x.b);
+        if(den.kind != NodeKind::Fn || den.fkind != FnKind::Sin) return std::nullopt;
+        num_node = x.a;
+        sarg = den.a;
+    }
+    else if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        for(NodeId k : x.kids) {
+            Node const &t = a.get(k);
+            if(t.kind == NodeKind::Pow) {
+                auto e = as_num(a, t.b);
+                Node const &b = a.get(t.a);
+                if(e && e->num == -1 && e->den == 1 && b.kind == NodeKind::Fn && b.fkind == FnKind::Sin) {
+                    sarg = b.a;
+                    continue;
+                }
+            }
+            if(!num_node) num_node = k;
+            else return std::nullopt;
+        }
+    }
+    else return std::nullopt;
+    if(!num_node || !sarg) return std::nullopt;
+    Node const &num = a.get(num_node);
+    if(num.kind != NodeKind::Add || num.kids.size() != 2) return std::nullopt;
+    bool one = false;
+    NodeId carg = 0;
+    for(NodeId k : num.kids) {
+        if(auto r = as_num(a, k); r && r_eq(*r, Rational{1, 1})) one = true;
+        else {
+            Node const &t = a.get(k);
+            if(t.kind != NodeKind::Fn || t.fkind != FnKind::Cos || !same_expr(a, t.a, sarg)) return std::nullopt;
+            carg = t.a;
+        }
+    }
+    if(!one || !carg) return std::nullopt;
+    auto lc = linear_coeff(a, carg, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    NodeId body = casio::add(a, {casio::num(a, 1), casio::neg(a, casio::fn(a, "cos", carg))});
+    steps.push_back("(1+cos(u))/sin(u)=sin(u)/(1-cos(u)).");
+    steps.push_back("w=1-cos(u), dw=sin(u)du.");
+    return casio::simplify(a, mul_coeff(a, r_div(Rational{1, 1}, *lc), ln_abs(a, body)));
+}
+
+static std::optional<NodeId> integrate_cot_plus_csc_sum(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    NodeId arg = 0;
+    bool got_one = false, got_cos = false;
+    for(NodeId k : x.kids) {
+        Node const &d = a.get(k);
+        if(d.kind != NodeKind::Div) return std::nullopt;
+        Node const &den = a.get(d.b);
+        if(den.kind != NodeKind::Fn || den.fkind != FnKind::Sin) return std::nullopt;
+        if(arg && !same_expr(a, arg, den.a)) return std::nullopt;
+        arg = den.a;
+        if(auto r = as_num(a, d.a); r && r_eq(*r, Rational{1, 1})) got_one = true;
+        else {
+            Node const &top = a.get(d.a);
+            if(top.kind != NodeKind::Fn || top.fkind != FnKind::Cos || !same_expr(a, top.a, arg)) return std::nullopt;
+            got_cos = true;
+        }
+    }
+    if(!arg || !got_one || !got_cos) return std::nullopt;
+    auto lc = linear_coeff(a, arg, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    NodeId body = casio::add(a, {casio::num(a, 1), casio::neg(a, casio::fn(a, "cos", arg))});
+    steps.push_back("cot(u)+cosec(u)=(1+cos(u))/sin(u).");
+    steps.push_back("(1+cos(u))/sin(u)=sin(u)/(1-cos(u)).");
+    return casio::simplify(a, mul_coeff(a, r_div(Rational{1, 1}, *lc), ln_abs(a, body)));
+}
+
+static std::optional<NodeId> integrate_sec2_tan_sqrt_shift(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    NodeId arg = 0, root_base = 0;
+    bool got_sec2 = false, got_tan = false;
+    for(NodeId f : x.kids) {
+        if(auto r = as_num(a, f)) { coeff = r_mul(coeff, *r); continue; }
+        if(auto sp = fn_power_factor_node(a, f, FnKind::Sec); sp && sp->second.num == 2 && sp->second.den == 1) {
+            if(arg && !same_expr(a, arg, sp->first)) return std::nullopt;
+            arg = sp->first; got_sec2 = true; continue;
+        }
+        if(auto tp = fn_power_factor_node(a, f, FnKind::Tan); tp && tp->second.num == 1 && tp->second.den == 1) {
+            if(arg && !same_expr(a, arg, tp->first)) return std::nullopt;
+            arg = tp->first; got_tan = true; continue;
+        }
+        if(!root_base) {
+            auto b = sqrt_base(a, f);
+            if(!b) return std::nullopt;
+            root_base = *b;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!arg || !got_sec2 || !got_tan || !root_base) return std::nullopt;
+    Node const &rb = a.get(root_base);
+    if(rb.kind != NodeKind::Add || rb.kids.size() != 2) return std::nullopt;
+    std::optional<Rational> c;
+    bool tan_term = false;
+    for(NodeId t : rb.kids) {
+        if(auto r = as_num(a, t)) c = *r;
+        else {
+            Node const &tn = a.get(t);
+            if(tn.kind != NodeKind::Fn || tn.fkind != FnKind::Tan || !same_expr(a, tn.a, arg)) return std::nullopt;
+            tan_term = true;
+        }
+    }
+    if(!c || !tan_term) return std::nullopt;
+    auto lc = linear_coeff(a, arg, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    Rational scale = r_div(r_mul(coeff, Rational{2, 1}), *lc);
+    NodeId u3 = casio::power(a, root_base, a.num(Rational{3, 2}));
+    NodeId u5 = casio::power(a, root_base, a.num(Rational{5, 2}));
+    NodeId prim = casio::add(a, {casio::div(a, u5, casio::num(a, 5)), mul_coeff(a, r_neg(*c), casio::div(a, u3, casio::num(a, 3)))});
+    steps.push_back("u=sqrt(" + format_expr_human(a, root_base) + ").");
+    steps.push_back("sec(" + format_expr_human(a, arg) + ")^2 dx=2u du.");
+    steps.push_back("I=" + rat_text(scale) + "*Int((u^2 " + signed_rat_text(a, r_neg(*c)) + ")*u^2)du.");
+    return casio::simplify(a, mul_coeff(a, scale, prim));
+}
+
 static std::optional<NodeId> integrate_const_pow_log_derivative(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -10370,6 +10639,24 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && e->num == -1 && e->den == 1) {
+            NodeId recip = casio::div(a, casio::num(a, 1), x.a);
+            std::vector<std::string> inner_steps;
+            std::optional<NodeId> direct;
+            if(auto r = integrate_sqrt_var_affine_den(a, recip, var, inner_steps)) direct = *r;
+            else if(auto r = integrate_recip_sqrt_affine_shift(a, recip, var, inner_steps)) direct = *r;
+            if(direct) {
+                out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, recip));
+                for(auto const &s : inner_steps)
+                    if(!s.empty()) out.steps.push_back(s);
+                out.result = *direct;
+                return out;
+            }
+        }
+    }
+
     if(auto pst = integrate_poly_sec_tan_parts(a, expr, var, out.steps, 2)) {
         out.result = *pst;
         return out;
@@ -10601,6 +10888,36 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto sv = integrate_sqrt_var_linear_den(a, expr, var, out.steps)) {
         out.result = *sv;
+        return out;
+    }
+
+    if(auto sv = integrate_sqrt_var_affine_den(a, expr, var, out.steps)) {
+        out.result = *sv;
+        return out;
+    }
+
+    if(auto ss = integrate_recip_sqrt_affine_shift(a, expr, var, out.steps)) {
+        out.result = *ss;
+        return out;
+    }
+
+    if(auto sq = integrate_sqrt_quad_over_var(a, expr, var, out.steps)) {
+        out.result = *sq;
+        return out;
+    }
+
+    if(auto cs = integrate_one_plus_cos_over_sin(a, expr, var, out.steps)) {
+        out.result = *cs;
+        return out;
+    }
+
+    if(auto cs = integrate_cot_plus_csc_sum(a, expr, var, out.steps)) {
+        out.result = *cs;
+        return out;
+    }
+
+    if(auto ts = integrate_sec2_tan_sqrt_shift(a, expr, var, out.steps)) {
+        out.result = *ts;
         return out;
     }
 
@@ -11186,11 +11503,14 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         auto n = as_num(a, x.b);
         auto coeff = linear_coeff(a, x.a, var);
         if(n && coeff && !r_zero(*coeff)) {
-            out.steps.push_back("Step 2: Identify reverse-chain power rule.");
+            std::string u = format_expr_human(a, x.a);
+            std::string k = format_expr_human(a, a.num(*coeff));
+            std::string inv_k = format_expr_human(a, a.num(r_div(Rational{1, 1}, *coeff)));
+            out.steps.push_back("u=" + u + ", du/d" + var + "=" + k + ".");
             if(n->num == -1 && n->den == 1) {
                 NodeId abs_u = casio::fn(a, "abs", x.a);
                 out.result = divide_by_coeff(a, casio::fn(a, "log", abs_u), *coeff);
-                out.steps.push_back("Step 3: Special case n=-1: ∫ u'/u dx = log(abs(u))");
+                out.steps.push_back("I=" + inv_k + "*Int(1/u)du.");
             } else {
                 Rational np1 = *n;
                 np1.num += np1.den;
@@ -11198,9 +11518,8 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
                 NodeId pow = casio::power(a, x.a, a.num(np1));
                 Rational denom = r_mul(*coeff, np1);
                 out.result = divide_by_coeff(a, pow, denom);
-                out.steps.push_back("Step 3: Divide by inner derivative.");
+                out.steps.push_back("I=" + inv_k + "*Int(u^" + format_expr_human(a, a.num(*n)) + ")du.");
             }
-            out.steps.push_back("Step 4: Simplify. Add constant C.");
             return out;
         }
     }
@@ -12958,6 +13277,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
     NodeId route_node = raw_has_neg_power ? parsed : node;
     auto result = integrate_giac_style(arena, route_node, req.var);
+    if(!result.result && route_node != parsed) result = integrate_giac_style(arena, parsed, req.var);
     
     if(!result.result) {
         if(contains_branch_inverse_trig(arena, node)) {
