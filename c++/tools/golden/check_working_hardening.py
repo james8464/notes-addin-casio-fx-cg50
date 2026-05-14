@@ -1578,6 +1578,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x=4*cos(theta)^2", "sqrt(4/x-1)=tan(theta)", "A=(2*pi-4)-2", "2*pi-6"],
         ["-5/3", "ERR:"],
     ),
+    (
+        "int",
+        "defint(6*x^3/sqrt(x^2+1),x,0,2)",
+        ["u=x^2+1", "x^2=u-1", "I=3*Int_1^5", "4*sqrt(5)+4"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(1/(20-sqrt(x)),x,0,100)",
+        ["u=sqrt(x)", "I=Int_0^10 2u/(20-u) du", "40*ln(2)-20"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(sin(x)*cos(x)*(1+sin(x))^5,x,0,pi/2)",
+        ["u=1+sin(x)", "sin(x)=u-1", "107/14"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(x^2/sqrt(4-x^2),x,0,sqrt(2))",
+        ["x=2*sin(t)", "I=Int_0^(pi/4)4*sin(t)^2dt", "pi/2-1"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(1/(1+x^2)^2,x,0,1)",
+        ["x=tan(t)", "I=Int_0^(pi/4)cos(t)^2dt", "1/8*(pi+2)"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(1/sqrt(3-4*x^2),x,0,3/4)",
+        ["x=sqrt(3)/2*sin(t)", "I=1/2*Int_0^(pi/3)dt", "pi/6"],
+        ["ERR:", "asin(3/2/sqrt(3))"],
+    ),
 ]
 
 

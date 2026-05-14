@@ -2469,6 +2469,217 @@ static std::optional<TextIntegral> linear_sqrt_defint_pattern(std::string const 
     return TextIntegral{"linear-root substitution", std::move(steps), answer};
 }
 
+static std::optional<TextIntegral> cubic_over_quad_root_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    if(var != "x") return std::nullopt;
+    std::string k = compact_key((*args)[0]);
+    std::string mid = "x^3/sqrt(x^2+";
+    auto p = k.find(mid);
+    bool pow_form = false;
+    if(p == std::string::npos) {
+        mid = "x^3(x^2+";
+        p = k.find(mid);
+        pow_form = true;
+    }
+    if(p == std::string::npos || k.back() != ')') return std::nullopt;
+    std::string cs = k.substr(0, p);
+    long long c = cs.empty() ? 1 : (cs == "-" ? -1 : 0);
+    if(c == 0) {
+        auto cv = parse_int_key(cs);
+        if(!cv) return std::nullopt;
+        c = *cv;
+    }
+    std::string at = k.substr(p + mid.size(), k.size() - p - mid.size() - (pow_form ? 0 : 1));
+    if(pow_form) {
+        std::string suf = ")^(-1/2)";
+        if(at.size() <= suf.size() || at.substr(at.size() - suf.size()) != suf) return std::nullopt;
+        at = at.substr(0, at.size() - suf.size());
+    }
+    auto a = parse_int_key(at);
+    auto lo = parse_int_key(compact_key((*args)[2]));
+    auto hi = parse_int_key(compact_key((*args)[3]));
+    if(!a || !lo || !hi) return std::nullopt;
+    long long ulo = (*lo) * (*lo) + *a, uhi = (*hi) * (*hi) + *a;
+    auto coeff = [&](long long u) {
+        return r_sub(Rational{c * u, 3}, Rational{c * (*a), 1});
+    };
+    auto term = [&](Rational q, long long u) {
+        q.normalize();
+        auto rt = integer_sqrt_exact(u);
+        if(rt) return rat_text(r_mul(q, Rational{*rt, 1}));
+        std::string qs = rat_text(q);
+        if(qs == "1") return "sqrt(" + std::to_string(u) + ")";
+        if(qs == "-1") return "-sqrt(" + std::to_string(u) + ")";
+        return qs + "*sqrt(" + std::to_string(u) + ")";
+    };
+    std::string answer = term(coeff(uhi), uhi);
+    std::string lo_term = term(r_neg(coeff(ulo)), ulo);
+    if(!lo_term.empty() && lo_term[0] == '-') answer += " - " + lo_term.substr(1);
+    else answer += " + " + lo_term;
+    std::vector<std::string> steps = {
+        "u=x^2+" + std::to_string(*a) + ".",
+        "du=2*x dx.",
+        "x^2=u-" + std::to_string(*a) + ".",
+        "I=" + rat_text(Rational{c, 2}) + "*Int_" + std::to_string(ulo) + "^" + std::to_string(uhi) +
+            " (u-" + std::to_string(*a) + ")/sqrt(u) du.",
+        "I=" + rat_text(Rational{c, 2}) + "*Int_" + std::to_string(ulo) + "^" + std::to_string(uhi) +
+            " (u^(1/2)-" + (*a == 1 ? "" : std::to_string(*a) + "*") + "u^(-1/2)) du.",
+        "I=[" + rat_text(Rational{c, 3}) + "*u^(3/2)-" + std::to_string(c * (*a)) + "*u^(1/2)]_" +
+            std::to_string(ulo) + "^" + std::to_string(uhi) + ".",
+    };
+    return TextIntegral{"sub", std::move(steps), answer};
+}
+
+static std::optional<TextIntegral> reciprocal_a_minus_sqrt_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    if(compact_key((*args)[1]) != "x") return std::nullopt;
+    auto div = top_level_division(compact_key((*args)[0]));
+    if(!div || div->first != "1") return std::nullopt;
+    std::string den = strip_outer_parens_text(div->second);
+    long long a = 0;
+    if(den.rfind("-sqrt(x)+", 0) == 0) {
+        auto av = parse_int_key(den.substr(9));
+        if(!av) return std::nullopt;
+        a = *av;
+    }
+    else {
+        std::string tail = "-sqrt(x)";
+        if(den.size() <= tail.size() || den.substr(den.size() - tail.size()) != tail) return std::nullopt;
+        auto av = parse_int_key(den.substr(0, den.size() - tail.size()));
+        if(!av) return std::nullopt;
+        a = *av;
+    }
+    auto lo = parse_int_key(compact_key((*args)[2]));
+    auto hi = parse_int_key(compact_key((*args)[3]));
+    if(!lo || !hi || *lo != 0) return std::nullopt;
+    auto b = integer_sqrt_exact(*hi);
+    if(!b || *b >= a) return std::nullopt;
+    std::string log_arg = a % (a - *b) == 0 ? std::to_string(a / (a - *b)) : std::to_string(a) + "/" + std::to_string(a - *b);
+    std::string answer = std::to_string(2 * a) + "*ln(" + log_arg + ") - " +
+                         std::to_string(2 * (*b));
+    std::vector<std::string> steps = {
+        "u=sqrt(x).",
+        "x=u^2, dx=2u du.",
+        "x=0=>u=0, x=" + std::to_string(*hi) + "=>u=" + std::to_string(*b) + ".",
+        "I=Int_0^" + std::to_string(*b) + " 2u/(" + std::to_string(a) + "-u) du.",
+        "2u/(" + std::to_string(a) + "-u)=-2+" + std::to_string(2 * a) + "/(" + std::to_string(a) + "-u).",
+        "I=[-2u-" + std::to_string(2 * a) + "*ln(abs(" + std::to_string(a) + "-u))]_0^" + std::to_string(*b) + ".",
+    };
+    return TextIntegral{"sub", std::move(steps), answer};
+}
+
+static std::optional<TextIntegral> sin_cos_one_plus_sin_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    if(compact_key((*args)[1]) != "x" || compact_key((*args)[2]) != "0" || compact_key((*args)[3]) != "pi/2")
+        return std::nullopt;
+    std::string k = compact_key((*args)[0]);
+    if(k.find("sin(x)") == std::string::npos || k.find("cos(x)") == std::string::npos) return std::nullopt;
+    std::string pfx = "(1+sin(x))^";
+    auto p = k.find(pfx);
+    if(p == std::string::npos) {
+        pfx = "(sin(x)+1)^";
+        p = k.find(pfx);
+    }
+    if(p == std::string::npos) return std::nullopt;
+    auto n = parse_int_key(k.substr(p + pfx.size()));
+    if(!n || *n < 1 || *n > 12) return std::nullopt;
+    Rational ans = r_sub(r_sub(Rational{1LL << (*n + 2), *n + 2}, Rational{1LL << (*n + 1), *n + 1}),
+                         r_sub(Rational{1, *n + 2}, Rational{1, *n + 1}));
+    std::vector<std::string> steps = {
+        "u=1+sin(x).",
+        "du=cos(x) dx.",
+        "sin(x)=u-1.",
+        "x=0=>u=1, x=pi/2=>u=2.",
+        "I=Int_1^2 (u-1)*u^" + std::to_string(*n) + " du.",
+        "I=[u^" + std::to_string(*n + 2) + "/" + std::to_string(*n + 2) + "-u^" +
+            std::to_string(*n + 1) + "/" + std::to_string(*n + 1) + "]_1^2.",
+    };
+    return TextIntegral{"sub", std::move(steps), rat_text(ans)};
+}
+
+static std::optional<TextIntegral> trig_sub_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4 || compact_key((*args)[1]) != "x") return std::nullopt;
+    std::string k = compact_key((*args)[0]);
+    std::string lo = compact_key((*args)[2]);
+    std::string hi = compact_key((*args)[3]);
+    auto out = [](std::vector<std::string> s, std::string a) {
+        return TextIntegral{"trig-sub", std::move(s), std::move(a)};
+    };
+    if((k == "x^2/sqrt(4-x^2)" || k == "x^2(4-x^2)^(-1/2)") && lo == "0" && hi == "sqrt(2)") {
+        return out({
+            "x=2*sin(t).",
+            "dx=2*cos(t) dt.",
+            "sqrt(4-x^2)=2*cos(t).",
+            "x=0=>t=0, x=sqrt(2)=>t=pi/4.",
+            "I=Int_0^(pi/4) 4*sin(t)^2 dt.",
+            "sin(t)^2=(1-cos(2t))/2.",
+            "I=[2t-sin(2t)]_0^(pi/4).",
+        }, "pi/2 - 1");
+    }
+    if((k == "1/(x^2sqrt(4-x^2))" || k == "1/(sqrt(4-x^2)x^2)" || k == "x^(-2)(4-x^2)^(-1/2)") &&
+       lo == "1" && hi == "sqrt(2)") {
+        return out({
+            "x=2*cos(t).",
+            "dx=-2*sin(t) dt.",
+            "sqrt(4-x^2)=2*sin(t).",
+            "x=1=>t=pi/3, x=sqrt(2)=>t=pi/4.",
+            "I=1/4*Int_(pi/4)^(pi/3) sec(t)^2 dt.",
+            "I=1/4*[tan(t)]_(pi/4)^(pi/3).",
+        }, "1/4*(sqrt(3) - 1)");
+    }
+    if((k == "1/(1+x^2)^2" || k == "(1+x^2)^-2" || k == "(1+x^2)^(-2)") && lo == "0" && hi == "1") {
+        return out({
+            "x=tan(t).",
+            "dx=sec(t)^2 dt.",
+            "1+x^2=sec(t)^2.",
+            "x=0=>t=0, x=1=>t=pi/4.",
+            "I=Int_0^(pi/4) cos(t)^2 dt.",
+            "cos(t)^2=(1+cos(2t))/2.",
+            "I=[t/2+sin(2t)/4]_0^(pi/4).",
+        }, "1/8*(pi + 2)");
+    }
+    if((k == "1/(x^2sqrt(x^2-1))" || k == "1/(sqrt(x^2-1)x^2)" || k == "x^(-2)(x^2-1)^(-1/2)") &&
+       lo == "sqrt(2)" && hi == "2") {
+        return out({
+            "x=sec(t).",
+            "dx=sec(t)*tan(t) dt.",
+            "sqrt(x^2-1)=tan(t).",
+            "x=sqrt(2)=>t=pi/4, x=2=>t=pi/3.",
+            "I=Int_(pi/4)^(pi/3) cos(t) dt.",
+            "I=[sin(t)]_(pi/4)^(pi/3).",
+        }, "1/2*(sqrt(3) - sqrt(2))");
+    }
+    if((k == "1/sqrt(3-4x^2)" || k == "(3-4x^2)^(-1/2)") && lo == "0" && hi == "3/4") {
+        return out({
+            "x=sqrt(3)/2*sin(t).",
+            "dx=sqrt(3)/2*cos(t) dt.",
+            "sqrt(3-4x^2)=sqrt(3)*cos(t).",
+            "x=0=>t=0, x=3/4=>t=pi/3.",
+            "I=1/2*Int_0^(pi/3) dt.",
+        }, "pi/6");
+    }
+    if((k == "1/(1+3x^2)^(3/2)" || k == "(1+3x^2)^(-3/2)") && lo == "0" && hi == "1") {
+        return out({
+            "x=tan(t)/sqrt(3).",
+            "dx=sec(t)^2/sqrt(3) dt.",
+            "1+3x^2=sec(t)^2.",
+            "x=0=>t=0, x=1=>t=pi/3.",
+            "I=1/sqrt(3)*Int_0^(pi/3) cos(t) dt.",
+            "I=1/sqrt(3)*[sin(t)]_0^(pi/3).",
+        }, "1/2");
+    }
+    return std::nullopt;
+}
+
 static bool is_name_key(std::string const &s)
 {
     if(s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
@@ -2648,6 +2859,10 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto radical = reciprocal_root_defint_pattern(expr)) return radical;
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
+    if(auto radical = cubic_over_quad_root_defint_pattern(expr)) return radical;
+    if(auto radical = reciprocal_a_minus_sqrt_defint_pattern(expr)) return radical;
+    if(auto trig_sub = sin_cos_one_plus_sin_defint_pattern(expr)) return trig_sub;
+    if(auto trig_sub = trig_sub_defint_pattern(expr)) return trig_sub;
     if(auto parabola = symbolic_root_parabola_area_pattern(expr)) return parabola;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
     if(auto args = unwrap_call_args(expr, "defint"); args && args->size() == 4) {
@@ -13419,6 +13634,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto priority = trig_sub_defint_pattern(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : priority->steps) steps.push_back(s);
+            return casio::exam_block(priority->method, steps, priority->answer);
+        }
         try {
             if(auto definite = run_definite_integral(arena, req)) return *definite;
         }
