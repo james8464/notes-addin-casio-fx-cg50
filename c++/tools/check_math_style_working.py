@@ -440,6 +440,24 @@ CASES = [
         ("u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(e^u) du", "I = 1/2*e^u + C", "1/2*e^(2*x - 3) + C"),
     ),
     (
+        "affine own exp parts simplification",
+        ["--int", "(x+1)*e^(x+1),method=parts"],
+        ("u = x + 1", "I = Int(u*e^u) du", "Int(u*e^u) du = (u-1)*e^u", "x*e^(x + 1) + C"),
+        ("e^(x + 1) + e^(x + 1)*(x - 1) + C", "1*Int"),
+    ),
+    (
+        "defint reciprocal x log x",
+        ["--int", "defint(1/(x*ln(x)),x,e,3)"],
+        ("u = ln(x)", "I = Int(1/u) du", "Limits: x = e => u = 1, x = 3 => u = ln(3)", "ln(abs(ln(3)))"),
+        ("ERR:", "Expected )", "No elementary"),
+    ),
+    (
+        "exp denominator linear definite",
+        ["--int", "defint(6/e^(2-3*x),x,k,1/2)"],
+        ("6/e^(- 3*x + 2) = 6*e^(3*x - 2)", "u = 3*x - 2", "F(1/2) - F(k)", "2*e^(-1/2) - 2*e^(3*k - 2)"),
+        ("ERR:", "Expected )", "No elementary"),
+    ),
+    (
         "affine trig reverse chain",
         ["--int", "sin(2*x-3),method=auto"],
         ("u = 2*x - 3", "du/dx = 2", "I = 1/2*Int(sin(u)) du = -cos(u)", "-1/2*cos(2*x - 3) + C"),

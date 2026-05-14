@@ -7472,9 +7472,9 @@ static std::optional<NodeId> split_over_exp_den(Arena &a, NodeId expr, std::stri
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Div || !is_pow_e(a, x.b)) return std::nullopt;
     Node const &top = a.get(x.a);
-    if(top.kind != NodeKind::Add) return std::nullopt;
+    std::vector<NodeId> numer_terms = top.kind == NodeKind::Add ? top.kids : std::vector<NodeId>{x.a};
     std::vector<NodeId> terms;
-    for(NodeId k : top.kids) {
+    for(NodeId k : numer_terms) {
         auto f = exp_factor(a, k);
         if(!f) return std::nullopt;
         NodeId e = casio::simplify(a, casio::add(a, {f->second, casio::neg(a, a.get(x.b).b)}));
@@ -7936,6 +7936,34 @@ static std::optional<NodeId> integrate_power_times_single(Arena &a, NodeId expr,
     add_di_table(false);
     if(trig == FnKind::Sin) return integrate_xn_sin(a, power, coeff, arg, *lc, var);
     return integrate_xn_cos(a, power, coeff, arg, *lc, var);
+}
+
+static std::optional<NodeId> integrate_affine_times_own_exp(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    NodeId aff_node = 0, exp_node = 0, arg = 0;
+    for(NodeId k : x.kids) {
+        if(auto n = as_num(a, k)) { coeff = r_mul(coeff, *n); continue; }
+        Node const &kn = a.get(k);
+        if(!exp_node && is_pow_e(a, k)) { exp_node = k; arg = kn.b; continue; }
+        if(!aff_node) { aff_node = k; continue; }
+        return std::nullopt;
+    }
+    if(!aff_node || !exp_node) return std::nullopt;
+    auto af = affine_form(a, aff_node, var);
+    auto ef = affine_form(a, arg, var);
+    if(!af || !ef || !r_eq(af->first, ef->first) || !r_eq(af->second, ef->second) || r_zero(ef->first))
+        return std::nullopt;
+    NodeId primitive = casio::simplify(a, mul_coeff(a, r_div(coeff, ef->first),
+        casio::mul(a, {casio::add(a, {arg, a.num(Rational{-1, 1})}), exp_node})));
+    steps.push_back("u = " + format_expr_human(a, arg));
+    steps.push_back("du/d" + var + " = " + rat_text(ef->first));
+    Rational scale = r_div(coeff, ef->first);
+    steps.push_back("I = " + (r_eq(scale, Rational{1, 1}) ? "" : rat_text(scale) + "*") + "Int(u*e^u) du");
+    steps.push_back("Int(u*e^u) du = (u-1)*e^u");
+    return primitive;
 }
 
 static std::optional<Rational> log_arg_var_power(Arena &a, NodeId n, std::string const &var)
@@ -9758,8 +9786,13 @@ static std::optional<NodeId> integrate_log_power_arg_over_var(Arena &a, NodeId e
     else return std::nullopt;
     if(!have_log || !have_dx_over_x) return std::nullopt;
     Rational next = r_add(power, Rational{1, 1});
-    if(r_zero(next)) return std::nullopt;
     NodeId logx = casio::fn(a, "log", casio::sym(a, var));
+    if(r_zero(next)) {
+        steps.push_back("u = ln(" + var + ")");
+        steps.push_back("du = 1/" + var + " d" + var);
+        steps.push_back("I = " + (r_eq(coeff, Rational{1, 1}) ? "" : rat_text(coeff) + "*") + "Int(1/u) du");
+        return casio::simplify(a, mul_coeff(a, coeff, ln_abs(a, logx)));
+    }
     NodeId ans = mul_coeff(a, r_div(coeff, next), casio::power(a, logx, a.num(next)));
     steps.push_back("u = ln(" + var + ")");
     steps.push_back("du = 1/" + var + " d" + var);
@@ -13595,6 +13628,11 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             out.result = *inner.result;
             return out;
         }
+    }
+
+    if(auto own_exp = integrate_affine_times_own_exp(a, expr, var, out.steps)) {
+        out.result = *own_exp;
+        return out;
     }
 
     if(a.get(expr).kind == NodeKind::Add) {
