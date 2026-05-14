@@ -675,6 +675,15 @@ static bool contains_symbol(Arena &a, NodeId n, std::string const &name)
     return false;
 }
 
+static bool has_other_symbols(Arena &a, NodeId n, std::string const &name)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, n, vars);
+    for(auto const &v : vars)
+        if(v != name) return true;
+    return false;
+}
+
 static std::optional<Rational> as_num(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -756,6 +765,13 @@ static std::optional<NodeId> strip_one_quadratic_x(Arena &a, NodeId term, std::s
 
 struct SymbolicQuadratic
 {
+    NodeId b = 0;
+    NodeId c = 0;
+};
+
+struct SymbolicQuadraticFull
+{
+    NodeId a2 = 0;
     NodeId b = 0;
     NodeId c = 0;
 };
@@ -892,9 +908,34 @@ static std::optional<SymbolicQuadratic> monic_symbolic_quadratic(Arena &a, NodeI
         if(contains_symbol(a, term, var)) return std::nullopt;
         c_terms.push_back(term);
     }
-    if(!saw_x2 || b_terms.empty()) return std::nullopt;
+    if(!saw_x2) return std::nullopt;
     return SymbolicQuadratic{
-        casio::simplify(a, casio::add(a, b_terms)),
+        b_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, b_terms)),
+        c_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, c_terms))
+    };
+}
+
+static std::optional<SymbolicQuadraticFull> symbolic_quadratic_parts(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = (x.kind == NodeKind::Add) ? x.kids : std::vector<NodeId>{n};
+    std::vector<NodeId> a_terms, b_terms, c_terms;
+    for(NodeId term : terms) {
+        if(auto q = strip_one_quadratic_x(a, term, var)) {
+            a_terms.push_back(*q);
+            continue;
+        }
+        if(auto b = strip_one_linear_x(a, term, var)) {
+            b_terms.push_back(*b);
+            continue;
+        }
+        if(contains_symbol(a, term, var)) return std::nullopt;
+        c_terms.push_back(term);
+    }
+    if(a_terms.empty()) return std::nullopt;
+    return SymbolicQuadraticFull{
+        casio::simplify(a, casio::add(a, a_terms)),
+        b_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, b_terms)),
         c_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, c_terms))
     };
 }
@@ -6539,6 +6580,76 @@ static std::optional<std::vector<std::string>> log_square_exact_route(Arena &a,
     return out;
 }
 
+static NodeId compact_single_other_quadratic(Arena &a, NodeId expr, std::string const &var)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, expr, vars);
+    std::vector<std::string> other;
+    for(auto const &v : vars)
+        if(v != var) other.push_back(v);
+    if(other.size() != 1) return expr;
+
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    NodeId flat = casio::simplify(a, casio::add(a, terms));
+    auto q = symbolic_quadratic_parts(a, flat, other[0]);
+    if(!q) return flat;
+
+    NodeId zero = zero_node(a);
+    NodeId u = casio::sym(a, other[0]);
+    std::vector<NodeId> out;
+    if(!casio::same_by_sig(a, q->a2, zero))
+        out.push_back(casio::mul(a, {q->a2, casio::power(a, u, casio::num(a, 2))}));
+    if(!casio::same_by_sig(a, q->b, zero))
+        out.push_back(casio::mul(a, {q->b, u}));
+    if(!casio::same_by_sig(a, q->c, zero)) out.push_back(q->c);
+    if(out.empty()) return zero;
+    return casio::simplify(a, casio::add(a, out));
+}
+
+static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    if(!has_other_symbols(a, rearr, var)) return std::nullopt;
+    auto q = symbolic_quadratic_parts(a, rearr, var);
+    if(!q) return std::nullopt;
+    NodeId two = casio::num(a, 2);
+    NodeId four = casio::num(a, 4);
+    NodeId v = casio::sym(a, var);
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, rearr) + " = 0");
+
+    if(casio::same_by_sig(a, q->a2, one_node(a))) {
+        NodeId half_b = casio::simplify(a, casio::div(a, q->b, two));
+        NodeId shifted = casio::simplify(a, casio::add(a, {v, half_b}));
+        NodeId rhs = compact_single_other_quadratic(a, casio::simplify(a, sub_node(a, casio::power(a, half_b, two), q->c)), var);
+        NodeId root = casio::simplify(a, casio::fn(a, "sqrt", rhs));
+        NodeId plus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), root}));
+        NodeId minus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), casio::neg(a, root)}));
+        out.push_back("(" + format_expr(a, shifted) + ")^2 = " + format_expr(a, rhs));
+        out.push_back(format_expr(a, shifted) + " = +/-" + format_expr(a, root));
+        out.push_back(var + " = " + format_expr(a, plus));
+        out.push_back(var + " = " + format_expr(a, minus));
+        out.push_back(solution_list_line(var, {var + " = " + format_expr(a, plus), var + " = " + format_expr(a, minus)}));
+        return out;
+    }
+
+    NodeId disc = casio::simplify(a, casio::add(a, {
+        casio::power(a, q->b, two),
+        casio::neg(a, casio::mul(a, {four, q->a2, q->c}))
+    }));
+    NodeId den = casio::simplify(a, casio::mul(a, {two, q->a2}));
+    NodeId root = casio::simplify(a, casio::fn(a, "sqrt", disc));
+    NodeId plus = casio::simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), root}), den));
+    NodeId minus = casio::simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), casio::neg(a, root)}), den));
+    out.push_back("a = " + format_expr(a, q->a2) + ", b = " + format_expr(a, q->b) + ", c = " + format_expr(a, q->c));
+    out.push_back("D = b^2 - 4ac = " + format_expr(a, disc));
+    out.push_back(var + " = (-b +/- sqrt(D))/(2a)");
+    out.push_back(var + " = " + format_expr(a, plus));
+    out.push_back(var + " = " + format_expr(a, minus));
+    out.push_back(solution_list_line(var, {var + " = " + format_expr(a, plus), var + " = " + format_expr(a, minus)}));
+    return out;
+}
+
 static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
 {
     Node const &x = a.get(n);
@@ -8987,6 +9098,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
         if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sl->begin(), sl->end());
+            return out;
+        }
+        if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), sq->begin(), sq->end());
+            return out;
+        }
+        if(has_other_symbols(arena, rearr, solve_var)) {
+            out.push_back("LHS - RHS = " + format_expr(arena, rearr));
+            out.push_back("symbolic parameters unsupported");
             return out;
         }
 

@@ -1928,6 +1928,46 @@ static void replace_all_text(std::string &s, std::string const &from, std::strin
 static std::string simplify_endpoint_answer_text(std::string s)
 {
     replace_all_text(s, "sqrt(0)", "0");
+    auto drop_zero_products = [&]() {
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            if(s.rfind("- ", 0) == 0 || s.rfind("+ ", 0) == 0) {
+                std::size_t start = 2;
+                std::size_t next_p = s.find(" + ", start);
+                std::size_t next_m = s.find(" - ", start);
+                std::size_t end = std::min(next_p == std::string::npos ? s.size() : next_p,
+                                           next_m == std::string::npos ? s.size() : next_m);
+                std::string term = s.substr(start, end - start);
+                if(term == "0" || (term.size() >= 2 && term.rfind("*0") == term.size() - 2) || term.rfind("0*", 0) == 0) {
+                    s.erase(0, end);
+                    if(s.rfind(" + ", 0) == 0) s.erase(0, 3);
+                    else if(s.rfind(" - ", 0) == 0) s = "-" + s.substr(2);
+                    changed = true;
+                    continue;
+                }
+            }
+            for(std::string const sep : {" + ", " - "}) {
+                std::size_t p = s.find(sep);
+                while(p != std::string::npos) {
+                    std::size_t start = p + sep.size();
+                    std::size_t next_p = s.find(" + ", start);
+                    std::size_t next_m = s.find(" - ", start);
+                    std::size_t end = std::min(next_p == std::string::npos ? s.size() : next_p,
+                                               next_m == std::string::npos ? s.size() : next_m);
+                    std::string term = s.substr(start, end - start);
+                    if(term == "0" || (term.size() >= 2 && term.rfind("*0") == term.size() - 2) || term.rfind("0*", 0) == 0) {
+                        s.erase(p, end - p);
+                        changed = true;
+                        break;
+                    }
+                    p = s.find(sep, end);
+                }
+                if(changed) break;
+            }
+        }
+    };
+    drop_zero_products();
     for(int n = 0; n <= 200; ++n) {
         std::string v = std::to_string(n);
         replace_all_text(s, "abs(0 + " + v + ")", v);
@@ -12295,6 +12335,15 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             auto pi_over = [&](std::int64_t den) {
                 return casio::div(a, a.constant(ConstKind::Pi), a.num(Rational{den, 1}));
             };
+            auto one_over_sqrt = [&](NodeId v, std::int64_t n) -> std::optional<int> {
+                Node const &q = a.get(v);
+                if(q.kind != NodeKind::Div) return std::nullopt;
+                auto top = as_num(a, q.a);
+                Node const &bot = a.get(q.b);
+                auto rad = (bot.kind == NodeKind::Fn && bot.fkind == FnKind::Sqrt) ? as_num(a, bot.a) : std::nullopt;
+                if(!top || !rad || std::llabs(top->num) != top->den || rad->num != n || rad->den != 1) return std::nullopt;
+                return top->num < 0 ? -1 : 1;
+            };
             if(auto r = as_num(a, arg)) {
                 if(r_zero(*r)) {
                     if(x.fkind == FnKind::Acos) return pi_over(2);
@@ -12316,6 +12365,9 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                     if(r_eq(*r, Rational{1, 2})) return pi_over(3);
                     if(r_eq(*r, Rational{-1, 2})) return casio::mul(a, {casio::num(a, 2), pi_over(3)});
                 }
+            }
+            if(x.fkind == FnKind::Asin) {
+                if(auto s = one_over_sqrt(arg, 2)) return *s > 0 ? pi_over(4) : casio::neg(a, pi_over(4));
             }
         }
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
@@ -12453,6 +12505,23 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(auto v = eval_log_power(exp)) return *v;
         }
         if(auto e = as_num(a, exp); e && e->num == 2 && e->den == 1) {
+            if(base_node.kind == NodeKind::Mul) {
+                Rational coeff{1, 1};
+                NodeId sqrt_arg = 0;
+                bool ok = true;
+                for(NodeId kid : base_node.kids) {
+                    if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+                    else {
+                        Node const &kn = a.get(kid);
+                        if(sqrt_arg || kn.kind != NodeKind::Fn || kn.fkind != FnKind::Sqrt) {
+                            ok = false;
+                            break;
+                        }
+                        sqrt_arg = kn.a;
+                    }
+                }
+                if(ok && sqrt_arg) return simplify_known_endpoint_values(a, mul_coeff(a, r_mul(coeff, coeff), sqrt_arg));
+            }
             if(auto p = pi_linear_form(a, base); p && r_zero(p->second)) {
                 NodeId pi_sq = casio::power(a, a.constant(ConstKind::Pi), a.num(Rational{2, 1}));
                 return casio::simplify(a, mul_coeff(a, r_mul(p->first, p->first), pi_sq));
@@ -12513,6 +12582,7 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             else if(!add_node && a.get(k).kind == NodeKind::Add) add_node = k;
             else rest.push_back(k);
         }
+        if(r_zero(coeff)) return casio::num(a, 0);
         if(add_node && rest.empty() && !r_eq(coeff, Rational{1, 1})) {
             std::vector<NodeId> terms;
             for(NodeId k : a.get(add_node).kids) terms.push_back(mul_coeff(a, coeff, k));

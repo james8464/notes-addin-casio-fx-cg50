@@ -1542,6 +1542,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["u=4*x+1", "I=-1/4*Int(ln(u)^2)du", "Int(ln(u)^2)du=u*(ln(u)^2-2*ln(u)+2)", "1/2*e^(sqrt(2))*sqrt(2)-1/2*e^(sqrt(2))"],
         ["No elementary primitive found", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(2*x^2+2*x*y+y^2=50,y)",
+        ["(y+x)^2=-x^2+50", "y+x=+/-sqrt(-x^2+50)", "y=[-x+sqrt(-x^2+50),-x-sqrt(-x^2+50)]"],
+        ["y=[-7.071", "all real", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(2*sqrt(50-x^2),x,-sqrt(50),-5)",
+        ["I=2*J,J=Int(sqrt(-x^2+50))dx", "F(-5)=-25-25*pi/2", "25/2*pi-25"],
+        ["5*sqrt(2)*0", "ERR:"],
+    ),
 ]
 
 
