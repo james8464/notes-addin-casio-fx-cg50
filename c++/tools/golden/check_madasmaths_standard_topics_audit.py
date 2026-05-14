@@ -208,7 +208,8 @@ def main() -> int:
             topics = classify(block)
             topic_counts.update(topics)
             is_testable = any(t in TESTABLE for t in topics)
-            skip = (not is_testable) or ("graph" in topics and len(set(topics) & TESTABLE) <= 1)
+            graph_proof_only = "graph" in topics and "proof" in topics and "integration" in topics
+            skip = (not is_testable) or graph_proof_only or ("graph" in topics and len(set(topics) & TESTABLE) <= 1)
             question, part = qid_parts(qid)
             source_pdf = f"{pdf.parent.name}/{pdf.name}"
             canonical_pdf = canonical_source(pdf.parent.name, pdf.name)
