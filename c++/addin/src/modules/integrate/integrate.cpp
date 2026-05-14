@@ -1228,6 +1228,24 @@ static std::optional<std::pair<NodeId, int>> log_power_factor(Arena &a, NodeId n
     return std::nullopt;
 }
 
+static std::optional<NodeId> combined_log_abs_arg(Arena &a, NodeId n)
+{
+    if(auto u = log_abs_arg(a, n)) return u;
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    std::vector<NodeId> top, bot;
+    for(NodeId k : x.kids) {
+        auto f = log_power_factor(a, k);
+        if(!f || f->second == 0) return std::nullopt;
+        int e = f->second < 0 ? -f->second : f->second;
+        NodeId term = e == 1 ? f->first : casio::power(a, f->first, casio::num(a, e));
+        (f->second > 0 ? top : bot).push_back(term);
+    }
+    NodeId num = top.empty() ? casio::num(a, 1) : mul_or_one_int(a, top);
+    if(bot.empty()) return casio::simplify(a, num);
+    return casio::simplify(a, casio::div(a, num, mul_or_one_int(a, bot)));
+}
+
 static NodeId exp_node(Arena &a, NodeId n)
 {
     return casio::power(a, casio::constant_e(a), n);
@@ -1588,7 +1606,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         bool explicit_answer = false;
         std::optional<Rational> Cval;
         std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C";
-        auto larg = log_abs_arg(a, *Li.result);
+        auto larg = combined_log_abs_arg(a, *Li.result);
         if(larg && B.have_y0) {
             auto lf = linfrac_in_y(a, *larg, tok->y);
             auto x0 = as_num(a, B.x0);
@@ -4006,7 +4024,10 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Let u=sqrt(x), so dx=2u du.",
                 "Integral becomes 2*Integral(u*cos(u)) du.",
-                "Use parts on u*cos(u).",
+                "For Integral(u*cos(u)) du: a=u, db=cos(u)du.",
+                "da=du, b=sin(u).",
+                "Integral(u*cos(u))du = u*sin(u)-Integral(sin(u))du.",
+                "Integral(u*cos(u))du = u*sin(u)+cos(u)+C.",
             },
             "2*sqrt(x)*sin(sqrt(x)) + 2*cos(sqrt(x)) + C"
         );
@@ -10334,6 +10355,32 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
     if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
 
     NodeId f0 = den.kids[0], f1 = den.kids[1];
+
+    auto try_two_linear = [&](NodeId l0, NodeId l1) -> std::optional<NodeId> {
+        if(poly_degree(*n) > 1) return std::nullopt;
+        auto p0 = poly_of_any(a, l0, var);
+        auto p1 = poly_of_any(a, l1, var);
+        if(!p0 || !p1 || !p0->ok || !p1->ok || poly_degree(*p0) != 1 || poly_degree(*p1) != 1) return std::nullopt;
+        Rational a0 = poly_at(*p0, 1), b0 = poly_at(*p0, 0);
+        Rational a1 = poly_at(*p1, 1), b1 = poly_at(*p1, 0);
+        Rational n1 = poly_at(*n, 1), n0 = poly_at(*n, 0);
+        Rational det = r_sub(r_mul(a1, b0), r_mul(a0, b1));
+        if(r_zero(det) || r_zero(a0) || r_zero(a1)) return std::nullopt;
+        Rational A = r_div(r_sub(r_mul(n1, b0), r_mul(a0, n0)), det);
+        Rational B = r_div(r_sub(r_mul(a1, n0), r_mul(n1, b1)), det);
+        std::vector<NodeId> terms;
+        if(!r_zero(A)) terms.push_back(mul_coeff(a, r_div(A, a0), ln_abs(a, l0)));
+        if(!r_zero(B)) terms.push_back(mul_coeff(a, r_div(B, a1), ln_abs(a, l1)));
+        if(terms.empty()) return casio::num(a, 0);
+        std::string L0 = format_expr_human(a, l0), L1 = format_expr_human(a, l1);
+        steps.push_back("PF: A/(" + L0 + ")+B/(" + L1 + ").");
+        steps.push_back(format_expr_human(a, x.a) + " = A*(" + L1 + ")+B*(" + L0 + ").");
+        steps.push_back("A=" + format_expr(a, a.num(A)) + ", B=" + format_expr(a, a.num(B)) + ".");
+        steps.push_back("I = " + format_expr(a, a.num(r_div(A, a0))) + "*ln(abs(" + L0 + ")) + " + format_expr(a, a.num(r_div(B, a1))) + "*ln(abs(" + L1 + ")) + C.");
+        return casio::simplify(a, casio::add(a, terms));
+    };
+    if(auto got = try_two_linear(f0, f1)) return got;
+
     auto try_quad_quad = [&](NodeId qleft, NodeId qright) -> std::optional<NodeId> {
         if(poly_degree(*n) > 3) return std::nullopt;
         auto q1 = poly_of_any(a, qleft, var);
