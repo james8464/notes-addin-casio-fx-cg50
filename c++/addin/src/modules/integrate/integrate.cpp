@@ -7530,6 +7530,13 @@ static NodeId normalize_recip_trig_power(Arena &a, NodeId n)
     return n;
 }
 
+static NodeId normalize_sqrt_power_factor(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) return casio::power(a, x.a, a.num(Rational{1, 2}));
+    return n;
+}
+
 static std::pair<Rational, NodeId> split_rat_factor(Arena &a, NodeId n)
 {
     if(auto r = as_num(a, n)) return {*r, casio::num(a, 1)};
@@ -7547,12 +7554,12 @@ static std::pair<Rational, NodeId> split_rat_factor(Arena &a, NodeId n)
             return {c, rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest))};
         }
     }
-    if(x.kind != NodeKind::Mul) return {Rational{1, 1}, n};
+    if(x.kind != NodeKind::Mul) return {Rational{1, 1}, normalize_sqrt_power_factor(a, n)};
     Rational c{1, 1};
     std::vector<NodeId> rest;
     for(NodeId k : x.kids) {
         if(auto r = as_num(a, k)) c = r_mul(c, *r);
-        else rest.push_back(k);
+        else rest.push_back(normalize_sqrt_power_factor(a, k));
     }
     return {c, rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest))};
 }
@@ -12047,9 +12054,15 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     NodeId parsed = parse_expr(arena, integrand);
     auto pre = casio::build_exam_prelude(arena, integrand, parsed);
     NodeId node = casio::simplify(arena, parsed);
+    std::string method_key = compact_key(req.method);
+    bool force_sub = method_key == "sub" || method_key == "substitution";
     IntegrateResult result;
     std::vector<std::string> div_steps;
-    if(auto div_prim = integrate_poly_div_linear(arena, node, var, div_steps)) {
+    std::optional<NodeId> div_prim;
+    if(!force_sub && (method_key.empty() || method_key == "auto" || method_key == "div")) {
+        div_prim = integrate_poly_div_linear(arena, node, var, div_steps);
+    }
+    if(div_prim) {
         result.result = *div_prim;
         result.steps = div_steps;
     }
