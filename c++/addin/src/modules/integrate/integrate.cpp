@@ -10629,9 +10629,15 @@ static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId 
     if(deg < 2 || deg > 4 || poly_degree(*n) >= deg) return std::nullopt;
 
     std::vector<Rational> roots;
-    for(int r = -12; r <= 12 && static_cast<int>(roots.size()) < deg; ++r) {
-        Rational rr = r_from_int(r);
-        if(r_zero(poly_eval(*d, rr))) roots.push_back(rr);
+    for(int den = 1; den <= 12 && static_cast<int>(roots.size()) < deg; ++den) {
+        for(int num = -48; num <= 48 && static_cast<int>(roots.size()) < deg; ++num) {
+            if(den != 1 && std::gcd(std::abs(num), den) != 1) continue;
+            Rational rr{num, den};
+            rr.normalize();
+            bool seen = false;
+            for(Rational r : roots) if(r_eq(r, rr)) { seen = true; break; }
+            if(!seen && r_zero(poly_eval(*d, rr))) roots.push_back(rr);
+        }
     }
     if(static_cast<int>(roots.size()) != deg) return std::nullopt;
 
