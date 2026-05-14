@@ -2248,6 +2248,47 @@ static std::optional<TextIntegral> linear_sqrt_defint_pattern(std::string const 
     return TextIntegral{"linear-root substitution", std::move(steps), answer};
 }
 
+static bool is_name_key(std::string const &s)
+{
+    if(s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
+    for(char ch : s)
+        if(!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_')) return false;
+    return true;
+}
+
+static std::optional<TextIntegral> symbolic_root_parabola_area_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+
+    std::string var = compact_key((*args)[1]);
+    std::string lo = compact_key((*args)[2]);
+    std::string hi = compact_key((*args)[3]);
+    if(!is_name_key(var) || !is_name_key(lo) || !is_name_key(hi) || lo == hi || lo == var || hi == var) return std::nullopt;
+
+    std::string k = compact_key((*args)[0]);
+    std::string left = "(" + var + "-" + lo + ")";
+    std::string right = "(" + var + "-" + hi + ")";
+    std::string alt_right = "(" + hi + "-" + var + ")";
+    bool hit = k == "-" + left + right || k == left + alt_right || k == alt_right + left ||
+               k == "-(" + var + "-" + hi + ")(" + var + "-" + lo + ")";
+    if(!hit) return std::nullopt;
+
+    std::string d = hi + "-" + lo;
+    std::string u = var == "u" ? "z" : "u";
+    std::vector<std::string> steps = {
+        "A = Integral_" + lo + "^" + hi + " (" + var + "-" + lo + ")(" + hi + "-" + var + ") d" + var + ".",
+        "Let d=" + d + " and " + u + "=" + var + "-(" + lo + "+" + hi + ")/2.",
+        var + "-" + lo + " = " + u + "+d/2, " + hi + "-" + var + " = d/2-" + u + ".",
+        "So y=d^2/4-" + u + "^2.",
+        var + "=" + lo + " gives " + u + "=-d/2; " + var + "=" + hi + " gives " + u + "=d/2.",
+        "A = Integral_(-d/2)^(d/2) (d^2/4-" + u + "^2) d" + u + ".",
+        "A = 2*Integral_0^(d/2) (d^2/4-" + u + "^2) d" + u + ".",
+        "A = 2*[d^2*" + u + "/4-" + u + "^3/3]_0^(d/2).",
+    };
+    return TextIntegral{"parabola area", std::move(steps), "(" + hi + "-" + lo + ")^3/6"};
+}
+
 static long long small_binom(int n, int k)
 {
     if(k < 0 || k > n) return 0;
@@ -2383,6 +2424,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto radical = linear_over_sqrt_defint_pattern(expr)) return radical;
     if(auto radical = linear_radical_defint_pattern(expr)) return radical;
     if(auto radical = linear_sqrt_defint_pattern(expr)) return radical;
+    if(auto parabola = symbolic_root_parabola_area_pattern(expr)) return parabola;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
     if(auto args = unwrap_call_args(expr, "defint"); args && args->size() == 4) {
         std::string integrand = compact_key((*args)[0]);

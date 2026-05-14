@@ -711,6 +711,11 @@ static std::optional<NodeId> strip_one_linear_x(Arena &a, NodeId term, std::stri
 {
     if(is_sym_var(a, term, var)) return one_node(a);
     Node const &t = a.get(term);
+    if(t.kind == NodeKind::Div && !contains_symbol(a, t.b, var)) {
+        auto top = strip_one_linear_x(a, t.a, var);
+        if(!top) return std::nullopt;
+        return casio::simplify(a, casio::div(a, *top, t.b));
+    }
     if(t.kind != NodeKind::Mul) return std::nullopt;
     bool saw_x = false;
     std::vector<NodeId> rest;
@@ -761,9 +766,69 @@ struct SymbolicLinear
     NodeId c = 0;
 };
 
+static std::optional<SymbolicLinear> symbolic_linear_parts_deep(Arena &a, NodeId n, std::string const &var)
+{
+    if(!contains_symbol(a, n, var)) return SymbolicLinear{casio::num(a, 0), n};
+    if(is_sym_var(a, n, var)) return SymbolicLinear{one_node(a), casio::num(a, 0)};
+
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> m_terms, c_terms;
+        for(NodeId kid : x.kids) {
+            auto p = symbolic_linear_parts_deep(a, kid, var);
+            if(!p) return std::nullopt;
+            m_terms.push_back(p->m);
+            c_terms.push_back(p->c);
+        }
+        return SymbolicLinear{
+            casio::simplify(a, casio::add(a, m_terms)),
+            casio::simplify(a, casio::add(a, c_terms))
+        };
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> scale;
+        std::optional<SymbolicLinear> body;
+        for(NodeId kid : x.kids) {
+            if(contains_symbol(a, kid, var)) {
+                if(body) return std::nullopt;
+                body = symbolic_linear_parts_deep(a, kid, var);
+                if(!body) return std::nullopt;
+            }
+            else scale.push_back(kid);
+        }
+        if(!body) return std::nullopt;
+        NodeId s = mul_or_one(a, scale);
+        return SymbolicLinear{
+            casio::simplify(a, casio::mul(a, {s, body->m})),
+            casio::simplify(a, casio::mul(a, {s, body->c}))
+        };
+    }
+    if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+        auto top = symbolic_linear_parts_deep(a, x.a, var);
+        if(!top) return std::nullopt;
+        return SymbolicLinear{
+            casio::simplify(a, casio::div(a, top->m, x.b)),
+            casio::simplify(a, casio::div(a, top->c, x.b))
+        };
+    }
+    return std::nullopt;
+}
+
 static std::optional<SymbolicLinear> symbolic_linear_parts(Arena &a, NodeId n, std::string const &var)
 {
+    if(auto deep = symbolic_linear_parts_deep(a, n, var)) {
+        if(auto m = as_num(a, deep->m); m && is_zero(*m)) return std::nullopt;
+        return deep;
+    }
     Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+        auto top = symbolic_linear_parts(a, x.a, var);
+        if(!top) return std::nullopt;
+        return SymbolicLinear{
+            casio::simplify(a, casio::div(a, top->m, x.b)),
+            casio::simplify(a, casio::div(a, top->c, x.b))
+        };
+    }
     std::vector<NodeId> terms = (x.kind == NodeKind::Add) ? x.kids : std::vector<NodeId>{n};
     std::vector<NodeId> m_terms;
     std::vector<NodeId> c_terms;
@@ -2185,6 +2250,14 @@ static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body
         coef = n.num;
         has_body = false;
         return true;
+    }
+    if(n.kind == NodeKind::Div) {
+        auto den = as_num(a, n.b);
+        if(den) {
+            split_coeff_body(a, n.a, coef, body, has_body);
+            coef = r_div(coef, *den);
+            return true;
+        }
     }
     if(n.kind != NodeKind::Mul) return true;
     std::vector<NodeId> rest;
@@ -6112,6 +6185,22 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
     if(hm && hc && casio::same_by_sig(a, bm, bc)) {
         Rational q = r_div(r_neg(cc), cm);
         ans = casio::num(a, q.num, q.den);
+    }
+    else {
+        Node const &q = a.get(ans);
+        if(q.kind == NodeKind::Div) {
+            Node const &top = a.get(q.a);
+            Node const &bot = a.get(q.b);
+            if(top.kind == NodeKind::Div && bot.kind == NodeKind::Div &&
+               casio::same_by_sig(a, top.a, bot.a)) {
+                if(auto tn = as_num(a, top.b); tn) {
+                    if(auto bn = as_num(a, bot.b); bn) {
+                        Rational qr = r_div(*bn, *tn);
+                        ans = casio::num(a, qr.num, qr.den);
+                    }
+                }
+            }
+        }
     }
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
