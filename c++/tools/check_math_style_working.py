@@ -482,6 +482,12 @@ CASES = [
         ("Integrate", "Simplify to", "No elementary"),
     ),
     (
+        "product derivative exp tan",
+        ["--int", "e^x*(tan(x)+sec(x)^2)"],
+        ("d/dx(e^x tan(x)) = e^x tan(x) + e^x sec(x)^2", "e^x*tan(x) + C"),
+        ("No elementary", "ERR:"),
+    ),
+    (
         "exp denominator linear definite",
         ["--int", "defint(6/e^(2-3*x),x,k,1/2)"],
         ("6/e^(- 3*x + 2) = 6*e^(3*x - 2)", "u = 3*x - 2", "F(1/2) - F(k)", "2*e^(-1/2) - 2*e^(3*k - 2)"),

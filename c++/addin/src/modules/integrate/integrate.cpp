@@ -3151,6 +3151,8 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"(1-2cos(x))^2 = 1 - 4cos(x) + 4cos(x)^2.", "cos(x)^2 = (1+cos(2*x))/2."}, "3*x - 4*sin(x) + sin(2*x) + C");
     if(c == "1/(cos(x)^2tan(x)^2)")
         return out({"cos(x)^2*tan(x)^2 = sin(x)^2.", "I = Int(cosec(x)^2) dx."}, "-cot(x) + C");
+    if(c == "e^x(tan(x)+sec(x)^2)" || c == "(tan(x)+sec(x)^2)e^x")
+        return out({"d/dx(e^x tan(x)) = e^x tan(x) + e^x sec(x)^2.", "I = e^x tan(x) + C."}, "e^x*tan(x) + C");
     if(c == "1/(cos(x)^2tan(x))" || c == "1/(tan(x)cos(x)^2)")
         return out({"1/(cos(x)^2tan(x)) = sec(x)^2/tan(x).", "u=tan(x), du=sec(x)^2 dx."}, "ln(abs(tan(x))) + C");
     if(c == "2+2tan(x)^2") return out({"1+tan(x)^2 = sec(x)^2.", "2+2tan(x)^2 = 2sec(x)^2."}, "2*tan(x) + C");
