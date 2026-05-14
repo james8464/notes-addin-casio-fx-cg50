@@ -122,6 +122,7 @@ struct Parser
         if(name == "arcsinh") name = "asinh";
         if(name == "arccosh") name = "acosh";
         if(name == "arctanh") name = "atanh";
+        if(name == "cuberoot") name = "cbrt";
         
         if(name == "pi") return constant_pi(a);
         if(name == "e") return constant_e(a);
@@ -130,7 +131,8 @@ struct Parser
             static const char *funcs[] = {
                 "sin","cos","tan","sec","cosec","cot",
                 "exp","log","log10","sqrt","abs","sign","factorial",
-                "atan","asin","acos","sinh","cosh","tanh","asinh","acosh","atanh"
+                "atan","asin","acos","sinh","cosh","tanh","asinh","acosh","atanh",
+                "cbrt"
             };
             for(auto f : funcs) if(n == f) return true;
             return false;
@@ -141,7 +143,8 @@ struct Parser
             if(peek() && (*peek() == "^" || *peek() == "**")) {
                 take(*peek());
                 NodeId exp = parse_unary();
-                NodeId inner = fn(a, name, consume_func_arg());
+                NodeId arg = consume_func_arg();
+                NodeId inner = name == "cbrt" ? power(a, arg, num(a, 1, 3)) : fn(a, name, arg);
                 return power(a, inner, exp);
             }
             if(peek() && *peek() == "(") {
@@ -159,10 +162,13 @@ struct Parser
                     return fn(a, name, mul(a, {arg, arg2}));
                 }
                 take(")");
+                if(name == "cbrt") return power(a, arg, num(a, 1, 3));
                 return fn(a, name, arg);
             }
             if(starts_atom(peek())) {
-                return fn(a, name, parse_atom());
+                NodeId arg = parse_atom();
+                if(name == "cbrt") return power(a, arg, num(a, 1, 3));
+                return fn(a, name, arg);
             }
         }
 

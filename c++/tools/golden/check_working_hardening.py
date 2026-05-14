@@ -500,6 +500,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "4*x^3*sqrt(x^4+1)/(1+sqrt(x^4+1))",
+        ["u = sqrt(x^4+1)", "u^2 = x^4+1", "I = 2*Int(u^2/(u+1)) du", "x^4 - 2*sqrt(x^4 + 1) + 2*ln(abs(1 + sqrt(x^4 + 1))) + C"],
+        ["2/3*(x^4 + 1)^(3/2)", "No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
+        "defint((x+1)/(2*x-1)^(3/2),x,1,5)",
+        ["u = 2*x - 1", "F(5) = 1", "F(1) = -1", "2"],
+        ["9^(-1/2)", "No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
         "(5*x+7)/((x-1)*(x^2+4)),method=pf",
         ["A/(x-1)+(Bx+C)/(x^2+4)", "A=12/5", "B=-12/5", "C=13/5", "Answer:"],
         ["Partial fractions: A/(x+p)", "ERR:"],

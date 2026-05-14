@@ -2239,6 +2239,86 @@ static std::optional<TextIntegral> reciprocal_root_defint_pattern(std::string co
     return TextIntegral{"reciprocal-root trig substitution", std::move(steps), answer};
 }
 
+static std::optional<TextIntegral> sqrt_over_one_plus_sqrt_power_pattern(std::string const &c)
+{
+    auto div = top_level_division(c);
+    if(!div) return std::nullopt;
+    std::string num = strip_outer_parens_text(div->first);
+    std::string den = strip_outer_parens_text(div->second);
+    std::string inner;
+    if(den.rfind("1+sqrt(", 0) == 0 && den.back() == ')') {
+        inner = den.substr(7, den.size() - 8);
+    }
+    else if(den.rfind("sqrt(", 0) == 0) {
+        int close = matching_paren_text(den, 4);
+        if(close <= 5 || den.substr(static_cast<std::size_t>(close) + 1) != "+1") return std::nullopt;
+        inner = den.substr(5, static_cast<std::size_t>(close) - 5);
+    }
+    else return std::nullopt;
+    std::string root = "sqrt(" + inner + ")";
+    if(num.size() <= root.size() || num.substr(num.size() - root.size()) != root) return std::nullopt;
+    std::string pref = num.substr(0, num.size() - root.size());
+    std::string base_prefix = "x^";
+    if(inner.rfind(base_prefix, 0) != 0) return std::nullopt;
+    std::size_t plus = inner.find('+', base_prefix.size());
+    if(plus == std::string::npos) return std::nullopt;
+    auto n = parse_int_key(inner.substr(base_prefix.size(), plus - base_prefix.size()));
+    if(!n || *n <= 1) return std::nullopt;
+    auto k = parse_int_key(inner.substr(plus + 1));
+    if(!k) return std::nullopt;
+    std::string wanted = std::to_string(*n) + "x^" + std::to_string(*n - 1);
+    if(pref != wanted) return std::nullopt;
+    std::string xpow = "x^" + std::to_string(*n);
+    std::vector<std::string> steps = {
+        "u = sqrt(" + inner + ").",
+        "u^2 = " + inner + ".",
+        "2u du = " + wanted + " dx.",
+        "I = 2*Int(u^2/(u+1)) du.",
+        "u^2/(u+1) = u - 1 + 1/(u+1).",
+    };
+    return TextIntegral{"sqrt rational substitution", std::move(steps), xpow + " - 2*" + root + " + 2*ln(abs(1 + " + root + ")) + C"};
+}
+
+static std::optional<TextIntegral> reciprocal_shift_root_pattern(std::string const &c)
+{
+    auto div = top_level_division(c);
+    std::string den;
+    if(div) {
+        if(strip_outer_parens_text(div->first) != "1") return std::nullopt;
+        den = strip_outer_parens_text(div->second);
+    }
+    else {
+        std::string raw = strip_outer_parens_text(c);
+        if(raw.size() > 3 && raw.compare(raw.size() - 3, 3, "^-1") == 0) {
+            den = strip_outer_parens_text(raw.substr(0, raw.size() - 3));
+        }
+        else if(raw.size() > 5 && raw.compare(raw.size() - 5, 5, "^(-1)") == 0) {
+            den = strip_outer_parens_text(raw.substr(0, raw.size() - 5));
+        }
+        else return std::nullopt;
+    }
+    if(den.empty() || den[0] != '(') return std::nullopt;
+    int close = matching_paren_text(den, 0);
+    if(close <= 0) return std::nullopt;
+    std::string lin = den.substr(1, static_cast<std::size_t>(close) - 1);
+    std::string rest = den.substr(static_cast<std::size_t>(close) + 1);
+    if(rest.rfind("sqrt(", 0) != 0 || rest.back() != ')') return std::nullopt;
+    if(lin.rfind("x-", 0) != 0) return std::nullopt;
+    auto a = parse_int_key(lin.substr(2));
+    if(!a || *a <= 0) return std::nullopt;
+    std::string want = "x^2-" + std::to_string((*a) * (*a));
+    if(rest.substr(5, rest.size() - 6) != want) return std::nullopt;
+    std::string ax = std::to_string(*a);
+    std::vector<std::string> steps = {
+        "x-" + ax + " = 1/u.",
+        "x = " + ax + " + 1/u.",
+        "dx = -1/u^2 du.",
+        "sqrt(x^2-" + std::to_string((*a) * (*a)) + ") = sqrt((1+" + std::to_string(2 * (*a)) + "*u)/u^2).",
+    };
+    std::string coeff = *a == 1 ? "-" : "-1/" + ax + "*";
+    return TextIntegral{"reciprocal root substitution", std::move(steps), coeff + "sqrt((x + " + ax + ")/(x - " + ax + ")) + C"};
+}
+
 static std::optional<TextIntegral> linear_over_sqrt_defint_pattern(std::string const &expr)
 {
     auto args = unwrap_call_args(expr, "defint");
@@ -2548,6 +2628,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
+    if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
     if(auto p = match_king_property_power(c)) {
         std::string pow = *p;
         return out(
@@ -6047,6 +6129,19 @@ static bool same_expr(Arena &a, NodeId lhs, NodeId rhs)
     return casio::sig(a, casio::simplify(a, lhs)) == casio::sig(a, casio::simplify(a, rhs));
 }
 
+static bool contains_expr(Arena &a, NodeId haystack, NodeId needle)
+{
+    if(same_expr(a, haystack, needle)) return true;
+    Node const &x = a.get(haystack);
+    if(x.kind == NodeKind::Fn) return contains_expr(a, x.a, needle);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_expr(a, x.a, needle) || contains_expr(a, x.b, needle);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(contains_expr(a, k, needle)) return true;
+    }
+    return false;
+}
+
 static std::optional<int> positive_int_power(Arena &a, NodeId n)
 {
     auto r = as_num(a, n);
@@ -7886,6 +7981,7 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
             if(j != i) rest.push_back(factors[j]);
         NodeId rem = rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest));
         if(rest.empty() && contains_var(a, *d, var)) continue;
+        if(!rest.empty() && contains_expr(a, rem, base) && !contains_expr(a, *d, base)) continue;
         auto k = proportional_node_var(a, rem, *d, var);
         if(!k) continue;
         Rational c = r_div(*k, p1);
@@ -12387,6 +12483,7 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         }
         if(x.fkind == FnKind::Log) {
             if(auto r = as_num(a, arg); r && r->num == r->den) return casio::num(a, 0);
+            if(auto r = as_num(a, arg); r && r->num == 1 && r->den > 1) return casio::neg(a, casio::fn(a, "log", a.num(Rational{r->den, 1})));
             Node const &ln_arg = a.get(arg);
             if(ln_arg.kind == NodeKind::Const && ln_arg.ckind == ConstKind::E) return casio::num(a, 1);
             if(ln_arg.kind == NodeKind::Fn && ln_arg.fkind == FnKind::Sqrt) {
@@ -12545,6 +12642,14 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 Rational outside{1, 1};
                 for(std::int64_t i = 0; i < exp_num->num / 2; ++i) outside = r_mul(outside, *b);
                 return casio::simplify(a, mul_coeff(a, outside, sqrt_rat(a, *b)));
+            }
+        }
+        if(exp_num && exp_num->den == 2 && exp_num->num < 0 && (-exp_num->num) % 2 == 1) {
+            if(auto b = as_num(a, base); b && b->num > 0) {
+                Rational outside{1, 1};
+                for(std::int64_t i = 0; i < (-exp_num->num) / 2; ++i) outside = r_mul(outside, *b);
+                NodeId den = casio::simplify(a, mul_coeff(a, outside, sqrt_rat(a, *b)));
+                return casio::simplify(a, casio::div(a, casio::num(a, 1), den));
             }
         }
         if(base_node.kind == NodeKind::Const && base_node.ckind == ConstKind::E) {
