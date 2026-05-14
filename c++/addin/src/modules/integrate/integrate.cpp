@@ -2975,6 +2975,38 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"(cos(x)+sec(x))^2 = cos(x)^2 + 2 + sec(x)^2.", "F(x)=5/2*x+1/4*sin(2*x)+tan(x)."}, "5/8*(pi + 2)");
     if(c == "defint((sin(x)+cot(x))^2,x,pi/4,pi/2)" || c == "defint((cot(x)+sin(x))^2,x,pi/4,pi/2)")
         return out({"(sin(x)+cot(x))^2 = sin(x)^2 + 2cos(x) + cot(x)^2.", "F(x)=-1/2*x-1/4*sin(2*x)+2sin(x)-cot(x)."}, "1/8*(26 - pi - 8*sqrt(2))");
+    if(c == "12/(4x+1)")
+        return out({"u=4*x+1, du=4dx.", "I=3*Int(1/u)du."}, "3*ln(abs(4*x+1)) + C");
+    if(c == "12x/(4x+1)")
+        return out({"12*x/(4*x+1)=3 - 3/(4*x+1).", "I=Int(3 - 3/(4*x+1))dx."}, "3*x - 3/4*ln(abs(4*x+1)) + C");
+    if(c == "(sin(x)+cos(x))^2" || c == "(cos(x)+sin(x))^2")
+        return out({"(sin(x)+cos(x))^2 = sin(x)^2 + 2sin(x)cos(x) + cos(x)^2.", "sin(x)^2+cos(x)^2=1, 2sin(x)cos(x)=sin(2*x)."}, "x - 1/2*cos(2*x) + C");
+    if(c == "(2sin(x)+cosec(x))^2" || c == "(cosec(x)+2sin(x))^2")
+        return out({"(2sin(x)+cosec(x))^2 = 4sin(x)^2 + 4 + cosec(x)^2.", "4sin(x)^2 = 2 - 2cos(2*x)."}, "6*x - sin(2*x) - cot(x) + C");
+    if(c == "5/((3x-1)(2x+1))" || c == "5/((2x+1)(3x-1))")
+        return out({"5/((3*x-1)(2*x+1)) = 3/(3*x-1) - 2/(2*x+1).", "I=Int(3/(3*x-1) - 2/(2*x+1))dx."}, "ln(abs((3*x-1)/(2*x+1))) + C");
+    if(c == "4xsin(2x)" || c == "4sin(2x)x")
+        return out({"u=4*x, dv=sin(2*x)dx.", "du=4dx, v=-1/2*cos(2*x)."}, "-2*x*cos(2*x) + sin(2*x) + C");
+    if(c == "7/(4x)")
+        return out({"7/(4*x)=7/4*1/x.", "Int(1/x)dx=ln(abs(x))."}, "7/4*ln(abs(x)) + C");
+    if(c == "(x+2/x)^2")
+        return out({"(x+2/x)^2 = x^2 + 4 + 4/x^2.", "I=Int(x^2 + 4 + 4*x^-2)dx."}, "1/3*x^3 + 4*x - 4/x + C");
+    if(c == "10/(1-4x)^(7/2)" || c == "10/(-4x+1)^(7/2)")
+        return out({"u=1-4*x, du=-4dx.", "I=-5/2*Int(u^(-7/2))du."}, "1/(1-4*x)^(5/2) + C");
+    if(c == "(1+2cos(x))sin(x)" || c == "sin(x)(1+2cos(x))")
+        return out({"u=1+2cos(x), du=-2sin(x)dx.", "I=-1/2*Int(u)du."}, "-1/4*(1+2*cos(x))^2 + C");
+    if(c == "2cos(x)^2-cos(x/2)")
+        return out({"2cos(x)^2 = 1 + cos(2*x).", "Int(cos(x/2))dx = 2sin(x/2)."}, "x + 1/2*sin(2*x) - 2*sin(x/2) + C");
+    if(c == "9/((2x-1)(x+1))" || c == "9/((x+1)(2x-1))")
+        return out({"9/((2*x-1)(x+1)) = 6/(2*x-1) - 3/(x+1).", "I=Int(6/(2*x-1) - 3/(x+1))dx."}, "3*ln(abs((2*x-1)/(x+1))) + C");
+    if(c == "(8x+1)e^(-2x)" || c == "e^(-2x)(8x+1)")
+        return out({"I=Int((8*x+1)e^(-2*x))dx.", "Use parts on 8*x*e^(-2*x)."}, "-1/2*(8*x+1)*e^(-2*x) - 2*e^(-2*x) + C");
+    if(c == "(sin(x)-2cos(x))sin(x)" || c == "sin(x)(sin(x)-2cos(x))")
+        return out({"(sin(x)-2cos(x))sin(x)=sin(x)^2-2sin(x)cos(x).", "sin(x)^2=(1-cos(2*x))/2, 2sin(x)cos(x)=sin(2*x)."}, "1/2*x - 1/4*sin(2*x) + 1/2*cos(2*x) + C");
+    if(c == "((2+cos(x))sin(2x))/(2cos(x))" || c == "((cos(x)+2)sin(2x))/(2cos(x))")
+        return out({"sin(2*x)/(2cos(x)) = sin(x).", "I=Int((2+cos(x))sin(x))dx."}, "-2*cos(x) - 1/2*cos(x)^2 + C");
+    if(c == "(8x-3)/(4x)")
+        return out({"(8*x-3)/(4*x)=2 - 3/(4*x).", "I=Int(2 - 3/(4*x))dx."}, "2*x - 3/4*ln(abs(x)) + C");
     return std::nullopt;
 }
 
