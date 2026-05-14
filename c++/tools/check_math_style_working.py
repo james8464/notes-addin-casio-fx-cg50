@@ -234,6 +234,11 @@ CASES = [
         ("log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4", "5*x^2 + 4*x - 1 = 0", "x = [1/5]"),
     ),
     (
+        "constant numeric method",
+        ["--alg", "1.300567/(pi/3),method=numeric"],
+        ("1300567/1000000/(pi/3)", "1.24195000123"),
+    ),
+    (
         "rational kept root domain",
         ["--alg", "(x^2-16)/(x-4)=14"],
         ("Domain: x - 4 != 0", "10 != 4", "x = [10]"),

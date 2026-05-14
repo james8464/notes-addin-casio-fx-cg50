@@ -8939,6 +8939,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId n = casio::simplify(arena, parsed);
 
             std::vector<std::string> steps;
+            if(req.method == "numeric" && !has_symbols(arena, n)) {
+                auto v = eval_node(arena, n, "x", 0.0);
+                if(v && std::isfinite(*v)) {
+                    steps.push_back(format_expr(arena, n));
+                    return casio::exam_block("numeric value", steps, format_double_compact(*v));
+                }
+            }
             if(req.method == "collect" || req.method == "canonical") {
                 steps.push_back(format_expr(arena, parsed));
                 steps.push_back("= " + format_expr(arena, n));
