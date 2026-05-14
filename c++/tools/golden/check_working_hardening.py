@@ -441,7 +441,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "derive",
         "mode:3,t^2+4*t,t^2-3*t^2,t",
-        ["dy/dt = 2*t - 6*t", "dy/dt = -4*t", "dy/dx = (-4*t)/(2*t+4) = -2*t/(t+2)", "dy/dx = -2*t/(t+2)"],
+        ["dy/dt = 2*t - 6*t", "dy/dt = -4*t", "dy/dx = (-4*t)/(2*t+4)", "dy/dx = -2*t/(t + 2)"],
         ["Answer: d/dx(", "Unexpected token", "ERR:"],
     ),
     (

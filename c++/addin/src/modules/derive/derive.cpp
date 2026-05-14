@@ -460,6 +460,56 @@ static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &
     return true;
 }
 
+static std::optional<std::string> source_sum_derivative_text(Arena &a, std::string const &expr, std::string const &var)
+{
+    auto trim = [](std::string s) {
+        while(!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+        while(!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+        return s;
+    };
+    std::vector<std::string> terms;
+    int depth = 0;
+    std::size_t start = 0;
+    for(std::size_t i = 0; i < expr.size(); ++i) {
+        char ch = expr[i];
+        if(ch == '(' || ch == '[') ++depth;
+        else if((ch == ')' || ch == ']') && depth > 0) --depth;
+        else if(depth == 0 && i > start && (ch == '+' || ch == '-') && expr[i - 1] != '^') {
+            std::string term = trim(expr.substr(start, i - start));
+            if(!term.empty()) terms.push_back(term);
+            start = i;
+        }
+    }
+    std::string tail = trim(expr.substr(start));
+    if(!tail.empty()) terms.push_back(tail);
+    if(terms.size() < 2 || terms.size() > 4) return std::nullopt;
+
+    std::string out;
+    for(std::string const &term : terms) {
+        std::string parse_term = term;
+        if(!parse_term.empty() && parse_term[0] == '+') parse_term.erase(parse_term.begin());
+        NodeId d = casio::simplify(a, diff(a, casio::parse_expr(a, parse_term), var, ""));
+        auto zr = as_num(a, d);
+        if(zr && zr->num == 0) continue;
+        std::string part = clean_math_text(format_expr_human(a, d));
+        if(part.empty()) continue;
+        bool neg = false;
+        if(part.rfind("- ", 0) == 0) {
+            neg = true;
+            part.erase(0, 2);
+        }
+        else if(part[0] == '-') {
+            neg = true;
+            part.erase(0, 1);
+            while(!part.empty() && part[0] == ' ') part.erase(part.begin());
+        }
+        if(out.empty()) out = neg ? "-" + part : part;
+        else out += neg ? " - " + part : " + " + part;
+    }
+    if(out.empty()) return std::string("0");
+    return out;
+}
+
 static bool has_variable_power(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -2066,8 +2116,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string xt = strip_label_assignment(parts[0]);
             std::string yt = strip_label_assignment(parts[1]);
             std::string tvar = (parts.size() >= 3 && !parts[2].empty()) ? parts[2] : "t";
-            NodeId xnode = casio::simplify(arena, casio::parse_expr(arena, xt));
-            NodeId ynode = casio::simplify(arena, casio::parse_expr(arena, yt));
+            NodeId raw_xnode = casio::parse_expr(arena, xt);
+            NodeId raw_ynode = casio::parse_expr(arena, yt);
+            NodeId xnode = casio::simplify(arena, raw_xnode);
+            NodeId ynode = casio::simplify(arena, raw_ynode);
             NodeId dxdt = casio::simplify(arena, diff(arena, xnode, tvar));
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
@@ -2260,11 +2312,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer
                 );
             }
-            std::vector<std::string> steps = {
-                "dx/dt = " + format_expr_human(arena, dxdt),
-                "dy/dt = " + format_expr_human(arena, dydt),
-                "dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.",
-            };
+            std::string dxdt_text = format_expr_human(arena, dxdt);
+            std::string dydt_text = format_expr_human(arena, dydt);
+            std::vector<std::string> steps;
+            if(auto raw_dxdt = source_sum_derivative_text(arena, xt, tvar)) {
+                if(compact_math_key(*raw_dxdt) != compact_math_key(dxdt_text))
+                    steps.push_back("dx/dt = " + *raw_dxdt);
+            }
+            steps.push_back("dx/dt = " + dxdt_text);
+            if(auto raw_dydt = source_sum_derivative_text(arena, yt, tvar)) {
+                if(compact_math_key(*raw_dydt) != compact_math_key(dydt_text))
+                    steps.push_back("dy/dt = " + *raw_dydt);
+            }
+            steps.push_back("dy/dt = " + dydt_text);
+            steps.push_back("dy/dx = (dy/dt)/(dx/dt), dx/dt != 0.");
             auto dx_aff = affine_int_in(arena, dxdt, tvar);
             auto dy_aff = affine_int_in(arena, dydt, tvar);
             std::string dx_text = dx_aff ? affine_int_text(*dx_aff, tvar) : format_expr_human(arena, dxdt);
@@ -2276,7 +2337,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string ratio_line = "dy/dx = (" + dy_text + ")/(" + dx_text + ")";
             if(dx_aff && dy_aff) {
                 if(auto reduced = reduced_affine_ratio_text(*dy_aff, *dx_aff, tvar)) {
-                    ratio_line += " = " + *reduced;
                     answer = "dy/dx = " + *reduced;
                 }
             }

@@ -59,6 +59,19 @@ static bool same_tree(Arena &a, NodeId lhs, NodeId rhs)
     return false;
 }
 
+static bool contains_symbol(Arena &a, NodeId id)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Sym) return true;
+    if(n.kind == NodeKind::Fn) return contains_symbol(a, n.a);
+    if(n.kind == NodeKind::Pow || n.kind == NodeKind::Div) return contains_symbol(a, n.a) || contains_symbol(a, n.b);
+    if(n.kind == NodeKind::Add || n.kind == NodeKind::Mul) {
+        for(NodeId k : n.kids)
+            if(contains_symbol(a, k)) return true;
+    }
+    return false;
+}
+
 static bool rational_eq(Rational const &a, std::int64_t n, std::int64_t d = 1)
 {
     Rational b{n, d};
@@ -144,14 +157,34 @@ static ScaledTerm split_scaled(Arena &a, NodeId id)
 {
     Node const &n = a.get(id);
     if(n.kind == NodeKind::Num) return ScaledTerm{n.num, 0, true};
+    if(n.kind == NodeKind::Div) {
+        Node const &den = a.get(n.b);
+        if(den.kind == NodeKind::Num) {
+            Node const &top = a.get(n.a);
+            if(top.kind == NodeKind::Num) return ScaledTerm{divq(top.num, den.num), 0, true};
+            ScaledTerm top_scaled = split_scaled(a, n.a);
+            if(top_scaled.constant) return ScaledTerm{divq(top_scaled.coeff, den.num), 0, true};
+            if(!(top_scaled.coeff.num == top_scaled.coeff.den))
+                return ScaledTerm{divq(top_scaled.coeff, den.num), top_scaled.body, false};
+            return ScaledTerm{divq(Rational{1, 1}, den.num), n.a, false};
+        }
+    }
     if(n.kind == NodeKind::Mul && !n.kids.empty()) {
-        Node const &first = a.get(n.kids[0]);
-        if(first.kind == NodeKind::Num) {
-            std::vector<NodeId> rest;
-            for(std::size_t i = 1; i < n.kids.size(); ++i) rest.push_back(n.kids[i]);
-            if(rest.empty()) return ScaledTerm{first.num, 0, true};
+        Rational coeff{1, 1};
+        std::vector<NodeId> rest;
+        bool saw_num = false;
+        for(NodeId kid : n.kids) {
+            Node const &k = a.get(kid);
+            if(k.kind == NodeKind::Num) {
+                coeff = mulq(coeff, k.num);
+                saw_num = true;
+            }
+            else rest.push_back(kid);
+        }
+        if(saw_num) {
+            if(rest.empty()) return ScaledTerm{coeff, 0, true};
             NodeId body = rest.size() == 1 ? rest[0] : a.mul(std::move(rest));
-            return ScaledTerm{first.num, body, false};
+            return ScaledTerm{coeff, body, false};
         }
     }
     return ScaledTerm{Rational{1, 1}, id, false};
@@ -322,14 +355,16 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     Node const &bn = a.get(b);
     if(is_zero(tn)) return num(a, 0);
     if(is_one(bn)) return t;
-    // Extract and divide leading integer from (k*...)/n where k,n are integers
+    // Extract and divide an integer factor from (k*...)/n where k,n are integers
     if(tn.kind == NodeKind::Mul && bn.kind == NodeKind::Num && bn.num.den == 1) {
-        Node const &first = a.get(tn.kids[0]);
-        if(first.kind == NodeKind::Num && first.num.den == 1) {
-            Rational q = divq(first.num, bn.num);
+        for(size_t factor_i = 0; factor_i < tn.kids.size(); ++factor_i) {
+            Node const &factor = a.get(tn.kids[factor_i]);
+            if(factor.kind != NodeKind::Num || factor.num.den != 1) continue;
+            Rational q = divq(factor.num, bn.num);
             if(q.den == 1) {
                 std::vector<NodeId> kept;
-                for(size_t i = 1; i < tn.kids.size(); i++) kept.push_back(tn.kids[i]);
+                for(size_t i = 0; i < tn.kids.size(); i++)
+                    if(i != factor_i) kept.push_back(tn.kids[i]);
                 if(q.num != 1) kept.insert(kept.begin(), num(a, q.num, 1));
                 NodeId newt = kept.empty() ? num(a, 1) : (kept.size() == 1 ? kept[0] : a.mul(std::move(kept)));
                 return simplify(a, newt);
@@ -339,6 +374,22 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     if(is_num(tn) && is_num(bn)) {
         Rational q = divq(tn.num, bn.num);
         return num(a, q.num, q.den);
+    }
+    if(tn.kind == NodeKind::Add && bn.kind == NodeKind::Num && bn.num.den == 1) {
+        std::vector<NodeId> terms;
+        bool ok = true;
+        for(NodeId kid : tn.kids) {
+            ScaledTerm t = split_scaled(a, kid);
+            Rational q = divq(t.coeff, bn.num);
+            if(q.den != 1) {
+                ok = false;
+                break;
+            }
+            if(t.constant) terms.push_back(num(a, q.num, 1));
+            else if(q.num == 1) terms.push_back(t.body);
+            else terms.push_back(a.mul({num(a, q.num, 1), t.body}));
+        }
+        if(ok) return simplify(a, a.add(std::move(terms)));
     }
     // Cancel simple common factors in (mul(...))/(mul(...)) or mul/atom.
     if(tn.kind == NodeKind::Mul) {
@@ -493,6 +544,27 @@ static NodeId make_add(Arena &a, std::vector<NodeId> parts)
     if(c.num != 0) out.push_back(num(a, c.num, c.den));
     if(out.empty()) return num(a, 0);
     if(auto rewritten = try_trig_sum_identity(a, out)) return simplify(a, *rewritten);
+    {
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            for(std::size_t i = 0; i < out.size() && !changed; ++i) {
+                ScaledTerm ti = split_scaled(a, out[i]);
+                if(ti.constant) continue;
+                for(std::size_t j = i + 1; j < out.size(); ++j) {
+                    ScaledTerm tj = split_scaled(a, out[j]);
+                    if(tj.constant || !same_tree(a, ti.body, tj.body)) continue;
+                    Rational sum = addq(ti.coeff, tj.coeff);
+                    out.erase(out.begin() + j);
+                    if(sum.num == 0) out.erase(out.begin() + i);
+                    else if(sum.num == sum.den) out[i] = ti.body;
+                    else out[i] = a.mul({num(a, sum.num, sum.den), ti.body});
+                    changed = true;
+                    break;
+                }
+            }
+        }
+    }
     if(out.size() == 1) return out[0];
     return a.add(std::move(out));
 }
@@ -510,6 +582,10 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
         }
         else if(is_num(n)) {
             c = mulq(c, n.num);
+        }
+        else if(n.kind == NodeKind::Div && is_num(a.get(n.a))) {
+            c = mulq(c, a.get(n.a).num);
+            out.push_back(a.div(num(a, 1), n.b));
         }
         else out.push_back(s);
     }
@@ -616,18 +692,26 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
                     NodeId base_j = out[j];
                     Rational exp_i{1, 1};
                     Rational exp_j{1, 1};
+                    auto one_over = [&](Node const &n, NodeId &base, Rational &exp) {
+                        if(n.kind != NodeKind::Div || !is_one(a.get(n.a))) return false;
+                        base = n.b;
+                        exp = Rational{-1, 1};
+                        return true;
+                    };
                     if(ni.kind == NodeKind::Pow) {
                         Node const &ei = a.get(ni.b);
                         if(ei.kind != NodeKind::Num) continue;
                         base_i = ni.a;
                         exp_i = ei.num;
                     }
+                    else one_over(ni, base_i, exp_i);
                     if(nj.kind == NodeKind::Pow) {
                         Node const &ej = a.get(nj.b);
                         if(ej.kind != NodeKind::Num) continue;
                         base_j = nj.a;
                         exp_j = ej.num;
                     }
+                    else one_over(nj, base_j, exp_j);
                     if(!same_tree(a, base_i, base_j)) continue;
                     Rational sum = addq(exp_i, exp_j);
                     out.erase(out.begin() + j);
@@ -647,7 +731,47 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
         }
     }
 
+    {
+        int add_i = -1;
+        bool const_only = true;
+        for(std::size_t i = 0; i < out.size(); ++i) {
+            Node const &n = a.get(out[i]);
+            if(contains_symbol(a, out[i])) {
+                const_only = false;
+                break;
+            }
+            if(n.kind == NodeKind::Add) {
+                if(add_i >= 0) {
+                    const_only = false;
+                    break;
+                }
+                add_i = static_cast<int>(i);
+            }
+        }
+        if(const_only && add_i >= 0) {
+            Node const &addn = a.get(out[add_i]);
+            std::vector<NodeId> terms;
+            for(NodeId term : addn.kids) {
+                std::vector<NodeId> factors;
+                if(!(c.num == c.den)) factors.push_back(num(a, c.num, c.den));
+                for(std::size_t i = 0; i < out.size(); ++i)
+                    if(static_cast<int>(i) != add_i) factors.push_back(out[i]);
+                factors.push_back(term);
+                terms.push_back(factors.size() == 1 ? factors[0] : a.mul(std::move(factors)));
+            }
+            return simplify(a, a.add(std::move(terms)));
+        }
+    }
+
     if(c.num == 0) return num(a, 0);
+    if(out.size() == 1) {
+        Node const &only = a.get(out[0]);
+        if(only.kind == NodeKind::Div && is_one(a.get(only.a)) && !(c.num == c.den)) {
+            NodeId top = num(a, c.num, 1);
+            NodeId bot = c.den == 1 ? only.b : a.mul({num(a, c.den, 1), only.b});
+            return simplify(a, a.div(top, bot));
+        }
+    }
     if(!(c.num == c.den)) out.insert(out.begin(), num(a, c.num, c.den));
     if(out.empty()) return num(a, 1);
     if(out.size() == 1) return out[0];

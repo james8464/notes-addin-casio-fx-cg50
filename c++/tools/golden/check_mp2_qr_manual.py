@@ -17,7 +17,7 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 
 CASES = [
-    ("Q5 integral parameter", ["--int", "defint((k*cos(x)^2-sec(x)^2)*sin(x),x,0,pi/3)"], ["(7*k - 24)/24", "u=cos(x)", "F(pi/3)-F(0)"]),
+    ("Q5 integral parameter", ["--int", "defint((k*cos(x)^2-sec(x)^2)*sin(x),x,0,pi/3)"], ["7/24*k - 1", "u=cos(x)", "F(pi/3)-F(0)"]),
     ("Q5 solve k", ["--alg", "(7*k-24)/24=3/4"], ["k = [6]"]),
     ("Q6 binomial sqrt", ["--alg", "binomial(sqrt(1-x),x,0,3)"], ["1/2*x", "1/8*x^2", "1/16*x^3", "Valid for"]),
     ("Q9 range f", ["--alg", "range(x^2-4,x,8,inf)"], ["y >= 60"]),
