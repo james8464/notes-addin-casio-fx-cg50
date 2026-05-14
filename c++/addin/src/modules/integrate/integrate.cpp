@@ -12028,6 +12028,7 @@ static std::pair<Rational, std::optional<NodeId>> numeric_factor(Arena &a, NodeI
             auto f = numeric_factor(a, x.a);
             return {r_div(f.first, *d), f.second};
         }
+        if(auto top = as_num(a, x.a)) return {*top, casio::div(a, a.num(Rational{1, 1}), x.b)};
     }
     if(x.kind == NodeKind::Mul) {
         Rational c{1, 1};
@@ -12190,6 +12191,33 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(exp && base.kind == NodeKind::Const && base.ckind == ConstKind::E) return a.num(*exp);
             }
         }
+        if(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos || x.fkind == FnKind::Atan) {
+            auto pi_over = [&](std::int64_t den) {
+                return casio::div(a, a.constant(ConstKind::Pi), a.num(Rational{den, 1}));
+            };
+            if(auto r = as_num(a, arg)) {
+                if(r_zero(*r)) {
+                    if(x.fkind == FnKind::Acos) return pi_over(2);
+                    return casio::num(a, 0);
+                }
+                if(x.fkind == FnKind::Atan) {
+                    if(r_eq(*r, Rational{1, 1})) return pi_over(4);
+                    if(r_eq(*r, Rational{-1, 1})) return casio::neg(a, pi_over(4));
+                }
+                if(x.fkind == FnKind::Asin) {
+                    if(r_eq(*r, Rational{1, 1})) return pi_over(2);
+                    if(r_eq(*r, Rational{-1, 1})) return casio::neg(a, pi_over(2));
+                    if(r_eq(*r, Rational{1, 2})) return pi_over(6);
+                    if(r_eq(*r, Rational{-1, 2})) return casio::neg(a, pi_over(6));
+                }
+                if(x.fkind == FnKind::Acos) {
+                    if(r_eq(*r, Rational{1, 1})) return casio::num(a, 0);
+                    if(r_eq(*r, Rational{-1, 1})) return a.constant(ConstKind::Pi);
+                    if(r_eq(*r, Rational{1, 2})) return pi_over(3);
+                    if(r_eq(*r, Rational{-1, 2})) return casio::mul(a, {casio::num(a, 2), pi_over(3)});
+                }
+            }
+        }
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
             if(auto m = pi_multiple(a, arg)) {
                 Rational q = mod_two_pi_multiple(*m);
@@ -12350,6 +12378,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         NodeId bot = simplify_known_endpoint_values(a, x.b);
         Node const &tn = a.get(top);
         auto bnum = as_num(a, bot);
+        auto bf = numeric_factor(a, bot);
+        if(bf.second && !r_eq(bf.first, Rational{1, 1})) {
+            NodeId scaled_top = mul_coeff(a, r_div(Rational{1, 1}, bf.first), top);
+            return simplify_known_endpoint_values(a, casio::div(a, scaled_top, *bf.second));
+        }
         if(bnum && tn.kind == NodeKind::Div) {
             if(auto tden = as_num(a, tn.b)) return casio::simplify(a, casio::div(a, tn.a, a.num(r_mul(*tden, *bnum))));
         }

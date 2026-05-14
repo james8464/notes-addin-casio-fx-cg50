@@ -327,7 +327,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(4*e^(-2*x)-e^(-4*x)=0,x)",
-        ["u=e^(-2x),u>0", "-u^2+4u=0", "0rejected,u>0", "x=[-ln(4)/2]"],
+        ["u=e^(-2x),u>0", "-u^2+4u=0", "0rejected,u>0", "x=[-ln(2)]"],
         ["all real values in domain", "No real solution", "ERR:"],
     ),
     (

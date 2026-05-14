@@ -397,7 +397,7 @@ CASES = [
     (
         "negative exponent substitution exact",
         ["--alg", "solve(4*e^(-2*x)-e^(-4*x)=0,x)"],
-        ("u = e^(-2*x), u > 0", "- u^2 + 4*u = 0", "0 rejected, u > 0", "x = [-ln(4)/2]"),
+        ("u = e^(-2*x), u > 0", "- u^2 + 4*u = 0", "0 rejected, u > 0", "x = [-ln(2)]"),
         ("x = all real", "No real solution", "ERR:"),
     ),
     (

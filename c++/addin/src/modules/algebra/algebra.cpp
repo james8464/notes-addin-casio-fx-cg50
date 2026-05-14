@@ -2158,6 +2158,20 @@ static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out)
         for(auto k : n.kids) add_terms_flat(a, k, out);
         return;
     }
+    if(n.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        std::vector<NodeId> rest;
+        for(auto k : n.kids) {
+            Node const &f = a.get(k);
+            if(f.kind == NodeKind::Num) coeff = r_mul(coeff, f.num);
+            else rest.push_back(k);
+        }
+        if(rest.size() == 1 && coeff.num != coeff.den && a.get(rest[0]).kind == NodeKind::Add) {
+            for(auto k : a.get(rest[0]).kids)
+                add_terms_flat(a, casio::simplify(a, a.mul({a.num(coeff), k})), out);
+            return;
+        }
+    }
     out.push_back(id);
 }
 
@@ -7129,12 +7143,34 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     NodeId ueq = casio::simplify(a, casio::add(a, u_terms));
     NodeId base_arg = casio::simplify(a, casio::mul(a, {a.num(base), a.sym(var)}));
     out.push_back(uvar + " = e^(" + format_expr(a, base_arg) + "), " + uvar + " > 0");
-    out.push_back(format_expr(a, ueq) + " = 0");
+    std::string ueq_text = format_expr(a, ueq);
+    for(std::size_t p = 0; (p = ueq_text.find(" + -", p)) != std::string::npos;) ueq_text.replace(p, 4, " - ");
+    out.push_back(ueq_text + " = 0");
     if(shift > 0) out.push_back("Multiply by " + (shift == 1 ? uvar : uvar + "^" + std::to_string(shift)));
     out.push_back(format_expr(a, poly2_to_node(a, upoly, uvar)) + " = 0");
 
     auto us = solve_poly2(a, upoly, uvar);
     std::vector<std::string> xraw;
+    auto exact_int_root = [](std::int64_t n, std::int64_t k) -> std::optional<std::int64_t> {
+        if(n < 0 || k <= 0) return std::nullopt;
+        std::int64_t lo = 0, hi = std::max<std::int64_t>(1, n);
+        while(lo <= hi) {
+            std::int64_t mid = lo + (hi - lo) / 2;
+            std::int64_t p = 1;
+            bool big = false;
+            for(std::int64_t i = 0; i < k; ++i) {
+                if(mid != 0 && p > n / mid) {
+                    big = true;
+                    break;
+                }
+                p *= mid;
+            }
+            if(!big && p == n) return mid;
+            if(big || p > n) hi = mid - 1;
+            else lo = mid + 1;
+        }
+        return std::nullopt;
+    };
     for(auto const &s : us) {
         auto uv = solution_line_value(a, s);
         if(!uv || *uv <= 0) {
@@ -7145,11 +7181,23 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
         std::string rhs = sol_rhs(s);
         NodeId root = casio::parse_expr(a, rhs);
         Rational pos_base = base;
-        NodeId log_root = casio::fn(a, "log", root);
+        bool neg_slope = pos_base.num < 0;
         if(pos_base.num < 0) {
             pos_base.num = -pos_base.num;
-            log_root = neg_node(a, log_root);
         }
+        NodeId log_arg = root;
+        if(pos_base.den == 1 && pos_base.num > 1) {
+            if(auto rr = as_num(a, root); rr && rr->num > 0 && rr->den > 0) {
+                auto rn = exact_int_root(rr->num, pos_base.num);
+                auto rd = exact_int_root(rr->den, pos_base.num);
+                if(rn && rd) {
+                    log_arg = a.num(Rational{*rn, *rd});
+                    pos_base = Rational{1, 1};
+                }
+            }
+        }
+        NodeId log_root = casio::fn(a, "log", log_arg);
+        if(neg_slope) log_root = neg_node(a, log_root);
         NodeId x = casio::simplify(a, casio::div(a, log_root, a.num(pos_base)));
         xraw.push_back(var + " = " + format_expr(a, x));
     }
