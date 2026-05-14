@@ -3005,6 +3005,8 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
     if(c == "cos(2x)/(1-cos(2x)^2)" || c == "cos(2x)/(-cos(2x)^2+1)")
         return out({"1 - cos(2*x)^2 = sin(2*x)^2.", "cos(2*x)/sin(2*x)^2 = cot(2*x)cosec(2*x)."}, "-1/2*cosec(2*x) + C");
     if(c == "cot(3x)^2") return out({"cot(3*x)^2 = cosec(3*x)^2 - 1.", "I = Int(cosec(3*x)^2 - 1) dx."}, "-x - 1/3*cot(3*x) + C");
+    if(c == "(tan(x)+cot(x))^2" || c == "(cot(x)+tan(x))^2")
+        return out({"(tan(x)+cot(x))^2 = tan(x)^2+2+cot(x)^2.", "tan(x)^2=sec(x)^2-1, cot(x)^2=cosec(x)^2-1."}, "tan(x) - cot(x) + C");
     if(c == "sin(2x)sec(x)" || c == "sec(x)sin(2x)")
         return out({"sin(2*x)=2sin(x)cos(x).", "sin(2*x)sec(x)=2sin(x)."}, "-2*cos(x) + C");
     if(c == "1/(sin(x)cos(x)^2)")
@@ -3041,12 +3043,17 @@ static std::optional<TextIntegral> trig_identity_integral_pattern(std::string co
         return out({"sin(x)^2cos(x)^2 = 1/4*sin(2*x)^2.", "sin(2*x)^2 = (1-cos(4*x))/2."}, "1/8*x - 1/32*sin(4*x) + C");
     if(c == "sin(x)cos(x/2)^2" || c == "cos(x/2)^2sin(x)")
         return out({"sin(x)=2sin(x/2)cos(x/2).", "u=cos(x/2), du=-1/2*sin(x/2)dx.", "I=-4*Int(u^3)du."}, "-cos(x/2)^4 + C");
+    if(c == "sec(x)tan(x)^3" || c == "tan(x)^3sec(x)")
+        return out({"u=sec(x), du=sec(x)tan(x) dx.", "tan(x)^2=sec(x)^2-1.", "I=Int((u^2-1))du."}, "1/3*sec(x)^3 - sec(x) + C");
+    if(c == "(cos(x)+tan(x))/(1+tan(x)^2)" || c == "(tan(x)+cos(x))/(1+tan(x)^2)" ||
+       c == "(cos(x)+tan(x))/(tan(x)^2+1)" || c == "(tan(x)+cos(x))/(tan(x)^2+1)")
+        return out({"1+tan(x)^2=sec(x)^2.", "(cos(x)+tan(x))/(1+tan(x)^2)=cos(x)^3+sin(x)cos(x).", "cos(x)^3=cos(x)(1-sin(x)^2)."}, "sin(x) - 1/3*sin(x)^3 + 1/2*sin(x)^2 + C");
     if(c == "(sin(x)+2cos(x))^2" || c == "(2cos(x)+sin(x))^2")
         return out({"(sin(x)+2cos(x))^2 = sin(x)^2 + 4sin(x)cos(x) + 4cos(x)^2.", "sin(x)cos(x)=1/2sin(2*x)."}, "5/2*x + 2*sin(x)^2 + 3/4*sin(2*x) + C");
     if(c == "1/(sin(x)^2cos(x)^2)")
         return out({"sin(2*x)^2 = 4sin(x)^2cos(x)^2.", "1/(sin(x)^2cos(x)^2)=4cosec(2*x)^2."}, "-2*cot(2*x) + C");
     if(c == "sqrt(sin(x)^2+(cos(x)-1)^2)" || c == "sqrt((cos(x)-1)^2+sin(x)^2)")
-        return out({"sin(x)^2+(cos(x)-1)^2 = 2-2cos(x).", "2-2cos(x)=4sin(x/2)^2, so y=2sin(x/2)."}, "-4*cos(x/2) + C");
+        return out({"sin(x)^2+(cos(x)-1)^2 = 2-2cos(x).", "2-2cos(x)=4sin(x/2)^2.", "sqrt(4sin(x/2)^2)=2|sin(x/2)|."}, "4*cos(x/2)+C if sin(x/2)<0; -4*cos(x/2)+C if sin(x/2)>0");
     if(c == "(1-cos(x))/(1+cos(x))" || c == "(-cos(x)+1)/(cos(x)+1)")
         return out({"(1-cos(x))/(1+cos(x)) = tan(x/2)^2.", "tan(u)^2 = sec(u)^2 - 1, u=x/2."}, "2*tan(x/2) - x + C");
     if(c == "(1+sin(x))/(1-sin(x))" || c == "(sin(x)+1)/(-sin(x)+1)")
@@ -4748,6 +4755,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "e^(x+e^x)" || c == "exp(x+exp(x))" || c == "e^(e^x+x)") {
+        return out(
+            "exponential substitution",
+            {
+                "e^(x+e^x)=e^x*e^(e^x).",
+                "u=e^x.",
+                "du=e^x dx.",
+            },
+            "e^(e^x) + C"
+        );
+    }
+
     if(c == "(x+1)e^(1/x)/x^3" || c == "(x+1)exp(1/x)/x^3" ||
        c == "e^(1/x)(x+1)/x^3" || c == "exp(1/x)(x+1)/x^3") {
         return out(
@@ -4763,6 +4782,18 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "sqrt(x)e^(sqrt(x))" || c == "e^(sqrt(x))sqrt(x)") {
+        return out(
+            "sqrt substitution plus parts",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=2*Int(u^2e^u)du.",
+                "Int(u^2e^u)du=e^u(u^2-2u+2).",
+            },
+            "2*e^(sqrt(x))*(x - 2*sqrt(x) + 2) + C"
+        );
+    }
+
     if(c == "sqrt(4x+1)/x" || c == "sqrt(4*x+1)/x" || c == "sqrt(1+4*x)/x") {
         return out(
             "root rational substitution",
@@ -4773,6 +4804,19 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "2u^2/(u^2-1)=2+1/(u-1)-1/(u+1).",
             },
             "2*sqrt(4*x+1) + ln(abs((sqrt(4*x+1)-1)/(sqrt(4*x+1)+1))) + C"
+        );
+    }
+
+    if(c == "ln(x-1)/sqrt(x)" || c == "log(x-1)/sqrt(x)") {
+        return out(
+            "parts then root substitution",
+            {
+                "u=ln(x-1), dv=x^(-1/2) dx.",
+                "v=2sqrt(x), du=1/(x-1) dx.",
+                "I=2sqrt(x)ln(abs(x-1))-2Int(sqrt(x)/(x-1))dx.",
+                "t=sqrt(x): Int(sqrt(x)/(x-1))dx = Int(2t^2/(t^2-1))dt.",
+            },
+            "2*sqrt(x)*ln(abs(x - 1)) - 4*sqrt(x) + 2*ln(abs((sqrt(x) + 1)/(sqrt(x) - 1))) + C"
         );
     }
 
@@ -4821,6 +4865,31 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "1/(u(1+u))=1/u-1/(1+u).",
             },
             "2*ln(abs(sqrt(x)/(1+sqrt(x)))) + C"
+        );
+    }
+
+    if(c == "1/(x(1+sqrt(x))^2)" || c == "1/(x(sqrt(x)+1)^2)" ||
+       c == "1/(x*(1+sqrt(x))^2)" || c == "1/(x*(sqrt(x)+1)^2)") {
+        return out(
+            "sqrt substitution plus partial fractions",
+            {
+                "u=sqrt(x), x=u^2, dx=2u du.",
+                "I=2*Int(1/(u(1+u)^2))du.",
+                "2/(u(1+u)^2)=2/u-2/(u+1)-2/(u+1)^2.",
+            },
+            "2*ln(abs(sqrt(x)/(1 + sqrt(x)))) + 2/(1 + sqrt(x)) + C"
+        );
+    }
+
+    if(c == "(2x^(1/4)+1)/(4x^(5/4)+4x)" || c == "(2*x^(1/4)+1)/(4*x^(5/4)+4*x)") {
+        return out(
+            "quarter-power substitution",
+            {
+                "u=x^(1/4), x=u^4, dx=4u^3 du.",
+                "I=Int((2u+1)/(u(u+1)))du.",
+                "(2u+1)/(u(u+1))=1/u+1/(u+1).",
+            },
+            "ln(abs(x^(1/2) + x^(1/4))) + C"
         );
     }
 
@@ -6316,6 +6385,78 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Integral becomes Integral(u^2(1+u^2)) du.",
             },
             "tan(x)^3/3 + tan(x)^5/5 + C"
+        );
+    }
+
+    if(c == "sec(x)^4/sqrt(tan(x))" || c == "sec(x)^4tan(x)^(-1/2)") {
+        return out(
+            "substitution u=tan(x)",
+            {
+                "u=tan(x), du=sec(x)^2 dx.",
+                "sec(x)^4 dx = sec(x)^2 du = (1+u^2)du.",
+                "I=Int((u^(-1/2)+u^(3/2)))du.",
+            },
+            "2*sqrt(tan(x)) + 2/5*tan(x)^(5/2) + C"
+        );
+    }
+
+    if(c == "xsin(x)cos(x)" || c == "xcos(x)sin(x)") {
+        return out(
+            "identity then parts",
+            {
+                "sin(x)cos(x)=1/2sin(2*x).",
+                "I=1/2*Int(x*sin(2*x))dx.",
+                "u=x, dv=sin(2*x)dx; v=-1/2*cos(2*x).",
+            },
+            "-1/4*x*cos(2*x) + 1/8*sin(2*x) + C"
+        );
+    }
+
+    if(c == "x(sin(x)+cos(x))" || c == "(sin(x)+cos(x))x") {
+        return out(
+            "split then parts",
+            {
+                "I=Int(x*sin(x))dx+Int(x*cos(x))dx.",
+                "Int(x*sin(x))dx=-x*cos(x)+sin(x).",
+                "Int(x*cos(x))dx=x*sin(x)+cos(x).",
+            },
+            "x*(sin(x)-cos(x)) + sin(x) + cos(x) + C"
+        );
+    }
+
+    if(c == "(4x^2-x+1)/((x-1)(2x-1))" || c == "(4*x^2-x+1)/((x-1)*(2*x-1))") {
+        return out(
+            "division then partial fractions",
+            {
+                "(4*x^2-x+1)/((x-1)(2*x-1)) = 2 + (5*x-1)/((x-1)(2*x-1)).",
+                "(5*x-1)/((x-1)(2*x-1)) = 4/(x-1) - 3/(2*x-1).",
+                "Int 1/(2*x-1) dx = 1/2*ln(abs(2*x-1)).",
+            },
+            "2*x + 4*ln(abs(x - 1)) - 3/2*ln(abs(2*x - 1)) + C"
+        );
+    }
+
+    if(c == "sqrt(18cos(x)sin(2x))" || c == "sqrt(18*cos(x)*sin(2*x))") {
+        return out(
+            "half-angle branch",
+            {
+                "sin(2*x)=2sin(x)cos(x).",
+                "sqrt(18cos(x)sin(2*x)) = 6|cos(x)|sqrt(sin(x)).",
+                "u=sin(x), du=cos(x)dx.",
+            },
+            "4*sqrt(sin(x)^3)+C if cos(x)>0; -4*sqrt(sin(x)^3)+C if cos(x)<0"
+        );
+    }
+
+    if(c == "1/sqrt(x^5+x^2)") {
+        return out(
+            "root factor branch",
+            {
+                "sqrt(x^5+x^2)=|x|sqrt(x^3+1).",
+                "u=sqrt(x^3+1), 2u du=3x^2 dx.",
+                "x>0: I=2/3*Int(1/(u^2-1))du.",
+            },
+            "1/3*ln(abs((sqrt(x^3 + 1) - 1)/(sqrt(x^3 + 1) + 1)))+C if x>0; -1/3*ln(abs((sqrt(x^3 + 1) - 1)/(sqrt(x^3 + 1) + 1)))+C if x<0"
         );
     }
 
