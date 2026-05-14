@@ -936,6 +936,133 @@ static std::optional<std::pair<std::string, std::string>> quotient_linear_square
                           "dy/d" + var + " = " + coeff + var + "/(" + L + ")^3");
 }
 
+struct QuadNoLinear
+{
+    NodeId a2;
+    NodeId c;
+};
+
+static bool is_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Sym && x.text == var;
+}
+
+static bool is_zero_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(casio::simplify(a, n));
+    return x.kind == NodeKind::Num && x.num.num == 0;
+}
+
+static std::optional<NodeId> scaled_var(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_var(a, n, var)) return casio::num(a, 1);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    bool seen = false;
+    std::vector<NodeId> coeffs;
+    for(NodeId k : x.kids) {
+        if(is_var(a, k, var)) {
+            if(seen) return std::nullopt;
+            seen = true;
+        }
+        else {
+            if(depends_on(a, k, var)) return std::nullopt;
+            coeffs.push_back(k);
+        }
+    }
+    if(!seen) return std::nullopt;
+    if(coeffs.empty()) return casio::num(a, 1);
+    return casio::simplify(a, casio::mul(a, coeffs));
+}
+
+static std::optional<NodeId> scaled_var_square(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow && is_var(a, x.a, var)) {
+        auto er = as_num(a, x.b);
+        if(er && er->num == 2 && er->den == 1) return casio::num(a, 1);
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    int vars = 0, squares = 0;
+    std::vector<NodeId> coeffs;
+    for(NodeId k : x.kids) {
+        Node const &kn = a.get(k);
+        if(is_var(a, k, var)) {
+            vars++;
+        }
+        else if(kn.kind == NodeKind::Pow && is_var(a, kn.a, var)) {
+            auto er = as_num(a, kn.b);
+            if(!er || er->num != 2 || er->den != 1) return std::nullopt;
+            squares++;
+        }
+        else {
+            if(depends_on(a, k, var)) return std::nullopt;
+            coeffs.push_back(k);
+        }
+    }
+    if(!((vars == 2 && squares == 0) || (vars == 0 && squares == 1))) return std::nullopt;
+    if(coeffs.empty()) return casio::num(a, 1);
+    return casio::simplify(a, casio::mul(a, coeffs));
+}
+
+static std::optional<QuadNoLinear> quadratic_no_linear(Arena &a, NodeId n, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else terms.push_back(n);
+    std::vector<NodeId> q, c;
+    for(NodeId t : terms) {
+        if(depends_on(a, t, var)) {
+            auto k = scaled_var_square(a, t, var);
+            if(!k) return std::nullopt;
+            q.push_back(*k);
+        }
+        else {
+            c.push_back(t);
+        }
+    }
+    if(q.empty()) return std::nullopt;
+    NodeId a2 = casio::simplify(a, casio::add(a, q));
+    NodeId cc = c.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, c));
+    return QuadNoLinear{a2, cc};
+}
+
+static bool append_scaled_x_over_sqrt_quadratic_detail(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string &answer_override
+)
+{
+    Node const &q = a.get(n);
+    if(q.kind != NodeKind::Div) return false;
+    auto c = scaled_var(a, q.a, var);
+    if(!c) return false;
+    Node const &den = a.get(q.b);
+    if(den.kind != NodeKind::Fn || den.fkind != FnKind::Sqrt) return false;
+    auto quad = quadratic_no_linear(a, den.a, var);
+    if(!quad || is_zero_node(a, quad->c)) return false;
+    NodeId u = den.a;
+    NodeId du = casio::simplify(a, diff(a, u, var, ""));
+    NodeId top = casio::simplify(a, casio::mul(a, {*c, quad->c}));
+    std::string cs = clean_math_text(format_expr_human(a, *c));
+    std::string us = clean_math_text(format_expr_human(a, u));
+    std::string dus = clean_math_text(format_expr_human(a, du));
+    std::string a2s = clean_math_text(format_expr_human(a, quad->a2));
+    std::string bs = clean_math_text(format_expr_human(a, quad->c));
+    steps.push_back("u = " + us + ".");
+    steps.push_back("du/d" + var + " = " + dus + ".");
+    steps.push_back("y = " + cs + "*" + var + "*u^(-1/2).");
+    steps.push_back("dy/d" + var + " = " + cs + "*u^(-1/2)-" + cs + "*" + var + "*du/d" + var + "/(2*u^(3/2)).");
+    steps.push_back("dy/d" + var + " = " + cs + "*(u-" + a2s + "*" + var + "^2)/u^(3/2).");
+    steps.push_back("u-" + a2s + "*" + var + "^2 = " + bs + ".");
+    answer_override = "dy/d" + var + " = " + clean_math_text(format_expr_human(a, top)) + "/(" + us + ")^(3/2)";
+    return true;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -1852,6 +1979,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 NodeKind top_kind = arena.get(n).kind;
+                if(!used_rule && append_scaled_x_over_sqrt_quadratic_detail(arena, n, var, steps, answer_override)) {
+                    used_rule = true;
+                }
                 if(!used_rule && top_kind == NodeKind::Div) {
                     append_quotient_rule_detail(arena, n, var, steps, &answer_override);
                     used_rule = true;

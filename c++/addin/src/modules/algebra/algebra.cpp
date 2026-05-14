@@ -2300,6 +2300,13 @@ static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body
             coef = r_div(coef, *den);
             return true;
         }
+        auto top = as_num(a, n.a);
+        if(top) {
+            coef = *top;
+            body = casio::div(a, casio::num(a, 1), n.b);
+            has_body = true;
+            return true;
+        }
     }
     if(n.kind != NodeKind::Mul) return true;
     std::vector<NodeId> rest;

@@ -1549,6 +1549,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["y=[-7.071", "all real", "ERR:"],
     ),
     (
+        "derive",
+        "4*x/sqrt(4*x^2+9),x",
+        ["u=4*x^2+9", "dy/dx=4*(u-4*x^2)/u^(3/2)", "dy/dx=36/(4*x^2+9)^(3/2)"],
+        ["ERR:"],
+    ),
+    (
         "int",
         "defint(2*sqrt(50-x^2),x,-sqrt(50),-5)",
         ["I=2*J,J=Int(sqrt(-x^2+50))dx", "F(-5)=-25-25*pi/2", "25/2*pi-25"],
