@@ -1125,6 +1125,11 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
             NodeId up = diff(a, u, var, dep);
             return casio::simplify(a, casio::mul(a, {n_node, um1, up}));
         }
+        if(!vr && base_depends && !exp_depends && (dep.empty() || !depends_on(a, v, dep))) {
+            NodeId vm1 = casio::simplify(a, casio::add(a, {v, casio::num(a, -1)}));
+            NodeId up = diff(a, u, var, dep);
+            return casio::simplify(a, casio::mul(a, {v, casio::power(a, u, vm1), up}));
+        }
         NodeId up = diff(a, u, var, dep);
         NodeId vp = diff(a, v, var, dep);
         NodeId ln_u = casio::fn(a, "log", u);
@@ -1923,6 +1928,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
                         steps.push_back("d/d" + var + "(" + var + "^" + std::to_string(exp->num) + ") = " +
                                         std::to_string(exp->num) + "*" + var + "^" + std::to_string(exp->num - 1) + ".");
+                        used_rule = true;
+                    }
+                    else if(!depends_on(arena, dn.b, var)) {
+                        steps.push_back("d/d" + var + "(" + var + "^n) = n*" + var + "^(n-1).");
                         used_rule = true;
                     }
                 }
