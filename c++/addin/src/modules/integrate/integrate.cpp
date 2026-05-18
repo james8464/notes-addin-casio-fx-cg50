@@ -1398,6 +1398,13 @@ static std::string exp_arg_text(Arena &a, NodeId n)
     return format_expr(a, n);
 }
 
+static std::string neg_exp_arg_text(Arena &a, NodeId n)
+{
+    std::string s = exp_arg_text(a, n);
+    bool simple = s.find_first_of(" +-") == std::string::npos;
+    return simple ? "-" + s : "-(" + s + ")";
+}
+
 static std::optional<std::pair<NodeId, int>> log_power_factor(Arena &a, NodeId n)
 {
     if(auto u = log_abs_arg(a, n)) return std::make_pair(*u, 1);
@@ -1629,6 +1636,11 @@ static std::optional<std::string> explicit_logistic_text(Arena &a, LinFrac lf, R
 {
     if(q.num == 0) return std::nullopt;
     std::string E = exp_log_product_text(a, S).value_or("e^(" + exp_arg_text(a, S) + ")");
+    auto coeff_times_E = [&](Rational r) {
+        if(r.num == r.den) return E;
+        if(r.num == -r.den) return "-" + E;
+        return rat_text_small(a, r) + "*" + E;
+    };
     if(lf.c.num == 0) {
         Rational m = r_mul(lf.d, q);
         if(lf.a.num == -lf.a.den && lf.b.num != 0) {
@@ -1645,6 +1657,27 @@ static std::optional<std::string> explicit_logistic_text(Arena &a, LinFrac lf, R
         if(lf.b.num != 0) top += " " + signed_rat_text(a, r_neg(lf.b));
         if(lf.a.num == lf.a.den) return top;
         return "(" + top + ")/" + rat_text_small(a, lf.a);
+    }
+    if(lf.d.num != 0 && lf.b.num == 0) {
+        Rational k0 = r_div(r_neg(lf.c), lf.d);
+        Rational k1 = r_div(lf.a, r_mul(lf.d, q));
+        std::string den = rat_text_small(a, k0);
+        if(k1.num != 0) {
+            std::string Einv = exp_log_product_text(a, casio::neg(a, S)).value_or("e^(" + neg_exp_arg_text(a, S) + ")");
+            std::string term = (k1.num == k1.den) ? Einv : (k1.num == -k1.den ? "-" + Einv : rat_text_small(a, k1) + "*" + Einv);
+            den += k1.num > 0 ? " + " + term : " - " + term.substr(term[0] == '-' ? 1 : 0);
+        }
+        return "1/(" + den + ")";
+    }
+    if(lf.d.num != 0) {
+        std::string top = coeff_times_E(r_mul(lf.d, q));
+        if(lf.b.num > 0) top += " - " + rat_text_small(a, lf.b);
+        else if(lf.b.num < 0) top += " + " + rat_text_small(a, r_neg(lf.b));
+        std::string den = rat_text_small(a, lf.a);
+        Rational m = r_mul(r_neg(lf.c), q);
+        if(m.num > 0) den += " + " + coeff_times_E(m);
+        else if(m.num < 0) den += " - " + coeff_times_E(r_neg(m));
+        return "(" + top + ")/(" + den + ")";
     }
     if(lf.d.num != 0) return std::nullopt;
     Rational n = r_mul(r_neg(lf.b), Rational{q.den, 1});
@@ -1835,6 +1868,10 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         if(r_eq(log_left->scale, Rational{1, 1})) steps.push_back("C = log(" + rat_text_small(a, q) + ")");
                         steps.push_back(log_lhs + " = " + format_expr(a, log_rhs) + " + log(" + rat_text_small(a, q) + ")");
                         steps.push_back(format_expr(a, log_arg) + " = " + rat_text_small(a, q) + "*e^(" + exp_arg_text(a, log_rhs) + ")");
+                        if(q.num == 1 && q.den != 1) {
+                            NodeId scaled_lhs = casio::simplify(a, casio::mul(a, {casio::num(a, q.den, q.num), log_arg}));
+                            steps.push_back(format_expr(a, scaled_lhs) + " = e^(" + exp_arg_text(a, log_rhs) + ")");
+                        }
                     }
                     NodeId Rused = log_rhs;
                     if(B.have_y1) {

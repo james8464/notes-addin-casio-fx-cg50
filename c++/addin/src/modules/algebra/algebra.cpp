@@ -1017,14 +1017,60 @@ static std::optional<NodeId> exp_like_arg(Arena &a, NodeId n)
     return std::nullopt;
 }
 
-static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+static std::optional<std::pair<Rational, NodeId>> coeff_exp_arg(Arena &a, NodeId n)
+{
+    if(auto e = exp_like_arg(a, n)) return std::make_pair(Rational{1, 1}, *e);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul || x.kids.size() != 2) return std::nullopt;
+    if(auto r = as_num(a, x.kids[0]); r) {
+        if(auto e = exp_like_arg(a, x.kids[1])) return std::make_pair(*r, *e);
+    }
+    if(auto r = as_num(a, x.kids[1]); r) {
+        if(auto e = exp_like_arg(a, x.kids[0])) return std::make_pair(*r, *e);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::string const &var,
+                                                     std::optional<double> lo, std::optional<double> hi,
+                                                     std::vector<std::string> &steps)
 {
     Node const &d = a.get(n);
     if(d.kind != NodeKind::Div) return std::nullopt;
     auto top_arg = exp_like_arg(a, d.a);
-    if(!top_arg || !contains_symbol(a, *top_arg, var)) return std::nullopt;
     Node const &bot = a.get(d.b);
     if(bot.kind != NodeKind::Add || bot.kids.size() != 2) return std::nullopt;
+    if(!top_arg) {
+        auto top_r = as_num(a, d.a);
+        if(!top_r || top_r->num != top_r->den) return std::nullopt;
+        bool saw_one = false;
+        std::optional<std::pair<Rational, NodeId>> exp_term;
+        for(NodeId kid : bot.kids) {
+            if(auto r = as_num(a, kid); r && r->num == r->den) saw_one = true;
+            else exp_term = coeff_exp_arg(a, kid);
+        }
+        if(!saw_one || !exp_term || exp_term->first.num <= 0) return std::nullopt;
+        auto p = poly_of(a, exp_term->second, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        if(lo && std::fabs(*lo) < 1e-12 && hi && !std::isfinite(*hi)) {
+            if(p->a0.num == 0 && p->a1.num < 0) {
+                Rational y0 = r_div(Rational{1, 1}, r_add(Rational{1, 1}, exp_term->first));
+                steps.push_back("Let u=e^(" + format_expr(a, exp_term->second) + "), so u>0.");
+                steps.push_back(var + ">=0 and exponent decreases, so 0<u<=1.");
+                std::string k = format_expr(a, casio::num(a, exp_term->first.num, exp_term->first.den));
+                steps.push_back("y=1/(1+" + k + "*u).");
+                return format_expr(a, casio::num(a, y0.num, y0.den)) + " <= y < 1";
+            }
+            if(p->a0.num == 0 && p->a1.num > 0) {
+                Rational y0 = r_div(Rational{1, 1}, r_add(Rational{1, 1}, exp_term->first));
+                steps.push_back("Let u=e^(" + format_expr(a, exp_term->second) + "), so u>=1.");
+                steps.push_back("As " + var + "=>inf, u=>inf and y=>0.");
+                return "0 < y <= " + format_expr(a, casio::num(a, y0.num, y0.den));
+            }
+        }
+        return std::nullopt;
+    }
+    if(!contains_symbol(a, *top_arg, var)) return std::nullopt;
     bool saw_one = false;
     bool saw_same_exp = false;
     for(NodeId kid : bot.kids) {
@@ -7755,6 +7801,48 @@ static std::optional<std::vector<std::string>> exp_coeff_solve_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> logistic_value_solve_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var, std::vector<std::string> out)
+{
+    auto run = [&](NodeId f_side, NodeId val_side) -> std::optional<std::vector<std::string>> {
+        Node const &f = a.get(f_side);
+        auto r = as_num(a, val_side);
+        if(f.kind != NodeKind::Div || !r || r->num <= 0 || r->num >= r->den) return std::nullopt;
+        auto top = as_num(a, f.a);
+        if(!top || top->num != top->den) return std::nullopt;
+        Node const &den = a.get(f.b);
+        if(den.kind != NodeKind::Add || den.kids.size() != 2) return std::nullopt;
+        bool saw_one = false;
+        std::optional<std::pair<Rational, NodeId>> exp_term;
+        for(NodeId kid : den.kids) {
+            if(auto one = as_num(a, kid); one && one->num == one->den) saw_one = true;
+            else exp_term = coeff_exp_arg(a, kid);
+        }
+        if(!saw_one || !exp_term || exp_term->first.num == 0) return std::nullopt;
+        Rational target = r_div(r_sub(r_div(Rational{1, 1}, *r), Rational{1, 1}), exp_term->first);
+        if(target.num <= 0) return std::nullopt;
+        auto p = poly_of(a, exp_term->second, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        NodeId log_target = casio::fn(a, "log", casio::num(a, target.num, target.den));
+        NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {log_target, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
+        std::string den_txt = format_expr(a, f.b);
+        out.push_back(den_txt + " = " + format_expr(a, casio::div(a, casio::num(a, r->den, 1), casio::num(a, r->num, 1))));
+        out.push_back(format_expr(a, casio::power(a, casio::constant_e(a), exp_term->second)) + " = " + format_expr(a, casio::num(a, target.num, target.den)));
+        out.push_back(format_expr(a, exp_term->second) + " = ln(" + format_expr(a, casio::num(a, target.num, target.den)) + ")");
+        std::string exact_txt = format_expr(a, exact);
+        if(p->a0.num == 0 && p->a1.num == -p->a1.den && target.num == 1)
+            exact_txt = "ln(" + format_expr(a, casio::num(a, target.den, 1)) + ")";
+        out.push_back(var + " = " + exact_txt);
+        double m = (double)p->a1.num / (double)p->a1.den;
+        double b = (double)p->a0.num / (double)p->a0.den;
+        double td = ((std::log((double)target.num / (double)target.den) - b) / m);
+        out.push_back(var + " ~= " + format_double_compact(td));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static std::optional<std::vector<std::string>> exp_const_solve_route(
     Arena &a, NodeId lhs, NodeId rhs, std::string const &var, std::vector<std::string> out)
 {
@@ -8592,7 +8680,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *er;
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto logistic = logistic_exp_range(arena, n, var, steps)) {
+                else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {
                     range_answer = *logistic;
                     steps.push_back("Range: " + range_answer + ".");
                 }
@@ -9185,6 +9273,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
