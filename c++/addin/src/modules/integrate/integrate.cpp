@@ -2029,9 +2029,20 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 answer = left + " = " + erhs;
             }
             else {
-                std::string erhs = exp_log_product_text(a, Rint).value_or("e^(" + exp_arg_text(a, Rint) + ")");
-                steps.push_back(left + " = A*" + erhs);
-                answer = left + " = A*" + erhs;
+                NodeId rhs = div_by_coeff(a, Rint, log_left->scale);
+                std::string erhs = exp_log_product_text(a, rhs).value_or("e^(" + exp_arg_text(a, rhs) + ")");
+                if(auto lin = linear_parts_node(a, log_left->arg, tok->y); lin && !same_expr(a, lin->first, casio::num(a, 0))) {
+                    NodeId centre = casio::simplify(a, casio::neg(a, casio::div(a, lin->second, lin->first)));
+                    NodeId shifted = casio::simplify(a, casio::add(a, {casio::sym(a, tok->y), casio::neg(a, centre)}));
+                    std::string c = format_expr(a, centre);
+                    std::string rel = format_expr(a, shifted) + " = A*" + erhs;
+                    steps.push_back(rel);
+                    answer = tok->y + " = " + (same_expr(a, centre, casio::num(a, 0)) ? "A*" + erhs : c + " + A*" + erhs);
+                }
+                else {
+                    steps.push_back(left + " = A*" + erhs);
+                    answer = left + " = A*" + erhs;
+                }
             }
         }
         return casio::exam_block("separable differential equation", steps, answer);
