@@ -1010,6 +1010,8 @@ struct BoundaryDE
     Rational y1r{0, 1};
     bool have_y0 = false;
     bool have_y1 = false;
+    bool y0_num = false;
+    bool y1_num = false;
 };
 
 static BoundaryDE parse_de_bc(Arena &a, std::string const &bc, std::string const &y, std::string const &x)
@@ -1019,17 +1021,22 @@ static BoundaryDE parse_de_bc(Arena &a, std::string const &bc, std::string const
     std::string p = y + "(";
     auto add_point = [&](NodeId xval, NodeId yval) -> bool {
         auto yr = as_num(a, casio::simplify(a, yval));
-        if(!yr) return false;
         if(!out.have_y0) {
             out.x0 = xval;
             out.y0 = yval;
-            out.y0r = *yr;
+            if(yr) {
+                out.y0r = *yr;
+                out.y0_num = true;
+            }
             out.have_y0 = true;
             return true;
         }
         out.x1 = xval;
         out.y1 = yval;
-        out.y1r = *yr;
+        if(yr) {
+            out.y1r = *yr;
+            out.y1_num = true;
+        }
         out.have_y1 = true;
         return true;
     };
@@ -1805,7 +1812,7 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
 
     std::string rhs = format_expr(a, *Si.result) + " + C";
     BoundaryDE B = parse_de_bc(a, bc, tok.y, tok.x);
-    if(B.have_y0) {
+    if(B.have_y0 && B.y0_num) {
         auto x0 = as_num(a, B.x0);
         auto m0 = x0 ? eval_rat_small(a, mu, tok.x, *x0) : std::optional<Rational>{};
         if(m0) {
@@ -1894,7 +1901,29 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         NodeId final_rhs_node = 0;
         std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C";
         auto log_left = log_left_form(a, *Li.result);
-        if(log_left && B.have_y0) {
+        if(log_left && B.have_y0 && !B.y0_num) {
+            NodeId log_arg = log_left->arg;
+            NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
+            auto x0 = as_num(a, B.x0);
+            auto r0 = x0 ? eval_rat_small(a, log_rhs, tok->x, *x0) : std::optional<Rational>{};
+            if(r0 && same_expr(a, log_arg, casio::sym(a, tok->y))) {
+                NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, casio::num(a, r0->num, r0->den))}));
+                std::string y0 = format_expr(a, B.y0);
+                steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + y0);
+                if(r_eq(log_left->scale, Rational{1, 1})) {
+                    std::string ctext = "ln(abs(" + y0 + "))";
+                    if(r0->num != 0) ctext += " " + signed_rat_text(a, r_neg(*r0));
+                    steps.push_back("C = " + ctext);
+                }
+                steps.push_back("ln(abs(" + tok->y + ")) = " + format_expr(a, Rused) + " + ln(abs(" + y0 + "))");
+                std::string erhs = exp_log_product_text(a, Rused).value_or("e^(" + exp_arg_text(a, Rused) + ")");
+                steps.push_back(tok->y + " = " + y0 + "*" + erhs);
+                answer = tok->y + " = " + y0 + "*" + erhs;
+                used_bc = true;
+                explicit_answer = true;
+            }
+        }
+        if(log_left && B.have_y0 && B.y0_num) {
             NodeId log_arg = log_left->arg;
             NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
             auto lf = linfrac_in_y(a, log_arg, tok->y);
@@ -1931,7 +1960,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                             steps.push_back(format_expr(a, scaled_lhs) + " = e^(" + exp_arg_text(a, Rused) + ")");
                         }
                     }
-                    if(B.have_y1) {
+                    if(B.have_y1 && B.y1_num) {
                         NodeId y1arg = casio::simplify(a, substitute_de_var(a, log_arg, tok->y, B.y1));
                         NodeId ratio = casio::simplify(a, casio::div(a, y1arg, casio::num(a, q.num, q.den)));
                         NodeId lhs_log = casio::fn(a, "log", casio::fn(a, "abs", ratio));
@@ -1961,7 +1990,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 }
             }
         }
-        if(B.have_y0 && !used_bc) {
+        if(B.have_y0 && B.y0_num && !used_bc) {
             auto x0 = as_num(a, B.x0);
             auto L0 = eval_rat_small(a, *Li.result, tok->y, B.y0r);
             auto R0 = x0 ? eval_rat_small(a, Rint, tok->x, *x0) : std::optional<Rational>{};
@@ -1977,7 +2006,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 answer = format_expr(a, *Li.result) + " = " + rhs;
             }
         }
-        if(B.have_y1 && Cval) {
+        if(B.have_y1 && B.y1_num && Cval) {
             auto L1 = eval_rat_small(a, *Li.result, tok->y, B.y1r);
             if(L1) {
                 NodeId R1 = casio::simplify(a, substitute_de_var(a, Rint, tok->x, B.x1));
