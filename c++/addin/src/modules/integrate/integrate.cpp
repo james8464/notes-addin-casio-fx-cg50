@@ -1843,6 +1843,8 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     return casio::exam_block("linear differential equation", steps, tok.y + " = " + final_rhs);
 }
 
+static std::optional<std::vector<std::string>> symbolic_de_constant_route(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc);
+
 static std::vector<std::string> solve_de_mode(std::string const &payload)
 {
     std::string eqtxt, bc;
@@ -1875,6 +1877,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         auto lp = linear_parts_node(a, res, "Dde");
         if(!lp) throw std::runtime_error("not first order");
         NodeId dydx = casio::simplify(a, casio::div(a, casio::neg(a, lp->second), lp->first));
+        if(auto route = symbolic_de_constant_route(a, *tok, dydx, bc)) return *route;
         auto sep = split_sep(a, dydx, tok->x, tok->y);
         if(!sep) return solve_linear_de_mode(a, *tok, dydx, bc);
         NodeId X = casio::simplify(a, sep->first);
@@ -2005,6 +2008,15 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 final_rhs_node = casio::simplify(a, casio::add(a, {Rint, casio::num(a, C.num, C.den)}));
                 answer = format_expr(a, *Li.result) + " = " + rhs;
             }
+        }
+        if(B.have_y0 && !used_bc && !Cval) {
+            NodeId L0 = casio::simplify(a, substitute_de_var(a, *Li.result, tok->y, B.y0));
+            NodeId R0 = casio::simplify(a, substitute_de_var(a, Rint, tok->x, B.x0));
+            NodeId Cnode = casio::simplify(a, casio::add(a, {L0, casio::neg(a, R0)}));
+            NodeId rhs_node = casio::simplify(a, casio::add(a, {Rint, Cnode}));
+            steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
+            steps.push_back("C = " + format_expr(a, Cnode));
+            answer = format_expr(a, *Li.result) + " = " + format_expr(a, rhs_node);
         }
         if(B.have_y1 && B.y1_num && Cval) {
             auto L1 = eval_rat_small(a, *Li.result, tok->y, B.y1r);
@@ -9850,6 +9862,223 @@ static NodeId ln_abs(Arena &a, NodeId n)
     return casio::fn(a, "log", casio::fn(a, "abs", n));
 }
 
+static NodeId sym_div(Arena &a, NodeId top, NodeId bot)
+{
+    return casio::simplify(a, casio::div(a, top, bot));
+}
+
+static NodeId sym_mul(Arena &a, std::initializer_list<NodeId> xs)
+{
+    return casio::simplify(a, casio::mul(a, std::vector<NodeId>(xs)));
+}
+
+static std::optional<std::pair<int, NodeId>> varpow_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(!contains_var(a, n, var)) return std::make_pair(0, n);
+    if(is_sym(a, n, var)) return std::make_pair(1, casio::num(a, 1));
+    if(x.kind == NodeKind::Pow && is_sym(a, x.a, var)) {
+        auto e = as_num(a, x.b);
+        if(e && e->den == 1 && e->num >= 1 && e->num <= 2) return std::make_pair(static_cast<int>(e->num), casio::num(a, 1));
+    }
+    if(x.kind == NodeKind::Div && !contains_var(a, x.b, var)) {
+        auto p = varpow_coeff(a, x.a, var);
+        if(!p) return std::nullopt;
+        return std::make_pair(p->first, sym_div(a, p->second, x.b));
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    int pow = 0;
+    std::vector<NodeId> coeffs;
+    for(NodeId k : x.kids) {
+        if(contains_var(a, k, var)) {
+            auto p = varpow_coeff(a, k, var);
+            if(!p || p->first == 0 || pow) return std::nullopt;
+            pow = p->first;
+            if(!same_expr(a, p->second, casio::num(a, 1))) coeffs.push_back(p->second);
+        } else coeffs.push_back(k);
+    }
+    if(!pow) return std::nullopt;
+    return std::make_pair(pow, coeffs.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, coeffs)));
+}
+
+struct SymPoly2
+{
+    NodeId c0 = 0, c1 = 0, c2 = 0;
+};
+
+static std::optional<SymPoly2> sym_poly2(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &node = a.get(n);
+    if(node.kind == NodeKind::Div && !contains_var(a, node.b, var)) {
+        auto p = sym_poly2(a, node.a, var);
+        if(!p) return std::nullopt;
+        p->c0 = sym_div(a, p->c0, node.b);
+        p->c1 = sym_div(a, p->c1, node.b);
+        p->c2 = sym_div(a, p->c2, node.b);
+        return p;
+    }
+    SymPoly2 p{casio::num(a, 0), casio::num(a, 0), casio::num(a, 0)};
+    std::vector<NodeId> terms = node.kind == NodeKind::Add ? node.kids : std::vector<NodeId>{n};
+    for(NodeId t : terms) {
+        auto vc = varpow_coeff(a, t, var);
+        if(!vc || vc->first < 0 || vc->first > 2) return std::nullopt;
+        NodeId *slot = vc->first == 0 ? &p.c0 : (vc->first == 1 ? &p.c1 : &p.c2);
+        *slot = casio::simplify(a, casio::add(a, {*slot, vc->second}));
+    }
+    return p;
+}
+
+static std::optional<NodeId> integrate_symbolic_rational_de(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    if(a.get(expr).kind == NodeKind::Div) {
+        Node const &q = a.get(expr);
+        Node const &d = a.get(q.b);
+        auto one = as_num(a, q.a);
+        if(one && one->num == one->den && d.kind == NodeKind::Div && is_sym(a, d.b, var))
+            expr = casio::simplify(a, casio::div(a, casio::sym(a, var), d.a));
+    }
+    if(a.get(expr).kind != NodeKind::Div) return std::nullopt;
+    Node const &x = a.get(expr);
+    bool top_one = false, top_var = is_sym(a, x.a, var);
+    if(auto r = as_num(a, x.a); r && r->num == r->den) top_one = true;
+    if(!top_one && !top_var) return std::nullopt;
+    auto p = sym_poly2(a, x.b, var);
+    if(!p) return std::nullopt;
+    if(as_num(a, casio::simplify(a, p->c0)) &&
+       as_num(a, casio::simplify(a, p->c1)) &&
+       as_num(a, casio::simplify(a, p->c2)))
+        return std::nullopt;
+    bool has1 = !same_expr(a, p->c1, casio::num(a, 0));
+    bool has2 = !same_expr(a, p->c2, casio::num(a, 0));
+    if(has1 && !has2) {
+        NodeId den = x.b, B = p->c1, A = p->c0, logd = ln_abs(a, den);
+        if(top_one) {
+            steps.push_back("u=" + format_expr(a, den) + ", du=" + format_expr(a, B) + " d" + var + ".");
+            return sym_div(a, logd, B);
+        }
+        steps.push_back(var + "/(" + format_expr(a, den) + ") = 1/(" + format_expr(a, B) + ") - (" + format_expr(a, A) + ")/((" + format_expr(a, B) + ")*(" + format_expr(a, den) + ")).");
+        return casio::simplify(a, casio::add(a, {
+            sym_div(a, casio::sym(a, var), B),
+            casio::neg(a, sym_div(a, sym_mul(a, {A, logd}), sym_mul(a, {B, B})))
+        }));
+    }
+    if(has2 && !has1) {
+        NodeId den = x.b, B = p->c2, A = p->c0;
+        if(top_var) {
+            steps.push_back("u=" + format_expr(a, den) + ", du=2*" + format_expr(a, B) + "*" + var + " d" + var + ".");
+            return sym_div(a, ln_abs(a, den), sym_mul(a, {casio::num(a, 2), B}));
+        }
+        NodeId K = casio::simplify(a, casio::neg(a, B));
+        NodeId rA = casio::fn(a, "sqrt", A), rK = casio::fn(a, "sqrt", K);
+        NodeId top = casio::add(a, {rA, sym_mul(a, {rK, casio::sym(a, var)})});
+        NodeId bot = casio::add(a, {rA, casio::neg(a, sym_mul(a, {rK, casio::sym(a, var)}))});
+        steps.push_back(format_expr(a, den) + " = " + format_expr(a, A) + " - " + format_expr(a, K) + "*" + var + "^2.");
+        return sym_div(a, ln_abs(a, sym_div(a, top, bot)), sym_mul(a, {casio::num(a, 2), rA, rK}));
+    }
+    return std::nullopt;
+}
+
+static bool zero_node(Arena &a, NodeId n)
+{
+    return same_expr(a, n, casio::num(a, 0));
+}
+
+static NodeId sub_node(Arena &a, NodeId l, NodeId r)
+{
+    return casio::simplify(a, casio::add(a, {l, casio::neg(a, r)}));
+}
+
+static std::optional<std::vector<std::string>> symbolic_de_constant_route(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc)
+{
+    BoundaryDE B = parse_de_bc(a, bc, tok.y, tok.x);
+    if(!B.have_y0 || contains_var(a, B.x0, tok.x) || contains_var(a, B.y0, tok.y)) return std::nullopt;
+    if(B.have_y1) return std::nullopt;
+    NodeId x = casio::sym(a, tok.x), y = casio::sym(a, tok.y);
+    NodeId dx = sub_node(a, x, B.x0);
+    auto clean = [&](NodeId n) { return !contains_var(a, n, tok.x) && !contains_var(a, n, tok.y); };
+    auto symbolic_fraction = [&](NodeId n) {
+        return !as_num(a, casio::simplify(a, n)) && format_expr(a, n).find('/') != std::string::npos;
+    };
+
+    if(auto lin = linear_parts_node(a, dydx, tok.y); lin && clean(lin->first) && clean(lin->second) && !zero_node(a, lin->first) && symbolic_fraction(lin->first)) {
+        NodeId A = lin->first, C = lin->second;
+        NodeId e = exp_node(a, sym_mul(a, {A, dx}));
+        NodeId y0term = casio::simplify(a, casio::add(a, {sym_mul(a, {A, B.y0}), C}));
+        NodeId ans = sym_div(a, sub_node(a, sym_mul(a, {y0term, e}), C), A);
+        std::vector<std::string> steps{
+            "d" + tok.y + "/d" + tok.x + " = " + format_expr(a, dydx),
+            "d" + tok.y + "/(" + format_expr(a, sym_mul(a, {A, y})) + " + " + format_expr(a, C) + ") = d" + tok.x,
+            "ln(abs(" + format_expr(a, sym_mul(a, {A, y})) + " + " + format_expr(a, C) + "))/" + format_expr(a, A) + " = " + tok.x + " + C",
+            tok.y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0),
+            format_expr(a, sym_mul(a, {A, y})) + " + " + format_expr(a, C) + " = " + format_expr(a, y0term) + "*e^(" + format_expr(a, sym_mul(a, {A, dx})) + ")",
+        };
+        return casio::exam_block("separable differential equation", steps, tok.y + " = " + format_expr(a, ans));
+    }
+
+    auto quad = sym_poly2(a, dydx, tok.y);
+    if(quad && clean(quad->c0) && clean(quad->c2) && zero_node(a, quad->c1) && !zero_node(a, quad->c2) && symbolic_fraction(quad->c2) && zero_node(a, B.y0)) {
+        NodeId A = quad->c0, B2 = quad->c2, K = cancel_double_negative(a, casio::simplify(a, casio::neg(a, B2)));
+        NodeId rootA = casio::fn(a, "sqrt", A), rootK = casio::fn(a, "sqrt", K);
+        NodeId e = exp_node(a, casio::neg(a, sym_mul(a, {casio::num(a, 2), rootA, rootK, dx})));
+        NodeId ans = casio::simplify(a, sym_mul(a, {sym_div(a, rootA, rootK), sym_div(a, sub_node(a, casio::num(a, 1), e), casio::add(a, {casio::num(a, 1), e}))}));
+        std::vector<std::string> steps{
+            "d" + tok.y + "/d" + tok.x + " = " + format_expr(a, dydx),
+            "d" + tok.y + "/(" + format_expr(a, A) + " - " + format_expr(a, K) + "*" + tok.y + "^2) = d" + tok.x,
+            tok.y + "(" + format_expr(a, B.x0) + ") = 0",
+            tok.y + " = sqrt(" + format_expr(a, A) + "/" + format_expr(a, K) + ")*(1-e^(-2*sqrt(" + format_expr(a, A) + "*" + format_expr(a, K) + ")*" + format_expr(a, dx) + "))/(1+e^(-2*sqrt(" + format_expr(a, A) + "*" + format_expr(a, K) + ")*" + format_expr(a, dx) + "))",
+        };
+        return casio::exam_block("separable differential equation", steps, tok.y + " = " + format_expr(a, ans));
+    }
+
+    NodeId ydydx = casio::simplify(a, casio::mul(a, {y, dydx}));
+    Node const &dy = a.get(dydx);
+    if(dy.kind == NodeKind::Div && contains_var(a, dy.b, tok.y)) {
+        Node const &den = a.get(dy.b);
+        if(is_sym(a, dy.b, tok.y)) ydydx = dy.a;
+        else if(den.kind == NodeKind::Mul) {
+            std::vector<NodeId> kept;
+            bool removed = false;
+            for(NodeId k : den.kids) {
+                if(!removed && is_sym(a, k, tok.y)) {
+                    removed = true;
+                    continue;
+                }
+                kept.push_back(k);
+            }
+            if(removed) ydydx = sym_div(a, dy.a, kept.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, kept)));
+        }
+    }
+    auto yp = sym_poly2(a, ydydx, tok.y);
+    if(!yp || !clean(yp->c0)) return std::nullopt;
+    if(zero_node(a, yp->c1) && !zero_node(a, yp->c2) && clean(yp->c2) && symbolic_fraction(yp->c2) && zero_node(a, B.y0)) {
+        NodeId A = yp->c0, B2 = yp->c2;
+        NodeId e = exp_node(a, sym_mul(a, {casio::num(a, 2), B2, dx}));
+        NodeId ans = casio::simplify(a, sym_mul(a, {sym_div(a, A, B2), sub_node(a, e, casio::num(a, 1))}));
+        std::vector<std::string> steps{
+            tok.y + "*d" + tok.y + "/d" + tok.x + " = " + format_expr(a, ydydx),
+            "z = " + tok.y + "^2",
+            "dz/d" + tok.x + " = 2*" + tok.y + "*d" + tok.y + "/d" + tok.x,
+            "dz/d" + tok.x + " = 2*" + format_expr(a, A) + " + 2*(" + format_expr(a, B2) + ")*z",
+            tok.y + "(" + format_expr(a, B.x0) + ") = 0",
+        };
+        return casio::exam_block("separable differential equation", steps, tok.y + "^2 = " + format_expr(a, ans));
+    }
+    if(!zero_node(a, yp->c1) && zero_node(a, yp->c2) && clean(yp->c1) && symbolic_fraction(yp->c1) && zero_node(a, B.y0)) {
+        NodeId A = yp->c0, B1 = yp->c1;
+        NodeId den = casio::simplify(a, casio::add(a, {A, sym_mul(a, {B1, y})}));
+        NodeId left = casio::simplify(a, casio::add(a, {sym_div(a, y, B1), casio::neg(a, sym_div(a, sym_mul(a, {A, ln_abs(a, den)}), sym_mul(a, {B1, B1})))}));
+        NodeId c0 = casio::neg(a, sym_div(a, sym_mul(a, {A, ln_abs(a, A)}), sym_mul(a, {B1, B1})));
+        std::vector<std::string> steps{
+            tok.y + "*d" + tok.y + "/d" + tok.x + " = " + format_expr(a, ydydx),
+            tok.y + "/(" + format_expr(a, den) + ") d" + tok.y + " = d" + tok.x,
+            "Int " + tok.y + "/(" + format_expr(a, den) + ") d" + tok.y + " = " + tok.x + " + C",
+            tok.y + "(" + format_expr(a, B.x0) + ") = 0",
+        };
+        return casio::exam_block("separable differential equation", steps, format_expr(a, left) + " = " + format_expr(a, casio::add(a, {dx, c0})));
+    }
+    return std::nullopt;
+}
+
 static std::optional<NodeId> integrate_x_sec2_parts(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -14081,6 +14310,11 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto scs = integrate_sin_cos_over_sqrt_two_sin2(a, expr, var, out.steps)) {
         out.result = *scs;
+        return out;
+    }
+
+    if(auto sr = integrate_symbolic_rational_de(a, expr, var, out.steps)) {
+        out.result = *sr;
         return out;
     }
 
