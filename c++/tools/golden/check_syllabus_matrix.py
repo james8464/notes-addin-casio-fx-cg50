@@ -51,6 +51,7 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("pure_sequences", "negative binomial validity", ("--alg", "binomial((1+x)^(-1/2),x,0,4)"), ("C(n,2)", "Valid for abs(x) < 1")),
     MatrixCase("pure_trigonometry", "area formula with sine", ("--trig", "30=1/2*6*10*sin(C),C,0,pi,8"), ("sin(C) = 1", "C = [pi/2]")),
     MatrixCase("pure_trigonometry", "R-form trig solve", ("--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform"), ("R =", "arccos(2/5)")),
+    MatrixCase("pure_trigonometry", "radian solve with numeric bounds", ("--trig", "2-cos(3*t/4)=3,t,0,20,10,method=rad"), ("3*t/4 = alpha + 2*pi*n", "t = [4*pi/3, 4*pi]")),
     MatrixCase("pure_trigonometry", "double-angle sine identity", ("--alg", "compare(sin(2*x),2*sin(x)*cos(x))"), ("equivalent",)),
     MatrixCase("pure_trigonometry", "double-angle cosine identity", ("--alg", "compare(cos(2*x),1-2*sin(x)^2)"), ("equivalent",)),
     MatrixCase("pure_trigonometry", "sector arc formula subpart", ("--alg", "solve(s=r*theta,theta)"), ("theta = s/r",)),

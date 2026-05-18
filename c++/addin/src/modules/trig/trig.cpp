@@ -5732,10 +5732,10 @@ static std::optional<std::string> same_arg_sin_cos_zero(std::string const &eq_ke
 
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
                                                      std::string const &lo_text, std::string const &hi_text,
-                                                     bool general = false)
+                                                     bool general = false,
+                                                     std::optional<bool> rad_override = std::nullopt)
 {
-    // Determine mode from hi bound: contains pi => rad, else deg.
-    bool rad = (hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos);
+    bool rad = rad_override.value_or((hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos));
     std::string eq_key = compact_key(eq_text);
     if(eq_key == "tan(" + var + ")(1+cos(2" + var + "))=2sin(2" + var + ")^2" ||
        eq_key == "tan(" + var + ")(cos(2" + var + ")+1)=2sin(2" + var + ")^2") {
@@ -6914,21 +6914,32 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto parts = split_csv(req.expr);
         std::vector<std::string> args;
         bool general = req.method == "general";
+        std::optional<bool> rad_override;
+        if(req.method == "rad" || req.method == "radians") rad_override = true;
+        if(req.method == "deg" || req.method == "degrees") rad_override = false;
         for(auto const &part : parts) {
             std::string trimmed = trim(part);
             if(trimmed == "method=general") {
                 general = true;
                 continue;
             }
+            if(trimmed == "rad" || trimmed == "radians" || trimmed == "method=rad" || trimmed == "method=radians") {
+                rad_override = true;
+                continue;
+            }
+            if(trimmed == "deg" || trimmed == "degrees" || trimmed == "method=deg" || trimmed == "method=degrees") {
+                rad_override = false;
+                continue;
+            }
             if(trimmed.rfind("method=", 0) == 0 || trimmed.rfind("target=", 0) == 0) continue;
             args.push_back(trimmed);
         }
         if(args.size() >= 4) {
-            return solve_simple_trig_eq(arena, args[0], args[1], args[2], args[3], general);
+            return solve_simple_trig_eq(arena, args[0], args[1], args[2], args[3], general, rad_override);
         }
         if(!args.empty()) {
             std::string var = args.size() >= 2 ? args[1] : "x";
-            return solve_simple_trig_eq(arena, args[0], var, "0", "2*pi", true);
+            return solve_simple_trig_eq(arena, args[0], var, "0", "2*pi", true, rad_override);
         }
     }
     if(req.expr.find('=') != std::string::npos) {
