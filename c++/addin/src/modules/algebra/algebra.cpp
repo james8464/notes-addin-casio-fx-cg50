@@ -2701,7 +2701,16 @@ static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::str
     std::vector<double> vals;
     for(auto const &s : sols) {
         auto v = solution_line_value(a, s);
-        if(v && std::isfinite(*v)) vals.push_back(*v);
+        if(v && std::isfinite(*v)) {
+            bool seen = false;
+            for(double u : vals) {
+                if(std::fabs(u - *v) < 5e-4) {
+                    seen = true;
+                    break;
+                }
+            }
+            if(!seen) vals.push_back(*v);
+        }
     }
     if(vals.empty()) return;
     std::sort(vals.begin(), vals.end());
@@ -2737,7 +2746,27 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
         if(!residual || !std::isfinite(*residual)) continue;
         if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) kept.push_back(s);
     }
-    return kept;
+    std::vector<std::string> unique;
+    std::vector<double> vals;
+    for(auto const &s : kept) {
+        auto v = solution_line_value(a, s);
+        if(!v || !std::isfinite(*v)) {
+            push_unique(unique, s);
+            continue;
+        }
+        bool seen = false;
+        for(double u : vals) {
+            if(std::fabs(u - *v) < 5e-4) {
+                seen = true;
+                break;
+            }
+        }
+        if(!seen) {
+            vals.push_back(*v);
+            unique.push_back(s);
+        }
+    }
+    return unique;
 }
 
 static bool square_rat_root(Rational r, Rational &root)
@@ -2850,7 +2879,7 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
     auto add_root = [&](double r) {
         if(r < lo - 1e-7 || r > hi + 1e-7) return;
         for(double seen : roots) {
-            if(std::fabs(seen - r) < 1e-5) return;
+            if(std::fabs(seen - r) < 5e-4) return;
         }
         roots.push_back(r);
     };

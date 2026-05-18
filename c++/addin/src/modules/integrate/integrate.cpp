@@ -111,11 +111,43 @@ static std::optional<std::int64_t> sqrt_i64_exact(std::int64_t n)
     return r * r == n ? std::optional<std::int64_t>(r) : std::nullopt;
 }
 
+static int pow_cmp_i64(std::int64_t base, int exp, std::int64_t target)
+{
+    std::int64_t acc = 1;
+    for(int i = 0; i < exp; ++i) {
+        if(base != 0 && acc > target / base) return 1;
+        acc *= base;
+    }
+    if(acc == target) return 0;
+    return acc < target ? -1 : 1;
+}
+
+static std::optional<std::int64_t> nth_root_i64_exact(std::int64_t n, int deg)
+{
+    if(deg <= 0 || (n < 0 && deg % 2 == 0)) return std::nullopt;
+    std::int64_t sign = n < 0 ? -1 : 1;
+    std::int64_t target = n < 0 ? -n : n;
+    if(target <= 1) return sign * target;
+    auto r = static_cast<std::int64_t>(std::pow(static_cast<long double>(target), 1.0L / deg));
+    if(r < 1) r = 1;
+    while(pow_cmp_i64(r + 1, deg, target) <= 0) ++r;
+    while(r > 1 && pow_cmp_i64(r, deg, target) > 0) --r;
+    return pow_cmp_i64(r, deg, target) == 0 ? std::optional<std::int64_t>(sign * r) : std::nullopt;
+}
+
 static std::optional<Rational> sqrt_rat_exact(Rational q)
 {
     if(q.num < 0) return std::nullopt;
     auto n = sqrt_i64_exact(q.num);
     auto d = sqrt_i64_exact(q.den);
+    if(!n || !d || *d == 0) return std::nullopt;
+    return Rational{*n, *d};
+}
+
+static std::optional<Rational> nth_root_rat_exact(Rational q, int deg)
+{
+    auto n = nth_root_i64_exact(q.num, deg);
+    auto d = nth_root_i64_exact(q.den, deg);
     if(!n || !d || *d == 0) return std::nullopt;
     return Rational{*n, *d};
 }
@@ -1142,8 +1174,8 @@ static std::optional<Rational> eval_rat_small(Arena &a, NodeId n, std::string co
         auto u = eval_rat_small(a, x.a, var, val);
         auto e = as_num(a, x.b);
         if(!u || !e || e->num < -8 || e->num > 8) return std::nullopt;
-        if(e->den == 2) {
-            auto root = sqrt_rat_exact(*u);
+        if(e->den > 1 && e->den <= 8) {
+            auto root = nth_root_rat_exact(*u, static_cast<int>(e->den));
             if(!root) return std::nullopt;
             Rational p = r_pow(*root, static_cast<int>(std::llabs(e->num)));
             return e->num >= 0 ? p : (p.num == 0 ? std::nullopt : std::optional<Rational>(r_div(Rational{1, 1}, p)));
@@ -1287,12 +1319,17 @@ static std::optional<AffinePowerLeft> affine_power_left_factor(Arena &a, NodeId 
 
 static std::string power_text(std::string const &base, Rational e)
 {
+    auto b = [&]() {
+        return (base.find(' ') != std::string::npos || base.find('+') != std::string::npos || base.find('-') != std::string::npos)
+            ? "(" + base + ")"
+            : base;
+    };
     if(e.num == e.den) return base;
     if(e.num == 1 && e.den == 2) return "sqrt(" + base + ")";
     if(e.num == -1 && e.den == 1) return "1/(" + base + ")";
     if(e.num == -1 && e.den == 2) return "1/sqrt(" + base + ")";
-    if(e.den == 1) return base + "^" + std::to_string(e.num);
-    return base + "^(" + std::to_string(e.num) + "/" + std::to_string(e.den) + ")";
+    if(e.den == 1) return b() + "^" + std::to_string(e.num);
+    return b() + "^(" + std::to_string(e.num) + "/" + std::to_string(e.den) + ")";
 }
 
 struct LinFrac
