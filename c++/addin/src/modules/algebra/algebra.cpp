@@ -5036,6 +5036,8 @@ static std::optional<std::string> log_linear_range(Arena &a, NodeId n, std::stri
     return std::string("all real y");
 }
 
+static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, NodeId n, NodeId u);
+
 static std::optional<std::string> exp_linear_range(
     Arena &a,
     NodeId n,
@@ -5047,15 +5049,54 @@ static std::optional<std::string> exp_linear_range(
 {
     Node const &x = a.get(n);
     NodeId arg = n;
+    NodeId exp_expr = n;
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) arg = x.a;
     else if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
         if(base.kind != NodeKind::Const || base.ckind != ConstKind::E) return std::nullopt;
         arg = x.b;
     }
-    else return std::nullopt;
+    else {
+        exp_expr = 0;
+        auto direct_exp = [&](NodeId t) -> NodeId {
+            Node const &z = a.get(t);
+            if(z.kind == NodeKind::Fn && z.fkind == FnKind::Exp) return t;
+            if(z.kind == NodeKind::Pow) {
+                Node const &base = a.get(z.a);
+                if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return t;
+            }
+            return 0;
+        };
+        if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+            if(x.kind == NodeKind::Add) {
+                for(NodeId k : x.kids) {
+                    exp_expr = direct_exp(k);
+                    if(!exp_expr && a.get(k).kind == NodeKind::Mul) {
+                        for(NodeId f : a.get(k).kids) {
+                            exp_expr = direct_exp(f);
+                            if(exp_expr) break;
+                        }
+                    }
+                    if(exp_expr) break;
+                }
+            }
+            else {
+                for(NodeId f : x.kids) {
+                    exp_expr = direct_exp(f);
+                    if(exp_expr) break;
+                }
+            }
+        }
+        if(!exp_expr) return std::nullopt;
+        Node const &e = a.get(exp_expr);
+        arg = e.kind == NodeKind::Fn ? e.a : e.b;
+    }
     auto p = poly_of(a, arg, var);
     if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    auto aff = linear_in_expr(a, n, exp_expr);
+    if(!aff || aff->first.num == 0) {
+        aff = std::make_pair(Rational{1, 1}, Rational{0, 1});
+    }
     steps.push_back("e^u > 0 for all real u.");
     if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
         auto ylo = eval_node(a, n, var, *lo_v);
@@ -5065,6 +5106,16 @@ static std::optional<std::string> exp_linear_range(
             double mx = std::max(*ylo, *yhi);
             steps.push_back("Evaluate endpoints since exp(linear) is monotone.");
             return format_double_compact(mn) + " <= y <= " + format_double_compact(mx);
+        }
+    }
+    if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v) && p->a1.num < 0) {
+        auto ylo = eval_node(a, n, var, *lo_v);
+        if(ylo) {
+            std::string lim = format_expr(a, a.num(aff->second));
+            double ylimit = static_cast<double>(aff->second.num) / static_cast<double>(aff->second.den);
+            steps.push_back("As " + var + " -> inf, e^u -> 0.");
+            if(*ylo < ylimit) return format_double_compact(*ylo) + " <= y < " + lim;
+            return lim + " < y <= " + format_double_compact(*ylo);
         }
     }
     return "y > 0";
