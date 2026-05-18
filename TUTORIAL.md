@@ -24,6 +24,27 @@ Goal: short exam-style maths lines for fx-CG50. Use exact syntax; use `*` if in 
 | z-test | `ztest(xbar,mu,sigma,n,alpha,tail)` | sample mean, null mean, sd, size, alpha, `lt/gt/ne` | Shows z, p, decision. |
 | SUVAT | `suvat(s=...,u=...,v=...,a=...,t=...,target=...)` | known values plus target | Solves missing kinematics variable. |
 
+## Formula Coverage
+
+The program should handle A-level formula families as working routes or subparts:
+
+| Area | Covered route |
+|---|---|
+| indices/surds | simplify/rewrite, rationalise-style surd transforms |
+| quadratics | factor, formula, discriminant, complete square, roots |
+| coordinate geometry | line/circle algebra, midpoint/distance as subparts |
+| functions | inverse, composite, modulus, domain/range |
+| sequences | arithmetic/geometric formulae via algebra; binomial expansion with validity |
+| trig | identities, exact values, bounded solves, R-form, sine/cosine rule subparts |
+| logs/exp | log laws, change of base, growth/decay, DE constants |
+| differentiation | chain/product/quotient/implicit/parametric/logdiff/stationary routes |
+| integration | direct, substitution, parts, DI, trig, PF, areas, volumes |
+| numerical | Newton-Raphson, trapezium, Simpson, mid-ordinate |
+| statistics | summary data, binomial, normal, z-tests |
+| mechanics | SUVAT plus algebraic force/moment/energy/power subparts |
+
+Gate: `python3 c++/tools/golden/check_syllabus_matrix.py --fail-on-gap --report-json`
+
 ## Derivative Methods
 
 | Method | Use |

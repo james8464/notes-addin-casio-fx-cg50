@@ -5167,6 +5167,76 @@ static std::optional<std::string> exp_linear_range(
     return "y > 0";
 }
 
+static std::optional<std::pair<Rational, NodeId>> positive_coeff_exp(Arena &a, NodeId n)
+{
+    if(auto e = exp_like_arg(a, n)) return std::make_pair(Rational{1, 1}, *e);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId arg = 0;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(auto e = exp_like_arg(a, k); e && !arg) arg = *e;
+        else return std::nullopt;
+    }
+    if(!arg || c.num <= 0) return std::nullopt;
+    return std::make_pair(c, arg);
+}
+
+static std::optional<std::pair<Rational, std::string>> trig_square_term(Arena &a, NodeId n)
+{
+    Rational c{1, 1};
+    NodeId core = n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        core = 0;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) c = r_mul(c, *r);
+            else if(!core) core = k;
+            else return std::nullopt;
+        }
+    }
+    if(!core) return std::nullopt;
+    Node const &p = a.get(core);
+    if(p.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, p.b);
+    if(!e || e->num != 2 || e->den != 1) return std::nullopt;
+    Node const &fn = a.get(p.a);
+    if(fn.kind != NodeKind::Fn || (fn.fkind != FnKind::Sin && fn.fkind != FnKind::Cos)) return std::nullopt;
+    return std::make_pair(c, std::string(fn.fkind == FnKind::Sin ? "sin(" : "cos(") + format_expr(a, fn.a) + ")^2");
+}
+
+static std::optional<std::string> trig_square_exp_range(
+    Arena &a,
+    NodeId n,
+    std::optional<double> lo_v,
+    std::optional<double> hi_v,
+    std::vector<std::string> &steps
+)
+{
+    if(!(lo_v && hi_v && std::fabs(*lo_v) < 1e-12 && !std::isfinite(*hi_v))) return std::nullopt;
+    auto ce = positive_coeff_exp(a, n);
+    if(!ce) return std::nullopt;
+    Rational off{0, 1};
+    std::optional<std::pair<Rational, std::string>> sq;
+    Node const &arg = a.get(ce->second);
+    std::vector<NodeId> terms = arg.kind == NodeKind::Add ? arg.kids : std::vector<NodeId>{ce->second};
+    for(NodeId t : terms) {
+        if(auto r = as_num(a, t)) off = r_add(off, *r);
+        else if(auto s = trig_square_term(a, t); s && !sq) sq = *s;
+        else return std::nullopt;
+    }
+    if(!sq || sq->first.num == 0) return std::nullopt;
+    Rational lo = off, hi = r_add(off, sq->first);
+    if(sq->first.num < 0) std::swap(lo, hi);
+    NodeId c = casio::num(a, ce->first.num, ce->first.den);
+    NodeId ylo = casio::simplify(a, casio::mul(a, {c, casio::power(a, casio::constant_e(a), casio::num(a, lo.num, lo.den))}));
+    NodeId yhi = casio::simplify(a, casio::mul(a, {c, casio::power(a, casio::constant_e(a), casio::num(a, hi.num, hi.den))}));
+    steps.push_back("0 <= " + sq->second + " <= 1.");
+    steps.push_back(format_expr(a, casio::num(a, lo.num, lo.den)) + " <= exponent <= " + format_expr(a, casio::num(a, hi.num, hi.den)) + ".");
+    return format_expr(a, ylo) + " <= y <= " + format_expr(a, yhi);
+}
+
 static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, NodeId n, NodeId u)
 {
     if(casio::same_by_sig(a, n, u)) return std::make_pair(Rational{1, 1}, Rational{0, 1});
@@ -8678,6 +8748,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, steps)) {
                     range_answer = *er;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto ter = trig_square_exp_range(arena, n, lo_v, hi_v, steps)) {
+                    range_answer = *ter;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {

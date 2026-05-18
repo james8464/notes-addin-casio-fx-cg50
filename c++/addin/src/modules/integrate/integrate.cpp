@@ -1889,31 +1889,37 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
             auto lf = linfrac_in_y(a, log_arg, tok->y);
             auto x0 = as_num(a, B.x0);
             auto r0 = x0 ? eval_rat_small(a, log_rhs, tok->x, *x0) : std::optional<Rational>{};
-            if(lf && r0 && r0->num == 0) {
+            if(lf && r0) {
                 Rational top = r_add(r_mul(lf->a, B.y0r), lf->b);
                 Rational bot = r_add(r_mul(lf->c, B.y0r), lf->d);
                 if(bot.num != 0) {
                     Rational q = r_div(top, bot);
                     Rational qs = q;
                     if(q.num < 0) q.num = -q.num;
+                    NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, casio::num(a, r0->num, r0->den))}));
                     std::string log_lhs = "log(abs(" + format_expr(a, log_arg) + "))";
                     steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
                     used_bc = true;
+                    if(r_eq(log_left->scale, Rational{1, 1})) {
+                        Rational cr = r_neg(*r0);
+                        std::string ctext;
+                        if(q.num != q.den) ctext = "log(" + rat_text_small(a, q) + ")";
+                        if(cr.num != 0) ctext += (ctext.empty() ? rat_text_small(a, cr) : " " + signed_rat_text(a, cr));
+                        if(ctext.empty()) ctext = "0";
+                        steps.push_back("C = " + ctext);
+                    }
                     if(q.num == q.den) {
-                        if(r_eq(log_left->scale, Rational{1, 1})) steps.push_back("C = 0");
-                        steps.push_back(log_lhs + " = " + format_expr(a, log_rhs));
-                        steps.push_back(format_expr(a, log_arg) + " = " + (qs.num < 0 ? "-" : "") + "e^(" + exp_arg_text(a, log_rhs) + ")");
+                        steps.push_back(log_lhs + " = " + format_expr(a, Rused));
+                        steps.push_back(format_expr(a, log_arg) + " = " + (qs.num < 0 ? "-" : "") + "e^(" + exp_arg_text(a, Rused) + ")");
                     }
                     else {
-                        if(r_eq(log_left->scale, Rational{1, 1})) steps.push_back("C = log(" + rat_text_small(a, q) + ")");
-                        steps.push_back(log_lhs + " = " + format_expr(a, log_rhs) + " + log(" + rat_text_small(a, q) + ")");
-                        steps.push_back(format_expr(a, log_arg) + " = " + (qs.num < 0 ? "-" : "") + rat_text_small(a, q) + "*e^(" + exp_arg_text(a, log_rhs) + ")");
+                        steps.push_back(log_lhs + " = " + format_expr(a, Rused) + " + log(" + rat_text_small(a, q) + ")");
+                        steps.push_back(format_expr(a, log_arg) + " = " + (qs.num < 0 ? "-" : "") + rat_text_small(a, q) + "*e^(" + exp_arg_text(a, Rused) + ")");
                         if(qs.num > 0 && q.num == 1 && q.den != 1) {
                             NodeId scaled_lhs = casio::simplify(a, casio::mul(a, {casio::num(a, q.den, q.num), log_arg}));
-                            steps.push_back(format_expr(a, scaled_lhs) + " = e^(" + exp_arg_text(a, log_rhs) + ")");
+                            steps.push_back(format_expr(a, scaled_lhs) + " = e^(" + exp_arg_text(a, Rused) + ")");
                         }
                     }
-                    NodeId Rused = log_rhs;
                     if(B.have_y1) {
                         NodeId y1arg = casio::simplify(a, substitute_de_var(a, log_arg, tok->y, B.y1));
                         NodeId ratio = casio::simplify(a, casio::div(a, y1arg, casio::num(a, q.num, q.den)));
