@@ -1290,6 +1290,39 @@ static NodeId div_by_coeff(Arena &a, NodeId rhs, Rational c)
     return casio::simplify(a, casio::div(a, rhs, casio::num(a, c.num, c.den)));
 }
 
+static NodeId split_const_power_product(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(e && base.kind == NodeKind::Mul) {
+            std::vector<NodeId> cs, vs;
+            for(NodeId k : base.kids) (contains_var(a, k, var) ? vs : cs).push_back(k);
+            if(!cs.empty() && !vs.empty()) {
+                NodeId c = casio::simplify(a, casio::mul(a, cs));
+                NodeId v = casio::simplify(a, casio::mul(a, vs));
+                return casio::simplify(a, casio::mul(a, {
+                    casio::power(a, c, x.b),
+                    casio::power(a, v, x.b)
+                }));
+            }
+        }
+    }
+    if(x.kind == NodeKind::Mul || x.kind == NodeKind::Add) {
+        std::vector<NodeId> ks;
+        ks.reserve(x.kids.size());
+        for(NodeId k : x.kids) ks.push_back(split_const_power_product(a, k, var));
+        return casio::simplify(a, x.kind == NodeKind::Mul ? casio::mul(a, ks) : casio::add(a, ks));
+    }
+    if(x.kind == NodeKind::Div) {
+        return casio::simplify(a, casio::div(a,
+            split_const_power_product(a, x.a, var),
+            split_const_power_product(a, x.b, var)));
+    }
+    return n;
+}
+
 struct AffinePowerLeft
 {
     Rational coeff, exp;
@@ -2066,6 +2099,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         Node const &Yn = a.get(Y);
         auto yn = Yn.kind == NodeKind::Div ? as_num(a, Yn.a) : std::optional<Rational>{};
         NodeId invY = (yn && yn->num == yn->den) ? Yn.b : casio::simplify(a, casio::div(a, casio::num(a, 1), Y));
+        invY = split_const_power_product(a, invY, tok->y);
         auto Li = integrate_giac_style(a, invY, tok->y);
         auto Ri = integrate_giac_style(a, X, tok->x);
         if(!Li.result) throw std::runtime_error("Int y " + format_expr(a, invY));
