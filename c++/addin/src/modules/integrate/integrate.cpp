@@ -1606,8 +1606,9 @@ static std::optional<NodeId> strip_neg_factor(Arena &a, NodeId n)
     bool used = false;
     for(NodeId k : x.kids) {
         auto r = as_num(a, k);
-        if(!used && r && r->num == -r->den) {
+        if(!used && r && r->num < 0) {
             used = true;
+            if(r->num != -r->den) kids.push_back(casio::num(a, -r->num, r->den));
             continue;
         }
         kids.push_back(k);
@@ -1636,6 +1637,30 @@ static NodeId cancel_div_den_double_negative(Arena &a, NodeId n)
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Div) return n;
     return casio::simplify(a, casio::div(a, x.a, cancel_double_negative(a, x.b)));
+}
+
+static NodeId cancel_div_den_double_negative_deep(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        NodeId top = cancel_div_den_double_negative_deep(a, x.a);
+        NodeId bot = cancel_div_den_double_negative_deep(a, x.b);
+        return cancel_div_den_double_negative(a, casio::simplify(a, casio::div(a, top, bot)));
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> ks;
+        ks.reserve(x.kids.size());
+        for(NodeId k : x.kids) ks.push_back(cancel_div_den_double_negative_deep(a, k));
+        NodeId r = casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, ks) : casio::mul(a, ks));
+        return x.kind == NodeKind::Mul ? cancel_double_negative(a, r) : r;
+    }
+    if(x.kind == NodeKind::Pow) {
+        return casio::simplify(a, casio::power(a, cancel_div_den_double_negative_deep(a, x.a), cancel_div_den_double_negative_deep(a, x.b)));
+    }
+    if(x.kind == NodeKind::Fn) {
+        return casio::simplify(a, a.fn(x.fkind, cancel_div_den_double_negative_deep(a, x.a)));
+    }
+    return n;
 }
 
 static std::optional<NodeId> sin_over_cos_node(Arena &a, NodeId n)
@@ -1803,6 +1828,11 @@ static std::optional<NodeId> de_ratio_simplify(Arena &a, NodeId top, NodeId bot)
 {
     if(same_expr(a, top, bot)) return casio::num(a, 1);
     Node const &tn = a.get(top);
+    if(tn.kind == NodeKind::Div && same_expr(a, tn.a, bot))
+        return casio::simplify(a, casio::div(a, casio::num(a, 1), tn.b));
+    Node const &bn = a.get(bot);
+    if(bn.kind == NodeKind::Div && same_expr(a, top, bn.a))
+        return casio::simplify(a, bn.b);
     if(tn.kind == NodeKind::Mul) {
         std::vector<NodeId> kept;
         bool cancelled = false;
@@ -1870,6 +1900,40 @@ static std::optional<std::string> reciprocal_linear_text(Arena &a, NodeId n, std
     if(bn > 0) den += "+" + std::to_string(bn);
     else if(bn < 0) den += "-" + std::to_string(-bn);
     return std::to_string(l) + "/(" + den + ")";
+}
+
+static std::string linear_scaled_text(std::int64_t an, std::int64_t bn, std::string const &var)
+{
+    std::string s;
+    if(an == 1) s = var;
+    else if(an == -1) s = "-" + var;
+    else if(an != 0) s = std::to_string(an) + "*" + var;
+    if(bn > 0) s += (s.empty() ? "" : "+") + std::to_string(bn);
+    else if(bn < 0) s += "-" + std::to_string(-bn);
+    return s.empty() ? "0" : s;
+}
+
+static std::optional<std::string> affine_reciprocal_text(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    auto c0 = as_num(a, x.kids[0]), c1 = as_num(a, x.kids[1]);
+    NodeId frac = c0 ? x.kids[1] : (c1 ? x.kids[0] : 0);
+    auto c = c0 ? *c0 : (c1 ? *c1 : Rational{0, 1});
+    if(!frac) return std::nullopt;
+    Node const &f = a.get(frac);
+    if(f.kind != NodeKind::Div) return std::nullopt;
+    auto top = as_num(a, f.a);
+    if(!top || top->num != top->den) return std::nullopt;
+    auto lp = linear_parts_node(a, f.b, var);
+    if(!lp) return std::nullopt;
+    auto A = as_num(a, lp->first), B = as_num(a, lp->second);
+    if(!A || !B || A->num == 0) return std::nullopt;
+    Rational ca = r_mul(c, *A), cb1 = r_add(r_mul(c, *B), Rational{1, 1});
+    std::int64_t l = std::lcm(std::lcm(ca.den, cb1.den), std::lcm(A->den, B->den));
+    std::int64_t na = ca.num * (l / ca.den), nb = cb1.num * (l / cb1.den);
+    std::int64_t da = A->num * (l / A->den), db = B->num * (l / B->den);
+    return "(" + linear_scaled_text(na, nb, var) + ")/(" + linear_scaled_text(da, db, var) + ")";
 }
 
 static std::string de_fmt(Arena &a, NodeId n)
@@ -2203,19 +2267,26 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 if(!r_eq(pe->second, Rational{1, 1})) {
                     steps.push_back(y_power_text(tok->y, pe->second) + " = " + format_expr(a, y_power_rhs));
                 }
-                y_rhs = fold_exact_roots(a, cancel_div_den_double_negative(a, y_rhs));
-                answer = tok->y + " = " + reciprocal_linear_text(a, y_rhs, tok->x).value_or(format_expr(a, y_rhs));
+                y_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs));
+                auto compact_rhs = affine_reciprocal_text(a, y_rhs, tok->x);
+                if(!compact_rhs) compact_rhs = reciprocal_linear_text(a, y_rhs, tok->x);
+                answer = tok->y + " = " + compact_rhs.value_or(format_expr(a, y_rhs));
             }
             else if(auto ap = affine_power_left_factor(a, *Li.result, tok->y); ap && ap->coeff.num != 0 && ap->exp.num != 0) {
                 NodeId base_power_rhs = div_by_coeff(a, final_rhs_node, ap->coeff);
+                base_power_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, base_power_rhs));
                 NodeId base_rhs = invert_power_rhs(a, base_power_rhs, ap->exp);
+                base_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, base_rhs));
                 steps.push_back(power_text(format_expr(a, ap->base), ap->exp) + " = " + format_expr(a, base_power_rhs));
                 steps.push_back(format_expr(a, ap->base) + " = " + format_expr(a, base_rhs));
                 auto lin = linear_parts_node(a, ap->base, tok->y);
                 auto A = lin ? as_num(a, lin->first) : std::optional<Rational>{};
                 if(lin && A && A->num != 0) {
                     NodeId y_rhs = casio::simplify(a, casio::div(a, casio::add(a, {base_rhs, casio::neg(a, lin->second)}), casio::num(a, A->num, A->den)));
-                    answer = tok->y + " = " + format_expr(a, y_rhs);
+                    y_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs));
+                    auto compact_rhs = affine_reciprocal_text(a, y_rhs, tok->x);
+                    if(!compact_rhs) compact_rhs = reciprocal_linear_text(a, y_rhs, tok->x);
+                    answer = tok->y + " = " + compact_rhs.value_or(format_expr(a, y_rhs));
                 }
             }
         }
