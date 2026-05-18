@@ -1959,6 +1959,9 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     NodeId muQ = cancel_matching_power_den(a, casio::simplify(a, compact_zero_exp(a, compact_exp_product(a, a.mul({mu, Q})))));
     if(auto t = sin_over_cos_node(a, muQ)) muQ = *t;
     auto Si = integrate_giac_style(a, muQ, tok.x);
+    if(!Si.result && !contains_var(a, P, tok.x) && !contains_var(a, Q, tok.x)) {
+        Si.result = casio::simplify(a, casio::div(a, casio::mul(a, {Q, mu}), P));
+    }
     if(!Si.result) throw std::runtime_error("RHS Int " + format_expr(a, muQ));
 
     std::vector<std::string> steps;
@@ -1974,6 +1977,7 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     steps.push_back(mu_disp + "*" + tok.y + " = " + de_fmt(a, *Si.result) + " + C");
 
     std::string rhs = format_expr(a, *Si.result) + " + C";
+    std::optional<NodeId> c_final;
     BoundaryDE B = parse_de_bc(a, bc, tok.y, tok.x);
     if(B.have_y0 && B.y0_num) {
         auto x0 = as_num(a, B.x0);
@@ -1994,6 +1998,7 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
             }
             steps.push_back(tok.y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
             steps.push_back("C = " + format_expr(a, cnode));
+            c_final = cnode;
             NodeId rhs_node = casio::simplify(a, casio::add(a, {*Si.result, cnode}));
             rhs = format_expr(a, rhs_node);
             steps.push_back(mu_disp + "*" + tok.y + " = " + rhs);
@@ -2002,6 +2007,11 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     std::string final_rhs = "(" + rhs + ")/(" + mu_s + ")";
     if(mu_s.size() > 3 && mu_s.substr(mu_s.size() - 3) == "^-1") {
         final_rhs = "(" + rhs + ")*" + mu_s.substr(0, mu_s.size() - 3);
+    }
+    if(c_final && !contains_var(a, P, tok.x) && !contains_var(a, Q, tok.x)) {
+        NodeId steady = casio::simplify(a, casio::div(a, Q, P));
+        NodeId decay = casio::simplify(a, casio::mul(a, {*c_final, exp_node(a, casio::neg(a, casio::mul(a, {P, casio::sym(a, tok.x)})))}));
+        final_rhs = format_expr(a, casio::simplify(a, casio::add(a, {steady, decay})));
     }
     return casio::exam_block("linear differential equation", steps, tok.y + " = " + final_rhs);
 }
@@ -2029,8 +2039,13 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
     try {
         if(eqtxt.find("d2") != std::string::npos) throw std::runtime_error("second-order DE unsupported");
         if(!top_eq_pos(eqtxt)) eqtxt = "dy/dx=" + eqtxt;
+        std::size_t eqp0 = *top_eq_pos(eqtxt);
         auto tok = find_deriv_token(eqtxt);
         if(!tok) throw std::runtime_error("need d?/d?");
+        std::string lhs0 = eqtxt.substr(0, eqp0);
+        std::string lhs_rest = lhs0;
+        lhs_rest.erase(tok->pos, tok->len);
+        bool prefer_linear = lhs_rest.find(tok->y) != std::string::npos;
         std::string repl = eqtxt;
         repl.replace(tok->pos, tok->len, "Dde");
         Arena a;
@@ -2041,6 +2056,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         if(!lp) throw std::runtime_error("not first order");
         NodeId dydx = casio::simplify(a, casio::div(a, casio::neg(a, lp->second), lp->first));
         if(auto route = symbolic_de_constant_route(a, *tok, dydx, bc)) return *route;
+        if(prefer_linear) return solve_linear_de_mode(a, *tok, dydx, bc);
         auto sep = split_sep(a, dydx, tok->x, tok->y);
         if(!sep) return solve_linear_de_mode(a, *tok, dydx, bc);
         NodeId X = casio::simplify(a, sep->first);
