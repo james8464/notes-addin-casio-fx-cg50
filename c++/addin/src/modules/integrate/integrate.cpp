@@ -969,11 +969,42 @@ static std::optional<std::pair<NodeId, NodeId>> split_sep(Arena &a, NodeId n, st
         return std::make_pair(mul_or_one_int(a, xs), mul_or_one_int(a, ys));
     }
     if(x.kind == NodeKind::Div) {
+        if(is_pow_e(a, x.b)) {
+            Node const &d = a.get(x.b);
+            return split_sep(a, casio::mul(a, {x.a, casio::power(a, d.a, casio::neg(a, d.b))}), xv, yv);
+        }
         auto p = split_sep(a, x.a, xv, yv);
         auto q = split_sep(a, x.b, xv, yv);
         if(!p || !q) return std::nullopt;
         return std::make_pair(casio::simplify(a, casio::div(a, p->first, q->first)),
                               casio::simplify(a, casio::div(a, p->second, q->second)));
+    }
+    if(is_pow_e(a, n)) {
+        Node const &e = a.get(x.b);
+        std::vector<NodeId> exp_terms;
+        if(e.kind == NodeKind::Add) {
+            exp_terms = e.kids;
+        }
+        else if(e.kind == NodeKind::Mul) {
+            std::vector<NodeId> coeffs;
+            NodeId sum = 0;
+            for(NodeId k : e.kids) {
+                if(a.get(k).kind == NodeKind::Add && !sum) sum = k;
+                else coeffs.push_back(k);
+            }
+            if(sum) {
+                for(NodeId k : a.get(sum).kids) {
+                    std::vector<NodeId> ks = coeffs;
+                    ks.push_back(k);
+                    exp_terms.push_back(casio::mul(a, ks));
+                }
+            }
+        }
+        if(!exp_terms.empty()) {
+            std::vector<NodeId> parts;
+            for(NodeId k : exp_terms) parts.push_back(casio::power(a, x.a, k));
+            return split_sep(a, casio::mul(a, parts), xv, yv);
+        }
     }
     if(hy && !hx) return std::make_pair(casio::num(a, 1), n);
     if(x.kind == NodeKind::Add) {
@@ -1320,6 +1351,34 @@ static NodeId split_const_power_product(Arena &a, NodeId n, std::string const &v
             split_const_power_product(a, x.a, var),
             split_const_power_product(a, x.b, var)));
     }
+    return n;
+}
+
+static NodeId rewrite_recip_trig_neg_powers(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(e && e->den == 1 && e->num < 0 && b.kind == NodeKind::Fn) {
+            char const *name = nullptr;
+            if(b.fkind == FnKind::Sec) name = "cos";
+            else if(b.fkind == FnKind::Cosec) name = "sin";
+            else if(b.fkind == FnKind::Cot) name = "tan";
+            if(name) return casio::power(a, casio::fn(a, name, b.a), casio::num(a, -e->num));
+        }
+        return casio::simplify(a, casio::power(a,
+            rewrite_recip_trig_neg_powers(a, x.a),
+            rewrite_recip_trig_neg_powers(a, x.b)));
+    }
+    if(x.kind == NodeKind::Mul || x.kind == NodeKind::Add) {
+        std::vector<NodeId> ks;
+        ks.reserve(x.kids.size());
+        for(NodeId k : x.kids) ks.push_back(rewrite_recip_trig_neg_powers(a, k));
+        return casio::simplify(a, x.kind == NodeKind::Mul ? casio::mul(a, ks) : casio::add(a, ks));
+    }
+    if(x.kind == NodeKind::Div) return casio::simplify(a, casio::div(a,
+        rewrite_recip_trig_neg_powers(a, x.a), rewrite_recip_trig_neg_powers(a, x.b)));
     return n;
 }
 
@@ -2094,12 +2153,13 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         if(prefer_linear) return solve_linear_de_mode(a, *tok, dydx, bc);
         auto sep = split_sep(a, dydx, tok->x, tok->y);
         if(!sep) return solve_linear_de_mode(a, *tok, dydx, bc);
-        NodeId X = casio::simplify(a, sep->first);
+        NodeId X = rewrite_recip_trig_neg_powers(a, casio::simplify(a, sep->first));
         NodeId Y = casio::simplify(a, sep->second);
         Node const &Yn = a.get(Y);
         auto yn = Yn.kind == NodeKind::Div ? as_num(a, Yn.a) : std::optional<Rational>{};
         NodeId invY = (yn && yn->num == yn->den) ? Yn.b : casio::simplify(a, casio::div(a, casio::num(a, 1), Y));
         invY = split_const_power_product(a, invY, tok->y);
+        invY = rewrite_recip_trig_neg_powers(a, invY);
         auto Li = integrate_giac_style(a, invY, tok->y);
         auto Ri = integrate_giac_style(a, X, tok->x);
         if(!Li.result) throw std::runtime_error("Int y " + format_expr(a, invY));
