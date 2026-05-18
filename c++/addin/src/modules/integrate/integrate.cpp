@@ -2045,7 +2045,9 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         std::string lhs0 = eqtxt.substr(0, eqp0);
         std::string lhs_rest = lhs0;
         lhs_rest.erase(tok->pos, tok->len);
-        bool prefer_linear = lhs_rest.find(tok->y) != std::string::npos;
+        bool additive_y_term = lhs_rest.find('+') != std::string::npos ||
+                               (tok->pos == 0 && !lhs_rest.empty() && lhs_rest[0] == '-');
+        bool prefer_linear = additive_y_term && lhs_rest.find(tok->y) != std::string::npos;
         std::string repl = eqtxt;
         repl.replace(tok->pos, tok->len, "Dde");
         Arena a;
