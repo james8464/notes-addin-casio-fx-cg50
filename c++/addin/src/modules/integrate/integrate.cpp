@@ -1487,6 +1487,7 @@ static std::optional<LogLeft> log_left_form(Arena &a, NodeId n)
 {
     if(auto u = combined_log_abs_arg(a, n)) return LogLeft{*u, Rational{1, 1}};
     if(auto f = log_power_factor(a, n)) return LogLeft{f->first, Rational{f->second, 1}};
+    if(auto f = log_rational_factor(a, n)) return LogLeft{f->first, f->second};
     if(auto s = scaled_combined_log_abs_arg(a, n)) return s;
     return std::nullopt;
 }
