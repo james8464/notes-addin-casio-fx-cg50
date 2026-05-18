@@ -494,6 +494,36 @@ CASES = [
         ("3/16", "No elementary", "ERR:"),
     ),
     (
+        "x trig square volume reduction",
+        ["--int", "defint(pi*x*cos(2*x)^2,x,0,pi/4)"],
+        ("cos(2*x)^2 = (1+cos(2*2*x))/2", "K = Int(1/2*x*cos(4*x))", "1/64*pi^3 - 1/16*pi"),
+        ("ERR:", "No elementary primitive found"),
+    ),
+    (
+        "x2 trig square avoids false reverse chain",
+        ["--int", "pi*x^2*cos(2*x)^2"],
+        ("I = pi*J, J = Int(x^2*cos(2*x)^2) dx", "DI table for x^2*cos(2*2*x)", "+ C"),
+        ("I = -1/2*Int(u^(2)) du", "-1/6*cos(2*x)^3 + C"),
+    ),
+    (
+        "xn log square parts",
+        ["--int", "defint(pi*x^2*ln(x)^2,x,1,e)"],
+        ("u = ln(x)^2, dv = x^2 dx", "repeated parts: Int(x^n ln(x)^2)dx", "5/27*pi*e^(3) - 2/27*pi"),
+        ("ERR:", "No elementary primitive found"),
+    ),
+    (
+        "simple substitution keeps all factors",
+        ["--int", "e^x*cos(x)^2*sin(x)"],
+        ("e^(x)*cos(x)^2*sin(x)",),
+        ("-1/3*cos(x)^3 + C", "trig reverse-chain substitution"),
+    ),
+    (
+        "exp cos sin double substitution",
+        ["--int", "defint(e^(cos(x))*sin(2*x),x,0,pi/2)"],
+        ("sin(2*x) = 2*sin(x)*cos(x)", "u = cos(x)", "Int(u*e^u) du = e^u*(u-1)", "F(pi/2) - F(0)", "2"),
+        ("ERR:", "2*e - 2"),
+    ),
+    (
         "sqrt e endpoint parts",
         ["--int", "defint(16*x^3*ln(x),x,sqrt(e),e),method=parts"],
         ("F(sqrt(e)) = 2*e^2 - e^2", "3*e^(4) - e^2"),
