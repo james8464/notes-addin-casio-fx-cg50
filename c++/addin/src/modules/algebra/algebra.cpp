@@ -7753,9 +7753,17 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
             }
         }
         NodeId log_root = casio::fn(a, "log", log_arg);
-        if(neg_slope) log_root = neg_node(a, log_root);
+        if(neg_slope) {
+            if(auto rr = as_num(a, log_arg); rr && rr->num > 0 && rr->den > 0 && rr->num < rr->den)
+                log_root = casio::fn(a, "log", a.num(Rational{rr->den, rr->num}));
+            else
+                log_root = neg_node(a, log_root);
+        }
         NodeId x = casio::simplify(a, casio::div(a, log_root, a.num(pos_base)));
-        xraw.push_back(var + " = " + format_expr(a, x));
+        std::string xt = format_expr(a, x);
+        if(xt.rfind("ln(1/", 0) == 0 && xt.size() > 6 && xt.back() == ')')
+            xt = "-ln(" + xt.substr(5, xt.size() - 6) + ")";
+        xraw.push_back(var + " = " + xt);
     }
     if(xraw.empty()) {
         out.push_back(var + " = []");
@@ -7818,6 +7826,52 @@ static std::optional<std::vector<std::string>> exp_common_factor_route(
         out.push_back(var + " = []");
     }
     return out;
+}
+
+static std::optional<std::vector<std::string>> rational_exp_common_factor_route(
+    Arena &a, NodeId rearr, std::string const &var, std::vector<std::string> out)
+{
+    auto has_exp = [&](NodeId n) {
+        std::vector<NodeId> args;
+        collect_exp_args_solve(a, n, args);
+        return !args.empty();
+    };
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    for(std::size_t i = 0; i < terms.size(); ++i) {
+        Node const &f = a.get(terms[i]);
+        if(f.kind != NodeKind::Div || !has_exp(terms[i])) continue;
+        std::vector<NodeId> rest_terms;
+        for(std::size_t j = 0; j < terms.size(); ++j)
+            if(j != i) rest_terms.push_back(terms[j]);
+        NodeId rest = rest_terms.empty() ? zero_node(a) : casio::simplify(a, casio::add(a, rest_terms));
+        NodeId cleared_rest = casio::simplify(a, casio::mul(a, {rest, f.b}));
+        NodeId cleared_residual = casio::simplify(a, casio::add(a, {f.a, cleared_rest}));
+        std::size_t n0 = out.size();
+        std::string den = format_expr(a, f.b);
+        out.push_back("Multiply by " + den);
+        out.push_back(format_expr(a, f.a) + " + (" + format_expr(a, rest) + ")*(" + den + ") = 0");
+        std::string eq = format_expr(a, cleared_residual);
+        if(eq != "0") out.push_back(eq + " = 0");
+        if(!has_exp(cleared_residual)) {
+            if(auto c = as_num(a, cleared_residual)) {
+                out.push_back(format_expr(a, cleared_residual) + (is_zero(*c) ? " = 0" : " != 0"));
+                out.push_back(is_zero(*c) ? var + " = all real values in domain" : var + " = []");
+                return out;
+            }
+            out.resize(n0);
+            continue;
+        }
+        auto route = exp_common_factor_route(a, cleared_residual, var, out);
+        if(!route) route = exp_substitution_route(a, cleared_residual, var, out);
+        if(!route) {
+            out.resize(n0);
+            continue;
+        }
+        if(route->size() == n0 + 3) return std::nullopt;
+        return route;
+    }
+    return std::nullopt;
 }
 
 static std::optional<std::pair<Rational, NodeId>> unknown_exp_base(Arena &a, NodeId n, std::string const &var)
@@ -9402,6 +9456,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(auto ref = rational_exp_common_factor_route(arena, rearr, solve_var, out)) return *ref;
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
