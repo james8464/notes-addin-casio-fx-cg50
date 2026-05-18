@@ -8775,6 +8775,19 @@ static std::optional<NodeId> integrate_trig_products(Arena &a, NodeId expr, std:
         steps.push_back("cosec(u)^2*tan(u)^2=sec(u)^2.");
         return casio::simplify(a, mul_coeff(a, r_div(coeff, *lc), casio::fn(a, "tan", arg)));
     }
+    if(csc_p == 1 && cot_p == 4 && sec_p == 0 && sin_p == 0 && cos_p == 0 && tan_p == 0) {
+        NodeId csc_u = casio::fn(a, "cosec", arg);
+        NodeId cot_u = casio::fn(a, "cot", arg);
+        NodeId L = casio::fn(a, "log", casio::fn(a, "abs", casio::add(a, {csc_u, casio::neg(a, cot_u)})));
+        NodeId prim = casio::add(a, {
+            mul_coeff(a, Rational{-1, 4}, casio::mul(a, {casio::power(a, csc_u, casio::num(a, 3)), cot_u})),
+            mul_coeff(a, Rational{5, 8}, casio::mul(a, {csc_u, cot_u})),
+            mul_coeff(a, Rational{3, 8}, L),
+        });
+        steps.push_back("cot(u)^4=(cosec(u)^2-1)^2.");
+        steps.push_back("I=Int(cosec(u)^5-2*cosec(u)^3+cosec(u))du.");
+        return casio::simplify(a, mul_coeff(a, r_div(coeff, *lc), prim));
+    }
 
     if(tan_p >= 0 && sec_p == 2 && sin_p == 0 && cos_p == 0 && csc_p == 0 && cot_p == 0 && tan_p > 0) {
         NodeId tan_u = casio::fn(a, "tan", arg);
