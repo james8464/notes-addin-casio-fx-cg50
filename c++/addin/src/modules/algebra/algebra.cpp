@@ -6436,7 +6436,11 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
             break;
         }
     }
-    if(!has_parameter) return std::nullopt;
+    if(!has_parameter) {
+        if(!contains_fn_kind(a, rearr, FnKind::Sqrt)) return std::nullopt;
+        auto rp = ratpoly_of_node(a, rearr, var);
+        if(rp.ok) return std::nullopt;
+    }
     NodeId ans = casio::simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
     Rational cm, cc;
     NodeId bm = 0, bc = 0;
@@ -6459,6 +6463,11 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
                         Rational qr = r_div(*bn, *tn);
                         ans = casio::num(a, qr.num, qr.den);
                     }
+                }
+            }
+            else if(top.kind == NodeKind::Num && bot.kind == NodeKind::Div) {
+                if(auto br = as_num(a, bot.a); br && br->num != 0) {
+                    ans = casio::simplify(a, casio::div(a, casio::mul(a, {q.a, bot.b}), bot.a));
                 }
             }
         }

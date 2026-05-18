@@ -1506,26 +1506,37 @@ static std::optional<std::string> exp_log_product_text(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
-    std::vector<std::string> factors;
+    std::vector<std::string> top, bot;
     std::vector<NodeId> rest;
+    auto log_factor = [&](NodeId u, Rational r) {
+        std::string base = format_expr(a, u);
+        Node const &b = a.get(u);
+        if(b.kind == NodeKind::Add || b.kind == NodeKind::Div || b.kind == NodeKind::Mul) base = "(" + base + ")";
+        std::string abs_base = "abs(" + base + ")";
+        bool neg = r.num < 0;
+        if(neg) r.num = -r.num;
+        std::string f;
+        if(r.den == 1) {
+            if(r.num == 1) f = abs_base;
+            else if((r.num % 2) == 0) f = base + "^" + std::to_string(r.num);
+            else f = abs_base + "^" + std::to_string(r.num);
+        } else if(r.num == 1 && r.den == 2) f = "sqrt(" + abs_base + ")";
+        else f = "(" + abs_base + ")^(" + rat_text_small(a, r) + ")";
+        (neg ? bot : top).push_back(f);
+    };
     for(NodeId t : terms) {
-        if(auto fp = log_power_factor(a, t)) {
-            Node const &u = a.get(fp->first);
-            std::string base = format_expr(a, fp->first);
-            if(u.kind == NodeKind::Add || u.kind == NodeKind::Div || u.kind == NodeKind::Mul) base = "(" + base + ")";
-            if(fp->second == 1) factors.push_back("abs(" + base + ")");
-            else factors.push_back(base + "^" + std::to_string(fp->second));
-        }
-        else {
-            rest.push_back(t);
-        }
+        if(auto fp = log_rational_factor(a, t)) log_factor(fp->first, fp->second);
+        else rest.push_back(t);
     }
-    if(factors.empty()) return std::nullopt;
+    if(top.empty() && bot.empty()) return std::nullopt;
     std::string out;
+    auto &factors = top;
     for(std::size_t i = 0; i < factors.size(); ++i) {
         if(i) out += "*";
         out += factors[i];
     }
+    if(out.empty()) out = "1";
+    for(auto const &d : bot) out += "/" + d;
     if(!rest.empty()) out += "*e^(" + exp_arg_text(a, add_or_zero_int(a, rest)) + ")";
     return out;
 }
