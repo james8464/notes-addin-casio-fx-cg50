@@ -344,6 +344,27 @@ static NodeId simplify_pow(Arena &a, NodeId base, NodeId exp)
         Rational bc = mulq(a.get(bn.b).num, en.num);
         return simplify(a, a.pow(bn.a, num(a, bc.num, bc.den)));
     }
+    if(bn.kind == NodeKind::Mul && is_int_num(en) && en.num.num > 1 && en.num.num <= 12) {
+        bool has_num = false;
+        bool monomial = true;
+        for(NodeId k : bn.kids) {
+            Node const &kn = a.get(k);
+            if(kn.kind == NodeKind::Num) {
+                has_num = true;
+                continue;
+            }
+            if(kn.kind == NodeKind::Sym || kn.kind == NodeKind::Const) continue;
+            if(kn.kind == NodeKind::Pow && is_num(a.get(kn.b))) continue;
+            monomial = false;
+            break;
+        }
+        if(has_num && monomial) {
+            std::vector<NodeId> factors;
+            factors.reserve(bn.kids.size());
+            for(NodeId k : bn.kids) factors.push_back(a.pow(k, e));
+            return simplify(a, a.mul(std::move(factors)));
+        }
+    }
     return a.pow(b, e);
 }
 
