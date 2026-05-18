@@ -1250,6 +1250,51 @@ static NodeId div_by_coeff(Arena &a, NodeId rhs, Rational c)
     return casio::simplify(a, casio::div(a, rhs, casio::num(a, c.num, c.den)));
 }
 
+struct AffinePowerLeft
+{
+    Rational coeff, exp;
+    NodeId base;
+};
+
+static std::optional<AffinePowerLeft> affine_power_left_factor(Arena &a, NodeId n, std::string const &y)
+{
+    auto base_exp = [&](NodeId id) -> std::optional<std::pair<NodeId, Rational>> {
+        Node const &u = a.get(id);
+        if(u.kind == NodeKind::Pow && contains_var(a, u.a, y)) {
+            auto e = as_num(a, u.b);
+            if(e && linear_parts_node(a, u.a, y)) return std::make_pair(u.a, *e);
+        }
+        return std::nullopt;
+    };
+    if(auto be = base_exp(n)) return AffinePowerLeft{Rational{1, 1}, be->second, be->first};
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    std::optional<std::pair<NodeId, Rational>> be;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) {
+            c = r_mul(c, *r);
+            continue;
+        }
+        if(!be) {
+            be = base_exp(k);
+            if(be) continue;
+        }
+        return std::nullopt;
+    }
+    return be ? std::optional<AffinePowerLeft>(AffinePowerLeft{c, be->second, be->first}) : std::nullopt;
+}
+
+static std::string power_text(std::string const &base, Rational e)
+{
+    if(e.num == e.den) return base;
+    if(e.num == 1 && e.den == 2) return "sqrt(" + base + ")";
+    if(e.num == -1 && e.den == 1) return "1/(" + base + ")";
+    if(e.num == -1 && e.den == 2) return "1/sqrt(" + base + ")";
+    if(e.den == 1) return base + "^" + std::to_string(e.num);
+    return base + "^(" + std::to_string(e.num) + "/" + std::to_string(e.den) + ")";
+}
+
 struct LinFrac
 {
     Rational a, b, c, d;
@@ -1735,6 +1780,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         NodeId y1arg = casio::simplify(a, substitute_de_var(a, *larg, tok->y, B.y1));
                         NodeId ratio = casio::simplify(a, casio::div(a, y1arg, casio::num(a, q.num, q.den)));
                         NodeId lhs_log = casio::fn(a, "log", casio::fn(a, "abs", ratio));
+                        if(auto rr = as_num(a, ratio); rr && (rr->num == rr->den || rr->num == -rr->den)) lhs_log = casio::num(a, 0);
                         NodeId R1 = casio::simplify(a, substitute_de_var(a, Rint, tok->x, B.x1));
                         NodeId eq = casio::simplify(a, casio::add(a, {R1, casio::neg(a, lhs_log)}));
                         std::vector<std::string> syms;
@@ -1816,6 +1862,18 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     steps.push_back(y_power_text(tok->y, pe->second) + " = " + format_expr(a, y_power_rhs));
                 }
                 answer = tok->y + " = " + format_expr(a, y_rhs);
+            }
+            else if(auto ap = affine_power_left_factor(a, *Li.result, tok->y); ap && ap->coeff.num != 0 && ap->exp.num != 0) {
+                NodeId base_power_rhs = div_by_coeff(a, final_rhs_node, ap->coeff);
+                NodeId base_rhs = invert_power_rhs(a, base_power_rhs, ap->exp);
+                steps.push_back(power_text(format_expr(a, ap->base), ap->exp) + " = " + format_expr(a, base_power_rhs));
+                steps.push_back(format_expr(a, ap->base) + " = " + format_expr(a, base_rhs));
+                auto lin = linear_parts_node(a, ap->base, tok->y);
+                auto A = lin ? as_num(a, lin->first) : std::optional<Rational>{};
+                if(lin && A && A->num != 0) {
+                    NodeId y_rhs = casio::simplify(a, casio::div(a, casio::add(a, {base_rhs, casio::neg(a, lin->second)}), casio::num(a, A->num, A->den)));
+                    answer = tok->y + " = " + format_expr(a, y_rhs);
+                }
             }
         }
         if(larg && !explicit_answer) {
