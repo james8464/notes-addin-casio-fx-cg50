@@ -524,6 +524,12 @@ CASES = [
         ("ERR:", "2*e - 2"),
     ),
     (
+        "sincos over cos2 square volume",
+        ["--int", "defint(pi*((4+sin(x)*cos(x))/cos(2*x))^2,x,pi/12,pi/6)"],
+        ("sin(x)*cos(x) = 1/2*sin(2*x)", "(sin(x)*cos(x) + 4)/(cos(2*x)) = 4*sec(2*x) + 1/2*tan(2*x)", "square = 65/4*sec(2*x)^2 + 4*sec(2*x)*tan(2*x) - 1/4", "49/12*pi*sqrt(3) + 4*pi - 1/48*pi^2"),
+        ("ERR:", "No elementary primitive found"),
+    ),
+    (
         "sqrt e endpoint parts",
         ["--int", "defint(16*x^3*ln(x),x,sqrt(e),e),method=parts"],
         ("F(sqrt(e)) = 2*e^2 - e^2", "3*e^(4) - e^2"),
