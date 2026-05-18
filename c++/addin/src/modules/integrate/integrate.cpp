@@ -102,6 +102,24 @@ static Rational r_pow(Rational r, int n)
     return out;
 }
 
+static std::optional<std::int64_t> sqrt_i64_exact(std::int64_t n)
+{
+    if(n < 0) return std::nullopt;
+    auto r = static_cast<std::int64_t>(std::sqrt(static_cast<long double>(n)));
+    while((r + 1) > 0 && (r + 1) <= 3037000499LL && (r + 1) * (r + 1) <= n) ++r;
+    while(r > 0 && r * r > n) --r;
+    return r * r == n ? std::optional<std::int64_t>(r) : std::nullopt;
+}
+
+static std::optional<Rational> sqrt_rat_exact(Rational q)
+{
+    if(q.num < 0) return std::nullopt;
+    auto n = sqrt_i64_exact(q.num);
+    auto d = sqrt_i64_exact(q.den);
+    if(!n || !d || *d == 0) return std::nullopt;
+    return Rational{*n, *d};
+}
+
 static int r_sign(Rational r)
 {
     if(r.num == 0) return 0;
@@ -1123,7 +1141,14 @@ static std::optional<Rational> eval_rat_small(Arena &a, NodeId n, std::string co
         }
         auto u = eval_rat_small(a, x.a, var, val);
         auto e = as_num(a, x.b);
-        if(!u || !e || e->den != 1 || e->num < -8 || e->num > 8) return std::nullopt;
+        if(!u || !e || e->num < -8 || e->num > 8) return std::nullopt;
+        if(e->den == 2) {
+            auto root = sqrt_rat_exact(*u);
+            if(!root) return std::nullopt;
+            Rational p = r_pow(*root, static_cast<int>(std::llabs(e->num)));
+            return e->num >= 0 ? p : (p.num == 0 ? std::nullopt : std::optional<Rational>(r_div(Rational{1, 1}, p)));
+        }
+        if(e->den != 1) return std::nullopt;
         if(e->num >= 0) return r_pow(*u, static_cast<int>(e->num));
         if(u->num == 0) return std::nullopt;
         return r_div(Rational{1, 1}, r_pow(*u, static_cast<int>(-e->num)));
@@ -1131,6 +1156,7 @@ static std::optional<Rational> eval_rat_small(Arena &a, NodeId n, std::string co
     if(x.kind == NodeKind::Fn) {
         auto u = eval_rat_small(a, x.a, var, val);
         if(!u) return std::nullopt;
+        if(x.fkind == FnKind::Sqrt) return sqrt_rat_exact(*u);
         if(x.fkind == FnKind::Sin && u->num == 0) return Rational{0, 1};
         if(x.fkind == FnKind::Cos && u->num == 0) return Rational{1, 1};
         if(x.fkind == FnKind::Tan && u->num == 0) return Rational{0, 1};
@@ -1148,6 +1174,80 @@ static std::optional<NodeId> log_abs_arg(Arena &a, NodeId n)
     Node const &u = a.get(x.a);
     if(u.kind == NodeKind::Fn && u.fkind == FnKind::Abs) return u.a;
     return x.a;
+}
+
+static std::optional<std::pair<Rational, Rational>> power_left_factor(Arena &a, NodeId n, std::string const &y)
+{
+    auto y_power = [&](NodeId id) -> std::optional<Rational> {
+        Node const &u = a.get(id);
+        if(is_sym(a, id, y)) return Rational{1, 1};
+        if(u.kind == NodeKind::Fn && u.fkind == FnKind::Sqrt && is_sym(a, u.a, y)) return Rational{1, 2};
+        if(u.kind == NodeKind::Pow && is_sym(a, u.a, y)) {
+            auto e = as_num(a, u.b);
+            if(e) return *e;
+        }
+        return std::nullopt;
+    };
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto den = as_num(a, x.b);
+        if(!den || den->num == 0) return std::nullopt;
+        auto top = power_left_factor(a, x.a, y);
+        if(!top) return std::nullopt;
+        top->first = r_div(top->first, *den);
+        return top;
+    }
+    if(auto e = y_power(n)) return std::make_pair(Rational{1, 1}, *e);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    std::optional<Rational> exp;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) {
+            c = r_mul(c, *r);
+            continue;
+        }
+        if(!exp) {
+            exp = y_power(k);
+            if(exp) {
+                continue;
+            }
+        }
+        return std::nullopt;
+    }
+    return exp ? std::optional<std::pair<Rational, Rational>>(std::make_pair(c, *exp)) : std::nullopt;
+}
+
+static std::string y_power_text(std::string const &y, Rational e)
+{
+    if(e.num == e.den) return y;
+    if(e.num == 1 && e.den == 2) return "sqrt(" + y + ")";
+    if(e.num == -1 && e.den == 1) return "1/" + y;
+    if(e.num == -1 && e.den == 2) return "1/sqrt(" + y + ")";
+    if(e.den == 1) return y + "^" + std::to_string(e.num);
+    return y + "^(" + std::to_string(e.num) + "/" + std::to_string(e.den) + ")";
+}
+
+static NodeId invert_power_rhs(Arena &a, NodeId rhs, Rational e)
+{
+    if(e.num == e.den) return rhs;
+    if(e.num == 1 && e.den == 2) return casio::simplify(a, casio::power(a, rhs, casio::num(a, 2)));
+    if(e.num == -1 && e.den == 1) return casio::simplify(a, casio::div(a, casio::num(a, 1), rhs));
+    if(e.num == -1 && e.den == 2) {
+        NodeId inv = casio::simplify(a, casio::div(a, casio::num(a, 1), rhs));
+        return casio::simplify(a, casio::power(a, inv, casio::num(a, 2)));
+    }
+    if(e.num != 0) {
+        Rational inv{e.den, e.num};
+        inv.normalize();
+        return casio::simplify(a, casio::power(a, rhs, casio::num(a, inv.num, inv.den)));
+    }
+    return rhs;
+}
+
+static NodeId div_by_coeff(Arena &a, NodeId rhs, Rational c)
+{
+    if(r_eq(c, Rational{1, 1})) return rhs;
+    return casio::simplify(a, casio::div(a, rhs, casio::num(a, c.num, c.den)));
 }
 
 struct LinFrac
@@ -1605,6 +1705,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         bool used_bc = false;
         bool explicit_answer = false;
         std::optional<Rational> Cval;
+        NodeId final_rhs_node = 0;
         std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C";
         auto larg = combined_log_abs_arg(a, *Li.result);
         if(larg && B.have_y0) {
@@ -1629,7 +1730,30 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + log(" + rat_text_small(a, q) + ")");
                         steps.push_back(format_expr(a, *larg) + " = " + rat_text_small(a, q) + "*e^(" + exp_arg_text(a, Rint) + ")");
                     }
-                    if(auto ex = explicit_logistic_answer(a, tok->y, *lf, q, Rint)) {
+                    NodeId Rused = Rint;
+                    if(B.have_y1) {
+                        NodeId y1arg = casio::simplify(a, substitute_de_var(a, *larg, tok->y, B.y1));
+                        NodeId ratio = casio::simplify(a, casio::div(a, y1arg, casio::num(a, q.num, q.den)));
+                        NodeId lhs_log = casio::fn(a, "log", casio::fn(a, "abs", ratio));
+                        NodeId R1 = casio::simplify(a, substitute_de_var(a, Rint, tok->x, B.x1));
+                        NodeId eq = casio::simplify(a, casio::add(a, {R1, casio::neg(a, lhs_log)}));
+                        std::vector<std::string> syms;
+                        collect_de_symbols(a, eq, syms);
+                        syms.erase(std::remove(syms.begin(), syms.end(), tok->x), syms.end());
+                        syms.erase(std::remove(syms.begin(), syms.end(), tok->y), syms.end());
+                        if(syms.size() == 1) {
+                            auto lp2 = linear_parts_node(a, eq, syms[0]);
+                            auto A = lp2 ? as_num(a, lp2->first) : std::optional<Rational>{};
+                            if(lp2 && A && A->num != 0) {
+                                NodeId pnode = casio::simplify(a, casio::div(a, casio::neg(a, lp2->second), casio::num(a, A->num, A->den)));
+                                steps.push_back(tok->y + "(" + format_expr(a, B.x1) + ") = " + format_expr(a, B.y1));
+                                steps.push_back(format_expr(a, lhs_log) + " = " + format_expr(a, R1));
+                                steps.push_back(syms[0] + " = " + format_expr(a, pnode));
+                                Rused = casio::simplify(a, substitute_de_var(a, Rint, syms[0], pnode));
+                            }
+                        }
+                    }
+                    if(auto ex = explicit_logistic_answer(a, tok->y, *lf, q, Rused)) {
                         answer = *ex;
                         explicit_answer = true;
                     }
@@ -1648,6 +1772,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 std::string rhs = format_expr(a, Rint);
                 if(C.num > 0) rhs += " + " + rat_text_small(a, C);
                 else if(C.num < 0) rhs += " - " + rat_text_small(a, r_neg(C));
+                final_rhs_node = casio::simplify(a, casio::add(a, {Rint, casio::num(a, C.num, C.den)}));
                 answer = format_expr(a, *Li.result) + " = " + rhs;
             }
         }
@@ -1676,10 +1801,21 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                             steps.push_back(tok->y + "(" + format_expr(a, B.x1) + ") = " + format_expr(a, B.y1));
                             steps.push_back(rat_text_small(a, *L1) + " = " + add_const_text(a, R1, *Cval));
                             steps.push_back(syms[0] + " = " + rat_text_small(a, pv));
+                            final_rhs_node = casio::simplify(a, casio::add(a, {Rk, casio::num(a, Cval->num, Cval->den)}));
                             answer = format_expr(a, *Li.result) + " = " + add_const_text(a, Rk, *Cval);
                         }
                     }
                 }
+            }
+        }
+        if(final_rhs_node && !explicit_answer) {
+            if(auto pe = power_left_factor(a, *Li.result, tok->y); pe && pe->first.num != 0 && pe->second.num != 0) {
+                NodeId y_power_rhs = div_by_coeff(a, final_rhs_node, pe->first);
+                NodeId y_rhs = invert_power_rhs(a, y_power_rhs, pe->second);
+                if(!r_eq(pe->second, Rational{1, 1})) {
+                    steps.push_back(y_power_text(tok->y, pe->second) + " = " + format_expr(a, y_power_rhs));
+                }
+                answer = tok->y + " = " + format_expr(a, y_rhs);
             }
         }
         if(larg && !explicit_answer) {
