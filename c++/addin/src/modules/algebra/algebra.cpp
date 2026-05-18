@@ -1042,7 +1042,7 @@ static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::st
     if(bot.kind != NodeKind::Add || bot.kids.size() != 2) return std::nullopt;
     if(!top_arg) {
         auto top_r = as_num(a, d.a);
-        if(!top_r || top_r->num != top_r->den) return std::nullopt;
+        if(!top_r || top_r->num <= 0) return std::nullopt;
         bool saw_one = false;
         std::optional<std::pair<Rational, NodeId>> exp_term;
         for(NodeId kid : bot.kids) {
@@ -1054,15 +1054,15 @@ static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::st
         if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
         if(lo && std::fabs(*lo) < 1e-12 && hi && !std::isfinite(*hi)) {
             if(p->a0.num == 0 && p->a1.num < 0) {
-                Rational y0 = r_div(Rational{1, 1}, r_add(Rational{1, 1}, exp_term->first));
+                Rational y0 = r_div(*top_r, r_add(Rational{1, 1}, exp_term->first));
                 steps.push_back("Let u=e^(" + format_expr(a, exp_term->second) + "), so u>0.");
                 steps.push_back(var + ">=0 and exponent decreases, so 0<u<=1.");
                 std::string k = format_expr(a, casio::num(a, exp_term->first.num, exp_term->first.den));
-                steps.push_back("y=1/(1+" + k + "*u).");
-                return format_expr(a, casio::num(a, y0.num, y0.den)) + " <= y < 1";
+                steps.push_back("y=" + format_expr(a, casio::num(a, top_r->num, top_r->den)) + "/(1+" + (exp_term->first.num == exp_term->first.den ? "" : k + "*") + "u).");
+                return format_expr(a, casio::num(a, y0.num, y0.den)) + " <= y < " + format_expr(a, casio::num(a, top_r->num, top_r->den));
             }
             if(p->a0.num == 0 && p->a1.num > 0) {
-                Rational y0 = r_div(Rational{1, 1}, r_add(Rational{1, 1}, exp_term->first));
+                Rational y0 = r_div(*top_r, r_add(Rational{1, 1}, exp_term->first));
                 steps.push_back("Let u=e^(" + format_expr(a, exp_term->second) + "), so u>=1.");
                 steps.push_back("As " + var + "=>inf, u=>inf and y=>0.");
                 return "0 < y <= " + format_expr(a, casio::num(a, y0.num, y0.den));
