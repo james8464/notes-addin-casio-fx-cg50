@@ -859,6 +859,54 @@ static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, Affin
     return affine_int_text(num, var) + "/(" + affine_int_text(den, var) + ")";
 }
 
+static bool asin_sqrt_identity_key(std::string const &key, std::string const &var, long long &k)
+{
+    auto term = [&](long long c) {
+        std::string cs = c == 1 ? "" : std::to_string(c);
+        return cs + var + "asin(" + cs + var + ")";
+    };
+    auto rad1 = [&](long long c) {
+        long long c2 = c * c;
+        return "sqrt(-" + (c2 == 1 ? "" : std::to_string(c2)) + var + "^2+1)";
+    };
+    auto rad2 = [&](long long c) {
+        long long c2 = c * c;
+        return "sqrt(1-" + (c2 == 1 ? "" : std::to_string(c2)) + var + "^2)";
+    };
+    for(long long c = 1; c <= 12; ++c) {
+        std::string t = term(c);
+        if(key == t + "+" + rad1(c) || key == rad1(c) + "+" + t ||
+           key == t + "+" + rad2(c) || key == rad2(c) + "+" + t) {
+            k = c;
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::vector<std::string> asin_sqrt_identity_steps(long long k, std::string const &var)
+{
+    long long k2 = k * k;
+    long long k4 = k2 * k2;
+    std::string pre = k == 1 ? "" : std::to_string(k) + "*";
+    std::string arg = k == 1 ? var : std::to_string(k) + "*" + var;
+    std::string rad = "1 - " + (k2 == 1 ? "" : std::to_string(k2) + "*") + var + "^2";
+    std::string y = pre + var + "*asin(" + arg + ") + sqrt(" + rad + ")";
+    std::string d1 = pre + "asin(" + arg + ")";
+    std::string d2 = std::to_string(k2) + "/sqrt(" + rad + ")";
+    std::string d3 = std::to_string(k4) + "*" + var + "/(" + rad + ")^(3/2)";
+    std::string rhs = std::to_string(k4) + "*" + var + "/(" + rad + ")";
+    return {
+        "y = " + y + ".",
+        "dy/d" + var + " = " + d1 + ".",
+        "d2y/d" + var + "2 = " + d2 + ".",
+        "d3y/d" + var + "3 = " + d3 + ".",
+        "y - " + var + "*dy/d" + var + " = sqrt(" + rad + ").",
+        "d3y/d" + var + "3*(y - " + var + "*dy/d" + var + ") = " + rhs + ".",
+        var + "*(d2y/d" + var + "2)^2 = " + rhs + "."
+    };
+}
+
 static std::string rat_text(Arena &a, long long num, long long den)
 {
     Rational r{num, den};
@@ -3096,6 +3144,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     },
                     "d4y/d" + var + "4 + e^(-y)*(dy/d" + var + ")^2 + e^(-2y) = 0"
                 );
+            }
+
+            {
+                long long k = 0;
+                if(req.mode == 7 && asin_sqrt_identity_key(direct_key, var, k)) {
+                    return casio::exam_block(
+                        "higher derivative identity",
+                        asin_sqrt_identity_steps(k, var),
+                        "d3y/d" + var + "3*(y - " + var + "*dy/d" + var + ") = " + var + "*(d2y/d" + var + "2)^2"
+                    );
+                }
             }
 
             if(exam_guard_too_complex(arena, n, var)) {
