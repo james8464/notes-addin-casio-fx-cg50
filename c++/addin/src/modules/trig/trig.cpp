@@ -5789,6 +5789,21 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             next = pos;
             return v > 0;
         };
+        auto read_rat = [&](std::string const &s, std::size_t pos, long long &n, long long &d, std::size_t &next) -> bool {
+            int sign = 1;
+            if(pos < s.size() && s[pos] == '-') { sign = -1; ++pos; }
+            long long a0 = 0; std::size_t e = 0;
+            if(!read_int(s, pos, a0, e)) return false;
+            n = sign * a0; d = 1; next = e;
+            if(e < s.size() && s[e] == '/') {
+                long long b0 = 0; std::size_t f = 0;
+                if(!read_int(s, e + 1, b0, f)) return false;
+                d = b0; next = f;
+            }
+            long long g0 = std::gcd(std::llabs(n), std::llabs(d));
+            if(g0 > 1) { n /= g0; d /= g0; }
+            return d > 0;
+        };
         long long k = 0, m = 0, rhs = 0;
         std::size_t p = 0, q = 0;
         if(read_int(eq_key, 0, k, p) && eq_key.compare(p, 4, "sin(") == 0 &&
@@ -5896,6 +5911,278 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                     std::sort(xs.begin(), xs.end());
                     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
                 }
+            }
+        }
+        {
+            std::string lhs = "sec(" + var + ")/(1+sec(" + var + "))-sec(" + var + ")/(1-sec(" + var + "))=";
+            long long n = 0; std::size_t e = 0;
+            if(eq_key.rfind(lhs, 0) == 0 && read_int(eq_key, lhs.size(), n, e) && eq_key.substr(e) == "sin(" + var + ")") {
+                double sroot = std::cbrt(2.0 / (double)n);
+                auto xs = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Sin, sroot));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "sec(" + var + ")/(1+sec(" + var + ")) = 1/(1+cos(" + var + "))",
+                        "sec(" + var + ")/(1-sec(" + var + ")) = 1/(cos(" + var + ")-1)",
+                        "LHS = 2/(sin(" + var + ")^2)",
+                        "2/(sin(" + var + ")^2) = " + std::to_string(n) + "*sin(" + var + ")",
+                        "sin(" + var + ") = " + trig_root_text(sroot),
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string lhs = "cot(" + var + ")-tan(" + var + ")=";
+            if(eq_key.rfind(lhs, 0) == 0) {
+                std::string rest = eq_key.substr(lhs.size());
+                long long cn = 1, cd = 1; std::size_t e = 0;
+                bool ok = false;
+                std::string tan2 = "tan(2" + var + ")";
+                if(rest == tan2) ok = true;
+                else if(rest.rfind(tan2 + "/", 0) == 0) {
+                    long long d0 = 0; std::size_t f = 0;
+                    ok = read_int(rest, tan2.size() + 1, d0, f) && f == rest.size();
+                    cn = 1; cd = d0;
+                }
+                else if(read_rat(rest, 0, cn, cd, e) && rest.substr(e) == tan2) ok = true;
+                if(ok && cn > 0 && cd > 0) {
+                    double root = std::sqrt((2.0 * (double)cd) / (double)cn);
+                    NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+                    std::vector<double> xs;
+                    for(double t : {root, -root}) {
+                        auto vals = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                                                 base_trig_degrees(FnKind::Tan, t));
+                        for(double x : vals) add_unique(xs, x);
+                    }
+                    std::sort(xs.begin(), xs.end());
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "cot(" + var + ")-tan(" + var + ") = 2cot(2*" + var + ")",
+                            "2cot(2*" + var + ") = " + ratio_text(cn, cd) + "*tan(2*" + var + ")",
+                            "2/tan(2*" + var + ") = " + ratio_text(cn, cd) + "*tan(2*" + var + ")",
+                            "tan(2*" + var + ")^2 = " + ratio_text(2 * cd, cn),
+                            "tan(2*" + var + ") = +/-" + trig_root_text(root),
+                        },
+                        format_solution_list(var, rad, xs)
+                    );
+                }
+            }
+        }
+        {
+            std::string lhs1 = "(sec(" + var + ")-cos(" + var + "))(cosec(" + var + ")-sin(" + var + "))=";
+            std::string lhs2 = "(cosec(" + var + ")-sin(" + var + "))(sec(" + var + ")-cos(" + var + "))=";
+            std::size_t off = std::string::npos;
+            if(eq_key.rfind(lhs1, 0) == 0) off = lhs1.size();
+            else if(eq_key.rfind(lhs2, 0) == 0) off = lhs2.size();
+            if(off != std::string::npos) {
+                long long n = 0, d = 1; std::size_t e = 0;
+                if(read_rat(eq_key, off, n, d, e) && e == eq_key.size()) {
+                    double target = 2.0 * (double)n / (double)d;
+                    if(target >= -1.0 - 1e-12 && target <= 1.0 + 1e-12) {
+                        NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+                        auto xs = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                                               base_trig_degrees(FnKind::Sin, target));
+                        return casio::exam_block(
+                            "trig solve",
+                            {
+                                "sec(" + var + ")-cos(" + var + ") = sin(" + var + ")^2/cos(" + var + ")",
+                                "cosec(" + var + ")-sin(" + var + ") = cos(" + var + ")^2/sin(" + var + ")",
+                                "LHS = sin(" + var + ")*cos(" + var + ")",
+                                "2sin(" + var + ")cos(" + var + ") = sin(2*" + var + ")",
+                                "sin(2*" + var + ") = " + trig_root_text(target),
+                            },
+                            format_solution_list(var, rad, xs)
+                        );
+                    }
+                }
+            }
+        }
+        {
+            std::string lhs1 = "tan(" + var + ")(1+sec(2" + var + "))=";
+            std::string lhs2 = "tan(" + var + ")(sec(2" + var + ")+1)=";
+            std::size_t off = std::string::npos;
+            if(eq_key.rfind(lhs1, 0) == 0) off = lhs1.size();
+            else if(eq_key.rfind(lhs2, 0) == 0) off = lhs2.size();
+            if(off != std::string::npos) {
+                long long n = 0; std::size_t e = 0;
+                if(read_int(eq_key, off, n, e) && eq_key.substr(e) == "tan(" + var + ")" && n > 2) {
+                    double root = std::sqrt((double)(n - 2) / (double)n);
+                    std::vector<double> xs;
+                    auto add_tan_roots = [&](double t) {
+                        auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                                 base_trig_degrees(FnKind::Tan, t));
+                        for(double x : vals) add_unique(xs, x);
+                    };
+                    add_tan_roots(0.0);
+                    add_tan_roots(root);
+                    add_tan_roots(-root);
+                    auto hi_node = casio::parse_expr(a, hi_text);
+                    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+                    xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
+                    std::sort(xs.begin(), xs.end());
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "tan(" + var + ")(1+sec(2*" + var + ")) = tan(2*" + var + ")",
+                            "tan(2*" + var + ") = " + std::to_string(n) + "*tan(" + var + ")",
+                            "2t/(1-t^2) = " + std::to_string(n) + "*t",
+                            "t=0 or t^2 = " + ratio_text(n - 2, n),
+                            "tan(" + var + ") = 0 or tan(" + var + ") = +/-" + trig_root_text(root),
+                        },
+                        format_solution_list(var, rad, xs)
+                    );
+                }
+            }
+        }
+        {
+            std::string lhs1 = "sin(" + var + ")cos(" + var + ")cos(2" + var + ")=";
+            if(eq_key.rfind(lhs1, 0) == 0) {
+                long long n = 0, d = 1; std::size_t e = 0;
+                if(read_rat(eq_key, lhs1.size(), n, d, e) && e == eq_key.size()) {
+                    double target = 4.0 * (double)n / (double)d;
+                    if(target >= -1.0 - 1e-12 && target <= 1.0 + 1e-12) {
+                        NodeId arg4 = casio::simplify(a, casio::mul(a, {casio::num(a, 4), casio::sym(a, var)}));
+                        auto xs = x_values_from_angle_degrees(a, arg4, var, lo_text, hi_text, rad,
+                                                               base_trig_degrees(FnKind::Sin, target));
+                        return casio::exam_block(
+                            "trig solve",
+                            {
+                                "2sin(" + var + ")cos(" + var + ") = sin(2*" + var + ")",
+                                "2sin(2*" + var + ")cos(2*" + var + ") = sin(4*" + var + ")",
+                                "sin(" + var + ")cos(" + var + ")cos(2*" + var + ") = sin(4*" + var + ")/4",
+                                "sin(4*" + var + ") = " + trig_root_text(target),
+                            },
+                            format_solution_list(var, rad, xs)
+                        );
+                    }
+                }
+            }
+        }
+        {
+            long long A0 = 0, B0 = 0, C0 = 0;
+            std::size_t e = 0, f = 0, g = 0;
+            std::string mid = "cos(2" + var + ")cos(" + var + ")+";
+            std::string tail = "sin(2" + var + ")sin(" + var + ")=";
+            if(read_int(eq_key, 0, A0, e) && eq_key.compare(e, mid.size(), mid) == 0 &&
+               read_int(eq_key, e + mid.size(), B0, f) && eq_key.compare(f, tail.size(), tail) == 0 &&
+               read_int(eq_key, f + tail.size(), C0, g) && g == eq_key.size()) {
+                long long c3 = 2 * A0 - 2 * B0;
+                long long c1 = -A0 + 2 * B0;
+                long long c0 = -C0;
+                auto eval = [&](double u) { return (double)c3*u*u*u + (double)c1*u + (double)c0; };
+                std::vector<std::pair<long long, long long>> roots;
+                for(long long den = 1; den <= 24; ++den) {
+                    for(long long num = -den; num <= den; ++num) {
+                        long long gg = std::gcd(std::llabs(num), den);
+                        long long rn = num / gg, rd = den / gg;
+                        bool seen = false;
+                        for(auto const &r : roots)
+                            if(r.first == rn && r.second == rd) { seen = true; break; }
+                        if(seen) continue;
+                        double u = (double)rn / (double)rd;
+                        if(std::fabs(eval(u)) < 1e-8) roots.push_back({rn, rd});
+                    }
+                }
+                if(!roots.empty()) {
+                    std::vector<double> xs;
+                    std::string cos_line = "cos(" + var + ") = ";
+                    for(std::size_t i = 0; i < roots.size(); ++i) {
+                        if(i) cos_line += " or ";
+                        cos_line += ratio_text(roots[i].first, roots[i].second);
+                        auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                                 base_trig_degrees(FnKind::Cos, (double)roots[i].first / (double)roots[i].second));
+                        for(double x : vals) add_unique(xs, x);
+                    }
+                    std::sort(xs.begin(), xs.end());
+                    std::string poly;
+                    if(c3) poly += std::to_string(c3) + "u^3";
+                    if(c1) poly += std::string(c1 > 0 && !poly.empty() ? "+" : "") + std::to_string(c1) + "u";
+                    if(c0) poly += std::string(c0 > 0 && !poly.empty() ? "+" : "") + std::to_string(c0);
+                    poly += " = 0";
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "u = cos(" + var + ")",
+                            "cos(2*" + var + ") = 2u^2-1",
+                            "sin(2*" + var + ")sin(" + var + ") = 2u(1-u^2)",
+                            std::to_string(A0) + "(2u^2-1)u+" + std::to_string(B0) + "*2u(1-u^2) = " + std::to_string(C0),
+                            poly,
+                            cos_line,
+                        },
+                        format_solution_list(var, rad, xs)
+                    );
+                }
+            }
+        }
+        {
+            std::string q = "(tan(2" + var + ")-sin(2" + var + "))/tan(2" + var + ")=1";
+            if(eq_key == q) {
+                NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+                auto xs = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Cos, 0.0));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "tan(2*" + var + ") = sin(2*" + var + ")/cos(2*" + var + ")",
+                        "(tan(2*" + var + ")-sin(2*" + var + "))/tan(2*" + var + ") = 1-cos(2*" + var + ")",
+                        "1-cos(2*" + var + ") = 1",
+                        "cos(2*" + var + ") = 0",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "cos(" + var + ")+sin(" + var + ")tan(2" + var + ")=1";
+            if(eq_key == q) {
+                std::vector<double> xs;
+                for(double c : {1.0, -0.5}) {
+                    auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                             base_trig_degrees(FnKind::Cos, c));
+                    for(double x : vals) add_unique(xs, x);
+                }
+                auto hi_node = casio::parse_expr(a, hi_text);
+                double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+                xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
+                std::sort(xs.begin(), xs.end());
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "cos(" + var + ")+sin(" + var + ")tan(2*" + var + ") = cos(" + var + ")/cos(2*" + var + ")",
+                        "cos(" + var + ")/cos(2*" + var + ") = 1",
+                        "cos(" + var + ") = cos(2*" + var + ")",
+                        "u = cos(" + var + ")",
+                        "u = 2u^2-1",
+                        "2u^2-u-1 = 0",
+                        "u = 1 or u = -1/2",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string lhs = "cosec(" + var + ")/(1+cosec(" + var + "))-cosec(" + var + ")/(1-cosec(" + var + "))=";
+            long long n = 0; std::size_t e = 0;
+            if(eq_key.rfind(lhs, 0) == 0 && read_int(eq_key, lhs.size(), n, e) && eq_key.substr(e) == "tan(" + var + ")" && n >= 4) {
+                double target = 4.0 / (double)n;
+                NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+                auto xs = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Sin, target));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "cosec(" + var + ")/(1+cosec(" + var + ")) = 1/(1+sin(" + var + "))",
+                        "cosec(" + var + ")/(1-cosec(" + var + ")) = 1/(sin(" + var + ")-1)",
+                        "LHS = 2/(cos(" + var + ")^2)",
+                        "2/(cos(" + var + ")^2) = " + std::to_string(n) + "*tan(" + var + ")",
+                        "2 = " + std::to_string(n) + "*sin(" + var + ")*cos(" + var + ")",
+                        "sin(2*" + var + ") = " + trig_root_text(target),
+                    },
+                    format_solution_list(var, rad, xs)
+                );
             }
         }
         if(eq_key == "tan(" + var + "+45)=1-2tan(" + var + ")") {
@@ -6008,6 +6295,52 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                             );
                         }
                     }
+                }
+            }
+        }
+        if(eq_key == "8cos(" + var + ")^3-6cos(" + var + ")+1=0") {
+            NodeId arg3 = casio::simplify(a, casio::mul(a, {casio::num(a, 3), casio::sym(a, var)}));
+            auto xs = x_values_from_angle_degrees(a, arg3, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, -0.5));
+            return casio::exam_block(
+                "trig solve",
+                {
+                    "cos(3*" + var + ") = 4cos(" + var + ")^3-3cos(" + var + ")",
+                    "2cos(3*" + var + ") + 1 = 0",
+                    "cos(3*" + var + ") = -1/2",
+                },
+                format_solution_list(var, rad, xs)
+            );
+        }
+        {
+            std::string lhs = "cos(" + var + ")^2+tan(" + var + ")^2=";
+            long long n = 0; std::size_t e = 0;
+            if(eq_key.rfind(lhs, 0) == 0 && read_int(eq_key, lhs.size(), n, e) && e < eq_key.size() && eq_key[e] == '/') {
+                long long d = 0; std::size_t f = 0;
+                if(read_int(eq_key, e + 1, d, f) && f == eq_key.size() && d > 0) {
+                    double K = (double)n / (double)d;
+                    auto roots = solve_quadratic_d(1.0, -(K + 1.0), 1.0);
+                    std::vector<double> xs;
+                    std::vector<std::string> steps{
+                        "u = cos(" + var + ")^2",
+                        "tan(" + var + ")^2 = (1-u)/u",
+                        "u+(1-u)/u = " + ratio_text(n, d),
+                        "u^2-" + trig_root_text(K + 1.0) + "*u+1 = 0",
+                    };
+                    for(double u : roots) {
+                        if(u < -1e-12 || u > 1.0 + 1e-12) {
+                            steps.push_back("Reject u = " + trig_root_text(u));
+                            continue;
+                        }
+                        double c = std::sqrt(std::max(0.0, u));
+                        steps.push_back("cos(" + var + ") = +/-" + trig_root_text(c));
+                        for(double v : {c, -c}) {
+                            auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                                     base_trig_degrees(FnKind::Cos, v));
+                            for(double x : vals) add_unique(xs, x);
+                        }
+                    }
+                    std::sort(xs.begin(), xs.end());
+                    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
                 }
             }
         }
