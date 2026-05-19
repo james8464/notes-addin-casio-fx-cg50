@@ -3430,6 +3430,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("dy/d" + var + " = y*[" + dexpo + "*ln(" + base + ") + " + eb + "*(" + dbase + ")/(" + base + ")].");
                     used_rule = true;
                 }
+                if(!used_rule && dn.kind == NodeKind::Pow) {
+                    Node const &base = arena.get(dn.a);
+                    if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && depends_on(arena, dn.b, var)) {
+                        NodeId du = casio::simplify(arena, diff(arena, dn.b, var));
+                        steps.push_back("u = " + clean_math_text(format_expr_human(arena, dn.b)) + ".");
+                        steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
+                        steps.push_back("dy/d" + var + " = e^u*du/d" + var + ".");
+                        used_rule = true;
+                    }
+                    else if(!depends_on(arena, dn.a, var) && depends_on(arena, dn.b, var)) {
+                        NodeId du = casio::simplify(arena, diff(arena, dn.b, var));
+                        std::string btxt = clean_math_text(format_expr_human(arena, dn.a));
+                        steps.push_back("u = " + clean_math_text(format_expr_human(arena, dn.b)) + ".");
+                        steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
+                        steps.push_back("dy/d" + var + " = " + btxt + "^u*ln(" + btxt + ")*du/d" + var + ".");
+                        used_rule = true;
+                    }
+                }
                 if(!used_rule && has_variable_power(arena, n, var)) {
                     steps.push_back("ln(y) = exponent*ln(base).");
                     steps.push_back("dy/d" + var + " = y*(exponent'*ln(base)+exponent*base'/base).");
