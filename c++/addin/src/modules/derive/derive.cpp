@@ -2370,6 +2370,109 @@ static bool append_quotient_rule_detail(
     return true;
 }
 
+static bool is_power_of_den(Arena &a, NodeId n, NodeId den, int power)
+{
+    Node x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    auto e = as_num(a, x.b);
+    return e && e->den == 1 && e->num == power && same_expr_key(a, x.a, den);
+}
+
+static std::optional<NodeId> find_square_denominator(Arena &a, NodeId term)
+{
+    Node x = a.get(term);
+    if(is_power_of_den(a, term, x.a, -2)) return x.a;
+    if(x.kind == NodeKind::Div) return x.b;
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            Node kid = a.get(k);
+            if(kid.kind == NodeKind::Pow && is_power_of_den(a, k, kid.a, -2)) return kid.a;
+            if(kid.kind == NodeKind::Div) return kid.b;
+        }
+    }
+    return std::nullopt;
+}
+
+static NodeId mul_or_one(Arena &a, std::vector<NodeId> factors)
+{
+    if(factors.empty()) return casio::num(a, 1);
+    if(factors.size() == 1) return factors[0];
+    return casio::simplify(a, casio::mul(a, factors));
+}
+
+static std::optional<NodeId> numerator_over_square_den(Arena &a, NodeId term, NodeId den)
+{
+    Node x = a.get(term);
+    if(is_power_of_den(a, term, den, -2)) return casio::num(a, 1);
+    if(x.kind == NodeKind::Div && same_expr_key(a, x.b, den))
+        return casio::simplify(a, casio::mul(a, {x.a, den}));
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+
+    for(std::size_t i = 0; i < x.kids.size(); ++i) {
+        NodeId k = x.kids[i];
+        if(is_power_of_den(a, k, den, -2)) {
+            std::vector<NodeId> rest;
+            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
+            return mul_or_one(a, rest);
+        }
+        if(is_power_of_den(a, k, den, -1)) {
+            std::vector<NodeId> rest;
+            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
+            rest.push_back(den);
+            return mul_or_one(a, rest);
+        }
+        Node kid = a.get(k);
+        if(kid.kind == NodeKind::Div && same_expr_key(a, kid.b, den)) {
+            std::vector<NodeId> rest;
+            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
+            rest.push_back(kid.a);
+            rest.push_back(den);
+            return mul_or_one(a, rest);
+        }
+    }
+    return std::nullopt;
+}
+
+static bool append_common_denominator_derivative(
+    Arena &a,
+    NodeId derivative,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string &answer_override
+)
+{
+    Node d = a.get(derivative);
+    if(d.kind != NodeKind::Add || d.kids.size() < 2 || d.kids.size() > 4) return false;
+    std::optional<NodeId> den;
+    for(NodeId t : d.kids) {
+        auto cand = find_square_denominator(a, t);
+        if(cand && !den) den = cand;
+        else if(cand && !same_expr_key(a, *den, *cand)) return false;
+    }
+    if(!den) return false;
+
+    std::vector<NodeId> nums;
+    nums.reserve(d.kids.size());
+    for(NodeId t : d.kids) {
+        auto n = numerator_over_square_den(a, t, *den);
+        if(!n) return false;
+        nums.push_back(*n);
+    }
+    NodeId raw_num = casio::simplify(a, casio::add(a, nums));
+    auto poly = poly_node_local(a, raw_num, var, 3);
+    if(!poly) return false;
+    std::string den_text = clean_math_text(format_expr_human(a, *den));
+    std::string raw_text = clean_math_text(format_expr_human(a, raw_num));
+    std::string poly_text = poly_coeffs_text(*poly, var);
+    if(poly_text.empty() || compact_math_key(poly_text) == compact_math_key(raw_text)) return false;
+    if(raw_text.size() <= 180) {
+        steps.push_back("dy/d" + var + " = " + fraction_num_text(raw_text) + "/(" + den_text + ")^2.");
+        steps.push_back(raw_text + " = " + poly_text + ".");
+    }
+    answer_override = "dy/d" + var + " = " + fraction_num_text(poly_text) + "/(" + den_text + ")^2";
+    return true;
+}
+
 static std::vector<std::string> split_csv(std::string const &s)
 {
     std::vector<std::string> parts;
@@ -3138,6 +3241,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     append_function_rule_steps(arena, n, var, steps);
                     used_rule = true;
                 }
+                if(answer_override.empty())
+                    append_common_denominator_derivative(arena, out, var, steps, answer_override);
                 if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
             }
             std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
