@@ -5414,6 +5414,19 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     }
     else if(std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c1) < 1e-12 &&
             (std::fabs(poly->s2) > 1e-12 || std::fabs(poly->sc) > 1e-12 || std::fabs(poly->c2) > 1e-12)) {
+        double plus_s = poly->s2 + poly->s1 + poly->c;
+        double minus_s = poly->s2 - poly->s1 + poly->c;
+        if(std::fabs(plus_s) < 1e-10 || std::fabs(minus_s) < 1e-10) {
+            steps.push_back("cos(A)=0 branch before division.");
+            if(std::fabs(plus_s) < 1e-10) {
+                steps.push_back("sin(A)=1 satisfies original equation.");
+                add_roots(FnKind::Sin, {1.0});
+            }
+            if(std::fabs(minus_s) < 1e-10) {
+                steps.push_back("sin(A)=-1 satisfies original equation.");
+                add_roots(FnKind::Sin, {-1.0});
+            }
+        }
         steps.push_back("Divide by cos(A)^2 where valid.");
         steps.push_back("sec(A)^2=1+tan(A)^2.");
         steps.push_back("Let u=tan(A), solve the quadratic in u.");
