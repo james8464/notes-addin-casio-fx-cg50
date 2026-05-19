@@ -138,6 +138,8 @@ static std::optional<std::int64_t> as_int64(Rational const &r)
     return r.num;
 }
 
+static std::string rational_power_root_text(Arena &a, Rational r, int root);
+
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
 {
     if(n < 0) return false;
@@ -3057,6 +3059,15 @@ static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::str
     out.push_back(oss.str());
 }
 
+static void sort_solution_lines(Arena &a, std::vector<std::string> &sols)
+{
+    std::sort(sols.begin(), sols.end(), [&](std::string const &u, std::string const &v) {
+        auto a0 = solution_line_value(a, u), b0 = solution_line_value(a, v);
+        if(a0 && b0) return *a0 < *b0;
+        return u < v;
+    });
+}
+
 static std::vector<std::string> filter_real_solutions(Arena &a,
                                                       NodeId residual_expr,
                                                       std::string const &var,
@@ -4752,7 +4763,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
             Node const &base = a.get(x.a);
             Node const &exp = a.get(x.b);
             if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den == 1 &&
-               exp.num.num >= -2 && exp.num.num <= 2) {
+               exp.num.num >= -8 && exp.num.num <= 8) {
                 p = static_cast<int>(exp.num.num);
                 return true;
             }
@@ -4818,6 +4829,77 @@ static std::optional<std::vector<std::string>> reciprocal_power_equation_route(A
         out.push_back(var + " = []");
         return out;
     }
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_same_power_quadratic_route(Arena &a,
+                                                                                    NodeId rearr,
+                                                                                    std::string const &var,
+                                                                                    std::optional<double> lo,
+                                                                                    std::optional<double> hi)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() < 2 || terms.size() > 3) return std::nullopt;
+
+    std::optional<int> n;
+    Rational cpos{0, 1}, c0{0, 1}, cneg{0, 1};
+    for(NodeId t : terms) {
+        Rational c{1, 1};
+        int p = 0;
+        if(!reciprocal_power_term(a, t, var, c, p)) return std::nullopt;
+        if(p == 0) {
+            c0 = r_add(c0, c);
+            continue;
+        }
+        int ap = p < 0 ? -p : p;
+        if(ap < 2 || ap > 8) return std::nullopt;
+        if(n && *n != ap) return std::nullopt;
+        n = ap;
+        if(p > 0) cpos = r_add(cpos, c);
+        else cneg = r_add(cneg, c);
+    }
+    if(!n || is_zero(cpos) || is_zero(cneg)) return std::nullopt;
+
+    Poly2 q{cpos, c0, cneg, true};
+    auto uroots = rational_quadratic_roots(q);
+    if(!uroots) return std::nullopt;
+
+    std::vector<std::string> raw;
+    std::vector<std::string> out;
+    out.push_back("Domain: " + var + " != 0");
+    out.push_back("u = " + var + "^" + std::to_string(*n));
+    out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+    std::vector<Rational> us{uroots->first, uroots->second};
+    for(Rational u : us) {
+        u.normalize();
+        if(is_zero(u)) {
+            out.push_back("u = 0 rejected");
+            continue;
+        }
+        out.push_back("u = " + format_rat_plain(u));
+        if(*n % 2 == 0) {
+            if(u.num < 0) {
+                out.push_back(var + "^" + std::to_string(*n) + " = " + format_rat_plain(u) + " has no real roots");
+                continue;
+            }
+            std::string root = rational_power_root_text(a, u, *n);
+            raw.push_back(var + " = " + root);
+            raw.push_back(var + " = -" + root);
+        }
+        else {
+            raw.push_back(var + " = " + rational_power_root_text(a, u, *n));
+        }
+    }
+    auto sols = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    if(sols.empty()) {
+        out.push_back(lo && hi ? "No solution in interval." : "No solution.");
+        out.push_back(var + " = []");
+        return out;
+    }
+    sort_solution_lines(a, sols);
     append_answer(out, var, sols);
     append_numeric_3dp(a, out, var, sols);
     return out;
@@ -5365,6 +5447,204 @@ static std::optional<std::vector<std::string>> fractional_recip_power_route(
     };
     if(auto out = try_sides(sides[0], sides[1])) return out;
     return try_sides(sides[1], sides[0]);
+}
+
+static bool rational_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, Rational &power)
+{
+    NodeId body = term;
+    bool has_body = true;
+    split_coeff_body(a, term, coef, body, has_body);
+    if(!has_body) {
+        power = Rational{0, 1};
+        return true;
+    }
+    Node const &x = a.get(body);
+    if(x.kind == NodeKind::Sym && x.text == var) {
+        power = Rational{1, 1};
+        return true;
+    }
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &base = a.get(x.a);
+    Node const &exp = a.get(x.b);
+    if(base.kind != NodeKind::Sym || base.text != var || exp.kind != NodeKind::Num) return false;
+    power = exp.num;
+    power.normalize();
+    return power.den <= 8 && power.num >= -8 && power.num <= 8;
+}
+
+static std::optional<std::vector<std::string>> fractional_same_power_quadratic_route(Arena &a,
+                                                                                    NodeId rearr,
+                                                                                    std::string const &var)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() < 2 || terms.size() > 3) return std::nullopt;
+
+    std::optional<Rational> pwr;
+    Rational cpos{0, 1}, c0{0, 1}, cneg{0, 1};
+    for(NodeId t : terms) {
+        Rational c{1, 1}, p{0, 1};
+        if(!rational_power_term(a, t, var, c, p)) return std::nullopt;
+        if(is_zero(p)) {
+            c0 = r_add(c0, c);
+            continue;
+        }
+        Rational ap = r_abs(p);
+        if(ap.num != 1 || ap.den <= 1) return std::nullopt;
+        if(pwr && (pwr->num != ap.num || pwr->den != ap.den)) return std::nullopt;
+        pwr = ap;
+        if(p.num > 0) cpos = r_add(cpos, c);
+        else cneg = r_add(cneg, c);
+    }
+    if(!pwr || is_zero(cpos) || is_zero(cneg)) return std::nullopt;
+
+    Poly2 q{cpos, c0, cneg, true};
+    if(q.a2.num < 0) q = neg_poly(q);
+    auto roots = rational_quadratic_roots(q);
+    if(!roots) return std::nullopt;
+
+    int n = static_cast<int>(pwr->den);
+    std::vector<std::string> out;
+    out.push_back("u = " + var + "^(1/" + std::to_string(n) + ")" + (n % 2 == 0 ? ", u >= 0" : ""));
+    out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+    std::vector<std::string> raw;
+    for(Rational u : std::vector<Rational>{roots->first, roots->second}) {
+        u.normalize();
+        out.push_back("u = " + format_rat_plain(u));
+        if(n % 2 == 0 && u.num < 0) {
+            out.push_back("reject u = " + format_rat_plain(u));
+            continue;
+        }
+        Rational x = rat_pow_i(u, n);
+        raw.push_back(var + " = " + format_rat_plain(x));
+    }
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    sort_solution_lines(a, valid);
+    append_answer(out, var, valid);
+    append_numeric_3dp(a, out, var, valid);
+    return out;
+}
+
+static std::string var_power_text(std::string const &var, Rational p)
+{
+    p.normalize();
+    if(p.num == 0) return "1";
+    if(p.num == p.den) return var;
+    return var + "^(" + format_rat_plain(p) + ")";
+}
+
+static std::string coef_power_text(Rational c, std::string const &pow)
+{
+    c.normalize();
+    if(c.num == c.den) return pow;
+    if(c.num == -c.den) return "-" + pow;
+    return format_rat_plain(c) + "*" + pow;
+}
+
+static std::optional<std::string> solve_power_eq_text(Arena &a, Rational target, Rational power)
+{
+    target.normalize();
+    power.normalize();
+    if(power.num <= 0 || power.den <= 0 || target.num < 0) return std::nullopt;
+    Rational raised = rat_pow_i(target, power.den);
+    return rational_power_root_text(a, raised, static_cast<int>(power.num));
+}
+
+static std::optional<std::vector<std::string>> two_power_factor_route(Arena &a,
+                                                                      NodeId rearr,
+                                                                      std::string const &var,
+                                                                      std::optional<double> lo,
+                                                                      std::optional<double> hi)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() != 2) return std::nullopt;
+    Rational c1{1, 1}, c2{1, 1}, p1{0, 1}, p2{0, 1};
+    if(!rational_power_term(a, terms[0], var, c1, p1) || !rational_power_term(a, terms[1], var, c2, p2)) return std::nullopt;
+    if(is_zero(p1) || is_zero(p2) || is_zero(c1) || is_zero(c2)) return std::nullopt;
+    if(r_cmp(p2, p1) < 0) {
+        std::swap(c1, c2);
+        std::swap(p1, p2);
+    }
+    if(p1.num <= 0 || p2.num <= 0 || r_cmp(p2, p1) <= 0) return std::nullopt;
+    Rational diff = r_sub(p2, p1);
+    Rational target = r_div(r_neg(c1), c2);
+    auto root = solve_power_eq_text(a, target, diff);
+    if(!root) return std::nullopt;
+
+    std::vector<std::string> raw{var + " = 0", var + " = " + *root};
+    if(diff.den == 1 && diff.num % 2 == 0 && target.num > 0) raw.push_back(var + " = -" + *root);
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    if(valid.empty()) return std::nullopt;
+    sort_solution_lines(a, valid);
+
+    std::vector<std::string> out;
+    out.push_back(var_power_text(var, p1) + "(" + signed_sum_text(format_rat_plain(c1), coef_power_text(c2, var_power_text(var, diff))) + ") = 0");
+    out.push_back(var_power_text(var, p1) + " = 0 or " + var_power_text(var, diff) + " = " + format_rat_plain(target));
+    append_answer(out, var, valid);
+    append_numeric_3dp(a, out, var, valid);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> power_quadratic_substitution_route(Arena &a,
+                                                                                 NodeId rearr,
+                                                                                 std::string const &var,
+                                                                                 std::optional<double> lo,
+                                                                                 std::optional<double> hi)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() < 2 || terms.size() > 3) return std::nullopt;
+
+    std::optional<long long> n;
+    Rational c2{0, 1}, c1{0, 1}, c0{0, 1};
+    for(NodeId t : terms) {
+        Rational c{1, 1}, p{0, 1};
+        if(!rational_power_term(a, t, var, c, p) || p.den != 1 || p.num < 0) return std::nullopt;
+        if(p.num == 0) {
+            c0 = r_add(c0, c);
+            continue;
+        }
+        if(!n) {
+            if(p.num % 2 == 0) n = p.num / 2;
+            else n = p.num;
+        }
+        if(!n || *n < 2 || *n > 8) return std::nullopt;
+        if(p.num == *n) c1 = r_add(c1, c);
+        else if(p.num == 2 * (*n)) c2 = r_add(c2, c);
+        else return std::nullopt;
+    }
+    if(!n || is_zero(c2)) return std::nullopt;
+
+    Poly2 q{c2, c1, c0, true};
+    auto roots = rational_quadratic_roots(q);
+    if(!roots) return std::nullopt;
+
+    std::vector<std::string> raw;
+    std::vector<std::string> out;
+    out.push_back("u = " + var + "^" + std::to_string(*n));
+    out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+    for(Rational u : std::vector<Rational>{roots->first, roots->second}) {
+        u.normalize();
+        out.push_back("u = " + format_rat_plain(u));
+        if(*n % 2 == 0) {
+            if(u.num < 0) {
+                out.push_back(var + "^" + std::to_string(*n) + " = " + format_rat_plain(u) + " has no real roots");
+                continue;
+            }
+            std::string root = rational_power_root_text(a, u, static_cast<int>(*n));
+            raw.push_back(var + " = " + root);
+            raw.push_back(var + " = -" + root);
+        }
+        else {
+            raw.push_back(var + " = " + rational_power_root_text(a, u, static_cast<int>(*n)));
+        }
+    }
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    sort_solution_lines(a, valid);
+    append_answer(out, var, valid);
+    append_numeric_3dp(a, out, var, valid);
+    return out;
 }
 
 static std::optional<std::vector<std::string>> custom_log_base_route(
@@ -7019,6 +7299,12 @@ static NodeId sqrt_var_sub_node(Arena &a, NodeId n, std::string const &var)
     Node const &x = a.get(n);
     NodeId u = casio::sym(a, "u");
     if(x.kind == NodeKind::Sym && x.text == var) return casio::power(a, u, casio::num(a, 2));
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den == 2)
+            return exp.num.num == 1 ? u : casio::power(a, u, casio::num(a, exp.num.num));
+    }
     if(x.kind == NodeKind::Fn) {
         Node const &arg = a.get(x.a);
         if(x.fkind == FnKind::Sqrt && arg.kind == NodeKind::Sym && arg.text == var) return u;
@@ -7041,9 +7327,38 @@ static NodeId sqrt_var_sub_node(Arena &a, NodeId n, std::string const &var)
     return n;
 }
 
+static bool is_plain_sqrt_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &arg = a.get(x.a);
+        return arg.kind == NodeKind::Sym && arg.text == var;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        return base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den == 2;
+    }
+    return false;
+}
+
+static bool contains_plain_sqrt_var(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_plain_sqrt_var(a, n, var)) return true;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return contains_plain_sqrt_var(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_plain_sqrt_var(a, x.a, var) || contains_plain_sqrt_var(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_plain_sqrt_var(a, k, var)) return true;
+    }
+    return false;
+}
+
 static bool only_plain_sqrt_var_terms(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
+    if(is_plain_sqrt_var(a, n, var)) return true;
     if(x.kind == NodeKind::Fn) {
         if(x.fkind == FnKind::Sqrt) {
             Node const &arg = a.get(x.a);
@@ -7066,7 +7381,7 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     std::string const &var
 )
 {
-    if(!contains_fn_kind(a, rearr, FnKind::Sqrt)) return std::nullopt;
+    if(!contains_fn_kind(a, rearr, FnKind::Sqrt) && !contains_plain_sqrt_var(a, rearr, var)) return std::nullopt;
     if(!only_plain_sqrt_var_terms(a, rearr, var)) return std::nullopt;
     NodeId ueq_node = casio::simplify(a, sqrt_var_sub_node(a, rearr, var));
     auto ueq = poly_of(a, ueq_node, "u");
@@ -9091,9 +9406,11 @@ static std::string two_term_poly_text(
 static std::string rational_power_root_text(Arena &a, Rational r, int root)
 {
     if(root == 1) return format_expr(a, a.num(r));
-    auto rn = integer_nth_root_i64(r.num, root);
+    bool neg = r.num < 0;
+    if(neg && root % 2 == 0) return "(" + format_expr(a, a.num(r)) + ")^(1/" + std::to_string(root) + ")";
+    auto rn = integer_nth_root_i64(neg ? -r.num : r.num, root);
     auto rd = integer_nth_root_i64(r.den, root);
-    if(rn && rd && *rd != 0) return format_expr(a, a.num(Rational{*rn, *rd}));
+    if(rn && rd && *rd != 0) return format_expr(a, a.num(Rational{neg ? -*rn : *rn, *rd}));
     return "(" + format_expr(a, a.num(r)) + ")^(1/" + std::to_string(root) + ")";
 }
 
@@ -11436,6 +11753,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
+        if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *nr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
@@ -11508,6 +11826,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
         }
+        if(auto rsp = reciprocal_same_power_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rsp;
+        if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
+        if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pf;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
