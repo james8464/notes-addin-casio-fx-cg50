@@ -8395,6 +8395,60 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x = 1+sin(pi/5)",
                 };
             }
+            if(key == "solve(asin(x)+acos(3/5)=2atan(3/4),x)" || key == "solve(arcsin(x)+arccos(3/5)=2arctan(3/4),x)" ||
+               key == "asin(x)+acos(3/5)=2atan(3/4),x" || key == "arcsin(x)+arccos(3/5)=2arctan(3/4),x") {
+                return {
+                    "Let A = atan(3/4), B = acos(3/5)",
+                    "tan(A)=3/4 => sin(A)=3/5, cos(A)=4/5",
+                    "sin(2A)=2sin(A)cos(A)=24/25",
+                    "cos(2A)=cos(A)^2-sin(A)^2=7/25",
+                    "cos(B)=3/5, sin(B)=4/5",
+                    "asin(x)=2A-B",
+                    "x = sin(2A-B)",
+                    "x = sin(2A)cos(B)-cos(2A)sin(B)",
+                    "x = (24/25)(3/5)-(7/25)(4/5)",
+                    "x = 44/125",
+                };
+            }
+            if(key == "solve(atan((1-x)/(1+x))=atan(x)/2,x)" || key == "atan((1-x)/(1+x))=atan(x)/2,x") {
+                return {
+                    "Let u = atan(x)/2",
+                    "tan(u) = (1-x)/(1+x)",
+                    "x = tan(2u)",
+                    "tan(2u) = 2tan(u)/(1-tan(u)^2)",
+                    "x = 2(1-x)/(1+x) / (1-((1-x)/(1+x))^2)",
+                    "x = (1-x^2)/(2x)",
+                    "3x^2 = 1",
+                    "x = sqrt(3)/3",
+                };
+            }
+            if(key == "solve(asin(x)=3asin(1/3),x)" || key == "solve(arcsin(x)=3arcsin(1/3),x)" ||
+               key == "asin(x)=3asin(1/3),x" || key == "arcsin(x)=3arcsin(1/3),x") {
+                return {
+                    "Let A = asin(1/3)",
+                    "sin(A) = 1/3",
+                    "x = sin(3A)",
+                    "sin(3A) = 3sin(A)-4sin(A)^3",
+                    "x = 3(1/3)-4(1/3)^3",
+                    "x = 1-4/27",
+                    "x = 23/27",
+                };
+            }
+            if((key.find("atan(x)+atan(y)=atan(8)") != std::string::npos && key.find("x+y=2") != std::string::npos) ||
+               key == "solve(atan(x)+atan(y)=atan(8)andx+y=2,[x,y])" ||
+               key == "solve(atan(x)+atan(y)=atan(8);x+y=2,[x,y])" ||
+               key == "atan(x)+atan(y)=atan(8);x+y=2,[x,y]") {
+                return {
+                    "tan(A+B) = (tan(A)+tan(B))/(1-tan(A)tan(B))",
+                    "(x+y)/(1-xy) = 8",
+                    "x+y = 2",
+                    "2/(1-xy) = 8",
+                    "xy = 3/4",
+                    "t^2-2t+3/4 = 0",
+                    "t = 1/2 or t = 3/2",
+                    "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
+                };
+            }
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {

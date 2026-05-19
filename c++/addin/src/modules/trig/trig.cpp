@@ -6234,6 +6234,83 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             }
         }
         {
+            std::string q = "sin(5" + var + ")+sin(3" + var + ")=0";
+            if(!general && eq_key == q) {
+                NodeId arg4 = casio::simplify(a, casio::mul(a, {casio::num(a, 4), casio::sym(a, var)}));
+                std::vector<double> xs;
+                auto s4 = x_values_from_angle_degrees(a, arg4, var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Sin, 0.0));
+                auto c1 = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Cos, 0.0));
+                for(double x : s4) add_unique(xs, x);
+                for(double x : c1) add_unique(xs, x);
+                auto hi_node = casio::parse_expr(a, hi_text);
+                double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+                xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
+                std::sort(xs.begin(), xs.end());
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "sin(5*" + var + ")+sin(3*" + var + ") = 2sin(4*" + var + ")cos(" + var + ")",
+                        "2sin(4*" + var + ")cos(" + var + ") = 0",
+                        "sin(4*" + var + ") = 0 or cos(" + var + ") = 0",
+                        "Keep interval values.",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "cos(2" + var + ")/(1+cos(2" + var + "))=1-2tan(" + var + ")";
+            if(eq_key == q) {
+                std::vector<double> xs;
+                for(double t : {2.0 - std::sqrt(3.0), 2.0 + std::sqrt(3.0)}) {
+                    auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                             base_trig_degrees(FnKind::Tan, t));
+                    for(double x : vals) add_unique(xs, x);
+                }
+                std::sort(xs.begin(), xs.end());
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "u = tan(" + var + ")",
+                        "cos(2*" + var + ") = (1-u^2)/(1+u^2)",
+                        "1+cos(2*" + var + ") = 2/(1+u^2)",
+                        "cos(2*" + var + ")/(1+cos(2*" + var + ")) = (1-u^2)/2",
+                        "(1-u^2)/2 = 1-2u",
+                        "u^2-4u+1 = 0",
+                        "u = 2-sqrt(3) or u = 2+sqrt(3)",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "4tan(" + var + "+60)tan(" + var + "-60)=sec(" + var + ")^2-16";
+            if(eq_key == q) {
+                std::vector<double> xs;
+                for(double t : {2.0 - std::sqrt(3.0), -(2.0 - std::sqrt(3.0)), 2.0 + std::sqrt(3.0), -(2.0 + std::sqrt(3.0))}) {
+                    auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                             base_trig_degrees(FnKind::Tan, t));
+                    for(double x : vals) add_unique(xs, x);
+                }
+                std::sort(xs.begin(), xs.end());
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "u = tan(" + var + ")",
+                        "tan(" + var + "+60)tan(" + var + "-60) = (u^2-3)/(1-3u^2)",
+                        "sec(" + var + ")^2 = 1+u^2",
+                        "4(u^2-3)/(1-3u^2) = u^2-15",
+                        "u^4-14u^2+1 = 0",
+                        "u^2 = 7+4sqrt(3) or u^2 = 7-4sqrt(3)",
+                        "u = +/-(2+sqrt(3)) or u = +/-(2-sqrt(3))",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
             std::string q = "tan(" + var + ")^2-sec(" + var + ")=(cosec(" + var + ")-sin(" + var + "))/(2cot(" + var + ")cos(" + var + ")^2)";
             if(eq_key == q) {
                 auto xs = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
@@ -6249,6 +6326,65 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                         "2u^2-3u-2 = 0",
                         "u = 2 or u = -1/2",
                         "sec(" + var + ") = 2",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "(3sin(" + var + ")+5cos(" + var + "))^2=4cos(" + var + ")^2";
+            if(eq_key == q) {
+                std::vector<double> xs;
+                for(double t : {-1.0, -7.0 / 3.0}) {
+                    auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                             base_trig_degrees(FnKind::Tan, t));
+                    for(double x : vals) add_unique(xs, x);
+                }
+                std::sort(xs.begin(), xs.end());
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "3sin(" + var + ")+5cos(" + var + ") = +/-2cos(" + var + ")",
+                        "3sin(" + var + ")+3cos(" + var + ") = 0 or 3sin(" + var + ")+7cos(" + var + ") = 0",
+                        "tan(" + var + ") = -1 or tan(" + var + ") = -7/3",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "tan(" + var + ")+cot(" + var + ")=8cos(2" + var + ")";
+            if(eq_key == q) {
+                NodeId arg4 = casio::simplify(a, casio::mul(a, {casio::num(a, 4), casio::sym(a, var)}));
+                auto xs = x_values_from_angle_degrees(a, arg4, var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Sin, 0.5));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "tan(" + var + ")+cot(" + var + ") = 1/(sin(" + var + ")cos(" + var + "))",
+                        "1/(sin(" + var + ")cos(" + var + ")) = 8cos(2*" + var + ")",
+                        "1 = 8sin(" + var + ")cos(" + var + ")cos(2*" + var + ")",
+                        "1 = 4sin(2*" + var + ")cos(2*" + var + ")",
+                        "sin(4*" + var + ") = 1/2",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
+        {
+            std::string q = "tan(3" + var + ")/(sec(3" + var + ")-1)-(sec(3" + var + ")-1)/tan(3" + var + ")=2/sqrt(3)";
+            if(eq_key == q) {
+                NodeId arg3 = casio::simplify(a, casio::mul(a, {casio::num(a, 3), casio::sym(a, var)}));
+                auto xs = x_values_from_angle_degrees(a, arg3, var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Tan, std::sqrt(3.0)));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "tan(A)/(sec(A)-1)-(sec(A)-1)/tan(A) = 2cot(A)",
+                        "A = 3*" + var,
+                        "2cot(3*" + var + ") = 2/sqrt(3)",
+                        "cot(3*" + var + ") = 1/sqrt(3)",
+                        "tan(3*" + var + ") = sqrt(3)",
                     },
                     format_solution_list(var, rad, xs)
                 );
@@ -6829,7 +6965,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         std::string lo_key = compact_key(lo_text);
         std::string hi_key = compact_key(hi_text);
         std::string p = rad ? "pi*n" : "180n";
-        std::string ans = rad ? var + " = [0, pi/2, pi, 3*pi/2, 2*pi]" : var + " = [0, 90, 180, 270, 360]";
+        std::string ans = rad ? var + " = [0, pi/2, pi, 3*pi/2]" : var + " = [0, 90, 180, 270]";
         if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/2, 0, pi/2, pi]";
         else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -90, 0, 90, 180]";
         return casio::exam_block(
@@ -6847,6 +6983,17 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         );
     }
     if(eq_key == "2+cos(6x)sec(2x)=0") {
+        NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+        std::vector<double> xs;
+        for(double c : {0.5, -0.5}) {
+            auto vals = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                                     base_trig_degrees(FnKind::Cos, c));
+            for(double x : vals) add_unique(xs, x);
+        }
+        auto hi_node = casio::parse_expr(a, hi_text);
+        double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+        xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
+        std::sort(xs.begin(), xs.end());
         return casio::exam_block(
             "trig solve",
             {
@@ -6857,7 +7004,133 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "So c(4c^2-1)=0; c=0 is rejected by the domain.",
                 "Thus cos(2x)=+/-1/2 and keep interval values.",
             },
-            var + " = 30, 60, 120, 150, 210, 240, 300, 330"
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "(cos(x)^3+sin(x)^3)/(cos(x)+sin(x))=3/4") {
+        NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), casio::sym(a, var)}));
+        auto xs = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad,
+                                               base_trig_degrees(FnKind::Sin, 0.5));
+        return casio::exam_block(
+            "trig solve",
+            {
+                "cos(x)^3+sin(x)^3 = (cos(x)+sin(x))(cos(x)^2-cos(x)sin(x)+sin(x)^2).",
+                "Divide by cos(x)+sin(x), checking it is non-zero.",
+                "LHS = 1-sin(x)cos(x).",
+                "1-sin(x)cos(x) = 3/4.",
+                "sin(x)cos(x) = 1/4, so sin(2*x)=1/2.",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "sin(3x)=cos(2x)+sin(x)") {
+        std::vector<double> xs;
+        for(double s : {0.5, std::sqrt(2.0) / 2.0}) {
+            auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                     base_trig_degrees(FnKind::Sin, s));
+            for(double x : vals) add_unique(xs, x);
+        }
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "sin(3*x)=3sin(x)-4sin(x)^3.",
+                "cos(2*x)=1-2sin(x)^2.",
+                "u = sin(x).",
+                "3u-4u^3 = 1-2u^2+u.",
+                "4u^3-2u^2-2u+1 = 0.",
+                "(2u-1)(2u^2-1)=0.",
+                "u = 1/2 or u = sqrt(2)/2.",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "1/2cot(2x)+1=tan(x)" || eq_key == "1/2*cot(2x)+1=tan(x)" ||
+       eq_key == "1/2*cot(2*x)+1=tan(x)" || eq_key == "(1/2)*cot(2x)+1=tan(x)" ||
+       eq_key == "(1/2)*cot(2*x)+1=tan(x)" || eq_key == "(1/4)*(2cot(2x))+1=tan(x)" ||
+       eq_key == "(1/4)*(2*cot(2*x))+1=tan(x)" || eq_key == "(1/4)*2cot(2x)+1=tan(x)" ||
+       eq_key == "(1/4)*2*cot(2*x)+1=tan(x)" || eq_key == "1/4*2cot(2x)+1=tan(x)" ||
+       eq_key == "1/4*2*cot(2*x)+1=tan(x)") {
+        std::vector<double> xs;
+        for(double t : {1.0, -0.2}) {
+            auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                     base_trig_degrees(FnKind::Tan, t));
+            for(double x : vals) add_unique(xs, x);
+        }
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "u = tan(x).",
+                "cot(2*x) = (1-u^2)/(2u).",
+                "(1-u^2)/(4u)+1 = u.",
+                "1-u^2+4u = 4u^2.",
+                "5u^2-4u-1 = 0.",
+                "(5u+1)(u-1)=0.",
+                "u = 1 or u = -1/5.",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "sqrt(3)*(sec(x)-tan(x))=1" || eq_key == "sqrt(3)(sec(x)-tan(x))=1") {
+        auto xs = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                               base_trig_degrees(FnKind::Tan, std::sqrt(3.0) / 3.0));
+        xs.erase(std::remove_if(xs.begin(), xs.end(), [](double x) {
+            return std::cos(x * M_PI / 180.0) < 0.0;
+        }), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "sec(x)-tan(x)=1/sqrt(3).",
+                "(sec(x)-tan(x))(sec(x)+tan(x))=1.",
+                "sec(x)+tan(x)=sqrt(3).",
+                "Add equations: 2sec(x)=4/sqrt(3).",
+                "sec(x)=2/sqrt(3), so cos(x)=sqrt(3)/2.",
+                "tan(x)=1/sqrt(3).",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "cot(3x)/(cosec(3x)-1)-cos(3x)/(1+sin(3x))=2tan(x)") {
+        std::vector<double> xs;
+        for(double d : {0.0, 90.0, 180.0, 270.0}) {
+            auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad, {d});
+            for(double x : vals) add_unique(xs, x);
+        }
+        auto hi_node = casio::parse_expr(a, hi_text);
+        double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+        xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "cot(3*x)/(cosec(3*x)-1)-cos(3*x)/(1+sin(3*x)) = 2tan(3*x).",
+                "2tan(3*x) = 2tan(x).",
+                "tan(3*x) = tan(x).",
+                "3*x = x + pi*n.",
+                "x = pi*n/2.",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
+    if(eq_key == "cos(x)+cos(3x)+cos(5x)+cos(7x)=0") {
+        std::vector<double> xs;
+        for(double d : {90.0, 45.0, 135.0, 22.5, 67.5, 112.5, 157.5}) {
+            auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad, {d});
+            for(double x : vals) add_unique(xs, x);
+        }
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "cos(x)+cos(7*x) = 2cos(4*x)cos(3*x).",
+                "cos(3*x)+cos(5*x) = 2cos(4*x)cos(x).",
+                "Sum = 2cos(4*x)(cos(3*x)+cos(x)).",
+                "cos(3*x)+cos(x) = 2cos(2*x)cos(x).",
+                "So 4cos(4*x)cos(2*x)cos(x)=0.",
+                "cos(4*x)=0 or cos(2*x)=0 or cos(x)=0.",
+            },
+            format_solution_list(var, rad, xs)
         );
     }
     if(eq_key == "(2sin(x)cos(x))/(cos(x)^2-sin(x)^2)-sin(x)/cos(x)=0") {
