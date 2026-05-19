@@ -3392,12 +3392,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 }
                 if(dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) && !is_atomic(arena, dn.a)) {
-                    if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
+                    if(auto exp = as_num(arena, dn.b); exp && !depends_on(arena, dn.b, var)) {
+                        Rational exp_minus1 = *exp;
+                        exp_minus1.num -= exp_minus1.den;
+                        exp_minus1.normalize();
+                        std::string exp_txt = clean_math_text(format_expr_human(arena, dn.b));
+                        std::string exp_m1_txt = clean_math_text(format_expr_human(arena, arena.num(exp_minus1)));
+                        std::string pow_txt = (exp_minus1.den == 1) ? "u^" + exp_m1_txt : "u^(" + exp_m1_txt + ")";
                         NodeId du = casio::simplify(arena, diff(arena, dn.a, var));
                         steps.push_back("u = " + format_expr_human(arena, dn.a) + ".");
                         steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(arena, du)) + ".");
                         steps.push_back(
-                            "dy/d" + var + " = " + std::to_string(exp->num) + "*u^" + std::to_string(exp->num - 1) +
+                            "dy/d" + var + " = " + exp_txt + "*" + pow_txt +
                             "*du/d" + var + "."
                         );
                         used_rule = true;
