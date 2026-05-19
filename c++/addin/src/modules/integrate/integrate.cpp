@@ -17479,10 +17479,19 @@ static std::optional<NodeId> simplify_param_trig_product(Arena &a, NodeId n, std
     }
     NodeId repl = 0;
     NodeId v = casio::sym(a, var);
+    auto rest_has_trig = [&]() {
+        for(NodeId k : rest) {
+            Node const &r = a.get(k);
+            if(r.kind == NodeKind::Fn && (r.fkind == FnKind::Sin || r.fkind == FnKind::Cos ||
+               r.fkind == FnKind::Tan || r.fkind == FnKind::Sec || r.fkind == FnKind::Cosec ||
+               r.fkind == FnKind::Cot)) return true;
+        }
+        return false;
+    };
     if(sin2 == 1 && sec == 1) repl = casio::mul(a, {casio::num(a, 2), casio::fn(a, "sin", v)});
     else if(sin2 == 1 && sec == 2) repl = casio::mul(a, {casio::num(a, 2), casio::fn(a, "tan", v)});
     else if(sin2 == 2 && sec == 2) repl = casio::mul(a, {casio::num(a, 4), casio::power(a, casio::fn(a, "sin", v), casio::num(a, 2))});
-    else if(sec == 0 && sin2 > 0) {
+    else if(sec == 0 && sin2 > 0 && rest_has_trig()) {
         repl = casio::mul(a, {
             casio::num(a, 1LL << sin2),
             casio::power(a, casio::fn(a, "sin", v), casio::num(a, sin2)),
@@ -17503,6 +17512,12 @@ static std::optional<NodeId> expand_param_product(Arena &a, NodeId n)
         if(a.get(k).kind == NodeKind::Add) {
             if(adds.size() >= 2 || a.get(k).kids.size() > 4) return std::nullopt;
             adds.push_back(k);
+        }
+        else if(a.get(k).kind == NodeKind::Pow && positive_int_power(a, a.get(k).b).value_or(0) == 2 &&
+                a.get(a.get(k).a).kind == NodeKind::Add && a.get(a.get(k).a).kids.size() <= 4) {
+            if(adds.size() >= 1) return std::nullopt;
+            adds.push_back(a.get(k).a);
+            adds.push_back(a.get(k).a);
         }
         else rest.push_back(k);
     }
