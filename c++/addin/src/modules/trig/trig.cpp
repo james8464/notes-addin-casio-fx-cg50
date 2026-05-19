@@ -4379,7 +4379,7 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
     };
     if(general) {
         std::vector<double> xbases;
-        double period = 360.0 / p->m;
+        double period = (std::fabs(target) < 1e-12 ? 180.0 : 360.0) / std::fabs(p->m);
         for(double base : base_trig_degrees(FnKind::Sin, target)) {
             double x = (base - alpha) / p->m;
             while(x < 0.0) x += period;
@@ -7886,7 +7886,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     }
 
     if(general) {
-        double a_period_deg = (fk == FnKind::Tan ? 180.0 : 360.0);
+        auto target_zero = numeric_eval(a, target_node, 0.0);
+        double a_period_deg = (fk == FnKind::Tan || ((fk == FnKind::Sin || fk == FnKind::Cos) && target_zero &&
+                               std::fabs(*target_zero) < 1e-12)) ? 180.0 : 360.0;
         double x_period_deg = a_period_deg / std::fabs(angle_coeff);
         std::vector<double> a_bases_deg;
         std::vector<double> x_bases_deg;
