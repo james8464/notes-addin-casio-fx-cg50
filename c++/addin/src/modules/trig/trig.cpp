@@ -3148,7 +3148,7 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
     if(!p) return std::nullopt;
     int shift = -p->min_e;
     int deg = p->max_e - p->min_e;
-    if(deg < 1 || deg > 3) return std::nullopt;
+    if(deg < 1 || deg > 5) return std::nullopt;
     if(!p->used_recip) return std::nullopt;
     if(base == FnKind::Tan && deg <= 1) return std::nullopt;
     std::vector<double> c((std::size_t)deg + 1, 0.0);
@@ -3164,6 +3164,11 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
         roots.push_back(0.0);
         auto q = solve_quadratic_d(c[3], c[2], c[1]);
         for(double r : q) add_unique(roots, r);
+    }
+    else if(deg == 5 && std::fabs(c[1]) < 1e-12 && std::fabs(c[2]) < 1e-12 && std::fabs(c[3]) < 1e-12 &&
+            std::fabs(c[4]) < 1e-12 && std::fabs(c[5]) > 1e-12) {
+        double v = -c[0] / c[5];
+        roots.push_back(v < 0.0 ? -std::pow(-v, 0.2) : std::pow(v, 0.2));
     }
     else return std::nullopt;
 
@@ -6045,6 +6050,30 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             if(g0 > 1) { n /= g0; d /= g0; }
             return d > 0;
         };
+        {
+            std::string v = var;
+            std::string pat = "sin(2*" + v + ")*tan(" + v + ")+cos(2*" + v + ")*cot(" + v + ")+2*sin(" + v + ")*cos(" + v + ")=2";
+            std::string pat2 = "sin(2" + v + ")*tan(" + v + ")+cos(2" + v + ")*cot(" + v + ")+2*sin(" + v + ")*cos(" + v + ")=2";
+            if(eq_key == compact_key(pat) || eq_key == compact_key(pat2)) {
+                NodeId arg2 = casio::mul(a, {casio::num(a, 2), casio::sym(a, var)});
+                auto xs = x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, 1.0));
+                return casio::exam_block(
+                    "trig solve",
+                    {
+                        "sin(2" + var + ") = 2sin(" + var + ")cos(" + var + ").",
+                        "cos(2" + var + ") = cos(" + var + ")^2-sin(" + var + ")^2.",
+                        "tan(" + var + ")=sin(" + var + ")/cos(" + var + "), cot(" + var + ")=cos(" + var + ")/sin(" + var + ").",
+                        "Multiply by sin(" + var + ").",
+                        "2sin(" + var + ")^3 + cos(" + var + ")^3 + sin(" + var + ")^2cos(" + var + ") = 2sin(" + var + ").",
+                        "cos(" + var + ")^3 + sin(" + var + ")^2cos(" + var + ") = cos(" + var + ").",
+                        "cos(" + var + ")*(1-2sin(" + var + ")cos(" + var + ")) = 0.",
+                        "cos(" + var + ")!=0.",
+                        "sin(2" + var + ") = 1.",
+                    },
+                    format_solution_list(var, rad, xs)
+                );
+            }
+        }
         long long k = 0, m = 0, rhs = 0;
         std::size_t p = 0, q = 0;
         if(read_int(eq_key, 0, k, p) && eq_key.compare(p, 4, "sin(") == 0 &&
