@@ -28,10 +28,10 @@ def require(name: str, out: str, needles: tuple[str, ...], forbidden: tuple[str,
 
 def main() -> int:
     require(
-        "hyperbolic_chain",
+        "hyperbolic_compact",
         run_host("--derive", "sinh(x^2)+atanh(x/3),x,method=chain"),
-        ("y = sinh(x^2)+atanh(x/3)", "d/dx(sinh(x^2))", "d/dx(atanh(x/3))", "cosh(x^2)"),
-        ("atan(h)",),
+        ("dy/dx =",),
+        ("d/dx(sinh(x^2))", "d/dx(atanh(x/3))", "atan(h)"),
     )
     require(
         "non_elementary_integral",

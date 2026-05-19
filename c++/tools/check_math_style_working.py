@@ -9,8 +9,14 @@ HOST = ROOT / "c++" / "addin" / "host" / "build" / "casio_host"
 CASES = [
     (
         "chain sum",
+        ["--derive", "sin(x^2)+atan(x/3),x,method=chain"],
+        ("d/dx(sin(x^2)) =", "d/dx(atan(x/3)) =", "dy/dx ="),
+    ),
+    (
+        "hyperbolic compact only",
         ["--derive", "sinh(x^2)+atanh(x/3),x,method=chain"],
-        ("d/dx(sinh(x^2)) =", "d/dx(atanh(x/3)) =", "dy/dx ="),
+        ("dy/dx =",),
+        ("d/dx(sinh(x^2)) =", "d/dx(atanh(x/3)) =", "u =", "du/dx ="),
     ),
     (
         "product",
@@ -92,6 +98,30 @@ CASES = [
         "log rational derivative quotient",
         ["--derive", "ln((x-1)/(x+2)),x"],
         ("u = (x - 1)/(x + 2)", "Domain: x < -2 or x > 1", "u' = ((1)*(x + 2)-(x - 1)*(1))/(x + 2)^2", "u' = 3/(x + 2)^2", "dy/dx = [3/(x + 2)^2]/[(x - 1)/(x + 2)]", "dy/dx = 3/((x + 2)*(x - 1))"),
+    ),
+    (
+        "log radical conjugate derivative family",
+        ["--derive", "ln((sqrt(e^x+1)-1)/(sqrt(e^x+1)+1)),x"],
+        ("s = sqrt(e^(x) + 1)", "dy/dx = 1/sqrt(e^(x) + 1)"),
+        ("du/dx/u",),
+    ),
+    (
+        "log radical conjugate x family",
+        ["--derive", "ln((sqrt(1-x^2)-1)/(sqrt(1-x^2)+1)),x"],
+        ("s = sqrt(- x^2 + 1)", "dy/dx = 2/(x*sqrt(- x^2 + 1))"),
+        ("du/dx/u",),
+    ),
+    (
+        "log asinh style radical family",
+        ["--derive", "ln(x-2+sqrt(x^2-4*x+13)),x"],
+        ("u = x - 2", "dy/dx = 1/sqrt(x^2 - 4*x + 13)"),
+        ("du/dx/u",),
+    ),
+    (
+        "atan complement derivative family",
+        ["--derive", "atan(x)+atan((1-x)/(1+x)),x"],
+        ("v = (1-u)/(1+u)", "dy/dx = 0"),
+        ("dy/dx = 1/(x^2 + 1) +",),
     ),
     (
         "reciprocal trig derivative identity",

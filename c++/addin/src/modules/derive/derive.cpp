@@ -424,15 +424,9 @@ static std::string chain_formula(FnKind f, std::string const &var)
     case FnKind::Sec: return "sec(u)*tan(u)" + du;
     case FnKind::Cosec: return "-cosec(u)*cot(u)" + du;
     case FnKind::Cot: return "-cosec(u)^2" + du;
-    case FnKind::Sinh: return "cosh(u)" + du;
-    case FnKind::Cosh: return "sinh(u)" + du;
-    case FnKind::Tanh: return "du/d" + var + "/cosh(u)^2";
     case FnKind::Asin: return "du/d" + var + "/sqrt(1-u^2)";
     case FnKind::Acos: return "-du/d" + var + "/sqrt(1-u^2)";
     case FnKind::Atan: return "du/d" + var + "/(1+u^2)";
-    case FnKind::Asinh: return "du/d" + var + "/sqrt(u^2+1)";
-    case FnKind::Acosh: return "du/d" + var + "/sqrt(u^2-1)";
-    case FnKind::Atanh: return "du/d" + var + "/(1-u^2)";
     case FnKind::Log: return "du/d" + var + "/u";
     case FnKind::Log10: return "du/d" + var + "/(u*ln(10))";
     case FnKind::Exp: return "exp(u)" + du;
@@ -444,7 +438,7 @@ static std::string chain_formula(FnKind f, std::string const &var)
 
 static void append_inverse_domain_detail(Arena &a, NodeId inner, FnKind f, std::string const &var, std::vector<std::string> &steps)
 {
-    if(f != FnKind::Asin && f != FnKind::Acos && f != FnKind::Atanh && f != FnKind::Acosh) return;
+    if(f != FnKind::Asin && f != FnKind::Acos) return;
     std::string key = compact_math_key(format_expr_human(a, inner));
     std::string recip = "1/(" + var + "^2+";
     if((f == FnKind::Asin || f == FnKind::Acos) && key.rfind(recip, 0) == 0 && key.back() == ')') {
@@ -457,8 +451,6 @@ static void append_inverse_domain_detail(Arena &a, NodeId inner, FnKind f, std::
         steps.push_back("-1 <= u <= 1; derivative uses -1 < u < 1.");
         return;
     }
-    if(f == FnKind::Atanh) steps.push_back("-1 < u < 1.");
-    if(f == FnKind::Acosh) steps.push_back("u >= 1; derivative uses u > 1.");
 }
 
 static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
@@ -471,8 +463,7 @@ static bool append_sum_derivative_detail(Arena &a, NodeId n, std::string const &
         if(!(zr && zr->num == 0)) {
             Node const &kn = a.get(k);
             if(kn.kind == NodeKind::Fn && depends_on(a, kn.a, var) &&
-               (kn.fkind == FnKind::Asin || kn.fkind == FnKind::Acos ||
-                kn.fkind == FnKind::Atanh || kn.fkind == FnKind::Acosh)) {
+               (kn.fkind == FnKind::Asin || kn.fkind == FnKind::Acos)) {
                 NodeId du = casio::simplify(a, diff(a, kn.a, var, ""));
                 steps.push_back("u = " + clean_math_text(format_expr_human(a, kn.a)) + ".");
                 steps.push_back("du/d" + var + " = " + clean_math_text(format_expr_human(a, du)) + ".");
@@ -558,6 +549,13 @@ static bool contains_fn_kind(Arena &a, NodeId n, FnKind kind)
             if(contains_fn_kind(a, k, kind)) return true;
     }
     return false;
+}
+
+static bool contains_hyperbolic_fn(Arena &a, NodeId n)
+{
+    return contains_fn_kind(a, n, FnKind::Sinh) || contains_fn_kind(a, n, FnKind::Cosh) ||
+           contains_fn_kind(a, n, FnKind::Tanh) || contains_fn_kind(a, n, FnKind::Asinh) ||
+           contains_fn_kind(a, n, FnKind::Acosh) || contains_fn_kind(a, n, FnKind::Atanh);
 }
 
 static std::string clean_math_text(std::string s)
@@ -1554,6 +1552,151 @@ static std::optional<std::pair<std::string, std::string>> log_recip_quadratic_ro
                           "dy/d" + var + " = -2*" + var + "/(" + q + ")");
 }
 
+struct SqrtPlusConst
+{
+    NodeId radicand;
+    Rational c;
+};
+
+static std::optional<SqrtPlusConst> sqrt_plus_const(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) return SqrtPlusConst{x.a, Rational{0, 1}};
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    std::optional<NodeId> rad;
+    Rational c{0, 1};
+    for(NodeId k : x.kids) {
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Sqrt) {
+            if(rad) return std::nullopt;
+            rad = kn.a;
+        }
+        else if(kn.kind == NodeKind::Num) {
+            c = Rational{c.num * kn.num.den + kn.num.num * c.den, c.den * kn.num.den};
+            c.normalize();
+        }
+        else return std::nullopt;
+    }
+    if(!rad) return std::nullopt;
+    return SqrtPlusConst{*rad, c};
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>> log_radical_detail(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &ln = a.get(n);
+    if(ln.kind != NodeKind::Fn || ln.fkind != FnKind::Log) return std::nullopt;
+    Node const &arg = a.get(ln.a);
+    if(arg.kind == NodeKind::Div) {
+        auto p = sqrt_plus_const(a, arg.a);
+        auto q = sqrt_plus_const(a, arg.b);
+        if(p && q && same_expr_key(a, p->radicand, q->radicand) && p->c.num == -q->c.num && p->c.den == q->c.den && q->c.num != 0) {
+            Rational k = q->c;
+            NodeId f = p->radicand;
+            NodeId fp = casio::simplify(a, diff(a, f, var, ""));
+            Rational k2{k.num * k.num, k.den * k.den};
+            k2.normalize();
+            NodeId den2 = casio::simplify(a, casio::add(a, {f, casio::neg(a, a.num(k2))}));
+            bool k_one = k.num == k.den;
+            NodeId top = k_one ? fp : casio::simplify(a, casio::mul(a, {a.num(k), fp}));
+            NodeId bot = casio::simplify(a, casio::mul(a, {a.fn(FnKind::Sqrt, f), den2}));
+            NodeId ans = casio::simplify(a, casio::div(a, top, bot));
+            std::string s = clean_math_text(format_expr_human(a, a.fn(FnKind::Sqrt, f)));
+            std::string final = clean_math_text(format_expr_human(a, ans));
+            if(same_expr_key(a, top, den2)) final = "1/" + s;
+            NodeId vx2 = casio::neg(a, casio::power(a, casio::sym(a, var), casio::num(a, 2)));
+            NodeId m2x = casio::mul(a, {casio::num(a, -2), casio::sym(a, var)});
+            if(k_one && same_expr_key(a, den2, vx2) && same_expr_key(a, fp, m2x)) final = "2/(" + var + "*" + s + ")";
+            return std::make_pair(
+                std::vector<std::string>{
+                    "Let s = " + s + ".",
+                    "d/d" + var + " ln((s-a)/(s+a)) = a*s'/((s-a)(s+a)).",
+                    "s^2 = " + clean_math_text(format_expr_human(a, f)) + "."
+                },
+                "dy/d" + var + " = " + final
+            );
+        }
+    }
+    if(arg.kind != NodeKind::Add) return std::nullopt;
+    std::optional<NodeId> rad;
+    std::vector<NodeId> rest;
+    for(NodeId k : arg.kids) {
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Sqrt && !rad) rad = kn.a;
+        else rest.push_back(k);
+    }
+    if(!rad || rest.empty()) return std::nullopt;
+    NodeId u = rest.size() == 1 ? rest.front() : casio::simplify(a, casio::add(a, rest));
+    NodeId up = casio::simplify(a, diff(a, u, var, ""));
+    NodeId rp = casio::simplify(a, diff(a, *rad, var, ""));
+    NodeId two_u_up = casio::simplify(a, casio::mul(a, {casio::num(a, 2), u, up}));
+    Node const &check = a.get(casio::simplify(a, casio::add(a, {rp, casio::neg(a, two_u_up)})));
+    bool rad_ok = same_expr_key(a, rp, two_u_up) || (check.kind == NodeKind::Num && check.num.num == 0);
+    if(!rad_ok) {
+        auto uc = cleared_poly_coeffs(format_expr_human(a, u), var, 0);
+        auto rc = cleared_poly_coeffs(format_expr_human(a, *rad), var, 0);
+        auto get = [](std::vector<Rational> const &v, std::size_t i) {
+            return i < v.size() ? v[i] : Rational{0, 1};
+        };
+        auto eq = [](Rational p, Rational q) {
+            p.normalize();
+            q.normalize();
+            return p.num == q.num && p.den == q.den;
+        };
+        if(uc && rc) {
+            Rational u0 = get(*uc, 0), u1 = get(*uc, 1);
+            Rational r1 = get(*rc, 1), r2 = get(*rc, 2);
+            Rational two_u0_u1 = rat_mul_local(Rational{2, 1}, rat_mul_local(u0, u1));
+            rad_ok = eq(r2, rat_mul_local(u1, u1)) && eq(r1, two_u0_u1);
+        }
+    }
+    if(!rad_ok) return std::nullopt;
+    NodeId ans = casio::simplify(a, casio::div(a, up, a.fn(FnKind::Sqrt, *rad)));
+    return std::make_pair(
+        std::vector<std::string>{
+            "Let u = " + clean_math_text(format_expr_human(a, u)) + ".",
+            clean_math_text(format_expr_human(a, *rad)) + " = u^2+c.",
+            "d/d" + var + " ln(u+sqrt(u^2+c)) = u'/sqrt(u^2+c)."
+        },
+        "dy/d" + var + " = " + clean_math_text(format_expr_human(a, ans))
+    );
+}
+
+static bool atan_complement_arg(Arena &a, NodeId u, NodeId v)
+{
+    Node const &x = a.get(v);
+    if(x.kind != NodeKind::Div) return false;
+    NodeId one = casio::num(a, 1);
+    NodeId num = casio::simplify(a, casio::add(a, {one, casio::neg(a, u)}));
+    NodeId den = casio::simplify(a, casio::add(a, {one, u}));
+    return same_expr_key(a, x.a, num) && same_expr_key(a, x.b, den);
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>> atan_complement_detail(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    Node const &a0 = a.get(x.kids[0]);
+    Node const &a1 = a.get(x.kids[1]);
+    if(a0.kind != NodeKind::Fn || a1.kind != NodeKind::Fn || a0.fkind != FnKind::Atan || a1.fkind != FnKind::Atan) return std::nullopt;
+    NodeId u = a0.a;
+    NodeId v = a1.a;
+    if(!atan_complement_arg(a, u, v)) {
+        if(!atan_complement_arg(a, v, u)) return std::nullopt;
+        u = a1.a;
+    }
+    std::string ut = clean_math_text(format_expr_human(a, u));
+    return std::make_pair(
+        std::vector<std::string>{
+            "u = " + ut + ".",
+            "v = (1-u)/(1+u).",
+            "dv/d" + var + " = -2*u'/(1+u)^2.",
+            "1+v^2 = 2*(1+u^2)/(1+u)^2.",
+            "dy/d" + var + " = u'/(1+u^2)-u'/(1+u^2)."
+        },
+        "dy/d" + var + " = 0"
+    );
+}
+
 struct QuadNoLinear
 {
     NodeId a2;
@@ -2243,6 +2386,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::string direct_key = compact_math_key(expr);
 
+            if(contains_hyperbolic_fn(arena, n)) {
+                NodeId d1 = casio::simplify(arena, diff(arena, n, var));
+                NodeId out = req.mode == 4 ? casio::simplify(arena, diff(arena, d1, var)) : d1;
+                std::string label = req.mode == 4 ? "d2y/d" + var + "2" : "dy/d" + var;
+                return {label + " = " + clean_math_text(format_expr_human(arena, out))};
+            }
+
             if(req.mode == 4 && direct_key == "cot(x)") {
                 return casio::exam_block(
                     "second derivative",
@@ -2382,6 +2532,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         },
                         route->second
                     );
+                }
+                if(auto route = log_radical_detail(arena, n, var)) {
+                    return casio::exam_block("differentiate", route->first, route->second);
+                }
+                if(auto route = atan_complement_detail(arena, n, var)) {
+                    return casio::exam_block("differentiate", route->first, route->second);
                 }
             }
 
