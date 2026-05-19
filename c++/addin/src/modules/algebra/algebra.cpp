@@ -1621,6 +1621,9 @@ static std::optional<BinomSeries> simple_factor_series(Arena &a, NodeId n, std::
     if(x.kind == NodeKind::Pow) {
         Node const &e = a.get(x.b);
         if(e.kind != NodeKind::Num) return std::nullopt;
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt)
+            return linear_power_series(a, base.a, r_mul(e.num, Rational{1, 2}), var, degree);
         return linear_power_series(a, x.a, e.num, var, degree);
     }
     if(x.kind == NodeKind::Div) {
@@ -1655,6 +1658,11 @@ static std::optional<BinomSeries> combined_series(Arena &a, NodeId n, std::strin
         }
         if(!any_series) return std::nullopt;
         out.has_series = true;
+        return out;
+    }
+    if(auto p = poly_of(a, n, var); p && p->ok) {
+        BinomSeries out;
+        out.c = poly_coeffs(*p, degree);
         return out;
     }
     if(x.kind == NodeKind::Mul) {
