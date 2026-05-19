@@ -1672,6 +1672,15 @@ static std::optional<BinomSeries> linear_power_series(Arena &a,
         b.normalize();
         out.bound = b;
     }
+    else if(!is_zero(u[2])) {
+        Rational b{std::llabs(u[2].den), std::llabs(u[2].num)};
+        b.normalize();
+        std::int64_t rn = 0, rd = 0;
+        if(is_square_i64(b.num, rn) && is_square_i64(b.den, rd) && rd != 0) {
+            out.bound = Rational{rn, rd};
+            out.bound->normalize();
+        }
+    }
     out.has_series = power.den != 1 || power.num < 0 || degree > 1;
     std::string u_text = series_answer_text(a, u, var);
     out.lines.push_back("(" + format_expr(a, base) + ")^" + rat_node_text(a, power) + " = " +
