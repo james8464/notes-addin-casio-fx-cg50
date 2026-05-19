@@ -1299,6 +1299,98 @@ static std::string poly_coeffs_text(std::vector<Rational> c, std::string const &
     return out.empty() ? "0" : out;
 }
 
+static bool additive_text(std::string const &s)
+{
+    return s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos;
+}
+
+static std::string fraction_num_text(std::string s)
+{
+    return additive_text(s) ? "(" + s + ")" : s;
+}
+
+static void trim_poly_local(std::vector<Rational> &p)
+{
+    while(p.size() > 1 && rat_zero_local(p.back())) p.pop_back();
+    if(p.empty()) p.push_back(Rational{0, 1});
+}
+
+static std::vector<Rational> poly_add_local(std::vector<Rational> a, std::vector<Rational> const &b)
+{
+    if(a.size() < b.size()) a.resize(b.size(), Rational{0, 1});
+    for(std::size_t i = 0; i < b.size(); ++i) a[i] = rat_add_local(a[i], b[i]);
+    trim_poly_local(a);
+    return a;
+}
+
+static std::vector<Rational> poly_neg_local(std::vector<Rational> a)
+{
+    for(auto &r : a) r.num = -r.num;
+    return a;
+}
+
+static std::optional<std::vector<Rational>> poly_mul_local(std::vector<Rational> const &a, std::vector<Rational> const &b, int max_degree)
+{
+    std::vector<Rational> out(a.size() + b.size() - 1, Rational{0, 1});
+    for(std::size_t i = 0; i < a.size(); ++i) {
+        for(std::size_t j = 0; j < b.size(); ++j) {
+            if(static_cast<int>(i + j) > max_degree && !rat_zero_local(rat_mul_local(a[i], b[j]))) return std::nullopt;
+            out[i + j] = rat_add_local(out[i + j], rat_mul_local(a[i], b[j]));
+        }
+    }
+    trim_poly_local(out);
+    return out;
+}
+
+static std::optional<std::vector<Rational>> poly_node_local(Arena &a, NodeId n, std::string const &var, int max_degree)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return std::vector<Rational>{x.num};
+    if(x.kind == NodeKind::Sym && x.text == var) return std::vector<Rational>{Rational{0, 1}, Rational{1, 1}};
+    if(x.kind == NodeKind::Add) {
+        std::vector<Rational> out{Rational{0, 1}};
+        for(NodeId k : x.kids) {
+            auto p = poly_node_local(a, k, var, max_degree);
+            if(!p) return std::nullopt;
+            out = poly_add_local(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<Rational> out{Rational{1, 1}};
+        for(NodeId k : x.kids) {
+            auto p = poly_node_local(a, k, var, max_degree);
+            if(!p) return std::nullopt;
+            auto m = poly_mul_local(out, *p, max_degree);
+            if(!m) return std::nullopt;
+            out = *m;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < 0 || e->num > max_degree) return std::nullopt;
+        auto base = poly_node_local(a, x.a, var, max_degree);
+        if(!base) return std::nullopt;
+        std::vector<Rational> out{Rational{1, 1}};
+        for(int i = 0; i < static_cast<int>(e->num); ++i) {
+            auto m = poly_mul_local(out, *base, max_degree);
+            if(!m) return std::nullopt;
+            out = *m;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = poly_node_local(a, x.a, var, max_degree);
+        auto den = as_num(a, x.b);
+        if(!top || !den || rat_zero_local(*den)) return std::nullopt;
+        for(auto &r : *top) r = rat_div_local(r, *den);
+        trim_poly_local(*top);
+        return top;
+    }
+    return std::nullopt;
+}
+
 static long long poly_int_gcd(std::vector<Rational> const &c)
 {
     long long g = 0;
@@ -2225,6 +2317,11 @@ static bool append_quotient_rule_detail(
     steps.push_back("v' = " + vp + ".");
     steps.push_back("y' = (u'v-u*v')/v^2.");
     std::string subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
+    bool subst_pushed = false;
+    if(subst.size() <= 220) {
+        steps.push_back(subst + ".");
+        subst_pushed = true;
+    }
     auto ul = linear_in_symbol(a, q.a, var);
     auto vl = linear_in_symbol(a, q.b, var);
     if(ul && vl && !depends_on(a, ul->coef, var) && !depends_on(a, ul->rest, var) &&
@@ -2236,11 +2333,40 @@ static bool append_quotient_rule_detail(
         std::string nt = clean_math_text(format_expr_human(a, top));
         steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
         if(answer_override)
-            *answer_override = "dy/d" + var + " = " + nt + "/(" + v + ")^2";
+            *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
+        return true;
+    }
+    auto pu = poly_node_local(a, q.a, var, 2);
+    auto pv = poly_node_local(a, q.b, var, 2);
+    auto pdu = poly_node_local(a, du, var, 2);
+    auto pdv = poly_node_local(a, dv, var, 2);
+    if(pu && pv && pdu && pdv) {
+        auto left = poly_mul_local(*pdu, *pv, 2);
+        auto right = poly_mul_local(*pu, *pdv, 2);
+        if(left && right) {
+            std::string raw_top = "(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")";
+            std::string pt = poly_coeffs_text(poly_add_local(*left, poly_neg_local(*right)), var);
+            if(!pt.empty() && compact_math_key(pt) != compact_math_key(raw_top)) {
+                steps.push_back("[" + raw_top + "] = " + pt + ".");
+                if(answer_override)
+                    *answer_override = "dy/d" + var + " = " + fraction_num_text(pt) + "/(" + v + ")^2";
+                return true;
+            }
+        }
+    }
+    NodeId top = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {du, q.b}),
+        casio::neg(a, casio::mul(a, {q.a, dv})),
+    }));
+    std::string nt = clean_math_text(format_expr_human(a, top));
+    if(node_weight(a, top) <= 40 && !nt.empty() && nt.size() + 18 < subst.size()) {
+        steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
+        if(answer_override)
+            *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
         return true;
     }
     if(answer_override && subst.size() <= 220) *answer_override = subst;
-    else steps.push_back(subst + ".");
+    else if(!subst_pushed) steps.push_back(subst + ".");
     return true;
 }
 
