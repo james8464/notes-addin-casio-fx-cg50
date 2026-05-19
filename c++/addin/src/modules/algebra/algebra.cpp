@@ -1538,6 +1538,46 @@ static std::optional<std::vector<std::string>> partial_fraction_two_linear(Arena
     };
 }
 
+static std::string signed_sum_text(std::string lhs, std::string rhs)
+{
+    if(lhs.empty()) return rhs;
+    if(rhs.empty()) return lhs;
+    if(!rhs.empty() && rhs[0] == '-') return lhs + " - " + rhs.substr(1);
+    return lhs + " + " + rhs;
+}
+
+static std::string quotient_term_text(Arena &a, Rational k, std::string const &den)
+{
+    if(is_zero(k)) return "";
+    if(k.num == k.den) return "1/(" + den + ")";
+    if(k.num == -k.den) return "-1/(" + den + ")";
+    return rat_node_text(a, k) + "/(" + den + ")";
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_linear_over_linear(Arena &a, NodeId parsed, std::string const &var)
+{
+    auto rp = ratpoly_of_node(a, parsed, var);
+    if(!rp.ok || !is_zero(rp.num.a2) || !is_zero(rp.den.a2) || is_zero(rp.den.a1)) return std::nullopt;
+    Rational A = rp.num.a1, B = rp.num.a0, C = rp.den.a1, D = rp.den.a0;
+    Rational det = r_sub(r_mul(A, D), r_mul(B, C));
+    if(is_zero(det)) return std::nullopt;
+    Rational q = r_div(A, C);
+    Rational rem = r_sub(B, r_mul(q, D));
+    Rational shift = r_div(D, C);
+    Rational k = r_div(rem, C);
+    std::string den = format_expr(a, poly2_to_node(a, Poly2{Rational{0, 1}, C, D, true}, var));
+    std::string monic_den = format_expr(a, poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, shift, true}, var));
+    std::string qtxt = rat_node_text(a, q);
+    std::string rem_form = signed_sum_text(qtxt, quotient_term_text(a, rem, den));
+    std::string final_form = signed_sum_text(qtxt, quotient_term_text(a, k, monic_den));
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "= " + rem_form,
+        "= " + final_form,
+        final_form,
+    };
+}
+
 static std::optional<std::vector<std::string>> partial_fraction_x2_linear(Arena &a, NodeId parsed, std::string const &raw, std::string const &var)
 {
     Node const &d = a.get(parsed);
@@ -9365,6 +9405,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 0 && (req.method == "partfrac" || req.method == "pf")) {
             NodeId parsed = casio::parse_expr(arena, req.expr);
+            if(auto pf = partial_fraction_linear_over_linear(arena, parsed, "x")) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, "x")) return *pf;
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, "x")) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, "x")) return *pf;
