@@ -3687,6 +3687,158 @@ static std::string quadratic_factor_text(Arena &a, Poly2 const &p, std::string c
     return lead + f1 + "*" + f2;
 }
 
+struct PolyAny
+{
+    std::vector<Rational> c;
+    bool ok = true;
+};
+
+static void trim_poly_any(PolyAny &p)
+{
+    while(p.c.size() > 1 && is_zero(p.c.back())) p.c.pop_back();
+    if(p.c.empty()) p.c.push_back(Rational{0, 1});
+}
+
+static PolyAny poly_any_add(PolyAny a, PolyAny const &b)
+{
+    if(!a.ok || !b.ok) return PolyAny{{}, false};
+    if(a.c.size() < b.c.size()) a.c.resize(b.c.size(), Rational{0, 1});
+    for(std::size_t i = 0; i < b.c.size(); ++i) a.c[i] = r_add(a.c[i], b.c[i]);
+    trim_poly_any(a);
+    return a;
+}
+
+static PolyAny poly_any_mul(PolyAny const &a, PolyAny const &b)
+{
+    if(!a.ok || !b.ok) return PolyAny{{}, false};
+    PolyAny r{std::vector<Rational>(a.c.size() + b.c.size() - 1, Rational{0, 1}), true};
+    for(std::size_t i = 0; i < a.c.size(); ++i)
+        for(std::size_t j = 0; j < b.c.size(); ++j)
+            r.c[i + j] = r_add(r.c[i + j], r_mul(a.c[i], b.c[j]));
+    trim_poly_any(r);
+    return r;
+}
+
+static std::optional<PolyAny> poly_any_of(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return PolyAny{{x.num}, true};
+    if(x.kind == NodeKind::Sym && x.text == var) return PolyAny{{Rational{0, 1}, Rational{1, 1}}, true};
+    if(x.kind == NodeKind::Add) {
+        PolyAny out{{Rational{0, 1}}, true};
+        for(NodeId k : x.kids) {
+            auto p = poly_any_of(a, k, var);
+            if(!p) return std::nullopt;
+            out = poly_any_add(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        PolyAny out{{Rational{1, 1}}, true};
+        for(NodeId k : x.kids) {
+            auto p = poly_any_of(a, k, var);
+            if(!p) return std::nullopt;
+            out = poly_any_mul(out, *p);
+            if(out.c.size() > 7) return std::nullopt;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto base = poly_any_of(a, x.a, var);
+        auto e = as_num(a, x.b);
+        if(!base || !e || e->den != 1 || e->num < 0 || e->num > 6) return std::nullopt;
+        PolyAny out{{Rational{1, 1}}, true};
+        for(int i = 0; i < (int)e->num; ++i) {
+            out = poly_any_mul(out, *base);
+            if(out.c.size() > 7) return std::nullopt;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = poly_any_of(a, x.a, var);
+        auto den = as_num(a, x.b);
+        if(!top || !den || is_zero(*den)) return std::nullopt;
+        for(auto &q : top->c) q = r_div(q, *den);
+        return top;
+    }
+    return std::nullopt;
+}
+
+static std::vector<long long> divisors_i64(long long n)
+{
+    n = std::llabs(n);
+    if(n == 0) return {0};
+    std::vector<long long> d;
+    for(long long i = 1; i * i <= n && i <= 2000; ++i) if(n % i == 0) {
+        d.push_back(i);
+        if(i * i != n) d.push_back(n / i);
+    }
+    return d;
+}
+
+static Rational poly_any_eval(PolyAny const &p, Rational x)
+{
+    Rational y{0, 1};
+    for(int i = (int)p.c.size() - 1; i >= 0; --i) y = r_add(r_mul(y, x), p.c[i]);
+    return y;
+}
+
+static bool divide_linear(PolyAny &p, Rational root)
+{
+    int n = (int)p.c.size() - 1;
+    if(n < 1) return false;
+    std::vector<Rational> q(n, Rational{0, 1});
+    q[n - 1] = p.c[n];
+    for(int i = n - 2; i >= 0; --i) q[i] = r_add(p.c[i + 1], r_mul(root, q[i + 1]));
+    if(!is_zero(r_add(p.c[0], r_mul(root, q[0])))) return false;
+    p.c = q;
+    trim_poly_any(p);
+    return true;
+}
+
+static std::optional<std::vector<std::string>> factor_poly_any_route(Arena &a, NodeId n, std::string const &var)
+{
+    auto p0 = poly_any_of(a, n, var);
+    if(!p0 || !p0->ok || p0->c.size() < 3 || p0->c.size() > 7) return std::nullopt;
+    PolyAny p = *p0;
+    std::vector<std::pair<Rational, int>> roots;
+    while(p.c.size() > 1) {
+        auto lead = as_int64(p.c.back());
+        auto cnst = as_int64(p.c.front());
+        if(!lead || !cnst) break;
+        bool found = false;
+        for(long long pp : divisors_i64(*cnst)) {
+            for(long long qq : divisors_i64(*lead)) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational r{sgn * pp, qq};
+                    r.normalize();
+                    if(!is_zero(poly_any_eval(p, r))) continue;
+                    int m = 0;
+                    while(divide_linear(p, r)) ++m;
+                    roots.push_back({r, m});
+                    found = true;
+                    goto next_root;
+                }
+            }
+        }
+next_root:
+        if(!found) break;
+    }
+    if(p.c.size() != 1 || roots.empty()) return std::nullopt;
+    std::sort(roots.begin(), roots.end(), [](std::pair<Rational, int> const &u, std::pair<Rational, int> const &v) {
+        return r_cmp(u.first, v.first) < 0;
+    });
+    std::string factored = is_zero(r_sub(p.c[0], Rational{1, 1})) ? "" : format_rat(a, p.c[0]) + "*";
+    for(auto const &rm : roots) {
+        std::string f = linear_factor_from_root(a, var, rm.first);
+        factored += rm.second == 1 ? f : f + "^" + std::to_string(rm.second);
+        factored += "*";
+    }
+    if(!factored.empty() && factored.back() == '*') factored.pop_back();
+    return std::vector<std::string>{format_expr(a, n), "= " + factored, factored};
+}
+
 static std::string scaled_npi(Arena &a, Rational scale)
 {
     scale.normalize();
@@ -10263,6 +10415,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(req.mode == 13) {
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            if(auto fa = factor_poly_any_route(arena, n, "x")) return *fa;
             auto p = poly_of(arena, n, "x");
             if(!p || !p->ok) {
                 return {
