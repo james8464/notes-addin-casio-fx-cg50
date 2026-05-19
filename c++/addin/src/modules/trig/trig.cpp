@@ -905,6 +905,59 @@ static std::optional<double> angle_to_degree_double(Arena &a, NodeId arg, bool p
     return plain_number_is_radian ? (*v * 180.0 / M_PI) : *v;
 }
 
+struct AngleBounds
+{
+    double lo;
+    double hi;
+    bool lo_open;
+    bool hi_open;
+    std::string lo_text;
+    std::string hi_text;
+};
+
+static std::string bound_expr_text(std::string s)
+{
+    s = trim(std::move(s));
+    int bal = 0;
+    for(char c : s) {
+        if(c == '(') ++bal;
+        else if(c == ')') --bal;
+    }
+    if(!s.empty() && s.front() == '(' && bal > 0) s.erase(s.begin());
+    if(!s.empty() && s.back() == ')' && bal < 0) s.pop_back();
+    return trim(std::move(s));
+}
+
+static AngleBounds angle_bounds(Arena &a, std::string const &lo_text, std::string const &hi_text, bool rad)
+{
+    AngleBounds b{};
+    std::string lt = trim(lo_text), ht = trim(hi_text);
+    b.lo_open = !lt.empty() && lt.front() == '(';
+    b.hi_open = !ht.empty() && ht.back() == ')';
+    b.lo_text = bound_expr_text(lo_text);
+    b.hi_text = bound_expr_text(hi_text);
+    b.lo = angle_to_degree_double(a, casio::parse_expr(a, b.lo_text), rad).value_or(0.0);
+    b.hi = angle_to_degree_double(a, casio::parse_expr(a, b.hi_text), rad).value_or(360.0);
+    if(b.lo > b.hi) {
+        std::swap(b.lo, b.hi);
+        std::swap(b.lo_open, b.hi_open);
+        std::swap(b.lo_text, b.hi_text);
+    }
+    return b;
+}
+
+static bool in_bounds(double x, AngleBounds const &b)
+{
+    if(b.lo_open ? x <= b.lo + 1e-7 : x < b.lo - 1e-7) return false;
+    if(b.hi_open ? x >= b.hi - 1e-7 : x > b.hi + 1e-7) return false;
+    return true;
+}
+
+static std::string interval_text(AngleBounds const &b, std::string const &var)
+{
+    return b.lo_text + (b.lo_open ? " < " : " <= ") + var + (b.hi_open ? " < " : " <= ") + b.hi_text;
+}
+
 static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId arg, std::string const &var, bool plain_number_is_radian = false)
 {
     Node const &A = a.get(arg);
@@ -1122,16 +1175,12 @@ static std::vector<double> x_values_from_angle_degrees(
     std::vector<double> xs;
     auto lin = linear_angle(a, arg, var, rad);
     if(!lin || std::fabs(lin->first) < 1e-12) return xs;
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
-    double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
-    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
-    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+    AngleBounds bounds = angle_bounds(a, lo_text, hi_text, rad);
     for(double theta : base_degs) {
         for(int k = -80; k <= 80; ++k) {
             double a_deg = theta + 360.0 * k;
             double xdeg = (a_deg - lin->second) / lin->first;
-            if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            if(!in_bounds(xdeg, bounds)) continue;
             add_unique(xs, xdeg);
         }
     }
@@ -1168,13 +1217,9 @@ static std::optional<std::vector<std::string>> solve_zero_product_trig(
         if(is_const(a, k)) continue;
         Node const &f = a.get(k);
         if(auto lin = linear_angle(a, k, var, rad); lin && std::fabs(lin->first) > 1e-12) {
-            auto lo_node = casio::parse_expr(a, lo_text);
-            auto hi_node = casio::parse_expr(a, hi_text);
-            double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
-            double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
-            if(lo > hi) std::swap(lo, hi);
+            AngleBounds b = angle_bounds(a, lo_text, hi_text, rad);
             double root = -lin->second / lin->first;
-            if(root >= lo - 1e-7 && root <= hi + 1e-7) {
+            if(in_bounds(root, b)) {
                 steps.push_back(casio::format_expr(a, k) + " = 0");
                 add_unique(xs, root);
             }
@@ -1188,7 +1233,7 @@ static std::optional<std::vector<std::string>> solve_zero_product_trig(
     }
     if(xs.empty()) return std::nullopt;
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig zero product", steps, format_solution_list(var, rad, xs));
 }
 
@@ -1281,17 +1326,13 @@ static std::optional<std::vector<std::string>> solve_same_trig_sum_zero(
     double ms = (A->first + B->first) / 2.0, bs = (A->second + B->second) / 2.0;
     double md = (A->first - B->first) / 2.0, bd = (A->second - B->second) / 2.0;
     if(md < 0) { md = -md; bd = -bd; }
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
-    double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
-    double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
-    if(lo > hi) std::swap(lo, hi);
+    AngleBounds bounds = angle_bounds(a, lo_text, hi_text, rad);
     std::vector<double> xs;
-    auto add_family = [&](double m, double b, double root) {
+    auto add_family = [&](double m, double shift, double root) {
         if(std::fabs(m) < 1e-12) return;
         for(int k = -100; k <= 100; ++k) {
-            double x = (root + 180.0 * k - b) / m;
-            if(x >= lo - 1e-7 && x <= hi + 1e-7) add_unique(xs, x);
+            double x = (root + 180.0 * k - shift) / m;
+            if(in_bounds(x, bounds)) add_unique(xs, x);
         }
     };
     add_family(ms, bs, t0->fk == FnKind::Sin ? 0.0 : 90.0);
@@ -1329,7 +1370,7 @@ static std::optional<std::vector<std::string>> solve_same_trig_sum_zero(
         ans += f2;
         return casio::exam_block("trig solve", steps, ans);
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs));
+    steps.push_back(interval_text(bounds, var) + " => " + format_solution_list(var, rad, xs));
     return casio::exam_block(
         "trig solve",
         steps,
@@ -1357,14 +1398,10 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     auto B = linear_angle(a, R.a, var, rad);
     if(!A || !B) return std::nullopt;
 
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
-    double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
-    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
-    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+    AngleBounds b = angle_bounds(a, lo_text, hi_text, rad);
 
     if(fk != FnKind::Tan && std::fabs(A->first - B->first) < 1e-12 && std::fabs(A->second - B->second) < 1e-12) {
-        std::string interval = lo_text + " <= " + var + " <= " + hi_text;
+        std::string interval = interval_text(b, var);
         return casio::exam_block(
             "trig solve",
             {
@@ -1413,7 +1450,7 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
         std::vector<double> fam_xs;
         for(int k = -100; k <= 100; ++k) {
             double xdeg = (rel.rhs_b + rel.period * k - A->second) / denom;
-            if(xdeg < lo_deg - 1e-7 || xdeg > hi_deg + 1e-7) continue;
+            if(!in_bounds(xdeg, b)) continue;
             if(!seen_n) {
                 first_n = k;
                 seen_n = true;
@@ -1453,8 +1490,8 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
             std::string h = rad ? "pi" : "180";
             family_line = At + " = " + Bt + "+" + p + " => " + var + " = " + div_text(p, d1) +
                 "\n" + At + " = " + h + "-" + Bt + "+" + p + " => " + var + " = " + div_text("(" + h + "+" + p + ")", d2);
-            family_filters.push_back(lo_text + " <= " + div_text(p, d1) + " <= " + hi_text);
-            family_filters.push_back(lo_text + " <= " + div_text("(" + h + "+" + p + ")", d2) + " <= " + hi_text);
+            family_filters.push_back(b.lo_text + (b.lo_open ? " < " : " <= ") + div_text(p, d1) + (b.hi_open ? " < " : " <= ") + b.hi_text);
+            family_filters.push_back(b.lo_text + (b.lo_open ? " < " : " <= ") + div_text("(" + h + "+" + p + ")", d2) + (b.hi_open ? " < " : " <= ") + b.hi_text);
         }
         else if(fk == FnKind::Cos && d1 && d2) {
             std::string p = rad ? "2*pi*n" : "360n";
@@ -1487,9 +1524,9 @@ static std::optional<std::vector<std::string>> solve_same_fn_linear(
     for(auto const &fr : family_roots) steps.push_back(fr);
     for(auto const &rej : rejected_n) steps.push_back(rej);
     if(!family_roots.empty()) steps.push_back("Accepted roots = union of the listed family roots.");
-    if(!n_ranges.empty()) steps.push_back("n in listed ranges => keep roots with " + lo_text + " <= " + var + " <= " + hi_text + ".");
+    if(!n_ranges.empty()) steps.push_back("n in listed ranges => keep roots with " + interval_text(b, var) + ".");
     if(!n_ranges.empty()) steps.push_back("Each kept root satisfies the original equation; no denominator exclusions.");
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs));
+    steps.push_back(interval_text(b, var) + " => " + format_solution_list(var, rad, xs));
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
