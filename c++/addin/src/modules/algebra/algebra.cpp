@@ -8631,6 +8631,16 @@ struct ExpPowerTerm
     Rational arg_coef{0, 1};
 };
 
+struct RelatedBaseExpTerm
+{
+    Rational coef{1, 1};
+    long long exp_base = 0;
+    Rational slope{0, 1};
+    Rational offset{0, 1};
+    std::vector<long long> log_bases;
+    int degree = 0;
+};
+
 static std::optional<long long> rational_int(Rational r)
 {
     r.normalize();
@@ -8645,6 +8655,258 @@ static NodeId u_power_node(Arena &a, std::string const &uvar, int power)
     if(power > 0) return power == 1 ? u : casio::power(a, u, casio::num(a, power));
     NodeId up = power == -1 ? u : casio::power(a, u, casio::num(a, -power));
     return casio::div(a, one_node(a), up);
+}
+
+static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) collect_mul_factors(a, k, out);
+    }
+    else out.push_back(n);
+}
+
+static std::optional<long long> positive_integer_node(Arena &a, NodeId n)
+{
+    auto r = as_num(a, n);
+    if(!r || r->den != 1 || r->num <= 1) return std::nullopt;
+    return r->num;
+}
+
+static std::optional<RelatedBaseExpTerm> parse_related_base_exp_term(
+    Arena &a,
+    NodeId term,
+    std::string const &var
+)
+{
+    RelatedBaseExpTerm t;
+    std::vector<NodeId> factors;
+    collect_mul_factors(a, term, factors);
+    bool have_exp = false;
+    for(NodeId f : factors) {
+        Node const &x = a.get(f);
+        if(x.kind == NodeKind::Num) {
+            t.coef = r_mul(t.coef, x.num);
+            continue;
+        }
+        if(x.kind == NodeKind::Div) {
+            auto den = as_num(a, x.b);
+            if(!den) return std::nullopt;
+            t.coef = r_div(t.coef, *den);
+            auto top = parse_related_base_exp_term(a, x.a, var);
+            if(!top || top->exp_base || !top->log_bases.empty()) return std::nullopt;
+            t.coef = r_mul(t.coef, top->coef);
+            continue;
+        }
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
+            auto b = positive_integer_node(a, x.a);
+            if(!b) return std::nullopt;
+            t.log_bases.push_back(*b);
+            continue;
+        }
+        if(x.kind == NodeKind::Pow) {
+            auto b = positive_integer_node(a, x.a);
+            if(!b || have_exp) return std::nullopt;
+            auto p = poly_of(a, x.b, var);
+            if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+            t.exp_base = *b;
+            t.slope = p->a1;
+            t.offset = p->a0;
+            have_exp = true;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!have_exp || is_zero(t.coef)) return std::nullopt;
+    return t;
+}
+
+static std::string power_text(std::string const &v, int p)
+{
+    if(p == 0) return "";
+    if(p == 1) return v;
+    return v + "^" + std::to_string(p);
+}
+
+static std::string term_abs_text(
+    Arena &a,
+    Rational coef,
+    std::string const &uvar,
+    int degree,
+    std::optional<long long> log_base = std::nullopt
+)
+{
+    if(coef.num < 0) coef.num = -coef.num;
+    std::vector<std::string> parts;
+    bool has_var = degree != 0 || log_base.has_value();
+    if(!(coef.num == coef.den && has_var)) parts.push_back(format_expr(a, a.num(coef)));
+    if(log_base) parts.push_back("ln(" + std::to_string(*log_base) + ")");
+    if(degree != 0) parts.push_back(power_text(uvar, degree));
+    if(parts.empty()) return "1";
+    std::string out = parts[0];
+    for(std::size_t i = 1; i < parts.size(); ++i) out += "*" + parts[i];
+    return out;
+}
+
+static std::string two_term_poly_text(
+    Arena &a,
+    Rational c1,
+    int d1,
+    Rational c2,
+    int d2,
+    std::string const &uvar
+)
+{
+    std::string out;
+    auto add = [&](Rational c, int d) {
+        if(is_zero(c)) return;
+        bool neg = c.num < 0;
+        if(out.empty()) {
+            if(neg) out += "-";
+        }
+        else out += neg ? " - " : " + ";
+        out += term_abs_text(a, c, uvar, d);
+    };
+    add(c1, d1);
+    add(c2, d2);
+    return out.empty() ? "0" : out;
+}
+
+static std::string rational_power_root_text(Arena &a, Rational r, int root)
+{
+    if(root == 1) return format_expr(a, a.num(r));
+    auto rn = integer_nth_root_i64(r.num, root);
+    auto rd = integer_nth_root_i64(r.den, root);
+    if(rn && rd && *rd != 0) return format_expr(a, a.num(Rational{*rn, *rd}));
+    return "(" + format_expr(a, a.num(r)) + ")^(1/" + std::to_string(root) + ")";
+}
+
+static std::optional<std::vector<std::string>> related_base_exp_substitution_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> raw_terms;
+    add_terms_flat(a, residual, raw_terms);
+    if(raw_terms.size() < 2 || raw_terms.size() > 4) return std::nullopt;
+    std::vector<RelatedBaseExpTerm> terms;
+    std::vector<long long> values;
+    for(NodeId n : raw_terms) {
+        auto t = parse_related_base_exp_term(a, n, var);
+        if(!t) return std::nullopt;
+        values.push_back(t->exp_base);
+        for(long long b : t->log_bases) values.push_back(b);
+        terms.push_back(*t);
+    }
+    int common = 0;
+    for(int cand = 2; cand <= 12 && !common; ++cand) {
+        bool ok = true;
+        for(long long v : values) {
+            auto p = integer_power_of_base(std::to_string(cand), std::to_string(v));
+            if(!p || *p <= 0) {
+                ok = false;
+                break;
+            }
+        }
+        if(ok) common = cand;
+    }
+    if(!common) return std::nullopt;
+
+    int log_count = (int)terms[0].log_bases.size();
+    std::vector<std::pair<int, Rational>> coeffs;
+    for(auto &t : terms) {
+        if((int)t.log_bases.size() != log_count) return std::nullopt;
+        auto bp = integer_power_of_base(std::to_string(common), std::to_string(t.exp_base));
+        if(!bp) return std::nullopt;
+        Rational deg_r = r_mul(Rational{*bp, 1}, t.slope);
+        auto deg = rational_int(deg_r);
+        if(!deg || std::llabs(*deg) > 8) return std::nullopt;
+        t.degree = (int)*deg;
+        if(!is_zero(t.offset)) {
+            auto scale = integer_base_power_rational(std::to_string(t.exp_base), t.offset);
+            if(!scale) return std::nullopt;
+            t.coef = r_mul(t.coef, *scale);
+        }
+        for(long long lb : t.log_bases) {
+            auto lp = integer_power_of_base(std::to_string(common), std::to_string(lb));
+            if(!lp || *lp <= 0) return std::nullopt;
+            t.coef = r_mul(t.coef, Rational{*lp, 1});
+        }
+        bool merged = false;
+        for(auto &kv : coeffs) {
+            if(kv.first == t.degree) {
+                kv.second = r_add(kv.second, t.coef);
+                merged = true;
+                break;
+            }
+        }
+        if(!merged) coeffs.push_back({t.degree, t.coef});
+    }
+    coeffs.erase(std::remove_if(coeffs.begin(), coeffs.end(), [](auto const &kv) { return is_zero(kv.second); }), coeffs.end());
+    if(coeffs.size() != 2) return std::nullopt;
+    std::sort(coeffs.begin(), coeffs.end(), [](auto const &l, auto const &r) { return l.first > r.first; });
+    int hi = coeffs[0].first, lo = coeffs[1].first;
+    Rational A = coeffs[0].second, B = coeffs[1].second;
+    if(hi <= lo || is_zero(A) || is_zero(B)) return std::nullopt;
+    int d = hi - lo;
+    if(d > 6) return std::nullopt;
+    Rational rhs = r_div(r_neg(B), A);
+    if(rhs.num <= 0) return std::nullopt;
+
+    std::string uvar = var == "u" ? "v" : "u";
+    out.push_back(uvar + " = " + std::to_string(common) + "^" + var + ", " + uvar + " > 0");
+    std::string orig;
+    for(std::size_t i = 0; i < terms.size(); ++i) {
+        Rational c = terms[i].coef;
+        for(long long lb : terms[i].log_bases) {
+            auto lp = integer_power_of_base(std::to_string(common), std::to_string(lb));
+            if(lp && *lp != 0) c = r_div(c, Rational{*lp, 1});
+        }
+        std::optional<long long> lb = terms[i].log_bases.empty() ? std::nullopt : std::optional<long long>(terms[i].log_bases[0]);
+        bool neg = c.num < 0;
+        if(orig.empty()) {
+            if(neg) orig += "-";
+        }
+        else orig += neg ? " - " : " + ";
+        orig += term_abs_text(a, c, uvar, terms[i].degree, lb);
+    }
+    out.push_back(orig + " = 0");
+    if(log_count > 0) {
+        std::vector<long long> seen;
+        for(auto const &t : terms)
+            for(long long lb : t.log_bases)
+                if(std::find(seen.begin(), seen.end(), lb) == seen.end()) seen.push_back(lb);
+        for(long long lb : seen) {
+            auto lp = integer_power_of_base(std::to_string(common), std::to_string(lb));
+            if(lp && *lp != 1) out.push_back("ln(" + std::to_string(lb) + ") = " + std::to_string(*lp) + "*ln(" + std::to_string(common) + ")");
+        }
+        out.push_back("Divide by ln(" + std::to_string(common) + ") > 0");
+    }
+    out.push_back(two_term_poly_text(a, A, hi, B, lo, uvar) + " = 0");
+    if(lo != 0) out.push_back(power_text(uvar, lo) + " > 0");
+    out.push_back(two_term_poly_text(a, A, d, B, 0, uvar) + " = 0");
+    out.push_back(power_text(uvar, d) + " = " + format_expr(a, a.num(rhs)));
+    std::string root = rational_power_root_text(a, rhs, d);
+    out.push_back(uvar + " = " + root);
+    out.push_back(std::to_string(common) + "^" + var + " = " + root);
+
+    std::string xtext;
+    auto exact = integer_power_of_base(std::to_string(common), root);
+    if(exact) xtext = std::to_string(*exact);
+    else {
+        auto rr = parse_rational_key(root);
+        if(rr && rr->num == 1) {
+            auto neg = integer_power_of_base(std::to_string(common), std::to_string(rr->den));
+            if(neg) xtext = "-" + std::to_string(*neg);
+        }
+    }
+    if(xtext.empty()) xtext = "log(" + std::to_string(common) + "," + root + ")";
+    std::string sol = var + " = " + xtext;
+    out.push_back(sol);
+    out.push_back(solution_list_line(var, {sol}));
+    return out;
 }
 
 static std::optional<NodeId> exp_arg_or_recip_arg(Arena &a, NodeId n)
@@ -10792,6 +11054,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
         if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
+        if(auto rb = related_base_exp_substitution_route(arena, rearr, solve_var, out)) return *rb;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
         if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var)) {
             out.insert(out.end(), pr->begin(), pr->end());
