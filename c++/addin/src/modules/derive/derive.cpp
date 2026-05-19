@@ -1552,6 +1552,42 @@ static std::optional<std::pair<std::string, std::string>> log_recip_quadratic_ro
                           "dy/d" + var + " = -2*" + var + "/(" + q + ")");
 }
 
+static std::optional<std::pair<std::vector<std::string>, std::string>> nested_abs_log_route(std::string const &key, std::string const &var)
+{
+    std::string p = "ln(abs(abs(";
+    if(key.rfind(p, 0) != 0 || key.size() < p.size() + var.size() + 5) return std::nullopt;
+    std::string rest = key.substr(p.size());
+    std::size_t mid = rest.find(")-");
+    if(mid == std::string::npos || rest.substr(rest.size() - 2) != "))") return std::nullopt;
+    std::string inner = rest.substr(0, mid);
+    std::string btxt = rest.substr(mid + 2, rest.size() - mid - 4);
+    long long a = 0, b = 0;
+    if(inner == var) a = 0;
+    else if(inner.rfind(var + "+", 0) == 0) {
+        if(!parse_int_text(inner.substr(var.size() + 1), a)) return std::nullopt;
+    }
+    else if(inner.rfind(var + "-", 0) == 0) {
+        if(!parse_int_text(inner.substr(var.size() + 1), a)) return std::nullopt;
+        a = -a;
+    }
+    else return std::nullopt;
+    if(!parse_int_text(btxt, b) || b <= 0) return std::nullopt;
+    std::string u = var + signed_term_text(a);
+    std::string d1 = var + signed_term_text(a - b);
+    std::string d2 = var + signed_term_text(a + b);
+    std::string split = std::to_string(-a);
+    return std::make_pair(
+        std::vector<std::string>{
+            "u = " + u + ".",
+            "u >= 0: y=ln(abs(u-" + std::to_string(b) + ")).",
+            "dy/d" + var + " = 1/(" + d1 + "), " + var + " != " + std::to_string(b - a) + ".",
+            "u <= 0: y=ln(abs(-u-" + std::to_string(b) + ")).",
+            "dy/d" + var + " = 1/(" + d2 + "), " + var + " != " + std::to_string(-a - b) + ".",
+        },
+        "dy/d" + var + " = {1/(" + d1 + "), " + var + ">=" + split + "; 1/(" + d2 + "), " + var + "<=" + split + "}"
+    );
+}
+
 struct SqrtPlusConst
 {
     NodeId radicand;
@@ -2532,6 +2568,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         },
                         route->second
                     );
+                }
+                if(auto route = nested_abs_log_route(direct_key, var)) {
+                    return casio::exam_block("differentiate", route->first, route->second);
+                }
+                {
+                    std::string q = var + "^2+1";
+                    if(direct_key == var + "ln(sqrt(" + q + ")+" + var + ")-sqrt(" + q + ")") {
+                        std::string s = "sqrt(" + q + ")";
+                        return casio::exam_block(
+                            "differentiate",
+                            {
+                                "Let s=" + s + ".",
+                                "d/d" + var + "[" + var + "*ln(s+" + var + ")] = ln(s+" + var + ")+" + var + "*(s'+1)/(s+" + var + ").",
+                                "s'=" + var + "/s, so " + var + "*(s'+1)/(s+" + var + ")=" + var + "/s.",
+                                "d/d" + var + "(-s)=-" + var + "/s.",
+                            },
+                            "dy/d" + var + " = ln(" + s + " + " + var + ")"
+                        );
+                    }
                 }
                 if(auto route = log_radical_detail(arena, n, var)) {
                     return casio::exam_block("differentiate", route->first, route->second);
