@@ -4372,15 +4372,16 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
         s += body;
         return s;
     };
+    std::string aux = compact_key(var) == "alpha" ? "beta" : "alpha";
     std::vector<std::string> steps{
         format_expr(a, residual) + " = 0.",
         "Expand shifted angles.",
         signed_term(p->s, "sin(" + M + ")", true) + signed_term(p->c, "cos(" + M + ")", false) +
             std::string(p->k < 0 ? " - " : " + ") + trig_root_text(std::fabs(p->k)) + "=0.",
         "R=sqrt(" + trig_root_text(p->s) + "^2+" + trig_root_text(p->c) + "^2)=" + trig_root_text(R) + ".",
-        "tan(alpha)=" + trig_root_text(p->c) + "/" + trig_root_text(p->s) + ".",
-        "R*sin(" + M + "+alpha)=" + trig_root_text(-p->k) + ".",
-        "sin(" + M + "+alpha)=" + trig_root_text(target) + ".",
+        "tan(" + aux + ")=" + trig_root_text(p->c) + "/" + trig_root_text(p->s) + ".",
+        "R*sin(" + M + "+" + aux + ")=" + trig_root_text(-p->k) + ".",
+        "sin(" + M + "+" + aux + ")=" + trig_root_text(target) + ".",
     };
     if(general) {
         std::vector<double> xbases;
@@ -5009,18 +5010,21 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         std::string alpha_txt = trig_root_text(alpha);
         std::string beta_txt = trig_root_text(90.0 - alpha);
         std::string target_txt = trig_root_text(target);
+        std::string var_key = compact_key(var);
+        std::string sin_aux = var_key == "alpha" ? "beta" : "alpha";
+        std::string cos_aux = var_key == "beta" ? "alpha" : "beta";
         steps.push_back("a=" + c_txt + ", b=" + s_txt + " for a*cos(A)+b*sin(A).");
         steps.push_back("R=sqrt(" + c_txt + "^2+" + s_txt + "^2)=" + r_txt + ".");
-        steps.push_back("R*cos(A-beta)=R*cos(A)*cos(beta)+R*sin(A)*sin(beta).");
-        steps.push_back("R*cos(beta)=" + c_txt + ", R*sin(beta)=" + s_txt + ", tan(beta)=" + s_txt + "/" + c_txt + ".");
-        steps.push_back("beta=" + beta_txt + " deg, so " + c_txt + "*cos(A)+" + s_txt + "*sin(A)=R*cos(A-beta).");
-        steps.push_back("cos(" + arg_text + "-beta)=" + target_txt + ".");
-        steps.push_back("R*sin(A+alpha)=R*sin(A)*cos(alpha)+R*cos(A)*sin(alpha).");
-        steps.push_back("R*cos(alpha)=" + s_txt + ", R*sin(alpha)=" + c_txt + ".");
-        steps.push_back("tan(alpha)=" + c_txt + "/" + s_txt + ".");
-        steps.push_back("alpha=" + alpha_txt + " deg, so " + s_txt + "*sin(A)+" + c_txt + "*cos(A)=R*sin(A+alpha).");
-        steps.push_back("R*sin(" + arg_text + "+alpha)=" + trig_root_text(-poly->c) + ".");
-        steps.push_back("sin(" + arg_text + "+alpha)=" + target_txt + ".");
+        steps.push_back("R*cos(A-" + cos_aux + ")=R*cos(A)*cos(" + cos_aux + ")+R*sin(A)*sin(" + cos_aux + ").");
+        steps.push_back("R*cos(" + cos_aux + ")=" + c_txt + ", R*sin(" + cos_aux + ")=" + s_txt + ", tan(" + cos_aux + ")=" + s_txt + "/" + c_txt + ".");
+        steps.push_back(cos_aux + "=" + beta_txt + " deg, so " + c_txt + "*cos(A)+" + s_txt + "*sin(A)=R*cos(A-" + cos_aux + ").");
+        steps.push_back("cos(" + arg_text + "-" + cos_aux + ")=" + target_txt + ".");
+        steps.push_back("R*sin(A+" + sin_aux + ")=R*sin(A)*cos(" + sin_aux + ")+R*cos(A)*sin(" + sin_aux + ").");
+        steps.push_back("R*cos(" + sin_aux + ")=" + s_txt + ", R*sin(" + sin_aux + ")=" + c_txt + ".");
+        steps.push_back("tan(" + sin_aux + ")=" + c_txt + "/" + s_txt + ".");
+        steps.push_back(sin_aux + "=" + alpha_txt + " deg, so " + s_txt + "*sin(A)+" + c_txt + "*cos(A)=R*sin(A+" + sin_aux + ").");
+        steps.push_back("R*sin(" + arg_text + "+" + sin_aux + ")=" + trig_root_text(-poly->c) + ".");
+        steps.push_back("sin(" + arg_text + "+" + sin_aux + ")=" + target_txt + ".");
         steps.push_back("-1 <= " + target_txt + " <= 1 => real sine roots.");
         auto lo_node = casio::parse_expr(a, lo_text);
         auto hi_node = casio::parse_expr(a, hi_text);
@@ -5030,7 +5034,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         steps.push_back(var + "(deg): " + trig_root_text(lo_deg) + " <= " + var + " <= " + trig_root_text(hi_deg) + ".");
         auto base = base_trig_degrees(FnKind::Sin, target);
         if(!base.empty()) {
-            steps.push_back("theta = " + arg_text + "+alpha.");
+            steps.push_back("theta = " + arg_text + "+" + sin_aux + ".");
             std::string base_line = "Base angles:";
             for(size_t i = 0; i < base.size(); ++i) {
                 if(i) base_line += ",";
@@ -5039,8 +5043,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             steps.push_back(base_line + ".");
             if(base.size() >= 2) {
                 steps.push_back("theta = asin(" + target_txt + ") => theta = " + trig_root_text(base[0]) + " or " + trig_root_text(base[1]) + ".");
-                steps.push_back(arg_text + "+alpha = " + trig_root_text(base[0]) + "+360n or " + trig_root_text(base[1]) + "+360n.");
-                steps.push_back(arg_text + " = " + trig_root_text(base[0]) + "-alpha+360n or " + trig_root_text(base[1]) + "-alpha+360n.");
+                steps.push_back(arg_text + "+" + sin_aux + " = " + trig_root_text(base[0]) + "+360n or " + trig_root_text(base[1]) + "+360n.");
+                steps.push_back(arg_text + " = " + trig_root_text(base[0]) + "-" + sin_aux + "+360n or " + trig_root_text(base[1]) + "-" + sin_aux + "+360n.");
             }
         }
         if(general && !base.empty()) {
