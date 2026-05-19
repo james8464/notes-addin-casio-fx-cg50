@@ -118,6 +118,12 @@ CASES = [
         ("du/dx/u",),
     ),
     (
+        "evalat exact fraction",
+        ["--alg", "evalat(sin(x)^2-cos(x)^2,x,pi/3)"],
+        ("x = pi/3", "f(pi/3) = 1/2"),
+        ("ERR:", "Done"),
+    ),
+    (
         "atan complement derivative family",
         ["--derive", "atan(x)+atan((1-x)/(1+x)),x"],
         ("v = (1-u)/(1+u)", "dy/dx = 0"),

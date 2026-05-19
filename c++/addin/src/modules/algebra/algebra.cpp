@@ -7997,7 +7997,7 @@ static std::string fitconst_value_text(double x)
     if(std::fabs(x) < 1e-9) x = 0.0;
     double nearest = std::round(x);
     if(std::fabs(x - nearest) < 1e-8) return std::to_string((long long)nearest);
-    for(int den = 2; den <= 24; ++den) {
+    for(int den = 2; den <= 120; ++den) {
         double num = std::round(x * den);
         if(std::fabs(x - num / den) < 1e-8) {
             long long n = (long long)num;
@@ -10111,6 +10111,32 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto parts = split_csv(req.expr);
             if(!parts.empty()) next.expr = parts[0];
             return run(arena, next);
+        }
+
+        if(req.method == "evalat") {
+            auto parts = split_csv(req.expr);
+            if(parts.size() < 3) return {"Err: need expr,var,value."};
+            std::string expr = trim_text(parts[0]);
+            std::string var = trim_text(parts[1]);
+            std::string value = trim_text(parts[2]);
+            NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
+            NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
+            std::vector<std::string> syms;
+            collect_symbols(arena, v, syms);
+            if(!syms.empty()) return {"Err: bad value."};
+            collect_symbols(arena, n, syms);
+            for(auto const &s : syms) {
+                if(s != var) return {"Err: need numeric expression."};
+            }
+            auto xv = eval_node_env(arena, v, {});
+            if(!xv || !std::isfinite(*xv)) return {"Err: bad value."};
+            auto yv = eval_node_env(arena, n, {{var, *xv}});
+            if(!yv || !std::isfinite(*yv)) return {"Err: undefined."};
+            return {
+                var + " = " + format_expr(arena, v),
+                "f(" + var + ") = " + format_expr(arena, n),
+                "f(" + format_expr(arena, v) + ") = " + fitconst_value_text(*yv),
+            };
         }
 
         if(req.mode == 13) {
