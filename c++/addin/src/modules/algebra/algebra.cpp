@@ -7433,6 +7433,110 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     return out;
 }
 
+static bool root_power_den_walk(Arena &a, NodeId n, std::string const &var, int &den)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Sqrt) {
+            Node const &arg = a.get(x.a);
+            if(arg.kind != NodeKind::Sym || arg.text != var) return false;
+            if(den && den != 2) return false;
+            den = 2;
+            return true;
+        }
+        return root_power_den_walk(a, x.a, var, den);
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den > 1) {
+            if(exp.num.den > 6) return false;
+            if(den && den != exp.num.den) return false;
+            den = static_cast<int>(exp.num.den);
+            return true;
+        }
+        return root_power_den_walk(a, x.a, var, den) && root_power_den_walk(a, x.b, var, den);
+    }
+    if(x.kind == NodeKind::Div) return root_power_den_walk(a, x.a, var, den) && root_power_den_walk(a, x.b, var, den);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(!root_power_den_walk(a, k, var, den)) return false;
+    }
+    return true;
+}
+
+static NodeId root_power_sub_node(Arena &a, NodeId n, std::string const &var, int den)
+{
+    Node const &x = a.get(n);
+    NodeId u = casio::sym(a, "u");
+    if(x.kind == NodeKind::Sym && x.text == var) return casio::power(a, u, casio::num(a, den));
+    if(x.kind == NodeKind::Fn) {
+        Node const &arg = a.get(x.a);
+        if(x.fkind == FnKind::Sqrt && den == 2 && arg.kind == NodeKind::Sym && arg.text == var) return u;
+        return casio::fn(a, x.text, root_power_sub_node(a, x.a, var, den));
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &exp = a.get(x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num) {
+            if(exp.num.den == den) return exp.num.num == 1 ? u : casio::power(a, u, casio::num(a, exp.num.num));
+            if(exp.num.den == 1) return casio::power(a, u, casio::num(a, exp.num.num * den));
+        }
+        return casio::power(a, root_power_sub_node(a, x.a, var, den), root_power_sub_node(a, x.b, var, den));
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        for(auto k : x.kids) kids.push_back(root_power_sub_node(a, k, var, den));
+        return casio::add(a, std::move(kids));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(auto k : x.kids) kids.push_back(root_power_sub_node(a, k, var, den));
+        return casio::mul(a, std::move(kids));
+    }
+    if(x.kind == NodeKind::Div) return casio::div(a, root_power_sub_node(a, x.a, var, den), root_power_sub_node(a, x.b, var, den));
+    return n;
+}
+
+static std::optional<std::vector<std::string>> rational_root_substitution_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    auto eval_p2 = [](Poly2 const &p, Rational u) {
+        return r_add(r_add(r_mul(p.a2, r_mul(u, u)), r_mul(p.a1, u)), p.a0);
+    };
+    int den = 0;
+    if(!root_power_den_walk(a, rearr, var, den) || den < 2) return std::nullopt;
+    NodeId ueq = casio::simplify(a, root_power_sub_node(a, rearr, var, den));
+    auto rp = ratpoly_of_node(a, ueq, "u");
+    if(!rp.ok || is_zero(rp.num.a2)) return std::nullopt;
+    auto uroots = solve_poly2(a, rp.num, "u");
+    if(uroots.empty()) return std::nullopt;
+    std::vector<std::string> raw;
+    std::vector<std::string> out;
+    out.push_back("u = " + var + "^(1/" + std::to_string(den) + ")" + (den % 2 == 0 ? ", u >= 0" : ""));
+    out.push_back(var + " = u^" + std::to_string(den));
+    out.push_back(format_expr(a, poly2_to_node(a, rp.num, "u")) + " = 0");
+    for(auto const &s : uroots) {
+        std::string rhs = sol_rhs(s);
+        out.push_back("u = " + rhs);
+        auto ur = parse_rational_text(rhs);
+        auto v = parse_const_double(a, rhs);
+        if(ur && is_zero(eval_p2(rp.den, *ur))) {
+            out.push_back("reject u = " + rhs);
+            continue;
+        }
+        if(den % 2 == 0 && ((ur && ur->num < 0) || (v && *v < -1e-10))) {
+            out.push_back("reject u = " + rhs);
+            continue;
+        }
+        NodeId ux = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, den)));
+        raw.push_back(var + " = " + format_expr(a, ux));
+    }
+    sort_solution_lines(a, raw);
+    append_answer(out, var, raw);
+    append_numeric_3dp(a, out, var, raw);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> power_equals_one_route(
     Arena &a,
     NodeId lhs,
@@ -11903,6 +12007,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
+            if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
