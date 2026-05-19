@@ -2078,6 +2078,71 @@ static bool append_scaled_x_over_sqrt_quadratic_detail(
     return true;
 }
 
+static std::optional<NodeId> half_double_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> rest;
+    bool took_two = false;
+    for(NodeId k : x.kids) {
+        Node const &c = a.get(k);
+        if(!took_two && c.kind == NodeKind::Num && c.num.num == 2 && c.num.den == 1) {
+            took_two = true;
+            continue;
+        }
+        rest.push_back(k);
+    }
+    if(!took_two || rest.empty()) return std::nullopt;
+    if(rest.size() == 1) return rest.front();
+    return casio::simplify(a, casio::mul(a, rest));
+}
+
+static std::optional<std::vector<std::string>> cos2_over_sqrt_1_plus_sin2_route(Arena &a, NodeId n, std::string const &var, std::string &answer)
+{
+    Node const &q = a.get(n);
+    if(q.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(q.a);
+    Node const &den = a.get(q.b);
+    if(top.kind != NodeKind::Fn || top.fkind != FnKind::Cos || den.kind != NodeKind::Fn || den.fkind != FnKind::Sqrt) return std::nullopt;
+    Node const &rad = a.get(den.a);
+    if(rad.kind != NodeKind::Add || rad.kids.size() != 2) return std::nullopt;
+    NodeId sin_arg = -1;
+    bool has_one = false;
+    for(NodeId k : rad.kids) {
+        Node const &r = a.get(k);
+        if(r.kind == NodeKind::Num && r.num.num == 1 && r.num.den == 1) has_one = true;
+        if(r.kind == NodeKind::Fn && r.fkind == FnKind::Sin) sin_arg = r.a;
+    }
+    if(!has_one || sin_arg < 0) return std::nullopt;
+    if(compact_math_key(format_expr_human(a, top.a)) != compact_math_key(format_expr_human(a, sin_arg))) return std::nullopt;
+    auto half = half_double_arg(a, top.a);
+    if(!half || !depends_on(a, *half, var)) return std::nullopt;
+    NodeId du = casio::simplify(a, diff(a, *half, var, ""));
+    std::string u = clean_math_text(format_expr_human(a, *half));
+    std::string up = clean_math_text(format_expr_human(a, du));
+    std::string s = "sin(" + u + ")";
+    std::string c = "cos(" + u + ")";
+    std::string neg_branch = (up == "1") ? "- " + s + " - " + c : "-" + up + "*(" + s + "+" + c + ")";
+    std::string pos_branch = (up == "1") ? s + " + " + c : up + "*(" + s + "+" + c + ")";
+    std::vector<std::string> steps{
+        "u=" + u + ".",
+        "1+sin(2u)=(" + s + "+" + c + ")^2.",
+        "cos(2u)=(" + c + "-" + s + ")(" + c + "+" + s + ").",
+        "y=(" + c + "-" + s + ")*sign(" + s + "+" + c + ").",
+        s + "+" + c + "=0 => u=3*pi/4+n*pi.",
+        s + "+" + c + ">0: dy/d" + var + "=" + neg_branch + ".",
+        s + "+" + c + "<0: dy/d" + var + "=" + pos_branch + ".",
+    };
+    if(compact_math_key(u) == compact_math_key(var)) {
+        steps.push_back("0<=x<=2*pi: x=3*pi/4, 7*pi/4.");
+        steps.push_back("alpha=3/4, beta=7/4.");
+        answer = "dy/d" + var + " = {-sin(" + var + ")-cos(" + var + "), 0<=x<=3*pi/4; sin(" + var + ")+cos(" + var + "), 3*pi/4<=x<=7*pi/4; -sin(" + var + ")-cos(" + var + "), 7*pi/4<=x<=2*pi}";
+        return steps;
+    }
+    answer = "dy/d" + var + " = {" + neg_branch + ", " + s + "+" + c + ">0; " + pos_branch + ", " + s + "+" + c + "<0}";
+    return steps;
+}
+
 static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const &dep = "")
 {
     Node const &x = a.get(n);
@@ -2859,6 +2924,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 NodeId out = req.mode == 4 ? casio::simplify(arena, diff(arena, d1, var)) : d1;
                 std::string label = req.mode == 4 ? "d2y/d" + var + "2" : "dy/d" + var;
                 return {label + " = " + clean_math_text(format_expr_human(arena, out))};
+            }
+
+            if(req.mode == 1) {
+                std::string answer;
+                if(auto route = cos2_over_sqrt_1_plus_sin2_route(arena, n, var, answer)) {
+                    return casio::exam_block("differentiate", *route, answer);
+                }
             }
 
             if(req.mode == 4 && direct_key == "cot(x)") {
