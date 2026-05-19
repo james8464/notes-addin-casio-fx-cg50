@@ -336,6 +336,31 @@ CASES = [
         ("y = f(x) = (5*x + 2)/(5*x + 2)", "5*x + 2 != 0", "y = 1", "f^-1(x) = no inverse on all real x"),
     ),
     (
+        "affine log inverse",
+        ["--alg", "inverse(3-ln(x))"],
+        ("y = f(x) = - ln(x) + 3", "y = e^(- x + 3)", "f^-1(x) = e^(- x + 3)"),
+    ),
+    (
+        "affine exp inverse",
+        ["--alg", "inverse(2*e^(3*x)-5)"],
+        ("y = f(x) = 2*e^(3*x) - 5", "y = ln((x + 5)/2)/3", "f^-1(x) = ln((x + 5)/2)/3"),
+    ),
+    (
+        "divided affine log inverse",
+        ["--alg", "inverse((1+ln(x+3))/2)"],
+        ("y = f(x) = (ln(x + 3) + 1)/2", "y = e^(2*(x - 1/2)) - 3", "f^-1(x) = e^(2*(x - 1/2)) - 3"),
+    ),
+    (
+        "log of affine exp exact solve",
+        ["--alg", "solve(ln(4-2*e^(3*x))=0,x)"],
+        ("- 2*e^(3*x) + 4 = 1", "u = e^(3*x), u > 0", "u = 3/2", "x = ln(3/2)/3"),
+    ),
+    (
+        "affine exp interval range",
+        ["--alg", "range((e^x+2)/4,x,ln(2),inf)"],
+        ("As x=>inf, e^u=>inf", "Range: 1 <= y", "1 <= y"),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),

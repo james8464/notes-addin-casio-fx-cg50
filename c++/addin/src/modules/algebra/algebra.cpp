@@ -370,9 +370,69 @@ static std::optional<NodeId> inverse_mobius(Arena &a, NodeId expr)
     return casio::simplify(a, casio::div(a, top, bot));
 }
 
+static bool affine_wrapper(Arena &a, NodeId expr, NodeId &inner, Rational &m, Rational &b)
+{
+    Node const &x = a.get(expr);
+    m = Rational{1, 1};
+    b = Rational{0, 1};
+    inner = expr;
+    if(x.kind == NodeKind::Div) {
+        Node const &den = a.get(x.b);
+        if(den.kind != NodeKind::Num || is_zero(den.num)) return false;
+        if(!affine_wrapper(a, x.a, inner, m, b)) return false;
+        m = r_div(m, den.num);
+        b = r_div(b, den.num);
+        return true;
+    }
+    auto term = [&](NodeId id, Rational &coef, NodeId &body) -> bool {
+        Node const &t = a.get(id);
+        coef = Rational{1, 1};
+        body = id;
+        if(t.kind != NodeKind::Mul) return true;
+        bool seen_body = false;
+        for(NodeId k : t.kids) {
+            Node const &n = a.get(k);
+            if(n.kind == NodeKind::Num) coef = r_mul(coef, n.num);
+            else {
+                if(seen_body) return false;
+                seen_body = true;
+                body = k;
+            }
+        }
+        return seen_body;
+    };
+    if(x.kind == NodeKind::Mul) return term(expr, m, inner);
+    if(x.kind != NodeKind::Add) return false;
+    bool seen = false;
+    for(NodeId k : x.kids) {
+        Node const &n = a.get(k);
+        if(n.kind == NodeKind::Num) {
+            b = r_add(b, n.num);
+            continue;
+        }
+        Rational c;
+        NodeId body = 0;
+        if(seen || !term(k, c, body)) return false;
+        seen = true;
+        m = c;
+        inner = body;
+    }
+    return seen && !is_zero(m);
+}
+
 static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
 {
     if(auto inv = inverse_mobius(a, expr)) return inv;
+    NodeId inner = 0;
+    Rational m, b;
+    if(affine_wrapper(a, expr, inner, m, b) && inner != expr) {
+        if(auto inv = inverse_simple_function(a, inner)) {
+            NodeId y = casio::sym(a, "x");
+            NodeId shifted = casio::add(a, {y, casio::neg(a, casio::num(a, b.num, b.den))});
+            NodeId inner_y = casio::simplify(a, casio::div(a, shifted, casio::num(a, m.num, m.den)));
+            return casio::simplify(a, clone_with_substitution(a, *inv, "x", inner_y));
+        }
+    }
     Node const &x = a.get(expr);
     NodeId y = casio::sym(a, "x");
 
@@ -420,6 +480,14 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
     }
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+            auto p = poly_of(a, x.b, "x");
+            if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+                NodeId logy = casio::fn(a, "log", y);
+                NodeId top = casio::add(a, {logy, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+                return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+            }
+        }
         if(base.kind == NodeKind::Num && base.num.num > 0 && base.num.den == 1) {
             auto p = poly_of(a, x.b, "x");
             if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
@@ -5473,6 +5541,22 @@ static std::optional<std::string> exp_linear_range(
                 }
             }
         }
+        if(!exp_expr && x.kind == NodeKind::Div) {
+            exp_expr = direct_exp(x.a);
+            Node const &top = a.get(x.a);
+            if(!exp_expr && (top.kind == NodeKind::Add || top.kind == NodeKind::Mul)) {
+                for(NodeId k : top.kids) {
+                    exp_expr = direct_exp(k);
+                    if(!exp_expr && a.get(k).kind == NodeKind::Mul) {
+                        for(NodeId f : a.get(k).kids) {
+                            exp_expr = direct_exp(f);
+                            if(exp_expr) break;
+                        }
+                    }
+                    if(exp_expr) break;
+                }
+            }
+        }
         if(!exp_expr) return std::nullopt;
         Node const &e = a.get(exp_expr);
         arg = e.kind == NodeKind::Fn ? e.a : e.b;
@@ -5502,6 +5586,13 @@ static std::optional<std::string> exp_linear_range(
             steps.push_back("As " + var + " -> inf, e^u -> 0.");
             if(*ylo < ylimit) return format_double_compact(*ylo) + " <= y < " + lim;
             return lim + " < y <= " + format_double_compact(*ylo);
+        }
+    }
+    if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v) && p->a1.num > 0) {
+        auto ylo = eval_node(a, n, var, *lo_v);
+        if(ylo) {
+            steps.push_back("As " + var + " -> inf, e^u -> inf.");
+            return aff->first.num > 0 ? format_double_compact(*ylo) + " <= y" : "y <= " + format_double_compact(*ylo);
         }
     }
     return "y > 0";
@@ -6866,6 +6957,13 @@ static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, Nod
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> exp_substitution_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+);
+
 static std::optional<std::vector<std::string>> log_linear_quotient_exact_route(Arena &a, NodeId rearr, std::string const &var)
 {
     std::vector<NodeId> terms;
@@ -7032,16 +7130,19 @@ static std::optional<std::vector<std::string>> log_single_arg_exact_route(Arena 
         coeff = r_add(coeff, c);
     }
     if(!saw || is_zero(coeff) || contains_symbol(a, base, var)) return std::nullopt;
-    auto lin = symbolic_linear_parts(a, arg, var);
-    if(!lin) return std::nullopt;
     Rational target = r_div(r_neg(constant), coeff);
     NodeId value = is_zero(target) ? one_node(a) : casio::simplify(a, casio::power(a, base, a.num(target)));
-    NodeId ans = casio::simplify(a, casio::div(a, sub_node(a, value, lin->c), lin->m));
     std::string logn = natural ? "ln" : "log";
     std::vector<std::string> out;
     out.push_back(format_expr(a, a.num(coeff)) + "*" + logn + "(" + format_expr(a, arg) + ") = " + format_expr(a, a.num(r_neg(constant))));
     out.push_back(logn + "(" + format_expr(a, arg) + ") = " + format_expr(a, a.num(target)));
     out.push_back(format_expr(a, arg) + " = " + format_expr(a, value));
+    auto lin = symbolic_linear_parts(a, arg, var);
+    if(!lin) {
+        NodeId residual = casio::simplify(a, sub_node(a, arg, value));
+        return exp_substitution_route(a, residual, var, out);
+    }
+    NodeId ans = casio::simplify(a, casio::div(a, sub_node(a, value, lin->c), lin->m));
     std::vector<std::string> raw{var + " = " + format_expr(a, ans)};
     auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
     append_rejected_by_domain(out, var, raw, valid);
