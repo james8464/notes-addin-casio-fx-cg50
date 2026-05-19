@@ -8740,6 +8740,24 @@ static std::optional<NodeId> expand_simple_power(Arena &a, NodeId expr, std::str
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::optional<NodeId> expand_mul_simple_powers(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> factors;
+    bool hit = false;
+    for(NodeId k : x.kids) {
+        if(auto e = expand_simple_power(a, k, var)) {
+            factors.push_back(*e);
+            hit = true;
+        } else factors.push_back(k);
+    }
+    if(!hit) return std::nullopt;
+    NodeId m = casio::simplify(a, casio::mul(a, factors));
+    if(auto expanded = expand_single_add_product(a, m, var)) return expanded;
+    return m;
+}
+
 static std::optional<NodeId> reciprocal_product_power(Arena &a, NodeId expr)
 {
     Node const &x = a.get(expr);
@@ -15543,6 +15561,16 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
+    if(auto expanded_pow_mul = expand_mul_simple_powers(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *expanded_pow_mul, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *expanded_pow_mul));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
     if(auto sv = integrate_sqrt_var_linear_den(a, expr, var, out.steps)) {
         out.result = *sv;
         return out;
@@ -17657,6 +17685,12 @@ static std::optional<NodeId> simplify_param_trig_product(Arena &a, NodeId n, std
             if(r.kind == NodeKind::Fn && (r.fkind == FnKind::Sin || r.fkind == FnKind::Cos ||
                r.fkind == FnKind::Tan || r.fkind == FnKind::Sec || r.fkind == FnKind::Cosec ||
                r.fkind == FnKind::Cot)) return true;
+            if(r.kind == NodeKind::Pow) {
+                Node const &b = a.get(r.a);
+                if(b.kind == NodeKind::Fn && (b.fkind == FnKind::Sin || b.fkind == FnKind::Cos ||
+                   b.fkind == FnKind::Tan || b.fkind == FnKind::Sec || b.fkind == FnKind::Cosec ||
+                   b.fkind == FnKind::Cot)) return true;
+            }
         }
         return false;
     };
@@ -17673,6 +17707,24 @@ static std::optional<NodeId> simplify_param_trig_product(Arena &a, NodeId n, std
     else return std::nullopt;
     rest.push_back(repl);
     return casio::simplify(a, casio::mul(a, rest));
+}
+
+static NodeId simplify_param_trig_products_deep(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> ks;
+        for(NodeId k : x.kids) ks.push_back(simplify_param_trig_products_deep(a, k, var));
+        return casio::simplify(a, casio::add(a, ks));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> ks;
+        for(NodeId k : x.kids) ks.push_back(simplify_param_trig_products_deep(a, k, var));
+        NodeId m = casio::simplify(a, casio::mul(a, ks));
+        if(auto t = simplify_param_trig_product(a, m, var)) return *t;
+        return m;
+    }
+    return n;
 }
 
 static std::optional<NodeId> expand_param_product(Arena &a, NodeId n)
@@ -17781,7 +17833,7 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         body = pull_numeric_power_factors(arena, body);
         body = merge_product_divs(arena, body);
         if(auto t = simplify_param_trig_product(arena, body, var)) body = *t;
-        if(auto e = expand_param_product(arena, body)) body = *e;
+        if(auto e = expand_param_product(arena, body)) body = simplify_param_trig_products_deep(arena, *e, var);
         std::string ds = format_expr_human(arena, d);
         std::string rs = format_expr_human(arena, r);
         std::string integrand = format_expr_human(arena, casio::simplify(arena, body));
