@@ -36,6 +36,19 @@ static bool depends_on(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static bool has_symbol_except(Arena &a, NodeId n, std::string const &var)
+{
+    auto const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return x.text != var;
+    if(x.kind == NodeKind::Fn) return has_symbol_except(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return has_symbol_except(a, x.a, var) || has_symbol_except(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(has_symbol_except(a, k, var)) return true;
+    }
+    return false;
+}
+
 static std::optional<Rational> as_num(Arena &a, NodeId n)
 {
     auto const &x = a.get(n);
@@ -2157,8 +2170,14 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
     if(x.kind == NodeKind::Add) {
         std::vector<NodeId> parts;
         parts.reserve(x.kids.size());
-        for(auto k : x.kids) parts.push_back(diff(a, k, var, dep));
-        return casio::simplify(a, casio::add(a, parts));
+        bool has_param = false;
+        for(auto k : x.kids) {
+            NodeId part = diff(a, k, var, dep);
+            has_param = has_param || has_symbol_except(a, part, var);
+            parts.push_back(part);
+        }
+        NodeId sum = casio::add(a, parts);
+        return has_param ? sum : casio::simplify(a, sum);
     }
     if(x.kind == NodeKind::Mul) {
         std::vector<NodeId> sum_terms;
@@ -2598,6 +2617,7 @@ static bool append_common_denominator_derivative(
         nums.push_back(n);
     }
     NodeId raw_num = casio::simplify(a, casio::add(a, nums));
+    if(has_symbol_except(a, raw_num, var)) return false;
     auto poly = poly_node_local(a, raw_num, var, 6);
     if(!poly) return false;
     std::string den_text = clean_math_text(format_expr_human(a, den));
@@ -3411,6 +3431,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 if(!used_rule && arena.get(n).kind == NodeKind::Add) {
                     append_sum_derivative_detail(arena, n, var, steps);
+                    if(has_symbol_except(arena, n, var)) {
+                        if(auto src = source_sum_derivative_text(arena, expr, var))
+                            answer_override = label + " = " + *src;
+                    }
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) &&
