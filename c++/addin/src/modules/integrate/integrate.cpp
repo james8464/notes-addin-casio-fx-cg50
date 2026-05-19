@@ -9719,6 +9719,41 @@ static std::optional<int> fn_power(Arena &a, NodeId n, FnKind fk, NodeId &arg)
     return std::nullopt;
 }
 
+static NodeId pull_numeric_power_factors(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return expr;
+    Rational coeff{1, 1};
+    bool changed = false;
+    std::vector<NodeId> kids;
+    for(NodeId k : x.kids) {
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Pow) {
+            auto p = positive_int_power(a, kn.b);
+            Node const &base = a.get(kn.a);
+            if(p && base.kind == NodeKind::Mul) {
+                Rational c{1, 1};
+                std::vector<NodeId> inner;
+                for(NodeId bk : base.kids) {
+                    if(auto r = as_num(a, bk)) c = r_mul(c, *r);
+                    else inner.push_back(bk);
+                }
+                if(!r_eq(c, Rational{1, 1}) && !inner.empty()) {
+                    coeff = r_mul(coeff, r_pow(c, *p));
+                    NodeId body = inner.size() == 1 ? inner.front() : casio::mul(a, inner);
+                    kids.push_back(casio::power(a, body, kn.b));
+                    changed = true;
+                    continue;
+                }
+            }
+        }
+        kids.push_back(k);
+    }
+    if(!changed) return expr;
+    NodeId body = kids.empty() ? casio::num(a, 1) : (kids.size() == 1 ? kids.front() : casio::mul(a, kids));
+    return casio::simplify(a, mul_coeff(a, coeff, body));
+}
+
 static NodeId integrate_poly_in_fn(Arena &a, Poly p, NodeId u, Rational du_coeff, bool negate)
 {
     std::vector<NodeId> terms;
@@ -11092,12 +11127,7 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
         NodeId rem = rest.empty() ? casio::num(a, 1) : casio::simplify(a, rest.size() == 1 ? rest[0] : casio::mul(a, rest));
         if(rest.empty() && contains_var(a, *d, var)) continue;
         if(!rest.empty() && contains_expr(a, rem, base) && !contains_expr(a, *d, base)) continue;
-        Node const &base_node = a.get(base);
-        if(base_node.kind == NodeKind::Fn &&
-           (base_node.fkind == FnKind::Sin || base_node.fkind == FnKind::Cos ||
-            base_node.fkind == FnKind::Tan || base_node.fkind == FnKind::Sec ||
-            base_node.fkind == FnKind::Cosec || base_node.fkind == FnKind::Cot) &&
-           !proportional_node(a, rem, *d)) {
+        if(contains_var(a, base, var) && trig_const_product(a, base, var) && !proportional_node(a, rem, *d)) {
             continue;
         }
         auto k = proportional_node_var(a, rem, *d, var);
@@ -15776,7 +15806,8 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
-    if(auto trig_prod = integrate_trig_products(a, expr, var, out.steps)) {
+    NodeId trig_expr = pull_numeric_power_factors(a, expr);
+    if(auto trig_prod = integrate_trig_products(a, trig_expr, var, out.steps)) {
         out.result = *trig_prod;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
         return out;
@@ -17451,6 +17482,13 @@ static std::optional<NodeId> simplify_param_trig_product(Arena &a, NodeId n, std
     if(sin2 == 1 && sec == 1) repl = casio::mul(a, {casio::num(a, 2), casio::fn(a, "sin", v)});
     else if(sin2 == 1 && sec == 2) repl = casio::mul(a, {casio::num(a, 2), casio::fn(a, "tan", v)});
     else if(sin2 == 2 && sec == 2) repl = casio::mul(a, {casio::num(a, 4), casio::power(a, casio::fn(a, "sin", v), casio::num(a, 2))});
+    else if(sec == 0 && sin2 > 0) {
+        repl = casio::mul(a, {
+            casio::num(a, 1LL << sin2),
+            casio::power(a, casio::fn(a, "sin", v), casio::num(a, sin2)),
+            casio::power(a, casio::fn(a, "cos", v), casio::num(a, sin2)),
+        });
+    }
     else return std::nullopt;
     rest.push_back(repl);
     return casio::simplify(a, casio::mul(a, rest));
@@ -17502,36 +17540,40 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         lines->insert(lines->begin(), setup);
         return *lines;
     };
-    auto param_inner = [&](std::string const &setup, std::vector<std::string> const &args, bool volume) -> std::optional<std::vector<std::string>> {
+    auto param_inner = [&](std::string const &setup, std::vector<std::string> const &args, bool volume, bool axis_y=false) -> std::optional<std::vector<std::string>> {
         if(args.size() != 5) return std::nullopt;
         NodeId x = parse_expr(arena, args[0]);
         NodeId y = parse_expr(arena, args[1]);
         std::string var = args[2].empty() ? "t" : args[2];
-        NodeId dx = casio::simplify(arena, casio::derive::differentiate_node(arena, x, var));
+        NodeId q = axis_y ? y : x;
+        NodeId r = axis_y ? x : y;
+        NodeId d = casio::simplify(arena, casio::derive::differentiate_node(arena, q, var));
         bool reverse = false;
         try {
             NodeId lo = parse_expr(arena, args[3]);
             NodeId hi = parse_expr(arena, args[4]);
-            NodeId xlo = simplify_known_endpoint_values(arena, substitute_var(arena, x, var, lo));
-            NodeId xhi = simplify_known_endpoint_values(arena, substitute_var(arena, x, var, hi));
-            auto vlo = eval_numeric_node(arena, xlo, "", 0.0);
-            auto vhi = eval_numeric_node(arena, xhi, "", 0.0);
+            NodeId qlo = simplify_known_endpoint_values(arena, substitute_var(arena, q, var, lo));
+            NodeId qhi = simplify_known_endpoint_values(arena, substitute_var(arena, q, var, hi));
+            auto vlo = eval_numeric_node(arena, qlo, "", 0.0);
+            auto vhi = eval_numeric_node(arena, qhi, "", 0.0);
             reverse = vlo && vhi && *vhi < *vlo;
         }
         catch(...) {}
-        NodeId body = volume ? casio::mul(arena, {parse_expr(arena, "pi"), casio::power(arena, y, casio::num(arena, 2)), dx})
-                             : casio::mul(arena, {y, dx});
+        NodeId body = volume ? casio::mul(arena, {parse_expr(arena, "pi"), casio::power(arena, r, casio::num(arena, 2)), d})
+                             : casio::mul(arena, {r, d});
         if(reverse) body = casio::neg(arena, body);
         body = merge_product_divs(arena, body);
+        body = pull_numeric_power_factors(arena, body);
         if(auto t = simplify_param_trig_product(arena, body, var)) body = *t;
         if(auto e = expand_param_product(arena, body)) body = *e;
-        std::string dxs = format_expr_human(arena, dx);
-        std::string ys = format_expr_human(arena, y);
+        std::string ds = format_expr_human(arena, d);
+        std::string rs = format_expr_human(arena, r);
         std::string integrand = format_expr_human(arena, casio::simplify(arena, body));
         std::string sign = reverse ? "-" : "";
-        auto lines = run_inner(setup + " dx/d" + var + " = " + dxs + ".", integrand, var, args[3], args[4]);
-        lines.insert(lines.begin() + 1, volume ? "V = " + sign + "pi*Int(" + ys + ")^2*(" + dxs + ") d" + var
-                                               : "A = " + sign + "Int(" + ys + ")*(" + dxs + ") d" + var);
+        std::string axis = axis_y ? "dy" : "dx";
+        auto lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", integrand, var, args[3], args[4]);
+        lines.insert(lines.begin() + 1, volume ? "V = " + sign + "pi*Int(" + rs + ")^2*(" + ds + ") d" + var
+                                               : "A = " + sign + "Int(" + rs + ")*(" + ds + ") d" + var);
         return lines;
     };
 
@@ -17550,6 +17592,8 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
     for(char const *name : {"param_volume_x", "paramVolX", "parVolX"}) {
         if(auto args = unwrap_call_args(req.expr, name)) return param_inner("V = pi*Int y^2 dx.", *args, true);
     }
+    if(auto args = unwrap_call_args(req.expr, "param_area_y")) return param_inner("A = Int x dy.", *args, false, true);
+    if(auto args = unwrap_call_args(req.expr, "param_volume_y")) return param_inner("V = pi*Int x^2 dy.", *args, true, true);
     return std::nullopt;
 }
 
