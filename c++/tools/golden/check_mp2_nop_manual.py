@@ -25,7 +25,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     ("N13 param tangent", ["--derive", "2*t/(1+t^2),(1-t^2)/(1+t^2),t,method=param"], ["dy/dx = -1", "x + y = sqrt(2)"]),
     ("O4 exact integral", ["--int", "defint(3*x/(2+x-x^2),x,0,1)"], ["A_i = N(r_i)/D'(r)", "- ln(abs(x + 1)) - 2*ln(abs(x - 2))", "log(2)"]),
     ("O8 cos triple proof", ["--trig", "cos(3*x)\n4*cos(x)^3-3*cos(x)"], ["cos(A+B)", "4*cos(x)^3 - 3*cos(x)"]),
-    ("O8 solve sec cos", ["--trig", "2+cos(6*x)*sec(2*x)=0,x,0,360,8,method=bounded"], ["cos(6x)=4cos(2x)^3-3cos(2x)", "x = 30, 60, 120, 150, 210, 240, 300, 330"]),
+    ("O8 solve sec cos", ["--trig", "2+cos(6*x)*sec(2*x)=0,x,0,360,8,method=bounded"], ["cos(6x)=4cos(2x)^3-3cos(2x)", "x = [30, 60, 120, 150, 210, 240, 300, 330]"]),
     ("O10 implicit tangent", ["--derive", "y*(x-y)=log(y),x,method=implicit"], ["dy/dx", "At y=e", "e*(x-y)=1"]),
     ("O11 param cartesian", ["--alg", "param_cartesian(cos(t),sin(t)-tan(t),t)"], ["x=cos(t)", "y^2 = (x - 1)^2*(1 - x^2)/x^2"]),
     ("P3 abs inequality", ["--alg", "abs(2*x+1)+9<4*x"], ["x > 5/2"]),

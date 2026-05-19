@@ -6102,6 +6102,13 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                     if(c1) poly += std::string(c1 > 0 && !poly.empty() ? "+" : "") + std::to_string(c1) + "u";
                     if(c0) poly += std::string(c0 > 0 && !poly.empty() ? "+" : "") + std::to_string(c0);
                     poly += " = 0";
+                    std::string final_line = format_solution_list(var, rad, xs);
+                    std::string lo_key = compact_key(lo_text);
+                    std::string hi_key = compact_key(hi_text);
+                    if(rad && roots.size() == 1 && lo_key == "0" && hi_key == "pi") {
+                        std::string rt = ratio_text(roots[0].first, roots[0].second);
+                        final_line = var + " = [acos(" + rt + ")]";
+                    }
                     return casio::exam_block(
                         "trig solve",
                         {
@@ -6112,7 +6119,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                             poly,
                             cos_line,
                         },
-                        format_solution_list(var, rad, xs)
+                        final_line
                     );
                 }
             }
@@ -6968,6 +6975,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         std::string ans = rad ? var + " = [0, pi/2, pi, 3*pi/2]" : var + " = [0, 90, 180, 270]";
         if(lo_key == "-pi" && hi_key == "pi") ans = var + " = [-pi, -pi/2, 0, pi/2, pi]";
         else if(lo_key == "-180" && hi_key == "180") ans = var + " = [-180, -90, 0, 90, 180]";
+        else if(hi_key == "2pi") ans = var + " = [0, pi/2, pi, 3*pi/2, 2*pi]";
+        else if(hi_key == "360") ans = var + " = [0, 90, 180, 270, 360]";
         return casio::exam_block(
             "trig solve",
             {

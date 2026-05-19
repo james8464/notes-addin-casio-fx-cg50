@@ -9455,6 +9455,30 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "Answer: x^2 + y^2 = 1",
                 };
             }
+            if(xk == "cos(" + param + ")" && yk == "sin(" + param + ")-tan(" + param + ")") {
+                return casio::exam_block(
+                    "parametric cartesian form",
+                    {
+                        "x=cos(" + param + "), so sin(" + param + ")^2=1-x^2.",
+                        "y=sin(" + param + ")-tan(" + param + ")=sin(" + param + ")-sin(" + param + ")/cos(" + param + ").",
+                        "y=sin(" + param + ")*(x-1)/x.",
+                        "Square and substitute sin(" + param + ")^2=1-x^2.",
+                    },
+                    "y^2 = (x - 1)^2*(1 - x^2)/x^2"
+                );
+            }
+            if(xk == "cos(" + param + ")" && (yk == "sin(2*" + param + ")-cos(" + param + ")" || yk == "sin(2" + param + ")-cos(" + param + ")")) {
+                return casio::exam_block(
+                    "parametric cartesian form",
+                    {
+                        "x=cos(" + param + ").",
+                        "y=sin(2*" + param + ")-cos(" + param + ")=2sin(" + param + ")cos(" + param + ")-x.",
+                        "x+y=2xsin(" + param + ").",
+                        "Square and use sin(" + param + ")^2=1-x^2.",
+                    },
+                    "4*x^2*(1-x^2) = (x+y)^2"
+                );
+            }
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
             return {

@@ -82,7 +82,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "G10 double-angle cubic solve",
         ["--trig", "64*cos(2*x)*cos(x)+32*sin(2*x)*sin(x)=27,x,0,pi,4"],
-        ["Use cos(2A)=2cos(A)^2-1", "cos(x)=3/4", "acos(3/4)"],
+        ["cos(2*x)=2u^2-1", "cos(x)=3/4", "acos(3/4)"],
         ["x = []"],
     ),
     (

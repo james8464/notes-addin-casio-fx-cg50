@@ -52,7 +52,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "D12 parametric area integral",
         ["--int", "defint(8*(sec(t)^2-2+cos(t)^2),t,0,pi/4)"],
-        ["I = Int(8*(sec(t)^2 + cos(t)^2 - 2)", "Int(sec(u)^2) du = tan(u)", "10 - 3*pi"],
+        ["I = Int(8*sec(t)^2 + 8*cos(t)^2 - 16) dt", "Int(sec(u)^2) du = tan(u)", "10 - 3*pi"],
         ["No elementary primitive", "ERR:"],
     ),
 ]

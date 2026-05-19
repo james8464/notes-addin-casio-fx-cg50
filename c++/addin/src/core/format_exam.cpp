@@ -429,6 +429,7 @@ std::string math_style_line(std::string line)
     std::size_t du_matches = line.find("; du matches");
     if(du_matches != std::string::npos) line = trim_copy(line.substr(0, du_matches));
     line = trim_copy(line);
+    if(line == "+ C" || line == "+ C.") line.clear();
     if(!line.empty() && !keep_short_exam_label(line) && !has_math_signal(line)) line.clear();
     replace_all(line, ".)", ")");
     replace_all(line, " -> ", "=>");

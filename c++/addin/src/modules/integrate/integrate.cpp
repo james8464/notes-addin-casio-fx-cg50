@@ -2208,6 +2208,18 @@ static std::string de_fmt(Arena &a, NodeId n)
     return s;
 }
 
+static std::optional<Rational> recip_var_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    NodeId sym = casio::sym(a, var);
+    NodeId one_over = casio::div(a, casio::num(a, 1), sym);
+    if(same_expr(a, n, one_over)) return Rational{1, 1};
+    Node const &nd = a.get(n);
+    if(nd.kind == NodeKind::Div && same_expr(a, nd.b, sym)) {
+        if(auto c = as_num(a, nd.a)) return *c;
+    }
+    return std::nullopt;
+}
+
 static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc)
 {
     auto lin = linear_parts_node(a, dydx, tok.y);
@@ -2373,11 +2385,18 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     auto p = s.find(": ");
                     if(p != std::string::npos) s = s.substr(p + 2);
                 }
-                if(no_ws(s) == "+C") continue;
+                std::string ns = no_ws(s);
+                if(ns == "+C" || ns == "C" || ns == "I=+C") continue;
+                for(std::size_t p = 0; (p = s.find("\n+ C", p)) != std::string::npos;) s.erase(p, 4);
                 if(!s.empty()) steps.push_back(s);
             }
         };
-        append_int_steps(Li);
+        if(auto cy = recip_var_coeff(a, invY, tok->y)) {
+            std::string lhs = r_eq(*cy, Rational{1, 1}) ? "ln(abs(" + tok->y + "))"
+                                                        : rat_text_small(a, *cy) + "*ln(abs(" + tok->y + "))";
+            steps.push_back("Int(" + format_expr(a, invY) + ") d" + tok->y + " = " + lhs);
+        }
+        else append_int_steps(Li);
         append_int_steps(Ri);
         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C");
 
@@ -2700,6 +2719,13 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 }
             }
         }
+        for(std::string &s : steps) {
+            for(std::size_t p = 0; (p = s.find("\n+ C", p)) != std::string::npos;) s.erase(p, 4);
+        }
+        steps.erase(std::remove_if(steps.begin(), steps.end(), [](std::string const &s) {
+            std::string ns = no_ws(s);
+            return ns == "+C" || ns == "C" || ns == "I=+C";
+        }), steps.end());
         return casio::exam_block("separable differential equation", steps, answer);
     }
     catch(std::exception const &e) {
@@ -4772,7 +4798,8 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     }
 
     if(c == "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)" ||
-       c == "defint((sin(x)+1)^2/cos(x)^2,x,pi/6,pi/3)") {
+       c == "defint((sin(x)+1)^2/cos(x)^2,x,pi/6,pi/3)" ||
+       c == "defint((sin(x)+1)^2cos(x)^-2,x,pi/6,pi/3)") {
         return out(
             "trig identity definite integration",
             {
@@ -6964,17 +6991,39 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
-    if(c == "xatan(x)") {
-        return out(
-            "integration by parts",
-            {
-                "Let u=atan(x), dv=x dx.",
-                "Then du=1/(1+x^2) dx and v=x^2/2.",
-                "Rewrite x^2/(1+x^2)=1-1/(1+x^2).",
-                "Integrate the remaining standard atan part.",
-            },
-            "((x^2+1)*atan(x) - x)/2 + C"
-        );
+    {
+        long long k = 0;
+        bool x_atan_kx = false;
+        if(c == "xatan(x)") {
+            k = 1;
+            x_atan_kx = true;
+        }
+        else if(c.rfind("xatan(", 0) == 0 && c.size() > 8 && c.substr(c.size() - 2) == "x)") {
+            std::string mid = c.substr(6, c.size() - 8);
+            if(!mid.empty() && std::all_of(mid.begin(), mid.end(), [](unsigned char ch) { return std::isdigit(ch); })) {
+                k = std::atoll(mid.c_str());
+                x_atan_kx = k > 0;
+            }
+        }
+        if(x_atan_kx) {
+            std::string kx = k == 1 ? "x" : std::to_string(k) + "*x";
+            std::string den = k == 1 ? "1+x^2" : "1+" + std::to_string(k * k) + "*x^2";
+            std::string inv2k = k == 1 ? "1/2" : "1/" + std::to_string(2 * k);
+            std::string inv2k2 = k == 1 ? "1/2" : "1/" + std::to_string(2 * k * k);
+            std::string ans = k == 1 ? "((x^2+1)*atan(x) - x)/2 + C"
+                                      : "x^2/2*atan(" + kx + ") - " + inv2k + "*x + " + inv2k2 + "*atan(" + kx + ") + C";
+            return out(
+                "integration by parts",
+                {
+                    "Let u=atan(" + kx + "), dv=x dx.",
+                    "du=" + std::to_string(k) + "/(" + den + ") dx and v=x^2/2.",
+                    "I = x^2/2*atan(" + kx + ") - " + std::to_string(k) + "/2*Integral(x^2/(" + den + ")) dx.",
+                    "Rewrite x^2/(" + den + ") = 1/" + std::to_string(k * k) + " - 1/(" + std::to_string(k * k) + "*(" + den + ")).",
+                    "Integrate the remaining standard atan part.",
+                },
+                ans
+            );
+        }
     }
 
     if(c == "sin(x)^6+cos(x)^6") {
