@@ -3005,6 +3005,16 @@ static std::string simplify_endpoint_answer_text(std::string s)
     replace_all_text(s, "log(sqrt(e))", "1/2");
     replace_all_text(s, "4*e^2*1/2", "2*e^2");
     replace_all_text(s, "- 2*e^2 + e^2", "- e^2");
+    auto replace_standalone = [](std::string &text, std::string const &from, std::string const &to) {
+        for(std::size_t p = 0; (p = text.find(from, p)) != std::string::npos;) {
+            if(p > 0 && (text[p - 1] == '*' || text[p - 1] == '/')) {
+                p += from.size();
+                continue;
+            }
+            text.replace(p, from.size(), to);
+            p += to.size();
+        }
+    };
     for(int n = 1; n <= 200; ++n) {
         for(int d = 1; d <= 200; ++d) {
             std::string from = "abs(" + std::to_string(n) + "/" + std::to_string(d) + ")";
@@ -3016,6 +3026,10 @@ static std::string simplify_endpoint_answer_text(std::string s)
         replace_all_text(s, "sqrt(" + v + ")^4", v + "^2");
         for(std::string const &fn : {"ln", "log"}) {
             replace_all_text(s, fn + "(sqrt(" + v + "))", "1/2*" + fn + "(" + v + ")");
+            for(long long k = 8; k >= 2; --k) {
+                if(auto r = integer_nth_root_exact(n, k); r && *r > 1)
+                    replace_standalone(s, fn + "(" + v + ")", std::to_string(k) + "*" + fn + "(" + std::to_string(*r) + ")");
+            }
             replace_all_text(s, " + " + fn + "(1/" + v + ")", " - " + fn + "(" + v + ")");
             replace_all_text(s, " - " + fn + "(1/" + v + ")", " + " + fn + "(" + v + ")");
             if(s == fn + "(1/" + v + ")") s = "-" + fn + "(" + v + ")";
@@ -3061,18 +3075,37 @@ static std::string simplify_endpoint_answer_text(std::string s)
         }
     };
     auto parse_rat_coeff = [&](std::string const &t, Rational &r) -> bool {
-        long long n = 0, d = 1;
-        std::size_t slash = t.find('/');
-        if(slash == std::string::npos) {
-            if(!parse_int_full(t, n)) return false;
+        auto parse_atom = [&](std::string const &part, Rational &q) -> bool {
+            long long n = 0, d = 1;
+            std::size_t slash = part.find('/');
+            if(slash == std::string::npos) {
+                if(!parse_int_full(part, n)) return false;
+            }
+            else {
+                if(!parse_int_full(part.substr(0, slash), n) || !parse_int_full(part.substr(slash + 1), d) || d == 0)
+                    return false;
+            }
+            q = Rational{n, d};
+            q.normalize();
+            return true;
+        };
+        if(t.find('*') != std::string::npos) {
+            Rational prod{1, 1};
+            std::size_t start = 0;
+            while(start <= t.size()) {
+                std::size_t p = t.find('*', start);
+                std::string part = t.substr(start, p == std::string::npos ? std::string::npos : p - start);
+                Rational q{0, 1};
+                if(!parse_atom(part, q)) return false;
+                prod = r_mul(prod, q);
+                if(p == std::string::npos) break;
+                start = p + 1;
+            }
+            r = prod;
+            r.normalize();
+            return true;
         }
-        else {
-            if(!parse_int_full(t.substr(0, slash), n) || !parse_int_full(t.substr(slash + 1), d) || d == 0)
-                return false;
-        }
-        r = Rational{n, d};
-        r.normalize();
-        return true;
+        return parse_atom(t, r);
     };
     auto parse_rat_ln_term = [&](std::string const &t, Rational &c, long long &v) -> bool {
         std::size_t p = t.find("*ln(");
@@ -17680,16 +17713,17 @@ static std::optional<NodeId> simplify_param_trig_product(Arena &a, NodeId n, std
     NodeId repl = 0;
     NodeId v = casio::sym(a, var);
     auto rest_has_trig = [&]() {
+        auto trig_base_arg = [&](NodeId id) {
+            Node const &r = a.get(id);
+            return r.kind == NodeKind::Fn && (r.fkind == FnKind::Sin || r.fkind == FnKind::Cos ||
+                   r.fkind == FnKind::Tan || r.fkind == FnKind::Sec || r.fkind == FnKind::Cosec ||
+                   r.fkind == FnKind::Cot) && arg_scale(r.a, 1);
+        };
         for(NodeId k : rest) {
             Node const &r = a.get(k);
-            if(r.kind == NodeKind::Fn && (r.fkind == FnKind::Sin || r.fkind == FnKind::Cos ||
-               r.fkind == FnKind::Tan || r.fkind == FnKind::Sec || r.fkind == FnKind::Cosec ||
-               r.fkind == FnKind::Cot)) return true;
+            if(trig_base_arg(k)) return true;
             if(r.kind == NodeKind::Pow) {
-                Node const &b = a.get(r.a);
-                if(b.kind == NodeKind::Fn && (b.fkind == FnKind::Sin || b.fkind == FnKind::Cos ||
-                   b.fkind == FnKind::Tan || b.fkind == FnKind::Sec || b.fkind == FnKind::Cosec ||
-                   b.fkind == FnKind::Cot)) return true;
+                if(trig_base_arg(r.a)) return true;
             }
         }
         return false;
@@ -17799,8 +17833,10 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
 {
     auto run_inner = [&](std::string const &setup, std::string const &integrand, std::string const &var,
                          std::string const &lo, std::string const &hi) -> std::vector<std::string> {
-        Request inner = req;
+        Request inner;
         inner.expr = "defint(" + integrand + "," + var + "," + lo + "," + hi + ")";
+        inner.var = var;
+        inner.method = req.method;
         auto lines = run_definite_integral(arena, inner);
         if(!lines) return {setup, "No elementary primitive found"};
         lines->insert(lines->begin(), setup);
@@ -17841,8 +17877,30 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         std::string axis = axis_y ? "dy" : "dx";
         auto lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", integrand, var, args[3], args[4]);
         if(lines.size() == 2 && lines[1] == "No elementary primitive found") {
+            std::string stable = format_expr(arena, casio::simplify(arena, body));
+            if(stable != integrand)
+                lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", stable, var, args[3], args[4]);
+        }
+        if(lines.size() == 2 && lines[1] == "No elementary primitive found") {
             if(auto frac = fraction_text(arena, body))
                 lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", *frac, var, args[3], args[4]);
+        }
+        if(lines.size() == 2 && lines[1] == "No elementary primitive found") {
+            IntegrateResult direct = integrate_giac_style(arena, casio::simplify(arena, body), var);
+            if(direct.result) {
+                NodeId lo = parse_expr(arena, args[3]);
+                NodeId hi = parse_expr(arena, args[4]);
+                NodeId flo = simplify_known_endpoint_values(arena, substitute_var(arena, *direct.result, var, lo));
+                NodeId fhi = simplify_known_endpoint_values(arena, substitute_var(arena, *direct.result, var, hi));
+                NodeId ans = casio::simplify(arena, casio::add(arena, {fhi, casio::neg(arena, flo)}));
+                lines = {setup + " " + axis + "/d" + var + " = " + ds + "."};
+                for(auto const &s : direct.steps) lines.push_back(s);
+                lines.push_back("F(" + var + ") = " + format_expr_human(arena, *direct.result));
+                lines.push_back("F(" + args[4] + ") - F(" + args[3] + ")");
+                lines.push_back("F(" + args[4] + ") = " + format_expr_human(arena, fhi));
+                lines.push_back("F(" + args[3] + ") = " + format_expr_human(arena, flo));
+                lines.push_back(format_expr_human(arena, ans));
+            }
         }
         lines.insert(lines.begin() + 1, volume ? "V = " + sign + "pi*Int(" + rs + ")^2*(" + ds + ") d" + var
                                                : "A = " + sign + "Int(" + rs + ")*(" + ds + ") d" + var);

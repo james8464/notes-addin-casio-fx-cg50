@@ -1151,6 +1151,47 @@ static std::string format_solution_list(std::string const &var, bool rad, std::v
     return oss.str();
 }
 
+static std::optional<std::vector<std::string>> solve_zero_product_trig(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<double> xs;
+    std::vector<std::string> steps;
+    steps.push_back(casio::format_expr(a, residual) + " = 0");
+    for(NodeId k : r.kids) {
+        if(is_const(a, k)) continue;
+        Node const &f = a.get(k);
+        if(auto lin = linear_angle(a, k, var, rad); lin && std::fabs(lin->first) > 1e-12) {
+            auto lo_node = casio::parse_expr(a, lo_text);
+            auto hi_node = casio::parse_expr(a, hi_text);
+            double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+            double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+            if(lo > hi) std::swap(lo, hi);
+            double root = -lin->second / lin->first;
+            if(root >= lo - 1e-7 && root <= hi + 1e-7) {
+                steps.push_back(casio::format_expr(a, k) + " = 0");
+                add_unique(xs, root);
+            }
+            continue;
+        }
+        if(f.kind == NodeKind::Fn && (f.fkind == FnKind::Sin || f.fkind == FnKind::Cos || f.fkind == FnKind::Tan)) {
+            steps.push_back(casio::format_expr(a, k) + " = 0");
+            auto part = x_values_from_angle_degrees(a, f.a, var, lo_text, hi_text, rad, base_trig_degrees(f.fkind, 0.0));
+            for(double x : part) add_unique(xs, x);
+        }
+    }
+    if(xs.empty()) return std::nullopt;
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    return casio::exam_block("trig zero product", steps, format_solution_list(var, rad, xs));
+}
+
 static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
 static std::string trig_root_text(double r);
 static std::vector<double> solve_quadratic_d(double a, double b, double c);
@@ -6422,6 +6463,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             var + " = all valid " + var + " in domain"
         );
     }
+    if(auto zp = solve_zero_product_trig(a, residual, var, lo_text, hi_text, rad)) return *zp;
     if(auto costan = solve_cos_tan_product(a, residual, var, lo_text, hi_text, rad, general)) return *costan;
     if(auto sin2tan = solve_sin2_tan_factor(a, residual, var, lo_text, hi_text, rad, general)) return *sin2tan;
     if(auto ss = solve_shifted_sin_sum(a, residual, var, lo_text, hi_text, rad, general)) return *ss;
