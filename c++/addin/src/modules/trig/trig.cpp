@@ -3916,6 +3916,7 @@ static std::optional<std::vector<std::string>> solve_sc_common_denominator(
     double s2 = sc_coef(*p, 2, 0), c2 = sc_coef(*p, 0, 2), c1 = sc_coef(*p, 0, 1);
     double k0 = sc_coef(*p, 0, 0), sc2 = sc_coef(*p, 1, 2), c3 = sc_coef(*p, 0, 3);
     double s1 = sc_coef(*p, 1, 0), s1c1 = sc_coef(*p, 1, 1), s2c = sc_coef(*p, 2, 1);
+    double s3 = sc_coef(*p, 3, 0), s4 = sc_coef(*p, 4, 0), c4 = sc_coef(*p, 0, 4), c6 = sc_coef(*p, 0, 6);
     if(sc_only(*p, {{2, 0}, {0, 2}, {0, 1}}) && std::fabs(s2 - c2) < 1e-12 && std::fabs(c1) > 1e-12) {
         steps.push_back("sin(" + A + ")^2+cos(" + A + ")^2=1.");
         steps.push_back(trig_root_text(s2) + fmt_poly_coeff(c1, false) + "*cos(" + A + ")=0.");
@@ -3938,6 +3939,13 @@ static std::optional<std::vector<std::string>> solve_sc_common_denominator(
         steps.push_back("sin(" + A + ")*(1-cos(" + A + ")^2)" + fmt_poly_coeff(-s2c, false) +
                         "*cos(" + A + ")*(1-sin(" + A + ")^2)=0.");
         steps.push_back("sin(" + A + ")^3=" + trig_root_text(s2c / s1) + "*cos(" + A + ")^3.");
+        steps.push_back("tan(" + A + ")=" + trig_root_text(r) + ".");
+        add_roots(FnKind::Tan, {r});
+    }
+    else if(sc_only(*p, {{3, 0}, {0, 3}}) && std::fabs(s3) > 1e-12 && std::fabs(c3) > 1e-12) {
+        double r = std::cbrt(-c3 / s3);
+        std::string ck = std::fabs(std::fabs(c3) - 1.0) < 1e-12 ? "" : trig_root_text(std::fabs(c3)) + "*";
+        steps.push_back(trig_root_text(s3) + "*sin(" + A + ")^3" + std::string(c3 < 0 ? " - " : " + ") + ck + "cos(" + A + ")^3=0.");
         steps.push_back("tan(" + A + ")=" + trig_root_text(r) + ".");
         add_roots(FnKind::Tan, {r});
     }
@@ -4088,6 +4096,32 @@ static std::optional<std::vector<std::string>> solve_sc_common_denominator(
         add_roots(FnKind::Cos, {0.0});
         steps.push_back("sin(" + A2 + ")=" + trig_root_text(target) + ".");
         add_roots_for(FnKind::Sin, {target}, arg2, A2, false);
+    }
+    else if(sc_only(*p, {{4, 0}, {0, 4}, {0, 6}}) && std::fabs(s4) > 1e-12 && std::fabs(c6) > 1e-12) {
+        double A3 = c6, A2 = c4 + s4, A1 = -2.0 * s4, A0 = s4;
+        std::vector<double> us;
+        for(double r : {-2.0, -1.0, -0.5, -0.25, 0.25, 0.5, 1.0, 2.0}) {
+            double v = ((A3 * r + A2) * r + A1) * r + A0;
+            if(std::fabs(v) < 1e-9) {
+                us.push_back(r);
+                auto q = solve_quadratic_d(A3, A2 + r * A3, A1 + r * (A2 + r * A3));
+                for(double x : q) add_unique(us, x);
+                break;
+            }
+        }
+        if(us.empty()) return std::nullopt;
+        steps.push_back("u=cos(" + A + ")^2.");
+        steps.push_back("sin(" + A + ")^4=(1-u)^2.");
+        steps.push_back(recip_poly_text(std::vector<double>{A0, A1, A2, A3}));
+        for(double u : us) {
+            if(u < -1e-12 || u > 1.0 + 1e-12) {
+                steps.push_back("Reject u=" + trig_root_text(u) + ": outside [0,1].");
+                continue;
+            }
+            double r = std::sqrt(std::max(0.0, u));
+            steps.push_back("cos(" + A + ")=+/-" + trig_root_text(r) + ".");
+            add_roots(FnKind::Cos, {r, -r});
+        }
     }
     else return std::nullopt;
     steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
@@ -5381,8 +5415,9 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
     else if(std::fabs(poly->s1) < 1e-12 && std::fabs(poly->c1) < 1e-12 &&
             (std::fabs(poly->s2) > 1e-12 || std::fabs(poly->sc) > 1e-12 || std::fabs(poly->c2) > 1e-12)) {
         steps.push_back("Divide by cos(A)^2 where valid.");
+        steps.push_back("sec(A)^2=1+tan(A)^2.");
         steps.push_back("Let u=tan(A), solve the quadratic in u.");
-        add_roots(FnKind::Tan, solve_quadratic_d(poly->s2, poly->sc, poly->c2));
+        add_roots(FnKind::Tan, solve_quadratic_d(poly->s2 + poly->c, poly->sc, poly->c2 + poly->c));
     }
     else return std::nullopt;
 
@@ -5839,6 +5874,51 @@ static bool sc_reduce_square(SCFullPoly const &p, FnKind fk, double &a2, double 
     return sc_as_uni(q, fk, a2, a1, a0);
 }
 
+static bool sc_as_uni_cubic(SCFullPoly const &p, FnKind fk, double c[4])
+{
+    c[0] = c[1] = c[2] = c[3] = 0.0;
+    bool any = false;
+    for(int s = 0; s <= SC_MAX_DEG; ++s)
+        for(int q = 0; q <= SC_MAX_DEG; ++q) {
+            double v = p.k[s][q];
+            if(std::fabs(v) < 1e-10) continue;
+            int e = fk == FnKind::Sin ? s : q;
+            int other = fk == FnKind::Sin ? q : s;
+            if(other || e > 3) return false;
+            c[e] += v;
+            any = true;
+        }
+    return any && std::fabs(c[3]) > 1e-12;
+}
+
+static bool sc_reduce_square_cubic(SCFullPoly const &p, FnKind fk, double c[4])
+{
+    SCFullPoly q;
+    bool to_cos = fk == FnKind::Cos;
+    for(int s = 0; s <= SC_MAX_DEG; ++s)
+        for(int cc = 0; cc <= SC_MAX_DEG; ++cc) {
+            double v = p.k[s][cc];
+            if(std::fabs(v) < 1e-10) continue;
+            if(to_cos) {
+                if(s == 0) q.k[0][cc] += v;
+                else if(s == 2 && cc + 2 <= SC_MAX_DEG) {
+                    q.k[0][cc] += v;
+                    q.k[0][cc + 2] -= v;
+                }
+                else return false;
+            }
+            else {
+                if(cc == 0) q.k[s][0] += v;
+                else if(cc == 2 && s + 2 <= SC_MAX_DEG) {
+                    q.k[s][0] += v;
+                    q.k[s + 2][0] -= v;
+                }
+                else return false;
+            }
+        }
+    return sc_as_uni_cubic(q, fk, c);
+}
+
 static bool sc_factor_root(SCFullPoly const &p, FnKind &fk, SCFullPoly &q)
 {
     int min_s = SC_MAX_DEG + 1, min_c = SC_MAX_DEG + 1;
@@ -5933,6 +6013,40 @@ static bool sc_collect_roots(
     };
     if(sc_as_uni(p, FnKind::Sin, a2, a1, a0)) return solve_uni(FnKind::Sin, a2, a1, a0);
     if(sc_as_uni(p, FnKind::Cos, a2, a1, a0)) return solve_uni(FnKind::Cos, a2, a1, a0);
+    double cu[4];
+    auto solve_cubic = [&](FnKind fk, double const c[4]) {
+        std::string u = fk == FnKind::Sin ? "s" : "c";
+        double first = NAN;
+        for(double r : {-7.0, -3.0, -2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 3.0, 7.0}) {
+            double v = ((c[3] * r + c[2]) * r + c[1]) * r + c[0];
+            if(std::fabs(v) < 1e-9) {
+                first = r;
+                break;
+            }
+        }
+        if(!std::isfinite(first)) return false;
+        steps.push_back("u=" + u + ".");
+        steps.push_back(recip_poly_text(std::vector<double>{c[0], c[1], c[2], c[3]}));
+        std::vector<double> rts{first};
+        auto q = solve_quadratic_d(c[3], c[2] + first * c[3], c[1] + first * (c[2] + first * c[3]));
+        for(double r : q) add_unique(rts, r);
+        std::string line = u + "=";
+        bool any = false;
+        for(double r : rts) {
+            if((fk == FnKind::Sin || fk == FnKind::Cos) && (r < -1.0 - 1e-10 || r > 1.0 + 1e-10)) {
+                steps.push_back("Reject " + u + "=" + trig_root_text(r) + ".");
+                continue;
+            }
+            if(any) line += " or " + u + "=";
+            line += trig_root_text(r);
+            any = true;
+            roots.push_back({fk, r});
+        }
+        if(any) steps.push_back(line + ".");
+        return any;
+    };
+    if(sc_as_uni_cubic(p, FnKind::Sin, cu) && solve_cubic(FnKind::Sin, cu)) return true;
+    if(sc_as_uni_cubic(p, FnKind::Cos, cu) && solve_cubic(FnKind::Cos, cu)) return true;
     if(sc_reduce_square(p, FnKind::Cos, a2, a1, a0)) {
         steps.push_back("s^2=1-c^2.");
         return solve_uni(FnKind::Cos, a2, a1, a0);
@@ -5940,6 +6054,14 @@ static bool sc_collect_roots(
     if(sc_reduce_square(p, FnKind::Sin, a2, a1, a0)) {
         steps.push_back("c^2=1-s^2.");
         return solve_uni(FnKind::Sin, a2, a1, a0);
+    }
+    if(sc_reduce_square_cubic(p, FnKind::Cos, cu)) {
+        steps.push_back("s^2=1-c^2.");
+        if(solve_cubic(FnKind::Cos, cu)) return true;
+    }
+    if(sc_reduce_square_cubic(p, FnKind::Sin, cu)) {
+        steps.push_back("c^2=1-s^2.");
+        if(solve_cubic(FnKind::Sin, cu)) return true;
     }
     if(depth < 2) {
         FnKind f;
@@ -5996,6 +6118,18 @@ static std::optional<std::vector<std::string>> solve_sc_tan_rational_poly(
     std::vector<double> xs;
     for(auto const &[fk, val] : roots) {
         if((fk == FnKind::Sin || fk == FnKind::Cos) && (val < -1.0 - 1e-10 || val > 1.0 + 1e-10)) continue;
+        bool bad_den = false;
+        if(fk == FnKind::Sin || fk == FnKind::Cos) {
+            double q = std::sqrt(std::max(0.0, 1.0 - val * val));
+            if(fk == FnKind::Sin)
+                bad_den = std::fabs(sc_poly_eval(r->d, val, q)) < 1e-8 && std::fabs(sc_poly_eval(r->d, val, -q)) < 1e-8;
+            else
+                bad_den = std::fabs(sc_poly_eval(r->d, q, val)) < 1e-8 && std::fabs(sc_poly_eval(r->d, -q, val)) < 1e-8;
+        }
+        if(bad_den) {
+            steps.push_back("Reject " + trig_name(fk) + "(" + arg + ")=" + trig_root_text(val) + ": denominator=0.");
+            continue;
+        }
         steps.push_back(trig_name(fk) + "(" + arg + ")=" + trig_root_text(val) + ".");
         steps.push_back(trig_base_angle_line(fk, arg, val));
         steps.push_back(trig_alpha_family_line(fk, arg, val, rad));
