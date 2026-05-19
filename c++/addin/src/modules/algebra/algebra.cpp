@@ -802,6 +802,19 @@ static bool contains_symbol(Arena &a, NodeId n, std::string const &name)
     return false;
 }
 
+static bool contains_const(Arena &a, NodeId n, ConstKind c)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Const) return x.ckind == c;
+    if(x.kind == NodeKind::Fn) return contains_const(a, x.a, c);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_const(a, x.a, c) || contains_const(a, x.b, c);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(contains_const(a, k, c)) return true;
+    }
+    return false;
+}
+
 static bool has_other_symbols(Arena &a, NodeId n, std::string const &name)
 {
     std::vector<std::string> vars;
@@ -873,6 +886,11 @@ static std::optional<NodeId> strip_one_quadratic_x(Arena &a, NodeId term, std::s
 {
     if(is_pow_var(a, term, var, 2)) return one_node(a);
     Node const &t = a.get(term);
+    if(t.kind == NodeKind::Div && !contains_symbol(a, t.b, var)) {
+        auto top = strip_one_quadratic_x(a, t.a, var);
+        if(!top) return std::nullopt;
+        return casio::simplify(a, casio::div(a, *top, t.b));
+    }
     if(t.kind != NodeKind::Mul) return std::nullopt;
     bool saw_x2 = false;
     std::vector<NodeId> rest;
@@ -3144,6 +3162,59 @@ static bool append_direct_square_route(Arena &a,
         push_sol(r_neg(ds->second));
     }
     auto sols = filter_real_solutions(a, residual, var, raw, lo, hi);
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return true;
+}
+
+static std::optional<std::pair<NodeId, NodeId>> direct_symbolic_square_side(Arena &a, NodeId sq, NodeId val, std::string const &var)
+{
+    Node const &n = a.get(sq);
+    if(n.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, n.b);
+    if(!e || e->num != 2 || e->den != 1 || contains_symbol(a, val, var)) return std::nullopt;
+    auto p = poly_of(a, n.a, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    auto q = as_num(a, val);
+    if(q) return std::nullopt;
+    return std::make_pair(n.a, val);
+}
+
+static bool append_direct_symbolic_square_route(Arena &a,
+                                                std::vector<std::string> &out,
+                                                NodeId lhs,
+                                                NodeId rhs,
+                                                NodeId residual,
+                                                std::string const &var,
+                                                std::optional<double> lo,
+                                                std::optional<double> hi)
+{
+    auto ds = direct_symbolic_square_side(a, lhs, rhs, var);
+    if(!ds) ds = direct_symbolic_square_side(a, rhs, lhs, var);
+    if(!ds) return false;
+    auto p = poly_of(a, ds->first, var);
+    if(!p || !p->ok || is_zero(p->a1)) return false;
+    NodeId root = casio::fn(a, "sqrt", ds->second);
+    std::string base = format_expr(a, ds->first);
+    std::string root_txt = format_expr(a, root);
+    out.push_back(base + " = +/-" + root_txt);
+    out.push_back(base + " = " + root_txt + " or " + base + " = -" + root_txt);
+    auto solve_linear = [&](NodeId target) {
+        return casio::simplify(a, casio::div(a, casio::add(a, {target, casio::neg(a, a.num(p->a0))}), a.num(p->a1)));
+    };
+    std::vector<NodeId> vals{solve_linear(root), solve_linear(casio::neg(a, root))};
+    std::vector<std::string> raw;
+    for(NodeId v : vals) raw.push_back(var + " = " + format_expr(a, v));
+    std::vector<std::string> sols;
+    if(lo && hi) {
+        for(std::size_t i = 0; i < vals.size(); ++i) {
+            auto v = eval_node(a, vals[i], var, 0.0);
+            if(v && std::isfinite(*v) && *v >= *lo - 1e-9 && *v <= *hi + 1e-9) sols.push_back(raw[i]);
+        }
+    }
+    else {
+        sols = filter_real_solutions(a, residual, var, raw, lo, hi);
+    }
     append_answer(out, var, sols);
     append_numeric_3dp(a, out, var, sols);
     return true;
@@ -7959,14 +8030,29 @@ static NodeId compact_single_other_quadratic(Arena &a, NodeId expr, std::string 
 
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
-    if(!has_other_symbols(a, rearr, var)) return std::nullopt;
+    std::string rearr_txt = format_expr(a, rearr);
+    bool has_named_const = rearr_txt.find("pi") != std::string::npos || rearr_txt.find("e^") != std::string::npos ||
+                           contains_const(a, rearr, ConstKind::Pi) || contains_const(a, rearr, ConstKind::E);
+    if(!has_other_symbols(a, rearr, var) && !has_named_const && ratpoly_of_node(a, rearr, var).ok)
+        return std::nullopt;
     auto q = symbolic_quadratic_parts(a, rearr, var);
     if(!q) return std::nullopt;
     NodeId two = casio::num(a, 2);
     NodeId four = casio::num(a, 4);
     NodeId v = casio::sym(a, var);
     std::vector<std::string> out;
-    out.push_back(format_expr(a, rearr) + " = 0");
+    out.push_back(rearr_txt + " = 0");
+
+    if(casio::same_by_sig(a, q->b, zero_node(a))) {
+        NodeId rhs = casio::simplify(a, casio::div(a, casio::neg(a, q->c), q->a2));
+        NodeId root = casio::simplify(a, casio::fn(a, "sqrt", rhs));
+        out.push_back(var + "^2 = " + format_expr(a, rhs));
+        out.push_back(var + " = +/-" + format_expr(a, root));
+        out.push_back(var + " = " + format_expr(a, root));
+        out.push_back(var + " = -" + format_expr(a, root));
+        out.push_back(solution_list_line(var, {var + " = " + format_expr(a, root), var + " = -" + format_expr(a, root)}));
+        return out;
+    }
 
     if(casio::same_by_sig(a, q->a2, one_node(a))) {
         NodeId half_b = casio::simplify(a, casio::div(a, q->b, two));
@@ -11332,6 +11418,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
         if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var)) {
             out.insert(out.end(), rbq->begin(), rbq->end());
