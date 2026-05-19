@@ -8271,6 +8271,62 @@ static std::optional<std::vector<std::string>> exp_common_factor_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> exp_two_term_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, residual, terms);
+    if(terms.size() != 2) return std::nullopt;
+    Rational c[2], m[2], b[2];
+    NodeId body = 0;
+    bool has_body = false;
+    for(int i = 0; i < 2; ++i) {
+        split_coeff_body(a, terms[i], c[i], body, has_body);
+        if(!has_body || is_zero(c[i])) return std::nullopt;
+        auto arg = exp_arg_node(a, body);
+        if(!arg) return std::nullopt;
+        auto p = poly_of(a, *arg, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        m[i] = p->a1;
+        b[i] = p->a0;
+    }
+    Rational dm = r_sub(m[0], m[1]);
+    if(is_zero(dm)) return std::nullopt;
+    Rational ratio = r_div(r_neg(c[1]), c[0]);
+    if(ratio.num <= 0) return std::nullopt;
+    Rational db = r_sub(b[1], b[0]);
+    NodeId ratio_node = a.num(ratio);
+    if(!is_zero(db)) ratio_node = casio::simplify(a, casio::mul(a, {ratio_node, casio::power(a, a.constant(ConstKind::E), a.num(db))}));
+    NodeId x = casio::simplify(a, casio::div(a, casio::fn(a, "ln", ratio_node), a.num(dm)));
+    std::string x_text = format_expr(a, x);
+    if(is_zero(db) && dm.den == 1) {
+        int root_power = static_cast<int>(std::llabs(dm.num));
+        auto rn = integer_nth_root_i64(ratio.num, root_power);
+        auto rd = integer_nth_root_i64(ratio.den, root_power);
+        if(rn && rd && *rd != 0) {
+            Rational root{*rn, *rd};
+            root.normalize();
+            bool neg_log = dm.num < 0;
+            if(root.num == 1 && root.den > 1) {
+                neg_log = !neg_log;
+                root = Rational{root.den, 1};
+            }
+            std::string log_arg = format_expr(a, a.num(root));
+            x_text = (neg_log ? "-ln(" : "ln(") + log_arg + ")";
+        }
+    }
+    out.push_back(format_expr(a, terms[0]) + " + " + format_expr(a, terms[1]) + " = 0");
+    out.push_back("Divide by e^(" + format_expr(a, casio::add(a, {casio::mul(a, {a.num(m[1]), a.sym(var)}), a.num(b[1])})) + ") > 0");
+    out.push_back("e^(" + format_expr(a, casio::mul(a, {a.num(dm), a.sym(var)})) + ") = " + format_expr(a, ratio_node));
+    out.push_back(var + " = " + x_text);
+    out.push_back(solution_list_line(var, {var + " = " + x_text}));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> nonzero_exp_product_route(
     Arena &a,
     NodeId residual,
@@ -10078,6 +10134,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
+        if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
         if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {

@@ -408,7 +408,7 @@ CASES = [
     (
         "negative exponent substitution exact",
         ["--alg", "solve(4*e^(-2*x)-e^(-4*x)=0,x)"],
-        ("u = e^(-2*x), u > 0", "- u^2 + 4*u = 0", "0 rejected, u > 0", "x = [-ln(2)]"),
+        ("Divide by e^(-4*x) > 0", "e^(2*x) = 1/4", "x = [-ln(2)]"),
         ("x = all real", "No real solution", "ERR:"),
     ),
     (
@@ -422,6 +422,12 @@ CASES = [
         ["--alg", "solve((1-x^2)*e^(-x^2)=0,x)"],
         ("e^(-x^2) > 0", "- x^2 + 1 = 0", "x = [1, -1]"),
         ("x = all real", "ERR:"),
+    ),
+    (
+        "two exponential terms factor",
+        ["--alg", "solve(-4*e^(-2*x)+3*e^(-3*x)=0,x)"],
+        ("Divide by e^(-3*x) > 0", "e^(x) = 3/4", "x = ln(3/4)"),
+        ("all real values", "x = []", "ERR:"),
     ),
     (
         "fractional reciprocal power substitution",
