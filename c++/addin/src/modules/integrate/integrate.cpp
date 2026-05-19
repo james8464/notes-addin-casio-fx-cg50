@@ -11163,6 +11163,7 @@ static std::optional<NodeId> integrate_power_derivative(Arena &a, NodeId expr, s
             continue;
         }
         auto k = proportional_node_var(a, rem, *d, var);
+        if(k && trig_const_product(a, rem, var) && !proportional_node(a, rem, *d)) k.reset();
         if(k && contains_var(a, rem, var) && !proportional_node(a, rem, *d)) {
             auto L = affine_form(a, rem, var);
             auto R = affine_form(a, *d, var);
@@ -11627,6 +11628,70 @@ static std::optional<NodeId> integrate_tan_power_sec2_form(Arena &a, NodeId expr
     steps.push_back("u = " + format_expr_human(a, arg));
     steps.push_back("I = " + (r_eq(scale, Rational{1, 1}) ? "" : rat_text(scale) + "*") + "tan(u)^" + rat_text(np1) + " + C");
     return casio::simplify(a, mul_coeff(a, scale, tan_pow));
+}
+
+static std::optional<NodeId> integrate_sin_even_over_cos2(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(expr);
+    Rational coeff{1, 1}, spow{0, 1}, cpow{0, 1};
+    NodeId arg = 0;
+    bool saw_direct_sin_cos = false;
+    auto take = [&](NodeId k, bool den) -> bool {
+        if(auto r = as_num(a, k)) { coeff = r_mul(coeff, den ? r_div(Rational{1, 1}, *r) : *r); return true; }
+        if(auto p = fn_power_factor_node(a, k, FnKind::Sin)) {
+            if(arg && !same_expr(a, arg, p->first)) return false;
+            arg = p->first; spow = r_add(spow, den ? r_neg(p->second) : p->second); saw_direct_sin_cos = true; return true;
+        }
+        if(auto p = fn_power_factor_node(a, k, FnKind::Cos)) {
+            if(arg && !same_expr(a, arg, p->first)) return false;
+            arg = p->first; cpow = r_add(cpow, den ? r_neg(p->second) : p->second); saw_direct_sin_cos = true; return true;
+        }
+        if(auto p = fn_power_factor_node(a, k, FnKind::Sec)) {
+            if(arg && !same_expr(a, arg, p->first)) return false;
+            arg = p->first; cpow = r_add(cpow, den ? p->second : r_neg(p->second)); saw_direct_sin_cos = true; return true;
+        }
+        if(auto p = fn_power_factor_node(a, k, FnKind::Tan)) {
+            if(arg && !same_expr(a, arg, p->first)) return false;
+            arg = p->first;
+            spow = r_add(spow, den ? r_neg(p->second) : p->second);
+            cpow = r_add(cpow, den ? p->second : r_neg(p->second));
+            return true;
+        }
+        return false;
+    };
+    auto walk = [&](NodeId n, bool den) -> bool {
+        Node const &v = a.get(n);
+        if(v.kind == NodeKind::Mul) {
+            for(NodeId k : v.kids) if(!take(k, den)) return false;
+            return true;
+        }
+        return take(n, den);
+    };
+    if(x.kind == NodeKind::Div) {
+        if(!walk(x.a, false) || !walk(x.b, true)) return std::nullopt;
+    } else {
+        if(!walk(expr, false)) return std::nullopt;
+    }
+    if(!arg || !saw_direct_sin_cos || cpow.num != -2 || cpow.den != 1 || spow.den != 1) return std::nullopt;
+    auto k = linear_coeff(a, arg, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+    NodeId u = arg, tan_u = casio::fn(a, "tan", u);
+    NodeId s2 = casio::fn(a, "sin", casio::mul(a, {casio::num(a, 2), u}));
+    NodeId prim = 0;
+    if(spow.num == 2) {
+        prim = casio::add(a, {tan_u, casio::neg(a, u)});
+        steps.push_back("sin(u)^2/cos(u)^2 = tan(u)^2.");
+    } else if(spow.num == 4) {
+        prim = casio::add(a, {tan_u, casio::mul(a, {casio::num(a, -3, 2), u}), casio::div(a, s2, casio::num(a, 4))});
+        steps.push_back("sin(u)^4/cos(u)^2 = sec(u)^2 - 2 + cos(u)^2.");
+    } else if(spow.num == 6) {
+        prim = casio::add(a, {tan_u, casio::mul(a, {casio::num(a, -15, 8), u}), casio::div(a, s2, casio::num(a, 2)),
+                              casio::neg(a, casio::div(a, casio::fn(a, "sin", casio::mul(a, {casio::num(a, 4), u})), casio::num(a, 32)))});
+        steps.push_back("sin(u)^6/cos(u)^2 = sec(u)^2 - 3 + 3cos(u)^2 - cos(u)^4.");
+    }
+    if(!prim) return std::nullopt;
+    steps.push_back("u = " + format_expr_human(a, u));
+    return casio::simplify(a, mul_coeff(a, r_div(coeff, *k), prim));
 }
 
 static bool is_sqrt_var_node(Arena &a, NodeId n, std::string const &var)
@@ -15469,6 +15534,11 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto ts = integrate_tan_power_sec2_form(a, expr, var, out.steps)) {
         out.result = *ts;
+        return out;
+    }
+
+    if(auto sc = integrate_sin_even_over_cos2(a, expr, var, out.steps)) {
+        out.result = *sc;
         return out;
     }
 
