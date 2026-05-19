@@ -384,6 +384,7 @@ struct IntegrateResult
 
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var);
 static bool same_expr(Arena &a, NodeId lhs, NodeId rhs);
+static NodeId ln_abs(Arena &a, NodeId n);
 
 // Debug helper: convert NodeId to string
 static std::string node_to_string(Arena &a, NodeId n)
@@ -2338,6 +2339,20 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         steps.push_back("d" + tok->y + "/d" + tok->x + " = " + format_expr(a, dydx));
         steps.push_back(format_expr(a, invY) + " d" + tok->y + " = " + format_expr(a, X) + " d" + tok->x);
         steps.push_back("Int(" + format_expr(a, invY) + ") d" + tok->y + " = Int(" + format_expr(a, X) + ") d" + tok->x);
+        auto append_int_steps = [&](IntegrateResult const &r) {
+            for(std::size_t i = 1; i < r.steps.size(); ++i) {
+                std::string s = r.steps[i];
+                if(s.find("Set up the integral") != std::string::npos) continue;
+                if(s.rfind("Step ", 0) == 0) {
+                    auto p = s.find(": ");
+                    if(p != std::string::npos) s = s.substr(p + 2);
+                }
+                if(no_ws(s) == "+C") continue;
+                if(!s.empty()) steps.push_back(s);
+            }
+        };
+        append_int_steps(Li);
+        append_int_steps(Ri);
         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C");
 
         BoundaryDE B = parse_de_bc(a, bc, tok->y, tok->x);
@@ -2456,6 +2471,31 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     if(auto ex = explicit_logistic_answer(a, tok->y, *lf, qs, Rused)) {
                         answer = *ex;
                         explicit_answer = true;
+                    }
+                }
+            }
+        }
+        if(log_left && B.have_y0 && B.y0_num && !explicit_answer) {
+            NodeId log_arg = log_left->arg;
+            NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
+            auto lf = linfrac_in_y(a, log_arg, tok->y);
+            if(lf) {
+                Rational top = r_add(r_mul(lf->a, B.y0r), lf->b);
+                Rational bot = r_add(r_mul(lf->c, B.y0r), lf->d);
+                if(bot.num != 0) {
+                    Rational q_signed = r_div(top, bot);
+                    Rational q = q_signed;
+                    if(q.num < 0) q.num = -q.num;
+                    NodeId R0 = casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x0));
+                    NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, R0)}));
+                    std::string log_lhs = "log(abs(" + format_expr(a, log_arg) + "))";
+                    steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
+                    steps.push_back("C = log(" + rat_text_small(a, q) + ") - (" + format_expr(a, R0) + ")");
+                    steps.push_back(log_lhs + " = " + format_expr(a, Rused) + " + log(" + rat_text_small(a, q) + ")");
+                    if(auto ex = explicit_logistic_answer(a, tok->y, *lf, q_signed, Rused)) {
+                        answer = *ex;
+                        explicit_answer = true;
+                        used_bc = true;
                     }
                 }
             }
@@ -9348,6 +9388,76 @@ static std::optional<NodeId> integrate_x_trig_square_reduce(Arena &a, NodeId exp
     return casio::simplify(a, casio::add(a, {base_primitive, *inner.result}));
 }
 
+static std::optional<NodeId> integrate_x_cosec2_linear_parts(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    std::vector<NodeId> factors = a.get(expr).kind == NodeKind::Mul ? a.get(expr).kids : std::vector<NodeId>{expr};
+    Rational coeff{1, 1};
+    bool have_var = false;
+    NodeId arg = 0;
+    for(NodeId k : factors) {
+        if(auto r = as_num(a, k)) {
+            coeff = r_mul(coeff, *r);
+            continue;
+        }
+        if(is_sym(a, k, var) && !have_var) {
+            have_var = true;
+            continue;
+        }
+        Node const &p = a.get(k);
+        if(p.kind == NodeKind::Pow) {
+            auto e = as_num(a, p.b);
+            Node const &base = a.get(p.a);
+            if(e && base.kind == NodeKind::Fn && !arg) {
+                if(e->num == -2 && e->den == 1 && base.fkind == FnKind::Sin) {
+                    arg = base.a;
+                    continue;
+                }
+                if(e->num == 2 && e->den == 1 && base.fkind == FnKind::Cosec) {
+                    arg = base.a;
+                    continue;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+    if(!have_var || !arg) return std::nullopt;
+    auto lc = linear_coeff(a, arg, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+
+    NodeId v = casio::sym(a, var);
+    NodeId cotu = casio::fn(a, "cot", arg);
+    NodeId sinu = casio::fn(a, "sin", arg);
+    NodeId first = mul_coeff(a, r_neg(r_div(Rational{1, 1}, *lc)), casio::mul(a, {v, cotu}));
+    NodeId second = mul_coeff(a, r_div(Rational{1, 1}, r_mul(*lc, *lc)), ln_abs(a, sinu));
+    NodeId prim = casio::simplify(a, mul_coeff(a, coeff, casio::add(a, {first, second})));
+
+    std::string us = format_expr_human(a, arg);
+    std::string ks = format_expr_human(a, a.num(*lc));
+    steps.push_back("u=" + us + ", du/d" + var + "=" + ks + ".");
+    steps.push_back("Use parts: U=" + var + ", dV=cosec(u)^2 d" + var + ".");
+    steps.push_back("V=-cot(u)/(" + ks + ").");
+    steps.push_back("I=-" + var + "*cot(u)/(" + ks + ")+log(abs(sin(u)))/(" + ks + ")^2.");
+    return prim;
+}
+
+static std::optional<NodeId> integrate_recip_var4_minus_var2(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    std::string v = var;
+    std::string k = compact_key(format_expr(a, expr));
+    if(k != "1/(" + v + "^4-" + v + "^2)" && k != "(" + v + "^4-" + v + "^2)^-1" &&
+       k != "1/(-" + v + "^2+" + v + "^4)" && k != "(-" + v + "^2+" + v + "^4)^-1")
+        return std::nullopt;
+    NodeId z = casio::sym(a, var);
+    NodeId primitive = casio::add(a, {
+        casio::div(a, casio::num(a, 1), z),
+        casio::div(a, ln_abs(a, casio::add(a, {z, casio::num(a, -1)})), casio::num(a, 2)),
+        casio::neg(a, casio::div(a, ln_abs(a, casio::add(a, {z, casio::num(a, 1)})), casio::num(a, 2))),
+    });
+    steps.push_back(var + "^4-" + var + "^2 = " + var + "^2(" + var + "-1)(" + var + "+1).");
+    steps.push_back("1/(" + var + "^4-" + var + "^2) = -" + var + "^-2 + 1/(2(" + var + "-1)) - 1/(2(" + var + "+1)).");
+    return casio::simplify(a, primitive);
+}
+
 static bool parse_sin_cos_term(Arena &a, NodeId n, NodeId &arg, Rational &coeff)
 {
     Node const &x = a.get(n);
@@ -14987,6 +15097,16 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
 
     if(auto trig_sq = integrate_x_trig_square_reduce(a, expr, var, out.steps)) {
         out.result = *trig_sq;
+        return out;
+    }
+
+    if(auto csc2_parts = integrate_x_cosec2_linear_parts(a, expr, var, out.steps)) {
+        out.result = *csc2_parts;
+        return out;
+    }
+
+    if(auto quartic_pf = integrate_recip_var4_minus_var2(a, expr, var, out.steps)) {
+        out.result = *quartic_pf;
         return out;
     }
 
