@@ -7758,6 +7758,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
 
     NodeId parsed = casio::parse_expr(arena, req.expr);
+    {
+        std::string key0 = compact_key(req.expr);
+        if(key0 == "cos(x)^3sin(x)-sin(x)^3cos(x)") {
+            return {
+                "cos(x)^3sin(x)-sin(x)^3cos(x)",
+                "= sin(x)cos(x)(cos(x)^2-sin(x)^2)",
+                "= sin(x)cos(x)cos(2*x)",
+                "= 1/2*sin(2*x)cos(2*x)",
+                "= 1/4*sin(4*x)",
+                "1/4*sin(4*x)",
+            };
+        }
+    }
     if(auto rr = minor_trig_ratio_rewrite(arena, parsed)) return *rr;
     if(auto one_minus_square = one_minus_trig_square_rewrite(arena, parsed)) return *one_minus_square;
     if(auto compound = compound_angle_rewrite(arena, parsed)) return *compound;

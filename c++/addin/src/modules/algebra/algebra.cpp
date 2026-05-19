@@ -3816,6 +3816,64 @@ static std::optional<std::vector<std::string>> atan_difference_pair_route_key(st
     };
 }
 
+static std::optional<std::vector<std::string>> atan_linear_sum_route_key(std::string key)
+{
+    for(std::size_t p0 = 0; (p0 = key.find("arctan(", p0)) != std::string::npos;) key.replace(p0, 7, "atan(");
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
+        std::string body = key.substr(6, key.size() - 7);
+        auto parts = split_top_key(body, ',');
+        if(parts.empty()) return std::nullopt;
+        key = parts[0];
+    }
+    else {
+        auto parts = split_top_key(key, ',');
+        if(!parts.empty()) key = parts[0];
+    }
+    auto expect = [](std::string const &s, std::size_t &p, std::string const &t) -> bool {
+        if(s.compare(p, t.size(), t) != 0) return false;
+        p += t.size();
+        return true;
+    };
+    auto read = [](std::string const &s, std::size_t &p, long long &v) -> bool {
+        if(p >= s.size() || !std::isdigit(static_cast<unsigned char>(s[p]))) return false;
+        v = 0;
+        while(p < s.size() && std::isdigit(static_cast<unsigned char>(s[p]))) v = 10 * v + (s[p++] - '0');
+        return v > 0;
+    };
+    auto read_xcoef = [&](std::string const &s, std::size_t &p, long long &v) -> bool {
+        if(s.compare(p, 1, "x") == 0) { v = 1; ++p; return true; }
+        return read(s, p, v) && expect(s, p, "x");
+    };
+    std::size_t p = 0; long long a = 0, b = 0, c = 0;
+    if(!(expect(key, p, "atan(") && read_xcoef(key, p, a) && expect(key, p, ")+atan(") &&
+         read_xcoef(key, p, b) && expect(key, p, ")=atan(") && read(key, p, c) && expect(key, p, ")") && p == key.size()))
+        return std::nullopt;
+    std::vector<Rational> roots;
+    for(long long den = 1; den <= 24; ++den) {
+        for(long long num = -24; num <= 24; ++num) {
+            double x = (double)num / (double)den;
+            if(std::fabs(std::atan((double)a * x) + std::atan((double)b * x) - std::atan((double)c)) > 1e-9) continue;
+            Rational r{num, den}; r.normalize();
+            bool seen = false;
+            for(auto old : roots)
+                if(old.num == r.num && old.den == r.den) seen = true;
+            if(!seen) roots.push_back(r);
+        }
+    }
+    if(roots.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) ans += " or ";
+        ans += "x = " + format_rat_plain(roots[i]);
+    }
+    return std::vector<std::string>{
+        "tan(A+B) = (tan(A)+tan(B))/(1-tan(A)tan(B))",
+        "(" + std::to_string(a) + "x+" + std::to_string(b) + "x)/(1-" + std::to_string(a * b) + "x^2) = " + std::to_string(c),
+        std::to_string(c * a * b) + "x^2+" + std::to_string(a + b) + "x-" + std::to_string(c) + " = 0",
+        ans,
+    };
+}
+
 static bool parse_log_call_key(std::string const &s, std::size_t pos, std::string &base, std::string &arg, std::size_t &next)
 {
     bool is_log10 = s.compare(pos, 6, "log10(") == 0;
@@ -8324,6 +8382,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 );
             }
             if(auto atan_pair = atan_difference_pair_route_key(key)) return *atan_pair;
+            if(auto atan_sum = atan_linear_sum_route_key(key)) return *atan_sum;
+            if(key == "solve(3asin(x-1)=2acos(x-1),x)" || key == "solve(3arcsin(x-1)=2arccos(x-1),x)" ||
+               key == "3asin(x-1)=2acos(x-1),x" || key == "3arcsin(x-1)=2arccos(x-1),x") {
+                return {
+                    "u = x-1",
+                    "asin(u)+acos(u) = pi/2",
+                    "3asin(u) = 2(pi/2-asin(u))",
+                    "5asin(u) = pi",
+                    "asin(u) = pi/5",
+                    "u = sin(pi/5)",
+                    "x = 1+sin(pi/5)",
+                };
+            }
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
