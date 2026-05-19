@@ -1421,6 +1421,11 @@ static std::string strip_label_assignment(std::string s)
 
 } // namespace
 
+NodeId differentiate_node(Arena &arena, NodeId node, std::string const &var, std::string const &dep)
+{
+    return diff(arena, node, var, dep);
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter an expression."};

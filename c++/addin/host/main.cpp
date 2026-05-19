@@ -606,6 +606,12 @@ int main(int argc, char **argv)
                 req.mode = 9;
                 req.expr = parts.size() >= 2 ? parts[0] + "\n" + parts[1] : inner;
             }
+            else if(!(inner = unwrap_call(expr, "param_cartesian(")).empty() ||
+                    !(inner = unwrap_call(expr, "cart(")).empty()) {
+                auto parts = split_top_csv(inner);
+                req.mode = 11;
+                req.expr = parts.size() >= 2 ? parts[0] + "\n" + parts[1] + "\n" + (parts.size() >= 3 ? parts[2] : "t") : inner;
+            }
             else if(!(inner = unwrap_call(expr, "fitconst(")).empty()) {
                 req.mode = 15;
                 req.method = "fitconst";
