@@ -2954,6 +2954,9 @@ static bool square_rat_root(Rational r, Rational &root)
     return true;
 }
 
+static std::optional<NodeId> exp_arg_node(Arena &a, NodeId n);
+static std::string format_double_compact(double x);
+
 static std::optional<std::pair<NodeId, Rational>> direct_square_side(Arena &a, NodeId sq, NodeId val, std::string const &var)
 {
     Node const &n = a.get(sq);
@@ -3005,6 +3008,102 @@ static bool append_direct_square_route(Arena &a,
     return true;
 }
 
+static std::optional<std::pair<NodeId, Rational>> scaled_square_body(Arena &a, NodeId side)
+{
+    Rational coef{1, 1};
+    NodeId body = side;
+    bool has_body = true;
+    split_coeff_body(a, side, coef, body, has_body);
+    if(!has_body) return std::nullopt;
+    Node const &n = a.get(body);
+    auto e = n.kind == NodeKind::Pow ? as_num(a, n.b) : std::optional<Rational>{};
+    if(!e || e->num != 2 || e->den != 1) return std::nullopt;
+    return std::make_pair(n.a, coef);
+}
+
+static bool affine_exp_parts(Arena &a, NodeId n, std::string const &var, Rational &A, Rational &B, Rational &M)
+{
+    A = Rational{0, 1};
+    B = Rational{0, 1};
+    M = Rational{0, 1};
+    bool saw = false;
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    for(NodeId term : terms) {
+        Rational coef;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, term, coef, body, has_body);
+        if(!has_body) {
+            B = r_add(B, coef);
+            continue;
+        }
+        auto arg = exp_arg_node(a, body);
+        if(!arg) return false;
+        auto p = poly_of(a, *arg, var);
+        if(!p || !p->ok || !is_zero(p->a2) || !is_zero(p->a0) || is_zero(p->a1)) return false;
+        if(!saw) {
+            M = p->a1;
+            saw = true;
+        }
+        else if(r_cmp(M, p->a1) != 0) return false;
+        A = r_add(A, coef);
+    }
+    return saw && !is_zero(A) && !is_zero(M);
+}
+
+static bool append_exp_square_route(Arena &a,
+                                    std::vector<std::string> &out,
+                                    NodeId lhs,
+                                    NodeId rhs,
+                                    std::string const &var)
+{
+    auto sq = scaled_square_body(a, lhs);
+    auto val = as_num(a, rhs);
+    if(!sq || !val) {
+        sq = scaled_square_body(a, rhs);
+        val = as_num(a, lhs);
+    }
+    if(!sq || !val || is_zero(sq->second)) return false;
+    Rational target = r_div(*val, sq->second);
+    if(target.num < 0) return false;
+    Rational A, B, M;
+    if(!affine_exp_parts(a, sq->first, var, A, B, M)) return false;
+    Rational root_rat;
+    NodeId root = square_rat_root(target, root_rat) ? a.num(root_rat) : casio::fn(a, "sqrt", a.num(target));
+    std::string base = format_expr(a, sq->first);
+    std::string root_txt = format_expr(a, root);
+    out.push_back("(" + base + ")^2 = " + format_expr(a, a.num(target)));
+    out.push_back(base + " = +/-" + root_txt);
+    std::vector<std::string> raw;
+    std::vector<std::string> approx;
+    for(int sgn : {1, -1}) {
+        NodeId t = sgn > 0 ? root : casio::neg(a, root);
+        NodeId u = casio::simplify(a, casio::div(a, sub_node(a, t, a.num(B)), a.num(A)));
+        auto uv = eval_node(a, u, var, 0.0);
+        std::string branch = "e^(" + format_expr(a, casio::mul(a, {a.num(M), a.sym(var)})) + ") = " + format_expr(a, u);
+        if(!uv || *uv <= 0) {
+            out.push_back(branch + " rejected");
+            continue;
+        }
+        out.push_back(branch);
+        NodeId x = casio::simplify(a, casio::div(a, casio::fn(a, "ln", u), a.num(M)));
+        std::string xt = format_expr(a, x);
+        raw.push_back(var + " = " + xt);
+        auto xv = eval_node(a, x, var, 0.0);
+        if(xv && std::isfinite(*xv)) approx.push_back(var + " = " + format_double_compact(*xv));
+    }
+    if(raw.empty()) {
+        out.push_back(var + " = []");
+        return true;
+    }
+    for(auto const &s : raw) out.push_back(s);
+    for(auto const &s : approx) out.push_back(s);
+    out.push_back(solution_list_line(var, raw));
+    append_numeric_3dp(a, out, var, raw);
+    return true;
+}
+
 static std::string format_double_compact(double x)
 {
     if(std::fabs(x) < 5e-11) x = 0.0;
@@ -3043,6 +3142,47 @@ static std::optional<double> parse_const_double(Arena &a, std::string const &tex
         if(pos == trim_text(text).size()) return v;
     }
     catch(...) {
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, std::string const &domain_text)
+{
+    auto parts = split_top_key(domain_text, ',');
+    if(parts.size() < 3) return std::nullopt;
+    auto lo = parse_const_double(a, parts[1]);
+    auto hi = parse_const_double(a, parts[2]);
+    if(!lo || !hi || !std::isfinite(*lo) || !std::isfinite(*hi) || !(*lo < *hi)) return std::nullopt;
+    auto p = poly_of(a, n, "x");
+    if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
+    double A = (double)p->a2.num / (double)p->a2.den;
+    double B = (double)p->a1.num / (double)p->a1.den;
+    double vertex = -B / (2.0 * A);
+    if(*lo < vertex && vertex < *hi) return std::nullopt;
+    double mid = 0.5 * (*lo + *hi);
+    auto ymid = eval_node(a, n, "x", mid);
+    if(!ymid) return std::nullopt;
+    NodeId y = casio::sym(a, "x");
+    if(is_zero(p->a1) && std::llabs(p->a2.num) == p->a2.den) {
+        NodeId inside = casio::simplify(a, casio::div(a, casio::add(a, {y, casio::neg(a, a.num(p->a0))}), a.num(p->a2)));
+        NodeId root = casio::fn(a, "sqrt", inside);
+        return mid >= vertex ? root : casio::neg(a, root);
+    }
+    NodeId disc = casio::add(a, {
+        a.num(r_mul(p->a1, p->a1)),
+        casio::mul(a, {a.num(r_mul(Rational{-4, 1}, p->a2)),
+                       casio::add(a, {a.num(p->a0), casio::neg(a, y)})})
+    });
+    NodeId root = casio::fn(a, "sqrt", disc);
+    NodeId den = a.num(r_mul(Rational{2, 1}, p->a2));
+    NodeId nb = a.num(r_neg(p->a1));
+    NodeId cands[2] = {
+        casio::simplify(a, casio::div(a, casio::add(a, {nb, root}), den)),
+        casio::simplify(a, casio::div(a, casio::add(a, {nb, casio::neg(a, root)}), den))
+    };
+    for(NodeId c : cands) {
+        auto v = eval_node(a, c, "x", *ymid);
+        if(v && std::fabs(*v - mid) < 1e-6) return c;
     }
     return std::nullopt;
 }
@@ -3114,7 +3254,9 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
                     fa = *fm;
                 }
             }
-            add_root(0.5 * (a0 + b0));
+            double cand = 0.5 * (a0 + b0);
+            auto fc = f(cand);
+            if(fc && std::fabs(*fc) < 1e-6) add_root(cand);
         }
         prev_x = x;
         prev = cur;
@@ -3168,21 +3310,14 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     NodeId sqrt_disc = a.fn(FnKind::Sqrt, disc_node);
 
     // If perfect square rational, return rational roots
-    std::int64_t rn = 0, rd = 0;
-    bool sq = false;
-    if(auto nn = as_int64(disc)) {
-        if(is_square_i64(*nn, rn)) {
-            rd = 1;
-            sq = true;
-        }
-    }
+    Rational rroot{0, 1};
+    bool sq = square_rat_root(disc, rroot);
 
     Rational denom_rat = r_mul(Rational{2, 1}, p.a2);
     NodeId two_a = a.num(denom_rat);
     NodeId minus_b = a.num(r_neg(p.a1));
 
     if(sq) {
-        Rational rroot{rn, rd};
         Rational denom = r_mul(Rational{2, 1}, p.a2);
         Rational x1 = r_div(r_add(r_neg(p.a1), rroot), denom);
         Rational x2 = r_div(r_add(r_neg(p.a1), r_neg(rroot)), denom);
@@ -9326,7 +9461,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 while(!domain_text.empty() && domain_text.back() == '.') domain_text.pop_back();
             }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
-            auto inv = inverse_simple_function(arena, n);
+            auto inv = !domain_text.empty() ? inverse_restricted_quadratic(arena, n, domain_text) : std::optional<NodeId>{};
+            if(!inv) inv = inverse_simple_function(arena, n);
             if(!inv) {
                 auto rp = ratpoly_of_node(arena, n, "x");
                 if(rp.ok && is_degree_at_most_one(rp.num) && is_degree_at_most_one(rp.den)) {
@@ -10245,6 +10381,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
         if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var)) {
             out.insert(out.end(), rbq->begin(), rbq->end());
             return out;

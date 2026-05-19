@@ -578,7 +578,9 @@ int main(int argc, char **argv)
             else if(!(inner = unwrap_call(expr, "inverse(")).empty()) {
                 req.mode = 8;
                 auto parts = split_top_csv(inner);
-                if(parts.size() >= 2 && parts[1].find_first_of("<>=") == std::string::npos) req.expr = parts[0];
+                if(parts.size() >= 4 && parts[1].find_first_of("<>=") == std::string::npos)
+                    req.expr = parts[0] + "," + parts[1] + "," + parts[2] + "," + parts[3];
+                else if(parts.size() >= 2 && parts[1].find_first_of("<>=") == std::string::npos) req.expr = parts[0];
                 else req.expr = inner;
             }
             else if(!(inner = unwrap_call(expr, "compare(")).empty() ||

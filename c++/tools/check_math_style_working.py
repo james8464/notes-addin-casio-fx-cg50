@@ -377,6 +377,30 @@ CASES = [
         ("x = -1",),
     ),
     (
+        "rational quadratic roots kept",
+        ["--alg", "solve(2/(2*x^2+3)=4/7,x)"],
+        ("Multiply by 2*x^2 + 3", "x = -1/2", "x = 1/2", "x = [-1/2, 1/2]"),
+        ("rejected by domain", "x = []"),
+    ),
+    (
+        "numeric scan rejects asymptote",
+        ["--alg", "solve(4/(2*ln(x-1)-3)=-2,x)"],
+        ("Domain: 2*ln(x - 1) - 3 != 0", "x = [2.64872127071]"),
+        ("5.48168907034",),
+    ),
+    (
+        "restricted quadratic inverse",
+        ["--alg", "inverse(4-x^2,x,2,4)"],
+        ("y = f(x) = - x^2 + 4", "f^-1(x) = sqrt(- x + 4)"),
+        ("Constant/non-monotone",),
+    ),
+    (
+        "affine exp square solve",
+        ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
+        ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
+        ("t = []",),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
