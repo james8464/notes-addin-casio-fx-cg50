@@ -12227,6 +12227,43 @@ static std::optional<NodeId> expand_trig_sum_product(Arena &a, NodeId expr, std:
     return casio::add(a, terms);
 }
 
+static std::optional<NodeId> expand_shifted_trig_factor_product(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> rest;
+    NodeId shifted = 0, dep = 0, phase = 0;
+    FnKind fk = FnKind::Sin;
+    auto split_shift = [&](NodeId arg) -> std::optional<std::pair<NodeId, NodeId>> {
+        Node const &u = a.get(arg);
+        if(u.kind != NodeKind::Add) return std::nullopt;
+        std::vector<NodeId> d, c;
+        for(NodeId k : u.kids) (contains_var(a, k, var) ? d : c).push_back(k);
+        if(d.empty() || c.empty()) return std::nullopt;
+        return std::make_pair(add_or_zero_int(a, d), add_or_zero_int(a, c));
+    };
+    for(NodeId k : x.kids) {
+        Node const &n = a.get(k);
+        if(!shifted && n.kind == NodeKind::Fn && (n.fkind == FnKind::Sin || n.fkind == FnKind::Cos)) {
+            if(auto sp = split_shift(n.a)) {
+                shifted = k; dep = sp->first; phase = sp->second; fk = n.fkind;
+                continue;
+            }
+        }
+        if(!trig_const_product(a, k, var)) return std::nullopt;
+        rest.push_back(k);
+    }
+    if(!shifted || rest.empty()) return std::nullopt;
+    NodeId sd = casio::fn(a, "sin", dep), cd = casio::fn(a, "cos", dep);
+    NodeId sp = casio::simplify(a, casio::fn(a, "sin", phase));
+    NodeId cp = casio::simplify(a, casio::fn(a, "cos", phase));
+    NodeId repl = fk == FnKind::Cos
+        ? casio::add(a, {casio::mul(a, {cd, cp}), casio::neg(a, casio::mul(a, {sd, sp}))})
+        : casio::add(a, {casio::mul(a, {sd, cp}), casio::mul(a, {cd, sp})});
+    rest.push_back(repl);
+    return expand_trig_sum_product(a, casio::mul(a, rest), var);
+}
+
 static Poly poly_derivative(Poly p)
 {
     if(!p.ok) return p;
@@ -15493,6 +15530,16 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
     }
 
+    if(auto split = expand_shifted_trig_factor_product(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *split, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *split));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
     if(auto trig_cancel = rewrite_trig_factor_cancellations(a, expr)) {
         auto inner = integrate_giac_style(a, *trig_cancel, var);
         if(inner.result) {
@@ -17161,6 +17208,28 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                     return simplify_known_endpoint_values(a, casio::mul(a, {c, sqrt_rat(a, *rad)}));
                 }
             }
+            if(tn.kind == NodeKind::Mul) {
+                Rational coeff{1, 1};
+                NodeId rad = 0;
+                bool ok = true;
+                for(NodeId kid : tn.kids) {
+                    if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+                    else {
+                        Node const &kn = a.get(kid);
+                        if(rad || kn.kind != NodeKind::Fn || kn.fkind != FnKind::Sqrt) { ok = false; break; }
+                        rad = kn.a;
+                    }
+                }
+                auto den = as_num(a, bot);
+                if(ok && rad && den) {
+                    if(auto rr = as_num(a, simplify_known_endpoint_values(a, rad)); rr && rr->num >= 0) {
+                        int p = static_cast<int>(exp_num->num);
+                        Rational c = r_div(r_mul(r_pow(coeff, p), r_pow(*rr, p / 2)), r_pow(*den, p));
+                        if(p % 2 == 0) return a.num(c);
+                        return simplify_known_endpoint_values(a, casio::mul(a, {a.num(c), sqrt_rat(a, *rr)}));
+                    }
+                }
+            }
         }
         if(exp_num && exp_num->den == 1 && exp_num->num < -1 && exp_num->num >= -8) {
             int p = static_cast<int>(-exp_num->num);
@@ -17761,6 +17830,92 @@ static NodeId simplify_param_trig_products_deep(Arena &a, NodeId n, std::string 
     return n;
 }
 
+struct SinOverCosParam {
+    Rational x_scale;
+    Rational y_scale;
+    Rational k;
+    Rational c;
+    NodeId arg;
+    NodeId u_expr;
+};
+
+static std::optional<std::pair<Rational, NodeId>> scaled_sin_affine0(Arena &a, NodeId n, std::string const &var)
+{
+    auto sf = split_rat_factor(a, n);
+    Node const &b = a.get(sf.second);
+    if(b.kind != NodeKind::Fn || b.fkind != FnKind::Sin) return std::nullopt;
+    auto af = affine_form(a, b.a, var);
+    if(!af || r_zero(af->first) || !r_zero(af->second)) return std::nullopt;
+    return std::make_pair(sf.first, b.a);
+}
+
+static std::optional<SinOverCosParam> match_sin_over_c_minus_cos(Arena &a, NodeId x, NodeId y, std::string const &var)
+{
+    auto xs = scaled_sin_affine0(a, x, var);
+    if(!xs) return std::nullopt;
+    auto xaf = affine_form(a, xs->second, var);
+    if(!xaf) return std::nullopt;
+    Node const &yn = a.get(y);
+    if(yn.kind != NodeKind::Div) return std::nullopt;
+    auto yscale = as_num(a, yn.a);
+    if(!yscale || r_zero(*yscale)) return std::nullopt;
+    Node const &den = a.get(yn.b);
+    if(den.kind != NodeKind::Add) return std::nullopt;
+    std::optional<Rational> c;
+    NodeId cos_arg = 0;
+    for(NodeId term : den.kids) {
+        if(auto r = as_num(a, term)) {
+            if(c) return std::nullopt;
+            c = *r;
+            continue;
+        }
+        auto tf = split_rat_factor(a, term);
+        Node const &body = a.get(tf.second);
+        if(!r_eq(tf.first, Rational{-1, 1}) || body.kind != NodeKind::Fn || body.fkind != FnKind::Cos || cos_arg) return std::nullopt;
+        cos_arg = body.a;
+    }
+    if(!c || !cos_arg) return std::nullopt;
+    auto caf = affine_form(a, cos_arg, var);
+    if(!caf || !r_eq(caf->first, xaf->first) || !r_zero(caf->second)) return std::nullopt;
+    NodeId u_expr = casio::simplify(a, casio::add(a, {a.num(*c), casio::neg(a, casio::fn(a, "cos", cos_arg))}));
+    return SinOverCosParam{xs->first, *yscale, xaf->first, *c, cos_arg, u_expr};
+}
+
+static std::optional<std::vector<std::string>> param_volume_y_sin_over_cos(Arena &arena, SinOverCosParam const &m,
+                                                                           std::string const &var,
+                                                                           std::string const &lo_text,
+                                                                           std::string const &hi_text,
+                                                                           bool reverse,
+                                                                           std::function<std::vector<std::string>(std::string const &, std::string const &, std::string const &, std::string const &, std::string const &)> const &run_inner)
+{
+    NodeId u = casio::sym(arena, "u");
+    NodeId poly = casio::add(arena, {
+        arena.num(r_sub(Rational{1, 1}, r_mul(m.c, m.c))),
+        casio::mul(arena, {arena.num(r_mul(Rational{2, 1}, m.c)), u}),
+        casio::neg(arena, casio::power(arena, u, arena.num(Rational{2, 1})))
+    });
+    Rational coeff = r_mul(r_mul(m.x_scale, m.x_scale), m.y_scale);
+    if(!reverse) coeff = r_neg(coeff);
+    NodeId body = casio::simplify(arena, casio::mul(arena, {
+        arena.constant(ConstKind::Pi), arena.num(coeff), poly,
+        casio::power(arena, u, arena.num(Rational{-2, 1}))
+    }));
+    NodeId lo = parse_expr(arena, lo_text);
+    NodeId hi = parse_expr(arena, hi_text);
+    NodeId ulo = simplify_known_endpoint_values(arena, substitute_var(arena, m.u_expr, var, lo));
+    NodeId uhi = simplify_known_endpoint_values(arena, substitute_var(arena, m.u_expr, var, hi));
+    auto lines = run_inner("V = pi*Int x^2 dy.", format_expr_human(arena, body), "u",
+                           format_expr_human(arena, ulo), format_expr_human(arena, uhi));
+    if(lines.size() == 2 && lines[1] == "No elementary primitive found") return std::nullopt;
+    std::string us = format_expr_human(arena, m.u_expr);
+    std::string as = format_expr_human(arena, m.arg);
+    auto at = lines.begin() + 1;
+    at = lines.insert(at, "u = " + us); ++at;
+    at = lines.insert(at, "du = " + rat_text(m.k) + "*sin(" + as + ")d" + var); ++at;
+    lines.insert(at, "sin(" + as + ")^2 = 1-(" + rat_text(m.c) + "-u)^2");
+    return lines;
+}
+
 static std::optional<NodeId> expand_param_product(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -17868,6 +18023,12 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         body = compact_zero_exp(arena, compact_exp_product(arena, body));
         body = pull_numeric_power_factors(arena, body);
         body = merge_product_divs(arena, body);
+        if(volume && axis_y) {
+            if(auto m = match_sin_over_c_minus_cos(arena, r, q, var)) {
+                if(auto special = param_volume_y_sin_over_cos(arena, *m, var, args[3], args[4], reverse, run_inner))
+                    return *special;
+            }
+        }
         if(auto t = simplify_param_trig_product(arena, body, var)) body = *t;
         if(auto e = expand_param_product(arena, body)) body = simplify_param_trig_products_deep(arena, *e, var);
         std::string ds = format_expr_human(arena, d);
