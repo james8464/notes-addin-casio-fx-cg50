@@ -1773,6 +1773,11 @@ static bool split_coeff_term(Arena &a, NodeId n, double &coeff, NodeId &rest, bo
     for(NodeId kid : x.kids) {
         Node const &k = a.get(kid);
         if(k.kind == NodeKind::Num) coeff *= (double)k.num.num / (double)k.num.den;
+        else if(!has_any_symbol(a, kid)) {
+            auto v = numeric_eval(a, kid, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            coeff *= *v;
+        }
         else {
             if(factor) return false;
             factor = kid;
