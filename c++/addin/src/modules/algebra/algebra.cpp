@@ -1483,20 +1483,33 @@ static Rational r_pow_int(Rational r, int p)
     return out;
 }
 
-static std::optional<std::int64_t> square_root_i64(std::int64_t n)
+static std::optional<std::int64_t> integer_nth_root_i64(std::int64_t n, int root)
 {
-    if(n < 0) return std::nullopt;
-    auto r = static_cast<std::int64_t>(std::llround(std::sqrt(static_cast<double>(n))));
-    if(r * r == n) return r;
+    if(root <= 0) return std::nullopt;
+    if(n < 0 && root % 2 == 0) return std::nullopt;
+    bool neg = n < 0;
+    std::uint64_t target = static_cast<std::uint64_t>(neg ? -n : n);
+    auto guess = static_cast<std::uint64_t>(std::llround(std::pow(static_cast<double>(target), 1.0 / root)));
+    auto ok = [&](std::uint64_t v) {
+        std::uint64_t acc = 1;
+        for(int i = 0; i < root; ++i) {
+            if(v && acc > target / v) return false;
+            acc *= v;
+        }
+        return acc == target;
+    };
+    for(std::uint64_t v = guess > 2 ? guess - 2 : 0; v <= guess + 2; ++v) {
+        if(ok(v)) return neg ? -static_cast<std::int64_t>(v) : static_cast<std::int64_t>(v);
+    }
     return std::nullopt;
 }
 
 static std::optional<Rational> rational_power_factor(Rational base, Rational power)
 {
     if(power.den == 1) return r_pow_int(base, static_cast<int>(power.num));
-    if(power.den != 2 || base.num <= 0 || base.den <= 0) return std::nullopt;
-    auto sn = square_root_i64(base.num);
-    auto sd = square_root_i64(base.den);
+    if(base.num <= 0 || base.den <= 0 || power.den > 8) return std::nullopt;
+    auto sn = integer_nth_root_i64(base.num, static_cast<int>(power.den));
+    auto sd = integer_nth_root_i64(base.den, static_cast<int>(power.den));
     if(!sn || !sd) return std::nullopt;
     Rational root{*sn, *sd};
     return r_pow_int(root, static_cast<int>(power.num));
@@ -1571,23 +1584,30 @@ static std::optional<BinomSeries> linear_power_series(Arena &a,
                                                       int degree)
 {
     auto p = poly_of(a, base, var);
-    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a0)) return std::nullopt;
+    if(!p || !p->ok || is_zero(p->a0)) return std::nullopt;
     auto factor = rational_power_factor(p->a0, power);
     if(!factor) return std::nullopt;
-    Rational m = r_div(p->a1, p->a0);
+    std::vector<Rational> u(degree + 1, Rational{0, 1});
+    if(degree >= 1) u[1] = r_div(p->a1, p->a0);
+    if(degree >= 2) u[2] = r_div(p->a2, p->a0);
     BinomSeries out;
     out.c.assign(degree + 1, Rational{0, 1});
     for(int i = 0; i <= degree; ++i) {
-        out.c[i] = r_mul(*factor, r_mul(binom_rat(power, i), r_pow_int(m, i)));
+        std::vector<Rational> upow(degree + 1, Rational{0, 1});
+        upow[0] = Rational{1, 1};
+        for(int j = 0; j < i; ++j) upow = convolve_series(upow, u, degree);
+        for(int j = 0; j <= degree; ++j)
+            out.c[j] = r_add(out.c[j], r_mul(*factor, r_mul(binom_rat(power, i), upow[j])));
     }
-    if(!is_zero(m)) {
-        Rational b{std::llabs(m.den), std::llabs(m.num)};
+    if(!is_zero(u[1])) {
+        Rational b{std::llabs(u[1].den), std::llabs(u[1].num)};
         b.normalize();
         out.bound = b;
     }
     out.has_series = power.den != 1 || power.num < 0 || degree > 1;
+    std::string u_text = series_answer_text(a, u, var);
     out.lines.push_back("(" + format_expr(a, base) + ")^" + rat_node_text(a, power) + " = " +
-                        rat_node_text(a, *factor) + "*(1+(" + rat_node_text(a, m) + ")*" + var + ")^" +
+                        rat_node_text(a, *factor) + "*(1+(" + u_text + "))^" +
                         rat_node_text(a, power));
     return out;
 }
@@ -1606,6 +1626,13 @@ static std::optional<BinomSeries> simple_factor_series(Arena &a, NodeId n, std::
     if(x.kind == NodeKind::Div) {
         auto top = as_num(a, x.a);
         if(!top || top->num != top->den) return std::nullopt;
+        Node const &den = a.get(x.b);
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt)
+            return linear_power_series(a, den.a, Rational{-1, 2}, var, degree);
+        if(den.kind == NodeKind::Pow) {
+            Node const &e = a.get(den.b);
+            if(e.kind == NodeKind::Num) return linear_power_series(a, den.a, r_neg(e.num), var, degree);
+        }
         return linear_power_series(a, x.b, Rational{-1, 1}, var, degree);
     }
     return std::nullopt;
@@ -1832,8 +1859,21 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     else if(x.kind == NodeKind::Div) {
         auto top = as_num(a, x.a);
         if(!top || top->num != top->den) return std::nullopt;
-        base = x.b;
-        power = Rational{-1, 1};
+        Node const &den = a.get(x.b);
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
+            base = den.a;
+            power = Rational{-1, 2};
+        }
+        else if(den.kind == NodeKind::Pow) {
+            Node const &e = a.get(den.b);
+            if(e.kind != NodeKind::Num) return std::nullopt;
+            base = den.a;
+            power = r_neg(e.num);
+        }
+        else {
+            base = x.b;
+            power = Rational{-1, 1};
+        }
     }
     else return std::nullopt;
 
@@ -1844,10 +1884,9 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         if(pn && pd && pn->ok && pd->ok && is_zero(pn->a2) && is_zero(pd->a2) && !is_zero(pn->a0) && !is_zero(pd->a0)) {
             Rational mp = r_div(pn->a1, pn->a0);
             Rational md = r_div(pd->a1, pd->a0);
-            auto fp = rational_power_factor(pn->a0, power);
-            auto fd = rational_power_factor(pd->a0, r_neg(power));
-            if(!fp || !fd) return std::nullopt;
-            Rational factor = r_mul(*fp, *fd);
+            auto f = rational_power_factor(r_div(pn->a0, pd->a0), power);
+            if(!f) return std::nullopt;
+            Rational factor = *f;
             std::vector<Rational> s1(degree + 1), s2(degree + 1), coeffs(degree + 1, Rational{0, 1});
             for(int i = 0; i <= degree; ++i) {
                 s1[i] = r_mul(binom_rat(power, i), r_pow_int(mp, i));
@@ -1893,7 +1932,19 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     }
 
     auto p = poly_of(a, base, var);
-    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a0)) return std::nullopt;
+    if(!p || !p->ok || is_zero(p->a0)) return std::nullopt;
+    if(!is_zero(p->a2)) {
+        auto s = linear_power_series(a, base, power, var, degree);
+        if(!s) return std::nullopt;
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, parsed));
+        for(auto const &line : s->lines) out.push_back(line);
+        out.push_back("T_r = C(n,r)*u^r");
+        out.push_back("Keep powers <= " + var + "^" + std::to_string(degree));
+        if(s->bound) out.push_back("Valid for abs(" + var + ") < " + rat_node_text(a, *s->bound));
+        out.push_back(series_answer_text(a, s->c, var));
+        return out;
+    }
     Rational m = r_div(p->a1, p->a0);
     Rational factor{1, 1};
     if(p->a0.num == p->a0.den) factor = Rational{1, 1};
