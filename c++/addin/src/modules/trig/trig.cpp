@@ -6555,6 +6555,123 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             );
         }
         {
+            auto terms_pm = [](std::string const &s) {
+                std::vector<std::string> out;
+                std::string cur;
+                int depth = 0;
+                for(std::size_t i = 0; i < s.size(); ++i) {
+                    char ch = s[i];
+                    if(ch == '(') ++depth;
+                    else if(ch == ')') --depth;
+                    if(depth == 0 && i > 0 && (ch == '+' || ch == '-')) {
+                        out.push_back(cur);
+                        cur.clear();
+                    }
+                    cur.push_back(ch);
+                }
+                if(!cur.empty()) out.push_back(cur);
+                return out;
+            };
+            auto read_scaled_call = [&](std::string const &s, std::string const &fn, long long &cn, long long &cd, std::string &arg) {
+                std::size_t p = 0, q = 0;
+                int sign = 1;
+                if(p < s.size() && s[p] == '-') { sign = -1; ++p; }
+                if(read_key_call(s, p, fn, arg, q) && q == s.size()) {
+                    cn = sign;
+                    cd = 1;
+                    return true;
+                }
+                long long n = 0, d = 1;
+                if(!read_rat(s, 0, n, d, p)) return false;
+                if(!read_key_call(s, p, fn, arg, q) || q != s.size()) return false;
+                cn = n;
+                cd = d;
+                return true;
+            };
+            auto read_sqrt_linear_cos = [&](std::string const &side, long long &an, long long &ad,
+                                            long long &bn, long long &bd, std::string &arg) {
+                std::string root;
+                std::size_t q = 0;
+                if(!read_key_call(side, 0, "sqrt", root, q) || q != side.size()) return false;
+                an = 0; ad = 1; bn = 0; bd = 1;
+                for(auto term : terms_pm(root)) {
+                    if(!term.empty() && term.front() == '+') term.erase(term.begin());
+                    long long n = 0, d = 1;
+                    std::size_t e = 0;
+                    std::string ca;
+                    if(read_scaled_call(term, "cos", n, d, ca)) {
+                        if(!arg.empty() && ca != arg) return false;
+                        arg = ca;
+                        bn = bn * d + n * bd;
+                        bd *= d;
+                    }
+                    else if(read_rat(term, 0, n, d, e) && e == term.size()) {
+                        an = an * d + n * ad;
+                        ad *= d;
+                    }
+                    else return false;
+                    long long ga = std::gcd(std::llabs(an), std::llabs(ad));
+                    long long gb = std::gcd(std::llabs(bn), std::llabs(bd));
+                    if(ga) { an /= ga; ad /= ga; }
+                    if(gb) { bn /= gb; bd /= gb; }
+                }
+                return !arg.empty() && ad > 0 && bd > 0;
+            };
+            auto side_pair = [&](std::string const &lhs, std::string const &rhs) -> std::optional<std::vector<std::string>> {
+                long long kn = 0, kd = 1, an = 0, ad = 1, bn = 0, bd = 1;
+                std::string sarg, carg;
+                if(!read_scaled_call(lhs, "sin", kn, kd, sarg)) return std::nullopt;
+                if(!read_sqrt_linear_cos(rhs, an, ad, bn, bd, carg) || sarg != carg || kn == 0) return std::nullopt;
+                if(sarg == "x" && kn == 1 && kd == 1 && an == 1 && ad == 1 && bn == -1 && bd == 1) return std::nullopt;
+                double k = (double)kn / (double)kd;
+                double A0 = (double)an / (double)ad;
+                double B0 = (double)bn / (double)bd;
+                auto roots = solve_quadratic_d(k * k, B0, A0 - k * k);
+                NodeId Aexpr = casio::parse_expr(a, sarg);
+                std::vector<double> xs;
+                for(double croot : roots) {
+                    if(croot < -1.0 - 1e-9 || croot > 1.0 + 1e-9) continue;
+                    auto vals = x_values_from_angle_degrees(a, Aexpr, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, croot));
+                    for(double xdeg : vals) {
+                        double xv = xdeg * M_PI / 180.0;
+                        auto av = numeric_eval(a, Aexpr, xv);
+                        if(!av) continue;
+                        double l = k * std::sin(*av);
+                        double r = std::sqrt(std::max(0.0, A0 + B0 * std::cos(*av)));
+                        if(std::fabs(l - r) < 1e-7) add_unique(xs, xdeg);
+                    }
+                }
+                std::sort(xs.begin(), xs.end());
+                std::string At = casio::format_expr(a, Aexpr);
+                std::string kt = ratio_text(kn, kd);
+                std::string at = ratio_text(an, ad);
+                std::string bt = ratio_text(bn, bd);
+                std::string cs = "cos(" + At + ")";
+                std::vector<std::string> steps{
+                    kt + "*sin(" + At + ") = sqrt(" + at + (bn < 0 ? " - " + ratio_text(-bn, bd) : " + " + bt) + "*" + cs + ")",
+                    kt + "*sin(" + At + ") >= 0",
+                    kt + "^2*sin(" + At + ")^2 = " + at + (bn < 0 ? " - " + ratio_text(-bn, bd) : " + " + bt) + "*" + cs,
+                    "Use sin(" + At + ")^2 = 1 - cos(" + At + ")^2.",
+                    trig_quad_text(k * k, B0, A0 - k * k),
+                };
+                for(double croot : roots) {
+                    if(croot < -1.0 - 1e-9 || croot > 1.0 + 1e-9)
+                        steps.push_back("Reject " + cs + " = " + trig_root_text(croot));
+                    else
+                        steps.push_back(cs + " = " + trig_root_text(croot));
+                }
+                steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var));
+                return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+            };
+            auto eq = eq_key.find('=');
+            if(eq != std::string::npos) {
+                std::string lhs = eq_key.substr(0, eq);
+                std::string rhs = eq_key.substr(eq + 1);
+                if(auto out = side_pair(lhs, rhs)) return *out;
+                if(auto out = side_pair(rhs, lhs)) return *out;
+            }
+        }
+        {
             std::string v = var;
             std::string pat = "sin(2*" + v + ")*tan(" + v + ")+cos(2*" + v + ")*cot(" + v + ")+2*sin(" + v + ")*cos(" + v + ")=2";
             std::string pat2 = "sin(2" + v + ")*tan(" + v + ")+cos(2" + v + ")*cot(" + v + ")+2*sin(" + v + ")*cos(" + v + ")=2";
