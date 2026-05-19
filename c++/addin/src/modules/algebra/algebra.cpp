@@ -3022,6 +3022,14 @@ static std::string format_double_compact(double x)
 
 static std::optional<double> parse_const_double(Arena &a, std::string const &text)
 {
+    std::string s0 = trim_text(text);
+    std::string k;
+    k.reserve(s0.size());
+    for(char c : s0) k.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    if(k == "inf" || k == "+inf" || k == "infinity" || k == "+infinity")
+        return std::numeric_limits<double>::infinity();
+    if(k == "-inf" || k == "-infinity")
+        return -std::numeric_limits<double>::infinity();
     try {
         NodeId n = casio::parse_expr(a, text);
         auto v = eval_node(a, n, "x", 0.0);
@@ -5595,7 +5603,24 @@ static std::optional<std::string> exp_linear_range(
             return aff->first.num > 0 ? format_double_compact(*ylo) + " <= y" : "y <= " + format_double_compact(*ylo);
         }
     }
-    return "y > 0";
+    if(lo_v && hi_v && !std::isfinite(*lo_v) && std::isfinite(*hi_v) && p->a1.num > 0) {
+        auto yhi = eval_node(a, n, var, *hi_v);
+        if(yhi) {
+            std::string lim = format_expr(a, a.num(aff->second));
+            steps.push_back("As " + var + " -> -inf, e^u -> 0.");
+            if(aff->first.num > 0) return lim + " < y <= " + format_double_compact(*yhi);
+            return format_double_compact(*yhi) + " <= y < " + lim;
+        }
+    }
+    if(lo_v && hi_v && !std::isfinite(*lo_v) && std::isfinite(*hi_v) && p->a1.num < 0) {
+        auto yhi = eval_node(a, n, var, *hi_v);
+        if(yhi) {
+            steps.push_back("As " + var + " -> -inf, e^u -> inf.");
+            return aff->first.num > 0 ? format_double_compact(*yhi) + " <= y" : "y <= " + format_double_compact(*yhi);
+        }
+    }
+    std::string lim = format_expr(a, a.num(aff->second));
+    return aff->first.num > 0 ? "y > " + lim : "y < " + lim;
 }
 
 static std::optional<std::pair<Rational, NodeId>> positive_coeff_exp(Arena &a, NodeId n)

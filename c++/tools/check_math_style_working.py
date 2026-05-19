@@ -361,6 +361,22 @@ CASES = [
         ("As x=>inf, e^u=>inf", "Range: 1 <= y", "1 <= y"),
     ),
     (
+        "affine exp shifted range",
+        ["--alg", "range(e^(2*x)-4)"],
+        ("e^u > 0 for all real u", "Range: y > -4", "y > -4"),
+    ),
+    (
+        "affine exp negative infinity interval",
+        ["--alg", "range(1/2*e^x+1,x,-inf,0)"],
+        ("As x=>-inf, e^u=>0", "Range: 1 < y <= 1.5", "1 < y <= 1.5"),
+    ),
+    (
+        "solve interval infinity",
+        ["--alg", "solve((x-3)^2+1=17,x,4,inf)"],
+        ("Interval: x in [4, inf]", "x = 7", "x = [7]"),
+        ("x = -1",),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),
