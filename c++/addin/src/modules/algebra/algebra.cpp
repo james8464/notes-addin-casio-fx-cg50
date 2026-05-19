@@ -5545,7 +5545,8 @@ static std::optional<std::string> solve_power_eq_text(Arena &a, Rational target,
 {
     target.normalize();
     power.normalize();
-    if(power.num <= 0 || power.den <= 0 || target.num < 0) return std::nullopt;
+    if(power.num <= 0 || power.den <= 0) return std::nullopt;
+    if(target.num < 0 && (power.den % 2 == 0 || power.num % 2 == 0)) return std::nullopt;
     Rational raised = rat_pow_i(target, power.den);
     return rational_power_root_text(a, raised, static_cast<int>(power.num));
 }
@@ -5596,25 +5597,29 @@ static std::optional<std::vector<std::string>> power_quadratic_substitution_rout
     add_terms_flat(a, rearr, terms);
     if(terms.size() < 2 || terms.size() > 3) return std::nullopt;
 
-    std::optional<long long> n;
-    Rational c2{0, 1}, c1{0, 1}, c0{0, 1};
+    struct Term {
+        Rational coef{0, 1};
+        Rational power{0, 1};
+    };
+    std::vector<Term> pts;
+    Rational c0{0, 1};
     for(NodeId t : terms) {
         Rational c{1, 1}, p{0, 1};
-        if(!rational_power_term(a, t, var, c, p) || p.den != 1 || p.num < 0) return std::nullopt;
+        if(!rational_power_term(a, t, var, c, p) || p.num < 0) return std::nullopt;
         if(p.num == 0) {
             c0 = r_add(c0, c);
             continue;
         }
-        if(!n) {
-            if(p.num % 2 == 0) n = p.num / 2;
-            else n = p.num;
-        }
-        if(!n || *n < 2 || *n > 8) return std::nullopt;
-        if(p.num == *n) c1 = r_add(c1, c);
-        else if(p.num == 2 * (*n)) c2 = r_add(c2, c);
-        else return std::nullopt;
+        pts.push_back(Term{c, p});
     }
-    if(!n || is_zero(c2)) return std::nullopt;
+    if(pts.size() != 2) return std::nullopt;
+    if(r_cmp(pts[1].power, pts[0].power) < 0) std::swap(pts[0], pts[1]);
+    Rational n = pts[0].power;
+    if(n.num <= 0 || n.den <= 0 || n.num > 8 || n.den > 8) return std::nullopt;
+    if(r_cmp(n, Rational{1, 1}) <= 0) return std::nullopt;
+    if(r_cmp(pts[1].power, r_mul(Rational{2, 1}, n)) != 0) return std::nullopt;
+    Rational c1 = pts[0].coef, c2 = pts[1].coef;
+    if(is_zero(c2)) return std::nullopt;
 
     Poly2 q{c2, c1, c0, true};
     auto roots = rational_quadratic_roots(q);
@@ -5622,23 +5627,22 @@ static std::optional<std::vector<std::string>> power_quadratic_substitution_rout
 
     std::vector<std::string> raw;
     std::vector<std::string> out;
-    out.push_back("u = " + var + "^" + std::to_string(*n));
+    out.push_back("u = " + var_power_text(var, n) + (n.den % 2 == 0 ? ", " + var + " >= 0" : ""));
     out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
     for(Rational u : std::vector<Rational>{roots->first, roots->second}) {
         u.normalize();
         out.push_back("u = " + format_rat_plain(u));
-        if(*n % 2 == 0) {
-            if(u.num < 0) {
-                out.push_back(var + "^" + std::to_string(*n) + " = " + format_rat_plain(u) + " has no real roots");
-                continue;
-            }
-            std::string root = rational_power_root_text(a, u, static_cast<int>(*n));
-            raw.push_back(var + " = " + root);
-            raw.push_back(var + " = -" + root);
+        if((n.den % 2 == 0 || n.num % 2 == 0) && u.num < 0) {
+            out.push_back("reject u = " + format_rat_plain(u));
+            continue;
         }
-        else {
-            raw.push_back(var + " = " + rational_power_root_text(a, u, static_cast<int>(*n)));
+        auto root = solve_power_eq_text(a, u, n);
+        if(!root) {
+            out.push_back(var_power_text(var, n) + " = " + format_rat_plain(u) + " has no real roots");
+            continue;
         }
+        raw.push_back(var + " = " + *root);
+        if(n.den == 1 && n.num % 2 == 0 && u.num > 0) raw.push_back(var + " = -" + *root);
     }
     auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
     sort_solution_lines(a, valid);
@@ -7558,6 +7562,57 @@ static std::optional<std::vector<std::string>> sqrt_difference_linear_route(
     out.push_back("Square again and solve.");
     for(auto const &s : sols) out.push_back(s);
     out.push_back("Answer: " + solution_list_line(var, sols));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> sqrt_sum_linear_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    Node const &r = a.get(rhs);
+    if(r.kind != NodeKind::Num || r.num.num <= 0) return std::nullopt;
+    Node const &l = a.get(lhs);
+    if(l.kind != NodeKind::Add || l.kids.size() != 2) return std::nullopt;
+    NodeId A = 0, B = 0;
+    for(auto k : l.kids) {
+        int sign = 0;
+        NodeId inside = 0;
+        if(!signed_sqrt_linear(a, k, var, sign, inside) || sign <= 0) return std::nullopt;
+        if(!A) A = inside;
+        else B = inside;
+    }
+    if(!A || !B) return std::nullopt;
+    NodeId c = rhs;
+    NodeId c2 = casio::simplify(a, casio::power(a, c, casio::num(a, 2)));
+    NodeId mid = casio::simplify(a, casio::add(a, {A, casio::neg(a, B), casio::neg(a, c2)}));
+    NodeId eq2 = casio::simplify(a, casio::add(a, {
+        casio::power(a, mid, casio::num(a, 2)),
+        casio::neg(a, casio::mul(a, {casio::num(a, 4), c2, B}))
+    }));
+    auto rp = ratpoly_of_node(a, eq2, var);
+    if(!rp.ok) return std::nullopt;
+    auto raw = solve_poly2(a, rp.num, var);
+    auto sols = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    if(sols.empty()) return std::nullopt;
+    sort_solution_lines(a, sols);
+
+    std::vector<std::string> out;
+    std::vector<std::string> dom;
+    collect_domain(a, casio::fn(a, "sqrt", A), dom);
+    collect_domain(a, casio::fn(a, "sqrt", B), dom);
+    std::string domain = combined_domain_answer(dom);
+    if(!domain.empty()) out.push_back("Domain: " + domain + ".");
+    out.push_back("sqrt(" + format_expr(a, A) + ") + sqrt(" + format_expr(a, B) + ") = " + format_expr(a, c));
+    out.push_back("sqrt(" + format_expr(a, A) + ") = " + format_expr(a, c) + " - sqrt(" + format_expr(a, B) + ")");
+    out.push_back(format_expr(a, A) + " = " + format_expr(a, c2) + " - 2*" + format_expr(a, c) + "*sqrt(" + format_expr(a, B) + ") + " + format_expr(a, B));
+    out.push_back("(" + format_expr(a, A) + ") - (" + format_expr(a, B) + ") - " + format_expr(a, c2) + " = -2*" + format_expr(a, c) + "*sqrt(" + format_expr(a, B) + ")");
+    out.push_back("Square again: " + format_expr(a, eq2) + " = 0");
+    for(auto const &s : sols) out.push_back(s);
+    out.push_back(solution_list_line(var, sols));
     return out;
 }
 
@@ -11846,6 +11901,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
+            if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
