@@ -4102,6 +4102,96 @@ static std::string all_real_except_roots_line(Arena &a, std::string const &var, 
     return line;
 }
 
+static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power)
+{
+    NodeId body = term;
+    bool has_body = true;
+    split_coeff_body(a, term, coef, body, has_body);
+    if(!has_body) {
+        power = 0;
+        return true;
+    }
+    auto read_power = [&](NodeId n, int &p) -> bool {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Sym && x.text == var) {
+            p = 1;
+            return true;
+        }
+        if(x.kind == NodeKind::Pow) {
+            Node const &base = a.get(x.a);
+            Node const &exp = a.get(x.b);
+            if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den == 1 &&
+               exp.num.num >= -2 && exp.num.num <= 2) {
+                p = static_cast<int>(exp.num.num);
+                return true;
+            }
+        }
+        return false;
+    };
+    if(read_power(body, power)) return true;
+    Node const &b = a.get(body);
+    auto top = b.kind == NodeKind::Div ? as_num(a, b.a) : std::optional<Rational>{};
+    if(b.kind == NodeKind::Div && top && top->num == top->den && read_power(b.b, power)) {
+        power = -power;
+        return power >= -2 && power <= 2;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_power_equation_route(Arena &a,
+                                                                              NodeId rearr,
+                                                                              std::string const &var,
+                                                                              std::optional<double> lo,
+                                                                              std::optional<double> hi)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.empty()) return std::nullopt;
+
+    int min_power = 0;
+    int max_power = 0;
+    std::vector<std::pair<int, Rational>> parsed;
+    for(NodeId t : terms) {
+        Rational c{1, 1};
+        int p = 0;
+        if(!reciprocal_power_term(a, t, var, c, p)) return std::nullopt;
+        min_power = std::min(min_power, p);
+        max_power = std::max(max_power, p);
+        parsed.push_back({p, c});
+    }
+    if(min_power >= 0) return std::nullopt;
+    int shift = -min_power;
+    if(max_power + shift > 2) return std::nullopt;
+
+    Poly2 p{};
+    for(auto const &[pow, c] : parsed) {
+        int deg = pow + shift;
+        if(deg == 0) p.a0 = r_add(p.a0, c);
+        else if(deg == 1) p.a1 = r_add(p.a1, c);
+        else if(deg == 2) p.a2 = r_add(p.a2, c);
+        else return std::nullopt;
+    }
+    if(is_zero(p.a0) && is_zero(p.a1) && is_zero(p.a2)) return std::nullopt;
+
+    NodeId x = casio::sym(a, var);
+    NodeId den = shift == 1 ? x : casio::power(a, x, casio::num(a, shift));
+    std::string den_txt = format_expr(a, den);
+    std::vector<std::string> out;
+    out.push_back("Domain: " + var + " != 0");
+    out.push_back("Multiply by " + den_txt);
+    out.push_back(den_txt + "*(" + format_expr(a, rearr) + ") = 0");
+    out.push_back("expand => " + format_expr(a, poly2_to_node(a, p, var)) + " = 0");
+    auto sols = filter_real_solutions(a, rearr, var, solve_poly2(a, p, var), lo, hi);
+    if(sols.empty()) {
+        out.push_back(lo && hi ? "No solution in interval." : "No solution.");
+        out.push_back(var + " = []");
+        return out;
+    }
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return out;
+}
+
 static bool zero_poly2(Poly2 const &p)
 {
     return p.ok && is_zero(p.a2) && is_zero(p.a1) && is_zero(p.a0);
@@ -10006,6 +10096,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
         if(!rp.ok) {
+            if(auto rec = reciprocal_power_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rec;
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
             if(auto aa = abs_linear_equation_route(arena, rearr, solve_var)) {
                 out.insert(out.end(), aa->begin(), aa->end());
