@@ -407,6 +407,18 @@ CASES = [
         ("t = []",),
     ),
     (
+        "consecutive exp powers factor",
+        ["--alg", "solve(-4*e^(-x)+4*e^(-2*x)+3*e^(-3*x)=0,x)"],
+        ("u = e^(-x), u > 0", "Divide by u > 0", "3*u^2 + 4*u - 4 = 0", "x = [ln(3/2)]"),
+        ("all real values in domain",),
+    ),
+    (
+        "inverse sec alias parses",
+        ["--derive", "arcsec(x),x"],
+        ("y = acos(1/x)", "u = 1/x", "dy/dx = x^-2/sqrt(- (1/x)^2 + 1)"),
+        ("arcsec*x",),
+    ),
+    (
         "radical solve no generic",
         ["--alg", "sqrt(x+5)-sqrt(x-3)=2,method=auto"],
         ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4 = 2*2*sqrt(x - 3)", "x = [4]"),

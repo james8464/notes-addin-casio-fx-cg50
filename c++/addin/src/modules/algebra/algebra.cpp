@@ -8379,6 +8379,7 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
         mx = std::max(mx, p);
     }
     int shift = mn < 0 ? (int)-mn : 0;
+    if(mx + shift > 2 && is_zero(cst) && mn > 0) shift = (int)-mn;
     if(mx + shift > 2) return std::nullopt;
     Poly2 upoly{{0, 1}, {0, 1}, {0, 1}, true};
     auto add_ucoef = [&](int deg, Rational v) {
@@ -8408,6 +8409,7 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     for(std::size_t p = 0; (p = ueq_text.find(" + -", p)) != std::string::npos;) ueq_text.replace(p, 4, " - ");
     out.push_back(ueq_text + " = 0");
     if(shift > 0) out.push_back("Multiply by " + (shift == 1 ? uvar : uvar + "^" + std::to_string(shift)));
+    else if(shift < 0) out.push_back("Divide by " + (shift == -1 ? uvar : uvar + "^" + std::to_string(-shift)) + " > 0");
     out.push_back(format_expr(a, poly2_to_node(a, upoly, uvar)) + " = 0");
 
     auto us = solve_poly2(a, upoly, uvar);
@@ -9714,16 +9716,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *mp;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {
+                    range_answer = *logistic;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, steps)) {
                     range_answer = *er;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto ter = trig_square_exp_range(arena, n, lo_v, hi_v, steps)) {
                     range_answer = *ter;
-                    steps.push_back("Range: " + range_answer + ".");
-                }
-                else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {
-                    range_answer = *logistic;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto exp_range = exp_plus_recip_range(arena, n, var, steps)) {
@@ -10391,8 +10393,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), bq->begin(), bq->end());
             return out;
         }
-        if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto ref = rational_exp_common_factor_route(arena, rearr, solve_var, out)) return *ref;
+        if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto nef = nonzero_exp_product_route(arena, rearr, solve_var, out)) return *nef;
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;

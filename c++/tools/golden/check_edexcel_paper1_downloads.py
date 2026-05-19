@@ -81,7 +81,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "Paper 1 range logistic transform",
         ["--alg", "range(e^x/(1+e^x))"],
-        ["Let u=e^x", "u>0", "0 < y < 1"],
+        ["u = e^x", "u>0", "0 < y < 1"],
         ["inspect graph/transform", "ERR:"],
     ),
     (

@@ -123,6 +123,9 @@ struct Parser
         if(name == "arccosh") name = "acosh";
         if(name == "arctanh") name = "atanh";
         if(name == "cuberoot") name = "cbrt";
+        bool inv_sec = name == "arcsec" || name == "asec";
+        bool inv_csc = name == "arccosec" || name == "arccsc" || name == "acsc";
+        bool inv_cot = name == "arccot" || name == "acot";
         
         if(name == "pi") return constant_pi(a);
         if(name == "e") return constant_e(a);
@@ -137,6 +140,12 @@ struct Parser
             for(auto f : funcs) if(n == f) return true;
             return false;
         };
+
+        if(inv_sec || inv_csc || inv_cot) {
+            NodeId arg = consume_func_arg();
+            NodeId recip = div(a, num(a, 1), arg);
+            return fn(a, inv_sec ? "acos" : inv_csc ? "asin" : "atan", recip);
+        }
 
         if(is_func(name)) {
             // sin^2(x) shorthand
