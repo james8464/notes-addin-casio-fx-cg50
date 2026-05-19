@@ -642,6 +642,24 @@ static std::string strip_outer_parens_text(std::string s)
     return s;
 }
 
+static std::vector<std::string> split_top_plus_text(std::string const &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(char c : s) {
+        if(c == '(') ++depth;
+        else if(c == ')') --depth;
+        if(c == '+' && depth == 0) {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else cur.push_back(c);
+    }
+    if(!cur.empty()) out.push_back(cur);
+    return out;
+}
+
 struct TrigSquareText {
     std::string fn;
     std::string arg;
@@ -1550,6 +1568,57 @@ static std::optional<std::pair<std::string, std::string>> log_recip_quadratic_ro
     std::string q = var + "^2" + signed_term_text(c);
     return std::make_pair("ln(1/(" + q + ")) = -ln(" + q + ").",
                           "dy/d" + var + " = -2*" + var + "/(" + q + ")");
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>> log_scaled_radical_over_x_route(std::string const &key, std::string const &var)
+{
+    if(key.rfind("ln(", 0) != 0 || key.back() != ')') return std::nullopt;
+    std::string body = strip_outer_parens_text(key.substr(3, key.size() - 4));
+    long long A = 0, B = 0, C = 0;
+    bool have_a = false, have_b = false, have_one = false;
+    std::string rad;
+    for(std::string t : split_top_plus_text(body)) {
+        if(t == "1") {
+            have_one = true;
+            continue;
+        }
+        std::string xden = "/" + var;
+        if(t.size() > xden.size() && t.substr(t.size() - xden.size()) == xden) {
+            if(!parse_int_text(t.substr(0, t.size() - xden.size()), A)) return std::nullopt;
+            have_a = true;
+            continue;
+        }
+        std::string marker = "sqrt(";
+        std::size_t p = t.find(marker);
+        if(p == std::string::npos || t.back() != ')') return std::nullopt;
+        rad = t.substr(p + marker.size(), t.size() - p - marker.size() - 1);
+        std::string pre = t.substr(0, p);
+        if(!pre.empty() && pre.back() == '*') pre.pop_back();
+        pre = strip_outer_parens_text(pre);
+        std::string s1 = "*1/" + var + "*";
+        std::string s2 = "/" + var + "*";
+        if(pre.size() > s1.size() && pre.substr(pre.size() - s1.size()) == s1) pre.resize(pre.size() - s1.size());
+        else if(pre.size() > s2.size() && pre.substr(pre.size() - s2.size()) == s2) pre.resize(pre.size() - s2.size());
+        else if(pre.size() > xden.size() && pre.substr(pre.size() - xden.size()) == xden) pre.resize(pre.size() - xden.size());
+        else return std::nullopt;
+        if(!parse_int_text(pre, B)) return std::nullopt;
+        have_b = true;
+    }
+    std::string q0 = var + "^2+" + var + "+";
+    if(!have_one || !have_a || !have_b || rad.rfind(q0, 0) != 0) return std::nullopt;
+    if(!parse_int_text(rad.substr(q0.size()), C)) return std::nullopt;
+    if(B == 0 || B * B != 2 * A || 2 * C != A) return std::nullopt;
+    std::string s = "sqrt(" + rad + ")";
+    std::string k = (B % 2 == 0) ? std::to_string(-B / 2) : "-" + std::to_string(B) + "/2";
+    return std::make_pair(
+        std::vector<std::string>{
+            "s = " + s + ".",
+            "y = ln((" + var + "+" + std::to_string(A) + "+" + std::to_string(B) + "*s)/" + var + ").",
+            "y = ln(" + var + "+" + std::to_string(A) + "+" + std::to_string(B) + "*s)-ln(" + var + ").",
+            std::to_string(B) + "^2=2*" + std::to_string(A) + ", " + std::to_string(C) + "=" + std::to_string(A) + "/2."
+        },
+        "dy/d" + var + " = " + k + "/(" + var + "*" + s + ")"
+    );
 }
 
 static std::optional<std::pair<std::vector<std::string>, std::string>> nested_abs_log_route(std::string const &key, std::string const &var)
@@ -2568,6 +2637,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         },
                         route->second
                     );
+                }
+                std::string raw_key = casio::normalize_text(expr);
+                {
+                    std::string t;
+                    t.reserve(raw_key.size());
+                    for(char c : raw_key)
+                        if(c != ' ' && c != '\t' && c != '\n' && c != '\r') t.push_back(c);
+                    raw_key.swap(t);
+                }
+                for(std::size_t p = 0; (p = raw_key.find("**", p)) != std::string::npos;) raw_key.replace(p, 2, "^");
+                if(auto route = log_scaled_radical_over_x_route(raw_key, var)) {
+                    return casio::exam_block("differentiate", route->first, route->second);
                 }
                 if(auto route = nested_abs_log_route(direct_key, var)) {
                     return casio::exam_block("differentiate", route->first, route->second);
