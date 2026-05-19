@@ -838,6 +838,15 @@ static std::string affine_int_text_human(AffineInt p, std::string const &var)
     return s;
 }
 
+static std::string affine_const_first_text(AffineInt p, std::string const &var)
+{
+    if(p.b == 0) return affine_int_text_human(p, var);
+    std::string s = std::to_string(p.b);
+    if(p.m > 0) s += " + " + (p.m == 1 ? var : std::to_string(p.m) + "*" + var);
+    else if(p.m < 0) s += " - " + (p.m == -1 ? var : std::to_string(-p.m) + "*" + var);
+    return s;
+}
+
 static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, AffineInt den, std::string const &var)
 {
     long long g = gcd_ll(gcd_ll(num.m, num.b), gcd_ll(den.m, den.b));
@@ -2473,6 +2482,71 @@ static bool append_common_denominator_derivative(
     return true;
 }
 
+struct SqrtLinearProduct
+{
+    NodeId rad;
+    AffineInt aff;
+};
+
+static std::optional<SqrtLinearProduct> sqrt_linear_product(Arena &a, NodeId n, std::string const &dep)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul || x.kids.size() != 2) return std::nullopt;
+    std::optional<NodeId> root;
+    bool has_dep = false;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(t.kind == NodeKind::Sym && t.text == dep) has_dep = true;
+        else if(t.kind == NodeKind::Fn && t.fkind == FnKind::Sqrt) root = t.a;
+        else return std::nullopt;
+    }
+    if(!has_dep || !root) return std::nullopt;
+    auto aff = affine_int_in(a, *root, dep);
+    if(!aff) return std::nullopt;
+    return SqrtLinearProduct{*root, *aff};
+}
+
+static bool is_named_symbol(Arena &a, NodeId n, std::string const &name)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Sym && x.text == name;
+}
+
+static std::optional<std::vector<std::string>> inverse_sqrt_linear_product_route(
+    Arena &a,
+    NodeId left,
+    NodeId right,
+    std::string const &var,
+    std::string const &dep,
+    std::string const &dname
+)
+{
+    std::optional<SqrtLinearProduct> p;
+    if(is_named_symbol(a, left, var)) p = sqrt_linear_product(a, right, dep);
+    else if(is_named_symbol(a, right, var)) p = sqrt_linear_product(a, left, dep);
+    if(!p) return std::nullopt;
+    long long b = p->aff.m, c = p->aff.b;
+    if(b == 0) return std::nullopt;
+    long long num = 2;
+    AffineInt den{3 * b, 2 * c};
+    long long g = gcd_ll(gcd_ll(num, den.m), den.b);
+    num /= g; den.m /= g; den.b /= g;
+    std::string rad = affine_const_first_text(p->aff, dep);
+    std::string den_txt = affine_const_first_text(den, dep);
+    std::string root = "sqrt(" + rad + ")";
+    std::string num_txt = num == 1 ? root : (num == -1 ? "-" + root : std::to_string(num) + "*" + root);
+    std::string answer = dname + " = " + num_txt + "/(" + den_txt + ")";
+    std::string dxdy = "d" + var + "/d" + dep + " = (" + den_txt + ")/" +
+                       (abs_ll(num) == 1 ? root : (std::to_string(abs_ll(num)) + "*" + root));
+    return std::vector<std::string>{
+        var + " = " + dep + "*" + root + ".",
+        "d" + var + "/d" + dep + " = " + root + " + " + dep + "*(" + affine_int_text_human(AffineInt{0, b}, dep) + ")/(2*" + root + ").",
+        dxdy + ".",
+        dname + " = 1/(d" + var + "/d" + dep + ").",
+        answer
+    };
+}
+
 static std::vector<std::string> split_csv(std::string const &s)
 {
     std::vector<std::string> parts;
@@ -3285,6 +3359,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string answer = dname + " = " + format_expr_human(arena, ans);
             std::string compact = eq_text;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
+            if(auto route = inverse_sqrt_linear_product_route(arena, left, right, var, dep, dname)) {
+                std::string route_answer = route->back();
+                route->pop_back();
+                return casio::exam_block("implicit inverse derivative", *route, route_answer);
+            }
             if(compact == "xy(x-y)+16=0" || compact == "x*y*(x-y)+16=0") {
                 return casio::exam_block(
                     "implicit differentiation",
