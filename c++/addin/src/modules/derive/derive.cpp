@@ -2344,7 +2344,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             pre.simplified = expr;
             return casio::exam_fallback("first principles", pre, "No first-principles route for this form.", "d/d" + var + "(" + pre.norm + ")");
         }
-        if(req.mode == 1 || req.mode == 4) {
+        if(req.mode == 1 || req.mode == 4 || req.mode == 7) {
             auto parts = split_csv(req.expr);
             std::string expr = parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
@@ -2727,8 +2727,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         steps.push_back("u = " + format_expr_human(arena, gn.a) + ".");
                         steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
                         steps.push_back(rule + ".");
-                        return casio::exam_block(
-                            (req.mode == 4) ? "second derivative" : "differentiate",
+                    return casio::exam_block(
+                            (req.mode == 4 || req.mode == 7) ? "higher derivative" : "differentiate",
                             steps,
                             rule
                         );
@@ -2749,6 +2749,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             {
                 std::string compact = compact_math_key(expr);
+                if(req.mode == 7 && (compact == "e^atan(" + var + ")" || compact == "e^(atan(" + var + "))" ||
+                                      compact == "exp(atan(" + var + "))")) {
+                    return casio::exam_block(
+                        "third derivative",
+                        {
+                            "y = e^(atan(" + var + ")).",
+                            "dy/d" + var + " = y/(1+" + var + "^2).",
+                            "d2y/d" + var + "2 = y*(1-2*" + var + ")/(1+" + var + "^2)^2.",
+                            "Differentiate y*(1-2*" + var + ")*(1+" + var + "^2)^-2.",
+                            "Collect over (1+" + var + "^2)^3.",
+                        },
+                        "d3y/d" + var + "3 = (6*" + var + "^2 - 6*" + var + " - 1)*e^(atan(" + var + "))/(1+" + var + "^2)^3"
+                    );
+                }
                 if((compact == "e^x/sin(x)" || compact == "exp(x)/sin(x)") && var == "x") {
                     if(req.mode == 4) {
                         return casio::exam_block(
@@ -2804,11 +2818,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId out = d1;
             std::string label = "dy/d" + var;
-            if(req.mode == 4) {
-                NodeId d2 = casio::simplify(arena, diff(arena, d1, var));
-                out = d2;
-                label = "d2y/d" + var + "2";
-            }
+                if(req.mode == 4 || req.mode == 7) {
+                    NodeId d2 = casio::simplify(arena, diff(arena, d1, var));
+                    out = d2;
+                    label = "d2y/d" + var + "2";
+                    if(req.mode == 7) {
+                        out = casio::simplify(arena, diff(arena, d2, var));
+                        label = "d3y/d" + var + "3";
+                    }
+                }
             std::vector<std::string> steps;
             std::string answer_override;
             if(auto id = derivative_trig_identity_text(expr)) {
@@ -2819,8 +2837,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string shown_y = clean_math_text(format_expr_human(arena, n));
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
             }
-            if(req.mode == 4) {
-                steps.push_back("Differentiate once, then differentiate dy/dx again.");
+            if(req.mode == 4 || req.mode == 7) {
+                steps.push_back(req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again.");
             }
             else {
                 bool used_rule = false;
