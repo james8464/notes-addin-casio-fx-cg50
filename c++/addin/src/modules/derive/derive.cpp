@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -898,11 +900,133 @@ static std::optional<int> negative_power_clear_exp(std::string const &a, std::st
             }
             if(i < text.size() && text[i] == ')') best = std::max(best, v);
         }
+        for(std::size_t pos = text.find(var + "^"); pos != std::string::npos; pos = text.find(var + "^", pos + 1)) {
+            std::size_t start = text.rfind('/', pos);
+            std::size_t stop = text.find_last_of("+-", pos);
+            if(start == std::string::npos || (stop != std::string::npos && start < stop)) continue;
+            std::size_t i = pos + var.size() + 1;
+            int v = 0;
+            while(i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) {
+                v = 10 * v + (text[i] - '0');
+                ++i;
+            }
+            best = std::max(best, v);
+        }
         return best;
     };
     int e = std::max(scan(a), scan(b));
     if(e <= 0) return std::nullopt;
     return e;
+}
+
+static std::optional<Rational> parse_int_rat_text(std::string s)
+{
+    s = compact_math_key(std::move(s));
+    if(s.empty()) return std::nullopt;
+    std::size_t slash = s.find('/');
+    char *end = nullptr;
+    long long n = std::strtoll(s.c_str(), &end, 10);
+    if(end == s.c_str()) return std::nullopt;
+    if(slash == std::string::npos) {
+        if(*end) return std::nullopt;
+        return Rational{n, 1};
+    }
+    if(static_cast<std::size_t>(end - s.c_str()) != slash) return std::nullopt;
+    long long d = std::strtoll(s.c_str() + slash + 1, &end, 10);
+    if(*end || d == 0) return std::nullopt;
+    Rational r{n, d};
+    r.normalize();
+    return r;
+}
+
+static bool rat_zero_local(Rational r) { return r.num == 0; }
+
+static Rational rat_add_local(Rational a, Rational b)
+{
+    Rational r{a.num * b.den + b.num * a.den, a.den * b.den};
+    r.normalize();
+    return r;
+}
+
+static Rational rat_div_local(Rational a, Rational b)
+{
+    Rational r{a.num * b.den, a.den * b.num};
+    r.normalize();
+    return r;
+}
+
+static std::optional<std::pair<Rational, Rational>> recip_power_affine(std::string text, std::string const &var, int e)
+{
+    text = compact_math_key(std::move(text));
+    std::vector<std::string> terms;
+    std::string cur;
+    for(std::size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if((c == '+' || c == '-') && i != 0) {
+            terms.push_back(cur);
+            cur.clear();
+        }
+        cur.push_back(c);
+    }
+    if(!cur.empty()) terms.push_back(cur);
+    Rational z{0, 1}, c{0, 1};
+    std::string vp = var + "^" + std::to_string(e);
+    for(std::string const &t : terms) {
+        std::size_t div = t.find("/(");
+        if(div == std::string::npos) {
+            auto r = parse_int_rat_text(t);
+            if(!r) return std::nullopt;
+            z = rat_add_local(z, *r);
+            continue;
+        }
+        std::string top = t.substr(0, div);
+        std::string den = t.substr(div + 2);
+        if(!den.empty() && den.back() == ')') den.pop_back();
+        std::size_t p = den.find(vp);
+        if(p == std::string::npos) return std::nullopt;
+        auto n = parse_int_rat_text(top);
+        std::string coeff = den.substr(0, p);
+        if(!coeff.empty() && coeff.back() == '*') coeff.pop_back();
+        auto d = parse_int_rat_text(coeff.empty() ? "1" : coeff);
+        if(!n || !d || rat_zero_local(*d)) return std::nullopt;
+        c = rat_add_local(c, rat_div_local(*n, *d));
+    }
+    return std::make_pair(z, c);
+}
+
+static std::string signed_term_text(long long n)
+{
+    if(n > 0) return " + " + std::to_string(n);
+    if(n < 0) return " - " + std::to_string(-n);
+    return "";
+}
+
+static std::string poly_pow_text(long long a, long long b, std::string const &var, int e)
+{
+    std::string vp = e == 1 ? var : var + "^" + std::to_string(e);
+    std::string s;
+    if(a == 1) s = vp;
+    else if(a == -1) s = "-" + vp;
+    else if(a != 0) s = std::to_string(a) + "*" + vp;
+    s += signed_term_text(b);
+    if(s.empty()) s = "0";
+    return s;
+}
+
+static std::optional<std::string> cleared_recip_power_ratio(std::string const &num, std::string const &den, std::string const &var, int e)
+{
+    auto n = recip_power_affine(num, var, e);
+    auto d = recip_power_affine(den, var, e);
+    if(!n || !d) return std::nullopt;
+    long long l = std::lcm(std::lcm(n->first.den, n->second.den), std::lcm(d->first.den, d->second.den));
+    long long na = n->first.num * (l / n->first.den), nb = n->second.num * (l / n->second.den);
+    long long da = d->first.num * (l / d->first.den), db = d->second.num * (l / d->second.den);
+    long long g = gcd_ll(gcd_ll(na, nb), gcd_ll(da, db));
+    na /= g; nb /= g; da /= g; db /= g;
+    if(da < 0 || (da == 0 && db < 0)) { na = -na; nb = -nb; da = -da; db = -db; }
+    std::string top = poly_pow_text(na, nb, var, e);
+    std::string bot = poly_pow_text(da, db, var, e);
+    return "(" + top + ")/(" + bot + ")";
 }
 
 static std::optional<std::pair<std::string, std::string>> quotient_linear_square_route(std::string const &key, std::string const &var)
@@ -2488,11 +2612,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(ratio_line != answer) steps.push_back(ratio_line);
-            if(ratio_line != answer) {
-                if(auto e = negative_power_clear_exp(dy_text, dx_text, tvar)) {
-                    std::string factor = tvar + (*e == 1 ? "" : "^" + std::to_string(*e));
-                    steps.push_back("dy/dx = ((" + dy_text + ")*" + factor + ")/((" + dx_text + ")*" + factor + ")");
+            if(auto e = negative_power_clear_exp(dy_text, dx_text, tvar)) {
+                std::string factor = tvar + (*e == 1 ? "" : "^" + std::to_string(*e));
+                steps.push_back("dy/dx = ((" + dy_text + ")*" + factor + ")/((" + dx_text + ")*" + factor + ")");
+                if(auto reduced = cleared_recip_power_ratio(dy_text, dx_text, tvar, *e)) answer = "dy/dx = " + *reduced;
+                try {
+                    NodeId f = casio::power(arena, casio::sym(arena, tvar), casio::num(arena, *e));
+                    NodeId num = casio::simplify(arena, casio::mul(arena, {parse_expr(arena, dy_text), f}));
+                    NodeId den = casio::simplify(arena, casio::mul(arena, {parse_expr(arena, dx_text), f}));
+                    if(answer == ratio_line)
+                        answer = "dy/dx = " + format_expr_human(arena, casio::simplify(arena, casio::div(arena, num, den)));
                 }
+                catch(...) {}
             }
             return casio::exam_block("parametric differentiation (limited)", steps, answer);
         }

@@ -8546,9 +8546,11 @@ static bool trig_const_product(Arena &a, NodeId expr, std::string const &var)
     return false;
 }
 
+static std::optional<std::pair<Rational, Rational>> coeff_var_power_rat(Arena &a, NodeId expr, std::string const &var);
+
 static bool var_power_const_product(Arena &a, NodeId expr, std::string const &var)
 {
-    if(!contains_var(a, expr, var) || var_power_rat(a, expr, var)) return true;
+    if(!contains_var(a, expr, var) || coeff_var_power_rat(a, expr, var)) return true;
     Node const &x = a.get(expr);
     if(x.kind == NodeKind::Mul) {
         bool has_power = false;
@@ -8570,6 +8572,12 @@ static std::optional<std::pair<Rational, Rational>> coeff_var_power_rat(Arena &a
     }
     if(auto p = var_power_rat(a, expr, var)) return std::make_pair(Rational{1, 1}, *p);
     Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Div) {
+        auto num = coeff_var_power_rat(a, x.a, var);
+        auto den = coeff_var_power_rat(a, x.b, var);
+        if(!num || !den || r_zero(den->first)) return std::nullopt;
+        return std::make_pair(r_div(num->first, den->first), r_add(num->second, r_neg(den->second)));
+    }
     if(x.kind != NodeKind::Mul) return std::nullopt;
     Rational c{1, 1}, p{0, 1};
     bool hit = false;
@@ -8598,6 +8606,8 @@ static bool log_var_power_product(Arena &a, NodeId expr, std::string const &var)
     return false;
 }
 
+static NodeId merge_product_divs(Arena &a, NodeId n);
+
 static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, std::string const &var)
 {
     Node const &x = a.get(expr);
@@ -8610,7 +8620,6 @@ static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, st
             adds.push_back(k);
         } else rest.push_back(k);
     }
-    if(adds.size() > 1) return std::nullopt;
     if(adds.empty() || (adds.size() == 1 && rest.empty())) return std::nullopt;
     bool trig_ok = true, power_ok = true, log_ok = true;
     for(NodeId k : rest) {
@@ -8631,7 +8640,7 @@ static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, st
         for(NodeId k : a.get(adds[0]).kids) {
             std::vector<NodeId> factors = rest;
             factors.push_back(k);
-            terms.push_back(casio::mul(a, factors));
+            terms.push_back(casio::simplify(a, merge_product_divs(a, casio::mul(a, factors))));
         }
     }
     else {
@@ -8640,7 +8649,7 @@ static std::optional<NodeId> expand_single_add_product(Arena &a, NodeId expr, st
                 std::vector<NodeId> factors = rest;
                 factors.push_back(u);
                 factors.push_back(v);
-                terms.push_back(casio::mul(a, factors));
+                terms.push_back(casio::simplify(a, merge_product_divs(a, casio::mul(a, factors))));
             }
         }
     }
@@ -17270,6 +17279,9 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
     return casio::simplify(a, n);
 }
 
+static NodeId merge_product_divs(Arena &a, NodeId n);
+static std::optional<NodeId> expand_param_product(Arena &a, NodeId n);
+
 static std::optional<std::vector<std::string>> run_definite_integral(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -17289,6 +17301,9 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     auto pre = casio::build_exam_prelude(arena, integrand, parsed);
     NodeId simple_node = casio::simplify(arena, parsed);
     NodeId node = casio::simplify(arena, compact_zero_exp(arena, compact_exp_product(arena, simple_node)));
+    if(auto expanded = expand_single_add_product(arena, node, var)) {
+        node = casio::simplify(arena, merge_product_divs(arena, *expanded));
+    }
     std::string method_key = compact_key(req.method);
     bool force_sub = method_key == "sub" || method_key == "substitution";
     IntegrateResult result;
@@ -18156,6 +18171,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block(priority->method, steps, priority->answer);
         }
         if(auto priority = reciprocal_a_minus_sqrt_defint_pattern(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : priority->steps) steps.push_back(s);
+            return casio::exam_block(priority->method, steps, priority->answer);
+        }
+        if(auto priority = symbolic_root_parabola_area_pattern(req.expr)) {
             std::vector<std::string> steps;
             steps.push_back("Start with " + req.expr + ".");
             for(auto const &s : priority->steps) steps.push_back(s);
