@@ -3999,6 +3999,61 @@ next_root:
     return std::vector<std::string>{format_expr(a, n), "= " + factored, factored};
 }
 
+static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
+                                                                       NodeId n,
+                                                                       std::string const &var,
+                                                                       std::optional<double> lo,
+                                                                       std::optional<double> hi)
+{
+    auto p0 = poly_any_of(a, n, var);
+    if(!p0 || !p0->ok || p0->c.size() < 4 || p0->c.size() > 7) return std::nullopt;
+    PolyAny p = *p0;
+    std::vector<std::string> raw, out{format_expr(a, n) + " = 0"};
+    while(p.c.size() > 3) {
+        auto lead = as_int64(p.c.back());
+        auto cnst = as_int64(p.c.front());
+        if(!lead || !cnst) break;
+        bool found = false;
+        for(long long pp : divisors_i64(*cnst)) {
+            for(long long qq : divisors_i64(*lead)) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational r{sgn * pp, qq};
+                    r.normalize();
+                    if(!is_zero(poly_any_eval(p, r))) continue;
+                    raw.push_back(var + " = " + format_rat(a, r));
+                    divide_linear(p, r);
+                    found = true;
+                    goto next_root;
+                }
+            }
+        }
+next_root:
+        if(!found) break;
+    }
+    if(p.c.size() == 3) {
+        Poly2 q{p.c[2], p.c[1], p.c[0], true};
+        auto qs = solve_poly2(a, q, var);
+        raw.insert(raw.end(), qs.begin(), qs.end());
+        out.push_back("remaining quadratic: " + format_expr(a, poly2_to_node(a, q, var)) + " = 0");
+    }
+    else if(p.c.size() != 1) return std::nullopt;
+    if(raw.empty()) return std::nullopt;
+    raw.erase(std::remove_if(raw.begin(), raw.end(), [](std::string const &s) {
+        return s.find("*i") != std::string::npos;
+    }), raw.end());
+    if(raw.empty()) return std::nullopt;
+    auto sols = filter_real_solutions(a, n, var, raw, lo, hi);
+    std::sort(sols.begin(), sols.end(), [&](std::string const &u, std::string const &v) {
+        auto a0 = solution_line_value(a, u), b0 = solution_line_value(a, v);
+        if(a0 && b0) return *a0 < *b0;
+        return u < v;
+    });
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return out;
+}
+
 static std::string scaled_npi(Arena &a, Rational scale)
 {
     scale.normalize();
@@ -11453,6 +11508,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
         }
+        if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pf;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
             out.push_back("symbolic parameters unsupported");
