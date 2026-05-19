@@ -1072,6 +1072,117 @@ static std::optional<std::pair<std::string, std::string>> quotient_linear_square
                           "dy/d" + var + " = " + coeff + var + "/(" + L + ")^3");
 }
 
+static std::optional<std::pair<std::string, std::string>> quotient_x2_linear_route(std::string const &key, std::string const &var)
+{
+    std::string prefix = var + "^2/(";
+    if(key.rfind(prefix, 0) != 0 || key.back() != ')') return std::nullopt;
+    std::string inner = key.substr(prefix.size(), key.size() - prefix.size() - 1);
+    auto pos = inner.find(var);
+    if(pos == std::string::npos) return std::nullopt;
+    std::string a_text = inner.substr(0, pos);
+    std::string b_text = inner.substr(pos + var.size());
+    long long a = 1, b = 0;
+    if(a_text.empty() || a_text == "+") a = 1;
+    else if(a_text == "-") a = -1;
+    else if(!parse_int_text(a_text, a)) return std::nullopt;
+    if(!b_text.empty() && !parse_int_text(b_text, b)) return std::nullopt;
+    std::string L = linear_text(a, b, var);
+    auto term = [&](long long c, std::string const &p) {
+        if(c == 1) return p;
+        if(c == -1) return "-" + p;
+        return std::to_string(c) + "*" + p;
+    };
+    std::string top = term(a, var + "^2");
+    long long c = 2 * b;
+    if(c > 0) top += " + " + term(c, var);
+    else if(c < 0) top += " - " + term(-c, var);
+    return std::make_pair("Let L=" + L + ", so L'=" + std::to_string(a) + ".",
+                          "dy/d" + var + " = (" + top + ")/(" + L + ")^2");
+}
+
+static std::optional<std::pair<std::string, std::string>> quotient_kx_x3_const_route(std::string const &key, std::string const &var)
+{
+    auto divp = key.find("/(");
+    if(divp == std::string::npos || key.back() != ')') return std::nullopt;
+    std::string top = key.substr(0, divp);
+    if(top.size() < var.size() || top.substr(top.size() - var.size()) != var) return std::nullopt;
+    std::string k_text = top.substr(0, top.size() - var.size());
+    long long k = 1;
+    if(k_text.empty() || k_text == "+") k = 1;
+    else if(k_text == "-") k = -1;
+    else if(!parse_int_text(k_text, k)) return std::nullopt;
+    std::string den = key.substr(divp + 2, key.size() - divp - 3);
+    std::string prefix = var + "^3";
+    if(den.rfind(prefix, 0) != 0) return std::nullopt;
+    long long c = 0;
+    std::string c_text = den.substr(prefix.size());
+    if(!c_text.empty() && !parse_int_text(c_text, c)) return std::nullopt;
+    if(c == 0) return std::nullopt;
+    long long a = k * c, b = -2 * k;
+    std::string num = std::to_string(a);
+    if(b > 0) num += " + " + std::to_string(b) + "*" + var + "^3";
+    else if(b < 0) num += " - " + std::to_string(-b) + "*" + var + "^3";
+    return std::make_pair("Let v=" + den + ", so v'=3*" + var + "^2.",
+                          "dy/d" + var + " = (" + num + ")/(" + den + ")^2");
+}
+
+static std::optional<std::pair<std::string, std::string>> quotient_x_log_const_route(std::string const &key, std::string const &var)
+{
+    std::string prefix = var + "/(";
+    if(key.rfind(prefix, 0) != 0 || key.back() != ')') return std::nullopt;
+    std::string den_key = key.substr(prefix.size(), key.size() - prefix.size() - 1);
+    std::string log_key = "ln(" + var + ")";
+    std::string c_text;
+    if(den_key.rfind(log_key, 0) == 0) c_text = den_key.substr(log_key.size());
+    else if(den_key.size() > log_key.size() + 1 && den_key.size() >= log_key.size() &&
+            den_key.substr(den_key.size() - log_key.size()) == log_key && den_key[den_key.size() - log_key.size() - 1] == '+') {
+        c_text = den_key.substr(0, den_key.size() - log_key.size() - 1);
+    }
+    else return std::nullopt;
+    long long c = 0;
+    if(!c_text.empty() && !parse_int_text(c_text, c)) return std::nullopt;
+    long long b = c - 1;
+    std::string top = "ln(" + var + ")";
+    if(b > 0) top += " + " + std::to_string(b);
+    else if(b < 0) top += " - " + std::to_string(-b);
+    std::string den = "ln(" + var + ")" + signed_term_text(c);
+    return std::make_pair("Let v=" + den + ", so v'=1/" + var + ".",
+                          "dy/d" + var + " = (" + top + ")/(" + den + ")^2");
+}
+
+static std::optional<std::pair<std::string, std::string>> quotient_log_log_const_route(std::string const &key, std::string const &var)
+{
+    std::string log_key = "ln(" + var + ")";
+    std::string prefix = log_key + "/(";
+    if(key.rfind(prefix, 0) != 0 || key.back() != ')') return std::nullopt;
+    std::string den_key = key.substr(prefix.size(), key.size() - prefix.size() - 1);
+    std::string c_text;
+    if(den_key.rfind(log_key, 0) == 0) c_text = den_key.substr(log_key.size());
+    else if(den_key.size() > log_key.size() + 1 && den_key.substr(den_key.size() - log_key.size()) == log_key &&
+            den_key[den_key.size() - log_key.size() - 1] == '+') {
+        c_text = den_key.substr(0, den_key.size() - log_key.size() - 1);
+    }
+    else return std::nullopt;
+    long long c = 0;
+    if(!c_text.empty() && !parse_int_text(c_text, c)) return std::nullopt;
+    if(c == 0) return std::nullopt;
+    std::string den = log_key + signed_term_text(c);
+    return std::make_pair("Let v=" + den + ".",
+                          "dy/d" + var + " = " + std::to_string(c) + "/(" + var + "*(" + den + ")^2)");
+}
+
+static std::optional<std::pair<std::string, std::string>> log_recip_quadratic_route(std::string const &key, std::string const &var)
+{
+    std::string prefix = "ln(1/(" + var + "^2";
+    if(key.rfind(prefix, 0) != 0 || key.size() < prefix.size() + 2 || key.substr(key.size() - 2) != "))") return std::nullopt;
+    std::string c_text = key.substr(prefix.size(), key.size() - prefix.size() - 2);
+    long long c = 0;
+    if(!c_text.empty() && !parse_int_text(c_text, c)) return std::nullopt;
+    std::string q = var + "^2" + signed_term_text(c);
+    return std::make_pair("ln(1/(" + q + ")) = -ln(" + q + ").",
+                          "dy/d" + var + " = -2*" + var + "/(" + q + ")");
+}
+
 struct QuadNoLinear
 {
     NodeId a2;
@@ -1829,6 +1940,74 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             route->first,
                             "dy/d" + var + " = [2*" + var + "*L^2 - " + var + "^2*2*L*L']/L^4.",
                             "Factor 2*" + var + "*L, then simplify.",
+                        },
+                        route->second
+                    );
+                }
+                if(auto route = quotient_x2_linear_route(direct_key, var)) {
+                    Node const &qn = arena.get(n);
+                    std::string vtxt = qn.kind == NodeKind::Div ? clean_math_text(format_expr_human(arena, qn.b)) : "L";
+                    std::string vptxt = qn.kind == NodeKind::Div ? clean_math_text(format_expr_human(arena, casio::simplify(arena, diff(arena, qn.b, var)))) : "L'";
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "u = " + var + "^2.",
+                            "u' = 2*" + var + ".",
+                            "v = " + vtxt + ".",
+                            "v' = " + vptxt + ".",
+                            "y' = (u'v-u*v')/v^2.",
+                            "dy/d" + var + " = [(2*" + var + ")*(" + vtxt + ") - (" + var + "^2)*(" + vptxt + ")]/(" + vtxt + ")^2.",
+                            route->first,
+                            "dy/d" + var + " = [2*" + var + "*L - " + var + "^2*L']/L^2.",
+                            "Simplify the numerator.",
+                        },
+                        route->second
+                    );
+                }
+                if(auto route = quotient_kx_x3_const_route(direct_key, var)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Use quotient rule with u=k*" + var + " and v=" + var + "^3+c.",
+                            "u'=k.",
+                            route->first,
+                            "dy/d" + var + " = [u'v-u*v']/v^2.",
+                            "Simplify the numerator.",
+                        },
+                        route->second
+                    );
+                }
+                if(auto route = quotient_x_log_const_route(direct_key, var)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Use quotient rule with u=" + var + " and v=ln(" + var + ")+c.",
+                            "u'=1.",
+                            route->first,
+                            "dy/d" + var + " = [u'v-u*v']/v^2.",
+                            "Simplify the numerator.",
+                        },
+                        route->second
+                    );
+                }
+                if(auto route = quotient_log_log_const_route(direct_key, var)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "Use quotient rule with u=ln(" + var + ") and v=ln(" + var + ")+c.",
+                            "u'=v'=1/" + var + ".",
+                            "dy/d" + var + " = [u'v-u*v']/v^2.",
+                            "Simplify the numerator.",
+                        },
+                        route->second
+                    );
+                }
+                if(auto route = log_recip_quadratic_route(direct_key, var)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            route->first,
+                            "Differentiate using chain rule.",
                         },
                         route->second
                     );
