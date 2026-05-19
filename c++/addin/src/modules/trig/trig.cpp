@@ -1200,6 +1200,34 @@ static std::string format_solution_list(std::string const &var, bool rad, std::v
     return oss.str();
 }
 
+static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
+static std::string trig_root_text(double r);
+static std::vector<double> solve_quadratic_d(double a, double b, double c);
+static std::string trig_quad_text(double a, double b, double c);
+static std::string recip_poly_text(std::vector<double> const &c);
+
+struct FnPoly
+{
+    double c[5]{};
+    int deg = 0;
+    NodeId arg = 0;
+    FnKind fk = FnKind::Sin;
+    bool has_arg = false;
+};
+
+struct RecipTrigPoly
+{
+    double coef[9]{};
+    int min_e = 0;
+    int max_e = 0;
+    NodeId arg = 0;
+    bool has_arg = false;
+    bool used_recip = false;
+};
+
+static std::optional<FnPoly> collect_fn_poly(Arena &a, NodeId residual);
+static std::optional<RecipTrigPoly> collect_recip_trig_poly(Arena &a, NodeId residual, FnKind base, FnKind recip);
+
 static std::optional<std::vector<std::string>> solve_zero_product_trig(
     Arena &a,
     NodeId residual,
@@ -1229,6 +1257,37 @@ static std::optional<std::vector<std::string>> solve_zero_product_trig(
             steps.push_back(casio::format_expr(a, k) + " = 0");
             auto part = x_values_from_angle_degrees(a, f.a, var, lo_text, hi_text, rad, base_trig_degrees(f.fkind, 0.0));
             for(double x : part) add_unique(xs, x);
+            continue;
+        }
+        if(auto fp = collect_fn_poly(a, k)) {
+            std::string A = format_expr(a, fp->arg);
+            std::string ftxt = trig_name(fp->fk);
+            std::vector<double> roots = fp->deg <= 2 ? solve_quadratic_d(fp->c[2], fp->c[1], fp->c[0]) : std::vector<double>{};
+            steps.push_back(casio::format_expr(a, k) + " = 0");
+            steps.push_back("u=" + ftxt + "(" + A + ")");
+            steps.push_back(recip_poly_text(std::vector<double>{fp->c[0], fp->c[1], fp->c[2]}));
+            for(double root : roots) {
+                if(root < -1.0 - 1e-10 || root > 1.0 + 1e-10) {
+                    steps.push_back("Reject u=" + trig_root_text(root) + ": outside [-1,1].");
+                    continue;
+                }
+                steps.push_back(ftxt + "(" + A + ")=" + trig_root_text(root));
+                auto vals = x_values_from_angle_degrees(a, fp->arg, var, lo_text, hi_text, rad, base_trig_degrees(fp->fk, root));
+                for(double x : vals) add_unique(xs, x);
+            }
+            continue;
+        }
+        if(auto tp = collect_recip_trig_poly(a, k, FnKind::Tan, FnKind::Cot); tp && !tp->used_recip && tp->min_e == 0 && tp->max_e <= 2) {
+            std::string A = format_expr(a, tp->arg);
+            auto roots = solve_quadratic_d(tp->coef[6], tp->coef[5], tp->coef[4]);
+            steps.push_back(casio::format_expr(a, k) + " = 0");
+            steps.push_back("u=tan(" + A + ")");
+            steps.push_back(recip_poly_text(std::vector<double>{tp->coef[4], tp->coef[5], tp->coef[6]}));
+            for(double root : roots) {
+                steps.push_back("tan(" + A + ")=" + trig_root_text(root));
+                auto vals = x_values_from_angle_degrees(a, tp->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, root));
+                for(double x : vals) add_unique(xs, x);
+            }
         }
     }
     if(xs.empty()) return std::nullopt;
@@ -1236,11 +1295,6 @@ static std::optional<std::vector<std::string>> solve_zero_product_trig(
     steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig zero product", steps, format_solution_list(var, rad, xs));
 }
-
-static std::string format_general_trig_family(std::string const &var, bool rad, std::vector<double> bases_deg, double period_deg);
-static std::string trig_root_text(double r);
-static std::vector<double> solve_quadratic_d(double a, double b, double c);
-static std::string trig_quad_text(double a, double b, double c);
 
 static std::string ratio_double_text(double x)
 {
@@ -3031,16 +3085,6 @@ static std::string trig_quad_text(double a, double b, double c)
     return out + "=0.";
 }
 
-struct RecipTrigPoly
-{
-    double coef[9]{};
-    int min_e = 0;
-    int max_e = 0;
-    NodeId arg = 0;
-    bool has_arg = false;
-    bool used_recip = false;
-};
-
 static bool recip_trig_factor(Arena &a, NodeId n, RecipTrigPoly &p, double &c, int &e, FnKind base, FnKind recip)
 {
     Node const &x = a.get(n);
@@ -3092,6 +3136,27 @@ static bool recip_trig_factor(Arena &a, NodeId n, RecipTrigPoly &p, double &c, i
 
 static bool add_recip_trig_term(Arena &a, NodeId term, RecipTrigPoly &p, FnKind base, FnKind recip)
 {
+    Node const &tn = a.get(term);
+    if(tn.kind == NodeKind::Mul) {
+        int add_idx = -1;
+        for(std::size_t i = 0; i < tn.kids.size(); ++i) {
+            if(a.get(tn.kids[i]).kind == NodeKind::Add) {
+                if(add_idx >= 0) return false;
+                add_idx = (int)i;
+            }
+        }
+        if(add_idx >= 0) {
+            Node const &addn = a.get(tn.kids[(std::size_t)add_idx]);
+            for(NodeId ak : addn.kids) {
+                std::vector<NodeId> factors;
+                for(std::size_t i = 0; i < tn.kids.size(); ++i)
+                    if((int)i != add_idx) factors.push_back(tn.kids[i]);
+                factors.push_back(ak);
+                if(!add_recip_trig_term(a, casio::simplify(a, casio::mul(a, factors)), p, base, recip)) return false;
+            }
+            return true;
+        }
+    }
     double c = 1.0;
     int e = 0;
     if(!recip_trig_factor(a, term, p, c, e, base, recip) || e < -4 || e > 4) return false;
@@ -3211,6 +3276,231 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
     }
     steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static std::optional<std::vector<std::string>> solve_tan_even_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_recip_trig_poly(a, residual, FnKind::Tan, FnKind::Cot);
+    if(!p || p->used_recip || p->min_e != 0 || p->max_e < 2 || p->max_e > 4) return std::nullopt;
+    bool even_only = std::fabs(p->coef[5]) < 1e-12 && std::fabs(p->coef[7]) < 1e-12;
+    std::string A = format_expr(a, p->arg);
+    if(!even_only) {
+        int deg = p->max_e;
+        if(deg < 1 || deg > 3) return std::nullopt;
+        double c0 = p->coef[4], c1 = p->coef[5], c2 = p->coef[6], c3 = p->coef[7];
+        std::vector<double> roots;
+        if(deg <= 2) roots = solve_quadratic_d(c2, c1, c0);
+        else {
+            double first = NAN;
+            for(double r : {-3.0, -2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 3.0, std::sqrt(3.0), -std::sqrt(3.0)}) {
+                double v = ((c3 * r + c2) * r + c1) * r + c0;
+                if(std::fabs(v) < 1e-9) {
+                    first = r;
+                    break;
+                }
+            }
+            if(!std::isfinite(first)) return std::nullopt;
+            roots.push_back(first);
+            double b2 = c3;
+            double b1 = c2 + first * b2;
+            double b0 = c1 + first * b1;
+            auto q = solve_quadratic_d(b2, b1, b0);
+            for(double r : q) add_unique(roots, r);
+        }
+
+        std::vector<std::string> steps{
+            format_expr(a, residual) + " = 0.",
+            "u=tan(" + A + ").",
+            recip_poly_text(std::vector<double>{c0, c1, c2, c3}),
+        };
+        std::vector<double> xs;
+        std::string rline = "u=";
+        for(std::size_t i = 0; i < roots.size(); ++i) {
+            if(i) rline += " or u=";
+            rline += trig_root_text(roots[i]);
+        }
+        steps.push_back(rline + ".");
+        for(double r : roots) {
+            steps.push_back("tan(" + A + ")=" + trig_root_text(r) + ".");
+            steps.push_back(trig_base_angle_line(FnKind::Tan, A, r));
+            steps.push_back(trig_alpha_family_line(FnKind::Tan, A, r, rad));
+            auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, r));
+            for(double x : vals) add_unique(xs, x);
+        }
+        std::sort(xs.begin(), xs.end());
+        steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+        return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+    }
+    double q2 = p->coef[8], q1 = p->coef[6], q0 = p->coef[4];
+    if(std::fabs(q2) < 1e-12 && std::fabs(q1) < 1e-12) return std::nullopt;
+    auto u_roots = solve_quadratic_d(q2, q1, q0);
+    if(u_roots.empty()) return std::nullopt;
+
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "u=tan(" + A + ")^2.",
+        trig_quad_text(q2, q1, q0),
+    };
+    std::vector<double> xs;
+    std::string uline = "u=";
+    bool saw_u = false;
+    for(double u : u_roots) {
+        if(saw_u) uline += " or u=";
+        uline += trig_root_text(u);
+        saw_u = true;
+    }
+    steps.push_back(uline + ".");
+    for(double u : u_roots) {
+        if(u < -1e-10) {
+            steps.push_back("Reject u=" + trig_root_text(u) + ": tan(" + A + ")^2>=0.");
+            continue;
+        }
+        double r = std::sqrt(std::max(0.0, u));
+        steps.push_back("tan(" + A + ")=+/-" + trig_root_text(r) + ".");
+        for(double t : {r, -r}) {
+            steps.push_back(trig_base_angle_line(FnKind::Tan, A, t));
+            steps.push_back(trig_alpha_family_line(FnKind::Tan, A, t, rad));
+            auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, t));
+            for(double x : vals) add_unique(xs, x);
+        }
+    }
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static bool add_fn_poly_term(Arena &a, NodeId n, FnPoly &p)
+{
+    double k = 1.0;
+    int e = 0;
+    NodeId arg = 0;
+    FnKind fk = FnKind::Sin;
+    bool has_fn = false;
+    std::vector<NodeId> fs;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) fs = x.kids;
+    else fs.push_back(n);
+    for(NodeId f : fs) {
+        if(!has_any_symbol(a, f)) {
+            auto v = numeric_eval(a, f, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            k *= *v;
+            continue;
+        }
+        Node const &y = a.get(f);
+        FnKind tf = FnKind::Sin;
+        NodeId ta = 0;
+        int te = 1;
+        if(y.kind == NodeKind::Fn && (y.fkind == FnKind::Sin || y.fkind == FnKind::Cos)) {
+            tf = y.fkind;
+            ta = y.a;
+        }
+        else if(y.kind == NodeKind::Pow) {
+            auto q = as_num(a, y.b);
+            Node const &b = a.get(y.a);
+            if(!q || q->den != 1 || q->num < 1 || q->num > 4 || b.kind != NodeKind::Fn ||
+               (b.fkind != FnKind::Sin && b.fkind != FnKind::Cos)) return false;
+            tf = b.fkind;
+            ta = b.a;
+            te = (int)q->num;
+        }
+        else return false;
+        if(has_fn && (tf != fk || !same_sig(a, arg, ta))) return false;
+        has_fn = true;
+        fk = tf;
+        arg = ta;
+        e += te;
+        if(e > 4) return false;
+    }
+    if(has_fn) {
+        if(p.has_arg && (p.fk != fk || !same_sig(a, p.arg, arg))) return false;
+        p.has_arg = true;
+        p.fk = fk;
+        p.arg = arg;
+    }
+    p.c[e] += k;
+    p.deg = std::max(p.deg, e);
+    return true;
+}
+
+static std::optional<FnPoly> collect_fn_poly(Arena &a, NodeId residual)
+{
+    FnPoly p;
+    Node const &r = a.get(residual);
+    if(r.kind == NodeKind::Add) {
+        for(NodeId k : r.kids)
+            if(!add_fn_poly_term(a, k, p)) return std::nullopt;
+    }
+    else if(!add_fn_poly_term(a, residual, p)) return std::nullopt;
+    while(p.deg > 0 && std::fabs(p.c[p.deg]) < 1e-12) --p.deg;
+    if(!p.has_arg || p.deg < 1 || p.deg > 3) return std::nullopt;
+    return p;
+}
+
+static std::optional<std::vector<std::string>> solve_single_fn_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_fn_poly(a, residual);
+    if(!p) return std::nullopt;
+    if(p->deg < 2) return std::nullopt;
+    std::vector<double> roots;
+    if(p->deg <= 2) roots = solve_quadratic_d(p->c[2], p->c[1], p->c[0]);
+    else {
+        double first = NAN;
+        for(double r : {-4.0, -3.0, -2.0, -1.0, -std::sqrt(2.0) / 2.0, -0.5, 0.5, std::sqrt(2.0) / 2.0, 1.0, 2.0, 3.0, 4.0}) {
+            double v = ((p->c[3] * r + p->c[2]) * r + p->c[1]) * r + p->c[0];
+            if(std::fabs(v) < 1e-9) {
+                first = r;
+                break;
+            }
+        }
+        if(!std::isfinite(first)) return std::nullopt;
+        roots.push_back(first);
+        double b2 = p->c[3], b1 = p->c[2] + first * b2, b0 = p->c[1] + first * b1;
+        auto q = solve_quadratic_d(b2, b1, b0);
+        for(double r : q) add_unique(roots, r);
+    }
+    std::string A = format_expr(a, p->arg);
+    std::string f = trig_name(p->fk);
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "u=" + f + "(" + A + ").",
+        recip_poly_text(std::vector<double>{p->c[0], p->c[1], p->c[2], p->c[3]}),
+    };
+    std::vector<double> xs;
+    std::string rline = "u=";
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) rline += " or u=";
+        rline += trig_root_text(roots[i]);
+    }
+    steps.push_back(rline + ".");
+    for(double r : roots) {
+        if(r < -1.0 - 1e-10 || r > 1.0 + 1e-10) {
+            steps.push_back("Reject u=" + trig_root_text(r) + ": outside [-1,1].");
+            continue;
+        }
+        steps.push_back(f + "(" + A + ")=" + trig_root_text(r) + ".");
+        steps.push_back(trig_base_angle_line(p->fk, A, r));
+        steps.push_back(trig_alpha_family_line(p->fk, A, r, rad));
+        auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(p->fk, r));
+        for(double x : vals) add_unique(xs, x);
+    }
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -3678,6 +3968,16 @@ static std::optional<std::vector<std::string>> solve_sc_common_denominator(
                         signed_num(c1 / s1c1) + ")=0.");
         add_roots(FnKind::Cos, {cos_root});
         add_roots(FnKind::Sin, {sin_root});
+    }
+    else if(sc_only(*p, {{1, 1}, {0, 2}, {1, 0}, {0, 1}}) &&
+            std::fabs(s1c1 + c2) < 1e-12 && std::fabs(s1 + c1) < 1e-12 &&
+            std::fabs(s1c1) > 1e-12 && std::fabs(s1) > 1e-12) {
+        double croot = -s1 / s1c1;
+        steps.push_back("(" + trig_root_text(s1c1) + "*cos(" + A + ")" +
+                        std::string(s1 < 0 ? " - " : " + ") + trig_root_text(std::fabs(s1)) +
+                        ")*(sin(" + A + ")-cos(" + A + "))=0.");
+        add_roots(FnKind::Cos, {croot});
+        add_roots(FnKind::Tan, {1.0});
     }
     else if(sc_only(*p, {{4, 0}, {0, 4}, {2, 2}, {1, 1}})) {
         double s4 = sc_coef(*p, 4, 0), c4 = sc_coef(*p, 0, 4), s2c2 = sc_coef(*p, 2, 2), sc = sc_coef(*p, 1, 1);
@@ -7726,6 +8026,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto q = solve_cosec_cot_fraction_identity(a, rhs, lhs, var, lo_text, hi_text, rad)) return *q;
     if(auto prod = solve_sec_cos_tan_product(a, lhs, rhs, var, lo_text, hi_text, rad)) return *prod;
     if(auto prod = solve_sec_cos_tan_product(a, rhs, lhs, var, lo_text, hi_text, rad)) return *prod;
+    if(!general) {
+        if(auto te = solve_tan_even_poly(a, casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)})), var, lo_text, hi_text, rad)) return *te;
+    }
     if(auto sq = solve_trig_square_eq(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *sq;
 
     // Try isolate: allow fn(...) + const = const, or const + fn(...) = const
@@ -7793,6 +8096,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto trig_sum = solve_same_trig_sum_zero(a, residual, var, lo_text, hi_text, rad, general)) return *trig_sum;
     if(auto sc2 = solve_sin2_cos2_factor(a, residual, var, lo_text, hi_text, rad, general)) return *sc2;
     if(auto ts2 = solve_tan2_sin2(a, residual, var, lo_text, hi_text, rad, general)) return *ts2;
+    if(!general) {
+        if(auto fp = solve_single_fn_poly(a, residual, var, lo_text, hi_text, rad)) return *fp;
+    }
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad, general)) return *same_res;
     if(auto tc2 = solve_tan_cos2_sin2sq(a, residual, var, lo_text, hi_text, rad)) return *tc2;
     if(auto tdc = solve_tan_double_cot_sec2(a, residual, var, lo_text, hi_text, rad)) return *tdc;
@@ -7804,6 +8110,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
     if(!general) {
         if(auto tc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Tan, FnKind::Cot)) return *tc;
+        if(auto te = solve_tan_even_poly(a, residual, var, lo_text, hi_text, rad)) return *te;
         if(auto sc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Sin, FnKind::Cosec)) return *sc;
         if(auto cs = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Cos, FnKind::Sec)) return *cs;
         if(auto ss = solve_sec_sin2_poly(a, residual, var, lo_text, hi_text, rad)) return *ss;
