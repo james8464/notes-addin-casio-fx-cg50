@@ -68,6 +68,22 @@ CASES = [
         ("dy/dx = (5*t^4 - 5)/(5*t^4)\ndy/dx = (5*t^4 - 5)/(5*t^4)",),
     ),
     (
+        "param reciprocal trig simplify",
+        ["--derive", "sec(theta),ln(1+cos(2*theta)),theta,method=param"],
+        ("dx/dt = sec(theta)*tan(theta)", "tan(u) = sin(u)/cos(u), sec(u) = 1/cos(u)", "dy/dx = -2*cos(theta)"),
+        ("dy/dx = -4*1/(2*cos(theta)^2)*cos(theta)*sin(theta)/(sec(theta)*tan(theta))\n",),
+    ),
+    (
+        "param double angle simplify",
+        ["--derive", "cos(2*theta),2*sin(theta)^3,theta,method=param"],
+        ("sin(2u) = 2sin(u)cos(u)", "dy/dx = -3*sin(theta)/2"),
+    ),
+    (
+        "param reciprocal power simplify",
+        ["--derive", "1/t+1/t^2,1/t-1/t^2,t,method=param"],
+        ("dy/dx = ((- t^-2 + 2*t^-3)*t^3)/((- t^-2 - 2*t^-3)*t^3)", "dy/dx = (t - 2)/(t + 2)"),
+    ),
+    (
         "exam chain final",
         ["--derive", "(2*x+ln(x))^3,x"],
         ("y = (2*x + ln(x))^3", "u = 2*x + ln(x)", "du/dx = 1/x + 2", "dy/dx = 3*(2*x + ln(x))^2*(1/x + 2)"),

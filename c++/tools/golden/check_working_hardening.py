@@ -931,6 +931,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Unexpected token"],
     ),
     (
+        "derive",
+        "sec(theta),ln(1+cos(2*theta)),theta,method=param",
+        ["dx/dt=sec(theta)*tan(theta)", "tan(u)=sin(u)/cos(u),sec(u)=1/cos(u)", "dy/dx=-2*cos(theta)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "derive",
+        "cos(2*theta),2*sin(theta)^3,theta,method=param",
+        ["sin(2u)=2sin(u)cos(u)", "dy/dx=-3*sin(theta)/2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "derive",
+        "1/t+1/t^2,1/t-1/t^2,t,method=param",
+        ["dy/dx=((-t^-2+2*t^-3)*t^3)/((-t^-2-2*t^-3)*t^3)", "dy/dx=(t-2)/(t+2)"],
+        ["ERR:", "Done"],
+    ),
+    (
         "int",
         "sqrt((2*x-3)^2)",
         ["sqrt(u^2)=abs(u)", "Split at u=0, so x=3/2", "For x >= 3/2", "For x < 3/2", "Answer: (2*x - 3)*abs(2*x - 3)/4 + C"],

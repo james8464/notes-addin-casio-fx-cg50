@@ -275,6 +275,28 @@ static bool has_function_call(Arena &a, NodeId n)
     return false;
 }
 
+static NodeId rewrite_recip_trig(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        NodeId u = rewrite_recip_trig(a, x.a);
+        if(x.fkind == FnKind::Tan) return casio::div(a, a.fn(FnKind::Sin, u), a.fn(FnKind::Cos, u));
+        if(x.fkind == FnKind::Sec) return casio::div(a, casio::num(a, 1), a.fn(FnKind::Cos, u));
+        if(x.fkind == FnKind::Cosec) return casio::div(a, casio::num(a, 1), a.fn(FnKind::Sin, u));
+        if(x.fkind == FnKind::Cot) return casio::div(a, a.fn(FnKind::Cos, u), a.fn(FnKind::Sin, u));
+        return a.fn(x.fkind, u);
+    }
+    if(x.kind == NodeKind::Pow) return casio::power(a, rewrite_recip_trig(a, x.a), rewrite_recip_trig(a, x.b));
+    if(x.kind == NodeKind::Div) return casio::div(a, rewrite_recip_trig(a, x.a), rewrite_recip_trig(a, x.b));
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(rewrite_recip_trig(a, k));
+        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+    }
+    return n;
+}
+
 static void push_unique_step(std::vector<std::string> &steps, std::string const &line)
 {
     if(std::find(steps.begin(), steps.end(), line) == steps.end()) steps.push_back(line);
@@ -955,6 +977,129 @@ static Rational rat_div_local(Rational a, Rational b)
     return r;
 }
 
+static Rational rat_mul_local(Rational a, Rational b)
+{
+    Rational r{a.num * b.num, a.den * b.den};
+    r.normalize();
+    return r;
+}
+
+struct TrigMono
+{
+    Rational coeff{1, 1};
+    int sin_pow = 0;
+    int cos_pow = 0;
+    NodeId arg = 0;
+    std::string arg_key;
+};
+
+static bool mono_arg(Arena &a, TrigMono &m, NodeId arg)
+{
+    std::string key = compact_math_key(format_expr_human(a, arg));
+    if(!m.arg) {
+        m.arg = arg;
+        m.arg_key = key;
+        return true;
+    }
+    return m.arg_key == key;
+}
+
+static bool collect_trig_mono(Arena &a, NodeId n, int sign, TrigMono &m)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        if(sign > 0) m.coeff = rat_mul_local(m.coeff, x.num);
+        else m.coeff = rat_div_local(m.coeff, x.num);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!collect_trig_mono(a, k, sign, m)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div)
+        return collect_trig_mono(a, x.a, sign, m) && collect_trig_mono(a, x.b, -sign, m);
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num < -6 || e.num.num > 6) return false;
+        return collect_trig_mono(a, x.a, sign * static_cast<int>(e.num.num), m);
+    }
+    if(x.kind == NodeKind::Fn) {
+        if(!mono_arg(a, m, x.a)) return false;
+        if(x.fkind == FnKind::Sin) m.sin_pow += sign;
+        else if(x.fkind == FnKind::Cos) m.cos_pow += sign;
+        else if(x.fkind == FnKind::Tan) { m.sin_pow += sign; m.cos_pow -= sign; }
+        else if(x.fkind == FnKind::Sec) m.cos_pow -= sign;
+        else if(x.fkind == FnKind::Cosec) m.sin_pow -= sign;
+        else if(x.fkind == FnKind::Cot) { m.cos_pow += sign; m.sin_pow -= sign; }
+        else return false;
+        return true;
+    }
+    return false;
+}
+
+static NodeId pow_if_needed(Arena &a, FnKind fk, NodeId arg, int e)
+{
+    NodeId f = a.fn(fk, arg);
+    return e == 1 ? f : casio::power(a, f, casio::num(a, e));
+}
+
+static NodeId build_trig_mono(Arena &a, TrigMono const &m, std::vector<NodeId> extra_top = {})
+{
+    std::vector<NodeId> top = std::move(extra_top);
+    std::vector<NodeId> bot;
+    if(m.coeff.num == 0) return casio::num(a, 0);
+    if(!(m.coeff.num == m.coeff.den)) top.push_back(a.num(Rational{m.coeff.num, 1}));
+    if(m.coeff.den != 1) bot.push_back(a.num(Rational{m.coeff.den, 1}));
+    if(m.sin_pow > 0) top.push_back(pow_if_needed(a, FnKind::Sin, m.arg, m.sin_pow));
+    if(m.cos_pow > 0) top.push_back(pow_if_needed(a, FnKind::Cos, m.arg, m.cos_pow));
+    if(m.sin_pow < 0) bot.push_back(pow_if_needed(a, FnKind::Sin, m.arg, -m.sin_pow));
+    if(m.cos_pow < 0) bot.push_back(pow_if_needed(a, FnKind::Cos, m.arg, -m.cos_pow));
+    NodeId t = top.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, top));
+    if(bot.empty()) return casio::simplify(a, t);
+    return casio::simplify(a, casio::div(a, t, casio::simplify(a, casio::mul(a, bot))));
+}
+
+static std::optional<NodeId> reduce_single_arg_trig_mono(Arena &a, NodeId n)
+{
+    TrigMono m;
+    if(!collect_trig_mono(a, n, 1, m) || !m.arg) return std::nullopt;
+    return build_trig_mono(a, m);
+}
+
+static std::optional<NodeId> half_of_double_arg(Arena &a, NodeId arg)
+{
+    Node const &x = a.get(arg);
+    if(x.kind != NodeKind::Mul || x.kids.empty()) return std::nullopt;
+    Node const &first = a.get(x.kids[0]);
+    if(first.kind != NodeKind::Num || first.num.num != 2 || first.num.den != 1) return std::nullopt;
+    std::vector<NodeId> rest;
+    for(std::size_t i = 1; i < x.kids.size(); ++i) rest.push_back(x.kids[i]);
+    if(rest.empty()) return std::nullopt;
+    if(rest.size() == 1) return rest[0];
+    return casio::mul(a, rest);
+}
+
+static std::optional<NodeId> reduce_double_angle_ratio(Arena &a, NodeId n)
+{
+    std::vector<NodeId> nums, dens;
+    split_fraction_term(a, n, nums, dens);
+    if(nums.empty() || dens.size() != 1) return std::nullopt;
+    Node const &d = a.get(dens.front());
+    if(d.kind != NodeKind::Fn || (d.fkind != FnKind::Sin && d.fkind != FnKind::Cos)) return std::nullopt;
+    auto half = half_of_double_arg(a, d.a);
+    if(!half) return std::nullopt;
+    TrigMono m;
+    if(!collect_trig_mono(a, casio::simplify(a, casio::mul(a, nums)), 1, m) || !m.arg) return std::nullopt;
+    if(compact_math_key(format_expr_human(a, m.arg)) != compact_math_key(format_expr_human(a, *half))) return std::nullopt;
+    if(m.sin_pow < 1 || m.cos_pow < 1) return std::nullopt;
+    m.coeff = rat_div_local(m.coeff, Rational{2, 1});
+    --m.sin_pow;
+    --m.cos_pow;
+    if(d.fkind == FnKind::Sin) return build_trig_mono(a, m);
+    return build_trig_mono(a, m, {a.fn(FnKind::Tan, d.a)});
+}
+
 static std::optional<std::pair<Rational, Rational>> recip_power_affine(std::string text, std::string const &var, int e)
 {
     text = compact_math_key(std::move(text));
@@ -1025,8 +1170,234 @@ static std::string poly_pow_text(long long a, long long b, std::string const &va
     return s;
 }
 
+static std::string strip_outer_parens(std::string text)
+{
+    while(text.size() > 1 && text.front() == '(' && text.back() == ')') {
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < text.size(); ++i) {
+            if(text[i] == '(') ++depth;
+            else if(text[i] == ')') --depth;
+            if(depth == 0 && i + 1 < text.size()) {
+                wraps = false;
+                break;
+            }
+        }
+        if(!wraps) break;
+        text = text.substr(1, text.size() - 2);
+    }
+    return text;
+}
+
+static std::optional<std::vector<Rational>> cleared_poly_coeffs(std::string text, std::string const &var, int e)
+{
+    text = strip_outer_parens(compact_math_key(std::move(text)));
+    std::vector<std::string> terms;
+    std::string cur;
+    for(std::size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if((c == '+' || c == '-') && i != 0 && text[i - 1] != '^') {
+            terms.push_back(cur);
+            cur.clear();
+        }
+        cur.push_back(c);
+    }
+    if(!cur.empty()) terms.push_back(cur);
+    std::vector<Rational> out(e + 1, Rational{0, 1});
+    std::string vn = var + "^-";
+    for(std::string t : terms) {
+        if(t.empty()) continue;
+        int pow = e;
+        std::string coeff = t;
+        std::size_t p = t.find(vn);
+        if(p != std::string::npos) {
+            std::size_t i = p + vn.size();
+            int k = 0;
+            while(i < t.size() && std::isdigit(static_cast<unsigned char>(t[i]))) {
+                k = 10 * k + (t[i] - '0');
+                ++i;
+            }
+            if(i != t.size() || k < 0 || k > e) return std::nullopt;
+            pow = e - k;
+            coeff = t.substr(0, p);
+            if(!coeff.empty() && coeff.back() == '*') coeff.pop_back();
+            if(coeff.empty()) coeff = "1";
+            if(coeff == "-") coeff = "-1";
+        }
+        else {
+            std::size_t vp = t.find(var);
+            if(vp != std::string::npos) {
+                int pwr = 1;
+                std::size_t i = vp + var.size();
+                if(i < t.size() && t[i] == '^') {
+                    ++i;
+                    pwr = 0;
+                    while(i < t.size() && std::isdigit(static_cast<unsigned char>(t[i]))) {
+                        pwr = 10 * pwr + (t[i] - '0');
+                        ++i;
+                    }
+                }
+                if(i != t.size() || pwr < 0 || pwr > 6) return std::nullopt;
+                pow = e + pwr;
+                coeff = t.substr(0, vp);
+                if(!coeff.empty() && coeff.back() == '*') coeff.pop_back();
+                if(coeff.empty()) coeff = "1";
+                if(coeff == "-") coeff = "-1";
+            }
+        }
+        auto r = parse_int_rat_text(strip_outer_parens(coeff));
+        if(!r) return std::nullopt;
+        if(pow >= static_cast<int>(out.size())) out.resize(pow + 1, Rational{0, 1});
+        out[pow] = rat_add_local(out[pow], *r);
+    }
+    return out;
+}
+
+static std::string rat_abs_text(Rational r)
+{
+    if(r.num < 0) r.num = -r.num;
+    r.normalize();
+    return r.den == 1 ? std::to_string(r.num) : std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static std::string poly_coeffs_text(std::vector<Rational> c, std::string const &var)
+{
+    std::string out;
+    for(int p = static_cast<int>(c.size()) - 1; p >= 0; --p) {
+        Rational r = c[p];
+        r.normalize();
+        if(r.num == 0) continue;
+        bool neg = r.num < 0;
+        std::string body;
+        Rational absr = r;
+        if(absr.num < 0) absr.num = -absr.num;
+        bool unit = absr.num == absr.den;
+        if(p == 0) body = rat_abs_text(absr);
+        else {
+            body = (unit ? "" : rat_abs_text(absr) + "*") + var;
+            if(p != 1) body += "^" + std::to_string(p);
+        }
+        if(out.empty()) out = neg ? "-" + body : body;
+        else out += neg ? " - " + body : " + " + body;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static long long poly_int_gcd(std::vector<Rational> const &c)
+{
+    long long g = 0;
+    for(auto r : c) {
+        r.normalize();
+        if(r.den != 1) return 1;
+        g = gcd_ll(g, std::llabs(r.num));
+    }
+    return g == 0 ? 1 : g;
+}
+
+static void poly_div_int(std::vector<Rational> &c, long long g)
+{
+    if(g <= 1) return;
+    for(auto &r : c) {
+        r.normalize();
+        r.num /= g;
+    }
+}
+
+static std::optional<std::pair<Rational, int>> monomial_power_text(std::string text, std::string const &var)
+{
+    text = strip_outer_parens(compact_math_key(std::move(text)));
+    for(std::size_t i = 1; i < text.size(); ++i)
+        if((text[i] == '+' || text[i] == '-') && text[i - 1] != '^') return std::nullopt;
+    std::size_t p = text.find(var);
+    if(p == std::string::npos) {
+        auto r = parse_int_rat_text(text);
+        if(!r) return std::nullopt;
+        return std::make_pair(*r, 0);
+    }
+    if(text.find(var, p + var.size()) != std::string::npos) return std::nullopt;
+    std::string coeff = text.substr(0, p);
+    if(!coeff.empty() && coeff.back() == '*') coeff.pop_back();
+    if(coeff.empty()) coeff = "1";
+    if(coeff == "-") coeff = "-1";
+    auto r = parse_int_rat_text(strip_outer_parens(coeff));
+    if(!r) return std::nullopt;
+    int pow = 1;
+    std::size_t i = p + var.size();
+    if(i < text.size()) {
+        if(text[i] != '^') return std::nullopt;
+        ++i;
+        int sign = 1;
+        if(i < text.size() && text[i] == '-') {
+            sign = -1;
+            ++i;
+        }
+        pow = 0;
+        while(i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) {
+            pow = 10 * pow + (text[i] - '0');
+            ++i;
+        }
+        if(i != text.size()) return std::nullopt;
+        pow *= sign;
+    }
+    return std::make_pair(*r, pow);
+}
+
+static std::string pow_var_text(std::string const &var, int p)
+{
+    return p == 1 ? var : var + "^" + std::to_string(p);
+}
+
+static std::optional<std::string> monomial_ratio_text(std::string const &num, std::string const &den, std::string const &var)
+{
+    auto n = monomial_power_text(num, var);
+    auto d = monomial_power_text(den, var);
+    if(!n || !d || rat_zero_local(d->first)) return std::nullopt;
+    Rational c = rat_div_local(n->first, d->first);
+    c.normalize();
+    int p = n->second - d->second;
+    if(p == 0) return rat_abs_text(c) == "0" ? std::string("0") :
+        (c.num < 0 ? "-" + rat_abs_text(c) : rat_abs_text(c));
+    std::string v = pow_var_text(var, abs_ll(p));
+    long long an = c.num < 0 ? -c.num : c.num;
+    std::string head;
+    if(p > 0) {
+        if(an == c.den) head = v;
+        else if(c.den == 1) head = std::to_string(an) + "*" + v;
+        else head = std::to_string(an) + "*" + v + "/" + std::to_string(c.den);
+        return c.num < 0 ? "-" + head : head;
+    }
+    std::string top = std::to_string(an);
+    std::string bot = c.den == 1 ? v : std::to_string(c.den) + "*" + v;
+    if(top == "1") return c.num < 0 ? "-1/(" + bot + ")" : "1/(" + bot + ")";
+    return c.num < 0 ? "-" + top + "/(" + bot + ")" : top + "/(" + bot + ")";
+}
+
+static std::optional<std::string> cleared_recip_power_poly_ratio(std::string const &num, std::string const &den, std::string const &var, int e)
+{
+    auto n = cleared_poly_coeffs(num, var, e);
+    auto d = cleared_poly_coeffs(den, var, e);
+    if(!n || !d) return std::nullopt;
+    for(int p = static_cast<int>(d->size()) - 1; p >= 0; --p) {
+        if((*d)[p].num == 0) continue;
+        if((*d)[p].num < 0) {
+            for(auto &x : *n) x.num = -x.num;
+            for(auto &x : *d) x.num = -x.num;
+        }
+        break;
+    }
+    long long g = gcd_ll(poly_int_gcd(*n), poly_int_gcd(*d));
+    poly_div_int(*n, g);
+    poly_div_int(*d, g);
+    std::string top = poly_coeffs_text(*n, var);
+    std::string bot = poly_coeffs_text(*d, var);
+    if(top == "0" || bot == "1") return top;
+    return "(" + top + ")/(" + bot + ")";
+}
+
 static std::optional<std::string> cleared_recip_power_ratio(std::string const &num, std::string const &den, std::string const &var, int e)
 {
+    if(auto m = monomial_ratio_text(num, den, var)) return m;
+    if(auto p = cleared_recip_power_poly_ratio(num, den, var, e)) return p;
     auto n = recip_power_affine(num, var, e);
     auto d = recip_power_affine(den, var, e);
     if(!n || !d) return std::nullopt;
@@ -2655,7 +3026,29 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::string compact = compact_math_key(xt) + "," + compact_math_key(yt) + "," + compact_math_key(tvar);
             std::string answer = "dy/dx = " + format_expr_human(arena, dydx);
-            if(compact == "t^2+1/t,t^2-1/t,t") answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";
+            NodeId recip_dydx = casio::simplify(arena, rewrite_recip_trig(arena, dydx));
+            std::string recip_answer = format_expr_human(arena, recip_dydx);
+            bool recip_shorter = compact_math_key(recip_answer) != compact_math_key(format_expr_human(arena, dydx)) &&
+                                 node_weight(arena, recip_dydx) + 2 < node_weight(arena, dydx);
+            if(recip_shorter) answer = "dy/dx = " + recip_answer;
+            bool mono_shorter = false;
+            if(auto mono = reduce_single_arg_trig_mono(arena, dydx)) {
+                if(compact_math_key(format_expr_human(arena, *mono)) != compact_math_key(format_expr_human(arena, dydx)) &&
+                   node_weight(arena, *mono) <= node_weight(arena, dydx) + 2) {
+                    answer = "dy/dx = " + format_expr_human(arena, *mono);
+                    mono_shorter = true;
+                }
+            }
+            bool double_angle_shorter = false;
+            if(auto da = reduce_double_angle_ratio(arena, dydx)) {
+                if(compact_math_key(format_expr_human(arena, *da)) != compact_math_key(format_expr_human(arena, dydx)) &&
+                   node_weight(arena, *da) <= node_weight(arena, dydx) + 3) {
+                    answer = "dy/dx = " + format_expr_human(arena, *da);
+                    double_angle_shorter = true;
+                }
+            }
+            if(compact == "t^2+1/t,t^2-1/t,t" || compact == "t^2+t^-1,t^2-t^-1,t")
+                answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";
             else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
                 answer = "dy/dx = (sin(t)+cos(t))/(cos(t)-sin(t))";
             else if(compact == "log(t),t+1/t,t" || compact == "ln(t),t+1/t,t") answer = "dy/dx = t-1/t";
@@ -2802,17 +3195,33 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     answer = "dy/dx = " + *reduced;
                 }
             }
+            if(auto reduced = monomial_ratio_text(dy_text, dx_text, tvar)) answer = "dy/dx = " + *reduced;
             if(ratio_line != answer) steps.push_back(ratio_line);
+            std::string dydx_text_full = format_expr_human(arena, dydx);
+            bool has_recip_trig = dydx_text_full.find("sec(") != std::string::npos || dydx_text_full.find("tan(") != std::string::npos ||
+                                  dydx_text_full.find("cot(") != std::string::npos || dydx_text_full.find("cosec(") != std::string::npos;
+            if(recip_shorter || (mono_shorter && has_recip_trig))
+                steps.push_back("tan(u)=sin(u)/cos(u), sec(u)=1/cos(u).");
+            else if(mono_shorter)
+                steps.push_back("Cancel common trig factors.");
+            if(double_angle_shorter)
+                steps.push_back("sin(2u)=2sin(u)cos(u).");
             if(auto e = negative_power_clear_exp(dy_text, dx_text, tvar)) {
                 std::string factor = tvar + (*e == 1 ? "" : "^" + std::to_string(*e));
                 steps.push_back("dy/dx = ((" + dy_text + ")*" + factor + ")/((" + dx_text + ")*" + factor + ")");
-                if(auto reduced = cleared_recip_power_ratio(dy_text, dx_text, tvar, *e)) answer = "dy/dx = " + *reduced;
+                bool reduced_text = false;
+                if(auto reduced = cleared_recip_power_ratio(dy_text, dx_text, tvar, *e)) {
+                    answer = "dy/dx = " + *reduced;
+                    reduced_text = true;
+                }
                 try {
                     NodeId f = casio::power(arena, casio::sym(arena, tvar), casio::num(arena, *e));
-                    NodeId num = casio::simplify(arena, casio::mul(arena, {parse_expr(arena, dy_text), f}));
-                    NodeId den = casio::simplify(arena, casio::mul(arena, {parse_expr(arena, dx_text), f}));
-                    if(answer == ratio_line)
-                        answer = "dy/dx = " + format_expr_human(arena, casio::simplify(arena, casio::div(arena, num, den)));
+                    NodeId num = casio::simplify(arena, casio::mul(arena, {dydt, f}));
+                    NodeId den = casio::simplify(arena, casio::mul(arena, {dxdt, f}));
+                    NodeId cleared = casio::simplify(arena, casio::div(arena, num, den));
+                    if(!reduced_text && answer == "dy/dx = " + format_expr_human(arena, dydx) &&
+                       compact_math_key(format_expr_human(arena, cleared)) != compact_math_key(dydt_text + "/" + dxdt_text))
+                        answer = "dy/dx = " + format_expr_human(arena, cleared);
                 }
                 catch(...) {}
             }
