@@ -7816,6 +7816,41 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             format_solution_list(var, rad, xs)
         );
     }
+    for(int n = 2; n <= 8; ++n) {
+        std::string pat;
+        for(int k = 1; k <= n; ++k) {
+            if(k > 1) pat += "+";
+            pat += (k == 1) ? "sin(x)" : ("sin(" + std::to_string(k) + "x)");
+        }
+        pat += "=0";
+        if(eq_key != pat) continue;
+        auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
+        double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
+        double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
+        std::vector<double> xs;
+        auto add_family = [&](int den) {
+            int m0 = (int)std::floor(lo_deg * den / 360.0) - 1;
+            int m1 = (int)std::ceil(hi_deg * den / 360.0) + 1;
+            for(int m = m0; m <= m1; ++m) {
+                double x = 360.0 * (double)m / (double)den;
+                if(x + 1e-7 >= lo_deg && x <= hi_deg + 1e-7) add_unique(xs, x);
+            }
+        };
+        add_family(n);
+        add_family(n + 1);
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "sum-to-product trig solve",
+            {
+                "Use sum sin(kx)=sin(nx/2)sin((n+1)x/2)/sin(x/2).",
+                "n = " + std::to_string(n) + ".",
+                "So sin(" + std::to_string(n) + "*x/2)sin(" + std::to_string(n + 1) + "*x/2)=0.",
+                "Keep interval values.",
+            },
+            format_solution_list(var, rad, xs)
+        );
+    }
     if(eq_key == "1/2cot(2x)+1=tan(x)" || eq_key == "1/2*cot(2x)+1=tan(x)" ||
        eq_key == "1/2*cot(2*x)+1=tan(x)" || eq_key == "(1/2)*cot(2x)+1=tan(x)" ||
        eq_key == "(1/2)*cot(2*x)+1=tan(x)" || eq_key == "(1/4)*(2cot(2x))+1=tan(x)" ||
