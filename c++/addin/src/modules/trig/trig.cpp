@@ -7672,6 +7672,51 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             ans
         );
     }
+    {
+        std::string v = compact_key(var);
+        auto read_pos_int = [](std::string const &s, std::size_t pos, long long &v, std::size_t &next) -> bool {
+            if(pos >= s.size() || !std::isdigit(static_cast<unsigned char>(s[pos]))) return false;
+            v = 0;
+            while(pos < s.size() && std::isdigit(static_cast<unsigned char>(s[pos]))) {
+                v = 10 * v + (s[pos] - '0');
+                ++pos;
+            }
+            next = pos;
+            return v > 0;
+        };
+        long long n = 0;
+        std::size_t e = 0;
+        std::string lhs = "tan(2" + v + ")-";
+        if(eq_key.rfind(lhs, 0) == 0 && read_pos_int(eq_key, lhs.size(), n, e) && n > 0 &&
+           eq_key.substr(e) == "cot(" + v + ")=0") {
+            std::vector<double> xs;
+            auto arg = casio::sym(a, var);
+            for(double d : {90.0, 270.0}) {
+                auto vals = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, {d});
+                for(double x : vals) add_unique(xs, x);
+            }
+            double t = std::sqrt((double)n / (double)(n + 2));
+            for(double root : {t, -t}) {
+                auto vals = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad,
+                                                         base_trig_degrees(FnKind::Tan, root));
+                for(double x : vals) add_unique(xs, x);
+            }
+            std::sort(xs.begin(), xs.end());
+            return casio::exam_block(
+                "trig solve",
+                {
+                    "tan(2" + var + ")=" + std::to_string(n) + "cot(" + var + ").",
+                    "tan(2" + var + ")=2sin(" + var + ")cos(" + var + ")/(cos(" + var + ")^2-sin(" + var + ")^2).",
+                    "cot(" + var + ")=cos(" + var + ")/sin(" + var + ").",
+                    "2sin(" + var + ")^2cos(" + var + ")=" + std::to_string(n) + "cos(" + var + ")(cos(" + var + ")^2-sin(" + var + ")^2).",
+                    "cos(" + var + ")=0 or " + std::to_string(n + 2) + "sin(" + var + ")^2=" + std::to_string(n) + "cos(" + var + ")^2.",
+                    "tan(" + var + ")^2=" + trig_root_text((double)n / (double)(n + 2)) + ".",
+                    "Keep interval values.",
+                },
+                format_solution_list(var, rad, xs)
+            );
+        }
+    }
     if(!general && eq_key == "tan(4x)-tan(2x)=0") {
         std::string lo_key = compact_key(lo_text);
         std::string hi_key = compact_key(hi_text);
