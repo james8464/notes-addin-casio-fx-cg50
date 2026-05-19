@@ -383,6 +383,12 @@ CASES = [
         ("rejected by domain", "x = []"),
     ),
     (
+        "rational quadratic surd denominator parses",
+        ["--alg", "solve(1/x-2/3*x=0,x)"],
+        ("x = (0 - sqrt(8/3))/(4/3)", "x = (0 + sqrt(8/3))/(4/3)", "x ~= -1.225, 1.225"),
+        ("x = []",),
+    ),
+    (
         "numeric scan rejects asymptote",
         ["--alg", "solve(4/(2*ln(x-1)-3)=-2,x)"],
         ("Domain: 2*ln(x - 1) - 3 != 0", "x = [2.64872127071]"),

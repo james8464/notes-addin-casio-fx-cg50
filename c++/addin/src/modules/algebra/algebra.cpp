@@ -3380,6 +3380,7 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
         std::string b_txt = format_expr(a, a.num(p.a1));
         std::string disc_txt = format_expr(a, sqrt_disc);
         std::string den_txt = format_expr(a, a.num(pos_den));
+        if(den_txt.find('/') != std::string::npos) den_txt = "(" + den_txt + ")";
         return {
             var + " = (" + b_txt + " - " + disc_txt + ")/" + den_txt,
             var + " = (" + b_txt + " + " + disc_txt + ")/" + den_txt,
