@@ -7325,6 +7325,38 @@ static std::optional<Rational> natural_log_power_ratio(Arena &a, NodeId top, Nod
     return r_mul(r_div(ct, cb), ratio);
 }
 
+static std::optional<std::pair<Rational, NodeId>> pi_linear_coeff(Arena &a, NodeId n)
+{
+    if(format_expr(a, n) == "pi") return std::make_pair(Rational{1, 1}, n);
+    Rational c{1, 1};
+    NodeId b = 0;
+    bool has_body = false;
+    split_coeff_body(a, n, c, b, has_body);
+    if(has_body && format_expr(a, b) == "pi") return std::make_pair(c, b);
+    if(has_body && !casio::same_by_sig(a, b, n)) {
+        auto inner = pi_linear_coeff(a, b);
+        if(inner) return std::make_pair(r_mul(c, inner->first), inner->second);
+    }
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        Rational sum{0, 1};
+        NodeId pi = 0;
+        for(NodeId kid : x.kids) {
+            auto part = pi_linear_coeff(a, kid);
+            if(!part) return std::nullopt;
+            sum = r_add(sum, part->first);
+            pi = part->second;
+        }
+        return std::make_pair(sum, pi);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = pi_linear_coeff(a, x.a);
+        auto den = as_num(a, x.b);
+        if(top && den && den->num != 0) return std::make_pair(r_div(top->first, *den), top->second);
+    }
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
     auto lin = symbolic_linear_parts(a, rearr, var);
@@ -7338,7 +7370,10 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
             break;
         }
     }
-    if(!has_parameter) {
+    bool has_trig_const = contains_fn_kind(a, rearr, FnKind::Sin) || contains_fn_kind(a, rearr, FnKind::Cos) ||
+                          contains_fn_kind(a, rearr, FnKind::Tan);
+    bool has_pi = !has_trig_const && format_expr(a, rearr).find("pi") != std::string::npos;
+    if(!has_parameter && !has_pi) {
         if(!contains_fn_kind(a, rearr, FnKind::Sqrt) && !contains_fn_kind(a, rearr, FnKind::Log)) return std::nullopt;
         auto rp = ratpoly_of_node(a, rearr, var);
         if(rp.ok) return std::nullopt;
@@ -7349,6 +7384,12 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
     bool hm = false, hc = false;
     split_coeff_body(a, lin->m, cm, bm, hm);
     split_coeff_body(a, lin->c, cc, bc, hc);
+    if(auto mn = as_num(a, lin->m)) {
+        if(auto pc = pi_linear_coeff(a, lin->c)) {
+            Rational q = r_div(r_neg(pc->first), *mn);
+            ans = casio::simplify(a, casio::mul(a, {casio::num(a, q.num, q.den), pc->second}));
+        }
+    }
     if(hm && hc && casio::same_by_sig(a, bm, bc)) {
         Rational q = r_div(r_neg(cc), cm);
         ans = casio::num(a, q.num, q.den);
