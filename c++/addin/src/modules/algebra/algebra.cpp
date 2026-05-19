@@ -1664,6 +1664,8 @@ static std::optional<BinomSeries> combined_series(Arena &a, NodeId n, std::strin
                 if(e.kind == NodeKind::Num) return linear_power_series(a, den.a, r_neg(e.num), var, degree);
                 return std::nullopt;
             }
+            if(den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt)
+                return linear_power_series(a, den.a, Rational{-1, 2}, var, degree);
             return linear_power_series(a, id, Rational{-1, 1}, var, degree);
         };
         Node const &den = a.get(x.b);
