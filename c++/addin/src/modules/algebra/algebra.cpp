@@ -347,6 +347,55 @@ static NodeId clone_with_substitution(Arena &a, NodeId n, std::string const &var
     return n;
 }
 
+static bool contains_exp_log_exact(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Const) return x.ckind == ConstKind::E;
+    if(x.kind == NodeKind::Fn) return x.fkind == FnKind::Log || x.fkind == FnKind::Exp || contains_exp_log_exact(a, x.a);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_exp_log_exact(a, x.a) || contains_exp_log_exact(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids) if(contains_exp_log_exact(a, k)) return true;
+    }
+    return false;
+}
+
+static NodeId exact_eval_simplify(Arena &a, NodeId n)
+{
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Num) return casio::num(a, x.num.num, x.num.den);
+    if(x.kind == NodeKind::Sym) return casio::sym(a, x.text);
+    if(x.kind == NodeKind::Const) return a.constant(x.ckind);
+    if(x.kind == NodeKind::Fn) {
+        NodeId arg = exact_eval_simplify(a, x.a);
+        Node const &u = a.get(arg);
+        if(x.fkind == FnKind::Log) {
+            if(u.kind == NodeKind::Pow) {
+                Node const &base = a.get(u.a);
+                if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return casio::simplify(a, u.b);
+            }
+            if(u.kind == NodeKind::Fn && u.fkind == FnKind::Exp) return casio::simplify(a, u.a);
+        }
+        if(x.fkind == FnKind::Exp && u.kind == NodeKind::Fn && u.fkind == FnKind::Log) return casio::simplify(a, u.a);
+        return casio::simplify(a, a.fn(x.fkind, arg));
+    }
+    if(x.kind == NodeKind::Pow) {
+        NodeId lhs = exact_eval_simplify(a, x.a);
+        NodeId rhs = exact_eval_simplify(a, x.b);
+        Node const &base = a.get(lhs);
+        Node const &expo = a.get(rhs);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && expo.kind == NodeKind::Fn && expo.fkind == FnKind::Log)
+            return casio::simplify(a, expo.a);
+        return casio::simplify(a, casio::power(a, lhs, rhs));
+    }
+    if(x.kind == NodeKind::Div) {
+        return casio::simplify(a, casio::div(a, exact_eval_simplify(a, x.a), exact_eval_simplify(a, x.b)));
+    }
+    std::vector<NodeId> kids;
+    kids.reserve(x.kids.size());
+    for(auto k : x.kids) kids.push_back(exact_eval_simplify(a, k));
+    return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+}
+
 static bool is_degree_at_most_one(Poly2 const &p)
 {
     return p.ok && is_zero(p.a2);
@@ -10423,8 +10472,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;
             collect_symbols(arena, v, syms);
-            if(!syms.empty()) {
-                NodeId sub = casio::simplify(arena, clone_with_substitution(arena, n, var, v));
+            if(!syms.empty() || contains_exp_log_exact(arena, v)) {
+                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
                 return {
                     var + " = " + format_expr(arena, v),
                     "f(" + var + ") = " + format_expr(arena, n),
