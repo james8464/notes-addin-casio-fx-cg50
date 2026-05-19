@@ -2220,6 +2220,21 @@ static std::optional<Rational> recip_var_coeff(Arena &a, NodeId n, std::string c
     return std::nullopt;
 }
 
+static std::optional<std::string> var_power_integral_line(Arena &a, NodeId n, std::string const &var)
+{
+    auto pe = power_left_factor(a, n, var);
+    if(!pe || r_eq(pe->second, Rational{-1, 1})) return std::nullopt;
+    Rational next = r_add(pe->second, Rational{1, 1});
+    if(next.num == 0) return std::nullopt;
+    Rational coeff = r_div(pe->first, next);
+    std::string body = y_power_text(var, next);
+    std::string rhs;
+    if(r_eq(coeff, Rational{1, 1})) rhs = body;
+    else if(r_eq(coeff, Rational{-1, 1})) rhs = "-" + body;
+    else rhs = rat_text_small(a, coeff) + "*" + body;
+    return "Int(" + format_expr(a, n) + ") d" + var + " = " + rhs;
+}
+
 static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc)
 {
     auto lin = linear_parts_node(a, dydx, tok.y);
@@ -2396,6 +2411,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                                                         : rat_text_small(a, *cy) + "*ln(abs(" + tok->y + "))";
             steps.push_back("Int(" + format_expr(a, invY) + ") d" + tok->y + " = " + lhs);
         }
+        else if(auto pl = var_power_integral_line(a, invY, tok->y)) steps.push_back(*pl);
         else append_int_steps(Li);
         append_int_steps(Ri);
         steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C");

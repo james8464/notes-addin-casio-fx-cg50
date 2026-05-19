@@ -9479,6 +9479,51 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "4*x^2*(1-x^2) = (x+y)^2"
                 );
             }
+            auto recip_param = [&](std::string const &s) -> std::optional<std::pair<long long, long long>> {
+                long long acoef = 0, bcoef = 0;
+                std::size_t i = 0;
+                int sign = 1;
+                auto read_int = [&](std::size_t &p, long long &v) -> bool {
+                    std::size_t start = p;
+                    while(p < s.size() && std::isdigit(static_cast<unsigned char>(s[p]))) ++p;
+                    if(start == p) return false;
+                    v = std::atoll(s.substr(start, p - start).c_str());
+                    return true;
+                };
+                while(i < s.size()) {
+                    if(s[i] == '+') { sign = 1; ++i; continue; }
+                    if(s[i] == '-') { sign = -1; ++i; continue; }
+                    if(s.compare(i, param.size(), param) == 0) {
+                        i += param.size();
+                        acoef += sign;
+                    }
+                    else {
+                        long long n = 0;
+                        if(!read_int(i, n) || i >= s.size() || s[i] != '/') return std::nullopt;
+                        ++i;
+                        if(s.compare(i, param.size(), param) != 0) return std::nullopt;
+                        i += param.size();
+                        bcoef += sign * n;
+                    }
+                    sign = 1;
+                }
+                if(acoef == 0 || bcoef == 0) return std::nullopt;
+                return std::make_pair(acoef, bcoef);
+            };
+            auto xr = recip_param(xk);
+            auto yr = recip_param(yk);
+            if(xr && yr && xr->first == yr->first && xr->second == -yr->second) {
+                long long prod = 4 * xr->first * xr->second;
+                return casio::exam_block(
+                    "parametric cartesian form",
+                    {
+                        "x+y=" + std::to_string(2 * xr->first) + "*" + param + ".",
+                        "x-y=" + std::to_string(2 * xr->second) + "/" + param + ".",
+                        "(x+y)(x-y)=" + std::to_string(prod) + ".",
+                    },
+                    "x^2 - y^2 = " + std::to_string(prod)
+                );
+            }
             auto y_cart = cartesian_from_param(arena, xe, ye, param);
             if(!y_cart) return {"Err: cartesian conversion supports linear x(t)."};
             return {

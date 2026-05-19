@@ -43,6 +43,12 @@ SOURCES = {
     "exampaperspractice_edexcel": "https://www.exampaperspractice.co.uk/a-level/sciences/mathematics/edexcel-a-level-mathematics-9ma0-past-papers",
     "exampaperspractice_aqa_further": "https://www.exampaperspractice.co.uk/aqa-a-level-further-maths-past-papers/",
     "pmt_aqa": "https://www.physicsandmathstutor.com/maths-revision/a-level-aqa/papers",
+    "mathspi_ocr": "https://www.mathspi.com/a-level/a-level-maths-ocr-practice-papers/",
+    "londonmathstutors_ocr": "https://www.londonmathstutors.co.uk/past-papers/a-level/maths/ocr",
+    "papafy_ocr": "https://papafy.com/ocr/past-papers/ocr-a-level/ocr-a-level-mathematics-a",
+    "zigzag_edexcel_sample": "https://zigzageducation.co.uk/samplepdf/Maths/s9439.pdf",
+    "zigzag_edexcel_as_sample": "https://zigzageducation.co.uk/public/samplepdf/Maths/s8658.pdf",
+    "mickmacve_edexcel_practice_a_ms": "https://www.mickmacve.com/uploads/2/9/5/2/29527671/01b_a_level_mathematics_practice_paper_a_-_pure_mathematics_mark_scheme.pdf",
     "savemyexams_edexcel": "https://www.savemyexams.com/a-level/maths/edexcel/past-papers",
     "savemyexams_further": "https://www.savemyexams.com/a-level/further-maths/edexcel/past-papers/",
     "revisely_edexcel": "https://www.revisely.com/papers/alevel/paper?e=edexcel&s=maths&u=m4",
@@ -106,11 +112,14 @@ def safe_name(s: str, fallback: str) -> str:
 
 
 def source_links(url: str) -> list[tuple[str, str]]:
+    if ".pdf" in urllib.parse.urlsplit(url).path.lower():
+        return [(url, "direct-pdf")]
     html = fetch(url).decode("utf-8", "ignore")
     parser = LinkParser()
     parser.feed(html)
     links: list[tuple[str, str]] = []
     for href, text in parser.links:
+        href = href.strip()
         abs_url = urllib.parse.urljoin(url, href.replace("&amp;", "&"))
         query_pdf = urllib.parse.parse_qs(urllib.parse.urlsplit(abs_url).query).get("pdf")
         if query_pdf:
