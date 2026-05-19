@@ -5778,6 +5778,48 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 {
     bool rad = rad_override.value_or((hi_text.find("pi") != std::string::npos) || (hi_text.find("π") != std::string::npos));
     std::string eq_key = compact_key(eq_text);
+    {
+        auto read_int = [](std::string const &s, std::size_t pos, long long &v, std::size_t &next) -> bool {
+            if(pos >= s.size() || !std::isdigit(static_cast<unsigned char>(s[pos]))) return false;
+            v = 0;
+            while(pos < s.size() && std::isdigit(static_cast<unsigned char>(s[pos]))) {
+                v = 10 * v + (s[pos] - '0');
+                ++pos;
+            }
+            next = pos;
+            return v > 0;
+        };
+        long long k = 0, m = 0, rhs = 0;
+        std::size_t p = 0, q = 0;
+        if(read_int(eq_key, 0, k, p) && eq_key.compare(p, 4, "sin(") == 0 &&
+           read_int(eq_key, p + 4, m, q)) {
+            std::string mv = std::to_string(m) + var;
+            std::string tail1 = var + ")cos(" + var + ")+" + std::to_string(k) + "cos(" + mv + ")sin(" + var + ")-";
+            std::string tail2 = var + ")cos(" + var + ")+" + std::to_string(k) + "cos(" + mv + ")sin(" + var + ")=";
+            bool rhs_eq_form = eq_key.compare(q, tail2.size(), tail2) == 0;
+            if(eq_key.compare(q, tail1.size(), tail1) == 0 || rhs_eq_form) {
+                std::size_t r = 0;
+                std::size_t rhs_pos = q + (rhs_eq_form ? tail2.size() : tail1.size());
+                if(read_int(eq_key, rhs_pos, rhs, r) && (rhs_eq_form ? r == eq_key.size() : eq_key.substr(r) == "=0") && std::llabs(rhs) <= k) {
+                    long long sum_mult = m + 1;
+                    NodeId arg = casio::simplify(a, casio::mul(a, {casio::num(a, sum_mult), casio::sym(a, var)}));
+                    std::vector<double> xs = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad,
+                                                                          base_trig_degrees(FnKind::Sin, (double)rhs / (double)k));
+                    std::string A = std::to_string(m) + "*" + var;
+                    std::string ratio = ratio_text(rhs, k);
+                    return casio::exam_block(
+                        "compound angle trig solve",
+                        {
+                            "sin(A)cos(B)+cos(A)sin(B) = sin(A+B)",
+                            std::to_string(k) + "*sin(" + A + "+" + var + ") = " + std::to_string(rhs),
+                            "sin(" + std::to_string(sum_mult) + "*" + var + ") = " + ratio,
+                        },
+                        format_solution_list(var, rad, xs)
+                    );
+                }
+            }
+        }
+    }
     if(eq_key == "tan(" + var + ")(1+cos(2" + var + "))=2sin(2" + var + ")^2" ||
        eq_key == "tan(" + var + ")(cos(2" + var + ")+1)=2sin(2" + var + ")^2") {
         NodeId arg = casio::sym(a, var);
