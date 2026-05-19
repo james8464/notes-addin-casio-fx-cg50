@@ -1730,8 +1730,8 @@ static std::optional<std::vector<std::string>> solve_tan_sum_zero(
     };
     if(general) return casio::exam_block("trig solve", steps, fam);
 
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
+    auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+    auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
     double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
     double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
     if(lo > hi) std::swap(lo, hi);
@@ -2311,8 +2311,8 @@ static std::optional<std::vector<std::string>> solve_shifted_sin_sum(
     steps.push_back(fam + ".");
     if(general) return casio::exam_block("trig solve", steps, fam);
     std::vector<double> xs;
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
+    auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+    auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
     double lo = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
     double hi = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
     if(lo > hi) std::swap(lo, hi);
@@ -4396,20 +4396,16 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
         steps.push_back(format_general_trig_family(var, rad, xbases, period) + ".");
         return casio::exam_block("trig solve", steps, format_general_trig_family(var, rad, xbases, period));
     }
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
-    double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
-    double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
-    if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
+    AngleBounds bounds = angle_bounds(a, lo_text, hi_text, rad);
     std::vector<double> xs;
     for(double base : base_trig_degrees(FnKind::Sin, target)) {
         for(int n = -80; n <= 80; ++n) {
             double x = (base + 360.0 * n - alpha) / p->m;
-            if(x < lo_deg - 1e-7 || x > hi_deg + 1e-7) continue;
+            if(!in_bounds(x, bounds)) continue;
             add_unique(xs, x);
         }
     }
-    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+    steps.push_back(interval_text(bounds, var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4975,8 +4971,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         auto c_int = near_int(poly->c1);
         auto rhs_int = near_int(-poly->c);
         auto r_int = near_int(R);
-        auto lo_node_for_exact = casio::parse_expr(a, lo_text);
-        auto hi_node_for_exact = casio::parse_expr(a, hi_text);
+        auto lo_node_for_exact = casio::parse_expr(a, bound_expr_text(lo_text));
+        auto hi_node_for_exact = casio::parse_expr(a, bound_expr_text(hi_text));
         double lo_deg_for_exact = angle_to_degree_double(a, lo_node_for_exact, rad).value_or(0.0);
         double hi_deg_for_exact = angle_to_degree_double(a, hi_node_for_exact, rad).value_or(360.0);
         if(rad && s_int && c_int && rhs_int && r_int && *s_int > 0 && *c_int > 0 && *r_int > 0 &&
@@ -5026,8 +5022,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         steps.push_back("R*sin(" + arg_text + "+" + sin_aux + ")=" + trig_root_text(-poly->c) + ".");
         steps.push_back("sin(" + arg_text + "+" + sin_aux + ")=" + target_txt + ".");
         steps.push_back("-1 <= " + target_txt + " <= 1 => real sine roots.");
-        auto lo_node = casio::parse_expr(a, lo_text);
-        auto hi_node = casio::parse_expr(a, hi_text);
+        auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
@@ -5127,8 +5123,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         if(lin && std::fabs(lin->first) > 1e-12) {
             std::string families;
             std::vector<std::string> n_filters;
-            auto lo_node = casio::parse_expr(a, lo_text);
-            auto hi_node = casio::parse_expr(a, hi_text);
+            auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+            auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
             double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
             double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
             if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
@@ -6293,7 +6289,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                     add_tan_roots(0.0);
                     add_tan_roots(root);
                     add_tan_roots(-root);
-                    auto hi_node = casio::parse_expr(a, hi_text);
+                    auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
                     double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
                     xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
                     std::sort(xs.begin(), xs.end());
@@ -6425,7 +6421,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                                                              base_trig_degrees(FnKind::Cos, c));
                     for(double x : vals) add_unique(xs, x);
                 }
-                auto hi_node = casio::parse_expr(a, hi_text);
+                auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
                 double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
                 xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
                 std::sort(xs.begin(), xs.end());
@@ -6496,7 +6492,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                                                              base_trig_degrees(FnKind::Tan, t));
                     for(double x : vals) add_unique(xs, x);
                 }
-                auto hi_node = casio::parse_expr(a, hi_text);
+                auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
                 double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
                 xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
                 std::sort(xs.begin(), xs.end());
@@ -6525,7 +6521,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                                                        base_trig_degrees(FnKind::Cos, 0.0));
                 for(double x : s4) add_unique(xs, x);
                 for(double x : c1) add_unique(xs, x);
-                auto hi_node = casio::parse_expr(a, hi_text);
+                auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
                 double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
                 xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
                 std::sort(xs.begin(), xs.end());
@@ -6709,7 +6705,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 auto cvals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
                                                           base_trig_degrees(FnKind::Cos, -0.5));
                 for(double x : cvals) add_unique(xs, x);
-                auto hi_node = casio::parse_expr(a, hi_text);
+                auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
                 double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
                 xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
                 std::sort(xs.begin(), xs.end());
@@ -7273,7 +7269,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                                                      base_trig_degrees(FnKind::Cos, c));
             for(double x : vals) add_unique(xs, x);
         }
-        auto hi_node = casio::parse_expr(a, hi_text);
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
         std::sort(xs.begin(), xs.end());
@@ -7380,7 +7376,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             auto vals = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad, {d});
             for(double x : vals) add_unique(xs, x);
         }
-        auto hi_node = casio::parse_expr(a, hi_text);
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         xs.erase(std::remove_if(xs.begin(), xs.end(), [&](double x) { return std::fabs(x - hi_deg) < 1e-7; }), xs.end());
         std::sort(xs.begin(), xs.end());
@@ -7457,8 +7453,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         );
     }
     if(eq_key == "cos(x)sin(2x)=0") {
-        auto lo_node = casio::parse_expr(a, lo_text);
-        auto hi_node = casio::parse_expr(a, hi_text);
+        auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(360.0);
         if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
@@ -7481,8 +7477,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         );
     }
     if(!general && (eq_key == "sin(2x)+cos(x)=0" || eq_key == "cos(x)+sin(2x)=0")) {
-        auto lo_node = casio::parse_expr(a, lo_text);
-        auto hi_node = casio::parse_expr(a, hi_text);
+        auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+        auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
         double lo_deg = angle_to_degree_double(a, lo_node, rad).value_or(0.0);
         double hi_deg = angle_to_degree_double(a, hi_node, rad).value_or(rad ? 360.0 : 360.0);
         if(lo_deg > hi_deg) std::swap(lo_deg, hi_deg);
@@ -7949,8 +7945,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         );
     }
 
-    auto lo_node = casio::parse_expr(a, lo_text);
-    auto hi_node = casio::parse_expr(a, hi_text);
+    auto lo_node = casio::parse_expr(a, bound_expr_text(lo_text));
+    auto hi_node = casio::parse_expr(a, bound_expr_text(hi_text));
     auto lo_deg_opt = angle_to_degree_double(a, lo_node, rad);
     auto hi_deg_opt = angle_to_degree_double(a, hi_node, rad);
     double lo_deg = lo_deg_opt.value_or(rad ? 0.0 : 0.0);
