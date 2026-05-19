@@ -412,6 +412,12 @@ CASES = [
         ("x = all real", "log_a", "ERR:"),
     ),
     (
+        "nonzero exponential product factor",
+        ["--alg", "solve((1-x^2)*e^(-x^2)=0,x)"],
+        ("e^(-x^2) > 0", "- x^2 + 1 = 0", "x = [1, -1]"),
+        ("x = all real", "ERR:"),
+    ),
+    (
         "equal exponentials",
         ["--alg", "solve(e^(2*x+1)=e^(x-3),x)"],
         ("e^(2*x + 1) = e^(x - 3)", "2*x + 1 = x - 3", "x + 4 = 0", "x = -4"),

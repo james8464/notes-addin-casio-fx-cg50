@@ -8107,6 +8107,35 @@ static std::optional<std::vector<std::string>> exp_common_factor_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> nonzero_exp_product_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    Node const &x = a.get(residual);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> exp_factors, rest_factors;
+    for(NodeId k : x.kids) {
+        if(exp_arg_node(a, k)) exp_factors.push_back(k);
+        else rest_factors.push_back(k);
+    }
+    if(exp_factors.empty() || rest_factors.empty()) return std::nullopt;
+    NodeId rest = mul_or_one(a, rest_factors);
+    std::vector<NodeId> rest_exp;
+    collect_exp_args_solve(a, rest, rest_exp);
+    if(!rest_exp.empty()) return std::nullopt;
+    out.push_back(format_expr(a, mul_or_one(a, exp_factors)) + " > 0");
+    out.push_back(format_expr(a, rest) + " = 0");
+    auto rp = ratpoly_of_node(a, rest, var);
+    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
+    auto raw = solve_poly2(a, primitive_poly2(rp.num), var);
+    auto valid = filter_real_solutions(a, residual, var, raw, std::nullopt, std::nullopt);
+    append_answer(out, var, valid);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> rational_exp_common_factor_route(
     Arena &a, NodeId rearr, std::string const &var, std::vector<std::string> out)
 {
@@ -9879,6 +9908,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto ref = rational_exp_common_factor_route(arena, rearr, solve_var, out)) return *ref;
+        if(auto nef = nonzero_exp_product_route(arena, rearr, solve_var, out)) return *nef;
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
