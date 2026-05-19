@@ -4525,6 +4525,80 @@ static std::optional<std::vector<std::string>> complex_nth_roots_route(
     return out;
 }
 
+struct PowerTermKey
+{
+    Rational coef{1, 1};
+    Rational power{0, 1};
+};
+
+static std::optional<PowerTermKey> parse_power_term_key(std::string const &term, std::string const &var)
+{
+    auto pos = term.find(var + "^(");
+    if(pos == std::string::npos || term.back() != ')') return std::nullopt;
+    std::string c = term.substr(0, pos);
+    Rational coef{1, 1};
+    if(c.empty() || c == "+") coef = Rational{1, 1};
+    else if(c == "-") coef = Rational{-1, 1};
+    else {
+        auto q = parse_rational_key(c);
+        if(!q) return std::nullopt;
+        coef = *q;
+    }
+    std::string p = term.substr(pos + var.size() + 2, term.size() - pos - var.size() - 3);
+    auto pow = parse_rational_key(p);
+    if(!pow) return std::nullopt;
+    return PowerTermKey{coef, *pow};
+}
+
+static Rational rat_pow_i(Rational r, long long n)
+{
+    Rational out{1, 1};
+    for(long long i = 0; i < n; ++i) out = r_mul(out, r);
+    out.normalize();
+    return out;
+}
+
+static std::optional<std::vector<std::string>> fractional_recip_power_route(
+    Arena &a,
+    std::string const &equation_text,
+    std::string const &var
+)
+{
+    auto sides = split_top_key(compact_input_key(equation_text), '=');
+    if(sides.size() != 2) return std::nullopt;
+    auto try_sides = [&](std::string const &lhs, std::string const &rhs) -> std::optional<std::vector<std::string>> {
+        auto L = parse_power_term_key(lhs, var);
+        if(!L || L->power.num != 1 || L->power.den <= 1) return std::nullopt;
+        auto terms = split_top_key(rhs, '+');
+        if(terms.size() != 2) return std::nullopt;
+        std::optional<Rational> C;
+        std::optional<PowerTermKey> R;
+        for(auto const &t : terms) {
+            if(auto q = parse_rational_key(t)) C = *q;
+            else if(auto p = parse_power_term_key(t, var)) R = *p;
+        }
+        if(!C || !R || R->power.num != -L->power.num || R->power.den != L->power.den) return std::nullopt;
+        Poly2 q{L->coef, r_neg(*C), r_neg(R->coef), true};
+        auto roots = rational_quadratic_roots(q);
+        if(!roots) return std::nullopt;
+        std::vector<Rational> us{roots->first, roots->second};
+        std::vector<std::string> xs;
+        std::string n = std::to_string(L->power.den);
+        std::vector<std::string> out;
+        out.push_back("Let u = " + var + "^(1/" + n + "), so " + var + " = u^" + n + ".");
+        out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+        for(auto u : us) {
+            out.push_back("u = " + format_rat_plain(u));
+            Rational x = rat_pow_i(u, L->power.den);
+            xs.push_back(var + " = " + format_rat_plain(x));
+        }
+        append_answer(out, var, xs);
+        return out;
+    };
+    if(auto out = try_sides(sides[0], sides[1])) return out;
+    return try_sides(sides[1], sides[0]);
+}
+
 static std::optional<std::vector<std::string>> custom_log_base_route(
     Arena &a,
     std::string const &equation_text,
@@ -9862,6 +9936,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;

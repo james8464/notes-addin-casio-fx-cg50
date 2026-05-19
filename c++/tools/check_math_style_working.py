@@ -418,6 +418,12 @@ CASES = [
         ("x = all real", "ERR:"),
     ),
     (
+        "fractional reciprocal power substitution",
+        ["--alg", "solve(t^(1/3)=2+15*t^(-1/3),t)"],
+        ("u = t^(1/3); t = u^3", "u^2 - 2*u - 15 = 0", "t = [125, -27]"),
+        ("t = []", "ERR:"),
+    ),
+    (
         "equal exponentials",
         ["--alg", "solve(e^(2*x+1)=e^(x-3),x)"],
         ("e^(2*x + 1) = e^(x - 3)", "2*x + 1 = x - 3", "x + 4 = 0", "x = -4"),
