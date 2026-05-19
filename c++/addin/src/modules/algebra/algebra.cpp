@@ -5120,6 +5120,53 @@ static std::optional<std::vector<std::string>> complex_nth_roots_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> real_exact_nth_power_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    if(var == "z") return std::nullopt;
+    long long n = 0;
+    Rational value{0, 1};
+    if(pow_of_symbol(a, lhs, var, n)) {
+        auto r = as_num(a, rhs);
+        if(!r) return std::nullopt;
+        value = *r;
+    }
+    else {
+        auto rz = as_num(a, rhs);
+        if(!rz || rz->num != 0 || rz->den != 1 || !pow_const_residual(a, rearr, var, n, value)) return std::nullopt;
+    }
+    if(n < 3 || value.den <= 0) return std::nullopt;
+    auto rn = integer_nth_root_i64(value.num, static_cast<int>(n));
+    auto rd = integer_nth_root_i64(value.den, static_cast<int>(n));
+    if(!rn || !rd || *rd == 0) return std::nullopt;
+    Rational root{*rn, *rd};
+    root.normalize();
+    std::string lhs_text = var + "^" + std::to_string(n);
+    std::string rhs_text = format_rat_plain(value);
+    std::string root_text = format_rat_plain(root);
+    std::vector<std::string> out;
+    out.push_back(lhs_text + " = " + rhs_text);
+    if(n % 2 == 0) {
+        if(value.num < 0) {
+            out.push_back("No real even root.");
+            append_answer(out, var, {});
+            return out;
+        }
+        Rational neg_root = r_neg(root);
+        out.push_back(var + " = +/-" + root_text);
+        append_answer(out, var, {var + " = " + root_text, var + " = " + format_rat_plain(neg_root)});
+        return out;
+    }
+    out.push_back(var + " = (" + rhs_text + ")^(1/" + std::to_string(n) + ")");
+    append_answer(out, var, {var + " = " + root_text});
+    return out;
+}
+
 struct PowerTermKey
 {
     Rational coef{1, 1};
@@ -11249,6 +11296,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
+        if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *nr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;
         if(auto inv_spec = inverse_trig_special_solve(arena, lhs, rhs, solve_var))
