@@ -3629,6 +3629,64 @@ struct EvenQuartic
     bool ok = true;
 };
 
+struct Poly4
+{
+    Rational c[5]{{0,1},{0,1},{0,1},{0,1},{0,1}};
+};
+
+static bool quartic_term(Arena &a, NodeId id, std::string const &var, int &deg, Rational &coef)
+{
+    Node const &n = a.get(id);
+    if(n.kind == NodeKind::Num) {
+        coef = r_mul(coef, n.num);
+        return true;
+    }
+    if(n.kind == NodeKind::Sym && n.text == var) {
+        deg += 1;
+        return true;
+    }
+    if(n.kind == NodeKind::Pow) {
+        Node const &b = a.get(n.a);
+        Node const &e = a.get(n.b);
+        if(b.kind == NodeKind::Sym && b.text == var && e.kind == NodeKind::Num && e.num.den == 1 && e.num.num >= 0 && e.num.num <= 4) {
+            deg += (int)e.num.num;
+            return true;
+        }
+        return false;
+    }
+    if(n.kind == NodeKind::Mul) {
+        for(NodeId k : n.kids)
+            if(!quartic_term(a, k, var, deg, coef)) return false;
+        return deg <= 4;
+    }
+    return false;
+}
+
+static std::optional<Poly4> quartic_of(Arena &a, NodeId n, std::string const &var)
+{
+    Poly4 q;
+    std::vector<NodeId> terms;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else terms.push_back(n);
+    for(NodeId t : terms) {
+        int d = 0;
+        Rational c{1, 1};
+        if(!quartic_term(a, t, var, d, c)) return std::nullopt;
+        q.c[d] = r_add(q.c[d], c);
+    }
+    if(is_zero(q.c[4])) return std::nullopt;
+    return q;
+}
+
+static std::string shift_root_text(Arena &a, Rational s, std::string const &root, int sign)
+{
+    if(root == "0") return format_expr(a, a.num(s));
+    if(is_zero(s)) return sign < 0 ? "-" + root : root;
+    std::string st = format_expr(a, a.num(s));
+    return st + (sign < 0 ? " - " : " + ") + root;
+}
+
 static bool even_quartic_term(Arena &a, NodeId id, std::string const &var, int &deg, Rational &coef)
 {
     Node const &n = a.get(id);
@@ -3725,6 +3783,50 @@ static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeI
     }
     for(auto const &x : xs) out.push_back(x);
     out.push_back("Answer: " + solution_list_line(var, xs));
+    append_numeric_3dp(a, out, var, xs);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> shifted_biquadratic_route(Arena &a, NodeId residual, std::string const &var)
+{
+    auto q = quartic_of(a, residual, var);
+    if(!q || is_zero(q->c[3])) return std::nullopt;
+    Rational s = r_div(r_neg(q->c[3]), r_mul(Rational{4, 1}, q->c[4]));
+    Rational s2 = r_mul(s, s), s3 = r_mul(s2, s), s4 = r_mul(s2, s2);
+    Rational b3 = r_add(r_mul(Rational{4,1}, r_mul(q->c[4], s)), q->c[3]);
+    Rational b2 = r_add(r_add(r_mul(Rational{6,1}, r_mul(q->c[4], s2)), r_mul(Rational{3,1}, r_mul(q->c[3], s))), q->c[2]);
+    Rational b1 = r_add(r_add(r_add(r_mul(Rational{4,1}, r_mul(q->c[4], s3)), r_mul(Rational{3,1}, r_mul(q->c[3], s2))), r_mul(Rational{2,1}, r_mul(q->c[2], s))), q->c[1]);
+    Rational b0 = r_add(r_add(r_add(r_add(r_mul(q->c[4], s4), r_mul(q->c[3], s3)), r_mul(q->c[2], s2)), r_mul(q->c[1], s)), q->c[0]);
+    if(!is_zero(b3) || !is_zero(b1)) return std::nullopt;
+    Poly2 ueq{q->c[4], b2, b0, true};
+    auto us = solve_poly2(a, ueq, "u");
+    if(us.empty()) return std::nullopt;
+    auto sqrt_rat = [&](Rational r) {
+        std::int64_t rn = 0, rd = 0;
+        if(r.num >= 0 && is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd != 0) {
+            Rational root{rn, rd};
+            root.normalize();
+            return format_expr(a, a.num(root));
+        }
+        return "sqrt(" + format_expr(a, a.num(r)) + ")";
+    };
+    std::vector<std::string> xs;
+    std::vector<std::string> out;
+    std::string st = format_expr(a, a.num(s));
+    out.push_back(var + " = y" + (s.num < 0 ? " - " + format_expr(a, a.num(r_abs(s))) : " + " + st));
+    out.push_back(format_expr(a, poly2_to_node(a, ueq, "u")) + " = 0, u = y^2");
+    for(auto const &line : us) {
+        out.push_back(line);
+        auto uv = parse_rational_text(sol_rhs(line));
+        if(!uv || uv->num < 0) continue;
+        std::string r = sqrt_rat(*uv);
+        xs.push_back(var + " = " + shift_root_text(a, s, r, -1));
+        xs.push_back(var + " = " + shift_root_text(a, s, r, 1));
+    }
+    if(xs.empty()) return std::nullopt;
+    sort_solution_lines(a, xs);
+    for(auto const &x : xs) out.push_back(x);
+    append_answer(out, var, xs);
     append_numeric_3dp(a, out, var, xs);
     return out;
 }
@@ -5442,6 +5544,7 @@ static std::optional<std::vector<std::string>> fractional_recip_power_route(
             Rational x = rat_pow_i(u, L->power.den);
             xs.push_back(var + " = " + format_rat_plain(x));
         }
+        sort_solution_lines(a, xs);
         append_answer(out, var, xs);
         return out;
     };
@@ -7535,6 +7638,37 @@ static std::optional<std::vector<std::string>> rational_root_substitution_route(
     append_answer(out, var, raw);
     append_numeric_3dp(a, out, var, raw);
     return out;
+}
+
+static std::optional<std::vector<std::string>> inverse_sqrt_square_route(Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    auto try_side = [&](NodeId l, NodeId r) -> std::optional<std::vector<std::string>> {
+        Node const &R = a.get(r);
+        if(R.kind != NodeKind::Num || R.num.num <= 0) return std::nullopt;
+        Node const &L = a.get(l);
+        if(L.kind != NodeKind::Pow) return std::nullopt;
+        Node const &e = a.get(L.b);
+        if(e.kind != NodeKind::Num || e.num.num != -1 || e.num.den != 2) return std::nullopt;
+        auto p = poly_of(a, L.a, var);
+        if(!p || !p->ok || is_zero(p->a2) || !is_zero(p->a1) || !is_zero(p->a0)) return std::nullopt;
+        Rational c2 = r_mul(R.num, R.num);
+        Rational x2 = r_div(Rational{1, 1}, r_mul(p->a2, c2));
+        if(x2.num <= 0) return std::nullopt;
+        std::string root = sqrt_bound_text(a, x2);
+        std::string neg = root == "0" ? root : (root[0] == '-' ? root.substr(1) : "-" + root);
+        std::vector<std::string> sols{var + " = " + neg, var + " = " + root};
+        sort_solution_lines(a, sols);
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, l) + " = " + format_expr(a, r));
+        out.push_back("sqrt(" + format_expr(a, L.a) + ") = " + format_expr(a, a.num(r_div(Rational{1, 1}, R.num))));
+        out.push_back(format_expr(a, L.a) + " = " + format_expr(a, a.num(r_div(Rational{1, 1}, c2))));
+        out.push_back(var + "^2 = " + format_expr(a, a.num(x2)));
+        append_answer(out, var, sols);
+        append_numeric_3dp(a, out, var, sols);
+        return out;
+    };
+    if(auto out = try_side(lhs, rhs)) return out;
+    return try_side(rhs, lhs);
 }
 
 static std::optional<std::vector<std::string>> power_equals_one_route(
@@ -11960,6 +12094,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), bq->begin(), bq->end());
             return out;
         }
+        if(auto sbq = shifted_biquadratic_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), sbq->begin(), sbq->end());
+            return out;
+        }
         if(auto ref = rational_exp_common_factor_route(arena, rearr, solve_var, out)) return *ref;
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto nef = nonzero_exp_product_route(arena, rearr, solve_var, out)) return *nef;
@@ -12007,6 +12145,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
+            if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;

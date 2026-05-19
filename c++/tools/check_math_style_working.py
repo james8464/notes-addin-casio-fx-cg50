@@ -567,7 +567,7 @@ CASES = [
     (
         "fractional reciprocal power substitution",
         ["--alg", "solve(t^(1/3)=2+15*t^(-1/3),t)"],
-        ("u = t^(1/3); t = u^3", "u^2 - 2*u - 15 = 0", "t = [125, -27]"),
+        ("u = t^(1/3); t = u^3", "u^2 - 2*u - 15 = 0", "t = [-27, 125]"),
         ("t = []", "ERR:"),
     ),
     (
