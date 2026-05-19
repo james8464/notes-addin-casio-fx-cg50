@@ -35,6 +35,16 @@ struct Poly2
 
 static bool is_zero(Rational const &r) { return r.num == 0; }
 
+static std::string join_text(std::vector<std::string> const &items, char const *sep)
+{
+    std::string out;
+    for(std::size_t i = 0; i < items.size(); ++i) {
+        if(i) out += sep;
+        out += items[i];
+    }
+    return out;
+}
+
 static Rational r_add(Rational a, Rational b)
 {
     Rational r;
@@ -850,6 +860,12 @@ struct SymbolicLinear
     NodeId c = 0;
 };
 
+struct SquareOffset
+{
+    NodeId square = 0;
+    NodeId offset = 0;
+};
+
 static std::optional<SymbolicLinear> symbolic_linear_parts_deep(Arena &a, NodeId n, std::string const &var)
 {
     if(!contains_symbol(a, n, var)) return SymbolicLinear{casio::num(a, 0), n};
@@ -953,6 +969,33 @@ static std::optional<std::vector<std::string>> complete_square_existing_square(A
         "k = 0",
         "Answer: " + format_expr(a, ans),
     };
+}
+
+static std::optional<SquareOffset> square_plus_offset(Arena &a, NodeId n, std::string const &var)
+{
+    auto square_term = [&](NodeId term) -> bool {
+        Node const &t = a.get(term);
+        if(t.kind != NodeKind::Pow) return false;
+        auto exp = as_num(a, t.b);
+        return exp && exp->num == 2 && exp->den == 1 && symbolic_linear_parts(a, t.a, var);
+    };
+    if(square_term(n)) return SquareOffset{n, casio::num(a, 0)};
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    NodeId sq = 0;
+    std::vector<NodeId> rest;
+    for(NodeId kid : x.kids) {
+        if(square_term(kid)) {
+            if(sq) return std::nullopt;
+            sq = kid;
+        }
+        else {
+            if(contains_symbol(a, kid, var)) return std::nullopt;
+            rest.push_back(kid);
+        }
+    }
+    if(!sq) return std::nullopt;
+    return SquareOffset{sq, rest.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest))};
 }
 
 static std::optional<SymbolicQuadratic> monic_symbolic_quadratic(Arena &a, NodeId n, std::string const &var)
@@ -7098,6 +7141,56 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
     return out;
 }
 
+static std::optional<std::vector<std::string>> symbolic_product_roots_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    Node const &x = a.get(rearr);
+    std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{rearr};
+    struct Root { NodeId root; int mult; };
+    std::vector<Root> roots;
+    std::vector<std::string> zero_factors;
+    bool saw_product = factors.size() > 1;
+    for(NodeId f : factors) {
+        if(!contains_symbol(a, f, var)) continue;
+        int mult = 1;
+        NodeId base = f;
+        Node const &fn = a.get(f);
+        if(fn.kind == NodeKind::Pow) {
+            auto e = as_num(a, fn.b);
+            if(!e || e->den != 1 || e->num < 1 || e->num > 9) return std::nullopt;
+            mult = (int)e->num;
+            base = fn.a;
+        }
+        auto lin = symbolic_linear_parts(a, base, var);
+        if(!lin) return std::nullopt;
+        NodeId root = casio::simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
+        bool merged = false;
+        for(auto &r : roots) {
+            if(casio::same_by_sig(a, r.root, root)) {
+                r.mult += mult;
+                merged = true;
+                break;
+            }
+        }
+        if(!merged) roots.push_back(Root{root, mult});
+        zero_factors.push_back(format_expr(a, base) + " = 0");
+    }
+    if(roots.empty() || !saw_product) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, rearr) + " = 0");
+    out.push_back(join_text(zero_factors, " or "));
+    std::vector<std::string> mults, vals, sol_lines;
+    for(auto const &r : roots) {
+        std::string rt = format_expr(a, r.root);
+        vals.push_back(rt);
+        sol_lines.push_back(var + " = " + rt);
+        mults.push_back("m(" + rt + ") = " + std::to_string(r.mult));
+    }
+    out.push_back(join_text(sol_lines, " or "));
+    out.push_back(join_text(mults, ", "));
+    out.push_back(var + " = [" + join_text(vals, ", ") + "]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
     auto alts = log_residual_alts(a, rearr);
@@ -9741,6 +9834,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *exp_range;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto so = square_plus_offset(arena, n, var)) {
+                    range_answer = "y >= " + format_expr(arena, so->offset);
+                    steps.push_back(format_expr(arena, so->square) + " >= 0");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto symq = monic_symbolic_quadratic(arena, n, var)) {
                     NodeId half_b = casio::simplify(arena, casio::div(arena, symq->b, casio::num(arena, 2)));
                     NodeId y0 = casio::simplify(arena, casio::add(arena, {
@@ -10132,10 +10230,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;
             collect_symbols(arena, v, syms);
-            if(!syms.empty()) return {"Err: bad value."};
+            if(!syms.empty()) {
+                NodeId sub = casio::simplify(arena, clone_with_substitution(arena, n, var, v));
+                return {
+                    var + " = " + format_expr(arena, v),
+                    "f(" + var + ") = " + format_expr(arena, n),
+                    "f(" + format_expr(arena, v) + ") = " + format_expr(arena, sub),
+                };
+            }
             collect_symbols(arena, n, syms);
-            for(auto const &s : syms) {
-                if(s != var) return {"Err: need numeric expression."};
+            bool has_param = false;
+            for(auto const &s : syms) if(s != var) has_param = true;
+            if(has_param) {
+                NodeId sub = casio::simplify(arena, clone_with_substitution(arena, n, var, v));
+                return {
+                    var + " = " + format_expr(arena, v),
+                    "f(" + var + ") = " + format_expr(arena, n),
+                    "f(" + format_expr(arena, v) + ") = " + format_expr(arena, sub),
+                };
             }
             auto xv = eval_node_env(arena, v, {});
             if(!xv || !std::isfinite(*xv)) return {"Err: bad value."};
@@ -10438,6 +10550,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
+        if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), pr->begin(), pr->end());
+            return out;
+        }
         if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sl->begin(), sl->end());
             return out;
