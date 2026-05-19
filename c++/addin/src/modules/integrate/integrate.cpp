@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <iomanip>
 #include <numeric>
 #include <optional>
@@ -17596,6 +17597,10 @@ static NodeId merge_product_divs(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Div) return casio::div(a, merge_product_divs(a, x.a), merge_product_divs(a, x.b));
+    if(x.kind == NodeKind::Pow) {
+        if(auto e = as_num(a, x.b); e && e->num < 0)
+            return casio::div(a, casio::num(a, 1), casio::power(a, merge_product_divs(a, x.a), a.num(r_neg(*e))));
+    }
     if(x.kind == NodeKind::Pow && a.get(x.a).kind == NodeKind::Div) {
         Node const &d = a.get(x.a);
         return casio::div(a, casio::power(a, merge_product_divs(a, d.a), x.b),
@@ -17711,6 +17716,33 @@ static std::optional<NodeId> expand_param_product(Arena &a, NodeId n)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::optional<std::string> fraction_text(Arena &a, NodeId n)
+{
+    std::vector<NodeId> num, den;
+    std::function<bool(NodeId, bool)> take = [&](NodeId k, bool inv) -> bool {
+        Node const &x = a.get(k);
+        if(x.kind == NodeKind::Mul) {
+            for(NodeId f : x.kids) if(!take(f, inv)) return false;
+            return true;
+        }
+        if(x.kind == NodeKind::Div) {
+            return take(x.a, inv) && take(x.b, !inv);
+        }
+        if(x.kind == NodeKind::Pow) {
+            if(auto e = as_num(a, x.b); e && e->num < 0) {
+                den.push_back(casio::power(a, x.a, a.num(r_neg(*e))));
+                return true;
+            }
+        }
+        (inv ? den : num).push_back(k);
+        return true;
+    };
+    if(!take(n, false) || den.empty()) return std::nullopt;
+    NodeId top = num.empty() ? casio::num(a, 1) : casio::mul(a, num);
+    NodeId bot = den.size() == 1 ? den.front() : casio::mul(a, den);
+    return "(" + format_expr_human(a, casio::simplify(a, top)) + ")/(" + format_expr_human(a, casio::simplify(a, bot)) + ")";
+}
+
 static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena, Request const &req)
 {
     auto run_inner = [&](std::string const &setup, std::string const &integrand, std::string const &var,
@@ -17747,6 +17779,7 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         body = merge_product_divs(arena, body);
         body = compact_zero_exp(arena, compact_exp_product(arena, body));
         body = pull_numeric_power_factors(arena, body);
+        body = merge_product_divs(arena, body);
         if(auto t = simplify_param_trig_product(arena, body, var)) body = *t;
         if(auto e = expand_param_product(arena, body)) body = *e;
         std::string ds = format_expr_human(arena, d);
@@ -17755,6 +17788,10 @@ static std::optional<std::vector<std::string>> run_integral_wrapper(Arena &arena
         std::string sign = reverse ? "-" : "";
         std::string axis = axis_y ? "dy" : "dx";
         auto lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", integrand, var, args[3], args[4]);
+        if(lines.size() == 2 && lines[1] == "No elementary primitive found") {
+            if(auto frac = fraction_text(arena, body))
+                lines = run_inner(setup + " " + axis + "/d" + var + " = " + ds + ".", *frac, var, args[3], args[4]);
+        }
         lines.insert(lines.begin() + 1, volume ? "V = " + sign + "pi*Int(" + rs + ")^2*(" + ds + ") d" + var
                                                : "A = " + sign + "Int(" + rs + ")*(" + ds + ") d" + var);
         return lines;
