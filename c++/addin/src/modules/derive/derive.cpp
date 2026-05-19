@@ -2339,7 +2339,14 @@ static bool append_product_rule_detail(
         else constants.push_back(k);
     }
     if(factors.size() < 2) {
-        steps.push_back("y' = sum(f_i'*product(other f_j)).");
+        if(factors.size() == 1 && !constants.empty()) {
+            NodeId c = constants.size() == 1 ? constants.front() : casio::simplify(a, casio::mul(a, constants));
+            NodeId fp = casio::simplify(a, diff(a, factors.front(), var));
+            steps.push_back("c = " + clean_math_text(format_expr_human(a, c)) + ".");
+            steps.push_back("f = " + clean_math_text(format_expr_human(a, factors.front())) + ".");
+            steps.push_back("f' = " + clean_math_text(format_expr_human(a, fp)) + ".");
+            steps.push_back("dy/d" + var + " = c*f'.");
+        }
         return true;
     }
     if(factors.size() > 8) {
