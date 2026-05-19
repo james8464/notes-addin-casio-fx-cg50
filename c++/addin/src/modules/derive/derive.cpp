@@ -962,7 +962,7 @@ static std::optional<std::pair<Rational, Rational>> recip_power_affine(std::stri
     std::string cur;
     for(std::size_t i = 0; i < text.size(); ++i) {
         char c = text[i];
-        if((c == '+' || c == '-') && i != 0) {
+        if((c == '+' || c == '-') && i != 0 && text[i - 1] != '^') {
             terms.push_back(cur);
             cur.clear();
         }
@@ -971,9 +971,21 @@ static std::optional<std::pair<Rational, Rational>> recip_power_affine(std::stri
     if(!cur.empty()) terms.push_back(cur);
     Rational z{0, 1}, c{0, 1};
     std::string vp = var + "^" + std::to_string(e);
+    std::string vn = var + "^-" + std::to_string(e);
     for(std::string const &t : terms) {
         std::size_t div = t.find("/(");
         if(div == std::string::npos) {
+            std::size_t negp = t.find(vn);
+            if(negp != std::string::npos) {
+                std::string coeff = t.substr(0, negp);
+                if(!coeff.empty() && coeff.back() == '*') coeff.pop_back();
+                if(coeff.empty()) coeff = "1";
+                if(coeff == "-") coeff = "-1";
+                auto r = parse_int_rat_text(coeff);
+                if(!r) return std::nullopt;
+                c = rat_add_local(c, *r);
+                continue;
+            }
             auto r = parse_int_rat_text(t);
             if(!r) return std::nullopt;
             z = rat_add_local(z, *r);

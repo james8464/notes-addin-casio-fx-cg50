@@ -17030,6 +17030,43 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 }
             }
         }
+        if(exp_num && exp_num->den == 1 && exp_num->num < -1 && exp_num->num >= -8) {
+            int p = static_cast<int>(-exp_num->num);
+            if(auto b = as_num(a, base); b && !r_zero(*b))
+                return a.num(r_div(Rational{1, 1}, r_pow(*b, p)));
+            if(p % 2 == 0 && base_node.kind == NodeKind::Fn && base_node.fkind == FnKind::Sqrt) {
+                if(auto b = as_num(a, simplify_known_endpoint_values(a, base_node.a)); b && b->num > 0)
+                    return a.num(r_div(Rational{1, 1}, r_pow(*b, p / 2)));
+            }
+            if(p % 2 == 0 && base_node.kind == NodeKind::Div) {
+                Node const &tn = a.get(base_node.a);
+                auto den = as_num(a, base_node.b);
+                if(den && tn.kind == NodeKind::Fn && tn.fkind == FnKind::Sqrt) {
+                    if(auto rad = as_num(a, simplify_known_endpoint_values(a, tn.a)); rad && rad->num > 0)
+                        return a.num(r_div(r_pow(*den, p), r_pow(*rad, p / 2)));
+                }
+            }
+            if(p % 2 == 0 && base_node.kind == NodeKind::Mul) {
+                Rational coeff{1, 1};
+                NodeId rad = 0;
+                bool ok = true;
+                for(NodeId kid : base_node.kids) {
+                    if(auto r = as_num(a, kid)) coeff = r_mul(coeff, *r);
+                    else {
+                        Node const &kn = a.get(kid);
+                        if(rad || kn.kind != NodeKind::Fn || kn.fkind != FnKind::Sqrt) {
+                            ok = false;
+                            break;
+                        }
+                        rad = kn.a;
+                    }
+                }
+                if(ok && rad) {
+                    if(auto r = as_num(a, simplify_known_endpoint_values(a, rad)); r && r->num > 0)
+                        return a.num(r_div(Rational{1, 1}, r_mul(r_pow(coeff, p), r_pow(*r, p / 2))));
+                }
+            }
+        }
         if(exp_num && exp_num->den == 1 && exp_num->num > 1 && base_node.kind == NodeKind::Fn && base_node.fkind == FnKind::Sqrt) {
             if(auto b = as_num(a, simplify_known_endpoint_values(a, base_node.a)); b && b->num >= 0) {
                 Rational outside{1, 1};
