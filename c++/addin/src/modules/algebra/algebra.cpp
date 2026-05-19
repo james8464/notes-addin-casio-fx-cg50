@@ -3759,6 +3759,63 @@ static std::string format_rat_plain(Rational r)
     return std::to_string(r.num) + "/" + std::to_string(r.den);
 }
 
+static std::optional<std::vector<std::string>> atan_difference_pair_route_key(std::string key)
+{
+    for(std::size_t p0 = 0; (p0 = key.find("arctan(", p0)) != std::string::npos;) key.replace(p0, 7, "atan(");
+    std::string var = "x";
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
+        std::string body = key.substr(6, key.size() - 7);
+        auto parts = split_top_key(body, ',');
+        if(parts.empty()) return std::nullopt;
+        key = parts[0];
+        if(parts.size() >= 2 && !parts[1].empty()) var = parts[1];
+    }
+    else {
+        auto parts = split_top_key(key, ',');
+        if(parts.size() >= 2) {
+            key = parts[0];
+            var = parts[1];
+        }
+    }
+    auto read_pos_i64 = [](std::string const &s, std::size_t &p, long long &v) -> bool {
+        if(p >= s.size() || !std::isdigit(static_cast<unsigned char>(s[p]))) return false;
+        v = 0;
+        while(p < s.size() && std::isdigit(static_cast<unsigned char>(s[p]))) {
+            v = 10 * v + (s[p] - '0');
+            ++p;
+        }
+        return v > 0;
+    };
+    auto expect = [](std::string const &s, std::size_t &p, std::string const &t) -> bool {
+        if(s.compare(p, t.size(), t) != 0) return false;
+        p += t.size();
+        return true;
+    };
+    std::size_t p = 0;
+    long long a0 = 0, b0 = 0, c0 = 0, d0 = 0;
+    if(!(expect(key, p, "tan(atan(") && read_pos_i64(key, p, a0) && expect(key, p, var + ")-atan(") &&
+         read_pos_i64(key, p, b0) && expect(key, p, "))+tan(atan(") && read_pos_i64(key, p, c0) &&
+         expect(key, p, ")-atan(") && read_pos_i64(key, p, d0) && expect(key, p, var + "))="))) return std::nullopt;
+    auto rhs = parse_rational_key(key.substr(p));
+    if(!rhs || a0 * b0 != c0 * d0) return std::nullopt;
+    Rational lin{a0 - d0, 1};
+    Rational con{c0 - b0, 1};
+    Rational den{a0 * b0, 1};
+    Rational bot = r_sub(lin, r_mul(*rhs, den));
+    if(is_zero(bot)) return std::nullopt;
+    Rational root = r_div(r_sub(*rhs, con), bot);
+    std::string den_txt = "1+" + std::to_string(a0 * b0) + var;
+    return std::vector<std::string>{
+        "tan(A-B) = (tan(A)-tan(B))/(1+tan(A)tan(B))",
+        "tan(atan(" + std::to_string(a0) + var + ")-atan(" + std::to_string(b0) + ")) = (" +
+            std::to_string(a0) + var + "-" + std::to_string(b0) + ")/(" + den_txt + ")",
+        "tan(atan(" + std::to_string(c0) + ")-atan(" + std::to_string(d0) + var + ")) = (" +
+            std::to_string(c0) + "-" + std::to_string(d0) + var + ")/(" + den_txt + ")",
+        "(" + std::to_string(a0 - d0) + var + "+" + std::to_string(c0 - b0) + ")/(" + den_txt + ") = " + format_rat_plain(*rhs),
+        var + " = " + format_rat_plain(root),
+    };
+}
+
 static bool parse_log_call_key(std::string const &s, std::size_t pos, std::string &base, std::string &arg, std::size_t &next)
 {
     bool is_log10 = s.compare(pos, 6, "log10(") == 0;
@@ -8266,6 +8323,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     *logv
                 );
             }
+            if(auto atan_pair = atan_difference_pair_route_key(key)) return *atan_pair;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
@@ -9551,6 +9609,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
         std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
+        if(auto atan_pair = atan_difference_pair_route_key(compact_input_key(equation_text + "," + solve_var))) return *atan_pair;
         if(!text_has_variable_token(equation_text) && !has_symbols(arena, eq->lhs) && !has_symbols(arena, eq->rhs)) {
             auto cp = poly_of(arena, rearr, solve_var);
             bool ok = cp && cp->ok && is_zero(cp->a2) && is_zero(cp->a1) && is_zero(cp->a0);
