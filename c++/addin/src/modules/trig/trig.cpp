@@ -1675,7 +1675,7 @@ static std::optional<std::vector<std::string>> solve_sin2_cos_factor(
     }
     else steps.push_back("Reject sin(A)=" + target_s + ": outside [-1,1].");
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -1741,7 +1741,7 @@ static std::optional<std::vector<std::string>> solve_tan_sum_zero(
         if(x >= lo - 1e-7 && x <= hi + 1e-7) add_unique(xs, x);
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -1908,7 +1908,7 @@ static std::optional<std::vector<std::string>> solve_tan2_sin2(
     }
     if(general) return casio::exam_block("trig solve", steps, ans);
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -1980,7 +1980,7 @@ static std::optional<std::vector<std::string>> solve_sin2_cos2_factor(
     auto ys = x_values_from_angle_degrees(a, cos_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, target));
     for(double y : ys) add_unique(xs, y);
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2070,7 +2070,7 @@ static std::optional<std::vector<std::string>> solve_cos_tan_product(
     steps.push_back(fam + ".");
     if(general) return casio::exam_block("trig solve", steps, fam);
     auto xs = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, bases);
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2156,7 +2156,7 @@ static std::optional<std::vector<std::string>> solve_trig_square_eq(
         if(root == 0.0) break;
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2234,7 +2234,7 @@ static std::optional<std::vector<std::string>> solve_sin2_tan_factor(
         for(double y : ys) add_unique(xs, y);
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2322,7 +2322,7 @@ static std::optional<std::vector<std::string>> solve_shifted_sin_sum(
             if(x >= lo - 1e-7 && x <= hi + 1e-7) add_unique(xs, x);
         }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + " => " + format_solution_list(var, rad, xs) + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2546,7 +2546,7 @@ static std::optional<std::vector<std::string>> solve_cos_quadratic(
         for(double v : part) add_unique(xs, v);
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text);
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var));
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -2594,7 +2594,7 @@ static std::optional<std::vector<std::string>> solve_sin_quadratic(
         for(double v : vals) add_unique(xs, v);
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -3005,7 +3005,7 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
             }
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -3140,7 +3140,7 @@ static std::optional<std::vector<std::string>> solve_sec_sin2_poly(
             steps.push_back(trig_alpha_family_line(FnKind::Cos, A, r, rad));
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -3586,7 +3586,7 @@ static std::optional<std::vector<std::string>> solve_sc_common_denominator(
         add_roots_for(FnKind::Sin, {target}, arg2, A2, false);
     }
     else return std::nullopt;
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -3816,7 +3816,7 @@ static std::optional<std::vector<std::string>> solve_pyth_recip_poly(
         ok = solve_u("cot", p->cot2 + p->csc2, 0.0, p->c + p->csc2, FnKind::Cot, false);
     }
     if(!ok) return std::nullopt;
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4077,7 +4077,7 @@ static std::optional<std::vector<std::string>> solve_u_rational_pyth(
                 for(double x : vals) add_unique(xs, x);
             }
         }
-        steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+        steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
         std::sort(xs.begin(), xs.end());
         return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
     }
@@ -4204,7 +4204,7 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
             add_unique(xs, x);
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4356,7 +4356,7 @@ static std::optional<std::vector<std::string>> solve_cosec_cot_fraction_identity
             for(double x : vals) add_unique(xs, x);
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4449,7 +4449,7 @@ static std::optional<std::vector<std::string>> solve_const_over_sec_sin_equals_c
         auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, cos_root));
         for(double x : vals) add_unique(xs, x);
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4580,7 +4580,7 @@ static std::optional<std::vector<std::string>> solve_tan_double_cot_sec2(
             for(double x : vals) add_unique(xs, x);
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4625,7 +4625,7 @@ static std::optional<std::vector<std::string>> solve_tan_cos2_sin2sq(
     addv(FnKind::Sin, a1, base_trig_degrees(FnKind::Sin, 0.0));
     addv(FnKind::Cos, a1, base_trig_degrees(FnKind::Cos, 0.0));
     addv(FnKind::Sin, arg2, base_trig_degrees(FnKind::Sin, target));
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
@@ -4661,7 +4661,7 @@ static std::optional<std::vector<std::string>> solve_sec_cos_tan_product(
         "sin(" + A + ")=1 rejected: cos(" + A + ")=0.",
     };
     std::vector<double> xs = x_values_from_angle_degrees(a, a1, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, 0.0));
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -4949,7 +4949,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
             for(auto const &line : n_filters) steps.push_back(line);
         }
     }
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -5504,7 +5504,7 @@ static std::optional<std::vector<std::string>> solve_sc_tan_rational_poly(
         }
     }
     std::sort(xs.begin(), xs.end());
-    steps.push_back(lo_text + " <= " + var + " <= " + hi_text + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
