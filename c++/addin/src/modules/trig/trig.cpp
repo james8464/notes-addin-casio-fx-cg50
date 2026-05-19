@@ -6464,6 +6464,45 @@ static std::optional<std::string> same_arg_sin_cos_zero(std::string const &eq_ke
     return std::nullopt;
 }
 
+static bool read_key_call(std::string const &s, std::size_t pos, std::string const &name, std::string &arg, std::size_t &next)
+{
+    std::string head = name + "(";
+    if(s.compare(pos, head.size(), head) != 0) return false;
+    std::size_t start = pos + head.size();
+    int depth = 1;
+    for(std::size_t i = start; i < s.size(); ++i) {
+        if(s[i] == '(') ++depth;
+        else if(s[i] == ')' && --depth == 0) {
+            arg = s.substr(start, i - start);
+            next = i + 1;
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::optional<std::string> sqrt_trig_derivative_arg(std::string const &side)
+{
+    std::string arg, root;
+    std::size_t p = 0, q = 0;
+    if(!read_key_call(side, 0, "sin", arg, p) || p >= side.size() || side[p] != '/') return std::nullopt;
+    if(!read_key_call(side, p + 1, "sqrt", root, q) || q != side.size()) return std::nullopt;
+    std::string ca = "cos(" + arg + ")";
+    if(root == "1-" + ca || root == "-" + ca + "+1") return arg;
+    return std::nullopt;
+}
+
+static std::optional<std::string> sqrt_trig_derivative_eq_arg(std::string const &eq_key)
+{
+    auto eq = eq_key.find('=');
+    if(eq == std::string::npos) return std::nullopt;
+    std::string lhs = eq_key.substr(0, eq);
+    std::string rhs = eq_key.substr(eq + 1);
+    if(rhs == "1") return sqrt_trig_derivative_arg(lhs);
+    if(lhs == "1") return sqrt_trig_derivative_arg(rhs);
+    return std::nullopt;
+}
+
 static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const &eq_text, std::string const &var,
                                                      std::string const &lo_text, std::string const &hi_text,
                                                      bool general = false,
@@ -6497,6 +6536,24 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             if(g0 > 1) { n /= g0; d /= g0; }
             return d > 0;
         };
+        if(auto Akey = sqrt_trig_derivative_eq_arg(eq_key)) {
+            NodeId A = casio::parse_expr(a, *Akey);
+            auto xs = x_values_from_angle_degrees(a, A, var, lo_text, hi_text, rad, {90.0});
+            std::string At = casio::format_expr(a, A);
+            return casio::exam_block(
+                "trig solve",
+                {
+                    "sin(" + At + ")/sqrt(1-cos(" + At + ")) = 1",
+                    "sin(" + At + ") > 0",
+                    "sin(" + At + ")^2 = 1-cos(" + At + ")",
+                    "1-cos(" + At + ")^2 = 1-cos(" + At + ")",
+                    "cos(" + At + ")(cos(" + At + ")-1)=0",
+                    "cos(" + At + ")=1 => denominator=0",
+                    rad ? At + " = pi/2 + 2*pi*n" : At + " = 90 + 360*n",
+                },
+                format_solution_list(var, rad, xs)
+            );
+        }
         {
             std::string v = var;
             std::string pat = "sin(2*" + v + ")*tan(" + v + ")+cos(2*" + v + ")*cot(" + v + ")+2*sin(" + v + ")*cos(" + v + ")=2";
