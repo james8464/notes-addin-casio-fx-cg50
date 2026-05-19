@@ -5920,6 +5920,32 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             );
         }
         {
+            std::string lhs = "tan(" + var + "+pi/4)=";
+            if(eq_key.rfind(lhs, 0) == 0) {
+                long long n = 0; std::size_t e = 0;
+                if(read_int(eq_key, lhs.size(), n, e) && eq_key.substr(e) == "+tan(" + var + ")") {
+                    long long c0 = 1 - n, D = n * n - 4 * c0;
+                    std::string qline = "u^2+" + std::to_string(n) + "u" + (c0 < 0 ? "-" : "+") + std::to_string(std::llabs(c0)) + " = 0";
+                    std::string roots = (n % 2 == 0 && D > 0 && D % 4 == 0)
+                        ? ("tan(" + var + ") = " + std::to_string(-n / 2) + "-sqrt(" + std::to_string(D / 4) + ") or tan(" + var + ") = " +
+                           std::to_string(-n / 2) + "+sqrt(" + std::to_string(D / 4) + ")")
+                        : ("tan(" + var + ") = (-" + std::to_string(n) + "-sqrt(" + std::to_string(D) + "))/2 or tan(" + var + ") = (-" +
+                           std::to_string(n) + "+sqrt(" + std::to_string(D) + "))/2");
+                    return casio::exam_block(
+                        "trig solve",
+                        {
+                            "u = tan(" + var + ")",
+                            "tan(" + var + "+pi/4) = (u+1)/(1-u)",
+                            "(u+1)/(1-u) = " + std::to_string(n) + "+u",
+                            "u+1 = (" + std::to_string(n) + "+u)(1-u)",
+                            qline,
+                        },
+                        roots
+                    );
+                }
+            }
+        }
+        {
             std::string pat = "cosec(" + var + ")/(cosec(" + var + ")-sin(" + var + "))+";
             if(eq_key.rfind(pat, 0) == 0 && eq_key.find("(sec(" + var + ")+1)=0", pat.size()) != std::string::npos) {
                 long long n = 0; std::size_t e = 0;

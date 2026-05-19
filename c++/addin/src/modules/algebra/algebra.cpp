@@ -7073,6 +7073,44 @@ static std::optional<NodeId> direct_trig_inverse_composition(Arena &a, NodeId n,
     return inner.a;
 }
 
+static std::optional<NodeId> tan_inverse_sum(Arena &a, NodeId n, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Tan) return std::nullopt;
+    Node const &s = a.get(x.a);
+    std::vector<NodeId> terms = s.kind == NodeKind::Add ? s.kids : std::vector<NodeId>{x.a};
+    if(terms.size() != 2) return std::nullopt;
+    std::vector<NodeId> u;
+    for(NodeId t : terms) {
+        Node const &q = a.get(t);
+        if(q.kind == NodeKind::Fn && q.fkind == FnKind::Atan) {
+            u.push_back(q.a);
+            continue;
+        }
+        if(q.kind == NodeKind::Mul && q.kids.size() == 2) {
+            Node const &k0 = a.get(q.kids[0]);
+            Node const &k1 = a.get(q.kids[1]);
+            if(k0.kind == NodeKind::Num && k0.num.num == -1 && k0.num.den == 1 && k1.kind == NodeKind::Fn && k1.fkind == FnKind::Atan) {
+                u.push_back(casio::neg(a, k1.a));
+                continue;
+            }
+            if(k1.kind == NodeKind::Num && k1.num.num == -1 && k1.num.den == 1 && k0.kind == NodeKind::Fn && k0.fkind == FnKind::Atan) {
+                u.push_back(casio::neg(a, k0.a));
+                continue;
+            }
+        }
+        return std::nullopt;
+    }
+    NodeId num = casio::simplify(a, casio::add(a, {u[0], u[1]}));
+    NodeId den = casio::simplify(a, casio::add(a, {casio::num(a, 1), casio::neg(a, casio::mul(a, {u[0], u[1]}))}));
+    NodeId out = casio::simplify(a, casio::div(a, num, den));
+    steps.push_back("tan(A+B) = (tan(A)+tan(B))/(1-tan(A)tan(B))");
+    steps.push_back("A = " + format_expr(a, terms[0]) + ", B = " + format_expr(a, terms[1]));
+    steps.push_back("= (" + format_expr(a, u[0]) + "+" + format_expr(a, u[1]) + ")/(1-(" + format_expr(a, u[0]) + ")*(" + format_expr(a, u[1]) + "))");
+    steps.push_back("= " + format_expr(a, out));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     Arena &a,
     NodeId lhs,
@@ -7172,6 +7210,71 @@ static std::optional<std::vector<std::string>> inverse_trig_principal_solve(
     }
     out.push_back("Answer: " + arg_text + " = " + target);
     return out;
+}
+
+static std::optional<std::vector<std::string>> inverse_trig_special_solve(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    auto two_atan_arg = [&](NodeId n) -> std::optional<NodeId> {
+        Node const &x = a.get(n);
+        if(x.kind != NodeKind::Mul || x.kids.size() != 2) return std::nullopt;
+        for(int i = 0; i < 2; ++i) {
+            Node const &k = a.get(x.kids[i]);
+            Node const &f = a.get(x.kids[1 - i]);
+            if(k.kind == NodeKind::Num && k.num.num == 2 && k.num.den == 1 && f.kind == NodeKind::Fn && f.fkind == FnKind::Atan)
+                return f.a;
+        }
+        return std::nullopt;
+    };
+    auto acos_var = [&](NodeId n) -> bool {
+        Node const &x = a.get(n);
+        return x.kind == NodeKind::Fn && x.fkind == FnKind::Acos && is_sym_var(a, x.a, var);
+    };
+    if(acos_var(lhs) || acos_var(rhs)) {
+        NodeId other = acos_var(lhs) ? rhs : lhs;
+        if(auto t = two_atan_arg(other)) {
+            NodeId t2 = casio::power(a, *t, casio::num(a, 2));
+            NodeId ans = casio::simplify(a, casio::div(a, casio::add(a, {casio::num(a, 1), casio::neg(a, t2)}),
+                                                       casio::add(a, {casio::num(a, 1), t2})));
+            return std::vector<std::string>{
+                "A = atan(" + format_expr(a, *t) + ")",
+                "tan(A) = " + format_expr(a, *t),
+                "cos(2A) = (1-tan(A)^2)/(1+tan(A)^2)",
+                var + " = cos(2A)",
+                var + " = " + format_expr(a, ans),
+            };
+        }
+    }
+    auto asin_var = [&](NodeId n) -> bool {
+        Node const &x = a.get(n);
+        return x.kind == NodeKind::Fn && x.fkind == FnKind::Asin && is_sym_var(a, x.a, var);
+    };
+    auto acos_kvar = [&](NodeId n) -> std::optional<Rational> {
+        Node const &x = a.get(n);
+        if(x.kind != NodeKind::Fn || x.fkind != FnKind::Acos) return std::nullopt;
+        auto p = poly_of(a, x.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || !is_zero(p->a0) || is_zero(p->a1)) return std::nullopt;
+        return p->a1;
+    };
+    if((asin_var(lhs) && acos_kvar(rhs)) || (asin_var(rhs) && acos_kvar(lhs))) {
+        Rational k = *(asin_var(lhs) ? acos_kvar(rhs) : acos_kvar(lhs));
+        NodeId kn = a.num(k);
+        NodeId k2 = casio::power(a, kn, casio::num(a, 2));
+        NodeId den = casio::fn(a, "sqrt", casio::add(a, {casio::num(a, 1), k2}));
+        NodeId ans = casio::simplify(a, casio::div(a, casio::num(a, 1), den));
+        return std::vector<std::string>{
+            "A = asin(" + var + ")",
+            "sin(A) = " + var,
+            "cos(A) = " + format_expr(a, kn) + "*" + var,
+            var + "^2+(" + format_expr(a, kn) + "*" + var + ")^2 = 1",
+            var + " = " + format_expr(a, ans),
+        };
+    }
+    return std::nullopt;
 }
 
 struct InvTrigAffine
@@ -9383,6 +9486,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.method == "rationalise" || req.method == "rationalize") {
                 if(auto route = rationalise_sqrt_denominator(arena, parsed)) return *route;
             }
+            if(auto tinv = tan_inverse_sum(arena, parsed, steps)) {
+                return casio::exam_block("algebra simplify", steps, format_expr(arena, *tinv));
+            }
             if(auto direct = direct_trig_inverse_composition(arena, parsed, steps)) {
                 return casio::exam_block("algebra simplify", steps, format_expr(arena, *direct));
             }
@@ -9477,6 +9583,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;
+        if(auto inv_spec = inverse_trig_special_solve(arena, lhs, rhs, solve_var))
+            return *inv_spec;
         if(auto inv_aff = inverse_trig_affine_solve(arena, rearr, solve_var, shown_eq))
             return *inv_aff;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
