@@ -2598,6 +2598,77 @@ static std::optional<std::vector<std::string>> solve_sin_quadratic(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static std::optional<std::vector<std::string>> solve_cos_half_sin(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add) return std::nullopt;
+    double A = 0.0, B = 0.0, S = 0.0;
+    NodeId half_arg = 0;
+    bool has_half = false;
+    for(NodeId kid : r.kids) {
+        if(!has_any_symbol(a, kid)) {
+            auto v = numeric_eval(a, kid, 0.0);
+            if(!v || !std::isfinite(*v)) return std::nullopt;
+            B += *v;
+            continue;
+        }
+        double coeff = 1.0;
+        NodeId rest = kid;
+        bool has_rest = true;
+        if(!split_coeff_term(a, kid, coeff, rest, has_rest) || !has_rest) return std::nullopt;
+        Node const &fn = a.get(rest);
+        if(fn.kind != NodeKind::Fn) return std::nullopt;
+        auto lin = linear_angle(a, fn.a, var, rad);
+        if(!lin || std::fabs(lin->second) > 1e-12) return std::nullopt;
+        if(fn.fkind == FnKind::Cos && std::fabs(lin->first - 1.0) < 1e-12) A += coeff;
+        else if(fn.fkind == FnKind::Sin && std::fabs(lin->first - 0.5) < 1e-12) {
+            S += coeff;
+            half_arg = fn.a;
+            has_half = true;
+        }
+        else return std::nullopt;
+    }
+    if(!has_half || std::fabs(A) < 1e-12 || std::fabs(S) < 1e-12) return std::nullopt;
+    auto roots = solve_quadratic_d(-2.0 * A, S, A + B);
+    if(roots.empty()) return std::nullopt;
+    std::string H = format_expr(a, half_arg);
+    std::vector<std::string> steps{
+        "u=sin(" + H + ").",
+        "cos(" + var + ")=1-2u^2.",
+        trig_quad_text(-2.0 * A, S, A + B),
+    };
+    std::vector<double> xs;
+    std::string rline = "u=";
+    bool any = false;
+    for(double u : roots) {
+        if(any) rline += " or u=";
+        rline += trig_root_text(u);
+        any = true;
+    }
+    steps.push_back(rline + ".");
+    for(double u : roots) {
+        if(u < -1.0 - 1e-10 || u > 1.0 + 1e-10) {
+            steps.push_back("Reject u=" + trig_root_text(u) + ": outside [-1,1].");
+            continue;
+        }
+        steps.push_back("sin(" + H + ")=" + trig_root_text(u) + ".");
+        steps.push_back(trig_base_angle_line(FnKind::Sin, H, u));
+        steps.push_back(trig_alpha_family_line(FnKind::Sin, H, u, rad));
+        auto vals = x_values_from_angle_degrees(a, half_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, u));
+        for(double x : vals) add_unique(xs, x);
+    }
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
 struct MixedTrigPoly
 {
     double c = 0.0;
@@ -7571,6 +7642,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto shifted = solve_shifted_linear_trig(a, residual, var, lo_text, hi_text, rad, general)) return *shifted;
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto sinq = solve_sin_quadratic(a, residual, var, lo_text, hi_text, rad)) return *sinq;
+    if(auto half = solve_cos_half_sin(a, residual, var, lo_text, hi_text, rad)) return *half;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
     if(!general) {
         if(auto tc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Tan, FnKind::Cot)) return *tc;
