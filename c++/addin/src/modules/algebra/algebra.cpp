@@ -7387,8 +7387,80 @@ static std::optional<std::vector<std::string>> symbolic_product_roots_route(Aren
     Node const &x = a.get(rearr);
     std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{rearr};
     struct Root { NodeId root; int mult; };
+    struct FactorRoots {
+        std::vector<NodeId> roots;
+        std::vector<std::string> steps;
+        std::string zero_factor;
+    };
+    auto root_expr = [&](Rational target, int n) -> std::optional<NodeId> {
+        if(target.num < 0 && n % 2 == 0) return std::nullopt;
+        if(n == 1) return a.num(target);
+        Rational sq{0, 1};
+        if(n == 2 && square_rat_root(target, sq)) return a.num(sq);
+        if(n == 4 && square_rat_root(target, sq)) {
+            return casio::fn(a, "sqrt", a.num(sq));
+        }
+        return casio::power(a, a.num(target), casio::div(a, a.num(Rational{1, 1}), a.num(Rational{n, 1})));
+    };
+    auto power_factor_roots = [&](NodeId f) -> std::optional<FactorRoots> {
+        std::vector<NodeId> terms;
+        add_terms_flat(a, f, terms);
+        if(terms.size() != 2) return std::nullopt;
+        Rational coef{0, 1}, cst{0, 1};
+        NodeId body = 0;
+        bool have_pow = false, have_cst = false;
+        for(NodeId t : terms) {
+            Rational c{1, 1};
+            NodeId b = 0;
+            bool has_body = false;
+            split_coeff_body(a, t, c, b, has_body);
+            if(!has_body) {
+                cst = r_add(cst, c);
+                have_cst = true;
+                continue;
+            }
+            Node const &bn = a.get(b);
+            if(bn.kind != NodeKind::Pow || have_pow) return std::nullopt;
+            auto e = as_num(a, bn.b);
+            if(!e || e->den != 1 || e->num < 2 || e->num > 6) return std::nullopt;
+            auto p = poly_of(a, bn.a, var);
+            if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+            coef = c;
+            body = b;
+            have_pow = true;
+        }
+        if(!have_pow || !have_cst || is_zero(coef)) return std::nullopt;
+        Node const &pow = a.get(body);
+        int n = (int)as_num(a, pow.b)->num;
+        Rational target = r_div(r_neg(cst), coef);
+        if(target.num < 0 && n % 2 == 0) return std::nullopt;
+        auto p = poly_of(a, pow.a, var);
+        if(!p || !p->ok || is_zero(p->a1)) return std::nullopt;
+        auto rt = root_expr(target, n);
+        if(!rt) return std::nullopt;
+        std::string base = format_expr(a, pow.a);
+        FactorRoots out;
+        out.zero_factor = format_expr(a, f) + " = 0";
+        out.steps.push_back(format_expr(a, body) + " = " + format_expr(a, a.num(target)));
+        auto push = [&](NodeId val) {
+            NodeId root = casio::simplify(a, casio::div(a, casio::add(a, {val, casio::neg(a, a.num(p->a0))}), a.num(p->a1)));
+            out.roots.push_back(root);
+        };
+        if(n % 2 == 0) {
+            out.steps.push_back(base + " = +/-" + format_expr(a, *rt));
+            push(casio::neg(a, *rt));
+            push(*rt);
+        }
+        else {
+            out.steps.push_back(base + " = " + format_expr(a, *rt));
+            push(*rt);
+        }
+        return out;
+    };
     std::vector<Root> roots;
     std::vector<std::string> zero_factors;
+    std::vector<std::string> nonzero_factors;
+    std::vector<std::string> extra_steps;
     bool saw_product = factors.size() > 1;
     for(NodeId f : factors) {
         if(!contains_symbol(a, f, var)) continue;
@@ -7397,28 +7469,43 @@ static std::optional<std::vector<std::string>> symbolic_product_roots_route(Aren
         Node const &fn = a.get(f);
         if(fn.kind == NodeKind::Pow) {
             auto e = as_num(a, fn.b);
-            if(!e || e->den != 1 || e->num < 1 || e->num > 9) return std::nullopt;
+            if(!e || e->den != 1 || e->num == 0 || std::llabs(e->num) > 9) return std::nullopt;
+            if(e->num < 0) {
+                auto lin = symbolic_linear_parts(a, fn.a, var);
+                if(!lin) return std::nullopt;
+                nonzero_factors.push_back(format_expr(a, fn.a) + " != 0");
+                continue;
+            }
             mult = (int)e->num;
             base = fn.a;
         }
         auto lin = symbolic_linear_parts(a, base, var);
-        if(!lin) return std::nullopt;
-        NodeId root = casio::simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
-        bool merged = false;
-        for(auto &r : roots) {
-            if(casio::same_by_sig(a, r.root, root)) {
-                r.mult += mult;
-                merged = true;
-                break;
+        if(lin) {
+            NodeId root = casio::simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
+            bool merged = false;
+            for(auto &r : roots) {
+                if(casio::same_by_sig(a, r.root, root)) {
+                    r.mult += mult;
+                    merged = true;
+                    break;
+                }
             }
+            if(!merged) roots.push_back(Root{root, mult});
+            zero_factors.push_back(format_expr(a, base) + " = 0");
+            continue;
         }
-        if(!merged) roots.push_back(Root{root, mult});
-        zero_factors.push_back(format_expr(a, base) + " = 0");
+        auto prs = power_factor_roots(f);
+        if(!prs) return std::nullopt;
+        zero_factors.push_back(prs->zero_factor);
+        extra_steps.insert(extra_steps.end(), prs->steps.begin(), prs->steps.end());
+        for(NodeId root : prs->roots) roots.push_back(Root{root, 1});
     }
     if(roots.empty() || !saw_product) return std::nullopt;
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
+    if(!nonzero_factors.empty()) out.push_back(join_text(nonzero_factors, ", "));
     out.push_back(join_text(zero_factors, " or "));
+    out.insert(out.end(), extra_steps.begin(), extra_steps.end());
     std::vector<std::string> mults, vals, sol_lines;
     for(auto const &r : roots) {
         std::string rt = format_expr(a, r.root);
@@ -8906,6 +8993,126 @@ static std::optional<std::vector<std::string>> related_base_exp_substitution_rou
     std::string sol = var + " = " + xtext;
     out.push_back(sol);
     out.push_back(solution_list_line(var, {sol}));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> affine_reciprocal_power_product_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, residual, terms);
+    if(terms.size() < 2 || terms.size() > 8) return std::nullopt;
+    NodeId common = 0;
+    int max_pow = 0;
+    bool saw = false;
+    std::vector<std::pair<int, NodeId>> parsed;
+    for(NodeId t : terms) {
+        std::vector<NodeId> factors, rest;
+        collect_mul_factors(a, t, factors);
+        int den_pow = 0;
+        for(NodeId f : factors) {
+            Node const &x = a.get(f);
+            if(x.kind == NodeKind::Pow) {
+                auto e = as_num(a, x.b);
+                if(e && e->den == 1 && e->num < 0 && e->num >= -8) {
+                    auto p = poly_of(a, x.a, var);
+                    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+                    if(!saw) {
+                        common = x.a;
+                        saw = true;
+                    }
+                    else if(!casio::same_by_sig(a, common, x.a)) return std::nullopt;
+                    den_pow += (int)-e->num;
+                    continue;
+                }
+            }
+            rest.push_back(f);
+        }
+        max_pow = std::max(max_pow, den_pow);
+        parsed.push_back({den_pow, mul_or_one(a, rest)});
+    }
+    if(!saw || max_pow <= 0) return std::nullopt;
+    std::vector<NodeId> cleared_terms;
+    for(auto const &kv : parsed) {
+        NodeId term = kv.second;
+        int p = max_pow - kv.first;
+        if(p > 0) {
+            NodeId scale = p == 1 ? common : casio::power(a, common, a.num(Rational{p, 1}));
+            term = casio::mul(a, {term, scale});
+        }
+        cleared_terms.push_back(term);
+    }
+    NodeId cleared = casio::simplify(a, casio::add(a, cleared_terms));
+    auto pr = symbolic_product_roots_route(a, cleared, var);
+    if(!pr) return std::nullopt;
+    std::string base = format_expr(a, common);
+    out.push_back("Domain: " + base + " != 0");
+    out.push_back("Multiply by (" + base + ")^" + std::to_string(max_pow));
+    out.insert(out.end(), pr->begin(), pr->end());
+    return out;
+}
+
+static std::optional<std::vector<std::string>> common_factor_recip_power_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    Node const &rn = a.get(residual);
+    if(rn.kind != NodeKind::Add || rn.kids.size() != 2) return std::nullopt;
+    struct T {
+        Rational coef{1, 1};
+        NodeId body = 0;
+        NodeId den_base = 0;
+        int den_pow = 0;
+    };
+    std::vector<T> ts;
+    for(NodeId term : rn.kids) {
+        std::vector<NodeId> factors, rest;
+        collect_mul_factors(a, term, factors);
+        T t;
+        for(NodeId f : factors) {
+            Node const &x = a.get(f);
+            if(x.kind == NodeKind::Pow) {
+                auto e = as_num(a, x.b);
+                if(e && e->den == 1 && e->num < 0 && e->num >= -8) {
+                    auto p = poly_of(a, x.a, var);
+                    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+                    if(t.den_base) return std::nullopt;
+                    t.den_base = x.a;
+                    t.den_pow = (int)-e->num;
+                    continue;
+                }
+            }
+            rest.push_back(f);
+        }
+        NodeId num = mul_or_one(a, rest);
+        bool has_body = false;
+        split_coeff_body(a, num, t.coef, t.body, has_body);
+        if(!has_body || !contains_symbol(a, t.body, var)) return std::nullopt;
+        ts.push_back(t);
+    }
+    int i_den = ts[0].den_pow ? 0 : ts[1].den_pow ? 1 : -1;
+    int i_plain = i_den == 0 ? 1 : i_den == 1 ? 0 : -1;
+    if(i_den < 0 || ts[i_plain].den_pow != 0) return std::nullopt;
+    if(!casio::same_by_sig(a, ts[0].body, ts[1].body)) return std::nullopt;
+    Rational target = r_div(r_neg(ts[i_den].coef), ts[i_plain].coef);
+    if(target.num <= 0) return std::nullopt;
+    NodeId den_base = ts[i_den].den_base;
+    NodeId pow = casio::power(a, den_base, a.num(Rational{ts[i_den].den_pow, 1}));
+    NodeId factor = casio::add(a, {a.num(target), casio::neg(a, pow)});
+    NodeId product = casio::simplify(a, casio::mul(a, {ts[0].body, factor}));
+    auto pr = symbolic_product_roots_route(a, product, var);
+    if(!pr) return std::nullopt;
+    std::string base = format_expr(a, den_base);
+    out.push_back("Domain: " + base + " != 0");
+    out.push_back("Multiply by (" + base + ")^" + std::to_string(ts[i_den].den_pow));
+    out.insert(out.end(), pr->begin(), pr->end());
     return out;
 }
 
@@ -11060,6 +11267,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), pr->begin(), pr->end());
             return out;
         }
+        if(auto cfr = common_factor_recip_power_route(arena, rearr, solve_var, out)) return *cfr;
+        if(auto arp = affine_reciprocal_power_product_route(arena, rearr, solve_var, out)) return *arp;
         if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sl->begin(), sl->end());
             return out;

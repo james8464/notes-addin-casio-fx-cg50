@@ -2427,29 +2427,6 @@ static bool append_quotient_rule_detail(
     return true;
 }
 
-static bool is_power_of_den(Arena &a, NodeId n, NodeId den, int power)
-{
-    Node x = a.get(n);
-    if(x.kind != NodeKind::Pow) return false;
-    auto e = as_num(a, x.b);
-    return e && e->den == 1 && e->num == power && same_expr_key(a, x.a, den);
-}
-
-static std::optional<NodeId> find_square_denominator(Arena &a, NodeId term)
-{
-    Node x = a.get(term);
-    if(is_power_of_den(a, term, x.a, -2)) return x.a;
-    if(x.kind == NodeKind::Div) return x.b;
-    if(x.kind == NodeKind::Mul) {
-        for(NodeId k : x.kids) {
-            Node kid = a.get(k);
-            if(kid.kind == NodeKind::Pow && is_power_of_den(a, k, kid.a, -2)) return kid.a;
-            if(kid.kind == NodeKind::Div) return kid.b;
-        }
-    }
-    return std::nullopt;
-}
-
 static NodeId mul_or_one(Arena &a, std::vector<NodeId> factors)
 {
     if(factors.empty()) return casio::num(a, 1);
@@ -2457,76 +2434,111 @@ static NodeId mul_or_one(Arena &a, std::vector<NodeId> factors)
     return casio::simplify(a, casio::mul(a, factors));
 }
 
-static std::optional<NodeId> numerator_over_square_den(Arena &a, NodeId term, NodeId den)
+struct RecipDenTerm
+{
+    NodeId den = 0;
+    int pow = 0;
+    NodeId rest = 0;
+};
+
+static std::optional<RecipDenTerm> reciprocal_den_term(Arena &a, NodeId term)
 {
     Node x = a.get(term);
-    if(is_power_of_den(a, term, den, -2)) return casio::num(a, 1);
-    if(x.kind == NodeKind::Div && same_expr_key(a, x.b, den))
-        return casio::simplify(a, casio::mul(a, {x.a, den}));
-    if(x.kind != NodeKind::Mul) return std::nullopt;
-
-    for(std::size_t i = 0; i < x.kids.size(); ++i) {
-        NodeId k = x.kids[i];
-        if(is_power_of_den(a, k, den, -2)) {
-            std::vector<NodeId> rest;
-            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
-            return mul_or_one(a, rest);
-        }
-        if(is_power_of_den(a, k, den, -1)) {
-            std::vector<NodeId> rest;
-            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
-            rest.push_back(den);
-            return mul_or_one(a, rest);
-        }
-        Node kid = a.get(k);
-        if(kid.kind == NodeKind::Div && same_expr_key(a, kid.b, den)) {
-            std::vector<NodeId> rest;
-            for(std::size_t j = 0; j < x.kids.size(); ++j) if(j != i) rest.push_back(x.kids[j]);
-            rest.push_back(kid.a);
-            rest.push_back(den);
-            return mul_or_one(a, rest);
-        }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && e->den == 1 && e->num < 0 && e->num >= -8)
+            return RecipDenTerm{x.a, static_cast<int>(-e->num), casio::num(a, 1)};
     }
-    return std::nullopt;
+    if(x.kind == NodeKind::Div) return RecipDenTerm{x.b, 1, x.a};
+    if(x.kind != NodeKind::Mul) return RecipDenTerm{0, 0, term};
+
+    RecipDenTerm out{0, 0, 0};
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        Node kid = a.get(k);
+        if(kid.kind == NodeKind::Pow) {
+            auto e = as_num(a, kid.b);
+            if(e && e->den == 1 && e->num < 0 && e->num >= -8) {
+                if(out.den) return std::nullopt;
+                out.den = kid.a;
+                out.pow = static_cast<int>(-e->num);
+                continue;
+            }
+        }
+        if(kid.kind == NodeKind::Div) {
+            if(out.den) return std::nullopt;
+            out.den = kid.b;
+            out.pow = 1;
+            rest.push_back(kid.a);
+            continue;
+        }
+        rest.push_back(k);
+    }
+    out.rest = mul_or_one(a, rest);
+    return out;
+}
+
+static std::string poly_gcd_factored_text(std::vector<Rational> c, std::string const &var)
+{
+    long long g = poly_int_gcd(c);
+    if(g <= 1) return "";
+    poly_div_int(c, g);
+    std::string body = poly_coeffs_text(c, var);
+    if(body.empty() || body == "0") return "";
+    return std::to_string(g) + "*" + fraction_num_text(body);
 }
 
 static bool append_common_denominator_derivative(
     Arena &a,
     NodeId derivative,
     std::string const &var,
+    std::string const &label,
     std::vector<std::string> &steps,
     std::string &answer_override
 )
 {
     Node d = a.get(derivative);
     if(d.kind != NodeKind::Add || d.kids.size() < 2 || d.kids.size() > 4) return false;
-    std::optional<NodeId> den;
+    NodeId den = 0;
+    int max_pow = 0;
+    std::vector<RecipDenTerm> parsed;
     for(NodeId t : d.kids) {
-        auto cand = find_square_denominator(a, t);
-        if(cand && !den) den = cand;
-        else if(cand && !same_expr_key(a, *den, *cand)) return false;
+        auto cand = reciprocal_den_term(a, t);
+        if(!cand) return false;
+        if(cand->den) {
+            if(!den) den = cand->den;
+            else if(!same_expr_key(a, den, cand->den)) return false;
+            max_pow = std::max(max_pow, cand->pow);
+        }
+        parsed.push_back(*cand);
     }
-    if(!den) return false;
+    if(!den || max_pow < 1) return false;
 
     std::vector<NodeId> nums;
-    nums.reserve(d.kids.size());
-    for(NodeId t : d.kids) {
-        auto n = numerator_over_square_den(a, t, *den);
-        if(!n) return false;
-        nums.push_back(*n);
+    nums.reserve(parsed.size());
+    for(auto const &t : parsed) {
+        NodeId n = t.rest ? t.rest : casio::num(a, 1);
+        int p = max_pow - t.pow;
+        if(p > 0) {
+            NodeId scale = p == 1 ? den : casio::power(a, den, casio::num(a, p));
+            n = casio::mul(a, {n, scale});
+        }
+        nums.push_back(n);
     }
     NodeId raw_num = casio::simplify(a, casio::add(a, nums));
-    auto poly = poly_node_local(a, raw_num, var, 3);
+    auto poly = poly_node_local(a, raw_num, var, 6);
     if(!poly) return false;
-    std::string den_text = clean_math_text(format_expr_human(a, *den));
+    std::string den_text = clean_math_text(format_expr_human(a, den));
     std::string raw_text = clean_math_text(format_expr_human(a, raw_num));
     std::string poly_text = poly_coeffs_text(*poly, var);
+    std::string nice_text = poly_gcd_factored_text(*poly, var);
+    if(nice_text.empty()) nice_text = poly_text;
     if(poly_text.empty() || compact_math_key(poly_text) == compact_math_key(raw_text)) return false;
     if(raw_text.size() <= 180) {
-        steps.push_back("dy/d" + var + " = " + fraction_num_text(raw_text) + "/(" + den_text + ")^2.");
-        steps.push_back(raw_text + " = " + poly_text + ".");
+        steps.push_back(label + " = " + fraction_num_text(raw_text) + "/(" + den_text + ")^" + std::to_string(max_pow) + ".");
+        steps.push_back(raw_text + " = " + nice_text + ".");
     }
-    answer_override = "dy/d" + var + " = " + fraction_num_text(poly_text) + "/(" + den_text + ")^2";
+    answer_override = label + " = " + fraction_num_text(nice_text) + "/(" + den_text + ")^" + std::to_string(max_pow);
     return true;
 }
 
@@ -3282,6 +3294,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(req.mode == 4 || req.mode == 7) {
                 steps.push_back(req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again.");
+                if(req.mode == 4)
+                    append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
             }
             else {
                 bool used_rule = false;
@@ -3375,7 +3389,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(answer_override.empty())
-                    append_common_denominator_derivative(arena, out, var, steps, answer_override);
+                    append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
                 if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
             }
             std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
