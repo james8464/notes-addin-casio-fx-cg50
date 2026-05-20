@@ -397,6 +397,12 @@ CASES = [
         ("As x=>inf, e^u=>inf", "Range: 1 <= y", "1 <= y"),
     ),
     (
+        "open lower affine exp range",
+        ["--alg", "range(2*e^(3*x)+11,x>0)"],
+        ("Interval of interest: x on (0, inf]", "As x=>inf, e^u=>inf", "Range: 13 < y", "13 < y"),
+        ("13 <= y",),
+    ),
+    (
         "affine exp shifted range",
         ["--alg", "range(e^(2*x)-4)"],
         ("e^u > 0 for all real u", "Range: y > -4", "y > -4"),

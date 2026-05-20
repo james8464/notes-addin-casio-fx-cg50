@@ -10159,6 +10159,8 @@ static std::optional<std::string> exp_linear_range(
     std::string const &var,
     std::optional<double> lo_v,
     std::optional<double> hi_v,
+    bool lo_open,
+    bool hi_open,
     std::vector<std::string> &steps
 )
 {
@@ -10228,15 +10230,20 @@ static std::optional<std::string> exp_linear_range(
     if(!aff || aff->first.num == 0) {
         aff = std::make_pair(Rational{1, 1}, Rational{0, 1});
     }
+    auto below = [](bool open) { return open ? " < y" : " <= y"; };
+    auto above = [](bool open) { return open ? "y < " : "y <= "; };
     steps.push_back("e^u > 0 for all real u.");
     if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
         auto ylo = eval_node(a, n, var, *lo_v);
         auto yhi = eval_node(a, n, var, *hi_v);
         if(ylo && yhi) {
-            double mn = std::min(*ylo, *yhi);
-            double mx = std::max(*ylo, *yhi);
+            bool lo_is_min = *ylo <= *yhi;
+            double mn = lo_is_min ? *ylo : *yhi;
+            double mx = lo_is_min ? *yhi : *ylo;
+            bool mn_open = lo_is_min ? lo_open : hi_open;
+            bool mx_open = lo_is_min ? hi_open : lo_open;
             steps.push_back("Evaluate endpoints since exp(linear) is monotone.");
-            return format_double_compact(mn) + " <= y <= " + format_double_compact(mx);
+            return format_double_compact(mn) + below(mn_open) + (mx_open ? " < " : " <= ") + format_double_compact(mx);
         }
     }
     if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v) && p->a1.num < 0) {
@@ -10245,15 +10252,15 @@ static std::optional<std::string> exp_linear_range(
             std::string lim = format_expr(a, a.num(aff->second));
             double ylimit = static_cast<double>(aff->second.num) / static_cast<double>(aff->second.den);
             steps.push_back("As " + var + " -> inf, e^u -> 0.");
-            if(*ylo < ylimit) return format_double_compact(*ylo) + " <= y < " + lim;
-            return lim + " < y <= " + format_double_compact(*ylo);
+            if(*ylo < ylimit) return format_double_compact(*ylo) + below(lo_open) + " < " + lim;
+            return lim + " < y" + (lo_open ? " < " : " <= ") + format_double_compact(*ylo);
         }
     }
     if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v) && p->a1.num > 0) {
         auto ylo = eval_node(a, n, var, *lo_v);
         if(ylo) {
             steps.push_back("As " + var + " -> inf, e^u -> inf.");
-            return aff->first.num > 0 ? format_double_compact(*ylo) + " <= y" : "y <= " + format_double_compact(*ylo);
+            return aff->first.num > 0 ? format_double_compact(*ylo) + below(lo_open) : above(lo_open) + format_double_compact(*ylo);
         }
     }
     if(lo_v && hi_v && !std::isfinite(*lo_v) && std::isfinite(*hi_v) && p->a1.num > 0) {
@@ -10261,15 +10268,15 @@ static std::optional<std::string> exp_linear_range(
         if(yhi) {
             std::string lim = format_expr(a, a.num(aff->second));
             steps.push_back("As " + var + " -> -inf, e^u -> 0.");
-            if(aff->first.num > 0) return lim + " < y <= " + format_double_compact(*yhi);
-            return format_double_compact(*yhi) + " <= y < " + lim;
+            if(aff->first.num > 0) return lim + " < y" + (hi_open ? " < " : " <= ") + format_double_compact(*yhi);
+            return format_double_compact(*yhi) + below(hi_open) + " < " + lim;
         }
     }
     if(lo_v && hi_v && !std::isfinite(*lo_v) && std::isfinite(*hi_v) && p->a1.num < 0) {
         auto yhi = eval_node(a, n, var, *hi_v);
         if(yhi) {
             steps.push_back("As " + var + " -> -inf, e^u -> inf.");
-            return aff->first.num > 0 ? format_double_compact(*yhi) + " <= y" : "y <= " + format_double_compact(*yhi);
+            return aff->first.num > 0 ? format_double_compact(*yhi) + below(hi_open) : above(hi_open) + format_double_compact(*yhi);
         }
     }
     std::string lim = format_expr(a, a.num(aff->second));
@@ -19059,7 +19066,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *logistic;
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, steps)) {
+                else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {
                     range_answer = *er;
                     steps.push_back("Range: " + range_answer + ".");
                 }
