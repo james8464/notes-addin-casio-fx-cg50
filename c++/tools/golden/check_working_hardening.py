@@ -1734,6 +1734,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["u = ln(x)", "(- 2*sqrt(2) + 3)/u = u", "u^2 = - 2*sqrt(2) + 3", "u = +/-sqrt(- 2*sqrt(2) + 3)", "x = [e^(-sqrt(- 2*sqrt(2) + 3)), e^(sqrt(- 2*sqrt(2) + 3))]"],
         ["x ~=", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(6-ln(x+3)=y,x)",
+        ["Domain: x + 3 > 0", "ln(x + 3) = - y + 6", "x + 3 = e^(- y + 6)", "x = e^(- y + 6) - 3"],
+        ["LHS - RHS", "ERR:"],
+    ),
+    (
+        "alg",
+        "6-ln(e^(x^2))",
+        ["-x^2 + 6"],
+        ["ERR:"],
+    ),
 ]
 
 
