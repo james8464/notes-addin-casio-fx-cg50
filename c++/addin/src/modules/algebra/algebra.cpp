@@ -19149,6 +19149,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(req.method == "collect" || req.method == "canonical") {
+                if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
                 steps.push_back(format_expr(arena, parsed));
                 steps.push_back("= " + (n_text ? *n_text : format_expr(arena, n)));
                 return casio::exam_block("collect", steps, n_text ? *n_text : format_expr(arena, n));

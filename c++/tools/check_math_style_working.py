@@ -535,6 +535,12 @@ CASES = [
         ("5.294", "log_b(A)", "ERR:"),
     ),
     (
+        "log law collect exact",
+        ["--alg", "simplify(2*ln(56)-(ln(168)-ln(3/7)))"],
+        ("ln(168) = 3*ln(2) + ln(3) + ln(7)", "ln(3/7) = ln(3) - ln(7)", "= 3*ln(2)", "3*ln(2)"),
+        ("simplify*",),
+    ),
+    (
         "reciprocal exponential substitution exact",
         ["--alg", "solve(e^x+8*e^(-x)=6,x)"],
         ("u = e^(x), u > 0", "u + 8/u - 6 = 0", "- 6*u + u^2 + 8 = 0", "x = [ln(2), ln(4)]"),

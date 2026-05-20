@@ -511,6 +511,11 @@ int main(int argc, char **argv)
                 req.method = "domain";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "simplify(")).empty()) {
+                req.mode = 0;
+                req.method = "collect";
+                req.expr = inner;
+            }
             else if(!(inner = unwrap_call(expr, "complete_square(")).empty() ||
                     !(inner = unwrap_call(expr, "comp_square(")).empty()) {
                 req.mode = 5;
