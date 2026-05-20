@@ -19360,7 +19360,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(req.method == "domain") {
                 if(!lo.empty() && !hi.empty()) {
-                    domain_answer = lo + " <= " + var + " <= " + hi;
+                    domain_answer = lo + (lo_open ? " < " : " <= ") + var + (hi_open ? " < " : " <= ") + hi;
                     steps.push_back("Domain used: " + domain_answer + ".");
                 }
                 return casio::exam_block("domain", steps, domain_answer);
