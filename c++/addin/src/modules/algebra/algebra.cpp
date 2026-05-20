@@ -20184,6 +20184,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back(format_expr(arena, so->square) + " >= 0");
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto symqf = symbolic_quadratic_parts(arena, n, var); symqf && as_num(arena, symqf->a2)) {
+                    Rational a2 = *as_num(arena, symqf->a2);
+                    NodeId h = exact_eval_simplify(arena, casio::div(arena, symqf->b, casio::mul(arena, {casio::num(arena, 2), symqf->a2})));
+                    NodeId k = exact_eval_simplify(arena, casio::add(arena, {
+                        symqf->c,
+                        casio::neg(arena, casio::div(arena, casio::power(arena, symqf->b, casio::num(arena, 2)),
+                                                      casio::mul(arena, {casio::num(arena, 4), symqf->a2})))
+                    }));
+                    NodeId square = casio::power(arena, casio::add(arena, {casio::sym(arena, var), h}), casio::num(arena, 2));
+                    NodeId completed = exact_eval_simplify(arena, casio::add(arena, {casio::mul(arena, {symqf->a2, square}), k}));
+                    range_answer = std::string(a2.num > 0 ? "y >= " : "y <= ") + format_expr(arena, k);
+                    steps.push_back(format_expr(arena, n) + " = " + format_expr(arena, completed));
+                    steps.push_back(format_expr(arena, square) + " >= 0");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto symq = monic_symbolic_quadratic(arena, n, var)) {
                     NodeId half_b = casio::simplify(arena, casio::div(arena, symq->b, casio::num(arena, 2)));
                     NodeId y0 = casio::simplify(arena, casio::add(arena, {
