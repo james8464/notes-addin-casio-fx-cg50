@@ -21,6 +21,7 @@
 #include <functional>
 #include <algorithm>
 #include <limits>
+#include <numeric>
 
 namespace casio::algebra
 {
@@ -363,6 +364,30 @@ static bool contains_exp_log_exact(Arena &a, NodeId n)
     return false;
 }
 
+static std::optional<std::pair<NodeId, Rational>> scaled_log_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) return std::make_pair(x.a, Rational{1, 1});
+    if(x.kind == NodeKind::Div) {
+        auto top = scaled_log_arg(a, x.a);
+        Node const &den = a.get(x.b);
+        if(!top || den.kind != NodeKind::Num || is_zero(den.num)) return std::nullopt;
+        top->second = r_div(top->second, den.num);
+        return top;
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId arg = 0;
+    for(NodeId k : x.kids) {
+        Node const &u = a.get(k);
+        if(u.kind == NodeKind::Num) c = r_mul(c, u.num);
+        else if(u.kind == NodeKind::Fn && u.fkind == FnKind::Log && !arg) arg = u.a;
+        else return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    return std::make_pair(arg, c);
+}
+
 static NodeId exact_eval_simplify(Arena &a, NodeId n)
 {
     Node x = a.get(n);
@@ -389,6 +414,10 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         Node const &expo = a.get(rhs);
         if(base.kind == NodeKind::Const && base.ckind == ConstKind::E && expo.kind == NodeKind::Fn && expo.fkind == FnKind::Log)
             return casio::simplify(a, expo.a);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+            if(auto sl = scaled_log_arg(a, rhs))
+                return casio::simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den)));
+        }
         return casio::simplify(a, casio::power(a, lhs, rhs));
     }
     if(x.kind == NodeKind::Div) {
@@ -4224,18 +4253,18 @@ static std::optional<PolyAny> poly_any_of(Arena &a, NodeId n, std::string const 
             auto p = poly_any_of(a, k, var);
             if(!p) return std::nullopt;
             out = poly_any_mul(out, *p);
-            if(out.c.size() > 7) return std::nullopt;
+            if(out.c.size() > 9) return std::nullopt;
         }
         return out;
     }
     if(x.kind == NodeKind::Pow) {
         auto base = poly_any_of(a, x.a, var);
         auto e = as_num(a, x.b);
-        if(!base || !e || e->den != 1 || e->num < 0 || e->num > 6) return std::nullopt;
+        if(!base || !e || e->den != 1 || e->num < 0 || e->num > 8) return std::nullopt;
         PolyAny out{{Rational{1, 1}}, true};
         for(int i = 0; i < (int)e->num; ++i) {
             out = poly_any_mul(out, *base);
-            if(out.c.size() > 7) return std::nullopt;
+            if(out.c.size() > 9) return std::nullopt;
         }
         return out;
     }
@@ -4247,6 +4276,74 @@ static std::optional<PolyAny> poly_any_of(Arena &a, NodeId n, std::string const 
         return top;
     }
     return std::nullopt;
+}
+
+static long long comb_small_i64(int n, int k)
+{
+    if(k < 0 || k > n) return 0;
+    if(k > n - k) k = n - k;
+    long long r = 1;
+    for(int i = 1; i <= k; ++i) r = r * (n - k + i) / i;
+    return r;
+}
+
+static std::string pi_fraction_text(int num, int den)
+{
+    int g = std::gcd(std::abs(num), std::abs(den));
+    num /= g;
+    den /= g;
+    if(den == 1) return num == 1 ? "pi" : std::to_string(num) + "*pi";
+    if(num == 1) return "pi/" + std::to_string(den);
+    return std::to_string(num) + "*pi/" + std::to_string(den);
+}
+
+static std::optional<std::vector<std::string>> tan_multiple_angle_poly_route(Arena &a, NodeId n, std::string const &var)
+{
+    auto p = poly_any_of(a, n, var);
+    if(!p || !p->ok || p->c.size() < 3 || p->c.size() > 9) return std::nullopt;
+    int deg = (int)p->c.size() - 1;
+    if(deg < 2 || deg > 8) return std::nullopt;
+
+    Rational scale{0, 1};
+    bool have_scale = false;
+    PolyAny want{std::vector<Rational>(deg + 1, Rational{0, 1}), true};
+    for(int i = 0; i <= deg; ++i) {
+        long long c = comb_small_i64(deg, i);
+        int sign = (i & 1) ? (((i - 1) / 2) & 1 ? -1 : 1) : ((i / 2) & 1 ? 1 : -1);
+        want.c[i] = Rational{sign * c, 1};
+        Rational q = r_div(p->c[i], want.c[i]);
+        if(!have_scale) {
+            scale = q;
+            have_scale = true;
+        }
+        else if(r_cmp(q, scale) != 0) return std::nullopt;
+    }
+    if(is_zero(scale)) return std::nullopt;
+
+    std::vector<std::string> roots;
+    roots.reserve(deg);
+    for(int k = 0; k < deg; ++k) {
+        int num = 1 + 4 * k;
+        int den = 4 * deg;
+        int g = std::gcd(num, den);
+        int rn = num / g, rd = den / g;
+        if(rn == 1 && rd == 4) roots.push_back("1");
+        else if(rn == 3 && rd == 4) roots.push_back("-1");
+        else roots.push_back("tan(" + pi_fraction_text(num, den) + ")");
+    }
+    std::string root_list;
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) root_list += ", ";
+        root_list += roots[i];
+    }
+    return std::vector<std::string>{
+        "Let " + var + " = tan(t)",
+        "tan(" + std::to_string(deg) + "*t) = 1",
+        "tan(" + std::to_string(deg) + "*t)=1 gives " + format_expr(a, poly_any_to_node(a, want, var)) + " = 0",
+        std::to_string(deg) + "*t = pi/4 + k*pi",
+        "t = pi/" + std::to_string(4 * deg) + " + k*pi/" + std::to_string(deg) + ", k=0,...," + std::to_string(deg - 1),
+        var + " = [" + root_list + "]",
+    };
 }
 
 static std::vector<long long> divisors_i64(long long n)
@@ -12817,6 +12914,76 @@ static Rational prime_exp_get(PrimeExps const &v, long long p)
     return Rational{0, 1};
 }
 
+static bool add_log_arg_factors(Arena &a, NodeId arg, Rational coeff, PrimeExps &logs)
+{
+    Node const &x = a.get(arg);
+    if(x.kind == NodeKind::Num) {
+        if(x.num.num <= 0 || x.num.den <= 0) return false;
+        return add_log_integer_factors(logs, x.num.num, coeff) &&
+               add_log_integer_factors(logs, x.num.den, r_neg(coeff));
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt)
+        return add_log_arg_factors(a, x.a, r_div(coeff, Rational{2, 1}), logs);
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e) return false;
+        return add_log_arg_factors(a, x.a, r_mul(coeff, *e), logs);
+    }
+    return false;
+}
+
+static std::string log_factor_terms_text(PrimeExps logs)
+{
+    std::sort(logs.begin(), logs.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
+    std::string out;
+    for(auto const &pe : logs) {
+        if(is_zero(pe.second)) continue;
+        Rational e = pe.second;
+        bool neg = e.num < 0;
+        if(neg) e = r_neg(e);
+        std::string term;
+        if(r_cmp(e, Rational{1, 1}) == 0) term = "ln(" + std::to_string(pe.first) + ")";
+        else term = format_rat_plain(e) + "*ln(" + std::to_string(pe.first) + ")";
+        if(out.empty()) out = neg ? "-" + term : term;
+        else out += neg ? " - " + term : " + " + term;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> log_constant_simplify_route(Arena &a, NodeId expr)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.empty()) return std::nullopt;
+    PrimeExps total;
+    std::vector<std::string> rewrites;
+    for(NodeId term : terms) {
+        Rational c{1, 1};
+        NodeId body = term;
+        bool has_body = true;
+        split_coeff_body(a, term, c, body, has_body);
+        if(!has_body) return std::nullopt;
+        Node const &b = a.get(body);
+        if(b.kind != NodeKind::Fn || b.fkind != FnKind::Log) return std::nullopt;
+        PrimeExps local;
+        if(!add_log_arg_factors(a, b.a, c, total)) return std::nullopt;
+        if(add_log_arg_factors(a, b.a, Rational{1, 1}, local)) {
+            std::string lhs = "ln(" + format_expr(a, b.a) + ")";
+            std::string rhs = log_factor_terms_text(local);
+            if(lhs != rhs) rewrites.push_back(lhs + " = " + rhs);
+        }
+    }
+    std::string ans = log_factor_terms_text(total);
+    if(ans == "0") return std::nullopt;
+    std::sort(rewrites.begin(), rewrites.end());
+    rewrites.erase(std::unique(rewrites.begin(), rewrites.end()), rewrites.end());
+    std::vector<std::string> out{format_expr(a, expr)};
+    for(auto const &r : rewrites) out.push_back(r);
+    out.push_back("= " + ans);
+    out.push_back(ans);
+    return out;
+}
+
 static bool add_log_term_factors(Arena &a, NodeId term, Rational side, PrimeExps &xlogs, PrimeExps &clogs, std::string const &var)
 {
     Rational c{1, 1};
@@ -13859,7 +14026,7 @@ static std::string fitconst_value_text(double x)
     if(std::fabs(x) < 1e-9) x = 0.0;
     double nearest = std::round(x);
     if(std::fabs(x - nearest) < 1e-8) return std::to_string((long long)nearest);
-    for(int den = 2; den <= 120; ++den) {
+    for(int den = 2; den <= 1000; ++den) {
         double num = std::round(x * den);
         if(std::fabs(x - num / den) < 1e-8) {
             long long n = (long long)num;
@@ -16731,6 +16898,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto direct = direct_trig_inverse_composition(arena, parsed, steps)) {
                 return casio::exam_block("algebra simplify", steps, format_expr(arena, *direct));
             }
+            if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {
                 Node const &inner = arena.get(pn.a);
@@ -16915,6 +17083,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
         if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
         if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
+        if(auto tmp = tan_multiple_angle_poly_route(arena, rearr, solve_var)) return *tmp;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pf;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
