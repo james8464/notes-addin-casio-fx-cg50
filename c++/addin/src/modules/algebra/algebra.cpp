@@ -610,11 +610,28 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(auto sl = scaled_log_arg(a, rhs))
                 return casio::simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den)));
         }
+        if(expo.kind == NodeKind::Num) {
+            Node const &base = a.get(lhs);
+            NodeId arg = 0;
+            if(base.kind == NodeKind::Pow && is_e_const_node(a, base.a)) arg = base.b;
+            else if(base.kind == NodeKind::Fn && base.fkind == FnKind::Exp) arg = base.a;
+            if(arg) return exact_eval_simplify(a, casio::power(a, casio::constant_e(a), casio::mul(a, {arg, rhs})));
+        }
         return casio::simplify(a, casio::power(a, lhs, rhs));
     }
     if(x.kind == NodeKind::Div) {
         NodeId lhs = exact_eval_simplify(a, x.a);
         NodeId rhs = exact_eval_simplify(a, x.b);
+        auto exp_arg = [&](NodeId id) -> std::optional<NodeId> {
+            Node const &u = a.get(id);
+            if(u.kind == NodeKind::Pow && is_e_const_node(a, u.a)) return u.b;
+            if(u.kind == NodeKind::Fn && u.fkind == FnKind::Exp) return u.a;
+            return std::nullopt;
+        };
+        if(auto l = exp_arg(lhs)) {
+            if(auto r = exp_arg(rhs))
+                return exact_eval_simplify(a, casio::power(a, casio::constant_e(a), casio::add(a, {*l, casio::neg(a, *r)})));
+        }
         if(auto ln = strip_whole_negative(a, lhs)) {
             if(auto rd = strip_whole_negative(a, rhs))
                 return casio::simplify(a, casio::div(a, *ln, *rd));
@@ -19261,6 +19278,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto mb = mixed_base_product_exp_route(arena, rearr, solve_var, out)) return *mb;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
+        NodeId exact_rearr_for_exp = exact_eval_simplify(arena, rearr);
+        if(!casio::same_by_sig(arena, exact_rearr_for_exp, rearr)) {
+            if(auto es = exp_substitution_route(arena, exact_rearr_for_exp, solve_var, out)) return *es;
+            if(auto seq = symbolic_exp_quadratic_route(arena, exact_rearr_for_exp, solve_var, out)) return *seq;
+            if(auto er2 = exp_rational_substitution_route(arena, exact_rearr_for_exp, solve_var, out)) return *er2;
+        }
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
         if(auto seq = symbolic_exp_quadratic_route(arena, rearr, solve_var, out)) return *seq;
         if(auto er2 = exp_rational_substitution_route(arena, rearr, solve_var, out)) return *er2;
