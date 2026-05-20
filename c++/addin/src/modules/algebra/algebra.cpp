@@ -1017,8 +1017,70 @@ static bool const_times_exp(Arena &a, NodeId expr, NodeId &coef, NodeId &exponen
     return true;
 }
 
+static std::optional<Rational> num_node_early(Arena &a, NodeId n)
+{
+    Node const &x = a.get(casio::simplify(a, n));
+    if(x.kind != NodeKind::Num) return std::nullopt;
+    return x.num;
+}
+
+static bool affine_exp_coeffs(Arena &a, NodeId expr, std::string const &var, NodeId &expn, bool &seen_exp, Rational &m, Rational &b)
+{
+    m = Rational{0, 1};
+    b = Rational{0, 1};
+    std::vector<NodeId> terms;
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else terms.push_back(expr);
+    bool any = false;
+    for(NodeId t : terms) {
+        NodeId c = 0, e = 0;
+        if(const_times_exp(a, t, c, e)) {
+            auto cr = num_node_early(a, exact_eval_simplify(a, c));
+            if(!cr) return false;
+            if(seen_exp && format_expr(a, expn) != format_expr(a, e)) return false;
+            expn = e;
+            seen_exp = true;
+            m = r_add(m, *cr);
+            any = true;
+        }
+        else if(!contains_var_simple(a, t, var)) {
+            auto br = num_node_early(a, exact_eval_simplify(a, t));
+            if(!br) return false;
+            b = r_add(b, *br);
+        }
+        else return false;
+    }
+    return any;
+}
+
+static std::optional<NodeId> inverse_exp_mobius(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    NodeId expn = 0;
+    bool seen = false;
+    Rational A{0, 1}, B{0, 1}, C{0, 1}, D{0, 1};
+    if(!affine_exp_coeffs(a, x.a, "x", expn, seen, A, B)) return std::nullopt;
+    if(!affine_exp_coeffs(a, x.b, "x", expn, seen, C, D)) return std::nullopt;
+    Rational det = r_sub(r_mul(A, D), r_mul(B, C));
+    if(is_zero(det)) return std::nullopt;
+    auto p = poly_of(a, expn, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    NodeId y = casio::sym(a, "x");
+    Rational tm = r_neg(D), tb = B, bm = C, bb = r_neg(A);
+    if(tm.num < 0 && tb.num < 0) { tm = r_neg(tm); tb = r_neg(tb); bm = r_neg(bm); bb = r_neg(bb); }
+    NodeId top = linear_expr(a, tm, tb, y);
+    NodeId bot = linear_expr(a, bm, bb, y);
+    NodeId ratio = casio::simplify(a, casio::div(a, top, bot));
+    NodeId logy = casio::fn(a, "log", ratio);
+    NodeId shifted = casio::add(a, {logy, casio::neg(a, a.num(p->a0))});
+    return casio::simplify(a, casio::div(a, shifted, a.num(p->a1)));
+}
+
 static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
 {
+    if(auto inv = inverse_exp_mobius(a, expr)) return inv;
     if(auto inv = inverse_mobius(a, expr)) return inv;
     NodeId inner = 0;
     Rational m, b;
@@ -2291,6 +2353,77 @@ static std::optional<std::string> quadratic_rational_full_range(Arena &a, NodeId
         }
     }
     return "all real y";
+}
+
+static std::optional<std::string> quadratic_rational_interval_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::string const &lo,
+    std::string const &hi,
+    bool lo_open,
+    bool hi_open,
+    std::vector<std::string> &steps
+)
+{
+    if(lo.empty() || hi.empty()) return std::nullopt;
+    auto x0 = parse_rational_text(lo);
+    auto x1 = parse_rational_text(hi);
+    if(!x0 || !x1 || r_cmp(*x0, *x1) >= 0) return std::nullopt;
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || !is_zero(rp.num.a2) || is_zero(rp.den.a2)) return std::nullopt;
+
+    auto y_at = [&](Rational x) -> std::optional<Rational> {
+        Rational d = poly_eval(rp.den, x);
+        if(is_zero(d)) return std::nullopt;
+        return r_div(poly_eval(rp.num, x), d);
+    };
+    auto inside = [&](double z) {
+        double l = (double)x0->num / x0->den;
+        double h = (double)x1->num / x1->den;
+        return z > l + 1e-10 && z < h - 1e-10;
+    };
+    Rational A = r_neg(r_mul(rp.num.a1, rp.den.a2));
+    Rational B = r_mul(Rational{-2, 1}, r_mul(rp.num.a0, rp.den.a2));
+    Rational C = r_sub(r_mul(rp.num.a1, rp.den.a0), r_mul(rp.num.a0, rp.den.a1));
+    double da = (double)A.num / A.den, db = (double)B.num / B.den, dc = (double)C.num / C.den;
+    if(std::fabs(da) < 1e-14) {
+        if(std::fabs(db) > 1e-14 && inside(-dc / db)) return std::nullopt;
+    }
+    else {
+        double disc = db * db - 4.0 * da * dc;
+        if(disc > 1e-12) {
+            double s = std::sqrt(disc);
+            if(inside((-db - s) / (2.0 * da)) || inside((-db + s) / (2.0 * da))) return std::nullopt;
+        }
+    }
+
+    auto y0 = y_at(*x0);
+    auto y1 = y_at(*x1);
+    Rational mid = r_div(r_add(*x0, *x1), Rational{2, 1});
+    auto ym = y_at(mid);
+    if(!ym) return std::nullopt;
+    auto bound = [&](Rational y, bool open, bool lower) {
+        return std::string("y ") + (lower ? (open ? "> " : ">= ") : (open ? "< " : "<= ")) + rat_node_text(a, y);
+    };
+    if(!y1 && hi_open && y0) {
+        steps.push_back("Vertical asymptote x = " + rat_node_text(a, *x1) + ".");
+        steps.push_back("Endpoint gives y(" + rat_node_text(a, *x0) + ") = " + rat_node_text(a, *y0) + ".");
+        return r_cmp(*ym, *y0) > 0 ? bound(*y0, lo_open, true) : bound(*y0, lo_open, false);
+    }
+    if(!y0 && lo_open && y1) {
+        steps.push_back("Vertical asymptote x = " + rat_node_text(a, *x0) + ".");
+        steps.push_back("Endpoint gives y(" + rat_node_text(a, *x1) + ") = " + rat_node_text(a, *y1) + ".");
+        return r_cmp(*ym, *y1) > 0 ? bound(*y1, hi_open, true) : bound(*y1, hi_open, false);
+    }
+    if(!y0 || !y1) return std::nullopt;
+    steps.push_back("Function is monotone on this interval.");
+    steps.push_back("Evaluate endpoints: y(" + rat_node_text(a, *x0) + ")=" + rat_node_text(a, *y0) + ", y(" + rat_node_text(a, *x1) + ")=" + rat_node_text(a, *y1) + ".");
+    bool asc = r_cmp(*y0, *y1) <= 0;
+    Rational mn = asc ? *y0 : *y1, mx = asc ? *y1 : *y0;
+    bool mn_open = asc ? lo_open : hi_open;
+    bool mx_open = asc ? hi_open : lo_open;
+    return rat_node_text(a, mn) + (mn_open ? " < y " : " <= y ") + (mx_open ? "< " : "<= ") + rat_node_text(a, mx);
 }
 
 struct RecipQuadData
@@ -4116,6 +4249,7 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
             kept.push_back(s);
             continue;
         }
+        if(s.find('i') != std::string::npos) continue;
         auto value = solution_line_value(a, s);
         if(!value) {
             if(!lo && !hi) kept.push_back(s);
@@ -4468,31 +4602,43 @@ static std::optional<double> parse_const_double(Arena &a, std::string const &tex
     return std::nullopt;
 }
 
+static bool restricted_interval_bounds(Arena &a, std::string const &domain_text, double &lo, double &hi)
+{
+    lo = -std::numeric_limits<double>::infinity();
+    hi = std::numeric_limits<double>::infinity();
+    auto parts = split_top_key(domain_text, ',');
+    if(parts.size() >= 3 && trim_text(parts[0]) == "x") {
+        auto l = parse_const_double(a, parts[1]);
+        auto h = parse_const_double(a, parts[2]);
+        if(l && h) { lo = *l; hi = *h; return lo < hi; }
+    }
+    bool seen = false;
+    for(std::string part : parts) {
+        part.erase(std::remove_if(part.begin(), part.end(), [](unsigned char c) { return std::isspace(c); }), part.end());
+        for(std::string op : {std::string(">="), std::string("<="), std::string(">"), std::string("<")}) {
+            auto p = part.find(op);
+            if(p == std::string::npos) continue;
+            std::string left = part.substr(0, p), right = part.substr(p + op.size());
+            if(left == "x") {
+                auto v = parse_const_double(a, right);
+                if(v) { if(op[0] == '>') lo = std::max(lo, *v); else hi = std::min(hi, *v); seen = true; }
+            }
+            else if(right == "x") {
+                auto v = parse_const_double(a, left);
+                if(v) { if(op[0] == '<') lo = std::max(lo, *v); else hi = std::min(hi, *v); seen = true; }
+            }
+            break;
+        }
+    }
+    return seen && lo < hi;
+}
+
 static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, std::string const &domain_text)
 {
-    auto parts = split_top_key(domain_text, ',');
     std::optional<double> lo, hi;
-    if(parts.size() >= 3) {
-        lo = parse_const_double(a, parts[1]);
-        hi = parse_const_double(a, parts[2]);
-    }
-    else {
-        std::string s = domain_text;
-        s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
-        auto parse_half_line = [&](std::string const &op) -> bool {
-            auto p = s.find(op);
-            if(p == std::string::npos) return false;
-            std::string left = s.substr(0, p), right = s.substr(p + op.size());
-            if(left != "x") return false;
-            auto b = parse_const_double(a, right);
-            if(!b) return false;
-            if(op[0] == '>') { lo = *b; hi = std::numeric_limits<double>::infinity(); }
-            else { lo = -std::numeric_limits<double>::infinity(); hi = *b; }
-            return true;
-        };
-        if(!parse_half_line(">=") && !parse_half_line(">") &&
-           !parse_half_line("<=") && !parse_half_line("<")) return std::nullopt;
-    }
+    double lo_d = 0.0, hi_d = 0.0;
+    if(restricted_interval_bounds(a, domain_text, lo_d, hi_d)) { lo = lo_d; hi = hi_d; }
+    else return std::nullopt;
     if(!lo || !hi || !(*lo < *hi)) return std::nullopt;
     auto p = poly_of(a, n, "x");
     if(!p) {
@@ -4568,6 +4714,50 @@ static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, st
     NodeId cands[2] = {
         casio::simplify(a, casio::div(a, casio::add(a, {nb, root}), den)),
         casio::simplify(a, casio::div(a, casio::add(a, {nb, casio::neg(a, root)}), den))
+    };
+    for(NodeId c : cands) {
+        auto v = eval_node(a, c, "x", *ymid);
+        if(v && std::fabs(*v - mid) < 1e-6) return c;
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> inverse_restricted_quadratic_rational(Arena &a, NodeId n, std::string const &domain_text)
+{
+    double lo = 0.0, hi = 0.0;
+    if(!restricted_interval_bounds(a, domain_text, lo, hi)) return std::nullopt;
+    auto rp = ratpoly_of_node(a, n, "x");
+    if(!rp.ok || !is_zero(rp.num.a2) || is_zero(rp.den.a2)) return std::nullopt;
+    if(is_zero(rp.num.a1) && is_zero(rp.num.a0)) return std::nullopt;
+
+    bool lo_f = std::isfinite(lo), hi_f = std::isfinite(hi);
+    double mid = (lo_f && hi_f) ? 0.5 * (lo + hi) : (lo_f ? lo + 1.0 : hi - 1.0);
+    auto ymid = eval_node(a, n, "x", mid);
+    if(!ymid || !std::isfinite(*ymid)) return std::nullopt;
+
+    NodeId y = casio::sym(a, "x");
+    NodeId By_minus_a = casio::add(a, {
+        casio::mul(a, {a.num(rp.den.a1), y}),
+        a.num(r_neg(rp.num.a1)),
+    });
+    NodeId Cy_minus_b = casio::add(a, {
+        casio::mul(a, {a.num(rp.den.a0), y}),
+        a.num(r_neg(rp.num.a0)),
+    });
+    NodeId disc = exact_eval_simplify(a, casio::add(a, {
+        casio::power(a, By_minus_a, casio::num(a, 2)),
+        casio::neg(a, casio::mul(a, {casio::num(a, 4), a.num(rp.den.a2), y, Cy_minus_b})),
+    }));
+    if(auto dp = poly_of(a, disc, "x"); dp && dp->ok) disc = poly2_to_node(a, *dp, "x");
+    NodeId root = casio::fn(a, "sqrt", disc);
+    NodeId top_base = casio::add(a, {
+        a.num(rp.num.a1),
+        casio::neg(a, casio::mul(a, {a.num(rp.den.a1), y})),
+    });
+    NodeId den = casio::mul(a, {casio::num(a, 2), a.num(rp.den.a2), y});
+    NodeId cands[2] = {
+        exact_eval_simplify(a, casio::div(a, casio::add(a, {top_base, root}), den)),
+        exact_eval_simplify(a, casio::div(a, casio::add(a, {top_base, casio::neg(a, root)}), den)),
     };
     for(NodeId c : cands) {
         auto v = eval_node(a, c, "x", *ymid);
@@ -14072,8 +14262,6 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
         else rest_terms.push_back(t);
     }
     if(!seen || is_zero(coef)) return std::nullopt;
-    auto rad_poly = poly_of(a, rad, var);
-    if(!rad_poly || !rad_poly->ok) return std::nullopt;
     NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
     auto rest_poly = poly_of(a, rest, var);
     if(!rest_poly || !rest_poly->ok) return std::nullopt;
@@ -14082,42 +14270,91 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     NodeId rhs_iso = casio::simplify(a, casio::mul(a, {casio::num(a, scale.num, scale.den), rest}));
     if(auto iso_poly = poly_of(a, rhs_iso, var); iso_poly && iso_poly->ok)
         rhs_iso = poly2_to_node(a, *iso_poly, var);
+    if(is_sym_var(a, rad, var)) {
+        if(auto p = poly_of(a, rhs_iso, var); p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+            Rational inv = r_div(Rational{1, 1}, p->a1);
+            Poly2 uq{Rational{1, 1}, r_mul(Rational{-1, 1}, inv), r_mul(p->a0, inv), true};
+            Rational D = r_sub(r_mul(uq.a1, uq.a1), r_mul(Rational{4, 1}, uq.a0));
+            if(r_cmp(D, Rational{0, 1}) < 0) {
+                return std::vector<std::string>{
+                    format_expr(a, lhs) + " = " + format_expr(a, rhs),
+                    "u = " + var + "^(1/2), u >= 0",
+                    var + " = u^2",
+                    "u = " + format_expr(a, clone_with_substitution(a, rhs_iso, var, casio::power(a, casio::sym(a, "u"), casio::num(a, 2)))),
+                    format_expr(a, poly2_to_node(a, uq, "u")) + " = 0",
+                    "D = " + format_expr(a, a.num(D)) + " < 0",
+                    "reject u = complex roots",
+                    var + " = []",
+                };
+            }
+        }
+    }
     NodeId squared = casio::simplify(a, casio::add(a, {
-        rad,
-        casio::neg(a, casio::power(a, rhs_iso, casio::num(a, 2)))
+        casio::power(a, rhs_iso, casio::num(a, 2)),
+        casio::neg(a, rad)
     }));
     auto rp2 = ratpoly_of_node(a, squared, var);
     std::vector<std::string> raw;
     std::string expanded;
-    if(rp2.ok && is_zero(rp2.den.a1) && is_zero(rp2.den.a2)) {
-        raw = solve_poly2(a, rp2.num, var);
-        expanded = format_expr(a, poly2_to_node(a, rp2.num, var));
-    }
-    else {
-        auto rp = poly_any_of(a, squared, var);
-        if(!rp || !rp->ok || rp->c.size() > 5) return std::nullopt;
-        std::vector<std::string> factor_lines;
-        raw = solve_poly_any_raw(a, *rp, var, factor_lines);
-        if(raw.empty()) raw = numeric_roots_scan(a, squared, var);
-        expanded = format_expr(a, poly_any_to_node(a, *rp, var));
-    }
-    if(raw.empty()) return std::nullopt;
-    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
-    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
-    sort_solution_lines(a, raw);
-    sort_solution_lines(a, valid);
-
     auto linear_domain = [&](NodeId n) -> std::optional<std::string> {
         auto p = poly_of(a, n, var);
         if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
         Rational bound = r_div(r_neg(p->a0), p->a1);
         return var + std::string(p->a1.num > 0 ? " >= " : " <= ") + format_expr(a, a.num(bound));
     };
+    if(rp2.ok && is_zero(rp2.den.a1) && is_zero(rp2.den.a2)) {
+        raw = solve_poly2(a, rp2.num, var);
+        expanded = format_expr(a, poly2_to_node(a, rp2.num, var));
+    }
+    else {
+        auto rp = poly_any_of(a, squared, var);
+        if(rp && rp->ok && rp->c.size() <= 5) {
+            std::vector<std::string> factor_lines;
+            raw = solve_poly_any_raw(a, *rp, var, factor_lines);
+            if(raw.empty()) raw = numeric_roots_scan(a, squared, var);
+            expanded = format_expr(a, poly_any_to_node(a, *rp, var));
+        }
+    }
+    if(raw.empty()) {
+        auto rad_lin = symbolic_linear_parts(a, rad, var);
+        auto rhs_lin = symbolic_linear_parts(a, rhs_iso, var);
+        if(!rad_lin || !rhs_lin) return std::nullopt;
+        NodeId A = exact_eval_simplify(a, casio::power(a, rhs_lin->m, casio::num(a, 2)));
+        NodeId B = exact_eval_simplify(a, casio::add(a, {
+            casio::mul(a, {casio::num(a, 2), rhs_lin->m, rhs_lin->c}),
+            casio::neg(a, rad_lin->m)
+        }));
+        NodeId C = exact_eval_simplify(a, casio::add(a, {
+            casio::power(a, rhs_lin->c, casio::num(a, 2)),
+            casio::neg(a, rad_lin->c)
+        }));
+        NodeId xs = casio::sym(a, var);
+        NodeId eq = exact_eval_simplify(a, casio::add(a, {
+            casio::mul(a, {A, casio::power(a, xs, casio::num(a, 2))}),
+            casio::mul(a, {B, xs}),
+            C
+        }));
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+        out.push_back("sqrt(" + format_expr(a, rad) + ") = " + format_expr(a, rhs_iso));
+        if(auto dom = linear_domain(rad)) out.push_back(format_expr(a, rad) + " >= 0 => " + *dom);
+        else out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
+        if(auto dom = linear_domain(rhs_iso)) out.push_back(format_expr(a, rhs_iso) + " >= 0 => " + *dom);
+        else out.push_back("Domain: " + format_expr(a, rhs_iso) + " >= 0");
+        out.push_back(format_expr(a, rad) + " = (" + format_expr(a, rhs_iso) + ")^2");
+        out.push_back("expand => " + format_expr(a, eq) + " = 0");
+        return out;
+    }
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    sort_solution_lines(a, raw);
+    sort_solution_lines(a, valid);
 
     std::vector<std::string> out;
     out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
     out.push_back("sqrt(" + format_expr(a, rad) + ") = " + format_expr(a, rhs_iso));
-    out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
+    if(auto dom = linear_domain(rad)) out.push_back(format_expr(a, rad) + " >= 0 => " + *dom);
+    else out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
     if(auto dom = linear_domain(rhs_iso)) out.push_back(format_expr(a, rhs_iso) + " >= 0 => " + *dom);
     else out.push_back("Domain: " + format_expr(a, rhs_iso) + " >= 0");
     out.push_back(format_expr(a, rad) + " = (" + format_expr(a, rhs_iso) + ")^2");
@@ -16784,6 +17021,125 @@ static std::optional<std::vector<std::string>> inverse_trig_special_solve(
         };
     }
     return std::nullopt;
+}
+
+static std::optional<NodeId> cos_exact_alpha_node(Arena &a, NodeId rhs)
+{
+    auto v = eval_node_env(a, rhs, {});
+    if(!v) return std::nullopt;
+    NodeId pi = a.constant(ConstKind::Pi);
+    auto over = [&](int d) { return casio::div(a, pi, casio::num(a, d)); };
+    double r = *v;
+    if(std::fabs(r - 1.0) < 1e-9) return casio::num(a, 0);
+    if(std::fabs(r - std::sqrt(3.0) / 2.0) < 1e-9) return over(6);
+    if(std::fabs(r - std::sqrt(2.0) / 2.0) < 1e-9) return over(4);
+    if(std::fabs(r - 0.5) < 1e-9) return over(3);
+    if(std::fabs(r) < 1e-9) return over(2);
+    if(std::fabs(r + 0.5) < 1e-9) return casio::mul(a, {casio::num(a, 2), over(3)});
+    if(std::fabs(r + std::sqrt(2.0) / 2.0) < 1e-9) return casio::mul(a, {casio::num(a, 3), over(4)});
+    if(std::fabs(r + std::sqrt(3.0) / 2.0) < 1e-9) return casio::mul(a, {casio::num(a, 5), over(6)});
+    if(std::fabs(r + 1.0) < 1e-9) return pi;
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> trig_quadratic_arg_exact_solve(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    NodeId arg = 0, val = 0;
+    Node const &L = a.get(lhs);
+    Node const &R = a.get(rhs);
+    if(L.kind == NodeKind::Fn && L.fkind == FnKind::Cos) { arg = L.a; val = rhs; }
+    else if(R.kind == NodeKind::Fn && R.fkind == FnKind::Cos) { arg = R.a; val = lhs; }
+    else {
+        auto from_residual = [&](NodeId res) -> bool {
+            std::vector<NodeId> terms, rest;
+            add_terms_flat(a, res, terms);
+            NodeId coef = 0;
+            auto cos_term = [&](NodeId t) -> std::optional<std::pair<NodeId, NodeId>> {
+                Node const &n = a.get(t);
+                if(n.kind == NodeKind::Fn && n.fkind == FnKind::Cos)
+                    return std::make_pair(n.a, one_node(a));
+                if(n.kind != NodeKind::Mul) return std::nullopt;
+                NodeId found = 0;
+                std::vector<NodeId> coeffs;
+                for(NodeId k : n.kids) {
+                    Node const &kid = a.get(k);
+                    if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Cos && found == 0) {
+                        found = kid.a;
+                        continue;
+                    }
+                    if(contains_symbol(a, k, var)) return std::nullopt;
+                    coeffs.push_back(k);
+                }
+                if(!found) return std::nullopt;
+                return std::make_pair(found, mul_or_one(a, coeffs));
+            };
+            for(NodeId t : terms) {
+                if(!arg) {
+                    if(auto ct = cos_term(t)) {
+                        arg = ct->first;
+                        coef = ct->second;
+                        continue;
+                    }
+                }
+                rest.push_back(t);
+            }
+            if(!arg) return false;
+            NodeId r = rest.empty() ? zero_node(a) : casio::simplify(a, casio::add(a, rest));
+            val = exact_eval_simplify(a, casio::div(a, casio::neg(a, r), coef ? coef : one_node(a)));
+            return true;
+        };
+        if(casio::same_by_sig(a, rhs, zero_node(a))) {
+            if(!from_residual(lhs)) return std::nullopt;
+        }
+        else if(casio::same_by_sig(a, lhs, zero_node(a))) {
+            if(!from_residual(rhs)) return std::nullopt;
+        }
+        else return std::nullopt;
+    }
+    auto alpha = cos_exact_alpha_node(a, val);
+    NodeId qa2 = 0, qb = 0, qc = 0;
+    if(auto q = symbolic_quadratic_parts(a, arg, var)) {
+        qa2 = q->a2;
+        qb = q->b;
+        qc = q->c;
+    }
+    else if(auto p = poly_of(a, arg, var); p && p->ok && !is_zero(p->a2)) {
+        qa2 = a.num(p->a2);
+        qb = a.num(p->a1);
+        qc = a.num(p->a0);
+    }
+    else {
+        return std::nullopt;
+    }
+    NodeId qb_s = exact_eval_simplify(a, qb);
+    if(!alpha || !(casio::same_by_sig(a, qb_s, zero_node(a)) || is_num_node(a, qb_s, 0)))
+        return std::nullopt;
+    NodeId two_pi = casio::mul(a, {casio::num(a, 2), a.constant(ConstKind::Pi)});
+    std::vector<NodeId> targets{*alpha};
+    if(!casio::same_by_sig(a, *alpha, zero_node(a)) && !casio::same_by_sig(a, *alpha, a.constant(ConstKind::Pi)))
+        targets.push_back(casio::simplify(a, sub_node(a, two_pi, *alpha)));
+
+    std::vector<std::string> out{format_expr(a, lhs) + " = " + format_expr(a, rhs)};
+    out.push_back("alpha = arccos(" + format_expr(a, val) + ") = " + format_expr(a, *alpha));
+    std::vector<std::string> sols;
+    for(NodeId t : targets) {
+        NodeId x2 = exact_eval_simplify(a, casio::div(a, sub_node(a, t, qc), qa2));
+        auto x2v = eval_node_env(a, x2, {});
+        out.push_back(format_expr(a, arg) + " = " + format_expr(a, t));
+        out.push_back(var + "^2 = " + format_expr(a, x2));
+        if(!x2v || *x2v < -1e-10) {
+            out.push_back(format_expr(a, x2) + " < 0");
+            continue;
+        }
+        NodeId root = exact_eval_simplify(a, casio::fn(a, "sqrt", x2));
+        std::string rt = format_expr(a, root);
+        sols.push_back(var + " = " + rt);
+        if(!casio::same_by_sig(a, root, zero_node(a))) sols.push_back(var + " = -" + rt);
+    }
+    if(sols.empty()) out.push_back(var + " = []");
+    else out.push_back(solution_list_line(var, sols));
+    return out;
 }
 
 struct InvTrigAffine
@@ -19992,6 +20348,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto inv = !domain_text.empty() ? inverse_restricted_quadratic(arena, n, domain_text) : std::optional<NodeId>{};
             if(!inv && !domain_text.empty()) inv = inverse_restricted_recip_square(arena, n, domain_text);
             if(!inv && !domain_text.empty()) inv = inverse_restricted_sqrt_recip_square(arena, n, domain_text);
+            if(!inv && !domain_text.empty()) inv = inverse_restricted_quadratic_rational(arena, n, domain_text);
             if(!inv && !domain_text.empty()) inv = inverse_restricted_trig(arena, n);
             if(!inv) inv = inverse_simple_function(arena, n);
             if(!inv) {
@@ -20470,6 +20827,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto qr = quartic_finite_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
+                    range_answer = *qr;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto qr = quadratic_rational_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
                     range_answer = *qr;
                     steps.push_back("Range: " + range_answer + ".");
                 }
@@ -21162,6 +21523,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *nr;
+        if(auto tq = trig_quadratic_arg_exact_solve(arena, lhs, rhs, solve_var))
+            return *tq;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))
             return *trig;
         if(auto inv_spec = inverse_trig_special_solve(arena, lhs, rhs, solve_var))
@@ -21298,6 +21661,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
         if(auto tmp = tan_multiple_angle_poly_route(arena, rearr, solve_var)) return *tmp;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *pf;
+        if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *spoly;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
             out.push_back("symbolic parameters unsupported");

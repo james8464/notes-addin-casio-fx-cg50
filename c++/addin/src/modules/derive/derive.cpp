@@ -2442,6 +2442,97 @@ static bool append_product_rule_detail(
     return true;
 }
 
+struct ExpAffineParts
+{
+    NodeId coef;
+    NodeId rest;
+    NodeId exponent;
+};
+
+static bool exp_factor_local(Arena &a, NodeId n, NodeId &exponent)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) { exponent = x.a; return true; }
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        if(b.kind == NodeKind::Const && b.ckind == ConstKind::E) { exponent = x.b; return true; }
+    }
+    return false;
+}
+
+static bool exp_term_local(Arena &a, NodeId n, std::string const &var, NodeId &coef, NodeId &exponent)
+{
+    if(exp_factor_local(a, n, exponent)) { coef = casio::num(a, 1); return true; }
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return false;
+    std::vector<NodeId> cs;
+    bool seen = false;
+    for(NodeId k : x.kids) {
+        NodeId e = 0;
+        if(!seen && exp_factor_local(a, k, e)) { exponent = e; seen = true; }
+        else if(!depends_on(a, k, var)) cs.push_back(k);
+        else return false;
+    }
+    if(!seen) return false;
+    coef = cs.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, cs));
+    return true;
+}
+
+static std::optional<ExpAffineParts> affine_in_exp(Arena &a, NodeId n, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else terms.push_back(n);
+    std::vector<NodeId> cs, rs;
+    NodeId expn = 0;
+    bool seen = false;
+    for(NodeId t : terms) {
+        NodeId c = 0, e = 0;
+        if(exp_term_local(a, t, var, c, e)) {
+            if(seen && !same_expr_key(a, expn, e)) return std::nullopt;
+            expn = e;
+            seen = true;
+            cs.push_back(c);
+        }
+        else if(!depends_on(a, t, var)) rs.push_back(t);
+        else return std::nullopt;
+    }
+    if(!seen) return std::nullopt;
+    return ExpAffineParts{
+        cs.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, cs)),
+        rs.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rs)),
+        expn,
+    };
+}
+
+static bool append_exp_mobius_quotient_detail(
+    Arena &a,
+    NodeId num,
+    NodeId den,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string *answer_override
+)
+{
+    auto u = affine_in_exp(a, num, var);
+    auto v = affine_in_exp(a, den, var);
+    if(!u || !v || !same_expr_key(a, u->exponent, v->exponent)) return false;
+    NodeId det = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {u->coef, v->rest}),
+        casio::neg(a, casio::mul(a, {u->rest, v->coef})),
+    }));
+    if(is_zero_node(a, det)) return false;
+    NodeId ep = casio::simplify(a, diff(a, u->exponent, var));
+    NodeId top = casio::simplify(a, casio::mul(a, {det, a.fn(FnKind::Exp, u->exponent), ep}));
+    std::string nt = clean_math_text(format_expr_human(a, top));
+    if(nt.empty() || node_weight(a, top) > 50) return false;
+    steps.push_back("[(u')*v-u*(v')] = " + nt + ".");
+    if(answer_override)
+        *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + clean_math_text(format_expr_human(a, den)) + ")^2";
+    return true;
+}
+
 static bool append_quotient_rule_detail(
     Arena &a,
     NodeId n,
@@ -2502,6 +2593,7 @@ static bool append_quotient_rule_detail(
             }
         }
     }
+    if(append_exp_mobius_quotient_detail(a, q.a, q.b, var, steps, answer_override)) return true;
     NodeId top = casio::simplify(a, casio::add(a, {
         casio::mul(a, {du, q.b}),
         casio::neg(a, casio::mul(a, {q.a, dv})),

@@ -1188,6 +1188,142 @@ static std::vector<double> x_values_from_angle_degrees(
     return xs;
 }
 
+static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r);
+static std::string trig_alpha_family_line(FnKind fk, std::string const &arg, double r, bool rad);
+
+struct EvenQuadAngle
+{
+    NodeId a2 = 0;
+    NodeId c = 0;
+};
+
+static bool is_pow_var2(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &base = a.get(x.a);
+    auto e = as_num(a, x.b);
+    return base.kind == NodeKind::Sym && base.text == var && e && e->num == 2 && e->den == 1;
+}
+
+static std::optional<NodeId> strip_x2_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_pow_var2(a, n, var)) return casio::num(a, 1);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    NodeId x2 = 0;
+    std::vector<NodeId> coeff;
+    for(NodeId k : x.kids) {
+        if(is_pow_var2(a, k, var)) {
+            if(x2) return std::nullopt;
+            x2 = k;
+        }
+        else {
+            if(contains_var(a, k, var)) return std::nullopt;
+            coeff.push_back(k);
+        }
+    }
+    if(!x2) return std::nullopt;
+    if(coeff.empty()) return casio::num(a, 1);
+    return casio::simplify(a, casio::mul(a, coeff));
+}
+
+static std::optional<EvenQuadAngle> even_quadratic_angle(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    std::vector<NodeId> q, c;
+    for(NodeId t : terms) {
+        if(auto k = strip_x2_coeff(a, t, var)) q.push_back(*k);
+        else {
+            if(contains_var(a, t, var)) return std::nullopt;
+            c.push_back(t);
+        }
+    }
+    if(q.empty()) return std::nullopt;
+    return EvenQuadAngle{
+        casio::simplify(a, casio::add(a, q)),
+        c.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, c))
+    };
+}
+
+static NodeId angle_node_from_degrees(Arena &a, double deg, bool rad)
+{
+    if(rad) return casio::parse_expr(a, format_pi_degrees(deg));
+    return casio::parse_expr(a, format_double_compact(deg));
+}
+
+static std::optional<std::vector<std::string>> solve_even_quadratic_angle_exact(
+    Arena &a,
+    FnKind fk,
+    NodeId arg,
+    NodeId target_node,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad,
+    std::string const &eq_text
+)
+{
+    if(!(fk == FnKind::Sin || fk == FnKind::Cos || fk == FnKind::Tan)) return std::nullopt;
+    auto q = even_quadratic_angle(a, arg, var);
+    if(!q) return std::nullopt;
+    auto av = numeric_eval(a, q->a2, 0.0);
+    auto cv = numeric_eval(a, q->c, 0.0);
+    auto tv = numeric_eval(a, target_node, 0.0);
+    if(!av || !cv || !tv || std::fabs(*av) < 1e-12) return std::nullopt;
+    auto bases = base_trig_degrees(fk, *tv);
+    if(bases.empty()) return std::nullopt;
+
+    bool filter = !(rad && trim(lo_text) == "0" && trim(hi_text) == "2*pi");
+    AngleBounds bounds = angle_bounds(a, lo_text, hi_text, rad);
+    std::string A = format_expr(a, arg);
+    std::string target = format_expr(a, target_node);
+    std::vector<std::string> steps{
+        eq_text + ".",
+        "A = " + A + ".",
+        trig_name(fk) + "(A) = " + target + ".",
+        trig_base_angle_line(fk, "A", *tv),
+        trig_alpha_family_line(fk, "A", *tv, rad),
+    };
+    std::vector<std::string> roots;
+    for(double base : bases) {
+        NodeId theta = angle_node_from_degrees(a, base, rad);
+        NodeId num = casio::add(a, {theta, casio::neg(a, q->c)});
+        NodeId den = q->a2;
+        if(*av < 0) {
+            num = casio::add(a, {q->c, casio::neg(a, theta)});
+            den = casio::neg(a, q->a2);
+        }
+        NodeId x2 = casio::simplify(a, casio::div(a, num, den));
+        auto x2v = numeric_eval(a, x2, 0.0);
+        steps.push_back(A + " = " + format_expr(a, theta) + ".");
+        steps.push_back(var + "^2 = " + format_expr(a, x2) + ".");
+        if(!x2v || *x2v < -1e-10) {
+            steps.push_back(format_expr(a, x2) + " < 0.");
+            continue;
+        }
+        NodeId root = casio::simplify(a, casio::fn(a, "sqrt", x2));
+        auto rv = numeric_eval(a, root, 0.0);
+        if(!rv) continue;
+        auto add_root = [&](std::string const &s, double v) {
+            double xdeg = rad ? v * 180.0 / M_PI : v;
+            if(filter && !in_bounds(xdeg, bounds)) return;
+            if(std::find(roots.begin(), roots.end(), s) == roots.end()) roots.push_back(s);
+        };
+        std::string rt = format_expr(a, root);
+        add_root(rt, *rv);
+        if(std::fabs(*rv) > 1e-10) add_root("-" + rt, -*rv);
+    }
+    std::string final = var + " = [";
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) final += ", ";
+        final += roots[i];
+    }
+    final += "]";
+    return casio::exam_block("trig solve", steps, final);
+}
+
 static std::string format_solution_list(std::string const &var, bool rad, std::vector<double> const &xs_deg)
 {
     std::ostringstream oss;
@@ -8462,11 +8598,11 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         if(auto direct = isolate_scaled_trig(left, right)) return direct;
         if(L.kind == NodeKind::Add && L.kids.size() == 2) {
             NodeId t0 = L.kids[0], t1 = L.kids[1];
-            if(is_const(a, t1)) {
+            if(!contains_var(a, t1, var)) {
                 NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t1)}));
                 if(auto out = isolate_scaled_trig(t0, new_rhs)) return out;
             }
-            if(is_const(a, t0)) {
+            if(!contains_var(a, t0, var)) {
                 NodeId new_rhs = casio::simplify(a, casio::add(a, {right, casio::neg(a, t0)}));
                 if(auto out = isolate_scaled_trig(t1, new_rhs)) return out;
             }
@@ -8487,6 +8623,32 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             },
             var + " = all valid " + var + " in domain"
         );
+    }
+    {
+        auto iso0 = isolate(lhs, rhs);
+        if(!iso0) iso0 = isolate(rhs, lhs);
+        if(iso0 && !contains_var(a, iso0->second, var)) {
+            NodeId fn_node = iso0->first;
+            NodeId target_node = iso0->second;
+            Node const &F = a.get(fn_node);
+            if(F.kind == NodeKind::Fn) {
+                FnKind fk0 = F.fkind;
+                if(fk0 == FnKind::Sec) {
+                    fk0 = FnKind::Cos;
+                    target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+                }
+                else if(fk0 == FnKind::Cosec) {
+                    fk0 = FnKind::Sin;
+                    target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+                }
+                else if(fk0 == FnKind::Cot) {
+                    fk0 = FnKind::Tan;
+                    target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+                }
+                if(auto qangle = solve_even_quadratic_angle_exact(a, fk0, F.a, target_node, var, lo_text, hi_text, rad, eq_text))
+                    return *qangle;
+            }
+        }
     }
     if(auto zp = solve_zero_product_trig(a, residual, var, lo_text, hi_text, rad)) return *zp;
     if(auto costan = solve_cos_tan_product(a, residual, var, lo_text, hi_text, rad, general)) return *costan;
@@ -8563,6 +8725,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         fk = FnKind::Tan;
         target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
     }
+
+    if(auto qangle = solve_even_quadratic_angle_exact(a, fk, L.a, target_node, var, lo_text, hi_text, rad, eq_text))
+        return *qangle;
 
     std::string target = format_expr(a, target_node);
 
