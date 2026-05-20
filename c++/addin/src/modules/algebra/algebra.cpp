@@ -639,6 +639,7 @@ static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
 struct PolyAny;
 static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
 static std::string sqrt_rational_surd_text(Arena &a, Rational r);
+static std::string cube_root_rational_text(Arena &a, Rational r);
 
 static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
 {
@@ -6924,6 +6925,77 @@ static bool read_xy_x2_equation(std::string const &eq, Rational &axy, Rational &
     if(!pxy || !px) return false;
     axy = *pxy; ax = *px; C = *rhs;
     return true;
+}
+
+static bool read_cube_sum_equation(std::string const &eq, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    bool sx = false, sy = false;
+    for(auto const &t : split_signed_terms_key(sides[0])) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "x^3", c) && c.num == c.den) sx = true;
+        else if(read_coeff_suffix(t, "y^3", c) && c.num == c.den) sy = true;
+    }
+    if(!sx || !sy) return false;
+    C = *rhs;
+    return true;
+}
+
+static bool read_xy_sum_equation(std::string const &eq, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    bool a = false, b = false;
+    for(auto const &t : split_signed_terms_key(sides[0])) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "x^2y", c) && c.num == c.den) a = true;
+        else if(read_coeff_suffix(t, "xy^2", c) && c.num == c.den) b = true;
+    }
+    if(!a || !b) return false;
+    C = *rhs;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> symmetric_cubic_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> C, P;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(read_cube_sum_equation(e, v)) C = v;
+        else if(read_xy_sum_equation(e, v)) P = v;
+    }
+    if(!C || !P) return std::nullopt;
+    Rational s3 = r_add(*C, r_mul(Rational{3, 1}, *P));
+    std::string st = cube_root_rational_text(a, s3);
+    auto sr = parse_rational_text(st);
+    if(!sr || is_zero(*sr)) return std::nullopt;
+    Rational p = r_div(*P, *sr);
+    Poly2 tp = primitive_poly2(Poly2{Rational{1, 1}, r_neg(*sr), p, true});
+    auto roots = solve_poly2(a, tp, "t");
+    if(roots.size() != 2) return std::nullopt;
+    std::string r1 = sol_rhs(roots[0]), r2 = sol_rhs(roots[1]);
+    std::vector<std::string> out;
+    out.push_back("s = x+y, p = xy");
+    out.push_back("x^3+y^3 = s^3 - 3*p*s");
+    out.push_back("x^2*y+x*y^2 = p*s = " + format_rat_plain(*P));
+    out.push_back("s^3 - 3*(" + format_rat_plain(*P) + ") = " + format_rat_plain(*C));
+    out.push_back("s^3 = " + format_rat_plain(s3));
+    out.push_back("s = " + st);
+    out.push_back("p = " + format_rat_plain(p));
+    out.push_back(format_expr(a, poly2_to_node(a, tp, "t")) + " = 0");
+    out.push_back("t = " + r1);
+    out.push_back("t = " + r2);
+    out.push_back("(x,y) = [(" + r1 + "," + r2 + "), (" + r2 + "," + r1 + ")]");
+    return out;
 }
 
 static std::string linear_u_text(Rational a, Rational b)
@@ -13764,6 +13836,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rqs = reciprocal_quadratic_system(arena, key)) return *rqs;
             if(auto sss = sum_sqrt_sum_square_system(arena, key)) return *sss;
             if(auto rsr = reciprocal_sqrt_ratio_square_system(arena, key)) return *rsr;
+            if(auto scs = symmetric_cubic_system(arena, key)) return *scs;
             if(auto hqs = homogeneous_quadratic_ratio_system(arena, key)) return *hqs;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
