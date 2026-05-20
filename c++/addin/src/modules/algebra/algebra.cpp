@@ -7975,7 +7975,7 @@ static std::optional<std::vector<std::string>> reciprocal_sqrt_affine_ratio_rout
         out.push_back(rat_node_text(a, t0.coef) + "*u + " + rat_node_text(a, t1.coef) + "/u = " + format_rat_plain(*R));
         out.push_back(format_expr(a, poly2_to_node(a, uq, "u")) + " = 0");
         if(auto rr = rational_quadratic_roots(uq))
-            out.push_back("Factor: " + quadratic_factor_text(a, uq, "u") + " = 0");
+            out.push_back(quadratic_factor_text(a, uq, "u") + " = 0");
         for(auto const &line : us) {
             std::string rhs_s = sol_rhs(line);
             auto ur = parse_rational_text(rhs_s);
@@ -11134,8 +11134,16 @@ static std::optional<RelatedBaseExpTerm> parse_related_base_exp_term(
             if(!den) return std::nullopt;
             t.coef = r_div(t.coef, *den);
             auto top = parse_related_base_exp_term(a, x.a, var);
-            if(!top || top->exp_base || !top->log_bases.empty()) return std::nullopt;
+            if(!top) return std::nullopt;
             t.coef = r_mul(t.coef, top->coef);
+            if(top->exp_base) {
+                if(have_exp) return std::nullopt;
+                t.exp_base = top->exp_base;
+                t.slope = top->slope;
+                t.offset = top->offset;
+                have_exp = true;
+            }
+            t.log_bases.insert(t.log_bases.end(), top->log_bases.begin(), top->log_bases.end());
             continue;
         }
         if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
@@ -11221,6 +11229,114 @@ static std::string rational_power_root_text(Arena &a, Rational r, int root)
     auto rd = integer_nth_root_i64(r.den, root);
     if(rn && rd && *rd != 0) return format_expr(a, a.num(Rational{neg ? -*rn : *rn, *rd}));
     return "(" + format_expr(a, a.num(r)) + ")^(1/" + std::to_string(root) + ")";
+}
+
+static std::optional<Rational> scaled_related_exp_coef(RelatedBaseExpTerm const &t)
+{
+    auto scale = integer_base_power_rational(std::to_string(t.exp_base), t.offset);
+    if(!scale) return std::nullopt;
+    return r_mul(t.coef, *scale);
+}
+
+static std::optional<Rational> rational_ratio_power(Rational base, Rational value)
+{
+    if(base.num <= 0 || value.num <= 0) return std::nullopt;
+    for(int k = -12; k <= 12; ++k)
+        if(r_cmp(r_pow_int(base, k), value) == 0) return Rational{k, 1};
+    return std::nullopt;
+}
+
+static std::string scaled_var_text(Rational k, std::string const &var)
+{
+    if(k.num == k.den) return var;
+    if(k.num == -k.den) return "-" + var;
+    return format_rat_plain(k) + "*" + var;
+}
+
+static std::optional<std::vector<std::string>> product_base_ratio_exp_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> raw_terms;
+    add_terms_flat(a, residual, raw_terms);
+    for(std::size_t i = 0; i < raw_terms.size(); ++i) {
+        Node const &x = a.get(raw_terms[i]);
+        if(x.kind == NodeKind::Div && a.get(x.a).kind == NodeKind::Add && as_num(a, x.b)) {
+            std::vector<NodeId> expanded;
+            for(std::size_t j = 0; j < i; ++j) expanded.push_back(raw_terms[j]);
+            for(NodeId k : a.get(x.a).kids) expanded.push_back(casio::div(a, k, x.b));
+            for(std::size_t j = i + 1; j < raw_terms.size(); ++j) expanded.push_back(raw_terms[j]);
+            raw_terms.swap(expanded);
+            break;
+        }
+    }
+    if(raw_terms.size() != 3) return std::nullopt;
+    std::vector<RelatedBaseExpTerm> terms;
+    for(NodeId n : raw_terms) {
+        auto t = parse_related_base_exp_term(a, n, var);
+        if(!t || !t->log_bases.empty()) return std::nullopt;
+        terms.push_back(*t);
+    }
+
+    for(int p = 0; p < 3; ++p) {
+        std::vector<int> ab;
+        for(int i = 0; i < 3; ++i) if(i != p) ab.push_back(i);
+        auto const &P = terms[p];
+        auto const &A = terms[ab[0]];
+        auto const &B = terms[ab[1]];
+        if(A.exp_base <= 1 || B.exp_base <= 1 || P.exp_base != A.exp_base * B.exp_base) continue;
+        if(r_cmp(A.slope, B.slope) != 0) continue;
+        if(r_cmp(A.slope, r_mul(Rational{2, 1}, P.slope)) != 0) continue;
+        if(is_zero(P.slope)) continue;
+        auto cA = scaled_related_exp_coef(A);
+        auto cB = scaled_related_exp_coef(B);
+        auto cP = scaled_related_exp_coef(P);
+        if(!cA || !cB || !cP || is_zero(*cA) || is_zero(*cB)) continue;
+
+        Poly2 uq = primitive_poly2(Poly2{*cA, *cP, *cB, true});
+        auto roots = solve_poly2(a, uq, "u");
+        if(roots.empty()) continue;
+
+        Rational ratio{A.exp_base, B.exp_base};
+        ratio.normalize();
+        std::string ratio_txt = format_rat_plain(ratio);
+        std::string uexp = scaled_var_text(P.slope, var);
+        out.push_back("u = (" + ratio_txt + ")^" + uexp + ", u > 0");
+        out.push_back("divide by " + std::to_string(P.exp_base) + "^" + uexp);
+        std::string ueq = signed_sum_text(rat_node_text(a, *cA) + "*u", rat_node_text(a, *cB) + "/u");
+        ueq = signed_sum_text(ueq, rat_node_text(a, *cP));
+        out.push_back(ueq + " = 0");
+        out.push_back(format_expr(a, poly2_to_node(a, uq, "u")) + " = 0");
+        if(auto rr = rational_quadratic_roots(uq))
+            out.push_back("Factor: " + quadratic_factor_text(a, uq, "u") + " = 0");
+
+        std::vector<std::string> xs;
+        for(auto const &rline : roots) {
+            std::string rhs = sol_rhs(rline);
+            out.push_back("u = " + rhs);
+            auto rv = parse_rational_text(rhs);
+            if(!rv || rv->num <= 0) continue;
+            auto kval = rational_ratio_power(ratio, *rv);
+            if(!kval) {
+                out.push_back("(" + ratio_txt + ")^" + uexp + " = " + rhs);
+                xs.push_back(var + " = log(" + ratio_txt + "," + rhs + ")");
+                continue;
+            }
+            Rational xval = r_div(*kval, P.slope);
+            out.push_back("(" + ratio_txt + ")^" + uexp + " = " + rhs + " => " + var + " = " + format_rat_plain(xval));
+            xs.push_back(var + " = " + format_rat_plain(xval));
+        }
+        xs = filter_real_solutions(a, residual, var, xs, std::nullopt, std::nullopt);
+        if(xs.empty()) continue;
+        sort_solution_lines(a, xs);
+        xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
+        out.push_back(solution_list_line(var, xs));
+        return out;
+    }
+    return std::nullopt;
 }
 
 static std::optional<std::vector<std::string>> related_base_exp_substitution_route(
@@ -13623,6 +13739,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
         if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
+        if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
         if(auto rb = related_base_exp_substitution_route(arena, rearr, solve_var, out)) return *rb;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
         if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var)) {
