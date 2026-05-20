@@ -588,6 +588,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(auto lf = exact_ln_factor_node(a, arg)) return casio::simplify(a, *lf);
             if(u.kind == NodeKind::Pow) {
                 if(is_e_const_node(a, u.a)) return casio::simplify(a, u.b);
+                if(auto bl = exact_ln_factor_node(a, u.a))
+                    return exact_eval_simplify(a, casio::mul(a, {u.b, *bl}));
             }
             if(u.kind == NodeKind::Fn && u.fkind == FnKind::Exp) return casio::simplify(a, u.a);
         }
@@ -2663,7 +2665,11 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
     Node const &n = a.get(id);
     switch(n.kind) {
     case NodeKind::Num: return (double)n.num.num / (double)n.num.den;
-    case NodeKind::Sym: return (n.text == var) ? xval : 0.0;
+    case NodeKind::Sym:
+        if(n.text == var) return xval;
+        if(n.text == "e") return M_E;
+        if(n.text == "pi") return M_PI;
+        return 0.0;
     case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
     case NodeKind::Fn: {
         auto av = eval_node(a, n.a, var, xval);
@@ -3820,8 +3826,6 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
     int steps = 4000;
     double step = (hi - lo) / steps;
     std::vector<double> roots;
-    int finite_samples = 0;
-    int near_zero_samples = 0;
     auto add_root = [&](double r) {
         if(r < lo - 1e-7 || r > hi + 1e-7) return;
         for(double seen : roots) {
@@ -3835,28 +3839,18 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
         return *v;
     };
 
-    double prev_x = lo;
-    auto prev = f(prev_x);
-    if(prev) {
-        finite_samples++;
-        if(std::fabs(*prev) < 1e-7) {
-            near_zero_samples++;
-            add_root(prev_x);
-        }
+    std::vector<double> xs(steps + 1);
+    std::vector<std::optional<double>> ys(steps + 1);
+    for(int i = 0; i <= steps; i++) {
+        xs[i] = (i == steps) ? hi : lo + step * i;
+        ys[i] = f(xs[i]);
     }
+
     for(int i = 1; i <= steps; i++) {
-        double x = (i == steps) ? hi : lo + step * i;
-        auto cur = f(x);
-        if(cur) {
-            finite_samples++;
-            if(std::fabs(*cur) < 1e-7) {
-                near_zero_samples++;
-                add_root(x);
-                if(roots.size() > 80 && near_zero_samples > 80) {
-                    return {"Infinite solutions."};
-                }
-            }
-        }
+        auto prev = ys[i - 1];
+        auto cur = ys[i];
+        double prev_x = xs[i - 1];
+        double x = xs[i];
         if(prev && cur && ((*prev < 0 && *cur > 0) || (*prev > 0 && *cur < 0))) {
             double a0 = prev_x;
             double b0 = x;
@@ -3881,14 +3875,47 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
             auto fc = f(cand);
             if(fc && std::fabs(*fc) < 1e-6) add_root(cand);
         }
-        prev_x = x;
-        prev = cur;
     }
-    if(finite_samples >= 20 && near_zero_samples * 10 > finite_samples * 8) {
-        return {"Infinite solutions."};
+
+    auto add_touch_root = [&](int i) {
+        if(!ys[i]) return;
+        double y0 = std::fabs(*ys[i]);
+        if(y0 > 1e-7) return;
+        double left = std::numeric_limits<double>::infinity();
+        double right = std::numeric_limits<double>::infinity();
+        if(i > 0 && ys[i - 1]) left = std::fabs(*ys[i - 1]);
+        if(i < steps && ys[i + 1]) right = std::fabs(*ys[i + 1]);
+        double near = std::min(left, right);
+        if(!std::isfinite(near) || near < 1e-6) return;
+        add_root(xs[i]);
+    };
+    add_touch_root(0);
+    add_touch_root(steps);
+    for(int i = 1; i < steps; i++) {
+        if(!ys[i] || !ys[i - 1] || !ys[i + 1]) continue;
+        double y0 = std::fabs(*ys[i]);
+        double yl = std::fabs(*ys[i - 1]);
+        double yr = std::fabs(*ys[i + 1]);
+        if(y0 <= 1e-7 && y0 <= 0.05 * std::min(yl, yr)) add_root(xs[i]);
     }
+    if(roots.size() > 20) return {};
+    std::sort(roots.begin(), roots.end());
     std::vector<std::string> out;
-    for(double r : roots) out.push_back(var + " = " + format_double_compact(r));
+    auto snap = [](double v) -> std::optional<Rational> {
+        for(long long den = 1; den <= 200; ++den) {
+            long long num = llround(v * (double)den);
+            if(std::fabs(v - (double)num / (double)den) < 1e-8) {
+                Rational r{num, den};
+                r.normalize();
+                return r;
+            }
+        }
+        return std::nullopt;
+    };
+    for(double r : roots) {
+        if(auto q = snap(r)) out.push_back(var + " = " + format_expr(a, a.num(*q)));
+        else out.push_back(var + " = " + format_double_compact(r));
+    }
     return out;
 }
 
@@ -9013,6 +9040,45 @@ static std::optional<std::vector<std::string>> reciprocal_power_plus_var_system_
     if(pairs.empty()) return std::nullopt;
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
     return out;
+}
+
+static std::optional<std::vector<std::string>> power_const_base_solve_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    auto run = [&](NodeId pnode, NodeId val) -> std::optional<std::vector<std::string>> {
+        Node const &p = a.get(pnode);
+        if(p.kind != NodeKind::Pow || contains_symbol(a, p.a, var) || contains_symbol(a, val, var)) return std::nullopt;
+        auto lin = symbolic_linear_parts(a, p.b, var);
+        if(!lin) return std::nullopt;
+        auto m = as_num(a, lin->m);
+        if(!m || is_zero(*m)) return std::nullopt;
+        NodeId base_log = casio::fn(a, "log", p.a);
+        NodeId rhs_log = casio::fn(a, "log", val);
+        NodeId top = exact_eval_simplify(a, sub_node(a, rhs_log, casio::mul(a, {lin->c, base_log})));
+        NodeId den = exact_eval_simplify(a, casio::mul(a, {a.num(*m), base_log}));
+        NodeId sol = exact_eval_simplify(a, casio::div(a, top, den));
+        if(auto v = eval_node(a, sol, "x", 0.0)) {
+            if(auto r = snap_small_rational(*v)) sol = a.num(*r);
+        }
+        out.push_back(format_expr(a, pnode) + " = " + format_expr(a, val));
+        NodeId log_left = exact_eval_simplify(a, casio::mul(a, {p.b, base_log}));
+        NodeId log_right = exact_eval_simplify(a, rhs_log);
+        out.push_back(format_expr(a, log_left) + " = " + format_expr(a, log_right));
+        if(!casio::same_by_sig(a, lin->c, zero_node(a))) {
+            NodeId rhs_no_c = exact_eval_simplify(a, top);
+            out.push_back(format_expr(a, casio::mul(a, {lin->m, casio::sym(a, var)})) + " = " + format_expr(a, rhs_no_c));
+        }
+        out.push_back(var + " = " + format_expr(a, sol));
+        out.push_back(var + " = [" + format_expr(a, sol) + "]");
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
 }
 
 static bool exp_of_var(Arena &a, NodeId n, std::string const &var)
@@ -16874,7 +16940,12 @@ static std::optional<std::vector<std::string>> exp_common_factor_route(
     std::string c = format_expr(a, coef_sum);
     out.push_back(f + "*(" + c + ") = 0");
     out.push_back(f + " > 0");
-    if(cv && std::fabs(*cv) < 1e-10) out.push_back(var + " = all real values in domain");
+    if(cv && std::fabs(*cv) < 1e-10) {
+        auto r0 = eval_node(a, residual, var, 0.37);
+        auto r1 = eval_node(a, residual, var, 1.11);
+        if(!r0 || !r1 || std::fabs(*r0) > 1e-7 || std::fabs(*r1) > 1e-7) return std::nullopt;
+        out.push_back(var + " = all real values in domain");
+    }
     else {
         out.push_back(c + " != 0");
         out.push_back(var + " = []");
@@ -17450,6 +17521,9 @@ static std::optional<std::vector<std::string>> exp_const_solve_route(
             out.push_back(format_expr(a, e_side) + " = " + format_expr(a, c_side));
             out.push_back("e^(" + format_expr(a, ce->second) + ") = " + format_expr(a, casio::num(a, target.num, target.den)));
             out.push_back(format_expr(a, ce->second) + " = ln(" + format_expr(a, casio::num(a, target.num, target.den)) + ")");
+            NodeId rhs_no_c = exact_eval_simplify(a, casio::neg(a, lin->c));
+            if(!casio::same_by_sig(a, lin->c, zero_node(a)))
+                out.push_back(format_expr(a, casio::mul(a, {lin->m, casio::sym(a, var)})) + " = " + format_expr(a, rhs_no_c));
             std::string exact_text = simplify_log_power_div_text(format_expr(a, exact));
             if(auto m = as_num(a, lin->m)) {
                 bool used_lp = false;
@@ -19269,6 +19343,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto aec = affine_exp_const_solve_route(arena, rearr, solve_var, out)) return *aec;
         if(auto etl = exp_trig_log_one_route(arena, lhs, rhs, rearr, solve_var, out, interval_lo, interval_hi)) return *etl;
+        if(auto pcs = power_const_base_solve_route(arena, lhs, rhs, solve_var, out)) return *pcs;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
