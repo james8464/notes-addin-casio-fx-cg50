@@ -8,6 +8,7 @@
 #include "core/parse_equation.hpp"
 #include "core/simplify.hpp"
 #include "modules/integrate/integrate.hpp"
+#include "modules/trig/trig.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -623,6 +624,50 @@ static std::optional<std::pair<NodeId, Rational>> scaled_log_arg(Arena &a, NodeI
     return std::make_pair(arg, c);
 }
 
+static std::optional<std::pair<NodeId, Rational>> scaled_plain_log_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) return std::make_pair(x.a, Rational{1, 1});
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId arg = 0;
+    for(NodeId k : x.kids) {
+        Node const &u = a.get(k);
+        if(u.kind == NodeKind::Num) c = r_mul(c, u.num);
+        else if(u.kind == NodeKind::Fn && u.fkind == FnKind::Log && !arg) arg = u.a;
+        else return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    return std::make_pair(arg, c);
+}
+
+static std::optional<std::pair<NodeId, Rational>> log_base_scaled_arg(Arena &a, NodeId n, NodeId base)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        Node const &den = a.get(x.b);
+        if(den.kind != NodeKind::Fn || den.fkind != FnKind::Log) return std::nullopt;
+        NodeId lhs = exact_eval_simplify(a, den.a);
+        NodeId rhs = exact_eval_simplify(a, base);
+        if(!casio::same_by_sig(a, lhs, rhs)) return std::nullopt;
+        return scaled_plain_log_arg(a, x.a);
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId body = 0;
+    for(NodeId k : x.kids) {
+        Node const &u = a.get(k);
+        if(u.kind == NodeKind::Num) c = r_mul(c, u.num);
+        else if(!body) body = k;
+        else return std::nullopt;
+    }
+    if(!body) return std::nullopt;
+    auto inner = log_base_scaled_arg(a, body, base);
+    if(!inner) return std::nullopt;
+    inner->second = r_mul(inner->second, c);
+    return inner;
+}
+
 static std::optional<NodeId> exp_split_log_sum(Arena &a, NodeId exponent)
 {
     std::vector<NodeId> terms;
@@ -738,6 +783,9 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(auto sl = scaled_log_arg(a, rhs))
                 return casio::simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den)));
             if(auto split = exp_split_log_sum(a, rhs)) return exact_eval_simplify(a, *split);
+        }
+        else if(auto lb = log_base_scaled_arg(a, rhs, lhs)) {
+            return exact_eval_simplify(a, casio::power(a, lb->first, casio::num(a, lb->second.num, lb->second.den)));
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
@@ -1133,6 +1181,29 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
         }
     }
     return std::nullopt;
+}
+
+static std::optional<NodeId> inverse_restricted_trig(Arena &a, NodeId expr)
+{
+    NodeId inner = expr;
+    Rational m{1, 1}, b{0, 1};
+    if(!affine_wrapper(a, expr, inner, m, b) || inner == expr) {
+        inner = expr;
+        m = Rational{1, 1};
+        b = Rational{0, 1};
+    }
+    if(is_zero(m)) return std::nullopt;
+    Node const &fn = a.get(inner);
+    if(fn.kind != NodeKind::Fn || (fn.fkind != FnKind::Sin && fn.fkind != FnKind::Cos && fn.fkind != FnKind::Tan)) return std::nullopt;
+    auto p = poly_of(a, fn.a, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    NodeId y = casio::sym(a, "x");
+    NodeId trig_y = exact_eval_simplify(a, casio::div(a, casio::add(a, {y, casio::neg(a, casio::num(a, b.num, b.den))}), casio::num(a, m.num, m.den)));
+    FnKind inv_kind = fn.fkind == FnKind::Sin ? FnKind::Asin : fn.fkind == FnKind::Cos ? FnKind::Acos : FnKind::Atan;
+    NodeId angle = a.fn(inv_kind, trig_y);
+    NodeId top = casio::add(a, {angle, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+    return exact_eval_simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
 }
 
 struct CartesianResult
@@ -2030,7 +2101,23 @@ static std::optional<std::string> linear_fractional_interval_range(
         return r_cmp(ys, asym) < 0 ? "y < " + rat_node_text(a, asym)
                                    : "y > " + rat_node_text(a, asym);
     }
-    if(r_cmp(pole, *x0) > 0) return std::nullopt;
+    if(r_cmp(pole, *x0) > 0) {
+        Rational asym = r_div(A, C);
+        Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
+        Rational mid = r_div(r_add(*x0, pole), Rational{2, 1});
+        Rational yl = r_div(r_add(r_mul(A, mid), B), r_add(r_mul(C, mid), D));
+        Rational yr = r_div(r_add(r_mul(A, r_add(pole, Rational{1, 1})), B), r_add(r_mul(C, r_add(pole, Rational{1, 1})), D));
+        steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+        steps.push_back("Horizontal asymptote y = " + rat_node_text(a, asym) + ".");
+        steps.push_back("Endpoint gives y = " + rat_node_text(a, y0) + ".");
+        std::string left = r_cmp(yl, y0) < 0
+            ? "y " + std::string(lo_open ? "< " : "<= ") + rat_node_text(a, y0)
+            : "y " + std::string(lo_open ? "> " : ">= ") + rat_node_text(a, y0);
+        std::string right = r_cmp(yr, asym) < 0
+            ? "y < " + rat_node_text(a, asym)
+            : "y > " + rat_node_text(a, asym);
+        return left + " or " + right;
+    }
     Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
     Rational asym = r_div(A, C);
     int cmp = r_cmp(y0, asym);
@@ -3102,18 +3189,17 @@ struct CompareTerm
 static CompareTerm parse_compare_term(Arena &a, std::string const &text)
 {
     if(auto eq = casio::parse_equation(a, text)) {
-        NodeId raw_residual = a.add({eq->lhs, neg_node(a, eq->rhs)});
         CompareTerm t;
-        t.lhs = casio::simplify(a, eq->lhs);
-        t.rhs = casio::simplify(a, eq->rhs);
+        t.lhs = exact_eval_simplify(a, casio::simplify(a, eq->lhs));
+        t.rhs = exact_eval_simplify(a, casio::simplify(a, eq->rhs));
         t.residual = sub_node(a, t.lhs, t.rhs);
-        t.domain = raw_residual;
+        t.domain = t.residual;
         t.equation = true;
         return t;
     }
     NodeId raw = casio::parse_expr(a, text);
-    NodeId n = casio::simplify(a, raw);
-    return CompareTerm{n, zero_node(a), n, raw, false};
+    NodeId n = exact_eval_simplify(a, casio::simplify(a, raw));
+    return CompareTerm{n, zero_node(a), n, n, false};
 }
 
 static std::string relation_text(Arena &a, CompareTerm const &t)
@@ -10522,6 +10608,62 @@ static std::optional<std::string> log_linear_range(Arena &a, NodeId n, std::stri
     return std::string("all real y");
 }
 
+static std::optional<std::string> log_linear_interval_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::string const &lo,
+    std::string const &hi,
+    bool lo_open,
+    bool hi_open,
+    std::vector<std::string> &steps
+)
+{
+    NodeId inner = n;
+    Rational scale{1, 1}, shift{0, 1};
+    if(!affine_wrapper(a, n, inner, scale, shift) || inner == n) {
+        inner = n;
+        scale = Rational{1, 1};
+        shift = Rational{0, 1};
+    }
+    Node const &logn = a.get(inner);
+    if(logn.kind != NodeKind::Fn || logn.fkind != FnKind::Log || is_zero(scale)) return std::nullopt;
+    auto p = poly_of(a, logn.a, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    if(lo.empty() || hi.empty()) return std::nullopt;
+
+    auto inf_key = [](std::string s) {
+        std::string k;
+        for(char ch : s) if(!std::isspace(static_cast<unsigned char>(ch))) k.push_back((char)std::tolower((unsigned char)ch));
+        return k == "inf" || k == "+inf" || k == "infinity" || k == "-inf" || k == "-infinity";
+    };
+    auto eval_at_text = [&](std::string const &s) -> std::optional<std::string> {
+        if(inf_key(s)) return std::nullopt;
+        NodeId xv = casio::parse_expr(a, s);
+        NodeId yv = exact_eval_simplify(a, clone_with_substitution(a, n, var, xv));
+        return format_expr(a, yv);
+    };
+    auto finite_side = [&](std::string const &s, bool open, bool lower_side) -> std::optional<std::string> {
+        auto y = eval_at_text(s);
+        if(!y) return std::nullopt;
+        bool increasing = r_mul(scale, p->a1).num > 0;
+        bool lower_bound = (lower_side && increasing) || (!lower_side && !increasing);
+        steps.push_back("log input is linear and log is monotone.");
+        steps.push_back("Endpoint gives y = " + *y + ".");
+        if(lower_bound) return std::string(open ? "y > " : "y >= ") + *y;
+        return std::string(open ? "y < " : "y <= ") + *y;
+    };
+    std::string hk = hi;
+    for(char &ch : hk) ch = (char)std::tolower((unsigned char)ch);
+    std::string lk = lo;
+    for(char &ch : lk) ch = (char)std::tolower((unsigned char)ch);
+    if(hk.find("inf") != std::string::npos && hk.find("-") == std::string::npos && p->a1.num > 0)
+        return finite_side(lo, lo_open, true);
+    if(lk.find("-inf") != std::string::npos && p->a1.num < 0)
+        return finite_side(hi, hi_open, false);
+    return std::nullopt;
+}
+
 static std::optional<std::string> log_positive_quadratic_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -11304,15 +11446,46 @@ static std::optional<std::string> monotone_power_interval_range(
     Arena &a,
     NodeId n,
     std::string const &var,
+    std::string const &lo,
+    std::string const &hi,
+    bool lo_open,
+    bool hi_open,
     std::optional<double> lo_v,
     std::optional<double> hi_v,
     std::vector<std::string> &steps
 )
 {
-    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v)) return std::nullopt;
     MonotonePowerInfo info;
     if(!extract_power_term(a, n, var, info)) return std::nullopt;
     if(info.exp % 2 == 0) return std::nullopt;
+    auto endpoint_text = [&](std::string const &s) -> std::optional<std::string> {
+        if(s.empty()) return std::nullopt;
+        std::string k;
+        for(char ch : s) if(!std::isspace(static_cast<unsigned char>(ch))) k.push_back((char)std::tolower((unsigned char)ch));
+        if(k.find("inf") != std::string::npos) return std::nullopt;
+        NodeId xv = casio::parse_expr(a, s);
+        NodeId yv = exact_eval_simplify(a, clone_with_substitution(a, n, var, xv));
+        return format_expr(a, yv);
+    };
+    if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v)) {
+        auto ylo = endpoint_text(lo);
+        if(!ylo) return std::nullopt;
+        bool increasing = info.coeff.num > 0;
+        steps.push_back(format_expr(a, n) + (increasing ? " is increasing." : " is decreasing."));
+        steps.push_back("Endpoint gives y = " + *ylo + ".");
+        if(increasing) return std::string(lo_open ? "y > " : "y >= ") + *ylo;
+        return std::string(lo_open ? "y < " : "y <= ") + *ylo;
+    }
+    if(lo_v && hi_v && !std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
+        auto yhi = endpoint_text(hi);
+        if(!yhi) return std::nullopt;
+        bool increasing = info.coeff.num > 0;
+        steps.push_back(format_expr(a, n) + (increasing ? " is increasing." : " is decreasing."));
+        steps.push_back("Endpoint gives y = " + *yhi + ".");
+        if(increasing) return std::string(hi_open ? "y < " : "y <= ") + *yhi;
+        return std::string(hi_open ? "y > " : "y >= ") + *yhi;
+    }
+    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v)) return std::nullopt;
     auto ylo = eval_node(a, n, var, *lo_v);
     auto yhi = eval_node(a, n, var, *hi_v);
     if(!ylo || !yhi) return std::nullopt;
@@ -11482,6 +11655,50 @@ static bool contains_fn_kind(Arena &a, NodeId n, FnKind fk)
             if(contains_fn_kind(a, k, fk)) return true;
     }
     return false;
+}
+
+static bool contains_trig_fn(Arena &a, NodeId n)
+{
+    return contains_fn_kind(a, n, FnKind::Sin) || contains_fn_kind(a, n, FnKind::Cos) ||
+           contains_fn_kind(a, n, FnKind::Tan) || contains_fn_kind(a, n, FnKind::Sec) ||
+           contains_fn_kind(a, n, FnKind::Cosec) || contains_fn_kind(a, n, FnKind::Cot);
+}
+
+static std::optional<std::vector<std::string>> trig_sqrt_equation_delegate(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::vector<std::string> const &solve_parts,
+    std::string const &var,
+    std::string const &method
+)
+{
+    if(solve_parts.size() < 4) return std::nullopt;
+    auto try_side = [&](NodeId root_side, NodeId other_side) -> std::optional<std::vector<std::string>> {
+        Node const &root = a.get(root_side);
+        if(root.kind != NodeKind::Fn || root.fkind != FnKind::Sqrt || !contains_trig_fn(a, root.a)) return std::nullopt;
+        if(contains_symbol(a, other_side, var)) return std::nullopt;
+        NodeId rhs_sq = exact_eval_simplify(a, casio::power(a, other_side, casio::num(a, 2)));
+        std::string root_arg = format_expr(a, root.a);
+        std::string other = format_expr(a, other_side);
+        std::string trig_eq = root_arg + "=" + format_expr(a, rhs_sq);
+        casio::trig::Request tr;
+        tr.mode = 0;
+        tr.expr = trig_eq + "," + var + "," + trim_text(solve_parts[2]) + "," + trim_text(solve_parts[3]);
+        tr.method = method;
+        auto trig_lines = casio::trig::run(a, tr);
+        if(trig_lines.empty() || (!trig_lines.empty() && trig_lines.front().find("Err:") != std::string::npos)) return std::nullopt;
+        std::vector<std::string> out{
+            "sqrt(" + root_arg + ") = " + other,
+            other + " >= 0",
+            root_arg + " = (" + other + ")^2",
+            root_arg + " = " + format_expr(a, rhs_sq),
+        };
+        out.insert(out.end(), trig_lines.begin(), trig_lines.end());
+        return out;
+    };
+    if(auto r = try_side(lhs, rhs)) return *r;
+    return try_side(rhs, lhs);
 }
 
 static bool has_variable_exponent(Arena &a, NodeId n, std::string const &var)
@@ -19241,6 +19458,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
             auto inv = !domain_text.empty() ? inverse_restricted_quadratic(arena, n, domain_text) : std::optional<NodeId>{};
+            if(!inv && !domain_text.empty()) inv = inverse_restricted_trig(arena, n);
             if(!inv) inv = inverse_simple_function(arena, n);
             if(!inv) {
                 auto rp = ratpoly_of_node(arena, n, "x");
@@ -19554,7 +19772,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else {
                 Node const &rn = arena.get(n);
-                if(auto mp = monotone_power_interval_range(arena, n, var, lo_v, hi_v, steps)) {
+                if(auto mp = monotone_power_interval_range(arena, n, var, lo, hi, lo_open, hi_open, lo_v, hi_v, steps)) {
                     range_answer = *mp;
                     steps.push_back("Range: " + range_answer + ".");
                 }
@@ -19710,6 +19928,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 else if(auto trig_min = unbounded_trig_square_min(arena, n)) {
                     range_answer = "y >= " + format_expr(arena, arena.num(*trig_min));
                     steps.push_back("Squared tan/cot/sec/cosec term gives a lower bound.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto li = log_linear_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
+                    range_answer = *li;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto lq = log_positive_quadratic_range(arena, n, var, steps)) {
@@ -20322,6 +20544,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return *inv_aff;
         if(auto inv_trig = inverse_trig_principal_solve(arena, lhs, rhs, solve_var, equation_text))
             return *inv_trig;
+        if(auto trig_sqrt = trig_sqrt_equation_delegate(arena, lhs, rhs, solve_parts, solve_var, req.method))
+            return *trig_sqrt;
         if(equation_text.find("log(") == std::string::npos) {
             if(auto log_exact = log_linear_quotient_exact_sides(arena, lhs, rhs, solve_var)) {
                 out.insert(out.end(), log_exact->begin(), log_exact->end());

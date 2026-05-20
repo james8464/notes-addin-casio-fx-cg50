@@ -562,13 +562,21 @@ int main(int argc, char **argv)
                     return false;
                 };
                 auto parts = split_top_csv(inner);
+                auto sqrt_trig_equation = [&]() {
+                    auto eq = parts.empty() ? std::string::npos : parts[0].find('=');
+                    if(eq == std::string::npos) return false;
+                    std::string l = trim(parts[0].substr(0, eq));
+                    std::string r = trim(parts[0].substr(eq + 1));
+                    return (l.rfind("sqrt(", 0) == 0 && has_trig(l)) ||
+                           (r.rfind("sqrt(", 0) == 0 && has_trig(r));
+                }();
                 bool alg_var = false;
                 if(parts.size() >= 2) {
                     std::string v = trim(parts[1]);
                     bool interval_arg = v.find('=') != std::string::npos || v.find("..") != std::string::npos;
                     alg_var = !interval_arg && !(v == "x" || v == "t" || v == "theta");
                 }
-                if(has_trig(inner) && !alg_var) {
+                if(has_trig(inner) && !alg_var && !sqrt_trig_equation) {
                     std::string trig_expr = inner;
                     if(parts.size() >= 2) {
                         auto eq = parts[1].find('=');
