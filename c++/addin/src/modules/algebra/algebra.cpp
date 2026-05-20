@@ -8009,6 +8009,64 @@ static std::optional<std::vector<std::string>> sqrt_sum_linear_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> sqrt_sum_equals_sqrt_linear_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto match_root = [&](NodeId n, NodeId &inside) {
+        Node const &x = a.get(n);
+        if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return false;
+        auto p = poly_of(a, x.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return false;
+        inside = x.a;
+        return true;
+    };
+    auto match = [&](NodeId sum, NodeId root) -> std::optional<std::vector<std::string>> {
+        Node const &s = a.get(sum);
+        if(s.kind != NodeKind::Add || s.kids.size() != 2) return std::nullopt;
+        NodeId A = 0, B = 0, C = 0;
+        for(auto k : s.kids) {
+            int sign = 0;
+            NodeId inside = 0;
+            if(!signed_sqrt_linear(a, k, var, sign, inside) || sign <= 0) return std::nullopt;
+            if(!A) A = inside;
+            else B = inside;
+        }
+        if(!A || !B || !match_root(root, C)) return std::nullopt;
+        NodeId D = casio::simplify(a, casio::add(a, {C, casio::neg(a, A), casio::neg(a, B)}));
+        NodeId eq2 = casio::simplify(a, casio::add(a, {
+            casio::mul(a, {casio::num(a, 4), A, B}),
+            casio::neg(a, casio::power(a, D, casio::num(a, 2)))
+        }));
+        auto rp = ratpoly_of_node(a, eq2, var);
+        if(!rp.ok) return std::nullopt;
+        auto raw = solve_poly2(a, rp.num, var);
+        auto sols = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        if(sols.empty()) return std::nullopt;
+        sort_solution_lines(a, sols);
+        std::vector<std::string> out, dom;
+        collect_domain(a, casio::fn(a, "sqrt", A), dom);
+        collect_domain(a, casio::fn(a, "sqrt", B), dom);
+        collect_domain(a, casio::fn(a, "sqrt", C), dom);
+        std::string domain = combined_domain_answer(dom);
+        if(!domain.empty()) out.push_back("Domain: " + domain + ".");
+        out.push_back("sqrt(" + format_expr(a, A) + ") + sqrt(" + format_expr(a, B) + ") = sqrt(" + format_expr(a, C) + ")");
+        out.push_back(format_expr(a, A) + " + " + format_expr(a, B) + " + 2*sqrt((" + format_expr(a, A) + ")*(" + format_expr(a, B) + ")) = " + format_expr(a, C));
+        out.push_back("2*sqrt((" + format_expr(a, A) + ")*(" + format_expr(a, B) + ")) = " + format_expr(a, D));
+        out.push_back("4*(" + format_expr(a, A) + ")*(" + format_expr(a, B) + ") = (" + format_expr(a, D) + ")^2");
+        out.push_back(format_expr(a, eq2) + " = 0");
+        for(auto const &sln : sols) out.push_back(sln);
+        out.push_back(solution_list_line(var, sols));
+        return out;
+    };
+    if(auto out = match(lhs, rhs)) return out;
+    return match(rhs, lhs);
+}
+
 static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
     Arena &a,
     NodeId lhs,
@@ -12299,6 +12357,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
+            if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
