@@ -7873,6 +7873,99 @@ static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_route(Arena
     return match(rhs, lhs);
 }
 
+struct SqrtRatioTerm
+{
+    Rational coef{1, 1};
+    NodeId top = 0;
+    NodeId bot = 0;
+};
+
+static bool sqrt_ratio_term(Arena &a, NodeId term, SqrtRatioTerm &out)
+{
+    NodeId body = 0;
+    bool has_body = false;
+    split_coeff_body(a, term, out.coef, body, has_body);
+    if(!has_body) return false;
+    Node const &r = a.get(body);
+    if(r.kind != NodeKind::Fn || r.fkind != FnKind::Sqrt) return false;
+    Node const &d = a.get(r.a);
+    if(d.kind != NodeKind::Div) return false;
+    out.top = d.a;
+    out.bot = d.b;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_sqrt_affine_ratio_route(Arena &a,
+                                                                                  NodeId lhs,
+                                                                                  NodeId rhs,
+                                                                                  NodeId rearr,
+                                                                                  std::string const &var,
+                                                                                  std::optional<double> lo,
+                                                                                  std::optional<double> hi)
+{
+    auto match = [&](NodeId sum, NodeId val) -> std::optional<std::vector<std::string>> {
+        auto R = as_num(a, val);
+        if(!R || R->num <= 0) return std::nullopt;
+        std::vector<NodeId> terms;
+        add_terms_flat(a, sum, terms);
+        if(terms.size() != 2) return std::nullopt;
+        SqrtRatioTerm t0, t1;
+        if(!sqrt_ratio_term(a, terms[0], t0) || !sqrt_ratio_term(a, terms[1], t1)) return std::nullopt;
+        if(!casio::same_by_sig(a, t0.top, t1.bot) || !casio::same_by_sig(a, t0.bot, t1.top)) return std::nullopt;
+        if(!symbolic_linear_parts(a, t0.top, var) || !symbolic_linear_parts(a, t0.bot, var)) return std::nullopt;
+
+        Poly2 uq = primitive_poly2(Poly2{t0.coef, r_neg(*R), t1.coef, true});
+        auto us = solve_poly2(a, uq, "u");
+        if(us.empty()) return std::nullopt;
+
+        auto wrap = [&](NodeId n) {
+            std::string s = format_expr(a, n);
+            Node const &x = a.get(n);
+            return x.kind == NodeKind::Add ? "(" + s + ")" : s;
+        };
+        auto ratio = [&](NodeId top, NodeId bot) { return wrap(top) + "/" + wrap(bot); };
+        std::vector<std::string> out, xs;
+        std::string rat = ratio(t0.top, t0.bot), inv = ratio(t0.bot, t0.top);
+        out.push_back(format_expr(a, sum) + " = " + format_rat_plain(*R));
+        out.push_back("Domain: " + rat + " > 0");
+        out.push_back("u = sqrt(" + rat + "), u > 0");
+        out.push_back("sqrt(" + inv + ") = 1/u");
+        out.push_back(rat_node_text(a, t0.coef) + "*u + " + rat_node_text(a, t1.coef) + "/u = " + format_rat_plain(*R));
+        out.push_back(format_expr(a, poly2_to_node(a, uq, "u")) + " = 0");
+        if(auto rr = rational_quadratic_roots(uq))
+            out.push_back("Factor: " + quadratic_factor_text(a, uq, "u") + " = 0");
+        for(auto const &line : us) {
+            std::string rhs_s = sol_rhs(line);
+            auto ur = parse_rational_text(rhs_s);
+            auto uv = parse_const_double(a, rhs_s);
+            if((ur && ur->num <= 0) || (uv && *uv <= 1e-12) || rhs_s.find('i') != std::string::npos) {
+                out.push_back("reject u = " + rhs_s);
+                continue;
+            }
+            if(!ur) continue;
+            Rational u2 = r_mul(*ur, *ur);
+            NodeId eq = casio::simplify(a, sub_node(a, t0.top, casio::mul(a, {a.num(u2), t0.bot})));
+            auto p = poly_of(a, eq, var);
+            if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) continue;
+            auto raw = solve_poly2(a, *p, var);
+            out.push_back("u = " + rhs_s);
+            out.push_back(rat + " = " + format_rat_plain(u2));
+            out.push_back(format_expr(a, eq) + " = 0");
+            xs.insert(xs.end(), raw.begin(), raw.end());
+        }
+        xs = filter_real_solutions(a, rearr, var, xs, lo, hi);
+        if(xs.empty()) return std::nullopt;
+        sort_solution_lines(a, xs);
+        xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
+        for(auto const &x : xs) out.push_back(x);
+        append_answer(out, var, xs);
+        append_numeric_3dp(a, out, var, xs);
+        return out;
+    };
+    if(auto out = match(lhs, rhs)) return out;
+    return match(rhs, lhs);
+}
+
 struct SurdConst
 {
     Rational r{0, 1};
@@ -13121,6 +13214,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
             if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
+            if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
