@@ -11458,7 +11458,7 @@ static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
         auto inside_p = poly_of(a, ln.a, var);
         auto line_p = poly_of(a, r, var);
         if(!inside_p || !line_p || !inside_p->ok || !line_p->ok) return false;
-        if(!is_zero(inside_p->a2) || is_zero(inside_p->a1) || !is_zero(line_p->a2)) return false;
+        if(!is_zero(inside_p->a2) || is_zero(inside_p->a1)) return false;
         root = l;
         line = r;
         return true;
@@ -11467,9 +11467,20 @@ static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
     Node const &rn = a.get(root);
     NodeId inside = rn.a;
     NodeId squared = casio::simplify(a, casio::add(a, {casio::power(a, line, casio::num(a, 2)), casio::neg(a, inside)}));
-    auto p = poly_of(a, squared, var);
-    if(!p || !p->ok) return std::nullopt;
-    auto raw = solve_poly2(a, *p, var);
+    std::vector<std::string> raw;
+    std::string expanded;
+    if(auto p = poly_of(a, squared, var); p && p->ok) {
+        raw = solve_poly2(a, *p, var);
+        expanded = format_expr(a, poly2_to_node(a, *p, var));
+    }
+    else {
+        auto pa = poly_any_of(a, squared, var);
+        if(!pa || !pa->ok || pa->c.size() > 5) return std::nullopt;
+        std::vector<std::string> factor_lines;
+        raw = solve_poly_any_raw(a, *pa, var, factor_lines);
+        if(raw.empty()) raw = numeric_roots_scan(a, squared, var);
+        expanded = format_expr(a, poly_any_to_node(a, *pa, var));
+    }
     if(raw.empty()) return std::nullopt;
     auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
 
@@ -11485,8 +11496,9 @@ static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
     out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
     if(auto dom = domain_line(inside)) out.push_back(format_expr(a, inside) + " >= 0 => " + *dom);
     if(auto dom = domain_line(line)) out.push_back(format_expr(a, line) + " >= 0 => " + *dom);
+    else out.push_back(format_expr(a, line) + " >= 0");
     out.push_back(format_expr(a, inside) + " = (" + format_expr(a, line) + ")^2");
-    out.push_back("expand => " + format_expr(a, squared) + " = 0");
+    out.push_back("expand => " + expanded + " = 0");
     for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
     append_rejected_by_domain(out, var, raw, valid);
     out.push_back(solution_list_line(var, valid));
@@ -11520,7 +11532,7 @@ static std::optional<std::vector<std::string>> nested_sqrt_plus_linear_route(
     if(!seen_outer || is_zero(outer_coef)) return std::nullopt;
     NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
     auto rest_poly = poly_of(a, rest, var);
-    if(!rest_poly || !rest_poly->ok || !is_zero(rest_poly->a2)) return std::nullopt;
+    if(!rest_poly || !rest_poly->ok) return std::nullopt;
 
     std::vector<NodeId> inner_terms, poly_terms;
     add_terms_flat(a, outer, inner_terms);
@@ -11629,9 +11641,21 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
         rad,
         casio::neg(a, casio::power(a, rhs_iso, casio::num(a, 2)))
     }));
-    auto rp = ratpoly_of_node(a, squared, var);
-    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
-    auto raw = solve_poly2(a, rp.num, var);
+    auto rp2 = ratpoly_of_node(a, squared, var);
+    std::vector<std::string> raw;
+    std::string expanded;
+    if(rp2.ok && is_zero(rp2.den.a1) && is_zero(rp2.den.a2)) {
+        raw = solve_poly2(a, rp2.num, var);
+        expanded = format_expr(a, poly2_to_node(a, rp2.num, var));
+    }
+    else {
+        auto rp = poly_any_of(a, squared, var);
+        if(!rp || !rp->ok || rp->c.size() > 5) return std::nullopt;
+        std::vector<std::string> factor_lines;
+        raw = solve_poly_any_raw(a, *rp, var, factor_lines);
+        if(raw.empty()) raw = numeric_roots_scan(a, squared, var);
+        expanded = format_expr(a, poly_any_to_node(a, *rp, var));
+    }
     if(raw.empty()) return std::nullopt;
     auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
     sort_solution_lines(a, raw);
@@ -11649,8 +11673,9 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     out.push_back("sqrt(" + format_expr(a, rad) + ") = " + format_expr(a, rhs_iso));
     out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
     if(auto dom = linear_domain(rhs_iso)) out.push_back(format_expr(a, rhs_iso) + " >= 0 => " + *dom);
+    else out.push_back("Domain: " + format_expr(a, rhs_iso) + " >= 0");
     out.push_back(format_expr(a, rad) + " = (" + format_expr(a, rhs_iso) + ")^2");
-    out.push_back("expand => " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = 0");
+    out.push_back("expand => " + expanded + " = 0");
     for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
     append_rejected_by_domain(out, var, raw, valid);
     out.push_back(solution_list_line(var, valid));

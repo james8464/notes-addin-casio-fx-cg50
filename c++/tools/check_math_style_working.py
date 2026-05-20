@@ -462,7 +462,7 @@ CASES = [
     (
         "single radical exact solve",
         ["--alg", "solve(sqrt(2*x+3)=x-1,x)"],
-        ("2*x + 3 >= 0 => x >= -3/2", "x - 1 >= 0 => x >= 1", "2*x + 3 = (x - 1)^2", "expand => (x - 1)^2 - (2*x + 3) = 0", "x = 2 - sqrt(6) rejected by domain", "x = [2 + sqrt(6)]"),
+        ("2*x + 3 >= 0 => x >= -3/2", "x - 1 >= 0 => x >= 1", "2*x + 3 = (x - 1)^2", "expand => x^2 - 4*x - 2 = 0", "x = 2 - sqrt(6) rejected by domain", "x = [2 + sqrt(6)]"),
         ("4.449",),
     ),
     (
