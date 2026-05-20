@@ -1761,6 +1761,8 @@ static std::optional<std::string> linear_fractional_interval_range(
     std::string const &var,
     std::string const &lo,
     std::string const &hi,
+    bool lo_open,
+    bool hi_open,
     std::vector<std::string> &steps
 )
 {
@@ -1788,9 +1790,12 @@ static std::optional<std::string> linear_fractional_interval_range(
         Rational y1 = r_div(r_add(r_mul(A, *x1), B), r_add(r_mul(C, *x1), D));
         Rational ymin = r_cmp(y0, y1) <= 0 ? y0 : y1;
         Rational ymax = r_cmp(y0, y1) <= 0 ? y1 : y0;
+        bool ymin_open = r_cmp(y0, y1) <= 0 ? lo_open : hi_open;
+        bool ymax_open = r_cmp(y0, y1) <= 0 ? hi_open : lo_open;
         steps.push_back("Fractional linear function is monotone on this interval.");
         steps.push_back("Evaluate endpoints: y(" + rat_node_text(a, *x0) + ")=" + rat_node_text(a, y0) + ", y(" + rat_node_text(a, *x1) + ")=" + rat_node_text(a, y1) + ".");
-        return rat_node_text(a, ymin) + " <= y <= " + rat_node_text(a, ymax);
+        return rat_node_text(a, ymin) + (ymin_open ? " < y " : " <= y ") +
+               (ymax_open ? "< " : "<= ") + rat_node_text(a, ymax);
     }
     if(r_cmp(pole, *x0) == 0) {
         Rational asym = r_div(A, C);
@@ -1808,8 +1813,8 @@ static std::optional<std::string> linear_fractional_interval_range(
     if(cmp == 0) return std::nullopt;
     steps.push_back("Write as y = " + rat_node_text(a, asym) + " + k/(" + format_expr(a, poly2_to_node(a, Poly2{Rational{0,1}, C, D, true}, var)) + ").");
     steps.push_back("Endpoint gives y = " + rat_node_text(a, y0) + "; horizontal asymptote y = " + rat_node_text(a, asym) + ".");
-    return cmp > 0 ? rat_node_text(a, asym) + " < y <= " + rat_node_text(a, y0)
-                   : rat_node_text(a, y0) + " <= y < " + rat_node_text(a, asym);
+    return cmp > 0 ? rat_node_text(a, asym) + " < y " + (lo_open ? "< " : "<= ") + rat_node_text(a, y0)
+                   : rat_node_text(a, y0) + (lo_open ? " < y < " : " <= y < ") + rat_node_text(a, asym);
 }
 
 static std::optional<std::string> linear_fractional_full_range(
@@ -3094,6 +3099,117 @@ static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body
     }
     body = rest.size() == 1 ? rest[0] : casio::simplify(a, a.mul(rest));
     return true;
+}
+
+static Poly2 scale_poly(Poly2 p, Rational k)
+{
+    if(!p.ok) return p;
+    p.a2 = r_mul(p.a2, k);
+    p.a1 = r_mul(p.a1, k);
+    p.a0 = r_mul(p.a0, k);
+    return p;
+}
+
+static bool linear_poly(Poly2 const &p)
+{
+    return p.ok && is_zero(p.a2) && !is_zero(p.a1);
+}
+
+static std::optional<Poly2> divide_quadratic_by_linear(Poly2 const &p, Poly2 const &l)
+{
+    if(!p.ok || !linear_poly(l) || is_zero(p.a2)) return std::nullopt;
+    Rational q1 = r_div(p.a2, l.a1);
+    Rational q0 = r_div(r_sub(p.a1, r_mul(l.a0, q1)), l.a1);
+    if(!is_zero(r_sub(p.a0, r_mul(l.a0, q0)))) return std::nullopt;
+    return Poly2{Rational{0, 1}, q1, q0, true};
+}
+
+static std::optional<Rational> poly_scalar_multiple(Poly2 const &p, Poly2 const &q)
+{
+    if(!p.ok || !q.ok) return std::nullopt;
+    std::optional<Rational> k;
+    auto use = [&](Rational a, Rational b) -> bool {
+        if(is_zero(b)) return is_zero(a);
+        Rational r = r_div(a, b);
+        if(k) return r_cmp(*k, r) == 0;
+        k = r;
+        return true;
+    };
+    if(!use(p.a2, q.a2) || !use(p.a1, q.a1) || !use(p.a0, q.a0)) return std::nullopt;
+    return k ? k : Rational{0, 1};
+}
+
+struct PolyFrac2
+{
+    Poly2 num;
+    Poly2 den;
+};
+
+static std::optional<PolyFrac2> term_fraction_poly(Arena &a, NodeId term, std::string const &var)
+{
+    Rational coef{1, 1};
+    NodeId body = term;
+    bool has_body = true;
+    if(!split_coeff_body(a, term, coef, body, has_body)) return std::nullopt;
+    Poly2 one{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}, true};
+    if(!has_body) return PolyFrac2{Poly2{Rational{0, 1}, Rational{0, 1}, coef, true}, one};
+    Node const &b = a.get(body);
+    if(b.kind == NodeKind::Div) {
+        auto n = poly_of(a, b.a, var);
+        auto d = poly_of(a, b.b, var);
+        if(!n || !d || !n->ok || !d->ok) return std::nullopt;
+        return PolyFrac2{scale_poly(*n, coef), *d};
+    }
+    auto n = poly_of(a, body, var);
+    if(!n || !n->ok) return std::nullopt;
+    return PolyFrac2{scale_poly(*n, coef), one};
+}
+
+static NodeId rational_from_poly(Arena &a, Rational k, Poly2 const &den, std::string const &var)
+{
+    return casio::simplify(a, casio::div(a, a.num(k), poly2_to_node(a, den, var)));
+}
+
+static std::optional<std::vector<std::string>> two_term_rational_factor_cancel(
+    Arena &a, NodeId expr, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.size() != 2) return std::nullopt;
+    auto A = term_fraction_poly(a, terms[0], var);
+    auto B = term_fraction_poly(a, terms[1], var);
+    if(!A || !B) return std::nullopt;
+
+    auto run = [&](PolyFrac2 const &quad, PolyFrac2 const &lin) -> std::optional<std::vector<std::string>> {
+        if(is_zero(quad.den.a2) || !linear_poly(lin.den)) return std::nullopt;
+        auto q = divide_quadratic_by_linear(quad.den, lin.den);
+        if(!q) return std::nullopt;
+        Poly2 combined = add_poly(quad.num, mul_poly(lin.num, *q));
+        if(!combined.ok) return std::nullopt;
+        std::optional<Rational> k;
+        Poly2 rest;
+        if((k = poly_scalar_multiple(combined, lin.den))) rest = *q;
+        else if((k = poly_scalar_multiple(combined, *q))) rest = lin.den;
+        else return std::nullopt;
+        if(is_zero(*k)) return std::nullopt;
+        std::string den = format_expr(a, poly2_to_node(a, quad.den, var));
+        std::string f = format_expr(a, poly2_to_node(a, lin.den, var));
+        std::string qtxt = format_expr(a, poly2_to_node(a, *q, var));
+        std::string n1 = format_expr(a, poly2_to_node(a, quad.num, var));
+        std::string n2 = format_expr(a, poly2_to_node(a, lin.num, var));
+        std::string comb = format_expr(a, poly2_to_node(a, combined, var));
+        std::string ans = format_expr(a, rational_from_poly(a, *k, rest, var));
+        return std::vector<std::string>{
+            format_expr(a, expr),
+            den + " = (" + f + ")*(" + qtxt + ")",
+            "= (" + n1 + " + (" + n2 + ")*(" + qtxt + "))/((" + f + ")*(" + qtxt + "))",
+            "= (" + comb + ")/((" + f + ")*(" + qtxt + "))",
+            "= " + ans,
+            ans,
+        };
+    };
+    if(auto r = run(*A, *B)) return r;
+    return run(*B, *A);
 }
 
 static bool trig_square_body(Arena &a, NodeId body, FnKind &fk, NodeId &arg)
@@ -18539,7 +18655,30 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string var = explicit_var ? parts[1] : "x";
             std::string lo = (parts.size() >= 3) ? parts[2] : "";
             std::string hi = (parts.size() >= 4) ? parts[3] : "";
+            bool lo_open = false, hi_open = false;
             if(!parts.empty()) expr = parts[0];
+            if(parts.size() == 2) {
+                std::string cond = trim_text(parts[1]);
+                auto set_halfline = [&](std::string v, std::string bound, bool lower, bool open) {
+                    var = trim_text(v);
+                    if(lower) {
+                        lo = trim_text(bound);
+                        hi = "inf";
+                        lo_open = open;
+                    }
+                    else {
+                        lo = "-inf";
+                        hi = trim_text(bound);
+                        hi_open = open;
+                    }
+                };
+                auto pos = cond.find(">=");
+                if(pos != std::string::npos) set_halfline(cond.substr(0, pos), cond.substr(pos + 2), true, false);
+                else if((pos = cond.find("<=")) != std::string::npos) set_halfline(cond.substr(0, pos), cond.substr(pos + 2), false, false);
+                else if((pos = cond.find(">")) != std::string::npos) set_halfline(cond.substr(0, pos), cond.substr(pos + 1), true, true);
+                else if((pos = cond.find("<")) != std::string::npos) set_halfline(cond.substr(0, pos), cond.substr(pos + 1), false, true);
+                explicit_var = !var.empty();
+            }
             NodeId parsed = casio::parse_expr(arena, expr);
             auto pre = casio::build_exam_prelude(arena, expr, parsed);
             NodeId n = exact_eval_simplify(arena, parsed);
@@ -18574,7 +18713,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 casio::append_exam_prelude_steps(steps, pre);
             }
             steps.push_back("Variable = " + var);
-            if(!lo.empty() && !hi.empty()) steps.push_back("Interval of interest: " + var + " on [" + lo + ", " + hi + "]");
+            if(!lo.empty() && !hi.empty()) steps.push_back(
+                "Interval of interest: " + var + " on " +
+                std::string(lo_open ? "(" : "[") + lo + ", " + hi + (hi_open ? ")" : "]")
+            );
             if(req.method == "period") {
                 if(auto per = trig_period(arena, n, var, steps)) {
                     steps.push_back("Period = " + *per);
@@ -18737,7 +18879,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *lf_full;
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, steps)) {
+                else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
                     range_answer = *lf;
                     steps.push_back("Range: " + range_answer + ".");
                 }
@@ -18887,7 +19029,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::string final_domain = domain_answer;
             if(!lo.empty() && !hi.empty()) {
-                final_domain = lo + " <= " + var + " <= " + hi;
+                final_domain = lo + (lo_open ? " < " : " <= ") + var + (hi_open ? " < " : " <= ") + hi;
                 if(req.method != "range") steps.push_back("Domain used: " + final_domain + ".");
             }
             std::string answer = req.method == "range" ? range_answer : final_domain + "; " + range_answer;
@@ -19250,6 +19392,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(req.method == "collect" || req.method == "canonical") {
+                if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                    return *rat_cancel;
                 if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
                 steps.push_back(format_expr(arena, parsed));
                 steps.push_back("= " + (n_text ? *n_text : format_expr(arena, n)));
@@ -19281,6 +19425,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto direct = direct_trig_inverse_composition(arena, parsed, steps)) {
                 return casio::exam_block("algebra simplify", steps, format_expr(arena, *direct));
             }
+            if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                return *rat_cancel;
             if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {

@@ -467,6 +467,18 @@ CASES = [
         ("unrestricted",),
     ),
     (
+        "two-term rational factor cancellation",
+        ["--alg", "simplify((2*x-1)/(x^2-x-2)-1/(x-2))"],
+        ("x^2 - x - 2 = (x - 2)*(x + 1)", "= 1/(x + 1)"),
+        ("ERR:",),
+    ),
+    (
+        "open half-line reciprocal range",
+        ["--alg", "range(1/(x+1),x>4)"],
+        ("Interval of interest: x on (4, inf]", "Range: 0 < y < 1/5"),
+        ("Range: y = 1/(x + 1)", "0 < y <= 1/5"),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
