@@ -6580,6 +6580,110 @@ static std::optional<std::vector<std::string>> rational_parabola_system(Arena &a
     return out;
 }
 
+static bool read_coeff_suffix(std::string const &term, std::string const &suffix, Rational &coef)
+{
+    if(term.size() < suffix.size() || term.compare(term.size() - suffix.size(), suffix.size(), suffix) != 0) return false;
+    std::string pre = term.substr(0, term.size() - suffix.size());
+    if(pre.empty()) {
+        coef = Rational{1, 1};
+        return true;
+    }
+    if(!pre.empty() && pre.back() == '*') pre.pop_back();
+    auto c = parse_rational_key(pre);
+    if(!c) return false;
+    coef = *c;
+    return true;
+}
+
+static bool read_reciprocal_symmetric_equation(std::string const &eq, Rational &A, Rational &B)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    Rational rhs{0, 1};
+    if(!read_coeff_suffix(sides[1], "x^2y^2", rhs)) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    std::optional<Rational> c1, c2;
+    for(auto const &t : terms) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "y^2(x+1)", c)) c1 = c;
+        else if(read_coeff_suffix(t, "x^2(y+1)", c)) c2 = c;
+    }
+    if(!c1 || !c2 || r_cmp(*c1, *c2) != 0 || is_zero(*c1)) return false;
+    A = *c1;
+    B = rhs;
+    return true;
+}
+
+static bool read_cross_linear_zero(std::string const &eq, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2 || sides[1] != "0") return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 3) return false;
+    std::optional<Rational> cx, cy;
+    bool xy = false;
+    for(auto const &t : terms) {
+        Rational c{0, 1};
+        if(t == "xy") xy = true;
+        else if(read_coeff_suffix(t, "x", c)) cx = c;
+        else if(read_coeff_suffix(t, "y", c)) cy = c;
+    }
+    if(!xy || !cx || !cy || r_cmp(*cx, *cy) != 0 || is_zero(*cx)) return false;
+    C = *cx;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_quadratic_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> A, B, C;
+    for(auto const &e : eqs) {
+        Rational p{0, 1}, q{0, 1};
+        if(read_reciprocal_symmetric_equation(e, p, q)) {
+            A = p; B = q;
+        }
+        else if(read_cross_linear_zero(e, p)) C = p;
+    }
+    if(!A || !B || !C) return std::nullopt;
+    Rational s = r_div(Rational{-1, 1}, *C);
+    Rational rhs = r_div(*B, *A);
+    Rational sumsq = r_sub(rhs, s);
+    Rational p = r_div(r_sub(r_mul(s, s), sumsq), Rational{2, 1});
+    Poly2 tp = primitive_poly2(Poly2{Rational{1, 1}, r_neg(s), p, true});
+    auto ts = solve_poly2(a, tp, "t");
+    if(ts.size() != 2) return std::nullopt;
+    std::vector<Rational> vals;
+    for(auto const &line : ts) {
+        auto v = parse_rational_text(sol_rhs(line));
+        if(!v || is_zero(*v)) return std::nullopt;
+        vals.push_back(*v);
+    }
+    std::vector<std::string> pairs;
+    auto add_pair = [&](Rational aa, Rational bb) {
+        pairs.push_back("(" + format_rat_plain(r_div(Rational{1, 1}, aa)) + "," + format_rat_plain(r_div(Rational{1, 1}, bb)) + ")");
+    };
+    add_pair(vals[0], vals[1]);
+    add_pair(vals[1], vals[0]);
+
+    std::vector<std::string> out;
+    out.push_back("a = 1/x, b = 1/y");
+    out.push_back("divide first by " + format_rat_plain(*A) + "*x^2*y^2");
+    out.push_back("a^2+a+b^2+b = " + format_rat_plain(rhs));
+    out.push_back("divide second by xy");
+    out.push_back(format_rat_plain(*C) + "*a + " + format_rat_plain(*C) + "*b + 1 = 0");
+    out.push_back("a+b = " + format_rat_plain(s));
+    out.push_back("a^2+b^2 = " + format_rat_plain(sumsq));
+    out.push_back("ab = " + format_rat_plain(p));
+    out.push_back(format_expr(a, poly2_to_node(a, tp, "t")) + " = 0");
+    out.push_back("a,b = " + format_rat_plain(vals[0]) + "," + format_rat_plain(vals[1]));
+    out.push_back("(x,y) = [" + pairs[0] + ", " + pairs[1] + "]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> fourth_power_sum_linear_system(Arena &a, std::string const &key)
 {
     std::string body;
@@ -13167,6 +13271,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 };
             }
             if(auto recsys = reciprocal_sum_cube_system(arena, key)) return *recsys;
+            if(auto rqs = reciprocal_quadratic_system(arena, key)) return *rqs;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
