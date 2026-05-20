@@ -437,6 +437,12 @@ CASES = [
         ("Constant/non-monotone",),
     ),
     (
+        "half-line quadratic inverse",
+        ["--alg", "inverse(x^2+1,x>=0)"],
+        ("y = f(x) = x^2 + 1", "f^-1(x) = sqrt(x - 1)", "Given domain: x>=0"),
+        ("Constant/non-monotone",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),

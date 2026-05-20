@@ -3778,17 +3778,40 @@ static std::optional<double> parse_const_double(Arena &a, std::string const &tex
 static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, std::string const &domain_text)
 {
     auto parts = split_top_key(domain_text, ',');
-    if(parts.size() < 3) return std::nullopt;
-    auto lo = parse_const_double(a, parts[1]);
-    auto hi = parse_const_double(a, parts[2]);
-    if(!lo || !hi || !std::isfinite(*lo) || !std::isfinite(*hi) || !(*lo < *hi)) return std::nullopt;
+    std::optional<double> lo, hi;
+    if(parts.size() >= 3) {
+        lo = parse_const_double(a, parts[1]);
+        hi = parse_const_double(a, parts[2]);
+    }
+    else {
+        std::string s = domain_text;
+        s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
+        auto parse_half_line = [&](std::string const &op) -> bool {
+            auto p = s.find(op);
+            if(p == std::string::npos) return false;
+            std::string left = s.substr(0, p), right = s.substr(p + op.size());
+            if(left != "x") return false;
+            auto b = parse_const_double(a, right);
+            if(!b) return false;
+            if(op[0] == '>') { lo = *b; hi = std::numeric_limits<double>::infinity(); }
+            else { lo = -std::numeric_limits<double>::infinity(); hi = *b; }
+            return true;
+        };
+        if(!parse_half_line(">=") && !parse_half_line(">") &&
+           !parse_half_line("<=") && !parse_half_line("<")) return std::nullopt;
+    }
+    if(!lo || !hi || !(*lo < *hi)) return std::nullopt;
     auto p = poly_of(a, n, "x");
     if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
     double A = (double)p->a2.num / (double)p->a2.den;
     double B = (double)p->a1.num / (double)p->a1.den;
     double vertex = -B / (2.0 * A);
-    if(*lo < vertex && vertex < *hi) return std::nullopt;
-    double mid = 0.5 * (*lo + *hi);
+    bool lo_f = std::isfinite(*lo), hi_f = std::isfinite(*hi);
+    if(!lo_f && !hi_f) return std::nullopt;
+    if((lo_f && *lo < vertex) && (hi_f && vertex < *hi)) return std::nullopt;
+    if(lo_f && !hi_f && *lo < vertex) return std::nullopt;
+    if(!lo_f && hi_f && vertex < *hi) return std::nullopt;
+    double mid = (lo_f && hi_f) ? 0.5 * (*lo + *hi) : (lo_f ? *lo + 1.0 : *hi - 1.0);
     auto ymid = eval_node(a, n, "x", mid);
     if(!ymid) return std::nullopt;
     NodeId y = casio::sym(a, "x");
