@@ -1060,6 +1060,46 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
     if(x.kind == NodeKind::Div) {
         auto top = a.get(x.a);
         Node const &den = a.get(x.b);
+        if(top.kind == NodeKind::Num && top.num.num == top.num.den) {
+            Rational A{0, 1}, B{0, 1};
+            bool ok = true, saw_tan = false;
+            std::vector<NodeId> terms;
+            add_terms_flat(a, x.b, terms);
+            for(NodeId t : terms) {
+                Rational c{1, 1};
+                NodeId body = t;
+                Node const &tn = a.get(t);
+                if(tn.kind == NodeKind::Num) {
+                    A = r_add(A, tn.num);
+                    continue;
+                }
+                if(tn.kind == NodeKind::Mul) {
+                    body = 0;
+                    for(NodeId k : tn.kids) {
+                        Node const &kn = a.get(k);
+                        if(kn.kind == NodeKind::Num) c = r_mul(c, kn.num);
+                        else if(!body) body = k;
+                        else ok = false;
+                    }
+                }
+                if(body) {
+                    Node const &bn = a.get(body);
+                    Node const &arg = bn.kind == NodeKind::Fn ? a.get(bn.a) : bn;
+                    if(bn.kind == NodeKind::Fn && bn.fkind == FnKind::Tan && arg.kind == NodeKind::Sym && arg.text == "x") {
+                        B = r_add(B, c);
+                        saw_tan = true;
+                    }
+                    else ok = false;
+                }
+                else ok = false;
+            }
+            if(ok && saw_tan && !is_zero(B)) {
+                NodeId inv_y = casio::div(a, casio::num(a, 1), y);
+                NodeId num = casio::add(a, {inv_y, casio::neg(a, casio::num(a, A.num, A.den))});
+                NodeId arg = casio::simplify(a, casio::div(a, num, casio::num(a, B.num, B.den)));
+                return casio::simplify(a, a.fn(FnKind::Atan, arg));
+            }
+        }
         if(top.kind == NodeKind::Num && top.num.num == top.num.den && den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt) {
             auto p = poly_of(a, den.a, "x");
             if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
