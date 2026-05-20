@@ -497,6 +497,18 @@ CASES = [
         ("Constant/non-monotone",),
     ),
     (
+        "x minus reciprocal half-line range",
+        ["--alg", "range(x-1/x,x>=1)"],
+        ("dy/dx = 1 + 1/x^2 > 0", "Range: 0 <= y"),
+        ("unrestricted",),
+    ),
+    (
+        "x minus reciprocal composition solve",
+        ["--alg", "solve(3*(x-1/x)^2+2=3/x^2+23,x>=1)"],
+        ("3*(x + -1/x)^2 - (3*x^-2 + 23) + 2 = 0", "= 3*x^2 - 27", "x = [3]"),
+        ("x = []",),
+    ),
+    (
         "left open asymptote range",
         ["--alg", "range((x-5)/(x-4),x<4)"],
         ("Vertical asymptote x = 4", "Horizontal asymptote y = 1", "Range: y > 1"),

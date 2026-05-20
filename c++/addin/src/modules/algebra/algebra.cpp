@@ -35,6 +35,8 @@ struct Poly2
 };
 
 static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p);
+static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out);
+static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power);
 
 static bool is_zero(Rational const &r) { return r.num == 0; }
 
@@ -142,7 +144,10 @@ static std::optional<std::int64_t> as_int64(Rational const &r)
 }
 
 static std::string rational_power_root_text(Arena &a, Rational r, int root);
+static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval);
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
+static std::string format_double_compact(double x);
+static std::string format_rat(Arena &a, Rational r);
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var);
 
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
@@ -219,6 +224,25 @@ static NodeId poly2_to_node(Arena &a, Poly2 const &p, std::string const &var)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::optional<NodeId> x_minus_recip_halfline_node(Arena &a, NodeId n, std::string const &var, Rational &c)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    Rational lin{0, 1}, rec{0, 1};
+    for(NodeId t : terms) {
+        Rational coef{1, 1};
+        int pow = 0;
+        if(!reciprocal_power_term(a, t, var, coef, pow)) return std::nullopt;
+        if(pow == 1) lin = r_add(lin, coef);
+        else if(pow == -1) rec = r_add(rec, coef);
+        else if(pow == 0 && is_zero(coef)) continue;
+        else return std::nullopt;
+    }
+    if(lin.num != lin.den || rec.num >= 0) return std::nullopt;
+    c = r_neg(rec);
+    return n;
+}
+
 static NodeId scaled_node(Arena &a, Rational c, NodeId n)
 {
     if(is_zero(c)) return casio::num(a, 0);
@@ -246,6 +270,25 @@ static NodeId expanded_square(Arena &a, NodeId n)
             terms.push_back(casio::mul(a, {casio::num(a, 2), x.kids[i], x.kids[j]}));
     }
     return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId expand_square_powers(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        NodeId base = expand_square_powers(a, x.a);
+        if(e.kind == NodeKind::Num && e.num.num == 2 && e.num.den == 1) return expanded_square(a, base);
+        return casio::power(a, base, expand_square_powers(a, x.b));
+    }
+    if(x.kind == NodeKind::Fn) return a.fn(x.fkind, expand_square_powers(a, x.a));
+    if(x.kind == NodeKind::Div) return casio::div(a, expand_square_powers(a, x.a), expand_square_powers(a, x.b));
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(expand_square_powers(a, k));
+        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+    }
+    return n;
 }
 
 static NodeId compose_quadratic_outer(Arena &a, Poly2 const &f, NodeId g)
@@ -2087,6 +2130,31 @@ static std::optional<std::string> reciprocal_quadratic_halfline_range(
     if(ninf && hx && r_cmp(*hx, rlo) <= 0) {
         if(r_cmp(*hx, rlo) == 0) return side(rlo, -1);
         return finite(*hx, hi_open);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> x_minus_recip_halfline_range(
+    Arena &a, NodeId n, std::string const &var, std::optional<double> lo, std::optional<double> hi,
+    bool lo_open, bool hi_open, std::vector<std::string> &steps)
+{
+    Rational c{0, 1};
+    if(!x_minus_recip_halfline_node(a, n, var, c)) return std::nullopt;
+    auto y_at = [&](double x) { return eval_node(a, n, var, x); };
+    std::string ct = c.num == c.den ? "" : format_rat(a, c) + "*";
+    if(lo && hi && std::isfinite(*lo) && !std::isfinite(*hi) && *lo > 0) {
+        auto y0 = y_at(*lo);
+        if(!y0) return std::nullopt;
+        steps.push_back("dy/dx = 1 + " + ct + "1/x^2 > 0.");
+        steps.push_back("As " + var + " -> inf, y -> inf.");
+        return format_double_compact(*y0) + (lo_open ? " < y" : " <= y");
+    }
+    if(lo && hi && !std::isfinite(*lo) && std::isfinite(*hi) && *hi < 0) {
+        auto y1 = y_at(*hi);
+        if(!y1) return std::nullopt;
+        steps.push_back("dy/dx = 1 + " + ct + "1/x^2 > 0.");
+        steps.push_back("As " + var + " -> -inf, y -> -inf.");
+        return std::string("y ") + (hi_open ? "< " : "<= ") + format_double_compact(*y1);
     }
     return std::nullopt;
 }
@@ -6060,28 +6128,96 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
     return false;
 }
 
+static void add_recip_coeff(std::vector<std::pair<int, Rational>> &xs, int power, Rational coef)
+{
+    if(is_zero(coef)) return;
+    for(auto &x : xs) {
+        if(x.first == power) {
+            x.second = r_add(x.second, coef);
+            return;
+        }
+    }
+    xs.push_back({power, coef});
+}
+
+static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coeffs(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<std::pair<int, Rational>> out;
+        for(NodeId k : x.kids) {
+            auto sub = reciprocal_power_coeffs(a, k, var);
+            if(!sub) return std::nullopt;
+            for(auto const &pc : *sub) add_recip_coeff(out, pc.first, pc.second);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<std::pair<int, Rational>> acc{{0, Rational{1, 1}}};
+        for(NodeId k : x.kids) {
+            auto sub = reciprocal_power_coeffs(a, k, var);
+            if(!sub) return std::nullopt;
+            std::vector<std::pair<int, Rational>> next;
+            for(auto const &a0 : acc) {
+                for(auto const &b0 : *sub) {
+                    int p = a0.first + b0.first;
+                    if(p < -8 || p > 8) return std::nullopt;
+                    add_recip_coeff(next, p, r_mul(a0.second, b0.second));
+                }
+            }
+            acc = next;
+        }
+        return acc;
+    }
+    Rational c{1, 1};
+    int p = 0;
+    if(reciprocal_power_term(a, n, var, c, p)) return std::vector<std::pair<int, Rational>>{{p, c}};
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num < 0 || e.num.num > 4) return std::nullopt;
+        auto base = reciprocal_power_coeffs(a, x.a, var);
+        if(!base) return std::nullopt;
+        std::vector<std::pair<int, Rational>> acc{{0, Rational{1, 1}}};
+        for(std::int64_t i = 0; i < e.num.num; ++i) {
+            std::vector<std::pair<int, Rational>> next;
+            for(auto const &u : acc) {
+                for(auto const &v : *base) {
+                    int p = u.first + v.first;
+                    if(p < -8 || p > 8) return std::nullopt;
+                    add_recip_coeff(next, p, r_mul(u.second, v.second));
+                }
+            }
+            acc = next;
+        }
+        return acc;
+    }
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> reciprocal_power_equation_route(Arena &a,
                                                                               NodeId rearr,
                                                                               std::string const &var,
                                                                               std::optional<double> lo,
                                                                               std::optional<double> hi)
 {
-    std::vector<NodeId> terms;
-    add_terms_flat(a, rearr, terms);
-    if(terms.empty()) return std::nullopt;
+    auto coeffs = reciprocal_power_coeffs(a, rearr, var);
+    if(!coeffs || coeffs->empty()) return std::nullopt;
+
+    bool saw_negative_power = false;
+    for(auto const &[p, c] : *coeffs)
+        if(p < 0) saw_negative_power = true;
 
     int min_power = 0;
     int max_power = 0;
     std::vector<std::pair<int, Rational>> parsed;
-    for(NodeId t : terms) {
-        Rational c{1, 1};
-        int p = 0;
-        if(!reciprocal_power_term(a, t, var, c, p)) return std::nullopt;
+    for(auto const &[p, c] : *coeffs) {
+        if(is_zero(c)) continue;
         min_power = std::min(min_power, p);
         max_power = std::max(max_power, p);
         parsed.push_back({p, c});
     }
-    if(min_power >= 0) return std::nullopt;
+    if(parsed.empty()) return std::nullopt;
+    if(min_power >= 0 && !saw_negative_power) return std::nullopt;
     int shift = -min_power;
     if(max_power + shift > 2) return std::nullopt;
 
@@ -6100,12 +6236,52 @@ static std::optional<std::vector<std::string>> reciprocal_power_equation_route(A
     std::string den_txt = format_expr(a, den);
     std::vector<std::string> out;
     out.push_back("Domain: " + var + " != 0");
-    out.push_back("Multiply by " + den_txt);
-    out.push_back(den_txt + "*(" + format_expr(a, rearr) + ") = 0");
-    out.push_back("expand => " + format_expr(a, poly2_to_node(a, p, var)) + " = 0");
+    if(shift > 0) {
+        out.push_back("Multiply by " + den_txt);
+        out.push_back(den_txt + "*(" + format_expr(a, rearr) + ") = 0");
+        out.push_back("expand => " + format_expr(a, poly2_to_node(a, p, var)) + " = 0");
+        if(is_zero(p.a2) && !is_zero(p.a1) && !is_zero(p.a0)) {
+            NodeId lhs_lin = casio::simplify(a, casio::mul(a, {a.num(p.a1), casio::sym(a, var)}));
+            out.push_back(format_expr(a, lhs_lin) + " = " + format_expr(a, a.num(r_neg(p.a0))));
+        }
+    }
+    else {
+        out.push_back(format_expr(a, rearr) + " = 0");
+        out.push_back("= " + format_expr(a, poly2_to_node(a, p, var)));
+        out.push_back(format_expr(a, poly2_to_node(a, p, var)) + " = 0");
+    }
     auto sols = filter_real_solutions(a, rearr, var, solve_poly2(a, p, var), lo, hi);
     if(sols.empty()) {
         out.push_back(lo && hi ? "No solution in interval." : "No solution.");
+        out.push_back(var + " = []");
+        return out;
+    }
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> expanded_square_power_solve_route(
+    Arena &a, NodeId rearr, std::string const &var, std::optional<double> lo, std::optional<double> hi)
+{
+    NodeId expanded = casio::simplify(a, expand_square_powers(a, rearr));
+    std::string rearr_txt = format_expr(a, rearr);
+    std::string expanded_txt = format_expr(a, expanded);
+    if(expanded_txt == rearr_txt) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back(rearr_txt + " = 0");
+    out.push_back("= " + expanded_txt);
+    out.push_back(expanded_txt + " = 0");
+    auto p = poly_of(a, expanded, var);
+    if(!p || !p->ok || is_zero(p->a2)) {
+        if(auto rec = reciprocal_power_equation_route(a, expanded, var, lo, hi)) {
+            out.insert(out.end(), rec->begin(), rec->end());
+            return out;
+        }
+        return std::nullopt;
+    }
+    auto sols = filter_real_solutions(a, rearr, var, solve_poly2(a, *p, var), lo, hi);
+    if(sols.empty()) {
         out.push_back(var + " = []");
         return out;
     }
@@ -19204,6 +19380,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *xq;
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto xr = x_minus_recip_halfline_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {
+                    range_answer = *xr;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto rq = one_over_positive_quadratic_range(arena, n, var, steps)) {
                     range_answer = *rq;
                     steps.push_back("Range: " + range_answer + ".");
@@ -19951,6 +20131,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(append_quadratic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
+        if(auto esq = expanded_square_power_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
+            out.insert(out.end(), esq->begin(), esq->end());
+            return out;
+        }
+        if(auto rec = reciprocal_power_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
+            for(auto const &line : *rec) push_unique(out, line);
+            return out;
+        }
         if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
             out.insert(out.end(), rbq->begin(), rbq->end());
             return out;
