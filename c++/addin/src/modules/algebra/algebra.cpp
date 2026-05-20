@@ -8873,6 +8873,96 @@ static std::optional<std::vector<std::string>> sqrt_difference_over_sqrt_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> two_sqrt_quadratic_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto match = [&](NodeId l, NodeId r) -> std::optional<std::vector<std::string>> {
+        Node const &rv = a.get(r);
+        if(rv.kind != NodeKind::Num || rv.num.num <= 0) return std::nullopt;
+        Node const &lv = a.get(l);
+        if(lv.kind != NodeKind::Add || lv.kids.size() != 2) return std::nullopt;
+        NodeId A = 0, B = 0;
+        int neg_roots = 0;
+        for(NodeId k : lv.kids) {
+            NodeId rad = 0;
+            Rational coef{1, 1};
+            if(!sqrt_term_coeff(a, k, rad, coef)) return std::nullopt;
+            if(r_cmp(coef, Rational{1, 1}) == 0) {
+                if(!A) A = rad;
+                else if(!B) B = rad;
+                else return std::nullopt;
+            }
+            else if(r_cmp(coef, Rational{-1, 1}) == 0) {
+                if(B) return std::nullopt;
+                B = rad;
+                ++neg_roots;
+            }
+            else return std::nullopt;
+        }
+        if(!A) return std::nullopt;
+        bool is_sum = neg_roots == 0;
+        if(!B) return std::nullopt;
+        auto Ap = poly_of(a, A, var), Bp = poly_of(a, B, var);
+        if(!Ap || !Bp || !Ap->ok || !Bp->ok) return std::nullopt;
+
+        NodeId c = r;
+        NodeId c2 = casio::simplify(a, casio::power(a, c, casio::num(a, 2)));
+        NodeId iso = is_sum
+            ? casio::simplify(a, casio::add(a, {c2, B, casio::neg(a, A)}))
+            : casio::simplify(a, casio::add(a, {A, casio::neg(a, B), casio::neg(a, c2)}));
+        if(auto ip = poly_of(a, iso, var); ip && ip->ok)
+            iso = poly2_to_node(a, *ip, var);
+        NodeId eq = casio::simplify(a, casio::add(a, {
+            casio::power(a, iso, casio::num(a, 2)),
+            casio::neg(a, casio::mul(a, {casio::num(a, 4), c2, B}))
+        }));
+        auto rp = ratpoly_of_node(a, eq, var);
+        if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
+        auto raw = solve_poly2(a, rp.num, var);
+        if(raw.empty()) return std::nullopt;
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        sort_solution_lines(a, raw);
+        sort_solution_lines(a, valid);
+
+        std::string At = format_expr(a, A), Bt = format_expr(a, B), ct = format_expr(a, c), isot = format_expr(a, iso);
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, l) + " = " + format_expr(a, r));
+        out.push_back("Domain: " + At + " >= 0");
+        out.push_back("Domain: " + Bt + " >= 0");
+        if(is_sum) {
+            out.push_back("sqrt(" + At + ") = " + ct + " - sqrt(" + Bt + ")");
+            out.push_back(At + " = " + format_expr(a, c2) + " - 2*" + ct + "*sqrt(" + Bt + ") + " + Bt);
+            out.push_back("2*" + ct + "*sqrt(" + Bt + ") = " + isot);
+        }
+        else {
+            out.push_back("sqrt(" + At + ") = " + ct + " + sqrt(" + Bt + ")");
+            out.push_back(At + " = " + format_expr(a, c2) + " + 2*" + ct + "*sqrt(" + Bt + ") + " + Bt);
+            out.push_back("2*" + ct + "*sqrt(" + Bt + ") = " + isot);
+        }
+        out.push_back("4*" + format_expr(a, c2) + "*(" + Bt + ") = (" + isot + ")^2");
+        out.push_back("expand => " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = 0");
+        for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+        if(valid.size() != raw.size()) {
+            std::vector<std::string> rej;
+            for(auto const &rr : raw) {
+                bool keep = false;
+                for(auto const &vv : valid) if(sol_rhs(rr) == sol_rhs(vv)) keep = true;
+                if(!keep) rej.push_back(rr);
+            }
+            if(!rej.empty()) out.push_back(var + " = " + join_solutions(rej) + " rejected by substitution");
+        }
+        out.push_back(solution_list_line(var, valid));
+        return out;
+    };
+    if(auto out = match(lhs, rhs)) return out;
+    return match(rhs, lhs);
+}
+
 static std::optional<std::vector<std::string>> sqrt_sum_linear_route(
     Arena &a,
     NodeId lhs,
@@ -13577,6 +13667,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
             if(auto ns = nested_sqrt_plus_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ns;
+            if(auto tsq = two_sqrt_quadratic_route(arena, lhs, rhs, rearr, solve_var)) return *tsq;
             if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
