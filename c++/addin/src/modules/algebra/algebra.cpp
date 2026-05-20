@@ -4003,7 +4003,9 @@ static bool append_direct_square_route(Arena &a,
                                        NodeId residual,
                                        std::string const &var,
                                        std::optional<double> lo,
-                                       std::optional<double> hi)
+                                       std::optional<double> hi,
+                                       bool lo_open = false,
+                                       bool hi_open = false)
 {
     auto ds = direct_square_side(a, lhs, rhs, var);
     if(!ds) ds = direct_square_side(a, rhs, lhs, var);
@@ -4028,6 +4030,7 @@ static bool append_direct_square_route(Arena &a,
         push_sol(r_neg(ds->second));
     }
     auto sols = filter_real_solutions(a, residual, var, raw, lo, hi);
+    filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     append_answer(out, var, sols);
     append_numeric_3dp(a, out, var, sols);
     return true;
@@ -4040,7 +4043,9 @@ static bool append_quadratic_square_route(Arena &a,
                                           NodeId residual,
                                           std::string const &var,
                                           std::optional<double> lo,
-                                          std::optional<double> hi)
+                                          std::optional<double> hi,
+                                          bool lo_open = false,
+                                          bool hi_open = false)
 {
     auto ds = direct_square_side(a, lhs, rhs, var);
     if(!ds) ds = direct_square_side(a, rhs, lhs, var);
@@ -4063,6 +4068,7 @@ static bool append_quadratic_square_route(Arena &a,
     for(auto const &s : raw)
         if(std::find(uniq.begin(), uniq.end(), s) == uniq.end()) uniq.push_back(s);
     auto sols = filter_real_solutions(a, residual, var, uniq, lo, hi);
+    filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     sort_solution_lines(a, sols);
     append_answer(out, var, sols);
     append_numeric_3dp(a, out, var, sols);
@@ -4089,7 +4095,9 @@ static bool append_direct_symbolic_square_route(Arena &a,
                                                 NodeId residual,
                                                 std::string const &var,
                                                 std::optional<double> lo,
-                                                std::optional<double> hi)
+                                                std::optional<double> hi,
+                                                bool lo_open = false,
+                                                bool hi_open = false)
 {
     auto ds = direct_symbolic_square_side(a, lhs, rhs, var);
     if(!ds) ds = direct_symbolic_square_side(a, rhs, lhs, var);
@@ -4113,6 +4121,7 @@ static bool append_direct_symbolic_square_route(Arena &a,
             auto v = eval_node(a, vals[i], var, 0.0);
             if(v && std::isfinite(*v) && *v >= *lo - 1e-9 && *v <= *hi + 1e-9) sols.push_back(raw[i]);
         }
+        filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     }
     else {
         sols = filter_real_solutions(a, residual, var, raw, lo, hi);
@@ -6297,7 +6306,8 @@ static std::optional<std::vector<std::string>> reciprocal_power_equation_route(A
 }
 
 static std::optional<std::vector<std::string>> expanded_square_power_solve_route(
-    Arena &a, NodeId rearr, std::string const &var, std::optional<double> lo, std::optional<double> hi)
+    Arena &a, NodeId rearr, std::string const &var, std::optional<double> lo, std::optional<double> hi,
+    bool lo_open = false, bool hi_open = false)
 {
     NodeId expanded = casio::simplify(a, expand_square_powers(a, rearr));
     std::string rearr_txt = format_expr(a, rearr);
@@ -6309,13 +6319,14 @@ static std::optional<std::vector<std::string>> expanded_square_power_solve_route
     out.push_back(expanded_txt + " = 0");
     auto p = poly_of(a, expanded, var);
     if(!p || !p->ok || is_zero(p->a2)) {
-        if(auto rec = reciprocal_power_equation_route(a, expanded, var, lo, hi)) {
-            out.insert(out.end(), rec->begin(), rec->end());
-            return out;
-        }
+            if(auto rec = reciprocal_power_equation_route(a, expanded, var, lo, hi)) {
+                out.insert(out.end(), rec->begin(), rec->end());
+                return out;
+            }
         return std::nullopt;
     }
     auto sols = filter_real_solutions(a, rearr, var, solve_poly2(a, *p, var), lo, hi);
+    filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     if(sols.empty()) {
         out.push_back(var + " = []");
         return out;
@@ -20220,11 +20231,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), log_alt->begin(), log_alt->end());
             return out;
         }
-        if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
-        if(append_quadratic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
-        if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return out;
+        if(append_quadratic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return out;
+        if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return out;
         if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
-        if(auto esq = expanded_square_power_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
+        if(auto esq = expanded_square_power_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) {
             out.insert(out.end(), esq->begin(), esq->end());
             return out;
         }
