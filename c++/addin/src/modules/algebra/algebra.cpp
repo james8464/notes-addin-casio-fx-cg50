@@ -6326,6 +6326,71 @@ static bool read_xy_ellipse_equation(std::string const &eq, Rational &cx, Ration
     return true;
 }
 
+static bool read_recip_power_sum_equation(std::string const &eq, int power, Rational &value)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    std::string sx = power == 1 ? "1/x" : "1/x^" + std::to_string(power);
+    std::string sy = power == 1 ? "1/y" : "1/y^" + std::to_string(power);
+    bool seen_x = false, seen_y = false;
+    for(auto const &t : terms) {
+        if(t == sx) seen_x = true;
+        else if(t == sy) seen_y = true;
+    }
+    if(!seen_x || !seen_y) return false;
+    value = *rhs;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_sum_cube_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> s, c3;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(read_recip_power_sum_equation(e, 1, v)) s = v;
+        else if(read_recip_power_sum_equation(e, 3, v)) c3 = v;
+    }
+    if(!s || !c3 || is_zero(*s)) return std::nullopt;
+    Rational p = r_div(r_sub(r_pow_int(*s, 3), *c3), r_mul(Rational{3, 1}, *s));
+    Poly2 tp = primitive_poly2(Poly2{Rational{1, 1}, r_neg(*s), p, true});
+    auto ts = solve_poly2(a, tp, "t");
+    if(ts.empty()) return std::nullopt;
+    sort_solution_lines(a, ts);
+    std::vector<std::string> vals;
+    for(auto const &line : ts) {
+        auto tv = parse_rational_text(sol_rhs(line));
+        if(!tv || is_zero(*tv)) return std::nullopt;
+        vals.push_back(format_rat_plain(*tv));
+    }
+    if(vals.size() != 2) return std::nullopt;
+    std::string x1 = format_rat_plain(r_div(Rational{1, 1}, *parse_rational_text(vals[0])));
+    std::string y1 = format_rat_plain(r_div(Rational{1, 1}, *parse_rational_text(vals[1])));
+    std::string x2 = format_rat_plain(r_div(Rational{1, 1}, *parse_rational_text(vals[1])));
+    std::string y2 = format_rat_plain(r_div(Rational{1, 1}, *parse_rational_text(vals[0])));
+
+    std::vector<std::string> out;
+    out.push_back("a = 1/x, b = 1/y");
+    out.push_back("a+b = " + format_rat_plain(*s));
+    out.push_back("a^3+b^3 = " + format_rat_plain(*c3));
+    out.push_back("a^3+b^3 = (a+b)^3 - 3ab(a+b)");
+    out.push_back(format_rat_plain(*c3) + " = (" + format_rat_plain(*s) + ")^3 - 3ab(" + format_rat_plain(*s) + ")");
+    out.push_back("ab = " + format_rat_plain(p));
+    out.push_back(format_expr(a, poly2_to_node(a, tp, "t")) + " = 0");
+    if(auto rr = rational_quadratic_roots(tp))
+        out.push_back("Factor: " + quadratic_factor_text(a, tp, "t") + " = 0");
+    out.push_back("a,b = " + vals[0] + "," + vals[1]);
+    out.push_back("(x,y) = [(" + x1 + "," + y1 + "), (" + x2 + "," + y2 + ")]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> xy_product_ellipse_system(Arena &a, std::string const &key)
 {
     std::string body;
@@ -12688,6 +12753,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
                 };
             }
+            if(auto recsys = reciprocal_sum_cube_system(arena, key)) return *recsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto system = symmetric_sum_product_system(key)) return *system;
