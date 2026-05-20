@@ -1120,6 +1120,40 @@ static std::optional<SymbolicQuadraticFull> symbolic_quadratic_parts(Arena &a, N
     };
 }
 
+static NodeId distribute_const_over_add_once(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        bool changed = false;
+        for(NodeId k : x.kids) {
+            NodeId nk = distribute_const_over_add_once(a, k, var);
+            changed = changed || nk != k;
+            kids.push_back(nk);
+        }
+        return changed ? casio::simplify(a, casio::add(a, kids)) : n;
+    }
+    if(x.kind != NodeKind::Mul) return n;
+    NodeId add = 0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        Node const &kn = a.get(k);
+        if(kn.kind == NodeKind::Add && !add) add = k;
+        else rest.push_back(k);
+    }
+    if(!add || rest.empty()) return n;
+    for(NodeId r : rest)
+        if(contains_symbol(a, r, var)) return n;
+    Node const &ad = a.get(add);
+    std::vector<NodeId> terms;
+    for(NodeId k : ad.kids) {
+        std::vector<NodeId> f = rest;
+        f.push_back(k);
+        terms.push_back(casio::mul(a, f));
+    }
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 static std::optional<std::vector<std::string>> symbolic_complete_square(Arena &a, NodeId n, std::string const &raw, std::string const &var)
 {
     if(auto sq = complete_square_existing_square(a, n, var)) return sq;
@@ -9209,18 +9243,152 @@ static NodeId compact_single_other_quadratic(Arena &a, NodeId expr, std::string 
 
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
-    std::string rearr_txt = format_expr(a, rearr);
+    NodeId flat = distribute_const_over_add_once(a, rearr, var);
+    std::string rearr_txt = format_expr(a, flat);
     bool has_named_const = rearr_txt.find("pi") != std::string::npos || rearr_txt.find("e^") != std::string::npos ||
-                           contains_const(a, rearr, ConstKind::Pi) || contains_const(a, rearr, ConstKind::E);
-    if(!has_other_symbols(a, rearr, var) && !has_named_const && ratpoly_of_node(a, rearr, var).ok)
+                           contains_const(a, flat, ConstKind::Pi) || contains_const(a, flat, ConstKind::E);
+    if(!has_other_symbols(a, flat, var) && !has_named_const && ratpoly_of_node(a, flat, var).ok)
         return std::nullopt;
-    auto q = symbolic_quadratic_parts(a, rearr, var);
+    auto q = symbolic_quadratic_parts(a, flat, var);
     if(!q) return std::nullopt;
     NodeId two = casio::num(a, 2);
     NodeId four = casio::num(a, 4);
     NodeId v = casio::sym(a, var);
     std::vector<std::string> out;
     out.push_back(rearr_txt + " = 0");
+
+    struct QS {
+        Rational r{0, 1};
+        Rational s{0, 1};
+        long long rad = 0;
+    };
+    auto qnorm = [](QS q) {
+        q.r.normalize();
+        q.s.normalize();
+        if(q.s.num == 0) q.rad = 0;
+        return q;
+    };
+    auto same_rad = [](QS const &u, QS const &v) {
+        return u.rad == v.rad || u.rad == 0 || v.rad == 0;
+    };
+    auto qadd = [&](QS u, QS v) -> std::optional<QS> {
+        if(!same_rad(u, v)) return std::nullopt;
+        long long rad = u.rad ? u.rad : v.rad;
+        return qnorm(QS{r_add(u.r, v.r), r_add(u.s, v.s), rad});
+    };
+    auto qneg = [&](QS u) { return qnorm(QS{r_neg(u.r), r_neg(u.s), u.rad}); };
+    auto qmul = [&](QS u, QS v) -> std::optional<QS> {
+        if(!same_rad(u, v)) return std::nullopt;
+        long long rad = u.rad ? u.rad : v.rad;
+        Rational rr = r_add(r_mul(u.r, v.r), r_mul(r_mul(u.s, v.s), Rational{rad, 1}));
+        Rational ss = r_add(r_mul(u.r, v.s), r_mul(u.s, v.r));
+        return qnorm(QS{rr, ss, rad});
+    };
+    auto qdiv = [&](QS u, QS v) -> std::optional<QS> {
+        if(!same_rad(u, v)) return std::nullopt;
+        long long rad = u.rad ? u.rad : v.rad;
+        Rational den = r_sub(r_mul(v.r, v.r), r_mul(r_mul(v.s, v.s), Rational{rad, 1}));
+        if(is_zero(den)) return std::nullopt;
+        QS conj{v.r, r_neg(v.s), rad};
+        auto top = qmul(u, conj);
+        if(!top) return std::nullopt;
+        return qnorm(QS{r_div(top->r, den), r_div(top->s, den), rad});
+    };
+    std::function<std::optional<QS>(NodeId)> parse_qs = [&](NodeId n) -> std::optional<QS> {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Num) return qnorm(QS{x.num, Rational{0, 1}, 0});
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+            Node const &in = a.get(x.a);
+            if(in.kind != NodeKind::Num || in.num.den != 1 || in.num.num <= 0) return std::nullopt;
+            std::int64_t rt = 0;
+            if(is_square_i64(in.num.num, rt)) return qnorm(QS{Rational{rt, 1}, Rational{0, 1}, 0});
+            return qnorm(QS{Rational{0, 1}, Rational{1, 1}, in.num.num});
+        }
+        if(x.kind == NodeKind::Add) {
+            QS acc{};
+            for(NodeId k : x.kids) {
+                auto qk = parse_qs(k);
+                if(!qk) return std::nullopt;
+                auto next = qadd(acc, *qk);
+                if(!next) return std::nullopt;
+                acc = *next;
+            }
+            return qnorm(acc);
+        }
+        if(x.kind == NodeKind::Mul) {
+            QS acc{Rational{1, 1}, Rational{0, 1}, 0};
+            for(NodeId k : x.kids) {
+                auto qk = parse_qs(k);
+                if(!qk) return std::nullopt;
+                auto next = qmul(acc, *qk);
+                if(!next) return std::nullopt;
+                acc = *next;
+            }
+            return qnorm(acc);
+        }
+        if(x.kind == NodeKind::Div) {
+            auto n0 = parse_qs(x.a);
+            auto d0 = parse_qs(x.b);
+            if(!n0 || !d0) return std::nullopt;
+            return qdiv(*n0, *d0);
+        }
+        return std::nullopt;
+    };
+    auto qtext = [&](QS q) {
+        q = qnorm(q);
+        auto surd = [&](Rational c) {
+            c.normalize();
+            bool neg = c.num < 0;
+            if(neg) c.num = -c.num;
+            std::string core = "sqrt(" + std::to_string(q.rad) + ")";
+            std::string s;
+            if(c.num == c.den) s = core;
+            else if(c.den == 1) s = std::to_string(c.num) + "*" + core;
+            else if(c.num == 1) s = core + "/" + std::to_string(c.den);
+            else s = std::to_string(c.num) + "/" + std::to_string(c.den) + "*" + core;
+            return neg ? "-" + s : s;
+        };
+        if(q.rad == 0 || is_zero(q.s)) return format_rat_plain(q.r);
+        if(is_zero(q.r)) return surd(q.s);
+        std::string r = format_rat_plain(q.r), s = surd(q.s);
+        return s[0] == '-' ? r + " - " + s.substr(1) : r + " + " + s;
+    };
+    auto sqrt_qs = [&](QS d) -> std::optional<QS> {
+        d = qnorm(d);
+        if(!is_zero(d.s)) return std::nullopt;
+        if(d.r.num < 0) return std::nullopt;
+        std::int64_t rn = 0, rd = 0;
+        if(is_square_i64(d.r.num, rn) && is_square_i64(d.r.den, rd) && rd) return qnorm(QS{Rational{rn, rd}, Rational{0, 1}, 0});
+        if(d.r.den == 1) return qnorm(QS{Rational{0, 1}, Rational{1, 1}, d.r.num});
+        return std::nullopt;
+    };
+    auto aq = parse_qs(q->a2), bq = parse_qs(q->b), cq = parse_qs(q->c);
+    if(aq && bq && cq && same_rad(*aq, *bq) && same_rad(*aq, *cq)) {
+        QS fourq{Rational{4, 1}, Rational{0, 1}, 0};
+        auto bb = qmul(*bq, *bq);
+        auto ac = qmul(*aq, *cq);
+        auto fac = ac ? qmul(fourq, *ac) : std::nullopt;
+        auto disc = (bb && fac) ? qadd(*bb, qneg(*fac)) : std::nullopt;
+        auto sd = disc ? sqrt_qs(*disc) : std::nullopt;
+        QS twoq{Rational{2, 1}, Rational{0, 1}, 0};
+        auto den = qmul(twoq, *aq);
+        if(sd && den) {
+            auto top1 = qadd(qneg(*bq), *sd);
+            auto top2 = qadd(qneg(*bq), qneg(*sd));
+            auto x1 = top1 ? qdiv(*top1, *den) : std::nullopt;
+            auto x2 = top2 ? qdiv(*top2, *den) : std::nullopt;
+            if(x1 && x2) {
+                std::vector<std::string> sols{var + " = " + qtext(*x1), var + " = " + qtext(*x2)};
+                sort_solution_lines(a, sols);
+                out.push_back("a = " + qtext(*aq) + ", b = " + qtext(*bq) + ", c = " + qtext(*cq));
+                out.push_back("D = b^2 - 4ac = " + qtext(*disc));
+                out.push_back(var + " = (-b +/- sqrt(D))/(2a)");
+                for(auto const &s : sols) out.push_back(s);
+                out.push_back(solution_list_line(var, sols));
+                return out;
+            }
+        }
+    }
 
     if(casio::same_by_sig(a, q->b, zero_node(a))) {
         NodeId rhs = casio::simplify(a, casio::div(a, casio::neg(a, q->c), q->a2));
