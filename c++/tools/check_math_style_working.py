@@ -509,6 +509,18 @@ CASES = [
         ("x = [1, 3]",),
     ),
     (
+        "open half-line quadratic range",
+        ["--alg", "range(x^2+2,x>0)"],
+        ("Range: y > 2 on the interval",),
+        ("Range: y >= 2",),
+    ),
+    (
+        "open half-line linear range",
+        ["--alg", "range(3*x-1,x>4)"],
+        ("Range: y > 11",),
+        ("Range: y >= 11",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),

@@ -18950,14 +18950,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
                     if(*lo_v >= vertex) {
                         auto ylo = eval_node(arena, n, var, *lo_v);
-                        if(ylo) range_answer = "y >= " + format_double_compact(*ylo);
+                        if(ylo) range_answer = std::string(lo_open ? "y > " : "y >= ") + format_double_compact(*ylo);
                     }
                 }
                 else if(lo_v && !std::isfinite(*lo_v) && hi_v && std::isfinite(*hi_v) && a.num > 0) {
                     double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
                     if(*hi_v <= vertex) {
                         auto yhi = eval_node(arena, n, var, *hi_v);
-                        if(yhi) range_answer = "y >= " + format_double_compact(*yhi);
+                        if(yhi) range_answer = std::string(hi_open ? "y > " : "y >= ") + format_double_compact(*yhi);
                     }
                 }
                 std::string range = "Range: " + range_answer;
@@ -18968,7 +18968,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 range_answer = "all real y";
                 if(lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v)) {
                     auto ylo = eval_node(arena, n, var, *lo_v);
-                    if(ylo) range_answer = p->a1.num > 0 ? "y >= " + format_double_compact(*ylo) : "y <= " + format_double_compact(*ylo);
+                    if(ylo) {
+                        if(p->a1.num > 0) range_answer = std::string(lo_open ? "y > " : "y >= ") + format_double_compact(*ylo);
+                        else range_answer = std::string(lo_open ? "y < " : "y <= ") + format_double_compact(*ylo);
+                    }
                 }
                 steps.push_back("Range: " + range_answer + ".");
             }
