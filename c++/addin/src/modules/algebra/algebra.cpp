@@ -4724,6 +4724,14 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
         return;
     }
     if(x.kind == NodeKind::Fn) {
+        if((x.fkind == FnKind::Sqrt || x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && !has_symbols(a, x.a)) {
+            auto v = eval_node(a, x.a, "x", 0.0);
+            if(v && ((x.fkind == FnKind::Sqrt && *v < -1e-10) ||
+                     ((x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && *v <= 0))) {
+                push_unique(out, "Domain: no real x");
+                return;
+            }
+        }
         if(x.fkind == FnKind::Sqrt && has_symbols(a, x.a)) {
             Node const &inner = a.get(x.a);
             if(inner.kind == NodeKind::Pow) {
@@ -16229,7 +16237,13 @@ static std::optional<NodeId> positive_log_value(Arena &a, NodeId n, std::string 
     if(x.kind == NodeKind::Const && x.ckind == ConstKind::E) return one_node(a);
     if(auto e = exp_like_arg(a, n)) return *e;
     if(x.kind == NodeKind::Mul || x.kind == NodeKind::Add) {
-        if(x.kind == NodeKind::Add) return std::nullopt;
+        if(x.kind == NodeKind::Add) {
+            if(!has_symbols(a, n)) {
+                auto v = eval_node(a, n, var, 0.0);
+                if(v && *v > 0) return casio::fn(a, "log", n);
+            }
+            return std::nullopt;
+        }
         std::vector<NodeId> terms;
         for(NodeId k : x.kids) {
             auto t = positive_log_value(a, k, var);
@@ -16409,43 +16423,76 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
     std::vector<NodeId> terms;
     add_terms_flat(a, residual, terms);
     std::optional<std::pair<Rational, NodeId>> ce;
-    Rational c{0, 1};
+    NodeId cnode = zero_node(a);
     for(NodeId t : terms) {
         if(auto e = coeff_exp_arg(a, t)) {
             if(ce) return std::nullopt;
             ce = *e;
         }
-        else if(auto n = as_num(a, t)) c = r_add(c, *n);
+        else if(!contains_symbol(a, t, var)) cnode = exact_eval_simplify(a, casio::add(a, {cnode, t}));
         else return std::nullopt;
     }
     if(!ce || is_zero(ce->first)) return std::nullopt;
-    Rational target = r_div(r_neg(c), ce->first);
-    if(target.num <= 0) return std::nullopt;
+    NodeId target_node = exact_eval_simplify(a, casio::div(a, neg_node(a, cnode), a.num(ce->first)));
+    auto logt = positive_log_value(a, target_node, var);
+    if(!logt) return std::nullopt;
+    auto ln_text = [&](NodeId n) {
+        std::string s = format_expr(a, n);
+        std::size_t p = 0;
+        while((p = s.find("log(", p)) != std::string::npos) {
+            s.replace(p, 4, "ln(");
+            p += 3;
+        }
+        return s;
+    };
+    out.push_back("e^(" + format_expr(a, ce->second) + ") = " + format_expr(a, target_node));
+    out.push_back(format_expr(a, ce->second) + " = " + ln_text(*logt));
+
     auto p = poly_of(a, ce->second, var);
-    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
-    NodeId logt = casio::fn(a, "log", casio::num(a, target.num, target.den));
-    NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
-    out.push_back("e^(" + format_expr(a, ce->second) + ") = " + format_rat_plain(target));
-    out.push_back(format_expr(a, ce->second) + " = ln(" + format_rat_plain(target) + ")");
-    std::string exact_text = simplify_log_power_div_text(format_expr(a, exact));
-    if(is_zero(p->a0) || format_expr(a, a.num(p->a0)) == "0") {
-        bool used_lp = false;
-        if(auto lp = log_power_solution_text(target, p->a1)) {
-            exact_text = *lp;
-            used_lp = true;
+    if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+        NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {*logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
+        std::string exact_text = simplify_log_power_div_text(format_expr(a, exact));
+        if(is_zero(p->a0) || format_expr(a, a.num(p->a0)) == "0") {
+            bool used_lp = false;
+            if(auto rt = as_num(a, target_node)) {
+                if(auto lp = log_power_solution_text(*rt, p->a1)) {
+                    exact_text = *lp;
+                    used_lp = true;
+                }
+            }
+            auto rt = as_num(a, target_node);
+            if(!used_lp && rt && p->a1.num < 0 && rt->den != 1) {
+                Rational inv{rt->den, rt->num};
+                inv.normalize();
+                Rational scale{p->a1.den, -p->a1.num};
+                scale.normalize();
+                std::string l = "ln(" + format_rat_plain(inv) + ")";
+                if(scale.num == scale.den) exact_text = l;
+                else if(scale.num == 1) exact_text = l + "/" + std::to_string(scale.den);
+                else exact_text = format_rat_plain(scale) + "*" + l;
+            }
         }
-        if(!used_lp && p->a1.num < 0 && target.den != 1) {
-            Rational inv{target.den, target.num};
-            inv.normalize();
-            Rational scale{p->a1.den, -p->a1.num};
-            scale.normalize();
-            std::string l = "ln(" + format_rat_plain(inv) + ")";
-            if(scale.num == scale.den) exact_text = l;
-            else if(scale.num == 1) exact_text = l + "/" + std::to_string(scale.den);
-            else exact_text = format_rat_plain(scale) + "*" + l;
-        }
+        out.push_back(var + " = " + exact_text);
+        return out;
     }
-    out.push_back(var + " = " + exact_text);
+
+    std::vector<NodeId> arg_terms;
+    add_terms_flat(a, ce->second, arg_terms);
+    std::optional<Rational> ecoef;
+    NodeId offset = zero_node(a);
+    for(NodeId t : arg_terms) {
+        auto ex = coeff_exp_arg(a, t);
+        if(ex && is_sym_var(a, ex->second, var)) {
+            if(ecoef) return std::nullopt;
+            ecoef = ex->first;
+        }
+        else if(!contains_symbol(a, t, var)) offset = exact_eval_simplify(a, casio::add(a, {offset, t}));
+        else return std::nullopt;
+    }
+    if(!ecoef || is_zero(*ecoef)) return std::nullopt;
+    NodeId inner = exact_eval_simplify(a, casio::div(a, casio::add(a, {*logt, neg_node(a, offset)}), a.num(*ecoef)));
+    out.push_back("e^(" + var + ") = " + format_expr(a, inner));
+    out.push_back(var + " = " + ln_text(casio::fn(a, "log", inner)));
     return out;
 }
 

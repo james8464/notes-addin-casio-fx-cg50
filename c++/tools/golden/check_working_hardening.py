@@ -1692,6 +1692,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["(x + 1)^2 = e^(2)*(e^y)^2", "x + 1 = e*(1 - x)", "x = (e - 1)/(e + 1)", "y = ln(2/(e + 1))"],
         ["solve(", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(e^(x+1)-2=2*(e-1),x)",
+        ["e^(x + 1) = 2*e", "x + 1 = ln(2) + 1", "x = ln(2)"],
+        ["x ~=", "0.693", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^(e^x-2)-3=e,x)",
+        ["e^(e^(x) - 2) = e + 3", "e^(x) - 2 = ln(e + 3)", "x = ln(ln(e + 3) + 2)"],
+        ["x ~=", "1.320", "ERR:"],
+    ),
+    (
+        "alg",
+        "domain(ln((4+e)/(1-e)+1))",
+        ["Domain: no real x"],
+        ["Domain: all real x", "ERR:"],
+    ),
 ]
 
 
