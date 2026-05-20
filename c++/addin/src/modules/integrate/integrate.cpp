@@ -18670,11 +18670,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
 
-    if(auto special = special_integral_answer(req.expr)) {
-        std::vector<std::string> steps;
-        steps.push_back("Start with " + req.expr + ".");
-        for(auto const &s : special->steps) steps.push_back(s);
-        return casio::exam_block(special->method, steps, special->answer);
+    bool force_di = method_key == "di" || method_key == "tabular";
+    if(!force_di) {
+        if(auto special = special_integral_answer(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : special->steps) steps.push_back(s);
+            return casio::exam_block(special->method, steps, special->answer);
+        }
     }
 
     if(direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
@@ -18802,7 +18805,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 {scaled_w, casio::fn(arena, node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos"), arg)}
             );
             NodeId second_part = casio::num(arena, 0);
-            std::optional<std::string> sqrt_backsub;
+            std::optional<std::string> sqrt_term_text;
             std::string fname = node_ref.fkind == FnKind::Atan ? "atan" : (node_ref.fkind == FnKind::Asin ? "asin" : "acos");
             std::string rule;
             if(node_ref.fkind == FnKind::Atan) {
@@ -18824,7 +18827,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         });
                         NodeId top_lc_node = casio::num(arena, top_lc->num, top_lc->den);
                         second_part = casio::div(arena, casio::fn(arena, "sqrt", rad), top_lc_node);
-                        sqrt_backsub = format_expr(arena, second_part);
+                        sqrt_term_text = format_expr(arena, second_part);
                     }
                 }
                 rule = "Int(asin(w)) dw = w*asin(w) + sqrt(1-w^2).";
@@ -18842,7 +18845,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         });
                         NodeId top_lc_node = casio::num(arena, top_lc->num, top_lc->den);
                         second_part = casio::neg(arena, casio::div(arena, casio::fn(arena, "sqrt", rad), top_lc_node));
-                        sqrt_backsub = format_expr(arena, second_part);
+                        sqrt_term_text = format_expr(arena, casio::neg(arena, second_part));
                     }
                 }
                 rule = "Int(acos(w)) dw = w*acos(w) - sqrt(1-w^2).";
@@ -18860,7 +18863,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else
                 steps.push_back("Use parts: u=" + fname + "(w), dv=dw, du=1/sqrt(1-w^2) dw, v=w.");
             steps.push_back(rule);
-            steps.push_back(sqrt_backsub ? "sqrt(1-w^2) = " + *sqrt_backsub + "." : "Back-substitute w.");
+            steps.push_back(sqrt_term_text ? "sqrt term = " + *sqrt_term_text + "." : "Back-substitute w.");
             return casio::exam_block("integration by parts", steps, format_expr(arena, primitive) + " + C");
         }
     }
@@ -18884,12 +18887,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
     std::vector<std::string> match_candidates = {req.expr, pre.norm, pre.parsed, pre.simplified, format_expr(arena, node)};
 
-    for(auto const &candidate : match_candidates) {
-        if(auto special = special_integral_answer(candidate)) {
-            std::vector<std::string> steps;
-            append_integrand_prelude(steps);
-            for(auto const &s : special->steps) steps.push_back(s);
-            return casio::exam_block(special->method, steps, special->answer);
+    if(!force_di) {
+        for(auto const &candidate : match_candidates) {
+            if(auto special = special_integral_answer(candidate)) {
+                std::vector<std::string> steps;
+                append_integrand_prelude(steps);
+                for(auto const &s : special->steps) steps.push_back(s);
+                return casio::exam_block(special->method, steps, special->answer);
+            }
         }
     }
 

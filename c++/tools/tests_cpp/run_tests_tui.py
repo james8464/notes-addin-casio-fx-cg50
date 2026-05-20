@@ -5912,7 +5912,11 @@ class CASIOApp(App):
                 return expected_values is None or expected_values == []
             if not quality(out):
                 return False
-            if (expected_values is None or expected_values == []) and ("x=[]" in text or "x = []" in text) and ("!=" in text or "rejected by domain" in text or "domain:" in text):
+            if (
+                (expected_values is None or expected_values == [])
+                and ("x=[]" in text or "x = []" in text)
+                and ("!=" in text or "reject" in text or "rejected by domain" in text or "domain:" in text)
+            ):
                 return True
             values = extract_last_solution_values(out, var)
             if not values:

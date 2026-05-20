@@ -182,6 +182,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(x+9=3*sqrt(x),x)",
+        ["u = x^(1/2), u >= 0", "u^2 - 3*u + 9 = 0", "reject u =", "x = []"],
+        ["sqrt(3)*i)^2", "ERR:"],
+    ),
+    (
+        "alg",
         "solve((2*x+1)^2=4,x)",
         ["(2*x + 1)^2 = 4", "2*x + 1 = +/-2", "x = [1/2, -3/2]"],
         ["LHS - RHS", "x + 1/2 = +/-1", "ERR:"],
@@ -213,14 +219,14 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "acos((x-1)/3)",
-        ["Use parts", "w=(x - 1)/3", "Answer:"],
-        ["Answer: int(", "Classify the integrand", "ERR:", "Unexpected token"],
+        ["Use parts", "w=(x - 1)/3", "sqrt term = sqrt", "+ C"],
+        ["sqrt(1-w^2) = -", "Answer: int(", "Classify the integrand", "ERR:", "Unexpected token"],
     ),
     (
         "int",
         "asin((x-1)/3)",
-        ["Use parts", "w=(x - 1)/3", "Answer:"],
-        ["Answer: int(", "Classify the integrand", "ERR:", "Unexpected token"],
+        ["Use parts", "w=(x - 1)/3", "sqrt term = sqrt", "+ C"],
+        ["sqrt(1-w^2) =", "Answer: int(", "Classify the integrand", "ERR:", "Unexpected token"],
     ),
     (
         "int",
@@ -659,6 +665,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "x^3*e^(2*x),method=di",
         ["D:", "I:", "Signs:", "e^(2*x)*(1/2*x^3 - 3/4*x^2 + 3/4*x - 3/8)"],
         ["Use DI/table integration by parts for x^n*e^(a*x+b).", "ERR:"],
+    ),
+    (
+        "int",
+        "x*e^(x),method=di",
+        ["D: x, 1, 0", "I: e^(x), e^(x)", "Signs: +, -", "e^(x)*(x - 1) + C"],
+        ["u = x; dv = e^x dx", "ERR:"],
     ),
     (
         "int",

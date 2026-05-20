@@ -11020,6 +11020,10 @@ static std::optional<std::vector<std::string>> rational_root_substitution_route(
     for(auto const &s : uroots) {
         std::string rhs = sol_rhs(s);
         out.push_back("u = " + rhs);
+        if(rhs.find('i') != std::string::npos) {
+            out.push_back("reject u = " + rhs + " since u is real");
+            continue;
+        }
         auto ur = parse_rational_text(rhs);
         auto v = parse_const_double(a, rhs);
         if(ur && is_zero(eval_p2(rp.den, *ur))) {
@@ -11032,6 +11036,11 @@ static std::optional<std::vector<std::string>> rational_root_substitution_route(
         }
         NodeId ux = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, den)));
         raw.push_back(var + " = " + format_expr(a, ux));
+    }
+    if(raw.empty()) {
+        out.push_back("no real solution");
+        out.push_back("Answer: " + var + " = []");
+        return out;
     }
     sort_solution_lines(a, raw);
     append_answer(out, var, raw);
@@ -11175,6 +11184,10 @@ next_root:
     for(auto const &line : uroots) {
         std::string rhs = sol_rhs(line);
         out.push_back("u = " + rhs);
+        if(rhs.find('i') != std::string::npos) {
+            out.push_back("reject u = " + rhs + " since u is real");
+            continue;
+        }
         auto ur = parse_rational_text(rhs);
         auto v = parse_const_double(a, rhs);
         if(den % 2 == 0 && ((ur && ur->num < 0) || (v && *v < -1e-10))) {
@@ -11183,6 +11196,11 @@ next_root:
         }
         NodeId xval = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, den)));
         xs.push_back(var + " = " + format_expr(a, xval));
+    }
+    if(xs.empty()) {
+        out.push_back("no real solution");
+        out.push_back("Answer: " + var + " = []");
+        return out;
     }
     xs = filter_real_solutions(a, rearr, var, xs, lo, hi);
     if(xs.empty()) return std::nullopt;

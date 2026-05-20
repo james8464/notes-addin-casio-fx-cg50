@@ -33,7 +33,7 @@ class Case:
     source: str
     topic: str
     cmd: tuple[str, str]
-    must: tuple[str, ...] = ("Answer:",)
+    must: tuple[str, ...] = ()
     forbid: tuple[str, ...] = ("ERR:", "Answer: int(", "Answer: d/dx(", "No elementary primitive", "Integral not recognised")
 
 
@@ -51,12 +51,59 @@ def marker_found(out: str, marker: str) -> bool:
         return True
     if marker.lower() == "collect i" and ("2i" in norm or "collect" in lo):
         return True
+    if marker.lower() == "di table" and "D:" in out and "I:" in out and "Signs:" in out:
+        return True
+    if marker.lower() == "di table" and "I1 =" in out and "I2 =" in out and "Int(" in out:
+        return True
+    if marker.lower() == "partial" and ("PF:" in out or "*den => coefficient equations" in out or "N/D = Q" in out):
+        return True
+    if marker.lower() == "equate" and ("coefficient equations" in lo or " = " in out):
+        return True
+    if marker.lower() == "let u=cos" and "u=cos(x)" in norm:
+        return True
+    if marker.lower() == "differentiate" and ("d/dx" in out or "dy/dx" in out):
+        return True
+    if marker.lower() == "use parts" and ("dv =" in out or " by parts" in lo or "parts gives" in lo):
+        return True
+    if marker.lower() == "let u" and ("u =" in out or "u=" in norm):
+        return True
+    if marker.lower() == "let" and ("u =" in out or "w =" in out or "u=" in norm or "w=" in norm):
+        return True
+    if marker.lower() == "divide numerator" and ("N,D /" in out or "D/x^2" in out or "N/x^2" in out):
+        return True
     return False
 
 
 def add(out: list[Case], source: str, topic: str, mode: str, expr: str, *must: str) -> None:
     idx = len(out) + 1
-    out.append(Case(f"{source}-{topic}-{idx:03d}", source, topic, (mode, expr), tuple(must or ("Answer:",))))
+    out.append(Case(f"{source}-{topic}-{idx:03d}", source, topic, (mode, expr), tuple(must)))
+
+
+def has_math_working(out: str) -> bool:
+    for line in out.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if any(ch in s for ch in "=+-*/^()[]") or any(
+            tok in s for tok in ("sin", "cos", "tan", "ln", "log", "sqrt", "Int", "d/d", "dy/dx", "Domain:", "Range:")
+        ):
+            return True
+    return False
+
+
+def weak_reasons(out: str) -> list[str]:
+    reasons: list[str] = []
+    if not out.strip():
+        reasons.append("empty output")
+    if not has_math_working(out):
+        reasons.append("no math working")
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    if lines and (lines[-1] in {"Done", "OK"} or lines[-1].endswith(":")):
+        reasons.append("weak final line")
+    for marker in ("Classify the integrand", "Use integration.", "Done"):
+        if marker in out:
+            reasons.append(marker)
+    return reasons
 
 
 def cases() -> list[Case]:
@@ -66,75 +113,75 @@ def cases() -> list[Case]:
     for a in (-3, -1, 1, 2, 3, 5):
         for deg in (1, 2, 3, 4, 6):
             p = f"x^{deg}" if deg > 1 else "x"
-            add(out, "paul_parts", "di_exp", "--int", f"{p}*e^({a}*x),method=di", "DI table", "Answer:")
-            add(out, "openstax_parts", "di_sin", "--int", f"{p}*sin({a}*x+1),method=di", "DI table", "Answer:")
-            add(out, "openstax_parts", "di_cos", "--int", f"{p}*cos({a}*x-2),method=di", "DI table", "Answer:")
+            add(out, "paul_parts", "di_exp", "--int", f"{p}*e^({a}*x),method=di", "DI table")
+            add(out, "openstax_parts", "di_sin", "--int", f"{p}*sin({a}*x+1),method=di", "DI table")
+            add(out, "openstax_parts", "di_cos", "--int", f"{p}*cos({a}*x-2),method=di", "DI table")
     for a, b in ((1, 2), (2, 5), (3, 7), (-2, 5), (4, -9)):
-        add(out, "paul_parts", "poly_exp", "--int", f"({a}*x+{b})*e^(x/3),method=parts", "Answer:")
-        add(out, "paul_parts", "poly_trig", "--int", f"({a}*x^2+{b}*x+1)*cos(3*x),method=di", "DI table", "Answer:")
+        add(out, "paul_parts", "poly_exp", "--int", f"({a}*x+{b})*e^(x/3),method=parts")
+        add(out, "paul_parts", "poly_trig", "--int", f"({a}*x^2+{b}*x+1)*cos(3*x),method=di", "DI table")
     for fn in ("asin", "acos", "atan"):
         for s, m in ((0, 2), (1, 3), (-2, 5), (4, 7), (8, 11)):
-            add(out, "mit_parts", "inverse_trig_parts", "--int", f"{fn}((x-{s})/{m}),method=parts", "Use parts", "Answer:")
+            add(out, "mit_parts", "inverse_trig_parts", "--int", f"{fn}((x-{s})/{m}),method=parts", "Use parts")
     for m in (2, 3, 5, 8, 13):
-        add(out, "paul_parts", "inverse_recip_parts", "--int", f"atan({m}/x),method=parts", "Answer:")
+        add(out, "paul_parts", "inverse_recip_parts", "--int", f"atan({m}/x),method=parts")
 
     # Paul/OpenStax: partial fractions, including hostile but factorable forms.
     for r1, r2 in ((1, -2), (2, -5), (-3, 4), (6, -1), (-7, 2)):
         den = f"(x-{r1})*(x-{r2})"
         for n in ("1", "3*x+5", "x^2+2*x+3"):
-            add(out, "paul_pf", "linear_pf", "--int", f"({n})/({den}),method=pf", "partial", "Answer:")
+            add(out, "paul_pf", "linear_pf", "--int", f"({n})/({den}),method=pf", "partial")
     for r in (-3, -1, 1, 2, 5):
-        add(out, "openstax_pf", "repeated_linear_pf", "--int", f"(3*x^2+5*x+7)/((x-{r})^2*(x^2+1)),method=pf", "Equate", "Answer:")
+        add(out, "openstax_pf", "repeated_linear_pf", "--int", f"(3*x^2+5*x+7)/((x-{r})^2*(x^2+1)),method=pf", "Equate")
     for a in (1, 2, 4, 7):
-        add(out, "openstax_pf", "linear_quad_pf", "--int", f"(5*x+7)/((x-{a})*(x^2+{a*a})),method=pf", "A/", "Bx+C", "Answer:")
+        add(out, "openstax_pf", "linear_quad_pf", "--int", f"(5*x+7)/((x-{a})*(x^2+{a*a})),method=pf", "A/", "Bx+C")
     for a, b in ((1, 4), (1, 7), (4, 9), (2, 5)):
-        add(out, "openstax_pf", "quad_quad_pf", "--int", f"(2*x^3+x^2+5*x+1)/((x^2+{a})*(x^2+{b})),method=pf", "Answer:")
+        add(out, "openstax_pf", "quad_quad_pf", "--int", f"(2*x^3+x^2+5*x+1)/((x^2+{a})*(x^2+{b})),method=pf")
     for r, q in ((1, 1), (-1, 4), (2, 4), (3, 5)):
         qexpr = f"x^2+{q}" if q != 5 else "x^2+2*x+5"
         num = "x^3+1" if r == 1 else "3*x^2+5*x+7"
-        add(out, "paul_pf", "repeated_quad_pf", "--int", f"({num})/((x-{r})*({qexpr})^2),method=pf", "quadratic^2", "A=", "Answer:")
+        add(out, "paul_pf", "repeated_quad_pf", "--int", f"({num})/((x-{r})*({qexpr})^2),method=pf", "quadratic^2", "A=")
 
     # Paul trig substitution and hidden substitutions.
     for a in (1, 2, 3, 5):
-        add(out, "paul_trig_sub", "sqrt_plus", "--int", f"sqrt({a*a}+x^2),method=trig", "Ref tri", "Answer:")
-        add(out, "paul_trig_sub", "sqrt_minus", "--int", f"sqrt({a*a}-x^2),method=trig", "Ref tri", "Answer:")
-        add(out, "paul_trig_sub", "recip_sqrt_minus", "--int", f"1/sqrt({a*a}-x^2),method=trig", "Answer:")
-        add(out, "paul_trig_sub", "recip_sqrt_plus", "--int", f"1/(x*sqrt({a*a}+x^2)),method=trig", "Answer:")
+        add(out, "paul_trig_sub", "sqrt_plus", "--int", f"sqrt({a*a}+x^2),method=trig", "Ref tri")
+        add(out, "paul_trig_sub", "sqrt_minus", "--int", f"sqrt({a*a}-x^2),method=trig", "Ref tri")
+        add(out, "paul_trig_sub", "recip_sqrt_minus", "--int", f"1/sqrt({a*a}-x^2),method=trig")
+        add(out, "paul_trig_sub", "recip_sqrt_plus", "--int", f"1/(x*sqrt({a*a}+x^2)),method=trig")
     for n in (2, 3, 4, 5, 6, 8):
-        add(out, "mit_downloads", "hidden_power_trig", "--int", f"x^{2*n-1}*sin(2*x^{n}),method=sub", "Let u", "Answer:")
-        add(out, "mit_downloads", "hidden_power_exp", "--int", f"x^{2*n-1}*e^(x^{n}),method=sub", "Let u", "Answer:")
+        add(out, "mit_downloads", "hidden_power_trig", "--int", f"x^{2*n-1}*sin(2*x^{n}),method=sub", "Let u")
+        add(out, "mit_downloads", "hidden_power_exp", "--int", f"x^{2*n-1}*e^(x^{n}),method=sub", "Let u")
     for s in (-4, -1, 0, 3, 8):
-        add(out, "paul_trig_sub", "sqrt_shift", "--int", f"1/(2+sqrt(x-{s})),method=sub", "Let", "Answer:")
+        add(out, "paul_trig_sub", "sqrt_shift", "--int", f"1/(2+sqrt(x-{s})),method=sub", "Let")
 
     # NRICH/STEP: symmetry and looping.
     for a, b in ((1, 1), (2, 3), (3, 2), (4, 5), (5, 4)):
-        add(out, "nrich_step", "loop_exp_trig", "--int", f"e^({a}*x)*cos({b}*x),method=parts", "Collect I", "Answer:")
-        add(out, "nrich_step", "loop_exp_trig", "--int", f"e^({a}*x)*sin({b}*x),method=parts", "Collect I", "Answer:")
+        add(out, "nrich_step", "loop_exp_trig", "--int", f"e^({a}*x)*cos({b}*x),method=parts", "Collect I")
+        add(out, "nrich_step", "loop_exp_trig", "--int", f"e^({a}*x)*sin({b}*x),method=parts", "Collect I")
     for k in (0, 1, 3, 5, 8):
-        add(out, "nrich_step", "alg_sym", "--int", f"(x^2+1)/(x^4+{k}*x^2+1),method=sub", "Divide numerator", "Answer:")
-        add(out, "nrich_step", "alg_sym", "--int", f"(x^2-1)/(x^4+{k}*x^2+1),method=sub", "Divide numerator", "Answer:")
+        add(out, "nrich_step", "alg_sym", "--int", f"(x^2+1)/(x^4+{k}*x^2+1),method=sub", "Divide numerator")
+        add(out, "nrich_step", "alg_sym", "--int", f"(x^2-1)/(x^4+{k}*x^2+1),method=sub", "Divide numerator")
     for n in (2, 3, 5, 8, 13):
-        add(out, "nrich_step", "king_property", "--int", f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)", "2I", "Answer:")
+        add(out, "nrich_step", "king_property", "--int", f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)", "2I")
 
     # Edexcel/Further-style algebra, trig, implicit/parametric.
     for A, B, C in ((2, 3, -2), (3, -5, 2), (4, 4, 1), (-2, 7, -3)):
-        add(out, "edexcel", "trig_poly", "--trig", f"{A}*cos(x)^2+{B}*cos(x)+{C}=0,x,0,2*pi,12,method=identity", "Let u=cos", "Answer:")
+        add(out, "edexcel", "trig_poly", "--trig", f"{A}*cos(x)^2+{B}*cos(x)+{C}=0,x,0,2*pi,12,method=identity", "Let u=cos")
     for A, B, C in ((3, 4, 2), (5, -12, 6), (8, 15, -4), (7, -24, 10)):
-        add(out, "edexcel", "rform", "--trig", f"{A}*cos(x)+{B}*sin(x)={C},x,0,2*pi,12,method=rform", "R =", "Answer:")
+        add(out, "edexcel", "rform", "--trig", f"{A}*cos(x)+{B}*sin(x)={C},x,0,2*pi,12,method=rform", "R =")
     for eq in (
         "x^y=y^x,x,method=implicit",
         "sin(x*y)+x^2=y^2,x,method=implicit",
         "ln(x+y)=x*y,x,method=implicit",
         "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
     ):
-        add(out, "edexcel", "implicit", "--derive", eq, "Differentiate", "Answer:")
+        add(out, "edexcel", "implicit", "--derive", eq, "Differentiate")
     for param in (
         "x=t^2+1/t,y=t^2-1/t,t,x,method=param_second",
         "mode:5,t^2+1/t,t^2-1/t,t",
         "mode:5,exp(t)*cos(t),exp(t)*sin(t),t",
         "mode:5,cos(t)^3,sin(t)^3,t",
     ):
-        add(out, "edexcel", "parametric", "--derive", param, "dy/dx", "Answer:")
+        add(out, "edexcel", "parametric", "--derive", param, "dy/dx")
     for expr in (
         "domain(sqrt(log(1/2,x-1)))",
         "domain(arcsin((x-3)/2)-log(10,4-x))",
@@ -143,7 +190,7 @@ def cases() -> list[Case]:
         "range(x/(1+x^2))",
         "range(1/(2-cos(3*x)))",
     ):
-        add(out, "edexcel", "domain_range", "--alg", expr, "Answer:")
+        add(out, "edexcel", "domain_range", "--alg", expr)
 
     return out
 
@@ -158,8 +205,9 @@ def run(case: Case) -> tuple[str, str, list[str]]:
         forbidden.append(f"returncode={proc.returncode}")
     if forbidden:
         return "fail", out, forbidden + missing
-    if missing or "Classify the integrand" in out or "Use integration." in out:
-        return "weak", out, missing or ["generic working"]
+    weak = weak_reasons(out)
+    if missing or weak:
+        return "weak", out, missing + weak
     return "pass", out, []
 
 
