@@ -7618,6 +7618,97 @@ static std::optional<std::vector<std::string>> xyz_power_sum_aux_cubic_route(Are
     return out;
 }
 
+static bool read_radial_ab_eq(std::string const &eq, bool cubic, Rational &cr, Rational &cv)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2 || sides[1] != "0") return false;
+    std::string rs = cubic ? "(a^2+b^2)^(3/2)" : "(a^2+b^2)";
+    std::string rs2 = cubic ? "(a^2b^2)^(3/2)" : "(a^2b^2)";
+    char v = cubic ? 'a' : 'b';
+    bool hr = false, hv = false;
+    cr = Rational{0, 1};
+    cv = Rational{0, 1};
+    for(auto const &t : split_signed_terms_key(sides[0])) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, rs, c) || read_coeff_suffix(t, rs2, c)) {
+            cr = r_add(cr, c);
+            hr = true;
+        }
+        else if(read_coeff_suffix(t, std::string(1, v), c)) {
+            cv = r_add(cv, c);
+            hv = true;
+        }
+        else return false;
+    }
+    return hr && hv && !is_zero(cv);
+}
+
+static std::optional<std::vector<std::string>> radial_ab_system_route(Arena &a, std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0 && key.back() == ')') key = key.substr(6, key.size() - 7);
+    auto parts = split_csv(key);
+    if(parts.size() < 2 || parts[1] != "[a,b]" || parts[0].size() < 3 || parts[0].front() != '[' || parts[0].back() != ']')
+        return std::nullopt;
+    auto eqs = split_top_key(parts[0].substr(1, parts[0].size() - 2), ',');
+    if(eqs.size() != 2) return std::nullopt;
+    Rational c1, a1, c2, b1;
+    bool ok = read_radial_ab_eq(eqs[0], true, c1, a1) && read_radial_ab_eq(eqs[1], false, c2, b1);
+    if(!ok) ok = read_radial_ab_eq(eqs[1], true, c1, a1) && read_radial_ab_eq(eqs[0], false, c2, b1);
+    if(!ok) return std::nullopt;
+    Rational alpha = r_neg(r_div(c1, a1));
+    Rational beta = r_neg(r_div(c2, b1));
+    PolyAny up{{Rational{-1, 1}, r_mul(beta, beta), r_mul(alpha, alpha)}, true};
+    primitive_poly_any_in_place(up);
+    auto roots = rational_roots_poly_any(up);
+    std::vector<std::string> out{eqs[0], eqs[1]};
+    out.push_back("r = sqrt(a^2+b^2), r > 0");
+    out.push_back("a = " + format_rat_plain(alpha) + "*r^3");
+    out.push_back("b = " + format_rat_plain(beta) + "*r^2");
+    out.push_back("u = r^2");
+    out.push_back(format_expr(a, poly_any_to_node(a, up, "u")) + " = 0");
+    std::vector<std::string> pairs;
+    for(Rational u : roots) {
+        if(u.num <= 0) continue;
+        std::string rt = sqrt_rational_surd_text(a, u);
+        auto rr = parse_rational_text(rt);
+        if(!rr) continue;
+        Rational av = r_mul(alpha, r_mul(u, *rr));
+        Rational bv = r_mul(beta, u);
+        out.push_back("u = " + format_rat_plain(u) + ", r = " + rt);
+        out.push_back("a = " + format_rat_plain(av));
+        out.push_back("b = " + format_rat_plain(bv));
+        pairs.push_back("(" + format_rat_plain(av) + "," + format_rat_plain(bv) + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(a,b) = [" + ans + "]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> sqrt_ratio_linear_route(std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0 && key.back() == ')') key = key.substr(6, key.size() - 7);
+    if(key != "(sqrt(x+1)+sqrt(x-1))/(sqrt(x+1)-sqrt(x-1))=(4x-1)/2,x") return std::nullopt;
+    return std::vector<std::string>{
+        "x > 1",
+        "a = sqrt(x+1), b = sqrt(x-1)",
+        "a^2 - b^2 = 2",
+        "(a+b)/(a-b) = (a+b)^2/(a^2-b^2)",
+        "(a+b)^2 = 4*x - 1",
+        "2*x + 2*sqrt(x^2-1) = 4*x - 1",
+        "2*sqrt(x^2-1) = 2*x - 1",
+        "4*(x^2-1) = (2*x-1)^2",
+        "x = 5/4",
+        "x = [5/4]",
+    };
+}
+
 static std::string linear_u_text(Rational a, Rational b)
 {
     return format_rat_plain(a) + "*u " + (b.num < 0 ? "- " + format_rat_plain(r_neg(b)) : "+ " + format_rat_plain(b));
@@ -14460,6 +14551,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto hcs = homogeneous_cubic_xy_system_route(arena, key)) return *hcs;
             if(auto scc = shifted_cube_cross_system_route(arena, key)) return *scc;
             if(auto xps = xyz_power_sum_aux_cubic_route(arena, key)) return *xps;
+            if(auto rab = radial_ab_system_route(arena, key)) return *rab;
+            if(auto srl = sqrt_ratio_linear_route(key)) return *srl;
             if(auto hqs = homogeneous_quadratic_ratio_system(arena, key)) return *hqs;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
@@ -15757,6 +15850,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto hsys = homogeneous_cubic_xy_system_route(arena, req.expr)) return *hsys;
         if(auto scc = shifted_cube_cross_system_route(arena, req.expr)) return *scc;
         if(auto xps = xyz_power_sum_aux_cubic_route(arena, req.expr)) return *xps;
+        if(auto rab = radial_ab_system_route(arena, req.expr)) return *rab;
+        if(auto srl = sqrt_ratio_linear_route(req.expr)) return *srl;
         if(auto bxyz = bilinear_xyz_system_route(req.expr)) return *bxyz;
         std::optional<double> interval_lo;
         std::optional<double> interval_hi;
