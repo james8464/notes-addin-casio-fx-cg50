@@ -15904,7 +15904,6 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
-    // Inverse-hyperbolic composites that reduce to standard radical primitives.
     if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Cosh || x.fkind == FnKind::Sinh)) {
         Node const &inner = a.get(x.a);
         bool plus_case = x.fkind == FnKind::Cosh && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Asinh;
@@ -15921,13 +15920,7 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
                     casio::mul(a, {u, sqrt_u}),
                     plus_case ? casio::fn(a, "asinh", u) : casio::mul(a, {casio::num(a, -1), casio::fn(a, "acosh", u)})
                 });
-                Rational denom = r_mul(Rational{2, 1}, *coeff);
-                out.result = casio::simplify(a, casio::div(a, primitive_u, a.num(denom)));
-                out.steps.push_back("Step 2: Let u=" + format_expr_human(a, u) + ", so du=" + format_expr_human(a, a.num(*coeff)) + " d" + var + ".");
-                out.steps.push_back(plus_case ? "Step 3: Use cosh(asinh(u))=sqrt(u^2+1)." : "Step 3: Use sinh(acosh(u))=sqrt(u^2-1).");
-                out.steps.push_back(plus_case ? "Step 4: Integral sqrt(u^2+1) du=(u*sqrt(u^2+1)+asinh(u))/2."
-                                              : "Step 4: Integral sqrt(u^2-1) du=(u*sqrt(u^2-1)-acosh(u))/2.");
-                out.steps.push_back("Step 5: Back-substitute u.");
+                out.result = casio::simplify(a, casio::div(a, primitive_u, a.num(r_mul(Rational{2, 1}, *coeff))));
                 return out;
             }
         }

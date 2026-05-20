@@ -40,19 +40,36 @@ def require(name: str, out: str, must: tuple[str, ...], forbid: tuple[str, ...] 
     return 0
 
 
+def require_compact(name: str, out: str, must: tuple[str, ...], final_must: tuple[str, ...], forbid: tuple[str, ...] = ()) -> int:
+    bad = [x for x in must if not markers_present(out, [x])]
+    bad += [f"forbidden:{x}" for x in forbid if x.lower() in out.lower()]
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    final = lines[-1] if lines else ""
+    bad += [f"final:{x}" for x in final_must if x not in final]
+    if "ERR:" in out or len(lines) > 6:
+        bad.append("not compact")
+    if bad:
+        print(f"FAIL {name}: {bad}", file=sys.stderr)
+        print(out, file=sys.stderr)
+        return 1
+    return 0
+
+
 def main() -> int:
     bad = 0
-    bad += require(
+    bad += require_compact(
         "cosh_asinh_integral",
         run(["--int", "cosh(asinh(x+5)),method=auto"]),
-        ("cosh(asinh(u))", "sqrt", "asinh(x + 5)", "Answer:"),
-        ("No elementary primitive found", "ERR:"),
+        ("cosh(asinh(x + 5))",),
+        ("sqrt((x + 5)^2 + 1)", "asinh(x + 5)", "+ C"),
+        ("Step 2:", "Use cosh"),
     )
-    bad += require(
+    bad += require_compact(
         "sinh_acosh_integral",
         run(["--int", "sinh(acosh(x+5)),method=auto"]),
-        ("sinh(acosh(u))", "sqrt", "acosh(x + 5)", "Answer:"),
-        ("No elementary primitive found", "ERR:"),
+        ("sinh(acosh(x + 5))",),
+        ("sqrt((x + 5)^2 - 1)", "acosh(x + 5)", "+ C"),
+        ("Step 2:", "Use sinh"),
     )
     bad += require(
         "symbolic_expand_noop",
