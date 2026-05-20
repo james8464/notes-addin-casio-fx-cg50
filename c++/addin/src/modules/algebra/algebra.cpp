@@ -10643,11 +10643,23 @@ static std::optional<std::string> sqrt_linear_interval_range(
     if(lo.empty() || hi.empty()) return std::nullopt;
     Node const &rn = a.get(n);
     if(rn.kind != NodeKind::Fn || rn.fkind != FnKind::Sqrt) return std::nullopt;
-    auto x0 = parse_rational_text(lo);
-    auto x1 = parse_rational_text(hi);
-    if(!x0 || !x1) return std::nullopt;
     auto lp = poly_of(a, rn.a, var);
     if(!lp || !lp->ok || !is_zero(lp->a2) || is_zero(lp->a1)) return std::nullopt;
+
+    auto x0 = parse_rational_text(lo);
+    auto x1 = parse_rational_text(hi);
+    bool hi_inf = trim_text(hi) == "inf" || trim_text(hi) == "+inf";
+    bool lo_inf = trim_text(lo) == "-inf";
+    if((hi_inf && x0) || (lo_inf && x1)) {
+        Rational endpoint = hi_inf ? *x0 : *x1;
+        Rational y_end = r_add(r_mul(lp->a1, endpoint), lp->a0);
+        if(y_end.num < 0) return std::nullopt;
+        bool grows_up = hi_inf ? (lp->a1.num > 0) : (lp->a1.num < 0);
+        steps.push_back("Endpoint gives y = " + sqrt_bound_text(a, y_end) + ".");
+        if(grows_up) return "y >= " + sqrt_bound_text(a, y_end);
+        return "0 <= y <= " + sqrt_bound_text(a, y_end);
+    }
+    if(!x0 || !x1) return std::nullopt;
 
     Rational left = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
     Rational right = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;

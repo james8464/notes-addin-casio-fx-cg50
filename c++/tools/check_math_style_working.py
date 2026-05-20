@@ -449,6 +449,12 @@ CASES = [
         ("Constant/non-monotone",),
     ),
     (
+        "sqrt linear half-line range",
+        ["--alg", "range(sqrt(x+1),x,0,inf)"],
+        ("Endpoint gives y = 1", "Range: y >= 1"),
+        ("Range: y >= 0",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
