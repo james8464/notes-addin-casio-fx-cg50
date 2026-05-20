@@ -344,6 +344,11 @@ static NodeId simplify_pow(Arena &a, NodeId base, NodeId exp)
         Rational bc = mulq(a.get(bn.b).num, en.num);
         return simplify(a, a.pow(bn.a, num(a, bc.num, bc.den)));
     }
+    if(bn.kind == NodeKind::Pow && is_num(en)) {
+        Node const &inner_base = a.get(bn.a);
+        if(inner_base.kind == NodeKind::Const && inner_base.ckind == ConstKind::E)
+            return simplify(a, a.pow(bn.a, a.mul({bn.b, e})));
+    }
     if(bn.kind == NodeKind::Mul && is_int_num(en) && en.num.num > 1 && en.num.num <= 12) {
         bool has_num = false;
         bool monomial = true;
@@ -561,6 +566,46 @@ static NodeId make_add(Arena &a, std::vector<NodeId> parts)
             // skip
         }
         else out.push_back(s);
+    }
+    {
+        bool changed = true;
+        while(changed) {
+            changed = false;
+            for(std::size_t i = 0; i < out.size() && !changed; ++i) {
+                ScaledTerm ti = split_scaled(a, out[i]);
+                if(ti.constant || !rational_eq(ti.coeff, 1)) continue;
+                for(std::size_t j = 0; j < out.size(); ++j) {
+                    if(i == j) continue;
+                    ScaledTerm tj = split_scaled(a, out[j]);
+                    if(tj.constant || !rational_eq(tj.coeff, -1)) continue;
+                    Node const &body = a.get(tj.body);
+                    if(body.kind != NodeKind::Add) continue;
+                    for(std::size_t k = 0; k < body.kids.size(); ++k) {
+                        ScaledTerm tk = split_scaled(a, body.kids[k]);
+                        if(tk.constant || !rational_eq(tk.coeff, 1) || !same_tree(a, ti.body, tk.body)) continue;
+                        std::vector<NodeId> repl;
+                        for(std::size_t m = 0; m < out.size(); ++m)
+                            if(m != i && m != j) repl.push_back(out[m]);
+                        for(std::size_t m = 0; m < body.kids.size(); ++m)
+                            if(m != k) repl.push_back(make_mul(a, {num(a, -1), body.kids[m]}));
+                        out.swap(repl);
+                        changed = true;
+                        break;
+                    }
+                    if(changed) break;
+                }
+            }
+        }
+    }
+    {
+        std::vector<NodeId> nonconst;
+        nonconst.reserve(out.size());
+        for(NodeId id : out) {
+            Node const &n = a.get(id);
+            if(is_num(n)) c = addq(c, n.num);
+            else nonconst.push_back(id);
+        }
+        out.swap(nonconst);
     }
     if(c.num != 0) out.push_back(num(a, c.num, c.den));
     if(out.empty()) return num(a, 0);

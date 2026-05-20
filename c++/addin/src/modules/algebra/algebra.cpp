@@ -217,6 +217,44 @@ static NodeId poly2_to_node(Arena &a, Poly2 const &p, std::string const &var)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static NodeId scaled_node(Arena &a, Rational c, NodeId n)
+{
+    if(is_zero(c)) return casio::num(a, 0);
+    if(c.num == c.den) return n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> terms;
+        terms.reserve(x.kids.size());
+        for(NodeId k : x.kids) terms.push_back(scaled_node(a, c, k));
+        return casio::simplify(a, casio::add(a, terms));
+    }
+    return casio::mul(a, {a.num(c), n});
+}
+
+static NodeId expanded_square(Arena &a, NodeId n)
+{
+    NodeId s = casio::simplify(a, n);
+    Node const &x = a.get(s);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2)
+        return casio::power(a, s, casio::num(a, 2));
+    std::vector<NodeId> terms;
+    for(std::size_t i = 0; i < x.kids.size(); ++i) {
+        terms.push_back(casio::power(a, x.kids[i], casio::num(a, 2)));
+        for(std::size_t j = i + 1; j < x.kids.size(); ++j)
+            terms.push_back(casio::mul(a, {casio::num(a, 2), x.kids[i], x.kids[j]}));
+    }
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId compose_quadratic_outer(Arena &a, Poly2 const &f, NodeId g)
+{
+    std::vector<NodeId> terms;
+    if(!is_zero(f.a2)) terms.push_back(scaled_node(a, f.a2, expanded_square(a, g)));
+    if(!is_zero(f.a1)) terms.push_back(scaled_node(a, f.a1, g));
+    if(!is_zero(f.a0) || terms.empty()) terms.push_back(a.num(f.a0));
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 static std::string sqrt_rational_surd_text(Arena &a, Rational r);
 
 struct RatPoly2
@@ -18702,6 +18740,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId fn = casio::parse_expr(arena, f);
             NodeId gn = casio::parse_expr(arena, g);
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
+            if(auto fp = poly_of(arena, fn, "x"); fp && fp->ok)
+                comp = compose_quadratic_outer(arena, *fp, gn);
             if(auto p = poly_of(arena, comp, "x"); p && p->ok)
                 comp = poly2_to_node(arena, *p, "x");
             std::string ans = format_expr(arena, comp);

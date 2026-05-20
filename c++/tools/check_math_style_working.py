@@ -545,6 +545,12 @@ CASES = [
         ("1/(6*(x + 4)/3)",),
     ),
     (
+        "compose quadratic with exponential",
+        ["--alg", "compose(x^2-10*x,e^x+5)"],
+        ("f(g(x)) = e^(2*x) - 25",),
+        ("(e^(x) + 5)^2", "10*e^(x) - 10*(e^(x) + 5)"),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
