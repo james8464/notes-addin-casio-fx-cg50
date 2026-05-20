@@ -8083,6 +8083,81 @@ static std::optional<std::vector<std::string>> sqrt_square_abs_linear_route(Aren
     return out;
 }
 
+static bool plain_sqrt_arg(Arena &a, NodeId n, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return false;
+    arg = x.a;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> sqrt_same_poly_offset_sum_route(Arena &a,
+                                                                               NodeId lhs,
+                                                                               NodeId rhs,
+                                                                               NodeId rearr,
+                                                                               std::string const &var)
+{
+    auto match = [&](NodeId sum, NodeId val) -> std::optional<std::vector<std::string>> {
+        auto R = as_num(a, val);
+        if(!R || R->num <= 0) return std::nullopt;
+        std::vector<NodeId> terms;
+        add_terms_flat(a, sum, terms);
+        if(terms.size() != 2) return std::nullopt;
+        NodeId arg0 = 0, arg1 = 0;
+        if(!plain_sqrt_arg(a, terms[0], arg0) || !plain_sqrt_arg(a, terms[1], arg1)) return std::nullopt;
+        auto p0 = poly_of(a, arg0, var), p1 = poly_of(a, arg1, var);
+        if(!p0 || !p1 || !p0->ok || !p1->ok) return std::nullopt;
+        if(!is_zero(r_sub(p1->a2, p0->a2)) || !is_zero(r_sub(p1->a1, p0->a1))) return std::nullopt;
+        Rational diff = r_sub(p1->a0, p0->a0);
+        NodeId base = arg0, other = arg1;
+        Rational delta = diff;
+        if(diff.num > 0) {
+            base = arg1;
+            other = arg0;
+            delta = r_neg(diff);
+        }
+        auto p = poly_of(a, base, var);
+        if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
+
+        Rational R2 = r_mul(*R, *R);
+        Rational twoR = r_mul(Rational{2, 1}, *R);
+        Rational uval = r_div(r_sub(R2, delta), twoR);
+        if(uval.num < 0) return std::nullopt;
+        Rational u2 = r_mul(uval, uval);
+        Poly2 xp{p->a2, p->a1, r_sub(p->a0, u2), true};
+        auto raw = solve_poly2(a, xp, var);
+        if(raw.empty()) return std::nullopt;
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        if(valid.empty()) return std::nullopt;
+        sort_solution_lines(a, valid);
+
+        std::vector<std::string> out;
+        std::string bt = format_expr(a, base);
+        std::string ot = format_expr(a, other);
+        std::string dt = format_rat_plain(delta);
+        std::string bdt = bt + (delta.num < 0 ? " - " + format_rat_plain(r_abs(delta)) : " + " + dt);
+        std::string Rt = format_rat_plain(*R);
+        std::string uv = format_rat_plain(uval);
+        out.push_back(format_expr(a, sum) + " = " + Rt);
+        out.push_back("u = sqrt(" + bt + "), u >= 0");
+        out.push_back("sqrt(" + bdt + ") + u = " + Rt);
+        out.push_back("sqrt(" + ot + ") = " + Rt + " - u");
+        out.push_back(ot + " = (" + Rt + " - u)^2");
+        out.push_back(format_rat_plain(twoR) + "*u = " + format_rat_plain(r_sub(R2, delta)));
+        out.push_back("u = " + uv);
+        out.push_back(bt + " = " + format_rat_plain(u2));
+        out.push_back(format_expr(a, poly2_to_node(a, xp, var)) + " = 0");
+        if(auto rr = rational_quadratic_roots(xp))
+            out.push_back("Factor: " + quadratic_factor_text(a, xp, var) + " = 0");
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(solution_list_line(var, valid));
+        append_numeric_3dp(a, out, var, valid);
+        return out;
+    };
+    if(auto r = match(lhs, rhs)) return r;
+    return match(rhs, lhs);
+}
+
 static bool root_power_den_walk(Arena &a, NodeId n, std::string const &var, int &den)
 {
     Node const &x = a.get(n);
@@ -13037,6 +13112,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sa = sqrt_square_abs_linear_route(arena, rearr, solve_var)) return *sa;
+            if(auto so = sqrt_same_poly_offset_sum_route(arena, lhs, rhs, rearr, solve_var)) return *so;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
