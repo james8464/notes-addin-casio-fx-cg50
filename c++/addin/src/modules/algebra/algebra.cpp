@@ -12362,6 +12362,119 @@ static std::optional<std::vector<std::string>> log_quadratic_common_factor_route
     return out;
 }
 
+using PrimeExps = std::vector<std::pair<long long, Rational>>;
+
+static void add_prime_exp(PrimeExps &v, long long p, Rational e)
+{
+    for(auto &kv : v) {
+        if(kv.first == p) {
+            kv.second = r_add(kv.second, e);
+            return;
+        }
+    }
+    v.push_back({p, e});
+}
+
+static bool add_log_integer_factors(PrimeExps &v, long long n, Rational coeff)
+{
+    if(n <= 0) return false;
+    for(long long p = 2; p <= n / p; ++p) {
+        int e = 0;
+        while(n % p == 0) {
+            n /= p;
+            ++e;
+        }
+        if(e) add_prime_exp(v, p, r_mul(coeff, Rational{e, 1}));
+    }
+    if(n > 1) add_prime_exp(v, n, coeff);
+    return true;
+}
+
+static Rational prime_exp_get(PrimeExps const &v, long long p)
+{
+    for(auto const &kv : v) if(kv.first == p) return kv.second;
+    return Rational{0, 1};
+}
+
+static bool add_log_term_factors(Arena &a, NodeId term, Rational side, PrimeExps &xlogs, PrimeExps &clogs, std::string const &var)
+{
+    Rational c{1, 1};
+    NodeId body = term;
+    bool has_body = true;
+    split_coeff_body(a, term, c, body, has_body);
+    c = r_mul(c, side);
+    if(!has_body) return is_zero(c);
+
+    auto add_log = [&](NodeId id, PrimeExps &dst) {
+        Node const &n = a.get(id);
+        if(n.kind != NodeKind::Fn || n.fkind != FnKind::Log) return false;
+        Node const &arg = a.get(n.a);
+        if(arg.kind != NodeKind::Num) return false;
+        auto iv = as_int64(arg.num);
+        return iv && add_log_integer_factors(dst, *iv, c);
+    };
+    if(add_log(body, clogs)) return true;
+
+    Node const &b = a.get(body);
+    if(b.kind != NodeKind::Mul) return false;
+    bool saw_var = false;
+    NodeId log_id = 0;
+    for(NodeId k : b.kids) {
+        if(is_sym_var(a, k, var)) saw_var = true;
+        else {
+            Node const &kn = a.get(k);
+            if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Log && !log_id) log_id = k;
+            else return false;
+        }
+    }
+    return saw_var && log_id && add_log(log_id, xlogs);
+}
+
+static std::optional<std::vector<std::string>> log_linear_combination_exact_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    PrimeExps xlogs, clogs;
+    std::vector<NodeId> lt, rt;
+    add_terms_flat(a, lhs, lt);
+    add_terms_flat(a, rhs, rt);
+    for(NodeId t : lt)
+        if(!add_log_term_factors(a, t, Rational{1, 1}, xlogs, clogs, var)) return std::nullopt;
+    for(NodeId t : rt)
+        if(!add_log_term_factors(a, t, Rational{-1, 1}, xlogs, clogs, var)) return std::nullopt;
+
+    bool have_x = false;
+    std::optional<Rational> k;
+    for(auto const &xe : xlogs) {
+        if(is_zero(xe.second)) continue;
+        have_x = true;
+        Rational ce = r_neg(prime_exp_get(clogs, xe.first));
+        Rational cand = r_div(ce, xe.second);
+        if(!k) k = cand;
+        else if(r_cmp(*k, cand) != 0) return std::nullopt;
+    }
+    if(!have_x || !k) return std::nullopt;
+    for(auto const &ce : clogs) {
+        Rational xe = prime_exp_get(xlogs, ce.first);
+        if(is_zero(xe) && !is_zero(ce.second)) return std::nullopt;
+    }
+
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back("Domain: log args >0");
+    NodeId residual = sub_node(a, lhs, rhs);
+    NodeId at_zero = casio::simplify(a, clone_with_substitution(a, residual, var, zero_node(a)));
+    NodeId at_one = casio::simplify(a, clone_with_substitution(a, residual, var, one_node(a)));
+    NodeId coeff = casio::simplify(a, sub_node(a, at_one, at_zero));
+    out.push_back(format_expr(a, coeff) + " != 0");
+    out.push_back(var + " = " + format_rat_plain(*k));
+    out.push_back(solution_list_line(var, {var + " = " + format_rat_plain(*k)}));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_single_arg_exact_route(Arena &a, NodeId rearr, std::string const &var)
 {
     std::vector<NodeId> terms;
@@ -16295,6 +16408,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(auto log_quad = log_quadratic_common_factor_route(arena, lhs, rhs, solve_var)) return *log_quad;
         }
+        if(auto log_lin = log_linear_combination_exact_route(arena, lhs, rhs, solve_var)) return *log_lin;
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_route->begin(), log_route->end());
             return out;
