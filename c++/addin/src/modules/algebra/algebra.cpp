@@ -6182,6 +6182,84 @@ static std::string system_pair_text(long long x, long long y)
     return "(" + std::to_string(x) + "," + std::to_string(y) + ")";
 }
 
+static bool read_difference_power_equation(std::string const &eq, int power, Rational &value)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_text(sides[1]);
+    if(!rhs) return false;
+    std::string xy = power == 1 ? "x-y" : "x^" + std::to_string(power) + "-y^" + std::to_string(power);
+    std::string yx = power == 1 ? "y-x" : "y^" + std::to_string(power) + "-x^" + std::to_string(power);
+    if(sides[0] == xy) {
+        value = *rhs;
+        return true;
+    }
+    if(sides[0] == yx) {
+        value = r_neg(*rhs);
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> difference_cubes_system(Arena &a, std::string const &key)
+{
+    std::string body = key;
+    std::string const pre = "solve([";
+    std::string const suf = "],[x,y])";
+    if(body.rfind(pre, 0) == 0 && body.size() > pre.size() + suf.size() &&
+       body.compare(body.size() - suf.size(), suf.size(), suf) == 0)
+        body = body.substr(pre.size(), body.size() - pre.size() - suf.size());
+    else if(body.rfind("[", 0) == 0 && body.size() > 8 && body.compare(body.size() - 7, 7, "],[x,y]") == 0)
+        body = body.substr(1, body.size() - 8);
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> d, c;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(read_difference_power_equation(e, 1, v)) d = v;
+        else if(read_difference_power_equation(e, 3, v)) c = v;
+    }
+    if(!d || !c || is_zero(*d)) return std::nullopt;
+
+    Rational target = r_div(*c, *d);
+    Rational b = r_neg(r_mul(Rational{3, 1}, *d));
+    Rational cc = r_sub(r_mul(*d, *d), target);
+    Poly2 px = primitive_poly2(Poly2{Rational{3, 1}, b, cc, true});
+    auto xs = solve_poly2(a, px, "x");
+    if(xs.empty()) return std::nullopt;
+    sort_solution_lines(a, xs);
+
+    Rational nd = r_neg(*d);
+    NodeId y_expr = casio::simplify(a, casio::add(a, {casio::sym(a, "x"), casio::num(a, nd.num, nd.den)}));
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back("x - y = " + format_rat_plain(*d));
+    out.push_back("x^3 - y^3 = " + format_rat_plain(*c));
+    out.push_back("x^3 - y^3 = (x-y)(x^2+x*y+y^2)");
+    out.push_back("x^2+x*y+y^2 = " + format_rat_plain(target));
+    out.push_back("y = " + format_expr(a, y_expr));
+    out.push_back("x^2 + x*(" + format_expr(a, y_expr) + ") + (" + format_expr(a, y_expr) + ")^2 = " + format_rat_plain(target));
+    out.push_back(format_expr(a, poly2_to_node(a, px, "x")) + " = 0");
+    for(auto const &line : xs) {
+        std::string xr = sol_rhs(line);
+        if(xr.find('i') != std::string::npos) continue;
+        out.push_back("x = " + xr);
+        std::string yr;
+        if(auto xv = parse_rational_text(xr)) yr = format_rat_plain(r_sub(*xv, *d));
+        else yr = format_expr(a, casio::simplify(a, casio::add(a, {casio::parse_expr(a, xr), casio::num(a, nd.num, nd.den)})));
+        out.push_back("y = " + yr);
+        pairs.push_back("(" + xr + "," + yr + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
+}
+
 // Set u=log/base exp. for exponential systems of the same substitution type.
 static std::optional<std::vector<std::string>> symmetric_sum_product_system(std::string const &key)
 {
@@ -8871,6 +8949,93 @@ static std::optional<std::vector<std::string>> sqrt_difference_over_sqrt_route(
     for(auto const &s : sols) out.push_back(s);
     out.push_back(solution_list_line(var, sols));
     return out;
+}
+
+static bool read_sqrt_pair(Arena &a, NodeId n, NodeId &A, NodeId &B, bool need_difference)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    A = 0;
+    B = 0;
+    for(NodeId k : x.kids) {
+        NodeId rad = 0;
+        Rational coef{1, 1};
+        if(!sqrt_term_coeff(a, k, rad, coef)) return false;
+        if(r_cmp(coef, Rational{1, 1}) == 0) {
+            if(!A) A = rad;
+            else if(!need_difference && !B) B = rad;
+            else return false;
+        }
+        else if(need_difference && r_cmp(coef, Rational{-1, 1}) == 0) {
+            if(B) return false;
+            B = rad;
+        }
+        else return false;
+    }
+    return A && B;
+}
+
+static bool same_unordered_radicals(Arena &a, NodeId a0, NodeId a1, NodeId b0, NodeId b1)
+{
+    std::string A0 = compact_input_key(format_expr(a, a0));
+    std::string A1 = compact_input_key(format_expr(a, a1));
+    std::string B0 = compact_input_key(format_expr(a, b0));
+    std::string B1 = compact_input_key(format_expr(a, b1));
+    return (A0 == B0 && A1 == B1) || (A0 == B1 && A1 == B0);
+}
+
+static std::optional<std::vector<std::string>> sqrt_sum_difference_ratio_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto match = [&](NodeId frac, NodeId val) -> std::optional<std::vector<std::string>> {
+        Node const &f = a.get(frac);
+        auto R = as_num(a, val);
+        if(f.kind != NodeKind::Div || !R) return std::nullopt;
+        Rational rm = r_sub(*R, Rational{1, 1});
+        Rational rp = r_add(*R, Rational{1, 1});
+        if(is_zero(rm) || is_zero(rp)) return std::nullopt;
+        NodeId nA = 0, nB = 0, dA = 0, dB = 0;
+        if(!read_sqrt_pair(a, f.a, nA, nB, false)) return std::nullopt;
+        if(!read_sqrt_pair(a, f.b, dA, dB, true)) return std::nullopt;
+        if(!same_unordered_radicals(a, nA, nB, dA, dB)) return std::nullopt;
+
+        Rational rm2 = r_mul(rm, rm);
+        Rational rp2 = r_mul(rp, rp);
+        NodeId eq = casio::simplify(a, casio::add(a, {
+            casio::mul(a, {casio::num(a, rm2.num, rm2.den), dA}),
+            casio::neg(a, casio::mul(a, {casio::num(a, rp2.num, rp2.den), dB}))
+        }));
+        auto q = ratpoly_of_node(a, eq, var);
+        if(!q.ok || !is_zero(q.den.a1) || !is_zero(q.den.a2)) return std::nullopt;
+        auto raw = solve_poly2(a, q.num, var);
+        auto sols = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        if(sols.empty()) return std::nullopt;
+        sort_solution_lines(a, raw);
+        sort_solution_lines(a, sols);
+
+        std::string At = format_expr(a, dA), Bt = format_expr(a, dB), Rt = format_rat_plain(*R);
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, frac) + " = " + Rt);
+        out.push_back("Domain: " + At + " >= 0");
+        out.push_back("Domain: " + Bt + " >= 0");
+        out.push_back("Domain: sqrt(" + At + ") - sqrt(" + Bt + ") != 0");
+        out.push_back("sqrt(" + At + ") + sqrt(" + Bt + ") = " + Rt + "*(sqrt(" + At + ") - sqrt(" + Bt + "))");
+        out.push_back(format_rat_plain(rm) + "*sqrt(" + At + ") = " + format_rat_plain(rp) + "*sqrt(" + Bt + ")");
+        out.push_back(format_rat_plain(rm2) + "*(" + At + ") = " + format_rat_plain(rp2) + "*(" + Bt + ")");
+        out.push_back("expand => " + format_expr(a, poly2_to_node(a, q.num, var)) + " = 0");
+        for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+        append_rejected_by_domain(out, var, raw, sols);
+        out.push_back(solution_list_line(var, sols));
+        append_numeric_3dp(a, out, var, sols);
+        return out;
+    };
+    if(auto out = match(lhs, rhs)) return out;
+    return match(rhs, lhs);
 }
 
 static std::optional<std::vector<std::string>> two_sqrt_quadratic_route(
@@ -12245,6 +12410,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
                 };
             }
+            if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
@@ -13780,6 +13946,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rq = radical_quotient_x_shift_route(arena, lhs, rhs, rearr, solve_var)) return *rq;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto sdos = sqrt_difference_over_sqrt_route(arena, lhs, rhs, rearr, solve_var)) return *sdos;
+            if(auto ssdr = sqrt_sum_difference_ratio_route(arena, lhs, rhs, rearr, solve_var)) return *ssdr;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
