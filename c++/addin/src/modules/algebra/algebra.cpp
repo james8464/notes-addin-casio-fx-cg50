@@ -15756,6 +15756,120 @@ static std::optional<NodeId> exp_arg_or_recip_arg(Arena &a, NodeId n)
     return casio::simplify(a, casio::neg(a, *den_arg));
 }
 
+static void add_exp_product_terms(Arena &a, NodeId n, std::vector<NodeId> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        for(NodeId k : x.kids) add_exp_product_terms(a, k, out);
+        return;
+    }
+    if(x.kind != NodeKind::Mul) {
+        out.push_back(n);
+        return;
+    }
+    NodeId add = 0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        Node const &kn = a.get(k);
+        if(!add && kn.kind == NodeKind::Add) add = k;
+        else rest.push_back(k);
+    }
+    if(!add) {
+        out.push_back(n);
+        return;
+    }
+    Node const &ad = a.get(add);
+    for(NodeId k : ad.kids) {
+        std::vector<NodeId> fs = rest;
+        fs.push_back(k);
+        add_exp_product_terms(a, casio::mul(a, fs), out);
+    }
+}
+
+static std::optional<std::vector<std::string>> symbolic_exp_quadratic_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> terms;
+    add_exp_product_terms(a, residual, terms);
+    struct ET { NodeId coef; Rational slope; };
+    std::vector<ET> es;
+    std::vector<NodeId> consts;
+    for(NodeId term : terms) {
+        Node const &tn = a.get(term);
+        std::vector<NodeId> fs = tn.kind == NodeKind::Mul ? tn.kids : std::vector<NodeId>{term};
+        std::vector<NodeId> coef;
+        Rational slope{0, 1};
+        for(NodeId f : fs) {
+            if(auto arg = exp_arg_node(a, f)) {
+                auto p = poly_of(a, *arg, var);
+                if(p && p->ok && is_zero(p->a2)) {
+                    slope = r_add(slope, p->a1);
+                    if(!is_zero(p->a0)) coef.push_back(casio::power(a, casio::constant_e(a), a.num(p->a0)));
+                    continue;
+                }
+            }
+            if(contains_symbol(a, f, var)) return std::nullopt;
+            coef.push_back(f);
+        }
+        NodeId c = coef.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, coef));
+        if(is_zero(slope)) consts.push_back(c);
+        else es.push_back(ET{c, slope});
+    }
+    if(es.empty()) return std::nullopt;
+    long long g = 0;
+    for(auto const &e : es) {
+        auto k = rational_int(e.slope);
+        if(!k || *k == 0 || std::llabs(*k) > 8) return std::nullopt;
+        g = g ? gcd_abs_ll(g, *k) : std::llabs(*k);
+    }
+    if(g <= 0) return std::nullopt;
+    std::vector<NodeId> c0 = consts, c1, c2;
+    for(auto const &e : es) {
+        auto k = *rational_int(e.slope) / g;
+        if(k < 0 || k > 2) return std::nullopt;
+        if(k == 0) c0.push_back(e.coef);
+        else if(k == 1) c1.push_back(e.coef);
+        else c2.push_back(e.coef);
+    }
+    if(c2.empty()) return std::nullopt;
+    std::string uvar = var == "u" ? "v" : "u";
+    NodeId u = a.sym(uvar);
+    std::vector<NodeId> ps;
+    if(!c2.empty()) ps.push_back(casio::mul(a, {exact_eval_simplify(a, casio::add(a, c2)), casio::power(a, u, casio::num(a, 2))}));
+    if(!c1.empty()) ps.push_back(casio::mul(a, {exact_eval_simplify(a, casio::add(a, c1)), u}));
+    if(!c0.empty()) ps.push_back(exact_eval_simplify(a, casio::add(a, c0)));
+    NodeId poly = exact_eval_simplify(a, casio::add(a, ps));
+    NodeId uarg = casio::mul(a, {casio::num(a, g), a.sym(var)});
+    out.push_back(uvar + " = e^(" + format_expr(a, uarg) + "), " + uvar + " > 0");
+    auto q = symbolic_quadratic_solve_route(a, poly, uvar);
+    if(!q) return std::nullopt;
+    out.insert(out.end(), q->begin(), q->end());
+    std::vector<std::string> xraw;
+    for(auto const &line : *q) {
+        std::string pref = uvar + " = ";
+        if(line.rfind(pref, 0) != 0 || line.find("[") != std::string::npos || line.find("(-b") != std::string::npos) continue;
+        std::string rhs = sol_rhs(line);
+        NodeId root = casio::parse_expr(a, rhs);
+        auto rv = eval_node_env(a, root, {});
+        if(rv && *rv <= 0) {
+            out.push_back(rhs + " rejected, " + uvar + " > 0");
+            continue;
+        }
+        NodeId ans = exact_eval_simplify(a, casio::div(a, casio::fn(a, "ln", root), casio::num(a, g)));
+        xraw.push_back(var + " = " + format_expr(a, ans));
+    }
+    if(xraw.empty()) return std::nullopt;
+    auto valid = filter_real_solutions(a, residual, var, xraw, std::nullopt, std::nullopt);
+    if(valid.empty()) return std::nullopt;
+    for(auto const &s : valid) out.push_back(s);
+    out.push_back(solution_list_line(var, valid));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> exp_substitution_route(
     Arena &a,
     NodeId residual,
@@ -18824,6 +18938,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto mb = mixed_base_product_exp_route(arena, rearr, solve_var, out)) return *mb;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
+        if(auto seq = symbolic_exp_quadratic_route(arena, rearr, solve_var, out)) return *seq;
         if(auto er2 = exp_rational_substitution_route(arena, rearr, solve_var, out)) return *er2;
         if(auto lp = log_poly_substitution_route(arena, rearr, solve_var, out)) return *lp;
         if(auto ls = log_substitution_route(arena, rearr, solve_var, out)) return *ls;
