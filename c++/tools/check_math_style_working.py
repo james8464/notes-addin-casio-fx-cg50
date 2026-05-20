@@ -443,6 +443,12 @@ CASES = [
         ("Constant/non-monotone",),
     ),
     (
+        "sqrt exponential inverse",
+        ["--alg", "inverse(sqrt(e^x-1),x,0,inf)"],
+        ("y = f(x) = sqrt(e^(x) - 1)", "f^-1(x) = ln(x^2 + 1)"),
+        ("Constant/non-monotone",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),

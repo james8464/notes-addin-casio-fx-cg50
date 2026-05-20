@@ -583,6 +583,11 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
+        if(x.fkind == FnKind::Sqrt && u.kind == NodeKind::Num && u.num.num >= 0) {
+            std::int64_t rn = 0, rd = 0;
+            if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
+                return casio::num(a, rn, rd);
+        }
         if(auto tv = exact_trig_const_node(a, x.fkind, arg)) return casio::simplify(a, *tv);
         if(x.fkind == FnKind::Log) {
             if(auto lf = exact_ln_factor_node(a, arg)) return casio::simplify(a, *lf);
@@ -834,6 +839,31 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
             NodeId y2 = casio::power(a, y, casio::num(a, 2));
             NodeId top = casio::add(a, {y2, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
             return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+        }
+        NodeId exp_coef = 0, exp_power = 0;
+        std::vector<NodeId> const_terms;
+        bool saw_exp = false, ok = true;
+        auto take_term = [&](NodeId t) {
+            NodeId c = 0, e = 0;
+            if(!saw_exp && const_times_exp(a, t, c, e)) {
+                exp_coef = c;
+                exp_power = e;
+                saw_exp = true;
+            }
+            else if(!contains_var_simple(a, t, "x")) const_terms.push_back(t);
+            else ok = false;
+        };
+        Node const &rad = a.get(x.a);
+        if(rad.kind == NodeKind::Add) for(NodeId k : rad.kids) take_term(k);
+        else take_term(x.a);
+        auto ep = saw_exp ? poly_of(a, exp_power, "x") : std::optional<Poly2>{};
+        if(ok && saw_exp && ep && ep->ok && is_zero(ep->a2) && !is_zero(ep->a1)) {
+            // y = sqrt(A*e^(m*x+c)+B) => x = (ln((y^2-B)/A)-c)/m
+            NodeId y2 = casio::power(a, y, casio::num(a, 2));
+            NodeId offset = const_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, const_terms));
+            NodeId ratio = casio::div(a, casio::add(a, {y2, casio::neg(a, offset)}), exp_coef);
+            NodeId top = casio::add(a, {casio::fn(a, "log", ratio), casio::neg(a, casio::num(a, ep->a0.num, ep->a0.den))});
+            return exact_eval_simplify(a, casio::div(a, top, casio::num(a, ep->a1.num, ep->a1.den)));
         }
     }
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
