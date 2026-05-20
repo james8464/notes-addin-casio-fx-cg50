@@ -6873,9 +6873,9 @@ static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_square_syst
     return out;
 }
 
-static std::optional<std::vector<std::string>> quartic_perfect_square_rewrite(Arena &a, NodeId n)
+static std::optional<Poly2> quartic_perfect_square_poly(Arena &a, NodeId n, std::string const &var)
 {
-    auto p = poly_any_of(a, n, "x");
+    auto p = poly_any_of(a, n, var);
     if(!p || !p->ok || p->c.size() != 5) return std::nullopt;
     Rational r4{0, 1}, r0{0, 1};
     if(!square_rat_root(p->c[4], r4) || !square_rat_root(p->c[0], r0)) return std::nullopt;
@@ -6888,18 +6888,40 @@ static std::optional<std::vector<std::string>> quartic_perfect_square_rewrite(Ar
             Rational c2 = r_add(r_mul(a1, a1), r_mul(Rational{2, 1}, r_mul(a2, a0)));
             Rational c1 = r_mul(Rational{2, 1}, r_mul(a1, a0));
             if(!is_zero(r_sub(c2, p->c[2])) || !is_zero(r_sub(c1, p->c[1]))) continue;
-            Poly2 q{a2, a1, a0, true};
-            std::string qt = format_expr(a, poly2_to_node(a, q, "x"));
-            return std::vector<std::string>{
-                format_expr(a, n),
-                "try (a*x^2+b*x+c)^2",
-                "a = " + format_rat_plain(a2) + ", b = " + format_rat_plain(a1) + ", c = " + format_rat_plain(a0),
-                format_expr(a, n) + " = (" + qt + ")^2",
-                "sqrt(f(x)) = +/-(" + qt + ")",
-            };
+            return Poly2{a2, a1, a0, true};
         }
     }
     return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> quartic_perfect_square_rewrite(Arena &a, NodeId n)
+{
+    auto q = quartic_perfect_square_poly(a, n, "x");
+    if(!q) return std::nullopt;
+    std::string qt = format_expr(a, poly2_to_node(a, *q, "x"));
+    return std::vector<std::string>{
+        format_expr(a, n),
+        "try (a*x^2+b*x+c)^2",
+        "a = " + format_rat_plain(q->a2) + ", b = " + format_rat_plain(q->a1) + ", c = " + format_rat_plain(q->a0),
+        format_expr(a, n) + " = (" + qt + ")^2",
+        "sqrt(f(x)) = +/-(" + qt + ")",
+    };
+}
+
+static std::optional<std::vector<std::string>> quartic_perfect_square_solve(Arena &a, NodeId n, std::string const &var)
+{
+    auto q = quartic_perfect_square_poly(a, n, var);
+    if(!q) return std::nullopt;
+    std::string qt = format_expr(a, poly2_to_node(a, *q, var));
+    auto roots = solve_poly2(a, *q, var);
+    if(roots.empty()) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, n) + " = 0");
+    out.push_back(format_expr(a, n) + " = (" + qt + ")^2");
+    out.push_back(qt + " = 0");
+    for(auto const &s : roots) out.push_back(s);
+    out.push_back(solution_list_line(var, roots));
+    return out;
 }
 
 static std::optional<std::vector<std::string>> fourth_power_sum_linear_system(Arena &a, std::string const &key)
@@ -15092,6 +15114,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto rsp = reciprocal_same_power_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rsp;
         if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
         if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
+        if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pf;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
