@@ -34,6 +34,8 @@ struct Poly2
     bool ok = true;
 };
 
+static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p);
+
 static bool is_zero(Rational const &r) { return r.num == 0; }
 
 static std::string join_text(std::vector<std::string> const &items, char const *sep)
@@ -2022,6 +2024,71 @@ static std::optional<std::string> quadratic_rational_full_range(Arena &a, NodeId
     steps.push_back("(" + A + ")*" + var + "^2 + (" + B + ")*" + var + " + (" + C + ") = 0.");
     steps.push_back("Discriminant = " + D + (strict ? " > 0." : " >= 0."));
     return "all real y";
+}
+
+struct RecipQuadData
+{
+    Poly2 den;
+    Rational asym{0, 1};
+    Rational coeff{0, 1};
+};
+
+static std::optional<RecipQuadData> reciprocal_quadratic_data(Arena &a, NodeId n, std::string const &var)
+{
+    auto rp = ratpoly_of_node(a, n, var);
+    if(!rp.ok || is_zero(rp.den.a2)) return std::nullopt;
+    Rational asym = r_div(rp.num.a2, rp.den.a2);
+    Rational rem1 = r_sub(rp.num.a1, r_mul(asym, rp.den.a1));
+    Rational rem0 = r_sub(rp.num.a0, r_mul(asym, rp.den.a0));
+    if(!is_zero(rem1) || is_zero(rem0)) return std::nullopt;
+    return RecipQuadData{rp.den, asym, rem0};
+}
+
+static std::optional<std::string> reciprocal_quadratic_halfline_range(
+    Arena &a, NodeId n, std::string const &var, std::string const &lo, std::string const &hi,
+    bool lo_open, bool hi_open, std::vector<std::string> &steps)
+{
+    auto rq = reciprocal_quadratic_data(a, n, var);
+    if(!rq) return std::nullopt;
+    auto rr = rational_quadratic_roots(rq->den);
+    if(!rr) return std::nullopt;
+    Rational rlo = r_cmp(rr->first, rr->second) <= 0 ? rr->first : rr->second;
+    Rational rhi = r_cmp(rr->first, rr->second) <= 0 ? rr->second : rr->first;
+    auto key = [](std::string s) {
+        std::string k;
+        for(char ch : s) if(!std::isspace((unsigned char)ch)) k.push_back((char)std::tolower((unsigned char)ch));
+        return k;
+    };
+    bool ninf = key(lo) == "-inf" || key(lo) == "-infinity";
+    bool pinf = key(hi) == "inf" || key(hi) == "+inf" || key(hi) == "infinity";
+    auto lx = ninf ? std::optional<Rational>{} : parse_rational_text(lo);
+    auto hx = pinf ? std::optional<Rational>{} : parse_rational_text(hi);
+    if((!ninf && !lx) || (!pinf && !hx)) return std::nullopt;
+    auto y_at = [&](Rational x) { return r_add(rq->asym, r_div(rq->coeff, poly_eval(rq->den, x))); };
+    auto side = [&](Rational pole, int dir) {
+        Rational ys = y_at(r_add(pole, Rational{dir, 1}));
+        steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+        steps.push_back("Horizontal asymptote y = " + rat_node_text(a, rq->asym) + ".");
+        return r_cmp(ys, rq->asym) > 0 ? "y > " + rat_node_text(a, rq->asym)
+                                       : "y < " + rat_node_text(a, rq->asym);
+    };
+    auto finite = [&](Rational x, bool open) {
+        Rational y0 = y_at(x);
+        int cmp = r_cmp(y0, rq->asym);
+        if(cmp == 0) return std::string();
+        steps.push_back("Endpoint gives y = " + rat_node_text(a, y0) + "; horizontal asymptote y = " + rat_node_text(a, rq->asym) + ".");
+        return cmp > 0 ? rat_node_text(a, rq->asym) + " < y " + (open ? "< " : "<= ") + rat_node_text(a, y0)
+                       : rat_node_text(a, y0) + (open ? " < y < " : " <= y < ") + rat_node_text(a, rq->asym);
+    };
+    if(pinf && lx && r_cmp(*lx, rhi) >= 0) {
+        if(r_cmp(*lx, rhi) == 0) return side(rhi, 1);
+        return finite(*lx, lo_open);
+    }
+    if(ninf && hx && r_cmp(*hx, rlo) <= 0) {
+        if(r_cmp(*hx, rlo) == 0) return side(rlo, -1);
+        return finite(*hx, hi_open);
+    }
+    return std::nullopt;
 }
 
 static std::optional<RepLinPF> repeated_linear_pf_data(Arena &a, NodeId parsed, std::string const &var)
@@ -4127,6 +4194,34 @@ static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, st
     }
     if(!lo || !hi || !(*lo < *hi)) return std::nullopt;
     auto p = poly_of(a, n, "x");
+    if(!p) {
+        auto rq = reciprocal_quadratic_data(a, n, "x");
+        if(!rq) return std::nullopt;
+        auto roots = rational_quadratic_roots(rq->den);
+        if(!roots) return std::nullopt;
+        Rational left = r_cmp(roots->first, roots->second) <= 0 ? roots->first : roots->second;
+        Rational right = r_cmp(roots->first, roots->second) <= 0 ? roots->second : roots->first;
+        bool lo_f = std::isfinite(*lo), hi_f = std::isfinite(*hi);
+        if(!((lo_f && !hi_f && *lo >= (double)right.num / right.den) ||
+             (!lo_f && hi_f && *hi <= (double)left.num / left.den))) return std::nullopt;
+        double mid = lo_f ? *lo + 1.0 : *hi - 1.0;
+        auto ymid = eval_node(a, n, "x", mid);
+        if(!ymid) return std::nullopt;
+        NodeId y = casio::sym(a, "x");
+        NodeId y_shift = casio::simplify(a, casio::add(a, {y, casio::neg(a, a.num(rq->asym))}));
+        NodeId target = casio::div(a, a.num(rq->coeff), y_shift);
+        Rational h = r_div(rq->den.a1, r_mul(Rational{2, 1}, rq->den.a2));
+        Rational k = r_sub(rq->den.a0, r_div(r_mul(rq->den.a1, rq->den.a1), r_mul(Rational{4, 1}, rq->den.a2)));
+        NodeId root_arg = casio::simplify(a, casio::div(a, casio::add(a, {target, casio::neg(a, a.num(k))}), a.num(rq->den.a2)));
+        NodeId root = casio::fn(a, "sqrt", root_arg);
+        NodeId base = a.num(r_neg(h));
+        double vertex = -((double)rq->den.a1.num / rq->den.a1.den) / (2.0 * ((double)rq->den.a2.num / rq->den.a2.den));
+        NodeId cand = mid >= vertex ? casio::add(a, {base, root}) : casio::add(a, {base, casio::neg(a, root)});
+        cand = casio::simplify(a, cand);
+        auto v = eval_node(a, cand, "x", *ymid);
+        if(v && std::fabs(*v - mid) < 1e-6) return cand;
+        return std::nullopt;
+    }
     if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
     double A = (double)p->a2.num / (double)p->a2.den;
     double B = (double)p->a1.num / (double)p->a1.den;
@@ -19120,6 +19215,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
                 else if(auto lf = linear_fractional_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
                     range_answer = *lf;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto rq = reciprocal_quadratic_halfline_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
+                    range_answer = *rq;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto qr = quadratic_rational_full_range(arena, n, var, steps)) {

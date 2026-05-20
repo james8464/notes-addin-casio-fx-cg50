@@ -485,6 +485,18 @@ CASES = [
         ("Range: y = 1/(x + 1)", "0 < y <= 1/5"),
     ),
     (
+        "reciprocal quadratic half-line range",
+        ["--alg", "range(1/(x^2-1),x>1)"],
+        ("Vertical asymptote x = 1", "Horizontal asymptote y = 0", "Range: y > 0"),
+        ("unrestricted",),
+    ),
+    (
+        "reciprocal quadratic half-line inverse",
+        ["--alg", "inverse(1/(x^2-1),x>1)"],
+        ("y = f(x) = 1/(x^2 - 1)", "f^-1(x) = sqrt(1/x + 1)", "Given domain: x>1"),
+        ("Constant/non-monotone",),
+    ),
+    (
         "left open asymptote range",
         ["--alg", "range((x-5)/(x-4),x<4)"],
         ("Vertical asymptote x = 4", "Horizontal asymptote y = 1", "Range: y > 1"),
