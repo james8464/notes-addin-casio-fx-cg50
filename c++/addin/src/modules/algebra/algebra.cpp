@@ -11508,6 +11508,84 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
     return out;
 }
 
+static bool scaled_shift_square(Arena &a, NodeId n, std::string const &var, NodeId &scale, Rational &shift)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{n};
+    NodeId sq = 0;
+    std::vector<NodeId> rest;
+    for(NodeId f : factors) {
+        Node const &p = a.get(f);
+        if(!sq && p.kind == NodeKind::Pow) {
+            auto e = as_num(a, p.b);
+            auto lin = e && e->num == 2 && e->den == 1 ? symbolic_linear_parts(a, p.a, var) : std::nullopt;
+            if(lin) {
+                auto m = as_num(a, lin->m);
+                auto c = as_num(a, lin->c);
+                if(m && c && m->num == m->den) {
+                    sq = f;
+                    shift = r_neg(*c);
+                    continue;
+                }
+            }
+        }
+        if(contains_symbol(a, f, var)) return false;
+        rest.push_back(f);
+    }
+    if(!sq) return false;
+    scale = mul_or_one(a, rest);
+    return true;
+}
+
+static bool square_difference_linear(Arena &a, NodeId n, std::string const &var, Rational shift)
+{
+    auto lin = symbolic_linear_parts(a, n, var);
+    if(!lin) return false;
+    auto m = as_num(a, lin->m);
+    auto c = as_num(a, lin->c);
+    if(!m || !c) return false;
+    return is_zero(r_sub(*m, r_mul(Rational{2, 1}, shift))) &&
+           is_zero(r_add(*c, r_mul(shift, shift)));
+}
+
+static std::optional<std::vector<std::string>> square_difference_ratio_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    NodeId scale = 0;
+    Rational c{0, 1};
+    NodeId lin_side = 0;
+    if(scaled_shift_square(a, rhs, var, scale, c) && square_difference_linear(a, lhs, var, c)) lin_side = lhs;
+    else if(scaled_shift_square(a, lhs, var, scale, c) && square_difference_linear(a, rhs, var, c)) lin_side = rhs;
+    else return std::nullopt;
+    if(is_zero(c)) return std::nullopt;
+
+    NodeId xexpr = casio::simplify(a, casio::add(a, {scale, one_node(a)}));
+    NodeId root = casio::simplify(a, casio::fn(a, "sqrt", xexpr));
+    std::string y = var;
+    std::string sh = is_zero(r_sub(c, Rational{1, 1})) ? var + " - 1" : var + " - " + format_rat_plain(c);
+    std::string xt = format_expr(a, xexpr);
+    std::string rt = format_expr(a, root);
+    std::string ct = is_zero(r_sub(c, Rational{1, 1})) ? "" : format_rat_plain(c) + "*";
+    std::string y1 = ct + rt + "/(" + rt + " - 1)";
+    std::string y2 = ct + rt + "/(" + rt + " + 1)";
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back(format_expr(a, lin_side) + " = " + y + "^2 - (" + sh + ")^2");
+    out.push_back(y + "^2 - (" + sh + ")^2 = (" + format_expr(a, scale) + ")*(" + sh + ")^2");
+    out.push_back(y + "^2 = " + xt + "*(" + sh + ")^2");
+    out.push_back(y + "/(" + sh + ") = +/-" + rt);
+    out.push_back(y + " = " + rt + "*(" + sh + ")");
+    out.push_back(y + " = -" + rt + "*(" + sh + ")");
+    out.push_back(y + " = " + y1);
+    out.push_back(y + " = " + y2);
+    out.push_back(y + " = [" + y1 + ", " + y2 + "]");
+    return out;
+}
+
 static bool is_num_node(Arena &a, NodeId n, std::int64_t num, std::int64_t den = 1)
 {
     Node const &x = a.get(n);
@@ -15006,6 +15084,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), sl->begin(), sl->end());
             return out;
         }
+        if(auto sdr = square_difference_ratio_route(arena, lhs, rhs, solve_var)) return *sdr;
         if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
