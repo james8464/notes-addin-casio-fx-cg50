@@ -98,13 +98,14 @@ static std::string format_expr_impl(Arena &arena, NodeId node, int parent_prec, 
         if(!n.kids.empty()) {
             Node const &k0 = arena.get(n.kids.front());
             if(k0.kind == NodeKind::Num && k0.num.num == -1 && k0.num.den == 1 && n.kids.size() > 1) {
-                oss << "-";
+                std::ostringstream rest;
                 // render rest with multiplication
                 for(std::size_t i = 1; i < n.kids.size(); i++) {
-                    if(i > 1) oss << "*";
-                    oss << format_expr_impl(arena, n.kids[i], 2, human);
+                    if(i > 1) rest << "*";
+                    rest << format_expr_impl(arena, n.kids[i], 2, human);
                 }
-                std::string text = oss.str();
+                std::string r = rest.str();
+                std::string text = !r.empty() && r[0] == '-' ? r.substr(1) : "-" + r;
                 if(prec(n) < parent_prec) return "(" + text + ")";
                 return text;
             }
