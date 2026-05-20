@@ -35,10 +35,6 @@ class CleanupGeneratedTests(unittest.TestCase):
 
             self.assertEqual({p.relative_to(root).as_posix() for p in removed}, {
                 ".DS_Store",
-                "c++/tests/reports/adversarial_runs",
-                "c++/tests/reports/adversarial_runs/latest.txt",
-                "c++/tests/reports/failure_report_latest.txt",
-                "c++/tests/reports",
                 "c++/tools/__pycache__",
                 "c++/tools/__pycache__/y.pyc",
                 "c++/tools/fuzz/random_exploration_graph.json",
@@ -51,6 +47,24 @@ class CleanupGeneratedTests(unittest.TestCase):
             self.assertTrue(extra_cache.exists())
             self.assertTrue(fuzz_latest.exists())
             self.assertTrue(ds.exists())
+
+    def test_reports_are_explicit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = root / "c++" / "tests" / "reports" / "failure_report_latest.txt"
+            empty = root / "c++" / "tests" / "reports" / "adversarial_runs" / "empty"
+            report.parent.mkdir(parents=True)
+            empty.mkdir(parents=True)
+            report.write_text("old report\n", encoding="utf-8")
+
+            default = CLEAN.cleanup(root, dry_run=True)
+            explicit = CLEAN.cleanup(root, dry_run=True, include_reports=True)
+
+            self.assertEqual({p.relative_to(root).as_posix() for p in default}, {
+                "c++/tests/reports/adversarial_runs/empty",
+            })
+            self.assertIn("c++/tests/reports/failure_report_latest.txt", {p.relative_to(root).as_posix() for p in explicit})
+            self.assertIn("c++/tests/reports", {p.relative_to(root).as_posix() for p in explicit})
 
 
 if __name__ == "__main__":

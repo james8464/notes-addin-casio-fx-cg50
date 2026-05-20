@@ -50,6 +50,7 @@ Clean generated/local files (dry-run first):
 ```bash
 python3 c++/tools/clean_project.py
 python3 c++/tools/clean_project.py --apply
+python3 c++/tools/clean_project.py --reports --apply  # also remove live reports
 ```
 
 Build calculator add-ins:

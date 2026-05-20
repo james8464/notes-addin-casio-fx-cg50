@@ -13,7 +13,6 @@ GENERATED_PATHS = [
     "calculator_files",
     "c++/addin/host/build",
     "c++/prizm/build",
-    "c++/tests/reports",
     "c++/tools/fuzz/random_exploration_graph.json",
     "c++/tools/fuzz/tui_failures.jsonl",
     "c++/tools/fuzz/catalogue_manifest_latest.txt",
@@ -43,11 +42,15 @@ def remove_path(path: Path, dry_run: bool) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Remove generated/local project artifacts.")
     parser.add_argument("--apply", action="store_true", help="Delete files; default is dry-run.")
+    parser.add_argument("--reports", action="store_true", help="Also delete c++/tests/reports; default preserves reports except empty dirs.")
     args = parser.parse_args()
     dry_run = not args.apply
 
     removed = 0
-    for rel in GENERATED_PATHS:
+    paths = list(GENERATED_PATHS)
+    if args.reports:
+        paths.append("c++/tests/reports")
+    for rel in paths:
         removed += int(remove_path(ROOT / rel, dry_run))
 
     for pattern in ("**/__pycache__", "**/*.pyc", "**/*.pyo", "**/.DS_Store"):
@@ -59,6 +62,10 @@ def main() -> int:
     for rel in ("c++/tests",):
         path = ROOT / rel
         if path.is_dir() and not any(path.iterdir()):
+            removed += int(remove_path(path, dry_run))
+    reports = ROOT / "c++/tests/reports"
+    if reports.is_dir() and not args.reports:
+        for path in sorted((p for p in reports.rglob("*") if p.is_dir() and not any(p.iterdir())), reverse=True):
             removed += int(remove_path(path, dry_run))
 
     print(("would remove total " if dry_run else "removed total ") + str(removed))

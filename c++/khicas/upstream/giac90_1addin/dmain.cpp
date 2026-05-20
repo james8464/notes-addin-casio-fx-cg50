@@ -93,7 +93,8 @@ int find_color(const char * s){
   if (strcmp(buf,"def")==0)
     return 1;
   // Keep common aliases coloured even when Giac's lexer treats them as symbols.
-  if (!strcmp(buf,"log") || !strcmp(buf,"sec") || !strcmp(buf,"csc") ||
+  if (!strcmp(buf,"log") || !strcmp(buf,"log10") || !strcmp(buf,"ln") ||
+      !strcmp(buf,"sec") || !strcmp(buf,"csc") ||
       !strcmp(buf,"cosec") || !strcmp(buf,"cot"))
     return 3;
   //int pos=dichotomic_search(keywords,sizeof(keywords),buf);

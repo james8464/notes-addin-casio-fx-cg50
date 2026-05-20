@@ -168,9 +168,9 @@ def main() -> int:
     for marker in ["dconsole_catalog_prefix", 'doCatalogMenu(buf,(char *)"Index",0,prefix)', "len>4"]:
         if marker not in dconsole:
             return fail("shell catalogue prefix search missing: " + marker)
-    for marker in ['!strcmp(buf,"log")', '!strcmp(buf,"sec")', '!strcmp(buf,"csc")', '!strcmp(buf,"cosec")', '!strcmp(buf,"cot")']:
-        if marker not in dmain:
-            return fail("syntax colour alias missing: " + marker)
+    for marker in ['!strcmp(buf,"log")', '!strcmp(buf,"log10")', '!strcmp(buf,"ln")', '!strcmp(buf,"sec")', '!strcmp(buf,"csc")', '!strcmp(buf,"cosec")', '!strcmp(buf,"cot")']:
+        if marker not in dmain or marker not in main_cc:
+            return fail("syntax colour alias missing from calculator/main shell: " + marker)
     if "solve_trig(eq,[var,lo,hi,max,method])" in active_catalog:
         return fail("solve_trig still active in catalogue; use solve() surface")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
