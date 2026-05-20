@@ -7,6 +7,26 @@ Two main code areas live here:
 
 The C++ side is now the active production path.
 
+## Production path
+
+`./compile` builds the real calculator add-in from:
+
+```text
+c++/khicas/upstream/giac90_1addin/
+```
+
+Host modules under `c++/addin/src/modules/` are fast regression/prototype code. A fix there does **not** change `CasioCAS.g3a` unless the same logic is ported into the KhiCAS source path above.
+
+Primary calculator working overlay:
+
+```text
+c++/khicas/upstream/giac90_1addin/main.cc
+c++/prizm/help/CASIOCAS.WORK.TPL
+c++/prizm/help/CASIOCAS.HLP
+```
+
+Use `c++/addin/host/build/device_solver_smoke` only for the separate native/fallback add-in route.
+
 ## Structure
 
 ```text
@@ -43,6 +63,7 @@ Run native C++ checks:
 
 ```bash
 python3 c++/tools/run_tests_cpp.py
+python3 c++/tools/golden/check_device_scope.py
 ```
 
 Clean generated/local files (dry-run first):

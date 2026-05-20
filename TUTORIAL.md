@@ -2,6 +2,8 @@
 
 Goal: short exam-style maths lines for fx-CG50. Use exact syntax; use `*` if in doubt.
 
+Build note: the shipped `.g3a` comes from `c++/khicas/upstream/giac90_1addin/`. Host-only changes in `c++/addin/src/modules/` are not calculator changes until ported there.
+
 ## Core Inputs
 
 | Task | Function | Parameters | Notes |
