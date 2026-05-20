@@ -8788,6 +8788,216 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     return out;
 }
 
+static std::optional<NodeId> log_linear_arg(Arena &a, NodeId n, std::string const &var, std::string const &lnvar, std::string const &other)
+{
+    if(is_sym_var(a, n, var)) return casio::sym(a, lnvar);
+    if(!contains_symbol(a, n, var) && !contains_symbol(a, n, other)) return casio::fn(a, "log", n);
+
+    Node const &node = a.get(n);
+    if(node.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> constants;
+    bool saw_var = false;
+    for(NodeId k : node.kids) {
+        if(is_sym_var(a, k, var)) {
+            if(saw_var) return std::nullopt;
+            saw_var = true;
+        }
+        else {
+            if(contains_symbol(a, k, var) || contains_symbol(a, k, other)) return std::nullopt;
+            constants.push_back(k);
+        }
+    }
+    if(!saw_var || constants.empty()) return std::nullopt;
+    NodeId c = constants.size() == 1 ? constants[0] : casio::mul(a, constants);
+    return exact_eval_simplify(a, casio::add(a, {casio::fn(a, "log", c), casio::sym(a, lnvar)}));
+}
+
+static std::optional<NodeId> log_linear_node(Arena &a, NodeId n, std::vector<std::string> const &vars)
+{
+    Node const &node = a.get(n);
+    if(node.kind == NodeKind::Fn && node.fkind == FnKind::Log) {
+        if(is_sym_var(a, node.a, vars[0])) return casio::sym(a, "X");
+        if(is_sym_var(a, node.a, vars[1])) return casio::sym(a, "Y");
+    }
+    if(!contains_either_symbol(a, n, vars[0], vars[1])) return n;
+    return std::nullopt;
+}
+
+static std::optional<NodeId> log_of_positive_side(Arena &a, NodeId n, std::vector<std::string> const &vars)
+{
+    Node const &node = a.get(n);
+    if(node.kind != NodeKind::Pow) return std::nullopt;
+    auto base_log0 = log_linear_arg(a, node.a, vars[0], "X", vars[1]);
+    auto base_log1 = log_linear_arg(a, node.a, vars[1], "Y", vars[0]);
+    std::optional<NodeId> base_log;
+    if(base_log0 && (!base_log1 || contains_symbol(a, *base_log0, "X"))) base_log = base_log0;
+    else if(base_log1) base_log = base_log1;
+    if(!base_log) return std::nullopt;
+    auto exponent = log_linear_node(a, node.b, vars);
+    if(!exponent) return std::nullopt;
+    return exact_eval_simplify(a, casio::mul(a, {*base_log, *exponent}));
+}
+
+static std::optional<std::pair<NodeId, NodeId>> snap_ln_integer_exp(Arena &a, NodeId n)
+{
+    auto v = eval_node(a, n, "x", 0.0);
+    if(!v) return std::nullopt;
+    if(std::fabs(*v) < 1e-10) return std::make_pair(zero_node(a), one_node(a));
+    for(int k = 2; k <= 30; ++k) {
+        double lk = std::log((double)k);
+        NodeId logk = casio::fn(a, "log", casio::num(a, k));
+        if(std::fabs(*v - lk) < 1e-9) return std::make_pair(logk, casio::num(a, k));
+        if(std::fabs(*v + lk) < 1e-9) return std::make_pair(neg_node(a, logk), casio::num(a, 1, k));
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> log_power_linear2_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+    if(vars[0] == "X" || vars[1] == "X" || vars[0] == "Y" || vars[1] == "Y") return std::nullopt;
+
+    std::vector<Linear2Parts> rows;
+    std::vector<std::string> out{
+        "X = ln(" + vars[0] + "), Y = ln(" + vars[1] + ")",
+        vars[0] + ">0, " + vars[1] + ">0"
+    };
+
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        auto l = log_of_positive_side(a, eq->lhs, vars);
+        auto r = log_of_positive_side(a, eq->rhs, vars);
+        if(!l || !r) return std::nullopt;
+        out.push_back("ln(" + format_expr(a, eq->lhs) + ") = ln(" + format_expr(a, eq->rhs) + ")");
+        out.push_back(format_expr(a, *l) + " = " + format_expr(a, *r));
+        NodeId residual = exact_eval_simplify(a, sub_node(a, *l, *r));
+        auto row = linear2_parts(a, residual, "X", "Y");
+        if(!row) return std::nullopt;
+        rows.push_back(*row);
+    }
+
+    NodeId det = exact_eval_simplify(a, sub_node(a, casio::mul(a, {rows[0].a0, rows[1].a1}), casio::mul(a, {rows[1].a0, rows[0].a1})));
+    if(casio::same_by_sig(a, det, zero_node(a))) return std::nullopt;
+    NodeId Xv = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[0].a1, rows[1].c}), casio::mul(a, {rows[1].a1, rows[0].c})), det));
+    NodeId Yv = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[1].a0, rows[0].c}), casio::mul(a, {rows[0].a0, rows[1].c})), det));
+    NodeId xv = exact_eval_simplify(a, casio::power(a, casio::constant_e(a), Xv));
+    NodeId yv = exact_eval_simplify(a, casio::power(a, casio::constant_e(a), Yv));
+    if(auto sx = snap_ln_integer_exp(a, Xv)) { Xv = sx->first; xv = sx->second; }
+    if(auto sy = snap_ln_integer_exp(a, Yv)) { Yv = sy->first; yv = sy->second; }
+    out.push_back("X = " + format_expr(a, Xv));
+    out.push_back("Y = " + format_expr(a, Yv));
+    out.push_back(vars[0] + " = e^X = " + format_expr(a, xv));
+    out.push_back(vars[1] + " = e^Y = " + format_expr(a, yv));
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, xv) + "," + format_expr(a, yv) + ")]");
+    return out;
+}
+
+struct PowPlusLine
+{
+    Rational base{0, 1};
+    Rational value{0, 1};
+};
+
+static bool read_pow_plus_linear_var(Arena &a, Equation const &eq, std::string const &avar, std::string const &bvar, PowPlusLine &line)
+{
+    auto run = [&](NodeId sum, NodeId val) {
+        auto rhs = as_num(a, val);
+        if(!rhs) return false;
+        std::vector<NodeId> terms;
+        add_terms_flat(a, sum, terms);
+        if(terms.size() != 2) return false;
+        bool saw_b = false;
+        std::optional<Rational> base;
+        for(NodeId t : terms) {
+            if(is_sym_var(a, t, bvar)) {
+                saw_b = true;
+                continue;
+            }
+            Node const &p = a.get(t);
+            if(p.kind != NodeKind::Pow || !is_sym_var(a, p.b, avar)) return false;
+            auto br = as_num(a, p.a);
+            if(!br || br->num <= 0) return false;
+            base = *br;
+        }
+        if(!saw_b || !base) return false;
+        line = PowPlusLine{*base, *rhs};
+        return true;
+    };
+    return run(eq.lhs, eq.rhs) || run(eq.rhs, eq.lhs);
+}
+
+static std::optional<Rational> snap_small_rational(double v)
+{
+    for(long long den = 1; den <= 200; ++den) {
+        long long num = llround(v * (double)den);
+        if(std::fabs(v - (double)num / (double)den) < 1e-9) {
+            Rational r{num, den};
+            r.normalize();
+            return r;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_power_plus_var_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+    if(vars.size() != 2) return std::nullopt;
+    auto e0 = casio::parse_equation(a, eq_texts[0]);
+    auto e1 = casio::parse_equation(a, eq_texts[1]);
+    if(!e0 || !e1) return std::nullopt;
+
+    PowPlusLine l0, l1;
+    if(!read_pow_plus_linear_var(a, *e0, vars[0], vars[1], l0) ||
+       !read_pow_plus_linear_var(a, *e1, vars[0], vars[1], l1)) return std::nullopt;
+    if(r_cmp(r_mul(l0.base, l1.base), Rational{1, 1}) != 0) return std::nullopt;
+    if(r_cmp(l0.base, Rational{1, 1}) < 0) std::swap(l0, l1);
+    if(r_cmp(l0.base, Rational{1, 1}) == 0) return std::nullopt;
+
+    Rational diff = r_sub(l0.value, l1.value);
+    Poly2 q{Rational{1, 1}, r_neg(diff), Rational{-1, 1}, true};
+    auto roots = solve_poly2(a, q, "u");
+    std::string base_txt = format_expr(a, a.num(l0.base));
+    std::string inv_txt = format_expr(a, a.num(l1.base));
+    std::vector<std::string> out{
+        "u = (" + base_txt + ")^" + vars[0] + ", u>0",
+        "(" + inv_txt + ")^" + vars[0] + " = 1/u",
+        "u + " + vars[1] + " = " + format_rat_plain(l0.value),
+        "1/u + " + vars[1] + " = " + format_rat_plain(l1.value),
+        "u - 1/u = " + format_rat_plain(diff),
+        format_expr(a, poly2_to_node(a, q, "u")) + " = 0"
+    };
+
+    std::vector<std::string> pairs;
+    for(auto const &root : roots) {
+        std::string rhs = sol_rhs(root);
+        NodeId un = casio::simplify(a, casio::parse_expr(a, rhs));
+        auto uv = eval_node(a, un, "x", 0.0);
+        if(!uv) continue;
+        if(*uv <= 0) {
+            out.push_back("u = " + rhs + " rejected, u>0");
+            continue;
+        }
+        if(auto r = snap_small_rational(*uv)) un = a.num(*r);
+        NodeId av = exact_eval_simplify(a, casio::div(a, casio::fn(a, "log", un), casio::fn(a, "log", a.num(l0.base))));
+        if(auto ai = eval_node(a, av, "x", 0.0)) {
+            double k = std::round(*ai);
+            if(std::fabs(*ai - k) < 1e-9) av = a.num(Rational{(long long)k, 1});
+        }
+        NodeId bv = exact_eval_simplify(a, sub_node(a, a.num(l0.value), un));
+        out.push_back("u = " + format_expr(a, un));
+        out.push_back(vars[0] + " = " + format_expr(a, av));
+        out.push_back(vars[1] + " = " + format_expr(a, bv));
+        pairs.push_back("(" + format_expr(a, av) + "," + format_expr(a, bv) + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
+    return out;
+}
+
 static bool exp_of_var(Arena &a, NodeId n, std::string const &var)
 {
     auto e = exp_like_arg(a, n);
@@ -17419,6 +17629,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto cg = chord_gradient_route(arena, req.expr)) return *cg;
             if(auto elss = exp_log_square_shift_system_route(arena, req.expr)) return *elss;
             if(auto elsq = exp_log_square_system_route(arena, req.expr)) return *elsq;
+            if(auto lps = log_power_linear2_system_route(arena, req.expr)) return *lps;
+            if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto logv = exact_log_base_value_key(key)) {
@@ -17514,6 +17726,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto expsys = exp_xy_square_system(arena, key)) return *expsys;
             if(auto elss = exp_log_square_shift_system_route(arena, key)) return *elss;
             if(auto elsq = exp_log_square_system_route(arena, key)) return *elsq;
+            if(auto lps = log_power_linear2_system_route(arena, key)) return *lps;
+            if(auto rpp = reciprocal_power_plus_var_system_route(arena, key)) return *rpp;
             if(auto lsys = exact_linear2_system_route(arena, key)) return *lsys;
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
