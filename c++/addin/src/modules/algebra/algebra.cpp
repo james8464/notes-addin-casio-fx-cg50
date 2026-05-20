@@ -12743,6 +12743,39 @@ static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &va
     return casio::simplify(a, terms.size() == 1 ? terms.front() : a.add(std::move(terms)));
 }
 
+static bool poly_any_div_exact(PolyAny const &num, PolyAny const &den, PolyAny &quot)
+{
+    if(!num.ok || !den.ok || den.c.empty() || is_zero(den.c.back()) || num.c.size() < den.c.size()) return false;
+    std::vector<Rational> rem = num.c;
+    std::vector<Rational> q(num.c.size() - den.c.size() + 1, Rational{0, 1});
+    int dn = (int)den.c.size() - 1;
+    for(int k = (int)rem.size() - 1; k >= dn; --k) {
+        Rational lead = r_div(rem[k], den.c[dn]);
+        int qi = k - dn;
+        q[qi] = lead;
+        if(is_zero(lead)) continue;
+        for(int j = 0; j <= dn; ++j)
+            rem[qi + j] = r_sub(rem[qi + j], r_mul(lead, den.c[j]));
+    }
+    for(int i = 0; i < dn; ++i)
+        if(!is_zero(rem[i])) return false;
+    quot = PolyAny{q, true};
+    trim_poly_any(quot);
+    return true;
+}
+
+static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_any_of(a, x.a, var);
+    auto den = poly_any_of(a, x.b, var);
+    if(!num || !den || !num->ok || !den->ok || den->c.size() < 2) return std::nullopt;
+    PolyAny q;
+    if(!poly_any_div_exact(*num, *den, q)) return std::nullopt;
+    return exact_eval_simplify(a, poly_any_to_node(a, q, var));
+}
+
 static std::optional<std::vector<std::string>> rational_root_poly_substitution_route(Arena &a, NodeId rearr, std::string const &var,
                                                                                      std::optional<double> lo,
                                                                                      std::optional<double> hi)
@@ -19423,12 +19456,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string f = trim_text(req.expr.substr(0, nl));
             std::string g = trim_text(req.expr.substr(nl + 1));
             NodeId fn = casio::parse_expr(arena, f);
-            NodeId gn = casio::parse_expr(arena, g);
+            NodeId gn_raw = casio::parse_expr(arena, g);
+            NodeId gn = gn_raw;
+            std::string gn_raw_text = format_expr(arena, gn_raw);
+            std::optional<std::string> gn_rewrite;
+            if(auto q = cancel_poly_any_fraction(arena, gn_raw, "x")) {
+                gn = *q;
+                gn_rewrite = gn_raw_text + " = " + format_expr(arena, gn);
+            }
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
             NodeId raw_comp = comp;
             if(auto fp = poly_of(arena, fn, "x"); fp && fp->ok)
                 raw_comp = comp = compose_quadratic_outer(arena, *fp, gn);
             comp = exact_eval_simplify(arena, comp);
+            if(auto q = cancel_poly_any_fraction(arena, comp, "x")) comp = *q;
             if(auto rp = ratpoly_of_node(arena, comp, "x"); rp.ok) {
                 if(auto q = linear_factor_quotient(rp.num, rp.den)) comp = poly2_to_node(arena, *q, "x");
                 else comp = casio::simplify(arena, casio::div(arena, poly2_to_node(arena, rp.num, "x"), poly2_to_node(arena, rp.den, "x")));
@@ -19438,12 +19479,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string ans = format_expr(arena, comp);
             std::vector<std::string> out = {
                 "f(x) = " + format_expr(arena, fn),
-                "g(x) = " + format_expr(arena, gn),
+                "g(x) = " + gn_raw_text,
+            };
+            if(gn_rewrite) out.push_back("g(x) = " + *gn_rewrite);
+            out.insert(out.end(), {
                 "x = g(x) = " + format_expr(arena, gn),
                 "f(g(x)) = f(" + format_expr(arena, gn) + ")",
-            };
+            });
             std::string raw = format_expr(arena, raw_comp);
-            if(raw != ans && contains_exp_log_exact(arena, raw_comp)) out.push_back("f(g(x)) = " + raw);
+            if(raw != ans && (contains_exp_log_exact(arena, raw_comp) || raw.find('/') != std::string::npos))
+                out.push_back("f(g(x)) = " + raw);
             out.push_back("f(g(x)) = " + ans);
             return out;
         }
@@ -19574,7 +19619,71 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string hi = (parts.size() >= 4) ? parts[3] : "";
             bool lo_open = false, hi_open = false;
             if(!parts.empty()) expr = parts[0];
-            if(parts.size() == 2) {
+            auto set_interval_bound = [&](std::string v, std::string bound, bool lower, bool open) {
+                var = trim_text(v);
+                if(lower) {
+                    lo = trim_text(bound);
+                    hi = hi.empty() ? "inf" : hi;
+                    lo_open = open;
+                }
+                else {
+                    lo = lo.empty() ? "-inf" : lo;
+                    hi = trim_text(bound);
+                    hi_open = open;
+                }
+            };
+            auto cond_ops = [](std::string const &s) {
+                struct Op { std::size_t pos; int len; std::string op; };
+                std::vector<Op> ops;
+                for(std::size_t i = 0; i < s.size(); ++i) {
+                    if(i + 1 < s.size() && (s.substr(i, 2) == ">=" || s.substr(i, 2) == "<=")) {
+                        ops.push_back(Op{i, 2, s.substr(i, 2)});
+                        ++i;
+                    }
+                    else if(s[i] == '>' || s[i] == '<') ops.push_back(Op{i, 1, s.substr(i, 1)});
+                }
+                return ops;
+            };
+            auto is_var_text = [](std::string s) {
+                s = trim_text(s);
+                if(s.empty()) return false;
+                for(char ch : s)
+                    if(!std::isalpha((unsigned char)ch) && ch != '_') return false;
+                return true;
+            };
+            std::function<bool(std::string const &)> parse_cond;
+            parse_cond = [&](std::string const &raw_cond) -> bool {
+                std::string cond = trim_text(raw_cond);
+                auto ops = cond_ops(cond);
+                if(ops.size() == 2) {
+                    std::string left = cond.substr(0, ops[0].pos);
+                    std::string mid = cond.substr(ops[0].pos + ops[0].len, ops[1].pos - (ops[0].pos + ops[0].len));
+                    std::string right = cond.substr(ops[1].pos + ops[1].len);
+                    return parse_cond(left + ops[0].op + mid) && parse_cond(mid + ops[1].op + right);
+                }
+                if(ops.size() != 1) return false;
+                std::string lhs = trim_text(cond.substr(0, ops[0].pos));
+                std::string rhs = trim_text(cond.substr(ops[0].pos + ops[0].len));
+                std::string op = ops[0].op;
+                if(is_var_text(lhs) && !rhs.empty()) {
+                    bool lower = op[0] == '>';
+                    set_interval_bound(lhs, rhs, lower, op.size() == 1);
+                    return true;
+                }
+                if(is_var_text(rhs) && !lhs.empty()) {
+                    bool lower = op[0] == '<';
+                    set_interval_bound(rhs, lhs, lower, op.size() == 1);
+                    return true;
+                }
+                return false;
+            };
+            bool parsed_condition = false;
+            if(parts.size() >= 2) {
+                for(std::size_t i = 1; i < parts.size(); ++i)
+                    parsed_condition = parse_cond(parts[i]) || parsed_condition;
+            }
+            if(parsed_condition) explicit_var = !var.empty();
+            else if(parts.size() == 2) {
                 std::string cond = trim_text(parts[1]);
                 auto set_halfline = [&](std::string v, std::string bound, bool lower, bool open) {
                     var = trim_text(v);
@@ -20601,7 +20710,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), rbq->begin(), rbq->end());
             return out;
         }
-        if(auto bq = biquadratic_route(arena, rearr, solve_var)) {
+        if(auto bq = biquadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
             out.insert(out.end(), bq->begin(), bq->end());
             return out;
         }
