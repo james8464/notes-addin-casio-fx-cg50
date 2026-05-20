@@ -727,6 +727,9 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
+            if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt &&
+               expo.num.num == 2 && expo.num.den == 1)
+                return exact_eval_simplify(a, base.a);
             NodeId arg = 0;
             if(base.kind == NodeKind::Pow && is_e_const_node(a, base.a)) arg = base.b;
             else if(base.kind == NodeKind::Fn && base.fkind == FnKind::Exp) arg = base.a;
@@ -19423,11 +19426,34 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             else if(auto p = poly_of(arena, n, var); p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
                 range_answer = "all real y";
+                auto below = [](bool open) { return open ? " < y" : " <= y"; };
                 if(lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v)) {
                     auto ylo = eval_node(arena, n, var, *lo_v);
                     if(ylo) {
                         if(p->a1.num > 0) range_answer = std::string(lo_open ? "y > " : "y >= ") + format_double_compact(*ylo);
                         else range_answer = std::string(lo_open ? "y < " : "y <= ") + format_double_compact(*ylo);
+                    }
+                }
+                else if(lo_v && !std::isfinite(*lo_v) && hi_v && std::isfinite(*hi_v)) {
+                    auto yhi = eval_node(arena, n, var, *hi_v);
+                    if(yhi) {
+                        if(p->a1.num > 0) range_answer = std::string(hi_open ? "y < " : "y <= ") + format_double_compact(*yhi);
+                        else range_answer = std::string(hi_open ? "y > " : "y >= ") + format_double_compact(*yhi);
+                    }
+                }
+                else if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
+                    auto ylo = eval_node(arena, n, var, *lo_v);
+                    auto yhi = eval_node(arena, n, var, *hi_v);
+                    if(ylo && yhi) {
+                        bool lo_is_min = *ylo <= *yhi;
+                        double mn = lo_is_min ? *ylo : *yhi;
+                        double mx = lo_is_min ? *yhi : *ylo;
+                        bool mn_open = lo_is_min ? lo_open : hi_open;
+                        bool mx_open = lo_is_min ? hi_open : lo_open;
+                        steps.push_back("y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
+                                        ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi));
+                        range_answer = format_double_compact(mn) + below(mn_open) +
+                                       (mx_open ? " < " : " <= ") + format_double_compact(mx);
                     }
                 }
                 steps.push_back("Range: " + range_answer + ".");
