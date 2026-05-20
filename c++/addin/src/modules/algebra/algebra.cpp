@@ -7873,6 +7873,216 @@ static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_route(Arena
     return match(rhs, lhs);
 }
 
+struct SurdConst
+{
+    Rational r{0, 1};
+    Rational s{0, 1};
+    long long rad = 0;
+};
+
+static SurdConst norm_surd_const(SurdConst q)
+{
+    q.r.normalize();
+    q.s.normalize();
+    if(q.s.num == 0) q.rad = 0;
+    return q;
+}
+
+static bool same_surd_rad(SurdConst const &u, SurdConst const &v)
+{
+    return u.rad == v.rad || u.rad == 0 || v.rad == 0;
+}
+
+static std::optional<SurdConst> add_surd_const(SurdConst u, SurdConst v)
+{
+    if(!same_surd_rad(u, v)) return std::nullopt;
+    long long rad = u.rad ? u.rad : v.rad;
+    return norm_surd_const(SurdConst{r_add(u.r, v.r), r_add(u.s, v.s), rad});
+}
+
+static SurdConst neg_surd_const(SurdConst u)
+{
+    return norm_surd_const(SurdConst{r_neg(u.r), r_neg(u.s), u.rad});
+}
+
+static std::optional<SurdConst> mul_surd_const(SurdConst u, SurdConst v)
+{
+    if(!same_surd_rad(u, v)) return std::nullopt;
+    long long rad = u.rad ? u.rad : v.rad;
+    Rational rr = r_add(r_mul(u.r, v.r), r_mul(r_mul(u.s, v.s), Rational{rad, 1}));
+    Rational ss = r_add(r_mul(u.r, v.s), r_mul(u.s, v.r));
+    return norm_surd_const(SurdConst{rr, ss, rad});
+}
+
+static std::optional<SurdConst> div_surd_const(SurdConst u, SurdConst v)
+{
+    if(!same_surd_rad(u, v)) return std::nullopt;
+    long long rad = u.rad ? u.rad : v.rad;
+    Rational den = r_sub(r_mul(v.r, v.r), r_mul(r_mul(v.s, v.s), Rational{rad, 1}));
+    if(is_zero(den)) return std::nullopt;
+    auto top = mul_surd_const(u, SurdConst{v.r, r_neg(v.s), rad});
+    if(!top) return std::nullopt;
+    return norm_surd_const(SurdConst{r_div(top->r, den), r_div(top->s, den), rad});
+}
+
+static std::optional<SurdConst> parse_surd_const(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return norm_surd_const(SurdConst{x.num, Rational{0, 1}, 0});
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &in = a.get(x.a);
+        if(in.kind != NodeKind::Num || in.num.den != 1 || in.num.num <= 0) return std::nullopt;
+        std::int64_t rt = 0;
+        if(is_square_i64(in.num.num, rt)) return norm_surd_const(SurdConst{Rational{rt, 1}, Rational{0, 1}, 0});
+        return norm_surd_const(SurdConst{Rational{0, 1}, Rational{1, 1}, in.num.num});
+    }
+    if(x.kind == NodeKind::Add) {
+        SurdConst acc;
+        for(NodeId k : x.kids) {
+            auto q = parse_surd_const(a, k);
+            if(!q) return std::nullopt;
+            auto next = add_surd_const(acc, *q);
+            if(!next) return std::nullopt;
+            acc = *next;
+        }
+        return norm_surd_const(acc);
+    }
+    if(x.kind == NodeKind::Mul) {
+        SurdConst acc{Rational{1, 1}, Rational{0, 1}, 0};
+        for(NodeId k : x.kids) {
+            auto q = parse_surd_const(a, k);
+            if(!q) return std::nullopt;
+            auto next = mul_surd_const(acc, *q);
+            if(!next) return std::nullopt;
+            acc = *next;
+        }
+        return norm_surd_const(acc);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto p = parse_surd_const(a, x.a), q = parse_surd_const(a, x.b);
+        if(!p || !q) return std::nullopt;
+        return div_surd_const(*p, *q);
+    }
+    return std::nullopt;
+}
+
+static std::string surd_const_text(SurdConst q)
+{
+    q = norm_surd_const(q);
+    auto surd = [&](Rational c) {
+        c.normalize();
+        bool neg = c.num < 0;
+        if(neg) c.num = -c.num;
+        std::string core = "sqrt(" + std::to_string(q.rad) + ")";
+        std::string s;
+        if(c.num == c.den) s = core;
+        else if(c.den == 1) s = std::to_string(c.num) + "*" + core;
+        else if(c.num == 1) s = core + "/" + std::to_string(c.den);
+        else s = std::to_string(c.num) + "/" + std::to_string(c.den) + "*" + core;
+        return neg ? "-" + s : s;
+    };
+    if(q.rad == 0 || is_zero(q.s)) return format_rat_plain(q.r);
+    if(is_zero(q.r)) return surd(q.s);
+    std::string r = format_rat_plain(q.r), s = surd(q.s);
+    return s[0] == '-' ? r + " - " + s.substr(1) : r + " + " + s;
+}
+
+static std::optional<double> surd_const_value(SurdConst q)
+{
+    q = norm_surd_const(q);
+    return (double)q.r.num / (double)q.r.den + ((double)q.s.num / (double)q.s.den) * (q.rad ? std::sqrt((double)q.rad) : 0.0);
+}
+
+static bool sqrt_const_x2_term(Arena &a, NodeId term, std::string const &var, Rational &coef, Rational &k)
+{
+    NodeId body = 0;
+    bool has_body = false;
+    split_coeff_body(a, term, coef, body, has_body);
+    if(!has_body) return false;
+    Node const &r = a.get(body);
+    if(r.kind != NodeKind::Fn || r.fkind != FnKind::Sqrt) return false;
+    auto p = poly_of(a, r.a, var);
+    if(!p || !p->ok || !is_zero(p->a1) || !is_zero(p->a0) || p->a2.num <= 0) return false;
+    k = p->a2;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> sqrt_square_abs_linear_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    std::vector<NodeId> terms, rest_terms;
+    add_terms_flat(a, rearr, terms);
+    Rational root_coef{0, 1}, k{0, 1};
+    NodeId root_term = 0;
+    bool saw_root = false;
+    for(NodeId t : terms) {
+        Rational c{1, 1}, kk{0, 1};
+        if(sqrt_const_x2_term(a, t, var, c, kk)) {
+            if(saw_root || c.num == 0) return std::nullopt;
+            saw_root = true;
+            root_coef = c;
+            k = kk;
+            root_term = t;
+        }
+        else rest_terms.push_back(t);
+    }
+    if(!saw_root || k.den != 1) return std::nullopt;
+    NodeId rest = rest_terms.empty() ? zero_node(a) : casio::simplify(a, casio::add(a, rest_terms));
+    auto lin = symbolic_linear_parts(a, rest, var);
+    if(!lin) return std::nullopt;
+    auto m0 = parse_surd_const(a, lin->m), c0 = parse_surd_const(a, lin->c);
+    if(!m0 || !c0) return std::nullopt;
+
+    std::vector<std::string> out, sols;
+    std::string root_txt = format_expr(a, root_term);
+    std::string sk = "sqrt(" + format_expr(a, a.num(k)) + ")";
+    std::string root_coef_txt = rat_node_text(a, root_coef);
+    std::string root_abs = (root_coef_txt == "1") ? sk + "*|" + var + "|" :
+                           (root_coef_txt == "-1") ? "-" + sk + "*|" + var + "|" :
+                           root_coef_txt + "*" + sk + "*|" + var + "|";
+    auto coeff_x_text = [&](SurdConst q) {
+        std::string s = surd_const_text(q);
+        if(s == "1") return var;
+        if(s == "-1") return "-" + var;
+        bool wrap = s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos;
+        return (wrap ? "(" + s + ")" : s) + "*" + var;
+    };
+    auto linear_text = [&](SurdConst m, SurdConst c) {
+        std::string s = coeff_x_text(m);
+        std::string ct = surd_const_text(c);
+        if(ct == "0") return s;
+        return s + (ct[0] == '-' ? " - " + ct.substr(1) : " + " + ct);
+    };
+    out.push_back(format_expr(a, rearr) + " = 0");
+    out.push_back(root_txt + " = " + root_abs);
+    out.push_back(var + " >= 0: |" + var + "| = " + var);
+    out.push_back(var + " < 0: |" + var + "| = -" + var);
+
+    auto branch = [&](int sign, char const *cond) {
+        SurdConst rt{Rational{0, 1}, root_coef, k.num};
+        if(sign < 0) rt = neg_surd_const(rt);
+        auto m = add_surd_const(*m0, rt);
+        if(!m || (is_zero(m->r) && is_zero(m->s))) return;
+        auto xq = div_surd_const(neg_surd_const(*c0), *m);
+        auto xv = xq ? surd_const_value(*xq) : std::nullopt;
+        if(!xq || !xv) return;
+        if((sign > 0 && *xv < -1e-9) || (sign < 0 && *xv >= -1e-9)) return;
+        std::string eq = linear_text(*m, *c0) + " = 0";
+        std::string sol = var + " = " + surd_const_text(*xq);
+        out.push_back(std::string(cond) + ": " + eq);
+        out.push_back(sol);
+        sols.push_back(sol);
+    };
+    branch(+1, "x >= 0");
+    branch(-1, "x < 0");
+    if(sols.empty()) return std::nullopt;
+    sols = filter_real_solutions(a, rearr, var, sols, std::nullopt, std::nullopt);
+    sort_solution_lines(a, sols);
+    sols.erase(std::unique(sols.begin(), sols.end()), sols.end());
+    out.push_back(solution_list_line(var, sols));
+    append_numeric_3dp(a, out, var, sols);
+    return out;
+}
+
 static bool root_power_den_walk(Arena &a, NodeId n, std::string const &var, int &den)
 {
     Node const &x = a.get(n);
@@ -12826,6 +13036,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return out;
             }
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
+            if(auto sa = sqrt_square_abs_linear_route(arena, rearr, solve_var)) return *sa;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
