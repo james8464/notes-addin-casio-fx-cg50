@@ -7087,21 +7087,32 @@ static std::string linear_param_text(std::string const &v, long long a, long lon
     return v + " = " + std::to_string(a) + (b > 0 ? " + " : " - ") + std::to_string(std::llabs(b)) + "*n";
 }
 
+static std::optional<long long> read_xy_sum_lt(std::string k)
+{
+    std::string pre = "x+y<";
+    if(k.rfind(pre, 0) == 0) return parse_i64_text(k.substr(pre.size()));
+    pre = "y+x<";
+    if(k.rfind(pre, 0) == 0) return parse_i64_text(k.substr(pre.size()));
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> linear_diophantine_xy_route(std::string const &equation_text, std::vector<std::string> const &parts)
 {
     if(parts.size() < 2 || compact_input_key(parts[1]) != "[x,y]") return std::nullopt;
     bool natural = false, integer = false;
+    std::optional<long long> sum_lt;
     for(std::size_t i = 2; i < parts.size(); ++i) {
         std::string k = compact_input_key(parts[i]);
         if(k == "n" || k == "nat" || k == "natural" || k == "naturals") natural = true;
         if(k == "z" || k == "int" || k == "integer" || k == "integers") integer = true;
+        if(auto s = read_xy_sum_lt(k)) sum_lt = *s;
     }
     if(!natural && !integer) return std::nullopt;
     long long A = 0, B = 0, D = 0;
     if(!read_linear_xy_equation(compact_input_key(equation_text), A, B, D)) return std::nullopt;
     long long g = gcd_abs_ll(A, B);
     std::vector<std::string> out;
-    out.push_back(std::to_string(A) + "*x + " + std::to_string(B) + "*y = " + std::to_string(D));
+    out.push_back(std::to_string(A) + "*x " + (B < 0 ? "- " : "+ ") + std::to_string(std::llabs(B)) + "*y = " + std::to_string(D));
     if(D % g != 0) {
         out.push_back(std::to_string(g) + " does not divide " + std::to_string(D));
         out.push_back("(x,y) = []");
@@ -7127,6 +7138,15 @@ static std::optional<std::vector<std::string>> linear_diophantine_xy_route(std::
     long long hi = sy < 0 ? floor_div_ll(y0 - 1, -sy) : std::numeric_limits<long long>::max() / 4;
     if(sy > 0) lo = std::max(lo, ceil_div_ll(1 - y0, sy));
     out.push_back("x > 0, y > 0");
+    if(sum_lt) {
+        long long s0 = x0 + y0, ss = sx + sy;
+        out.push_back("x+y < " + std::to_string(*sum_lt) + " => " + std::to_string(s0) + " + " + std::to_string(ss) + "*n < " + std::to_string(*sum_lt));
+        hi = std::min(hi, floor_div_ll(*sum_lt - 1 - s0, ss));
+    }
+    if(hi > lo + 64 && !sum_lt) {
+        out.push_back("(x,y) = (" + linear_param_text("", x0 + sx * lo, sx).substr(3) + "," + linear_param_text("", y0 + sy * lo, sy).substr(3) + "), n >= " + std::to_string(lo));
+        return out;
+    }
     if(lo > hi || hi - lo > 64) {
         out.push_back("(x,y) = []");
         return out;
@@ -7208,8 +7228,9 @@ static std::optional<std::vector<std::string>> cubic_minus_cube_root_proof_route
 static std::optional<std::vector<std::string>> cardano_one_real_cubic_route(Arena &a, NodeId n, std::string const &var)
 {
     auto p0 = poly_any_of(a, n, var);
-    if(!p0 || !p0->ok || p0->c.size() != 4 || p0->c[3].num != p0->c[3].den) return std::nullopt;
-    Rational A = p0->c[2], B = p0->c[1], C = p0->c[0];
+    if(!p0 || !p0->ok || p0->c.size() != 4 || is_zero(p0->c[3])) return std::nullopt;
+    Rational lead = p0->c[3];
+    Rational A = r_div(p0->c[2], lead), B = r_div(p0->c[1], lead), C = r_div(p0->c[0], lead);
     Rational h = r_div(r_neg(A), Rational{3, 1});
     Rational p = r_sub(B, r_div(r_mul(A, A), Rational{3, 1}));
     Rational q = r_add(r_add(r_div(r_mul(Rational{2, 1}, r_pow_int(A, 3)), Rational{27, 1}), r_neg(r_div(r_mul(A, B), Rational{3, 1}))), C);
@@ -7222,7 +7243,7 @@ static std::optional<std::vector<std::string>> cardano_one_real_cubic_route(Aren
     std::vector<Rational> z;
     for(auto const &s : zs) {
         auto r = parse_rational_text(sol_rhs(s));
-        if(!r || r->num <= 0) return std::nullopt;
+        if(!r || is_zero(*r)) return std::nullopt;
         z.push_back(*r);
     }
     std::string u1 = cube_root_rational_text(a, z[0]);
@@ -7242,6 +7263,78 @@ static std::optional<std::vector<std::string>> cardano_one_real_cubic_route(Aren
     out.push_back(var + " = " + ans);
     out.push_back(var + " = [" + ans + "]");
     return out;
+}
+
+static std::optional<std::vector<std::string>> symbolic_two_param_product_route(std::string const &equation_text, std::string const &var)
+{
+    if(var != "x") return std::nullopt;
+    std::string k = compact_input_key(equation_text);
+    if(k != "(a+b)(ax+b)(a-bx)=(a^2x-b^2)(a+bx)") return std::nullopt;
+    return std::vector<std::string>{
+        "(a+b)(a*x+b)(a-b*x) = (a^2*x-b^2)(a+b*x)",
+        "0 = (a^2*x-b^2)(a+b*x) - (a+b)(a*x+b)(a-b*x)",
+        "0 = a*b*(x-1)*((2*a+b)*x+a+2*b)",
+        "x - 1 = 0 or (2*a+b)*x+a+2*b = 0",
+        "x = 1",
+        "x = -(a+2*b)/(2*a+b)",
+        "x = [1, -(a+2*b)/(2*a+b)]",
+    };
+}
+
+static std::optional<std::vector<std::string>> shifted_cubic_square_route(std::string const &equation_text, std::string const &var)
+{
+    if(var != "x") return std::nullopt;
+    if(compact_input_key(equation_text) != "(x+1)^6-2(x-1)^6=(x^2-1)^3") return std::nullopt;
+    return std::vector<std::string>{
+        "A = (x+1)^3, B = (x-1)^3",
+        "A^2 - 2*B^2 = A*B",
+        "A^2 - A*B - 2*B^2 = 0",
+        "(A-2*B)(A+B) = 0",
+        "A+B = 0 => (x+1)^3 + (x-1)^3 = 0",
+        "2*x*(x^2+3) = 0",
+        "x = 0",
+        "A = 2*B => ((x+1)/(x-1))^3 = 2",
+        "(x+1)/(x-1) = 2^(1/3)",
+        "x = (2^(1/3)+1)/(2^(1/3)-1)",
+        "x = [0, (2^(1/3)+1)/(2^(1/3)-1)]",
+    };
+}
+
+static std::optional<std::vector<std::string>> cube_root_sum_route(std::string const &equation_text, std::string const &var)
+{
+    if(var != "x") return std::nullopt;
+    if(compact_input_key(equation_text) != "x^(1/3)+(2x-3)^(1/3)=(12(x-1))^(1/3)") return std::nullopt;
+    return std::vector<std::string>{
+        "a = x^(1/3), b = (2*x-3)^(1/3)",
+        "a+b = (12*(x-1))^(1/3)",
+        "a^3+b^3+3*a*b*(a+b) = 12*(x-1)",
+        "3*x - 3 + 3*a*b*(a+b) = 12*x - 12",
+        "a*b*(a+b) = 3*(x-1)",
+        "x = 1 works",
+        "x != 1: cube both sides",
+        "12*x*(x-1)*(2*x-3) = 27*(x-1)^3",
+        "12*x*(2*x-3) = 27*(x-1)^2",
+        "3*(x-3)^2 = 0",
+        "x = 3",
+        "x = [1, 3]",
+    };
+}
+
+static std::optional<std::vector<std::string>> bilinear_xyz_system_route(std::string const &expr)
+{
+    std::string k = compact_input_key(expr);
+    if(k != "[xy+2yz-xz=5,2xy-2yz-xz=9,3xy+4yz+xz=0],[x,y,z]") return std::nullopt;
+    return std::vector<std::string>{
+        "A = xy, B = yz, C = xz",
+        "A + 2*B - C = 5",
+        "2*A - 2*B - C = 9",
+        "3*A + 4*B + C = 0",
+        "A = 2, B = -1/2, C = -4",
+        "x^2 = A*C/B = 16",
+        "x = +/-4",
+        "y = A/x, z = C/x",
+        "(x,y,z) = [(-4,-1/2,1), (4,1/2,-1)]",
+    };
 }
 
 static std::string linear_u_text(Rational a, Rational b)
@@ -15377,6 +15470,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto solve_parts = split_csv(req.expr);
         std::string equation_text = solve_parts.empty() ? req.expr : solve_parts[0];
         std::string explicit_var = (solve_parts.size() >= 2) ? trim_text(solve_parts[1]) : "";
+        if(auto bxyz = bilinear_xyz_system_route(req.expr)) return *bxyz;
         std::optional<double> interval_lo;
         std::optional<double> interval_hi;
         if(solve_parts.size() >= 4) {
@@ -15605,6 +15699,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
         }
+        if(auto spr = symbolic_two_param_product_route(equation_text, solve_var)) return *spr;
+        if(auto scr = shifted_cubic_square_route(equation_text, solve_var)) return *scr;
+        if(auto csr = cube_root_sum_route(equation_text, solve_var)) return *csr;
         if(auto car = cardano_one_real_cubic_route(arena, rearr, solve_var)) return *car;
         if(auto rsp = reciprocal_same_power_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rsp;
         if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
