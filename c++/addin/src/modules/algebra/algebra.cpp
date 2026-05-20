@@ -4122,6 +4122,7 @@ static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
     if(!p0 || !p0->ok || p0->c.size() < 4 || p0->c.size() > 7) return std::nullopt;
     PolyAny p = *p0;
     std::vector<std::string> raw, out{format_expr(a, n) + " = 0"};
+    std::vector<Rational> found_roots;
     while(p.c.size() > 3) {
         auto lead = as_int64(p.c.back());
         auto cnst = as_int64(p.c.front());
@@ -4135,6 +4136,7 @@ static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
                     r.normalize();
                     if(!is_zero(poly_any_eval(p, r))) continue;
                     raw.push_back(var + " = " + format_rat(a, r));
+                    found_roots.push_back(r);
                     divide_linear(p, r);
                     found = true;
                     goto next_root;
@@ -4148,6 +4150,12 @@ next_root:
         Poly2 q{p.c[2], p.c[1], p.c[0], true};
         auto qs = solve_poly2(a, q, var);
         raw.insert(raw.end(), qs.begin(), qs.end());
+        if(!found_roots.empty()) {
+            std::string factored;
+            for(Rational r : found_roots) factored += linear_factor_from_root(a, var, r) + "*";
+            factored += "(" + format_expr(a, poly2_to_node(a, q, var)) + ")";
+            out.push_back(factored + " = 0");
+        }
         out.push_back("remaining quadratic: " + format_expr(a, poly2_to_node(a, q, var)) + " = 0");
     }
     else if(p.c.size() != 1) return std::nullopt;
@@ -7533,6 +7541,112 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     }
     for(auto const &xline : xs) out.push_back(xline);
     out.push_back("Answer: " + solution_list_line(var, xs));
+    return out;
+}
+
+static bool sqrt_term_coeff(Arena &a, NodeId n, NodeId &rad, Rational &coef)
+{
+    Node const &x = a.get(n);
+    coef = Rational{1, 1};
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        rad = x.a;
+        return true;
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    NodeId seen = 0;
+    for(NodeId k : x.kids) {
+        if(auto c = as_num(a, k)) coef = r_mul(coef, *c);
+        else {
+            Node const &q = a.get(k);
+            if(q.kind != NodeKind::Fn || q.fkind != FnKind::Sqrt || seen) return false;
+            seen = q.a;
+        }
+    }
+    if(!seen) return false;
+    rad = seen;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> sqrt_poly_substitution_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    std::vector<NodeId> terms, rest_terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() < 2) return std::nullopt;
+    NodeId rad = 0;
+    std::string rad_key;
+    Rational ucoef{0, 1};
+    bool saw_root = false;
+    for(NodeId t : terms) {
+        NodeId r = 0;
+        Rational c{1, 1};
+        if(sqrt_term_coeff(a, t, r, c)) {
+            std::string key = compact_input_key(format_expr(a, r));
+            if(!saw_root) {
+                saw_root = true;
+                rad = r;
+                rad_key = key;
+            }
+            else if(key != rad_key) return std::nullopt;
+            ucoef = r_add(ucoef, c);
+        }
+        else rest_terms.push_back(t);
+    }
+    if(!saw_root || is_zero(ucoef)) return std::nullopt;
+    auto p = poly_of(a, rad, var);
+    if(!p || !p->ok || (is_zero(p->a2) && is_zero(p->a1))) return std::nullopt;
+    NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
+    auto r = poly_of(a, rest, var);
+    if(!r || !r->ok) return std::nullopt;
+
+    Rational k{0, 1};
+    bool have_k = false;
+    auto match_coef = [&](Rational rp, Rational pp) {
+        if(is_zero(pp)) return is_zero(rp);
+        Rational kk = r_div(rp, pp);
+        if(!have_k) {
+            k = kk;
+            have_k = true;
+            return true;
+        }
+        return is_zero(r_sub(k, kk));
+    };
+    if(!match_coef(r->a2, p->a2) || !match_coef(r->a1, p->a1) || !have_k || is_zero(k)) return std::nullopt;
+    Rational c0 = r_sub(r->a0, r_mul(k, p->a0));
+    Poly2 uq{k, ucoef, c0, true};
+    auto us = solve_poly2(a, uq, "u");
+    if(us.empty()) return std::nullopt;
+
+    std::vector<std::string> out, xs;
+    out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
+    out.push_back("u = sqrt(" + format_expr(a, rad) + "), u >= 0");
+    out.push_back(format_expr(a, rad) + " = u^2");
+    out.push_back(format_expr(a, poly2_to_node(a, uq, "u")) + " = 0");
+    if(auto rr = rational_quadratic_roots(uq))
+        out.push_back("Factor: " + quadratic_factor_text(a, uq, "u") + " = 0");
+    for(auto const &line : us) {
+        std::string rhs = sol_rhs(line);
+        out.push_back("u = " + rhs);
+        auto ur = parse_rational_text(rhs);
+        auto uv = parse_const_double(a, rhs);
+        if((ur && ur->num < 0) || (uv && *uv < -1e-10) || rhs.find('i') != std::string::npos) {
+            out.push_back("reject u = " + rhs);
+            continue;
+        }
+        if(!ur) continue;
+        Rational u2 = r_mul(*ur, *ur);
+        Poly2 xp{p->a2, p->a1, r_sub(p->a0, u2), true};
+        out.push_back(format_expr(a, rad) + " = " + format_expr(a, a.num(u2)));
+        out.push_back(format_expr(a, poly2_to_node(a, xp, var)) + " = 0");
+        auto xraw = solve_poly2(a, xp, var);
+        xs.insert(xs.end(), xraw.begin(), xraw.end());
+    }
+    xs = filter_real_solutions(a, rearr, var, xs, std::nullopt, std::nullopt);
+    if(xs.empty()) return std::nullopt;
+    sort_solution_lines(a, xs);
+    xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
+    for(auto const &x : xs) out.push_back(x);
+    append_answer(out, var, xs);
+    append_numeric_3dp(a, out, var, xs);
     return out;
 }
 
@@ -12362,6 +12476,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
+            if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
