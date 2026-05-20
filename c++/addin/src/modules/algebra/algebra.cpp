@@ -6998,6 +6998,252 @@ static std::optional<std::vector<std::string>> symmetric_cubic_system(Arena &a, 
     return out;
 }
 
+static bool read_linear_xy_term(std::string const &t, char var, Rational &coef)
+{
+    std::string v(1, var);
+    if(t == v) {
+        coef = Rational{1, 1};
+        return true;
+    }
+    if(t == "-" + v) {
+        coef = Rational{-1, 1};
+        return true;
+    }
+    return read_coeff_suffix(t, v, coef);
+}
+
+static bool add_linear_xy_expr(std::string const &expr, Rational scale, Rational &ax, Rational &by, Rational &c0)
+{
+    for(auto const &t : split_signed_terms_key(expr)) {
+        Rational c{0, 1};
+        if(read_linear_xy_term(t, 'x', c)) ax = r_add(ax, r_mul(scale, c));
+        else if(read_linear_xy_term(t, 'y', c)) by = r_add(by, r_mul(scale, c));
+        else if(auto k = parse_rational_key(t)) c0 = r_add(c0, r_mul(scale, *k));
+        else return false;
+    }
+    return true;
+}
+
+static bool read_linear_xy_equation(std::string const &eq, long long &A, long long &B, long long &D)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    Rational ax{0, 1}, by{0, 1}, c0{0, 1};
+    if(!add_linear_xy_expr(sides[0], Rational{1, 1}, ax, by, c0)) return false;
+    if(!add_linear_xy_expr(sides[1], Rational{-1, 1}, ax, by, c0)) return false;
+    if(is_zero(ax) || is_zero(by)) return false;
+    long long l = lcm_abs_ll(lcm_abs_ll(ax.den, by.den), c0.den);
+    A = ax.num * (l / ax.den);
+    B = by.num * (l / by.den);
+    D = -c0.num * (l / c0.den);
+    long long g = gcd_abs_ll(gcd_abs_ll(A, B), D);
+    if(g > 1) { A /= g; B /= g; D /= g; }
+    if(A < 0) { A = -A; B = -B; D = -D; }
+    return true;
+}
+
+static long long floor_div_ll(long long a, long long b)
+{
+    if(b < 0) { a = -a; b = -b; }
+    long long q = a / b, r = a % b;
+    return (r && a < 0) ? q - 1 : q;
+}
+
+static long long ceil_div_ll(long long a, long long b)
+{
+    return -floor_div_ll(-a, b);
+}
+
+static long long mod_pos_ll(long long a, long long m)
+{
+    long long r = a % m;
+    return r < 0 ? r + m : r;
+}
+
+static long long egcd_ll(long long a, long long b, long long &x, long long &y)
+{
+    if(b == 0) {
+        x = (a < 0 ? -1 : 1);
+        y = 0;
+        return std::llabs(a);
+    }
+    long long x1 = 0, y1 = 0;
+    long long g = egcd_ll(b, a % b, x1, y1);
+    x = y1;
+    y = x1 - (a / b) * y1;
+    return g;
+}
+
+static std::optional<long long> inv_mod_ll(long long a, long long m)
+{
+    long long x = 0, y = 0;
+    if(m <= 1 || egcd_ll(a, m, x, y) != 1) return std::nullopt;
+    return mod_pos_ll(x, m);
+}
+
+static std::string linear_param_text(std::string const &v, long long a, long long b)
+{
+    if(b == 0) return v + " = " + std::to_string(a);
+    return v + " = " + std::to_string(a) + (b > 0 ? " + " : " - ") + std::to_string(std::llabs(b)) + "*n";
+}
+
+static std::optional<std::vector<std::string>> linear_diophantine_xy_route(std::string const &equation_text, std::vector<std::string> const &parts)
+{
+    if(parts.size() < 2 || compact_input_key(parts[1]) != "[x,y]") return std::nullopt;
+    bool natural = false, integer = false;
+    for(std::size_t i = 2; i < parts.size(); ++i) {
+        std::string k = compact_input_key(parts[i]);
+        if(k == "n" || k == "nat" || k == "natural" || k == "naturals") natural = true;
+        if(k == "z" || k == "int" || k == "integer" || k == "integers") integer = true;
+    }
+    if(!natural && !integer) return std::nullopt;
+    long long A = 0, B = 0, D = 0;
+    if(!read_linear_xy_equation(compact_input_key(equation_text), A, B, D)) return std::nullopt;
+    long long g = gcd_abs_ll(A, B);
+    std::vector<std::string> out;
+    out.push_back(std::to_string(A) + "*x + " + std::to_string(B) + "*y = " + std::to_string(D));
+    if(D % g != 0) {
+        out.push_back(std::to_string(g) + " does not divide " + std::to_string(D));
+        out.push_back("(x,y) = []");
+        return out;
+    }
+    long long a = A / g, b = B / g, d = D / g;
+    long long m = std::llabs(b);
+    auto inv = inv_mod_ll(a, m);
+    if(!inv) return std::nullopt;
+    long long x0 = mod_pos_ll(d * (*inv), m);
+    long long y0 = (D - A * x0) / B;
+    long long sx = m;
+    long long sy = -A * (B > 0 ? 1 : -1) / g;
+    out.push_back("mod " + std::to_string(std::llabs(B)) + ": " + std::to_string(A) + "*x = " + std::to_string(D));
+    out.push_back("x = " + std::to_string(x0) + " mod " + std::to_string(sx));
+    out.push_back(linear_param_text("x", x0, sx));
+    out.push_back(linear_param_text("y", y0, sy));
+    if(!natural) {
+        out.push_back("(x,y) = (" + linear_param_text("", x0, sx).substr(3) + "," + linear_param_text("", y0, sy).substr(3) + "), n in Z");
+        return out;
+    }
+    long long lo = ceil_div_ll(1 - x0, sx);
+    long long hi = sy < 0 ? floor_div_ll(y0 - 1, -sy) : std::numeric_limits<long long>::max() / 4;
+    if(sy > 0) lo = std::max(lo, ceil_div_ll(1 - y0, sy));
+    out.push_back("x > 0, y > 0");
+    if(lo > hi || hi - lo > 64) {
+        out.push_back("(x,y) = []");
+        return out;
+    }
+    std::string ns;
+    for(long long n = lo; n <= hi; ++n) {
+        if(n != lo) ns += ",";
+        ns += std::to_string(n);
+    }
+    out.push_back("n = " + ns);
+    std::string ans;
+    for(long long n = lo; n <= hi; ++n) {
+        if(n != lo) ans += ", ";
+        ans += "(" + std::to_string(x0 + sx * n) + "," + std::to_string(y0 + sy * n) + ")";
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
+}
+
+static bool read_v3_minus_c(std::string const &s, std::string const &var, long long &c)
+{
+    auto terms = split_signed_terms_key(s);
+    if(terms.size() != 2 || terms[0] != var + "^3") return false;
+    auto k = parse_i64_text(terms[1]);
+    if(!k || *k >= 0) return false;
+    c = -*k;
+    return true;
+}
+
+static bool read_cube_root_v_plus_c(std::string s, std::string const &var, long long &c)
+{
+    std::string const suf = "^(1/3)";
+    if(s.size() <= suf.size() || s.compare(s.size() - suf.size(), suf.size(), suf) != 0) return false;
+    s = s.substr(0, s.size() - suf.size());
+    while(s.size() > 2 && s.front() == '(' && s.back() == ')') s = s.substr(1, s.size() - 2);
+    auto terms = split_top_key(s, '+');
+    if(terms.size() != 2) return false;
+    if(terms[0] == var) {
+        auto k = parse_i64_text(terms[1]);
+        if(!k) return false;
+        c = *k;
+        return true;
+    }
+    if(terms[1] == var) {
+        auto k = parse_i64_text(terms[0]);
+        if(!k) return false;
+        c = *k;
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> cubic_minus_cube_root_proof_route(std::string const &equation_text, std::string const &var)
+{
+    auto sides = split_top_key(compact_input_key(equation_text), '=');
+    if(sides.size() != 2) return std::nullopt;
+    long long c1 = 0, c2 = 0;
+    if(!read_v3_minus_c(sides[0], var, c1) || !read_cube_root_v_plus_c(sides[1], var, c2) || c1 != c2) return std::nullopt;
+    long long r = 0;
+    bool ok = false;
+    for(long long k = -20; k <= 20; ++k) {
+        if(k * k * k - k == c1) { r = k; ok = true; break; }
+    }
+    if(!ok || std::llabs(r) < 2) return std::nullopt;
+    Rational h{r, 2};
+    h.normalize();
+    Rational k = r_sub(r_div(Rational{3 * r * r, 1}, Rational{4, 1}), Rational{1, 1});
+    std::vector<std::string> out;
+    out.push_back(var + "^3 - " + std::to_string(c1) + " = (" + var + " + " + std::to_string(c1) + ")^(1/3)");
+    out.push_back(var + "^3 - " + var + " - " + std::to_string(c1) + " = (" + var + " - " + std::to_string(r) + ")*(" + var + "^2 + " + std::to_string(r) + "*" + var + " + " + std::to_string(r * r - 1) + ")");
+    out.push_back(var + "^2 + " + std::to_string(r) + "*" + var + " + " + std::to_string(r * r - 1) + " = (" + var + " + " + format_rat_plain(h) + ")^2 + " + format_rat_plain(k) + " > 0");
+    out.push_back(var + " < " + std::to_string(r) + " => " + var + "^3 - " + std::to_string(c1) + " < " + var + " < (" + var + " + " + std::to_string(c1) + ")^(1/3)");
+    out.push_back(var + " > " + std::to_string(r) + " => " + var + "^3 - " + std::to_string(c1) + " > " + var + " > (" + var + " + " + std::to_string(c1) + ")^(1/3)");
+    out.push_back(var + " = " + std::to_string(r));
+    out.push_back(var + " = [" + std::to_string(r) + "]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> cardano_one_real_cubic_route(Arena &a, NodeId n, std::string const &var)
+{
+    auto p0 = poly_any_of(a, n, var);
+    if(!p0 || !p0->ok || p0->c.size() != 4 || p0->c[3].num != p0->c[3].den) return std::nullopt;
+    Rational A = p0->c[2], B = p0->c[1], C = p0->c[0];
+    Rational h = r_div(r_neg(A), Rational{3, 1});
+    Rational p = r_sub(B, r_div(r_mul(A, A), Rational{3, 1}));
+    Rational q = r_add(r_add(r_div(r_mul(Rational{2, 1}, r_pow_int(A, 3)), Rational{27, 1}), r_neg(r_div(r_mul(A, B), Rational{3, 1}))), C);
+    if(is_zero(p)) return std::nullopt;
+    Rational prod = r_neg(r_div(p, Rational{3, 1}));
+    Rational prod3 = r_pow_int(prod, 3);
+    Poly2 zp = primitive_poly2(Poly2{Rational{1, 1}, q, prod3, true});
+    auto zs = solve_poly2(a, zp, "z");
+    if(zs.size() != 2) return std::nullopt;
+    std::vector<Rational> z;
+    for(auto const &s : zs) {
+        auto r = parse_rational_text(sol_rhs(s));
+        if(!r || r->num <= 0) return std::nullopt;
+        z.push_back(*r);
+    }
+    std::string u1 = cube_root_rational_text(a, z[0]);
+    std::string u2 = cube_root_rational_text(a, z[1]);
+    std::string ht = format_rat_plain(h);
+    std::string ans = signed_sum_text(ht, signed_sum_text(u1, u2));
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, n) + " = 0");
+    out.push_back(var + " = u " + (h.num < 0 ? "- " + format_rat_plain(r_neg(h)) : "+ " + ht));
+    out.push_back("u^3 " + (p.num < 0 ? "- " + format_rat_plain(r_neg(p)) : "+ " + format_rat_plain(p)) + "*u " + (q.num < 0 ? "- " + format_rat_plain(r_neg(q)) : "+ " + format_rat_plain(q)) + " = 0");
+    out.push_back("u = A+B");
+    out.push_back("3*A*B = " + format_rat_plain(prod));
+    out.push_back("A^3+B^3 = " + format_rat_plain(r_neg(q)));
+    out.push_back(format_expr(a, poly2_to_node(a, zp, "z")) + " = 0, z = A^3 or B^3");
+    out.push_back("A^3 = " + format_rat_plain(z[0]) + ", B^3 = " + format_rat_plain(z[1]));
+    out.push_back("u = " + u1 + " + " + u2);
+    out.push_back(var + " = " + ans);
+    out.push_back(var + " = [" + ans + "]");
+    return out;
+}
+
 static std::string linear_u_text(Rational a, Rational b)
 {
     return format_rat_plain(a) + "*u " + (b.num < 0 ? "- " + format_rat_plain(r_neg(b)) : "+ " + format_rat_plain(b));
@@ -15247,6 +15493,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
         std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
+        if(auto dio = linear_diophantine_xy_route(equation_text, solve_parts)) return *dio;
         if(auto atan_pair = atan_difference_pair_route_key(compact_input_key(equation_text + "," + solve_var))) return *atan_pair;
         if(!text_has_variable_token(equation_text) && !has_symbols(arena, eq->lhs) && !has_symbols(arena, eq->rhs)) {
             auto cp = poly_of(arena, rearr, solve_var);
@@ -15353,10 +15600,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(auto sdr = square_difference_ratio_route(arena, lhs, rhs, solve_var)) return *sdr;
+        if(auto cbr = cubic_minus_cube_root_proof_route(equation_text, solve_var)) return *cbr;
         if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
         }
+        if(auto car = cardano_one_real_cubic_route(arena, rearr, solve_var)) return *car;
         if(auto rsp = reciprocal_same_power_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rsp;
         if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
         if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
