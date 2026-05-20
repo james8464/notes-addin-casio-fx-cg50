@@ -17655,7 +17655,10 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
             else
                 log_root = neg_node(a, log_root);
         }
-        NodeId x = casio::simplify(a, casio::div(a, sub_node(a, log_root, a.num(base_offset)), a.num(pos_base)));
+        NodeId x_num = neg_slope
+            ? casio::add(a, {log_root, a.num(base_offset)})
+            : sub_node(a, log_root, a.num(base_offset));
+        NodeId x = casio::simplify(a, casio::div(a, x_num, a.num(pos_base)));
         std::string xt = format_expr(a, x);
         if(xt.rfind("ln(1/", 0) == 0 && xt.size() > 6 && xt.back() == ')')
             xt = "-ln(" + xt.substr(5, xt.size() - 6) + ")";
