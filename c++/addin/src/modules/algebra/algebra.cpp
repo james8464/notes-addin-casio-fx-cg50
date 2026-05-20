@@ -6246,6 +6246,158 @@ static std::string system_pair_text(long long x, long long y)
     return "(" + std::to_string(x) + "," + std::to_string(y) + ")";
 }
 
+static bool extract_system_body_xy(std::string const &key, std::string &body)
+{
+    body = key;
+    std::string const pre = "solve([";
+    std::string const suf = "],[x,y])";
+    if(body.rfind(pre, 0) == 0 && body.size() > pre.size() + suf.size() &&
+       body.compare(body.size() - suf.size(), suf.size(), suf) == 0) {
+        body = body.substr(pre.size(), body.size() - pre.size() - suf.size());
+        return true;
+    }
+    if(body.rfind("[", 0) == 0 && body.size() > 8 && body.compare(body.size() - 7, 7, "],[x,y]") == 0) {
+        body = body.substr(1, body.size() - 8);
+        return true;
+    }
+    return false;
+}
+
+static bool read_xy_product_equation(std::string const &eq, Rational &A, Rational &B)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    auto read_inner = [&](std::string inner) -> bool {
+        if(inner.size() <= 3 || inner.compare(inner.size() - 3, 3, "-xy") != 0) return false;
+        auto a = parse_rational_key(inner.substr(0, inner.size() - 3));
+        if(!a) return false;
+        A = *a;
+        B = *rhs;
+        return true;
+    };
+    std::string const &l = sides[0];
+    if(l.rfind("xy(", 0) == 0 && l.back() == ')') return read_inner(l.substr(3, l.size() - 4));
+    if(l.size() > 4 && l.front() == '(' && l.compare(l.size() - 3, 3, ")xy") == 0)
+        return read_inner(l.substr(1, l.size() - 4));
+    return false;
+}
+
+static bool read_square_term_coeff(std::string const &term, char var, Rational &coef)
+{
+    std::string suffix;
+    suffix.push_back(var);
+    suffix += "^2";
+    if(term.size() < suffix.size() || term.compare(term.size() - suffix.size(), suffix.size(), suffix) != 0) return false;
+    std::string pre = term.substr(0, term.size() - suffix.size());
+    if(pre.empty()) {
+        coef = Rational{1, 1};
+        return true;
+    }
+    auto c = parse_rational_key(pre);
+    if(!c) return false;
+    coef = *c;
+    return true;
+}
+
+static bool read_xy_ellipse_equation(std::string const &eq, Rational &cx, Rational &cy, Rational &D)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    bool sx = false, sy = false;
+    for(auto const &t : terms) {
+        Rational c{0, 1};
+        if(read_square_term_coeff(t, 'x', c)) {
+            cx = c;
+            sx = true;
+        }
+        else if(read_square_term_coeff(t, 'y', c)) {
+            cy = c;
+            sy = true;
+        }
+    }
+    if(!sx || !sy || is_zero(cx) || is_zero(cy)) return false;
+    D = *rhs;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> xy_product_ellipse_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> A, B, cx, cy, D;
+    for(auto const &e : eqs) {
+        Rational p{0, 1}, q{0, 1}, r{0, 1};
+        if(read_xy_product_equation(e, p, q)) {
+            A = p;
+            B = q;
+        }
+        else if(read_xy_ellipse_equation(e, p, q, r)) {
+            cx = p;
+            cy = q;
+            D = r;
+        }
+    }
+    if(!A || !B || !cx || !cy || !D) return std::nullopt;
+
+    Poly2 up = primitive_poly2(Poly2{Rational{1, 1}, r_neg(*A), *B, true});
+    auto us = solve_poly2(a, up, "u");
+    if(us.empty()) return std::nullopt;
+    sort_solution_lines(a, us);
+
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back("u = xy");
+    out.push_back("u(" + format_rat_plain(*A) + "-u) = " + format_rat_plain(*B));
+    out.push_back(format_expr(a, poly2_to_node(a, up, "u")) + " = 0");
+    if(auto rr = rational_quadratic_roots(up))
+        out.push_back("Factor: " + quadratic_factor_text(a, up, "u") + " = 0");
+    out.push_back(format_rat_plain(*cx) + "*x^2 + " + format_rat_plain(*cy) + "*y^2 = " + format_rat_plain(*D));
+    out.push_back("y = u/x");
+    out.push_back(format_rat_plain(*cx) + "*x^2 + " + format_rat_plain(*cy) + "*u^2/x^2 = " + format_rat_plain(*D));
+    out.push_back("Multiply by x^2");
+
+    for(auto const &uline : us) {
+        auto uv = parse_rational_text(sol_rhs(uline));
+        if(!uv) continue;
+        out.push_back("u = " + format_rat_plain(*uv));
+        Poly2 zp = primitive_poly2(Poly2{*cx, r_neg(*D), r_mul(*cy, r_mul(*uv, *uv)), true});
+        out.push_back(format_expr(a, poly2_to_node(a, zp, "z")) + " = 0, z = x^2");
+        auto zs = solve_poly2(a, zp, "z");
+        sort_solution_lines(a, zs);
+        bool any = false;
+        for(auto const &zline : zs) {
+            auto zv = parse_rational_text(sol_rhs(zline));
+            if(!zv || zv->num <= 0) continue;
+            std::string xr = sqrt_rational_surd_text(a, *zv);
+            auto xrv = parse_rational_text(xr);
+            if(!xrv || is_zero(*xrv)) continue;
+            std::string y1 = format_rat_plain(r_div(*uv, *xrv));
+            std::string y2 = format_rat_plain(r_div(r_neg(*uv), *xrv));
+            out.push_back("x^2 = " + format_rat_plain(*zv));
+            pairs.push_back("(" + xr + "," + y1 + ")");
+            pairs.push_back("(-" + xr + "," + y2 + ")");
+            any = true;
+        }
+        if(!any) out.push_back("u = " + format_rat_plain(*uv) + " gives no real x");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
+}
+
 static bool read_difference_power_equation(std::string const &eq, int power, Rational &value)
 {
     auto sides = split_top_key(eq, '=');
@@ -6268,13 +6420,7 @@ static bool read_difference_power_equation(std::string const &eq, int power, Rat
 static std::optional<std::vector<std::string>> difference_cubes_system(Arena &a, std::string const &key)
 {
     std::string body = key;
-    std::string const pre = "solve([";
-    std::string const suf = "],[x,y])";
-    if(body.rfind(pre, 0) == 0 && body.size() > pre.size() + suf.size() &&
-       body.compare(body.size() - suf.size(), suf.size(), suf) == 0)
-        body = body.substr(pre.size(), body.size() - pre.size() - suf.size());
-    else if(body.rfind("[", 0) == 0 && body.size() > 8 && body.compare(body.size() - 7, 7, "],[x,y]") == 0)
-        body = body.substr(1, body.size() - 8);
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
     auto eqs = split_top_key(body, ',');
     if(eqs.size() != 2) return std::nullopt;
     std::optional<Rational> d, c;
@@ -12542,6 +12688,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
                 };
             }
+            if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
