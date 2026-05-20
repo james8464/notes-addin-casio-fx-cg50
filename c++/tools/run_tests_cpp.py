@@ -45,6 +45,7 @@ def main() -> int:
         ("trig_basis", [sys.executable, "c++/tools/check_trig_basis.py"]),
         ("feature_parity", [sys.executable, "c++/tools/check_feature_parity.py"]),
         ("host_smoke", [sys.executable, "c++/tools/golden/check_host_smoke.py"]),
+        ("device_scope", [sys.executable, "c++/tools/golden/check_device_scope.py"]),
         ("tests_txt_cases", [sys.executable, "c++/tools/golden/check_tests_txt_cases.py"]),
         ("expr_format", [sys.executable, "c++/tools/golden/compare_expr_format.py"]),
         ("suvat", [sys.executable, "c++/tools/golden/compare_suvat.py"]),

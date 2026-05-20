@@ -2590,11 +2590,8 @@ static bool solve_newton_call(const char *input, OutputLines &out)
 static bool solve_device_placeholder(const char *name, OutputLines &out)
 {
     FixedString<96> &line = out.next();
-    line.append("Route for ");
     line.append(name);
-    line.append(".");
-    out.add("Use standard algebra steps, then verify by substitution.");
-    out.add("Answer: exact result from full CAS path.");
+    line.append(": unsupported on CG50 route.");
     return true;
 }
 

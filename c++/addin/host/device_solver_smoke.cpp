@@ -27,10 +27,43 @@ bool check(casio::device::Module module, const char *input, const char *expected
     return true;
 }
 
+bool module_from_name(const char *name, casio::device::Module &out)
+{
+    if(std::strcmp(name, "shell") == 0) out = casio::device::Module::Shell;
+    else if(std::strcmp(name, "simplify") == 0) out = casio::device::Module::Simplify;
+    else if(std::strcmp(name, "algebra") == 0) out = casio::device::Module::Algebra;
+    else if(std::strcmp(name, "derive") == 0) out = casio::device::Module::Derive;
+    else if(std::strcmp(name, "integrate") == 0) out = casio::device::Module::Integrate;
+    else if(std::strcmp(name, "trig") == 0) out = casio::device::Module::Trig;
+    else if(std::strcmp(name, "suvat") == 0) out = casio::device::Module::Suvat;
+    else if(std::strcmp(name, "stats") == 0) out = casio::device::Module::Stats;
+    else return false;
+    return true;
+}
+
+int run_cli(int argc, char **argv)
+{
+    if(argc < 3) {
+        std::cerr << "usage: device_solver_smoke <module> <input>\n";
+        return 2;
+    }
+    casio::device::Module module = casio::device::Module::Shell;
+    if(!module_from_name(argv[1], module)) {
+        std::cerr << "unknown module: " << argv[1] << "\n";
+        return 2;
+    }
+    casio::device::OutputLines lines;
+    bool ok = casio::device::solve(module, argv[2], lines);
+    for(int i = 0; i < lines.count(); i++) std::cout << lines.line(i) << "\n";
+    return ok ? 0 : 1;
+}
+
 } // namespace
 
-int main()
+int main(int argc, char **argv)
 {
+    if(argc > 1) return run_cli(argc, argv);
+
     bool ok = true;
     ok = check(casio::device::Module::Simplify, "2x+3-x+4", "Answer: x + 7") && ok;
     ok = check(casio::device::Module::Simplify, "x^2+2x+x^2", "Answer: 2x^2 + 2x") && ok;
