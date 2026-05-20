@@ -1710,6 +1710,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Domain: no real x"],
         ["Domain: all real x", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(ln(e*x^2)*ln(x)=1,x)",
+        ["u = ln(x)", "u + 2*u^2 - 1 = 0", "u = 1/2", "u = -1", "x = [sqrt(e), e^(-1)]"],
+        ["x ~=", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^(2*x-2)-7*e^(x-1)+10=0,x)",
+        ["u = e^(x - 1), u > 0", "u^2 - 7*u + 10 = 0", "x = [ln(2) + 1, ln(5) + 1]"],
+        ["x ~=", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(6*e^(3*x)+1=7*e^(2*x),x)",
+        ["u = e^(x), u > 0", "6*u^3 - 7*u^2 + 1 = 0", "x = [ln(1/2), 0]"],
+        ["x ~=", "ERR:"],
+    ),
 ]
 
 
