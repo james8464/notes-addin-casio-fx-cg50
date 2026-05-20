@@ -10641,10 +10641,32 @@ static std::optional<std::string> sqrt_linear_interval_range(
 )
 {
     if(lo.empty() || hi.empty()) return std::nullopt;
-    Node const &rn = a.get(n);
+    NodeId core = n;
+    Rational scale{1, 1}, shift{0, 1};
+    {
+        NodeId inner = 0;
+        Rational m, b;
+        if(affine_wrapper(a, n, inner, m, b) && inner != n) {
+            Node const &in = a.get(inner);
+            if(in.kind == NodeKind::Fn && in.fkind == FnKind::Sqrt) {
+                core = inner;
+                scale = m;
+                shift = b;
+            }
+        }
+    }
+    Node const &rn = a.get(core);
     if(rn.kind != NodeKind::Fn || rn.fkind != FnKind::Sqrt) return std::nullopt;
     auto lp = poly_of(a, rn.a, var);
     if(!lp || !lp->ok || !is_zero(lp->a2) || is_zero(lp->a1)) return std::nullopt;
+    auto value_node = [&](Rational rad) -> NodeId {
+        NodeId root = exact_eval_simplify(a, casio::fn(a, "sqrt", a.num(rad)));
+        return exact_eval_simplify(a, casio::add(a, {
+            casio::mul(a, {a.num(scale), root}),
+            a.num(shift)
+        }));
+    };
+    auto value_text = [&](Rational rad) -> std::string { return format_expr(a, value_node(rad)); };
 
     auto x0 = parse_rational_text(lo);
     auto x1 = parse_rational_text(hi);
@@ -10655,9 +10677,13 @@ static std::optional<std::string> sqrt_linear_interval_range(
         Rational y_end = r_add(r_mul(lp->a1, endpoint), lp->a0);
         if(y_end.num < 0) return std::nullopt;
         bool grows_up = hi_inf ? (lp->a1.num > 0) : (lp->a1.num < 0);
-        steps.push_back("Endpoint gives y = " + sqrt_bound_text(a, y_end) + ".");
-        if(grows_up) return "y >= " + sqrt_bound_text(a, y_end);
-        return "0 <= y <= " + sqrt_bound_text(a, y_end);
+        steps.push_back("Endpoint gives y = " + value_text(y_end) + ".");
+        if(grows_up) return scale.num > 0 ? "y >= " + value_text(y_end) : "y <= " + value_text(y_end);
+        std::string a0 = value_text(Rational{0, 1}), a1 = value_text(y_end);
+        auto v0 = eval_node_env(a, value_node(Rational{0, 1}), {});
+        auto v1 = eval_node_env(a, value_node(y_end), {});
+        if(v0 && v1 && *v0 <= *v1) return a0 + " <= y <= " + a1;
+        return a1 + " <= y <= " + a0;
     }
     if(!x0 || !x1) return std::nullopt;
 
@@ -10675,9 +10701,10 @@ static std::optional<std::string> sqrt_linear_interval_range(
     }
     if(hi_inner.num < 0) return std::nullopt;
 
-    steps.push_back("Evaluate endpoints: y(" + format_rat(a, left) + ")=" + sqrt_bound_text(a, y_left) +
-                    ", y(" + format_rat(a, right) + ")=" + sqrt_bound_text(a, y_right) + ".");
-    return sqrt_bound_text(a, lo_inner) + " <= y <= " + sqrt_bound_text(a, hi_inner);
+    steps.push_back("Evaluate endpoints: y(" + format_rat(a, left) + ")=" + value_text(y_left) +
+                    ", y(" + format_rat(a, right) + ")=" + value_text(y_right) + ".");
+    if(scale.num > 0) return value_text(lo_inner) + " <= y <= " + value_text(hi_inner);
+    return value_text(hi_inner) + " <= y <= " + value_text(lo_inner);
 }
 
 static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId n)

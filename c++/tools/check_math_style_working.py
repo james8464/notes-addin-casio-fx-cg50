@@ -455,6 +455,12 @@ CASES = [
         ("Range: y >= 0",),
     ),
     (
+        "affine sqrt interval range",
+        ["--alg", "range(sqrt(x)-3,x,0,9)"],
+        ("y(0) = -3, y(9) = 0", "Range: -3 <= y <= 0"),
+        ("unrestricted", "Range: y >= 0"),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
