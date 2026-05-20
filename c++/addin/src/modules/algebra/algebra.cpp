@@ -372,6 +372,28 @@ static bool is_e_const_node(Arena &a, NodeId n)
            (x.kind == NodeKind::Sym && x.text == "e");
 }
 
+static std::optional<std::pair<long long, long long>> pure_power_i64(long long n)
+{
+    if(n <= 0) return std::nullopt;
+    for(long long p = 2; p * p <= n; ++p) {
+        if(n % p) continue;
+        long long c = 0;
+        while(n % p == 0) {
+            n /= p;
+            ++c;
+        }
+        if(n == 1 && c > 1) return std::make_pair(p, c);
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
+static NodeId ln_power_term(Arena &a, long long base, long long exp)
+{
+    NodeId l = casio::fn(a, "log", casio::num(a, base));
+    return exp == 1 ? l : casio::mul(a, {casio::num(a, exp), l});
+}
+
 static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId arg)
 {
     std::string k = format_expr(a, arg);
@@ -456,7 +478,14 @@ static std::optional<NodeId> exact_ln_factor_node(Arena &a, NodeId n)
     Node const &x = a.get(n);
     if(is_e_const_node(a, n)) return casio::num(a, 1);
     if(x.kind == NodeKind::Num && x.num.num == x.num.den) return casio::num(a, 0);
-    if(x.kind == NodeKind::Num && x.num.num > 0) return casio::fn(a, "log", n);
+    if(x.kind == NodeKind::Num && x.num.num > 0) {
+        auto u = pure_power_i64(x.num.num);
+        auto v = pure_power_i64(x.num.den);
+        if(x.num.den == 1 && u) return ln_power_term(a, u->first, u->second);
+        if(x.num.num == 1 && v) return casio::neg(a, ln_power_term(a, v->first, v->second));
+        if(u && v) return casio::add(a, {ln_power_term(a, u->first, u->second), casio::neg(a, ln_power_term(a, v->first, v->second))});
+        return casio::fn(a, "log", n);
+    }
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
         auto u = exact_ln_factor_node(a, x.a);
         if(!u) return std::nullopt;

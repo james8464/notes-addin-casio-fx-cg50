@@ -1758,6 +1758,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["4/3*y + 2*ln(3)/2 - 8 = 0", "y = - 3/2*ln(3)/2 + 6"],
         ["ERR:"],
     ),
+    (
+        "alg",
+        "solve(e^(4*x)=16^(1/ln(2)),x)",
+        ["4*x = 4", "x = 1"],
+        ["x ~=", "ERR:"],
+    ),
 ]
 
 
