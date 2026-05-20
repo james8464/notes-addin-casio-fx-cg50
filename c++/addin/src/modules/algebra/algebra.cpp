@@ -1767,8 +1767,13 @@ static std::optional<std::string> linear_fractional_interval_range(
 )
 {
     if(lo.empty() || hi.empty()) return std::nullopt;
-    auto x0 = parse_rational_text(lo);
-    if(!x0) return std::nullopt;
+    std::string lo_key;
+    for(char ch : lo) {
+        if(!std::isspace(static_cast<unsigned char>(ch))) lo_key.push_back((char)std::tolower((unsigned char)ch));
+    }
+    bool lo_ninf = lo_key == "-inf" || lo_key == "-infinity";
+    auto x0 = lo_ninf ? std::optional<Rational>{} : parse_rational_text(lo);
+    if(!lo_ninf && !x0) return std::nullopt;
     std::string hi_key;
     for(char ch : hi) {
         if(!std::isspace(static_cast<unsigned char>(ch))) hi_key.push_back((char)std::tolower((unsigned char)ch));
@@ -1782,6 +1787,25 @@ static std::optional<std::string> linear_fractional_interval_range(
     Rational det = r_sub(r_mul(A, D), r_mul(B, C));
     if(is_zero(det)) return std::nullopt;
     Rational pole = r_div(r_neg(D), C);
+    if(lo_ninf) {
+        if(!x1) return std::nullopt;
+        Rational asym = r_div(A, C);
+        if(r_cmp(pole, *x1) < 0) return std::nullopt;
+        if(r_cmp(pole, *x1) == 0) {
+            Rational sample_x = r_add(*x1, Rational{-1, 1});
+            Rational ys = r_div(r_add(r_mul(A, sample_x), B), r_add(r_mul(C, sample_x), D));
+            steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+            steps.push_back("Horizontal asymptote y = " + rat_node_text(a, asym) + ".");
+            return r_cmp(ys, asym) < 0 ? "y < " + rat_node_text(a, asym)
+                                       : "y > " + rat_node_text(a, asym);
+        }
+        Rational y1 = r_div(r_add(r_mul(A, *x1), B), r_add(r_mul(C, *x1), D));
+        int cmp = r_cmp(y1, asym);
+        if(cmp == 0) return std::nullopt;
+        steps.push_back("Endpoint gives y = " + rat_node_text(a, y1) + "; horizontal asymptote y = " + rat_node_text(a, asym) + ".");
+        return cmp > 0 ? rat_node_text(a, asym) + " < y " + (hi_open ? "< " : "<= ") + rat_node_text(a, y1)
+                       : rat_node_text(a, y1) + (hi_open ? " < y < " : " <= y < ") + rat_node_text(a, asym);
+    }
     if(x1) {
         Rational lo_r = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
         Rational hi_r = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;

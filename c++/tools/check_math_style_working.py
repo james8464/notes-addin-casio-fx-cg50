@@ -479,6 +479,12 @@ CASES = [
         ("Range: y = 1/(x + 1)", "0 < y <= 1/5"),
     ),
     (
+        "left open asymptote range",
+        ["--alg", "range((x-5)/(x-4),x<4)"],
+        ("Vertical asymptote x = 4", "Horizontal asymptote y = 1", "Range: y > 1"),
+        ("unrestricted",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
