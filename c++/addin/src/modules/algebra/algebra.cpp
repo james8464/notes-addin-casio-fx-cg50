@@ -14419,6 +14419,34 @@ static std::optional<std::vector<std::string>> exp_const_solve_route(
     return run(rhs, lhs);
 }
 
+static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
+    Arena &a, NodeId residual, std::string const &var, std::vector<std::string> out)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, residual, terms);
+    std::optional<std::pair<Rational, NodeId>> ce;
+    Rational c{0, 1};
+    for(NodeId t : terms) {
+        if(auto e = coeff_exp_arg(a, t)) {
+            if(ce) return std::nullopt;
+            ce = *e;
+        }
+        else if(auto n = as_num(a, t)) c = r_add(c, *n);
+        else return std::nullopt;
+    }
+    if(!ce || is_zero(ce->first)) return std::nullopt;
+    Rational target = r_div(r_neg(c), ce->first);
+    if(target.num <= 0) return std::nullopt;
+    auto p = poly_of(a, ce->second, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    NodeId logt = casio::fn(a, "log", casio::num(a, target.num, target.den));
+    NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
+    out.push_back("e^(" + format_expr(a, ce->second) + ") = " + format_rat_plain(target));
+    out.push_back(format_expr(a, ce->second) + " = ln(" + format_rat_plain(target) + ")");
+    out.push_back(var + " = " + format_expr(a, exact));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> equal_exp_solve_route(
     Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
 {
@@ -16057,6 +16085,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto nef = nonzero_exp_product_route(arena, rearr, solve_var, out)) return *nef;
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
+        if(auto aec = affine_exp_const_solve_route(arena, rearr, solve_var, out)) return *aec;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
