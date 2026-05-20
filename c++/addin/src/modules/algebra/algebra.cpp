@@ -483,6 +483,60 @@ static bool affine_wrapper(Arena &a, NodeId expr, NodeId &inner, Rational &m, Ra
     return seen && !is_zero(m);
 }
 
+static bool exp_factor(Arena &a, NodeId expr, NodeId &exponent)
+{
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) {
+        exponent = x.a;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) {
+            exponent = x.b;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool contains_var_simple(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return x.text == var;
+    if(x.kind == NodeKind::Fn) return contains_var_simple(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div)
+        return contains_var_simple(a, x.a, var) || contains_var_simple(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) if(contains_var_simple(a, k, var)) return true;
+    }
+    return false;
+}
+
+static bool const_times_exp(Arena &a, NodeId expr, NodeId &coef, NodeId &exponent)
+{
+    if(exp_factor(a, expr, exponent)) {
+        coef = casio::num(a, 1);
+        return true;
+    }
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Mul) return false;
+    std::vector<NodeId> cparts;
+    bool saw_exp = false;
+    for(NodeId k : x.kids) {
+        NodeId ex = 0;
+        if(!saw_exp && exp_factor(a, k, ex)) {
+            exponent = ex;
+            saw_exp = true;
+        }
+        else if(!contains_var_simple(a, k, "x")) cparts.push_back(k);
+        else return false;
+    }
+    if(!saw_exp) return false;
+    coef = cparts.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, cparts));
+    return true;
+}
+
 static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
 {
     if(auto inv = inverse_mobius(a, expr)) return inv;
@@ -499,6 +553,15 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
     Node const &x = a.get(expr);
     NodeId y = casio::sym(a, "x");
 
+    NodeId exp_coef = 0, exp_power = 0;
+    if(const_times_exp(a, expr, exp_coef, exp_power)) {
+        auto p = poly_of(a, exp_power, "x");
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+            NodeId logy = casio::fn(a, "log", casio::div(a, y, exp_coef));
+            NodeId top = casio::add(a, {logy, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+            return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+        }
+    }
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
         auto p = poly_of(a, x.a, "x");
         if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
@@ -525,6 +588,17 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
                 NodeId ey = casio::power(a, casio::constant_e(a), casio::div(a, y, casio::num(a, *exp)));
                 NodeId top = casio::add(a, {ey, casio::neg(a, casio::num(a, p2->a0.num, p2->a0.den))});
                 return casio::simplify(a, casio::div(a, top, casio::num(a, p2->a1.num, p2->a1.den)));
+            }
+        }
+        if(arg.kind == NodeKind::Div && !contains_var_simple(a, arg.a, "x")) {
+            auto p = poly_of(a, arg.b, "x");
+            if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
+                NodeId ey = casio::power(a, casio::constant_e(a), y);
+                NodeId top = casio::add(a, {
+                    casio::div(a, arg.a, ey),
+                    casio::neg(a, casio::num(a, p->a0.num, p->a0.den))
+                });
+                return casio::simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
             }
         }
     }
@@ -12166,6 +12240,107 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     std::vector<std::string> out
 );
 
+static bool shifted_exp_base(Arena &a, NodeId n, NodeId arg, Rational &shift)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    bool saw_exp = false, saw_const = false;
+    for(NodeId k : x.kids) {
+        if(auto e = exp_like_arg(a, k); e && casio::same_by_sig(a, *e, arg)) saw_exp = true;
+        else if(auto r = as_num(a, k); r) {
+            shift = *r;
+            saw_const = true;
+        }
+        else return false;
+    }
+    return saw_exp && saw_const;
+}
+
+static bool exp_over_shift_square(Arena &a, NodeId n, NodeId &arg, Rational &shift)
+{
+    auto read_pow = [&](NodeId id, NodeId want_arg, Rational &s) {
+        Node const &p = a.get(id);
+        if(p.kind != NodeKind::Pow) return false;
+        auto e = as_num(a, p.b);
+        if(!e || e->num != -2 || e->den != 1) return false;
+        return shifted_exp_base(a, p.a, want_arg, s);
+    };
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        if(auto e = exp_like_arg(a, x.kids[0]); e && read_pow(x.kids[1], *e, shift)) {
+            arg = *e;
+            return true;
+        }
+        if(auto e = exp_like_arg(a, x.kids[1]); e && read_pow(x.kids[0], *e, shift)) {
+            arg = *e;
+            return true;
+        }
+    }
+    if(x.kind == NodeKind::Div) {
+        if(auto e = exp_like_arg(a, x.a)) {
+            Node const &d = a.get(x.b);
+            if(d.kind == NodeKind::Pow) {
+                auto p = as_num(a, d.b);
+                if(p && p->num == 2 && p->den == 1 && shifted_exp_base(a, d.a, *e, shift)) {
+                    arg = *e;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> exp_shift_square_quotient_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    auto r = as_num(a, rhs);
+    if(!r || r->num != r->den) return std::nullopt;
+    NodeId arg = 0;
+    Rational shift{0, 1};
+    if(!exp_over_shift_square(a, lhs, arg, shift)) return std::nullopt;
+    auto p = poly_of(a, arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    std::string uvar = var == "u" ? "v" : "u";
+    out.push_back(uvar + " = e^(" + format_expr(a, arg) + "), " + uvar + " > 0");
+    std::string den = uvar + (shift.num < 0 ? " - " + format_expr(a, a.num(r_neg(shift))) : " + " + format_expr(a, a.num(shift)));
+    out.push_back(uvar + "/(" + den + ")^2 = 1");
+    out.push_back(uvar + " = (" + den + ")^2");
+    Poly2 up{Rational{1, 1}, r_sub(r_mul(Rational{2, 1}, shift), Rational{1, 1}), r_mul(shift, shift), true};
+    out.push_back(format_expr(a, poly2_to_node(a, up, uvar)) + " = 0");
+    auto us = solve_poly2(a, up, uvar);
+    std::vector<std::string> xraw;
+    for(auto const &line : us) {
+        auto uv = parse_rational_text(sol_rhs(line));
+        if(!uv || uv->num <= 0) {
+            out.push_back(sol_rhs(line) + " rejected, " + uvar + " > 0");
+            continue;
+        }
+        Rational pole = r_neg(shift);
+        if(r_cmp(*uv, pole) == 0) {
+            out.push_back(sol_rhs(line) + " rejected, denominator = 0");
+            continue;
+        }
+        out.push_back(line);
+        NodeId logu = (uv->num == uv->den) ? zero_node(a) : casio::fn(a, "log", a.num(*uv));
+        NodeId ans = casio::simplify(a, casio::div(a, sub_node(a, logu, a.num(p->a0)), a.num(p->a1)));
+        xraw.push_back(var + " = " + format_expr(a, ans));
+    }
+    if(xraw.empty()) out.push_back(var + " = []");
+    else {
+        std::sort(xraw.begin(), xraw.end());
+        for(auto const &x : xraw) out.push_back(x);
+        out.push_back(solution_list_line(var, xraw));
+    }
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_linear_quotient_exact_route(Arena &a, NodeId rearr, std::string const &var)
 {
     std::vector<NodeId> terms;
@@ -16446,6 +16621,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(auto ref = rational_exp_common_factor_route(arena, rearr, solve_var, out)) return *ref;
+        if(auto ess = exp_shift_square_quotient_route(arena, lhs, rhs, solve_var, out)) return *ess;
         if(append_common_den_rational_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(auto nef = nonzero_exp_product_route(arena, rearr, solve_var, out)) return *nef;
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
