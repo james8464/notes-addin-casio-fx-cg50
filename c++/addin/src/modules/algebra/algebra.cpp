@@ -4374,6 +4374,16 @@ static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::s
 {
     double lo = lo_in.value_or(-100.0);
     double hi = hi_in.value_or(100.0);
+    if(!std::isfinite(lo) && !std::isfinite(hi)) {
+        lo = -100.0;
+        hi = 100.0;
+    }
+    else if(std::isfinite(lo) && !std::isfinite(hi)) {
+        hi = lo + 200.0;
+    }
+    else if(!std::isfinite(lo) && std::isfinite(hi)) {
+        lo = hi - 200.0;
+    }
     if(!(lo < hi)) return {};
     int steps = 4000;
     double step = (hi - lo) / steps;
@@ -19431,8 +19441,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         symq->c,
                         casio::neg(arena, casio::power(arena, half_b, casio::num(arena, 2)))
                     }));
+                    NodeId square = casio::power(arena, casio::add(arena, {casio::sym(arena, var), half_b}), casio::num(arena, 2));
+                    NodeId completed = casio::simplify(arena, casio::add(arena, {square, y0}));
                     range_answer = "y >= " + format_expr(arena, y0);
-                    steps.push_back("Complete the square to find the minimum.");
+                    steps.push_back(format_expr(arena, n) + " = " + format_expr(arena, completed));
+                    steps.push_back(format_expr(arena, square) + " >= 0");
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto trig_range = direct_trig_range(arena, n, steps)) {
