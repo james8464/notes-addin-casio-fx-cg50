@@ -4337,6 +4337,54 @@ next_root:
     return out;
 }
 
+static std::vector<std::string> solve_poly_any_raw(Arena &a, PolyAny p, std::string const &var, std::vector<std::string> &factor_lines)
+{
+    std::vector<std::string> raw;
+    std::vector<Rational> roots;
+    while(p.c.size() > 3) {
+        auto lead = as_int64(p.c.back());
+        auto cnst = as_int64(p.c.front());
+        if(!lead || !cnst) break;
+        bool found = false;
+        for(long long pp : divisors_i64(*cnst)) {
+            for(long long qq : divisors_i64(*lead)) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational r{sgn * pp, qq};
+                    r.normalize();
+                    if(!is_zero(poly_any_eval(p, r))) continue;
+                    raw.push_back(var + " = " + format_rat(a, r));
+                    roots.push_back(r);
+                    divide_linear(p, r);
+                    found = true;
+                    goto next_root;
+                }
+            }
+        }
+next_root:
+        if(!found) break;
+    }
+    if(p.c.size() == 3) {
+        Poly2 q{p.c[2], p.c[1], p.c[0], true};
+        if(!roots.empty()) {
+            std::string factored;
+            for(Rational r : roots) factored += linear_factor_from_root(a, var, r) + "*";
+            factored += "(" + format_expr(a, poly2_to_node(a, q, var)) + ")";
+            factor_lines.push_back(factored + " = 0");
+            factor_lines.push_back("remaining quadratic: " + format_expr(a, poly2_to_node(a, q, var)) + " = 0");
+        }
+        auto qs = solve_poly2(a, q, var);
+        raw.insert(raw.end(), qs.begin(), qs.end());
+    }
+    else if(p.c.size() == 1 && !roots.empty()) {
+        std::string factored = is_zero(r_sub(p.c[0], Rational{1, 1})) ? "" : format_rat(a, p.c[0]) + "*";
+        for(Rational r : roots) factored += linear_factor_from_root(a, var, r) + "*";
+        if(!factored.empty() && factored.back() == '*') factored.pop_back();
+        if(!factored.empty()) factor_lines.push_back(factored + " = 0");
+    }
+    return raw;
+}
+
 static std::string scaled_npi(Arena &a, Rational scale)
 {
     scale.normalize();
@@ -4932,12 +4980,12 @@ static std::string join_solutions(std::vector<std::string> const &sols)
     return out;
 }
 
-static void append_rejected_by_domain(std::vector<std::string> &out,
-                                      std::string const &var,
-                                      std::vector<std::string> const &raw,
-                                      std::vector<std::string> const &valid)
+static void append_rejected_roots(std::vector<std::string> &out,
+                                  std::string const &var,
+                                  std::vector<std::string> const &raw,
+                                  std::vector<std::string> const &valid,
+                                  std::string const &why)
 {
-    if(valid.size() == raw.size()) return;
     std::vector<std::string> rejected;
     for(auto const &r : raw) {
         bool keep = false;
@@ -4947,9 +4995,25 @@ static void append_rejected_by_domain(std::vector<std::string> &out,
                 break;
             }
         }
-        if(!keep) rejected.push_back(r);
+        if(keep) continue;
+        bool seen = false;
+        for(auto const &e : rejected) {
+            if(sol_rhs(e) == sol_rhs(r)) {
+                seen = true;
+                break;
+            }
+        }
+        if(!seen) rejected.push_back(r);
     }
-    if(!rejected.empty()) out.push_back(var + " = " + join_solutions(rejected) + " rejected by domain");
+    if(!rejected.empty()) out.push_back(var + " = " + join_solutions(rejected) + " rejected by " + why);
+}
+
+static void append_rejected_by_domain(std::vector<std::string> &out,
+                                      std::string const &var,
+                                      std::vector<std::string> const &raw,
+                                      std::vector<std::string> const &valid)
+{
+    append_rejected_roots(out, var, raw, valid, "domain");
 }
 
 static void append_kept_denominator_check(Arena &a,
@@ -9449,6 +9513,74 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
     append_rejected_by_domain(out, var, raw, valid);
     out.push_back(solution_list_line(var, valid));
+    return out;
+}
+
+static bool sqrt_plus_affine_side(Arena &a, NodeId n, std::string const &var, NodeId &rad, NodeId &rest)
+{
+    std::vector<NodeId> terms, other;
+    add_terms_flat(a, n, terms);
+    bool seen = false;
+    for(NodeId t : terms) {
+        NodeId r = 0;
+        Rational c{1, 1};
+        if(sqrt_term_coeff(a, t, r, c)) {
+            if(seen || r_cmp(c, Rational{1, 1}) != 0) return false;
+            rad = r;
+            seen = true;
+        }
+        else other.push_back(t);
+    }
+    if(!seen) return false;
+    rest = other.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, other));
+    auto p = poly_of(a, rest, var);
+    return p && p->ok && is_zero(p->a2);
+}
+
+static std::optional<std::vector<std::string>> sqrt_plus_affine_equals_sqrt_plus_affine_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    NodeId A = 0, B = 0, P = 0, Q = 0;
+    if(!sqrt_plus_affine_side(a, lhs, var, A, P) || !sqrt_plus_affine_side(a, rhs, var, B, Q)) return std::nullopt;
+    NodeId L = casio::simplify(a, casio::add(a, {Q, casio::neg(a, P)}));
+    auto lp = poly_of(a, L, var);
+    if(!lp || !lp->ok || is_zero(lp->a1) || !is_zero(lp->a2)) return std::nullopt;
+    NodeId L2 = casio::simplify(a, casio::power(a, L, casio::num(a, 2)));
+    NodeId iso = casio::simplify(a, casio::add(a, {A, casio::neg(a, L2), casio::neg(a, B)}));
+    NodeId eq = casio::simplify(a, casio::add(a, {
+        casio::power(a, iso, casio::num(a, 2)),
+        casio::neg(a, casio::mul(a, {casio::num(a, 4), L2, B}))
+    }));
+    auto p = poly_any_of(a, eq, var);
+    if(!p || !p->ok || p->c.size() < 2 || p->c.size() > 5) return std::nullopt;
+    std::vector<std::string> factor_lines;
+    auto raw = solve_poly_any_raw(a, *p, var, factor_lines);
+    if(raw.empty()) return std::nullopt;
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    sort_solution_lines(a, raw);
+    sort_solution_lines(a, valid);
+    if(valid.empty()) return std::nullopt;
+
+    std::string At = format_expr(a, A), Bt = format_expr(a, B), Lt = format_expr(a, L), It = format_expr(a, iso);
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back("Domain: " + At + " >= 0");
+    out.push_back("Domain: " + Bt + " >= 0");
+    out.push_back("sqrt(" + At + ") = " + Lt + " + sqrt(" + Bt + ")");
+    out.push_back(At + " = (" + Lt + " + sqrt(" + Bt + "))^2");
+    out.push_back(It + " = 2*(" + Lt + ")*sqrt(" + Bt + ")");
+    out.push_back("(" + It + ")^2 = 4*(" + Lt + ")^2*(" + Bt + ")");
+    out.push_back("expand => " + format_expr(a, poly_any_to_node(a, *p, var)) + " = 0");
+    for(auto const &line : factor_lines) out.push_back(line);
+    for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+    append_rejected_roots(out, var, raw, valid, "substitution");
+    out.push_back(solution_list_line(var, valid));
+    append_numeric_3dp(a, out, var, valid);
     return out;
 }
 
@@ -13956,6 +14088,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
             if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
+            if(auto spaff = sqrt_plus_affine_equals_sqrt_plus_affine_route(arena, lhs, rhs, rearr, solve_var)) return *spaff;
             if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
