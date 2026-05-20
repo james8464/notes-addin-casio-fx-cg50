@@ -214,6 +214,8 @@ static NodeId poly2_to_node(Arena &a, Poly2 const &p, std::string const &var)
     return casio::simplify(a, casio::add(a, terms));
 }
 
+static std::string sqrt_rational_surd_text(Arena &a, Rational r);
+
 struct RatPoly2
 {
     Poly2 num;
@@ -3551,15 +3553,14 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     if(disc.num < 0) {
         Rational abs_disc = disc;
         abs_disc.num = -abs_disc.num;
-        NodeId sqrt_abs_disc = a.fn(FnKind::Sqrt, a.num(abs_disc));
-        NodeId two_a = a.num(r_mul(Rational{2, 1}, p.a2));
-        NodeId minus_b = a.num(r_neg(p.a1));
-        std::string real = format_expr(a, minus_b);
-        std::string imag = format_expr(a, sqrt_abs_disc);
-        std::string den = format_expr(a, two_a);
+        Rational den = r_mul(Rational{2, 1}, p.a2);
+        Rational real_rat = r_div(r_neg(p.a1), den);
+        Rational imag_sq = r_div(abs_disc, r_mul(den, den));
+        std::string real = format_expr(a, a.num(real_rat));
+        std::string imag = sqrt_rational_surd_text(a, imag_sq);
         return {
-            var + " = (" + real + " + " + imag + "*i)/" + den,
-            var + " = (" + real + " - " + imag + "*i)/" + den,
+            var + " = " + real + " + " + imag + "*i",
+            var + " = " + real + " - " + imag + "*i",
         };
     }
 
@@ -4280,18 +4281,59 @@ next_root:
     }
     else if(p.c.size() != 1) return std::nullopt;
     if(raw.empty()) return std::nullopt;
-    raw.erase(std::remove_if(raw.begin(), raw.end(), [](std::string const &s) {
-        return s.find("*i") != std::string::npos;
-    }), raw.end());
-    if(raw.empty()) return std::nullopt;
-    auto sols = filter_real_solutions(a, n, var, raw, lo, hi);
-    std::sort(sols.begin(), sols.end(), [&](std::string const &u, std::string const &v) {
+    std::vector<std::string> sols;
+    if(lo || hi) {
+        raw.erase(std::remove_if(raw.begin(), raw.end(), [](std::string const &s) {
+            return s.find("*i") != std::string::npos;
+        }), raw.end());
+        if(raw.empty()) return std::nullopt;
+        sols = filter_real_solutions(a, n, var, raw, lo, hi);
+    }
+    else sols = raw;
+    std::stable_sort(sols.begin(), sols.end(), [&](std::string const &u, std::string const &v) {
+        bool ui = u.find("*i") != std::string::npos, vi = v.find("*i") != std::string::npos;
+        if(ui != vi) return !ui;
         auto a0 = solution_line_value(a, u), b0 = solution_line_value(a, v);
         if(a0 && b0) return *a0 < *b0;
         return u < v;
     });
-    append_answer(out, var, sols);
-    append_numeric_3dp(a, out, var, sols);
+    std::vector<std::string> uniq;
+    std::vector<double> uniq_vals;
+    for(auto const &s : sols) {
+        auto v = solution_line_value(a, s);
+        bool seen = false;
+        if(v) {
+            for(double u : uniq_vals)
+                if(std::fabs(u - *v) < 1e-9) seen = true;
+        }
+        else {
+            for(auto const &u : uniq)
+                if(u == s) seen = true;
+        }
+        if(seen) continue;
+        uniq.push_back(s);
+        if(v) uniq_vals.push_back(*v);
+    }
+    sols = uniq;
+    bool has_complex = false;
+    for(auto const &s : sols) has_complex = has_complex || s.find("*i") != std::string::npos;
+    if(has_complex) {
+        std::vector<std::string> real_sols;
+        for(auto const &s : sols) {
+            if(s.find("*i") == std::string::npos) {
+                real_sols.push_back(s);
+                out.push_back(s);
+            }
+        }
+        if(!real_sols.empty()) out.push_back(solution_list_line(var, real_sols));
+        for(auto const &s : sols)
+            if(s.find("*i") != std::string::npos) out.push_back(s);
+        out.push_back(solution_list_line(var, sols));
+    }
+    else {
+        append_answer(out, var, sols);
+        append_numeric_3dp(a, out, var, sols);
+    }
     return out;
 }
 

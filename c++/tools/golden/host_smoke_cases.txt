@@ -14,4 +14,4 @@ int	sec(x)*tan(x)	Answer: sec(x) + C
 
 alg	2x+3=7	x = 2
 alg	x^2-5x+6=0	x = 3
-alg	x^2+1=0	x = (0 + sqrt(4)*i)/2
+alg	x^2+1=0	x = 0 + i
