@@ -37,6 +37,7 @@ struct Poly2
 static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p);
 static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out);
 static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power);
+static NodeId exact_eval_simplify(Arena &a, NodeId n);
 
 static bool is_zero(Rational const &r) { return r.num == 0; }
 
@@ -622,6 +623,26 @@ static std::optional<std::pair<NodeId, Rational>> scaled_log_arg(Arena &a, NodeI
     return std::make_pair(arg, c);
 }
 
+static std::optional<NodeId> exp_split_log_sum(Arena &a, NodeId exponent)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, exponent, terms);
+    std::vector<NodeId> rest, factors;
+    bool moved_log = false;
+    for(NodeId t : terms) {
+        if(auto sl = scaled_log_arg(a, t)) {
+            factors.push_back(exact_eval_simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den))));
+            moved_log = true;
+        }
+        else rest.push_back(t);
+    }
+    if(!moved_log) return std::nullopt;
+    NodeId factor = factors.empty() ? casio::num(a, 1) : exact_eval_simplify(a, casio::mul(a, factors));
+    if(rest.empty()) return factor;
+    NodeId tail = casio::power(a, casio::constant_e(a), casio::simplify(a, casio::add(a, rest)));
+    return casio::simplify(a, casio::mul(a, {factor, tail}));
+}
+
 static std::optional<NodeId> strip_whole_negative(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -682,6 +703,9 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(u.kind == NodeKind::Fn && u.fkind == FnKind::Exp) return casio::simplify(a, u.a);
         }
         if(x.fkind == FnKind::Exp && u.kind == NodeKind::Fn && u.fkind == FnKind::Log) return casio::simplify(a, u.a);
+        if(x.fkind == FnKind::Exp) {
+            if(auto split = exp_split_log_sum(a, arg)) return *split;
+        }
         return casio::simplify(a, a.fn(x.fkind, arg));
     }
     if(x.kind == NodeKind::Pow) {
@@ -699,6 +723,7 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         if(is_e_const_node(a, lhs)) {
             if(auto sl = scaled_log_arg(a, rhs))
                 return casio::simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den)));
+            if(auto split = exp_split_log_sum(a, rhs)) return *split;
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
@@ -13864,6 +13889,38 @@ static std::optional<std::string> log_power_solution_text(Rational target, Ratio
     return sign > 0 ? "ln(" + std::to_string(*base) + ")" : "-ln(" + std::to_string(*base) + ")";
 }
 
+static std::optional<std::string> shifted_log_power_solution_text(Rational target, Rational slope, Rational offset)
+{
+    auto log_part = log_power_solution_text(target, slope);
+    if(!log_part) return std::nullopt;
+    Rational shift = r_div(r_neg(offset), slope);
+    if(is_zero(shift)) return log_part;
+    if(shift.den == 1 && std::llabs(slope.num) != slope.den &&
+       log_part->rfind("ln(", 0) == 0 && log_part->back() == ')') {
+        std::string inner = log_part->substr(3, log_part->size() - 4);
+        if(shift.num > 0)
+            return "ln(" + inner + (shift.num == 1 ? "*e" : "*e^" + std::to_string(shift.num)) + ")";
+    }
+    Rational mag = shift.num < 0 ? r_neg(shift) : shift;
+    return *log_part + (shift.num < 0 ? " - " : " + ") + format_rat_plain(mag);
+}
+
+static std::string affine_exp_solution_step_text(std::string const &var, std::string const &log_rhs,
+                                                 Rational slope, Rational offset)
+{
+    auto add_offset = [&](bool negate_log) {
+        std::string s = negate_log ? "- " + log_rhs : log_rhs;
+        if(is_zero(offset)) return s;
+        Rational mag = offset.num < 0 ? r_neg(offset) : offset;
+        s += offset.num < 0 ? " + " : " - ";
+        s += format_rat_plain(mag);
+        return s;
+    };
+    if(slope.num == slope.den) return var + " = " + add_offset(false);
+    if(slope.num == -slope.den) return var + " = " + add_offset(true);
+    return var + " = (" + add_offset(false) + ")/" + format_rat_plain(slope);
+}
+
 static std::optional<std::pair<Rational, NodeId>> pi_linear_coeff(Arena &a, NodeId n)
 {
     if(format_expr(a, n) == "pi") return std::make_pair(Rational{1, 1}, n);
@@ -18328,6 +18385,15 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
     if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
         NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {*logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
         std::string exact_text = simplify_log_power_div_text(format_expr(a, exact));
+        std::string rearranged_text = affine_exp_solution_step_text(var, ln_text(*logt), p->a1, p->a0);
+        out.push_back(rearranged_text);
+        bool used_shifted = false;
+        if(auto rt = as_num(a, target_node)) {
+            if(auto sp = shifted_log_power_solution_text(*rt, p->a1, p->a0)) {
+                exact_text = *sp;
+                used_shifted = true;
+            }
+        }
         if(is_zero(p->a0) || format_expr(a, a.num(p->a0)) == "0") {
             bool used_lp = false;
             if(auto rt = as_num(a, target_node)) {
@@ -18348,7 +18414,7 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
                 else exact_text = format_rat_plain(scale) + "*" + l;
             }
         }
-        out.push_back(var + " = " + exact_text);
+        if(used_shifted || rearranged_text != var + " = " + exact_text) out.push_back(var + " = " + exact_text);
         return out;
     }
     if(auto lin = symbolic_linear_parts(a, ce->second, var)) {
@@ -19018,18 +19084,23 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId fn = casio::parse_expr(arena, f);
             NodeId gn = casio::parse_expr(arena, g);
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
+            NodeId raw_comp = comp;
             if(auto fp = poly_of(arena, fn, "x"); fp && fp->ok)
-                comp = compose_quadratic_outer(arena, *fp, gn);
+                raw_comp = comp = compose_quadratic_outer(arena, *fp, gn);
+            comp = exact_eval_simplify(arena, comp);
             if(auto p = poly_of(arena, comp, "x"); p && p->ok)
                 comp = poly2_to_node(arena, *p, "x");
             std::string ans = format_expr(arena, comp);
-            return {
+            std::vector<std::string> out = {
                 "f(x) = " + format_expr(arena, fn),
                 "g(x) = " + format_expr(arena, gn),
                 "x = g(x) = " + format_expr(arena, gn),
                 "f(g(x)) = f(" + format_expr(arena, gn) + ")",
-                "Answer: f(g(x)) = " + ans,
             };
+            std::string raw = format_expr(arena, raw_comp);
+            if(raw != ans && contains_exp_log_exact(arena, raw_comp)) out.push_back("f(g(x)) = " + raw);
+            out.push_back("f(g(x)) = " + ans);
+            return out;
         }
         if(req.mode == 8) {
             std::string func_text = trim_text(req.expr);

@@ -557,6 +557,18 @@ CASES = [
         ("Err:", "(2*x + 3)^2 - 2"),
     ),
     (
+        "compose exp log affine",
+        ["--alg", "compose(e^(2*x),3*x+ln(2))"],
+        ("f(g(x)) = e^(2*(3*x + ln(2)))", "f(g(x)) = 4*e^(6*x)"),
+        ("ERR:",),
+    ),
+    (
+        "shifted exp solve target form",
+        ["--alg", "solve(12*e^(6*x-6)=768,x)"],
+        ("6*x - 6 = ln(64)", "x = (ln(64) + 6)/6", "x = ln(2*e)"),
+        ("ERR:",),
+    ),
+    (
         "log exp product solve",
         ["--alg", "solve(4+ln(e*x^2)=6,x>0)"],
         ("ln(e*x^2) = 2*ln(x) + 1", "ln(x) = 1/2", "x = [sqrt(e)]"),
