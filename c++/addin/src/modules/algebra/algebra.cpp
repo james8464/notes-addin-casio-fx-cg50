@@ -19367,11 +19367,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     std::vector<double> vals;
                     auto ylo = eval_node(arena, n, var, *lo_v);
                     auto yhi = eval_node(arena, n, var, *hi_v);
+                    if(ylo && yhi) steps.push_back("y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
+                                                   ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi));
                     if(ylo) vals.push_back(*ylo);
                     if(yhi) vals.push_back(*yhi);
                     double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
                     if(vertex >= std::min(*lo_v, *hi_v) - 1e-12 && vertex <= std::max(*lo_v, *hi_v) + 1e-12) {
                         auto yv = eval_node(arena, n, var, vertex);
+                        if(yv) steps.push_back("y(" + format_double_compact(vertex) + ")=" + format_double_compact(*yv));
                         if(yv) vals.push_back(*yv);
                     }
                     if(!vals.empty()) {
@@ -20147,6 +20150,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) +
                 (interval_hi_open ? ")" : "]")
             );
+            if(*interval_lo > *interval_hi + 1e-12 ||
+               (std::fabs(*interval_lo - *interval_hi) <= 1e-12 && (interval_lo_open || interval_hi_open))) {
+                out.push_back(format_double_compact(*interval_lo) + " > " + format_double_compact(*interval_hi));
+                out.push_back(solve_var + " = []");
+                return out;
+            }
         }
         std::vector<std::string> domain_lines;
         collect_text_trig_domain(arena, equation_text, domain_lines);
