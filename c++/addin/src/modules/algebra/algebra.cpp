@@ -11275,6 +11275,8 @@ static std::optional<std::string> sqrt_linear_interval_range(
     std::string const &var,
     std::string const &lo,
     std::string const &hi,
+    bool lo_open,
+    bool hi_open,
     std::vector<std::string> &steps
 )
 {
@@ -11315,8 +11317,11 @@ static std::optional<std::string> sqrt_linear_interval_range(
         Rational y_end = r_add(r_mul(lp->a1, endpoint), lp->a0);
         if(y_end.num < 0) return std::nullopt;
         bool grows_up = hi_inf ? (lp->a1.num > 0) : (lp->a1.num < 0);
+        bool endpoint_open = hi_inf ? lo_open : hi_open;
         steps.push_back("Endpoint gives y = " + value_text(y_end) + ".");
-        if(grows_up) return scale.num > 0 ? "y >= " + value_text(y_end) : "y <= " + value_text(y_end);
+        if(grows_up) return scale.num > 0
+            ? std::string(endpoint_open ? "y > " : "y >= ") + value_text(y_end)
+            : std::string(endpoint_open ? "y < " : "y <= ") + value_text(y_end);
         std::string a0 = value_text(Rational{0, 1}), a1 = value_text(y_end);
         auto v0 = eval_node_env(a, value_node(Rational{0, 1}), {});
         auto v1 = eval_node_env(a, value_node(y_end), {});
@@ -19508,7 +19513,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     range_answer = *qr;
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto sl = sqrt_linear_interval_range(arena, n, var, lo, hi, steps)) {
+                else if(auto sl = sqrt_linear_interval_range(arena, n, var, lo, hi, lo_open, hi_open, steps)) {
                     range_answer = *sl;
                     steps.push_back("Range: " + range_answer + ".");
                 }
