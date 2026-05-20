@@ -3734,7 +3734,72 @@ static std::optional<EvenQuartic> even_quartic_of(Arena &a, NodeId n, std::strin
     return q;
 }
 
-static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeId residual, std::string const &var)
+static std::string simplify_nested_surd_text(std::string s)
+{
+    std::string k;
+    for(char c : s)
+        if(c != ' ' && c != '\t' && c != '\r' && c != '\n') k.push_back(c);
+    if(k.rfind("sqrt(", 0) != 0 || k.back() != ')') return s;
+    std::string in = k.substr(5, k.size() - 6);
+    std::size_t p = in.find("*sqrt(");
+    if(p == std::string::npos) return s;
+    auto parse_ll = [](std::string const &t) -> std::optional<long long> {
+        if(t.empty()) return std::nullopt;
+        long long v = 0;
+        for(char ch : t) {
+            if(ch < '0' || ch > '9') return std::nullopt;
+            v = 10 * v + (ch - '0');
+        }
+        return v;
+    };
+    std::size_t cstart = p;
+    while(cstart > 0 && in[cstart - 1] >= '0' && in[cstart - 1] <= '9') --cstart;
+    int sign = 1;
+    if(cstart > 0 && in[cstart - 1] == '-') {
+        sign = -1;
+        --cstart;
+    }
+    else if(cstart > 0 && in[cstart - 1] == '+') --cstart;
+    std::string btxt = in.substr(cstart, p - cstart);
+    if(!btxt.empty() && btxt[0] == '-') {
+        sign = -1;
+        btxt = btxt.substr(1);
+    }
+    auto B = parse_ll(btxt);
+    std::size_t close = in.find(')', p + 6);
+    if(!B || close == std::string::npos) return s;
+    auto C = parse_ll(in.substr(p + 6, close - (p + 6)));
+    if(!C || *B <= 0 || *C <= 0) return s;
+    std::string before = in.substr(0, cstart);
+    std::string tail = in.substr(close + 1);
+    std::optional<long long> A;
+    if(!before.empty()) {
+        if(before.back() == '+' || before.back() == '-') before.pop_back();
+        A = parse_ll(before);
+    }
+    else if(!tail.empty() && tail[0] == '+') A = parse_ll(tail.substr(1));
+    if(!A || *A <= 0) return s;
+    long long prod4 = (*B) * (*B) * (*C);
+    for(long long m = *A; m >= 1; --m) {
+        long long n = *A - m;
+        if(n <= 0 || 4 * m * n != prod4) continue;
+        std::int64_t sm = 0;
+        if(!is_square_i64(m, sm)) continue;
+        std::int64_t sn = 0;
+        std::string nt;
+        if(is_square_i64(n, sn)) nt = std::to_string(sn);
+        else nt = "sqrt(" + std::to_string(n) + ")";
+        if(nt == "0") return std::to_string(sm);
+        return sign > 0 ? std::to_string(sm) + " + " + nt : std::to_string(sm) + " - " + nt;
+    }
+    return s;
+}
+
+static std::optional<std::vector<std::string>> biquadratic_route(Arena &a,
+                                                                 NodeId residual,
+                                                                 std::string const &var,
+                                                                 std::optional<double> lo = std::nullopt,
+                                                                 std::optional<double> hi = std::nullopt)
 {
     auto q = even_quartic_of(a, residual, var);
     if(!q) return std::nullopt;
@@ -3758,6 +3823,7 @@ static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeI
     auto neg_text = [](std::string s) {
         if(s == "0") return s;
         if(!s.empty() && s[0] == '-') return s.substr(1);
+        if(s.find('+') != std::string::npos || s.find(" - ") != std::string::npos) return "-(" + s + ")";
         return "-" + s;
     };
     for(auto const &s : us) {
@@ -3772,15 +3838,18 @@ static std::optional<std::vector<std::string>> biquadratic_route(Arena &a, NodeI
         else {
             NodeId u_node = casio::parse_expr(a, rhs);
             root_text = format_expr(a, casio::simplify(a, casio::fn(a, "sqrt", u_node)));
+            root_text = simplify_nested_surd_text(root_text);
         }
         xs.push_back(var + " = " + root_text);
         if(root_text != "0") xs.push_back(var + " = " + neg_text(root_text));
     }
+    xs = filter_real_solutions(a, residual, var, xs, lo, hi);
     if(xs.empty()) {
         out.push_back("No real " + var + ".");
         out.push_back("Answer: " + var + " = []");
         return out;
     }
+    sort_solution_lines(a, xs);
     for(auto const &x : xs) out.push_back(x);
     out.push_back("Answer: " + solution_list_line(var, xs));
     append_numeric_3dp(a, out, var, xs);
@@ -3847,9 +3916,22 @@ static bool reciprocal_even_power_term(Arena &a, NodeId n, std::string const &va
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
         Node const &exp = a.get(x.b);
-        if(base.kind != NodeKind::Sym || base.text != var || exp.kind != NodeKind::Num || exp.num.den != 1) return false;
-        power = (int)exp.num.num;
+        if(exp.kind != NodeKind::Num || exp.num.den != 1) return false;
+        if(base.kind == NodeKind::Sym && base.text == var) {
+            power = (int)exp.num.num;
+            coef = Rational{1, 1};
+            return power >= -2 && power <= 2;
+        }
+        int bp = 0;
+        Rational bc{1, 1};
+        if(!reciprocal_even_power_term(a, x.a, var, bp, bc)) return false;
+        long long e = exp.num.num;
+        if(e < -2 || e > 2) return false;
+        power = (int)(bp * e);
         coef = Rational{1, 1};
+        long long ae = e < 0 ? -e : e;
+        for(long long i = 0; i < ae; ++i) coef = r_mul(coef, bc);
+        if(e < 0) coef = r_div(Rational{1, 1}, coef);
         return power >= -2 && power <= 2;
     }
     if(x.kind == NodeKind::Mul) {
@@ -3862,7 +3944,7 @@ static bool reciprocal_even_power_term(Arena &a, NodeId n, std::string const &va
             power += kp;
             coef = r_mul(coef, kc);
         }
-        return power == -2 || power == 0 || power == 2;
+        return power >= -2 && power <= 2;
     }
     if(x.kind == NodeKind::Div) {
         int np = 0, dp = 0;
@@ -3870,12 +3952,16 @@ static bool reciprocal_even_power_term(Arena &a, NodeId n, std::string const &va
         if(!reciprocal_even_power_term(a, x.a, var, np, nc) || !reciprocal_even_power_term(a, x.b, var, dp, dc)) return false;
         power = np - dp;
         coef = r_div(nc, dc);
-        return power == -2 || power == 0 || power == 2;
+        return power >= -2 && power <= 2;
     }
     return false;
 }
 
-static std::optional<std::vector<std::string>> reciprocal_biquadratic_route(Arena &a, NodeId residual, std::string const &var)
+static std::optional<std::vector<std::string>> reciprocal_biquadratic_route(Arena &a,
+                                                                            NodeId residual,
+                                                                            std::string const &var,
+                                                                            std::optional<double> lo,
+                                                                            std::optional<double> hi)
 {
     std::vector<NodeId> terms;
     Node const &r = a.get(residual);
@@ -3899,7 +3985,7 @@ static std::optional<std::vector<std::string>> reciprocal_biquadratic_route(Aren
         casio::mul(a, {casio::num(a, x0.num, x0.den), casio::power(a, casio::sym(a, var), casio::num(a, 2))}),
         casio::num(a, xm2.num, xm2.den),
     }));
-    auto bq = biquadratic_route(a, quartic, var);
+    auto bq = biquadratic_route(a, quartic, var, lo, hi);
     if(!bq) return std::nullopt;
 
     std::vector<std::string> out;
@@ -12516,7 +12602,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
-        if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var)) {
+        if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
             out.insert(out.end(), rbq->begin(), rbq->end());
             return out;
         }
