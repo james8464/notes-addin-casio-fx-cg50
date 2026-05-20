@@ -18670,6 +18670,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId fn = casio::parse_expr(arena, f);
             NodeId gn = casio::parse_expr(arena, g);
             NodeId comp = casio::simplify(arena, clone_with_substitution(arena, fn, "x", gn));
+            if(auto p = poly_of(arena, comp, "x"); p && p->ok)
+                comp = poly2_to_node(arena, *p, "x");
             std::string ans = format_expr(arena, comp);
             return {
                 "f(x) = " + format_expr(arena, fn),

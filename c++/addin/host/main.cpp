@@ -544,6 +544,11 @@ int main(int argc, char **argv)
                 req.method = "evalat";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "compose(")).empty()) {
+                auto parts = split_top_csv(inner);
+                req.mode = 7;
+                req.expr = parts.size() >= 2 ? parts[0] + "\n" + parts[1] : inner;
+            }
             else if(!(inner = unwrap_call(expr, "solve(")).empty()) {
                 auto has_trig = [](std::string const &s) {
                     for(char const *k : {"sin(", "cos(", "tan(", "sec(", "cosec(", "csc(", "cot("}) {

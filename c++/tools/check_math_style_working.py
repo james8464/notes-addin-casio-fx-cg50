@@ -521,6 +521,12 @@ CASES = [
         ("Range: y >= 11",),
     ),
     (
+        "compose wrapper expands quadratic",
+        ["--alg", "compose(x^2-2,2*x+3)"],
+        ("f(g(x)) = 4*x^2 + 12*x + 7",),
+        ("Err:", "(2*x + 3)^2 - 2"),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
