@@ -692,6 +692,20 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
                 return casio::num(a, rn, rd);
         }
+        if(x.fkind == FnKind::Sqrt && u.kind == NodeKind::Mul) {
+            Rational c{1, 1};
+            std::vector<NodeId> rest;
+            for(NodeId k : u.kids) {
+                Node const &m = a.get(k);
+                if(m.kind == NodeKind::Num) c = r_mul(c, m.num);
+                else rest.push_back(k);
+            }
+            std::int64_t rn = 0, rd = 0;
+            if(c.num > 0 && is_square_i64(c.num, rn) && is_square_i64(c.den, rd) && rd != 0 && rn != rd && !rest.empty()) {
+                NodeId inner = rest.size() == 1 ? rest[0] : casio::mul(a, rest);
+                return exact_eval_simplify(a, casio::mul(a, {casio::num(a, rn, rd), casio::fn(a, "sqrt", inner)}));
+            }
+        }
         if(auto tv = exact_trig_const_node(a, x.fkind, arg)) return casio::simplify(a, *tv);
         if(x.fkind == FnKind::Log) {
             if(auto lf = exact_ln_factor_node(a, arg)) return casio::simplify(a, *lf);
@@ -704,7 +718,7 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         if(x.fkind == FnKind::Exp && u.kind == NodeKind::Fn && u.fkind == FnKind::Log) return casio::simplify(a, u.a);
         if(x.fkind == FnKind::Exp) {
-            if(auto split = exp_split_log_sum(a, arg)) return *split;
+            if(auto split = exp_split_log_sum(a, arg)) return exact_eval_simplify(a, *split);
         }
         return casio::simplify(a, a.fn(x.fkind, arg));
     }
@@ -723,10 +737,12 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         if(is_e_const_node(a, lhs)) {
             if(auto sl = scaled_log_arg(a, rhs))
                 return casio::simplify(a, casio::power(a, sl->first, casio::num(a, sl->second.num, sl->second.den)));
-            if(auto split = exp_split_log_sum(a, rhs)) return *split;
+            if(auto split = exp_split_log_sum(a, rhs)) return exact_eval_simplify(a, *split);
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
+            if(expo.num.num == 1 && expo.num.den == 2)
+                return exact_eval_simplify(a, casio::fn(a, "sqrt", lhs));
             if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt &&
                expo.num.num == 2 && expo.num.den == 1)
                 return exact_eval_simplify(a, base.a);
@@ -759,7 +775,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
     std::vector<NodeId> kids;
     kids.reserve(x.kids.size());
     for(auto k : x.kids) kids.push_back(exact_eval_simplify(a, k));
-    return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    NodeId r = casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    return casio::same_by_sig(a, r, n) ? r : exact_eval_simplify(a, r);
 }
 
 static NodeId cancel_log_exp_only(Arena &a, NodeId n)
@@ -3926,7 +3943,8 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
             if(!lo && !hi) kept.push_back(s);
             continue;
         }
-        if(lo && hi && (*value < *lo - 1e-9 || *value > *hi + 1e-9)) continue;
+        if(lo && *value < *lo - 1e-9) continue;
+        if(hi && *value > *hi + 1e-9) continue;
         auto residual = eval_node(a, residual_expr, var, *value);
         if(!residual || !std::isfinite(*residual)) continue;
         if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) kept.push_back(s);
@@ -7115,7 +7133,9 @@ static std::optional<std::vector<std::string>> power_quadratic_substitution_rout
                                                                                  NodeId rearr,
                                                                                  std::string const &var,
                                                                                  std::optional<double> lo,
-                                                                                 std::optional<double> hi)
+                                                                                 std::optional<double> hi,
+                                                                                 bool lo_open = false,
+                                                                                 bool hi_open = false)
 {
     std::vector<NodeId> terms;
     add_terms_flat(a, rearr, terms);
@@ -7168,7 +7188,14 @@ static std::optional<std::vector<std::string>> power_quadratic_substitution_rout
         raw.push_back(var + " = " + *root);
         if(n.den == 1 && n.num % 2 == 0 && u.num > 0) raw.push_back(var + " = -" + *root);
     }
-    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    std::vector<std::string> valid;
+    for(auto const &s : raw) {
+        auto v = solution_line_value(a, s);
+        if(v && lo && *v < *lo - 1e-9) continue;
+        if(v && hi && *v > *hi + 1e-9) continue;
+        valid.push_back(s);
+    }
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
     sort_solution_lines(a, valid);
     append_answer(out, var, valid);
     append_numeric_3dp(a, out, var, valid);
@@ -11520,7 +11547,11 @@ static bool only_plain_sqrt_var_terms(Arena &a, NodeId n, std::string const &var
 static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     Arena &a,
     NodeId rearr,
-    std::string const &var
+    std::string const &var,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 )
 {
     if(!contains_fn_kind(a, rearr, FnKind::Sqrt) && !contains_plain_sqrt_var(a, rearr, var)) return std::nullopt;
@@ -11561,13 +11592,17 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
         NodeId ux = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, 2)));
         xs.push_back(var + " = " + format_expr(a, ux));
     }
-    if(xs.empty()) {
+    auto valid = filter_real_solutions(a, rearr, var, xs, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    if(xs.empty() || valid.empty()) {
+        if(!xs.empty()) append_rejected_by_domain(out, var, xs, valid);
         out.push_back("no real solution");
         out.push_back("Answer: " + var + " = []");
         return out;
     }
     for(auto const &xline : xs) out.push_back(xline);
-    out.push_back("Answer: " + solution_list_line(var, xs));
+    append_rejected_by_domain(out, var, xs, valid);
+    out.push_back("Answer: " + solution_list_line(var, valid));
     return out;
 }
 
@@ -12337,7 +12372,13 @@ static NodeId root_power_sub_node(Arena &a, NodeId n, std::string const &var, in
     return n;
 }
 
-static std::optional<std::vector<std::string>> rational_root_substitution_route(Arena &a, NodeId rearr, std::string const &var)
+static std::optional<std::vector<std::string>> rational_root_substitution_route(Arena &a,
+                                                                               NodeId rearr,
+                                                                               std::string const &var,
+                                                                               std::optional<double> lo = std::nullopt,
+                                                                               std::optional<double> hi = std::nullopt,
+                                                                               bool lo_open = false,
+                                                                               bool hi_open = false)
 {
     auto eval_p2 = [](Poly2 const &p, Rational u) {
         return r_add(r_add(r_mul(p.a2, r_mul(u, u)), r_mul(p.a1, u)), p.a0);
@@ -12379,9 +12420,18 @@ static std::optional<std::vector<std::string>> rational_root_substitution_route(
         out.push_back("Answer: " + var + " = []");
         return out;
     }
-    sort_solution_lines(a, raw);
-    append_answer(out, var, raw);
-    append_numeric_3dp(a, out, var, raw);
+    std::vector<std::string> valid;
+    for(auto const &s : raw) {
+        auto v = solution_line_value(a, s);
+        if(v && lo && *v < *lo - 1e-9) continue;
+        if(v && hi && *v > *hi + 1e-9) continue;
+        valid.push_back(s);
+    }
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    append_rejected_by_domain(out, var, raw, valid);
+    sort_solution_lines(a, valid);
+    append_answer(out, var, valid);
+    append_numeric_3dp(a, out, var, valid);
     return out;
 }
 
@@ -19122,6 +19172,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto fp = poly_of(arena, fn, "x"); fp && fp->ok)
                 raw_comp = comp = compose_quadratic_outer(arena, *fp, gn);
             comp = exact_eval_simplify(arena, comp);
+            if(auto rp = ratpoly_of_node(arena, comp, "x"); rp.ok) {
+                if(auto q = linear_factor_quotient(rp.num, rp.den)) comp = poly2_to_node(arena, *q, "x");
+                else comp = casio::simplify(arena, casio::div(arena, poly2_to_node(arena, rp.num, "x"), poly2_to_node(arena, rp.den, "x")));
+            }
             if(auto p = poly_of(arena, comp, "x"); p && p->ok)
                 comp = poly2_to_node(arena, *p, "x");
             std::string ans = format_expr(arena, comp);
@@ -20350,7 +20404,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto car = cardano_one_real_cubic_route(arena, rearr, solve_var)) return *car;
         if(auto rsp = reciprocal_same_power_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rsp;
         if(auto tpf = two_power_factor_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *tpf;
-        if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
+        if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *pqs;
         if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
         if(auto tmp = tan_multiple_angle_poly_route(arena, rearr, solve_var)) return *tmp;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *pf;
@@ -20382,7 +20436,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto tsl = two_sqrt_linear_rhs_route(arena, lhs, rhs, rearr, solve_var)) return *tsl;
             if(auto tsq = two_sqrt_quadratic_route(arena, lhs, rhs, rearr, solve_var)) return *tsq;
             if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
-            if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
+            if(auto rr = rational_root_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
             if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
             if(auto spaff = sqrt_plus_affine_equals_sqrt_plus_affine_route(arena, lhs, rhs, rearr, solve_var)) return *spaff;
@@ -20390,7 +20444,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto scr = shifted_cubic_ratio_square_route(arena, rhs, lhs, rearr, solve_var)) return *scr;
             if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
-            if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
+            if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *sr;
             if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *spoly;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
