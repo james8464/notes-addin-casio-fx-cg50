@@ -34,6 +34,7 @@ def main() -> int:
         ("invalid_input_working", [sys.executable, "c++/tools/check_invalid_input_working.py"]),
         ("diff_exam_working", [sys.executable, "c++/tools/check_diff_exam_working.py"]),
         ("math_style_working", [sys.executable, "c++/tools/check_math_style_working.py"]),
+        ("exam_working_contracts", [sys.executable, "c++/tools/golden/check_exam_working_contracts.py"]),
         ("help_quality", [sys.executable, "c++/tools/check_help_quality.py"]),
         ("build_packaging", [sys.executable, "c++/tools/check_build_packaging.py"]),
         ("calculator_border", [sys.executable, "c++/tools/check_calculator_border.py"]),
