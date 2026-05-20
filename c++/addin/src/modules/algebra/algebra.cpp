@@ -15565,11 +15565,87 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     return out;
 }
 
+static std::optional<Rational> log_x_multiplier(Arena &a, NodeId n, std::string const &var);
+
 static std::string exp_of_text(std::string const &u)
 {
     if(u == "1") return "e";
     if(u == "1/2") return "sqrt(e)";
     return "e^(" + u + ")";
+}
+
+static std::optional<Rational> log_linear_multiplier(Arena &a, NodeId n, std::string const &var)
+{
+    Rational coef{1, 1};
+    NodeId body = n;
+    bool has = true;
+    split_coeff_body(a, n, coef, body, has);
+    if(!has) {
+        coef = Rational{1, 1};
+        body = n;
+    }
+    auto m = log_x_multiplier(a, body, var);
+    if(!m) return std::nullopt;
+    return r_mul(coef, *m);
+}
+
+static std::optional<std::vector<std::string>> reciprocal_log_square_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var, std::vector<std::string> out)
+{
+    auto run = [&](NodeId frac_side, NodeId log_side) -> std::optional<std::vector<std::string>> {
+        auto lm = log_linear_multiplier(a, log_side, var);
+        if(!lm || is_zero(*lm)) return std::nullopt;
+        Rational outer{1, 1};
+        NodeId body = frac_side;
+        bool has = true;
+        split_coeff_body(a, frac_side, outer, body, has);
+        if(!has) {
+            outer = Rational{1, 1};
+            body = frac_side;
+        }
+        Node const &f = a.get(body);
+        if(f.kind != NodeKind::Div) return std::nullopt;
+        auto dm = log_linear_multiplier(a, f.b, var);
+        if(!dm || is_zero(*dm)) return std::nullopt;
+        NodeId c = f.a;
+        if(outer.num != outer.den)
+            c = exact_eval_simplify(a, casio::mul(a, {a.num(outer), c}));
+        if(has_symbols(a, c)) return std::nullopt;
+        auto cv = eval_node_env(a, c, {});
+        if(!cv || !std::isfinite(*cv) || *cv <= 0) return std::nullopt;
+        Rational den = r_mul(*dm, *lm);
+        if(is_zero(den)) return std::nullopt;
+        NodeId target = exact_eval_simplify(a, casio::div(a, c, a.num(den)));
+        auto tv = eval_node_env(a, target, {});
+        if(!tv || !std::isfinite(*tv) || *tv <= 0) return std::nullopt;
+        NodeId root = exact_eval_simplify(a, casio::fn(a, "sqrt", target));
+        std::string uvar = var == "u" ? "v" : "u";
+        std::string ut = format_expr(a, root);
+        out.push_back("Domain: " + var + " > 0");
+        out.push_back("Domain: ln(" + var + ") != 0");
+        out.push_back(uvar + " = ln(" + var + ")");
+        std::string ctext = format_expr(a, c);
+        Node const &cn = a.get(c);
+        if(cn.kind == NodeKind::Add || (!ctext.empty() && ctext[0] == '-')) ctext = "(" + ctext + ")";
+        std::string left_u = ctext + "/";
+        if(dm->num == dm->den) left_u += uvar;
+        else left_u += "(" + format_rat_plain(*dm) + "*" + uvar + ")";
+        std::string right_u = lm->num == lm->den ? uvar : format_rat_plain(*lm) + "*" + uvar;
+        out.push_back(left_u + " = " + right_u);
+        out.push_back(uvar + "^2 = " + format_expr(a, target));
+        out.push_back(uvar + " = +/-" + ut);
+        std::vector<std::string> xs{var + " = e^(" + ut + ")", var + " = e^(-" + ut + ")"};
+        std::sort(xs.begin(), xs.end(), [&](std::string const &p, std::string const &q) {
+            auto pv = solution_line_value(a, p), qv = solution_line_value(a, q);
+            if(pv && qv) return *pv < *qv;
+            return p < q;
+        });
+        for(auto const &s : xs) out.push_back(s);
+        out.push_back(solution_list_line(var, xs));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
 }
 
 static std::optional<std::vector<std::string>> mixed_base_product_exp_route(
@@ -18298,6 +18374,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), log_sq->begin(), log_sq->end());
             return out;
         }
+        if(auto rls = reciprocal_log_square_route(arena, lhs, rhs, solve_var, out)) return *rls;
         if(auto lnr = ln_reciprocal_quadratic_route(arena, lhs, rhs, solve_var)) return *lnr;
         if(auto log_exact = log_linear_quotient_exact_route(arena, rearr, solve_var)) {
             out.insert(out.end(), log_exact->begin(), log_exact->end());

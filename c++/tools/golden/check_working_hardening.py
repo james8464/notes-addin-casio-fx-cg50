@@ -1728,6 +1728,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["u = e^(x), u > 0", "6*u^3 - 7*u^2 + 1 = 0", "x = [ln(1/2), 0]"],
         ["x ~=", "ERR:"],
     ),
+    (
+        "alg",
+        "solve((3-2*sqrt(2))/ln(x)=ln(x),x)",
+        ["u = ln(x)", "(- 2*sqrt(2) + 3)/u = u", "u^2 = - 2*sqrt(2) + 3", "u = +/-sqrt(- 2*sqrt(2) + 3)", "x = [e^(-sqrt(- 2*sqrt(2) + 3)), e^(sqrt(- 2*sqrt(2) + 3))]"],
+        ["x ~=", "ERR:"],
+    ),
 ]
 
 
