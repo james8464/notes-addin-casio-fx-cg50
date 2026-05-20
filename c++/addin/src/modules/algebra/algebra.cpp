@@ -3721,6 +3721,24 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
     return unique;
 }
 
+static void filter_open_interval_solutions(Arena &a,
+                                           std::vector<std::string> &sols,
+                                           std::optional<double> lo,
+                                           std::optional<double> hi,
+                                           bool lo_open,
+                                           bool hi_open)
+{
+    if(!lo_open && !hi_open) return;
+    std::vector<std::string> kept;
+    for(auto const &s : sols) {
+        auto v = solution_line_value(a, s);
+        if(v && lo_open && lo && *v <= *lo + 1e-9) continue;
+        if(v && hi_open && hi && *v >= *hi - 1e-9) continue;
+        kept.push_back(s);
+    }
+    sols.swap(kept);
+}
+
 static bool square_rat_root(Rational r, Rational &root)
 {
     r.normalize();
@@ -4976,7 +4994,9 @@ static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
                                                                        NodeId n,
                                                                        std::string const &var,
                                                                        std::optional<double> lo,
-                                                                       std::optional<double> hi)
+                                                                       std::optional<double> hi,
+                                                                       bool lo_open = false,
+                                                                       bool hi_open = false)
 {
     auto p0 = poly_any_of(a, n, var);
     if(!p0 || !p0->ok || p0->c.size() < 4 || p0->c.size() > 7) return std::nullopt;
@@ -5027,6 +5047,7 @@ next_root:
         }), raw.end());
         if(raw.empty()) return std::nullopt;
         sols = filter_real_solutions(a, n, var, raw, lo, hi);
+        filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     }
     else sols = raw;
     std::stable_sort(sols.begin(), sols.end(), [&](std::string const &u, std::string const &v) {
@@ -13615,7 +13636,13 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
     return out;
 }
 
-static std::optional<std::vector<std::string>> symbolic_product_roots_route(Arena &a, NodeId rearr, std::string const &var)
+static std::optional<std::vector<std::string>> symbolic_product_roots_route(Arena &a,
+                                                                            NodeId rearr,
+                                                                            std::string const &var,
+                                                                            std::optional<double> lo = std::nullopt,
+                                                                            std::optional<double> hi = std::nullopt,
+                                                                            bool lo_open = false,
+                                                                            bool hi_open = false)
 {
     Node const &x = a.get(rearr);
     std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{rearr};
@@ -13739,12 +13766,35 @@ static std::optional<std::vector<std::string>> symbolic_product_roots_route(Aren
     if(!nonzero_factors.empty()) out.push_back(join_text(nonzero_factors, ", "));
     out.push_back(join_text(zero_factors, " or "));
     out.insert(out.end(), extra_steps.begin(), extra_steps.end());
-    std::vector<std::string> mults, vals, sol_lines;
+    std::vector<std::string> raw_lines;
     for(auto const &r : roots) {
         std::string rt = format_expr(a, r.root);
+        raw_lines.push_back(var + " = " + rt);
+    }
+    auto sol_lines = (lo || hi) ? filter_real_solutions(a, rearr, var, raw_lines, lo, hi) : raw_lines;
+    filter_open_interval_solutions(a, sol_lines, lo, hi, lo_open, hi_open);
+    if(sol_lines.empty()) {
+        out.push_back(lo || hi ? "No solution in interval." : "No solution.");
+        out.push_back(var + " = []");
+        return out;
+    }
+    if(lo || hi) {
+        for(auto const &s : raw_lines) {
+            bool keep = false;
+            for(auto const &v : sol_lines) if(sol_rhs(s) == sol_rhs(v)) keep = true;
+            if(!keep) out.push_back(s + " rejected by interval");
+        }
+    }
+    std::vector<std::string> mults, vals;
+    for(auto const &s : sol_lines) {
+        std::string rt = sol_rhs(s);
         vals.push_back(rt);
-        sol_lines.push_back(var + " = " + rt);
-        mults.push_back("m(" + rt + ") = " + std::to_string(r.mult));
+        for(auto const &r : roots) {
+            if(format_expr(a, r.root) == rt) {
+                mults.push_back("m(" + rt + ") = " + std::to_string(r.mult));
+                break;
+            }
+        }
     }
     out.push_back(join_text(sol_lines, " or "));
     out.push_back(join_text(mults, ", "));
@@ -19471,6 +19521,42 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto bxyz = bilinear_xyz_system_route(req.expr)) return *bxyz;
         std::optional<double> interval_lo;
         std::optional<double> interval_hi;
+        bool interval_lo_open = false;
+        bool interval_hi_open = false;
+        auto parse_solve_halfline = [&](std::string const &cond) {
+            auto set = [&](std::string const &left, std::string const &right, bool ge, bool open) {
+                std::string l = trim_text(left), r = trim_text(right);
+                bool left_var = l.size() == 1 && std::isalpha((unsigned char)l[0]);
+                bool right_var = r.size() == 1 && std::isalpha((unsigned char)r[0]);
+                if(left_var == right_var) return false;
+                auto bound = parse_const_double(arena, left_var ? r : l);
+                if(!bound) return false;
+                explicit_var = left_var ? l : r;
+                bool lower = left_var ? ge : !ge;
+                if(lower) {
+                    interval_lo = *bound;
+                    interval_lo_open = open;
+                    interval_hi = std::numeric_limits<double>::infinity();
+                }
+                else {
+                    interval_lo = -std::numeric_limits<double>::infinity();
+                    interval_hi = *bound;
+                    interval_hi_open = open;
+                }
+                return true;
+            };
+            std::size_t pos = cond.find(">=");
+            if(pos != std::string::npos) return set(cond.substr(0, pos), cond.substr(pos + 2), true, false);
+            pos = cond.find("<=");
+            if(pos != std::string::npos) return set(cond.substr(0, pos), cond.substr(pos + 2), false, false);
+            pos = cond.find('>');
+            if(pos != std::string::npos) return set(cond.substr(0, pos), cond.substr(pos + 1), true, true);
+            pos = cond.find('<');
+            if(pos != std::string::npos) return set(cond.substr(0, pos), cond.substr(pos + 1), false, true);
+            return false;
+        };
+        if(solve_parts.size() == 2 && explicit_var.find_first_of("<>") != std::string::npos)
+            parse_solve_halfline(explicit_var);
         if(solve_parts.size() >= 4) {
             interval_lo = parse_const_double(arena, solve_parts[2]);
             interval_hi = parse_const_double(arena, solve_parts[3]);
@@ -19608,7 +19694,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         out.push_back("1. Start with " + shown_eq + ".");
         if(interval_lo && interval_hi) {
             out.push_back(
-                "2. Interval: " + solve_var + " in [" + format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) + "]"
+                "2. Interval: " + solve_var + " in " + (interval_lo_open ? "(" : "[") +
+                format_double_compact(*interval_lo) + ", " + format_double_compact(*interval_hi) +
+                (interval_hi_open ? ")" : "]")
             );
         }
         std::vector<std::string> domain_lines;
@@ -19719,7 +19807,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto lp = log_poly_substitution_route(arena, rearr, solve_var, out)) return *lp;
         if(auto ls = log_substitution_route(arena, rearr, solve_var, out)) return *ls;
         if(auto rb = related_base_exp_substitution_route(arena, rearr, solve_var, out)) return *rb;
-        if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var)) {
+        if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) {
             out.insert(out.end(), pr->begin(), pr->end());
             return out;
         }
@@ -19752,7 +19840,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto pqs = power_quadratic_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pqs;
         if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
         if(auto tmp = tan_multiple_angle_poly_route(arena, rearr, solve_var)) return *tmp;
-        if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *pf;
+        if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *pf;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
             out.push_back("symbolic parameters unsupported");
@@ -20009,6 +20097,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         auto candidates = solve_poly2(arena, rp.num, solve_var);
         auto sols = filter_real_solutions(arena, rearr, solve_var, candidates, interval_lo, interval_hi);
+        filter_open_interval_solutions(arena, sols, interval_lo, interval_hi, interval_lo_open, interval_hi_open);
         if(sols.empty()) {
             for(auto const &s : candidates) {
                 std::string rhs = sol_rhs(s);

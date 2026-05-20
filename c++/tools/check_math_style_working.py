@@ -503,6 +503,12 @@ CASES = [
         ("sqrt(- 16",),
     ),
     (
+        "open interval product solve",
+        ["--alg", "solve((x-1)*(x-3)=0,x>1)"],
+        ("Interval: x in (1, inf]", "x = 1 rejected by interval", "x = [3]"),
+        ("x = [1, 3]",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
