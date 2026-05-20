@@ -45,10 +45,11 @@ Run native C++ checks:
 python3 c++/tools/run_tests_cpp.py
 ```
 
-Clean generated/local files:
+Clean generated/local files (dry-run first):
 
 ```bash
 python3 c++/tools/clean_project.py
+python3 c++/tools/clean_project.py --apply
 ```
 
 Build calculator add-ins:

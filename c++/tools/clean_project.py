@@ -30,7 +30,7 @@ def remove_path(path: Path, dry_run: bool) -> bool:
     if not path.exists() and not path.is_symlink():
         return False
     rel = path.relative_to(ROOT)
-    print(("would remove " if dry_run else "remove ") + str(rel))
+    print(("would remove " if dry_run else "removed ") + str(rel))
     if dry_run:
         return True
     if path.is_dir() and not path.is_symlink():
@@ -42,25 +42,26 @@ def remove_path(path: Path, dry_run: bool) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Remove generated/local project artifacts.")
-    parser.add_argument("--dry-run", action="store_true", help="List removals without deleting.")
+    parser.add_argument("--apply", action="store_true", help="Delete files; default is dry-run.")
     args = parser.parse_args()
+    dry_run = not args.apply
 
     removed = 0
     for rel in GENERATED_PATHS:
-        removed += int(remove_path(ROOT / rel, args.dry_run))
+        removed += int(remove_path(ROOT / rel, dry_run))
 
     for pattern in ("**/__pycache__", "**/*.pyc", "**/*.pyo", "**/.DS_Store"):
         for path in sorted(ROOT.glob(pattern)):
             if ".git" in path.parts:
                 continue
-            removed += int(remove_path(path, args.dry_run))
+            removed += int(remove_path(path, dry_run))
 
     for rel in ("c++/tests",):
         path = ROOT / rel
         if path.is_dir() and not any(path.iterdir()):
-            removed += int(remove_path(path, args.dry_run))
+            removed += int(remove_path(path, dry_run))
 
-    print(f"total {removed}")
+    print(("would remove total " if dry_run else "removed total ") + str(removed))
     return 0
 
 
