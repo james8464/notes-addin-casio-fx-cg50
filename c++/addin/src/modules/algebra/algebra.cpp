@@ -8141,6 +8141,99 @@ static std::optional<std::vector<std::string>> symmetric_sum_product_system(std:
     };
 }
 
+static bool parse_exp_coeff_term(std::string term, std::string const &pat, long long &coef)
+{
+    term.erase(std::remove(term.begin(), term.end(), '*'), term.end());
+    if(term == pat) {
+        coef = 1;
+        return true;
+    }
+    if(term.size() <= pat.size() || term.compare(term.size() - pat.size(), pat.size(), pat) != 0) return false;
+    auto c = parse_i64_text(term.substr(0, term.size() - pat.size()));
+    if(!c) return false;
+    coef = *c;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> exp_xy_square_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+
+    auto read_eq = [](std::string const &eq, std::string const &p0, std::string const &p1,
+                      long long &c0, long long &c1, long long &rhs) -> bool {
+        auto sides = split_top_key(eq, '=');
+        if(sides.size() != 2) return false;
+        auto r = parse_i64_text(sides[1]);
+        if(!r) return false;
+        auto ts = split_top_key(sides[0], '+');
+        if(ts.size() != 2) return false;
+        long long a = 0, b = 0;
+        bool ok = parse_exp_coeff_term(ts[0], p0, a) && parse_exp_coeff_term(ts[1], p1, b);
+        if(!ok) ok = parse_exp_coeff_term(ts[1], p0, a) && parse_exp_coeff_term(ts[0], p1, b);
+        if(!ok || a == 0 || b == 0) return false;
+        c0 = a; c1 = b; rhs = *r;
+        return true;
+    };
+
+    long long P = 0, Q = 0, S = 0, A = 0, B = 0, T = 0;
+    if(!read_eq(eqs[0], "e^x", "e^y", P, Q, S) ||
+       !read_eq(eqs[1], "e^x", "e^(2y)", A, B, T)) {
+        if(!read_eq(eqs[1], "e^x", "e^y", P, Q, S) ||
+           !read_eq(eqs[0], "e^x", "e^(2y)", A, B, T)) return std::nullopt;
+    }
+
+    Poly2 q{Rational{B * P, 1}, Rational{-A * Q, 1}, Rational{A * S - T * P, 1}, true};
+    auto roots = solve_poly2(a, q, "v");
+    if(roots.empty()) return std::nullopt;
+
+    auto term = [](long long c, char const *v) {
+        if(c == 1) return std::string(v);
+        if(c == -1) return std::string("-") + v;
+        return std::to_string(c) + v;
+    };
+
+    std::vector<std::string> out;
+    out.push_back("u = e^x, v = e^y, u>0, v>0");
+    out.push_back(term(P, "u") + " + " + term(Q, "v") + " = " + std::to_string(S));
+    out.push_back(term(A, "u") + " + " + term(B, "v^2") + " = " + std::to_string(T));
+    out.push_back("u = (" + std::to_string(S) + " - " + term(Q, "v") + ")/" + std::to_string(P));
+    out.push_back(format_expr(a, poly2_to_node(a, q, "v")) + " = 0");
+
+    std::vector<std::string> pairs;
+    for(auto const &root : roots) {
+        std::string vt = sol_rhs(root);
+        if(vt.find('i') != std::string::npos) continue;
+        auto vv = parse_const_double(a, vt);
+        if(!vv || *vv <= 0) continue;
+        NodeId vn = casio::simplify(a, casio::parse_expr(a, vt));
+        NodeId un = casio::simplify(
+            a,
+            casio::div(
+                a,
+                sub_node(a, a.num(Rational{S, 1}), casio::mul(a, {a.num(Rational{Q, 1}), vn})),
+                a.num(Rational{P, 1})
+            )
+        );
+        auto uv = eval_node(a, un, "x", 0.0);
+        if(!uv || *uv <= 0) continue;
+        std::string ut = format_expr(a, un);
+        out.push_back("v = " + vt);
+        out.push_back("u = " + ut);
+        pairs.push_back("(ln(" + ut + "),ln(" + vt + "))");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string joined;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) joined += ", ";
+        joined += pairs[i];
+    }
+    out.push_back("(x,y) = [" + joined + "]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std::string const &key)
 {
     std::string const prefix = "rewrite(sqrt(";
@@ -11691,6 +11784,100 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
     (void)wrote;
 }
 
+static bool is_ln_var(Arena &a, NodeId id, std::string const &var)
+{
+    Node const &n = a.get(id);
+    return n.kind == NodeKind::Fn && n.fkind == FnKind::Log && is_sym_var(a, n.a, var);
+}
+
+static std::string exp_e_text(Rational r)
+{
+    r.normalize();
+    if(r.num == 1 && r.den == 1) return "e";
+    if(r.den == 1) return "e^(" + std::to_string(r.num) + ")";
+    return "e^(" + format_rat_plain(r) + ")";
+}
+
+static std::optional<std::vector<std::string>> ln_reciprocal_quadratic_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    auto read_rhs = [&](NodeId id, Rational &A, Rational &B) {
+        std::vector<NodeId> terms;
+        add_terms_flat(a, id, terms);
+        if(terms.empty() || terms.size() > 2) return false;
+        bool has_recip = false;
+        B = Rational{0, 1};
+        for(NodeId t : terms) {
+            Rational c{1, 1};
+            NodeId body = t;
+            bool has_body = true;
+            split_coeff_body(a, t, c, body, has_body);
+            if(!has_body) {
+                B = r_add(B, c);
+                continue;
+            }
+            Node const &n = a.get(body);
+            if(n.kind == NodeKind::Div && is_ln_var(a, n.b, var)) {
+                Node const &top = a.get(n.a);
+                if(top.kind != NodeKind::Num) return false;
+                A = r_add(A, r_mul(c, top.num));
+                has_recip = true;
+            }
+            else return false;
+        }
+        return has_recip;
+    };
+
+    NodeId log_side = 0, other_side = 0;
+    if(is_ln_var(a, lhs, var)) {
+        log_side = lhs;
+        other_side = rhs;
+    }
+    else if(is_ln_var(a, rhs, var)) {
+        log_side = rhs;
+        other_side = lhs;
+    }
+    else return std::nullopt;
+
+    Rational A{0, 1}, B{0, 1};
+    if(!read_rhs(other_side, A, B) || is_zero(A)) return std::nullopt;
+
+    Poly2 q{Rational{1, 1}, r_neg(B), r_neg(A), true};
+    auto roots = solve_poly2(a, q, "u");
+    if(roots.empty()) return std::nullopt;
+
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, log_side) + " = " + format_expr(a, other_side));
+    out.push_back("Domain: " + var + " > 0");
+    out.push_back("Domain: ln(" + var + ") != 0");
+    out.push_back("u = ln(" + var + "), u != 0");
+    std::string rhs_u = format_rat_plain(A) + "/u";
+    if(!is_zero(B)) rhs_u += (B.num > 0 ? " + " : " - ") + format_rat_plain(r_abs(B));
+    out.push_back("u = " + rhs_u);
+    out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+
+    std::vector<Rational> us;
+    for(auto const &root : roots) {
+        auto rtxt = sol_rhs(root);
+        auto rv = parse_rational_key(rtxt);
+        if(!rv || is_zero(*rv) || rtxt.find('i') != std::string::npos) continue;
+        us.push_back(*rv);
+    }
+    std::sort(us.begin(), us.end(), [](Rational a0, Rational b0) { return r_cmp(a0, b0) < 0; });
+    std::vector<std::string> xs;
+    for(Rational u : us) {
+        out.push_back("u = " + format_rat_plain(u));
+        xs.push_back(var + " = " + exp_e_text(u));
+    }
+    if(xs.empty()) return std::nullopt;
+    out.push_back(solution_list_line(var, xs));
+    return out;
+}
+
 static std::optional<Rational> natural_log_power_ratio(Arena &a, NodeId top, NodeId bot)
 {
     Rational ct, cb;
@@ -12104,6 +12291,66 @@ static std::optional<std::vector<std::string>> log_linear_quotient_exact_sides(
     out.push_back(logn + "((" + A + ")/(" + B + ")) = " + c);
     out.push_back("(" + A + ")/(" + B + ") = " + f);
     out.push_back(A + " = " + f + "*(" + B + ")");
+    std::vector<std::string> raw{var + " = " + format_expr(a, ans)};
+    auto valid = filter_real_solutions(a, sub_node(a, lhs, rhs), var, raw, std::nullopt, std::nullopt);
+    append_rejected_by_domain(out, var, raw, valid);
+    if(valid.empty()) out.push_back(var + " = []");
+    else {
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(solution_list_line(var, valid));
+    }
+    return out;
+}
+
+static std::optional<std::vector<std::string>> log_quadratic_common_factor_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var
+)
+{
+    auto L = read_log_side_linear(a, lhs), R = read_log_side_linear(a, rhs);
+    if(!L || !R || L->natural != R->natural || contains_symbol(a, L->base, var)) return std::nullopt;
+    if(!L->natural && !casio::same_by_sig(a, L->base, R->base)) return std::nullopt;
+    auto lp = poly_of(a, L->arg, var), rp = poly_of(a, R->arg, var);
+    if(!lp || !rp || !lp->ok || !rp->ok || is_zero(lp->a2) || is_zero(rp->a2)) return std::nullopt;
+    auto lr = rational_quadratic_roots(*lp), rr = rational_quadratic_roots(*rp);
+    if(!lr || !rr) return std::nullopt;
+    Rational common{0, 1};
+    bool found = false;
+    for(Rational u : {lr->first, lr->second}) {
+        for(Rational v : {rr->first, rr->second}) {
+            if(r_cmp(u, v) == 0) {
+                common = u;
+                found = true;
+            }
+        }
+    }
+    if(!found) return std::nullopt;
+
+    auto quotient = [](Poly2 p, Rational r) {
+        return std::make_pair(p.a2, r_add(p.a1, r_mul(p.a2, r)));
+    };
+    auto lq = quotient(*lp, common), rq = quotient(*rp, common);
+    Rational exponent = r_sub(R->constant, L->constant);
+    NodeId factor = is_zero(exponent) ? one_node(a) : casio::simplify(a, casio::power(a, L->base, a.num(exponent)));
+    NodeId den = casio::simplify(a, sub_node(a, casio::mul(a, {factor, a.num(rq.first)}), a.num(lq.first)));
+    if(casio::same_by_sig(a, den, zero_node(a))) return std::nullopt;
+    NodeId num = casio::simplify(a, sub_node(a, a.num(lq.second), casio::mul(a, {factor, a.num(rq.second)})));
+    NodeId ans = casio::simplify(a, casio::div(a, num, den));
+
+    std::string A = format_expr(a, L->arg), B = format_expr(a, R->arg);
+    std::string c = format_expr(a, a.num(exponent));
+    std::string f = format_expr(a, factor), logn = L->natural ? "ln" : "log";
+    std::string fac = var + " - (" + format_expr(a, a.num(common)) + ")";
+    std::string llin = format_expr(a, casio::add(a, {casio::mul(a, {a.num(lq.first), a.sym(var)}), a.num(lq.second)}));
+    std::string rlin = format_expr(a, casio::add(a, {casio::mul(a, {a.num(rq.first), a.sym(var)}), a.num(rq.second)}));
+    std::vector<std::string> out;
+    out.push_back(logn + "((" + A + ")/(" + B + ")) = " + c);
+    out.push_back("(" + A + ")/(" + B + ") = " + f);
+    out.push_back(A + " = " + f + "*(" + B + ")");
+    out.push_back(fac + " = 0 is outside the log domain");
+    out.push_back(llin + " = " + f + "*(" + rlin + ")");
     std::vector<std::string> raw{var + " = " + format_expr(a, ans)};
     auto valid = filter_real_solutions(a, sub_node(a, lhs, rhs), var, raw, std::nullopt, std::nullopt);
     append_rejected_by_domain(out, var, raw, valid);
@@ -14586,6 +14833,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
+            if(auto expsys = exp_xy_square_system(arena, key)) return *expsys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
             if(key == "make_subject(y=3/(x+2),x)") {
@@ -16045,6 +16293,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 out.insert(out.end(), log_exact->begin(), log_exact->end());
                 return out;
             }
+            if(auto log_quad = log_quadratic_common_factor_route(arena, lhs, rhs, solve_var)) return *log_quad;
         }
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_route->begin(), log_route->end());
@@ -16058,6 +16307,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             out.insert(out.end(), log_sq->begin(), log_sq->end());
             return out;
         }
+        if(auto lnr = ln_reciprocal_quadratic_route(arena, lhs, rhs, solve_var)) return *lnr;
         if(auto log_exact = log_linear_quotient_exact_route(arena, rearr, solve_var)) {
             out.insert(out.end(), log_exact->begin(), log_exact->end());
             return out;
