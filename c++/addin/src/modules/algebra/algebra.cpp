@@ -13598,6 +13598,163 @@ static std::optional<std::vector<std::string>> log_linear_symbolic_route(Arena &
     return out;
 }
 
+struct LogAffineArg
+{
+    NodeId core = 0;
+    NodeId scale = 0;
+    NodeId offset = 0;
+};
+
+static NodeId exact_ln_const(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(is_e_const_node(a, n)) return one_node(a);
+    if(x.kind == NodeKind::Num && x.num.num == x.num.den) return zero_node(a);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt)
+        return exact_eval_simplify(a, casio::div(a, exact_ln_const(a, x.a), casio::num(a, 2)));
+    if(x.kind == NodeKind::Pow) {
+        if(auto e = as_num(a, x.b))
+            return exact_eval_simplify(a, casio::mul(a, {a.num(*e), exact_ln_const(a, x.a)}));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> terms;
+        for(NodeId k : x.kids) terms.push_back(exact_ln_const(a, k));
+        return exact_eval_simplify(a, casio::add(a, terms));
+    }
+    if(x.kind == NodeKind::Div)
+        return exact_eval_simplify(a, sub_node(a, exact_ln_const(a, x.a), exact_ln_const(a, x.b)));
+    return exact_eval_simplify(a, casio::fn(a, "log", n));
+}
+
+static std::optional<LogAffineArg> log_affine_arg(Arena &a, NodeId n, std::string const &var)
+{
+    if(!contains_symbol(a, n, var)) return LogAffineArg{0, zero_node(a), exact_ln_const(a, n)};
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        if(contains_symbol(a, x.a, var) && !contains_symbol(a, x.b, var)) {
+            auto t = log_affine_arg(a, x.a, var);
+            if(!t || !t->core) return std::nullopt;
+            t->offset = exact_eval_simplify(a, sub_node(a, t->offset, exact_ln_const(a, x.b)));
+            return t;
+        }
+        if(!contains_symbol(a, x.a, var) && contains_symbol(a, x.b, var)) {
+            auto t = log_affine_arg(a, x.b, var);
+            if(!t || !t->core) return std::nullopt;
+            t->scale = casio::neg(a, t->scale);
+            t->offset = exact_eval_simplify(a, sub_node(a, exact_ln_const(a, x.a), t->offset));
+            return t;
+        }
+    }
+    if(x.kind == NodeKind::Mul) {
+        NodeId v = 0;
+        std::vector<NodeId> cs;
+        for(NodeId k : x.kids) {
+            if(contains_symbol(a, k, var)) {
+                if(v) return std::nullopt;
+                v = k;
+            }
+            else cs.push_back(k);
+        }
+        if(v) {
+            auto t = log_affine_arg(a, v, var);
+            if(!t || !t->core) return std::nullopt;
+            if(!cs.empty()) t->offset = exact_eval_simplify(a, casio::add(a, {t->offset, exact_ln_const(a, product_or_one(a, cs))}));
+            return t;
+        }
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        auto t = log_affine_arg(a, x.a, var);
+        if(!t || !t->core) return std::nullopt;
+        t->scale = exact_eval_simplify(a, casio::div(a, t->scale, casio::num(a, 2)));
+        t->offset = exact_eval_simplify(a, casio::div(a, t->offset, casio::num(a, 2)));
+        return t;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e) return std::nullopt;
+        auto t = log_affine_arg(a, x.a, var);
+        if(!t || !t->core) return std::nullopt;
+        t->scale = exact_eval_simplify(a, casio::mul(a, {t->scale, a.num(*e)}));
+        t->offset = exact_eval_simplify(a, casio::mul(a, {t->offset, a.num(*e)}));
+        return t;
+    }
+    if(!symbolic_linear_parts(a, n, var)) return std::nullopt;
+    return LogAffineArg{n, one_node(a), zero_node(a)};
+}
+
+static std::optional<std::vector<std::string>> log_affine_linear_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    NodeId core = 0, coeff = zero_node(a), constant = zero_node(a);
+    std::vector<std::string> dom, notes;
+    bool saw = false, needs_affine = false;
+    for(NodeId term : terms) {
+        Rational c;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, term, c, body, has_body);
+        NodeId cnode = a.num(c);
+        if(has_body) {
+            NodeId arg = 0, base = 0;
+            bool has_base = false;
+            if(log_piece(a, body, arg, base, has_base)) {
+                if(has_base && contains_symbol(a, base, var)) return std::nullopt;
+                auto la = log_affine_arg(a, arg, var);
+                if(!la) return std::nullopt;
+                NodeId k = cnode;
+                if(has_base) {
+                    k = exact_eval_simplify(a, casio::div(a, k, exact_ln_const(a, base)));
+                    notes.push_back("log(" + format_expr(a, base) + "," + format_expr(a, arg) + ") = ln(" + format_expr(a, arg) + ")/ln(" + format_expr(a, base) + ")");
+                }
+                dom.push_back(format_expr(a, arg) + " > 0");
+                if(la->core) {
+                    saw = true;
+                    if(!core) core = la->core;
+                    else if(!casio::same_by_sig(a, core, la->core)) return std::nullopt;
+                    coeff = exact_eval_simplify(a, casio::add(a, {coeff, casio::mul(a, {k, la->scale})}));
+                    if(!casio::same_by_sig(a, la->offset, zero_node(a))) {
+                        needs_affine = true;
+                        notes.push_back("ln(" + format_expr(a, arg) + ") = " +
+                                        format_expr(a, casio::add(a, {casio::mul(a, {la->scale, casio::fn(a, "log", la->core)}), la->offset})));
+                    }
+                    constant = exact_eval_simplify(a, casio::add(a, {constant, casio::mul(a, {k, la->offset})}));
+                }
+                else constant = exact_eval_simplify(a, casio::add(a, {constant, casio::mul(a, {k, la->offset})}));
+                continue;
+            }
+        }
+        if(contains_symbol(a, term, var)) return std::nullopt;
+        constant = exact_eval_simplify(a, casio::add(a, {constant, casio::mul(a, {cnode, has_body ? body : one_node(a)})}));
+    }
+    if(!saw || !needs_affine || casio::same_by_sig(a, coeff, zero_node(a))) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, core, var);
+    if(!lin) return std::nullopt;
+    NodeId target = exact_eval_simplify(a, casio::div(a, casio::neg(a, constant), coeff));
+    NodeId value = exact_eval_simplify(a, casio::power(a, a.constant(ConstKind::E), target));
+    NodeId ans = exact_eval_simplify(a, casio::div(a, sub_node(a, value, lin->c), lin->m));
+    std::vector<std::string> out{format_expr(a, rearr) + " = 0"};
+    std::sort(dom.begin(), dom.end());
+    dom.erase(std::unique(dom.begin(), dom.end()), dom.end());
+    for(auto const &d : dom) out.push_back("Domain: " + d);
+    std::sort(notes.begin(), notes.end());
+    notes.erase(std::unique(notes.begin(), notes.end()), notes.end());
+    for(auto const &n : notes) out.push_back(n);
+    std::string L = "ln(" + format_expr(a, core) + ")";
+    out.push_back("(" + format_expr(a, coeff) + ")*" + L + " + " + format_expr(a, constant) + " = 0");
+    out.push_back(L + " = " + format_expr(a, target));
+    out.push_back(format_expr(a, core) + " = " + format_expr(a, value));
+    std::vector<std::string> raw{var + " = " + format_expr(a, ans)};
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    append_rejected_by_domain(out, var, raw, valid);
+    if(valid.empty()) out.push_back(var + " = []");
+    else {
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(solution_list_line(var, valid));
+    }
+    return out;
+}
+
 static std::optional<std::string> positive_log_power_root(Arena &a, Rational k, Rational c, int p)
 {
     if(k.num <= 0 || c.den != 1 || p <= 0) return std::nullopt;
@@ -18458,6 +18615,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(auto log_prod = log_product_power_solve_route(arena, lhs, rhs, solve_var)) return *log_prod;
+        if(auto log_aff = log_affine_linear_route(arena, rearr, solve_var)) {
+            out.insert(out.end(), log_aff->begin(), log_aff->end());
+            return out;
+        }
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_route->begin(), log_route->end());
             return out;

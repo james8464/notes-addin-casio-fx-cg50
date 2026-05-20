@@ -1746,6 +1746,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["-x^2 + 6"],
         ["ERR:"],
     ),
+    (
+        "alg",
+        "solve(2+log(2,x)=2*ln(x/sqrt(e)),x)",
+        ["Domain: x > 0", "ln(x/sqrt(e)) = ln(x) - 1/2", "log(2,x) = ln(x)/ln(2)", "(1/ln(2) - 2)*ln(x) + 3 = 0", "ln(x) = -3/(1/ln(2) - 2)"],
+        ["x = []", "ERR:", "LHS-RHS"],
+    ),
 ]
 
 
