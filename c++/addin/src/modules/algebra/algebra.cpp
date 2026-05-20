@@ -4544,6 +4544,71 @@ static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, st
     return std::nullopt;
 }
 
+static std::optional<NodeId> inverse_restricted_recip_square(Arena &a, NodeId n, std::string const &domain_text)
+{
+    double lo = -std::numeric_limits<double>::infinity();
+    double hi = std::numeric_limits<double>::infinity();
+    for(std::string part : split_top_key(domain_text, ',')) {
+        part.erase(std::remove_if(part.begin(), part.end(), [](unsigned char c) { return std::isspace(c); }), part.end());
+        for(std::string op : {std::string(">="), std::string("<="), std::string(">"), std::string("<")}) {
+            auto p = part.find(op);
+            if(p == std::string::npos) continue;
+            std::string left = part.substr(0, p), right = part.substr(p + op.size());
+            if(left == "x") {
+                auto v = parse_const_double(a, right);
+                if(v) {
+                    if(op[0] == '>') lo = std::max(lo, *v);
+                    else hi = std::min(hi, *v);
+                }
+            }
+            else if(right == "x") {
+                auto v = parse_const_double(a, left);
+                if(v) {
+                    if(op[0] == '<') lo = std::max(lo, *v);
+                    else hi = std::min(hi, *v);
+                }
+            }
+            break;
+        }
+    }
+
+    NodeId coef = 0, recip = 0;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        Node const &d = a.get(x.b);
+        if(d.kind != NodeKind::Pow) return std::nullopt;
+        auto e = as_num(a, d.b);
+        if(!e || e->num != 2 || e->den != 1 || !is_sym_var(a, d.a, "x")) return std::nullopt;
+        coef = x.a;
+    }
+    else if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> coeffs;
+        for(NodeId k : x.kids) {
+            Node const &kn = a.get(k);
+            if(!recip && kn.kind == NodeKind::Pow) {
+                auto e = as_num(a, kn.b);
+                if(e && e->num == -2 && e->den == 1 && is_sym_var(a, kn.a, "x")) {
+                    recip = k;
+                    continue;
+                }
+            }
+            if(contains_symbol(a, k, "x")) return std::nullopt;
+            coeffs.push_back(k);
+        }
+        if(!recip) return std::nullopt;
+        coef = coeffs.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, coeffs));
+    }
+    else return std::nullopt;
+
+    auto cv = eval_node_env(a, coef, {});
+    if(!cv || *cv <= 0.0) return std::nullopt;
+    int sign = lo > 0.0 ? 1 : hi < 0.0 ? -1 : 0;
+    if(!sign) return std::nullopt;
+    NodeId y = casio::sym(a, "x");
+    NodeId ans = exact_eval_simplify(a, casio::fn(a, "sqrt", casio::div(a, coef, y)));
+    return sign > 0 ? ans : exact_eval_simplify(a, casio::neg(a, ans));
+}
+
 static std::vector<std::string> numeric_roots_scan(Arena &a, NodeId expr, std::string const &var,
                                                    std::optional<double> lo_in = std::nullopt,
                                                    std::optional<double> hi_in = std::nullopt)
@@ -10767,6 +10832,17 @@ static std::optional<std::string> exp_linear_range(
                             if(exp_expr) break;
                         }
                     }
+                    if(!exp_expr && a.get(k).kind == NodeKind::Div) {
+                        NodeId top_id = a.get(k).a;
+                        exp_expr = direct_exp(top_id);
+                        Node const &top = a.get(top_id);
+                        if(!exp_expr && (top.kind == NodeKind::Add || top.kind == NodeKind::Mul)) {
+                            for(NodeId f : top.kids) {
+                                exp_expr = direct_exp(f);
+                                if(exp_expr) break;
+                            }
+                        }
+                    }
                     if(exp_expr) break;
                 }
             }
@@ -10942,6 +11018,13 @@ static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, Nod
         if(!saw_u) return std::nullopt;
         return std::make_pair(c, Rational{0, 1});
     }
+    if(x.kind == NodeKind::Div) {
+        auto den = as_num(a, x.b);
+        if(!den || is_zero(*den)) return std::nullopt;
+        auto top = linear_in_expr(a, x.a, u);
+        if(!top) return std::nullopt;
+        return std::make_pair(r_div(top->first, *den), r_div(top->second, *den));
+    }
     if(x.kind == NodeKind::Add) {
         Rational m{0, 1}, b{0, 1};
         for(NodeId k : x.kids) {
@@ -11079,7 +11162,7 @@ static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::
     return var + " <= " + format_rat(a, one_bound);
 }
 
-static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vector<std::string> &steps)
+static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     auto add_trig_term = [&](NodeId term, Rational &s, Rational &c, Rational &off, std::string &arg, bool &seen) -> bool {
         Node const &t = a.get(term);
@@ -11144,6 +11227,64 @@ static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::vec
     };
 
     if(auto ar = affine_trig_range()) return *ar;
+
+    auto affine_symbolic_trig_range = [&]() -> std::optional<std::string> {
+        NodeId s = zero_node(a), c = zero_node(a), off = zero_node(a);
+        std::string arg;
+        bool seen = false;
+        auto add_term = [&](NodeId term) -> bool {
+            Node const &t = a.get(term);
+            if(!contains_symbol(a, term, var)) {
+                off = exact_eval_simplify(a, casio::add(a, {off, term}));
+                return true;
+            }
+            NodeId fn_id = 0;
+            std::vector<NodeId> coeffs;
+            if(t.kind == NodeKind::Fn && (t.fkind == FnKind::Sin || t.fkind == FnKind::Cos)) fn_id = term;
+            else if(t.kind == NodeKind::Mul) {
+                for(NodeId k : t.kids) {
+                    Node const &kid = a.get(k);
+                    if(!fn_id && kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos)) fn_id = k;
+                    else {
+                        if(contains_symbol(a, k, var)) return false;
+                        coeffs.push_back(k);
+                    }
+                }
+            }
+            else return false;
+            if(!fn_id) return false;
+            Node const &fn = a.get(fn_id);
+            std::string this_arg = format_expr(a, fn.a);
+            if(seen && this_arg != arg) return false;
+            arg = this_arg;
+            seen = true;
+            NodeId coef = coeffs.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, coeffs));
+            if(fn.fkind == FnKind::Sin) s = exact_eval_simplify(a, casio::add(a, {s, coef}));
+            else c = exact_eval_simplify(a, casio::add(a, {c, coef}));
+            return true;
+        };
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Add) {
+            for(NodeId k : x.kids)
+                if(!add_term(k)) return std::nullopt;
+        }
+        else if(!add_term(n)) return std::nullopt;
+        if(!seen || (casio::same_by_sig(a, s, zero_node(a)) && casio::same_by_sig(a, c, zero_node(a)))) return std::nullopt;
+        NodeId amp2 = exact_eval_simplify(a, casio::add(a, {
+            casio::power(a, s, casio::num(a, 2)),
+            casio::power(a, c, casio::num(a, 2))
+        }));
+        NodeId amp = exact_eval_simplify(a, casio::fn(a, "sqrt", amp2));
+        NodeId lo = exact_eval_simplify(a, casio::add(a, {off, casio::neg(a, amp)}));
+        NodeId hi = exact_eval_simplify(a, casio::add(a, {off, amp}));
+        std::string st = format_expr(a, s), ct = format_expr(a, c);
+        steps.push_back("R = sqrt((" + st + ")^2 + (" + ct + ")^2) = " + format_expr(a, amp));
+        steps.push_back("-R <= " + st + "*sin(" + arg + ") + " + ct + "*cos(" + arg + ") <= R");
+        steps.push_back(format_expr(a, lo) + " <= " + format_expr(a, n) + " <= " + format_expr(a, hi));
+        return format_expr(a, lo) + " <= y <= " + format_expr(a, hi);
+    };
+
+    if(auto sr = affine_symbolic_trig_range()) return *sr;
 
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Fn) return std::nullopt;
@@ -11469,7 +11610,7 @@ static bool extract_power_term(Arena &a, NodeId n, std::string const &var, Monot
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
         auto e = as_num(a, x.b);
-        if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num > 0) {
+        if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num != 0) {
             info.exp = e->num;
             info.coeff = Rational{1, 1};
             return true;
@@ -11510,7 +11651,6 @@ static std::optional<std::string> monotone_power_interval_range(
 {
     MonotonePowerInfo info;
     if(!extract_power_term(a, n, var, info)) return std::nullopt;
-    if(info.exp % 2 == 0) return std::nullopt;
     auto endpoint_text = [&](std::string const &s) -> std::optional<std::string> {
         if(s.empty()) return std::nullopt;
         std::string k;
@@ -11520,6 +11660,21 @@ static std::optional<std::string> monotone_power_interval_range(
         NodeId yv = exact_eval_simplify(a, clone_with_substitution(a, n, var, xv));
         return format_expr(a, yv);
     };
+    if(info.exp < 0) {
+        if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v) || (*lo_v <= 0.0 && *hi_v >= 0.0)) return std::nullopt;
+        auto ylo_txt = endpoint_text(lo), yhi_txt = endpoint_text(hi);
+        auto ylo = eval_node(a, n, var, *lo_v), yhi = eval_node(a, n, var, *hi_v);
+        if(!ylo_txt || !yhi_txt || !ylo || !yhi) return std::nullopt;
+        bool lo_is_min = *ylo <= *yhi;
+        std::string mn = lo_is_min ? *ylo_txt : *yhi_txt;
+        std::string mx = lo_is_min ? *yhi_txt : *ylo_txt;
+        bool mn_open = lo_is_min ? lo_open : hi_open;
+        bool mx_open = lo_is_min ? hi_open : lo_open;
+        steps.push_back(var + " != 0.");
+        steps.push_back("Evaluate endpoints: y(" + lo + ")=" + *ylo_txt + ", y(" + hi + ")=" + *yhi_txt + ".");
+        return mn + (mn_open ? " < y" : " <= y") + (mx_open ? " < " : " <= ") + mx;
+    }
+    if(info.exp % 2 == 0) return std::nullopt;
     if(lo_v && hi_v && std::isfinite(*lo_v) && !std::isfinite(*hi_v)) {
         auto ylo = endpoint_text(lo);
         if(!ylo) return std::nullopt;
@@ -11560,7 +11715,7 @@ static std::optional<std::string> odd_power_full_range(
 {
     MonotonePowerInfo info;
     if(!extract_power_term(a, n, var, info)) return std::nullopt;
-    if(info.exp % 2 == 0 || is_zero(info.coeff)) return std::nullopt;
+    if(info.exp <= 0 || info.exp % 2 == 0 || is_zero(info.coeff)) return std::nullopt;
     steps.push_back(format_expr(a, n) + " is an odd power, so it is unbounded both ways.");
     return "all real y";
 }
@@ -13919,15 +14074,38 @@ struct AbsPlusConstEqInfo
 {
     NodeId abs_node = 0;
     NodeId abs_arg = 0;
+    Rational abs_coef{1, 1};
     Rational c{0, 1};
 };
 
 static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId n, std::string const &var)
 {
+    auto read_abs = [&](NodeId id, Rational &coef, NodeId &abs_node, NodeId &abs_arg) -> bool {
+        Node const &z = a.get(id);
+        coef = Rational{1, 1};
+        NodeId core = id;
+        if(z.kind == NodeKind::Mul) {
+            core = 0;
+            for(NodeId k : z.kids) {
+                if(auto r = as_num(a, k)) coef = r_mul(coef, *r);
+                else if(!core) core = k;
+                else return false;
+            }
+            if(!core) return false;
+        }
+        Node const &absn = a.get(core);
+        if(absn.kind != NodeKind::Fn || absn.fkind != FnKind::Abs) return false;
+        auto p = poly_of(a, absn.a, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1) || is_zero(coef)) return false;
+        abs_node = core;
+        abs_arg = absn.a;
+        return true;
+    };
+
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Abs) {
         auto p = poly_of(a, x.a, var);
-        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) return AbsPlusConstEqInfo{n, x.a, Rational{0, 1}};
+        if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) return AbsPlusConstEqInfo{n, x.a, Rational{1, 1}, Rational{0, 1}};
         return std::nullopt;
     }
     if(x.kind != NodeKind::Add) return std::nullopt;
@@ -13935,11 +14113,12 @@ static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId
     bool seen_abs = false;
     for(auto kid : x.kids) {
         Node const &kn = a.get(kid);
-        if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Abs && !seen_abs) {
-            auto p = poly_of(a, kn.a, var);
-            if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
-            info.abs_node = kid;
-            info.abs_arg = kn.a;
+        Rational coef;
+        NodeId abs_node = 0, abs_arg = 0;
+        if(!seen_abs && read_abs(kid, coef, abs_node, abs_arg)) {
+            info.abs_node = abs_node;
+            info.abs_arg = abs_arg;
+            info.abs_coef = coef;
             seen_abs = true;
         }
         else if(kn.kind == NodeKind::Num) {
@@ -13958,7 +14137,7 @@ static std::optional<std::vector<std::string>> abs_linear_equation_route(Arena &
     auto p = poly_of(a, info->abs_arg, var);
     if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
 
-    Rational rhs = r_neg(info->c);
+    Rational rhs = r_div(r_neg(info->c), info->abs_coef);
     std::vector<std::string> out;
     std::string abs_text = format_expr(a, info->abs_node);
     std::string arg = format_expr(a, info->abs_arg);
@@ -14029,6 +14208,43 @@ static std::optional<std::vector<std::string>> log_abs_plus_const_route(
 
     Node const &rv = a.get(rhs_node);
     if(rv.kind != NodeKind::Num) return std::nullopt;
+    if(base == "e" && !is_zero(rv.num)) {
+        auto info = abs_plus_const_eq_info(a, log_arg, var);
+        if(!info) return std::nullopt;
+        NodeId target_node = exact_eval_simplify(a, casio::power(a, casio::constant_e(a), rhs_node));
+        NodeId abs_rhs_node = exact_eval_simplify(a, casio::div(a, casio::add(a, {
+            target_node,
+            casio::neg(a, a.num(info->c))
+        }), a.num(info->abs_coef)));
+        auto av = eval_node_env(a, abs_rhs_node, {});
+        std::vector<std::string> out;
+        std::string inner = format_expr(a, log_arg);
+        std::string abs_text = format_expr(a, info->abs_node);
+        std::string rhs_text = format_expr(a, rhs_node);
+        out.push_back(format_expr(a, log_node) + " = " + rhs_text);
+        out.push_back("Domain: " + inner + " > 0");
+        out.push_back(inner + " = e^" + rhs_text);
+        out.push_back(abs_text + " = " + format_expr(a, abs_rhs_node));
+        if(!av || *av < 0.0) {
+            out.push_back(var + " = []");
+            return out;
+        }
+        auto p = poly_of(a, info->abs_arg, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        NodeId pos = exact_eval_simplify(a, casio::div(a, casio::add(a, {
+            abs_rhs_node,
+            casio::neg(a, a.num(p->a0))
+        }), a.num(p->a1)));
+        NodeId neg = exact_eval_simplify(a, casio::div(a, casio::add(a, {
+            casio::neg(a, abs_rhs_node),
+            casio::neg(a, a.num(p->a0))
+        }), a.num(p->a1)));
+        std::vector<std::string> sols{var + " = " + format_expr(a, neg), var + " = " + format_expr(a, pos)};
+        sort_solution_lines(a, sols);
+        for(auto const &s : sols) out.push_back(s);
+        out.push_back(solution_list_line(var, sols));
+        return out;
+    }
     Rational target{1, 1};
     if(!is_zero(rv.num)) {
         auto exact = integer_base_power_rational(base, rv.num);
@@ -14046,7 +14262,7 @@ static std::optional<std::vector<std::string>> log_abs_plus_const_route(
     out.push_back("Domain: " + inner + " > 0");
     out.push_back(inner + " = " + base + "^" + rhs_text);
     out.push_back(inner + " = " + format_expr(a, a.num(target)));
-    Rational abs_rhs = r_sub(target, info->c);
+    Rational abs_rhs = r_div(r_sub(target, info->c), info->abs_coef);
     std::string abs_rhs_text = format_expr(a, a.num(abs_rhs));
     out.push_back(abs_text + " = " + abs_rhs_text);
     if(abs_rhs.num < 0) {
@@ -19559,6 +19775,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
             auto inv = !domain_text.empty() ? inverse_restricted_quadratic(arena, n, domain_text) : std::optional<NodeId>{};
+            if(!inv && !domain_text.empty()) inv = inverse_restricted_recip_square(arena, n, domain_text);
             if(!inv && !domain_text.empty()) inv = inverse_restricted_trig(arena, n);
             if(!inv) inv = inverse_simple_function(arena, n);
             if(!inv) {
@@ -19922,15 +20139,20 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     auto ylo = eval_node(arena, n, var, *lo_v);
                     auto yhi = eval_node(arena, n, var, *hi_v);
                     if(ylo && yhi) {
+                        auto endpoint_text = [&](std::string const &s) {
+                            NodeId xv = casio::parse_expr(arena, s);
+                            NodeId yv = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, xv));
+                            return format_expr(arena, yv);
+                        };
+                        std::string ylo_txt = endpoint_text(lo);
+                        std::string yhi_txt = endpoint_text(hi);
                         bool lo_is_min = *ylo <= *yhi;
-                        double mn = lo_is_min ? *ylo : *yhi;
-                        double mx = lo_is_min ? *yhi : *ylo;
+                        std::string mn = lo_is_min ? ylo_txt : yhi_txt;
+                        std::string mx = lo_is_min ? yhi_txt : ylo_txt;
                         bool mn_open = lo_is_min ? lo_open : hi_open;
                         bool mx_open = lo_is_min ? hi_open : lo_open;
-                        steps.push_back("y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
-                                        ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi));
-                        range_answer = format_double_compact(mn) + below(mn_open) +
-                                       (mx_open ? " < " : " <= ") + format_double_compact(mx);
+                        steps.push_back("y(" + lo + ") = " + ylo_txt + ", y(" + hi + ") = " + yhi_txt);
+                        range_answer = mn + below(mn_open) + (mx_open ? " < " : " <= ") + mx;
                     }
                 }
                 steps.push_back("Range: " + range_answer + ".");
@@ -19975,7 +20197,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back(format_expr(arena, square) + " >= 0");
                     steps.push_back("Range: " + range_answer + ".");
                 }
-                else if(auto trig_range = direct_trig_range(arena, n, steps)) {
+                else if(auto trig_range = direct_trig_range(arena, n, var, steps)) {
                     range_answer = *trig_range;
                     steps.push_back("Range: " + range_answer + ".");
                 }
