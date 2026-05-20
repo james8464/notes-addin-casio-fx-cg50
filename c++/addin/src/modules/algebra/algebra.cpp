@@ -7650,6 +7650,109 @@ static std::optional<std::vector<std::string>> sqrt_poly_substitution_route(Aren
     return out;
 }
 
+static bool sqrt_x_ratio_term(Arena &a, NodeId n, std::string const &var, Rational &coef, Rational &k, bool &direct)
+{
+    coef = Rational{1, 1};
+    NodeId root = n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        root = 0;
+        for(NodeId kid : x.kids) {
+            if(auto c = as_num(a, kid)) coef = r_mul(coef, *c);
+            else {
+                Node const &q = a.get(kid);
+                if(q.kind != NodeKind::Fn || q.fkind != FnKind::Sqrt || root) return false;
+                root = kid;
+            }
+        }
+        if(!root) return false;
+    }
+    Node const &r = a.get(root);
+    if(r.kind != NodeKind::Fn || r.fkind != FnKind::Sqrt) return false;
+    Node const &arg = a.get(r.a);
+    if(arg.kind != NodeKind::Div) return false;
+    Node const &top = a.get(arg.a), &bot = a.get(arg.b);
+    if(top.kind == NodeKind::Sym && top.text == var && bot.kind == NodeKind::Num && bot.num.num > 0) {
+        k = bot.num;
+        direct = true;
+        return true;
+    }
+    if(top.kind == NodeKind::Num && top.num.num > 0 && bot.kind == NodeKind::Sym && bot.text == var) {
+        k = top.num;
+        direct = false;
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_route(Arena &a,
+                                                                           NodeId lhs,
+                                                                           NodeId rhs,
+                                                                           NodeId rearr,
+                                                                           std::string const &var,
+                                                                           std::optional<double> lo,
+                                                                           std::optional<double> hi)
+{
+    auto match = [&](NodeId sum, NodeId val) -> std::optional<std::vector<std::string>> {
+        Node const &v = a.get(val);
+        if(v.kind != NodeKind::Num) return std::nullopt;
+        std::vector<NodeId> terms;
+        add_terms_flat(a, sum, terms);
+        if(terms.size() != 2) return std::nullopt;
+        Rational kd{0,1}, kr{0,1}, cd{0,1}, cr{0,1};
+        bool have_d = false, have_r = false;
+        for(NodeId t : terms) {
+            Rational c{1,1}, k{0,1};
+            bool direct = false;
+            if(!sqrt_x_ratio_term(a, t, var, c, k, direct)) return std::nullopt;
+            if(direct) {
+                if(have_d) return std::nullopt;
+                have_d = true; kd = k; cd = c;
+            }
+            else {
+                if(have_r) return std::nullopt;
+                have_r = true; kr = k; cr = c;
+            }
+        }
+        if(!have_d || !have_r || r_cmp(kd, kr) != 0 || is_zero(cd) || is_zero(cr)) return std::nullopt;
+        Poly2 q = primitive_poly2(Poly2{cd, r_neg(v.num), cr, true});
+        auto us = solve_poly2(a, q, "u");
+        if(us.empty()) return std::nullopt;
+        std::vector<std::string> out, xs;
+        std::string kt = format_expr(a, a.num(kd));
+        std::string xu = kt == "1" ? var : var + "/" + kt;
+        out.push_back("Domain: " + var + " > 0");
+        out.push_back("u = sqrt(" + xu + "), u > 0");
+        out.push_back("sqrt(" + kt + "/" + var + ") = 1/u");
+        out.push_back(rat_node_text(a, cr) + "/u + " + rat_node_text(a, cd) + "*u = " + rat_node_text(a, v.num));
+        out.push_back(format_expr(a, poly2_to_node(a, q, "u")) + " = 0");
+        if(auto rr = rational_quadratic_roots(q))
+            out.push_back("Factor: " + quadratic_factor_text(a, q, "u") + " = 0");
+        for(auto const &line : us) {
+            std::string rhs_s = sol_rhs(line);
+            out.push_back("u = " + rhs_s);
+            auto ur = parse_rational_text(rhs_s);
+            auto uv = parse_const_double(a, rhs_s);
+            if((ur && ur->num <= 0) || (uv && *uv <= 1e-12) || rhs_s.find('i') != std::string::npos) {
+                out.push_back("reject u = " + rhs_s);
+                continue;
+            }
+            if(!ur) continue;
+            Rational xval = r_mul(kd, r_mul(*ur, *ur));
+            xs.push_back(var + " = " + format_expr(a, a.num(xval)));
+        }
+        xs = filter_real_solutions(a, rearr, var, xs, lo, hi);
+        if(xs.empty()) return std::nullopt;
+        sort_solution_lines(a, xs);
+        for(auto const &x : xs) out.push_back(x);
+        append_answer(out, var, xs);
+        append_numeric_3dp(a, out, var, xs);
+        return out;
+    };
+    if(auto out = match(lhs, rhs)) return out;
+    return match(rhs, lhs);
+}
+
 static bool root_power_den_walk(Arena &a, NodeId n, std::string const &var, int &den)
 {
     Node const &x = a.get(n);
@@ -12477,6 +12580,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
             if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
+            if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
