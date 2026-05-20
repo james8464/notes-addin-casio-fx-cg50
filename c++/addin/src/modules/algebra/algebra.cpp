@@ -6600,6 +6600,25 @@ static bool read_coeff_suffix(std::string const &term, std::string const &suffix
     return true;
 }
 
+static std::vector<std::string> split_signed_terms_key(std::string const &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if((c == '+' || c == '-') && depth == 0 && !cur.empty()) {
+            out.push_back(cur);
+            cur.clear();
+        }
+        if(c != '+') cur.push_back(c);
+    }
+    if(!cur.empty()) out.push_back(cur);
+    return out;
+}
+
 static bool read_reciprocal_symmetric_equation(std::string const &eq, Rational &A, Rational &B)
 {
     auto sides = split_top_key(eq, '=');
@@ -6862,6 +6881,96 @@ static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_square_syst
         out.push_back("x^2 = " + format_rat_plain(x2));
         pairs.push_back("(" + xr + "," + yr + ")");
         pairs.push_back("(-" + xr + "," + multiply_root_text(r_neg(m), xr) + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
+}
+
+static bool read_y2_x2_equation(std::string const &eq, Rational &ay, Rational &ax, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    std::optional<Rational> py, px;
+    for(auto const &t : split_signed_terms_key(sides[0])) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "y^2", c)) py = c;
+        else if(read_coeff_suffix(t, "x^2", c)) px = c;
+    }
+    if(!py || !px) return false;
+    ay = *py; ax = *px; C = *rhs;
+    return true;
+}
+
+static bool read_xy_x2_equation(std::string const &eq, Rational &axy, Rational &ax, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    std::optional<Rational> pxy, px;
+    for(auto const &t : split_signed_terms_key(sides[0])) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "xy", c) || read_coeff_suffix(t, "x*y", c)) pxy = c;
+        else if(read_coeff_suffix(t, "x^2", c)) px = c;
+    }
+    if(!pxy || !px) return false;
+    axy = *pxy; ax = *px; C = *rhs;
+    return true;
+}
+
+static std::string linear_u_text(Rational a, Rational b)
+{
+    return format_rat_plain(a) + "*u " + (b.num < 0 ? "- " + format_rat_plain(r_neg(b)) : "+ " + format_rat_plain(b));
+}
+
+static std::optional<std::vector<std::string>> homogeneous_quadratic_ratio_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> ay, ax1, c1, axy, ax2, c2;
+    for(auto const &e : eqs) {
+        Rational p{0, 1}, q{0, 1}, r{0, 1};
+        if(read_y2_x2_equation(e, p, q, r)) { ay = p; ax1 = q; c1 = r; }
+        else if(read_xy_x2_equation(e, p, q, r)) { axy = p; ax2 = q; c2 = r; }
+    }
+    if(!ay || !ax1 || !c1 || !axy || !ax2 || !c2) return std::nullopt;
+    Poly2 up = primitive_poly2(Poly2{
+        r_mul(*c2, *ay),
+        r_neg(r_mul(*c1, *axy)),
+        r_sub(r_mul(*c2, *ax1), r_mul(*c1, *ax2)),
+        true
+    });
+    auto us = solve_poly2(a, up, "u");
+    if(us.empty()) return std::nullopt;
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back("u = y/x");
+    out.push_back(format_rat_plain(*ay) + "*u^2 " + (ax1->num < 0 ? "- " + format_rat_plain(r_neg(*ax1)) : "+ " + format_rat_plain(*ax1)) + " = " + format_rat_plain(*c1) + "/x^2");
+    out.push_back(linear_u_text(*axy, *ax2) + " = " + format_rat_plain(*c2) + "/x^2");
+    out.push_back(format_rat_plain(*c1) + "*(" + linear_u_text(*axy, *ax2) + ") = " + format_rat_plain(*c2) + "*(" + format_rat_plain(*ay) + "*u^2 " + (ax1->num < 0 ? "- " + format_rat_plain(r_neg(*ax1)) : "+ " + format_rat_plain(*ax1)) + ")");
+    out.push_back(format_expr(a, poly2_to_node(a, up, "u")) + " = 0");
+    for(auto const &line : us) {
+        auto uv = parse_rational_text(sol_rhs(line));
+        if(!uv) continue;
+        Rational den = r_add(r_mul(*axy, *uv), *ax2);
+        if(is_zero(den)) continue;
+        Rational x2 = r_div(*c2, den);
+        if(x2.num <= 0) continue;
+        std::string xr = sqrt_rational_surd_text(a, x2);
+        out.push_back("u = " + format_rat_plain(*uv));
+        out.push_back("x^2 = " + format_rat_plain(x2));
+        pairs.push_back("(" + xr + "," + multiply_root_text(*uv, xr) + ")");
+        pairs.push_back("(-" + xr + "," + multiply_root_text(r_neg(*uv), xr) + ")");
     }
     if(pairs.empty()) return std::nullopt;
     std::string ans;
@@ -13655,6 +13764,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rqs = reciprocal_quadratic_system(arena, key)) return *rqs;
             if(auto sss = sum_sqrt_sum_square_system(arena, key)) return *sss;
             if(auto rsr = reciprocal_sqrt_ratio_square_system(arena, key)) return *rsr;
+            if(auto hqs = homogeneous_quadratic_ratio_system(arena, key)) return *hqs;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
