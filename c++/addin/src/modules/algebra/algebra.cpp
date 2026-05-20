@@ -4052,6 +4052,22 @@ static std::optional<NodeId> inverse_restricted_quadratic(Arena &a, NodeId n, st
     auto ymid = eval_node(a, n, "x", mid);
     if(!ymid) return std::nullopt;
     NodeId y = casio::sym(a, "x");
+    Rational h = r_div(p->a1, r_mul(Rational{2, 1}, p->a2));
+    Rational k = r_sub(p->a0, r_div(r_mul(p->a1, p->a1), r_mul(Rational{4, 1}, p->a2)));
+    NodeId shifted = casio::add(a, {y, casio::neg(a, a.num(k))});
+    NodeId root_arg = casio::div(a, shifted, a.num(p->a2));
+    NodeId root_simple = casio::fn(a, "sqrt", casio::simplify(a, root_arg));
+    if(p->a2.num > 0) {
+        std::int64_t rn = 0, rd = 0;
+        if(is_square_i64(p->a2.num, rn) && is_square_i64(p->a2.den, rd) && rn != 0) {
+            root_simple = casio::div(a, casio::fn(a, "sqrt", casio::simplify(a, shifted)), a.num(Rational{rn, rd}));
+        }
+    }
+    NodeId base = a.num(r_neg(h));
+    NodeId sq_inv = mid >= vertex ? casio::add(a, {base, root_simple})
+                                  : casio::add(a, {base, casio::neg(a, root_simple)});
+    if(auto v = eval_node(a, casio::simplify(a, sq_inv), "x", *ymid); v && std::fabs(*v - mid) < 1e-6)
+        return casio::simplify(a, sq_inv);
     if(is_zero(p->a1) && std::llabs(p->a2.num) == p->a2.den) {
         NodeId inside = casio::simplify(a, casio::div(a, casio::add(a, {y, casio::neg(a, a.num(p->a0))}), a.num(p->a2)));
         NodeId root = casio::fn(a, "sqrt", inside);
@@ -18885,6 +18901,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     if(*lo_v >= vertex) {
                         auto ylo = eval_node(arena, n, var, *lo_v);
                         if(ylo) range_answer = "y >= " + format_double_compact(*ylo);
+                    }
+                }
+                else if(lo_v && !std::isfinite(*lo_v) && hi_v && std::isfinite(*hi_v) && a.num > 0) {
+                    double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
+                    if(*hi_v <= vertex) {
+                        auto yhi = eval_node(arena, n, var, *hi_v);
+                        if(yhi) range_answer = "y >= " + format_double_compact(*yhi);
                     }
                 }
                 std::string range = "Range: " + range_answer;

@@ -491,6 +491,18 @@ CASES = [
         ("x = -2.44948974278", "0 + sqrt", "0 - sqrt"),
     ),
     (
+        "restricted quadratic left range",
+        ["--alg", "range(4*(x+1)^2,x<=-2)"],
+        ("Range: y >= 4 on the interval",),
+        ("Range: y >= 0",),
+    ),
+    (
+        "restricted quadratic inverse simplified",
+        ["--alg", "inverse(4*(x+1)^2,x<=-2)"],
+        ("f^-1(x) = - sqrt(x)/2 - 1",),
+        ("sqrt(- 16",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
