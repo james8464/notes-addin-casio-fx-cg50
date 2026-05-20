@@ -372,6 +372,119 @@ static bool is_e_const_node(Arena &a, NodeId n)
            (x.kind == NodeKind::Sym && x.text == "e");
 }
 
+static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId arg)
+{
+    std::string k = format_expr(a, arg);
+    k.erase(std::remove_if(k.begin(), k.end(), [](unsigned char c) { return std::isspace(c); }), k.end());
+    bool neg = false;
+    if(!k.empty() && k[0] == '-') {
+        neg = true;
+        k.erase(k.begin());
+    }
+    auto sq = [&](int n) { return casio::fn(a, "sqrt", a.num(Rational{n, 1})); };
+    auto half = [&](NodeId n) { return casio::div(a, n, a.num(Rational{2, 1})); };
+    auto third = [&](NodeId n) { return casio::div(a, n, a.num(Rational{3, 1})); };
+    auto maybe_neg = [&](NodeId n, bool odd) { return (neg && odd) ? casio::neg(a, n) : n; };
+    auto base = [&](FnKind g) -> std::optional<NodeId> {
+        if(g == FnKind::Sin) {
+            if(k == "0") return casio::num(a, 0);
+            if(k == "pi/6") return a.num(Rational{1, 2});
+            if(k == "pi/4") return half(sq(2));
+            if(k == "pi/3") return half(sq(3));
+            if(k == "pi/2") return casio::num(a, 1);
+        }
+        if(g == FnKind::Cos) {
+            if(k == "0") return casio::num(a, 1);
+            if(k == "pi/6") return half(sq(3));
+            if(k == "pi/4") return half(sq(2));
+            if(k == "pi/3") return a.num(Rational{1, 2});
+            if(k == "pi/2") return casio::num(a, 0);
+        }
+        if(g == FnKind::Tan) {
+            if(k == "0") return casio::num(a, 0);
+            if(k == "pi/6") return third(sq(3));
+            if(k == "pi/4") return casio::num(a, 1);
+            if(k == "pi/3") return sq(3);
+        }
+        return std::nullopt;
+    };
+    if(f == FnKind::Sin || f == FnKind::Cos || f == FnKind::Tan) {
+        auto v = base(f);
+        if(!v) return std::nullopt;
+        return maybe_neg(*v, f != FnKind::Cos);
+    }
+    FnKind g = f == FnKind::Sec ? FnKind::Cos : f == FnKind::Cosec ? FnKind::Sin : f == FnKind::Cot ? FnKind::Tan : FnKind::Log;
+    if(g == FnKind::Log) return std::nullopt;
+    auto v = base(g);
+    if(!v || casio::same_by_sig(a, *v, casio::num(a, 0))) return std::nullopt;
+    return maybe_neg(casio::div(a, casio::num(a, 1), *v), g != FnKind::Cos);
+}
+
+static std::optional<NodeId> exact_trig_square_node(Arena &a, FnKind f, NodeId arg)
+{
+    std::string k = format_expr(a, arg);
+    k.erase(std::remove_if(k.begin(), k.end(), [](unsigned char c) { return std::isspace(c); }), k.end());
+    if(!k.empty() && k[0] == '-') k.erase(k.begin());
+    auto r = [&](long long n, long long d = 1) { return casio::num(a, n, d); };
+    if(f == FnKind::Sin) {
+        if(k == "0") return r(0);
+        if(k == "pi/6") return r(1, 4);
+        if(k == "pi/4") return r(1, 2);
+        if(k == "pi/3") return r(3, 4);
+        if(k == "pi/2") return r(1);
+    }
+    if(f == FnKind::Cos) {
+        if(k == "0") return r(1);
+        if(k == "pi/6") return r(3, 4);
+        if(k == "pi/4") return r(1, 2);
+        if(k == "pi/3") return r(1, 4);
+        if(k == "pi/2") return r(0);
+    }
+    if(f == FnKind::Tan || f == FnKind::Cot || f == FnKind::Sec || f == FnKind::Cosec) {
+        auto b = exact_trig_square_node(a, f == FnKind::Tan || f == FnKind::Sec ? FnKind::Cos : FnKind::Sin, arg);
+        if(!b || casio::same_by_sig(a, *b, casio::num(a, 0))) return std::nullopt;
+        if(f == FnKind::Sec || f == FnKind::Cosec) return casio::div(a, casio::num(a, 1), *b);
+        auto t = exact_trig_square_node(a, f == FnKind::Tan ? FnKind::Sin : FnKind::Cos, arg);
+        if(!t) return std::nullopt;
+        return casio::div(a, *t, *b);
+    }
+    return std::nullopt;
+}
+
+static std::optional<NodeId> exact_ln_factor_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(is_e_const_node(a, n)) return casio::num(a, 1);
+    if(x.kind == NodeKind::Num && x.num.num == x.num.den) return casio::num(a, 0);
+    if(x.kind == NodeKind::Num && x.num.num > 0) return casio::fn(a, "log", n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        auto u = exact_ln_factor_node(a, x.a);
+        if(!u) return std::nullopt;
+        return casio::div(a, *u, casio::num(a, 2));
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &en = a.get(x.b);
+        auto u = exact_ln_factor_node(a, x.a);
+        if(en.kind != NodeKind::Num || !u) return std::nullopt;
+        return casio::mul(a, {a.num(en.num), *u});
+    }
+    if(x.kind == NodeKind::Div) {
+        auto u = exact_ln_factor_node(a, x.a), v = exact_ln_factor_node(a, x.b);
+        if(!u || !v) return std::nullopt;
+        return casio::add(a, {*u, casio::neg(a, *v)});
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> terms;
+        for(NodeId k : x.kids) {
+            auto u = exact_ln_factor_node(a, k);
+            if(!u) return std::nullopt;
+            terms.push_back(*u);
+        }
+        return casio::add(a, terms);
+    }
+    return std::nullopt;
+}
+
 static std::optional<std::pair<NodeId, Rational>> scaled_log_arg(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -440,7 +553,9 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
+        if(auto tv = exact_trig_const_node(a, x.fkind, arg)) return casio::simplify(a, *tv);
         if(x.fkind == FnKind::Log) {
+            if(auto lf = exact_ln_factor_node(a, arg)) return casio::simplify(a, *lf);
             if(u.kind == NodeKind::Pow) {
                 if(is_e_const_node(a, u.a)) return casio::simplify(a, u.b);
             }
@@ -450,6 +565,12 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         return casio::simplify(a, a.fn(x.fkind, arg));
     }
     if(x.kind == NodeKind::Pow) {
+        Node const &raw_base = a.get(x.a);
+        Node const &raw_exp = a.get(x.b);
+        if(raw_base.kind == NodeKind::Fn && raw_exp.kind == NodeKind::Num &&
+           raw_exp.num.num == 2 && raw_exp.num.den == 1) {
+            if(auto ts = exact_trig_square_node(a, raw_base.fkind, raw_base.a)) return *ts;
+        }
         NodeId lhs = exact_eval_simplify(a, x.a);
         NodeId rhs = exact_eval_simplify(a, x.b);
         Node const &expo = a.get(rhs);
@@ -12819,6 +12940,7 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
             }
         }
     }
+    ans = exact_eval_simplify(a, ans);
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
     out.push_back(format_expr(a, lin->m) + " != 0");
@@ -18683,6 +18805,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto cfr = common_factor_recip_power_route(arena, rearr, solve_var, out)) return *cfr;
         if(auto arp = affine_reciprocal_power_product_route(arena, rearr, solve_var, out)) return *arp;
+        if(contains_fn_kind(arena, rearr, FnKind::Sec) || contains_fn_kind(arena, rearr, FnKind::Cosec) ||
+           contains_fn_kind(arena, rearr, FnKind::Cot)) {
+            NodeId exact_rearr = exact_eval_simplify(arena, rearr);
+            if(auto sl = symbolic_linear_solve_route(arena, exact_rearr, solve_var)) {
+                out.insert(out.end(), sl->begin(), sl->end());
+                return out;
+            }
+        }
         if(auto sl = symbolic_linear_solve_route(arena, rearr, solve_var)) {
             out.insert(out.end(), sl->begin(), sl->end());
             return out;
