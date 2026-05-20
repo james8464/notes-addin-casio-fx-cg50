@@ -638,6 +638,7 @@ static std::string compact_input_key(std::string text);
 static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
 struct PolyAny;
 static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
+static std::string sqrt_rational_surd_text(Arena &a, Rational r);
 
 static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
 {
@@ -6685,6 +6686,190 @@ static std::optional<std::vector<std::string>> reciprocal_quadratic_system(Arena
     out.push_back(format_expr(a, poly2_to_node(a, tp, "t")) + " = 0");
     out.push_back("a,b = " + format_rat_plain(vals[0]) + "," + format_rat_plain(vals[1]));
     out.push_back("(x,y) = [" + pairs[0] + ", " + pairs[1] + "]");
+    return out;
+}
+
+static bool read_sum_sqrt_sum_equation(std::string const &eq, Rational &A)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    if(sides[0] == "x+y+sqrt(x+y)" || sides[0] == "sqrt(x+y)+x+y") {
+        A = *rhs;
+        return true;
+    }
+    return false;
+}
+
+static bool read_sum_squares_equation(std::string const &eq, Rational &B)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    if(sides[0] == "x^2+y^2" || sides[0] == "y^2+x^2") {
+        B = *rhs;
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::string>> sum_sqrt_sum_square_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> A, B;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(read_sum_sqrt_sum_equation(e, v)) A = v;
+        else if(read_sum_squares_equation(e, v)) B = v;
+    }
+    if(!A || !B) return std::nullopt;
+    Poly2 up = primitive_poly2(Poly2{Rational{1, 1}, Rational{1, 1}, r_neg(*A), true});
+    auto us = solve_poly2(a, up, "u");
+    std::vector<Rational> ss;
+    std::vector<std::string> out;
+    out.push_back("s = x+y");
+    out.push_back("s + sqrt(s) = " + format_rat_plain(*A));
+    out.push_back("u = sqrt(s), u >= 0");
+    out.push_back(format_expr(a, poly2_to_node(a, up, "u")) + " = 0");
+    for(auto const &line : us) {
+        auto uv = parse_rational_text(sol_rhs(line));
+        if(!uv) continue;
+        if(uv->num < 0) {
+            out.push_back("reject u = " + format_rat_plain(*uv));
+            continue;
+        }
+        out.push_back("u = " + format_rat_plain(*uv));
+        ss.push_back(r_mul(*uv, *uv));
+    }
+    std::vector<std::string> pairs;
+    for(Rational s : ss) {
+        Rational p = r_div(r_sub(r_mul(s, s), *B), Rational{2, 1});
+        Poly2 tp = primitive_poly2(Poly2{Rational{1, 1}, r_neg(s), p, true});
+        out.push_back("x+y = " + format_rat_plain(s));
+        out.push_back("xy = (" + format_rat_plain(s) + "^2 - " + format_rat_plain(*B) + ")/2 = " + format_rat_plain(p));
+        out.push_back(format_expr(a, poly2_to_node(a, tp, "t")) + " = 0");
+        auto ts = solve_poly2(a, tp, "t");
+        if(ts.size() != 2) continue;
+        std::vector<std::string> vals;
+        for(auto const &line : ts) {
+            std::string v = sol_rhs(line);
+            if(v.find('i') == std::string::npos) vals.push_back(v);
+        }
+        if(vals.size() != 2) continue;
+        pairs.push_back("(" + vals[0] + "," + vals[1] + ")");
+        pairs.push_back("(" + vals[1] + "," + vals[0] + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    out.push_back("(x,y) = [" + pairs[0] + ", " + pairs[1] + "]");
+    return out;
+}
+
+static bool read_recip_sqrt_ratio_equation(std::string const &eq, Rational &R)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    bool a = false, b = false;
+    for(auto const &t : terms) {
+        if(t == "sqrt((x+y)/x)") a = true;
+        else if(t == "sqrt(x/(x+y))") b = true;
+    }
+    if(!a || !b) return false;
+    R = *rhs;
+    return true;
+}
+
+static bool read_weighted_sum_squares_equation(std::string const &eq, Rational &A, Rational &B, Rational &C)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    std::optional<Rational> ax, by;
+    for(auto const &t : terms) {
+        Rational c{0, 1};
+        if(read_coeff_suffix(t, "x^2", c)) ax = c;
+        else if(read_coeff_suffix(t, "y^2", c)) by = c;
+    }
+    if(!ax || !by) return false;
+    A = *ax; B = *by; C = *rhs;
+    return true;
+}
+
+static std::string multiply_root_text(Rational c, std::string root)
+{
+    c.normalize();
+    if(is_zero(c)) return "0";
+    if(c.num == c.den) return root;
+    if(c.num == -c.den) return root.rfind("-", 0) == 0 ? root.substr(1) : "-" + root;
+    std::size_t pos = root.find("*sqrt(");
+    if(pos != std::string::npos) {
+        auto k = parse_rational_text(root.substr(0, pos));
+        if(k) return format_rat_plain(r_mul(c, *k)) + root.substr(pos);
+    }
+    if(auto r = parse_rational_text(root)) return format_rat_plain(r_mul(c, *r));
+    return format_rat_plain(c) + "*" + root;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_sqrt_ratio_square_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> R, A, B, C;
+    for(auto const &e : eqs) {
+        Rational p{0, 1}, q{0, 1}, r{0, 1};
+        if(read_recip_sqrt_ratio_equation(e, p)) R = p;
+        else if(read_weighted_sum_squares_equation(e, p, q, r)) {
+            A = p; B = q; C = r;
+        }
+    }
+    if(!R || !A || !B || !C) return std::nullopt;
+    Poly2 up = primitive_poly2(Poly2{Rational{1, 1}, r_neg(*R), Rational{1, 1}, true});
+    auto us = solve_poly2(a, up, "u");
+    if(us.empty()) return std::nullopt;
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back("u = sqrt((x+y)/x)");
+    out.push_back("1/u = sqrt(x/(x+y))");
+    out.push_back("u + 1/u = " + format_rat_plain(*R));
+    out.push_back(format_expr(a, poly2_to_node(a, up, "u")) + " = 0");
+    for(auto const &line : us) {
+        auto uv = parse_rational_text(sol_rhs(line));
+        if(!uv || uv->num <= 0) continue;
+        out.push_back("u = " + format_rat_plain(*uv));
+        Rational k = r_mul(*uv, *uv);
+        Rational m = r_sub(k, Rational{1, 1});
+        out.push_back("(x+y)/x = " + format_rat_plain(k));
+        out.push_back("y = " + format_rat_plain(m) + "*x");
+        Rational den = r_add(*A, r_mul(*B, r_mul(m, m)));
+        if(is_zero(den)) continue;
+        Rational x2 = r_div(*C, den);
+        if(x2.num <= 0) continue;
+        std::string xr = sqrt_rational_surd_text(a, x2);
+        std::string yr = multiply_root_text(m, xr);
+        out.push_back("x^2 = " + format_rat_plain(x2));
+        pairs.push_back("(" + xr + "," + yr + ")");
+        pairs.push_back("(-" + xr + "," + multiply_root_text(r_neg(m), xr) + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
     return out;
 }
 
@@ -13305,6 +13490,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(auto recsys = reciprocal_sum_cube_system(arena, key)) return *recsys;
             if(auto rqs = reciprocal_quadratic_system(arena, key)) return *rqs;
+            if(auto sss = sum_sqrt_sum_square_system(arena, key)) return *sss;
+            if(auto rsr = reciprocal_sqrt_ratio_square_system(arena, key)) return *rsr;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
