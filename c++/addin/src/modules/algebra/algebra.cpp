@@ -635,6 +635,7 @@ static bool sin_cos_fourth_sum(Arena &a, NodeId n, std::string &arg_text)
 
 static std::vector<std::string> split_top_key(std::string const &s, char sep);
 static std::string compact_input_key(std::string text);
+static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
 
 static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
 {
@@ -8669,6 +8670,24 @@ static std::string sqrt_rational_surd_text(Arena &a, Rational r)
     return format_rat_plain(c) + "*" + root;
 }
 
+static std::string cube_root_rational_text(Arena &a, Rational r)
+{
+    bool neg = r.num < 0;
+    Rational q{neg ? -r.num : r.num, r.den};
+    q.normalize();
+    auto rn = integer_nth_root_i64(q.num, 3);
+    auto rd = integer_nth_root_i64(q.den, 3);
+    if(rn && rd && *rd) {
+        Rational exact{neg ? -*rn : *rn, *rd};
+        exact.normalize();
+        return format_rat_plain(exact);
+    }
+    std::string sign = neg ? "-" : "";
+    if(q.num == 1 && q.den > 1 && q.den < 1000000)
+        return sign + "1/" + std::to_string(q.den) + "*" + std::to_string(q.den * q.den) + "^(1/3)";
+    return sign + "(" + format_rat_plain(q) + ")^(1/3)";
+}
+
 static bool x_plus_sqrt_x2_const(Arena &a, NodeId n, std::string const &var, Rational &c)
 {
     Node const &x = a.get(n);
@@ -9790,6 +9809,92 @@ static std::optional<std::vector<std::string>> sqrt_plus_affine_equals_sqrt_plus
     for(auto const &line : factor_lines) out.push_back(line);
     for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
     append_rejected_roots(out, var, raw, valid, "substitution");
+    out.push_back(solution_list_line(var, valid));
+    append_numeric_3dp(a, out, var, valid);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> shifted_cubic_ratio_square_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto C = as_num(a, rhs);
+    if(!C || C->num <= 0) return std::nullopt;
+    std::int64_t sn = 0, sd = 0;
+    if(!is_square_i64(C->num, sn) || !is_square_i64(C->den, sd) || !sd) return std::nullopt;
+    Rational sqrtC{sn, sd};
+    sqrtC.normalize();
+
+    std::vector<NodeId> factors;
+    collect_mul_factors(a, lhs, factors);
+    if(factors.size() != 2) return std::nullopt;
+    NodeId top = 0, lin = 0;
+    for(NodeId f : factors) {
+        Node const &p = a.get(f);
+        if(p.kind != NodeKind::Pow) return std::nullopt;
+        auto e = as_num(a, p.b);
+        if(!e || e->den != 1) return std::nullopt;
+        if(e->num == 2) top = p.a;
+        else if(e->num == -6) lin = p.a;
+    }
+    if(!top || !lin) return std::nullopt;
+    auto lp = poly_of(a, lin, var);
+    if(!lp || !lp->ok || !is_zero(lp->a2) || is_zero(lp->a1)) return std::nullopt;
+    NodeId lin3 = casio::power(a, lin, casio::num(a, 3));
+    auto tp = poly_any_of(a, top, var);
+    auto l3p = poly_any_of(a, lin3, var);
+    if(!tp || !l3p || !tp->ok || !l3p->ok) return std::nullopt;
+    std::size_t ncoef = std::max(tp->c.size(), l3p->c.size());
+    tp->c.resize(ncoef, Rational{0, 1});
+    l3p->c.resize(ncoef, Rational{0, 1});
+    Rational K = r_sub(tp->c[0], l3p->c[0]);
+    for(std::size_t i = 1; i < ncoef; ++i)
+        if(!is_zero(r_sub(tp->c[i], l3p->c[i]))) return std::nullopt;
+    if(is_zero(K)) return std::nullopt;
+
+    std::vector<Rational> us;
+    us.push_back(r_div(r_sub(sqrtC, Rational{1, 1}), K));
+    us.push_back(r_div(r_sub(r_neg(sqrtC), Rational{1, 1}), K));
+    std::vector<std::string> xs;
+    std::vector<std::string> out;
+    std::string L = format_expr(a, lin), T = format_expr(a, top), Kt = format_rat_plain(K), Ct = format_rat_plain(*C);
+    out.push_back(T + " = (" + L + ")^3 " + (K.num < 0 ? "- " + format_rat_plain(r_neg(K)) : "+ " + Kt));
+    out.push_back("((" + L + ")^3 " + (K.num < 0 ? "- " + format_rat_plain(r_neg(K)) : "+ " + Kt) + ")^2/(" + L + ")^6 = " + Ct);
+    out.push_back("u = 1/(" + L + ")^3");
+    out.push_back("(1 " + (K.num < 0 ? "- " + format_rat_plain(r_neg(K)) : "+ " + Kt) + "*u)^2 = " + Ct);
+    out.push_back("1 " + (K.num < 0 ? "- " + format_rat_plain(r_neg(K)) : "+ " + Kt) + "*u = +/-" + format_rat_plain(sqrtC));
+    for(Rational u : us) {
+        if(is_zero(u)) continue;
+        u.normalize();
+        out.push_back("u = " + format_rat_plain(u));
+        Rational l3 = r_div(Rational{1, 1}, u);
+        std::string cr = cube_root_rational_text(a, l3);
+        out.push_back("(" + L + ")^3 = " + format_rat_plain(l3));
+        std::string xt;
+        if(auto rv = parse_rational_text(cr)) {
+            Rational xv = r_div(r_sub(*rv, lp->a0), lp->a1);
+            xt = format_rat_plain(xv);
+        }
+        else if(r_cmp(lp->a1, Rational{1, 1}) == 0) {
+            Rational shift = r_neg(lp->a0);
+            if(is_zero(shift)) xt = cr;
+            else if(cr.rfind("-", 0) == 0) xt = format_rat_plain(shift) + " - " + cr.substr(1);
+            else xt = format_rat_plain(shift) + " + " + cr;
+        }
+        else {
+            xt = "(" + cr + " - (" + format_rat_plain(lp->a0) + "))/" + format_rat_plain(lp->a1);
+        }
+        xs.push_back(var + " = " + xt);
+    }
+    (void)rearr;
+    auto valid = xs;
+    sort_solution_lines(a, valid);
+    if(valid.empty()) return std::nullopt;
+    for(auto const &s : valid) out.push_back(s);
     out.push_back(solution_list_line(var, valid));
     append_numeric_3dp(a, out, var, valid);
     return out;
@@ -14302,6 +14407,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
             if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
             if(auto spaff = sqrt_plus_affine_equals_sqrt_plus_affine_route(arena, lhs, rhs, rearr, solve_var)) return *spaff;
+            if(auto scr = shifted_cubic_ratio_square_route(arena, lhs, rhs, rearr, solve_var)) return *scr;
+            if(auto scr = shifted_cubic_ratio_square_route(arena, rhs, lhs, rearr, solve_var)) return *scr;
             if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
