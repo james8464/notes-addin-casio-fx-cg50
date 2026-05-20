@@ -485,6 +485,12 @@ CASES = [
         ("unrestricted",),
     ),
     (
+        "quadratic square exact solve",
+        ["--alg", "solve((4-x^2)^2=4,x)"],
+        ("- x^2 + 4 = +/-2", "x = [-sqrt(6), -sqrt(2), sqrt(2), sqrt(6)]"),
+        ("x = -2.44948974278", "0 + sqrt", "0 - sqrt"),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),

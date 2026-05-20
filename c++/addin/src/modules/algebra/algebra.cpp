@@ -3578,6 +3578,8 @@ static std::string sol_rhs(std::string const &line)
     return trim_text(line.substr(pos + 1));
 }
 
+static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
+
 static std::string solution_list_line(std::string const &var, std::vector<std::string> const &sols)
 {
     for(auto const &line : sols) {
@@ -3615,6 +3617,26 @@ static std::optional<double> solution_line_value(Arena &a, std::string const &li
     catch(...) {
     }
     return std::nullopt;
+}
+
+static std::string clean_zero_prefix_solution(std::string s)
+{
+    for(std::string const &p : {" = 0 + ", " = 0 - "}) {
+        auto pos = s.find(p);
+        if(pos == std::string::npos) continue;
+        s.replace(pos, p.size(), p == " = 0 + " ? " = " : " = -");
+    }
+    return s;
+}
+
+static std::vector<std::string> real_solution_lines(Arena &a, std::vector<std::string> const &raw)
+{
+    std::vector<std::string> out;
+    for(auto const &s : raw) {
+        if(s.find('i') != std::string::npos) continue;
+        out.push_back(clean_zero_prefix_solution(s));
+    }
+    return out;
 }
 
 static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::string const &var, std::vector<std::string> const &sols)
@@ -3719,7 +3741,7 @@ static std::optional<std::pair<NodeId, Rational>> direct_square_side(Arena &a, N
     auto e = as_num(a, n.b);
     if(!e || e->num != 2 || e->den != 1) return std::nullopt;
     auto p = poly_of(a, n.a, var);
-    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    if(!p || !p->ok || (is_zero(p->a2) && is_zero(p->a1))) return std::nullopt;
     auto q = as_num(a, val);
     Rational root;
     if(!q || !square_rat_root(*q, root)) return std::nullopt;
@@ -3758,6 +3780,42 @@ static bool append_direct_square_route(Arena &a,
         push_sol(r_neg(ds->second));
     }
     auto sols = filter_real_solutions(a, residual, var, raw, lo, hi);
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
+    return true;
+}
+
+static bool append_quadratic_square_route(Arena &a,
+                                          std::vector<std::string> &out,
+                                          NodeId lhs,
+                                          NodeId rhs,
+                                          NodeId residual,
+                                          std::string const &var,
+                                          std::optional<double> lo,
+                                          std::optional<double> hi)
+{
+    auto ds = direct_square_side(a, lhs, rhs, var);
+    if(!ds) ds = direct_square_side(a, rhs, lhs, var);
+    if(!ds) return false;
+    auto p = poly_of(a, ds->first, var);
+    if(!p || !p->ok || is_zero(p->a2) || !is_zero(p->a1)) return false;
+    std::string base = format_expr(a, ds->first);
+    std::string root = format_expr(a, a.num(ds->second));
+    out.push_back(base + " = +/-" + root);
+    out.push_back(base + " = " + root + " or " + base + " = -" + root);
+    std::vector<std::string> raw;
+    for(Rational target : {ds->second, r_neg(ds->second)}) {
+        Poly2 q = *p;
+        q.a0 = r_sub(q.a0, target);
+        auto ss = solve_poly2(a, q, var);
+        raw.insert(raw.end(), ss.begin(), ss.end());
+    }
+    raw = real_solution_lines(a, raw);
+    std::vector<std::string> uniq;
+    for(auto const &s : raw)
+        if(std::find(uniq.begin(), uniq.end(), s) == uniq.end()) uniq.push_back(s);
+    auto sols = filter_real_solutions(a, residual, var, uniq, lo, hi);
+    sort_solution_lines(a, sols);
     append_answer(out, var, sols);
     append_numeric_3dp(a, out, var, sols);
     return true;
@@ -19594,6 +19652,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return out;
         }
         if(append_direct_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
+        if(append_quadratic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_direct_symbolic_square_route(arena, out, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return out;
         if(append_exp_square_route(arena, out, lhs, rhs, solve_var)) return out;
         if(auto rbq = reciprocal_biquadratic_route(arena, rearr, solve_var, interval_lo, interval_hi)) {
