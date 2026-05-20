@@ -15253,7 +15253,7 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
                 mx = std::max(mx, *q);
             }
         }
-        if(ok && mx - mn <= 2) {
+        if(ok && mx - mn <= 6) {
             base = cand.arg_coef;
             powers = ps;
             found = true;
@@ -15268,17 +15268,20 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
         mx = std::max(mx, p);
     }
     int shift = mn < 0 ? (int)-mn : 0;
-    if(mx + shift > 2 && is_zero(cst) && mn > 0) shift = (int)-mn;
-    if(mx + shift > 2) return std::nullopt;
+    if(mx + shift > 6 && is_zero(cst) && mn > 0) shift = (int)-mn;
+    if(mx + shift > 6) return std::nullopt;
     Poly2 upoly{{0, 1}, {0, 1}, {0, 1}, true};
+    PolyAny uany{std::vector<Rational>((std::size_t)(mx + shift + 1), Rational{0, 1}), true};
     auto add_ucoef = [&](int deg, Rational v) {
         if(deg == 0) upoly.a0 = r_add(upoly.a0, v);
         else if(deg == 1) upoly.a1 = r_add(upoly.a1, v);
         else if(deg == 2) upoly.a2 = r_add(upoly.a2, v);
+        uany.c[(std::size_t)deg] = r_add(uany.c[(std::size_t)deg], v);
     };
     for(std::size_t i = 0; i < es.size(); ++i) add_ucoef((int)powers[i] + shift, es[i].coef);
     add_ucoef(shift, cst);
-    if(is_zero(upoly.a2) && is_zero(upoly.a1)) return std::nullopt;
+    trim_poly_any(uany);
+    if(uany.c.size() < 2) return std::nullopt;
 
     std::string uvar = var == "u" ? "v" : "u";
     std::vector<NodeId> u_terms;
@@ -15297,11 +15300,21 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     std::string ueq_text = format_expr(a, ueq);
     for(std::size_t p = 0; (p = ueq_text.find(" + -", p)) != std::string::npos;) ueq_text.replace(p, 4, " - ");
     out.push_back(ueq_text + " = 0");
-    if(shift > 0) out.push_back("Multiply by " + (shift == 1 ? uvar : uvar + "^" + std::to_string(shift)));
-    else if(shift < 0) out.push_back("Divide by " + (shift == -1 ? uvar : uvar + "^" + std::to_string(-shift)) + " > 0");
-    out.push_back(format_expr(a, poly2_to_node(a, upoly, uvar)) + " = 0");
+    out.push_back(format_expr(a, poly_any_to_node(a, uany, uvar)) + " = 0");
 
-    auto us = solve_poly2(a, upoly, uvar);
+    std::vector<std::string> us;
+    if(uany.c.size() <= 3) {
+        upoly.a0 = uany.c.size() > 0 ? uany.c[0] : Rational{0, 1};
+        upoly.a1 = uany.c.size() > 1 ? uany.c[1] : Rational{0, 1};
+        upoly.a2 = uany.c.size() > 2 ? uany.c[2] : Rational{0, 1};
+        us = solve_poly2(a, upoly, uvar);
+    }
+    else {
+        std::vector<std::string> factor_lines;
+        us = solve_poly_any_raw(a, uany, uvar, factor_lines);
+        for(auto const &line : factor_lines) out.push_back(line);
+    }
+    if(us.empty()) return std::nullopt;
     std::vector<std::string> xraw;
     auto exact_int_root = [](std::int64_t n, std::int64_t k) -> std::optional<std::int64_t> {
         if(n < 0 || k <= 0) return std::nullopt;
@@ -17744,8 +17757,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto aes = affine_exp_common_slope_route(arena, rearr, solve_var, out)) return *aes;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
-        if(auto rb = related_base_exp_substitution_route(arena, rearr, solve_var, out)) return *rb;
         if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
+        if(auto rb = related_base_exp_substitution_route(arena, rearr, solve_var, out)) return *rb;
         if(auto pr = symbolic_product_roots_route(arena, rearr, solve_var)) {
             out.insert(out.end(), pr->begin(), pr->end());
             return out;

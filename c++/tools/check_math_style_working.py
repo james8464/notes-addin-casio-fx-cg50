@@ -445,7 +445,7 @@ CASES = [
     (
         "consecutive exp powers factor",
         ["--alg", "solve(-4*e^(-x)+4*e^(-2*x)+3*e^(-3*x)=0,x)"],
-        ("u = e^(-x), u > 0", "Divide by u > 0", "3*u^2 + 4*u - 4 = 0", "x = [ln(3/2)]"),
+        ("u = e^(-x), u > 0", "- 4*u + 4*u^2 + 3*u^3 = 0", "u*(3*u^2 + 4*u - 4) = 0", "x = [ln(3/2)]"),
         ("all real values in domain",),
     ),
     (
@@ -537,7 +537,7 @@ CASES = [
     (
         "reciprocal exponential substitution exact",
         ["--alg", "solve(e^x+8*e^(-x)=6,x)"],
-        ("u = e^(x), u > 0", "u + 8/u - 6 = 0", "u^2 - 6*u + 8 = 0", "x = [ln(2), ln(4)]"),
+        ("u = e^(x), u > 0", "u + 8/u - 6 = 0", "- 6*u + u^2 + 8 = 0", "x = [ln(2), ln(4)]"),
         ("0.693", "1.386", "x = all real", "ERR:"),
     ),
     (
