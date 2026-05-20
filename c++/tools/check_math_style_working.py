@@ -539,6 +539,12 @@ CASES = [
         ("x = []",),
     ),
     (
+        "log fraction derivative simplification",
+        ["--derive", "1/2*ln((x+4)/3),x"],
+        ("f' = 1/(x + 4)", "dy/dx = 1/(2*(x + 4))"),
+        ("1/(6*(x + 4)/3)",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),

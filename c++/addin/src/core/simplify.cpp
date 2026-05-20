@@ -606,7 +606,14 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
         }
         else if(n.kind == NodeKind::Div && is_num(a.get(n.a))) {
             c = mulq(c, a.get(n.a).num);
-            out.push_back(a.div(num(a, 1), n.b));
+            Node const &den = a.get(n.b);
+            if(den.kind == NodeKind::Div) {
+                out.push_back(den.b);
+                out.push_back(a.div(num(a, 1), den.a));
+            }
+            else {
+                out.push_back(a.div(num(a, 1), n.b));
+            }
         }
         else out.push_back(s);
     }
