@@ -13280,7 +13280,11 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     NodeId lhs,
     NodeId rhs,
     NodeId rearr,
-    std::string const &var
+    std::string const &var,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 )
 {
     std::vector<NodeId> terms, rest_terms;
@@ -13304,7 +13308,7 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     if(!rad_poly || !rad_poly->ok) return std::nullopt;
     NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
     auto rest_poly = poly_of(a, rest, var);
-    if(!rest_poly || !rest_poly->ok || !is_zero(rest_poly->a2)) return std::nullopt;
+    if(!rest_poly || !rest_poly->ok) return std::nullopt;
 
     Rational scale = r_div(Rational{-1, 1}, coef);
     NodeId rhs_iso = casio::simplify(a, casio::mul(a, {casio::num(a, scale.num, scale.den), rest}));
@@ -13330,7 +13334,8 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
         expanded = format_expr(a, poly_any_to_node(a, *rp, var));
     }
     if(raw.empty()) return std::nullopt;
-    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
     sort_solution_lines(a, raw);
     sort_solution_lines(a, valid);
 
@@ -20355,7 +20360,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
-            if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var)) return *spoly;
+            if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *spoly;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
