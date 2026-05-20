@@ -3720,6 +3720,10 @@ static std::optional<Poly4> quartic_of(Arena &a, NodeId n, std::string const &va
 static std::string shift_root_text(Arena &a, Rational s, std::string const &root, int sign)
 {
     if(root == "0") return format_expr(a, a.num(s));
+    if(auto r = parse_rational_text(root)) {
+        Rational v = sign < 0 ? r_sub(s, *r) : r_add(s, *r);
+        return format_expr(a, a.num(v));
+    }
     if(is_zero(s)) return sign < 0 ? "-" + root : root;
     std::string st = format_expr(a, a.num(s));
     return st + (sign < 0 ? " - " : " + ") + root;
@@ -6682,6 +6686,35 @@ static std::optional<std::vector<std::string>> reciprocal_quadratic_system(Arena
     out.push_back("a,b = " + format_rat_plain(vals[0]) + "," + format_rat_plain(vals[1]));
     out.push_back("(x,y) = [" + pairs[0] + ", " + pairs[1] + "]");
     return out;
+}
+
+static std::optional<std::vector<std::string>> quartic_perfect_square_rewrite(Arena &a, NodeId n)
+{
+    auto p = poly_any_of(a, n, "x");
+    if(!p || !p->ok || p->c.size() != 5) return std::nullopt;
+    Rational r4{0, 1}, r0{0, 1};
+    if(!square_rat_root(p->c[4], r4) || !square_rat_root(p->c[0], r0)) return std::nullopt;
+    if(is_zero(r4)) return std::nullopt;
+    std::vector<Rational> a2s{r4, r_neg(r4)};
+    std::vector<Rational> a0s{r0, r_neg(r0)};
+    for(Rational a2 : a2s) {
+        Rational a1 = r_div(p->c[3], r_mul(Rational{2, 1}, a2));
+        for(Rational a0 : a0s) {
+            Rational c2 = r_add(r_mul(a1, a1), r_mul(Rational{2, 1}, r_mul(a2, a0)));
+            Rational c1 = r_mul(Rational{2, 1}, r_mul(a1, a0));
+            if(!is_zero(r_sub(c2, p->c[2])) || !is_zero(r_sub(c1, p->c[1]))) continue;
+            Poly2 q{a2, a1, a0, true};
+            std::string qt = format_expr(a, poly2_to_node(a, q, "x"));
+            return std::vector<std::string>{
+                format_expr(a, n),
+                "try (a*x^2+b*x+c)^2",
+                "a = " + format_rat_plain(a2) + ", b = " + format_rat_plain(a1) + ", c = " + format_rat_plain(a0),
+                format_expr(a, n) + " = (" + qt + ")^2",
+                "sqrt(f(x)) = +/-(" + qt + ")",
+            };
+        }
+    }
+    return std::nullopt;
 }
 
 static std::optional<std::vector<std::string>> fourth_power_sum_linear_system(Arena &a, std::string const &key)
@@ -13831,6 +13864,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId raw_n = casio::parse_expr(arena, expr);
             NodeId n = casio::simplify(arena, raw_n);
+            if(targets.empty()) {
+                if(auto sq = quartic_perfect_square_rewrite(arena, n)) return *sq;
+            }
             std::string sc_arg;
             if(sin_cos_fourth_sum(arena, raw_n, sc_arg) || sin_cos_fourth_sum_text(expr, sc_arg)) {
                 std::string s = "sin(" + sc_arg + ")";
