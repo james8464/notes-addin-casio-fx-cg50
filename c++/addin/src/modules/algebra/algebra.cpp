@@ -141,6 +141,7 @@ static std::optional<std::int64_t> as_int64(Rational const &r)
 
 static std::string rational_power_root_text(Arena &a, Rational r, int root);
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
+static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var);
 
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
 {
@@ -5539,6 +5540,17 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
         power = -power;
         return power >= -2 && power <= 2;
     }
+    if(b.kind == NodeKind::Div && top && top->num == top->den) {
+        Rational dc{1, 1};
+        NodeId dbody = 0;
+        bool dhas = false;
+        split_coeff_body(a, b.b, dc, dbody, dhas);
+        if(dhas && read_power(dbody, power)) {
+            coef = r_div(coef, dc);
+            power = -power;
+            return power >= -2 && power <= 2;
+        }
+    }
     return false;
 }
 
@@ -5802,6 +5814,24 @@ static bool append_common_den_rational_route(Arena &a,
         return true;
     };
     return try_route(lhs, rhs) || try_route(rhs, lhs);
+}
+
+static std::optional<Poly2> laurent_shift_poly(Arena &a, NodeId n, std::string const &var, int shift)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    Poly2 p{Rational{0, 1}, Rational{0, 1}, Rational{0, 1}, true};
+    for(NodeId t : terms) {
+        Rational c{1, 1};
+        int pow = 0;
+        if(!reciprocal_power_term(a, t, var, c, pow)) return std::nullopt;
+        int d = pow + shift;
+        if(d < 0 || d > 2) return std::nullopt;
+        if(d == 0) p.a0 = r_add(p.a0, c);
+        else if(d == 1) p.a1 = r_add(p.a1, c);
+        else p.a2 = r_add(p.a2, c);
+    }
+    return p;
 }
 
 static std::optional<Poly2> linear_factor_quotient(Poly2 const &num, Poly2 const &den)
@@ -13307,12 +13337,54 @@ static std::optional<std::vector<std::string>> log_linear_quotient_exact_route(A
         }
     }
     if(!top || !bot || !base || contains_symbol(a, base, var)) return std::nullopt;
-    auto lt = symbolic_linear_parts(a, top, var);
-    auto lb = symbolic_linear_parts(a, bot, var);
-    if(!lt || !lb) return std::nullopt;
-
     Rational exponent = r_neg(constant);
     NodeId factor = is_zero(exponent) ? one_node(a) : casio::simplify(a, casio::power(a, base, a.num(exponent)));
+    auto lt = symbolic_linear_parts(a, top, var);
+    auto lb = symbolic_linear_parts(a, bot, var);
+    if(!lt || !lb) {
+        NodeId eq = 0;
+        if(auto tp = laurent_shift_poly(a, top, var, 2); tp) {
+            auto bp = laurent_shift_poly(a, bot, var, 2);
+            if(!bp) return std::nullopt;
+            eq = exact_eval_simplify(a, sub_node(a, poly2_to_node(a, *tp, var),
+                                                 casio::mul(a, {factor, poly2_to_node(a, *bp, var)})));
+        }
+        else {
+            auto rp_top = ratpoly_of_node(a, top, var);
+            auto rp_bot = ratpoly_of_node(a, bot, var);
+            if(!rp_top.ok || !rp_bot.ok) return std::nullopt;
+            auto den_scale = proportional_scale_poly2(rp_top.den, rp_bot.den);
+            if(!den_scale) return std::nullopt;
+            eq = exact_eval_simplify(a, sub_node(a, poly2_to_node(a, rp_top.num, var),
+                                                 casio::mul(a, {factor, a.num(*den_scale), poly2_to_node(a, rp_bot.num, var)})));
+        }
+        auto q = symbolic_quadratic_solve_route(a, eq, var);
+        if(!q) return std::nullopt;
+        std::string A = format_expr(a, top), B = format_expr(a, bot), c = format_expr(a, a.num(exponent));
+        std::string base_txt = format_expr(a, base);
+        std::string logA = natural ? "ln(" + A + ")" : "log(" + base_txt + "," + A + ")";
+        std::string logB = natural ? "ln(" + B + ")" : "log(" + base_txt + "," + B + ")";
+        std::string f = format_expr(a, factor);
+        std::vector<std::string> out;
+        out.push_back(logA + " - " + logB + " = " + c);
+        out.push_back(std::string(natural ? "ln" : "log") + "((" + A + ")/(" + B + ")) = " + c);
+        out.push_back("(" + A + ")/(" + B + ") = " + f);
+        out.push_back(A + " = " + f + "*(" + B + ")");
+        out.insert(out.end(), q->begin(), q->end());
+        std::vector<std::string> raw;
+        std::string pref = var + " = ";
+        for(auto const &line : *q)
+            if(line.rfind(pref, 0) == 0 && line.find("[") == std::string::npos && line.find("(-b") == std::string::npos)
+                raw.push_back(line);
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        append_rejected_by_domain(out, var, raw, valid);
+        if(valid.empty()) out.push_back(var + " = []");
+        else {
+            for(auto const &s : valid) out.push_back(s);
+            out.push_back(solution_list_line(var, valid));
+        }
+        return out;
+    }
     NodeId den = casio::simplify(a, sub_node(a, casio::mul(a, {factor, lb->m}), lt->m));
     if(casio::same_by_sig(a, den, zero_node(a))) return std::nullopt;
     NodeId num = casio::simplify(a, sub_node(a, lt->c, casio::mul(a, {factor, lb->c})));
@@ -13382,16 +13454,54 @@ static std::optional<std::vector<std::string>> log_linear_quotient_exact_sides(
     auto L = read_log_side_linear(a, lhs), R = read_log_side_linear(a, rhs);
     if(!L || !R || L->natural != R->natural || contains_symbol(a, L->base, var)) return std::nullopt;
     if(!L->natural && !casio::same_by_sig(a, L->base, R->base)) return std::nullopt;
-    auto lt = symbolic_linear_parts(a, L->arg, var), rt = symbolic_linear_parts(a, R->arg, var);
-    if(!lt || !rt) return std::nullopt;
     Rational exponent = r_sub(R->constant, L->constant);
     NodeId factor = is_zero(exponent) ? one_node(a) : casio::simplify(a, casio::power(a, L->base, a.num(exponent)));
+    std::string A = format_expr(a, L->arg), B = format_expr(a, R->arg), c = format_expr(a, a.num(exponent));
+    std::string f = format_expr(a, factor), logn = L->natural ? "ln" : "log";
+    auto lt = symbolic_linear_parts(a, L->arg, var), rt = symbolic_linear_parts(a, R->arg, var);
+    if(!lt || !rt) {
+        if(poly_of(a, L->arg, var) && poly_of(a, R->arg, var)) return std::nullopt;
+        NodeId eq = 0;
+        if(auto lp2 = laurent_shift_poly(a, L->arg, var, 2); lp2) {
+            auto rp2 = laurent_shift_poly(a, R->arg, var, 2);
+            if(!rp2) return std::nullopt;
+            eq = exact_eval_simplify(a, sub_node(a, poly2_to_node(a, *lp2, var),
+                                                 casio::mul(a, {factor, poly2_to_node(a, *rp2, var)})));
+        }
+        else {
+            auto lp = ratpoly_of_node(a, L->arg, var);
+            auto rp = ratpoly_of_node(a, R->arg, var);
+            if(!lp.ok || !rp.ok) return std::nullopt;
+            auto den_scale = proportional_scale_poly2(lp.den, rp.den);
+            if(!den_scale) return std::nullopt;
+            eq = exact_eval_simplify(a, sub_node(a, poly2_to_node(a, lp.num, var),
+                                                 casio::mul(a, {factor, a.num(*den_scale), poly2_to_node(a, rp.num, var)})));
+        }
+        auto q = symbolic_quadratic_solve_route(a, eq, var);
+        if(!q) return std::nullopt;
+        std::vector<std::string> out;
+        out.push_back(logn + "((" + A + ")/(" + B + ")) = " + c);
+        out.push_back("(" + A + ")/(" + B + ") = " + f);
+        out.push_back(A + " = " + f + "*(" + B + ")");
+        out.insert(out.end(), q->begin(), q->end());
+        std::vector<std::string> raw;
+        std::string pref = var + " = ";
+        for(auto const &line : *q)
+            if(line.rfind(pref, 0) == 0 && line.find("[") == std::string::npos && line.find("(-b") == std::string::npos)
+                raw.push_back(line);
+        auto valid = filter_real_solutions(a, sub_node(a, lhs, rhs), var, raw, std::nullopt, std::nullopt);
+        append_rejected_by_domain(out, var, raw, valid);
+        if(valid.empty()) out.push_back(var + " = []");
+        else {
+            for(auto const &s : valid) out.push_back(s);
+            out.push_back(solution_list_line(var, valid));
+        }
+        return out;
+    }
     NodeId den = casio::simplify(a, sub_node(a, casio::mul(a, {factor, rt->m}), lt->m));
     if(casio::same_by_sig(a, den, zero_node(a))) return std::nullopt;
     NodeId num = casio::simplify(a, sub_node(a, lt->c, casio::mul(a, {factor, rt->c})));
     NodeId ans = exact_eval_simplify(a, casio::div(a, num, den));
-    std::string A = format_expr(a, L->arg), B = format_expr(a, R->arg), c = format_expr(a, a.num(exponent));
-    std::string f = format_expr(a, factor), logn = L->natural ? "ln" : "log";
     std::vector<std::string> out;
     out.push_back(logn + "((" + A + ")/(" + B + ")) = " + c);
     out.push_back("(" + A + ")/(" + B + ") = " + f);
