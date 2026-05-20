@@ -2080,6 +2080,26 @@ static std::optional<std::string> linear_fractional_interval_range(
     if(x1) {
         Rational lo_r = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
         Rational hi_r = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;
+        if(r_cmp(pole, *x1) == 0 && hi_open) {
+            Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
+            Rational mid = r_div(r_add(*x0, pole), Rational{2, 1});
+            Rational ym = r_div(r_add(r_mul(A, mid), B), r_add(r_mul(C, mid), D));
+            steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+            steps.push_back("Endpoint gives y = " + rat_node_text(a, y0) + ".");
+            return r_cmp(ym, y0) > 0
+                ? "y " + std::string(lo_open ? "> " : ">= ") + rat_node_text(a, y0)
+                : "y " + std::string(lo_open ? "< " : "<= ") + rat_node_text(a, y0);
+        }
+        if(r_cmp(pole, *x0) == 0 && lo_open) {
+            Rational y1 = r_div(r_add(r_mul(A, *x1), B), r_add(r_mul(C, *x1), D));
+            Rational mid = r_div(r_add(pole, *x1), Rational{2, 1});
+            Rational ym = r_div(r_add(r_mul(A, mid), B), r_add(r_mul(C, mid), D));
+            steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+            steps.push_back("Endpoint gives y = " + rat_node_text(a, y1) + ".");
+            return r_cmp(ym, y1) > 0
+                ? "y " + std::string(hi_open ? "> " : ">= ") + rat_node_text(a, y1)
+                : "y " + std::string(hi_open ? "< " : "<= ") + rat_node_text(a, y1);
+        }
         if(r_cmp(pole, lo_r) >= 0 && r_cmp(pole, hi_r) <= 0) return std::nullopt;
         Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
         Rational y1 = r_div(r_add(r_mul(A, *x1), B), r_add(r_mul(C, *x1), D));
@@ -5664,6 +5684,28 @@ static std::string denominator_domain_line(Arena &a, NodeId den_node)
     return line;
 }
 
+static bool positive_constant_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Const && x.ckind == ConstKind::E) return true;
+    if(x.kind == NodeKind::Num) return x.num.num > 0;
+    return false;
+}
+
+static std::optional<std::string> log_linear_fraction_domain(Arena &a, NodeId arg, std::string const &var)
+{
+    Node const &x = a.get(arg);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = symbolic_linear_parts(a, x.a, var);
+    auto bot = symbolic_linear_parts(a, x.b, var);
+    if(!top || !bot) return std::nullopt;
+    if(!casio::same_by_sig(a, top->c, bot->c) || !positive_constant_node(a, top->c)) return std::nullopt;
+    if(!casio::same_by_sig(a, top->m, casio::neg(a, bot->m))) return std::nullopt;
+    if(!casio::same_by_sig(a, bot->m, one_node(a))) return std::nullopt;
+    std::string c = format_expr(a, top->c);
+    return "Domain: -" + c + " < " + var + " < " + c;
+}
+
 static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
 {
     Node const &x = a.get(n);
@@ -5700,8 +5742,10 @@ static void collect_domain(Arena &a, NodeId n, std::vector<std::string> &out)
             if(amin && amin->num >= 0) push_unique(out, "Domain: all real x");
             else push_unique(out, "Domain: " + format_expr(a, x.a) + " >= 0");
         }
-        if((x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && has_symbols(a, x.a))
+        if((x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && has_symbols(a, x.a)) {
+            if(auto solved = log_linear_fraction_domain(a, x.a, "x")) push_unique(out, *solved);
             push_unique(out, "Domain: " + format_expr(a, x.a) + " > 0");
+        }
         if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && has_symbols(a, x.a)) {
             Node const &arg = a.get(x.a);
             if(arg.kind == NodeKind::Fn && (arg.fkind == FnKind::Sin || arg.fkind == FnKind::Cos)) {
@@ -10959,6 +11003,15 @@ static std::optional<DomainSolve> positive_linear_fraction_domain(Arena &a, Node
 {
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Div) return std::nullopt;
+    if(auto symbolic = log_linear_fraction_domain(a, n, var)) {
+        std::string answer = *symbolic;
+        std::string prefix = "Domain: ";
+        if(answer.rfind(prefix, 0) == 0) answer = answer.substr(prefix.size());
+        return DomainSolve{{
+            "(" + format_expr(a, x.a) + ")/(" + format_expr(a, x.b) + ") > 0",
+            *symbolic
+        }, answer};
+    }
     auto top = poly_of(a, x.a, var);
     auto bot = poly_of(a, x.b, var);
     if(!top || !bot || !top->ok || !bot->ok) return std::nullopt;
