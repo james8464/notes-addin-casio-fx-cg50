@@ -8971,6 +8971,73 @@ static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    std::vector<NodeId> terms, rest_terms;
+    add_terms_flat(a, rearr, terms);
+    NodeId rad = 0;
+    Rational coef{0, 1};
+    bool seen = false;
+    for(NodeId t : terms) {
+        NodeId r = 0;
+        Rational c{1, 1};
+        if(sqrt_term_coeff(a, t, r, c)) {
+            if(seen) return std::nullopt;
+            seen = true;
+            rad = r;
+            coef = c;
+        }
+        else rest_terms.push_back(t);
+    }
+    if(!seen || is_zero(coef)) return std::nullopt;
+    auto rad_poly = poly_of(a, rad, var);
+    if(!rad_poly || !rad_poly->ok) return std::nullopt;
+    NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
+    auto rest_poly = poly_of(a, rest, var);
+    if(!rest_poly || !rest_poly->ok || !is_zero(rest_poly->a2)) return std::nullopt;
+
+    Rational scale = r_div(Rational{-1, 1}, coef);
+    NodeId rhs_iso = casio::simplify(a, casio::mul(a, {casio::num(a, scale.num, scale.den), rest}));
+    if(auto iso_poly = poly_of(a, rhs_iso, var); iso_poly && iso_poly->ok)
+        rhs_iso = poly2_to_node(a, *iso_poly, var);
+    NodeId squared = casio::simplify(a, casio::add(a, {
+        rad,
+        casio::neg(a, casio::power(a, rhs_iso, casio::num(a, 2)))
+    }));
+    auto rp = ratpoly_of_node(a, squared, var);
+    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
+    auto raw = solve_poly2(a, rp.num, var);
+    if(raw.empty()) return std::nullopt;
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    sort_solution_lines(a, raw);
+    sort_solution_lines(a, valid);
+
+    auto linear_domain = [&](NodeId n) -> std::optional<std::string> {
+        auto p = poly_of(a, n, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        Rational bound = r_div(r_neg(p->a0), p->a1);
+        return var + std::string(p->a1.num > 0 ? " >= " : " <= ") + format_expr(a, a.num(bound));
+    };
+
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back("sqrt(" + format_expr(a, rad) + ") = " + format_expr(a, rhs_iso));
+    out.push_back("Domain: " + format_expr(a, rad) + " >= 0");
+    if(auto dom = linear_domain(rhs_iso)) out.push_back(format_expr(a, rhs_iso) + " >= 0 => " + *dom);
+    out.push_back(format_expr(a, rad) + " = (" + format_expr(a, rhs_iso) + ")^2");
+    out.push_back("expand => " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = 0");
+    for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+    append_rejected_by_domain(out, var, raw, valid);
+    out.push_back(solution_list_line(var, valid));
+    return out;
+}
+
 struct AbsPlusConstEqInfo
 {
     NodeId abs_node = 0;
@@ -13356,6 +13423,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rar = reciprocal_sqrt_affine_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rar;
             if(auto rsr = reciprocal_sqrt_ratio_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi)) return *rsr;
             if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var)) return *sr;
+            if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var)) return *spoly;
             if(append_sqrt_abs_zero_contradiction(arena, out, lhs, rhs, solve_var)) return out;
             append_nonrat_equation_route(arena, out, rearr, solve_var);
             auto numeric = numeric_roots_scan(arena, rearr, solve_var, interval_lo, interval_hi);
