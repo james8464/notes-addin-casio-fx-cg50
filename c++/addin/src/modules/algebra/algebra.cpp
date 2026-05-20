@@ -8251,6 +8251,102 @@ static std::optional<std::vector<std::string>> sqrt_same_poly_offset_sum_route(A
     return match(rhs, lhs);
 }
 
+static std::string sqrt_rational_surd_text(Arena &a, Rational r)
+{
+    if(r.num < 0) return "sqrt(" + format_rat_plain(r) + ")";
+    std::int64_t rn = 0, rd = 0;
+    if(is_square_i64(r.num, rn) && is_square_i64(r.den, rd) && rd)
+        return format_rat_plain(Rational{rn, rd});
+    if(r.num > 1000000000LL || r.den > 1000000000LL) return "sqrt(" + format_rat_plain(r) + ")";
+    long long n = r.num * r.den;
+    long long sq = 1;
+    for(long long k = 2; k * k <= n; ++k)
+        while(n % (k * k) == 0) {
+            sq *= k;
+            n /= k * k;
+        }
+    Rational c{sq, r.den};
+    c.normalize();
+    if(n == 1) return format_rat_plain(c);
+    std::string root = "sqrt(" + std::to_string(n) + ")";
+    if(c.num == c.den) return root;
+    if(c.den == 1) return std::to_string(c.num) + "*" + root;
+    return format_rat_plain(c) + "*" + root;
+}
+
+static bool x_plus_sqrt_x2_const(Arena &a, NodeId n, std::string const &var, Rational &c)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    bool saw_x = false, saw_root = false;
+    for(NodeId k : x.kids) {
+        if(is_sym_var(a, k, var)) {
+            saw_x = true;
+            continue;
+        }
+        Node const &r = a.get(k);
+        if(r.kind != NodeKind::Fn || r.fkind != FnKind::Sqrt) return false;
+        auto p = poly_of(a, r.a, var);
+        if(!p || !p->ok || p->a2.num != p->a2.den || !is_zero(p->a1)) return false;
+        c = p->a0;
+        saw_root = true;
+    }
+    return saw_x && saw_root;
+}
+
+static std::optional<std::vector<std::string>> radical_quotient_x_shift_route(Arena &a,
+                                                                              NodeId lhs,
+                                                                              NodeId rhs,
+                                                                              NodeId rearr,
+                                                                              std::string const &var)
+{
+    auto match = [&](NodeId frac, NodeId val) -> std::optional<std::vector<std::string>> {
+        Node const &f = a.get(frac);
+        auto R = as_num(a, val);
+        if(f.kind != NodeKind::Div || !R || R->num == 0 || R->num == R->den) return std::nullopt;
+        Rational ca{0, 1}, cb{0, 1};
+        if(!x_plus_sqrt_x2_const(a, f.a, var, ca) || !x_plus_sqrt_x2_const(a, f.b, var, cb)) return std::nullopt;
+        Rational R2 = r_mul(*R, *R);
+        Rational C = r_mul(Rational{2, 1}, r_mul(*R, r_sub(Rational{1, 1}, *R)));
+        Rational D = r_sub(ca, r_mul(R2, cb));
+        Rational K = r_mul(Rational{2, 1}, r_mul(*R, r_sub(*R, Rational{1, 1})));
+        Rational den = r_sub(r_mul(Rational{2, 1}, r_mul(C, D)), r_mul(r_mul(K, K), cb));
+        if(is_zero(den)) return std::nullopt;
+        Rational x2 = r_div(r_neg(r_mul(D, D)), den);
+        if(x2.num <= 0) return std::nullopt;
+        std::string root = sqrt_rational_surd_text(a, x2);
+        std::vector<std::string> raw{var + " = " + root, var + " = -" + root};
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        if(valid.empty()) return std::nullopt;
+        sort_solution_lines(a, valid);
+
+        std::string num = format_expr(a, f.a), bot = format_expr(a, f.b), Rt = format_rat_plain(*R);
+        std::string lhs1 = (D.num >= 0 ? format_rat_plain(D) + " - " + format_rat_plain(r_abs(C)) + "*" + var + "^2"
+                                      : format_rat_plain(C) + "*" + var + "^2 " + format_rat_plain(D));
+        std::string rhs1 = format_rat_plain(K) + "*" + var + "*sqrt(" + var + "^2" +
+                           (cb.num < 0 ? " - " + format_rat_plain(r_abs(cb)) : " + " + format_rat_plain(cb)) + ")";
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, frac) + " = " + Rt);
+        out.push_back(num + " = " + Rt + "*(" + bot + ")");
+        std::string mx = format_rat_plain(r_sub(*R, Rational{1, 1}));
+        std::string mxterm = mx == "1" ? var : (mx == "-1" ? "-" + var : mx + "*" + var);
+        out.push_back("sqrt(" + var + "^2" + (ca.num < 0 ? " - " + format_rat_plain(r_abs(ca)) : " + " + format_rat_plain(ca)) + ") = " +
+                      mxterm + " + " + Rt + "*sqrt(" + var + "^2" +
+                      (cb.num < 0 ? " - " + format_rat_plain(r_abs(cb)) : " + " + format_rat_plain(cb)) + ")");
+        out.push_back(lhs1 + " = " + rhs1);
+        out.push_back("(" + lhs1 + ")^2 = (" + rhs1 + ")^2");
+        out.push_back(format_rat_plain(den) + "*" + var + "^2 + " + format_rat_plain(r_mul(D, D)) + " = 0");
+        out.push_back(var + "^2 = " + format_rat_plain(x2));
+        out.push_back(var + " = +/-" + root);
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(solution_list_line(var, valid));
+        append_numeric_3dp(a, out, var, valid);
+        return out;
+    };
+    if(auto r = match(lhs, rhs)) return r;
+    return match(rhs, lhs);
+}
+
 static bool root_power_den_walk(Arena &a, NodeId n, std::string const &var, int &den)
 {
     Node const &x = a.get(n);
@@ -13206,6 +13302,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto la = log_abs_plus_const_route(arena, lhs, rhs, solve_var)) return *la;
             if(auto sa = sqrt_square_abs_linear_route(arena, rearr, solve_var)) return *sa;
             if(auto so = sqrt_same_poly_offset_sum_route(arena, lhs, rhs, rearr, solve_var)) return *so;
+            if(auto rq = radical_quotient_x_shift_route(arena, lhs, rhs, rearr, solve_var)) return *rq;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
