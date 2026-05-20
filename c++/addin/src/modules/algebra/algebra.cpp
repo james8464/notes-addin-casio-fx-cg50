@@ -651,6 +651,38 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
     return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
 }
 
+static NodeId cancel_log_exp_only(Arena &a, NodeId n)
+{
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        NodeId arg = cancel_log_exp_only(a, x.a);
+        Node const &u = a.get(arg);
+        if(x.fkind == FnKind::Log) {
+            if(u.kind == NodeKind::Pow && is_e_const_node(a, u.a)) return cancel_log_exp_only(a, u.b);
+            if(u.kind == NodeKind::Fn && u.fkind == FnKind::Exp) return cancel_log_exp_only(a, u.a);
+        }
+        if(x.fkind == FnKind::Exp && u.kind == NodeKind::Fn && u.fkind == FnKind::Log) return cancel_log_exp_only(a, u.a);
+        return casio::simplify(a, a.fn(x.fkind, arg));
+    }
+    if(x.kind == NodeKind::Pow) {
+        NodeId lhs = cancel_log_exp_only(a, x.a);
+        NodeId rhs = cancel_log_exp_only(a, x.b);
+        return casio::simplify(a, casio::power(a, lhs, rhs));
+    }
+    if(x.kind == NodeKind::Div) {
+        NodeId lhs = cancel_log_exp_only(a, x.a);
+        NodeId rhs = cancel_log_exp_only(a, x.b);
+        return casio::simplify(a, casio::div(a, lhs, rhs));
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(auto k : x.kids) kids.push_back(cancel_log_exp_only(a, k));
+        return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    }
+    return n;
+}
+
 static std::optional<std::string> simplify_log_exp_text(Arena &a, NodeId n)
 {
     std::string s = format_expr(a, n);
@@ -19678,8 +19710,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block("algebra simplify", steps, n_text ? *n_text : format_expr(arena, n));
         }
 
-        NodeId lhs = casio::simplify(arena, eq->lhs);
-        NodeId rhs = casio::simplify(arena, eq->rhs);
+        NodeId raw_lhs = casio::simplify(arena, eq->lhs);
+        NodeId raw_rhs = casio::simplify(arena, eq->rhs);
+        NodeId lhs = cancel_log_exp_only(arena, raw_lhs);
+        NodeId rhs = cancel_log_exp_only(arena, raw_rhs);
 
         NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
         std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
@@ -19695,7 +19729,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
         // Exam-style numbered working.
         std::vector<std::string> out;
-        std::string shown_eq = format_expr(arena, lhs) + " = " + format_expr(arena, rhs);
+        std::string shown_eq = format_expr(arena, raw_lhs) + " = " + format_expr(arena, raw_rhs);
         out.push_back("1. Start with " + shown_eq + ".");
         if(interval_lo && interval_hi) {
             out.push_back(
@@ -19706,8 +19740,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         std::vector<std::string> domain_lines;
         collect_text_trig_domain(arena, equation_text, domain_lines);
-        collect_domain(arena, lhs, domain_lines);
-        collect_domain(arena, rhs, domain_lines);
+        collect_domain(arena, raw_lhs, domain_lines);
+        collect_domain(arena, raw_rhs, domain_lines);
         if(!domain_lines.empty()) {
             for(auto const &d : domain_lines) out.push_back(d);
         }

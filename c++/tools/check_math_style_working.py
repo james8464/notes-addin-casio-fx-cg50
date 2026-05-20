@@ -527,6 +527,18 @@ CASES = [
         ("Err:", "(2*x + 3)^2 - 2"),
     ),
     (
+        "log exp product solve",
+        ["--alg", "solve(4+ln(e*x^2)=6,x>0)"],
+        ("ln(e*x^2) = 2*ln(x) + 1", "ln(x) = 1/2", "x = [sqrt(e)]"),
+        ("x = []", "x ~= 1.649"),
+    ),
+    (
+        "ln e power solve simplification",
+        ["--alg", "solve(ln(e^(2*x+1))+3=10,x)"],
+        ("2*x - 6 = 0", "x = [3]"),
+        ("x = []",),
+    ),
+    (
         "affine exp square solve",
         ["--alg", "solve(4*(3*e^t+1)^2=1000^3,t)"],
         ("(3*e^(t) + 1)^2 = 250000000", "e^(t) = (sqrt(250000000) - 1)/3", "t ~= 8.570"),
