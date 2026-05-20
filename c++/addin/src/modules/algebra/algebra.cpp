@@ -636,6 +636,8 @@ static bool sin_cos_fourth_sum(Arena &a, NodeId n, std::string &arg_text)
 static std::vector<std::string> split_top_key(std::string const &s, char sep);
 static std::string compact_input_key(std::string text);
 static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
+struct PolyAny;
+static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
 
 static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
 {
@@ -6345,6 +6347,312 @@ static bool read_recip_power_sum_equation(std::string const &eq, int power, Rati
     if(!seen_x || !seen_y) return false;
     value = *rhs;
     return true;
+}
+
+static bool read_fourth_power_sum_equation(std::string const &eq, Rational &value)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    if(sides[0] == "x^4+y^4" || sides[0] == "y^4+x^4") {
+        value = *rhs;
+        return true;
+    }
+    return false;
+}
+
+static bool read_linear_xy_sumdiff_equation(std::string const &eq, Rational &value, bool &is_sum)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    if(sides[0] == "x+y" || sides[0] == "y+x") {
+        value = *rhs;
+        is_sum = true;
+        return true;
+    }
+    if(sides[0] == "x-y") {
+        value = *rhs;
+        is_sum = false;
+        return true;
+    }
+    if(sides[0] == "y-x") {
+        value = r_neg(*rhs);
+        is_sum = false;
+        return true;
+    }
+    return false;
+}
+
+static bool parse_linear_const_key(std::string const &s, char var, Rational &c)
+{
+    std::string v(1, var);
+    if(s == v) {
+        c = Rational{0, 1};
+        return true;
+    }
+    if(s.rfind(v + "+", 0) == 0) {
+        auto q = parse_rational_key(s.substr(2));
+        if(!q) return false;
+        c = *q;
+        return true;
+    }
+    if(s.rfind(v + "-", 0) == 0) {
+        auto q = parse_rational_key(s.substr(2));
+        if(!q) return false;
+        c = r_neg(*q);
+        return true;
+    }
+    return false;
+}
+
+static std::string linear_key_text(char var, Rational c)
+{
+    std::string v(1, var);
+    if(is_zero(c)) return v;
+    if(c.num < 0) return v + "-" + format_rat_plain(r_neg(c));
+    return v + "+" + format_rat_plain(c);
+}
+
+static bool read_parabola_y_equation(std::string const &eq, Rational &coef, Rational &shift)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto rhs = parse_rational_key(sides[1]);
+    if(!rhs) return false;
+    std::string left = sides[0];
+    std::string const tail = "x^2-y";
+    if(left.size() < tail.size() || left.compare(left.size() - tail.size(), tail.size(), tail) != 0) return false;
+    std::string pre = left.substr(0, left.size() - tail.size());
+    if(pre.empty()) coef = Rational{1, 1};
+    else {
+        if(!pre.empty() && pre.back() == '*') pre.pop_back();
+        if(pre.size() > 2 && pre.front() == '(' && pre.back() == ')') pre = pre.substr(1, pre.size() - 2);
+        auto c = parse_rational_key(pre);
+        if(!c) return false;
+        coef = *c;
+    }
+    shift = *rhs;
+    return true;
+}
+
+static bool read_q66_rational_equation(
+    std::string const &eq,
+    Rational &A,
+    Rational &B,
+    Rational &N,
+    Rational &M
+)
+{
+    auto sides = split_top_key(eq, '=');
+    if(sides.size() != 2) return false;
+    auto terms = split_top_key(sides[0], '+');
+    if(terms.size() != 2) return false;
+    auto read_term = [](std::string const &t, std::string const &num, Rational &c) -> bool {
+        std::string pre = num + "/(";
+        if(t.rfind(pre, 0) != 0 || t.back() != ')') return false;
+        return parse_linear_const_key(t.substr(pre.size(), t.size() - pre.size() - 1), 'x', c);
+    };
+    if(!read_term(terms[0], "x", A) || !read_term(terms[1], "1", B)) return false;
+    std::string rhs = sides[1];
+    std::string const pre = "";
+    auto slash = rhs.find("/(");
+    if(slash == std::string::npos || rhs.back() != ')') return false;
+    auto n = parse_rational_key(rhs.substr(0, slash));
+    if(!n) return false;
+    Rational m{0, 1};
+    if(!parse_linear_const_key(rhs.substr(slash + 2, rhs.size() - slash - 3), 'y', m)) return false;
+    N = *n;
+    M = m;
+    (void)pre;
+    return true;
+}
+
+static void primitive_poly_any_in_place(PolyAny &p)
+{
+    trim_poly_any(p);
+    long long l = 1;
+    for(auto &c : p.c) {
+        c.normalize();
+        l = lcm_abs_ll(l, c.den);
+    }
+    long long g = 0;
+    std::vector<long long> vals;
+    for(auto const &c : p.c) {
+        long long v = c.num * (l / c.den);
+        vals.push_back(v);
+        g = g ? gcd_abs_ll(g, v) : std::llabs(v);
+    }
+    if(g == 0) g = 1;
+    for(std::size_t i = 0; i < vals.size(); ++i) p.c[i] = Rational{vals[i] / g, 1};
+    if(!p.c.empty() && p.c.back().num < 0)
+        for(auto &c : p.c) c.num = -c.num;
+}
+
+static std::optional<Rational> square_from_root_text(std::string s)
+{
+    s = trim_text(s);
+    if(s.rfind("0 + ", 0) == 0) s = trim_text(s.substr(4));
+    else if(s.rfind("0 - ", 0) == 0) s = "-" + trim_text(s.substr(4));
+    if(auto r = parse_rational_text(s)) return r_mul(*r, *r);
+    bool neg = false;
+    if(s.rfind("-", 0) == 0) {
+        neg = true;
+        s = s.substr(1);
+    }
+    (void)neg;
+    if(s.rfind("sqrt(", 0) == 0 && s.back() == ')') return parse_rational_text(s.substr(5, s.size() - 6));
+    return std::nullopt;
+}
+
+static std::string clean_zero_surd_root(std::string s)
+{
+    s = trim_text(s);
+    if(s.rfind("0 + ", 0) == 0) return trim_text(s.substr(4));
+    if(s.rfind("0 - ", 0) == 0) return "-" + trim_text(s.substr(4));
+    return s;
+}
+
+static std::optional<std::vector<std::string>> rational_parabola_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> A, B, N, M, coef, shift;
+    for(auto const &e : eqs) {
+        Rational p{0, 1}, q{0, 1}, r{0, 1}, s{0, 1};
+        if(read_q66_rational_equation(e, p, q, r, s)) {
+            A = p; B = q; N = r; M = s;
+        }
+        else if(read_parabola_y_equation(e, p, q)) {
+            coef = p; shift = q;
+        }
+    }
+    if(!A || !B || !N || !M || !coef || !shift) return std::nullopt;
+
+    PolyAny lnum{{*A, r_add(*B, Rational{1, 1}), Rational{1, 1}}, true};
+    PolyAny yden{{r_sub(*M, *shift), Rational{0, 1}, *coef}, true};
+    PolyAny xden{{r_mul(*A, *B), r_add(*A, *B), Rational{1, 1}}, true};
+    PolyAny lhs = poly_any_mul(lnum, yden);
+    PolyAny rhs = xden;
+    for(auto &c : rhs.c) c = r_neg(r_mul(*N, c));
+    PolyAny poly = poly_any_add(lhs, rhs);
+    primitive_poly_any_in_place(poly);
+    std::vector<std::string> factor_lines;
+    auto raw = solve_poly_any_raw(a, poly, "x", factor_lines);
+    if(raw.empty()) return std::nullopt;
+
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back("y = " + format_rat_plain(*coef) + "*x^2 - " + format_rat_plain(*shift));
+    out.push_back(linear_key_text('y', *M) + " = " + signed_sum_text(format_rat_plain(*coef) + "*x^2", format_rat_plain(r_sub(*M, *shift))));
+    out.push_back("multiply by (" + linear_key_text('x', *A) + ")(" + linear_key_text('x', *B) + ")(" + linear_key_text('y', *M) + ")");
+    out.push_back(format_expr(a, poly_any_to_node(a, poly, "x")) + " = 0");
+    for(auto const &f : factor_lines) out.push_back(f);
+    for(auto const &line : raw) {
+        std::string xr = sol_rhs(line);
+        if(xr.find('i') != std::string::npos) continue;
+        auto xq = parse_rational_text(xr);
+        if(xq && (is_zero(r_add(*xq, *A)) || is_zero(r_add(*xq, *B)))) {
+            out.push_back("x = " + xr + " rejected by denominator");
+            continue;
+        }
+        auto x2 = square_from_root_text(xr);
+        if(!x2) continue;
+        Rational yv = r_sub(r_mul(*coef, *x2), *shift);
+        if(is_zero(r_add(yv, *M))) {
+            out.push_back("x = " + xr + " rejected by y+" + format_rat_plain(*M) + " = 0");
+            continue;
+        }
+        xr = clean_zero_surd_root(xr);
+        pairs.push_back("(" + xr + "," + format_rat_plain(yv) + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> fourth_power_sum_linear_system(Arena &a, std::string const &key)
+{
+    std::string body;
+    if(!extract_system_body_xy(key, body)) return std::nullopt;
+    auto eqs = split_top_key(body, ',');
+    if(eqs.size() != 2) return std::nullopt;
+    std::optional<Rational> C, D;
+    bool is_sum = false;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        bool s = false;
+        if(read_fourth_power_sum_equation(e, v)) C = v;
+        else if(read_linear_xy_sumdiff_equation(e, v, s)) {
+            D = v;
+            is_sum = s;
+        }
+    }
+    if(!C || !D) return std::nullopt;
+
+    Rational half{2, 1};
+    Rational m = r_div(*D, half);
+    Rational m2 = r_mul(m, m);
+    Rational m4 = r_mul(m2, m2);
+    Poly2 zp = primitive_poly2(Poly2{
+        Rational{2, 1},
+        r_mul(Rational{12, 1}, m2),
+        r_sub(r_mul(Rational{2, 1}, m4), *C),
+        true
+    });
+    auto zs = solve_poly2(a, zp, "z");
+    if(zs.empty()) return std::nullopt;
+
+    std::vector<std::string> pairs;
+    std::vector<std::string> out;
+    out.push_back(is_sum ? "x+y = " + format_rat_plain(*D) : "x-y = " + format_rat_plain(*D));
+    out.push_back(is_sum ? "x = " + format_rat_plain(m) + " + u, y = " + format_rat_plain(m) + " - u"
+                         : "x = u + " + format_rat_plain(m) + ", y = u - " + format_rat_plain(m));
+    out.push_back("x^4 + y^4 = " + format_rat_plain(*C));
+    out.push_back(is_sum ? "(" + format_rat_plain(m) + " + u)^4 + (" + format_rat_plain(m) + " - u)^4 = " + format_rat_plain(*C)
+                         : "(u + " + format_rat_plain(m) + ")^4 + (u - " + format_rat_plain(m) + ")^4 = " + format_rat_plain(*C));
+    out.push_back("2*u^4 + 12*" + format_rat_plain(m2) + "*u^2 + 2*" + format_rat_plain(m4) + " = " + format_rat_plain(*C));
+    out.push_back("z = u^2, z >= 0");
+    out.push_back(format_expr(a, poly2_to_node(a, zp, "z")) + " = 0");
+    for(auto const &zline : zs) {
+        auto zv = parse_rational_text(sol_rhs(zline));
+        if(!zv) continue;
+        if(zv->num < 0) {
+            out.push_back("reject z = " + format_rat_plain(*zv));
+            continue;
+        }
+        auto rn = integer_nth_root_i64(zv->num, 2);
+        auto rd = integer_nth_root_i64(zv->den, 2);
+        if(!rn || !rd || !*rd) continue;
+        Rational u{*rn, *rd};
+        u.normalize();
+        out.push_back("z = " + format_rat_plain(*zv));
+        out.push_back(is_zero(u) ? "u = 0" : "u = +/-" + format_rat_plain(u));
+        auto add_pair = [&](Rational uu) {
+            Rational xv = is_sum ? r_add(m, uu) : r_add(uu, m);
+            Rational yv = is_sum ? r_sub(m, uu) : r_sub(uu, m);
+            pairs.push_back("(" + format_rat_plain(xv) + "," + format_rat_plain(yv) + ")");
+        };
+        add_pair(u);
+        if(!is_zero(u)) add_pair(r_neg(u));
+    }
+    if(pairs.empty()) return std::nullopt;
+    std::string ans;
+    for(std::size_t i = 0; i < pairs.size(); ++i) {
+        if(i) ans += ", ";
+        ans += pairs[i];
+    }
+    out.push_back("(x,y) = [" + ans + "]");
+    return out;
 }
 
 static std::optional<std::vector<std::string>> reciprocal_sum_cube_system(Arena &a, std::string const &key)
@@ -12859,6 +13167,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 };
             }
             if(auto recsys = reciprocal_sum_cube_system(arena, key)) return *recsys;
+            if(auto rps = rational_parabola_system(arena, key)) return *rps;
+            if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto xys = xy_product_ellipse_system(arena, key)) return *xys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto system = symmetric_sum_product_system(key)) return *system;
