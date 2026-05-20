@@ -1792,7 +1792,16 @@ static std::optional<std::string> linear_fractional_interval_range(
         steps.push_back("Evaluate endpoints: y(" + rat_node_text(a, *x0) + ")=" + rat_node_text(a, y0) + ", y(" + rat_node_text(a, *x1) + ")=" + rat_node_text(a, y1) + ".");
         return rat_node_text(a, ymin) + " <= y <= " + rat_node_text(a, ymax);
     }
-    if(r_cmp(pole, *x0) >= 0) return std::nullopt;
+    if(r_cmp(pole, *x0) == 0) {
+        Rational asym = r_div(A, C);
+        Rational sample_x = r_add(*x0, Rational{1, 1});
+        Rational ys = r_div(r_add(r_mul(A, sample_x), B), r_add(r_mul(C, sample_x), D));
+        steps.push_back("Vertical asymptote x = " + rat_node_text(a, pole) + ".");
+        steps.push_back("Horizontal asymptote y = " + rat_node_text(a, asym) + ".");
+        return r_cmp(ys, asym) < 0 ? "y < " + rat_node_text(a, asym)
+                                   : "y > " + rat_node_text(a, asym);
+    }
+    if(r_cmp(pole, *x0) > 0) return std::nullopt;
     Rational y0 = r_div(r_add(r_mul(A, *x0), B), r_add(r_mul(C, *x0), D));
     Rational asym = r_div(A, C);
     int cmp = r_cmp(y0, asym);
