@@ -8811,6 +8811,68 @@ static std::optional<std::vector<std::string>> sqrt_difference_linear_route(
     return out;
 }
 
+static bool rational_over_sqrt(Arena &a, NodeId n, NodeId target, Rational &coef)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return false;
+    auto top = as_num(a, x.a);
+    if(!top) return false;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Fn || den.fkind != FnKind::Sqrt) return false;
+    if(compact_input_key(format_expr(a, den.a)) != compact_input_key(format_expr(a, target))) return false;
+    coef = *top;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> sqrt_difference_over_sqrt_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    Node const &l = a.get(lhs);
+    if(l.kind != NodeKind::Add || l.kids.size() != 2) return std::nullopt;
+    NodeId A = 0, B = 0;
+    for(NodeId k : l.kids) {
+        int sign = 0;
+        NodeId inside = 0;
+        if(!signed_sqrt_linear(a, k, var, sign, inside)) return std::nullopt;
+        if(sign > 0) A = inside;
+        else B = inside;
+    }
+    if(!A || !B) return std::nullopt;
+    Rational c{0, 1};
+    if(!rational_over_sqrt(a, rhs, B, c) || is_zero(c)) return std::nullopt;
+
+    NodeId cnode = casio::num(a, c.num, c.den);
+    NodeId rhs_sq_root = casio::simplify(a, casio::add(a, {B, cnode}));
+    NodeId squared = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {A, B}),
+        casio::neg(a, casio::power(a, rhs_sq_root, casio::num(a, 2)))
+    }));
+    auto rp = ratpoly_of_node(a, squared, var);
+    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
+    auto raw = solve_poly2(a, rp.num, var);
+    auto sols = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    if(sols.empty()) return std::nullopt;
+    sort_solution_lines(a, sols);
+
+    std::string At = format_expr(a, A), Bt = format_expr(a, B), ct = format_expr(a, cnode);
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back("Domain: " + At + " >= 0");
+    out.push_back("Domain: " + Bt + " > 0");
+    out.push_back("*sqrt(" + Bt + "): sqrt((" + At + ")*(" + Bt + ")) - (" + Bt + ") = " + ct);
+    out.push_back("sqrt((" + At + ")*(" + Bt + ")) = " + format_expr(a, rhs_sq_root));
+    out.push_back("(" + At + ")*(" + Bt + ") = (" + format_expr(a, rhs_sq_root) + ")^2");
+    out.push_back("expand => " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = 0");
+    for(auto const &s : sols) out.push_back(s);
+    out.push_back(solution_list_line(var, sols));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> sqrt_sum_linear_route(
     Arena &a,
     NodeId lhs,
@@ -13413,6 +13475,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto so = sqrt_same_poly_offset_sum_route(arena, lhs, rhs, rearr, solve_var)) return *so;
             if(auto rq = radical_quotient_x_shift_route(arena, lhs, rhs, rearr, solve_var)) return *rq;
             if(auto sl = sqrt_linear_equals_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sl;
+            if(auto sdos = sqrt_difference_over_sqrt_route(arena, lhs, rhs, rearr, solve_var)) return *sdos;
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
