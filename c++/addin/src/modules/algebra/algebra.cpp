@@ -9033,6 +9033,103 @@ static std::optional<std::vector<std::string>> sqrt_linear_equals_linear_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> nested_sqrt_plus_linear_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    std::vector<NodeId> terms, rest_terms;
+    add_terms_flat(a, rearr, terms);
+    NodeId outer = 0;
+    Rational outer_coef{0, 1};
+    bool seen_outer = false;
+    for(NodeId t : terms) {
+        NodeId r = 0;
+        Rational c{1, 1};
+        if(sqrt_term_coeff(a, t, r, c)) {
+            if(seen_outer) return std::nullopt;
+            outer = r;
+            outer_coef = c;
+            seen_outer = true;
+        }
+        else rest_terms.push_back(t);
+    }
+    if(!seen_outer || is_zero(outer_coef)) return std::nullopt;
+    NodeId rest = rest_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, rest_terms));
+    auto rest_poly = poly_of(a, rest, var);
+    if(!rest_poly || !rest_poly->ok || !is_zero(rest_poly->a2)) return std::nullopt;
+
+    std::vector<NodeId> inner_terms, poly_terms;
+    add_terms_flat(a, outer, inner_terms);
+    NodeId inner = 0;
+    Rational inner_coef{0, 1};
+    bool seen_inner = false;
+    for(NodeId t : inner_terms) {
+        NodeId r = 0;
+        Rational c{1, 1};
+        if(sqrt_term_coeff(a, t, r, c)) {
+            if(seen_inner) return std::nullopt;
+            inner = r;
+            inner_coef = c;
+            seen_inner = true;
+        }
+        else poly_terms.push_back(t);
+    }
+    if(!seen_inner || is_zero(inner_coef)) return std::nullopt;
+    auto inner_p = poly_of(a, inner, var);
+    if(!inner_p || !inner_p->ok) return std::nullopt;
+    NodeId outer_poly = poly_terms.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, poly_terms));
+    auto outer_poly_p = poly_of(a, outer_poly, var);
+    if(!outer_poly_p || !outer_poly_p->ok) return std::nullopt;
+
+    Rational oscale = r_div(Rational{-1, 1}, outer_coef);
+    NodeId outer_rhs = casio::simplify(a, casio::mul(a, {casio::num(a, oscale.num, oscale.den), rest}));
+    if(auto p = poly_of(a, outer_rhs, var); p && p->ok) outer_rhs = poly2_to_node(a, *p, var);
+    NodeId outer_rhs_sq = casio::simplify(a, casio::power(a, outer_rhs, casio::num(a, 2)));
+    NodeId inner_num = casio::simplify(a, casio::add(a, {outer_rhs_sq, casio::neg(a, outer_poly)}));
+    Rational iscale = r_div(Rational{1, 1}, inner_coef);
+    NodeId inner_rhs = casio::simplify(a, casio::mul(a, {casio::num(a, iscale.num, iscale.den), inner_num}));
+    if(auto p = poly_of(a, inner_rhs, var); p && p->ok) inner_rhs = poly2_to_node(a, *p, var);
+    NodeId eq = casio::simplify(a, casio::add(a, {inner, casio::neg(a, casio::power(a, inner_rhs, casio::num(a, 2)))}));
+    auto rp = ratpoly_of_node(a, eq, var);
+    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2)) return std::nullopt;
+    auto raw = solve_poly2(a, rp.num, var);
+    if(raw.empty()) return std::nullopt;
+    auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+    sort_solution_lines(a, raw);
+    sort_solution_lines(a, valid);
+
+    auto linear_domain = [&](NodeId n) -> std::optional<std::string> {
+        auto p = poly_of(a, n, var);
+        if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+        Rational bound = r_div(r_neg(p->a0), p->a1);
+        return var + std::string(p->a1.num > 0 ? " >= " : " <= ") + format_expr(a, a.num(bound));
+    };
+
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    out.push_back("sqrt(" + format_expr(a, outer) + ") = " + format_expr(a, outer_rhs));
+    out.push_back("Domain: " + format_expr(a, outer) + " >= 0");
+    out.push_back("Domain: " + format_expr(a, inner) + " >= 0");
+    if(auto dom = linear_domain(outer_rhs)) out.push_back(format_expr(a, outer_rhs) + " >= 0 => " + *dom);
+    out.push_back(format_expr(a, outer) + " = (" + format_expr(a, outer_rhs) + ")^2");
+    std::string inner_coef_txt = format_expr(a, a.num(inner_coef));
+    std::string inner_lhs = inner_coef_txt == "1" ? "sqrt(" + format_expr(a, inner) + ")" : inner_coef_txt + "*sqrt(" + format_expr(a, inner) + ")";
+    out.push_back(inner_lhs + " = " + format_expr(a, inner_num));
+    if(r_cmp(inner_coef, Rational{1, 1}) != 0 || compact_input_key(format_expr(a, inner_num)) != compact_input_key(format_expr(a, inner_rhs)))
+        out.push_back("sqrt(" + format_expr(a, inner) + ") = " + format_expr(a, inner_rhs));
+    if(auto dom = linear_domain(inner_rhs)) out.push_back(format_expr(a, inner_rhs) + " >= 0 => " + *dom);
+    out.push_back(format_expr(a, inner) + " = (" + format_expr(a, inner_rhs) + ")^2");
+    out.push_back("expand => " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = 0");
+    for(auto const &s : raw) out.push_back(var + " = " + sol_rhs(s));
+    append_rejected_by_domain(out, var, raw, valid);
+    out.push_back(solution_list_line(var, valid));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     Arena &a,
     NodeId lhs,
@@ -13479,6 +13576,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto ss = sqrt_sum_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ss;
             if(auto sss = sqrt_sum_equals_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sss;
             if(auto sd = sqrt_difference_linear_route(arena, lhs, rhs, rearr, solve_var)) return *sd;
+            if(auto ns = nested_sqrt_plus_linear_route(arena, lhs, rhs, rearr, solve_var)) return *ns;
             if(auto isq = inverse_sqrt_square_route(arena, lhs, rhs, solve_var)) return *isq;
             if(auto rr = rational_root_substitution_route(arena, rearr, solve_var)) return *rr;
             if(auto rrp = rational_root_poly_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rrp;
