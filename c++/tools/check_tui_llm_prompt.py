@@ -30,7 +30,7 @@ def main() -> int:
         "Source/markscheme-guided tests",
         "required marker",
         "Generic calculator/meta text is not valid working",
-        "Prefer A-level/Further Maths methods",
+        "Prefer A-level Maths methods",
         "do not reject advanced methods for genuinely advanced inputs",
     ]
     missing = [m for m in markers if m not in llm]

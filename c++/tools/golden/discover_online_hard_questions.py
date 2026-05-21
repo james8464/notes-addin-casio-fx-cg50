@@ -163,7 +163,7 @@ def cases() -> list[Case]:
     for n in (2, 3, 5, 8, 13):
         add(out, "nrich_step", "king_property", "--int", f"defint(sin(x)^{n}/(sin(x)^{n}+cos(x)^{n}),x,0,pi/2)", "2I")
 
-    # Edexcel/Further-style algebra, trig, implicit/parametric.
+    # Edexcel-style algebra, trig, implicit/parametric.
     for A, B, C in ((2, 3, -2), (3, -5, 2), (4, 4, 1), (-2, 7, -3)):
         add(out, "edexcel", "trig_poly", "--trig", f"{A}*cos(x)^2+{B}*cos(x)+{C}=0,x,0,2*pi,12,method=identity", "Let u=cos")
     for A, B, C in ((3, 4, 2), (5, -12, 6), (8, 15, -4), (7, -24, 10)):

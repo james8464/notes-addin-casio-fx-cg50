@@ -59,21 +59,21 @@ Verdicts:
 - INCORRECT: final answer is wrong/missing, a shown step is mathematically false, valid solutions are lost, extra invalid solutions are kept, or domain/interval restrictions are violated.
 
 When working is NOT required:
-- Accept answer-only/minimal output for genuinely trivial tasks: numeric evaluation, constant simplification, direct function rewrite, one-step linear solve, simple domain/range answer, direct matrix/statistic value, stats summaries/plots, or exact value lookup.
+- Accept answer-only/minimal output for genuinely trivial tasks: numeric evaluation, constant simplification, direct function rewrite, one-step linear solve, simple domain/range answer, direct distribution value, or exact value lookup.
 - Accept compact contradiction output for invalid, no-variable, or nonsensical constant equations, e.g. `24 != 0` with `solution = []`; do not require an invented variable, interval, or fsolve working.
 - Do not demand artificial micro-steps when there are no meaningful method marks.
 - For direct standard rules, one formula line plus answer is enough, e.g. `d/dx(tan x)=sec^2 x` or `cos^2 x=(1+cos2x)/2`.
 
 When working IS required:
 - Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
-- For supported non-trivial A-level/Further Maths routes, answer-only output is NEEDS_REVIEW even when the final line is correct.
+- For supported non-trivial A-level Maths routes, answer-only output is NEEDS_REVIEW even when the final line is correct.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
 - For DI/tabular integration by parts, `D:`, `I:`, `Signs:` plus the final collected answer is full method evidence; do not require separate u/dv/du/v lines.
 - For looping IBP, output that defines `I`, defines `J`, gives `u/dv/du/v`, substitutes `J` back, then shows `Collect:` and `Solve:` lines for `I` is full method evidence; do not demand a separate collection for `J`.
 - For crash-safety/depth-guard/generated stress tests, answer-only or unchanged-expression output is fine if it is bounded, non-crashing, and mathematically sane.
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.
 - Worksheet traps to police especially hard: looping IBP must show the repeated integral being collected; substitutions must show du/dx or dx/du and back-substitution; partial fractions must show the assumed form and coefficient values; trig equations must show identity/R-form plus interval filtering; implicit/parametric differentiation must show collection/isolation of derivatives; binomial expansions must show validity conditions when needed.
-- If the problem is beyond A-level/Further Maths, still grade it: accept correct special-function, branch-aware, implicit, numeric, or non-elementary conclusions only when the output explains why that route is needed.
+- If the problem is beyond A-level Maths, still grade it: accept correct special-function, branch-aware, implicit, numeric, or non-elementary conclusions only when the output explains why that route is needed.
 - For very large generated expressions, accept structured placeholders like `f1`, `f2`, `u`, `v` if each is defined and the rule connecting them is correct. Do not demand the whole expanded derivative on every line.
 
 Source/markscheme-guided tests:
@@ -87,7 +87,7 @@ Quality filters:
 - If the output is mostly sentences rather than mathematical lines, mark NEEDS_REVIEW even if the final answer is correct.
 - Do not reject output merely because it has no line numbers or prose.
 - Do not reject terse mathematical notation if it is copyable and method-mark complete.
-- Prefer A-level/Further Maths methods over special functions or university methods when such a route exists, but do not reject advanced methods for genuinely advanced inputs.
+- Prefer A-level Maths methods over special functions or university methods when such a route exists, but do not reject advanced methods for genuinely advanced inputs.
 - Equivalent algebraic/trig forms are fine if domains, branches, constants, and intervals are respected.
 - Factorised/simplified exact answers are preferred, but unsimplified equivalent answers are not INCORRECT unless the question asks for a specific form.
 - If unsure, use NEEDS_REVIEW, not INCORRECT.
