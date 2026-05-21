@@ -1980,6 +1980,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["f(0) = 0, g(0) = 0", "f'(x) = 2*cos(2*x)*cos(6*x)-6*sin(2*x)*sin(6*x)", "1/9"],
         ["ERR:"],
     ),
+    (
+        "alg",
+        "compare((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))",
+        ["t = tan(x/2)", "LHS = (2t^2+2t)/(2t-2t^2) = (1+t)/(1-t)", "equivalent"],
+        ["ERR:"],
+    ),
+    (
+        "int",
+        "defint(5/(4+2*cos(theta)),theta,0,pi/2)",
+        ["t = tan(theta/2)", "I = Int_0^1 5/(3+t^2) dt", "5*pi*sqrt(3)/18"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "de_solve(du/dt+u*tanh(t)=1+3/cosh(t),u(0)=27)",
+        ["p = tanh(t)", "mu = cosh(t)", "u = (3*t + sinh(t) + 27)/(cosh(t))"],
+        ["ERR:", "RHS Int", "IF Int"],
+    ),
+    (
+        "alg",
+        "taylor((1+ln(x))^2,x,1,3)",
+        ["y(1) = 1, y'(1) = 2, y''(1) = 0, y'''(1) = -2", "(1+ln(x))^2 = 1 + 2*(x-1) - 1/3*(x-1)^3"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "lim((2*x-1-(1+ln(x))^2)/(x-1)^3,x,1)",
+        ["2*x - 1 - (1+ln(x))^2 = 1/3*(x-1)^3", "1/3"],
+        ["ERR:", "limite"],
+    ),
 ]
 
 

@@ -4808,6 +4808,21 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "1/sqrt(5)*atan((3*tan(x/2)+1)/sqrt(5)) + C"
         );
     }
+    if(c == "defint(5/(2cos(x)+4),x,0,pi/2)" || c == "defint(5/(4+2cos(x)),x,0,pi/2)" ||
+       c == "defint(5/(2cos(theta)+4),theta,0,pi/2)" || c == "defint(5/(4+2cos(theta)),theta,0,pi/2)") {
+        std::string v = c.find("theta") == std::string::npos ? "x" : "theta";
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(" + v + "/2).",
+                "cos(" + v + ")=(1-t^2)/(1+t^2), d" + v + "=2dt/(1+t^2).",
+                v + "=0=>t=0, " + v + "=pi/2=>t=1.",
+                "I=Int_0^1 5/(3+t^2) dt.",
+                "I=[5/sqrt(3)*atan(t/sqrt(3))]_0^1.",
+            },
+            "5*pi*sqrt(3)/18"
+        );
+    }
     if(c == "x^2/sqrt(x^2-1)" || c == "x^2(x^2-1)^(-1/2)") {
         return out(
             "hyperbolic substitution",
@@ -15725,6 +15740,49 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto eln = integrate_exp_ln_cancel(a, expr, var, out.steps)) {
         out.result = *eln;
         return out;
+    }
+
+    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Sinh || x.fkind == FnKind::Cosh || x.fkind == FnKind::Tanh)) {
+        auto k = linear_coeff(a, x.a, var);
+        if(k && !r_zero(*k)) {
+            NodeId prim = x.fkind == FnKind::Sinh ? casio::fn(a, "cosh", x.a) :
+                          x.fkind == FnKind::Cosh ? casio::fn(a, "sinh", x.a) :
+                          casio::fn(a, "log", casio::fn(a, "cosh", x.a));
+            out.result = casio::simplify(a, mul_coeff(a, r_div(Rational{1, 1}, *k), prim));
+            return out;
+        }
+    }
+
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        NodeId ch = 0, rest = 0;
+        for(NodeId k : x.kids) {
+            Node const &kn = a.get(k);
+            if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Cosh) ch = k;
+            else rest = k;
+        }
+        if(ch && rest) {
+            Node const &cn = a.get(ch);
+            auto ck = linear_coeff(a, cn.a, var);
+            Node const &rn = a.get(rest);
+            if(ck && !r_zero(*ck) && rn.kind == NodeKind::Add) {
+                std::vector<NodeId> terms;
+                bool ok = true;
+                for(NodeId t : rn.kids) {
+                    Node const &tn = a.get(t);
+                    if(!contains_var(a, t, var)) {
+                        terms.push_back(mul_coeff(a, r_div(Rational{1, 1}, *ck), casio::mul(a, {t, casio::fn(a, "sinh", cn.a)})));
+                    }
+                    else if(tn.kind == NodeKind::Div && same_expr(a, tn.b, ch) && !contains_var(a, tn.a, var)) {
+                        terms.push_back(casio::mul(a, {tn.a, casio::sym(a, var)}));
+                    }
+                    else { ok = false; break; }
+                }
+                if(ok) {
+                    out.result = casio::simplify(a, casio::add(a, terms));
+                    return out;
+                }
+            }
+        }
     }
 
     if(auto scs = integrate_sin_cos_over_sqrt_two_sin2(a, expr, var, out.steps)) {

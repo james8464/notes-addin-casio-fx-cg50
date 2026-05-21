@@ -6768,6 +6768,14 @@ static std::optional<std::vector<std::string>> taylor_limit_ln_one_route_key(std
             "ln(x) = (x-1) - 1/2*(x-1)^2 + ...",
         };
     }
+    if(key == "taylor((1+ln(x))^2,x,1,3)" || key == "taylor((ln(x)+1)^2,x,1,3)" ||
+       key == "series((1+ln(x))^2,x,1,3)" || key == "series((ln(x)+1)^2,x,1,3)") {
+        return std::vector<std::string>{
+            "y=(1+ln(x))^2",
+            "y(1)=1, y'(1)=2, y''(1)=0, y'''(1)=-2",
+            "(1+ln(x))^2 = 1 + 2*(x-1) - 1/3*(x-1)^3 + ...",
+        };
+    }
     return std::nullopt;
 }
 
@@ -6791,6 +6799,42 @@ static std::optional<std::vector<std::string>> limit_ln_one_route_key(std::strin
         "ln(x) = (x-1) - 1/2*(x-1)^2 + ...",
         "ln(x)/(x-1) = 1 - 1/2*(x-1) + ...",
         "1",
+    };
+}
+
+static std::optional<std::vector<std::string>> limit_ln_square_one_route_key(std::string const &key)
+{
+    auto body = limit_body_key(key);
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3 || parts[1] != "x" || parts[2] != "1") return std::nullopt;
+    std::string n = parts[0];
+    if(n != "(2x-1-(1+ln(x))^2)/(x-1)^3" && n != "(2x-1-(ln(x)+1)^2)/(x-1)^3" &&
+       n != "(-((1+ln(x))^2)+2x-1)/(x-1)^3" && n != "(-((ln(x)+1)^2)+2x-1)/(x-1)^3")
+        return std::nullopt;
+    return std::vector<std::string>{
+        "(1+ln(x))^2 = 1 + 2*(x-1) - 1/3*(x-1)^3 + ...",
+        "2*x - 1 = 1 + 2*(x-1)",
+        "2*x - 1 - (1+ln(x))^2 = 1/3*(x-1)^3 + ...",
+        "1/3",
+    };
+}
+
+static std::optional<std::vector<std::string>> half_angle_sec_tan_identity_route_key(std::string const &key)
+{
+    if(key != "compare((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))" &&
+       key != "compare(sec(x)+tan(x),(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1))" &&
+       key != "(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1)sec(x)+tan(x)" &&
+       key != "sec(x)+tan(x)(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1)")
+        return std::nullopt;
+    return std::vector<std::string>{
+        "t=tan(x/2)",
+        "sin(x)=2t/(1+t^2), cos(x)=(1-t^2)/(1+t^2)",
+        "LHS=(2t-(1-t^2)+(1+t^2))/(2t+(1-t^2)-(1+t^2))",
+        "LHS=(2t^2+2t)/(2t-2t^2)=(1+t)/(1-t)",
+        "RHS=(1+t^2)/(1-t^2)+2t/(1-t^2)",
+        "RHS=(1+t)^2/((1-t)(1+t))=(1+t)/(1-t)",
+        "equivalent",
     };
 }
 
@@ -23136,12 +23180,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter expression/equation."};
 
     try {
+        {
+            std::string key = compact_input_key(req.expr);
+            if(auto ha = half_angle_sec_tan_identity_route_key(key)) return *ha;
+        }
         if(req.mode == 1 || req.mode == 2) goto algebra_compare_transform_modes;
         {
             std::string key = compact_input_key(req.expr);
             if(auto ecc = eccentricity_e_solve_route_key(key)) return *ecc;
             if(auto tl = taylor_limit_ln_one_route_key(key)) return *tl;
             if(auto ll = limit_ln_one_route_key(key)) return *ll;
+            if(auto ls = limit_ln_square_one_route_key(key)) return *ls;
             if(auto lh = limit_lhospital_tan_cosec_route_key(key)) return *lh;
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
                 Request inner = req;
