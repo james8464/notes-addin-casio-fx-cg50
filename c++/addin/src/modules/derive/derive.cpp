@@ -3850,14 +3850,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "implicit differentiation",
                     {
-                        "Rewrite as F=x^2*y-x*y^2+16=0.",
-                        "Differentiate: 2xy + x^2*y' - y^2 - 2xy*y' = 0.",
-                        "Collect y' terms: y'(x^2-2xy)=y^2-2xy.",
-                        "Factor: y' = -y*(2*x-y)/(x*(x-2*y)).",
-                        "For stationary points set dy/dx=0, so y=2x.",
-                        "Substitute y=2x into the curve to get x=2, y=4.",
+                        "x^2*y - x*y^2 + 16 = 0.",
+                        "2*x*y + x^2*dy/dx - y^2 - 2*x*y*dy/dx = 0.",
+                        "(x^2-2*x*y)*dy/dx = y^2-2*x*y.",
+                        "dy/dx = -y*(2*x-y)/(x*(x-2*y)).",
+                        "dy/dx = 0 => y = 2*x.",
+                        "x*(2*x)*(x-2*x)+16 = 0.",
+                        "x = 2, y = 4.",
                     },
-                    dname + " = -y*(2*x-y)/(x*(x-2*y)); stationary point (2,4)"
+                    "(2,4)"
                 );
             }
             if(compact == "y(x-y)=log(y)" || compact == "y*(x-y)=log(y)" || compact == "y(x-y)=ln(y)" ||

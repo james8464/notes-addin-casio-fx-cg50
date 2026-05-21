@@ -10173,15 +10173,98 @@ static NodeId system_residual(Arena &a, Equation const &eq, std::string const &v
     return casio::simplify(a, sub_node(a, eq.lhs, eq.rhs));
 }
 
+static void collect_system_denoms(Arena &a, NodeId n, std::vector<NodeId> &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        out.push_back(x.b);
+        collect_system_denoms(a, x.a, out);
+        collect_system_denoms(a, x.b, out);
+        return;
+    }
+    if(x.kind == NodeKind::Fn) collect_system_denoms(a, x.a, out);
+    else if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind == NodeKind::Num && e.num.den == 1 && e.num.num < 0)
+            out.push_back(casio::power(a, x.a, casio::num(a, -e.num.num)));
+        collect_system_denoms(a, x.a, out);
+        collect_system_denoms(a, x.b, out);
+    }
+    else if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul)
+        for(NodeId k : x.kids) collect_system_denoms(a, k, out);
+}
+
+static bool remove_system_denom(Arena &a, std::vector<NodeId> &ds, NodeId d)
+{
+    for(auto it = ds.begin(); it != ds.end(); ++it) {
+        if(casio::same_by_sig(a, *it, d)) {
+            ds.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+static void split_system_fraction_term(Arena &a, NodeId n, std::vector<NodeId> &nums, std::vector<NodeId> &dens)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        split_system_fraction_term(a, x.a, nums, dens);
+        dens.push_back(x.b);
+        return;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind == NodeKind::Num && e.num.den == 1 && e.num.num < 0) {
+            dens.push_back(casio::power(a, x.a, casio::num(a, -e.num.num)));
+            return;
+        }
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) split_system_fraction_term(a, k, nums, dens);
+        return;
+    }
+    nums.push_back(n);
+}
+
+static NodeId clear_system_term(Arena &a, NodeId term, std::vector<NodeId> const &all_denoms)
+{
+    std::vector<NodeId> nums, dens;
+    split_system_fraction_term(a, term, nums, dens);
+    std::vector<NodeId> left = all_denoms;
+    for(NodeId d : dens) remove_system_denom(a, left, d);
+    nums.insert(nums.end(), left.begin(), left.end());
+    if(nums.empty()) return casio::num(a, 1);
+    return casio::simplify(a, casio::mul(a, nums));
+}
+
+static NodeId clear_system_denoms(Arena &a, NodeId n)
+{
+    std::vector<NodeId> ds;
+    collect_system_denoms(a, n, ds);
+    if(ds.empty()) return n;
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms;
+    if(x.kind == NodeKind::Add) {
+        terms.reserve(x.kids.size());
+        for(NodeId k : x.kids) terms.push_back(clear_system_term(a, k, ds));
+    }
+    else terms.push_back(clear_system_term(a, n, ds));
+    return exact_eval_simplify(a, expand_square_powers(a, casio::add(a, terms)));
+}
+
 static std::optional<std::vector<std::string>> linear_substitution2_system_route(Arena &a, std::string const &expr)
 {
     std::vector<std::string> eq_texts, vars;
     if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+    std::vector<NodeId> raw_res;
     std::vector<NodeId> res;
     for(auto const &txt : eq_texts) {
         auto eq = casio::parse_equation(a, txt);
         if(!eq) return std::nullopt;
-        res.push_back(system_residual(a, *eq, vars[0], vars[1]));
+        NodeId raw = system_residual(a, *eq, vars[0], vars[1]);
+        raw_res.push_back(raw);
+        res.push_back(clear_system_denoms(a, raw));
     }
 
     for(int line_i = 0; line_i < 2; ++line_i) {
@@ -10209,9 +10292,26 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
                 std::string rhs = sol_rhs(root_line);
                 if(rhs.find('i') != std::string::npos || rhs.find("No solution") != std::string::npos ||
                    rhs.find("Infinite") != std::string::npos) continue;
-                out.push_back(root_line);
                 NodeId other_val = casio::parse_expr(a, rhs);
                 NodeId iso_val = exact_eval_simplify(a, clone_with_substitution(a, iso_expr, vars[other], other_val));
+                auto ov = eval_node_env(a, other_val, {});
+                auto iv = eval_node_env(a, iso_val, {});
+                if(ov && iv) {
+                    std::vector<std::pair<std::string, double>> env{
+                        {vars[0], iso == 0 ? *iv : *ov},
+                        {vars[1], iso == 0 ? *ov : *iv},
+                    };
+                    bool keep = true;
+                    for(NodeId rr : raw_res) {
+                        auto v = eval_node_env(a, rr, env);
+                        if(!v || !std::isfinite(*v) || std::fabs(*v) > 1e-7) {
+                            keep = false;
+                            break;
+                        }
+                    }
+                    if(!keep) continue;
+                }
+                out.push_back(root_line);
                 std::string v0 = iso == 0 ? format_expr(a, iso_val) : rhs;
                 std::string v1 = iso == 0 ? rhs : format_expr(a, iso_val);
                 pairs.push_back("(" + v0 + "," + v1 + ")");
