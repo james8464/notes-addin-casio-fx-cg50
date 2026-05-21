@@ -8559,6 +8559,114 @@ static std::string explicit_mul_for_piecewise(std::string const &s)
     return out;
 }
 
+static std::optional<std::vector<std::string>> outer_abs_rational_inequality_route(
+    Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
+{
+    NodeId A0 = casio::parse_expr(a, absarg);
+    NodeId B0 = casio::parse_expr(a, rhs);
+    auto A = rat_any_of(a, A0, "x"), B = rat_any_of(a, B0, "x");
+    if(!A || !B) return std::nullopt;
+
+    PolyAny ad_bd = poly_any_mul(A->d, B->d);
+    PolyAny eq_pos = poly_any_sub(poly_any_mul(A->n, B->d), poly_any_mul(B->n, A->d));
+    PolyAny eq_neg = poly_any_sub(poly_any_neg(poly_any_mul(A->n, B->d)), poly_any_mul(B->n, A->d));
+
+    std::vector<IneqRoot> crit;
+    auto add_root = [&](IneqRoot z, bool num, bool den) {
+        auto it = std::find_if(crit.begin(), crit.end(), [&](IneqRoot const &q) { return std::fabs(q.v - z.v) < 1e-9; });
+        if(it == crit.end()) {
+            z.num = num;
+            z.den = den;
+            crit.push_back(z);
+        }
+        else {
+            it->num = it->num || num;
+            it->den = it->den || den;
+        }
+    };
+    for(auto z : poly_any_real_roots_ineq(a, eq_pos)) add_root(z, true, false);
+    for(auto z : poly_any_real_roots_ineq(a, eq_neg)) add_root(z, true, false);
+    for(auto z : poly_any_real_roots_ineq(a, A->n)) add_root(z, false, false);
+    for(auto z : poly_any_real_roots_ineq(a, ad_bd)) add_root(z, false, true);
+    std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+
+    auto eval_rat = [](RatAny const &r, double x) -> std::optional<double> {
+        double d = poly_any_eval_double(r.d, x);
+        if(std::fabs(d) < 1e-10) return std::nullopt;
+        return poly_any_eval_double(r.n, x) / d;
+    };
+    auto eval = [&](double x) -> std::optional<double> {
+        auto av = eval_rat(*A, x), bv = eval_rat(*B, x);
+        if(!av || !bv) return std::nullopt;
+        return std::fabs(*av) - *bv;
+    };
+    auto ok_rel = [&](double v) {
+        if(op == ">") return v > 1e-9;
+        if(op == "<") return v < -1e-9;
+        if(op == ">=") return v >= -1e-9;
+        return v <= 1e-9;
+    };
+    auto sample_between = [](std::vector<IneqRoot> const &c, std::size_t i) {
+        if(c.empty()) return 0.0;
+        if(i == 0) return c[0].v - 1.0;
+        if(i == c.size()) return c.back().v + 1.0;
+        return 0.5 * (c[i - 1].v + c[i].v);
+    };
+
+    std::vector<bool> interval_ok(crit.size() + 1, false), point_ok(crit.size(), false);
+    std::vector<std::string> signs;
+    for(std::size_t i = 0; i <= crit.size(); ++i) {
+        auto v = eval(sample_between(crit, i));
+        interval_ok[i] = v && ok_rel(*v);
+        std::string lo = i == 0 ? "-inf" : crit[i - 1].text;
+        std::string hi = i == crit.size() ? "inf" : crit[i].text;
+        signs.push_back("(" + lo + "," + hi + "):" + (!v ? "undef" : (*v > 0 ? "+" : (*v < 0 ? "-" : "0"))));
+    }
+    for(std::size_t i = 0; i < crit.size(); ++i) {
+        auto v = crit[i].den ? std::nullopt : eval(crit[i].v);
+        point_ok[i] = v && ok_rel(*v);
+    }
+
+    std::vector<std::string> ans;
+    for(std::size_t i = 0; i <= crit.size();) {
+        if(!interval_ok[i]) {
+            if(i < crit.size() && point_ok[i] && !interval_ok[i + 1])
+                ans.push_back("x = " + crit[i].text);
+            ++i;
+            continue;
+        }
+        std::optional<std::string> lo, hi;
+        bool li = false, ri = false;
+        if(i > 0) {
+            lo = crit[i - 1].text;
+            li = point_ok[i - 1];
+        }
+        while(i < crit.size() && point_ok[i] && interval_ok[i + 1]) ++i;
+        if(i < crit.size()) {
+            hi = crit[i].text;
+            ri = point_ok[i];
+        }
+        if(!lo && !hi) ans.push_back("all real x");
+        else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        ++i;
+    }
+    if(ans.empty()) ans.push_back("no solution");
+
+    std::string af = format_expr(a, A0), bf = format_expr(a, B0);
+    std::vector<std::string> out{
+        "abs(" + af + ") " + op + " " + bf,
+        af + " = " + bf + " or -(" + af + ") = " + bf,
+    };
+    std::vector<std::string> poles;
+    for(auto const &z : crit) if(z.den) poles.push_back(z.text);
+    if(!poles.empty()) out.push_back("D=0: x != " + join_text(poles, ", "));
+    out.push_back("sign: " + join_text(signs, "; "));
+    out.push_back(join_text(ans, " or "));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_route(
     Arena &a, std::string const &op, std::string const &lhs, std::string const &rhs)
 {
@@ -8784,6 +8892,9 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                 };
             }
         }
+    }
+    if(abs_line.empty()) if(auto la = outer_abs_arg(lhs)) {
+        if(auto ar = outer_abs_rational_inequality_route(a, op, *la, rhs)) return *ar;
     }
     if(key.find("abs(") != std::string::npos) {
         if(auto pw = abs_piecewise_linear_inequality_route(a, op, lhs, rhs)) return *pw;
@@ -22091,6 +22202,85 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "Interval of interest: " + var + " on " +
                 std::string(lo_open ? "(" : "[") + lo + ", " + hi + (hi_open ? ")" : "]")
             );
+            struct BoxBound {
+                std::string v, lo, hi;
+                bool lo_open = false, hi_open = false;
+                double lod = 0.0, hid = 0.0;
+            };
+            auto parse_box_cond = [&](std::string const &raw, BoxBound &b) -> bool {
+                std::string cond = trim_text(raw);
+                auto ops = cond_ops(cond);
+                if(ops.size() != 2) return false;
+                std::string left = trim_text(cond.substr(0, ops[0].pos));
+                std::string mid = trim_text(cond.substr(ops[0].pos + ops[0].len, ops[1].pos - (ops[0].pos + ops[0].len)));
+                std::string right = trim_text(cond.substr(ops[1].pos + ops[1].len));
+                if(!is_var_text(mid) || ops[0].op[0] != '<' || ops[1].op[0] != '<') return false;
+                auto lv = parse_bound(left), hv = parse_bound(right);
+                if(!lv || !hv || !std::isfinite(*lv) || !std::isfinite(*hv)) return false;
+                b.v = mid; b.lo = left; b.hi = right;
+                b.lo_open = ops[0].op.size() == 1; b.hi_open = ops[1].op.size() == 1;
+                b.lod = *lv; b.hid = *hv;
+                return b.lod <= b.hid;
+            };
+            auto parse_box_triples = [&](std::vector<BoxBound> &boxes) -> bool {
+                if(parts.size() < 7 || (parts.size() - 1) % 3 != 0) return false;
+                for(std::size_t i = 1; i + 2 < parts.size(); i += 3) {
+                    if(!is_var_text(parts[i])) return false;
+                    auto lv = parse_bound(parts[i + 1]), hv = parse_bound(parts[i + 2]);
+                    if(!lv || !hv || !std::isfinite(*lv) || !std::isfinite(*hv)) return false;
+                    boxes.push_back({trim_text(parts[i]), trim_text(parts[i + 1]), trim_text(parts[i + 2]), false, false, *lv, *hv});
+                }
+                return boxes.size() >= 2;
+            };
+            auto parse_box_conditions = [&](std::vector<BoxBound> &boxes, std::string &out_sym) -> bool {
+                std::size_t start = 1;
+                if(parts.size() >= 4 && is_var_text(parts[1]) && cond_ops(parts[2]).size() == 2) {
+                    out_sym = trim_text(parts[1]);
+                    start = 2;
+                }
+                for(std::size_t i = start; i < parts.size(); ++i) {
+                    BoxBound b;
+                    if(!parse_box_cond(parts[i], b)) return false;
+                    boxes.push_back(b);
+                }
+                return boxes.size() >= 2;
+            };
+            std::vector<BoxBound> boxes;
+            std::string out_sym = "y";
+            if(parse_box_conditions(boxes, out_sym) || parse_box_triples(boxes)) {
+                if(boxes.size() <= 6) {
+                    double mn = 0.0, mx = 0.0;
+                    bool have = false, mn_closed = false, mx_closed = false;
+                    std::size_t combos = std::size_t{1} << boxes.size();
+                    for(std::size_t mask = 0; mask < combos; ++mask) {
+                        std::vector<std::pair<std::string, double>> env;
+                        bool open_corner = false;
+                        for(std::size_t j = 0; j < boxes.size(); ++j) {
+                            bool hi_side = (mask >> j) & 1U;
+                            env.push_back({boxes[j].v, hi_side ? boxes[j].hid : boxes[j].lod});
+                            open_corner = open_corner || (hi_side ? boxes[j].hi_open : boxes[j].lo_open);
+                        }
+                        auto val = eval_node_env(arena, n, env);
+                        if(!val || !std::isfinite(*val)) { have = false; break; }
+                        bool closed = !open_corner;
+                        if(!have || *val < mn - 1e-9) { mn = *val; mn_closed = closed; }
+                        else if(std::fabs(*val - mn) < 1e-9) mn_closed = mn_closed || closed;
+                        if(!have || *val > mx + 1e-9) { mx = *val; mx_closed = closed; }
+                        else if(std::fabs(*val - mx) < 1e-9) mx_closed = mx_closed || closed;
+                        have = true;
+                    }
+                    if(have) {
+                        while(!steps.empty() && (steps.back().rfind("Interval of interest:", 0) == 0 || steps.back().rfind("Variable =", 0) == 0))
+                            steps.pop_back();
+                        for(auto const &b : boxes)
+                            steps.push_back(b.lo + (b.lo_open ? " < " : " <= ") + b.v + (b.hi_open ? " < " : " <= ") + b.hi);
+                        std::string range_answer = format_double_compact(mn) + (mn_closed ? " <= " : " < ") + out_sym +
+                                                   (mx_closed ? " <= " : " < ") + format_double_compact(mx);
+                        steps.push_back("Range: " + range_answer + ".");
+                        return casio::exam_block("range", steps, range_answer);
+                    }
+                }
+            }
             if(req.method == "period") {
                 if(auto per = trig_period(arena, n, var, steps)) {
                     steps.push_back("Period = " + *per);
