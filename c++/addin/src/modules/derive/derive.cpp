@@ -112,6 +112,7 @@ static bool has_node_kind(Arena &a, NodeId n, NodeKind kind)
 
 static std::string clean_math_text(std::string s);
 static std::string compact_math_key(std::string text);
+static bool contains_fn_kind(Arena &a, NodeId n, FnKind kind);
 
 static void push_denominator(Arena &a, NodeId n, std::vector<NodeId> &nodes, std::vector<std::string> &texts)
 {
@@ -261,6 +262,109 @@ static NodeId neg_expanded(Arena &a, NodeId n)
         return casio::simplify(a, casio::add(a, terms));
     }
     return casio::simplify(a, casio::neg(a, n));
+}
+
+struct IsolatedSqrt
+{
+    NodeId root;
+    NodeId repl;
+};
+
+static bool sqrt_factor(Arena &a, NodeId n, NodeId &coef, NodeId &root)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        coef = casio::num(a, 1);
+        root = n;
+        return true;
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    std::vector<NodeId> rest;
+    bool seen = false;
+    for(NodeId k : x.kids) {
+        Node const &f = a.get(k);
+        if(f.kind == NodeKind::Fn && f.fkind == FnKind::Sqrt) {
+            if(seen) return false;
+            seen = true;
+            root = k;
+        }
+        else {
+            if(contains_fn_kind(a, k, FnKind::Sqrt)) return false;
+            rest.push_back(k);
+        }
+    }
+    if(!seen) return false;
+    coef = rest.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, rest));
+    return true;
+}
+
+static std::optional<IsolatedSqrt> isolate_sqrt(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    std::vector<NodeId> rest;
+    NodeId coef = casio::num(a, 1), root = 0;
+    bool seen = false;
+    for(NodeId t : terms) {
+        NodeId c = 0, r = 0;
+        if(sqrt_factor(a, t, c, r)) {
+            if(seen) return std::nullopt;
+            seen = true;
+            coef = c;
+            root = r;
+        }
+        else rest.push_back(t);
+    }
+    if(!seen || rest.empty()) return std::nullopt;
+    NodeId rhs = rest.size() == 1 ? neg_expanded(a, rest.front()) : neg_expanded(a, casio::simplify(a, casio::add(a, rest)));
+    return IsolatedSqrt{root, casio::simplify(a, casio::div(a, rhs, coef))};
+}
+
+static NodeId replace_by_key(Arena &a, NodeId n, std::string const &target, NodeId repl)
+{
+    if(compact_math_key(format_expr_human(a, n)) == target) return repl;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return casio::simplify(a, a.fn(x.fkind, replace_by_key(a, x.a, target, repl)));
+    if(x.kind == NodeKind::Pow) return casio::simplify(a, casio::power(a, replace_by_key(a, x.a, target, repl), replace_by_key(a, x.b, target, repl)));
+    if(x.kind == NodeKind::Div) return casio::simplify(a, casio::div(a, replace_by_key(a, x.a, target, repl), replace_by_key(a, x.b, target, repl)));
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(replace_by_key(a, k, target, repl));
+        return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    }
+    return n;
+}
+
+static NodeId expand_small(Arena &a, NodeId n, int depth = 2)
+{
+    if(depth <= 0) return n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> terms;
+        terms.reserve(x.kids.size());
+        for(NodeId k : x.kids) terms.push_back(expand_small(a, k, depth));
+        return casio::simplify(a, casio::add(a, terms));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(expand_small(a, k, depth));
+        for(std::size_t i = 0; i < kids.size(); ++i) {
+            Node const &k = a.get(kids[i]);
+            if(k.kind != NodeKind::Add || k.kids.size() > 6 || k.kids.size() * kids.size() > 18) continue;
+            std::vector<NodeId> out;
+            out.reserve(k.kids.size());
+            for(NodeId t : k.kids) {
+                std::vector<NodeId> facs = kids;
+                facs[i] = t;
+                out.push_back(expand_small(a, casio::simplify(a, casio::mul(a, facs)), depth - 1));
+            }
+            return casio::simplify(a, casio::add(a, out));
+        }
+        return casio::simplify(a, casio::mul(a, kids));
+    }
+    return n;
 }
 
 static std::string denominator_product_text(std::vector<std::string> const &denoms)
@@ -3830,6 +3934,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::vector<NodeId> den_nodes;
             std::vector<std::string> denoms;
             std::optional<NodeId> cleared_ans;
+            std::optional<NodeId> sqrt_ans;
+            std::string sqrt_line;
             if(has_den) {
                 steps.push_back("Domain: denoms !=0.");
                 collect_denominators(arena, left, den_nodes, denoms);
@@ -3849,10 +3955,30 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 }
             }
+            if(auto sr = isolate_sqrt(arena, work)) {
+                std::string key = compact_math_key(format_expr_human(arena, sr->root));
+                NodeId top = replace_by_key(arena, casio::neg(arena, fx), key, sr->repl);
+                NodeId bot = replace_by_key(arena, fy, key, sr->repl);
+                NodeId plain = casio::simplify(arena, casio::div(arena, top, bot));
+                std::vector<NodeId> sdens;
+                std::vector<std::string> sden_txt;
+                collect_denominators(arena, top, sdens, sden_txt);
+                collect_denominators(arena, bot, sdens, sden_txt);
+                NodeId cleared = sdens.empty()
+                    ? plain
+                    : casio::simplify(arena, casio::div(arena, expand_small(arena, clear_denominators_expression(arena, top, sdens)),
+                                                       expand_small(arena, clear_denominators_expression(arena, bot, sdens))));
+                std::string ptxt = clean_math_text(format_expr_human(arena, plain));
+                std::string ctxt = clean_math_text(format_expr_human(arena, cleared));
+                sqrt_ans = (ctxt.size() < ptxt.size()) ? cleared : plain;
+                sqrt_line = clean_math_text(format_expr_human(arena, sr->root)) + " = " +
+                            clean_math_text(format_expr_human(arena, sr->repl));
+            }
             std::string fx_s = clean_math_text(format_expr_human(arena, fx));
             std::string fy_s = clean_math_text(format_expr_human(arena, fy));
             if(cleared_ans) answer = dname + " = " + format_expr_human(arena, *cleared_ans);
             else {
+                if(sqrt_ans) answer = dname + " = " + format_expr_human(arena, *sqrt_ans);
                 steps.push_back("F(x,y) = " + clean_math_text(format_expr_human(arena, work)) + " = 0.");
                 steps.push_back("F_x = " + fx_s + ".");
                 steps.push_back("F_y = " + fy_s + ".");
@@ -3860,6 +3986,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("(" + fx_s + ") + (" + fy_s + ")*" + dname + " = 0.");
                 steps.push_back("(" + fy_s + ")*" + dname + " = -(" + fx_s + ").");
                 steps.push_back(dname + " = -(" + fx_s + ")/(" + fy_s + ").");
+                if(sqrt_ans) {
+                    steps.push_back(sqrt_line + ".");
+                    steps.push_back(answer + ".");
+                }
             }
             return casio::exam_block("implicit differentiation (limited)", steps, answer);
         }
