@@ -4405,37 +4405,6 @@ static std::optional<TextIntegral> trig_sub_defint_pattern(std::string const &ex
     return std::nullopt;
 }
 
-static std::optional<TextIntegral> acosh_parts_defint_pattern(std::string const &expr)
-{
-    auto args = unwrap_call_args(expr, "defint");
-    if(!args || args->size() != 4) return std::nullopt;
-    if(compact_key((*args)[1]) != "x" || compact_key((*args)[2]) != "1" || compact_key((*args)[3]) != "3")
-        return std::nullopt;
-    std::string k = compact_key((*args)[0]);
-    auto norm = [](std::string s) {
-        for(std::string from : {"arcosh", "arccosh"}) {
-            std::size_t p = 0;
-            while((p = s.find(from, p)) != std::string::npos) {
-                s.replace(p, from.size(), "acosh");
-                p += 5;
-            }
-        }
-        return s;
-    };
-    k = norm(k);
-    if(k != "4/15xacosh(x)" && k != "4/15*x*acosh(x)" && k != "4xacosh(x)/15" && k != "4*x*acosh(x)/15")
-        return std::nullopt;
-    std::vector<std::string> steps = {
-        "Use parts: u=acosh(x), dv=4*x/15 dx.",
-        "du=1/sqrt(x^2-1) dx and v=2*x^2/15.",
-        "I=[2*x^2*acosh(x)/15]_1^3 - 2/15*Int_1^3 x^2/sqrt(x^2-1) dx.",
-        "For J=Int x^2/sqrt(x^2-1) dx, put x=cosh(t).",
-        "J=1/2*(x*sqrt(x^2-1)+acosh(x)).",
-        "acosh(1)=0 and acosh(3)=ln(3+2*sqrt(2)).",
-    };
-    return TextIntegral{"integration by parts", std::move(steps), "1/15*(17*ln(3+2*sqrt(2)) - 6*sqrt(2))"};
-}
-
 static bool is_name_key(std::string const &s)
 {
     if(s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
@@ -4867,33 +4836,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "5*pi*sqrt(3)/18"
         );
     }
-    if(c == "x^2/sqrt(x^2-1)" || c == "x^2(x^2-1)^(-1/2)") {
-        return out(
-            "hyperbolic substitution",
-            {
-                "Let x=cosh(u).",
-                "dx=sinh(u) du and sqrt(x^2-1)=sinh(u).",
-                "I=Int cosh(u)^2 du.",
-                "cosh(u)^2=(cosh(2u)+1)/2.",
-                "I=1/4*sinh(2u)+1/2*u.",
-                "sinh(2u)=2x*sqrt(x^2-1), u=acosh(x).",
-            },
-            "1/2*(x*sqrt(x^2-1)+acosh(x)) + C"
-        );
-    }
-    if(c == "xacosh(x)" || c == "xarcosh(x)") {
-        return out(
-            "integration by parts",
-            {
-                "Let u=acosh(x), dv=x dx.",
-                "du=1/sqrt(x^2-1) dx and v=x^2/2.",
-                "I=x^2*acosh(x)/2-1/2*Int(x^2/sqrt(x^2-1)) dx.",
-                "Use x=cosh(t) for the remaining integral.",
-                "Int(x^2/sqrt(x^2-1)) dx=1/2*(x*sqrt(x^2-1)+acosh(x)).",
-            },
-            "1/2*x^2*acosh(x)-1/4*(x*sqrt(x^2-1)+acosh(x)) + C"
-        );
-    }
     if(auto ti = trig_identity_integral_pattern(c)) return ti;
     if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
     if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
@@ -4919,7 +4861,6 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto radical = reciprocal_a_minus_sqrt_defint_pattern(expr)) return radical;
     if(auto trig_sub = sin_cos_one_plus_sin_defint_pattern(expr)) return trig_sub;
     if(auto trig_sub = trig_sub_defint_pattern(expr)) return trig_sub;
-    if(auto hyper = acosh_parts_defint_pattern(expr)) return hyper;
     if(auto parabola = symbolic_root_parabola_area_pattern(expr)) return parabola;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
     if(auto args = unwrap_call_args(expr, "defint"); args && args->size() == 4) {

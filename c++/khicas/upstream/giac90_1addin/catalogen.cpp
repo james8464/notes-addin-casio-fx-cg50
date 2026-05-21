@@ -117,9 +117,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"coeff(p,x,n)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
   {"compare(expr1,expr2)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
 #if 0
-  {"comb(n,k)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
-  {"correlation(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
-  {"covariance(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"cartesian([x(t),y(t)],t)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PLOT << 8)},
@@ -144,7 +141,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"implicit_diff(eq,[x,y])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_SOLVE << 8)},
   {"domain(expr,[x,lo,hi])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
-  // {"disque n", "disque ", 0, 0, 0, CAT_CATEGORY_LOGO},
 #if 0
   {"dot(a,b)", 0, 0, 0, 0, CAT_CATEGORY_LINALG},
 #endif
@@ -172,7 +168,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"exponential_regression(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
-  {"exponential_regression_plot(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"exponentiald(lambda,x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
@@ -251,10 +246,8 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"limit(f,x=a)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #if 0
-  {"linear_regression(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
-  {"linear_regression_plot(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"linetan(expr,x,x0)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
@@ -266,7 +259,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"logarithmic_regression(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
-  {"logarithmic_regression_plot(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"lu(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
@@ -280,10 +272,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"matrix(r,c,func)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
 #endif
 #if 0
-  {"mean(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
-  {"median(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"mult_conjugate", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
-  {"normald([mu,sigma],x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
 #endif
 #if 0
   {"normal_diff(expr,[x])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
@@ -297,38 +286,25 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"partfrac(p,x)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
 #if 0
-  {"param_area([x(t),y(t)],t,[a,b])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #endif
   {"param_diff([x(t),y(t)],t)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #if 0
-  {"plot(expr,x)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
 #ifdef RELEASE
-  {"plotarea(expr,x=a..b,[n,meth])", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
 #endif
-  {"plotcontour(expr,[x=xm..xM,y=ym..yM],levels)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
-  {"plotfield(f(t,y),[t=tmin..tmax,y=ymin..ymax])", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
-  {"plotlist(list)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
-  {"plotode(f(t,y),[t=tmin..tmax,y],[t0,y0])", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
-  {"plotparam([x,y],t)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
-  {"plotpolar(r,theta)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
   {"poly(expr,[x])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"plotseq(f(x),x=[u0,m,M],n)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
 #endif
 #if 0
-  {"polygonscatterplot(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"polynomial_regression(Xlist,Ylist,n)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
-  {"polynomial_regression_plot(Xlist,Ylist,n)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
   //{"pour", "pour j de 1 jusque  faire  fpour;", 0, 0, 0, CAT_CATEGORY_PROG},
 #if 0
   {"power_regression(Xlist,Ylist,n)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
-  {"power_regression_plot(Xlist,Ylist,n)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"powmod(a,n,p)", 0, 0, 0, 0, CAT_CATEGORY_ARIT},
@@ -374,7 +350,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"solve_trig_by(eq,var,method)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
 #endif
 #if 0
-  {"stddev(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
   {"subst(a,b=c)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
   {"suvat(equations,vars)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE},
@@ -451,7 +426,7 @@ static bool catalog_hidden_name(const char *name){
 #if 0
   // Policy markers kept out of ROM:
   // CAT_CATEGORY_PROG CAT_CATEGORY_LOGO draw_ laplace fourier_ jordan svd
-  // gramschmidt rand cfactor residue resultant seq( plotfield( plotode(
+  // gramschmidt rand cfactor residue resultant seq(
   // hilbert( erf( legendre( powmod(
   // hidden_prefix:
   // hidden_exact:

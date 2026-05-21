@@ -754,102 +754,6 @@ static bool contains_fn_kind(Arena &a, NodeId n, FnKind kind)
     return false;
 }
 
-static bool contains_hyperbolic_fn(Arena &a, NodeId n)
-{
-    return contains_fn_kind(a, n, FnKind::Sinh) || contains_fn_kind(a, n, FnKind::Cosh) ||
-           contains_fn_kind(a, n, FnKind::Tanh) || contains_fn_kind(a, n, FnKind::Asinh) ||
-           contains_fn_kind(a, n, FnKind::Acosh) || contains_fn_kind(a, n, FnKind::Atanh);
-}
-
-static std::optional<std::vector<std::string>> cosh_power_second_route(Arena &a, NodeId n, std::string const &var)
-{
-    Node const &p = a.get(n);
-    if(p.kind != NodeKind::Pow) return std::nullopt;
-    Node const &b = a.get(p.a);
-    if(b.kind != NodeKind::Fn || b.fkind != FnKind::Cosh) return std::nullopt;
-    Node const &arg = a.get(b.a);
-    if(arg.kind != NodeKind::Sym || arg.text != var) return std::nullopt;
-    std::string e = format_expr_human(a, p.b);
-    std::string c = "cosh(" + var + ")";
-    return std::vector<std::string>{
-        "y = " + c + "^" + e,
-        "dy/d" + var + " = " + e + "*" + c + "^(" + e + "-1)*sinh(" + var + ")",
-        "d2y/d" + var + "2 = " + e + "*(" + e + "-1)*" + c + "^(" + e + "-2)*sinh(" + var + ")^2 + " + e + "*" + c + "^" + e,
-        "sinh(" + var + ")^2 = " + c + "^2 - 1",
-        "d2y/d" + var + "2 = " + e + "^2*" + c + "^" + e + " - " + e + "*(" + e + "-1)*" + c + "^(" + e + "-2)"};
-}
-
-struct AtanhLinearDeriv {
-    Rational c;
-    Rational m;
-    Rational b;
-    std::string lin;
-    std::string num;
-    std::string den;
-};
-
-static std::optional<AtanhLinearDeriv> atanh_linear_fraction_deriv(Arena &a, NodeId n, std::string const &var)
-{
-    Node const &fn = a.get(n);
-    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Atanh) return std::nullopt;
-    Node const &q = a.get(fn.a);
-    if(q.kind != NodeKind::Div) return std::nullopt;
-    auto num = linear_in_symbol(a, q.a, var);
-    auto den = linear_in_symbol(a, q.b, var);
-    if(!num || !den) return std::nullopt;
-    auto A = as_num(a, num->coef), B = as_num(a, num->rest);
-    auto C = as_num(a, den->coef), D = as_num(a, den->rest);
-    if(!A || !B || !C || !D) return std::nullopt;
-    auto add = [](Rational p, Rational q) { Rational r{p.num * q.den + q.num * p.den, p.den * q.den}; r.normalize(); return r; };
-    auto neg = [](Rational p) { p.num = -p.num; return p; };
-    auto sub = [&](Rational p, Rational q) { return add(p, neg(q)); };
-    auto mul = [](Rational p, Rational q) { Rational r{p.num * q.num, p.den * q.den}; r.normalize(); return r; };
-    auto div = [](Rational p, Rational q) { Rational r{p.num * q.den, p.den * q.num}; r.normalize(); return r; };
-    Rational det = sub(mul(*A, *D), mul(*B, *C));
-    if(det.num == 0) return std::nullopt;
-    Rational m1 = sub(*C, *A), b1 = sub(*D, *B);
-    Rational m2 = add(*C, *A), b2 = add(*D, *B);
-    Rational k, m, b;
-    if(m1.num == 0 && b1.num != 0) {
-        k = b1; m = m2; b = b2;
-    }
-    else if(m2.num == 0 && b2.num != 0) {
-        k = b2; m = m1; b = b1;
-    }
-    else return std::nullopt;
-    Rational c = div(det, k);
-    NodeId lin = casio::simplify(a, casio::add(a, {casio::mul(a, {a.num(m), a.sym(var)}), a.num(b)}));
-    return AtanhLinearDeriv{c, m, b, clean_math_text(format_expr_human(a, lin)),
-                            clean_math_text(format_expr_human(a, q.a)), clean_math_text(format_expr_human(a, q.b))};
-}
-
-static std::optional<std::vector<std::string>> atanh_linear_fraction_route(Arena &a, NodeId n, std::string const &var, bool second)
-{
-    auto info = atanh_linear_fraction_deriv(a, n, var);
-    if(!info) return std::nullopt;
-    std::vector<std::string> steps = {
-        "u = (" + info->num + ")/(" + info->den + ")",
-        "dy/d" + var + " = u'/(1-u^2)",
-        "1-u^2 = [(" + info->den + ")^2-(" + info->num + ")^2]/(" + info->den + ")^2",
-    };
-    if(!second) {
-        return std::vector<std::string>{
-            steps[0],
-            steps[1],
-            steps[2],
-            "dy/d" + var + " = " + clean_math_text(format_expr_human(a, a.num(info->c))) + "/(" + info->lin + ")",
-        };
-    }
-    Rational top{-(info->c.num * info->m.num), info->c.den * info->m.den};
-    top.normalize();
-    return std::vector<std::string>{
-        steps[0],
-        "dy/d" + var + " = " + clean_math_text(format_expr_human(a, a.num(info->c))) + "/(" + info->lin + ")",
-        "Differentiate again.",
-        "d2y/d" + var + "2 = " + clean_math_text(format_expr_human(a, a.num(top))) + "/(" + info->lin + ")^2",
-    };
-}
-
 static std::string clean_math_text(std::string s)
 {
     auto replace_all = [&](std::string const &from, std::string const &to) {
@@ -3466,22 +3370,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 );
             }
             std::string direct_key = compact_math_key(expr);
-
-            if(req.mode == 4) {
-                if(auto route = atanh_linear_fraction_route(arena, n, var, true)) return *route;
-                if(auto route = cosh_power_second_route(arena, n, var)) {
-                    return *route;
-                }
-            }
-            if(req.mode == 1) {
-                if(auto route = atanh_linear_fraction_route(arena, n, var, false)) return *route;
-            }
-            if(contains_hyperbolic_fn(arena, n)) {
-                NodeId d1 = casio::simplify(arena, diff(arena, n, var));
-                NodeId out = req.mode == 4 ? casio::simplify(arena, diff(arena, d1, var)) : d1;
-                std::string label = req.mode == 4 ? "d2y/d" + var + "2" : "dy/d" + var;
-                return {label + " = " + clean_math_text(format_expr_human(arena, out))};
-            }
 
             if(req.mode == 1) {
                 std::string answer;

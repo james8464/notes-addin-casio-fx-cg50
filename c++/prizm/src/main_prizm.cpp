@@ -87,7 +87,6 @@ const CommandItem kIntegrateCommands[] = {
     {"series", "series("},
     {"solve", "solve("},
     {"de", "de_solve("},
-    {"param area", "param_int("},
     {"defint", "defint("},
     {"sub", "subst_int("},
     {"parts", "parts_int("},
@@ -135,7 +134,6 @@ const CommandItem kStatsCommands[] = {
     {"binom", "binom("},
     {"binomcdf", "binomcdf("},
     {"normalcdf", "normalcdf("},
-    {"hyp test", "hyp_test("},
 };
 
 const CommandItem kArithCommands[] = {

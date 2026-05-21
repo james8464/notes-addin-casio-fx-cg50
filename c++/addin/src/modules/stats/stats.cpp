@@ -304,14 +304,7 @@ static Request autodetect(Request req)
 {
     std::string s = trim(req.expr);
     std::string lo = lower(s);
-    if(starts_with(lo, "stats(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "corr(") || starts_with(lo, "correlation(") ||
-            starts_with(lo, "covariance(") || starts_with(lo, "cov(") || starts_with(lo, "reg(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "binomcdf(") || starts_with(lo, "binomialcdf(") ||
+    if(starts_with(lo, "binomcdf(") || starts_with(lo, "binomialcdf(") ||
             starts_with(lo, "binomial_cdf(")) {
         req.mode = 3;
         if(starts_with(lo, "binomcdf(")) req.expr = inside_call(s, "binomcdf") + ",cdf";
@@ -325,30 +318,6 @@ static Request autodetect(Request req)
     else if(starts_with(lo, "normalcdf(")) {
         req.mode = 4;
         req.expr = inside_call(s, "normalcdf");
-    }
-    else if(starts_with(lo, "ztest(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "spark(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "plot(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "mean(") || starts_with(lo, "average(") || starts_with(lo, "avg(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "median(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "quartiles(") || starts_with(lo, "five_number(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "stddev(") || starts_with(lo, "sd(") || starts_with(lo, "stdev(")) {
-        req.mode = 99;
-    }
-    else if(starts_with(lo, "variance(") || starts_with(lo, "var(")) {
-        req.mode = 99;
     }
     else {
         req.mode = 99;
