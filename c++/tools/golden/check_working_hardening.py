@@ -1872,6 +1872,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["dy/dx = n*cosh(x)^(n-1)*sinh(x)", "sinh(x)^2 = cosh(x)^2 - 1", "d2y/dx2 = n^2*cosh(x)^n - n*(n-1)*cosh(x)^(n-2)"],
         ["limite", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(2*sqrt(5)*u^2+3*u-sqrt(5)=0,u,0,1)",
+        ["Interval: u in [0, 1]", "u = sqrt(5)/5", "u = [sqrt(5)/5]"],
+        ["u = -sqrt(5)/2", "ERR:"],
+    ),
+    (
+        "alg",
+        "maclaurin(e^(e^x-1),x,3)",
+        ["e^x = 1 + x + 1/2*x^2 + 1/6*x^3", "u = x + 1/2*x^2 + 1/6*x^3", "1 + x + x^2 + 5/6*x^3"],
+        ["unsupported", "ERR:"],
+    ),
 ]
 
 

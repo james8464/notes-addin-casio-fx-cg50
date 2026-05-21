@@ -153,7 +153,13 @@ static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std:
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
-static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var);
+static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
+                                                                              NodeId rearr,
+                                                                              std::string const &var,
+                                                                              std::optional<double> lo = std::nullopt,
+                                                                              std::optional<double> hi = std::nullopt,
+                                                                              bool lo_open = false,
+                                                                              bool hi_open = false);
 
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
 {
@@ -3014,6 +3020,111 @@ static std::optional<std::vector<std::string>> combined_binomial_series_route(Ar
     out.push_back("Keep powers <= " + var + "^" + std::to_string(degree));
     if(s->bound) out.push_back("Valid for abs(" + var + ") < " + rat_node_text(a, *s->bound));
     out.push_back(series_answer_text(a, s->c, var));
+    return out;
+}
+
+static std::optional<std::vector<Rational>> maclaurin_series_coeffs(Arena &a, NodeId n, std::string const &var, int degree)
+{
+    auto zero = [&]() { return std::vector<Rational>(degree + 1, Rational{0, 1}); };
+    auto one = [&]() {
+        auto v = zero();
+        v[0] = Rational{1, 1};
+        return v;
+    };
+    auto scale = [&](std::vector<Rational> v, Rational c) {
+        for(auto &x : v) x = r_mul(x, c);
+        return v;
+    };
+    std::function<std::optional<std::vector<Rational>>(NodeId)> ser = [&](NodeId id) -> std::optional<std::vector<Rational>> {
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Num) {
+            auto v = zero();
+            v[0] = x.num;
+            return v;
+        }
+        if(x.kind == NodeKind::Sym) {
+            if(x.text != var) return std::nullopt;
+            auto v = zero();
+            if(degree >= 1) v[1] = Rational{1, 1};
+            return v;
+        }
+        if(x.kind == NodeKind::Add) {
+            auto out = zero();
+            for(NodeId k : x.kids) {
+                auto s = ser(k);
+                if(!s) return std::nullopt;
+                for(int i = 0; i <= degree; ++i) out[i] = r_add(out[i], (*s)[i]);
+            }
+            return out;
+        }
+        if(x.kind == NodeKind::Mul) {
+            auto out = one();
+            for(NodeId k : x.kids) {
+                auto s = ser(k);
+                if(!s) return std::nullopt;
+                out = convolve_series(out, *s, degree);
+            }
+            return out;
+        }
+        if(x.kind == NodeKind::Div) {
+            auto top = ser(x.a);
+            auto den = as_num(a, x.b);
+            if(!top || !den || is_zero(*den)) return std::nullopt;
+            return scale(*top, r_div(Rational{1, 1}, *den));
+        }
+        auto exp_series = [&](NodeId arg) -> std::optional<std::vector<Rational>> {
+            auto u = ser(arg);
+            if(!u || !is_zero((*u)[0])) return std::nullopt;
+            auto out = one(), up = one();
+            Rational fact{1, 1};
+            for(int k = 1; k <= degree; ++k) {
+                up = convolve_series(up, *u, degree);
+                fact = r_mul(fact, Rational{k, 1});
+                for(int i = 0; i <= degree; ++i) out[i] = r_add(out[i], r_div(up[i], fact));
+            }
+            return out;
+        };
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return exp_series(x.a);
+        if(x.kind == NodeKind::Pow) {
+            Node const &base = a.get(x.a);
+            bool ebase = (base.kind == NodeKind::Const && base.ckind == ConstKind::E) ||
+                         (base.kind == NodeKind::Sym && base.text == "e");
+            if(ebase) return exp_series(x.b);
+            auto e = as_num(a, x.b);
+            if(!e || e->den != 1 || e->num < 0 || e->num > degree) return std::nullopt;
+            auto b = ser(x.a);
+            if(!b) return std::nullopt;
+            auto out = one();
+            for(int i = 0; i < e->num; ++i) out = convolve_series(out, *b, degree);
+            return out;
+        }
+        return std::nullopt;
+    };
+    return ser(n);
+}
+
+static std::optional<std::vector<std::string>> maclaurin_exp_route(Arena &a, std::string const &inner)
+{
+    auto args = split_csv(inner);
+    if(args.empty()) return std::nullopt;
+    std::string var = args.size() >= 2 && !args[1].empty() ? compact_input_key(args[1]) : "x";
+    int degree = args.size() >= 3 ? std::atoi(args[2].c_str()) : 3;
+    if(degree < 0 || degree > 6) degree = 3;
+    NodeId n = casio::parse_expr(a, args[0]);
+    auto coeffs = maclaurin_series_coeffs(a, n, var, degree);
+    if(!coeffs) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back("e^" + var + " = " + series_answer_text(a, *maclaurin_series_coeffs(a, casio::power(a, casio::sym(a, "e"), casio::sym(a, var)), var, degree), var));
+    Node const &x = a.get(n);
+    if((x.kind == NodeKind::Pow && ((a.get(x.a).kind == NodeKind::Const && a.get(x.a).ckind == ConstKind::E) ||
+                                    (a.get(x.a).kind == NodeKind::Sym && a.get(x.a).text == "e"))) ||
+       (x.kind == NodeKind::Fn && x.fkind == FnKind::Exp)) {
+        NodeId u = x.kind == NodeKind::Pow ? x.b : x.a;
+        out.push_back("u = " + format_expr(a, u));
+        if(auto us = maclaurin_series_coeffs(a, u, var, degree)) out.push_back("u = " + series_answer_text(a, *us, var));
+        out.push_back("e^u = 1 + u + u^2/2 + u^3/6");
+    }
+    out.push_back(series_answer_text(a, *coeffs, var));
     return out;
 }
 
@@ -18789,7 +18900,13 @@ static NodeId compact_single_other_quadratic(Arena &a, NodeId expr, std::string 
     return casio::simplify(a, casio::add(a, out));
 }
 
-static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var)
+static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
+                                                                              NodeId rearr,
+                                                                              std::string const &var,
+                                                                              std::optional<double> lo,
+                                                                              std::optional<double> hi,
+                                                                              bool lo_open,
+                                                                              bool hi_open)
 {
     NodeId flat = distribute_const_over_add_once(a, rearr, var);
     std::string rearr_txt = format_expr(a, flat);
@@ -18926,11 +19043,28 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
             auto x1 = top1 ? qdiv(*top1, *den) : std::nullopt;
             auto x2 = top2 ? qdiv(*top2, *den) : std::nullopt;
             if(x1 && x2) {
-                std::vector<std::string> sols{var + " = " + qtext(*x1), var + " = " + qtext(*x2)};
+                auto qval = [](QS q) {
+                    return (double)q.r.num / (double)q.r.den +
+                           (double)q.s.num / (double)q.s.den * (q.rad ? std::sqrt((double)q.rad) : 0.0);
+                };
+                auto keep = [&](QS q) {
+                    double v0 = qval(q);
+                    if(lo && (lo_open ? v0 <= *lo + 1e-9 : v0 < *lo - 1e-9)) return false;
+                    if(hi && (hi_open ? v0 >= *hi - 1e-9 : v0 > *hi + 1e-9)) return false;
+                    return true;
+                };
+                std::vector<std::string> sols;
+                if(keep(*x1)) sols.push_back(var + " = " + qtext(*x1));
+                if(keep(*x2)) sols.push_back(var + " = " + qtext(*x2));
                 sort_solution_lines(a, sols);
                 out.push_back("a = " + qtext(*aq) + ", b = " + qtext(*bq) + ", c = " + qtext(*cq));
                 out.push_back("D = b^2 - 4ac = " + qtext(*disc));
                 out.push_back(var + " = (-b +/- sqrt(D))/(2a)");
+                if(sols.empty()) {
+                    out.push_back((lo || hi) ? "No solution in interval." : "No real roots.");
+                    out.push_back("Answer: " + var + " = []");
+                    return out;
+                }
                 for(auto const &s : sols) out.push_back(s);
                 out.push_back(solution_list_line(var, sols));
                 return out;
@@ -23209,11 +23343,12 @@ algebra_compare_transform_modes:
             return run(arena, next);
         }
         if(req.mode == 14) {
+            if(auto out = maclaurin_exp_route(arena, req.expr)) return *out;
             if(auto out = binomial_series_route(arena, req.expr)) return *out;
             return {
                 "1. Start with binomial(" + req.expr + ").",
-                "2. Supported forms: (1+a*x)^n, sqrt(1+a*x), 1/(a*x+b).",
-                "Answer: unsupported binomial series form.",
+                "2. Supported: binomial or exponential Maclaurin forms.",
+                "Answer: unsupported series form.",
             };
         }
         if(req.mode == 15) {
@@ -24753,7 +24888,7 @@ algebra_compare_transform_modes:
         }
         if(auto sdr = square_difference_ratio_route(arena, lhs, rhs, solve_var)) return *sdr;
         if(auto cbr = cubic_minus_cube_root_proof_route(equation_text, solve_var)) return *cbr;
-        if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var)) {
+        if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) {
             out.insert(out.end(), sq->begin(), sq->end());
             return out;
         }
