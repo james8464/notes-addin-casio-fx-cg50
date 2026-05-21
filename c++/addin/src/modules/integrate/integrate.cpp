@@ -17562,6 +17562,19 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(x.fkind == FnKind::Asin) {
                 if(auto s = one_over_sqrt(arg, 2)) return *s > 0 ? pi_over(4) : casio::neg(a, pi_over(4));
             }
+            if(x.fkind == FnKind::Atan) {
+                Node const &an = a.get(arg);
+                if(an.kind == NodeKind::Fn && an.fkind == FnKind::Sqrt) {
+                    if(auto r = as_num(a, an.a); r && r->num == 3 && r->den == 1) return pi_over(3);
+                }
+                if(an.kind == NodeKind::Div) {
+                    Node const &top = a.get(an.a);
+                    auto den = as_num(a, an.b);
+                    if(top.kind == NodeKind::Fn && top.fkind == FnKind::Sqrt && den && den->num == 3 && den->den == 1) {
+                        if(auto r = as_num(a, top.a); r && r->num == 3 && r->den == 1) return pi_over(6);
+                    }
+                }
+            }
         }
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos) {
             if(auto m = pi_multiple(a, arg)) {

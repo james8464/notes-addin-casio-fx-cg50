@@ -343,6 +343,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["No elementary primitive", "1*Int"],
     ),
     (
+        "alg",
+        "solve(31*cosh(x)-4*cosh(2*x)=0,x)",
+        ["cosh(2*x) = 2*cosh(x)^2 - 1", "8*u^2 - 31*u - 4 = 0", "reject u = -1/8", "x = [ln(4 - sqrt(15)), ln(4 + sqrt(15))]"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(x*atan(4*x),x,0,sqrt(3)/4)",
+        ["u = atan(4*x), dv = x dx", "F(sqrt(3)/4) = 1/24*pi - sqrt(3)/32", "1/24*pi - 1/32*sqrt(3)"],
+        ["atan(sqrt(3))", "ERR:"],
+    ),
+    (
         "int",
         "de_solve(d2y/dx2-4*dy/dx+4*y=0)",
         ["m^2 - 4*m + 4 = 0", "m = 2 repeated", "y = (A + B*x)*e^(2*x)"],

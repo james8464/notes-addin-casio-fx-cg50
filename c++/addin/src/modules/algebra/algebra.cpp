@@ -15359,6 +15359,100 @@ static std::optional<std::vector<std::string>> hyperbolic_cosh_square_solve_rout
     return out;
 }
 
+static NodeId cosh_double_sub(Arena &a, NodeId n, std::string const &var, bool &seen, bool &ok)
+{
+    if(!ok) return n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosh) {
+        auto lin = symbolic_linear_parts(a, x.a, var);
+        auto m = lin ? as_num(a, lin->m) : std::optional<Rational>{};
+        auto c = lin ? as_num(a, lin->c) : std::optional<Rational>{};
+        if(!m || !c || !is_zero(*c)) {
+            ok = false;
+            return n;
+        }
+        seen = true;
+        NodeId u = casio::sym(a, "u");
+        if(m->num == m->den) return u;
+        if(m->num == 2 * m->den)
+            return casio::add(a, {casio::mul(a, {a.num(Rational{2, 1}), casio::power(a, u, a.num(Rational{2, 1}))}),
+                                  a.num(Rational{-1, 1})});
+        ok = false;
+        return n;
+    }
+    if(x.kind == NodeKind::Fn) return n;
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(cosh_double_sub(a, k, var, seen, ok));
+        return x.kind == NodeKind::Add ? casio::add(a, std::move(kids)) : casio::mul(a, std::move(kids));
+    }
+    if(x.kind == NodeKind::Div) return casio::div(a, cosh_double_sub(a, x.a, var, seen, ok),
+                                                  cosh_double_sub(a, x.b, var, seen, ok));
+    if(x.kind == NodeKind::Pow) return casio::power(a, cosh_double_sub(a, x.a, var, seen, ok),
+                                                    cosh_double_sub(a, x.b, var, seen, ok));
+    return n;
+}
+
+static std::optional<std::vector<std::string>> hyperbolic_cosh_double_solve_route(Arena &a, std::string const &expr)
+{
+    std::string inner = unwrap_call_text(expr, "solve");
+    if(inner.empty()) return std::nullopt;
+    auto args = split_csv(inner);
+    if(args.size() != 2) return std::nullopt;
+    std::string var = compact_input_key(args[1]);
+    auto eq = casio::parse_equation(a, args[0]);
+    if(!eq) return std::nullopt;
+    NodeId rearr = casio::simplify(a, casio::add(a, {eq->lhs, casio::neg(a, eq->rhs)}));
+    bool seen = false, ok = true;
+    NodeId ueq = casio::simplify(a, cosh_double_sub(a, rearr, var, seen, ok));
+    if(!ok || !seen || format_expr(a, rearr) == format_expr(a, ueq)) return std::nullopt;
+    auto p = poly_of(a, ueq, "u");
+    if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
+    Poly2 q = *p;
+    if(q.a2.num < 0 || (is_zero(q.a2) && q.a1.num < 0)) q = neg_poly(q);
+    auto ur = rational_quadratic_roots(q);
+    if(!ur) return std::nullopt;
+    std::vector<std::string> out{
+        "cosh(2*" + var + ") = 2*cosh(" + var + ")^2 - 1",
+        "u = cosh(" + var + ")",
+        format_expr(a, poly2_to_node(a, q, "u")) + " = 0"
+    };
+    if(auto rr = rational_quadratic_roots(q)) out.push_back("Factor: " + quadratic_factor_text(a, q, "u") + " = 0");
+    std::vector<std::pair<double, std::string>> sols;
+    for(Rational u : {ur->first, ur->second}) {
+        out.push_back("u = " + format_rat(a, u));
+        if(r_cmp(u, Rational{1, 1}) < 0) {
+            out.push_back("reject u = " + format_rat(a, u) + " since cosh(" + var + ") >= 1");
+            continue;
+        }
+        out.push_back("cosh(" + var + ") = " + format_rat(a, u));
+        Poly2 ep{Rational{1, 1}, r_mul(Rational{-2, 1}, u), Rational{1, 1}, true};
+        out.push_back("Let s = e^" + var + ", s > 0");
+        out.push_back(format_expr(a, poly2_to_node(a, ep, "s")) + " = 0");
+        for(auto const &sline : solve_poly2(a, ep, "s")) {
+            std::string rhs = sol_rhs(sline);
+            if(rhs.find("No solution") != std::string::npos || rhs.find('i') != std::string::npos) continue;
+            double sv = solution_line_value(a, sline).value_or(0.0);
+            if(sv <= 0) continue;
+            sols.push_back({std::log(sv), "ln(" + rhs + ")"});
+        }
+    }
+    if(sols.empty()) return std::nullopt;
+    std::sort(sols.begin(), sols.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
+    std::vector<std::string> final;
+    for(auto const &s : sols) {
+        out.push_back(var + " = " + s.second);
+        if(std::find(final.begin(), final.end(), s.second) == final.end()) final.push_back(s.second);
+    }
+    std::string joined;
+    for(std::size_t i = 0; i < final.size(); ++i) {
+        if(i) joined += ", ";
+        joined += final[i];
+    }
+    out.push_back(var + " = [" + joined + "]");
+    return out;
+}
+
 static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -24508,6 +24602,7 @@ algebra_compare_transform_modes:
         if(auto iso = direct_constant_solution(lhs, rhs)) return *iso;
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
 
+        if(auto hcosh2 = hyperbolic_cosh_double_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh2;
         if(auto hcosh = hyperbolic_cosh_square_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh;
         if(auto ths = tanh_log_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var, out)) return *ths;
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
