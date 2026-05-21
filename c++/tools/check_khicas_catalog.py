@@ -53,7 +53,6 @@ OLD_FEATURE_ALIASES = [
     "match(expr,form)",
     "coeff_match(expr,form,vars,[x])",
     "normal_diff(expr,[x])",
-    "param_area([x(t),y(t)],t,[a,b])",
     "param_diff([x(t),y(t)],t)",
     "poly(expr,[x])",
     "range(expr,[x,lo,hi])",

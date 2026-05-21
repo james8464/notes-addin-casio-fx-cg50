@@ -42,8 +42,8 @@ def count_questions(txt: Path) -> int:
 
 def main() -> int:
     if not CORPUS.exists():
-        print(f"FAIL missing corpus dir {CORPUS}", file=sys.stderr)
-        return 1
+        print(f"SKIP online corpus inventory: missing corpus dir {CORPUS}")
+        return 0
 
     sources: list[dict[str, object]] = []
     totals = {"pdf": 0, "txt": 0, "qp": 0, "ms": 0, "solution": 0, "other": 0, "question_markers": 0}

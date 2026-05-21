@@ -12,17 +12,14 @@ ACTIVE_ADDIN = ROOT / "c++/addin/src"
 
 UPSTREAM_EQUIVALENTS = [
     "simplify(", "factor(", "partfrac(", "solve(", "fsolve(", "csolve(",
-    "diff(", "integrate(", "desolve(", "rsolve(", "limit(", "taylor(",
-    "sum(", "tcollect(", "texpand(", "subst(", "inv(",
-    "mean(", "median(", "stddev(",
-    "correlation(", "linear_regression(",
-    "binomial(", "normald(", "gcd(", "lcm(", "ifactor(",
-    "isprime(", "powmod(",
+    "diff(", "integrate(", "desolve(", "rsolve(", "limit(",
+    "sum(", "tcollect(", "texpand(", "subst(",
+    "binomial(", "gcd(", "lcm(", "ifactor(", "isprime(",
 ]
 
 OLD_WORKING_LAYER = [
     "complete_square(", "compare(", "transform(", "compose(", "inverse(",
-    "rewrite(", "domain(", "range(", "cartesian(", "fitconst(",
+    "rewrite(", "domain(", "range(", "fitconst(",
     "suvat(",
 ]
 
@@ -30,10 +27,10 @@ SOURCE_CATALOG_SURFACE = [
     "complete_square(", "compare(", "transform(", "xform(", "expand(",
     "binom_expand(", "binom_coeff(", "coeff_match(",
     "poly(", "factor(", "solve(", "compose(", "inverse(", "rewrite(",
-    "domain(", "range(", "cartesian(", "fitconst(", "match(",
+    "domain(", "range(", "fitconst(", "match(",
     "normal_diff(", "implicit_diff(", "param_diff(",
     "tangent_line(",
-    "integrate(", "desolve(", "de_solve(", "param_area(",
+    "integrate(", "desolve(", "de_solve(",
     "solve_trig(", "trig_prove(", "trig_transform(", "trig_rewrite(",
     "suvat(",
 ]
@@ -41,10 +38,10 @@ SOURCE_CATALOG_SURFACE = [
 SOURCE_ALIAS_REWRITES = [
     "complete_square(", "fitconst(", "match(", "coeff_match(",
     "binom_expand(", "binom_coeff(",
-    "rewrite(", "suvat(", "cartesian(", "range(",
+    "rewrite(", "suvat(", "range(",
     "compose(", "inverse(", "normal_diff(",
     "implicit_diff(", "param_diff(",
-    "param_area(", "tangent_line(", "de_solve(",
+    "tangent_line(", "de_solve(",
     "poly(", "solve_trig(", "trig_prove(", "trig_transform(",
     "trig_rewrite(", "xform(", "transform(",
 ]

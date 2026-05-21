@@ -16,6 +16,26 @@ REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 CASES = REPO / "c++" / "tools" / "golden" / "madasmaths_standard_manual_cases.jsonl"
 REPORT = REPO / "c++" / "tests" / "reports" / "madasmaths_standard_topics_audit" / "manual_cases_latest.txt"
+REMOVED_FEATURE_MARKERS = (
+    "mean_value(", "volume_x(", "volume_y(", "area_between(",
+    "param_area(", "param_area_y(", "param_volume",
+    "ztest(", "covariance(", "correlation(", "linear_regression(",
+    "median(", "mean(", "quartiles(", "stddev(", "stdev(",
+    "method=summary", "method=weierstrass", "method=tabular",
+    "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
+    "taylor(", "maclaurin(",
+)
+
+
+def removed_case(case: dict[str, Any]) -> bool:
+    text = " ".join(str(x) for x in case.get("args", []))
+    for raw in case.get("variants", []):
+        if isinstance(raw, dict):
+            text += " " + " ".join(str(x) for x in raw.get("args", []))
+        else:
+            text += " " + " ".join(str(x) for x in raw)
+    lo = text.lower()
+    return any(marker.lower() in lo for marker in REMOVED_FEATURE_MARKERS)
 
 
 def command_specs(case: dict[str, Any]) -> list[tuple[str, list[str], list[str], list[str]]]:
@@ -42,6 +62,11 @@ def main() -> int:
     bad: list[str] = []
     lines = ["MadAsMaths standard manual cases", ""]
     for case in cases:
+        if removed_case(case):
+            print("SKIP removed", case["id"])
+            lines.append(f"SKIP removed {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")
+            lines.append("")
+            continue
         if case.get("status") == "unsupported-ok":
             print("OK", case["id"])
             lines.append(f"OK {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")

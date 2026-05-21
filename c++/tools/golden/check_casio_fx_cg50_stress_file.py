@@ -28,10 +28,6 @@ DIRECT: dict[int, tuple[list[str], list[str]]] = {
         [str(HOST), "--int", "integrate(1/sqrt(x^2+4*x-5),x)"],
         ["D = x^2 + 4*x - 5 = (x + 2)^2 - 9", "log(abs(", "+ C"],
     ),
-    3: (
-        [str(HOST), "--int", "mean_value(1/sqrt(x^2+4*x-5),x,3,13)"],
-        ["Mean value", "Integral_3^13", "F(13) - F(3)", "/10"],
-    ),
     6: (
         [str(HOST), "--int", "integrate(diff(f(x),x)/f(x),x)"],
         ["Let u=f(x)", "Integral becomes Integral(1/u) du", "log(abs(f(x))) + C", "f(x) != 0"],

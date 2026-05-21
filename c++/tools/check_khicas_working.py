@@ -79,7 +79,6 @@ ALIASES = [
     "normal_diff(",
     "implicit_diff(",
     "param_diff(",
-    "param_area(",
     "tangent_line(",
     "de_solve(",
     "poly(",

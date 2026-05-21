@@ -21,7 +21,7 @@ CASES = [
     ("derive", "x^4,method=second", ["Differentiate once", "d2y/dx2"]),
     ("trig", "2+sec(x-pi/3)=0, x, 0, 2*pi,method=bounded", ["u = cos(x - pi/3)", "u = -1/2", "x = [pi, 5*pi/3]"]),
     ("alg", "x^2-5*x+6=0,method=factor", ["x^2 - 5*x + 6 = 0"]),
-    ("stats", "1,2,3,4,method=summary", ["mean =", "Sxx ="]),
+    ("stats", "binom(4,0.5,2)", ["X ~ B(4, 0.5)", "P(X = 2)"]),
     ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", ["s = 25"]),
 ]
 

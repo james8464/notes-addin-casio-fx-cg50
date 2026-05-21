@@ -100,7 +100,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"approx(x)", 0, 0, 0, 0, CAT_CATEGORY_REAL},
 #endif
+#if 0
   {"arg(z)", 0, 0, 0, 0, CAT_CATEGORY_COMPLEXNUM},
+#endif
   {"binomial(n,p,k)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
   {"binom_expand(expr)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
   {"binom_coeff(expr,x,k)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
@@ -114,13 +116,17 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #endif
   {"coeff(p,x,n)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
   {"compare(expr1,expr2)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
+#if 0
   {"comb(n,k)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
   {"correlation(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"covariance(l1,l2)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
+#endif
 #if 0
   {"cartesian([x(t),y(t)],t)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_PLOT << 8)},
 #endif
+#if 0
   {"cross(u,v)", 0, 0, 0, 0, CAT_CATEGORY_LINALG},
+#endif
 #if 0
   {"csolve(equation,x)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE| (CAT_CATEGORY_COMPLEXNUM << 8)},
 #endif
@@ -139,7 +145,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"implicit_diff(eq,[x,y])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_SOLVE << 8)},
   {"domain(expr,[x,lo,hi])", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_REAL << 8)},
   // {"disque n", "disque ", 0, 0, 0, CAT_CATEGORY_LOGO},
+#if 0
   {"dot(a,b)", 0, 0, 0, 0, CAT_CATEGORY_LINALG},
+#endif
 #if 0
   {"draw_arc(x1,y1,rx,ry,theta1,theta2,c)", 0, 0, 0, 0, CAT_CATEGORY_PROGCMD},
   {"draw_circle(x1,y1,r,c)", 0, 0, 0, 0, CAT_CATEGORY_PROGCMD},
@@ -191,7 +199,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"gramschmidt(M)", 0, 0, 0, 0, CAT_CATEGORY_LINALG},
 #endif
+#if 0
   {"halftan(expr)", 0, 0, 0, 0, CAT_CATEGORY_TRIG},
+#endif
 #if 0
   {"hermite(n)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
   {"hilbert(n)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
@@ -218,7 +228,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
 #if 0
   {"interp(X,Y)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
 #endif
+#if 0
   {"inv(A)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
+#endif
 #if 0
   {"inverse(f(x))", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_SOLVE << 8)},
 #endif
@@ -238,14 +250,18 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"legendre(n)", 0, 0, 0, 0, CAT_CATEGORY_POLYNOMIAL},
 #endif
   {"limit(f,x=a)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
+#if 0
   {"linear_regression(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
+#endif
 #if 0
   {"linear_regression_plot(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
 #if 0
   {"linetan(expr,x,x0)", 0, 0, 0, 0, CAT_CATEGORY_PLOT},
 #endif
+#if 0
   {"linsolve([eq1,eq2,..],[x,y,..])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_LINALG <<8) | (CAT_CATEGORY_MATRIX << 16)},
+#endif
 #if 0
   {"logarithmic_regression(Xlist,Ylist)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
 #endif
@@ -263,10 +279,12 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"coeff_match(expr,form,vars,[x])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_ALGEBRA << 8)},
   {"matrix(r,c,func)", 0, 0, 0, 0, CAT_CATEGORY_MATRIX},
 #endif
+#if 0
   {"mean(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"median(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
   {"mult_conjugate", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
   {"normald([mu,sigma],x)", 0, 0, 0, 0, CAT_CATEGORY_PROBA},
+#endif
 #if 0
   {"normal_diff(expr,[x])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #endif
@@ -355,7 +373,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"solve_trig(eq,[var,lo,hi,max,method])", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
   {"solve_trig_by(eq,var,method)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_TRIG << 8)},
 #endif
+#if 0
   {"stddev(l)", 0, 0, 0, 0, CAT_CATEGORY_STATS},
+#endif
   {"subst(a,b=c)", 0, 0, 0, 0, CAT_CATEGORY_ALGEBRA},
   {"suvat(equations,vars)", 0, 0, 0, 0, CAT_CATEGORY_SOLVE},
   {"sum(f,k,m,M)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
@@ -366,7 +386,9 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"tabvar(f,[x=a..b])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
 #endif
   //{"tantque", "tantque  faire   ftantque;", 0, 0, 0, CAT_CATEGORY_PROG},
+#if 0
   {"taylor(f,x=a,n,[polynom])", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS},
+#endif
 #if 0
   {"tangent_line(expr,x,x0)", 0, 0, 0, 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_PLOT << 8)},
 #endif
@@ -413,6 +435,11 @@ static bool catalog_hidden_category(int category){
   case CAT_CATEGORY_LOGO:
   case CAT_CATEGORY_OPTIONS:
   case CAT_CATEGORY_LIST:
+  case CAT_CATEGORY_MATRIX:
+  case CAT_CATEGORY_LINALG:
+  case CAT_CATEGORY_STATS:
+  case CAT_CATEGORY_COMPLEXNUM:
+  case CAT_CATEGORY_PLOT:
     return true;
   default:
     return false;
@@ -429,7 +456,10 @@ static bool catalog_hidden_name(const char *name){
   // hidden_prefix:
   // hidden_exact:
 #endif
-  if (!strncmp(name,"draw_",5) || !strncmp(name,"plot",4))
+  if (!strncmp(name,"draw_",5) || !strncmp(name,"plot",4) ||
+      !strncmp(name,"sinh",4) || !strncmp(name,"cosh",4) || !strncmp(name,"tanh",4) ||
+      !strncmp(name,"asinh",5) || !strncmp(name,"acosh",5) || !strncmp(name,"atanh",5) ||
+      !strncmp(name,"arsinh",6) || !strncmp(name,"arcosh",6) || !strncmp(name,"artanh",6))
     return true;
   return false;
 }
@@ -597,7 +627,7 @@ static bool catalog_make_calculus_insert(char *insertText,const char *base){
   }
   if (!strcmp(base,"integrate(")){
     static const char *methods[]={
-      "auto","direct","reverse_chain","sub","parts","di","trig","pf","div","weierstrass","symmetry"
+      "auto","direct","reverse_chain","sub","parts","di","trig","pf","div"
     };
     int choice=0;
     // Test marker: Int method

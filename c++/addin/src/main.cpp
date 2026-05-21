@@ -168,7 +168,7 @@ int main(void)
 
         switch(app) {
             case 0:
-                run_module("CAS Shell", casio::device::Module::Shell, "2x+3=7", "expr, eqn, stats(...), diff(...)");
+                run_module("CAS Shell", casio::device::Module::Shell, "2x+3=7", "expr, eqn, binom(...), diff(...)");
                 break;
             case 1:
                 run_module("Simplify", casio::device::Module::Simplify, "2x+3-x+4", "linear expression");
@@ -186,7 +186,7 @@ int main(void)
                 run_module("Trig", casio::device::Module::Trig, "sin(30)", "exact common angles");
                 break;
             case 6:
-                run_module("Stats", casio::device::Module::Stats, "stats(1,2,3,4)", "stats(...), binomcdf(n,p,r)");
+                run_module("Stats", casio::device::Module::Stats, "binomcdf(10,0.5,4)", "binom/binomcdf/normalcdf");
                 break;
             case 7:
                 run_module("SUVAT", casio::device::Module::Suvat, "s=10,u=0,v=?,a=2,t=5", "use ? for target");

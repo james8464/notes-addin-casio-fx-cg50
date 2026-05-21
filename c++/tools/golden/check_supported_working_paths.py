@@ -114,7 +114,6 @@ def base_cases() -> list[Case]:
         ("x^2+2*x+1,method=canonical", ("x^2 + 2*x + 1", "= x^2 + 2*x + 1")),
         ("complete_square(2*x^2+8*x+3)", ("h =", "k =", "Answer:")),
         ("complete_square((2*x+4)^2)", ("h = 2", "k = 0", "4*(x + 2)^2")),
-        ("1/(sqrt(x)+1),method=rationalise", ("*(sqrt(x) - 1)/(sqrt(x) - 1)", "(sqrt(x) - 1)/(x - 1)")),
         ("pf((x^2+5*x+6)/(x^2*(x+1)))", ("A/x^2", "A=", "B=", "C=")),
         ("compare((x^2-1)/(x-1),x+1)", ("E1 =", "E2 =", "Equivalent")),
         ("compare(x^2=1,(x-1)*(x+1)=0)", ("E1-R1", "E2-R2", "equivalent")),
@@ -226,7 +225,6 @@ def base_cases() -> list[Case]:
         ("(x^2+1)/(x^4+1),method=pf", ("Factor x^4+1", "coeffs", "+ C")),
         ("(x^2+1)/(x^4+x^2+1),method=sub", ("N,D / x^2", "u=x-1/x", "+ C")),
         ("(x^2-1)/(x^4+1),method=sub", ("u^2-2", "A=1/(2*sqrt(2))", "+ C")),
-        ("1/(2+cos(x)),method=weierstrass", ("t=tan(x/2)", "cos(x)", "+ C")),
         ("defint(ln(sin(x)),x,0,pi/2)", ("x=>pi/2-x", "u = 2x", "-pi*log(2)/2")),
         ("defint(sin(x)^n/(sin(x)^n+cos(x)^n),x,0,pi/2)", ("King property", "2I", "pi/4")),
         ("exp(sqrt(x)),method=sub", ("u=sqrt(x)", "dv=e^u", "+ C")),
@@ -280,12 +278,8 @@ def base_cases() -> list[Case]:
 
     # Stats/probability/mechanics.
     for item in [
-        ("1,2,3,4,method=summary", ("mean =", "median", "sd =")),
         ("binom(10,.5,4)", ("P(X", "B(10")),
         ("normalcdf(0,1,-1.96,1.96)", ("N(0", "Phi")),
-        ("reg([1,2,3],[2,4,5])", ("Sxx", "r =")),
-        ("1,2,3;-13,-14,-15,method=regression", ("y = -x - 12", "r = -1"), ("+ -",)),
-        ("ztest(15,10,5,20,gt)", ("H0", "p = P(Z >")),
     ]:
         expr, must, *rest = item
         forbid = rest[0] if rest else ()

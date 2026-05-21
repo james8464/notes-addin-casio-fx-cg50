@@ -6677,6 +6677,22 @@ static std::string compact_input_key(std::string text)
     return out;
 }
 
+static bool contains_removed_hyperbolic_function(std::string const &text)
+{
+    std::string key = compact_input_key(text);
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    static constexpr char const *names[] = {
+        "sinh(", "cosh(", "tanh(", "asinh(", "acosh(", "atanh(",
+        "arcsinh(", "arccosh(", "arctanh(", "arsinh(", "arcosh(", "artanh("
+    };
+    for(char const *name : names) {
+        if(key.find(name) != std::string::npos) return true;
+    }
+    return false;
+}
+
 static std::optional<long long> parse_i64_text(std::string const &s);
 
 static std::vector<std::string> split_top_key(std::string const &s, char sep)
@@ -12944,48 +12960,6 @@ static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std
         "2. " + std::to_string(*A) + "+sqrt(" + std::to_string(*B) + ") = m+n+2*sqrt(m*n).",
         "3. m+n=" + std::to_string(*A) + ", 4*m*n=" + std::to_string(*B) + ".",
         "4. t^2-" + std::to_string(*A) + "*t+" + std::to_string((*B) / 4) + " = 0 => t = " + std::to_string(m) + " or " + std::to_string(n) + ".",
-        ans,
-    };
-}
-
-static std::optional<std::vector<std::string>> rationalise_sqrt_denominator(Arena &a, NodeId parsed)
-{
-    Node const &d = a.get(parsed);
-    if(d.kind != NodeKind::Div) return std::nullopt;
-    Node const &den = a.get(d.b);
-    if(den.kind != NodeKind::Add || den.kids.size() != 2) return std::nullopt;
-
-    NodeId root = 0;
-    Rational c{0, 1};
-    bool have_c = false;
-    for(NodeId k : den.kids) {
-        Node const &kid = a.get(k);
-        if(kid.kind == NodeKind::Fn && kid.fkind == FnKind::Sqrt) {
-            if(root) return std::nullopt;
-            root = k;
-        }
-        else if(auto r = as_num(a, k)) {
-            if(have_c) return std::nullopt;
-            c = *r;
-            have_c = true;
-        }
-        else return std::nullopt;
-    }
-    if(!root || !have_c || is_zero(c)) return std::nullopt;
-
-    Node const &rn = a.get(root);
-    NodeId conjugate = casio::simplify(a, casio::add(a, {root, a.num(r_neg(c))}));
-    NodeId denom = casio::simplify(a, casio::add(a, {rn.a, casio::neg(a, a.num(r_mul(c, c)))}));
-    NodeId numerator = casio::simplify(a, casio::mul(a, {d.a, conjugate}));
-    NodeId answer = casio::simplify(a, casio::div(a, numerator, denom));
-
-    std::string start = format_expr(a, parsed);
-    std::string conj = format_expr(a, conjugate);
-    std::string ans = format_expr(a, answer);
-    return std::vector<std::string>{
-        start,
-        "= " + start + "*(" + conj + ")/(" + conj + ")",
-        "= " + ans,
         ans,
     };
 }
@@ -23287,6 +23261,7 @@ static std::optional<std::vector<std::string>> equal_exp_solve_route(
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
+    if(contains_removed_hyperbolic_function(req.expr)) return {"Err: unsupported function."};
 
     try {
         {
@@ -25120,9 +25095,6 @@ algebra_compare_transform_modes:
                         n_text ? *n_text : format_expr(arena, n)
                     );
                 }
-            }
-            if(req.method == "rationalise" || req.method == "rationalize") {
-                if(auto route = rationalise_sqrt_denominator(arena, parsed)) return *route;
             }
             if(auto tinv = tan_inverse_sum(arena, parsed, steps)) {
                 return casio::exam_block("algebra simplify", steps, format_expr(arena, *tinv));

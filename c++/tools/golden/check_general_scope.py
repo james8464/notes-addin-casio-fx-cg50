@@ -28,10 +28,10 @@ def require(name: str, out: str, needles: tuple[str, ...], forbidden: tuple[str,
 
 def main() -> int:
     require(
-        "hyperbolic_compact",
+        "hyperbolic_removed",
         run_host("--derive", "sinh(x^2)+atanh(x/3),x,method=chain"),
-        ("dy/dx =",),
-        ("d/dx(sinh(x^2))", "d/dx(atanh(x/3))", "atan(h)"),
+        ("Err: unsupported function",),
+        ("dy/dx =", "atan(h)"),
     )
     require(
         "non_elementary_integral",
@@ -40,10 +40,10 @@ def main() -> int:
         ("A-level primitive",),
     )
     require(
-        "general_nested_parse",
+        "general_nested_hyperbolic_removed",
         run_host("--alg", "exp(log(abs(x)+2))+sinh(asinh(x))"),
-        ("sinh(asinh(x))", "abs(x) + 2"),
-        ("simplify*", "atan(h)"),
+        ("Err: unsupported function",),
+        ("simplify*", "atan(h)", "abs(x) + 2"),
     )
     print("general_scope OK")
     return 0

@@ -229,13 +229,6 @@ Req: x.
 Opt: none.
 Ex F2: approx(pi)
 @END
-@arg(z)
-F2:arg(1+i)
-arg(z)
-Angle of complex z.
-Req: z.
-Opt: none.
-Ex F2: arg(1+i)
 @END
 @binomial(n,p,k)
 F2:binomial(10,.5,4)
@@ -311,29 +304,8 @@ Req: expr1, expr2.
 Opt: none.
 Ex F2: compare(sin(x)^2+cos(x)^2,1)
 @END
-@comb(n,k)
-F2:comb(10,4)
-comb(n,k)
-Returns nCk
-Req: n, k.
-Opt: none.
-Ex F2: comb(10,4)
 @END
-@correlation(l1,l2)
-F2:correlation([1,2,3],[2,5,8])
-correlation(l1,l2)
-Correlation.
-Req: l1, l2.
-Opt: none.
-Ex F2: correlation([1,2,3],[2,5,8])
 @END
-@covariance(l1,l2)
-F2:covariance([1,2,3],[2,5,8])
-covariance(l1,l2)
-Covariance.
-Req: l1, l2.
-Opt: none.
-Ex F2: covariance([1,2,3],[2,5,8])
 @END
 @cartesian([x(t),y(t)],t)
 F2:cartesian([x=t+1,y=t^2],t)
@@ -343,13 +315,6 @@ Req: [x(t),y(t)], t.
 Opt: none.
 Ex F2: cartesian([x=t+1,y=t^2],t)
 @END
-@cross(u,v)
-F2:cross([1,2,3],[0,1,3])
-cross(u,v)
-Cross product.
-Req: u, v.
-Opt: none.
-Ex F2: cross([1,2,3],[0,1,3])
 @END
 @csolve(equation,x)
 F2:csolve(x^2+x+1=0)
@@ -428,23 +393,7 @@ Req: expr.
 Opt: var,lo,hi.
 Ex F2: domain(sqrt(x-1),x,0,9)
 @END
-@disque n
-F2:disque 30
-F3:disque(30,90)
-disque n
-Filled circle tangent to the turtle, radius n. Run disque n,theta for a filled arc of circle, theta in degrees, or disque n,theta,segment for a segment of circle.
-Req: see syntax.
-Opt: none.
-Ex F2: disque 30
-Ex F3: disque(30,90)
 @END
-@dot(a,b)
-F2:dot([1,2,3],[4,5,6])
-dot(a,b)
-Dot product.
-Req: a, b.
-Opt: none.
-Ex F2: dot([1,2,3],[4,5,6])
 @END
 @draw_arc(x1,y1,rx,ry,theta1,theta2,c)
 F2:draw_arc(100,100,60,80,0,pi,magenta)
@@ -566,14 +515,6 @@ Req: Xlist, Ylist.
 Opt: none.
 Ex F2: exponential_regression([1,2,3],[2,5,8])
 @END
-@exponential_regression_plot(Xlist,Ylist)
-F2:X,Y:=[1,2,3,4,5],[0,1,3,4,4];exponential_regression_plot(X,Y);scatterplot(X,Y)
-exponential_regression_plot(Xlist,Ylist)
-Exponential regression plot.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: X,Y:=[1,2,3,4,5],[0,1,3,4,4];exponential_regression_plot(X,Y);scatterplot(X,Y)
-@END
 @exponentiald(lambda,x)
 F2:exponentiald(5.1,3.4)
 exponentiald(lambda,x)
@@ -688,13 +629,6 @@ Opt: none.
 Ex F2: gramschmidt([[1,2,3],[4,5,6]])
 Ex F3: gramschmidt([1,1+x],(p,q)->integrate(p*q,x,-1,1))
 @END
-@halftan(expr)
-F2:halftan(cos(x))
-halftan(expr)
-Use tan(x/2).
-Req: expr.
-Opt: none.
-Ex F2: halftan(cos(x))
 @END
 @hermite(n)
 F2:hermite(10)
@@ -772,7 +706,7 @@ Ex F2: oo
 F2:integrate(x*sin(x),x,method=parts)
 integrate(f,x,[a,b,method,u])
 Integral with exam steps.
-Methods: auto,direct,reverse_chain,sub,parts,di,trig,pf,div,weierstrass,symmetry.
+Methods: auto,direct,reverse_chain,sub,parts,di,trig,pf,div.
 Req: f,x.
 Opt: a,b,method=auto,u.
 Ex F2: integrate(x*sin(x),x,method=parts)
@@ -793,13 +727,6 @@ Req: X, Y.
 Opt: none.
 Ex F2: interp([1,2,3],[2,5,10])
 @END
-@inv(A)
-F2:inv([[1,2],[3,4]])
-inv(A)
-Inverse of A.
-Req: A.
-Opt: none.
-Ex F2: inv([[1,2],[3,4]])
 @END
 @inverse(f(x))
 F2:inverse(2*x+3)
@@ -883,21 +810,7 @@ Opt: none.
 Ex F2: limit(sin(x)/x,x=0)
 Ex F3: limit(exp(-1/x),x=0,1)
 @END
-@linear_regression(Xlist,Ylist)
-F2:linear_regression([1,2,3],[2,5,8])
-linear_regression(Xlist,Ylist)
-Linear regression.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: linear_regression([1,2,3],[2,5,8])
 @END
-@linear_regression_plot(Xlist,Ylist)
-F2:X,Y:=[1,2,3,4,5],[0,1,3,4,4];linear_regression_plot(X,Y);scatterplot(X,Y)
-linear_regression_plot(Xlist,Ylist)
-Linear regression plot.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: X,Y:=[1,2,3,4,5],[0,1,3,4,4];linear_regression_plot(X,Y);scatterplot(X,Y)
 @END
 @linetan(expr,x,x0)
 F2:linetan(sin(x),x,pi/2)
@@ -907,13 +820,6 @@ Req: expr, x, x0.
 Opt: none.
 Ex F2: linetan(sin(x),x,pi/2)
 @END
-@linsolve([eq1,eq2,..],[x,y,..])
-F2:linsolve([x+y=1,x-y=2],[x,y])
-linsolve([eq1,eq2,..],[x,y,..])
-Solve linear system.
-Req: [eq1,eq2,..].
-Opt: x,y,...
-Ex F2: linsolve([x+y=1,x-y=2],[x,y])
 @END
 @logarithmic_regression(Xlist,Ylist)
 F2:logarithmic_regression([1,2,3],[2,5,8])
@@ -922,14 +828,6 @@ Log regression.
 Req: Xlist, Ylist.
 Opt: none.
 Ex F2: logarithmic_regression([1,2,3],[2,5,8])
-@END
-@logarithmic_regression_plot(Xlist,Ylist)
-F2:X,Y:=[1,2,3,4,5],[0,1,3,4,4];logarithmic_regression_plot(X,Y);scatterplot(X,Y)
-logarithmic_regression_plot(Xlist,Ylist)
-Logarithmic regression plot.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: X,Y:=[1,2,3,4,5],[0,1,3,4,4];logarithmic_regression_plot(X,Y);scatterplot(X,Y)
 @END
 @lu(A)
 F2:lu([[1,2],[3,4]])
@@ -963,29 +861,8 @@ Req: expr,form,vars.
 Opt: var x.
 Ex F2: coeff_match(a*x^2+b*x+c,2*x^2-3*x+5,[a,b,c],x)
 @END
-@matrix(r,c,func)
-F2:matrix(2,3,(j,k)->j^k)
-matrix(r,c,func)
-Matrix by function.
-Req: r, c, func.
-Opt: none.
-Ex F2: matrix(2,3,(j,k)->j^k)
 @END
-@mean(l)
-F2:mean([1,2,3])
-mean(l)
-Mean.
-Req: l.
-Opt: none.
-Ex F2: mean([1,2,3])
 @END
-@median(l)
-F2:median([1,2,3])
-median(l)
-Median.
-Req: l.
-Opt: none.
-Ex F2: median([1,2,3])
 @END
 @mult_conjugate
 F2:mult_conjugate(sqrt(2)-sqrt(3))
@@ -995,13 +872,6 @@ Req: surd/complex expression.
 Opt: none.
 Ex F2: mult_conjugate(sqrt(2)-sqrt(3))
 @END
-@normald([mu,sigma],x)
-F2:normald(1.2)
-normald([mu,sigma],x)
-Normal dist. Use _cdf/_icdf.
-Req: [mu,sigma], x.
-Opt: none.
-Ex F2: normald(1.2)
 @END
 @normal_diff(expr,[x])
 F2:normal_diff((2*x+ln(x))^3,x)
@@ -1045,13 +915,6 @@ Req: p, x.
 Opt: none.
 Ex F2: partfrac(1/(x^4-1))
 @END
-@param_area([x(t),y(t)],t,[a,b])
-F2:param_area([t^2,t^3],t,0,1)
-param_area([x(t),y(t)],t,[a,b])
-Param area: int y*dx/dt.
-Req: [x(t),y(t)], t.
-Opt: a,b.
-Ex F2: param_area([t^2,t^3],t,0,1)
 @END
 @param_diff([x(t),y(t)],t)
 F2:param_diff([t^2,t^3],t)
@@ -1061,75 +924,13 @@ Req: [x(t),y(t)].
 Opt: t.
 Ex F2: param_diff([t^2,t^3],t)
 @END
-@plot(expr,x)
-F2:plot(ln(x),x,0,5)
-F3:plot(1/x,x=1..5,xstep=1)
-plot(expr,x)
-Plot an expression. For example plot(sin(x)), plot(ln(x),x.0,5)
-Req: expr, x.
-Opt: none.
-Ex F2: plot(ln(x),x,0,5)
-Ex F3: plot(1/x,x=1..5,xstep=1)
 @END
-@plotarea(expr,x=a..b,[n,meth])
-F2:plotarea(1/x,x=1..3,2,trapezoid)
-plotarea(expr,x=a..b,[n,meth])
-Area under curve with specified quadrature.
-Req: expr, x=a..b.
-Opt: n,meth.
-Ex F2: plotarea(1/x,x=1..3,2,trapezoid)
 @END
-@plotcontour(expr,[x=xm..xM,y=ym..yM],levels)
-F2:plotcontour(x^2+2y^2,[x=-2..2,y=-2..2],[1,2])
-plotcontour(expr,[x=xm..xM,y=ym..yM],levels)
-Levels of expr.
-Req: expr, levels.
-Opt: x=xm..xM,y=ym..yM.
-Ex F2: plotcontour(x^2+2y^2,[x=-2..2,y=-2..2],[1,2])
 @END
-@plotfield(f(t,y),[t=tmin..tmax,y=ymin..ymax])
-F2:plotfield(sin(t*y),[t=-3..3,y=-3..3],plotode=[0,1])
-plotfield(f(t,y),[t=tmin..tmax,y=ymin..ymax])
-Plot field of differential equation y'=f(t,y), an optionnally one solution by adding plotode=[t0,y0]
-Req: f(t,y).
-Opt: t=tmin..tmax,y=ymin..ymax.
-Ex F2: plotfield(sin(t*y),[t=-3..3,y=-3..3],plotode=[0,1])
 @END
-@plotlist(list)
-F2:plotlist([3/2,2,1,1/2,3,2,3/2])
-plotlist(list)
-Plot a list
-Req: list.
-Opt: none.
-Ex F2: plotlist([3/2,2,1,1/2,3,2,3/2])
 @END
-@plotode(f(t,y),[t=tmin..tmax,y],[t0,y0])
-F2:plotode(sin(t*y),[t=-3..3,y],[0,1])
-plotode(f(t,y),[t=tmin..tmax,y],[t0,y0])
-Plot solution of differential equation y'=f(t,y), y(t0)=y0.
-Req: f(t,y).
-Opt: t=tmin..tmax,y, t0,y0.
-Ex F2: plotode(sin(t*y),[t=-3..3,y],[0,1])
 @END
-@plotparam([x,y],t)
-F2:plotparam([sin(3t),cos(2t)],t,0,pi)
-F3:plotparam([t^2,t^3],t=-1..1,tstep=0.1)
-plotparam([x,y],t)
-Parametric plot. For example plotparam([sin(3t),cos(2t)],t,0,pi) or plotparam(exp(i*t),t,0,pi)
-Req: [x,y], t.
-Opt: none.
-Ex F2: plotparam([sin(3t),cos(2t)],t,0,pi)
-Ex F3: plotparam([t^2,t^3],t=-1..1,tstep=0.1)
 @END
-@plotpolar(r,theta)
-F2:plotpolar(cos(3*x),x,0,pi)
-F3:plotpolar(1/(1+cos(x)),x=0..pi,xstep=0.05)
-plotpolar(r,theta)
-Polar plot.
-Req: r, theta.
-Opt: none.
-Ex F2: plotpolar(cos(3*x),x,0,pi)
-Ex F3: plotpolar(1/(1+cos(x)),x=0..pi,xstep=0.05)
 @END
 @poly(expr,[x])
 F2:poly(x^2-5*x+6,x)
@@ -1139,21 +940,6 @@ Req: expr.
 Opt: x.
 Ex F2: poly(x^2-5*x+6,x)
 @END
-@plotseq(f(x),x=[u0,m,M],n)
-F2:plotseq(sqrt(2+x),x=[6,0,7],5)
-plotseq(f(x),x=[u0,m,M],n)
-Plot f(x) on [m,M] and n terms of the sequence defined by u_{n+1}=f(u_n) and u0.
-Req: f(x), x=[u0,m,M], n.
-Opt: none.
-Ex F2: plotseq(sqrt(2+x),x=[6,0,7],5)
-@END
-@polygonscatterplot(Xlist,Ylist)
-F2:polygonscatterplot([1,2,3,4,5],[0,1,3,4,4])
-polygonscatterplot(Xlist,Ylist)
-Plot points and polygonal line.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: polygonscatterplot([1,2,3,4,5],[0,1,3,4,4])
 @END
 @polynomial_regression(Xlist,Ylist,n)
 F2:polynomial_regression([1,2,3],[2,5,10],2)
@@ -1162,14 +948,6 @@ Poly regression.
 Req: Xlist, Ylist, n.
 Opt: none.
 Ex F2: polynomial_regression([1,2,3],[2,5,10],2)
-@END
-@polynomial_regression_plot(Xlist,Ylist,n)
-F2:X,Y:=[1,2,3,4,5],[0,1,3,4,4];polynomial_regression_plot(X,Y,2);scatterplot(X,Y)
-polynomial_regression_plot(Xlist,Ylist,n)
-Polynomial regression plot, degree <= n.
-Req: Xlist, Ylist, n.
-Opt: none.
-Ex F2: X,Y:=[1,2,3,4,5],[0,1,3,4,4];polynomial_regression_plot(X,Y,2);scatterplot(X,Y)
 @END
 @pour
 F2:pour j de 1 jusque 10 faire print(j,j^2); fpour;
@@ -1186,14 +964,6 @@ Power regression.
 Req: Xlist, Ylist, n.
 Opt: none.
 Ex F2: power_regression([1,2,3],[2,5,8])
-@END
-@power_regression_plot(Xlist,Ylist,n)
-F2:X,Y:=[1,2,3,4,5],[0,1,3,4,4];power_regression_plot(X,Y);scatterplot(X,Y)
-power_regression_plot(Xlist,Ylist,n)
-Power regression graph
-Req: Xlist, Ylist, n.
-Opt: none.
-Ex F2: X,Y:=[1,2,3,4,5],[0,1,3,4,4];power_regression_plot(X,Y);scatterplot(X,Y)
 @END
 @powmod(a,n,p)
 F2:powmod(123,456,789)
@@ -1361,13 +1131,6 @@ Req: eq,var,method.
 Opt: lo,hi,max.
 Ex F2: solve_trig_by(2*sin(x)+1=0,x,bounded)
 @END
-@stddev(l)
-F2:stddev([1,2,3])
-stddev(l)
-Std dev.
-Req: l.
-Opt: none.
-Ex F2: stddev([1,2,3])
 @END
 @subst(a,b=c)
 F2:subst(x^2,x=3)
@@ -1417,15 +1180,6 @@ Req: see syntax.
 Opt: none.
 Ex F2: j:=13; tantque j!=1 faire j:=when(even(j),j/2,3j+1); print(j); ftantque;
 @END
-@taylor(f,x=a,n,[polynom])
-F2:taylor(sin(x),x=0,5)
-F3:taylor(sin(x),x=0,5,polynom)
-taylor(f,x=a,n,[polynom])
-Taylor expansion.
-Req: f, x=a, n.
-Opt: polynom.
-Ex F2: taylor(sin(x),x=0,5)
-Ex F3: taylor(sin(x),x=0,5,polynom)
 @END
 @tangent_line(expr,x,x0)
 F2:tangent_line(x^2,x,3)

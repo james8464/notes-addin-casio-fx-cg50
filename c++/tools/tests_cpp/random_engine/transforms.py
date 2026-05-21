@@ -22,8 +22,6 @@ def apply_transform(expr: str, transform: str, rng: random.Random) -> str:
         return e.replace("x+1", "((x^2-1)/(x-1))")
     if transform == "log_exp":
         return e.replace("x", "log(exp(x))")
-    if transform == "rationalise":
-        return e.replace("sqrt(x)", "(x/sqrt(x))")
     if transform == "inverse_shift":
         return e.replace("x", "(u-1)")
     return e
@@ -39,9 +37,9 @@ def apply_transforms(expr: str, transforms: Iterable[str], rng: random.Random) -
 def random_transform_chain(rng: random.Random, topic: str, difficulty: int) -> Tuple[str, ...]:
     pools = {
         "trig": ("sin_cos", "pythag", "wrap_zero"),
-        "integration": ("wrap_one", "sin_cos", "rationalise", "common_denominator"),
+        "integration": ("wrap_one", "sin_cos", "common_denominator"),
         "algebra": ("wrap_zero", "expand_square", "factor_square", "common_denominator"),
-        "domain": ("wrap_zero", "log_exp", "rationalise"),
+        "domain": ("wrap_zero", "log_exp"),
     }
     pool = list(pools.get(topic, ("wrap_zero", "wrap_one")))
     rng.shuffle(pool)

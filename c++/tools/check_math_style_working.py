@@ -13,12 +13,6 @@ CASES = [
         ("d/dx(sin(x^2)) =", "d/dx(atan(x/3)) =", "dy/dx ="),
     ),
     (
-        "hyperbolic compact only",
-        ["--derive", "sinh(x^2)+atanh(x/3),x,method=chain"],
-        ("dy/dx =",),
-        ("d/dx(sinh(x^2)) =", "d/dx(atanh(x/3)) =", "u =", "du/dx ="),
-    ),
-    (
         "product",
         ["--derive", "(x^2+1)*sin(x),x"],
         ("f1 = x^2 + 1", "f1' = 2*x", "f2 = sin(x)", "f2' = cos(x)", "dy/dx = f1'*f2 + f1*f2'"),
@@ -935,16 +929,6 @@ CASES = [
         "defint expands polynomial power",
         ["--int", "defint((4-x^2)^2,x,0,2)"],
         ("(- x^2 + 4)^2 = x^4 - 8*x^2 + 16", "F(2) - F(0)", "256/15"),
-    ),
-    (
-        "volume wrapper x-axis",
-        ["--int", "volume_x(4-x^2,x,-2,2)"],
-        ("V = pi*Int(y^2) dx", "(- x^2 + 4)^2 = x^4 - 8*x^2 + 16", "512*pi/15"),
-    ),
-    (
-        "area between wrapper exact logs",
-        ["--int", "area_between(6+8*e^(-3*x),e^(3*x)-1,x,0,ln(2))"],
-        ("A = Int(upper-lower) dx", "F(ln(2)) - F(0)", "7*ln(2)"),
     ),
     (
         "generic denominator derivative log rule",

@@ -2036,6 +2036,16 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
 ]
 
+REMOVED_FEATURE_MARKERS = (
+    "mean_value(", "volume_x(", "volume_y(", "area_between(",
+    "param_area(", "param_area_y(", "param_volume",
+    "ztest(", "covariance(", "correlation(", "linear_regression(",
+    "median(", "mean(", "quartiles(", "stddev(", "stdev(",
+    "method=summary",
+    "method=weierstrass", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
+    "taylor(", "maclaurin(",
+)
+
 
 def compact(text: str) -> str:
     s = "".join(ch for ch in text if ch not in " \t\r\n*").lower()
@@ -2079,7 +2089,12 @@ def main() -> int:
     if not HOST.exists():
         raise SystemExit(f"Missing host binary: {HOST}")
     bad = 0
+    total = 0
     for flag, expr, needles, forbidden in CASES:
+        if any(marker in expr for marker in REMOVED_FEATURE_MARKERS):
+            print("SKIP removed", flag, expr)
+            continue
+        total += 1
         out = run(flag, expr)
         norm = compact(out)
         low_signal = {"", "parts", "method", "d/dx", "collectiterms", "partialfractions", "checkinoriginal", "integratex+1"}
@@ -2092,7 +2107,7 @@ def main() -> int:
         bad += 1
         print("FAIL", flag, expr)
         print(out)
-    print("done mismatches", bad, "/", len(CASES))
+    print("done mismatches", bad, "/", total)
     return 1 if bad else 0
 
 

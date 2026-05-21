@@ -2391,8 +2391,6 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_rewrite_param_call(input,"param_diff(",1,rewritten))
     return true;
-  if (cascas_rewrite_param_call(input,"param_area(",3,rewritten))
-    return true;
   if (cascas_rewrite_solve_trig_call(input,rewritten))
     return true;
   if (cascas_rewrite_trig_basis_call(input,"trigcos(","trigcos",rewritten))
@@ -3201,24 +3199,15 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     cascas_append_tpl_line(out,"t059");
     return true;
   }
-  if ((cascas_call_args(s,"param_diff(",args,4,count,close,body) ||
-       cascas_call_args(s,"param_area(",args,4,count,close,body)) && count>=2){
+  if (cascas_call_args(s,"param_diff(",args,4,count,close,body) && count>=2){
     string xe,ye,t=args[1].size()?args[1]:"t";
     if (cascas_split_xy_param(args[0],xe,ye)){
 	      cascas_append_expr_line(out,cascas_tpl("t060").c_str(),xe);
 	      cascas_append_expr_line(out,cascas_tpl("t061").c_str(),ye);
-	      if (cascas_startswith(s,"param_area(")){
-			string line=cascas_tpl("t062") + t + cascas_tpl("t063") + t + ")";
-		cascas_append_line(out,line.c_str());
-				line=cascas_tpl("t064") + t + " d" + t;
-		cascas_append_line(out,line.c_str());
-	      }
-	      else {
-			string line=cascas_tpl("t062") + t + cascas_tpl("t065") + t + ".";
-		cascas_append_line(out,line.c_str());
-			line=cascas_tpl("t066") + t + cascas_tpl("t067") + t + ")";
-		cascas_append_line(out,line.c_str());
-	      }
+	      string line=cascas_tpl("t062") + t + cascas_tpl("t065") + t + ".";
+	      cascas_append_line(out,line.c_str());
+	      line=cascas_tpl("t066") + t + cascas_tpl("t067") + t + ")";
+	      cascas_append_line(out,line.c_str());
 	      return true;
     }
   }
@@ -3541,7 +3530,7 @@ static bool cascas_old_python_scope_working_call(const char *s){
   // Only student-solution features get exam working. Core KhiCAS tools stay answer-only.
   static const char *calls[]={
     "diff(","derive(","diff_by(","normal_diff(",
-    "implicit_diff(","param_diff(","param_area(",
+	    "implicit_diff(","param_diff(",
     "integrate(","int(","defint(","integrate_by(","int_by(",
     "solve(","solve_by(","solve_trig(","solve_trig_by(",
     "trig_prove(","trig_rewrite(","trig_transform(",

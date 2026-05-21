@@ -58,17 +58,17 @@ def require_compact(name: str, out: str, must: tuple[str, ...], final_must: tupl
 def main() -> int:
     bad = 0
     bad += require_compact(
-        "cosh_asinh_integral",
+        "cosh_asinh_removed",
         run(["--int", "cosh(asinh(x+5)),method=auto"]),
-        ("cosh(asinh(x + 5))",),
-        ("sqrt((x + 5)^2 + 1)", "asinh(x + 5)", "+ C"),
+        ("Err: unsupported function",),
+        (),
         ("Step 2:", "Use cosh"),
     )
     bad += require_compact(
-        "sinh_acosh_integral",
+        "sinh_acosh_removed",
         run(["--int", "sinh(acosh(x+5)),method=auto"]),
-        ("sinh(acosh(x + 5))",),
-        ("sqrt((x + 5)^2 - 1)", "acosh(x + 5)", "+ C"),
+        ("Err: unsupported function",),
+        (),
         ("Step 2:", "Use sinh"),
     )
     bad += require(
@@ -243,11 +243,12 @@ def main() -> int:
         ("6 is outside 0 <= r <= 2", "P(X = 6) = 0"),
         ("2C6", "0.6^(2-6)", "ERR:"),
     )
-    bad += require(
-        "plot_refined_intercepts",
+    bad += require_compact(
+        "plot_removed",
         run(["--stats", "plot(x^2-4,-6,6,9)"]),
-        ("x-intercepts near -2, 2",),
-        ("-1.88888889", "1.88888889", "ERR:"),
+        ("Err: unsupported stats function",),
+        ("Err: unsupported",),
+        ("x-intercepts", "-1.88888889", "1.88888889"),
     )
     bad += require(
         "substitution_integral_keeps_factor",

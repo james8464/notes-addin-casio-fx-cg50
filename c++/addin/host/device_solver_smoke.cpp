@@ -86,17 +86,11 @@ int main(int argc, char **argv)
     ok = check(casio::device::Module::Shell, "trig(sin^2(x)+cos^2(x))", "Answer: 1") && ok;
     ok = check(casio::device::Module::Shell, "solve_trig(2sin(x)+1=0)", "x = 210 + 360n") && ok;
     ok = check(casio::device::Module::Shell, "solve_trig(sin(x)^2-1=0)", "x = 90 + 360n") && ok;
-    ok = check(casio::device::Module::Shell, "det2(1,2,3,4)", "Answer: det = -2") && ok;
-    ok = check(casio::device::Module::Shell, "inv2(1,2,3,4)", "Answer: [[-2,1],[3/2,-1/2]]") && ok;
-    ok = check(casio::device::Module::Shell, "dot3(1,2,3,4,5,6)", "Answer: 32") && ok;
-    ok = check(casio::device::Module::Shell, "cross3(1,0,0,0,1,0)", "Answer: (0,0,1)") && ok;
     ok = check(casio::device::Module::Shell, "binom(4,1/2,2)", "Answer: 3/8") && ok;
     ok = check(casio::device::Module::Shell, "binomcdf(4,1/2,2)", "Answer: 11/16") && ok;
-    ok = check(casio::device::Module::Shell, "stats(1,2,3,4)", "mean = sum x/n = 5/2") && ok;
     ok = check(casio::device::Module::Shell, "gcd(84,126,210)", "Answer: gcd = 42") && ok;
     ok = check(casio::device::Module::Shell, "lcm(6,10,15)", "Answer: lcm = 30") && ok;
     ok = check(casio::device::Module::Shell, "factorial(6)", "Answer: 720") && ok;
-    ok = check(casio::device::Module::Shell, "ncr(10,3)", "Answer: 120") && ok;
     ok = check(casio::device::Module::Shell, "isprime(97)", "Answer: prime") && ok;
     ok = check(casio::device::Module::Shell, "factors(360)", "Answer: 2^3*3^2*5") && ok;
     ok = check(casio::device::Module::Shell, "divisors(28)", "Answer: 1,2,4,7,14,28") && ok;

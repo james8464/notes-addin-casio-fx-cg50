@@ -914,6 +914,22 @@ static std::string compact_math_key(std::string text)
     return out;
 }
 
+static bool contains_removed_hyperbolic_function(std::string const &text)
+{
+    std::string key = compact_math_key(text);
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    static constexpr char const *names[] = {
+        "sinh(", "cosh(", "tanh(", "asinh(", "acosh(", "atanh(",
+        "arcsinh(", "arccosh(", "arctanh(", "arsinh(", "arcosh(", "artanh("
+    };
+    for(char const *name : names) {
+        if(key.find(name) != std::string::npos) return true;
+    }
+    return false;
+}
+
 static int matching_paren_text(std::string const &s, std::size_t open)
 {
     int depth = 0;
@@ -3217,6 +3233,7 @@ NodeId differentiate_node(Arena &arena, NodeId node, std::string const &var, std
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter an expression."};
+    if(contains_removed_hyperbolic_function(req.expr)) return {"Err: unsupported function."};
 
     try {
         if(req.mode == 6) {

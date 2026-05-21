@@ -131,30 +131,11 @@ const CommandItem kShellCommands[] = {
     {"ans", "ans"},
 };
 
-const CommandItem kMatrixCommands[] = {
-    {"matrix", "matrix("},
-    {"det2", "det2("},
-    {"det", "det2("},
-    {"inv2", "inv2("},
-    {"rref", "rref("},
-    {"tran", "tran("},
-    {"dot3", "dot3("},
-    {"cross3", "cross3("},
-    {"egv", "egv("},
-};
-
 const CommandItem kStatsCommands[] = {
-    {"stats", "stats("},
     {"binom", "binom("},
     {"binomcdf", "binomcdf("},
-    {"normald", "normald("},
     {"normalcdf", "normalcdf("},
     {"hyp test", "hyp_test("},
-    {"linreg", "linear_regression("},
-    {"corr", "correlation("},
-    {"scatter", "scatterplot("},
-    {"hist", "histogram("},
-    {"bar", "barplot("},
 };
 
 const CommandItem kArithCommands[] = {
@@ -163,20 +144,8 @@ const CommandItem kArithCommands[] = {
     {"ifact", "factors("},
     {"divs", "divisors("},
     {"prime", "isprime("},
-    {"ncr", "ncr("},
     {"fact!", "factorial("},
     {"powmod", "powmod("},
-};
-
-const CommandItem kPlotCommands[] = {
-    {"plot(", "plot("},
-    {"plotseq(", "plotseq("},
-    {"plotlist(", "plotlist("},
-    {"plotparam(", "plotparam("},
-    {"plotpolar(", "plotpolar("},
-    {"plotfield(", "plotfield("},
-    {"histogram(", "histogram("},
-    {"barplot(", "barplot("},
 };
 
 const CommandItem kBooleanCommands[] = {
@@ -250,7 +219,7 @@ void render_shell(ShellLine *lines, int count, int top, int selected,
     char mode[16];
     shell_mode(mode, (int)sizeof(mode), degrees, uppercase);
     casio::prizm::draw_shell("CasioCAS", mode, ptrs, count, top, selected, editor, start, cursor,
-                             "algb", "calc", "plot", "cmds", uppercase ? "a<>A" : "A<>a", "File");
+                             "algb", "calc", "trig", "cmds", uppercase ? "a<>A" : "A<>a", "File");
 }
 
 int select_menu(const char *title, const char *const *items, int count)
@@ -366,11 +335,9 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         "Algebra",
         "Calculus",
         "Trig",
-        "Matrix",
         "Stats",
         "Boolean",
         "Arith",
-        "Plot",
         "Shell",
         "File",
     };
@@ -390,30 +357,22 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         insert_command(kTrigCommands, c, editor, cursor);
     }
     else if(group == 3) {
-        int c = select_command("Matrix", kMatrixCommands);
-        insert_command(kMatrixCommands, c, editor, cursor);
-    }
-    else if(group == 4) {
         int c = select_command("Stats", kStatsCommands);
         insert_command(kStatsCommands, c, editor, cursor);
     }
-    else if(group == 5) {
+    else if(group == 4) {
         int c = select_command("Boolean", kBooleanCommands);
         insert_command(kBooleanCommands, c, editor, cursor);
     }
-    else if(group == 6) {
+    else if(group == 5) {
         int c = select_command("Arith", kArithCommands);
         insert_command(kArithCommands, c, editor, cursor);
     }
-    else if(group == 7) {
-        int c = select_command("Plot", kPlotCommands);
-        insert_command(kPlotCommands, c, editor, cursor);
-    }
-    else if(group == 8) {
+    else if(group == 6) {
         int c = select_command("Shell", kShellCommands);
         insert_command(kShellCommands, c, editor, cursor);
     }
-    else if(group == 9) {
+    else if(group == 7) {
         int c = select_file_command(kFileCommands);
         if(c < 0) return;
         int action = kFileCommands[c].action;
@@ -470,8 +429,8 @@ extern "C" int main(void)
             continue;
         }
         if(key == KEY_CTRL_F3) {
-            int c = select_popup_command(kPlotCommands, 2);
-            insert_command(kPlotCommands, c, editor, input_cursor);
+            int c = select_popup_command(kTrigCommands, 2);
+            insert_command(kTrigCommands, c, editor, input_cursor);
             selected = -1;
             continue;
         }

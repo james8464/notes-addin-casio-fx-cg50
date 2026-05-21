@@ -1891,20 +1891,6 @@ static bool solve_factorial_call(const char *input, OutputLines &out)
     return true;
 }
 
-static bool solve_ncr_call(const char *input, OutputLines &out)
-{
-    int a[2];
-    if(!parse_int_args(input, a, 2) || a[0] < 0 || a[1] < 0 || a[1] > a[0]) {
-        out.add("Use ncr(n,r), 0<=r<=n.");
-        return false;
-    }
-    out.add("1. nCr = n!/(r!(n-r)!).");
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: ");
-    ans.append_int(comb_int(a[0], a[1]));
-    return true;
-}
-
 static bool solve_isprime_call(const char *input, OutputLines &out)
 {
     int a[1];
@@ -1975,84 +1961,6 @@ static bool solve_divisors_call(const char *input, OutputLines &out)
     return true;
 }
 
-static bool solve_det2(const char *input, OutputLines &out)
-{
-    Fraction a[4];
-    if(!parse_fraction_args(input, a, 4)) {
-        out.add("Use det2(a,b,c,d).");
-        return false;
-    }
-    Fraction det = frac_sub(frac_mul(a[0], a[3]), frac_mul(a[1], a[2]));
-    add_input_line(out, "1. Matrix: ", input);
-    out.add("2. For [[a,b],[c,d]], det = ad - bc.");
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: det = ");
-    append_fraction(ans, det);
-    return true;
-}
-
-static bool solve_inv2(const char *input, OutputLines &out)
-{
-    Fraction a[4];
-    if(!parse_fraction_args(input, a, 4)) {
-        out.add("Use inv2(a,b,c,d).");
-        return false;
-    }
-    Fraction det = frac_sub(frac_mul(a[0], a[3]), frac_mul(a[1], a[2]));
-    if(is_zero(det)) {
-        out.add("Answer: singular matrix, no inverse.");
-        return true;
-    }
-    Fraction e[4];
-    frac_div(a[3], det, e[0]);
-    frac_div(frac_neg(a[1]), det, e[1]);
-    frac_div(frac_neg(a[2]), det, e[2]);
-    frac_div(a[0], det, e[3]);
-    add_input_line(out, "1. Matrix: ", input);
-    out.add("2. Inverse = (1/det)[[d,-b],[-c,a]].");
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: [[");
-    append_fraction(ans, e[0]); ans.append(",");
-    append_fraction(ans, e[1]); ans.append("],[");
-    append_fraction(ans, e[2]); ans.append(",");
-    append_fraction(ans, e[3]); ans.append("]]");
-    return true;
-}
-
-static bool solve_dot3(const char *input, OutputLines &out)
-{
-    Fraction a[6];
-    if(!parse_fraction_args(input, a, 6)) {
-        out.add("Use dot3(ax,ay,az,bx,by,bz).");
-        return false;
-    }
-    Fraction dot = frac_add(frac_add(frac_mul(a[0], a[3]), frac_mul(a[1], a[4])), frac_mul(a[2], a[5]));
-    out.add("1. Use a.b = axbx + ayby + azbz.");
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: ");
-    append_fraction(ans, dot);
-    return true;
-}
-
-static bool solve_cross3(const char *input, OutputLines &out)
-{
-    Fraction a[6];
-    if(!parse_fraction_args(input, a, 6)) {
-        out.add("Use cross3(ax,ay,az,bx,by,bz).");
-        return false;
-    }
-    Fraction x = frac_sub(frac_mul(a[1], a[5]), frac_mul(a[2], a[4]));
-    Fraction y = frac_sub(frac_mul(a[2], a[3]), frac_mul(a[0], a[5]));
-    Fraction z = frac_sub(frac_mul(a[0], a[4]), frac_mul(a[1], a[3]));
-    out.add("1. Use determinant form for a x b.");
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: (");
-    append_fraction(ans, x); ans.append(",");
-    append_fraction(ans, y); ans.append(",");
-    append_fraction(ans, z); ans.append(")");
-    return true;
-}
-
 static bool solve_binom(const char *input, OutputLines &out)
 {
     Fraction a[3];
@@ -2105,46 +2013,6 @@ static bool solve_binom_cdf(const char *input, OutputLines &out)
     FixedString<96> &ans = out.next();
     ans.append("Answer: ");
     append_fraction(ans, total);
-    return true;
-}
-
-static bool solve_stats_list(const char *input, OutputLines &out)
-{
-    Fraction a[32];
-    int count = 0;
-    if(!parse_fraction_list(input, a, 32, count)) {
-        out.add("Use stats(a,b,c,...).");
-        return false;
-    }
-    Fraction sum = make_fraction(0, 1);
-    Fraction minv = a[0];
-    Fraction maxv = a[0];
-    Fraction sumsq = make_fraction(0, 1);
-    for(int i = 0; i < count; i++) {
-        sum = frac_add(sum, a[i]);
-        sumsq = frac_add(sumsq, frac_mul(a[i], a[i]));
-        if(less_fraction(a[i], minv)) minv = a[i];
-        if(less_fraction(maxv, a[i])) maxv = a[i];
-    }
-    Fraction mean = make_fraction(sum.num, sum.den * count);
-    Fraction sxx = frac_sub(sumsq, make_fraction(sum.num * sum.num, sum.den * sum.den * count));
-    out.add("1. One-variable stats.");
-    FixedString<96> &nline = out.next();
-    nline.append("2. n = ");
-    nline.append_int(count);
-    nline.append(", sum x = ");
-    append_fraction(nline, sum);
-    FixedString<96> &mline = out.next();
-    mline.append("3. mean = sum x/n = ");
-    append_fraction(mline, mean);
-    FixedString<96> &rline = out.next();
-    rline.append("4. min = ");
-    append_fraction(rline, minv);
-    rline.append(", max = ");
-    append_fraction(rline, maxv);
-    FixedString<96> &sline = out.next();
-    sline.append("5. Sxx = ");
-    append_fraction(sline, sxx);
     return true;
 }
 
@@ -2582,17 +2450,11 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     int n = 0;
     for(int i = prefix_len; i + 1 < len && n + 1 < (int)sizeof(inner); i++) inner[n++] = input[i];
     inner[n] = '\0';
-    if(kind == 1) return solve_det2(inner, out);
-    if(kind == 2) return solve_inv2(inner, out);
-    if(kind == 3) return solve_dot3(inner, out);
-    if(kind == 4) return solve_cross3(inner, out);
     if(kind == 5) return solve_binom(inner, out);
-    if(kind == 6) return solve_stats_list(inner, out);
     if(kind == 7) return solve_binom_cdf(inner, out);
     if(kind == 8) return solve_gcd_call(inner, out);
     if(kind == 9) return solve_lcm_call(inner, out);
     if(kind == 10) return solve_factorial_call(inner, out);
-    if(kind == 11) return solve_ncr_call(inner, out);
     if(kind == 12) return solve_isprime_call(inner, out);
     if(kind == 13) return solve_factors_call(inner, out);
     if(kind == 14) return solve_divisors_call(inner, out);
@@ -2604,9 +2466,7 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 20) return solve_inverse_call(inner, out);
     if(kind == 21) return solve_rewrite_call(inner, out);
     if(kind == 22) return solve_domain_range_call(inner, out);
-    if(kind == 24) return solve_device_placeholder("cartesian/parametric", out);
     if(kind == 25) return solve_device_placeholder("fit constants", out);
-    if(kind == 26) return solve_device_placeholder("plot/draw", out);
     if(kind == 27) return solve_device_placeholder("boolean proof", out);
     return false;
 }
@@ -2634,17 +2494,11 @@ bool solve(Module module, const char *input, OutputLines &out)
 
     switch(module) {
         case Module::Shell:
-            if(starts_with(input, "det2(")) return solve_utility_call(input, "det2(", 1, out);
-            if(starts_with(input, "inv2(")) return solve_utility_call(input, "inv2(", 2, out);
-            if(starts_with(input, "dot3(")) return solve_utility_call(input, "dot3(", 3, out);
-            if(starts_with(input, "cross3(")) return solve_utility_call(input, "cross3(", 4, out);
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
-            if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
             if(starts_with(input, "gcd(")) return solve_utility_call(input, "gcd(", 8, out);
             if(starts_with(input, "lcm(")) return solve_utility_call(input, "lcm(", 9, out);
             if(starts_with(input, "factorial(")) return solve_utility_call(input, "factorial(", 10, out);
-            if(starts_with(input, "ncr(")) return solve_utility_call(input, "ncr(", 11, out);
             if(starts_with(input, "isprime(")) return solve_utility_call(input, "isprime(", 12, out);
             if(starts_with(input, "factors(")) return solve_utility_call(input, "factors(", 13, out);
             if(starts_with(input, "divisors(")) return solve_utility_call(input, "divisors(", 14, out);
@@ -2666,11 +2520,7 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "domain(")) return solve_utility_call(input, "domain(", 22, out);
             if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
             if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
-            if(starts_with(input, "cartesian(")) return solve_utility_call(input, "cartesian(", 24, out);
             if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
-            if(starts_with(input, "plot(")) return solve_utility_call(input, "plot(", 26, out);
-            if(starts_with(input, "scatterplot(")) return solve_utility_call(input, "scatterplot(", 26, out);
-            if(starts_with(input, "histogram(")) return solve_utility_call(input, "histogram(", 26, out);
             if(starts_with(input, "bool_simplify(")) return solve_utility_call(input, "bool_simplify(", 27, out);
             if(starts_with(input, "nand(")) return solve_utility_call(input, "nand(", 27, out);
             if(starts_with(input, "nor(")) return solve_utility_call(input, "nor(", 27, out);
@@ -2698,11 +2548,9 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::Trig: return solve_trig(input, out);
         case Module::Suvat: return solve_suvat(input, out);
         case Module::Stats:
-            if(starts_with(input, "stats(")) return solve_utility_call(input, "stats(", 6, out);
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
-            if(starts_with(input, "ncr(")) return solve_utility_call(input, "ncr(", 11, out);
-            return solve_stats_list(input, out);
+            return solve_device_placeholder("binom/binomcdf only", out);
 
         case Module::Boolean: return solve_simplify(input, out);
         case Module::DeriveNormal: return solve_derive(input, out);

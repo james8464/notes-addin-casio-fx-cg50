@@ -564,12 +564,8 @@ FEATURE_PARITY_EXPECTED = {
         "integrate_trig_power",
     ),
     "Stats": (
-        "stats_one_var",
-        "stats_regression",
         "stats_binomial",
         "stats_normal",
-        "stats_ztest",
-        "stats_plot",
     ),
     "SUVAT": (
         "suvat_find_s",
@@ -611,7 +607,7 @@ FEATURE_PARITY_NOTES = {
     "Trigonometry": "Python modes 1-4: prove, transform, solve, rewrite; degree/radian and rearranged identity forms.",
     "Derive": "Normal, implicit, parametric; chain/product/quotient/log cases.",
     "Integrate": "Python modes 1-2 plus methods: direct, substitution, parts, trig, partial fractions, division, DE.",
-    "Stats": "C++ extension: one-var, regression, binomial, normal, z-test, graph sparkline.",
+    "Stats": "C++ extension: binomial and normal probability only.",
     "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
     "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
     "MethodSurface": "Direct host method/options surface across every supported feature group, including invalid method fallback.",
@@ -3652,7 +3648,7 @@ class CASIOApp(App):
         self.append_result("[dim]Trigonometry[/dim] — identities, transforms, equation solving")
         self.append_result("[dim]Derive[/dim] — differentiation and harder chain-rule cases")
         self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
-        self.append_result("[dim]Stats[/dim] — one-var stats, regression/correlation, probability, plots")
+        self.append_result("[dim]Stats[/dim] — binomial and normal probability")
         self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
         self.append_result("[dim]Boolean[/dim] — simplify, NAND, NOR, proof checks")
         self.update_summary("Programs")
@@ -4443,7 +4439,7 @@ class CASIOApp(App):
         if name in ("diff", "implicit_diff", "param_diff"):
             return ("poly", "chain", "product", "quotient", "implicit", "param") + calculus_math
         if name in ("integrate", "int"):
-            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry", "manip_trig", "manip_rational") + calculus_math
+            return ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "manip_trig", "manip_rational") + calculus_math
         if name in ("solve", "fsolve", "zeros"):
             return ("linear", "quad", "factor", "complete_square", "log_exp", "rational", "interval", "hidden_form") + generic_math
         if name in ("solve_trig", "trigsolve"):
@@ -4454,8 +4450,8 @@ class CASIOApp(App):
             return ("sin_cos", "pythag", "double_angle", "compound_angle", "target", "manip_trig")
         if name in ("domain", "range"):
             return ("poly", "rational", "radical", "log", "trig", "interval", "hidden_identity") + calculus_math
-        if name in ("binomial", "normal", "poisson", "correlation", "covariance", "regression", "mean", "median", "quartiles", "stddev"):
-            return ("summary", "regression", "binomial", "normal", "poisson", "edge")
+        if name in ("binomial", "normal"):
+            return ("binomial", "normal", "edge")
         if name in ("det", "inverse", "rank", "rref", "eigenvals", "eigenvects", "dot", "cross"):
             return ("matrix2", "matrix3", "singular", "vector")
         if name == "complete_square":
@@ -4485,8 +4481,7 @@ class CASIOApp(App):
             "diff", "implicit_diff", "param_diff", "integrate", "int",
             "solve", "fsolve", "zeros", "solve_trig", "trigsolve", "domain", "range",
             "factor", "expand", "partfrac", "complete_square", "collect", "coeff",
-            "binomial", "normal", "poisson", "correlation", "covariance", "mean", "median",
-            "quartiles", "stddev", "det", "inverse", "rank", "rref", "dot", "cross",
+            "binomial", "normal", "det", "inverse", "rank", "rref", "dot", "cross",
             "trig_prove", "trig_transform", "trig_rewrite",
         }
         if name in direct or name.startswith("trig"):
@@ -4513,8 +4508,6 @@ class CASIOApp(App):
             "trig": ["sin(x)^4", "tan(x)^3", "sec(x)^3"],
             "pf": ["1/(x^2*(x+1))", "(2*x+5)/(x^2+5*x-7)", "1/(x*(x^2+1))"],
             "div": ["(x^2+1)/(x-1)", "x^4/(x^2+1)", "(x^3+1)/(x+1)"],
-            "weierstrass": ["1/(2+cos(x))", "1/(1+sin(x)+cos(x))"],
-            "symmetry": ["sin(x)/(sin(x)+cos(x))", "log(sin(x))"],
             "manip_trig": [
                 "(tan(x)^2+1)/(sec(x)^2)",
                 "(1-cos(2*x))/(sin(x))",
@@ -4637,11 +4630,6 @@ class CASIOApp(App):
 
     def catalogue_arg_value(self, param, fn_name, shape, rng):
         p = (param or "").strip().lower()
-        if fn_name in ("correlation", "covariance", "regression"):
-            if p in ("l1", "x", "xs", "data1"):
-                return "[1,2,3,4]"
-            if p in ("l2", "y", "ys", "data2"):
-                return "[2,5,7,11]"
         if p in ("x", "var") or "var" in p:
             return "x"
         if p in ("y",):
@@ -4657,7 +4645,7 @@ class CASIOApp(App):
         if "method" in p:
             if shape.startswith("math_"):
                 return "auto"
-            return shape if shape in ("direct", "reverse_chain", "sub", "parts", "trig", "pf", "div", "di", "weierstrass", "symmetry") else "auto"
+            return shape if shape in ("direct", "reverse_chain", "sub", "parts", "trig", "pf", "div", "di") else "auto"
         if p in ("lo", "a"):
             return "0" if shape in ("bounded", "interval", "trig") else "1"
         if p in ("hi", "b"):
@@ -4724,7 +4712,7 @@ class CASIOApp(App):
                 expr = rng.choice(["acos((x-1)/3)", "arccos((2*x+1)/5)"])
             else:
                 expr = self.random_catalogue_expr(rng, shape)
-            method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div", "weierstrass", "symmetry") else "auto"
+            method = shape if shape in ("direct", "reverse_chain", "sub", "parts", "di", "trig", "pf", "div") else "auto"
             return "int", "{0},method={1}".format(expr, method)
         if name in ("solve", "fsolve", "zeros"):
             solve_methods = {"linear", "factor", "quad_formula", "complete_square", "substitution", "clear_denoms", "log_exp", "numeric", "interval"}
@@ -4761,7 +4749,7 @@ class CASIOApp(App):
             return "alg", "coeff({0},x,{1})".format(self.random_catalogue_expr(rng, shape), rng.randint(1, 5))
         if name in ("domain", "range"):
             return "alg", "{0}({1})".format(name, self.random_domain_range_expr(rng, shape))
-        if name in ("binomial", "normal", "poisson", "correlation", "covariance", "mean", "median", "quartiles", "stddev"):
+        if name in ("binomial", "normal"):
             return "stats", self.catalogue_call_for(fn, combo, shape, rng)
         return "", self.catalogue_call_for(fn, combo, shape, rng)
 
@@ -4919,12 +4907,8 @@ class CASIOApp(App):
             "random_trig_simplify_case": "Trigonometry",
             "random_trig_prove_case": "Trigonometry",
             "random_trig_rearrange_case": "Trigonometry",
-            "random_stats_one_var_case": "Stats",
-            "random_stats_regression_case": "Stats",
             "random_stats_binomial_case": "Stats",
             "random_stats_normal_case": "Stats",
-            "random_stats_ztest_case": "Stats",
-            "random_stats_plot_case": "Stats",
             "random_boolean_simplify_case": "Boolean",
             "random_boolean_nand_case": "Boolean",
             "random_boolean_nor_case": "Boolean",
@@ -8206,12 +8190,8 @@ class CASIOApp(App):
         if getattr(self, "backend", "python") != "c":
             return []
         features = [
-            self.random_stats_one_var_case,
-            self.random_stats_regression_case,
             self.random_stats_binomial_case,
             self.random_stats_normal_case,
-            self.random_stats_ztest_case,
-            self.random_stats_plot_case,
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
@@ -8412,8 +8392,6 @@ class CASIOApp(App):
             ("int", "sin(x)^4,method=trig", "trig", True),
             ("int", "1/((x-1)*(x+2)),method=pf", "pf", True),
             ("int", "(x^3+1)/(x+1),method=div", "div", True),
-            ("int", "1/(2+cos(x)),method=weierstrass", "weierstrass", True),
-            ("int", "sin(x)/(sin(x)+cos(x)),method=symmetry", "symmetry", True),
             ("derive", "x^3,method=auto", "auto", True),
             ("derive", "sin(x^2),method=chain", "chain", True),
             ("derive", "x^2*exp(x),method=product", "product", True),
@@ -8447,19 +8425,12 @@ class CASIOApp(App):
             ("alg", "x^2-2=0,x,-2,2,method=interval", "interval", True),
             ("alg", "(x+1)^3,method=expand", "expand", True),
             ("alg", "x^2+2*x+1,method=collect", "collect", True),
-            ("alg", "1/(sqrt(x)+1),method=rationalise", "rationalise", True),
             ("alg", "x^2+2*x+1,method=canonical", "canonical", True),
             ("alg", "x^2+a*x+b,target=(x+1)^2,method=target", "target", True),
             ("alg", "(a*x+b)(x-2)=4*x^2+6*x-1,method=equate_coeffs", "equate_coeffs", True),
             ("alg", "2*x+y=5,x-y=1,method=simultaneous", "simultaneous", True),
-            ("stats", "1,2,3,4,method=auto", "auto", True),
-            ("stats", "1,2,3,4,method=summary", "summary", True),
-            ("stats", "1,2,3;2,4,6,method=regression", "regression", True),
-            ("stats", "1,2,3,4,method=hypothesis_test", "hypothesis_test", True),
             ("stats", "binomial(10,.5,4),method=binomial", "binomial", True),
-            ("stats", "normal(0,1,1.96),method=normal", "normal", True),
-            ("stats", "poisson(3,2),method=poisson", "poisson", True),
-            ("stats", "1,2,3,4,method=confidence_interval", "confidence_interval", True),
+            ("stats", "normalcdf(0,1,-1,1),method=normal", "normal", True),
             ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=auto", "auto", True),
             ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat", "suvat", True),
             ("suvat", "s=,u=20,v=,a=-10,t=2,target=v,method=projectile", "projectile", True),
@@ -8474,7 +8445,7 @@ class CASIOApp(App):
             ("derive", "x^3,method=auto", "auto", True),
             ("trig", "sin(x)=1/2,x,0,2*pi,6,method=auto", "auto", True),
             ("alg", "2*x+3=11,method=auto", "auto", True),
-            ("stats", "1,2,3,4,method=auto", "auto", True),
+            ("stats", "binomial(4,0.5,2),method=auto", "auto", True),
             ("suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=auto", "auto", True),
             ("int", "x^2,method=not_a_method", "invalid", False),
         ]
@@ -10070,20 +10041,6 @@ class CASIOApp(App):
 
         cases = [
             (
-                "1\n-1000000000,-4,-1,0,1,4,1000000000\n",
-                "Stats: extreme one-variable summary",
-                stats_checker("mean", "sxx", "var(sample)"),
-                "one-var stats with extreme balanced values",
-                "stats_one_var:extreme",
-            ),
-            (
-                "2\n-1000000,-1,0,1,1000000\n-2000001,-3,-1,1,1999999\n",
-                "Stats: extreme exact regression/correlation",
-                stats_checker("sxy", "r = 1", "2*x"),
-                "linear regression y=-1+2x, r=1",
-                "stats_regression:extreme",
-            ),
-            (
                 "3\n10,0.5,3,pmf\n",
                 "Stats: binomial pmf",
                 stats_checker("x = 3", "p("),
@@ -10110,27 +10067,6 @@ class CASIOApp(App):
                 stats_checker("standardise", "0.841"),
                 "N(7,2000) from -7993 to 2007",
                 "stats_normal:negative_parentheses",
-            ),
-            (
-                "5\n105,100,15,36,gt,0.05\n",
-                "Stats: one-tailed z-test",
-                stats_checker("h0", "reject h0"),
-                "right-tail z-test rejects at 5%",
-                "stats_ztest:right",
-            ),
-            (
-                "6\n-1000,-10,0,10,1000,1000000,-1000000\n",
-                "Stats: sparkline extreme list",
-                stats_checker("spark"),
-                "compact plot from data",
-                "stats_spark:extreme",
-            ),
-            (
-                "7\nx^2-4,-3,3,21\n",
-                "Stats: function plot summary",
-                stats_checker("spark", "x-intercepts"),
-                "plot summary finds intercepts for x^2-4",
-                "stats_plot:quadratic",
             ),
         ]
 

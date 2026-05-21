@@ -35,27 +35,9 @@ ifactor(
 gcd(
 isprime(
 lcm(
-F8 mat
-matrix(
-det(
-matpow(
-tran(
-rref(
-inv(
-F9 stat
-mean(
-median(
-stddev(
-quartile1(
-quartile3(
-correlation(
-linear_regression(
-F: prob
+F8 prob
 binomial(
-normald(
-poisson(
-student(
-chisquare(
+normalcdf(
 F; real
 exact(
 approx(
@@ -72,12 +54,4 @@ tan(
 tcollect(
 texpand(
 tlin(
-F= cplx
-abs(
-arg(
-re(
-im(
-conj(
-csolve(
-cfactor(
 @END

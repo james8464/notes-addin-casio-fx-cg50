@@ -119,11 +119,6 @@ CASES = (
         ("(e^(x) + 5)^2",),
     ),
     ContractCase(
-        "statistics/hypothesis/standardise/decision",
-        ("--stats", "ztest(5.4,5,1.2,36,0.05,gt)"),
-        ("H0: mu = 5", "z = (xbar-mu)/(sigma/sqrt(n)) = 2", "p = P(Z > 2)", "p < 0.05", "reject H0"),
-    ),
-    ContractCase(
         "mechanics/suvat/formula/substitute",
         ("--suvat", "s=,u=0,v=10,a=2,t=5,target=s,method=suvat"),
         ("s = ut + 1/2at^2", "= 0*5 + 1/2*2*5^2", "s = 25"),
