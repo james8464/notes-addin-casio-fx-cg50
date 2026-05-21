@@ -534,11 +534,6 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
-            else if(!(inner = unwrap_call(expr, "newton(")).empty()) {
-                req.mode = 12;
-                req.method = "newton";
-                req.expr = inner;
-            }
             else if(!(inner = unwrap_call(expr, "evalat(")).empty()) {
                 req.mode = 0;
                 req.method = "evalat";

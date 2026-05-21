@@ -42,7 +42,6 @@ CASES: tuple[Case, ...] = (
     Case("shell_inverse", "shell", "inverse(2x+1)", ("Answer: f^-1(x) = (x - 1)/2",)),
     Case("shell_rewrite", "shell", "rewrite(x^2+2x+3,x+1)", ("Answer: u^2 + 2",)),
     Case("shell_range", "shell", "domain(x^2-4x+1)", ("Range: y >= -3.",)),
-    Case("shell_newton", "shell", "newton(x^2-2=0,1,2)", ("x1 = 3/2", "Answer: x ~= 17/12")),
     Case("direct_simplify", "simplify", "2x+3-x+4", ("Answer: x + 7",)),
     Case("direct_algebra", "algebra", "x^2-5x+6=0", ("Answer: x = 2 or x = 3",)),
     Case("direct_derive", "derive", "3x^2+2x+1", ("Answer: dy/dx = 6x + 2",)),

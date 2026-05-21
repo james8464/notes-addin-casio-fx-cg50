@@ -72,7 +72,6 @@ const CommandItem kAlgebraAllCommands[] = {
     {"dom/rng", "domain("},
     {"range", "range("},
     {"cart", "cartesian("},
-    {"newton", "newton("},
     {"fit const", "fitconst("},
 };
 

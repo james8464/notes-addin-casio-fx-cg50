@@ -12,8 +12,6 @@ CASES = REPO / "c++" / "tools" / "golden" / "rtf_cases.jsonl"
 
 
 NEEDLES: dict[str, list[str]] = {
-    # Tests.txt says 1.889, but Newton's method for x^10+5x=449 from x0=1.8 gives 1.838 after two iterations.
-    "2c": ["x_(n+1) = x_n - f(x_n)/f'(x_n)", "x = 1.838"],
     "8c": ["x = f(y)", "f^-1(x) = (- e^(x) + 4)/2", "Given domain: x<2"],
     "9": ["1/y dy = (- x + 1)/(x + 1) dx", "y = (x + 1)^2*e^(-x)"],
     "H7a": ["F_x", "F_y", "dy/dx = (2 - 2*x*y)/(x^2 - 2*y)"],

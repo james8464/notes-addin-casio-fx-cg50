@@ -23741,64 +23741,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "y = " + format_expr(arena, y_cart->y_expr),
             };
         }
-        if(req.mode == 12) {
-            auto parts = split_csv(req.expr);
-            if(parts.size() < 3) return {"Err: need Eq, x0, n."};
-            std::string equation_text = trim_text(parts[0]);
-            std::string forced_var;
-            std::size_t x0_index = 1;
-            std::size_t n_index = 2;
-            if(parts.size() >= 4) {
-                forced_var = trim_text(parts[1]);
-                x0_index = 2;
-                n_index = 3;
-            }
-            auto clean_number = [](std::string s) {
-                s = trim_text(s);
-                while(!s.empty() && (s.back() == '.' || s.back() == ',')) s.pop_back();
-                return s;
-            };
-            std::string x0_text = clean_number(parts[x0_index]);
-            std::string n_text = clean_number(parts[n_index]);
-
-            auto eq = casio::parse_equation(arena, equation_text);
-            NodeId residual = 0;
-            if(eq) {
-                residual = casio::simplify(arena, casio::add(arena, {eq->lhs, casio::mul(arena, {casio::num(arena, -1), eq->rhs})}));
-            }
-            else {
-                residual = casio::simplify(arena, casio::parse_expr(arena, equation_text));
-            }
-            std::string var = forced_var.empty() ? choose_solve_var(arena, residual, "x") : forced_var;
-            auto x0 = parse_const_double(arena, x0_text);
-            if(!x0) return {"Err: Bad number."};
-            int steps_count = 0;
-            try { steps_count = std::stoi(n_text); } catch(...) { return {"Err: Bad number."}; }
-            if(steps_count < 1 || steps_count > 20) return {"Err: n must be 1..20."};
-
-            std::vector<std::string> out;
-            out.push_back("1. Use Newton-Raphson.");
-            out.push_back("2. f(" + var + ") = " + format_expr(arena, residual));
-            out.push_back("3. Use x_(n+1) = x_n - f(x_n)/f'(x_n).");
-            double x = *x0;
-            for(int i = 0; i < steps_count; i++) {
-                double h = std::max(1e-6, std::fabs(x) * 1e-6);
-                auto fx = eval_node(arena, residual, var, x);
-                auto fp1 = eval_node(arena, residual, var, x + h);
-                auto fm1 = eval_node(arena, residual, var, x - h);
-                if(!fx || !fp1 || !fm1) return {"Err: Newton evaluation failed."};
-                double dfx = (*fp1 - *fm1) / (2.0 * h);
-                if(!std::isfinite(dfx) || std::fabs(dfx) < 1e-14) return {"Err: derivative too small."};
-                double next = x - *fx / dfx;
-                out.push_back(std::to_string(4 + i) + ". x_" + std::to_string(i + 1) + " = " + format_double_compact(next));
-                x = next;
-            }
-            std::ostringstream ans3;
-            ans3 << std::fixed << std::setprecision(3) << x;
-            out.push_back("Answer: " + var + " = " + ans3.str() + " (3 d.p.)");
-            return out;
-        }
-
         if(req.method == "factor" && req.mode != 13 && req.expr.find('=') == std::string::npos) {
             algebra::Request next = req;
             next.mode = 13;

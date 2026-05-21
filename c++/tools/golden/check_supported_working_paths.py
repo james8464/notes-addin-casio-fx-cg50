@@ -169,7 +169,6 @@ def base_cases() -> list[Case]:
         ("rewrite(sqrt(12+sqrt(140)))", ("m+n=12", "Answer: sqrt(7) + sqrt(5)")),
         ("rewrite(sin(x)^4+cos(x)^4,sin(x)^2*cos(x)^2)", ("(sin(x)^2 + cos(x)^2)^2", "1 - 2*sin(x)^2*cos(x)^2")),
         ("binomial(sqrt(1+2*x),x,3)", ("T_r = C(n,r)*u^r", "(1+u)^n", "Valid", "x^3")),
-        ("newton(x^3-2*x-5,x,2,3)", ("Newton", "x_", "Answer:")),
         ("inverse((x+3)/2)", ("x = f(y)", "f^-1")),
         ("inverse(5*x-1)", ("f^-1(x) = x/5 + 1/5",)),
     ]:

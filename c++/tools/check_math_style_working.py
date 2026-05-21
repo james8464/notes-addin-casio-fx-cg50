@@ -947,31 +947,6 @@ CASES = [
         ("A = Int(upper-lower) dx", "F(ln(2)) - F(0)", "7*ln(2)"),
     ),
     (
-        "trapezium rule table lines",
-        ["--int", "trapezium(1/(1+x),x,0,1,4)"],
-        ("h = (1-0)/4 = 0.25", "x_i = 0, 0.25, 0.5, 0.75, 1", "T = h/2", "0.697024"),
-    ),
-    (
-        "simpson rule table lines",
-        ["--int", "simpson(e^(-x^2),x,0,1,4)"],
-        ("h = (1-0)/4 = 0.25", "S = h/3", "0.746855"),
-    ),
-    (
-        "midordinate rule table lines",
-        ["--int", "midordinate(sin(x),x,0,pi,6)"],
-        ("h = (pi-0)/6 = 0.523599", "x_mid =", "M = h*sum(y_mid)", "2.02303"),
-    ),
-    (
-        "trapezium table x-y lines",
-        ["--int", "trapezium_table([1,2.25,3.5,4.75,6],[9,17,25,21,13])"],
-        ("x_i = 1, 2.25, 3.5, 4.75, 6", "h = 1.25", "T = h/2", "92.5"),
-    ),
-    (
-        "simpson table x-y lines",
-        ["--int", "simpson_table([0,1,2,3,4],[1,4,9,16,25])"],
-        ("x_i = 0, 1, 2, 3, 4", "S = h/3", "41.333333"),
-    ),
-    (
         "generic denominator derivative log rule",
         ["--int", "x^3/(x^4+2),method=reverse_chain"],
         ("u = x^4 + 2", "du/dx = 4*x^3", "1/4*ln(abs(x^4 + 2)) + C"),

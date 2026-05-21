@@ -108,7 +108,6 @@ int main(int argc, char **argv)
     ok = check(casio::device::Module::Shell, "inverse(2x+1)", "Answer: f^-1(x) = (x - 1)/2") && ok;
     ok = check(casio::device::Module::Shell, "rewrite(x^2+2x+3,x+1)", "Answer: u^2 + 2") && ok;
     ok = check(casio::device::Module::Shell, "domain(x^2-4x+1)", "Range: y >= -3.") && ok;
-    ok = check(casio::device::Module::Shell, "newton(x^2-2=0,1,2)", "Answer: x ~= 17/12") && ok;
     ok = check(casio::device::Module::Shell, "suvat(s=10,u=0,v=?,a=2,t=5)", "Answer: v = 10") && ok;
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;

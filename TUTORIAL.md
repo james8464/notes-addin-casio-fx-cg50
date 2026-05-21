@@ -41,7 +41,6 @@ The program should handle A-level formula families as working routes or subparts
 | logs/exp | log laws, change of base, growth/decay, DE constants |
 | differentiation | chain/product/quotient/implicit/parametric/logdiff/stationary routes |
 | integration | direct, substitution, parts, DI, trig, PF, areas, volumes |
-| numerical | Newton-Raphson, trapezium, Simpson, mid-ordinate |
 | statistics | summary data, binomial, normal, z-tests |
 | mechanics | SUVAT plus algebraic force/moment/energy/power subparts |
 

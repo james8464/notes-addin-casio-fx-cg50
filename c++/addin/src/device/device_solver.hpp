@@ -31,7 +31,6 @@ enum class Module
     AlgRewrite,
     AlgDomRng,
     AlgCartesian,
-    AlgNewton,
     TrigProve,
     TrigTransform,
     TrigSolve,

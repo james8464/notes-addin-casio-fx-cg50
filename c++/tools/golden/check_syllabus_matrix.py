@@ -81,8 +81,6 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("pure_integration", "definite integral evaluation", ("--int", "defint(x^2,x,1,3)"), ("F(3) - F(1)", "26/3")),
     MatrixCase("pure_integration", "area between curves setup", ("--int", "area_between(x,x^2,x,0,1)"), ("A = Int(upper-lower) dx", "1/6")),
     MatrixCase("pure_integration", "volume of revolution setup", ("--int", "volume_x(4-x^2,x,-2,2)"), ("V = pi*Int(y^2) dx", "512*pi/15")),
-    MatrixCase("pure_numerical_methods", "Newton-Raphson iteration", ("--alg", "newton(x^2-2,x,1,3)"), ("x_(n+1) = x_n - f(x_n)/f'(x_n)", "x = 1.414")),
-    MatrixCase("pure_numerical_methods", "non-polynomial Newton iteration", ("--alg", "newton(cos(x)-x,x,1,4)"), ("x_(n+1) = x_n - f(x_n)/f'(x_n)", "x = 0.739")),
     MatrixCase("pure_vectors", "vector magnitude subpart", ("--alg", "sqrt(1^2+2^2+3^2)"), ("sqrt(14)",), False),
     MatrixCase("stats_sampling_data", "summary statistics", ("--stats", "stats(1,2,2,3,5,8)"), ("mean", "Sxx"), False),
     MatrixCase("stats_sampling_data", "variance and sd formula lines", ("--stats", "stats(2,4,4,10)"), ("var = Sxx/n", "sd = sqrt(var)")),

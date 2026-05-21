@@ -32,12 +32,6 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["No elementary primitive", "ERR:"],
     ),
     (
-        "Z2 Newton two iterations",
-        ["--alg", "newton(x^10+5*x-449,x,1.8,2)"],
-        ["Use Newton-Raphson", "f(x) = x^10 + 5*x - 449", "x = 1.838"],
-        ["Expected )", "Unexpected end", "solve(newton"],
-    ),
-    (
         "Z3 rationalised log derivative",
         ["--derive", "ln(1/(sqrt(x^2+1)-x)),x"],
         ["Rationalise", "sqrt(x^2+1)+x", "dy/dx = 1/sqrt(x^2 + 1)"],

@@ -2535,58 +2535,6 @@ static bool solve_domain_range_call(const char *input, OutputLines &out)
     return true;
 }
 
-static bool solve_newton_call(const char *input, OutputLines &out)
-{
-    char args[4][96];
-    int argc = 0;
-    if(!parse_call_args_compact(input, args, 4, argc) || argc < 3) {
-        out.add("Use newton(eq,x0,steps).");
-        return false;
-    }
-    char var = detect_poly_var(args[0]);
-    RPoly f;
-    if(!parse_equation_poly_arg(args[0], var, f)) {
-        out.add("1. Define f(x)=left-right.");
-        out.add("2. Use x_(n+1)=x_n-f(x_n)/f'(x_n).");
-        out.add("Answer: iterate from the chosen starting value.");
-        return true;
-    }
-    Fraction x;
-    if(!read_fraction_token(args[1], 0, cstr_len(args[1]), x)) {
-        out.add("Use an exact integer/fraction starting value x0.");
-        return false;
-    }
-    int pos = 0;
-    int steps = 0;
-    if(!read_int(args[2], pos, cstr_len(args[2]), steps) || pos != cstr_len(args[2]) || steps < 1) {
-        out.add("Use a positive integer number of iterations.");
-        return false;
-    }
-    if(steps > 8) steps = 8;
-    RPoly fp = rpoly_derivative(f);
-    add_input_line(out, "1. f(x)=0 from ", args[0]);
-    for(int i = 0; i < steps; i++) {
-        Fraction y = rpoly_eval(f, x);
-        Fraction yp = rpoly_eval(fp, x);
-        Fraction delta;
-        if(!frac_div(y, yp, delta)) {
-            out.add("Stop: f'(x_n)=0.");
-            return false;
-        }
-        x = frac_sub(x, delta);
-        FixedString<96> &line = out.next();
-        line.append_int(i + 2);
-        line.append(". x");
-        line.append_int(i + 1);
-        line.append(" = ");
-        append_fraction(line, x);
-    }
-    FixedString<96> &ans = out.next();
-    ans.append("Answer: x ~= ");
-    append_fraction(ans, x);
-    return true;
-}
-
 static bool solve_device_placeholder(const char *name, OutputLines &out)
 {
     FixedString<96> &line = out.next();
@@ -2656,7 +2604,6 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 20) return solve_inverse_call(inner, out);
     if(kind == 21) return solve_rewrite_call(inner, out);
     if(kind == 22) return solve_domain_range_call(inner, out);
-    if(kind == 23) return solve_newton_call(inner, out);
     if(kind == 24) return solve_device_placeholder("cartesian/parametric", out);
     if(kind == 25) return solve_device_placeholder("fit constants", out);
     if(kind == 26) return solve_device_placeholder("plot/draw", out);
@@ -2719,7 +2666,6 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "domain(")) return solve_utility_call(input, "domain(", 22, out);
             if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
             if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
-            if(starts_with(input, "newton(")) return solve_utility_call(input, "newton(", 23, out);
             if(starts_with(input, "cartesian(")) return solve_utility_call(input, "cartesian(", 24, out);
             if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
             if(starts_with(input, "plot(")) return solve_utility_call(input, "plot(", 26, out);
@@ -2774,7 +2720,6 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::AlgRewrite: return solve_algebra(input, out);
         case Module::AlgDomRng: return solve_algebra(input, out);
         case Module::AlgCartesian: return solve_algebra(input, out);
-        case Module::AlgNewton: return solve_algebra(input, out);
         case Module::TrigProve: return solve_trig(input, out);
         case Module::TrigTransform: return solve_trig(input, out);
         case Module::TrigSolve: return solve_trig(input, out);
