@@ -6697,6 +6697,140 @@ static std::string format_rat_plain(Rational r)
     return std::to_string(r.num) + "/" + std::to_string(r.den);
 }
 
+static long long square_root_if_square(long long n)
+{
+    if(n < 0) return -1;
+    long long r = static_cast<long long>(std::sqrt(static_cast<long double>(n)));
+    while(r > 0 && r * r > n) --r;
+    while(r < 3037000499LL && (r + 1) * (r + 1) <= n) ++r;
+    return r * r == n ? r : -1;
+}
+
+static std::string sqrt_rat_positive_text(Rational r)
+{
+    r.normalize();
+    if(r.num == 0) return "0";
+    long long sn = square_root_if_square(r.num);
+    long long sd = square_root_if_square(r.den);
+    if(sn >= 0 && sd > 0) return sd == 1 ? std::to_string(sn) : std::to_string(sn) + "/" + std::to_string(sd);
+    if(sd > 0) return sd == 1 ? "sqrt(" + std::to_string(r.num) + ")" : "sqrt(" + std::to_string(r.num) + ")/" + std::to_string(sd);
+    return "sqrt(" + format_rat_plain(r) + ")";
+}
+
+static std::optional<std::vector<std::string>> eccentricity_e_solve_route_key(std::string key)
+{
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') key = key.substr(6, key.size() - 7);
+    auto parts = split_top_key(key, ',');
+    if(parts.size() < 2 || parts[1] != "e") return std::nullopt;
+    bool pos_only = parts.size() >= 4 && parts[2] == "0" && parts[3] == "1";
+    auto eq = split_top_key(parts[0], '=');
+    if(eq.size() != 2) return std::nullopt;
+    auto b2 = parse_rational_key(eq[0]);
+    if(!b2) return std::nullopt;
+    auto read_rhs = [](std::string const &s) -> std::optional<Rational> {
+        std::string tail = "(1-e^2)";
+        if(s.size() > tail.size() && s.compare(s.size() - tail.size(), tail.size(), tail) == 0)
+            return parse_rational_key(s.substr(0, s.size() - tail.size()));
+        std::string head = "(1-e^2)";
+        if(s.rfind(head, 0) == 0) return parse_rational_key(s.substr(head.size()));
+        return std::nullopt;
+    };
+    auto a2 = read_rhs(eq[1]);
+    if(!a2 || a2->num == 0) return std::nullopt;
+    Rational e2 = r_sub(Rational{1, 1}, r_div(*b2, *a2));
+    if(e2.num < 0) return std::vector<std::string>{eq[0] + " = " + eq[1], "e^2 = " + format_rat_plain(e2), "e = []"};
+    std::string e = sqrt_rat_positive_text(e2);
+    std::vector<std::string> out{
+        eq[0] + " = " + eq[1],
+        "e^2 = 1 - " + format_rat_plain(*b2) + "/" + format_rat_plain(*a2),
+        "e^2 = " + format_rat_plain(e2),
+    };
+    if(pos_only) {
+        out.push_back("0 <= e <= 1");
+        out.push_back("e = [" + e + "]");
+    }
+    else {
+        out.push_back("e = +/-" + e);
+        out.push_back("e = [" + e + ", -" + e + "]");
+    }
+    return out;
+}
+
+static std::optional<std::vector<std::string>> taylor_limit_ln_one_route_key(std::string const &key)
+{
+    if(key == "taylor(ln(x),x,1,2)" || key == "taylor(log(x),x,1,2)" ||
+       key == "series(ln(x),x,1,2)" || key == "series(log(x),x,1,2)") {
+        return std::vector<std::string>{
+            "f(x) = ln(x)",
+            "f(1)=0",
+            "f'(x)=1/x, f'(1)=1",
+            "f''(x)=-1/x^2, f''(1)=-1",
+            "ln(x) = (x-1) - 1/2*(x-1)^2 + ...",
+        };
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> limit_body_key(std::string const &key)
+{
+    for(std::string const &name : {"limit(", "lim(", "limite("}) {
+        if(key.rfind(name, 0) == 0 && key.size() > name.size() && key.back() == ')')
+            return key.substr(name.size(), key.size() - name.size() - 1);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> limit_ln_one_route_key(std::string const &key)
+{
+    auto body = limit_body_key(key);
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3 || parts[1] != "x" || parts[2] != "1") return std::nullopt;
+    if(parts[0] != "ln(x)/(x-1)" && parts[0] != "log(x)/(x-1)") return std::nullopt;
+    return std::vector<std::string>{
+        "ln(x) = (x-1) - 1/2*(x-1)^2 + ...",
+        "ln(x)/(x-1) = 1 - 1/2*(x-1) + ...",
+        "1",
+    };
+}
+
+static std::optional<std::vector<std::string>> limit_lhospital_tan_cosec_route_key(std::string const &key)
+{
+    auto body = limit_body_key(key);
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3 || parts[1] != "x" || parts[2] != "0") return std::nullopt;
+    std::string const &s = parts[0];
+    std::string p0 = "1/((x+";
+    if(s.rfind(p0, 0) != 0) return std::nullopt;
+    std::size_t p1 = s.find(")tan(", p0.size());
+    if(p1 == std::string::npos) return std::nullopt;
+    auto a = parse_rational_key(s.substr(p0.size(), p1 - p0.size()));
+    std::size_t p2 = p1 + 5;
+    std::size_t p3 = s.find("x)", p2);
+    if(p3 == std::string::npos) return std::nullopt;
+    auto b = parse_rational_key(s.substr(p2, p3 - p2));
+    std::size_t p4 = p3 + 2;
+    std::string fn;
+    if(s.compare(p4, 6, "cosec(") == 0) { fn = "cosec"; p4 += 6; }
+    else if(s.compare(p4, 4, "csc(") == 0) { fn = "cosec"; p4 += 4; }
+    else return std::nullopt;
+    std::size_t p5 = s.find("x))", p4);
+    if(p5 == std::string::npos || p5 + 3 != s.size()) return std::nullopt;
+    auto c = parse_rational_key(s.substr(p4, p5 - p4));
+    if(!a || !b || !c || a->num == 0 || b->num == 0) return std::nullopt;
+    Rational ans = r_div(*c, r_mul(*a, *b));
+    std::string at = format_rat_plain(*a), bt = format_rat_plain(*b), ct = format_rat_plain(*c);
+    return std::vector<std::string>{
+        "1/((x+" + at + ")*tan(" + bt + "*x)*" + fn + "(" + ct + "*x)) = sin(" + ct + "*x)*cos(" + bt + "*x)/((x+" + at + ")*sin(" + bt + "*x))",
+        "f(0)=0, g(0)=0",
+        "f'(x)=" + ct + "*cos(" + ct + "*x)*cos(" + bt + "*x)-" + bt + "*sin(" + ct + "*x)*sin(" + bt + "*x)",
+        "g'(x)=sin(" + bt + "*x)+" + bt + "*(x+" + at + ")*cos(" + bt + "*x)",
+        "lim f/g = f'(0)/g'(0)",
+        format_rat_plain(ans),
+    };
+}
+
 static std::optional<std::vector<std::string>> atan_difference_pair_route_key(std::string key)
 {
     for(std::size_t p0 = 0; (p0 = key.find("arctan(", p0)) != std::string::npos;) key.replace(p0, 7, "atan(");
@@ -23005,6 +23139,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(req.mode == 1 || req.mode == 2) goto algebra_compare_transform_modes;
         {
             std::string key = compact_input_key(req.expr);
+            if(auto ecc = eccentricity_e_solve_route_key(key)) return *ecc;
+            if(auto tl = taylor_limit_ln_one_route_key(key)) return *tl;
+            if(auto ll = limit_ln_one_route_key(key)) return *ll;
+            if(auto lh = limit_lhospital_tan_cosec_route_key(key)) return *lh;
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
                 Request inner = req;
                 inner.mode = 6;

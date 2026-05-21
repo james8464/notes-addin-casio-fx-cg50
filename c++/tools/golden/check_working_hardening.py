@@ -1956,6 +1956,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["t = tan(x/2)", "I = Int 1/(3t^2+2t+2) dt", "1/sqrt(5)*atan((3*tan(x/2) + 1)/sqrt(5)) + C"],
         ["ERR:", "No elementary primitive"],
     ),
+    (
+        "alg",
+        "solve(4=16*(1-e^2),e,0,1)",
+        ["e^2 = 3/4", "e = [sqrt(3)/2]"],
+        ["ERR:", "e = []"],
+    ),
+    (
+        "alg",
+        "taylor(ln(x),x,1,2)",
+        ["f'(x) = 1/x", "f''(x) = -1/x^2", "ln(x) = (x-1) - 1/2*(x-1)^2"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "lim(ln(x)/(x-1),x,1)",
+        ["ln(x)/(x-1) = 1 - 1/2*(x-1)", "1"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "lim(1/((x+3)*tan(6*x)*cosec(2*x)),x,0)",
+        ["f(0) = 0, g(0) = 0", "f'(x) = 2*cos(2*x)*cos(6*x)-6*sin(2*x)*sin(6*x)", "1/9"],
+        ["ERR:"],
+    ),
 ]
 
 
