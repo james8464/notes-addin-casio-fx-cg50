@@ -22328,6 +22328,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(req.expr.empty()) return {"Enter expression/equation."};
 
     try {
+        if(req.mode == 1 || req.mode == 2) goto algebra_compare_transform_modes;
         {
             std::string key = compact_input_key(req.expr);
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
@@ -22615,6 +22616,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, "x")) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, "x")) return *pf;
         }
+algebra_compare_transform_modes:
         if(req.mode == 1) {
             // Compare: expr1\\nexpr2
             auto nl = req.expr.find('\n');
@@ -22878,8 +22880,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(req.mode == 5) {
             // Complete square for quadratic ax^2+bx+c.
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
-            if(auto sym = symbolic_complete_square(arena, n, req.expr, "x")) return *sym;
-            auto p = poly_of(arena, n, "x");
+            std::string var = choose_solve_var(arena, n, "");
+            if(auto sym = symbolic_complete_square(arena, n, req.expr, var)) return *sym;
+            auto p = poly_of(arena, n, var);
             if(!p || !p->ok || is_zero(p->a2)) {
                 std::string key = compact_input_key(req.expr);
                 if(key.find("asin(") != std::string::npos || key.find("arcsin(") != std::string::npos ||
@@ -22896,7 +22899,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return {
                     "1. Start with " + format_expr(arena, n) + ".",
                     "2. Complete square applies to ax^2+bx+c.",
-                    "3. This is not a quadratic in x; use factor/substitution first if possible.",
+                    "3. This is not a quadratic in " + var + "; use factor/substitution first if possible.",
                     "Answer: " + format_expr(arena, n),
                 };
             }
@@ -22913,7 +22916,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             Rational frac = r_div(b2, foura);
             Rational k = r_add(c, r_neg(frac));
 
-            NodeId x = casio::sym(arena, "x");
+            NodeId x = casio::sym(arena, var);
             NodeId hnode = casio::num(arena, h.num, h.den);
             NodeId knode = casio::num(arena, k.num, k.den);
             NodeId inside = casio::add(arena, {x, hnode});
@@ -22928,7 +22931,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     NodeId abs_k = casio::num(arena, std::llabs(k.num), k.den);
                     tail = (k.num < 0 ? " - " : " + ") + format_expr(arena, abs_k);
                 }
-                ans = (is_zero(r_sub(a, Rational{1, 1})) ? "" : format_expr(arena, anode) + "*") + "(x + 0)^2" + tail;
+                ans = (is_zero(r_sub(a, Rational{1, 1})) ? "" : format_expr(arena, anode) + "*") + "(" + var + " + 0)^2" + tail;
             }
             return {
                 format_expr(arena, n),
@@ -23035,7 +23038,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "4. y = " + ans + ".",
                 "5. Answer: f^-1(x) = " + ans,
             };
-            if(!domain_text.empty()) out.push_back("6. Given domain: " + domain_text + ".");
+            if(auto rp = ratpoly_of_node(arena, n, "x"); rp.ok && is_degree_at_most_one(rp.num) &&
+               is_degree_at_most_one(rp.den) && !is_zero(rp.den.a1)) {
+                out.push_back("Domain: x != " + format_rat(arena, r_div(rp.num.a1, rp.den.a1)));
+            }
+            if(!domain_text.empty()) out.push_back("Given domain: " + domain_text + ".");
             return out;
         }
         if(req.mode == 9) {
