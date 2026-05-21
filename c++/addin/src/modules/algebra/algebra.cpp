@@ -8512,6 +8512,187 @@ static std::optional<std::string> outer_abs_arg(std::string const &s)
     return s.substr(4, s.size() - 5);
 }
 
+struct AbsPiece
+{
+    std::string arg;
+    Rational root;
+    double value = 0.0;
+};
+
+static std::vector<std::string> collect_abs_args_key(std::string const &s)
+{
+    std::vector<std::string> out;
+    for(std::size_t i = 0; (i = s.find("abs(", i)) != std::string::npos;) {
+        int depth = 1;
+        std::size_t j = i + 4;
+        for(; j < s.size(); ++j) {
+            if(s[j] == '(') ++depth;
+            else if(s[j] == ')' && --depth == 0) break;
+        }
+        if(j >= s.size()) break;
+        std::string arg = s.substr(i + 4, j - i - 4);
+        if(std::find(out.begin(), out.end(), arg) == out.end()) out.push_back(arg);
+        i = j + 1;
+    }
+    return out;
+}
+
+static void replace_abs_arg_all(std::string &s, std::string const &arg, std::string const &repl)
+{
+    std::string needle = "abs(" + arg + ")";
+    for(std::size_t p = 0; (p = s.find(needle, p)) != std::string::npos;) {
+        s.replace(p, needle.size(), repl);
+        p += repl.size();
+    }
+}
+
+static std::string explicit_mul_for_piecewise(std::string const &s)
+{
+    std::string out;
+    out.reserve(s.size() + 8);
+    auto left = [](char c) { return std::isdigit((unsigned char)c) || c == 'x' || c == ')'; };
+    auto right = [](char c) { return c == '(' || c == 'x'; };
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        if(i && left(s[i - 1]) && right(s[i])) out.push_back('*');
+        out.push_back(s[i]);
+    }
+    return out;
+}
+
+static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_route(
+    Arena &a, std::string const &op, std::string const &lhs, std::string const &rhs)
+{
+    auto args = collect_abs_args_key(lhs + "+" + rhs);
+    if(args.empty() || args.size() > 3) return std::nullopt;
+    std::vector<AbsPiece> pieces;
+    for(auto const &arg : args) {
+        NodeId n = casio::parse_expr(a, arg);
+        auto p = poly_any_of(a, n, "x");
+        if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
+        Rational root = r_div(r_neg(p->c[0]), p->c[1]);
+        pieces.push_back({arg, root, (double)root.num / (double)root.den});
+    }
+    std::sort(pieces.begin(), pieces.end(), [](AbsPiece const &u, AbsPiece const &v) { return u.value < v.value; });
+
+    auto subst = [&](std::string s, double sample) {
+        for(auto const &p : pieces) {
+            bool pos = sample >= p.value;
+            std::string repl = pos ? "(" + p.arg + ")" : "(0-(" + p.arg + "))";
+            replace_abs_arg_all(s, p.arg, repl);
+        }
+        return explicit_mul_for_piecewise(s);
+    };
+    auto ok_sign = [&](double v) {
+        if(!std::isfinite(v)) return false;
+        if(op == ">") return v > 1e-9;
+        if(op == "<") return v < -1e-9;
+        if(op == ">=") return v >= -1e-9;
+        return v <= 1e-9;
+    };
+    auto sample_between = [](std::vector<IneqRoot> const &crit, std::size_t i) {
+        if(crit.empty()) return 0.0;
+        if(i == 0) return crit[0].v - 1.0;
+        if(i == crit.size()) return crit.back().v + 1.0;
+        return 0.5 * (crit[i - 1].v + crit[i].v);
+    };
+
+    std::vector<IneqRoot> crit;
+    for(auto const &p : pieces)
+        crit.push_back({p.value, format_rat_plain(p.root), false, false});
+    std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+    crit.erase(std::unique(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return std::fabs(x.v - y.v) < 1e-9; }), crit.end());
+
+    std::vector<IneqRoot> base_crit = crit;
+    std::size_t break_count = base_crit.size();
+    for(std::size_t i = 0; i <= break_count; ++i) {
+        double sample = sample_between(base_crit, i);
+        std::string sl = subst(lhs, sample), sr = subst(rhs, sample);
+        NodeId L = casio::parse_expr(a, sl);
+        NodeId R = casio::parse_expr(a, sr);
+        auto to_any = [](Poly2 p) {
+            PolyAny out{{p.a0, p.a1, p.a2}, p.ok};
+            trim_poly_any(out);
+            return out;
+        };
+        RatPoly2 rp = ratpoly_of_node(a, sub_node(a, L, R), "x");
+        if(!rp.ok) return std::nullopt;
+        RatAny q{to_any(rp.num), to_any(rp.den)};
+        for(auto z : poly_any_real_roots_ineq(a, q.n)) {
+            z.num = true;
+            crit.push_back(z);
+        }
+        for(auto z : poly_any_real_roots_ineq(a, q.d)) {
+            z.den = true;
+            crit.push_back(z);
+        }
+    }
+    std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+    crit.erase(std::unique(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return std::fabs(x.v - y.v) < 1e-9; }), crit.end());
+
+    auto eval_piece = [&](double x) -> std::optional<double> {
+        try {
+            NodeId L = casio::parse_expr(a, subst(lhs, x));
+            NodeId R = casio::parse_expr(a, subst(rhs, x));
+            auto lv = eval_node(a, L, "x", x), rv = eval_node(a, R, "x", x);
+            if(!lv || !rv) return std::nullopt;
+            return *lv - *rv;
+        } catch(...) {
+            return std::nullopt;
+        }
+    };
+    std::vector<bool> interval_ok(crit.size() + 1, false), point_ok(crit.size(), false);
+    std::vector<std::string> signs;
+    for(std::size_t i = 0; i <= crit.size(); ++i) {
+        double x = sample_between(crit, i);
+        auto v = eval_piece(x);
+        interval_ok[i] = v && ok_sign(*v);
+        std::string lo = i == 0 ? "-inf" : crit[i - 1].text;
+        std::string hi = i == crit.size() ? "inf" : crit[i].text;
+        signs.push_back("(" + lo + "," + hi + "):" + (!v ? "undef" : (*v > 0 ? "+" : (*v < 0 ? "-" : "0"))));
+    }
+    for(std::size_t i = 0; i < crit.size(); ++i) {
+        auto v = eval_piece(crit[i].v);
+        point_ok[i] = v && ok_sign(*v);
+    }
+
+    std::vector<std::string> ans;
+    for(std::size_t i = 0; i <= crit.size();) {
+        if(!interval_ok[i]) {
+            if(i < crit.size() && point_ok[i] && !interval_ok[i + 1])
+                ans.push_back("x = " + crit[i].text);
+            ++i;
+            continue;
+        }
+        std::optional<std::string> lo, hi;
+        bool li = false, ri = false;
+        if(i > 0) {
+            lo = crit[i - 1].text;
+            li = point_ok[i - 1];
+        }
+        while(i < crit.size() && point_ok[i] && interval_ok[i + 1]) ++i;
+        if(i < crit.size()) {
+            hi = crit[i].text;
+            ri = point_ok[i];
+        }
+        if(!lo && !hi) ans.push_back("all real x");
+        else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        ++i;
+    }
+    if(ans.empty()) ans.push_back("no solution");
+
+    std::vector<std::string> out;
+    for(auto const &p : pieces) {
+        std::string r = format_rat_plain(p.root);
+        out.push_back("x < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+        out.push_back("x >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+    }
+    out.push_back("sign: " + join_text(signs, "; "));
+    out.push_back(join_text(ans, " or "));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> rational_inequality_route(Arena &a, std::string expr)
 {
     std::string key = compact_input_key(expr);
@@ -8572,7 +8753,8 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                 }
                 for(std::size_t i = 0; i <= crit.size();) {
                     if(!ok[i]) {
-                        if(i < crit.size() && point_ok[i]) ans.push_back("x = " + crit[i].text);
+                        if(i < crit.size() && point_ok[i] && !ok[i + 1])
+                            ans.push_back("x = " + crit[i].text);
                         ++i;
                         continue;
                     }
@@ -8602,6 +8784,9 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                 };
             }
         }
+    }
+    if(key.find("abs(") != std::string::npos) {
+        if(auto pw = abs_piecewise_linear_inequality_route(a, op, lhs, rhs)) return *pw;
     }
     NodeId L = casio::parse_expr(a, lhs), R = casio::parse_expr(a, rhs);
     auto l = rat_any_of(a, L, "x"), r = rat_any_of(a, R, "x");
@@ -21267,19 +21452,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Square both sides and use sin(t)^2=1-x^2.",
                     },
                     "4*x^2*(1-x^2) = (x+y)^2"
-                );
-            }
-            if(key == "abs(2x+1)+9<4x") {
-                return casio::exam_block(
-                    "absolute value inequality",
-                    {
-                        "Move 9: abs(2x+1) < 4x-9.",
-                        "Need 4x-9 > 0, so x > 9/4.",
-                        "Then -(4x-9) < 2x+1 < 4x-9.",
-                        "Left side gives x>4/3; right side gives x>5/2.",
-                        "Combine with x>9/4.",
-                    },
-                    "x > 5/2"
                 );
             }
         }

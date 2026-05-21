@@ -28,7 +28,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     ("O8 solve sec cos", ["--trig", "2+cos(6*x)*sec(2*x)=0,x,0,360,8,method=bounded"], ["cos(6x)=4cos(2x)^3-3cos(2x)", "x = [30, 60, 120, 150, 210, 240, 300, 330]"]),
     ("O10 implicit tangent", ["--derive", "y*(x-y)=log(y),x,method=implicit"], ["dy/dx", "At y=e", "e*(x-y)=1"]),
     ("O11 param cartesian", ["--alg", "param_cartesian(cos(t),sin(t)-tan(t),t)"], ["x=cos(t)", "y^2 = (x - 1)^2*(1 - x^2)/x^2"]),
-    ("P3 abs inequality", ["--alg", "abs(2*x+1)+9<4*x"], ["x > 5/2"]),
+    ("P3 abs inequality", ["--alg", "abs(2*x+1)+9<4*x"], ["x > 5"]),
     ("P4 separable DE", ["--alg", "de_solve(110*dH/dt=12-H,H(0)=1)"], ["dH/(12-H) = dt/110", "H = 12 - 11*e^(-t/110)"]),
     ("P7 fourth-root integral", ["--int", "defint(e^(x^(1/4))/sqrt(x),x,0,1)"], ["u=x^(1/4)", "Integral(4u*e^u)", "4"]),
     ("P8 binomial shifted", ["--alg", "binomial((1/4-x)^(-3/2),x,0,3)"], ["8", "48*x", "240*x^2", "1120*x^3", "Valid for abs(x) < 1/4"]),
