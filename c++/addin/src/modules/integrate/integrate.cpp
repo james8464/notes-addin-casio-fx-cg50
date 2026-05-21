@@ -14330,6 +14330,15 @@ static std::optional<NodeId> integrate_linear_over_sqrt_quadratic(Arena &a, Node
 
     Rational A = r_div(n->a1, r_mul(Rational{2, 1}, d->a2));
     Rational B = r_sub(n->a0, r_mul(A, d->a1));
+    if(r_zero(A) && !r_zero(B) && r_zero(d->a1) && r_sign(d->a0) > 0) {
+        NodeId root_a = sqrt_rat(a, d->a2);
+        NodeId u = casio::simplify(a, casio::mul(a, {sqrt_rat(a, r_div(d->a2, d->a0)), casio::sym(a, var)}));
+        std::string sc = format_expr_human(a, casio::div(a, a.num(B), root_a));
+        steps.push_back("Let u=" + format_expr_human(a, u) + ".");
+        steps.push_back("Integral becomes " + (sc == "1" ? "" : sc + "*") + "Int(1/sqrt(u^2+1)) du.");
+        steps.push_back("Int(1/sqrt(u^2+1)) du=asinh(u).");
+        return casio::simplify(a, casio::mul(a, {casio::div(a, a.num(B), root_a), casio::fn(a, "asinh", u)}));
+    }
     std::vector<NodeId> terms;
     if(!r_zero(A)) terms.push_back(mul_coeff(a, r_mul(Rational{2, 1}, A), casio::fn(a, "sqrt", den.a)));
     if(!r_zero(B)) terms.push_back(mul_coeff(a, B, integrate_one_over_sqrt_quadratic(a, den.a, *d, var)));
@@ -17417,6 +17426,11 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 Node const &base = a.get(an.a);
                 if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return arg;
             }
+        }
+        if(x.fkind == FnKind::Asinh) {
+            if(auto r = as_num(a, arg); r && r_zero(*r)) return a.num(Rational{0, 1});
+            NodeId rad = simplify_known_endpoint_values(a, casio::add(a, {casio::power(a, arg, a.num(Rational{2, 1})), a.num(Rational{1, 1})}));
+            return casio::fn(a, "log", casio::add(a, {arg, casio::fn(a, "sqrt", rad)}));
         }
         if(x.fkind == FnKind::Exp) {
             auto exp_of_log_power = [&](NodeId v) -> std::optional<NodeId> {

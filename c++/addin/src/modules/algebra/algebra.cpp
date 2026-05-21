@@ -6744,6 +6744,50 @@ static void append_rejected_by_domain(std::vector<std::string> &out,
     append_rejected_roots(out, var, raw, valid, "domain");
 }
 
+static std::optional<std::vector<std::string>> tanh_log_sqrt_linear_route(
+    Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
+{
+    auto run = [&](NodeId lin_side, NodeId tanh_side) -> std::optional<std::vector<std::string>> {
+        auto lp = poly_of(a, lin_side, var);
+        if(!lp || !lp->ok || !is_zero(lp->a2) || !is_zero(lp->a0) || is_zero(lp->a1)) return std::nullopt;
+        Node const &tn = a.get(tanh_side);
+        if(tn.kind != NodeKind::Fn || tn.fkind != FnKind::Tanh) return std::nullopt;
+        Node const &ln = a.get(tn.a);
+        if(ln.kind != NodeKind::Fn || ln.fkind != FnKind::Log) return std::nullopt;
+        Node const &rt = a.get(ln.a);
+        if(rt.kind != NodeKind::Fn || rt.fkind != FnKind::Sqrt) return std::nullopt;
+        auto rp = poly_of(a, rt.a, var);
+        if(!rp || !rp->ok || !is_zero(rp->a2) || is_zero(rp->a1)) return std::nullopt;
+
+        Poly2 top{Rational{0, 1}, lp->a1, Rational{1, 1}, true};
+        Poly2 bot{Rational{0, 1}, r_neg(lp->a1), Rational{1, 1}, true};
+        Poly2 q = sub_poly(top, mul_poly(bot, *rp));
+        if(q.a2.num < 0 || (is_zero(q.a2) && q.a1.num < 0)) q = neg_poly(q);
+        std::vector<std::string> raw = solve_poly2(a, q, var), valid;
+        for(auto const &s : raw) {
+            auto v = solution_line_value(a, s);
+            auto rv = v ? eval_node(a, rt.a, var, *v) : std::optional<double>{};
+            if(v && rv && std::isfinite(*rv) && *rv > 0 && std::fabs((double)lp->a1.num * *v / (double)lp->a1.den) < 1)
+                valid.push_back(s);
+        }
+
+        NodeId vx = casio::mul(a, {a.num(lp->a1), a.sym(var)});
+        NodeId topn = casio::simplify(a, casio::add(a, {one_node(a), vx}));
+        NodeId botn = casio::simplify(a, casio::add(a, {one_node(a), neg_node(a, vx)}));
+        NodeId frac = casio::div(a, topn, botn);
+        out.push_back("atanh(" + format_expr(a, lin_side) + ") = ln(sqrt(" + format_expr(a, rt.a) + "))");
+        out.push_back("1/2*ln((" + format_expr(a, topn) + ")/(" + format_expr(a, botn) + ")) = 1/2*ln(" + format_expr(a, rt.a) + ")");
+        out.push_back(format_expr(a, frac) + " = " + format_expr(a, rt.a));
+        out.push_back(format_expr(a, poly2_to_node(a, q, var)) + " = 0");
+        append_rejected_by_domain(out, var, raw, valid);
+        for(auto const &s : valid) out.push_back(s);
+        out.push_back(valid.empty() ? var + " = []" : solution_list_line(var, valid));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static void append_kept_denominator_check(Arena &a,
                                           std::vector<std::string> &out,
                                           std::string const &var,
@@ -24465,6 +24509,7 @@ algebra_compare_transform_modes:
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
 
         if(auto hcosh = hyperbolic_cosh_square_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh;
+        if(auto ths = tanh_log_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var, out)) return *ths;
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;

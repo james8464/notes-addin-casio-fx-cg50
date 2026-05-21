@@ -331,6 +331,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Err: second-order DE unsupported", "No elementary primitive"],
     ),
     (
+        "alg",
+        "solve(2*x=tanh(ln(sqrt(2-3*x))),x)",
+        ["atanh(2*x) = ln(sqrt(- 3*x + 2))", "6*x^2 - 9*x + 1 = 0", "rejected by domain", "x = [3/4 - sqrt(57)/12]"],
+        ["x = []", "log_b(A)-log_b(B)"],
+    ),
+    (
+        "int",
+        "mean_value(1/sqrt(4*x^2+9),x,0,3)",
+        ["u = 2/3*x", "Int(1/sqrt(u^2+1)) du = asinh(u)", "1/6*ln(sqrt(5) + 2)"],
+        ["No elementary primitive", "1*Int"],
+    ),
+    (
         "int",
         "de_solve(d2y/dx2-4*dy/dx+4*y=0)",
         ["m^2 - 4*m + 4 = 0", "m = 2 repeated", "y = (A + B*x)*e^(2*x)"],
