@@ -1755,7 +1755,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(y*sec(pi/6)^2=(8-2*ln(2))+2*ln(sec(pi/6)),y)",
-        ["4/3*y + 2*ln(3)/2 - 8 = 0", "y = - 3/2*ln(3)/2 + 6"],
+        ["4/3*y + 2*ln(3)/2 - 8 = 0", "y = - 3/4*ln(3) + 6"],
         ["ERR:"],
     ),
     (

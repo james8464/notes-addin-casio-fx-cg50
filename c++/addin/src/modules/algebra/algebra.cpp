@@ -10299,31 +10299,35 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
                 roots_shown = true;
                 out.insert(out.end(), tpf->begin(), tpf->end());
                 std::string prefix = vars[other] + " = ";
+                std::vector<std::string> listed_roots;
                 for(auto const &line : *tpf) {
                     if(line.rfind(prefix, 0) != 0) continue;
                     std::string rhs = trim_text(sol_rhs(line));
-                    if(rhs.empty() || rhs.find("~=") != std::string::npos) continue;
+                    if(rhs.empty() || rhs.find("~=") != std::string::npos || rhs.find('i') != std::string::npos) continue;
                     if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
                         for(auto const &part : split_csv(rhs.substr(1, rhs.size() - 2)))
-                            roots.push_back(prefix + trim_text(part));
+                            if(part.find('i') == std::string::npos) listed_roots.push_back(prefix + trim_text(part));
                     }
                     else roots.push_back(line);
                 }
+                if(roots.empty()) roots = listed_roots;
             }
             else if(auto pf = poly_factor_solve_route(a, reduced, vars[other], std::nullopt, std::nullopt)) {
                 roots_shown = true;
                 out.insert(out.end(), pf->begin(), pf->end());
                 std::string prefix = vars[other] + " = ";
+                std::vector<std::string> listed_roots;
                 for(auto const &line : *pf) {
                     if(line.rfind(prefix, 0) != 0) continue;
                     std::string rhs = sol_rhs(line);
-                    if(rhs.empty() || rhs.find("~=") != std::string::npos) continue;
+                    if(rhs.empty() || rhs.find("~=") != std::string::npos || rhs.find('i') != std::string::npos) continue;
                     if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
                         for(auto const &part : split_csv(rhs.substr(1, rhs.size() - 2)))
-                            roots.push_back(prefix + trim_text(part));
+                            if(part.find('i') == std::string::npos) listed_roots.push_back(prefix + trim_text(part));
                     }
                     else roots.push_back(line);
                 }
+                if(roots.empty()) roots = listed_roots;
             }
             else continue;
 

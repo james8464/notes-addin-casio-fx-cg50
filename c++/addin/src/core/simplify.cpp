@@ -677,6 +677,26 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
         else out.push_back(s);
     }
 
+    for(std::size_t i = 0; i < out.size(); ++i) {
+        Node const &n = a.get(out[i]);
+        if(n.kind != NodeKind::Div) continue;
+        for(std::size_t j = 0; j < out.size(); ++j) {
+            if(i == j || !same_tree(a, n.b, out[j])) continue;
+            NodeId top = n.a;
+            if(i > j) {
+                out.erase(out.begin() + i);
+                out.erase(out.begin() + j);
+            }
+            else {
+                out.erase(out.begin() + j);
+                out.erase(out.begin() + i);
+            }
+            out.push_back(top);
+            i = 0;
+            break;
+        }
+    }
+
     // Cancel simple symbolic inverses: x*(1/x) and x*x^-1.
     // This is intentionally narrow but fixes common derivative forms (eg x*(1/x)).
     {

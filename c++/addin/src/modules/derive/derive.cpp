@@ -3213,16 +3213,53 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "d2y/dx2 = -a^2/y^3"
                     );
                 }
-                casio::ExamPrelude pre;
-                pre.raw = expr;
-                pre.norm = casio::normalize_text(expr);
-                pre.parsed = expr;
-                pre.simplified = expr;
+                if(auto eq = casio::parse_equation(arena, expr)) {
+                    NodeId f = casio::simplify(arena, casio::add(arena, {eq->lhs, casio::neg(arena, eq->rhs)}));
+                    NodeId fx = casio::simplify(arena, diff(arena, f, var));
+                    NodeId fy = casio::simplify(arena, diff(arena, f, "y"));
+                    NodeId p = cancel_common_int_div(arena, casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy)));
+                    NodeId fxx = casio::simplify(arena, diff(arena, fx, var));
+                    NodeId fxy = casio::simplify(arena, diff(arena, fx, "y"));
+                    NodeId fyy = casio::simplify(arena, diff(arena, fy, "y"));
+                    NodeId d2 = cancel_common_int_div(
+                        arena,
+                        casio::simplify(
+                            arena,
+                            casio::div(
+                                arena,
+                                casio::neg(
+                                    arena,
+                                    casio::add(arena, {fxx, casio::mul(arena, {casio::num(arena, 2), fxy, p}), casio::mul(arena, {fyy, p, p})})
+                                ),
+                                fy
+                            )
+                        )
+                    );
+                    std::string sub_line;
+                    if(auto rel = isolate_fn(arena, f, FnKind::Exp); rel && depends_on(arena, rel->root, "y")) {
+                        std::string key = compact_math_key(format_expr_human(arena, rel->root));
+                        p = cancel_common_int_div(arena, casio::simplify(arena, replace_by_key(arena, p, key, rel->repl)));
+                        d2 = cancel_common_int_div(arena, casio::simplify(arena, replace_by_key(arena, d2, key, rel->repl)));
+                        sub_line = clean_math_text(format_expr_human(arena, rel->root)) + " = " +
+                                   clean_math_text(format_expr_human(arena, rel->repl)) + ".";
+                    }
+                    std::string d1s = clean_math_text(format_expr_human(arena, p));
+                    std::string d2s = clean_math_text(format_expr_human(arena, d2));
+                    std::vector<std::string> steps{
+                        "F_x = " + clean_math_text(format_expr_human(arena, fx)) + ".",
+                        "F_y = " + clean_math_text(format_expr_human(arena, fy)) + ".",
+                        "dy/d" + var + " = -F_x/F_y = " + d1s + ".",
+                        "d2y/d" + var + "2 = -(F_xx+2*F_xy*dy/d" + var + "+F_yy*(dy/d" + var + ")^2)/F_y.",
+                    };
+                    if(!sub_line.empty()) steps.push_back(sub_line);
+                    return casio::exam_block(
+                        "implicit second derivative",
+                        steps,
+                        "d2y/d" + var + "2 = " + d2s
+                    );
+                }
                 return casio::exam_fallback(
-                    "implicit second derivative",
-                    pre,
-                    "",
-                    "d2y/dx2 = differentiate dy/dx again after substituting dy/dx"
+                    "implicit second derivative", {expr, casio::normalize_text(expr), expr, expr}, "", "d2y/dx2"
                 );
             }
 
@@ -4051,6 +4088,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 NodeId base = cleared_ans ? *cleared_ans : ans;
                 NodeId plain = cancel_common_int_div(arena, casio::simplify(arena, replace_by_key(arena, base, key, sr.repl)));
                 NodeId cleared = plain;
+                bool cleared_nested_den = false;
                 Node const &pn = arena.get(plain);
                 if(pn.kind == NodeKind::Div) {
                     std::vector<NodeId> sdens;
@@ -4063,11 +4101,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                             casio::div(arena, expand_small(arena, clear_denominators_expression(arena, pn.a, sdens)),
                                        expand_small(arena, clear_denominators_expression(arena, pn.b, sdens)))
                         );
+                        cleared_nested_den = true;
                     }
                 }
                 std::string ptxt = clean_math_text(format_expr_human(arena, plain));
                 std::string ctxt = clean_math_text(format_expr_human(arena, cleared));
-                sqrt_ans = (ctxt.size() < ptxt.size()) ? cleared : plain;
+                sqrt_ans = cleared_nested_den || ctxt.size() < ptxt.size() ? cleared : plain;
                 sqrt_line = clean_math_text(format_expr_human(arena, sr.root)) + " = " +
                             clean_math_text(format_expr_human(arena, sr.repl));
             }
