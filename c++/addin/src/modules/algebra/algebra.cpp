@@ -8580,6 +8580,8 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
     Arena &a, std::string const &expr, std::string const &var)
 {
     std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0) return std::nullopt;
+    if(split_top_key(key, ',').size() > 1) return std::nullopt;
     std::size_t pos = 0;
     if(!find_top_equal(key, pos)) return std::nullopt;
     std::string lhs = key.substr(0, pos), rhs = key.substr(pos + 1);
@@ -8954,6 +8956,124 @@ static std::optional<std::vector<std::string>> outer_abs_power_affine_inequality
         if(!ns.empty()) out.push_back("n integer => n = " + join_text(ns, ", "));
     }
     return out;
+}
+
+static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_route(Arena &a, std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0) return std::nullopt;
+    if(split_top_key(key, ',').size() > 1) return std::nullopt;
+    std::size_t pos = 0;
+    std::string op;
+    if(!find_top_rel(key, pos, op)) {
+        if(!find_top_equal(key, pos)) return std::nullopt;
+        op = "=";
+    }
+    std::string lhs = key.substr(0, pos), rhs = key.substr(pos + op.size());
+    std::optional<std::string> absarg = outer_abs_arg(lhs);
+    std::string target = rhs;
+    if(!absarg) {
+        absarg = outer_abs_arg(rhs);
+        target = lhs;
+    }
+    if(!absarg) return std::nullopt;
+    NodeId body = casio::parse_expr(a, *absarg);
+    NodeId Cnode = casio::parse_expr(a, target);
+    auto C = as_num(a, Cnode);
+    if(!C || C->num < 0) return std::nullopt;
+    auto scaled_log = [&](NodeId n) -> std::optional<std::pair<Rational, NodeId>> {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) return std::make_pair(Rational{1, 1}, x.a);
+        if(x.kind != NodeKind::Mul) return std::nullopt;
+        Rational k{1, 1};
+        NodeId arg = 0;
+        for(NodeId kid : x.kids) {
+            Node const &q = a.get(kid);
+            if(auto r = as_num(a, kid)) k = r_mul(k, *r);
+            else if(q.kind == NodeKind::Fn && q.fkind == FnKind::Log && !arg) arg = q.a;
+            else return std::nullopt;
+        }
+        if(!arg || is_zero(k)) return std::nullopt;
+        return std::make_pair(k, arg);
+    };
+    auto sl = scaled_log(body);
+    if(!sl) return std::nullopt;
+    Rational kabs = sl->first.num < 0 ? r_neg(sl->first) : sl->first;
+    Rational a0 = r_div(*C, kabs);
+    std::vector<std::string> vars;
+    collect_symbols(a, sl->second, vars);
+    if(vars.size() != 1) return std::nullopt;
+    std::string var = vars[0];
+    auto lin = symbolic_linear_parts(a, sl->second, var);
+    if(!lin) return std::nullopt;
+    auto mv = eval_node_env(a, lin->m, {});
+    if(!mv || std::fabs(*mv) < 1e-12) return std::nullopt;
+    auto exp_node = [&](Rational r) -> NodeId {
+        if(is_zero(r)) return one_node(a);
+        if(r.num == r.den) return casio::constant_e(a);
+        return casio::power(a, casio::constant_e(a), a.num(r));
+    };
+    auto x_at = [&](Rational r) -> NodeId {
+        return exact_eval_simplify(a, casio::div(a, sub_node(a, exp_node(r), lin->c), lin->m));
+    };
+    NodeId xneg = x_at(r_neg(a0));
+    NodeId xpos = x_at(a0);
+    NodeId xdom = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
+    std::string body_s = format_expr(a, body);
+    std::string arg_s = format_expr(a, sl->second);
+    std::string c_s = format_expr(a, Cnode);
+    std::string a_s = format_rat_plain(a0);
+    std::string eneg = format_expr(a, exp_node(r_neg(a0)));
+    std::string epos = format_expr(a, exp_node(a0));
+    std::string xneg_s = format_expr(a, xneg);
+    std::string xpos_s = format_expr(a, xpos);
+    std::string xdom_s = format_expr(a, xdom);
+    if(op == "=") {
+        std::vector<std::pair<double, std::string>> sols;
+        if(auto v = eval_node_env(a, xneg, {})) sols.push_back({*v, xneg_s});
+        if(auto v = eval_node_env(a, xpos, {})) sols.push_back({*v, xpos_s});
+        std::sort(sols.begin(), sols.end(), [](auto const &u, auto const &v) { return u.first < v.first; });
+        std::vector<std::string> xs;
+        for(auto const &s : sols) xs.push_back(s.second);
+        return std::vector<std::string>{
+            "abs(" + body_s + ") = " + c_s,
+            "Domain: " + arg_s + " > 0",
+            "abs(ln(" + arg_s + ")) = " + a_s,
+            "ln(" + arg_s + ") = " + a_s + " or ln(" + arg_s + ") = -" + a_s,
+            arg_s + " = " + epos + " or " + arg_s + " = " + eneg,
+            solution_list_line(var, xs),
+        };
+    }
+    bool inside = op == "<" || op == "<=";
+    std::string le = op.size() == 2 ? "<=" : "<";
+    std::string ge = op.size() == 2 ? ">=" : ">";
+    double vneg = eval_node_env(a, xneg, {}).value_or(0.0);
+    double vpos = eval_node_env(a, xpos, {}).value_or(0.0);
+    if(vneg > vpos) {
+        std::swap(vneg, vpos);
+        std::swap(xneg_s, xpos_s);
+    }
+    bool domain_right = *mv > 0.0;
+    std::string ans;
+    if(inside) {
+        ans = xneg_s + " " + le + " " + var + " " + le + " " + xpos_s;
+    }
+    else if(domain_right) {
+        ans = xdom_s + " < " + var + " " + le + " " + xneg_s + " or " + var + " " + ge + " " + xpos_s;
+    }
+    else {
+        ans = var + " " + le + " " + xneg_s + " or " + xpos_s + " " + ge + " " + var + " < " + xdom_s;
+    }
+    return std::vector<std::string>{
+        "abs(" + body_s + ") " + op + " " + c_s,
+        "Domain: " + arg_s + " > 0",
+        "abs(ln(" + arg_s + ")) " + op + " " + a_s,
+        inside ? "-" + a_s + " " + le + " ln(" + arg_s + ") " + le + " " + a_s
+               : "ln(" + arg_s + ") " + ge + " " + a_s + " or ln(" + arg_s + ") " + le + " -" + a_s,
+        inside ? eneg + " " + le + " " + arg_s + " " + le + " " + epos
+               : arg_s + " " + ge + " " + epos + " or " + arg_s + " " + le + " " + eneg,
+        ans,
+    };
 }
 
 static std::optional<std::vector<std::string>> outer_abs_rational_inequality_route(
@@ -21800,8 +21920,37 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     try {
         {
             std::string key = compact_input_key(req.expr);
+            if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
+                Request inner = req;
+                inner.mode = 6;
+                inner.expr = key.substr(6, key.size() - 7);
+                return run(arena, inner);
+            }
+            if(req.mode == 6) {
+                auto parts = split_top_key(key, ',');
+                std::size_t eqpos = 0;
+                if(parts.size() >= 2 && parts[0].find("abs(") != std::string::npos && find_top_equal(parts[0], eqpos)) {
+                    if(auto eq = casio::parse_equation(arena, parts[0])) {
+                        NodeId lhs = casio::simplify(arena, eq->lhs);
+                        NodeId rhs = casio::simplify(arena, eq->rhs);
+                        NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
+                        if(auto aa = abs_linear_equation_route(arena, rearr, parts[1])) return *aa;
+                    }
+                }
+            }
+        }
+        {
+            std::string key = compact_input_key(req.expr);
             std::size_t relpos = 0;
             std::string relop;
+            auto top_parts = split_top_key(key, ',');
+            if(top_parts.size() >= 2) {
+                if(auto al = abs_scaled_log_linear_relation_route(arena, top_parts[0])) return *al;
+            }
+            if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
+                if(auto ri = rational_inequality_route(arena, top_parts[0])) return *ri;
+            }
+            if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
             if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
                 if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
             }
