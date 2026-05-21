@@ -16953,6 +16953,89 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
     return out;
 }
 
+static std::optional<std::vector<std::string>> abs_symbolic_linear_equation_route(Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    NodeId arg = 0, other = 0, abs_node = 0;
+    auto pick = [&](NodeId u, NodeId v) {
+        Node const &n = a.get(u);
+        if(n.kind != NodeKind::Fn || n.fkind != FnKind::Abs || contains_fn_kind(a, v, FnKind::Abs)) return false;
+        arg = n.a;
+        other = v;
+        abs_node = u;
+        return contains_symbol(a, arg, var);
+    };
+    if(!pick(lhs, rhs) && !pick(rhs, lhs)) return std::nullopt;
+    if(!symbolic_linear_parts(a, arg, var) || !symbolic_linear_parts(a, other, var)) return std::nullopt;
+
+    std::string at = format_expr(a, arg), ot = format_expr(a, other);
+    std::vector<std::string> out{format_expr(a, abs_node) + " = " + ot};
+    std::vector<std::string> sols;
+    auto branch = [&](NodeId side, std::string const &cond, bool positive_side) -> bool {
+        NodeId residual = exact_eval_simplify(a, sub_node(a, side, other));
+        auto lines = symbolic_linear_solve_route(a, residual, var);
+        std::vector<std::string> bs;
+        bool numeric_condition = !has_other_symbols(a, arg, var);
+        if(lines) {
+            for(auto const &line : *lines)
+                if(line.rfind(var + " = ", 0) == 0) bs.push_back(line);
+        }
+        if(bs.empty()) {
+            auto rp = ratpoly_of_node(a, residual, var);
+            if(!rp.ok || !is_zero(rp.num.a2)) return false;
+            bs = solve_poly2(a, rp.num, var);
+            std::vector<std::string> kept;
+            for(auto const &s : bs) {
+                auto xv = solution_line_value(a, s);
+                if(numeric_condition && xv) {
+                    auto av = eval_node(a, arg, var, *xv);
+                    if(av && (positive_side ? *av < -1e-8 : *av >= -1e-8)) continue;
+                }
+                kept.push_back(s);
+            }
+            bs = kept;
+        }
+        if(bs.empty()) return false;
+        out.push_back(cond + " => " + (positive_side ? at : "-(" + at + ")") + " = " + ot);
+        out.push_back(format_expr(a, residual) + " = 0");
+        for(auto const &sol : bs) {
+            out.push_back(sol);
+            if(!numeric_condition) {
+                std::string pre = var + " = ";
+                if(sol.rfind(pre, 0) == 0) {
+                    NodeId sv = casio::parse_expr(a, sol.substr(pre.size()));
+                    NodeId cv = exact_eval_simplify(a, clone_with_substitution(a, arg, var, sv));
+                    out.push_back(format_expr(a, cv) + (positive_side ? " >= 0" : " < 0"));
+                }
+            }
+            if(std::find(sols.begin(), sols.end(), sol) == sols.end()) sols.push_back(sol);
+        }
+        return true;
+    };
+    bool ok1 = branch(arg, at + " >= 0", true);
+    bool ok2 = branch(neg_node(a, arg), at + " < 0", false);
+    if(!ok1 && !ok2) return std::nullopt;
+    sort_solution_lines(a, sols);
+    out.push_back(solution_list_line(var, sols));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> symbolic_linear_coeff_simplify_route(Arena &a, NodeId n, std::string const &var)
+{
+    std::string vname = var;
+    if(!contains_symbol(a, n, vname)) {
+        std::vector<std::string> syms;
+        collect_symbols(a, n, syms);
+        if(syms.size() != 1) return std::nullopt;
+        vname = syms[0];
+    }
+    auto lin = symbolic_linear_parts(a, n, vname);
+    if(!lin || contains_symbol(a, lin->m, vname) || contains_symbol(a, lin->c, vname)) return std::nullopt;
+    NodeId v = casio::sym(a, vname);
+    NodeId rebuilt = exact_eval_simplify(a, casio::add(a, {casio::mul(a, {lin->m, v}), lin->c}));
+    if(casio::same_by_sig(a, rebuilt, n)) return std::nullopt;
+    return std::vector<std::string>{format_expr(a, n), "= " + format_expr(a, rebuilt), format_expr(a, rebuilt)};
+}
+
 static std::optional<std::vector<std::string>> symbolic_product_roots_route(Arena &a,
                                                                             NodeId rearr,
                                                                             std::string const &var,
@@ -23923,6 +24006,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             if(req.method == "collect" || req.method == "canonical") {
+                if(auto slc = symbolic_linear_coeff_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                    return *slc;
                 if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, choose_solve_var(arena, parsed, "x")))
                     return *rat_cancel;
                 if(auto rat_sum = rational_sum_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
@@ -23962,6 +24047,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return *rat_cancel;
             if(auto rat_sum = rational_sum_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
                 return *rat_sum;
+            if(auto slc = symbolic_linear_coeff_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                return *slc;
             if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {
@@ -24063,6 +24150,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
