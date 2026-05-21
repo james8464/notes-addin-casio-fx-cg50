@@ -823,6 +823,12 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(auto r = exp_arg(rhs))
                 return exact_eval_simplify(a, casio::power(a, casio::constant_e(a), casio::add(a, {*l, casio::neg(a, *r)})));
         }
+        Node const &den = a.get(rhs);
+        if(den.kind == NodeKind::Div) {
+            Node const &top = a.get(den.a);
+            if(top.kind == NodeKind::Num && top.num.num == top.num.den)
+                return exact_eval_simplify(a, casio::mul(a, {lhs, den.b}));
+        }
         if(auto ln = strip_whole_negative(a, lhs)) {
             if(auto rd = strip_whole_negative(a, rhs))
                 return casio::simplify(a, casio::div(a, *ln, *rd));
@@ -3634,16 +3640,19 @@ static CompareTerm parse_compare_term(Arena &a, std::string const &text)
 {
     if(auto eq = casio::parse_equation(a, text)) {
         CompareTerm t;
-        t.lhs = exact_eval_simplify(a, casio::simplify(a, eq->lhs));
-        t.rhs = exact_eval_simplify(a, casio::simplify(a, eq->rhs));
+        NodeId raw_lhs = casio::simplify(a, eq->lhs);
+        NodeId raw_rhs = casio::simplify(a, eq->rhs);
+        t.lhs = exact_eval_simplify(a, raw_lhs);
+        t.rhs = exact_eval_simplify(a, raw_rhs);
         t.residual = sub_node(a, t.lhs, t.rhs);
-        t.domain = t.residual;
+        t.domain = sub_node(a, raw_lhs, raw_rhs);
         t.equation = true;
         return t;
     }
     NodeId raw = casio::parse_expr(a, text);
-    NodeId n = exact_eval_simplify(a, casio::simplify(a, raw));
-    return CompareTerm{n, zero_node(a), n, n, false};
+    NodeId raw_s = casio::simplify(a, raw);
+    NodeId n = exact_eval_simplify(a, raw_s);
+    return CompareTerm{n, zero_node(a), n, raw_s, false};
 }
 
 static std::string relation_text(Arena &a, CompareTerm const &t)
@@ -4391,6 +4400,13 @@ static bool relation_equivalent(Arena &a, CompareTerm const &u, CompareTerm cons
     return numeric_equation_solution_sets_same(a, u.residual, v.residual);
 }
 
+static std::string compare_diff_text(Arena &a, NodeId lhs, NodeId rhs)
+{
+    NodeId diff = sub_node(a, lhs, rhs);
+    if(casio::same_by_sig(a, diff, zero_node(a)) || numeric_same(a, lhs, rhs)) return "0";
+    return format_expr(a, diff);
+}
+
 static std::string sol_rhs(std::string const &line)
 {
     auto pos = line.find('=');
@@ -4517,7 +4533,17 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
         if(lo && *value < *lo - 1e-9) continue;
         if(hi && *value > *hi + 1e-9) continue;
         auto residual = eval_node(a, residual_expr, var, *value);
-        if(!residual || !std::isfinite(*residual)) continue;
+        if(!residual || !std::isfinite(*residual)) {
+            try {
+                NodeId rhs = casio::parse_expr(a, sol_rhs(s));
+                NodeId sub = exact_eval_simplify(a, clone_with_substitution(a, residual_expr, var, rhs));
+                auto exact = eval_node_env(a, sub, {});
+                if(exact && std::isfinite(*exact) && std::fabs(*exact) <= 1e-9) kept.push_back(s);
+                else if(!lo && !hi && has_symbols(a, sub)) kept.push_back(s);
+            }
+            catch(...) {}
+            continue;
+        }
         if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) kept.push_back(s);
     }
     std::vector<std::string> unique;
@@ -23572,8 +23598,14 @@ algebra_compare_transform_modes:
             if(nl == std::string::npos) return {"Err: need E1 and E2."};
             std::string e1 = req.expr.substr(0, nl);
             std::string e2 = req.expr.substr(nl + 1);
-            CompareTerm t1 = parse_compare_term(arena, e1);
-            CompareTerm t2 = parse_compare_term(arena, e2);
+            CompareTerm t1, t2;
+            try {
+                t1 = parse_compare_term(arena, e1);
+                t2 = parse_compare_term(arena, e2);
+            }
+            catch(...) {
+                return {trim_text(e1), trim_text(e2), "not equivalent"};
+            }
             bool eq = relation_equivalent(arena, t1, t2);
             std::vector<std::string> out;
             if(t1.equation || t2.equation) {
@@ -23581,12 +23613,12 @@ algebra_compare_transform_modes:
                 else out.push_back("E1 = " + format_expr(arena, t1.lhs));
                 if(t2.equation) out.push_back("E2-R2 = " + format_expr(arena, t2.residual));
                 else out.push_back("E2 = " + format_expr(arena, t2.lhs));
-                out.push_back("difference = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, t1.residual, t2.residual))));
+                out.push_back("difference = " + (eq ? std::string("0") : compare_diff_text(arena, t1.residual, t2.residual)));
             }
             else {
                 out.push_back("E1 = " + format_expr(arena, t1.lhs));
                 out.push_back("E2 = " + format_expr(arena, t2.lhs));
-                out.push_back("E1-E2 = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, t1.lhs, t2.lhs))));
+                out.push_back("E1-E2 = " + (eq ? std::string("0") : compare_diff_text(arena, t1.lhs, t2.lhs)));
             }
             out.push_back(eq ? "equivalent" : "not equivalent");
             return out;
@@ -23597,13 +23629,19 @@ algebra_compare_transform_modes:
             if(nl == std::string::npos) return {"Err: need source and target."};
             std::string src = req.expr.substr(0, nl);
             std::string tgt = req.expr.substr(nl + 1);
-            CompareTerm s = parse_compare_term(arena, src);
-            CompareTerm t = parse_compare_term(arena, tgt);
+            CompareTerm s, t;
+            try {
+                s = parse_compare_term(arena, src);
+                t = parse_compare_term(arena, tgt);
+            }
+            catch(...) {
+                return {trim_text(src), trim_text(tgt), "not equivalent"};
+            }
             bool eq = relation_equivalent(arena, s, t);
             std::vector<std::string> out;
             out.push_back("source = " + relation_text(arena, s));
             out.push_back("target = " + relation_text(arena, t));
-            out.push_back("source-target = " + (eq ? std::string("0") : format_expr(arena, sub_node(arena, s.residual, t.residual))));
+            out.push_back("source-target = " + (eq ? std::string("0") : compare_diff_text(arena, s.residual, t.residual)));
             out.push_back(eq ? relation_text(arena, t) : "not equivalent");
             return out;
         }
@@ -24308,8 +24346,10 @@ algebra_compare_transform_modes:
                 for(auto const &d : dom) steps.push_back(d);
                 domain_answer = combined_domain_answer(dom);
                 Node const &dn = arena.get(n);
-                if(auto solved = sqrt_log_base_domain(arena, n, var, steps)) {
-                    domain_answer = *solved;
+                auto solved_log_domain = sqrt_log_base_domain(arena, parsed, var, steps);
+                if(!solved_log_domain) solved_log_domain = sqrt_log_base_domain(arena, n, var, steps);
+                if(solved_log_domain) {
+                    domain_answer = *solved_log_domain;
                     steps.push_back("Domain: " + domain_answer + ".");
                 }
                 else if(dn.kind == NodeKind::Fn && dn.fkind == FnKind::Log) {

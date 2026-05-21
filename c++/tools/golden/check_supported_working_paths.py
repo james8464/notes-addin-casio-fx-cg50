@@ -107,7 +107,7 @@ def base_cases() -> list[Case]:
 
     # Algebra manipulations.
     for expr, must in [
-        ("factor(x^2-5*x+6)", ("(x - 3)*(x - 2)",)),
+        ("factor(x^2-5*x+6)", ("(x - 2)*(x - 3)",)),
         ("expand((2*x-3)^4)", ("(2*x - 3)^4", "16*x^4")),
         ("(m*x+n)^2,method=expand", ("(m*x + n)^2", "2*m", "n", "x")),
         ("x^2+2*x+1,method=collect", ("x^2 + 2*x + 1",)),
@@ -260,8 +260,8 @@ def base_cases() -> list[Case]:
         ("2*cos(x)^2+3*cos(x)-2=0,x,0,2*pi,10,method=identity", ("Reject u=-2", "alpha = arccos", "x = [")),
         ("cos(2*x)+cos(x)=2,x,0,180,method=identity", ("c = -3/2 or c = 1", "Reject c = -3/2", "x = [0]"), ("2c^2+c-3",)),
         ("sqrt(1-cos(x))=sin(x),x,0,2*pi,8,method=square_then_check", ("Square", "Check", "Answer:")),
-        ("tan(2*x)=sqrt(3),x,0,2*pi,8,method=cast", ("tan(A)", "Base angles", "Answer:")),
-        ("1/cos(x)=3,x,0,2*pi,8,method=identity", ("arccos(1/3)", "2*pi - arccos(1/3)")),
+        ("tan(2*x)=sqrt(3),x,0,2*pi,8,method=cast", ("u = tan(2*x)", "alpha = arctan(sqrt(3)) = pi/3", "x = [pi/6")),
+        ("1/cos(x)=3,x,0,2*pi,8,method=identity", ("arccos(1/3)", "2*pi-alpha")),
         ("cos(x)=0,x,0,360,8,method=identity", ("arccos(0)=pi/2", "90", "270")),
         ("cos(x)*sin(2*x)=0,x,0,180", ("x = [0, 90, 180]",), ("270", "360")),
         ("sin(x)=sqrt(2)/2,x,0,pi", ("arcsin(sqrt(2)/2)=pi/4", "pi/4", "3*pi/4")),

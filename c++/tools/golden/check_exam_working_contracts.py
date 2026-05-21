@@ -110,7 +110,7 @@ CASES = (
     ContractCase(
         "trig/rform/method",
         ("--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform"),
-        ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "x = ["),
+        ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "Filter: 0 <= arctan(4/3)+arccos(2/5) <= 2*pi", "x = ["),
     ),
     ContractCase(
         "functions/composition/expand-cancel",
