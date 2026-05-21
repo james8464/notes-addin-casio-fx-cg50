@@ -320,6 +320,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "de_solve(2*d2w/dt2-5*dw/dt+2*w=450*e^(-t))",
+        ["2*m^2 - 5*m + 2 = 0", "m = 2, 1/2", "Try w_p = k*e^(-t)", "k = 50", "w = A*e^(2*t) + B*e^(1/2*t) + 50*e^(-t)"],
+        ["Err: second-order DE unsupported", "No elementary primitive", "Int(450*e^(-t))"],
+    ),
+    (
+        "int",
         "de_solve(d2y/dx2-4*dy/dx+4*y=0)",
         ["m^2 - 4*m + 4 = 0", "m = 2 repeated", "y = (A + B*x)*e^(2*x)"],
         ["Err: second-order DE unsupported", "d2y = "],
@@ -1787,6 +1793,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "defint(1/(x*(2*x+5)),x,1,inf)",
         ["1/(x(2*x + 5)) = 1/5/x - 2/5/(2*x + 5)", "lim_{T->inf} T/(2*T + 5) = 1/2", "1/5*ln(7/2)"],
         ["inf/(2*inf + 5)", "ERR:"],
+    ),
+    (
+        "int",
+        "defint((8*x-12)/((2*x^2+3)*(x+1)),x,0,inf)",
+        ["(8*x - 12)/((2*x^2 + 3)*(x + 1)) = 8*x/(2*x^2 + 3) - 4/(x + 1)", "lim_{T->inf} (2*T^2 + 3)/(T + 1)^2 = 2", "ln(4/9)"],
+        ["Expected )", "ERR:"],
     ),
     (
         "int",

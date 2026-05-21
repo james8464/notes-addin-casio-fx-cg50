@@ -2462,6 +2462,23 @@ static std::optional<TrigForce> second_order_trig_force(Arena &a, NodeId n, std:
     return TrigForce{body.fkind, sf.first, *w, body.a};
 }
 
+struct ExpForce
+{
+    Rational coeff{1, 1};
+    Rational k{1, 1};
+    NodeId arg = 0;
+};
+
+static std::optional<ExpForce> second_order_exp_force(Arena &a, NodeId n, std::string const &var)
+{
+    auto sf = split_numeric_factor(a, casio::simplify(a, n));
+    auto arg = exp_arg_node(a, sf.second);
+    if(!arg) return std::nullopt;
+    auto k = linear_coeff(a, *arg, var);
+    if(!k || r_zero(*k)) return std::nullopt;
+    return ExpForce{sf.first, *k, *arg};
+}
+
 static std::vector<std::string> solve_second_order_de_mode(std::string const &eqtxt)
 {
     auto tok = find_second_deriv_token(eqtxt);
@@ -2541,6 +2558,19 @@ static std::vector<std::string> solve_second_order_de_mode(std::string const &eq
         }
     }
     if(!K) {
+        if(auto force = second_order_exp_force(a, rest, tok->x)) {
+            Rational F = r_neg(force->coeff);
+            Rational denom = r_add(r_add(r_mul(*A, r_mul(force->k, force->k)), r_mul(*B, force->k)), *C);
+            if(r_zero(denom)) throw std::runtime_error("second-order DE unsupported");
+            Rational lambda = r_div(F, denom);
+            std::string driven = "e^(" + format_expr(a, force->arg) + ")";
+            std::string part = (lambda.num == lambda.den ? "" : rat_text_small(a, lambda) + "*") + driven;
+            steps.push_back("RHS = " + rat_text_small(a, F) + "*" + driven);
+            steps.push_back("Try " + tok->y + "_p = k*" + driven);
+            steps.push_back(rat_text_small(a, denom) + "*k = " + rat_text_small(a, F));
+            steps.push_back("k = " + rat_text_small(a, lambda));
+            return casio::exam_block("second-order differential equation", steps, tok->y + " = " + cf + (lambda.num < 0 ? " - " : " + ") + (lambda.num < 0 ? part.substr(1) : part));
+        }
         auto force = second_order_trig_force(a, rest, tok->x);
         if(!force || B->num != 0) throw std::runtime_error("second-order DE unsupported");
         Rational w2 = r_mul(force->w, force->w);
@@ -18708,6 +18738,81 @@ static std::string log_coeff_text(Rational r, std::string const &body)
     return rat_text(r) + "*" + body;
 }
 
+static std::optional<std::vector<std::string>> run_improper_quadratic_linear_pf_defint(Arena &arena, Request const &req)
+{
+    std::optional<std::vector<std::string>> args;
+    for(char const *name : {"defint", "integrate", "int"}) {
+        args = unwrap_call_args(req.expr, name);
+        if(args) break;
+    }
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    if(!is_pos_inf_text((*args)[3])) return std::nullopt;
+
+    NodeId lo = casio::simplify(arena, parse_expr(arena, (*args)[2]));
+    auto L = as_num(arena, lo);
+    if(!L) return std::nullopt;
+
+    NodeId node = casio::simplify(arena, parse_expr(arena, (*args)[0]));
+    Node const &n = arena.get(node);
+    if(n.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_of_any(arena, n.a, var);
+    if(!num || poly_degree(*num) > 1) return std::nullopt;
+    Rational q = poly_at(*num, 0), p = poly_at(*num, 1);
+
+    Node const &d = arena.get(n.b);
+    if(d.kind != NodeKind::Mul) return std::nullopt;
+    std::optional<Poly> quad, lin;
+    NodeId quad_node = 0, lin_node = 0;
+    for(NodeId f : d.kids) {
+        auto fp = poly_of_any(arena, f, var);
+        if(!fp) return std::nullopt;
+        int deg = poly_degree(*fp);
+        if(deg == 2 && !quad) { quad = *fp; quad_node = f; }
+        else if(deg == 1 && !lin) { lin = *fp; lin_node = f; }
+        else return std::nullopt;
+    }
+    if(!quad || !lin) return std::nullopt;
+    Rational a = poly_at(*quad, 2), c = poly_at(*quad, 0), b = poly_at(*lin, 1), d0 = poly_at(*lin, 0);
+    if(r_zero(a) || r_zero(b) || r_zero(c) || !r_zero(poly_at(*quad, 1))) return std::nullopt;
+
+    Rational denC = r_add(r_mul(c, r_mul(b, b)), r_mul(a, r_mul(d0, d0)));
+    if(r_zero(denC)) return std::nullopt;
+    Rational C = r_div(r_mul(b, r_sub(r_mul(q, b), r_mul(p, d0))), denC);
+    Rational A = r_neg(r_div(r_mul(C, a), b));
+    Rational B = r_div(r_sub(p, r_mul(A, d0)), b);
+    if(!r_zero(B)) return std::nullopt;
+    Rational m = r_div(A, r_mul(Rational{2, 1}, a));
+    Rational nlog = r_div(C, b);
+    if(!r_zero(r_add(r_mul(Rational{2, 1}, m), nlog))) return std::nullopt;
+
+    Rational bL = r_add(r_mul(b, *L), d0);
+    Rational qL = r_add(r_mul(a, r_mul(*L, *L)), c);
+    if(r_zero(bL) || r_zero(qL)) return std::nullopt;
+    Rational ratio = r_div(r_mul(a, r_mul(bL, bL)), r_mul(r_mul(b, b), qL));
+    if(ratio.num < 0) ratio.num = -ratio.num;
+    ratio.normalize();
+
+    std::string final = log_coeff_text(m, "ln(" + rat_text(ratio) + ")");
+    if(m.den == 1 && m.num > 1 && m.num <= 6) final = "ln(" + rat_text(r_pow(ratio, static_cast<int>(m.num))) + ")";
+
+    Rational absC = C.num < 0 ? r_neg(C) : C;
+    std::string qtxt = format_expr_human(arena, quad_node);
+    std::string ltxt = format_expr_human(arena, lin_node);
+    std::string qT = format_expr_human(arena, casio::simplify(arena, substitute_var(arena, quad_node, var, casio::sym(arena, "T"))));
+    std::string lT = format_expr_human(arena, casio::simplify(arena, substitute_var(arena, lin_node, var, casio::sym(arena, "T"))));
+    std::string ntxt = format_expr_human(arena, n.a);
+    std::string Atxt = coeff_var_text(arena, A, var);
+    std::vector<std::string> steps = {
+        "I = lim_{T->inf} Int_" + format_expr_human(arena, lo) + "^T " + (*args)[0] + " d" + var + ".",
+        "(" + ntxt + ")/((" + qtxt + ")*(" + ltxt + ")) = " + Atxt + "/(" + qtxt + ")" + (C.num < 0 ? " - " : " + ") + rat_text(absC) + "/(" + ltxt + ").",
+        "F(" + var + ") = " + log_coeff_text(m, "ln(" + qtxt + ")") + " " + (nlog.num < 0 ? "- " : "+ ") + log_coeff_text(nlog.num < 0 ? r_neg(nlog) : nlog, "ln(abs(" + ltxt + "))") + ".",
+        "lim_{T->inf} (" + qT + ")/(" + lT + ")^2 = " + rat_text(r_div(a, r_mul(b, b))) + ".",
+        "F(" + format_expr_human(arena, lo) + ") = " + log_coeff_text(m, "ln(" + rat_text(qL) + ")") + " " + (nlog.num < 0 ? "- " : "+ ") + log_coeff_text(nlog.num < 0 ? r_neg(nlog) : nlog, "ln(" + rat_text(bL) + ")") + ".",
+    };
+    return casio::exam_block("improper partial fractions", steps, final);
+}
+
 static std::optional<std::vector<std::string>> run_improper_linear_pf_defint(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -18874,6 +18979,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto quad_pf = run_improper_quadratic_linear_pf_defint(arena, req)) return *quad_pf;
         if(auto lin_pf = run_improper_linear_pf_defint(arena, req)) return *lin_pf;
         if(auto exp_tail = run_improper_exp_defint(arena, req)) return *exp_tail;
         if(direct == "defint(cosh(x),x,0,inf)" || direct == "integrate(cosh(x),x,0,inf)" ||
