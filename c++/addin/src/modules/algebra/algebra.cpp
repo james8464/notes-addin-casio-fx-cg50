@@ -9037,37 +9037,55 @@ static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_ro
     NodeId Cnode = casio::parse_expr(a, target);
     auto C = as_num(a, Cnode);
     if(!C || C->num < 0) return std::nullopt;
-    auto scaled_log = [&](NodeId n) -> std::optional<std::pair<Rational, NodeId>> {
+    struct ScaledLog
+    {
+        Rational k{1, 1};
+        NodeId arg = 0;
+        NodeId base = 0;
+        bool natural = true;
+    };
+    auto scaled_log = [&](NodeId n) -> std::optional<ScaledLog> {
         Node const &x = a.get(n);
-        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) return std::make_pair(Rational{1, 1}, x.a);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log)
+            return ScaledLog{Rational{1, 1}, x.a, casio::constant_e(a), true};
         if(x.kind != NodeKind::Mul) return std::nullopt;
         Rational k{1, 1};
         NodeId arg = 0;
+        NodeId base = casio::constant_e(a);
+        bool natural = true;
         for(NodeId kid : x.kids) {
             Node const &q = a.get(kid);
             if(auto r = as_num(a, kid)) k = r_mul(k, *r);
             else if(q.kind == NodeKind::Fn && q.fkind == FnKind::Log && !arg) arg = q.a;
+            else if(q.kind == NodeKind::Div) {
+                auto nr = as_num(a, q.a);
+                Node const &den = a.get(q.b);
+                if(!nr || den.kind != NodeKind::Fn || den.fkind != FnKind::Log || has_symbols(a, den.a) || !natural)
+                    return std::nullopt;
+                k = r_mul(k, *nr);
+                base = den.a;
+                natural = false;
+            }
             else return std::nullopt;
         }
         if(!arg || is_zero(k)) return std::nullopt;
-        return std::make_pair(k, arg);
+        return ScaledLog{k, arg, base, natural};
     };
     auto sl = scaled_log(body);
     if(!sl) return std::nullopt;
-    Rational kabs = sl->first.num < 0 ? r_neg(sl->first) : sl->first;
+    Rational kabs = sl->k.num < 0 ? r_neg(sl->k) : sl->k;
     Rational a0 = r_div(*C, kabs);
     std::vector<std::string> vars;
-    collect_symbols(a, sl->second, vars);
+    collect_symbols(a, sl->arg, vars);
     if(vars.size() != 1) return std::nullopt;
     std::string var = vars[0];
-    auto lin = symbolic_linear_parts(a, sl->second, var);
+    auto lin = symbolic_linear_parts(a, sl->arg, var);
     if(!lin) return std::nullopt;
     auto mv = eval_node_env(a, lin->m, {});
     if(!mv || std::fabs(*mv) < 1e-12) return std::nullopt;
     auto exp_node = [&](Rational r) -> NodeId {
         if(is_zero(r)) return one_node(a);
-        if(r.num == r.den) return casio::constant_e(a);
-        return casio::power(a, casio::constant_e(a), a.num(r));
+        return exact_eval_simplify(a, casio::power(a, sl->base, a.num(r)));
     };
     auto x_at = [&](Rational r) -> NodeId {
         return exact_eval_simplify(a, casio::div(a, sub_node(a, exp_node(r), lin->c), lin->m));
@@ -9076,7 +9094,9 @@ static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_ro
     NodeId xpos = x_at(a0);
     NodeId xdom = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
     std::string body_s = format_expr(a, body);
-    std::string arg_s = format_expr(a, sl->second);
+    std::string arg_s = format_expr(a, sl->arg);
+    std::string base_s = format_expr(a, sl->base);
+    std::string log_s = sl->natural ? "ln(" + arg_s + ")" : "ln(" + arg_s + ")/ln(" + base_s + ")";
     std::string c_s = format_expr(a, Cnode);
     std::string a_s = format_rat_plain(a0);
     std::string eneg = format_expr(a, exp_node(r_neg(a0)));
@@ -9094,8 +9114,8 @@ static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_ro
         return std::vector<std::string>{
             "abs(" + body_s + ") = " + c_s,
             "Domain: " + arg_s + " > 0",
-            "abs(ln(" + arg_s + ")) = " + a_s,
-            "ln(" + arg_s + ") = " + a_s + " or ln(" + arg_s + ") = -" + a_s,
+            "abs(" + log_s + ") = " + a_s,
+            log_s + " = " + a_s + " or " + log_s + " = -" + a_s,
             arg_s + " = " + epos + " or " + arg_s + " = " + eneg,
             solution_list_line(var, xs),
         };
@@ -9123,9 +9143,9 @@ static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_ro
     return std::vector<std::string>{
         "abs(" + body_s + ") " + op + " " + c_s,
         "Domain: " + arg_s + " > 0",
-        "abs(ln(" + arg_s + ")) " + op + " " + a_s,
-        inside ? "-" + a_s + " " + le + " ln(" + arg_s + ") " + le + " " + a_s
-               : "ln(" + arg_s + ") " + ge + " " + a_s + " or ln(" + arg_s + ") " + le + " -" + a_s,
+        "abs(" + log_s + ") " + op + " " + a_s,
+        inside ? "-" + a_s + " " + le + " " + log_s + " " + le + " " + a_s
+               : log_s + " " + ge + " " + a_s + " or " + log_s + " " + le + " -" + a_s,
         inside ? eneg + " " + le + " " + arg_s + " " + le + " " + epos
                : arg_s + " " + ge + " " + epos + " or " + arg_s + " " + le + " " + eneg,
         ans,
@@ -16317,7 +16337,12 @@ static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId
     return info;
 }
 
-static std::optional<std::vector<std::string>> abs_poly_const_equation_route(Arena &a, NodeId rearr, std::string const &var)
+static std::optional<std::vector<std::string>> abs_poly_const_equation_route(
+    Arena &a,
+    NodeId rearr,
+    std::string const &var,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt)
 {
     NodeId abs_node = 0, abs_arg = 0;
     Rational coef{1, 1}, c{0, 1};
@@ -16395,7 +16420,9 @@ static std::optional<std::vector<std::string>> abs_poly_const_equation_route(Are
             if(std::find(sols.begin(), sols.end(), s) == sols.end()) sols.push_back(s);
     }
     sort_solution_lines(a, sols);
-    out.push_back(sols.empty() ? var + " = []" : solution_list_line(var, sols));
+    auto valid = (lo || hi) ? filter_real_solutions(a, rearr, var, sols, lo, hi) : sols;
+    if(lo || hi) append_rejected_roots(out, var, sols, valid, "interval");
+    out.push_back(valid.empty() ? var + " = []" : solution_list_line(var, valid));
     return out;
 }
 
@@ -24266,7 +24293,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(!rp.ok) {
             if(auto rec = reciprocal_power_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rec;
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
-            if(auto apc = abs_poly_const_equation_route(arena, rearr, solve_var)) return *apc;
+            if(auto apc = abs_poly_const_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *apc;
             if(auto aa = abs_linear_equation_route(arena, rearr, solve_var)) {
                 out.insert(out.end(), aa->begin(), aa->end());
                 return out;
