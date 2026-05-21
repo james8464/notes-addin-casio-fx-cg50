@@ -381,6 +381,20 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
     Node const &bn = a.get(b);
     if(is_zero(tn)) return num(a, 0);
     if(is_one(bn)) return t;
+    if(is_int_num(bn) && bn.num.num == -1) return simplify(a, a.mul({num(a, -1), t}));
+    if(is_int_num(bn) && bn.num.num < 0) {
+        return simplify(a, a.div(a.mul({num(a, -1), t}), num(a, -bn.num.num, 1)));
+    }
+    if(bn.kind == NodeKind::Mul && !bn.kids.empty()) {
+        Node const &d0 = a.get(bn.kids[0]);
+        if(d0.kind == NodeKind::Num && d0.num.den == 1 && d0.num.num < 0) {
+            std::vector<NodeId> den;
+            den.reserve(bn.kids.size());
+            den.push_back(num(a, -d0.num.num, 1));
+            for(std::size_t i = 1; i < bn.kids.size(); ++i) den.push_back(bn.kids[i]);
+            return simplify(a, a.div(a.mul({num(a, -1), t}), a.mul(std::move(den))));
+        }
+    }
     // Extract and divide an integer factor from (k*...)/n where k,n are integers
     if(tn.kind == NodeKind::Mul && bn.kind == NodeKind::Num && bn.num.den == 1) {
         for(size_t factor_i = 0; factor_i < tn.kids.size(); ++factor_i) {
@@ -832,6 +846,16 @@ static NodeId make_mul(Arena &a, std::vector<NodeId> parts)
                 factors.push_back(term);
                 terms.push_back(factors.size() == 1 ? factors[0] : a.mul(std::move(factors)));
             }
+            return simplify(a, a.add(std::move(terms)));
+        }
+    }
+
+    if(c.num == -1 && c.den == 1 && out.size() == 1) {
+        Node const &only = a.get(out[0]);
+        if(only.kind == NodeKind::Add) {
+            std::vector<NodeId> terms;
+            terms.reserve(only.kids.size());
+            for(NodeId term : only.kids) terms.push_back(a.mul({num(a, -1), term}));
             return simplify(a, a.add(std::move(terms)));
         }
     }

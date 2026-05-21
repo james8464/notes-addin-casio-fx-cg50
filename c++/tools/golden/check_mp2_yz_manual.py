@@ -58,7 +58,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "Z8 inverse and domain",
         ["--alg", "inverse(ln(4-2*x),x,y)"],
-        ["x = f(y)", "f^-1(x) = (4 - e^x)/2"],
+        ["x = f(y)", "f^-1(x) = (- e^(x) + 4)/2"],
         ["not isolated"],
     ),
     (
