@@ -8501,6 +8501,23 @@ static bool find_top_rel(std::string const &s, std::size_t &pos, std::string &op
     return false;
 }
 
+static bool find_top_equal(std::string const &s, std::size_t &pos)
+{
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if(depth || c != '=') continue;
+        char prev = i ? s[i - 1] : '\0';
+        char next = i + 1 < s.size() ? s[i + 1] : '\0';
+        if(prev == '<' || prev == '>' || prev == '!' || next == '=') continue;
+        pos = i;
+        return true;
+    }
+    return false;
+}
+
 static std::optional<std::string> outer_abs_arg(std::string const &s)
 {
     if(s.rfind("abs(", 0) != 0 || s.back() != ')') return std::nullopt;
@@ -8557,6 +8574,243 @@ static std::string explicit_mul_for_piecewise(std::string const &s)
         out.push_back(s[i]);
     }
     return out;
+}
+
+static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_route(
+    Arena &a, std::string const &expr, std::string const &var)
+{
+    std::string key = compact_input_key(expr);
+    std::size_t pos = 0;
+    if(!find_top_equal(key, pos)) return std::nullopt;
+    std::string lhs = key.substr(0, pos), rhs = key.substr(pos + 1);
+    auto args = collect_abs_args_key(lhs + "+" + rhs);
+    if(args.empty() || args.size() > 3) return std::nullopt;
+    if(args.size() == 1) {
+        std::string tl = lhs, tr = rhs;
+        replace_abs_arg_all(tl, args[0], "0");
+        replace_abs_arg_all(tr, args[0], "0");
+        NodeId outside = sub_node(a, casio::parse_expr(a, tl), casio::parse_expr(a, tr));
+        if(!contains_symbol(a, outside, var)) return std::nullopt;
+    }
+    std::vector<AbsPiece> pieces;
+    for(auto const &arg : args) {
+        NodeId n = casio::parse_expr(a, arg);
+        auto p = poly_any_of(a, n, var);
+        if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
+        Rational root = r_div(r_neg(p->c[0]), p->c[1]);
+        pieces.push_back({arg, root, (double)root.num / (double)root.den});
+    }
+    std::sort(pieces.begin(), pieces.end(), [](AbsPiece const &u, AbsPiece const &v) { return u.value < v.value; });
+
+    auto subst = [&](std::string s, double sample) {
+        for(auto const &p : pieces) {
+            bool pos_side = sample >= p.value;
+            std::string repl = pos_side ? "(" + p.arg + ")" : "(0-(" + p.arg + "))";
+            replace_abs_arg_all(s, p.arg, repl);
+        }
+        return explicit_mul_for_piecewise(s);
+    };
+    auto sample_between = [](std::vector<AbsPiece> const &crit, std::size_t i) {
+        if(crit.empty()) return 0.0;
+        if(i == 0) return crit[0].value - 1.0;
+        if(i == crit.size()) return crit.back().value + 1.0;
+        return 0.5 * (crit[i - 1].value + crit[i].value);
+    };
+
+    std::vector<std::string> out;
+    for(auto const &p : pieces) {
+        std::string r = format_rat_plain(p.root);
+        out.push_back(var + " < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+        out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+    }
+
+    std::vector<std::string> sols;
+    for(std::size_t i = 0; i <= pieces.size(); ++i) {
+        double sample = sample_between(pieces, i);
+        std::string sl = subst(lhs, sample), sr = subst(rhs, sample);
+        NodeId L = casio::parse_expr(a, sl);
+        NodeId R = casio::parse_expr(a, sr);
+        NodeId residual = sub_node(a, L, R);
+        RatPoly2 rp = ratpoly_of_node(a, residual, var);
+        if(!rp.ok) return std::nullopt;
+        auto cand = solve_poly2(a, rp.num, var);
+        std::vector<std::string> valid;
+        for(auto const &s : cand) {
+            auto xv = solution_line_value(a, s);
+            if(!xv) continue;
+            if(i > 0 && *xv < pieces[i - 1].value - 1e-9) continue;
+            if(i < pieces.size() && *xv > pieces[i].value + 1e-9) continue;
+            auto rv = eval_node(a, residual, var, *xv);
+            if(!rv || std::fabs(*rv) > 1e-7) continue;
+            valid.push_back(s);
+        }
+        if(valid.empty()) continue;
+        for(auto const &s : valid)
+            if(std::find(sols.begin(), sols.end(), s) == sols.end()) sols.push_back(s);
+        std::string cond;
+        if(i == 0) cond = var + " <= " + format_rat_plain(pieces[i].root);
+        else if(i == pieces.size()) cond = var + " >= " + format_rat_plain(pieces[i - 1].root);
+        else cond = format_rat_plain(pieces[i - 1].root) + " <= " + var + " <= " + format_rat_plain(pieces[i].root);
+        out.push_back(cond + ": " +
+                      format_expr(a, L) + " = " + format_expr(a, R) + " => " +
+                      join_text(valid, ", "));
+    }
+    if(sols.empty()) out.push_back(var + " = []");
+    else {
+        sort_solution_lines(a, sols);
+        out.push_back(solution_list_line(var, sols));
+    }
+    return out;
+}
+
+struct ExpAffine
+{
+    Rational coef{1, 1};
+    Rational shift{0, 1};
+    NodeId arg = 0;
+};
+
+static std::optional<std::pair<Rational, NodeId>> scaled_exp_arg_node(Arena &a, NodeId n)
+{
+    if(auto e = exp_arg_node(a, n)) return std::make_pair(Rational{1, 1}, *e);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId arg = 0;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(auto e = exp_arg_node(a, k); e && !arg) arg = *e;
+        else return std::nullopt;
+    }
+    if(!arg || is_zero(c)) return std::nullopt;
+    return std::make_pair(c, arg);
+}
+
+static std::optional<ExpAffine> exp_affine_node(Arena &a, NodeId n)
+{
+    if(auto e = scaled_exp_arg_node(a, n)) return ExpAffine{e->first, Rational{0, 1}, e->second};
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    std::optional<std::pair<Rational, NodeId>> exp;
+    Rational shift{0, 1};
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) shift = r_add(shift, *r);
+        else if(auto e = scaled_exp_arg_node(a, k); e && !exp) exp = *e;
+        else return std::nullopt;
+    }
+    if(!exp) return std::nullopt;
+    return ExpAffine{exp->first, shift, exp->second};
+}
+
+static std::optional<std::vector<std::string>> outer_abs_exp_affine_inequality_route(
+    Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
+{
+    NodeId A0 = casio::parse_expr(a, absarg);
+    NodeId C0 = casio::parse_expr(a, rhs);
+    auto C = as_num(a, C0);
+    if(!C) return std::nullopt;
+    if(C->num < 0) {
+        bool all = (op == ">" || op == ">=");
+        return std::vector<std::string>{
+            "abs(" + format_expr(a, A0) + ") " + op + " " + format_expr(a, C0),
+            all ? "all real x" : "x = []",
+        };
+    }
+    auto aff = exp_affine_node(a, A0);
+    if(!aff) return std::nullopt;
+    auto p = poly_any_of(a, aff->arg, "x");
+    if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
+    Rational b = p->c[0], m = p->c[1];
+
+    std::vector<IneqRoot> crit;
+    auto add_root = [&](Rational y) {
+        if(is_zero(aff->coef)) return;
+        Rational t = r_div(r_sub(y, aff->shift), aff->coef);
+        if(t.num <= 0) return;
+        NodeId ln_t = t.num == t.den ? zero_node(a) : casio::fn(a, "log", casio::num(a, t.num, t.den));
+        NodeId xnode = exact_eval_simplify(a, casio::div(a, sub_node(a, ln_t, casio::num(a, b.num, b.den)), casio::num(a, m.num, m.den)));
+        auto xv = eval_node_env(a, xnode, {});
+        if(!xv || !std::isfinite(*xv)) return;
+        crit.push_back({*xv, format_expr(a, xnode), true, false});
+    };
+    add_root(*C);
+    add_root(r_neg(*C));
+    std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+    crit.erase(std::unique(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) {
+        return std::fabs(x.v - y.v) < 1e-9;
+    }), crit.end());
+
+    auto eval = [&](double x) -> std::optional<double> {
+        auto av = eval_node(a, A0, "x", x);
+        if(!av) return std::nullopt;
+        return std::fabs(*av) - ((double)C->num / (double)C->den);
+    };
+    auto ok_rel = [&](double v) {
+        if(op == ">") return v > 1e-9;
+        if(op == "<") return v < -1e-9;
+        if(op == ">=") return v >= -1e-9;
+        return v <= 1e-9;
+    };
+    auto sample_between = [](std::vector<IneqRoot> const &c, std::size_t i) {
+        if(c.empty()) return 0.0;
+        if(i == 0) return c[0].v - 1.0;
+        if(i == c.size()) return c.back().v + 1.0;
+        return 0.5 * (c[i - 1].v + c[i].v);
+    };
+
+    std::vector<bool> interval_ok(crit.size() + 1, false), point_ok(crit.size(), false);
+    std::vector<std::string> signs;
+    for(std::size_t i = 0; i <= crit.size(); ++i) {
+        auto v = eval(sample_between(crit, i));
+        interval_ok[i] = v && ok_rel(*v);
+        std::string lo = i == 0 ? "-inf" : crit[i - 1].text;
+        std::string hi = i == crit.size() ? "inf" : crit[i].text;
+        signs.push_back("(" + lo + "," + hi + "):" + (!v ? "undef" : (*v > 0 ? "+" : (*v < 0 ? "-" : "0"))));
+    }
+    for(std::size_t i = 0; i < crit.size(); ++i) {
+        auto v = eval(crit[i].v);
+        point_ok[i] = v && ok_rel(*v);
+    }
+
+    std::vector<std::string> ans;
+    for(std::size_t i = 0; i <= crit.size();) {
+        if(!interval_ok[i]) {
+            if(i < crit.size() && point_ok[i] && !interval_ok[i + 1])
+                ans.push_back("x = " + crit[i].text);
+            ++i;
+            continue;
+        }
+        std::optional<std::string> lo, hi;
+        bool li = false, ri = false;
+        if(i > 0) {
+            lo = crit[i - 1].text;
+            li = point_ok[i - 1];
+        }
+        while(i < crit.size() && point_ok[i] && interval_ok[i + 1]) ++i;
+        if(i < crit.size()) {
+            hi = crit[i].text;
+            ri = point_ok[i];
+        }
+        if(!lo && !hi) ans.push_back("all real x");
+        else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        ++i;
+    }
+    if(ans.empty()) ans.push_back("x = []");
+
+    std::string af = format_expr(a, A0), cf = format_expr(a, C0);
+    std::string branch = (op == ">" || op == ">=")
+        ? af + " " + op + " " + cf + " or " + af + " " + (op == ">" ? "< " : "<= ") + "-" + cf
+        : "-" + cf + " " + (op == "<" ? "< " : "<= ") + af + " " + op + " " + cf;
+    return std::vector<std::string>{
+        "abs(" + af + ") " + op + " " + cf,
+        af + " = " + cf + " or " + af + " = -" + cf,
+        branch,
+        "e^(" + format_expr(a, aff->arg) + ") > 0",
+        "sign: " + join_text(signs, "; "),
+        join_text(ans, " or "),
+    };
 }
 
 static std::optional<std::vector<std::string>> outer_abs_rational_inequality_route(
@@ -8827,6 +9081,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         rhs = "(" + *ra + ")^2";
     }
     if(abs_line.empty()) if(auto la = outer_abs_arg(lhs)) {
+        if(auto ae = outer_abs_exp_affine_inequality_route(a, op, *la, rhs)) return *ae;
         NodeId R0 = casio::parse_expr(a, rhs);
         auto rp = poly_any_of(a, R0, "x");
         if(rp && rp->c.size() == 1 && rp->c[0].num > 0) {
@@ -15669,6 +15924,88 @@ static std::optional<AbsPlusConstEqInfo> abs_plus_const_eq_info(Arena &a, NodeId
     }
     if(!seen_abs) return std::nullopt;
     return info;
+}
+
+static std::optional<std::vector<std::string>> abs_poly_const_equation_route(Arena &a, NodeId rearr, std::string const &var)
+{
+    NodeId abs_node = 0, abs_arg = 0;
+    Rational coef{1, 1}, c{0, 1};
+    auto read_abs = [&](NodeId id, Rational &k, NodeId &node, NodeId &arg) {
+        Node const &z = a.get(id);
+        k = Rational{1, 1};
+        NodeId core = id;
+        if(z.kind == NodeKind::Mul) {
+            core = 0;
+            for(NodeId t : z.kids) {
+                if(auto r = as_num(a, t)) k = r_mul(k, *r);
+                else if(!core) core = t;
+                else return false;
+            }
+        }
+        Node const &u = a.get(core);
+        if(u.kind != NodeKind::Fn || u.fkind != FnKind::Abs || is_zero(k)) return false;
+        node = core;
+        arg = u.a;
+        return true;
+    };
+    Node const &x = a.get(rearr);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Abs) {
+        abs_node = rearr;
+        abs_arg = x.a;
+    }
+    else if(x.kind == NodeKind::Add) {
+        bool seen = false;
+        for(NodeId k : x.kids) {
+            Node const &u = a.get(k);
+            Rational ck;
+            NodeId an = 0, aa = 0;
+            if(!seen && read_abs(k, ck, an, aa)) {
+                coef = ck;
+                abs_node = an;
+                abs_arg = aa;
+                seen = true;
+            }
+            else if(u.kind == NodeKind::Num) c = r_add(c, u.num);
+            else return std::nullopt;
+        }
+        if(!seen) return std::nullopt;
+    }
+    else return std::nullopt;
+
+    auto p = poly_any_of(a, abs_arg, var);
+    if(!p || p->c.size() <= 2 || p->c.size() > 5) return std::nullopt;
+    Rational rhs = r_div(r_neg(c), coef);
+    std::string abs_text = format_expr(a, abs_node);
+    std::string arg = format_expr(a, abs_arg);
+    std::string rhs_text = format_expr(a, casio::num(a, rhs.num, rhs.den));
+    std::vector<std::string> out{abs_text + " = " + rhs_text};
+    if(rhs.num < 0) {
+        out.push_back(abs_text + " >= 0");
+        out.push_back(var + " = []");
+        return out;
+    }
+    out.push_back(arg + " = " + rhs_text + " or " + arg + " = -" + rhs_text);
+    std::vector<std::string> sols;
+    for(Rational target : {rhs, r_neg(rhs)}) {
+        PolyAny q = *p;
+        if(q.c.empty()) q.c.push_back(Rational{0, 1});
+        q.c[0] = r_sub(q.c[0], target);
+        trim_poly_any(q);
+        std::vector<std::string> factor_lines;
+        auto xs = solve_poly_any_raw(a, q, var, factor_lines);
+        std::vector<std::string> real;
+        for(auto const &s : xs)
+            if(s.rfind(var + " = ", 0) == 0 && s.find('i') == std::string::npos) real.push_back(s);
+        sort_solution_lines(a, real);
+        for(auto const &line : factor_lines) out.push_back(line);
+        out.push_back(arg + " = " + format_expr(a, casio::num(a, target.num, target.den)) + " => " +
+                      (real.empty() ? var + " = []" : join_text(real, ", ")));
+        for(auto const &s : real)
+            if(std::find(sols.begin(), sols.end(), s) == sols.end()) sols.push_back(s);
+    }
+    sort_solution_lines(a, sols);
+    out.push_back(sols.empty() ? var + " = []" : solution_list_line(var, sols));
+    return out;
 }
 
 static std::optional<std::vector<std::string>> abs_linear_equation_route(Arena &a, NodeId rearr, std::string const &var)
@@ -23238,6 +23575,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
         if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
@@ -23410,6 +23748,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(!rp.ok) {
             if(auto rec = reciprocal_power_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rec;
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;
+            if(auto apc = abs_poly_const_equation_route(arena, rearr, solve_var)) return *apc;
             if(auto aa = abs_linear_equation_route(arena, rearr, solve_var)) {
                 out.insert(out.end(), aa->begin(), aa->end());
                 return out;
