@@ -163,9 +163,14 @@ def case_matches(row: dict[str, Any], case: dict[str, Any]) -> bool:
     canonical = audit.canonical_source(str(row["topic_page"]), str(row["pdf"]))
     if source not in {source_key(row), canonical}:
         return False
-    if str(case.get("qid")) != str(row["question"]):
+    case_ordinal = str(case.get("ordinal", ""))
+    row_ordinal = str(row["ordinal"])
+    if case_ordinal and case_ordinal == row_ordinal:
+        return True
+    if case_ordinal and case_ordinal != row_ordinal:
         return False
-    if str(case.get("ordinal", "")) not in {"", str(row["ordinal"])}:
+    case_qid = re.sub(r"(?i)^hard", "", str(case.get("qid")))
+    if case_qid != str(row["question"]):
         return False
     part = str(row.get("part") or "")
     item = str(case.get("item") or "")
@@ -207,14 +212,31 @@ def markdown_for_case(case: dict[str, Any]) -> list[str]:
     return lines
 
 
+def markdown_for_ledger_command(row: dict[str, Any]) -> list[str]:
+    lines = [
+        "- ID: `ledger-command`",
+        "- Input: `" + " ".join(str(x) for x in row.get("command", [])) + "`",
+    ]
+    expected = list(row.get("expected", []))
+    if expected:
+        lines.append("- Expected answer markers:")
+        lines.extend(f"  - `{needle}`" for needle in expected)
+        lines.append("- Suggested working needles:")
+        lines.extend(f"  - `{needle}`" for needle in expected)
+    return lines
+
+
 def build_corpus(rows: list[dict[str, Any]], render: bool, force_render: bool) -> str:
     cases = load_cases()
     draft_notes = load_draft_notes()
     cases_by_row: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    matched_case_ids: set[str] = set()
     for row in rows:
         for case in cases:
             if case_matches(row, case):
                 cases_by_row[row_marker(row)].append(case)
+                if case.get("id"):
+                    matched_case_ids.add(str(case["id"]))
 
     text_blocks: dict[tuple[str, int], dict[str, Any]] = {}
     rendered: dict[str, list[Path]] = {}
@@ -285,6 +307,10 @@ def build_corpus(rows: list[dict[str, Any]], render: bool, force_render: bool) -
                     "- Not applicable: non-calculator, graph/proof-only, or no unique CAS command.",
                     "",
                 ])
+            elif row.get("command"):
+                lines.append("#### Program Test")
+                lines.extend(markdown_for_ledger_command(row))
+                lines.append("")
             else:
                 lines.extend([
                     "#### Program Test",
@@ -296,6 +322,21 @@ def build_corpus(rows: list[dict[str, Any]], render: bool, force_render: bool) -
             draft_note = draft_notes.get(str(row["question"]))
             if draft_note:
                 lines.extend(["#### Draft Notes", "```json", draft_note, "```", ""])
+            lines.append("")
+    extra_cases = [case for case in cases if case.get("args") and str(case.get("id", "")) not in matched_case_ids]
+    if extra_cases:
+        lines.extend(["## Extra Manual Cases", ""])
+        for case in extra_cases:
+            lines.extend([
+                f"### {case.get('id', 'manual-case')}",
+                f"- Source: `{case.get('source_pdf', '')}`",
+                f"- QID: `{case.get('qid', '')}`",
+                f"- Ordinal: `{case.get('ordinal', '')}`",
+                f"- Item: `{case.get('item', '')}`",
+                "",
+                "#### Program Test",
+            ])
+            lines.extend(markdown_for_case(case))
             lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

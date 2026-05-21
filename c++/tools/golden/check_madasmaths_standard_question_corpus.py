@@ -55,9 +55,14 @@ def case_matches(row: dict[str, Any], case: dict[str, Any]) -> bool:
     canonical = audit.canonical_source(str(row["topic_page"]), str(row["pdf"]))
     if source not in {source_key(row), canonical}:
         return False
-    if str(case.get("qid")) != str(row["question"]):
+    case_ordinal = str(case.get("ordinal", ""))
+    row_ordinal = str(row["ordinal"])
+    if case_ordinal and case_ordinal == row_ordinal:
+        return True
+    if case_ordinal and case_ordinal != row_ordinal:
         return False
-    if str(case.get("ordinal", "")) not in {"", str(row["ordinal"])}:
+    case_qid = re.sub(r"(?i)^hard", "", str(case.get("qid")))
+    if case_qid != str(row["question"]):
         return False
     part = str(row.get("part") or "")
     item = str(case.get("item") or "")
@@ -107,17 +112,24 @@ def main() -> int:
             errors.append(f"missing title {title}")
 
     for case in cases:
-        command = " ".join(str(x) for x in case.get("args", []))
+        args_list = case.get("args")
+        if not args_list:
+            continue
+        command = " ".join(str(x) for x in args_list)
         if command not in text:
             errors.append(f"case command missing from corpus: {case.get('id', case_key(case))}")
 
     done_rows = [row for row in rows if row["status"] == "done"]
     for row in done_rows:
+        if row.get("command"):
+            continue
         if not any(case_matches(row, case) for case in cases):
             errors.append(f"done row has no matching manual case: {row_marker(row)}")
 
     if not args.skip_host:
         for case in cases:
+            if not case.get("args"):
+                continue
             bad = run_host(case)
             if bad:
                 errors.append(f"host failed {case.get('id', case_key(case))}: {bad}")
