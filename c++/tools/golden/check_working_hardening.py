@@ -1932,6 +1932,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Leibnitz: d4y/dx4", "v'''' = 81*cos(3*x)", "d4y/dx4 = - 119*e^(2*x)*cos(3*x) + 120*e^(2*x)*sin(3*x)"],
         ["limite", "ERR:"],
     ),
+    (
+        "derive",
+        "ln(e^(2*x)*cos(3*x)),x",
+        ["ln(uv)=ln(u)+ln(v)", "dy/dx = 2 - 3*tan(3*x)"],
+        ["limite", "ERR:"],
+    ),
+    (
+        "derive",
+        "mode:8,ln(e^(2*x)*cos(3*x)),x",
+        ["d2y/dx2 = -9*sec(3*x)^2", "d4y/dx4 = -162*sec(3*x)^4 - 324*sec(3*x)^2*tan(3*x)^2"],
+        ["limite", "ERR:"],
+    ),
+    (
+        "alg",
+        "maclaurin(ln(e^(2*x)*cos(3*x)),x,4)",
+        ["ln(1+u) = u - u^2/2 + u^3/3 - u^4/4", "2*x - 9/2*x^2 - 27/4*x^4"],
+        ["ERR:", "unsupported"],
+    ),
+    (
+        "int",
+        "1/(2*sin(x)-cos(x)+5),method=weierstrass",
+        ["t = tan(x/2)", "I = Int 1/(3t^2+2t+2) dt", "1/sqrt(5)*atan((3*tan(x/2) + 1)/sqrt(5)) + C"],
+        ["ERR:", "No elementary primitive"],
+    ),
 ]
 
 

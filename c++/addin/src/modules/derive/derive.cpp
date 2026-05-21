@@ -2772,6 +2772,49 @@ static bool exp_factor_local(Arena &a, NodeId n, NodeId &exponent)
     return false;
 }
 
+static bool append_log_exp_cos_four_detail(Arena &a, NodeId n, std::string const &var,
+                                           std::vector<std::string> &steps, std::string &answer, int order)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Log) return false;
+    Node const &m = a.get(x.a);
+    if(m.kind != NodeKind::Mul) return false;
+    NodeId exp_arg = 0, cos_arg = 0;
+    for(NodeId k : m.kids) {
+        Node const &t = a.get(k);
+        NodeId e = 0;
+        if(exp_factor_local(a, k, e)) exp_arg = e;
+        else if(t.kind == NodeKind::Fn && t.fkind == FnKind::Cos) cos_arg = t.a;
+        else return false;
+    }
+    if(!exp_arg || !cos_arg) return false;
+    auto ea = affine_int_in(a, exp_arg, var);
+    auto ca = affine_int_in(a, cos_arg, var);
+    if(!ea || !ca || ea->b || ca->b || ca->m <= 0) return false;
+    long long b = ca->m, b2 = b * b, b3 = b2 * b, b4 = b2 * b2;
+    auto mulc = [](long long c, std::string const &s) {
+        if(c == 1) return s;
+        if(c == -1) return "-" + s;
+        return std::to_string(c) + "*" + s;
+    };
+    auto sub = [&](long long c, std::string const &s) { return std::string(" - ") + mulc(c, s); };
+    std::string u = affine_int_text_human(*ca, var);
+    std::string tan_u = "tan(" + u + ")";
+    std::string sec2 = "sec(" + u + ")^2";
+    std::string sec4 = "sec(" + u + ")^4";
+    steps.push_back("ln(uv)=ln(u)+ln(v).");
+    steps.push_back("y = " + affine_int_text_human(*ea, var) + " + ln(cos(" + u + ")).");
+    steps.push_back("dy/d" + var + " = " + std::to_string(ea->m) + sub(b, tan_u) + ".");
+    if(order == 1) {
+        answer = "dy/d" + var + " = " + std::to_string(ea->m) + sub(b, tan_u);
+        return true;
+    }
+    steps.push_back("d2y/d" + var + "2 = " + mulc(-b2, sec2) + ".");
+    steps.push_back("d3y/d" + var + "3 = " + mulc(-2 * b3, sec2 + "*" + tan_u) + ".");
+    answer = "d4y/d" + var + "4 = " + mulc(-2 * b4, sec4) + sub(4 * b4, sec2 + "*" + tan_u + "^2");
+    return true;
+}
+
 static bool exp_term_local(Arena &a, NodeId n, std::string const &var, NodeId &coef, NodeId &exponent)
 {
     if(exp_factor_local(a, n, exponent)) { coef = casio::num(a, 1); return true; }
@@ -3866,7 +3909,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
             }
             if(req.mode == 4 || req.mode == 7 || req.mode == 8) {
-                bool used_high = req.mode == 8 && append_leibniz_four_detail(arena, n, var, steps);
+                bool used_high = req.mode == 8 &&
+                                 (append_log_exp_cos_four_detail(arena, n, var, steps, answer_override, 4) ||
+                                  append_leibniz_four_detail(arena, n, var, steps));
                 if(!used_high) {
                     steps.push_back(req.mode == 8 ? "Differentiate four times." :
                                     (req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again."));
@@ -3956,6 +4001,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     used_rule = true;
                 }
                 if(!used_rule && append_log_linear_fraction_detail(arena, n, var, steps, answer_override)) {
+                    used_rule = true;
+                }
+                if(!used_rule && append_log_exp_cos_four_detail(arena, n, var, steps, answer_override, 1)) {
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {

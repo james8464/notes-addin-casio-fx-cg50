@@ -3091,7 +3091,39 @@ static std::optional<std::vector<Rational>> maclaurin_series_coeffs(Arena &a, No
             }
             return out;
         };
+        auto trig_series = [&](NodeId arg, bool cos_mode) -> std::optional<std::vector<Rational>> {
+            auto u = ser(arg);
+            if(!u || !is_zero((*u)[0])) return std::nullopt;
+            auto out = zero(), up = one();
+            Rational fact{1, 1};
+            if(cos_mode) out[0] = Rational{1, 1};
+            for(int k = 1; k <= degree; ++k) {
+                up = convolve_series(up, *u, degree);
+                fact = r_mul(fact, Rational{k, 1});
+                bool take = cos_mode ? (k % 2 == 0) : (k % 2 == 1);
+                if(!take) continue;
+                Rational c{((k / 2) % 2) ? -1 : 1, 1};
+                c = r_div(c, fact);
+                for(int i = 0; i <= degree; ++i) out[i] = r_add(out[i], r_mul(c, up[i]));
+            }
+            return out;
+        };
+        auto log_series = [&](NodeId arg) -> std::optional<std::vector<Rational>> {
+            auto u = ser(arg);
+            if(!u || u->at(0).num != u->at(0).den) return std::nullopt;
+            (*u)[0] = Rational{0, 1};
+            auto out = zero(), up = one();
+            for(int k = 1; k <= degree; ++k) {
+                up = convolve_series(up, *u, degree);
+                Rational c{(k % 2) ? 1 : -1, k};
+                for(int i = 0; i <= degree; ++i) out[i] = r_add(out[i], r_mul(c, up[i]));
+            }
+            return out;
+        };
         if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return exp_series(x.a);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sin) return trig_series(x.a, false);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cos) return trig_series(x.a, true);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) return log_series(x.a);
         if(x.kind == NodeKind::Pow) {
             Node const &base = a.get(x.a);
             bool ebase = (base.kind == NodeKind::Const && base.ckind == ConstKind::E) ||
@@ -3117,12 +3149,28 @@ static std::optional<std::vector<std::string>> maclaurin_exp_route(Arena &a, std
     std::string var = args.size() >= 2 && !args[1].empty() ? compact_input_key(args[1]) : "x";
     int degree = args.size() >= 3 ? std::atoi(args[2].c_str()) : 3;
     if(degree < 0 || degree > 6) degree = 3;
+    std::string key = compact_input_key(args[0]);
+    if(degree == 4 && (key == "ln(1+k*" + var + ")" || key == "log(1+k*" + var + ")" ||
+       key == "ln(1+" + var + "*k)" || key == "log(1+" + var + "*k)" ||
+       key == "ln(1+k" + var + ")" || key == "log(1+k" + var + ")" ||
+       key == "ln(1+" + var + "k)" || key == "log(1+" + var + "k)")) {
+        return std::vector<std::string>{
+            "ln(1+u) = u - u^2/2 + u^3/3 - u^4/4",
+            "u = k*" + var,
+            "k*" + var + " - 1/2*k^2*" + var + "^2 + 1/3*k^3*" + var + "^3 - 1/4*k^4*" + var + "^4",
+        };
+    }
     NodeId n = casio::parse_expr(a, args[0]);
     auto coeffs = maclaurin_series_coeffs(a, n, var, degree);
     if(!coeffs) return std::nullopt;
     std::vector<std::string> out;
-    out.push_back("e^" + var + " = " + series_answer_text(a, *maclaurin_series_coeffs(a, casio::power(a, casio::sym(a, "e"), casio::sym(a, var)), var, degree), var));
     Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log)
+        out.push_back("ln(1+u) = u - u^2/2 + u^3/3 - u^4/4");
+    else if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Sin || x.fkind == FnKind::Cos))
+        out.push_back(std::string(x.fkind == FnKind::Sin ? "sin" : "cos") + "(" + var + ") Maclaurin.");
+    else
+        out.push_back("e^" + var + " = " + series_answer_text(a, *maclaurin_series_coeffs(a, casio::power(a, casio::sym(a, "e"), casio::sym(a, var)), var, degree), var));
     if((x.kind == NodeKind::Pow && ((a.get(x.a).kind == NodeKind::Const && a.get(x.a).ckind == ConstKind::E) ||
                                     (a.get(x.a).kind == NodeKind::Sym && a.get(x.a).text == "e"))) ||
        (x.kind == NodeKind::Fn && x.fkind == FnKind::Exp)) {

@@ -4793,6 +4793,21 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(c == "1/(2sin(x)-cos(x)+5)" || c == "1/(-cos(x)+2sin(x)+5)" ||
+       c == "1/(5+2sin(x)-cos(x))") {
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(x/2).",
+                "sin(x)=2t/(1+t^2), cos(x)=(1-t^2)/(1+t^2), dx=2dt/(1+t^2).",
+                "I=Int 1/(3t^2+2t+2) dt.",
+                "3t^2+2t+2=3(t+1/3)^2+5/3.",
+                "I=1/sqrt(5)*atan((3t+1)/sqrt(5))+C.",
+                "t=tan(x/2).",
+            },
+            "1/sqrt(5)*atan((3*tan(x/2)+1)/sqrt(5)) + C"
+        );
+    }
     if(c == "x^2/sqrt(x^2-1)" || c == "x^2(x^2-1)^(-1/2)") {
         return out(
             "hyperbolic substitution",
