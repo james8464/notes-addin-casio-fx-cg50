@@ -1782,6 +1782,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["one exponential tail grows without bound", "I = divergent"],
         ["e^inf", "ERR:"],
     ),
+    (
+        "int",
+        "defint(1/(x*(2*x+5)),x,1,inf)",
+        ["1/(x(2*x + 5)) = 1/5/x - 2/5/(2*x + 5)", "lim_{T->inf} T/(2*T + 5) = 1/2", "1/5*ln(7/2)"],
+        ["inf/(2*inf + 5)", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(2/(t*(3*t+7)),t,1,inf)",
+        ["2/(t(3*t + 7)) = 2/7/t - 6/7/(3*t + 7)", "lim_{T->inf} T/(3*T + 7) = 1/3", "2/7*ln(10/3)"],
+        ["inf/(3*inf + 7)", "ERR:"],
+    ),
 ]
 
 

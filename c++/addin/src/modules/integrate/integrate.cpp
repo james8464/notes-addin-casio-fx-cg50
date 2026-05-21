@@ -18700,6 +18700,101 @@ static bool is_neg_inf_text(std::string s)
     return s == "-inf" || s == "-infinity";
 }
 
+static std::string log_coeff_text(Rational r, std::string const &body)
+{
+    r.normalize();
+    if(r.num == r.den) return body;
+    if(r.num == -r.den) return "-" + body;
+    return rat_text(r) + "*" + body;
+}
+
+static std::optional<std::vector<std::string>> run_improper_linear_pf_defint(Arena &arena, Request const &req)
+{
+    std::optional<std::vector<std::string>> args;
+    for(char const *name : {"defint", "integrate", "int"}) {
+        args = unwrap_call_args(req.expr, name);
+        if(args) break;
+    }
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    if(!is_pos_inf_text((*args)[3])) return std::nullopt;
+
+    NodeId lo = casio::simplify(arena, parse_expr(arena, (*args)[2]));
+    auto L = as_num(arena, lo);
+    if(!L || r_zero(*L)) return std::nullopt;
+
+    NodeId parsed = parse_expr(arena, (*args)[0]);
+    NodeId node = casio::simplify(arena, parsed);
+    Node const &n = arena.get(node);
+    if(n.kind != NodeKind::Div) return std::nullopt;
+    auto c = as_num(arena, casio::simplify(arena, n.a));
+    if(!c) return std::nullopt;
+
+    std::vector<NodeId> factors;
+    NodeId den = casio::simplify(arena, n.b);
+    Node const &d = arena.get(den);
+    if(d.kind == NodeKind::Mul) factors = d.kids;
+    else factors.push_back(den);
+
+    bool have_x = false;
+    std::optional<Rational> a_coeff;
+    std::optional<Rational> b_const;
+    for(NodeId f : factors) {
+        auto lin = affine_form(arena, f, var);
+        if(!lin) return std::nullopt;
+        if(r_eq(lin->first, Rational{1, 1}) && r_zero(lin->second) && !have_x) {
+            have_x = true;
+            continue;
+        }
+        if(!r_zero(lin->first) && !r_zero(lin->second) && !a_coeff) {
+            a_coeff = lin->first;
+            b_const = lin->second;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!have_x || !a_coeff || !b_const || r_zero(*a_coeff) || r_zero(*b_const)) return std::nullopt;
+
+    Rational A = r_div(*c, *b_const);
+    Rational B = r_div(r_neg(r_mul(*a_coeff, *c)), *b_const);
+    Rational primitive_coeff = A;
+    Rational aL = r_mul(*a_coeff, *L);
+    Rational aL_plus_b = r_add(aL, *b_const);
+    if(r_zero(aL) || r_zero(aL_plus_b)) return std::nullopt;
+    Rational limit_ratio = r_div(Rational{1, 1}, *a_coeff);
+    Rational eval_ratio = r_div(*L, aL_plus_b);
+    Rational answer_ratio = r_div(aL_plus_b, aL);
+    if(limit_ratio.num < 0) limit_ratio.num = -limit_ratio.num;
+    if(eval_ratio.num < 0) eval_ratio.num = -eval_ratio.num;
+    if(answer_ratio.num < 0) answer_ratio.num = -answer_ratio.num;
+    limit_ratio.normalize();
+    eval_ratio.normalize();
+    answer_ratio.normalize();
+
+    std::string integrand = (*args)[0];
+    std::string a_text = format_expr_human(arena, arena.num(*a_coeff));
+    std::string b_text = format_expr_human(arena, arena.num(*b_const));
+    std::string c_text = format_expr_human(arena, arena.num(*c));
+    std::string L_text = format_expr_human(arena, lo);
+    std::string axb = a_text + "*" + var + " + " + b_text;
+    std::string answer = log_coeff_text(primitive_coeff, "ln(" + rat_text(answer_ratio) + ")");
+    Rational B_abs = B;
+    if(B_abs.num < 0) B_abs.num = -B_abs.num;
+    B_abs.normalize();
+    std::string pf_rhs = rat_text(A) + "/" + var + (B.num < 0 ? " - " : " + ") + rat_text(B_abs) + "/(" + axb + ")";
+
+    std::vector<std::string> steps = {
+        "I = lim_{T->inf} Int_" + L_text + "^T " + integrand + " d" + var + ".",
+        c_text + "/(" + var + "(" + axb + ")) = " + pf_rhs + ".",
+        "F(" + var + ") = " + log_coeff_text(primitive_coeff, "ln(abs(" + var + "))") + " - " +
+            log_coeff_text(primitive_coeff, "ln(abs(" + axb + "))") + ".",
+        "F(T) = " + log_coeff_text(primitive_coeff, "ln(abs(T/(" + a_text + "*T + " + b_text + ")))") + ".",
+        "lim_{T->inf} T/(" + a_text + "*T + " + b_text + ") = " + rat_text(limit_ratio) + ".",
+        "F(" + L_text + ") = " + log_coeff_text(primitive_coeff, "ln(" + rat_text(eval_ratio) + ")") + ".",
+    };
+    return casio::exam_block("improper partial fractions", steps, answer);
+}
+
 static std::optional<std::vector<std::string>> run_improper_exp_defint(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -18779,6 +18874,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto lin_pf = run_improper_linear_pf_defint(arena, req)) return *lin_pf;
         if(auto exp_tail = run_improper_exp_defint(arena, req)) return *exp_tail;
         if(direct == "defint(cosh(x),x,0,inf)" || direct == "integrate(cosh(x),x,0,inf)" ||
            direct == "int(cosh(x),x,0,inf)") {
