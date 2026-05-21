@@ -3318,6 +3318,9 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
         case FnKind::Log: return std::log(u);
         case FnKind::Log10: return std::log10(u);
         case FnKind::Exp: return std::exp(u);
+        case FnKind::Asin: return std::asin(u);
+        case FnKind::Acos: return std::acos(u);
+        case FnKind::Atan: return std::atan(u);
         default: return std::nullopt;
         }
     }
@@ -17621,6 +17624,10 @@ static std::optional<std::vector<std::string>> inverse_trig_affine_solve(
     for(NodeId term : terms) {
         if(auto it = inv_trig_term(a, term)) {
             Node const &fn = a.get(it->second);
+            if(!contains_symbol(a, fn.a, var)) {
+                info.constants.push_back(term);
+                continue;
+            }
             if(info.saw && (fn.fkind != info.outer || !casio::same_by_sig(a, fn.a, info.arg))) return std::nullopt;
             info.saw = true;
             info.outer = fn.fkind;
@@ -17647,6 +17654,30 @@ static std::optional<std::vector<std::string>> inverse_trig_affine_solve(
     std::string arg = format_expr(a, info.arg);
     std::string tgt = canonical_angle_text(a, target);
     auto exact = exact_principal_trig_value(a, info.outer, target);
+    if(!exact) {
+        auto tv = eval_node(a, target, var, 0.0);
+        struct AngleCand { const char *txt; int num; int den; double val; };
+        AngleCand cands[] = {
+            {"0", 0, 1, 0.0},
+            {"pi/6", 1, 6, M_PI / 6.0},
+            {"pi/4", 1, 4, M_PI / 4.0},
+            {"pi/3", 1, 3, M_PI / 3.0},
+            {"pi/2", 1, 2, M_PI / 2.0},
+            {"2*pi/3", 2, 3, 2.0 * M_PI / 3.0},
+            {"3*pi/4", 3, 4, 3.0 * M_PI / 4.0},
+            {"5*pi/6", 5, 6, 5.0 * M_PI / 6.0},
+            {"pi", 1, 1, M_PI},
+        };
+        if(tv) {
+            for(auto const &cand : cands) {
+                if(std::fabs(*tv - cand.val) > 1e-9) continue;
+                NodeId angle = cand.num == 0 ? zero_node(a) : casio::mul(a, {casio::num(a, cand.num, cand.den), a.constant(ConstKind::Pi)});
+                tgt = cand.txt;
+                exact = exact_principal_trig_value(a, info.outer, angle);
+                break;
+            }
+        }
+    }
     if(!exact) return std::nullopt;
     std::vector<std::string> out;
     out.push_back(shown_eq);
