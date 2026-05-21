@@ -56,6 +56,27 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     return x.num;
 }
 
+static NodeId log_base_for_power(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num && x.num.den == 1 && x.num.num > 0) {
+        long long v = x.num.num;
+        if(v == 1) return casio::num(a, 0);
+        for(long long r = 2; r <= v / r; ++r) {
+            long long q = v;
+            int p = 0;
+            while(q % r == 0) {
+                q /= r;
+                ++p;
+            }
+            if(q == 1 && p > 1) {
+                return casio::mul(a, {casio::num(a, p), casio::fn(a, "log", casio::num(a, r))});
+            }
+        }
+    }
+    return casio::fn(a, "log", n);
+}
+
 static long long int_coeff_abs(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -2400,7 +2421,7 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         }
         NodeId up = diff(a, u, var, dep);
         NodeId vp = diff(a, v, var, dep);
-        NodeId ln_u = casio::fn(a, "log", u);
+        NodeId ln_u = log_base_for_power(a, u);
         NodeId term1 = casio::mul(a, {vp, ln_u});
         NodeId term2 = casio::mul(a, {v, casio::div(a, up, u)});
         NodeId sum = casio::add(a, {term1, term2});
@@ -4023,6 +4044,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::optional<IsolatedSqrt> rel = isolate_sqrt(arena, work);
             if(!rel) rel = isolate_fn(arena, work, FnKind::Exp);
+            if(rel && !depends_on(arena, rel->root, dep)) rel.reset();
             if(rel) {
                 auto const &sr = *rel;
                 std::string key = compact_math_key(format_expr_human(arena, sr.root));

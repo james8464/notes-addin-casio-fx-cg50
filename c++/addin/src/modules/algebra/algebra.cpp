@@ -10278,16 +10278,52 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
 
             NodeId iso_expr = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
             NodeId reduced = exact_eval_simplify(a, expand_square_powers(a, clone_with_substitution(a, res[curve_i], vars[iso], iso_expr)));
-            auto p = poly_of(a, reduced, vars[other]);
-            if(!p || !p->ok) continue;
-            auto roots = solve_poly2(a, *p, vars[other]);
-
+            if(auto any = poly_any_of(a, reduced, vars[other]); any && any->ok)
+                reduced = exact_eval_simplify(a, poly_any_to_node(a, *any, vars[other]));
             std::vector<std::string> pairs;
             std::vector<std::string> out{
                 format_expr(a, res[line_i]) + " = 0",
                 vars[iso] + " = " + format_expr(a, iso_expr),
                 format_expr(a, reduced) + " = 0"
             };
+            std::vector<std::string> roots;
+            bool roots_shown = false;
+            auto p = poly_of(a, reduced, vars[other]);
+            if(p && p->ok) {
+                roots = solve_poly2(a, *p, vars[other]);
+            }
+            else if(auto tpf = two_power_factor_route(a, reduced, vars[other], std::nullopt, std::nullopt)) {
+                roots_shown = true;
+                out.insert(out.end(), tpf->begin(), tpf->end());
+                std::string prefix = vars[other] + " = ";
+                for(auto const &line : *tpf) {
+                    if(line.rfind(prefix, 0) != 0) continue;
+                    std::string rhs = trim_text(sol_rhs(line));
+                    if(rhs.empty() || rhs.find("~=") != std::string::npos) continue;
+                    if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
+                        for(auto const &part : split_csv(rhs.substr(1, rhs.size() - 2)))
+                            roots.push_back(prefix + trim_text(part));
+                    }
+                    else roots.push_back(line);
+                }
+            }
+            else if(auto pf = poly_factor_solve_route(a, reduced, vars[other], std::nullopt, std::nullopt)) {
+                roots_shown = true;
+                out.insert(out.end(), pf->begin(), pf->end());
+                std::string prefix = vars[other] + " = ";
+                for(auto const &line : *pf) {
+                    if(line.rfind(prefix, 0) != 0) continue;
+                    std::string rhs = sol_rhs(line);
+                    if(rhs.empty() || rhs.find("~=") != std::string::npos) continue;
+                    if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
+                        for(auto const &part : split_csv(rhs.substr(1, rhs.size() - 2)))
+                            roots.push_back(prefix + trim_text(part));
+                    }
+                    else roots.push_back(line);
+                }
+            }
+            else continue;
+
             for(auto const &root_line : roots) {
                 std::string rhs = sol_rhs(root_line);
                 if(rhs.find('i') != std::string::npos || rhs.find("No solution") != std::string::npos ||
@@ -10311,7 +10347,7 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
                     }
                     if(!keep) continue;
                 }
-                out.push_back(root_line);
+                if(!roots_shown) out.push_back(root_line);
                 std::string v0 = iso == 0 ? format_expr(a, iso_val) : rhs;
                 std::string v1 = iso == 0 ? rhs : format_expr(a, iso_val);
                 pairs.push_back("(" + v0 + "," + v1 + ")");
@@ -20591,6 +20627,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lps = log_power_linear2_system_route(arena, req.expr)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
+            if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
+            if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto logv = exact_log_base_value_key(key)) {
@@ -20689,6 +20727,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lps = log_power_linear2_system_route(arena, key)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, key)) return *rpp;
             if(auto lsys = exact_linear2_system_route(arena, key)) return *lsys;
+            if(auto lsub = linear_substitution2_system_route(arena, key)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
