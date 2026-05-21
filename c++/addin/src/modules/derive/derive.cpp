@@ -270,10 +270,34 @@ struct IsolatedSqrt
     NodeId repl;
 };
 
-static bool sqrt_factor(Arena &a, NodeId n, NodeId &coef, NodeId &root)
+static bool target_fn(Arena &a, NodeId n, FnKind kind)
 {
     Node const &x = a.get(n);
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+    if(x.kind == NodeKind::Fn && x.fkind == kind) return true;
+    if(kind == FnKind::Exp && x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        return b.kind == NodeKind::Const && b.ckind == ConstKind::E;
+    }
+    return false;
+}
+
+static bool contains_target_fn(Arena &a, NodeId n, FnKind kind)
+{
+    if(target_fn(a, n, kind)) return true;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return contains_target_fn(a, x.a, kind);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_target_fn(a, x.a, kind) || contains_target_fn(a, x.b, kind);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(contains_target_fn(a, k, kind)) return true;
+    }
+    return false;
+}
+
+static bool fn_factor(Arena &a, NodeId n, FnKind kind, NodeId &coef, NodeId &root)
+{
+    Node const &x = a.get(n);
+    if(target_fn(a, n, kind)) {
         coef = casio::num(a, 1);
         root = n;
         return true;
@@ -282,14 +306,13 @@ static bool sqrt_factor(Arena &a, NodeId n, NodeId &coef, NodeId &root)
     std::vector<NodeId> rest;
     bool seen = false;
     for(NodeId k : x.kids) {
-        Node const &f = a.get(k);
-        if(f.kind == NodeKind::Fn && f.fkind == FnKind::Sqrt) {
+        if(target_fn(a, k, kind)) {
             if(seen) return false;
             seen = true;
             root = k;
         }
         else {
-            if(contains_fn_kind(a, k, FnKind::Sqrt)) return false;
+            if(contains_target_fn(a, k, kind)) return false;
             rest.push_back(k);
         }
     }
@@ -298,7 +321,7 @@ static bool sqrt_factor(Arena &a, NodeId n, NodeId &coef, NodeId &root)
     return true;
 }
 
-static std::optional<IsolatedSqrt> isolate_sqrt(Arena &a, NodeId n)
+static std::optional<IsolatedSqrt> isolate_fn(Arena &a, NodeId n, FnKind kind)
 {
     Node const &x = a.get(n);
     std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
@@ -307,7 +330,7 @@ static std::optional<IsolatedSqrt> isolate_sqrt(Arena &a, NodeId n)
     bool seen = false;
     for(NodeId t : terms) {
         NodeId c = 0, r = 0;
-        if(sqrt_factor(a, t, c, r)) {
+        if(fn_factor(a, t, kind, c, r)) {
             if(seen) return std::nullopt;
             seen = true;
             coef = c;
@@ -318,6 +341,11 @@ static std::optional<IsolatedSqrt> isolate_sqrt(Arena &a, NodeId n)
     if(!seen || rest.empty()) return std::nullopt;
     NodeId rhs = rest.size() == 1 ? neg_expanded(a, rest.front()) : neg_expanded(a, casio::simplify(a, casio::add(a, rest)));
     return IsolatedSqrt{root, casio::simplify(a, casio::div(a, rhs, coef))};
+}
+
+static std::optional<IsolatedSqrt> isolate_sqrt(Arena &a, NodeId n)
+{
+    return isolate_fn(a, n, FnKind::Sqrt);
 }
 
 static NodeId replace_by_key(Arena &a, NodeId n, std::string const &target, NodeId repl)
@@ -3955,28 +3983,44 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     }
                 }
             }
-            if(auto sr = isolate_sqrt(arena, work)) {
-                std::string key = compact_math_key(format_expr_human(arena, sr->root));
-                NodeId top = replace_by_key(arena, casio::neg(arena, fx), key, sr->repl);
-                NodeId bot = replace_by_key(arena, fy, key, sr->repl);
-                NodeId plain = casio::simplify(arena, casio::div(arena, top, bot));
-                std::vector<NodeId> sdens;
-                std::vector<std::string> sden_txt;
-                collect_denominators(arena, top, sdens, sden_txt);
-                collect_denominators(arena, bot, sdens, sden_txt);
-                NodeId cleared = sdens.empty()
-                    ? plain
-                    : casio::simplify(arena, casio::div(arena, expand_small(arena, clear_denominators_expression(arena, top, sdens)),
-                                                       expand_small(arena, clear_denominators_expression(arena, bot, sdens))));
+            std::optional<IsolatedSqrt> rel = isolate_sqrt(arena, work);
+            if(!rel) rel = isolate_fn(arena, work, FnKind::Exp);
+            if(rel) {
+                auto const &sr = *rel;
+                std::string key = compact_math_key(format_expr_human(arena, sr.root));
+                NodeId base = cleared_ans ? *cleared_ans : ans;
+                NodeId plain = casio::simplify(arena, replace_by_key(arena, base, key, sr.repl));
+                NodeId cleared = plain;
+                Node const &pn = arena.get(plain);
+                if(pn.kind == NodeKind::Div) {
+                    std::vector<NodeId> sdens;
+                    std::vector<std::string> sden_txt;
+                    collect_denominators(arena, pn.a, sdens, sden_txt);
+                    collect_denominators(arena, pn.b, sdens, sden_txt);
+                    if(!sdens.empty()) {
+                        cleared = casio::simplify(
+                            arena,
+                            casio::div(arena, expand_small(arena, clear_denominators_expression(arena, pn.a, sdens)),
+                                       expand_small(arena, clear_denominators_expression(arena, pn.b, sdens)))
+                        );
+                    }
+                }
                 std::string ptxt = clean_math_text(format_expr_human(arena, plain));
                 std::string ctxt = clean_math_text(format_expr_human(arena, cleared));
                 sqrt_ans = (ctxt.size() < ptxt.size()) ? cleared : plain;
-                sqrt_line = clean_math_text(format_expr_human(arena, sr->root)) + " = " +
-                            clean_math_text(format_expr_human(arena, sr->repl));
+                sqrt_line = clean_math_text(format_expr_human(arena, sr.root)) + " = " +
+                            clean_math_text(format_expr_human(arena, sr.repl));
             }
             std::string fx_s = clean_math_text(format_expr_human(arena, fx));
             std::string fy_s = clean_math_text(format_expr_human(arena, fy));
-            if(cleared_ans) answer = dname + " = " + format_expr_human(arena, *cleared_ans);
+            if(cleared_ans) {
+                if(sqrt_ans) {
+                    answer = dname + " = " + format_expr_human(arena, *sqrt_ans);
+                    steps.push_back(sqrt_line + ".");
+                    steps.push_back(answer + ".");
+                }
+                else answer = dname + " = " + format_expr_human(arena, *cleared_ans);
+            }
             else {
                 if(sqrt_ans) answer = dname + " = " + format_expr_human(arena, *sqrt_ans);
                 steps.push_back("F(x,y) = " + clean_math_text(format_expr_human(arena, work)) + " = 0.");
