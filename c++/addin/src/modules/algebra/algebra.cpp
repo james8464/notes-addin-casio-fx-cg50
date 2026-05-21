@@ -6099,10 +6099,50 @@ static std::optional<std::string> log_denominator_exclusion(std::string d)
     return std::nullopt;
 }
 
+static std::optional<std::string> abs_linear_denominator_exclusion(Arena &a, NodeId den_node, std::string const &var)
+{
+    NodeId abs_arg = 0;
+    Rational abs_coef{0, 1}, c{0, 1};
+    std::vector<NodeId> terms;
+    add_terms_flat(a, den_node, terms);
+    for(NodeId t : terms) {
+        Rational coef{1, 1};
+        NodeId body = t;
+        bool has_body = true;
+        if(!split_coeff_body(a, t, coef, body, has_body)) return std::nullopt;
+        if(!has_body) {
+            c = r_add(c, coef);
+            continue;
+        }
+        Node const &b = a.get(body);
+        if(b.kind != NodeKind::Fn || b.fkind != FnKind::Abs) return std::nullopt;
+        if(abs_arg && format_expr(a, abs_arg) != format_expr(a, b.a)) return std::nullopt;
+        abs_arg = b.a;
+        abs_coef = r_add(abs_coef, coef);
+    }
+    if(!abs_arg || is_zero(abs_coef)) return std::nullopt;
+    auto p = poly_of(a, abs_arg, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    Rational rhs = r_div(r_neg(c), abs_coef);
+    std::string den = format_expr(a, den_node);
+    if(rhs.num < 0) return "Domain: all real " + var;
+    std::vector<Rational> roots{r_div(r_sub(rhs, p->a0), p->a1)};
+    if(!is_zero(rhs)) roots.push_back(r_div(r_sub(r_neg(rhs), p->a0), p->a1));
+    std::sort(roots.begin(), roots.end(), [](Rational u, Rational v) { return r_cmp(u, v) < 0; });
+    roots.erase(std::unique(roots.begin(), roots.end(), [](Rational u, Rational v) { return r_cmp(u, v) == 0; }), roots.end());
+    std::string line = "Domain: " + den + " != 0 => ";
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) line += ", ";
+        line += var + " != " + format_rat(a, roots[i]);
+    }
+    return line;
+}
+
 static std::string denominator_domain_line(Arena &a, NodeId den_node)
 {
     std::string den = format_expr(a, den_node);
     std::string var = choose_solve_var(a, den_node, "");
+    if(auto absd = abs_linear_denominator_exclusion(a, den_node, var)) return *absd;
     auto p = poly_of(a, den_node, var);
     if(!p || !p->ok || (is_zero(p->a1) && is_zero(p->a2))) return "Domain: " + den + " != 0";
 
@@ -15000,6 +15040,77 @@ next_common_factor:
     return exact_eval_simplify(a, casio::div(a, poly_any_to_node(a, nn, var), poly_any_to_node(a, dd, var)));
 }
 
+static int poly2_degree(Poly2 const &p)
+{
+    if(!is_zero(p.a2)) return 2;
+    if(!is_zero(p.a1)) return 1;
+    return 0;
+}
+
+static PolyAny poly2_any(Poly2 const &p)
+{
+    PolyAny out{{p.a0, p.a1, p.a2}, true};
+    trim_poly_any(out);
+    return out;
+}
+
+static std::optional<Poly2> poly2_div_exact(Poly2 const &num, Poly2 const &den)
+{
+    PolyAny q;
+    if(!poly_any_div_exact(poly2_any(num), poly2_any(den), q) || q.c.size() > 3) return std::nullopt;
+    q.c.resize(3, Rational{0, 1});
+    return Poly2{q.c[2], q.c[1], q.c[0], true};
+}
+
+static std::optional<std::vector<std::string>> rational_sum_simplify_route(
+    Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2) return std::nullopt;
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    std::vector<PolyFrac2> fracs;
+    bool has_frac = false, lcm_ok = true;
+    Poly2 common{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}, true};
+    for(NodeId t : terms) {
+        auto f = term_fraction_poly(a, t, var);
+        if(!f) { lcm_ok = false; break; }
+        if(poly2_degree(f->den) > 0) has_frac = true;
+        if(poly2_degree(f->den) > poly2_degree(common)) common = f->den;
+        fracs.push_back(*f);
+    }
+    NodeId combined = 0;
+    if(has_frac && lcm_ok) {
+        Poly2 num{Rational{0, 1}, Rational{0, 1}, Rational{0, 1}, true};
+        for(auto const &f : fracs) {
+            auto q = poly2_div_exact(common, f.den);
+            if(!q) { lcm_ok = false; break; }
+            Poly2 term = mul_poly(f.num, *q);
+            if(!term.ok) { lcm_ok = false; break; }
+            num = add_poly(num, term);
+            if(!num.ok) { lcm_ok = false; break; }
+        }
+        if(lcm_ok) combined = exact_eval_simplify(a, casio::div(a, poly2_to_node(a, num, var), poly2_to_node(a, common, var)));
+    }
+    if(!has_frac) return std::nullopt;
+    if(!combined) {
+        auto r = rat_any_of(a, expr, var);
+        if(!r || r->n.c.size() > 8 || r->d.c.size() > 8) return std::nullopt;
+        combined = exact_eval_simplify(a, casio::div(a, poly_any_to_node(a, r->n, var), poly_any_to_node(a, r->d, var)));
+    }
+    NodeId ans = combined;
+    if(auto c = cancel_poly_any_fraction(a, combined, var)) ans = *c;
+    if(casio::same_by_sig(a, ans, expr) || !numeric_same(a, expr, ans)) return std::nullopt;
+    std::string lhs = format_expr(a, expr);
+    std::string mid = format_expr(a, combined);
+    std::string rhs = format_expr(a, ans);
+    std::vector<std::string> out{lhs};
+    if(mid != lhs && mid != rhs && mid.size() <= 180) out.push_back("= " + mid);
+    out.push_back("= " + rhs);
+    out.push_back(rhs);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> rational_root_poly_substitution_route(Arena &a, NodeId rearr, std::string const &var,
                                                                                      std::optional<double> lo,
                                                                                      std::optional<double> hi)
@@ -23814,6 +23925,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.method == "collect" || req.method == "canonical") {
                 if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, choose_solve_var(arena, parsed, "x")))
                     return *rat_cancel;
+                if(auto rat_sum = rational_sum_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                    return *rat_sum;
                 if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
                 steps.push_back(format_expr(arena, parsed));
                 steps.push_back("= " + (n_text ? *n_text : format_expr(arena, n)));
@@ -23847,6 +23960,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, choose_solve_var(arena, parsed, "x")))
                 return *rat_cancel;
+            if(auto rat_sum = rational_sum_simplify_route(arena, parsed, choose_solve_var(arena, parsed, "x")))
+                return *rat_sum;
             if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
             Node const &pn = arena.get(parsed);
             if(pn.kind == NodeKind::Fn && (pn.fkind == FnKind::Asin || pn.fkind == FnKind::Acos || pn.fkind == FnKind::Atan)) {
