@@ -1836,6 +1836,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["2/(t(3*t + 7)) = 2/7/t - 6/7/(3*t + 7)", "lim_{T->inf} T/(3*T + 7) = 1/3", "2/7*ln(10/3)"],
         ["inf/(3*inf + 7)", "ERR:"],
     ),
+    (
+        "int",
+        "int(sinh(y)^2,y)",
+        ["sinh(u)^2 = (cosh(2u)-1)/2", "sinh(2*y)/4 - y/2 + C"],
+        ["No elementary primitive", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(pi*sinh(y)^2,y,0,ln(3)/2)",
+        ["sinh(u)^2 = (cosh(2u)-1)/2", "F(ln(3)/2) = 1/3*pi - 1/4*pi*ln(3)", "1/3*pi - 1/4*pi*ln(3)"],
+        ["No elementary primitive", "sinh(ln(3))", "sinh(0)", "ERR:"],
+    ),
+    (
+        "int",
+        "int(cosh(2*y)^2,y)",
+        ["cosh(u)^2 = (cosh(2u)+1)/2", "(sinh(4*y)/4 + y)/2 + C"],
+        ["No elementary primitive", "ERR:"],
+    ),
 ]
 
 

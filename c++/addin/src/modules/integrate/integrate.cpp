@@ -13224,6 +13224,16 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
             });
             steps.push_back("Step 2: cos(u)^6=(10+15cos(2u)+6cos(4u)+cos(6u))/32.");
         }
+    } else if((base.fkind == FnKind::Sinh || base.fkind == FnKind::Cosh) && *p == 2) {
+        primitive = casio::add(a, {
+            casio::div(a, casio::fn(a, "sinh", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4)),
+            base.fkind == FnKind::Sinh
+                ? casio::neg(a, casio::div(a, u, casio::num(a, 2)))
+                : casio::div(a, u, casio::num(a, 2)),
+        });
+        steps.push_back(base.fkind == FnKind::Sinh
+            ? "sinh(u)^2 = (cosh(2u)-1)/2."
+            : "cosh(u)^2 = (cosh(2u)+1)/2.");
     } else if(base.fkind == FnKind::Tan) {
         if(*p == 2) {
             primitive = casio::simplify(a, casio::add(a, {
@@ -17425,6 +17435,18 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(an.kind == NodeKind::Pow) {
                 Node const &base = a.get(an.a);
                 if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return arg;
+            }
+        }
+        if(x.fkind == FnKind::Sinh || x.fkind == FnKind::Cosh) {
+            if(auto r = as_num(a, arg); r && r_zero(*r))
+                return x.fkind == FnKind::Sinh ? a.num(Rational{0, 1}) : a.num(Rational{1, 1});
+            NodeId ep = simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), arg));
+            NodeId em = simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), casio::neg(a, arg)));
+            auto rp = as_num(a, ep);
+            auto rm = as_num(a, em);
+            if(rp && rm) {
+                Rational top = x.fkind == FnKind::Sinh ? r_sub(*rp, *rm) : r_add(*rp, *rm);
+                return a.num(r_div(top, Rational{2, 1}));
             }
         }
         if(x.fkind == FnKind::Asinh) {
