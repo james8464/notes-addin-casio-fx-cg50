@@ -303,8 +303,26 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(100*d2x/dt2+60*dx/dt+13*x=26)",
-        ["Err: second-order DE unsupported"],
-        ["d2x = ", "Int(1) d2x", "2x ="],
+        ["100*m^2 + 60*m + 13 = 0", "m = -3/10 +/- 1/5*i", "x_p = 2", "x = 2 + e^(-3/10*t)*(A*cos(1/5*t) + B*sin(1/5*t))"],
+        ["Err: second-order DE unsupported", "d2x = ", "Int(1) d2x", "2x ="],
+    ),
+    (
+        "int",
+        "de_solve(d2x/dt2-4*dx/dt+5*x=0)",
+        ["m^2 - 4*m + 5 = 0", "m = 2 +/- i", "x = e^(2*t)*(A*cos(t) + B*sin(t))"],
+        ["Err: second-order DE unsupported", "d2x = ", "Int(1) d2x"],
+    ),
+    (
+        "int",
+        "de_solve(d2y/dx2-5*dy/dx+6*y=0)",
+        ["m^2 - 5*m + 6 = 0", "m = 3, 2", "y = A*e^(3*x) + B*e^(2*x)"],
+        ["Err: second-order DE unsupported", "d2y = "],
+    ),
+    (
+        "int",
+        "de_solve(d2y/dx2-4*dy/dx+4*y=0)",
+        ["m^2 - 4*m + 4 = 0", "m = 2 repeated", "y = (A + B*x)*e^(2*x)"],
+        ["Err: second-order DE unsupported", "d2y = "],
     ),
     (
         "alg",

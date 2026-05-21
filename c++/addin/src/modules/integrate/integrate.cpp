@@ -2322,6 +2322,116 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     return casio::exam_block("linear differential equation", steps, tok.y + " = " + final_rhs);
 }
 
+static std::optional<DeToken> find_second_deriv_token(std::string const &s)
+{
+    for(std::size_t i = 0; i + 6 < s.size(); ++i) {
+        if(s[i] != 'd' || s[i + 1] != '2') continue;
+        std::size_t j = i + 2;
+        while(j < s.size() && (std::isalnum((unsigned char)s[j]) || s[j] == '_')) ++j;
+        if(j == i + 2 || j + 3 >= s.size() || s[j] != '/' || s[j + 1] != 'd') continue;
+        std::size_t k = j + 2;
+        while(k < s.size() && (std::isalnum((unsigned char)s[k]) || s[k] == '_')) ++k;
+        if(k == j + 2 || s[k - 1] != '2') continue;
+        return DeToken{i, k - i, s.substr(i + 2, j - i - 2), s.substr(j + 2, k - j - 3)};
+    }
+    return std::nullopt;
+}
+
+static std::string coeff_var_text(Arena &a, Rational c, std::string const &v)
+{
+    if(c.num == 0) return "0";
+    if(c.num == c.den) return v;
+    if(c.num == -c.den) return "-" + v;
+    return rat_text_small(a, c) + "*" + v;
+}
+
+static std::string complex_root_text(Arena &a, Rational alpha, Rational beta)
+{
+    std::string b = beta.num == beta.den ? "i" : rat_text_small(a, beta) + "*i";
+    if(alpha.num == 0) return "m = +/- " + b;
+    return "m = " + rat_text_small(a, alpha) + " +/- " + b;
+}
+
+static std::vector<std::string> solve_second_order_de_mode(std::string const &eqtxt)
+{
+    auto tok = find_second_deriv_token(eqtxt);
+    if(!tok) throw std::runtime_error("second-order DE unsupported");
+    if(!top_eq_pos(eqtxt)) throw std::runtime_error("need equation");
+    std::string repl = eqtxt;
+    repl.replace(tok->pos, tok->len, "D2de");
+    while(auto d1 = find_deriv_token(repl)) {
+        if(d1->y != tok->y || d1->x != tok->x) throw std::runtime_error("mixed derivative unsupported");
+        repl.replace(d1->pos, d1->len, "Dde");
+    }
+    Arena a;
+    auto parsed = casio::parse_equation(a, repl);
+    if(!parsed) throw std::runtime_error("need equation");
+    NodeId res = casio::simplify(a, casio::add(a, {parsed->lhs, casio::neg(a, parsed->rhs)}));
+    auto p2 = linear_parts_node(a, res, "D2de");
+    if(!p2) throw std::runtime_error("second-order DE unsupported");
+    auto p1 = linear_parts_node(a, p2->second, "Dde");
+    if(!p1) throw std::runtime_error("second-order DE unsupported");
+    auto py = linear_parts_node(a, p1->second, tok->y);
+    if(!py) throw std::runtime_error("second-order DE unsupported");
+    auto A = as_num(a, casio::simplify(a, p2->first));
+    auto B = as_num(a, casio::simplify(a, p1->first));
+    auto C = as_num(a, casio::simplify(a, py->first));
+    auto K = as_num(a, casio::simplify(a, py->second));
+    if(!A || !B || !C || !K || A->num == 0) throw std::runtime_error("second-order DE unsupported");
+    if(C->num == 0 && K->num != 0) throw std::runtime_error("second-order DE unsupported");
+
+    Rational disc = r_sub(r_mul(*B, *B), r_mul(Rational{4, 1}, r_mul(*A, *C)));
+    Rational twoA = r_mul(Rational{2, 1}, *A);
+    Rational alpha = r_div(r_neg(*B), twoA);
+    Rational yp{0, 1};
+    if(K->num != 0) yp = r_div(r_neg(*K), *C);
+
+    NodeId m = casio::sym(a, "m");
+    NodeId poly = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {casio::num(a, A->num, A->den), casio::power(a, m, casio::num(a, 2))}),
+        casio::mul(a, {casio::num(a, B->num, B->den), m}),
+        casio::num(a, C->num, C->den)
+    }));
+    std::vector<std::string> steps{format_expr(a, poly) + " = 0"};
+
+    auto add_particular = [&]() {
+        if(yp.num != 0) steps.push_back(tok->y + "_p = " + rat_text_small(a, yp));
+    };
+    auto final_with_particular = [&](std::string const &cf) {
+        return tok->y + " = " + (yp.num == 0 ? cf : rat_text_small(a, yp) + " + " + cf);
+    };
+
+    std::string cf;
+    if(disc.num < 0) {
+        auto beta0 = sqrt_rat_exact(r_neg(disc));
+        if(!beta0) throw std::runtime_error("second-order DE unsupported");
+        Rational beta = r_div(*beta0, twoA);
+        if(beta.num < 0) beta = r_neg(beta);
+        steps.push_back(complex_root_text(a, alpha, beta));
+        add_particular();
+        std::string bx = coeff_var_text(a, beta, tok->x);
+        std::string trig = "A*cos(" + bx + ") + B*sin(" + bx + ")";
+        cf = alpha.num == 0 ? trig : "e^(" + coeff_var_text(a, alpha, tok->x) + ")*(" + trig + ")";
+    }
+    else {
+        auto sd = sqrt_rat_exact(disc);
+        if(!sd) throw std::runtime_error("second-order DE unsupported");
+        Rational r1 = r_div(r_add(r_neg(*B), *sd), twoA);
+        Rational r2 = r_div(r_sub(r_neg(*B), *sd), twoA);
+        if(r_eq(r1, r2)) {
+            steps.push_back("m = " + rat_text_small(a, r1) + " repeated");
+            add_particular();
+            cf = "(A + B*" + tok->x + ")*e^(" + coeff_var_text(a, r1, tok->x) + ")";
+        }
+        else {
+            steps.push_back("m = " + rat_text_small(a, r1) + ", " + rat_text_small(a, r2));
+            add_particular();
+            cf = "A*e^(" + coeff_var_text(a, r1, tok->x) + ") + B*e^(" + coeff_var_text(a, r2, tok->x) + ")";
+        }
+    }
+    return casio::exam_block("second-order differential equation", steps, final_with_particular(cf));
+}
+
 static std::optional<std::vector<std::string>> symbolic_de_constant_route(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc);
 
 static std::vector<std::string> solve_de_mode(std::string const &payload)
@@ -2343,7 +2453,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
     bc = no_ws(normalize_text(bc));
 
     try {
-        if(eqtxt.find("d2") != std::string::npos) throw std::runtime_error("second-order DE unsupported");
+        if(eqtxt.find("d2") != std::string::npos) return solve_second_order_de_mode(eqtxt);
         if(!top_eq_pos(eqtxt)) eqtxt = "dy/dx=" + eqtxt;
         std::size_t eqp0 = *top_eq_pos(eqtxt);
         auto tok = find_deriv_token(eqtxt);
