@@ -4408,7 +4408,6 @@ static std::optional<std::vector<std::string>> solve_pyth_recip_poly(
         for(double x : vals) add_unique(xs, x);
     };
     auto solve_u = [&](std::string const &u_name, double qa, double qb, double qc, FnKind out_fk, bool reciprocal) -> bool {
-        if(std::fabs(qa) < 1e-12) return false;
         auto roots = solve_quadratic_d(qa, qb, qc);
         if(roots.empty()) return false;
         steps.push_back("u=" + u_name + "(" + A + ").");
@@ -8642,8 +8641,11 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                     target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
                 }
                 else if(fk0 == FnKind::Cot) {
-                    fk0 = FnKind::Tan;
-                    target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+                    auto z = as_num(a, target_node);
+                    if(!(z && z->num == 0)) {
+                        fk0 = FnKind::Tan;
+                        target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
+                    }
                 }
                 if(auto qangle = solve_even_quadratic_angle_exact(a, fk0, F.a, target_node, var, lo_text, hi_text, rad, eq_text))
                     return *qangle;
@@ -8722,6 +8724,21 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
     }
     else if(fk == FnKind::Cot) {
+        auto z = as_num(a, target_node);
+        if(z && z->num == 0) {
+            std::string A = format_expr(a, arg);
+            std::vector<double> xs;
+            auto vals = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, 0.0));
+            for(double x : vals) add_unique(xs, x);
+            std::sort(xs.begin(), xs.end());
+            std::vector<std::string> steps;
+            casio::append_exam_prelude_steps(steps, pre);
+            steps.push_back("cot(" + A + ") = 0 => cos(" + A + ") = 0");
+            steps.push_back(trig_base_angle_line(FnKind::Cos, A, 0.0));
+            steps.push_back(trig_alpha_family_line(FnKind::Cos, A, 0.0, rad));
+            steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+            return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+        }
         fk = FnKind::Tan;
         target_node = casio::simplify(a, casio::div(a, casio::num(a, 1), target_node));
     }

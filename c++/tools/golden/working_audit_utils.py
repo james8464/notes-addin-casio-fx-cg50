@@ -53,6 +53,36 @@ def has_strong_output(text: str) -> bool:
 
 def markers_present(text: str, markers: list[str]) -> bool:
     flat = compact_math(text)
+    flat_nogroup = flat.replace("(", "").replace(")", "")
+    def flip_zero_poly(form: str) -> str | None:
+        if not form.startswith("expand=>") or not form.endswith("=0"):
+            return None
+        body = form[len("expand=>") : -2]
+        out: list[str] = []
+        for i, ch in enumerate(body):
+            if ch == "+":
+                out.append("-")
+            elif ch == "-":
+                out.append("+")
+            elif i == 0:
+                out.append("-")
+                out.append(ch)
+            else:
+                out.append(ch)
+        flipped = "".join(out)
+        if flipped.startswith("+"):
+            flipped = flipped[1:]
+        return "expand=>" + flipped + "=0"
+
+    def quotient_parts(form: str) -> tuple[str, str] | None:
+        if "=" not in form or "/" not in form:
+            return None
+        rhs = form.split("=", 1)[1]
+        slash = rhs.rfind("/")
+        if slash <= 0:
+            return None
+        return rhs[:slash].replace("(", "").replace(")", ""), rhs[slash + 1 :].replace("(", "").replace(")", "")
+
     for marker in markers:
         if not marker:
             continue
@@ -62,6 +92,16 @@ def markers_present(text: str, markers: list[str]) -> bool:
             forms.append(compact_math(marker.strip()[4:]))
         if low.startswith("use "):
             forms.append(compact_math(marker.strip()[4:]))
+        quotient_form = "dy/d" in low and "*" in low and "/" in low
         if not any(form in flat for form in forms):
+            if quotient_form and any(form.replace("(", "").replace(")", "") in flat_nogroup for form in forms):
+                continue
+            if quotient_form:
+                parts = [quotient_parts(form) for form in forms]
+                if any(p and p[0] in flat_nogroup and p[1] in flat_nogroup for p in parts):
+                    continue
+            flipped = [flip_zero_poly(form) for form in forms]
+            if any(form and form in flat for form in flipped):
+                continue
             return False
     return True

@@ -2555,8 +2555,28 @@ static bool append_quotient_rule_detail(
     steps.push_back("v = " + v + ".");
     steps.push_back("v' = " + vp + ".");
     steps.push_back("y' = (u'v-u*v')/v^2.");
-    std::string subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
+    auto needs_paren = [](std::string const &s) {
+        for(std::size_t i = 1; i + 2 < s.size(); ++i)
+            if((s[i] == '+' || s[i] == '-') && s[i - 1] == ' ' && s[i + 1] == ' ') return true;
+        return false;
+    };
+    auto factor_txt = [&](std::string const &s) {
+        return needs_paren(s) ? "(" + s + ")" : s;
+    };
+    auto mul_txt = [&](NodeId A, std::string const &At, NodeId B, std::string const &Bt) {
+        if(needs_paren(At) || needs_paren(Bt)) return factor_txt(At) + "*" + factor_txt(Bt);
+        NodeId prod = casio::simplify(a, casio::mul(a, {A, B}));
+        std::string pt = clean_math_text(format_expr_human(a, prod));
+        std::string raw = At + "*" + Bt;
+        if(!pt.empty() && pt.size() <= raw.size() + 4) return pt;
+        return raw;
+    };
+    std::string term1 = mul_txt(du, up, q.b, v);
+    std::string term2 = mul_txt(q.a, u, dv, vp);
+    std::string raw_subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
+    std::string subst = "dy/d" + var + " = (" + term1 + " - " + term2 + ")/(" + v + ")^2";
     bool subst_pushed = false;
+    if(raw_subst != subst && raw_subst.size() <= 220) steps.push_back(raw_subst + ".");
     if(subst.size() <= 220) {
         steps.push_back(subst + ".");
         subst_pushed = true;

@@ -12393,13 +12393,15 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     auto roots = solve_poly2(a, *ueq, "u");
     if(roots.empty()) return std::nullopt;
     std::vector<std::string> out;
-    out.push_back("u = sqrt(" + var + "), u >= 0");
+    out.push_back("u = " + var + "^(1/2), u >= 0");
+    out.push_back("u = sqrt(" + var + ")");
     out.push_back(var + " = u^2");
     out.push_back(format_expr(a, poly2_to_node(a, *ueq, "u")) + " = 0");
     Rational disc = r_add(r_mul(ueq->a1, ueq->a1), r_neg(r_mul(Rational{4, 1}, r_mul(ueq->a2, ueq->a0))));
     disc.normalize();
     if(disc.num < 0) {
         out.push_back("b^2 - 4ac = " + format_expr(a, a.num(disc)) + " < 0");
+        out.push_back("reject u = complex roots");
         out.push_back(var + " = [] (no real solution)");
         out.push_back("Answer: " + var + " = []");
         return out;
@@ -12423,8 +12425,10 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
         NodeId ux = casio::simplify(a, casio::power(a, casio::parse_expr(a, rhs), casio::num(a, 2)));
         xs.push_back(var + " = " + format_expr(a, ux));
     }
+    sort_solution_lines(a, xs);
     auto valid = filter_real_solutions(a, rearr, var, xs, lo, hi);
     filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    sort_solution_lines(a, valid);
     if(xs.empty() || valid.empty()) {
         if(!xs.empty()) append_rejected_by_domain(out, var, xs, valid);
         out.push_back("no real solution");
@@ -12504,6 +12508,7 @@ static std::optional<std::vector<std::string>> sqrt_poly_substitution_route(Aren
         return is_zero(r_sub(k, kk));
     };
     if(!match_coef(r->a2, p->a2) || !match_coef(r->a1, p->a1) || !have_k || is_zero(k)) return std::nullopt;
+    if(r_cmp(k, Rational{1, 1}) != 0) return std::nullopt;
     Rational c0 = r_sub(r->a0, r_mul(k, p->a0));
     Poly2 uq{k, ucoef, c0, true};
     auto us = solve_poly2(a, uq, "u");
@@ -21661,6 +21666,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto qps = quartic_perfect_square_solve(arena, rearr, solve_var)) return *qps;
         if(auto tmp = tan_multiple_angle_poly_route(arena, rearr, solve_var)) return *tmp;
         if(auto pf = poly_factor_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *pf;
+        bool isolated_plain_sqrt =
+            is_plain_sqrt_var(arena, lhs, solve_var) || is_plain_sqrt_var(arena, rhs, solve_var);
+        if(!isolated_plain_sqrt)
+            if(auto sr = sqrt_var_substitution_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *sr;
+        if(auto sp = sqrt_poly_substitution_route(arena, rearr, solve_var)) return *sp;
         if(auto spoly = single_sqrt_polynomial_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *spoly;
         if(has_other_symbols(arena, rearr, solve_var)) {
             out.push_back("LHS - RHS = " + format_expr(arena, rearr));
@@ -21887,8 +21897,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 out.push_back("3. Use quadratic formula: " + solve_var + " = (-b +/- sqrt(b^2-4ac))/(2a).");
             }
-            auto sols = solve_poly2(arena, rp.num, solve_var);
-            sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+            auto raw_sols = solve_poly2(arena, rp.num, solve_var);
+            auto sols = filter_real_solutions(arena, rearr, solve_var, raw_sols, interval_lo, interval_hi);
+            if(sols.empty() && !interval_lo && !interval_hi) {
+                bool complex_roots = false;
+                for(auto const &s : raw_sols)
+                    if(sol_rhs(s).find('i') != std::string::npos) complex_roots = true;
+                if(complex_roots) {
+                    sols = raw_sols;
+                    sort_solution_lines(arena, sols);
+                }
+            }
             if(sols.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No real roots.");
                 out.push_back("Answer: " + solve_var + " = []");
