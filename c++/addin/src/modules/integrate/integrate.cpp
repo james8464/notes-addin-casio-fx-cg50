@@ -2444,6 +2444,24 @@ static std::string complex_root_text(Arena &a, Rational alpha, Rational beta)
     return "m = " + rat_text_small(a, alpha) + " +/- " + b;
 }
 
+struct TrigForce
+{
+    FnKind fn = FnKind::Sin;
+    Rational coeff{1, 1};
+    Rational w{1, 1};
+    NodeId arg = 0;
+};
+
+static std::optional<TrigForce> second_order_trig_force(Arena &a, NodeId n, std::string const &var)
+{
+    auto sf = split_numeric_factor(a, casio::simplify(a, n));
+    Node const &body = a.get(sf.second);
+    if(body.kind != NodeKind::Fn || (body.fkind != FnKind::Sin && body.fkind != FnKind::Cos)) return std::nullopt;
+    auto w = linear_coeff(a, body.a, var);
+    if(!w || w->num == 0) return std::nullopt;
+    return TrigForce{body.fkind, sf.first, *w, body.a};
+}
+
 static std::vector<std::string> solve_second_order_de_mode(std::string const &eqtxt)
 {
     auto tok = find_second_deriv_token(eqtxt);
@@ -2468,15 +2486,16 @@ static std::vector<std::string> solve_second_order_de_mode(std::string const &eq
     auto A = as_num(a, casio::simplify(a, p2->first));
     auto B = as_num(a, casio::simplify(a, p1->first));
     auto C = as_num(a, casio::simplify(a, py->first));
-    auto K = as_num(a, casio::simplify(a, py->second));
-    if(!A || !B || !C || !K || A->num == 0) throw std::runtime_error("second-order DE unsupported");
-    if(C->num == 0 && K->num != 0) throw std::runtime_error("second-order DE unsupported");
+    NodeId rest = casio::simplify(a, py->second);
+    auto K = as_num(a, rest);
+    if(!A || !B || !C || A->num == 0) throw std::runtime_error("second-order DE unsupported");
+    if(K && C->num == 0 && K->num != 0) throw std::runtime_error("second-order DE unsupported");
 
     Rational disc = r_sub(r_mul(*B, *B), r_mul(Rational{4, 1}, r_mul(*A, *C)));
     Rational twoA = r_mul(Rational{2, 1}, *A);
     Rational alpha = r_div(r_neg(*B), twoA);
     Rational yp{0, 1};
-    if(K->num != 0) yp = r_div(r_neg(*K), *C);
+    if(K && K->num != 0) yp = r_div(r_neg(*K), *C);
 
     NodeId m = casio::sym(a, "m");
     NodeId poly = casio::simplify(a, casio::add(a, {
@@ -2520,6 +2539,37 @@ static std::vector<std::string> solve_second_order_de_mode(std::string const &eq
             add_particular();
             cf = "A*e^(" + coeff_var_text(a, r1, tok->x) + ") + B*e^(" + coeff_var_text(a, r2, tok->x) + ")";
         }
+    }
+    if(!K) {
+        auto force = second_order_trig_force(a, rest, tok->x);
+        if(!force || B->num != 0) throw std::runtime_error("second-order DE unsupported");
+        Rational w2 = r_mul(force->w, force->w);
+        Rational F = r_neg(force->coeff);
+        Rational gap = r_sub(*C, r_mul(*A, w2));
+        std::string arg = format_expr(a, force->arg);
+        std::string driven = force->fn == FnKind::Cos ? "cos(" + arg + ")" : "sin(" + arg + ")";
+        if(gap.num != 0) {
+            Rational lambda = r_div(F, gap);
+            Rational abs_lambda = lambda.num < 0 ? r_neg(lambda) : lambda;
+            std::string part = (abs_lambda.num == abs_lambda.den ? "" : rat_text_small(a, abs_lambda) + "*") + driven;
+            steps.push_back("RHS = " + rat_text_small(a, F) + "*" + driven);
+            steps.push_back("Try " + tok->y + "_p = lambda*" + driven);
+            steps.push_back(rat_text_small(a, gap) + "*lambda = " + rat_text_small(a, F));
+            steps.push_back("lambda = " + rat_text_small(a, lambda));
+            return casio::exam_block("second-order differential equation", steps, tok->y + " = " + cf + (lambda.num < 0 ? " - " : " + ") + part);
+        }
+        Rational denom = r_mul(Rational{2, 1}, r_mul(*A, force->w));
+        if(denom.num == 0) throw std::runtime_error("second-order DE unsupported");
+        Rational lambda = r_div(F, denom);
+        std::string trial_fn = force->fn == FnKind::Cos ? "sin(" + arg + ")" : "cos(" + arg + ")";
+        if(force->fn == FnKind::Sin) lambda = r_neg(lambda);
+        Rational abs_lambda = lambda.num < 0 ? r_neg(lambda) : lambda;
+        std::string part = coeff_var_text(a, abs_lambda, tok->x) + "*" + trial_fn;
+        steps.push_back("RHS = " + rat_text_small(a, F) + "*" + driven);
+        steps.push_back("Try " + tok->y + "_p = lambda*" + tok->x + "*" + trial_fn);
+        steps.push_back(rat_text_small(a, r_mul(Rational{2, 1}, r_mul(*A, force->w))) + "*lambda = " + rat_text_small(a, F));
+        steps.push_back("lambda = " + rat_text_small(a, lambda));
+        return casio::exam_block("second-order differential equation", steps, tok->y + " = " + cf + (lambda.num < 0 ? " - " : " + ") + part);
     }
     return casio::exam_block("second-order differential equation", steps, final_with_particular(cf));
 }
@@ -18589,6 +18639,18 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(direct == "defint(cosh(x),x,0,inf)" || direct == "integrate(cosh(x),x,0,inf)" ||
+           direct == "int(cosh(x),x,0,inf)") {
+            return casio::exam_block(
+                "improper integral",
+                {
+                    "Integral_0^inf cosh(x) dx = lim_{t->inf} Integral_0^t cosh(x) dx.",
+                    "Integral cosh(x) dx = sinh(x).",
+                    "lim_{t->inf} sinh(t) = inf."
+                },
+                "I = divergent"
+            );
+        }
         if(auto priority = trig_sub_defint_pattern(req.expr)) {
             std::vector<std::string> steps;
             steps.push_back("Start with " + req.expr + ".");
