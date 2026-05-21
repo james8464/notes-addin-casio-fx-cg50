@@ -91,6 +91,12 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["inspect graph/transform", "ERR:"],
     ),
     (
+        "June 2019 Q5 reciprocal quadratic range",
+        ["--alg", "range(21/(2*x^2+4*x+9))"],
+        ["Discriminant = - 56*y^2 + 168*y", "Range: 0 < y <= 3", "0 < y <= 3"],
+        ["0 <= y <= 3", "inspect graph/transform", "ERR:"],
+    ),
+    (
         "October 2021 Q9 repeated-linear partial fractions",
         ["--alg", "partfrac((50*x^2+38*x+9)/((5*x+2)^2*(1-2*x)))"],
         ["A=0", "B=1", "C=2", "1/(5*x + 2)^2 + 2/(- 2*x + 1)"],

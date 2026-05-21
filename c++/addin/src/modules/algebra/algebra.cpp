@@ -2349,8 +2349,14 @@ static std::optional<std::string> quadratic_rational_full_range(Arena &a, NodeId
                 auto r0 = clean(roots[0]), r1 = clean(roots[1]);
                 if(r1.first < r0.first) std::swap(r0, r1);
                 steps.push_back(D + " >= 0.");
-                return d2.num > 0 ? "y <= " + r0.second + " or y >= " + r1.second
-                                  : r0.second + " <= y <= " + r1.second;
+                bool const_num = is_zero(rp.num.a2) && is_zero(rp.num.a1) && !is_zero(rp.num.a0);
+                bool open0 = const_num && std::fabs(r0.first) < 1e-12;
+                bool open1 = const_num && std::fabs(r1.first) < 1e-12;
+                if(d2.num > 0)
+                    return "y " + std::string(open0 ? "< " : "<= ") + r0.second +
+                           " or y " + std::string(open1 ? "> " : ">= ") + r1.second;
+                return r0.second + (open0 ? " < y" : " <= y") +
+                       (open1 ? " < " : " <= ") + r1.second;
             }
         }
     }
