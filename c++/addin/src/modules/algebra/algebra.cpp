@@ -8704,6 +8704,22 @@ static std::optional<ExpAffine> exp_affine_node(Arena &a, NodeId n)
     return ExpAffine{exp->first, shift, exp->second};
 }
 
+static std::optional<std::string> abs_exp_affine_range(
+    Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Abs) return std::nullopt;
+    auto aff = exp_affine_node(a, x.a);
+    if(!aff) return std::nullopt;
+    auto p = poly_any_of(a, aff->arg, var);
+    if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
+    Rational root = r_div(r_neg(aff->shift), aff->coef);
+    if(root.num <= 0) return std::nullopt;
+    steps.push_back("e^(" + format_expr(a, aff->arg) + ") = " + format_rat_plain(root) + " gives inside abs = 0.");
+    steps.push_back("abs(" + format_expr(a, x.a) + ") >= 0.");
+    return "y >= 0";
+}
+
 static std::optional<std::vector<std::string>> outer_abs_exp_affine_inequality_route(
     Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
 {
@@ -21871,6 +21887,64 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> abs_exp_affine_equation_route(Arena &a, std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0) return std::nullopt;
+    if(split_top_key(key, ',').size() > 1) return std::nullopt;
+    std::size_t pos = 0;
+    if(!find_top_equal(key, pos)) return std::nullopt;
+    std::string lhs = key.substr(0, pos), rhs = key.substr(pos + 1);
+    auto absarg = outer_abs_arg(lhs);
+    std::string target = rhs;
+    if(!absarg) {
+        absarg = outer_abs_arg(rhs);
+        target = lhs;
+    }
+    if(!absarg) return std::nullopt;
+    NodeId A0 = casio::parse_expr(a, *absarg);
+    NodeId C0 = casio::parse_expr(a, target);
+    auto C = as_num(a, C0);
+    if(!C || C->num < 0) return std::nullopt;
+    auto aff = exp_affine_node(a, A0);
+    if(!aff) return std::nullopt;
+    std::vector<std::string> vars;
+    collect_symbols(a, aff->arg, vars);
+    if(vars.size() != 1) return std::nullopt;
+    std::string var = vars[0];
+    std::string af = format_expr(a, A0), cf = format_expr(a, C0);
+    std::vector<std::string> out{
+        "abs(" + af + ") = " + cf,
+        af + " = " + cf + " or " + af + " = -" + cf,
+    };
+    std::vector<std::string> sols;
+    auto branch = [&](Rational y) {
+        NodeId yn = casio::num(a, y.num, y.den);
+        std::string ys = format_expr(a, yn);
+        Rational u = r_div(r_sub(y, aff->shift), aff->coef);
+        if(u.num <= 0) {
+            out.push_back(af + " = " + ys + " => e^(" + format_expr(a, aff->arg) + ") = " + format_rat_plain(u) + " rejected");
+            return;
+        }
+        std::vector<std::string> b{af + " = " + ys};
+        if(auto r = affine_exp_const_solve_route(a, sub_node(a, A0, yn), var, b)) {
+            out.insert(out.end(), r->begin(), r->end());
+            for(auto it = r->rbegin(); it != r->rend(); ++it) {
+                if(it->rfind(var + " = ", 0) == 0) {
+                    sols.push_back(*it);
+                    break;
+                }
+            }
+        }
+    };
+    branch(*C);
+    if(!is_zero(*C)) branch(r_neg(*C));
+    sort_solution_lines(a, sols);
+    sols.erase(std::unique(sols.begin(), sols.end()), sols.end());
+    out.push_back(sols.empty() ? var + " = []" : solution_list_line(var, sols));
+    return out;
+}
+
 static std::optional<std::vector<std::string>> equal_exp_solve_route(
     Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
 {
@@ -21946,11 +22020,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto top_parts = split_top_key(key, ',');
             if(top_parts.size() >= 2) {
                 if(auto al = abs_scaled_log_linear_relation_route(arena, top_parts[0])) return *al;
+                if(auto ae = abs_exp_affine_equation_route(arena, top_parts[0])) return *ae;
             }
             if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
                 if(auto ri = rational_inequality_route(arena, top_parts[0])) return *ri;
             }
             if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
+            if(auto ae = abs_exp_affine_equation_route(arena, req.expr)) return *ae;
             if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
                 if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
             }
@@ -23216,6 +23292,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         steps.push_back("min y = " + format_rat(arena, abs_info->min));
                     }
                     else steps.push_back(abs_linear_text(arena, n, var) + " >= 0.");
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto aer = abs_exp_affine_range(arena, n, var, steps)) {
+                    range_answer = *aer;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(rn.kind == NodeKind::Fn && rn.fkind == FnKind::Acos) {
