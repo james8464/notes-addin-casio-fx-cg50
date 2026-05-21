@@ -22380,9 +22380,18 @@ static std::optional<std::vector<std::string>> exp_const_solve_route(
             out.push_back(var + " = " + exact_text);
             return out;
         }
-        if(c->num <= 0) return std::nullopt;
+        if(c->num <= 0) {
+            out.push_back(format_expr(a, e_side) + " > 0");
+            out.push_back(var + " = []");
+            return out;
+        }
         Rational target = r_div(*c, ce->first);
-        if(target.num <= 0) return std::nullopt;
+        if(target.num <= 0) {
+            out.push_back(format_expr(a, e_side) + " = " + format_expr(a, c_side));
+            out.push_back(format_expr(a, casio::power(a, casio::constant_e(a), ce->second)) + " > 0");
+            out.push_back(var + " = []");
+            return out;
+        }
         NodeId logc = casio::fn(a, "log", casio::num(a, target.num, target.den));
         NodeId eq = casio::simplify(a, casio::add(a, {ce->second, casio::neg(a, logc)}));
         if(auto lin = symbolic_linear_parts(a, eq, var)) {
@@ -22470,6 +22479,11 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
     }
     if(!ce || is_zero(ce->first)) return std::nullopt;
     NodeId target_node = exact_eval_simplify(a, casio::div(a, neg_node(a, cnode), a.num(ce->first)));
+    if(auto rt = as_num(a, target_node); rt && rt->num <= 0) {
+        out.push_back(format_expr(a, casio::power(a, casio::constant_e(a), ce->second)) + " > 0");
+        out.push_back(var + " = []");
+        return out;
+    }
     auto logt = positive_log_value(a, target_node, var);
     if(!logt) return std::nullopt;
     auto ln_text = [&](NodeId n) {

@@ -761,6 +761,24 @@ static bool contains_hyperbolic_fn(Arena &a, NodeId n)
            contains_fn_kind(a, n, FnKind::Acosh) || contains_fn_kind(a, n, FnKind::Atanh);
 }
 
+static std::optional<std::vector<std::string>> cosh_power_second_route(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &p = a.get(n);
+    if(p.kind != NodeKind::Pow) return std::nullopt;
+    Node const &b = a.get(p.a);
+    if(b.kind != NodeKind::Fn || b.fkind != FnKind::Cosh) return std::nullopt;
+    Node const &arg = a.get(b.a);
+    if(arg.kind != NodeKind::Sym || arg.text != var) return std::nullopt;
+    std::string e = format_expr_human(a, p.b);
+    std::string c = "cosh(" + var + ")";
+    return std::vector<std::string>{
+        "y = " + c + "^" + e,
+        "dy/d" + var + " = " + e + "*" + c + "^(" + e + "-1)*sinh(" + var + ")",
+        "d2y/d" + var + "2 = " + e + "*(" + e + "-1)*" + c + "^(" + e + "-2)*sinh(" + var + ")^2 + " + e + "*" + c + "^" + e,
+        "sinh(" + var + ")^2 = " + c + "^2 - 1",
+        "d2y/d" + var + "2 = " + e + "^2*" + c + "^" + e + " - " + e + "*(" + e + "-1)*" + c + "^(" + e + "-2)"};
+}
+
 static std::string clean_math_text(std::string s)
 {
     auto replace_all = [&](std::string const &from, std::string const &to) {
@@ -3285,6 +3303,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::string direct_key = compact_math_key(expr);
 
+            if(req.mode == 4) {
+                if(auto route = cosh_power_second_route(arena, n, var)) {
+                    return *route;
+                }
+            }
             if(contains_hyperbolic_fn(arena, n)) {
                 NodeId d1 = casio::simplify(arena, diff(arena, n, var));
                 NodeId out = req.mode == 4 ? casio::simplify(arena, diff(arena, d1, var)) : d1;

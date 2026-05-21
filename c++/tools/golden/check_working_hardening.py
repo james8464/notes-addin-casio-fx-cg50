@@ -1795,6 +1795,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x ~=", "ERR:"],
     ),
     (
+        "alg",
+        "solve(e^x=0,x)",
+        ["e^(x) > 0", "x = []"],
+        ["ln(0)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^x=-2,x)",
+        ["e^(x) > 0", "x = []"],
+        ["ln(-2)", "ERR:"],
+    ),
+    (
         "int",
         "defint(3*e^(-2*x),x,0,inf)",
         ["Since -2<0", "I = 0 - F(0)", "3/2"],
@@ -1853,6 +1865,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "int(cosh(2*y)^2,y)",
         ["cosh(u)^2 = (cosh(2u)+1)/2", "(sinh(4*y)/4 + y)/2 + C"],
         ["No elementary primitive", "ERR:"],
+    ),
+    (
+        "derive",
+        "cosh(x)^n,x,method=second",
+        ["dy/dx = n*cosh(x)^(n-1)*sinh(x)", "sinh(x)^2 = cosh(x)^2 - 1", "d2y/dx2 = n^2*cosh(x)^n - n*(n-1)*cosh(x)^(n-2)"],
+        ["limite", "ERR:"],
     ),
 ]
 
