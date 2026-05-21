@@ -1344,6 +1344,7 @@ struct PolyAny;
 static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
 static std::string sqrt_rational_surd_text(Arena &a, Rational r);
 static std::string cube_root_rational_text(Arena &a, Rational r);
+static std::string multiply_root_text(Rational c, std::string root);
 
 static bool trig_fourth_term_text(std::string const &term, char const *fn, std::string &arg)
 {
@@ -8318,6 +8319,372 @@ static void primitive_poly_any_in_place(PolyAny &p)
     for(std::size_t i = 0; i < vals.size(); ++i) p.c[i] = Rational{vals[i] / g, 1};
     if(!p.c.empty() && p.c.back().num < 0)
         for(auto &c : p.c) c.num = -c.num;
+}
+
+struct RatAny
+{
+    PolyAny n;
+    PolyAny d;
+};
+
+static PolyAny poly_any_neg(PolyAny p)
+{
+    for(auto &c : p.c) c = r_neg(c);
+    return p;
+}
+
+static PolyAny poly_any_sub(PolyAny a, PolyAny const &b)
+{
+    return poly_any_add(a, poly_any_neg(b));
+}
+
+static bool poly_any_zero(PolyAny const &p)
+{
+    PolyAny q = p;
+    trim_poly_any(q);
+    return q.c.size() == 1 && is_zero(q.c[0]);
+}
+
+static RatAny rat_any_norm(RatAny r)
+{
+    trim_poly_any(r.n);
+    trim_poly_any(r.d);
+    return r;
+}
+
+static std::optional<RatAny> rat_any_of(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto l = rat_any_of(a, x.a, var), r = rat_any_of(a, x.b, var);
+        if(!l || !r || poly_any_zero(r->n)) return std::nullopt;
+        return rat_any_norm(RatAny{poly_any_mul(l->n, r->d), poly_any_mul(l->d, r->n)});
+    }
+    if(x.kind == NodeKind::Add) {
+        RatAny out{{{Rational{0, 1}}, true}, {{Rational{1, 1}}, true}};
+        for(NodeId k : x.kids) {
+            auto t = rat_any_of(a, k, var);
+            if(!t) return std::nullopt;
+            out.n = poly_any_add(poly_any_mul(out.n, t->d), poly_any_mul(t->n, out.d));
+            out.d = poly_any_mul(out.d, t->d);
+            out = rat_any_norm(out);
+            if(out.n.c.size() > 10 || out.d.c.size() > 10) return std::nullopt;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        RatAny out{{{Rational{1, 1}}, true}, {{Rational{1, 1}}, true}};
+        for(NodeId k : x.kids) {
+            auto t = rat_any_of(a, k, var);
+            if(!t) return std::nullopt;
+            out.n = poly_any_mul(out.n, t->n);
+            out.d = poly_any_mul(out.d, t->d);
+            out = rat_any_norm(out);
+            if(out.n.c.size() > 10 || out.d.c.size() > 10) return std::nullopt;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        auto b = rat_any_of(a, x.a, var);
+        if(!b || e.kind != NodeKind::Num || e.num.den != 1 || std::llabs(e.num.num) > 8) return std::nullopt;
+        RatAny out{{{Rational{1, 1}}, true}, {{Rational{1, 1}}, true}};
+        for(int i = 0; i < (int)std::llabs(e.num.num); ++i) {
+            out.n = poly_any_mul(out.n, b->n);
+            out.d = poly_any_mul(out.d, b->d);
+            if(out.n.c.size() > 10 || out.d.c.size() > 10) return std::nullopt;
+        }
+        if(e.num.num < 0) std::swap(out.n, out.d);
+        return rat_any_norm(out);
+    }
+    auto p = poly_any_of(a, n, var);
+    if(!p) return std::nullopt;
+    return rat_any_norm(RatAny{*p, {{Rational{1, 1}}, true}});
+}
+
+static double poly_any_eval_double(PolyAny const &p, double x)
+{
+    double y = 0.0;
+    for(int i = (int)p.c.size() - 1; i >= 0; --i)
+        y = y * x + (double)p.c[i].num / (double)p.c[i].den;
+    return y;
+}
+
+static int rat_any_sign_double(RatAny const &r, double x)
+{
+    double n = poly_any_eval_double(r.n, x), d = poly_any_eval_double(r.d, x);
+    if(std::fabs(n) < 1e-10 || std::fabs(d) < 1e-10) return 0;
+    return (n > 0) == (d > 0) ? 1 : -1;
+}
+
+struct IneqRoot
+{
+    double v = 0.0;
+    std::string text;
+    bool num = false;
+    bool den = false;
+};
+
+static std::string quadratic_root_node_text(Arena &a, Rational A, Rational B, Rational C, bool plus)
+{
+    Rational D = r_sub(r_mul(B, B), r_mul(Rational{4, 1}, r_mul(A, C)));
+    Rational den = r_mul(Rational{2, 1}, A);
+    Rational base = r_div(r_neg(B), den);
+    Rational c = r_div(plus ? Rational{1, 1} : Rational{-1, 1}, den);
+    std::string term = multiply_root_text(c, sqrt_rational_surd_text(a, D));
+    if(auto tr = parse_rational_text(term)) return format_rat_plain(r_add(base, *tr));
+    if(is_zero(base)) return term;
+    return format_rat_plain(base) + (term.rfind("-", 0) == 0 ? " - " + term.substr(1) : " + " + term);
+}
+
+static std::vector<IneqRoot> poly_any_real_roots_ineq(Arena &a, PolyAny p)
+{
+    primitive_poly_any_in_place(p);
+    std::vector<IneqRoot> roots;
+    while(p.c.size() > 1) {
+        auto lead = as_int64(p.c.back()), cnst = as_int64(p.c.front());
+        if(!lead || !cnst) break;
+        bool found = false;
+        for(long long pp : divisors_i64(*cnst)) for(long long qq : divisors_i64(*lead)) {
+            if(qq == 0) continue;
+            for(int sgn : {-1, 1}) {
+                Rational r{sgn * pp, qq};
+                r.normalize();
+                if(!is_zero(poly_any_eval(p, r))) continue;
+                roots.push_back({(double)r.num / (double)r.den, format_rat_plain(r), false, false});
+                divide_linear(p, r);
+                found = true;
+                goto next_root;
+            }
+        }
+next_root:
+        if(!found) break;
+    }
+    trim_poly_any(p);
+    if(p.c.size() == 3) {
+        Rational A = p.c[2], B = p.c[1], C = p.c[0];
+        Rational D = r_sub(r_mul(B, B), r_mul(Rational{4, 1}, r_mul(A, C)));
+        if(D.num > 0) {
+            double dd = std::sqrt((double)D.num / (double)D.den);
+            double aa = (double)A.num / (double)A.den;
+            double bb = (double)B.num / (double)B.den;
+            roots.push_back({(-bb - dd) / (2.0 * aa), quadratic_root_node_text(a, A, B, C, false), false, false});
+            roots.push_back({(-bb + dd) / (2.0 * aa), quadratic_root_node_text(a, A, B, C, true), false, false});
+        }
+    }
+    std::sort(roots.begin(), roots.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+    roots.erase(std::unique(roots.begin(), roots.end(), [](IneqRoot const &x, IneqRoot const &y) {
+        return std::fabs(x.v - y.v) < 1e-9;
+    }), roots.end());
+    return roots;
+}
+
+static bool find_top_rel(std::string const &s, std::size_t &pos, std::string &op)
+{
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if(depth) continue;
+        if(i + 1 < s.size() && (s.substr(i, 2) == "<=" || s.substr(i, 2) == ">=")) {
+            pos = i;
+            op = s.substr(i, 2);
+            return true;
+        }
+        if(c == '<' || c == '>') {
+            pos = i;
+            op = s.substr(i, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::optional<std::string> outer_abs_arg(std::string const &s)
+{
+    if(s.rfind("abs(", 0) != 0 || s.back() != ')') return std::nullopt;
+    int depth = 0;
+    for(std::size_t i = 3; i < s.size(); ++i) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')' && --depth == 0 && i + 1 != s.size()) return std::nullopt;
+    }
+    return s.substr(4, s.size() - 5);
+}
+
+static std::optional<std::vector<std::string>> rational_inequality_route(Arena &a, std::string expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0) {
+        std::string body = key.substr(6);
+        if(!body.empty() && body.back() == ')') body.pop_back();
+        auto args = split_top_key(body, ',');
+        if(args.size() < 2 || args[1] != "x") return std::nullopt;
+        key = args[0];
+    }
+    else {
+        auto args = split_top_key(key, ',');
+        if(args.size() == 2 && args[1] == "x") key = args[0];
+        else if(args.size() > 1) return std::nullopt;
+    }
+    std::size_t pos = 0;
+    std::string op;
+    if(!find_top_rel(key, pos, op)) return std::nullopt;
+    std::string lhs = key.substr(0, pos), rhs = key.substr(pos + op.size());
+    std::string abs_line;
+    if(auto la = outer_abs_arg(lhs)) if(auto ra = outer_abs_arg(rhs)) {
+        abs_line = "abs(" + *la + ") " + op + " abs(" + *ra + ") => (" + *la + ")^2 " + op + " (" + *ra + ")^2";
+        lhs = "(" + *la + ")^2";
+        rhs = "(" + *ra + ")^2";
+    }
+    if(abs_line.empty()) if(auto la = outer_abs_arg(lhs)) {
+        NodeId R0 = casio::parse_expr(a, rhs);
+        auto rp = poly_any_of(a, R0, "x");
+        if(rp && rp->c.size() == 1 && rp->c[0].num > 0) {
+            abs_line = "abs(" + *la + ") " + op + " " + rhs + " => (" + *la + ")^2 " + op + " (" + rhs + ")^2";
+            lhs = "(" + *la + ")^2";
+            rhs = "(" + rhs + ")^2";
+        }
+        else {
+            NodeId A0 = casio::parse_expr(a, *la);
+            auto ap = poly_any_of(a, A0, "x");
+            if(ap && rp && ap->c.size() <= 2 && rp->c.size() <= 2 && (op == ">" || op == ">=")) {
+                PolyAny p1 = poly_any_sub(*ap, *rp);
+                PolyAny p2 = poly_any_sub(poly_any_neg(*ap), *rp);
+                std::vector<IneqRoot> crit = poly_any_real_roots_ineq(a, p1);
+                auto more = poly_any_real_roots_ineq(a, p2);
+                crit.insert(crit.end(), more.begin(), more.end());
+                std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+                crit.erase(std::unique(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return std::fabs(x.v - y.v) < 1e-9; }), crit.end());
+                std::vector<bool> ok(crit.size() + 1, false), point_ok(crit.size(), false);
+                std::vector<std::string> ans, signs;
+                for(std::size_t i = 0; i <= crit.size(); ++i) {
+                    double sample = crit.empty() ? 0.0 : (i == 0 ? crit[0].v - 1.0 : (i == crit.size() ? crit.back().v + 1.0 : 0.5 * (crit[i - 1].v + crit[i].v)));
+                    double v = std::fabs(poly_any_eval_double(*ap, sample)) - poly_any_eval_double(*rp, sample);
+                    ok[i] = op == ">" ? v > 1e-10 : v >= -1e-10;
+                    std::string lo = i == 0 ? "-inf" : crit[i - 1].text;
+                    std::string hi = i == crit.size() ? "inf" : crit[i].text;
+                    signs.push_back("(" + lo + "," + hi + "):" + (v > 0 ? "+" : (v < 0 ? "-" : "0")));
+                }
+                for(std::size_t i = 0; i < crit.size(); ++i) {
+                    double v = std::fabs(poly_any_eval_double(*ap, crit[i].v)) - poly_any_eval_double(*rp, crit[i].v);
+                    point_ok[i] = op == ">" ? v > 1e-10 : v >= -1e-10;
+                }
+                for(std::size_t i = 0; i <= crit.size();) {
+                    if(!ok[i]) {
+                        if(i < crit.size() && point_ok[i]) ans.push_back("x = " + crit[i].text);
+                        ++i;
+                        continue;
+                    }
+                    std::optional<std::string> lo, hi;
+                    bool li = false, ri = false;
+                    if(i > 0) {
+                        lo = crit[i - 1].text;
+                        li = point_ok[i - 1];
+                    }
+                    while(i < crit.size() && point_ok[i] && ok[i + 1]) ++i;
+                    if(i < crit.size()) {
+                        hi = crit[i].text;
+                        ri = point_ok[i];
+                    }
+                    if(!lo && !hi) ans.push_back("all real x");
+                    else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
+                    else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
+                    else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+                    ++i;
+                }
+                if(ans.empty()) ans.push_back("no solution");
+                return std::vector<std::string>{
+                    "abs(" + *la + ") " + op + " " + rhs,
+                    *la + " " + op + " " + rhs + " or -(" + *la + ") " + op + " " + rhs,
+                    "sign: " + join_text(signs, "; "),
+                    join_text(ans, " or "),
+                };
+            }
+        }
+    }
+    NodeId L = casio::parse_expr(a, lhs), R = casio::parse_expr(a, rhs);
+    auto l = rat_any_of(a, L, "x"), r = rat_any_of(a, R, "x");
+    if(!l || !r) return std::nullopt;
+    RatAny q{poly_any_sub(poly_any_mul(l->n, r->d), poly_any_mul(r->n, l->d)), poly_any_mul(l->d, r->d)};
+    q = rat_any_norm(q);
+    if(poly_any_zero(q.d)) return std::nullopt;
+    std::vector<IneqRoot> crit = poly_any_real_roots_ineq(a, q.n);
+    for(auto &z : crit) z.num = true;
+    for(auto p : poly_any_real_roots_ineq(a, q.d)) {
+        auto it = std::find_if(crit.begin(), crit.end(), [&](IneqRoot const &z) { return std::fabs(z.v - p.v) < 1e-9; });
+        if(it == crit.end()) {
+            p.den = true;
+            crit.push_back(p);
+        }
+        else it->den = true;
+    }
+    std::sort(crit.begin(), crit.end(), [](IneqRoot const &x, IneqRoot const &y) { return x.v < y.v; });
+    auto ok_sign = [&](int s) {
+        if(op == ">") return s > 0;
+        if(op == "<") return s < 0;
+        if(op == ">=") return s >= 0;
+        return s <= 0;
+    };
+    bool nonstrict = op.size() == 2;
+    std::vector<std::string> ans, signs;
+    std::vector<bool> interval_ok(crit.size() + 1, false);
+    for(std::size_t i = 0; i <= crit.size(); ++i) {
+        double sample = crit.empty() ? 0.0
+            : (i == 0 ? crit[0].v - 1.0
+            : (i == crit.size() ? crit.back().v + 1.0
+            : 0.5 * (crit[i - 1].v + crit[i].v)));
+        int s = rat_any_sign_double(q, sample);
+        interval_ok[i] = ok_sign(s);
+        std::string lo = i == 0 ? "-inf" : crit[i - 1].text;
+        std::string hi = i == crit.size() ? "inf" : crit[i].text;
+        signs.push_back("(" + lo + "," + hi + "):" + (s > 0 ? "+" : (s < 0 ? "-" : "0")));
+    }
+    for(std::size_t i = 0; i <= crit.size(); ++i) {
+        if(interval_ok[i]) {
+            std::optional<std::string> lo, hi;
+            bool li = false, ri = false;
+            if(i > 0) {
+                lo = crit[i - 1].text;
+                li = nonstrict && crit[i - 1].num && !crit[i - 1].den;
+            }
+            if(i < crit.size()) {
+                hi = crit[i].text;
+                ri = nonstrict && crit[i].num && !crit[i].den;
+            }
+            if(!lo && !hi) ans.push_back("all real x");
+            else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
+            else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
+            else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        }
+        if(nonstrict && i < crit.size() && crit[i].num && !crit[i].den && !interval_ok[i] && !interval_ok[i + 1])
+            ans.push_back("x = " + crit[i].text);
+    }
+    if(ans.empty()) ans.push_back("no solution");
+    NodeId nnode = poly_any_to_node(a, q.n, "x");
+    NodeId dnode = poly_any_to_node(a, q.d, "x");
+    std::vector<std::string> out;
+    if(!abs_line.empty()) out.push_back(abs_line);
+    out.push_back(format_expr(a, sub_node(a, L, R)) + " " + op + " 0");
+    out.push_back(format_expr(a, casio::div(a, nnode, dnode)) + " " + op + " 0");
+    std::vector<std::string> roots, poles;
+    for(auto const &z : crit) {
+        if(z.num) roots.push_back(z.text);
+        if(z.den) poles.push_back(z.text);
+    }
+    if(!roots.empty()) {
+        std::vector<std::string> xs;
+        for(auto const &z : roots) xs.push_back(z);
+        out.push_back("N=0: x = " + join_text(xs, ", "));
+    }
+    if(!poles.empty()) {
+        std::vector<std::string> xs;
+        for(auto const &z : poles) xs.push_back(z);
+        out.push_back("D=0: x != " + join_text(xs, ", "));
+    }
+    out.push_back("sign: " + join_text(signs, "; "));
+    out.push_back(join_text(ans, " or "));
+    return out;
 }
 
 static std::optional<Rational> square_from_root_text(std::string s)
@@ -20656,6 +21023,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     try {
         {
             std::string key = compact_input_key(req.expr);
+            std::size_t relpos = 0;
+            std::string relop;
+            if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
+                if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
+            }
             if(auto cg = chord_gradient_route(arena, req.expr)) return *cg;
             if(auto elss = exp_log_square_shift_system_route(arena, req.expr)) return *elss;
             if(auto elsq = exp_log_square_system_route(arena, req.expr)) return *elsq;
