@@ -56,6 +56,43 @@ static std::optional<Rational> as_num(Arena &a, NodeId n)
     return x.num;
 }
 
+static long long int_coeff_abs(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return x.num.den == 1 ? std::llabs(x.num.num) : 1;
+    if(x.kind != NodeKind::Mul) return 1;
+    long long c = 1;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(t.kind == NodeKind::Num && t.num.den == 1) c *= t.num.num;
+    }
+    return std::llabs(c);
+}
+
+static long long int_content(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add) return int_coeff_abs(a, n);
+    long long g = 0;
+    for(NodeId k : x.kids) {
+        long long c = int_coeff_abs(a, k);
+        if(c) g = std::gcd(g, c);
+    }
+    return g ? g : 1;
+}
+
+static NodeId cancel_common_int_div(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return n;
+    if(a.get(x.b).kind != NodeKind::Add) return n;
+    long long g = std::gcd(int_content(a, x.a), int_content(a, x.b));
+    if(g <= 1) return n;
+    NodeId top = casio::simplify(a, casio::div(a, x.a, casio::num(a, g)));
+    NodeId bot = casio::simplify(a, casio::div(a, x.b, casio::num(a, g)));
+    return casio::simplify(a, casio::div(a, top, bot));
+}
+
 static bool is_atomic(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -3795,6 +3832,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId fy = casio::simplify(arena, diff(arena, work, dep));
             std::string dname = "d" + dep + "/d" + var;
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy));
+            ans = cancel_common_int_div(arena, ans);
             casio::ExamPrelude pre;
             pre.raw = eq_text;
             pre.norm = casio::normalize_text(eq_text);
@@ -3853,13 +3891,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block(
                     "implicit differentiation",
                     {
-                        "Differentiate: d(2xy)/dx=d(2^x+y^2)/dx.",
-                        "Product rule: d(2xy)/dx=2y+2x*dy/dx.",
-                        "d(2^x)/dx=2^x*log(2).",
-                        "So 2y+2x*dy/dx = 2^x*log(2)+2y*dy/dx.",
-                        "Collect dy/dx and divide by 2.",
+                        "d(2*x*y)/dx = d(2^x+y^2)/dx.",
+                        "2*y+2*x*dy/dx = 2^x*ln(2)+2*y*dy/dx.",
+                        "2*(x-y)*dy/dx = 2^x*ln(2)-2*y.",
+                        "(x-y)*dy/dx = 2^(x-1)*ln(2)-y.",
                     },
-                    dname + " = (y - 2^(x-1)*log(2))/(y-x)"
+                    dname + " = (y - 2^(x-1)*ln(2))/(y-x)"
                 );
             }
             if(compact == "sin(2x)cot(y)=1" || compact == "sin(2*x)*cot(y)=1") {
@@ -3979,7 +4016,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     steps.push_back("collect " + dname + ".");
                     if(auto lp = linear_in_symbol(arena, dcleared, dname)) {
                         auto zr = as_num(arena, lp->coef);
-                        if(!(zr && zr->num == 0)) cleared_ans = casio::simplify(arena, casio::div(arena, neg_expanded(arena, lp->rest), lp->coef));
+                        if(!(zr && zr->num == 0)) cleared_ans = cancel_common_int_div(arena, casio::simplify(arena, casio::div(arena, neg_expanded(arena, lp->rest), lp->coef)));
                     }
                 }
             }
@@ -3989,7 +4026,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 auto const &sr = *rel;
                 std::string key = compact_math_key(format_expr_human(arena, sr.root));
                 NodeId base = cleared_ans ? *cleared_ans : ans;
-                NodeId plain = casio::simplify(arena, replace_by_key(arena, base, key, sr.repl));
+                NodeId plain = cancel_common_int_div(arena, casio::simplify(arena, replace_by_key(arena, base, key, sr.repl)));
                 NodeId cleared = plain;
                 Node const &pn = arena.get(plain);
                 if(pn.kind == NodeKind::Div) {

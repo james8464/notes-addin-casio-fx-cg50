@@ -55,7 +55,7 @@ DIRECT: dict[int, tuple[list[str], str | None, list[str]]] = {
     24: ([str(HOST), "--int", "x/(sqrt(1+x^2)*(1+sqrt(1+x^2)))"], None, ["Let u=sqrt(1+x^2)", "log(abs(1+sqrt(1+x^2))) + C"]),
     25: ([str(HOST), "--derive", "x^2*y+x*y^2=1,method=implicit"], None, ["dy/dx = -y*(2*x+y)/(x*(x+2*y))"]),
     101: ([str(HOST), "--derive", "x*log(y)+y*log(x)=1,method=implicit"], None, ["Domain:", "dy/dx = -(log(y)+y/x)/(x/y+log(x))"]),
-    102: ([str(HOST), "--derive", "e^(x*y)=x+y,method=implicit"], None, ["dy/dx = (1-y*e^(x*y))/(x*e^(x*y)-1)"]),
+    102: ([str(HOST), "--derive", "e^(x*y)=x+y,method=implicit"], None, ["e^(x*y) = x + y", "dy/dx = (- (x + y)*y + 1)/((x + y)*x - 1)"]),
     103: ([str(HOST), "--derive", "t^3-3*t,t^2+1,t,method=param_second"], None, ["d2y/dx2 = -2*(t^2+1)/(9*(t^2-1)^3)"]),
     104: ([str(HOST), "--derive", "sec(t),tan(t),t,method=param_second"], None, ["d2y/dx2 = -cot(t)^3"]),
     105: ([str(HOST), "--int", "x/(1+x^4)"], None, ["u=x^2", "atan(x^2)/2 + C"]),

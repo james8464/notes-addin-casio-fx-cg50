@@ -10157,6 +10157,73 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     return out;
 }
 
+static std::optional<NodeId> cross_residual_if_fraction(Arena &a, NodeId l, NodeId r,
+                                                       std::string const &v0, std::string const &v1)
+{
+    if(contains_either_symbol(a, r, v0, v1)) return std::nullopt;
+    Node const &ln = a.get(l);
+    if(ln.kind != NodeKind::Div) return std::nullopt;
+    return casio::simplify(a, sub_node(a, ln.a, casio::mul(a, {r, ln.b})));
+}
+
+static NodeId system_residual(Arena &a, Equation const &eq, std::string const &v0, std::string const &v1)
+{
+    if(auto r = cross_residual_if_fraction(a, eq.lhs, eq.rhs, v0, v1)) return *r;
+    if(auto r = cross_residual_if_fraction(a, eq.rhs, eq.lhs, v0, v1)) return *r;
+    return casio::simplify(a, sub_node(a, eq.lhs, eq.rhs));
+}
+
+static std::optional<std::vector<std::string>> linear_substitution2_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+    std::vector<NodeId> res;
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        res.push_back(system_residual(a, *eq, vars[0], vars[1]));
+    }
+
+    for(int line_i = 0; line_i < 2; ++line_i) {
+        int curve_i = 1 - line_i;
+        for(int iso = 0; iso < 2; ++iso) {
+            int other = 1 - iso;
+            auto lin = symbolic_linear_parts(a, res[line_i], vars[iso]);
+            if(!lin || contains_either_symbol(a, lin->m, vars[0], vars[1]) ||
+               contains_symbol(a, lin->c, vars[iso]) ||
+               casio::same_by_sig(a, lin->m, zero_node(a))) continue;
+
+            NodeId iso_expr = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
+            NodeId reduced = exact_eval_simplify(a, expand_square_powers(a, clone_with_substitution(a, res[curve_i], vars[iso], iso_expr)));
+            auto p = poly_of(a, reduced, vars[other]);
+            if(!p || !p->ok) continue;
+            auto roots = solve_poly2(a, *p, vars[other]);
+
+            std::vector<std::string> pairs;
+            std::vector<std::string> out{
+                format_expr(a, res[line_i]) + " = 0",
+                vars[iso] + " = " + format_expr(a, iso_expr),
+                format_expr(a, reduced) + " = 0"
+            };
+            for(auto const &root_line : roots) {
+                std::string rhs = sol_rhs(root_line);
+                if(rhs.find('i') != std::string::npos || rhs.find("No solution") != std::string::npos ||
+                   rhs.find("Infinite") != std::string::npos) continue;
+                out.push_back(root_line);
+                NodeId other_val = casio::parse_expr(a, rhs);
+                NodeId iso_val = exact_eval_simplify(a, clone_with_substitution(a, iso_expr, vars[other], other_val));
+                std::string v0 = iso == 0 ? format_expr(a, iso_val) : rhs;
+                std::string v1 = iso == 0 ? rhs : format_expr(a, iso_val);
+                pairs.push_back("(" + v0 + "," + v1 + ")");
+            }
+            if(pairs.empty()) return std::nullopt;
+            out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
+            return out;
+        }
+    }
+    return std::nullopt;
+}
+
 static std::optional<NodeId> log_linear_arg(Arena &a, NodeId n, std::string const &var, std::string const &lnvar, std::string const &other)
 {
     if(is_sym_var(a, n, var)) return casio::sym(a, lnvar);
@@ -20424,6 +20491,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lps = log_power_linear2_system_route(arena, req.expr)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
+            if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto logv = exact_log_base_value_key(key)) {
                 return casio::exam_block(

@@ -21,7 +21,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "H7 implicit exponential derivative",
         ["--derive", "2*x*y=2^x+y^2,x,method=implicit"],
-        ["Differentiate", "dy/dx", "(y - 2^(x-1)*log(2))/(y-x)"],
+        ["d(2*x*y)/dx = d(2^x+y^2)/dx", "dy/dx", "(y - 2^(x - 1)*ln(2))/(y - x)"],
     ),
     (
         "H9 disguised trig derivative",
