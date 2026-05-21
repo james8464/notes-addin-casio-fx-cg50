@@ -12015,8 +12015,13 @@ static std::optional<std::string> monotone_power_interval_range(
     std::vector<std::string> &steps
 )
 {
+    NodeId core = n;
+    Rational scale{1, 1}, shift{0, 1};
+    NodeId inner = 0;
+    if(affine_wrapper(a, n, inner, scale, shift) && inner != n) core = inner;
     MonotonePowerInfo info;
-    if(!extract_power_term(a, n, var, info)) return std::nullopt;
+    if(!extract_power_term(a, core, var, info)) return std::nullopt;
+    info.coeff = r_mul(info.coeff, scale);
     auto endpoint_text = [&](std::string const &s) -> std::optional<std::string> {
         if(s.empty()) return std::nullopt;
         std::string k;
@@ -12063,13 +12068,17 @@ static std::optional<std::string> monotone_power_interval_range(
     auto ylo = eval_node(a, n, var, *lo_v);
     auto yhi = eval_node(a, n, var, *hi_v);
     if(!ylo || !yhi) return std::nullopt;
-    double mn = std::min(*ylo, *yhi);
-    double mx = std::max(*ylo, *yhi);
+    bool lo_is_min = *ylo <= *yhi;
+    double mn = lo_is_min ? *ylo : *yhi;
+    double mx = lo_is_min ? *yhi : *ylo;
+    bool mn_open = lo_is_min ? lo_open : hi_open;
+    bool mx_open = lo_is_min ? hi_open : lo_open;
     std::string expr = format_expr(a, n);
     steps.push_back(expr + (info.coeff.num >= 0 ? " is increasing." : " is decreasing."));
     steps.push_back("Evaluate endpoints: y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
                     ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi) + ".");
-    return format_double_compact(mn) + " <= y <= " + format_double_compact(mx);
+    return format_double_compact(mn) + (mn_open ? " < y" : " <= y") +
+           (mx_open ? " < " : " <= ") + format_double_compact(mx);
 }
 
 static std::optional<std::string> odd_power_full_range(
@@ -12147,12 +12156,35 @@ static std::optional<std::string> sqrt_linear_interval_range(
     }
     if(!x0 || !x1) return std::nullopt;
 
-    Rational left = r_cmp(*x0, *x1) <= 0 ? *x0 : *x1;
-    Rational right = r_cmp(*x0, *x1) <= 0 ? *x1 : *x0;
+    bool normal_order = r_cmp(*x0, *x1) <= 0;
+    Rational left = normal_order ? *x0 : *x1;
+    Rational right = normal_order ? *x1 : *x0;
+    bool left_open = normal_order ? lo_open : hi_open;
+    bool right_open = normal_order ? hi_open : lo_open;
     Rational y_left = r_add(r_mul(lp->a1, left), lp->a0);
     Rational y_right = r_add(r_mul(lp->a1, right), lp->a0);
     Rational lo_inner = r_cmp(y_left, y_right) <= 0 ? y_left : y_right;
     Rational hi_inner = r_cmp(y_left, y_right) <= 0 ? y_right : y_left;
+    auto root_in_interval_closed = [&](Rational root) {
+        int lcmp = r_cmp(root, left);
+        int rcmp = r_cmp(root, right);
+        if(lcmp < 0 || rcmp > 0) return false;
+        if(lcmp == 0) return !left_open;
+        if(rcmp == 0) return !right_open;
+        return true;
+    };
+    auto endpoint_attains = [&](Rational rad) {
+        return (r_cmp(rad, y_left) == 0 && !left_open) ||
+               (r_cmp(rad, y_right) == 0 && !right_open);
+    };
+    auto bound_closed = [&](Rational rad) {
+        if(endpoint_attains(rad)) return true;
+        if(rad.num == 0) {
+            Rational root = r_div(r_neg(lp->a0), lp->a1);
+            return root_in_interval_closed(root);
+        }
+        return false;
+    };
 
     if(lo_inner.num < 0) {
         Rational root = r_div(r_neg(lp->a0), lp->a1);
@@ -12163,8 +12195,13 @@ static std::optional<std::string> sqrt_linear_interval_range(
 
     steps.push_back("Evaluate endpoints: y(" + format_rat(a, left) + ")=" + value_text(y_left) +
                     ", y(" + format_rat(a, right) + ")=" + value_text(y_right) + ".");
-    if(scale.num > 0) return value_text(lo_inner) + " <= y <= " + value_text(hi_inner);
-    return value_text(hi_inner) + " <= y <= " + value_text(lo_inner);
+    auto interval_text = [](std::string const &low, bool low_closed, std::string const &high, bool high_closed) {
+        return low + (low_closed ? " <= y" : " < y") + (high_closed ? " <= " : " < ") + high;
+    };
+    bool lo_closed = bound_closed(lo_inner);
+    bool hi_closed = bound_closed(hi_inner);
+    if(scale.num > 0) return interval_text(value_text(lo_inner), lo_closed, value_text(hi_inner), hi_closed);
+    return interval_text(value_text(hi_inner), hi_closed, value_text(lo_inner), lo_closed);
 }
 
 static std::optional<std::string> inverse_trig_plain_trig_note(Arena &a, NodeId n)
@@ -20505,6 +20542,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::function<bool(std::string const &)> parse_cond;
             parse_cond = [&](std::string const &raw_cond) -> bool {
                 std::string cond = trim_text(raw_cond);
+                auto neq = cond.find("!=");
+                if(neq != std::string::npos) {
+                    std::string lhs = trim_text(cond.substr(0, neq));
+                    std::string rhs = trim_text(cond.substr(neq + 2));
+                    if(is_var_text(lhs) && !rhs.empty()) { var = lhs; return true; }
+                    if(is_var_text(rhs) && !lhs.empty()) { var = rhs; return true; }
+                    return false;
+                }
                 auto ops = cond_ops(cond);
                 if(ops.size() == 2) {
                     std::string left = cond.substr(0, ops[0].pos);
@@ -20660,22 +20705,39 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 NodeId y0n = casio::num(arena, y0.num, y0.den);
                 range_answer = a.num > 0 ? "y >= " + format_expr(arena, y0n) : "y <= " + format_expr(arena, y0n);
                 if(lo_v && hi_v && std::isfinite(*lo_v) && std::isfinite(*hi_v)) {
-                    std::vector<double> vals;
+                    struct RangeCandidate { double y; bool closed; };
+                    std::vector<RangeCandidate> vals;
+                    auto same_d = [](double u, double v) { return std::fabs(u - v) <= 1e-10; };
+                    auto candidate_closed = [&](double x) {
+                        if(same_d(x, *lo_v)) return !lo_open;
+                        if(same_d(x, *hi_v)) return !hi_open;
+                        return true;
+                    };
                     auto ylo = eval_node(arena, n, var, *lo_v);
                     auto yhi = eval_node(arena, n, var, *hi_v);
                     if(ylo && yhi) steps.push_back("y(" + format_double_compact(*lo_v) + ")=" + format_double_compact(*ylo) +
                                                    ", y(" + format_double_compact(*hi_v) + ")=" + format_double_compact(*yhi));
-                    if(ylo) vals.push_back(*ylo);
-                    if(yhi) vals.push_back(*yhi);
+                    if(ylo) vals.push_back({*ylo, !lo_open});
+                    if(yhi) vals.push_back({*yhi, !hi_open});
                     double vertex = -((double)b.num / b.den) / (2.0 * ((double)a.num / a.den));
                     if(vertex >= std::min(*lo_v, *hi_v) - 1e-12 && vertex <= std::max(*lo_v, *hi_v) + 1e-12) {
                         auto yv = eval_node(arena, n, var, vertex);
                         if(yv) steps.push_back("y(" + format_double_compact(vertex) + ")=" + format_double_compact(*yv));
-                        if(yv) vals.push_back(*yv);
+                        if(yv) vals.push_back({*yv, candidate_closed(vertex)});
                     }
                     if(!vals.empty()) {
-                        auto [mn, mx] = std::minmax_element(vals.begin(), vals.end());
-                        range_answer = format_double_compact(*mn) + " <= y <= " + format_double_compact(*mx);
+                        double mn = vals.front().y, mx = vals.front().y;
+                        for(auto const &v : vals) {
+                            mn = std::min(mn, v.y);
+                            mx = std::max(mx, v.y);
+                        }
+                        bool mn_closed = false, mx_closed = false;
+                        for(auto const &v : vals) {
+                            if(same_d(v.y, mn) && v.closed) mn_closed = true;
+                            if(same_d(v.y, mx) && v.closed) mx_closed = true;
+                        }
+                        range_answer = format_double_compact(mn) + (mn_closed ? " <= y" : " < y") +
+                                       (mx_closed ? " <= " : " < ") + format_double_compact(mx);
                     }
                 }
                 else if(lo_v && std::isfinite(*lo_v) && hi_v && !std::isfinite(*hi_v) && a.num > 0) {
