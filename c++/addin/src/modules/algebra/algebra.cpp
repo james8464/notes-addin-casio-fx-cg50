@@ -8705,6 +8705,63 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
     return out;
 }
 
+static bool abs_arg_node(Arena &a, NodeId n, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Abs) return false;
+    arg = x.a;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> abs_negative_log_linear_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    NodeId t = 0;
+    if(!((abs_arg_node(a, lhs, t) && casio::same_by_sig(a, rhs, neg_node(a, t))) ||
+         (abs_arg_node(a, rhs, t) && casio::same_by_sig(a, lhs, neg_node(a, t)))))
+        return std::nullopt;
+
+    NodeId arg = 0, base = 0;
+    bool has_base = false;
+    if(!log_piece(a, t, arg, base, has_base)) return std::nullopt;
+    bool base_gt_one = true;
+    if(has_base) {
+        auto bv = eval_node(a, base, var, 0.0);
+        if(!bv || *bv <= 0.0 || std::fabs(*bv - 1.0) < 1e-12) return std::nullopt;
+        base_gt_one = *bv > 1.0;
+    }
+
+    auto lin = symbolic_linear_parts(a, arg, var);
+    if(!lin) return std::nullopt;
+    auto m = as_num(a, lin->m), c = as_num(a, lin->c);
+    if(!m || !c || is_zero(*m)) return std::nullopt;
+
+    std::string tt = format_expr(a, t);
+    std::string at = format_expr(a, arg);
+    std::vector<std::string> out{
+        "abs(" + tt + ") = -" + tt,
+        "abs(A) = -A => A <= 0",
+        "Domain: " + at + " > 0",
+        tt + " <= 0",
+    };
+
+    Rational one{1, 1};
+    Rational z0 = r_div(r_neg(*c), *m);
+    Rational z1 = r_div(r_sub(one, *c), *m);
+    if(base_gt_one) {
+        out.push_back("0 < " + at + " <= 1");
+        if(m->num > 0)
+            out.push_back(format_rat_plain(z0) + " < " + var + " <= " + format_rat_plain(z1));
+        else
+            out.push_back(format_rat_plain(z1) + " <= " + var + " < " + format_rat_plain(z0));
+    }
+    else {
+        out.push_back(at + " >= 1");
+        out.push_back(var + (m->num > 0 ? " >= " : " <= ") + format_rat_plain(z1));
+    }
+    return out;
+}
+
 struct ExpAffine
 {
     Rational coef{1, 1};
@@ -24119,6 +24176,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
 
+        if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
