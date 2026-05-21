@@ -144,6 +144,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(log(a)-log(b)=log(a-b),a)",
+        ["ln(a) - ln(b) = ln(a - b)", "Domain: a - b > 0", "a - b*(a - b) = 0", "a = -b^2/(- b + 1)"],
+        ["symbolic parameters unsupported", "No real solution", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(log(2,x^2+4*x+3)=4+log(2,x^2+x),x)",
         [
             "log(2,(x^2 + 4*x + 3)/(x^2 + x)) = 4",

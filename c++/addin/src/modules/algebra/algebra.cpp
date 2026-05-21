@@ -152,6 +152,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
+static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a, NodeId rearr, std::string const &var);
 
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
@@ -17341,6 +17342,7 @@ static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, Nod
     auto alts = log_residual_alts(a, rearr);
     if(!alts) return std::nullopt;
     for(NodeId cand : {alts->quotient, alts->cleared}) {
+        if(auto sl = symbolic_linear_solve_route(a, cand, var)) return *sl;
         auto rp = ratpoly_of_node(a, cand, var);
         if(!rp.ok) continue;
         auto sols = solve_poly2(a, primitive_poly2(rp.num), var);

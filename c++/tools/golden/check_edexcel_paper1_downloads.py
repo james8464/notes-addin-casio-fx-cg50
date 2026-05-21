@@ -43,6 +43,12 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["theta = []", "Right side still contains", "ERR:"],
     ),
     (
+        "June 2019 Q9 symbolic log quotient",
+        ["--alg", "solve(log(a)-log(b)=log(a-b),a)"],
+        ["ln(a) - ln(b) = ln(a - b)", "Domain: a - b > 0", "a - b*(a - b) = 0", "a = -b^2/(- b + 1)"],
+        ["symbolic parameters unsupported", "No real solution", "ERR:"],
+    ),
+    (
         "October 2020 Q14 cosec identity solve",
         ["--trig", "cosec(x)-sin(x)=cos(x)*cot(3*x-50),x,0,180,10,method=identity"],
         ["cosec(x)-sin(x)=cos(x)cot(x)", "x=90", "cot(x)=cot(3x-50)", "x = [25, 90, 115]"],
