@@ -8573,6 +8573,7 @@ struct AbsPiece
 {
     std::string arg;
     Rational root;
+    Rational slope;
     double value = 0.0;
 };
 
@@ -8640,13 +8641,13 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
         auto p = poly_any_of(a, n, var);
         if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
         Rational root = r_div(r_neg(p->c[0]), p->c[1]);
-        pieces.push_back({arg, root, (double)root.num / (double)root.den});
+        pieces.push_back({arg, root, p->c[1], (double)root.num / (double)root.den});
     }
     std::sort(pieces.begin(), pieces.end(), [](AbsPiece const &u, AbsPiece const &v) { return u.value < v.value; });
 
     auto subst = [&](std::string s, double sample) {
         for(auto const &p : pieces) {
-            bool pos_side = sample >= p.value;
+            bool pos_side = (p.slope.num > 0) == (sample >= p.value);
             std::string repl = pos_side ? "(" + p.arg + ")" : "(0-(" + p.arg + "))";
             replace_abs_arg_all(s, p.arg, repl);
         }
@@ -8662,8 +8663,14 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
     std::vector<std::string> out;
     for(auto const &p : pieces) {
         std::string r = format_rat_plain(p.root);
-        out.push_back(var + " < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
-        out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+        if(p.slope.num > 0) {
+            out.push_back(var + " < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+            out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+        }
+        else {
+            out.push_back(var + " < " + r + " => abs(" + p.arg + ") = " + p.arg);
+            out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+        }
     }
 
     std::vector<std::string> sols;
@@ -9328,13 +9335,13 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
         auto p = poly_any_of(a, n, "x");
         if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
         Rational root = r_div(r_neg(p->c[0]), p->c[1]);
-        pieces.push_back({arg, root, (double)root.num / (double)root.den});
+        pieces.push_back({arg, root, p->c[1], (double)root.num / (double)root.den});
     }
     std::sort(pieces.begin(), pieces.end(), [](AbsPiece const &u, AbsPiece const &v) { return u.value < v.value; });
 
     auto subst = [&](std::string s, double sample) {
         for(auto const &p : pieces) {
-            bool pos = sample >= p.value;
+            bool pos = (p.slope.num > 0) == (sample >= p.value);
             std::string repl = pos ? "(" + p.arg + ")" : "(0-(" + p.arg + "))";
             replace_abs_arg_all(s, p.arg, repl);
         }
@@ -9443,8 +9450,14 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
     std::vector<std::string> out;
     for(auto const &p : pieces) {
         std::string r = format_rat_plain(p.root);
-        out.push_back("x < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
-        out.push_back("x >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+        if(p.slope.num > 0) {
+            out.push_back("x < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+            out.push_back("x >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+        }
+        else {
+            out.push_back("x < " + r + " => abs(" + p.arg + ") = " + p.arg);
+            out.push_back("x >= " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+        }
     }
     out.push_back("sign: " + join_text(signs, "; "));
     out.push_back(join_text(ans, " or "));
