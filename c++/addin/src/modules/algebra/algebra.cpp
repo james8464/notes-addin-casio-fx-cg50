@@ -8633,7 +8633,44 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
         replace_abs_arg_all(tl, args[0], "0");
         replace_abs_arg_all(tr, args[0], "0");
         NodeId outside = sub_node(a, casio::parse_expr(a, tl), casio::parse_expr(a, tr));
-        if(!contains_symbol(a, outside, var)) return std::nullopt;
+        if(!contains_symbol(a, outside, var)) {
+            auto c = as_num(a, exact_eval_simplify(a, outside));
+            if(!c || collect_abs_args_key(args[0]).empty()) return std::nullopt;
+            Rational target = r_neg(*c);
+            NodeId arg_node = casio::parse_expr(a, args[0]);
+            std::string arg_text = format_expr(a, arg_node);
+            std::vector<std::string> out{"abs(" + arg_text + ") = " + format_rat_plain(target)};
+            if(target.num < 0) {
+                out.push_back(var + " = []");
+                return out;
+            }
+            std::vector<std::string> sols;
+            auto take = [&](std::string const &line) {
+                auto l = line.find('['), r = line.rfind(']');
+                if(l == std::string::npos || r == std::string::npos || r <= l) return;
+                for(std::string p : split_top_key(line.substr(l + 1, r - l - 1), ',')) {
+                    p = trim_text(p);
+                    if(!p.empty()) push_unique(sols, var + " = " + p);
+                }
+            };
+            auto branch = [&](Rational t) {
+                std::string eq = arg_text + "=" + format_rat_plain(t);
+                out.push_back(eq);
+                auto r = abs_piecewise_linear_equation_route(a, eq, var);
+                if(!r) return false;
+                for(std::size_t i = 0; i + 1 < r->size(); ++i) out.push_back((*r)[i]);
+                if(!r->empty()) take(r->back());
+                return true;
+            };
+            if(!branch(target)) return std::nullopt;
+            if(!is_zero(target) && !branch(r_neg(target))) return std::nullopt;
+            std::vector<std::string> sorted = sols;
+            sort_solution_lines(a, sorted);
+            sols.clear();
+            for(auto const &s : sorted) push_unique(sols, s);
+            out.push_back(solution_list_line(var, sols));
+            return out;
+        }
     }
     std::vector<AbsPiece> pieces;
     for(auto const &arg : args) {
