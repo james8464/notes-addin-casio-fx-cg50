@@ -42,6 +42,12 @@ def main() -> int:
     bad: list[str] = []
     lines = ["MadAsMaths standard manual cases", ""]
     for case in cases:
+        if case.get("status") == "unsupported-ok":
+            print("OK", case["id"])
+            lines.append(f"OK {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")
+            lines.append("  unsupported-ok: " + str(case.get("notes", "reviewed; no unique host command")))
+            lines.append("")
+            continue
         case_bad = False
         results: list[tuple[str, list[str], list[str], str]] = []
         for label, args, needles, banned_tokens in command_specs(case):

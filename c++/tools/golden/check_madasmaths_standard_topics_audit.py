@@ -234,10 +234,10 @@ def main() -> int:
                     question_cases = manual_by_question.get((source_pdf, question)) or manual_by_question.get((canonical_pdf, question)) or []
             covered_items = [str(c.get("item", "")) for c in question_cases]
             if case:
-                status = "done"
+                status = "unsupported-ok" if case.get("status") == "unsupported-ok" else "done"
                 command = case.get("args", [])
                 expected = case.get("needles", [])
-                notes = "manual host-verified"
+                notes = str(case.get("notes", "manual reviewed; no unique CAS command")) if status == "unsupported-ok" else "manual host-verified"
                 covered_items = [str(case.get("item", ""))]
                 if source_pdf != case.get("source_pdf"):
                     notes = f"covered by {case.get('source_pdf')}"
