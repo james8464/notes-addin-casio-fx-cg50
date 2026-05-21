@@ -326,6 +326,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "de_solve(3*d2x/dt2+4*dx/dt+x=200*cos(t))",
+        ["3*m^2 + 4*m + 1 = 0", "Try x_p = p*cos(t) + q*sin(t)", "-2*p + 4*q = 200", "-4*p - 2*q = 0", "p = -20, q = 40", "40*sin(t) - 20*cos(t)"],
+        ["Err: second-order DE unsupported", "No elementary primitive"],
+    ),
+    (
+        "int",
         "de_solve(d2y/dx2-4*dy/dx+4*y=0)",
         ["m^2 - 4*m + 4 = 0", "m = 2 repeated", "y = (A + B*x)*e^(2*x)"],
         ["Err: second-order DE unsupported", "d2y = "],

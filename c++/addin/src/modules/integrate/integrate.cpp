@@ -2572,12 +2572,60 @@ static std::vector<std::string> solve_second_order_de_mode(std::string const &eq
             return casio::exam_block("second-order differential equation", steps, tok->y + " = " + cf + (lambda.num < 0 ? " - " : " + ") + (lambda.num < 0 ? part.substr(1) : part));
         }
         auto force = second_order_trig_force(a, rest, tok->x);
-        if(!force || B->num != 0) throw std::runtime_error("second-order DE unsupported");
+        if(!force) throw std::runtime_error("second-order DE unsupported");
         Rational w2 = r_mul(force->w, force->w);
         Rational F = r_neg(force->coeff);
         Rational gap = r_sub(*C, r_mul(*A, w2));
         std::string arg = format_expr(a, force->arg);
         std::string driven = force->fn == FnKind::Cos ? "cos(" + arg + ")" : "sin(" + arg + ")";
+        auto lin2 = [&](Rational c1, std::string const &v1, Rational c2, std::string const &v2) {
+            std::string s;
+            auto add = [&](Rational c, std::string const &v) {
+                if(c.num == 0) return;
+                bool neg = c.num < 0;
+                Rational ab = neg ? r_neg(c) : c;
+                std::string t = coeff_var_text(a, ab, v);
+                if(s.empty()) s = neg ? "-" + t : t;
+                else s += neg ? " - " + t : " + " + t;
+            };
+            add(c1, v1);
+            add(c2, v2);
+            return s.empty() ? std::string("0") : s;
+        };
+        auto trig_combo = [&](Rational c1, std::string const &f1, Rational c2, std::string const &f2) {
+            std::string s;
+            auto add = [&](Rational c, std::string const &f) {
+                if(c.num == 0) return;
+                bool neg = c.num < 0;
+                Rational ab = neg ? r_neg(c) : c;
+                std::string t = ab.num == ab.den ? f : rat_text_small(a, ab) + "*" + f;
+                if(s.empty()) s = neg ? "-" + t : t;
+                else s += neg ? " - " + t : " + " + t;
+            };
+            add(c1, f1);
+            add(c2, f2);
+            return s;
+        };
+        auto append_part = [](std::string const &base, std::string const &part) {
+            if(part.empty()) return base;
+            return base + (part[0] == '-' ? " - " + part.substr(1) : " + " + part);
+        };
+        if(B->num != 0) {
+            Rational bw = r_mul(*B, force->w);
+            Rational denom = r_add(r_mul(gap, gap), r_mul(bw, bw));
+            if(denom.num == 0) throw std::runtime_error("second-order DE unsupported");
+            Rational p = force->fn == FnKind::Cos ? r_div(r_mul(F, gap), denom) : r_div(r_neg(r_mul(F, bw)), denom);
+            Rational q = force->fn == FnKind::Cos ? r_div(r_mul(F, bw), denom) : r_div(r_mul(F, gap), denom);
+            std::string rhs2 = force->fn == FnKind::Cos ? "0" : rat_text_small(a, F);
+            std::string rhs1 = force->fn == FnKind::Cos ? rat_text_small(a, F) : "0";
+            steps.push_back("RHS = " + rat_text_small(a, F) + "*" + driven);
+            steps.push_back("Try " + tok->y + "_p = p*cos(" + arg + ") + q*sin(" + arg + ")");
+            steps.push_back(lin2(gap, "p", bw, "q") + " = " + rhs1);
+            steps.push_back(lin2(r_neg(bw), "p", gap, "q") + " = " + rhs2);
+            steps.push_back("p = " + rat_text_small(a, p) + ", q = " + rat_text_small(a, q));
+            std::string part = trig_combo(q, "sin(" + arg + ")", p, "cos(" + arg + ")");
+            return casio::exam_block("second-order differential equation", steps, tok->y + " = " + append_part(cf, part));
+        }
         if(gap.num != 0) {
             Rational lambda = r_div(F, gap);
             Rational abs_lambda = lambda.num < 0 ? r_neg(lambda) : lambda;
