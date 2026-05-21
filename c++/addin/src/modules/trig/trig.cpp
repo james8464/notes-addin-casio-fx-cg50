@@ -8556,6 +8556,49 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
+    auto abs_trig_eq = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
+        Node const &L = a.get(left);
+        if(L.kind != NodeKind::Fn || L.fkind != FnKind::Abs) return std::nullopt;
+        Node const &inner = a.get(L.a);
+        if(inner.kind != NodeKind::Fn ||
+           !(inner.fkind == FnKind::Sin || inner.fkind == FnKind::Cos || inner.fkind == FnKind::Tan ||
+             inner.fkind == FnKind::Sec || inner.fkind == FnKind::Cosec || inner.fkind == FnKind::Cot))
+            return std::nullopt;
+        if(contains_var(a, right, var)) return std::nullopt;
+        std::string inner_s = casio::format_expr(a, L.a);
+        std::string target_s = casio::format_expr(a, right);
+        if(auto r = as_num(a, right); r && r->num < 0) {
+            return casio::exam_block(
+                "trig solve",
+                {
+                    "abs(" + inner_s + ") = " + target_s,
+                    "abs(" + inner_s + ") >= 0",
+                    target_s + " < 0",
+                },
+                var + " = []"
+            );
+        }
+        NodeId left_sq = casio::simplify(a, a.pow(L.a, casio::num(a, 2)));
+        NodeId right_sq = casio::simplify(a, a.pow(right, casio::num(a, 2)));
+        std::string square_eq = casio::format_expr(a, left_sq) + "=" + casio::format_expr(a, right_sq);
+        auto nested = solve_simple_trig_eq(a, square_eq, var, lo_text, hi_text, general, rad_override);
+        std::vector<std::string> out{
+            "A = " + inner_s,
+            "abs(" + inner_s + ") = " + target_s,
+            "abs(A) = " + target_s,
+            "A = +/-" + target_s,
+            "A^2 = " + target_s + "^2",
+            casio::format_expr(a, left_sq) + " = " + casio::format_expr(a, right_sq),
+        };
+        for(std::string const &line : nested) {
+            if(compact_key(line) == compact_key(out.back())) continue;
+            out.push_back(line);
+        }
+        return out;
+    };
+    if(auto q = abs_trig_eq(lhs, rhs)) return *q;
+    if(auto q = abs_trig_eq(rhs, lhs)) return *q;
+
     if(auto q = solve_const_over_sec_sin_equals_cot(a, lhs, rhs, var, lo_text, hi_text, rad)) return *q;
     if(auto q = solve_const_over_sec_sin_equals_cot(a, rhs, lhs, var, lo_text, hi_text, rad)) return *q;
     if(auto q = solve_cosec_cot_fraction_identity(a, lhs, rhs, var, lo_text, hi_text, rad)) return *q;

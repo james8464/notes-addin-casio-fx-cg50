@@ -8813,6 +8813,149 @@ static std::optional<std::vector<std::string>> outer_abs_exp_affine_inequality_r
     };
 }
 
+struct PowerAffineIneq
+{
+    NodeId base = 0;
+    NodeId exponent = 0;
+    Rational shift{0, 1};
+    std::string var;
+};
+
+static std::optional<std::pair<NodeId, Rational>> scaled_power_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) return std::make_pair(n, Rational{1, 1});
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    NodeId p = 0;
+    for(NodeId k : x.kids) {
+        if(auto r = as_num(a, k)) c = r_mul(c, *r);
+        else if(a.get(k).kind == NodeKind::Pow && !p) p = k;
+        else return std::nullopt;
+    }
+    if(!p || c.num <= 0) return std::nullopt;
+    return std::make_pair(p, c);
+}
+
+static std::optional<PowerAffineIneq> power_affine_ineq_node(Arena &a, NodeId n)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    NodeId pow_node = 0;
+    Rational coeff{1, 1}, shift{0, 1};
+    for(NodeId t : terms) {
+        if(auto sp = scaled_power_node(a, t); sp && !pow_node) {
+            pow_node = sp->first;
+            coeff = sp->second;
+        }
+        else if(auto r = as_num(a, t)) shift = r_add(shift, *r);
+        else return std::nullopt;
+    }
+    if(!pow_node || coeff.num != coeff.den) return std::nullopt;
+    Node const &p = a.get(pow_node);
+    if(has_symbols(a, p.a)) return std::nullopt;
+    auto bv = eval_node_env(a, p.a, {});
+    if(!bv || *bv <= 0.0 || std::fabs(*bv - 1.0) < 1e-12) return std::nullopt;
+    std::vector<std::string> vars;
+    collect_symbols(a, p.b, vars);
+    if(vars.size() != 1) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, p.b, vars[0]);
+    if(!lin) return std::nullopt;
+    auto mv = eval_node_env(a, lin->m, {});
+    if(!mv || std::fabs(*mv) < 1e-12) return std::nullopt;
+    return PowerAffineIneq{p.a, p.b, shift, vars[0]};
+}
+
+static std::optional<std::vector<std::string>> outer_abs_power_affine_inequality_route(
+    Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
+{
+    if(!(op == "<" || op == "<=" || op == ">" || op == ">=")) return std::nullopt;
+    NodeId A0 = casio::parse_expr(a, absarg);
+    NodeId C0 = casio::parse_expr(a, rhs);
+    auto C = as_num(a, C0);
+    if(!C || C->num < 0) return std::nullopt;
+    auto pa = power_affine_ineq_node(a, A0);
+    if(!pa) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, pa->exponent, pa->var);
+    if(!lin) return std::nullopt;
+    double base_v = *eval_node_env(a, pa->base, {});
+    double m_v = *eval_node_env(a, lin->m, {});
+    bool increasing = std::log(base_v) * m_v > 0.0;
+
+    Rational lo_y = r_sub(r_neg(*C), pa->shift);
+    Rational hi_y = r_sub(*C, pa->shift);
+    if(r_cmp(lo_y, hi_y) > 0) std::swap(lo_y, hi_y);
+
+    auto bound_node = [&](Rational y) -> NodeId {
+        NodeId y_node = a.num(y);
+        NodeId log_ratio = exact_eval_simplify(a, casio::div(a, casio::fn(a, "log", y_node), casio::fn(a, "log", pa->base)));
+        return exact_eval_simplify(a, casio::div(a, sub_node(a, log_ratio, lin->c), lin->m));
+    };
+    auto power_text = [&]() {
+        std::string b = format_expr(a, pa->base);
+        std::string e = format_expr(a, pa->exponent);
+        Node const &bn = a.get(pa->base);
+        if((bn.kind == NodeKind::Num && bn.num.den != 1) || bn.kind == NodeKind::Div ||
+           b.find('+') != std::string::npos || b.find('-') != std::string::npos)
+            b = "(" + b + ")";
+        if(e != pa->var) e = "(" + e + ")";
+        return b + "^" + e;
+    };
+    std::string ptxt = power_text();
+    std::string atxt = ptxt;
+    if(!is_zero(pa->shift)) {
+        if(pa->shift.num > 0) atxt += " + " + format_rat_plain(pa->shift);
+        else atxt += " - " + format_rat_plain(r_neg(pa->shift));
+    }
+    std::vector<std::string> out{
+        "abs(" + atxt + ") " + op + " " + format_expr(a, C0),
+    };
+    bool inside = (op == "<" || op == "<=");
+    std::string le = (op.size() == 2) ? "<=" : "<";
+    std::string ge = (op.size() == 2) ? ">=" : ">";
+    if(inside) {
+        out.push_back("-" + format_expr(a, C0) + " " + le + " " + atxt + " " + le + " " + format_expr(a, C0));
+        out.push_back(format_rat_plain(lo_y) + " " + le + " " + ptxt + " " + le + " " + format_rat_plain(hi_y));
+    }
+    else {
+        out.push_back(atxt + " " + ge + " " + format_expr(a, C0) + " or " + atxt + " " + le + " -" + format_expr(a, C0));
+        out.push_back(ptxt + " " + ge + " " + format_rat_plain(hi_y) + " or " + ptxt + " " + le + " " + format_rat_plain(lo_y));
+        out.push_back(ptxt + " > 0");
+    }
+    if(hi_y.num <= 0) {
+        out.push_back(pa->var + " = []");
+        return out;
+    }
+
+    std::optional<NodeId> lo_x, hi_x;
+    if(lo_y.num > 0) lo_x = bound_node(lo_y);
+    hi_x = bound_node(hi_y);
+    std::string lo_s = lo_x ? format_expr(a, *lo_x) : "";
+    std::string hi_s = format_expr(a, *hi_x);
+    if(!inside) {
+        std::vector<std::string> parts;
+        if(lo_x) parts.push_back(pa->var + (increasing ? " " + le + " " + lo_s : " " + ge + " " + lo_s));
+        parts.push_back(pa->var + (increasing ? " " + ge + " " + hi_s : " " + le + " " + hi_s));
+        out.push_back(join_text(parts, " or "));
+        return out;
+    }
+    std::string ans;
+    if(increasing) ans = lo_x ? lo_s + " " + le + " " + pa->var + " " + le + " " + hi_s : pa->var + " " + le + " " + hi_s;
+    else ans = lo_x ? hi_s + " " + le + " " + pa->var + " " + le + " " + lo_s : pa->var + " " + ge + " " + hi_s;
+    out.push_back(ans);
+    auto lo_v = lo_x ? eval_node_env(a, *lo_x, {}) : std::optional<double>{};
+    auto hi_v = eval_node_env(a, *hi_x, {});
+    if(pa->var == "n" && lo_v && hi_v) {
+        double L = std::min(*lo_v, *hi_v), H = std::max(*lo_v, *hi_v);
+        int a0 = (op == "<") ? (int)std::floor(L) + 1 : (int)std::ceil(L);
+        int b0 = (op == "<") ? (int)std::ceil(H) - 1 : (int)std::floor(H);
+        std::vector<std::string> ns;
+        for(int k = a0; k <= b0 && k <= a0 + 80; ++k) ns.push_back(std::to_string(k));
+        if(!ns.empty()) out.push_back("n integer => n = " + join_text(ns, ", "));
+    }
+    return out;
+}
+
 static std::optional<std::vector<std::string>> outer_abs_rational_inequality_route(
     Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
 {
@@ -9081,6 +9224,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         rhs = "(" + *ra + ")^2";
     }
     if(abs_line.empty()) if(auto la = outer_abs_arg(lhs)) {
+        if(auto ap = outer_abs_power_affine_inequality_route(a, op, *la, rhs)) return *ap;
         if(auto ae = outer_abs_exp_affine_inequality_route(a, op, *la, rhs)) return *ae;
         NodeId R0 = casio::parse_expr(a, rhs);
         auto rp = poly_any_of(a, R0, "x");

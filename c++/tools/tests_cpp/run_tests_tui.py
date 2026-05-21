@@ -50,6 +50,36 @@ try:
     TEXTUAL_AVAILABLE = True
 except ImportError:
     TEXTUAL_AVAILABLE = False
+    ComposeResult = object
+
+    class App:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, *args, **kwargs):
+            raise RuntimeError("textual is required for interactive TUI mode")
+
+        def call_from_thread(self, fn, *args, **kwargs):
+            return fn(*args, **kwargs)
+
+    class _DummyWidget:
+        class Changed:
+            pass
+
+        class Submitted:
+            pass
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    Container = Vertical = Horizontal = Static = RichLog = _DummyWidget
+    Input = _DummyWidget
 
 _TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = Path(__file__).resolve().parents[3]
