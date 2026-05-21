@@ -2645,6 +2645,13 @@ static std::optional<std::vector<std::string>> partial_fraction_two_linear(Arena
     };
 }
 
+static std::string pf_var_for(Arena &a, NodeId parsed)
+{
+    std::vector<std::string> vars;
+    collect_symbols(a, parsed, vars);
+    return vars.empty() ? "x" : vars.front();
+}
+
 static std::string signed_sum_text(std::string lhs, std::string rhs)
 {
     if(lhs.empty()) return rhs;
@@ -3126,6 +3133,88 @@ static std::optional<std::vector<std::string>> maclaurin_exp_route(Arena &a, std
     }
     out.push_back(series_answer_text(a, *coeffs, var));
     return out;
+}
+
+struct AtanhLinearSeries {
+    Rational c;
+    Rational m;
+    Rational b;
+    Rational f0_ratio;
+};
+
+static std::optional<AtanhLinearSeries> atanh_linear_fraction_series(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &fn = a.get(n);
+    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Atanh) return std::nullopt;
+    Node const &q = a.get(fn.a);
+    if(q.kind != NodeKind::Div) return std::nullopt;
+    auto num = linear_poly_coeffs(a, q.a, var);
+    auto den = linear_poly_coeffs(a, q.b, var);
+    if(!num || !den) return std::nullopt;
+    Rational A = num->first, B = num->second, C = den->first, D = den->second;
+    Rational det = r_sub(r_mul(A, D), r_mul(B, C));
+    if(is_zero(det)) return std::nullopt;
+    Rational m1 = r_sub(C, A), b1 = r_sub(D, B);
+    Rational m2 = r_add(C, A), b2 = r_add(D, B);
+    Rational k, m, b;
+    if(is_zero(m1) && !is_zero(b1)) {
+        k = b1; m = m2; b = b2;
+    }
+    else if(is_zero(m2) && !is_zero(b2)) {
+        k = b2; m = m1; b = b1;
+    }
+    else return std::nullopt;
+    if(is_zero(k) || is_zero(b)) return std::nullopt;
+    Rational c = r_div(det, k);
+    Rational ratio = r_div(r_add(D, B), r_sub(D, B));
+    if(ratio.num <= 0) return std::nullopt;
+    return AtanhLinearSeries{c, m, b, ratio};
+}
+
+static std::string rat_mul_var_text(Arena &a, Rational r, std::string const &var, int pow)
+{
+    if(is_zero(r)) return "";
+    std::string v = pow == 1 ? var : var + "^" + std::to_string(pow);
+    if(r.num == r.den) return v;
+    if(r.num == -r.den) return "-" + v;
+    return rat_node_text(a, r) + "*" + v;
+}
+
+static void append_series_term(std::string &s, std::string t)
+{
+    t = trim_text(t);
+    if(t.empty()) return;
+    bool neg = t[0] == '-';
+    if(s.empty()) s = t;
+    else s += neg ? " - " + trim_text(t.substr(1)) : " + " + t;
+}
+
+static std::optional<std::vector<std::string>> maclaurin_atanh_linear_fraction_route(Arena &a, std::string const &inner)
+{
+    auto args = split_csv(inner);
+    if(args.empty()) return std::nullopt;
+    std::string var = args.size() >= 2 && !args[1].empty() ? compact_input_key(args[1]) : "x";
+    int degree = args.size() >= 3 ? std::atoi(args[2].c_str()) : 2;
+    if(degree < 2) return std::nullopt;
+    NodeId n = casio::parse_expr(a, args[0]);
+    auto info = atanh_linear_fraction_series(a, n, var);
+    if(!info) return std::nullopt;
+    Rational f1 = r_div(info->c, info->b);
+    Rational f2_num = r_neg(r_mul(info->c, info->m));
+    Rational f2_0 = r_div(f2_num, r_mul(info->b, info->b));
+    Rational x2 = r_div(f2_0, Rational{2, 1});
+    std::string lin = format_expr(a, poly2_to_node(a, Poly2{Rational{0, 1}, info->m, info->b, true}, var));
+    std::string f0 = "1/2*ln(" + rat_node_text(a, info->f0_ratio) + ")";
+    std::string ans = f0;
+    append_series_term(ans, rat_mul_var_text(a, f1, var, 1));
+    append_series_term(ans, rat_mul_var_text(a, x2, var, 2));
+    return std::vector<std::string>{
+        "f(0) = " + f0,
+        "f'(" + var + ") = " + rat_node_text(a, info->c) + "/(" + lin + "), f'(0) = " + rat_node_text(a, f1),
+        "f''(" + var + ") = " + rat_node_text(a, f2_num) + "/(" + lin + ")^2, f''(0) = " + rat_node_text(a, f2_0),
+        "f(" + var + ") = f(0) + " + var + "*f'(0) + " + var + "^2/2*f''(0)",
+        ans,
+    };
 }
 
 static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, std::string const &inner)
@@ -6893,6 +6982,68 @@ static std::optional<std::vector<std::string>> tanh_log_sqrt_linear_route(
         append_rejected_by_domain(out, var, raw, valid);
         for(auto const &s : valid) out.push_back(s);
         out.push_back(valid.empty() ? var + " = []" : solution_list_line(var, valid));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
+static bool sinh_scaled_term(Arena &a, NodeId n, std::string const &var, Rational &coef, Rational &arg_coef)
+{
+    coef = Rational{1, 1};
+    NodeId body = n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        bool saw = false;
+        Rational c{1, 1};
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) c = r_mul(c, *r);
+            else if(!saw) {
+                body = k;
+                saw = true;
+            }
+            else return false;
+        }
+        if(!saw) return false;
+        coef = c;
+    }
+    Node const &fn = a.get(body);
+    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Sinh) return false;
+    auto lin = linear_poly_coeffs(a, fn.a, var);
+    if(!lin || !is_zero(lin->second)) return false;
+    arg_coef = lin->first;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> hyperbolic_sinh_triple_solve_route(Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    auto run = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
+        Rational A, B, ka, kb;
+        if(!sinh_scaled_term(a, left, var, A, ka) || !sinh_scaled_term(a, right, var, B, kb)) return std::nullopt;
+        ka.normalize();
+        kb.normalize();
+        if(!(ka.num == 3 && ka.den == 1) || !(kb.num == 1 && kb.den == 1) || is_zero(A)) return std::nullopt;
+        Rational target = r_div(r_sub(B, r_mul(Rational{3, 1}, A)), r_mul(Rational{4, 1}, A));
+        Rational fourA = r_mul(Rational{4, 1}, A);
+        Rational c0 = r_sub(r_mul(Rational{3, 1}, A), B);
+        Rational c0abs = c0.num < 0 ? r_neg(c0) : c0;
+        std::vector<std::string> out;
+        out.push_back("sinh(3*" + var + ") = 4*sinh(" + var + ")^3 + 3*sinh(" + var + ")");
+        out.push_back("sinh(" + var + ")*(" + rat_node_text(a, fourA) + "*sinh(" + var + ")^2 " +
+                      (c0.num < 0 ? "- " : "+ ") + rat_node_text(a, c0abs) + ") = 0");
+        out.push_back("sinh(" + var + ") = 0 => " + var + " = 0");
+        if(target.num <= 0) {
+            out.push_back("sinh(" + var + ")^2 = " + rat_node_text(a, target) + " gives no extra real roots");
+            out.push_back(var + " = [0]");
+            return out;
+        }
+        std::string s = sqrt_rational_surd_text(a, target);
+        std::string rt = sqrt_rational_surd_text(a, r_add(Rational{1, 1}, target));
+        out.push_back("sinh(" + var + ")^2 = " + rat_node_text(a, target));
+        out.push_back("sinh(" + var + ") = +/-" + s);
+        out.push_back(var + " = ln(" + s + " + " + rt + ")");
+        out.push_back(var + " = ln(-" + s + " + " + rt + ")");
+        out.push_back(var + " = [0, ln(" + s + " + " + rt + "), ln(-" + s + " + " + rt + ")]");
         return out;
     };
     if(auto r = run(lhs, rhs)) return r;
@@ -23088,10 +23239,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
         if(req.mode == 0 && (req.method == "partfrac" || req.method == "pf")) {
             NodeId parsed = casio::parse_expr(arena, req.expr);
-            if(auto pf = partial_fraction_linear_over_linear(arena, parsed, "x")) return *pf;
-            if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, "x")) return *pf;
-            if(auto pf = partial_fraction_repeated_linear(arena, parsed, "x")) return *pf;
-            if(auto pf = partial_fraction_two_linear(arena, parsed, "x")) return *pf;
+            std::string pfv = pf_var_for(arena, parsed);
+            if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
+            if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
         }
 algebra_compare_transform_modes:
         if(req.mode == 1) {
@@ -23343,6 +23495,7 @@ algebra_compare_transform_modes:
             return run(arena, next);
         }
         if(req.mode == 14) {
+            if(auto out = maclaurin_atanh_linear_fraction_route(arena, req.expr)) return *out;
             if(auto out = maclaurin_exp_route(arena, req.expr)) return *out;
             if(auto out = binomial_series_route(arena, req.expr)) return *out;
             return {
@@ -24591,9 +24744,10 @@ algebra_compare_transform_modes:
                 return casio::exam_block("collect", steps, n_text ? *n_text : format_expr(arena, n));
             }
             if(req.method == "pf" || req.method == "partfrac") {
-                if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, "x")) return *pf;
-                if(auto pf = partial_fraction_repeated_linear(arena, parsed, "x")) return *pf;
-                if(auto pf = partial_fraction_two_linear(arena, parsed, "x")) return *pf;
+                std::string pfv = pf_var_for(arena, parsed);
+                if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
+                if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
                 Node const &pn = arena.get(parsed);
                 if(pn.kind != NodeKind::Div) {
                     return casio::exam_block(
@@ -24751,6 +24905,7 @@ algebra_compare_transform_modes:
         if(auto iso = direct_constant_solution(lhs, rhs)) return *iso;
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
 
+        if(auto hsinh = hyperbolic_sinh_triple_solve_route(arena, lhs, rhs, solve_var)) return *hsinh;
         if(auto hcosh2 = hyperbolic_cosh_double_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh2;
         if(auto hcosh = hyperbolic_cosh_square_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh;
         if(auto ths = tanh_log_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var, out)) return *ths;

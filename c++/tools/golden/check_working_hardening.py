@@ -1884,6 +1884,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["e^x = 1 + x + 1/2*x^2 + 1/6*x^3", "u = x + 1/2*x^2 + 1/6*x^3", "1 + x + x^2 + 5/6*x^3"],
         ["unsupported", "ERR:"],
     ),
+    (
+        "alg",
+        "solve(sinh(3*x)=19*sinh(x),x)",
+        ["sinh(3*x) = 4*sinh(x)^3 + 3*sinh(x)", "x = ln(2 + sqrt(5))", "x = ln(-2 + sqrt(5))"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "derive",
+        "atanh((3-x)/(6+x)),x",
+        ["dy/dx = u'/(1-u^2)", "dy/dx = -1/(2*x + 3)"],
+        ["ERR:"],
+    ),
+    (
+        "derive",
+        "atanh((3-x)/(6+x)),x,method=second",
+        ["dy/dx = -1/(2*x + 3)", "d2y/dx2 = 2/(2*x + 3)^2"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "maclaurin(atanh((3-x)/(6+x)),x,2)",
+        ["f(0) = 1/2*ln(3)", "1/2*ln(3) - 1/3*x + 1/9*x^2"],
+        ["unsupported", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(1/(9*x^2+16),x,4/3,inf)",
+        ["lim_{T->inf}", "lim_{T->inf} atan(3/4*T) = pi/2", "1/48*pi"],
+        ["atan(3/4*inf)", "ERR:"],
+    ),
+    (
+        "alg",
+        "partfrac(2/((r+4)*(r+6)))",
+        ["A/(r + 4)+B/(r + 6)", "A = 1, B = -1"],
+        ["Domain:", "ERR:"],
+    ),
 ]
 
 

@@ -18835,6 +18835,47 @@ static std::string log_coeff_text(Rational r, std::string const &body)
     return rat_text(r) + "*" + body;
 }
 
+static std::optional<std::vector<std::string>> run_improper_reciprocal_quadratic_atan_defint(Arena &arena, Request const &req)
+{
+    std::optional<std::vector<std::string>> args;
+    for(char const *name : {"defint", "integrate", "int"}) {
+        args = unwrap_call_args(req.expr, name);
+        if(args) break;
+    }
+    if(!args || args->size() != 4 || !is_pos_inf_text((*args)[3])) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    NodeId lo = casio::simplify(arena, parse_expr(arena, (*args)[2]));
+    auto L = as_num(arena, lo);
+    if(!L) return std::nullopt;
+    NodeId node = casio::simplify(arena, parse_expr(arena, (*args)[0]));
+    Node const &n = arena.get(node);
+    if(n.kind != NodeKind::Div) return std::nullopt;
+    auto N = as_num(arena, n.a);
+    auto den = poly_of_any(arena, n.b, var);
+    if(!N || !den || poly_degree(*den) != 2 || !r_zero(poly_at(*den, 1))) return std::nullopt;
+    Rational A = poly_at(*den, 2), C = poly_at(*den, 0);
+    if(A.num <= 0 || C.num <= 0) return std::nullopt;
+    auto sA = sqrt_rat_exact(A), sC = sqrt_rat_exact(C);
+    if(!sA || !sC) return std::nullopt;
+    Rational coeff = r_div(*N, r_mul(*sA, *sC));
+    Rational scale = r_div(*sA, *sC);
+    Rational argL = r_mul(scale, *L);
+    std::string prim = log_coeff_text(coeff, "atan(" + rat_text(scale) + "*" + var + ")");
+    std::string upper = log_coeff_text(coeff, "pi/2");
+    std::string lower = log_coeff_text(coeff, "atan(" + rat_text(argL) + ")");
+    std::string ans;
+    if(r_eq(argL, Rational{1, 1})) ans = pi_times(r_div(coeff, Rational{4, 1}));
+    else ans = log_coeff_text(coeff, "(pi/2 - atan(" + rat_text(argL) + "))");
+    std::vector<std::string> steps = {
+        "I = lim_{T->inf} Int_" + format_expr_human(arena, lo) + "^T " + (*args)[0] + " d" + var + ".",
+        "F(" + var + ") = " + prim + ".",
+        "lim_{T->inf} atan(" + rat_text(scale) + "*T) = pi/2.",
+        "F(T) -> " + upper + ".",
+        "F(" + format_expr_human(arena, lo) + ") = " + lower + ".",
+    };
+    return casio::exam_block("improper atan integral", steps, ans);
+}
+
 static std::optional<std::vector<std::string>> run_improper_quadratic_linear_pf_defint(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -19076,6 +19117,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto atan_tail = run_improper_reciprocal_quadratic_atan_defint(arena, req)) return *atan_tail;
         if(auto quad_pf = run_improper_quadratic_linear_pf_defint(arena, req)) return *quad_pf;
         if(auto lin_pf = run_improper_linear_pf_defint(arena, req)) return *lin_pf;
         if(auto exp_tail = run_improper_exp_defint(arena, req)) return *exp_tail;
