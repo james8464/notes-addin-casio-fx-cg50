@@ -1920,6 +1920,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["A/(r + 4)+B/(r + 6)", "A = 1, B = -1"],
         ["Domain:", "ERR:"],
     ),
+    (
+        "derive",
+        "mode:8,e^(3*x)*sin(x),x",
+        ["Leibnitz: d4y/dx4", "u'''' = 81*e^(3*x)", "v'''' = sin(x)", "d4y/dx4 = 28*e^(3*x)*sin(x) + 96*e^(3*x)*cos(x)"],
+        ["limite", "ERR:"],
+    ),
+    (
+        "derive",
+        "mode:8,e^(2*x)*cos(3*x),x",
+        ["Leibnitz: d4y/dx4", "v'''' = 81*cos(3*x)", "d4y/dx4 = - 119*e^(2*x)*cos(3*x) + 120*e^(2*x)*sin(3*x)"],
+        ["limite", "ERR:"],
+    ),
 ]
 
 

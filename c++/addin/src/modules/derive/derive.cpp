@@ -2721,6 +2721,39 @@ static bool append_product_rule_detail(
     return true;
 }
 
+static bool append_leibniz_four_detail(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::vector<std::string> &steps
+)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return false;
+    std::vector<NodeId> f;
+    for(auto k : x.kids) {
+        if(depends_on(a, k, var)) f.push_back(k);
+        else return false;
+    }
+    if(f.size() != 2) return false;
+    std::vector<NodeId> u(5), v(5);
+    u[0] = f[0]; v[0] = f[1];
+    for(int i = 1; i <= 4; ++i) {
+        u[i] = casio::simplify(a, diff(a, u[i - 1], var));
+        v[i] = casio::simplify(a, diff(a, v[i - 1], var));
+    }
+    auto fmt = [&](NodeId t) { return clean_math_text(format_expr_human(a, t)); };
+    steps.push_back("u = " + fmt(u[0]) + ".");
+    steps.push_back("v = " + fmt(v[0]) + ".");
+    steps.push_back("Leibnitz: d4y/d" + var + "4 = u''''v + 4u'''v' + 6u''v'' + 4u'v''' + uv''''.");
+    for(int i = 1; i <= 4; ++i) {
+        std::string p(static_cast<std::size_t>(i), '\'');
+        steps.push_back("u" + p + " = " + fmt(u[i]) + ".");
+        steps.push_back("v" + p + " = " + fmt(v[i]) + ".");
+    }
+    return true;
+}
+
 struct ExpAffineParts
 {
     NodeId coef;
@@ -3259,7 +3292,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             pre.simplified = expr;
             return casio::exam_fallback("first principles", pre, "No first-principles route for this form.", "d/d" + var + "(" + pre.norm + ")");
         }
-        if(req.mode == 1 || req.mode == 4 || req.mode == 7) {
+        if(req.mode == 1 || req.mode == 4 || req.mode == 7 || req.mode == 8) {
             auto parts = split_csv(req.expr);
             std::string expr = parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
@@ -3809,13 +3842,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId out = d1;
             std::string label = "dy/d" + var;
-                if(req.mode == 4 || req.mode == 7) {
+                if(req.mode == 4 || req.mode == 7 || req.mode == 8) {
                     NodeId d2 = casio::simplify(arena, diff(arena, d1, var));
                     out = d2;
                     label = "d2y/d" + var + "2";
-                    if(req.mode == 7) {
+                    if(req.mode == 7 || req.mode == 8) {
                         out = casio::simplify(arena, diff(arena, d2, var));
                         label = "d3y/d" + var + "3";
+                        if(req.mode == 8) {
+                            out = casio::simplify(arena, diff(arena, out, var));
+                            label = "d4y/d" + var + "4";
+                        }
                     }
                 }
             std::vector<std::string> steps;
@@ -3828,8 +3865,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string shown_y = clean_math_text(format_expr_human(arena, n));
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
             }
-            if(req.mode == 4 || req.mode == 7) {
-                steps.push_back(req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again.");
+            if(req.mode == 4 || req.mode == 7 || req.mode == 8) {
+                bool used_high = req.mode == 8 && append_leibniz_four_detail(arena, n, var, steps);
+                if(!used_high) {
+                    steps.push_back(req.mode == 8 ? "Differentiate four times." :
+                                    (req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again."));
+                }
                 if(req.mode == 4)
                     append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
             }
@@ -3962,7 +4003,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!roots.empty()) final_answer += ", " + var + " != " + roots;
             }
             return casio::exam_block(
-                (req.mode == 4) ? "second derivative" : "differentiate",
+                req.mode == 4 ? "second derivative" : (req.mode == 7 ? "third derivative" : (req.mode == 8 ? "fourth derivative" : "differentiate")),
                 steps,
                 final_answer
             );
