@@ -17,7 +17,7 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 
 CASES = [
-    ("Q5 integral parameter", ["--int", "defint((k*cos(x)^2-sec(x)^2)*sin(x),x,0,pi/3)"], ["7/24*k - 1", "u=cos(x)", "F(pi/3)-F(0)"]),
+    ("Q5 integral parameter", ["--int", "defint((k*cos(x)^2-sec(x)^2)*sin(x),x,0,pi/3)"], ["(7*k - 24)/24", "u = cos(x)", "Evaluate F(pi/3)-F(0)"]),
     ("Q5 solve k", ["--alg", "(7*k-24)/24=3/4"], ["k = [6]"]),
     ("Q6 binomial sqrt", ["--alg", "binomial(sqrt(1-x),x,0,3)"], ["1/2*x", "1/8*x^2", "1/16*x^3", "Valid for"]),
     ("Q9 range f", ["--alg", "range(x^2-4,x,8,inf)"], ["y >= 60"]),
@@ -28,7 +28,7 @@ CASES = [
     ("R2 symbolic complete square", ["--alg", "complete_square(x^2+2*k*x+4)"], ["(x + k)^2", "- k^2 + 4"]),
     ("R2 symbolic range", ["--alg", "range(x^2+2*k*x+4)"], ["y >= - k^2 + 4"]),
     ("R5 exp reciprocal range", ["--alg", "range(e^(n*x)+k*e^(-n*x))"], ["AM-GM", "y >= 2*sqrt(k)"]),
-    ("R7 exact integral", ["--int", "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)"], ["sec(x)^2*sin(x)^2 = tan(x)^2", "F(pi/3) - F(pi/6)", "4 - pi/6"]),
+    ("R7 exact integral", ["--int", "defint((1+sin(x))^2/cos(x)^2,x,pi/6,pi/3)"], ["tan(x)^2 = sec(x)^2-1", "Evaluate F(pi/3)-F(pi/6)", "4 - pi/6"]),
     ("R9 partial fractions", ["--alg", "partfrac((16*x^2+3*x-2)/(x^2*(3*x-2)))"], ["A=1", "B=0", "C=16", "1/x^2 + 16/(3*x-2)"]),
     ("R9 binomial", ["--alg", "binomial(1/(3*x-2),x,0,3)"], ["-1/2", "- 3/4*x", "- 9/8*x^2", "- 27/16*x^3"]),
     ("R10 sin triple", ["--trig", "sin(3*theta)\n3*sin(theta)-4*sin(theta)^3"], ["sin(A+B)", "3*sin(theta) - 4*sin(theta)^3"]),

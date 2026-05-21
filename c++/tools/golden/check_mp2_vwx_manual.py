@@ -75,7 +75,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "X Q12 definite integral",
         ["--int", "defint(32*sin(x)*sin(2*x)*sin(3*x),x,0,pi/3)"],
-        ["sin(x)sin(3*x)", "F(pi/3)=13/3", "9"],
+        ["sin(x)sin(3x)", "F(pi/3) = 13/3", "9"],
     ),
 ]
 

@@ -22,7 +22,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "C8 exponential substitution integral",
         ["--int", "defint(e^(2*x)/(e^x+1),x,log(2),log(8))"],
-        ["u=e^x+1", "Integral becomes Integral((u-1)/u) du", "6 - log(3)"],
+        ["u = e^x + 1", "I = Int_3^9 ((u - 1)/u) du", "6 - ln(3)"],
         ["No elementary primitive", "ERR:"],
     ),
     (
@@ -46,7 +46,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "D11 reciprocal exponential substitution",
         ["--int", "defint((1/x^2+1/x^3)*e^(1/x),x,1/log(3),1/log(2))"],
-        ["u=1/x", "Int = -Int(1+u)e^u du", "ln(27/4)"],
+        ["u = 1/x", "I = -Integral_ln(3)^ln(2)((1+u)*e^u) du", "ln(27/4)"],
         ["No elementary primitive", "ERR:"],
     ),
     (

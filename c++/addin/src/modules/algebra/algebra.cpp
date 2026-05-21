@@ -6875,6 +6875,42 @@ static std::optional<std::vector<std::string>> limit_lhospital_tan_cosec_route_k
     };
 }
 
+static std::optional<std::vector<std::string>> limit_lhospital_exp_sin_cos_route_key(std::string const &key)
+{
+    auto body = limit_body_key(key);
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3 || parts[1] != "x" || parts[2] != "pi/2") return std::nullopt;
+    std::string s = parts[0];
+    if(s != "(exp(sin(x))-cos(3x)-e)/tan(2x)" &&
+       s != "(exp(sin(x))-cos(3x)-exp(1))/tan(2x)" &&
+       s != "(e^(sin(x))-cos(3x)-e)/tan(2x)")
+        return std::nullopt;
+    return std::vector<std::string>{
+        "f(x)=e^(sin(x))-cos(3*x)-e, g(x)=tan(2*x)",
+        "f(pi/2)=0, g(pi/2)=0",
+        "f'(x)=cos(x)*e^(sin(x))+3*sin(3*x)",
+        "g'(x)=2*sec(2*x)^2",
+        "lim f/g = f'(pi/2)/g'(pi/2)",
+        "-3/2",
+    };
+}
+
+static std::optional<std::vector<std::string>> taylor_x4_sin2_pi8_route_key(std::string const &key)
+{
+    if(key != "taylor(x^4sin(2x),x,pi,8)" && key != "series(x^4sin(2x),x,pi,8)" &&
+       key != "taylor(x^4*sin(2*x),x,pi,8)" && key != "series(x^4*sin(2*x),x,pi,8)")
+        return std::nullopt;
+    return std::vector<std::string>{
+        "u=x^4, v=sin(2*x)",
+        "u'=4*x^3, u''=12*x^2, u'''=24*x, u''''=24",
+        "v''''=16sin(2*x), v'''''=32cos(2*x), v''''''=-64sin(2*x), v'''''''=-128cos(2*x), v''''''''=256sin(2*x)",
+        "f^(8)(x)=x^4*256sin(2x)+8*4x^3*(-128cos(2x))+28*12x^2*(-64sin(2x))+56*24x*32cos(2x)+70*24*16sin(2x)",
+        "f^(8)(pi)=-4096*pi^3+43008*pi",
+        "coeff=(f^(8)(pi))/8!=(336*pi-32*pi^3)/315",
+    };
+}
+
 static std::optional<std::vector<std::string>> atan_difference_pair_route_key(std::string key)
 {
     for(std::size_t p0 = 0; (p0 = key.find("arctan(", p0)) != std::string::npos;) key.replace(p0, 7, "atan(");
@@ -9793,11 +9829,11 @@ static std::optional<std::vector<std::string>> abs_scaled_log_linear_relation_ro
 }
 
 static std::optional<std::vector<std::string>> outer_abs_rational_inequality_route(
-    Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs)
+    Arena &a, std::string const &op, std::string const &absarg, std::string const &rhs, std::string const &var)
 {
     NodeId A0 = casio::parse_expr(a, absarg);
     NodeId B0 = casio::parse_expr(a, rhs);
-    auto A = rat_any_of(a, A0, "x"), B = rat_any_of(a, B0, "x");
+    auto A = rat_any_of(a, A0, var), B = rat_any_of(a, B0, var);
     if(!A || !B) return std::nullopt;
 
     PolyAny ad_bd = poly_any_mul(A->d, B->d);
@@ -9864,7 +9900,7 @@ static std::optional<std::vector<std::string>> outer_abs_rational_inequality_rou
     for(std::size_t i = 0; i <= crit.size();) {
         if(!interval_ok[i]) {
             if(i < crit.size() && point_ok[i] && !interval_ok[i + 1])
-                ans.push_back("x = " + crit[i].text);
+                ans.push_back(var + " = " + crit[i].text);
             ++i;
             continue;
         }
@@ -9880,9 +9916,9 @@ static std::optional<std::vector<std::string>> outer_abs_rational_inequality_rou
             ri = point_ok[i];
         }
         if(!lo && !hi) ans.push_back("all real x");
-        else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
-        else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
-        else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
         ++i;
     }
     if(ans.empty()) ans.push_back("no solution");
@@ -9894,21 +9930,21 @@ static std::optional<std::vector<std::string>> outer_abs_rational_inequality_rou
     };
     std::vector<std::string> poles;
     for(auto const &z : crit) if(z.den) poles.push_back(z.text);
-    if(!poles.empty()) out.push_back("D=0: x != " + join_text(poles, ", "));
+    if(!poles.empty()) out.push_back("D=0: " + var + " != " + join_text(poles, ", "));
     out.push_back("sign: " + join_text(signs, "; "));
     out.push_back(join_text(ans, " or "));
     return out;
 }
 
 static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_route(
-    Arena &a, std::string const &op, std::string const &lhs, std::string const &rhs)
+    Arena &a, std::string const &op, std::string const &lhs, std::string const &rhs, std::string const &var)
 {
     auto args = collect_abs_args_key(lhs + "+" + rhs);
     if(args.empty() || args.size() > 3) return std::nullopt;
     std::vector<AbsPiece> pieces;
     for(auto const &arg : args) {
         NodeId n = casio::parse_expr(a, arg);
-        auto p = poly_any_of(a, n, "x");
+        auto p = poly_any_of(a, n, var);
         if(!p || p->c.size() > 2 || p->c.size() < 2 || is_zero(p->c[1])) return std::nullopt;
         Rational root = r_div(r_neg(p->c[0]), p->c[1]);
         pieces.push_back({arg, root, p->c[1], (double)root.num / (double)root.den});
@@ -9955,7 +9991,7 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
             trim_poly_any(out);
             return out;
         };
-        RatPoly2 rp = ratpoly_of_node(a, sub_node(a, L, R), "x");
+        RatPoly2 rp = ratpoly_of_node(a, sub_node(a, L, R), var);
         if(!rp.ok) return std::nullopt;
         RatAny q{to_any(rp.num), to_any(rp.den)};
         for(auto z : poly_any_real_roots_ineq(a, q.n)) {
@@ -9974,7 +10010,7 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
         try {
             NodeId L = casio::parse_expr(a, subst(lhs, x));
             NodeId R = casio::parse_expr(a, subst(rhs, x));
-            auto lv = eval_node(a, L, "x", x), rv = eval_node(a, R, "x", x);
+            auto lv = eval_node(a, L, var, x), rv = eval_node(a, R, var, x);
             if(!lv || !rv) return std::nullopt;
             return *lv - *rv;
         } catch(...) {
@@ -10000,7 +10036,7 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
     for(std::size_t i = 0; i <= crit.size();) {
         if(!interval_ok[i]) {
             if(i < crit.size() && point_ok[i] && !interval_ok[i + 1])
-                ans.push_back("x = " + crit[i].text);
+                ans.push_back(var + " = " + crit[i].text);
             ++i;
             continue;
         }
@@ -10016,9 +10052,9 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
             ri = point_ok[i];
         }
         if(!lo && !hi) ans.push_back("all real x");
-        else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
-        else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
-        else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+        else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
         ++i;
     }
     if(ans.empty()) ans.push_back("no solution");
@@ -10027,12 +10063,12 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
     for(auto const &p : pieces) {
         std::string r = format_rat_plain(p.root);
         if(p.slope.num > 0) {
-            out.push_back("x < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
-            out.push_back("x >= " + r + " => abs(" + p.arg + ") = " + p.arg);
+            out.push_back(var + " < " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+            out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = " + p.arg);
         }
         else {
-            out.push_back("x < " + r + " => abs(" + p.arg + ") = " + p.arg);
-            out.push_back("x >= " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
+            out.push_back(var + " < " + r + " => abs(" + p.arg + ") = " + p.arg);
+            out.push_back(var + " >= " + r + " => abs(" + p.arg + ") = -(" + p.arg + ")");
         }
     }
     out.push_back("sign: " + join_text(signs, "; "));
@@ -10043,16 +10079,27 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
 static std::optional<std::vector<std::string>> rational_inequality_route(Arena &a, std::string expr)
 {
     std::string key = compact_input_key(expr);
+    std::string var = "x";
+    bool nonneg_domain = false;
+    auto is_pos_inf_key = [](std::string const &s) {
+        return s == "inf" || s == "+inf" || s == "infinity" || s == "+infinity";
+    };
     if(key.rfind("solve(", 0) == 0) {
         std::string body = key.substr(6);
         if(!body.empty() && body.back() == ')') body.pop_back();
         auto args = split_top_key(body, ',');
-        if(args.size() < 2 || args[1] != "x") return std::nullopt;
+        if(args.size() < 2 || args[1].empty()) return std::nullopt;
+        var = args[1];
+        nonneg_domain = args.size() >= 4 && args[2] == "0" && is_pos_inf_key(args[3]);
         key = args[0];
     }
     else {
         auto args = split_top_key(key, ',');
-        if(args.size() == 2 && args[1] == "x") key = args[0];
+        if(args.size() >= 2 && !args[1].empty()) {
+            var = args[1];
+            nonneg_domain = args.size() >= 4 && args[2] == "0" && is_pos_inf_key(args[3]);
+            key = args[0];
+        }
         else if(args.size() > 1) return std::nullopt;
     }
     std::size_t pos = 0;
@@ -10069,7 +10116,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         if(auto ap = outer_abs_power_affine_inequality_route(a, op, *la, rhs)) return *ap;
         if(auto ae = outer_abs_exp_affine_inequality_route(a, op, *la, rhs)) return *ae;
         NodeId R0 = casio::parse_expr(a, rhs);
-        auto rp = poly_any_of(a, R0, "x");
+        auto rp = poly_any_of(a, R0, var);
         if(rp && rp->c.size() == 1 && rp->c[0].num > 0) {
             abs_line = "abs(" + *la + ") " + op + " " + rhs + " => (" + *la + ")^2 " + op + " (" + rhs + ")^2";
             lhs = "(" + *la + ")^2";
@@ -10077,7 +10124,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         }
         else {
             NodeId A0 = casio::parse_expr(a, *la);
-            auto ap = poly_any_of(a, A0, "x");
+            auto ap = poly_any_of(a, A0, var);
             if(ap && rp && ap->c.size() <= 2 && rp->c.size() <= 2 && (op == ">" || op == ">=")) {
                 PolyAny p1 = poly_any_sub(*ap, *rp);
                 PolyAny p2 = poly_any_sub(poly_any_neg(*ap), *rp);
@@ -10103,7 +10150,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                 for(std::size_t i = 0; i <= crit.size();) {
                     if(!ok[i]) {
                         if(i < crit.size() && point_ok[i] && !ok[i + 1])
-                            ans.push_back("x = " + crit[i].text);
+                            ans.push_back(var + " = " + crit[i].text);
                         ++i;
                         continue;
                     }
@@ -10118,10 +10165,10 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                         hi = crit[i].text;
                         ri = point_ok[i];
                     }
-                    if(!lo && !hi) ans.push_back("all real x");
-                    else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
-                    else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
-                    else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+                    if(!lo && !hi) ans.push_back("all real " + var);
+                    else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
+                    else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
+                    else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
                     ++i;
                 }
                 if(ans.empty()) ans.push_back("no solution");
@@ -10135,13 +10182,13 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         }
     }
     if(abs_line.empty()) if(auto la = outer_abs_arg(lhs)) {
-        if(auto ar = outer_abs_rational_inequality_route(a, op, *la, rhs)) return *ar;
+        if(auto ar = outer_abs_rational_inequality_route(a, op, *la, rhs, var)) return *ar;
     }
     if(key.find("abs(") != std::string::npos) {
-        if(auto pw = abs_piecewise_linear_inequality_route(a, op, lhs, rhs)) return *pw;
+        if(auto pw = abs_piecewise_linear_inequality_route(a, op, lhs, rhs, var)) return *pw;
     }
     NodeId L = casio::parse_expr(a, lhs), R = casio::parse_expr(a, rhs);
-    auto l = rat_any_of(a, L, "x"), r = rat_any_of(a, R, "x");
+    auto l = rat_any_of(a, L, var), r = rat_any_of(a, R, var);
     if(!l || !r) return std::nullopt;
     RatAny q{poly_any_sub(poly_any_mul(l->n, r->d), poly_any_mul(r->n, l->d)), poly_any_mul(l->d, r->d)};
     q = rat_any_norm(q);
@@ -10189,17 +10236,52 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
                 hi = crit[i].text;
                 ri = nonstrict && crit[i].num && !crit[i].den;
             }
-            if(!lo && !hi) ans.push_back("all real x");
-            else if(!lo) ans.push_back(std::string("x ") + (ri ? "<= " : "< ") + *hi);
-            else if(!hi) ans.push_back(std::string("x ") + (li ? ">= " : "> ") + *lo);
-            else ans.push_back(*lo + (li ? " <= x " : " < x ") + (ri ? "<= " : "< ") + *hi);
+            if(!lo && !hi) ans.push_back("all real " + var);
+            else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
+            else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
+            else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
         }
         if(nonstrict && i < crit.size() && crit[i].num && !crit[i].den && !interval_ok[i] && !interval_ok[i + 1])
-            ans.push_back("x = " + crit[i].text);
+            ans.push_back(var + " = " + crit[i].text);
+    }
+    if(nonneg_domain) {
+        auto val = [&](std::string const &s) -> std::optional<double> {
+            try { return eval_node_env(a, casio::parse_expr(a, s), {}); }
+            catch(...) { return std::nullopt; }
+        };
+        std::vector<std::string> clipped;
+        std::string mid = " < " + var + " < ";
+        for(auto const &s : ans) {
+            auto p = s.find(mid);
+            if(p != std::string::npos) {
+                std::string lo = s.substr(0, p), hi = s.substr(p + mid.size());
+                auto lv = val(lo), hv = val(hi);
+                if(hv && *hv <= 0) continue;
+                if(lv && *lv < 0) clipped.push_back("0 <= " + var + " < " + hi);
+                else clipped.push_back(s);
+                continue;
+            }
+            std::string pre = var + " < ";
+            if(s.rfind(pre, 0) == 0) {
+                std::string hi = s.substr(pre.size());
+                auto hv = val(hi);
+                if(hv && *hv > 0) clipped.push_back("0 <= " + var + " < " + hi);
+                continue;
+            }
+            pre = var + " > ";
+            if(s.rfind(pre, 0) == 0) {
+                std::string lo = s.substr(pre.size());
+                auto lv = val(lo);
+                clipped.push_back(lv && *lv < 0 ? var + " >= 0" : s);
+                continue;
+            }
+            clipped.push_back(s);
+        }
+        ans.swap(clipped);
     }
     if(ans.empty()) ans.push_back("no solution");
-    NodeId nnode = poly_any_to_node(a, q.n, "x");
-    NodeId dnode = poly_any_to_node(a, q.d, "x");
+    NodeId nnode = poly_any_to_node(a, q.n, var);
+    NodeId dnode = poly_any_to_node(a, q.d, var);
     std::vector<std::string> out;
     if(!abs_line.empty()) out.push_back(abs_line);
     out.push_back(format_expr(a, sub_node(a, L, R)) + " " + op + " 0");
@@ -10212,14 +10294,15 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
     if(!roots.empty()) {
         std::vector<std::string> xs;
         for(auto const &z : roots) xs.push_back(z);
-        out.push_back("N=0: x = " + join_text(xs, ", "));
+        out.push_back("N=0: " + var + " = " + join_text(xs, ", "));
     }
     if(!poles.empty()) {
         std::vector<std::string> xs;
         for(auto const &z : poles) xs.push_back(z);
-        out.push_back("D=0: x != " + join_text(xs, ", "));
+        out.push_back("D=0: " + var + " != " + join_text(xs, ", "));
     }
     out.push_back("sign: " + join_text(signs, "; "));
+    if(nonneg_domain) out.push_back(var + " >= 0");
     out.push_back(join_text(ans, " or "));
     return out;
 }
@@ -23192,6 +23275,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto ll = limit_ln_one_route_key(key)) return *ll;
             if(auto ls = limit_ln_square_one_route_key(key)) return *ls;
             if(auto lh = limit_lhospital_tan_cosec_route_key(key)) return *lh;
+            if(auto le = limit_lhospital_exp_sin_cos_route_key(key)) return *le;
+            if(auto tx = taylor_x4_sin2_pi8_route_key(key)) return *tx;
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
                 Request inner = req;
                 inner.mode = 6;

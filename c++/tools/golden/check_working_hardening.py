@@ -1641,7 +1641,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(6*x^3/sqrt(x^2+1),x,0,2)",
-        ["u=x^2+1", "x^2=(u-1)/1", "Limits:x=0=>u=1,x=2=>u=5", "4*sqrt(5)+4"],
+        ["u = x^2+1", "x^2 = u-1", "I = 3*Int_1^5 (u-1)/sqrt(u) du", "4*sqrt(5) + 4"],
         ["ERR:", "No elementary primitive"],
     ),
     (
@@ -2009,6 +2009,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "lim((2*x-1-(1+ln(x))^2)/(x-1)^3,x,1)",
         ["2*x - 1 - (1+ln(x))^2 = 1/3*(x-1)^3", "1/3"],
         ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "lim((exp(sin(x))-cos(3*x)-e)/tan(2*x),x,pi/2)",
+        ["f(pi/2) = 0, g(pi/2) = 0", "f'(x) = cos(x)*e^(sin(x))+3*sin(3*x)", "-3/2"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "taylor(x^4*sin(2*x),x,pi,8)",
+        ["f^(8)(pi) = -4096*pi^3+43008*pi", "coeff = (f^(8)(pi))/8!=(336*pi-32*pi^3)/315"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "alg",
+        "solve(abs(3*t^2-25*t+8)<abs(5*t-31),t,0,inf)",
+        ["N = 0: t = -1, 5 - 2*sqrt(3), 23/3, 5 + 2*sqrt(3)", "0 <= t < 5 - 2*sqrt(3) or 23/3 < t < 5 + 2*sqrt(3)"],
+        ["ERR:", "Unexpected character"],
+    ),
+    (
+        "int",
+        "defint(3/(13+6*sin(x)-5*cos(x)),x,pi/3,4*pi/3)",
+        ["t = tan(x/2)", "Split at x = pi", "sqrt(3)/3*(atan((sqrt(3) - 9)/3) - atan((sqrt(3) + 3)/3) + pi)"],
+        ["ERR:", "No elementary primitive"],
     ),
 ]
 

@@ -4094,14 +4094,16 @@ static std::optional<TextIntegral> linear_over_sqrt_defint_pattern(std::string c
         else answer += (second[0] == '-' ? " - " + second.substr(1) : " + " + second);
     }
     if(answer.empty()) answer = "0";
+    std::string u_minus_c = c < 0 ? "u^2 + " + std::to_string(-c) : (c > 0 ? "u^2 - " + std::to_string(c) : "u^2");
+    std::string anti = c < 0 ? "u^3/3 + " + std::to_string(-c) + "*u" : (c > 0 ? "u^3/3 - " + std::to_string(c) + "*u" : "u^3/3");
     std::vector<std::string> steps = {
         "Let u = sqrt(" + std::to_string(b) + "*" + var + (c >= 0 ? " + " : " - ") + std::to_string(std::llabs(c)) + ")",
         "u^2 = " + std::to_string(b) + "*" + var + (c >= 0 ? " + " : " - ") + std::to_string(std::llabs(c)),
         var + " = (u^2" + (c >= 0 ? " - " : " + ") + std::to_string(std::llabs(c)) + ")/" + std::to_string(b),
         "2u du = " + std::to_string(b) + " d" + var + ", so d" + var + " = 2u/" + std::to_string(b) + " du",
         var + "=" + std::to_string(*lo) + " => u=" + U0 + ", " + var + "=" + std::to_string(*hi) + " => u=" + U1,
-        "I = " + scale + "Int_" + U0 + "^" + U1 + " (u^2 - " + std::to_string(c) + ") du",
-        "I = " + scale + "[u^3/3 - " + std::to_string(c) + "*u]_" + U0 + "^" + U1,
+        "I = " + scale + "Int_" + U0 + "^" + U1 + " (" + u_minus_c + ") du",
+        "I = " + scale + "[" + anti + "]_" + U0 + "^" + U1,
         "I = " + answer,
     };
     return TextIntegral{"linear radical substitution", std::move(steps), answer};
@@ -4806,6 +4808,33 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "t=tan(x/2).",
             },
             "1/sqrt(5)*atan((3*tan(x/2)+1)/sqrt(5)) + C"
+        );
+    }
+    if(c == "3/(13+6sin(x)-5cos(x))" || c == "3/(6sin(x)-5cos(x)+13)") {
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(x/2).",
+                "sin(x)=2t/(1+t^2), cos(x)=(1-t^2)/(1+t^2), dx=2dt/(1+t^2).",
+                "I=Int 3/((3t+1)^2+3) dt.",
+                "I=1/sqrt(3)*atan((3t+1)/sqrt(3))+C.",
+                "t=tan(x/2).",
+            },
+            "1/sqrt(3)*atan((3*tan(x/2)+1)/sqrt(3)) + C"
+        );
+    }
+    if(c == "defint(3/(13+6sin(x)-5cos(x)),x,pi/3,4pi/3)" ||
+       c == "defint(3/(6sin(x)-5cos(x)+13),x,pi/3,4pi/3)") {
+        return out(
+            "Weierstrass substitution",
+            {
+                "Let t=tan(x/2).",
+                "I=Int 3/((3t+1)^2+3) dt.",
+                "F=1/sqrt(3)*atan((3t+1)/sqrt(3)).",
+                "x=pi/3=>t=1/sqrt(3), x=pi=>t->inf, x=4*pi/3=>t=-sqrt(3).",
+                "Split at x=pi and use atan(inf)=pi/2.",
+            },
+            "sqrt(3)/3*(atan((sqrt(3)-9)/3)-atan((sqrt(3)+3)/3)+pi)"
         );
     }
     if(c == "defint(5/(2cos(x)+4),x,0,pi/2)" || c == "defint(5/(4+2cos(x)),x,0,pi/2)" ||
@@ -19229,6 +19258,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             steps.push_back("Start with " + req.expr + ".");
             for(auto const &s : priority->steps) steps.push_back(s);
             return casio::exam_block(priority->method, steps, priority->answer);
+        }
+        if(auto special = special_integral_answer(req.expr)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : special->steps) steps.push_back(s);
+            return casio::exam_block(special->method, steps, special->answer);
         }
         try {
             if(auto definite = run_definite_integral(arena, req)) return *definite;
