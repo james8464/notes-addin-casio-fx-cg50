@@ -28,6 +28,16 @@ python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_standard_manual_cases.py
 ```
 
+External source setup:
+
+```bash
+python3 c++/tools/golden/download_a_level_audit_sources.py
+python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"MadAsMaths standard topics"/integration --first 2
+```
+
+Audit flow graph: `c++/tools/golden/a_level_audit_graph.md`.
+Manual cross-source audit tracker: `c++/tools/golden/a_level_audit_tracker.jsonl`.
+
 `check_madasmaths_full_audit.py` renders local MP2 A-Z papers/solutions from
 `~/Downloads/MadAsMaths papers` into ignored report images, writes the JSONL
 ledger, and runs all curated MP2 host markscheme cases. Use `--no-render` for

@@ -66,6 +66,13 @@ python3 c++/tools/run_tests_cpp.py
 python3 c++/tools/golden/check_device_scope.py
 ```
 
+Download external A-level audit sources:
+
+```bash
+python3 c++/tools/golden/download_a_level_audit_sources.py
+python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"MadAsMaths standard topics"/integration --first 2
+```
+
 Clean generated/local files (dry-run first):
 
 ```bash
@@ -85,5 +92,6 @@ Transfer files are published under `calculator_files/`, then `./compile` copies 
 ## Notes
 
 - Generated files, editor state, virtualenvs, reports, and local graph outputs are intentionally not kept in git.
+- External paper PDFs and rendered page images live under `~/Downloads`; only audit scripts and manifests belong in git.
 - `run_tests.py` is C++-only.
 - Host build outputs belong under `c++/addin/host/build/`.
