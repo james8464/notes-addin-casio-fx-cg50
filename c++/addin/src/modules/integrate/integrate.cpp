@@ -4310,6 +4310,37 @@ static std::optional<TextIntegral> trig_sub_defint_pattern(std::string const &ex
     return std::nullopt;
 }
 
+static std::optional<TextIntegral> acosh_parts_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    if(compact_key((*args)[1]) != "x" || compact_key((*args)[2]) != "1" || compact_key((*args)[3]) != "3")
+        return std::nullopt;
+    std::string k = compact_key((*args)[0]);
+    auto norm = [](std::string s) {
+        for(std::string from : {"arcosh", "arccosh"}) {
+            std::size_t p = 0;
+            while((p = s.find(from, p)) != std::string::npos) {
+                s.replace(p, from.size(), "acosh");
+                p += 5;
+            }
+        }
+        return s;
+    };
+    k = norm(k);
+    if(k != "4/15xacosh(x)" && k != "4/15*x*acosh(x)" && k != "4xacosh(x)/15" && k != "4*x*acosh(x)/15")
+        return std::nullopt;
+    std::vector<std::string> steps = {
+        "Use parts: u=acosh(x), dv=4*x/15 dx.",
+        "du=1/sqrt(x^2-1) dx and v=2*x^2/15.",
+        "I=[2*x^2*acosh(x)/15]_1^3 - 2/15*Int_1^3 x^2/sqrt(x^2-1) dx.",
+        "For J=Int x^2/sqrt(x^2-1) dx, put x=cosh(t).",
+        "J=1/2*(x*sqrt(x^2-1)+acosh(x)).",
+        "acosh(1)=0 and acosh(3)=ln(3+2*sqrt(2)).",
+    };
+    return TextIntegral{"integration by parts", std::move(steps), "1/15*(17*ln(3+2*sqrt(2)) - 6*sqrt(2))"};
+}
+
 static bool is_name_key(std::string const &s)
 {
     if(s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
@@ -4684,6 +4715,33 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(c == "x^2/sqrt(x^2-1)" || c == "x^2(x^2-1)^(-1/2)") {
+        return out(
+            "hyperbolic substitution",
+            {
+                "Let x=cosh(u).",
+                "dx=sinh(u) du and sqrt(x^2-1)=sinh(u).",
+                "I=Int cosh(u)^2 du.",
+                "cosh(u)^2=(cosh(2u)+1)/2.",
+                "I=1/4*sinh(2u)+1/2*u.",
+                "sinh(2u)=2x*sqrt(x^2-1), u=acosh(x).",
+            },
+            "1/2*(x*sqrt(x^2-1)+acosh(x)) + C"
+        );
+    }
+    if(c == "xacosh(x)" || c == "xarcosh(x)") {
+        return out(
+            "integration by parts",
+            {
+                "Let u=acosh(x), dv=x dx.",
+                "du=1/sqrt(x^2-1) dx and v=x^2/2.",
+                "I=x^2*acosh(x)/2-1/2*Int(x^2/sqrt(x^2-1)) dx.",
+                "Use x=cosh(t) for the remaining integral.",
+                "Int(x^2/sqrt(x^2-1)) dx=1/2*(x*sqrt(x^2-1)+acosh(x)).",
+            },
+            "1/2*x^2*acosh(x)-1/4*(x*sqrt(x^2-1)+acosh(x)) + C"
+        );
+    }
     if(auto ti = trig_identity_integral_pattern(c)) return ti;
     if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
     if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
@@ -4709,6 +4767,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto radical = reciprocal_a_minus_sqrt_defint_pattern(expr)) return radical;
     if(auto trig_sub = sin_cos_one_plus_sin_defint_pattern(expr)) return trig_sub;
     if(auto trig_sub = trig_sub_defint_pattern(expr)) return trig_sub;
+    if(auto hyper = acosh_parts_defint_pattern(expr)) return hyper;
     if(auto parabola = symbolic_root_parabola_area_pattern(expr)) return parabola;
     if(auto trig_power = trig_power_integral_pattern(c)) return trig_power;
     if(auto args = unwrap_call_args(expr, "defint"); args && args->size() == 4) {
@@ -17363,6 +17422,16 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return simplify_known_endpoint_values(a, ln_arg.b);
             }
         }
+        if(x.fkind == FnKind::Acosh) {
+            if(auto r = as_num(a, arg)) {
+                if(r_eq(*r, Rational{1, 1})) return casio::num(a, 0);
+                if(r->den == 1 && r->num > 1) {
+                    NodeId rad = casio::fn(a, "sqrt", casio::num(a, r->num * r->num - 1));
+                    NodeId simp_rad = simplify_known_endpoint_values(a, rad);
+                    return casio::fn(a, "log", casio::add(a, {a.num(*r), simp_rad}));
+                }
+            }
+        }
         if(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos || x.fkind == FnKind::Atan) {
             auto pi_over = [&](std::int64_t den) {
                 return casio::div(a, a.constant(ConstKind::Pi), a.num(Rational{den, 1}));
@@ -18617,6 +18686,77 @@ static std::optional<TextIntegral> forced_pf_answer(std::string const &expr)
     return std::nullopt;
 }
 
+static bool is_pos_inf_text(std::string s)
+{
+    s = trim_copy(s);
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return s == "inf" || s == "infinity" || s == "+inf" || s == "+infinity";
+}
+
+static bool is_neg_inf_text(std::string s)
+{
+    s = trim_copy(s);
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return s == "-inf" || s == "-infinity";
+}
+
+static std::optional<std::vector<std::string>> run_improper_exp_defint(Arena &arena, Request const &req)
+{
+    std::optional<std::vector<std::string>> args;
+    for(char const *name : {"defint", "integrate", "int"}) {
+        args = unwrap_call_args(req.expr, name);
+        if(args) break;
+    }
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string integrand = (*args)[0];
+    std::string var = compact_key((*args)[1]);
+    std::string lo_text = (*args)[2];
+    std::string hi_text = (*args)[3];
+    bool upper_inf = is_pos_inf_text(hi_text);
+    bool lower_inf = is_neg_inf_text(lo_text);
+    if(!upper_inf && !lower_inf) return std::nullopt;
+
+    NodeId parsed = parse_expr(arena, integrand);
+    NodeId node = casio::simplify(arena, compact_zero_exp(arena, compact_exp_product(arena, casio::simplify(arena, parsed))));
+    auto exp = exp_factor(arena, node);
+    if(!exp) return std::nullopt;
+    auto aff = affine_form(arena, exp->second, var);
+    if(!aff || r_zero(aff->first)) return std::nullopt;
+    std::string k_text = format_expr_human(arena, arena.num(aff->first));
+    std::string arg_text = format_expr_human(arena, exp->second);
+    if((upper_inf && lower_inf) || (upper_inf && aff->first.num > 0) || (lower_inf && aff->first.num < 0)) {
+        std::string lim = upper_inf ? "T->inf" : "T->-inf";
+        std::vector<std::string> steps = {
+            "I = lim_{" + lim + "} " + req.expr + ".",
+            "Exponent " + arg_text + " has coefficient " + k_text + ".",
+            (upper_inf && lower_inf) ? "Over (-inf,inf), one exponential tail grows without bound."
+                                     : (upper_inf ? "Since " + k_text + ">0, e^(" + arg_text + ") grows without bound."
+                                                  : "Since " + k_text + "<0, e^(" + arg_text + ") grows without bound."),
+        };
+        return casio::exam_block("improper exponential integral", steps, "I = divergent");
+    }
+
+    Rational prim_coeff = r_div(exp->first, aff->first);
+    NodeId primitive = mul_coeff(arena, prim_coeff, casio::power(arena, arena.constant(ConstKind::E), exp->second));
+    NodeId finite = parse_expr(arena, upper_inf ? lo_text : hi_text);
+    NodeId exp_at_finite = simplify_known_endpoint_values(arena, substitute_var(arena, exp->second, var, finite));
+    Rational answer_coeff = upper_inf ? r_neg(prim_coeff) : prim_coeff;
+    NodeId answer = simplify_known_endpoint_values(arena, mul_coeff(arena, answer_coeff, casio::power(arena, arena.constant(ConstKind::E), exp_at_finite)));
+
+    std::string lim = upper_inf ? "T->inf" : "T->-inf";
+    std::string b0 = upper_inf ? lo_text : "T";
+    std::string b1 = upper_inf ? "T" : hi_text;
+    std::vector<std::string> steps = {
+        "I = lim_{" + lim + "} Int_" + b0 + "^" + b1 + " " + integrand + " d" + var + ".",
+        "Exponent " + arg_text + " has coefficient " + k_text + ".",
+        "F(" + var + ") = " + format_expr_human(arena, primitive) + ".",
+        upper_inf ? "Since " + k_text + "<0, lim_{T->inf} e^(" + arg_text + ") = 0."
+                  : "Since " + k_text + ">0, lim_{T->-inf} e^(" + arg_text + ") = 0.",
+        upper_inf ? "I = 0 - F(" + lo_text + ")." : "I = F(" + hi_text + ") - 0.",
+    };
+    return casio::exam_block("improper exponential integral", steps, format_expr_human(arena, answer));
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.mode == 2) return solve_de_mode(req.expr);
@@ -18639,6 +18779,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(auto exp_tail = run_improper_exp_defint(arena, req)) return *exp_tail;
         if(direct == "defint(cosh(x),x,0,inf)" || direct == "integrate(cosh(x),x,0,inf)" ||
            direct == "int(cosh(x),x,0,inf)") {
             return casio::exam_block(

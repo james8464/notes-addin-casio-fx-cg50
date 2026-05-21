@@ -1758,6 +1758,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["4*x = 4", "x = 1"],
         ["x ~=", "ERR:"],
     ),
+    (
+        "int",
+        "defint(3*e^(-2*x),x,0,inf)",
+        ["Since -2<0", "I = 0 - F(0)", "3/2"],
+        ["e^(-2*inf)", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(5*e^(2*x),x,-inf,1)",
+        ["Since 2>0", "I = F(1) - 0", "5/2*e^(2)"],
+        ["e^(2*-inf)", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(e^x,x,0,inf)",
+        ["grows without bound", "I = divergent"],
+        ["e^inf - 1", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(e^(-x),x,-inf,inf)",
+        ["one exponential tail grows without bound", "I = divergent"],
+        ["e^inf", "ERR:"],
+    ),
 ]
 
 

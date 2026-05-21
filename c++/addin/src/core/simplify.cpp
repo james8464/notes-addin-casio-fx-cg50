@@ -952,6 +952,9 @@ NodeId fn(Arena &a, std::string_view name, NodeId arg)
     if(name == "arcsinh") name = "asinh";
     if(name == "arccosh") name = "acosh";
     if(name == "arctanh") name = "atanh";
+    if(name == "arsinh") name = "asinh";
+    if(name == "arcosh") name = "acosh";
+    if(name == "artanh") name = "atanh";
     if(name == "arcsec" || name == "asec") return fn(a, "acos", div(a, num(a, 1), arg));
     if(name == "arccosec" || name == "arccsc" || name == "acsc") return fn(a, "asin", div(a, num(a, 1), arg));
     if(name == "arccot" || name == "acot") return fn(a, "atan", div(a, num(a, 1), arg));

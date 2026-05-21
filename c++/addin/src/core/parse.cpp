@@ -122,6 +122,9 @@ struct Parser
         if(name == "arcsinh") name = "asinh";
         if(name == "arccosh") name = "acosh";
         if(name == "arctanh") name = "atanh";
+        if(name == "arsinh") name = "asinh";
+        if(name == "arcosh") name = "acosh";
+        if(name == "artanh") name = "atanh";
         if(name == "cuberoot") name = "cbrt";
         bool inv_sec = name == "arcsec" || name == "asec";
         bool inv_csc = name == "arccosec" || name == "arccsc" || name == "acsc";

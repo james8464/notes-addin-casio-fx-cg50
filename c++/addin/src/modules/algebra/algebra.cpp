@@ -1447,7 +1447,7 @@ static bool is_known_name_token(std::string const &name)
         "sin", "cos", "tan", "sec", "csc", "cosec", "cot",
         "asin", "acos", "atan", "arcsin", "arccos", "arctan",
         "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-        "arcsinh", "arccosh", "arctanh",
+        "arcsinh", "arccosh", "arctanh", "arsinh", "arcosh", "artanh",
         "exp", "log", "ln", "log10", "sqrt", "abs", "sign", "factorial",
         "pi", "e"
     };
