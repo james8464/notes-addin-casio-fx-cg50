@@ -15126,6 +15126,48 @@ static bool poly_any_div_exact(PolyAny const &num, PolyAny const &den, PolyAny &
     return true;
 }
 
+static std::string poly_any_desc_text(Arena &a, PolyAny p, std::string const &var)
+{
+    trim_poly_any(p);
+    std::string out;
+    for(int i = static_cast<int>(p.c.size()) - 1; i >= 0; --i) {
+        if(is_zero(p.c[i])) continue;
+        NodeId term = a.num(p.c[i]);
+        if(i == 1) term = casio::mul(a, {term, casio::sym(a, var)});
+        else if(i > 1) term = casio::mul(a, {term, casio::power(a, casio::sym(a, var), casio::num(a, (long long)i))});
+        std::string s = trim_text(format_expr(a, term));
+        if(out.empty()) out = s;
+        else if(!s.empty() && s[0] == '-') out += " - " + trim_text(s.substr(1));
+        else out += " + " + s;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> shifted_roots_route(Arena &a, std::string const &expr)
+{
+    std::string inner = unwrap_call_text(expr, "shift_roots");
+    if(inner.empty()) return std::nullopt;
+    auto args = split_csv(inner);
+    if(args.size() != 4) return std::nullopt;
+    std::string oldv = compact_input_key(args[1]);
+    std::string newv = compact_input_key(args[2]);
+    NodeId shift = casio::parse_expr(a, args[3]);
+    NodeId repl = casio::simplify(a, casio::add(a, {casio::sym(a, newv), casio::neg(a, shift)}));
+    NodeId sub = casio::simplify(a, clone_with_substitution(a, casio::parse_expr(a, args[0]), oldv, repl));
+    auto p = poly_any_of(a, sub, newv);
+    if(!p || !p->ok) return std::nullopt;
+    return casio::exam_block(
+        "transformed roots",
+        {
+            newv + " = " + oldv + " + " + format_expr(a, shift),
+            oldv + " = " + format_expr(a, repl),
+            "f(" + format_expr(a, repl) + ") = 0",
+            format_expr(a, sub) + " = 0"
+        },
+        poly_any_desc_text(a, *p, newv) + " = 0"
+    );
+}
+
 static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -22377,6 +22419,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
+            if(auto sroot = shifted_roots_route(arena, req.expr)) return *sroot;
             if(auto logv = exact_log_base_value_key(key)) {
                 return casio::exam_block(
                     "custom-base log",

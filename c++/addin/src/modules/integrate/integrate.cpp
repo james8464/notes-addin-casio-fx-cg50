@@ -387,6 +387,7 @@ struct IntegrateResult
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var);
 static bool same_expr(Arena &a, NodeId lhs, NodeId rhs);
 static NodeId ln_abs(Arena &a, NodeId n);
+static NodeId simplify_known_endpoint_values(Arena &a, NodeId n);
 static std::optional<double> eval_numeric_node(Arena &a, NodeId id, std::string const &var, double xval);
 
 // Debug helper: convert NodeId to string
@@ -2235,6 +2236,96 @@ static std::optional<std::string> var_power_integral_line(Arena &a, NodeId n, st
     return "Int(" + format_expr(a, n) + ") d" + var + " = " + rhs;
 }
 
+static std::vector<NodeId> de_rhs_terms(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) return x.kids;
+    if(x.kind != NodeKind::Mul) return {n};
+    for(std::size_t i = 0; i < x.kids.size(); ++i) {
+        Node const &k = a.get(x.kids[i]);
+        if(k.kind != NodeKind::Add) continue;
+        std::vector<NodeId> out;
+        for(NodeId t : k.kids) {
+            std::vector<NodeId> fs;
+            for(std::size_t j = 0; j < x.kids.size(); ++j) fs.push_back(i == j ? t : x.kids[j]);
+            out.push_back(casio::simplify(a, mul_or_one_int(a, fs)));
+        }
+        return out;
+    }
+    return {n};
+}
+
+static bool de_take_num_exp(Arena &a, NodeId n, Rational &c, NodeId &arg)
+{
+    if(auto r = as_num(a, casio::simplify(a, n))) {
+        c = r_mul(c, *r);
+        return true;
+    }
+    if(auto e = exp_left_form(a, n)) {
+        c = r_mul(c, e->coeff);
+        if(arg && !same_expr(a, arg, e->arg)) return false;
+        arg = e->arg;
+        return true;
+    }
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return false;
+    for(NodeId k : x.kids) {
+        if(!de_take_num_exp(a, k, c, arg)) return false;
+    }
+    return true;
+}
+
+static std::optional<NodeId> de_exp_atan_term_integral(Arena &a, NodeId n, std::string const &var)
+{
+    Rational c{1, 1};
+    NodeId arg = 0, den = 0;
+    std::function<bool(NodeId)> take = [&](NodeId u) -> bool {
+        Node const &x = a.get(u);
+        if(x.kind == NodeKind::Div) {
+            if(den) return false;
+            den = x.b;
+            return de_take_num_exp(a, x.a, c, arg);
+        }
+        if(x.kind == NodeKind::Mul) {
+            for(NodeId k : x.kids) {
+                if(!take(k)) return false;
+            }
+            return true;
+        }
+        return de_take_num_exp(a, u, c, arg);
+    };
+    if(!take(n) || !arg) return std::nullopt;
+    auto k = linear_coeff(a, arg, var);
+    if(!k || k->num == 0) return std::nullopt;
+    Rational scale = r_div(c, *k);
+    NodeId earg = exp_node(a, arg);
+    if(!den) return casio::simplify(a, casio::mul(a, {a.num(scale), earg}));
+
+    Node const &d = a.get(den);
+    if(d.kind != NodeKind::Add || d.kids.size() != 2) return std::nullopt;
+    NodeId e2arg = 0;
+    bool one = false;
+    for(NodeId q : d.kids) {
+        if(auto r = as_num(a, q); r && r_eq(*r, Rational{1, 1})) one = true;
+        else if(auto ea = exp_arg_node(a, q)) e2arg = *ea;
+    }
+    if(!one || !e2arg) return std::nullopt;
+    NodeId twice = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+    if(!same_expr(a, casio::simplify(a, e2arg), twice)) return std::nullopt;
+    return casio::simplify(a, casio::mul(a, {a.num(scale), casio::fn(a, "atan", earg)}));
+}
+
+static std::optional<NodeId> de_exp_atan_rhs_integral(Arena &a, NodeId n, std::string const &var)
+{
+    std::vector<NodeId> out;
+    for(NodeId t : de_rhs_terms(a, n)) {
+        auto r = de_exp_atan_term_integral(a, t, var);
+        if(!r) return std::nullopt;
+        out.push_back(*r);
+    }
+    return casio::simplify(a, add_or_zero_int(a, out));
+}
+
 static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc)
 {
     auto lin = linear_parts_node(a, dydx, tok.y);
@@ -2254,6 +2345,7 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
     if(!Si.result && !contains_var(a, P, tok.x) && !contains_var(a, Q, tok.x)) {
         Si.result = casio::simplify(a, casio::div(a, casio::mul(a, {Q, mu}), P));
     }
+    if(!Si.result) Si.result = de_exp_atan_rhs_integral(a, muQ, tok.x);
     if(!Si.result) throw std::runtime_error("RHS Int " + format_expr(a, muQ));
 
     std::vector<std::string> steps;
@@ -2275,7 +2367,7 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
         auto x0 = as_num(a, B.x0);
         auto m0 = x0 ? eval_rat_small(a, mu, tok.x, *x0) : std::optional<Rational>{};
         if(m0 && B.y0_num) {
-            NodeId s0 = casio::simplify(a, substitute_de_var(a, *Si.result, tok.x, B.x0));
+                NodeId s0 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, *Si.result, tok.x, B.x0)));
             NodeId cnode = 0;
             auto s0r = x0 ? eval_rat_small(a, *Si.result, tok.x, *x0) : std::optional<Rational>{};
             if(s0r) cnode = a.num(r_sub(r_mul(*m0, B.y0r), *s0r));
@@ -2296,8 +2388,8 @@ static std::vector<std::string> solve_linear_de_mode(Arena &a, DeToken const &to
             steps.push_back(mu_disp + "*" + tok.y + " = " + rhs);
         }
         else {
-            NodeId m0n = casio::simplify(a, substitute_de_var(a, mu, tok.x, B.x0));
-            NodeId s0 = casio::simplify(a, substitute_de_var(a, *Si.result, tok.x, B.x0));
+            NodeId m0n = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, mu, tok.x, B.x0)));
+            NodeId s0 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, *Si.result, tok.x, B.x0)));
             NodeId cnode = casio::simplify(a, casio::add(a, {
                 casio::mul(a, {m0n, B.y0}),
                 casio::neg(a, s0)
