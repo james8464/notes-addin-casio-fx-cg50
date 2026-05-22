@@ -1926,6 +1926,50 @@ static std::optional<std::vector<std::string>> symbolic_complete_square(Arena &a
     };
 }
 
+static std::optional<std::vector<std::string>> complete_square_xy_circle(Arena &a, NodeId n)
+{
+    auto qx = monic_symbolic_quadratic(a, n, "x");
+    if(!qx) return std::nullopt;
+    NodeId x = casio::sym(a, "x");
+    NodeId hx = casio::simplify(a, casio::div(a, qx->b, casio::num(a, 2)));
+    NodeId sx = casio::power(a, casio::add(a, {x, hx}), casio::num(a, 2));
+    NodeId cxorr = casio::simplify(a, casio::power(a, hx, casio::num(a, 2)));
+    NodeId tailx = casio::simplify(a, casio::add(a, {qx->c, casio::neg(a, cxorr)}));
+
+    auto qy = monic_symbolic_quadratic(a, tailx, "y");
+    if(!qy) return std::nullopt;
+    NodeId y = casio::sym(a, "y");
+    NodeId hy = casio::simplify(a, casio::div(a, qy->b, casio::num(a, 2)));
+    NodeId sy = casio::power(a, casio::add(a, {y, hy}), casio::num(a, 2));
+    NodeId cyorr = casio::simplify(a, casio::power(a, hy, casio::num(a, 2)));
+    NodeId tail = casio::simplify(a, casio::add(a, {qy->c, casio::neg(a, cyorr)}));
+    NodeId left = casio::simplify(a, casio::add(a, {sx, sy}));
+
+    std::vector<std::string> out{
+        format_expr(a, n),
+        format_expr(a, casio::add(a, {casio::power(a, x, casio::num(a, 2)), casio::mul(a, {qx->b, x})})) +
+            " = " + format_expr(a, casio::add(a, {sx, casio::neg(a, cxorr)})),
+        format_expr(a, casio::add(a, {casio::power(a, y, casio::num(a, 2)), casio::mul(a, {qy->b, y})})) +
+            " = " + format_expr(a, casio::add(a, {sy, casio::neg(a, cyorr)})),
+    };
+
+    if(auto tv = as_num(a, tail); tv && tv->num < 0) {
+        NodeId r2 = casio::neg(a, tail);
+        NodeId radius = exact_eval_simplify(a, casio::fn(a, "sqrt", r2));
+        NodeId centre_x = casio::simplify(a, casio::neg(a, hx));
+        NodeId centre_y = casio::simplify(a, casio::neg(a, hy));
+        out.push_back(format_expr(a, left) + " = " + format_expr(a, r2));
+        out.push_back("centre = (" + format_expr(a, centre_x) + "," + format_expr(a, centre_y) + ")");
+        out.push_back("r = " + format_expr(a, radius));
+        out.push_back("Answer: " + format_expr(a, left) + " = " + format_expr(a, r2));
+    }
+    else {
+        NodeId ans = casio::simplify(a, casio::add(a, {left, tail}));
+        out.push_back("Answer: " + format_expr(a, ans));
+    }
+    return out;
+}
+
 static std::optional<std::string> exp_plus_recip_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -23995,6 +24039,7 @@ algebra_compare_transform_modes:
         if(req.mode == 5) {
             // Complete square for quadratic ax^2+bx+c.
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            if(auto xy = complete_square_xy_circle(arena, n)) return *xy;
             std::string var = choose_solve_var(arena, n, "");
             if(auto sym = symbolic_complete_square(arena, n, req.expr, var)) return *sym;
             auto p = poly_of(arena, n, var);

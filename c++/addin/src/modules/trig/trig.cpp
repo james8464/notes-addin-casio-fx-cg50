@@ -3337,6 +3337,23 @@ static std::string trig_root_text(double r)
     if(std::fabs(r + sqrt3) < 1e-9) return "-sqrt(3)";
     if(std::fabs(r - inv_sqrt3) < 1e-9) return "sqrt(3)/3";
     if(std::fabs(r + inv_sqrt3) < 1e-9) return "-sqrt(3)/3";
+    for(int rad : {2, 3}) {
+        double root = std::sqrt((double)rad);
+        for(int den = 1; den <= 24; ++den) {
+            for(int num = 1; num <= 48; ++num) {
+                double v = (double)num * root / (double)den;
+                if(std::fabs(std::fabs(r) - v) > 1e-9) continue;
+                int g = std::gcd(num, den);
+                int n = num / g;
+                int d = den / g;
+                std::string s = (r < 0 ? "-" : "");
+                if(n != 1) s += std::to_string(n) + "*";
+                s += "sqrt(" + std::to_string(rad) + ")";
+                if(d != 1) s += "/" + std::to_string(d);
+                return s;
+            }
+        }
+    }
     for(int den = 1; den <= 24; ++den) {
         long long num = llround(r * den);
         if(std::fabs(r - (double)num / den) < 1e-9) return ratio_text(num, den);
@@ -5078,6 +5095,77 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
     steps.push_back(interval_text(bounds, var) + ".");
     std::sort(xs.begin(), xs.end());
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static std::optional<std::pair<std::pair<double, double>, double>> tan_zero_target(Arena &a, NodeId target, std::string const &var, bool rad)
+{
+    NodeId t = casio::simplify(a, target);
+    Node const &x = a.get(t);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{t};
+    double tan_coeff = 0.0;
+    double constant = 0.0;
+    std::optional<std::pair<double, double>> lin;
+    for(NodeId term : terms) {
+        if(!has_any_symbol(a, term)) {
+            auto v = numeric_eval(a, term, 0.0);
+            if(!v || !std::isfinite(*v)) return std::nullopt;
+            constant += *v;
+            continue;
+        }
+        double coeff = 1.0;
+        NodeId rest = term;
+        bool has_rest = true;
+        if(!split_coeff_term(a, term, coeff, rest, has_rest) || !has_rest) return std::nullopt;
+        Node const &r = a.get(rest);
+        if(r.kind != NodeKind::Fn || r.fkind != FnKind::Tan) return std::nullopt;
+        auto angle = linear_angle(a, r.a, var, rad);
+        if(!angle || std::fabs(angle->first) < 1e-12) return std::nullopt;
+        if(lin && (std::fabs(lin->first - angle->first) > 1e-12 || std::fabs(lin->second - angle->second) > 1e-9))
+            return std::nullopt;
+        lin = *angle;
+        tan_coeff += coeff;
+    }
+    if(!lin || std::fabs(tan_coeff) < 1e-12) return std::nullopt;
+    return std::make_pair(*lin, -constant / tan_coeff);
+}
+
+static std::optional<std::vector<std::string>> shifted_linear_tan_target_route(
+    Arena &a,
+    NodeId src,
+    NodeId target,
+    std::string const &var,
+    bool rad
+)
+{
+    auto p = collect_shift_lin_trig(a, src, var, rad);
+    auto t = tan_zero_target(a, target, var, rad);
+    if(!p || !t || std::fabs(p->k) > 1e-10 || std::fabs(p->s) < 1e-12) return std::nullopt;
+    if(std::fabs(t->first.first - p->m) > 1e-12 || std::fabs(t->first.second) > 1e-9) return std::nullopt;
+    double want = -p->c / p->s;
+    if(std::fabs(want - t->second) > 1e-8) return std::nullopt;
+    std::string M = std::fabs(p->m - 1.0) < 1e-12 ? var : trig_root_text(p->m) + "*" + var;
+    auto term = [](double v, std::string const &body, bool first) {
+        std::string s;
+        if(v < 0) s += first ? "-" : " - ";
+        else if(!first) s += " + ";
+        double av = std::fabs(v);
+        if(std::fabs(av - 1.0) > 1e-10) s += trig_root_text(av) + "*";
+        s += body;
+        return s;
+    };
+    std::string lhs = term(p->s, "sin(" + M + ")", true) + term(p->c, "cos(" + M + ")", false);
+    return casio::exam_block(
+        "trig transform",
+        {
+            "Source = " + format_expr(a, src) + ".",
+            "Use compound-angle expansions.",
+            lhs + " = 0.",
+            term(p->s, "sin(" + M + ")", true) + " = " + trig_root_text(-p->c) + "*cos(" + M + ").",
+            "cos(" + M + ") != 0.",
+            "tan(" + M + ") = " + trig_root_text(want) + ".",
+        },
+        "tan(" + M + ") = " + trig_root_text(want)
+    );
 }
 
 static bool match_fn_coeff(Arena &a, NodeId n, FnKind fk, double want, NodeId &arg)
@@ -9308,6 +9396,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId src_parsed = casio::parse_expr(arena, src);
         NodeId target_parsed = casio::parse_expr(arena, target);
         if(auto route = compound_fraction_cot_target(src, target)) return *route;
+        for(std::string const &v : {"x", "theta", "t", "u"}) {
+            if(auto route = shifted_linear_tan_target_route(arena, src_parsed, target_parsed, v, false)) return *route;
+            if(auto route = shifted_linear_tan_target_route(arena, src_parsed, target_parsed, v, true)) return *route;
+        }
         if(auto exact_route = tan_target_sincos(arena, src_parsed, target_parsed)) return *exact_route;
         NodeId s = casio::simplify(arena, src_parsed);
         NodeId t = casio::simplify(arena, target_parsed);

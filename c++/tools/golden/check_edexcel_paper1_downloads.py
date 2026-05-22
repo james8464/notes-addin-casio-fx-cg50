@@ -336,6 +336,102 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["R=sqrt(1^2+2^2)=sqrt(5)", "cos(alpha)=1/sqrt(5)", "sin(alpha)=2/sqrt(5)", "sqrt(5)*sin(x+atan(2))"],
         ["Answer: = sin(x)", "ERR:"],
     ),
+    (
+        "June 2022 Q2 factor theorem parameter",
+        ["--alg", "solve((-2-4)*((-2)^2-3*(-2)+k)-42=0,k)"],
+        ["- 6*(k + 10) - 42 = 0", "k = -17", "k = [-17]"],
+        ["ERR:", "k = []"],
+    ),
+    (
+        "June 2022 Q3 circle complete square",
+        ["--alg", "complete_square(x^2+y^2-10*x+16*y-80)"],
+        ["x^2 - 10*x = (x - 5)^2 - 25", "y^2 + 16*y = (y + 8)^2 - 64", "(x - 5)^2 + (y + 8)^2 = 169", "centre = (5,-8)", "r = 13"],
+        ["ERR:", "not a quadratic"],
+    ),
+    (
+        "June 2022 Q4 Riemann integral log",
+        ["--int", "defint(2/x,x,21/10,63/10)"],
+        ["F(63/10) - F(21/10)", "2*ln(3)"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "June 2022 Q5 tree model simultaneous equations",
+        ["--alg", "solve([2*a+b=2.6^2,10*a+b=5.1^2],[a,b])"],
+        ["a = 77/32", "b = 779/400", "(a,b) = [(77/32,779/400)]"],
+        ["ERR:", "(a,b) = []"],
+    ),
+    (
+        "June 2022 Q6 cubic from stationary roots",
+        ["--alg", "solve(8=a*2*(2-6)^2,a)"],
+        ["8 = 32*a", "a = 1/4", "a = [1/4]"],
+        ["ERR:", "a = []"],
+    ),
+    (
+        "June 2022 Q8 speed model derivative",
+        ["--derive", "(10-0.4*t)*ln(t+1),t"],
+        ["f1 = - 2/5*t + 10", "f1' = -2/5", "f2' = 1/(t + 1)", "dy/dt = - 2/5*ln(t + 1) + (- 2/5*t + 10)*1/(t + 1)"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "June 2022 Q10 bee wasp exponential crossing",
+        ["--alg", "solve(45+220*e^(0.05*t)=10+800*e^(-0.05*t),t)"],
+        ["u = e^(1/20*t), u > 0", "220*u - 800/u + 35 = 0", "rejected, u > 0", "t = [20*ln(sqrt(28209)/88 - 7/88)]"],
+        ["ERR:", "t = []"],
+    ),
+    (
+        "June 2022 Q11 cubic intersection factor",
+        ["--alg", "factor(2*x^3+15*x^2-42*x+17)"],
+        ["(x - 1/2)*(2*x^2 + 16*x - 34)"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q12 parts definite integral",
+        ["--int", "defint(x^3*ln(x),x,1,e^2),method=parts"],
+        ["u = ln(x), dv = x^3 dx", "F(e^2) = 7/16*e^(8)", "F(1) = -1/16", "7/16*e^(8) + 1/16"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "June 2022 Q13 arithmetic series quadratic",
+        ["--alg", "solve(n^2-26*n+160=0,n)"],
+        ["(n - 13)^2 = 9", "n = 16", "n = 10", "n = [16, 10]"],
+        ["ERR:", "n = []"],
+    ),
+    (
+        "June 2022 Q14 compound angle proof target",
+        ["--trig", "2*sin(x-60)-cos(x-30),target=tan(x)-3*sqrt(3),method=identity"],
+        ["compound-angle expansions", "1/2*sin(x) - 3*sqrt(3)/2*cos(x) = 0", "tan(x) = 3*sqrt(3)"],
+        ["Source != target", "ERR:"],
+    ),
+    (
+        "June 2022 Q14 hence trig solve",
+        ["--trig", "2*sin(2*theta)=cos(2*theta+30),theta,0,180,10,method=identity"],
+        ["5/2*sin(2*theta) - sqrt(3)/2*cos(2*theta)", "theta = [9.55330267543, 99.5533026754]"],
+        ["theta = []", "ERR:"],
+    ),
+    (
+        "June 2022 Q15 optimisation derivative",
+        ["--derive", "0.8*r^2+1680/r,r"],
+        ["d/dr(4/5*r^2) = 8/5*r", "d/dr(1680/r) = -1680*r^-2", "dy/dr = 8/5*r - 1680*r^-2"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "June 2022 Q15 optimisation stationary radius",
+        ["--alg", "solve(1.6*r-1680/r^2=0,r,0,inf)"],
+        ["Interval: r in [0, inf]", "r = 10.1639635681", "r = [10.1639635681]"],
+        ["ERR:", "r = []"],
+    ),
+    (
+        "June 2022 Q16 parametric area identity",
+        ["--trig", "(2*sin(2*t)+3*sin(t))*16*sin(t)*cos(t),target=8-8*cos(4*t)+48*sin(t)^2*cos(t),method=identity"],
+        ["Source = target", "8 - 8*cos(4*t) + 48*sin(t)^2*cos(t)"],
+        ["Source != target", "ERR:"],
+    ),
+    (
+        "June 2022 Q16 parametric exact area",
+        ["--int", "defint(8-8*cos(4*t)+48*sin(t)^2*cos(t),t,0,pi/4)"],
+        ["F(pi/4) - F(0)", "4*sqrt(2) + 2*pi"],
+        ["ERR:", "No elementary primitive"],
+    ),
 ]
 
 
