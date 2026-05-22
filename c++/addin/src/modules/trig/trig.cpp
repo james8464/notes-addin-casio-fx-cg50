@@ -593,6 +593,126 @@ static std::optional<std::vector<std::string>> direct_pythagorean_key(std::strin
     return std::vector<std::string>{start, "= 1", "1"};
 }
 
+static void append_unique_line(std::vector<std::string> &lines, std::string const &line)
+{
+    if(std::find(lines.begin(), lines.end(), line) == lines.end()) lines.push_back(line);
+}
+
+static NodeId small_angle_approx_node(Arena &a, NodeId n, std::vector<std::string> &rules, bool &changed)
+{
+    Node const &x = a.get(n);
+    switch(x.kind) {
+    case NodeKind::Num:
+    case NodeKind::Sym:
+    case NodeKind::Const:
+        return n;
+    case NodeKind::Fn: {
+        NodeId arg = small_angle_approx_node(a, x.a, rules, changed);
+        std::string arg_text = format_expr(a, arg);
+        if(x.fkind == FnKind::Sin || x.fkind == FnKind::Tan) {
+            append_unique_line(rules, trig_name(x.fkind) + "(" + arg_text + ") ~ " + arg_text);
+            changed = true;
+            return arg;
+        }
+        if(x.fkind == FnKind::Cos) {
+            NodeId sq = casio::power(a, arg, casio::num(a, 2));
+            NodeId approx = casio::simplify(a, casio::add(a, {casio::num(a, 1), casio::neg(a, casio::div(a, sq, casio::num(a, 2)))}));
+            append_unique_line(rules, "cos(" + arg_text + ") ~ 1 - (" + arg_text + ")^2/2");
+            changed = true;
+            return approx;
+        }
+        return a.fn(x.fkind, arg);
+    }
+    case NodeKind::Add: {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(small_angle_approx_node(a, k, rules, changed));
+        return casio::simplify(a, casio::add(a, kids));
+    }
+    case NodeKind::Mul: {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(small_angle_approx_node(a, k, rules, changed));
+        return casio::simplify(a, casio::mul(a, kids));
+    }
+    case NodeKind::Div:
+        return casio::simplify(a, casio::div(a, small_angle_approx_node(a, x.a, rules, changed),
+                                             small_angle_approx_node(a, x.b, rules, changed)));
+    case NodeKind::Pow:
+        return casio::simplify(a, casio::power(a, small_angle_approx_node(a, x.a, rules, changed),
+                                               small_angle_approx_node(a, x.b, rules, changed)));
+    }
+    return n;
+}
+
+static NodeId product_or_one(Arena &a, std::vector<NodeId> const &factors)
+{
+    if(factors.empty()) return casio::num(a, 1);
+    if(factors.size() == 1) return factors[0];
+    return casio::simplify(a, casio::mul(a, factors));
+}
+
+static void collect_quotient_factors(Arena &a, NodeId n, std::vector<NodeId> &top, std::vector<NodeId> &bot, bool invert)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        collect_quotient_factors(a, x.a, top, bot, invert);
+        collect_quotient_factors(a, x.b, top, bot, !invert);
+        return;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) collect_quotient_factors(a, k, top, bot, invert);
+        return;
+    }
+    (invert ? bot : top).push_back(n);
+}
+
+static NodeId cancel_common_quotient_factor(Arena &a, NodeId n, bool &cancelled)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return n;
+    std::vector<NodeId> top;
+    std::vector<NodeId> bot;
+    collect_quotient_factors(a, n, top, bot, false);
+    std::vector<bool> used(bot.size(), false);
+    std::vector<NodeId> kept_top;
+    for(NodeId t : top) {
+        bool hit = false;
+        for(std::size_t i = 0; i < bot.size(); ++i) {
+            if(used[i]) continue;
+            if(casio::sig(a, t) == casio::sig(a, bot[i])) {
+                used[i] = true;
+                hit = true;
+                cancelled = true;
+                break;
+            }
+        }
+        if(!hit) kept_top.push_back(t);
+    }
+    std::vector<NodeId> kept_bot;
+    for(std::size_t i = 0; i < bot.size(); ++i)
+        if(!used[i]) kept_bot.push_back(bot[i]);
+    return casio::simplify(a, casio::div(a, product_or_one(a, kept_top), product_or_one(a, kept_bot)));
+}
+
+static std::optional<std::vector<std::string>> small_angle_route(Arena &a, NodeId raw)
+{
+    std::vector<std::string> rules;
+    bool changed = false;
+    NodeId approx = small_angle_approx_node(a, raw, rules, changed);
+    if(!changed) return std::nullopt;
+    NodeId simplified = casio::simplify(a, approx);
+    bool cancelled = false;
+    simplified = cancel_common_quotient_factor(a, simplified, cancelled);
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, raw));
+    for(auto const &rule : rules) out.push_back(rule);
+    out.push_back("~ " + format_expr(a, approx));
+    if(cancelled) out.push_back("Cancel common factor.");
+    std::string final = format_expr(a, simplified);
+    if(final != format_expr(a, approx)) out.push_back("= " + final);
+    out.push_back(final);
+    return out;
+}
+
 static std::string rat_text(long long n, long long d = 1)
 {
     if(d < 0) {
@@ -9219,6 +9339,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             shifted_cos ? "3. Equivalent target also uses cos(1 + x)^2." : "3. Simplify.",
             "Answer: = " + ans,
         };
+    }
+
+    if(req.method == "small" || req.method == "small_angle") {
+        NodeId raw = casio::parse_expr(arena, req.expr);
+        if(auto sr = small_angle_route(arena, raw)) return *sr;
+        return {"Err: no small-angle trig term."};
     }
 
     // Solve mode convention from python runner:

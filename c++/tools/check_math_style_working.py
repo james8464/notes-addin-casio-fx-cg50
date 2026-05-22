@@ -145,6 +145,11 @@ CASES = [
         ("R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"),
     ),
     (
+        "small-angle quotient",
+        ["--trig", "(1-cos(4*theta))/(2*theta*sin(3*theta)),method=small"],
+        ("cos(4*theta) ~ 1 - (4*theta)^2/2", "sin(3*theta) ~ 3*theta", "~ 8*theta^2/(6*theta^2)", "= 4/3"),
+    ),
+    (
         "affine trig range",
         ["--alg", "range(3+2*sin(4*x-pi/3))"],
         ("-1 <= sin(4*x - pi/3) <= 1", "1 <= 2*sin(4*x - pi/3) + 3 <= 5", "1 <= y <= 5"),
