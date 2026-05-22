@@ -18203,6 +18203,7 @@ static std::optional<std::vector<std::string>> symbolic_product_roots_route(Aren
     std::vector<std::string> nonzero_factors;
     std::vector<std::string> extra_steps;
     bool saw_product = factors.size() > 1;
+    if(!saw_product) return std::nullopt;
     for(NodeId f : factors) {
         if(!contains_symbol(a, f, var)) continue;
         int mult = 1;
@@ -18241,7 +18242,7 @@ static std::optional<std::vector<std::string>> symbolic_product_roots_route(Aren
         extra_steps.insert(extra_steps.end(), prs->steps.begin(), prs->steps.end());
         for(NodeId root : prs->roots) roots.push_back(Root{root, 1});
     }
-    if(roots.empty() || !saw_product) return std::nullopt;
+    if(roots.empty()) return std::nullopt;
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
     if(!nonzero_factors.empty()) out.push_back(join_text(nonzero_factors, ", "));
@@ -25776,6 +25777,12 @@ algebra_compare_transform_modes:
             out.push_back("3. " + format_expr(arena, lhs_linear) + " = " + format_expr(arena, rhs_const));
             auto raw_sols = solve_poly2(arena, rp.num, solve_var);
             if(!raw_sols.empty()) out.push_back("4. " + solve_var + " = " + sol_rhs(raw_sols.front()));
+            if(raw_sols.size() == 1 && sol_rhs(raw_sols.front()).find('.') != std::string::npos &&
+               is_zero(rp.den.a1) && is_zero(rp.den.a2) && !interval_lo && !interval_hi) {
+                append_answer(out, solve_var, raw_sols);
+                append_numeric_3dp(arena, out, solve_var, raw_sols);
+                return out;
+            }
             auto sols = filter_real_solutions(arena, rearr, solve_var, raw_sols, interval_lo, interval_hi);
             if(sols.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");

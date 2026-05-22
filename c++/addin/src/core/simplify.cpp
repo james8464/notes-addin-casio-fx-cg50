@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -80,28 +81,70 @@ static bool rational_eq(Rational const &a, std::int64_t n, std::int64_t d = 1)
     return a.num == b.num && a.den == b.den;
 }
 
+static std::int64_t abs_i64_for_gcd(std::int64_t v)
+{
+    if(v == std::numeric_limits<std::int64_t>::min())
+        throw std::runtime_error("integer overflow");
+    return v < 0 ? -v : v;
+}
+
 static Rational addq(Rational a, Rational b)
 {
+    a.normalize();
+    b.normalize();
+    std::int64_t g = std::gcd(a.den, b.den);
+    __int128 n = static_cast<__int128>(a.num) * (b.den / g) +
+                 static_cast<__int128>(b.num) * (a.den / g);
+    __int128 d = static_cast<__int128>(a.den / g) * b.den;
+    if(n > std::numeric_limits<std::int64_t>::max() ||
+       n < std::numeric_limits<std::int64_t>::min() ||
+       d > std::numeric_limits<std::int64_t>::max())
+        throw std::runtime_error("integer overflow");
     Rational r;
-    r.num = a.num * b.den + b.num * a.den;
-    r.den = a.den * b.den;
+    r.num = static_cast<std::int64_t>(n);
+    r.den = static_cast<std::int64_t>(d);
     r.normalize();
     return r;
 }
 static Rational mulq(Rational a, Rational b)
 {
+    a.normalize();
+    b.normalize();
+    std::int64_t g1 = std::gcd(abs_i64_for_gcd(a.num), b.den);
+    std::int64_t g2 = std::gcd(abs_i64_for_gcd(b.num), a.den);
+    if(g1 > 1) { a.num /= g1; b.den /= g1; }
+    if(g2 > 1) { b.num /= g2; a.den /= g2; }
+    __int128 n = static_cast<__int128>(a.num) * b.num;
+    __int128 d = static_cast<__int128>(a.den) * b.den;
+    if(n > std::numeric_limits<std::int64_t>::max() ||
+       n < std::numeric_limits<std::int64_t>::min() ||
+       d > std::numeric_limits<std::int64_t>::max())
+        throw std::runtime_error("integer overflow");
     Rational r;
-    r.num = a.num * b.num;
-    r.den = a.den * b.den;
+    r.num = static_cast<std::int64_t>(n);
+    r.den = static_cast<std::int64_t>(d);
     r.normalize();
     return r;
 }
 static Rational divq(Rational a, Rational b)
 {
     if(b.num == 0) throw std::runtime_error("division by zero");
+    a.normalize();
+    b.normalize();
+    std::int64_t g1 = std::gcd(abs_i64_for_gcd(a.num), abs_i64_for_gcd(b.num));
+    std::int64_t g2 = std::gcd(b.den, a.den);
+    if(g1 > 1) { a.num /= g1; b.num /= g1; }
+    if(g2 > 1) { b.den /= g2; a.den /= g2; }
+    __int128 n = static_cast<__int128>(a.num) * b.den;
+    __int128 d = static_cast<__int128>(a.den) * b.num;
+    if(d < 0) { d = -d; n = -n; }
+    if(n > std::numeric_limits<std::int64_t>::max() ||
+       n < std::numeric_limits<std::int64_t>::min() ||
+       d > std::numeric_limits<std::int64_t>::max())
+        throw std::runtime_error("integer overflow");
     Rational r;
-    r.num = a.num * b.den;
-    r.den = a.den * b.num;
+    r.num = static_cast<std::int64_t>(n);
+    r.den = static_cast<std::int64_t>(d);
     r.normalize();
     return r;
 }

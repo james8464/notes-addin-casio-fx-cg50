@@ -15,6 +15,102 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
+        "June 2022 Q1 binomial pmf",
+        ["--stats", "binom(15,0.48,3)"],
+        ["X ~ B(15, 0.48)", "P(X = 3)", "0.01966868"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q1 binomial upper tail",
+        ["--stats", "binomial(15,0.48,5,ge)"],
+        ["P(X >= 5) = 1 - P(X <= 4)", "0.92013108"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q1 normal approximation",
+        ["--stats", "normalcdf(120,sqrt(62.4),110.5,inf)"],
+        ["X ~ N(120, (sqrt(62.4))^2)", "110.5", "0.88543985"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q2 normal sd from percentile",
+        ["--alg", "solve((7.902-8)/x=-1.95996398454,x)"],
+        ["x != 0", "x ~= 0.050"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q2 normal central proportion",
+        ["--stats", "normalcdf(8,0.05,7.94,8.09)"],
+        ["z1 = (7.94-8)/0.05 = -1.2", "z2 = (8.09-8)/0.05 = 1.8", "0.84900001"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q2 normal profit tails",
+        ["--stats", "normalcdf(8,0.05,-inf,7.94)"],
+        ["P(-inf < X < 7.94)", "0.11506967"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q2 expected profit",
+        ["--alg", "500*(0.30*0.84900001-0.15*0.11506967+0.20*0.03593032),method=numeric"],
+        ["122.31280825"],
+        ["ERR:", "-3.766"],
+    ),
+    (
+        "June 2022 Q2 batch acceptance probability",
+        ["--stats", "binomcdf(200,0.015,5)"],
+        ["X ~ B(200, 0.015)", "P(X <= 5)", "0.9176083"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q3 rainfall mean",
+        ["--alg", "174.9/31,method=numeric"],
+        ["1749/310", "5.64193548387"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q3 rainfall sd",
+        ["--alg", "sqrt(3523.283/31-(174.9/31)^2),method=numeric"],
+        ["sqrt(78631763/961000)", "9.04559861581"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q4 lower critical tail",
+        ["--stats", "binom(50,0.1,0)"],
+        ["X ~ B(50, 0.1)", "P(X = 0)", "0.00515378"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q4 upper critical tail",
+        ["--stats", "binomial(50,0.1,10,ge)"],
+        ["P(X >= 10) = 1 - P(X <= 9)", "0.02453794"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q4 actual significance decimal sum",
+        ["--alg", "0.005153775207+0.02453793601,method=numeric"],
+        ["29691711217/1000000000000", "0.029691711217"],
+        ["ERR:", "-3.766"],
+    ),
+    (
+        "June 2022 Q5 Venn cell arithmetic",
+        ["--alg", "90*0.4+80*0.05"],
+        ["40"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q5 conditional probability",
+        ["--alg", "(247+481)/(247+481+123+40),method=numeric"],
+        ["728/891", "0.817059483726"],
+        ["ERR:"],
+    ),
+    (
+        "June 2022 Q6 log model",
+        ["--alg", "solve(log10(h)=-0.05*log10(m)+1.92,h)"],
+        ["Domain: h > 0", "Domain: m > 0", "h = 10^(48/25)*m^(-1/20)"],
+        ["ERR:"],
+    ),
+    (
         "June 2023 Q1 independence",
         ["--alg", "solve(0.3=(0.3+0.05+0.25)*(0.3+p),p)"],
         ["3/10 = 3/5*(p + 3/10)", "p = 1/5"],
