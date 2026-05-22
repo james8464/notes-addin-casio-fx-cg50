@@ -7,6 +7,10 @@ Two main code areas live here:
 
 The C++ side is now the active production path.
 
+Current exam scope is Edexcel A-level Mathematics 9MA0 only. Further Maths-only
+surfaces and raw helper wrappers should stay hidden or return compact
+unsupported errors; do not grow `.g3a` for non-syllabus commands.
+
 ## Production path
 
 `./compile` builds the real calculator add-in from:

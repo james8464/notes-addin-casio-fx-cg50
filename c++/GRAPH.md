@@ -63,6 +63,20 @@ Working output scope:
 - no/answer-first: most raw KhiCAS commands such as `tcollect`, `texpand`,
   `factor`, `simplify`, unless wrapped by project routes
 
+## Syllabus Scope
+
+```mermaid
+graph TD
+  Scope["Edexcel A-level Maths 9MA0 only"] --> Pure["Pure: proof, algebra/functions, coordinate geometry, sequences, trig, logs, differentiation, integration, numerical methods, vectors"]
+  Scope --> Stats["Statistics: sampling, data, probability, distributions, hypothesis tests"]
+  Scope --> Mech["Mechanics: units, kinematics, forces/Newton, moments"]
+  Scope --> Remove["Remove/compact-error non-scope helpers"]
+  Remove --> Further["Further-only: complex, matrices, polar, hyperbolic, SHM/elasticity extras, decision"]
+  Remove --> UI["plots, contour/field/param/polar/seq/list, spark"]
+  Remove --> StatsRaw["raw mean/median/stdev/cov/corr/regression/ztest/normald"]
+  Remove --> Helpers["rationalise, tabular, weierstrass, symmetry, area/volume helper wrappers"]
+```
+
 ## Host Test Engine
 
 ```mermaid
