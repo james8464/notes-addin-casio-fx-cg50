@@ -36,6 +36,12 @@ using namespace std;
 #ifndef NO_NAMESPACE_GIAC
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
+  static gen cascas_removed_moyal_surface(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1)
+      return g;
+    return gensizeerr(contextptr);
+  }
+
   gen incomplete_beta(double a,double b,double p,bool regularize){ // regularize=true by default
     // I_p(a,b)=1/B(a,b)*int(t^(a-1)*(1-t)^(b-1),t=0..p)
     // =p^a*(1-p)^(b-1)/B(a,b)*continued fraction expansion
@@ -350,11 +356,19 @@ namespace giac {
     return gensizeerr(contextptr);
   }
   static const char _normald_s []="normald";
+#if 0
   static define_unary_function_eval (__normald,&_normald,_normald_s);
+#else
+  static define_unary_function_eval (__normald,&cascas_removed_moyal_surface,_normald_s);
+#endif
   define_unary_function_ptr5( at_normald ,alias_at_normald,&__normald,0,true);
 
   static const char _NORMALD_s []="NORMALD";
+#if 0
   static define_unary_function_eval (__NORMALD,&_normald,_NORMALD_s);
+#else
+  static define_unary_function_eval (__NORMALD,&cascas_removed_moyal_surface,_NORMALD_s);
+#endif
   define_unary_function_ptr5( at_NORMALD ,alias_at_NORMALD,&__NORMALD,0,true);
 
   gen _randexp(const gen & args,GIAC_CONTEXT){
@@ -391,7 +405,11 @@ namespace giac {
   define_unary_function_ptr5( at_normal_cdf ,alias_at_normal_cdf,&__normal_cdf,0,true);
 
   static const char _normald_cdf_s []="normald_cdf";
+#if 0
   static define_unary_function_eval (__normald_cdf,&_normal_cdf,_normald_cdf_s);
+#else
+  static define_unary_function_eval (__normald_cdf,&cascas_removed_moyal_surface,_normald_cdf_s);
+#endif
   define_unary_function_ptr5( at_normald_cdf ,alias_at_normald_cdf,&__normald_cdf,0,true);
 
   gen _UTPN(const gen & args,GIAC_CONTEXT){
@@ -446,7 +464,11 @@ namespace giac {
   define_unary_function_ptr5( at_normal_icdf ,alias_at_normal_icdf,&__normal_icdf,0,true);
 
   static const char _normald_icdf_s []="normald_icdf";
+#if 0
   static define_unary_function_eval (__normald_icdf,&_normal_icdf,_normald_icdf_s);
+#else
+  static define_unary_function_eval (__normald_icdf,&cascas_removed_moyal_surface,_normald_icdf_s);
+#endif
   define_unary_function_ptr5( at_normald_icdf ,alias_at_normald_icdf,&__normald_icdf,0,true);
 
   gen apply3rd(const gen & e1, const gen & e2,const gen & e3,const context * contextptr, gen (* f) (const gen &, const gen &,const gen &,const context *) ){

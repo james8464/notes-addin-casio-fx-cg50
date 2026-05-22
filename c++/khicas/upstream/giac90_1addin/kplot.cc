@@ -117,6 +117,12 @@ extern const int BUFFER_SIZE;
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
+  static gen cascas_removed_plot_surface(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1)
+      return g;
+    return gensizeerr(contextptr);
+  }
+
   string gen2tex(const gen & args,GIAC_CONTEXT){
     return "undef";
   }
@@ -1902,7 +1908,11 @@ namespace giac {
     return plotseq(expr,var,x0d,xmin,xmax,niter,attributs,contextptr);
   }
   static const char _plotseq_s []="plotseq";
+#if 0
   static define_unary_function_eval (__plotseq,&_plotseq,_plotseq_s);
+#else
+  static define_unary_function_eval (__plotseq,&cascas_removed_plot_surface,_plotseq_s);
+#endif
   define_unary_function_ptr5( at_plotseq ,alias_at_plotseq,&__plotseq,0,true);
 
   static gen divide_by_2(const gen & ra,GIAC_CONTEXT){
@@ -2607,7 +2617,11 @@ namespace giac {
     return plotcontour(f0,true,contextptr);
   }
   static const char _plotcontour_s []="plotcontour";
+#if 0
   static define_unary_function_eval_quoted (__plotcontour,&_plotcontour,_plotcontour_s);
+#else
+  static define_unary_function_eval_quoted (__plotcontour,&cascas_removed_plot_surface,_plotcontour_s);
+#endif
   define_unary_function_ptr5( at_plotcontour ,alias_at_plotcontour,&__plotcontour,_QUOTE_ARGUMENTS,true);
 #endif
   
@@ -2698,7 +2712,11 @@ namespace giac {
     return funcplotfunc(args,false,contextptr);
   }
   static const char _plotfunc_s []="plotfunc";
+#if 0
   static define_unary_function_eval_quoted (__plotfunc,&_plotfunc,_plotfunc_s);
+#else
+  static define_unary_function_eval_quoted (__plotfunc,&cascas_removed_plot_surface,_plotfunc_s);
+#endif
   define_unary_function_ptr5( at_plotfunc ,alias_at_plotfunc,&__plotfunc,_QUOTE_ARGUMENTS,true);
 
   static gen plotpoints(const vecteur & v,const vecteur & attributs,GIAC_CONTEXT){
@@ -2831,7 +2849,11 @@ namespace giac {
     return plotfunc(v[0],xvar,attributs,false,xmin,xmax,ymin,ymax,zmin,zmax,nstep,0,showeq,contextptr);
   }
   static const char _plot_s []="plot"; // FIXME use maple arguments
+#if 0
   static define_unary_function_eval_quoted (__plot,&_plot,_plot_s);
+#else
+  static define_unary_function_eval_quoted (__plot,&cascas_removed_plot_surface,_plot_s);
+#endif
   define_unary_function_ptr5( at_plot ,alias_at_plot,&__plot,_QUOTE_ARGUMENTS,true);
 
   gen plotparam(const gen & f,const gen & vars,const vecteur & attributs,bool densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_tmin, double function_tmax,double function_tstep,const gen & equation,const gen & parameq,const gen & vparam,const context * contextptr){
@@ -3032,7 +3054,11 @@ namespace giac {
     return paramplotparam(args,true,contextptr);
   }
   static const char _plotparam_s []="plotparam";
+#if 0
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
+#else
+  static define_unary_function_eval_quoted (__plotparam,&cascas_removed_plot_surface,_plotparam_s);
+#endif
   define_unary_function_ptr5( at_plotparam ,alias_at_plotparam,&__plotparam,_QUOTE_ARGUMENTS,true);
 
   gen _plotpolar(const gen & args,const context * contextptr){
@@ -3052,7 +3078,11 @@ namespace giac {
     return _plotparam(gen(vargs,_SEQ__VECT),contextptr);
   }
   static const char _plotpolar_s []="plotpolar";
+#if 0
   static define_unary_function_eval_quoted (__plotpolar,&_plotpolar,_plotpolar_s);
+#else
+  static define_unary_function_eval_quoted (__plotpolar,&cascas_removed_plot_surface,_plotpolar_s);
+#endif
   define_unary_function_ptr5( at_plotpolar ,alias_at_plotpolar,&__plotpolar,_QUOTE_ARGUMENTS,true);
 
   gen _LineTan(const gen & g,GIAC_CONTEXT){
@@ -3222,7 +3252,11 @@ namespace giac {
     return put_attributs(plotode(v,contextptr),attributs,contextptr);
   }
   static const char _plotode_s []="plotode";
+#if 0
   static define_unary_function_eval (__plotode,&_plotode,_plotode_s);
+#else
+  static define_unary_function_eval (__plotode,&cascas_removed_plot_surface,_plotode_s);
+#endif
   define_unary_function_ptr5( at_plotode ,alias_at_plotode,&__plotode,0,true);
 
 #if 1
@@ -3381,7 +3415,11 @@ namespace giac {
     return plotfield(xp,yp,x,y,xmin,xmax,xstep/scaling,ymin,ymax,ystep/scaling,scaling,attributs,normalize,contextptr);
   }
   static const char _plotfield_s []="plotfield";
+#if 0
   static define_unary_function_eval (__plotfield,&_plotfield,_plotfield_s);
+#else
+  static define_unary_function_eval (__plotfield,&cascas_removed_plot_surface,_plotfield_s);
+#endif
   define_unary_function_ptr5( at_plotfield ,alias_at_plotfield,&__plotfield,0,true);
 
 
@@ -3982,7 +4020,11 @@ namespace giac {
     return update_turtle_state(true,contextptr);
   }
   static const char _disque_s []="disque";
+#if 0
   static define_unary_function_eval2 (__disque,&_disque,_disque_s,&printastifunction);
+#else
+  static define_unary_function_eval2 (__disque,&cascas_removed_plot_surface,_disque_s,&printastifunction);
+#endif
   define_unary_function_ptr5( at_disque ,alias_at_disque,&__disque,0,T_LOGO);
 
   gen _disque_centre(const gen & g,GIAC_CONTEXT){
@@ -4004,7 +4046,11 @@ namespace giac {
     return _saute(-r,contextptr);
   }
   static const char _disque_centre_s []="disque_centre";
+#if 0
   static define_unary_function_eval2 (__disque_centre,&_disque_centre,_disque_centre_s,&printastifunction);
+#else
+  static define_unary_function_eval2 (__disque_centre,&cascas_removed_plot_surface,_disque_centre_s,&printastifunction);
+#endif
   define_unary_function_ptr5( at_disque_centre ,alias_at_disque_centre,&__disque_centre,0,T_LOGO);
 
   gen _polygone_rempli(const gen & g,GIAC_CONTEXT){
