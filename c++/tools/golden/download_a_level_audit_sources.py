@@ -36,9 +36,27 @@ MADAS_STANDARD = {
     "various": "https://www.madasmaths.com/archive_maths_booklets_standard_topics_various.html",
 }
 
+MADAS_BOOKLETS_A_LEVEL = {
+    "elementary": "https://www.madasmaths.com/archive_maths_booklets_elementary_topics.html",
+    "basic_calculus": "https://www.madasmaths.com/archive_maths_booklets_basic_topics_calculus.html",
+    "basic_various": "https://www.madasmaths.com/archive_maths_booklets_basic_topics_various.html",
+    "standard_integration": "https://www.madasmaths.com/archive_maths_booklets_standard_topics_integration.html",
+    "standard_trigonometry": "https://www.madasmaths.com/archive_maths_booklets_standard_topics_trigonometry.html",
+    "standard_various": "https://www.madasmaths.com/archive_maths_booklets_standard_topics_various.html",
+    "statistics": "https://www.madasmaths.com/archive_maths_booklets_statistics.html",
+    "mechanics": "https://www.madasmaths.com/archive_maths_booklets_mechanics.html",
+}
+
 MADAS_PAPERS = {
+    "c1": "https://www.madasmaths.com/archive_iygb_practice_papers_c1_practice_papers.html",
+    "c2": "https://www.madasmaths.com/archive_iygb_practice_papers_c2_practice_papers.html",
+    "c3": "https://www.madasmaths.com/archive_iygb_practice_papers_c3_practice_papers.html",
+    "c4": "https://www.madasmaths.com/archive_iygb_practice_papers_c4_practice_papers.html",
     "mp1": "https://www.madasmaths.com/archive_iygb_practice_papers_mp1_practice_papers.html",
     "mp2": "https://www.madasmaths.com/archive_iygb_practice_papers_mp2_practice_papers.html",
+    "mms": "https://www.madasmaths.com/archive_iygb_practice_papers_mms_practice_papers.html",
+    "sp": "https://www.madasmaths.com/archive_iygb_practice_papers_sp_practice_papers.html",
+    "spx": "https://www.madasmaths.com/archive_iygb_practice_papers_spx_practice_papers.html",
     "syn": "https://www.madasmaths.com/archive_iygb_practice_papers_syn_practice_papers.html",
 }
 
@@ -47,6 +65,25 @@ EDEXCEL_PAGES = {
 }
 
 PEARSON_BASE = "https://qualifications.pearson.com/content/dam/pdf/A-Level/Mathematics/2017/Exam-materials/"
+
+PEARSON_SUPPORT = {
+    "a-level-l3-mathematics-sams.pdf": "https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/specification-and-sample-assesment/a-level-l3-mathematics-sams.pdf",
+    "A_level_Mathematics_Sample_Assessment_Materials_Exemplification.pdf": "https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/Teaching%20and%20learning%20materials/A_level_Mathematics_Sample_Assessment_Materials_Exemplification.pdf",
+    "Sample_Assessment_Materials_Model_Answers_Pure.pdf": "https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/Teaching%20and%20learning%20materials/Sample_Assessment_Materials_Model_Answers%E2%80%93Pure_for_AS_and_A_level_Mathematics.pdf",
+    "Sample_Assessment_Materials_Model_Answers_Statistics.pdf": "https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/Teaching%20and%20learning%20materials/Sample_Assessment_Materials_Model_Answers%E2%80%93Statistics_for_AS_and_A_level_Mathematics.pdf",
+    "Sample_Assessment_Materials_Model_Answers_Mechanics.pdf": "https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/Teaching%20and%20learning%20materials/Sample_Assessment_Materials_Model_Answers%E2%80%93Mechanics_for_AS_and_A_level_Mathematics.pdf",
+}
+
+PEARSON_9MA0_2025_PROBES = [
+    "9ma0-01-que-20250604.pdf",
+    "9ma0-01-rms-20250814.pdf",
+    "9ma0-02-que-20250612.pdf",
+    "9ma0-02-rms-20250814.pdf",
+    "9ma0-31-que-20250620.pdf",
+    "9ma0-31-rms-20250814.pdf",
+    "9ma0-32-que-20250620.pdf",
+    "9ma0-32-rms-20250814.pdf",
+]
 
 # Public Pearson UK A-level Mathematics 9MA0 papers/mark schemes.
 # 2025 is intentionally absent: as of 2026-05-22 Pearson returns HTML/login
@@ -234,6 +271,53 @@ def add_direct_rows(rows: list[dict[str, object]], family: str, page_key: str, n
         time.sleep(0.03)
 
 
+def add_named_url_rows(rows: list[dict[str, object]], family: str, page_key: str, urls: dict[str, str], out_dir: Path, force: bool) -> None:
+    for name, url in urls.items():
+        status, size, error = download(url, out_dir / name, force)
+        rows.append(
+            {
+                "family": family,
+                "page": page_key,
+                "kind": kind_from_name(name),
+                "name": name,
+                "url": url,
+                "path": str(out_dir / name),
+                "status": status,
+                "bytes": size,
+                "error": error,
+            }
+        )
+        time.sleep(0.03)
+
+
+def add_probe_rows(rows: list[dict[str, object]], family: str, page_key: str, names: list[str]) -> None:
+    for name in names:
+        url = PEARSON_BASE + name
+        try:
+            data = fetch(url, timeout=20)
+            status = "public-pdf" if data.startswith(b"%PDF") else "not-public"
+            error = "" if status == "public-pdf" else "official URL returned non-PDF"
+            size = len(data) if status == "public-pdf" else 0
+        except Exception as e:
+            status = "not-public"
+            error = str(e).replace("\n", " ")[:300]
+            size = 0
+        rows.append(
+            {
+                "family": family,
+                "page": page_key,
+                "kind": kind_from_name(name),
+                "name": name,
+                "url": url,
+                "path": "",
+                "status": status,
+                "bytes": size,
+                "error": error,
+            }
+        )
+        time.sleep(0.03)
+
+
 def add_rows(
     rows: list[dict[str, object]],
     family: str,
@@ -280,6 +364,8 @@ def main() -> int:
     home = Path.home()
     for topic, url in MADAS_STANDARD.items():
         add_rows(rows, "madas_standard", topic, url, home / "Downloads" / "MadAsMaths standard topics" / topic, args.force)
+    for topic, url in MADAS_BOOKLETS_A_LEVEL.items():
+        add_rows(rows, "madas_booklets_a_level", topic, url, home / "Downloads" / "MadAsMaths A-level booklets" / topic, args.force)
     for paper, url in MADAS_PAPERS.items():
         add_rows(rows, "madas_iygb", paper, url, home / "Downloads" / "MadAsMaths papers", args.force)
     add_direct_rows(
@@ -290,6 +376,15 @@ def main() -> int:
         home / "Downloads" / "Edexcel A Level Maths past papers",
         args.force,
     )
+    add_named_url_rows(
+        rows,
+        "pearson_9ma0_support",
+        "sample_assessment_and_model_answers",
+        PEARSON_SUPPORT,
+        home / "Downloads" / "Edexcel A Level Maths support materials",
+        args.force,
+    )
+    add_probe_rows(rows, "pearson_9ma0_probe", "official_2025_not_public", PEARSON_9MA0_2025_PROBES)
     for name, url in EDEXCEL_PAGES.items():
         add_rows(rows, "edexcel_9ma0", name, url, home / "Downloads" / "Edexcel A Level Maths past papers", args.force, only_9ma0=True)
 

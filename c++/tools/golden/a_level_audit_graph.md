@@ -2,17 +2,23 @@
 
 ```mermaid
 graph TD
-  S["9MA0 source pages"] --> D["download_a_level_audit_sources.py"]
-  O["Pearson public 9MA0 list"] --> D
-  D --> P["clean PDF folders in Downloads"]
-  P --> V["check_edexcel_public_paper_corpus.py"]
+  M1["Madas booklets"] --> D["download_a_level_audit_sources.py"]
+  M2["Madas IYGB packs"] --> D
+  E1["Pearson 9MA0 public"] --> D
+  E2["Pearson SAM/model answers"] --> D
+  E3["2025 official probes"] --> D
+  D --> P["PDF cache in Downloads"]
+  D --> X["manifest_latest.jsonl"]
+  X --> V["check_a_level_source_downloads.py"]
+  P --> E["Edexcel corpus checks"]
+  P --> S["Madas scan checks"]
   P --> R["render_audit_pdf_pages.py"]
-  R --> I["page PNGs"]
-  I --> M["manual question review"]
-  M -->|supported 9MA0 part| J["manual JSONL cases"]
-  M -->|removed/FM/manual-only| U["unsupported-ok tracker row"]
+  R --> I["page images"]
+  I --> Q["manual Q review"]
+  Q -->|supported| J["manual JSONL case"]
+  Q -->|unsupported/manual| U["tracker unsupported-ok"]
   J --> H["casio_host"]
-  H --> C["mark-scheme comparison"]
+  H --> C["mark-scheme judgement"]
   C -->|pass| G["golden case"]
   C -->|fail| F["fix route family"]
   F --> T["focused + core gates"]
