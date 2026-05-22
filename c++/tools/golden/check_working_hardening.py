@@ -2098,7 +2098,7 @@ REMOVED_FEATURE_MARKERS = (
     "method=summary",
     "method=weierstrass", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
     "taylor(", "maclaurin(",
-    "solve(z^", "d2",
+    "solve(z^", "d2", "mode:5", "mode:7", "mode:8", "method=third", "method=param_second",
 )
 
 

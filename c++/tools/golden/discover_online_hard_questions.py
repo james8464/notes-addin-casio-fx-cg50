@@ -176,10 +176,10 @@ def cases() -> list[Case]:
     ):
         add(out, "edexcel", "implicit", "--derive", eq, "Differentiate")
     for param in (
-        "x=t^2+1/t,y=t^2-1/t,t,x,method=param_second",
-        "mode:5,t^2+1/t,t^2-1/t,t",
-        "mode:5,exp(t)*cos(t),exp(t)*sin(t),t",
-        "mode:5,cos(t)^3,sin(t)^3,t",
+        "x=t^2+1/t,y=t^2-1/t,t,x,method=param",
+        "mode:3,t^2+1/t,t^2-1/t,t",
+        "mode:3,exp(t)*cos(t),exp(t)*sin(t),t",
+        "mode:3,cos(t)^3,sin(t)^3,t",
     ):
         add(out, "edexcel", "parametric", "--derive", param, "dy/dx")
     for expr in (

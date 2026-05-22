@@ -18,7 +18,8 @@ REMOVED_FEATURE_MARKERS = (
     "median(", "mean(", "quartiles(", "stddev(", "stdev(",
     "method=summary", "method=weierstrass", "method=tabular",
     "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
-    "taylor(", "maclaurin(",
+    "taylor(", "maclaurin(", "method=third", "method=param_second", "mode:5",
+    "third_derivative", "fourth_derivative", "higher_derivative", "d3y", "d4y",
 )
 
 
@@ -34,7 +35,10 @@ def skipped(case: dict) -> bool:
     source = str(case.get("source", "")).lower()
     if "further" in source or "9fm0" in source or "fcp" in source or "ffp" in source:
         return True
-    text = " ".join(str(x) for x in case.get("args", [])).lower()
+    text = " ".join(str(x) for x in case.get("args", []))
+    text += " " + str(case.get("id", "")) + " " + str(case.get("item", ""))
+    text += " " + " ".join(str(x) for x in case.get("needles", []))
+    text = text.lower()
     return any(marker.lower() in text for marker in REMOVED_FEATURE_MARKERS)
 
 

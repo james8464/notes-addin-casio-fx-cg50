@@ -318,7 +318,7 @@ F2:diff(sin(x),x)
 F3:diff(x=t^2,y=t^3,t,method=param)
 diff(f,var,[n,method])
 Derivative with exam steps.
-Methods: auto,chain,product,quotient,logdiff,implicit,param,second,param_second,first_principles.
+Methods: auto,chain,product,quotient,logdiff,implicit,param,second,first_principles.
 Req: f,var.
 Opt: n,method=auto. Param form: x=...,y=...,t.
 Ex F2: diff(sin(x),x)

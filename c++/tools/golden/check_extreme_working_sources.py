@@ -223,7 +223,6 @@ def generated_cases() -> list[dict[str, Any]]:
         ("sin(x*y)+x^2=y^2,x,method=implicit", "Differentiate both sides"),
         ("1/(2*x+1)+1/(y+1)=x^2,x,method=implicit", "Clear denominators"),
         ("x=t^2+1/t,y=t^2-1/t,t,x,method=param", "dy/dx=(dy/dt)/(dx/dt)"),
-        ("mode:5,t^2+1/t,t^2-1/t,t", "d2y/dx2 = [d/dt(dy/dx)]/(dx/dt)"),
     ):
         out.append({
             "id": "gen-derive-" + compact(expr),

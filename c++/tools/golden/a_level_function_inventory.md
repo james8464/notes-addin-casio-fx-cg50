@@ -101,7 +101,8 @@ Legend:
 | `param_diff([x(t),y(t)],t)` | keep | CasioCAS | yes | `dx/dt`, `dy/dt`, `dy/dx`, optional second derivative. |
 | `tangent_line(expr,x,x0)` | typed-hidden | CasioCAS/KhiCAS | yes | Tangent line route. |
 | first principles derivative | typed method | CasioCAS | yes | Host method `first_principles`. |
-| second/third derivative | typed method | CasioCAS | yes | `method=second`, `method=third`; third is not a 9MA0 priority. |
+| second derivative | typed method | CasioCAS | yes | `method=second`; 9MA0 includes second derivatives. |
+| third/fourth derivative, parametric second derivative | blocked | CasioCAS old | blocked | 9MA0 parametric/implicit differentiation is first-derivative only; higher derivative helper methods removed. |
 | related-rate algebra checks | keep | CasioCAS | partial | Usually via `diff` + `compare`, not a single user-facing function. |
 
 ## Integration And DE

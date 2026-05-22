@@ -180,23 +180,21 @@ def main() -> int:
         ("Split I = Integral_0^1", "Tail becomes", "0"),
         ("ERR:", "Expected )"),
     )
-    bad += require(
-        "labelled_parametric_second",
+    bad += require_compact(
+        "labelled_parametric_second_removed",
         run(["--derive", "(x=t^2 + 1/t),(y=t**2-1/t),t,x,method=param_second"]),
-        ("dx/dt = 2*t - t^-2", "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)", "d2y/dx2 = -12*t^4/(2*t^3 - 1)^3"),
-        ("ERR:", "Expected )", "Unexpected token"),
+        ("Err: invalid method",),
+        (),
+        ("d2y/dx2", "Unexpected token"),
     )
     param_e = run(["--derive", "(x)=exp((t))*cos((t)),y=exp(t)sin(t),t,x,method=param_second"])
-    bad += require(
-        "labelled_parametric_second_exp",
+    bad += require_compact(
+        "labelled_parametric_second_exp_removed",
         param_e,
-        ("dx/dt = e^t(cos(t)-sin(t))", "d/dt(dy/dx) = 2/(cos(t)-sin(t))^2", "d2y/dx2 = 2/[e^t(cos(t) - sin(t))^3"),
-        ("ERR:", "Unexpected token", "Divide by"),
+        ("Err: invalid method",),
+        (),
+        ("d2y/dx2", "Unexpected token", "Divide by"),
     )
-    if param_e.count("d2y/dx2 =") != 1:
-        print("FAIL labelled_parametric_second_exp: duplicate final d2 line", file=sys.stderr)
-        print(param_e, file=sys.stderr)
-        bad += 1
     bad += require(
         "nested_surd_rewrite_wrapped",
         run(["--alg", "(rewrite(sqrt((15)+sqrt((224)))))"]),

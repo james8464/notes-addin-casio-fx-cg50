@@ -15,6 +15,7 @@ Sources:
 Current product decision:
 - Target exam mode is normal A-level Maths.
 - Further-only surfaces should be hidden or removed from the app working layer.
+- 9MA0 parametric/implicit differentiation is first-derivative only; parametric second derivative, third derivative and fourth derivative routes are removed.
 - User-requested removals stay out of the user-facing app catalogue/help: comb, normald, mean, median, stdev/stddev, correlation, covariance, linear_regression, plotting, rationalise, tabular, weierstrass, symmetry, mean_value, volumes/areas, parametric area/volumes, ztest, spark, hyperbolic functions.
 - Boolean proof helper surfaces are also hidden; they are not 9MA0 mathematics.
 - If a removed surface appears in a paper, record it as unsupported-ok unless the same mathematical part can be handled through a retained algebra/calculus route.

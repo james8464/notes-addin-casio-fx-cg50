@@ -23,15 +23,19 @@ REMOVED_FEATURE_MARKERS = (
     "median(", "mean(", "quartiles(", "stddev(", "stdev(",
     "method=summary", "method=weierstrass", "method=tabular",
     "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
-    "taylor(", "maclaurin(",
+    "taylor(", "maclaurin(", "method=third", "method=param_second", "mode:5",
+    "third_derivative", "fourth_derivative", "higher_derivative", "d3y", "d4y",
 )
 
 
 def removed_case(case: dict[str, Any]) -> bool:
     text = " ".join(str(x) for x in case.get("args", []))
+    text += " " + str(case.get("id", "")) + " " + str(case.get("item", ""))
+    text += " " + " ".join(str(x) for x in case.get("needles", []))
     for raw in case.get("variants", []):
         if isinstance(raw, dict):
             text += " " + " ".join(str(x) for x in raw.get("args", []))
+            text += " " + " ".join(str(x) for x in raw.get("needles", []))
         else:
             text += " " + " ".join(str(x) for x in raw)
     lo = text.lower()

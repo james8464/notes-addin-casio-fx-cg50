@@ -35,7 +35,6 @@ CASES = [
     ("R10 cos triple", ["--trig", "cos(3*theta)\n4*cos(theta)^3-3*cos(theta)"], ["cos(A+B)", "4*cos(theta)^3 - 3*cos(theta)"]),
     ("R10 tan triple", ["--trig", "tan(3*theta)\n(3*tan(theta)-tan(theta)^3)/(1-3*tan(theta)^2)"], ["tan(2theta)", "1 - 3*tan(theta)^2"]),
     ("R11 param", ["--derive", "cos(theta)^3,sin(theta)^3,theta,method=param"], ["dy/dx = -tan(theta)"]),
-    ("R11 param second", ["--derive", "cos(theta)^3,sin(theta)^3,theta,method=param_second"], ["d2y/dx2 = 1/(3*cos(theta)^4*sin(theta))"]),
 ]
 
 

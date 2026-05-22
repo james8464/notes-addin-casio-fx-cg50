@@ -129,6 +129,30 @@ def main() -> int:
         ("I:",),
     )
     require(
+        "third_derivative_method_removed",
+        run_host_err_ok("--derive", "x^4,x,method=third"),
+        ("Err: invalid method",),
+        ("d3y",),
+    )
+    require(
+        "param_second_method_removed",
+        run_host_err_ok("--derive", "t^2+1/t,t^2-1/t,t,method=param_second"),
+        ("Err: invalid method",),
+        ("d2y/dx2",),
+    )
+    require(
+        "third_mode_removed",
+        run_host("--derive", "mode:7,e^(atan(x)),x"),
+        ("Err: unsupported function",),
+        ("d3y",),
+    )
+    require(
+        "fourth_mode_removed",
+        run_host("--derive", "mode:8,e^(3*x)*sin(x),x"),
+        ("Err: unsupported function",),
+        ("d4y", "Leibnitz"),
+    )
+    require(
         "ztest_stats_removed",
         run_host("--stats", "ztest(5,4,1,10,0.05,gt)"),
         ("Err: unsupported stats function",),

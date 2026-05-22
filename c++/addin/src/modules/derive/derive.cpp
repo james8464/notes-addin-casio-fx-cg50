@@ -1056,54 +1056,6 @@ static std::optional<std::string> reduced_affine_ratio_text(AffineInt num, Affin
     return affine_int_text(num, var) + "/(" + affine_int_text(den, var) + ")";
 }
 
-static bool asin_sqrt_identity_key(std::string const &key, std::string const &var, long long &k)
-{
-    auto term = [&](long long c) {
-        std::string cs = c == 1 ? "" : std::to_string(c);
-        return cs + var + "asin(" + cs + var + ")";
-    };
-    auto rad1 = [&](long long c) {
-        long long c2 = c * c;
-        return "sqrt(-" + (c2 == 1 ? "" : std::to_string(c2)) + var + "^2+1)";
-    };
-    auto rad2 = [&](long long c) {
-        long long c2 = c * c;
-        return "sqrt(1-" + (c2 == 1 ? "" : std::to_string(c2)) + var + "^2)";
-    };
-    for(long long c = 1; c <= 12; ++c) {
-        std::string t = term(c);
-        if(key == t + "+" + rad1(c) || key == rad1(c) + "+" + t ||
-           key == t + "+" + rad2(c) || key == rad2(c) + "+" + t) {
-            k = c;
-            return true;
-        }
-    }
-    return false;
-}
-
-static std::vector<std::string> asin_sqrt_identity_steps(long long k, std::string const &var)
-{
-    long long k2 = k * k;
-    long long k4 = k2 * k2;
-    std::string pre = k == 1 ? "" : std::to_string(k) + "*";
-    std::string arg = k == 1 ? var : std::to_string(k) + "*" + var;
-    std::string rad = "1 - " + (k2 == 1 ? "" : std::to_string(k2) + "*") + var + "^2";
-    std::string y = pre + var + "*asin(" + arg + ") + sqrt(" + rad + ")";
-    std::string d1 = pre + "asin(" + arg + ")";
-    std::string d2 = std::to_string(k2) + "/sqrt(" + rad + ")";
-    std::string d3 = std::to_string(k4) + "*" + var + "/(" + rad + ")^(3/2)";
-    std::string rhs = std::to_string(k4) + "*" + var + "/(" + rad + ")";
-    return {
-        "y = " + y + ".",
-        "dy/d" + var + " = " + d1 + ".",
-        "d2y/d" + var + "2 = " + d2 + ".",
-        "d3y/d" + var + "3 = " + d3 + ".",
-        "y - " + var + "*dy/d" + var + " = sqrt(" + rad + ").",
-        "d3y/d" + var + "3*(y - " + var + "*dy/d" + var + ") = " + rhs + ".",
-        var + "*(d2y/d" + var + "2)^2 = " + rhs + "."
-    };
-}
-
 static std::string rat_text(Arena &a, long long num, long long den)
 {
     Rational r{num, den};
@@ -2597,39 +2549,6 @@ static bool append_product_rule_detail(
     return true;
 }
 
-static bool append_leibniz_four_detail(
-    Arena &a,
-    NodeId n,
-    std::string const &var,
-    std::vector<std::string> &steps
-)
-{
-    Node const &x = a.get(n);
-    if(x.kind != NodeKind::Mul) return false;
-    std::vector<NodeId> f;
-    for(auto k : x.kids) {
-        if(depends_on(a, k, var)) f.push_back(k);
-        else return false;
-    }
-    if(f.size() != 2) return false;
-    std::vector<NodeId> u(5), v(5);
-    u[0] = f[0]; v[0] = f[1];
-    for(int i = 1; i <= 4; ++i) {
-        u[i] = casio::simplify(a, diff(a, u[i - 1], var));
-        v[i] = casio::simplify(a, diff(a, v[i - 1], var));
-    }
-    auto fmt = [&](NodeId t) { return clean_math_text(format_expr_human(a, t)); };
-    steps.push_back("u = " + fmt(u[0]) + ".");
-    steps.push_back("v = " + fmt(v[0]) + ".");
-    steps.push_back("Leibnitz: d4y/d" + var + "4 = u''''v + 4u'''v' + 6u''v'' + 4u'v''' + uv''''.");
-    for(int i = 1; i <= 4; ++i) {
-        std::string p(static_cast<std::size_t>(i), '\'');
-        steps.push_back("u" + p + " = " + fmt(u[i]) + ".");
-        steps.push_back("v" + p + " = " + fmt(v[i]) + ".");
-    }
-    return true;
-}
-
 struct ExpAffineParts
 {
     NodeId coef;
@@ -2648,8 +2567,8 @@ static bool exp_factor_local(Arena &a, NodeId n, NodeId &exponent)
     return false;
 }
 
-static bool append_log_exp_cos_four_detail(Arena &a, NodeId n, std::string const &var,
-                                           std::vector<std::string> &steps, std::string &answer, int order)
+static bool append_log_exp_cos_detail(Arena &a, NodeId n, std::string const &var,
+                                      std::vector<std::string> &steps, std::string &answer)
 {
     Node const &x = a.get(n);
     if(x.kind != NodeKind::Fn || x.fkind != FnKind::Log) return false;
@@ -2667,7 +2586,7 @@ static bool append_log_exp_cos_four_detail(Arena &a, NodeId n, std::string const
     auto ea = affine_int_in(a, exp_arg, var);
     auto ca = affine_int_in(a, cos_arg, var);
     if(!ea || !ca || ea->b || ca->b || ca->m <= 0) return false;
-    long long b = ca->m, b2 = b * b, b3 = b2 * b, b4 = b2 * b2;
+    long long b = ca->m;
     auto mulc = [](long long c, std::string const &s) {
         if(c == 1) return s;
         if(c == -1) return "-" + s;
@@ -2676,18 +2595,10 @@ static bool append_log_exp_cos_four_detail(Arena &a, NodeId n, std::string const
     auto sub = [&](long long c, std::string const &s) { return std::string(" - ") + mulc(c, s); };
     std::string u = affine_int_text_human(*ca, var);
     std::string tan_u = "tan(" + u + ")";
-    std::string sec2 = "sec(" + u + ")^2";
-    std::string sec4 = "sec(" + u + ")^4";
     steps.push_back("ln(uv)=ln(u)+ln(v).");
     steps.push_back("y = " + affine_int_text_human(*ea, var) + " + ln(cos(" + u + ")).");
     steps.push_back("dy/d" + var + " = " + std::to_string(ea->m) + sub(b, tan_u) + ".");
-    if(order == 1) {
-        answer = "dy/d" + var + " = " + std::to_string(ea->m) + sub(b, tan_u);
-        return true;
-    }
-    steps.push_back("d2y/d" + var + "2 = " + mulc(-b2, sec2) + ".");
-    steps.push_back("d3y/d" + var + "3 = " + mulc(-2 * b3, sec2 + "*" + tan_u) + ".");
-    answer = "d4y/d" + var + "4 = " + mulc(-2 * b4, sec4) + sub(4 * b4, sec2 + "*" + tan_u + "^2");
+    answer = "dy/d" + var + " = " + std::to_string(ea->m) + sub(b, tan_u);
     return true;
 }
 
@@ -3094,6 +3005,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter an expression."};
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
+    if(req.mode == 5 || req.mode == 7 || req.mode == 8) return {"Err: unsupported function."};
 
     try {
         if(req.mode == 6) {
@@ -3212,7 +3124,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             pre.simplified = expr;
             return casio::exam_fallback("first principles", pre, "No first-principles route for this form.", "d/d" + var + "(" + pre.norm + ")");
         }
-        if(req.mode == 1 || req.mode == 4 || req.mode == 7 || req.mode == 8) {
+        if(req.mode == 1 || req.mode == 4) {
             auto parts = split_csv(req.expr);
             std::string expr = parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
@@ -3629,7 +3541,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.mode == 4 &&
                (direct_key == "log(1+cos(x))" || direct_key == "ln(1+cos(x))")) {
                 return casio::exam_block(
-                    "higher derivative identity",
+                    "second derivative",
                     {
                         "Start with y = log(1+cos(x)).",
                         "dy/d" + var + " = -sin(x)/(1+cos(x)).",
@@ -3638,24 +3550,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Use sin(x)^2+cos(x)^2=1.",
                         "So d2y/d" + var + "2 = -1/(1+cos(x)).",
                         "Since e^y=1+cos(x), d2y/d" + var + "2 = -e^(-y).",
-                        "Differentiate: d3y/d" + var + "3 = e^(-y)*dy/d" + var + ".",
-                        "Differentiate again using product rule.",
-                        "d4y/d" + var + "4 = -e^(-y)*(dy/d" + var + ")^2 + e^(-y)*d2y/d" + var + "2.",
-                        "Substitute d2y/d" + var + "2 = -e^(-y).",
                     },
-                    "d4y/d" + var + "4 + e^(-y)*(dy/d" + var + ")^2 + e^(-2y) = 0"
+                    "d2y/d" + var + "2 = -e^(-y)"
                 );
-            }
-
-            {
-                long long k = 0;
-                if(req.mode == 7 && asin_sqrt_identity_key(direct_key, var, k)) {
-                    return casio::exam_block(
-                        "higher derivative identity",
-                        asin_sqrt_identity_steps(k, var),
-                        "d3y/d" + var + "3*(y - " + var + "*dy/d" + var + ") = " + var + "*(d2y/d" + var + "2)^2"
-                    );
-                }
             }
 
             if(exam_guard_too_complex(arena, n, var)) {
@@ -3671,8 +3568,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         steps.push_back("u = " + format_expr_human(arena, gn.a) + ".");
                         steps.push_back("du/d" + var + " = " + format_expr_human(arena, du) + ".");
                         steps.push_back(rule + ".");
-                    return casio::exam_block(
-                            (req.mode == 4 || req.mode == 7) ? "higher derivative" : "differentiate",
+                        return casio::exam_block(
+                            req.mode == 4 ? "second derivative" : "differentiate",
                             steps,
                             rule
                         );
@@ -3693,20 +3590,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             {
                 std::string compact = compact_math_key(expr);
-                if(req.mode == 7 && (compact == "e^atan(" + var + ")" || compact == "e^(atan(" + var + "))" ||
-                                      compact == "exp(atan(" + var + "))")) {
-                    return casio::exam_block(
-                        "third derivative",
-                        {
-                            "y = e^(atan(" + var + ")).",
-                            "dy/d" + var + " = y/(1+" + var + "^2).",
-                            "d2y/d" + var + "2 = y*(1-2*" + var + ")/(1+" + var + "^2)^2.",
-                            "Differentiate y*(1-2*" + var + ")*(1+" + var + "^2)^-2.",
-                            "Collect over (1+" + var + "^2)^3.",
-                        },
-                        "d3y/d" + var + "3 = (6*" + var + "^2 - 6*" + var + " - 1)*e^(atan(" + var + "))/(1+" + var + "^2)^3"
-                    );
-                }
                 if((compact == "e^x/sin(x)" || compact == "exp(x)/sin(x)") && var == "x") {
                     if(req.mode == 4) {
                         return casio::exam_block(
@@ -3762,19 +3645,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             NodeId out = d1;
             std::string label = "dy/d" + var;
-                if(req.mode == 4 || req.mode == 7 || req.mode == 8) {
-                    NodeId d2 = casio::simplify(arena, diff(arena, d1, var));
-                    out = d2;
-                    label = "d2y/d" + var + "2";
-                    if(req.mode == 7 || req.mode == 8) {
-                        out = casio::simplify(arena, diff(arena, d2, var));
-                        label = "d3y/d" + var + "3";
-                        if(req.mode == 8) {
-                            out = casio::simplify(arena, diff(arena, out, var));
-                            label = "d4y/d" + var + "4";
-                        }
-                    }
-                }
+            if(req.mode == 4) {
+                out = casio::simplify(arena, diff(arena, d1, var));
+                label = "d2y/d" + var + "2";
+            }
             std::vector<std::string> steps;
             std::string answer_override;
             if(auto id = derivative_trig_identity_text(expr)) {
@@ -3785,16 +3659,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string shown_y = clean_math_text(format_expr_human(arena, n));
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
             }
-            if(req.mode == 4 || req.mode == 7 || req.mode == 8) {
-                bool used_high = req.mode == 8 &&
-                                 (append_log_exp_cos_four_detail(arena, n, var, steps, answer_override, 4) ||
-                                  append_leibniz_four_detail(arena, n, var, steps));
-                if(!used_high) {
-                    steps.push_back(req.mode == 8 ? "Differentiate four times." :
-                                    (req.mode == 7 ? "Differentiate three times." : "Differentiate once, then differentiate dy/dx again."));
-                }
-                if(req.mode == 4)
-                    append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
+            if(req.mode == 4) {
+                steps.push_back("Differentiate once, then differentiate dy/dx again.");
+                append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
             }
             else {
                 bool used_rule = false;
@@ -3880,7 +3747,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!used_rule && append_log_linear_fraction_detail(arena, n, var, steps, answer_override)) {
                     used_rule = true;
                 }
-                if(!used_rule && append_log_exp_cos_four_detail(arena, n, var, steps, answer_override, 1)) {
+                if(!used_rule && append_log_exp_cos_detail(arena, n, var, steps, answer_override)) {
                     used_rule = true;
                 }
                 if(!used_rule && dn.kind == NodeKind::Fn && depends_on(arena, dn.a, var)) {
@@ -3928,7 +3795,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(!roots.empty()) final_answer += ", " + var + " != " + roots;
             }
             return casio::exam_block(
-                req.mode == 4 ? "second derivative" : (req.mode == 7 ? "third derivative" : (req.mode == 8 ? "fourth derivative" : "differentiate")),
+                req.mode == 4 ? "second derivative" : "differentiate",
                 steps,
                 final_answer
             );

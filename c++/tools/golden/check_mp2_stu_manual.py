@@ -13,9 +13,9 @@ HOST = REPO / "c++/addin/host/build/casio_host"
 
 CASES: list[tuple[str, list[str], list[str]]] = [
     (
-        "S Q3 higher derivative identity",
+        "S Q3 second derivative identity",
         ["--derive", "mode:4,ln(1+cos(x))"],
-        ["dy/dx = -sin(x)/(1+cos(x))", "d2y/dx2 = -e^(-y)", "d4y/dx4 + e^(-y)*(dy/dx)^2 + e^(-2y) = 0"],
+        ["dy/dx = -sin(x)/(1+cos(x))", "d2y/dx2 = -e^(-y)"],
     ),
     (
         "S Q14 substitution integral",

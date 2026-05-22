@@ -8272,7 +8272,6 @@ class CASIOApp(App):
             ("derive", "x^2+y^2=1,method=implicit", "implicit", True),
             ("derive", "t^2,t^3,t,method=param", "param", True),
             ("derive", "x^4,method=second", "second", True),
-            ("derive", "t^2+1/t,t^2-1/t,t,method=param_second", "param_second", True),
             ("trig", "sin(x)=1/2,x,0,2*pi,6,method=auto", "auto", True),
             ("trig", "sin(x)-1/2,method=general", "general", True),
             ("trig", "sin(x)=1/2,x,0,2*pi,6,method=bounded", "bounded", True),
