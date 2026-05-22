@@ -17732,6 +17732,72 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
 
 static NodeId merge_product_divs(Arena &a, NodeId n);
 
+static std::optional<std::pair<Rational, std::string>> linear_symbol_factor(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym) return std::make_pair(Rational{1, 1}, x.text);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    std::optional<std::string> sym;
+    for(NodeId k : x.kids) {
+        Node const &kid = a.get(k);
+        if(auto r = as_num(a, k)) coeff = r_mul(coeff, *r);
+        else if(kid.kind == NodeKind::Sym && !sym) sym = kid.text;
+        else return std::nullopt;
+    }
+    if(!sym || coeff.num == 0) return std::nullopt;
+    return std::make_pair(coeff, *sym);
+}
+
+static std::optional<std::pair<Rational, std::string>> reciprocal_linear_symbol_term(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        auto base = e && e->num == -1 && e->den == 1 ? linear_symbol_factor(a, x.a) : std::nullopt;
+        if(base) return std::make_pair(r_div(Rational{1, 1}, base->first), base->second);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = as_num(a, x.a);
+        auto bot = top ? linear_symbol_factor(a, x.b) : std::nullopt;
+        if(bot) return std::make_pair(r_div(*top, bot->first), bot->second);
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational coeff{1, 1};
+        NodeId rest = 0;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) coeff = r_mul(coeff, *r);
+            else if(!rest) rest = k;
+            else return std::nullopt;
+        }
+        if(rest) {
+            auto inner = reciprocal_linear_symbol_term(a, rest);
+            if(inner) return std::make_pair(r_mul(coeff, inner->first), inner->second);
+        }
+    }
+    return std::nullopt;
+}
+
+static NodeId reciprocal_sum_over_symbol(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2) return n;
+    Rational coeff{0, 1};
+    std::optional<std::string> sym;
+    for(NodeId k : x.kids) {
+        auto term = reciprocal_linear_symbol_term(a, k);
+        if(!term) return n;
+        if(sym && *sym != term->second) return n;
+        sym = term->second;
+        coeff = r_add(coeff, term->first);
+    }
+    if(!sym) return n;
+    if(coeff.num == 0) return casio::num(a, 0);
+    NodeId den = casio::sym(a, *sym);
+    if(coeff.den != 1) den = casio::mul(a, {casio::num(a, coeff.den), den});
+    return casio::div(a, casio::num(a, coeff.num), den);
+}
+
 static std::optional<std::vector<std::string>> run_definite_integral(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -17812,6 +17878,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     NodeId f_hi = simplify_known_endpoint_values(arena, substitute_var(arena, primitive, var, hi));
     NodeId f_lo = simplify_known_endpoint_values(arena, substitute_var(arena, primitive, var, lo));
     NodeId ans = simplify_known_endpoint_values(arena, casio::add(arena, {f_hi, casio::neg(arena, f_lo)}));
+    ans = reciprocal_sum_over_symbol(arena, ans);
 
     std::vector<std::string> steps;
     casio::append_exam_prelude_steps(steps, pre);

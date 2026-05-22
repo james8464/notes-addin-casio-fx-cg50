@@ -43,6 +43,12 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["Answer: d/dtheta", "ERR:"],
     ),
     (
+        "June 2018 Q7b parameter inverse proportional integral",
+        ["--int", "defint(2/(2*x-k)^2,x,k,2*k)"],
+        ["Limits: x = k => u = k, x = 2*k => u = 3*k", "2/(3*k)"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
         "June 2018 Q11 rational binomial",
         ["--alg", "binomial(sqrt((1+4*x)/(1-x)),x,0,2)"],
         ["sqrt(4*x + 1)", "(- x + 1)^(-1/2)", "5/2*x", "- 5/8*x^2", "Valid for abs(x) < 1/4"],
