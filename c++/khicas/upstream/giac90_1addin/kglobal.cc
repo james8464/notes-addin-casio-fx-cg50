@@ -2857,6 +2857,7 @@ extern "C" void Sleep(unsigned int miliSecond);
   // elif ...: -> elif ... then [nothing in stack]
   // try: ... except: ...
   std::string python2xcas(const std::string & s_orig,GIAC_CONTEXT){
+    return s_orig;
     if (xcas_mode(contextptr)>0 && abs_calc_mode(contextptr)!=38)
       return s_orig;
     // quick check for python-like syntax: search line ending with :
