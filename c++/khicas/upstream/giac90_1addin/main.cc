@@ -2032,6 +2032,7 @@ static bool cascas_removed_function_hash(unsigned h){
     case 0x11420879u:
     case 0x1427b873u:
     case 0x14cdb897u:
+    case 0x15c2f8ecu:
     case 0x178d4c35u:
     case 0x22fc8274u:
     case 0x23b19318u:
