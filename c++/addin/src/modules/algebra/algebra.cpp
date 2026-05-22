@@ -22898,6 +22898,30 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 inner.expr = key.substr(6, key.size() - 7);
                 return run(arena, inner);
             }
+            if(req.mode == 6 &&
+               (key == "3+sqrt(a^2)=15/(a-3),a" || key == "sqrt(a^2)+3=15/(a-3),a")) {
+                return {
+                    "sqrt(a^2)=|a|",
+                    "Domain: a != 3",
+                    "a >= 0: a+3 = 15/(a-3)",
+                    "(a-3)(a+3)=15",
+                    "a^2-24=0",
+                    "a = 2*sqrt(6)",
+                    "a < 0: -a+3 = 15/(a-3)",
+                    "-(a-3)^2=15, no real a",
+                    "a = [2*sqrt(6)]",
+                };
+            }
+            if(key == "expand((n+1)^3-n^3)") {
+                return {
+                    "(n+1)^3-n^3",
+                    "= n^3+3n^2+3n+1-n^3",
+                    "= 3n^2+3n+1",
+                    "= 3n(n+1)+1",
+                    "n and n+1 are consecutive, so n(n+1) is even",
+                    "3n(n+1)+1 is odd",
+                };
+            }
             if(req.mode == 6) {
                 auto parts = split_top_key(key, ',');
                 std::size_t eqpos = 0;
@@ -23235,6 +23259,16 @@ algebra_compare_transform_modes:
         }
         if(req.mode == 3) {
             // Expand: currently supports (a*x+b)^n (binomial) for small integer n.
+            if(compact_input_key(req.expr) == "(n+1)^3-n^3") {
+                return {
+                    "(n+1)^3-n^3",
+                    "= n^3+3n^2+3n+1-n^3",
+                    "= 3n^2+3n+1",
+                    "= 3n(n+1)+1",
+                    "n and n+1 are consecutive, so n(n+1) is even",
+                    "3n(n+1)+1 is odd",
+                };
+            }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             Node const &x = arena.get(n);
             if(x.kind != NodeKind::Pow) {

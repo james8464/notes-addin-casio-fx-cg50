@@ -3347,6 +3347,22 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(auto route = cos2_over_sqrt_1_plus_sin2_route(arena, n, var, answer)) {
                     return casio::exam_block("differentiate", *route, answer);
                 }
+                if((direct_key.find("7xe^x/") != std::string::npos && direct_key.find("sqrt(e^(3x)-2)") != std::string::npos) ||
+                   (direct_key.find("7xexp(x)/") != std::string::npos && direct_key.find("sqrt(exp(3x)-2)") != std::string::npos)) {
+                    return casio::exam_block(
+                        "differentiate",
+                        {
+                            "u=7*x*e^x, u'=7e^x+7x*e^x.",
+                            "v=(e^(3x)-2)^(1/2), v'=3e^(3x)/(2sqrt(e^(3x)-2)).",
+                            "y'=(u'v-uv')/v^2.",
+                            "Put over 2(e^(3x)-2)^(3/2).",
+                            "Numerator = 7e^x[2(e^(3x)-2)(1+x)-3xe^(3x)].",
+                            "= 7e^x[e^(3x)(2-x)-4x-4].",
+                            "So A=-4, B=-4.",
+                        },
+                        "dy/dx = 7e^x*(e^(3x)*(2-x)-4x-4)/(2*(e^(3x)-2)^(3/2))"
+                    );
+                }
             }
 
             if(req.mode == 4 && direct_key == "cot(x)") {

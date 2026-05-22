@@ -1171,6 +1171,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["a = (5/13*m*g - 12/13*mu*m*g)/m", "Traceback"],
     ),
     (
+        "alg",
+        "solve(3+sqrt(a^2)=15/(a-3),a)",
+        ["sqrt(a^2)=|a|", "a >= 0", "a = [2*sqrt(6)]"],
+        ["a = 4.898979", "Traceback"],
+    ),
+    (
+        "alg",
+        "expand((n+1)^3-n^3)",
+        ["= 3n^2+3n+1", "= 3n(n+1)+1", "n(n+1) is even", "is odd"],
+        ["(n + 1)^3 - n^3\n", "Traceback"],
+    ),
+    (
+        "derive",
+        "7*x*e^x/(sqrt(e^(3*x)-2)),x",
+        ["Numerator = 7e^x", "A = -4, B = -4", "e^(3x)*(2-x)-4x-4"],
+        ["dy/dx = ((7*e^(x)", "Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],
