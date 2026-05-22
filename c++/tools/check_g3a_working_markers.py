@@ -35,6 +35,7 @@ FORBIDDEN = [
     b"I=uv-Int(vdu)",
     b"dy/dx=(dy/d",
     b"Area=Int",
+    b"use tabvar",
 ]
 
 MAGIC = b"CCP1"

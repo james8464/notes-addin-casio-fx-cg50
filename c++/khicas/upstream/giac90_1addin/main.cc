@@ -2845,7 +2845,7 @@ static string cascas_range_text(const string &expr,const string &var,const strin
   else if (low=="1/"+var || low=="1/("+var+")")
     out += "y != 0";
   else if (has_interval)
-    out += "use tabvar for tight interval";
+    out += "tight interval unsupported";
   else
     out += "all real y or add interval";
   return out;
