@@ -225,7 +225,7 @@ namespace giac {
     return scatterplot(g,2,contextptr);
   }
   static const char _scatterplot_s []="scatterplot";
-  static define_unary_function_eval (__scatterplot,&_scatterplot,_scatterplot_s);
+  static define_unary_function_eval (__scatterplot,&cascas_removed_surface,_scatterplot_s);
   define_unary_function_ptr5( at_scatterplot ,alias_at_scatterplot,&__scatterplot,0,true);
 
   gen _polygonplot(const gen & g,GIAC_CONTEXT){
@@ -233,11 +233,11 @@ namespace giac {
     return scatterplot(g,1,contextptr);
   }
   static const char _polygonplot_s []="polygonplot";
-  static define_unary_function_eval (__polygonplot,&_polygonplot,_polygonplot_s);
+  static define_unary_function_eval (__polygonplot,&cascas_removed_surface,_polygonplot_s);
   define_unary_function_ptr5( at_polygonplot ,alias_at_polygonplot,&__polygonplot,0,true);
 
   static const char _ligne_polygonale_s []="ligne_polygonale";
-  static define_unary_function_eval (__ligne_polygonale,&_polygonplot,_ligne_polygonale_s);
+  static define_unary_function_eval (__ligne_polygonale,&cascas_removed_surface,_ligne_polygonale_s);
   define_unary_function_ptr5( at_ligne_polygonale ,alias_at_ligne_polygonale,&__ligne_polygonale,0,true);
 
   gen _polygonscatterplot(const gen & g,GIAC_CONTEXT){
@@ -245,11 +245,11 @@ namespace giac {
     return scatterplot(g,3,contextptr);
   }
   static const char _polygonscatterplot_s []="polygonscatterplot";
-  static define_unary_function_eval (__polygonscatterplot,&_polygonscatterplot,_polygonscatterplot_s);
+  static define_unary_function_eval (__polygonscatterplot,&cascas_removed_surface,_polygonscatterplot_s);
   define_unary_function_ptr5( at_polygonscatterplot ,alias_at_polygonscatterplot,&__polygonscatterplot,0,true);
 
   static const char _set_language_s []="set_language";
-static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s);
+static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_language_s);
   define_unary_function_ptr5( at_set_language ,alias_at_set_language,&__set_language,0,true);
 
   gen _scalar_product(const gen & args,GIAC_CONTEXT){
@@ -4431,7 +4431,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     return v;
   }
   static const char _stdDev_s []="stdDev";
-  static define_unary_function_eval (__stdDev,&_stdDev,_stdDev_s);
+  static define_unary_function_eval (__stdDev,&cascas_removed_surface,_stdDev_s);
   define_unary_function_ptr5( at_stdDev ,alias_at_stdDev,&__stdDev,0,true);  
 
   gen _variance(const gen & g,GIAC_CONTEXT){
@@ -4446,7 +4446,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     return v;
   }
   static const char _variance_s []="variance";
-static define_unary_function_eval (__variance,&_variance,_variance_s);
+static define_unary_function_eval (__variance,&cascas_removed_surface,_variance_s);
   define_unary_function_ptr5( at_variance ,alias_at_variance,&__variance,0,true);
 
   static gen freq_quantile(const matrice & v,double d,GIAC_CONTEXT){
@@ -4517,14 +4517,14 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return quartile123(g,0.25,contextptr);
   }
   static const char _quartile1_s []="quartile1";
-  static define_unary_function_eval(unary_quartile1,&_quartile1,_quartile1_s);
+  static define_unary_function_eval(unary_quartile1,&cascas_removed_surface,_quartile1_s);
   define_unary_function_ptr5( at_quartile1 ,alias_at_quartile1,&unary_quartile1,0,true);
 
   gen _quartile3(const gen & g,GIAC_CONTEXT){
     return quartile123(g,0.75,contextptr);
   }
   static const char _quartile3_s []="quartile3";
-  static define_unary_function_eval(unary_quartile3,&_quartile3,_quartile3_s);
+  static define_unary_function_eval(unary_quartile3,&cascas_removed_surface,_quartile3_s);
   define_unary_function_ptr5( at_quartile3 ,alias_at_quartile3,&unary_quartile3,0,true);
 
   static vector<double> prepare_effectifs(const vecteur & v,GIAC_CONTEXT){
@@ -4755,7 +4755,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return histogram(args,class_minimum,class_size,attributs,contextptr);
   }
   static const char _histogram_s []="histogram";
-  static define_unary_function_eval (__histogram,&_histogram,_histogram_s);
+  static define_unary_function_eval (__histogram,&cascas_removed_surface,_histogram_s);
   define_unary_function_ptr5( at_histogram ,alias_at_histogram,&__histogram,0,true);
 
 #if 0
@@ -5528,7 +5528,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     return res;
   }
   static const char _camembert_s []="camembert";
-static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
+static define_unary_function_eval (__camembert,&cascas_removed_surface,_camembert_s);
   define_unary_function_ptr5( at_camembert ,alias_at_camembert,&__camembert,0,true);
 
   gen _is_matrix(const gen & a,GIAC_CONTEXT){

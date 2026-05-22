@@ -41,6 +41,12 @@ using namespace std;
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
+  static gen cascas_removed_subst_surface(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1)
+      return g;
+    return gensizeerr(contextptr);
+  }
+
   gen checkanglemode(GIAC_CONTEXT){
     if (!angle_radian(contextptr)) 
       //grad
@@ -1044,7 +1050,7 @@ namespace giac {
     return hyp2exp(args,contextptr);
   }
   static const char _hyp2exp_s []="hyp2exp";
-  static define_unary_function_eval (__hyp2exp,&_hyp2exp,_hyp2exp_s);
+  static define_unary_function_eval (__hyp2exp,&cascas_removed_subst_surface,_hyp2exp_s);
   define_unary_function_ptr5( at_hyp2exp ,alias_at_hyp2exp,&__hyp2exp,0,true);
 
   gen sincos(const gen & e,GIAC_CONTEXT){
