@@ -385,6 +385,7 @@
 {"nops",0,0,9,13},
 {"norm",0,0,9,13},
 {"normal",0,0,9,13},
+{"normal_cdf",0,0,9,13},
 {"normalize",0,0,9,13},
 {"normalvariate",0,0,9,13},
 {"nprimes",0,0,9,13},

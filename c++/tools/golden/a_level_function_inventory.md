@@ -18,6 +18,7 @@ Legend:
 - Origin `KhiCAS`: original KhiCAS/CasioCAS CAS/parser/catalogue.
 - Origin `CasioCAS`: added modified layer in `c++/addin/src` or `giac90_1addin/main.cc`.
 - Origin `Both`: original KhiCAS operation exists, but current project wraps A-level cases for working.
+- Shipping `.g3a`: `./compile` builds `c++/khicas/upstream/giac90_1addin`; `c++/addin/src` host/device modules are route libraries/prototypes until ported into that source-built path.
 - Working `yes`: method-mark working intended.
 - Working `partial`: working for supported A-level routes; fallback is compact answer/error.
 - Working `no`: utility/obvious/programming or native answer-only.
@@ -123,10 +124,10 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `binom(n,p,r)` / `binomial(n,p,r)` | keep | CasioCAS | yes | PMF/tail/cdf-style lines. |
-| `binomcdf(n,p,r)` / `binomial_cdf(...)` | keep | CasioCAS | yes | Summation/complement lines. |
-| `normalcdf(mu,sigma,lo,hi)` | keep | CasioCAS | yes | Standardisation lines. |
-| `binomial(n,p,k)` native catalogue | keep | KhiCAS/CasioCAS | partial | Native name exists; Stats module gives working. |
+| `binom(n,p,r)` / `binomial(n,p,r)` | keep | CasioCAS | yes | Host stats route gives PMF/tail/cdf-style lines; source-built `.g3a` needs parity check. |
+| `binomcdf(n,p,r)` / `binomial_cdf(...)` | keep | CasioCAS/KhiCAS | partial | Host route gives summation/complement lines; source-built `.g3a` has native `binomial_cdf` but no wrapper working yet. |
+| `normalcdf(mu,sigma,lo,hi)` | keep | CasioCAS/KhiCAS | yes | Source-built `.g3a` rewrites to native `normal_cdf` and emits compact standardisation lines. |
+| `binomial(n,p,k)` native catalogue | keep | KhiCAS/CasioCAS | partial | Native name exists; host Stats module gives stronger working. |
 | `normald`, `mean`, `median`, `stdev`, `correlation`, `covariance`, `linear_regression`, `ztest` | blocked | KhiCAS/CasioCAS old | blocked | Removed/unsupported by user scope. |
 
 ## Mechanics

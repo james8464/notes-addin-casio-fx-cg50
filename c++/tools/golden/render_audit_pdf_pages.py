@@ -8,9 +8,12 @@ import subprocess
 from pathlib import Path
 
 
-def render_pdf(pdf: Path, out_root: Path, dpi: int, first: int | None, fmt: str, force: bool) -> int:
-    rel = pdf.stem
-    out_dir = out_root / pdf.parent.name / rel
+def render_pdf(pdf: Path, base: Path, out_root: Path, dpi: int, first: int | None, fmt: str, force: bool) -> int:
+    try:
+        rel = pdf.relative_to(base).with_suffix("")
+    except ValueError:
+        rel = Path(pdf.stem)
+    out_dir = out_root / base.name / rel
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = "jpg" if fmt == "jpeg" else "png"
     if not force and list(out_dir.glob(f"page-*.{suffix}")):
@@ -43,20 +46,20 @@ def main() -> int:
     ap.add_argument("--first", type=int, default=0, help="render first N pages only; 0 means all pages")
     ap.add_argument("--force", action="store_true", help="rerender PDFs even when page images already exist")
     args = ap.parse_args()
-    pdfs: list[Path] = []
+    pdfs: list[tuple[Path, Path]] = []
     for raw in args.paths:
         p = Path(raw).expanduser()
         if p.is_dir():
-            pdfs.extend(sorted(p.rglob("*.pdf")))
+            pdfs.extend((pdf, p) for pdf in sorted(p.rglob("*.pdf")))
         elif p.suffix.lower() == ".pdf":
-            pdfs.append(p)
+            pdfs.append((p, p.parent))
     if not pdfs:
         print("FAIL no PDFs")
         return 1
     out = Path(args.out).expanduser()
     bad = 0
-    for pdf in pdfs:
-        bad += render_pdf(pdf, out, args.dpi, args.first or None, args.format, args.force)
+    for pdf, base in pdfs:
+        bad += render_pdf(pdf, base, out, args.dpi, args.first or None, args.format, args.force)
     return 1 if bad else 0
 
 

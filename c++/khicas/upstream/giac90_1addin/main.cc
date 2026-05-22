@@ -2467,6 +2467,15 @@ static bool cascas_rewrite_binom_coeff_call(const char *input,string &out){
   return true;
 }
 
+static bool cascas_rewrite_normalcdf_call(const char *input,string &out){
+  string args[4],s; int count=0,close=0;
+  if (!cascas_call_args(input,"normalcdf(",args,4,count,close,s) || count<4)
+    return false;
+  out="evalf(normal_cdf(" + args[0] + "," + args[1] + "," + args[2] + "," + args[3] + "))";
+  out += s.substr(close+1,s.size()-close-1);
+  return true;
+}
+
 static bool cascas_rewrite_coeff_match_call(const char *input,const char *alias,string &out){
   string args[4],s; int count=0,close=0;
   if (!cascas_call_args(input,alias,args,4,count,close,s) || count<3)
@@ -2583,6 +2592,8 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
     return true;
   if (cascas_rewrite_binom_coeff_call(input,rewritten))
     return true;
+  if (cascas_rewrite_normalcdf_call(input,rewritten))
+    return true;
   if (cascas_rewrite_fitconst_call(input,rewritten))
     return true;
   if (cascas_rewrite_coeff_match_call(input,"coeff_match(",rewritten))
@@ -2600,6 +2611,23 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
       return true;
   }
   return false;
+}
+
+static string cascas_lower_trim_text(const string &s){
+  string t=cascas_trim(s);
+  for (int i=0;i<int(t.size());++i)
+    t[i]=tolower((unsigned char)t[i]);
+  return t;
+}
+
+static bool cascas_is_pos_inf_text(const string &s){
+  string t=cascas_lower_trim_text(s);
+  return t=="inf" || t=="+inf" || t=="infinity" || t=="+infinity";
+}
+
+static bool cascas_is_neg_inf_text(const string &s){
+  string t=cascas_lower_trim_text(s);
+  return t=="-inf" || t=="-infinity";
 }
 
 static bool cascas_nonneg_int_text(const string &s){
@@ -3436,6 +3464,31 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		    cascas_append_tpl_line(out,"t086");
     return true;
   }
+  if (cascas_call_args(s,"normalcdf(",args,4,count,close,body) && count>=4){
+    string mu=args[0],sd=args[1],lo=args[2],hi=args[3];
+    string line="X~N(" + mu + "," + sd + "^2)";
+    cascas_append_line(out,line.c_str());
+    line="Z=(X-" + mu + ")/" + sd;
+    cascas_append_line(out,line.c_str());
+    if (!cascas_is_neg_inf_text(lo)){
+      line="z1=(" + lo + "-" + mu + ")/" + sd;
+      cascas_append_line(out,line.c_str());
+    }
+    if (!cascas_is_pos_inf_text(hi)){
+      line="z2=(" + hi + "-" + mu + ")/" + sd;
+      cascas_append_line(out,line.c_str());
+    }
+    if (cascas_is_neg_inf_text(lo) && cascas_is_pos_inf_text(hi))
+      line="P=1";
+    else if (cascas_is_neg_inf_text(lo))
+      line="P=Phi(z2)";
+    else if (cascas_is_pos_inf_text(hi))
+      line="P=1-Phi(z1)";
+    else
+      line="P=Phi(z2)-Phi(z1)";
+    cascas_append_line(out,line.c_str());
+    return true;
+  }
   if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
     string expr=args[0];
     if (cascas_append_same_base_log_solve(out,expr))
@@ -3710,7 +3763,7 @@ static bool cascas_old_python_scope_working_call(const char *s){
     "domain(","range(","compare(","xform(","transform(","rewrite(",
     "match(","coeff_match(","fitconst(","complete_square(",
     "partfrac(","propfrac(","binom_expand(","binom_coeff(",
-    "de_solve(","suvat(","tangent_line(",0
+    "normalcdf(","de_solve(","suvat(","tangent_line(",0
   };
   for (int i=0;calls[i];++i){
     if (cascas_startswith(s,calls[i]))

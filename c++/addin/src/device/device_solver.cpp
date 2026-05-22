@@ -1807,6 +1807,104 @@ static bool parse_int_args(const char *input, int *args, int expected)
     return true;
 }
 
+static int find_top_level_char(const char *s, int begin, int end, char needle)
+{
+    int depth = 0;
+    for(int i = begin; i < end; i++) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if((c == ')' || c == ']' || c == '}') && depth > 0) depth--;
+        else if(c == needle && depth == 0) return i;
+    }
+    return -1;
+}
+
+static bool read_double_token(const char *s, int begin, int end, double &out)
+{
+    while(begin < end && s[begin] == '+') begin++;
+    while(end > begin && s[end - 1] == '+') end--;
+    if(begin >= end) return false;
+    if(end - begin == 3 && s[begin] == 'i' && s[begin + 1] == 'n' && s[begin + 2] == 'f') {
+        out = 1.0e300;
+        return true;
+    }
+    if(end - begin == 4 && s[begin] == '-' && s[begin + 1] == 'i' && s[begin + 2] == 'n' && s[begin + 3] == 'f') {
+        out = -1.0e300;
+        return true;
+    }
+    if(starts_at(s, begin, "sqrt(") && end > begin + 6 && s[end - 1] == ')') {
+        double v = 0.0;
+        if(!read_double_token(s, begin + 5, end - 1, v) || v < 0.0) return false;
+        out = sqrt(v);
+        return true;
+    }
+    int div = find_top_level_char(s, begin, end, '/');
+    if(div > begin) {
+        double a = 0.0, b = 0.0;
+        if(!read_double_token(s, begin, div, a) || !read_double_token(s, div + 1, end, b) || b == 0.0) return false;
+        out = a / b;
+        return true;
+    }
+    char tmp[40];
+    int n = 0;
+    for(int i = begin; i < end && n + 1 < (int)sizeof(tmp); i++) tmp[n++] = s[i];
+    tmp[n] = '\0';
+    char *tail = nullptr;
+    double v = strtod(tmp, &tail);
+    if(tail == tmp || (tail && *tail != '\0')) return false;
+    out = v;
+    return true;
+}
+
+static bool parse_double_args(const char *input, double *args, int expected, char shown[][32])
+{
+    char s[192];
+    int n = compact(input, s, (int)sizeof(s));
+    int count = 0;
+    int start = 0;
+    int depth = 0;
+    for(int i = 0; i <= n; i++) {
+        char c = i < n ? s[i] : ',';
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if((c == ')' || c == ']' || c == '}') && depth > 0) depth--;
+        if(i == n || (c == ',' && depth == 0)) {
+            if(count >= expected || i == start) return false;
+            if(!read_double_token(s, start, i, args[count])) return false;
+            int k = 0;
+            for(int j = start; j < i && k + 1 < 32; j++) shown[count][k++] = s[j];
+            shown[count][k] = '\0';
+            count++;
+            start = i + 1;
+        }
+    }
+    return count == expected;
+}
+
+static double normal_cdf_approx(double z)
+{
+    double x = z < 0.0 ? -z : z;
+    double t = 1.0 / (1.0 + 0.2316419 * x);
+    double p = 0.3989422804014327 * exp(-0.5 * x * x) * t *
+        (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return z >= 0.0 ? 1.0 - p : p;
+}
+
+static void append_double(FixedString<96> &line, double v)
+{
+    if(v > 9.0e299) {
+        line.append("inf");
+        return;
+    }
+    if(v < -9.0e299) {
+        line.append("-inf");
+        return;
+    }
+    if(v > -0.0000000005 && v < 0.0000000005) v = 0.0;
+    char tmp[32];
+    snprintf(tmp, sizeof(tmp), "%.8g", v);
+    line.append(tmp);
+}
+
 static bool parse_int_list(const char *input, int *args, int cap, int &count)
 {
     Fraction vals[32];
@@ -2001,6 +2099,72 @@ static bool solve_binom_cdf(const char *input, OutputLines &out)
     FixedString<96> &ans = out.next();
     ans.append("Answer: ");
     append_fraction(ans, total);
+    return true;
+}
+
+static bool solve_normal_cdf(const char *input, OutputLines &out)
+{
+    double a[4];
+    char shown[4][32];
+    if(!parse_double_args(input, a, 4, shown)) {
+        out.add("Use normalcdf(mu,sigma,lo,hi).");
+        return false;
+    }
+    if(a[1] <= 0.0) {
+        out.add("Err: sigma must be positive.");
+        return true;
+    }
+    double z1 = (a[2] - a[0]) / a[1];
+    double z2 = (a[3] - a[0]) / a[1];
+    double ans = normal_cdf_approx(z2) - normal_cdf_approx(z1);
+    bool wrap_sigma = find_char(shown[1], '/') >= 0;
+    FixedString<96> &dist = out.next();
+    dist.append("1. X ~ N(");
+    dist.append(shown[0]);
+    dist.append(", ");
+    if(wrap_sigma) dist.append("(");
+    dist.append(shown[1]);
+    if(wrap_sigma) dist.append(")");
+    dist.append("^2).");
+    FixedString<96> &stdz = out.next();
+    stdz.append("2. Z=(X-");
+    stdz.append(shown[0]);
+    stdz.append(")/");
+    if(wrap_sigma) stdz.append("(");
+    stdz.append(shown[1]);
+    if(wrap_sigma) stdz.append(")");
+    stdz.append(".");
+    FixedString<96> &zl = out.next();
+    zl.append("3. z1=(");
+    zl.append(shown[2]);
+    zl.append("-");
+    zl.append(shown[0]);
+    zl.append(")/");
+    if(wrap_sigma) zl.append("(");
+    zl.append(shown[1]);
+    if(wrap_sigma) zl.append(")");
+    zl.append("=");
+    append_double(zl, z1);
+    FixedString<96> &zh = out.next();
+    zh.append("4. z2=(");
+    zh.append(shown[3]);
+    zh.append("-");
+    zh.append(shown[0]);
+    zh.append(")/");
+    if(wrap_sigma) zh.append("(");
+    zh.append(shown[1]);
+    if(wrap_sigma) zh.append(")");
+    zh.append("=");
+    append_double(zh, z2);
+    FixedString<96> &prob = out.next();
+    prob.append("5. P(");
+    prob.append(shown[2]);
+    prob.append("<X<");
+    prob.append(shown[3]);
+    prob.append(")=Phi(z2)-Phi(z1).");
+    FixedString<96> &final = out.next();
+    final.append("Answer: ");
+    append_double(final, ans);
     return true;
 }
 
@@ -2454,6 +2618,7 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 20) return solve_inverse_call(inner, out);
     if(kind == 21) return solve_rewrite_call(inner, out);
     if(kind == 22) return solve_domain_range_call(inner, out);
+    if(kind == 23) return solve_normal_cdf(inner, out);
     if(kind == 25) return solve_device_placeholder("fit constants", out);
     return false;
 }
@@ -2487,6 +2652,7 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::Shell:
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
+            if(starts_with(input, "normalcdf(")) return solve_utility_call(input, "normalcdf(", 23, out);
             if(starts_with(input, "gcd(")) return solve_utility_call(input, "gcd(", 8, out);
             if(starts_with(input, "lcm(")) return solve_utility_call(input, "lcm(", 9, out);
             if(starts_with(input, "factorial(")) return solve_utility_call(input, "factorial(", 10, out);
@@ -2537,7 +2703,8 @@ bool solve(Module module, const char *input, OutputLines &out)
         case Module::Stats:
             if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
-            return solve_device_placeholder("binom/binomcdf only", out);
+            if(starts_with(input, "normalcdf(")) return solve_utility_call(input, "normalcdf(", 23, out);
+            return solve_device_placeholder("binom/binomcdf/normalcdf only", out);
 
     }
 

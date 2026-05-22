@@ -370,6 +370,11 @@ def main() -> int:
     for marker in ['!strcmp(buf,"log")', '!strcmp(buf,"log10")', '!strcmp(buf,"ln")', '!strcmp(buf,"sec")', '!strcmp(buf,"csc")', '!strcmp(buf,"cosec")', '!strcmp(buf,"cot")']:
         if marker not in dmain or marker not in main_cc:
             return fail("syntax colour alias missing from calculator/main shell: " + marker)
+    if '{"normal_cdf",0,0,9,13}' not in lexer_text:
+        return fail("source-built normal_cdf lexer entry missing")
+    for marker in ['cascas_rewrite_normalcdf_call', '"normalcdf("', '"evalf(normal_cdf("']:
+        if marker not in main_cc:
+            return fail("source-built normalcdf wrapper missing: " + marker)
     if "solve_trig(eq,[var,lo,hi,max,method])" in active_catalog:
         return fail("solve_trig still active in catalogue; use solve() surface")
     if "catalog_hidden_name(completeCat[cur].name)" not in catalog:
