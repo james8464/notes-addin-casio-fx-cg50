@@ -33,7 +33,6 @@ enum : FeatureId
     F_ALG_INV = 407,
     F_ALG_RW = 408,
     F_ALG_DOM_RNG = 409,
-    F_ALG_CART = 410,
 
     F_TRIG_PROVE = 500,
     F_TRIG_XFORM = 501,
@@ -81,7 +80,6 @@ const char* ALIAS_ALG_COMP[] = {"comp", "complain"};
 const char* ALIAS_ALG_INV[] = {"inv", "inverse"};
 const char* ALIAS_ALG_RW[] = {"rw", "rewrite"};
 const char* ALIAS_ALG_DOM_RNG[] = {"dr", "dom", "rng", "domain", "range"};
-const char* ALIAS_ALG_CART[] = {"cart", "cartesian"};
 const char* ALIAS_TRIG_PROVE[] = {"prove"};
 const char* ALIAS_TRIG_XFORM[] = {"xform", "transform"};
 const char* ALIAS_TRIG_SOLVE[] = {"solve"};
@@ -138,7 +136,6 @@ const FeatureSpec FEATURES[] = {
     {F_ALG_INV, "Algebra", "INV", "Inverse", ALIAS_ALG_INV, 2, PROMPTS_NONE, 0},
     {F_ALG_RW, "Algebra", "RW", "Rewrite", ALIAS_ALG_RW, 2, PROMPTS_NONE, 0},
     {F_ALG_DOM_RNG, "Algebra", "DR", "Dom/Rng", ALIAS_ALG_DOM_RNG, 4, PROMPTS_NONE, 0},
-    {F_ALG_CART, "Algebra", "CRT", "Cartesian", ALIAS_ALG_CART, 1, PROMPTS_NONE, 0},
 
     {F_TRIG_PROVE, "Trig", "PRV", "Prove", ALIAS_TRIG_PROVE, 1, PROMPTS_NONE, 0},
     {F_TRIG_XFORM, "Trig", "XFM", "Transform", ALIAS_TRIG_XFORM, 2, PROMPTS_NONE, 0},

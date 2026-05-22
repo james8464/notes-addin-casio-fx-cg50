@@ -49,7 +49,6 @@ const CommandItem kAlgebraCommands[] = {
     {"texpand(", "texpand("},
     {"sum(", "sum("},
     {"oo", "oo"},
-    {"product(", "product("},
 };
 
 const CommandItem kAlgebraAllCommands[] = {
@@ -60,7 +59,6 @@ const CommandItem kAlgebraAllCommands[] = {
     {"tcollect", "tcollect("},
     {"solve", "solve("},
     {"sum", "sum("},
-    {"product", "product("},
     {"poly", "polynomial("},
     {"comp sq", "complete_square("},
     {"cmp", "compare("},
@@ -71,8 +69,6 @@ const CommandItem kAlgebraAllCommands[] = {
     {"rw", "rewrite("},
     {"dom/rng", "domain("},
     {"range", "range("},
-    {"cart", "cartesian("},
-    {"fit const", "fitconst("},
 };
 
 const CommandItem kDeriveCommands[] = {
@@ -103,7 +99,6 @@ const CommandItem kCalculusCommands[] = {
     {"limit(", "limit("},
     {"binomial(", "binomial("},
     {"solve(", "solve("},
-    {"desolve(", "desolve("},
 };
 
 const CommandItem kTrigCommands[] = {
