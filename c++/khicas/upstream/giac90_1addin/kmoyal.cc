@@ -270,7 +270,7 @@ namespace giac {
   static define_unary_function_eval (__randNorm,&_randNorm,_randNorm_s);
   define_unary_function_ptr5( at_randNorm ,alias_at_randNorm,&__randNorm,0,true);
 
-  static const char _randnormald_s []="randnormald";
+  static const char _randnormald_s []="_y0";
   static define_unary_function_eval (__randnormald,&cascas_removed_moyal_surface,_randnormald_s);
   define_unary_function_ptr5( at_randnormald ,alias_at_randnormald,&__randnormald,0,true);
 
@@ -355,7 +355,7 @@ namespace giac {
       return normald(v[0],v[1],v[2],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _normald_s []="normald";
+  static const char _normald_s []="_y1";
 #if 0
   static define_unary_function_eval (__normald,&_normald,_normald_s);
 #else
@@ -363,7 +363,7 @@ namespace giac {
 #endif
   define_unary_function_ptr5( at_normald ,alias_at_normald,&__normald,0,true);
 
-  static const char _NORMALD_s []="NORMALD";
+  static const char _NORMALD_s []="_y2";
 #if 0
   static define_unary_function_eval (__NORMALD,&_normald,_NORMALD_s);
 #else
@@ -404,7 +404,7 @@ namespace giac {
   static define_unary_function_eval (__normal_cdf,&_normal_cdf,_normal_cdf_s);
   define_unary_function_ptr5( at_normal_cdf ,alias_at_normal_cdf,&__normal_cdf,0,true);
 
-  static const char _normald_cdf_s []="normald_cdf";
+  static const char _normald_cdf_s []="_y3";
 #if 0
   static define_unary_function_eval (__normald_cdf,&_normal_cdf,_normald_cdf_s);
 #else
@@ -463,7 +463,7 @@ namespace giac {
   static define_unary_function_eval (__normal_icdf,&_normal_icdf,_normal_icdf_s);
   define_unary_function_ptr5( at_normal_icdf ,alias_at_normal_icdf,&__normal_icdf,0,true);
 
-  static const char _normald_icdf_s []="normald_icdf";
+  static const char _normald_icdf_s []="_y4";
 #if 0
   static define_unary_function_eval (__normald_icdf,&_normal_icdf,_normald_icdf_s);
 #else

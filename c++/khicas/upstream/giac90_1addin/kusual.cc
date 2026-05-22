@@ -2505,7 +2505,7 @@ namespace giac {
     return cosh(e,contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_sinh," D_at_sinh",&d_at_sinh);
-  static const char _sinh_s []="sinh";
+  static const char _sinh_s []="_u0";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (44,__sinh,&sinh,(size_t)&D_at_sinhunary_function_ptr,_sinh_s);
@@ -2584,7 +2584,7 @@ namespace giac {
     return symb_cosh(e);
   }
   define_partial_derivative_onearg_genop( D_at_cosh,"D_at_cosh",sinh);
-  static const char _cosh_s []="cosh";
+  static const char _cosh_s []="_u1";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (46,__cosh,&cosh,(size_t)&D_at_coshunary_function_ptr,_cosh_s);
@@ -2668,7 +2668,7 @@ namespace giac {
     return 1-pow(tanh(e,contextptr),2);
   }
   define_partial_derivative_onearg_genop( D_at_tanh," D_at_tanh",&d_tanh);
-  static const char _tanh_s []="tanh";
+  static const char _tanh_s []="_u2";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (48,__tanh,&tanh,(size_t)&D_at_tanhunary_function_ptr,_tanh_s);
@@ -2730,7 +2730,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)+1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_asinh," D_at_asinh",&d_asinh);
-  static const char _asinh_s []="asinh";
+  static const char _asinh_s []="_u3";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (50,__asinh,&asinh,(size_t)&D_at_asinhunary_function_ptr,_asinh_s);
@@ -2797,7 +2797,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)-1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_acosh," D_at_acosh",&d_acosh);
-  static const char _acosh_s []="acosh";
+  static const char _acosh_s []="_u4";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (52,__acosh,&acosh,(size_t)&D_at_acoshunary_function_ptr,_acosh_s);
@@ -2864,7 +2864,7 @@ namespace giac {
     return inv(1-pow(args,2),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_atanh," D_at_atanh",&d_atanh);
-  static const char _atanh_s []="atanh";
+  static const char _atanh_s []="_u5";
 #if 0
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (54,__atanh,&atanh,(size_t)&D_at_atanhunary_function_ptr,_atanh_s);
@@ -7035,7 +7035,7 @@ namespace giac {
       return zero;
     return comb((unsigned long int) v.front().val,(unsigned long int) v.back().val);
   }
-  static const char _comb_s []="comb";
+  static const char _comb_s []="_u6";
   static define_unary_function_eval (__comb,&_comb,_comb_s);
   define_unary_function_ptr5( at_comb ,alias_at_comb,&__comb,0,true);
 #else
@@ -7044,7 +7044,7 @@ namespace giac {
       return args;
     return gensizeerr(contextptr);
   }
-  static const char _comb_s []="comb";
+  static const char _comb_s []="_u6";
   static define_unary_function_eval (__comb,&_comb_removed,_comb_s);
   define_unary_function_ptr5( at_comb ,alias_at_comb,&__comb,0,true);
 #endif

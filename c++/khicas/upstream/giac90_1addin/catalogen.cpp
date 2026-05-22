@@ -434,17 +434,26 @@ static bool catalog_hidden_name(const char *name){
   if (!name) return true;
 #if 0
   // Policy markers kept out of ROM:
-  // CAT_CATEGORY_PROG CAT_CATEGORY_LOGO draw_ laplace fourier_ jordan svd
+  // CAT_CATEGORY_PROG CAT_CATEGORY_LOGO draw_ laplace ilaplace fourier_ jordan svd
   // gramschmidt rand cfactor residue resultant seq(
   // hilbert( erf( legendre( powmod(
   // hidden_prefix:
   // hidden_exact:
 #endif
-  if (!strncmp(name,"draw_",5) || !strncmp(name,"plot",4) ||
-      !strncmp(name,"sinh",4) || !strncmp(name,"cosh",4) || !strncmp(name,"tanh",4) ||
-      !strncmp(name,"asinh",5) || !strncmp(name,"acosh",5) || !strncmp(name,"atanh",5) ||
-      !strncmp(name,"arsinh",6) || !strncmp(name,"arcosh",6) || !strncmp(name,"artanh",6) ||
-      !strncmp(name,"fourier_",8) || !strncmp(name,"laplace",7) || !strncmp(name,"ilaplace",8))
+  if ((name[0]=='d' && name[1]=='r' && name[2]=='a' && name[3]=='w' && name[4]=='_') ||
+      (name[0]=='p' && name[1]=='l' && name[2]=='o' && name[3]=='t') ||
+      (name[0]=='s' && name[1]=='i' && name[2]=='n' && name[3]=='h') ||
+      (name[0]=='c' && name[1]=='o' && name[2]=='s' && name[3]=='h') ||
+      (name[0]=='t' && name[1]=='a' && name[2]=='n' && name[3]=='h') ||
+      (name[0]=='a' && name[1]=='s' && name[2]=='i' && name[3]=='n' && name[4]=='h') ||
+      (name[0]=='a' && name[1]=='c' && name[2]=='o' && name[3]=='s' && name[4]=='h') ||
+      (name[0]=='a' && name[1]=='t' && name[2]=='a' && name[3]=='n' && name[4]=='h') ||
+      (name[0]=='a' && name[1]=='r' && name[2]=='s' && name[3]=='i' && name[4]=='n' && name[5]=='h') ||
+      (name[0]=='a' && name[1]=='r' && name[2]=='c' && name[3]=='o' && name[4]=='s' && name[5]=='h') ||
+      (name[0]=='a' && name[1]=='r' && name[2]=='t' && name[3]=='a' && name[4]=='n' && name[5]=='h') ||
+      (name[0]=='f' && name[1]=='o' && name[2]=='u' && name[3]=='r' && name[4]=='i' && name[5]=='e' && name[6]=='r' && name[7]=='_') ||
+      (name[0]=='l' && name[1]=='a' && name[2]=='p' && name[3]=='l' && name[4]=='a' && name[5]=='c' && name[6]=='e') ||
+      (name[0]=='i' && name[1]=='l' && name[2]=='a' && name[3]=='p' && name[4]=='l' && name[5]=='a' && name[6]=='c' && name[7]=='e'))
       return true;
   if (!strncmp(name,"range(a,b)",10))
     return true;

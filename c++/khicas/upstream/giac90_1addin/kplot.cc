@@ -1369,7 +1369,7 @@ namespace giac {
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return symbolic(at_plot_style,args);
   }
-  static const char _plot_style_s []="plot_style";
+  static const char _plot_style_s []="_pa";
   static define_unary_function_eval_index (114,__plot_style,&_plot_style,_plot_style_s);
   define_unary_function_ptr5( at_plot_style ,alias_at_plot_style,&__plot_style,0,true);
 
@@ -1908,7 +1908,7 @@ namespace giac {
       return gentypeerr(contextptr);
     return plotseq(expr,var,x0d,xmin,xmax,niter,attributs,contextptr);
   }
-  static const char _plotseq_s []="plotseq";
+  static const char _plotseq_s []="_p0";
 #if 0
   static define_unary_function_eval (__plotseq,&_plotseq,_plotseq_s);
 #else
@@ -2617,7 +2617,7 @@ namespace giac {
     if ( f0.type==_STRNG && f0.subtype==-1) return  f0;
     return plotcontour(f0,true,contextptr);
   }
-  static const char _plotcontour_s []="plotcontour";
+  static const char _plotcontour_s []="_p1";
 #if 0
   static define_unary_function_eval_quoted (__plotcontour,&_plotcontour,_plotcontour_s);
 #else
@@ -2712,7 +2712,7 @@ namespace giac {
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return funcplotfunc(args,false,contextptr);
   }
-  static const char _plotfunc_s []="plotfunc";
+  static const char _plotfunc_s []="_p2";
 #if 0
   static define_unary_function_eval_quoted (__plotfunc,&_plotfunc,_plotfunc_s);
 #else
@@ -2849,7 +2849,7 @@ namespace giac {
       return plotpoints(*v0._VECTptr,attributs,contextptr);
     return plotfunc(v[0],xvar,attributs,false,xmin,xmax,ymin,ymax,zmin,zmax,nstep,0,showeq,contextptr);
   }
-  static const char _plot_s []="plot"; // FIXME use maple arguments
+  static const char _plot_s []="_p3"; // FIXME use maple arguments
 #if 0
   static define_unary_function_eval_quoted (__plot,&_plot,_plot_s);
 #else
@@ -3054,7 +3054,7 @@ namespace giac {
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return paramplotparam(args,true,contextptr);
   }
-  static const char _plotparam_s []="plotparam";
+  static const char _plotparam_s []="_p4";
 #if 0
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
 #else
@@ -3078,7 +3078,7 @@ namespace giac {
     vargs.front()=makevecteur(rho*cos(angletorad(theta,contextptr),contextptr),rho*sin(angletorad(theta,contextptr),contextptr));
     return _plotparam(gen(vargs,_SEQ__VECT),contextptr);
   }
-  static const char _plotpolar_s []="plotpolar";
+  static const char _plotpolar_s []="_p5";
 #if 0
   static define_unary_function_eval_quoted (__plotpolar,&_plotpolar,_plotpolar_s);
 #else
@@ -3252,7 +3252,7 @@ namespace giac {
     // v.erase(v.begin()+s,v.end());
     return put_attributs(plotode(v,contextptr),attributs,contextptr);
   }
-  static const char _plotode_s []="plotode";
+  static const char _plotode_s []="_p6";
 #if 0
   static define_unary_function_eval (__plotode,&_plotode,_plotode_s);
 #else
@@ -3415,7 +3415,7 @@ namespace giac {
     }
     return plotfield(xp,yp,x,y,xmin,xmax,xstep/scaling,ymin,ymax,ystep/scaling,scaling,attributs,normalize,contextptr);
   }
-  static const char _plotfield_s []="plotfield";
+  static const char _plotfield_s []="_p7";
 #if 0
   static define_unary_function_eval (__plotfield,&_plotfield,_plotfield_s);
 #else
@@ -4020,7 +4020,7 @@ namespace giac {
     (*turtleptr).radius += 1 << 27;
     return update_turtle_state(true,contextptr);
   }
-  static const char _disque_s []="disque";
+  static const char _disque_s []="_p8";
 #if 0
   static define_unary_function_eval2 (__disque,&_disque,_disque_s,&printastifunction);
 #else
@@ -4046,7 +4046,7 @@ namespace giac {
     _tourne_droite(direct?90:-90,contextptr);
     return _saute(-r,contextptr);
   }
-  static const char _disque_centre_s []="disque_centre";
+  static const char _disque_centre_s []="_p9";
 #if 0
   static define_unary_function_eval2 (__disque_centre,&_disque_centre,_disque_centre_s,&printastifunction);
 #else
