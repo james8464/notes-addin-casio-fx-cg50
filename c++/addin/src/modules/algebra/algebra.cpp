@@ -3034,6 +3034,7 @@ static std::optional<std::vector<std::string>> combined_binomial_series_route(Ar
     return out;
 }
 
+#if 0
 static std::optional<std::vector<Rational>> maclaurin_series_coeffs(Arena &a, NodeId n, std::string const &var, int degree)
 {
     auto zero = [&]() { return std::vector<Rational>(degree + 1, Rational{0, 1}); };
@@ -3186,6 +3187,7 @@ static std::optional<std::vector<std::string>> maclaurin_exp_route(Arena &a, std
     out.push_back(series_answer_text(a, *coeffs, var));
     return out;
 }
+#endif
 
 static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, std::string const &inner)
 {
@@ -6711,29 +6713,6 @@ static std::optional<std::vector<std::string>> eccentricity_e_solve_route_key(st
     return out;
 }
 
-static std::optional<std::vector<std::string>> taylor_limit_ln_one_route_key(std::string const &key)
-{
-    if(key == "taylor(ln(x),x,1,2)" || key == "taylor(log(x),x,1,2)" ||
-       key == "series(ln(x),x,1,2)" || key == "series(log(x),x,1,2)") {
-        return std::vector<std::string>{
-            "f(x) = ln(x)",
-            "f(1)=0",
-            "f'(x)=1/x, f'(1)=1",
-            "f''(x)=-1/x^2, f''(1)=-1",
-            "ln(x) = (x-1) - 1/2*(x-1)^2 + ...",
-        };
-    }
-    if(key == "taylor((1+ln(x))^2,x,1,3)" || key == "taylor((ln(x)+1)^2,x,1,3)" ||
-       key == "series((1+ln(x))^2,x,1,3)" || key == "series((ln(x)+1)^2,x,1,3)") {
-        return std::vector<std::string>{
-            "y=(1+ln(x))^2",
-            "y(1)=1, y'(1)=2, y''(1)=0, y'''(1)=-2",
-            "(1+ln(x))^2 = 1 + 2*(x-1) - 1/3*(x-1)^3 + ...",
-        };
-    }
-    return std::nullopt;
-}
-
 static std::optional<std::string> limit_body_key(std::string const &key)
 {
     for(std::string const &name : {"limit(", "lim(", "limite("}) {
@@ -6848,21 +6827,6 @@ static std::optional<std::vector<std::string>> limit_lhospital_exp_sin_cos_route
         "g'(x)=2*sec(2*x)^2",
         "lim f/g = f'(pi/2)/g'(pi/2)",
         "-3/2",
-    };
-}
-
-static std::optional<std::vector<std::string>> taylor_x4_sin2_pi8_route_key(std::string const &key)
-{
-    if(key != "taylor(x^4sin(2x),x,pi,8)" && key != "series(x^4sin(2x),x,pi,8)" &&
-       key != "taylor(x^4*sin(2*x),x,pi,8)" && key != "series(x^4*sin(2*x),x,pi,8)")
-        return std::nullopt;
-    return std::vector<std::string>{
-        "u=x^4, v=sin(2*x)",
-        "u'=4*x^3, u''=12*x^2, u'''=24*x, u''''=24",
-        "v''''=16sin(2*x), v'''''=32cos(2*x), v''''''=-64sin(2*x), v'''''''=-128cos(2*x), v''''''''=256sin(2*x)",
-        "f^(8)(x)=x^4*256sin(2x)+8*4x^3*(-128cos(2x))+28*12x^2*(-64sin(2x))+56*24x*32cos(2x)+70*24*16sin(2x)",
-        "f^(8)(pi)=-4096*pi^3+43008*pi",
-        "coeff=(f^(8)(pi))/8!=(336*pi-32*pi^3)/315",
     };
 }
 
@@ -23011,12 +22975,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         {
             std::string key = compact_input_key(req.expr);
             if(auto ecc = eccentricity_e_solve_route_key(key)) return *ecc;
-            if(auto tl = taylor_limit_ln_one_route_key(key)) return *tl;
             if(auto ll = limit_ln_one_route_key(key)) return *ll;
             if(auto ls = limit_ln_square_one_route_key(key)) return *ls;
             if(auto lh = limit_lhospital_tan_cosec_route_key(key)) return *lh;
             if(auto le = limit_lhospital_exp_sin_cos_route_key(key)) return *le;
-            if(auto tx = taylor_x4_sin2_pi8_route_key(key)) return *tx;
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
                 Request inner = req;
                 inner.mode = 6;
@@ -23603,13 +23565,9 @@ algebra_compare_transform_modes:
             return run(arena, next);
         }
         if(req.mode == 14) {
-            if(auto out = maclaurin_exp_route(arena, req.expr)) return *out;
+            if(req.method == "removed") return {"Err: unsupported function."};
             if(auto out = binomial_series_route(arena, req.expr)) return *out;
-            return {
-                "1. Start with binomial(" + req.expr + ").",
-                "2. Supported: binomial or exponential Maclaurin forms.",
-                "Answer: unsupported series form.",
-            };
+            return {"Err: unsupported series form."};
         }
         if(req.mode == 15) {
             if(auto fit = fit_constants_route(arena, req.expr)) return *fit;

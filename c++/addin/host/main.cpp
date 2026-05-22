@@ -534,10 +534,15 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
-            else if(!(inner = unwrap_call(expr, "maclaurin(")).empty() ||
-                    !(inner = unwrap_call(expr, "series(")).empty()) {
+            else if(!(inner = unwrap_call(expr, "series(")).empty()) {
                 req.mode = 14;
-                req.method = "series";
+                req.method = "binomial";
+                req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "maclaurin(")).empty() ||
+                    !(inner = unwrap_call(expr, "taylor(")).empty()) {
+                req.mode = 14;
+                req.method = "removed";
                 req.expr = inner;
             }
             else if(!(inner = unwrap_call(expr, "evalat(")).empty()) {

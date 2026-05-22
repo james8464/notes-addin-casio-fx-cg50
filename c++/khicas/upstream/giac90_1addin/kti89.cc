@@ -451,6 +451,7 @@ namespace giac {
 
   gen _taylor(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#if 0
     /* if (xcas_mode(contextptr)==0)
        return _series(g); */
     vecteur v(gen2vecteur(g));
@@ -474,6 +475,9 @@ namespace giac {
     if (is_equal(v[1]))
       return _series(makesequence(v[0],v[1],v[2]),contextptr);
     return _series(makesequence(v[0],symb_equal(v[1],x0),v[2]),contextptr);//_series(makesequence(v[0],symbolic(at_equal,makesequence(v[1],x0)),v[2]),contextptr);
+#else
+    return gensizeerr(contextptr);
+#endif
   }
   static const char _taylor_s[]="taylor";
   static define_unary_function_eval (__taylor,&_taylor,_taylor_s);

@@ -11,7 +11,6 @@ F2 calc
 diff(
 integrate(
 limit(
-series(
 solve(
 desolve(
 rsolve(

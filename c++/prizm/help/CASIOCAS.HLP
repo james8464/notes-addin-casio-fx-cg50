@@ -1,4 +1,4 @@
-@ loop for
+@loop for
 F2:for
  loop for
 Defined loop.
@@ -6,7 +6,7 @@ Req: loop counter/body.
 Opt: start,end,step.
 Ex F2: for
 @END
-@ loop in list
+@loop in list
 F2:for in
  loop in list
 Loop on all elements of a list.
@@ -14,7 +14,7 @@ Req: var,list,body.
 Opt: none.
 Ex F2: for in
 @END
-@ loop while
+@loop while
 F2:while
  loop while
 Undefined loop.
@@ -22,7 +22,7 @@ Req: condition,body.
 Opt: none.
 Ex F2: while
 @END
-@ test if
+@test if
 F2:if
  test if
 Test
@@ -30,13 +30,13 @@ Req: condition,true branch.
 Opt: else branch.
 Ex F2: if
 @END
-@ test else
+@test else
  test else
 Test false case
 Req: false branch.
 Opt: none.
 @END
-@ function def
+@function def
 F2:f(x):=
  function def
 Definition of function.
@@ -44,13 +44,13 @@ Req: name,args,body.
 Opt: local vars.
 Ex F2: f(x):=
 @END
-@ local j,k;
+@local j,k;
  local j,k;
 Local variables declaration (Xcas)
 Req: local variable names.
 Opt: none.
 @END
-@ range(a,b)
+@range(a,b)
 F2:in range(1,10)
  range(a,b)
 In range [a,b) (a included, b excluded)
@@ -58,22 +58,16 @@ Req: a,b.
 Opt: step.
 Ex F2: in range(1,10)
 @END
-@ return res
+@return res
  return res
 Leaves current function and returns res.
 Req: result expression.
 Opt: none.
 @END
-@ edit list 
+@edit list
  edit list 
 List creation wizzard.
 Req: list values.
-Opt: none.
-@END
-@ edit matrix 
- edit matrix 
-Matrix wizard.
-Req: matrix entries.
 Opt: none.
 @END
 @!
@@ -203,14 +197,6 @@ Logical not.
 Args: not(expr).
 Ex F2: not(x>0)
 @END
-@_cdf
-F2:_icdf
-_cdf
-CDF suffix. F2: _icdf.
-Req: distribution args.
-Opt: see syntax.
-Ex F2: _icdf
-@END
 @abs(x)
 F2:abs(-3)
 F3:abs([1,2])
@@ -228,7 +214,6 @@ Approx.
 Req: x.
 Opt: none.
 Ex F2: approx(pi)
-@END
 @END
 @binomial(n,p,k)
 F2:binomial(10,.5,4)
@@ -261,14 +246,6 @@ Smallest int >= x.
 Req: x.
 Opt: none.
 Ex F2: ceiling(1.2)
-@END
-@cfactor(p)
-F2:cfactor(x^4-1)
-cfactor(p)
-Factor over C.
-Req: p.
-Opt: none.
-Ex F2: cfactor(x^4-1)
 @END
 @complete_square(expr,[x])
 F2:complete_square(x^2+6*x+11)
@@ -303,26 +280,6 @@ Compare after simp.
 Req: expr1, expr2.
 Opt: none.
 Ex F2: compare(sin(x)^2+cos(x)^2,1)
-@END
-@END
-@END
-@END
-@cartesian([x(t),y(t)],t)
-F2:cartesian([x=t+1,y=t^2],t)
-cartesian([x(t),y(t)],t)
-Eliminate t.
-Req: [x(t),y(t)], t.
-Opt: none.
-Ex F2: cartesian([x=t+1,y=t^2],t)
-@END
-@END
-@csolve(equation,x)
-F2:csolve(x^2+x+1=0)
-csolve(equation,x)
-Solve over C.
-Req: equation, x.
-Opt: none.
-Ex F2: csolve(x^2+x+1=0)
 @END
 @degree(p,x)
 F2:degree(x^4-1)
@@ -393,96 +350,6 @@ Req: expr.
 Opt: var,lo,hi.
 Ex F2: domain(sqrt(x-1),x,0,9)
 @END
-@END
-@END
-@draw_arc(x1,y1,rx,ry,theta1,theta2,c)
-F2:draw_arc(100,100,60,80,0,pi,magenta)
-draw_arc(x1,y1,rx,ry,theta1,theta2,c)
-Pixelised arc of ellipse.
-Req: x1, y1, rx, ry, theta1, theta2, c.
-Opt: none.
-Ex F2: draw_arc(100,100,60,80,0,pi,magenta)
-@END
-@draw_circle(x1,y1,r,c)
-F2:draw_circle(100,100,60,cyan+filled)
-draw_circle(x1,y1,r,c)
-Pixelised circle. Option: filled
-Req: x1, y1, r, c.
-Opt: none.
-Ex F2: draw_circle(100,100,60,cyan+filled)
-@END
-@draw_line(x1,y1,x2,y2,c)
-F2:draw_line(100,50,300,200,blue)
-draw_line(x1,y1,x2,y2,c)
-Pixelised line.
-Req: x1, y1, x2, y2, c.
-Opt: none.
-Ex F2: draw_line(100,50,300,200,blue)
-@END
-@draw_pixel(x,y,color)
-F2:draw_pixel(100,50,red)
-draw_pixel(x,y,color)
-Colors pixel x,y. Run draw_pixel() to synchronise screen.
-Req: x, y, color.
-Opt: none.
-Ex F2: draw_pixel(100,50,red)
-@END
-@draw_polygon([[x1,y1],...],c)
-F2:draw_polygon([[100,50],[30,20],[60,70]],red+filled)
-draw_polygon([[x1,y1],...],c)
-Pixelised polygon.
-Req: [[x1,y1],...], c.
-Opt: none.
-Ex F2: draw_polygon([[100,50],[30,20],[60,70]],red+filled)
-@END
-@draw_rectangle(x,y,w,h,c)
-F2:draw_rectangle(100,50,30,20,red+filled)
-draw_rectangle(x,y,w,h,c)
-Rectangle.
-Req: x, y, w, h, c.
-Opt: none.
-Ex F2: draw_rectangle(100,50,30,20,red+filled)
-@END
-@draw_string(s,x,y,c)
-F2:draw_string("Bonjour",80,60)
-draw_string(s,x,y,c)
-Draw string s at pixel x,y
-Req: s, x, y, c.
-Opt: none.
-Ex F2: draw_string("Bonjour",80,60)
-@END
-@erf(x)
-F2:erf(1.2)
-erf(x)
-Error function of x.
-Req: x.
-Opt: none.
-Ex F2: erf(1.2)
-@END
-@erfc(x)
-F2:erfc(1.2)
-erfc(x)
-Complementary error function of x.
-Req: x.
-Opt: none.
-Ex F2: erfc(1.2)
-@END
-@euler(n)
-F2:euler(25)
-euler(n)
-Euler phi.
-Req: n.
-Opt: none.
-Ex F2: euler(25)
-@END
-@evalc(z)
-F2:evalc(1/(1+i*sqrt(3)))
-evalc(z)
-Write z=x+i*y.
-Req: z.
-Opt: none.
-Ex F2: evalc(1/(1+i*sqrt(3)))
-@END
 @exact(x)
 F2:exact(1.2)
 exact(x)
@@ -498,30 +365,6 @@ Expand.
 Req: expr.
 Opt: none.
 Ex F2: expand((x+1)^3)
-@END
-@exp2trig(expr)
-F2:exp2trig(exp(i*x))
-exp2trig(expr)
-Exp to trig.
-Req: expr.
-Opt: none.
-Ex F2: exp2trig(exp(i*x))
-@END
-@exponential_regression(Xlist,Ylist)
-F2:exponential_regression([1,2,3],[2,5,8])
-exponential_regression(Xlist,Ylist)
-Exp regression.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: exponential_regression([1,2,3],[2,5,8])
-@END
-@exponentiald(lambda,x)
-F2:exponentiald(5.1,3.4)
-exponentiald(lambda,x)
-Exponential dist. Use _cdf/_icdf.
-Req: lambda, x.
-Opt: none.
-Ex F2: exponentiald(5.1,3.4)
 @END
 @factor(p,[x])
 F2:factor(x^4-1)
@@ -557,34 +400,6 @@ Req: x.
 Opt: none.
 Ex F2: floor(pi)
 @END
-@fourier_an(f,x,T,n,a)
-F2:fourier_an(x^2,n)
-F3:fourier_an(x^2,x,2*pi,n,-pi)
-fourier_an(f,x,T,n,a)
-Cosine Fourier coefficients of f
-Req: f, x, T, n, a.
-Opt: none.
-Ex F2: fourier_an(x^2,n)
-Ex F3: fourier_an(x^2,x,2*pi,n,-pi)
-@END
-@fourier_bn(f,x,T,n,a)
-F2:fourier_bn(x^2,n)
-F3:fourier_bn(x^2,x,2*pi,n,-pi)
-fourier_bn(f,x,T,n,a)
-Sine Fourier coefficients of f
-Req: f, x, T, n, a.
-Opt: none.
-Ex F2: fourier_bn(x^2,n)
-Ex F3: fourier_bn(x^2,x,2*pi,n,-pi)
-@END
-@fourier_cn(f,x,T,n,a)
-F2:fourier_cn(x^2,x,2*pi,n,-pi)
-fourier_cn(f,x,T,n,a)
-Exponential Fourier coefficients of f
-Req: f, x, T, n, a.
-Opt: none.
-Ex F2: fourier_cn(x^2,x,2*pi,n,-pi)
-@END
 @fsolve(equation,x=a..b)
 F2:fsolve(cos(x)=x,x=0..1)
 fsolve(equation,x=a..b)
@@ -601,14 +416,6 @@ Req: x.
 Opt: none.
 Ex F2: function f(x) local y; y:=x^2; return y; ffunction:;
 @END
-@gauss(q)
-F2:gauss(x^2+x*y+x*z+y^2+z^2,[x,y,z])
-gauss(q)
-Quadratic form reduction
-Req: q.
-Opt: none.
-Ex F2: gauss(x^2+x*y+x*z+y^2+z^2,[x,y,z])
-@END
 @gcd(a,b,...)
 F2:gcd(23,13)
 F3:gcd(x^2-1,x^3-1)
@@ -618,33 +425,6 @@ Req: a, b, ....
 Opt: none.
 Ex F2: gcd(23,13)
 Ex F3: gcd(x^2-1,x^3-1)
-@END
-@gramschmidt(M)
-F2:gramschmidt([[1,2,3],[4,5,6]])
-F3:gramschmidt([1,1+x],(p,q)->integrate(p*q,x,-1,1))
-gramschmidt(M)
-Gram-Schmidt orthonormalize.
-Req: M.
-Opt: none.
-Ex F2: gramschmidt([[1,2,3],[4,5,6]])
-Ex F3: gramschmidt([1,1+x],(p,q)->integrate(p*q,x,-1,1))
-@END
-@END
-@hermite(n)
-F2:hermite(10)
-hermite(n)
-n-th Hermite polynomial
-Req: n.
-Opt: none.
-Ex F2: hermite(10)
-@END
-@hilbert(n)
-F2:hilbert(4)
-hilbert(n)
-Hilbert matrix of order n.
-Req: n.
-Opt: none.
-Ex F2: hilbert(4)
 @END
 @iabcuv(a,b,c)
 F2:iabcuv(23,13,15)
@@ -686,14 +466,6 @@ Req: n.
 Opt: none.
 Ex F2: ifactor(360)
 @END
-@ilaplace(f,s,x)
-F2:ilaplace(s/(s^2+1),s,x)
-ilaplace(f,s,x)
-Inverse Laplace transform of f
-Req: f, s, x.
-Opt: none.
-Ex F2: ilaplace(s/(s^2+1),s,x)
-@END
 @inf
 F2:oo
 inf
@@ -719,15 +491,6 @@ Req: f,x,method.
 Opt: u,a,b.
 Ex F2: integrate_by(x*exp(x),x,parts)
 @END
-@interp(X,Y)
-F2:interp([1,2,3],[2,5,10])
-interp(X,Y)
-Lagrange interp.
-Req: X, Y.
-Opt: none.
-Ex F2: interp([1,2,3],[2,5,10])
-@END
-@END
 @inverse(f(x))
 F2:inverse(2*x+3)
 inverse(f(x))
@@ -745,32 +508,6 @@ Req: n.
 Opt: none.
 Ex F2: isprime(11)
 Ex F3: isprime(10)
-@END
-@jordan(A)
-F2:jordan([[1,2],[3,4]])
-F3:jordan([[1,1,-1,2,-1],[2,0,1,-4,-1],[0,1,1,1,1],[0,1,2,0,1],[0,0,-3,3,-1]])
-jordan(A)
-Jordan normal form of matrix A, returns P and D such that P^-1*A*P=D
-Req: A.
-Opt: none.
-Ex F2: jordan([[1,2],[3,4]])
-Ex F3: jordan([[1,1,-1,2,-1],[2,0,1,-4,-1],[0,1,1,1,1],[0,1,2,0,1],[0,0,-3,3,-1]])
-@END
-@laguerre(n,a,x)
-F2:laguerre(10)
-laguerre(n,a,x)
-n-ieme Laguerre polynomial (default a=0).
-Req: n, a, x.
-Opt: none.
-Ex F2: laguerre(10)
-@END
-@laplace(f,x,s)
-F2:laplace(sin(x),x,s)
-laplace(f,x,s)
-Laplace transform of f
-Req: f, x, s.
-Opt: none.
-Ex F2: laplace(sin(x),x,s)
 @END
 @lcm(a,b,...)
 F2:lcm(23,13)
@@ -790,16 +527,6 @@ Req: p, x.
 Opt: none.
 Ex F2: lcoeff(x^4-1)
 @END
-@legendre(n)
-F2:legendre(10)
-F3:legendre(10,t)
-legendre(n)
-n-the Legendre polynomial.
-Req: n.
-Opt: none.
-Ex F2: legendre(10)
-Ex F3: legendre(10,t)
-@END
 @limit(f,x=a)
 F2:limit(sin(x)/x,x=0)
 F3:limit(exp(-1/x),x=0,1)
@@ -810,8 +537,6 @@ Opt: none.
 Ex F2: limit(sin(x)/x,x=0)
 Ex F3: limit(exp(-1/x),x=0,1)
 @END
-@END
-@END
 @linetan(expr,x,x0)
 F2:linetan(sin(x),x,pi/2)
 linetan(expr,x,x0)
@@ -819,31 +544,6 @@ Tangent to the graph at x=x0.
 Req: expr, x, x0.
 Opt: none.
 Ex F2: linetan(sin(x),x,pi/2)
-@END
-@END
-@logarithmic_regression(Xlist,Ylist)
-F2:logarithmic_regression([1,2,3],[2,5,8])
-logarithmic_regression(Xlist,Ylist)
-Log regression.
-Req: Xlist, Ylist.
-Opt: none.
-Ex F2: logarithmic_regression([1,2,3],[2,5,8])
-@END
-@lu(A)
-F2:lu([[1,2],[3,4]])
-lu(A)
-LU decomposition LU of matrix A, P*A=L*U
-Req: A.
-Opt: none.
-Ex F2: lu([[1,2],[3,4]])
-@END
-@matpow(A,n)
-F2:matpow([[1,2],[3,4]],n)
-matpow(A,n)
-Matrix power.
-Req: A, n.
-Opt: none.
-Ex F2: matpow([[1,2],[3,4]],n)
 @END
 @match(expr,form)
 F2:match(a*x+b,2*x+3,[a,b],x)
@@ -860,18 +560,6 @@ Equate coeffs.
 Req: expr,form,vars.
 Opt: var x.
 Ex F2: coeff_match(a*x^2+b*x+c,2*x^2-3*x+5,[a,b,c],x)
-@END
-@END
-@END
-@END
-@mult_conjugate
-F2:mult_conjugate(sqrt(2)-sqrt(3))
-mult_conjugate
-Multiplier par le conjugue (sqrt).
-Req: surd/complex expression.
-Opt: none.
-Ex F2: mult_conjugate(sqrt(2)-sqrt(3))
-@END
 @END
 @normal_diff(expr,[x])
 F2:normal_diff((2*x+ln(x))^3,x)
@@ -897,16 +585,6 @@ Req: x.
 Opt: none.
 Ex F2: numer(3/4)
 @END
-@odesolve(f(t,y),[t,y],[t0,y0],t1)
-F2:odesolve(sin(t*y),[t,y],[0,1],2)
-F3:odesolve(0..pi,(t,v)->{[-v[1],v[0]]},[0,1])
-odesolve(f(t,y),[t,y],[t0,y0],t1)
-Approx. solution of differential equation y'=f(t,y) and y(t0)=y0, value for t=t1 (add curve to get intermediate values of y)
-Req: f(t,y), t1.
-Opt: t,y, t0,y0.
-Ex F2: odesolve(sin(t*y),[t,y],[0,1],2)
-Ex F3: odesolve(0..pi,(t,v)->{[-v[1],v[0]]},[0,1])
-@END
 @partfrac(p,x)
 F2:partfrac(1/(x^4-1))
 partfrac(p,x)
@@ -914,7 +592,6 @@ Partial fractions.
 Req: p, x.
 Opt: none.
 Ex F2: partfrac(1/(x^4-1))
-@END
 @END
 @param_diff([x(t),y(t)],t)
 F2:param_diff([t^2,t^3],t)
@@ -924,14 +601,6 @@ Req: [x(t),y(t)].
 Opt: t.
 Ex F2: param_diff([t^2,t^3],t)
 @END
-@END
-@END
-@END
-@END
-@END
-@END
-@END
-@END
 @poly(expr,[x])
 F2:poly(x^2-5*x+6,x)
 poly(expr,[x])
@@ -939,15 +608,6 @@ Polynomial factor/solve.
 Req: expr.
 Opt: x.
 Ex F2: poly(x^2-5*x+6,x)
-@END
-@END
-@polynomial_regression(Xlist,Ylist,n)
-F2:polynomial_regression([1,2,3],[2,5,10],2)
-polynomial_regression(Xlist,Ylist,n)
-Poly regression.
-Req: Xlist, Ylist, n.
-Opt: none.
-Ex F2: polynomial_regression([1,2,3],[2,5,10],2)
 @END
 @pour
 F2:pour j de 1 jusque 10 faire print(j,j^2); fpour;
@@ -957,22 +617,6 @@ Req: loop bounds/body.
 Opt: step.
 Ex F2: pour j de 1 jusque 10 faire print(j,j^2); fpour;
 @END
-@power_regression(Xlist,Ylist,n)
-F2:power_regression([1,2,3],[2,5,8])
-power_regression(Xlist,Ylist,n)
-Power regression.
-Req: Xlist, Ylist, n.
-Opt: none.
-Ex F2: power_regression([1,2,3],[2,5,8])
-@END
-@powmod(a,n,p)
-F2:powmod(123,456,789)
-powmod(a,n,p)
-Returns a^n mod p.
-Req: a, n, p.
-Opt: none.
-Ex F2: powmod(123,456,789)
-@END
 @proot(p)
 F2:proot(x^3+2.1*x^2+3x+4.2)
 proot(p)
@@ -980,40 +624,6 @@ Polynomial real/complex roots.
 Req: p.
 Opt: none.
 Ex F2: proot(x^3+2.1*x^2+3x+4.2)
-@END
-@q2a(expr,[vars])
-F2:q2a(x^2+3*x*y)
-F3:q2a(x^2+3*x*y,[x,y])
-q2a(expr,[vars])
-Matrix of a quadratic form
-Req: expr.
-Opt: vars.
-Ex F2: q2a(x^2+3*x*y)
-Ex F3: q2a(x^2+3*x*y,[x,y])
-@END
-@qr(A)
-F2:qr([[1,2],[3,4]])
-qr(A)
-A=Q*R factorization with Q orthogonal and R upper triangular
-Req: A.
-Opt: none.
-Ex F2: qr([[1,2],[3,4]])
-@END
-@quartile1(l)
-F2:quartile1([1,2,3])
-quartile1(l)
-Q1.
-Req: l.
-Opt: none.
-Ex F2: quartile1([1,2,3])
-@END
-@quartile3(l)
-F2:quartile3([1,2,3])
-quartile3(l)
-Q3.
-Req: l.
-Opt: none.
-Ex F2: quartile3([1,2,3])
 @END
 @quo(p,q,x)
 F2:quo(x^2-1,x-1,x)
@@ -1047,22 +657,6 @@ Req: p, q, x.
 Opt: none.
 Ex F2: rem(x^2-1,x-1,x)
 @END
-@resultant(p,q,x)
-F2:P:=x^3+p*x+q;resultant(P,P',x);
-resultant(p,q,x)
-Resultant in x of polynomials p and q.
-Req: p, q, x.
-Opt: none.
-Ex F2: P:=x^3+p*x+q;resultant(P,P',x);
-@END
-@revert(p[,x])
-F2:revert(x+x^2+x^4)
-revert(p[,x])
-Revert Taylor series
-Req: p[,x].
-Opt: none.
-Ex F2: revert(x+x^2+x^4)
-@END
 @rewrite(expr,target)
 F2:rewrite(x^2+6*x+11)
 F3:rewrite(2*x^2-8*x+3,x)
@@ -1072,14 +666,6 @@ Req: expr.
 Opt: target.
 Ex F2: rewrite(x^2+6*x+11)
 Ex F3: rewrite(2*x^2-8*x+3,x)
-@END
-@rsolve(equation,u(n),[init])
-F2:rsolve(u(n+1)=2*u(n)+3,u(n),u(0)=1)
-rsolve(equation,u(n),[init])
-Solve recurrence.
-Req: equation, u(n).
-Opt: init.
-Ex F2: rsolve(u(n+1)=2*u(n)+3,u(n),u(0)=1)
 @END
 @si
 F2:f(x):=si x>0 alors x; sinon -x; fsi;// valeur absolue
@@ -1115,23 +701,6 @@ Opt: method=auto. Use x=lo..hi for bounded trig.
 Ex F2: solve(x^2-x-1=0,x,method=factor)
 Ex F3: solve(2*sin(x)+1=0,x=0..2*pi,method=cast)
 @END
-@solve_by(equation,x,method)
-F2:solve_by(x^2-5*x+6=0,x,factor)
-solve_by(equation,x,method)
-Forced solve method.
-Req: eq,x,method.
-Opt: lo,hi.
-Ex F2: solve_by(x^2-5*x+6=0,x,factor)
-@END
-@solve_trig_by(eq,var,method)
-F2:solve_trig_by(2*sin(x)+1=0,x,bounded)
-solve_trig_by(eq,var,method)
-Compat alias; prefer solve(...).
-Req: eq,var,method.
-Opt: lo,hi,max.
-Ex F2: solve_trig_by(2*sin(x)+1=0,x,bounded)
-@END
-@END
 @subst(a,b=c)
 F2:subst(x^2,x=3)
 subst(a,b=c)
@@ -1156,22 +725,6 @@ Req: f, k, m, M.
 Opt: none.
 Ex F2: sum(k,k,1,n)
 @END
-@svd(A)
-F2:svd([[1,2],[3,4]])
-svd(A)
-Singular Value Decomposition, returns U orthogonal, S vector of singular values, Q orthogonal such that A=U*diag(S)*tran(Q).
-Req: A.
-Opt: none.
-Ex F2: svd([[1,2],[3,4]])
-@END
-@tabvar(f,[x=a..b])
-F2:tabvar(sqrt(x^2+x+1))
-tabvar(f,[x=a..b])
-Variation table.
-Req: f.
-Opt: x=a..b.
-Ex F2: tabvar(sqrt(x^2+x+1))
-@END
 @tantque
 F2:j:=13; tantque j!=1 faire j:=when(even(j),j/2,3j+1); print(j); ftantque;
 tantque
@@ -1180,7 +733,6 @@ Req: see syntax.
 Opt: none.
 Ex F2: j:=13; tantque j!=1 faire j:=when(even(j),j/2,3j+1); print(j); ftantque;
 @END
-@END
 @tangent_line(expr,x,x0)
 F2:tangent_line(x^2,x,3)
 tangent_line(expr,x,x0)
@@ -1188,22 +740,6 @@ Tangent at x0.
 Req: expr, x, x0.
 Opt: none.
 Ex F2: tangent_line(x^2,x,3)
-@END
-@tchebyshev1(n)
-F2:tchebyshev1(10)
-tchebyshev1(n)
-Tchebyshev polynomial 1st kind: cos(n*x)=T_n(cos(x))
-Req: n.
-Opt: none.
-Ex F2: tchebyshev1(10)
-@END
-@tchebyshev2(n)
-F2:tchebyshev2(10)
-tchebyshev2(n)
-Tchebyshev polynomial 2nd kind: sin((n+1)*x)=sin(x)*U_n(cos(x))
-Req: n.
-Opt: none.
-Ex F2: tchebyshev2(10)
 @END
 @tcollect(expr)
 F2:tcollect(sin(x)+cos(x))
@@ -1229,14 +765,6 @@ Req: expr.
 Opt: none.
 Ex F2: tlin(sin(x)^3)
 @END
-@transform(expr,[form])
-F2:transform((x+1)^2-(x^2+2*x+1))
-transform(expr,[form])
-Transform/rearrange expr.
-Req: expr.
-Opt: form.
-Ex F2: transform((x+1)^2-(x^2+2*x+1))
-@END
 @xform(expr,target)
 F2:xform(x^2+2*x+1,(x+1)^2)
 xform(expr,target)
@@ -1244,14 +772,6 @@ Transform to target form.
 Req: expr, target.
 Opt: none.
 Ex F2: xform(x^2+2*x+1,(x+1)^2)
-@END
-@trig2exp(expr)
-F2:trig2exp(cos(x)^3)
-trig2exp(expr)
-Trig to complex exp.
-Req: expr.
-Opt: none.
-Ex F2: trig2exp(cos(x)^3)
 @END
 @trig_prove(lhs,rhs)
 F2:trig_prove(sin(x)^2+cos(x)^2,1)
@@ -1306,12 +826,4 @@ Req: expr or eq.
 Opt: target.
 Ex F2: trigtan(cos(x)^4)
 Ex F3: trigtan(sin(x)^4+cos(x)^2=1)
-@END
-@uniformd(a,b,x)
-F2:uniformd(0,1,.4)
-uniformd(a,b,x)
-uniform law on [a,b] of density 1/(b-a)
-Req: a, b, x.
-Opt: none.
-Ex F2: uniformd(0,1,.4)
 @END

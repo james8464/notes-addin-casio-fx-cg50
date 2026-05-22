@@ -3347,6 +3347,7 @@ namespace giac {
 
   // "unary" version
   static const char _series_s []="series";
+#if 0
   gen _series(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type==_SPOL1)
@@ -3424,12 +3425,18 @@ namespace giac {
       return gentoomanyargs(_series_s);
     return series(v[0],v[1],v[2],v[3].val,v[4].val,contextptr);
   }
+#else
+  gen _series(const gen & args,GIAC_CONTEXT){
+    if ( args.type==_STRNG && args.subtype==-1) return  args;
+    return gensizeerr(contextptr);
+  }
+#endif
   static define_unary_function_eval (__series,&_series,_series_s);
   define_unary_function_ptr5( at_series ,alias_at_series,&__series,0,true);
 
-#if 1
   // "unary" version
   static const char _revert_s []="revert";
+#if 0
   gen _revert(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type==_SPOL1){
@@ -3478,9 +3485,14 @@ namespace giac {
     gen remains;
     return sparse_poly12gen(res,x,remains,false);
   }
+#else
+  gen _revert(const gen & args,GIAC_CONTEXT){
+    if ( args.type==_STRNG && args.subtype==-1) return  args;
+    return gensizeerr(contextptr);
+  }
+#endif
   static define_unary_function_eval (__revert,&_revert,_revert_s);
   define_unary_function_ptr5( at_revert ,alias_at_revert,&__revert,0,true);
-#endif
   
   static const char _bounded_function_s []="bounded_function";
   gen _bounded_function(const gen & args,GIAC_CONTEXT){
@@ -3549,4 +3561,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-
