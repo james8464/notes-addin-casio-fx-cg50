@@ -243,12 +243,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
 
     auto show = [&](NodeId n) { return format_expr(arena, n); };
 
-    auto emit = [&](std::string const &eq, std::string const &sub, NodeId res) {
-        out.push_back(eq);
-        if(!sub.empty()) {
-            std::string prefix = in.target + " = ";
-            out.push_back(sub.rfind(prefix, 0) == 0 ? "= " + sub.substr(prefix.size()) : "= " + sub);
-        }
+    auto append_value = [&](NodeId res) {
         out.push_back(in.target + " = " + show(res));
         double dv = 0;
         if(node_to_double(arena, res, dv)) {
@@ -266,6 +261,15 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
             std::string dec = format_decimal(dv, sf);
             if(!dec.empty() && dec != show(res)) out.push_back(in.target + " = " + dec + (unit.empty() ? "" : (" " + unit)));
         }
+    };
+
+    auto emit = [&](std::string const &eq, std::string const &sub, NodeId res) {
+        out.push_back(eq);
+        if(!sub.empty()) {
+            std::string prefix = in.target + " = ";
+            out.push_back(sub.rfind(prefix, 0) == 0 ? "= " + sub.substr(prefix.size()) : "= " + sub);
+        }
+        append_value(res);
     };
 
     // Direct formulas first
@@ -434,13 +438,19 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
     if(in.target == "a" && has_v && has_u && has_s) {
         NodeId top = add(arena, {power(arena, v, num(arena, 2)), neg(arena, power(arena, u, num(arena, 2)))});
         NodeId res = div(arena, top, mul(arena, {num(arena, 2), s}));
-        emit("a = (v^2-u^2)/2s", "v^2 = u^2 + 2as", res);
+        out.push_back("v^2 = u^2 + 2as");
+        out.push_back("a = (v^2-u^2)/(2s)");
+        out.push_back("= ((" + show(v) + ")^2 - (" + show(u) + ")^2)/(2*(" + show(s) + "))");
+        append_value(res);
         return out;
     }
     if(in.target == "s" && has_v && has_u && has_a) {
         NodeId top = add(arena, {power(arena, v, num(arena, 2)), neg(arena, power(arena, u, num(arena, 2)))});
         NodeId res = div(arena, top, mul(arena, {num(arena, 2), a}));
-        emit("s = (v^2-u^2)/2a", "v^2 = u^2 + 2as", res);
+        out.push_back("v^2 = u^2 + 2as");
+        out.push_back("s = (v^2-u^2)/(2a)");
+        out.push_back("= ((" + show(v) + ")^2 - (" + show(u) + ")^2)/(2*(" + show(a) + "))");
+        append_value(res);
         return out;
     }
 

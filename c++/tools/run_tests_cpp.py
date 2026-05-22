@@ -70,6 +70,8 @@ def main() -> int:
         ("edexcel_public_paper_corpus", [sys.executable, "c++/tools/golden/check_edexcel_public_paper_corpus.py"]),
         ("edexcel_paper1_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper1_downloads.py"]),
         ("edexcel_paper2_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper2_downloads.py"]),
+        ("edexcel_paper31_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper31_downloads.py"]),
+        ("edexcel_paper32_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper32_downloads.py"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),
         ("mp2_vwx_manual", [sys.executable, "c++/tools/golden/check_mp2_vwx_manual.py"]),
         ("mp2_yz_manual", [sys.executable, "c++/tools/golden/check_mp2_yz_manual.py"]),

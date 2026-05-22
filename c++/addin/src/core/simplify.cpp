@@ -395,6 +395,22 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
             return simplify(a, a.div(a.mul({num(a, -1), t}), a.mul(std::move(den))));
         }
     }
+    // Reduce a numeric numerator against a leading numeric factor in the denominator:
+    // 40/(28*cos(a)) -> 10/(7*cos(a)).
+    if(tn.kind == NodeKind::Num && bn.kind == NodeKind::Mul && !bn.kids.empty()) {
+        Node const &d0 = a.get(bn.kids[0]);
+        if(d0.kind == NodeKind::Num && d0.num.den == 1) {
+            Rational q = divq(tn.num, d0.num);
+            if(q.num != tn.num.num || q.den != d0.num.num) {
+                std::vector<NodeId> den;
+                den.reserve(bn.kids.size());
+                if(q.den != 1) den.push_back(num(a, q.den, 1));
+                for(std::size_t i = 1; i < bn.kids.size(); ++i) den.push_back(bn.kids[i]);
+                NodeId newb = den.empty() ? num(a, 1) : (den.size() == 1 ? den[0] : a.mul(std::move(den)));
+                return simplify(a, a.div(num(a, q.num, 1), newb));
+            }
+        }
+    }
     // Extract and divide an integer factor from (k*...)/n where k,n are integers
     if(tn.kind == NodeKind::Mul && bn.kind == NodeKind::Num && bn.num.den == 1) {
         for(size_t factor_i = 0; factor_i < tn.kids.size(); ++factor_i) {
