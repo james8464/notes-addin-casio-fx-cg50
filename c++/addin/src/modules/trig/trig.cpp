@@ -9177,6 +9177,24 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter trig expression."};
+    {
+        std::string key = compact_key(req.expr);
+        for(std::string v : {"theta", "x", "u"}) {
+            std::string a = "1-cos(2" + v + ")";
+            std::string b = "tan(" + v + ")sin(2" + v + ")";
+            if(key == a + "=" + b || key == b + "=" + a) {
+                return casio::exam_block(
+                    "trig identity",
+                    {
+                        "1-cos(2*" + v + ") = 2sin(" + v + ")^2",
+                        "tan(" + v + ")*sin(2*" + v + ") = (sin(" + v + ")/cos(" + v + "))*2sin(" + v + ")cos(" + v + ")",
+                        "= 2sin(" + v + ")^2",
+                    },
+                    "1-cos(2*" + v + ") = tan(" + v + ")*sin(2*" + v + ")"
+                );
+            }
+        }
+    }
 
     if(req.mode == 1) {
         // Prove identity: input is "LHS\\nRHS" (route line ignored).

@@ -39,6 +39,7 @@ struct Poly2
 static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p);
 static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out);
 static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power);
+static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
 static std::string sol_rhs(std::string const &line);
@@ -2630,8 +2631,11 @@ static std::optional<TwoLinPF> two_linear_pf_data(Arena &a, NodeId parsed, std::
     if(!is_zero(B)) ts.push_back(rat_node_text(a, B) + "/(" + l2s + ")");
     std::string ans;
     for(std::size_t i = 0; i < ts.size(); ++i) {
-        if(i) ans += " + ";
-        ans += ts[i];
+        if(i && !ts[i].empty() && ts[i][0] == '-') ans += " - " + ts[i].substr(1);
+        else {
+            if(i) ans += " + ";
+            ans += ts[i];
+        }
     }
     return TwoLinPF{A, B, aa, bb, cc, dd, l1s, l2s, ans};
 }
@@ -2760,6 +2764,34 @@ static std::optional<std::vector<std::string>> partial_fraction_linear_over_line
         "= " + final_form,
         final_form,
     };
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_quadratic_over_two_linear(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &d = a.get(parsed);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_of(a, d.a, var);
+    auto den = poly_of(a, d.b, var);
+    if(!num || !den || !num->ok || !den->ok || is_zero(num->a2) || is_zero(den->a2)) return std::nullopt;
+    Rational q = r_div(num->a2, den->a2);
+    Poly2 rem = sub_poly(*num, scale_poly(*den, q));
+    if(!is_zero(rem.a2)) return std::nullopt;
+    NodeId rem_div = casio::div(a, poly2_to_node(a, rem, var), d.b);
+    auto pf = partial_fraction_two_linear_symbolic(a, rem_div, var);
+    if(!pf) return std::nullopt;
+    std::string qtxt = rat_node_text(a, q);
+    std::string den_txt = format_expr(a, d.b);
+    std::string rem_txt = format_expr(a, poly2_to_node(a, rem, var));
+    std::string tail = pf->empty() ? "" : pf->back();
+    std::string ans = signed_sum_text(qtxt, tail);
+    std::vector<std::string> out{
+        format_expr(a, parsed),
+        "Divide: " + format_expr(a, d.a) + " = " + qtxt + "*(" + den_txt + ") + (" + rem_txt + ")",
+        "= " + qtxt + " + (" + rem_txt + ")/(" + den_txt + ")",
+    };
+    out.insert(out.end(), pf->begin(), pf->end());
+    out.push_back(ans);
+    return out;
 }
 
 static std::optional<std::vector<std::string>> partial_fraction_x2_linear(Arena &a, NodeId parsed, std::string const &raw, std::string const &var)
@@ -6167,18 +6199,146 @@ static std::optional<std::vector<std::string>> factor_poly_any_route(Arena &a, N
 next_root:
         if(!found) break;
     }
-    if(p.c.size() != 1 || roots.empty()) return std::nullopt;
+    if(roots.empty()) return std::nullopt;
+    if(p.c.size() != 1 && p.c.size() != 3) return std::nullopt;
     std::sort(roots.begin(), roots.end(), [](std::pair<Rational, int> const &u, std::pair<Rational, int> const &v) {
         return r_cmp(u.first, v.first) < 0;
     });
-    std::string factored = is_zero(r_sub(p.c[0], Rational{1, 1})) ? "" : format_rat(a, p.c[0]) + "*";
+    std::string factored;
+    if(p.c.size() == 1) factored = is_zero(r_sub(p.c[0], Rational{1, 1})) ? "" : format_rat(a, p.c[0]) + "*";
     for(auto const &rm : roots) {
         std::string f = linear_factor_from_root(a, var, rm.first);
         factored += rm.second == 1 ? f : f + "^" + std::to_string(rm.second);
         factored += "*";
     }
+    if(p.c.size() == 3) {
+        Poly2 q{p.c[2], p.c[1], p.c[0], true};
+        factored += "(" + format_expr(a, poly2_to_node(a, q, var)) + ")*";
+    }
     if(!factored.empty() && factored.back() == '*') factored.pop_back();
     return std::vector<std::string>{format_expr(a, n), "= " + factored, factored};
+}
+
+static std::string sum_factor_text(Arena &a, Rational c, std::string const &body)
+{
+    c.normalize();
+    if(is_zero(c)) return "";
+    if(c.num == c.den) return body;
+    if(c.num == -c.den) return "-(" + body + ")";
+    return rat_node_text(a, c) + "*(" + body + ")";
+}
+
+static void append_signed_term(std::string &line, std::string term)
+{
+    term = trim_text(term);
+    if(term.empty()) return;
+    if(line.empty()) {
+        line = term;
+        return;
+    }
+    if(term[0] == '-') line += " - " + trim_text(term.substr(1));
+    else line += " + " + term;
+}
+
+static bool geometric_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, NodeId &base)
+{
+    coef = Rational{1, 1};
+    base = 0;
+    std::vector<NodeId> factors;
+    collect_mul_factors(a, term, factors);
+    for(NodeId f : factors) {
+        Node const &x = a.get(f);
+        if(x.kind == NodeKind::Num) {
+            coef = r_mul(coef, x.num);
+            continue;
+        }
+        if(x.kind == NodeKind::Pow) {
+            Node const &e = a.get(x.b);
+            if(e.kind == NodeKind::Sym && e.text == var && !contains_symbol(a, x.a, var) && !base) {
+                base = x.a;
+                continue;
+            }
+        }
+        return false;
+    }
+    return base != 0;
+}
+
+static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::string const &raw)
+{
+    std::string body = unwrap_call_text(raw, "sum");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() != 4) return std::nullopt;
+    auto parse_int = [](std::string s) -> std::optional<long long> {
+        s = trim_text(s);
+        if(s.empty()) return std::nullopt;
+        char *end = nullptr;
+        long long v = std::strtoll(s.c_str(), &end, 10);
+        return end && *end == '\0' ? std::optional<long long>{v} : std::nullopt;
+    };
+    std::string expr_txt = trim_text(parts[0]);
+    std::string var = trim_text(parts[1]);
+    auto lo = parse_int(parts[2]);
+    auto hi = parse_int(parts[3]);
+    if(var.empty() || !lo || !hi || *hi < *lo || *hi - *lo > 300) return std::nullopt;
+
+    NodeId expr = casio::parse_expr(a, expr_txt);
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    PolyAny poly{{Rational{0, 1}}, true};
+    struct GeoTerm { Rational coef; NodeId base; };
+    std::vector<GeoTerm> geos;
+    for(NodeId term : terms) {
+        Rational c{1, 1};
+        NodeId base = 0;
+        if(geometric_power_term(a, term, var, c, base)) {
+            geos.push_back(GeoTerm{c, base});
+            continue;
+        }
+        auto p = poly_any_of(a, term, var);
+        if(!p || !p->ok || p->c.size() > 4) return std::nullopt;
+        poly = poly_any_add(poly, *p);
+    }
+
+    NodeId total = casio::num(a, 0);
+    for(long long k = *lo; k <= *hi; ++k) {
+        NodeId sub = exact_eval_simplify(a, clone_with_substitution(a, expr, var, casio::num(a, k)));
+        total = exact_eval_simplify(a, casio::add(a, {total, sub}));
+    }
+    std::string formula;
+    long long m = *lo, n = *hi, count = n - m + 1;
+    auto s1 = [&] {
+        std::string top = std::to_string(n) + "*" + std::to_string(n + 1) + "/2";
+        if(m == 1) return top;
+        return top + " - " + std::to_string(m - 1) + "*" + std::to_string(m) + "/2";
+    };
+    auto s2 = [&] {
+        std::string top = std::to_string(n) + "*" + std::to_string(n + 1) + "*" + std::to_string(2 * n + 1) + "/6";
+        if(m == 1) return top;
+        return top + " - " + std::to_string(m - 1) + "*" + std::to_string(m) + "*" + std::to_string(2 * m - 1) + "/6";
+    };
+    auto s3 = [&] {
+        std::string top = "(" + std::to_string(n) + "*" + std::to_string(n + 1) + "/2)^2";
+        if(m == 1) return top;
+        return top + " - (" + std::to_string(m - 1) + "*" + std::to_string(m) + "/2)^2";
+    };
+    if(poly.c.size() > 0) append_signed_term(formula, sum_factor_text(a, poly.c[0], std::to_string(count)));
+    if(poly.c.size() > 1) append_signed_term(formula, sum_factor_text(a, poly.c[1], s1()));
+    if(poly.c.size() > 2) append_signed_term(formula, sum_factor_text(a, poly.c[2], s2()));
+    if(poly.c.size() > 3) append_signed_term(formula, sum_factor_text(a, poly.c[3], s3()));
+    for(auto const &g : geos) {
+        std::string b = format_expr(a, g.base);
+        std::string geom;
+        auto br = as_num(a, g.base);
+        if(br && br->num == br->den) geom = std::to_string(count);
+        else geom = "(" + b + "^" + std::to_string(n + 1) + "-" + b + "^" + std::to_string(m) + ")/(" + b + "-1)";
+        append_signed_term(formula, sum_factor_text(a, g.coef, geom));
+    }
+    if(formula.empty()) formula = "0";
+    std::string sigma = "sum_{" + var + "=" + std::to_string(m) + "}^" + std::to_string(n) + " (" + format_expr(a, expr) + ")";
+    std::string ans = format_expr(a, total);
+    return std::vector<std::string>{sigma, "= " + formula, "= " + ans, ans};
 }
 
 static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
@@ -23007,6 +23167,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         {
             std::string key = compact_input_key(req.expr);
             if(auto ha = half_angle_sec_tan_identity_route_key(key)) return *ha;
@@ -23329,6 +23490,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId parsed = casio::parse_expr(arena, req.expr);
             std::string pfv = pf_var_for(arena, parsed);
             if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
@@ -24849,6 +25011,7 @@ algebra_compare_transform_modes:
             }
             if(req.method == "pf" || req.method == "partfrac") {
                 std::string pfv = pf_var_for(arena, parsed);
+                if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
                 if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;

@@ -3027,47 +3027,47 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "d/d" + var + " " + var + "^2 = 2*" + var
                 );
             }
-            if(key == "sec(x)") {
+            if(key == "sec(" + var + ")") {
                 return casio::exam_block(
                     "first principles",
                     {
-                        "Use f(x+h)-f(x) over h.",
-                        "[sec(x+h)-sec(x)]/h = [1/cos(x+h)-1/cos(x)]/h.",
-                        "= [cos(x)-cos(x+h)]/[h*cos(x+h)cos(x)].",
+                        "Use f(" + var + "+h)-f(" + var + ") over h.",
+                        "[sec(" + var + "+h)-sec(" + var + ")]/h = [1/cos(" + var + "+h)-1/cos(" + var + ")]/h.",
+                        "= [cos(" + var + ")-cos(" + var + "+h)]/[h*cos(" + var + "+h)cos(" + var + ")].",
                         "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
-                        "= [2sin(x+h/2)sin(h/2)]/[h*cos(x+h)cos(x)].",
-                        "h->0: sin(h/2)/(h/2)->1 and cos(x+h)->cos(x).",
+                        "= [2sin(" + var + "+h/2)sin(h/2)]/[h*cos(" + var + "+h)cos(" + var + ")].",
+                        "h->0: sin(h/2)/(h/2)->1 and cos(" + var + "+h)->cos(" + var + ").",
                     },
-                    "d/d" + var + " sec(x) = sec(x)*tan(x)"
+                    "d/d" + var + " sec(" + var + ") = sec(" + var + ")*tan(" + var + ")"
                 );
             }
-            if(key == "sin(x)") {
+            if(key == "sin(" + var + ")") {
                 return casio::exam_block(
                     "first principles",
                     {
-                        "Use [f(x+h)-f(x)]/h.",
-                        "[sin(x+h)-sin(x)]/h.",
-                        "Use sin(x+h)=sin(x)cos(h)+cos(x)sin(h).",
-                        "sin(x+h)-sin(x)=sin(x)cos(h)+cos(x)sin(h)-sin(x).",
-                        "= sin(x)(cos(h)-1)+cos(x)sin(h).",
-                        "[sin(x+h)-sin(x)]/h = sin(x)*(cos(h)-1)/h + cos(x)*sin(h)/h.",
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "[sin(" + var + "+h)-sin(" + var + ")]/h.",
+                        "Use sin(" + var + "+h)=sin(" + var + ")cos(h)+cos(" + var + ")sin(h).",
+                        "sin(" + var + "+h)-sin(" + var + ")=sin(" + var + ")cos(h)+cos(" + var + ")sin(h)-sin(" + var + ").",
+                        "= sin(" + var + ")(cos(h)-1)+cos(" + var + ")sin(h).",
+                        "[sin(" + var + "+h)-sin(" + var + ")]/h = sin(" + var + ")*(cos(h)-1)/h + cos(" + var + ")*sin(h)/h.",
                         "h->0: (cos(h)-1)/h->0 and sin(h)/h->1.",
                     },
-                    "d/d" + var + " sin(x) = cos(x)"
+                    "d/d" + var + " sin(" + var + ") = cos(" + var + ")"
                 );
             }
-            if(key == "cos(x)") {
+            if(key == "cos(" + var + ")") {
                 return casio::exam_block(
                     "first principles",
                     {
-                        "Use [f(x+h)-f(x)]/h.",
-                        "[cos(x+h)-cos(x)]/h.",
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "[cos(" + var + "+h)-cos(" + var + ")]/h.",
                         "Use cos(A)-cos(B)=-2sin((A+B)/2)sin((A-B)/2).",
-                        "cos(x+h)-cos(x)=-2sin(x+h/2)sin(h/2).",
-                        "[cos(x+h)-cos(x)]/h = -sin(x+h/2)*[sin(h/2)/(h/2)].",
-                        "h->0: sin(h/2)/(h/2)->1 and sin(x+h/2)->sin(x).",
+                        "cos(" + var + "+h)-cos(" + var + ")=-2sin(" + var + "+h/2)sin(h/2).",
+                        "[cos(" + var + "+h)-cos(" + var + ")]/h = -sin(" + var + "+h/2)*[sin(h/2)/(h/2)].",
+                        "h->0: sin(h/2)/(h/2)->1 and sin(" + var + "+h/2)->sin(" + var + ").",
                     },
-                    "d/d" + var + " cos(x) = -sin(x)"
+                    "d/d" + var + " cos(" + var + ") = -sin(" + var + ")"
                 );
             }
             if(auto k = scaled_var_arg_from_key(key, "sin", var); k && *k != 1) {

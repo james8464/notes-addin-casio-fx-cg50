@@ -30,6 +30,18 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["Given domain: x.", "ERR:"],
     ),
     (
+        "June 2018 Q4 finite AP/GP sum",
+        ["--alg", "sum(3+5*r+2^r,r,1,16)"],
+        ["sum_{r = 1}^16", "3*(16)", "5*(16*17/2)", "(2^17-2^1)/(2-1)", "131798"],
+        ["Expected )", "ERR:"],
+    ),
+    (
+        "June 2018 Q6 cubic factor theorem",
+        ["--alg", "factor(-3*x^3+8*x^2-9*x+10)"],
+        ["(x - 2)", "- 3*x^2 + 2*x - 5"],
+        ["numeric coeffs needed", "ERR:"],
+    ),
+    (
         "June 2018 Q7i sec equation",
         ["--trig", "4*sin(x)=sec(x),x,0,pi/2,10,method=identity"],
         ["sec(x)=1/cos(x)", "sin(2x)=1/2", "pi/12", "5*pi/12"],
@@ -40,6 +52,24 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["--trig", "5*sin(theta)-5*cos(theta)=2,theta,0,360,10,method=rform"],
         ["R=", "alpha=", "sin(theta+alpha)", "theta = [61.4299401894, 208.570059811]"],
         ["Write a*sin(A)+b*cos(A)=R*sin(A+alpha).\n3. Then solve", "ERR:"],
+    ),
+    (
+        "June 2018 Q9 first principles cos theta",
+        ["--derive", "cos(theta),theta,method=first_principles"],
+        ["[cos(theta+h)-cos(theta)]/h", "cos(A)-cos(B)", "d/dtheta cos(theta) = -sin(theta)"],
+        ["d/dtheta(cos(theta))", "ERR:"],
+    ),
+    (
+        "June 2018 Q11 proper partial fractions",
+        ["--alg", "partfrac((1+11*x-6*x^2)/((x-3)*(1-2*x)))"],
+        ["Divide:", "= 3 +", "A/(x - 3)+B/(- 2*x + 1)", "3 + 4/(x - 3) - 2/(- 2*x + 1)"],
+        ["3 + +", "ERR:"],
+    ),
+    (
+        "June 2018 Q12 double-angle tan identity proof",
+        ["--trig", "1-cos(2*theta)=tan(theta)*sin(2*theta),method=identity"],
+        ["1-cos(2*theta) = 2sin(theta)^2", "tan(theta)*sin(2*theta)", "= 2sin(theta)^2"],
+        ["theta = []", "x = []", "ERR:"],
     ),
     (
         "Paper 2 identity tan polynomial",
