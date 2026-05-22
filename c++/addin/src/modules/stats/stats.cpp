@@ -148,6 +148,11 @@ static std::optional<long double> parse_scalar(std::string text)
     std::string lo = lower(text);
     if(lo == "inf" || lo == "+inf") return std::numeric_limits<long double>::infinity();
     if(lo == "-inf") return -std::numeric_limits<long double>::infinity();
+    if(starts_with(lo, "sqrt(") && text.back() == ')') {
+        auto v = parse_scalar(text.substr(5, text.size() - 6));
+        if(v && *v >= 0.0L) return std::sqrt((double)*v);
+        return std::nullopt;
+    }
     auto parts = split_on(text, '/');
     if(parts.size() == 2) {
         auto a = parse_scalar(parts[0]);
@@ -286,18 +291,40 @@ static std::vector<std::string> binomial(std::string const &expr)
 
 static std::vector<std::string> normal(std::string const &expr)
 {
+    auto args = split_on(expr, ',');
+    std::vector<std::string> kept;
+    for(auto const &arg : args) {
+        std::string lo = lower(arg);
+        if(lo == "cdf" || lo == "pmf" || lo == "tail") continue;
+        kept.push_back(trim(arg));
+    }
     auto nums = parse_call_numbers(expr);
     if(nums.size() < 4) return {"Err: normalcdf needs mu,sigma,lo,hi."};
     long double mu = nums[0], sigma = nums[1], lo = nums[2], hi = nums[3];
     if(sigma <= 0.0L) return {"Err: sigma must be positive."};
+    auto shown = [&](int i, long double v) {
+        if(i >= 0 && i < (int)kept.size()) {
+            std::string s = trim(kept[(std::size_t)i]);
+            std::string sl = lower(s);
+            if(sl.find("sqrt") != std::string::npos || sl.find('/') != std::string::npos) return s;
+        }
+        return fmt(v);
+    };
+    std::string mu_s = shown(0, mu);
+    std::string sigma_s = shown(1, sigma);
+    bool compound_sigma = sigma_s.find("sqrt") != std::string::npos || sigma_s.find('/') != std::string::npos;
+    std::string sigma_d = compound_sigma ? "(" + sigma_s + ")" : sigma_s;
+    std::string sigma_var = compound_sigma ? "(" + sigma_s + ")^2" : sigma_s + "^2";
+    std::string lo_s = shown(2, lo);
+    std::string hi_s = shown(3, hi);
     long double z1 = (lo - mu) / sigma;
     long double z2 = (hi - mu) / sigma;
     long double ans = normal_cdf(z2) - normal_cdf(z1);
     return {
-        "X ~ N(" + fmt(mu) + ", " + fmt(sigma) + "^2)",
-        "standardise: Z = (X-" + fmt(mu) + ")/" + fmt(sigma) + " ~ N(0,1)",
-        "z1 = (" + fmt(lo) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z1),
-        "z2 = (" + fmt(hi) + "-" + fmt(mu) + ")/" + fmt(sigma) + " = " + fmt(z2),
+        "X ~ N(" + mu_s + ", " + sigma_var + ")",
+        "standardise: Z = (X-" + mu_s + ")/" + sigma_d + " ~ N(0,1)",
+        "z1 = (" + lo_s + "-" + mu_s + ")/" + sigma_d + " = " + fmt(z1),
+        "z2 = (" + hi_s + "-" + mu_s + ")/" + sigma_d + " = " + fmt(z2),
         "P(" + fmt(lo) + " < X < " + fmt(hi) + ") = Phi(" + fmt(z2) + ") - Phi(" + fmt(z1) + ") = " + fmt(ans),
     };
 }

@@ -40,7 +40,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "E9 R-form perimeter",
         ["--trig", "5*cos(theta)+12*sin(theta),method=rform"],
-        ["R=sqrt(12^2+5^2)=13", "cos(alpha)=12/13", "sin(alpha)=5/13", "13*sin(theta+atan(5/12))"],
+        ["R=sqrt(5^2+12^2)=13", "cos(alpha)=5/13", "sin(alpha)=12/13", "13*sin(theta+atan(5/12))"],
         ["Answer: = 5*cos", "ERR:"],
     ),
     (
