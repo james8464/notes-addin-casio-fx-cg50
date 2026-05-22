@@ -73,12 +73,14 @@ python3 c++/tools/golden/check_device_scope.py
 Download external A-level audit sources:
 
 ```bash
-python3 c++/tools/golden/download_a_level_audit_sources.py --force
-python3 c++/tools/golden/download_online_paper_corpus.py
+python3 c++/tools/golden/download_a_level_audit_sources.py --scope all --clean --force
+python3 c++/tools/golden/download_online_paper_corpus.py --clean --force
+python3 c++/tools/golden/check_a_level_source_downloads.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
-python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"MadAsMaths standard topics"/integration --first 2
+python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"MadAsMaths standard topics" ~/Downloads/"MadAsMaths A-level booklets" ~/Downloads/"MadAsMaths papers" ~/Downloads/"Edexcel A Level Maths past papers" ~/Downloads/"Edexcel A Level Maths support materials"
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
-python3 c++/tools/golden/check_madasmaths_full_audit.py --force-render
+python3 c++/tools/golden/check_madasmaths_full_audit.py --no-render --strict-skips
+python3 c++/tools/golden/check_a_level_audit_tracker.py
 ```
 
 Clean generated/local files (dry-run first):
@@ -100,6 +102,6 @@ Transfer files are published under `calculator_files/`, then `./compile` copies 
 ## Notes
 
 - Generated files, editor state, virtualenvs, reports, and local graph outputs are intentionally not kept in git.
-- External paper PDFs and rendered page images live under `~/Downloads`; only audit scripts and manifests belong in git.
+- External paper PDFs and rendered page images live under `~/Downloads`; only audit scripts and manual trackers belong in git.
 - `run_tests.py` is C++-only.
 - Host build outputs belong under `c++/addin/host/build/`.

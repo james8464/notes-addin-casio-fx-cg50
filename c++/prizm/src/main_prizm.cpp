@@ -84,14 +84,12 @@ const CommandItem kIntegrateCommands[] = {
     {"solve", "solve("},
     {"de", "de_solve("},
     {"defint", "defint("},
-    {"sub", "subst_int("},
-    {"parts", "parts_int("},
 };
 
 const CommandItem kCalculusCommands[] = {
     {"'", "'"},
     {"diff(", "diff("},
-    {"diff2(", "diff2("},
+    {"second", "diff("},
     {"implicit", "implicit_diff("},
     {"param d", "param_diff("},
     {"integrate(", "integrate("},
@@ -137,7 +135,6 @@ const CommandItem kArithCommands[] = {
     {"divs", "divisors("},
     {"prime", "isprime("},
     {"fact!", "factorial("},
-    {"powmod", "powmod("},
 };
 
 const FileItem kFileCommands[] = {

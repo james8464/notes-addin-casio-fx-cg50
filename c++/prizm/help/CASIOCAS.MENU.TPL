@@ -12,7 +12,7 @@ diff(
 integrate(
 limit(
 solve(
-desolve(
+de_solve(
 F3 2d
 reserved
 F4 cat

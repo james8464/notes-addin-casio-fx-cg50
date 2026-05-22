@@ -32,17 +32,18 @@ python3 c++/tools/golden/check_madasmaths_standard_manual_cases.py
 External source setup:
 
 ```bash
-python3 c++/tools/golden/download_a_level_audit_sources.py --force
+python3 c++/tools/golden/download_a_level_audit_sources.py --scope all --clean --force
 python3 c++/tools/golden/check_a_level_source_downloads.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
-python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"Edexcel A Level Maths past papers" --first 2
+python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"Edexcel A Level Maths past papers" --first 2
 ```
 
 Audit flow graph: `c++/tools/golden/a_level_audit_graph.md`.
 Manual cross-source audit tracker: `c++/tools/golden/a_level_audit_tracker.jsonl`.
 
-`download_a_level_audit_sources.py` now defaults to normal Edexcel A-level
-Maths (`--scope edexcel-9ma0`). It writes PDFs outside git:
+`download_a_level_audit_sources.py` defaults to normal Edexcel A-level Maths
+(`--scope edexcel-9ma0`). Use `--clean` to remove only managed download folders
+before redownloading. It writes PDFs outside git:
 
 - `~/Downloads/Edexcel A Level Maths past papers`
 - `~/Downloads/Edexcel A Level Maths support materials`
@@ -69,3 +70,7 @@ the ledger is expected to have no unaudited calculator-testable rows.
 
 `check_madasmaths_standard_manual_cases.py` runs hand-transcribed cases from
 rendered MadAsMaths standard-topic PDFs and records the latest local report.
+
+`check_a_level_audit_tracker.py` runs every command recorded in
+`a_level_audit_tracker.jsonl`; it is a stale-command guard, not proof of full
+manual mark-scheme coverage.

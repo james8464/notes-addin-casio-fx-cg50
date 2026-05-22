@@ -14,6 +14,7 @@ import html.parser
 import json
 import argparse
 import re
+import shutil
 import ssl
 import sys
 import time
@@ -355,6 +356,7 @@ def add_rows(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--clean", action="store_true", help="remove managed download folders before downloading")
     ap.add_argument("--force", action="store_true", help="redownload PDFs even when a valid local PDF exists")
     ap.add_argument(
         "--scope",
@@ -366,6 +368,22 @@ def main() -> int:
 
     rows: list[dict[str, object]] = []
     home = Path.home()
+    managed_dirs = [
+        home / "Downloads" / "Edexcel A Level Maths past papers",
+        home / "Downloads" / "Edexcel A Level Maths support materials",
+    ]
+    if args.scope == "all":
+        managed_dirs.extend(
+            [
+                home / "Downloads" / "MadAsMaths standard topics",
+                home / "Downloads" / "MadAsMaths A-level booklets",
+                home / "Downloads" / "MadAsMaths papers",
+            ]
+        )
+    if args.clean:
+        for path in managed_dirs:
+            if path.exists():
+                shutil.rmtree(path)
     if args.scope == "all":
         for topic, url in MADAS_STANDARD.items():
             add_rows(rows, "madas_standard", topic, url, home / "Downloads" / "MadAsMaths standard topics" / topic, args.force)

@@ -47,6 +47,7 @@ c++/tests/reports/
 c++/tools/fuzz/tui_failures.jsonl
 c++/tools/fuzz/random_exploration_graph.json
 c++/tools/fuzz/catalogue_manifest_latest.txt
+c++/tools/golden/madasmaths_standard_question_corpus.md
 
 # Python bytecode
 **/__pycache__/
