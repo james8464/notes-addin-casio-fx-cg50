@@ -113,6 +113,14 @@ def main() -> int:
         "param_area(t,t^2,t,0,1)", "param_area_y(t,t^2,t,0,1)",
         "param_volume_x(t,t^2,t,0,1)", "param_volume_y(t,t^2,t,0,1)",
         "ztest(5,4,1,10,0.05,gt)", "spark([1,2,3])",
+        "csolve(x^2+1=0,x)", "cfactor(x^2+1)", "cpartfrac(1/(x^2+1))",
+        "complex(1,2)", "arg(1+i)", "re(1+i)", "im(1+i)", "conj(1+i)",
+        "matrix(2,2,1)", "det(matrix(2,2,1))", "rref(matrix(2,2,1))",
+        "jordan(matrix(2,2,1))", "svd(matrix(2,2,1))",
+        "polar2rectangular(1,pi/3)", "rectangular2polar(1+i)",
+        "laplace(sin(x),x,s)", "ilaplace(1/(s^2+1),s,x)",
+        "fourier_an(sin(x),x,2*pi,1,0)", "taylor(ln(x),x,1,2)",
+        "normald_cdf(0)", "normald_icdf(0.5)",
     ]
     for expr in removed_alg:
         require("removed_alg_" + expr.split("(")[0], run_host("--alg", expr), ("Err: unsupported function",))

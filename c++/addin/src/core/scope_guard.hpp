@@ -19,6 +19,15 @@ inline bool contains_removed_function(std::string const &text)
         "area_between(", "param_area(", "param_area_y(",
         "param_volume_x(", "param_volume_y(", "ztest(", "spark(",
         "bool_simplify(", "prove_bool(", "nand(", "nor(",
+        "csolve(", "cfactor(", "cpartfrac(", "complex(", "arg(", "re(", "im(", "conj(",
+        "matrix(", "det(", "rref(", "tran(", "transpose(", "idn(",
+        "egv(", "egvl(", "eigenvals(", "eigenvalues(", "eigenvects(", "eigenvectors(",
+        "jordan(", "svd(", "gramschmidt(", "rank(",
+        "polar2rectangular(", "rectangular2polar(", "polar_complex(",
+        "laplace(", "ilaplace(", "invlaplace(", "fourier_an(", "fourier_bn(", "fourier_cn(",
+        "maclaurin(", "taylor(",
+        "normald_cdf(", "normald_icdf(", "randnormald(", "randnorm(",
+        "quartile1(", "quartile3(", "variance(", "stddevp(",
         "sinh(", "cosh(", "tanh(", "csch(", "sech(", "coth(", "cosech(",
         "asinh(", "acosh(", "atanh(", "acsch(", "asech(", "acoth(", "acosech(",
         "arcsinh(", "arccosh(", "arctanh(", "arcsch(", "arcsech(", "arccoth(", "arcosech(",
@@ -31,7 +40,14 @@ inline bool contains_removed_function(std::string const &text)
         folded.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     }
     return std::any_of(std::begin(names), std::end(names), [&](char const *name) {
-        return folded.find(name) != std::string::npos;
+        std::size_t pos = folded.find(name);
+        while(pos != std::string::npos) {
+            if(pos == 0) return true;
+            unsigned char before = static_cast<unsigned char>(folded[pos - 1]);
+            if(!std::isalnum(before) && folded[pos - 1] != '_') return true;
+            pos = folded.find(name, pos + 1);
+        }
+        return false;
     });
 }
 
