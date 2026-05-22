@@ -194,12 +194,11 @@ static std::string convert_abs_pipes(std::string text)
 }
 
 static constexpr std::string_view compact_words[] = {
-    "arccosec", "arcsinh", "arccosh", "arctanh", "arsinh", "arcosh", "artanh", "arcsec", "arccsc", "arccot",
+    "arccosec", "arcsec", "arccsc", "arccot",
     "arcsin", "arccos", "arctan",
-    "asinh", "acosh", "atanh", "asec", "acsc", "acot",
+    "asec", "acsc", "acot",
     "cosec",
     "asin", "acos", "atan",
-    "sinh", "cosh", "tanh",
     "sqrt", "sin", "cos", "tan", "sec", "cot",
     "abs", "exp", "log10", "log", "ln", "csc",
 };

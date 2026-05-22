@@ -1,4 +1,5 @@
 #include "device/device_solver.hpp"
+#include "core/scope_guard.hpp"
 
 namespace casio::device
 {
@@ -2476,6 +2477,10 @@ bool solve(Module module, const char *input, OutputLines &out)
     if(input == nullptr || input[0] == '\0') {
         out.add("Enter an expression first.");
         return false;
+    }
+    if(casio::contains_removed_function(input)) {
+        out.add("Err: unsupported function.");
+        return true;
     }
 
     switch(module) {

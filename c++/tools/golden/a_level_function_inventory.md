@@ -98,7 +98,7 @@ Legend:
 | `diff(f,x[,n,method])` / `derive(...)` | keep | Both | yes | Chain/product/quotient/logdiff/general rule lines. |
 | `normal_diff(expr[,x])` | typed-hidden | CasioCAS | yes | First derivative alias. |
 | `implicit_diff(eq,[x,y])` | keep | CasioCAS | yes | Differentiate both sides, collect `dy/dx`. |
-| `param_diff([x(t),y(t)],t)` | keep | CasioCAS | yes | `dx/dt`, `dy/dt`, `dy/dx`, optional second derivative. |
+| `param_diff([x(t),y(t)],t)` | keep | CasioCAS | yes | `dx/dt`, `dy/dt`, `dy/dx` only. |
 | `tangent_line(expr,x,x0)` | typed-hidden | CasioCAS/KhiCAS | yes | Tangent line route. |
 | first principles derivative | typed method | CasioCAS | yes | Host method `first_principles`. |
 | second derivative | typed method | CasioCAS | yes | `method=second`; 9MA0 includes second derivatives. |
