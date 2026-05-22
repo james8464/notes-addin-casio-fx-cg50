@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan local MadAsMaths MP2 A-Z papers for calculator-testable A-level patterns."""
+"""Scan local MadAsMaths MP1/MP2/SYN papers for calculator-testable A-level patterns."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ TOPICS: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
-MANUAL_SUITES = {
+MP2_MANUAL_SUITES = {
     "a": "mp2_ab_manual", "b": "mp2_ab_manual",
     "c": "mp2_cd_manual", "d": "mp2_cd_manual",
     "e": "mp2_efg_manual", "f": "mp2_efg_manual", "g": "mp2_efg_manual",
@@ -75,48 +75,62 @@ def main() -> int:
     if not shutil.which("pdftotext"):
         return fail("pdftotext missing")
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["MadAsMaths MP2 A-Z scan", ""]
+    lines = ["MadAsMaths MP1/MP2/SYN scan", ""]
     totals: Counter[str] = Counter()
     missing: list[str] = []
     weak: list[str] = []
-    found_pairs = [
-        code for code in "abcdefghijklmnopqrstuvwxyz"
-        if (PAPER_DIR / f"mp2_{code}.pdf").exists()
-        and (PAPER_DIR / f"mp2_{code}_solutions.pdf").exists()
-    ]
+    suites = ("mp1", "mp2", "syn")
+    found_pairs = []
+    for suite in suites:
+        for code in "abcdefghijklmnopqrstuvwxyz":
+            if (PAPER_DIR / f"{suite}_{code}.pdf").exists() and (PAPER_DIR / f"{suite}_{code}_solutions.pdf").exists():
+                found_pairs.append((suite, code))
     if not found_pairs:
         lines.append(f"skipped: no local PDFs found in {PAPER_DIR}")
         REPORT.write_text("\n".join(lines) + "\n")
         print(f"SKIP madasmaths paper scan: no local PDFs in {PAPER_DIR}")
         return 0
-    for code in "abcdefghijklmnopqrstuvwxyz":
-        paper = PAPER_DIR / f"mp2_{code}.pdf"
-        sol = PAPER_DIR / f"mp2_{code}_solutions.pdf"
-        if not paper.exists() or not sol.exists():
-            missing.append(code)
-            continue
-        paper_text = pdf_text(paper)
-        sol_text = pdf_text(sol)
-        qs = split_questions(paper_text)
-        sol_qs = split_questions(sol_text)
-        if len(qs) < 8:
-            weak.append(f"{code}: only {len(qs)} questions parsed")
-        sol_note = "ocr-low" if len(sol_qs) < 5 else "ocr-ok"
-        topic_counts: Counter[str] = Counter()
-        testable = 0
-        for qid, block in qs:
-            topics = classify(block)
-            topic_counts.update(topics)
-            totals.update(topics)
-            if any(t not in {"proof", "unclassified"} for t in topics):
-                testable += 1
-        suite = MANUAL_SUITES.get(code, "missing")
-        if suite == "missing":
-            weak.append(f"{code}: no manual suite")
+    for suite_name in suites:
+        suite_counts: Counter[str] = Counter()
+        suite_questions = 0
+        suite_testable = 0
+        lines.append(f"[{suite_name}]")
+        for code in "abcdefghijklmnopqrstuvwxyz":
+            paper = PAPER_DIR / f"{suite_name}_{code}.pdf"
+            sol = PAPER_DIR / f"{suite_name}_{code}_solutions.pdf"
+            if not paper.exists() or not sol.exists():
+                missing.append(f"{suite_name}_{code}")
+                continue
+            paper_text = pdf_text(paper)
+            sol_text = pdf_text(sol)
+            qs = split_questions(paper_text)
+            sol_qs = split_questions(sol_text)
+            placeholder = suite_name == "syn" and code in "xyz" and len(qs) == 0
+            if len(qs) < 8 and not placeholder:
+                weak.append(f"{suite_name}_{code}: only {len(qs)} questions parsed")
+            sol_note = "ocr-low" if len(sol_qs) < 5 else "ocr-ok"
+            topic_counts: Counter[str] = Counter()
+            testable = 0
+            for _qid, block in qs:
+                topics = classify(block)
+                topic_counts.update(topics)
+                totals.update(topics)
+                suite_counts.update(topics)
+                if any(t not in {"proof", "unclassified"} for t in topics):
+                    testable += 1
+            suite_questions += len(qs)
+            suite_testable += testable
+            manual_suite = MP2_MANUAL_SUITES.get(code, "none-yet") if suite_name == "mp2" else "none-yet"
+            suffix = "placeholder=coming-soon" if placeholder else " ".join(f"{k}:{topic_counts[k]}" for k in sorted(topic_counts))
+            lines.append(
+                f"{suite_name}_{code}: q={len(qs):02d} solq={len(sol_qs):02d} sol={sol_note} testable={testable:02d} manual={manual_suite} "
+                + suffix
+            )
         lines.append(
-            f"mp2_{code}: q={len(qs):02d} solq={len(sol_qs):02d} sol={sol_note} testable={testable:02d} suite={suite} "
-            + " ".join(f"{k}:{topic_counts[k]}" for k in sorted(topic_counts))
+            f"{suite_name}_totals: q={suite_questions} testable={suite_testable} "
+            + " ".join(f"{k}:{suite_counts[k]}" for k in sorted(suite_counts))
         )
+        lines.append("")
     lines.append("")
     lines.append("topic_totals: " + " ".join(f"{k}:{totals[k]}" for k in sorted(totals)))
     if missing:
