@@ -421,6 +421,15 @@ static bool catalog_hidden_category(int category){
   }
 }
 
+static bool catalog_visible_category(int category){
+  for (int shift=0;shift<=16;shift+=8){
+    int c=(category>>shift) & 0xff;
+    if (c && !catalog_hidden_category(c))
+      return true;
+  }
+  return false;
+}
+
 static bool catalog_hidden_name(const char *name){
   if (!name) return true;
 #if 0
@@ -434,7 +443,10 @@ static bool catalog_hidden_name(const char *name){
   if (!strncmp(name,"draw_",5) || !strncmp(name,"plot",4) ||
       !strncmp(name,"sinh",4) || !strncmp(name,"cosh",4) || !strncmp(name,"tanh",4) ||
       !strncmp(name,"asinh",5) || !strncmp(name,"acosh",5) || !strncmp(name,"atanh",5) ||
-      !strncmp(name,"arsinh",6) || !strncmp(name,"arcosh",6) || !strncmp(name,"artanh",6))
+      !strncmp(name,"arsinh",6) || !strncmp(name,"arcosh",6) || !strncmp(name,"artanh",6) ||
+      !strncmp(name,"fourier_",8) || !strncmp(name,"laplace",7) || !strncmp(name,"ilaplace",8))
+      return true;
+  if (!strncmp(name,"range(a,b)",10))
     return true;
   return false;
 }
@@ -743,6 +755,10 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }
     else {
       if (catalog_hidden_name(completeCat[cur].name)){
+	++cur;
+	continue;
+      }
+      if (isall && !catalog_visible_category(completeCat[cur].category)){
 	++cur;
 	continue;
       }

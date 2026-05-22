@@ -248,6 +248,36 @@ REQUIRED_PROGCMD_SURFACES = [
     '{"not(x)"',
 ]
 
+FM_ONLY_INACTIVE_CATALOG_SURFACES = [
+    "erf(x)",
+    "erfc(x)",
+    "euler(n)",
+    "exponentiald(lambda,x)",
+    "halftan(expr)",
+    "hermite(n)",
+    "iabcuv(a,b,c)",
+    "ichinrem([a,m],[b,n])",
+    "idivis(n)",
+    "iegcd(a,b)",
+    "interp(X,Y)",
+    "laguerre(n,a,x)",
+    "legendre(n)",
+    "odesolve(f(t,y),[t,y],[t0,y0],t1)",
+    "powmod(a,n,p)",
+    "proot(p)",
+    "resultant(p,q,x)",
+    "revert(p[,x])",
+    "rsolve(equation,u(n),[init])",
+    "tabvar(f,[x=a..b])",
+    "taylor(f,x=a,n,[polynom])",
+    "tchebyshev1(n)",
+    "tchebyshev2(n)",
+    "trig2exp(expr)",
+    "uniformd(a,b,x)",
+]
+
+FM_ONLY_HIDDEN_PREFIXES = ["fourier_", "laplace", "ilaplace"]
+
 
 def fail(msg: str) -> int:
     print(f"FAIL {msg}")
@@ -314,6 +344,15 @@ def main() -> int:
     for protected_prefix in ['"line"', '"nor"']:
         if protected_prefix in hidden_prefix_block:
             return fail(f"over-broad hidden prefix: {protected_prefix}")
+    active_fm_only = [x for x in FM_ONLY_INACTIVE_CATALOG_SURFACES if x in active_catalog]
+    if active_fm_only:
+        return fail("FM-only catalog surface active: " + ", ".join(active_fm_only))
+    hidden_impl = catalog.split("static bool catalog_hidden_name", 1)[1].split("static const char *CASCAS_HELP_FILE", 1)[0]
+    missing_fm_prefix = [x for x in FM_ONLY_HIDDEN_PREFIXES if x not in hidden_impl]
+    if missing_fm_prefix:
+        return fail("FM-only hidden prefix missing: " + ", ".join(missing_fm_prefix))
+    if "catalog_visible_category" not in catalog or "isall && !catalog_visible_category(completeCat[cur].category)" not in catalog:
+        return fail("hidden-category commands still leak into All")
 
     missing_hidden = [x for x in HIDDEN_MARKERS if x not in catalog]
     if missing_hidden:
