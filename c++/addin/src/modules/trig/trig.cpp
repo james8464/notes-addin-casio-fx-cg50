@@ -1093,23 +1093,53 @@ static std::optional<std::vector<std::string>> one_minus_trig_square_rewrite(Are
     };
 }
 
+static std::optional<NodeId> trig_ratio_arg(Arena &a, NodeId n, FnKind fk)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &num = a.get(x.a);
+    Node const &den = a.get(x.b);
+    if(num.kind != NodeKind::Fn || den.kind != NodeKind::Fn) return std::nullopt;
+    FnKind nf = (fk == FnKind::Tan) ? FnKind::Sin : FnKind::Cos;
+    FnKind df = (fk == FnKind::Tan) ? FnKind::Cos : FnKind::Sin;
+    if(num.fkind != nf || den.fkind != df) return std::nullopt;
+    if(casio::sig(a, num.a) != casio::sig(a, den.a)) return std::nullopt;
+    return num.a;
+}
+
+static std::optional<std::vector<std::string>> trig_ratio_target_route(Arena &a, NodeId src, NodeId target)
+{
+    auto build = [&](FnKind fk, NodeId arg) -> std::vector<std::string> {
+        std::string u = casio::format_expr(a, arg);
+        std::string name = (fk == FnKind::Tan) ? "tan" : "cot";
+        std::string ratio = (fk == FnKind::Tan) ? "sin(u)/cos(u)" : "cos(u)/sin(u)";
+        return {
+            "1. Let u = " + u + ".",
+            "2. Target = " + casio::format_expr(a, target) + ".",
+            "3. Use identity " + name + "(u)=" + ratio + ".",
+            "4. " + ratio + " = " + name + "(u).",
+            "5. " + casio::format_expr(a, src) + " = " + casio::format_expr(a, target) + ".",
+            "Answer: " + casio::format_expr(a, target),
+        };
+    };
+    for(FnKind fk : {FnKind::Tan, FnKind::Cot}) {
+        Node const &s = a.get(src);
+        if(s.kind == NodeKind::Fn && s.fkind == fk) {
+            auto arg = trig_ratio_arg(a, target, fk);
+            if(arg && casio::sig(a, s.a) == casio::sig(a, *arg)) return build(fk, s.a);
+        }
+        Node const &t = a.get(target);
+        if(t.kind == NodeKind::Fn && t.fkind == fk) {
+            auto arg = trig_ratio_arg(a, src, fk);
+            if(arg && casio::sig(a, t.a) == casio::sig(a, *arg)) return build(fk, t.a);
+        }
+    }
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> tan_target_sincos(Arena &a, NodeId src, NodeId target)
 {
-    Node const &s = a.get(src);
-    Node const &t = a.get(target);
-    if(s.kind != NodeKind::Fn || s.fkind != FnKind::Tan || t.kind != NodeKind::Div) return std::nullopt;
-    Node const &num = a.get(t.a);
-    Node const &den = a.get(t.b);
-    if(num.kind != NodeKind::Fn || den.kind != NodeKind::Fn) return std::nullopt;
-    if(num.fkind != FnKind::Sin || den.fkind != FnKind::Cos) return std::nullopt;
-    if(casio::sig(a, s.a) != casio::sig(a, num.a) || casio::sig(a, s.a) != casio::sig(a, den.a)) return std::nullopt;
-    std::string u = casio::format_expr(a, s.a);
-    return std::vector<std::string>{
-        "1. Let u = " + u + ".",
-        "2. Use identity tan(u)=sin(u)/cos(u).",
-        "3. Substitute u back.",
-        "Answer: " + casio::format_expr(a, target),
-    };
+    return trig_ratio_target_route(a, src, target);
 }
 
 static bool numeric_equiv(Arena &a, NodeId lhs, NodeId rhs)

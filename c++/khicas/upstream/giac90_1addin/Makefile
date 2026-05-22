@@ -51,7 +51,7 @@ khicas.elf: libcas.a libgui.a catalogfr.o
 	sh3eb-elf-objdump -C -t khicas.elf | sort > dump_t
 
 khicasen.elf: libcas.a libgui.a catalogen.o 
-	$(CXX) $(LDFLAGS) -Wl,-Map=khicasen.map catalogen.o  $(LIBS) -o $@
+	$(CXX) $(LDFLAGS) -Wl,-Map=./khicasen.map catalogen.o  $(LIBS) -o $@
 	sh3eb-elf-objdump -C -t khicasen.elf | sort > dumpen_t
 
 OBJFLAGS= -O binary -R .bss -R .gint_bss -R .debug_info -R .debug_abbrev -R .debug_loc -R .debug_aranges -R .debug_ranges -R .debug_line -R .debug_str -R .symtab -R .strtab -R.comment -R  debug_frame

@@ -56,6 +56,12 @@ extern int line_start;
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
+  static gen cascas_removed_surface(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1)
+      return g;
+    return gensizeerr(contextptr);
+  }
+
   static vecteur listplot(const gen & g,vecteur & attributs,GIAC_CONTEXT){
     if (g.type!=_VECT || g._VECTptr->empty())
       return vecteur(1,gensizeerr(contextptr));
@@ -119,9 +125,15 @@ namespace giac {
     else
       return symb_pnt(gen(res,_GROUP__VECT),attributs[0],contextptr);
   }
+#if 0
   static const char _plotlist_s []="plotlist";
   static define_unary_function_eval (__plotlist,&_listplot,_plotlist_s);
   define_unary_function_ptr5( at_plotlist ,alias_at_plotlist,&__plotlist,0,true);
+#else
+  static const char _plotlist_s []="plotlist";
+  static define_unary_function_eval (__plotlist,&cascas_removed_surface,_plotlist_s);
+  define_unary_function_ptr5( at_plotlist ,alias_at_plotlist,&__plotlist,0,true);
+#endif
   // [[x1 y1] [x2 y2] ...]
   static gen scatterplot(const gen & g,int mode,GIAC_CONTEXT){
     bool polygone=bool(mode&1),scatter=bool(mode&2),bar=bool(mode &4);
@@ -4365,6 +4377,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     return stddevmean(mtran(*v[0]._VECTptr),withstddev,xcol,freqcol,contextptr);
   }
 
+#if 0
   gen _mean(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
@@ -4379,7 +4392,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static const char _mean_s []="mean";
   static define_unary_function_eval (__mean,&_mean,_mean_s);
   define_unary_function_ptr5( at_mean ,alias_at_mean,&__mean,0,true);
+#else
+  static const char _mean_s []="mean";
+  static define_unary_function_eval (__mean,&cascas_removed_surface,_mean_s);
+  define_unary_function_ptr5( at_mean ,alias_at_mean,&__mean,0,true);
+#endif
 
+#if 0
   gen _stddev(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
@@ -4394,6 +4413,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static const char _stddev_s []="stddev";
   static define_unary_function_eval (__stddev,&_stddev,_stddev_s);
   define_unary_function_ptr5( at_stddev ,alias_at_stddev,&__stddev,0,true);
+#else
+  static const char _stddev_s []="stddev";
+  static define_unary_function_eval (__stddev,&cascas_removed_surface,_stddev_s);
+  define_unary_function_ptr5( at_stddev ,alias_at_stddev,&__stddev,0,true);
+#endif
 
   gen _stdDev(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
@@ -4476,12 +4500,18 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
       return (v[v.size()/2]+v[v.size()/2-1])/2;
     return v[int(std::ceil(v.size()*d))-1]; // v[(v.size()-1)/4];
   }
+#if 0
   gen _median(const gen & g,GIAC_CONTEXT){
     return quartile123(g,0.5,contextptr);
   }
   static const char _median_s []="median";
   static define_unary_function_eval(unary_median,&_median,_median_s);
   define_unary_function_ptr5( at_median ,alias_at_median,&unary_median,0,true);
+#else
+  static const char _median_s []="median";
+  static define_unary_function_eval (__median,&cascas_removed_surface,_median_s);
+  define_unary_function_ptr5( at_median ,alias_at_median,&__median,0,true);
+#endif
 
   gen _quartile1(const gen & g,GIAC_CONTEXT){
     return quartile123(g,0.25,contextptr);
@@ -4728,7 +4758,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   static define_unary_function_eval (__histogram,&_histogram,_histogram_s);
   define_unary_function_ptr5( at_histogram ,alias_at_histogram,&__histogram,0,true);
 
-#if 1
+#if 0
   vecteur genpoint2vecteur(const gen & g,GIAC_CONTEXT){
     vecteur v(gen2vecteur(g));
     for (unsigned i=0;i<v.size();++i){
@@ -5283,6 +5313,43 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
   }
   static const char _polynomial_regression_plot_s []="polynomial_regression_plot";
   static define_unary_function_eval (__polynomial_regression_plot,&_polynomial_regression_plot,_polynomial_regression_plot_s);
+  define_unary_function_ptr5( at_polynomial_regression_plot ,alias_at_polynomial_regression_plot,&__polynomial_regression_plot,0,true);
+#else
+  static const char _covariance_s []="covariance";
+  static define_unary_function_eval (__covariance,&cascas_removed_surface,_covariance_s);
+  define_unary_function_ptr5( at_covariance ,alias_at_covariance,&__covariance,0,true);
+  static const char _correlation_s []="correlation";
+  static define_unary_function_eval (__correlation,&cascas_removed_surface,_correlation_s);
+  define_unary_function_ptr5( at_correlation ,alias_at_correlation,&__correlation,0,true);
+  static const char _linear_regression_s []="linear_regression";
+  static define_unary_function_eval (__linear_regression,&cascas_removed_surface,_linear_regression_s);
+  define_unary_function_ptr5( at_linear_regression ,alias_at_linear_regression,&__linear_regression,0,true);
+  static const char _exponential_regression_s []="exponential_regression";
+  static define_unary_function_eval (__exponential_regression,&cascas_removed_surface,_exponential_regression_s);
+  define_unary_function_ptr5( at_exponential_regression ,alias_at_exponential_regression,&__exponential_regression,0,true);
+  static const char _logarithmic_regression_s []="logarithmic_regression";
+  static define_unary_function_eval (__logarithmic_regression,&cascas_removed_surface,_logarithmic_regression_s);
+  define_unary_function_ptr5( at_logarithmic_regression ,alias_at_logarithmic_regression,&__logarithmic_regression,0,true);
+  static const char _power_regression_s []="power_regression";
+  static define_unary_function_eval (__power_regression,&cascas_removed_surface,_power_regression_s);
+  define_unary_function_ptr5( at_power_regression ,alias_at_power_regression,&__power_regression,0,true);
+  static const char _polynomial_regression_s []="polynomial_regression";
+  static define_unary_function_eval (__polynomial_regression,&cascas_removed_surface,_polynomial_regression_s);
+  define_unary_function_ptr5( at_polynomial_regression ,alias_at_polynomial_regression,&__polynomial_regression,0,true);
+  static const char _linear_regression_plot_s []="linear_regression_plot";
+  static define_unary_function_eval (__linear_regression_plot,&cascas_removed_surface,_linear_regression_plot_s);
+  define_unary_function_ptr5( at_linear_regression_plot ,alias_at_linear_regression_plot,&__linear_regression_plot,0,true);
+  static const char _exponential_regression_plot_s []="exponential_regression_plot";
+  static define_unary_function_eval (__exponential_regression_plot,&cascas_removed_surface,_exponential_regression_plot_s);
+  define_unary_function_ptr5( at_exponential_regression_plot ,alias_at_exponential_regression_plot,&__exponential_regression_plot,0,true);
+  static const char _logarithmic_regression_plot_s []="logarithmic_regression_plot";
+  static define_unary_function_eval (__logarithmic_regression_plot,&cascas_removed_surface,_logarithmic_regression_plot_s);
+  define_unary_function_ptr5( at_logarithmic_regression_plot ,alias_at_logarithmic_regression_plot,&__logarithmic_regression_plot,0,true);
+  static const char _power_regression_plot_s []="power_regression_plot";
+  static define_unary_function_eval (__power_regression_plot,&cascas_removed_surface,_power_regression_plot_s);
+  define_unary_function_ptr5( at_power_regression_plot ,alias_at_power_regression_plot,&__power_regression_plot,0,true);
+  static const char _polynomial_regression_plot_s []="polynomial_regression_plot";
+  static define_unary_function_eval (__polynomial_regression_plot,&cascas_removed_surface,_polynomial_regression_plot_s);
   define_unary_function_ptr5( at_polynomial_regression_plot ,alias_at_polynomial_regression_plot,&__polynomial_regression_plot,0,true);
 #endif
 

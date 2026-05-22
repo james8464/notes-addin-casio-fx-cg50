@@ -6970,6 +6970,7 @@ namespace giac {
     }
     return comb((unsigned long int) a.val,(unsigned long int) b.val);
   }
+#if 0
   gen _comb(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (ckmatrix(args))
@@ -6997,6 +6998,16 @@ namespace giac {
   static const char _comb_s []="comb";
   static define_unary_function_eval (__comb,&_comb,_comb_s);
   define_unary_function_ptr5( at_comb ,alias_at_comb,&__comb,0,true);
+#else
+  static gen _comb_removed(const gen & args,GIAC_CONTEXT){
+    if (args.type==_STRNG && args.subtype==-1)
+      return args;
+    return gensizeerr(contextptr);
+  }
+  static const char _comb_s []="comb";
+  static define_unary_function_eval (__comb,&_comb_removed,_comb_s);
+  define_unary_function_ptr5( at_comb ,alias_at_comb,&__comb,0,true);
+#endif
 
   gen perm(const gen & a,const gen &b){
     if (a.type!=_INT_ || b.type!=_INT_)
