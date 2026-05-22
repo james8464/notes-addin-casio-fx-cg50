@@ -2649,10 +2649,64 @@ static std::optional<std::vector<std::string>> partial_fraction_two_linear(Arena
     };
 }
 
+static std::optional<std::vector<std::string>> partial_fraction_two_linear_symbolic(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &d = a.get(parsed);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    Node const &den = a.get(d.b);
+    if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
+    auto l1 = linear_poly_coeffs(a, den.kids[0], var);
+    auto l2 = linear_poly_coeffs(a, den.kids[1], var);
+    if(!l1 || !l2) return std::nullopt;
+    Rational aa = l1->first, bb = l1->second, cc = l2->first, dd = l2->second;
+    if(is_zero(aa) || is_zero(cc)) return std::nullopt;
+    Rational r1 = r_div(r_neg(bb), aa);
+    Rational r2 = r_div(r_neg(dd), cc);
+    Rational l2r1 = r_add(r_mul(cc, r1), dd);
+    Rational l1r2 = r_add(r_mul(aa, r2), bb);
+    if(is_zero(l2r1) || is_zero(l1r2)) return std::nullopt;
+
+    NodeId n1 = exact_eval_simplify(a, clone_with_substitution(a, d.a, var, casio::num(a, r1.num, r1.den)));
+    NodeId n2 = exact_eval_simplify(a, clone_with_substitution(a, d.a, var, casio::num(a, r2.num, r2.den)));
+    NodeId A = exact_eval_simplify(a, casio::div(a, n1, casio::num(a, l2r1.num, l2r1.den)));
+    NodeId B = exact_eval_simplify(a, casio::div(a, n2, casio::num(a, l1r2.num, l1r2.den)));
+    std::string l1s = format_expr(a, den.kids[0]);
+    std::string l2s = format_expr(a, den.kids[1]);
+
+    auto frac_term = [&](NodeId c, std::string const &denom) {
+        NodeId s = exact_eval_simplify(a, c);
+        Node const &sn = a.get(s);
+        if(sn.kind == NodeKind::Num && sn.num.num == 0) return std::string{};
+        if(sn.kind == NodeKind::Num && sn.num.num == sn.num.den) return "1/(" + denom + ")";
+        if(sn.kind == NodeKind::Num && sn.num.num == -sn.num.den) return "-1/(" + denom + ")";
+        std::string t = format_expr(a, s);
+        if(sn.kind == NodeKind::Add) t = "(" + t + ")";
+        return t + "/(" + denom + ")";
+    };
+    std::string tA = frac_term(A, l1s);
+    std::string tB = frac_term(B, l2s);
+    std::string ans = tA;
+    if(!tB.empty()) {
+        if(ans.empty()) ans = tB;
+        else if(tB[0] == '-') ans += " - " + tB.substr(1);
+        else ans += " + " + tB;
+    }
+    if(ans.empty()) return std::nullopt;
+
+    return std::vector<std::string>{
+        "A/(" + l1s + ")+B/(" + l2s + ")",
+        "Multiply by (" + l1s + ")(" + l2s + ")",
+        var + "=" + rat_node_text(a, r1) + ": A = " + format_expr(a, n1) + "/" + rat_node_text(a, l2r1) + " = " + format_expr(a, A),
+        var + "=" + rat_node_text(a, r2) + ": B = " + format_expr(a, n2) + "/" + rat_node_text(a, l1r2) + " = " + format_expr(a, B),
+        ans,
+    };
+}
+
 static std::string pf_var_for(Arena &a, NodeId parsed)
 {
     std::vector<std::string> vars;
     collect_symbols(a, parsed, vars);
+    for(auto const &v : vars) if(v == "x") return v;
     return vars.empty() ? "x" : vars.front();
 }
 
@@ -23314,6 +23368,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_two_linear_symbolic(arena, parsed, pfv)) return *pf;
         }
 algebra_compare_transform_modes:
         if(req.mode == 1) {
@@ -24833,6 +24888,7 @@ algebra_compare_transform_modes:
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
                 if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_two_linear_symbolic(arena, parsed, pfv)) return *pf;
                 Node const &pn = arena.get(parsed);
                 if(pn.kind != NodeKind::Div) {
                     return casio::exam_block(

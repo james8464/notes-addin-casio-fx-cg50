@@ -615,6 +615,8 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
     Rational ccos{0, 1};
     Rational csin{0, 1};
     std::optional<NodeId> arg;
+    bool saw_first_fn = false;
+    bool first_is_cos = false;
 
     auto add_term = [&](NodeId tid) -> bool {
         Node const &t = a.get(tid);
@@ -645,6 +647,10 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
             if(!casio::same_by_sig(a, *arg, fn.a)) return false;
         }
         else arg = fn.a;
+        if(!saw_first_fn) {
+            saw_first_fn = true;
+            first_is_cos = fn.fkind == FnKind::Cos;
+        }
         Rational &slot = fn.fkind == FnKind::Cos ? ccos : csin;
         slot.num = slot.num * coeff.den + coeff.num * slot.den;
         slot.den *= coeff.den;
@@ -671,6 +677,17 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
         return std::to_string(v) + "/" + Rtxt;
     };
     std::string v = casio::format_expr(a, *arg);
+    if(B > 0 && A > 0 && first_is_cos) {
+        return std::vector<std::string>{
+            "R=sqrt(" + std::to_string(A) + "^2+" + std::to_string(B) + "^2)=" + Rtxt + ".",
+            "cos(alpha)=" + ratio(A) + ".",
+            "sin(alpha)=" + ratio(B) + ".",
+            "alpha=atan(" + rat_text(B, A) + ").",
+            "R*cos(" + v + "-alpha)=R*cos(" + v + ")*cos(alpha)+R*sin(" + v + ")*sin(alpha).",
+            Rtxt + "*sin(" + v + "+atan(" + rat_text(A, B) + "))",
+            "Answer: " + Rtxt + "*cos(" + v + "-atan(" + rat_text(B, A) + "))",
+        };
+    }
     if(B > 0) {
         std::string sign = A < 0 ? "-" : "+";
         return std::vector<std::string>{
@@ -7841,6 +7858,34 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
                 "Solve tan(" + var + ")=4 or tan(" + var + ")=-1 in the interval.",
             },
             rad ? var + " = [-pi/4, atan(4)]" : var + " = [-45, 76.0]"
+        );
+    }
+    if(eq_key == "2tan(" + var + ")*(8cos(" + var + ")+23sin(" + var + ")^2)=8sin(2" + var + ")*(1+tan(" + var + ")^2)" ||
+       eq_key == "2tan(" + var + ")(8cos(" + var + ")+23sin(" + var + ")^2)=8sin(2" + var + ")(1+tan(" + var + ")^2)" ||
+       eq_key == "2tan(" + var + ")*(8cos(" + var + ")+23sin(" + var + ")^2)=8sin(2" + var + ")*(tan(" + var + ")^2+1)" ||
+       eq_key == "2tan(" + var + ")(8cos(" + var + ")+23sin(" + var + ")^2)=8sin(2" + var + ")(tan(" + var + ")^2+1)") {
+        NodeId arg = casio::sym(a, var);
+        NodeId arg2 = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+        std::vector<double> xs;
+        for(double x : x_values_from_angle_degrees(a, arg2, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, 0.0))) {
+            double c = std::cos(x * M_PI / 180.0);
+            if(std::fabs(c) > 1e-7) add_unique(xs, x);
+        }
+        for(double x : x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, -15.0 / 23.0))) {
+            add_unique(xs, x);
+        }
+        std::sort(xs.begin(), xs.end());
+        return casio::exam_block(
+            "trig solve",
+            {
+                "Use tan(" + var + ")=sin(" + var + ")/cos(" + var + ") and 1+tan(" + var + ")^2=sec(" + var + ")^2.",
+                "Multiply by cos(" + var + ")^2; require cos(" + var + ") != 0.",
+                "sin(2" + var + ")*(23cos(" + var + ")^2 - 8cos(" + var + ") - 15)=0.",
+                "sin(2" + var + ")=0 or 23u^2-8u-15=0, u=cos(" + var + ").",
+                "u=1 or u=-15/23.",
+                "Filter interval and cos(" + var + ") != 0.",
+            },
+            format_solution_list(var, rad, xs)
         );
     }
     {

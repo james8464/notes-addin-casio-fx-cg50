@@ -98,8 +98,20 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2023 R-form expression",
         ["--trig", "2*cos(theta)+8*sin(theta),method=rform"],
-        ["R=sqrt(8^2+2^2)=sqrt(68)", "sqrt(68)*sin(theta+atan(1/4))"],
+        ["R=sqrt(2^2+8^2)=sqrt(68)", "cos(alpha)=2/sqrt(68)", "Answer: sqrt(68)*cos(theta-atan(4))"],
         ["Answer: = 2*cos", "ERR:"],
+    ),
+    (
+        "June 2023 symbolic partial fractions",
+        ["--alg", "partfrac((3*k*x-18)/((x+4)*(x-2)))"],
+        ["= 2*k + 3", "= k - 3", "(2*k + 3)/(x + 4) + (k - 3)/(x - 2)"],
+        ["ERR:"],
+    ),
+    (
+        "June 2023 tan-domain trig solve",
+        ["--trig", "2*tan(x)*(8*cos(x)+23*sin(x)^2)=8*sin(2*x)*(1+tan(x)^2),x,360,540,10,method=identity"],
+        ["cos(x) != 0", "sin(2x)*(23cos(x)^2 - 8cos(x) - 15)=0", "u=-15/23", "x = [360, 490.705706831, 540]"],
+        ["450", "ERR:"],
     ),
     (
         "June 2024 cosec reciprocal identity",
