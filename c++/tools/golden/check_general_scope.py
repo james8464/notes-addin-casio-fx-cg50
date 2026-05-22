@@ -116,11 +116,13 @@ def main() -> int:
         "csolve(x^2+1=0,x)", "cfactor(x^2+1)", "cpartfrac(1/(x^2+1))",
         "complex(1,2)", "arg(1+i)", "re(1+i)", "im(1+i)", "conj(1+i)",
         "matrix(2,2,1)", "det(matrix(2,2,1))", "rref(matrix(2,2,1))",
-        "jordan(matrix(2,2,1))", "svd(matrix(2,2,1))",
+        "jordan(matrix(2,2,1))", "svd(matrix(2,2,1))", "inv([[1,2],[3,4]])",
+        "dot([1,2],[3,4])", "cross([1,2,3],[4,5,6])", "linsolve([x+y=1],[x,y])",
         "polar2rectangular(1,pi/3)", "rectangular2polar(1+i)",
         "laplace(sin(x),x,s)", "ilaplace(1/(s^2+1),s,x)",
         "fourier_an(sin(x),x,2*pi,1,0)", "taylor(ln(x),x,1,2)",
-        "normald_cdf(0)", "normald_icdf(0.5)",
+        "normald_cdf(0)", "normald_icdf(0.5)", "exponentiald(2,3)", "uniformd(0,1,0.5)",
+        "quartiles([1,2,3])",
     ]
     for expr in removed_alg:
         require("removed_alg_" + expr.split("(")[0], run_host("--alg", expr), ("Err: unsupported function",))

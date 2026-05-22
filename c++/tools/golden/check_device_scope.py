@@ -54,8 +54,11 @@ CASES: tuple[Case, ...] = (
     Case("removed_plot", "shell", "plot(x)", ("Err: unsupported function.",), True, 1),
     Case("removed_complex", "shell", "csolve(x^2+1=0,x)", ("Err: unsupported function.",), True, 1),
     Case("removed_matrix", "shell", "det(matrix(2,2,1))", ("Err: unsupported function.",), True, 1),
+    Case("removed_matrix_inv", "shell", "inv([[1,2],[3,4]])", ("Err: unsupported function.",), True, 1),
+    Case("removed_vector_dot", "shell", "dot([1,2],[3,4])", ("Err: unsupported function.",), True, 1),
     Case("removed_laplace", "shell", "laplace(sin(x),x,s)", ("Err: unsupported function.",), True, 1),
     Case("removed_taylor", "shell", "taylor(ln(x),x,1,2)", ("Err: unsupported function.",), True, 1),
+    Case("removed_uniformd", "shell", "uniformd(0,1,0.5)", ("Err: unsupported function.",), True, 1),
 )
 
 
