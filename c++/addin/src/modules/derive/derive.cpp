@@ -1206,6 +1206,65 @@ static Rational rat_mul_local(Rational a, Rational b)
     return r;
 }
 
+static bool is_var_square_node(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return false;
+    Node const &base = a.get(x.a);
+    Node const &exp = a.get(x.b);
+    return base.kind == NodeKind::Sym && base.text == var &&
+           exp.kind == NodeKind::Num && exp.num.num == 2 && exp.num.den == 1;
+}
+
+static std::optional<Rational> x_square_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_var_square_node(a, n, var)) return Rational{1, 1};
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto top = x_square_coeff(a, x.a, var);
+        Node const &bot = a.get(x.b);
+        if(!top || bot.kind != NodeKind::Num || bot.num.num == 0) return std::nullopt;
+        return rat_div_local(*top, bot.num);
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    bool seen_square = false;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(is_var_square_node(a, k, var)) {
+            if(seen_square) return std::nullopt;
+            seen_square = true;
+        }
+        else if(t.kind == NodeKind::Num) {
+            coeff = rat_mul_local(coeff, t.num);
+        }
+        else return std::nullopt;
+    }
+    return seen_square ? std::optional<Rational>{coeff} : std::nullopt;
+}
+
+static bool rat_is_one(Rational r) { r.normalize(); return r.num == r.den; }
+static bool rat_is_minus_one(Rational r) { r.normalize(); return r.num == -r.den; }
+
+static std::string coeff_text(Arena &a, Rational c, std::string const &body)
+{
+    c.normalize();
+    if(rat_is_one(c)) return body;
+    if(rat_is_minus_one(c)) return "-" + body;
+    return rat_text(a, c.num, c.den) + "*" + body;
+}
+
+static std::string append_signed_coeff_text(Arena &a, std::string left, Rational c, std::string const &body)
+{
+    c.normalize();
+    if(c.num < 0) {
+        c.num = -c.num;
+        c.normalize();
+        return left + "-" + coeff_text(a, c, body);
+    }
+    return left + "+" + coeff_text(a, c, body);
+}
+
 struct TrigMono
 {
     Rational coeff{1, 1};
@@ -2567,6 +2626,46 @@ static bool exp_factor_local(Arena &a, NodeId n, NodeId &exponent)
     return false;
 }
 
+static NodeId product_or_one_local(Arena &a, std::vector<NodeId> const &factors)
+{
+    if(factors.empty()) return casio::num(a, 1);
+    if(factors.size() == 1) return factors.front();
+    return casio::simplify(a, casio::mul(a, factors));
+}
+
+static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2) return std::nullopt;
+    std::string exp_key;
+    NodeId exp_factor = 0;
+    std::vector<NodeId> rest_terms;
+    rest_terms.reserve(x.kids.size());
+    for(NodeId term : x.kids) {
+        Node const &t = a.get(term);
+        std::vector<NodeId> factors = t.kind == NodeKind::Mul ? t.kids : std::vector<NodeId>{term};
+        std::vector<NodeId> rest;
+        bool seen = false;
+        for(NodeId f : factors) {
+            NodeId exponent = 0;
+            if(!seen && exp_factor_local(a, f, exponent)) {
+                std::string key = compact_math_key(format_expr_human(a, f));
+                if(exp_key.empty()) {
+                    exp_key = key;
+                    exp_factor = f;
+                }
+                else if(key != exp_key) return std::nullopt;
+                seen = true;
+            }
+            else rest.push_back(f);
+        }
+        if(!seen) return std::nullopt;
+        rest_terms.push_back(product_or_one_local(a, rest));
+    }
+    NodeId rest_sum = casio::simplify(a, casio::add(a, rest_terms));
+    return casio::simplify(a, casio::mul(a, {exp_factor, rest_sum}));
+}
+
 static bool append_log_exp_cos_detail(Arena &a, NodeId n, std::string const &var,
                                       std::vector<std::string> &steps, std::string &answer)
 {
@@ -2763,6 +2862,15 @@ static bool append_quotient_rule_detail(
     std::string nt = clean_math_text(format_expr_human(a, top));
     if(node_weight(a, top) <= 40 && !nt.empty() && nt.size() + 18 < subst.size()) {
         steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
+        if(auto factored = factor_common_exp_from_sum(a, top)) {
+            std::string ft = clean_math_text(format_expr_human(a, *factored));
+            if(!ft.empty() && compact_math_key(ft) != compact_math_key(nt)) {
+                steps.push_back(nt + " = " + ft + ".");
+                if(answer_override)
+                    *answer_override = "dy/d" + var + " = " + fraction_num_text(ft) + "/(" + v + ")^2";
+                return true;
+            }
+        }
         if(answer_override)
             *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
         return true;
@@ -3025,6 +3133,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         "Let h->0.",
                     },
                     "d/d" + var + " " + var + "^2 = 2*" + var
+                );
+            }
+            NodeId fp_node = casio::simplify(arena, casio::parse_expr(arena, expr));
+            if(auto c = x_square_coeff(arena, fp_node, var); c && !rat_is_one(*c)) {
+                Rational two_c = rat_mul_local(*c, Rational{2, 1});
+                std::string f = coeff_text(arena, *c, var + "^2");
+                std::string ctxt = rat_text(arena, c->num, c->den);
+                return casio::exam_block(
+                    "first principles",
+                    {
+                        "Use [f(" + var + "+h)-f(" + var + ")]/h.",
+                        "f(" + var + ") = " + f + ".",
+                        "f(" + var + "+h)-f(" + var + ") = " + ctxt + "*[(" + var + "+h)^2-" + var + "^2].",
+                        "(" + var + "+h)^2-" + var + "^2 = 2*" + var + "*h+h^2.",
+                        "[" + ctxt + "*(2*" + var + "*h+h^2)]/h = " + ctxt + "*(2*" + var + "+h).",
+                        "= " + append_signed_coeff_text(arena, coeff_text(arena, two_c, var), *c, "h") + ".",
+                        "h->0.",
+                    },
+                    "d/d" + var + " " + f + " = " + coeff_text(arena, two_c, var)
                 );
             }
             if(key == "sec(" + var + ")") {
