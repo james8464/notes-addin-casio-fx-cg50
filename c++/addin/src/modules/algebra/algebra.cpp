@@ -6592,7 +6592,7 @@ static std::string compact_input_key(std::string text)
     return out;
 }
 
-static bool contains_removed_hyperbolic_function(std::string const &text)
+static bool contains_removed_function(std::string const &text)
 {
     std::string key = compact_input_key(text);
     std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
@@ -6600,7 +6600,14 @@ static bool contains_removed_hyperbolic_function(std::string const &text)
     });
     static constexpr char const *names[] = {
         "sinh(", "cosh(", "tanh(", "asinh(", "acosh(", "atanh(",
-        "arcsinh(", "arccosh(", "arctanh(", "arsinh(", "arcosh(", "artanh("
+        "arcsinh(", "arccosh(", "arctanh(", "arsinh(", "arcosh(", "artanh(",
+        "rationalise(", "rationalize(", "normald(",
+        "mean(", "median(", "stdev(", "stddev(", "correlation(", "covariance(",
+        "linear_regression(", "ztest(", "plot(", "spark(",
+        "plotcontour(", "plotfield(", "plotlist(", "plotode(", "plotparam(",
+        "plotpolar(", "plotseq(", "disque(", "tabular(", "weierstrass(",
+        "symmetry(", "mean_value(", "volume_x(", "volume_y(", "area_between(",
+        "param_area(", "param_area_y(", "param_volume_x(", "param_volume_y("
     };
     for(char const *name : names) {
         if(key.find(name) != std::string::npos) return true;
@@ -22964,7 +22971,7 @@ static std::optional<std::vector<std::string>> equal_exp_solve_route(
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
-    if(contains_removed_hyperbolic_function(req.expr)) return {"Err: unsupported function."};
+    if(contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
         {

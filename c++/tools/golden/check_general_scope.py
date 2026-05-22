@@ -45,6 +45,12 @@ def main() -> int:
         ("Err: unsupported function",),
         ("simplify*", "atan(h)", "abs(x) + 2"),
     )
+    require(
+        "rationalise_removed",
+        run_host("--alg", "rationalise(1/(sqrt(2)+1))"),
+        ("Err: unsupported function",),
+        ("rationalise*", "Answer:"),
+    )
     print("general_scope OK")
     return 0
 
