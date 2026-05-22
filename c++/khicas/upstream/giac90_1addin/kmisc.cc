@@ -264,7 +264,7 @@ static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_l
   define_unary_function_ptr5( at_scalar_product ,alias_at_scalar_product,&__scalar_product,0,true);
 
   static const char _dot_s []="dot";
-  static define_unary_function_eval (__dot,&_scalar_product,_dot_s);
+  static define_unary_function_eval (__dot,&cascas_removed_surface,_dot_s);
   define_unary_function_ptr5( at_dot ,alias_at_dot,&__dot,0,true);
 
   gen _compare(const gen & args,GIAC_CONTEXT){
@@ -513,7 +513,7 @@ static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_l
     return r;
   }    
   static const char _rank_s []="rank";
-  static define_unary_function_eval (__rank,&_rank,_rank_s);
+  static define_unary_function_eval (__rank,&cascas_removed_surface,_rank_s);
   define_unary_function_ptr5( at_rank ,alias_at_rank,&__rank,0,true);
 
   gen _sec(const gen & args,GIAC_CONTEXT){
@@ -1599,7 +1599,7 @@ static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_l
     return gensizeerr(contextptr);
   }
   static const char _gramschmidt_s []="gramschmidt";
-  static define_unary_function_eval (__gramschmidt,&_gramschmidt,_gramschmidt_s);
+  static define_unary_function_eval (__gramschmidt,&cascas_removed_surface,_gramschmidt_s);
   define_unary_function_ptr5( at_gramschmidt ,alias_at_gramschmidt,&__gramschmidt,0,true);
 
   void aplatir(const matrice & m,vecteur & v,bool full){
@@ -2186,11 +2186,11 @@ static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_l
     return dotvecteur(v[0],v[1]);
   }
   static const char _dotprod_s []="dotprod";
-  static define_unary_function_eval (__dotprod,&_dotprod,_dotprod_s);
+  static define_unary_function_eval (__dotprod,&cascas_removed_surface,_dotprod_s);
   define_unary_function_ptr5( at_dotprod ,alias_at_dotprod,&__dotprod,0,true);
 
   static const char _crossproduct_s []="crossproduct";
-  static define_unary_function_eval (__crossproduct,&_cross,_crossproduct_s);
+  static define_unary_function_eval (__crossproduct,&cascas_removed_surface,_crossproduct_s);
   define_unary_function_ptr5( at_crossproduct ,alias_at_crossproduct,&__crossproduct,0,true);
 
   gen _diag(const gen & g,GIAC_CONTEXT){

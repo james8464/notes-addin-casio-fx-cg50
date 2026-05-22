@@ -283,22 +283,7 @@ namespace giac {
 
   gen _gauss(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    if (args.type!=_VECT)
-      return _gauss(makesequence(args,lidnt(args)),contextptr);
-    int s=int(args._VECTptr->size());
-    if (s<2)
-      return gendimerr(contextptr);
-    const gen & arg1=(*args._VECTptr)[1];
-    if (arg1.type==_VECT){
-      const vecteur & v=*arg1._VECTptr;
-      vecteur D,U,P;
-      gen w=gauss(args._VECTptr->front(),v.empty()?lidnt(args):v,D,U,P,contextptr);
-      w=_plus(w,contextptr);
-      if (s>2 || v.empty())
-	return makesequence(w,D,P);
-      return w;
-    }
-    return _randNorm(args,contextptr);
+    return gensizeerr(contextptr);
   }
   static const char _gauss_s []="gauss";
   static define_unary_function_eval (__gauss,&_gauss,_gauss_s);
@@ -346,4 +331,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

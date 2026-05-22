@@ -272,28 +272,7 @@ namespace giac {
   
   gen _hilbert(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    int n,p;
-    if (args.type==_INT_) {
-      n=args.val;
-      p=args.val;
-    }
-    else {
-      if ( (args.type!=_VECT)  || (args._VECTptr->size()!=2) )
-	return gentypeerr(contextptr);
-      vecteur v(*args._VECTptr);
-      gen v1=v.front(),v2=v.back();
-      n=v1.val;
-      p=v2.val; 
-    }   
-    vecteur c;
-    for (int k=0;k<n;k++){
-      vecteur l(p);
-      for (int j=0;j<p;j++){
-	l[j]=rdiv(1,k+j+1,contextptr);
-      }
-      c.push_back(l);
-    } 
-    return gen(c,_MATRIX__VECT);
+    return gensizeerr(contextptr);
   }
 
   static const char _hilbert_s[]="hilbert";

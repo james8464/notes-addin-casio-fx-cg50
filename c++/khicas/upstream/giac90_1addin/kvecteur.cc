@@ -5752,11 +5752,7 @@ namespace giac {
 
   gen _jordan(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
-    bool mode=complex_mode(contextptr);
-    complex_mode(true,contextptr);
-    gen res=jordan(a,false,contextptr);
-    complex_mode(mode,contextptr);
-    return res;
+    return gensizeerr(contextptr);
   }
   static const char _jordan_s []="jordan";
   static define_unary_function_eval (__jordan,&_jordan,_jordan_s);
@@ -5764,7 +5760,7 @@ namespace giac {
 
   gen _rat_jordan(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
-    return jordan(a,true,contextptr);
+    return gensizeerr(contextptr);
   }
   static const char _rat_jordan_s []="rat_jordan";
   static define_unary_function_eval (__rat_jordan,&_rat_jordan,_rat_jordan_s);
@@ -6046,14 +6042,7 @@ namespace giac {
   */
   gen _cross(const gen &args,GIAC_CONTEXT){
     if (args.type==_STRNG && args.subtype==-1) return args;
-    if (args.type!=_VECT)
-      return symb_cross(args);
-    if (args._VECTptr->size()!=2)
-      return gendimerr(contextptr);
-    gen res=cross(args._VECTptr->front(),args._VECTptr->back(),contextptr);
-    if (res.type==_VECT)
-      res.subtype=args._VECTptr->front().subtype;
-    return res;
+    return gensizeerr(contextptr);
   }
   static const char _cross_s []="cross";
   static define_unary_function_eval4 (__cross,&_cross,_cross_s,0,texprintsommetasoperator);
@@ -6353,6 +6342,8 @@ namespace giac {
 
   gen _svd(const gen &args_orig,GIAC_CONTEXT){
     if (args_orig.type==_STRNG && args_orig.subtype==-1) return args_orig;
+    return gensizeerr(contextptr);
+#if 0
     gen args;
     int method=0; // use -1 to check built-in svd, -2 for svl (singular values only) 
     if ( (args_orig.type==_VECT) && (args_orig._VECTptr->size()==2) && (args_orig._VECTptr->back().type==_INT_)){
@@ -6518,6 +6509,7 @@ namespace giac {
     if (transposed)
       return makesequence(p,svl,u); 
     return makesequence(u,svl,p); 
+#endif
   }
   static const char _svd_s []="svd";
   static define_unary_function_eval (__svd,&_svd,_svd_s);
@@ -6633,8 +6625,6 @@ namespace giac {
       // FIXME: pow should not always call egv stuff
   gen _matpow(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
-    if (a.type==_VECT && a._VECTptr->size()==2 && ckmatrix(a._VECTptr->front()))
-      return matpow(*a._VECTptr->front()._VECTptr,a._VECTptr->back(),contextptr);
     return gensizeerr(contextptr);
   }
   static const char _matpow_s []="matpow";

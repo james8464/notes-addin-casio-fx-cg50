@@ -5373,12 +5373,7 @@ namespace giac {
   }
   gen _fourier_an(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    if (args.type!=_VECT) return gensizeerr(contextptr);
-    vecteur v(*args._VECTptr);
-    if (!get_fourier(v)) return gensizeerr(contextptr);
-    return fourier_an(v[0],v[1],v[2],v[3],v[4],contextptr);
-    //gen f=v[0],x=v[1],T=v[2],n=v[3],a=v[4];
-    //return fourier_an(f,x,T,n,a,contextptr);
+    return gensizeerr(contextptr);
   }
   static const char _fourier_an_s []="fourier_an";
   static define_unary_function_eval (__fourier_an,&_fourier_an,_fourier_an_s);
@@ -5395,12 +5390,7 @@ namespace giac {
   }
   gen _fourier_bn(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    if (args.type!=_VECT) return gensizeerr(contextptr);
-    vecteur v(*args._VECTptr);
-    if (!get_fourier(v)) return gensizeerr(contextptr);
-    return fourier_bn(v[0],v[1],v[2],v[3],v[4],contextptr);
-    // gen f=v[0],x=v[1],T=v[2],n=v[3],a=v[4];
-    // return fourier_bn(f,x,T,n,a,contextptr);
+    return gensizeerr(contextptr);
   } 
   static const char _fourier_bn_s []="fourier_bn";
   static define_unary_function_eval (__fourier_bn,&_fourier_bn,_fourier_bn_s);
@@ -5416,12 +5406,7 @@ namespace giac {
   }
   gen _fourier_cn(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    if (args.type!=_VECT) return gensizeerr(contextptr);
-    vecteur v(*args._VECTptr);
-    if (!get_fourier(v)) return gensizeerr(contextptr);
-    return fourier_cn(v[0],v[1],v[2],v[3],v[4],contextptr);
-    // gen f=v[0],x=v[1],T=v[2],n=v[3],a=v[4];
-    // return fourier_cn(f,x,T,n,a,contextptr);
+    return gensizeerr(contextptr);
   } 
 
   static const char _fourier_cn_s []="fourier_cn";
@@ -5568,4 +5553,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

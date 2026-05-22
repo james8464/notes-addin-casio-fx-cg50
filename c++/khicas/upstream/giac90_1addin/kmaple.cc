@@ -1819,77 +1819,7 @@ namespace giac {
   // example args=u(n+1)=2*u(n)+n,u(n),u(0)=1
   gen _rsolve(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    vecteur varg=gen2vecteur(args);
-    if (0 && debug_infolevel>20)
-      varg.dbgprint();
-    int s=int(varg.size());
-    if (!s)
-      return gendimerr();
-    gen f,u,n;
-    vecteur initcond;
-    if (s>1){
-      gen un=varg[1];
-      if (un.is_symb_of_sommet(at_of)){
-	gen & unf=un._SYMBptr->feuille;
-	if (unf.type==_VECT && unf._VECTptr->size()==2){
-	  u=unf._VECTptr->front();
-	  n=unf._VECTptr->back();
-	}
-      }
-      if (un.type==_VECT){
-	vecteur & unv=*un._VECTptr;
-	vecteur uv;
-	for (const_iterateur it=unv.begin();it!=unv.end();++it){
-	  const gen & itg=*it;
-	  if (itg.is_symb_of_sommet(at_of)){
-	    gen & unf=itg._SYMBptr->feuille;
-	    if (unf.type==_VECT && unf._VECTptr->size()==2){
-	      uv.push_back(unf._VECTptr->front());
-	      if (is_zero(n))
-		n=unf._VECTptr->back();
-	      else
-		if (n!=unf._VECTptr->back())
-		  return gentypeerr();
-	    }
-	  }
-	}
-	u=uv;
-      }
-      if (is_zero(n))
-	return gentypeerr();
-    }
-    else {
-      u=gen(identificateur("rsolve_u"));
-      n=gen(identificateur("rsolve_n"));
-    }
-    vecteur quoted=gen2vecteur(u);
-    quoted.push_back(n);
-    varg=quote_eval(varg,quoted,contextptr);
-    f=varg[0];
-    if (s>2){
-      initcond=vecteur(varg.begin()+2,varg.end());
-      if (initcond.size()==1 && initcond.front().type==_VECT){
-	// use a temporary vector,
-	// otherwise the source is destroyed when copying the first element of the vector
-	// another way to do that could be to have a gen with a copy of initcond.front
-	vecteur tmp=*initcond.front()._VECTptr;
-	initcond=tmp;
-      }
-    }
-    else {
-      if (f.type==_VECT && !f._VECTptr->empty()){
-	if (u.type!=_VECT || f._VECTptr->size()!=u._VECTptr->size()){
-	  initcond=*f._VECTptr;
-	  f=initcond.front();
-	  initcond.erase(initcond.begin());
-	}
-      }
-    }
-    int st=step_infolevel(contextptr);
-    step_infolevel(0,contextptr);
-    gen res=rsolve(f,u,n,initcond,st,contextptr);
-    step_infolevel(st,contextptr);
-    return res;
+    return gensizeerr(contextptr);
   }
   static const char _rsolve_s []="rsolve";
   static define_unary_function_eval_quoted (__rsolve,&_rsolve,_rsolve_s);

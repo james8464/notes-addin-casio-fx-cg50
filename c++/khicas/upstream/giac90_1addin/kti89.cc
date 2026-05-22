@@ -131,33 +131,24 @@ namespace giac {
   define_unary_function_ptr5( at_isprime ,alias_at_isprime,&__isprime,0,true);
 
   gen _cSolve(const gen & g,GIAC_CONTEXT){
-    bool old_complex_mode=complex_mode(contextptr);
-    complex_mode(true,contextptr);
-    gen res=_solve(g,contextptr);
-    complex_mode(old_complex_mode,contextptr);
-    return res;
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return gensizeerr(contextptr);
   }
   static const char _csolve_s[]="csolve";
   static define_unary_function_eval_quoted (__csolve,&_cSolve,_csolve_s);
   define_unary_function_ptr5( at_csolve ,alias_at_csolve,&__csolve,_QUOTE_ARGUMENTS,true);
 
   gen _cFactor(const gen & g,GIAC_CONTEXT){
-    bool old_complex_mode=complex_mode(contextptr);
-    complex_mode(true,contextptr);
-    gen res=_factor(g,contextptr);
-    complex_mode(old_complex_mode,contextptr);
-    return res;
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return gensizeerr(contextptr);
   }
   static const char _cfactor_s[]="cfactor";
   static define_unary_function_eval (__cfactor,&_cFactor,_cfactor_s);
   define_unary_function_ptr5( at_cfactor ,alias_at_cfactor,&__cfactor,0,true);
 
   gen _cpartfrac(const gen & g,GIAC_CONTEXT){
-    bool old_complex_mode=complex_mode(contextptr);
-    complex_mode(true,contextptr);
-    gen res=_partfrac(g,contextptr);
-    complex_mode(old_complex_mode,contextptr);
-    return res;
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return gensizeerr(contextptr);
   }
   static const char _cpartfrac_s[]="cpartfrac";
   static define_unary_function_eval (__cpartfrac,&_cpartfrac,_cpartfrac_s);
