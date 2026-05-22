@@ -1165,6 +1165,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Traceback"],
     ),
     (
+        "alg",
+        "solve(m*g*(5/13)-mu*m*g*(12/13)=m*a,a)",
+        ["5/13*m*g - 12/13*mu*m*g = m*a", "m != 0", "a = 5/13*g - 12/13*mu*g"],
+        ["a = (5/13*m*g - 12/13*mu*m*g)/m", "Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],

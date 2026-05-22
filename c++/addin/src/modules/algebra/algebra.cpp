@@ -17478,6 +17478,46 @@ static std::optional<std::pair<Rational, NodeId>> pi_linear_coeff(Arena &a, Node
     return std::nullopt;
 }
 
+static bool remove_factor_once(Arena &a, NodeId term, NodeId factor, NodeId &out)
+{
+    if(casio::same_by_sig(a, term, factor)) {
+        out = casio::num(a, 1);
+        return true;
+    }
+    Node const &t = a.get(term);
+    if(t.kind != NodeKind::Mul) return false;
+    bool removed = false;
+    std::vector<NodeId> kids;
+    kids.reserve(t.kids.size());
+    for(NodeId k : t.kids) {
+        if(!removed && casio::same_by_sig(a, k, factor)) {
+            removed = true;
+            continue;
+        }
+        kids.push_back(k);
+    }
+    if(!removed) return false;
+    out = kids.empty() ? casio::num(a, 1) : casio::mul(a, kids);
+    return true;
+}
+
+static NodeId cancel_common_denominator_factor(Arena &a, NodeId n)
+{
+    Node const &q = a.get(n);
+    if(q.kind != NodeKind::Div) return n;
+    NodeId reduced = 0;
+    if(remove_factor_once(a, q.a, q.b, reduced)) return exact_eval_simplify(a, reduced);
+    Node const &top = a.get(q.a);
+    if(top.kind != NodeKind::Add) return n;
+    std::vector<NodeId> terms;
+    terms.reserve(top.kids.size());
+    for(NodeId kid : top.kids) {
+        if(!remove_factor_once(a, kid, q.b, reduced)) return n;
+        terms.push_back(reduced);
+    }
+    return exact_eval_simplify(a, casio::add(a, terms));
+}
+
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var)
 {
     auto lin = symbolic_linear_parts(a, rearr, var);
@@ -17558,7 +17598,7 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
             }
         }
     }
-    ans = exact_eval_simplify(a, ans);
+    ans = exact_eval_simplify(a, cancel_common_denominator_factor(a, ans));
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
     out.push_back(format_expr(a, lin->m) + " != 0");
