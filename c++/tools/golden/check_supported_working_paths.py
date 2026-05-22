@@ -91,7 +91,7 @@ def base_cases() -> list[Case]:
         ("(x+1)/(x-2)+(x-2)/(x+1)=5,method=clear_denoms", ("Domain:", "x =")),
         ("sqrt(x+5)-sqrt(x-3)=2,method=auto", ("Domain:", "sqrt(x + 5) = 2 + sqrt(x - 3)", "(x + 5) - (x - 3) - 4", "x = [4]")),
         ("x+2*sqrt(x)-8=0", ("u = sqrt(x)", "u^2 + 2*u - 8 = 0", "x = 4")),
-        ("x+7=5*sqrt(x)", ("u = sqrt(x)", "b^2 - 4ac = -3 < 0", "x = []"), ("*i",)),
+        ("x+7=5*sqrt(x)", ("u = sqrt(x)", "D = -3 < 0", "x = []"), ("*i",)),
         ("(x^2-5*x+7)^(x^2-9*x+20)=1", ("base = 1", "exponent = 0", "x = [2, 3, 4, 5]")),
         ("abs(2*x+1)+9<4*x", ("abs", "x > 5")),
         ("2^(2*x)-5*2^x+4=0,method=log_exp", ("u=a^x", "x =")),

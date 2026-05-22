@@ -5262,17 +5262,7 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     disc.normalize();
 
     if(disc.num < 0) {
-        Rational abs_disc = disc;
-        abs_disc.num = -abs_disc.num;
-        Rational den = r_mul(Rational{2, 1}, p.a2);
-        Rational real_rat = r_div(r_neg(p.a1), den);
-        Rational imag_sq = r_div(abs_disc, r_mul(den, den));
-        std::string real = format_expr(a, a.num(real_rat));
-        std::string imag = sqrt_rational_surd_text(a, imag_sq);
-        return {
-            var + " = " + real + " + " + imag + "*i",
-            var + " = " + real + " - " + imag + "*i",
-        };
+        return {};
     }
 
     NodeId disc_node = a.num(disc);
@@ -6169,6 +6159,7 @@ next_root:
     if(p.c.size() == 3) {
         Poly2 q{p.c[2], p.c[1], p.c[0], true};
         auto qs = solve_poly2(a, q, var);
+        bool no_real_quadratic = qs.empty();
         raw.insert(raw.end(), qs.begin(), qs.end());
         if(!found_roots.empty()) {
             std::string factored;
@@ -6177,6 +6168,10 @@ next_root:
             out.push_back(factored + " = 0");
         }
         out.push_back("remaining quadratic: " + format_expr(a, poly2_to_node(a, q, var)) + " = 0");
+        if(no_real_quadratic) {
+            Rational D = r_sub(r_mul(q.a1, q.a1), r_mul(Rational{4, 1}, r_mul(q.a2, q.a0)));
+            out.push_back("D = " + format_rat(a, D) + " < 0 => No real roots.");
+        }
     }
     else if(p.c.size() != 1) return std::nullopt;
     if(raw.empty()) return std::nullopt;
@@ -6232,7 +6227,14 @@ next_root:
     }
     else {
         append_answer(out, var, sols);
-        append_numeric_3dp(a, out, var, sols);
+        bool has_no_real_quadratic = false;
+        for(auto const &line : out) {
+            if(line.find("No real roots") != std::string::npos) {
+                has_no_real_quadratic = true;
+                break;
+            }
+        }
+        if(!has_no_real_quadratic) append_numeric_3dp(a, out, var, sols);
     }
     return out;
 }
@@ -8008,74 +8010,6 @@ static bool pow_const_residual(Arena &a, NodeId n, std::string const &var, long 
     return true;
 }
 
-static std::string pi_part(long long num, long long den)
-{
-    Rational r{num, den};
-    r.normalize();
-    if(r.num == 0) return "0";
-    if(r.den == 1) {
-        if(r.num == 1) return "pi";
-        return std::to_string(r.num) + "*pi";
-    }
-    if(r.num == 1) return "pi/" + std::to_string(r.den);
-    return std::to_string(r.num) + "*pi/" + std::to_string(r.den);
-}
-
-static std::string exp_i(std::string const &theta)
-{
-    if(theta == "0") return "1";
-    if(theta == "pi") return "-1";
-    return "e^(" + theta + "*i)";
-}
-
-static std::optional<std::vector<std::string>> complex_nth_roots_route(
-    Arena &a,
-    NodeId lhs,
-    NodeId rhs,
-    NodeId rearr,
-    std::string const &var
-)
-{
-    if(var != "z") return std::nullopt;
-    long long n = 0;
-    Rational value{0, 1};
-    if(pow_of_symbol(a, lhs, var, n)) {
-        if(auto r = as_num(a, rhs)) value = *r;
-        else return std::nullopt;
-    }
-    else {
-        auto rz = as_num(a, rhs);
-        if(!rz || rz->num != 0 || rz->den != 1 || !pow_const_residual(a, rearr, var, n, value)) return std::nullopt;
-    }
-    if(value.num == 0 || value.den != 1) return std::nullopt;
-    long long abs_value = std::llabs(value.num);
-    auto rad = nth_root_exact_i64(abs_value, n);
-    if(!rad) return std::nullopt;
-    long long phi_num = value.num < 0 ? 1 : 0;
-    std::vector<std::string> roots;
-    for(long long k = 0; k < n; ++k) {
-        std::string e = exp_i(pi_part(phi_num + 2 * k, n));
-        if(e == "1") roots.push_back(std::to_string(*rad));
-        else if(e == "-1") roots.push_back(*rad == 1 ? e : "-" + std::to_string(*rad));
-        else roots.push_back(*rad == 1 ? e : std::to_string(*rad) + "*" + e);
-    }
-    std::string joined;
-    for(std::size_t i = 0; i < roots.size(); ++i) {
-        if(i) joined += ", ";
-        joined += roots[i];
-    }
-    std::string lhs_text = var + "^" + std::to_string(n);
-    std::string rhs_text = format_expr(a, a.num(value));
-    std::vector<std::string> out;
-    out.push_back(lhs_text + " = " + rhs_text);
-    out.push_back(rhs_text + " = " + std::to_string(abs_value) + "*e^(" + pi_part(phi_num, 1) + "*i)");
-    std::string mag = *rad == 1 ? "" : std::to_string(*rad) + "*";
-    out.push_back(var + " = " + mag + "e^(" + (phi_num ? "(pi+2*k*pi)" : "2*k*pi") + "*i/" + std::to_string(n) + ")");
-    out.push_back("k = 0, 1, ..., " + std::to_string(n - 1));
-    out.push_back(var + " = [" + joined + "]");
-    return out;
-}
-
 static std::optional<std::vector<std::string>> real_exact_nth_power_route(
     Arena &a,
     NodeId lhs,
@@ -8084,7 +8018,6 @@ static std::optional<std::vector<std::string>> real_exact_nth_power_route(
     std::string const &var
 )
 {
-    if(var == "z") return std::nullopt;
     long long n = 0;
     Rational value{0, 1};
     if(pow_of_symbol(a, lhs, var, n)) {
@@ -8115,7 +8048,7 @@ static std::optional<std::vector<std::string>> real_exact_nth_power_route(
         }
         Rational neg_root = r_neg(root);
         out.push_back(var + " = +/-" + root_text);
-        append_answer(out, var, {var + " = " + root_text, var + " = " + format_rat_plain(neg_root)});
+        append_answer(out, var, {var + " = " + format_rat_plain(neg_root), var + " = " + root_text});
         return out;
     }
     out.push_back(var + " = (" + rhs_text + ")^(1/" + std::to_string(n) + ")");
@@ -14707,7 +14640,7 @@ static std::optional<std::vector<std::string>> sqrt_var_substitution_route(
     disc.normalize();
     if(disc.num < 0) {
         out.push_back("b^2 - 4ac = " + format_expr(a, a.num(disc)) + " < 0");
-        out.push_back("reject u = complex roots");
+        out.push_back("No real u");
         out.push_back(var + " = [] (no real solution)");
         out.push_back("Answer: " + var + " = []");
         return out;
@@ -16741,12 +16674,11 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
             if(r_cmp(D, Rational{0, 1}) < 0) {
                 return std::vector<std::string>{
                     format_expr(a, lhs) + " = " + format_expr(a, rhs),
-                    "u = " + var + "^(1/2), u >= 0",
+                    "u = sqrt(" + var + "), u >= 0",
                     var + " = u^2",
                     "u = " + format_expr(a, clone_with_substitution(a, rhs_iso, var, casio::power(a, casio::sym(a, "u"), casio::num(a, 2)))),
                     format_expr(a, poly2_to_node(a, uq, "u")) + " = 0",
-                    "D = " + format_expr(a, a.num(D)) + " < 0",
-                    "reject u = complex roots",
+                    "D = " + format_expr(a, a.num(D)) + " < 0 => No real u",
                     var + " = []",
                 };
             }
@@ -19304,6 +19236,14 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
         casio::power(a, q->b, two),
         casio::neg(a, casio::mul(a, {four, q->a2, q->c}))
     }));
+    auto disc_num = as_num(a, disc);
+    if(disc_num && disc_num->num < 0) {
+        out.push_back("a = " + format_expr(a, q->a2) + ", b = " + format_expr(a, q->b) + ", c = " + format_expr(a, q->c));
+        out.push_back("D = b^2 - 4ac = " + format_expr(a, disc));
+        out.push_back("D < 0 => No real roots.");
+        out.push_back(var + " = []");
+        return out;
+    }
     NodeId den = casio::simplify(a, casio::mul(a, {two, q->a2}));
     NodeId root = casio::simplify(a, casio::fn(a, "sqrt", disc));
     NodeId plus = casio::simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), root}), den));
@@ -24705,7 +24645,7 @@ algebra_compare_transform_modes:
             Rational c = p->a0;
             // Factorization via finding roots (quadratic formula)
             Rational b2_4ac = r_sub(r_mul(b, b), r_mul(r_mul(Rational{4, 1}, a), c));
-            if(b2_4ac.num < 0) return {"Err: complex roots, not factored over reals."};
+            if(b2_4ac.num < 0) return {"Err: not factored over reals."};
 
             auto opt_disc = as_int64(b2_4ac);
             if(!opt_disc || *opt_disc < 0) {
@@ -25011,7 +24951,6 @@ algebra_compare_transform_modes:
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
-        if(auto cr = complex_nth_roots_route(arena, lhs, rhs, rearr, solve_var)) return *cr;
         if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *nr;
         if(auto tq = trig_quadratic_arg_exact_solve(arena, lhs, rhs, solve_var))
             return *tq;
@@ -25396,18 +25335,11 @@ algebra_compare_transform_modes:
             }
             else {
                 out.push_back("3. Use quadratic formula: " + solve_var + " = (-b +/- sqrt(b^2-4ac))/(2a).");
+                Rational D = r_sub(r_mul(rp.num.a1, rp.num.a1), r_mul(Rational{4, 1}, r_mul(rp.num.a2, rp.num.a0)));
+                if(D.num < 0) out.push_back("D = " + format_rat(arena, D) + " < 0 => No real roots.");
             }
             auto raw_sols = solve_poly2(arena, rp.num, solve_var);
             auto sols = filter_real_solutions(arena, rearr, solve_var, raw_sols, interval_lo, interval_hi);
-            if(sols.empty() && !interval_lo && !interval_hi) {
-                bool complex_roots = false;
-                for(auto const &s : raw_sols)
-                    if(sol_rhs(s).find('i') != std::string::npos) complex_roots = true;
-                if(complex_roots) {
-                    sols = raw_sols;
-                    sort_solution_lines(arena, sols);
-                }
-            }
             if(sols.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No real roots.");
                 out.push_back("Answer: " + solve_var + " = []");

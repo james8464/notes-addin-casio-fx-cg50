@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     ok = check(casio::device::Module::Algebra, "2x+3=7", "Answer: x = 2") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-5x+6=0", "Answer: x = 2 or x = 3") && ok;
     ok = check(casio::device::Module::Algebra, "x^2-2=0", "sqrt(8)") && ok;
-    ok = check(casio::device::Module::Algebra, "x^2+1=0", "i*sqrt(4)") && ok;
+    ok = check(casio::device::Module::Algebra, "x^2+1=0", "x = []") && ok;
     ok = check(casio::device::Module::Derive, "3x^2+2x+1", "Answer: dy/dx = 6x + 2") && ok;
     ok = check(casio::device::Module::Integrate, "3x^2+2x+1", "Answer: x^3 + x^2 + x + C") && ok;
     ok = check(casio::device::Module::Trig, "sin(30)", "Answer: 1/2") && ok;

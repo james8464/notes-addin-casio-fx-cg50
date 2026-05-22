@@ -745,24 +745,11 @@ static bool append_quadratic_roots(OutputLines &out, const int *coeff, char var)
     disc_line.append(".");
 
     if(disc < 0) {
-        out.add("5. Discriminant is negative, use i^2 = -1.");
+        out.add("5. D < 0: no real roots.");
         FixedString<96> &ans = out.next();
         ans.append("Answer: ");
         ans.append_char(var);
-        ans.append(" = (");
-        ans.append_int(-b2);
-        ans.append(" + i*sqrt(");
-        ans.append_int(-disc);
-        ans.append("))/");
-        ans.append_int(2 * a2);
-        ans.append(" or ");
-        ans.append_char(var);
-        ans.append(" = (");
-        ans.append_int(-b2);
-        ans.append(" - i*sqrt(");
-        ans.append_int(-disc);
-        ans.append("))/");
-        ans.append_int(2 * a2);
+        ans.append(" = []");
         return true;
     }
     if(!is_square_int(disc, root)) {

@@ -189,7 +189,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(x+9=3*sqrt(x),x)",
-        ["u = x^(1/2), u >= 0", "u^2 - 3*u + 9 = 0", "reject u =", "x = []"],
+        ["u = sqrt(x), u >= 0", "u^2 - 3*u + 9 = 0", "No real u", "x = []"],
         ["sqrt(3)*i)^2", "ERR:"],
     ),
     (
@@ -2098,6 +2098,7 @@ REMOVED_FEATURE_MARKERS = (
     "method=summary",
     "method=weierstrass", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "arcosh",
     "taylor(", "maclaurin(",
+    "solve(z^", "d2",
 )
 
 
