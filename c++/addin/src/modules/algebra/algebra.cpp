@@ -7087,6 +7087,131 @@ static std::optional<std::string> exact_log_base_value_key(std::string const &ke
     return std::nullopt;
 }
 
+static bool log_base_rational_value(std::string const &base, Rational v, Rational &out)
+{
+    v.normalize();
+    if(v.num <= 0 || v.den <= 0) return false;
+    auto pn = integer_power_of_base(base, std::to_string(v.num));
+    auto pd = integer_power_of_base(base, std::to_string(v.den));
+    if(!pn || !pd) return false;
+    out = Rational{*pn - *pd, 1};
+    return true;
+}
+
+static void log_law_add_part(std::vector<std::pair<std::string, Rational>> &parts,
+                             std::string const &atom,
+                             Rational c)
+{
+    if(is_zero(c)) return;
+    for(auto &p : parts) {
+        if(p.first == atom) {
+            p.second = r_add(p.second, c);
+            return;
+        }
+    }
+    parts.push_back({atom, c});
+}
+
+static bool log_law_collect(Arena &a,
+                            NodeId n,
+                            std::string const &base,
+                            Rational c,
+                            Rational &constant,
+                            std::vector<std::pair<std::string, Rational>> &parts)
+{
+    if(is_zero(c)) return true;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        Rational lv;
+        if(!log_base_rational_value(base, x.num, lv)) return false;
+        constant = r_add(constant, r_mul(c, lv));
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        return log_law_collect(a, x.a, base, r_div(c, Rational{2, 1}), constant, parts);
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num) return false;
+        return log_law_collect(a, x.a, base, r_mul(c, e.num), constant, parts);
+    }
+    if(x.kind == NodeKind::Div) {
+        return log_law_collect(a, x.a, base, c, constant, parts) &&
+               log_law_collect(a, x.b, base, r_neg(c), constant, parts);
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!log_law_collect(a, k, base, c, constant, parts)) return false;
+        return true;
+    }
+    if(!has_symbols(a, n)) return false;
+    log_law_add_part(parts, format_expr(a, n), c);
+    return true;
+}
+
+static std::string log_law_term_text(Rational c, std::string const &body)
+{
+    c.normalize();
+    if(c.num < 0) c.num = -c.num;
+    if(body.empty()) return format_rat_plain(c);
+    if(c.num == c.den) return body;
+    return format_rat_plain(c) + "*" + body;
+}
+
+static std::optional<std::vector<std::string>> log_law_named_route_key(Arena &a, std::string const &key)
+{
+    std::string base, arg;
+    std::size_t next = 0;
+    if(!parse_log_call_key(key, 0, base, arg, next) || next != key.size()) return std::nullopt;
+
+    NodeId argn = casio::parse_expr(a, arg);
+    Rational constant{0, 1};
+    std::vector<std::pair<std::string, Rational>> parts;
+    if(!log_law_collect(a, argn, base, Rational{1, 1}, constant, parts)) return std::nullopt;
+
+    std::vector<std::string> atoms;
+    for(auto const &p : parts) {
+        if(is_zero(p.second)) continue;
+        if(std::find(atoms.begin(), atoms.end(), p.first) == atoms.end()) atoms.push_back(p.first);
+    }
+    if(atoms.empty()) return std::nullopt;
+    std::sort(atoms.begin(), atoms.end(), [](std::string const &u, std::string const &v) {
+        if(u.size() != v.size()) return u.size() < v.size();
+        return u < v;
+    });
+    if(atoms.size() > 6) return std::nullopt;
+
+    auto label_for = [&](std::string const &atom) {
+        for(std::size_t i = 0; i < atoms.size(); ++i)
+            if(atoms[i] == atom) return std::string(1, static_cast<char>('a' + i));
+        return atom;
+    };
+    std::string final;
+    auto append = [&](Rational c, std::string const &body) {
+        if(is_zero(c)) return;
+        bool neg = c.num < 0;
+        if(final.empty()) {
+            final += neg ? "-" : "";
+            final += log_law_term_text(c, body);
+        }
+        else {
+            final += neg ? "-" : "+";
+            final += log_law_term_text(c, body);
+        }
+    };
+    append(constant, "");
+    for(auto const &p : parts)
+        if(!is_zero(p.second)) append(p.second, label_for(p.first));
+    if(final.empty()) return std::nullopt;
+
+    std::vector<std::string> out;
+    for(std::size_t i = 0; i < atoms.size(); ++i)
+        out.push_back(std::string(1, static_cast<char>('a' + i)) + "=log(" + base + "," + atoms[i] + ")");
+    out.push_back("log(" + base + "," + format_expr(a, argn) + ")=" + final);
+    out.push_back(final);
+    return out;
+}
+
 static std::string format_key_expr(Arena &a, std::string const &text)
 {
     try {
@@ -22963,6 +23088,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto sroot = shifted_roots_route(arena, req.expr)) return *sroot;
+            if(req.mode == 0) {
+                if(auto llaw = log_law_named_route_key(arena, key)) return *llaw;
+            }
             if(auto logv = exact_log_base_value_key(key)) {
                 return casio::exam_block(
                     "custom-base log",

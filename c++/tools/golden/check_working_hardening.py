@@ -1178,6 +1178,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "log(2,sqrt(x))",
+        ["a = log(2,x)", "log(2,sqrt(x)) = 1/2*a", "1/2*a"],
+        ["ln(sqrt(x))/ln(2)", "Traceback"],
+    ),
+    (
+        "alg",
+        "log(2,x*(x+8))",
+        ["a = log(2,x)", "b = log(2,x + 8)", "a+b"],
+        ["ln(x*(x + 8))/ln(2)", "Traceback"],
+    ),
+    (
+        "alg",
+        "log(2,8*(x+8)/x)",
+        ["a = log(2,x)", "b = log(2,x + 8)", "3+b-a"],
+        ["ln(8*(x + 8)/x)/ln(2)", "Traceback"],
+    ),
+    (
+        "alg",
         "expand((n+1)^3-n^3)",
         ["= 3n^2+3n+1", "= 3n(n+1)+1", "n(n+1) is even", "is odd"],
         ["(n + 1)^3 - n^3\n", "Traceback"],
