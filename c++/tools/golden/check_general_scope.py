@@ -63,6 +63,18 @@ def main() -> int:
         ("Err: unsupported function",),
         ("tanh(x)", "ln(abs(sinh(x)))"),
     )
+    require(
+        "removed_surface_derive_guard",
+        run_host("--derive", "mean(x)+weierstrass(x),x"),
+        ("Err: unsupported function",),
+        ("dy/dx =", "mean*x", "weierstrass*x"),
+    )
+    require(
+        "removed_surface_integrate_guard",
+        run_host("--int", "param_area(t,t^2,t,0,1)"),
+        ("Err: unsupported function",),
+        ("A = Int", "dx/dt"),
+    )
     print("general_scope OK")
     return 0
 

@@ -6,6 +6,7 @@
 #include "core/same.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
+#include "core/scope_guard.hpp"
 #include "core/simplify.hpp"
 #include "modules/integrate/integrate.hpp"
 #include "modules/trig/trig.hpp"
@@ -6644,44 +6645,6 @@ static std::string compact_input_key(std::string text)
         out.swap(collapsed);
     }
     return out;
-}
-
-static bool contains_removed_function(std::string const &text)
-{
-    static constexpr char const *names[] = {
-        "sinh(", "cosh(", "tanh(", "csch(", "sech(", "coth(", "cosech(",
-        "asinh(", "acosh(", "atanh(", "acsch(", "asech(", "acoth(", "acosech(",
-        "arcsinh(", "arccosh(", "arctanh(", "arcsch(", "arcsech(", "arccoth(", "arcosech(",
-        "arsinh(", "arcosh(", "artanh(", "arsch(", "arsech(", "arcoth(",
-        "comb(", "rationalise(", "rationalize(", "normald(",
-        "mean(", "median(", "stdev(", "stddev(", "correlation(", "covariance(",
-        "linear_regression(", "ztest(", "plot(", "spark(",
-        "plotcontour(", "plotfield(", "plotlist(", "plotode(", "plotparam(",
-        "plotpolar(", "plotseq(", "disque(", "tabular(", "weierstrass(",
-        "symmetry(", "mean_value(", "volume_x(", "volume_y(", "area_between(",
-        "param_area(", "param_area_y(", "param_volume_x(", "param_volume_y("
-    };
-    auto fold = [](std::string s) {
-        std::string out;
-        out.reserve(s.size());
-        for(char c : s) {
-            if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
-            out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
-        }
-        return out;
-    };
-    auto hit = [&](std::string const &hay) {
-        for(char const *name : names) {
-            if(hay.find(name) != std::string::npos) return true;
-        }
-        return false;
-    };
-    if(hit(fold(text))) return true;
-    std::string key = compact_input_key(text);
-    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
-        return static_cast<char>(std::tolower(ch));
-    });
-    return hit(key);
 }
 
 static std::optional<long long> parse_i64_text(std::string const &s);
@@ -23040,7 +23003,7 @@ static std::optional<std::vector<std::string>> equal_exp_solve_route(
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
-    if(contains_removed_function(req.expr)) return {"Err: unsupported function."};
+    if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
         {
