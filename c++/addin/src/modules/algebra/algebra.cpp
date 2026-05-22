@@ -165,6 +165,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
+static std::optional<Rational> rational_ratio_power(Rational base, Rational value);
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
                                                                               NodeId rearr,
@@ -6264,6 +6265,105 @@ static bool geometric_power_term(Arena &a, NodeId term, std::string const &var, 
     return base != 0;
 }
 
+static bool inf_text(std::string s)
+{
+    s = trim_text(s);
+    return s == "inf" || s == "infty" || s == "infinity";
+}
+
+static std::optional<std::vector<std::string>> infinite_geometric_sum_route(
+    Arena &a,
+    std::string const &expr_txt,
+    std::string const &var,
+    long long lo
+)
+{
+    NodeId expr = casio::parse_expr(a, expr_txt);
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.empty()) return std::nullopt;
+
+    NodeId total = zero_node(a);
+    std::vector<std::string> formulas;
+    for(NodeId term : terms) {
+        Rational coef{1, 1};
+        NodeId base = 0;
+        if(!geometric_power_term(a, term, var, coef, base)) return std::nullopt;
+        auto br = as_num(a, base);
+        if(!br || r_cmp(r_abs(*br), Rational{1, 1}) >= 0) return std::nullopt;
+        NodeId first = exact_eval_simplify(a, casio::mul(a, {
+            a.num(coef),
+            casio::power(a, base, a.num(Rational{lo, 1}))
+        }));
+        NodeId denom = exact_eval_simplify(a, sub_node(a, one_node(a), base));
+        total = exact_eval_simplify(a, casio::add(a, {total, casio::div(a, first, denom)}));
+        formulas.push_back(format_expr(a, first) + "/(1-" + format_expr(a, base) + ")");
+    }
+
+    std::string sigma = "sum_{" + var + "=" + std::to_string(lo) + "}^inf (" + format_expr(a, expr) + ")";
+    std::string ans = format_expr(a, total);
+    return std::vector<std::string>{
+        sigma,
+        "|common ratio| < 1",
+        "= " + join_text(formulas, " + "),
+        "= " + ans,
+        ans
+    };
+}
+
+static std::optional<Rational> unit_linear_offset(Arena &a, NodeId n, std::string const &var)
+{
+    auto lin = symbolic_linear_parts(a, n, var);
+    if(!lin) return std::nullopt;
+    auto m = as_num(a, lin->m);
+    auto c = as_num(a, lin->c);
+    if(!m || !c || r_cmp(*m, Rational{1, 1}) != 0) return std::nullopt;
+    return *c;
+}
+
+static std::optional<std::vector<std::string>> telescoping_log_sum_route(
+    Arena &a,
+    NodeId expr,
+    std::string const &var,
+    long long lo,
+    long long hi
+)
+{
+    NodeId arg = 0, base = 0;
+    bool has_base = false;
+    if(!log_piece(a, expr, arg, base, has_base) || !has_base || contains_symbol(a, base, var)) return std::nullopt;
+    Node const &q = a.get(arg);
+    if(q.kind != NodeKind::Div) return std::nullopt;
+    auto top = unit_linear_offset(a, q.a, var);
+    auto bot = unit_linear_offset(a, q.b, var);
+    if(!top || !bot || r_cmp(r_sub(*top, *bot), Rational{1, 1}) != 0) return std::nullopt;
+
+    Rational numerator = r_add(Rational{hi, 1}, *top);
+    Rational denominator = r_add(Rational{lo, 1}, *bot);
+    if(numerator.num <= 0 || denominator.num <= 0) return std::nullopt;
+    Rational product = r_div(numerator, denominator);
+    product.normalize();
+
+    std::string base_txt = format_expr(a, base);
+    std::string total_arg = format_expr(a, a.num(product));
+    NodeId ans_node = casio::div(a, casio::fn(a, "log", a.num(product)), casio::fn(a, "log", base));
+    if(auto br = as_num(a, base)) {
+        if(auto p = rational_ratio_power(*br, product)) ans_node = a.num(*p);
+    }
+    ans_node = exact_eval_simplify(a, ans_node);
+    std::string first = format_expr(a, clone_with_substitution(a, expr, var, a.num(Rational{lo, 1})));
+    std::string last = format_expr(a, clone_with_substitution(a, expr, var, a.num(Rational{hi, 1})));
+    std::string sigma = "sum_{" + var + "=" + std::to_string(lo) + "}^" + std::to_string(hi) + " (" + format_expr(a, expr) + ")";
+    std::string ans = format_expr(a, ans_node);
+    return std::vector<std::string>{
+        sigma,
+        "= " + first + " + ... + " + last,
+        "= log(" + base_txt + "," + total_arg + ")",
+        "= " + ans,
+        ans
+    };
+}
+
 static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::string const &raw)
 {
     std::string body = unwrap_call_text(raw, "sum");
@@ -6280,10 +6380,13 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
     std::string expr_txt = trim_text(parts[0]);
     std::string var = trim_text(parts[1]);
     auto lo = parse_int(parts[2]);
+    if(var.empty() || !lo) return std::nullopt;
+    if(inf_text(parts[3])) return infinite_geometric_sum_route(a, expr_txt, var, *lo);
     auto hi = parse_int(parts[3]);
-    if(var.empty() || !lo || !hi || *hi < *lo || *hi - *lo > 300) return std::nullopt;
+    if(!hi || *hi < *lo || *hi - *lo > 300) return std::nullopt;
 
     NodeId expr = casio::parse_expr(a, expr_txt);
+    if(auto tel = telescoping_log_sum_route(a, expr, var, *lo, *hi)) return *tel;
     std::vector<NodeId> terms;
     add_terms_flat(a, expr, terms);
     PolyAny poly{{Rational{0, 1}}, true};
@@ -16899,7 +17002,7 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
                     var + " = u^2",
                     "u = " + format_expr(a, clone_with_substitution(a, rhs_iso, var, casio::power(a, casio::sym(a, "u"), casio::num(a, 2)))),
                     format_expr(a, poly2_to_node(a, uq, "u")) + " = 0",
-                    "D = " + format_expr(a, a.num(D)) + " < 0 => No real u",
+                    "D = " + format_expr(a, a.num(D)) + " < 0 => No real solution",
                     var + " = []",
                 };
             }
@@ -18761,6 +18864,119 @@ static std::optional<std::vector<std::string>> log_linear_combination_exact_rout
     out.push_back(var + " = " + format_rat_plain(*k));
     out.push_back(solution_list_line(var, {var + " = " + format_rat_plain(*k)}));
     return out;
+}
+
+static std::optional<std::pair<long long, Rational>> single_prime_power(Arena &a, NodeId n)
+{
+    PrimeExps logs;
+    if(!add_log_arg_factors(a, n, Rational{1, 1}, logs)) return std::nullopt;
+    long long prime = 0;
+    Rational exp{0, 1};
+    for(auto const &kv : logs) {
+        if(is_zero(kv.second)) continue;
+        if(kv.first <= 1) return std::nullopt;
+        if(prime && prime != kv.first) return std::nullopt;
+        prime = kv.first;
+        exp = kv.second;
+    }
+    if(!prime || is_zero(exp)) return std::nullopt;
+    return std::make_pair(prime, exp);
+}
+
+static NodeId add_node_term(Arena &a, NodeId acc, Rational c, NodeId body)
+{
+    if(is_zero(c)) return acc;
+    NodeId term = r_cmp(c, Rational{1, 1}) == 0 ? body : casio::mul(a, {a.num(c), body});
+    return exact_eval_simplify(a, casio::add(a, {acc, term}));
+}
+
+struct PrimeExpLinearSide
+{
+    long long prime = 0;
+    NodeId slope = 0;
+    NodeId constant = 0;
+};
+
+static std::optional<PrimeExpLinearSide> prime_exp_linear_side(Arena &a, NodeId side, std::string const &var)
+{
+    std::vector<NodeId> factors;
+    collect_mul_factors(a, side, factors);
+    PrimeExpLinearSide out;
+    out.slope = zero_node(a);
+    out.constant = zero_node(a);
+    bool saw_var = false;
+
+    auto set_prime = [&](long long p) {
+        if(!out.prime) out.prime = p;
+        return out.prime == p;
+    };
+
+    for(NodeId f : factors) {
+        Node const &x = a.get(f);
+        if(x.kind == NodeKind::Pow) {
+            auto pe = single_prime_power(a, x.a);
+            if(!pe || !set_prime(pe->first)) return std::nullopt;
+            auto lin = symbolic_linear_parts_deep(a, x.b, var);
+            if(!lin) return std::nullopt;
+            if(!casio::same_by_sig(a, lin->m, zero_node(a))) saw_var = true;
+            out.slope = add_node_term(a, out.slope, pe->second, lin->m);
+            out.constant = add_node_term(a, out.constant, pe->second, lin->c);
+            continue;
+        }
+        if(contains_symbol(a, f, var)) return std::nullopt;
+        auto pe = single_prime_power(a, f);
+        if(!pe || !set_prime(pe->first)) return std::nullopt;
+        out.constant = add_node_term(a, out.constant, pe->second, one_node(a));
+    }
+    if(!saw_var || !out.prime || casio::same_by_sig(a, out.slope, zero_node(a))) return std::nullopt;
+    return out;
+}
+
+static std::optional<std::vector<std::string>> prime_exp_product_solve_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    auto run = [&](NodeId prod_side, NodeId value_side) -> std::optional<std::vector<std::string>> {
+        if(contains_symbol(a, value_side, var)) return std::nullopt;
+        auto side = prime_exp_linear_side(a, prod_side, var);
+        auto value = single_prime_power(a, value_side);
+        if(!side || !value || side->prime != value->first) return std::nullopt;
+
+        NodeId var_term = exact_eval_simplify(a, casio::mul(a, {side->slope, casio::sym(a, var)}));
+        NodeId left_exp = exact_eval_simplify(a, casio::add(a, {side->constant, var_term}));
+        NodeId right_exp = a.num(value->second);
+        NodeId isolated = exact_eval_simplify(a, sub_node(a, right_exp, side->constant));
+        NodeId sol = exact_eval_simplify(a, casio::div(a, isolated, side->slope));
+        NodeId display_sol = sol;
+        std::vector<std::string> sol_syms;
+        collect_symbols(a, sol, sol_syms);
+        sol_syms.erase(std::remove(sol_syms.begin(), sol_syms.end(), var), sol_syms.end());
+        sol_syms.erase(std::remove(sol_syms.begin(), sol_syms.end(), "e"), sol_syms.end());
+        if(sol_syms.size() == 1) {
+            if(auto lin = symbolic_linear_parts_deep(a, sol, sol_syms[0])) {
+                auto m = as_num(a, lin->m), c = as_num(a, lin->c);
+                if(m && c) display_sol = exact_eval_simplify(a, linear_expr(a, *m, *c, casio::sym(a, sol_syms[0])));
+            }
+        }
+
+        std::string p = std::to_string(side->prime);
+        out.push_back(format_expr(a, prod_side) + " = " + format_expr(a, value_side));
+        out.push_back(p + "^(" + format_expr(a, left_exp) + ") = " + p + "^(" + format_expr(a, right_exp) + ")");
+        out.push_back(format_expr(a, left_exp) + " = " + format_expr(a, right_exp));
+        out.push_back(format_expr(a, var_term) + " = " + format_expr(a, isolated));
+        bool param = false;
+        for(auto const &s : sol_syms)
+            if(s != var && s != "e") param = true;
+        out.push_back(var + " = " + format_expr(a, display_sol));
+        if(!param) out.push_back(solution_list_line(var, {var + " = " + format_expr(a, display_sol)}));
+        return out;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
 }
 
 static bool monomial_coeff_power(Arena &a, NodeId n, std::string const &var, Rational &coef, int &power)
@@ -25265,6 +25481,7 @@ algebra_compare_transform_modes:
         if(auto lv = logistic_value_solve_route(arena, lhs, rhs, solve_var, out)) return *lv;
         if(auto aec = affine_exp_const_solve_route(arena, rearr, solve_var, out)) return *aec;
         if(auto etl = exp_trig_log_one_route(arena, lhs, rhs, rearr, solve_var, out, interval_lo, interval_hi)) return *etl;
+        if(auto pep = prime_exp_product_solve_route(arena, lhs, rhs, solve_var, out)) return *pep;
         if(auto pcs = power_const_base_solve_route(arena, lhs, rhs, solve_var, out)) return *pcs;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;

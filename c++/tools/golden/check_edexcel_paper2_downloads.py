@@ -36,6 +36,24 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["Expected )", "ERR:"],
     ),
     (
+        "June 2019 Q1 same-base symbolic exponent",
+        ["--alg", "solve(2^x*4^y=1/(2*sqrt(2)),y)"],
+        ["2^(x+2*y) = 2^(-3/2)", "x+2*y = -3/2", "2*y = - x - 3/2", "y = -1/2*x - 3/4"],
+        ["LHS - RHS", "ERR:"],
+    ),
+    (
+        "June 2019 Q8i infinite geometric sum",
+        ["--alg", "sum(20*(1/2)^r,r,4,inf)"],
+        ["sum_{r = 4}^inf", "|common ratio| < 1", "5/4/(1-1/2)", "5/2"],
+        ["Expected )", "ERR:"],
+    ),
+    (
+        "June 2019 Q8ii telescoping log sum",
+        ["--alg", "sum(log(5,(n+2)/(n+1)),n,1,48)"],
+        ["sum_{n = 1}^48", "log(5,25)", "2"],
+        ["Expected )", "ERR:"],
+    ),
+    (
         "June 2018 Q6 cubic factor theorem",
         ["--alg", "factor(-3*x^3+8*x^2-9*x+10)"],
         ["(x - 2)", "- 3*x^2 + 2*x - 5"],
@@ -70,6 +88,12 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["--trig", "1-cos(2*theta)=tan(theta)*sin(2*theta),method=identity"],
         ["1-cos(2*theta) = 2sin(theta)^2", "tan(theta)*sin(2*theta)", "= 2sin(theta)^2"],
         ["theta = []", "x = []", "ERR:"],
+    ),
+    (
+        "June 2019 Q12 compound-angle fraction identity",
+        ["--trig", "cos(3*theta)/sin(theta)+sin(3*theta)/cos(theta),target=2*cot(2*theta),method=identity"],
+        ["cos(3*theta)*cos(theta)+sin(3*theta)*sin(theta)", "cos(A-B)", "cos(2*theta)/(sin(theta)*cos(theta))", "sin(2*theta)=2sin(theta)cos(theta)", "2*cot(2*theta)"],
+        ["Source = target.", "ERR:"],
     ),
     (
         "Paper 2 identity tan polynomial",

@@ -189,7 +189,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(x+9=3*sqrt(x),x)",
-        ["u = sqrt(x), u >= 0", "u^2 - 3*u + 9 = 0", "No real u", "x = []"],
+        ["u = sqrt(x), u >= 0", "u^2 - 3*u + 9 = 0", "No real solution", "x = []"],
         ["sqrt(3)*i)^2", "ERR:"],
     ),
     (

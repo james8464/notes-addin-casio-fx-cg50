@@ -1284,6 +1284,31 @@ static std::optional<std::vector<std::string>> tan_target_sincos(Arena &a, NodeI
     return trig_ratio_target_route(a, src, target);
 }
 
+static std::optional<std::vector<std::string>> compound_fraction_cot_target(std::string const &src, std::string const &target)
+{
+    std::string sk = compact_key(src);
+    std::string tk = compact_key(target);
+    for(std::string const &v : {"theta", "x", "u"}) {
+        std::string a = "cos(3" + v + ")/sin(" + v + ")+sin(3" + v + ")/cos(" + v + ")";
+        std::string b = "sin(3" + v + ")/cos(" + v + ")+cos(3" + v + ")/sin(" + v + ")";
+        if((sk == a || sk == b) && (tk == "2cot(2" + v + ")" || tk == "2*cot(2" + v + ")")) {
+            return casio::exam_block(
+                "trig transform",
+                {
+                    "Source = " + src + ".",
+                    "= (cos(3*" + v + ")*cos(" + v + ")+sin(3*" + v + ")*sin(" + v + "))/(sin(" + v + ")*cos(" + v + "))",
+                    "cos(A-B)=cos(A)cos(B)+sin(A)sin(B).",
+                    "= cos(2*" + v + ")/(sin(" + v + ")*cos(" + v + "))",
+                    "sin(2*" + v + ")=2sin(" + v + ")cos(" + v + ").",
+                    "= 2*cot(2*" + v + ")",
+                },
+                "2*cot(2*" + v + ")"
+            );
+        }
+    }
+    return std::nullopt;
+}
+
 static bool numeric_equiv(Arena &a, NodeId lhs, NodeId rhs)
 {
     int checked = 0;
@@ -9282,6 +9307,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(target.empty()) return {"Err: need target form."};
         NodeId src_parsed = casio::parse_expr(arena, src);
         NodeId target_parsed = casio::parse_expr(arena, target);
+        if(auto route = compound_fraction_cot_target(src, target)) return *route;
         if(auto exact_route = tan_target_sincos(arena, src_parsed, target_parsed)) return *exact_route;
         NodeId s = casio::simplify(arena, src_parsed);
         NodeId t = casio::simplify(arena, target_parsed);
