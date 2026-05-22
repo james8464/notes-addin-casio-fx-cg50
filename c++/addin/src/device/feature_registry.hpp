@@ -22,7 +22,6 @@ enum : FeatureId
 
     F_INT = 300,
     F_INT_DE = 301,
-    F_INT_PAR = 302,
 
     F_ALG_CMP = 400,
     F_ALG_XFORM = 401,
@@ -42,11 +41,6 @@ enum : FeatureId
     F_TRIG_RW = 503,
 
     F_SUVAT = 600,
-
-    F_BOOL_SIMP = 700,
-    F_BOOL_NAND = 701,
-    F_BOOL_NOR = 702,
-    F_BOOL_PROVE = 703,
 
     F_SHELL = 900,
 };
@@ -77,7 +71,6 @@ const char* ALIAS_DERIVE_IMP[] = {"imp", "impDiff", "implicit"};
 const char* ALIAS_DERIVE_PAR[] = {"par", "paramD", "param"};
 const char* ALIAS_INT[] = {"int", "integrate"};
 const char* ALIAS_INT_DE[] = {"de", "diffEq"};
-const char* ALIAS_INT_PAR[] = {"parA", "paramArea"};
 const char* ALIAS_ALG_CMP[] = {"cmp", "compare"};
 const char* ALIAS_ALG_XFORM[] = {"xform", "transform"};
 const char* ALIAS_ALG_EXP[] = {"exp", "expand"};
@@ -94,10 +87,6 @@ const char* ALIAS_TRIG_XFORM[] = {"xform", "transform"};
 const char* ALIAS_TRIG_SOLVE[] = {"solve"};
 const char* ALIAS_TRIG_RW[] = {"rw", "rewrite"};
 const char* ALIAS_SUVAT[] = {"suvat"};
-const char* ALIAS_BOOL_SIMP[] = {"simp", "simplify"};
-const char* ALIAS_BOOL_NAND[] = {"nand"};
-const char* ALIAS_BOOL_NOR[] = {"nor"};
-const char* ALIAS_BOOL_PROVE[] = {"prove"};
 const char* ALIAS_SHELL[] = {"shell", "sh"};
 
 const PromptSpec PROMPTS_NONE[] = {
@@ -138,7 +127,6 @@ const FeatureSpec FEATURES[] = {
 
     {F_INT, "Integrate", "INT", "Integrate", ALIAS_INT, 2, &PROMPT_F, 1},
     {F_INT_DE, "Integrate", "DE", "Diff Eq", ALIAS_INT_DE, 2, PROMPTS_NONE, 0},
-    {F_INT_PAR, "Integrate", "PAR", "Param Area", ALIAS_INT_PAR, 2, PROMPTS_NONE, 0},
 
     {F_ALG_CMP, "Algebra", "CMP", "Compare", ALIAS_ALG_CMP, 2, PROMPTS_NONE, 0},
     {F_ALG_XFORM, "Algebra", "XFM", "Transform", ALIAS_ALG_XFORM, 2, PROMPTS_NONE, 0},
@@ -158,11 +146,6 @@ const FeatureSpec FEATURES[] = {
     {F_TRIG_RW, "Trig", "RW", "Rewrite", ALIAS_TRIG_RW, 2, PROMPTS_NONE, 0},
 
     {F_SUVAT, "SUVAT", "SUV", "SUVAT", ALIAS_SUVAT, 1, PROMPTS_NONE, 0},
-
-    {F_BOOL_SIMP, "Bool", "SIM", "Simplify", ALIAS_BOOL_SIMP, 2, PROMPTS_NONE, 0},
-    {F_BOOL_NAND, "Bool", "NAN", "NAND", ALIAS_BOOL_NAND, 1, PROMPTS_NONE, 0},
-    {F_BOOL_NOR, "Bool", "NOR", "NOR", ALIAS_BOOL_NOR, 1, PROMPTS_NONE, 0},
-    {F_BOOL_PROVE, "Bool", "PRV", "Prove", ALIAS_BOOL_PROVE, 1, PROMPTS_NONE, 0},
 
     {F_SHELL, "Shell", "SHL", "Shell", ALIAS_SHELL, 2, PROMPTS_NONE, 0},
 };

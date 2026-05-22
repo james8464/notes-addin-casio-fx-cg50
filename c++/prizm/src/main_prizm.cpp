@@ -145,13 +145,6 @@ const CommandItem kArithCommands[] = {
     {"powmod", "powmod("},
 };
 
-const CommandItem kBooleanCommands[] = {
-    {"bool simp", "bool_simplify("},
-    {"nand", "nand("},
-    {"nor", "nor("},
-    {"prove", "prove_bool("},
-};
-
 const FileItem kFileCommands[] = {
     {"toggle DEG/RAD", FileToggleAngle},
     {"clear input", FileClearInput},
@@ -333,7 +326,6 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         "Calculus",
         "Trig",
         "Stats",
-        "Boolean",
         "Arith",
         "Shell",
         "File",
@@ -358,18 +350,14 @@ void open_commands(unsigned char *editor, int &cursor, int &start, bool &degrees
         insert_command(kStatsCommands, c, editor, cursor);
     }
     else if(group == 4) {
-        int c = select_command("Boolean", kBooleanCommands);
-        insert_command(kBooleanCommands, c, editor, cursor);
-    }
-    else if(group == 5) {
         int c = select_command("Arith", kArithCommands);
         insert_command(kArithCommands, c, editor, cursor);
     }
-    else if(group == 6) {
+    else if(group == 5) {
         int c = select_command("Shell", kShellCommands);
         insert_command(kShellCommands, c, editor, cursor);
     }
-    else if(group == 7) {
+    else if(group == 6) {
         int c = select_file_command(kFileCommands);
         if(c < 0) return;
         int action = kFileCommands[c].action;

@@ -2539,29 +2539,6 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
             return solve_device_placeholder("binom/binomcdf only", out);
 
-        case Module::Boolean: return solve_simplify(input, out);
-        case Module::DeriveNormal: return solve_derive(input, out);
-        case Module::DeriveImplicit: return solve_derive(input, out);
-        case Module::DeriveParam: return solve_derive(input, out);
-        case Module::IntDE: return solve_integrate(input, out);
-        case Module::IntParamArea: return solve_integrate(input, out);
-        case Module::AlgCompare: return solve_algebra(input, out);
-        case Module::AlgTransform: return solve_algebra(input, out);
-        case Module::AlgExpand: return solve_algebra(input, out);
-        case Module::AlgPoly: return solve_algebra(input, out);
-        case Module::AlgCompSq: return solve_algebra(input, out);
-        case Module::AlgComplain: return solve_algebra(input, out);
-        case Module::AlgInverse: return solve_algebra(input, out);
-        case Module::AlgRewrite: return solve_algebra(input, out);
-        case Module::AlgDomRng: return solve_algebra(input, out);
-        case Module::AlgCartesian: return solve_algebra(input, out);
-        case Module::TrigProve: return solve_trig(input, out);
-        case Module::TrigTransform: return solve_trig(input, out);
-        case Module::TrigSolve: return solve_trig(input, out);
-        case Module::TrigRewrite: return solve_trig(input, out);
-        case Module::BoolNAND: return solve_simplify(input, out);
-        case Module::BoolNOR: return solve_simplify(input, out);
-        case Module::BoolProve: return solve_simplify(input, out);
     }
 
     out.add("Use a listed command from the catalogue.");

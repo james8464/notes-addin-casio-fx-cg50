@@ -18,6 +18,7 @@ inline bool contains_removed_function(std::string const &text)
         "symmetry(", "mean_value(", "volume_x(", "volume_y(",
         "area_between(", "param_area(", "param_area_y(",
         "param_volume_x(", "param_volume_y(", "ztest(", "spark(",
+        "bool_simplify(", "prove_bool(", "nand(", "nor(",
         "sinh(", "cosh(", "tanh(", "csch(", "sech(", "coth(", "cosech(",
         "asinh(", "acosh(", "atanh(", "acsch(", "asech(", "acoth(", "acosech(",
         "arcsinh(", "arccosh(", "arctanh(", "arcsch(", "arcsech(", "arccoth(", "arcosech(",

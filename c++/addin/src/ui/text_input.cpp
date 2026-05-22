@@ -38,7 +38,7 @@ static void draw_frame(const char *title, const char *help, std::string const &t
 
 static bool map_key_to_char(int key, char &out)
 {
-    // Minimal mapping for Boolean syntax and simple math tokens.
+    // Minimal mapping for shell syntax and simple math tokens.
     // NOTE: gint key codes are many; we only map what we need now.
     // Letters A-Z
     if(key >= KEY_A && key <= KEY_Z) {
@@ -50,7 +50,7 @@ static bool map_key_to_char(int key, char &out)
         out = char('0' + (key - KEY_0));
         return true;
     }
-    // Punctuation for boolean
+    // Punctuation
     if(key == KEY_PLUS) { out = '+'; return true; }
     if(key == KEY_DOT) { out = '.'; return true; }
     if(key == KEY_COMMA) { out = ','; return true; }
@@ -116,4 +116,3 @@ bool text_input(std::string &io_text, const char *title, const char *help)
 }
 
 } // namespace casio::ui
-

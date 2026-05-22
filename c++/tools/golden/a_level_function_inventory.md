@@ -33,7 +33,7 @@ Legend:
 | constants `pi,e,inf` | keep | KhiCAS | no | `inf` needed for limits/improper integrals. |
 | arithmetic operators `+ - * / ^` | keep | KhiCAS | no | Base parser. |
 | comparisons `< <= == != >= >` | keep | KhiCAS | no | Program/condition syntax. |
-| boolean `and/or/not/!,&,|,~,=>` | keep | Both | partial | Boolean module has step/prove/NAND/NOR helpers; not 9MA0 priority. |
+| boolean `and/or/not/!,&,|,~,=>` | hide | KhiCAS | no | Parser syntax retained; Boolean helper menu/routes removed from 9MA0 app surface. |
 | assignment `:=`, store `=>` | keep | KhiCAS | no | Shell/program utility. |
 | program tokens `function`, `si`, `pour`, `tantque`, `_`, `\\`, `%` | hide | KhiCAS | no | Catalogue hidden where possible; parser retained. |
 
@@ -140,7 +140,7 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `--bool`, `--nand`, `--nor`, `--prove` host routes | dev-only | CasioCAS | partial | Testing/proof utilities, not primary calculator surface. |
+| `--bool`, `--nand`, `--nor`, `--prove` host routes | dev-only | CasioCAS | blocked on app | Host-only test utilities; app/catalogue surface removed. |
 
 ## Removed Or Hidden By 9MA0 Scope
 
@@ -154,3 +154,4 @@ Legend:
 | further stats/list summaries (`normald`, `mean`, `median`, `stdev`, regressions, covariance/correlation, `ztest`) | blocked/hidden |
 | old manual numerical helpers (Newton, fixed point, trapezium, Simpson, midpoint/mid-ordinate) | removed |
 | old geometry/area/volume helpers (`area_between`, `volume_x/y`, `param_area*`, `param_volume*`, `mean_value`, `symmetry`) | blocked/hidden |
+| Boolean helpers (`bool_simplify`, `prove_bool`, `nand`, `nor`) | blocked/hidden |

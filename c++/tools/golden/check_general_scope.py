@@ -75,6 +75,12 @@ def main() -> int:
         ("Err: unsupported function",),
         ("A = Int", "dx/dt"),
     )
+    require(
+        "boolean_removed",
+        run_host("--alg", "prove_bool(A+A'=1)"),
+        ("Err: unsupported function",),
+        ("NAND", "NOR", "prove"),
+    )
     print("general_scope OK")
     return 0
 
