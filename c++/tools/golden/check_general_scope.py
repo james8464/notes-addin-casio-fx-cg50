@@ -17,6 +17,14 @@ def run_host(*args: str) -> str:
     return proc.stdout
 
 
+def run_host_err_ok(*args: str) -> str:
+    proc = subprocess.run([str(HOST), *args], cwd=str(REPO), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out = proc.stdout or proc.stderr
+    if proc.returncode != 0 and not out.startswith("Err:"):
+        raise AssertionError(out)
+    return out
+
+
 def require(name: str, out: str, needles: tuple[str, ...], forbidden: tuple[str, ...] = ()) -> None:
     low = out.lower()
     compact_low = "".join(low.split())
@@ -80,6 +88,38 @@ def main() -> int:
         run_host("--alg", "prove_bool(A+A'=1)"),
         ("Err: unsupported function",),
         ("NAND", "NOR", "prove"),
+    )
+    removed_alg = [
+        "normald(0,1,0)", "mean([1,2,3])", "median([1,2,3])", "stdev([1,2,3])",
+        "correlation([1,2],[3,4])", "covariance([1,2],[3,4])",
+        "linear_regression([1,2],[3,4])", "plot(x)", "plotcontour(x)",
+        "plotfield(x)", "plotlist([1,2])", "plotode(x)", "plotparam(x,y)",
+        "plotpolar(sin(x))", "plotseq(x)", "disque(x)", "tabular(x^2)",
+        "symmetry(x^2)", "mean_value(x,x,0,1)", "volume_x(x,x,0,1)",
+        "volume_y(x,x,0,1)", "area_between(x,x^2,x,0,1)",
+        "param_area(t,t^2,t,0,1)", "param_area_y(t,t^2,t,0,1)",
+        "param_volume_x(t,t^2,t,0,1)", "param_volume_y(t,t^2,t,0,1)",
+        "ztest(5,4,1,10,0.05,gt)", "spark([1,2,3])",
+    ]
+    for expr in removed_alg:
+        require("removed_alg_" + expr.split("(")[0], run_host("--alg", expr), ("Err: unsupported function",))
+    require(
+        "weierstrass_method_removed",
+        run_host_err_ok("--int", "1/(2*sin(x)-cos(x)+5),method=weierstrass"),
+        ("Err: invalid method",),
+        ("u = tan",),
+    )
+    require(
+        "tabular_method_removed",
+        run_host_err_ok("--int", "x^2*e^x,method=tabular"),
+        ("Err: invalid method",),
+        ("I:",),
+    )
+    require(
+        "ztest_stats_removed",
+        run_host("--stats", "ztest(5,4,1,10,0.05,gt)"),
+        ("Err: unsupported stats function",),
+        ("z =", "p ="),
     )
     print("general_scope OK")
     return 0
