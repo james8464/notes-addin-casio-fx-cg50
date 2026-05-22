@@ -115,6 +115,18 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["No elementary primitive", "ERR:"],
     ),
     (
+        "June 2018 Q14 parametric parabola identity",
+        ["--alg", "compare(4+2*cos(2*t),6-(3+2*sin(t)-3)^2)"],
+        ["E1-E2 = 0", "equivalent"],
+        ["not equivalent", "ERR:"],
+    ),
+    (
+        "June 2018 Q14 line parameter upper bound",
+        ["--alg", "solve(49-4*(k+3)>0,k)"],
+        ["N = 0: k = 37/4", "k < 37/4"],
+        ["ERR:", "k = []"],
+    ),
+    (
         "June 2019 Q6 double-angle tan solve",
         ["--trig", "5*sin(2*theta)=9*tan(theta),theta,-180,180,10,method=identity"],
         ["sin(theta)=0", "cos(theta)^2=9/10", "theta = [", "0, 18.4", "161.6"],
