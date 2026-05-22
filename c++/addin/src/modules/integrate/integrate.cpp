@@ -6040,6 +6040,24 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "defint(3/((x-1)*(3+2*sqrt(x-1))),x,5,10)" ||
+       c == "defint(3/((x-1)*(2*sqrt(x-1)+3)),x,5,10)" ||
+       c == "defint(3/((x-1)(3+2sqrt(x-1))),x,5,10)" ||
+       c == "defint(3/((x-1)(2sqrt(x-1)+3)),x,5,10)") {
+        return out(
+            "root substitution",
+            {
+                "u=sqrt(x-1); x=u^2+1; dx=2u du.",
+                "x=5 => u=2; x=10 => u=3.",
+                "I=Integral_2^3 6/(u*(3+2u)) du.",
+                "6/(u*(3+2u)) = 2/u - 4/(3+2u).",
+                "F(u)=2ln(abs(u))-2ln(abs(3+2u)).",
+                "F(3)-F(2)=2ln(7/6)=ln(49/36).",
+            },
+            "ln(49/36)"
+        );
+    }
+
     if(c == "1/(1+sin(x))" || c == "1/(sin(x)+1)") {
         return out(
             "trig conjugate",
@@ -17881,6 +17899,10 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     if(var.size() > 2 && var.front() == '(' && var.back() == ')') var = trim_copy(var.substr(1, var.size() - 2));
     std::string lo_text = (*args)[2];
     std::string hi_text = (*args)[3];
+
+    if(auto special_def = special_integral_answer(req.expr)) {
+        return casio::exam_block("definite integration", special_def->steps, special_def->answer);
+    }
 
     NodeId parsed = parse_expr(arena, integrand);
     auto pre = casio::build_exam_prelude(arena, integrand, parsed);

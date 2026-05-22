@@ -13848,6 +13848,147 @@ static std::optional<std::string> trig_square_exp_range(
     return format_expr(a, ylo) + " <= y <= " + format_expr(a, yhi);
 }
 
+static std::optional<std::string> poly_exp_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::string const &lo_s,
+    std::string const &hi_s,
+    std::optional<double> lo_v,
+    std::optional<double> hi_v,
+    bool lo_open,
+    bool hi_open,
+    std::vector<std::string> &steps
+)
+{
+    Rational offset{0, 1};
+    NodeId core = n;
+    Node const &root = a.get(n);
+    if(root.kind == NodeKind::Add) {
+        core = 0;
+        for(NodeId k : root.kids) {
+            if(auto q = as_num(a, k)) offset = r_add(offset, *q);
+            else if(!core) core = k;
+            else return std::nullopt;
+        }
+        if(!core) return std::nullopt;
+    }
+
+    Rational coeff{1, 1};
+    NodeId exp_arg = 0;
+    std::vector<NodeId> poly_terms;
+    Node const &c = a.get(core);
+    std::vector<NodeId> factors = c.kind == NodeKind::Mul ? c.kids : std::vector<NodeId>{core};
+    for(NodeId f : factors) {
+        if(auto q = as_num(a, f)) coeff = r_mul(coeff, *q);
+        else if(auto e = exp_like_arg(a, f); e && !exp_arg) exp_arg = *e;
+        else poly_terms.push_back(f);
+    }
+    if(!exp_arg || poly_terms.empty()) return std::nullopt;
+    auto ep = poly_of(a, exp_arg, var);
+    if(!ep || !ep->ok || !is_zero(ep->a2) || is_zero(ep->a1)) return std::nullopt;
+    NodeId qn = mul_or_one(a, poly_terms);
+    auto q = poly_of(a, qn, var);
+    if(!q || !q->ok || is_zero(q->a2)) return std::nullopt;
+
+    Poly2 deriv{
+        r_mul(ep->a1, q->a2),
+        r_add(r_mul(ep->a1, q->a1), r_mul(Rational{2, 1}, q->a2)),
+        r_add(r_mul(ep->a1, q->a0), q->a1),
+        true
+    };
+    if(is_zero(deriv.a2) && is_zero(deriv.a1)) return std::nullopt;
+
+    struct Cand { double y; std::string text; bool closed; };
+    std::vector<Cand> vals;
+    bool low_inf = false, high_inf = false;
+    auto in_interval = [&](Rational x) {
+        double xd = (double)x.num / (double)x.den;
+        if(lo_v && std::isfinite(*lo_v)) {
+            if(xd < *lo_v - 1e-10 || (lo_open && std::fabs(xd - *lo_v) <= 1e-10)) return false;
+        }
+        if(hi_v && std::isfinite(*hi_v)) {
+            if(xd > *hi_v + 1e-10 || (hi_open && std::fabs(xd - *hi_v) <= 1e-10)) return false;
+        }
+        return true;
+    };
+    auto y_text = [&](Rational x) {
+        NodeId xv = casio::num(a, x.num, x.den);
+        return format_expr(a, exact_eval_simplify(a, clone_with_substitution(a, n, var, xv)));
+    };
+    auto add_x = [&](Rational x, bool closed) {
+        double xd = (double)x.num / (double)x.den;
+        auto y = eval_node(a, n, var, xd);
+        if(y && std::isfinite(*y)) vals.push_back({*y, y_text(x), closed});
+    };
+    auto add_endpoint = [&](std::string const &s, double x, bool closed) {
+        auto y = eval_node(a, n, var, x);
+        if(!y || !std::isfinite(*y)) return;
+        NodeId xv = casio::parse_expr(a, s);
+        vals.push_back({*y, format_expr(a, exact_eval_simplify(a, clone_with_substitution(a, n, var, xv))), closed});
+    };
+    auto add_limit = [&]() {
+        double y = (double)offset.num / (double)offset.den;
+        vals.push_back({y, format_expr(a, casio::num(a, offset.num, offset.den)), false});
+    };
+
+    steps.push_back("y = " + format_expr(a, n));
+    steps.push_back("dy/d" + var + " = " + format_expr(a, casio::mul(a, {a.num(coeff), casio::power(a, casio::constant_e(a), exp_arg), poly2_to_node(a, deriv, var)})));
+    steps.push_back(format_expr(a, casio::power(a, casio::constant_e(a), exp_arg)) + " > 0");
+
+    std::vector<Rational> roots;
+    if(is_zero(deriv.a2)) {
+        Rational r = r_div(r_neg(deriv.a0), deriv.a1);
+        roots.push_back(r);
+    }
+    else if(auto rr = rational_quadratic_roots(deriv)) {
+        roots.push_back(rr->first);
+        if(rr->first.num != rr->second.num || rr->first.den != rr->second.den) roots.push_back(rr->second);
+    }
+    else return std::nullopt;
+
+    std::vector<std::string> rtxt;
+    for(Rational r : roots) {
+        r.normalize();
+        rtxt.push_back(format_rat(a, r));
+        if(in_interval(r)) add_x(r, true);
+    }
+    steps.push_back(format_expr(a, poly2_to_node(a, deriv, var)) + " = 0 => " + var + " = " + join_text(rtxt, ", "));
+
+    if(lo_v && std::isfinite(*lo_v)) add_endpoint(lo_s, *lo_v, !lo_open);
+    else {
+        Rational lead = r_mul(coeff, q->a2);
+        if(ep->a1.num > 0) add_limit();
+        else if(lead.num > 0) high_inf = true;
+        else low_inf = true;
+    }
+    if(hi_v && std::isfinite(*hi_v)) add_endpoint(hi_s, *hi_v, !hi_open);
+    else {
+        Rational lead = r_mul(coeff, q->a2);
+        if(ep->a1.num < 0) add_limit();
+        else if(lead.num > 0) high_inf = true;
+        else low_inf = true;
+    }
+
+    if(vals.empty()) return std::nullopt;
+    auto same = [](double x, double y) { return std::fabs(x - y) <= 1e-9; };
+    Cand mn = vals.front(), mx = vals.front();
+    for(auto const &v : vals) {
+        if(v.y < mn.y - 1e-9) mn = v;
+        else if(same(v.y, mn.y) && v.closed) mn.closed = true;
+        if(v.y > mx.y + 1e-9) mx = v;
+        else if(same(v.y, mx.y) && v.closed) mx.closed = true;
+    }
+    std::vector<std::string> yvals;
+    for(Rational r : roots) if(in_interval(r)) yvals.push_back("y(" + format_rat(a, r) + ") = " + y_text(r));
+    if(!yvals.empty()) steps.push_back(join_text(yvals, ", "));
+    if(!lo_s.empty() || !hi_s.empty()) steps.push_back("Interval: " + (lo_s.empty() ? "-inf" : lo_s) + " <= " + var + " <= " + (hi_s.empty() ? "inf" : hi_s));
+    if(low_inf && high_inf) return "all real y";
+    if(high_inf) return std::string("y ") + (mn.closed ? ">= " : "> ") + mn.text;
+    if(low_inf) return std::string("y ") + (mx.closed ? "<= " : "< ") + mx.text;
+    return mn.text + (mn.closed ? " <= y" : " < y") + (mx.closed ? " <= " : " < ") + mx.text;
+}
+
 static std::optional<std::pair<Rational, Rational>> linear_in_expr(Arena &a, NodeId n, NodeId u)
 {
     if(casio::same_by_sig(a, n, u)) return std::make_pair(Rational{1, 1}, Rational{0, 1});
@@ -24665,6 +24806,10 @@ algebra_compare_transform_modes:
                 }
                 else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {
                     range_answer = *logistic;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto per = poly_exp_range(arena, n, var, lo, hi, lo_v, hi_v, lo_open, hi_open, steps)) {
+                    range_answer = *per;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {
