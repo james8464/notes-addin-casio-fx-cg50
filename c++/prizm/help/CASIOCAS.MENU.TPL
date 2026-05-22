@@ -13,7 +13,6 @@ integrate(
 limit(
 solve(
 desolve(
-rsolve(
 F3 2d
 reserved
 F4 cat

@@ -84,7 +84,7 @@ const CommandItem kDeriveCommands[] = {
 const CommandItem kIntegrateCommands[] = {
     {"int", "int("},
     {"limit", "limit("},
-    {"series", "series("},
+    {"binom", "binomial("},
     {"solve", "solve("},
     {"de", "de_solve("},
     {"defint", "defint("},
@@ -101,10 +101,9 @@ const CommandItem kCalculusCommands[] = {
     {"integrate(", "integrate("},
     {"defint(", "defint("},
     {"limit(", "limit("},
-    {"series(", "series("},
+    {"binomial(", "binomial("},
     {"solve(", "solve("},
     {"desolve(", "desolve("},
-    {"rsolve(", "rsolve("},
 };
 
 const CommandItem kTrigCommands[] = {
