@@ -189,7 +189,7 @@ graph TD
   Downloads --> Std["check_madasmaths_standard_topics_audit.py"]
   Downloads --> MP2["check_madasmaths_full_audit.py"]
   Downloads --> Edexcel["check_edexcel_*_downloads.py"]
-  Render --> Images["~/Downloads/CasioCAS audit page images"]
+  Render --> Images["ignored page-image cache"]
   Std --> Ledger["ignored ledgers/reports"]
   MP2 --> Ledger
   Edexcel --> Tracker["c++/tools/golden/a_level_audit_tracker.jsonl"]
