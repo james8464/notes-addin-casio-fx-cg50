@@ -271,7 +271,7 @@ namespace giac {
   define_unary_function_ptr5( at_randNorm ,alias_at_randNorm,&__randNorm,0,true);
 
   static const char _randnormald_s []="randnormald";
-  static define_unary_function_eval (__randnormald,&_randNorm,_randnormald_s);
+  static define_unary_function_eval (__randnormald,&cascas_removed_moyal_surface,_randnormald_s);
   define_unary_function_ptr5( at_randnormald ,alias_at_randnormald,&__randnormald,0,true);
 
   double randchisquare(int k,GIAC_CONTEXT){
