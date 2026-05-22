@@ -108,8 +108,8 @@ High-value step generators:
   equate coefficients, partial fractions
 - differentiation: first principles, chain, product, quotient, logdiff,
   implicit, parametric, second derivative
-- integration: direct, reverse chain, substitution, parts, DI/tabular,
-  partial fractions, trig identities, Weierstrass, symmetry, DE separation
+- integration: direct, reverse chain, substitution, parts, partial fractions,
+  trig identities, definite-integral evaluation, DE separation
 - trig: sin/cos/tan rewrites, R-form, sum/product identities, power reduction,
   bounded/general solution checks
 - domain/range: denominator/radical/log/inverse-trig guards, sampling only as
@@ -180,7 +180,7 @@ Safe-ish size levers:
 - keep verbose help/examples/templates in `CASIOCAS.PAK` via `CASIOCAS.HLP`/`CASIOCAS.TPL` sources
 - hide/remove non-scope UI surfaces first
 - remove linked legacy objects only one at a time with full gates
-- preserve core Giac paths used by solve/diff/int/trig/matrices/stats
+- preserve core Giac paths used by solve/diff/int/trig/stats
 
 ## Patch Rules
 

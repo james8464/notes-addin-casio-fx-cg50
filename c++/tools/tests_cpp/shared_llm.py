@@ -68,7 +68,7 @@ When working IS required:
 - Differentiation/integration/trig solving/proofs/implicit or parametric calculus/DEs/partial fractions/binomial expansion/equation manipulation must show the key route.
 - For supported non-trivial A-level Maths routes, answer-only output is NEEDS_REVIEW even when the final line is correct.
 - Full-mark working should include the important method line(s), substitutions and differentials, identities used, IBP choices u/dv/du/v, PF setup and coefficients, equation rearrangements, factorisation/collection, interval/domain checks, and rejected invalid roots where relevant.
-- For DI/tabular integration by parts, `D:`, `I:`, `Signs:` plus the final collected answer is full method evidence; do not require separate u/dv/du/v lines.
+- For DI integration by parts, `D:`, `I:`, `Signs:` plus the final collected answer is full method evidence; do not require separate u/dv/du/v lines.
 - For looping IBP, output that defines `I`, defines `J`, gives `u/dv/du/v`, substitutes `J` back, then shows `Collect:` and `Solve:` lines for `I` is full method evidence; do not demand a separate collection for `J`.
 - For crash-safety/depth-guard/generated stress tests, answer-only or unchanged-expression output is fine if it is bounded, non-crashing, and mathematically sane.
 - No big jumps: if a student would need to know how one line became the next, the missing line is NEEDS_REVIEW.

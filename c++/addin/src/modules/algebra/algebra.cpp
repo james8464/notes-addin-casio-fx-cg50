@@ -11992,6 +11992,10 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     NodeId v1 = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[1].a0, rows[0].c}), casio::mul(a, {rows[0].a0, rows[1].c})), det));
     out.push_back(vars[0] + " = " + format_expr(a, v0));
     out.push_back(vars[1] + " = " + format_expr(a, v1));
+    auto d0 = eval_node_env(a, v0, {});
+    auto d1 = eval_node_env(a, v1, {});
+    if(d0 && std::isfinite(*d0)) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
+    if(d1 && std::isfinite(*d1)) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, v0) + "," + format_expr(a, v1) + ")]");
     return out;
 }
@@ -12193,6 +12197,10 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
                 if(!roots_shown) out.push_back(root_line);
                 std::string v0 = iso == 0 ? format_expr(a, iso_val) : rhs;
                 std::string v1 = iso == 0 ? rhs : format_expr(a, iso_val);
+                if(ov && iv && std::isfinite(*ov) && std::isfinite(*iv)) {
+                    out.push_back(vars[0] + " ~= " + format_double_compact(iso == 0 ? *iv : *ov));
+                    out.push_back(vars[1] + " ~= " + format_double_compact(iso == 0 ? *ov : *iv));
+                }
                 pairs.push_back("(" + v0 + "," + v1 + ")");
             }
             if(pairs.empty()) return std::nullopt;

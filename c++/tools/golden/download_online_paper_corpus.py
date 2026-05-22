@@ -57,6 +57,23 @@ SOURCES = {
     "simplestudy_edexcel": "https://simplestudy.com/gb/a-level/edexcel/maths-pure/past-papers",
 }
 
+A_LEVEL_MATHS_SOURCES = {
+    "revisionmaths_edexcel",
+    "pmt_edexcel",
+    "chalkface_edexcel",
+    "mymathscloud_edexcel",
+    "naikermaths_alevel",
+    "crashmaths_edexcel",
+    "mathsgenie_edexcel",
+    "mathspi_edexcel",
+    "mme_edexcel",
+    "exampaperspractice_edexcel",
+    "savemyexams_edexcel",
+    "revisely_edexcel",
+    "tutorioo_edexcel",
+    "simplestudy_edexcel",
+}
+
 
 class LinkParser(html.parser.HTMLParser):
     def __init__(self) -> None:
@@ -146,6 +163,17 @@ def source_links(url: str) -> list[tuple[str, str]]:
     return out
 
 
+def in_a_level_maths_scope(url: str, label: str) -> bool:
+    s = urllib.parse.unquote(url + " " + label).lower()
+    if "further" in s or "9fm0" in s or "8fm0" in s:
+        return False
+    if "international advanced level" in s or re.search(r"(?<![a-z])ial(?![a-z])", s):
+        return False
+    if "8ma0" in s or "(as)" in s or re.search(r"(?<![a-z])as[-_ ]", s):
+        return False
+    return True
+
+
 def download_pdf(url: str, path: Path) -> tuple[bool, str]:
     try:
         data = fetch(url)
@@ -181,10 +209,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-per-source", type=int, default=0)
     ap.add_argument("--source", choices=sorted(SOURCES), action="append")
+    ap.add_argument("--all-sources", action="store_true", help="include non-Edexcel, AS/IAL, and Further sources")
     ap.add_argument("--sleep", type=float, default=0.05)
     args = ap.parse_args()
 
-    sources = {k: v for k, v in SOURCES.items() if not args.source or k in args.source}
+    selected = set(args.source or (SOURCES if args.all_sources else A_LEVEL_MATHS_SOURCES))
+    sources = {k: v for k, v in SOURCES.items() if k in selected}
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = OUT / "manifest_latest.jsonl"
     failures = OUT / "download_failures.txt"
@@ -201,6 +231,8 @@ def main() -> int:
         except Exception as e:
             fail_lines.append(f"{source}\t{page}\tpage\t{e}")
             continue
+        if not args.all_sources:
+            links = [(url, text) for url, text in links if in_a_level_maths_scope(url, text)]
         if args.max_per_source > 0:
             links = links[: args.max_per_source]
         print(f"{source}: links={len(links)}", flush=True)

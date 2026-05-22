@@ -22,8 +22,7 @@ Build note: the shipped `.g3a` comes from `c++/khicas/upstream/giac90_1addin/`. 
 | differential equation | `de_solve(eq,[bc])` | first-order DE, optional boundary | Separable and linear first-order forms. |
 | trig solve | `solve(eq,x=lo..hi,method=cast/rform)` | equation, bounded variable | Prefer `solve`; `solve_trig_by` is compatibility. |
 | stats binomial | `binomial(n,p,k)` | trials, probability, value | Gives support check and `P(X=k)`. |
-| stats normal | `normalcdf(a,b,mu,sigma)` | lower, upper, mean, sd | Shows standardisation. |
-| z-test | `ztest(xbar,mu,sigma,n,alpha,tail)` | sample mean, null mean, sd, size, alpha, `lt/gt/ne` | Shows z, p, decision. |
+| stats normal | `normalcdf(mu,sigma,lo,hi)` | mean, sd, lower, upper | Shows standardisation. |
 | SUVAT | `suvat(s=...,u=...,v=...,a=...,t=...,target=...)` | known values plus target | Solves missing kinematics variable. |
 
 ## Formula Coverage
@@ -40,8 +39,8 @@ The program should handle A-level formula families as working routes or subparts
 | trig | identities, exact values, bounded solves, R-form, sine/cosine rule subparts |
 | logs/exp | log laws, change of base, growth/decay, DE constants |
 | differentiation | chain/product/quotient/implicit/parametric/logdiff/stationary routes |
-| integration | direct, substitution, parts, DI, trig, PF, areas, volumes |
-| statistics | summary data, binomial, normal, z-tests |
+| integration | direct, substitution, parts, trig identities, partial fractions, definite integrals |
+| statistics | binomial and normal probabilities |
 | mechanics | SUVAT plus algebraic force/moment/energy/power subparts |
 
 Gate: `python3 c++/tools/golden/check_syllabus_matrix.py --fail-on-gap --report-json`
@@ -70,12 +69,9 @@ Gate: `python3 c++/tools/golden/check_syllabus_matrix.py --fail-on-gap --report-
 | `reverse_chain` | `f'(x)g(f(x))` |
 | `sub` | substitution |
 | `parts` | integration by parts |
-| `di` | repeated/tabular parts |
 | `trig` | trig identities/powers |
 | `pf` | partial fractions |
 | `div` | algebraic division first |
-| `weierstrass` | `t=tan(x/2)` |
-| `symmetry` | definite integral symmetry/King property |
 
 ## Differential Equations
 

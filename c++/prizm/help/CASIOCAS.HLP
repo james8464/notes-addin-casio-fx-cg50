@@ -706,7 +706,7 @@ Ex F2: oo
 F2:integrate(x*sin(x),x,method=parts)
 integrate(f,x,[a,b,method,u])
 Integral with exam steps.
-Methods: auto,direct,reverse_chain,sub,parts,di,trig,pf,div.
+Methods: auto,direct,reverse_chain,sub,parts,trig,pf,div.
 Req: f,x.
 Opt: a,b,method=auto,u.
 Ex F2: integrate(x*sin(x),x,method=parts)

@@ -168,6 +168,8 @@ static std::vector<long double> parse_call_numbers(std::string const &text)
     std::vector<long double> out;
     out.reserve(args.size());
     for(auto const &arg : args) {
+        std::string lo = lower(arg);
+        if(lo == "cdf" || lo == "pmf" || lo == "tail" || lo == "ge" || lo == "gt") continue;
         auto v = parse_scalar(arg);
         if(!v) return parse_numbers(text);
         out.push_back(*v);

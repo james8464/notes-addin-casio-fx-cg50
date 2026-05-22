@@ -1153,6 +1153,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Traceback", "normal approx with continuity correction"],
     ),
     (
+        "stats",
+        "binomcdf(10,1/6,2)",
+        ["X ~ B(10, 0.16666667)", "P(X <= 2)", "0.7752268"],
+        ["X ~ B(10, 1)", "Traceback"],
+    ),
+    (
+        "alg",
+        "solve([(16.3-mu)/sigma=-0.52440051,(29-mu)/sigma=1.28155156],[mu,sigma])",
+        ["mu ~=", "sigma ~=", "19.987", "7.032"],
+        ["Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],

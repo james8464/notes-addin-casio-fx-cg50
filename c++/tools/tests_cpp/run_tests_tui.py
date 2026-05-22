@@ -8117,29 +8117,6 @@ class CASIOApp(App):
     def random_suvat_two_solution_case(self, rng, difficulty, index):
         return self.random_suvat_edge_case(rng, difficulty, index, "a")
 
-    def random_stats_one_var_case(self, rng, difficulty, index):
-        size = rng.randint(3, 12 if difficulty != "chaos" else 30)
-        vals = []
-        for _ in range(size):
-            if difficulty == "chaos" and rng.random() < 0.25:
-                vals.append(str(rng.choice([-1, 1]) * self.random_unbounded_count(rng, minimum=10**6, continue_probability=0.20)))
-            else:
-                vals.append(str(rng.randint(-50, 50)))
-        inp = "1\n" + ",".join(vals) + "\n"
-        label = f"Stats one-var {index}"
-        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("mean", "sxx"), feature="stats_one_var")
-
-    def random_stats_regression_case(self, rng, difficulty, index):
-        n = rng.randint(4, 10)
-        a = rng.randint(-20, 20)
-        b = rng.choice([-5, -3, -2, -1, 1, 2, 3, 5])
-        scale = 10**rng.randint(0, 4) if difficulty == "chaos" else 1
-        xs = [scale * (i - n // 2) for i in range(n)]
-        ys = [a + b * x for x in xs]
-        inp = "2\n" + ",".join(map(str, xs)) + "\n" + ",".join(map(str, ys)) + "\n"
-        label = f"Stats regression {index}"
-        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("sxy", "r ="), feature="stats_regression")
-
     def random_stats_binomial_case(self, rng, difficulty, index):
         if difficulty == "chaos":
             n = rng.choice([100, 1000, 10000, rng.randint(50, 300)])
@@ -8166,25 +8143,6 @@ class CASIOApp(App):
         inp = f"4\n{mu},{sigma},{lo},{hi}\n"
         label = f"Stats normal {index}"
         return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("z1 ="), feature="stats_normal")
-
-    def random_stats_ztest_case(self, rng, difficulty, index):
-        mu = rng.randint(-50, 50)
-        sigma = rng.choice([2, 5, 10, 15, 30])
-        n = rng.choice([9, 16, 25, 36, 100])
-        shift = rng.choice([-3, -2, -1, 1, 2, 3]) * sigma / math.sqrt(n)
-        xbar = mu + shift
-        tail = rng.choice(["two", "gt", "lt"])
-        inp = f"5\n{xbar:.6g},{mu},{sigma},{n},{tail},0.05\n"
-        label = f"Stats z-test {index}: {tail}"
-        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("h0", "p ="), feature=f"stats_ztest:{tail}")
-
-    def random_stats_plot_case(self, rng, difficulty, index):
-        expr = rng.choice(["x^2-4", "sin(x)", "cos(x)", "x^3-x", "exp(x/3)-2"])
-        lo, hi = (-6, 6) if difficulty == "chaos" else (-3, 3)
-        points = rng.choice([9, 13, 21, 41])
-        inp = f"7\n{expr},{lo},{hi},{points}\n"
-        label = f"Stats plot {index}: {expr}"
-        return self.make_cli_case("Stats", "statsProgram.py", inp, label, stats_checker("spark"), feature="stats_plot")
 
     def build_random_stats_cases(self, difficulty, count, rng):
         if getattr(self, "backend", "python") != "c":
