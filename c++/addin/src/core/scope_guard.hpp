@@ -14,7 +14,7 @@ inline bool contains_removed_function(std::string const &text)
         "correlation(", "covariance(", "linear_regression(",
         "plot(", "plotcontour(", "plotfield(", "plotlist(", "plotode(",
         "plotparam(", "plotpolar(", "plotseq(", "disque(",
-        "rationalise(", "rationalize(", "tabular(", "weierstrass(",
+        "rationalise(", "rationalize(", "tabular(", "tabvar(", "weierstrass(",
         "symmetry(", "mean_value(", "volume_x(", "volume_y(",
         "area_between(", "param_area(", "param_area_y(",
         "param_volume_x(", "param_volume_y(", "ztest(", "spark(",

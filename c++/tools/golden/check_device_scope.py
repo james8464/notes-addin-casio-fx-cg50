@@ -52,6 +52,7 @@ CASES: tuple[Case, ...] = (
     Case("removed_hyperbolic", "shell", "diff(sinh(x))", ("Err: unsupported function.",), True, 1),
     Case("removed_mean", "shell", "mean([1,2,3])", ("Err: unsupported function.",), True, 1),
     Case("removed_plot", "shell", "plot(x)", ("Err: unsupported function.",), True, 1),
+    Case("removed_tabvar", "shell", "tabvar(x^2)", ("Err: unsupported function.",), True, 1),
     Case("removed_complex", "shell", "csolve(x^2+1=0,x)", ("Err: unsupported function.",), True, 1),
     Case("removed_matrix", "shell", "det(matrix(2,2,1))", ("Err: unsupported function.",), True, 1),
     Case("removed_matrix_inv", "shell", "inv([[1,2],[3,4]])", ("Err: unsupported function.",), True, 1),

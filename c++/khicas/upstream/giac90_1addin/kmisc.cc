@@ -4015,6 +4015,7 @@ static define_unary_function_eval (__set_language,&cascas_removed_surface,_set_l
 
   gen _tabvar(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+    return gensizeerr(contextptr);
     vecteur v(g.type==_VECT && g.subtype==_SEQ__VECT?*g._VECTptr:vecteur(1,g));
     int s=int(v.size());
 #ifdef EMCC

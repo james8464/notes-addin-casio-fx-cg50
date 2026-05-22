@@ -107,7 +107,7 @@ def main() -> int:
         "correlation([1,2],[3,4])", "covariance([1,2],[3,4])",
         "linear_regression([1,2],[3,4])", "plot(x)", "plotcontour(x)",
         "plotfield(x)", "plotlist([1,2])", "plotode(x)", "plotparam(x,y)",
-        "plotpolar(sin(x))", "plotseq(x)", "disque(x)", "tabular(x^2)",
+        "plotpolar(sin(x))", "plotseq(x)", "disque(x)", "tabular(x^2)", "tabvar(x^2)",
         "symmetry(x^2)", "mean_value(x,x,0,1)", "volume_x(x,x,0,1)",
         "volume_y(x,x,0,1)", "area_between(x,x^2,x,0,1)",
         "param_area(t,t^2,t,0,1)", "param_area_y(t,t^2,t,0,1)",
