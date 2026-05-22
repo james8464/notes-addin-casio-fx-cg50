@@ -484,7 +484,6 @@
 {"randint",0,0,9,13},
 {"randmatrix",0,0,9,13},
 {"randmultinomial",0,0,9,13},
-{"randnormald",0,0,9,13},
 {"random",0,0,9,13},
 {"randpoisson",0,0,9,13},
 {"randpoly",0,0,9,13},
