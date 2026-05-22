@@ -3601,9 +3601,6 @@ static std::optional<double> eval_node_multi(Arena &a, NodeId id, std::vector<st
         case FnKind::Asin: return std::asin(u);
         case FnKind::Acos: return std::acos(u);
         case FnKind::Atan: return std::atan(u);
-        case FnKind::Sinh: return std::sinh(u);
-        case FnKind::Cosh: return std::cosh(u);
-        case FnKind::Tanh: return std::tanh(u);
         case FnKind::Exp: return std::exp(u);
         case FnKind::Log: return std::log(u);
         case FnKind::Log10: return std::log10(u);
@@ -3655,7 +3652,7 @@ static bool domain_sensitive_node(Arena &a, NodeId id)
     Node const &n = a.get(id);
     if(n.kind == NodeKind::Fn) {
         if(n.fkind == FnKind::Log || n.fkind == FnKind::Log10 || n.fkind == FnKind::Sqrt ||
-           n.fkind == FnKind::Asin || n.fkind == FnKind::Acos || n.fkind == FnKind::Acosh || n.fkind == FnKind::Atanh)
+           n.fkind == FnKind::Asin || n.fkind == FnKind::Acos)
             return true;
         return domain_sensitive_node(a, n.a);
     }

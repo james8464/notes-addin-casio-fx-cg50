@@ -46,12 +46,6 @@ enum class FnKind : std::uint8_t
     Asin,
     Acos,
     Atan,
-    Sinh,
-    Cosh,
-    Tanh,
-    Asinh,
-    Acosh,
-    Atanh,
     Exp,
     Log,   // internal name: log, display: ln
     Log10,

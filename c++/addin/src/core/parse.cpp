@@ -119,12 +119,6 @@ struct Parser
         if(name == "arcsin") name = "asin";
         if(name == "arccos") name = "acos";
         if(name == "arctan") name = "atan";
-        if(name == "arcsinh") name = "asinh";
-        if(name == "arccosh") name = "acosh";
-        if(name == "arctanh") name = "atanh";
-        if(name == "arsinh") name = "asinh";
-        if(name == "arcosh") name = "acosh";
-        if(name == "artanh") name = "atanh";
         if(name == "cuberoot") name = "cbrt";
         bool inv_sec = name == "arcsec" || name == "asec";
         bool inv_csc = name == "arccosec" || name == "arccsc" || name == "acsc";
@@ -137,7 +131,7 @@ struct Parser
             static const char *funcs[] = {
                 "sin","cos","tan","sec","cosec","cot",
                 "exp","log","log10","sqrt","abs","sign","factorial",
-                "atan","asin","acos","sinh","cosh","tanh","asinh","acosh","atanh",
+                "atan","asin","acos",
                 "cbrt"
             };
             for(auto f : funcs) if(n == f) return true;

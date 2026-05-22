@@ -928,12 +928,6 @@ static FnKind fn_kind_from_name(std::string_view name)
     if(name == "asin") return FnKind::Asin;
     if(name == "acos") return FnKind::Acos;
     if(name == "atan") return FnKind::Atan;
-    if(name == "sinh") return FnKind::Sinh;
-    if(name == "cosh") return FnKind::Cosh;
-    if(name == "tanh") return FnKind::Tanh;
-    if(name == "asinh") return FnKind::Asinh;
-    if(name == "acosh") return FnKind::Acosh;
-    if(name == "atanh") return FnKind::Atanh;
     if(name == "exp") return FnKind::Exp;
     if(name == "log") return FnKind::Log;
     if(name == "log10") return FnKind::Log10;
@@ -949,12 +943,6 @@ NodeId fn(Arena &a, std::string_view name, NodeId arg)
     // Alias rules: ln->log, csc->cosec
     if(name == "ln") name = "log";
     if(name == "csc") name = "cosec";
-    if(name == "arcsinh") name = "asinh";
-    if(name == "arccosh") name = "acosh";
-    if(name == "arctanh") name = "atanh";
-    if(name == "arsinh") name = "asinh";
-    if(name == "arcosh") name = "acosh";
-    if(name == "artanh") name = "atanh";
     if(name == "arcsec" || name == "asec") return fn(a, "acos", div(a, num(a, 1), arg));
     if(name == "arccosec" || name == "arccsc" || name == "acsc") return fn(a, "asin", div(a, num(a, 1), arg));
     if(name == "arccot" || name == "acot") return fn(a, "atan", div(a, num(a, 1), arg));

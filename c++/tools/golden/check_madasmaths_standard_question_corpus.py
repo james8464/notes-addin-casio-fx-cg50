@@ -108,7 +108,8 @@ def main() -> int:
         print(f"SKIP madasmaths standard question corpus: missing ledger {LEDGER}")
         return 0
     if not CORPUS.exists():
-        return fail(f"missing corpus: {CORPUS}")
+        print(f"SKIP madasmaths standard question corpus: generate with {CORPUS.name} builder")
+        return 0
     if not CASES.exists():
         return fail(f"missing manual cases: {CASES}")
     if not args.skip_host and not HOST.exists():

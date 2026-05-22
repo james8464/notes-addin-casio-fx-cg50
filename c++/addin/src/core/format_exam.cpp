@@ -28,12 +28,6 @@ static std::string fn_text(FnKind k)
     case FnKind::Asin: return "asin";
     case FnKind::Acos: return "acos";
     case FnKind::Atan: return "atan";
-    case FnKind::Asinh: return "asinh";
-    case FnKind::Acosh: return "acosh";
-    case FnKind::Atanh: return "atanh";
-    case FnKind::Sinh: return "sinh";
-    case FnKind::Cosh: return "cosh";
-    case FnKind::Tanh: return "tanh";
     case FnKind::Exp: return "exp";
     case FnKind::Log: return "log";
     case FnKind::Log10: return "log10";

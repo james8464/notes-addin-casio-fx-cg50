@@ -412,9 +412,6 @@ static std::string node_to_string(Arena &a, NodeId n)
             case FnKind::Asin: name = "asin"; break;
             case FnKind::Acos: name = "acos"; break;
             case FnKind::Atan: name = "atan"; break;
-            case FnKind::Sinh: name = "sinh"; break;
-            case FnKind::Cosh: name = "cosh"; break;
-            case FnKind::Tanh: name = "tanh"; break;
             case FnKind::Exp: name = "exp"; break;
             case FnKind::Log: name = "log"; break;
             case FnKind::Log10: name = "log10"; break;
@@ -5950,7 +5947,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
 
     if(c == "log(x+sqrt(x^2-1))" || c == "ln(x+sqrt(x^2-1))") {
         return out(
-            "parts with arcosh form",
+            "parts with log-root form",
             {
                 "Use parts with u=log(x+sqrt(x^2-1)), dv=dx.",
                 "Then du=1/sqrt(x^2-1) dx and v=x.",
@@ -6933,8 +6930,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             {
                 "Let u=x^3, so du=3x^2 dx.",
                 "Integral becomes (1/3)*Integral(1/sqrt(u^2+1)) du.",
-                "Use Integral(1/sqrt(u^2+1)) du = asinh(u).",
-                "Write asinh(u)=log(u+sqrt(u^2+1)).",
+                "Use Integral(1/sqrt(u^2+1)) du = log(u+sqrt(u^2+1)).",
                 "Back-substitute u=x^3.",
             },
             "log(x^3+sqrt(x^6+1))/3 + C"
@@ -7387,10 +7383,9 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
 
     if(c == "log(x+sqrt(x^2+1))" || c == "ln(x+sqrt(x^2+1))") {
         return out(
-            "parts with asinh form",
+            "parts with log-root form",
             {
-                "Recognise log(x+sqrt(x^2+1)) = asinh(x).",
-                "Use parts: u=asinh(x), dv=dx.",
+                "Use parts: u=log(x+sqrt(x^2+1)), dv=dx.",
                 "Then du=1/sqrt(x^2+1) dx and v=x.",
                 "Remaining Integral(x/sqrt(x^2+1)) dx = sqrt(x^2+1).",
             },
@@ -7468,7 +7463,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
                 "Use w=(y+2)/(sqrt(3)*y).",
                 "Then dw/sqrt(1+w^2) = -dy/(y*sqrt(y^2+y+1)).",
             },
-            "-asinh((x^2+2)/(sqrt(3)*x^2))/2 + C"
+            "-log((x^2+2)/(sqrt(3)*x^2)+sqrt(1+(x^2+2)^2/(3*x^4)))/2 + C"
         );
     }
 
@@ -8539,7 +8534,7 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
 
     if(c == "log(x+sqrt(x^2-a^2))" || c == "ln(x+sqrt(x^2-a^2))") {
         return out(
-            "parts with arcosh form",
+            "parts with log-root form",
             {
                 "Use parts with u=log(x+sqrt(x^2-a^2)), dv=dx.",
                 "Then du=1/sqrt(x^2-a^2) dx and v=x.",
@@ -13239,16 +13234,6 @@ static std::optional<NodeId> integrate_affine_trig_power(Arena &a, NodeId expr, 
             });
             steps.push_back("Step 2: cos(u)^6=(10+15cos(2u)+6cos(4u)+cos(6u))/32.");
         }
-    } else if((base.fkind == FnKind::Sinh || base.fkind == FnKind::Cosh) && *p == 2) {
-        primitive = casio::add(a, {
-            casio::div(a, casio::fn(a, "sinh", casio::mul(a, {casio::num(a, 2), u})), casio::num(a, 4)),
-            base.fkind == FnKind::Sinh
-                ? casio::neg(a, casio::div(a, u, casio::num(a, 2)))
-                : casio::div(a, u, casio::num(a, 2)),
-        });
-        steps.push_back(base.fkind == FnKind::Sinh
-            ? "sinh(u)^2 = (cosh(2u)-1)/2."
-            : "cosh(u)^2 = (cosh(2u)+1)/2.");
     } else if(base.fkind == FnKind::Tan) {
         if(*p == 2) {
             primitive = casio::simplify(a, casio::add(a, {
@@ -15728,49 +15713,6 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         return out;
     }
 
-    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Sinh || x.fkind == FnKind::Cosh || x.fkind == FnKind::Tanh)) {
-        auto k = linear_coeff(a, x.a, var);
-        if(k && !r_zero(*k)) {
-            NodeId prim = x.fkind == FnKind::Sinh ? casio::fn(a, "cosh", x.a) :
-                          x.fkind == FnKind::Cosh ? casio::fn(a, "sinh", x.a) :
-                          casio::fn(a, "log", casio::fn(a, "cosh", x.a));
-            out.result = casio::simplify(a, mul_coeff(a, r_div(Rational{1, 1}, *k), prim));
-            return out;
-        }
-    }
-
-    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
-        NodeId ch = 0, rest = 0;
-        for(NodeId k : x.kids) {
-            Node const &kn = a.get(k);
-            if(kn.kind == NodeKind::Fn && kn.fkind == FnKind::Cosh) ch = k;
-            else rest = k;
-        }
-        if(ch && rest) {
-            Node const &cn = a.get(ch);
-            auto ck = linear_coeff(a, cn.a, var);
-            Node const &rn = a.get(rest);
-            if(ck && !r_zero(*ck) && rn.kind == NodeKind::Add) {
-                std::vector<NodeId> terms;
-                bool ok = true;
-                for(NodeId t : rn.kids) {
-                    Node const &tn = a.get(t);
-                    if(!contains_var(a, t, var)) {
-                        terms.push_back(mul_coeff(a, r_div(Rational{1, 1}, *ck), casio::mul(a, {t, casio::fn(a, "sinh", cn.a)})));
-                    }
-                    else if(tn.kind == NodeKind::Div && same_expr(a, tn.b, ch) && !contains_var(a, tn.a, var)) {
-                        terms.push_back(casio::mul(a, {tn.a, casio::sym(a, var)}));
-                    }
-                    else { ok = false; break; }
-                }
-                if(ok) {
-                    out.result = casio::simplify(a, casio::add(a, terms));
-                    return out;
-                }
-            }
-        }
-    }
-
     if(auto scs = integrate_sin_cos_over_sqrt_two_sin2(a, expr, var, out.steps)) {
         out.result = *scs;
         return out;
@@ -16369,28 +16311,6 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         out.result = *alg_sym;
         out.steps.push_back("Step 6: Back-substitute u.");
         return out;
-    }
-
-    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Cosh || x.fkind == FnKind::Sinh)) {
-        Node const &inner = a.get(x.a);
-        bool plus_case = x.fkind == FnKind::Cosh && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Asinh;
-        bool minus_case = x.fkind == FnKind::Sinh && inner.kind == NodeKind::Fn && inner.fkind == FnKind::Acosh;
-        if(plus_case || minus_case) {
-            auto coeff = linear_coeff(a, inner.a, var);
-            if(coeff && !r_zero(*coeff)) {
-                NodeId u = inner.a;
-                NodeId sqrt_u = casio::fn(a, "sqrt", casio::add(a, {
-                    casio::power(a, u, casio::num(a, 2)),
-                    casio::num(a, plus_case ? 1 : -1)
-                }));
-                NodeId primitive_u = casio::add(a, {
-                    casio::mul(a, {u, sqrt_u}),
-                    plus_case ? casio::fn(a, "asinh", u) : casio::mul(a, {casio::num(a, -1), casio::fn(a, "acosh", u)})
-                });
-                out.result = casio::simplify(a, casio::div(a, primitive_u, a.num(r_mul(Rational{2, 1}, *coeff))));
-                return out;
-            }
-        }
     }
 
     if(x.kind == NodeKind::Div) {
@@ -17496,23 +17416,6 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
                 if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return arg;
             }
         }
-        if(x.fkind == FnKind::Sinh || x.fkind == FnKind::Cosh) {
-            if(auto r = as_num(a, arg); r && r_zero(*r))
-                return x.fkind == FnKind::Sinh ? a.num(Rational{0, 1}) : a.num(Rational{1, 1});
-            NodeId ep = simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), arg));
-            NodeId em = simplify_known_endpoint_values(a, casio::power(a, a.constant(ConstKind::E), casio::neg(a, arg)));
-            auto rp = as_num(a, ep);
-            auto rm = as_num(a, em);
-            if(rp && rm) {
-                Rational top = x.fkind == FnKind::Sinh ? r_sub(*rp, *rm) : r_add(*rp, *rm);
-                return a.num(r_div(top, Rational{2, 1}));
-            }
-        }
-        if(x.fkind == FnKind::Asinh) {
-            if(auto r = as_num(a, arg); r && r_zero(*r)) return a.num(Rational{0, 1});
-            NodeId rad = simplify_known_endpoint_values(a, casio::add(a, {casio::power(a, arg, a.num(Rational{2, 1})), a.num(Rational{1, 1})}));
-            return casio::fn(a, "log", casio::add(a, {arg, casio::fn(a, "sqrt", rad)}));
-        }
         if(x.fkind == FnKind::Exp) {
             auto exp_of_log_power = [&](NodeId v) -> std::optional<NodeId> {
                 Node const &vn = a.get(v);
@@ -17593,16 +17496,6 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
             if(ln_arg.kind == NodeKind::Pow) {
                 Node const &base = a.get(ln_arg.a);
                 if(base.kind == NodeKind::Const && base.ckind == ConstKind::E) return simplify_known_endpoint_values(a, ln_arg.b);
-            }
-        }
-        if(x.fkind == FnKind::Acosh) {
-            if(auto r = as_num(a, arg)) {
-                if(r_eq(*r, Rational{1, 1})) return casio::num(a, 0);
-                if(r->den == 1 && r->num > 1) {
-                    NodeId rad = casio::fn(a, "sqrt", casio::num(a, r->num * r->num - 1));
-                    NodeId simp_rad = simplify_known_endpoint_values(a, rad);
-                    return casio::fn(a, "log", casio::add(a, {a.num(*r), simp_rad}));
-                }
             }
         }
         if(x.fkind == FnKind::Asin || x.fkind == FnKind::Acos || x.fkind == FnKind::Atan) {
