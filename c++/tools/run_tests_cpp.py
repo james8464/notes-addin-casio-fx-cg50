@@ -67,6 +67,7 @@ def main() -> int:
         ("madasmaths_standard_manual_cases", [sys.executable, "c++/tools/golden/check_madasmaths_standard_manual_cases.py"]),
         ("online_paper_corpus_inventory", [sys.executable, "c++/tools/golden/check_online_paper_corpus_inventory.py"]),
         ("online_paper_manual_cases", [sys.executable, "c++/tools/golden/check_online_paper_manual_cases.py"]),
+        ("edexcel_public_paper_corpus", [sys.executable, "c++/tools/golden/check_edexcel_public_paper_corpus.py"]),
         ("edexcel_paper1_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper1_downloads.py"]),
         ("edexcel_paper2_downloads", [sys.executable, "c++/tools/golden/check_edexcel_paper2_downloads.py"]),
         ("mp2_generalized_variants", [sys.executable, "c++/tools/golden/check_mp2_generalized_variants.py"]),

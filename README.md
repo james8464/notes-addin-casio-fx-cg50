@@ -69,7 +69,8 @@ python3 c++/tools/golden/check_device_scope.py
 Download external A-level audit sources:
 
 ```bash
-python3 c++/tools/golden/download_a_level_audit_sources.py
+python3 c++/tools/golden/download_a_level_audit_sources.py --force
+python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
 python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"MadAsMaths standard topics"/integration --first 2
 ```
 
