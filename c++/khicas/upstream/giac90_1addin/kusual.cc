@@ -2442,6 +2442,7 @@ namespace giac {
     return gensizeerr(contextptr);
   }
   gen sinh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
 #ifdef BCD
@@ -2500,6 +2501,7 @@ namespace giac {
     return symb_sinh(e);
   }
   static gen d_at_sinh(const gen & e,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
     return cosh(e,contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_sinh," D_at_sinh",&d_at_sinh);
@@ -2519,6 +2521,7 @@ namespace giac {
     return symbolic(at_cosh,e);
   }
   gen cosh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
 #ifdef BCD
@@ -2595,6 +2598,7 @@ namespace giac {
 
   // static symbolic symb_tanh(const gen & e){ return symbolic(at_tanh,e);  }
   gen tanh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
 #ifdef BCD
@@ -2660,6 +2664,7 @@ namespace giac {
     return symbolic(at_tanh,e);
   }
   static gen d_tanh(const gen & e,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
     return 1-pow(tanh(e,contextptr),2);
   }
   define_partial_derivative_onearg_genop( D_at_tanh," D_at_tanh",&d_tanh);
@@ -2680,6 +2685,7 @@ namespace giac {
     return ln(x+sqrt(x*x+1,contextptr),contextptr);
   }
   gen asinh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
 #ifdef BCD
@@ -2720,6 +2726,7 @@ namespace giac {
     return ln(e+sqrt(pow(e,2)+1,contextptr),contextptr);
   }
   static gen d_asinh(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
     return inv(recursive_normal(sqrt(pow(args,2)+1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_asinh," D_at_asinh",&d_asinh);
@@ -2742,6 +2749,7 @@ namespace giac {
     return ln(x+sqrt(x+1,contextptr)*sqrt(x-1,contextptr),contextptr);
   }
   gen acosh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
       if (is_strictly_greater(1,e0,contextptr))
@@ -2785,6 +2793,7 @@ namespace giac {
     // return ln(e+sqrt(pow(e,2)-1,contextptr),contextptr);
   }
   static gen d_acosh(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
     return inv(recursive_normal(sqrt(pow(args,2)-1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_acosh," D_at_acosh",&d_acosh);
@@ -2802,6 +2811,7 @@ namespace giac {
 
   // static symbolic symb_atanh(const gen & e){  return symbolic(at_atanh,e);}
   gen atanh(const gen & e0,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
 #if 0
     if (e0.type==_FLOAT_){
       if (is_strictly_greater(e0,1,contextptr) || is_strictly_greater(-1,e0,contextptr))
@@ -2850,6 +2860,7 @@ namespace giac {
     // return symbolic(at_atanh,e);
   }
   static gen d_atanh(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
     return inv(1-pow(args,2),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_atanh," D_at_atanh",&d_atanh);
