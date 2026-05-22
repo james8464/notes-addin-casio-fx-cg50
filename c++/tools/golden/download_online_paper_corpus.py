@@ -171,6 +171,10 @@ def in_a_level_maths_scope(url: str, label: str) -> bool:
         return False
     if "8ma0" in s or "(as)" in s or re.search(r"(?<![a-z])as[-_ ]", s):
         return False
+    if re.search(r"(?<![a-z0-9])(?:fp[1-3]|m[3-5]|s[3-4]|d[1-2])(?![a-z0-9])", s):
+        return False
+    if re.search(r"(?<![0-9])(?:666[789]|6679|668[0169]|669[01])(?![0-9])", s):
+        return False
     return True
 
 
@@ -210,12 +214,15 @@ def main() -> int:
     ap.add_argument("--max-per-source", type=int, default=0)
     ap.add_argument("--source", choices=sorted(SOURCES), action="append")
     ap.add_argument("--all-sources", action="store_true", help="include non-Edexcel, AS/IAL, and Further sources")
+    ap.add_argument("--clean", action="store_true", help="remove the existing corpus before downloading")
     ap.add_argument("--force", action="store_true", help="redownload PDFs even when a local copy exists")
     ap.add_argument("--sleep", type=float, default=0.05)
     args = ap.parse_args()
 
     selected = set(args.source or (SOURCES if args.all_sources else A_LEVEL_MATHS_SOURCES))
     sources = {k: v for k, v in SOURCES.items() if k in selected}
+    if args.clean and OUT.exists():
+        shutil.rmtree(OUT)
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = OUT / "manifest_latest.jsonl"
     failures = OUT / "download_failures.txt"
