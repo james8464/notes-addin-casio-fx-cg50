@@ -4,6 +4,8 @@ Sources:
 - Pearson Edexcel A Level Mathematics 9MA0 specification, Issue 4, official PDF: https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/specification-and-sample-assesment/a-level-l3-mathematics-specification-issue4.pdf
 - Pearson Edexcel A Level Further Mathematics 9FM0 specification, Issue 4, official PDF: https://qualifications.pearson.com/content/dam/pdf/A%20Level/Mathematics/2017/specification-and-sample-assesment/a-level-l3-further-mathematics-specification.pdf
 
+Research refreshed: 2026-05-22.
+
 9MA0 required:
 - Pure: proof, algebra/functions, coordinate geometry, sequences/series, trig, exp/log, differentiation, integration, numerical methods, vectors.
 - Stats: sampling, data presentation/interpretation, probability, distributions, hypothesis tests.

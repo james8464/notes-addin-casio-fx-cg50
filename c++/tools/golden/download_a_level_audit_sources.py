@@ -2,8 +2,6 @@
 """Download A-level Maths audit source PDFs into tidy local folders.
 
 Local outputs are intentionally outside git:
-  ~/Downloads/MadAsMaths standard topics
-  ~/Downloads/MadAsMaths papers
   ~/Downloads/Edexcel A Level Maths past papers
 
 The tracked output is only an ignored report manifest under c++/tests/reports.
@@ -358,16 +356,23 @@ def add_rows(
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true", help="redownload PDFs even when a valid local PDF exists")
+    ap.add_argument(
+        "--scope",
+        choices=("edexcel-9ma0", "all"),
+        default="edexcel-9ma0",
+        help="edexcel-9ma0 downloads official normal A-level Maths papers/support only; all also adds broad MadAsMaths packs",
+    )
     args = ap.parse_args()
 
     rows: list[dict[str, object]] = []
     home = Path.home()
-    for topic, url in MADAS_STANDARD.items():
-        add_rows(rows, "madas_standard", topic, url, home / "Downloads" / "MadAsMaths standard topics" / topic, args.force)
-    for topic, url in MADAS_BOOKLETS_A_LEVEL.items():
-        add_rows(rows, "madas_booklets_a_level", topic, url, home / "Downloads" / "MadAsMaths A-level booklets" / topic, args.force)
-    for paper, url in MADAS_PAPERS.items():
-        add_rows(rows, "madas_iygb", paper, url, home / "Downloads" / "MadAsMaths papers", args.force)
+    if args.scope == "all":
+        for topic, url in MADAS_STANDARD.items():
+            add_rows(rows, "madas_standard", topic, url, home / "Downloads" / "MadAsMaths standard topics" / topic, args.force)
+        for topic, url in MADAS_BOOKLETS_A_LEVEL.items():
+            add_rows(rows, "madas_booklets_a_level", topic, url, home / "Downloads" / "MadAsMaths A-level booklets" / topic, args.force)
+        for paper, url in MADAS_PAPERS.items():
+            add_rows(rows, "madas_iygb", paper, url, home / "Downloads" / "MadAsMaths papers", args.force)
     add_direct_rows(
         rows,
         "pearson_9ma0_public",

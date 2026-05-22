@@ -13,13 +13,16 @@ from download_a_level_audit_sources import PEARSON_9MA0_PUBLIC, PEARSON_9MA0_202
 REPO = Path(__file__).resolve().parents[3]
 MANIFEST = REPO / "c++" / "tests" / "reports" / "a_level_source_downloads" / "manifest_latest.jsonl"
 
-MIN_FAMILY_COUNTS = {
-    "madas_standard": 62,
-    "madas_booklets_a_level": 171,
-    "madas_iygb": 624,
+REQUIRED_FAMILY_COUNTS = {
     "pearson_9ma0_public": len(PEARSON_9MA0_PUBLIC),
     "pearson_9ma0_support": len(PEARSON_SUPPORT),
     "pearson_9ma0_probe": len(PEARSON_9MA0_2025_PROBES),
+}
+
+OPTIONAL_ALL_SCOPE_COUNTS = {
+    "madas_standard": 62,
+    "madas_booklets_a_level": 171,
+    "madas_iygb": 624,
 }
 
 
@@ -49,7 +52,10 @@ def main() -> int:
         for row in rows
         if row.get("status") in {"downloaded", "exists"} and not valid_pdf(str(row.get("path", "")))
     ]
-    missing_families = [f"{family}:{counts[family]}/{need}" for family, need in MIN_FAMILY_COUNTS.items() if counts[family] < need]
+    missing_families = [f"{family}:{counts[family]}/{need}" for family, need in REQUIRED_FAMILY_COUNTS.items() if counts[family] < need]
+    for family, need in OPTIONAL_ALL_SCOPE_COUNTS.items():
+        if counts[family] and counts[family] < need:
+            missing_families.append(f"{family}:{counts[family]}/{need}")
     public_2025 = [str(row.get("name")) for row in rows if row.get("family") == "pearson_9ma0_probe" and row.get("status") == "public-pdf"]
     if bad or invalid or missing_families or public_2025:
         print("FAIL source downloads")
@@ -62,7 +68,8 @@ def main() -> int:
         if bad:
             print("bad " + " | ".join(bad[:12]))
         return 1
-    print("OK source downloads rows=%d %s" % (len(rows), " ".join(f"{k}={counts[k]}" for k in sorted(MIN_FAMILY_COUNTS))))
+    expected = {**REQUIRED_FAMILY_COUNTS, **{k: v for k, v in OPTIONAL_ALL_SCOPE_COUNTS.items() if counts[k]}}
+    print("OK source downloads rows=%d %s" % (len(rows), " ".join(f"{k}={counts[k]}" for k in sorted(expected))))
     return 0
 
 

@@ -25,6 +25,18 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["ERR:", "Answer:"],
     ),
     (
+        "June 2018 Q2a derivative and second derivative",
+        ["--derive", "x^2-2*x-24*sqrt(x),x"],
+        ["d/dx(x^2) = 2*x", "d/dx(-24*sqrt(x)) = -12/sqrt(x)", "dy/dx = 2*x - 12/sqrt(x) - 2"],
+        ["ERR:", "limite"],
+    ),
+    (
+        "June 2018 Q2a second derivative",
+        ["--derive", "x^2-2*x-24*sqrt(x),x,method=second"],
+        ["Differentiate once; differentiate dy/dx again", "d2y/dx2 = 6*sqrt(x)^-3 + 2"],
+        ["ERR:", "Answer: d/dx"],
+    ),
+    (
         "June 2018 Q5 trig quotient derivative",
         ["--derive", "3*sin(theta)/(2*sin(theta)+2*cos(theta)),theta"],
         ["quotient rule", "1 + sin(2*theta)", "3/(2*(1 + sin(2*theta)))"],

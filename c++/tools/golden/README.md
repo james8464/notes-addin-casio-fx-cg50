@@ -35,23 +35,27 @@ External source setup:
 python3 c++/tools/golden/download_a_level_audit_sources.py --force
 python3 c++/tools/golden/check_a_level_source_downloads.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
-python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"MadAsMaths standard topics"/integration --first 2
+python3 c++/tools/golden/render_audit_pdf_pages.py ~/Downloads/"Edexcel A Level Maths past papers" --first 2
 ```
 
 Audit flow graph: `c++/tools/golden/a_level_audit_graph.md`.
 Manual cross-source audit tracker: `c++/tools/golden/a_level_audit_tracker.jsonl`.
 
-`download_a_level_audit_sources.py` writes PDFs outside git:
+`download_a_level_audit_sources.py` now defaults to normal Edexcel A-level
+Maths (`--scope edexcel-9ma0`). It writes PDFs outside git:
 
-- `~/Downloads/MadAsMaths standard topics`
-- `~/Downloads/MadAsMaths A-level booklets`
-- `~/Downloads/MadAsMaths papers`
 - `~/Downloads/Edexcel A Level Maths past papers`
 - `~/Downloads/Edexcel A Level Maths support materials`
 
 It also writes the ignored manifest/report under
 `c++/tests/reports/a_level_source_downloads`. Pearson 2025 9MA0 URLs are probed
 but not treated as required until Pearson serves public PDFs.
+
+Use `--scope all` only when deliberately re-auditing broad MadAsMaths packs:
+
+- `~/Downloads/MadAsMaths standard topics`
+- `~/Downloads/MadAsMaths A-level booklets`
+- `~/Downloads/MadAsMaths papers`
 
 `check_madasmaths_full_audit.py` renders local MP2 A-Z papers/solutions from
 `~/Downloads/MadAsMaths papers` into ignored report images, writes the JSONL
