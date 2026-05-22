@@ -1458,8 +1458,6 @@ static bool is_known_name_token(std::string const &name)
     static const char *known[] = {
         "sin", "cos", "tan", "sec", "csc", "cosec", "cot",
         "asin", "acos", "atan", "arcsin", "arccos", "arctan",
-        "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-        "arcsinh", "arccosh", "arctanh", "arsinh", "arcosh", "artanh",
         "exp", "log", "ln", "log10", "sqrt", "abs", "sign", "factorial",
         "pi", "e"
     };
@@ -3187,88 +3185,6 @@ static std::optional<std::vector<std::string>> maclaurin_exp_route(Arena &a, std
     }
     out.push_back(series_answer_text(a, *coeffs, var));
     return out;
-}
-
-struct AtanhLinearSeries {
-    Rational c;
-    Rational m;
-    Rational b;
-    Rational f0_ratio;
-};
-
-static std::optional<AtanhLinearSeries> atanh_linear_fraction_series(Arena &a, NodeId n, std::string const &var)
-{
-    Node const &fn = a.get(n);
-    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Atanh) return std::nullopt;
-    Node const &q = a.get(fn.a);
-    if(q.kind != NodeKind::Div) return std::nullopt;
-    auto num = linear_poly_coeffs(a, q.a, var);
-    auto den = linear_poly_coeffs(a, q.b, var);
-    if(!num || !den) return std::nullopt;
-    Rational A = num->first, B = num->second, C = den->first, D = den->second;
-    Rational det = r_sub(r_mul(A, D), r_mul(B, C));
-    if(is_zero(det)) return std::nullopt;
-    Rational m1 = r_sub(C, A), b1 = r_sub(D, B);
-    Rational m2 = r_add(C, A), b2 = r_add(D, B);
-    Rational k, m, b;
-    if(is_zero(m1) && !is_zero(b1)) {
-        k = b1; m = m2; b = b2;
-    }
-    else if(is_zero(m2) && !is_zero(b2)) {
-        k = b2; m = m1; b = b1;
-    }
-    else return std::nullopt;
-    if(is_zero(k) || is_zero(b)) return std::nullopt;
-    Rational c = r_div(det, k);
-    Rational ratio = r_div(r_add(D, B), r_sub(D, B));
-    if(ratio.num <= 0) return std::nullopt;
-    return AtanhLinearSeries{c, m, b, ratio};
-}
-
-static std::string rat_mul_var_text(Arena &a, Rational r, std::string const &var, int pow)
-{
-    if(is_zero(r)) return "";
-    std::string v = pow == 1 ? var : var + "^" + std::to_string(pow);
-    if(r.num == r.den) return v;
-    if(r.num == -r.den) return "-" + v;
-    return rat_node_text(a, r) + "*" + v;
-}
-
-static void append_series_term(std::string &s, std::string t)
-{
-    t = trim_text(t);
-    if(t.empty()) return;
-    bool neg = t[0] == '-';
-    if(s.empty()) s = t;
-    else s += neg ? " - " + trim_text(t.substr(1)) : " + " + t;
-}
-
-static std::optional<std::vector<std::string>> maclaurin_atanh_linear_fraction_route(Arena &a, std::string const &inner)
-{
-    auto args = split_csv(inner);
-    if(args.empty()) return std::nullopt;
-    std::string var = args.size() >= 2 && !args[1].empty() ? compact_input_key(args[1]) : "x";
-    int degree = args.size() >= 3 ? std::atoi(args[2].c_str()) : 2;
-    if(degree < 2) return std::nullopt;
-    NodeId n = casio::parse_expr(a, args[0]);
-    auto info = atanh_linear_fraction_series(a, n, var);
-    if(!info) return std::nullopt;
-    Rational f1 = r_div(info->c, info->b);
-    Rational f2_num = r_neg(r_mul(info->c, info->m));
-    Rational f2_0 = r_div(f2_num, r_mul(info->b, info->b));
-    Rational x2 = r_div(f2_0, Rational{2, 1});
-    std::string lin = format_expr(a, poly2_to_node(a, Poly2{Rational{0, 1}, info->m, info->b, true}, var));
-    std::string f0 = "1/2*ln(" + rat_node_text(a, info->f0_ratio) + ")";
-    std::string ans = f0;
-    append_series_term(ans, rat_mul_var_text(a, f1, var, 1));
-    append_series_term(ans, rat_mul_var_text(a, x2, var, 2));
-    return std::vector<std::string>{
-        "f(0) = " + f0,
-        "f'(" + var + ") = " + rat_node_text(a, info->c) + "/(" + lin + "), f'(0) = " + rat_node_text(a, f1),
-        "f''(" + var + ") = " + rat_node_text(a, f2_num) + "/(" + lin + ")^2, f''(0) = " + rat_node_text(a, f2_0),
-        "f(" + var + ") = f(0) + " + var + "*f'(0) + " + var + "^2/2*f''(0)",
-        ans,
-    };
 }
 
 static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, std::string const &inner)
@@ -7246,112 +7162,6 @@ static void append_rejected_by_domain(std::vector<std::string> &out,
                                       std::vector<std::string> const &valid)
 {
     append_rejected_roots(out, var, raw, valid, "domain");
-}
-
-static std::optional<std::vector<std::string>> tanh_log_sqrt_linear_route(
-    Arena &a, NodeId lhs, NodeId rhs, NodeId residual, std::string const &var, std::vector<std::string> out)
-{
-    auto run = [&](NodeId lin_side, NodeId tanh_side) -> std::optional<std::vector<std::string>> {
-        auto lp = poly_of(a, lin_side, var);
-        if(!lp || !lp->ok || !is_zero(lp->a2) || !is_zero(lp->a0) || is_zero(lp->a1)) return std::nullopt;
-        Node const &tn = a.get(tanh_side);
-        if(tn.kind != NodeKind::Fn || tn.fkind != FnKind::Tanh) return std::nullopt;
-        Node const &ln = a.get(tn.a);
-        if(ln.kind != NodeKind::Fn || ln.fkind != FnKind::Log) return std::nullopt;
-        Node const &rt = a.get(ln.a);
-        if(rt.kind != NodeKind::Fn || rt.fkind != FnKind::Sqrt) return std::nullopt;
-        auto rp = poly_of(a, rt.a, var);
-        if(!rp || !rp->ok || !is_zero(rp->a2) || is_zero(rp->a1)) return std::nullopt;
-
-        Poly2 top{Rational{0, 1}, lp->a1, Rational{1, 1}, true};
-        Poly2 bot{Rational{0, 1}, r_neg(lp->a1), Rational{1, 1}, true};
-        Poly2 q = sub_poly(top, mul_poly(bot, *rp));
-        if(q.a2.num < 0 || (is_zero(q.a2) && q.a1.num < 0)) q = neg_poly(q);
-        std::vector<std::string> raw = solve_poly2(a, q, var), valid;
-        for(auto const &s : raw) {
-            auto v = solution_line_value(a, s);
-            auto rv = v ? eval_node(a, rt.a, var, *v) : std::optional<double>{};
-            if(v && rv && std::isfinite(*rv) && *rv > 0 && std::fabs((double)lp->a1.num * *v / (double)lp->a1.den) < 1)
-                valid.push_back(s);
-        }
-
-        NodeId vx = casio::mul(a, {a.num(lp->a1), a.sym(var)});
-        NodeId topn = casio::simplify(a, casio::add(a, {one_node(a), vx}));
-        NodeId botn = casio::simplify(a, casio::add(a, {one_node(a), neg_node(a, vx)}));
-        NodeId frac = casio::div(a, topn, botn);
-        out.push_back("atanh(" + format_expr(a, lin_side) + ") = ln(sqrt(" + format_expr(a, rt.a) + "))");
-        out.push_back("1/2*ln((" + format_expr(a, topn) + ")/(" + format_expr(a, botn) + ")) = 1/2*ln(" + format_expr(a, rt.a) + ")");
-        out.push_back(format_expr(a, frac) + " = " + format_expr(a, rt.a));
-        out.push_back(format_expr(a, poly2_to_node(a, q, var)) + " = 0");
-        append_rejected_by_domain(out, var, raw, valid);
-        for(auto const &s : valid) out.push_back(s);
-        out.push_back(valid.empty() ? var + " = []" : solution_list_line(var, valid));
-        return out;
-    };
-    if(auto r = run(lhs, rhs)) return r;
-    return run(rhs, lhs);
-}
-
-static bool sinh_scaled_term(Arena &a, NodeId n, std::string const &var, Rational &coef, Rational &arg_coef)
-{
-    coef = Rational{1, 1};
-    NodeId body = n;
-    Node const &x = a.get(n);
-    if(x.kind == NodeKind::Mul) {
-        bool saw = false;
-        Rational c{1, 1};
-        for(NodeId k : x.kids) {
-            if(auto r = as_num(a, k)) c = r_mul(c, *r);
-            else if(!saw) {
-                body = k;
-                saw = true;
-            }
-            else return false;
-        }
-        if(!saw) return false;
-        coef = c;
-    }
-    Node const &fn = a.get(body);
-    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Sinh) return false;
-    auto lin = linear_poly_coeffs(a, fn.a, var);
-    if(!lin || !is_zero(lin->second)) return false;
-    arg_coef = lin->first;
-    return true;
-}
-
-static std::optional<std::vector<std::string>> hyperbolic_sinh_triple_solve_route(Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
-{
-    auto run = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
-        Rational A, B, ka, kb;
-        if(!sinh_scaled_term(a, left, var, A, ka) || !sinh_scaled_term(a, right, var, B, kb)) return std::nullopt;
-        ka.normalize();
-        kb.normalize();
-        if(!(ka.num == 3 && ka.den == 1) || !(kb.num == 1 && kb.den == 1) || is_zero(A)) return std::nullopt;
-        Rational target = r_div(r_sub(B, r_mul(Rational{3, 1}, A)), r_mul(Rational{4, 1}, A));
-        Rational fourA = r_mul(Rational{4, 1}, A);
-        Rational c0 = r_sub(r_mul(Rational{3, 1}, A), B);
-        Rational c0abs = c0.num < 0 ? r_neg(c0) : c0;
-        std::vector<std::string> out;
-        out.push_back("sinh(3*" + var + ") = 4*sinh(" + var + ")^3 + 3*sinh(" + var + ")");
-        out.push_back("sinh(" + var + ")*(" + rat_node_text(a, fourA) + "*sinh(" + var + ")^2 " +
-                      (c0.num < 0 ? "- " : "+ ") + rat_node_text(a, c0abs) + ") = 0");
-        out.push_back("sinh(" + var + ") = 0 => " + var + " = 0");
-        if(target.num <= 0) {
-            out.push_back("sinh(" + var + ")^2 = " + rat_node_text(a, target) + " gives no extra real roots");
-            out.push_back(var + " = [0]");
-            return out;
-        }
-        std::string s = sqrt_rational_surd_text(a, target);
-        std::string rt = sqrt_rational_surd_text(a, r_add(Rational{1, 1}, target));
-        out.push_back("sinh(" + var + ")^2 = " + rat_node_text(a, target));
-        out.push_back("sinh(" + var + ") = +/-" + s);
-        out.push_back(var + " = ln(" + s + " + " + rt + ")");
-        out.push_back(var + " = ln(-" + s + " + " + rt + ")");
-        out.push_back(var + " = [0, ln(" + s + " + " + rt + "), ln(-" + s + " + " + rt + ")]");
-        return out;
-    };
-    if(auto r = run(lhs, rhs)) return r;
-    return run(rhs, lhs);
 }
 
 static void append_kept_denominator_check(Arena &a,
@@ -14004,30 +13814,6 @@ static bool term_is_cos_with_coeff(Arena &a, NodeId n, Rational &coeff, std::str
     return false;
 }
 
-static std::optional<std::string> tanh_full_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
-{
-    Rational k{1, 1};
-    NodeId body = n;
-    Node const &x = a.get(n);
-    if(x.kind == NodeKind::Mul) {
-        std::vector<NodeId> rest;
-        for(NodeId kid : x.kids) {
-            if(auto r = node_num(a, kid)) k = r_mul(k, *r);
-            else rest.push_back(kid);
-        }
-        if(rest.size() != 1) return std::nullopt;
-        body = rest.front();
-    }
-    Node const &b = a.get(body);
-    if(b.kind != NodeKind::Fn || b.fkind != FnKind::Tanh) return std::nullopt;
-    auto m = linear_var_coeff_loose(a, b.a, var);
-    if(!m || m->num == 0) return std::nullopt;
-    Rational ak = r_abs(k);
-    steps.push_back("-1 < tanh(" + format_expr(a, b.a) + ") < 1");
-    steps.push_back("-" + format_rat(a, ak) + " < " + format_expr(a, n) + " < " + format_rat(a, ak));
-    return "-" + format_rat(a, ak) + " < y < " + format_rat(a, ak);
-}
-
 static std::optional<std::string> reciprocal_cos_range(Arena &a, NodeId n, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -15805,223 +15591,6 @@ static std::optional<std::vector<std::string>> shifted_roots_route(Arena &a, std
         },
         poly_any_desc_text(a, *p, newv) + " = 0"
     );
-}
-
-static NodeId cosh_square_sub(Arena &a, NodeId n, std::string const &var, std::string &arg, bool &seen, bool &ok)
-{
-    if(!ok) return n;
-    Node const &x = a.get(n);
-    if(x.kind == NodeKind::Pow) {
-        Node const &b = a.get(x.a);
-        auto e = as_num(a, x.b);
-        if(b.kind == NodeKind::Fn && b.fkind == FnKind::Cosh && e && e->den == 1 && e->num > 0 && e->num % 2 == 0) {
-            std::string this_arg = format_expr(a, b.a);
-            if(seen && this_arg != arg) ok = false;
-            arg = this_arg;
-            seen = true;
-            NodeId u = casio::sym(a, "u");
-            return e->num == 2 ? u : casio::power(a, u, casio::num(a, e->num / 2));
-        }
-    }
-    if(x.kind == NodeKind::Fn) {
-        if(x.fkind == FnKind::Cosh) {
-            ok = false;
-            return n;
-        }
-        return n;
-    }
-    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
-        std::vector<NodeId> kids;
-        for(NodeId k : x.kids) kids.push_back(cosh_square_sub(a, k, var, arg, seen, ok));
-        return x.kind == NodeKind::Add ? casio::add(a, std::move(kids)) : casio::mul(a, std::move(kids));
-    }
-    if(x.kind == NodeKind::Div) return casio::div(a, cosh_square_sub(a, x.a, var, arg, seen, ok),
-                                                  cosh_square_sub(a, x.b, var, arg, seen, ok));
-    if(x.kind == NodeKind::Pow) return casio::power(a, cosh_square_sub(a, x.a, var, arg, seen, ok),
-                                                    cosh_square_sub(a, x.b, var, arg, seen, ok));
-    (void)var;
-    return n;
-}
-
-static std::string half_log_solution_text(Arena &a, Rational s)
-{
-    s.normalize();
-    if(s.num == s.den) return "0";
-    if(s.num < s.den) {
-        Rational inv{s.den, s.num};
-        inv.normalize();
-        std::string pos = half_log_solution_text(a, inv);
-        return pos == "0" ? "0" : "-" + pos;
-    }
-    std::int64_t rn = 0, rd = 0;
-    if(is_square_i64(s.num, rn) && is_square_i64(s.den, rd) && rd != 0) {
-        Rational root{rn, rd};
-        root.normalize();
-        return "ln(" + format_rat(a, root) + ")";
-    }
-    return "1/2*ln(" + format_rat(a, s) + ")";
-}
-
-static std::optional<std::vector<std::string>> hyperbolic_cosh_square_solve_route(Arena &a, std::string const &expr)
-{
-    std::string inner = unwrap_call_text(expr, "solve");
-    if(inner.empty()) return std::nullopt;
-    auto args = split_csv(inner);
-    if(args.size() != 2) return std::nullopt;
-    std::string var = compact_input_key(args[1]);
-    auto eq = casio::parse_equation(a, args[0]);
-    if(!eq) return std::nullopt;
-    NodeId rearr = casio::simplify(a, casio::add(a, {eq->lhs, casio::neg(a, eq->rhs)}));
-    std::string arg;
-    bool seen = false, ok = true;
-    NodeId ueq = casio::simplify(a, cosh_square_sub(a, rearr, var, arg, seen, ok));
-    if(!ok || !seen) return std::nullopt;
-    auto lin = symbolic_linear_parts(a, casio::parse_expr(a, arg), var);
-    auto m = lin ? as_num(a, lin->m) : std::optional<Rational>{};
-    auto c = lin ? as_num(a, lin->c) : std::optional<Rational>{};
-    if(!m || !c || m->num == 0 || c->num != 0) return std::nullopt;
-    auto p = poly_of(a, ueq, "u");
-    if(!p || !p->ok || (is_zero(p->a2) && is_zero(p->a1))) return std::nullopt;
-    std::vector<Rational> uroots;
-    if(!is_zero(p->a2)) {
-        auto rr = rational_quadratic_roots(*p);
-        if(!rr) return std::nullopt;
-        uroots = {rr->first, rr->second};
-    }
-    else uroots = {r_div(r_neg(p->a0), p->a1)};
-
-    std::vector<std::string> out{
-        "u = cosh(" + arg + ")^2",
-        format_expr(a, ueq) + " = 0"
-    };
-    if(auto rr = rational_quadratic_roots(*p)) out.push_back("Factor: " + quadratic_factor_text(a, *p, "u") + " = 0");
-    std::vector<std::pair<double, std::string>> sols;
-    for(Rational u : uroots) {
-        u.normalize();
-        out.push_back("u = " + format_rat(a, u));
-        if(r_cmp(u, Rational{1, 1}) < 0) {
-            out.push_back("reject u = " + format_rat(a, u) + " since cosh(" + arg + ")^2 >= 1");
-            continue;
-        }
-        out.push_back("cosh(" + arg + ")^2 = " + format_rat(a, u));
-        Poly2 sq{Rational{1, 1}, r_sub(Rational{2, 1}, r_mul(Rational{4, 1}, u)), Rational{1, 1}, true};
-        auto sr = rational_quadratic_roots(sq);
-        if(!sr) return std::nullopt;
-        out.push_back("Let s = e^(2*" + arg + "), s > 0");
-        out.push_back(format_expr(a, poly2_to_node(a, sq, "s")) + " = 0");
-        for(Rational s : {sr->first, sr->second}) {
-            if(s.num <= 0) continue;
-            std::string base = half_log_solution_text(a, s);
-            std::string xt = is_zero(r_sub(*m, Rational{1, 1})) ? base : "(" + base + ")/" + format_rat(a, *m);
-            sols.push_back({0.5 * std::log((double)s.num / (double)s.den) / ((double)m->num / (double)m->den), xt});
-        }
-    }
-    if(sols.empty()) return std::nullopt;
-    std::sort(sols.begin(), sols.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
-    std::vector<std::string> final;
-    for(auto const &s : sols)
-        if(std::find(final.begin(), final.end(), s.second) == final.end()) final.push_back(s.second);
-    std::string joined;
-    for(std::size_t i = 0; i < final.size(); ++i) {
-        if(i) joined += ", ";
-        joined += final[i];
-    }
-    out.push_back(var + " = [" + joined + "]");
-    return out;
-}
-
-static NodeId cosh_double_sub(Arena &a, NodeId n, std::string const &var, bool &seen, bool &ok)
-{
-    if(!ok) return n;
-    Node const &x = a.get(n);
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cosh) {
-        auto lin = symbolic_linear_parts(a, x.a, var);
-        auto m = lin ? as_num(a, lin->m) : std::optional<Rational>{};
-        auto c = lin ? as_num(a, lin->c) : std::optional<Rational>{};
-        if(!m || !c || !is_zero(*c)) {
-            ok = false;
-            return n;
-        }
-        seen = true;
-        NodeId u = casio::sym(a, "u");
-        if(m->num == m->den) return u;
-        if(m->num == 2 * m->den)
-            return casio::add(a, {casio::mul(a, {a.num(Rational{2, 1}), casio::power(a, u, a.num(Rational{2, 1}))}),
-                                  a.num(Rational{-1, 1})});
-        ok = false;
-        return n;
-    }
-    if(x.kind == NodeKind::Fn) return n;
-    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
-        std::vector<NodeId> kids;
-        for(NodeId k : x.kids) kids.push_back(cosh_double_sub(a, k, var, seen, ok));
-        return x.kind == NodeKind::Add ? casio::add(a, std::move(kids)) : casio::mul(a, std::move(kids));
-    }
-    if(x.kind == NodeKind::Div) return casio::div(a, cosh_double_sub(a, x.a, var, seen, ok),
-                                                  cosh_double_sub(a, x.b, var, seen, ok));
-    if(x.kind == NodeKind::Pow) return casio::power(a, cosh_double_sub(a, x.a, var, seen, ok),
-                                                    cosh_double_sub(a, x.b, var, seen, ok));
-    return n;
-}
-
-static std::optional<std::vector<std::string>> hyperbolic_cosh_double_solve_route(Arena &a, std::string const &expr)
-{
-    std::string inner = unwrap_call_text(expr, "solve");
-    if(inner.empty()) return std::nullopt;
-    auto args = split_csv(inner);
-    if(args.size() != 2) return std::nullopt;
-    std::string var = compact_input_key(args[1]);
-    auto eq = casio::parse_equation(a, args[0]);
-    if(!eq) return std::nullopt;
-    NodeId rearr = casio::simplify(a, casio::add(a, {eq->lhs, casio::neg(a, eq->rhs)}));
-    bool seen = false, ok = true;
-    NodeId ueq = casio::simplify(a, cosh_double_sub(a, rearr, var, seen, ok));
-    if(!ok || !seen || format_expr(a, rearr) == format_expr(a, ueq)) return std::nullopt;
-    auto p = poly_of(a, ueq, "u");
-    if(!p || !p->ok || is_zero(p->a2)) return std::nullopt;
-    Poly2 q = *p;
-    if(q.a2.num < 0 || (is_zero(q.a2) && q.a1.num < 0)) q = neg_poly(q);
-    auto ur = rational_quadratic_roots(q);
-    if(!ur) return std::nullopt;
-    std::vector<std::string> out{
-        "cosh(2*" + var + ") = 2*cosh(" + var + ")^2 - 1",
-        "u = cosh(" + var + ")",
-        format_expr(a, poly2_to_node(a, q, "u")) + " = 0"
-    };
-    if(auto rr = rational_quadratic_roots(q)) out.push_back("Factor: " + quadratic_factor_text(a, q, "u") + " = 0");
-    std::vector<std::pair<double, std::string>> sols;
-    for(Rational u : {ur->first, ur->second}) {
-        out.push_back("u = " + format_rat(a, u));
-        if(r_cmp(u, Rational{1, 1}) < 0) {
-            out.push_back("reject u = " + format_rat(a, u) + " since cosh(" + var + ") >= 1");
-            continue;
-        }
-        out.push_back("cosh(" + var + ") = " + format_rat(a, u));
-        Poly2 ep{Rational{1, 1}, r_mul(Rational{-2, 1}, u), Rational{1, 1}, true};
-        out.push_back("Let s = e^" + var + ", s > 0");
-        out.push_back(format_expr(a, poly2_to_node(a, ep, "s")) + " = 0");
-        for(auto const &sline : solve_poly2(a, ep, "s")) {
-            std::string rhs = sol_rhs(sline);
-            if(rhs.find("No solution") != std::string::npos || rhs.find('i') != std::string::npos) continue;
-            double sv = solution_line_value(a, sline).value_or(0.0);
-            if(sv <= 0) continue;
-            sols.push_back({std::log(sv), "ln(" + rhs + ")"});
-        }
-    }
-    if(sols.empty()) return std::nullopt;
-    std::sort(sols.begin(), sols.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
-    std::vector<std::string> final;
-    for(auto const &s : sols) {
-        out.push_back(var + " = " + s.second);
-        if(std::find(final.begin(), final.end(), s.second) == final.end()) final.push_back(s.second);
-    }
-    std::string joined;
-    for(std::size_t i = 0; i < final.size(); ++i) {
-        if(i) joined += ", ";
-        joined += final[i];
-    }
-    out.push_back(var + " = [" + joined + "]");
-    return out;
 }
 
 static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::string const &var)
@@ -23325,7 +22894,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto sroot = shifted_roots_route(arena, req.expr)) return *sroot;
-            if(auto hcosh = hyperbolic_cosh_square_solve_route(arena, req.expr)) return *hcosh;
             if(auto logv = exact_log_base_value_key(key)) {
                 return casio::exam_block(
                     "custom-base log",
@@ -23828,7 +23396,6 @@ algebra_compare_transform_modes:
             return run(arena, next);
         }
         if(req.mode == 14) {
-            if(auto out = maclaurin_atanh_linear_fraction_route(arena, req.expr)) return *out;
             if(auto out = maclaurin_exp_route(arena, req.expr)) return *out;
             if(auto out = binomial_series_route(arena, req.expr)) return *out;
             return {
@@ -24513,10 +24080,6 @@ algebra_compare_transform_modes:
                     range_answer = "y >= " + format_expr(arena, y0);
                     steps.push_back(format_expr(arena, n) + " = " + format_expr(arena, completed));
                     steps.push_back(format_expr(arena, square) + " >= 0");
-                    steps.push_back("Range: " + range_answer + ".");
-                }
-                else if(auto thr = tanh_full_range(arena, n, var, steps)) {
-                    range_answer = *thr;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto trig_range = direct_trig_range(arena, n, var, steps)) {
@@ -25237,10 +24800,6 @@ algebra_compare_transform_modes:
         if(auto iso = direct_constant_solution(lhs, rhs)) return *iso;
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
 
-        if(auto hsinh = hyperbolic_sinh_triple_solve_route(arena, lhs, rhs, solve_var)) return *hsinh;
-        if(auto hcosh2 = hyperbolic_cosh_double_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh2;
-        if(auto hcosh = hyperbolic_cosh_square_solve_route(arena, "solve(" + equation_text + "," + solve_var + ")")) return *hcosh;
-        if(auto ths = tanh_log_sqrt_linear_route(arena, lhs, rhs, rearr, solve_var, out)) return *ths;
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
