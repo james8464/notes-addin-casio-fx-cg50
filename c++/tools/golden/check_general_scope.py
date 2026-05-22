@@ -105,7 +105,8 @@ def main() -> int:
     removed_alg = [
         "normald(0,1,0)", "mean([1,2,3])", "median([1,2,3])", "stdev([1,2,3])",
         "correlation([1,2],[3,4])", "covariance([1,2],[3,4])",
-        "linear_regression([1,2],[3,4])", "plot(x)", "plotcontour(x)",
+        "linear_regression([1,2],[3,4])", "plot(x)", "plotarea(x,x=0..1)", "plotfunc(x,x)",
+        "plotcontour(x)",
         "plotfield(x)", "plotlist([1,2])", "plotode(x)", "plotparam(x,y)",
         "plotpolar(sin(x))", "plotseq(x)", "disque(x)", "tabular(x^2)", "tabvar(x^2)",
         "symmetry(x^2)", "mean_value(x,x,0,1)", "volume_x(x,x,0,1)",

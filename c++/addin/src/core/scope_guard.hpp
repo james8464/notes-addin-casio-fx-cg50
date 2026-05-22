@@ -12,8 +12,8 @@ inline bool contains_removed_function(std::string const &text)
     static constexpr char const *names[] = {
         "comb(", "normald(", "mean(", "median(", "stdev(", "stddev(",
         "correlation(", "covariance(", "linear_regression(",
-        "plot(", "plotcontour(", "plotfield(", "plotlist(", "plotode(",
-        "plotparam(", "plotpolar(", "plotseq(", "disque(",
+        "plot(", "plotarea(", "plotfunc(", "plotcontour(", "plotfield(", "plotlist(", "plotode(",
+        "plotparam(", "plotpolar(", "plotseq(", "areaplot(", "disque(",
         "rationalise(", "rationalize(", "tabular(", "tabvar(", "weierstrass(",
         "symmetry(", "mean_value(", "volume_x(", "volume_y(",
         "area_between(", "param_area(", "param_area_y(",

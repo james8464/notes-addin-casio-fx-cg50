@@ -6310,6 +6310,7 @@ static define_unary_function_eval (__camembert,&cascas_removed_surface,_camember
   // method=trapeze,point_milieu,rectangle_gauche,rectangle_droit
   gen _plotarea(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+    return gensizeerr(contextptr);
     vecteur v(gen2vecteur(g));
     vecteur attributs(1,COLOR_BLACK);
     int s=read_attributs(v,attributs,contextptr);

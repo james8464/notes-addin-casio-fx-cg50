@@ -1608,6 +1608,7 @@ namespace giac {
 
   const double max_nstep=1024;
   gen plotfunc(const gen & f_,const gen & vars,const vecteur & attributs,bool densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_zmin, double function_zmax,int nstep,int jstep,bool showeq,const context * contextptr){
+    return gensizeerr(contextptr);
     if (f_.is_symb_of_sommet(at_equal) || is_inequation(f_)){
       return string2gen("Try plot(["+f_._SYMBptr->feuille.print(contextptr)+"],"+vars.print(contextptr)+"). (In)equations can not be plotted.",false);
     }
