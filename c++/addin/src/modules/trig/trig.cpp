@@ -1101,6 +1101,7 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
     if(A.kind == NodeKind::Sym && A.text == var) return std::make_pair(1.0, 0.0);
     if(A.kind == NodeKind::Mul) {
         double coeff = 1.0;
+        bool coeff_has_pi = false;
         std::optional<std::pair<double, double>> linear_part;
         for(auto kid : A.kids) {
             Node const &K = a.get(kid);
@@ -1114,9 +1115,13 @@ static std::optional<std::pair<double, double>> linear_angle(Arena &a, NodeId ar
                 auto q = numeric_eval(a, kid, 0.0);
                 if(!q || !std::isfinite(*q)) return std::nullopt;
                 coeff *= *q;
+                coeff_has_pi = coeff_has_pi || contains_pi(a, kid);
             }
         }
-        if(linear_part) return std::make_pair(coeff * linear_part->first, coeff * linear_part->second);
+        if(linear_part) {
+            double scale = (!plain_number_is_radian && coeff_has_pi) ? (180.0 / M_PI) : 1.0;
+            return std::make_pair(scale * coeff * linear_part->first, scale * coeff * linear_part->second);
+        }
     }
     if(A.kind == NodeKind::Div) {
         auto top = linear_angle(a, A.a, var, plain_number_is_radian);

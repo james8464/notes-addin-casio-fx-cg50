@@ -57,14 +57,29 @@ static std::string join_text(std::vector<std::string> const &items, char const *
 
 static Rational r_add(Rational a, Rational b)
 {
+    a.normalize();
+    b.normalize();
+    std::int64_t g = std::gcd(std::llabs(a.den), std::llabs(b.den));
     Rational r;
-    r.num = a.num * b.den + b.num * a.den;
-    r.den = a.den * b.den;
+    r.num = a.num * (b.den / g) + b.num * (a.den / g);
+    r.den = (a.den / g) * b.den;
     r.normalize();
     return r;
 }
 static Rational r_mul(Rational a, Rational b)
 {
+    a.normalize();
+    b.normalize();
+    std::int64_t g1 = std::gcd(std::llabs(a.num), std::llabs(b.den));
+    if(g1 > 1) {
+        a.num /= g1;
+        b.den /= g1;
+    }
+    std::int64_t g2 = std::gcd(std::llabs(b.num), std::llabs(a.den));
+    if(g2 > 1) {
+        b.num /= g2;
+        a.den /= g2;
+    }
     Rational r;
     r.num = a.num * b.num;
     r.den = a.den * b.den;
@@ -73,11 +88,7 @@ static Rational r_mul(Rational a, Rational b)
 }
 static Rational r_div(Rational a, Rational b)
 {
-    Rational r;
-    r.num = a.num * b.den;
-    r.den = a.den * b.num;
-    r.normalize();
-    return r;
+    return r_mul(a, Rational{b.den, b.num});
 }
 static Rational r_neg(Rational a)
 {
@@ -2942,6 +2953,8 @@ static std::optional<BinomSeries> linear_power_series(Arena &a,
     out.lines.push_back("(" + format_expr(a, base) + ")^" + rat_node_text(a, power) + " = " +
                         rat_node_text(a, *factor) + "*(1+(" + u_text + "))^" +
                         rat_node_text(a, power));
+    out.lines.push_back("(" + format_expr(a, base) + ")^" + rat_node_text(a, power) + " = " +
+                        series_answer_text(a, out.c, var));
     return out;
 }
 
@@ -3388,6 +3401,12 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
                 s1[i] = r_mul(binom_rat(power, i), r_pow_int(mp, i));
                 s2[i] = r_mul(binom_rat(r_neg(power), i), r_pow_int(md, i));
             }
+            auto f1 = rational_power_factor(pn->a0, power);
+            auto f2 = rational_power_factor(pd->a0, r_neg(power));
+            auto scaled = [&](std::vector<Rational> s, Rational f) {
+                for(auto &c : s) c = r_mul(c, f);
+                return s;
+            };
             for(int i = 0; i <= degree; ++i)
                 for(int j = 0; j + i <= degree; ++j)
                     coeffs[i + j] = r_add(coeffs[i + j], r_mul(s1[i], s2[j]));
@@ -3417,13 +3436,18 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
                                       ? "sqrt(" + format_expr(a, base_node.a) + ")*(" + format_expr(a, base_node.b) + ")^(-1/2)"
                                       : "(" + format_expr(a, base_node.a) + ")^" + rat_node_text(a, power) + "*(" +
                                             format_expr(a, base_node.b) + ")^" + rat_node_text(a, r_neg(power));
-            return std::vector<std::string>{
-                "1. Rewrite as " + rewrite + ".",
-                "2. Expand each binomial factor.",
-                "3. Multiply series and keep terms up to " + var + "^" + std::to_string(degree) + ".",
-                "4. Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".",
-                "Answer: " + ans,
-            };
+            std::vector<std::string> out{"1. Rewrite as " + rewrite + "."};
+            if(f1 && f2) {
+                out.push_back("(" + format_expr(a, base_node.a) + ")^" + rat_node_text(a, power) + " = " +
+                              series_answer_text(a, scaled(s1, *f1), var));
+                out.push_back("(" + format_expr(a, base_node.b) + ")^" + rat_node_text(a, r_neg(power)) + " = " +
+                              series_answer_text(a, scaled(s2, *f2), var));
+            }
+            else out.push_back("2. Expand each binomial factor.");
+            out.push_back("Multiply series and keep terms up to " + var + "^" + std::to_string(degree) + ".");
+            out.push_back("Valid for abs(" + var + ") < " + rat_node_text(a, bound) + ".");
+            out.push_back("Answer: " + ans);
+            return out;
         }
     }
 
@@ -4514,7 +4538,18 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
             catch(...) {}
             continue;
         }
-        if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) kept.push_back(s);
+        if(std::fabs(*residual) <= 1e-6 * std::max(1.0, std::fabs(*value))) {
+            kept.push_back(s);
+            continue;
+        }
+        try {
+            NodeId rhs = casio::parse_expr(a, sol_rhs(s));
+            NodeId sub = exact_eval_simplify(a, clone_with_substitution(a, residual_expr, var, rhs));
+            auto exact = eval_node_env(a, sub, {});
+            if(exact && std::isfinite(*exact) && std::fabs(*exact) <= 1e-9) kept.push_back(s);
+            else if(!lo && !hi && has_symbols(a, sub)) kept.push_back(s);
+        }
+        catch(...) {}
     }
     std::vector<std::string> unique;
     std::vector<double> vals;
@@ -5248,10 +5283,36 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
     }
     if(is_zero(p.a2)) {
         // linear: a1 x + a0 = 0 => x = -a0/a1
-        Rational xval = r_div(r_neg(p.a0), p.a1);
-        xval.normalize();
-        NodeId sol = casio::num(a, xval.num, xval.den);
-        return {var + " = " + format_expr(a, sol)};
+        __int128 n = -static_cast<__int128>(p.a0.num) * static_cast<__int128>(p.a1.den);
+        __int128 d = static_cast<__int128>(p.a0.den) * static_cast<__int128>(p.a1.num);
+        auto abs128 = [](__int128 v) { return v < 0 ? -v : v; };
+        auto gcd128 = [&](auto self, __int128 u, __int128 v) -> __int128 {
+            u = abs128(u);
+            v = abs128(v);
+            while(v != 0) {
+                __int128 t = u % v;
+                u = v;
+                v = t;
+            }
+            return u == 0 ? 1 : u;
+        };
+        if(d < 0) {
+            n = -n;
+            d = -d;
+        }
+        __int128 g = gcd128(gcd128, n, d);
+        n /= g;
+        d /= g;
+        constexpr __int128 lim = static_cast<__int128>(std::numeric_limits<std::int64_t>::max());
+        if(abs128(n) <= lim && d <= lim) {
+            Rational xval{static_cast<std::int64_t>(n), static_cast<std::int64_t>(d)};
+            xval.normalize();
+            NodeId sol = casio::num(a, xval.num, xval.den);
+            return {var + " = " + format_expr(a, sol)};
+        }
+        long double value = -((long double)p.a0.num / (long double)p.a0.den) /
+                            ((long double)p.a1.num / (long double)p.a1.den);
+        return {var + " = " + format_double_compact((double)value)};
     }
 
     // quadratic formula
@@ -25281,10 +25342,9 @@ algebra_compare_transform_modes:
             NodeId lhs_linear = casio::simplify(arena, casio::mul(arena, {casio::num(arena, a.num, a.den), casio::sym(arena, solve_var)}));
             NodeId rhs_const = casio::num(arena, -b.num, b.den);
             out.push_back("3. " + format_expr(arena, lhs_linear) + " = " + format_expr(arena, rhs_const));
-            Rational sol = r_div(r_neg(b), a);
-            out.push_back("4. " + solve_var + " = " + format_expr(arena, casio::num(arena, sol.num, sol.den)));
-            auto sols = solve_poly2(arena, rp.num, solve_var);
-            sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
+            auto raw_sols = solve_poly2(arena, rp.num, solve_var);
+            if(!raw_sols.empty()) out.push_back("4. " + solve_var + " = " + sol_rhs(raw_sols.front()));
+            auto sols = filter_real_solutions(arena, rearr, solve_var, raw_sols, interval_lo, interval_hi);
             if(sols.empty()) {
                 out.push_back(interval_lo && interval_hi ? "No solution in the interval." : "No solution.");
                 out.push_back("Answer: " + solve_var + " = []");
