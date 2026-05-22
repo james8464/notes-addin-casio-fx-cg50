@@ -210,6 +210,7 @@ def main() -> int:
     ap.add_argument("--max-per-source", type=int, default=0)
     ap.add_argument("--source", choices=sorted(SOURCES), action="append")
     ap.add_argument("--all-sources", action="store_true", help="include non-Edexcel, AS/IAL, and Further sources")
+    ap.add_argument("--force", action="store_true", help="redownload PDFs even when a local copy exists")
     ap.add_argument("--sleep", type=float, default=0.05)
     args = ap.parse_args()
 
@@ -244,16 +245,16 @@ def main() -> int:
             name = f"{i:03d}_{digest}_{safe_name(stem_src, f'{source}_{i:03d}.pdf')}"
             pdf = pdf_dir / name
             txt = txt_dir / (pdf.stem + ".txt")
-            status = "exists" if pdf.exists() else "download"
+            status = "download" if args.force or not pdf.exists() else "exists"
             size = pdf.stat().st_size if pdf.exists() else 0
-            if not pdf.exists():
+            if args.force or not pdf.exists():
                 ok, detail = download_pdf(url, pdf)
                 if not ok:
                     fail_lines.append(f"{source}\t{url}\t{detail}")
                     continue
                 size = int(detail)
                 time.sleep(args.sleep)
-            text_status = "exists" if txt.exists() else extract_text(pdf, txt)
+            text_status = extract_text(pdf, txt) if args.force or not txt.exists() else "exists"
             rows.append(
                 {
                     "source": source,
