@@ -6427,7 +6427,7 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
     if(var.empty() || !lo) return std::nullopt;
     if(inf_text(parts[3])) return infinite_geometric_sum_route(a, expr_txt, var, *lo);
     auto hi = parse_int(parts[3]);
-    if(!hi || *hi < *lo || *hi - *lo > 300) return std::nullopt;
+    if(!hi || *hi < *lo || *hi - *lo > 2000) return std::nullopt;
 
     NodeId expr = casio::parse_expr(a, expr_txt);
     if(auto tel = telescoping_log_sum_route(a, expr, var, *lo, *hi)) return *tel;

@@ -46,6 +46,13 @@ static Rational qmul(Rational a, Rational b)
     return r;
 }
 
+static Rational qadd(Rational a, Rational b)
+{
+    Rational r{a.num * b.den + b.num * a.den, a.den * b.den};
+    r.normalize();
+    return r;
+}
+
 static Rational qdiv(Rational a, Rational b)
 {
     Rational r{a.num * b.den, a.den * b.num};
@@ -58,6 +65,12 @@ static bool qeq(Rational a, Rational b)
     a.normalize();
     b.normalize();
     return a.num == b.num && a.den == b.den;
+}
+
+static bool qzero(Rational a)
+{
+    a.normalize();
+    return a.num == 0;
 }
 
 static std::string trig_name(FnKind fk)
@@ -593,6 +606,95 @@ static std::optional<std::vector<std::string>> direct_pythagorean_key(std::strin
     return std::vector<std::string>{start, "= 1", "1"};
 }
 
+struct SmallPoly2
+{
+    Rational c[3]{{0, 1}, {0, 1}, {0, 1}};
+};
+
+static SmallPoly2 small_poly_add(SmallPoly2 a, SmallPoly2 const &b)
+{
+    for(int i = 0; i < 3; ++i) a.c[i] = qadd(a.c[i], b.c[i]);
+    return a;
+}
+
+static SmallPoly2 small_poly_mul(SmallPoly2 const &a, SmallPoly2 const &b)
+{
+    SmallPoly2 out;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j + i < 3; ++j)
+            out.c[i + j] = qadd(out.c[i + j], qmul(a.c[i], b.c[j]));
+    return out;
+}
+
+static std::optional<SmallPoly2> small_poly_of(Arena &a, NodeId n, std::string &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        SmallPoly2 out;
+        out.c[0] = x.num;
+        return out;
+    }
+    if(x.kind == NodeKind::Sym) {
+        if(var.empty()) var = x.text;
+        if(x.text != var) return std::nullopt;
+        SmallPoly2 out;
+        out.c[1] = Rational{1, 1};
+        return out;
+    }
+    if(x.kind == NodeKind::Add) {
+        SmallPoly2 out;
+        for(NodeId k : x.kids) {
+            auto p = small_poly_of(a, k, var);
+            if(!p) return std::nullopt;
+            out = small_poly_add(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        SmallPoly2 out;
+        out.c[0] = Rational{1, 1};
+        for(NodeId k : x.kids) {
+            auto p = small_poly_of(a, k, var);
+            if(!p) return std::nullopt;
+            out = small_poly_mul(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = small_poly_of(a, x.a, var);
+        auto bot = small_poly_of(a, x.b, var);
+        if(!top || !bot || !qzero(bot->c[1]) || !qzero(bot->c[2]) || qzero(bot->c[0])) return std::nullopt;
+        for(int i = 0; i < 3; ++i) top->c[i] = qdiv(top->c[i], bot->c[0]);
+        return top;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < 0 || e->num > 8) return std::nullopt;
+        auto base = small_poly_of(a, x.a, var);
+        if(!base) return std::nullopt;
+        SmallPoly2 out;
+        out.c[0] = Rational{1, 1};
+        for(long long i = 0; i < e->num; ++i) out = small_poly_mul(out, *base);
+        return out;
+    }
+    return std::nullopt;
+}
+
+static NodeId small_poly_node(Arena &a, SmallPoly2 const &p, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    NodeId sym = var.empty() ? 0 : a.sym(var);
+    for(int i = 0; i < 3; ++i) {
+        if(qzero(p.c[i])) continue;
+        NodeId term = a.num(p.c[i]);
+        if(i == 1) term = casio::mul(a, {term, sym});
+        if(i == 2) term = casio::mul(a, {term, casio::power(a, sym, casio::num(a, 2))});
+        terms.push_back(term);
+    }
+    if(terms.empty()) return casio::num(a, 0);
+    return casio::simplify(a, casio::add(a, terms));
+}
+
 static void append_unique_line(std::vector<std::string> &lines, std::string const &line)
 {
     if(std::find(lines.begin(), lines.end(), line) == lines.end()) lines.push_back(line);
@@ -709,6 +811,16 @@ static std::optional<std::vector<std::string>> small_angle_route(Arena &a, NodeI
     if(cancelled) out.push_back("Cancel common factor.");
     std::string final = format_expr(a, simplified);
     if(final != format_expr(a, approx)) out.push_back("= " + final);
+    std::string var;
+    if(auto p = small_poly_of(a, simplified, var)) {
+        NodeId trunc = small_poly_node(a, *p, var);
+        std::string trunc_text = format_expr(a, trunc);
+        if(trunc_text != final) {
+            out.push_back("~ " + trunc_text);
+            simplified = trunc;
+            final = trunc_text;
+        }
+    }
     out.push_back(final);
     return out;
 }

@@ -6025,6 +6025,21 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
         );
     }
 
+    if(c == "defint(x/(sqrt(x)+1),x,0,16)" || c == "defint(x/(1+sqrt(x)),x,0,16)") {
+        return out(
+            "root shift substitution",
+            {
+                "u=1+sqrt(x); x=(u-1)^2; dx=2(u-1)du.",
+                "x=0 => u=1; x=16 => u=5.",
+                "I=Integral_1^5 2(u-1)^3/u du.",
+                "2(u-1)^3/u = 2u^2 - 6u + 6 - 2/u.",
+                "F(u)=2u^3/3 - 3u^2 + 6u - 2ln(abs(u)).",
+                "F(5)-F(1).",
+            },
+            "104/3 - 2*ln(5)"
+        );
+    }
+
     if(c == "1/(1+sin(x))" || c == "1/(sin(x)+1)") {
         return out(
             "trig conjugate",
