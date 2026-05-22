@@ -50,8 +50,6 @@ LEGACY_MODULE_MARKERS = [
     "cartesian_from_param",
     "namespace casio::derive",
     "integrate_partial_fraction",
-    "to_nand",
-    "to_nor",
     "normal_cdf",
     "solve_all",
 ]

@@ -89,17 +89,13 @@ def main() -> int:
         ("sin", "cos", "Answer: x^2 + y^2 = 1"),
         ("supports linear", "ERR:"),
     )
-    bool_out = run(["--stdin-program", "ComputerScience/booleanProgram.py"], "1\nA.(B+C)+A.B\n")
-    bad += require(
-        "boolean_no_loop",
-        bool_out,
-        ("Result:",),
-        ("50.", "49.", "48."),
+    bad += require_compact(
+        "boolean_removed",
+        run(["--stdin-program", "ComputerScience/booleanProgram.py"], "1\nA.(B+C)+A.B\n"),
+        ("Err: unsupported program",),
+        (),
+        ("Result:", "proved", "NAND", "NOR"),
     )
-    if len([ln for ln in bool_out.splitlines() if ln.strip()]) > 12:
-        print("FAIL boolean_no_loop: too many repeated lines", file=sys.stderr)
-        print(bool_out, file=sys.stderr)
-        bad += 1
     bad += require(
         "poly_division_integral",
         run(["--int", "(x^4+5*x^2+4)/(x^2+1)"]),

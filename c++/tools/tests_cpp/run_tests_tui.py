@@ -577,12 +577,6 @@ FEATURE_PARITY_EXPECTED = {
         "suvat_expected_error",
         "suvat_uni",
     ),
-    "Boolean": (
-        "boolean_simplify",
-        "boolean_nand",
-        "boolean_nor",
-        "boolean_prove",
-    ),
     "MethodSurface": (
         "method_surface:int",
         "method_surface:derive",
@@ -599,7 +593,6 @@ FEATURE_PARITY_EXPECTED = {
         "integrate_",
         "stats_",
         "suvat_",
-        "boolean_",
     ),
 }
 FEATURE_PARITY_NOTES = {
@@ -609,7 +602,6 @@ FEATURE_PARITY_NOTES = {
     "Integrate": "Python modes 1-2 plus methods: direct, substitution, parts, trig, partial fractions, division, DE.",
     "Stats": "C++ extension: binomial and normal probability only.",
     "SUVAT": "Python solver parameters s/u/v/a/t with target inferred/marked; exact rationals/surds and edge errors.",
-    "Boolean": "Python modes 1-4: simplify, NAND, NOR, prove.",
     "MethodSurface": "Direct host method/options surface across every supported feature group, including invalid method fallback.",
     "ExamMix": "Cross-feature stress loop; catches route gaps between program-specific builders.",
     "ExamGap": "Worksheet-style traps: right answer but missing full-mark method lines.",
@@ -2901,8 +2893,6 @@ class CASIOApp(App):
             "stats": "Stats",
             "statistics": "Stats",
             "stat": "Stats",
-            "boolean": "Boolean",
-            "bool": "Boolean",
             "methods": "MethodSurface",
             "method": "MethodSurface",
             "methodsurface": "MethodSurface",
@@ -3650,7 +3640,6 @@ class CASIOApp(App):
         self.append_result("[dim]Integrate[/dim] — standard integrals, substitution, parts, extremes")
         self.append_result("[dim]Stats[/dim] — binomial and normal probability")
         self.append_result("[dim]SUVAT[/dim] — motion equations and projectile-style checks")
-        self.append_result("[dim]Boolean[/dim] — simplify, NAND, NOR, proof checks")
         self.update_summary("Programs")
 
     def show_status(self):
@@ -3771,7 +3760,6 @@ class CASIOApp(App):
                 ("Integrate", self.run_integrate),
                 ("Stats", self.run_stats),
                 ("SUVAT", self.run_suvat),
-                ("Boolean", self.run_boolean),
             ]
 
             if self.current_program != "all":
@@ -4909,10 +4897,6 @@ class CASIOApp(App):
             "random_trig_rearrange_case": "Trigonometry",
             "random_stats_binomial_case": "Stats",
             "random_stats_normal_case": "Stats",
-            "random_boolean_simplify_case": "Boolean",
-            "random_boolean_nand_case": "Boolean",
-            "random_boolean_nor_case": "Boolean",
-            "random_boolean_prove_case": "Boolean",
             "random_matrix_case": "Matrix",
             "random_complex_case": "Complex",
             "random_calculate_case": "Calculate",
@@ -5126,7 +5110,7 @@ class CASIOApp(App):
                             if len(self._test_times) > 500:
                                 self._test_times = self._test_times[-200:]
                         quality_issues = []
-                        if not skip_quality and case.program not in ("Boolean", "MethodSurface", "Adversarial") and getattr(case, "feature", ""):
+                        if not skip_quality and case.program not in ("MethodSurface", "Adversarial") and getattr(case, "feature", ""):
                             quality_issues = exam_working_quality_issues(
                                 output, case.program, case.feature
                             )
@@ -5152,7 +5136,7 @@ class CASIOApp(App):
                             getattr(case, "graph_meta", None),
                         )
                         self.record_adversarial_case_result(case, record)
-                        if use_llm and case.program not in ("Boolean", "MethodSurface"):
+                        if use_llm and case.program != "MethodSurface":
                             llm_pending.append(record)
                             if len(llm_pending) >= llm_bs:
                                 flush_llm_pending()
@@ -5502,8 +5486,6 @@ class CASIOApp(App):
 
     def with_random_format_fuzz(self, case, rng, difficulty):
         if not case or not case.script or not callable(case.checker):
-            return case
-        if case.program == "Boolean" or "booleanProgram.py" in case.script:
             return case
         fuzzed_input = self.fuzz_cli_input_format(case.input_text, rng, difficulty)
         if fuzzed_input == case.input_text:
@@ -8153,74 +8135,6 @@ class CASIOApp(App):
         ]
         return self.build_unique_random_cases(features, count, rng, difficulty)
 
-    def random_boolean_expr(self, rng, depth=3):
-        atoms = ["A", "B", "C", "D", "E", "0", "1"]
-        if depth <= 0 or rng.random() < 0.28:
-            base = rng.choice(atoms)
-        else:
-            left = self.random_boolean_expr(rng, depth - 1)
-            right = self.random_boolean_expr(rng, depth - 1)
-            op = rng.choice([".", "+"])
-            if rng.random() < 0.35:
-                left = "({0})".format(left)
-            if rng.random() < 0.35:
-                right = "({0})".format(right)
-            base = "{0}{1}{2}".format(left, op, right)
-        if rng.random() < 0.28:
-            base = "{0},".format(base if base.startswith("(") else "({0})".format(base))
-        return base
-
-    def random_boolean_simplify_case(self, rng, difficulty, index):
-        templates = [
-            "A.A,",
-            "A+A.B",
-            "((B,.A),.B,),+A.B",
-            "A.(B+C)+A.B,",
-            "(A+B).(A+B,)",
-        ]
-        expr = rng.choice(templates) if rng.random() < 0.45 else self.random_boolean_expr(rng, 5 if difficulty == "chaos" else 3)
-        inp = "1\n{0}\n".format(expr)
-        label = "Boolean simplify {0}".format(index)
-        checker = build_checker(contains_all=("Result:",), forbid=("Error:", "ERR:"), min_lines=2)
-        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_simplify", use_calculated=False)
-
-    def random_boolean_nand_case(self, rng, difficulty, index):
-        expr = self.random_boolean_expr(rng, 4 if difficulty == "chaos" else 2)
-        inp = "2\n{0}\n".format(expr)
-        label = "Boolean NAND {0}".format(index)
-        checker = build_checker(contains_all=("NAND form:",), forbid=("Error:", "ERR:"), min_lines=2)
-        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_nand", use_calculated=False)
-
-    def random_boolean_nor_case(self, rng, difficulty, index):
-        expr = self.random_boolean_expr(rng, 4 if difficulty == "chaos" else 2)
-        inp = "3\n{0}\n".format(expr)
-        label = "Boolean NOR {0}".format(index)
-        checker = build_checker(contains_all=("NOR form:",), forbid=("Error:", "ERR:"), min_lines=2)
-        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_nor", use_calculated=False)
-
-    def random_boolean_prove_case(self, rng, difficulty, index):
-        pairs = [
-            ("A.(B+C)", "A.B+A.C"),
-            ("A+A.B", "A"),
-            ("(A+B).(A+C)", "A+B.C"),
-            ("A+A,", "1"),
-            ("A.A,", "0"),
-        ]
-        lhs, rhs = rng.choice(pairs)
-        inp = "4\n{0}\n{1}\n".format(lhs, rhs)
-        label = "Boolean prove {0}".format(index)
-        checker = build_checker(contains_any=("proved", "Both sides", "OK", "Result:"), forbid=("Could not prove", "Error:", "ERR:"), min_lines=3)
-        return self.make_cli_case("Boolean", "ComputerScience/booleanProgram.py", inp, label, checker, feature="boolean_prove", use_calculated=False)
-
-    def build_random_boolean_cases(self, difficulty, count, rng):
-        features = [
-            self.random_boolean_simplify_case,
-            self.random_boolean_nand_case,
-            self.random_boolean_nor_case,
-            self.random_boolean_prove_case,
-        ]
-        return self.build_unique_random_cases(features, count, rng, difficulty)
-
     def random_university_algebra_case(self, rng, difficulty, index):
         mode = rng.choice([
             "quad_quad_sub", "circle_line", "discriminate_one",
@@ -8460,10 +8374,6 @@ class CASIOApp(App):
             lambda local_rng, local_difficulty, idx: self.random_suvat_edge_case(
                 local_rng, local_difficulty, idx, local_rng.choice(["s", "u", "v", "a", "t"])
             ),
-            self.random_boolean_simplify_case,
-            self.random_boolean_nand_case,
-            self.random_boolean_nor_case,
-            self.random_boolean_prove_case,
         ]
         super_hard_rng = random.Random(rng.randint(1, 99999))
         cases = self.build_unique_random_cases(features, count, super_hard_rng, "chaos")
@@ -8482,7 +8392,6 @@ class CASIOApp(App):
             ("Integrate", self.build_random_integrate_cases),
             ("Stats", self.build_random_stats_cases),
             ("SUVAT", self.build_random_suvat_cases),
-            ("Boolean", self.build_random_boolean_cases),
             ("MethodSurface", self.build_random_method_surface_cases),
             ("ExamMix", self.build_university_cases),
         ]
@@ -8504,7 +8413,6 @@ class CASIOApp(App):
             "Integrate": 12,
             "Stats": 6,
             "SUVAT": 13,
-            "Boolean": 4,
             "MethodSurface": 7,
             "ExamMix": 4,
         }
@@ -8820,19 +8728,6 @@ class CASIOApp(App):
         with ThreadPoolExecutor(max_workers=CASE_WORKERS) as executor:
             for label, passed, out, inp, check_info in executor.map(evaluate, cases):
                 self.add_test(label, passed, out, program, inp, check_info)
-
-    def run_boolean(self, difficulty="all"):
-        p = "Boolean"
-        tests = [
-            ("1\nA+A.B\n", "Boolean: simplify absorption", "boolean_simplify", build_checker(contains_all=("Result:",), forbid=("Error:", "ERR:"), min_lines=2)),
-            ("2\nA.B+C\n", "Boolean: NAND form", "boolean_nand", build_checker(contains_all=("NAND form:",), forbid=("Error:", "ERR:"), min_lines=2)),
-            ("3\nA+B.C\n", "Boolean: NOR form", "boolean_nor", build_checker(contains_all=("NOR form:",), forbid=("Error:", "ERR:"), min_lines=2)),
-            ("4\nA.(B+C)\nA.B+A.C\n", "Boolean: prove distributive", "boolean_prove", build_checker(contains_any=("proved", "Both sides", "OK", "Result:"), forbid=("Could not prove", "Error:", "ERR:"), min_lines=3)),
-        ]
-        for inp, label, feature, checker in tests:
-            out, err = self.run_cli("ComputerScience/booleanProgram.py", inp)
-            combined = out if not err else out + "\n" + err
-            self.add_test(label, checker(combined), combined, p, inp, getattr(checker, "__name__", "boolean checker"), feature)
 
     def run_algebra(self, difficulty="all"):
         p = "Algebra"

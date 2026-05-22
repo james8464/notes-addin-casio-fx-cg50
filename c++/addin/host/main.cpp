@@ -5,7 +5,6 @@
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
 
-#include "modules/boolean/boolean.hpp"
 #include "modules/suvat/suvat.hpp"
 #include "modules/integrate/integrate.hpp"
 #include "modules/algebra/algebra.hpp"
@@ -316,57 +315,7 @@ static int run_stdin_program(casio::Arena &arena, std::string const &program, st
         return 0;
     }
     if(program == "ComputerScience/booleanProgram.py" || program == "booleanProgram.py") {
-        int mode = 1;
-        try { mode = std::stoi(get(0)); } catch(...) {}
-        if(mode == 4) {
-            std::string lhs = get(1).empty() ? "A.(B+C)" : get(1);
-            std::string rhs = get(2).empty() ? "A.B+A.C" : get(2);
-            std::cout << "1. LHS = " << lhs << "\n";
-            std::cout << "2. RHS = " << rhs << "\n";
-            auto [proof, err] = casio::boolean::prove(lhs, rhs);
-            if(!err.empty()) {
-                std::cout << "Error: " << err << "\n";
-                return 0;
-            }
-            int i = 3;
-            for(auto const &ln : proof) std::cout << i++ << ". " << ln << "\n";
-            std::cout << i << ". proved\n";
-            return 0;
-        }
-
-        std::string expr = get(1);
-        if(expr.empty()) {
-            if(mode == 2) expr = "A.B";
-            else if(mode == 3) expr = "A+B";
-            else expr = "((B,.A),.B,),+A.B";
-        }
-        auto cur = casio::boolean::parse(expr);
-        std::cout << "1. " << casio::boolean::show(cur) << "\n";
-        if(mode == 2) {
-            auto out = casio::boolean::normalise(casio::boolean::to_nand(cur));
-            std::cout << "2. NAND form: " << casio::boolean::show(out) << "\n";
-            return 0;
-        }
-        if(mode == 3) {
-            auto out = casio::boolean::normalise(casio::boolean::to_nor(cur));
-            std::cout << "2. NOR form: " << casio::boolean::show(out) << "\n";
-            return 0;
-        }
-
-        int n = 2;
-        std::set<std::string> seen;
-        seen.insert(casio::boolean::show(cur));
-        while(n <= 50) {
-            auto hit = casio::boolean::step(cur);
-            if(!hit.first) break;
-            std::string next = casio::boolean::show(hit.first);
-            if(seen.count(next)) break;
-            cur = hit.first;
-            seen.insert(next);
-            std::cout << n << ". " << next << "    (" << hit.second << ")\n";
-            ++n;
-        }
-        std::cout << "Result: " << casio::boolean::show(cur) << "\n";
+        std::cout << "Err: unsupported program.\n";
         return 0;
     }
     if(program == "statsProgram.py") {
@@ -397,17 +346,15 @@ int main(int argc, char **argv)
 {
     if(argc < 2) {
         std::cerr << "usage: casio_host \"EXPR\"\n";
-        std::cerr << "   or: casio_host --bool \"BOOL_EXPR\"\n";
         return 2;
     }
 
     std::string flag = argv[1];
+    if(flag == "--bool" || flag == "--nand" || flag == "--nor" || flag == "--prove") {
+        std::cout << "Err: unsupported function\n";
+        return 0;
+    }
     bool is_stdin_program = (flag == "--stdin-program");
-    bool is_bool = (flag == "--bool");
-    bool is_bool_nand = (flag == "--nand");
-    bool is_bool_nor = (flag == "--nor");
-    bool is_bool_prove = (flag == "--prove");
-    bool any_bool = is_bool || is_bool_nand || is_bool_nor || is_bool_prove;
     bool is_suvat = (flag == "--suvat");
     bool is_int = (flag == "--int");
     bool is_alg = (flag == "--alg");
@@ -415,7 +362,7 @@ int main(int argc, char **argv)
     bool is_derive = (flag == "--derive");
     bool is_stats = (flag == "--stats");
 
-    std::string expr = (is_stdin_program || any_bool || is_suvat || is_int || is_alg || is_trig || is_derive || is_stats) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string expr = (is_stdin_program || is_suvat || is_int || is_alg || is_trig || is_derive || is_stats) ? (argc >= 3 ? argv[2] : "") : argv[1];
     casio::Arena arena;
     // Resource budget: cap node growth (prevents pathological hangs/crashes).
     if(char const *env = std::getenv("CASIO_MAX_NODES")) {
@@ -761,50 +708,13 @@ int main(int argc, char **argv)
             print_lines(lines);
             return 0;
         }
-        if(is_bool || is_bool_nand || is_bool_nor || is_bool_prove) {
-            if(is_bool_prove) {
-                if(argc < 4) {
-                    std::cout << "ERR: need LHS RHS\n";
-                    return 2;
-                }
-                auto [lines, err] = casio::boolean::prove(argv[2], argv[3]);
-                if(!err.empty()) {
-                    std::cout << "ERR: " << err << "\n";
-                    return 1;
-                }
-                print_lines(lines);
-                return 0;
-            }
-            auto n = casio::boolean::parse(expr);
-            if(is_bool_nand) {
-                auto out = casio::boolean::normalise(casio::boolean::to_nand(n));
-                std::cout << casio::boolean::show(out) << "\n";
-                return 0;
-            }
-            if(is_bool_nor) {
-                auto out = casio::boolean::normalise(casio::boolean::to_nor(n));
-                std::cout << casio::boolean::show(out) << "\n";
-                return 0;
-            }
-
-            std::cout << "BOOL: " << casio::boolean::show(n) << "\n";
-            std::cout << "SHORT: " << casio::boolean::short_text(n) << "\n";
-            auto hit = casio::boolean::step(n);
-            if(hit.first) {
-                std::cout << "STEP: " << casio::boolean::show(hit.first) << "\n";
-                std::cout << "WHY: " << hit.second << "\n";
-            }
-            else std::cout << "STEP: (none)\n";
-        }
-        else {
-            std::string norm = casio::normalize_text(expr);
-            auto root = casio::parse_expr(arena, expr);
-            std::string fmt = casio::format_expr(arena, root);
-            std::string human = casio::format_equation_human_readable(arena, root);
-            std::cout << "NORM: " << norm << "\n";
-            std::cout << "FMT: " << fmt << "\n";
-            std::cout << "HUMAN: " << human << "\n";
-        }
+        std::string norm = casio::normalize_text(expr);
+        auto root = casio::parse_expr(arena, expr);
+        std::string fmt = casio::format_expr(arena, root);
+        std::string human = casio::format_equation_human_readable(arena, root);
+        std::cout << "NORM: " << norm << "\n";
+        std::cout << "FMT: " << fmt << "\n";
+        std::cout << "HUMAN: " << human << "\n";
         return 0;
     }
     catch(std::exception const &e) {

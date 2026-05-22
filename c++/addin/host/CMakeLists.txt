@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(casio_host
   main.cpp
-  ../src/modules/boolean/boolean.cpp
   ../src/modules/suvat/suvat.cpp
   ../src/modules/integrate/integrate.cpp
   ../src/modules/algebra/algebra.cpp

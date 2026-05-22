@@ -140,7 +140,7 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `--bool`, `--nand`, `--nor`, `--prove` host routes | dev-only | CasioCAS | blocked on app | Host-only test utilities; app/catalogue surface removed. |
+| `--bool`, `--nand`, `--nor`, `--prove` host routes | remove | CasioCAS | no | Host routes now return compact unsupported output. |
 
 ## Removed Or Hidden By 9MA0 Scope
 

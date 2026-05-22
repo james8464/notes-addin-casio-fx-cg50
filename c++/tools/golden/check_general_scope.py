@@ -89,6 +89,19 @@ def main() -> int:
         ("Err: unsupported function",),
         ("NAND", "NOR", "prove"),
     )
+    for flag in ("--bool", "--nand", "--nor"):
+        require(
+            "boolean_host_" + flag[2:],
+            run_host(flag, "A+B"),
+            ("Err: unsupported function",),
+            ("BOOL:", "NAND", "NOR", "Result:"),
+        )
+    require(
+        "boolean_host_prove",
+        run_host("--prove", "A.(B+C)", "A.B+A.C"),
+        ("Err: unsupported function",),
+        ("proved", "Both sides", "Result:"),
+    )
     removed_alg = [
         "normald(0,1,0)", "mean([1,2,3])", "median([1,2,3])", "stdev([1,2,3])",
         "correlation([1,2],[3,4])", "covariance([1,2],[3,4])",

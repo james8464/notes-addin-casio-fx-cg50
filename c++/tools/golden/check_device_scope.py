@@ -48,7 +48,7 @@ CASES: tuple[Case, ...] = (
     Case("direct_suvat", "suvat", "s=10,u=0,v=?,a=2,t=5", ("Answer: v = 10",)),
     Case("unsupported_cartesian", "shell", "cartesian(x=t,y=t^2)", ("Err: unsupported form.",), True, 1),
     Case("unsupported_fitconst", "shell", "fitconst(a*x+b=2*x+3,[a,b])", ("unsupported on CG50 route",), True, 1),
-    Case("unsupported_bool", "shell", "prove_bool(A+A'=1)", ("unsupported on CG50 route",), True, 1),
+    Case("unsupported_bool", "shell", "prove_bool(A+A'=1)", ("Err: unsupported form",), True, 1),
 )
 
 

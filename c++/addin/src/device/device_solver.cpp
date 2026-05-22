@@ -2454,7 +2454,6 @@ static bool solve_utility_call(const char *input, const char *prefix, int kind, 
     if(kind == 21) return solve_rewrite_call(inner, out);
     if(kind == 22) return solve_domain_range_call(inner, out);
     if(kind == 25) return solve_device_placeholder("fit constants", out);
-    if(kind == 27) return solve_device_placeholder("boolean proof", out);
     return false;
 }
 
@@ -2508,10 +2507,6 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
             if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
             if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
-            if(starts_with(input, "bool_simplify(")) return solve_utility_call(input, "bool_simplify(", 27, out);
-            if(starts_with(input, "nand(")) return solve_utility_call(input, "nand(", 27, out);
-            if(starts_with(input, "nor(")) return solve_utility_call(input, "nor(", 27, out);
-            if(starts_with(input, "prove_bool(")) return solve_utility_call(input, "prove_bool(", 27, out);
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);
