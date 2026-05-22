@@ -51,6 +51,18 @@ def main() -> int:
         ("Err: unsupported function",),
         ("rationalise*", "Answer:"),
     )
+    require(
+        "comb_removed",
+        run_host("--alg", "comb(5,2)"),
+        ("Err: unsupported function",),
+        ("comb*", "10"),
+    )
+    require(
+        "hyperbolic_reciprocal_removed",
+        run_host("--int", "sech(x)^2+coth(x),method=auto"),
+        ("Err: unsupported function",),
+        ("tanh(x)", "ln(abs(sinh(x)))"),
+    )
     print("general_scope OK")
     return 0
 

@@ -6594,14 +6594,12 @@ static std::string compact_input_key(std::string text)
 
 static bool contains_removed_function(std::string const &text)
 {
-    std::string key = compact_input_key(text);
-    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
-        return static_cast<char>(std::tolower(ch));
-    });
     static constexpr char const *names[] = {
-        "sinh(", "cosh(", "tanh(", "asinh(", "acosh(", "atanh(",
-        "arcsinh(", "arccosh(", "arctanh(", "arsinh(", "arcosh(", "artanh(",
-        "rationalise(", "rationalize(", "normald(",
+        "sinh(", "cosh(", "tanh(", "csch(", "sech(", "coth(", "cosech(",
+        "asinh(", "acosh(", "atanh(", "acsch(", "asech(", "acoth(", "acosech(",
+        "arcsinh(", "arccosh(", "arctanh(", "arcsch(", "arcsech(", "arccoth(", "arcosech(",
+        "arsinh(", "arcosh(", "artanh(", "arsch(", "arsech(", "arcoth(",
+        "comb(", "rationalise(", "rationalize(", "normald(",
         "mean(", "median(", "stdev(", "stddev(", "correlation(", "covariance(",
         "linear_regression(", "ztest(", "plot(", "spark(",
         "plotcontour(", "plotfield(", "plotlist(", "plotode(", "plotparam(",
@@ -6609,10 +6607,27 @@ static bool contains_removed_function(std::string const &text)
         "symmetry(", "mean_value(", "volume_x(", "volume_y(", "area_between(",
         "param_area(", "param_area_y(", "param_volume_x(", "param_volume_y("
     };
-    for(char const *name : names) {
-        if(key.find(name) != std::string::npos) return true;
-    }
-    return false;
+    auto fold = [](std::string s) {
+        std::string out;
+        out.reserve(s.size());
+        for(char c : s) {
+            if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
+            out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
+        return out;
+    };
+    auto hit = [&](std::string const &hay) {
+        for(char const *name : names) {
+            if(hay.find(name) != std::string::npos) return true;
+        }
+        return false;
+    };
+    if(hit(fold(text))) return true;
+    std::string key = compact_input_key(text);
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    return hit(key);
 }
 
 static std::optional<long long> parse_i64_text(std::string const &s);
