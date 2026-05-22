@@ -36,6 +36,8 @@ FORBIDDEN = [
     b"dy/dx=(dy/d",
     b"Area=Int",
     b"use tabvar",
+    b"normald(",
+    b"paramplot(",
 ]
 
 MAGIC = b"CCP1"

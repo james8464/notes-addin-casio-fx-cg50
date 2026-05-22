@@ -1273,7 +1273,7 @@ namespace giac {
 	  // Try to find t in x=pr
 	  vecteur v=protect_solve(x-pr,*t._IDNTptr,1,contextptr);
 	  if (!v.empty() && !is_undef(v)){
-	    *logptr(contextptr) << "solve(" << pr << "=" << x << "," << t << ") returned " << v << ".\nIf solutions were missed consider paramplot(" << makevecteur(pr,t*pr) << "," << t << ")" << endl;
+	    *logptr(contextptr) << "solve(" << pr << "=" << x << "," << t << ") returned " << v << ".\nBranches may also be implicit." << endl;
 	    for (unsigned j=0;j<v.size();++j){
 	      sol.push_back(x*v[j]);
 	    }

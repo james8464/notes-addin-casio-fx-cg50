@@ -1056,7 +1056,7 @@ int doTextArea(textArea* text) {
 	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	     ){
 	  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \n#\nF3 misc\n:\n;\n_\n!\n%\n&\nprint(\ninput(\n":"F1 test\nif \nelse \n<\n>\n==\n!=\nand\nor\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\nf(x):=\nreturn \nlocal\nF3 misc\n;\n:\n_\n!\n%\n&\nprint(\ninput(\n";
-	  le_menu += "F7 arit\n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 lin\nmatrix(\ndet(\nmatpow(\nranm(\ncross(\ncurl(\negvl(\negv(\nF9 list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< prog\n;\n:\n\\\n&\n?\n!\ndebug(\npython(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF> misc\n<\n>\n_\n!\n % \nrand(\nbinomial(\nnormald(";
+	  le_menu += "F7 ALG\nsimplify(\nfactor(\nexpand(\nsolve(\npartfrac(\ncompare(\nrewrite(\ndomain(\nrange(\nF8 CALC\ndiff(\nint(\ndefint(\nimplicit_diff(\nparam_diff(\ntangent_line(\nde_solve(\nF9 TRIG\nsin(\ncos(\ntan(\nasin(\nacos(\natan(\nsec(\ncosec(\ncot(\nF: STAT\nbinom(\nbinomcdf(\nnormalcdf(\nF; MECH\nsuvat(\nF< NUM\ngcd(\nlcm(\nfactorial(\nisprime(\nF= LOG\nln(\nlog(\nlog10(\nexp(\nsqrt(\nabs(\nF> MISC\n<\n>\n_\n!\n%\n&";
 	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),2);
 	  if (!ptr){
 	    show_status(text,search,replace);
