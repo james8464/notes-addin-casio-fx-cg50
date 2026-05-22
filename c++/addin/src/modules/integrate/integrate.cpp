@@ -3392,6 +3392,60 @@ static std::string simplify_endpoint_answer_text(std::string s)
         }
     }
     if(logs.size() >= 2) {
+        bool integer_logs = true;
+        std::vector<std::pair<long long, Rational>> prime_logs;
+        auto add_prime_log = [&](long long p, Rational c) {
+            if(r_zero(c)) return;
+            for(auto &kv : prime_logs) {
+                if(kv.first == p) {
+                    kv.second = r_add(kv.second, c);
+                    return;
+                }
+            }
+            prime_logs.push_back({p, c});
+        };
+        auto factor_integer_log = [&](long long n, Rational c) {
+            if(n <= 0) {
+                integer_logs = false;
+                return;
+            }
+            for(long long p = 2; p <= n / p; ++p) {
+                int e = 0;
+                while(n % p == 0) {
+                    n /= p;
+                    ++e;
+                }
+                if(e) add_prime_log(p, r_mul(c, Rational{e, 1}));
+            }
+            if(n > 1) add_prime_log(n, c);
+        };
+        for(auto const &kv : logs) {
+            if(kv.second.den != 1) {
+                integer_logs = false;
+                break;
+            }
+            factor_integer_log(kv.second.num, kv.first);
+        }
+        if(integer_logs && !prime_logs.empty() && keep.empty()) {
+            std::sort(prime_logs.begin(), prime_logs.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
+            std::string out;
+            auto append = [&](int sg, std::string const &body) {
+                if(body.empty() || body == "0") return;
+                if(out.empty()) out = sg < 0 ? "-" + body : body;
+                else out += sg < 0 ? " - " + body : " + " + body;
+            };
+            for(auto const &kv : prime_logs) {
+                if(r_zero(kv.second)) continue;
+                Rational c = kv.second;
+                int sg = 1;
+                if(c.num < 0) {
+                    sg = -1;
+                    c = r_neg(c);
+                }
+                append(sg, rat_prefix(c) + "ln(" + std::to_string(kv.first) + ")");
+            }
+            if(!out.empty()) return out;
+        }
         Rational common_abs{logs[0].first.num < 0 ? -logs[0].first.num : logs[0].first.num, logs[0].first.den};
         bool common_ok = common_abs.num > 0;
         Rational common_product{1, 1};

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -108,6 +109,15 @@ static Rational negq(Rational a)
 {
     a.num = -a.num;
     return a;
+}
+
+static bool mul_i64_checked(std::int64_t a, std::int64_t b, std::int64_t &out)
+{
+    __int128 v = static_cast<__int128>(a) * static_cast<__int128>(b);
+    if(v > std::numeric_limits<std::int64_t>::max() || v < std::numeric_limits<std::int64_t>::min())
+        return false;
+    out = static_cast<std::int64_t>(v);
+    return true;
 }
 
 static NodeId make_add(Arena &a, std::vector<NodeId> parts);
@@ -318,13 +328,11 @@ static NodeId simplify_pow(Arena &a, NodeId base, NodeId exp)
     if(is_num(bn) && is_int_num(en)) {
         std::int64_t p = en.num.num;
         if(p >= 0) {
-            // power for rationals when exponent int and small-ish; mimic python integer pow
-            // (No overflow guard yet; we keep it simple first.)
             std::int64_t nnum = 1;
             std::int64_t nden = 1;
             for(std::int64_t i = 0; i < p; i++) {
-                nnum *= bn.num.num;
-                nden *= bn.num.den;
+                if(!mul_i64_checked(nnum, bn.num.num, nnum) || !mul_i64_checked(nden, bn.num.den, nden))
+                    return a.pow(b, e);
             }
             return num(a, nnum, nden);
         }
@@ -333,8 +341,8 @@ static NodeId simplify_pow(Arena &a, NodeId base, NodeId exp)
             std::int64_t nnum = 1;
             std::int64_t nden = 1;
             for(std::int64_t i = 0; i < p; i++) {
-                nnum *= bn.num.den;
-                nden *= bn.num.num;
+                if(!mul_i64_checked(nnum, bn.num.den, nnum) || !mul_i64_checked(nden, bn.num.num, nden))
+                    return a.pow(b, e);
             }
             return num(a, nnum, nden);
         }

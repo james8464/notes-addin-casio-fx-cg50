@@ -2562,11 +2562,15 @@ static std::optional<std::vector<std::string>> solve_sin2_tan_factor(
     if(u < -1e-10 || u > 1.0 + 1e-10) return std::nullopt;
     double croot = std::sqrt(std::max(0.0, u));
     std::string A = format_expr(a, tan_arg);
+    std::string cos2_line = trig_root_text(2.0 * sin2) + "*cos(A)^2";
+    if(tan1 >= 0) cos2_line += "+";
+    cos2_line += trig_root_text(tan1);
     std::vector<std::string> steps = {
         "A=" + A + ".",
         "sin(2A)=2*sin(A)*cos(A), tan(A)=sin(A)/cos(A).",
-        "sin(A)*(2*cos(A)^2" + std::string(tan1 >= 0 ? "+" : "") + trig_root_text(tan1) + ")=0.",
-        "sin(A)=0 or cos(A)=+/-" + trig_root_text(croot) + ".",
+        "sin(A)*(" + cos2_line + ")=0.",
+        "sin(A)=0 or cos(A)^2=" + trig_root_text(u) + ".",
+        "cos(A)=+/-" + trig_root_text(croot) + ".",
     };
     auto lin = linear_angle(a, tan_arg, var, rad);
     if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;

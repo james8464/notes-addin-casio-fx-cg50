@@ -24986,6 +24986,13 @@ algebra_compare_transform_modes:
         if(!eq) {
             NodeId parsed = casio::parse_expr(arena, req.expr);
             auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
+            if(req.method == "numeric" && !has_symbols(arena, parsed)) {
+                auto v = eval_node(arena, parsed, "x", 0.0);
+                if(v && std::isfinite(*v)) {
+                    std::vector<std::string> steps{format_expr(arena, parsed)};
+                    return casio::exam_block("numeric value", steps, format_double_compact(*v));
+                }
+            }
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
 

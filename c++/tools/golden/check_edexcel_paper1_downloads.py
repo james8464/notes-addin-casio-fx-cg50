@@ -133,10 +133,34 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["theta = []", "Right side still contains", "ERR:"],
     ),
     (
+        "June 2019 Q6 shifted double-angle tan solve",
+        ["--trig", "5*sin(2*x-50)=9*tan(x-25),x,0,360,10,method=identity"],
+        ["A = x - 25", "10*cos(A)^2-9", "cos(A)^2=9/10", "x = [6.56505117708, 25"],
+        ["2*cos(A)^2-9", "x = []", "Right side still contains", "ERR:"],
+    ),
+    (
         "June 2019 Q9 symbolic log quotient",
         ["--alg", "solve(log(a)-log(b)=log(a-b),a)"],
         ["ln(a) - ln(b) = ln(a - b)", "Domain: a - b > 0", "a - b*(a - b) = 0", "a = -b^2/(- b + 1)"],
         ["symbolic parameters unsupported", "No real solution", "ERR:"],
+    ),
+    (
+        "June 2019 Q11 geometric race total numeric",
+        ["--alg", "24+6.3*(1.05^16-1)/(1.05-1),method=numeric"],
+        ["173.042"],
+        ["25.568", "ERR:"],
+    ),
+    (
+        "June 2019 Q12 bounce height numeric",
+        ["--alg", "10*e^(-0.25*(pi+atan(4)))*abs(sin(pi+atan(4))),method=numeric"],
+        ["3.175"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q13 definite PF area log form",
+        ["--int", "defint((15-3*x)/((2*x-4)*(x+3)),x,3,5)"],
+        ["PF: A/(2*x - 4)+B/(x + 3)", "A = 9/5, B = -12/5", "F(5) = -63/10*ln(2) + 9/10*ln(3)", "-24/5*ln(2) + 33/10*ln(3)"],
+        ["33/10*ln(6) - 12/5*ln(8) - 9/10*ln(2)\n", "ERR:"],
     ),
     (
         "October 2020 Q14 cosec identity solve",
