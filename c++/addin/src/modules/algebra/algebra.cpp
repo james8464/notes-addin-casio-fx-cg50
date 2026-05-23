@@ -8962,7 +8962,11 @@ static std::optional<std::vector<std::string>> real_exact_nth_power_route(
     NodeId lhs,
     NodeId rhs,
     NodeId rearr,
-    std::string const &var
+    std::string const &var,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 )
 {
     long long n = 0;
@@ -8986,40 +8990,29 @@ static std::optional<std::vector<std::string>> real_exact_nth_power_route(
         append_answer(out, var, {});
         return out;
     }
-    auto rn = integer_nth_root_i64(value.num < 0 ? -value.num : value.num, static_cast<int>(n));
-    auto rd = integer_nth_root_i64(value.den, static_cast<int>(n));
-    bool exact_root = rn && rd && *rd != 0;
-    std::string root_text;
-    if(exact_root) {
-        Rational root{value.num < 0 ? -*rn : *rn, *rd};
-        root.normalize();
-        root_text = format_rat_plain(root);
-    }
-    else if(value.den == 1 && n % 2 == 0) root_text = rhs_text + "^(1/" + std::to_string(n) + ")";
-    else root_text = "(" + rhs_text + ")^(1/" + std::to_string(n) + ")";
+    std::string root_text = rational_power_root_text(a, value, static_cast<int>(n));
+    std::vector<std::string> raw;
     if(n % 2 == 0) {
         out.push_back(var + " = +/-" + root_text);
-        append_answer(out, var, {var + " = -" + root_text, var + " = " + root_text});
-        return out;
+        raw = {var + " = -" + root_text, var + " = " + root_text};
     }
-    out.push_back(var + " = " + root_text);
-    append_answer(out, var, {var + " = " + root_text});
+    else {
+        out.push_back(var + " = " + root_text);
+        raw = {var + " = " + root_text};
+    }
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    sort_solution_lines(a, valid);
+    if((lo || hi) && valid.size() != raw.size()) append_rejected_roots(out, var, raw, valid, "interval");
+    append_answer(out, var, valid);
     return out;
 }
 
 static std::string nth_power_root_text(Arena &a, NodeId value, long long n)
 {
     std::string rhs_text = format_expr(a, value);
-    if(auto r = as_num(a, value); r && r->den > 0) {
-        auto rn = integer_nth_root_i64(r->num < 0 ? -r->num : r->num, static_cast<int>(n));
-        auto rd = integer_nth_root_i64(r->den, static_cast<int>(n));
-        if(rn && rd && *rd != 0) {
-            Rational root{r->num < 0 ? -*rn : *rn, *rd};
-            root.normalize();
-            return format_rat_plain(root);
-        }
-        if(r->den == 1 && n % 2 == 0) return rhs_text + "^(1/" + std::to_string(n) + ")";
-    }
+    if(auto r = as_num(a, value); r && r->den > 0)
+        return rational_power_root_text(a, *r, static_cast<int>(n));
     return "(" + rhs_text + ")^(1/" + std::to_string(n) + ")";
 }
 
@@ -9135,7 +9128,11 @@ static std::optional<std::vector<std::string>> symbolic_nth_power_route(
     NodeId lhs,
     NodeId rhs,
     NodeId rearr,
-    std::string const &var
+    std::string const &var,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 )
 {
     long long n = 0;
@@ -9178,14 +9175,20 @@ static std::optional<std::vector<std::string>> symbolic_nth_power_route(
     std::string rearr_text = format_expr(a, rearr);
     if(rearr_text != "0" && rearr_text.find(var) != std::string::npos) out.push_back(rearr_text + " = 0");
     out.push_back(lhs_text + " = " + rhs_text);
+    std::vector<std::string> raw;
     if(n % 2 == 0) {
         out.push_back(var + " = +/-" + root_text);
-        append_answer(out, var, {var + " = -" + root_text, var + " = " + root_text});
+        raw = {var + " = -" + root_text, var + " = " + root_text};
     }
     else {
         out.push_back(var + " = " + root_text);
-        append_answer(out, var, {var + " = " + root_text});
+        raw = {var + " = " + root_text};
     }
+    auto valid = filter_real_solutions(a, rearr, var, raw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
+    sort_solution_lines(a, valid);
+    if((lo || hi) && valid.size() != raw.size()) append_rejected_roots(out, var, raw, valid, "interval");
+    append_answer(out, var, valid);
     return out;
 }
 
@@ -13889,6 +13892,108 @@ static std::optional<std::vector<std::string>> log_law_system2_route(Arena &a, s
         return out;
     }
     return std::nullopt;
+}
+
+static bool parse_log_call_key(std::string const &s, std::string &base, std::string &arg)
+{
+    std::string inner = unwrap_call_text(s, "log");
+    if(inner.empty()) return false;
+    auto parts = split_csv(inner);
+    if(parts.size() != 2) return false;
+    base = compact_input_key(parts[0]);
+    arg = compact_input_key(parts[1]);
+    return !base.empty() && !arg.empty();
+}
+
+static bool parse_log_power_eq_key(std::string const &eq, std::string const &xvar, std::string const &yvar, Rational &m)
+{
+    auto sides = split_top_key(compact_input_key(eq), '=');
+    if(sides.size() != 2) return false;
+    auto read = [&](std::string const &l, std::string const &r) {
+        std::string b, arg;
+        if(!parse_log_call_key(l, b, arg) || b != yvar || arg != xvar) return false;
+        auto q = parse_rational_key(r);
+        if(!q) return false;
+        m = *q;
+        return true;
+    };
+    return read(sides[0], sides[1]) || read(sides[1], sides[0]);
+}
+
+static bool parse_const_plus_log_key(std::string const &s, std::string const &base, std::string const &arg, Rational &c)
+{
+    auto terms = split_top_key(s, '+');
+    if(terms.size() != 2) return false;
+    for(int i = 0; i < 2; ++i) {
+        auto q = parse_rational_key(terms[i]);
+        std::string b, a0;
+        if(q && parse_log_call_key(terms[1 - i], b, a0) && b == base && a0 == arg) {
+            c = *q;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool parse_log_scaled_eq_key(std::string const &eq,
+                                    std::string const &xvar,
+                                    std::string const &yvar,
+                                    std::string &base,
+                                    Rational &c)
+{
+    auto sides = split_top_key(compact_input_key(eq), '=');
+    if(sides.size() != 2) return false;
+    auto read = [&](std::string const &l, std::string const &r) {
+        std::string b, arg;
+        if(!parse_log_call_key(l, b, arg) || arg != xvar) return false;
+        Rational shift;
+        if(!parse_const_plus_log_key(r, b, yvar, shift)) return false;
+        base = b;
+        c = shift;
+        return true;
+    };
+    return read(sides[0], sides[1]) || read(sides[1], sides[0]);
+}
+
+static std::optional<std::vector<std::string>> log_power_scaled_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+    std::string xvar = compact_input_key(vars[0]);
+    std::string yvar = compact_input_key(vars[1]);
+
+    Rational m{0, 1}, c{0, 1};
+    std::string base;
+    bool have_power = parse_log_power_eq_key(eq_texts[0], xvar, yvar, m);
+    bool have_scaled = parse_log_scaled_eq_key(eq_texts[1], xvar, yvar, base, c);
+    if(!have_power || !have_scaled) {
+        have_power = parse_log_power_eq_key(eq_texts[1], xvar, yvar, m);
+        have_scaled = parse_log_scaled_eq_key(eq_texts[0], xvar, yvar, base, c);
+    }
+    if(!have_power || !have_scaled || m.den != 1 || m.num <= 1) return std::nullopt;
+
+    NodeId base_node = casio::parse_expr(a, base);
+    NodeId scale_node = exact_eval_simplify(a, casio::power(a, base_node, a.num(c)));
+    auto scale = as_num(a, scale_node);
+    if(!scale || scale->num <= 0 || scale->den <= 0) return std::nullopt;
+    Rational ypow{m.num - 1, 1};
+    std::string yroot = rational_power_root_text(a, *scale, static_cast<int>(ypow.num));
+    if(yroot == "1") return std::nullopt;
+    NodeId y_node = casio::parse_expr(a, yroot);
+    NodeId x_node = exact_eval_simplify(a, casio::mul(a, {scale_node, y_node}));
+
+    std::vector<std::string> out;
+    out.push_back("Domain: " + xvar + " > 0, " + yvar + " > 0, " + yvar + " != 1");
+    out.push_back("log(" + yvar + "," + xvar + ") = " + format_rat_plain(m));
+    out.push_back(xvar + " = " + yvar + "^" + format_rat_plain(m));
+    out.push_back("log(" + base + "," + xvar + ") = " + format_rat_plain(c) + " + log(" + base + "," + yvar + ")");
+    out.push_back(xvar + " = " + format_expr(a, scale_node) + "*" + yvar);
+    out.push_back(yvar + "^" + format_rat_plain(m) + " = " + format_expr(a, scale_node) + "*" + yvar);
+    out.push_back(yvar + " > 0 => " + yvar + "^" + format_rat_plain(ypow) + " = " + format_expr(a, scale_node));
+    out.push_back(yvar + " = " + yroot);
+    out.push_back(xvar + " = " + format_expr(a, x_node));
+    out.push_back("(" + xvar + "," + yvar + ") = [(" + format_expr(a, x_node) + "," + yroot + ")]");
+    return out;
 }
 
 static std::optional<NodeId> log_linear_arg(Arena &a, NodeId n, std::string const &var, std::string const &lnvar, std::string const &other)
@@ -24803,6 +24908,22 @@ static std::string rational_power_root_text(Arena &a, Rational r, int root)
     auto rn = integer_nth_root_i64(neg ? -r.num : r.num, root);
     auto rd = integer_nth_root_i64(r.den, root);
     if(rn && rd && *rd != 0) return format_expr(a, a.num(Rational{neg ? -*rn : *rn, *rd}));
+    if(root == 2) return sqrt_rational_surd_text(a, r);
+    if(!neg) {
+        for(int d = root - 1; d >= 2; --d) {
+            if(root % d) continue;
+            auto pn = integer_nth_root_i64(r.num, d);
+            auto pd = integer_nth_root_i64(r.den, d);
+            if(!pn || !pd || *pd == 0) continue;
+            Rational base{*pn, *pd};
+            base.normalize();
+            int reduced_root = root / d;
+            std::string bt = format_expr(a, a.num(base));
+            if(reduced_root == 1) return bt;
+            if(reduced_root == 2) return "sqrt(" + bt + ")";
+            return bt + "^(1/" + std::to_string(reduced_root) + ")";
+        }
+    }
     return "(" + format_expr(a, a.num(r)) + ")^(1/" + std::to_string(root) + ")";
 }
 
@@ -27253,6 +27374,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
 
     if(auto elss = exp_log_square_shift_system_route(a, expr)) return *elss;
     if(auto elsq = exp_log_square_system_route(a, expr)) return *elsq;
+    if(auto lpscale = log_power_scaled_system_route(a, expr)) return *lpscale;
     if(auto lls = log_law_system2_route(a, expr)) return *lls;
     if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
     if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
@@ -27454,6 +27576,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto cg = chord_gradient_route(arena, req.expr)) return *cg;
             if(auto elss = exp_log_square_shift_system_route(arena, req.expr)) return *elss;
             if(auto elsq = exp_log_square_system_route(arena, req.expr)) return *elsq;
+            if(auto lpscale = log_power_scaled_system_route(arena, req.expr)) return *lpscale;
             if(auto lls = log_law_system2_route(arena, req.expr)) return *lls;
             if(auto lps = log_power_linear2_system_route(arena, req.expr)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
@@ -27547,6 +27670,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto expsys = exp_xy_square_system(arena, key)) return *expsys;
             if(auto elss = exp_log_square_shift_system_route(arena, key)) return *elss;
             if(auto elsq = exp_log_square_system_route(arena, key)) return *elsq;
+            if(auto lpscale = log_power_scaled_system_route(arena, key)) return *lpscale;
             if(auto lls = log_law_system2_route(arena, key)) return *lls;
             if(auto lps = log_power_linear2_system_route(arena, key)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, key)) return *rpp;
@@ -29417,8 +29541,8 @@ algebra_compare_transform_modes:
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
         if(!interval_lo && !interval_hi)
             if(auto rcube = reciprocal_square_cube_route(arena, rearr, solve_var)) return *rcube;
-        if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *nr;
-        if(auto snr = symbolic_nth_power_route(arena, lhs, rhs, rearr, solve_var)) return *snr;
+        if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *nr;
+        if(auto snr = symbolic_nth_power_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *snr;
         if(auto tq = trig_quadratic_arg_exact_solve(arena, lhs, rhs, solve_var))
             return *tq;
         if(auto trig = simple_trig_zero_solve(arena, lhs, rhs, solve_var, equation_text))

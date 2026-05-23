@@ -339,7 +339,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2020 Q15 inflection x roots",
         ["--alg", "solve(54*(x^4-27)=0,x)"],
-        ["x^4 = 27", "x = +/-27^(1/4)", "x = [-27^(1/4), 27^(1/4)]"],
+        ["x^4 = 27", "x = +/-(27)^(1/4)", "x = [-(27)^(1/4), (27)^(1/4)]"],
         ["ERR:", "x = []"],
     ),
     (
