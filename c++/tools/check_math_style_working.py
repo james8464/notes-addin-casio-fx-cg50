@@ -18,6 +18,11 @@ CASES = [
         ("f1 = x^2 + 1", "f1' = 2*x", "f2 = sin(x)", "f2' = cos(x)", "dy/dx = f1'*f2 + f1*f2'"),
     ),
     (
+        "exp sincos product final",
+        ["--derive", "e^(3*x)*(sin(x)+cos(x)),x,method=product"],
+        ("dy/dx = (e^(3*x))*((3)*(sin(x) + cos(x)) + (cos(x) - sin(x)))", "dy/dx = 2*e^(3*x)*(sin(x) + 2*cos(x))"),
+    ),
+    (
         "single chain",
         ["--derive", "sin((x+1)^2),x,method=chain"],
         ("u = (x + 1)^2", "du/dx = 2*(x + 1)", "dy/dx = cos(u)*du/dx"),
@@ -32,6 +37,11 @@ CASES = [
         ["--derive", "(4*x+1)/(1-2*x),x,method=quotient"],
         ("u = 4*x + 1", "v = - 2*x + 1", "[(4)*(- 2*x + 1)-(4*x + 1)*(-2)] = 6", "dy/dx = 6/(- 2*x + 1)^2"),
         ("dy/dx = [(4)*(- 2*x + 1) - (4*x + 1)*(-2)]/(- 2*x + 1)^2",),
+    ),
+    (
+        "trig quotient stationary numerator",
+        ["--derive", "sin(x)/(2-cos(x)),x,method=quotient"],
+        ("[(cos(x))*(- cos(x) + 2)-(sin(x))*(sin(x))] = 2*cos(x) - 1", "dy/dx = (2*cos(x) - 1)/(- cos(x) + 2)^2"),
     ),
     (
         "implicit log direct",
@@ -138,6 +148,17 @@ CASES = [
         "rform final",
         ["--trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,8,method=rform"],
         ("R = sqrt(3^2 + 4^2) = 5", "3*cos(x)+4*sin(x)=5*cos(x-alpha)", "x = [arctan(4/3) + arccos(2/5), 2*pi + arctan(4/3) - arccos(2/5)]"),
+    ),
+    (
+        "equal coefficient rform angle",
+        ["--trig", "2*cos(x)+2*sin(x),method=rform"],
+        ("alpha = pi/4", "sqrt(8)*cos(x-pi/4)"),
+    ),
+    (
+        "reciprocal rform solve",
+        ["--trig", "6/(2*cos(3*x)+2*sin(3*x))-sqrt(6)=0,x,0,pi,10,method=rform"],
+        ("6/(2*cos(3*x) + 2*sin(3*x)) = sqrt(6)", "2*cos(3*x) + 2*sin(3*x) = sqrt(6)", "x = [pi/36, 5*pi/36, 25*pi/36, 29*pi/36]"),
+        ("x = []",),
     ),
     (
         "signed rform rewrite",

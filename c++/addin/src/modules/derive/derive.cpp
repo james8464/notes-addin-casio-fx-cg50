@@ -3090,6 +3090,116 @@ static std::string product_rule_line(std::string const &label, std::size_t n, bo
     return label + " = " + (has_const ? "c*(" + inner + ")" : inner);
 }
 
+struct LinearSinCosExact
+{
+    Rational sin_c{0, 1};
+    Rational cos_c{0, 1};
+    NodeId arg = 0;
+    bool seen = false;
+};
+
+static bool scaled_product_sincos_term(Arena &a, NodeId n, FnKind &fk, NodeId &arg, Rational &coeff)
+{
+    Node const &x = a.get(n);
+    coeff = Rational{1, 1};
+    if(x.kind == NodeKind::Fn && (x.fkind == FnKind::Sin || x.fkind == FnKind::Cos)) {
+        fk = x.fkind;
+        arg = x.a;
+        return true;
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    std::optional<NodeId> fn_arg;
+    std::optional<FnKind> fn_kind;
+    for(NodeId kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Num) coeff = rat_mul_local(coeff, k.num);
+        else if(k.kind == NodeKind::Fn && (k.fkind == FnKind::Sin || k.fkind == FnKind::Cos) && !fn_arg) {
+            fn_arg = k.a;
+            fn_kind = k.fkind;
+        }
+        else return false;
+    }
+    if(!fn_arg || !fn_kind) return false;
+    fk = *fn_kind;
+    arg = *fn_arg;
+    return true;
+}
+
+static std::optional<LinearSinCosExact> linear_sincos_exact(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    LinearSinCosExact out;
+    for(NodeId term : terms) {
+        FnKind fk = FnKind::Sin;
+        NodeId arg = 0;
+        Rational c{1, 1};
+        if(!scaled_product_sincos_term(a, term, fk, arg, c)) return std::nullopt;
+        if(out.seen && !same_expr_key(a, out.arg, arg)) return std::nullopt;
+        out.arg = arg;
+        out.seen = true;
+        if(fk == FnKind::Sin) out.sin_c = rat_add_local(out.sin_c, c);
+        else out.cos_c = rat_add_local(out.cos_c, c);
+    }
+    if(!out.seen || (rat_zero_local(out.sin_c) && rat_zero_local(out.cos_c))) return std::nullopt;
+    return out;
+}
+
+static std::optional<NodeId> exp_arg_for_product(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Exp) return x.a;
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        if(b.kind == NodeKind::Const && b.ckind == ConstKind::E) return x.b;
+    }
+    return std::nullopt;
+}
+
+static Rational common_int_factor(Rational a, Rational b)
+{
+    a.normalize();
+    b.normalize();
+    if(a.den != 1 || b.den != 1) return Rational{1, 1};
+    long long g = std::gcd(std::llabs(a.num), std::llabs(b.num));
+    if(g <= 1) return Rational{1, 1};
+    if(a.num < 0 && (b.num <= 0 || b.num == 0)) g = -g;
+    return Rational{g, 1};
+}
+
+static std::string linear_sincos_text(Arena &a, Rational s, Rational c, NodeId arg)
+{
+    std::string A = clean_math_text(format_expr_human(a, arg));
+    std::string out;
+    if(!rat_zero_local(s)) out = coeff_text(a, s, "sin(" + A + ")");
+    if(!rat_zero_local(c)) out = out.empty() ? coeff_text(a, c, "cos(" + A + ")") : append_signed_coeff_text(a, out, c, "cos(" + A + ")");
+    return out;
+}
+
+static std::optional<std::string> exp_linear_sincos_product_final(Arena &a, std::vector<NodeId> const &factors, std::string const &var)
+{
+    if(factors.size() != 2) return std::nullopt;
+    for(int i = 0; i < 2; ++i) {
+        int j = 1 - i;
+        auto exp_arg = exp_arg_for_product(a, factors[(std::size_t)i]);
+        auto combo = linear_sincos_exact(a, factors[(std::size_t)j]);
+        if(!exp_arg || !combo) continue;
+        auto k = as_num(a, casio::simplify(a, diff(a, *exp_arg, var)));
+        auto u = as_num(a, casio::simplify(a, diff(a, combo->arg, var)));
+        if(!k || !u) continue;
+        Rational sin_c = rat_sub_local(rat_mul_local(*k, combo->sin_c), rat_mul_local(*u, combo->cos_c));
+        Rational cos_c = rat_add_local(rat_mul_local(*k, combo->cos_c), rat_mul_local(*u, combo->sin_c));
+        Rational g = common_int_factor(sin_c, cos_c);
+        Rational inner_s = rat_div_local(sin_c, g);
+        Rational inner_c = rat_div_local(cos_c, g);
+        std::string inner = linear_sincos_text(a, inner_s, inner_c, combo->arg);
+        if(inner.empty()) return std::nullopt;
+        std::string exp_txt = clean_math_text(format_expr_human(a, factors[(std::size_t)i]));
+        return coeff_text(a, g, exp_txt + "*(" + inner + ")");
+    }
+    return std::nullopt;
+}
+
 static bool append_product_rule_detail(
     Arena &a,
     NodeId n,
@@ -3190,6 +3300,11 @@ static bool append_product_rule_detail(
                 );
                 break;
             }
+        }
+        if(auto ans = exp_linear_sincos_product_final(a, factors, var)) {
+            std::string line = "dy/d" + var + " = " + *ans;
+            if(answer_override) *answer_override = line;
+            else steps.push_back(line + ".");
         }
     }
     if(node_weight(a, n) <= 45 && simple_polynomial_node(a, n, var)) {
@@ -3377,6 +3492,91 @@ static bool append_exp_mobius_quotient_detail(
     return true;
 }
 
+struct ScaledTrigTerm
+{
+    Rational coeff{1, 1};
+    NodeId arg = 0;
+};
+
+static std::optional<ScaledTrigTerm> scaled_trig_term(Arena &a, NodeId n, FnKind fk)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == fk) return ScaledTrigTerm{Rational{1, 1}, x.a};
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    std::optional<NodeId> arg;
+    for(NodeId kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Num) {
+            c = rat_mul_local(c, k.num);
+        }
+        else if(k.kind == NodeKind::Fn && k.fkind == fk && !arg) {
+            arg = k.a;
+        }
+        else return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    return ScaledTrigTerm{c, *arg};
+}
+
+struct ConstCosDen
+{
+    Rational c{0, 1};
+    Rational cos_c{0, 1};
+    NodeId arg = 0;
+};
+
+static std::optional<ConstCosDen> const_plus_cos_den(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    ConstCosDen out;
+    bool saw_cos = false;
+    for(NodeId term : terms) {
+        if(auto q = as_num(a, term)) out.c = rat_add_local(out.c, *q);
+        else if(auto ct = scaled_trig_term(a, term, FnKind::Cos)) {
+            if(saw_cos && !same_expr_key(a, out.arg, ct->arg)) return std::nullopt;
+            out.cos_c = rat_add_local(out.cos_c, ct->coeff);
+            out.arg = ct->arg;
+            saw_cos = true;
+        }
+        else return std::nullopt;
+    }
+    if(!saw_cos || rat_zero_local(out.cos_c)) return std::nullopt;
+    return out;
+}
+
+static bool append_sin_over_const_cos_quotient_detail(
+    Arena &a,
+    NodeId num,
+    NodeId den,
+    std::string const &var,
+    std::vector<std::string> &steps,
+    std::string const &up,
+    std::string const &v,
+    std::string const &u,
+    std::string const &vp,
+    std::string *answer_override
+)
+{
+    auto sn = scaled_trig_term(a, num, FnKind::Sin);
+    auto cd = const_plus_cos_den(a, den);
+    if(!sn || !cd || !same_expr_key(a, sn->arg, cd->arg)) return false;
+    NodeId du = casio::simplify(a, diff(a, sn->arg, var));
+    NodeId inner = casio::simplify(a, casio::add(a, {
+        casio::mul(a, {a.num(cd->c), a.fn(FnKind::Cos, sn->arg)}),
+        a.num(cd->cos_c),
+    }));
+    NodeId top = casio::simplify(a, casio::mul(a, {a.num(sn->coeff), du, inner}));
+    if(node_weight(a, top) > 40) return false;
+    std::string nt = clean_math_text(format_expr_human(a, top));
+    if(nt.empty()) return false;
+    steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
+    if(answer_override)
+        *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
+    return true;
+}
+
 static bool append_quotient_rule_detail(
     Arena &a,
     NodeId n,
@@ -3458,6 +3658,7 @@ static bool append_quotient_rule_detail(
         }
     }
     if(append_exp_mobius_quotient_detail(a, q.a, q.b, var, steps, answer_override)) return true;
+    if(append_sin_over_const_cos_quotient_detail(a, q.a, q.b, var, steps, up, v, u, vp, answer_override)) return true;
     NodeId top = casio::simplify(a, casio::add(a, {
         casio::mul(a, {du, q.b}),
         casio::neg(a, casio::mul(a, {q.a, dv})),

@@ -859,6 +859,21 @@ static std::string rat_text(long long n, long long d = 1)
     return std::to_string(n) + "/" + std::to_string(d);
 }
 
+static std::string atan_ratio_text(long long n, long long d)
+{
+    if(d < 0) {
+        n = -n;
+        d = -d;
+    }
+    long long g = std::gcd(std::llabs(n), std::llabs(d));
+    if(g > 0) {
+        n /= g;
+        d /= g;
+    }
+    if(n == d) return "pi/4";
+    return "atan(" + rat_text(n, d) + ")";
+}
+
 static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -929,35 +944,39 @@ static std::optional<std::vector<std::string>> linear_sincos_rform(Arena &a, Nod
     };
     std::string v = casio::format_expr(a, *arg);
     if(B > 0 && A > 0 && first_is_cos) {
+        std::string beta = atan_ratio_text(B, A);
+        std::string alpha = atan_ratio_text(A, B);
         return std::vector<std::string>{
             "R=sqrt(" + std::to_string(A) + "^2+" + std::to_string(B) + "^2)=" + Rtxt + ".",
             "cos(alpha)=" + ratio(A) + ".",
             "sin(alpha)=" + ratio(B) + ".",
-            "alpha=atan(" + rat_text(B, A) + ").",
+            "alpha=" + beta + ".",
             "R*cos(" + v + "-alpha)=R*cos(" + v + ")*cos(alpha)+R*sin(" + v + ")*sin(alpha).",
-            Rtxt + "*sin(" + v + "+atan(" + rat_text(A, B) + "))",
-            "Answer: " + Rtxt + "*cos(" + v + "-atan(" + rat_text(B, A) + "))",
+            Rtxt + "*sin(" + v + "+" + alpha + ")",
+            "Answer: " + Rtxt + "*cos(" + v + "-" + beta + ")",
         };
     }
     if(B > 0) {
         std::string sign = A < 0 ? "-" : "+";
+        std::string alpha = atan_ratio_text(absA, B);
         return std::vector<std::string>{
             "R=sqrt(" + std::to_string(B) + "^2+" + std::to_string(absA) + "^2)=" + Rtxt + ".",
             "cos(alpha)=" + ratio(B) + ".",
             "sin(alpha)=" + ratio(absA) + ".",
-            "alpha=atan(" + rat_text(absA, B) + ").",
+            "alpha=" + alpha + ".",
             "R*sin(" + v + sign + "alpha)=R*sin(" + v + ")*cos(alpha)" + (A < 0 ? "-R*cos(" : "+R*cos(") + v + ")*sin(alpha).",
-            "Answer: " + Rtxt + "*sin(" + v + sign + "atan(" + rat_text(absA, B) + "))",
+            "Answer: " + Rtxt + "*sin(" + v + sign + alpha + ")",
         };
     }
     std::string sign = B < 0 ? "+" : "-";
+    std::string alpha = atan_ratio_text(absB, A);
     return std::vector<std::string>{
         "R=sqrt(" + std::to_string(A) + "^2+" + std::to_string(absB) + "^2)=" + Rtxt + ".",
         "cos(alpha)=" + ratio(A) + ".",
         "sin(alpha)=" + ratio(absB) + ".",
-        "alpha=atan(" + rat_text(absB, A) + ").",
+        "alpha=" + alpha + ".",
         "R*cos(" + v + sign + "alpha)=R*cos(" + v + ")*cos(alpha)" + (B < 0 ? "-R*sin(" : "+R*sin(") + v + ")*sin(alpha).",
-        "Answer: " + Rtxt + "*cos(" + v + sign + "atan(" + rat_text(absB, A) + "))",
+        "Answer: " + Rtxt + "*cos(" + v + sign + alpha + ")",
     };
 }
 
@@ -9081,6 +9100,79 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.norm = casio::normalize_text(equation_for_parse);
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
+
+    auto reciprocal_linear_sincos = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
+        struct Iso
+        {
+            NodeId div = 0;
+            NodeId den = 0;
+            NodeId original_target = 0;
+            NodeId target = 0;
+        };
+        auto simplify_sqrt_ratio = [&](NodeId n) {
+            Node const &D = a.get(n);
+            if(D.kind != NodeKind::Div) return n;
+            auto top = as_num(a, D.a);
+            Node const &B = a.get(D.b);
+            if(!top || B.kind != NodeKind::Fn || B.fkind != FnKind::Sqrt) return n;
+            auto rad = as_num(a, B.a);
+            if(rad && top->num == rad->num && top->den == rad->den) return D.b;
+            return n;
+        };
+        auto direct = [&](NodeId term, NodeId target) -> std::optional<Iso> {
+            Node const &T = a.get(term);
+            if(T.kind != NodeKind::Div || contains_var(a, T.a, var) || contains_var(a, target, var)) return std::nullopt;
+            auto tv = numeric_eval(a, target, 0.0);
+            if(tv && std::fabs(*tv) < 1e-12) return std::nullopt;
+            auto p = collect_mixed_trig_poly(a, T.b);
+            if(!p || std::fabs(p->c) > 1e-12 || std::fabs(p->s2) > 1e-12 ||
+               std::fabs(p->c2) > 1e-12 || std::fabs(p->sc) > 1e-12 ||
+               std::fabs(p->s1) < 1e-12 || std::fabs(p->c1) < 1e-12)
+                return std::nullopt;
+            NodeId new_rhs = casio::simplify(a, casio::div(a, T.a, target));
+            new_rhs = simplify_sqrt_ratio(new_rhs);
+            return Iso{term, T.b, target, new_rhs};
+        };
+        auto isolate = [&](NodeId L, NodeId R) -> std::optional<Iso> {
+            if(auto d = direct(L, R)) return d;
+            Node const &Ln = a.get(L);
+            if(Ln.kind != NodeKind::Add) return std::nullopt;
+            std::optional<NodeId> div_term;
+            NodeId offset = casio::num(a, 0);
+            for(NodeId kid : Ln.kids) {
+                if(!div_term) {
+                    Node const &K = a.get(kid);
+                    if(K.kind == NodeKind::Div && !contains_var(a, K.a, var)) {
+                        div_term = kid;
+                        continue;
+                    }
+                }
+                if(contains_var(a, kid, var)) return std::nullopt;
+                offset = casio::simplify(a, casio::add(a, {offset, kid}));
+            }
+            if(!div_term) return std::nullopt;
+            NodeId target = casio::simplify(a, casio::add(a, {R, casio::neg(a, offset)}));
+            return direct(*div_term, target);
+        };
+        auto iso = isolate(left, right);
+        if(!iso) iso = isolate(right, left);
+        if(!iso) return std::nullopt;
+        std::string div_txt = casio::format_expr(a, iso->div);
+        std::string den_txt = casio::format_expr(a, iso->den);
+        std::string original_target_txt = casio::format_expr(a, iso->original_target);
+        std::string target_txt = casio::format_expr(a, iso->target);
+        auto nested = solve_simple_trig_eq(a, den_txt + "=" + target_txt, var, lo_text, hi_text, general, rad_override);
+        std::vector<std::string> out{
+            div_txt + " = " + original_target_txt,
+            den_txt + " = " + target_txt,
+        };
+        for(std::string const &line : nested) {
+            if(!out.empty() && compact_key(line) == compact_key(out.back())) continue;
+            out.push_back(line);
+        }
+        return out;
+    };
+    if(auto recip = reciprocal_linear_sincos(lhs, rhs)) return *recip;
 
     auto abs_trig_eq = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
         Node const &L = a.get(left);

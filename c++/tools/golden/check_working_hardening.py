@@ -1027,6 +1027,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["dy/dx=[(4)*(-2*x+1)-(4*x+1)*(-2)]/(-2*x+1)^2", "ERR:"],
     ),
     (
+        "derive",
+        "sin(x)/(2-cos(x)),x,method=quotient",
+        ["[(cos(x))*(-cos(x)+2)-(sin(x))*(sin(x))]=2*cos(x)-1", "dy/dx=(2*cos(x)-1)/(-cos(x)+2)^2"],
+        ["ERR:"],
+    ),
+    (
+        "derive",
+        "e^(3*x)*(sin(x)+cos(x)),x,method=product",
+        ["dy/dx=(e^(3*x))*((3)*(sin(x)+cos(x))+(cos(x)-sin(x)))", "dy/dx=2*e^(3*x)*(sin(x)+2*cos(x))"],
+        ["ERR:"],
+    ),
+    (
         "int",
         "x*ln(5*x)",
         ["u=ln(5*x)", "dv=x dx", "du=1/x dx", "v=x^2/2", "I=uv-Int(vdu)", "1/2*x^2*ln(5*x) - 1/4*x^2 + C"],
@@ -1721,6 +1733,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "2*sqrt(2)*cos(x)+2*sqrt(2)*sin(x),method=rform",
         ["R*sin(x+alpha)", "alpha = pi/4", "4*sin(x+pi/4)"],
         ["ERR:"],
+    ),
+    (
+        "trig",
+        "2*cos(x)+2*sin(x),method=rform",
+        ["alpha=pi/4", "sqrt(8)*cos(x-pi/4)"],
+        ["atan(1)", "ERR:"],
+    ),
+    (
+        "trig",
+        "6/(2*cos(3*x)+2*sin(3*x))-sqrt(6)=0,x,0,pi,10,method=rform",
+        ["6/(2*cos(3*x)+2*sin(3*x))=sqrt(6)", "2*cos(3*x)+2*sin(3*x)=sqrt(6)", "x=[pi/36,5*pi/36,25*pi/36,29*pi/36]"],
+        ["x=[]", "ERR:"],
     ),
     (
         "trig",
