@@ -4947,6 +4947,11 @@ static bool append_direct_symbolic_square_route(Arena &a,
     auto p = poly_of(a, ds->first, var);
     if(!p || !p->ok || is_zero(p->a1)) return false;
     NodeId root = casio::fn(a, "sqrt", ds->second);
+    Node const &rv = a.get(ds->second);
+    if(rv.kind == NodeKind::Pow && !contains_symbol(a, rv.a, var)) {
+        auto e = as_num(a, rv.b);
+        if(e && e->num == 2 && e->den == 1) root = rv.a;
+    }
     std::string base = format_expr(a, ds->first);
     std::string root_txt = format_expr(a, root);
     out.push_back(base + " = +/-" + root_txt);
@@ -22275,6 +22280,11 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
     if(casio::same_by_sig(a, q->b, zero_node(a))) {
         NodeId rhs = casio::simplify(a, casio::div(a, casio::neg(a, q->c), q->a2));
         NodeId root = casio::simplify(a, casio::fn(a, "sqrt", rhs));
+        Node const &rv = a.get(rhs);
+        if(rv.kind == NodeKind::Pow && !contains_symbol(a, rv.a, var)) {
+            auto e = as_num(a, rv.b);
+            if(e && e->num == 2 && e->den == 1) root = rv.a;
+        }
         out.push_back(var + "^2 = " + format_expr(a, rhs));
         out.push_back(var + " = +/-" + format_expr(a, root));
         out.push_back(var + " = " + format_expr(a, root));
@@ -22288,6 +22298,11 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
         NodeId shifted = casio::simplify(a, casio::add(a, {v, half_b}));
         NodeId rhs = compact_single_other_quadratic(a, casio::simplify(a, sub_node(a, casio::power(a, half_b, two), q->c)), var);
         NodeId root = casio::simplify(a, casio::fn(a, "sqrt", rhs));
+        Node const &rv = a.get(rhs);
+        if(rv.kind == NodeKind::Pow && !contains_symbol(a, rv.a, var)) {
+            auto e = as_num(a, rv.b);
+            if(e && e->num == 2 && e->den == 1) root = rv.a;
+        }
         NodeId plus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), root}));
         NodeId minus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), casio::neg(a, root)}));
         out.push_back("(" + format_expr(a, shifted) + ")^2 = " + format_expr(a, rhs));
@@ -24875,6 +24890,147 @@ static std::optional<std::vector<std::string>> reciprocal_log_square_route(
     };
     if(auto r = run(lhs, rhs)) return r;
     return run(rhs, lhs);
+}
+
+struct PrimeLinearExp
+{
+    Rational m{0, 1};
+    Rational c{0, 1};
+};
+
+struct PrimeExpSide
+{
+    std::map<long long, PrimeLinearExp> exp;
+    int power_terms = 0;
+};
+
+static bool factor_i64_primes(long long n, std::map<long long, int> &out)
+{
+    if(n <= 0) return false;
+    for(long long p = 2; p * p <= n; ++p) {
+        while(n % p == 0) {
+            ++out[p];
+            n /= p;
+        }
+    }
+    if(n > 1) ++out[n];
+    return true;
+}
+
+static void add_prime_linear(PrimeExpSide &side, long long prime, Rational scale, Poly2 const &p)
+{
+    auto &e = side.exp[prime];
+    e.m = r_add(e.m, r_mul(scale, p.a1));
+    e.c = r_add(e.c, r_mul(scale, p.a0));
+}
+
+static bool add_rational_prime_power(PrimeExpSide &side, Rational base, Poly2 const &power, int sign)
+{
+    base.normalize();
+    if(base.num <= 0 || base.den <= 0) return false;
+    std::map<long long, int> num, den;
+    if(!factor_i64_primes(base.num, num) || !factor_i64_primes(base.den, den)) return false;
+    for(auto const &kv : num) add_prime_linear(side, kv.first, Rational{sign * kv.second, 1}, power);
+    for(auto const &kv : den) add_prime_linear(side, kv.first, Rational{-sign * kv.second, 1}, power);
+    return true;
+}
+
+static bool read_prime_exp_side(Arena &a, NodeId n, std::string const &var, int sign, PrimeExpSide &side)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num)
+        return add_rational_prime_power(side, x.num, Poly2{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}, true}, sign);
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!read_prime_exp_side(a, k, var, sign, side)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div)
+        return read_prime_exp_side(a, x.a, var, sign, side) &&
+               read_prime_exp_side(a, x.b, var, -sign, side);
+    if(x.kind != NodeKind::Pow) return false;
+    auto p = poly_of(a, x.b, var);
+    if(!p || !p->ok || !is_zero(p->a2)) return false;
+    Node const &base = a.get(x.a);
+    if(base.kind != NodeKind::Num) return false;
+    ++side.power_terms;
+    return add_rational_prime_power(side, base.num, *p, sign);
+}
+
+static NodeId prime_exp_node(Arena &a, PrimeLinearExp const &e, std::string const &var)
+{
+    return poly2_to_node(a, Poly2{Rational{0, 1}, e.m, e.c, true}, var);
+}
+
+static std::string prime_exp_text(Arena &a, PrimeLinearExp const &e, std::string const &var)
+{
+    return format_expr(a, prime_exp_node(a, e, var));
+}
+
+static bool exp_is_one(PrimeLinearExp const &e)
+{
+    return is_zero(e.m) && r_cmp(e.c, Rational{1, 1}) == 0;
+}
+
+static bool exp_is_zero(PrimeLinearExp const &e)
+{
+    return is_zero(e.m) && is_zero(e.c);
+}
+
+static std::string prime_product_text(Arena &a, std::map<long long, PrimeLinearExp> const &mp, std::string const &var)
+{
+    std::vector<std::string> parts;
+    for(auto const &kv : mp) {
+        if(exp_is_zero(kv.second)) continue;
+        std::string p = std::to_string(kv.first);
+        if(exp_is_one(kv.second)) parts.push_back(p);
+        else parts.push_back(p + "^(" + prime_exp_text(a, kv.second, var) + ")");
+    }
+    return parts.empty() ? "1" : join_text(parts, "*");
+}
+
+static std::optional<std::vector<std::string>> prime_factor_exp_product_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    PrimeExpSide L, R;
+    if(!read_prime_exp_side(a, lhs, var, 1, L) || !read_prime_exp_side(a, rhs, var, 1, R)) return std::nullopt;
+    if(L.power_terms + R.power_terms < 2) return std::nullopt;
+
+    std::vector<long long> primes;
+    for(auto const &kv : L.exp) primes.push_back(kv.first);
+    for(auto const &kv : R.exp)
+        if(std::find(primes.begin(), primes.end(), kv.first) == primes.end()) primes.push_back(kv.first);
+    if(primes.size() < 2) return std::nullopt;
+    std::sort(primes.begin(), primes.end());
+
+    std::optional<Rational> sol;
+    std::vector<std::string> eq_lines;
+    for(long long p : primes) {
+        PrimeLinearExp le = L.exp[p], re = R.exp[p];
+        Rational dm = r_sub(le.m, re.m);
+        Rational dc = r_sub(le.c, re.c);
+        if(is_zero(dm)) {
+            if(!is_zero(dc)) return std::nullopt;
+            continue;
+        }
+        Rational cand = r_div(r_neg(dc), dm);
+        if(sol && r_cmp(*sol, cand) != 0) return std::nullopt;
+        sol = cand;
+        eq_lines.push_back(prime_exp_text(a, le, var) + " = " + prime_exp_text(a, re, var));
+    }
+    if(!sol || eq_lines.empty()) return std::nullopt;
+
+    out.push_back(prime_product_text(a, L.exp, var) + " = " + prime_product_text(a, R.exp, var));
+    for(auto const &line : eq_lines) out.push_back(line);
+    std::string ans = format_expr(a, a.num(*sol));
+    out.push_back(var + " = " + ans);
+    out.push_back(var + " = [" + ans + "]");
+    return out;
 }
 
 static std::optional<std::vector<std::string>> mixed_base_product_exp_route(
@@ -28301,6 +28457,7 @@ algebra_compare_transform_modes:
         if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto aes = affine_exp_common_slope_route(arena, rearr, solve_var, out)) return *aes;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
+        if(auto pfe = prime_factor_exp_product_route(arena, lhs, rhs, solve_var, out)) return *pfe;
         if(auto mb = mixed_base_product_exp_route(arena, rearr, solve_var, out)) return *mb;
         if(auto abe = affine_related_base_exp_route(arena, rearr, solve_var, out)) return *abe;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
