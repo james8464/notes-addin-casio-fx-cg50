@@ -14095,6 +14095,113 @@ static std::optional<std::vector<std::string>> rationalise_simple_surd_route(Are
     };
 }
 
+static std::string paren_math(std::string const &s)
+{
+    return "(" + s + ")";
+}
+
+struct SurdTermWork
+{
+    std::string setup;
+    std::string expanded;
+    std::string simplified;
+    bool rationalised = false;
+};
+
+static void append_signed_math(std::string &out, std::string term)
+{
+    term = trim_text(term);
+    bool neg = !term.empty() && term[0] == '-';
+    if(neg) {
+        term.erase(term.begin());
+        term = trim_text(term);
+    }
+    if(out.empty()) {
+        if(neg) out = "-" + term;
+        else out = term;
+        return;
+    }
+    out += neg ? " - " : " + ";
+    out += term;
+}
+
+static std::string join_math_terms(std::vector<std::string> const &terms)
+{
+    std::string out;
+    for(auto const &t : terms) append_signed_math(out, t);
+    return out;
+}
+
+static std::optional<SurdTermWork> rationalise_binomial_surd_term(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = eval_simple_surd(a, x.a);
+    auto bot = eval_simple_surd(a, x.b);
+    if(!top || !bot || bot->b.num == 0 || bot->d <= 1) return std::nullopt;
+    SimpleSurd conj{bot->a, Rational{-bot->b.num, bot->b.den}, bot->d};
+    auto num = mul_simple_surd(*top, conj);
+    auto den = mul_simple_surd(*bot, conj);
+    if(den && den->b.num == 0 && den->a.num < 0) {
+        conj.a.num = -conj.a.num;
+        conj.b.num = -conj.b.num;
+        num = mul_simple_surd(*top, conj);
+        den = mul_simple_surd(*bot, conj);
+    }
+    auto val = div_simple_surd(*top, *bot);
+    if(!num || !den || !val || den->b.num != 0 || den->a.num == 0) return std::nullopt;
+    SurdTermWork w;
+    std::string c = simple_surd_text(a, conj);
+    w.setup = paren_math(format_expr(a, x.a)) + "*" + paren_math(c) + "/" +
+              paren_math(paren_math(format_expr(a, x.b)) + "*" + paren_math(c));
+    w.expanded = paren_math(simple_surd_text(a, *num)) + "/" + simple_surd_text(a, *den);
+    w.simplified = simple_surd_text(a, *val);
+    w.rationalised = true;
+    return w;
+}
+
+static std::optional<std::vector<std::string>> rationalise_binomial_surd_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    auto w = rationalise_binomial_surd_term(a, parsed);
+    if(!w) return std::nullopt;
+    std::vector<std::string> out{format_expr(a, parsed)};
+    push_unique(out, "= " + w->setup);
+    push_unique(out, "= " + w->expanded);
+    push_unique(out, "= " + w->simplified);
+    push_unique(out, ans);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> mixed_surd_sum_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2 || x.kids.size() > 8) return std::nullopt;
+    std::vector<std::string> setup_terms, expanded_terms, simple_terms;
+    bool changed = false;
+    bool rationalised = false;
+    for(NodeId k : x.kids) {
+        auto val = eval_simple_surd(a, k);
+        if(!val) return std::nullopt;
+        std::string raw = format_expr(a, k);
+        std::string simp = simple_surd_text(a, *val);
+        SurdTermWork w{simp, simp, simp, false};
+        if(auto rat = rationalise_binomial_surd_term(a, k)) w = *rat;
+        if(compact_input_key(raw) != compact_input_key(simp)) changed = true;
+        rationalised = rationalised || w.rationalised;
+        setup_terms.push_back(w.setup);
+        expanded_terms.push_back(w.expanded);
+        simple_terms.push_back(w.simplified);
+    }
+    if(!changed || !rationalised) return std::nullopt;
+    std::vector<std::string> out{format_expr(a, parsed)};
+    push_unique(out, "= " + join_math_terms(setup_terms));
+    push_unique(out, "= " + join_math_terms(expanded_terms));
+    push_unique(out, "= " + join_math_terms(simple_terms));
+    push_unique(out, "= " + ans);
+    push_unique(out, ans);
+    return out;
+}
+
 static std::optional<std::string> binomial_surd_square_line(Arena &a, SimpleSurd s)
 {
     s = fold_simple_surd(s);
@@ -14245,6 +14352,8 @@ static std::optional<std::vector<std::string>> simple_surd_expression_route(Aren
     if(auto diff = two_sqrt_difference_route(a, parsed, ans)) return *diff;
     if(auto collected = collected_surd_sum_route(a, parsed, ans)) return *collected;
     if(auto rat = rationalise_simple_surd_route(a, parsed, ans)) return *rat;
+    if(auto brat = rationalise_binomial_surd_route(a, parsed, ans)) return *brat;
+    if(auto mixed = mixed_surd_sum_route(a, parsed, ans)) return *mixed;
     return std::vector<std::string>{raw, "= " + ans, ans};
 }
 
