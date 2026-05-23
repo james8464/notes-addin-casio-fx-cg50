@@ -120,6 +120,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "2*sqrt(2)/(sqrt(3)-1)-2*sqrt(3)/(sqrt(2)+1)",
+        ["*(1 + sqrt(3))", "*(-1 + sqrt(2))", "sqrt(2) + 2*sqrt(3) - sqrt(6)"],
+        ["ERR:", "Answer:"],
+    ),
+    (
+        "alg",
+        "simplify((a+2*((a+2*2)/2))/((a+2*2)/2))",
+        ["(4*a + 8)/(a + 4)", "4*(a + 2)/(a + 4)"],
+        ["ERR:", "Domain:"],
+    ),
+    (
+        "alg",
         "solve(log(2,x)+log(4,x)=6,x)",
         ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],
         ["ERR:", "Unexpected token"],
