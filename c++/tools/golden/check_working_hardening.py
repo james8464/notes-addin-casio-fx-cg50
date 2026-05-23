@@ -174,6 +174,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve((2-log(4,x^7))/(7-log(4,x^2))+(log(4,x))^2=0,x)",
+        ["u = log(4,x)", "log(4,x^7) = 7*u", "2*u - 7 != 0", "2*u^3", "u = 1/2", "x = [2, 4, 16]"],
+        ["log_b(A)-log_b(B)", "x ~= 2.000", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],
