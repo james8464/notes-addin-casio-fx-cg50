@@ -10835,6 +10835,93 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_inequality_r
     return out;
 }
 
+static std::optional<std::string> difference_of_squares_factor_text(Arena &a, NodeId n)
+{
+    NodeId s = exact_eval_simplify(a, n);
+    Rational scale_all{1, 1};
+    Node const &sn = a.get(s);
+    if(sn.kind == NodeKind::Div) {
+        auto d = as_num(a, exact_eval_simplify(a, sn.b));
+        if(!d || d->num == 0) return std::nullopt;
+        scale_all = r_div(Rational{1, 1}, *d);
+        s = sn.a;
+    }
+    std::vector<std::string> vars;
+    collect_symbols(a, s, vars);
+    if(vars.size() != 1) return std::nullopt;
+    std::vector<NodeId> terms;
+    add_terms_flat(a, s, terms);
+    if(terms.size() != 2) return std::nullopt;
+    std::optional<Rational> sqc, cst;
+    for(NodeId t : terms) {
+        if(auto c = strip_one_quadratic_x(a, t, vars[0])) {
+            auto r = as_num(a, exact_eval_simplify(a, *c));
+            if(!r) return std::nullopt;
+            sqc = r_mul(*r, scale_all);
+        }
+        else {
+            auto r = as_num(a, exact_eval_simplify(a, t));
+            if(!r) return std::nullopt;
+            cst = r_mul(*r, scale_all);
+        }
+    }
+    if(!sqc || !cst || sqc->num <= 0 || cst->num >= 0) return std::nullopt;
+    Rational pos_c = r_neg(*cst);
+    Rational ratio = r_div(*sqc, pos_c);
+    std::int64_t rn = 0, rd = 0;
+    if(ratio.num <= 0 || !is_square_i64(ratio.num, rn) || !is_square_i64(ratio.den, rd) || rd == 0 || rn == 0)
+        return std::nullopt;
+    Rational scale = r_div(*sqc, Rational{rn * rn, 1});
+    std::string ax = (rn == 1 ? vars[0] : std::to_string(rn) + "*" + vars[0]);
+    std::string b = std::to_string(rd);
+    std::string core = "(" + ax + " + " + b + ")*(" + ax + " - " + b + ")";
+    if(scale.num == scale.den) return core;
+    return format_rat_plain(scale) + "*" + core;
+}
+
+static std::string flip_relop(std::string op)
+{
+    if(op == "<") return ">";
+    if(op == ">") return "<";
+    if(op == "<=") return ">=";
+    if(op == ">=") return "<=";
+    return op;
+}
+
+static std::optional<std::vector<std::string>> symbolic_linear_inequality_route(Arena &a, std::string expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')')
+        key = key.substr(6, key.size() - 7);
+    auto args = split_top_key(key, ',');
+    if(args.size() < 2 || args[1].empty()) return std::nullopt;
+    std::size_t pos = 0;
+    std::string op;
+    if(!find_top_rel(args[0], pos, op)) return std::nullopt;
+    std::string lhs_s = args[0].substr(0, pos);
+    std::string rhs_s = args[0].substr(pos + op.size());
+    NodeId lhs = casio::parse_expr(a, lhs_s);
+    NodeId rhs = casio::parse_expr(a, rhs_s);
+    NodeId residual = exact_eval_simplify(a, casio::add(a, {lhs, neg_node(a, rhs)}));
+    std::string var = args[1];
+    std::vector<std::string> syms;
+    collect_symbols(a, residual, syms);
+    if(syms.size() == 1 && syms[0] == var) return std::nullopt;
+    auto lin = symbolic_linear_parts(a, residual, var);
+    if(!lin || contains_symbol(a, lin->m, var) || contains_symbol(a, lin->c, var)) return std::nullopt;
+    auto m = as_num(a, exact_eval_simplify(a, lin->m));
+    if(!m || m->num == 0) return std::nullopt;
+    NodeId rhs_var = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
+    std::string final_op = m->num < 0 ? flip_relop(op) : op;
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, residual) + " " + op + " 0");
+    out.push_back(format_expr(a, lin->m) + "*" + var + " " + op + " " + format_expr(a, neg_node(a, lin->c)));
+    out.push_back(var + " " + final_op + " " + format_expr(a, rhs_var));
+    if(auto factored = difference_of_squares_factor_text(a, rhs_var))
+        out.push_back(var + " " + final_op + " " + *factored);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> rational_inequality_route(Arena &a, std::string expr)
 {
     std::string key = compact_input_key(expr);
@@ -26736,12 +26823,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
                 if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
+                if(auto sli = symbolic_linear_inequality_route(arena, req.expr)) return *sli;
                 if(auto ri = rational_inequality_route(arena, top_parts.size() >= 4 ? req.expr : top_parts[0])) return *ri;
             }
             if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
             if(auto ae = abs_exp_affine_equation_route(arena, req.expr)) return *ae;
             if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
                 if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
+                if(auto sli = symbolic_linear_inequality_route(arena, req.expr)) return *sli;
                 if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
             }
             if(auto cg = chord_gradient_route(arena, req.expr)) return *cg;

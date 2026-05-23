@@ -386,6 +386,8 @@ struct IntegrateResult
 };
 
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var);
+static bool simple_algebraic_integrand(Arena &a, NodeId n, std::string const &var);
+static std::string join_integral_terms(Arena &a, std::vector<NodeId> const &terms, std::string const &var);
 static bool same_expr(Arena &a, NodeId lhs, NodeId rhs);
 static NodeId ln_abs(Arena &a, NodeId n);
 static NodeId simplify_known_endpoint_values(Arena &a, NodeId n);
@@ -15887,8 +15889,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
             }
         }
         if(!primitives.empty()) {
-            out.steps.push_back("Step 2: Split the integral over the sum.");
-            for(auto const &s : substeps) out.steps.push_back(s);
+            if(simple_algebraic_integrand(a, expr, var))
+                out.steps.push_back("I = " + join_integral_terms(a, kids, var));
+            else {
+                out.steps.push_back("Step 2: Split the integral over the sum.");
+                for(auto const &s : substeps) out.steps.push_back(s);
+            }
             out.result = casio::simplify(a, casio::add(a, primitives));
             out.steps.push_back("Step 3: Add the primitives and simplify.");
             return out;
@@ -16218,8 +16224,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         }
         if(!parts.empty()) {
             out.result = casio::simplify(a, casio::add(a, parts));
-            out.steps.push_back("Step 2: Integrate each term.");
-            out.steps.push_back("Step 3: Combine results.");
+            if(simple_algebraic_integrand(a, expr, var))
+                out.steps.push_back("I = " + join_integral_terms(a, x.kids, var));
+            else {
+                out.steps.push_back("Step 2: Integrate each term.");
+                out.steps.push_back("Step 3: Combine results.");
+            }
             return out;
         }
     }
@@ -17883,6 +17893,37 @@ static NodeId reciprocal_sum_over_symbol(Arena &a, NodeId n)
     NodeId den = casio::sym(a, *sym);
     if(coeff.den != 1) den = casio::mul(a, {casio::num(a, coeff.den), den});
     return casio::div(a, casio::num(a, coeff.num), den);
+}
+
+static bool simple_algebraic_integrand(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return true;
+    if(x.kind == NodeKind::Sym) return x.text == var;
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!simple_algebraic_integrand(a, k, var)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        return e && e->num >= 0 && is_sym(a, x.a, var);
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt)
+        return is_sym(a, x.a, var);
+    return false;
+}
+
+static std::string join_integral_terms(Arena &a, std::vector<NodeId> const &terms, std::string const &var)
+{
+    std::string out;
+    for(std::size_t i = 0; i < terms.size(); ++i) {
+        std::string t = format_expr_human(a, terms[i]);
+        if(!i) out = "Int(" + t + ") d" + var;
+        else if(!t.empty() && t[0] == '-') out += " - Int(" + t.substr(1) + ") d" + var;
+        else out += " + Int(" + t + ") d" + var;
+    }
+    return out;
 }
 
 static std::optional<std::vector<std::string>> run_definite_integral(Arena &arena, Request const &req)
