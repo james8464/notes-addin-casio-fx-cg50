@@ -1650,6 +1650,30 @@ static std::string poly_coeffs_text(std::vector<Rational> c, std::string const &
     return out.empty() ? "0" : out;
 }
 
+static std::string laurent_coeffs_text(std::vector<Rational> const &c, std::string const &var, int denom_power)
+{
+    std::string out;
+    for(int i = static_cast<int>(c.size()) - 1; i >= 0; --i) {
+        Rational r = c[static_cast<std::size_t>(i)];
+        r.normalize();
+        if(r.num == 0) continue;
+        bool neg = r.num < 0;
+        Rational absr = r;
+        if(absr.num < 0) absr.num = -absr.num;
+        bool unit = absr.num == absr.den;
+        int p = i - denom_power;
+        std::string body;
+        if(p == 0) body = rat_abs_text(absr);
+        else {
+            body = (unit ? "" : rat_abs_text(absr) + "*") + var;
+            if(p != 1) body += "^" + std::to_string(p);
+        }
+        if(out.empty()) out = neg ? "-" + body : body;
+        else out += neg ? " - " + body : " + " + body;
+    }
+    return out.empty() ? "0" : out;
+}
+
 static bool additive_text(std::string const &s)
 {
     return s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos;
@@ -3527,11 +3551,18 @@ static bool append_common_denominator_derivative(
     std::string nice_text = poly_gcd_factored_text(*poly, var);
     if(nice_text.empty()) nice_text = poly_text;
     if(poly_text.empty() || compact_math_key(poly_text) == compact_math_key(raw_text)) return false;
+    std::string laurent_text;
+    if(compact_math_key(den_text) == compact_math_key(var))
+        laurent_text = laurent_coeffs_text(*poly, var, max_pow);
     if(raw_text.size() <= 180) {
         steps.push_back(label + " = " + fraction_num_text(raw_text) + "/(" + den_text + ")^" + std::to_string(max_pow) + ".");
         steps.push_back(raw_text + " = " + nice_text + ".");
+        if(!laurent_text.empty())
+            steps.push_back(label + " = " + laurent_text + ".");
     }
-    answer_override = label + " = " + fraction_num_text(nice_text) + "/(" + den_text + ")^" + std::to_string(max_pow);
+    answer_override = !laurent_text.empty()
+        ? label + " = " + laurent_text
+        : label + " = " + fraction_num_text(nice_text) + "/(" + den_text + ")^" + std::to_string(max_pow);
     return true;
 }
 
