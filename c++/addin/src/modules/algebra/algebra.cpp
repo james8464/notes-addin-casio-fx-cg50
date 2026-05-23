@@ -14301,6 +14301,100 @@ struct MonoTerm
     std::map<std::string, int> pow;
 };
 
+using PolyVars = std::map<std::vector<int>, Rational>;
+
+static int poly_vars_degree(std::vector<int> const &k)
+{
+    int d = 0;
+    for(int e : k) d += e;
+    return d;
+}
+
+static bool poly_vars_add_into(PolyVars &dst, PolyVars const &src)
+{
+    for(auto const &kv : src) dst[kv.first] = r_add(dst[kv.first], kv.second);
+    return true;
+}
+
+static bool poly_vars_mul(PolyVars const &a0, PolyVars const &b0, int max_deg, PolyVars &out)
+{
+    out.clear();
+    for(auto const &a : a0) {
+        for(auto const &b : b0) {
+            std::vector<int> k = a.first;
+            if(k.size() != b.first.size()) return false;
+            for(std::size_t i = 0; i < k.size(); ++i) k[i] += b.first[i];
+            if(poly_vars_degree(k) > max_deg) return false;
+            out[k] = r_add(out[k], r_mul(a.second, b.second));
+        }
+    }
+    return true;
+}
+
+static bool poly_vars_of(Arena &a, NodeId n, std::vector<std::string> const &vars, int max_deg, PolyVars &out)
+{
+    Node const &x = a.get(n);
+    std::vector<int> zero(vars.size(), 0);
+    if(x.kind == NodeKind::Num) {
+        out.clear();
+        out[zero] = x.num;
+        return true;
+    }
+    if(x.kind == NodeKind::Sym) {
+        out.clear();
+        for(std::size_t i = 0; i < vars.size(); ++i) {
+            if(x.text == vars[i]) {
+                zero[i] = 1;
+                out[zero] = Rational{1, 1};
+                return true;
+            }
+        }
+        return false;
+    }
+    if(x.kind == NodeKind::Add) {
+        out.clear();
+        for(NodeId k : x.kids) {
+            PolyVars p;
+            if(!poly_vars_of(a, k, vars, max_deg, p)) return false;
+            poly_vars_add_into(out, p);
+        }
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        out.clear();
+        out[zero] = Rational{1, 1};
+        for(NodeId k : x.kids) {
+            PolyVars p, next;
+            if(!poly_vars_of(a, k, vars, max_deg, p) || !poly_vars_mul(out, p, max_deg, next)) return false;
+            out = std::move(next);
+        }
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        PolyVars top;
+        auto den = as_num(a, exact_eval_simplify(a, x.b));
+        if(!den || is_zero(*den) || !poly_vars_of(a, x.a, vars, max_deg, top)) return false;
+        out.clear();
+        for(auto const &kv : top) out[kv.first] = r_div(kv.second, *den);
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < 0 || e->num > 4) return false;
+        PolyVars base;
+        if(!poly_vars_of(a, x.a, vars, max_deg, base)) return false;
+        out.clear();
+        out[zero] = Rational{1, 1};
+        for(int i = 0; i < e->num; ++i) {
+            PolyVars next;
+            if(!poly_vars_mul(out, base, max_deg, next)) return false;
+            out = std::move(next);
+        }
+        return true;
+    }
+    return false;
+}
+
 static bool monomial_of_node(Arena &a, NodeId n, MonoTerm &m)
 {
     Node const &x = a.get(n);
@@ -14439,6 +14533,118 @@ static std::optional<std::vector<std::string>> product_square_sum_system_route(A
         vars[0] + "-" + vars[1] + " = +/-" + format_rat_plain(*rm),
         "(" + vars[0] + "," + vars[1] + ") = [" + join_text(ps, ", ") + "]",
     };
+}
+
+struct CirclePoint
+{
+    Rational x{0, 1};
+    Rational y{0, 1};
+};
+
+static Rational poly_vars_coeff(PolyVars const &p, std::initializer_list<int> key)
+{
+    auto it = p.find(std::vector<int>(key));
+    return it == p.end() ? Rational{0, 1} : it->second;
+}
+
+static bool only_circle3_terms(PolyVars const &p)
+{
+    for(auto const &kv : p) {
+        if(is_zero(kv.second)) continue;
+        auto const &k = kv.first;
+        if(k == std::vector<int>{0, 0, 0} || k == std::vector<int>{1, 0, 0} ||
+           k == std::vector<int>{0, 1, 0} || k == std::vector<int>{0, 0, 1} ||
+           k == std::vector<int>{2, 0, 0} || k == std::vector<int>{0, 2, 0} ||
+           k == std::vector<int>{0, 0, 2})
+            continue;
+        return false;
+    }
+    return true;
+}
+
+static std::optional<CirclePoint> circle_point_equation(Arena &a, std::string const &txt,
+                                                        std::vector<std::string> const &vars)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return std::nullopt;
+    PolyVars p;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    if(!poly_vars_of(a, residual, vars, 2, p) || !only_circle3_terms(p)) return std::nullopt;
+    Rational k = poly_vars_coeff(p, {2, 0, 0});
+    if(is_zero(k) || r_cmp(poly_vars_coeff(p, {0, 2, 0}), k) != 0 ||
+       r_cmp(poly_vars_coeff(p, {0, 0, 2}), r_neg(k)) != 0 ||
+       !is_zero(poly_vars_coeff(p, {0, 0, 1})))
+        return std::nullopt;
+    Rational x = r_div(r_neg(poly_vars_coeff(p, {1, 0, 0})), r_mul(Rational{2, 1}, k));
+    Rational y = r_div(r_neg(poly_vars_coeff(p, {0, 1, 0})), r_mul(Rational{2, 1}, k));
+    Rational c = poly_vars_coeff(p, {0, 0, 0});
+    Rational want = r_mul(k, r_add(r_mul(x, x), r_mul(y, y)));
+    if(r_cmp(c, want) != 0) return std::nullopt;
+    return CirclePoint{x, y};
+}
+
+static std::string diff_square_text(std::string const &v, Rational p)
+{
+    if(is_zero(p)) return v + "^2";
+    std::string q = format_rat_plain(r_abs(p));
+    return "(" + v + (p.num > 0 ? "-" : "+") + q + ")^2";
+}
+
+static std::string linear2_text(Rational A, std::string const &v0, Rational B, std::string const &v1)
+{
+    std::string out;
+    auto add = [&](Rational c, std::string const &v) {
+        if(is_zero(c)) return;
+        bool neg = c.num < 0;
+        Rational u = neg ? r_neg(c) : c;
+        std::string term = (r_cmp(u, Rational{1, 1}) == 0 ? "" : format_rat_plain(u) + "*") + v;
+        if(out.empty()) out = neg ? "-" + term : term;
+        else out += neg ? " - " + term : " + " + term;
+    };
+    add(A, v0);
+    add(B, v1);
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> circle_three_point_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars_n(expr, eqs, vars, 3)) return std::nullopt;
+    std::vector<CirclePoint> p;
+    for(auto const &e : eqs) {
+        auto q = circle_point_equation(a, e, vars);
+        if(!q) return std::nullopt;
+        p.push_back(*q);
+    }
+    Rational A1 = r_mul(Rational{2, 1}, r_sub(p[1].x, p[0].x));
+    Rational B1 = r_mul(Rational{2, 1}, r_sub(p[1].y, p[0].y));
+    Rational C1 = r_sub(r_add(r_mul(p[1].x, p[1].x), r_mul(p[1].y, p[1].y)),
+                        r_add(r_mul(p[0].x, p[0].x), r_mul(p[0].y, p[0].y)));
+    Rational A2 = r_mul(Rational{2, 1}, r_sub(p[2].x, p[0].x));
+    Rational B2 = r_mul(Rational{2, 1}, r_sub(p[2].y, p[0].y));
+    Rational C2 = r_sub(r_add(r_mul(p[2].x, p[2].x), r_mul(p[2].y, p[2].y)),
+                        r_add(r_mul(p[0].x, p[0].x), r_mul(p[0].y, p[0].y)));
+    Rational D = r_sub(r_mul(A1, B2), r_mul(A2, B1));
+    if(is_zero(D)) return std::nullopt;
+    Rational cx = r_div(r_sub(r_mul(C1, B2), r_mul(C2, B1)), D);
+    Rational cy = r_div(r_sub(r_mul(A1, C2), r_mul(A2, C1)), D);
+    Rational dx = r_sub(cx, p[0].x), dy = r_sub(cy, p[0].y);
+    Rational r2 = r_add(r_mul(dx, dx), r_mul(dy, dy));
+    if(r2.num < 0) return std::nullopt;
+    std::string rt = sqrt_rational_surd_text(a, r2);
+    std::vector<std::string> out;
+    for(auto const &q : p)
+        out.push_back(diff_square_text(vars[0], q.x) + " + " + diff_square_text(vars[1], q.y) + " = " + vars[2] + "^2");
+    out.push_back("Subtract first: " + linear2_text(A1, vars[0], B1, vars[1]) + " = " + format_rat_plain(C1));
+    out.push_back("Subtract first: " + linear2_text(A2, vars[0], B2, vars[1]) + " = " + format_rat_plain(C2));
+    out.push_back(vars[0] + " = " + format_rat_plain(cx));
+    out.push_back(vars[1] + " = " + format_rat_plain(cy));
+    out.push_back(vars[2] + "^2 = " + diff_square_text(format_rat_plain(cx), p[0].x) + " + " +
+                  diff_square_text(format_rat_plain(cy), p[0].y) + " = " + format_rat_plain(r2));
+    out.push_back(vars[2] + " = " + rt);
+    out.push_back("(" + vars[0] + "," + vars[1] + "," + vars[2] + ") = [(" +
+                  format_rat_plain(cx) + "," + format_rat_plain(cy) + "," + rt + ")]");
+    return out;
 }
 
 static MonoTerm mono_pow_term(MonoTerm t, int n)
@@ -29026,6 +29232,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto gpf = gp_finite_sum_system_route(a, expr)) return *gpf;
     if(auto sec = sector_system_route(a, expr)) return *sec;
     if(auto pss = product_square_sum_system_route(a, expr)) return *pss;
+    if(auto c3 = circle_three_point_system_route(a, expr)) return *c3;
     if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
     if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
     if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;

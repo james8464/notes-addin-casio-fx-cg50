@@ -270,6 +270,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([a^2+b^2=r^2,(8-a)^2+b^2=r^2,a^2+(6-b)^2=r^2],[a,b,r])",
+        ["Subtract first: 16*a = 64", "Subtract first: 12*b = 36", "a = 4", "b = 3", "r = 5"],
+        ["solve([a^2", "ERR:"],
+    ),
+    (
+        "alg",
         "expand((4*x+1/(k*x))^7)",
         ["T_r = C(7,r)", "21504*x^3/(k^2)", "1/(k^7*x^7)"],
         ["symbolic expansion too large", "ERR:"],
