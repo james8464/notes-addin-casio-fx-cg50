@@ -26,4 +26,5 @@ graph TD
   C -->|fail| F["fix route family"]
   F --> T["focused + core gates"]
   T --> G
+  G --> Z["delete audited PDFs/images"]
 ```

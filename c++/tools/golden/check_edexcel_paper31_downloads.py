@@ -398,6 +398,96 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["33/100"],
         ["ERR:"],
     ),
+    (
+        "October 2020 Q1 Venn p",
+        ["--alg", "0.4-0.07-0.24,method=numeric"],
+        ["9/100", "0.09"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q1 Venn q by independence",
+        ["--alg", "solve((q+0.16+0.24)*0.4=0.24,q)"],
+        ["2/5*(q + 2/5) = 6/25", "q = 1/5", "q ~= 0.200"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q1 Venn r by conditional",
+        ["--alg", "solve(r/(r+0.09)=0.64,r)"],
+        ["r/(r + 9/100) = 16/25", "r = 4/25", "r ~= 0.160"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q1 Venn s",
+        ["--alg", "1-(0.20+0.24+0.16+0.07+0.09+0.16),method=numeric"],
+        ["2/25", "0.08"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q3 mean from sums",
+        ["--alg", "607.5/27,method=numeric"],
+        ["45/2", "22.5"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q3 standard deviation from sums",
+        ["--alg", "sqrt(17623.25/27-(607.5/27)^2),method=numeric"],
+        ["sqrt(7909/54)", "12.102188"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q3 outlier threshold",
+        ["--alg", "22.5+3*12.10218,method=numeric"],
+        ["58.80654"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q4 distribution k",
+        ["--alg", "solve(k*(1/10+1/20+1/30+1/40+1/50)=1,k)"],
+        ["137/600*k = 1", "k = 600/137"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q4 sum to 80",
+        ["--alg", "(600/137/30)*(600/137/50)*2+(600/137/40)^2,method=numeric"],
+        ["705/18769", "0.037561937"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q4 angle probability",
+        ["--alg", "(600/137)/10+(600/137)/20"],
+        ["90/137"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 normal upper tail",
+        ["--stats", "normalcdf(10,4,15,inf)"],
+        ["X ~ N(10, 4^2)", "z1 = (15-10)/4 = 1.25", "0.10564977"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 sample mean p-value",
+        ["--stats", "normalcdf(10,4/sqrt(20),11.5,inf)"],
+        ["X ~ N(10, (4/sqrt(20))^2)", "z1 = (11.5-10)/(4/sqrt(20))", "0.04676626"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 dentist lower tail",
+        ["--stats", "normalcdf(5,3.5,-inf,2)"],
+        ["X ~ N(5, 3.5^2)", "z2 = (2-5)/3.5", "0.19568297"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 dentist conditional",
+        ["--alg", "0.119119/(0.923436),method=numeric"],
+        ["119119/923436", "0.128995404"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 truncated median",
+        ["--alg", "5+3.5*0.253347103,method=numeric"],
+        ["5.8867148605"],
+        ["ERR:"],
+    ),
 ]
 
 
