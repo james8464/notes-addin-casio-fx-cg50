@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import re
+
+
+def strip_zero_surd_prefix(s: str) -> str:
+    s = re.sub(r"(^|(?<=[=,(]))0\+(?=(?:\d+\*)?sqrt\()", r"\1", s)
+    s = re.sub(r"(^|(?<=[=,(]))0-(?=(?:\d+\*)?sqrt\()", r"\1-", s)
+    return s
+
 
 def compact_math(text: str) -> str:
     s = (text or "").lower().replace("\r", "")
@@ -87,6 +95,7 @@ def markers_present(text: str, markers: list[str]) -> bool:
         if not marker:
             continue
         forms = [compact_math(marker)]
+        forms += [strip_zero_surd_prefix(form) for form in list(forms)]
         low = marker.strip().lower()
         if low.startswith("let "):
             forms.append(compact_math(marker.strip()[4:]))

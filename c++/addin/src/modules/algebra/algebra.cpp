@@ -5777,9 +5777,13 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
                 std::string cst = format_expr(a, a.num(constant));
                 std::string plus = surd(coeff);
                 std::string minus = surd(r_neg(coeff));
+                auto root_text = [&](std::string const &term) {
+                    if(is_zero(constant)) return term;
+                    return signed_sum_text(cst, term);
+                };
                 return {
-                    var + " = " + cst + (plus.rfind("-", 0) == 0 ? " - " + plus.substr(1) : " + " + plus),
-                    var + " = " + cst + (minus.rfind("-", 0) == 0 ? " - " + minus.substr(1) : " + " + minus),
+                    var + " = " + root_text(plus),
+                    var + " = " + root_text(minus),
                 };
             }
         }
@@ -6315,6 +6319,28 @@ static std::optional<PolyAny> poly_any_of(Arena &a, NodeId n, std::string const 
     return std::nullopt;
 }
 
+static PolyAny primitive_integer_root_poly(PolyAny p)
+{
+    long long l = 1;
+    for(auto const &c : p.c) {
+        long long d = std::llabs(c.den);
+        if(d <= 0) return p;
+        long long g = std::gcd(std::llabs(l), d);
+        if(l > std::numeric_limits<long long>::max() / (d / g)) return p;
+        l *= d / g;
+    }
+    if(l != 1) for(auto &c : p.c) c = r_mul(c, Rational{l, 1});
+    long long g = 0;
+    for(auto const &c : p.c) {
+        if(c.den != 1) return p;
+        g = std::gcd(g, std::llabs(c.num));
+    }
+    if(g > 1) for(auto &c : p.c) c = r_div(c, Rational{g, 1});
+    if(!p.c.empty() && p.c.back().num < 0) for(auto &c : p.c) c = r_neg(c);
+    trim_poly_any(p);
+    return p;
+}
+
 static long long comb_small_i64(int n, int k)
 {
     if(k < 0 || k > n) return 0;
@@ -6419,7 +6445,8 @@ static std::vector<Rational> rational_roots_any(PolyAny p)
 {
     std::vector<Rational> roots;
     while(p.c.size() > 1) {
-        auto lead = as_int64(p.c.back()), cnst = as_int64(p.c.front());
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) for(long long qq : divisors_i64(*lead)) {
@@ -6536,8 +6563,9 @@ static std::optional<std::vector<std::string>> factor_poly_any_route(Arena &a, N
     PolyAny p = *p0;
     std::vector<std::pair<Rational, int>> roots;
     while(p.c.size() > 1) {
-        auto lead = as_int64(p.c.back());
-        auto cnst = as_int64(p.c.front());
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back());
+        auto cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) {
@@ -6816,8 +6844,9 @@ static std::optional<std::vector<std::string>> poly_factor_solve_route(Arena &a,
     std::vector<std::string> raw, out{format_expr(a, n) + " = 0"};
     std::vector<Rational> found_roots;
     while(p.c.size() > 3) {
-        auto lead = as_int64(p.c.back());
-        auto cnst = as_int64(p.c.front());
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back());
+        auto cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) {
@@ -6926,8 +6955,9 @@ static std::vector<std::string> solve_poly_any_raw(Arena &a, PolyAny p, std::str
     std::vector<std::string> raw;
     std::vector<Rational> roots;
     while(p.c.size() > 3) {
-        auto lead = as_int64(p.c.back());
-        auto cnst = as_int64(p.c.front());
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back());
+        auto cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) {
@@ -9843,23 +9873,7 @@ static bool read_q66_rational_equation(
 
 static void primitive_poly_any_in_place(PolyAny &p)
 {
-    trim_poly_any(p);
-    long long l = 1;
-    for(auto &c : p.c) {
-        c.normalize();
-        l = lcm_abs_ll(l, c.den);
-    }
-    long long g = 0;
-    std::vector<long long> vals;
-    for(auto const &c : p.c) {
-        long long v = c.num * (l / c.den);
-        vals.push_back(v);
-        g = g ? gcd_abs_ll(g, v) : std::llabs(v);
-    }
-    if(g == 0) g = 1;
-    for(std::size_t i = 0; i < vals.size(); ++i) p.c[i] = Rational{vals[i] / g, 1};
-    if(!p.c.empty() && p.c.back().num < 0)
-        for(auto &c : p.c) c.num = -c.num;
+    p = primitive_integer_root_poly(p);
 }
 
 struct RatAny
@@ -11464,6 +11478,12 @@ static std::optional<Rational> square_from_root_text(std::string s)
     }
     (void)neg;
     if(s.rfind("sqrt(", 0) == 0 && s.back() == ')') return parse_rational_text(s.substr(5, s.size() - 6));
+    std::size_t pos = s.find("*sqrt(");
+    if(pos != std::string::npos && s.back() == ')') {
+        auto c = parse_rational_text(s.substr(0, pos));
+        auto r = parse_rational_text(s.substr(pos + 6, s.size() - pos - 7));
+        if(c && r) return r_mul(r_mul(*c, *c), *r);
+    }
     return std::nullopt;
 }
 
@@ -12329,8 +12349,9 @@ static std::vector<Rational> rational_roots_poly_any(PolyAny p)
     std::vector<Rational> roots;
     trim_poly_any(p);
     while(p.c.size() > 1) {
-        auto lead = as_int64(p.c.back());
-        auto cnst = as_int64(p.c.front());
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back());
+        auto cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) {
@@ -18849,7 +18870,8 @@ static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::s
     PolyAny nn = *num, dd = *den;
     bool changed = false;
     for(;;) {
-        auto lead = as_int64(nn.c.back()), cnst = as_int64(nn.c.front());
+        PolyAny cand = primitive_integer_root_poly(nn);
+        auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) {
@@ -19164,7 +19186,8 @@ static std::optional<std::vector<std::string>> rational_root_poly_substitution_r
     PolyAny rem = p;
     std::vector<std::pair<Rational, int>> rat_roots;
     while(rem.c.size() > 3) {
-        auto lead = as_int64(rem.c.back()), cnst = as_int64(rem.c.front());
+        PolyAny cand = primitive_integer_root_poly(rem);
+        auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
         if(!lead || !cnst) break;
         bool found = false;
         for(long long pp : divisors_i64(*cnst)) for(long long qq : divisors_i64(*lead)) {
@@ -27103,6 +27126,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lsys3 = exact_linear3_system_route(arena, req.expr)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
             if(auto lss = linear_surd_square_system_route(arena, req.expr)) return *lss;
+            if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
