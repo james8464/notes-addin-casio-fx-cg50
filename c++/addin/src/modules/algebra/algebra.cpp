@@ -13953,6 +13953,173 @@ static std::optional<std::vector<std::string>> exact_linear3_system_route(Arena 
     return out;
 }
 
+struct GpSumEq
+{
+    int power = 0;
+    Rational sum{0, 1};
+};
+
+static std::optional<GpSumEq> gp_sum_equation(Arena &a, std::string const &txt,
+                                              std::string const &first, std::string const &ratio)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return std::nullopt;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    auto lin = symbolic_linear_parts(a, residual, first);
+    if(!lin || contains_symbol(a, lin->m, first) || contains_symbol(a, lin->c, first)) return std::nullopt;
+    auto c = as_num(a, lin->c);
+    if(!c) return std::nullopt;
+    auto p = poly_any_of(a, lin->m, ratio);
+    if(!p || !p->ok || p->c.size() < 2 || p->c.size() > 3) return std::nullopt;
+    int pow = -1;
+    Rational sign{0, 1};
+    for(std::size_t i = 0; i < p->c.size(); ++i) {
+        Rational q = p->c[i];
+        if(is_zero(q)) continue;
+        if(i == 0) sign = q;
+        else if(pow < 0) pow = (int)i;
+        else return std::nullopt;
+    }
+    if(pow != 1 && pow != 2) return std::nullopt;
+    if(sign.num == 0) return std::nullopt;
+    for(std::size_t i = 0; i < p->c.size(); ++i) {
+        if((int)i != 0 && (int)i != pow && !is_zero(p->c[i])) return std::nullopt;
+    }
+    if(r_cmp(p->c[pow], sign) != 0 || std::llabs(sign.num) != sign.den) return std::nullopt;
+    Rational sum = r_div(r_neg(*c), sign);
+    if(sum.num <= 0) return std::nullopt;
+    return GpSumEq{pow, sum};
+}
+
+static std::optional<std::vector<std::string>> gp_first_third_sum_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    auto e0 = gp_sum_equation(a, eqs[0], vars[0], vars[1]);
+    auto e1 = gp_sum_equation(a, eqs[1], vars[0], vars[1]);
+    if(!e0 || !e1 || e0->power == e1->power) return std::nullopt;
+    GpSumEq one = e0->power == 1 ? *e0 : *e1;
+    GpSumEq two = e0->power == 2 ? *e0 : *e1;
+
+    Rational S = one.sum;
+    Rational T = two.sum;
+    Poly2 q{S, r_neg(T), r_sub(S, T), true};
+    auto roots = rational_quadratic_roots(q);
+    if(!roots) return std::nullopt;
+    std::vector<Rational> rvals{roots->first, roots->second};
+    std::sort(rvals.begin(), rvals.end(), [](Rational u, Rational v) { return r_cmp(u, v) < 0; });
+    rvals.erase(std::unique(rvals.begin(), rvals.end(), [](Rational u, Rational v) { return r_cmp(u, v) == 0; }), rvals.end());
+
+    std::vector<std::string> out{
+        vars[0] + "+" + vars[0] + "*" + vars[1] + " = " + format_rat(a, S),
+        vars[0] + "+" + vars[0] + "*" + vars[1] + "^2 = " + format_rat(a, T),
+        vars[0] + "*(1+" + vars[1] + ") = " + format_rat(a, S),
+        vars[0] + "*(1+" + vars[1] + "^2) = " + format_rat(a, T),
+        "(1+" + vars[1] + "^2)/(1+" + vars[1] + ") = " + format_rat(a, r_div(T, S)),
+        format_expr(a, poly2_to_node(a, q, vars[1])) + " = 0"
+    };
+    auto solved = solve_poly2(a, q, vars[1]);
+    out.insert(out.end(), solved.begin(), solved.end());
+
+    std::vector<std::string> sums;
+    for(Rational r : rvals) {
+        if(r_cmp(r_abs(r), Rational{1, 1}) >= 0) continue;
+        Rational first = r_div(S, r_add(Rational{1, 1}, r));
+        Rational inf = r_div(first, r_sub(Rational{1, 1}, r));
+        std::string rt = format_rat(a, r);
+        std::string one_plus = format_rat(a, r_add(Rational{1, 1}, r));
+        std::string one_minus = format_rat(a, r_sub(Rational{1, 1}, r));
+        std::string at = format_rat(a, first);
+        std::string st = format_rat(a, inf);
+        out.push_back(vars[1] + " = " + rt + " => " + vars[0] + " = " + format_rat(a, S) + "/(" + one_plus + ") = " + at);
+        out.push_back("S_inf = " + at + "/(" + one_minus + ") = " + st);
+        sums.push_back(st);
+    }
+    if(sums.empty()) return std::nullopt;
+    out.push_back("S_inf = [" + join_text(sums, ", ") + "]");
+    return out;
+}
+
+struct ExpPointEq
+{
+    Rational value{0, 1};
+    NodeId base = 0;
+    Rational slope{0, 1};
+};
+
+static std::optional<ExpPointEq> exp_point_equation(Arena &a, std::string const &txt,
+                                                    std::string const &scale, std::string const &kvar)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return std::nullopt;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    auto lin = symbolic_linear_parts(a, residual, scale);
+    if(!lin || contains_symbol(a, lin->m, scale) || contains_symbol(a, lin->c, scale)) return std::nullopt;
+    auto c = as_num(a, lin->c);
+    if(!c) return std::nullopt;
+
+    Rational coef{1, 1};
+    NodeId body = lin->m;
+    bool has_body = true;
+    split_coeff_body(a, lin->m, coef, body, has_body);
+    if(!has_body || coef.num == 0) return std::nullopt;
+    Rational value = r_div(r_neg(*c), coef);
+    if(value.num <= 0) return std::nullopt;
+
+    Node const &p = a.get(body);
+    if(p.kind != NodeKind::Pow || contains_symbol(a, p.a, kvar)) return std::nullopt;
+    auto base_v = eval_node_env(a, p.a, {});
+    if(!base_v || *base_v <= 0.0 || std::fabs(*base_v - 1.0) < 1e-12) return std::nullopt;
+    auto exp_lin = symbolic_linear_parts(a, p.b, kvar);
+    if(!exp_lin || !casio::same_by_sig(a, exp_lin->c, zero_node(a))) return std::nullopt;
+    auto slope = as_num(a, exp_lin->m);
+    if(!slope || is_zero(*slope)) return std::nullopt;
+    return ExpPointEq{value, p.a, *slope};
+}
+
+static std::optional<std::vector<std::string>> exponential_growth_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    auto e0 = exp_point_equation(a, eqs[0], vars[0], vars[1]);
+    auto e1 = exp_point_equation(a, eqs[1], vars[0], vars[1]);
+    if(!e0 || !e1 || !casio::same_by_sig(a, e0->base, e1->base)) return std::nullopt;
+    Rational delta = r_sub(e1->slope, e0->slope);
+    if(is_zero(delta)) return std::nullopt;
+    Rational ratio = r_div(e1->value, e0->value);
+    if(ratio.num <= 0) return std::nullopt;
+
+    NodeId ratio_n = a.num(ratio);
+    NodeId log_ratio = casio::fn(a, "log", ratio_n);
+    NodeId log_base = casio::fn(a, "log", e0->base);
+    NodeId k_node = exact_eval_simplify(a, casio::div(a, log_ratio, casio::mul(a, {a.num(delta), log_base})));
+    if(auto br = as_num(a, e0->base)) {
+        if(auto p = rational_ratio_power(*br, ratio)) k_node = a.num(r_div(*p, delta));
+    }
+    Rational power = r_div(e0->slope, delta);
+    NodeId scale_factor = exact_eval_simplify(a, casio::power(a, ratio_n, a.num(power)));
+    NodeId A_node = exact_eval_simplify(a, casio::div(a, a.num(e0->value), scale_factor));
+
+    std::string base = format_expr(a, e0->base);
+    std::string ratio_txt = format_rat(a, ratio);
+    std::vector<std::string> out{
+        format_rat(a, e0->value) + " = " + vars[0] + "*" + base + "^(" + format_rat(a, e0->slope) + "*" + vars[1] + ")",
+        format_rat(a, e1->value) + " = " + vars[0] + "*" + base + "^(" + format_rat(a, e1->slope) + "*" + vars[1] + ")",
+        "Divide equations:",
+        base + "^(" + format_rat(a, delta) + "*" + vars[1] + ") = " + ratio_txt,
+        format_rat(a, delta) + "*" + vars[1] + "*ln(" + base + ") = ln(" + ratio_txt + ")",
+        vars[1] + " = " + format_expr(a, k_node),
+    };
+    auto kd = eval_node_env(a, k_node, {});
+    if(kd && std::isfinite(*kd)) out.push_back(vars[1] + " ~= " + format_double_compact(*kd));
+    out.push_back(base + "^(" + format_rat(a, e0->slope) + "*" + vars[1] + ") = " + format_expr(a, scale_factor));
+    out.push_back(vars[0] + " = " + format_rat(a, e0->value) + "/" + format_expr(a, scale_factor) + " = " + format_expr(a, A_node));
+    auto ad = eval_node_env(a, A_node, {});
+    if(ad && std::isfinite(*ad)) out.push_back(vars[0] + " ~= " + format_double_compact(*ad));
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, A_node) + "," + format_expr(a, k_node) + ")]");
+    return out;
+}
+
 static std::optional<NodeId> cross_residual_if_fraction(Arena &a, NodeId l, NodeId r,
                                                        std::string const &v0, std::string const &v1)
 {
@@ -28372,6 +28539,8 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto lls = log_law_system2_route(a, expr)) return *lls;
     if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
     if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
+    if(auto gp = gp_first_third_sum_system_route(a, expr)) return *gp;
+    if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
     if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
     if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;
     if(auto lss = linear_surd_square_system_route(a, expr)) return *lss;
