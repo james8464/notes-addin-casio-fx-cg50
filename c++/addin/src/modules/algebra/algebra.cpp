@@ -21985,6 +21985,121 @@ static NodeId compact_single_other_quadratic(Arena &a, NodeId expr, std::string 
     return casio::simplify(a, casio::add(a, out));
 }
 
+static std::optional<std::pair<Rational, NodeId>> sqrt_extract_common_square_factor(Arena &a, NodeId expr)
+{
+    expr = casio::simplify(a, expr);
+    auto square_part = [](std::int64_t n) {
+        n = std::llabs(n);
+        if(n <= 1) return n;
+        auto lim = static_cast<std::int64_t>(std::sqrt(static_cast<double>(n)));
+        for(std::int64_t k = lim; k >= 2; --k)
+            if(n % (k * k) == 0) return k * k;
+        return static_cast<std::int64_t>(1);
+    };
+    auto split_term = [&](NodeId id, Rational &coef, NodeId &body) {
+        coef = Rational{1, 1};
+        std::vector<NodeId> rest;
+        Node const &t = a.get(id);
+        if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) {
+                Node const &n = a.get(k);
+                if(n.kind == NodeKind::Num) coef = r_mul(coef, n.num);
+                else rest.push_back(k);
+            }
+        }
+        else if(t.kind == NodeKind::Num) {
+            coef = t.num;
+        }
+        else {
+            rest.push_back(id);
+        }
+        body = rest.empty() ? one_node(a) : mul_or_one(a, rest);
+    };
+
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.empty()) return std::nullopt;
+
+    std::vector<std::pair<Rational, NodeId>> parts;
+    parts.reserve(terms.size());
+    std::int64_t num_gcd = 0, den_lcm = 1;
+    for(NodeId term : terms) {
+        Rational coef;
+        NodeId body = 0;
+        split_term(term, coef, body);
+        if(is_zero(coef)) continue;
+        parts.push_back({coef, body});
+        num_gcd = num_gcd ? std::gcd(num_gcd, std::llabs(coef.num)) : std::llabs(coef.num);
+        den_lcm = std::lcm(den_lcm, coef.den);
+    }
+    if(parts.empty() || num_gcd == 0) return std::nullopt;
+
+    Rational common{num_gcd, den_lcm};
+    common.normalize();
+    std::int64_t sq_num = square_part(common.num);
+    std::int64_t sq_den = square_part(common.den);
+    if(sq_num <= 1) return std::nullopt;
+
+    Rational square{sq_num, sq_den};
+    square.normalize();
+    Rational root{static_cast<std::int64_t>(std::sqrt(static_cast<double>(sq_num))),
+                  static_cast<std::int64_t>(std::sqrt(static_cast<double>(sq_den)))};
+    root.normalize();
+
+    std::vector<NodeId> inner_terms;
+    for(auto const &p : parts) {
+        Rational c = r_div(p.first, square);
+        NodeId coef_node = casio::num(a, c.num, c.den);
+        if(auto one = as_num(a, p.second); one && one->num == one->den) inner_terms.push_back(coef_node);
+        else if(c.num == c.den) inner_terms.push_back(p.second);
+        else inner_terms.push_back(casio::mul(a, {coef_node, p.second}));
+    }
+    return std::make_pair(root, casio::simplify(a, casio::add(a, inner_terms)));
+}
+
+static NodeId scale_expr_by_rational(Arena &a, NodeId expr, Rational scale)
+{
+    scale.normalize();
+    if(is_zero(scale)) return zero_node(a);
+    if(scale.num == scale.den) return expr;
+
+    Rational coef = scale;
+    std::vector<NodeId> rest;
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            Node const &n = a.get(k);
+            if(n.kind == NodeKind::Num) coef = r_mul(coef, n.num);
+            else rest.push_back(k);
+        }
+    }
+    else if(x.kind == NodeKind::Num) {
+        Rational c = r_mul(x.num, scale);
+        return casio::num(a, c.num, c.den);
+    }
+    else {
+        rest.push_back(expr);
+    }
+
+    coef.normalize();
+    if(coef.num != coef.den || rest.empty()) rest.insert(rest.begin(), casio::num(a, coef.num, coef.den));
+    return casio::simplify(a, mul_or_one(a, rest));
+}
+
+static Rational numeric_factor_of_product(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind == NodeKind::Num) return x.num;
+    Rational coef{1, 1};
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            Node const &n = a.get(k);
+            if(n.kind == NodeKind::Num) coef = r_mul(coef, n.num);
+        }
+    }
+    return coef;
+}
+
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
                                                                               NodeId rearr,
                                                                               std::string const &var,
@@ -22197,11 +22312,37 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
     }
     NodeId den = casio::simplify(a, casio::mul(a, {two, q->a2}));
     NodeId root = casio::simplify(a, casio::fn(a, "sqrt", disc));
-    NodeId plus = casio::simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), root}), den));
-    NodeId minus = casio::simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), casio::neg(a, root)}), den));
+    bool extracted_root = false;
+    if(auto extracted = sqrt_extract_common_square_factor(a, disc)) {
+        root = casio::simplify(a, casio::mul(a, {
+            casio::num(a, extracted->first.num, extracted->first.den),
+            casio::fn(a, "sqrt", extracted->second)
+        }));
+        extracted_root = true;
+    }
+    NodeId plus = exact_eval_simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), root}), den));
+    NodeId minus = exact_eval_simplify(a, casio::div(a, casio::add(a, {casio::neg(a, q->b), casio::neg(a, root)}), den));
+    if(numeric_factor_of_product(a, den).num < 0) {
+        NodeId den_pos = scale_expr_by_rational(a, den, Rational{-1, 1});
+        NodeId base = exact_eval_simplify(a, casio::div(a, q->b, den_pos));
+        NodeId root_term = exact_eval_simplify(a, casio::div(a, root, den_pos));
+        plus = exact_eval_simplify(a, casio::add(a, {base, casio::neg(a, root_term)}));
+        minus = exact_eval_simplify(a, casio::add(a, {base, root_term}));
+    }
+    else if(extracted_root) {
+        NodeId base = exact_eval_simplify(a, casio::div(a, casio::neg(a, q->b), den));
+        NodeId root_term = exact_eval_simplify(a, casio::div(a, root, den));
+        if(auto dn = as_num(a, den)) {
+            base = scale_expr_by_rational(a, q->b, r_div(Rational{-1, 1}, *dn));
+            root_term = scale_expr_by_rational(a, root, r_div(Rational{1, 1}, *dn));
+        }
+        plus = exact_eval_simplify(a, casio::add(a, {base, root_term}));
+        minus = exact_eval_simplify(a, casio::add(a, {base, casio::neg(a, root_term)}));
+    }
     out.push_back("a = " + format_expr(a, q->a2) + ", b = " + format_expr(a, q->b) + ", c = " + format_expr(a, q->c));
     out.push_back("D = b^2 - 4ac = " + format_expr(a, disc));
     out.push_back(var + " = (-b +/- sqrt(D))/(2a)");
+    if(!casio::same_by_sig(a, root, casio::fn(a, "sqrt", disc))) out.push_back("sqrt(D) = " + format_expr(a, root));
     out.push_back(var + " = " + format_expr(a, plus));
     out.push_back(var + " = " + format_expr(a, minus));
     out.push_back(solution_list_line(var, {var + " = " + format_expr(a, plus), var + " = " + format_expr(a, minus)}));
