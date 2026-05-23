@@ -42,6 +42,7 @@ static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out);
 static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power);
 static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
+static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
 static std::string sol_rhs(std::string const &line);
 
@@ -3266,6 +3267,99 @@ static std::optional<std::vector<std::string>> combined_binomial_series_route(Ar
     return out;
 }
 
+static NodeId pow_int_node(Arena &a, NodeId base, int p)
+{
+    if(p == 0) return one_node(a);
+    if(p == 1) return base;
+    return casio::power(a, base, a.num(Rational{p, 1}));
+}
+
+static std::optional<std::vector<std::string>> symbolic_finite_binomial_route(Arena &a,
+                                                                              NodeId parsed,
+                                                                              std::string const &var,
+                                                                              int degree)
+{
+    Node const &pow = a.get(parsed);
+    if(pow.kind != NodeKind::Pow) return std::nullopt;
+    auto nrat = as_num(a, pow.b);
+    if(!nrat || nrat->den != 1 || nrat->num < 0 || nrat->num > 20) return std::nullopt;
+    int n = (int)nrat->num;
+    Node const &base = a.get(pow.a);
+    if(base.kind != NodeKind::Add) return std::nullopt;
+    if(auto p = poly_of(a, pow.a, var); p && p->ok) return std::nullopt;
+
+    std::function<std::optional<NodeId>(NodeId)> lin_coeff = [&](NodeId t) -> std::optional<NodeId> {
+        Node const &x = a.get(t);
+        if(x.kind == NodeKind::Sym && x.text == var) return one_node(a);
+        if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+            auto top = lin_coeff(x.a);
+            if(!top) return std::nullopt;
+            return exact_eval_simplify(a, casio::div(a, *top, x.b));
+        }
+        if(x.kind != NodeKind::Mul) return std::nullopt;
+        bool saw = false;
+        std::vector<NodeId> rest;
+        for(NodeId k : x.kids) {
+            Node const &z = a.get(k);
+            if(!saw && z.kind == NodeKind::Sym && z.text == var) {
+                saw = true;
+                continue;
+            }
+            if(contains_symbol(a, k, var)) return std::nullopt;
+            rest.push_back(k);
+        }
+        if(!saw) return std::nullopt;
+        return mul_or_one(a, rest);
+    };
+
+    std::vector<NodeId> terms;
+    add_terms_flat(a, pow.a, terms);
+    std::vector<NodeId> cterms, bterms;
+    for(NodeId t : terms) {
+        if(!contains_symbol(a, t, var)) cterms.push_back(t);
+        else if(auto c = lin_coeff(t)) bterms.push_back(*c);
+        else return std::nullopt;
+    }
+    if(bterms.empty()) return std::nullopt;
+    NodeId a0 = cterms.empty() ? casio::num(a, 0) : exact_eval_simplify(a, casio::add(a, cterms));
+    NodeId b0 = exact_eval_simplify(a, casio::add(a, bterms));
+    Rational bcoef{1, 1};
+    NodeId bbody = b0;
+    bool b_has_body = true;
+    split_coeff_body(a, b0, bcoef, bbody, b_has_body);
+
+    int upto = std::min(degree, n);
+    std::vector<NodeId> out_terms;
+    std::vector<std::string> out{format_expr(a, parsed)};
+    out.push_back("a = " + format_expr(a, a0) + ", b = " + format_expr(a, b0) + ", n = " + std::to_string(n));
+    for(int i = 0; i <= upto; ++i) {
+        Rational C = binom_rat(Rational{n, 1}, i);
+        std::vector<NodeId> fac{a.num(C)};
+        fac.push_back(pow_int_node(a, a0, n - i));
+        fac.push_back(a.num(r_pow_int(bcoef, i)));
+        if(i > 0 && b_has_body) fac.push_back(pow_int_node(a, bbody, i));
+        if(i == 1) fac.push_back(casio::sym(a, var));
+        else if(i > 1) fac.push_back(casio::power(a, casio::sym(a, var), a.num(Rational{i, 1})));
+        NodeId term = exact_eval_simplify(a, casio::simplify(a, casio::mul(a, fac)));
+        out_terms.push_back(term);
+        out.push_back("T" + std::to_string(i) + " = C(" + std::to_string(n) + "," + std::to_string(i) + ")*" +
+                      format_expr(a, pow_int_node(a, a0, n - i)) + "*(" + format_expr(a, b0) + "*" + var + ")^" +
+                      std::to_string(i) + " = " + format_expr(a, term));
+    }
+    std::string ans;
+    for(NodeId t : out_terms) {
+        std::string s = trim_text(format_expr(a, t));
+        if(s.empty() || s == "0") continue;
+        if(ans.empty()) ans = s;
+        else if(s.rfind("- ", 0) == 0) ans += " - " + trim_text(s.substr(2));
+        else if(s[0] == '-') ans += " - " + trim_text(s.substr(1));
+        else ans += " + " + s;
+    }
+    if(ans.empty()) ans = "0";
+    out.push_back(ans);
+    return out;
+}
+
 #if 0
 static std::optional<std::vector<Rational>> maclaurin_series_coeffs(Arena &a, NodeId n, std::string const &var, int degree)
 {
@@ -3517,6 +3611,7 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         return out;
     }
     if(auto combo = combined_binomial_series_route(a, parsed, var, degree)) return *combo;
+    if(auto sym = symbolic_finite_binomial_route(a, parsed, var, degree)) return *sym;
     NodeId base = 0;
     Rational power{1, 1};
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
