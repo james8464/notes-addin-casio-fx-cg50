@@ -132,6 +132,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "coeff((1+x/2)^7,x,1)",
+        ["Term in x^1", "Coefficient = 7/2"],
+        ["Unexpected token", "ERR:"],
+    ),
+    (
+        "alg",
+        "coeff((1+2/x)^2*(1+x/2)^7,x,1)",
+        ["x^1 terms:", "4*x^-2", "35/8*x^3", "Coefficient = 42"],
+        ["Unexpected token", "ERR:"],
+    ),
+    (
+        "alg",
+        "coeff(2/x+3*x,x,-1)",
+        ["x^-1 terms:", "2*x^-1", "Coefficient = 2"],
+        ["Unexpected token", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(z^6+64=0,z)",
         ["z^6 = -64", "z = 2*e^((pi+2*k*pi)*i/6)", "2*e^(11*pi/6*i)"],
         ["z = []", "No real solution", "ERR:"],

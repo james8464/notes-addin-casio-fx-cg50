@@ -40,11 +40,16 @@ struct Poly2
 static std::optional<std::pair<Rational, Rational>> rational_quadratic_roots(Poly2 const &p);
 static void add_terms_flat(Arena &a, NodeId id, std::vector<NodeId> &out);
 static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, int &power);
+static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coeffs(Arena &a, NodeId n, std::string const &var);
 static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
 static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
 static std::string sol_rhs(std::string const &line);
+
+static constexpr int kLaurentPowerMin = -40;
+static constexpr int kLaurentPowerMax = 40;
+static constexpr int kLaurentIntegerPowerMax = 30;
 
 static bool is_zero(Rational const &r) { return r.num == 0; }
 
@@ -3857,12 +3862,21 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     if(args.size() != 3) return std::nullopt;
     std::string var = trim_text(args[1]);
     auto kk = parse_rational_text(trim_text(args[2]));
-    if(var.empty() || !kk || kk->den != 1 || kk->num < 0 || kk->num > 40) return std::nullopt;
+    if(var.empty() || !kk || kk->den != 1 || kk->num < kLaurentPowerMin || kk->num > kLaurentPowerMax) return std::nullopt;
     int want = (int)kk->num;
 
-    auto linear_term_coeff = [&](NodeId t) -> std::optional<NodeId> {
+    std::function<std::optional<NodeId>(NodeId)> linear_term_coeff;
+    linear_term_coeff = [&](NodeId t) -> std::optional<NodeId> {
         Node const &x = a.get(t);
         if(x.kind == NodeKind::Sym && x.text == var) return one_node(a);
+        if(x.kind == NodeKind::Div) {
+            auto den = as_num(a, x.b);
+            if(den) {
+                if(auto top = linear_term_coeff(x.a))
+                    return exact_eval_simplify(a, casio::div(a, *top, a.num(*den)));
+            }
+            return std::nullopt;
+        }
         if(x.kind != NodeKind::Mul) return std::nullopt;
         bool saw = false;
         std::vector<NodeId> rest;
@@ -3877,6 +3891,72 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
         }
         if(!saw) return std::nullopt;
         return mul_or_one(a, rest);
+    };
+
+    auto laurent_power = [&](int p) {
+        if(p == 0) return std::string("1");
+        if(p == 1) return var;
+        return var + "^" + std::to_string(p);
+    };
+    auto laurent_term = [&](int p, Rational c) {
+        std::string cx = rat_node_text(a, c);
+        std::string xp = laurent_power(p);
+        if(p == 0) return cx;
+        if(c.num == c.den) return xp;
+        if(c.num == -c.den) return "-" + xp;
+        return cx + "*" + xp;
+    };
+    auto laurent_factor_coeffs = [&](NodeId id) {
+        auto xs = reciprocal_power_coeffs(a, id, var);
+        if(!xs) return xs;
+        std::sort(xs->begin(), xs->end(), [](auto const &u, auto const &v) { return u.first < v.first; });
+        return xs;
+    };
+    auto laurent_route = [&](NodeId id) -> std::optional<std::vector<std::string>> {
+        auto all = laurent_factor_coeffs(id);
+        if(!all) return std::nullopt;
+        Rational coeff{0, 1};
+        for(auto const &pc : *all)
+            if(pc.first == want) coeff = r_add(coeff, pc.second);
+        if(is_zero(coeff)) return std::vector<std::string>{format_expr(a, id), "No " + var + "^" + std::to_string(want) + " term.", "Coefficient = 0"};
+
+        std::vector<std::vector<std::pair<int, Rational>>> factors;
+        Node const &root = a.get(id);
+        if(root.kind == NodeKind::Mul) {
+            for(NodeId kid : root.kids) {
+                auto fc = laurent_factor_coeffs(kid);
+                if(!fc) return std::nullopt;
+                factors.push_back(*fc);
+            }
+        }
+        else {
+            factors.push_back(*all);
+        }
+
+        std::vector<std::string> contrib;
+        std::function<void(std::size_t, int, Rational, std::vector<std::string> &)> rec;
+        rec = [&](std::size_t i, int pow, Rational c, std::vector<std::string> &bits) {
+            if(contrib.size() > 8) return;
+            if(i == factors.size()) {
+                if(pow == want) contrib.push_back(join_text(bits, "*"));
+                return;
+            }
+            for(auto const &pc : factors[i]) {
+                if(is_zero(pc.second)) continue;
+                bits.push_back("(" + laurent_term(pc.first, pc.second) + ")");
+                rec(i + 1, pow + pc.first, r_mul(c, pc.second), bits);
+                bits.pop_back();
+            }
+        };
+        std::vector<std::string> bits;
+        rec(0, 0, Rational{1, 1}, bits);
+
+        std::vector<std::string> out{format_expr(a, id)};
+        if(!contrib.empty() && contrib.size() <= 8) {
+            out.push_back(var + "^" + std::to_string(want) + " terms: " + join_text(contrib, " + "));
+        }
+        out.push_back("Coefficient = " + rat_node_text(a, coeff));
+        return out;
     };
 
     struct BinomInfo {
@@ -3945,7 +4025,7 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     };
 
     NodeId n = casio::parse_expr(a, trim_text(args[0]));
-    if(auto bi = read_binom(n)) {
+    if(want >= 0) if(auto bi = read_binom(n)) {
         if(want > bi->nn) return std::nullopt;
         NodeId coeff = binom_coeff_at(*bi, want);
         std::string vpow = var + "^" + std::to_string(want);
@@ -3960,11 +4040,11 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     }
 
     Node const &prod = a.get(n);
-    if(prod.kind != NodeKind::Mul) return std::nullopt;
+    if(prod.kind != NodeKind::Mul) return laurent_route(n);
     std::optional<BinomInfo> bi;
     std::vector<NodeId> rest;
     for(NodeId kid : prod.kids) {
-        if(!bi) {
+        if(want >= 0 && !bi) {
             if(auto b = read_binom(kid)) {
                 bi = *b;
                 continue;
@@ -3972,10 +4052,10 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
         }
         rest.push_back(kid);
     }
-    if(!bi) return std::nullopt;
+    if(!bi) return laurent_route(n);
     NodeId linear = mul_or_one(a, rest);
     auto lp = read_linear_poly(linear);
-    if(!lp) return std::nullopt;
+    if(!lp) return laurent_route(n);
     NodeId b_want = binom_coeff_at(*bi, want);
     NodeId b_prev = binom_coeff_at(*bi, want - 1);
     NodeId total = exact_eval_simplify(a, casio::add(a, {
@@ -8266,7 +8346,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
             Node const &base = a.get(x.a);
             Node const &exp = a.get(x.b);
             if(base.kind == NodeKind::Sym && base.text == var && exp.kind == NodeKind::Num && exp.num.den == 1 &&
-               exp.num.num >= -8 && exp.num.num <= 8) {
+               exp.num.num >= kLaurentPowerMin && exp.num.num <= kLaurentPowerMax) {
                 p = static_cast<int>(exp.num.num);
                 return true;
             }
@@ -8278,7 +8358,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
     auto top = b.kind == NodeKind::Div ? as_num(a, b.a) : std::optional<Rational>{};
     if(b.kind == NodeKind::Div && top && top->num == top->den && read_power(b.b, power)) {
         power = -power;
-        return power >= -2 && power <= 2;
+        return power >= kLaurentPowerMin && power <= kLaurentPowerMax;
     }
     if(b.kind == NodeKind::Div && top && top->num == top->den) {
         Rational dc{1, 1};
@@ -8288,7 +8368,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
         if(dhas && read_power(dbody, power)) {
             coef = r_div(coef, dc);
             power = -power;
-            return power >= -2 && power <= 2;
+            return power >= kLaurentPowerMin && power <= kLaurentPowerMax;
         }
     }
     return false;
@@ -8327,7 +8407,7 @@ static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coe
             for(auto const &a0 : acc) {
                 for(auto const &b0 : *sub) {
                     int p = a0.first + b0.first;
-                    if(p < -8 || p > 8) return std::nullopt;
+                    if(p < kLaurentPowerMin || p > kLaurentPowerMax) return std::nullopt;
                     add_recip_coeff(next, p, r_mul(a0.second, b0.second));
                 }
             }
@@ -8340,7 +8420,7 @@ static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coe
     if(reciprocal_power_term(a, n, var, c, p)) return std::vector<std::pair<int, Rational>>{{p, c}};
     if(x.kind == NodeKind::Pow) {
         Node const &e = a.get(x.b);
-        if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num < 0 || e.num.num > 4) return std::nullopt;
+        if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num < 0 || e.num.num > kLaurentIntegerPowerMax) return std::nullopt;
         auto base = reciprocal_power_coeffs(a, x.a, var);
         if(!base) return std::nullopt;
         std::vector<std::pair<int, Rational>> acc{{0, Rational{1, 1}}};
@@ -8349,7 +8429,7 @@ static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coe
             for(auto const &u : acc) {
                 for(auto const &v : *base) {
                     int p = u.first + v.first;
-                    if(p < -8 || p > 8) return std::nullopt;
+                    if(p < kLaurentPowerMin || p > kLaurentPowerMax) return std::nullopt;
                     add_recip_coeff(next, p, r_mul(u.second, v.second));
                 }
             }
@@ -27639,7 +27719,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
         }
         if(auto pm = power_model_route(arena, req.expr)) return *pm;
-        if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
+        if(req.mode == 0 && (req.method.empty() || req.method == "coeff" || req.method == "binom_coeff")) {
+            if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
+        }
         if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         if(req.method == "standard_line" || req.method == "line_standard") {
             if(auto sl = standard_line_route(arena, req.expr)) return *sl;
