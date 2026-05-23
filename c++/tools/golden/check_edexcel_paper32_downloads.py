@@ -71,7 +71,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2019 Q3 connected particles tension",
         ["--alg", "solve([T-16/13*m*g-10/13*m*g=2*m*a,3*m*g-T=3*m*a],[T,a])"],
-        ["T = 12*m*g/5", "a = g/5"],
+        ["T = 12*m*g/5", "a = 1/5*g"],
         ["T ~= 0", "a ~= 0", "ERR:"],
     ),
     (
@@ -671,7 +671,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q2 connected particles acceleration",
         ["--alg", "solve([9/5*g-2/5*g-U=3*a,U-g=a],[U,a])"],
-        ["U = 22/5*g/4", "a = 2/5*g/4"],
+        ["U = 11/10*g", "a = 1/10*g"],
         ["ERR:"],
     ),
     (

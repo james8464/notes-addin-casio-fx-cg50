@@ -169,6 +169,7 @@ static std::string format_rat(Arena &a, Rational r);
 static std::optional<Rational> rational_power_factor(Rational base, Rational power);
 static std::optional<Rational> rational_ratio_power(Rational base, Rational value);
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
+static void collect_symbols(Arena &a, NodeId n, std::vector<std::string> &out);
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
                                                                               NodeId rearr,
                                                                               std::string const &var,
@@ -249,6 +250,17 @@ static NodeId poly2_to_node(Arena &a, Poly2 const &p, std::string const &var)
     if(!is_zero(p.a1)) terms.push_back(casio::mul(a, {a.num(p.a1), a.sym(var)}));
     if(!is_zero(p.a0) || terms.empty()) terms.push_back(a.num(p.a0));
     return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId collect_single_symbol_poly(Arena &a, NodeId n)
+{
+    NodeId s = exact_eval_simplify(a, n);
+    std::vector<std::string> syms;
+    collect_symbols(a, s, syms);
+    if(syms.size() != 1) return s;
+    auto p = poly_of(a, s, syms[0]);
+    if(!p || !p->ok) return s;
+    return exact_eval_simplify(a, poly2_to_node(a, *p, syms[0]));
 }
 
 static std::optional<NodeId> x_minus_recip_halfline_node(Arena &a, NodeId n, std::string const &var, Rational &c)
@@ -763,6 +775,7 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
+        if(x.fkind == FnKind::Abs && u.kind == NodeKind::Num) return a.num(r_abs(u.num));
         if(x.fkind == FnKind::Sqrt && u.kind == NodeKind::Num && u.num.num >= 0) {
             std::int64_t rn = 0, rd = 0;
             if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
@@ -1935,6 +1948,65 @@ static std::optional<std::vector<std::string>> symbolic_complete_square(Arena &a
         "h = b/(2a) = " + format_expr(a, half_b),
         "k = c - b^2/(4a) = " + format_expr(a, tail),
         "Answer: " + format_expr(a, ans),
+    };
+}
+
+static std::optional<std::vector<std::string>> factored_quadratic_vertex_route(Arena &a, std::string const &expr, std::string const &method)
+{
+    auto parts = split_csv(expr);
+    if(parts.empty()) return std::nullopt;
+    NodeId n = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    std::string var = parts.size() >= 2 && !trim_text(parts[1]).empty() ? trim_text(parts[1]) : choose_solve_var(a, n, "x");
+    Node const &m = a.get(n);
+    if(m.kind != NodeKind::Mul) return std::nullopt;
+
+    Rational lead{1, 1};
+    std::vector<NodeId> roots;
+    for(NodeId kid : m.kids) {
+        Node const &kn = a.get(kid);
+        if(kn.kind == NodeKind::Num) {
+            lead = r_mul(lead, kn.num);
+            continue;
+        }
+        auto lin = symbolic_linear_parts(a, kid, var);
+        if(!lin) return std::nullopt;
+        auto slope = as_num(a, lin->m);
+        if(!slope || is_zero(*slope)) return std::nullopt;
+        lead = r_mul(lead, *slope);
+        roots.push_back(collect_single_symbol_poly(a, casio::div(a, casio::neg(a, lin->c), lin->m)));
+    }
+    if(roots.size() != 2 || is_zero(lead)) return std::nullopt;
+
+    bool opens_up = lead.num > 0;
+    if(method == "minimum" && !opens_up) return std::vector<std::string>{"Err: no minimum; quadratic opens down."};
+    if(method == "maximum" && opens_up) return std::vector<std::string>{"Err: no maximum; quadratic opens up."};
+
+    NodeId two = casio::num(a, 2);
+    NodeId four = casio::num(a, 4);
+    NodeId delta = exact_eval_simplify(a, casio::add(a, {roots[1], casio::neg(a, roots[0])}));
+    NodeId x0 = exact_eval_simplify(a, casio::div(a, casio::add(a, {roots[0], roots[1]}), two));
+    NodeId y0 = exact_eval_simplify(a, casio::div(a, casio::neg(a, casio::mul(a, {
+        casio::num(a, lead.num, lead.den),
+        casio::power(a, delta, two),
+    })), four));
+    std::string tag = opens_up ? "min" : "max";
+    std::string r0 = format_expr(a, roots[0]);
+    std::string r1 = format_expr(a, roots[1]);
+    std::string x0t = format_expr(a, x0);
+    std::string y0t = format_expr(a, y0);
+    std::string dt = format_expr(a, delta);
+    std::string lead_txt = format_expr(a, casio::num(a, lead.num, lead.den));
+    std::string y_calc;
+    if(r_cmp(lead, Rational{1, 1}) == 0) y_calc = "-(" + dt + ")^2/4";
+    else if(r_cmp(lead, Rational{-1, 1}) == 0) y_calc = "(" + dt + ")^2/4";
+    else if(lead.num > 0) y_calc = "-" + lead_txt + "*(" + dt + ")^2/4";
+    else y_calc = format_expr(a, casio::num(a, r_abs(lead).num, r_abs(lead).den)) + "*(" + dt + ")^2/4";
+    return std::vector<std::string>{
+        "f(" + var + ") = " + format_expr(a, n),
+        "y = 0 => " + var + " = " + r0 + " or " + var + " = " + r1,
+        var + "_" + tag + " = (" + r0 + " + " + r1 + ")/2 = " + x0t,
+        "y_" + tag + " = " + y_calc + " = " + y0t,
+        "(" + x0t + "," + y0t + ")",
     };
 }
 
@@ -13110,15 +13182,19 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     NodeId r1 = exact_eval_simplify(a, neg_node(a, rows[1].c));
     NodeId n0 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {r0, rows[1].a1}), casio::mul(a, {r1, rows[0].a1})));
     NodeId n1 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {rows[0].a0, r1}), casio::mul(a, {rows[1].a0, r0})));
-    NodeId v0 = exact_eval_simplify(a, casio::div(a, n0, det));
-    NodeId v1 = exact_eval_simplify(a, casio::div(a, n1, det));
-    auto ft = [&](NodeId n) { return format_expr(a, exact_eval_simplify(a, n)); };
-    out.push_back("D = " + ft(rows[0].a0) + "*" + ft(rows[1].a1) + " - " +
-                  ft(rows[1].a0) + "*" + ft(rows[0].a1) + " = " + ft(det));
-    out.push_back(vars[0] + " = (" + ft(r0) + "*" + ft(rows[1].a1) + " - " +
-                  ft(r1) + "*" + ft(rows[0].a1) + ")/D = " + format_expr(a, v0));
-    out.push_back(vars[1] + " = (" + ft(rows[0].a0) + "*" + ft(r1) + " - " +
-                  ft(rows[1].a0) + "*" + ft(r0) + ")/D = " + format_expr(a, v1));
+    NodeId v0 = collect_single_symbol_poly(a, casio::div(a, n0, det));
+    NodeId v1 = collect_single_symbol_poly(a, casio::div(a, n1, det));
+    auto ft = [&](NodeId n) { return format_expr(a, collect_single_symbol_poly(a, n)); };
+    auto mt = [&](NodeId n) {
+        std::string s = ft(n);
+        return (s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos) ? "(" + s + ")" : s;
+    };
+    out.push_back("D = " + mt(rows[0].a0) + "*" + mt(rows[1].a1) + " - " +
+                  mt(rows[1].a0) + "*" + mt(rows[0].a1) + " = " + ft(det));
+    out.push_back(vars[0] + " = (" + mt(r0) + "*" + mt(rows[1].a1) + " - " +
+                  mt(r1) + "*" + mt(rows[0].a1) + ")/D = " + format_expr(a, v0));
+    out.push_back(vars[1] + " = (" + mt(rows[0].a0) + "*" + mt(r1) + " - " +
+                  mt(rows[1].a0) + "*" + mt(r0) + ")/D = " + format_expr(a, v1));
     out.push_back(vars[0] + " = " + format_expr(a, v0));
     out.push_back(vars[1] + " = " + format_expr(a, v1));
     auto d0 = eval_node_env(a, v0, {});
@@ -26756,6 +26832,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         if(req.method == "standard_line" || req.method == "line_standard") {
             if(auto sl = standard_line_route(arena, req.expr)) return *sl;
+        }
+        if(req.method == "minimum" || req.method == "maximum" || req.method == "vertex") {
+            if(auto vx = factored_quadratic_vertex_route(arena, req.expr, req.method)) return *vx;
         }
         {
             std::string key = compact_input_key(req.expr);
