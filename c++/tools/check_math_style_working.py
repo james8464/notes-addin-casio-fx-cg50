@@ -181,6 +181,18 @@ CASES = [
         ("R = sqrt((4)^2 + (3)^2) = 5", "-5 <= 3*cos(x) + 4*sin(x) <= 5", "-5 <= y <= 5"),
     ),
     (
+        "reciprocal sincos range",
+        ["--alg", "range(1/(5+sin(x)+sqrt(3)*cos(x)),x,0,2*pi)"],
+        ("R = sqrt((1)^2 + (sqrt(3))^2) = 2", "3 <= denominator <= 7", "Range: 1/7 <= y <= 1/3"),
+        ("unrestricted", "ERR:"),
+    ),
+    (
+        "squared sincos range",
+        ["--alg", "range((sin(x)+sqrt(3)*cos(x))^2,x,0,2*pi)"],
+        ("R = sqrt((1)^2 + (sqrt(3))^2) = 2", "-2 <= sin(x) + sqrt(3)*cos(x) <= 2", "Range: 0 <= y <= 4"),
+        ("unrestricted", "ERR:"),
+    ),
+    (
         "trig period",
         ["--alg", "period(tan(4*x-pi/3))"],
         ("u = 4*x - pi/3", "du/dx = 4", "period(tan) = pi", "pi/4"),
@@ -258,6 +270,12 @@ CASES = [
         ["--trig", "2*cos(theta)*tan(theta)=sqrt(3),theta,0,360,method=general"],
         ("cos(A)*tan(A) = sin(A), cos(A)!=0", "sin(A) = sqrt(3)/2", "theta = 60 + n*360 or 120 + n*360"),
         ("theta = []", "Failed to isolate"),
+    ),
+    (
+        "acute cot quadratic keeps exact tan",
+        ["--trig", "7*cot(alpha)^2+6*cot(alpha)=1,alpha,0,pi/2"],
+        ("u = tan(alpha)", "u = -1 or u = 7", "tan(alpha) = 7", "alpha = [1.42889927219]"),
+        ("ERR:",),
     ),
     (
         "madas general shifted sine",

@@ -3826,6 +3826,7 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
     steps.push_back(recip_poly_text(c));
     std::string rline = "u=";
     bool any = false;
+    std::vector<double> accepted_u;
     for(double r : roots) {
         if(p->min_e < 0 && std::fabs(r) < 1e-10) {
             steps.push_back("Reject u=0: " + rf + " undefined.");
@@ -3839,10 +3840,14 @@ static std::optional<std::vector<std::string>> solve_recip_trig_poly(
         rline += trig_root_text(r);
         any = true;
         auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(base, r));
+        if(!vals.empty()) add_unique(accepted_u, r);
         for(double x : vals) add_unique(xs, x);
     }
     if(any) steps.push_back(rline + ".");
     steps.push_back(bf + "(" + A + ")=u.");
+    if(base == FnKind::Tan) {
+        for(double r : accepted_u) steps.push_back("tan(" + A + ")=" + trig_root_text(r) + ".");
+    }
     if(any && base != FnKind::Tan) {
         for(double r : roots) {
             if(r >= -1.0 - 1e-10 && r <= 1.0 + 1e-10 && !(p->min_e < 0 && std::fabs(r) < 1e-10)) {

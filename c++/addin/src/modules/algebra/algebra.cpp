@@ -18764,6 +18764,173 @@ static std::optional<std::string> reciprocal_cos_range(Arena &a, NodeId n, std::
     return format_rat(a, lo) + " <= y <= " + format_rat(a, hi);
 }
 
+static std::optional<std::string> reciprocal_affine_trig_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    NodeId top = exact_eval_simplify(a, x.a);
+    if(contains_symbol(a, top, var) || !eval_node_env(a, top, {})) return std::nullopt;
+
+    NodeId s = zero_node(a), c = zero_node(a), off = zero_node(a);
+    std::string arg;
+    bool seen = false;
+    auto add_term = [&](NodeId term) -> bool {
+        if(!contains_symbol(a, term, var)) {
+            off = exact_eval_simplify(a, casio::add(a, {off, term}));
+            return true;
+        }
+
+        NodeId fn_id = 0;
+        std::vector<NodeId> coeffs;
+        Node const &t = a.get(term);
+        auto is_var_trig = [&](NodeId id) {
+            Node const &z = a.get(id);
+            return z.kind == NodeKind::Fn && (z.fkind == FnKind::Sin || z.fkind == FnKind::Cos) && contains_symbol(a, z.a, var);
+        };
+        if(is_var_trig(term)) fn_id = term;
+        else if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) {
+                if(is_var_trig(k)) {
+                    if(fn_id) return false;
+                    fn_id = k;
+                }
+                else {
+                    if(contains_symbol(a, k, var)) return false;
+                    coeffs.push_back(k);
+                }
+            }
+        }
+        else return false;
+        if(!fn_id) return false;
+
+        Node const &fn = a.get(fn_id);
+        std::string this_arg = format_expr(a, fn.a);
+        if(seen && this_arg != arg) return false;
+        arg = this_arg;
+        seen = true;
+        NodeId coeff = coeffs.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, coeffs));
+        if(fn.fkind == FnKind::Sin) s = exact_eval_simplify(a, casio::add(a, {s, coeff}));
+        else c = exact_eval_simplify(a, casio::add(a, {c, coeff}));
+        return true;
+    };
+
+    Node const &den = a.get(x.b);
+    if(den.kind == NodeKind::Add) {
+        for(NodeId k : den.kids)
+            if(!add_term(k)) return std::nullopt;
+    }
+    else if(!add_term(x.b)) return std::nullopt;
+    if(!seen || (casio::same_by_sig(a, s, zero_node(a)) && casio::same_by_sig(a, c, zero_node(a)))) return std::nullopt;
+
+    NodeId amp2 = exact_eval_simplify(a, casio::add(a, {
+        casio::power(a, s, casio::num(a, 2)),
+        casio::power(a, c, casio::num(a, 2))
+    }));
+    NodeId amp = exact_eval_simplify(a, casio::fn(a, "sqrt", amp2));
+    NodeId den_lo = exact_eval_simplify(a, casio::add(a, {off, casio::neg(a, amp)}));
+    NodeId den_hi = exact_eval_simplify(a, casio::add(a, {off, amp}));
+    auto lo_v = eval_node_env(a, den_lo, {});
+    auto hi_v = eval_node_env(a, den_hi, {});
+    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v)) return std::nullopt;
+    if((*lo_v <= 0.0 && *hi_v >= 0.0) || (*hi_v <= 0.0 && *lo_v >= 0.0)) return std::nullopt;
+
+    NodeId y0 = exact_eval_simplify(a, casio::div(a, top, den_lo));
+    NodeId y1 = exact_eval_simplify(a, casio::div(a, top, den_hi));
+    auto y0_v = eval_node_env(a, y0, {});
+    auto y1_v = eval_node_env(a, y1, {});
+    if(!y0_v || !y1_v || !std::isfinite(*y0_v) || !std::isfinite(*y1_v)) return std::nullopt;
+
+    std::string st = format_expr(a, s), ct = format_expr(a, c);
+    steps.push_back("R = sqrt((" + st + ")^2 + (" + ct + ")^2) = " + format_expr(a, amp));
+    steps.push_back("-R <= " + st + "*sin(" + arg + ") + " + ct + "*cos(" + arg + ") <= R");
+    steps.push_back(format_expr(a, den_lo) + " <= denominator <= " + format_expr(a, den_hi));
+    if(*y0_v <= *y1_v) return format_expr(a, y0) + " <= y <= " + format_expr(a, y1);
+    return format_expr(a, y1) + " <= y <= " + format_expr(a, y0);
+}
+
+static std::optional<std::string> squared_affine_trig_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    auto exp = as_num(a, x.b);
+    if(!exp || exp->num != 2 || exp->den != 1) return std::nullopt;
+
+    NodeId s = zero_node(a), c = zero_node(a), off = zero_node(a);
+    std::string arg;
+    bool seen = false;
+    auto add_term = [&](NodeId term) -> bool {
+        if(!contains_symbol(a, term, var)) {
+            off = exact_eval_simplify(a, casio::add(a, {off, term}));
+            return true;
+        }
+        NodeId fn_id = 0;
+        std::vector<NodeId> coeffs;
+        Node const &t = a.get(term);
+        auto is_var_trig = [&](NodeId id) {
+            Node const &z = a.get(id);
+            return z.kind == NodeKind::Fn && (z.fkind == FnKind::Sin || z.fkind == FnKind::Cos) && contains_symbol(a, z.a, var);
+        };
+        if(is_var_trig(term)) fn_id = term;
+        else if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) {
+                if(is_var_trig(k)) {
+                    if(fn_id) return false;
+                    fn_id = k;
+                }
+                else {
+                    if(contains_symbol(a, k, var)) return false;
+                    coeffs.push_back(k);
+                }
+            }
+        }
+        else return false;
+        if(!fn_id) return false;
+        Node const &fn = a.get(fn_id);
+        std::string this_arg = format_expr(a, fn.a);
+        if(seen && this_arg != arg) return false;
+        arg = this_arg;
+        seen = true;
+        NodeId coeff = coeffs.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, coeffs));
+        if(fn.fkind == FnKind::Sin) s = exact_eval_simplify(a, casio::add(a, {s, coeff}));
+        else c = exact_eval_simplify(a, casio::add(a, {c, coeff}));
+        return true;
+    };
+
+    Node const &base = a.get(x.a);
+    if(base.kind == NodeKind::Add) {
+        for(NodeId k : base.kids)
+            if(!add_term(k)) return std::nullopt;
+    }
+    else if(!add_term(x.a)) return std::nullopt;
+    if(!seen || (casio::same_by_sig(a, s, zero_node(a)) && casio::same_by_sig(a, c, zero_node(a)))) return std::nullopt;
+
+    NodeId amp2 = exact_eval_simplify(a, casio::add(a, {
+        casio::power(a, s, casio::num(a, 2)),
+        casio::power(a, c, casio::num(a, 2))
+    }));
+    NodeId amp = exact_eval_simplify(a, casio::fn(a, "sqrt", amp2));
+    NodeId base_lo = exact_eval_simplify(a, casio::add(a, {off, casio::neg(a, amp)}));
+    NodeId base_hi = exact_eval_simplify(a, casio::add(a, {off, amp}));
+    auto lo_v = eval_node_env(a, base_lo, {});
+    auto hi_v = eval_node_env(a, base_hi, {});
+    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || !std::isfinite(*hi_v)) return std::nullopt;
+
+    NodeId lo_sq = exact_eval_simplify(a, casio::power(a, base_lo, casio::num(a, 2)));
+    NodeId hi_sq = exact_eval_simplify(a, casio::power(a, base_hi, casio::num(a, 2)));
+    auto lo_sq_v = eval_node_env(a, lo_sq, {});
+    auto hi_sq_v = eval_node_env(a, hi_sq, {});
+    if(!lo_sq_v || !hi_sq_v || !std::isfinite(*lo_sq_v) || !std::isfinite(*hi_sq_v)) return std::nullopt;
+
+    NodeId range_lo = zero_node(a);
+    if(!(*lo_v <= 0.0 && *hi_v >= 0.0)) range_lo = *lo_sq_v <= *hi_sq_v ? lo_sq : hi_sq;
+    NodeId range_hi = *lo_sq_v >= *hi_sq_v ? lo_sq : hi_sq;
+    std::string st = format_expr(a, s), ct = format_expr(a, c);
+    steps.push_back("R = sqrt((" + st + ")^2 + (" + ct + ")^2) = " + format_expr(a, amp));
+    steps.push_back("-R <= " + st + "*sin(" + arg + ") + " + ct + "*cos(" + arg + ") <= R");
+    steps.push_back(format_expr(a, base_lo) + " <= " + format_expr(a, x.a) + " <= " + format_expr(a, base_hi));
+    return format_expr(a, range_lo) + " <= y <= " + format_expr(a, range_hi);
+}
+
 static bool term_is_sin_with_coeff(Arena &a, NodeId n, Rational &coeff, std::string &arg)
 {
     Node const &x = a.get(n);
@@ -30831,12 +30998,20 @@ algebra_compare_transform_modes:
                     steps.push_back(format_expr(arena, square) + " >= 0");
                     steps.push_back("Range: " + range_answer + ".");
                 }
+                else if(auto sqtrig = squared_affine_trig_range(arena, n, var, steps)) {
+                    range_answer = *sqtrig;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
                 else if(auto trig_range = direct_trig_range(arena, n, var, steps)) {
                     range_answer = *trig_range;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto rec_cos = reciprocal_cos_range(arena, n, steps)) {
                     range_answer = *rec_cos;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto rec_trig = reciprocal_affine_trig_range(arena, n, var, steps)) {
+                    range_answer = *rec_trig;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto cos_sin = cos_over_linear_sin_range(arena, n, steps)) {

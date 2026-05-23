@@ -1196,6 +1196,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "7*cot(alpha)^2+6*cot(alpha)=1,alpha,0,pi/2",
+        ["u=tan(alpha)", "u=-1 or u=7", "tan(alpha)=7", "Answer: alpha = [1.42889927219]"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
         "27*sin(phi)^2+8*cosec(phi)=0,phi,0,2*pi,8",
         ["u = sin(phi)", "cosec(phi) = 1/u", "27u^3 + 8 = 0", "u = -2/3", "Answer: phi = [3.87132030982, 5.55345765095]"],
         ["Failed to isolate", "phi = []"],
@@ -1685,6 +1691,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "range(1/(2-cos(3*x)))",
         ["cos(3*x) in [-1,1]", "Answer: 1/3 <= y <= 1"],
         ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(1/(5+sin(x)+sqrt(3)*cos(x)),x,0,2*pi)",
+        ["R = sqrt((1)^2 + (sqrt(3))^2) = 2", "3 <= denominator <= 7", "Answer: 1/7 <= y <= 1/3"],
+        ["unrestricted", "ERR:"],
+    ),
+    (
+        "alg",
+        "range((sin(x)+sqrt(3)*cos(x))^2,x,0,2*pi)",
+        ["R = sqrt((1)^2 + (sqrt(3))^2) = 2", "-2 <= sin(x) + sqrt(3)*cos(x) <= 2", "Answer: 0 <= y <= 4"],
+        ["unrestricted", "ERR:"],
     ),
     (
         "alg",
