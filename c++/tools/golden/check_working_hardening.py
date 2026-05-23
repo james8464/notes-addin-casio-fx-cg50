@@ -536,6 +536,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "expand((x-1)^3-4*(x-1)+1)",
+        ["(x - 1)^3 - 4*(x - 1) + 1", "x^3 - 3*x^2 - x + 4"],
+        ["Answer:", "ERR:"],
+    ),
+    (
+        "derive",
+        "x^4-4*x,x,2,method=first_principles",
+        ["[f(2+h)-f(2)]/h", "f(2+h)-f(2) = h^4 + 8*h^3 + 24*h^2 + 28*h", "f'(2) = 28"],
+        ["No first-principles route", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve([log(2,y-1)=1+log(2,x),2*log(3,y)=2+log(3,x)],[x,y])",
+        ["y - 2*x - 1 = 0", "y^2 - 9*x = 0", "(x,y) = [(1,3), (1/4,3/2)]"],
+        ["solve([log", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(4*pi*r-660/r^2=0,r)",
+        ["r^3 = 165/pi", "r = (165/pi)^(1/3)", "r = [(165/pi)^(1/3)]"],
+        ["r = [3.744", "ERR:"],
+    ),
+    (
+        "alg",
         "domain(csc(2*x+pi/6)^2-cot(2*x+pi/6)^2)",
         ["sin(2*x + pi/6) != 0", "Answer:"],
         ["Answer: all real x", "ERR:"],
@@ -881,6 +905,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "rewrite(sqrt(12+sqrt(140)))",
         ["Let sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "4*m*n=140", "Answer: sqrt(7)+sqrt(5)"],
         ["rewrite*sqrt", "ERR:"],
+    ),
+    (
+        "alg",
+        "sqrt(180)",
+        ["sqrt(36*5)", "6*sqrt(5)"],
+        ["ERR:", "Answer: sqrt(180)"],
+    ),
+    (
+        "alg",
+        "sqrt((9-3)^2+(8-20)^2)",
+        ["sqrt(36*5)", "6*sqrt(5)"],
+        ["ERR:", "Answer: sqrt(180)"],
     ),
     (
         "alg",

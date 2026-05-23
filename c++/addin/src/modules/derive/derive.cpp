@@ -3467,6 +3467,63 @@ static std::string strip_label_assignment(std::string s)
     return s;
 }
 
+static long long comb_i64(int n, int k)
+{
+    if(k < 0 || k > n) return 0;
+    if(k > n - k) k = n - k;
+    long long r = 1;
+    for(int i = 1; i <= k; ++i) r = r * (n - k + i) / i;
+    return r;
+}
+
+static Rational rat_pow_local(Rational r, int p)
+{
+    Rational out{1, 1};
+    for(int i = 0; i < p; ++i) out = rat_mul_local(out, r);
+    out.normalize();
+    return out;
+}
+
+static std::optional<std::vector<std::string>> first_principles_point_poly_route(
+    Arena &a,
+    NodeId f,
+    std::string const &var,
+    Rational point
+)
+{
+    auto p = poly_node_local(a, f, var, 8);
+    if(!p || p->size() < 2) return std::nullopt;
+
+    std::vector<Rational> diff(p->size(), Rational{0, 1});
+    for(std::size_t deg = 1; deg < p->size(); ++deg) {
+        if(rat_zero_local((*p)[deg])) continue;
+        for(std::size_t hk = 1; hk <= deg; ++hk) {
+            Rational term{comb_i64((int)deg, (int)hk), 1};
+            term = rat_mul_local(term, rat_pow_local(point, (int)(deg - hk)));
+            term = rat_mul_local(term, (*p)[deg]);
+            diff[hk] = rat_add_local(diff[hk], term);
+        }
+    }
+    trim_poly_local(diff);
+    if(diff.size() < 2) return std::nullopt;
+    std::vector<Rational> quotient(diff.begin() + 1, diff.end());
+    trim_poly_local(quotient);
+
+    std::string pt = rat_text(a, point.num, point.den);
+    std::string ftxt = clean_math_text(format_expr_human(a, f));
+    std::string diff_txt = poly_coeffs_text(diff, "h");
+    std::string quo_txt = poly_coeffs_text(quotient, "h");
+    std::string ans = rat_text(a, quotient[0].num, quotient[0].den);
+    return std::vector<std::string>{
+        "f(" + var + ") = " + ftxt,
+        "[f(" + pt + "+h)-f(" + pt + ")]/h",
+        "f(" + pt + "+h)-f(" + pt + ") = " + diff_txt,
+        "[f(" + pt + "+h)-f(" + pt + ")]/h = " + quo_txt,
+        "h -> 0",
+        "f'(" + pt + ") = " + ans,
+    };
+}
+
 } // namespace
 
 NodeId differentiate_node(Arena &arena, NodeId node, std::string const &var, std::string const &dep)
@@ -3486,6 +3543,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string expr = parts.empty() ? req.expr : parts[0];
             std::string var = (parts.size() >= 2 && !parts[1].empty()) ? parts[1] : "x";
             std::string key = compact_math_key(expr);
+            NodeId fp_node = casio::simplify(arena, casio::parse_expr(arena, expr));
+            if(parts.size() >= 3 && !parts[2].empty()) {
+                NodeId point_node = casio::simplify(arena, casio::parse_expr(arena, parts[2]));
+                if(auto point = as_num(arena, point_node)) {
+                    if(auto route = first_principles_point_poly_route(arena, fp_node, var, *point)) return *route;
+                }
+            }
             if(key == var + "^2") {
                 return casio::exam_block(
                     "first principles",
@@ -3500,7 +3564,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "d/d" + var + " " + var + "^2 = 2*" + var
                 );
             }
-            NodeId fp_node = casio::simplify(arena, casio::parse_expr(arena, expr));
             if(auto c = x_square_coeff(arena, fp_node, var); c && !rat_is_one(*c)) {
                 Rational two_c = rat_mul_local(*c, Rational{2, 1});
                 std::string f = coeff_text(arena, *c, var + "^2");
