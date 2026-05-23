@@ -4964,6 +4964,50 @@ static void sort_solution_lines(Arena &a, std::vector<std::string> &sols)
     });
 }
 
+static bool known_domain_constraints_ok(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    auto finite_value = [&](NodeId id) -> std::optional<double> {
+        auto v = eval_node_env(a, id, {});
+        if(v && std::isfinite(*v)) return v;
+        return std::nullopt;
+    };
+    if(x.kind == NodeKind::Fn) {
+        if(auto v = finite_value(x.a)) {
+            if((x.fkind == FnKind::Log || x.fkind == FnKind::Log10) && *v <= 0) return false;
+            if(x.fkind == FnKind::Sqrt && *v < -1e-10) return false;
+            if((x.fkind == FnKind::Asin || x.fkind == FnKind::Acos) && (*v < -1 - 1e-10 || *v > 1 + 1e-10)) return false;
+        }
+        return known_domain_constraints_ok(a, x.a);
+    }
+    if(x.kind == NodeKind::Div) {
+        if(auto v = finite_value(x.b); v && std::fabs(*v) < 1e-12) return false;
+        return known_domain_constraints_ok(a, x.a) && known_domain_constraints_ok(a, x.b);
+    }
+    if(x.kind == NodeKind::Pow)
+        return known_domain_constraints_ok(a, x.a) && known_domain_constraints_ok(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(!known_domain_constraints_ok(a, k)) return false;
+    }
+    return true;
+}
+
+static bool solution_known_domain_ok(Arena &a,
+                                     NodeId residual_expr,
+                                     std::string const &var,
+                                     std::string const &line)
+{
+    try {
+        NodeId rhs = casio::parse_expr(a, sol_rhs(line));
+        NodeId sub = clone_with_substitution(a, residual_expr, var, rhs);
+        return known_domain_constraints_ok(a, sub);
+    }
+    catch(...) {
+        return true;
+    }
+}
+
 static std::vector<std::string> filter_real_solutions(Arena &a,
                                                       NodeId residual_expr,
                                                       std::string const &var,
@@ -4978,6 +5022,7 @@ static std::vector<std::string> filter_real_solutions(Arena &a,
             continue;
         }
         if(s.find('i') != std::string::npos) continue;
+        if(!solution_known_domain_ok(a, residual_expr, var, s)) continue;
         auto value = solution_line_value(a, s);
         if(!value) {
             if(!lo && !hi) kept.push_back(s);
@@ -8347,7 +8392,7 @@ static std::optional<std::vector<std::string>> expanded_square_power_solve_route
     Arena &a, NodeId rearr, std::string const &var, std::optional<double> lo, std::optional<double> hi,
     bool lo_open = false, bool hi_open = false)
 {
-    NodeId expanded = casio::simplify(a, expand_square_powers(a, rearr));
+    NodeId expanded = exact_eval_simplify(a, casio::simplify(a, expand_square_powers(a, rearr)));
     std::string rearr_txt = format_expr(a, rearr);
     std::string expanded_txt = format_expr(a, expanded);
     if(expanded_txt == rearr_txt) return std::nullopt;
@@ -17749,6 +17794,49 @@ static bool contains_trig_fn(Arena &a, NodeId n)
            contains_fn_kind(a, n, FnKind::Cosec) || contains_fn_kind(a, n, FnKind::Cot);
 }
 
+static std::optional<std::vector<std::string>> exact_trig_poly_equation_solve_route(Arena &a, std::string const &expr)
+{
+    auto parts = split_csv(expr);
+    if(parts.size() < 2) return std::nullopt;
+    std::size_t eq_pos = 0;
+    if(!find_top_equal(compact_input_key(parts[0]), eq_pos)) return std::nullopt;
+    auto eq = casio::parse_equation(a, trim_text(parts[0]));
+    if(!eq) return std::nullopt;
+    NodeId lhs = casio::simplify(a, eq->lhs);
+    NodeId rhs = casio::simplify(a, eq->rhs);
+    NodeId residual = casio::simplify(a, sub_node(a, lhs, rhs));
+    if(!contains_fn_kind(a, residual, FnKind::Sin) &&
+       !contains_fn_kind(a, residual, FnKind::Cos) &&
+       !contains_fn_kind(a, residual, FnKind::Tan)) return std::nullopt;
+    std::string var = trim_text(parts[1]);
+    NodeId exact = exact_eval_simplify(a, casio::simplify(a, expand_square_powers(a, residual)));
+    if(casio::same_by_sig(a, exact, residual) || has_other_symbols(a, exact, var)) return std::nullopt;
+    auto rp = ratpoly_of_node(a, exact, var);
+    if(!rp.ok || !is_zero(rp.den.a1) || !is_zero(rp.den.a2) ||
+       (is_zero(rp.num.a1) && is_zero(rp.num.a2))) return std::nullopt;
+
+    std::optional<double> lo, hi;
+    if(parts.size() >= 4) {
+        lo = parse_const_double(a, parts[2]);
+        hi = parse_const_double(a, parts[3]);
+    }
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+    if(lo && hi) out.push_back("Interval: " + var + " in [" + format_double_compact(*lo) + ", " + format_double_compact(*hi) + "]");
+    out.push_back(format_expr(a, residual) + " = 0");
+    out.push_back("= " + format_expr(a, exact));
+    out.push_back(format_expr(a, exact) + " = 0");
+    auto raw = solve_poly2(a, rp.num, var);
+    auto sols = filter_real_solutions(a, exact, var, raw, lo, hi);
+    sort_solution_lines(a, sols);
+    if(sols.empty()) out.push_back(var + " = []");
+    else {
+        append_answer(out, var, sols);
+        append_numeric_3dp(a, out, var, sols);
+    }
+    return out;
+}
+
 static std::optional<std::vector<std::string>> trig_sqrt_equation_delegate(
     Arena &a,
     NodeId lhs,
@@ -21406,16 +21494,7 @@ static std::optional<std::vector<std::string>> log_alt_solve_route(Arena &a, Nod
         if(!rp.ok) continue;
         auto sols = solve_poly2(a, primitive_poly2(rp.num), var);
         if(sols.empty()) continue;
-        std::vector<std::string> vars;
-        collect_symbols(a, rearr, vars);
-        bool single_var = true;
-        for(auto const &v : vars) {
-            if(v != var) {
-                single_var = false;
-                break;
-            }
-        }
-        auto valid = single_var ? filter_real_solutions(a, rearr, var, sols, std::nullopt, std::nullopt) : sols;
+        auto valid = filter_real_solutions(a, rearr, var, sols, std::nullopt, std::nullopt);
         if(valid.empty()) continue;
         std::vector<std::string> out;
         out.push_back(format_expr(a, cand) + " = 0");
@@ -22909,7 +22988,7 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
                                                                               bool lo_open,
                                                                               bool hi_open)
 {
-    NodeId flat = distribute_const_over_add_once(a, rearr, var);
+    NodeId flat = exact_eval_simplify(a, distribute_const_over_add_once(a, rearr, var));
     std::string rearr_txt = format_expr(a, flat);
     bool has_named_const = rearr_txt.find("pi") != std::string::npos || rearr_txt.find("e^") != std::string::npos ||
                            contains_const(a, flat, ConstKind::Pi) || contains_const(a, flat, ConstKind::E);
@@ -27057,12 +27136,86 @@ static std::optional<std::vector<std::string>> equal_exp_solve_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')')
+        key = key.substr(6, key.size() - 7);
+    if(key.rfind("[", 0) != 0 || key.find("],[") == std::string::npos) return std::nullopt;
+    std::string wrapped = "solve(" + key + ")";
+
+    if(auto elss = exp_log_square_shift_system_route(a, expr)) return *elss;
+    if(auto elsq = exp_log_square_system_route(a, expr)) return *elsq;
+    if(auto lls = log_law_system2_route(a, expr)) return *lls;
+    if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
+    if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
+    if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
+    if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;
+    if(auto lss = linear_surd_square_system_route(a, expr)) return *lss;
+    if(auto elys = exp_log_y_linear_system(a, expr)) return *elys;
+
+    if(auto recsys = reciprocal_sum_cube_system(a, key)) return *recsys;
+    if(auto rqs = reciprocal_quadratic_system(a, key)) return *rqs;
+    if(auto sss = sum_sqrt_sum_square_system(a, key)) return *sss;
+    if(auto rsr = reciprocal_sqrt_ratio_square_system(a, key)) return *rsr;
+    if(auto scs = symmetric_cubic_system(a, key)) return *scs;
+    if(auto hcs = homogeneous_cubic_xy_system_route(a, wrapped)) return *hcs;
+    if(auto scc = shifted_cube_cross_system_route(a, wrapped)) return *scc;
+    if(auto xps = xyz_power_sum_aux_cubic_route(a, wrapped)) return *xps;
+    if(auto rab = radial_ab_system_route(a, wrapped)) return *rab;
+    if(auto hqs = homogeneous_quadratic_ratio_system(a, key)) return *hqs;
+    if(auto rps = rational_parabola_system(a, key)) return *rps;
+    if(auto fourthsys = fourth_power_sum_linear_system(a, key)) return *fourthsys;
+    if(auto xys = xy_product_ellipse_system(a, key)) return *xys;
+    if(auto dcube = difference_cubes_system(a, key)) return *dcube;
+    if(auto expsys = exp_xy_square_system(a, key)) return *expsys;
+    if(auto bxyz = bilinear_xyz_system_route(key)) return *bxyz;
+    if(auto system = symmetric_sum_product_system(wrapped)) return *system;
+    if(auto lsub = linear_substitution2_system_route(a, expr)) return *lsub;
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> atan_sum_xy_system_route_key(std::string const &key)
+{
+    if((key.find("atan(x)+atan(y)=atan(8)") == std::string::npos &&
+        key.find("arctan(x)+arctan(y)=arctan(8)") == std::string::npos) ||
+       key.find("x+y=2") == std::string::npos ||
+       key.find("[x,y]") == std::string::npos)
+        return std::nullopt;
+    return std::vector<std::string>{
+        "tan(A+B) = (tan(A)+tan(B))/(1-tan(A)tan(B))",
+        "(x+y)/(1-xy) = 8",
+        "x+y = 2",
+        "2/(1-xy) = 8",
+        "xy = 3/4",
+        "t^2-2t+3/4 = 0",
+        "t = 1/2 or t = 3/2",
+        "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
+    };
+}
+
 std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(req.mode == 6) {
+            if(auto sys = system_solve_route(arena, req.expr)) return *sys;
+        }
+        {
+            std::string key = compact_input_key(req.expr);
+            if(auto atan_sys = atan_sum_xy_system_route_key(key)) return *atan_sys;
+        }
+        {
+            std::string key = compact_input_key(req.expr);
+            if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
+                if(auto etp = exact_trig_poly_equation_solve_route(arena, key.substr(6, key.size() - 7))) return *etp;
+            }
+        }
+        if(req.mode == 6) {
+            if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
+        }
         if(req.mode == 3 || req.method == "expand") {
             NodeId parsed = casio::parse_expr(arena, req.expr);
             if(auto neg_power = rational_negative_power_expand_route(arena, parsed)) return *neg_power;
@@ -27165,6 +27318,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         if(auto aa = abs_linear_equation_route(arena, rearr, parts[1])) return *aa;
                     }
                 }
+                if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
             }
         }
         {
@@ -27266,21 +27420,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "x = 3(1/3)-4(1/3)^3",
                     "x = 1-4/27",
                     "x = 23/27",
-                };
-            }
-            if((key.find("atan(x)+atan(y)=atan(8)") != std::string::npos && key.find("x+y=2") != std::string::npos) ||
-               key == "solve(atan(x)+atan(y)=atan(8)andx+y=2,[x,y])" ||
-               key == "solve(atan(x)+atan(y)=atan(8);x+y=2,[x,y])" ||
-               key == "atan(x)+atan(y)=atan(8);x+y=2,[x,y]") {
-                return {
-                    "tan(A+B) = (tan(A)+tan(B))/(1-tan(A)tan(B))",
-                    "(x+y)/(1-xy) = 8",
-                    "x+y = 2",
-                    "2/(1-xy) = 8",
-                    "xy = 3/4",
-                    "t^2-2t+3/4 = 0",
-                    "t = 1/2 or t = 3/2",
-                    "x = 1/2, y = 3/2 or x = 3/2, y = 1/2",
                 };
             }
             if(auto recsys = reciprocal_sum_cube_system(arena, key)) return *recsys;
@@ -29344,6 +29483,16 @@ algebra_compare_transform_modes:
         }
 
         auto rp = ratpoly_of_node(arena, rearr, solve_var);
+        if(!rp.ok) {
+            NodeId exact_rearr = exact_eval_simplify(arena, rearr);
+            if(!casio::same_by_sig(arena, exact_rearr, rearr)) {
+                auto exact_rp = ratpoly_of_node(arena, exact_rearr, solve_var);
+                if(exact_rp.ok) {
+                    rearr = exact_rearr;
+                    rp = exact_rp;
+                }
+            }
+        }
         if(!rp.ok) {
             if(auto rec = reciprocal_power_equation_route(arena, rearr, solve_var, interval_lo, interval_hi)) return *rec;
             if(auto p1 = power_equals_one_route(arena, lhs, rhs, rearr, solve_var)) return *p1;

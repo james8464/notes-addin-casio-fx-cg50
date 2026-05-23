@@ -520,6 +520,39 @@ int main(int argc, char **argv)
                     }
                     return false;
                 };
+                auto has_var_token = [](std::string const &s, std::string const &v) {
+                    for(std::size_t i = 0; i < s.size();) {
+                        if(std::isalnum((unsigned char)s[i]) || s[i] == '_') {
+                            std::size_t j = i + 1;
+                            while(j < s.size() && (std::isalnum((unsigned char)s[j]) || s[j] == '_')) ++j;
+                            if(s.substr(i, j - i) == v) return true;
+                            i = j;
+                        }
+                        else ++i;
+                    }
+                    return false;
+                };
+                auto trig_uses_var = [&](std::string const &s, std::string const &v) {
+                    for(char const *k : {"sin(", "cos(", "tan(", "sec(", "cosec(", "csc(", "cot("}) {
+                        std::string needle(k);
+                        for(std::size_t pos = s.find(needle); pos != std::string::npos; pos = s.find(needle, pos + 1)) {
+                            if(pos != 0) {
+                                unsigned char prev = static_cast<unsigned char>(s[pos - 1]);
+                                if(std::isalpha(prev) || prev == '_') continue;
+                            }
+                            std::size_t i = pos + needle.size();
+                            int depth = 1;
+                            for(std::size_t j = i; j < s.size(); ++j) {
+                                if(s[j] == '(') ++depth;
+                                else if(s[j] == ')' && --depth == 0) {
+                                    if(has_var_token(s.substr(i, j - i), v)) return true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return false;
+                };
                 auto parts = split_top_csv(inner);
                 auto sqrt_trig_equation = [&]() {
                     auto eq = parts.empty() ? std::string::npos : parts[0].find('=');
@@ -530,12 +563,14 @@ int main(int argc, char **argv)
                            (r.rfind("sqrt(", 0) == 0 && has_trig(r));
                 }();
                 bool alg_var = false;
+                std::string solve_var = "x";
                 if(parts.size() >= 2) {
                     std::string v = trim(parts[1]);
                     bool interval_arg = v.find('=') != std::string::npos || v.find("..") != std::string::npos;
+                    if(!interval_arg && !v.empty()) solve_var = v;
                     alg_var = !interval_arg && !(v == "x" || v == "t" || v == "theta");
                 }
-                if(has_trig(inner) && !alg_var && !sqrt_trig_equation) {
+                if(has_trig(inner) && trig_uses_var(parts.empty() ? inner : parts[0], solve_var) && !alg_var && !sqrt_trig_equation) {
                     std::string trig_expr = inner;
                     if(parts.size() >= 2) {
                         auto eq = parts[1].find('=');

@@ -200,7 +200,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q3 log equation",
         ["--alg", "solve(log(3,12*y+5)-log(3,1-3*y)=2,y)"],
-        ["Domain: 12*y + 5 > 0", "(12*y + 5)/(- 3*y + 1) - 9 = 0", "y = [4/39]"],
+        ["Domain: 12*y + 5 > 0", "(12*y + 5)/(- 3*y + 1) = 9", "y = [4/39]"],
         ["ERR:", "y = []"],
     ),
     (
@@ -644,7 +644,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2023 Q11 tank coefficient",
         ["--alg", "solve((81/25)^(3/2)=8*K+(36/25)^(3/2),K,method=linear)"],
-        ["K = 0.513", "K = [0.513]"],
+        ["K = 513/1000", "K = [513/1000]", "K ~= 0.513"],
         ["ERR:"],
     ),
     (
