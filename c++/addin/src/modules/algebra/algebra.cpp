@@ -10960,6 +10960,79 @@ static std::string flip_relop(std::string op)
     return op;
 }
 
+static std::optional<std::vector<std::string>> exponential_inequality_route(Arena &a, std::string expr)
+{
+    std::string key = compact_input_key(expr);
+    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')')
+        key = key.substr(6, key.size() - 7);
+    auto args = split_top_key(key, ',');
+    if(args.size() < 2 || args[1].empty()) return std::nullopt;
+    std::string rel = args[0], var = args[1];
+    std::size_t pos = 0;
+    std::string op;
+    if(!find_top_rel(rel, pos, op)) return std::nullopt;
+    if(op == "=") return std::nullopt;
+    std::string lhs_s = rel.substr(0, pos);
+    std::string rhs_s = rel.substr(pos + op.size());
+
+    auto parse_side = [&](NodeId side, NodeId other, std::string relop) -> std::optional<std::vector<std::string>> {
+        Rational coeff{1, 1};
+        NodeId body = side;
+        bool has_body = true;
+        if(!split_coeff_body(a, side, coeff, body, has_body) || !has_body || coeff.num <= 0) return std::nullopt;
+        Node const &pown = a.get(body);
+        if(pown.kind != NodeKind::Pow) return std::nullopt;
+        auto base = as_num(a, exact_eval_simplify(a, pown.a));
+        if(!base || base->num <= 0 || base->den <= 0 || base->num == base->den) return std::nullopt;
+        auto exp_poly = poly_of(a, pown.b, var);
+        if(!exp_poly || !exp_poly->ok || !is_zero(exp_poly->a2) || is_zero(exp_poly->a1)) return std::nullopt;
+        auto other_num = as_num(a, exact_eval_simplify(a, other));
+        if(!other_num) return std::nullopt;
+        Rational target = r_div(*other_num, coeff);
+        if(target.num <= 0 || target.den <= 0) return std::nullopt;
+
+        std::string base_txt = format_expr(a, a.num(*base));
+        std::string target_txt = format_expr(a, a.num(target));
+        NodeId log_ratio = exact_eval_simplify(a, casio::div(a, casio::fn(a, "ln", a.num(target)), casio::fn(a, "ln", a.num(*base))));
+        std::string after_log = r_cmp(*base, Rational{1, 1}) > 0 ? relop : flip_relop(relop);
+        std::string final_op = exp_poly->a1.num > 0 ? after_log : flip_relop(after_log);
+        NodeId bound = exact_eval_simplify(a, casio::div(a, casio::add(a, {log_ratio, neg_node(a, a.num(exp_poly->a0))}), a.num(exp_poly->a1)));
+        std::string exp_txt = format_expr(a, pown.b);
+        std::string bound_txt = format_expr(a, bound);
+        std::string base_pow = base->den == 1 ? base_txt : "(" + base_txt + ")";
+        auto mul_arg = [](std::string s) {
+            return s.find('+') != std::string::npos || s.find(" - ") != std::string::npos || (!s.empty() && s[0] == '-')
+                ? "(" + s + ")" : s;
+        };
+
+        std::vector<std::string> out;
+        out.push_back(format_expr(a, side) + " " + relop + " " + format_expr(a, other));
+        if(coeff.num != coeff.den) out.push_back(format_expr(a, body) + " " + relop + " " + target_txt);
+        out.push_back(base_pow + "^(" + exp_txt + ") " + relop + " " + target_txt);
+        out.push_back(r_cmp(*base, Rational{1, 1}) > 0 ? "ln(" + base_txt + ") > 0" : "ln(" + base_txt + ") < 0, reverse inequality");
+        out.push_back(mul_arg(exp_txt) + "*ln(" + base_txt + ") " + relop + " ln(" + target_txt + ")");
+        out.push_back(exp_txt + " " + after_log + " " + format_expr(a, log_ratio));
+        out.push_back(var + " " + final_op + " " + bound_txt);
+        if(auto bv = eval_node_env(a, bound, {}); var == "n" && bv && std::isfinite(*bv)) {
+            constexpr double eps = 1e-9;
+            if(final_op == "<" || final_op == "<=") {
+                long long k = final_op == "<" ? (long long)std::ceil(*bv - eps) - 1 : (long long)std::floor(*bv + eps);
+                out.push_back("n integer => n <= " + std::to_string(k));
+            }
+            else if(final_op == ">" || final_op == ">=") {
+                long long k = final_op == ">" ? (long long)std::floor(*bv + eps) + 1 : (long long)std::ceil(*bv - eps);
+                out.push_back("n integer => n >= " + std::to_string(k));
+            }
+        }
+        return out;
+    };
+
+    NodeId lhs = casio::parse_expr(a, lhs_s);
+    NodeId rhs = casio::parse_expr(a, rhs_s);
+    if(auto r = parse_side(lhs, rhs, op)) return r;
+    return parse_side(rhs, lhs, flip_relop(op));
+}
+
 static std::optional<std::vector<std::string>> symbolic_linear_inequality_route(Arena &a, std::string expr)
 {
     std::string key = compact_input_key(expr);
@@ -26913,6 +26986,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(auto ae = abs_exp_affine_equation_route(arena, top_parts[0])) return *ae;
             }
             if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
+                if(auto ei = exponential_inequality_route(arena, req.expr)) return *ei;
                 if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
                 if(auto sli = symbolic_linear_inequality_route(arena, req.expr)) return *sli;
                 if(auto ri = rational_inequality_route(arena, top_parts.size() >= 4 ? req.expr : top_parts[0])) return *ri;
@@ -26920,6 +26994,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
             if(auto ae = abs_exp_affine_equation_route(arena, req.expr)) return *ae;
             if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
+                if(auto ei = exponential_inequality_route(arena, req.expr)) return *ei;
                 if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
                 if(auto sli = symbolic_linear_inequality_route(arena, req.expr)) return *sli;
                 if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
