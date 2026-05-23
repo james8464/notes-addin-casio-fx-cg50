@@ -14531,6 +14531,11 @@ static MultiSurd add_multi_surd(MultiSurd a0, MultiSurd b0)
     return norm_multi_surd(a0);
 }
 
+static MultiSurd sub_multi_surd(MultiSurd a0, MultiSurd b0)
+{
+    return add_multi_surd(a0, neg_multi_surd(b0));
+}
+
 static std::optional<MultiSurd> mul_multi_surd(MultiSurd a0, MultiSurd b0)
 {
     MultiSurd out;
@@ -14567,26 +14572,53 @@ static std::optional<MultiSurd> multi_surd_conjugate(MultiSurd den)
     return norm_multi_surd(conj);
 }
 
+static std::optional<MultiSurd> reducing_multi_surd_conjugate(MultiSurd den)
+{
+    den = norm_multi_surd(den);
+    if(auto c = multi_surd_conjugate(den)) return c;
+    if(den.terms.size() < 3 || den.terms.size() > 4) return std::nullopt;
+    std::size_t n = den.terms.size();
+    std::size_t limit = std::size_t{1} << n;
+    for(std::size_t mask = 1; mask + 1 < limit; ++mask) {
+        MultiSurd a0, b0;
+        for(std::size_t i = 0; i < n; ++i) {
+            if(mask & (std::size_t{1} << i)) a0.terms.push_back(den.terms[i]);
+            else b0.terms.push_back(den.terms[i]);
+        }
+        a0 = norm_multi_surd(a0);
+        b0 = norm_multi_surd(b0);
+        MultiSurd conj = sub_multi_surd(a0, b0);
+        auto prod = mul_multi_surd(den, conj);
+        if(prod && !prod->terms.empty() && prod->terms.size() < den.terms.size())
+            return norm_multi_surd(conj);
+    }
+    return std::nullopt;
+}
+
 static std::optional<MultiSurd> div_multi_surd(MultiSurd top, MultiSurd bot)
 {
     top = norm_multi_surd(top);
     bot = norm_multi_surd(bot);
     if(bot.terms.empty()) return std::nullopt;
-    if(bot.terms.size() == 1 && bot.terms[0].first == 1) {
-        Rational d = bot.terms[0].second;
-        if(d.num == 0) return std::nullopt;
-        for(auto &t : top.terms) t.second = r_div(t.second, d);
-        return norm_multi_surd(top);
+    MultiSurd cur_top = top;
+    MultiSurd cur_bot = bot;
+    for(int step = 0; step < 4; ++step) {
+        cur_bot = norm_multi_surd(cur_bot);
+        if(cur_bot.terms.size() == 1 && cur_bot.terms[0].first == 1) {
+            Rational d = cur_bot.terms[0].second;
+            if(d.num == 0) return std::nullopt;
+            for(auto &t : cur_top.terms) t.second = r_div(t.second, d);
+            return norm_multi_surd(cur_top);
+        }
+        auto conj = reducing_multi_surd_conjugate(cur_bot);
+        if(!conj) return std::nullopt;
+        auto num = mul_multi_surd(cur_top, *conj);
+        auto den = mul_multi_surd(cur_bot, *conj);
+        if(!num || !den) return std::nullopt;
+        cur_top = *num;
+        cur_bot = *den;
     }
-    auto conj = multi_surd_conjugate(bot);
-    if(!conj) return std::nullopt;
-    auto num = mul_multi_surd(top, *conj);
-    auto den = mul_multi_surd(bot, *conj);
-    if(!num || !den || den->terms.size() != 1 || den->terms[0].first != 1) return std::nullopt;
-    Rational d = den->terms[0].second;
-    if(d.num == 0) return std::nullopt;
-    for(auto &t : num->terms) t.second = r_div(t.second, d);
-    return norm_multi_surd(*num);
+    return std::nullopt;
 }
 
 static std::optional<MultiSurd> eval_multi_surd(Arena &a, NodeId n)
@@ -14665,6 +14697,7 @@ static std::string multi_surd_text(Arena &a, MultiSurd m)
 
 struct MultiSurdWork
 {
+    std::vector<std::string> lines;
     std::string setup;
     std::string expanded;
     std::string simplified;
@@ -14703,18 +14736,38 @@ static std::optional<MultiSurdWork> rationalise_multi_surd_div(Arena &a, NodeId 
     auto bot = eval_multi_surd(a, x.b);
     auto top = top0 ? mul_multi_surd(prefix, *top0) : std::optional<MultiSurd>{};
     if(!top || !bot) return std::nullopt;
-    auto conj = multi_surd_conjugate(*bot);
-    if(!conj) return std::nullopt;
-    auto num = mul_multi_surd(*top, *conj);
-    auto den = mul_multi_surd(*bot, *conj);
     auto val = div_multi_surd(*top, *bot);
-    if(!num || !den || !val || den->terms.size() != 1 || den->terms[0].first != 1) return std::nullopt;
+    if(!val) return std::nullopt;
     MultiSurdWork w;
-    std::string c = multi_surd_text(a, *conj);
     std::string top_txt = wrapped ? multi_surd_text(a, *top) : format_expr(a, x.a);
-    w.setup = paren_math(top_txt) + "*" + paren_math(c) + "/" +
-              paren_math(paren_math(format_expr(a, x.b)) + "*" + paren_math(c));
-    w.expanded = paren_math(multi_surd_text(a, *num)) + "/" + multi_surd_text(a, *den);
+    std::string den_txt = format_expr(a, x.b);
+    MultiSurd cur_top = *top;
+    MultiSurd cur_den = *bot;
+    for(int step = 0; step < 4; ++step) {
+        cur_den = norm_multi_surd(cur_den);
+        if(cur_den.terms.size() == 1 && cur_den.terms[0].first == 1) break;
+        auto conj = reducing_multi_surd_conjugate(cur_den);
+        if(!conj) return std::nullopt;
+        auto num = mul_multi_surd(cur_top, *conj);
+        auto den = mul_multi_surd(cur_den, *conj);
+        if(!num || !den) return std::nullopt;
+        std::string c = multi_surd_text(a, *conj);
+        std::string setup = paren_math(top_txt) + "*" + paren_math(c) + "/" +
+                            paren_math(paren_math(den_txt) + "*" + paren_math(c));
+        std::string expanded = paren_math(multi_surd_text(a, *num)) + "/" +
+                               paren_math(multi_surd_text(a, *den));
+        if(w.lines.empty()) w.setup = setup;
+        w.expanded = expanded;
+        push_unique(w.lines, "= " + setup);
+        push_unique(w.lines, "= " + expanded);
+        cur_top = *num;
+        cur_den = *den;
+        top_txt = multi_surd_text(a, cur_top);
+        den_txt = multi_surd_text(a, cur_den);
+    }
+    cur_den = norm_multi_surd(cur_den);
+    if(cur_den.terms.size() != 1 || cur_den.terms[0].first != 1 || cur_den.terms[0].second.num == 0)
+        return std::nullopt;
     w.simplified = multi_surd_text(a, *val);
     w.value = *val;
     w.rationalised = true;
@@ -14741,8 +14794,14 @@ static std::optional<std::vector<std::string>> multi_surd_expression_route(Arena
         for(NodeId k : x.kids) {
             std::string kraw = format_expr(a, k);
             if(auto w = rationalise_multi_surd_div(a, k)) {
-                push_unique(out, kraw + " = " + w->setup);
-                push_unique(out, "= " + w->expanded);
+                push_unique(out, kraw);
+                if(!w->lines.empty()) {
+                    for(auto const &line : w->lines) push_unique(out, line);
+                }
+                else {
+                    push_unique(out, "= " + w->setup);
+                    push_unique(out, "= " + w->expanded);
+                }
                 push_unique(out, "= " + w->simplified);
                 pieces.push_back(w->simplified);
                 rationalised = true;
@@ -14753,13 +14812,161 @@ static std::optional<std::vector<std::string>> multi_surd_expression_route(Arena
             }
         }
     } else if(auto w = rationalise_multi_surd_div(a, parsed)) {
-        push_unique(out, "= " + w->setup);
-        push_unique(out, "= " + w->expanded);
+        if(!w->lines.empty()) {
+            for(auto const &line : w->lines) push_unique(out, line);
+        }
+        else {
+            push_unique(out, "= " + w->setup);
+            push_unique(out, "= " + w->expanded);
+        }
         push_unique(out, "= " + w->simplified);
         rationalised = true;
     }
     if(!rationalised) return std::vector<std::string>{raw, "= " + ans, ans};
     if(!pieces.empty()) push_unique(out, "= " + join_math_terms(pieces));
+    push_unique(out, "= " + ans);
+    push_unique(out, ans);
+    return out;
+}
+
+static bool cube_root_power_factor(Arena &a, NodeId n, Rational &coef, Rational &rad)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coef = r_mul(coef, x.num);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!cube_root_power_factor(a, k, coef, rad)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        Rational c1{1, 1}, r1{1, 1}, c2{1, 1}, r2{1, 1};
+        if(!cube_root_power_factor(a, x.a, c1, r1) || !cube_root_power_factor(a, x.b, c2, r2)) return false;
+        if(c2.num == 0 || r2.num == 0) return false;
+        coef = r_mul(coef, r_div(c1, c2));
+        rad = r_mul(rad, r_div(r1, r2));
+        return true;
+    }
+    if(x.kind != NodeKind::Pow) return false;
+    NodeId base_id = exact_eval_simplify(a, x.a);
+    Node const &base = a.get(base_id);
+    Node const &expo = a.get(x.b);
+    if(base.kind != NodeKind::Num || expo.kind != NodeKind::Num || base.num.num <= 0 || base.num.den <= 0) return false;
+    if(expo.num.den == 1) {
+        if(std::llabs(expo.num.num) > 12) return false;
+        coef = r_mul(coef, r_pow_int(base.num, static_cast<int>(expo.num.num)));
+        return true;
+    }
+    if(expo.num.den != 3 || std::llabs(expo.num.num) > 9) return false;
+    Rational q = rat_pow_i(base.num, std::llabs(expo.num.num));
+    if(expo.num.num < 0) q = r_div(Rational{1, 1}, q);
+    rad = r_mul(rad, q);
+    return true;
+}
+
+static std::optional<std::pair<Rational, long long>> cube_root_rational_parts(Rational r)
+{
+    r.normalize();
+    if(r.num == 0) return std::make_pair(Rational{0, 1}, 1LL);
+    bool neg = r.num < 0;
+    Rational q{neg ? -r.num : r.num, r.den};
+    q.normalize();
+    if(q.den <= 0 || q.num > 1000000LL || q.den > 1000000LL) return std::nullopt;
+    if(q.num > 1000000000LL / q.den || q.num * q.den > 1000000000LL / q.den) return std::nullopt;
+    long long n = q.num * q.den * q.den;
+    long long outside = 1;
+    for(long long k = 2; k * k * k <= n; ++k) {
+        long long c = k * k * k;
+        while(n % c == 0) {
+            outside *= k;
+            n /= c;
+        }
+    }
+    Rational coef{neg ? -outside : outside, q.den};
+    coef.normalize();
+    return std::make_pair(coef, n);
+}
+
+static std::string cube_root_unit_text(long long rad)
+{
+    return rad == 1 ? "1" : std::to_string(rad) + "^(1/3)";
+}
+
+static std::string cube_root_rational_unit_text(Rational r)
+{
+    r.normalize();
+    if(r.den == 1) return std::to_string(r.num) + "^(1/3)";
+    return "(" + format_rat_plain(r) + ")^(1/3)";
+}
+
+static std::string multiply_cube_text(Rational c, std::string const &unit)
+{
+    c.normalize();
+    if(unit == "1") return format_rat_plain(c);
+    if(c.num == c.den) return unit;
+    if(c.num == -c.den) return "-" + unit;
+    return format_rat_plain(c) + "*" + unit;
+}
+
+static std::string join_signed_text(std::vector<std::string> const &terms)
+{
+    std::string out;
+    for(auto term : terms) append_signed_math(out, term);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> cube_root_power_sum_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    if(has_symbols(a, parsed)) return std::nullopt;
+    std::vector<NodeId> terms;
+    Node const &s = a.get(simplified);
+    if(s.kind == NodeKind::Add) terms = s.kids;
+    else terms.push_back(simplified);
+    if(terms.empty() || terms.size() > 8) return std::nullopt;
+
+    std::vector<std::string> raw_terms, factor_terms, simple_terms;
+    std::map<long long, Rational> sums;
+    bool saw_cube = false;
+    for(NodeId t : terms) {
+        Rational coef{1, 1}, rad{1, 1};
+        if(!cube_root_power_factor(a, t, coef, rad)) return std::nullopt;
+        coef.normalize();
+        rad.normalize();
+        if(rad.num == 0) {
+            raw_terms.push_back("0");
+            factor_terms.push_back("0");
+            simple_terms.push_back("0");
+            continue;
+        }
+        if(rad.num != rad.den) saw_cube = true;
+        auto part = cube_root_rational_parts(rad);
+        if(!part) return std::nullopt;
+        Rational root_coef = part->first;
+        long long inner = part->second;
+        Rational final_coef = r_mul(coef, root_coef);
+        std::string root_unit = cube_root_unit_text(inner);
+        raw_terms.push_back(multiply_cube_text(coef, cube_root_rational_unit_text(rad)));
+        factor_terms.push_back(multiply_cube_text(coef, multiply_cube_text(root_coef, root_unit)));
+        simple_terms.push_back(multiply_cube_text(final_coef, root_unit));
+        sums[inner] = r_add(sums[inner], final_coef);
+    }
+    if(!saw_cube) return std::nullopt;
+
+    std::vector<std::string> final_terms;
+    for(auto const &kv : sums) {
+        if(kv.second.num == 0) continue;
+        final_terms.push_back(multiply_cube_text(kv.second, cube_root_unit_text(kv.first)));
+    }
+    if(final_terms.empty()) final_terms.push_back("0");
+    std::string ans = join_signed_text(final_terms);
+    std::string raw = format_expr(a, parsed);
+    if(compact_input_key(raw) == compact_input_key(ans)) return std::nullopt;
+    std::vector<std::string> out{raw};
+    push_unique(out, "= " + join_signed_text(raw_terms));
+    push_unique(out, "= " + join_signed_text(factor_terms));
+    push_unique(out, "= " + join_signed_text(simple_terms));
     push_unique(out, "= " + ans);
     push_unique(out, ans);
     return out;
@@ -28156,6 +28363,7 @@ algebra_compare_transform_modes:
             auto n_text = simplify_log_exp_text(arena, n);
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
             if(auto idx_text = numeric_negative_index_sum_text_route(req.expr, format_expr(arena, n))) return *idx_text;
+            if(auto cube = cube_root_power_sum_route(arena, parsed, n)) return *cube;
             if(auto idx = numeric_index_power_route(arena, parsed, n)) return *idx;
             if(auto idx_sum = numeric_negative_index_sum_route(arena, parsed, n)) return *idx_sum;
             if(auto surd = simple_surd_expression_route(arena, parsed)) return *surd;
