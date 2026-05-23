@@ -20142,10 +20142,30 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
         }
     }
     ans = exact_eval_simplify(a, cancel_common_denominator_factor(a, ans));
+    std::string ans_text = format_expr(a, ans);
+    std::vector<std::string> ans_work;
+    if(contains_fn_kind(a, ans, FnKind::Sqrt)) {
+        auto sw = simple_surd_expression_route(a, ans);
+        if(!sw) sw = multi_surd_expression_route(a, ans);
+        if(sw && !sw->empty()) {
+            std::string final = sw->back();
+            if(!final.empty() && compact_input_key(final) != compact_input_key(ans_text)) {
+                ans_work = *sw;
+                ans_text = final;
+            }
+        }
+    }
     std::vector<std::string> out;
     out.push_back(format_expr(a, rearr) + " = 0");
     out.push_back(format_expr(a, lin->m) + " != 0");
-    out.push_back(var + " = " + format_expr(a, ans));
+    if(ans_work.empty()) {
+        out.push_back(var + " = " + ans_text);
+    }
+    else {
+        out.push_back(var + " = " + ans_work.front());
+        for(std::size_t i = 1; i + 1 < ans_work.size(); ++i) out.push_back(ans_work[i]);
+        out.push_back(var + " = " + ans_text);
+    }
     return out;
 }
 

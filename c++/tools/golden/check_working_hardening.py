@@ -1351,6 +1351,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["dy/dx = ((7*e^(x)", "Traceback"],
     ),
     (
+        "derive",
+        "4*x*sqrt(x)-25/16*x^2,x",
+        ["4*x*sqrt(x) - 25/16*x^2 = 4*x^(3/2) - 25/16*x^2", "d/dx(4*x^(3/2)) = 6*sqrt(x)", "dy/dx = 6*sqrt(x) - 25/8*x"],
+        ["4*sqrt(x) + 4*x*1/(2*sqrt(x))", "Traceback"],
+    ),
+    (
+        "alg",
+        "solve(z*sqrt(8)-6=2*z/sqrt(2),z)",
+        ["z = 6/(sqrt(8) + -2/sqrt(2))", "= 3*sqrt(2)", "z = 3*sqrt(2)"],
+        ["z = [6/(sqrt(8)", "Traceback"],
+    ),
+    (
         "int",
         "sin((x)^2-pi/4)^2+cos((x)^2-pi/4)^2",
         ["Use identity sin(u)^2 + cos(u)^2 = 1", "Answer: x + C"],

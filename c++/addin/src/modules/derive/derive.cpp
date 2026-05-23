@@ -767,6 +767,60 @@ static std::string clean_math_text(std::string s)
     replace_all("--", "");
     replace_all("+ -", "- ");
     replace_all("- -", "+ ");
+    auto compact_coeff = [](std::string c) {
+        c.erase(std::remove_if(c.begin(), c.end(), [](unsigned char ch) { return std::isspace(ch); }), c.end());
+        return c;
+    };
+    auto rewrite_power = [&](std::string const &power, auto make_repl) {
+        std::size_t pos = 0;
+        while((pos = s.find(power, pos)) != std::string::npos) {
+            std::size_t var_end = pos;
+            std::size_t var_start = var_end;
+            while(var_start > 0) {
+                unsigned char ch = static_cast<unsigned char>(s[var_start - 1]);
+                if(!std::isalnum(ch) && s[var_start - 1] != '_') break;
+                --var_start;
+            }
+            if(var_start == var_end) {
+                pos += power.size();
+                continue;
+            }
+            std::string var = s.substr(var_start, var_end - var_start);
+            std::size_t repl_start = var_start;
+            std::string coeff;
+            std::size_t p = var_start;
+            while(p > 0 && std::isspace(static_cast<unsigned char>(s[p - 1]))) --p;
+            if(p > 0 && s[p - 1] == '*') {
+                std::size_t coeff_end = p - 1;
+                std::size_t coeff_start = coeff_end;
+                while(coeff_start > 0) {
+                    char ch = s[coeff_start - 1];
+                    if(!(std::isdigit(static_cast<unsigned char>(ch)) || ch == '/' || std::isspace(static_cast<unsigned char>(ch)))) break;
+                    --coeff_start;
+                }
+                if(coeff_start > 0 && s[coeff_start - 1] == '-') --coeff_start;
+                coeff = compact_coeff(s.substr(coeff_start, coeff_end - coeff_start));
+                if(!coeff.empty()) repl_start = coeff_start;
+            }
+            std::string repl = make_repl(coeff, var);
+            s.replace(repl_start, pos + power.size() - repl_start, repl);
+            pos = repl_start + repl.size();
+        }
+    };
+    rewrite_power("^(-1/2)", [](std::string const &coeff, std::string const &var) {
+        if(coeff.empty()) return "1/sqrt(" + var + ")";
+        if(coeff == "1/2") return "1/(2*sqrt(" + var + "))";
+        if(coeff == "-1/2") return "-1/(2*sqrt(" + var + "))";
+        auto slash = coeff.find('/');
+        if(slash != std::string::npos)
+            return coeff.substr(0, slash) + "/(" + coeff.substr(slash + 1) + "*sqrt(" + var + "))";
+        return coeff + "/sqrt(" + var + ")";
+    });
+    rewrite_power("^(-3/2)", [](std::string const &coeff, std::string const &var) {
+        std::string body = "sqrt(" + var + ")^-3";
+        if(coeff.empty()) return body;
+        return coeff + "*" + body;
+    });
     return s;
 }
 
@@ -2052,6 +2106,89 @@ static std::optional<std::pair<Rational, int>> monomial_var_power(Arena &a, Node
         }
     }
     return power ? std::optional<std::pair<Rational, int>>{{c, power}} : std::nullopt;
+}
+
+static NodeId monomial_half_power_node(Arena &a, Rational coef, Rational power, std::string const &var)
+{
+    NodeId body = a.sym(var);
+    if(!(power.num == power.den))
+        body = casio::power(a, body, a.num(power));
+    if(rat_is_one(coef)) return body;
+    if(rat_is_minus_one(coef)) return casio::neg(a, body);
+    return casio::mul(a, {a.num(coef), body});
+}
+
+static bool half_power_factor(Arena &a, NodeId n, std::string const &var, Rational &power)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == var) {
+        power = Rational{1, 1};
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &arg = a.get(x.a);
+        if(arg.kind == NodeKind::Sym && arg.text == var) {
+            power = Rational{1, 2};
+            return true;
+        }
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && e) {
+            power = *e;
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::optional<NodeId> sqrt_var_product_to_power(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    Rational coef{1, 1};
+    Rational power{0, 1};
+    bool saw_sqrt = false;
+    bool saw_var = false;
+
+    auto factor = [&](NodeId k) -> bool {
+        if(auto q = as_num(a, k)) {
+            coef = rat_mul_local(coef, *q);
+            return true;
+        }
+        Node const &f = a.get(k);
+        if(f.kind == NodeKind::Fn && f.fkind == FnKind::Sqrt) saw_sqrt = true;
+        Rational p{0, 1};
+        if(!half_power_factor(a, k, var, p)) return false;
+        saw_var = true;
+        power = rat_add_local(power, p);
+        return true;
+    };
+
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!factor(k)) return std::nullopt;
+    }
+    else if(!factor(n)) return std::nullopt;
+
+    if(!saw_var || !saw_sqrt) return std::nullopt;
+    return casio::simplify(a, monomial_half_power_node(a, coef, power, var));
+}
+
+static NodeId rewrite_sqrt_var_products(Arena &a, NodeId n, std::string const &var, bool &changed)
+{
+    if(auto m = sqrt_var_product_to_power(a, n, var)) {
+        changed = true;
+        return *m;
+    }
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(rewrite_sqrt_var_products(a, k, var, changed));
+        return casio::simplify(a, x.kind == NodeKind::Add ? a.add(std::move(kids)) : a.mul(std::move(kids)));
+    }
+    return n;
 }
 
 struct SqrtQuotParts
@@ -4173,6 +4310,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
             NodeId d1 = casio::simplify(arena, diff(arena, n, var));
+            bool sqrt_power_rewrite = false;
+            NodeId rewritten_n = rewrite_sqrt_var_products(arena, n, var, sqrt_power_rewrite);
+            if(sqrt_power_rewrite) {
+                n = rewritten_n;
+                d1 = casio::simplify(arena, diff(arena, n, var));
+            }
             {
                 std::string key = casio::normalize_text(expr);
                 std::string compact;
@@ -4214,6 +4357,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             {
                 std::string shown_y = clean_math_text(format_expr_human(arena, n));
+                if(sqrt_power_rewrite) {
+                    std::string raw_y = clean_math_text(format_expr_human(arena, parsed));
+                    if(raw_y != shown_y) steps.push_back(raw_y + " = " + shown_y + ".");
+                }
                 if(!shown_y.empty() && shown_y.size() <= 140) steps.push_back("y = " + shown_y + ".");
             }
             if(req.mode == 4) {

@@ -701,7 +701,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q5 acceleration i component",
         ["--derive", "3*t^(1/2),t"],
-        ["dy/dt = 3/2*t^(-1/2)"],
+        ["dy/dt = 3/(2*sqrt(t))"],
         ["ERR:"],
     ),
     (
