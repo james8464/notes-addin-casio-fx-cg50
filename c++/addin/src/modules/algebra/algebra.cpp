@@ -13834,6 +13834,16 @@ static SimpleSurd pure_surd_term(Rational c, long long rad)
     return fold_simple_surd(SimpleSurd{Rational{0, 1}, r_mul(c, Rational{outside, 1}), inside});
 }
 
+static std::optional<SimpleSurd> sqrt_rational_surd(Rational r)
+{
+    r.normalize();
+    if(r.num < 0 || r.den <= 0) return std::nullopt;
+    if(r.num == 0) return fold_simple_surd(SimpleSurd{Rational{0, 1}, Rational{0, 1}, 0});
+    if(r.den == 1) return pure_surd_term(Rational{1, 1}, r.num);
+    if(r.num > 1000000000LL / r.den) return std::nullopt;
+    return pure_surd_term(Rational{1, r.den}, r.num * r.den);
+}
+
 static std::optional<SimpleSurd> add_simple_surd(SimpleSurd x, SimpleSurd y)
 {
     x = fold_simple_surd(x);
@@ -13909,9 +13919,8 @@ static std::optional<SimpleSurd> eval_simple_surd(Arena &a, NodeId n)
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
-        if(u.kind != NodeKind::Num || u.num.num < 0 || u.num.den != 1) return std::nullopt;
-        auto [outside, inside] = square_factor_i64(u.num.num);
-        return fold_simple_surd(SimpleSurd{Rational{0, 1}, Rational{outside, 1}, inside});
+        if(u.kind != NodeKind::Num) return std::nullopt;
+        return sqrt_rational_surd(u.num);
     }
     if(x.kind == NodeKind::Add) {
         SimpleSurd acc{Rational{0, 1}, Rational{0, 1}, 0};
@@ -14135,8 +14144,12 @@ static std::optional<RawSurdTerm> raw_single_surd_term(Arena &a, NodeId n)
     if(x.kind == NodeKind::Num) return RawSurdTerm{x.num, 1, false};
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
         Node const &u = a.get(x.a);
-        if(u.kind != NodeKind::Num || u.num.den != 1 || u.num.num <= 0) return std::nullopt;
-        return RawSurdTerm{Rational{1, 1}, u.num.num, true};
+        if(u.kind != NodeKind::Num || u.num.num <= 0 || u.num.den <= 0) return std::nullopt;
+        Rational r = u.num;
+        r.normalize();
+        if(r.den == 1) return RawSurdTerm{Rational{1, 1}, r.num, true};
+        if(r.num > 1000000000LL / r.den) return std::nullopt;
+        return RawSurdTerm{Rational{1, r.den}, r.num * r.den, true};
     }
     if(x.kind == NodeKind::Mul) {
         RawSurdTerm acc{Rational{1, 1}, 1, false};
