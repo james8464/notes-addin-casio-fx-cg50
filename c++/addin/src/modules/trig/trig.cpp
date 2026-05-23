@@ -3441,12 +3441,18 @@ static std::string trig_root_text(double r)
     double rt3 = std::sqrt(3.0) / 2.0;
     double sqrt3 = std::sqrt(3.0);
     double inv_sqrt3 = sqrt3 / 3.0;
+    double tan15 = 2.0 - sqrt3;
+    double tan75 = 2.0 + sqrt3;
     if(std::fabs(r - rt2) < 1e-9) return "sqrt(2)/2";
     if(std::fabs(r + rt2) < 1e-9) return "-sqrt(2)/2";
     if(std::fabs(r - rt3) < 1e-9) return "sqrt(3)/2";
     if(std::fabs(r + rt3) < 1e-9) return "-sqrt(3)/2";
     if(std::fabs(r - sqrt3) < 1e-9) return "sqrt(3)";
     if(std::fabs(r + sqrt3) < 1e-9) return "-sqrt(3)";
+    if(std::fabs(r - tan75) < 1e-9) return "2+sqrt(3)";
+    if(std::fabs(r + tan75) < 1e-9) return "-2-sqrt(3)";
+    if(std::fabs(r - tan15) < 1e-9) return "2-sqrt(3)";
+    if(std::fabs(r + tan15) < 1e-9) return "-2+sqrt(3)";
     if(std::fabs(r - inv_sqrt3) < 1e-9) return "sqrt(3)/3";
     if(std::fabs(r + inv_sqrt3) < 1e-9) return "-sqrt(3)/3";
     for(int rad : {2, 3}) {
@@ -3507,6 +3513,10 @@ static std::string trig_base_angle_line(FnKind fk, std::string const &arg, doubl
         else if(std::fabs(r + 1.0) < 1e-9) exact = "-pi/4";
         else if(std::fabs(r - rt3) < 1e-9) exact = "pi/3";
         else if(std::fabs(r + rt3) < 1e-9) exact = "-pi/3";
+        else if(std::fabs(r - (2.0 + rt3)) < 1e-9) exact = "5*pi/12";
+        else if(std::fabs(r + (2.0 + rt3)) < 1e-9) exact = "-5*pi/12";
+        else if(std::fabs(r - (2.0 - rt3)) < 1e-9) exact = "pi/12";
+        else if(std::fabs(r + (2.0 - rt3)) < 1e-9) exact = "-pi/12";
         else if(std::fabs(r - rt3 / 3.0) < 1e-9) exact = "pi/6";
         else if(std::fabs(r + rt3 / 3.0) < 1e-9) exact = "-pi/6";
     }
