@@ -144,6 +144,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(4^(3*p-1)=5^210,p)",
+        ["2*(3*p - 1)*ln(2) = 210*ln(5)", "p = (210*ln(5) + 2*ln(2))/(6*ln(2))"],
+        ["ln(-", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(log(a)-log(b)=log(a-b),a)",
         ["ln(a) - ln(b) = ln(a - b)", "Domain: a - b > 0", "a - b*(a - b) = 0", "a = -b^2/(- b + 1)"],
         ["symbolic parameters unsupported", "No real solution", "ERR:"],
@@ -917,6 +923,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sqrt((9-3)^2+(8-20)^2)",
         ["sqrt(36*5)", "6*sqrt(5)"],
         ["ERR:", "Answer: sqrt(180)"],
+    ),
+    (
+        "alg",
+        "(81/16)^(3/4)",
+        ["27/8"],
+        ["ERR:", "Answer: (81/16)^(3/4)"],
+    ),
+    (
+        "alg",
+        "sqrt(150)-sqrt(54)",
+        ["sqrt(25*6)", "5*sqrt(6) - 3*sqrt(6)", "2*sqrt(6)"],
+        ["ERR:", "Answer: sqrt(150) - sqrt(54)"],
+    ),
+    (
+        "alg",
+        "21/sqrt(7)",
+        ["21*sqrt(7)/7", "3*sqrt(7)"],
+        ["ERR:", "Answer: 21/sqrt(7)"],
     ),
     (
         "alg",

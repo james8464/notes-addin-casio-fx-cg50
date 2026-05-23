@@ -165,6 +165,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
+static std::optional<Rational> rational_power_factor(Rational base, Rational power);
 static std::optional<Rational> rational_ratio_power(Rational base, Rational value);
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
 static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Arena &a,
@@ -752,6 +753,12 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             Node const &raw = a.get(x.a);
             if(raw.kind == NodeKind::Pow && is_e_const_node(a, raw.a)) return exact_eval_simplify(a, raw.b);
             if(raw.kind == NodeKind::Fn && raw.fkind == FnKind::Exp) return exact_eval_simplify(a, raw.a);
+            if(raw.kind == NodeKind::Pow) {
+                Node const &base = a.get(raw.a);
+                Node const &expo = a.get(raw.b);
+                if(base.kind == NodeKind::Num && base.num.num > 0 && expo.kind == NodeKind::Num)
+                    return exact_eval_simplify(a, casio::mul(a, {raw.b, casio::fn(a, "log", raw.a)}));
+            }
         }
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
@@ -812,6 +819,10 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
+            if(base.kind == NodeKind::Num) {
+                if(auto f = rational_power_factor(base.num, expo.num))
+                    return casio::num(a, f->num, f->den);
+            }
             if(expo.num.num == 1 && expo.num.den == 2)
                 return exact_eval_simplify(a, casio::fn(a, "sqrt", lhs));
             if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt &&
@@ -2918,7 +2929,10 @@ static std::optional<std::int64_t> integer_nth_root_i64(std::int64_t n, int root
 
 static std::optional<Rational> rational_power_factor(Rational base, Rational power)
 {
-    if(power.den == 1) return r_pow_int(base, static_cast<int>(power.num));
+    if(power.den == 1) {
+        if(std::llabs(power.num) > 18) return std::nullopt;
+        return r_pow_int(base, static_cast<int>(power.num));
+    }
     if(base.num <= 0 || base.den <= 0 || power.den > 8) return std::nullopt;
     auto sn = integer_nth_root_i64(base.num, static_cast<int>(power.den));
     auto sd = integer_nth_root_i64(base.den, static_cast<int>(power.den));
@@ -13767,6 +13781,289 @@ static std::optional<std::vector<std::string>> numeric_surd_simplify_route(std::
     }
     out.push_back(ans);
     return out;
+}
+
+struct SimpleSurd
+{
+    Rational a{0, 1};
+    Rational b{0, 1};
+    long long d = 0;
+};
+
+static bool rat_is_one(Rational r)
+{
+    r.normalize();
+    return r.num == 1 && r.den == 1;
+}
+
+static std::pair<long long, long long> square_factor_i64(long long n)
+{
+    long long best = 1;
+    for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(n))); k >= 2; --k) {
+        if(n % (k * k) == 0) {
+            best = k;
+            break;
+        }
+    }
+    return {best, n / (best * best)};
+}
+
+static SimpleSurd fold_simple_surd(SimpleSurd s)
+{
+    s.a.normalize();
+    s.b.normalize();
+    if(s.b.num == 0) {
+        s.b = Rational{0, 1};
+        s.d = 0;
+    }
+    else if(s.d == 0) {
+        s.b = Rational{0, 1};
+    }
+    else if(s.d == 1) {
+        s.a = r_add(s.a, s.b);
+        s.b = Rational{0, 1};
+        s.d = 0;
+    }
+    return s;
+}
+
+static std::optional<SimpleSurd> add_simple_surd(SimpleSurd x, SimpleSurd y)
+{
+    x = fold_simple_surd(x);
+    y = fold_simple_surd(y);
+    SimpleSurd r;
+    r.a = r_add(x.a, y.a);
+    if(x.b.num == 0) {
+        r.b = y.b;
+        r.d = y.d;
+    }
+    else if(y.b.num == 0) {
+        r.b = x.b;
+        r.d = x.d;
+    }
+    else if(x.d == y.d) {
+        r.b = r_add(x.b, y.b);
+        r.d = x.d;
+    }
+    else return std::nullopt;
+    return fold_simple_surd(r);
+}
+
+static std::optional<SimpleSurd> mul_simple_surd(SimpleSurd x, SimpleSurd y)
+{
+    x = fold_simple_surd(x);
+    y = fold_simple_surd(y);
+    long long d = x.b.num != 0 ? x.d : y.d;
+    if(x.b.num != 0 && y.b.num != 0 && x.d != y.d) return std::nullopt;
+    SimpleSurd r;
+    r.a = r_mul(x.a, y.a);
+    if(x.b.num != 0 && y.b.num != 0)
+        r.a = r_add(r.a, r_mul(r_mul(x.b, y.b), Rational{d, 1}));
+    r.b = r_add(r_mul(x.a, y.b), r_mul(x.b, y.a));
+    r.d = d;
+    return fold_simple_surd(r);
+}
+
+static std::optional<SimpleSurd> div_simple_surd(SimpleSurd x, SimpleSurd y)
+{
+    x = fold_simple_surd(x);
+    y = fold_simple_surd(y);
+    if(y.a.num == 0 && y.b.num == 0) return std::nullopt;
+    if(y.b.num == 0) {
+        if(y.a.num == 0) return std::nullopt;
+        x.a = r_div(x.a, y.a);
+        x.b = r_div(x.b, y.a);
+        return fold_simple_surd(x);
+    }
+    long long d = y.d;
+    if(x.b.num != 0 && x.d != d) return std::nullopt;
+    x.d = d;
+    Rational denom = r_sub(r_mul(y.a, y.a), r_mul(r_mul(y.b, y.b), Rational{d, 1}));
+    if(denom.num == 0) return std::nullopt;
+    SimpleSurd r;
+    r.a = r_div(r_sub(r_mul(x.a, y.a), r_mul(r_mul(x.b, y.b), Rational{d, 1})), denom);
+    r.b = r_div(r_sub(r_mul(x.b, y.a), r_mul(x.a, y.b)), denom);
+    r.d = d;
+    return fold_simple_surd(r);
+}
+
+static std::optional<SimpleSurd> eval_simple_surd(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return fold_simple_surd(SimpleSurd{x.num, Rational{0, 1}, 0});
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        NodeId arg = exact_eval_simplify(a, x.a);
+        Node const &u = a.get(arg);
+        if(u.kind != NodeKind::Num || u.num.num < 0 || u.num.den != 1) return std::nullopt;
+        auto [outside, inside] = square_factor_i64(u.num.num);
+        return fold_simple_surd(SimpleSurd{Rational{0, 1}, Rational{outside, 1}, inside});
+    }
+    if(x.kind == NodeKind::Add) {
+        SimpleSurd acc{Rational{0, 1}, Rational{0, 1}, 0};
+        for(NodeId k : x.kids) {
+            auto t = eval_simple_surd(a, k);
+            if(!t) return std::nullopt;
+            auto sum = add_simple_surd(acc, *t);
+            if(!sum) return std::nullopt;
+            acc = *sum;
+        }
+        return fold_simple_surd(acc);
+    }
+    if(x.kind == NodeKind::Mul) {
+        SimpleSurd acc{Rational{1, 1}, Rational{0, 1}, 0};
+        for(NodeId k : x.kids) {
+            auto t = eval_simple_surd(a, k);
+            if(!t) return std::nullopt;
+            auto prod = mul_simple_surd(acc, *t);
+            if(!prod) return std::nullopt;
+            acc = *prod;
+        }
+        return fold_simple_surd(acc);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = eval_simple_surd(a, x.a);
+        auto bot = eval_simple_surd(a, x.b);
+        if(!top || !bot) return std::nullopt;
+        return div_simple_surd(*top, *bot);
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        Node const &expo = a.get(x.b);
+        if(base.kind == NodeKind::Num && expo.kind == NodeKind::Num) {
+            if(auto r = rational_power_factor(base.num, expo.num))
+                return fold_simple_surd(SimpleSurd{*r, Rational{0, 1}, 0});
+        }
+    }
+    return std::nullopt;
+}
+
+static std::string simple_surd_term_text(Arena &a, Rational c, long long d)
+{
+    c.normalize();
+    if(d == 0 || c.num == 0) return rat_node_text(a, c);
+    std::string root = "sqrt(" + std::to_string(d) + ")";
+    if(rat_is_one(c)) return root;
+    if(c.num == -1 && c.den == 1) return "-" + root;
+    return rat_node_text(a, c) + "*" + root;
+}
+
+static std::string simple_surd_text(Arena &a, SimpleSurd s)
+{
+    s = fold_simple_surd(s);
+    if(s.b.num == 0) return rat_node_text(a, s.a);
+    if(s.a.num == 0) return simple_surd_term_text(a, s.b, s.d);
+    Rational absb = s.b;
+    if(absb.num < 0) absb.num = -absb.num;
+    return rat_node_text(a, s.a) + (s.b.num < 0 ? " - " : " + ") + simple_surd_term_text(a, absb, s.d);
+}
+
+static bool sqrt_integer_term(Arena &a, NodeId n, Rational &coef, long long &rad)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &u = a.get(x.a);
+        if(u.kind == NodeKind::Num && u.num.den == 1 && u.num.num > 0) {
+            coef = Rational{1, 1};
+            rad = u.num.num;
+            return true;
+        }
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    Rational c{1, 1};
+    bool saw = false;
+    long long r = 0;
+    for(NodeId k : x.kids) {
+        Node const &u = a.get(k);
+        if(u.kind == NodeKind::Num) c = r_mul(c, u.num);
+        else if(u.kind == NodeKind::Fn && u.fkind == FnKind::Sqrt) {
+            Node const &v = a.get(u.a);
+            if(saw || v.kind != NodeKind::Num || v.num.den != 1 || v.num.num <= 0) return false;
+            saw = true;
+            r = v.num.num;
+        }
+        else return false;
+    }
+    if(!saw) return false;
+    coef = c;
+    rad = r;
+    return true;
+}
+
+static std::string signed_join(Arena &a, std::vector<std::pair<Rational, std::string>> const &terms)
+{
+    std::string out;
+    for(auto const &term : terms) {
+        Rational c = term.first;
+        c.normalize();
+        bool neg = c.num < 0;
+        Rational abs_c = c;
+        if(abs_c.num < 0) abs_c.num = -abs_c.num;
+        if(out.empty()) {
+            if(neg) out += "-";
+        }
+        else out += neg ? " - " : " + ";
+        if(!rat_is_one(abs_c)) out += rat_node_text(a, abs_c) + "*";
+        out += term.second;
+    }
+    return out;
+}
+
+static std::optional<std::vector<std::string>> two_sqrt_difference_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+    Rational c1, c2;
+    long long r1 = 0, r2 = 0;
+    if(!sqrt_integer_term(a, x.kids[0], c1, r1) || !sqrt_integer_term(a, x.kids[1], c2, r2)) return std::nullopt;
+    if(!(rat_is_one(c1) || (c1.num == -1 && c1.den == 1)) ||
+       !(rat_is_one(c2) || (c2.num == -1 && c2.den == 1))) return std::nullopt;
+    auto [o1, d1] = square_factor_i64(r1);
+    auto [o2, d2] = square_factor_i64(r2);
+    if(d1 != d2 || d1 == 1 || o1 == 1 || o2 == 1) return std::nullopt;
+    std::vector<std::pair<Rational, std::string>> split_terms{
+        {c1, "sqrt(" + std::to_string(o1 * o1) + "*" + std::to_string(d1) + ")"},
+        {c2, "sqrt(" + std::to_string(o2 * o2) + "*" + std::to_string(d2) + ")"},
+    };
+    std::vector<std::pair<Rational, std::string>> collect_terms{
+        {r_mul(c1, Rational{o1, 1}), "sqrt(" + std::to_string(d1) + ")"},
+        {r_mul(c2, Rational{o2, 1}), "sqrt(" + std::to_string(d2) + ")"},
+    };
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "= " + signed_join(a, split_terms),
+        "= " + signed_join(a, collect_terms),
+        "= " + ans,
+        ans,
+    };
+}
+
+static std::optional<std::vector<std::string>> rationalise_simple_surd_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(x.a);
+    Node const &bot = a.get(x.b);
+    if(top.kind != NodeKind::Num || top.num.den != 1 || bot.kind != NodeKind::Fn || bot.fkind != FnKind::Sqrt) return std::nullopt;
+    Node const &rad = a.get(bot.a);
+    if(rad.kind != NodeKind::Num || rad.num.den != 1 || rad.num.num <= 0) return std::nullopt;
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "= " + std::to_string(top.num.num) + "*sqrt(" + std::to_string(rad.num.num) + ")/" + std::to_string(rad.num.num),
+        "= " + ans,
+        ans,
+    };
+}
+
+static std::optional<std::vector<std::string>> simple_surd_expression_route(Arena &a, NodeId parsed)
+{
+    auto s = eval_simple_surd(a, parsed);
+    if(!s) return std::nullopt;
+    std::string raw = format_expr(a, parsed);
+    std::string ans = simple_surd_text(a, *s);
+    if(compact_input_key(raw) == compact_input_key(ans)) return std::nullopt;
+    if(auto diff = two_sqrt_difference_route(a, parsed, ans)) return *diff;
+    if(auto rat = rationalise_simple_surd_route(a, parsed, ans)) return *rat;
+    return std::vector<std::string>{raw, "= " + ans, ans};
 }
 
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
@@ -25147,6 +25444,7 @@ algebra_compare_transform_modes:
             NodeId raw_n = casio::parse_expr(arena, expr);
             NodeId n = casio::simplify(arena, raw_n);
             if(targets.empty()) {
+                if(auto surd = simple_surd_expression_route(arena, raw_n)) return *surd;
                 if(auto sq = quartic_perfect_square_rewrite(arena, n)) return *sq;
             }
             std::string sc_arg;
@@ -26192,6 +26490,7 @@ algebra_compare_transform_modes:
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
+            if(auto surd = simple_surd_expression_route(arena, parsed)) return *surd;
             if(req.method == "expand") {
                 std::string ans = n_text ? *n_text : format_expr(arena, n);
                 return {format_expr(arena, parsed), "Answer: " + ans};
@@ -26470,10 +26769,12 @@ algebra_compare_transform_modes:
         if(auto aec = affine_exp_const_solve_route(arena, rearr, solve_var, out)) return *aec;
         if(auto etl = exp_trig_log_one_route(arena, lhs, rhs, rearr, solve_var, out, interval_lo, interval_hi)) return *etl;
         if(auto pep = prime_exp_product_solve_route(arena, lhs, rhs, solve_var, out)) return *pep;
+        if(auto pcs_raw = power_const_base_solve_route(arena, eq->lhs, eq->rhs, solve_var, out)) return *pcs_raw;
         if(auto pcs = power_const_base_solve_route(arena, lhs, rhs, solve_var, out)) return *pcs;
         if(auto ec = exp_const_solve_route(arena, lhs, rhs, solve_var, out)) return *ec;
         if(auto ee = equal_exp_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *ee;
         if(auto er = exp_coeff_solve_route(arena, lhs, rhs, rearr, solve_var, out)) return *er;
+        if(auto pl_raw = power_log_linear_solve_route(arena, eq->lhs, eq->rhs, solve_var, out)) return *pl_raw;
         if(auto pl = power_log_linear_solve_route(arena, lhs, rhs, solve_var, out)) return *pl;
         if(auto et = exp_two_term_route(arena, rearr, solve_var, out)) return *et;
         if(auto aes = affine_exp_common_slope_route(arena, rearr, solve_var, out)) return *aes;
