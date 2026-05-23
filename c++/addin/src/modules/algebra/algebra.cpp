@@ -23,6 +23,7 @@
 #include <functional>
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <numeric>
 
 namespace casio::algebra
@@ -20619,6 +20620,164 @@ static bool monomial_coeff_power(Arena &a, NodeId n, std::string const &var, Rat
     return coef.num > 0 && power > 0;
 }
 
+struct MultiMono
+{
+    Rational coef{1, 1};
+    std::map<std::string, int> pow;
+};
+
+static bool pow_rat_int(Rational r, int p, Rational &out)
+{
+    out = Rational{1, 1};
+    int n = std::abs(p);
+    for(int i = 0; i < n; ++i) out = r_mul(out, r);
+    if(p < 0) {
+        if(out.num == 0) return false;
+        out = r_div(Rational{1, 1}, out);
+    }
+    return true;
+}
+
+static bool read_multi_monomial(Arena &a, NodeId n, MultiMono &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        out.coef = r_mul(out.coef, x.num);
+        return true;
+    }
+    if(x.kind == NodeKind::Sym) {
+        out.pow[x.text] += 1;
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!read_multi_monomial(a, k, out)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        MultiMono top, bot;
+        if(!read_multi_monomial(a, x.a, top) || !read_multi_monomial(a, x.b, bot) || bot.coef.num == 0) return false;
+        out.coef = r_mul(out.coef, r_div(top.coef, bot.coef));
+        for(auto const &kv : top.pow) out.pow[kv.first] += kv.second;
+        for(auto const &kv : bot.pow) out.pow[kv.first] -= kv.second;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num || e.num.den != 1 || std::abs(e.num.num) > 20) return false;
+        MultiMono base;
+        if(!read_multi_monomial(a, x.a, base)) return false;
+        Rational cp;
+        if(!pow_rat_int(base.coef, (int)e.num.num, cp)) return false;
+        out.coef = r_mul(out.coef, cp);
+        for(auto const &kv : base.pow) out.pow[kv.first] += kv.second * (int)e.num.num;
+        return true;
+    }
+    return false;
+}
+
+static bool multi_mono_has_symbol(MultiMono const &m)
+{
+    for(auto const &kv : m.pow)
+        if(kv.second != 0) return true;
+    return false;
+}
+
+static bool multi_mono_has_negative_power(MultiMono const &m)
+{
+    for(auto const &kv : m.pow)
+        if(kv.second < 0) return true;
+    return false;
+}
+
+static std::string mono_power_text(std::string const &v, int p)
+{
+    if(p == 1) return v;
+    return v + "^" + std::to_string(p);
+}
+
+static std::string join_factor_text(std::vector<std::string> const &f)
+{
+    if(f.empty()) return "1";
+    std::string out = f[0];
+    for(std::size_t i = 1; i < f.size(); ++i) out += "*" + f[i];
+    return out;
+}
+
+static std::string multi_mono_text(MultiMono m)
+{
+    m.coef.normalize();
+    bool neg = m.coef.num < 0;
+    Rational c = m.coef;
+    if(c.num < 0) c.num = -c.num;
+    std::vector<std::string> num, den;
+    bool any_num_var = false;
+    for(auto const &kv : m.pow)
+        if(kv.second > 0) any_num_var = true;
+    if(c.num != 1 || !any_num_var) num.push_back(std::to_string(c.num));
+    if(c.den != 1) den.push_back(std::to_string(c.den));
+    for(auto const &kv : m.pow) {
+        if(kv.second > 0) num.push_back(mono_power_text(kv.first, kv.second));
+        else if(kv.second < 0) den.push_back(mono_power_text(kv.first, -kv.second));
+    }
+    std::string out = join_factor_text(num);
+    if(!den.empty()) {
+        std::string dt = join_factor_text(den);
+        out += den.size() == 1 ? "/" + dt : "/(" + dt + ")";
+    }
+    if(neg) out = "-" + out;
+    return out;
+}
+
+static std::string mono_cancel_text(MultiMono const &top, MultiMono const &bot)
+{
+    std::vector<std::string> parts;
+    Rational qc = r_div(top.coef, bot.coef);
+    if(qc.num != qc.den || parts.empty())
+        parts.push_back("(" + format_rat_plain(top.coef) + "/" + format_rat_plain(bot.coef) + ")");
+    std::map<std::string, std::pair<int, int>> vars;
+    for(auto const &kv : top.pow) vars[kv.first].first = kv.second;
+    for(auto const &kv : bot.pow) vars[kv.first].second = kv.second;
+    for(auto const &kv : vars) {
+        int p = kv.second.first;
+        int q = kv.second.second;
+        if(p == 0 && q == 0) continue;
+        if(q == 0) parts.push_back(mono_power_text(kv.first, p));
+        else parts.push_back(kv.first + "^(" + std::to_string(p) + "-" + std::to_string(q) + ")");
+    }
+    return join_factor_text(parts);
+}
+
+static std::optional<std::vector<std::string>> monomial_fraction_route(Arena &a, NodeId parsed)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Div) {
+        MultiMono mono;
+        if(!read_multi_monomial(a, parsed, mono) || !multi_mono_has_symbol(mono) || !multi_mono_has_negative_power(mono))
+            return std::nullopt;
+        std::string raw = format_expr(a, parsed);
+        std::string final = multi_mono_text(mono);
+        if(compact_input_key(raw) == compact_input_key(final)) return std::nullopt;
+        return std::vector<std::string>{raw, "= " + final, final};
+    }
+    MultiMono top, bot;
+    if(!read_multi_monomial(a, x.a, top) || !read_multi_monomial(a, x.b, bot) || bot.coef.num == 0) return std::nullopt;
+    if(!multi_mono_has_symbol(top) && !multi_mono_has_symbol(bot)) return std::nullopt;
+    MultiMono ans;
+    ans.coef = r_div(top.coef, bot.coef);
+    for(auto const &kv : top.pow) ans.pow[kv.first] += kv.second;
+    for(auto const &kv : bot.pow) ans.pow[kv.first] -= kv.second;
+    std::string raw = format_expr(a, parsed);
+    std::string final = multi_mono_text(ans);
+    if(compact_input_key(raw) == compact_input_key(final)) return std::nullopt;
+    std::vector<std::string> out{raw};
+    push_unique(out, "= (" + multi_mono_text(top) + ")/(" + multi_mono_text(bot) + ")");
+    push_unique(out, "= " + mono_cancel_text(top, bot));
+    push_unique(out, "= " + final);
+    push_unique(out, final);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> log_linear_symbolic_route(Arena &a, NodeId rearr, std::string const &var)
 {
     std::vector<NodeId> terms;
@@ -26947,6 +27106,7 @@ algebra_compare_transform_modes:
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
             if(auto idx = numeric_index_power_route(arena, parsed, n)) return *idx;
             if(auto surd = simple_surd_expression_route(arena, parsed)) return *surd;
+            if(auto mono = monomial_fraction_route(arena, parsed)) return *mono;
             if(req.method == "expand") {
                 std::string ans = n_text ? *n_text : format_expr(arena, n);
                 return {format_expr(arena, parsed), "Answer: " + ans};

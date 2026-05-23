@@ -938,6 +938,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "9*x^6*y^4/(3*x^2*y)^3",
+        ["(9*x^6*y^4)/(27*x^6*y^3)", "(9/27)*x^(6-6)*y^(4-3)", "y/3"],
+        ["ERR:", "Answer: y/3"],
+    ),
+    (
+        "alg",
+        "(4*x*y^2)^2/(2*x)^3",
+        ["2*x^-1*y^4", "2*y^4/x"],
+        ["ERR:", "Answer: 2*y^4/x"],
+    ),
+    (
+        "alg",
         "sqrt(150)-sqrt(54)",
         ["sqrt(25*6)", "5*sqrt(6) - 3*sqrt(6)", "2*sqrt(6)"],
         ["ERR:", "Answer: sqrt(150) - sqrt(54)"],
