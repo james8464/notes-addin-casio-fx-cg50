@@ -133,6 +133,24 @@ static int node_weight(Arena &a, NodeId n)
     return w;
 }
 
+static bool simple_polynomial_node(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return true;
+    if(x.kind == NodeKind::Sym) return true;
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!simple_polynomial_node(a, k, var)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < 0 || e->num > 6) return false;
+        return simple_polynomial_node(a, x.a, var);
+    }
+    return false;
+}
+
 static bool exam_guard_too_complex(Arena &a, NodeId n, std::string const &var)
 {
     // Conservative guard: avoid expanding cases that explode step-by-step working.
@@ -3043,9 +3061,11 @@ static bool append_product_rule_detail(
     }
 
     bool has_const = !constants.empty();
+    std::string const_txt;
     if(has_const) {
         NodeId c = constants.size() == 1 ? constants.front() : casio::simplify(a, casio::mul(a, constants));
-        steps.push_back("c = " + clean_math_text(format_expr_human(a, c)) + ".");
+        const_txt = clean_math_text(format_expr_human(a, c));
+        steps.push_back("c = " + const_txt + ".");
     }
 
     std::vector<std::string> factor_txts;
@@ -3084,6 +3104,7 @@ static bool append_product_rule_detail(
     steps.push_back(rule + ".");
     if(factors.size() <= 3) {
         std::string subst = "dy/d" + var + " = ";
+        if(has_const) subst += "(" + const_txt + ")*(";
         for(std::size_t i = 0; i < factors.size(); ++i) {
             if(i) subst += " + ";
             subst += "(" + deriv_txts[i] + ")";
@@ -3092,6 +3113,7 @@ static bool append_product_rule_detail(
                 subst += "*(" + factor_txts[j] + ")";
             }
         }
+        if(has_const) subst += ")";
         steps.push_back(subst + ".");
     }
     if(factors.size() == 2) {
@@ -3103,6 +3125,21 @@ static bool append_product_rule_detail(
                     factor_txts[j] + ") + (" + deriv_txts[j] + "))."
                 );
                 break;
+            }
+        }
+    }
+    if(node_weight(a, n) <= 45 && simple_polynomial_node(a, n, var)) {
+        NodeId raw_diff = diff(a, n, var);
+        NodeId expanded = casio::simplify(a, expand_small(a, raw_diff, 3));
+        if(simple_polynomial_node(a, expanded, var) && node_weight(a, expanded) <= 60) {
+            std::string ans = clean_math_text(format_expr_human(a, expanded));
+            std::string raw = clean_math_text(format_expr_human(a, raw_diff));
+            if(!raw.empty() && compact_math_key(raw) != compact_math_key(ans)) {
+                steps.push_back("dy/d" + var + " = " + raw + ".");
+            }
+            if(!ans.empty() && compact_math_key(ans) != compact_math_key(raw)) {
+                steps.push_back("dy/d" + var + " = " + ans + ".");
+                if(answer_override) *answer_override = "dy/d" + var + " = " + ans;
             }
         }
     }
