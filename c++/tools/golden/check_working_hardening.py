@@ -186,6 +186,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([log(2,x*y^2)=0,log(2,x^2*y)=3],[x,y])",
+        ["Domain: x > 0, y > 0", "X + 2*Y = 0", "2*X + Y = 3", "x = 4", "y = 1/2", "(x,y) = [(4,1/2)]"],
+        ["solve([log", "ERR:"],
+    ),
+    (
+        "alg",
+        "coeff(((y+16)/4)^5,y,2)",
+        ["Term in y^2", "Coefficient = 40"],
+        ["Unexpected token", "ERR:"],
+    ),
+    (
+        "alg",
+        "coeff((sqrt(2)*z-2)^5*(sqrt(2)*z+2)^5,z,8)",
+        ["B1 = (sqrt(2)*z - 2)^5", "Coefficient = -320"],
+        ["Unexpected token", "Coefficient = -20*sqrt(2)^8", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],

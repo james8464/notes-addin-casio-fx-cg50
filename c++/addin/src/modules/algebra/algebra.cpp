@@ -3971,10 +3971,20 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
         if(pow.kind != NodeKind::Pow) return std::nullopt;
         auto nnr = as_num(a, pow.b);
         if(!nnr || nnr->den != 1 || nnr->num < 0 || nnr->num > 30) return std::nullopt;
-        Node const &base = a.get(pow.a);
-        if(base.kind != NodeKind::Add || base.kids.size() != 2) return std::nullopt;
+        NodeId base_id = pow.a;
+        Node const *base = &a.get(base_id);
+        std::optional<Rational> common_den;
+        if(base->kind == NodeKind::Div) {
+            auto den = as_num(a, base->b);
+            if(!den || den->num == 0) return std::nullopt;
+            common_den = *den;
+            base_id = base->a;
+            base = &a.get(base_id);
+        }
+        if(base->kind != NodeKind::Add || base->kids.size() != 2) return std::nullopt;
         std::optional<NodeId> cterm, lcoef, lterm;
-        for(NodeId kid : base.kids) {
+        for(NodeId raw_kid : base->kids) {
+            NodeId kid = common_den ? exact_eval_simplify(a, casio::div(a, raw_kid, a.num(*common_den))) : raw_kid;
             if(!contains_symbol(a, kid, var) && !cterm) {
                 cterm = kid;
                 continue;
@@ -4041,6 +4051,56 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
 
     Node const &prod = a.get(n);
     if(prod.kind != NodeKind::Mul) return laurent_route(n);
+    std::vector<BinomInfo> binoms;
+    std::vector<NodeId> non_binom;
+    if(want >= 0) {
+        for(NodeId kid : prod.kids) {
+            if(auto b = read_binom(kid)) binoms.push_back(*b);
+            else non_binom.push_back(kid);
+        }
+        if(non_binom.empty() && binoms.size() >= 2) {
+            std::vector<NodeId> coeffs(want + 1, a.num(Rational{0, 1}));
+            coeffs[0] = one_node(a);
+            for(auto const &b : binoms) {
+                std::vector<NodeId> next(want + 1, a.num(Rational{0, 1}));
+                for(int p = 0; p <= want; ++p) {
+                    for(int k = 0; k <= b.nn && p + k <= want; ++k) {
+                        next[p + k] = exact_eval_simplify(a, casio::add(a, {
+                            next[p + k],
+                            casio::mul(a, {coeffs[p], binom_coeff_at(b, k)})
+                        }));
+                    }
+                }
+                coeffs.swap(next);
+            }
+            std::vector<std::string> out{format_expr(a, n)};
+            for(std::size_t i = 0; i < binoms.size(); ++i)
+                out.push_back("B" + std::to_string(i + 1) + " = " + format_expr(a, binoms[i].pow_node));
+            out.push_back("Coefficient = sum powers adding to " + std::to_string(want));
+            std::function<NodeId(NodeId)> reduce_even_sqrt_power = [&](NodeId id) -> NodeId {
+                Node const &x = a.get(id);
+                if(x.kind == NodeKind::Pow) {
+                    Node const &b = a.get(x.a);
+                    Node const &e = a.get(x.b);
+                    if(b.kind == NodeKind::Fn && b.fkind == FnKind::Sqrt &&
+                       e.kind == NodeKind::Num && e.num.den == 1 && e.num.num % 2 == 0)
+                        return exact_eval_simplify(a, casio::power(a, b.a, a.num(Rational{e.num.num / 2, 1})));
+                    return casio::power(a, reduce_even_sqrt_power(x.a), reduce_even_sqrt_power(x.b));
+                }
+                if(x.kind == NodeKind::Mul || x.kind == NodeKind::Add) {
+                    std::vector<NodeId> kids;
+                    for(NodeId k : x.kids) kids.push_back(reduce_even_sqrt_power(k));
+                    return x.kind == NodeKind::Mul ? casio::mul(a, kids) : casio::add(a, kids);
+                }
+                if(x.kind == NodeKind::Div) return casio::div(a, reduce_even_sqrt_power(x.a), reduce_even_sqrt_power(x.b));
+                if(x.kind == NodeKind::Fn) return a.fn(x.fkind, reduce_even_sqrt_power(x.a));
+                return id;
+            };
+            NodeId coeff = exact_eval_simplify(a, casio::simplify(a, reduce_even_sqrt_power(coeffs[want])));
+            out.push_back("Coefficient = " + format_expr(a, coeff));
+            return out;
+        }
+    }
     std::optional<BinomInfo> bi;
     std::vector<NodeId> rest;
     for(NodeId kid : prod.kids) {
@@ -14043,6 +14103,155 @@ static bool parse_log_call_key(std::string const &s, std::string &base, std::str
     base = compact_input_key(parts[0]);
     arg = compact_input_key(parts[1]);
     return !base.empty() && !arg.empty();
+}
+
+static bool log_monomial_exponents(
+    Arena &a,
+    NodeId n,
+    std::vector<std::string> const &vars,
+    std::vector<Rational> &exps,
+    Rational &coeff
+)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coeff = r_mul(coeff, x.num);
+        return x.num.num > 0;
+    }
+    if(x.kind == NodeKind::Sym) {
+        for(std::size_t i = 0; i < vars.size(); ++i) {
+            if(x.text == vars[i]) {
+                exps[i] = r_add(exps[i], Rational{1, 1});
+                return true;
+            }
+        }
+        return false;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &b = a.get(x.a);
+        Node const &e = a.get(x.b);
+        if(b.kind != NodeKind::Sym || e.kind != NodeKind::Num || e.num.den != 1) return false;
+        for(std::size_t i = 0; i < vars.size(); ++i) {
+            if(b.text == vars[i]) {
+                exps[i] = r_add(exps[i], e.num);
+                return true;
+            }
+        }
+        return false;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) if(!log_monomial_exponents(a, k, vars, exps, coeff)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        if(!log_monomial_exponents(a, x.a, vars, exps, coeff)) return false;
+        std::vector<Rational> den(vars.size(), Rational{0, 1});
+        Rational den_coeff{1, 1};
+        if(!log_monomial_exponents(a, x.b, vars, den, den_coeff) || den_coeff.num <= 0) return false;
+        coeff = r_div(coeff, den_coeff);
+        for(std::size_t i = 0; i < vars.size(); ++i) exps[i] = r_sub(exps[i], den[i]);
+        return true;
+    }
+    return false;
+}
+
+static std::string log_linear_combo_text(std::vector<Rational> const &coefs, std::vector<std::string> const &names)
+{
+    std::string s;
+    for(std::size_t i = 0; i < coefs.size(); ++i) {
+        Rational c = coefs[i];
+        if(is_zero(c)) continue;
+        bool neg = c.num < 0;
+        Rational mag{neg ? -c.num : c.num, c.den};
+        if(!s.empty()) s += neg ? " - " : " + ";
+        else if(neg) s += "-";
+        if(!(mag.num == 1 && mag.den == 1)) s += format_rat_plain(mag) + "*";
+        s += names[i];
+    }
+    return s.empty() ? "0" : s;
+}
+
+static std::optional<std::vector<std::string>> log_monomial_system2_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars_n(expr, eq_texts, vars, 2)) return std::nullopt;
+    std::string base_key;
+    std::vector<std::vector<Rational>> mat;
+    std::vector<Rational> rhs;
+    std::vector<std::string> log_names = {"X", "Y"};
+    std::vector<std::string> out;
+    out.push_back("Domain: " + vars[0] + " > 0, " + vars[1] + " > 0");
+    out.push_back("X = log(b," + vars[0] + "), Y = log(b," + vars[1] + ")");
+    auto parse_log_call_preserve_arg = [](std::string const &s, std::string &base, std::string &arg) {
+        std::string inner = unwrap_call_text(s, "log");
+        if(inner.empty()) return false;
+        auto parts = split_csv(inner);
+        if(parts.size() != 2) return false;
+        base = compact_input_key(parts[0]);
+        arg = parts[1];
+        for(std::size_t p = 0; (p = arg.find("**", p)) != std::string::npos;) arg.replace(p, 2, "^");
+        arg.erase(std::remove_if(arg.begin(), arg.end(), [](unsigned char c) {
+            return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+        }), arg.end());
+        return !base.empty() && !arg.empty();
+    };
+
+    for(std::string const &txt : eq_texts) {
+        std::string eq_key = txt;
+        for(std::size_t p = 0; (p = eq_key.find("**", p)) != std::string::npos;) eq_key.replace(p, 2, "^");
+        eq_key.erase(std::remove_if(eq_key.begin(), eq_key.end(), [](unsigned char c) {
+            return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+        }), eq_key.end());
+        auto sides = split_top_key(eq_key, '=');
+        if(sides.size() != 2) return std::nullopt;
+        std::string b, arg;
+        Rational val;
+        auto read = [&](std::string const &log_side, std::string const &val_side) {
+            if(!parse_log_call_preserve_arg(log_side, b, arg)) return false;
+            auto q = parse_rational_key(val_side);
+            if(!q) return false;
+            val = *q;
+            return true;
+        };
+        if(!read(sides[0], sides[1]) && !read(sides[1], sides[0])) return std::nullopt;
+        Rational raw_val = val;
+        if(base_key.empty()) base_key = b;
+        else if(base_key != b) return std::nullopt;
+
+        NodeId arg_node = casio::parse_expr(a, arg);
+        std::vector<Rational> row(vars.size(), Rational{0, 1});
+        Rational coeff{1, 1};
+        if(!log_monomial_exponents(a, arg_node, vars, row, coeff)) return std::nullopt;
+        Rational coeff_log{0, 1};
+        bool has_coeff = false;
+        if(!(coeff.num == 1 && coeff.den == 1)) {
+            if(!log_base_rational_value(base_key, coeff, coeff_log)) return std::nullopt;
+            val = r_sub(val, coeff_log);
+            has_coeff = true;
+        }
+        mat.push_back(row);
+        rhs.push_back(val);
+        out.push_back("log(" + format_key_expr(a, b) + "," + format_key_expr(a, arg) + ") = " + format_rat_plain(raw_val));
+        if(has_coeff)
+            out.push_back(format_rat_plain(coeff_log) + " + " + log_linear_combo_text(row, log_names) + " = " + format_rat_plain(raw_val));
+        out.push_back(log_linear_combo_text(row, log_names) + " = " + format_rat_plain(rhs.back()));
+    }
+    if(mat.size() != 2) return std::nullopt;
+    Rational det = r_sub(r_mul(mat[0][0], mat[1][1]), r_mul(mat[0][1], mat[1][0]));
+    if(is_zero(det)) return std::nullopt;
+    Rational X = r_div(r_sub(r_mul(rhs[0], mat[1][1]), r_mul(mat[0][1], rhs[1])), det);
+    Rational Y = r_div(r_sub(r_mul(mat[0][0], rhs[1]), r_mul(rhs[0], mat[1][0])), det);
+    out[1] = "X = log(" + format_key_expr(a, base_key) + "," + vars[0] + "), Y = log(" + format_key_expr(a, base_key) + "," + vars[1] + ")";
+    out.push_back("X = " + format_rat_plain(X));
+    out.push_back("Y = " + format_rat_plain(Y));
+    NodeId base_node = casio::parse_expr(a, base_key);
+    NodeId xv = exact_eval_simplify(a, casio::power(a, base_node, a.num(X)));
+    NodeId yv = exact_eval_simplify(a, casio::power(a, base_node, a.num(Y)));
+    std::string xs = format_expr(a, xv), ys = format_expr(a, yv);
+    out.push_back(vars[0] + " = " + xs);
+    out.push_back(vars[1] + " = " + ys);
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + xs + "," + ys + ")]");
+    return out;
 }
 
 static bool parse_log_power_eq_key(std::string const &eq, std::string const &xvar, std::string const &yvar, Rational &m)
@@ -28002,6 +28211,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto elss = exp_log_square_shift_system_route(a, expr)) return *elss;
     if(auto elsq = exp_log_square_system_route(a, expr)) return *elsq;
     if(auto lpscale = log_power_scaled_system_route(a, expr)) return *lpscale;
+    if(auto lms = log_monomial_system2_route(a, expr)) return *lms;
     if(auto lls = log_law_system2_route(a, expr)) return *lls;
     if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
     if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
