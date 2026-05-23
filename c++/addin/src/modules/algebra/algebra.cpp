@@ -9642,6 +9642,66 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
 
     std::vector<std::string> out;
 
+    // log_b(A)-log_b(B)=c  =>  A/B=b^c.
+    auto parse_log_difference = [&](std::string const &side) -> std::optional<std::pair<LogTermKey, LogTermKey>> {
+        int depth = 0;
+        for(std::size_t i = 0; i < side.size(); ++i) {
+            char ch = side[i];
+            if(ch == '(') depth++;
+            else if(ch == ')') depth--;
+            else if(ch == '-' && depth == 0 && i > 0) {
+                auto pos = parse_log_term_key(side.substr(0, i));
+                auto neg = parse_log_term_key(side.substr(i + 1));
+                if(pos && neg && pos->coeff.num == 1 && pos->coeff.den == 1 &&
+                   neg->coeff.num == 1 && neg->coeff.den == 1)
+                    return std::make_pair(*pos, *neg);
+            }
+        }
+        return std::nullopt;
+    };
+    auto run_log_difference = [&](std::string const &log_side, std::string const &value_side) -> std::optional<std::vector<std::string>> {
+        auto diff = parse_log_difference(log_side);
+        auto exponent = parse_rational_key(value_side);
+        if(!diff || !exponent || diff->first.base != diff->second.base) return std::nullopt;
+        try {
+            NodeId base_node = casio::parse_expr(a, diff->first.base);
+            if(contains_symbol(a, base_node, var)) return std::nullopt;
+            NodeId factor_node = exact_eval_simplify(a, casio::power(a, base_node, a.num(*exponent)));
+            std::string base = format_expr(a, base_node);
+            std::string A = format_key_expr(a, diff->first.arg);
+            std::string B = format_key_expr(a, diff->second.arg);
+            std::string c = format_rat_plain(*exponent);
+            std::string f = format_expr(a, factor_node);
+            std::vector<std::string> res;
+            res.push_back("Domain: " + A + " > 0");
+            res.push_back("Domain: " + B + " > 0");
+            res.push_back("log(" + base + "," + A + ") - log(" + base + "," + B + ") = " + c);
+            res.push_back("log(" + base + ",(" + A + ")/(" + B + ")) = " + c);
+            res.push_back("(" + A + ")/(" + B + ") = " + f);
+            res.push_back(A + " = " + f + "*(" + B + ")");
+            std::string poly_key = "(" + diff->first.arg + ")-(" + f + ")*(" + diff->second.arg + ")";
+            NodeId poly_node = casio::simplify(a, casio::parse_expr(a, poly_key));
+            auto rp = ratpoly_of_node(a, poly_node, var);
+            if(!rp.ok) return std::nullopt;
+            Poly2 prim = primitive_poly2(rp.num);
+            res.push_back(format_expr(a, poly2_to_node(a, prim, var)) + " = 0");
+            auto raw = solve_poly2(a, prim, var);
+            auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+            append_rejected_by_domain(res, var, raw, valid);
+            if(valid.empty()) res.push_back(var + " = []");
+            else {
+                for(auto const &v : valid) res.push_back(v);
+                res.push_back(solution_list_line(var, valid));
+            }
+            return res;
+        }
+        catch(...) {
+            return std::nullopt;
+        }
+    };
+    if(auto r = run_log_difference(sides[0], sides[1])) return *r;
+    if(auto r = run_log_difference(sides[1], sides[0])) return *r;
+
     // log_x(A)=c  =>  x^c=A, with x>0 and x!=1.
     if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
         auto l = parse_log_term_key(lhs_terms[0]);
@@ -18051,6 +18111,8 @@ static std::optional<std::vector<std::string>> exact_trig_poly_equation_solve_ro
     NodeId lhs = casio::simplify(a, eq->lhs);
     NodeId rhs = casio::simplify(a, eq->rhs);
     NodeId residual = casio::simplify(a, sub_node(a, lhs, rhs));
+    if(contains_fn_kind(a, residual, FnKind::Log) || contains_fn_kind(a, residual, FnKind::Log10))
+        return std::nullopt;
     if(!contains_fn_kind(a, residual, FnKind::Sin) &&
        !contains_fn_kind(a, residual, FnKind::Cos) &&
        !contains_fn_kind(a, residual, FnKind::Tan)) return std::nullopt;
@@ -19531,6 +19593,171 @@ static std::optional<std::vector<std::string>> log_power_substitution_route(
     }
     for(auto const &x : xs) out.push_back(x);
     out.push_back(solution_list_line(var, xs));
+    return out;
+}
+
+static std::string strip_outer_key_parens(std::string s)
+{
+    for(;;) {
+        s = trim_text(s);
+        if(s.size() < 2 || s.front() != '(' || s.back() != ')') return s;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < s.size(); ++i) {
+            if(s[i] == '(') depth++;
+            else if(s[i] == ')') depth--;
+            if(depth == 0 && i + 1 < s.size()) {
+                wraps = false;
+                break;
+            }
+        }
+        if(!wraps) return s;
+        s = s.substr(1, s.size() - 2);
+    }
+}
+
+static std::string canonical_key_expr(Arena &a, std::string const &s)
+{
+    return compact_input_key(format_key_expr(a, strip_outer_key_parens(s)));
+}
+
+static bool parse_plain_log_call_key(std::string term, std::string &base, std::string &arg)
+{
+    term = strip_outer_key_parens(term);
+    std::size_t next = 0;
+    return parse_log_call_key(term, 0, base, arg, next) && next == term.size();
+}
+
+static bool read_trig_call_key(std::string const &s, std::size_t pos, std::string &call, std::size_t &next)
+{
+    std::size_t start = pos;
+    bool ok_name = false;
+    for(char const *name : {"sin", "cos"}) {
+        std::size_t len = std::char_traits<char>::length(name);
+        if(s.compare(pos, len, name) == 0 && pos + len < s.size() && s[pos + len] == '(') {
+            ok_name = true;
+            pos += len;
+            break;
+        }
+    }
+    if(!ok_name) return false;
+    int depth = 0;
+    for(std::size_t i = pos; i < s.size(); ++i) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')') {
+            depth--;
+            if(depth == 0) {
+                next = i + 1;
+                call = s.substr(start, next - start);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool trig_arg_kind(Arena &a, std::string const &txt, FnKind &kind, std::string &arg)
+{
+    try {
+        NodeId n = casio::parse_expr(a, txt);
+        Node const &x = a.get(n);
+        if(x.kind != NodeKind::Fn || (x.fkind != FnKind::Sin && x.fkind != FnKind::Cos)) return false;
+        kind = x.fkind;
+        arg = format_expr(a, x.a);
+        return true;
+    }
+    catch(...) {
+        return false;
+    }
+}
+
+static std::optional<std::vector<std::string>> log_sin_cos_product_route(
+    Arena &a,
+    std::string const &equation_text,
+    std::string const &var
+)
+{
+    std::string key = casio::normalize_text(equation_text);
+    for(std::size_t p = 0; (p = key.find("**", p)) != std::string::npos;) key.replace(p, 2, "^");
+    key.erase(std::remove_if(key.begin(), key.end(), [](unsigned char c) {
+        return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+    }), key.end());
+    auto sides = split_top_key(key, '=');
+    if(sides.size() != 2) return std::nullopt;
+    sides[0] = trim_text(sides[0]);
+    sides[1] = trim_text(sides[1]);
+
+    std::string prod_side, rhs_side;
+    if(auto r = parse_rational_key(sides[1]); r && r->num == 1 && r->den == 4) {
+        prod_side = sides[0];
+        rhs_side = sides[1];
+    }
+    else if(auto r = parse_rational_key(sides[0]); r && r->num == 1 && r->den == 4) {
+        prod_side = sides[1];
+        rhs_side = sides[0];
+    }
+    else return std::nullopt;
+
+    std::string b1, a1, b2, a2;
+    auto logs = split_top_key(strip_outer_key_parens(prod_side), '*');
+    if(logs.size() == 2) {
+        if(!parse_plain_log_call_key(logs[0], b1, a1) || !parse_plain_log_call_key(logs[1], b2, a2))
+            return std::nullopt;
+    }
+    else {
+        std::string p = strip_outer_key_parens(prod_side);
+        std::size_t n1 = 0, n2 = 0;
+        if(!parse_log_call_key(p, 0, b1, a1, n1) || !parse_log_call_key(p, n1, b2, a2, n2) || n2 != p.size())
+            return std::nullopt;
+    }
+    if(canonical_key_expr(a, b1) != canonical_key_expr(a, b2)) return std::nullopt;
+    if(canonical_key_expr(a, a1) == canonical_key_expr(a, a2)) return std::nullopt;
+
+    auto factors = split_top_key(strip_outer_key_parens(b1), '*');
+    if(factors.size() != 2) {
+        std::string p = strip_outer_key_parens(b1), f_a, f_b;
+        std::size_t n1 = 0, n2 = 0;
+        if(read_trig_call_key(p, 0, f_a, n1) && read_trig_call_key(p, n1, f_b, n2) && n2 == p.size())
+            factors = {f_a, f_b};
+    }
+    if(factors.size() != 2) return std::nullopt;
+    std::string f0 = canonical_key_expr(a, factors[0]), f1 = canonical_key_expr(a, factors[1]);
+    std::string c1 = canonical_key_expr(a, a1), c2 = canonical_key_expr(a, a2);
+    bool same_pair = (f0 == c1 && f1 == c2) || (f0 == c2 && f1 == c1);
+    if(!same_pair) return std::nullopt;
+
+    FnKind k1 = FnKind::Sin, k2 = FnKind::Sin;
+    std::string arg1, arg2;
+    if(!trig_arg_kind(a, a1, k1, arg1) || !trig_arg_kind(a, a2, k2, arg2)) return std::nullopt;
+    if(!((k1 == FnKind::Sin && k2 == FnKind::Cos) || (k1 == FnKind::Cos && k2 == FnKind::Sin)))
+        return std::nullopt;
+    if(canonical_key_expr(a, arg1) != canonical_key_expr(a, arg2)) return std::nullopt;
+    if(canonical_key_expr(a, arg1) != canonical_key_expr(a, var)) return std::nullopt;
+
+    std::string s = k1 == FnKind::Sin ? format_key_expr(a, a1) : format_key_expr(a, a2);
+    std::string c = k1 == FnKind::Cos ? format_key_expr(a, a1) : format_key_expr(a, a2);
+    std::string b = format_key_expr(a, b1);
+    std::vector<std::string> out;
+    out.push_back("Domain: " + s + " > 0, " + c + " > 0");
+    out.push_back("b = " + b);
+    out.push_back("0 < b < 1");
+    out.push_back("A = log(b," + s + ")");
+    out.push_back("B = log(b," + c + ")");
+    out.push_back("A*B = " + rhs_side);
+    out.push_back("b^A = " + s);
+    out.push_back("b^B = " + c);
+    out.push_back("b^(A+B) = " + s + "*" + c);
+    out.push_back("A + B = 1");
+    out.push_back("A = 1 - B");
+    out.push_back("B*(1 - B) = 1/4");
+    out.push_back("(2*B - 1)^2 = 0");
+    out.push_back("B = 1/2");
+    out.push_back("A = 1/2");
+    out.push_back("b^(1/2) = " + s);
+    out.push_back(s + "*" + c + " = " + s + "^2");
+    out.push_back(c + " = " + s);
+    out.push_back("tan(" + var + ") = 1");
+    out.push_back(var + " = pi/4 + 2*pi*n");
     return out;
 }
 
@@ -27836,14 +28063,28 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string key = compact_input_key(req.expr);
             if(auto atan_sys = atan_sum_xy_system_route_key(key)) return *atan_sys;
         }
+        if(auto solve_inner = unwrap_call_text(req.expr, "solve"); !solve_inner.empty()) {
+            auto parts = split_csv(solve_inner);
+            if(parts.size() >= 2) {
+                std::string var = trim_text(parts[1]);
+                if(auto log_trig = log_sin_cos_product_route(arena, parts[0], var)) return *log_trig;
+            }
+        }
         {
             std::string key = compact_input_key(req.expr);
             if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')') {
-                if(auto etp = exact_trig_poly_equation_solve_route(arena, key.substr(6, key.size() - 7))) return *etp;
+                if(key.find("log(") == std::string::npos && key.find("ln(") == std::string::npos)
+                    if(auto etp = exact_trig_poly_equation_solve_route(arena, key.substr(6, key.size() - 7))) return *etp;
             }
         }
         if(req.mode == 6) {
-            if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
+            auto parts = split_csv(req.expr);
+            if(parts.size() >= 2) {
+                std::string var = trim_text(parts[1]);
+                if(auto log_trig = log_sin_cos_product_route(arena, parts[0], var)) return *log_trig;
+            }
+            if(req.expr.find("log(") == std::string::npos && req.expr.find("ln(") == std::string::npos)
+                if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
         }
         if(req.mode == 3 || req.method == "expand") {
             NodeId parsed = casio::parse_expr(arena, req.expr);
@@ -27949,7 +28190,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         if(auto aa = abs_linear_equation_route(arena, rearr, parts[1])) return *aa;
                     }
                 }
-                if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
+                if(req.expr.find("log(") == std::string::npos && req.expr.find("ln(") == std::string::npos)
+                    if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
             }
         }
         {
@@ -29939,6 +30181,10 @@ algebra_compare_transform_modes:
         if(auto iso = direct_constant_solution(lhs, rhs)) return *iso;
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
 
+        if(auto log_trig = log_sin_cos_product_route(arena, equation_text, solve_var)) {
+            out.insert(out.end(), log_trig->begin(), log_trig->end());
+            return out;
+        }
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;

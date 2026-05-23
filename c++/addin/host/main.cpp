@@ -520,6 +520,17 @@ int main(int argc, char **argv)
                     }
                     return false;
                 };
+                auto has_log = [](std::string const &s) {
+                    for(char const *k : {"log(", "log10(", "ln("}) {
+                        std::string needle(k);
+                        for(std::size_t pos = s.find(needle); pos != std::string::npos; pos = s.find(needle, pos + 1)) {
+                            if(pos == 0) return true;
+                            unsigned char prev = static_cast<unsigned char>(s[pos - 1]);
+                            if(!std::isalpha(prev) && prev != '_') return true;
+                        }
+                    }
+                    return false;
+                };
                 auto has_var_token = [](std::string const &s, std::string const &v) {
                     for(std::size_t i = 0; i < s.size();) {
                         if(std::isalnum((unsigned char)s[i]) || s[i] == '_') {
@@ -570,7 +581,7 @@ int main(int argc, char **argv)
                     if(!interval_arg && !v.empty()) solve_var = v;
                     alg_var = !interval_arg && !(v == "x" || v == "t" || v == "theta");
                 }
-                if(has_trig(inner) && trig_uses_var(parts.empty() ? inner : parts[0], solve_var) && !alg_var && !sqrt_trig_equation) {
+                if(has_trig(inner) && !has_log(inner) && trig_uses_var(parts.empty() ? inner : parts[0], solve_var) && !alg_var && !sqrt_trig_equation) {
                     std::string trig_expr = inner;
                     if(parts.size() >= 2) {
                         auto eq = parts[1].find('=');

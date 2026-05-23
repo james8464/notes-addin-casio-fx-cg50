@@ -180,6 +180,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(log(sin(x)*cos(x),sin(x))*log(sin(x)*cos(x),cos(x))=1/4,x)",
+        ["Domain: sin(x) > 0, cos(x) > 0", "A*B = 1/4", "A + B = 1", "tan(x) = 1", "x = pi/4 + 2*pi*n"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],
