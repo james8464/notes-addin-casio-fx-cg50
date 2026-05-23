@@ -4035,6 +4035,85 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     };
 
     NodeId n = casio::parse_expr(a, trim_text(args[0]));
+    std::function<std::optional<std::vector<NodeId>>(NodeId)> poly_coeffs;
+    poly_coeffs = [&](NodeId id) -> std::optional<std::vector<NodeId>> {
+        if(want < 0) return std::nullopt;
+        std::vector<NodeId> out((std::size_t)want + 1, a.num(Rational{0, 1}));
+        if(!contains_symbol(a, id, var)) {
+            out[0] = id;
+            return out;
+        }
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Sym && x.text == var) {
+            if(want >= 1) out[1] = one_node(a);
+            return out;
+        }
+        if(x.kind == NodeKind::Add) {
+            for(NodeId k : x.kids) {
+                auto pc = poly_coeffs(k);
+                if(!pc) return std::nullopt;
+                for(int i = 0; i <= want; ++i)
+                    out[(std::size_t)i] = exact_eval_simplify(a, casio::add(a, {out[(std::size_t)i], (*pc)[(std::size_t)i]}));
+            }
+            return out;
+        }
+        if(x.kind == NodeKind::Mul) {
+            out[0] = one_node(a);
+            for(NodeId k : x.kids) {
+                auto pc = poly_coeffs(k);
+                if(!pc) return std::nullopt;
+                std::vector<NodeId> next((std::size_t)want + 1, a.num(Rational{0, 1}));
+                for(int i = 0; i <= want; ++i) {
+                    for(int j = 0; i + j <= want; ++j) {
+                        next[(std::size_t)(i + j)] = exact_eval_simplify(a, casio::add(a, {
+                            next[(std::size_t)(i + j)],
+                            casio::mul(a, {out[(std::size_t)i], (*pc)[(std::size_t)j]})
+                        }));
+                    }
+                }
+                out.swap(next);
+            }
+            return out;
+        }
+        if(x.kind == NodeKind::Pow) {
+            Node const &e = a.get(x.b);
+            if(e.kind != NodeKind::Num || e.num.den != 1 || e.num.num < 0 || e.num.num > 12) return std::nullopt;
+            auto base = poly_coeffs(x.a);
+            if(!base) return std::nullopt;
+            out[0] = one_node(a);
+            for(long long p = 0; p < e.num.num; ++p) {
+                std::vector<NodeId> next((std::size_t)want + 1, a.num(Rational{0, 1}));
+                for(int i = 0; i <= want; ++i) {
+                    for(int j = 0; i + j <= want; ++j) {
+                        next[(std::size_t)(i + j)] = exact_eval_simplify(a, casio::add(a, {
+                            next[(std::size_t)(i + j)],
+                            casio::mul(a, {out[(std::size_t)i], (*base)[(std::size_t)j]})
+                        }));
+                    }
+                }
+                out.swap(next);
+            }
+            return out;
+        }
+        if(x.kind == NodeKind::Div) {
+            if(contains_symbol(a, x.b, var)) return std::nullopt;
+            auto top = poly_coeffs(x.a);
+            if(!top) return std::nullopt;
+            for(int i = 0; i <= want; ++i)
+                (*top)[(std::size_t)i] = exact_eval_simplify(a, casio::div(a, (*top)[(std::size_t)i], x.b));
+            return top;
+        }
+        return std::nullopt;
+    };
+    auto generic_poly_coeff_route = [&](NodeId id) -> std::optional<std::vector<std::string>> {
+        auto pc = poly_coeffs(id);
+        if(!pc) return std::nullopt;
+        NodeId coeff = exact_eval_simplify(a, (*pc)[(std::size_t)want]);
+        std::vector<std::string> out{format_expr(a, id)};
+        out.push_back("Coefficient = sum " + var + " powers adding to " + std::to_string(want));
+        out.push_back("Coefficient = " + format_expr(a, coeff));
+        return out;
+    };
     if(want >= 0) if(auto bi = read_binom(n)) {
         if(want > bi->nn) return std::nullopt;
         NodeId coeff = binom_coeff_at(*bi, want);
@@ -4050,7 +4129,10 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     }
 
     Node const &prod = a.get(n);
-    if(prod.kind != NodeKind::Mul) return laurent_route(n);
+    if(prod.kind != NodeKind::Mul) {
+        if(auto gp = generic_poly_coeff_route(n)) return *gp;
+        return laurent_route(n);
+    }
     std::vector<BinomInfo> binoms;
     std::vector<NodeId> non_binom;
     if(want >= 0) {
@@ -4112,7 +4194,10 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
         }
         rest.push_back(kid);
     }
-    if(!bi) return laurent_route(n);
+    if(!bi) {
+        if(auto gp = generic_poly_coeff_route(n)) return *gp;
+        return laurent_route(n);
+    }
     NodeId linear = mul_or_one(a, rest);
     auto lp = read_linear_poly(linear);
     if(!lp) return laurent_route(n);
@@ -9153,6 +9238,79 @@ static std::string nth_power_root_text(Arena &a, NodeId value, long long n)
     std::string rhs_text = format_expr(a, value);
     if(auto r = as_num(a, value); r && r->den > 0)
         return rational_power_root_text(a, *r, static_cast<int>(n));
+    auto exact_odd_root = [](Rational r, long long root) -> std::optional<Rational> {
+        if(root <= 0 || root > 9 || r.den <= 0) return std::nullopt;
+        bool neg = r.num < 0;
+        auto rn = integer_nth_root_i64(neg ? -r.num : r.num, static_cast<int>(root));
+        auto rd = integer_nth_root_i64(r.den, static_cast<int>(root));
+        if(!rn || !rd || *rd == 0) return std::nullopt;
+        Rational out{neg ? -*rn : *rn, *rd};
+        out.normalize();
+        return out;
+    };
+    auto split_square_factor = [](long long v, long long &outside, long long &inside) {
+        outside = 1;
+        inside = v;
+        if(v <= 1 || v > 1000000000LL) return;
+        for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(inside))); k >= 2; --k) {
+            long long sq = k * k;
+            if(inside % sq == 0) {
+                outside *= k;
+                inside /= sq;
+                k = static_cast<long long>(std::sqrt(static_cast<double>(inside))) + 1;
+            }
+        }
+    };
+    auto canon_sqrt = [&](Rational &coef, Rational &rad) {
+        rad.normalize();
+        if(rad.num <= 0 || rad.den <= 0) return false;
+        long long no = 1, ni = 1, do_ = 1, di = 1;
+        split_square_factor(rad.num, no, ni);
+        split_square_factor(rad.den, do_, di);
+        coef = r_mul(coef, Rational{no, do_ * di});
+        rad = Rational{ni * di, 1};
+        coef.normalize();
+        rad.normalize();
+        return true;
+    };
+    std::function<bool(NodeId, int, Rational &, Rational &, bool &)> collect_sqrt =
+        [&](NodeId id, int sign, Rational &coef, Rational &rad, bool &saw) -> bool {
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Num) {
+            if(x.num.num == 0 && sign < 0) return false;
+            coef = sign > 0 ? r_mul(coef, x.num) : r_div(coef, x.num);
+            return true;
+        }
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+            auto r = as_num(a, x.a);
+            if(!r || r->num <= 0 || r->den <= 0) return false;
+            rad = sign > 0 ? r_mul(rad, *r) : r_div(rad, *r);
+            saw = true;
+            return true;
+        }
+        if(x.kind == NodeKind::Mul) {
+            for(NodeId k : x.kids)
+                if(!collect_sqrt(k, sign, coef, rad, saw)) return false;
+            return true;
+        }
+        if(x.kind == NodeKind::Div)
+            return collect_sqrt(x.a, sign, coef, rad, saw) && collect_sqrt(x.b, -sign, coef, rad, saw);
+        return false;
+    };
+    if(n % 2 == 1 && n >= 3 && n <= 9) {
+        Rational coef{1, 1}, rad{1, 1};
+        bool saw_sqrt = false;
+        if(collect_sqrt(value, 1, coef, rad, saw_sqrt) && saw_sqrt && canon_sqrt(coef, rad)) {
+            if(rad.num == rad.den) {
+                if(auto c = exact_odd_root(coef, n)) return format_rat_plain(*c);
+            }
+            else {
+                Rational need = r_div(coef, r_pow_int(rad, static_cast<int>((n - 1) / 2)));
+                if(auto c = exact_odd_root(need, n))
+                    return multiply_root_text(*c, sqrt_rational_surd_text(a, rad));
+            }
+        }
+    }
     return "(" + rhs_text + ")^(1/" + std::to_string(n) + ")";
 }
 
@@ -9253,7 +9411,7 @@ static std::optional<std::vector<std::string>> reciprocal_square_cube_route(Aren
     if(!have1 || !have_m2 || casio::same_by_sig(a, c1, zero_node(a))) return std::nullopt;
     NodeId rhs = exact_eval_simplify(a, casio::div(a, neg_node(a, cm2), c1));
     std::string rhs_txt = format_expr(a, rhs);
-    std::string root = "(" + rhs_txt + ")^(1/3)";
+    std::string root = nth_power_root_text(a, rhs, 3);
     return std::vector<std::string>{
         var + " != 0",
         format_expr(a, exact_eval_simplify(a, casio::add(a, {casio::mul(a, {c1, casio::power(a, casio::sym(a, var), casio::num(a, 3))}), cm2}))) + " = 0",
@@ -11431,12 +11589,11 @@ static std::string flip_relop(std::string op)
 
 static std::optional<std::vector<std::string>> exponential_inequality_route(Arena &a, std::string expr)
 {
-    std::string key = compact_input_key(expr);
-    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')')
-        key = key.substr(6, key.size() - 7);
-    auto args = split_top_key(key, ',');
+    std::string key = trim_text(expr);
+    if(auto inner = unwrap_call_text(key, "solve"); !inner.empty()) key = inner;
+    auto args = split_csv(key);
     if(args.size() < 2 || args[1].empty()) return std::nullopt;
-    std::string rel = args[0], var = args[1];
+    std::string rel = trim_text(args[0]), var = trim_text(args[1]);
     std::size_t pos = 0;
     std::string op;
     if(!find_top_rel(rel, pos, op)) return std::nullopt;
@@ -30324,6 +30481,11 @@ algebra_compare_transform_modes:
 
         NodeId rearr = casio::simplify(arena, casio::add(arena, {lhs, casio::neg(arena, rhs)}));
         std::string solve_var = choose_solve_var(arena, rearr, explicit_var);
+        bool reject_zero = false;
+        if(solve_parts.size() >= 3) {
+            std::string cond = compact_input_key(solve_parts[2]);
+            reject_zero = cond == solve_var + "!=0" || cond == solve_var + "<>0";
+        }
         if(auto dio = linear_diophantine_xy_route(equation_text, solve_parts)) return *dio;
         if(auto atan_pair = atan_difference_pair_route_key(compact_input_key(equation_text + "," + solve_var))) return *atan_pair;
         if(!text_has_variable_token(equation_text) && !has_symbols(arena, eq->lhs) && !has_symbols(arena, eq->rhs)) {
@@ -30362,6 +30524,29 @@ algebra_compare_transform_modes:
             out.push_back("Domain: log args >0.");
         }
         if(auto ident = reciprocal_trig_identity_step(equation_text)) out.push_back(*ident);
+        if(reject_zero) {
+            out.push_back(solve_var + " != 0");
+            auto rp = ratpoly_of_node(arena, rearr, solve_var);
+            if(rp.ok && is_zero(rp.den.a1) && is_zero(rp.den.a2)) {
+                std::vector<std::string> raw;
+                if(!is_zero(rp.num.a2) || !is_zero(rp.num.a1)) raw = solve_poly2(arena, rp.num, solve_var);
+                if(!raw.empty()) {
+                    out.push_back(format_expr(arena, poly2_to_node(arena, rp.num, solve_var)) + " = 0");
+                    std::vector<std::string> kept;
+                    for(auto const &s : raw) {
+                        out.push_back(s);
+                        auto r = parse_rational_text(sol_rhs(s));
+                        if(r && is_zero(*r)) out.push_back(s + " rejected by " + solve_var + " != 0");
+                        else kept.push_back(s);
+                    }
+                    kept = filter_real_solutions(arena, rearr, solve_var, kept, interval_lo, interval_hi);
+                    sort_solution_lines(arena, kept);
+                    append_answer(out, solve_var, kept);
+                    append_numeric_3dp(arena, out, solve_var, kept);
+                    return out;
+                }
+            }
+        }
 
         auto direct_constant_solution = [&](NodeId vside, NodeId value) -> std::optional<std::vector<std::string>> {
             if(!is_sym_var(arena, vside, solve_var) || contains_symbol(arena, value, solve_var)) return std::nullopt;

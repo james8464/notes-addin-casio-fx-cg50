@@ -204,6 +204,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "coeff((3*x-2)*(x+4)*(x+k),x,2)",
+        ["Coefficient = sum x powers adding to 2", "Coefficient = 3*k + 10"],
+        ["Unexpected token", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(24*k^2=384*k,k,k!=0)",
+        ["k != 0", "k = 0 rejected by k != 0", "k = [16]"],
+        ["k = [0, 16]", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(10*1.2^(n-1)>1000,n)",
+        ["10*(6/5)^(n - 1) > 1000", "(6/5)^(n - 1) > 100", "n integer => n >= 27"],
+        ["(506/5)^(n - 1)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(x-16*sqrt(2)/x^2=0,x)",
+        ["x^3 = 16*sqrt(2)", "x = 2*sqrt(2)", "x = [2*sqrt(2)]"],
+        ["(16*sqrt(2))^(1/3)", "ERR:"],
+    ),
+    (
+        "trig",
+        "12+3*sin(pi*t/6)=10,t,12,24,8,method=identity",
+        ["pi*t/6 = alpha + 2*pi*n", "t = [19.3936771632, 22.6063228368]"],
+        ["pi*t/6 = alpha + 360n", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],

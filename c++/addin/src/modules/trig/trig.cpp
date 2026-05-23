@@ -3545,17 +3545,18 @@ static std::string trig_base_angle_line(FnKind fk, std::string const &arg, doubl
 
 static std::string trig_alpha_family_line(FnKind fk, std::string const &arg, double r, bool rad)
 {
+    bool arg_rad = rad || arg.find("pi") != std::string::npos;
     std::string val = trig_root_text(r);
-    std::string period = rad ? "2*pi*n" : "360n";
+    std::string period = arg_rad ? "2*pi*n" : "360n";
     if(fk == FnKind::Sin) {
         return "sin(" + arg + ")=" + val + " => " + arg + " = alpha + " + period + " or " + arg + " = " +
-               std::string(rad ? "pi-alpha" : "180-alpha") + " + " + period + ".";
+               std::string(arg_rad ? "pi-alpha" : "180-alpha") + " + " + period + ".";
     }
     if(fk == FnKind::Cos) {
         return "cos(" + arg + ")=" + val + " => " + arg + " = alpha + " + period + " or " + arg + " = " +
-               std::string(rad ? "2*pi-alpha" : "360-alpha") + " + " + period + ".";
+               std::string(arg_rad ? "2*pi-alpha" : "360-alpha") + " + " + period + ".";
     }
-    return "tan(" + arg + ")=" + val + " => " + arg + " = alpha + " + std::string(rad ? "pi*n" : "180n") + ".";
+    return "tan(" + arg + ")=" + val + " => " + arg + " = alpha + " + std::string(arg_rad ? "pi*n" : "180n") + ".";
 }
 
 static std::string trig_quad_text(double a, double b, double c)
