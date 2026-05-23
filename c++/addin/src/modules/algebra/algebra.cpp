@@ -29345,8 +29345,12 @@ algebra_compare_transform_modes:
         if(req.mode == 13) {
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
-            if(auto fa = factor_poly_any_route(arena, n, "x")) return *fa;
-            auto p = poly_of(arena, n, "x");
+            std::string fvar = "x";
+            std::vector<std::string> syms;
+            collect_symbols(arena, n, syms);
+            if(syms.size() == 1) fvar = syms[0];
+            if(auto fa = factor_poly_any_route(arena, n, fvar)) return *fa;
+            auto p = poly_of(arena, n, fvar);
             if(!p || !p->ok) {
                 return {
                     "1. Start with " + format_expr(arena, n) + ".",
@@ -29394,7 +29398,7 @@ algebra_compare_transform_modes:
             out.push_back("Find the roots, then write the factor form.");
 
             if(r1_int && r2_int && r1.num != r2.num) {
-                NodeId x = casio::sym(arena, "x");
+                NodeId x = casio::sym(arena, fvar);
                 NodeId term1 = casio::add(arena, {x, casio::num(arena, -r1.num)});
                 NodeId term2 = casio::add(arena, {x, casio::num(arena, -r2.num)});
                 NodeId factored;
@@ -29409,7 +29413,7 @@ algebra_compare_transform_modes:
                 out.push_back("Answer: " + ans);
                 return out;
             } else if(r1_int && r1.num == r2.num) {
-                NodeId x = casio::sym(arena, "x");
+                NodeId x = casio::sym(arena, fvar);
                 NodeId term = casio::add(arena, {x, casio::num(arena, -r1.num)});
                 NodeId sq = casio::power(arena, term, casio::num(arena, 2));
                 NodeId factored;

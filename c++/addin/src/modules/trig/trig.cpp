@@ -532,9 +532,28 @@ static std::vector<std::string> split_csv(std::string const &s)
     std::vector<std::string> parts;
     std::string cur;
     int depth = 0;
-    for(char c : s) {
-        if(c == '(' || c == '[' || c == '{') depth++;
-        if(c == ')' || c == ']' || c == '}') depth--;
+    auto open_bound_marker = [&](std::size_t pos) {
+        if(trim(cur).size()) return false;
+        int d = 0;
+        for(std::size_t i = pos; i < s.size(); ++i) {
+            char ch = s[i];
+            if(ch == '(') ++d;
+            else if(ch == ')') {
+                if(--d == 0) return false;
+            }
+            else if(ch == ',' && d == 1) return true;
+        }
+        return true;
+    };
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(') {
+            if(!open_bound_marker(i)) depth++;
+        }
+        else if(c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') {
+            if(depth > 0) depth--;
+        }
         if(c == ',' && depth == 0) {
             parts.push_back(cur);
             cur.clear();
@@ -9682,11 +9701,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto parts = split_csv(req.expr);
         std::vector<std::string> args;
         bool general = req.method == "general";
+        bool open_lo = false, open_hi = false;
         std::optional<bool> rad_override;
         if(req.method == "rad" || req.method == "radians") rad_override = true;
         if(req.method == "deg" || req.method == "degrees") rad_override = false;
         for(auto const &part : parts) {
             std::string trimmed = trim(part);
+            std::string opt = compact_key(trimmed);
+            if(opt == "open_lo" || opt == "lo_open" || opt == "method=open_lo") {
+                open_lo = true;
+                continue;
+            }
+            if(opt == "open_hi" || opt == "hi_open" || opt == "method=open_hi") {
+                open_hi = true;
+                continue;
+            }
             if(trimmed == "method=general") {
                 general = true;
                 continue;
@@ -9703,6 +9732,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             args.push_back(trimmed);
         }
         if(args.size() >= 4) {
+            if(open_lo && (args[2].empty() || args[2].front() != '(')) args[2] = "(" + args[2];
+            if(open_hi && (args[3].empty() || args[3].back() != ')')) args[3] += ")";
             return solve_simple_trig_eq(arena, args[0], args[1], args[2], args[3], general, rad_override);
         }
         if(!args.empty()) {

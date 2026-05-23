@@ -30,6 +30,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "1/2*tan(x)-sin(x)=0,x,0,360),method=identity",
+        ["Multiply by cos(x)", "0 <= x < 360", "x = [0, 60, 180, 300]"],
+        ["ERR:", "Unexpected token", "360]"],
+    ),
+    (
+        "trig",
+        "sin(x)=0,x,(0,360)",
+        ["0 < x < 360", "x = [180]"],
+        ["ERR:", "Unexpected token", "x = [0", "360]"],
+    ),
+    (
+        "trig",
         "sin(4*x+10)=sin(50),x,0,360,method=general",
         ["sin(A)=sin(B)", "A=B+360n=>x=10+n*90", "A=180-B+360n=>x=30+n*90", "x=10+n*90orx=30+n*90"],
         ["46.302756", "83.697243", "x = []"],
@@ -111,6 +123,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(z^6=1,z)",
         ["z^6 = 1", "k = 0, 1, ..., 5", "z = [1, e^(pi/3*i), e^(2*pi/3*i), -1"],
         ["base = 1 or exponent = 0", "z = [1]", "ERR:"],
+    ),
+    (
+        "alg",
+        "factor(k^3-9*k^2+24*k-16)",
+        ["= (k - 1)*(k - 4)^2", "(k - 1)*(k - 4)^2"],
+        ["numeric coeffs needed", "ERR:"],
     ),
     (
         "alg",
