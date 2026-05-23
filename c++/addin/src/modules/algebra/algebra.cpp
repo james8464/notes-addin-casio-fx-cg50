@@ -14295,6 +14295,234 @@ static std::optional<std::vector<std::string>> sector_system_route(Arena &a, std
     return sector_system_route_for(a, eqs, vars[1], vars[0]);
 }
 
+struct MonoTerm
+{
+    Rational coef{1, 1};
+    std::map<std::string, int> pow;
+};
+
+static bool monomial_of_node(Arena &a, NodeId n, MonoTerm &m)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        m.coef = x.num;
+        return true;
+    }
+    if(x.kind == NodeKind::Sym) {
+        m.pow[x.text] += 1;
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        m.coef = Rational{1, 1};
+        m.pow.clear();
+        for(NodeId k : x.kids) {
+            MonoTerm t;
+            if(!monomial_of_node(a, k, t)) return false;
+            m.coef = r_mul(m.coef, t.coef);
+            for(auto const &kv : t.pow) m.pow[kv.first] += kv.second;
+        }
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        MonoTerm top, den;
+        if(!monomial_of_node(a, x.a, top) || !monomial_of_node(a, x.b, den) || is_zero(den.coef)) return false;
+        m.coef = r_div(top.coef, den.coef);
+        m.pow = top.pow;
+        for(auto const &kv : den.pow) m.pow[kv.first] -= kv.second;
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < -12 || e->num > 12) return false;
+        MonoTerm b;
+        if(!monomial_of_node(a, x.a, b) || (is_zero(b.coef) && e->num < 0)) return false;
+        m.coef = r_pow_int(b.coef, (int)e->num);
+        for(auto const &kv : b.pow) m.pow[kv.first] = kv.second * (int)e->num;
+        return true;
+    }
+    return false;
+}
+
+static bool two_var_coeffs(Arena &a, NodeId n, std::vector<std::string> const &vars,
+                           std::map<std::pair<int, int>, Rational> &coef)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    for(NodeId t : terms) {
+        MonoTerm m;
+        if(!monomial_of_node(a, t, m)) return false;
+        int px = 0, py = 0;
+        auto ix = m.pow.find(vars[0]);
+        if(ix != m.pow.end()) { px = ix->second; m.pow.erase(ix); }
+        auto iy = m.pow.find(vars[1]);
+        if(iy != m.pow.end()) { py = iy->second; m.pow.erase(iy); }
+        for(auto const &kv : m.pow) if(kv.second != 0) return false;
+        if(px < 0 || py < 0 || px > 2 || py > 2) return false;
+        coef[{px, py}] = r_add(coef[{px, py}], m.coef);
+    }
+    return true;
+}
+
+static bool product_equation(Arena &a, std::string const &txt, std::vector<std::string> const &vars, Rational &prod)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return false;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    std::map<std::pair<int, int>, Rational> c;
+    if(!two_var_coeffs(a, residual, vars, c)) return false;
+    Rational xy = c[{1, 1}], k = c[{0, 0}];
+    if(is_zero(xy)) return false;
+    for(auto const &kv : c)
+        if(kv.first != std::make_pair(1, 1) && kv.first != std::make_pair(0, 0) && !is_zero(kv.second)) return false;
+    prod = r_div(r_neg(k), xy);
+    return true;
+}
+
+static bool square_sum_equation(Arena &a, std::string const &txt, std::vector<std::string> const &vars, Rational &sum)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return false;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    std::map<std::pair<int, int>, Rational> c;
+    if(!two_var_coeffs(a, residual, vars, c)) return false;
+    Rational x2 = c[{2, 0}], y2 = c[{0, 2}], k = c[{0, 0}];
+    if(is_zero(x2) || r_cmp(x2, y2) != 0) return false;
+    for(auto const &kv : c)
+        if(kv.first != std::make_pair(2, 0) && kv.first != std::make_pair(0, 2) &&
+           kv.first != std::make_pair(0, 0) && !is_zero(kv.second)) return false;
+    sum = r_div(r_neg(k), x2);
+    return true;
+}
+
+static std::optional<std::vector<std::string>> product_square_sum_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    Rational p{0, 1}, s{0, 1};
+    bool have_p = false, have_s = false;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(product_equation(a, e, vars, v)) { p = v; have_p = true; }
+        else if(square_sum_equation(a, e, vars, v)) { s = v; have_s = true; }
+    }
+    if(!have_p || !have_s) return std::nullopt;
+    Rational sp = r_add(s, r_mul(Rational{2, 1}, p));
+    Rational sm = r_sub(s, r_mul(Rational{2, 1}, p));
+    if(sp.num < 0 || sm.num < 0) return std::nullopt;
+    auto rp = parse_rational_text(sqrt_rational_surd_text(a, sp));
+    auto rm = parse_rational_text(sqrt_rational_surd_text(a, sm));
+    if(!rp || !rm) return std::nullopt;
+    std::vector<std::pair<Rational, Rational>> pairs;
+    for(Rational u : {*rp, r_neg(*rp)}) {
+        for(Rational v : {*rm, r_neg(*rm)}) {
+            pairs.push_back({r_div(r_add(u, v), Rational{2, 1}),
+                             r_div(r_sub(u, v), Rational{2, 1})});
+        }
+    }
+    std::sort(pairs.begin(), pairs.end(),
+              [](std::pair<Rational, Rational> const &l, std::pair<Rational, Rational> const &r) {
+        bool lp = l.first.num > 0 && l.second.num > 0;
+        bool rp = r.first.num > 0 && r.second.num > 0;
+        if(lp != rp) return lp > rp;
+        int cx = r_cmp(l.first, r.first);
+        if(cx) return cx < 0;
+        return r_cmp(l.second, r.second) < 0;
+    });
+    std::vector<std::string> ps;
+    for(auto const &q : pairs) ps.push_back("(" + format_rat_plain(q.first) + "," + format_rat_plain(q.second) + ")");
+    return std::vector<std::string>{
+        vars[0] + "*" + vars[1] + " = " + format_rat_plain(p),
+        vars[0] + "^2+" + vars[1] + "^2 = " + format_rat_plain(s),
+        "(" + vars[0] + "+" + vars[1] + ")^2 = " + format_rat_plain(s) + " + 2*" + format_rat_plain(p) + " = " + format_rat_plain(sp),
+        "(" + vars[0] + "-" + vars[1] + ")^2 = " + format_rat_plain(s) + " - 2*" + format_rat_plain(p) + " = " + format_rat_plain(sm),
+        vars[0] + "+" + vars[1] + " = +/-" + format_rat_plain(*rp),
+        vars[0] + "-" + vars[1] + " = +/-" + format_rat_plain(*rm),
+        "(" + vars[0] + "," + vars[1] + ") = [" + join_text(ps, ", ") + "]",
+    };
+}
+
+static MonoTerm mono_pow_term(MonoTerm t, int n)
+{
+    t.coef = r_pow_int(t.coef, n);
+    for(auto &kv : t.pow) kv.second *= n;
+    return t;
+}
+
+static MonoTerm mono_mul_term(MonoTerm a, MonoTerm const &b)
+{
+    a.coef = r_mul(a.coef, b.coef);
+    for(auto const &kv : b.pow) a.pow[kv.first] += kv.second;
+    return a;
+}
+
+static std::string mono_factor(std::string const &v, int p)
+{
+    if(p == 1) return v;
+    return v + "^" + std::to_string(p);
+}
+
+static std::string mono_unsigned_text(Rational c, std::map<std::string, int> const &pow)
+{
+    std::vector<std::string> num, den;
+    bool unit = c.num == c.den;
+    if(!unit || pow.empty()) num.push_back(format_rat_plain(c));
+    for(auto const &kv : pow) {
+        if(kv.second > 0) num.push_back(mono_factor(kv.first, kv.second));
+        else if(kv.second < 0) den.push_back(mono_factor(kv.first, -kv.second));
+    }
+    std::string nt = join_text(num, "*");
+    if(nt.empty()) nt = "1";
+    if(den.empty()) return nt;
+    std::string dt = join_text(den, "*");
+    if(nt == "1") return "1/(" + dt + ")";
+    return nt + "/(" + dt + ")";
+}
+
+static std::string mono_sum_text(std::vector<MonoTerm> const &terms)
+{
+    std::string out;
+    for(MonoTerm t : terms) {
+        if(is_zero(t.coef)) continue;
+        bool neg = t.coef.num < 0;
+        if(neg) t.coef = r_neg(t.coef);
+        std::string body = mono_unsigned_text(t.coef, t.pow);
+        if(out.empty()) out = neg ? "-" + body : body;
+        else out += neg ? " - " + body : " + " + body;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> monomial_binomial_expand_route(Arena &a, NodeId n)
+{
+    Node const &p = a.get(n);
+    if(p.kind != NodeKind::Pow) return std::nullopt;
+    auto e = as_num(a, p.b);
+    if(!e || e->den != 1 || e->num < 0 || e->num > 10) return std::nullopt;
+    Node const &base = a.get(p.a);
+    if(base.kind != NodeKind::Add || base.kids.size() != 2) return std::nullopt;
+    MonoTerm A, B;
+    if(!monomial_of_node(a, base.kids[0], A) || !monomial_of_node(a, base.kids[1], B)) return std::nullopt;
+    bool has_neg_power = false;
+    for(auto const &kv : A.pow) if(kv.second < 0) has_neg_power = true;
+    for(auto const &kv : B.pow) if(kv.second < 0) has_neg_power = true;
+    if(!has_neg_power) return std::nullopt;
+    int nn = (int)e->num;
+    std::vector<MonoTerm> terms;
+    for(int r = 0; r <= nn; ++r) {
+        MonoTerm t = mono_mul_term(mono_pow_term(A, nn - r), mono_pow_term(B, r));
+        t.coef = r_mul(t.coef, binom_rat(Rational{nn, 1}, r));
+        terms.push_back(t);
+    }
+    std::string expanded = mono_sum_text(terms);
+    return std::vector<std::string>{
+        format_expr(a, n),
+        "T_r = C(" + std::to_string(nn) + ",r)*(" + format_expr(a, base.kids[0]) + ")^(" +
+            std::to_string(nn) + "-r)*(" + format_expr(a, base.kids[1]) + ")^r",
+        "= " + expanded,
+        expanded,
+    };
+}
+
 struct ExpPointEq
 {
     Rational value{0, 1};
@@ -28797,6 +29025,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto gp = gp_first_third_sum_system_route(a, expr)) return *gp;
     if(auto gpf = gp_finite_sum_system_route(a, expr)) return *gpf;
     if(auto sec = sector_system_route(a, expr)) return *sec;
+    if(auto pss = product_square_sum_system_route(a, expr)) return *pss;
     if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
     if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
     if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;
@@ -29347,6 +29576,8 @@ algebra_compare_transform_modes:
             if(expn.kind != NodeKind::Num || expn.num.den != 1) return {"Err: exponent must be integer."};
             int nn = (int)expn.num.num;
             if(nn < 0 || nn > 18) return {"Err: exponent out of range."};
+
+            if(auto mb = monomial_binomial_expand_route(arena, n)) return *mb;
 
             NodeId base = x.a;
             {

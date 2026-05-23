@@ -264,6 +264,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([x*y=28,x^2+y^2=65],[x,y])",
+        ["(x+y)^2 = 65 + 2*28 = 121", "(x-y)^2 = 65 - 2*28 = 9", "(x,y) = [(4,7), (7,4), (-7,-4), (-4,-7)]"],
+        ["solve([x*y", "ERR:"],
+    ),
+    (
+        "alg",
+        "expand((4*x+1/(k*x))^7)",
+        ["T_r = C(7,r)", "21504*x^3/(k^2)", "1/(k^7*x^7)"],
+        ["symbolic expansion too large", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],
