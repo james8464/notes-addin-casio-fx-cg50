@@ -530,6 +530,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([2*(2)^3+a*(2)^2+b*2+c=0,2*(-1)^3+a*(-1)^2+b*(-1)+c=0,2*(1)^3+a*(1)^2+b*1+c=-14],[a,b,c])",
+        ["a = 3", "b = -9", "c = -10", "(a,b,c) = [(3,-9,-10)]"],
+        ["solve([", "ERR:"],
+    ),
+    (
+        "alg",
         "domain(csc(2*x+pi/6)^2-cot(2*x+pi/6)^2)",
         ["sin(2*x + pi/6) != 0", "Answer:"],
         ["Answer: all real x", "ERR:"],

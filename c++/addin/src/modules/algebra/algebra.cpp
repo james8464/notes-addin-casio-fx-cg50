@@ -12477,6 +12477,23 @@ static bool extract_system_expr_vars(std::string expr, std::vector<std::string> 
     return eqs.size() == 2 && vars.size() == 2 && !vars[0].empty() && !vars[1].empty();
 }
 
+static bool extract_system_expr_vars_n(std::string expr, std::vector<std::string> &eqs, std::vector<std::string> &vars, std::size_t n)
+{
+    if(auto inner = unwrap_call_text(expr, "solve"); !inner.empty()) expr = inner;
+    auto parts = split_csv(expr);
+    if(parts.size() < 2) return false;
+    std::string body = trim_text(parts[0]);
+    std::string var_body = trim_text(parts[1]);
+    if(body.size() < 2 || body.front() != '[' || body.back() != ']') return false;
+    if(var_body.size() < 2 || var_body.front() != '[' || var_body.back() != ']') return false;
+    eqs = split_csv(body.substr(1, body.size() - 2));
+    vars = split_csv(var_body.substr(1, var_body.size() - 2));
+    for(auto &v : vars) v = trim_text(v);
+    if(eqs.size() != n || vars.size() != n) return false;
+    for(auto const &v : vars) if(v.empty()) return false;
+    return true;
+}
+
 struct Linear2Parts
 {
     NodeId a0 = 0;
@@ -12484,9 +12501,23 @@ struct Linear2Parts
     NodeId c = 0;
 };
 
+struct Linear3Parts
+{
+    NodeId a0 = 0;
+    NodeId a1 = 0;
+    NodeId a2 = 0;
+    NodeId c = 0;
+};
+
 static bool contains_either_symbol(Arena &a, NodeId n, std::string const &v0, std::string const &v1)
 {
     return contains_symbol(a, n, v0) || contains_symbol(a, n, v1);
+}
+
+static bool contains_any_symbol(Arena &a, NodeId n, std::vector<std::string> const &vars)
+{
+    for(auto const &v : vars) if(contains_symbol(a, n, v)) return true;
+    return false;
 }
 
 static std::optional<Linear2Parts> linear2_parts(Arena &a, NodeId n, std::string const &v0, std::string const &v1)
@@ -12510,6 +12541,37 @@ static std::optional<Linear2Parts> linear2_parts(Arena &a, NodeId n, std::string
     if(contains_either_symbol(a, c, v0, v1)) return std::nullopt;
     if(casio::same_by_sig(a, a0, zero) && casio::same_by_sig(a, a1, zero)) return std::nullopt;
     return Linear2Parts{a0, a1, c};
+}
+
+static std::optional<Linear3Parts> linear3_parts(Arena &a, NodeId n, std::vector<std::string> const &vars)
+{
+    if(vars.size() != 3) return std::nullopt;
+    NodeId zero = zero_node(a);
+    std::vector<NodeId> coeffs{zero, zero, zero};
+    NodeId rest = n;
+    for(std::size_t i = 0; i < vars.size(); ++i) {
+        if(!contains_symbol(a, rest, vars[i])) continue;
+        auto p = symbolic_linear_parts(a, rest, vars[i]);
+        if(!p || contains_any_symbol(a, p->m, vars)) return std::nullopt;
+        coeffs[i] = p->m;
+        rest = p->c;
+    }
+    if(contains_any_symbol(a, rest, vars)) return std::nullopt;
+    if(casio::same_by_sig(a, coeffs[0], zero) && casio::same_by_sig(a, coeffs[1], zero) &&
+       casio::same_by_sig(a, coeffs[2], zero))
+        return std::nullopt;
+    return Linear3Parts{coeffs[0], coeffs[1], coeffs[2], rest};
+}
+
+static NodeId det3(Arena &a,
+                   NodeId a00, NodeId a01, NodeId a02,
+                   NodeId a10, NodeId a11, NodeId a12,
+                   NodeId a20, NodeId a21, NodeId a22)
+{
+    NodeId p0 = casio::mul(a, {a00, sub_node(a, casio::mul(a, {a11, a22}), casio::mul(a, {a12, a21}))});
+    NodeId p1 = casio::mul(a, {a01, sub_node(a, casio::mul(a, {a10, a22}), casio::mul(a, {a12, a20}))});
+    NodeId p2 = casio::mul(a, {a02, sub_node(a, casio::mul(a, {a10, a21}), casio::mul(a, {a11, a20}))});
+    return casio::simplify(a, casio::add(a, {p0, casio::neg(a, p1), p2}));
 }
 
 static bool log_equation_residual(Arena &a, Equation const &eq, NodeId &residual, std::vector<std::string> &steps)
@@ -12558,6 +12620,48 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     if(d0 && std::isfinite(*d0)) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
     if(d1 && std::isfinite(*d1)) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, v0) + "," + format_expr(a, v1) + ")]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> exact_linear3_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars_n(expr, eq_texts, vars, 3)) return std::nullopt;
+
+    std::vector<Linear3Parts> rows;
+    std::vector<std::string> out;
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        NodeId residual = casio::simplify(a, sub_node(a, eq->lhs, eq->rhs));
+        auto row = linear3_parts(a, residual, vars);
+        if(!row) return std::nullopt;
+        rows.push_back(*row);
+        out.push_back(format_expr(a, residual) + " = 0");
+    }
+
+    NodeId det = det3(a,
+                      rows[0].a0, rows[0].a1, rows[0].a2,
+                      rows[1].a0, rows[1].a1, rows[1].a2,
+                      rows[2].a0, rows[2].a1, rows[2].a2);
+    if(casio::same_by_sig(a, det, zero_node(a))) return std::nullopt;
+    std::vector<NodeId> b{casio::neg(a, rows[0].c), casio::neg(a, rows[1].c), casio::neg(a, rows[2].c)};
+    NodeId d0 = det3(a, b[0], rows[0].a1, rows[0].a2, b[1], rows[1].a1, rows[1].a2, b[2], rows[2].a1, rows[2].a2);
+    NodeId d1 = det3(a, rows[0].a0, b[0], rows[0].a2, rows[1].a0, b[1], rows[1].a2, rows[2].a0, b[2], rows[2].a2);
+    NodeId d2 = det3(a, rows[0].a0, rows[0].a1, b[0], rows[1].a0, rows[1].a1, b[1], rows[2].a0, rows[2].a1, b[2]);
+    std::vector<NodeId> ans{
+        exact_eval_simplify(a, casio::div(a, d0, det)),
+        exact_eval_simplify(a, casio::div(a, d1, det)),
+        exact_eval_simplify(a, casio::div(a, d2, det)),
+    };
+    for(std::size_t i = 0; i < vars.size(); ++i)
+        out.push_back(vars[i] + " = " + format_expr(a, ans[i]));
+    for(std::size_t i = 0; i < vars.size(); ++i) {
+        auto d = eval_node_env(a, ans[i], {});
+        if(d && std::isfinite(*d)) out.push_back(vars[i] + " ~= " + format_double_compact(*d));
+    }
+    out.push_back("(" + vars[0] + "," + vars[1] + "," + vars[2] + ") = [(" +
+                  format_expr(a, ans[0]) + "," + format_expr(a, ans[1]) + "," + format_expr(a, ans[2]) + ")]");
     return out;
 }
 
@@ -23973,6 +24077,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto elsq = exp_log_square_system_route(arena, req.expr)) return *elsq;
             if(auto lps = log_power_linear2_system_route(arena, req.expr)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
+            if(auto lsys3 = exact_linear3_system_route(arena, req.expr)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
@@ -24077,6 +24182,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto elsq = exp_log_square_system_route(arena, key)) return *elsq;
             if(auto lps = log_power_linear2_system_route(arena, key)) return *lps;
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, key)) return *rpp;
+            if(auto lsys3 = exact_linear3_system_route(arena, key)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, key)) return *lsys;
             if(auto lsub = linear_substitution2_system_route(arena, key)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
