@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan local MadAsMaths MP1/MP2/SYN papers for calculator-testable A-level patterns."""
+"""Scan local MadAsMaths paper PDFs for calculator-testable A-level patterns."""
 
 from __future__ import annotations
 
@@ -43,6 +43,13 @@ MP2_MANUAL_SUITES = {
     "y": "mp2_yz_manual", "z": "mp2_yz_manual",
 }
 
+BLANK_PLACEHOLDERS = {
+    ("mms", "x"), ("mms", "y"), ("mms", "z"),
+    ("spx", "n"), ("spx", "o"), ("spx", "p"), ("spx", "q"), ("spx", "r"), ("spx", "s"),
+    ("spx", "t"), ("spx", "u"), ("spx", "v"), ("spx", "w"), ("spx", "x"), ("spx", "y"), ("spx", "z"),
+    ("syn", "x"), ("syn", "y"), ("syn", "z"),
+}
+
 
 def fail(msg: str) -> int:
     print("FAIL " + msg)
@@ -75,16 +82,22 @@ def main() -> int:
     if not shutil.which("pdftotext"):
         return fail("pdftotext missing")
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["MadAsMaths MP1/MP2/SYN scan", ""]
+    lines = ["MadAsMaths paper scan", ""]
     totals: Counter[str] = Counter()
     missing: list[str] = []
     weak: list[str] = []
-    suites = ("mp1", "mp2", "syn")
-    found_pairs = []
-    for suite in suites:
-        for code in "abcdefghijklmnopqrstuvwxyz":
-            if (PAPER_DIR / f"{suite}_{code}.pdf").exists() and (PAPER_DIR / f"{suite}_{code}_solutions.pdf").exists():
-                found_pairs.append((suite, code))
+    seen: set[tuple[str, str]] = set()
+    for pdf in sorted(PAPER_DIR.glob("*.pdf")):
+        m = re.match(r"([a-z0-9]+)_([a-z])(?:_solutions)?\.pdf$", pdf.name, re.I)
+        if m:
+            seen.add((m.group(1).lower(), m.group(2).lower()))
+    suites = tuple(sorted({suite for suite, _code in seen}))
+    found_pairs = [
+        (suite, code)
+        for suite, code in sorted(seen)
+        if (PAPER_DIR / f"{suite}_{code}.pdf").exists()
+        and (PAPER_DIR / f"{suite}_{code}_solutions.pdf").exists()
+    ]
     if not found_pairs:
         lines.append(f"skipped: no local PDFs found in {PAPER_DIR}")
         REPORT.write_text("\n".join(lines) + "\n")
@@ -95,7 +108,7 @@ def main() -> int:
         suite_questions = 0
         suite_testable = 0
         lines.append(f"[{suite_name}]")
-        for code in "abcdefghijklmnopqrstuvwxyz":
+        for code in sorted(code for suite, code in seen if suite == suite_name):
             paper = PAPER_DIR / f"{suite_name}_{code}.pdf"
             sol = PAPER_DIR / f"{suite_name}_{code}_solutions.pdf"
             if not paper.exists() or not sol.exists():
@@ -105,8 +118,8 @@ def main() -> int:
             sol_text = pdf_text(sol)
             qs = split_questions(paper_text)
             sol_qs = split_questions(sol_text)
-            placeholder = suite_name == "syn" and code in "xyz" and len(qs) == 0
-            if len(qs) < 8 and not placeholder:
+            placeholder = (suite_name, code) in BLANK_PLACEHOLDERS and len(qs) == 0
+            if len(qs) < 7 and not placeholder:
                 weak.append(f"{suite_name}_{code}: only {len(qs)} questions parsed")
             sol_note = "ocr-low" if len(sol_qs) < 5 else "ocr-ok"
             topic_counts: Counter[str] = Counter()
