@@ -3474,7 +3474,7 @@ static std::string trig_root_text(double r)
     if(std::fabs(r + tan15) < 1e-9) return "-2+sqrt(3)";
     if(std::fabs(r - inv_sqrt3) < 1e-9) return "sqrt(3)/3";
     if(std::fabs(r + inv_sqrt3) < 1e-9) return "-sqrt(3)/3";
-    for(int rad : {2, 3}) {
+    for(int rad : {2, 3, 5, 6, 7, 10}) {
         double root = std::sqrt((double)rad);
         for(int den = 1; den <= 24; ++den) {
             for(int num = 1; num <= 48; ++num) {
@@ -3496,6 +3496,61 @@ static std::string trig_root_text(double r)
         if(std::fabs(r - (double)num / den) < 1e-9) return ratio_text(num, den);
     }
     return format_double_compact(r);
+}
+
+static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a, NodeId n)
+{
+    auto p = collect_mixed_trig_poly(a, n);
+    if(!p || std::fabs(p->c) > 1e-12 || std::fabs(p->s2) > 1e-12 || std::fabs(p->c2) > 1e-12 || std::fabs(p->sc) > 1e-12)
+        return std::nullopt;
+    double C = p->c1, S = p->s1;
+    if(std::fabs(C) < 1e-12 || std::fabs(S) < 1e-12) return std::nullopt;
+    double R = std::sqrt(C * C + S * S);
+    if(R < 1e-12) return std::nullopt;
+    std::string v = format_expr(a, p->arg);
+    std::string lhs = format_expr(a, n);
+    std::string Rtxt = trig_root_text(R);
+    bool degrees = compact_key(v).find("theta") != std::string::npos;
+    auto prod = [&](std::string const &body) { return Rtxt == "1" ? body : Rtxt + "*" + body; };
+    if(C > 1e-12) {
+        double A = std::fabs(S);
+        bool plus = S < 0.0;
+        std::string sign = plus ? "+" : "-";
+        std::string absS = trig_root_text(A);
+        std::string Ctxt = trig_root_text(C);
+        double adeg = std::atan2(A, C) * 180.0 / M_PI;
+        std::string alpha = degrees ? format_double_compact(adeg) : format_pi_degrees(adeg);
+        std::string final = prod("cos(" + v + sign + alpha + ")");
+        std::vector<std::string> steps{
+            "R=sqrt(" + Ctxt + "^2+" + absS + "^2)=" + Rtxt + ".",
+            "R*cos(" + v + sign + "alpha)=R*cos(" + v + ")*cos(alpha)" + std::string(plus ? "-R*sin(" : "+R*sin(") + v + ")*sin(alpha).",
+            "R*cos(alpha)=" + Ctxt + ", R*sin(alpha)=" + absS + ".",
+            "tan(alpha)=" + absS + "/" + Ctxt + ".",
+            "alpha=" + alpha + std::string(degrees ? " deg." : "."),
+            lhs + "=" + final + ".",
+        };
+        return casio::exam_block("R-form", steps, final);
+    }
+    if(S > 1e-12) {
+        double A = std::fabs(C);
+        bool plus = C > 0.0;
+        std::string sign = plus ? "+" : "-";
+        std::string absC = trig_root_text(A);
+        std::string Stxt = trig_root_text(S);
+        double adeg = std::atan2(A, S) * 180.0 / M_PI;
+        std::string alpha = degrees ? format_double_compact(adeg) : format_pi_degrees(adeg);
+        std::string final = prod("sin(" + v + sign + alpha + ")");
+        std::vector<std::string> steps{
+            "R=sqrt(" + Stxt + "^2+" + absC + "^2)=" + Rtxt + ".",
+            "R*sin(" + v + sign + "alpha)=R*sin(" + v + ")*cos(alpha)" + std::string(plus ? "+R*cos(" : "-R*cos(") + v + ")*sin(alpha).",
+            "R*cos(alpha)=" + Stxt + ", R*sin(alpha)=" + absC + ".",
+            "tan(alpha)=" + absC + "/" + Stxt + ".",
+            "alpha=" + alpha + std::string(degrees ? " deg." : "."),
+            lhs + "=" + final + ".",
+        };
+        return casio::exam_block("R-form", steps, final);
+    }
+    return std::nullopt;
 }
 
 static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r)
@@ -5902,6 +5957,8 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         std::string arg_text = format_expr(a, poly->arg);
         std::string s_txt = trig_root_text(poly->s1);
         std::string c_txt = trig_root_text(poly->c1);
+        std::string s_abs_txt = trig_root_text(std::fabs(poly->s1));
+        std::string c_abs_txt = trig_root_text(std::fabs(poly->c1));
         std::string r_txt = trig_root_text(R);
         auto angle_txt = [&](double deg) { return rad ? format_pi_degrees(deg) : trig_root_text(deg); };
         std::string unit_txt = rad ? "" : " deg";
@@ -5913,7 +5970,7 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         std::string sin_aux = var_key == "alpha" ? "beta" : "alpha";
         std::string cos_aux = var_key == "beta" ? "alpha" : "beta";
         steps.push_back("a=" + c_txt + ", b=" + s_txt + " for a*cos(A)+b*sin(A).");
-        steps.push_back("R=sqrt(" + c_txt + "^2+" + s_txt + "^2)=" + r_txt + ".");
+        steps.push_back("R=sqrt(" + c_abs_txt + "^2+" + s_abs_txt + "^2)=" + r_txt + ".");
         steps.push_back("R*cos(A-" + cos_aux + ")=R*cos(A)*cos(" + cos_aux + ")+R*sin(A)*sin(" + cos_aux + ").");
         steps.push_back("R*cos(" + cos_aux + ")=" + c_txt + ", R*sin(" + cos_aux + ")=" + s_txt + ", tan(" + cos_aux + ")=" + s_txt + "/" + c_txt + ".");
         steps.push_back(cos_aux + "=" + beta_txt + unit_txt + ", so " + c_txt + "*cos(A)+" + s_txt + "*sin(A)=R*cos(A-" + cos_aux + ").");
@@ -9575,7 +9632,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto py = direct_pythagorean_rewrite(arena, raw)) return *py;
         if(auto da = direct_double_angle_rewrite(arena, raw)) return *da;
         if(auto rr = minor_trig_ratio_rewrite(arena, raw)) return *rr;
+        if(auto compound = compound_angle_rewrite(arena, raw)) return *compound;
         if(auto route = linear_sincos_rform(arena, s)) return *route;
+        if(auto route = linear_sincos_rform_real(arena, s)) return *route;
         if(key == "sqrt(3)sin(x)+cos(x)" || key == "cos(x)+sqrt(3)sin(x)") {
             return casio::exam_block(
                 "R-form",

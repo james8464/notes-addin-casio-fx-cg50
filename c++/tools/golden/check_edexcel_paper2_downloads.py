@@ -320,7 +320,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q15 water-level crossings",
         ["--trig", "3+4*cos(0.5*t)-2*sin(0.5*t)=0,t,0,4*pi,10,method=rform,rad"],
-        ["R = sqrt(4^2+-2^2)", "sin(1/2*t+alpha) = -0.67082039325", "t = [3.68492634122, 7.02685383713]"],
+        ["R = sqrt(4^2+2^2)", "sin(1/2*t+alpha) = -3*sqrt(5)/10", "t = [3.68492634122, 7.02685383713]"],
         ["t = []", "ERR:"],
     ),
     (

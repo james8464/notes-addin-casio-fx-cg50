@@ -34,7 +34,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "C11 exact R-form rewrite",
         ["--trig", "sqrt(3)*sin(x)+cos(x),method=rform"],
-        ["R=sqrt(3+1)=2", "2*cos(x-pi/3)"],
+        ["R=sqrt(1^2+sqrt(3)^2)=2", "2*cos(x-pi/3)"],
         ["Answer: sqrt(3)*sin(x) + cos(x)"],
     ),
     (

@@ -1310,6 +1310,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sin(A+B),method=compound_angle",
+        ["sin(A+B)=sin(A)cos(B)+cos(A)sin(B)", "sin(A)*cos(B)+cos(A)*sin(B)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
+        "cos(A+B),method=compound_angle",
+        ["cos(A+B)=cos(A)cos(B)-sin(A)sin(B)", "cos(A)*cos(B)-sin(A)*sin(B)"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "trig",
         "cos(7*theta),method=auto",
         ["Basis: let c=cos(theta)", "Answer: 64*c^7 - 112*c^5 + 56*c^3 - 7*c"],
         ["ERR:", "Unexpected token"],
@@ -1697,6 +1709,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sqrt(3)*sin(x)+cos(x)=sqrt(3),x,0,2*pi,10,method=rform",
         ["beta = pi/3", "alpha = pi/6", "x+alpha = pi/3+2*pi*n", "Answer: x = [pi/6, pi/2]"],
         [" deg", "+360n", "ERR:"],
+    ),
+    (
+        "trig",
+        "sqrt(2)*cos(theta)-sqrt(6)*sin(theta),method=rform",
+        ["R=sqrt(sqrt(2)^2+sqrt(6)^2)=2*sqrt(2)", "R*cos(theta+alpha)", "tan(alpha)=sqrt(6)/sqrt(2)", "alpha=60 deg", "2*sqrt(2)*cos(theta + 60)"],
+        ["2.449", "ERR:"],
     ),
     (
         "trig",
