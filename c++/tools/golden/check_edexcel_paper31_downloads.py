@@ -602,6 +602,72 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["0.381401143615"],
         ["ERR:"],
     ),
+    (
+        "June 2018 Paper 3 Q3 binomial tail",
+        ["--stats", "binomial(10,0.1,4,tail)"],
+        ["P(X >= 4) = 1 - P(X <= 3)", "0.0127952"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q3 geometric first hit",
+        ["--alg", "0.9^4*0.1,method=numeric"],
+        ["6561/100000", "0.06561"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q3 Thomas alpha",
+        ["--alg", "solve(10/2*(2*1/100+9*a)=1,a)"],
+        ["a = 1/50", "a ~= 0.020"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q3 Thomas probability",
+        ["--alg", "1/100+4*(1/50)"],
+        ["9/100"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q4 journey mean",
+        ["--alg", "4133/95,method=numeric"],
+        ["4133/95", "43.5052631579"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q4 journey standard deviation",
+        ["--alg", "sqrt(202294/95-(4133/95)^2),method=numeric"],
+        ["sqrt(2136241/9025)", "15.3851423093"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q5 battery P longer than 16",
+        ["--stats", "normalcdf(18,4,16,inf)"],
+        ["X ~ N(18, 4^2)", "0.69146246"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q5 battery P longer than 20",
+        ["--stats", "normalcdf(18,4,20,inf)"],
+        ["X ~ N(18, 4^2)", "0.30853754"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q5 four-battery conditional",
+        ["--alg", "(0.30853754/0.69146246)^4,method=numeric"],
+        ["0.039642188513"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q5 two-new-battery probability",
+        ["--alg", "(4462/10000)^2,method=numeric"],
+        ["4977361/25000000", "0.19909444"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q5 mean-test p-value",
+        ["--stats", "normalcdf(18,4/sqrt(20),19.2,inf)"],
+        ["X ~ N(18, (4/sqrt(20))^2)", "0.08985625"],
+        ["ERR:"],
+    ),
 ]
 
 

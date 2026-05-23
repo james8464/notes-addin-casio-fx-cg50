@@ -752,6 +752,108 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["sqrt(452)"],
         ["ERR:"],
     ),
+    (
+        "June 2018 Paper 3 Q6 velocity i primitive",
+        ["--int", "int(t^(-1/2),t)"],
+        ["2*sqrt(t) + C"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q6 velocity j primitive",
+        ["--int", "int(-4*t,t)"],
+        ["-2*t^2 + C"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q6 displacement i",
+        ["--alg", "2*sqrt(4)-2*sqrt(1)"],
+        ["2"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q6 displacement j",
+        ["--alg", "-2*4^2-(-2*1^2)"],
+        ["-30"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q6 distance AB",
+        ["--alg", "sqrt(2^2+(-30)^2)"],
+        ["sqrt(904)"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q7 crate acceleration",
+        ["--alg", "solve([R+40*3/5=20*9.8,40*4/5-0.14*R=20*a],[R,a])"],
+        ["R = 172", "a = 99/250", "a ~= 0.396"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q8 acceleration components",
+        ["--alg", "solve([7=2*2+1/2*A*2^2,-10=-3*2+1/2*B*2^2],[A,B])"],
+        ["A = 3/2", "B = -2"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q8 acceleration magnitude",
+        ["--alg", "sqrt((3/2)^2+(-2)^2)"],
+        ["sqrt(25/4)", "5/2"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q8 second-stage time",
+        ["--alg", "solve(5+4*t=-7+8.8*t,t,method=linear)"],
+        ["t = 5/2", "t ~= 2.500"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q9 rope tension formula",
+        ["--alg", "compare(5*M*g*(3*x+a)/(6*a), (M*g*a+3*M*g*x)/(2*a*(3/5)))"],
+        ["E1-E2 = 0", "equivalent"],
+        ["ERR:", "not equivalent"],
+    ),
+    (
+        "June 2018 Paper 3 Q9 block position",
+        ["--alg", "solve(2*(3*x+a)/(3*a)=2,x)"],
+        ["x = 4/3*a/2"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q9 tan beta",
+        ["--alg", "compare((5*M*g/2)/(2*M*g),5/4)"],
+        ["E1-E2 = 0", "equivalent"],
+        ["ERR:", "not equivalent"],
+    ),
+    (
+        "June 2018 Paper 3 Q9 rope-break boundary",
+        ["--alg", "compare((3*(5*a/3)+a)/(6*a),1)"],
+        ["E1-E2 = 0", "equivalent"],
+        ["ERR:", "not equivalent"],
+    ),
+    (
+        "June 2018 Paper 3 Q10 vertical energy formula",
+        ["--alg", "2*g/(sin(a)^2)"],
+        ["2*g*sin(a)^-2"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q10 tan alpha",
+        ["--alg", "solve(100*q^2-20*q-5/4=0,q)"],
+        ["q = 1/4", "q ~= -0.050, 0.250"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q10 angle alpha",
+        ["--alg", "atan(1/4)*180/pi,method=numeric"],
+        ["14.0362434679"],
+        ["ERR:"],
+    ),
+    (
+        "June 2018 Paper 3 Q10 flight time",
+        ["--alg", "5/sqrt(2*9.8),method=numeric"],
+        ["5/sqrt(98/5)", "1.12938487863"],
+        ["ERR:"],
+    ),
 ]
 
 
