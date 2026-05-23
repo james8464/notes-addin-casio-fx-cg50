@@ -13827,6 +13827,13 @@ static SimpleSurd fold_simple_surd(SimpleSurd s)
     return s;
 }
 
+static SimpleSurd pure_surd_term(Rational c, long long rad)
+{
+    if(rad <= 0 || c.num == 0) return fold_simple_surd(SimpleSurd{Rational{0, 1}, Rational{0, 1}, 0});
+    auto [outside, inside] = square_factor_i64(rad);
+    return fold_simple_surd(SimpleSurd{Rational{0, 1}, r_mul(c, Rational{outside, 1}), inside});
+}
+
 static std::optional<SimpleSurd> add_simple_surd(SimpleSurd x, SimpleSurd y)
 {
     x = fold_simple_surd(x);
@@ -13854,11 +13861,14 @@ static std::optional<SimpleSurd> mul_simple_surd(SimpleSurd x, SimpleSurd y)
     x = fold_simple_surd(x);
     y = fold_simple_surd(y);
     long long d = x.b.num != 0 ? x.d : y.d;
-    if(x.b.num != 0 && y.b.num != 0 && x.d != y.d) return std::nullopt;
     SimpleSurd r;
     r.a = r_mul(x.a, y.a);
-    if(x.b.num != 0 && y.b.num != 0)
-        r.a = r_add(r.a, r_mul(r_mul(x.b, y.b), Rational{d, 1}));
+    if(x.b.num != 0 && y.b.num != 0) {
+        if(x.d == y.d) r.a = r_add(r.a, r_mul(r_mul(x.b, y.b), Rational{d, 1}));
+        else if(x.a.num == 0 && y.a.num == 0)
+            return pure_surd_term(r_mul(x.b, y.b), x.d * y.d);
+        else return std::nullopt;
+    }
     r.b = r_add(r_mul(x.a, y.b), r_mul(x.b, y.a));
     r.d = d;
     return fold_simple_surd(r);
@@ -13874,6 +13884,11 @@ static std::optional<SimpleSurd> div_simple_surd(SimpleSurd x, SimpleSurd y)
         x.a = r_div(x.a, y.a);
         x.b = r_div(x.b, y.a);
         return fold_simple_surd(x);
+    }
+    if(x.a.num == 0 && y.a.num == 0 && x.b.num != 0 && y.b.num != 0) {
+        if(x.d % y.d == 0)
+            return pure_surd_term(r_div(x.b, y.b), x.d / y.d);
+        return pure_surd_term(r_div(r_div(x.b, y.b), Rational{y.d, 1}), x.d * y.d);
     }
     long long d = y.d;
     if(x.b.num != 0 && x.d != d) return std::nullopt;
@@ -13929,6 +13944,23 @@ static std::optional<SimpleSurd> eval_simple_surd(Arena &a, NodeId n)
     if(x.kind == NodeKind::Pow) {
         Node const &base = a.get(x.a);
         Node const &expo = a.get(x.b);
+        if(expo.kind == NodeKind::Num && expo.num.den == 1 && std::llabs(expo.num.num) <= 8) {
+            auto base_surd = eval_simple_surd(a, x.a);
+            if(base_surd) {
+                SimpleSurd acc{Rational{1, 1}, Rational{0, 1}, 0};
+                for(long long i = 0; i < std::llabs(expo.num.num); ++i) {
+                    auto prod = mul_simple_surd(acc, *base_surd);
+                    if(!prod) return std::nullopt;
+                    acc = *prod;
+                }
+                if(expo.num.num < 0) {
+                    auto inv = div_simple_surd(SimpleSurd{Rational{1, 1}, Rational{0, 1}, 0}, acc);
+                    if(!inv) return std::nullopt;
+                    return inv;
+                }
+                return fold_simple_surd(acc);
+            }
+        }
         if(base.kind == NodeKind::Num && expo.kind == NodeKind::Num) {
             if(auto r = rational_power_factor(base.num, expo.num))
                 return fold_simple_surd(SimpleSurd{*r, Rational{0, 1}, 0});
@@ -14054,6 +14086,141 @@ static std::optional<std::vector<std::string>> rationalise_simple_surd_route(Are
     };
 }
 
+static std::optional<std::string> binomial_surd_square_line(Arena &a, SimpleSurd s)
+{
+    s = fold_simple_surd(s);
+    if(s.a.num == 0 || s.b.num == 0 || s.d <= 1) return std::nullopt;
+    Rational left = r_mul(s.a, s.a);
+    Rational mid = r_mul(r_mul(Rational{2, 1}, s.a), s.b);
+    Rational right = r_mul(r_mul(s.b, s.b), Rational{s.d, 1});
+    std::string out = rat_node_text(a, left);
+    Rational abs_mid = mid;
+    if(abs_mid.num < 0) abs_mid.num = -abs_mid.num;
+    out += mid.num < 0 ? " - " : " + ";
+    out += simple_surd_term_text(a, abs_mid, s.d);
+    out += right.num < 0 ? " - " : " + ";
+    if(right.num < 0) right.num = -right.num;
+    out += rat_node_text(a, right);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> binomial_surd_square_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    Node const &expo = a.get(x.b);
+    if(expo.kind != NodeKind::Num || expo.num.num != 2 || expo.num.den != 1) return std::nullopt;
+    auto base = eval_simple_surd(a, x.a);
+    if(!base) return std::nullopt;
+    auto line = binomial_surd_square_line(a, *base);
+    if(!line) return std::nullopt;
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "= " + *line,
+        "= " + ans,
+        ans,
+    };
+}
+
+struct RawSurdTerm
+{
+    Rational coef{1, 1};
+    long long rad = 1;
+    bool has_surd = false;
+};
+
+static std::optional<RawSurdTerm> raw_single_surd_term(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return RawSurdTerm{x.num, 1, false};
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &u = a.get(x.a);
+        if(u.kind != NodeKind::Num || u.num.den != 1 || u.num.num <= 0) return std::nullopt;
+        return RawSurdTerm{Rational{1, 1}, u.num.num, true};
+    }
+    if(x.kind == NodeKind::Mul) {
+        RawSurdTerm acc{Rational{1, 1}, 1, false};
+        for(NodeId k : x.kids) {
+            auto t = raw_single_surd_term(a, k);
+            if(!t) return std::nullopt;
+            acc.coef = r_mul(acc.coef, t->coef);
+            if(t->has_surd) {
+                if(acc.rad > 1000000000LL / t->rad) return std::nullopt;
+                acc.rad *= t->rad;
+                acc.has_surd = true;
+            }
+        }
+        return acc;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = raw_single_surd_term(a, x.a);
+        auto bot = raw_single_surd_term(a, x.b);
+        if(!top || !bot || bot->coef.num == 0) return std::nullopt;
+        RawSurdTerm r;
+        r.coef = r_div(top->coef, bot->coef);
+        if(!bot->has_surd) {
+            r.rad = top->rad;
+            r.has_surd = top->has_surd;
+            return r;
+        }
+        if(!top->has_surd) {
+            r.coef = r_div(r.coef, Rational{bot->rad, 1});
+            r.rad = bot->rad;
+            r.has_surd = true;
+            return r;
+        }
+        if(top->rad % bot->rad == 0) {
+            r.rad = top->rad / bot->rad;
+            r.has_surd = r.rad != 1;
+            return r;
+        }
+        if(top->rad > 1000000000LL / bot->rad) return std::nullopt;
+        r.coef = r_div(r.coef, Rational{bot->rad, 1});
+        r.rad = top->rad * bot->rad;
+        r.has_surd = true;
+        return r;
+    }
+    return std::nullopt;
+}
+
+static std::pair<Rational, long long> simplify_raw_surd_term(RawSurdTerm t)
+{
+    if(!t.has_surd || t.rad == 1) return {t.coef, 1};
+    auto [outside, inside] = square_factor_i64(t.rad);
+    return {r_mul(t.coef, Rational{outside, 1}), inside};
+}
+
+static std::optional<std::vector<std::string>> collected_surd_sum_route(Arena &a, NodeId parsed, std::string const &ans)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2) return std::nullopt;
+    std::vector<std::pair<Rational, std::string>> raw_terms;
+    std::vector<std::pair<Rational, std::string>> simple_terms;
+    long long common = 0;
+    bool any_surd = false;
+    for(NodeId k : x.kids) {
+        auto raw = raw_single_surd_term(a, k);
+        if(!raw || !raw->has_surd) return std::nullopt;
+        raw_terms.push_back({raw->coef, "sqrt(" + std::to_string(raw->rad) + ")"});
+        auto [coef, rad] = simplify_raw_surd_term(*raw);
+        if(rad != 1) {
+            any_surd = true;
+            if(common == 0) common = rad;
+            if(common != rad) return std::nullopt;
+            simple_terms.push_back({coef, "sqrt(" + std::to_string(rad) + ")"});
+        }
+        else simple_terms.push_back({coef, "1"});
+    }
+    if(!any_surd) return std::nullopt;
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "= " + signed_join(a, raw_terms),
+        "= " + signed_join(a, simple_terms),
+        "= " + ans,
+        ans,
+    };
+}
+
 static std::optional<std::vector<std::string>> simple_surd_expression_route(Arena &a, NodeId parsed)
 {
     auto s = eval_simple_surd(a, parsed);
@@ -14061,9 +14228,128 @@ static std::optional<std::vector<std::string>> simple_surd_expression_route(Aren
     std::string raw = format_expr(a, parsed);
     std::string ans = simple_surd_text(a, *s);
     if(compact_input_key(raw) == compact_input_key(ans)) return std::nullopt;
+    if(auto square = binomial_surd_square_route(a, parsed, ans)) return *square;
     if(auto diff = two_sqrt_difference_route(a, parsed, ans)) return *diff;
+    if(auto collected = collected_surd_sum_route(a, parsed, ans)) return *collected;
     if(auto rat = rationalise_simple_surd_route(a, parsed, ans)) return *rat;
     return std::vector<std::string>{raw, "= " + ans, ans};
+}
+
+struct Lin2
+{
+    Rational x{0, 1};
+    Rational y{0, 1};
+    Rational c{0, 1};
+    bool ok = true;
+};
+
+static Lin2 lin2_add(Lin2 a, Lin2 b)
+{
+    if(!a.ok || !b.ok) return Lin2{{}, {}, {}, false};
+    return Lin2{r_add(a.x, b.x), r_add(a.y, b.y), r_add(a.c, b.c), true};
+}
+
+static Lin2 lin2_scale(Lin2 a, Rational k)
+{
+    if(!a.ok) return Lin2{{}, {}, {}, false};
+    return Lin2{r_mul(a.x, k), r_mul(a.y, k), r_mul(a.c, k), true};
+}
+
+static std::optional<Rational> lin2_constant(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return x.num;
+    return std::nullopt;
+}
+
+static Lin2 lin2_of_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return Lin2{Rational{0, 1}, Rational{0, 1}, x.num, true};
+    if(x.kind == NodeKind::Sym) {
+        if(x.text == "x") return Lin2{Rational{1, 1}, Rational{0, 1}, Rational{0, 1}, true};
+        if(x.text == "y") return Lin2{Rational{0, 1}, Rational{1, 1}, Rational{0, 1}, true};
+        return Lin2{{}, {}, {}, false};
+    }
+    if(x.kind == NodeKind::Add) {
+        Lin2 acc{Rational{0, 1}, Rational{0, 1}, Rational{0, 1}, true};
+        for(NodeId k : x.kids) acc = lin2_add(acc, lin2_of_node(a, k));
+        return acc;
+    }
+    if(x.kind == NodeKind::Mul) {
+        Rational scale{1, 1};
+        std::optional<Lin2> linear;
+        for(NodeId k : x.kids) {
+            if(auto c = lin2_constant(a, k)) {
+                scale = r_mul(scale, *c);
+                continue;
+            }
+            Lin2 t = lin2_of_node(a, k);
+            if(!t.ok) return Lin2{{}, {}, {}, false};
+            if(linear) return Lin2{{}, {}, {}, false};
+            linear = t;
+        }
+        if(!linear) return Lin2{Rational{0, 1}, Rational{0, 1}, scale, true};
+        return lin2_scale(*linear, scale);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto denom = lin2_constant(a, x.b);
+        if(!denom || denom->num == 0) return Lin2{{}, {}, {}, false};
+        return lin2_scale(lin2_of_node(a, x.a), r_div(Rational{1, 1}, *denom));
+    }
+    return Lin2{{}, {}, {}, false};
+}
+
+static long long lcm_i64(long long a, long long b)
+{
+    a = std::llabs(a);
+    b = std::llabs(b);
+    if(a == 0 || b == 0) return 0;
+    return a / std::gcd(a, b) * b;
+}
+
+static std::string standard_line_lhs(long long A, long long B)
+{
+    auto term = [](long long k, char var) {
+        long long ak = std::llabs(k);
+        std::string v(1, var);
+        if(ak == 1) return v;
+        return std::to_string(ak) + "*" + v;
+    };
+    std::string out;
+    if(A != 0) out = (A < 0 ? "-" : "") + term(A, 'x');
+    if(B != 0) {
+        if(out.empty()) out = (B < 0 ? "-" : "") + term(B, 'y');
+        else out += (B < 0 ? " - " : " + ") + term(B, 'y');
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<std::vector<std::string>> standard_line_route(Arena &a, std::string const &expr)
+{
+    auto eq = casio::parse_equation(a, expr);
+    if(!eq) return std::nullopt;
+    Lin2 lhs = lin2_of_node(a, eq->lhs);
+    Lin2 rhs = lin2_of_node(a, eq->rhs);
+    if(!lhs.ok || !rhs.ok) return std::nullopt;
+    Lin2 r = lin2_add(lhs, lin2_scale(rhs, Rational{-1, 1}));
+    if(!r.ok || (r.x.num == 0 && r.y.num == 0)) return std::nullopt;
+    long long l = lcm_i64(r.x.den, lcm_i64(r.y.den, r.c.den));
+    if(l == 0) return std::nullopt;
+    long long A = r.x.num * (l / r.x.den);
+    long long B = r.y.num * (l / r.y.den);
+    long long C = r.c.num * (l / r.c.den);
+    long long g = std::gcd(std::llabs(A), std::gcd(std::llabs(B), std::llabs(C)));
+    if(g > 1) {
+        A /= g; B /= g; C /= g;
+    }
+    if(A < 0 || (A == 0 && B < 0)) {
+        A = -A; B = -B; C = -C;
+    }
+    std::string zero = standard_line_lhs(A, B) + (C < 0 ? " - " : " + ") + std::to_string(std::llabs(C)) + " = 0";
+    if(C == 0) zero = standard_line_lhs(A, B) + " = 0";
+    std::string ans = standard_line_lhs(A, B) + " = " + std::to_string(-C);
+    return std::vector<std::string>{format_expr(a, eq->lhs) + " = " + format_expr(a, eq->rhs), zero, ans};
 }
 
 static std::optional<std::string> reciprocal_trig_identity_step(std::string const &raw)
@@ -24647,6 +24933,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto pm = power_model_route(arena, req.expr)) return *pm;
         if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
         if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
+        if(req.method == "standard_line" || req.method == "line_standard") {
+            if(auto sl = standard_line_route(arena, req.expr)) return *sl;
+        }
         {
             std::string key = compact_input_key(req.expr);
             if(auto ha = half_angle_sec_tan_identity_route_key(key)) return *ha;

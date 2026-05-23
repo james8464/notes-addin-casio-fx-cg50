@@ -938,9 +938,27 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "(4-sqrt(5))^2",
+        ["16 - 8*sqrt(5) + 5", "21 - 8*sqrt(5)"],
+        ["ERR:", "Answer: (- sqrt(5) + 4)^2"],
+    ),
+    (
+        "alg",
+        "2*sqrt(5)*sqrt(15)-sqrt(75)-sqrt(60)/sqrt(5)",
+        ["2*sqrt(75) - sqrt(75) - sqrt(12)", "10*sqrt(3) - 5*sqrt(3) - 2*sqrt(3)", "3*sqrt(3)"],
+        ["ERR:", "Answer: 2*sqrt(5)*sqrt(15) - sqrt(75) - sqrt(60)/sqrt(5)"],
+    ),
+    (
+        "alg",
         "21/sqrt(7)",
         ["21*sqrt(7)/7", "3*sqrt(7)"],
         ["ERR:", "Answer: 21/sqrt(7)"],
+    ),
+    (
+        "alg",
+        "y+1=(-2/3)*(x-4),method=standard_line",
+        ["y + 1 = -2/3*(x - 4)", "2*x + 3*y - 5 = 0", "2*x + 3*y = 5"],
+        ["ERR:"],
     ),
     (
         "alg",
