@@ -26818,6 +26818,7 @@ struct SinglePowerLog
 {
     NodeId xcoef = 0;
     NodeId constant = 0;
+    int var_powers = 0;
 };
 
 static std::optional<NodeId> log_base_value(Arena &a, NodeId base)
@@ -26835,48 +26836,77 @@ static std::optional<NodeId> log_base_value(Arena &a, NodeId base)
     return std::nullopt;
 }
 
+static void add_signed_log_linear_term(Arena &a, NodeId &acc, NodeId term, int sign)
+{
+    if(sign < 0) term = neg_node(a, term);
+    acc = exact_eval_simplify(a, casio::add(a, {acc, term}));
+}
+
+static bool add_single_power_log_piece(Arena &a,
+                                       NodeId n,
+                                       std::string const &var,
+                                       int sign,
+                                       SinglePowerLog &acc,
+                                       bool &saw_power)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!add_single_power_log_piece(a, k, var, sign, acc, saw_power)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        return add_single_power_log_piece(a, x.a, var, sign, acc, saw_power) &&
+               add_single_power_log_piece(a, x.b, var, -sign, acc, saw_power);
+    }
+    if(auto r = as_num(a, n)) {
+        if(r->num <= 0) return false;
+        if(r->num != r->den)
+            add_signed_log_linear_term(a, acc.constant, casio::fn(a, "log", n), sign);
+        return true;
+    }
+
+    NodeId base = 0, exponent = 0;
+    if(x.kind == NodeKind::Pow) {
+        base = x.a;
+        exponent = x.b;
+    }
+    else if(auto e = exp_like_arg(a, n)) {
+        base = casio::constant_e(a);
+        exponent = *e;
+    }
+    else if(!has_symbols(a, n)) {
+        auto v = eval_node_env(a, n, {});
+        if(!v || !std::isfinite(*v) || *v <= 0) return false;
+        if(std::fabs(*v - 1.0) > 1e-12)
+            add_signed_log_linear_term(a, acc.constant, casio::fn(a, "log", n), sign);
+        return true;
+    }
+    else return false;
+
+    auto lb = log_base_value(a, base);
+    if(!lb) return false;
+    saw_power = true;
+    if(contains_symbol(a, exponent, var)) {
+        if(++acc.var_powers > 1) return false;
+        auto lin = symbolic_linear_parts(a, exponent, var);
+        if(!lin) return false;
+        add_signed_log_linear_term(a, acc.xcoef, exact_eval_simplify(a, casio::mul(a, {lin->m, *lb})), sign);
+        add_signed_log_linear_term(a, acc.constant, exact_eval_simplify(a, casio::mul(a, {lin->c, *lb})), sign);
+    }
+    else {
+        add_signed_log_linear_term(a, acc.constant, exact_eval_simplify(a, casio::mul(a, {exponent, *lb})), sign);
+    }
+    return true;
+}
+
 static std::optional<SinglePowerLog> single_power_log(Arena &a, NodeId n, std::string const &var)
 {
-    std::vector<NodeId> factors;
-    collect_mul_factors(a, n, factors);
-    Rational coef{1, 1};
-    NodeId xcoef = zero_node(a), constant = zero_node(a);
-    bool saw_var_power = false, saw_power = false;
-    for(NodeId f : factors) {
-        if(auto r = as_num(a, f)) {
-            coef = r_mul(coef, *r);
-            continue;
-        }
-        NodeId base = 0, exponent = 0;
-        Node const &u = a.get(f);
-        if(u.kind == NodeKind::Pow) {
-            base = u.a;
-            exponent = u.b;
-        }
-        else if(auto e = exp_like_arg(a, f)) {
-            base = casio::constant_e(a);
-            exponent = *e;
-        }
-        else return std::nullopt;
-        saw_power = true;
-        auto lb = log_base_value(a, base);
-        if(!lb) return std::nullopt;
-        if(contains_symbol(a, exponent, var)) {
-            if(saw_var_power) return std::nullopt;
-            auto lin = symbolic_linear_parts(a, exponent, var);
-            if(!lin) return std::nullopt;
-            saw_var_power = true;
-            xcoef = exact_eval_simplify(a, casio::mul(a, {lin->m, *lb}));
-            constant = exact_eval_simplify(a, casio::add(a, {constant, casio::mul(a, {lin->c, *lb})}));
-        }
-        else {
-            constant = exact_eval_simplify(a, casio::add(a, {constant, casio::mul(a, {exponent, *lb})}));
-        }
-    }
-    if((!saw_power && coef.num == coef.den) || coef.num <= 0) return std::nullopt;
-    if(coef.num != coef.den)
-        constant = exact_eval_simplify(a, casio::add(a, {casio::fn(a, "log", casio::num(a, coef.num, coef.den)), constant}));
-    return SinglePowerLog{xcoef, constant};
+    SinglePowerLog acc{zero_node(a), zero_node(a), 0};
+    bool saw_power = false;
+    if(!add_single_power_log_piece(a, n, var, 1, acc, saw_power)) return std::nullopt;
+    if(!saw_power && casio::same_by_sig(a, acc.constant, zero_node(a))) return std::nullopt;
+    return acc;
 }
 
 static std::optional<std::vector<std::string>> power_log_linear_solve_route(
@@ -26891,11 +26921,23 @@ static std::optional<std::vector<std::string>> power_log_linear_solve_route(
     NodeId ans = 0;
     if(is_negative_one_num(a, xcoef)) ans = exact_eval_simplify(a, neg_node(a, constant));
     else ans = exact_eval_simplify(a, casio::div(a, constant, xcoef));
+    bool has_div_domain = false;
+    auto div_domain = [&](NodeId n) {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Div && contains_symbol(a, x.b, var)) {
+            push_unique(out, "Domain: " + format_expr(a, x.b) + " != 0");
+            has_div_domain = true;
+        }
+    };
+    div_domain(lhs);
+    div_domain(rhs);
     out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
     out.push_back(format_expr(a, casio::add(a, {casio::mul(a, {L->xcoef, casio::sym(a, var)}), L->constant})) + " = " +
                   format_expr(a, casio::add(a, {casio::mul(a, {R->xcoef, casio::sym(a, var)}), R->constant})));
     out.push_back(format_expr(a, casio::mul(a, {xcoef, casio::sym(a, var)})) + " = " + format_expr(a, constant));
     out.push_back(var + " = " + format_expr(a, ans));
+    out.push_back(solution_list_line(var, {var + " = " + format_expr(a, ans)}));
+    if(has_div_domain) append_numeric_3dp(a, out, var, {var + " = " + format_expr(a, ans)});
     return out;
 }
 
