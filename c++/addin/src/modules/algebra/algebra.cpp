@@ -8850,6 +8850,76 @@ static std::optional<std::vector<std::string>> fractional_recip_power_route(
     return try_sides(sides[1], sides[0]);
 }
 
+static std::optional<Rational> exact_rational_nth_root(Rational r, int n)
+{
+    if(n <= 0 || r.den <= 0) return std::nullopt;
+    if(r.num < 0 && n % 2 == 0) return std::nullopt;
+    auto rn = integer_nth_root_i64(r.num < 0 ? -r.num : r.num, n);
+    auto rd = integer_nth_root_i64(r.den, n);
+    if(!rn || !rd || *rd == 0) return std::nullopt;
+    Rational out{r.num < 0 ? -*rn : *rn, *rd};
+    out.normalize();
+    return out;
+}
+
+static std::optional<std::vector<std::string>> negative_fractional_power_const_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto read = [&](NodeId pnode, NodeId cnode) -> std::optional<std::vector<std::string>> {
+        Node const &p = a.get(pnode);
+        if(p.kind != NodeKind::Pow) return std::nullopt;
+        Node const &base = a.get(p.a);
+        Node const &exp = a.get(p.b);
+        auto c = as_num(a, cnode);
+        if(base.kind != NodeKind::Sym || base.text != var || exp.kind != NodeKind::Num || !c) return std::nullopt;
+        Rational e = exp.num;
+        e.normalize();
+        if(e.num >= 0 || e.den <= 1 || e.num < -8 || e.den > 8 || c->num == 0) return std::nullopt;
+
+        int m = static_cast<int>(-e.num);
+        int q = static_cast<int>(e.den);
+        if(m != 1) return std::nullopt;
+        Rational target = r_div(Rational{1, 1}, *c);
+        target.normalize();
+        auto root = exact_rational_nth_root(target, m);
+        if(!root) return std::nullopt;
+
+        std::vector<Rational> us{*root};
+        if(m % 2 == 0 && root->num != 0) {
+            Rational neg = r_neg(*root);
+            us.push_back(neg);
+        }
+        std::vector<std::string> raw;
+        std::vector<std::string> out;
+        out.push_back(var + "^(" + format_rat_plain(e) + ") = " + format_rat_plain(*c));
+        out.push_back(var + " != 0");
+        out.push_back("u = " + var + "^(1/" + std::to_string(q) + ")" + (q % 2 == 0 ? ", u >= 0" : ""));
+        out.push_back("u = " + format_rat_plain(target));
+        for(Rational u : us) {
+            u.normalize();
+            if(q % 2 == 0 && u.num < 0) {
+                out.push_back("reject u = " + format_rat_plain(u));
+                continue;
+            }
+            if(m != 1) out.push_back("u = " + format_rat_plain(u));
+            Rational x = rat_pow_i(u, q);
+            raw.push_back(var + " = " + format_rat_plain(x));
+        }
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        sort_solution_lines(a, valid);
+        append_answer(out, var, valid);
+        append_numeric_3dp(a, out, var, valid);
+        return out;
+    };
+    if(auto out = read(lhs, rhs)) return out;
+    return read(rhs, lhs);
+}
+
 static bool rational_power_term(Arena &a, NodeId term, std::string const &var, Rational &coef, Rational &power)
 {
     NodeId body = term;
@@ -14399,6 +14469,140 @@ static std::optional<std::vector<std::string>> numeric_index_power_route(Arena &
     add_unique("= " + format_expr(a, casio::power(a, base, x.b)));
     add_unique("= " + ans);
     add_unique(ans);
+    return out;
+}
+
+static bool contains_negative_numeric_power(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind == NodeKind::Num && e.num.num < 0 && !has_symbols(a, x.a)) return true;
+    }
+    for(NodeId k : x.kids)
+        if(contains_negative_numeric_power(a, k)) return true;
+    return false;
+}
+
+static std::string signed_rat_sum_text(std::vector<Rational> const &vals)
+{
+    std::string out;
+    for(Rational v : vals) {
+        v.normalize();
+        bool neg = v.num < 0;
+        if(neg) v.num = -v.num;
+        std::string t = format_rat_plain(v);
+        if(out.empty()) out = neg ? "-" + t : t;
+        else out += neg ? " - " + t : " + " + t;
+    }
+    return out;
+}
+
+static std::optional<std::vector<std::string>> numeric_negative_index_sum_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    if(has_symbols(a, parsed) || !contains_negative_numeric_power(a, parsed)) return std::nullopt;
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    std::vector<NodeId> terms;
+    add_terms_flat(a, parsed, terms);
+    if(terms.size() < 2) return std::nullopt;
+    std::vector<Rational> vals;
+    bool changed = false;
+    for(NodeId t : terms) {
+        NodeId e = exact_eval_simplify(a, t);
+        auto r = as_num(a, e);
+        if(!r) return std::nullopt;
+        vals.push_back(*r);
+        if(compact_input_key(format_expr(a, t)) != compact_input_key(format_expr(a, e))) changed = true;
+    }
+    if(!changed) return std::nullopt;
+    std::string raw = format_expr(a, parsed);
+    std::string mid = signed_rat_sum_text(vals);
+    std::string ans = format_expr(a, simplified);
+    if(compact_input_key(raw) == compact_input_key(ans)) return std::nullopt;
+    std::vector<std::string> out{raw};
+    push_unique(out, "= " + mid);
+    push_unique(out, "= " + ans);
+    push_unique(out, ans);
+    return out;
+}
+
+static bool read_numeric_power_key(std::string term, Rational &value, bool &negative_power)
+{
+    bool neg = false;
+    if(!term.empty() && term.front() == '-') {
+        neg = true;
+        term = term.substr(1);
+    }
+    if(auto q = parse_rational_key(term)) {
+        value = neg ? r_neg(*q) : *q;
+        return true;
+    }
+    std::size_t pos = term.find("^(");
+    std::string base_txt, exp_txt;
+    if(pos != std::string::npos && term.back() == ')') {
+        base_txt = term.substr(0, pos);
+        exp_txt = term.substr(pos + 2, term.size() - pos - 3);
+    }
+    else {
+        pos = term.find("^-");
+        if(pos == std::string::npos) return false;
+        base_txt = term.substr(0, pos);
+        exp_txt = term.substr(pos + 1);
+    }
+    auto base = parse_rational_key(base_txt);
+    auto exp = parse_rational_key(exp_txt);
+    if(!base || !exp || exp->den != 1 || std::abs(exp->num) > 20) return false;
+    Rational p = rat_pow_i(*base, std::llabs(exp->num));
+    if(exp->num < 0) {
+        if(p.num == 0) return false;
+        p = r_div(Rational{1, 1}, p);
+        negative_power = true;
+    }
+    value = neg ? r_neg(p) : p;
+    value.normalize();
+    return true;
+}
+
+static std::vector<std::string> split_signed_numeric_power_terms(std::string const &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        bool exponent_sign = i > 0 && s[i - 1] == '^';
+        if((c == '+' || c == '-') && depth == 0 && !cur.empty() && !exponent_sign) {
+            out.push_back(cur);
+            cur.clear();
+        }
+        if(c != '+') cur.push_back(c);
+    }
+    if(!cur.empty()) out.push_back(cur);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> numeric_negative_index_sum_text_route(std::string const &expr, std::string const &ans)
+{
+    std::string key = compact_input_key(expr);
+    auto terms = split_signed_numeric_power_terms(key);
+    if(terms.size() < 2) return std::nullopt;
+    std::vector<Rational> vals;
+    bool saw_negative_power = false;
+    for(auto const &t : terms) {
+        Rational v{0, 1};
+        if(!read_numeric_power_key(t, v, saw_negative_power)) return std::nullopt;
+        vals.push_back(v);
+    }
+    if(!saw_negative_power) return std::nullopt;
+    std::string mid = signed_rat_sum_text(vals);
+    if(compact_input_key(mid) == compact_input_key(ans)) return std::nullopt;
+    std::vector<std::string> out{trim_text(expr)};
+    push_unique(out, "= " + mid);
+    push_unique(out, "= " + ans);
+    push_unique(out, ans);
     return out;
 }
 
@@ -27104,7 +27308,9 @@ algebra_compare_transform_modes:
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
+            if(auto idx_text = numeric_negative_index_sum_text_route(req.expr, format_expr(arena, n))) return *idx_text;
             if(auto idx = numeric_index_power_route(arena, parsed, n)) return *idx;
+            if(auto idx_sum = numeric_negative_index_sum_route(arena, parsed, n)) return *idx_sum;
             if(auto surd = simple_surd_expression_route(arena, parsed)) return *surd;
             if(auto mono = monomial_fraction_route(arena, parsed)) return *mono;
             if(req.method == "expand") {
@@ -27296,6 +27502,7 @@ algebra_compare_transform_modes:
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;
+        if(auto neg_frac = negative_fractional_power_const_route(arena, lhs, rhs, rearr, solve_var)) return *neg_frac;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
         if(!interval_lo && !interval_hi)
