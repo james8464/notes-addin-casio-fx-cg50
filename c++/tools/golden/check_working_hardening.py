@@ -932,6 +932,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "(36^(1/2)+16^(1/4))^(-2/3)",
+        ["(6 + 2)^(-2/3)", "8^(-2/3)", "1/4"],
+        ["ERR:", "Answer: 1/4"],
+    ),
+    (
+        "alg",
         "sqrt(150)-sqrt(54)",
         ["sqrt(25*6)", "5*sqrt(6) - 3*sqrt(6)", "2*sqrt(6)"],
         ["ERR:", "Answer: sqrt(150) - sqrt(54)"],

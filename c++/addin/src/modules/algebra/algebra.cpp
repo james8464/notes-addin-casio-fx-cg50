@@ -14248,6 +14248,50 @@ static std::optional<std::vector<std::string>> simple_surd_expression_route(Aren
     return std::vector<std::string>{raw, "= " + ans, ans};
 }
 
+static std::optional<std::vector<std::string>> numeric_index_power_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    if(has_symbols(a, parsed)) return std::nullopt;
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    Node const &e = a.get(x.b);
+    if(e.kind != NodeKind::Num || e.num.den == 1) return std::nullopt;
+
+    NodeId base = exact_eval_simplify(a, x.a);
+    Node const &b = a.get(base);
+    Node const &raw_base = a.get(x.a);
+    if(b.kind != NodeKind::Num || raw_base.kind != NodeKind::Add) return std::nullopt;
+
+    std::vector<NodeId> eval_terms;
+    bool changed = false;
+    std::string eval_sum;
+    for(NodeId kid : raw_base.kids) {
+        NodeId ek = exact_eval_simplify(a, kid);
+        eval_terms.push_back(ek);
+        std::string kt = format_expr(a, kid);
+        std::string et = format_expr(a, ek);
+        if(compact_input_key(kt) != compact_input_key(et)) changed = true;
+        if(eval_sum.empty()) eval_sum = et;
+        else if(!et.empty() && et[0] == '-') eval_sum += " - " + trim_text(et.substr(1));
+        else eval_sum += " + " + et;
+    }
+    if(!changed) return std::nullopt;
+
+    std::vector<std::string> out;
+    auto add_unique = [&](std::string s) {
+        if(s.empty()) return;
+        if(out.empty() || compact_input_key(out.back()) != compact_input_key(s)) out.push_back(s);
+    };
+    std::string raw = format_expr(a, parsed);
+    std::string ans = format_expr(a, simplified);
+    add_unique(raw);
+    add_unique("= (" + eval_sum + ")^(" + format_expr(a, x.b) + ")");
+    add_unique("= " + format_expr(a, casio::power(a, casio::add(a, eval_terms), x.b)));
+    add_unique("= " + format_expr(a, casio::power(a, base, x.b)));
+    add_unique("= " + ans);
+    add_unique(ans);
+    return out;
+}
+
 struct Lin2
 {
     Rational x{0, 1};
@@ -26792,6 +26836,7 @@ algebra_compare_transform_modes:
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
+            if(auto idx = numeric_index_power_route(arena, parsed, n)) return *idx;
             if(auto surd = simple_surd_expression_route(arena, parsed)) return *surd;
             if(req.method == "expand") {
                 std::string ans = n_text ? *n_text : format_expr(arena, n);
