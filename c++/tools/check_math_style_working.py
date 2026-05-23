@@ -669,7 +669,7 @@ CASES = [
     (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
-        ("u=a^x", "x = [0, 2]"),
+        ("u = 2^x, u > 0", "- 5*u + u^2 + 4 = 0", "x = [0, 2]"),
     ),
     (
         "natural log quotient exact",

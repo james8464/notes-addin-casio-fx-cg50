@@ -94,7 +94,7 @@ def base_cases() -> list[Case]:
         ("x+7=5*sqrt(x)", ("u = sqrt(x)", "D = -3 < 0", "x = []"), ("*i",)),
         ("(x^2-5*x+7)^(x^2-9*x+20)=1", ("base = 1", "exponent = 0", "x = [2, 3, 4, 5]")),
         ("abs(2*x+1)+9<4*x", ("abs", "x > 5")),
-        ("2^(2*x)-5*2^x+4=0,method=log_exp", ("u=a^x", "x =")),
+        ("2^(2*x)-5*2^x+4=0,method=log_exp", ("u = 2^x, u > 0", "x =")),
         ("solve(log(2,x)+log(4,x)=6,x,method=log_exp)", ("u = log(2,x)", "x = 16")),
         ("solve(log(2,x)+log(x,2)=5/2,x,method=log_exp)", ("1/u", "x = sqrt(2) or 4")),
         ("solve(log(3,x)+log(x,27)=4,x,method=log_exp)", ("3/u", "x = 3 or 27")),

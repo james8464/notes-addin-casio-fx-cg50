@@ -25234,6 +25234,129 @@ static std::optional<std::vector<std::string>> related_base_exp_substitution_rou
     return out;
 }
 
+static std::optional<std::vector<std::string>> related_base_exp_poly_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> raw_terms;
+    add_terms_flat(a, residual, raw_terms);
+    if(raw_terms.size() < 3 || raw_terms.size() > 6) return std::nullopt;
+
+    std::vector<RelatedBaseExpTerm> terms;
+    std::vector<long long> values;
+    Rational constant{0, 1};
+    for(NodeId n : raw_terms) {
+        if(auto c = as_num(a, n)) {
+            constant = r_add(constant, *c);
+            continue;
+        }
+        auto t = parse_related_base_exp_term(a, n, var);
+        if(!t || !t->log_bases.empty() || t->exp_base <= 1) return std::nullopt;
+        terms.push_back(*t);
+        values.push_back(t->exp_base);
+    }
+    if(terms.size() < 2) return std::nullopt;
+
+    int common = 0;
+    for(int cand = 2; cand <= 12 && !common; ++cand) {
+        bool ok = true;
+        for(long long v : values) {
+            auto p = integer_power_of_base(std::to_string(cand), std::to_string(v));
+            if(!p || *p <= 0) {
+                ok = false;
+                break;
+            }
+        }
+        if(ok) common = cand;
+    }
+    if(!common) return std::nullopt;
+
+    std::vector<std::pair<int, Rational>> coeffs;
+    auto add_coeff = [&](int degree, Rational c) {
+        for(auto &kv : coeffs) {
+            if(kv.first == degree) {
+                kv.second = r_add(kv.second, c);
+                return;
+            }
+        }
+        coeffs.push_back({degree, c});
+    };
+    add_coeff(0, constant);
+    int max_degree = 0;
+    for(auto const &t : terms) {
+        auto bp = integer_power_of_base(std::to_string(common), std::to_string(t.exp_base));
+        if(!bp) return std::nullopt;
+        auto deg = rational_int(r_mul(Rational{*bp, 1}, t.slope));
+        if(!deg || *deg <= 0 || *deg > 6) return std::nullopt;
+        auto c = scaled_related_exp_coef(t);
+        if(!c) return std::nullopt;
+        add_coeff((int)*deg, *c);
+        max_degree = std::max(max_degree, (int)*deg);
+    }
+    if(max_degree < 2) return std::nullopt;
+
+    PolyAny poly{std::vector<Rational>((std::size_t)max_degree + 1, Rational{0, 1}), true};
+    for(auto const &kv : coeffs) {
+        if(kv.first < 0 || kv.first > max_degree) return std::nullopt;
+        poly.c[(std::size_t)kv.first] = r_add(poly.c[(std::size_t)kv.first], kv.second);
+    }
+    trim_poly_any(poly);
+    if(poly.c.size() < 3) return std::nullopt;
+
+    std::string uvar = var == "u" ? "v" : "u";
+    out.push_back(uvar + " = " + std::to_string(common) + "^" + var + ", " + uvar + " > 0");
+    out.push_back(format_expr(a, poly_any_to_node(a, poly, uvar)) + " = 0");
+    std::size_t min_degree = 0;
+    while(min_degree < poly.c.size() && is_zero(poly.c[min_degree])) ++min_degree;
+    if(min_degree >= poly.c.size()) return std::nullopt;
+    if(min_degree > 0) {
+        out.push_back(power_text(uvar, (int)min_degree) + " > 0");
+        poly.c.erase(poly.c.begin(), poly.c.begin() + (long)min_degree);
+        trim_poly_any(poly);
+        out.push_back(format_expr(a, poly_any_to_node(a, poly, uvar)) + " = 0");
+    }
+    std::vector<std::string> factor_lines;
+    std::vector<std::string> us = solve_poly_any_raw(a, poly, uvar, factor_lines);
+    for(auto const &line : factor_lines) out.push_back(line);
+    if(us.empty()) return std::nullopt;
+
+    std::vector<std::string> xraw;
+    for(auto const &s : us) {
+        auto uv = solution_line_value(a, s);
+        if(!uv || *uv <= 0) {
+            out.push_back(sol_rhs(s) + " rejected, " + uvar + " > 0");
+            continue;
+        }
+        out.push_back(s);
+        std::string rhs = sol_rhs(s);
+        out.push_back(std::to_string(common) + "^" + var + " = " + rhs);
+        NodeId root = casio::parse_expr(a, rhs);
+        NodeId ans = 0;
+        if(auto rr = parse_rational_text(rhs)) {
+            if(auto pow = rational_ratio_power(Rational{common, 1}, *rr)) ans = a.num(*pow);
+        }
+        if(!ans) {
+            ans = exact_eval_simplify(a, casio::div(a, casio::fn(a, "log", root),
+                                                   casio::fn(a, "log", a.num(Rational{common, 1}))));
+        }
+        xraw.push_back(var + " = " + format_expr(a, ans));
+    }
+    if(xraw.empty()) {
+        out.push_back(var + " = []");
+        return out;
+    }
+    auto valid = filter_real_solutions(a, residual, var, xraw, std::nullopt, std::nullopt);
+    sort_solution_lines(a, valid);
+    append_rejected_by_domain(out, var, xraw, valid);
+    for(auto const &s : valid) out.push_back(s);
+    out.push_back(solution_list_line(var, valid));
+    append_numeric_3dp(a, out, var, valid);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> affine_reciprocal_power_product_route(
     Arena &a,
     NodeId residual,
@@ -29682,6 +29805,7 @@ algebra_compare_transform_modes:
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto pfe = prime_factor_exp_product_route(arena, lhs, rhs, solve_var, out)) return *pfe;
         if(auto mb = mixed_base_product_exp_route(arena, rearr, solve_var, out)) return *mb;
+        if(auto rbp = related_base_exp_poly_route(arena, rearr, solve_var, out)) return *rbp;
         if(auto abe = affine_related_base_exp_route(arena, rearr, solve_var, out)) return *abe;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
         NodeId exact_rearr_for_exp = exact_eval_simplify(arena, rearr);
