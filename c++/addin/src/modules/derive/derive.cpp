@@ -1206,6 +1206,20 @@ static Rational rat_mul_local(Rational a, Rational b)
     return r;
 }
 
+static Rational rat_sub_local(Rational a, Rational b)
+{
+    Rational r{a.num * b.den - b.num * a.den, a.den * b.den};
+    r.normalize();
+    return r;
+}
+
+static Rational rat_neg_local(Rational a)
+{
+    a.num = -a.num;
+    a.normalize();
+    return a;
+}
+
 static bool is_var_square_node(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -1913,6 +1927,357 @@ static std::optional<std::pair<std::string, std::string>> quotient_log_log_const
     std::string den = log_key + signed_term_text(c);
     return std::make_pair("Let v=" + den + ".",
                           "dy/d" + var + " = " + std::to_string(c) + "/(" + var + "*(" + den + ")^2)");
+}
+
+static bool is_log_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Log) return false;
+    Node const &arg = a.get(x.a);
+    return arg.kind == NodeKind::Sym && arg.text == var;
+}
+
+static std::optional<Rational> log_var_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    if(is_log_var(a, n, var)) return Rational{1, 1};
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto top = log_var_coeff(a, x.a, var);
+        auto den = as_num(a, x.b);
+        if(!top || !den || rat_zero_local(*den)) return std::nullopt;
+        return rat_div_local(*top, *den);
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    bool saw_log = false;
+    for(NodeId k : x.kids) {
+        if(auto q = as_num(a, k)) c = rat_mul_local(c, *q);
+        else if(is_log_var(a, k, var) && !saw_log) saw_log = true;
+        else return std::nullopt;
+    }
+    return saw_log ? std::optional<Rational>{c} : std::nullopt;
+}
+
+static void append_signed_piece(Arena &a, std::string &s, Rational c, std::string const &body)
+{
+    c.normalize();
+    if(rat_zero_local(c)) return;
+    bool neg = c.num < 0;
+    if(neg) c = rat_neg_local(c);
+    std::string term = coeff_text(a, c, body);
+    if(s.empty()) s = neg ? "-" + term : term;
+    else s += neg ? " - " + term : " + " + term;
+}
+
+static void append_signed_raw(std::string &s, bool neg, std::string const &term)
+{
+    if(term.empty()) return;
+    if(s.empty()) s = neg ? "-" + term : term;
+    else s += neg ? " - " + term : " + " + term;
+}
+
+static std::string coeff_over_sqrt_text(Arena &a, Rational c, std::string const &var)
+{
+    c.normalize();
+    if(c.num < 0) return "-" + coeff_over_sqrt_text(a, rat_neg_local(c), var);
+    if(c.den == 1) {
+        if(c.num == 1) return "1/sqrt(" + var + ")";
+        return rat_text(a, c.num, c.den) + "/sqrt(" + var + ")";
+    }
+    return std::to_string(c.num) + "/(" + std::to_string(c.den) + "*sqrt(" + var + "))";
+}
+
+static std::string coeff_over_x_text(Arena &a, Rational c, std::string const &var)
+{
+    c.normalize();
+    if(c.num < 0) return "-" + coeff_over_x_text(a, rat_neg_local(c), var);
+    if(c.den == 1) {
+        if(c.num == 1) return "1/" + var;
+        return rat_text(a, c.num, c.den) + "/" + var;
+    }
+    return std::to_string(c.num) + "/(" + std::to_string(c.den) + "*" + var + ")";
+}
+
+static std::optional<Rational> sqrt_var_den_coeff(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &arg = a.get(x.a);
+        if(arg.kind == NodeKind::Sym && arg.text == var) return Rational{1, 1};
+        return std::nullopt;
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    bool saw_sqrt = false;
+    for(NodeId k : x.kids) {
+        if(auto q = as_num(a, k)) c = rat_mul_local(c, *q);
+        else {
+            auto s = sqrt_var_den_coeff(a, k, var);
+            if(!s || saw_sqrt) return std::nullopt;
+            c = rat_mul_local(c, *s);
+            saw_sqrt = true;
+        }
+    }
+    return saw_sqrt ? std::optional<Rational>{c} : std::nullopt;
+}
+
+static std::optional<std::pair<Rational, int>> monomial_var_power(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == var) return std::make_pair(Rational{1, 1}, 1);
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num >= 1 && e->num <= 8)
+            return std::make_pair(Rational{1, 1}, static_cast<int>(e->num));
+        return std::nullopt;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = monomial_var_power(a, x.a, var);
+        auto den = as_num(a, x.b);
+        if(!top || !den || rat_zero_local(*den)) return std::nullopt;
+        top->first = rat_div_local(top->first, *den);
+        return top;
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational c{1, 1};
+    int power = 0;
+    for(NodeId k : x.kids) {
+        if(auto q = as_num(a, k)) c = rat_mul_local(c, *q);
+        else {
+            auto m = monomial_var_power(a, k, var);
+            if(!m || power != 0) return std::nullopt;
+            c = rat_mul_local(c, m->first);
+            power = m->second;
+        }
+    }
+    return power ? std::optional<std::pair<Rational, int>>{{c, power}} : std::nullopt;
+}
+
+struct SqrtQuotParts
+{
+    Rational A{0, 1};
+    Rational B{0, 1};
+    Rational C{1, 1};
+};
+
+static std::optional<SqrtQuotParts> sqrt_quotient_parts(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto den = sqrt_var_den_coeff(a, x.b, var);
+    if(!den || rat_zero_local(*den)) return std::nullopt;
+    std::vector<NodeId> terms;
+    Node const &top = a.get(x.a);
+    if(top.kind == NodeKind::Add) terms = top.kids;
+    else terms.push_back(x.a);
+    SqrtQuotParts p;
+    p.C = *den;
+    for(NodeId t : terms) {
+        auto m = monomial_var_power(a, t, var);
+        if(!m) return std::nullopt;
+        if(m->second == 2) p.A = rat_add_local(p.A, m->first);
+        else if(m->second == 1) p.B = rat_add_local(p.B, m->first);
+        else return std::nullopt;
+    }
+    if(rat_zero_local(p.A) && rat_zero_local(p.B)) return std::nullopt;
+    return p;
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>>
+sqrt_quotient_log_derivative_route(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms;
+    if(x.kind == NodeKind::Add) terms = x.kids;
+    else return std::nullopt;
+
+    std::optional<SqrtQuotParts> sq;
+    NodeId sq_node = 0;
+    Rational logc{0, 1};
+    bool saw_log = false;
+    for(NodeId t : terms) {
+        if(auto lc = log_var_coeff(a, t, var)) {
+            logc = rat_add_local(logc, *lc);
+            saw_log = true;
+            continue;
+        }
+        if(auto q = sqrt_quotient_parts(a, t, var); q && !sq) {
+            sq = *q;
+            sq_node = t;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!sq || !saw_log) return std::nullopt;
+
+    Rational acoef = rat_div_local(sq->A, sq->C);
+    Rational bcoef = rat_div_local(sq->B, sq->C);
+    std::string simplified;
+    append_signed_piece(a, simplified, acoef, var + "^(3/2)");
+    append_signed_piece(a, simplified, bcoef, "sqrt(" + var + ")");
+    if(simplified.empty()) return std::nullopt;
+
+    Rational da = rat_mul_local(acoef, Rational{3, 2});
+    Rational db = rat_mul_local(bcoef, Rational{1, 2});
+    std::string derivative_sum;
+    append_signed_piece(a, derivative_sum, da, "sqrt(" + var + ")");
+    {
+        Rational q = db;
+        bool neg = q.num < 0;
+        if(neg) q = rat_neg_local(q);
+        append_signed_raw(derivative_sum, neg, coeff_over_sqrt_text(a, q, var));
+    }
+    {
+        Rational q = logc;
+        bool neg = q.num < 0;
+        if(neg) q = rat_neg_local(q);
+        append_signed_raw(derivative_sum, neg, coeff_over_x_text(a, q, var));
+    }
+
+    std::vector<std::string> steps;
+    steps.push_back(clean_math_text(format_expr_human(a, sq_node)) + " = " + simplified + ".");
+    if(!rat_zero_local(acoef)) steps.push_back("d/d" + var + "[" + coeff_text(a, acoef, var + "^(3/2)") + "] = " + coeff_text(a, da, "sqrt(" + var + ")") + ".");
+    if(!rat_zero_local(bcoef)) steps.push_back("d/d" + var + "[" + coeff_text(a, bcoef, "sqrt(" + var + ")") + "] = " + coeff_over_sqrt_text(a, db, var) + ".");
+    steps.push_back("d/d" + var + "[" + coeff_text(a, logc, "ln(" + var + ")") + "] = " + coeff_over_x_text(a, logc, var) + ".");
+    steps.push_back("dy/d" + var + " = " + derivative_sum + ".");
+
+    std::string answer = "dy/d" + var + " = " + derivative_sum;
+    if(sq->A.den == 1 && sq->B.den == 1 && sq->C.den == 1 && logc.den == 1 && sq->C.num != 0) {
+        long long den = 2 * sq->C.num;
+        Rational n2{3 * sq->A.num, 1};
+        Rational n1{sq->B.num, 1};
+        Rational ns{2 * sq->C.num * logc.num, 1};
+        if(den < 0) {
+            den = -den;
+            n2 = rat_neg_local(n2);
+            n1 = rat_neg_local(n1);
+            ns = rat_neg_local(ns);
+        }
+        std::string num;
+        append_signed_piece(a, num, n2, var + "^2");
+        append_signed_piece(a, num, n1, var);
+        append_signed_piece(a, num, ns, "sqrt(" + var + ")");
+        if(!num.empty()) {
+            std::string den_txt = (den == 1 ? "" : std::to_string(den) + "*") + var + "*sqrt(" + var + ")";
+            answer = "dy/d" + var + " = (" + num + ")/(" + den_txt + ")";
+        }
+    }
+    return std::make_pair(steps, answer);
+}
+
+static void collect_logs(Arena &a, NodeId n, std::vector<NodeId> &logs)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Log) {
+        logs.push_back(n);
+        return;
+    }
+    if(x.kind == NodeKind::Fn) collect_logs(a, x.a, logs);
+    else if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        collect_logs(a, x.a, logs);
+        collect_logs(a, x.b, logs);
+    }
+    else if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) collect_logs(a, k, logs);
+    }
+}
+
+static std::optional<std::pair<Rational, Rational>> linear_in_expr_local(Arena &a, NodeId n, NodeId u)
+{
+    if(same_expr_key(a, n, u)) return std::make_pair(Rational{1, 1}, Rational{0, 1});
+    if(auto q = as_num(a, n)) return std::make_pair(Rational{0, 1}, *q);
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        Rational c{1, 1};
+        bool saw_u = false;
+        for(NodeId k : x.kids) {
+            if(same_expr_key(a, k, u)) saw_u = true;
+            else if(auto q = as_num(a, k)) c = rat_mul_local(c, *q);
+            else if(auto p = linear_in_expr_local(a, k, u); p && !saw_u && rat_zero_local(p->second)) {
+                c = rat_mul_local(c, p->first);
+                saw_u = true;
+            }
+            else return std::nullopt;
+        }
+        if(!saw_u) return std::nullopt;
+        return std::make_pair(c, Rational{0, 1});
+    }
+    if(x.kind == NodeKind::Div) {
+        auto den = as_num(a, x.b);
+        if(!den || rat_zero_local(*den)) return std::nullopt;
+        auto top = linear_in_expr_local(a, x.a, u);
+        if(!top) return std::nullopt;
+        return std::make_pair(rat_div_local(top->first, *den), rat_div_local(top->second, *den));
+    }
+    if(x.kind == NodeKind::Add) {
+        Rational m{0, 1}, b{0, 1};
+        for(NodeId k : x.kids) {
+            auto p = linear_in_expr_local(a, k, u);
+            if(!p) return std::nullopt;
+            m = rat_add_local(m, p->first);
+            b = rat_add_local(b, p->second);
+        }
+        return std::make_pair(m, b);
+    }
+    return std::nullopt;
+}
+
+static std::string log_linear_text(Arena &a, Rational m, Rational b, std::string const &var)
+{
+    std::string s;
+    append_signed_piece(a, s, m, "ln(" + var + ")");
+    b.normalize();
+    if(!rat_zero_local(b)) {
+        bool neg = b.num < 0;
+        if(neg) b = rat_neg_local(b);
+        std::string term = rat_text(a, b.num, b.den);
+        if(s.empty()) s = neg ? "-" + term : term;
+        else s += neg ? " - " + term : " + " + term;
+    }
+    return s.empty() ? "0" : s;
+}
+
+static std::string over_x_times_square_text(Arena &a, Rational c, std::string const &var, std::string const &den)
+{
+    c.normalize();
+    if(c.num < 0) return "-" + over_x_times_square_text(a, rat_neg_local(c), var, den);
+    std::string bot = var + "*(" + den + ")^2";
+    if(c.den != 1) bot = std::to_string(c.den) + "*" + bot;
+    if(c.num == 1) return "1/(" + bot + ")";
+    return std::to_string(c.num) + "/(" + bot + ")";
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>>
+log_linear_fraction_derivative_route(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &q = a.get(n);
+    if(q.kind != NodeKind::Div) return std::nullopt;
+    std::vector<NodeId> logs;
+    collect_logs(a, n, logs);
+    if(logs.empty()) return std::nullopt;
+    for(NodeId l : logs) if(!same_expr_key(a, l, logs.front())) return std::nullopt;
+    if(!is_log_var(a, logs.front(), var)) return std::nullopt;
+
+    auto top = linear_in_expr_local(a, q.a, logs.front());
+    auto bot = linear_in_expr_local(a, q.b, logs.front());
+    if(!top || !bot || rat_zero_local(bot->first)) return std::nullopt;
+    Rational det = rat_sub_local(rat_mul_local(top->first, bot->second), rat_mul_local(bot->first, top->second));
+    if(rat_zero_local(det)) return std::nullopt;
+
+    std::string u = log_linear_text(a, top->first, top->second, var);
+    std::string v = log_linear_text(a, bot->first, bot->second, var);
+    std::string up = coeff_over_x_text(a, top->first, var);
+    std::string vp = coeff_over_x_text(a, bot->first, var);
+    std::vector<std::string> steps{
+        "u = " + u + ", u' = " + up + ".",
+        "v = " + v + ", v' = " + vp + ".",
+        "y' = (u'v-u*v')/v^2.",
+        "Numerator = (" + up + ")(" + v + ") - (" + u + ")(" + vp + ").",
+        "Numerator = " + coeff_over_x_text(a, det, var) + ".",
+        var + " > 0 and (" + v + ")^2 > 0 on the domain.",
+    };
+    return std::make_pair(steps, "dy/d" + var + " = " + over_x_times_square_text(a, det, var, v));
 }
 
 static std::optional<std::pair<std::string, std::string>> log_recip_quadratic_route(std::string const &key, std::string const &var)
@@ -3371,6 +3736,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(auto route = cos2_over_sqrt_1_plus_sin2_route(arena, n, var, answer)) {
                     return casio::exam_block("differentiate", *route, answer);
                 }
+                if(auto route = sqrt_quotient_log_derivative_route(arena, n, var)) return casio::exam_block("differentiate", route->first, route->second);
+                if(auto route = log_linear_fraction_derivative_route(arena, n, var)) return casio::exam_block("differentiate", route->first, route->second);
                 if((direct_key.find("7xe^x/") != std::string::npos && direct_key.find("sqrt(e^(3x)-2)") != std::string::npos) ||
                    (direct_key.find("7xexp(x)/") != std::string::npos && direct_key.find("sqrt(exp(3x)-2)") != std::string::npos)) {
                     return casio::exam_block(

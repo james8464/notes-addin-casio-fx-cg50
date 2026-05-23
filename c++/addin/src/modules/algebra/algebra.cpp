@@ -3626,6 +3626,91 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
     return out;
 }
 
+static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena &a, std::string const &expr)
+{
+    std::string s = trim_text(expr);
+    std::string body;
+    for(char const *name : {"binom_coeff", "coeff"}) {
+        std::string p = std::string(name) + "(";
+        if(s.rfind(p, 0) == 0 && s.size() > p.size() && s.back() == ')') {
+            body = s.substr(p.size(), s.size() - p.size() - 1);
+            break;
+        }
+    }
+    if(body.empty()) {
+        auto raw_args = split_csv(s);
+        if(raw_args.size() == 3) body = s;
+        else return std::nullopt;
+    }
+    auto args = split_csv(body);
+    if(args.size() != 3) return std::nullopt;
+    std::string var = trim_text(args[1]);
+    auto kk = parse_rational_text(trim_text(args[2]));
+    if(var.empty() || !kk || kk->den != 1 || kk->num < 0 || kk->num > 40) return std::nullopt;
+    int want = (int)kk->num;
+
+    NodeId n = casio::parse_expr(a, trim_text(args[0]));
+    Node const &pow = a.get(n);
+    if(pow.kind != NodeKind::Pow) return std::nullopt;
+    auto nnr = as_num(a, pow.b);
+    if(!nnr || nnr->den != 1 || nnr->num < 0 || nnr->num > 30) return std::nullopt;
+    int nn = (int)nnr->num;
+    Node const &base = a.get(pow.a);
+    if(base.kind != NodeKind::Add || base.kids.size() != 2) return std::nullopt;
+
+    auto linear_term_coeff = [&](NodeId t) -> std::optional<NodeId> {
+        Node const &x = a.get(t);
+        if(x.kind == NodeKind::Sym && x.text == var) return one_node(a);
+        if(x.kind != NodeKind::Mul) return std::nullopt;
+        bool saw = false;
+        std::vector<NodeId> rest;
+        for(NodeId k : x.kids) {
+            Node const &z = a.get(k);
+            if(!saw && z.kind == NodeKind::Sym && z.text == var) {
+                saw = true;
+                continue;
+            }
+            if(contains_symbol(a, k, var)) return std::nullopt;
+            rest.push_back(k);
+        }
+        if(!saw) return std::nullopt;
+        return mul_or_one(a, rest);
+    };
+
+    std::optional<NodeId> cterm, lcoef, lterm;
+    for(NodeId kid : base.kids) {
+        if(!contains_symbol(a, kid, var) && !cterm) {
+            cterm = kid;
+            continue;
+        }
+        if(auto lc = linear_term_coeff(kid); lc && !lcoef) {
+            lcoef = *lc;
+            lterm = kid;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!cterm || !lcoef || !lterm || want > nn) return std::nullopt;
+
+    Rational C = binom_rat(Rational{nn, 1}, want);
+    NodeId coeff = casio::mul(a, {
+        a.num(C),
+        want == 0 ? one_node(a) : casio::power(a, *lcoef, a.num(Rational{want, 1})),
+        nn == want ? one_node(a) : casio::power(a, *cterm, a.num(Rational{nn - want, 1})),
+    });
+    coeff = exact_eval_simplify(a, coeff);
+
+    std::string vpow = var + "^" + std::to_string(want);
+    return std::vector<std::string>{
+        format_expr(a, n),
+        "Term in " + vpow + ": C(" + std::to_string(nn) + "," + std::to_string(want) + ")*(" +
+            format_expr(a, *cterm) + ")^" + std::to_string(nn - want) + "*(" + format_expr(a, *lterm) + ")^" + std::to_string(want),
+        "Coefficient = C(" + std::to_string(nn) + "," + std::to_string(want) + ")*(" + format_expr(a, *cterm) + ")^" +
+            std::to_string(nn - want) + "*(" + format_expr(a, *lcoef) + ")^" + std::to_string(want),
+        "Coefficient = " + format_expr(a, coeff),
+    };
+}
+
 static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval)
 {
     Node const &n = a.get(id);
@@ -8398,28 +8483,33 @@ static std::optional<std::vector<std::string>> real_exact_nth_power_route(
         if(!rz || rz->num != 0 || rz->den != 1 || !pow_const_residual(a, rearr, var, n, value)) return std::nullopt;
     }
     if(n < 3 || value.den <= 0) return std::nullopt;
-    auto rn = integer_nth_root_i64(value.num, static_cast<int>(n));
-    auto rd = integer_nth_root_i64(value.den, static_cast<int>(n));
-    if(!rn || !rd || *rd == 0) return std::nullopt;
-    Rational root{*rn, *rd};
-    root.normalize();
     std::string lhs_text = var + "^" + std::to_string(n);
     std::string rhs_text = format_rat_plain(value);
-    std::string root_text = format_rat_plain(root);
     std::vector<std::string> out;
     out.push_back(lhs_text + " = " + rhs_text);
-    if(n % 2 == 0) {
-        if(value.num < 0) {
-            out.push_back("No real even root.");
-            append_answer(out, var, {});
-            return out;
-        }
-        Rational neg_root = r_neg(root);
-        out.push_back(var + " = +/-" + root_text);
-        append_answer(out, var, {var + " = " + format_rat_plain(neg_root), var + " = " + root_text});
+    if(n % 2 == 0 && value.num < 0) {
+        out.push_back("No real even root.");
+        append_answer(out, var, {});
         return out;
     }
-    out.push_back(var + " = (" + rhs_text + ")^(1/" + std::to_string(n) + ")");
+    auto rn = integer_nth_root_i64(value.num < 0 ? -value.num : value.num, static_cast<int>(n));
+    auto rd = integer_nth_root_i64(value.den, static_cast<int>(n));
+    bool exact_root = rn && rd && *rd != 0;
+    std::string root_text;
+    if(exact_root) {
+        Rational root{value.num < 0 ? -*rn : *rn, *rd};
+        root.normalize();
+        root_text = format_rat_plain(root);
+    }
+    else {
+        root_text = "(" + rhs_text + ")^(1/" + std::to_string(n) + ")";
+    }
+    if(n % 2 == 0) {
+        out.push_back(var + " = +/-" + root_text);
+        append_answer(out, var, {var + " = -" + root_text, var + " = " + root_text});
+        return out;
+    }
+    out.push_back(var + " = " + root_text);
     append_answer(out, var, {var + " = " + root_text});
     return out;
 }
@@ -14056,6 +14146,123 @@ static std::optional<std::string> log_mobius_range(Arena &a, NodeId n, std::stri
     steps.push_back("Let u=" + format_expr(a, u) + "; as x varies on its domain, u covers all real values.");
     steps.push_back("Then y is a fractional-linear function of u.");
     return "y != " + rat_node_text(a, asym);
+}
+
+static std::string exp_rational_bound_text(Rational r)
+{
+    r.normalize();
+    if(is_zero(r)) return "1";
+    if(r.den == 1) {
+        if(r.num == 1) return "e";
+        return "e^" + std::to_string(r.num);
+    }
+    return "e^(" + format_rat_plain(r) + ")";
+}
+
+static std::optional<std::vector<std::string>> log_mobius_inequality_route(Arena &a, std::string const &expr)
+{
+    auto args = split_csv(expr);
+    if(args.empty()) return std::nullopt;
+    std::string rel = trim_text(args[0]);
+    int depth = 0;
+    std::size_t pos = std::string::npos;
+    std::string op;
+    for(std::size_t i = 0; i < rel.size(); ++i) {
+        char c = rel[i];
+        if(c == '(' || c == '[') ++depth;
+        else if(c == ')' || c == ']') --depth;
+        else if(depth == 0 && (c == '>' || c == '<')) {
+            pos = i;
+            op = rel.substr(i, (i + 1 < rel.size() && rel[i + 1] == '=') ? 2 : 1);
+            break;
+        }
+    }
+    if(pos == std::string::npos) return std::nullopt;
+    std::string lhs_txt = trim_text(rel.substr(0, pos));
+    std::string rhs_txt = trim_text(rel.substr(pos + op.size()));
+    if(rhs_txt != "0") return std::nullopt;
+
+    NodeId lhs = casio::parse_expr(a, lhs_txt);
+    Node const &q = a.get(lhs);
+    if(q.kind != NodeKind::Div) return std::nullopt;
+    std::vector<NodeId> logs;
+    std::function<void(NodeId)> walk = [&](NodeId id) {
+        Node const &z = a.get(id);
+        if(z.kind == NodeKind::Fn && z.fkind == FnKind::Log) {
+            logs.push_back(id);
+            return;
+        }
+        if(z.kind == NodeKind::Add || z.kind == NodeKind::Mul) for(NodeId k : z.kids) walk(k);
+        else if(z.kind == NodeKind::Div || z.kind == NodeKind::Pow) { walk(z.a); walk(z.b); }
+        else if(z.kind == NodeKind::Fn) walk(z.a);
+    };
+    walk(lhs);
+    if(logs.empty()) return std::nullopt;
+    NodeId u_node = logs.front();
+    for(NodeId l : logs) if(!casio::same_by_sig(a, l, u_node)) return std::nullopt;
+    std::string var = args.size() >= 2 ? trim_text(args[1]) : "x";
+    Node const &ln = a.get(u_node);
+    if(args.size() < 2) {
+        Node const &arg = a.get(ln.a);
+        if(arg.kind == NodeKind::Sym) var = arg.text;
+    }
+    auto top = linear_in_expr(a, q.a, u_node);
+    auto bot = linear_in_expr(a, q.b, u_node);
+    if(!top || !bot || is_zero(top->first) || is_zero(bot->first)) return std::nullopt;
+
+    Rational nroot = r_div(r_neg(top->second), top->first);
+    Rational droot = r_div(r_neg(bot->second), bot->first);
+    if(r_cmp(nroot, droot) == 0) return std::nullopt;
+    std::vector<Rational> crit{nroot, droot};
+    std::sort(crit.begin(), crit.end(), [](Rational l, Rational r) { return r_cmp(l, r) < 0; });
+
+    auto eval_sign = [&](Rational u) {
+        Rational num = r_add(r_mul(top->first, u), top->second);
+        Rational den = r_add(r_mul(bot->first, u), bot->second);
+        int sn = r_cmp(num, Rational{0, 1});
+        int sd = r_cmp(den, Rational{0, 1});
+        if(sd == 0) return 0;
+        return sn * sd;
+    };
+    auto ok = [&](int s) {
+        if(op == ">") return s > 0;
+        if(op == "<") return s < 0;
+        if(op == ">=") return s >= 0;
+        return s <= 0;
+    };
+    auto sample = [&](int i) {
+        if(i == 0) return r_sub(crit[0], Rational{1, 1});
+        if(i == 2) return r_add(crit[1], Rational{1, 1});
+        return r_div(r_add(crit[0], crit[1]), Rational{2, 1});
+    };
+    std::vector<std::string> u_ans, x_ans;
+    for(int i = 0; i < 3; ++i) {
+        if(!ok(eval_sign(sample(i)))) continue;
+        if(i == 0) {
+            u_ans.push_back("u < " + format_rat_plain(crit[0]));
+            x_ans.push_back("0 < " + var + " < " + exp_rational_bound_text(crit[0]));
+        }
+        else if(i == 1) {
+            u_ans.push_back(format_rat_plain(crit[0]) + " < u < " + format_rat_plain(crit[1]));
+            x_ans.push_back(exp_rational_bound_text(crit[0]) + " < " + var + " < " + exp_rational_bound_text(crit[1]));
+        }
+        else {
+            u_ans.push_back("u > " + format_rat_plain(crit[1]));
+            x_ans.push_back(var + " > " + exp_rational_bound_text(crit[1]));
+        }
+    }
+    if(u_ans.empty()) return std::nullopt;
+
+    return std::vector<std::string>{
+        "u = ln(" + var + ")",
+        "Domain: " + var + " > 0, u != " + format_rat_plain(droot),
+        "(" + rat_node_text(a, top->first) + "*u" + (top->second.num < 0 ? " - " : " + ") + format_rat_plain(top->second.num < 0 ? r_neg(top->second) : top->second) + ")/(" +
+            rat_node_text(a, bot->first) + "*u" + (bot->second.num < 0 ? " - " : " + ") + format_rat_plain(bot->second.num < 0 ? r_neg(bot->second) : bot->second) + ") " + op + " 0",
+        "N = 0: u = " + format_rat_plain(nroot),
+        "D = 0: u != " + format_rat_plain(droot),
+        join_text(u_ans, " or "),
+        join_text(x_ans, " or "),
+    };
 }
 
 static std::optional<std::string> positive_linear_domain(Arena &a, NodeId n, std::string const &var)
@@ -21345,6 +21552,77 @@ static std::optional<Rational> scaled_related_exp_coef(RelatedBaseExpTerm const 
     return r_mul(t.coef, *scale);
 }
 
+static std::optional<Rational> rational_ratio_power(Rational base, Rational value);
+
+static std::string related_exp_arg_text(std::string const &var, Rational offset)
+{
+    offset.normalize();
+    if(is_zero(offset)) return var;
+    std::string off = format_rat_plain(offset.num < 0 ? r_neg(offset) : offset);
+    return var + (offset.num < 0 ? " - " : " + ") + off;
+}
+
+static std::optional<std::vector<std::string>> affine_related_base_exp_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out
+)
+{
+    std::vector<NodeId> raw_terms;
+    add_terms_flat(a, residual, raw_terms);
+    if(raw_terms.size() < 2 || raw_terms.size() > 5) return std::nullopt;
+
+    long long base = 0;
+    Rational exp_coeff{0, 1};
+    Rational constant{0, 1};
+    std::vector<RelatedBaseExpTerm> exp_terms;
+    for(NodeId n : raw_terms) {
+        if(auto c = as_num(a, n)) {
+            constant = r_add(constant, *c);
+            continue;
+        }
+        auto t = parse_related_base_exp_term(a, n, var);
+        if(!t || !t->log_bases.empty() || t->exp_base <= 1) return std::nullopt;
+        if(!base) {
+            base = t->exp_base;
+            exp_coeff = t->slope;
+        }
+        else if(base != t->exp_base || r_cmp(exp_coeff, t->slope) != 0) return std::nullopt;
+        if(r_cmp(t->slope, Rational{1, 1}) != 0) return std::nullopt;
+        auto sc = scaled_related_exp_coef(*t);
+        if(!sc) return std::nullopt;
+        exp_coeff = t->slope;
+        exp_terms.push_back(*t);
+    }
+    if(exp_terms.empty() || is_zero(constant)) return std::nullopt;
+
+    Rational coeff{0, 1};
+    std::string base_txt = std::to_string(base);
+    for(auto const &t : exp_terms) {
+        auto sc = scaled_related_exp_coef(t);
+        if(!sc) return std::nullopt;
+        coeff = r_add(coeff, *sc);
+        if(!is_zero(t.offset)) {
+            std::string scale = format_rat_plain(r_div(*sc, t.coef));
+            out.push_back(base_txt + "^(" + related_exp_arg_text(var, t.offset) + ") = " +
+                          scale + "*" + base_txt + "^" + var);
+        }
+    }
+    if(is_zero(coeff)) return std::nullopt;
+    Rational rhs = r_div(r_neg(constant), coeff);
+    if(rhs.num <= 0) return std::nullopt;
+
+    out.push_back(format_rat_plain(coeff) + "*" + base_txt + "^" + var + " = " + format_rat_plain(r_neg(constant)));
+    out.push_back(base_txt + "^" + var + " = " + format_rat_plain(rhs));
+    std::string sol;
+    if(auto kval = rational_ratio_power(Rational{base, 1}, rhs)) sol = format_rat_plain(*kval);
+    else sol = "log(" + base_txt + "," + format_rat_plain(rhs) + ")";
+    out.push_back(var + " = " + sol);
+    out.push_back(var + " = [" + sol + "]");
+    return out;
+}
+
 static std::optional<Rational> rational_ratio_power(Rational base, Rational value)
 {
     if(base.num <= 0 || value.num <= 0) return std::nullopt;
@@ -23569,6 +23847,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
         if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         {
             std::string key = compact_input_key(req.expr);
@@ -23635,11 +23914,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(auto ae = abs_exp_affine_equation_route(arena, top_parts[0])) return *ae;
             }
             if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
+                if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
                 if(auto ri = rational_inequality_route(arena, top_parts[0])) return *ri;
             }
             if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
             if(auto ae = abs_exp_affine_equation_route(arena, req.expr)) return *ae;
             if(find_top_rel(key, relpos, relop) || key.rfind("solve(", 0) == 0) {
+                if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
                 if(auto ri = rational_inequality_route(arena, req.expr)) return *ri;
             }
             if(auto cg = chord_gradient_route(arena, req.expr)) return *cg;
@@ -25682,6 +25963,7 @@ algebra_compare_transform_modes:
         if(auto aes = affine_exp_common_slope_route(arena, rearr, solve_var, out)) return *aes;
         if(auto ef = exp_common_factor_route(arena, rearr, solve_var, out)) return *ef;
         if(auto mb = mixed_base_product_exp_route(arena, rearr, solve_var, out)) return *mb;
+        if(auto abe = affine_related_base_exp_route(arena, rearr, solve_var, out)) return *abe;
         if(auto pbr = product_base_ratio_exp_route(arena, rearr, solve_var, out)) return *pbr;
         NodeId exact_rearr_for_exp = exact_eval_simplify(arena, rearr);
         if(!casio::same_by_sig(arena, exact_rearr_for_exp, rearr)) {

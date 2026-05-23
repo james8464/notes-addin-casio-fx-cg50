@@ -481,6 +481,12 @@ int main(int argc, char **argv)
                 req.method = "binomial";
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "binom_coeff(")).empty() ||
+                    !(inner = unwrap_call(expr, "coeff(")).empty()) {
+                req.mode = 0;
+                req.method = "binom_coeff";
+                req.expr = inner;
+            }
             else if(!(inner = unwrap_call(expr, "series(")).empty()) {
                 req.mode = 14;
                 req.method = "binomial";

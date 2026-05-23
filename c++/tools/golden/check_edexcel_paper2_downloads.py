@@ -108,10 +108,34 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["Parser error", "ERR:"],
     ),
     (
+        "October 2020 Q4 binomial coefficient",
+        ["--alg", "binom_coeff((a+2*x)^7,x,4)"],
+        ["Term in x^4", "C(7,4)", "Coefficient = 560*a^3"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q4 coefficient equation",
+        ["--alg", "solve(560*a^3=15120,a)"],
+        ["560*a^3 - 15120 = 0", "a = [3]"],
+        ["ERR:"],
+    ),
+    (
+        "October 2020 Q5 exponential intersection exact",
+        ["--alg", "solve(3*2^x=15-2^(x+1),x)"],
+        ["2^(x + 1) = 2*2^x", "5*2^x = 15", "2^x = 3", "x = log(2,3)"],
+        ["x = [1.584", "ERR:"],
+    ),
+    (
         "October 2020 Q6 algebraic division integral",
         ["--int", "defint((x^2+8*x-3)/(x+2),x,0,6),method=div"],
         ["Q = x + 6, R = -15", "54", "ln(8)"],
         ["No elementary primitive", "ERR:"],
+    ),
+    (
+        "October 2020 Q7 quotient-log derivative simplification",
+        ["--derive", "(4*x^2+x)/(2*sqrt(x))-4*ln(x),x"],
+        ["2*x^(3/2) + 1/2*sqrt(x)", "dy/dx = 3*sqrt(x) + 1/(4*sqrt(x)) - 4/x", "(12*x^2 + x - 16*sqrt(x))/(4*x*sqrt(x))"],
+        ["limite", "ERR:"],
     ),
     (
         "October 2020 Q10 triple-angle solve",
@@ -130,6 +154,24 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
         ["--alg", "range((3*log(x)-7)/(log(x)-2))"],
         ["u = ln(x)", "y != 3"],
         ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "October 2020 Q13 log-fraction derivative",
+        ["--derive", "(3*ln(x)-7)/(ln(x)-2),x"],
+        ["dy/dx = 1/(x*(ln(x) - 2)^2)", "x > 0", "(ln(x) - 2)^2 > 0"],
+        ["limite", "ERR:"],
+    ),
+    (
+        "October 2020 Q13 log-fraction inequality",
+        ["--alg", "solve((3*ln(a)-7)/(ln(a)-2)>0,a)"],
+        ["u = ln(a)", "u < 2 or u > 7/3", "0 < a < e^2 or a > e^(7/3)"],
+        ["Unexpected character", "ERR:"],
+    ),
+    (
+        "October 2020 Q15 fifth-root exact solve",
+        ["--alg", "solve(r^5=3,r)"],
+        ["r^5 = 3", "r = (3)^(1/5)", "r = [(3)^(1/5)]"],
+        ["r = [1.245", "ERR:"],
     ),
     (
         "October 2021 implicit polynomial powers",

@@ -93,8 +93,14 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q12 car model growth factor",
         ["--alg", "solve(p^7=50000/32000,p)"],
-        ["p^7 = 25/16", "p = [1.06583155827]", "p ~= 1.066"],
-        ["ERR:", "p = []"],
+        ["p^7 = 25/16", "p = (25/16)^(1/7)", "p = [(25/16)^(1/7)]"],
+        ["ERR:", "p = []", "p = [1.065"],
+    ),
+    (
+        "June 2018 Q12 car model growth factor numeric",
+        ["--alg", "(25/16)^(1/7),method=numeric"],
+        ["1.06583155827"],
+        ["ERR:"],
     ),
     (
         "June 2018 Q12 car model initial value",
