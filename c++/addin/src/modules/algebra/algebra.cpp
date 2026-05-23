@@ -10840,8 +10840,25 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
     std::string key = compact_input_key(expr);
     std::string var = "x";
     bool nonneg_domain = false;
+    std::optional<double> clip_lo, clip_hi;
+    std::string clip_lo_text, clip_hi_text;
     auto is_pos_inf_key = [](std::string const &s) {
         return s == "inf" || s == "+inf" || s == "infinity" || s == "+infinity";
+    };
+    auto parse_clip = [&](std::vector<std::string> const &args) {
+        if(args.size() < 4) return;
+        auto lo = parse_const_double(a, args[2]);
+        auto hi = parse_const_double(a, args[3]);
+        if(lo && std::isfinite(*lo)) {
+            clip_lo = *lo;
+            try { clip_lo_text = format_expr(a, casio::parse_expr(a, args[2])); }
+            catch(...) { clip_lo_text = args[2]; }
+        }
+        if(hi && std::isfinite(*hi)) {
+            clip_hi = *hi;
+            try { clip_hi_text = format_expr(a, casio::parse_expr(a, args[3])); }
+            catch(...) { clip_hi_text = args[3]; }
+        }
     };
     if(key.rfind("solve(", 0) == 0) {
         std::string body = key.substr(6);
@@ -10850,6 +10867,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         if(args.size() < 2 || args[1].empty()) return std::nullopt;
         var = args[1];
         nonneg_domain = args.size() >= 4 && args[2] == "0" && is_pos_inf_key(args[3]);
+        parse_clip(args);
         key = args[0];
     }
     else {
@@ -10857,6 +10875,7 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         if(args.size() >= 2 && !args[1].empty()) {
             var = args[1];
             nonneg_domain = args.size() >= 4 && args[2] == "0" && is_pos_inf_key(args[3]);
+            parse_clip(args);
             key = args[0];
         }
         else if(args.size() > 1) return std::nullopt;
@@ -10972,6 +10991,39 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
     bool nonstrict = op.size() == 2;
     std::vector<std::string> ans, signs;
     std::vector<bool> interval_ok(crit.size() + 1, false);
+    auto in_clip = [&](double v) {
+        if(clip_lo && v < *clip_lo - 1e-9) return false;
+        if(clip_hi && v > *clip_hi + 1e-9) return false;
+        return true;
+    };
+    auto add_interval = [&](std::optional<std::string> lo, std::optional<std::string> hi,
+                            double lv, double hv, bool li, bool ri) {
+        if(clip_lo) {
+            if(lv < *clip_lo - 1e-9) {
+                lv = *clip_lo;
+                lo = clip_lo_text;
+                li = true;
+            }
+            else if(std::fabs(lv - *clip_lo) <= 1e-9) li = li && true;
+        }
+        if(clip_hi) {
+            if(hv > *clip_hi + 1e-9) {
+                hv = *clip_hi;
+                hi = clip_hi_text;
+                ri = true;
+            }
+            else if(std::fabs(hv - *clip_hi) <= 1e-9) ri = ri && true;
+        }
+        if(lv > hv + 1e-9) return;
+        if(std::fabs(lv - hv) <= 1e-9) {
+            if(li && ri && lo) ans.push_back(var + " = " + *lo);
+            return;
+        }
+        if(!lo && !hi) ans.push_back("all real " + var);
+        else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
+        else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
+        else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
+    };
     for(std::size_t i = 0; i <= crit.size(); ++i) {
         double sample = crit.empty() ? 0.0
             : (i == 0 ? crit[0].v - 1.0
@@ -10987,20 +11039,21 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
         if(interval_ok[i]) {
             std::optional<std::string> lo, hi;
             bool li = false, ri = false;
+            double lv = -std::numeric_limits<double>::infinity();
+            double hv = std::numeric_limits<double>::infinity();
             if(i > 0) {
                 lo = crit[i - 1].text;
                 li = nonstrict && crit[i - 1].num && !crit[i - 1].den;
+                lv = crit[i - 1].v;
             }
             if(i < crit.size()) {
                 hi = crit[i].text;
                 ri = nonstrict && crit[i].num && !crit[i].den;
+                hv = crit[i].v;
             }
-            if(!lo && !hi) ans.push_back("all real " + var);
-            else if(!lo) ans.push_back(var + " " + (ri ? "<= " : "< ") + *hi);
-            else if(!hi) ans.push_back(var + " " + (li ? ">= " : "> ") + *lo);
-            else ans.push_back(*lo + (li ? " <= " + var + " " : " < " + var + " ") + (ri ? "<= " : "< ") + *hi);
+            add_interval(lo, hi, lv, hv, li, ri);
         }
-        if(nonstrict && i < crit.size() && crit[i].num && !crit[i].den && !interval_ok[i] && !interval_ok[i + 1])
+        if(nonstrict && i < crit.size() && crit[i].num && !crit[i].den && !interval_ok[i] && !interval_ok[i + 1] && in_clip(crit[i].v))
             ans.push_back(var + " = " + crit[i].text);
     }
     if(nonneg_domain) {
@@ -11062,6 +11115,11 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
     }
     out.push_back("sign: " + join_text(signs, "; "));
     if(nonneg_domain) out.push_back(var + " >= 0");
+    if(clip_lo || clip_hi) {
+        if(clip_lo && clip_hi) out.push_back("Interval: " + clip_lo_text + " <= " + var + " <= " + clip_hi_text);
+        else if(clip_lo) out.push_back("Interval: " + var + " >= " + clip_lo_text);
+        else out.push_back("Interval: " + var + " <= " + clip_hi_text);
+    }
     out.push_back(join_text(ans, " or "));
     return out;
 }
@@ -14827,6 +14885,98 @@ static std::optional<std::vector<std::string>> multi_surd_expression_route(Arena
     push_unique(out, "= " + ans);
     push_unique(out, ans);
     return out;
+}
+
+static std::optional<std::vector<std::string>> linear_surd_square_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars) || vars.size() != 2) return std::nullopt;
+
+    std::vector<Equation> eqs;
+    std::vector<NodeId> residuals;
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        eqs.push_back(*eq);
+        residuals.push_back(system_residual(a, *eq, vars[0], vars[1]));
+    }
+
+    auto square_side = [&](NodeId l, NodeId r, NodeId &base, NodeId &val) {
+        Node const &ln = a.get(l);
+        if(ln.kind != NodeKind::Pow || contains_any_symbol(a, r, vars)) return false;
+        Node const &e = a.get(ln.b);
+        if(e.kind != NodeKind::Num || e.num.num != 2 || e.num.den != 1) return false;
+        base = ln.a;
+        val = r;
+        return true;
+    };
+
+    for(int line_i = 0; line_i < 2; ++line_i) {
+        int curve_i = 1 - line_i;
+        int iso_order[2] = {1, 0};
+        for(int iso_pos = 0; iso_pos < 2; ++iso_pos) {
+            int iso = iso_order[iso_pos];
+            int other = 1 - iso;
+            auto lin = symbolic_linear_parts(a, residuals[line_i], vars[iso]);
+            if(!lin || casio::same_by_sig(a, lin->m, zero_node(a)) ||
+               contains_either_symbol(a, lin->m, vars[0], vars[1]) ||
+               contains_symbol(a, lin->c, vars[iso]))
+                continue;
+
+            NodeId iso_expr = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
+            if(!contains_symbol(a, iso_expr, vars[other]) || contains_symbol(a, iso_expr, vars[iso])) continue;
+
+            NodeId lhs = exact_eval_simplify(a, clone_with_substitution(a, eqs[curve_i].lhs, vars[iso], iso_expr));
+            NodeId rhs = exact_eval_simplify(a, clone_with_substitution(a, eqs[curve_i].rhs, vars[iso], iso_expr));
+            NodeId base = 0, val = 0;
+            if(!square_side(lhs, rhs, base, val) && !square_side(rhs, lhs, base, val)) continue;
+
+            auto bp = symbolic_linear_parts(a, base, vars[other]);
+            if(!bp || !casio::same_by_sig(a, bp->c, zero_node(a)) ||
+               contains_symbol(a, bp->m, vars[other]) || contains_symbol(a, bp->m, vars[iso]))
+                continue;
+
+            NodeId coeff_sq = exact_eval_simplify(a, casio::power(a, bp->m, casio::num(a, 2)));
+            auto coeff_ms = eval_multi_surd(a, coeff_sq);
+            auto val_ms = eval_multi_surd(a, val);
+            if(!coeff_ms || !val_ms) continue;
+            auto q_ms = div_multi_surd(*val_ms, *coeff_ms);
+            if(!q_ms) continue;
+            q_ms = norm_multi_surd(*q_ms);
+            if(q_ms->terms.size() != 1 || q_ms->terms[0].first != 1 || q_ms->terms[0].second.num < 0) continue;
+            Rational q = q_ms->terms[0].second;
+            q.normalize();
+
+            std::string coeff_txt = multi_surd_text(a, *coeff_ms);
+            std::string val_txt = multi_surd_text(a, *val_ms);
+            std::string root_txt = sqrt_rational_surd_text(a, q);
+            Rational root_rat;
+            NodeId root = square_rat_root(q, root_rat) ? a.num(root_rat) : casio::fn(a, "sqrt", a.num(q));
+            NodeId neg_root = neg_node(a, root);
+
+            std::vector<std::string> out;
+            out.push_back(format_expr(a, residuals[line_i]) + " = 0");
+            out.push_back(vars[iso] + " = " + format_expr(a, iso_expr));
+            out.push_back(format_expr(a, lhs) + " = " + format_expr(a, rhs));
+            out.push_back(paren_math(coeff_txt) + "*" + vars[other] + "^2 = " + val_txt);
+            out.push_back(vars[other] + "^2 = " + paren_math(val_txt) + "/" + paren_math(coeff_txt));
+            out.push_back(vars[other] + "^2 = " + format_rat_plain(q));
+            out.push_back(vars[other] + " = +/-" + root_txt);
+
+            std::vector<std::string> pairs;
+            for(NodeId ov : {root, neg_root}) {
+                NodeId iv = exact_eval_simplify(a, clone_with_substitution(a, iso_expr, vars[other], ov));
+                std::string ot = format_expr(a, ov);
+                std::string it = format_expr(a, iv);
+                out.push_back(vars[other] + " = " + ot);
+                out.push_back(vars[iso] + " = " + it);
+                pairs.push_back(iso == 0 ? "(" + it + "," + ot + ")" : "(" + ot + "," + it + ")");
+            }
+            out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
+            return out;
+        }
+    }
+    return std::nullopt;
 }
 
 static bool cube_root_power_factor(Arena &a, NodeId n, Rational &coef, Rational &rad)
@@ -26586,7 +26736,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             if(top_parts.size() >= 2 && find_top_rel(top_parts[0], relpos, relop)) {
                 if(auto lmi = log_mobius_inequality_route(arena, req.expr)) return *lmi;
-                if(auto ri = rational_inequality_route(arena, top_parts[0])) return *ri;
+                if(auto ri = rational_inequality_route(arena, top_parts.size() >= 4 ? req.expr : top_parts[0])) return *ri;
             }
             if(auto al = abs_scaled_log_linear_relation_route(arena, req.expr)) return *al;
             if(auto ae = abs_exp_affine_equation_route(arena, req.expr)) return *ae;
@@ -26602,6 +26752,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
             if(auto lsys3 = exact_linear3_system_route(arena, req.expr)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
+            if(auto lss = linear_surd_square_system_route(arena, req.expr)) return *lss;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
             if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
@@ -28175,12 +28326,16 @@ algebra_compare_transform_modes:
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;
             collect_symbols(arena, v, syms);
-            if(!syms.empty() || contains_exp_log_exact(arena, v)) {
+            if(!syms.empty() || contains_exp_log_exact(arena, v) || contains_fn_kind(arena, v, FnKind::Sqrt)) {
                 NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                std::string sub_txt = format_expr(arena, sub2);
+                if(auto ms = eval_multi_surd(arena, sub2))
+                    sub_txt = multi_surd_text(arena, *ms);
                 return {
                     var + " = " + format_expr(arena, v),
                     "f(" + var + ") = " + format_expr(arena, n),
-                    "f(" + format_expr(arena, v) + ") = " + format_expr(arena, sub),
+                    "f(" + format_expr(arena, v) + ") = " + sub_txt,
                 };
             }
             collect_symbols(arena, n, syms);
