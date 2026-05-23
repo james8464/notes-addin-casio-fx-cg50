@@ -3831,15 +3831,6 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     if(var.empty() || !kk || kk->den != 1 || kk->num < 0 || kk->num > 40) return std::nullopt;
     int want = (int)kk->num;
 
-    NodeId n = casio::parse_expr(a, trim_text(args[0]));
-    Node const &pow = a.get(n);
-    if(pow.kind != NodeKind::Pow) return std::nullopt;
-    auto nnr = as_num(a, pow.b);
-    if(!nnr || nnr->den != 1 || nnr->num < 0 || nnr->num > 30) return std::nullopt;
-    int nn = (int)nnr->num;
-    Node const &base = a.get(pow.a);
-    if(base.kind != NodeKind::Add || base.kids.size() != 2) return std::nullopt;
-
     auto linear_term_coeff = [&](NodeId t) -> std::optional<NodeId> {
         Node const &x = a.get(t);
         if(x.kind == NodeKind::Sym && x.text == var) return one_node(a);
@@ -3859,38 +3850,120 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
         return mul_or_one(a, rest);
     };
 
-    std::optional<NodeId> cterm, lcoef, lterm;
-    for(NodeId kid : base.kids) {
-        if(!contains_symbol(a, kid, var) && !cterm) {
-            cterm = kid;
-            continue;
-        }
-        if(auto lc = linear_term_coeff(kid); lc && !lcoef) {
-            lcoef = *lc;
-            lterm = kid;
-            continue;
-        }
-        return std::nullopt;
-    }
-    if(!cterm || !lcoef || !lterm || want > nn) return std::nullopt;
-
-    Rational C = binom_rat(Rational{nn, 1}, want);
-    NodeId coeff = casio::mul(a, {
-        a.num(C),
-        want == 0 ? one_node(a) : casio::power(a, *lcoef, a.num(Rational{want, 1})),
-        nn == want ? one_node(a) : casio::power(a, *cterm, a.num(Rational{nn - want, 1})),
-    });
-    coeff = exact_eval_simplify(a, coeff);
-
-    std::string vpow = var + "^" + std::to_string(want);
-    return std::vector<std::string>{
-        format_expr(a, n),
-        "Term in " + vpow + ": C(" + std::to_string(nn) + "," + std::to_string(want) + ")*(" +
-            format_expr(a, *cterm) + ")^" + std::to_string(nn - want) + "*(" + format_expr(a, *lterm) + ")^" + std::to_string(want),
-        "Coefficient = C(" + std::to_string(nn) + "," + std::to_string(want) + ")*(" + format_expr(a, *cterm) + ")^" +
-            std::to_string(nn - want) + "*(" + format_expr(a, *lcoef) + ")^" + std::to_string(want),
-        "Coefficient = " + format_expr(a, coeff),
+    struct BinomInfo {
+        NodeId pow_node;
+        NodeId cterm;
+        NodeId lcoef;
+        NodeId lterm;
+        int nn;
     };
+    auto read_binom = [&](NodeId id) -> std::optional<BinomInfo> {
+        Node const &pow = a.get(id);
+        if(pow.kind != NodeKind::Pow) return std::nullopt;
+        auto nnr = as_num(a, pow.b);
+        if(!nnr || nnr->den != 1 || nnr->num < 0 || nnr->num > 30) return std::nullopt;
+        Node const &base = a.get(pow.a);
+        if(base.kind != NodeKind::Add || base.kids.size() != 2) return std::nullopt;
+        std::optional<NodeId> cterm, lcoef, lterm;
+        for(NodeId kid : base.kids) {
+            if(!contains_symbol(a, kid, var) && !cterm) {
+                cterm = kid;
+                continue;
+            }
+            if(auto lc = linear_term_coeff(kid); lc && !lcoef) {
+                lcoef = *lc;
+                lterm = kid;
+                continue;
+            }
+            return std::nullopt;
+        }
+        if(!cterm || !lcoef || !lterm) return std::nullopt;
+        return BinomInfo{id, *cterm, *lcoef, *lterm, (int)nnr->num};
+    };
+
+    auto binom_coeff_at = [&](BinomInfo const &bi, int k) -> NodeId {
+        if(k < 0 || k > bi.nn) return a.num(Rational{0, 1});
+        Rational C = binom_rat(Rational{bi.nn, 1}, k);
+        NodeId coeff = casio::mul(a, {
+            a.num(C),
+            k == 0 ? one_node(a) : casio::power(a, bi.lcoef, a.num(Rational{k, 1})),
+            bi.nn == k ? one_node(a) : casio::power(a, bi.cterm, a.num(Rational{bi.nn - k, 1})),
+        });
+        return exact_eval_simplify(a, coeff);
+    };
+
+    auto read_linear_poly = [&](NodeId id) -> std::optional<std::pair<NodeId, NodeId>> {
+        std::vector<NodeId> cterms, xterms;
+        auto add_term = [&](NodeId t) -> bool {
+            if(!contains_symbol(a, t, var)) {
+                cterms.push_back(t);
+                return true;
+            }
+            if(auto lc = linear_term_coeff(t)) {
+                xterms.push_back(*lc);
+                return true;
+            }
+            return false;
+        };
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Add) {
+            for(NodeId kid : x.kids) if(!add_term(kid)) return std::nullopt;
+        }
+        else if(!add_term(id)) return std::nullopt;
+        NodeId c0 = cterms.empty() ? a.num(Rational{0, 1}) : exact_eval_simplify(a, casio::add(a, cterms));
+        NodeId c1 = xterms.empty() ? a.num(Rational{0, 1}) : exact_eval_simplify(a, casio::add(a, xterms));
+        return std::make_pair(c0, c1);
+    };
+
+    NodeId n = casio::parse_expr(a, trim_text(args[0]));
+    if(auto bi = read_binom(n)) {
+        if(want > bi->nn) return std::nullopt;
+        NodeId coeff = binom_coeff_at(*bi, want);
+        std::string vpow = var + "^" + std::to_string(want);
+        return std::vector<std::string>{
+            format_expr(a, n),
+            "Term in " + vpow + ": C(" + std::to_string(bi->nn) + "," + std::to_string(want) + ")*(" +
+                format_expr(a, bi->cterm) + ")^" + std::to_string(bi->nn - want) + "*(" + format_expr(a, bi->lterm) + ")^" + std::to_string(want),
+            "Coefficient = C(" + std::to_string(bi->nn) + "," + std::to_string(want) + ")*(" + format_expr(a, bi->cterm) + ")^" +
+                std::to_string(bi->nn - want) + "*(" + format_expr(a, bi->lcoef) + ")^" + std::to_string(want),
+            "Coefficient = " + format_expr(a, coeff),
+        };
+    }
+
+    Node const &prod = a.get(n);
+    if(prod.kind != NodeKind::Mul) return std::nullopt;
+    std::optional<BinomInfo> bi;
+    std::vector<NodeId> rest;
+    for(NodeId kid : prod.kids) {
+        if(!bi) {
+            if(auto b = read_binom(kid)) {
+                bi = *b;
+                continue;
+            }
+        }
+        rest.push_back(kid);
+    }
+    if(!bi) return std::nullopt;
+    NodeId linear = mul_or_one(a, rest);
+    auto lp = read_linear_poly(linear);
+    if(!lp) return std::nullopt;
+    NodeId b_want = binom_coeff_at(*bi, want);
+    NodeId b_prev = binom_coeff_at(*bi, want - 1);
+    NodeId total = exact_eval_simplify(a, casio::add(a, {
+        casio::mul(a, {lp->first, b_want}),
+        casio::mul(a, {lp->second, b_prev}),
+    }));
+    std::string prev = want > 0 ? var + "^" + std::to_string(want - 1) : var + "^-1";
+    std::vector<std::string> out{
+        format_expr(a, n),
+        "B = " + format_expr(a, bi->pow_node),
+        "Coeff_B(" + var + "^" + std::to_string(want) + ") = " + format_expr(a, b_want),
+    };
+    if(want > 0) out.push_back("Coeff_B(" + prev + ") = " + format_expr(a, b_prev));
+    out.push_back("Linear factor = " + format_expr(a, linear) + " = " + format_expr(a, lp->first) + " + (" + format_expr(a, lp->second) + ")*" + var);
+    out.push_back("Coefficient = (" + format_expr(a, lp->first) + ")*(" + format_expr(a, b_want) + ") + (" + format_expr(a, lp->second) + ")*(" + format_expr(a, b_prev) + ")");
+    out.push_back("Coefficient = " + format_expr(a, total));
+    return out;
 }
 
 static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &var, double xval)
