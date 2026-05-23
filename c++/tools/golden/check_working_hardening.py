@@ -246,6 +246,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([2*r+r*theta=23,1/2*r^2*theta=15],[r,theta])",
+        ["r*theta = 23 - 2*r", "2*r^2 - 23*r + 30 = 0", "3/10", "(r,theta) = [(10,3/10)]"],
+        ["solve([2*r", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve([a+a*r=40,a+a*r+a*r^2+a*r^3=130],[a,r])",
+        ["(1-r^4)/(1-r^2) = 13/4", "4*r^4 - 13*r^2 + 9 = 0", "S_5 = [-275, 211]"],
+        ["solve([a", "ERR:"],
+    ),
+    (
+        "alg",
+        "expand((1+x-x^2)^6)",
+        ["x^12 - 6*x^11", "- 10*x^3", "9*x^2 + 6*x + 1"],
+        ["base must be ax+b", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(ln(2*w+1)=1+ln(w-1),w)",
         ["ln((2*w + 1)/(w - 1)) = 1", "(2*w + 1)/(w - 1) = e", "w = [(e + 1)/(e - 2)]"],
         ["w = 5.176", "log_b(A)", "ERR:"],

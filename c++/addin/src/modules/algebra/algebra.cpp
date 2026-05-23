@@ -13959,6 +13959,12 @@ struct GpSumEq
     Rational sum{0, 1};
 };
 
+struct GpFiniteSumEq
+{
+    int terms = 0;
+    Rational sum{0, 1};
+};
+
 static std::optional<GpSumEq> gp_sum_equation(Arena &a, std::string const &txt,
                                               std::string const &first, std::string const &ratio)
 {
@@ -13989,6 +13995,132 @@ static std::optional<GpSumEq> gp_sum_equation(Arena &a, std::string const &txt,
     Rational sum = r_div(r_neg(*c), sign);
     if(sum.num <= 0) return std::nullopt;
     return GpSumEq{pow, sum};
+}
+
+static std::optional<GpFiniteSumEq> gp_finite_sum_equation(Arena &a, std::string const &txt,
+                                                           std::string const &first, std::string const &ratio)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return std::nullopt;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    auto lin = symbolic_linear_parts(a, residual, first);
+    if(!lin || contains_symbol(a, lin->m, first) || contains_symbol(a, lin->c, first)) return std::nullopt;
+    auto c = as_num(a, lin->c);
+    if(!c) return std::nullopt;
+    auto p = poly_any_of(a, lin->m, ratio);
+    if(!p || !p->ok || p->c.size() < 2 || p->c.size() > 8) return std::nullopt;
+    trim_poly_any(*p);
+    Rational sign = p->c[0];
+    if(is_zero(sign) || std::llabs(sign.num) != sign.den) return std::nullopt;
+    for(Rational q : p->c) if(r_cmp(q, sign) != 0) return std::nullopt;
+    Rational sum = r_div(r_neg(*c), sign);
+    if(sum.num <= 0) return std::nullopt;
+    return GpFiniteSumEq{(int)p->c.size(), sum};
+}
+
+static std::vector<Rational> rational_poly_roots(Arena &a, PolyAny p)
+{
+    (void)a;
+    std::vector<Rational> roots;
+    trim_poly_any(p);
+    while(p.c.size() > 3) {
+        if(is_zero(p.c[0])) {
+            Rational z{0, 1};
+            roots.push_back(z);
+            divide_linear(p, z);
+            continue;
+        }
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto lead = as_int64(cand.c.back());
+        auto cnst = as_int64(cand.c.front());
+        if(!lead || !cnst) break;
+        bool found = false;
+        for(long long pp : divisors_i64(std::llabs(*cnst))) {
+            for(long long qq : divisors_i64(std::llabs(*lead))) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational r{sgn * pp, qq};
+                    r.normalize();
+                    if(!is_zero(poly_any_eval(p, r))) continue;
+                    roots.push_back(r);
+                    divide_linear(p, r);
+                    found = true;
+                    goto next_root;
+                }
+            }
+        }
+next_root:
+        if(!found) break;
+    }
+    if(p.c.size() == 2 && !is_zero(p.c[1])) roots.push_back(r_div(r_neg(p.c[0]), p.c[1]));
+    else if(p.c.size() == 3) {
+        Poly2 q{p.c[2], p.c[1], p.c[0], true};
+        if(auto rr = rational_quadratic_roots(q)) {
+            roots.push_back(rr->first);
+            roots.push_back(rr->second);
+        }
+    }
+    std::sort(roots.begin(), roots.end(), [](Rational u, Rational v) { return r_cmp(u, v) < 0; });
+    roots.erase(std::unique(roots.begin(), roots.end(), [](Rational u, Rational v) { return r_cmp(u, v) == 0; }), roots.end());
+    return roots;
+}
+
+static Rational gp_finite_sum_value(Rational first, Rational ratio, int terms)
+{
+    if(r_cmp(ratio, Rational{1, 1}) == 0) return r_mul(first, Rational{terms, 1});
+    return r_mul(first, r_div(r_sub(Rational{1, 1}, r_pow_int(ratio, terms)), r_sub(Rational{1, 1}, ratio)));
+}
+
+static std::optional<std::vector<std::string>> gp_finite_sum_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    auto e0 = gp_finite_sum_equation(a, eqs[0], vars[0], vars[1]);
+    auto e1 = gp_finite_sum_equation(a, eqs[1], vars[0], vars[1]);
+    if(!e0 || !e1 || e0->terms == e1->terms) return std::nullopt;
+    GpFiniteSumEq small = e0->terms < e1->terms ? *e0 : *e1;
+    GpFiniteSumEq large = e0->terms < e1->terms ? *e1 : *e0;
+
+    PolyAny eqp{std::vector<Rational>(large.terms + 1, Rational{0, 1}), true};
+    eqp.c[0] = r_sub(small.sum, large.sum);
+    eqp.c[small.terms] = large.sum;
+    eqp.c[large.terms] = r_neg(small.sum);
+    primitive_poly_any_in_place(eqp);
+    auto roots = rational_poly_roots(a, eqp);
+    if(roots.empty()) return std::nullopt;
+
+    std::vector<std::string> out{
+        "S_" + std::to_string(small.terms) + " = " + vars[0] + "*(1-" + vars[1] + "^" + std::to_string(small.terms) + ")/(1-" + vars[1] + ") = " + format_rat(a, small.sum),
+        "S_" + std::to_string(large.terms) + " = " + vars[0] + "*(1-" + vars[1] + "^" + std::to_string(large.terms) + ")/(1-" + vars[1] + ") = " + format_rat(a, large.sum),
+        "(1-" + vars[1] + "^" + std::to_string(large.terms) + ")/(1-" + vars[1] + "^" + std::to_string(small.terms) + ") = " + format_rat(a, r_div(large.sum, small.sum)),
+        poly_any_text_desc(eqp, vars[1]) + " = 0"
+    };
+
+    int target = large.terms + 1;
+    std::vector<std::string> targets;
+    std::vector<std::string> pairs;
+    for(Rational r : roots) {
+        Rational den = r_sub(Rational{1, 1}, r_pow_int(r, small.terms));
+        std::string rt = format_rat(a, r);
+        if(is_zero(den)) {
+            out.push_back(vars[1] + " = " + rt + " rejected, S_" + std::to_string(small.terms) + " denominator is 0");
+            continue;
+        }
+        Rational first = r_cmp(r, Rational{1, 1}) == 0 ? r_div(small.sum, Rational{small.terms, 1})
+                                                        : r_mul(small.sum, r_div(r_sub(Rational{1, 1}, r), den));
+        Rational st = gp_finite_sum_value(first, r, target);
+        std::string at = format_rat(a, first);
+        std::string sumt = format_rat(a, st);
+        std::string denom_txt = rt.rfind("-", 0) == 0 ? "1+" + rt.substr(1) : "1-" + rt;
+        out.push_back(vars[1] + " = " + rt + " => " + vars[0] + " = " + at);
+        out.push_back("S_" + std::to_string(target) + " = " + at + "*(1-(" + rt + ")^" + std::to_string(target) + ")/(" + denom_txt + ") = " + sumt);
+        pairs.push_back("(" + at + "," + rt + ")");
+        targets.push_back(sumt);
+    }
+    if(targets.empty()) return std::nullopt;
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
+    out.push_back("S_" + std::to_string(target) + " = [" + join_text(targets, ", ") + "]");
+    return out;
 }
 
 static std::optional<std::vector<std::string>> gp_first_third_sum_system_route(Arena &a, std::string const &expr)
@@ -14038,6 +14170,129 @@ static std::optional<std::vector<std::string>> gp_first_third_sum_system_route(A
     if(sums.empty()) return std::nullopt;
     out.push_back("S_inf = [" + join_text(sums, ", ") + "]");
     return out;
+}
+
+static bool single_power_coeff(PolyAny p, int power, Rational &coef)
+{
+    trim_poly_any(p);
+    if((int)p.c.size() <= power) return false;
+    coef = p.c[power];
+    if(is_zero(coef)) return false;
+    for(std::size_t i = 0; i < p.c.size(); ++i)
+        if((int)i != power && !is_zero(p.c[i])) return false;
+    return true;
+}
+
+struct SectorLine
+{
+    bool area = false;
+    Rational theta_coeff{0, 1};
+    Rational radius_coeff{0, 1};
+    Rational rhs{0, 1};
+};
+
+static std::optional<SectorLine> sector_line(Arena &a, std::string const &txt,
+                                             std::string const &radius, std::string const &angle)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return std::nullopt;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    auto lin = symbolic_linear_parts(a, residual, angle);
+    if(!lin || contains_symbol(a, lin->m, angle) || contains_symbol(a, lin->c, angle)) return std::nullopt;
+    auto mp = poly_any_of(a, lin->m, radius);
+    auto cp = poly_any_of(a, lin->c, radius);
+    if(!mp || !cp || !mp->ok || !cp->ok) return std::nullopt;
+    Rational mc{0, 1};
+    if(single_power_coeff(*mp, 1, mc)) {
+        int sgn = mc.num < 0 ? -1 : 1;
+        Rational sign{sgn, 1};
+        Rational theta_c = r_div(mc, sign);
+        if(r_cmp(theta_c, Rational{1, 1}) != 0) return std::nullopt;
+        trim_poly_any(*cp);
+        Rational k{0, 1}, c0{0, 1};
+        if(!cp->c.empty()) c0 = cp->c[0];
+        if(cp->c.size() > 1) k = cp->c[1];
+        for(std::size_t i = 2; i < cp->c.size(); ++i) if(!is_zero(cp->c[i])) return std::nullopt;
+        k = r_div(k, sign);
+        Rational rhs = r_div(r_neg(c0), sign);
+        if(rhs.num <= 0 || k.num <= 0) return std::nullopt;
+        return SectorLine{false, theta_c, k, rhs};
+    }
+    if(single_power_coeff(*mp, 2, mc)) {
+        int sgn = mc.num < 0 ? -1 : 1;
+        Rational sign{sgn, 1};
+        Rational theta_c = r_div(mc, sign);
+        trim_poly_any(*cp);
+        if(cp->c.size() > 1) for(std::size_t i = 1; i < cp->c.size(); ++i) if(!is_zero(cp->c[i])) return std::nullopt;
+        Rational c0 = cp->c.empty() ? Rational{0, 1} : cp->c[0];
+        Rational rhs = r_div(r_neg(c0), sign);
+        if(rhs.num <= 0 || theta_c.num <= 0) return std::nullopt;
+        return SectorLine{true, theta_c, Rational{0, 1}, rhs};
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> sector_system_route_for(Arena &a, std::vector<std::string> const &eqs,
+                                                                       std::string const &radius, std::string const &angle)
+{
+    auto l0 = sector_line(a, eqs[0], radius, angle);
+    auto l1 = sector_line(a, eqs[1], radius, angle);
+    if(!l0 || !l1 || l0->area == l1->area) return std::nullopt;
+    SectorLine per = l0->area ? *l1 : *l0;
+    SectorLine ar = l0->area ? *l0 : *l1;
+    Poly2 q = primitive_poly2(Poly2{r_mul(ar.theta_coeff, per.radius_coeff),
+                                    r_neg(r_mul(ar.theta_coeff, per.rhs)),
+                                    ar.rhs,
+                                    true});
+    auto roots = rational_quadratic_roots(q);
+    if(!roots) return std::nullopt;
+    std::vector<Rational> rvals{roots->first, roots->second};
+    std::sort(rvals.begin(), rvals.end(), [](Rational u, Rational v) { return r_cmp(u, v) < 0; });
+    rvals.erase(std::unique(rvals.begin(), rvals.end(), [](Rational u, Rational v) { return r_cmp(u, v) == 0; }), rvals.end());
+
+    std::vector<std::string> out{
+        radius + "*" + angle + " + " + format_rat(a, per.radius_coeff) + "*" + radius + " = " + format_rat(a, per.rhs),
+        format_rat(a, ar.theta_coeff) + "*" + radius + "^2*" + angle + " = " + format_rat(a, ar.rhs),
+        radius + "*" + angle + " = " + format_rat(a, per.rhs) + " - " + format_rat(a, per.radius_coeff) + "*" + radius,
+        format_rat(a, ar.theta_coeff) + "*" + radius + "*(" + format_rat(a, per.rhs) + " - " + format_rat(a, per.radius_coeff) + "*" + radius + ") = " + format_rat(a, ar.rhs),
+        format_expr(a, poly2_to_node(a, q, radius)) + " = 0"
+    };
+    auto qs = solve_poly2(a, q, radius);
+    out.insert(out.end(), qs.begin(), qs.end());
+
+    std::vector<std::string> pairs;
+    for(Rational rv : rvals) {
+        std::string rt = format_rat(a, rv);
+        if(rv.num <= 0) {
+            out.push_back(radius + " = " + rt + " rejected, " + radius + " <= 0");
+            continue;
+        }
+        Rational theta = r_div(r_sub(per.rhs, r_mul(per.radius_coeff, rv)), rv);
+        std::string tt = format_rat(a, theta);
+        if(theta.num <= 0) {
+            out.push_back(radius + " = " + rt + " rejected, " + angle + " <= 0");
+            continue;
+        }
+        double tv = (double)theta.num / (double)theta.den;
+        if(tv > 2.0 * std::acos(-1.0) + 1e-12) {
+            out.push_back(radius + " = " + rt + " => " + angle + " = " + tt + " rejected, " + angle + " > 2*pi");
+            continue;
+        }
+        out.push_back(radius + " = " + rt + " => " + angle + " = (" + format_rat(a, per.rhs) + " - " +
+                      format_rat(a, per.radius_coeff) + "*" + rt + ")/" + rt + " = " + tt);
+        pairs.push_back("(" + rt + "," + tt + ")");
+    }
+    if(pairs.empty()) return std::nullopt;
+    out.push_back("(" + radius + "," + angle + ") = [" + join_text(pairs, ", ") + "]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> sector_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    if(auto r = sector_system_route_for(a, eqs, vars[0], vars[1])) return *r;
+    return sector_system_route_for(a, eqs, vars[1], vars[0]);
 }
 
 struct ExpPointEq
@@ -28540,6 +28795,8 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
     if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
     if(auto gp = gp_first_third_sum_system_route(a, expr)) return *gp;
+    if(auto gpf = gp_finite_sum_system_route(a, expr)) return *gpf;
+    if(auto sec = sector_system_route(a, expr)) return *sec;
     if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
     if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
     if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;
@@ -29091,8 +29348,27 @@ algebra_compare_transform_modes:
             int nn = (int)expn.num.num;
             if(nn < 0 || nn > 18) return {"Err: exponent out of range."};
 
-            // Extract base = a*x + b (order doesn't matter)
             NodeId base = x.a;
+            {
+                std::string pv = choose_solve_var(arena, base, "");
+                if(pv.empty()) pv = "x";
+                if(auto bp = poly_any_of(arena, base, pv); bp && bp->ok && bp->c.size() > 2 && nn <= 8) {
+                    PolyAny acc{{Rational{1, 1}}, true};
+                    for(int i = 0; i < nn; ++i) {
+                        acc = poly_any_mul(acc, *bp);
+                        if(acc.c.size() > 17) return {"Err: symbolic expansion too large."};
+                    }
+                    std::string expanded = poly_any_text_desc(acc, pv);
+                    return {
+                        format_expr(arena, n),
+                        "= (" + poly_any_text_desc(*bp, pv) + ")^" + std::to_string(nn),
+                        "= " + expanded,
+                        expanded,
+                    };
+                }
+            }
+
+            // Extract base = a*x + b (order doesn't matter)
             Node const &bn = arena.get(base);
             if(bn.kind != NodeKind::Add || bn.kids.size() != 2) return {"Err: base must be ax+b."};
 
