@@ -3529,6 +3529,13 @@ static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a
             "alpha=" + alpha + std::string(degrees ? " deg." : "."),
             lhs + "=" + final + ".",
         };
+        if(S > 1e-12) {
+            double sdeg = std::atan2(C, S) * 180.0 / M_PI;
+            std::string salpha = degrees ? format_double_compact(sdeg) : format_pi_degrees(sdeg);
+            steps.push_back("R*sin(" + v + "+alpha)=R*sin(" + v + ")*cos(alpha)+R*cos(" + v + ")*sin(alpha).");
+            steps.push_back("R*cos(alpha)=" + absS + ", R*sin(alpha)=" + Ctxt + ", alpha=" + salpha + ".");
+            steps.push_back(lhs + "=" + prod("sin(" + v + "+" + salpha + ")") + ".");
+        }
         return casio::exam_block("R-form", steps, final);
     }
     if(S > 1e-12) {

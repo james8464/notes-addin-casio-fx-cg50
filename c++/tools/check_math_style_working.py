@@ -432,7 +432,7 @@ CASES = [
     (
         "numeric scan rejects asymptote",
         ["--alg", "solve(4/(2*ln(x-1)-3)=-2,x)"],
-        ("Domain: 2*ln(x - 1) - 3 != 0", "x = [2.64872127071]"),
+        ("Domain: 2*ln(x - 1) - 3 != 0", "x = [sqrt(e) + 1]"),
         ("5.48168907034",),
     ),
     (

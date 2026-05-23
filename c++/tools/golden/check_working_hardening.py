@@ -1718,6 +1718,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "2*sqrt(2)*cos(x)+2*sqrt(2)*sin(x),method=rform",
+        ["R*sin(x+alpha)", "alpha = pi/4", "4*sin(x+pi/4)"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
         ["ERR:"],
@@ -1865,6 +1871,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(log(2,x)+log(4,x)=6,x,method=log_exp)",
         ["u = log(2,x)", "log(4,x) = u/2", "3u/2 = 6", "x = 16"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(e^(-1/2*x^2)-x^2*e^(-1/2*x^2)=0,x)",
+        ["e^(-1/2*x^2) > 0", "- x^2 + 1 = 0", "x = [-1, 1]"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(4/(2*ln(x-1)-3)=-2,x)",
+        ["Domain: x - 1 > 0", "ln(x - 1) = 1/2", "x - 1 = sqrt(e)", "x = [sqrt(e) + 1]"],
+        ["x = [2.648", "x ~=", "ERR:"],
     ),
     (
         "alg",
