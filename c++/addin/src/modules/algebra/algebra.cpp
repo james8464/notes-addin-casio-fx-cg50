@@ -3780,6 +3780,45 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 }
 
 static NodeId zero_node(Arena &a) { return a.num(Rational{0, 1}); }
+static std::optional<std::vector<std::string>> power_model_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "power_model");
+    if(body.empty()) body = unwrap_call_text(expr, "log_model");
+    if(body.empty()) return std::nullopt;
+    auto args = split_csv(body);
+    if(args.size() < 2 || args.size() > 4) return std::nullopt;
+
+    std::string xvar = args.size() >= 3 ? trim_text(args[2]) : "x";
+    std::string yvar = args.size() >= 4 ? trim_text(args[3]) : "y";
+    if(xvar.empty() || yvar.empty()) return std::nullopt;
+
+    NodeId intercept = casio::simplify(a, casio::parse_expr(a, trim_text(args[0])));
+    NodeId slope = casio::simplify(a, casio::parse_expr(a, trim_text(args[1])));
+    if(contains_symbol(a, intercept, xvar) || contains_symbol(a, slope, xvar)) return std::nullopt;
+
+    std::string c = format_expr(a, intercept);
+    std::string m = format_expr(a, slope);
+    std::string xpow = m == "1" ? xvar : xvar + "^(" + m + ")";
+    NodeId coef = casio::simplify(a, casio::power(a, a.num(Rational{10, 1}), intercept));
+    std::string coef_exact = format_expr(a, coef);
+    std::vector<std::string> out{
+        "X = log10(" + xvar + "), Y = log10(" + yvar + ")",
+        "Y = " + c + " + " + m + "*X",
+        "log10(" + yvar + ") = " + c + " + " + m + "*log10(" + xvar + ")",
+        "log10(" + yvar + ") = log10(10^(" + c + ")) + log10(" + xpow + ")",
+        "log10(" + yvar + ") = log10(10^(" + c + ")*" + xpow + ")",
+        yvar + " = " + coef_exact + "*" + xpow,
+    };
+    auto cv = eval_node(a, coef, xvar, 1.0);
+    auto mv = eval_node(a, slope, xvar, 1.0);
+    if(cv && mv && std::isfinite(*cv) && std::isfinite(*mv)) {
+        std::ostringstream oss;
+        oss << yvar << " ~= " << std::setprecision(3) << *cv << "*" << xvar << "^(" << std::setprecision(3) << *mv << ")";
+        out.push_back(oss.str());
+    }
+    return out;
+}
+
 static NodeId neg_node(Arena &a, NodeId n) { return a.mul({a.num(Rational{-1, 1}), n}); }
 static NodeId sub_node(Arena &a, NodeId lhs, NodeId rhs)
 {
@@ -4603,6 +4642,9 @@ static std::optional<double> solution_line_value(Arena &a, std::string const &li
         std::string rhs = sol_rhs(line);
         if(rhs.find('i') != std::string::npos) return std::nullopt;
         NodeId n = casio::parse_expr(a, rhs);
+        std::vector<std::string> vars;
+        collect_symbols(a, n, vars);
+        if(!vars.empty()) return std::nullopt;
         auto v = eval_node(a, n, "x", 0.0);
         if(v && std::isfinite(*v)) return *v;
     }
@@ -20856,7 +20898,9 @@ static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std:
     case NodeKind::Sym:
         for(auto const &kv : env)
             if(kv.first == n.text) return kv.second;
-        return 0.0;
+        if(n.text == "e") return M_E;
+        if(n.text == "pi") return M_PI;
+        return std::nullopt;
     case NodeKind::Const: return (n.ckind == ConstKind::Pi) ? M_PI : M_E;
     case NodeKind::Fn: {
         auto av = eval_node_env(a, n.a, env);
@@ -23847,6 +23891,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(auto pm = power_model_route(arena, req.expr)) return *pm;
         if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
         if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         {

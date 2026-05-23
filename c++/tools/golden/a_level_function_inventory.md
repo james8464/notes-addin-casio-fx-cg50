@@ -63,6 +63,7 @@ Legend:
 | `inverse(f[,domain])` | typed-hidden | CasioCAS | yes | Inverse function working/domain notes. |
 | `domain(expr[,x,lo,hi])` | keep | CasioCAS | partial | Compact domain lines; no long prose target. |
 | `range(expr[,x,lo,hi])` | keep | CasioCAS | partial | Compact range lines; no long prose target. |
+| `power_model(a,b[,x,y])` / `log_model(...)` | typed-hidden | CasioCAS | yes | Converts `log10(y)=a+b log10(x)` to `y=10^a*x^b`. |
 | `period(expr)` | typed-hidden | CasioCAS | partial | Trig period where recognised. |
 | `abs(x)`, `sign(x)` | keep | KhiCAS | no | Native scalar utilities; used inside routes. |
 | `evalat(expr,x=a)` | typed-hidden | CasioCAS | no | Direct value substitution. |

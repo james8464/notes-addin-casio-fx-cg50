@@ -47,6 +47,7 @@ The rich host modules are testable with `c++/addin/host/build/casio_host`, but t
 | `simplify`, `factor`, `expand`, `partfrac`, `complete_square`, `coeff`, `poly` | KhiCAS + wrapper aliases | both | partial/yes by recognised route |
 | `solve`, `fsolve`, `solve_by`, hidden `solve_trig` aliases | KhiCAS + wrapper aliases | both | partial/yes by recognised route |
 | `domain`, `range`, `compare`, `match`, `coeff_match`, `fitconst`, `xform`, `transform`, `rewrite`, `subst` | `main.cc` aliases + KhiCAS | both | partial/yes by recognised route |
+| `power_model`, `log_model` | algebra module | CasioCAS | yes, for log-linear stats model rearrangement |
 | `diff`, `derive`, `normal_diff`, `implicit_diff`, `param_diff`, `tangent_line` | `main.cc` aliases + KhiCAS | both | yes for recognised 9MA0 routes |
 | `integrate`, `int`, `defint`, `integrate_by`, `int_by`, `de_solve` | `main.cc` aliases + KhiCAS | both | yes for recognised 9MA0 routes |
 | `trig_prove`, `trig_rewrite`, `trig_transform`, `trigcos`, `trigsin`, `trigtan` | `main.cc` aliases + KhiCAS | both | partial/yes by recognised route |

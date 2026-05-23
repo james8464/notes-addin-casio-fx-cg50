@@ -15,6 +15,90 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
+        "June 2019 Q1 three green probability",
+        ["--alg", "9/10*4/5*2/3"],
+        ["12/25"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q1 at least one each colour",
+        ["--alg", "9/10*1/5+9/10*4/5*1/3"],
+        ["21/50"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q1 conditional red from B",
+        ["--alg", "(9/10*1/5)/(1/10+9/10*1/5+9/10*4/5*1/3),method=numeric"],
+        ["9/26", "0.346153"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q2 standard deviation from Sxx",
+        ["--alg", "sqrt(4952.906/184),method=numeric"],
+        ["sqrt(2476453/92000)", "5.188252"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q2 normal interpercentile range",
+        ["--alg", "2*1.28155156*5.19,method=numeric"],
+        ["13.302505"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q3 log-linear power model",
+        ["--alg", "power_model(-1.82,0.89,x,y)"],
+        ["log10(y) = -91/50 + 89/100*log10(x)", "y = 10^(-91/50)*x^(89/100)", "0.0151*x^(0.89)"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q4 cloud cover sample probability",
+        ["--alg", "132/184,method=numeric"],
+        ["33/46", "0.717391"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q4 binomial upper tail",
+        ["--stats", "binomial(8,0.76,6,ge)"],
+        ["X ~ B(8, 0.76)", "P(X >= 6) = 1 - P(X <= 5)", "0.70327766"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q4 expected number of sevens",
+        ["--alg", "184*0.28118774,method=numeric"],
+        ["51.73854416"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q4 following-day proportion",
+        ["--alg", "23/28,method=numeric"],
+        ["23/28", "0.821428"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q5 recover normal sigma",
+        ["--alg", "solve((24.63-25)/s=-1.036433389,s)"],
+        ["s = 370000000/1036433389", "s ~= 0.357"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q5 percentile k",
+        ["--alg", "solve((k-25)/0.357004=0.253347103,k,method=linear)"],
+        ["k ~= 25.090"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q5 normal approximation",
+        ["--stats", "normalcdf(90,sqrt(49.5),-inf,99.5)"],
+        ["X ~ N(90, (sqrt(49.5))^2)", "z2 = (99.5-90)/(sqrt(49.5))", "0.9115355"],
+        ["ERR:"],
+    ),
+    (
+        "June 2019 Q5 mean test p-value",
+        ["--stats", "normalcdf(25,0.16/sqrt(20),-inf,24.94)"],
+        ["X ~ N(25, (0.16/sqrt(20))^2)", "z2 = (24.94-25)/(0.16/sqrt(20))", "0.04676626"],
+        ["ERR:"],
+    ),
+    (
         "June 2022 Q1 binomial pmf",
         ["--stats", "binom(15,0.48,3)"],
         ["X ~ B(15, 0.48)", "P(X = 3)", "0.01966868"],
