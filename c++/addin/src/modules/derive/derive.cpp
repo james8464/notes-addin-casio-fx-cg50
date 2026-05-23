@@ -983,6 +983,46 @@ static bool same_expr_key(Arena &a, NodeId lhs, NodeId rhs)
     return compact_math_key(format_expr_human(a, lhs)) == compact_math_key(format_expr_human(a, rhs));
 }
 
+static NodeId roundtrip_simplify(Arena &a, NodeId n)
+{
+    try {
+        return casio::simplify(a, casio::parse_expr(a, clean_math_text(format_expr_human(a, n))));
+    }
+    catch(...) {
+        return n;
+    }
+}
+
+static std::optional<NodeId> split_add_over_common_den(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(x.a);
+    if(top.kind != NodeKind::Add || top.kids.size() < 2 || top.kids.size() > 4) return std::nullopt;
+
+    bool split = false;
+    std::vector<NodeId> terms;
+    terms.reserve(top.kids.size());
+    for(NodeId t : top.kids) {
+        if(same_expr_key(a, t, x.b)) {
+            terms.push_back(casio::num(a, 1));
+            split = true;
+        }
+        else {
+            terms.push_back(casio::simplify(a, casio::div(a, t, x.b)));
+        }
+    }
+    if(!split) return std::nullopt;
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId nicer_derivative_final(Arena &a, NodeId n)
+{
+    NodeId best = roundtrip_simplify(a, n);
+    if(auto split = split_add_over_common_den(a, best)) best = *split;
+    return best;
+}
+
 static std::optional<NodeId> cos_tan_product_arg(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -4419,6 +4459,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             }
             std::vector<std::string> steps;
             std::string answer_override;
+            bool allow_power_chain_final = false;
             if(auto id = derivative_trig_identity_text(expr)) {
                 steps.push_back(id->identity);
                 if(!id->domain.empty()) steps.push_back(id->domain);
@@ -4438,6 +4479,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             else {
                 bool used_rule = false;
                 Node const &dn = arena.get(n);
+                allow_power_chain_final = dn.kind == NodeKind::Pow && depends_on(arena, dn.a, var) && !is_atomic(arena, dn.a) &&
+                    as_num(arena, dn.b) && !depends_on(arena, dn.b, var);
                 append_sign_branch_steps(arena, n, var, steps);
                 if(dn.kind == NodeKind::Pow && arena.get(dn.a).kind == NodeKind::Sym && arena.get(dn.a).text == var) {
                     if(auto exp = as_num(arena, dn.b); exp && exp->den == 1 && !depends_on(arena, dn.b, var)) {
@@ -4560,6 +4603,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 if(answer_override.empty())
                     append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
                 if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
+            }
+            if(answer_override.empty() && allow_power_chain_final) {
+                NodeId nice = nicer_derivative_final(arena, out);
+                std::string raw_txt = clean_math_text(format_expr_human(arena, out));
+                std::string nice_txt = clean_math_text(format_expr_human(arena, nice));
+                if(!nice_txt.empty() && !same_expr_key(arena, nice, out) && nice_txt.size() <= raw_txt.size() + 12)
+                    out = nice;
             }
             std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
             if(answer_override.empty() && contains_fn_kind(arena, n, FnKind::Sign)) {
