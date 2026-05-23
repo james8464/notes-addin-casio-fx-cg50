@@ -13101,12 +13101,24 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
         auto row = linear2_parts(a, residual, vars[0], vars[1]);
         if(!row) return std::nullopt;
         rows.push_back(*row);
+        out.push_back(format_expr(a, residual) + " = 0");
     }
 
     NodeId det = casio::simplify(a, sub_node(a, casio::mul(a, {rows[0].a0, rows[1].a1}), casio::mul(a, {rows[1].a0, rows[0].a1})));
     if(casio::same_by_sig(a, det, zero_node(a))) return std::nullopt;
-    NodeId v0 = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[0].a1, rows[1].c}), casio::mul(a, {rows[1].a1, rows[0].c})), det));
-    NodeId v1 = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[1].a0, rows[0].c}), casio::mul(a, {rows[0].a0, rows[1].c})), det));
+    NodeId r0 = exact_eval_simplify(a, neg_node(a, rows[0].c));
+    NodeId r1 = exact_eval_simplify(a, neg_node(a, rows[1].c));
+    NodeId n0 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {r0, rows[1].a1}), casio::mul(a, {r1, rows[0].a1})));
+    NodeId n1 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {rows[0].a0, r1}), casio::mul(a, {rows[1].a0, r0})));
+    NodeId v0 = exact_eval_simplify(a, casio::div(a, n0, det));
+    NodeId v1 = exact_eval_simplify(a, casio::div(a, n1, det));
+    auto ft = [&](NodeId n) { return format_expr(a, exact_eval_simplify(a, n)); };
+    out.push_back("D = " + ft(rows[0].a0) + "*" + ft(rows[1].a1) + " - " +
+                  ft(rows[1].a0) + "*" + ft(rows[0].a1) + " = " + ft(det));
+    out.push_back(vars[0] + " = (" + ft(r0) + "*" + ft(rows[1].a1) + " - " +
+                  ft(r1) + "*" + ft(rows[0].a1) + ")/D = " + format_expr(a, v0));
+    out.push_back(vars[1] + " = (" + ft(rows[0].a0) + "*" + ft(r1) + " - " +
+                  ft(rows[1].a0) + "*" + ft(r0) + ")/D = " + format_expr(a, v1));
     out.push_back(vars[0] + " = " + format_expr(a, v0));
     out.push_back(vars[1] + " = " + format_expr(a, v1));
     auto d0 = eval_node_env(a, v0, {});
