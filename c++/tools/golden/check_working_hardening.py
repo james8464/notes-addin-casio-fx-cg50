@@ -1694,6 +1694,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sqrt(3)*sin(x)+cos(x)=sqrt(3),x,0,2*pi,10,method=rform",
+        ["beta = pi/3", "alpha = pi/6", "x+alpha = pi/3+2*pi*n", "Answer: x = [pi/6, pi/2]"],
+        [" deg", "+360n", "ERR:"],
+    ),
+    (
+        "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
         ["ERR:"],
