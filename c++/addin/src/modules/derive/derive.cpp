@@ -3202,6 +3202,7 @@ static std::optional<std::string> exp_linear_sincos_product_final(Arena &a, std:
 
 static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n);
 static NodeId factor_int_content_from_mul_add(Arena &a, NodeId n);
+static std::optional<std::string> factor_common_poly_power_text(Arena &a, NodeId n, std::string const &var);
 
 struct TextProduct
 {
@@ -3443,6 +3444,8 @@ static bool append_product_rule_detail(
                 NodeId nice = factor_int_content_from_mul_add(a, *factored);
                 std::string raw = clean_math_text(format_expr_human(a, raw_diff));
                 std::string ans = clean_math_text(format_expr_human(a, nice));
+                if(auto poly_factored = factor_common_poly_power_text(a, nice, var))
+                    ans = *poly_factored;
                 if(!ans.empty() && compact_math_key(ans) != compact_math_key(raw) && node_weight(a, nice) <= 80) {
                     std::string line = "dy/d" + var + " = " + ans;
                     steps.push_back(line + ".");
@@ -3523,6 +3526,45 @@ static NodeId factor_int_content_from_mul_add(Arena &a, NodeId n)
         return casio::simplify(a, casio::mul(a, factors));
     }
     return n;
+}
+
+static std::optional<std::string> factor_common_poly_power_text(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    NodeId add = 0;
+    std::vector<std::string> parts;
+    for(NodeId k : x.kids) {
+        Node const &kid = a.get(k);
+        if(kid.kind == NodeKind::Add && !add) add = k;
+        else parts.push_back(clean_math_text(format_expr_human(a, k)));
+    }
+    if(!add) return std::nullopt;
+    auto p = poly_node_local(a, add, var, 8);
+    if(!p) return std::nullopt;
+    int min_deg = -1;
+    for(std::size_t i = 0; i < p->size(); ++i) {
+        Rational r = (*p)[i];
+        r.normalize();
+        if(r.num != 0) {
+            min_deg = static_cast<int>(i);
+            break;
+        }
+    }
+    if(min_deg <= 0) return std::nullopt;
+    long long g = poly_int_gcd(*p);
+    std::vector<Rational> body(p->begin() + min_deg, p->end());
+    if(g > 1) poly_div_int(body, g);
+    if(g > 1) parts.push_back(std::to_string(g));
+    parts.push_back(min_deg == 1 ? var : var + "^" + std::to_string(min_deg));
+    parts.push_back("(" + poly_coeffs_text(body, var) + ")");
+    std::string out;
+    for(auto const &part : parts) {
+        if(part.empty()) continue;
+        if(!out.empty()) out += "*";
+        out += part;
+    }
+    return out.empty() ? std::optional<std::string>() : out;
 }
 
 static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n)
@@ -3849,13 +3891,13 @@ static bool append_quotient_rule_detail(
             *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
         return true;
     }
-    auto pu = poly_node_local(a, q.a, var, 2);
-    auto pv = poly_node_local(a, q.b, var, 2);
-    auto pdu = poly_node_local(a, du, var, 2);
-    auto pdv = poly_node_local(a, dv, var, 2);
+    auto pu = poly_node_local(a, q.a, var, 4);
+    auto pv = poly_node_local(a, q.b, var, 4);
+    auto pdu = poly_node_local(a, du, var, 4);
+    auto pdv = poly_node_local(a, dv, var, 4);
     if(pu && pv && pdu && pdv) {
-        auto left = poly_mul_local(*pdu, *pv, 2);
-        auto right = poly_mul_local(*pu, *pdv, 2);
+        auto left = poly_mul_local(*pdu, *pv, 4);
+        auto right = poly_mul_local(*pu, *pdv, 4);
         if(left && right) {
             std::string raw_top = "(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")";
             std::string pt = poly_coeffs_text(poly_add_local(*left, poly_neg_local(*right)), var);

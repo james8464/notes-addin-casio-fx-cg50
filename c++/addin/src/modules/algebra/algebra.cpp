@@ -537,7 +537,112 @@ static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId ar
     auto half = [&](NodeId n) { return casio::div(a, n, a.num(Rational{2, 1})); };
     auto third = [&](NodeId n) { return casio::div(a, n, a.num(Rational{3, 1})); };
     auto maybe_neg = [&](NodeId n, bool odd) { return (neg && odd) ? casio::neg(a, n) : n; };
+    auto parse_ll = [](std::string const &s) -> std::optional<long long> {
+        if(s.empty()) return std::nullopt;
+        long long v = 0;
+        for(char ch : s) {
+            if(ch < '0' || ch > '9') return std::nullopt;
+            v = 10 * v + (ch - '0');
+        }
+        return v;
+    };
+    std::function<std::optional<Rational>(std::string const &)> parse_rat =
+    [&](std::string const &s) -> std::optional<Rational> {
+        std::size_t star = s.find('*');
+        if(star != std::string::npos) {
+            Rational out{1, 1};
+            std::size_t start = 0;
+            while(start <= s.size()) {
+                std::size_t next = s.find('*', start);
+                std::string part = s.substr(start, next == std::string::npos ? std::string::npos : next - start);
+                auto r = parse_rat(part);
+                if(!r) return std::nullopt;
+                out = r_mul(out, *r);
+                if(next == std::string::npos) break;
+                start = next + 1;
+            }
+            return out;
+        }
+        std::size_t slash = s.find('/');
+        if(slash == std::string::npos) {
+            auto n = parse_ll(s);
+            if(!n) return std::nullopt;
+            return Rational{*n, 1};
+        }
+        auto n = parse_ll(s.substr(0, slash));
+        auto d = parse_ll(s.substr(slash + 1));
+        if(!n || !d || *d == 0) return std::nullopt;
+        return Rational{*n, *d};
+    };
+    auto pi_coeff = [&]() -> std::optional<Rational> {
+        if(k == "0") return Rational{0, 1};
+        std::size_t p = k.find("pi");
+        if(p == std::string::npos) return std::nullopt;
+        std::string before = k.substr(0, p);
+        std::string after = k.substr(p + 2);
+        Rational c{1, 1};
+        if(!before.empty()) {
+            if(before.back() != '*') return std::nullopt;
+            before.pop_back();
+            auto r = parse_rat(before);
+            if(!r) return std::nullopt;
+            c = *r;
+        }
+        if(!after.empty()) {
+            if(after[0] != '/') return std::nullopt;
+            auto d = parse_ll(after.substr(1));
+            if(!d || *d == 0) return std::nullopt;
+            c = r_div(c, Rational{*d, 1});
+        }
+        return c;
+    };
+    auto reduce = [](Rational q, Rational period) {
+        q.normalize();
+        period.normalize();
+        while(q.num < 0) q = r_add(q, period);
+        while(r_cmp(q, period) >= 0) q = r_sub(q, period);
+        return q;
+    };
+    auto from_coeff = [&](FnKind g, Rational q) -> std::optional<NodeId> {
+        q = reduce(q, Rational{g == FnKind::Tan ? 1 : 2, 1});
+        auto is = [&](long long n, long long d) { return r_cmp(q, Rational{n, d}) == 0; };
+        if(g == FnKind::Sin) {
+            if(is(0, 1) || is(1, 1)) return casio::num(a, 0);
+            if(is(1, 6) || is(5, 6)) return a.num(Rational{1, 2});
+            if(is(1, 4) || is(3, 4)) return half(sq(2));
+            if(is(1, 3) || is(2, 3)) return half(sq(3));
+            if(is(1, 2)) return casio::num(a, 1);
+            if(is(7, 6) || is(11, 6)) return a.num(Rational{-1, 2});
+            if(is(5, 4) || is(7, 4)) return casio::neg(a, half(sq(2)));
+            if(is(4, 3) || is(5, 3)) return casio::neg(a, half(sq(3)));
+            if(is(3, 2)) return casio::num(a, -1);
+        }
+        if(g == FnKind::Cos) {
+            if(is(0, 1)) return casio::num(a, 1);
+            if(is(1, 6) || is(11, 6)) return half(sq(3));
+            if(is(1, 4) || is(7, 4)) return half(sq(2));
+            if(is(1, 3) || is(5, 3)) return a.num(Rational{1, 2});
+            if(is(1, 2) || is(3, 2)) return casio::num(a, 0);
+            if(is(2, 3) || is(4, 3)) return a.num(Rational{-1, 2});
+            if(is(3, 4) || is(5, 4)) return casio::neg(a, half(sq(2)));
+            if(is(5, 6) || is(7, 6)) return casio::neg(a, half(sq(3)));
+            if(is(1, 1)) return casio::num(a, -1);
+        }
+        if(g == FnKind::Tan) {
+            if(is(0, 1)) return casio::num(a, 0);
+            if(is(1, 6)) return third(sq(3));
+            if(is(1, 4)) return casio::num(a, 1);
+            if(is(1, 3)) return sq(3);
+            if(is(2, 3)) return casio::neg(a, sq(3));
+            if(is(3, 4)) return casio::num(a, -1);
+            if(is(5, 6)) return casio::neg(a, third(sq(3)));
+        }
+        return std::nullopt;
+    };
     auto base = [&](FnKind g) -> std::optional<NodeId> {
+        if(auto c = pi_coeff()) {
+            if(auto v = from_coeff(g, *c)) return *v;
+        }
         if(g == FnKind::Sin) {
             if(k == "0") return casio::num(a, 0);
             if(k == "pi/6") return a.num(Rational{1, 2});
@@ -10765,25 +10870,40 @@ static std::optional<std::vector<std::string>> abs_piecewise_linear_equation_rou
         if(!rp.ok) return std::nullopt;
         auto cand = solve_poly2(a, rp.num, var);
         std::vector<std::string> valid;
+        std::vector<std::string> rejected;
         for(auto const &s : cand) {
             auto xv = solution_line_value(a, s);
-            if(!xv) continue;
-            if(i > 0 && *xv < pieces[i - 1].value - 1e-9) continue;
-            if(i < pieces.size() && *xv > pieces[i].value + 1e-9) continue;
+            if(!xv) {
+                rejected.push_back(s + " (reject)");
+                continue;
+            }
+            if(i > 0 && *xv < pieces[i - 1].value - 1e-9) {
+                rejected.push_back(s + " (reject)");
+                continue;
+            }
+            if(i < pieces.size() && *xv > pieces[i].value + 1e-9) {
+                rejected.push_back(s + " (reject)");
+                continue;
+            }
             auto rv = eval_node(a, residual, var, *xv);
-            if(!rv || std::fabs(*rv) > 1e-7) continue;
+            if(!rv || std::fabs(*rv) > 1e-7) {
+                rejected.push_back(s + " (reject)");
+                continue;
+            }
             valid.push_back(s);
         }
-        if(valid.empty()) continue;
+        if(valid.empty() && rejected.empty()) continue;
         for(auto const &s : valid)
             if(std::find(sols.begin(), sols.end(), s) == sols.end()) sols.push_back(s);
         std::string cond;
         if(i == 0) cond = var + " <= " + format_rat_plain(pieces[i].root);
         else if(i == pieces.size()) cond = var + " >= " + format_rat_plain(pieces[i - 1].root);
         else cond = format_rat_plain(pieces[i - 1].root) + " <= " + var + " <= " + format_rat_plain(pieces[i].root);
+        std::vector<std::string> branch = valid;
+        branch.insert(branch.end(), rejected.begin(), rejected.end());
         out.push_back(cond + ": " +
                       format_expr(a, L) + " = " + format_expr(a, R) + " => " +
-                      join_text(valid, ", "));
+                      join_text(branch, ", "));
     }
     if(sols.empty()) out.push_back(var + " = []");
     else {
@@ -18502,31 +18622,41 @@ static std::optional<std::string> sqrt_log_base_domain(Arena &a, NodeId n, std::
 
 static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
-    auto add_trig_term = [&](NodeId term, Rational &s, Rational &c, Rational &off, std::string &arg, bool &seen) -> bool {
+    std::function<bool(NodeId, Rational, Rational &, Rational &, Rational &, std::string &, bool &)> add_trig_term =
+    [&](NodeId term, Rational scale, Rational &s, Rational &c, Rational &off, std::string &arg, bool &seen) -> bool {
         Node const &t = a.get(term);
         if(t.kind == NodeKind::Num) {
-            off = r_add(off, t.num);
+            off = r_add(off, r_mul(scale, t.num));
+            return true;
+        }
+        if(t.kind == NodeKind::Add) {
+            for(NodeId k : t.kids)
+                if(!add_trig_term(k, scale, s, c, off, arg, seen)) return false;
             return true;
         }
         Rational coeff{1, 1};
-        Node const *fn = &t;
+        NodeId fn_id = term;
         if(t.kind == NodeKind::Mul) {
             coeff = Rational{1, 1};
-            fn = nullptr;
+            fn_id = 0;
             for(NodeId k : t.kids) {
                 Node const &kid = a.get(k);
                 if(kid.kind == NodeKind::Num) coeff = r_mul(coeff, kid.num);
-                else if(kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos) && !fn) fn = &kid;
+                else if((kid.kind == NodeKind::Fn || kid.kind == NodeKind::Add) && !fn_id) fn_id = k;
                 else return false;
             }
-            if(!fn) return false;
+            if(!fn_id) return false;
+            if(a.get(fn_id).kind == NodeKind::Add)
+                return add_trig_term(fn_id, r_mul(scale, coeff), s, c, off, arg, seen);
         }
-        if(fn->kind != NodeKind::Fn || (fn->fkind != FnKind::Sin && fn->fkind != FnKind::Cos)) return false;
-        std::string this_arg = format_expr(a, fn->a);
+        Node const &fn = a.get(fn_id);
+        if(fn.kind != NodeKind::Fn || (fn.fkind != FnKind::Sin && fn.fkind != FnKind::Cos)) return false;
+        std::string this_arg = format_expr(a, fn.a);
         if(seen && this_arg != arg) return false;
         arg = this_arg;
         seen = true;
-        if(fn->fkind == FnKind::Sin) s = r_add(s, coeff);
+        coeff = r_mul(scale, coeff);
+        if(fn.fkind == FnKind::Sin) s = r_add(s, coeff);
         else c = r_add(c, coeff);
         return true;
     };
@@ -18538,9 +18668,9 @@ static std::optional<std::string> direct_trig_range(Arena &a, NodeId n, std::str
         Node const &x = a.get(n);
         if(x.kind == NodeKind::Add) {
             for(NodeId k : x.kids)
-                if(!add_trig_term(k, s, c, off, arg, seen)) return std::nullopt;
+                if(!add_trig_term(k, Rational{1, 1}, s, c, off, arg, seen)) return std::nullopt;
         }
-        else if(!add_trig_term(n, s, c, off, arg, seen)) return std::nullopt;
+        else if(!add_trig_term(n, Rational{1, 1}, s, c, off, arg, seen)) return std::nullopt;
         if(!seen || (is_zero(s) && is_zero(c))) return std::nullopt;
         Rational amp2 = r_add(r_mul(s, s), r_mul(c, c));
         std::int64_t rn = 0;
@@ -19004,6 +19134,7 @@ static std::optional<std::string> squared_affine_trig_range(Arena &a, NodeId n, 
     NodeId range_lo = zero_node(a);
     if(!(*lo_v <= 0.0 && *hi_v >= 0.0)) range_lo = *lo_sq_v <= *hi_sq_v ? lo_sq : hi_sq;
     NodeId range_hi = *lo_sq_v >= *hi_sq_v ? lo_sq : hi_sq;
+    if(casio::same_by_sig(a, off, zero_node(a))) range_hi = amp2;
     std::string st = format_expr(a, s), ct = format_expr(a, c);
     steps.push_back("R = sqrt((" + st + ")^2 + (" + ct + ")^2) = " + format_expr(a, amp));
     steps.push_back("-R <= " + st + "*sin(" + arg + ") + " + ct + "*cos(" + arg + ") <= R");

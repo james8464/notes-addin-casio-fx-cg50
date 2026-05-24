@@ -2538,6 +2538,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["t = tan(x/2)", "Split at x = pi", "sqrt(3)/3*(atan((sqrt(3) - 9)/3) - atan((sqrt(3) + 3)/3) + pi)"],
         ["ERR:", "No elementary primitive"],
     ),
+    (
+        "alg",
+        "solve(4*x+abs(3*x+2)=1,x)",
+        ["x <= -2/3", "x = 3 (reject)", "x = [-1/7]"],
+        ["ERR:"],
+    ),
+    (
+        "derive",
+        "(2*x^2+1)/(3*x^2+1),x,method=quotient",
+        ["[(4*x)*(3*x^2 + 1)-(2*x^2 + 1)*(6*x)] = -2*x", "dy/dx = -2*x/(3*x^2 + 1)^2"],
+        ["ERR:"],
+    ),
+    (
+        "derive",
+        "x^3*e^(-2*x),x,method=product",
+        ["dy/dx = e^(-2*x)*x^2*(-2*x + 3)"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "range(2*(2*sin(x)+2*cos(x))+1)",
+        ["R = sqrt((4)^2 + (4)^2)", "Range: -sqrt(32) + 1 <= y <= sqrt(32) + 1"],
+        ["inspect graph/transform", "ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(sin(6*x),x,5*pi/18)",
+        ["f(5*pi/18) = -1/2*sqrt(3)"],
+        ["sin(6*5*pi/18)", "ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(sin(x),x,-5*pi/6)",
+        ["f(-5*pi/6) = -1/2"],
+        ["f(-5*pi/6) = 1/2", "ERR:"],
+    ),
 ]
 
 REMOVED_FEATURE_MARKERS = (
