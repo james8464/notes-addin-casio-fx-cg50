@@ -6112,6 +6112,72 @@ static bool const_value(Arena &a, NodeId n, double want)
     return v && std::fabs(*v - want) < 1e-12;
 }
 
+static std::optional<std::vector<std::string>> double_angle_cot_route(
+    Arena &a,
+    NodeId src,
+    NodeId target,
+    std::string const &title,
+    bool final_as_identity
+)
+{
+    Node const &t = a.get(target);
+    if(t.kind != NodeKind::Fn || t.fkind != FnKind::Cot) return std::nullopt;
+    Node const &s = a.get(src);
+    if(s.kind != NodeKind::Div) return std::nullopt;
+    Node const &den = a.get(s.b);
+    if(den.kind != NodeKind::Fn || den.fkind != FnKind::Sin) return std::nullopt;
+
+    NodeId u = t.a;
+    NodeId two_u = casio::simplify(a, casio::mul(a, {casio::num(a, 2), u}));
+    if(!same_sig(a, den.a, two_u) && !casio::same_by_sig(a, den.a, two_u)) return std::nullopt;
+
+    bool got_one = false;
+    bool got_cos = false;
+    Node const &num = a.get(s.a);
+    if(num.kind == NodeKind::Add && num.kids.size() == 2) {
+        for(NodeId kid : num.kids) {
+            if(const_value(a, kid, 1.0)) {
+                got_one = true;
+                continue;
+            }
+            Node const &k = a.get(kid);
+            if(k.kind == NodeKind::Fn && k.fkind == FnKind::Cos &&
+               (same_sig(a, k.a, two_u) || casio::same_by_sig(a, k.a, two_u))) {
+                got_cos = true;
+                continue;
+            }
+            return std::nullopt;
+        }
+    }
+    else {
+        double coeff = 1.0;
+        NodeId cos_arg = 0;
+        if(!match_fn_square(a, s.a, FnKind::Cos, coeff, cos_arg) ||
+           std::fabs(coeff - 2.0) > 1e-12 ||
+           (!same_sig(a, cos_arg, u) && !casio::same_by_sig(a, cos_arg, u)))
+            return std::nullopt;
+        got_one = true;
+        got_cos = true;
+    }
+    if(!got_one || !got_cos) return std::nullopt;
+
+    std::string U = format_expr(a, u);
+    std::string D = format_expr(a, den.a);
+    std::string source = "(1+cos(" + D + "))/sin(" + D + ")";
+    std::string answer = "cot(" + U + ")";
+    return casio::exam_block(
+        title,
+        {
+            "1+cos(" + D + ") = 2*cos(" + U + ")^2.",
+            "sin(" + D + ") = 2*sin(" + U + ")*cos(" + U + ").",
+            source + " = 2*cos(" + U + ")^2/(2*sin(" + U + ")*cos(" + U + ")).",
+            "= cos(" + U + ")/sin(" + U + ").",
+            "= " + answer + ".",
+        },
+        final_as_identity ? source + " = " + answer : answer
+    );
+}
+
 static bool match_linear_fn_const(Arena &a, NodeId n, FnKind fk, double fn_coeff, double c, NodeId &arg)
 {
     Node const &x = a.get(n);
@@ -6229,6 +6295,81 @@ static std::optional<std::vector<std::string>> solve_cosec_cot_fraction_identity
     }
     steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     std::sort(xs.begin(), xs.end());
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static std::optional<std::vector<std::string>> solve_cosec_plus_cot_half_angle(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    if(contains_var(a, rhs, var)) return std::nullopt;
+    auto rv = numeric_eval(a, rhs, 0.0);
+    if(!rv || !std::isfinite(*rv)) return std::nullopt;
+    Node const &L = a.get(lhs);
+    std::vector<NodeId> terms;
+    if(L.kind == NodeKind::Add) terms = L.kids;
+    else terms.push_back(lhs);
+
+    double csc_coeff = 0.0, cot_coeff = 0.0;
+    NodeId arg = 0;
+    auto same_or_set = [&](NodeId n) {
+        if(!arg) {
+            arg = n;
+            return true;
+        }
+        return same_sig(a, arg, n);
+    };
+    for(NodeId kid : terms) {
+        double coeff = 1.0;
+        NodeId rest = kid;
+        bool has_rest = true;
+        if(!split_coeff_term(a, kid, coeff, rest, has_rest) || !has_rest) return std::nullopt;
+        Node const &r = a.get(rest);
+        if(r.kind != NodeKind::Fn || !(r.fkind == FnKind::Cosec || r.fkind == FnKind::Cot)) return std::nullopt;
+        if(!same_or_set(r.a)) return std::nullopt;
+        if(r.fkind == FnKind::Cosec) csc_coeff += coeff;
+        else cot_coeff += coeff;
+    }
+    if(!arg || std::fabs(csc_coeff) < 1e-12 || std::fabs(csc_coeff - cot_coeff) > 1e-12) return std::nullopt;
+
+    double cot_target = *rv / csc_coeff;
+    if(!std::isfinite(cot_target)) return std::nullopt;
+    NodeId half_arg = casio::simplify(a, casio::div(a, arg, casio::num(a, 2)));
+    std::string A = format_expr(a, arg);
+    std::string H = format_expr(a, half_arg);
+    std::vector<std::string> steps{
+        format_expr(a, lhs) + " = " + format_expr(a, rhs),
+        "cosec(" + A + ")+cot(" + A + ") = (1+cos(" + A + "))/sin(" + A + ").",
+        "(1+cos(" + A + "))/sin(" + A + ") = cot(" + H + ").",
+    };
+    if(std::fabs(csc_coeff - 1.0) > 1e-12)
+        steps.push_back("cosec(" + A + ")+cot(" + A + ") = " + trig_root_text(cot_target) + ".");
+    steps.push_back("cot(" + H + ") = " + trig_root_text(cot_target) + ".");
+
+    std::vector<double> xs;
+    if(std::fabs(cot_target) < 1e-12) {
+        steps.push_back("cot(" + H + ") = 0 => cos(" + H + ") = 0.");
+        steps.push_back(trig_base_angle_line(FnKind::Cos, H, 0.0));
+        steps.push_back(trig_alpha_family_line(FnKind::Cos, H, 0.0, rad));
+        auto vals = x_values_from_angle_degrees(a, half_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, 0.0));
+        for(double x : vals) add_unique(xs, x);
+    }
+    else {
+        double tan_target = 1.0 / cot_target;
+        steps.push_back("tan(" + H + ") = " + trig_root_text(tan_target) + ".");
+        steps.push_back(trig_base_angle_line(FnKind::Tan, H, tan_target));
+        steps.push_back(trig_alpha_family_line(FnKind::Tan, H, tan_target, rad));
+        auto vals = x_values_from_angle_degrees(a, half_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, tan_target));
+        for(double x : vals) add_unique(xs, x);
+    }
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
@@ -9910,6 +10051,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto q = solve_const_over_sec_sin_equals_cot(a, rhs, lhs, var, lo_text, hi_text, rad)) return *q;
     if(auto q = solve_cosec_cot_fraction_identity(a, lhs, rhs, var, lo_text, hi_text, rad)) return *q;
     if(auto q = solve_cosec_cot_fraction_identity(a, rhs, lhs, var, lo_text, hi_text, rad)) return *q;
+    if(auto q = solve_cosec_plus_cot_half_angle(a, lhs, rhs, var, lo_text, hi_text, rad)) return *q;
+    if(auto q = solve_cosec_plus_cot_half_angle(a, rhs, lhs, var, lo_text, hi_text, rad)) return *q;
     if(auto prod = solve_sec_cos_tan_product(a, lhs, rhs, var, lo_text, hi_text, rad)) return *prod;
     if(auto prod = solve_sec_cos_tan_product(a, rhs, lhs, var, lo_text, hi_text, rad)) return *prod;
     if(!general) {
@@ -10315,6 +10458,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(rhs.empty()) return {"Err: need LHS and RHS."};
         std::string lk = compact_key(lhs);
         std::string rk = compact_key(rhs);
+        NodeId lhs_raw = casio::parse_expr(arena, lhs);
+        NodeId rhs_raw = casio::parse_expr(arena, rhs);
+        if(auto route = double_angle_cot_route(arena, lhs_raw, rhs_raw, "trig identity", true)) return *route;
         for(std::string v : {"x", "theta", "t"}) {
             std::string sec2 = "sec(2" + v + ")";
             std::string sin_form = "1/(1-2sin(" + v + ")^2)";
@@ -10375,8 +10521,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 "tan(3" + v + ") = (3*tan(" + v + ")-tan(" + v + ")^3)/(1-3*tan(" + v + ")^2)"
             );
         }
-        NodeId l = casio::simplify(arena, casio::parse_expr(arena, lhs));
-        NodeId r = casio::simplify(arena, casio::parse_expr(arena, rhs));
+        NodeId l = casio::simplify(arena, lhs_raw);
+        NodeId r = casio::simplify(arena, rhs_raw);
         bool same = (casio::sig(arena, l) == casio::sig(arena, r));
         bool numeric_ok = true;
         if(!same) {
@@ -10408,6 +10554,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId src_parsed = casio::parse_expr(arena, src);
         NodeId target_parsed = casio::parse_expr(arena, target);
         if(auto route = compound_fraction_cot_target(src, target)) return *route;
+        if(auto route = double_angle_cot_route(arena, src_parsed, target_parsed, "trig transform", false)) return *route;
         for(std::string const &v : {"x", "theta", "t", "u"}) {
             if(auto route = shifted_linear_tan_target_route(arena, src_parsed, target_parsed, v, false)) return *route;
             if(auto route = shifted_linear_tan_target_route(arena, src_parsed, target_parsed, v, true)) return *route;

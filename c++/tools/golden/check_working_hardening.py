@@ -2640,6 +2640,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["R = sqrt(2*sqrt(3)^2+8^2) = 2*sqrt(19)", "sin(theta+alpha) = 3*sqrt(19)/19", "theta = [20.0782948987, 113.095256209]"],
         ["R = sqrt(2*sqrt(3)^2+8^2) = 8.717", "ERR:"],
     ),
+    (
+        "trig",
+        "cosec(4*x)+cot(4*x)=1,x,0,2*pi,method=identity",
+        ["cosec(4*x)+cot(4*x) = (1+cos(4*x))/sin(4*x)", "cot(2*x) = 1", "x = [pi/8, 5*pi/8, 9*pi/8, 13*pi/8]"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "(1+cos(2*theta))/sin(2*theta),target=cot(theta),method=auto",
+        ["1+cos(2*theta) = 2*cos(theta)^2", "sin(2*theta) = 2*sin(theta)*cos(theta)", "= cot(theta)"],
+        ["Source = target", "ERR:"],
+    ),
+    (
+        "trig",
+        "(1+cos(2*(x+pi/3)))/sin(2*(x+pi/3)),target=cot(x+pi/3),method=auto",
+        ["1+cos(2*(x + pi/3)) = 2*cos(x + pi/3)^2", "= cot(x + pi/3)"],
+        ["Source = target", "ERR:"],
+    ),
 ]
 
 REMOVED_FEATURE_MARKERS = (
