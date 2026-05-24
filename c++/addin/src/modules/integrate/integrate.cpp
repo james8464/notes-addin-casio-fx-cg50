@@ -3784,11 +3784,91 @@ static bool parse_linear_key(std::string s, std::string const &var, long long &m
     return true;
 }
 
+static bool parse_unit_shift_root_over_var(std::string integrand, std::string const &var, long long &shift)
+{
+    std::string den = "/" + var;
+    if(integrand.size() <= den.size() || integrand.substr(integrand.size() - den.size()) != den) return false;
+    std::string top = integrand.substr(0, integrand.size() - den.size());
+    if(top.rfind("sqrt(", 0) != 0 || top.back() != ')') return false;
+    std::string inner = top.substr(5, top.size() - 6);
+    long long m = 0, b = 0;
+    if(parse_linear_key(inner, var, m, b) && m == 1 && b > 0) {
+        shift = b;
+        return true;
+    }
+    std::string suffix = "+" + var;
+    if(inner.size() > suffix.size() && inner.substr(inner.size() - suffix.size()) == suffix) {
+        auto n = parse_int_key(inner.substr(0, inner.size() - suffix.size()));
+        if(n && *n > 0) {
+            shift = *n;
+            return true;
+        }
+    }
+    return false;
+}
+
 static std::string rat_text(Rational r)
 {
     r.normalize();
     if(r.den == 1) return std::to_string(r.num);
     return std::to_string(r.num) + "/" + std::to_string(r.den);
+}
+
+static std::string sqrt_shift_over_var_answer(std::string const &var, long long shift)
+{
+    auto s = sqrt_i64_exact(shift);
+    std::string inner = var + "+" + std::to_string(shift);
+    if(!s) return "2*sqrt(" + inner + ") + sqrt(" + std::to_string(shift) + ")*ln(abs((sqrt(" + inner + ")-sqrt(" + std::to_string(shift) + "))/(sqrt(" + inner + ")+sqrt(" + std::to_string(shift) + ")))) + C";
+    std::string root = "sqrt(" + inner + ")";
+    std::string c = *s == 1 ? "" : std::to_string(*s) + "*";
+    return "2*" + root + " + " + c + "ln(abs((" + root + "-" + std::to_string(*s) + ")/(" + root + "+" + std::to_string(*s) + "))) + C";
+}
+
+static std::string sqrt_shift_pf_line(long long shift)
+{
+    auto s = sqrt_i64_exact(shift);
+    if(s) {
+        std::string sp = std::to_string(*s);
+        return "2u^2/(u^2-" + std::to_string(shift) + ") = 2 + " + sp + "/(u-" + sp + ") - " + sp + "/(u+" + sp + ")";
+    }
+    std::string rt = "sqrt(" + std::to_string(shift) + ")";
+    return "2u^2/(u^2-" + std::to_string(shift) + ") = 2 + " + rt + "/(u-" + rt + ") - " + rt + "/(u+" + rt + ")";
+}
+
+static std::optional<TextIntegral> sqrt_shift_over_var_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    long long shift = 0;
+    if(!parse_unit_shift_root_over_var(compact_key((*args)[0]), var, shift)) return std::nullopt;
+    auto s = sqrt_i64_exact(shift);
+    auto lo = parse_int_key(compact_key((*args)[2]));
+    auto hi = parse_int_key(compact_key((*args)[3]));
+    if(!s || !lo || !hi) return std::nullopt;
+    auto ulo = sqrt_i64_exact(*lo + shift);
+    auto uhi = sqrt_i64_exact(*hi + shift);
+    if(!ulo || !uhi || *ulo <= *s || *uhi <= *s) return std::nullopt;
+    Rational ratio{(*uhi - *s) * (*ulo + *s), (*uhi + *s) * (*ulo - *s)};
+    ratio.normalize();
+    long long constant = 2 * (*uhi - *ulo);
+    std::string answer = std::to_string(constant);
+    if(ratio.num != ratio.den) {
+        std::string log_term = "ln(" + rat_text(ratio) + ")";
+        if(*s != 1) log_term = std::to_string(*s) + "*" + log_term;
+        answer += " + " + log_term;
+    }
+    std::string root = "sqrt(" + var + "+" + std::to_string(shift) + ")";
+    std::string sp = std::to_string(*s);
+    std::vector<std::string> steps{
+        "Let u=" + root + ", so u^2=" + var + "+" + std::to_string(shift) + ".",
+        var + "=u^2-" + std::to_string(shift) + " and d" + var + "=2u du.",
+        var + "=" + std::to_string(*lo) + "=>u=" + std::to_string(*ulo) + ", " + var + "=" + std::to_string(*hi) + "=>u=" + std::to_string(*uhi) + ".",
+        "Integral becomes Int_" + std::to_string(*ulo) + "^" + std::to_string(*uhi) + " 2u^2/(u^2-" + std::to_string(shift) + ") du.",
+        sqrt_shift_pf_line(shift) + ".",
+        "F(u)=2u + " + (*s == 1 ? "" : sp + "*") + "ln(abs((u-" + sp + ")/(u+" + sp + "))).",
+    };
+    return TextIntegral{"root substitution", std::move(steps), answer};
 }
 
 static std::string pi_times(Rational r)
@@ -4738,6 +4818,20 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     if(auto ti = trig_identity_integral_pattern(c)) return ti;
     if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
     if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
+    if(auto sr = sqrt_shift_over_var_defint_pattern(expr)) return sr;
+    long long sqrt_shift = 0;
+    if(parse_unit_shift_root_over_var(c, "x", sqrt_shift)) {
+        return out(
+            "root substitution",
+            {
+                "Let u=sqrt(x+" + std::to_string(sqrt_shift) + "), so x=u^2-" + std::to_string(sqrt_shift) + ".",
+                "Then dx=2u du.",
+                "Integral becomes 2*Integral(u^2/(u^2-" + std::to_string(sqrt_shift) + ")) du.",
+                sqrt_shift_pf_line(sqrt_shift) + ".",
+            },
+            sqrt_shift_over_var_answer("x", sqrt_shift)
+        );
+    }
     if(auto p = match_king_property_power(c)) {
         std::string pow = *p;
         return out(
