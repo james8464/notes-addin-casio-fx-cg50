@@ -1880,6 +1880,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sin(x)+3*cos(x)=0,x,method=identity",
+        ["cos(x)!=0", "(sin(x)+3*cos(x))/cos(x)=0", "tan(x)+3=0", "tan(x)=-3"],
+        ["R*cos", "ERR:"],
+    ),
+    (
+        "trig",
+        "cot(75*pi/180),target=2-sqrt(3),method=identity",
+        ["tan(5*pi/12)=(tan(pi/4)+tan(pi/6))/(1-tan(pi/4)*tan(pi/6))", "cot(5*pi/12)=1/(2+sqrt(3))", "2-sqrt(3)"],
+        ["Source = target", "ERR:"],
+    ),
+    (
+        "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
         ["ERR:"],

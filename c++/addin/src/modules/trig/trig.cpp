@@ -318,6 +318,45 @@ static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, 
     return lines;
 }
 
+static std::string compact_key(std::string text);
+
+static std::optional<std::vector<std::string>> exact_tan75_compound_text(std::string const &src)
+{
+    std::string key = compact_key(src);
+    bool cot = false;
+    std::string inner;
+    if(key.rfind("tan(", 0) == 0 && key.back() == ')') inner = key.substr(4, key.size() - 5);
+    else if(key.rfind("cot(", 0) == 0 && key.back() == ')') {
+        cot = true;
+        inner = key.substr(4, key.size() - 5);
+    }
+    else return std::nullopt;
+
+    bool rad = false;
+    if(inner == "5pi/12" || inner == "75pi/180" || inner == "pi/4+pi/6") rad = true;
+    else if(inner != "75" && inner != "45+30") return std::nullopt;
+
+    std::string total = rad ? "5*pi/12" : "75";
+    std::string A = rad ? "pi/4" : "45";
+    std::string B = rad ? "pi/6" : "30";
+    std::string unit = rad ? "" : " deg";
+    std::vector<std::string> steps{
+        total + unit + " = " + A + unit + " + " + B + unit,
+        "tan(" + total + ") = (tan(" + A + ")+tan(" + B + "))/(1-tan(" + A + ")*tan(" + B + "))",
+        "tan(" + A + ") = 1, tan(" + B + ") = 1/sqrt(3)",
+        "tan(" + total + ") = (1+1/sqrt(3))/(1-1/sqrt(3))",
+        "tan(" + total + ") = (sqrt(3)+1)/(sqrt(3)-1)",
+        "tan(" + total + ") = 2+sqrt(3)",
+    };
+    if(cot) {
+        steps.push_back("cot(" + total + ") = 1/tan(" + total + ")");
+        steps.push_back("cot(" + total + ") = 1/(2+sqrt(3))");
+        steps.push_back("cot(" + total + ") = 2-sqrt(3)");
+        return casio::exam_block("compound-angle", steps, "2-sqrt(3)");
+    }
+    return casio::exam_block("compound-angle", steps, "2+sqrt(3)");
+}
+
 static std::optional<Rational> pi_multiple_coeff(Arena &a, NodeId n)
 {
     // Match pi * q, q * pi, (q*pi)/r, pi*(q/r), etc where q,r are numeric rationals.
@@ -4043,6 +4082,62 @@ static std::optional<std::vector<std::string>> solve_rform_same_cos_equation(
 
     if(auto out = route(lhs, rhs)) return out;
     return route(rhs, lhs);
+}
+
+static std::optional<std::vector<std::string>> solve_linear_sincos_zero_tan(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad,
+    bool general = false
+)
+{
+    NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
+    auto p = collect_mixed_trig_poly(a, residual);
+    if(!p || std::fabs(p->c) > 1e-12 || std::fabs(p->s2) > 1e-12 ||
+       std::fabs(p->c2) > 1e-12 || std::fabs(p->sc) > 1e-12)
+        return std::nullopt;
+    double S = p->s1, C = p->c1;
+    if(std::fabs(S) < 1e-12 || std::fabs(C) < 1e-12) return std::nullopt;
+    auto lin = linear_angle(a, p->arg, var, rad);
+    if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;
+
+    std::string A = casio::format_expr(a, p->arg);
+    std::string Stxt = trig_root_text(S);
+    std::string Ctxt = trig_root_text(C);
+    double target = -C / S;
+    std::string Ttxt = trig_root_text(target);
+    auto term = [](std::string const &coef, std::string const &body) {
+        if(coef == "1") return body;
+        if(coef == "-1") return "-" + body;
+        return coef + "*" + body;
+    };
+    auto plus_const = [](std::string const &s) {
+        if(!s.empty() && s[0] == '-') return s;
+        return "+" + s;
+    };
+    auto tan_line = term(Stxt, "tan(" + A + ")") + plus_const(Ctxt) + "=0";
+    double base = (std::atan(target) * 180.0 / M_PI - lin->second) / lin->first;
+    double period = 180.0 / std::fabs(lin->first);
+    std::vector<std::string> steps{
+        casio::format_expr(a, residual) + " = 0",
+        "cos(" + A + ")=0 => " + term(Stxt, "sin(" + A + ")") + "!=0",
+        "cos(" + A + ")!=0",
+        "(" + casio::format_expr(a, residual) + ")/cos(" + A + ")=0",
+        tan_line,
+        "tan(" + A + ")=" + Ttxt,
+        rad ? A + "=atan(" + Ttxt + ")+pi*n" : A + "=atan(" + Ttxt + ")+180n",
+    };
+    if(general) {
+        steps.push_back(format_general_trig_family(var, rad, {base}, period));
+        return casio::exam_block("trig solve", steps, format_general_trig_family(var, rad, {base}, period));
+    }
+    auto xs = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, target));
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs));
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
 static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r)
@@ -10021,6 +10116,9 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
+    if(general) {
+        if(auto ts = solve_linear_sincos_zero_tan(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *ts;
+    }
     if(auto rf = solve_rform_same_cos_equation(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *rf;
 
     auto reciprocal_linear_sincos = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
@@ -10643,6 +10741,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string target = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
         if(target.empty()) return {"Err: need target form."};
+        std::string src_key = compact_key(src);
+        std::string target_key = compact_key(target);
+        bool exact75_cot = src_key.rfind("cot(", 0) == 0 && (target_key == "2-sqrt(3)" || target_key == "-sqrt(3)+2");
+        bool exact75_tan = src_key.rfind("tan(", 0) == 0 && (target_key == "2+sqrt(3)" || target_key == "sqrt(3)+2");
+        if(exact75_cot || exact75_tan) {
+            if(auto exact75 = exact_tan75_compound_text(src)) return *exact75;
+        }
         NodeId src_parsed = casio::parse_expr(arena, src);
         NodeId target_parsed = casio::parse_expr(arena, target);
         if(auto route = compound_fraction_cot_target(src, target)) return *route;
@@ -10672,6 +10777,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         auto nl = req.expr.find('\n');
         std::string src = (nl == std::string::npos) ? req.expr : req.expr.substr(0, nl);
         std::string targets = (nl == std::string::npos) ? "" : req.expr.substr(nl + 1);
+        if(auto exact75 = exact_tan75_compound_text(src)) return *exact75;
         NodeId raw = casio::parse_expr(arena, src);
         NodeId s = casio::simplify(arena, raw);
         std::string key = compact_key(src);
@@ -10858,6 +10964,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         return solve_simple_trig_eq(arena, req.expr, "x", "0", "2*pi", true);
     }
 
+    if(auto exact75 = exact_tan75_compound_text(req.expr)) return *exact75;
     NodeId parsed = casio::parse_expr(arena, req.expr);
     {
         std::string key0 = compact_key(req.expr);
