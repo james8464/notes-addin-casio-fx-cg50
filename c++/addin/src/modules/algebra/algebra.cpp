@@ -544,6 +544,9 @@ static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId ar
             if(k == "pi/4") return half(sq(2));
             if(k == "pi/3") return half(sq(3));
             if(k == "pi/2") return casio::num(a, 1);
+            if(k == "pi") return casio::num(a, 0);
+            if(k == "3*pi/2" || k == "3/2*pi") return casio::num(a, -1);
+            if(k == "2*pi") return casio::num(a, 0);
         }
         if(g == FnKind::Cos) {
             if(k == "0") return casio::num(a, 1);
@@ -551,12 +554,17 @@ static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId ar
             if(k == "pi/4") return half(sq(2));
             if(k == "pi/3") return a.num(Rational{1, 2});
             if(k == "pi/2") return casio::num(a, 0);
+            if(k == "pi") return casio::num(a, -1);
+            if(k == "3*pi/2" || k == "3/2*pi") return casio::num(a, 0);
+            if(k == "2*pi") return casio::num(a, 1);
         }
         if(g == FnKind::Tan) {
             if(k == "0") return casio::num(a, 0);
             if(k == "pi/6") return third(sq(3));
             if(k == "pi/4") return casio::num(a, 1);
             if(k == "pi/3") return sq(3);
+            if(k == "pi") return casio::num(a, 0);
+            if(k == "2*pi") return casio::num(a, 0);
         }
         return std::nullopt;
     };
@@ -2430,8 +2438,11 @@ static std::optional<std::string> linear_fractional_full_range(
     NodeId cy_minus_a = poly2_to_node(a, Poly2{Rational{0, 1}, C, r_neg(A), true}, "y");
     NodeId b_minus_dy = poly2_to_node(a, Poly2{Rational{0, 1}, r_neg(D), B, true}, "y");
     steps.push_back("y = " + format_expr(a, n));
-    steps.push_back("y(" + format_expr(a, den) + ") = " + format_expr(a, num));
-    steps.push_back(var + "(" + format_expr(a, cy_minus_a) + ") = " + format_expr(a, b_minus_dy));
+    auto mul_line = [](std::string const &lhs, std::string const &rhs) {
+        return rhs == "y" ? lhs + "*y" : lhs + "*(" + rhs + ")";
+    };
+    steps.push_back(mul_line("y", format_expr(a, den)) + " = " + format_expr(a, num));
+    steps.push_back(mul_line(var, format_expr(a, cy_minus_a)) + " = " + format_expr(a, b_minus_dy));
     steps.push_back(format_expr(a, cy_minus_a) + " != 0");
     return "y != " + rat_node_text(a, asym);
 }
@@ -23595,7 +23606,11 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     Arena &a,
     NodeId residual,
     std::string const &var,
-    std::vector<std::string> out
+    std::vector<std::string> out,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 );
 
 static bool shifted_exp_base(Arena &a, NodeId n, NodeId arg, Rational &shift)
@@ -27546,7 +27561,11 @@ static std::optional<std::vector<std::string>> symbolic_exp_quadratic_route(
     Arena &a,
     NodeId residual,
     std::string const &var,
-    std::vector<std::string> out
+    std::vector<std::string> out,
+    std::optional<double> lo = std::nullopt,
+    std::optional<double> hi = std::nullopt,
+    bool lo_open = false,
+    bool hi_open = false
 )
 {
     std::vector<NodeId> terms;
@@ -27619,7 +27638,8 @@ static std::optional<std::vector<std::string>> symbolic_exp_quadratic_route(
         xraw.push_back(var + " = " + format_expr(a, ans));
     }
     if(xraw.empty()) return std::nullopt;
-    auto valid = filter_real_solutions(a, residual, var, xraw, std::nullopt, std::nullopt);
+    auto valid = filter_real_solutions(a, residual, var, xraw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
     if(valid.empty()) return std::nullopt;
     for(auto const &s : valid) out.push_back(s);
     out.push_back(solution_list_line(var, valid));
@@ -27755,7 +27775,11 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
     Arena &a,
     NodeId residual,
     std::string const &var,
-    std::vector<std::string> out
+    std::vector<std::string> out,
+    std::optional<double> lo,
+    std::optional<double> hi,
+    bool lo_open,
+    bool hi_open
 )
 {
     std::vector<NodeId> terms;
@@ -27949,7 +27973,8 @@ static std::optional<std::vector<std::string>> exp_substitution_route(
         out.push_back(var + " = []");
         return out;
     }
-    auto valid = filter_real_solutions(a, residual, var, xraw, std::nullopt, std::nullopt);
+    auto valid = filter_real_solutions(a, residual, var, xraw, lo, hi);
+    filter_open_interval_solutions(a, valid, lo, hi, lo_open, hi_open);
     std::sort(valid.begin(), valid.end(), [&](std::string const &l, std::string const &r) {
         auto lv = solution_line_value(a, l), rv = solution_line_value(a, r);
         if(lv && rv) return *lv < *rv;
@@ -31444,7 +31469,7 @@ algebra_compare_transform_modes:
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;
             collect_symbols(arena, v, syms);
-            if(!syms.empty() || contains_exp_log_exact(arena, v) || contains_fn_kind(arena, v, FnKind::Sqrt)) {
+            if(!syms.empty() || contains_const(arena, v, ConstKind::Pi) || contains_exp_log_exact(arena, v) || contains_fn_kind(arena, v, FnKind::Sqrt)) {
                 NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
                 NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
                 std::string sub_txt = format_expr(arena, sub2);
@@ -31991,13 +32016,13 @@ algebra_compare_transform_modes:
             if(auto cef2 = common_exp_factor_zero_route(arena, exact_rearr_for_exp, solve_var, out)) return *cef2;
             if(auto nef2 = nonzero_exp_product_route(arena, exact_rearr_for_exp, solve_var, out)) return *nef2;
             if(auto eg = exp_general_arg_substitution_route(arena, exact_rearr_for_exp, solve_var, out)) return *eg;
-            if(auto es = exp_substitution_route(arena, exact_rearr_for_exp, solve_var, out)) return *es;
-            if(auto seq = symbolic_exp_quadratic_route(arena, exact_rearr_for_exp, solve_var, out)) return *seq;
+            if(auto es = exp_substitution_route(arena, exact_rearr_for_exp, solve_var, out, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *es;
+            if(auto seq = symbolic_exp_quadratic_route(arena, exact_rearr_for_exp, solve_var, out, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *seq;
             if(auto er2 = exp_rational_substitution_route(arena, exact_rearr_for_exp, solve_var, out)) return *er2;
         }
         if(auto eg = exp_general_arg_substitution_route(arena, rearr, solve_var, out)) return *eg;
-        if(auto es = exp_substitution_route(arena, rearr, solve_var, out)) return *es;
-        if(auto seq = symbolic_exp_quadratic_route(arena, rearr, solve_var, out)) return *seq;
+        if(auto es = exp_substitution_route(arena, rearr, solve_var, out, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *es;
+        if(auto seq = symbolic_exp_quadratic_route(arena, rearr, solve_var, out, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *seq;
         if(auto er2 = exp_rational_substitution_route(arena, rearr, solve_var, out)) return *er2;
         if(auto lp = log_poly_substitution_route(arena, rearr, solve_var, out)) return *lp;
         if(auto ls = log_substitution_route(arena, rearr, solve_var, out)) return *ls;

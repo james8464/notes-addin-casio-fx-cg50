@@ -78,6 +78,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "2*cos(x+pi/6)=sec(x+pi/2),x,0,pi,10,method=identity",
+        ["2*cos(A)cos(B)=1", "cos(2*x+2/3*pi)=1/2", "x=[pi/2,5*pi/6]"],
+        ["x = []", "Failed to isolate", "ERR:"],
+    ),
+    (
+        "trig",
+        "tan(pi/4-atan(t)),method=compound_angle",
+        ["tan(A)=1,tan(B)=-t", "N=1-t", "D=1+t", "(1-t)/(1+t)"],
+        ["N/D", "ERR:"],
+    ),
+    (
+        "trig",
+        "2*cos(theta+atan(t))=5*sin(theta-atan(t)),theta,0,360,10,method=compound_angle",
+        ["tan(theta)=(2+5tan(A))/(5+2tan(A))", "tan(A)=t", "tan(theta)=(2+5*t)/(5+2*t)"],
+        ["theta = []", "ERR:"],
+    ),
+    (
+        "trig",
         "cos(5*x)+5*cos(3*x)+12*cos(x)=0,x,0,2*pi,10,method=identity",
         ["cos(5x)+5cos(3x)+10cos(x) = 16cos(x)^5", "16cos(x)^4+2>0", "x = [pi/2, 3*pi/2]"],
         ["x = []", "ERR:", "Unexpected token"],
@@ -171,6 +189,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve(log(2,x)+log(4,x)=6,x)",
         ["u = log(2,x)", "log(4,x) = u/2", "x = 16"],
         ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "evalat(e^x*(sin(2*x)+2*cos(2*x)),x,pi)",
+        ["x=pi", "f(pi)=2*e^(pi)"],
+        ["46.281", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(1/(x+1),x>4)",
+        ["y*(x+1)=1", "x*y=-y+1", "Range:0<y<1/5"],
+        ["x(y)", "y(x", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(300-280*e^(-0.05*t)=250-230*e^(-0.1*t),t>0)",
+        ["t=0rejectedbydomain", "t=20*ln(23/5)", "t=[20*ln(23/5)]"],
+        ["t = [0,", "ERR:"],
     ),
     (
         "alg",
@@ -1395,8 +1431,8 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "tan(2*x+pi/6),method=auto",
-        ["tan(A+B)", "Let N = tan(2*x)+1/sqrt(3)", "Let D = 1-tan(2*x)*1/sqrt(3)", "Answer: N/D"],
-        ["Answer: (tan(", "ERR:", "Unexpected token"],
+        ["tan(A+B)", "N=tan(2*x)+1/sqrt(3)", "D=1-tan(2*x)*1/sqrt(3)", "(tan(2*x)+1/sqrt(3))/(1-tan(2*x)*1/sqrt(3))"],
+        ["N/D", "ERR:", "Unexpected token"],
     ),
     (
         "alg",

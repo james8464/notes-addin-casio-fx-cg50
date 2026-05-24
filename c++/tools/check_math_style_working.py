@@ -139,6 +139,12 @@ CASES = [
         ("ERR:", "undefined"),
     ),
     (
+        "evalat pi exact trig exp",
+        ["--alg", "evalat(e^x*(sin(2*x)+2*cos(2*x)),x,pi)"],
+        ("x = pi", "f(pi) = 2*e^(pi)"),
+        ("46.281", "ERR:", "undefined"),
+    ),
+    (
         "atan complement derivative family",
         ["--derive", "atan(x)+atan((1-x)/(1+x)),x"],
         ("v = (1-u)/(1+u)", "dy/dx = 0"),
@@ -172,6 +178,24 @@ CASES = [
         ("x = []",),
     ),
     (
+        "cos sec product-to-sum solve",
+        ["--trig", "2*cos(x+pi/6)=sec(x+pi/2),x,0,pi,10,method=identity"],
+        ("2*cos(A)cos(B) = 1", "cos(2*x + 2/3*pi) = 1/2", "x = [pi/2, 5*pi/6]"),
+        ("x = []", "Failed to isolate", "ERR:"),
+    ),
+    (
+        "tan compound atan parameter",
+        ["--trig", "tan(pi/4-atan(t)),method=compound_angle"],
+        ("tan(A) = 1, tan(B) = -t", "N = 1-t", "D = 1+t", "(1-t)/(1+t)"),
+        ("N/D", "ERR:"),
+    ),
+    (
+        "compound tan relation parameter",
+        ["--trig", "2*cos(theta+atan(t))=5*sin(theta-atan(t)),theta,0,360,10,method=compound_angle"],
+        ("tan(theta) = (2+5tan(A))/(5+2tan(A))", "tan(A) = t", "tan(theta) = (2 + 5*t)/(5 + 2*t)"),
+        ("theta = []", "ERR:"),
+    ),
+    (
         "signed rform rewrite",
         ["--trig", "4*sin(x)-3*cos(x),method=rform"],
         ("R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"),
@@ -198,6 +222,12 @@ CASES = [
         ("unrestricted", "ERR:"),
     ),
     (
+        "linear fractional range multiply notation",
+        ["--alg", "range(1/(x+1),x>4)"],
+        ("y*(x + 1) = 1", "x*y = - y + 1", "Range: 0 < y < 1/5"),
+        ("x(y)", "y(x", "ERR:"),
+    ),
+    (
         "half-open tan reciprocal range",
         ["--alg", "range(1/(1+tan(x)),0<=x,x<pi/2)"],
         ("0 <= x < pi/2 => 0 <= tan(x) < infinity", "1 <= tan(x) + 1 < infinity", "Range: 0 < y <= 1"),
@@ -218,6 +248,12 @@ CASES = [
         "direct inverse trig composition",
         ["--alg", "sin(asin(x))"],
         ("Domain: -1 <= x <= 1", "sin(asin(x)) = x"),
+    ),
+    (
+        "exp substitution open interval filter",
+        ["--alg", "solve(300-280*e^(-0.05*t)=250-230*e^(-0.1*t),t>0)"],
+        ("t = 0 rejected by domain", "t = 20*ln(23/5)", "t = [20*ln(23/5)]"),
+        ("t = [0,", "ERR:"),
     ),
     (
         "inverse trig exact solve",

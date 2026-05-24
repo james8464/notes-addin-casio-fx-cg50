@@ -206,6 +206,12 @@ static std::optional<std::string> exact_tan_text(Arena &a, NodeId n)
 {
     std::string s = casio::format_expr(a, n);
     if(s == "0") return "0";
+    if(s == "30") return "1/sqrt(3)";
+    if(s == "-30") return "-1/sqrt(3)";
+    if(s == "45") return "1";
+    if(s == "-45") return "-1";
+    if(s == "60") return "sqrt(3)";
+    if(s == "-60") return "-sqrt(3)";
     if(s == "pi/6") return "1/sqrt(3)";
     if(s == "-pi/6") return "-1/sqrt(3)";
     if(s == "pi/4") return "1";
@@ -213,6 +219,35 @@ static std::optional<std::string> exact_tan_text(Arena &a, NodeId n)
     if(s == "pi/3") return "sqrt(3)";
     if(s == "-pi/3") return "-sqrt(3)";
     return std::nullopt;
+}
+
+static std::optional<NodeId> simple_neg_inner(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    bool neg = false;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        auto q = as_num(a, k);
+        if(q && q->num == -q->den && !neg) neg = true;
+        else rest.push_back(k);
+    }
+    if(!neg || rest.empty()) return std::nullopt;
+    return rest.size() == 1 ? rest[0] : casio::simplify(a, casio::mul(a, rest));
+}
+
+static std::optional<std::string> tan_arg_text(Arena &a, NodeId n)
+{
+    if(auto ex = exact_tan_text(a, n)) return *ex;
+    if(auto inner = simple_neg_inner(a, n)) {
+        if(auto t = tan_arg_text(a, *inner)) {
+            if(t->rfind("-", 0) == 0) return t->substr(1);
+            return "-" + *t;
+        }
+    }
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Atan) return casio::format_expr(a, x.a);
+    return "tan(" + casio::format_expr(a, n) + ")";
 }
 
 static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, NodeId n)
@@ -241,21 +276,38 @@ static std::optional<std::vector<std::string>> compound_angle_rewrite(Arena &a, 
             "Answer: " + ans,
         };
     }
-    auto exact_b = exact_tan_text(a, arg.kids[1]);
-    std::string tan_b = exact_b.value_or("tan(" + B + ")");
-    std::string numerator = "tan(" + A + ")+" + tan_b;
-    std::string denominator = (tan_b == "1")
-        ? "1-tan(" + A + ")"
-        : "1-tan(" + A + ")*" + tan_b;
+    std::string tan_a = tan_arg_text(a, arg.kids[0]).value_or("tan(" + A + ")");
+    std::string tan_b = tan_arg_text(a, arg.kids[1]).value_or("tan(" + B + ")");
+    auto add_text = [](std::string const &p, std::string const &q) {
+        if(q == "0") return p;
+        if(p == "0") return q;
+        if(q.rfind("-", 0) == 0) return p + "-" + q.substr(1);
+        return p + "+" + q;
+    };
+    auto mul_text = [](std::string const &p, std::string const &q) {
+        if(p == "1") return q;
+        if(q == "1") return p;
+        if(p == "-1") return q.rfind("-", 0) == 0 ? q.substr(1) : "-" + q;
+        if(q == "-1") return p.rfind("-", 0) == 0 ? p.substr(1) : "-" + p;
+        return p + "*" + q;
+    };
+    auto one_minus = [](std::string const &q) {
+        if(q == "0") return std::string("1");
+        if(q.rfind("-", 0) == 0) return std::string("1+") + q.substr(1);
+        return std::string("1-") + q;
+    };
+    std::string numerator = add_text(tan_a, tan_b);
+    std::string denominator = one_minus(mul_text(tan_a, tan_b));
+    std::string answer = "(" + numerator + ")/(" + denominator + ")";
     std::vector<std::string> lines{
         "1. Start with " + start + ".",
         "2. Use tan(A+B)=(tan(A)+tan(B))/(1-tan(A)tan(B)).",
     };
     int step = 3;
-    if(exact_b) lines.push_back(std::to_string(step++) + ". tan(" + B + ") = " + tan_b + ".");
+    lines.push_back(std::to_string(step++) + ". tan(A)=" + tan_a + ", tan(B)=" + tan_b + ".");
     lines.push_back(std::to_string(step++) + ". Let N = " + numerator + ".");
     lines.push_back(std::to_string(step++) + ". Let D = " + denominator + ".");
-    lines.push_back("Answer: N/D");
+    lines.push_back("Answer: " + answer);
     return lines;
 }
 
@@ -5387,6 +5439,206 @@ static std::optional<std::vector<std::string>> solve_shifted_linear_trig(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static bool coeff_fn_any(Arena &a, NodeId n, FnKind fk, double &coeff, NodeId &arg)
+{
+    NodeId rest = n;
+    bool has_rest = true;
+    coeff = 1.0;
+    if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest) return false;
+    Node const &r = a.get(rest);
+    if(r.kind != NodeKind::Fn || r.fkind != fk) return false;
+    arg = r.a;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> solve_cos_sec_product_to_sum(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    std::vector<NodeId> terms = r.kind == NodeKind::Add ? r.kids : std::vector<NodeId>{residual};
+    if(terms.size() != 2) return std::nullopt;
+    bool have_cos = false, have_sec = false;
+    double ccos = 0.0, csec = 0.0;
+    NodeId Aarg = 0, Barg = 0;
+    for(NodeId t : terms) {
+        double c = 0.0;
+        NodeId arg = 0;
+        if(coeff_fn_any(a, t, FnKind::Cos, c, arg)) {
+            if(have_cos) return std::nullopt;
+            have_cos = true; ccos = c; Aarg = arg;
+        }
+        else if(coeff_fn_any(a, t, FnKind::Sec, c, arg)) {
+            if(have_sec) return std::nullopt;
+            have_sec = true; csec = c; Barg = arg;
+        }
+        else return std::nullopt;
+    }
+    if(!have_cos || !have_sec || std::fabs(ccos) < 1e-12 || std::fabs(csec) < 1e-12) return std::nullopt;
+    double K = -ccos / csec;
+    if(std::fabs(K) < 1e-12) return std::nullopt;
+    auto A = linear_angle(a, Aarg, var, rad);
+    auto B = linear_angle(a, Barg, var, rad);
+    if(!A || !B || std::fabs(A->first) < 1e-12 || std::fabs(B->first) < 1e-12) return std::nullopt;
+
+    NodeId var_arg = 0;
+    double const_deg = 0.0;
+    if(std::fabs(A->first - B->first) < 1e-9) {
+        var_arg = casio::simplify(a, casio::add(a, {Aarg, Barg}));
+        const_deg = A->second - B->second;
+    }
+    else if(std::fabs(A->first + B->first) < 1e-9) {
+        var_arg = casio::simplify(a, casio::add(a, {Aarg, casio::neg(a, Barg)}));
+        const_deg = A->second + B->second;
+    }
+    else return std::nullopt;
+
+    double cconst = std::cos(const_deg * M_PI / 180.0);
+    double rhs = 2.0 / K;
+    double target = rhs - cconst;
+    if(target < -1.0 - 1e-10 || target > 1.0 + 1e-10) {
+        std::vector<std::string> steps{
+            format_expr(a, residual) + " = 0.",
+            "Use sec(B)=1/cos(B).",
+            trig_root_text(K) + "*cos(A)cos(B)=1.",
+            "2cos(A)cos(B)=cos(A+B)+cos(A-B).",
+            "Required cosine value is outside [-1,1].",
+        };
+        return casio::exam_block("trig solve", steps, var + " = []");
+    }
+
+    std::string At = format_expr(a, Aarg);
+    std::string Bt = format_expr(a, Barg);
+    std::string Ut = format_expr(a, var_arg);
+    std::string Ct = rad ? format_pi_degrees(const_deg) : format_double_compact(const_deg);
+    auto prod = [](std::string const &k, std::string const &body) {
+        if(k == "1") return body;
+        if(k == "-1") return "-" + body;
+        return k + "*" + body;
+    };
+    std::vector<double> xs = x_values_from_angle_degrees(a, var_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, target));
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "A=" + At + ", B=" + Bt + ".",
+        prod(trig_root_text(K), "cos(A)") + " = sec(B).",
+        "sec(B)=1/cos(B).",
+        prod(trig_root_text(K), "cos(A)cos(B)") + " = 1.",
+        "2cos(A)cos(B)=cos(A+B)+cos(A-B).",
+        "cos(" + Ut + ")+cos(" + Ct + ")=" + trig_root_text(rhs) + ".",
+        "cos(" + Ut + ")=" + trig_root_text(target) + ".",
+        trig_base_angle_line(FnKind::Cos, Ut, target),
+        trig_alpha_family_line(FnKind::Cos, Ut, target, rad),
+        interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".",
+    };
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static std::optional<NodeId> unit_var_shift(Arena &a, NodeId arg, std::string const &var)
+{
+    Node const &x = a.get(arg);
+    if(x.kind == NodeKind::Sym && x.text == var) return casio::num(a, 0);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    bool saw_var = false;
+    std::vector<NodeId> shifts;
+    for(NodeId k : x.kids) {
+        Node const &n = a.get(k);
+        if(n.kind == NodeKind::Sym && n.text == var) {
+            if(saw_var) return std::nullopt;
+            saw_var = true;
+        }
+        else {
+            if(contains_var(a, k, var)) return std::nullopt;
+            shifts.push_back(k);
+        }
+    }
+    if(!saw_var) return std::nullopt;
+    return shifts.empty() ? casio::num(a, 0) : casio::simplify(a, casio::add(a, shifts));
+}
+
+static std::optional<std::vector<std::string>> solve_compound_tan_relation(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto read = [&](NodeId n, FnKind fk, double &coeff, NodeId &arg) {
+        return coeff_fn_any(a, n, fk, coeff, arg);
+    };
+    double p = 0.0, q = 0.0;
+    NodeId c_arg = 0, s_arg = 0;
+    if(!(read(lhs, FnKind::Cos, p, c_arg) && read(rhs, FnKind::Sin, q, s_arg)) &&
+       !(read(rhs, FnKind::Cos, p, c_arg) && read(lhs, FnKind::Sin, q, s_arg)))
+        return std::nullopt;
+    if(std::fabs(p) < 1e-12 || std::fabs(q) < 1e-12) return std::nullopt;
+    auto c_shift = unit_var_shift(a, c_arg, var);
+    auto s_shift = unit_var_shift(a, s_arg, var);
+    if(!c_shift || !s_shift) return std::nullopt;
+    NodeId neg_c = casio::simplify(a, casio::neg(a, *c_shift));
+    if(!casio::same_by_sig(a, *s_shift, neg_c)) return std::nullopt;
+    std::string A = format_expr(a, *c_shift);
+    if(A == "0") return std::nullopt;
+    std::string tA = tan_arg_text(a, *c_shift).value_or("tan(" + A + ")");
+    auto term = [](double c, std::string const &body) {
+        if(std::fabs(c - 1.0) < 1e-10) return body;
+        if(std::fabs(c + 1.0) < 1e-10) return "-" + body;
+        return trig_root_text(c) + "*" + body;
+    };
+    auto add = [&](double c0, double c1) {
+        std::string out = trig_root_text(c0);
+        if(std::fabs(c1) > 1e-12) {
+            if(c1 > 0) out += "+";
+            out += term(c1, tA);
+        }
+        return out;
+    };
+    std::string num = add(p, q);
+    std::string den = add(q, p);
+    std::string ans = "tan(" + var + ") = (" + num + ")/(" + den + ")";
+    std::vector<std::string> steps{
+        format_expr(a, lhs) + " = " + format_expr(a, rhs) + ".",
+        format_expr(a, lhs) + " - " + format_expr(a, rhs) + " = 0.",
+        "Let A=" + A + ".",
+        trig_root_text(p) + "[cos(" + var + ")cos(A)-sin(" + var + ")sin(A)] = " +
+            trig_root_text(q) + "[sin(" + var + ")cos(A)-cos(" + var + ")sin(A)].",
+        "cos(" + var + ")(" + trig_root_text(p) + "cos(A)+" + trig_root_text(q) + "sin(A)) = sin(" +
+            var + ")(" + trig_root_text(q) + "cos(A)+" + trig_root_text(p) + "sin(A)).",
+        "tan(" + var + ")=(" + trig_root_text(p) + "+" + trig_root_text(q) + "tan(A))/(" +
+            trig_root_text(q) + "+" + trig_root_text(p) + "tan(A)).",
+        "tan(A)=" + tA + ".",
+    };
+    if(auto Av = numeric_eval(a, *c_shift, 0.0)) {
+        double Adeg = rad ? (*Av * 180.0 / M_PI) : *Av;
+        double tv = std::tan(Adeg * M_PI / 180.0);
+        double dv = q + p * tv;
+        if(std::isfinite(tv) && std::isfinite(dv) && std::fabs(dv) > 1e-12) {
+            double target = (p + q * tv) / dv;
+            if(std::isfinite(target)) {
+                auto xs = x_values_from_angle_degrees(a, casio::sym(a, var), var, lo_text, hi_text, rad,
+                                                       base_trig_degrees(FnKind::Tan, target));
+                steps.push_back("tan(" + var + ") = " + trig_root_text(target) + ".");
+                steps.push_back("R*sin(" + var + "+alpha) = 0.");
+                steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " +
+                                format_solution_list(var, rad, xs) + ".");
+                return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+            }
+        }
+    }
+    return casio::exam_block(
+        "trig solve",
+        steps,
+        ans
+    );
+}
+
 static std::optional<std::pair<std::pair<double, double>, double>> tan_zero_target(Arena &a, NodeId target, std::string const &var, bool rad)
 {
     NodeId t = casio::simplify(a, target);
@@ -9338,6 +9590,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     };
 
     if(auto rel = solve_same_fn_linear(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *rel;
+    if(auto ctr = solve_compound_tan_relation(a, lhs, rhs, var, lo_text, hi_text, rad)) return *ctr;
 
     NodeId residual = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
     if(auto r0 = as_num(a, residual); r0 && r0->num == 0) {
@@ -9401,6 +9654,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto half = solve_cos_half_sin(a, residual, var, lo_text, hi_text, rad)) return *half;
     if(auto sq = solve_same_angle_squares(a, residual, var, lo_text, hi_text, rad)) return *sq;
     if(auto cubic = solve_double_angle_cubic(a, residual, var, lo_text, hi_text, rad)) return *cubic;
+    if(auto cspt = solve_cos_sec_product_to_sum(a, residual, var, lo_text, hi_text, rad)) return *cspt;
     if(!general) {
         if(auto tc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Tan, FnKind::Cot)) return *tc;
         if(auto te = solve_tan_even_poly(a, residual, var, lo_text, hi_text, rad)) return *te;

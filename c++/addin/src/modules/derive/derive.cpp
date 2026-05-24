@@ -4592,7 +4592,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     return casio::exam_block(
                         "differentiate",
                         {
-                            "Use quotient rule with u=" + var + " and v=ln(" + var + ")+c.",
+                            "Use quotient rule with u=" + var + ".",
                             "u'=1.",
                             route->first,
                             "dy/d" + var + " = [u'v-u*v']/v^2.",
@@ -4605,7 +4605,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     return casio::exam_block(
                         "differentiate",
                         {
-                            "Use quotient rule with u=ln(" + var + ") and v=ln(" + var + ")+c.",
+                            "Use quotient rule with u=ln(" + var + ").",
                             "u'=v'=1/" + var + ".",
                             "dy/d" + var + " = [u'v-u*v']/v^2.",
                             "Simplify the numerator.",
