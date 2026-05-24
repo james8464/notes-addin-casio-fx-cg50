@@ -11,6 +11,42 @@ HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 
 CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
+        "derive",
+        "(k*x^2-a)/(k*x^2+a),x",
+        ["u = k*x^2 - a", "v = k*x^2 + a", "[(2*k*x)*(k*x^2 + a)-(k*x^2 - a)*(2*k*x)] = 4*k*x*a", "dy/dx = 4*k*x*a/(k*x^2 + a)^2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "trig",
+        "2*tan(x)/(1+tan(x)^2)=sin(2*x),method=identity",
+        ["tan(x) = sin(x)/cos(x)", "1+tan(x)^2 = 1/cos(x)^2", "2sin(x)cos(x) = sin(2*x)"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "tan(15),method=identity",
+        ["Let T = tan(15)", "2T/(1+T^2) = 1/2", "T = 2 +/- sqrt(3)", "tan(15) = 2 - sqrt(3)"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "solve(abs(9*x^2+6*x+2)=9*x^2+6*x+2,x)",
+        ["abs(A)=A => A >= 0", "D = -36 <= 0", "x = all real"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "derive",
+        "x=y*sqrt(9-4*y^2)",
+        ["dx/dy = (-8*y^2 + 9)/sqrt(-4*y^2 + 9)", "dy/dx = sqrt(-4*y^2 + 9)/(-8*y^2 + 9)"],
+        ["-x/(", "ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(y*sqrt(9-4*y^2),y,3*sqrt(2)/4)",
+        ["f(3*sqrt(2)/4) = 9/4"],
+        ["ERR:"],
+    ),
+    (
         "trig",
         "sec(x)^2-tan(x)^2=1,x,0,2*pi,10,method=identity",
         ["LHS-RHS=0", "all valid x in domain"],

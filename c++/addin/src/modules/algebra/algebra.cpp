@@ -943,6 +943,48 @@ static std::optional<NodeId> strip_whole_negative(Arena &a, NodeId n)
     return std::nullopt;
 }
 
+static std::optional<Rational> square_surd_product_value(Arena &a, NodeId n)
+{
+    Rational acc{1, 1};
+    bool ok = true;
+    bool saw = false;
+    auto collect = [&](auto &&self, NodeId id, bool denom) -> void {
+        if(!ok) return;
+        Node const &t = a.get(id);
+        if(t.kind == NodeKind::Num) {
+            Rational sq = r_mul(t.num, t.num);
+            acc = denom ? r_div(acc, sq) : r_mul(acc, sq);
+            saw = true;
+            return;
+        }
+        if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) self(self, k, denom);
+            return;
+        }
+        if(t.kind == NodeKind::Div) {
+            self(self, t.a, denom);
+            self(self, t.b, !denom);
+            return;
+        }
+        if(t.kind == NodeKind::Fn && t.fkind == FnKind::Sqrt) {
+            NodeId arg = exact_eval_simplify(a, t.a);
+            Node const &u = a.get(arg);
+            if(u.kind != NodeKind::Num) {
+                ok = false;
+                return;
+            }
+            acc = denom ? r_div(acc, u.num) : r_mul(acc, u.num);
+            saw = true;
+            return;
+        }
+        ok = false;
+    };
+    collect(collect, n, false);
+    if(!ok || !saw) return std::nullopt;
+    acc.normalize();
+    return acc;
+}
+
 static NodeId exact_eval_simplify(Arena &a, NodeId n)
 {
     Node x = a.get(n);
@@ -963,13 +1005,28 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         NodeId arg = exact_eval_simplify(a, x.a);
         Node const &u = a.get(arg);
+        if(x.fkind == FnKind::Sqrt) {
+            NodeId arg2 = exact_eval_simplify(a, expand_square_powers(a, arg));
+            if(format_expr(a, arg2) != format_expr(a, arg))
+                return exact_eval_simplify(a, casio::fn(a, "sqrt", arg2));
+        }
         if(x.fkind == FnKind::Abs && u.kind == NodeKind::Num) return a.num(r_abs(u.num));
         if(x.fkind == FnKind::Sqrt && u.kind == NodeKind::Num && u.num.num >= 0) {
             std::int64_t rn = 0, rd = 0;
             if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
                 return casio::num(a, rn, rd);
-            if(u.num.num == 1 && u.num.den > 1)
-                return casio::simplify(a, casio::div(a, casio::fn(a, "sqrt", casio::num(a, u.num.den)), casio::num(a, u.num.den)));
+            bool num_sq = is_square_i64(u.num.num, rn);
+            bool den_sq = is_square_i64(u.num.den, rd) && rd != 0;
+            if(u.num.den > 1 && num_sq)
+                return exact_eval_simplify(a, casio::div(a,
+                    casio::mul(a, {casio::num(a, rn), casio::fn(a, "sqrt", casio::num(a, u.num.den))}),
+                    casio::num(a, u.num.den)));
+            if(u.num.den > 1 && den_sq)
+                return exact_eval_simplify(a, casio::div(a, casio::fn(a, "sqrt", casio::num(a, u.num.num)), casio::num(a, rd)));
+            if(u.num.den > 1 && u.num.num <= std::numeric_limits<std::int64_t>::max() / u.num.den)
+                return exact_eval_simplify(a, casio::div(a,
+                    casio::fn(a, "sqrt", casio::num(a, u.num.num * u.num.den)),
+                    casio::num(a, u.num.den)));
         }
         if(x.fkind == FnKind::Sqrt && (u.kind == NodeKind::Mul || u.kind == NodeKind::Div)) {
             Rational c{1, 1};
@@ -1051,6 +1108,10 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         }
         if(expo.kind == NodeKind::Num) {
             Node const &base = a.get(lhs);
+            if(expo.num.num == 2 && expo.num.den == 1) {
+                if(auto sq = square_surd_product_value(a, lhs))
+                    return casio::num(a, sq->num, sq->den);
+            }
             if(base.kind == NodeKind::Num) {
                 if(auto f = rational_power_factor(base.num, expo.num))
                     return casio::num(a, f->num, f->den);
@@ -11382,6 +11443,47 @@ static bool abs_arg_node(Arena &a, NodeId n, NodeId &arg)
     if(x.kind != NodeKind::Fn || x.fkind != FnKind::Abs) return false;
     arg = x.a;
     return true;
+}
+
+static std::optional<std::vector<std::string>> abs_self_nonnegative_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var)
+{
+    NodeId arg = 0;
+    if(abs_arg_node(a, lhs, arg)) {
+        if(!casio::same_by_sig(a, arg, rhs)) return std::nullopt;
+    }
+    else if(abs_arg_node(a, rhs, arg)) {
+        if(!casio::same_by_sig(a, arg, lhs)) return std::nullopt;
+    }
+    else return std::nullopt;
+
+    auto p = poly_of(a, arg, var);
+    if(!p || !p->ok) return std::nullopt;
+    std::string at = format_expr(a, arg);
+    std::vector<std::string> out{
+        "abs(" + at + ") = " + at,
+        "abs(A)=A => A >= 0",
+        at + " >= 0",
+    };
+    if(is_zero(p->a2) && is_zero(p->a1)) {
+        out.push_back(format_rat(a, p->a0) + (p->a0.num >= 0 ? " >= 0." : " < 0."));
+        out.push_back(p->a0.num >= 0 ? var + " = all real" : var + " = []");
+        return out;
+    }
+    if(!is_zero(p->a2)) {
+        Rational D = r_sub(r_mul(p->a1, p->a1), r_mul(Rational{4, 1}, r_mul(p->a2, p->a0)));
+        if(p->a2.num > 0 && D.num <= 0) {
+            out.push_back("D = " + format_rat(a, D) + " <= 0; a = " + format_rat(a, p->a2) + " > 0.");
+            out.push_back(var + " = all real");
+            return out;
+        }
+        if(p->a2.num < 0 && D.num < 0) {
+            out.push_back("D = " + format_rat(a, D) + " < 0; a = " + format_rat(a, p->a2) + " < 0.");
+            out.push_back(var + " = []");
+            return out;
+        }
+    }
+    return std::nullopt;
 }
 
 static std::optional<std::vector<std::string>> abs_negative_log_linear_route(
@@ -32831,6 +32933,7 @@ algebra_compare_transform_modes:
             out.insert(out.end(), log_trig->begin(), log_trig->end());
             return out;
         }
+        if(auto aself = abs_self_nonnegative_route(arena, lhs, rhs, solve_var)) return *aself;
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
         if(auto ape = abs_piecewise_linear_equation_route(arena, equation_text, solve_var)) return *ape;

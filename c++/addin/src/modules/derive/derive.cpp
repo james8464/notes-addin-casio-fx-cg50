@@ -1917,6 +1917,50 @@ static std::vector<Rational> poly_derivative_local(std::vector<Rational> const &
     return out;
 }
 
+static bool symbol_sqrt_product_rad(Arena &a, NodeId n, std::string const &sym, NodeId &rad)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul || x.kids.size() != 2) return false;
+    bool has_sym = false;
+    bool has_root = false;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(t.kind == NodeKind::Sym && t.text == sym) has_sym = true;
+        else if(t.kind == NodeKind::Fn && t.fkind == FnKind::Sqrt) {
+            rad = t.a;
+            has_root = true;
+        }
+        else return false;
+    }
+    return has_sym && has_root;
+}
+
+struct SqrtProductDerivativeText
+{
+    std::string rad;
+    std::string rad_prime;
+    std::string numerator;
+    std::string derivative;
+};
+
+static std::optional<SqrtProductDerivativeText> sqrt_product_derivative_text(Arena &a, NodeId n, std::string const &sym)
+{
+    NodeId rad = 0;
+    if(!symbol_sqrt_product_rad(a, n, sym, rad)) return std::nullopt;
+    auto p = poly_node_local(a, rad, sym, 4);
+    if(!p || p->size() < 2) return std::nullopt;
+    auto dp = poly_derivative_local(*p);
+    std::vector<Rational> half_sym_dp(dp.size() + 1, Rational{0, 1});
+    for(std::size_t i = 0; i < dp.size(); ++i)
+        half_sym_dp[i + 1] = rat_div_local(dp[i], Rational{2, 1});
+    auto num = poly_add_local(*p, half_sym_dp);
+    std::string rad_txt = poly_coeffs_text(*p, sym);
+    std::string dp_txt = poly_coeffs_text(dp, sym);
+    std::string num_txt = poly_coeffs_text(num, sym);
+    if(rad_txt.empty() || dp_txt.empty() || num_txt.empty()) return std::nullopt;
+    return SqrtProductDerivativeText{rad_txt, dp_txt, num_txt, fraction_num_text(num_txt) + "/sqrt(" + rad_txt + ")"};
+}
+
 static NodeId linear_sqrt_base_node(Arena &a, std::vector<Rational> const &base, std::string const &var)
 {
     std::vector<NodeId> terms;
@@ -3778,6 +3822,16 @@ static bool append_product_rule_detail(
             std::string exam_subst = exam_product_substitution_line(a, constants, factors, deriv_nodes, var);
             if(!exam_subst.empty() && compact_math_key(exam_subst) != compact_math_key(subst))
                 steps.push_back(exam_subst + ".");
+            if(constants.empty()) {
+                if(auto sr = sqrt_product_derivative_text(a, n, var)) {
+                    std::string line1 = "dy/d" + var + " = sqrt(" + sr->rad + ") + " + var + "*(" +
+                                        sr->rad_prime + ")/(2*sqrt(" + sr->rad + "))";
+                    std::string line2 = "dy/d" + var + " = " + sr->derivative;
+                    steps.push_back(line1 + ".");
+                    steps.push_back(line2 + ".");
+                    if(answer_override) *answer_override = line2;
+                }
+            }
         }
     }
     if(factors.size() == 2) {
@@ -4238,6 +4292,19 @@ static bool append_quotient_rule_detail(
         steps.push_back(subst + ".");
         subst_pushed = true;
     }
+    if(same_expr_key(a, du, dv)) {
+        NodeId delta = casio::simplify(a, casio::add(a, {q.b, casio::neg(a, q.a)}));
+        NodeId top = casio::simplify(a, casio::mul(a, {du, delta}));
+        std::string nt = clean_math_text(format_expr_human(a, top));
+        std::string raw_top = "(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")";
+        if(!nt.empty() && compact_math_key(nt) != compact_math_key(raw_top) && node_weight(a, top) <= 50) {
+            steps.push_back("[(u')*v-u*(v')] = " + nt + ".");
+            steps.push_back("[" + raw_top + "] = " + nt + ".");
+            if(answer_override)
+                *answer_override = "dy/d" + var + " = " + fraction_num_text(nt) + "/(" + v + ")^2";
+            return true;
+        }
+    }
     auto ul = linear_in_symbol(a, q.a, var);
     auto vl = linear_in_symbol(a, q.b, var);
     if(ul && vl && !depends_on(a, ul->coef, var) && !depends_on(a, ul->rest, var) &&
@@ -4491,6 +4558,34 @@ static std::optional<std::vector<std::string>> inverse_sqrt_linear_product_route
         dxdy + ".",
         dname + " = 1/(d" + var + "/d" + dep + ").",
         answer
+    };
+}
+
+static std::optional<std::vector<std::string>> inverse_sqrt_poly_product_route(
+    Arena &a,
+    NodeId left,
+    NodeId right,
+    std::string const &var,
+    std::string const &dep,
+    std::string const &dname
+)
+{
+    NodeId product = 0;
+    if(is_named_symbol(a, left, var)) product = right;
+    else if(is_named_symbol(a, right, var)) product = left;
+    else return std::nullopt;
+    auto sr = sqrt_product_derivative_text(a, product, dep);
+    if(!sr) return std::nullopt;
+    std::string dxdy = "d" + var + "/d" + dep;
+    std::string den = sr->numerator.find(" + ") != std::string::npos || sr->numerator.find(" - ") != std::string::npos
+                          ? "(" + sr->numerator + ")"
+                          : sr->numerator;
+    return std::vector<std::string>{
+        var + " = " + dep + "*sqrt(" + sr->rad + ").",
+        dxdy + " = sqrt(" + sr->rad + ") + " + dep + "*(" + sr->rad_prime + ")/(2*sqrt(" + sr->rad + ")).",
+        dxdy + " = " + sr->derivative + ".",
+        dname + " = 1/(" + dxdy + ").",
+        dname + " = sqrt(" + sr->rad + ")/" + den,
     };
 }
 
@@ -5487,6 +5582,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string compact = eq_text;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
             if(auto route = inverse_sqrt_linear_product_route(arena, left, right, var, dep, dname)) {
+                std::string route_answer = route->back();
+                route->pop_back();
+                return casio::exam_block("implicit inverse derivative", *route, route_answer);
+            }
+            if(auto route = inverse_sqrt_poly_product_route(arena, left, right, var, dep, dname)) {
                 std::string route_answer = route->back();
                 route->pop_back();
                 return casio::exam_block("implicit inverse derivative", *route, route_answer);

@@ -11482,6 +11482,38 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     "1-cos(2*" + v + ") = tan(" + v + ")*sin(2*" + v + ")"
                 );
             }
+            std::string tan_double = "2tan(" + v + ")/(1+tan(" + v + ")^2)";
+            if(key == tan_double || key == tan_double + "=sin(2" + v + ")") {
+                return casio::exam_block(
+                    "trig identity",
+                    {
+                        "tan(" + v + ") = sin(" + v + ")/cos(" + v + ")",
+                        "1+tan(" + v + ")^2 = (cos(" + v + ")^2+sin(" + v + ")^2)/cos(" + v + ")^2",
+                        "1+tan(" + v + ")^2 = 1/cos(" + v + ")^2",
+                        "2tan(" + v + ")/(1+tan(" + v + ")^2) = 2sin(" + v + ")cos(" + v + ")",
+                        "2sin(" + v + ")cos(" + v + ") = sin(2*" + v + ")",
+                    },
+                    "2*tan(" + v + ")/(1+tan(" + v + ")^2) = sin(2*" + v + ")"
+                );
+            }
+        }
+        if(key == "tan(15)" || key == "tan(pi/12)") {
+            std::string a = key == "tan(15)" ? "15" : "pi/12";
+            std::string two_a = key == "tan(15)" ? "30" : "pi/6";
+            std::string upper = key == "tan(15)" ? "45" : "pi/4";
+            return casio::exam_block(
+                "trig exact value",
+                {
+                    "Let T = tan(" + a + ").",
+                    "sin(2*" + a + ") = 2T/(1+T^2).",
+                    "sin(" + two_a + ") = 1/2.",
+                    "2T/(1+T^2) = 1/2.",
+                    "T^2 - 4T + 1 = 0.",
+                    "T = 2 +/- sqrt(3).",
+                    "0 < " + a + " < " + upper + ", so 0 < T < 1.",
+                },
+                "tan(" + a + ") = 2 - sqrt(3)"
+            );
         }
     }
 
