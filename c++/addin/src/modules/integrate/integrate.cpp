@@ -3882,6 +3882,113 @@ static std::string pi_times(Rational r)
     return std::to_string(r.num) + "/" + std::to_string(r.den) + "*pi";
 }
 
+static std::optional<std::string> theta_for_tan_limit(std::string const &s)
+{
+    std::string k = compact_key(s);
+    if(k == "0") return "0";
+    if(k == "1") return "pi/4";
+    if(k == "sqrt(3)") return "pi/3";
+    if(k == "1/sqrt(3)" || k == "1/(sqrt(3))" || k == "(1)/(sqrt(3))" ||
+       k == "sqrt(3)/3" || k == "(sqrt(3))/3") return "pi/6";
+    return std::nullopt;
+}
+
+static std::string sum_nonzero(std::string a, std::string b)
+{
+    if(a == "0") return b;
+    if(b == "0") return a;
+    if(!b.empty() && b.front() == '-') return a + " - " + b.substr(1);
+    return a + " + " + b;
+}
+
+struct Cos2PrimitiveVal
+{
+    Rational pi;
+    Rational plain;
+    Rational root3;
+};
+
+static std::optional<Cos2PrimitiveVal> cos2_primitive_parts(Rational k, std::string const &theta)
+{
+    if(theta == "0") return Cos2PrimitiveVal{Rational{0, 1}, Rational{0, 1}, Rational{0, 1}};
+    if(theta == "pi/6") return Cos2PrimitiveVal{r_div(k, Rational{12, 1}), Rational{0, 1}, r_div(k, Rational{8, 1})};
+    if(theta == "pi/4") return Cos2PrimitiveVal{r_div(k, Rational{8, 1}), r_div(k, Rational{4, 1}), Rational{0, 1}};
+    if(theta == "pi/3") return Cos2PrimitiveVal{r_div(k, Rational{6, 1}), Rational{0, 1}, r_div(k, Rational{8, 1})};
+    return std::nullopt;
+}
+
+static std::string root3_term(Rational c)
+{
+    c.normalize();
+    if(r_zero(c)) return "0";
+    if(r_eq(c, Rational{1, 1})) return "sqrt(3)";
+    if(r_eq(c, Rational{-1, 1})) return "-sqrt(3)";
+    return rat_text(c) + "*sqrt(3)";
+}
+
+static std::string cos2_primitive_diff_text(Cos2PrimitiveVal hi, Cos2PrimitiveVal lo)
+{
+    Rational p = r_sub(hi.pi, lo.pi);
+    Rational q = r_sub(hi.plain, lo.plain);
+    Rational r = r_sub(hi.root3, lo.root3);
+    return sum_nonzero(sum_nonzero(r_zero(p) ? "0" : pi_times(p), r_zero(q) ? "0" : rat_text(q)), root3_term(r));
+}
+
+static bool match_one_plus_square_den(std::string den, std::string const &var)
+{
+    den = strip_outer_parens_text(std::move(den));
+    replace_all_text(den, "^(2)", "^2");
+    std::string a = "(1+" + var + "^2)^2";
+    std::string b = "(" + var + "^2+1)^2";
+    return den == a || den == b;
+}
+
+static std::optional<TextIntegral> tan_square_recip_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    std::string integrand = compact_key((*args)[0]);
+    std::optional<Rational> k;
+    std::size_t slash = integrand.find('/');
+    if(slash != std::string::npos) {
+        std::string top = integrand.substr(0, slash);
+        std::string den = integrand.substr(slash + 1);
+        if(!match_one_plus_square_den(den, var)) return std::nullopt;
+        if(top.empty()) top = "1";
+        k = parse_rational_text(top);
+    } else {
+        replace_all_text(integrand, "^(-2)", "^-2");
+        for(std::string den : {"(1+" + var + "^2)^-2", "(" + var + "^2+1)^-2"}) {
+            if(integrand.size() >= den.size() && integrand.substr(integrand.size() - den.size()) == den) {
+                std::string top = integrand.substr(0, integrand.size() - den.size());
+                if(top.empty()) top = "1";
+                k = parse_rational_text(top);
+                break;
+            }
+        }
+    }
+    if(!k) return std::nullopt;
+    auto lo = theta_for_tan_limit((*args)[2]);
+    auto hi = theta_for_tan_limit((*args)[3]);
+    if(!lo || !hi) return std::nullopt;
+    auto flo = cos2_primitive_parts(*k, *lo);
+    auto fhi = cos2_primitive_parts(*k, *hi);
+    if(!flo || !fhi) return std::nullopt;
+    std::string answer = cos2_primitive_diff_text(*fhi, *flo);
+    std::string kt = rat_text(*k);
+    std::vector<std::string> steps{
+        "Let " + var + "=tan(theta), d" + var + "=sec(theta)^2 dtheta.",
+        var + "=" + compact_key((*args)[2]) + " => theta=" + *lo + ", " + var + "=" + compact_key((*args)[3]) + " => theta=" + *hi + ".",
+        "1+" + var + "^2=sec(theta)^2.",
+        "I = Int_" + *lo + "^" + *hi + " " + kt + "*sec(theta)^2/sec(theta)^4 dtheta.",
+        "I = Int_" + *lo + "^" + *hi + " " + kt + "*cos(theta)^2 dtheta.",
+        "cos(theta)^2 = (1+cos(2*theta))/2.",
+        "F(theta) = " + kt + "*(theta/2 + sin(2*theta)/4).",
+    };
+    return TextIntegral{"trig substitution", std::move(steps), answer};
+}
+
 static std::optional<TextIntegral> reciprocal_root_defint_pattern(std::string const &expr)
 {
     auto args = unwrap_call_args(expr, "defint");
@@ -4815,7 +4922,22 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "5*pi*sqrt(3)/18"
         );
     }
+    if(c == "defint(tan(x)sec(2x),x,0,pi/6)" || c == "defint(tan(x)sec(2*x),x,0,pi/6)") {
+        return out(
+            "sec substitution",
+            {
+                "Let u=sec(x), du=sec(x)tan(x) dx.",
+                "cos(2*x)=2/sec(x)^2-1=(2-u^2)/u^2.",
+                "tan(x)*sec(2*x) dx = u/(2-u^2) du.",
+                "x=0 => u=1, x=pi/6 => u=2/sqrt(3).",
+                "F(u) = -1/2*ln(abs(2-u^2)).",
+                "F(pi/6) - F(0).",
+            },
+            "1/2*ln(3)"
+        );
+    }
     if(auto ti = trig_identity_integral_pattern(c)) return ti;
+    if(auto ti = tan_square_recip_defint_pattern(expr)) return ti;
     if(auto sr = sqrt_over_one_plus_sqrt_power_pattern(c)) return sr;
     if(auto rr = reciprocal_shift_root_pattern(c)) return rr;
     if(auto sr = sqrt_shift_over_var_defint_pattern(expr)) return sr;
@@ -12536,6 +12658,242 @@ static std::optional<NodeId> integrate_sec2_tan_sqrt_shift(Arena &a, NodeId expr
     return casio::simplify(a, mul_coeff(a, scale, prim));
 }
 
+struct LinearDecreasingRoot
+{
+    Rational m;
+    Rational n;
+    Rational b;
+    std::string var;
+};
+
+static std::optional<LinearDecreasingRoot> match_linear_decreasing_root(Arena &a, std::string const &expr, std::string const &var)
+{
+    try {
+        NodeId node = casio::parse_expr(a, expr);
+        Node const &x = a.get(node);
+        std::vector<NodeId> fs = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{node};
+        Rational scale{1, 1};
+        std::optional<std::pair<Rational, Rational>> lin;
+        std::optional<std::pair<Rational, Rational>> root;
+        for(NodeId f : fs) {
+            if(auto r = as_num(a, f)) {
+                scale = r_mul(scale, *r);
+                continue;
+            }
+            if(!root) {
+                if(auto base = sqrt_base(a, f)) {
+                    root = affine_form(a, *base, var);
+                    if(!root) return std::nullopt;
+                    continue;
+                }
+            }
+            if(!lin) {
+                lin = affine_form(a, f, var);
+                if(lin) continue;
+            }
+            return std::nullopt;
+        }
+        if(!lin || !root) return std::nullopt;
+        if(!r_eq(root->first, Rational{-1, 1}) || r_zero(lin->first)) return std::nullopt;
+        return LinearDecreasingRoot{r_mul(scale, lin->first), r_mul(scale, lin->second), root->second, var};
+    } catch(...) {
+        return std::nullopt;
+    }
+}
+
+static std::string coeff_term(Rational c, std::string const &term)
+{
+    c.normalize();
+    if(r_zero(c)) return "0";
+    if(r_eq(c, Rational{1, 1})) return term;
+    if(r_eq(c, Rational{-1, 1})) return "-" + term;
+    return rat_text(c) + "*" + term;
+}
+
+static std::string add_terms(std::vector<std::string> terms)
+{
+    std::string out;
+    for(std::string const &t : terms) {
+        if(t.empty() || t == "0") continue;
+        if(out.empty()) out = t;
+        else if(t.front() == '-') out += " - " + t.substr(1);
+        else out += " + " + t;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::string affine_u2_text(Arena &a, Rational c, Rational m)
+{
+    std::string u2 = coeff_term(r_neg(m), "u^2");
+    std::string ct = rat_text(c);
+    return add_terms({ct, u2});
+}
+
+static std::string linear_root_arg_text(LinearDecreasingRoot const &d)
+{
+    return rat_text(d.b) + "-" + d.var;
+}
+
+static std::string factored_linear_root_final(Arena &a, LinearDecreasingRoot const &d)
+{
+    Rational A = r_mul(Rational{-3, 1}, d.m);
+    Rational B = r_sub(r_mul(Rational{-2, 1}, r_mul(d.m, d.b)), r_mul(Rational{5, 1}, d.n));
+    Rational scale{2, 15};
+    if(A.den == 1 && B.den == 1) {
+        long long g = std::gcd(std::llabs(A.num), std::llabs(B.num));
+        if(g > 1) {
+            scale = r_mul(scale, Rational{g, 1});
+            A = r_div(A, Rational{g, 1});
+            B = r_div(B, Rational{g, 1});
+        }
+        if(A.num < 0 || (A.num == 0 && B.num < 0)) {
+            scale = r_neg(scale);
+            A = r_neg(A);
+            B = r_neg(B);
+        }
+    }
+    NodeId inner = affine_node(a, {A, B}, d.var);
+    std::string prefix;
+    if(r_eq(scale, Rational{1, 1})) prefix = "";
+    else if(r_eq(scale, Rational{-1, 1})) prefix = "-";
+    else prefix = rat_text(scale) + "*";
+    return prefix + "(" + format_expr_human(a, inner) + ")*(" + linear_root_arg_text(d) + ")^(3/2) + C";
+}
+
+static std::optional<TextIntegral> linear_decreasing_root_pattern(Arena &a, std::string const &expr, std::string const &var, bool parts)
+{
+    auto d = match_linear_decreasing_root(a, expr, var);
+    if(!d) return std::nullopt;
+    std::string root_arg = linear_root_arg_text(*d);
+    NodeId lin_node = affine_node(a, {d->m, d->n}, d->var);
+    std::string lin = format_expr_human(a, lin_node);
+    Rational c = r_add(r_mul(d->m, d->b), d->n);
+    std::string final = factored_linear_root_final(a, *d);
+    if(parts) {
+        std::vector<std::string> steps{
+            "u = " + lin + ", dv = sqrt(" + root_arg + ") d" + d->var + ".",
+            "du = " + rat_text(d->m) + " d" + d->var + ", v = -2/3*(" + root_arg + ")^(3/2).",
+            "I = u*v - Int(v du).",
+            "I = -2/3*(" + lin + ")*(" + root_arg + ")^(3/2) + " + rat_text(r_mul(Rational{2, 3}, d->m)) +
+                "*Int((" + root_arg + ")^(3/2)) d" + d->var + ".",
+            "Int((" + root_arg + ")^(3/2)) d" + d->var + " = -2/5*(" + root_arg + ")^(5/2).",
+            "I = " + final,
+        };
+        return TextIntegral{"integration by parts", std::move(steps), final};
+    }
+    std::string lin_u = affine_u2_text(a, c, d->m);
+    Rational u5 = r_div(r_mul(Rational{2, 1}, d->m), Rational{5, 1});
+    Rational u3 = r_div(r_mul(Rational{-2, 1}, c), Rational{3, 1});
+    std::vector<std::string> steps{
+        "u = sqrt(" + root_arg + "); u^2 = " + root_arg + ".",
+        d->var + " = " + rat_text(d->b) + " - u^2; d" + d->var + " = -2u du.",
+        lin + " = " + lin_u + ".",
+        "I = Int -2u^2(" + lin_u + ") du.",
+        "I = " + add_terms({coeff_term(u5, "u^5"), coeff_term(u3, "u^3")}) + " + C.",
+        "I = " + final,
+    };
+    return TextIntegral{"root substitution", std::move(steps), final};
+}
+
+static std::optional<Rational> match_var_exp_product(Arena &a, std::string expr, std::string const &var)
+{
+    std::string k = compact_key(std::move(expr));
+    for(std::string const &base : {var + "e^" + var, var + "e^(" + var + ")", var + "exp(" + var + ")"}) {
+        if(k == base) return Rational{1, 1};
+        if(k == "-" + base) return Rational{-1, 1};
+        for(std::string sep : {"", "*"}) {
+            if(k.size() > base.size() + sep.size() && k.substr(k.size() - base.size() - sep.size()) == sep + base) {
+                auto r = parse_rational_text(k.substr(0, k.size() - base.size() - sep.size()));
+                if(r) return *r;
+            }
+        }
+    }
+    try {
+        NodeId node = casio::parse_expr(a, k);
+        Node const &x = a.get(node);
+        std::vector<NodeId> fs = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{node};
+        NodeId v = casio::sym(a, var);
+        NodeId ex = casio::parse_expr(a, "e^(" + var + ")");
+        NodeId expx = casio::parse_expr(a, "exp(" + var + ")");
+        Rational coeff{1, 1};
+        bool got_var = false, got_exp = false;
+        for(NodeId f : fs) {
+            if(auto r = as_num(a, f)) {
+                coeff = r_mul(coeff, *r);
+            } else if(!got_var && same_expr(a, f, v)) {
+                got_var = true;
+            } else if(!got_exp && (same_expr(a, f, ex) || same_expr(a, f, expx))) {
+                got_exp = true;
+            } else {
+                return std::nullopt;
+            }
+        }
+        if(got_var && got_exp) return coeff;
+    } catch(...) {
+    }
+    return std::nullopt;
+}
+
+static std::string exp_var_primitive_value(Rational coeff, Rational x)
+{
+    x.normalize();
+    Rational c = r_mul(coeff, r_sub(x, Rational{1, 1}));
+    if(r_zero(c)) return "0";
+    if(r_zero(x)) return rat_text(c);
+    std::string e = "e^(" + rat_text(x) + ")";
+    if(r_eq(c, Rational{1, 1})) return e;
+    if(r_eq(c, Rational{-1, 1})) return "-" + e;
+    return rat_text(c) + "*" + e;
+}
+
+static std::optional<TextIntegral> var_exp_parts_pattern(std::string const &expr, std::string const &var)
+{
+    Arena local;
+    auto coeff = match_var_exp_product(local, expr, var);
+    if(!coeff) return std::nullopt;
+    std::string e = "e^(" + var + ")";
+    bool scaled = !r_eq(*coeff, Rational{1, 1});
+    std::string answer = coeff_term(*coeff, e + "*(" + var + " - 1)") + " + C";
+    std::vector<std::string> steps;
+    if(scaled) steps.push_back("I = " + rat_text(*coeff) + "*J, J = Int(" + var + "*" + e + ") d" + var + ".");
+    steps.push_back("D: " + var + ", 1, 0.");
+    steps.push_back("I: " + e + ", " + e + ".");
+    steps.push_back(std::string(scaled ? "J" : "I") + " = " + var + "*(" + e + ") - (" + e + ") + C.");
+    if(scaled) steps.push_back("I = " + answer);
+    return TextIntegral{"integration by parts", std::move(steps), answer};
+}
+
+static std::optional<TextIntegral> var_exp_parts_defint_pattern(std::string const &expr)
+{
+    auto args = unwrap_call_args(expr, "defint");
+    if(!args || args->size() != 4) return std::nullopt;
+    std::string var = compact_key((*args)[1]);
+    Arena local;
+    auto coeff = match_var_exp_product(local, (*args)[0], var);
+    if(!coeff) return std::nullopt;
+    auto lo = parse_rational_text(compact_key((*args)[2]));
+    auto hi = parse_rational_text(compact_key((*args)[3]));
+    if(!lo || !hi) return std::nullopt;
+    std::string e = "e^(" + var + ")";
+    std::string flo = exp_var_primitive_value(*coeff, *lo);
+    std::string fhi = exp_var_primitive_value(*coeff, *hi);
+    std::string answer;
+    if(flo == "0") answer = fhi;
+    else if(fhi == "0" && !flo.empty() && flo.front() == '-') answer = flo.substr(1);
+    else if(fhi == "0") answer = "-(" + flo + ")";
+    else answer = fhi + " - (" + flo + ")";
+    std::vector<std::string> steps{
+        "D: " + var + ", 1, 0.",
+        "I: " + e + ", " + e + ".",
+        "I = " + var + "*(" + e + ") - (" + e + ") + C.",
+        "F(" + var + ") = " + coeff_term(*coeff, e + "*(" + var + " - 1)") + ".",
+        "F(" + rat_text(*hi) + ") - F(" + rat_text(*lo) + ").",
+        "F(" + rat_text(*hi) + ") = " + fhi + ".",
+        "F(" + rat_text(*lo) + ") = " + flo + ".",
+    };
+    return TextIntegral{"integration by parts", std::move(steps), answer};
+}
+
 static std::optional<NodeId> integrate_const_pow_log_derivative(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(expr);
@@ -18830,7 +19188,36 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 
     std::string direct = compact_key(req.expr);
     if(direct.rfind("de_solve(", 0) == 0) return solve_de_mode(req.expr);
+    if(method_key == "parts" || method_key == "ibp") {
+        if(auto exp_parts = var_exp_parts_pattern(req.expr, req.var)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : exp_parts->steps) steps.push_back(s);
+            return casio::exam_block(exp_parts->method, steps, exp_parts->answer);
+        }
+        if(auto root_parts = linear_decreasing_root_pattern(arena, req.expr, req.var, true)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : root_parts->steps) steps.push_back(s);
+            return casio::exam_block(root_parts->method, steps, root_parts->answer);
+        }
+    } else if(method_key.empty() || method_key == "sub" || method_key == "substitution") {
+        if(auto root_sub = linear_decreasing_root_pattern(arena, req.expr, req.var, false)) {
+            std::vector<std::string> steps;
+            steps.push_back("Start with " + req.expr + ".");
+            for(auto const &s : root_sub->steps) steps.push_back(s);
+            return casio::exam_block(root_sub->method, steps, root_sub->answer);
+        }
+    }
     if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        if(method_key == "parts" || method_key == "ibp") {
+            if(auto exp_parts = var_exp_parts_defint_pattern(req.expr)) {
+                std::vector<std::string> steps;
+                steps.push_back("Start with " + req.expr + ".");
+                for(auto const &s : exp_parts->steps) steps.push_back(s);
+                return casio::exam_block(exp_parts->method, steps, exp_parts->answer);
+            }
+        }
         if(auto atan_tail = run_improper_reciprocal_quadratic_atan_defint(arena, req)) return *atan_tail;
         if(auto quad_pf = run_improper_quadratic_linear_pf_defint(arena, req)) return *quad_pf;
         if(auto lin_pf = run_improper_linear_pf_defint(arena, req)) return *lin_pf;

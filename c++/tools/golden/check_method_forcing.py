@@ -14,7 +14,10 @@ CATALOG = REPO / "c++" / "khicas" / "upstream" / "giac90_1addin" / "catalogen.cp
 
 
 CASES = [
-    ("int", "x*exp(x),method=parts", ["u=x", "dv=e^x dx"]),
+    ("int", "x*exp(x),method=parts", ["D: x, 1, 0", "I: e^(x), e^(x)", "e^(x)*(x - 1) + C"]),
+    ("int", "2*x*exp(x),method=parts", ["I = 2*J", "J = x*(e^(x)) - (e^(x)) + C", "2*e^(x)*(x - 1) + C"]),
+    ("int", "defint(x*e^x,x,0,1),method=parts", ["F(1) = 0", "F(0) = -1", "1"]),
+    ("int", "defint(2*x*e^x,x,0,1),method=parts", ["F(x) = 2*e^(x)*(x - 1)", "F(1) = 0", "F(0) = -2", "2"]),
     ("int", "x*cos(x^2),method=sub,u=x^2", ["u=x^2", "du/dx = 2*x"]),
     ("int", "defint(3*x/(3*x-5),x,2,3),method=sub", ["u = 3*x - 5", "Limits: x = 2 => u = 1", "5/3*ln(4) + 1"]),
     ("int", "x^2,method=badmethod", ["Invalid method"]),
