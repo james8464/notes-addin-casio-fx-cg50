@@ -81,7 +81,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q11 rational binomial",
         ["--alg", "binomial(sqrt((1+4*x)/(1-x)),x,0,2)"],
-        ["sqrt(4*x + 1)", "(4*x + 1)^1/2 = 1 + 2*x - 2*x^2", "(- x + 1)^-1/2 = 1 + 1/2*x + 3/8*x^2", "5/2*x", "- 5/8*x^2", "Valid for abs(x) < 1/4"],
+        ["(4*x + 1)^1/2 = 1 + 2*x - 2*x^2", "(- x + 1)^-1/2 = 1 + 1/2*x + 3/8*x^2", "5/2*x", "- 5/8*x^2", "Valid for abs(4*x) < 1"],
         ["unsupported binomial", "ERR:"],
     ),
     (

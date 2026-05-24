@@ -811,6 +811,18 @@ CASES = [
         ("(4*x + 1)^1/2", "(x + 1)^-1", "Valid for abs(x) < 1/4", "6 + 4*x^3"),
     ),
     (
+        "binomial sqrt quotient product",
+        ["--alg", "series(sqrt((1+a*x)/(4-x)),x,0,3)"],
+        ("(a*x + 1)^1/2 = 1 + 1/2*a*x - 1/8*a^2*x^2", "(- x + 4)^-1/2 = 1/2 + 1/16*x + 3/256*x^2", "1/32*a - 1/16*a^2 + 3/256"),
+        ("unsupported series form",),
+    ),
+    (
+        "affine rhs de uses integrating factor",
+        ["--int", "de_solve(dV/dt+k*V=200,V(0)=0)"],
+        ("dV/dt + p*V = q", "mu = e^Int(p dt) = e^(k*t)", "C = -200/k", "V = 200/k - 200*1/k*e^(-k*t)"),
+        ("1/(- k*V + 200) dV",),
+    ),
+    (
         "exp substitution no generic",
         ["--alg", "2^(2*x)-5*2^x+4=0,method=log_exp"],
         ("u = 2^x, u > 0", "- 5*u + u^2 + 4 = 0", "x = [0, 2]"),

@@ -3899,17 +3899,53 @@ static std::optional<SymbolicBinomSeries> symbolic_linear_power_series_expr(Aren
     return out;
 }
 
+static SymbolicBinomSeries symbolic_product_series(Arena &a,
+                                                   std::vector<SymbolicBinomSeries> const &parts,
+                                                   int degree)
+{
+    SymbolicBinomSeries out;
+    out.c = symbolic_zero_series(a, degree);
+    out.c[0] = one_node(a);
+    for(auto const &s : parts) {
+        out.has_series = out.has_series || s.has_series;
+        out.c = symbolic_convolve_series(a, out.c, s.c, degree);
+        out.lines.insert(out.lines.end(), s.lines.begin(), s.lines.end());
+        for(auto const &v : s.valid) push_unique(out.valid, v);
+    }
+    return out;
+}
+
 static std::optional<SymbolicBinomSeries> symbolic_factor_series(Arena &a, NodeId n, std::string const &var, int degree)
 {
     Node const &x = a.get(n);
-    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt)
+    auto div_power = [&](NodeId top, NodeId bot, NodeId power) -> std::optional<SymbolicBinomSeries> {
+        if(contains_symbol(a, power, var)) return std::nullopt;
+        auto ntop = symbolic_linear_power_series_expr(a, top, power, var, degree);
+        NodeId neg_power = exact_eval_simplify(a, casio::neg(a, power));
+        auto nbot = symbolic_linear_power_series_expr(a, bot, neg_power, var, degree);
+        if(!ntop || !nbot) return std::nullopt;
+        return symbolic_product_series(a, {*ntop, *nbot}, degree);
+    };
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &arg = a.get(x.a);
+        if(arg.kind == NodeKind::Div) {
+            if(auto s = div_power(arg.a, arg.b, a.num(Rational{1, 2}))) return s;
+        }
         return symbolic_linear_power_series(a, x.a, Rational{1, 2}, var, degree);
+    }
     if(x.kind == NodeKind::Pow) {
         Node const &e = a.get(x.b);
         Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Div) {
+            if(auto s = div_power(base.a, base.b, x.b)) return s;
+        }
         if(e.kind == NodeKind::Num) {
             if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt) {
                 Rational p = r_mul(e.num, Rational{1, 2});
+                Node const &arg = a.get(base.a);
+                if(arg.kind == NodeKind::Div) {
+                    if(auto s = div_power(arg.a, arg.b, a.num(p))) return s;
+                }
                 if(auto s = symbolic_linear_power_series(a, base.a, p, var, degree)) return s;
                 return symbolic_linear_power_series_expr(a, base.a, a.num(p), var, degree);
             }
@@ -3918,6 +3954,10 @@ static std::optional<SymbolicBinomSeries> symbolic_factor_series(Arena &a, NodeI
         }
         if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt) {
             NodeId half_power = exact_eval_simplify(a, casio::mul(a, {a.num(Rational{1, 2}), x.b}));
+            Node const &arg = a.get(base.a);
+            if(arg.kind == NodeKind::Div) {
+                if(auto s = div_power(arg.a, arg.b, half_power)) return s;
+            }
             return symbolic_linear_power_series_expr(a, base.a, half_power, var, degree);
         }
         return symbolic_linear_power_series_expr(a, x.a, x.b, var, degree);
