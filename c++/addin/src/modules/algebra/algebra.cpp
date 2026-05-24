@@ -3297,9 +3297,18 @@ static std::optional<std::vector<std::string>> partial_fraction_two_linear_symbo
         auto p = poly_of(a, den_id, var);
         auto rr = p && p->ok ? rational_quadratic_roots(*p) : std::optional<std::pair<Rational, Rational>>{};
         if(rr && !is_zero(p->a2)) {
-            NodeId l1 = poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, r_neg(rr->first), true}, var);
-            NodeId l2 = poly2_to_node(a, Poly2{Rational{0, 1}, p->a2, r_mul(r_neg(p->a2), rr->second), true}, var);
-            den_id = casio::mul(a, {l1, l2});
+            NodeId l1 = 0;
+            NodeId l2 = 0;
+            if(is_zero(rr->first) || is_zero(rr->second)) {
+                Rational other = is_zero(rr->first) ? rr->second : rr->first;
+                l1 = poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, Rational{0, 1}, true}, var);
+                l2 = poly2_to_node(a, Poly2{Rational{0, 1}, p->a2, r_mul(r_neg(p->a2), other), true}, var);
+            }
+            else {
+                l1 = poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, r_neg(rr->first), true}, var);
+                l2 = poly2_to_node(a, Poly2{Rational{0, 1}, p->a2, r_mul(r_neg(p->a2), rr->second), true}, var);
+            }
+            den_id = a.mul({l1, l2});
             denp = &a.get(den_id);
         }
     }
@@ -7814,6 +7823,77 @@ next_root:
     std::sort(roots.begin(), roots.end(), [](Rational a, Rational b) { return r_cmp(a, b) < 0; });
     roots.erase(std::unique(roots.begin(), roots.end(), [](Rational a, Rational b) { return r_cmp(a, b) == 0; }), roots.end());
     return roots;
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_distinct_linear_any(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_any_of(a, x.a, var);
+    auto den = poly_any_of(a, x.b, var);
+    if(!num || !den || !num->ok || !den->ok || den->c.size() < 4 || den->c.size() > 5) return std::nullopt;
+    trim_poly_any(*num);
+    trim_poly_any(*den);
+    int deg = static_cast<int>(den->c.size()) - 1;
+    if(static_cast<int>(num->c.size()) - 1 >= deg) return std::nullopt;
+    auto roots = rational_roots_any(*den);
+    if(static_cast<int>(roots.size()) != deg) return std::nullopt;
+
+    struct Factor { Rational a, b, r; std::string text; };
+    std::vector<Factor> factors;
+    factors.reserve(roots.size());
+    int scale_idx = 0;
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(!is_zero(roots[i])) {
+            scale_idx = static_cast<int>(i);
+            break;
+        }
+    }
+    Rational lead = den->c.back();
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        Rational m{1, 1};
+        if(static_cast<int>(i) == scale_idx) m = lead;
+        Rational c = r_mul(r_neg(m), roots[i]);
+        NodeId f = poly2_to_node(a, Poly2{Rational{0, 1}, m, c, true}, var);
+        factors.push_back(Factor{m, c, roots[i], format_expr(a, f)});
+    }
+
+    static char const *names[] = {"A", "B", "C", "D"};
+    std::vector<Rational> coeffs;
+    coeffs.reserve(factors.size());
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        Rational prod{1, 1};
+        for(std::size_t j = 0; j < factors.size(); ++j) {
+            if(i == j) continue;
+            prod = r_mul(prod, r_add(r_mul(factors[j].a, factors[i].r), factors[j].b));
+        }
+        if(is_zero(prod)) return std::nullopt;
+        coeffs.push_back(r_div(poly_any_eval(*num, factors[i].r), prod));
+    }
+
+    std::string form, mult, ans;
+    std::vector<std::string> out;
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        std::string t = std::string(names[i]) + "/(" + factors[i].text + ")";
+        form = signed_sum_text(form, t);
+        mult += "(" + factors[i].text + ")";
+    }
+    out.push_back(form);
+    out.push_back("Multiply by " + mult);
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        Rational prod{1, 1};
+        for(std::size_t j = 0; j < factors.size(); ++j) {
+            if(i == j) continue;
+            prod = r_mul(prod, r_add(r_mul(factors[j].a, factors[i].r), factors[j].b));
+        }
+        Rational nv = poly_any_eval(*num, factors[i].r);
+        out.push_back(var + " = " + rat_node_text(a, factors[i].r) + ": " + names[i] +
+                      " = " + rat_node_text(a, nv) + "/" + rat_node_text(a, prod) +
+                      " = " + rat_node_text(a, coeffs[i]));
+        ans = signed_sum_text(ans, quotient_term_text(a, coeffs[i], factors[i].text));
+    }
+    out.push_back(ans);
+    return out;
 }
 
 static std::optional<std::string> quartic_finite_interval_range(
@@ -31628,6 +31708,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear_symbolic(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_distinct_linear_any(arena, parsed, pfv)) return *pf;
         }
 algebra_compare_transform_modes:
         if(req.mode == 1) {
@@ -33276,6 +33357,7 @@ algebra_compare_transform_modes:
                 if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear_symbolic(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_distinct_linear_any(arena, parsed, pfv)) return *pf;
                 Node const &pn = arena.get(parsed);
                 if(pn.kind != NodeKind::Div) {
                     return casio::exam_block(

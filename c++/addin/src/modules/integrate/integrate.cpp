@@ -2619,6 +2619,7 @@ static std::string coeff_var_text(Arena &a, Rational c, std::string const &v)
 }
 
 static std::optional<std::vector<std::string>> symbolic_de_constant_route(Arena &a, DeToken const &tok, NodeId dydx, std::string const &bc);
+static NodeId normalize_rational_power_answer(Arena &a, NodeId n, std::string const &var);
 
 static std::vector<std::string> solve_de_mode(std::string const &payload)
 {
@@ -3006,6 +3007,13 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     if(raw_answer != scaled_answer) steps.push_back(raw_answer);
                 }
                 y_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs));
+                NodeId tidy_rhs = normalize_rational_power_answer(a, y_rhs, tok->x);
+                if(!same_expr(a, y_rhs, tidy_rhs)) {
+                    std::string raw = format_expr(a, y_rhs);
+                    std::string tidy = format_expr(a, tidy_rhs);
+                    if(raw != tidy) steps.push_back(tok->y + " = " + raw);
+                }
+                y_rhs = tidy_rhs;
                 auto compact_rhs = affine_reciprocal_text(a, y_rhs, tok->x);
                 if(!compact_rhs) compact_rhs = reciprocal_linear_text(a, y_rhs, tok->x);
                 answer = tok->y + " = " + compact_rhs.value_or(format_expr(a, y_rhs));
@@ -11429,6 +11437,15 @@ static std::optional<RatPoly> rational_poly_of(Arena &a, NodeId n, std::string c
     auto p = poly_of_any(a, n, var);
     if(!p || !p->ok) return std::nullopt;
     return RatPoly{*p, Poly{{Rational{1, 1}}, true}};
+}
+
+static NodeId normalize_rational_power_answer(Arena &a, NodeId n, std::string const &var)
+{
+    auto r = rational_poly_of(a, n, var);
+    if(!r || !r->num.ok || !r->den.ok || poly_degree(r->den) < 1) return n;
+    NodeId top = poly_to_node(a, r->num, var);
+    NodeId bot = poly_to_node(a, r->den, var);
+    return casio::simplify(a, casio::div(a, top, bot));
 }
 
 static std::optional<NodeId> integrate_cancelled_rational(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
