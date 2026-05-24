@@ -785,6 +785,35 @@ static std::string clean_math_text(std::string s)
     replace_all("--", "");
     replace_all("+ -", "- ");
     replace_all("- -", "+ ");
+    replace_all("* -1", "*-1");
+    auto clean_numeric_times_minus_one = [&]() {
+        std::size_t pos = 0;
+        while((pos = s.find("*-1", pos)) != std::string::npos) {
+            std::size_t after = pos + 3;
+            if(after < s.size() && std::isdigit(static_cast<unsigned char>(s[after]))) {
+                pos = after;
+                continue;
+            }
+            std::size_t start = pos;
+            while(start > 0) {
+                char ch = s[start - 1];
+                if(!(std::isdigit(static_cast<unsigned char>(ch)) || ch == '/')) break;
+                --start;
+            }
+            if(start == pos) {
+                pos = after;
+                continue;
+            }
+            bool negative = start > 0 && s[start - 1] == '-' &&
+                            (start == 1 || !std::isalnum(static_cast<unsigned char>(s[start - 2])));
+            if(negative) --start;
+            std::string coeff = s.substr(start, pos - start);
+            std::string repl = negative ? coeff.substr(1) : "-" + coeff;
+            s.replace(start, after - start, repl);
+            pos = start + repl.size();
+        }
+    };
+    clean_numeric_times_minus_one();
     auto compact_coeff = [](std::string c) {
         c.erase(std::remove_if(c.begin(), c.end(), [](unsigned char ch) { return std::isspace(ch); }), c.end());
         return c;
@@ -4003,6 +4032,7 @@ static std::string poly_gcd_factored_text(std::vector<Rational> c, std::string c
     poly_div_int(c, g);
     std::string body = poly_coeffs_text(c, var);
     if(body.empty() || body == "0") return "";
+    if(body == "-1") return "-" + std::to_string(g);
     return std::to_string(g) + "*" + fraction_num_text(body);
 }
 

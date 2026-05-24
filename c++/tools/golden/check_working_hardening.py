@@ -1244,6 +1244,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "y-e=-3*e*(x-e^2),method=standard_line",
+        ["y - e = -3*e*(x - e^(2))", "y = - 3*e*x + e + 3*e^(3)", "y + 3*e*x = e + 3*e^(3)"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "y-a=m*(x-b),method=standard_line",
+        ["y - a = m*(x - b)", "y = m*x + a - m*b", "y - m*x = a - m*b"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(-asin(x-1),x,0)",
+        ["f(0) = pi/2"],
+        ["1.570796", "ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(atan(x),x,1)",
+        ["f(1) = pi/4"],
+        ["0.785398", "ERR:"],
+    ),
+    (
+        "alg",
         "cot(x^2-pi/4),method=auto",
         ["Use identity cot(u) = cos(u)/sin(u)", "Domain: sin(x^2 - pi/4) != 0", "Answer: cos(x^2 - pi/4)/sin(x^2 - pi/4)"],
         ["Err:", "Unexpected token"],
@@ -2591,6 +2615,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "(2*x^2+1)/(3*x^2+1),x,method=quotient",
         ["[(4*x)*(3*x^2 + 1)-(2*x^2 + 1)*(6*x)] = -2*x", "dy/dx = -2*x/(3*x^2 + 1)^2"],
         ["ERR:"],
+    ),
+    (
+        "derive",
+        "(8*x^2+8*x+3)/(2*x+1)^2,x,method=quotient",
+        ["(16*x + 8)*(2*x + 1) - 4*(8*x^2 + 8*x + 3) = -4", "dy/dx = -4/(2*x + 1)^3"],
+        ["4*-1", "ERR:"],
+    ),
+    (
+        "derive",
+        "2*atan(x)-3*ln(1+x^2)-7*x^2,x",
+        ["d/dx(2*atan(x)) = 2/(x^2 + 1)", "- 6*x - 14*x*(x^2 + 1) + 2 = 2*(-7*x^3 - 10*x + 1)"],
+        ["-2*(7*x^3 - 10*x + 1)", "ERR:"],
     ),
     (
         "derive",

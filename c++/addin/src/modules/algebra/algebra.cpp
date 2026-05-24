@@ -716,6 +716,36 @@ static std::optional<NodeId> exact_trig_const_node(Arena &a, FnKind f, NodeId ar
         if(!v) return std::nullopt;
         return maybe_neg(*v, f != FnKind::Cos);
     }
+    auto pi_mul = [&](long long n, long long d = 1) -> NodeId {
+        if(n == 0) return casio::num(a, 0);
+        NodeId p = a.constant(ConstKind::Pi);
+        if(n != 1) p = casio::mul(a, {casio::num(a, n), p});
+        return d == 1 ? p : casio::div(a, p, casio::num(a, d));
+    };
+    if(f == FnKind::Asin) {
+        std::optional<NodeId> r;
+        if(k == "0") r = casio::num(a, 0);
+        else if(k == "1/2") r = pi_mul(1, 6);
+        else if(k == "sqrt(2)/2") r = pi_mul(1, 4);
+        else if(k == "sqrt(3)/2") r = pi_mul(1, 3);
+        else if(k == "1") r = pi_mul(1, 2);
+        if(r) return neg ? casio::neg(a, *r) : *r;
+    }
+    if(f == FnKind::Acos) {
+        if(k == "0") return pi_mul(1, 2);
+        if(k == "1/2") return neg ? pi_mul(2, 3) : pi_mul(1, 3);
+        if(k == "sqrt(2)/2") return neg ? pi_mul(3, 4) : pi_mul(1, 4);
+        if(k == "sqrt(3)/2") return neg ? pi_mul(5, 6) : pi_mul(1, 6);
+        if(k == "1") return neg ? pi_mul(1, 1) : casio::num(a, 0);
+    }
+    if(f == FnKind::Atan) {
+        std::optional<NodeId> r;
+        if(k == "0") r = casio::num(a, 0);
+        else if(k == "sqrt(3)/3") r = pi_mul(1, 6);
+        else if(k == "1") r = pi_mul(1, 4);
+        else if(k == "sqrt(3)") r = pi_mul(1, 3);
+        if(r) return neg ? casio::neg(a, *r) : *r;
+    }
     FnKind g = f == FnKind::Sec ? FnKind::Cos : f == FnKind::Cosec ? FnKind::Sin : f == FnKind::Cot ? FnKind::Tan : FnKind::Log;
     if(g == FnKind::Log) return std::nullopt;
     auto v = base(g);
@@ -17653,13 +17683,84 @@ static std::string standard_line_lhs(long long A, long long B)
     return out.empty() ? "0" : out;
 }
 
+static bool has_xy(Arena &a, NodeId n)
+{
+    return contains_symbol(a, n, "x") || contains_symbol(a, n, "y");
+}
+
+static std::optional<NodeId> symbol_minus_constant(Arena &a, NodeId n, std::string const &sym)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == sym) return zero_node(a);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    bool saw_sym = false;
+    std::vector<NodeId> rest;
+    for(NodeId kid : x.kids) {
+        Node const &k = a.get(kid);
+        if(k.kind == NodeKind::Sym && k.text == sym) {
+            if(saw_sym) return std::nullopt;
+            saw_sym = true;
+            continue;
+        }
+        if(has_xy(a, kid)) return std::nullopt;
+        rest.push_back(kid);
+    }
+    if(!saw_sym) return std::nullopt;
+    NodeId c = rest.empty() ? zero_node(a) : exact_eval_simplify(a, casio::add(a, rest));
+    return exact_eval_simplify(a, casio::neg(a, c));
+}
+
+static std::optional<std::pair<NodeId, NodeId>> slope_times_x_minus_constant(Arena &a, NodeId n)
+{
+    if(auto x0 = symbol_minus_constant(a, n, "x")) return std::make_pair(one_node(a), *x0);
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::optional<NodeId> x0;
+    std::vector<NodeId> slope_terms;
+    for(NodeId kid : x.kids) {
+        if(!x0) {
+            if(auto c = symbol_minus_constant(a, kid, "x")) {
+                x0 = *c;
+                continue;
+            }
+        }
+        if(has_xy(a, kid)) return std::nullopt;
+        slope_terms.push_back(kid);
+    }
+    if(!x0) return std::nullopt;
+    NodeId m = slope_terms.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, slope_terms));
+    return std::make_pair(m, *x0);
+}
+
+static std::optional<std::vector<std::string>> point_slope_standard_line(Arena &a, casio::Equation const &eq)
+{
+    auto y0 = symbol_minus_constant(a, eq.lhs, "y");
+    auto rhs = slope_times_x_minus_constant(a, eq.rhs);
+    if(!y0 || !rhs) {
+        y0 = symbol_minus_constant(a, eq.rhs, "y");
+        rhs = slope_times_x_minus_constant(a, eq.lhs);
+    }
+    if(!y0 || !rhs) return std::nullopt;
+    NodeId m = rhs->first;
+    NodeId x0 = rhs->second;
+    NodeId mx = exact_eval_simplify(a, casio::mul(a, {m, casio::sym(a, "x")}));
+    NodeId mx0 = exact_eval_simplify(a, casio::mul(a, {m, x0}));
+    NodeId line_rhs = exact_eval_simplify(a, sub_node(a, *y0, mx0));
+    NodeId line_lhs = exact_eval_simplify(a, sub_node(a, casio::sym(a, "y"), mx));
+    return std::vector<std::string>{
+        format_expr(a, eq.lhs) + " = " + format_expr(a, eq.rhs),
+        format_expr(a, casio::sym(a, "y")) + " = " + format_expr(a, casio::add(a, {mx, line_rhs})),
+        format_expr(a, line_lhs) + " = " + format_expr(a, line_rhs)
+    };
+}
+
 static std::optional<std::vector<std::string>> standard_line_route(Arena &a, std::string const &expr)
 {
     auto eq = casio::parse_equation(a, expr);
     if(!eq) return std::nullopt;
     Lin2 lhs = lin2_of_node(a, eq->lhs);
     Lin2 rhs = lin2_of_node(a, eq->rhs);
-    if(!lhs.ok || !rhs.ok) return std::nullopt;
+    if(!lhs.ok || !rhs.ok) return point_slope_standard_line(a, *eq);
     Lin2 r = lin2_add(lhs, lin2_scale(rhs, Rational{-1, 1}));
     if(!r.ok || (r.x.num == 0 && r.y.num == 0)) return std::nullopt;
     long long l = lcm_i64(r.x.den, lcm_i64(r.y.den, r.c.den));
@@ -31869,6 +31970,13 @@ algebra_compare_transform_modes:
                 NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
                 NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
                 if(simple_exact_e_value(arena, sub2)) return exact_lines(sub2);
+            }
+            if(contains_fn_kind(arena, n, FnKind::Asin) || contains_fn_kind(arena, n, FnKind::Acos) ||
+               contains_fn_kind(arena, n, FnKind::Atan)) {
+                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                if(!contains_fn_kind(arena, sub2, FnKind::Asin) && !contains_fn_kind(arena, sub2, FnKind::Acos) &&
+                   !contains_fn_kind(arena, sub2, FnKind::Atan)) return exact_lines(sub2);
             }
             collect_symbols(arena, n, syms);
             bool has_param = false;
