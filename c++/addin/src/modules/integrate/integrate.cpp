@@ -1963,11 +1963,19 @@ static std::optional<std::string> signed_local_de_rhs_text(Arena &a,
     }
 }
 
+static std::optional<NodeId> exp_arg_node(Arena &a, NodeId n);
+
 static std::optional<std::string> simplified_de_rhs_text(Arena &a, NodeId y0, std::string const &erhs)
 {
     try {
         NodeId rhs0 = casio::parse_expr(a, erhs);
         if(contains_abs_fn(a, rhs0)) return std::nullopt;
+        if(auto yexp = exp_arg_node(a, y0)) {
+            if(auto rexp = exp_arg_node(a, rhs0)) {
+                NodeId rhs = exp_node(a, casio::simplify(a, casio::add(a, {*yexp, *rexp})));
+                return format_expr(a, rhs);
+            }
+        }
         NodeId rhs = casio::simplify(a, casio::mul(a, {y0, rhs0}));
         rhs = casio::simplify(a, absorb_numeric_denominators(a, rhs));
         rhs = casio::simplify(a, distribute_numeric_add_products(a, rhs));
@@ -3640,10 +3648,33 @@ static std::string simplify_endpoint_answer_text(std::string s)
         if(t.size() <= start || t.back() != ')') return false;
         return parse_rat_coeff(t.substr(start, t.size() - start - 1), v);
     };
+    auto parse_any_pi_rat_ln = [&](std::string const &t, Rational &c, Rational &v) -> bool {
+        std::size_t p = t.find("*ln(");
+        std::size_t name_len = 3;
+        if(p == std::string::npos) {
+            p = t.find("*log(");
+            name_len = 4;
+        }
+        if(p == std::string::npos || t.size() <= p + name_len + 2 || t.back() != ')') return false;
+        std::string coeff = t.substr(0, p);
+        if(coeff == "pi") c = Rational{1, 1};
+        else {
+            std::string tail = "*pi";
+            if(coeff.size() <= tail.size() || coeff.substr(coeff.size() - tail.size()) != tail) return false;
+            if(!parse_rat_coeff(coeff.substr(0, coeff.size() - tail.size()), c)) return false;
+        }
+        return parse_rat_coeff(t.substr(p + 1 + name_len, t.size() - (p + 1 + name_len) - 1), v);
+    };
     auto rat_display = [](Rational r) {
         r.normalize();
         if(r.den == 1) return std::to_string(r.num);
         return std::to_string(r.num) + "/" + std::to_string(r.den);
+    };
+    auto pi_rat_prefix = [](Rational r) {
+        r.normalize();
+        if(r.den == 1 && r.num == 1) return std::string("pi*");
+        if(r.den == 1) return std::to_string(r.num) + "*pi*";
+        return std::to_string(r.num) + "/" + std::to_string(r.den) + "*pi*";
     };
     auto rat_pow_signed = [](Rational r, int e) {
         if(e < 0) return r_div(Rational{1, 1}, r_pow(r, -e));
@@ -3659,6 +3690,37 @@ static std::string simplify_endpoint_answer_text(std::string s)
         return q;
     };
     auto terms = split_signed_terms(s);
+    {
+        bool all_pi_logs = true;
+        std::vector<std::pair<Rational, Rational>> pi_logs;
+        for(auto const &t : terms) {
+            Rational c{0, 1}, v{0, 1};
+            if(!parse_any_pi_rat_ln(t.body, c, v) || v.num <= 0) {
+                all_pi_logs = false;
+                break;
+            }
+            if(t.sign < 0) c = r_neg(c);
+            pi_logs.push_back({c, v});
+        }
+        if(all_pi_logs && pi_logs.size() >= 2) {
+            Rational common_abs{pi_logs[0].first.num < 0 ? -pi_logs[0].first.num : pi_logs[0].first.num, pi_logs[0].first.den};
+            bool common_ok = common_abs.num > 0;
+            Rational product{1, 1};
+            for(auto const &kv : pi_logs) {
+                Rational ac{kv.first.num < 0 ? -kv.first.num : kv.first.num, kv.first.den};
+                ac.normalize();
+                if(!r_eq(ac, common_abs)) { common_ok = false; break; }
+                product = r_mul(product, kv.first.num < 0 ? r_div(Rational{1, 1}, kv.second) : kv.second);
+            }
+            if(common_ok && product.num > 0) {
+                for(int k = 6; k >= 2; --k) {
+                    if(auto root = rat_root_exact(product, k))
+                        return pi_rat_prefix(r_mul(common_abs, Rational{k, 1})) + "ln(" + rat_display(*root) + ")";
+                }
+                return pi_rat_prefix(common_abs) + "ln(" + rat_display(product) + ")";
+            }
+        }
+    }
     std::vector<SignedTerm> keep;
     std::vector<std::pair<Rational, Rational>> logs;
     for(auto const &t : terms) {
@@ -3707,6 +3769,22 @@ static std::string simplify_endpoint_answer_text(std::string s)
         }
         if(integer_logs && !prime_logs.empty() && keep.empty()) {
             std::sort(prime_logs.begin(), prime_logs.end(), [](auto const &l, auto const &r) { return l.first < r.first; });
+            Rational product{1, 1};
+            bool product_ok = true;
+            for(auto const &kv : prime_logs) {
+                if(kv.second.den != 1 || kv.second.num < -12 || kv.second.num > 12) {
+                    product_ok = false;
+                    break;
+                }
+                product = r_mul(product, rat_pow_signed(Rational{kv.first, 1}, static_cast<int>(kv.second.num)));
+            }
+            if(product_ok && product.num > 0) {
+                for(int k = 6; k >= 2; --k) {
+                    if(auto root = rat_root_exact(product, k))
+                        return std::to_string(k) + "*ln(" + rat_display(*root) + ")";
+                }
+                return "ln(" + rat_display(product) + ")";
+            }
             std::string out;
             auto append = [&](int sg, std::string const &body) {
                 if(body.empty() || body == "0") return;

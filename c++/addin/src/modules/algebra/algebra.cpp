@@ -3290,7 +3290,19 @@ static std::optional<std::vector<std::string>> partial_fraction_two_linear_symbo
 {
     Node const &d = a.get(parsed);
     if(d.kind != NodeKind::Div) return std::nullopt;
-    Node const &den = a.get(d.b);
+    NodeId den_id = d.b;
+    Node const *denp = &a.get(den_id);
+    if(denp->kind != NodeKind::Mul || denp->kids.size() != 2) {
+        auto p = poly_of(a, den_id, var);
+        auto rr = p && p->ok ? rational_quadratic_roots(*p) : std::optional<std::pair<Rational, Rational>>{};
+        if(rr && !is_zero(p->a2)) {
+            NodeId l1 = poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, r_neg(rr->first), true}, var);
+            NodeId l2 = poly2_to_node(a, Poly2{Rational{0, 1}, p->a2, r_mul(r_neg(p->a2), rr->second), true}, var);
+            den_id = casio::mul(a, {l1, l2});
+            denp = &a.get(den_id);
+        }
+    }
+    Node const &den = *denp;
     if(den.kind != NodeKind::Mul || den.kids.size() != 2) return std::nullopt;
     auto l1 = linear_poly_coeffs(a, den.kids[0], var);
     auto l2 = linear_poly_coeffs(a, den.kids[1], var);
