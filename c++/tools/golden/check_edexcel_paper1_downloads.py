@@ -549,7 +549,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q8 bacteria rate",
         ["--derive", "1000*e^((ln(2)/5)*t),t"],
-        ["dy/dt = 1000*e^(ln(2)/5*t)*ln(2)/5"],
+        ["dy/dt = 200*e^(ln(2)/5*t)*ln(2)"],
         ["limite", "ERR:"],
     ),
     (

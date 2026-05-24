@@ -513,7 +513,7 @@ CASES = [
     (
         "affine exp negative infinity interval",
         ["--alg", "range(1/2*e^x+1,x,-inf,0)"],
-        ("As x=>-inf, e^u=>0", "Range: 1 < y <= 1.5", "1 < y <= 1.5"),
+        ("x<=0; exponent tends to -inf; 0<u<=1", "Range: 1 < y <= 3/2", "1 < y <= 3/2"),
     ),
     (
         "solve interval infinity",

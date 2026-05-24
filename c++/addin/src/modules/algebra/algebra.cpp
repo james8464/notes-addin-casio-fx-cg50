@@ -1182,6 +1182,14 @@ static NodeId reduce_numeric_div_coeff(Arena &a, NodeId n)
     auto den = as_num(a, bot);
     if(!den || den->num == 0) return casio::simplify(a, casio::div(a, top, bot));
 
+    Node const &top_div = a.get(top);
+    if(top_div.kind == NodeKind::Div) {
+        if(auto inner_den = as_num(a, top_div.b); inner_den && inner_den->num != 0) {
+            Rational joined = r_mul(*inner_den, *den);
+            return reduce_numeric_div_coeff(a, casio::div(a, top_div.a, casio::num(a, joined.num, joined.den)));
+        }
+    }
+
     Rational coeff{1, 1};
     std::vector<NodeId> factors;
     Node const &T = a.get(top);
@@ -2616,6 +2624,68 @@ static std::optional<std::string> logistic_exp_range(Arena &a, NodeId n, std::st
     steps.push_back("Then y=u/(1+u).");
     steps.push_back("As u->0+, y->0; as u->infinity, y->1.");
     return "0 < y < 1";
+}
+
+static std::optional<std::string> affine_exp_interval_range(Arena &a, NodeId n, std::string const &var,
+                                                            std::optional<double> lo, std::optional<double> hi,
+                                                            bool lo_open, bool hi_open,
+                                                            std::vector<std::string> &steps)
+{
+    NodeId expr = n;
+    {
+        Node const &raw = a.get(n);
+        if(raw.kind == NodeKind::Mul) {
+            NodeId add_part = 0;
+            std::vector<NodeId> rest;
+            for(NodeId k : raw.kids) {
+                if(!add_part && a.get(k).kind == NodeKind::Add) add_part = k;
+                else rest.push_back(k);
+            }
+            if(add_part) {
+                std::vector<NodeId> terms;
+                for(NodeId t : a.get(add_part).kids) {
+                    std::vector<NodeId> fs = rest;
+                    fs.push_back(t);
+                    terms.push_back(casio::simplify(a, casio::mul(a, fs)));
+                }
+                expr = casio::simplify(a, casio::add(a, terms));
+            }
+        }
+    }
+    expr = exact_eval_simplify(a, expr);
+    NodeId expn = 0;
+    bool seen = false;
+    Rational m{0, 1}, b{0, 1};
+    if(!affine_exp_coeffs(a, expr, var, expn, seen, m, b) || !seen || is_zero(m)) return std::nullopt;
+    auto p = poly_of(a, expn, var);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    bool right_halfline = lo && hi && std::isfinite(*lo) && !std::isfinite(*hi);
+    bool left_halfline = lo && hi && !std::isfinite(*lo) && std::isfinite(*hi);
+    if(!right_halfline && !left_halfline) return std::nullopt;
+
+    double endpoint = right_halfline ? *lo : *hi;
+    if(std::fabs(endpoint) > 1e-12 || p->a0.num != 0) return std::nullopt;
+
+    bool exp_to_zero =
+        (right_halfline && p->a1.num < 0) ||
+        (left_halfline && p->a1.num > 0);
+    if(!exp_to_zero) return std::nullopt;
+
+    Rational y_endpoint = r_add(b, m);
+    Rational y_limit = b;
+    std::string e = format_expr(a, expn);
+    steps.push_back("Let u=e^(" + e + "), so u>0.");
+    steps.push_back(var + (right_halfline ? ">=0" : "<=0") + " and exponent tends to -inf, so 0<u<=1.");
+    steps.push_back("y = " + format_rat(a, b) + (m.num >= 0 ? " + " : " - ") + format_rat(a, r_abs(m)) + "*u.");
+    bool endpoint_closed = right_halfline ? !lo_open : !hi_open;
+    Rational low = y_endpoint, high = y_limit;
+    bool low_closed = endpoint_closed, high_closed = false;
+    if(r_cmp(low, high) > 0) {
+        std::swap(low, high);
+        std::swap(low_closed, high_closed);
+    }
+    return format_rat(a, low) + (low_closed ? " <= y" : " < y") + (high_closed ? " <= " : " < ") + format_rat(a, high);
 }
 
 static std::string rat_node_text(Arena &a, Rational r)
@@ -32272,6 +32342,10 @@ algebra_compare_transform_modes:
                 }
                 else if(auto logistic = logistic_exp_range(arena, n, var, lo_v, hi_v, steps)) {
                     range_answer = *logistic;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto aer = affine_exp_interval_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {
+                    range_answer = *aer;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto per = poly_exp_range(arena, n, var, lo, hi, lo_v, hi_v, lo_open, hi_open, steps)) {

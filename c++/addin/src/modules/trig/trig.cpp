@@ -2816,6 +2816,87 @@ static std::optional<std::vector<std::string>> solve_sin_sum_to_cos_factor(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static bool split_coeff_term(Arena &a, NodeId n, double &coeff, NodeId &rest, bool &has_rest);
+
+static bool coeff_sin_term(Arena &a, NodeId n, double &coeff, NodeId &arg)
+{
+    NodeId rest = n;
+    bool has_rest = true;
+    if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest) return false;
+    Node const &r = a.get(rest);
+    if(r.kind != NodeKind::Fn || r.fkind != FnKind::Sin) return false;
+    arg = r.a;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> solve_symmetric_sin_outer_sum(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad,
+    bool general = false
+)
+{
+    if(general) return std::nullopt;
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add || r.kids.size() != 3) return std::nullopt;
+    struct T { double c; NodeId arg; double m; double b; };
+    std::vector<T> ts;
+    for(NodeId k : r.kids) {
+        double c = 0.0;
+        NodeId arg = 0;
+        if(!coeff_sin_term(a, k, c, arg)) return std::nullopt;
+        auto lin = linear_angle(a, arg, var, rad);
+        if(!lin || std::fabs(lin->first) < 1e-12) return std::nullopt;
+        ts.push_back({c, arg, lin->first, lin->second});
+    }
+    std::vector<T> pos, neg;
+    for(auto const &t : ts) {
+        if(std::fabs(t.c - 1.0) < 1e-10) pos.push_back(t);
+        else if(std::fabs(t.c + 1.0) < 1e-10) neg.push_back(t);
+        else return std::nullopt;
+    }
+    bool flipped = false;
+    std::vector<T> outer;
+    T mid{};
+    if(pos.size() == 2 && neg.size() == 1) {
+        outer = pos;
+        mid = neg[0];
+    }
+    else if(neg.size() == 2 && pos.size() == 1) {
+        outer = neg;
+        mid = pos[0];
+        flipped = true;
+    }
+    else return std::nullopt;
+    if(outer[0].m > outer[1].m) std::swap(outer[0], outer[1]);
+    if(std::fabs((outer[0].m + outer[1].m) / 2.0 - mid.m) > 1e-10 ||
+       std::fabs((outer[0].b + outer[1].b) / 2.0 - mid.b) > 1e-8)
+        return std::nullopt;
+
+    NodeId diff_arg = casio::simplify(a, casio::add(a, {outer[1].arg, casio::neg(a, mid.arg)}));
+    std::string lo_arg = format_expr(a, outer[0].arg);
+    std::string hi_arg = format_expr(a, outer[1].arg);
+    std::string mid_arg = format_expr(a, mid.arg);
+    std::string diff = format_expr(a, diff_arg);
+    std::vector<std::string> steps;
+    if(flipped) steps.push_back("Multiply by -1.");
+    steps.insert(steps.end(), {
+        "sin(" + lo_arg + ")+sin(" + hi_arg + ")=2*sin(" + mid_arg + ")*cos(" + diff + ").",
+        "2*sin(" + mid_arg + ")*cos(" + diff + ")-sin(" + mid_arg + ")=0.",
+        "sin(" + mid_arg + ")*(2*cos(" + diff + ")-1)=0.",
+        "sin(" + mid_arg + ")=0 or cos(" + diff + ")=1/2.",
+    });
+    std::vector<double> xs = x_values_from_angle_degrees(a, mid.arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Sin, 0.0));
+    auto ys = x_values_from_angle_degrees(a, diff_arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, 0.5));
+    for(double y : ys) add_unique(xs, y);
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
 static std::optional<std::vector<std::string>> solve_tan_sum_zero(
     Arena &a,
     NodeId residual,
@@ -6777,6 +6858,135 @@ static std::optional<std::vector<std::string>> cot_sin_double_identity_route(Are
     return run(rhs, lhs);
 }
 
+static bool match_sin_sum_side(Arena &a, NodeId n, NodeId &p, NodeId &q)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() != 2) return false;
+    Node const &a0 = a.get(x.kids[0]);
+    Node const &a1 = a.get(x.kids[1]);
+    if(a0.kind != NodeKind::Fn || a0.fkind != FnKind::Sin ||
+       a1.kind != NodeKind::Fn || a1.fkind != FnKind::Sin)
+        return false;
+    p = a0.a;
+    q = a1.a;
+    return true;
+}
+
+static bool same_or_neg_sig(Arena &a, NodeId u, NodeId v)
+{
+    return same_sig(a, u, v) || same_sig(a, u, casio::simplify(a, casio::neg(a, v)));
+}
+
+static bool match_sum_product_side(Arena &a, NodeId n, NodeId p, NodeId q)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return false;
+    double coeff = 1.0;
+    NodeId sarg = 0, carg = 0;
+    for(NodeId k : x.kids) {
+        if(!has_any_symbol(a, k)) {
+            auto v = numeric_eval(a, k, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            coeff *= *v;
+            continue;
+        }
+        Node const &f = a.get(k);
+        if(f.kind == NodeKind::Fn && f.fkind == FnKind::Sin && !sarg) sarg = f.a;
+        else if(f.kind == NodeKind::Fn && f.fkind == FnKind::Cos && !carg) carg = f.a;
+        else return false;
+    }
+    if(std::fabs(coeff - 2.0) > 1e-12 || !sarg || !carg) return false;
+    NodeId want_s = casio::simplify(a, casio::div(a, casio::add(a, {p, q}), casio::num(a, 2)));
+    NodeId want_d = casio::simplify(a, casio::div(a, casio::add(a, {p, casio::neg(a, q)}), casio::num(a, 2)));
+    return same_sig(a, sarg, want_s) && same_or_neg_sig(a, carg, want_d);
+}
+
+static std::optional<std::vector<std::string>> sum_to_product_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        NodeId p = 0, q = 0;
+        if(!match_sin_sum_side(a, L, p, q) || !match_sum_product_side(a, R, p, q)) return std::nullopt;
+        std::string P = format_expr(a, p);
+        std::string Q = format_expr(a, q);
+        std::string A = "(" + P + "+" + Q + ")/2";
+        std::string B = "(" + P + "-" + Q + ")/2";
+        return casio::exam_block(
+            "trig identity",
+            {
+                "Let A=" + A + ", B=" + B + ".",
+                "A+B=" + P + ", A-B=" + Q + ".",
+                "sin(" + P + ")+sin(" + Q + ") = sin(A+B)+sin(A-B).",
+                "= sin(A)cos(B)+cos(A)sin(B)+sin(A)cos(B)-cos(A)sin(B)",
+                "= 2sin(A)cos(B)",
+            },
+            "2*sin(" + A + ")*cos(" + B + ")"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
+static bool match_double_over_base(Arena &a, NodeId n, FnKind top_fk, FnKind bot_fk, double &coeff, NodeId &arg)
+{
+    NodeId rest = n;
+    bool has_rest = true;
+    if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest) return false;
+    Node const &d = a.get(rest);
+    if(d.kind != NodeKind::Div) return false;
+    Node const &top = a.get(d.a);
+    Node const &bot = a.get(d.b);
+    if(top.kind != NodeKind::Fn || top.fkind != top_fk ||
+       bot.kind != NodeKind::Fn || bot.fkind != bot_fk)
+        return false;
+    auto half = half_of_double_arg(a, top.a);
+    if(!half || !same_sig(a, *half, bot.a)) return false;
+    arg = bot.a;
+    return true;
+}
+
+static bool match_sec_arg(Arena &a, NodeId n, NodeId arg)
+{
+    Node const &x = a.get(n);
+    return x.kind == NodeKind::Fn && x.fkind == FnKind::Sec && same_sig(a, x.a, arg);
+}
+
+static std::optional<std::vector<std::string>> sin2_cos2_sec_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        Node const &x = a.get(L);
+        if(x.kind != NodeKind::Add || x.kids.size() != 2) return std::nullopt;
+        NodeId arg = 0;
+        bool saw_sin = false, saw_cos = false;
+        for(NodeId t : x.kids) {
+            double c = 0.0;
+            NodeId u = 0;
+            if(match_double_over_base(a, t, FnKind::Sin, FnKind::Sin, c, u) && std::fabs(c - 1.0) < 1e-12) {
+                if(!trig_same_or_set(a, arg, u)) return std::nullopt;
+                saw_sin = true;
+            }
+            else if(match_double_over_base(a, t, FnKind::Cos, FnKind::Cos, c, u) && std::fabs(c + 1.0) < 1e-12) {
+                if(!trig_same_or_set(a, arg, u)) return std::nullopt;
+                saw_cos = true;
+            }
+            else return std::nullopt;
+        }
+        if(!saw_sin || !saw_cos || !match_sec_arg(a, R, arg)) return std::nullopt;
+        std::string A = format_expr(a, arg);
+        return casio::exam_block(
+            "trig identity",
+            {
+                "sin(2*" + A + ")/sin(" + A + ") - cos(2*" + A + ")/cos(" + A + ")",
+                "= 2sin(" + A + ")cos(" + A + ")/sin(" + A + ") - (2cos(" + A + ")^2-1)/cos(" + A + ")",
+                "= 2cos(" + A + ") - (2cos(" + A + ") - sec(" + A + "))",
+                "= sec(" + A + ")",
+            },
+            "sec(" + A + ")"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static bool match_cosec_sec_identity_side(Arena &a, NodeId n, NodeId &arg)
 {
     Node const &x = a.get(n);
@@ -6994,6 +7204,8 @@ static std::optional<std::vector<std::string>> trig_proof_equation_route(Arena &
 {
     if(auto r = cot_minus_tan_identity_route(a, lhs, rhs)) return r;
     if(auto r = cot_sin_double_identity_route(a, lhs, rhs)) return r;
+    if(auto r = sum_to_product_identity_route(a, lhs, rhs)) return r;
+    if(auto r = sin2_cos2_sec_identity_route(a, lhs, rhs)) return r;
     if(auto r = cosec_sec_identity_route(a, lhs, rhs)) return r;
     if(auto r = cosec_consequence_route(a, lhs, rhs)) return r;
     if(auto r = asin_acos_unit_route(a, lhs, rhs)) return r;
@@ -11449,6 +11661,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto costan = solve_cos_tan_product(a, residual, var, lo_text, hi_text, rad, general)) return *costan;
     if(auto sin2tan = solve_sin2_tan_factor(a, residual, var, lo_text, hi_text, rad, general)) return *sin2tan;
     if(auto ss = solve_shifted_sin_sum(a, residual, var, lo_text, hi_text, rad, general)) return *ss;
+    if(auto sos = solve_symmetric_sin_outer_sum(a, residual, var, lo_text, hi_text, rad, general)) return *sos;
     if(auto ssc = solve_sin_sum_to_cos_factor(a, residual, var, lo_text, hi_text, rad, general)) return *ssc;
     if(auto sin2cos = solve_sin2_cos_factor(a, residual, var, lo_text, hi_text, rad, general)) return *sin2cos;
     if(auto tansum = solve_tan_sum_zero(a, residual, var, lo_text, hi_text, rad, general)) return *tansum;

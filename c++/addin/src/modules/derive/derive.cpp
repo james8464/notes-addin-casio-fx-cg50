@@ -1045,6 +1045,14 @@ static std::optional<NodeId> reciprocal_product_denominator(Arena &a, NodeId n)
             top.push_back(u.b);
             moved = true;
         }
+        else if(u.kind == NodeKind::Pow) {
+            auto e = as_num(a, u.b);
+            if(e && e->num == -1 && e->den == 1) {
+                top.push_back(u.a);
+                moved = true;
+            }
+            else bot.push_back(f);
+        }
         else bot.push_back(f);
     }
     if(!moved) return std::nullopt;
@@ -1069,7 +1077,10 @@ static std::optional<NodeId> split_add_over_common_den(Arena &a, NodeId n)
             split = true;
         }
         else {
-            terms.push_back(casio::simplify(a, casio::div(a, t, x.b)));
+            NodeId raw = casio::div(a, t, x.b);
+            NodeId part = casio::simplify(a, raw);
+            if(!same_expr_key(a, raw, part)) split = true;
+            terms.push_back(part);
         }
     }
     if(!split) return std::nullopt;
