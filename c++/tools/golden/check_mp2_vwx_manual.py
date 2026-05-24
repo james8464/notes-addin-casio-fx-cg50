@@ -60,7 +60,7 @@ CASES: list[tuple[str, list[str], list[str]]] = [
     (
         "X Q5 stationary equation",
         ["--derive", "2*asin(x)-4*x^(3/2),x"],
-        ["For stationary points", "Square both sides", "9x^3-9x+1=0"],
+        ["dy/dx = 2/sqrt(1-x^2)-6*sqrt(x)", "dy/dx = 0", "9*x^3 - 9*x + 1 = 0"],
     ),
     (
         "X Q7 second derivative",

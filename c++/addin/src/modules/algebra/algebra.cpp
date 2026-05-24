@@ -19827,6 +19827,98 @@ static std::optional<std::string> one_over_positive_quadratic_range(Arena &a, No
     return "0 < y <= " + format_rat(a, upper);
 }
 
+static std::optional<Rational> log_same_ratio(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &top = a.get(x.a);
+    if(top.kind != NodeKind::Fn || top.fkind != FnKind::Log) return std::nullopt;
+    Rational scale{1, 1};
+    NodeId bot_log = x.b;
+    Node const &bot = a.get(x.b);
+    if(bot.kind == NodeKind::Mul) {
+        bot_log = 0;
+        for(NodeId k : bot.kids) {
+            if(auto q = as_num(a, k)) scale = r_mul(scale, *q);
+            else {
+                if(bot_log) return std::nullopt;
+                bot_log = k;
+            }
+        }
+        if(!bot_log) return std::nullopt;
+    }
+    Node const &bl = a.get(bot_log);
+    if(bl.kind != NodeKind::Fn || bl.fkind != FnKind::Log || !casio::same_by_sig(a, top.a, bl.a) || is_zero(scale)) return std::nullopt;
+    return r_div(Rational{1, 1}, scale);
+}
+
+static std::optional<Rational> rational_log_sum(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    Rational out{0, 1};
+    for(NodeId t : terms) {
+        if(auto q = as_num(a, t)) out = r_add(out, *q);
+        else if(auto q = log_same_ratio(a, t)) out = r_add(out, *q);
+        else return std::nullopt;
+    }
+    return out;
+}
+
+static bool is_log_over_var(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        Node const &top = a.get(x.a);
+        return top.kind == NodeKind::Fn && top.fkind == FnKind::Log && is_sym_var(a, x.b, var);
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    bool got_log = false, got_recip = false;
+    for(NodeId k : x.kids) {
+        Node const &q = a.get(k);
+        if(q.kind == NodeKind::Fn && q.fkind == FnKind::Log) got_log = true;
+        else if(q.kind == NodeKind::Pow && is_sym_var(a, q.a, var)) {
+            auto e = as_num(a, q.b);
+            if(!e || e->num != -1 || e->den != 1) return false;
+            got_recip = true;
+        }
+        else return false;
+    }
+    return got_log && got_recip;
+}
+
+static std::optional<std::string> exp_plus_log_over_x_halfline_range(
+    Arena &a, NodeId n, std::string const &var, std::string const &lo,
+    std::optional<double> lo_v, std::optional<double> hi_v, std::vector<std::string> &steps)
+{
+    if(!lo_v || !hi_v || !std::isfinite(*lo_v) || std::isfinite(*hi_v) || *lo_v <= 0.0) return std::nullopt;
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    bool got_exp = false, got_logx = false;
+    for(NodeId t : terms) {
+        if(auto e = exp_like_arg(a, t)) {
+            auto lp = linear_poly_coeffs(a, *e, var);
+            if(!lp || lp->first.num >= 0) return std::nullopt;
+            got_exp = true;
+        }
+        else if(is_log_over_var(a, t, var)) {
+            auto tv = eval_node(a, t, var, *lo_v);
+            if(!tv || *tv <= 0.0) return std::nullopt;
+            got_logx = true;
+        }
+        else return std::nullopt;
+    }
+    if(!got_exp || !got_logx) return std::nullopt;
+    NodeId xv = casio::parse_expr(a, lo);
+    NodeId yv = exact_eval_simplify(a, clone_with_substitution(a, n, var, xv));
+    auto yr = rational_log_sum(a, yv);
+    std::string ylo = yr ? format_rat(a, *yr) : format_expr(a, yv);
+    steps.push_back("dy/d" + var + " < 0 on the interval, so the maximum is at " + var + "=" + lo + ".");
+    steps.push_back("As " + var + " -> inf, y -> 0.");
+    steps.push_back("y(" + lo + ") = " + ylo + ".");
+    return "0 < y <= " + ylo;
+}
+
 static std::optional<std::string> sqrt_recip_square_halfline_range(
     Arena &a, NodeId n, std::string const &var, std::optional<double> lo_v, std::optional<double> hi_v,
     bool lo_open, bool hi_open, std::vector<std::string> &steps)
@@ -31861,6 +31953,10 @@ algebra_compare_transform_modes:
                 }
                 else if(auto per = poly_exp_range(arena, n, var, lo, hi, lo_v, hi_v, lo_open, hi_open, steps)) {
                     range_answer = *per;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto elx = exp_plus_log_over_x_halfline_range(arena, n, var, lo, lo_v, hi_v, steps)) {
+                    range_answer = *elx;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto er = exp_linear_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {

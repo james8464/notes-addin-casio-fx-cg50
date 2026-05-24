@@ -2772,6 +2772,60 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["1+cos(2*(x + pi/3)) = 2*cos(x + pi/3)^2", "= cot(x + pi/3)"],
         ["Source = target", "ERR:"],
     ),
+    (
+        "trig",
+        "cot(x)-tan(x)=2*cot(2*x),method=identity",
+        ["cos(x)^2-sin(x)^2", "sin(2*x)=2sin(x)cos(x)", "2*cot(2*x)"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(e^(-2*x)+ln(2)/x,x,ln(4),inf)",
+        ["dy/dx<0", "y(ln(4))=9/16", "0<y<=9/16"],
+        ["0.5625", "ERR:"],
+    ),
+    (
+        "derive",
+        "3*asin(x)-4*x^(3/2)+5,x",
+        ["dy/dx=3/sqrt(1-x^2)-6*sqrt(x)", "4*x^3-4*x+1=0"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
+        "4*cosec(2*theta)^2-sec(theta)^2=cosec(theta)^2,method=identity",
+        ["4/(4sin(theta)^2cos(theta)^2)", "1/sin(theta)^2", "cosec(theta)^2"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "4*(cosec(2*theta)^2-2)=sec(theta)^2-2*cosec(theta),method=identity",
+        ["u=cosec(theta)", "(u-2)(u+4)=0", "sin(theta)=1/2orsin(theta)=-1/4"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "asin(x)=acos(y),method=identity",
+        ["sin(A)=x", "cos(A)=y", "x^2+y^2=1"],
+        ["ERR:", "need sin/cos/tan"],
+    ),
+    (
+        "derive",
+        "e^(2*x)*(2*cos(3*x)-sin(3*x)),x,method=second",
+        ["dy/dx=e^(2*x)*(-8*sin(3*x)+cos(3*x))", "d2y/dx2=e^(2*x)*(-19*sin(3*x)-22*cos(3*x))", "d2y/dx2-4*dy/dx+13*y=0"],
+        ["ERR:"],
+    ),
+    (
+        "derive",
+        "e^x*(cos(2*x)+3*sin(2*x)),x,method=second",
+        ["m=1,b=2", "d2y/dx2-2*dy/dx+5*y=0"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "range(e^(-x)+ln(3)/x,x,ln(9),inf)",
+        ["y(ln(9))=11/18", "0<y<=11/18"],
+        ["ERR:"],
+    ),
 ]
 
 REMOVED_FEATURE_MARKERS = (

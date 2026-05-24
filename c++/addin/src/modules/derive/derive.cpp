@@ -3426,6 +3426,140 @@ static std::optional<std::string> exp_linear_sincos_product_final(Arena &a, std:
     return std::nullopt;
 }
 
+static std::optional<std::pair<std::vector<std::string>, std::string>> exp_linear_sincos_ode_route(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{n};
+    if(factors.size() != 2) return std::nullopt;
+    for(int i = 0; i < 2; ++i) {
+        int j = 1 - i;
+        auto exp_arg = exp_arg_for_product(a, factors[(std::size_t)i]);
+        auto combo = linear_sincos_exact(a, factors[(std::size_t)j]);
+        if(!exp_arg || !combo) continue;
+        auto m = as_num(a, casio::simplify(a, diff(a, *exp_arg, var)));
+        auto b = as_num(a, casio::simplify(a, diff(a, combo->arg, var)));
+        if(!m || !b || rat_zero_local(*b)) continue;
+
+        Rational s1 = rat_sub_local(rat_mul_local(*m, combo->sin_c), rat_mul_local(*b, combo->cos_c));
+        Rational c1 = rat_add_local(rat_mul_local(*m, combo->cos_c), rat_mul_local(*b, combo->sin_c));
+        Rational s2 = rat_sub_local(rat_mul_local(*m, s1), rat_mul_local(*b, c1));
+        Rational c2 = rat_add_local(rat_mul_local(*m, c1), rat_mul_local(*b, s1));
+        Rational dy_coeff = rat_mul_local(Rational{2, 1}, *m);
+        Rational y_coeff = rat_add_local(rat_mul_local(*m, *m), rat_mul_local(*b, *b));
+        std::string exp_txt = clean_math_text(format_expr_human(a, factors[(std::size_t)i]));
+        std::string y_txt = linear_sincos_text(a, combo->sin_c, combo->cos_c, combo->arg);
+        std::string d1_txt = linear_sincos_text(a, s1, c1, combo->arg);
+        std::string d2_txt = linear_sincos_text(a, s2, c2, combo->arg);
+        if(y_txt.empty() || d1_txt.empty() || d2_txt.empty()) return std::nullopt;
+        std::string ode = "d2y/d" + var + "2";
+        ode = append_signed_coeff_text(a, ode, rat_neg_local(dy_coeff), "dy/d" + var);
+        ode = append_signed_coeff_text(a, ode, y_coeff, "y");
+        ode += " = 0";
+        std::vector<std::string> steps{
+            "y = " + exp_txt + "*(" + y_txt + ")",
+            "dy/d" + var + " = " + exp_txt + "*(" + d1_txt + ")",
+            "d2y/d" + var + "2 = " + exp_txt + "*(" + d2_txt + ")",
+            "For e^(m*x)(A*cos(b*x)+B*sin(b*x)): y''-2m*y'+(m^2+b^2)y=0",
+            "m=" + rat_text(a, m->num, m->den) + ", b=" + rat_text(a, b->num, b->den),
+        };
+        return std::make_pair(steps, ode);
+    }
+    return std::nullopt;
+}
+
+static bool split_rational_coeff_factor(Arena &a, NodeId n, Rational &coeff, NodeId &factor)
+{
+    coeff = Rational{1, 1};
+    factor = n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coeff = x.num;
+        factor = 0;
+        return true;
+    }
+    if(x.kind != NodeKind::Mul) return true;
+    std::optional<NodeId> rest;
+    for(NodeId k : x.kids) {
+        Node const &q = a.get(k);
+        if(q.kind == NodeKind::Num) coeff = rat_mul_local(coeff, q.num);
+        else {
+            if(rest) return false;
+            rest = k;
+        }
+    }
+    factor = rest.value_or(0);
+    return true;
+}
+
+static void reduce_integer_content(std::vector<Rational> &p)
+{
+    long long g = 0;
+    for(auto q : p) {
+        q.normalize();
+        if(q.num == 0) continue;
+        if(q.den != 1) return;
+        g = g ? std::gcd(g, std::llabs(q.num)) : std::llabs(q.num);
+    }
+    if(g <= 1) return;
+    for(auto &q : p) q.num /= g;
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>> asin_power_stationary_route(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    Rational asin_c{0, 1}, pow_c{0, 1};
+    bool got_asin = false, got_pow = false;
+    for(NodeId t : terms) {
+        if(!depends_on(a, t, var)) continue;
+        Rational c{1, 1};
+        NodeId f = 0;
+        if(!split_rational_coeff_factor(a, t, c, f) || !f) return std::nullopt;
+        Node const &q = a.get(f);
+        if(q.kind == NodeKind::Fn && q.fkind == FnKind::Asin && is_var(a, q.a, var)) {
+            asin_c = rat_add_local(asin_c, c);
+            got_asin = true;
+        }
+        else if(q.kind == NodeKind::Pow && is_var(a, q.a, var)) {
+            auto e = as_num(a, q.b);
+            if(!e || e->num != 3 || e->den != 2) return std::nullopt;
+            pow_c = rat_add_local(pow_c, c);
+            got_pow = true;
+        }
+        else return std::nullopt;
+    }
+    if(!got_asin || !got_pow || rat_zero_local(asin_c) || rat_zero_local(pow_c)) return std::nullopt;
+    Rational three_halves{3, 2};
+    Rational d_pow = rat_mul_local(three_halves, pow_c);
+    Rational k = rat_mul_local(d_pow, d_pow);
+    Rational a2 = rat_mul_local(asin_c, asin_c);
+    std::vector<Rational> cubic{a2, rat_neg_local(k), Rational{0, 1}, k};
+    reduce_integer_content(cubic);
+    std::string cubic_txt = poly_coeffs_text(cubic, var);
+    auto asin_deriv_text = [&](Rational c) {
+        c.normalize();
+        std::string den = "sqrt(1-" + var + "^2)";
+        if(rat_is_one(c)) return "1/" + den;
+        if(rat_is_minus_one(c)) return "-1/" + den;
+        return rat_text(a, c.num, c.den) + "/" + den;
+    };
+    std::string dy = asin_deriv_text(asin_c) +
+        append_signed_coeff_text(a, "", d_pow, "sqrt(" + var + ")");
+    if(!dy.empty() && dy[0] == '+') dy.erase(dy.begin());
+    return std::make_pair(
+        std::vector<std::string>{
+            "d/d" + var + "[asin(" + var + ")] = 1/sqrt(1-" + var + "^2)",
+            "d/d" + var + "[" + var + "^(3/2)] = 3/2*sqrt(" + var + ")",
+            "dy/d" + var + " = " + dy,
+            "dy/d" + var + " = 0",
+            asin_deriv_text(asin_c) + " = " + coeff_text(a, rat_neg_local(d_pow), "sqrt(" + var + ")"),
+            "Square both sides.",
+            cubic_txt + " = 0",
+        },
+        "dy/d" + var + " = " + dy
+    );
+}
+
 static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n);
 static NodeId factor_int_content_from_mul_add(Arena &a, NodeId n);
 static std::optional<std::string> factor_common_poly_power_text(Arena &a, NodeId n, std::string const &var);
@@ -4755,6 +4889,12 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 }
             }
 
+            if(req.mode == 4) {
+                if(auto route = exp_linear_sincos_ode_route(arena, n, var)) {
+                    return casio::exam_block("second derivative", route->first, route->second);
+                }
+            }
+
             if(req.mode == 4 && direct_key == "cot(x)") {
                 return casio::exam_block(
                     "second derivative",
@@ -4930,6 +5070,9 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     return casio::exam_block("differentiate", route->first, route->second);
                 }
                 if(auto route = atan_complement_detail(arena, n, var)) {
+                    return casio::exam_block("differentiate", route->first, route->second);
+                }
+                if(auto route = asin_power_stationary_route(arena, n, var)) {
                     return casio::exam_block("differentiate", route->first, route->second);
                 }
             }

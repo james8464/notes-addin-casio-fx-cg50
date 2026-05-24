@@ -6342,6 +6342,278 @@ static bool coeff_fn_any(Arena &a, NodeId n, FnKind fk, double &coeff, NodeId &a
     return true;
 }
 
+static std::optional<NodeId> match_cot_minus_tan(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    NodeId arg = 0;
+    bool got_cot = false, got_tan = false;
+    for(NodeId t : terms) {
+        double c = 0.0;
+        NodeId u = 0;
+        if(coeff_fn_any(a, t, FnKind::Cot, c, u) && std::fabs(c - 1.0) < 1e-12) got_cot = true;
+        else if(coeff_fn_any(a, t, FnKind::Tan, c, u) && std::fabs(c + 1.0) < 1e-12) got_tan = true;
+        else return std::nullopt;
+        if(arg && !same_sig(a, arg, u)) return std::nullopt;
+        arg = u;
+    }
+    return got_cot && got_tan ? std::optional<NodeId>{arg} : std::nullopt;
+}
+
+static bool match_two_cot_double(Arena &a, NodeId n, NodeId arg)
+{
+    double c = 0.0;
+    NodeId u = 0;
+    if(!coeff_fn_any(a, n, FnKind::Cot, c, u) || std::fabs(c - 2.0) > 1e-12) return false;
+    NodeId two_arg = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+    return same_sig(a, u, two_arg);
+}
+
+static std::optional<std::vector<std::string>> cot_minus_tan_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        auto arg = match_cot_minus_tan(a, L);
+        if(!arg || !match_two_cot_double(a, R, *arg)) return std::nullopt;
+        std::string A = format_expr(a, *arg);
+        return casio::exam_block(
+            "trig identity",
+            {
+                "cot(" + A + ")-tan(" + A + ")",
+                "= cos(" + A + ")/sin(" + A + ") - sin(" + A + ")/cos(" + A + ")",
+                "= (cos(" + A + ")^2-sin(" + A + ")^2)/(sin(" + A + ")cos(" + A + "))",
+                "cos(2*" + A + ")=cos(" + A + ")^2-sin(" + A + ")^2",
+                "sin(2*" + A + ")=2sin(" + A + ")cos(" + A + ")",
+                "= 2*cos(2*" + A + ")/sin(2*" + A + ")",
+            },
+            "2*cot(2*" + A + ")"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
+static bool match_cosec_sec_identity_side(Arena &a, NodeId n, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    bool got_csc = false, got_sec = false;
+    for(NodeId t : terms) {
+        double c = 0.0;
+        NodeId u = 0;
+        if(match_fn_square(a, t, FnKind::Cosec, c, u) && std::fabs(c - 4.0) < 1e-12) {
+            got_csc = true;
+            if(!arg) {
+                Node const &un = a.get(u);
+                if(un.kind == NodeKind::Mul) {
+                    for(NodeId k : un.kids) {
+                        if(auto q = as_num(a, k); q && q->num == 2 && q->den == 1) continue;
+                        if(arg) return false;
+                        arg = k;
+                    }
+                }
+                if(!arg) return false;
+            }
+            NodeId two_arg = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+            if(!same_sig(a, u, two_arg)) return false;
+        }
+        else if(match_fn_square(a, t, FnKind::Sec, c, u) && std::fabs(c + 1.0) < 1e-12) {
+            got_sec = true;
+            if(arg && !same_sig(a, u, arg)) return false;
+            arg = u;
+        }
+        else return false;
+    }
+    return got_csc && got_sec && arg;
+}
+
+static bool match_cosec_square_rhs(Arena &a, NodeId n, NodeId arg)
+{
+    double c = 0.0;
+    NodeId u = 0;
+    return match_fn_square(a, n, FnKind::Cosec, c, u) && std::fabs(c - 1.0) < 1e-12 && same_sig(a, u, arg);
+}
+
+static std::optional<std::vector<std::string>> cosec_sec_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        NodeId arg = 0;
+        if(!match_cosec_sec_identity_side(a, L, arg) || !match_cosec_square_rhs(a, R, arg)) return std::nullopt;
+        std::string A = format_expr(a, arg);
+        return casio::exam_block(
+            "trig identity",
+            {
+                "4*cosec(2*" + A + ")^2-sec(" + A + ")^2",
+                "= 4/(4sin(" + A + ")^2cos(" + A + ")^2) - 1/cos(" + A + ")^2",
+                "= 1/(sin(" + A + ")^2cos(" + A + ")^2) - sin(" + A + ")^2/(sin(" + A + ")^2cos(" + A + ")^2)",
+                "= cos(" + A + ")^2/(sin(" + A + ")^2cos(" + A + ")^2)",
+                "= 1/sin(" + A + ")^2",
+            },
+            "cosec(" + A + ")^2"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
+static std::optional<NodeId> collect_cosec_consequence_residual(Arena &a, NodeId r)
+{
+    Node const &x = a.get(r);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{r};
+    NodeId arg = 0;
+    double csc2 = 0.0, sec2 = 0.0, csc1 = 0.0, c = 0.0;
+    for(NodeId t : terms) {
+        double k = 0.0;
+        NodeId u = 0;
+        if(match_fn_square(a, t, FnKind::Cosec, k, u)) {
+            if(!arg) {
+                Node const &un = a.get(u);
+                if(un.kind == NodeKind::Mul) {
+                    for(NodeId qn : un.kids) {
+                        if(auto q = as_num(a, qn); q && q->num == 2 && q->den == 1) continue;
+                        if(arg) return std::nullopt;
+                        arg = qn;
+                    }
+                }
+                if(!arg) return std::nullopt;
+            }
+            NodeId two_arg = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+            if(!same_sig(a, u, two_arg)) return std::nullopt;
+            csc2 += k;
+        }
+        else if(match_fn_square(a, t, FnKind::Sec, k, u)) {
+            if(arg && !same_sig(a, u, arg)) return std::nullopt;
+            arg = u;
+            sec2 += k;
+        }
+        else if(coeff_fn_any(a, t, FnKind::Cosec, k, u)) {
+            if(arg && !same_sig(a, u, arg)) return std::nullopt;
+            arg = u;
+            csc1 += k;
+        }
+        else if(auto q = as_num(a, t)) c += (double)q->num / (double)q->den;
+        else return std::nullopt;
+    }
+    if(!arg) return std::nullopt;
+    if(std::fabs(csc2 - 4.0) < 1e-12 && std::fabs(sec2 + 1.0) < 1e-12 &&
+       std::fabs(csc1 - 2.0) < 1e-12 && std::fabs(c + 8.0) < 1e-12)
+        return arg;
+    return std::nullopt;
+}
+
+static std::optional<NodeId> match_four_cosec2_minus_two(Arena &a, NodeId n)
+{
+    double coeff = 0.0;
+    NodeId rest = 0;
+    bool has_rest = true;
+    if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest || std::fabs(coeff - 4.0) > 1e-12) return std::nullopt;
+    Node const &x = a.get(rest);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{rest};
+    NodeId arg = 0;
+    double csc2 = 0.0, c = 0.0;
+    for(NodeId t : terms) {
+        double k = 0.0;
+        NodeId u = 0;
+        if(match_fn_square(a, t, FnKind::Cosec, k, u)) {
+            csc2 += k;
+            Node const &un = a.get(u);
+            if(un.kind != NodeKind::Mul) return std::nullopt;
+            for(NodeId qn : un.kids) {
+                if(auto q = as_num(a, qn); q && q->num == 2 && q->den == 1) continue;
+                if(arg) return std::nullopt;
+                arg = qn;
+            }
+            if(!arg) return std::nullopt;
+            NodeId two_arg = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+            if(!same_sig(a, u, two_arg)) return std::nullopt;
+        }
+        else if(auto q = as_num(a, t)) c += (double)q->num / (double)q->den;
+        else return std::nullopt;
+    }
+    if(arg && std::fabs(csc2 - 1.0) < 1e-12 && std::fabs(c + 2.0) < 1e-12) return arg;
+    return std::nullopt;
+}
+
+static bool match_sec2_minus_2cosec(Arena &a, NodeId n, NodeId arg)
+{
+    Node const &x = a.get(n);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{n};
+    bool got_sec = false, got_csc = false;
+    for(NodeId t : terms) {
+        double k = 0.0;
+        NodeId u = 0;
+        if(match_fn_square(a, t, FnKind::Sec, k, u) && std::fabs(k - 1.0) < 1e-12 && same_sig(a, u, arg)) got_sec = true;
+        else if(coeff_fn_any(a, t, FnKind::Cosec, k, u) && std::fabs(k + 2.0) < 1e-12 && same_sig(a, u, arg)) got_csc = true;
+        else return false;
+    }
+    return got_sec && got_csc;
+}
+
+static std::optional<std::vector<std::string>> cosec_consequence_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto direct = [&](NodeId L, NodeId R) -> std::optional<NodeId> {
+        auto arg = match_four_cosec2_minus_two(a, L);
+        if(arg && match_sec2_minus_2cosec(a, R, *arg)) return arg;
+        return std::nullopt;
+    };
+    auto arg = direct(lhs, rhs);
+    if(!arg) arg = direct(rhs, lhs);
+    NodeId res = casio::simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
+    if(!arg) {
+        arg = collect_cosec_consequence_residual(a, res);
+    }
+    if(!arg) {
+        res = casio::simplify(a, casio::add(a, {rhs, casio::neg(a, lhs)}));
+        arg = collect_cosec_consequence_residual(a, res);
+    }
+    if(!arg) return std::nullopt;
+    std::string A = format_expr(a, *arg);
+    return casio::exam_block(
+        "trig identity",
+        {
+            "4*(cosec(2*" + A + ")^2-2)=sec(" + A + ")^2-2*cosec(" + A + ")",
+            "4*cosec(2*" + A + ")^2-sec(" + A + ")^2=8-2*cosec(" + A + ")",
+            "4*cosec(2*" + A + ")^2-sec(" + A + ")^2=cosec(" + A + ")^2",
+            "u=cosec(" + A + ")",
+            "u^2=8-2u",
+            "u^2+2u-8=0",
+            "(u-2)(u+4)=0",
+            "cosec(" + A + ")=2 or cosec(" + A + ")=-4",
+        },
+        "sin(" + A + ") = 1/2 or sin(" + A + ") = -1/4"
+    );
+}
+
+static std::optional<std::vector<std::string>> asin_acos_unit_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        Node const &l = a.get(L);
+        Node const &r = a.get(R);
+        if(l.kind != NodeKind::Fn || r.kind != NodeKind::Fn || l.fkind != FnKind::Asin || r.fkind != FnKind::Acos) return std::nullopt;
+        std::string X = format_expr(a, l.a), Y = format_expr(a, r.a);
+        return casio::exam_block(
+            "trig identity",
+            {
+                "Let A=asin(" + X + ")=acos(" + Y + ")",
+                "sin(A)=" + X,
+                "cos(A)=" + Y,
+                "sin(A)^2+cos(A)^2=1",
+            },
+            X + "^2 + " + Y + "^2 = 1"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
+static std::optional<std::vector<std::string>> trig_proof_equation_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    if(auto r = cot_minus_tan_identity_route(a, lhs, rhs)) return r;
+    if(auto r = cosec_sec_identity_route(a, lhs, rhs)) return r;
+    if(auto r = cosec_consequence_route(a, lhs, rhs)) return r;
+    if(auto r = asin_acos_unit_route(a, lhs, rhs)) return r;
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> solve_cos_sec_product_to_sum(
     Arena &a,
     NodeId residual,
@@ -10562,6 +10834,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
 
     if(auto inv_pi = inverse_trig_pi_identity_route(a, lhs, rhs)) return *inv_pi;
     if(auto tan_ratio = tan_sum_diff_ratio_proof(a, lhs, rhs)) return *tan_ratio;
+    if(auto proof = trig_proof_equation_route(a, lhs, rhs)) return *proof;
     if(general) {
         if(auto ts = solve_linear_sincos_zero_tan(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *ts;
     }
@@ -11100,6 +11373,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         NodeId lhs_raw = casio::parse_expr(arena, lhs);
         NodeId rhs_raw = casio::parse_expr(arena, rhs);
         if(auto route = double_angle_cot_route(arena, lhs_raw, rhs_raw, "trig identity", true)) return *route;
+        if(auto route = trig_proof_equation_route(arena, casio::simplify(arena, lhs_raw), casio::simplify(arena, rhs_raw))) return *route;
         for(std::string v : {"x", "theta", "t"}) {
             std::string sec2 = "sec(2" + v + ")";
             std::string sin_form = "1/(1-2sin(" + v + ")^2)";
