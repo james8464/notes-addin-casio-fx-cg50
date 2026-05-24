@@ -341,6 +341,35 @@ static NodeId neg_expanded(Arena &a, NodeId n)
     return casio::simplify(a, casio::neg(a, n));
 }
 
+static bool expression_head_negative(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return x.num.num < 0;
+    if(x.kind == NodeKind::Add && !x.kids.empty()) return expression_head_negative(a, x.kids.front());
+    if(x.kind == NodeKind::Mul) {
+        Rational c{1, 1};
+        bool have_num = false;
+        for(NodeId k : x.kids) {
+            if(auto r = as_num(a, k)) {
+                c.num *= r->num;
+                c.den *= r->den;
+                c.normalize();
+                have_num = true;
+            }
+        }
+        return have_num && c.num < 0;
+    }
+    return false;
+}
+
+static NodeId cancel_double_negative_div(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return n;
+    if(!expression_head_negative(a, x.a) || !expression_head_negative(a, x.b)) return n;
+    return casio::simplify(a, casio::div(a, neg_expanded(a, x.a), neg_expanded(a, x.b)));
+}
+
 struct IsolatedSqrt
 {
     NodeId root;
@@ -5621,6 +5650,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy));
             ans = cancel_common_int_div(arena, ans);
             ans = nicer_derivative_final(arena, ans);
+            ans = cancel_double_negative_div(arena, ans);
             casio::ExamPrelude pre;
             pre.raw = eq_text;
             pre.norm = casio::normalize_text(eq_text);

@@ -204,7 +204,7 @@ def main() -> int:
     bad += require(
         "algebra_de_solve_routes_general_engine",
         run(["--alg", "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)"]),
-        ("1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(8/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"),
+        ("1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(8/5)", "h = 5/(10 - 8*e^(sin(1/10*t)/5))"),
         ("solve(de_solve", "ERR:"),
     )
     bad += require(

@@ -57,7 +57,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q9 implicit cycle-track derivative",
         ["--derive", "x^2-2*x*y+3*y^2=50,x,method=implicit"],
-        ["F_x = 2*x - 2*y", "F_y = - 2*x + 6*y", "F_x + F_y*dy/dx = 0", "dy/dx = (- x + y)/(- x + 3*y)"],
+        ["F_x = 2*x - 2*y", "F_y = - 2*x + 6*y", "F_x + F_y*dy/dx = 0", "dy/dx = (x - y)/(x - 3*y)"],
         ["Answer: d/dx", "ERR:"],
     ),
     (
@@ -69,7 +69,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q10 separable coaster model",
         ["--int", "de_solve(dH/dt=H*cos(t/4)/40,H(0)=5)"],
-        ["1/H dH = cos(t/4)/40 dt", "ln(abs(H)) = 4*sin(t/4)/40 + C", "C = ln(5)", "H = 5*e^(4*sin(t/4)/40)"],
+        ["1/H dH = cos(t/4)/40 dt", "ln(abs(H)) = 4*sin(t/4)/40 + C", "C = ln(5)", "H = 5*e^(1/10*sin(1/4*t))"],
         ["ERR:", "Integral not recognised"],
     ),
     (

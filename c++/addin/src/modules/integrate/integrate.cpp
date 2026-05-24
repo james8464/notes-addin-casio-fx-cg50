@@ -1641,9 +1641,7 @@ static std::string exp_arg_text(Arena &a, NodeId n)
 
 static std::string neg_exp_arg_text(Arena &a, NodeId n)
 {
-    std::string s = exp_arg_text(a, n);
-    bool simple = s.find_first_of(" +-") == std::string::npos;
-    return simple ? "-" + s : "-(" + s + ")";
+    return exp_arg_text(a, casio::simplify(a, casio::neg(a, n)));
 }
 
 static std::optional<std::pair<NodeId, int>> log_power_factor(Arena &a, NodeId n)
@@ -1852,6 +1850,132 @@ static std::optional<std::string> exp_log_product_text(Arena &a, NodeId n)
     for(auto const &d : bot) out += "/" + d;
     if(!rest.empty()) out += "*e^(" + exp_arg_text(a, add_or_zero_int(a, rest)) + ")";
     return out;
+}
+
+static NodeId absorb_numeric_denominators(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        NodeId top = absorb_numeric_denominators(a, x.a);
+        NodeId bot = absorb_numeric_denominators(a, x.b);
+        if(auto r = as_num(a, bot); r && r->num != 0) return mul_rational_expr(a, r_div(Rational{1, 1}, *r), top);
+        return casio::simplify(a, casio::div(a, top, bot));
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(absorb_numeric_denominators(a, k));
+        return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    }
+    if(x.kind == NodeKind::Pow) return casio::simplify(a, casio::power(a, absorb_numeric_denominators(a, x.a), absorb_numeric_denominators(a, x.b)));
+    if(x.kind == NodeKind::Fn) return casio::simplify(a, a.fn(x.fkind, absorb_numeric_denominators(a, x.a)));
+    return n;
+}
+
+static bool contains_abs_fn(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) return x.fkind == FnKind::Abs || contains_abs_fn(a, x.a);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) return contains_abs_fn(a, x.a) || contains_abs_fn(a, x.b);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(contains_abs_fn(a, k)) return true;
+    }
+    return false;
+}
+
+static std::optional<NodeId> local_abs_branch_node(Arena &a, NodeId n, std::string const &xvar, Rational x0)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        auto inner = local_abs_branch_node(a, x.a, xvar, x0);
+        if(!inner) return std::nullopt;
+        if(x.fkind == FnKind::Abs) {
+            auto v = eval_rat_small(a, x.a, xvar, x0);
+            if(!v || v->num == 0) return std::nullopt;
+            return v->num > 0 ? *inner : casio::simplify(a, casio::neg(a, *inner));
+        }
+        return casio::simplify(a, a.fn(x.fkind, *inner));
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = local_abs_branch_node(a, x.a, xvar, x0);
+        auto bot = local_abs_branch_node(a, x.b, xvar, x0);
+        if(!top || !bot) return std::nullopt;
+        return casio::simplify(a, casio::div(a, *top, *bot));
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto base = local_abs_branch_node(a, x.a, xvar, x0);
+        auto exp = local_abs_branch_node(a, x.b, xvar, x0);
+        if(!base || !exp) return std::nullopt;
+        return casio::simplify(a, casio::power(a, *base, *exp));
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) {
+            auto kk = local_abs_branch_node(a, k, xvar, x0);
+            if(!kk) return std::nullopt;
+            kids.push_back(*kk);
+        }
+        return casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
+    }
+    return n;
+}
+
+static NodeId distribute_numeric_add_products(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div)
+        return casio::simplify(a, casio::div(a, distribute_numeric_add_products(a, x.a), distribute_numeric_add_products(a, x.b)));
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(distribute_numeric_add_products(a, k));
+        return casio::simplify(a, casio::add(a, kids));
+    }
+    if(x.kind != NodeKind::Mul) return n;
+    auto split = split_numeric_factor(a, n);
+    if(r_eq(split.first, Rational{1, 1})) return n;
+    Node const &body = a.get(split.second);
+    if(body.kind != NodeKind::Add) return n;
+    std::vector<NodeId> terms;
+    for(NodeId k : body.kids) terms.push_back(mul_rational_expr(a, split.first, k));
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::optional<std::string> signed_local_de_rhs_text(Arena &a,
+                                                           std::string const &xvar,
+                                                           NodeId x0,
+                                                           NodeId y0,
+                                                           std::string const &erhs)
+{
+    try {
+        NodeId rhs0 = casio::parse_expr(a, erhs);
+        if(!contains_abs_fn(a, rhs0)) return std::nullopt;
+        auto x0r = as_num(a, casio::simplify(a, x0));
+        if(!x0r) return std::nullopt;
+        auto local_rhs = local_abs_branch_node(a, rhs0, xvar, *x0r);
+        if(!local_rhs) return std::nullopt;
+        NodeId rhs = casio::simplify(a, casio::mul(a, {y0, *local_rhs}));
+        rhs = casio::simplify(a, absorb_numeric_denominators(a, rhs));
+        rhs = casio::simplify(a, distribute_numeric_add_products(a, rhs));
+        return format_expr(a, rhs);
+    }
+    catch(...) {
+        return std::nullopt;
+    }
+}
+
+static std::optional<std::string> simplified_de_rhs_text(Arena &a, NodeId y0, std::string const &erhs)
+{
+    try {
+        NodeId rhs0 = casio::parse_expr(a, erhs);
+        if(contains_abs_fn(a, rhs0)) return std::nullopt;
+        NodeId rhs = casio::simplify(a, casio::mul(a, {y0, rhs0}));
+        rhs = casio::simplify(a, absorb_numeric_denominators(a, rhs));
+        rhs = casio::simplify(a, distribute_numeric_add_products(a, rhs));
+        return format_expr(a, rhs);
+    }
+    catch(...) {
+        return std::nullopt;
+    }
 }
 
 static std::optional<NodeId> exp_arg_node(Arena &a, NodeId n)
@@ -2597,25 +2721,58 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
             NodeId log_arg = log_left->arg;
             NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
             if(same_expr(a, log_arg, casio::sym(a, tok->y))) {
-                NodeId R0 = casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x0));
-                NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, R0)}));
+                NodeId R0 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x0)));
+                NodeId Rused = simplify_known_endpoint_values(a, casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, R0)})));
                 std::string y0 = format_expr(a, B.y0);
                 steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + y0);
                 if(r_eq(log_left->scale, Rational{1, 1})) {
-                    std::string ctext = "ln(abs(" + y0 + "))";
-                    if(!same_expr(a, R0, casio::num(a, 0))) ctext += " - (" + format_expr(a, R0) + ")";
+                    auto abs_log_const = [&](NodeId n) -> std::optional<std::string> {
+                        auto r = as_num(a, casio::simplify(a, n));
+                        if(!r) return std::nullopt;
+                        if(r->num < 0) r->num = -r->num;
+                        if(r->num == r->den) return std::string{};
+                        return std::string("ln(") + rat_text_small(a, *r) + ")";
+                    };
+                    std::string ctext;
+                    auto ylog = abs_log_const(B.y0);
+                    auto r0v = as_num(a, casio::simplify(a, R0));
+                    if(ylog && r0v) {
+                        ctext = *ylog;
+                        Rational cr = r_neg(*r0v);
+                        if(cr.num != 0) ctext += (ctext.empty() ? rat_text_small(a, cr) : " " + signed_rat_text(a, cr));
+                        if(ctext.empty()) ctext = "0";
+                    }
+                    else {
+                        ctext = ylog ? (*ylog).empty() ? "0" : *ylog : "ln(abs(" + y0 + "))";
+                        if(!same_expr(a, R0, casio::num(a, 0))) {
+                            if(ctext == "0") ctext = "-(" + format_expr(a, R0) + ")";
+                            else ctext += " - (" + format_expr(a, R0) + ")";
+                        }
+                    }
                     steps.push_back("C = " + ctext);
                 }
                 steps.push_back("ln(abs(" + tok->y + ")) = " + format_expr(a, Rused) + " + ln(abs(" + y0 + "))");
                 std::string erhs = exp_log_product_text(a, Rused).value_or("e^(" + exp_arg_text(a, Rused) + ")");
                 steps.push_back(tok->y + " = " + y0 + "*" + erhs);
                 answer = tok->y + " = " + y0 + "*" + erhs;
+                if(auto simple = simplified_de_rhs_text(a, B.y0, erhs)) {
+                    std::string line = tok->y + " = " + *simple;
+                    if(line != answer) {
+                        steps.push_back(line);
+                        answer = line;
+                    }
+                }
+                if(auto local = signed_local_de_rhs_text(a, tok->x, B.x0, B.y0, erhs)) {
+                    steps.push_back("Sign branch from " + tok->y + "(" + format_expr(a, B.x0) + ").");
+                    steps.push_back(tok->y + " = " + *local);
+                    answer = tok->y + " = " + *local;
+                }
                 if(B.have_y1) {
                     NodeId y1arg = casio::simplify(a, substitute_de_var(a, log_arg, tok->y, B.y1));
                     NodeId y0arg = casio::simplify(a, substitute_de_var(a, log_arg, tok->y, B.y0));
                     NodeId ratio = de_ratio_simplify(a, y1arg, y0arg).value_or(casio::simplify(a, casio::div(a, y1arg, y0arg)));
                     NodeId lhs_log = casio::fn(a, "log", casio::fn(a, "abs", ratio));
-                    NodeId R1 = casio::simplify(a, substitute_de_var(a, Rused, tok->x, B.x1));
+                    NodeId R1 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, Rused, tok->x, B.x1)));
                     NodeId eq = casio::simplify(a, casio::add(a, {R1, casio::neg(a, lhs_log)}));
                     std::vector<std::string> syms;
                     collect_de_symbols(a, eq, syms);
@@ -2628,7 +2785,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                             steps.push_back(tok->y + "(" + format_expr(a, B.x1) + ") = " + format_expr(a, B.y1));
                             steps.push_back("ln(abs(" + format_expr(a, ratio) + ")) = " + format_expr(a, R1));
                             steps.push_back(syms[0] + " = " + format_expr(a, *pnode));
-                            Rused = casio::simplify(a, substitute_de_var(a, Rused, syms[0], *pnode));
+                            Rused = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, Rused, syms[0], *pnode)));
                             erhs = exp_log_product_text(a, Rused).value_or("e^(" + exp_arg_text(a, Rused) + ")");
                             steps.push_back(tok->y + " = " + y0 + "*" + erhs);
                             answer = tok->y + " = " + y0 + "*" + erhs;
@@ -2639,7 +2796,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 explicit_answer = true;
             }
         }
-        if(log_left && B.have_y0 && B.y0_num) {
+        if(log_left && B.have_y0 && B.y0_num && !used_bc) {
             NodeId log_arg = log_left->arg;
             NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
             auto lf = linfrac_in_y(a, log_arg, tok->y);
@@ -2652,7 +2809,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     Rational q = r_div(top, bot);
                     Rational qs = q;
                     if(q.num < 0) q.num = -q.num;
-                    NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, casio::num(a, r0->num, r0->den))}));
+                    NodeId Rused = simplify_known_endpoint_values(a, casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, casio::num(a, r0->num, r0->den))})));
                     std::string log_lhs = "log(abs(" + format_expr(a, log_arg) + "))";
                     steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
                     used_bc = true;
@@ -2681,7 +2838,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                         NodeId ratio = casio::simplify(a, casio::div(a, y1arg, casio::num(a, q.num, q.den)));
                         NodeId lhs_log = casio::fn(a, "log", casio::fn(a, "abs", ratio));
                         if(auto rr = as_num(a, ratio); rr && (rr->num == rr->den || rr->num == -rr->den)) lhs_log = casio::num(a, 0);
-                        NodeId R1 = casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x1));
+                        NodeId R1 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x1)));
                         NodeId eq = casio::simplify(a, casio::add(a, {R1, casio::neg(a, lhs_log)}));
                         std::vector<std::string> syms;
                         collect_de_symbols(a, eq, syms);
@@ -2695,7 +2852,7 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                                 steps.push_back(tok->y + "(" + format_expr(a, B.x1) + ") = " + format_expr(a, B.y1));
                                 steps.push_back(format_expr(a, lhs_log) + " = " + format_expr(a, R1));
                                 steps.push_back(syms[0] + " = " + format_expr(a, pnode));
-                                Rused = casio::simplify(a, substitute_de_var(a, log_rhs, syms[0], pnode));
+                                Rused = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, log_rhs, syms[0], pnode)));
                             }
                         }
                     }
@@ -2717,8 +2874,8 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                     Rational q_signed = r_div(top, bot);
                     Rational q = q_signed;
                     if(q.num < 0) q.num = -q.num;
-                    NodeId R0 = casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x0));
-                    NodeId Rused = casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, R0)}));
+                    NodeId R0 = simplify_known_endpoint_values(a, casio::simplify(a, substitute_de_var(a, log_rhs, tok->x, B.x0)));
+                    NodeId Rused = simplify_known_endpoint_values(a, casio::simplify(a, casio::add(a, {log_rhs, casio::neg(a, R0)})));
                     std::string log_lhs = "log(abs(" + format_expr(a, log_arg) + "))";
                     steps.push_back(tok->y + "(" + format_expr(a, B.x0) + ") = " + format_expr(a, B.y0));
                     steps.push_back("C = log(" + rat_text_small(a, q) + ") - (" + format_expr(a, R0) + ")");

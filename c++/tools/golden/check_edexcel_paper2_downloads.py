@@ -422,7 +422,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2022 Q14 separable DE solution",
         ["--int", "de_solve(dV/dt=3*V/((2*t-1)*(t+1)),V(2)=3)"],
-        ["1/V dV = 3/((2*t - 1)*(t + 1)) dt", "PF: A/(2*t - 1)+B/(t + 1)", "C = ln(abs(3))", "V = 3*abs((2*t - 1))/abs((t + 1))"],
+        ["1/V dV = 3/((2*t - 1)*(t + 1)) dt", "PF: A/(2*t - 1)+B/(t + 1)", "C = ln(3)", "V = 3*(2*t - 1)/(t + 1)"],
         ["ERR:", "1/V = 1/V"],
     ),
     (

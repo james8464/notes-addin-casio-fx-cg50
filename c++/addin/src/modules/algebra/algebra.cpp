@@ -32704,6 +32704,24 @@ algebra_compare_transform_modes:
                     "4*x^2*(1-x^2) = (x+y)^2"
                 );
             }
+            if(xk == "tan(" + param + ")" &&
+               (yk == "cos(" + param + ")^2" || yk == "sin(" + param + ")^2" || yk == "sec(" + param + ")^2")) {
+                std::vector<std::string> steps{
+                    "x=tan(" + param + ").",
+                    "1+tan(" + param + ")^2=sec(" + param + ")^2.",
+                };
+                std::string answer;
+                if(yk == "cos(" + param + ")^2") {
+                    steps.push_back("cos(" + param + ")^2=1/sec(" + param + ")^2.");
+                    answer = "y = 1/(1+x^2)";
+                }
+                else if(yk == "sin(" + param + ")^2") {
+                    steps.push_back("sin(" + param + ")^2=tan(" + param + ")^2/sec(" + param + ")^2.");
+                    answer = "y = x^2/(1+x^2)";
+                }
+                else answer = "y = 1+x^2";
+                return casio::exam_block("parametric cartesian form", steps, answer);
+            }
             auto recip_param = [&](std::string const &s) -> std::optional<std::pair<long long, long long>> {
                 long long acoef = 0, bcoef = 0;
                 std::size_t i = 0;

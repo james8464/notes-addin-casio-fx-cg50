@@ -483,7 +483,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dh/dt=(1/50)*h*(2*h-1)*cos(t/10),h(0)=5/2)",
-        ["1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(8/5)", "(2*h - 1)/h = 8/5*e^(sin(t/10)/5)", "h = 5/(10 - 8*e^(sin(t/10)/5))"],
+        ["1/(h*(2*h - 1)) dh = 1/50*cos(t/10) dt", "C = ln(8/5)", "(2*h - 1)/h = 8/5*e^(sin(1/10*t)/5)", "h = 5/(10 - 8*e^(sin(1/10*t)/5))"],
         ["Try dy/dx", "unsupported DE route", "dh = []", "ERR:"],
     ),
     (
@@ -495,7 +495,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
-        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = -3 + 4*e^(x^3/3 + x)"],
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(1/3*x^3 + x)", "y = -3 + 4*e^(1/3*x^3 + x)"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (
@@ -543,7 +543,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dh/dt=3/2*h*sin(3*t/4),h(0)=1)",
-        ["1/h dh = 3/2*sin(3*t/4) dt", "C = 2", "h = e^(- 2*cos(3*t/4) + 2)"],
+        ["1/h dh = 3/2*sin(3*t/4) dt", "C = 2", "h = e^(- 2*cos(3/4*t) + 2)"],
         ["unsupported DE route", "ERR:"],
     ),
     (
