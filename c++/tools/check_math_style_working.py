@@ -272,6 +272,12 @@ CASES = [
         ("theta = []", "Failed to isolate"),
     ),
     (
+        "sec double-angle reciprocal proof",
+        ["--trig", "sec(2*x)\n1/(1-2*sin(x)^2)"],
+        ("sec(2x) = 1/cos(2x)", "cos(2x) = 1-2sin(x)^2", "sec(2x) = 1/(1 - 2sin(x)^2)"),
+        ("LHS = RHS", "ERR:"),
+    ),
+    (
         "acute cot quadratic keeps exact tan",
         ["--trig", "7*cot(alpha)^2+6*cot(alpha)=1,alpha,0,pi/2"],
         ("u = tan(alpha)", "u = -1 or u = 7", "tan(alpha) = 7", "alpha = [1.42889927219]"),

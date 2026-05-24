@@ -9627,6 +9627,24 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(rhs.empty()) return {"Err: need LHS and RHS."};
         std::string lk = compact_key(lhs);
         std::string rk = compact_key(rhs);
+        for(std::string v : {"x", "theta", "t"}) {
+            std::string sec2 = "sec(2" + v + ")";
+            std::string sin_form = "1/(1-2sin(" + v + ")^2)";
+            std::string cos_form = "1/(2cos(" + v + ")^2-1)";
+            if(lk == sec2 && (rk == sin_form || rk == cos_form)) {
+                bool use_sin = rk == sin_form;
+                return casio::exam_block(
+                    "trig identity",
+                    {
+                        "sec(2" + v + ") = 1/cos(2" + v + ").",
+                        use_sin ? "cos(2" + v + ") = 1-2sin(" + v + ")^2."
+                                : "cos(2" + v + ") = 2cos(" + v + ")^2-1.",
+                    },
+                    use_sin ? "sec(2" + v + ") = 1/(1-2sin(" + v + ")^2)"
+                            : "sec(2" + v + ") = 1/(2cos(" + v + ")^2-1)"
+                );
+            }
+        }
         if((lk == "sin(3theta)" && rk == "3sin(theta)-4sin(theta)^3") ||
            (lk == "sin(3x)" && rk == "3sin(x)-4sin(x)^3")) {
             std::string v = lk.find("theta") != std::string::npos ? "theta" : "x";

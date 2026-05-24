@@ -1340,6 +1340,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sec(2*x)\n1/(1-2*sin(x)^2)",
+        ["sec(2x)=1/cos(2x)", "cos(2x)=1-2sin(x)^2", "Answer: sec(2x) = 1/(1-2sin(x)^2)"],
+        ["LHS=RHS", "ERR:"],
+    ),
+    (
+        "trig",
         "cos(7*theta),method=auto",
         ["Basis: let c=cos(theta)", "Answer: 64*c^7 - 112*c^5 + 56*c^3 - 7*c"],
         ["ERR:", "Unexpected token"],
