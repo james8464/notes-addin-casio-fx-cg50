@@ -1022,6 +1022,37 @@ static NodeId roundtrip_simplify(Arena &a, NodeId n)
     }
 }
 
+static bool is_one_node(Arena &a, NodeId n)
+{
+    Node const &x = a.get(casio::simplify(a, n));
+    return x.kind == NodeKind::Num && x.num.num == x.num.den;
+}
+
+static std::optional<NodeId> reciprocal_product_denominator(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div || !is_one_node(a, x.a)) return std::nullopt;
+    std::vector<NodeId> den_factors;
+    Node const &den = a.get(x.b);
+    if(den.kind == NodeKind::Mul) den_factors = den.kids;
+    else den_factors.push_back(x.b);
+
+    bool moved = false;
+    std::vector<NodeId> top, bot;
+    for(NodeId f : den_factors) {
+        Node const &u = a.get(f);
+        if(u.kind == NodeKind::Div && is_one_node(a, u.a)) {
+            top.push_back(u.b);
+            moved = true;
+        }
+        else bot.push_back(f);
+    }
+    if(!moved) return std::nullopt;
+    NodeId topn = top.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, top));
+    if(bot.empty()) return casio::simplify(a, topn);
+    return casio::simplify(a, casio::div(a, topn, casio::simplify(a, casio::mul(a, bot))));
+}
+
 static std::optional<NodeId> split_add_over_common_den(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -1048,6 +1079,7 @@ static std::optional<NodeId> split_add_over_common_den(Arena &a, NodeId n)
 static NodeId nicer_derivative_final(Arena &a, NodeId n)
 {
     NodeId best = roundtrip_simplify(a, n);
+    if(auto recip = reciprocal_product_denominator(a, best)) best = *recip;
     if(auto split = split_add_over_common_den(a, best)) best = *split;
     return best;
 }
@@ -5573,6 +5605,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string dname = "d" + dep + "/d" + var;
             NodeId ans = casio::simplify(arena, casio::div(arena, casio::neg(arena, fx), fy));
             ans = cancel_common_int_div(arena, ans);
+            ans = nicer_derivative_final(arena, ans);
             casio::ExamPrelude pre;
             pre.raw = eq_text;
             pre.norm = casio::normalize_text(eq_text);

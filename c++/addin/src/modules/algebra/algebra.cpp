@@ -793,7 +793,7 @@ static std::optional<NodeId> exact_ln_factor_node(Arena &a, NodeId n)
         auto u = pure_power_i64(x.num.num);
         auto v = pure_power_i64(x.num.den);
         if(x.num.den == 1 && u) return ln_power_term(a, u->first, u->second);
-        if(x.num.num == 1 && v) return casio::neg(a, ln_power_term(a, v->first, v->second));
+        if(x.num.num == 1) return casio::neg(a, v ? ln_power_term(a, v->first, v->second) : casio::fn(a, "log", casio::num(a, x.num.den)));
         if(u && v) return casio::add(a, {ln_power_term(a, u->first, u->second), casio::neg(a, ln_power_term(a, v->first, v->second))});
         return casio::fn(a, "log", n);
     }
@@ -1162,6 +1162,19 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
     for(auto k : x.kids) kids.push_back(exact_eval_simplify(a, k));
     NodeId r = casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
     return format_expr(a, r) == format_expr(a, n) ? r : exact_eval_simplify(a, r);
+}
+
+static NodeId exact_eval_polish(Arena &a, NodeId n)
+{
+    NodeId s = exact_eval_simplify(a, n);
+    std::string before = format_expr(a, s);
+    try {
+        NodeId r = exact_eval_simplify(a, casio::simplify(a, casio::parse_expr(a, before)));
+        std::string after = format_expr(a, r);
+        if(!after.empty() && after.size() <= before.size() + 8) return r;
+    }
+    catch(...) {}
+    return s;
 }
 
 static NodeId cancel_log_exp_only(Arena &a, NodeId n)
@@ -29637,7 +29650,7 @@ static std::optional<std::vector<std::string>> exp_two_term_route(
     Rational db = r_sub(b[1], b[0]);
     NodeId ratio_node = a.num(ratio);
     if(!is_zero(db)) ratio_node = casio::simplify(a, casio::mul(a, {ratio_node, casio::power(a, a.constant(ConstKind::E), a.num(db))}));
-    NodeId x = casio::simplify(a, casio::div(a, casio::fn(a, "ln", ratio_node), a.num(dm)));
+    NodeId x = exact_eval_polish(a, casio::div(a, casio::fn(a, "ln", ratio_node), a.num(dm)));
     std::string x_text = format_expr(a, x);
     if(is_zero(db) && dm.den == 1) {
         int root_power = static_cast<int>(std::llabs(dm.num));
@@ -30476,7 +30489,7 @@ static std::optional<std::vector<std::string>> affine_exp_const_solve_route(
 
     auto p = poly_of(a, ce->second, var);
     if(p && p->ok && is_zero(p->a2) && !is_zero(p->a1)) {
-        NodeId exact = casio::simplify(a, casio::div(a, casio::add(a, {*logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
+        NodeId exact = exact_eval_polish(a, casio::div(a, casio::add(a, {*logt, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))}), casio::num(a, p->a1.num, p->a1.den)));
         std::string exact_text = simplify_log_power_div_text(format_expr(a, exact));
         std::string rearranged_text = affine_exp_solution_step_text(var, ln_text(*logt), p->a1, p->a0);
         out.push_back(rearranged_text);
@@ -32497,19 +32510,19 @@ algebra_compare_transform_modes:
                contains_fn_kind(arena, n, FnKind::Sqrt) ||
                contains_fn_kind(arena, n, FnKind::Log) ||
                contains_fn_kind(arena, v, FnKind::Sqrt)) {
-                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
-                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                NodeId sub = exact_eval_polish(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_polish(arena, expand_square_powers(arena, sub));
                 return exact_lines(sub2);
             }
             if(contains_exp_log_exact(arena, n)) {
-                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
-                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                NodeId sub = exact_eval_polish(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_polish(arena, expand_square_powers(arena, sub));
                 if(simple_exact_e_value(arena, sub2)) return exact_lines(sub2);
             }
             if(contains_fn_kind(arena, n, FnKind::Asin) || contains_fn_kind(arena, n, FnKind::Acos) ||
                contains_fn_kind(arena, n, FnKind::Atan)) {
-                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
-                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                NodeId sub = exact_eval_polish(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_polish(arena, expand_square_powers(arena, sub));
                 if(!contains_fn_kind(arena, sub2, FnKind::Asin) && !contains_fn_kind(arena, sub2, FnKind::Acos) &&
                    !contains_fn_kind(arena, sub2, FnKind::Atan)) return exact_lines(sub2);
             }
