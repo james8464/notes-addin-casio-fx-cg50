@@ -780,6 +780,22 @@ CASES = [
         ("Valid for", "T_r = C(n,r)*u^r", "Keep powers"),
     ),
     (
+        "large finite binomial has no validity",
+        ["--alg", "series((3+2*x)^20,x,0,5)"],
+        ("(2*x + 3)^20 = 3486784401*(1+(2/3)*x)^20", "7118894532096*x^5"),
+        ("Valid for", "c3/c2"),
+    ),
+    (
+        "symbolic exponent binomial ratio",
+        ["--alg", "series((3+2*x)^n,x,0,3)"],
+        ("(2*x + 3)^n = 3^n*(1+(2/3)*x)^n", "c3/c2 = 2/9*(n - 2)", "Valid for abs(2/3*x) < 1"),
+    ),
+    (
+        "irrational factor binomial sign",
+        ["--alg", "series((3+2*x)^(7/2),x,0,5)"],
+        ("(2*x + 3)^7/2 = 3^(7/2)*(1+(2/3)*x)^7/2", "c3/c2 = 1/3", "- 7/1944*3^(7/2)*x^5"),
+    ),
+    (
         "binomial two-linear PF series",
         ["--alg", "binomial((5*x+3)/((1-x)*(1+3*x)),x,0,3)"],
         ("PF: 2/(- x + 1) + 1/(3*x + 1)", "Valid for abs(x) < 1/3", "3 - x + 11*x^2 - 25*x^3"),

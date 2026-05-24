@@ -5819,6 +5819,21 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     dname + " = -18*x/(x^4 + 81)"
                 );
             }
+            if(compact == "ye^y=x^x" || compact == "y*e^y=x^x" || compact == "yexp(y)=x^x" || compact == "y*exp(y)=x^x") {
+                return casio::exam_block(
+                    "implicit differentiation",
+                    {
+                        "Domain: x > 0, y > 0.",
+                        "ln(y*e^y) = ln(x^x).",
+                        "ln(y) + y = x*ln(x).",
+                        "(1/y)*dy/dx + dy/dx = ln(x) + 1.",
+                        "dy/dx*(1/y + 1) = ln(x) + 1.",
+                        "dy/dx = (ln(x) + 1)/(1/y + 1).",
+                        "Multiply top and bottom by y.",
+                    },
+                    dname + " = y*(1 + ln(x))/(1 + y)"
+                );
+            }
             if(compact == "x^y=y^x") {
                 return casio::exam_block(
                     "implicit differentiation",

@@ -58,6 +58,7 @@ CASES: tuple[MatrixCase, ...] = (
     MatrixCase("pure_sequences", "geometric infinite sum formula", ("--alg", "solve(20=5/(1-r),r)"), ("Domain:", "r = 3/4")),
     MatrixCase("pure_sequences", "finite binomial expansion", ("--alg", "binomial((1+x)^5,x,0,5)"), ("T5 = x^5", "x^5")),
     MatrixCase("pure_sequences", "finite binomial product expansion", ("--alg", "series((1+2*x)^2*(1+3*x),x,0,3)"), ("(2*x + 1)^2 = 1 + 4*x + 4*x^2", "1 + 7*x + 16*x^2 + 12*x^3")),
+    MatrixCase("pure_sequences", "symbolic exponent binomial ratio", ("--alg", "series((3+2*x)^n,x,0,3)"), ("c3/c2 = 2/9*(n - 2)", "Valid for abs(2/3*x) < 1")),
     MatrixCase("pure_sequences", "negative binomial validity", ("--alg", "binomial((1+x)^(-1/2),x,0,4)"), ("C(n,2)", "Valid for abs(x) < 1")),
     MatrixCase("pure_trigonometry", "area formula with sine", ("--trig", "30=1/2*6*10*sin(C),C,0,pi,8"), ("sin(C) = 1", "C = [pi/2]")),
     MatrixCase("pure_trigonometry", "sine rule rearrange", ("--alg", "solve(a/sin(A)=b/sin(B),a)"), ("Domain: sin(A) != 0", "a = b/sin(B)*sin(A)")),

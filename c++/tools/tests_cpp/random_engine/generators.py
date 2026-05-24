@@ -585,6 +585,7 @@ class AdversarialGenerator:
             ("pure_coordinate_geometry", "alg", "complete_square(x^2+y^2-6*x+10*y+34)", "geometry", "equation", "complete_square", ("complete_square", "centre_radius"), True),
             ("pure_sequences", "alg", "binomial((1+x)^5,x,0,5)", "binomial", "expr,var,point,order", "expand", ("pascal", "finite"), True),
             ("pure_sequences", "alg", "series((1+2*x)^2*(1+3*x),x,0,3)", "binomial", "expr,var,point,order", "expand", ("binomial_product", "finite"), True),
+            ("pure_sequences", "alg", "series((3+2*x)^n,x,0,3)", "binomial", "expr,var,point,order", "expand", ("symbolic_exponent", "ratio"), True),
             ("pure_trigonometry", "trig", "3*cos(x)+4*sin(x)=2,x,0,2*pi,10,method=rform", "solve_trig", "eq,var,lo,hi,max,method", "rform", ("rform", "interval_filter"), True),
             ("pure_explogs", "alg", "solve(log(2,x-1)+log(2,x+3)=3,x,method=log_exp)", "solve", "eq,var,method", "log_exp", ("domain", "log_laws"), True),
             ("pure_differentiation", "derive", "sin((x+1)^2),x,method=chain", "diff", "expr,var,method", "chain", ("chain_rule",), True),
