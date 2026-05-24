@@ -1124,6 +1124,29 @@ static NodeId nicer_derivative_final(Arena &a, NodeId n)
     return best;
 }
 
+static std::optional<NodeId> param_cancel_common_factors(Arena &a, NodeId top, NodeId bot)
+{
+    std::vector<NodeId> n = a.get(top).kind == NodeKind::Mul ? a.get(top).kids : std::vector<NodeId>{top};
+    std::vector<NodeId> d = a.get(bot).kind == NodeKind::Mul ? a.get(bot).kids : std::vector<NodeId>{bot};
+    bool changed = false;
+    for(std::size_t i = 0; i < d.size();) {
+        bool erased = false;
+        for(std::size_t j = 0; j < n.size(); ++j) {
+            if(!same_expr_key(a, d[i], n[j])) continue;
+            d.erase(d.begin() + i);
+            n.erase(n.begin() + j);
+            changed = true;
+            erased = true;
+            break;
+        }
+        if(!erased) ++i;
+    }
+    if(!changed) return std::nullopt;
+    NodeId nt = n.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, n));
+    NodeId dt = d.empty() ? casio::num(a, 1) : casio::simplify(a, casio::mul(a, d));
+    return casio::simplify(a, casio::div(a, expand_small(a, nt), expand_small(a, dt)));
+}
+
 static std::optional<NodeId> cos_tan_product_arg(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -5926,6 +5949,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId dxdt = casio::simplify(arena, diff(arena, xnode, tvar));
             NodeId dydt = casio::simplify(arena, diff(arena, ynode, tvar));
             NodeId dydx = casio::simplify(arena, casio::div(arena, dydt, dxdt));
+            if(auto reduced = param_cancel_common_factors(arena, dydt, dxdt)) dydx = *reduced;
+            dydx = nicer_derivative_final(arena, dydx);
+            if(arena.get(dydx).kind == NodeKind::Div) {
+                Node const &q = arena.get(dydx);
+                NodeId expanded = casio::simplify(arena, casio::div(
+                    arena,
+                    expand_small(arena, q.a),
+                    expand_small(arena, q.b)
+                ));
+                if(node_weight(arena, expanded) <= node_weight(arena, dydx)) dydx = expanded;
+            }
             if(req.mode == 5) {
                 NodeId d_dydx_dt = casio::simplify(arena, diff(arena, dydx, tvar));
                 NodeId d2 = casio::simplify(arena, casio::div(arena, d_dydx_dt, dxdt));

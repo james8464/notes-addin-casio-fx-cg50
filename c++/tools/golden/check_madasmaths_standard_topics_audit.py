@@ -69,13 +69,13 @@ CURATED_CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "Madas standard separable DE",
         ["--int", "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)"],
-        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y = -3 + 4*e^(x^3/3 + x)"],
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y = -3 + 4*e^(1/3*x^3 + x)"],
         ["unsupported DE route", "ERR:"],
     ),
     (
         "Madas standard DE exponentiate finish",
         ["--int", "de_solve(dh/dt=3/2*h*sin(3*t/4),h(0)=1)"],
-        ["ln(abs(h)) = -2*cos(3*t/4) + C", "C = 2", "h = e^(- 2*cos(3*t/4) + 2)"],
+        ["ln(abs(h)) = -2*cos(3*t/4) + C", "C = 2", "h = e^(- 2*cos(3/4*t) + 2)"],
         ["unsupported DE route", "ERR:"],
     ),
     (

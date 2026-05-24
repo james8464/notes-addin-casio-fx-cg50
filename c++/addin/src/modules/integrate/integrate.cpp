@@ -3507,6 +3507,23 @@ static std::string simplify_endpoint_answer_text(std::string s)
         if(!parse_rat_coeff(t.substr(0, p), c)) return false;
         return parse_int_full(t.substr(p + 1 + name_len, t.size() - (p + 1 + name_len) - 1), v);
     };
+    auto parse_pi_rat_ln_term = [&](std::string const &t, Rational &c, long long &v) -> bool {
+        std::size_t p = t.find("*ln(");
+        std::size_t name_len = 3;
+        if(p == std::string::npos) {
+            p = t.find("*log(");
+            name_len = 4;
+        }
+        if(p == std::string::npos || t.size() <= p + name_len + 2 || t.back() != ')') return false;
+        std::string coeff = t.substr(0, p);
+        if(coeff == "pi") c = Rational{1, 1};
+        else {
+            std::string tail = "*pi";
+            if(coeff.size() <= tail.size() || coeff.substr(coeff.size() - tail.size()) != tail) return false;
+            if(!parse_rat_coeff(coeff.substr(0, coeff.size() - tail.size()), c)) return false;
+        }
+        return parse_int_full(t.substr(p + 1 + name_len, t.size() - (p + 1 + name_len) - 1), v);
+    };
     auto rat_prefix = [](Rational r) {
         if(r.den == 1 && r.num == 1) return std::string();
         if(r.den == 1) return std::to_string(r.num) + "*";
@@ -3518,6 +3535,18 @@ static std::string simplify_endpoint_answer_text(std::string s)
         for(long long k = 2; k <= 8; ++k) {
             if(auto r = integer_nth_root_exact(single_rv, k); r && *r > 1) {
                 return rat_prefix(r_mul(single_rc, Rational{k, 1})) + "ln(" + std::to_string(*r) + ")";
+            }
+        }
+    }
+    Rational pi_rc{0, 1};
+    long long pi_rv = 0;
+    if(parse_pi_rat_ln_term(s, pi_rc, pi_rv) && pi_rc.num > 0 && pi_rv > 1) {
+        for(long long k = 2; k <= 8; ++k) {
+            if(auto r = integer_nth_root_exact(pi_rv, k); r && *r > 1) {
+                Rational c = r_mul(pi_rc, Rational{k, 1});
+                std::string p = c.den == 1 ? (c.num == 1 ? "pi*" : std::to_string(c.num) + "*pi*")
+                                            : std::to_string(c.num) + "/" + std::to_string(c.den) + "*pi*";
+                return p + "ln(" + std::to_string(*r) + ")";
             }
         }
     }
