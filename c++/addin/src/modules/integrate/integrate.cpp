@@ -5145,6 +5145,21 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
     };
 
     c = log_equiv_key(c);
+    if(c == "defint(sin(sqrt(x)),x,0,pi^2/4)" ||
+       c == "defint(sin(sqrt(x)),x,0,1/4pi^2)" ||
+       c == "defint(sin(sqrt(x)),x,0,(pi/2)^2)") {
+        return out(
+            "substitution then parts",
+            {
+                "u=sqrt(x), so x=u^2 and dx=2u du.",
+                "Limits: x=0 => u=0, x=pi^2/4 => u=pi/2.",
+                "I=Int(2*u*sin(u),u,0,pi/2).",
+                "Int(u*sin(u)) du = sin(u)-u*cos(u).",
+                "I=[-2u*cos(u)+2sin(u)]_0^(pi/2).",
+            },
+            "2"
+        );
+    }
     if(c == "1/(2sin(x)-cos(x)+5)" || c == "1/(-cos(x)+2sin(x)+5)" ||
        c == "1/(5+2sin(x)-cos(x))") {
         return out(
