@@ -2942,6 +2942,8 @@ static bool match_fn_square(Arena &a, NodeId n, FnKind fk, double &coeff, NodeId
     return true;
 }
 
+static bool coeff_fn_any(Arena &a, NodeId n, FnKind fk, double &coeff, NodeId &arg);
+
 static std::optional<std::vector<std::string>> solve_tan2_sin2(
     Arena &a,
     NodeId residual,
@@ -6068,6 +6070,170 @@ static std::optional<std::vector<std::string>> solve_pyth_recip_poly(
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
+static bool trig_same_or_set(Arena &a, NodeId &arg, NodeId u)
+{
+    if(!arg) {
+        arg = u;
+        return true;
+    }
+    return same_sig(a, arg, u);
+}
+
+static std::optional<NodeId> half_of_double_arg(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    double c = 1.0;
+    std::vector<NodeId> rest;
+    for(NodeId k : x.kids) {
+        if(!has_any_symbol(a, k)) {
+            auto v = numeric_eval(a, k, 0.0);
+            if(!v || !std::isfinite(*v)) return std::nullopt;
+            c *= *v;
+        }
+        else rest.push_back(k);
+    }
+    if(std::fabs(c - 2.0) > 1e-12 || rest.empty()) return std::nullopt;
+    return rest.size() == 1 ? rest[0] : casio::simplify(a, casio::mul(a, rest));
+}
+
+static bool match_fn_power_exact(Arena &a, NodeId n, FnKind fk, long long pn, long long pd, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(pn == pd && x.kind == NodeKind::Fn && x.fkind == fk) {
+        arg = x.a;
+        return true;
+    }
+    if(x.kind != NodeKind::Pow) return false;
+    auto q = as_num(a, x.b);
+    Node const &b = a.get(x.a);
+    if(!q || q->num != pn || q->den != pd || b.kind != NodeKind::Fn || b.fkind != fk) return false;
+    arg = b.a;
+    return true;
+}
+
+static bool match_sin2_cosec2_as_cot(Arena &a, NodeId n, double &coeff, NodeId &arg)
+{
+    coeff = 1.0;
+    Node const &x = a.get(n);
+    std::vector<NodeId> fs = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{n};
+    bool got_sin2 = false, got_csc2 = false;
+    NodeId local = 0;
+    for(NodeId f : fs) {
+        if(!has_any_symbol(a, f)) {
+            auto v = numeric_eval(a, f, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            coeff *= *v;
+            continue;
+        }
+        NodeId u = 0;
+        if(match_fn_power_exact(a, f, FnKind::Sin, 1, 1, u)) {
+            auto half = half_of_double_arg(a, u);
+            if(!half || !trig_same_or_set(a, local, *half)) return false;
+            got_sin2 = true;
+        }
+        else if(match_fn_power_exact(a, f, FnKind::Cosec, 2, 1, u)) {
+            if(!trig_same_or_set(a, local, u)) return false;
+            got_csc2 = true;
+        }
+        else return false;
+    }
+    if(!got_sin2 || !got_csc2) return false;
+    arg = local;
+    coeff *= 2.0;
+    return true;
+}
+
+struct CotDoublePoly
+{
+    double c = 0.0;
+    double cot1 = 0.0;
+    double cot2 = 0.0;
+    NodeId arg = 0;
+    bool used_double = false;
+};
+
+static std::optional<CotDoublePoly> collect_cot_double_poly(Arena &a, NodeId residual)
+{
+    CotDoublePoly p;
+    Node const &r = a.get(residual);
+    std::vector<NodeId> terms = r.kind == NodeKind::Add ? r.kids : std::vector<NodeId>{residual};
+    for(NodeId t : terms) {
+        double k = 0.0;
+        NodeId u = 0;
+        bool has_rest = true;
+        NodeId rest = 0;
+        if(match_sin2_cosec2_as_cot(a, t, k, u)) {
+            if(!trig_same_or_set(a, p.arg, u)) return std::nullopt;
+            p.cot1 += k;
+            p.used_double = true;
+        }
+        else if(match_fn_square(a, t, FnKind::Cot, k, u)) {
+            if(!trig_same_or_set(a, p.arg, u)) return std::nullopt;
+            p.cot2 += k;
+        }
+        else if(coeff_fn_any(a, t, FnKind::Cot, k, u)) {
+            if(!trig_same_or_set(a, p.arg, u)) return std::nullopt;
+            p.cot1 += k;
+        }
+        else if(split_coeff_term(a, t, k, rest, has_rest) && !has_rest) {
+            p.c += k;
+        }
+        else return std::nullopt;
+    }
+    if(!p.arg || !p.used_double) return std::nullopt;
+    return p;
+}
+
+static std::optional<std::vector<std::string>> solve_cot_double_cosec_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    auto p = collect_cot_double_poly(a, residual);
+    if(!p) return std::nullopt;
+    auto roots = solve_quadratic_d(p->cot2, p->cot1, p->c);
+    if(roots.empty()) return std::nullopt;
+    std::string A = format_expr(a, p->arg);
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "sin(2*" + A + ")=2sin(" + A + ")cos(" + A + ").",
+        "cosec(" + A + ")^2=1/sin(" + A + ")^2.",
+        "sin(2*" + A + ")*cosec(" + A + ")^2=2cot(" + A + ").",
+        "u=cot(" + A + ").",
+        trig_quad_text(p->cot2, p->cot1, p->c),
+    };
+    std::vector<double> xs;
+    std::string rline = "u=";
+    for(std::size_t i = 0; i < roots.size(); ++i) {
+        if(i) rline += " or u=";
+        rline += trig_root_text(roots[i]);
+    }
+    steps.push_back(rline + ".");
+    for(double u : roots) {
+        if(std::fabs(u) < 1e-10) {
+            steps.push_back("cot(" + A + ")=0 => cos(" + A + ")=0.");
+            auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Cos, 0.0));
+            for(double x : vals) add_unique(xs, x);
+        }
+        else {
+            double t = 1.0 / u;
+            steps.push_back("cot(" + A + ")=" + trig_root_text(u) + " => tan(" + A + ")=" + trig_root_text(t) + ".");
+            steps.push_back(trig_base_angle_line(FnKind::Tan, A, t));
+            steps.push_back(trig_alpha_family_line(FnKind::Tan, A, t, rad));
+            auto vals = x_values_from_angle_degrees(a, p->arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, t));
+            for(double x : vals) add_unique(xs, x);
+        }
+    }
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + ".");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
 struct UPoly
 {
     double c[7]{};
@@ -6515,6 +6681,102 @@ static std::optional<std::vector<std::string>> cot_minus_tan_identity_route(Aren
     return run(rhs, lhs);
 }
 
+static bool match_one_plus_cot2(Arena &a, NodeId n, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        NodeId u = 0;
+        if(match_fn_power_exact(a, n, FnKind::Cosec, 2, 1, u)) {
+            arg = u;
+            return true;
+        }
+    }
+    if(x.kind != NodeKind::Add) return false;
+    bool got_one = false, got_cot2 = false;
+    NodeId local = 0;
+    for(NodeId t : x.kids) {
+        if(auto q = as_num(a, t); q && q->num == q->den) got_one = true;
+        else {
+            double k = 0.0;
+            NodeId u = 0;
+            if(!match_fn_square(a, t, FnKind::Cot, k, u) || std::fabs(k - 1.0) > 1e-12) return false;
+            if(!trig_same_or_set(a, local, u)) return false;
+            got_cot2 = true;
+        }
+    }
+    if(!got_one || !got_cot2) return false;
+    arg = local;
+    return true;
+}
+
+static bool match_two_cot_over_one_plus_cot2(Arena &a, NodeId n, NodeId &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        double c = 0.0;
+        NodeId u = 0, darg = 0;
+        if(!coeff_fn_any(a, x.a, FnKind::Cot, c, u) || std::fabs(c - 2.0) > 1e-12) return false;
+        if(!match_one_plus_cot2(a, x.b, darg) || !same_sig(a, u, darg)) return false;
+        arg = u;
+        return true;
+    }
+    if(x.kind != NodeKind::Mul) return false;
+    double coeff = 1.0;
+    bool got_cot = false, got_inv = false;
+    NodeId local = 0;
+    for(NodeId f : x.kids) {
+        if(!has_any_symbol(a, f)) {
+            auto v = numeric_eval(a, f, 0.0);
+            if(!v || !std::isfinite(*v)) return false;
+            coeff *= *v;
+            continue;
+        }
+        NodeId u = 0;
+        if(match_fn_power_exact(a, f, FnKind::Cot, 1, 1, u)) {
+            if(!trig_same_or_set(a, local, u)) return false;
+            got_cot = true;
+        }
+        else if(match_fn_power_exact(a, f, FnKind::Cosec, -2, 1, u)) {
+            if(!trig_same_or_set(a, local, u)) return false;
+            got_inv = true;
+        }
+        else return false;
+    }
+    if(std::fabs(coeff - 2.0) > 1e-12 || !got_cot || !got_inv) return false;
+    arg = local;
+    return true;
+}
+
+static bool match_sin_double_rhs(Arena &a, NodeId n, NodeId arg)
+{
+    double c = 0.0;
+    NodeId u = 0;
+    if(!coeff_fn_any(a, n, FnKind::Sin, c, u) || std::fabs(c - 1.0) > 1e-12) return false;
+    NodeId two_arg = casio::simplify(a, casio::mul(a, {casio::num(a, 2), arg}));
+    return same_sig(a, u, two_arg);
+}
+
+static std::optional<std::vector<std::string>> cot_sin_double_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        NodeId arg = 0;
+        if(!match_two_cot_over_one_plus_cot2(a, L, arg) || !match_sin_double_rhs(a, R, arg)) return std::nullopt;
+        std::string A = format_expr(a, arg);
+        return casio::exam_block(
+            "trig identity",
+            {
+                "2*cot(" + A + ")/(1+cot(" + A + ")^2)",
+                "= 2*(cos(" + A + ")/sin(" + A + "))/(1+cos(" + A + ")^2/sin(" + A + ")^2)",
+                "= 2*cos(" + A + ")*sin(" + A + ")/(sin(" + A + ")^2+cos(" + A + ")^2)",
+                "= 2sin(" + A + ")cos(" + A + ")",
+            },
+            "sin(2*" + A + ")"
+        );
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static bool match_cosec_sec_identity_side(Arena &a, NodeId n, NodeId &arg)
 {
     Node const &x = a.get(n);
@@ -6731,6 +6993,7 @@ static std::optional<std::vector<std::string>> asin_acos_unit_route(Arena &a, No
 static std::optional<std::vector<std::string>> trig_proof_equation_route(Arena &a, NodeId lhs, NodeId rhs)
 {
     if(auto r = cot_minus_tan_identity_route(a, lhs, rhs)) return r;
+    if(auto r = cot_sin_double_identity_route(a, lhs, rhs)) return r;
     if(auto r = cosec_sec_identity_route(a, lhs, rhs)) return r;
     if(auto r = cosec_consequence_route(a, lhs, rhs)) return r;
     if(auto r = asin_acos_unit_route(a, lhs, rhs)) return r;
@@ -11211,6 +11474,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
         if(auto sc = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Sin, FnKind::Cosec)) return *sc;
         if(auto cs = solve_recip_trig_poly(a, residual, var, lo_text, hi_text, rad, FnKind::Cos, FnKind::Sec)) return *cs;
         if(auto ss = solve_sec_sin2_poly(a, residual, var, lo_text, hi_text, rad)) return *ss;
+        if(auto cd = solve_cot_double_cosec_poly(a, residual, var, lo_text, hi_text, rad)) return *cd;
         if(auto pr = solve_pyth_recip_poly(a, residual, var, lo_text, hi_text, rad)) return *pr;
         if(auto ur = solve_u_rational_pyth(a, residual, var, lo_text, hi_text, rad)) return *ur;
         if(auto cd = solve_sc_common_denominator(a, residual, var, lo_text, hi_text, rad)) return *cd;

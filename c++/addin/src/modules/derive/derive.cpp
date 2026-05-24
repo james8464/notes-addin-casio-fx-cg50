@@ -3784,6 +3784,10 @@ static bool append_product_rule_detail(
             steps.push_back("f = " + clean_math_text(format_expr_human(a, factors.front())) + ".");
             steps.push_back("f' = " + clean_math_text(format_expr_human(a, fp)) + ".");
             steps.push_back("dy/d" + var + " = c*f'.");
+            if(answer_override) {
+                NodeId ans = nicer_derivative_final(a, casio::simplify(a, casio::mul(a, {c, fp})));
+                *answer_override = "dy/d" + var + " = " + clean_math_text(format_expr_human(a, ans));
+            }
         }
         return true;
     }
